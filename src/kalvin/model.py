@@ -9,8 +9,8 @@ HIGH_BIT_MASK = 0x8000_0000_0000_0000
 
 class KLineType(IntEnum):
     """Type based on the high bit of a key."""
-    NODE = 0       # high bit = 0 (branch)
-    EMBEDDING = 1  # high bit = 1 (leaf)
+    NODE = 1       # high bit = 1 (branch)
+    EMBEDDING = 0  # high bit = 0 (leaf)
 
 
 # Type alias for a KNode (64-bit int with high bit reserved for type)
@@ -19,17 +19,17 @@ KNode: TypeAlias = int
 
 def get_node_type(node: KNode) -> KLineType:
     """Get the type of a KNode based on its high bit."""
-    return KLineType.EMBEDDING if (node & HIGH_BIT_MASK) else KLineType.NODE
+    return KLineType.NODE if (node & HIGH_BIT_MASK) else KLineType.EMBEDDING
 
 
 def create_node_key(key: int) -> KNode:
-    """Create a NODE key (ensures high bit is 0)."""
-    return key & ~HIGH_BIT_MASK
+    """Create a NODE key (sets high bit to 1)."""
+    return key | HIGH_BIT_MASK
 
 
 def create_embedding_key(key: int) -> KNode:
-    """Create an EMBEDDING key (sets high bit to 1)."""
-    return key | HIGH_BIT_MASK
+    """Create an EMBEDDING key (ensures high bit is 0)."""
+    return key & ~HIGH_BIT_MASK
 
 
 @dataclass
@@ -37,8 +37,8 @@ class KLine:
     """A structure with a 64-bit significance s_key and list of child KNodes.
 
     The high bit of s_key indicates the type:
-    - 0: NODE (branch - can have children)
-    - 1: EMBEDDING (leaf - no children)
+    - 1: NODE (branch - can have children)
+    - 0: EMBEDDING (leaf - no children)
 
     Attributes:
         s_key: 64-bit integer s_key (high bit reserved for type)
@@ -50,17 +50,17 @@ class KLine:
     @property
     def type(self) -> KLineType:
         """Return the type based on the high bit of s_key."""
-        return KLineType.EMBEDDING if (self.s_key & HIGH_BIT_MASK) else KLineType.NODE
+        return KLineType.NODE if (self.s_key & HIGH_BIT_MASK) else KLineType.EMBEDDING
 
     @classmethod
     def create_node(cls, s_key: int, nodes: list[KNode]) -> "KLine":
-        """Create a NODE KLine (ensures high bit is 0)."""
-        return cls(s_key=s_key & ~HIGH_BIT_MASK, nodes=nodes)
+        """Create a NODE KLine (sets high bit to 1)."""
+        return cls(s_key=s_key | HIGH_BIT_MASK, nodes=nodes)
 
     @classmethod
     def create_embedding(cls, s_key: int, nodes: list[KNode]) -> "KLine":
-        """Create an EMBEDDING KLine (sets high bit to 1)."""
-        return cls(s_key=s_key | HIGH_BIT_MASK, nodes=nodes)
+        """Create an EMBEDDING KLine (ensures high bit is 0)."""
+        return cls(s_key=s_key & ~HIGH_BIT_MASK, nodes=nodes)
 
     def signifies(self, query: int) -> bool:
         """Check if this KLine signifies a query via AND operation.
@@ -88,8 +88,8 @@ def query_significance(
       its nodes represent (recursive to depth n)
     - If any nodes already in result → stop and return list so far
 
-    Only NODE type KLines (high bit = 0) are traversed.
-    EMBEDDING nodes (high bit = 1) are leaves and not in kv_list.
+    Only NODE type KLines (high bit = 1) are traversed.
+    EMBEDDING nodes (high bit = 0) are leaves and not in kv_list.
 
     Args:
         kv_list: List of KLines to search (must contain all NODE type KLines)

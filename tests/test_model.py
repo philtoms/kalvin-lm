@@ -13,8 +13,8 @@ from kalvin.model import (
 class TestKLineType:
     def test_kline_type_values(self):
         """Test KLineType enum values."""
-        assert KLineType.NODE == 0
-        assert KLineType.EMBEDDING == 1
+        assert KLineType.NODE == 1
+        assert KLineType.EMBEDDING == 0
 
     def test_high_bit_mask(self):
         """Test that HIGH_BIT_MASK is the correct bit 63 mask."""
@@ -24,25 +24,25 @@ class TestKLineType:
 
 class TestKNode:
     def test_get_node_type_node(self):
-        """Test get_node_type returns NODE for high bit = 0."""
-        node = 0x7FFF_FFFF_FFFF_FFFF
+        """Test get_node_type returns NODE for high bit = 1."""
+        node = 0x8000_0000_0000_0000
         assert get_node_type(node) == KLineType.NODE
 
     def test_get_node_type_embedding(self):
-        """Test get_node_type returns EMBEDDING for high bit = 1."""
-        node = 0x8000_0000_0000_0000
+        """Test get_node_type returns EMBEDDING for high bit = 0."""
+        node = 0x7FFF_FFFF_FFFF_FFFF
         assert get_node_type(node) == KLineType.EMBEDDING
 
     def test_create_node_key(self):
-        """Test create_node_key clears high bit."""
-        key = create_node_key(0xFFFF_0000_0000_0000)
-        assert key == 0x7FFF_0000_0000_0000
+        """Test create_node_key sets high bit."""
+        key = create_node_key(0x7FFF_0000_0000_0000)
+        assert key == 0xFFFF_0000_0000_0000
         assert get_node_type(key) == KLineType.NODE
 
     def test_create_embedding_key(self):
-        """Test create_embedding_key sets high bit."""
-        key = create_embedding_key(0x7FFF_0000_0000_0000)
-        assert key == 0xFFFF_0000_0000_0000
+        """Test create_embedding_key clears high bit."""
+        key = create_embedding_key(0xFFFF_0000_0000_0000)
+        assert key == 0x7FFF_0000_0000_0000
         assert get_node_type(key) == KLineType.EMBEDDING
 
 
@@ -58,44 +58,44 @@ class TestKLine:
         assert kl.nodes == [0x1000, 0x2000]
 
     def test_type_property_node(self):
-        """Test that type property returns NODE when high bit is 0."""
-        kl = KLine(s_key=0x7FFF_FFFF_FFFF_FFFF, nodes=[])
+        """Test that type property returns NODE when high bit is 1."""
+        kl = KLine(s_key=0x8000_0000_0000_0000, nodes=[])
         assert kl.type == KLineType.NODE
 
     def test_type_property_embedding(self):
-        """Test that type property returns EMBEDDING when high bit is 1."""
-        kl = KLine(s_key=0x8000_0000_0000_0000, nodes=[])
+        """Test that type property returns EMBEDDING when high bit is 0."""
+        kl = KLine(s_key=0x7FFF_FFFF_FFFF_FFFF, nodes=[])
         assert kl.type == KLineType.EMBEDDING
 
     def test_create_node_factory(self):
-        """Test create_node factory clears high bit."""
-        kl = KLine.create_node(s_key=0xFFFF_0000_0000_0000, nodes=[0x100, 0x200])
+        """Test create_node factory sets high bit."""
+        kl = KLine.create_node(s_key=0x7FFF_0000_0000_0000, nodes=[0x100, 0x200])
 
         assert kl.type == KLineType.NODE
-        assert kl.s_key == 0x7FFF_0000_0000_0000
+        assert kl.s_key == 0xFFFF_0000_0000_0000
         assert kl.nodes == [0x100, 0x200]
 
-    def test_create_node_factory_preserves_zero_high_bit(self):
-        """Test create_node preserves key when high bit already 0."""
-        kl = KLine.create_node(s_key=0x1234_5678_9ABC_DEF0, nodes=[])
+    def test_create_node_factory_preserves_high_bit(self):
+        """Test create_node preserves key when high bit already set."""
+        kl = KLine.create_node(s_key=0x9234_5678_9ABC_DEF0, nodes=[])
 
         assert kl.type == KLineType.NODE
-        assert kl.s_key == 0x1234_5678_9ABC_DEF0
+        assert kl.s_key == 0x9234_5678_9ABC_DEF0
 
     def test_create_embedding_factory(self):
-        """Test create_embedding factory sets high bit."""
-        kl = KLine.create_embedding(s_key=0x1234_5678_9ABC_DEF0, nodes=[0x100])
+        """Test create_embedding factory clears high bit."""
+        kl = KLine.create_embedding(s_key=0x9234_5678_9ABC_DEF0, nodes=[0x100])
 
         assert kl.type == KLineType.EMBEDDING
-        assert kl.s_key == 0x9234_5678_9ABC_DEF0
+        assert kl.s_key == 0x1234_5678_9ABC_DEF0
         assert kl.nodes == [0x100]
 
     def test_create_embedding_factory_idempotent(self):
-        """Test create_embedding is idempotent when high bit already set."""
-        kl = KLine.create_embedding(s_key=0x8000_0000_0000_0001, nodes=[])
+        """Test create_embedding is idempotent when high bit already cleared."""
+        kl = KLine.create_embedding(s_key=0x7FFF_0000_0000_0001, nodes=[])
 
         assert kl.type == KLineType.EMBEDDING
-        assert kl.s_key == 0x8000_0000_0000_0001
+        assert kl.s_key == 0x7FFF_0000_0000_0001
 
     def test_store_in_list(self):
         """Test storing KLine objects in a list."""
@@ -142,7 +142,7 @@ class TestQuerySignificance:
 
     def test_match_with_only_embeddings_returns_kline(self):
         """If match has only embeddings, return just the matching kline."""
-        # EMBEDDING keys have high bit set
+        # EMBEDDING keys have high bit cleared
         embedding1 = create_embedding_key(0x1000)
         embedding2 = create_embedding_key(0x2000)
         matching = KLine(s_key=0xFF00, nodes=[embedding1, embedding2])
@@ -165,9 +165,12 @@ class TestQuerySignificance:
 
     def test_match_with_child_klines_returns_all(self):
         """If match has child klines, return matching kline + children."""
-        child1 = KLine(s_key=0x0010, nodes=[])
-        child2 = KLine(s_key=0x0020, nodes=[])
-        parent = KLine(s_key=0xFF00, nodes=[0x0010, 0x0020])  # references children
+        key_child1 = create_node_key(0x0010)
+        key_child2 = create_node_key(0x0020)
+
+        child1 = KLine(s_key=key_child1, nodes=[])
+        child2 = KLine(s_key=key_child2, nodes=[])
+        parent = KLine(s_key=0xFF00, nodes=[key_child1, key_child2])  # references children
 
         results = query_significance([parent, child1, child2], query=0xFF00, depth=2)
 
@@ -178,9 +181,12 @@ class TestQuerySignificance:
 
     def test_depth_limits_expansion(self):
         """Depth parameter limits how many levels of children are expanded."""
-        grandchild = KLine(s_key=0x0100, nodes=[])
-        child = KLine(s_key=0x0010, nodes=[0x0100])
-        parent = KLine(s_key=0xFF00, nodes=[0x0010])
+        key_grandchild = create_node_key(0x0100)
+        key_child = create_node_key(0x0010)
+
+        grandchild = KLine(s_key=key_grandchild, nodes=[])
+        child = KLine(s_key=key_child, nodes=[key_grandchild])
+        parent = KLine(s_key=0xFF00, nodes=[key_child])
 
         # depth=1: only parent, no child expansion
         results = query_significance([parent, child, grandchild], query=0xFF00, depth=1)
@@ -262,12 +268,16 @@ class TestQuerySignificance:
 
     def test_nested_hierarchy_expansion(self):
         """Test deeply nested hierarchy is expanded correctly."""
-        leaf1 = KLine(s_key=0x1000, nodes=[])
-        leaf2 = KLine(s_key=0x2000, nodes=[])
-        leaf3 = KLine(s_key=0x3000, nodes=[])
+        key_leaf1 = create_node_key(0x1000)
+        key_leaf2 = create_node_key(0x2000)
+        key_leaf3 = create_node_key(0x3000)
+        key_intermediate = create_node_key(0x0010)
 
-        intermediate = KLine(s_key=0x0010, nodes=[0x1000, 0x2000])
-        root = KLine(s_key=0xFF00, nodes=[0x0010, 0x3000])
+        leaf1 = KLine(s_key=key_leaf1, nodes=[])
+        leaf2 = KLine(s_key=key_leaf2, nodes=[])
+        leaf3 = KLine(s_key=key_leaf3, nodes=[])
+        intermediate = KLine(s_key=key_intermediate, nodes=[key_leaf1, key_leaf2])
+        root = KLine(s_key=0xFF00, nodes=[key_intermediate, key_leaf3])
 
         results = query_significance(
             [root, intermediate, leaf1, leaf2, leaf3],
