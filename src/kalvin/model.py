@@ -14,7 +14,7 @@ class KLineType(IntEnum):
 
 @dataclass
 class KLine:
-    """A structure with a 64-bit significance s_key and list of 64-bit nodes.
+    """A structure with a 64-bit significance s_key and list of child KLines.
 
     The high bit of s_key indicates the type:
     - 0: NODE
@@ -22,10 +22,10 @@ class KLine:
 
     Attributes:
         s_key: 64-bit integer s_key (high bit reserved for type)
-        nodes: List of integer nodes
+        nodes: List of child KLine objects
     """
-    s_key: int          # 64-bit s_key
-    nodes: list[int]    # list of nodes
+    s_key: int              # 64-bit s_key
+    nodes: list["KLine"]    # list of child KLines
 
     @property
     def type(self) -> KLineType:
@@ -33,12 +33,12 @@ class KLine:
         return KLineType.EMBEDDING if (self.s_key & HIGH_BIT_MASK) else KLineType.NODE
 
     @classmethod
-    def create_node(cls, s_key: int, nodes: list[int]) -> "KLine":
+    def create_node(cls, s_key: int, nodes: list["KLine"]) -> "KLine":
         """Create a NODE KLine (ensures high bit is 0)."""
         return cls(s_key=s_key & ~HIGH_BIT_MASK, nodes=nodes)
 
     @classmethod
-    def create_embedding(cls, s_key: int, nodes: list[int]) -> "KLine":
+    def create_embedding(cls, s_key: int, nodes: list["KLine"]) -> "KLine":
         """Create an EMBEDDING KLine (sets high bit to 1)."""
         return cls(s_key=s_key | HIGH_BIT_MASK, nodes=nodes)
 
@@ -54,14 +54,53 @@ class KLine:
         return (self.s_key & query) != 0
 
 
-def query_significance(kv_list: list[KLine], query: int) -> list[KLine]:
+def query_significance(
+    kv_list: list[KLine],
+    query: int,
+    depth: int = 1,
+) -> list[KLine]:
     """Query a list of KLines by ANDing Significance with a query.
 
+    Searches recursively up to the specified depth, detecting and halting
+    circular dependencies.
+
     Args:
-        kv_list: List of Klines to search
-        query: The query nodes to match
+        kv_list: List of KLines to search
+        query: The query value to match
+        depth: Maximum recursion depth:
+            - depth=0: search nothing
+            - depth=1: search only top-level items (default)
+            - depth=2: search top-level + children
+            - depth=N: search N levels deep
 
     Returns:
-        List of KLines where (s_key & query) != 0
+        List of KLines where (s_key & query) != 0, including matches found
+        in child nodes up to the specified depth
     """
-    return [kv for kv in kv_list if kv.signifies(query)]
+    results: list[KLine] = []
+    visited: set[int] = set()
+
+    def search(kline: KLine, current_depth: int) -> None:
+        """Recursively search KLine and its children."""
+        # Stop if we've exceeded max depth
+        if current_depth >= depth:
+            return
+
+        # Use id() to detect circular references (same object)
+        kline_id = id(kline)
+        if kline_id in visited:
+            return
+        visited.add(kline_id)
+
+        # Check if this KLine matches
+        if kline.signifies(query):
+            results.append(kline)
+
+        # Search children
+        for child in kline.nodes:
+            search(child, current_depth + 1)
+
+    for kline in kv_list:
+        search(kline, 0)
+
+    return results
