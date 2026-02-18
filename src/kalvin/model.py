@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import IntEnum
+from typing import TypeAlias
 
 
 # High bit mask (bit 63)
@@ -7,25 +8,44 @@ HIGH_BIT_MASK = 0x8000_0000_0000_0000
 
 
 class KLineType(IntEnum):
-    """Type of KLine based on the high bit of s_key."""
-    NODE = 0       # high bit = 0
-    EMBEDDING = 1  # high bit = 1
+    """Type based on the high bit of a key."""
+    NODE = 0       # high bit = 0 (branch)
+    EMBEDDING = 1  # high bit = 1 (leaf)
+
+
+# Type alias for a KNode (64-bit int with high bit reserved for type)
+KNode: TypeAlias = int
+
+
+def get_node_type(node: KNode) -> KLineType:
+    """Get the type of a KNode based on its high bit."""
+    return KLineType.EMBEDDING if (node & HIGH_BIT_MASK) else KLineType.NODE
+
+
+def create_node_key(key: int) -> KNode:
+    """Create a NODE key (ensures high bit is 0)."""
+    return key & ~HIGH_BIT_MASK
+
+
+def create_embedding_key(key: int) -> KNode:
+    """Create an EMBEDDING key (sets high bit to 1)."""
+    return key | HIGH_BIT_MASK
 
 
 @dataclass
 class KLine:
-    """A structure with a 64-bit significance s_key and list of child KLines.
+    """A structure with a 64-bit significance s_key and list of child KNodes.
 
     The high bit of s_key indicates the type:
-    - 0: NODE
-    - 1: EMBEDDING
+    - 0: NODE (branch - can have children)
+    - 1: EMBEDDING (leaf - no children)
 
     Attributes:
         s_key: 64-bit integer s_key (high bit reserved for type)
-        nodes: List of child KLine objects
+        nodes: List of child KNode integers (high bit indicates type)
     """
-    s_key: int              # 64-bit s_key
-    nodes: list["KLine"]    # list of child KLines
+    s_key: int           # 64-bit s_key
+    nodes: list[KNode]   # list of child KNodes (ints with type bit)
 
     @property
     def type(self) -> KLineType:
@@ -33,12 +53,12 @@ class KLine:
         return KLineType.EMBEDDING if (self.s_key & HIGH_BIT_MASK) else KLineType.NODE
 
     @classmethod
-    def create_node(cls, s_key: int, nodes: list["KLine"]) -> "KLine":
+    def create_node(cls, s_key: int, nodes: list[KNode]) -> "KLine":
         """Create a NODE KLine (ensures high bit is 0)."""
         return cls(s_key=s_key & ~HIGH_BIT_MASK, nodes=nodes)
 
     @classmethod
-    def create_embedding(cls, s_key: int, nodes: list["KLine"]) -> "KLine":
+    def create_embedding(cls, s_key: int, nodes: list[KNode]) -> "KLine":
         """Create an EMBEDDING KLine (sets high bit to 1)."""
         return cls(s_key=s_key | HIGH_BIT_MASK, nodes=nodes)
 
@@ -61,46 +81,76 @@ def query_significance(
 ) -> list[KLine]:
     """Query a list of KLines by ANDing Significance with a query.
 
-    Searches recursively up to the specified depth, detecting and halting
-    circular dependencies.
+    Algorithm:
+    - If query not matched → return empty list
+    - If query matches a kline with only embeddings → return just that kline
+    - If query matches a kline with kline nodes → return kline + all klines
+      its nodes represent (recursive to depth n)
+    - If any nodes already in result → stop and return list so far
+
+    Only NODE type KLines (high bit = 0) are traversed.
+    EMBEDDING nodes (high bit = 1) are leaves and not in kv_list.
 
     Args:
-        kv_list: List of KLines to search
+        kv_list: List of KLines to search (must contain all NODE type KLines)
         query: The query value to match
-        depth: Maximum recursion depth:
-            - depth=0: search nothing
-            - depth=1: search only top-level items (default)
-            - depth=2: search top-level + children
-            - depth=N: search N levels deep
+        depth: Maximum recursion depth for expanding child nodes:
+            - depth=0: return empty
+            - depth=1: return matching kline only (no child expansion)
+            - depth=2: return matching kline + its direct children
+            - depth=N: expand N levels of children
 
     Returns:
-        List of KLines where (s_key & query) != 0, including matches found
-        in child nodes up to the specified depth
+        List containing the matching KLine and its descendants.
+        Empty list if no match is found.
     """
-    results: list[KLine] = []
-    visited: set[int] = set()
+    if depth <= 0:
+        return []
 
-    def search(kline: KLine, current_depth: int) -> None:
-        """Recursively search KLine and its children."""
-        # Stop if we've exceeded max depth
+    def find_kline_by_key(key: int) -> KLine | None:
+        """Find a KLine in kv_list by its s_key."""
+        for kline in kv_list:
+            if kline.s_key == key:
+                return kline
+        return None
+
+    def get_node_klines(nodes: list[KNode]) -> list[KLine]:
+        """Get all NODE type KLines from a list of node keys."""
+        result = []
+        for node_key in nodes:
+            if get_node_type(node_key) == KLineType.NODE:
+                kline = find_kline_by_key(node_key)
+                if kline is not None:
+                    result.append(kline)
+        return result
+
+    def expand_kline(kline: KLine, result: list[KLine], current_depth: int) -> bool:
+        """Expand a KLine and its children into result.
+
+        Returns True if expansion was stopped due to cycle detection.
+        """
+        # Check for cycle - if kline already in result, stop
+        if kline in result:
+            return True
+
+        result.append(kline)
+
+        # Stop if we've reached max depth
         if current_depth >= depth:
-            return
+            return False
 
-        # Use id() to detect circular references (same object)
-        kline_id = id(kline)
-        if kline_id in visited:
-            return
-        visited.add(kline_id)
+        # Expand child NODE klines
+        for child in get_node_klines(kline.nodes):
+            if expand_kline(child, result, current_depth + 1):
+                return True
 
-        # Check if this KLine matches
-        if kline.signifies(query):
-            results.append(kline)
+        return False
 
-        # Search children
-        for child in kline.nodes:
-            search(child, current_depth + 1)
-
+    # Find first matching kline
     for kline in kv_list:
-        search(kline, 0)
+        if kline.signifies(query):
+            result: list[KLine] = []
+            expand_kline(kline, result, 1)
+            return result
 
-    return results
+    return []
