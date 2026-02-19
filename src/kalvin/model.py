@@ -118,41 +118,84 @@ REMAINDER_KEY: int = 0x7FFF_FFFF_FFFF_FFFE
 def query_significance(
     kv_list: list[KLine],
     query: int,
-    depth: int = 1,
     focus_limit: int = 0,
 ) -> Generator[KLine, None, None]:
     """Query a list of KLines by ANDing Significance with a query.
 
-    Generator that yields KLines in two phases:
-    1. Focus: Yields matching KLines and their descendants immediately
-    2. Remainder: Yields a single special KLine with REMAINDER_KEY and
-       nodes containing all remainder KLine s_keys
-
-    Only NODE type KLines (high bit = 1) are traversed.
-    EMBEDDING nodes (high bit = 0) are leaves and not in kv_list.
+    Generator that yields top-level matching KLines only (no descendant expansion).
+    Results are split into focus and remainder batches:
+    1. Focus: Yields matching KLines immediately (up to focus_limit)
+    2. Remainder: Yields a single KLine with REMAINDER_KEY containing
+       remaining match s_keys in its nodes
 
     Args:
         kv_list: List of KLines to search (may contain duplicates)
-        query: The query value to match
-        depth: Maximum recursion depth for expanding child nodes:
-            - depth=0: yield nothing
-            - depth=1: yield matching klines only (no child expansion)
-            - depth=2: yield matching klines + their direct children
-            - depth=N: expand N levels of children
+        query: The query value to match (AND operation on s_key)
         focus_limit: Number of top-level matches in focus (0 = all in focus)
             - focus_limit=2: first 2 matches yielded immediately, rest in remainder
 
     Yields:
-        Focus KLines immediately, then a single remainder KLine.
+        Focus KLines immediately, then a single remainder KLine (if any).
+    """
+    # Find all matching klines
+    matches = [kline for kline in kv_list if kline.signifies(query)]
+
+    # Split into focus and remainder
+    if focus_limit > 0:
+        focus_matches = matches[:focus_limit]
+        remainder_matches = matches[focus_limit:]
+    else:
+        focus_matches = matches
+        remainder_matches = []
+
+    # Yield focus matches
+    yield from focus_matches
+
+    # Collect remainder into a single KLine
+    if remainder_matches:
+        remainder_nodes = [kl.s_key for kl in remainder_matches]
+        yield KLine(s_key=REMAINDER_KEY, nodes=remainder_nodes)
+
+
+def expand_significance(
+    kv_list: list[KLine],
+    klines: list[KLine],
+    depth: int = 1,
+    focus_limit: int = 0,
+) -> Generator[KLine, None, None]:
+    """Expand KLines and their descendants up to a given depth.
+
+    Generator that yields KLines and their descendants in two phases:
+    1. Focus: Yields first `focus_limit` KLines and their descendants
+    2. Remainder: Yields remaining KLines as a single remainder KLine
+
+    Only NODE type KLines (high bit = 1) are traversed for children.
+    EMBEDDING nodes (high bit = 0) are leaves and not expanded.
+
+    Handles REMAINDER_KEY KLines by expanding their nodes as s_keys.
+
+    Args:
+        kv_list: List of KLines to search for children
+        klines: List of KLines to expand (e.g., from query_significance)
+        depth: Maximum recursion depth for expanding child nodes:
+            - depth=0: yield nothing
+            - depth=1: yield klines only (no child expansion)
+            - depth=2: yield klines + their direct children
+            - depth=N: expand N levels of children
+        focus_limit: Number of klines in focus (0 = all in focus)
+            - focus_limit=2: first 2 klines expanded, rest in remainder
+
+    Yields:
+        Expanded KLines from focus batch, then remainder KLine (if any).
     """
     if depth <= 0:
         return
 
     visited: set[int] = set()  # Track visited s_keys for cycle detection
 
-    def find_kline_by_key(search_list: list[KLine], key: int) -> KLine | None:
-        """Find a KLine in search_list by its s_key."""
-        for kline in search_list:
+    def find_kline_by_key(key: int) -> KLine | None:
+        """Find a KLine in kv_list by its s_key."""
+        for kline in kv_list:
             if kline.s_key == key:
                 return kline
         return None
@@ -162,17 +205,25 @@ def query_significance(
         found = []
         for node_key in nodes:
             if get_node_type(node_key) == KLineType.NODE:
-                kline = find_kline_by_key(kv_list, node_key)
+                kline = find_kline_by_key(node_key)
                 if kline is not None:
                     found.append(kline)
         return found
 
     def expand_kline(kline: KLine, current_depth: int, batch: list[KLine]) -> None:
         """Expand a KLine and its children into batch."""
+        # Handle REMAINDER_KEY - expand its nodes as s_keys
+        if kline.s_key == REMAINDER_KEY:
+            for node_key in kline.nodes:
+                child = find_kline_by_key(node_key)
+                if child is not None:
+                    expand_kline(child, current_depth, batch)
+            return
+
         # Check for cycle - if s_key already visited, check that it is
         # the same kline and stop this branch
         if kline.s_key in visited:
-            v_kline = find_kline_by_key(batch, kline.s_key)
+            v_kline = find_kline_by_key(kline.s_key)
             if v_kline and nodes_equal(v_kline.nodes, kline.nodes):
                 return
         else:
@@ -188,29 +239,24 @@ def query_significance(
         for child in get_node_klines(kline.nodes):
             expand_kline(child, current_depth + 1, batch)
 
-    # Find all matching klines
-    matches = [kline for kline in kv_list if kline.signifies(query)]
-
-    # Split into focus and remainder
+    # Split klines into focus and remainder
     if focus_limit > 0:
-        focus_matches = matches[:focus_limit]
-        remainder_matches = matches[focus_limit:]
+        focus_klines = klines[:focus_limit]
+        remainder_klines = klines[focus_limit:]
     else:
-        focus_matches = matches
-        remainder_matches = []
+        focus_klines = klines
+        remainder_klines = []
 
-    # Yield focus matches immediately (with their descendants)
-    # Use a single accumulated batch for proper cycle detection
+    # Yield focus batch with descendants
     focus_batch: list[KLine] = []
-    for kline in focus_matches:
+    for kline in focus_klines:
         expand_kline(kline, 1, focus_batch)
     yield from focus_batch
 
     # Collect remainder into a single KLine
-    if remainder_matches:
+    if remainder_klines:
         remainder_batch: list[KLine] = []
-        for kline in remainder_matches:
+        for kline in remainder_klines:
             expand_kline(kline, 1, remainder_batch)
-        # Extract s_keys as nodes for the remainder KLine
         remainder_nodes = [kl.s_key for kl in remainder_batch]
         yield KLine(s_key=REMAINDER_KEY, nodes=remainder_nodes)
