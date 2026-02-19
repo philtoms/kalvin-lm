@@ -7,6 +7,31 @@ from typing import TypeAlias
 HIGH_BIT_MASK = 0x8000_0000_0000_0000
 
 
+# === Significance Bit Constants ===
+# Layout: S1(bits56-63) | S2(bits40-55) | S3(bits16-39) | Reserved(bits0-15)
+# Higher bits = more significant: S1 > S2 > S3 > S4
+
+# S1: 8 bits (bits 56-63)
+S1_SHIFT = 56
+S1_MASK = 0xFF << S1_SHIFT
+
+# S2: 16 bits (bits 40-55)
+S2_SHIFT = 40
+S2_MASK = 0xFFFF << S2_SHIFT
+S2_S1_PCT_SHIFT = 40   # S1 percentage within S2
+S2_S2_PCT_SHIFT = 48   # S2 percentage within S2
+
+# S3: 24 bits (bits 16-39)
+S3_SHIFT = 16
+S3_MASK = 0xFFFFFF << S3_SHIFT
+S3_S1_PCT_SHIFT = 16   # S1% for unordered matches (bits 16-23)
+S3_S2_PCT_SHIFT = 24   # S2% for unordered matches (bits 24-31)
+S3_GEN_PCT_SHIFT = 32  # Generational S1% (bits 32-39)
+
+# S4: no significance
+S4_VALUE = 0
+
+
 class KLineType(IntEnum):
     """Type based on the high bit of a key."""
     NODE = 1       # high bit = 1 (branch)
@@ -15,6 +40,9 @@ class KLineType(IntEnum):
 
 # Type alias for a KNode (64-bit int with high bit reserved for type)
 KNode: TypeAlias = int
+
+# Type alias for Significance (64-bit int with S1/S2/S3/S4 encoding)
+Significance: TypeAlias = int
 
 
 def get_node_type(node: KNode) -> KLineType:
@@ -85,6 +113,88 @@ def nodes_equal(nodes1: list[KNode], nodes2: list[KNode]) -> bool:
     return True
 
 
+# === Significance Helper Functions ===
+
+def get_s1(sig: Significance) -> int:
+    """Extract S1 value (0-255)."""
+    return (sig >> S1_SHIFT) & 0xFF
+
+
+def get_s2(sig: Significance) -> int:
+    """Extract full S2 value (0-65535)."""
+    return (sig >> S2_SHIFT) & 0xFFFF
+
+
+def get_s2_s1_percentage(sig: Significance) -> int:
+    """Extract S2's S1 percentage (0-255)."""
+    return (sig >> S2_S1_PCT_SHIFT) & 0xFF
+
+
+def get_s2_s2_percentage(sig: Significance) -> int:
+    """Extract S2's S2 percentage (0-255)."""
+    return (sig >> S2_S2_PCT_SHIFT) & 0xFF
+
+
+def build_s1(percentage: int) -> Significance:
+    """Build S1 significance.
+
+    Args:
+        percentage: Match percentage (0-100)
+    """
+    scaled = max(0, min(100, percentage)) * 255 // 100
+    return scaled << S1_SHIFT
+
+
+def build_s2(s1_pct: int, s2_pct: int) -> Significance:
+    """Build S2 significance.
+
+    Args:
+        s1_pct: Positional match percentage (0-100)
+        s2_pct: Non-positional match percentage (0-100)
+    """
+    s1_scaled = max(0, min(100, s1_pct)) * 255 // 100
+    s2_scaled = max(0, min(100, s2_pct)) * 255 // 100
+    return (s1_scaled << S2_S1_PCT_SHIFT) | (s2_scaled << S2_S2_PCT_SHIFT)
+
+
+def get_s3(sig: Significance) -> int:
+    """Extract full S3 value (0-16777215)."""
+    return (sig >> S3_SHIFT) & 0xFFFFFF
+
+
+def get_s3_s1_percentage(sig: Significance) -> int:
+    """Extract S3's S1 percentage for unordered matches (0-255)."""
+    return (sig >> S3_S1_PCT_SHIFT) & 0xFF
+
+
+def get_s3_s2_percentage(sig: Significance) -> int:
+    """Extract S3's S2 percentage for unordered matches (0-255)."""
+    return (sig >> S3_S2_PCT_SHIFT) & 0xFF
+
+
+def get_s3_gen_percentage(sig: Significance) -> int:
+    """Extract S3's generational S1 percentage (0-255)."""
+    return (sig >> S3_GEN_PCT_SHIFT) & 0xFF
+
+
+def build_s3(s1_pct: int, s2_pct: int, gen_pct: int) -> Significance:
+    """Build S3 significance.
+
+    Args:
+        s1_pct: Unordered S1 match percentage (0-100)
+        s2_pct: Unordered S2 match percentage (0-100)
+        gen_pct: Generational S1 match percentage (0-100)
+    """
+    s1_scaled = max(0, min(100, s1_pct)) * 255 // 100
+    s2_scaled = max(0, min(100, s2_pct)) * 255 // 100
+    gen_scaled = max(0, min(100, gen_pct)) * 255 // 100
+    return (
+        (s1_scaled << S3_S1_PCT_SHIFT)
+        | (s2_scaled << S3_S2_PCT_SHIFT)
+        | (gen_scaled << S3_GEN_PCT_SHIFT)
+    )
+
+
 from typing import Iterator
 
 
@@ -143,6 +253,122 @@ class Model:
             if kline.s_key == key:
                 return kline
         return None
+
+    def calculate_significance(self, query: KLine, model: KLine) -> Significance:
+        """Calculate significance between query and model KLines.
+
+        Significance is comparable as integers - higher = more significant.
+        S1 > S2 > S3 > S4.
+
+        Returns:
+            64-bit significance value
+        """
+        # Handle empty node lists
+        if not query.nodes and not model.nodes:
+            return build_s1(100)  # Perfect match
+        if not query.nodes or not model.nodes:
+            return S4_VALUE
+
+        min_len = min(len(query.nodes), len(model.nodes))
+
+        # Count S1 matches: positional equality (up to min length)
+        s1_match_positions = set(
+            i for i in range(min_len) if query.nodes[i] == model.nodes[i]
+        )
+        s1_matches = len(s1_match_positions)
+
+        # S1: All prefix nodes match
+        if s1_matches == min_len:
+            percentage = 100  # All matched
+            return build_s1(percentage)
+
+        # S2: Partial match (some positional matches exist)
+        if s1_matches > 0:
+            s1_pct = (s1_matches * 100) // min_len
+
+            # S2 matches: nodes at different positions
+            model_set = set(model.nodes)
+            s2_matches = 0
+            for i, node in enumerate(query.nodes):
+                if i in s1_match_positions:
+                    continue  # Already counted as S1
+                if node in model_set:
+                    s2_matches += 1
+
+            s2_pct = (s2_matches * 100) // len(query.nodes) if query.nodes else 0
+            return build_s2(s1_pct, s2_pct)
+
+        # S3: No positional matches, check unordered and generational
+        model_set = set(model.nodes)
+        query_set = set(query.nodes)
+
+        # Unordered S1: query nodes that exist in model (any position)
+        unordered_s1_matches = query_set & model_set
+        s3_s1_pct = (
+            (len(unordered_s1_matches) * 100) // len(query_set) if query_set else 0
+        )
+
+        # Unordered S2: query nodes whose children match model nodes
+        s3_s2_matches = 0
+        for node in query.nodes:
+            if node in model_set:
+                continue  # Already S1 match
+            # Check if node's children intersect with model
+            node_kline = self.find_by_key(node)
+            if node_kline:
+                node_children = set(node_kline.nodes)
+                if node_children & model_set:
+                    s3_s2_matches += 1
+
+        s3_s2_pct = (
+            (s3_s2_matches * 100) // len(query.nodes) if query.nodes else 0
+        )
+
+        # Generational: query nodes whose descendants (at any depth) match model nodes
+        gen_matches = 0
+        for node in query.nodes:
+            if node in model_set:
+                continue  # Already S1 match
+            # Collect all descendants of this node
+            descendants = self._get_all_descendants(node, visited=set())
+            if descendants & model_set:
+                gen_matches += 1
+
+        gen_pct = (gen_matches * 100) // len(query.nodes) if query.nodes else 0
+
+        if s3_s1_pct > 0 or s3_s2_pct > 0 or gen_pct > 0:
+            return build_s3(s3_s1_pct, s3_s2_pct, gen_pct)
+
+        # S4: No match
+        return S4_VALUE
+
+    def _get_all_descendants(self, node_key: int, visited: set[int]) -> set[int]:
+        """Recursively collect all descendant nodes.
+
+        Args:
+            node_key: The node to start from
+            visited: Set of already visited nodes (cycle detection)
+
+        Returns:
+            Set of all descendant node keys
+        """
+        if node_key in visited:
+            return set()
+        visited.add(node_key)
+
+        descendants: set[int] = set()
+        kline = self.find_by_key(node_key)
+
+        if kline is None:
+            return descendants
+
+        for child in kline.nodes:
+            descendants.add(child)
+            # Recursively get child's descendants
+            child_descendants = self._get_all_descendants(child, visited.copy())
+            descendants.update(child_descendants)
+
+        return descendants
 
     def query(
         self,
