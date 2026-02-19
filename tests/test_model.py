@@ -6,6 +6,8 @@ from kalvin.model import (
     get_node_type,
     create_node_key,
     create_embedding_key,
+    nodes_equal,
+    add_kline,
     query_significance,
 )
 
@@ -139,6 +141,82 @@ class TestKLine:
 
         kl_list = [root, intermediate, leaf1, leaf2, leaf3]
         assert len(kl_list) == 5
+
+
+class TestNodesEqual:
+    def test_empty_lists_equal(self):
+        """Empty node lists are equal."""
+        assert nodes_equal([], []) is True
+
+    def test_same_lists_equal(self):
+        """Identical node lists are equal."""
+        assert nodes_equal([0x1000, 0x2000], [0x1000, 0x2000]) is True
+
+    def test_different_lengths_not_equal(self):
+        """Lists of different lengths are not equal."""
+        assert nodes_equal([0x1000], [0x1000, 0x2000]) is False
+
+    def test_different_values_not_equal(self):
+        """Lists with different values are not equal."""
+        assert nodes_equal([0x1000, 0x2000], [0x1000, 0x3000]) is False
+
+
+class TestAddKLine:
+    def test_add_new_key(self):
+        """Adding a kline with new key succeeds."""
+        kv_list = []
+        kl = KLine(s_key=0x1000, nodes=[])
+
+        result = add_kline(kv_list, kl)
+
+        assert result is True
+        assert len(kv_list) == 1
+        assert kv_list[0] == kl
+
+    def test_add_duplicate_key_different_nodes(self):
+        """Adding kline with same key but different nodes succeeds."""
+        kl1 = KLine(s_key=0x1000, nodes=[0x0100])
+        kl2 = KLine(s_key=0x1000, nodes=[0x0200])
+        kv_list = [kl1]
+
+        result = add_kline(kv_list, kl2)
+
+        assert result is True
+        assert len(kv_list) == 2
+
+    def test_reject_exact_duplicate(self):
+        """Adding exact duplicate (same key and nodes) is rejected."""
+        kl1 = KLine(s_key=0x1000, nodes=[0x0100, 0x0200])
+        kl2 = KLine(s_key=0x1000, nodes=[0x0100, 0x0200])
+        kv_list = [kl1]
+
+        result = add_kline(kv_list, kl2)
+
+        assert result is False
+        assert len(kv_list) == 1
+
+    def test_reject_exact_duplicate_empty_nodes(self):
+        """Adding exact duplicate with empty nodes is rejected."""
+        kl1 = KLine(s_key=0x1000, nodes=[])
+        kl2 = KLine(s_key=0x1000, nodes=[])
+        kv_list = [kl1]
+
+        result = add_kline(kv_list, kl2)
+
+        assert result is False
+        assert len(kv_list) == 1
+
+    def test_multiple_keys_all_added(self):
+        """Multiple klines with different keys are all added."""
+        kv_list = []
+        kl1 = KLine(s_key=0x1000, nodes=[])
+        kl2 = KLine(s_key=0x2000, nodes=[])
+        kl3 = KLine(s_key=0x3000, nodes=[])
+
+        assert add_kline(kv_list, kl1) is True
+        assert add_kline(kv_list, kl2) is True
+        assert add_kline(kv_list, kl3) is True
+        assert len(kv_list) == 3
 
 
 class TestQuerySignificance:

@@ -75,6 +75,39 @@ class KLine:
         return (self.s_key & query) != 0
 
 
+def nodes_equal(nodes1: list[KNode], nodes2: list[KNode]) -> bool:
+    """Check if two node lists are equal."""
+    if len(nodes1) != len(nodes2):
+        return False
+    for i in range(len(nodes1)):
+        if nodes1[i] != nodes2[i]:
+            return False
+    return True
+
+
+def add_kline(kv_list: list[KLine], kline: KLine) -> bool:
+    """Add a KLine to a list, enforcing the duplicate key invariant.
+
+    Invariant: Duplicate keys are allowed, but nodes must differ.
+    - If s_key is new: add the kline
+    - If s_key exists with different nodes: add the kline (allowed)
+    - If s_key exists with same nodes: reject (would be exact duplicate)
+
+    Args:
+        kv_list: List to add to (modified in place)
+        kline: KLine to add
+
+    Returns:
+        True if added, False if rejected (exact duplicate)
+    """
+    for existing in kv_list:
+        if existing.s_key == kline.s_key:
+            if nodes_equal(existing.nodes, kline.nodes):
+                return False  # Exact duplicate, reject
+    kv_list.append(kline)
+    return True
+
+
 def query_significance(
     kv_list: list[KLine],
     query: int,
@@ -136,14 +169,8 @@ def query_significance(
         # the same kline and stop this branch
         if kline.s_key in visited:
             v_kline = find_kline_by_key(result, kline.s_key)
-            if v_kline and len(kline.nodes) == len(v_kline.nodes):
-                diff=False
-                for i in range(len(kline.nodes)):
-                    if kline.nodes[i] != v_kline.nodes[i]:
-                        diff=True
-                        break
-                if not diff:
-                    return
+            if v_kline and nodes_equal(v_kline.nodes, kline.nodes):
+                return
         else:
           visited.add(kline.s_key)
 
