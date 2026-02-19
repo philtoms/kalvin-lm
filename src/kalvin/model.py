@@ -85,7 +85,7 @@ def nodes_equal(nodes1: list[KNode], nodes2: list[KNode]) -> bool:
     return True
 
 
-def add_kline(kv_list: list[KLine], kline: KLine) -> bool:
+def add_kline(model: list[KLine], kline: KLine) -> bool:
     """Add a KLine to a list, enforcing the duplicate key invariant.
 
     Invariant: Duplicate keys are allowed, but nodes must differ.
@@ -94,24 +94,24 @@ def add_kline(kv_list: list[KLine], kline: KLine) -> bool:
     - If s_key exists with same nodes: reject (would be exact duplicate)
 
     Args:
-        kv_list: List to add to (modified in place)
+        model: List to add to (modified in place)
         kline: KLine to add
 
     Returns:
         True if added, False if rejected (exact duplicate)
     """
-    for existing in kv_list:
+    for existing in model:
         if existing.s_key == kline.s_key:
             if nodes_equal(existing.nodes, kline.nodes):
                 return False  # Exact duplicate, reject
-    kv_list.append(kline)
+    model.append(kline)
     return True
 
 
 from typing import Iterator
 
 def query_significance(
-    kv_list: list[KLine],
+    model: list[KLine],
     query: int,
     focus_limit: int = 0,
 ) -> tuple[Iterator[KLine], Iterator[KLine]]:
@@ -122,7 +122,7 @@ def query_significance(
     2. Slow stream: yields remaining matching KLines
 
     Args:
-        kv_list: List of KLines to search (may contain duplicates)
+        model: List of KLines to search (may contain duplicates)
         query: The query value to match (AND operation on s_key)
         focus_limit: Number of top-level matches in fast (0 = all in fast)
             - focus_limit=2: first 2 matches in fast, rest in slow
@@ -132,7 +132,7 @@ def query_significance(
     """
     def fast_generator() -> Iterator[KLine]:
         count = 0
-        for kline in kv_list:
+        for kline in model:
             if kline.signifies(query):
                 if focus_limit > 0 and count >= focus_limit:
                     break
@@ -143,7 +143,7 @@ def query_significance(
         if focus_limit <= 0:
             return  # No slow when focus_limit is 0
         count = 0
-        for kline in kv_list:
+        for kline in model:
             if kline.signifies(query):
                 if count >= focus_limit:
                     yield kline
@@ -153,8 +153,8 @@ def query_significance(
 
 
 def expand_significance(
-    kv_list: list[KLine],
-    klines: list[KLine],
+    model: list[KLine],
+    focus_set: list[KLine],
     depth: int = 1,
     focus_limit: int = 0,
 ) -> tuple[Iterator[KLine], Iterator[KLine]]:
@@ -168,7 +168,7 @@ def expand_significance(
     EMBEDDING nodes (high bit = 0) are leaves and not expanded.
 
     Args:
-        kv_list: List of KLines to search for children
+        model: List of KLines to search for children
         klines: List of KLines to expand (e.g., from query_significance)
         depth: Maximum recursion depth for expanding child nodes:
             - depth=0: yield nothing
@@ -185,8 +185,8 @@ def expand_significance(
         return iter([]), iter([])
 
     def find_kline_by_key(key: int) -> KLine | None:
-        """Find a KLine in kv_list by its s_key."""
-        for kline in kv_list:
+        """Find a KLine in model by its s_key."""
+        for kline in model:
             if kline.s_key == key:
                 return kline
         return None
@@ -229,7 +229,7 @@ def expand_significance(
     def fast_generator() -> Iterator[KLine]:
         visited: set[int] = set()
         count = 0
-        for kline in klines:
+        for kline in focus_set:
             if focus_limit > 0 and count >= focus_limit:
                 break
             yield from expand_kline_generator(kline, 1, visited)
@@ -240,7 +240,7 @@ def expand_significance(
             return  # No slow when focus_limit is 0
         visited: set[int] = set()
         count = 0
-        for kline in klines:
+        for kline in focus_set:
             if count >= focus_limit:
                 yield from expand_kline_generator(kline, 1, visited)
             count += 1
