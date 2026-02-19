@@ -110,11 +110,6 @@ def add_kline(kv_list: list[KLine], kline: KLine) -> bool:
 
 from typing import Iterator
 
-
-# Special key for remainder batch KLine (EMBEDDING type: high bit = 0)
-REMAINDER_KEY: int = 0x7FFF_FFFF_FFFF_FFFE
-
-
 def query_significance(
     kv_list: list[KLine],
     query: int,
@@ -123,19 +118,19 @@ def query_significance(
     """Query a list of KLines by ANDing Significance with a query.
 
     Returns two independent generators for concurrent processing:
-    1. Focus stream: yields matching KLines immediately (up to focus_limit)
-    2. Remainder stream: yields remaining matching KLines
+    1. Fast stream: yields matching KLines immediately (up to focus_limit)
+    2. Slow stream: yields remaining matching KLines
 
     Args:
         kv_list: List of KLines to search (may contain duplicates)
         query: The query value to match (AND operation on s_key)
-        focus_limit: Number of top-level matches in focus (0 = all in focus)
-            - focus_limit=2: first 2 matches in focus, rest in remainder
+        focus_limit: Number of top-level matches in fast (0 = all in fast)
+            - focus_limit=2: first 2 matches in fast, rest in slow
 
     Returns:
-        Tuple of (focus_generator, remainder_generator) that yield KLines.
+        Tuple of (fast_generator, slow_generator) that yield KLines.
     """
-    def focus_generator() -> Iterator[KLine]:
+    def fast_generator() -> Iterator[KLine]:
         count = 0
         for kline in kv_list:
             if kline.signifies(query):
@@ -144,9 +139,9 @@ def query_significance(
                 yield kline
                 count += 1
 
-    def remainder_generator() -> Iterator[KLine]:
+    def slow_generator() -> Iterator[KLine]:
         if focus_limit <= 0:
-            return  # No remainder when focus_limit is 0
+            return  # No slow when focus_limit is 0
         count = 0
         for kline in kv_list:
             if kline.signifies(query):
@@ -154,7 +149,7 @@ def query_significance(
                     yield kline
                 count += 1
 
-    return focus_generator(), remainder_generator()
+    return fast_generator(), slow_generator()
 
 
 def expand_significance(
@@ -166,13 +161,11 @@ def expand_significance(
     """Expand KLines and their descendants up to a given depth.
 
     Returns two independent generators for concurrent processing:
-    1. Focus stream: yields first `focus_limit` KLines and their descendants
-    2. Remainder stream: yields remaining KLines and their descendants
+    1. Fast stream: yields first `focus_limit` KLines and their descendants
+    2. Slow stream: yields remaining KLines and their descendants
 
     Only NODE type KLines (high bit = 1) are traversed for children.
     EMBEDDING nodes (high bit = 0) are leaves and not expanded.
-
-    Handles REMAINDER_KEY KLines by expanding their nodes as s_keys.
 
     Args:
         kv_list: List of KLines to search for children
@@ -182,11 +175,11 @@ def expand_significance(
             - depth=1: yield klines only (no child expansion)
             - depth=2: yield klines + their direct children
             - depth=N: expand N levels of children
-        focus_limit: Number of klines in focus (0 = all in focus)
-            - focus_limit=2: first 2 klines in focus, rest in remainder
+        focus_limit: Number of klines in fast (0 = all in fast)
+            - focus_limit=2: first 2 klines in fast, rest in slow
 
     Returns:
-        Tuple of (focus_generator, remainder_generator) that yield expanded KLines.
+        Tuple of (fast_generator, slow_generator) that yield expanded KLines.
     """
     if depth <= 0:
         return iter([]), iter([])
@@ -214,13 +207,6 @@ def expand_significance(
         visited: set[int],
     ) -> Iterator[KLine]:
         """Expand a KLine and yield results immediately."""
-        # Handle REMAINDER_KEY - expand its nodes as s_keys
-        if kline.s_key == REMAINDER_KEY:
-            for node_key in kline.nodes:
-                child = find_kline_by_key(node_key)
-                if child is not None:
-                    yield from expand_kline_generator(child, current_depth, visited)
-            return
 
         # Check for cycle - if kline already visited, stop this branch
         if kline.s_key in visited:
@@ -240,7 +226,7 @@ def expand_significance(
         for child in get_node_klines(kline.nodes):
             yield from expand_kline_generator(child, current_depth + 1, visited)
 
-    def focus_generator() -> Iterator[KLine]:
+    def fast_generator() -> Iterator[KLine]:
         visited: set[int] = set()
         count = 0
         for kline in klines:
@@ -249,9 +235,9 @@ def expand_significance(
             yield from expand_kline_generator(kline, 1, visited)
             count += 1
 
-    def remainder_generator() -> Iterator[KLine]:
+    def slow_generator() -> Iterator[KLine]:
         if focus_limit <= 0:
-            return  # No remainder when focus_limit is 0
+            return  # No slow when focus_limit is 0
         visited: set[int] = set()
         count = 0
         for kline in klines:
@@ -259,4 +245,4 @@ def expand_significance(
                 yield from expand_kline_generator(kline, 1, visited)
             count += 1
 
-    return focus_generator(), remainder_generator()
+    return fast_generator(), slow_generator()
