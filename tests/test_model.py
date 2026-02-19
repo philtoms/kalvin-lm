@@ -3,7 +3,6 @@ from kalvin.model import (
     KLine,
     KLineType,
     HIGH_BIT_MASK,
-    REMAINDER_KEY,
     get_node_type,
     create_node_key,
     create_embedding_key,
@@ -223,71 +222,61 @@ class TestAddKLine:
 
 class TestQuerySignificance:
     def test_no_match_returns_empty(self):
-        """If no kline matches, return empty list."""
+        """If no kline matches, both streams are empty."""
         kl1 = KLine(s_key=0x0001, nodes=[])
         kl2 = KLine(s_key=0x0002, nodes=[])
 
-        results = list(query_significance([kl1, kl2], query=0xFF00))
-        assert len(results) == 0
+        focus, remainder = query_significance([kl1, kl2], query=0xFF00)
+        assert list(focus) == []
+        assert list(remainder) == []
 
-    def test_single_match_returns_kline(self):
-        """If match found, return the matching kline."""
+    def test_single_match_in_focus(self):
+        """If match found, it's in the focus stream."""
         matching = KLine(s_key=0xFF00, nodes=[])
         non_matching = KLine(s_key=0x0001, nodes=[])
 
-        results = list(query_significance([non_matching, matching], query=0xFF00))
+        focus, remainder = query_significance([non_matching, matching], query=0xFF00)
 
-        assert len(results) == 1
-        assert results[0] == matching
+        assert list(focus) == [matching]
+        assert list(remainder) == []
 
-    def test_all_matches_are_returned(self):
-        """All matching klines in list order are returned."""
+    def test_all_matches_in_focus_when_no_limit(self):
+        """All matching klines in focus when focus_limit=0."""
         match1 = KLine(s_key=0xFF00, nodes=[])
         match2 = KLine(s_key=0xFF01, nodes=[])
         non_matching = KLine(s_key=0x0001, nodes=[])
 
-        results = list(query_significance([non_matching, match1, match2], query=0xFF00))
+        focus, remainder = query_significance([non_matching, match1, match2], query=0xFF00)
 
-        assert len(results) == 2
-        assert match1 in results
-        assert match2 in results
+        assert list(focus) == [match1, match2]
+        assert list(remainder) == []
 
-    def test_focus_limit_splits_into_batches(self):
-        """focus_limit splits matches into focus batch and remainder KLine."""
+    def test_focus_limit_splits_streams(self):
+        """focus_limit splits matches into focus and remainder streams."""
         match1 = KLine(s_key=0xFF00, nodes=[])
         match2 = KLine(s_key=0xFF01, nodes=[])
         match3 = KLine(s_key=0xFF02, nodes=[])
 
-        results = list(query_significance([match1, match2, match3], query=0xFF00, focus_limit=2))
+        focus, remainder = query_significance([match1, match2, match3], query=0xFF00, focus_limit=2)
 
-        assert len(results) == 3
-        assert results[0] == match1
-        assert results[1] == match2
-        assert results[2].s_key == REMAINDER_KEY
-        assert match3.s_key in results[2].nodes
+        assert list(focus) == [match1, match2]
+        assert list(remainder) == [match3]
 
-    def test_focus_limit_zero_means_all_in_focus(self):
-        """focus_limit=0 means all matches in focus batch."""
+    def test_streams_are_independent(self):
+        """Focus and remainder streams can be consumed independently."""
         match1 = KLine(s_key=0xFF00, nodes=[])
         match2 = KLine(s_key=0xFF01, nodes=[])
         match3 = KLine(s_key=0xFF02, nodes=[])
 
-        results = list(query_significance([match1, match2, match3], query=0xFF00, focus_limit=0))
-        assert len(results) == 3
-        for r in results:
-            assert r.s_key != REMAINDER_KEY
+        focus, remainder = query_significance([match1, match2, match3], query=0xFF00, focus_limit=1)
 
-    def test_remainder_kline_is_embedding_type(self):
-        """Remainder KLine has EMBEDDING type (high bit = 0)."""
-        match1 = KLine(s_key=0xFF00, nodes=[])
-        match2 = KLine(s_key=0xFF01, nodes=[])
-        match3 = KLine(s_key=0xFF02, nodes=[])
+        # Consume focus first
+        focus_list = list(focus)
+        assert focus_list == [match1]
 
-        results = list(query_significance([match1, match2, match3], query=0xFF00, focus_limit=2))
-
-        remainder = results[-1]
-        assert remainder.s_key == REMAINDER_KEY
-        assert remainder.type == KLineType.EMBEDDING
+        # Remainder is still available
+        remainder_list = list(remainder)
+        assert remainder_list == [match2, match3]
 
 
 class TestExpandSignificance:
@@ -297,8 +286,11 @@ class TestExpandSignificance:
         parent = KLine(s_key=0xFF00, nodes=[key_child])
         child = KLine(s_key=key_child, nodes=[])
 
-        klines = list(query_significance([parent, child], query=0xFF00))
-        results = list(expand_significance([parent, child], klines, depth=1))
+        focus_q, _ = query_significance([parent, child], query=0xFF00)
+        klines = list(focus_q)
+
+        focus, remainder = expand_significance([parent, child], klines, depth=1)
+        results = list(focus)
 
         assert len(results) == 1
         assert results[0] == parent
@@ -312,8 +304,11 @@ class TestExpandSignificance:
         child2 = KLine(s_key=key_child2, nodes=[])
         parent = KLine(s_key=0xFF00, nodes=[key_child1, key_child2])
 
-        klines = list(query_significance([parent, child1, child2], query=0xFF00))
-        results = list(expand_significance([parent, child1, child2], klines, depth=2))
+        focus_q, _ = query_significance([parent, child1, child2], query=0xFF00)
+        klines = list(focus_q)
+
+        focus, remainder = expand_significance([parent, child1, child2], klines, depth=2)
+        results = list(focus)
 
         assert len(results) == 3
         assert results[0] == parent
@@ -331,32 +326,39 @@ class TestExpandSignificance:
         parent = KLine(s_key=key_parent, nodes=[key_child])
 
         kv_list = [parent, child, grandchild]
-        klines = list(query_significance(kv_list, query=0xF000))
+        focus_q, _ = query_significance(kv_list, query=0xF000)
+        klines = list(focus_q)
 
         # depth=1: only parent, no child expansion
-        results = list(expand_significance(kv_list, klines, depth=1))
+        focus, _ = expand_significance(kv_list, klines, depth=1)
+        results = list(focus)
         assert len(results) == 1
         assert results[0] == parent
 
         # depth=2: parent + child, no grandchild
-        results = list(expand_significance(kv_list, klines, depth=2))
+        focus, _ = expand_significance(kv_list, klines, depth=2)
+        results = list(focus)
         assert len(results) == 2
         assert results[0] == parent
         assert results[1] == child
 
         # depth=3: parent + child + grandchild
-        results = list(expand_significance(kv_list, klines, depth=3))
+        focus, _ = expand_significance(kv_list, klines, depth=3)
+        results = list(focus)
         assert len(results) == 3
         assert results[0] == parent
         assert results[1] == child
         assert results[2] == grandchild
 
     def test_depth_zero_returns_empty(self):
-        """depth=0 returns empty list."""
+        """depth=0 returns empty streams."""
         matching = KLine(s_key=0xFF00, nodes=[])
-        klines = list(query_significance([matching], query=0xFF00))
-        results = list(expand_significance([matching], klines, depth=0))
-        assert len(results) == 0
+        focus_q, _ = query_significance([matching], query=0xFF00)
+        klines = list(focus_q)
+
+        focus, remainder = expand_significance([matching], klines, depth=0)
+        assert list(focus) == []
+        assert list(remainder) == []
 
     def test_cycle_detection_stops_expansion(self):
         """Circular references stop expansion."""
@@ -367,8 +369,11 @@ class TestExpandSignificance:
         kl_b = KLine(s_key=key_b, nodes=[key_a])
 
         kv_list = [kl_a, kl_b]
-        klines = list(query_significance(kv_list, query=key_a))
-        results = list(expand_significance(kv_list, klines, depth=100))
+        focus_q, _ = query_significance(kv_list, query=key_a)
+        klines = list(focus_q)
+
+        focus, _ = expand_significance(kv_list, klines, depth=100)
+        results = list(focus)
 
         assert len(results) == 2
         assert kl_a in results
@@ -379,8 +384,11 @@ class TestExpandSignificance:
         key = create_node_key(0xFF00)
         kl = KLine(s_key=key, nodes=[key])
 
-        klines = list(query_significance([kl], query=key))
-        results = list(expand_significance([kl], klines, depth=100))
+        focus_q, _ = query_significance([kl], query=key)
+        klines = list(focus_q)
+
+        focus, _ = expand_significance([kl], klines, depth=100)
+        results = list(focus)
 
         assert len(results) == 1
         assert results[0] == kl
@@ -394,8 +402,11 @@ class TestExpandSignificance:
         parent = KLine(s_key=0xFF00, nodes=[embedding_key, node_key])
 
         kv_list = [parent, child]
-        klines = list(query_significance(kv_list, query=0xFF00))
-        results = list(expand_significance(kv_list, klines, depth=2))
+        focus_q, _ = query_significance(kv_list, query=0xFF00)
+        klines = list(focus_q)
+
+        focus, _ = expand_significance(kv_list, klines, depth=2)
+        results = list(focus)
 
         assert len(results) == 2
         assert results[0] == parent
@@ -415,8 +426,11 @@ class TestExpandSignificance:
         root = KLine(s_key=0xFF00, nodes=[key_intermediate, key_leaf3])
 
         kv_list = [root, intermediate, leaf1, leaf2, leaf3]
-        klines = list(query_significance(kv_list, query=0xFF00))
-        results = list(expand_significance(kv_list, klines, depth=3))
+        focus_q, _ = query_significance(kv_list, query=0xFF00)
+        klines = list(focus_q)
+
+        focus, _ = expand_significance(kv_list, klines, depth=3)
+        results = list(focus)
 
         assert len(results) == 5
         assert root in results
@@ -436,8 +450,11 @@ class TestExpandSignificance:
         root = KLine(s_key=key_root, nodes=[key_child])
 
         kv_list = [root, child, grandchild]
-        klines = list(query_significance(kv_list, query=0xFF00))
-        results = list(expand_significance(kv_list, klines, depth=10))
+        focus_q, _ = query_significance(kv_list, query=0xFF00)
+        klines = list(focus_q)
+
+        focus, _ = expand_significance(kv_list, klines, depth=10)
+        results = list(focus)
 
         assert len(results) == 3
         assert results[0] == root
@@ -455,15 +472,18 @@ class TestExpandSignificance:
         root = KLine(s_key=key_root, nodes=[key_child])
 
         kv_list = [root, child, grandchild]
-        klines = list(query_significance(kv_list, query=0xFF00))
-        results = list(expand_significance(kv_list, klines, depth=10))
+        focus_q, _ = query_significance(kv_list, query=0xFF00)
+        klines = list(focus_q)
+
+        focus, _ = expand_significance(kv_list, klines, depth=10)
+        results = list(focus)
 
         assert len(results) == 3
         assert results[0] == root
         assert results[1] == child
         assert results[2] == grandchild
 
-    def test_focus_limit_splits_expansion(self):
+    def test_focus_limit_splits_streams(self):
         """focus_limit in expand_significance splits into focus and remainder."""
         key_child1 = create_node_key(0x0010)
         key_child2 = create_node_key(0x0020)
@@ -481,43 +501,172 @@ class TestExpandSignificance:
         child4 = KLine(s_key=key_child4, nodes=[])
         child5 = KLine(s_key=key_child5, nodes=[])
         child6 = KLine(s_key=key_child6, nodes=[])
-        parent2 = KLine(s_key=0xF001, nodes=[key_child4, key_child5, child6.s_key])
+        parent2 = KLine(s_key=0xF001, nodes=[key_child4, key_child5, key_child6])
 
         kv_list = [parent1, parent2, child1, child2, child3, child4, child5, child6]
-        klines = list(query_significance(kv_list, query=0xF000))
+        focus_q, _ = query_significance(kv_list, query=0xF000)
+        klines = list(focus_q)
 
-        # focus_limit=1: parent1 + children expanded, parent2 + children in remainder
-        results = list(expand_significance(kv_list, klines, depth=2, focus_limit=1))
+        # focus_limit=1: parent1 + children in focus, parent2 + children in remainder
+        focus, remainder = expand_significance(kv_list, klines, depth=2, focus_limit=1)
 
-        # focus: parent1 + 3 children = 4, remainder KLine = 1, total = 5
-        assert len(results) == 5
-        assert parent1 in results
-        assert child1 in results
-        assert child2 in results
-        assert child3 in results
+        focus_results = list(focus)
+        assert len(focus_results) == 4  # parent1 + 3 children
+        assert parent1 in focus_results
+        assert child1 in focus_results
+        assert child2 in focus_results
+        assert child3 in focus_results
 
-        remainder = results[-1]
-        assert remainder.s_key == REMAINDER_KEY
-        assert parent2.s_key in remainder.nodes
+        remainder_results = list(remainder)
+        assert len(remainder_results) == 4  # parent2 + 3 children
+        assert parent2 in remainder_results
+        assert child4 in remainder_results
+        assert child5 in remainder_results
+        assert child6 in remainder_results
 
-    def test_expands_remainder_kline_from_query(self):
-        """expand_significance handles REMAINDER_KEY from query_significance."""
+    def test_expand_without_focus_limit(self):
+        """Without focus_limit, all klines in focus stream."""
+        match1 = KLine(s_key=0xFF00, nodes=[])
+        match2 = KLine(s_key=0xFF01, nodes=[])
+
+        kv_list = [match1, match2]
+        focus_q, _ = query_significance(kv_list, query=0xFF00)
+        klines = list(focus_q)
+
+        focus, remainder = expand_significance(kv_list, klines, depth=1)
+        assert list(focus) == [match1, match2]
+        assert list(remainder) == []
+
+    def test_remainder_empty_when_focus_limit_zero(self):
+        """When focus_limit=0, remainder is empty (all in focus)."""
+        match1 = KLine(s_key=0xFF00, nodes=[])
+        match2 = KLine(s_key=0xFF01, nodes=[])
+
+        kv_list = [match1, match2]
+        focus_q, _ = query_significance(kv_list, query=0xFF00)
+        klines = list(focus_q)
+
+        focus, remainder = expand_significance(kv_list, klines, depth=1, focus_limit=0)
+        assert list(focus) == [match1, match2]
+        assert list(remainder) == []
+
+    def test_remainder_stream_consumed_independently(self):
+        """Remainder stream can be consumed before focus stream."""
+        key_child1 = create_node_key(0x0010)
+        key_child2 = create_node_key(0x0020)
+
+        child1 = KLine(s_key=key_child1, nodes=[])
+        child2 = KLine(s_key=key_child2, nodes=[])
+        parent1 = KLine(s_key=0xF000, nodes=[key_child1])
+        parent2 = KLine(s_key=0xF001, nodes=[key_child2])
+
+        kv_list = [parent1, parent2, child1, child2]
+        focus_q, _ = query_significance(kv_list, query=0xF000)
+        klines = list(focus_q)
+
+        focus, remainder = expand_significance(kv_list, klines, depth=2, focus_limit=1)
+
+        # Consume remainder first
+        remainder_results = list(remainder)
+        assert len(remainder_results) == 2  # parent2 + child2
+        assert parent2 in remainder_results
+        assert child2 in remainder_results
+
+        # Focus still works
+        focus_results = list(focus)
+        assert len(focus_results) == 2  # parent1 + child1
+        assert parent1 in focus_results
+        assert child1 in focus_results
+
+    def test_remainder_with_larger_focus_limit(self):
+        """Focus_limit larger than klines puts all in focus, empty remainder."""
+        match1 = KLine(s_key=0xFF00, nodes=[])
+        match2 = KLine(s_key=0xFF01, nodes=[])
+
+        kv_list = [match1, match2]
+        focus_q, _ = query_significance(kv_list, query=0xFF00)
+        klines = list(focus_q)
+
+        focus, remainder = expand_significance(kv_list, klines, depth=1, focus_limit=10)
+        assert list(focus) == [match1, match2]
+        assert list(remainder) == []
+
+    def test_remainder_with_nested_hierarchy(self):
+        """Remainder expands nested hierarchy correctly."""
+        key_grandchild1 = create_node_key(0x0100)
+        key_grandchild2 = create_node_key(0x0200)
+        key_child1 = create_node_key(0x0010)
+        key_child2 = create_node_key(0x0020)
+
+        grandchild1 = KLine(s_key=key_grandchild1, nodes=[])
+        grandchild2 = KLine(s_key=key_grandchild2, nodes=[])
+        child1 = KLine(s_key=key_child1, nodes=[key_grandchild1])
+        child2 = KLine(s_key=key_child2, nodes=[key_grandchild2])
+        parent1 = KLine(s_key=0xF000, nodes=[key_child1])
+        parent2 = KLine(s_key=0xF001, nodes=[key_child2])
+
+        kv_list = [parent1, parent2, child1, child2, grandchild1, grandchild2]
+        focus_q, _ = query_significance(kv_list, query=0xF000)
+        klines = list(focus_q)
+
+        focus, remainder = expand_significance(kv_list, klines, depth=3, focus_limit=1)
+
+        # Focus: parent1 + child1 + grandchild1
+        focus_results = list(focus)
+        assert len(focus_results) == 3
+        assert parent1 in focus_results
+        assert child1 in focus_results
+        assert grandchild1 in focus_results
+
+        # Remainder: parent2 + child2 + grandchild2
+        remainder_results = list(remainder)
+        assert len(remainder_results) == 3
+        assert parent2 in remainder_results
+        assert child2 in remainder_results
+        assert grandchild2 in remainder_results
+
+    def test_remainder_depth_limits_expansion(self):
+        """Depth parameter limits expansion in remainder stream too."""
+        key_grandchild = create_node_key(0x0100)
+        key_child = create_node_key(0x0010)
+
+        grandchild = KLine(s_key=key_grandchild, nodes=[])
+        child = KLine(s_key=key_child, nodes=[key_grandchild])
+        parent1 = KLine(s_key=0xF000, nodes=[key_child])
+        parent2 = KLine(s_key=0xF001, nodes=[key_child])
+
+        kv_list = [parent1, parent2, child, grandchild]
+        focus_q, _ = query_significance(kv_list, query=0xF000)
+        klines = list(focus_q)
+
+        # depth=1: no child expansion
+        focus, remainder = expand_significance(kv_list, klines, depth=1, focus_limit=1)
+        assert list(focus) == [parent1]
+        assert list(remainder) == [parent2]
+
+        # depth=2: expand to children, not grandchildren
+        focus, remainder = expand_significance(kv_list, klines, depth=2, focus_limit=1)
+        focus_results = list(focus)
+        assert len(focus_results) == 2  # parent1 + child
+        remainder_results = list(remainder)
+        assert len(remainder_results) == 2  # parent2 + child
+
+    def test_multiple_klines_in_remainder(self):
+        """Multiple klines go to remainder when focus_limit is small."""
         match1 = KLine(s_key=0xFF00, nodes=[])
         match2 = KLine(s_key=0xFF01, nodes=[])
         match3 = KLine(s_key=0xFF02, nodes=[])
+        match4 = KLine(s_key=0xFF03, nodes=[])
 
-        kv_list = [match1, match2, match3]
-        # Query with focus_limit=2 creates remainder KLine
-        klines = list(query_significance(kv_list, query=0xFF00, focus_limit=2))
+        kv_list = [match1, match2, match3, match4]
+        focus_q, _ = query_significance(kv_list, query=0xFF00)
+        klines = list(focus_q)
 
-        # klines = [match1, match2, remainder_kline]
-        assert len(klines) == 3
-        assert klines[2].s_key == REMAINDER_KEY
+        focus, remainder = expand_significance(kv_list, klines, depth=1, focus_limit=1)
 
-        # Expand all - REMAINDER_KEY kline expands its nodes directly
-        results = list(expand_significance(kv_list, klines, depth=1))
-        assert len(results) == 3
-        assert match1 in results
-        assert match2 in results
-        # Remainder KLine expands to match3 directly (not wrapped)
-        assert match3 in results
+        assert list(focus) == [match1]
+        remainder_results = list(remainder)
+        assert len(remainder_results) == 3
+        assert match2 in remainder_results
+        assert match3 in remainder_results
+        assert match4 in remainder_results
