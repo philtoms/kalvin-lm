@@ -41,9 +41,19 @@ class TestKNode:
 
     def test_create_embedding_key(self):
         """Test create_embedding_key clears high bit."""
-        key = create_embedding_key(0xFFFF_0000_0000_0000)
+        key = create_embedding_key(0x7FFF_0000_0000_0000)
         assert key == 0x7FFF_0000_0000_0000
         assert get_node_type(key) == KLineType.EMBEDDING
+
+    def test_create_node_key_rejects_high_bit(self):
+        """Test create_node_key raises AssertionError when high bit already set."""
+        with pytest.raises(AssertionError, match="Key value must not use high bit"):
+            create_node_key(0x8000_0000_0000_0001)
+
+    def test_create_embedding_key_rejects_high_bit(self):
+        """Test create_embedding_key raises AssertionError when high bit already set."""
+        with pytest.raises(AssertionError, match="Key value must not use high bit"):
+            create_embedding_key(0x8000_0000_0000_0001)
 
 
 class TestKLine:

@@ -24,13 +24,14 @@ def get_node_type(node: KNode) -> KLineType:
 
 def create_node_key(key: int) -> KNode:
     """Create a NODE key (sets high bit to 1)."""
+    assert not (key & HIGH_BIT_MASK), "Key value must not use high bit"
     return key | HIGH_BIT_MASK
 
 
 def create_embedding_key(key: int) -> KNode:
     """Create an EMBEDDING key (ensures high bit is 0)."""
+    assert not (key & HIGH_BIT_MASK), "Key value must not use high bit"
     return key & ~HIGH_BIT_MASK
-
 
 @dataclass
 class KLine:
