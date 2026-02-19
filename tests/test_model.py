@@ -2,14 +2,12 @@ import pytest
 from kalvin.model import (
     KLine,
     KLineType,
+    Model,
     HIGH_BIT_MASK,
     get_node_type,
     create_node_key,
     create_embedding_key,
     nodes_equal,
-    add_kline,
-    query_significance,
-    expand_significance,
 )
 
 
@@ -162,13 +160,13 @@ class TestNodesEqual:
         assert nodes_equal([0x1000, 0x2000], [0x1000, 0x3000]) is False
 
 
-class TestAddKLine:
+class TestModelAdd:
     def test_add_new_key(self):
         """Adding a kline with new key succeeds."""
-        model = []
+        model = Model()
         kl = KLine(s_key=0x1000, nodes=[])
 
-        result = add_kline(model, kl)
+        result = model.add(kl)
 
         assert result is True
         assert len(model) == 1
@@ -178,9 +176,9 @@ class TestAddKLine:
         """Adding kline with same key but different nodes succeeds."""
         kl1 = KLine(s_key=0x1000, nodes=[0x0100])
         kl2 = KLine(s_key=0x1000, nodes=[0x0200])
-        model = [kl1]
+        model = Model([kl1])
 
-        result = add_kline(model, kl2)
+        result = model.add(kl2)
 
         assert result is True
         assert len(model) == 2
@@ -189,9 +187,9 @@ class TestAddKLine:
         """Adding exact duplicate (same key and nodes) is rejected."""
         kl1 = KLine(s_key=0x1000, nodes=[0x0100, 0x0200])
         kl2 = KLine(s_key=0x1000, nodes=[0x0100, 0x0200])
-        model = [kl1]
+        model = Model([kl1])
 
-        result = add_kline(model, kl2)
+        result = model.add(kl2)
 
         assert result is False
         assert len(model) == 1
@@ -200,33 +198,34 @@ class TestAddKLine:
         """Adding exact duplicate with empty nodes is rejected."""
         kl1 = KLine(s_key=0x1000, nodes=[])
         kl2 = KLine(s_key=0x1000, nodes=[])
-        model = [kl1]
+        model = Model([kl1])
 
-        result = add_kline(model, kl2)
+        result = model.add(kl2)
 
         assert result is False
         assert len(model) == 1
 
     def test_multiple_keys_all_added(self):
         """Multiple klines with different keys are all added."""
-        model = []
+        model = Model()
         kl1 = KLine(s_key=0x1000, nodes=[])
         kl2 = KLine(s_key=0x2000, nodes=[])
         kl3 = KLine(s_key=0x3000, nodes=[])
 
-        assert add_kline(model, kl1) is True
-        assert add_kline(model, kl2) is True
-        assert add_kline(model, kl3) is True
+        assert model.add(kl1) is True
+        assert model.add(kl2) is True
+        assert model.add(kl3) is True
         assert len(model) == 3
 
 
-class TestQuerySignificance:
+class TestModelQuery:
     def test_no_match_returns_empty(self):
         """If no kline matches, both streams are empty."""
         kl1 = KLine(s_key=0x0001, nodes=[])
         kl2 = KLine(s_key=0x0002, nodes=[])
+        model = Model([kl1, kl2])
 
-        fast, slow = query_significance([kl1, kl2], query=0xFF00)
+        fast, slow = model.query(query=0xFF00)
         assert list(fast) == []
         assert list(slow) == []
 
@@ -234,8 +233,9 @@ class TestQuerySignificance:
         """If match found, it's in the fast stream."""
         matching = KLine(s_key=0xFF00, nodes=[])
         non_matching = KLine(s_key=0x0001, nodes=[])
+        model = Model([non_matching, matching])
 
-        fast, slow = query_significance([non_matching, matching], query=0xFF00)
+        fast, slow = model.query(query=0xFF00)
 
         assert list(fast) == [matching]
         assert list(slow) == []
@@ -245,8 +245,9 @@ class TestQuerySignificance:
         match1 = KLine(s_key=0xFF00, nodes=[])
         match2 = KLine(s_key=0xFF01, nodes=[])
         non_matching = KLine(s_key=0x0001, nodes=[])
+        model = Model([non_matching, match1, match2])
 
-        fast, slow = query_significance([non_matching, match1, match2], query=0xFF00)
+        fast, slow = model.query(query=0xFF00)
 
         assert list(fast) == [match1, match2]
         assert list(slow) == []
@@ -256,8 +257,9 @@ class TestQuerySignificance:
         match1 = KLine(s_key=0xFF00, nodes=[])
         match2 = KLine(s_key=0xFF01, nodes=[])
         match3 = KLine(s_key=0xFF02, nodes=[])
+        model = Model([match1, match2, match3])
 
-        fast, slow = query_significance([match1, match2, match3], query=0xFF00, focus_limit=2)
+        fast, slow = model.query(query=0xFF00, focus_limit=2)
 
         assert list(fast) == [match1, match2]
         assert list(slow) == [match3]
@@ -267,8 +269,9 @@ class TestQuerySignificance:
         match1 = KLine(s_key=0xFF00, nodes=[])
         match2 = KLine(s_key=0xFF01, nodes=[])
         match3 = KLine(s_key=0xFF02, nodes=[])
+        model = Model([match1, match2, match3])
 
-        fast, slow = query_significance([match1, match2, match3], query=0xFF00, focus_limit=1)
+        fast, slow = model.query(query=0xFF00, focus_limit=1)
 
         # Consume fast first
         fast_list = list(fast)
@@ -279,17 +282,18 @@ class TestQuerySignificance:
         assert slow_list == [match2, match3]
 
 
-class TestExpandSignificance:
+class TestModelExpand:
     def test_depth_one_returns_klines_only(self):
         """depth=1 returns focus_set without expansion."""
         key_child = create_node_key(0x0010)
         parent = KLine(s_key=0xFF00, nodes=[key_child])
         child = KLine(s_key=key_child, nodes=[])
+        model = Model([parent, child])
 
-        fast_q, _ = query_significance([parent, child], query=0xFF00)
+        fast_q, _ = model.query(query=0xFF00)
         focus_set = list(fast_q)
 
-        fast, slow = expand_significance([parent, child], focus_set, depth=1)
+        fast, slow = model.expand(focus_set, depth=1)
         results = list(fast)
 
         assert len(results) == 1
@@ -303,11 +307,12 @@ class TestExpandSignificance:
         child1 = KLine(s_key=key_child1, nodes=[])
         child2 = KLine(s_key=key_child2, nodes=[])
         parent = KLine(s_key=0xFF00, nodes=[key_child1, key_child2])
+        model = Model([parent, child1, child2])
 
-        fast_q, _ = query_significance([parent, child1, child2], query=0xFF00)
+        fast_q, _ = model.query(query=0xFF00)
         focus_set = list(fast_q)
 
-        fast, slow = expand_significance([parent, child1, child2], focus_set, depth=2)
+        fast, slow = model.expand(focus_set, depth=2)
         results = list(fast)
 
         assert len(results) == 3
@@ -324,26 +329,26 @@ class TestExpandSignificance:
         grandchild = KLine(s_key=key_grandchild, nodes=[])
         child = KLine(s_key=key_child, nodes=[key_grandchild])
         parent = KLine(s_key=key_parent, nodes=[key_child])
+        model = Model([parent, child, grandchild])
 
-        model = [parent, child, grandchild]
-        fast_q, _ = query_significance(model, query=0xF000)
+        fast_q, _ = model.query(query=0xF000)
         focus_set = list(fast_q)
 
         # depth=1: only parent, no child expansion
-        fast, _ = expand_significance(model, focus_set, depth=1)
+        fast, _ = model.expand(focus_set, depth=1)
         results = list(fast)
         assert len(results) == 1
         assert results[0] == parent
 
         # depth=2: parent + child, no grandchild
-        fast, _ = expand_significance(model, focus_set, depth=2)
+        fast, _ = model.expand(focus_set, depth=2)
         results = list(fast)
         assert len(results) == 2
         assert results[0] == parent
         assert results[1] == child
 
         # depth=3: parent + child + grandchild
-        fast, _ = expand_significance(model, focus_set, depth=3)
+        fast, _ = model.expand(focus_set, depth=3)
         results = list(fast)
         assert len(results) == 3
         assert results[0] == parent
@@ -353,10 +358,12 @@ class TestExpandSignificance:
     def test_depth_zero_returns_empty(self):
         """depth=0 returns empty streams."""
         matching = KLine(s_key=0xFF00, nodes=[])
-        fast_q, _ = query_significance([matching], query=0xFF00)
+        model = Model([matching])
+
+        fast_q, _ = model.query(query=0xFF00)
         focus_set = list(fast_q)
 
-        fast, slow = expand_significance([matching], focus_set, depth=0)
+        fast, slow = model.expand(focus_set, depth=0)
         assert list(fast) == []
         assert list(slow) == []
 
@@ -367,12 +374,12 @@ class TestExpandSignificance:
 
         kl_a = KLine(s_key=key_a, nodes=[key_b])
         kl_b = KLine(s_key=key_b, nodes=[key_a])
+        model = Model([kl_a, kl_b])
 
-        model = [kl_a, kl_b]
-        fast_q, _ = query_significance(model, query=key_a)
+        fast_q, _ = model.query(query=key_a)
         focus_set = list(fast_q)
 
-        fast, _ = expand_significance(model, focus_set, depth=100)
+        fast, _ = model.expand(focus_set, depth=100)
         results = list(fast)
 
         assert len(results) == 2
@@ -383,11 +390,12 @@ class TestExpandSignificance:
         """Self-referencing KLine stops expansion."""
         key = create_node_key(0xFF00)
         kl = KLine(s_key=key, nodes=[key])
+        model = Model([kl])
 
-        fast_q, _ = query_significance([kl], query=key)
+        fast_q, _ = model.query(query=key)
         focus_set = list(fast_q)
 
-        fast, _ = expand_significance([kl], focus_set, depth=100)
+        fast, _ = model.expand(focus_set, depth=100)
         results = list(fast)
 
         assert len(results) == 1
@@ -400,12 +408,12 @@ class TestExpandSignificance:
 
         child = KLine(s_key=node_key, nodes=[])
         parent = KLine(s_key=0xFF00, nodes=[embedding_key, node_key])
+        model = Model([parent, child])
 
-        model = [parent, child]
-        fast_q, _ = query_significance(model, query=0xFF00)
+        fast_q, _ = model.query(query=0xFF00)
         focus_set = list(fast_q)
 
-        fast, _ = expand_significance(model, focus_set, depth=2)
+        fast, _ = model.expand(focus_set, depth=2)
         results = list(fast)
 
         assert len(results) == 2
@@ -424,12 +432,12 @@ class TestExpandSignificance:
         leaf3 = KLine(s_key=key_leaf3, nodes=[])
         intermediate = KLine(s_key=key_intermediate, nodes=[key_leaf1, key_leaf2])
         root = KLine(s_key=0xFF00, nodes=[key_intermediate, key_leaf3])
+        model = Model([root, intermediate, leaf1, leaf2, leaf3])
 
-        model = [root, intermediate, leaf1, leaf2, leaf3]
-        fast_q, _ = query_significance(model, query=0xFF00)
+        fast_q, _ = model.query(query=0xFF00)
         focus_set = list(fast_q)
 
-        fast, _ = expand_significance(model, focus_set, depth=3)
+        fast, _ = model.expand(focus_set, depth=3)
         results = list(fast)
 
         assert len(results) == 5
@@ -448,12 +456,12 @@ class TestExpandSignificance:
         grandchild = KLine(s_key=key_grandchild, nodes=[key_root])
         child = KLine(s_key=key_child, nodes=[key_grandchild])
         root = KLine(s_key=key_root, nodes=[key_child])
+        model = Model([root, child, grandchild])
 
-        model = [root, child, grandchild]
-        fast_q, _ = query_significance(model, query=0xFF00)
+        fast_q, _ = model.query(query=0xFF00)
         focus_set = list(fast_q)
 
-        fast, _ = expand_significance(model, focus_set, depth=10)
+        fast, _ = model.expand(focus_set, depth=10)
         results = list(fast)
 
         assert len(results) == 3
@@ -470,12 +478,12 @@ class TestExpandSignificance:
         grandchild = KLine(s_key=key_grandchild, nodes=[key_child])
         child = KLine(s_key=key_child, nodes=[key_grandchild])
         root = KLine(s_key=key_root, nodes=[key_child])
+        model = Model([root, child, grandchild])
 
-        model = [root, child, grandchild]
-        fast_q, _ = query_significance(model, query=0xFF00)
+        fast_q, _ = model.query(query=0xFF00)
         focus_set = list(fast_q)
 
-        fast, _ = expand_significance(model, focus_set, depth=10)
+        fast, _ = model.expand(focus_set, depth=10)
         results = list(fast)
 
         assert len(results) == 3
@@ -484,7 +492,7 @@ class TestExpandSignificance:
         assert results[2] == grandchild
 
     def test_focus_limit_splits_streams(self):
-        """focus_limit in expand_significance splits into fast and slow."""
+        """focus_limit in expand splits into fast and slow."""
         key_child1 = create_node_key(0x0010)
         key_child2 = create_node_key(0x0020)
         key_child3 = create_node_key(0x0030)
@@ -503,12 +511,12 @@ class TestExpandSignificance:
         child6 = KLine(s_key=key_child6, nodes=[])
         parent2 = KLine(s_key=0xF001, nodes=[key_child4, key_child5, key_child6])
 
-        model = [parent1, parent2, child1, child2, child3, child4, child5, child6]
-        fast_q, _ = query_significance(model, query=0xF000)
+        model = Model([parent1, parent2, child1, child2, child3, child4, child5, child6])
+        fast_q, _ = model.query(query=0xF000)
         focus_set = list(fast_q)
 
         # focus_limit=1: parent1 + children in fast, parent2 + children in slow
-        fast, slow = expand_significance(model, focus_set, depth=2, focus_limit=1)
+        fast, slow = model.expand(focus_set, depth=2, focus_limit=1)
 
         fast_results = list(fast)
         assert len(fast_results) == 4  # parent1 + 3 children
@@ -528,12 +536,12 @@ class TestExpandSignificance:
         """Without focus_limit, all klines in fast stream."""
         match1 = KLine(s_key=0xFF00, nodes=[])
         match2 = KLine(s_key=0xFF01, nodes=[])
+        model = Model([match1, match2])
 
-        model = [match1, match2]
-        fast_q, _ = query_significance(model, query=0xFF00)
+        fast_q, _ = model.query(query=0xFF00)
         focus_set = list(fast_q)
 
-        fast, slow = expand_significance(model, focus_set, depth=1)
+        fast, slow = model.expand(focus_set, depth=1)
         assert list(fast) == [match1, match2]
         assert list(slow) == []
 
@@ -541,12 +549,12 @@ class TestExpandSignificance:
         """When focus_limit=0, slow is empty (all in fast)."""
         match1 = KLine(s_key=0xFF00, nodes=[])
         match2 = KLine(s_key=0xFF01, nodes=[])
+        model = Model([match1, match2])
 
-        model = [match1, match2]
-        fast_q, _ = query_significance(model, query=0xFF00)
+        fast_q, _ = model.query(query=0xFF00)
         focus_set = list(fast_q)
 
-        fast, slow = expand_significance(model, focus_set, depth=1, focus_limit=0)
+        fast, slow = model.expand(focus_set, depth=1, focus_limit=0)
         assert list(fast) == [match1, match2]
         assert list(slow) == []
 
@@ -559,12 +567,12 @@ class TestExpandSignificance:
         child2 = KLine(s_key=key_child2, nodes=[])
         parent1 = KLine(s_key=0xF000, nodes=[key_child1])
         parent2 = KLine(s_key=0xF001, nodes=[key_child2])
+        model = Model([parent1, parent2, child1, child2])
 
-        model = [parent1, parent2, child1, child2]
-        fast_q, _ = query_significance(model, query=0xF000)
+        fast_q, _ = model.query(query=0xF000)
         focus_set = list(fast_q)
 
-        fast, slow = expand_significance(model, focus_set, depth=2, focus_limit=1)
+        fast, slow = model.expand(focus_set, depth=2, focus_limit=1)
 
         # Consume slow first
         slow_results = list(slow)
@@ -582,12 +590,12 @@ class TestExpandSignificance:
         """focus_limit larger than klines puts all in fast, empty slow."""
         match1 = KLine(s_key=0xFF00, nodes=[])
         match2 = KLine(s_key=0xFF01, nodes=[])
+        model = Model([match1, match2])
 
-        model = [match1, match2]
-        fast_q, _ = query_significance(model, query=0xFF00)
+        fast_q, _ = model.query(query=0xFF00)
         focus_set = list(fast_q)
 
-        fast, slow = expand_significance(model, focus_set, depth=1, focus_limit=10)
+        fast, slow = model.expand(focus_set, depth=1, focus_limit=10)
         assert list(fast) == [match1, match2]
         assert list(slow) == []
 
@@ -604,12 +612,12 @@ class TestExpandSignificance:
         child2 = KLine(s_key=key_child2, nodes=[key_grandchild2])
         parent1 = KLine(s_key=0xF000, nodes=[key_child1])
         parent2 = KLine(s_key=0xF001, nodes=[key_child2])
+        model = Model([parent1, parent2, child1, child2, grandchild1, grandchild2])
 
-        model = [parent1, parent2, child1, child2, grandchild1, grandchild2]
-        fast_q, _ = query_significance(model, query=0xF000)
+        fast_q, _ = model.query(query=0xF000)
         focus_set = list(fast_q)
 
-        fast, slow = expand_significance(model, focus_set, depth=3, focus_limit=1)
+        fast, slow = model.expand(focus_set, depth=3, focus_limit=1)
 
         # Fast: parent1 + child1 + grandchild1
         fast_results = list(fast)
@@ -634,18 +642,18 @@ class TestExpandSignificance:
         child = KLine(s_key=key_child, nodes=[key_grandchild])
         parent1 = KLine(s_key=0xF000, nodes=[key_child])
         parent2 = KLine(s_key=0xF001, nodes=[key_child])
+        model = Model([parent1, parent2, child, grandchild])
 
-        model = [parent1, parent2, child, grandchild]
-        fast_q, _ = query_significance(model, query=0xF000)
+        fast_q, _ = model.query(query=0xF000)
         focus_set = list(fast_q)
 
         # depth=1: no child expansion
-        fast, slow = expand_significance(model, focus_set, depth=1, focus_limit=1)
+        fast, slow = model.expand(focus_set, depth=1, focus_limit=1)
         assert list(fast) == [parent1]
         assert list(slow) == [parent2]
 
         # depth=2: expand to children, not grandchildren
-        fast, slow = expand_significance(model, focus_set, depth=2, focus_limit=1)
+        fast, slow = model.expand(focus_set, depth=2, focus_limit=1)
         fast_results = list(fast)
         assert len(fast_results) == 2  # parent1 + child
         slow_results = list(slow)
@@ -657,12 +665,12 @@ class TestExpandSignificance:
         match2 = KLine(s_key=0xFF01, nodes=[])
         match3 = KLine(s_key=0xFF02, nodes=[])
         match4 = KLine(s_key=0xFF03, nodes=[])
+        model = Model([match1, match2, match3, match4])
 
-        model = [match1, match2, match3, match4]
-        fast_q, _ = query_significance(model, query=0xFF00)
+        fast_q, _ = model.query(query=0xFF00)
         focus_set = list(fast_q)
 
-        fast, slow = expand_significance(model, focus_set, depth=1, focus_limit=1)
+        fast, slow = model.expand(focus_set, depth=1, focus_limit=1)
 
         assert list(fast) == [match1]
         slow_results = list(slow)
@@ -670,3 +678,37 @@ class TestExpandSignificance:
         assert match2 in slow_results
         assert match3 in slow_results
         assert match4 in slow_results
+
+
+class TestModelIterators:
+    def test_iterate_over_model(self):
+        """Can iterate over all KLines in model."""
+        kl1 = KLine(s_key=0x1000, nodes=[])
+        kl2 = KLine(s_key=0x2000, nodes=[])
+        model = Model([kl1, kl2])
+
+        klines = list(model)
+        assert len(klines) == 2
+        assert kl1 in klines
+        assert kl2 in klines
+
+    def test_getitem_access(self):
+        """Can access KLines by index."""
+        kl1 = KLine(s_key=0x1000, nodes=[])
+        kl2 = KLine(s_key=0x2000, nodes=[])
+        model = Model([kl1, kl2])
+
+        assert model[0] == kl1
+        assert model[1] == kl2
+
+    def test_find_by_key(self):
+        """Can find KLine by its s_key."""
+        kl1 = KLine(s_key=0x1000, nodes=[0x0100])
+        kl2 = KLine(s_key=0x2000, nodes=[0x0200])
+        model = Model([kl1, kl2])
+
+        found = model.find_by_key(0x1000)
+        assert found == kl1
+
+        not_found = model.find_by_key(0x3000)
+        assert not_found is None

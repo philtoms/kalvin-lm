@@ -85,164 +85,204 @@ def nodes_equal(nodes1: list[KNode], nodes2: list[KNode]) -> bool:
     return True
 
 
-def add_kline(model: list[KLine], kline: KLine) -> bool:
-    """Add a KLine to a list, enforcing the duplicate key invariant.
-
-    Invariant: Duplicate keys are allowed, but nodes must differ.
-    - If s_key is new: add the kline
-    - If s_key exists with different nodes: add the kline (allowed)
-    - If s_key exists with same nodes: reject (would be exact duplicate)
-
-    Args:
-        model: List to add to (modified in place)
-        kline: KLine to add
-
-    Returns:
-        True if added, False if rejected (exact duplicate)
-    """
-    for existing in model:
-        if existing.s_key == kline.s_key:
-            if nodes_equal(existing.nodes, kline.nodes):
-                return False  # Exact duplicate, reject
-    model.append(kline)
-    return True
-
-
 from typing import Iterator
 
-def query_significance(
-    model: list[KLine],
-    query: int,
-    focus_limit: int = 0,
-) -> tuple[Iterator[KLine], Iterator[KLine]]:
-    """Query a list of KLines by ANDing Significance with a query.
 
-    Returns two independent generators for concurrent processing:
-    1. Fast stream: yields matching KLines immediately (up to focus_limit)
-    2. Slow stream: yields remaining matching KLines
+class Model:
+    """A collection of KLines with query and expansion operations.
 
-    Args:
-        model: List of KLines to search (may contain duplicates)
-        query: The query value to match (AND operation on s_key)
-        focus_limit: Number of top-level matches in fast (0 = all in fast)
-            - focus_limit=2: first 2 matches in fast, rest in slow
+    Maintains an ordered list of KLines and provides methods for:
+    - Adding KLines with duplicate detection
+    - Querying by significance (AND operation on s_key)
+    - Expanding KLines to traverse their children
 
-    Returns:
-        Tuple of (fast_generator, slow_generator) that yield KLines.
+    The model supports two-stream processing for concurrent consumption:
+    - Fast stream: for immediate processing by a fast thread
+    - Slow stream: for deferred processing by a slow thread
     """
-    def fast_generator() -> Iterator[KLine]:
-        count = 0
-        for kline in model:
-            if kline.signifies(query):
-                if focus_limit > 0 and count >= focus_limit:
-                    break
-                yield kline
-                count += 1
 
-    def slow_generator() -> Iterator[KLine]:
-        if focus_limit <= 0:
-            return  # No slow when focus_limit is 0
-        count = 0
-        for kline in model:
-            if kline.signifies(query):
-                if count >= focus_limit:
-                    yield kline
-                count += 1
+    def __init__(self, klines: list[KLine] | None = None):
+        """Initialize the model with optional existing KLines.
 
-    return fast_generator(), slow_generator()
+        Args:
+            klines: Optional list of KLines to initialize with
+        """
+        self._klines: list[KLine] = klines.copy() if klines else []
 
+    def add(self, kline: KLine) -> bool:
+        """Add a KLine, enforcing the duplicate key invariant.
 
-def expand_significance(
-    model: list[KLine],
-    focus_set: list[KLine],
-    depth: int = 1,
-    focus_limit: int = 0,
-) -> tuple[Iterator[KLine], Iterator[KLine]]:
-    """Expand KLines and their descendants up to a given depth.
+        Invariant: Duplicate keys are allowed, but nodes must differ.
+        - If s_key is new: add the kline
+        - If s_key exists with different nodes: add the kline (allowed)
+        - If s_key exists with same nodes: reject (would be exact duplicate)
 
-    Returns two independent generators for concurrent processing:
-    1. Fast stream: yields first `focus_limit` KLines and their descendants
-    2. Slow stream: yields remaining KLines and their descendants
+        Args:
+            kline: KLine to add
 
-    Only NODE type KLines (high bit = 1) are traversed for children.
-    EMBEDDING nodes (high bit = 0) are leaves and not expanded.
+        Returns:
+            True if added, False if rejected (exact duplicate)
+        """
+        for existing in self._klines:
+            if existing.s_key == kline.s_key:
+                if nodes_equal(existing.nodes, kline.nodes):
+                    return False  # Exact duplicate, reject
+        self._klines.append(kline)
+        return True
 
-    Args:
-        model: List of KLines to search for children
-        klines: List of KLines to expand (e.g., from query_significance)
-        depth: Maximum recursion depth for expanding child nodes:
-            - depth=0: yield nothing
-            - depth=1: yield klines only (no child expansion)
-            - depth=2: yield klines + their direct children
-            - depth=N: expand N levels of children
-        focus_limit: Number of klines in fast (0 = all in fast)
-            - focus_limit=2: first 2 klines in fast, rest in slow
+    def find_by_key(self, key: int) -> KLine | None:
+        """Find a KLine by its s_key.
 
-    Returns:
-        Tuple of (fast_generator, slow_generator) that yield expanded KLines.
-    """
-    if depth <= 0:
-        return iter([]), iter([])
+        Args:
+            key: The s_key to search for
 
-    def find_kline_by_key(key: int) -> KLine | None:
-        """Find a KLine in model by its s_key."""
-        for kline in model:
+        Returns:
+            KLine if found, None otherwise
+        """
+        for kline in self._klines:
             if kline.s_key == key:
                 return kline
         return None
 
-    def get_node_klines(nodes: list[KNode]) -> list[KLine]:
-        """Get all NODE type KLines from a list of node keys."""
-        found = []
-        for node_key in nodes:
-            if get_node_type(node_key) == KLineType.NODE:
-                kline = find_kline_by_key(node_key)
-                if kline is not None:
-                    found.append(kline)
-        return found
+    def query(
+        self,
+        query: int,
+        focus_limit: int = 0,
+    ) -> tuple[Iterator[KLine], Iterator[KLine]]:
+        """Query KLines by ANDing significance with a query.
 
-    def expand_kline_generator(
-        kline: KLine,
-        current_depth: int,
-        visited: set[int],
-    ) -> Iterator[KLine]:
-        """Expand a KLine and yield results immediately."""
+        Returns two independent generators for concurrent processing:
+        1. Fast stream: yields matching KLines immediately (up to focus_limit)
+        2. Slow stream: yields remaining matching KLines
 
-        # Check for cycle - if kline already visited, stop this branch
-        if kline.s_key in visited:
-            v_kline = find_kline_by_key(kline.s_key)
-            if v_kline and nodes_equal(v_kline.nodes, kline.nodes):
+        Args:
+            query: The query value to match (AND operation on s_key)
+            focus_limit: Number of top-level matches in fast (0 = all in fast)
+                - focus_limit=2: first 2 matches in fast, rest in slow
+
+        Returns:
+            Tuple of (fast_generator, slow_generator) that yield KLines.
+        """
+        klines = self._klines
+
+        def fast_generator() -> Iterator[KLine]:
+            count = 0
+            for kline in klines:
+                if kline.signifies(query):
+                    if focus_limit > 0 and count >= focus_limit:
+                        break
+                    yield kline
+                    count += 1
+
+        def slow_generator() -> Iterator[KLine]:
+            if focus_limit <= 0:
+                return  # No slow when focus_limit is 0
+            count = 0
+            for kline in klines:
+                if kline.signifies(query):
+                    if count >= focus_limit:
+                        yield kline
+                    count += 1
+
+        return fast_generator(), slow_generator()
+
+    def expand(
+        self,
+        focus_set: list[KLine],
+        depth: int = 1,
+        focus_limit: int = 0,
+    ) -> tuple[Iterator[KLine], Iterator[KLine]]:
+        """Expand KLines and their descendants up to a given depth.
+
+        Returns two independent generators for concurrent processing:
+        1. Fast stream: yields first `focus_limit` KLines and their descendants
+        2. Slow stream: yields remaining KLines and their descendants
+
+        Only NODE type KLines (high bit = 1) are traversed for children.
+        EMBEDDING nodes (high bit = 0) are leaves and not expanded.
+
+        Args:
+            focus_set: List of KLines to expand (e.g., from query)
+            depth: Maximum recursion depth for expanding child nodes:
+                - depth=0: yield nothing
+                - depth=1: yield klines only (no child expansion)
+                - depth=2: yield klines + their direct children
+                - depth=N: expand N levels of children
+            focus_limit: Number of klines in fast (0 = all in fast)
+                - focus_limit=2: first 2 klines in fast, rest in slow
+
+        Returns:
+            Tuple of (fast_generator, slow_generator) that yield expanded KLines.
+        """
+        if depth <= 0:
+            return iter([]), iter([])
+
+        model = self
+
+        def get_node_klines(nodes: list[KNode]) -> list[KLine]:
+            """Get all NODE type KLines from a list of node keys."""
+            found = []
+            for node_key in nodes:
+                if get_node_type(node_key) == KLineType.NODE:
+                    kline = model.find_by_key(node_key)
+                    if kline is not None:
+                        found.append(kline)
+            return found
+
+        def expand_kline_generator(
+            kline: KLine,
+            current_depth: int,
+            visited: set[int],
+        ) -> Iterator[KLine]:
+            """Expand a KLine and yield results immediately."""
+
+            # Check for cycle - if kline already visited, stop this branch
+            if kline.s_key in visited:
+                v_kline = model.find_by_key(kline.s_key)
+                if v_kline and nodes_equal(v_kline.nodes, kline.nodes):
+                    return
+            else:
+                visited.add(kline.s_key)
+
+            yield kline
+
+            # Stop if we've reached max depth
+            if current_depth >= depth:
                 return
-        else:
-            visited.add(kline.s_key)
 
-        yield kline
+            # Expand child NODE klines
+            for child in get_node_klines(kline.nodes):
+                yield from expand_kline_generator(child, current_depth + 1, visited)
 
-        # Stop if we've reached max depth
-        if current_depth >= depth:
-            return
-
-        # Expand child NODE klines
-        for child in get_node_klines(kline.nodes):
-            yield from expand_kline_generator(child, current_depth + 1, visited)
-
-    def fast_generator() -> Iterator[KLine]:
-        visited: set[int] = set()
-        count = 0
-        for kline in focus_set:
-            if focus_limit > 0 and count >= focus_limit:
-                break
-            yield from expand_kline_generator(kline, 1, visited)
-            count += 1
-
-    def slow_generator() -> Iterator[KLine]:
-        if focus_limit <= 0:
-            return  # No slow when focus_limit is 0
-        visited: set[int] = set()
-        count = 0
-        for kline in focus_set:
-            if count >= focus_limit:
+        def fast_generator() -> Iterator[KLine]:
+            visited: set[int] = set()
+            count = 0
+            for kline in focus_set:
+                if focus_limit > 0 and count >= focus_limit:
+                    break
                 yield from expand_kline_generator(kline, 1, visited)
-            count += 1
+                count += 1
 
-    return fast_generator(), slow_generator()
+        def slow_generator() -> Iterator[KLine]:
+            if focus_limit <= 0:
+                return  # No slow when focus_limit is 0
+            visited: set[int] = set()
+            count = 0
+            for kline in focus_set:
+                if count >= focus_limit:
+                    yield from expand_kline_generator(kline, 1, visited)
+                count += 1
+
+        return fast_generator(), slow_generator()
+
+    def __len__(self) -> int:
+        """Return the number of KLines in the model."""
+        return len(self._klines)
+
+    def __iter__(self) -> Iterator[KLine]:
+        """Iterate over all KLines in the model."""
+        return iter(self._klines)
+
+    def __getitem__(self, index: int) -> KLine:
+        """Get a KLine by index."""
+        return self._klines[index]
