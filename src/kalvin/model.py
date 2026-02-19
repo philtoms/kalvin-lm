@@ -108,19 +108,25 @@ def add_kline(kv_list: list[KLine], kline: KLine) -> bool:
     return True
 
 
+from typing import Generator
+
+
+# Special key for remainder batch KLine (EMBEDDING type: high bit = 0)
+REMAINDER_KEY: int = 0x7FFF_FFFF_FFFF_FFFE
+
+
 def query_significance(
     kv_list: list[KLine],
     query: int,
     depth: int = 1,
-    cap: int = 0,
-) -> list[KLine]:
+    focus_limit: int = 0,
+) -> Generator[KLine, None, None]:
     """Query a list of KLines by ANDing Significance with a query.
 
-    Algorithm:
-    - Find all KLines that match the query
-    - For each match, expand its children up to depth N
-    - Cap applies per level: max N entries at each depth level
-    - Cycle detection: don't revisit s_keys already in result
+    Generator that yields KLines in two phases:
+    1. Focus: Yields matching KLines and their descendants immediately
+    2. Remainder: Yields a single special KLine with REMAINDER_KEY and
+       nodes containing all remainder KLine s_keys
 
     Only NODE type KLines (high bit = 1) are traversed.
     EMBEDDING nodes (high bit = 0) are leaves and not in kv_list.
@@ -129,26 +135,24 @@ def query_significance(
         kv_list: List of KLines to search (may contain duplicates)
         query: The query value to match
         depth: Maximum recursion depth for expanding child nodes:
-            - depth=0: return empty
-            - depth=1: return matching klines only (no child expansion)
-            - depth=2: return matching klines + their direct children
+            - depth=0: yield nothing
+            - depth=1: yield matching klines only (no child expansion)
+            - depth=2: yield matching klines + their direct children
             - depth=N: expand N levels of children
-        cap: Maximum number of children per level (0 = no limit)
-            - cap=2: return max 2 top-level matches, max 2 children per match, etc.
+        focus_limit: Number of top-level matches in focus (0 = all in focus)
+            - focus_limit=2: first 2 matches yielded immediately, rest in remainder
 
-    Returns:
-        List containing all matching KLines and their descendants.
-        Empty list if no match is found.
+    Yields:
+        Focus KLines immediately, then a single remainder KLine.
     """
     if depth <= 0:
-        return []
+        return
 
-    result: list[KLine] = []
     visited: set[int] = set()  # Track visited s_keys for cycle detection
 
-    def find_kline_by_key(kv_list: list[KLine], key: int) -> KLine | None:
-        """Find a KLine in kv_list by its s_key."""
-        for kline in kv_list:
+    def find_kline_by_key(search_list: list[KLine], key: int) -> KLine | None:
+        """Find a KLine in search_list by its s_key."""
+        for kline in search_list:
             if kline.s_key == key:
                 return kline
         return None
@@ -163,38 +167,50 @@ def query_significance(
                     found.append(kline)
         return found
 
-    def expand_kline(kline: KLine, current_depth: int) -> None:
-        """Expand a KLine and its children into result."""
+    def expand_kline(kline: KLine, current_depth: int, batch: list[KLine]) -> None:
+        """Expand a KLine and its children into batch."""
         # Check for cycle - if s_key already visited, check that it is
         # the same kline and stop this branch
         if kline.s_key in visited:
-            v_kline = find_kline_by_key(result, kline.s_key)
+            v_kline = find_kline_by_key(batch, kline.s_key)
             if v_kline and nodes_equal(v_kline.nodes, kline.nodes):
                 return
         else:
-          visited.add(kline.s_key)
+            visited.add(kline.s_key)
 
-        result.append(kline)
+        batch.append(kline)
 
         # Stop if we've reached max depth
         if current_depth >= depth:
             return
 
-        # Expand child NODE klines, respecting cap per level
-        children = get_node_klines(kline.nodes)
-        if cap > 0:
-            children = children[:cap]
+        # Expand child NODE klines
+        for child in get_node_klines(kline.nodes):
+            expand_kline(child, current_depth + 1, batch)
 
-        for child in children:
-            expand_kline(child, current_depth + 1)
+    # Find all matching klines
+    matches = [kline for kline in kv_list if kline.signifies(query)]
 
-    # Find all matching klines and expand them, respecting cap at top level
-    match_count = 0
-    for kline in kv_list:
-        if kline.signifies(query):
-            expand_kline(kline, 1)
-            match_count += 1
-            if cap > 0 and match_count >= cap:
-                break
+    # Split into focus and remainder
+    if focus_limit > 0:
+        focus_matches = matches[:focus_limit]
+        remainder_matches = matches[focus_limit:]
+    else:
+        focus_matches = matches
+        remainder_matches = []
 
-    return result
+    # Yield focus matches immediately (with their descendants)
+    # Use a single accumulated batch for proper cycle detection
+    focus_batch: list[KLine] = []
+    for kline in focus_matches:
+        expand_kline(kline, 1, focus_batch)
+    yield from focus_batch
+
+    # Collect remainder into a single KLine
+    if remainder_matches:
+        remainder_batch: list[KLine] = []
+        for kline in remainder_matches:
+            expand_kline(kline, 1, remainder_batch)
+        # Extract s_keys as nodes for the remainder KLine
+        remainder_nodes = [kl.s_key for kl in remainder_batch]
+        yield KLine(s_key=REMAINDER_KEY, nodes=remainder_nodes)

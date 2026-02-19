@@ -3,6 +3,7 @@ from kalvin.model import (
     KLine,
     KLineType,
     HIGH_BIT_MASK,
+    REMAINDER_KEY,
     get_node_type,
     create_node_key,
     create_embedding_key,
@@ -225,7 +226,7 @@ class TestQuerySignificance:
         kl1 = KLine(s_key=0x0001, nodes=[])
         kl2 = KLine(s_key=0x0002, nodes=[])
 
-        results = query_significance([kl1, kl2], query=0xFF00)
+        results = list(query_significance([kl1, kl2], query=0xFF00))
         assert len(results) == 0
 
     def test_match_with_only_embeddings_returns_kline(self):
@@ -236,7 +237,7 @@ class TestQuerySignificance:
         matching = KLine(s_key=0xFF00, nodes=[embedding1, embedding2])
         non_matching = KLine(s_key=0x0001, nodes=[])
 
-        results = query_significance([non_matching, matching], query=0xFF00)
+        results = list(query_significance([non_matching, matching], query=0xFF00))
 
         assert len(results) == 1
         assert results[0] == matching
@@ -246,7 +247,7 @@ class TestQuerySignificance:
         matching = KLine(s_key=0xFF00, nodes=[])
         non_matching = KLine(s_key=0x0001, nodes=[])
 
-        results = query_significance([non_matching, matching], query=0xFF00)
+        results = list(query_significance([non_matching, matching], query=0xFF00))
 
         assert len(results) == 1
         assert results[0] == matching
@@ -260,7 +261,7 @@ class TestQuerySignificance:
         child2 = KLine(s_key=key_child2, nodes=[])
         parent = KLine(s_key=0xFF00, nodes=[key_child1, key_child2])  # references children
 
-        results = query_significance([parent, child1, child2], query=0xFF00, depth=2)
+        results = list(query_significance([parent, child1, child2], query=0xFF00, depth=2))
 
         assert len(results) == 3
         assert results[0] == parent
@@ -281,18 +282,18 @@ class TestQuerySignificance:
         # Child has 0x0010, grandchild has 0x0100 - neither overlaps with 0xF000
 
         # depth=1: only parent, no child expansion
-        results = query_significance([parent, child, grandchild], query=0xF000, depth=1)
+        results = list(query_significance([parent, child, grandchild], query=0xF000, depth=1))
         assert len(results) == 1
         assert results[0] == parent
 
         # depth=2: parent + child, no grandchild
-        results = query_significance([parent, child, grandchild], query=0xF000, depth=2)
+        results = list(query_significance([parent, child, grandchild], query=0xF000, depth=2))
         assert len(results) == 2
         assert results[0] == parent
         assert results[1] == child
 
         # depth=3: parent + child + grandchild
-        results = query_significance([parent, child, grandchild], query=0xF000, depth=3)
+        results = list(query_significance([parent, child, grandchild], query=0xF000, depth=3))
         assert len(results) == 3
         assert results[0] == parent
         assert results[1] == child
@@ -301,7 +302,7 @@ class TestQuerySignificance:
     def test_depth_zero_returns_empty(self):
         """depth=0 returns empty list."""
         matching = KLine(s_key=0xFF00, nodes=[])
-        results = query_significance([matching], query=0xFF00, depth=0)
+        results = list(query_significance([matching], query=0xFF00, depth=0))
         assert len(results) == 0
 
     def test_cycle_detection_stops_expansion(self):
@@ -313,7 +314,7 @@ class TestQuerySignificance:
         kl_b = KLine(s_key=key_b, nodes=[key_a])
 
         # kl_a matches, expands to kl_b, which references kl_a (already in result)
-        results = query_significance([kl_a, kl_b], query=key_a, depth=100)
+        results = list(query_significance([kl_a, kl_b], query=key_a, depth=100))
 
         # Should have kl_a and kl_b, then stop when it sees kl_a again
         assert len(results) == 2
@@ -325,7 +326,7 @@ class TestQuerySignificance:
         key = create_node_key(0xFF00)
         kl = KLine(s_key=key, nodes=[key])
 
-        results = query_significance([kl], query=key, depth=100)
+        results = list(query_significance([kl], query=key, depth=100))
 
         # kl added, then tries to expand self but it's already in result
         assert len(results) == 1
@@ -339,7 +340,7 @@ class TestQuerySignificance:
         child = KLine(s_key=node_key, nodes=[])
         parent = KLine(s_key=0xFF00, nodes=[embedding_key, node_key])
 
-        results = query_significance([parent, child], query=0xFF00, depth=2)
+        results = list(query_significance([parent, child], query=0xFF00, depth=2))
 
         # Only parent and child (from node_key), not any lookup for embedding_key
         assert len(results) == 2
@@ -353,32 +354,43 @@ class TestQuerySignificance:
         non_matching = KLine(s_key=0x0001, nodes=[])
 
         # Both match1 and match2 match the query
-        results = query_significance([non_matching, match1, match2], query=0xFF00)
+        results = list(query_significance([non_matching, match1, match2], query=0xFF00))
 
         assert len(results) == 2
         assert match1 in results
         assert match2 in results
 
-    def test_cap_limits_top_level_matches(self):
-        """Cap limits number of top-level matches."""
+    def test_focus_limit_splits_into_batches(self):
+        """focus_limit splits matches into focus batch and remainder KLine."""
         match1 = KLine(s_key=0xFF00, nodes=[])
         match2 = KLine(s_key=0xFF01, nodes=[])
         match3 = KLine(s_key=0xFF02, nodes=[])
 
-        results = query_significance([match1, match2, match3], query=0xFF00, cap=2)
-        assert len(results) == 2
+        # focus_limit=2: first 2 yielded immediately, 3rd in remainder KLine
+        results = list(query_significance([match1, match2, match3], query=0xFF00, focus_limit=2))
 
-    def test_cap_zero_means_no_limit(self):
-        """Cap=0 means no limit on results."""
-        match1 = KLine(s_key=0xFF00, nodes=[])
-        match2 = KLine(s_key=0xFF01, nodes=[])
-        match3 = KLine(s_key=0xFF02, nodes=[])
-
-        results = query_significance([match1, match2, match3], query=0xFF00, cap=0)
+        # 2 focus + 1 remainder KLine = 3 total
         assert len(results) == 3
+        assert results[0] == match1
+        assert results[1] == match2
+        # Last result is remainder KLine with match3's s_key in nodes
+        assert results[2].s_key == REMAINDER_KEY
+        assert match3.s_key in results[2].nodes
 
-    def test_cap_limits_children_per_parent(self):
-        """Cap limits children per parent at each level."""
+    def test_focus_limit_zero_means_all_in_focus(self):
+        """focus_limit=0 means all matches in focus batch."""
+        match1 = KLine(s_key=0xFF00, nodes=[])
+        match2 = KLine(s_key=0xFF01, nodes=[])
+        match3 = KLine(s_key=0xFF02, nodes=[])
+
+        results = list(query_significance([match1, match2, match3], query=0xFF00, focus_limit=0))
+        assert len(results) == 3
+        # No remainder KLine when focus_limit=0
+        for r in results:
+            assert r.s_key != REMAINDER_KEY
+
+    def test_focus_limit_with_children(self):
+        """focus_limit applies to top-level matches, remainder KLine contains all s_keys."""
         key_child1 = create_node_key(0x0010)
         key_child2 = create_node_key(0x0020)
         key_child3 = create_node_key(0x0030)
@@ -386,7 +398,7 @@ class TestQuerySignificance:
         child1 = KLine(s_key=key_child1, nodes=[])
         child2 = KLine(s_key=key_child2, nodes=[])
         child3 = KLine(s_key=key_child3, nodes=[])
-        parent1 = KLine(s_key=0xFF00, nodes=[key_child1, key_child2, key_child3])
+        parent1 = KLine(s_key=0xF000, nodes=[key_child1, key_child2, key_child3])
 
         key_child4 = create_node_key(0x0040)
         key_child5 = create_node_key(0x0050)
@@ -395,19 +407,57 @@ class TestQuerySignificance:
         child4 = KLine(s_key=key_child4, nodes=[])
         child5 = KLine(s_key=key_child5, nodes=[])
         child6 = KLine(s_key=key_child6, nodes=[])
-        parent2= KLine(s_key=0xFF00, nodes=[key_child4, key_child5, key_child6])
+        parent2 = KLine(s_key=0xF001, nodes=[key_child4, key_child5, key_child6])
 
-        # cap=2: (parent + max 2 children) * 2
-        results = query_significance([parent1, parent2,child1, child2, child3, child4, child5, child6], query=0xF000, depth=2, cap=2)
-        assert len(results) == 6  # 2 parent + 4 children
+        # focus_limit=1: parent1 + children yielded, parent2 + children in remainder KLine
+        results = list(query_significance(
+            [parent1, parent2, child1, child2, child3, child4, child5, child6],
+            query=0xF000,
+            depth=2,
+            focus_limit=1
+        ))
+
+        # focus: parent1 + 3 children = 4, remainder KLine = 1, total = 5
+        assert len(results) == 5
         assert parent1 in results
         assert child1 in results
         assert child2 in results
-        assert child3 not in results  # cap limits to 2 children
-        assert parent2 in results
-        assert child4 in results
-        assert child5 in results
-        assert child6 not in results  # cap limits to 2 children
+        assert child3 in results
+
+        # Last result is remainder KLine containing parent2 and children s_keys
+        remainder = results[-1]
+        assert remainder.s_key == REMAINDER_KEY
+        assert parent2.s_key in remainder.nodes
+        assert child4.s_key in remainder.nodes
+        assert child5.s_key in remainder.nodes
+        assert child6.s_key in remainder.nodes
+
+    def test_focus_batch_yields_first(self):
+        """Focus batch is yielded before remainder KLine."""
+        match1 = KLine(s_key=0xFF00, nodes=[])
+        match2 = KLine(s_key=0xFF01, nodes=[])
+        match3 = KLine(s_key=0xFF02, nodes=[])
+
+        # With focus_limit=2, match1 and match2 should come before remainder KLine
+        results = list(query_significance([match1, match2, match3], query=0xFF00, focus_limit=2))
+
+        # Order: match1, match2 (focus), remainder KLine
+        assert results[0] == match1
+        assert results[1] == match2
+        assert results[2].s_key == REMAINDER_KEY
+        assert match3.s_key in results[2].nodes
+
+    def test_remainder_kline_is_embedding_type(self):
+        """Remainder KLine has EMBEDDING type (high bit = 0)."""
+        match1 = KLine(s_key=0xFF00, nodes=[])
+        match2 = KLine(s_key=0xFF01, nodes=[])
+        match3 = KLine(s_key=0xFF02, nodes=[])
+
+        results = list(query_significance([match1, match2, match3], query=0xFF00, focus_limit=2))
+
+        remainder = results[-1]
+        assert remainder.s_key == REMAINDER_KEY
+        assert remainder.type == KLineType.EMBEDDING
 
     def test_nested_hierarchy_expansion(self):
         """Test deeply nested hierarchy is expanded correctly."""
@@ -422,11 +472,11 @@ class TestQuerySignificance:
         intermediate = KLine(s_key=key_intermediate, nodes=[key_leaf1, key_leaf2])
         root = KLine(s_key=0xFF00, nodes=[key_intermediate, key_leaf3])
 
-        results = query_significance(
+        results = list(query_significance(
             [root, intermediate, leaf1, leaf2, leaf3],
             query=0xFF00,
             depth=3
-        )
+        ))
 
         # root -> intermediate, leaf3
         # intermediate -> leaf1, leaf2
@@ -448,11 +498,11 @@ class TestQuerySignificance:
         child = KLine(s_key=key_child, nodes=[key_grandchild])
         root = KLine(s_key=key_root, nodes=[key_child])
 
-        results = query_significance(
+        results = list(query_significance(
             [root, child, grandchild],
             query=0xFF00,
             depth=10
-        )
+        ))
 
         # root added, then child, then grandchild
         # grandchild references root which is already in results -> stop
@@ -472,11 +522,11 @@ class TestQuerySignificance:
         child = KLine(s_key=key_child, nodes=[key_grandchild])
         root = KLine(s_key=key_root, nodes=[key_child])
 
-        results = query_significance(
+        results = list(query_significance(
             [root, child, grandchild],
             query=0xFF00,
             depth=10
-        )
+        ))
 
         # root added, then child, then grandchild
         # grandchild references child which is already in results -> stop
