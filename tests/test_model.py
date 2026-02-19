@@ -193,24 +193,28 @@ class TestQuerySignificance:
         """Depth parameter limits how many levels of children are expanded."""
         key_grandchild = create_node_key(0x0100)
         key_child = create_node_key(0x0010)
+        key_parent = create_node_key(0xF000)  # Use 0xF000 so only parent matches
 
         grandchild = KLine(s_key=key_grandchild, nodes=[])
         child = KLine(s_key=key_child, nodes=[key_grandchild])
-        parent = KLine(s_key=0xFF00, nodes=[key_child])
+        parent = KLine(s_key=key_parent, nodes=[key_child])
+
+        # Query 0xF000 only matches parent (0xF000 in low bits)
+        # Child has 0x0010, grandchild has 0x0100 - neither overlaps with 0xF000
 
         # depth=1: only parent, no child expansion
-        results = query_significance([parent, child, grandchild], query=0xFF00, depth=1)
+        results = query_significance([parent, child, grandchild], query=0xF000, depth=1)
         assert len(results) == 1
         assert results[0] == parent
 
         # depth=2: parent + child, no grandchild
-        results = query_significance([parent, child, grandchild], query=0xFF00, depth=2)
+        results = query_significance([parent, child, grandchild], query=0xF000, depth=2)
         assert len(results) == 2
         assert results[0] == parent
         assert results[1] == child
 
         # depth=3: parent + child + grandchild
-        results = query_significance([parent, child, grandchild], query=0xFF00, depth=3)
+        results = query_significance([parent, child, grandchild], query=0xF000, depth=3)
         assert len(results) == 3
         assert results[0] == parent
         assert results[1] == child
@@ -264,17 +268,68 @@ class TestQuerySignificance:
         assert results[0] == parent
         assert child in results
 
-    def test_first_match_in_list_is_returned(self):
-        """First matching kline in list order is returned."""
+    def test_all_matches_are_returned(self):
+        """All matching klines in list order are returned."""
         match1 = KLine(s_key=0xFF00, nodes=[])
         match2 = KLine(s_key=0xFF01, nodes=[])
         non_matching = KLine(s_key=0x0001, nodes=[])
 
-        # match1 comes before match2
+        # Both match1 and match2 match the query
         results = query_significance([non_matching, match1, match2], query=0xFF00)
 
-        assert len(results) == 1
-        assert results[0] == match1  # match1 found first, match2 never checked
+        assert len(results) == 2
+        assert match1 in results
+        assert match2 in results
+
+    def test_cap_limits_top_level_matches(self):
+        """Cap limits number of top-level matches."""
+        match1 = KLine(s_key=0xFF00, nodes=[])
+        match2 = KLine(s_key=0xFF01, nodes=[])
+        match3 = KLine(s_key=0xFF02, nodes=[])
+
+        results = query_significance([match1, match2, match3], query=0xFF00, cap=2)
+        assert len(results) == 2
+
+    def test_cap_zero_means_no_limit(self):
+        """Cap=0 means no limit on results."""
+        match1 = KLine(s_key=0xFF00, nodes=[])
+        match2 = KLine(s_key=0xFF01, nodes=[])
+        match3 = KLine(s_key=0xFF02, nodes=[])
+
+        results = query_significance([match1, match2, match3], query=0xFF00, cap=0)
+        assert len(results) == 3
+
+    def test_cap_limits_children_per_parent(self):
+        """Cap limits children per parent at each level."""
+        key_child1 = create_node_key(0x0010)
+        key_child2 = create_node_key(0x0020)
+        key_child3 = create_node_key(0x0030)
+
+        child1 = KLine(s_key=key_child1, nodes=[])
+        child2 = KLine(s_key=key_child2, nodes=[])
+        child3 = KLine(s_key=key_child3, nodes=[])
+        parent1 = KLine(s_key=0xFF00, nodes=[key_child1, key_child2, key_child3])
+
+        key_child4 = create_node_key(0x0040)
+        key_child5 = create_node_key(0x0050)
+        key_child6 = create_node_key(0x0060)
+
+        child4 = KLine(s_key=key_child4, nodes=[])
+        child5 = KLine(s_key=key_child5, nodes=[])
+        child6 = KLine(s_key=key_child6, nodes=[])
+        parent2= KLine(s_key=0xFF00, nodes=[key_child4, key_child5, key_child6])
+
+        # cap=2: (parent + max 2 children) * 2
+        results = query_significance([parent1, parent2,child1, child2, child3, child4, child5, child6], query=0xF000, depth=2, cap=2)
+        assert len(results) == 6  # 2 parent + 4 children
+        assert parent1 in results
+        assert child1 in results
+        assert child2 in results
+        assert child3 not in results  # cap limits to 2 children
+        assert parent2 in results
+        assert child4 in results
+        assert child5 in results
+        assert child6 not in results  # cap limits to 2 children
 
     def test_nested_hierarchy_expansion(self):
         """Test deeply nested hierarchy is expanded correctly."""
@@ -330,7 +385,7 @@ class TestQuerySignificance:
 
     def test_cyclic_grandchildren_stops_expansion(self):
         """Cyclic children (child references ancestor) stop expansion."""
-        # Structure: root -> child -> grandchild -> child (cycle back to top)
+        # Structure: root -> child -> grandchild -> child (cycle back to parent)
         key_root = create_node_key(0xFF00)
         key_child = create_node_key(0x0010)
         key_grandchild = create_node_key(0x0100)

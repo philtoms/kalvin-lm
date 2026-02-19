@@ -79,36 +79,41 @@ def query_significance(
     kv_list: list[KLine],
     query: int,
     depth: int = 1,
+    cap: int = 0,
 ) -> list[KLine]:
     """Query a list of KLines by ANDing Significance with a query.
 
     Algorithm:
-    - If query not matched → return empty list
-    - If query matches a kline with only embeddings → return just that kline
-    - If query matches a kline with kline nodes → return kline + all klines
-      its nodes represent (recursive to depth n)
-    - If any nodes already in result → stop and return list so far
+    - Find all KLines that match the query
+    - For each match, expand its children up to depth N
+    - Cap applies per level: max N entries at each depth level
+    - Cycle detection: don't revisit s_keys already in result
 
     Only NODE type KLines (high bit = 1) are traversed.
     EMBEDDING nodes (high bit = 0) are leaves and not in kv_list.
 
     Args:
-        kv_list: List of KLines to search (must contain all NODE type KLines)
+        kv_list: List of KLines to search (may contain duplicates)
         query: The query value to match
         depth: Maximum recursion depth for expanding child nodes:
             - depth=0: return empty
-            - depth=1: return matching kline only (no child expansion)
-            - depth=2: return matching kline + its direct children
+            - depth=1: return matching klines only (no child expansion)
+            - depth=2: return matching klines + their direct children
             - depth=N: expand N levels of children
+        cap: Maximum number of children per level (0 = no limit)
+            - cap=2: return max 2 top-level matches, max 2 children per match, etc.
 
     Returns:
-        List containing the matching KLine and its descendants.
+        List containing all matching KLines and their descendants.
         Empty list if no match is found.
     """
     if depth <= 0:
         return []
 
-    def find_kline_by_key(key: int) -> KLine | None:
+    result: list[KLine] = []
+    visited: set[int] = set()  # Track visited s_keys for cycle detection
+
+    def find_kline_by_key(kv_list: list[KLine], key: int) -> KLine | None:
         """Find a KLine in kv_list by its s_key."""
         for kline in kv_list:
             if kline.s_key == key:
@@ -117,41 +122,52 @@ def query_significance(
 
     def get_node_klines(nodes: list[KNode]) -> list[KLine]:
         """Get all NODE type KLines from a list of node keys."""
-        result = []
+        found = []
         for node_key in nodes:
             if get_node_type(node_key) == KLineType.NODE:
-                kline = find_kline_by_key(node_key)
+                kline = find_kline_by_key(kv_list, node_key)
                 if kline is not None:
-                    result.append(kline)
-        return result
+                    found.append(kline)
+        return found
 
-    def expand_kline(kline: KLine, result: list[KLine], current_depth: int) -> bool:
-        """Expand a KLine and its children into result.
-
-        Returns True if expansion was stopped due to cycle detection.
-        """
-        # Check for cycle - if kline already in result, stop
-        if kline in result:
-            return True
+    def expand_kline(kline: KLine, current_depth: int) -> None:
+        """Expand a KLine and its children into result."""
+        # Check for cycle - if s_key already visited, check that it is
+        # the same kline and stop this branch
+        if kline.s_key in visited:
+            v_kline = find_kline_by_key(result, kline.s_key)
+            if v_kline and len(kline.nodes) == len(v_kline.nodes):
+                diff=False
+                for i in range(len(kline.nodes)):
+                    if kline.nodes[i] != v_kline.nodes[i]:
+                        diff=True
+                        break
+                if not diff:
+                    return
+        else:
+          visited.add(kline.s_key)
 
         result.append(kline)
 
         # Stop if we've reached max depth
         if current_depth >= depth:
-            return False
+            return
 
-        # Expand child NODE klines
-        for child in get_node_klines(kline.nodes):
-            if expand_kline(child, result, current_depth + 1):
-                return True
+        # Expand child NODE klines, respecting cap per level
+        children = get_node_klines(kline.nodes)
+        if cap > 0:
+            children = children[:cap]
 
-        return False
+        for child in children:
+            expand_kline(child, current_depth + 1)
 
-    # Find first matching kline
+    # Find all matching klines and expand them, respecting cap at top level
+    match_count = 0
     for kline in kv_list:
         if kline.signifies(query):
-            result: list[KLine] = []
-            expand_kline(kline, result, 1)
-            return result
+            expand_kline(kline, 1)
+            match_count += 1
+            if cap > 0 and match_count >= cap:
+                break
 
-    return []
+    return result
