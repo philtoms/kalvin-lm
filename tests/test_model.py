@@ -10,11 +10,13 @@ from kalvin.model import (
     nodes_equal,
     # Significance
     Significance,
-    S1_SHIFT,
+    S1_BIT,
+    S1_PCT_SHIFT,
     S2_SHIFT,
     S3_SHIFT,
     S4_VALUE,
-    get_s1,
+    has_s1,
+    get_s1_percentage,
     get_s2,
     get_s2_s1_percentage,
     get_s2_s2_percentage,
@@ -733,30 +735,45 @@ class TestModelIterators:
 
 class TestSignificanceHelpers:
     def test_build_s1_100_percent(self):
-        """S1 at 100% gives max value (255) in S1 bits."""
+        """S1 at 100% sets S1 bit with max percentage (127)."""
         sig = build_s1(100)
-        assert get_s1(sig) == 255
-        assert sig == (255 << S1_SHIFT)
+        assert has_s1(sig) is True
+        assert get_s1_percentage(sig) == 127
 
     def test_build_s1_50_percent(self):
-        """S1 at 50% gives 127 in S1 bits."""
+        """S1 at 50% sets S1 bit with 63 in percentage bits."""
         sig = build_s1(50)
-        assert get_s1(sig) == 127
+        assert has_s1(sig) is True
+        assert get_s1_percentage(sig) == 63
 
     def test_build_s1_0_percent(self):
-        """S1 at 0% gives 0 in S1 bits."""
+        """S1 at 0% still sets S1 bit with 0 percentage."""
         sig = build_s1(0)
-        assert get_s1(sig) == 0
+        assert has_s1(sig) is True
+        assert get_s1_percentage(sig) == 0
 
     def test_build_s1_clamps_negative(self):
         """Negative percentage is clamped to 0."""
         sig = build_s1(-10)
-        assert get_s1(sig) == 0
+        assert has_s1(sig) is True
+        assert get_s1_percentage(sig) == 0
 
     def test_build_s1_clamps_over_100(self):
         """Percentage over 100 is clamped to 100."""
         sig = build_s1(150)
-        assert get_s1(sig) == 255
+        assert has_s1(sig) is True
+        assert get_s1_percentage(sig) == 127
+
+    def test_build_s1_default(self):
+        """S1 with no percentage defaults to 100%."""
+        sig = build_s1()
+        assert has_s1(sig) is True
+        assert get_s1_percentage(sig) == 127
+
+    def test_s1_bit_value(self):
+        """S1 bit is at position 56."""
+        sig = build_s1()
+        assert sig == S1_BIT | (127 << S1_PCT_SHIFT)
 
     def test_build_s2_full(self):
         """S2 with both percentages gives correct values."""
@@ -788,13 +805,13 @@ class TestSignificanceHelpers:
 
 class TestCalculateSignificance:
     def test_s1_exact_match(self):
-        """Exact node match returns S1 with 100%."""
+        """Exact node match returns S1."""
         query = KLine(s_key=0x1000, nodes=[0x100, 0x200])
         model_kline = KLine(s_key=0x2000, nodes=[0x100, 0x200])
         m = Model([query, model_kline])
 
         sig = m.calculate_significance(query, model_kline)
-        assert get_s1(sig) == 255
+        assert has_s1(sig) is True
 
     def test_s1_prefix_match_query_shorter(self):
         """Query prefix matches model (query shorter)."""
@@ -803,7 +820,7 @@ class TestCalculateSignificance:
         m = Model([query, model_kline])
 
         sig = m.calculate_significance(query, model_kline)
-        assert get_s1(sig) == 255  # All prefix nodes match
+        assert has_s1(sig) is True  # All prefix nodes match
 
     def test_s1_prefix_match_query_longer(self):
         """Query prefix matches model (query longer)."""
@@ -812,16 +829,16 @@ class TestCalculateSignificance:
         m = Model([query, model_kline])
 
         sig = m.calculate_significance(query, model_kline)
-        assert get_s1(sig) == 255  # All prefix nodes match
+        assert has_s1(sig) is True  # All prefix nodes match
 
     def test_s1_empty_both(self):
-        """Both empty nodes returns S1 100%."""
+        """Both empty nodes returns S1."""
         query = KLine(s_key=0x1000, nodes=[])
         model_kline = KLine(s_key=0x2000, nodes=[])
         m = Model([query, model_kline])
 
         sig = m.calculate_significance(query, model_kline)
-        assert get_s1(sig) == 255
+        assert has_s1(sig) is True
 
     def test_s4_query_empty_model_not(self):
         """Query empty, model not empty returns S4."""
@@ -848,7 +865,7 @@ class TestCalculateSignificance:
         m = Model([query, model_kline])
 
         sig = m.calculate_significance(query, model_kline)
-        assert get_s1(sig) == 0  # Not S1
+        assert has_s1(sig) is False  # Not S1
         assert get_s2_s1_percentage(sig) == 127  # 50% positional match
 
     def test_s2_with_non_positional_match(self):
@@ -858,7 +875,7 @@ class TestCalculateSignificance:
         m = Model([query, model_kline])
 
         sig = m.calculate_significance(query, model_kline)
-        assert get_s1(sig) == 0  # Not S1
+        assert has_s1(sig) is False  # Not S1
         assert get_s2_s1_percentage(sig) == 127  # 50% positional
         assert get_s2_s2_percentage(sig) == 127  # 50% non-positional
 
@@ -968,7 +985,7 @@ class TestCalculateSignificanceS3:
         m = Model([query, model_kline])
 
         sig = m.calculate_significance(query, model_kline)
-        assert get_s1(sig) == 0  # Not S1
+        assert has_s1(sig) is False  # Not S1
         assert get_s2(sig) == 0  # Not S2 (no positional matches)
         assert get_s3_s1_percentage(sig) > 0  # Has unordered S1 matches
 

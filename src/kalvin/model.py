@@ -8,12 +8,15 @@ HIGH_BIT_MASK = 0x8000_0000_0000_0000
 
 
 # === Significance Bit Constants ===
-# Layout: S1(bits56-63) | S2(bits40-55) | S3(bits16-39) | Reserved(bits0-15)
+# Layout: S1(bit56) | S1%(bits57-63) | S2(bits40-55) | S3(bits16-39) | Reserved(bits0-15)
 # Higher bits = more significant: S1 > S2 > S3 > S4
 
-# S1: 8 bits (bits 56-63)
-S1_SHIFT = 56
-S1_MASK = 0xFF << S1_SHIFT
+# S1: single bit (bit 56) - prefix match indicator
+S1_BIT = 1 << 56
+
+# S1%: 7 bits (bits 57-63) for degree/percentage
+S1_PCT_SHIFT = 57
+S1_PCT_MASK = 0x7F << S1_PCT_SHIFT
 
 # S2: 16 bits (bits 40-55)
 S2_SHIFT = 40
@@ -115,9 +118,14 @@ def nodes_equal(nodes1: list[KNode], nodes2: list[KNode]) -> bool:
 
 # === Significance Helper Functions ===
 
-def get_s1(sig: Significance) -> int:
-    """Extract S1 value (0-255)."""
-    return (sig >> S1_SHIFT) & 0xFF
+def has_s1(sig: Significance) -> bool:
+    """Check if S1 bit is set (prefix match)."""
+    return bool(sig & S1_BIT)
+
+
+def get_s1_percentage(sig: Significance) -> int:
+    """Extract S1 percentage (0-127)."""
+    return (sig >> S1_PCT_SHIFT) & 0x7F
 
 
 def get_s2(sig: Significance) -> int:
@@ -135,14 +143,14 @@ def get_s2_s2_percentage(sig: Significance) -> int:
     return (sig >> S2_S2_PCT_SHIFT) & 0xFF
 
 
-def build_s1(percentage: int) -> Significance:
-    """Build S1 significance.
+def build_s1(percentage: int = 100) -> Significance:
+    """Build S1 significance with optional percentage.
 
     Args:
-        percentage: Match percentage (0-100)
+        percentage: Match percentage (0-100), default 100
     """
-    scaled = max(0, min(100, percentage)) * 255 // 100
-    return scaled << S1_SHIFT
+    scaled = max(0, min(100, percentage)) * 127 // 100  # Scale to 7 bits
+    return S1_BIT | (scaled << S1_PCT_SHIFT)
 
 
 def build_s2(s1_pct: int, s2_pct: int) -> Significance:
@@ -302,13 +310,13 @@ class Model:
         model_set = set(model.nodes)
         query_set = set(query.nodes)
 
-        # Unordered S1: query nodes that exist in model (any position)
+        # S3-Unordered S1: query nodes that exist in model (any position)
         unordered_s1_matches = query_set & model_set
         s3_s1_pct = (
             (len(unordered_s1_matches) * 100) // len(query_set) if query_set else 0
         )
 
-        # Unordered S2: query nodes whose children match model nodes
+        # S3-Unordered S2: query nodes whose children match model nodes
         s3_s2_matches = 0
         for node in query.nodes:
             if node in model_set:
@@ -324,7 +332,7 @@ class Model:
             (s3_s2_matches * 100) // len(query.nodes) if query.nodes else 0
         )
 
-        # Generational: query nodes whose descendants (at any depth) match model nodes
+        # S3-Generational: query nodes whose descendants (at any depth) match model nodes
         gen_matches = 0
         for node in query.nodes:
             if node in model_set:
