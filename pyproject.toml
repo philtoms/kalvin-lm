@@ -11,6 +11,8 @@ dependencies = [
     "numpy>=1.26.0",
     "matplotlib>=3.8.0",
     "tqdm>=4.66.0",
+    "textual>=8.0.0",
+    "textual-dev>=1.8.0",
 ]
 
 [project.optional-dependencies]
