@@ -1,23 +1,75 @@
+"""Kalvin - Knowledge graph with tokenization support."""
 
 from dataclasses import dataclass
-from enum import IntEnum
 from pathlib import Path
 from struct import pack, unpack
-from typing import TypeAlias, Iterator, Literal
+from typing import Literal
 import json
+
 from kalvin.model import KLine, KNode, Model
+from kalvin.tokenizer import Tokenizer
+
 
 @dataclass
 class Kalvin:
 
-    def __init__(self, model: Model | None = None):
-        """Initialize the model with optional existing KLines.
+    def __init__(
+        self,
+        model: Model | None = None,
+        tokenizer: Tokenizer | None = None,
+    ):
+        """Initialize Kalvin with optional model and tokenizer.
 
         Args:
-            klines: Optional list of KLines to initialize with
+            model: Optional Model instance
+            tokenizer: Optional Tokenizer instance
         """
         self.model = model if model else Model()
-        
+        self.tokenizer = tokenizer if tokenizer else Tokenizer()
+
+    def train_tokenizer(
+        self,
+        texts: list[str],
+        vocab_size: int = 4096,
+        pattern: str | None = None,
+    ) -> None:
+        """Train the BPE tokenizer on a corpus.
+
+        Args:
+            texts: List of training strings
+            vocab_size: Target vocabulary size (default 4096)
+            pattern: Optional custom regex pattern for pre-tokenization
+        """
+        self.tokenizer.train(texts, vocab_size=vocab_size, pattern=pattern)
+
+    @property
+    def vocab_size(self) -> int:
+        """Return the tokenizer vocabulary size."""
+        return self.tokenizer.vocab_size
+
+    # === Tokenization ===
+
+    def encode(self, text: str) -> list[KNode]:
+        """Encode a string to a list of KNodes (token IDs).
+
+        Args:
+            text: Input string to encode
+
+        Returns:
+            List of KNode integers (token IDs)
+        """
+        return self.tokenizer.encode(text)
+
+    def decode(self, nodes: list[KNode]) -> str:
+        """Decode a list of KNodes (token IDs) back to a string.
+
+        Args:
+            nodes: List of KNode integers (token IDs)
+
+        Returns:
+            Decoded string
+        """
+        return self.tokenizer.decode(nodes)
 
     # === Serialization ===
 
