@@ -1,0 +1,487 @@
+"""Tests for Kalvin class - serialization and file operations."""
+
+import json
+import pytest
+import tempfile
+from pathlib import Path
+
+from kalvin.kalvin import Kalvin
+from kalvin.model import KLine, Model, create_node_key, create_embedding_key
+
+
+class TestKalvinInit:
+    """Tests for Kalvin initialization."""
+
+    def test_init_empty(self):
+        """Kalvin can be initialized without a model."""
+        kalvin = Kalvin()
+        assert kalvin.model is not None
+        assert len(kalvin.model) == 0
+
+    def test_init_with_model(self):
+        """Kalvin can be initialized with an existing model."""
+        klines = [KLine(s_key=0x1000, nodes=[0x0100])]
+        model = Model(klines)
+        kalvin = Kalvin(model)
+
+        assert len(kalvin.model) == 1
+        assert kalvin.model[0].s_key == 0x1000
+
+    def test_init_with_none_creates_empty_model(self):
+        """Passing None creates an empty model."""
+        kalvin = Kalvin(None)
+        assert kalvin.model is not None
+        assert len(kalvin.model) == 0
+
+
+class TestKalvinToBytes:
+    """Tests for binary serialization."""
+
+    def test_to_bytes_empty(self):
+        """Empty Kalvin serializes to minimal bytes."""
+        kalvin = Kalvin()
+
+        data = kalvin.to_bytes()
+
+        # 4 bytes for kline count (0)
+        assert data == b"\x00\x00\x00\x00"
+
+    def test_to_bytes_single_kline_no_nodes(self):
+        """Single KLine with no nodes serializes correctly."""
+        kline = KLine(s_key=0x123456789ABCDEF0, nodes=[])
+        model = Model([kline])
+        kalvin = Kalvin(model)
+
+        data = kalvin.to_bytes()
+
+        # 4 bytes count + 8 bytes s_key + 4 bytes node count (0)
+        assert len(data) == 16
+        # Verify count (little-endian uint32)
+        assert data[:4] == b"\x01\x00\x00\x00"
+        # Verify s_key (little-endian uint64)
+        assert data[4:12] == b"\xF0\xDE\xBC\x9A\x78\x56\x34\x12"
+        # Verify node count
+        assert data[12:16] == b"\x00\x00\x00\x00"
+
+    def test_to_bytes_single_kline_with_nodes(self):
+        """Single KLine with nodes serializes correctly."""
+        s_key = 0x1000
+        nodes = [0x0100, 0x0200, 0x0300]
+        kline = KLine(s_key=s_key, nodes=nodes)
+        model = Model([kline])
+        kalvin = Kalvin(model)
+
+        data = kalvin.to_bytes()
+
+        # 4 bytes count + 8 bytes s_key + 4 bytes node count + 3*8 bytes nodes
+        assert len(data) == 4 + 8 + 4 + 24
+        # Verify node count is 3
+        assert data[12:16] == b"\x03\x00\x00\x00"
+
+    def test_to_bytes_multiple_klines(self):
+        """Multiple KLines serialize correctly."""
+        klines = [
+            KLine(s_key=0x1000, nodes=[0x0100]),
+            KLine(s_key=0x2000, nodes=[0x0200, 0x0300]),
+            KLine(s_key=0x3000, nodes=[]),
+        ]
+        model = Model(klines)
+        kalvin = Kalvin(model)
+
+        data = kalvin.to_bytes()
+
+        # 4 bytes count + (8+4+8) + (8+4+16) + (8+4)
+        assert len(data) == 4 + 20 + 28 + 12
+        # Verify kline count is 3
+        assert data[:4] == b"\x03\x00\x00\x00"
+
+    def test_to_bytes_preserves_high_bit(self):
+        """High bit in s_key is preserved during serialization."""
+        node_key = create_node_key(0x1000)
+        embedding_key = create_embedding_key(0x2000)
+
+        klines = [
+            KLine(s_key=node_key, nodes=[]),
+            KLine(s_key=embedding_key, nodes=[]),
+        ]
+        model = Model(klines)
+        kalvin = Kalvin(model)
+
+        data = kalvin.to_bytes()
+
+        # Deserialize and verify
+        kalvin2 = Kalvin.from_bytes(data)
+        assert kalvin2.model[0].s_key == node_key
+        assert kalvin2.model[1].s_key == embedding_key
+
+
+class TestKalvinFromBytes:
+    """Tests for binary deserialization."""
+
+    def test_from_bytes_empty(self):
+        """Empty bytes deserializes to empty Kalvin."""
+        data = b"\x00\x00\x00\x00"
+
+        kalvin = Kalvin.from_bytes(data)
+
+        assert len(kalvin.model) == 0
+
+    def test_from_bytes_roundtrip_empty(self):
+        """Roundtrip serialization preserves empty Kalvin."""
+        original = Kalvin()
+
+        data = original.to_bytes()
+        restored = Kalvin.from_bytes(data)
+
+        assert len(restored.model) == len(original.model)
+
+    def test_from_bytes_roundtrip_single_kline(self):
+        """Roundtrip preserves single KLine."""
+        kline = KLine(s_key=0x123456789ABCDEF0, nodes=[0x0100, 0x0200])
+        original = Kalvin(Model([kline]))
+
+        data = original.to_bytes()
+        restored = Kalvin.from_bytes(data)
+
+        assert len(restored.model) == 1
+        assert restored.model[0].s_key == kline.s_key
+        assert restored.model[0].nodes == kline.nodes
+
+    def test_from_bytes_roundtrip_multiple_klines(self):
+        """Roundtrip preserves multiple KLines."""
+        klines = [
+            KLine(s_key=0x1000, nodes=[0x0100]),
+            KLine(s_key=0x2000, nodes=[0x0200, 0x0300]),
+            KLine(s_key=0x3000, nodes=[]),
+        ]
+        original = Kalvin(Model(klines))
+
+        data = original.to_bytes()
+        restored = Kalvin.from_bytes(data)
+
+        assert len(restored.model) == 3
+        for i, kl in enumerate(original.model):
+            assert restored.model[i].s_key == kl.s_key
+            assert restored.model[i].nodes == kl.nodes
+
+
+class TestKalvinToDict:
+    """Tests for dictionary serialization."""
+
+    def test_to_dict_empty(self):
+        """Empty Kalvin serializes to dict with empty klines."""
+        kalvin = Kalvin()
+
+        data = kalvin.to_dict()
+
+        assert data == {"klines": []}
+
+    def test_to_dict_single_kline(self):
+        """Single KLine serializes to dict correctly."""
+        kline = KLine(s_key=0x1000, nodes=[0x0100, 0x0200])
+        kalvin = Kalvin(Model([kline]))
+
+        data = kalvin.to_dict()
+
+        assert data == {
+            "klines": [
+                {"s_key": 0x1000, "nodes": [0x0100, 0x0200]}
+            ]
+        }
+
+    def test_to_dict_multiple_klines(self):
+        """Multiple KLines serialize to dict correctly."""
+        klines = [
+            KLine(s_key=0x1000, nodes=[0x0100]),
+            KLine(s_key=0x2000, nodes=[]),
+        ]
+        kalvin = Kalvin(Model(klines))
+
+        data = kalvin.to_dict()
+
+        assert data == {
+            "klines": [
+                {"s_key": 0x1000, "nodes": [0x0100]},
+                {"s_key": 0x2000, "nodes": []},
+            ]
+        }
+
+    def test_to_dict_is_json_serializable(self):
+        """Dict output is JSON serializable."""
+        klines = [KLine(s_key=0x1000, nodes=[0x0100])]
+        kalvin = Kalvin(Model(klines))
+
+        data = kalvin.to_dict()
+
+        # Should not raise
+        json_str = json.dumps(data)
+        assert json.loads(json_str) == data
+
+
+class TestKalvinFromDict:
+    """Tests for dictionary deserialization."""
+
+    def test_from_dict_empty(self):
+        """Empty dict creates empty Kalvin."""
+        kalvin = Kalvin.from_dict({"klines": []})
+
+        assert len(kalvin.model) == 0
+
+    def test_from_dict_single_kline(self):
+        """Single KLine deserializes from dict correctly."""
+        data = {"klines": [{"s_key": 0x1000, "nodes": [0x0100, 0x0200]}]}
+
+        kalvin = Kalvin.from_dict(data)
+
+        assert len(kalvin.model) == 1
+        assert kalvin.model[0].s_key == 0x1000
+        assert kalvin.model[0].nodes == [0x0100, 0x0200]
+
+    def test_from_dict_roundtrip(self):
+        """Roundtrip preserves all data."""
+        klines = [
+            KLine(s_key=0x1000, nodes=[0x0100]),
+            KLine(s_key=0x2000, nodes=[0x0200, 0x0300]),
+        ]
+        original = Kalvin(Model(klines))
+
+        data = original.to_dict()
+        restored = Kalvin.from_dict(data)
+
+        assert len(restored.model) == len(original.model)
+        for i, kl in enumerate(original.model):
+            assert restored.model[i].s_key == kl.s_key
+            assert restored.model[i].nodes == kl.nodes
+
+
+class TestKalvinSaveLoad:
+    """Tests for file operations."""
+
+    def test_save_binary_default(self):
+        """Save uses binary format by default."""
+        klines = [KLine(s_key=0x1000, nodes=[0x0100])]
+        kalvin = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.kalvin"
+            kalvin.save(path)
+
+            # Read raw bytes to verify binary format
+            raw = path.read_bytes()
+            assert raw[:4] == b"\x01\x00\x00\x00"  # Binary kline count
+
+    def test_save_binary_explicit(self):
+        """Save with format='binary' creates binary file."""
+        klines = [KLine(s_key=0x1000, nodes=[0x0100])]
+        kalvin = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.kalvin"
+            kalvin.save(path, format="binary")
+
+            raw = path.read_bytes()
+            assert raw[:4] == b"\x01\x00\x00\x00"
+
+    def test_save_json_explicit(self):
+        """Save with format='json' creates JSON file."""
+        klines = [KLine(s_key=0x1000, nodes=[0x0100])]
+        kalvin = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.kalvin"
+            kalvin.save(path, format="json")
+
+            # Should be valid JSON
+            content = path.read_text()
+            data = json.loads(content)
+            assert data["klines"][0]["s_key"] == 0x1000
+
+    def test_save_json_auto_detect(self):
+        """Save with format=None auto-detects JSON from .json extension."""
+        klines = [KLine(s_key=0x1000, nodes=[0x0100])]
+        kalvin = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.json"
+            kalvin.save(path, format=None)  # Explicit None for auto-detect
+
+            content = path.read_text()
+            data = json.loads(content)
+            assert data["klines"][0]["s_key"] == 0x1000
+
+    def test_save_binary_auto_detect(self):
+        """Save auto-detects binary format from non-.json extension."""
+        klines = [KLine(s_key=0x1000, nodes=[0x0100])]
+        kalvin = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.bin"
+            kalvin.save(path)  # format=None, auto-detect
+
+            raw = path.read_bytes()
+            assert raw[:4] == b"\x01\x00\x00\x00"  # Binary format
+
+    def test_load_binary_default(self):
+        """Load uses binary format by default."""
+        klines = [KLine(s_key=0x1000, nodes=[0x0100])]
+        original = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.kalvin"
+            original.save(path, format="binary")
+
+            restored = Kalvin.load(path)  # Default binary
+
+            assert len(restored.model) == 1
+            assert restored.model[0].s_key == 0x1000
+
+    def test_load_json_explicit(self):
+        """Load with format='json' reads JSON file."""
+        klines = [KLine(s_key=0x1000, nodes=[0x0100])]
+        original = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.kalvin"
+            original.save(path, format="json")
+
+            restored = Kalvin.load(path, format="json")
+
+            assert restored.model[0].s_key == 0x1000
+
+    def test_load_json_auto_detect(self):
+        """Load auto-detects JSON format from .json extension."""
+        klines = [KLine(s_key=0x1000, nodes=[0x0100])]
+        original = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.json"
+            original.save(path, format="json")
+
+            restored = Kalvin.load(path)  # Auto-detect
+
+            assert restored.model[0].s_key == 0x1000
+
+    def test_load_binary_auto_detect(self):
+        """Load auto-detects binary format from non-.json extension."""
+        klines = [KLine(s_key=0x1000, nodes=[0x0100])]
+        original = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.bin"
+            original.save(path, format="binary")
+
+            restored = Kalvin.load(path)  # Auto-detect
+
+            assert restored.model[0].s_key == 0x1000
+
+    def test_roundtrip_binary_file(self):
+        """Roundtrip through binary file preserves data."""
+        klines = [
+            KLine(s_key=0x1000, nodes=[0x0100, 0x0200]),
+            KLine(s_key=0x2000, nodes=[]),
+        ]
+        original = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.kalvin"
+            original.save(path)
+            restored = Kalvin.load(path)
+
+            assert len(restored.model) == len(original.model)
+            for i, kl in enumerate(original.model):
+                assert restored.model[i].s_key == kl.s_key
+                assert restored.model[i].nodes == kl.nodes
+
+    def test_roundtrip_json_file(self):
+        """Roundtrip through JSON file preserves data."""
+        klines = [
+            KLine(s_key=0x1000, nodes=[0x0100, 0x0200]),
+            KLine(s_key=0x2000, nodes=[]),
+        ]
+        original = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.json"
+            original.save(path, format="json")
+            restored = Kalvin.load(path, format="json")
+
+            assert len(restored.model) == len(original.model)
+            for i, kl in enumerate(original.model):
+                assert restored.model[i].s_key == kl.s_key
+                assert restored.model[i].nodes == kl.nodes
+
+    def test_save_to_existing_directory(self):
+        """Save works when directory exists."""
+        klines = [KLine(s_key=0x1000, nodes=[])]
+        kalvin = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create subdirectory first
+            subdir = Path(tmpdir) / "subdir"
+            subdir.mkdir()
+            path = subdir / "test.kalvin"
+            kalvin.save(path)
+
+            assert path.exists()
+
+    def test_save_with_string_path(self):
+        """Save accepts string path."""
+        klines = [KLine(s_key=0x1000, nodes=[])]
+        kalvin = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = str(Path(tmpdir) / "test.kalvin")
+            kalvin.save(path)
+
+            assert Path(path).exists()
+
+    def test_load_with_string_path(self):
+        """Load accepts string path."""
+        klines = [KLine(s_key=0x1000, nodes=[])]
+        original = Kalvin(Model(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = str(Path(tmpdir) / "test.kalvin")
+            original.save(path)
+            restored = Kalvin.load(path)
+
+            assert len(restored.model) == 1
+
+
+class TestKalvinLargeData:
+    """Tests for handling larger data sets."""
+
+    def test_large_kline_count(self):
+        """Handles hundreds of KLines."""
+        klines = [KLine(s_key=i, nodes=[i * 100]) for i in range(500)]
+        original = Kalvin(Model(klines))
+
+        data = original.to_bytes()
+        restored = Kalvin.from_bytes(data)
+
+        assert len(restored.model) == 500
+        assert restored.model[0].s_key == 0
+        assert restored.model[499].s_key == 499
+
+    def test_large_node_count(self):
+        """Handles KLines with many nodes."""
+        nodes = list(range(1000))
+        kline = KLine(s_key=0x1000, nodes=nodes)
+        original = Kalvin(Model([kline]))
+
+        data = original.to_bytes()
+        restored = Kalvin.from_bytes(data)
+
+        assert len(restored.model[0].nodes) == 1000
+        assert restored.model[0].nodes == nodes
+
+    def test_max_s_key_value(self):
+        """Handles maximum s_key value (all bits set)."""
+        max_key = 0xFFFF_FFFF_FFFF_FFFF
+        kline = KLine(s_key=max_key, nodes=[])
+        original = Kalvin(Model([kline]))
+
+        data = original.to_bytes()
+        restored = Kalvin.from_bytes(data)
+
+        assert restored.model[0].s_key == max_key
