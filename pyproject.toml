@@ -3,7 +3,7 @@ name = "kalvin"
 version = "0.1.0"
 description = "PyTorch development project with MPS support"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "torch>=2.2.0",
     "torchvision>=0.17.0",
@@ -27,6 +27,9 @@ notebooks = [
     "jupyter>=1.0.0",
     "ipywidgets>=8.1.0",
 ]
+tokenizers = [
+    "rustbpe>=0.1.0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -34,13 +37,13 @@ build-backend = "hatchling.build"
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 
