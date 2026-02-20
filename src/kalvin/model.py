@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import TypeAlias
+from pathlib import Path
+from struct import pack, unpack
+from typing import TypeAlias, Iterator, Literal
+import json
 
 
 # High bit mask (bit 63)
@@ -201,9 +204,6 @@ def build_s3(s1_pct: int, s2_pct: int, gen_pct: int) -> Significance:
         | (s2_scaled << S3_S2_PCT_SHIFT)
         | (gen_scaled << S3_GEN_PCT_SHIFT)
     )
-
-
-from typing import Iterator
 
 
 class Model:
@@ -520,3 +520,111 @@ class Model:
     def __getitem__(self, index: int) -> KLine:
         """Get a KLine by index."""
         return self._klines[index]
+
+    # === Serialization ===
+
+    def to_bytes(self) -> bytes:
+        """Serialize model to binary format.
+
+        Binary layout:
+        - 4 bytes: number of klines (uint32)
+        - For each kline:
+          - 8 bytes: s_key (uint64)
+          - 4 bytes: node count (uint32)
+          - N * 8 bytes: nodes (uint64 each)
+        """
+        parts = [pack("<I", len(self._klines))]
+        for kline in self._klines:
+            parts.append(pack("<Q", kline.s_key))
+            parts.append(pack("<I", len(kline.nodes)))
+            for node in kline.nodes:
+                parts.append(pack("<Q", node))
+        return b"".join(parts)
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> "Model":
+        """Deserialize model from binary format."""
+        offset = 0
+        kline_count = unpack("<I", data[offset:offset + 4])[0]
+        offset += 4
+
+        klines: list[KLine] = []
+        for _ in range(kline_count):
+            s_key = unpack("<Q", data[offset:offset + 8])[0]
+            offset += 8
+            node_count = unpack("<I", data[offset:offset + 4])[0]
+            offset += 4
+            nodes: list[KNode] = []
+            for _ in range(node_count):
+                node = unpack("<Q", data[offset:offset + 8])[0]
+                offset += 8
+                nodes.append(node)
+            klines.append(KLine(s_key=s_key, nodes=nodes))
+
+        return cls(klines=klines)
+
+    def to_dict(self) -> dict:
+        """Serialize model to dict (for JSON)."""
+        return {
+            "klines": [
+                {"s_key": kline.s_key, "nodes": kline.nodes}
+                for kline in self._klines
+            ]
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Model":
+        """Deserialize model from dict."""
+        klines = [
+            KLine(s_key=item["s_key"], nodes=item["nodes"])
+            for item in data["klines"]
+        ]
+        return cls(klines=klines)
+
+    def save(
+        self,
+        path: str | Path,
+        format: Literal["binary", "json"] = "binary",
+    ) -> None:
+        """Save model to file.
+
+        Args:
+            path: File path to save to
+            format: 'binary' (default, compact) or 'json' (human-readable)
+        """
+        path = Path(path)
+
+        # Auto-detect format from extension if not specified
+        if format is None:
+            format = "json" if path.suffix.lower() == ".json" else "binary"
+
+        if format == "binary":
+            path.write_bytes(self.to_bytes())
+        else:
+            path.write_text(json.dumps(self.to_dict(), indent=2))
+
+    @classmethod
+    def load(
+        cls,
+        path: str | Path,
+        format: Literal["binary", "json"] | None = None,
+    ) -> "Model":
+        """Load model from file.
+
+        Args:
+            path: File path to load from
+            format: 'binary', 'json', or None (auto-detect from extension)
+
+        Returns:
+            Loaded Model instance
+        """
+        path = Path(path)
+
+        # Auto-detect format from extension if not specified
+        if format is None:
+            format = "json" if path.suffix.lower() == ".json" else "binary"
+
+        if format == "binary":
+            return cls.from_bytes(path.read_bytes())
+        else:
+            return cls.from_dict(json.loads(path.read_text()))
