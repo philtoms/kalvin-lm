@@ -180,7 +180,7 @@ class Tokenizer:
         (path / f"{name}.bin").write_text(json.dumps(ranks_data))
 
     @classmethod
-    def from_directory(cls, path: str | Path, name: str = "tokenizer") -> "Tokenizer":
+    def from_directory(cls, path: str | Path = "data", name: str = "tokenizer") -> "Tokenizer":
         """Load a pre-trained tokenizer from a directory.
 
         Uses tiktoken for fast inference (recommended by rustbpe).
