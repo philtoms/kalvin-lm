@@ -47,17 +47,6 @@ class Kalvin:
         self.model.add_embedding(KLine(s_key=build_token, nodes=tokens))
         return build_token
 
-    def encode_batch(self, texts: list[str]) -> list[int]:
-        """Encode a batch of strings to their token signatures.
-
-        Args:
-            texts: List of input strings to encode
-
-        Returns:
-            List of token signatures (one per input text)
-        """
-        return [self.encode(text) for text in texts]
-
     def decode(self, token_sig: int) -> str:
         """Decode a list of KNodes (token IDs) back to a string.
 
