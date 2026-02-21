@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 from kalvin.kalvin import Kalvin
-from kalvin.model import KLine, Model, create_node_key, create_embedding_key
+from kalvin.model import KLine, KLineType, Model, create_signature_key, create_embedding_key
 
 
 class TestKalvinInit:
@@ -97,7 +97,7 @@ class TestKalvinToBytes:
 
     def test_to_bytes_preserves_high_bit(self):
         """High bit in s_key is preserved during serialization."""
-        node_key = create_node_key(0x1000)
+        node_key = create_signature_key(0x1000)
         embedding_key = create_embedding_key(0x2000)
 
         klines = [
@@ -485,3 +485,68 @@ class TestKalvinLargeData:
         restored = Kalvin.from_bytes(data)
 
         assert restored.model[0].s_key == max_key
+
+class TestKalvinEmbeddings:
+    """Tests for embedding handling."""
+
+    def test_add_new_encoding(self):
+        kalvin = Kalvin()
+        token_sig = kalvin.encode("hello")
+        assert token_sig is not None
+
+        decoded = kalvin.decode(token_sig)
+        assert decoded == "hello"
+
+
+    def test_add_very_long_string(self):
+        vl_str = """
+          Mary had a little lamb, 
+          Its fleece was white as snow, 
+          And everywhere that Mary went, 
+          The lamb was sure to go. 
+        """
+        kalvin = Kalvin()
+        token_sig = kalvin.encode(vl_str)
+
+        assert kalvin.decode(token_sig) == vl_str
+
+    def test_add_duplicate_encoding(self):
+        kalvin = Kalvin()
+        token_sig1 = kalvin.encode("hello")
+        token_sig2 = kalvin.encode("hello")
+
+        assert token_sig1 == token_sig2
+
+    def test_add_encoded_string(self):
+        kalvin = Kalvin()
+        token_sig = kalvin.encode("hello there!")
+
+        assert kalvin.decode(token_sig) == "hello there!"
+
+
+    def test_add_encoded_strings(self):
+        kalvin = Kalvin()
+        token_sig1 = kalvin.encode("hello there!")
+        token_sig2 = kalvin.encode("hello dolly!")
+
+        assert kalvin.decode(token_sig1) == "hello there!"
+        assert kalvin.decode(token_sig2) == "hello dolly!"
+
+  
+    def test_existing_substring(self):
+        """Existing sub-strings do not create new klines"""
+
+        vl_str = """Mary had a little lamb, 
+          Its fleece was white as snow, 
+          And everywhere that Mary went, 
+          The lamb was sure to go. 
+        """
+        kalvin = Kalvin()
+        kalvin.encode(vl_str)
+        model1 = kalvin.model._klines.copy()
+        kalvin.encode("Mary had a little lamb,")
+        kalvin.encode(" was white")
+
+        assert len(kalvin.model._klines) == len(model1) + 2
+
+

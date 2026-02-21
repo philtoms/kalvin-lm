@@ -14,7 +14,7 @@ HIGH_BIT_MASK = 0x8000_0000_0000_0000
 
 class KLineType(IntEnum):
     """Type based on the high bit of a key."""
-    NODE = 1       # high bit = 1 (branch)
+    SIGNATURE = 1  # high bit = 1 (branch)
     EMBEDDING = 0  # high bit = 0 (leaf)
 
 
@@ -24,10 +24,10 @@ KNode: TypeAlias = int
 
 def get_node_type(node: KNode) -> KLineType:
     """Get the type of a KNode based on its high bit."""
-    return KLineType.NODE if (node & HIGH_BIT_MASK) else KLineType.EMBEDDING
+    return KLineType.SIGNATURE if (node & HIGH_BIT_MASK) else KLineType.EMBEDDING
 
 
-def create_node_key(key: int) -> KNode:
+def create_signature_key(key: int) -> KNode:
     """Create a NODE key (sets high bit to 1)."""
     assert not (key & HIGH_BIT_MASK), "Key value must not use high bit"
     return key | HIGH_BIT_MASK
@@ -57,10 +57,10 @@ class KLine:
     @property
     def type(self) -> KLineType:
         """Return the type based on the high bit of s_key."""
-        return KLineType.NODE if (self.s_key & HIGH_BIT_MASK) else KLineType.EMBEDDING
+        return KLineType.SIGNATURE if (self.s_key & HIGH_BIT_MASK) else KLineType.EMBEDDING
 
     @classmethod
-    def create_node(cls, s_key: int, nodes: list[KNode]) -> "KLine":
+    def create_signature(cls, s_key: int, nodes: list[KNode]) -> "KLine":
         """Create a NODE KLine (sets high bit to 1)."""
         return cls(s_key=s_key | HIGH_BIT_MASK, nodes=nodes)
 
@@ -111,8 +111,9 @@ class Model:
             klines: Optional list of KLines to initialize with
         """
         self._klines: list[KLine] = klines.copy() if klines else []
+        self._signatures = set(kline.s_key for kline in self._klines)
 
-    def add(self, kline: KLine) -> bool:
+    def add_signature(self, kline: KLine) -> bool:
         """Add a KLine, enforcing the duplicate key invariant.
 
         Invariant: Duplicate keys are allowed, but nodes must differ.
@@ -124,14 +125,43 @@ class Model:
             kline: KLine to add
 
         Returns:
-            True if added, False if rejected (exact duplicate)
+            index if added, None if rejected (exact duplicate)
         """
-        for existing in self._klines:
-            if existing.s_key == kline.s_key:
-                if nodes_equal(existing.nodes, kline.nodes):
-                    return False  # Exact duplicate, reject
-        self._klines.append(kline)
+        kline.s_key |= HIGH_BIT_MASK
+        if kline.s_key in self._signatures:
+            existing = self.find_by_key(kline.s_key)
+            if existing and nodes_equal(existing.nodes, kline.nodes):
+                return False  # Exact duplicate, reject
+
+        self._klines.insert(0,kline)
+        self._signatures.add(kline.s_key)
         return True
+    
+
+    def add_embedding(self, kline: KLine) -> bool:
+        """Add a KLine, enforcing the duplicate key invariant.
+
+        Invariant: Duplicate keys are allowed, but nodes must differ.
+        - If s_key is new: add the kline
+        - If s_key exists with different nodes: add the kline (allowed)
+        - If s_key exists with same nodes: reject (would be exact duplicate)
+
+        Args:
+            kline: KLine to add
+
+        Returns:
+            index if added, None if rejected (exact duplicate)
+        """
+        kline.s_key &= ~HIGH_BIT_MASK
+        if kline.s_key in self._signatures:
+            existing = self.find_by_key(kline.s_key)
+            if existing and nodes_equal(existing.nodes, kline.nodes):
+                return False  # Exact duplicate, reject
+
+        self._klines.insert(0,kline)
+        self._signatures.add(kline.s_key)
+        return True
+    
 
     def find_by_key(self, key: int) -> KLine | None:
         """Find a KLine by its s_key.
@@ -226,7 +256,7 @@ class Model:
             """Get all NODE type KLines from a list of node keys."""
             found = []
             for node_key in nodes:
-                if get_node_type(node_key) == KLineType.NODE:
+                if get_node_type(node_key) == KLineType.SIGNATURE:
                     kline = model.find_by_key(node_key)
                     if kline is not None:
                         found.append(kline)
