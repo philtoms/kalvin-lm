@@ -2,10 +2,9 @@
 
 from dataclasses import dataclass
 from enum import IntEnum
-from pathlib import Path
-from struct import pack, unpack
-from typing import TypeAlias, Iterator, Literal
-import json
+from typing import TypeAlias, Iterator
+from collections import deque
+
 
 
 # High bit mask (bit 63)
@@ -110,7 +109,9 @@ class Model:
         Args:
             klines: Optional list of KLines to initialize with
         """
-        self._klines: list[KLine] = klines.copy() if klines else []
+        self._klines: deque[KLine] = deque()
+        if klines:
+            self._klines.extend(klines)
         self._signatures = set(kline.s_key for kline in self._klines)
 
     def add_signature(self, kline: KLine) -> bool:
@@ -125,7 +126,7 @@ class Model:
             kline: KLine to add
 
         Returns:
-            index if added, None if rejected (exact duplicate)
+            True if added, False if rejected (exact duplicate)
         """
         kline.s_key |= HIGH_BIT_MASK
         if kline.s_key in self._signatures:
@@ -141,10 +142,9 @@ class Model:
     def add_embedding(self, kline: KLine) -> bool:
         """Add a KLine, enforcing the duplicate key invariant.
 
-        Invariant: Duplicate keys are allowed, but nodes must differ.
+        Invariant: Duplicate keys are not allowed (f(key) iso nodes)
         - If s_key is new: add the kline
-        - If s_key exists with different nodes: add the kline (allowed)
-        - If s_key exists with same nodes: reject (would be exact duplicate)
+        - If s_key exists: reject (would be exact duplicate)
 
         Args:
             kline: KLine to add
@@ -154,9 +154,7 @@ class Model:
         """
         kline.s_key &= ~HIGH_BIT_MASK
         if kline.s_key in self._signatures:
-            existing = self.find_by_key(kline.s_key)
-            if existing and nodes_equal(existing.nodes, kline.nodes):
-                return False  # Exact duplicate, reject
+            return False  # Exact duplicate, reject
 
         self._klines.insert(0,kline)
         self._signatures.add(kline.s_key)
