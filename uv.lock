@@ -1590,8 +1590,11 @@ dependencies = [
     { name = "matplotlib" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pyarrow" },
+    { name = "rustbpe" },
     { name = "textual" },
     { name = "textual-dev" },
+    { name = "tiktoken" },
     { name = "torch" },
     { name = "torchaudio" },
     { name = "torchvision" },
@@ -1611,11 +1614,6 @@ notebooks = [
     { name = "ipywidgets" },
     { name = "jupyter" },
 ]
-tokenizers = [
-    { name = "pyarrow" },
-    { name = "rustbpe" },
-    { name = "tiktoken" },
-]
 
 [package.metadata]
 requires-dist = [
@@ -1625,20 +1623,20 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.8.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8.0" },
     { name = "numpy", specifier = ">=1.26.0" },
-    { name = "pyarrow", marker = "extra == 'tokenizers'", specifier = ">=15.0.0" },
+    { name = "pyarrow", specifier = ">=15.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.2.0" },
-    { name = "rustbpe", marker = "extra == 'tokenizers'", specifier = ">=0.1.0" },
+    { name = "rustbpe", specifier = ">=0.1.0" },
     { name = "textual", specifier = ">=8.0.0" },
     { name = "textual-dev", specifier = ">=1.8.0" },
-    { name = "tiktoken", marker = "extra == 'tokenizers'", specifier = ">=0.7.0" },
+    { name = "tiktoken", specifier = ">=0.7.0" },
     { name = "torch", specifier = ">=2.2.0" },
     { name = "torchaudio", specifier = ">=2.2.0" },
     { name = "torchvision", specifier = ">=0.17.0" },
     { name = "tqdm", specifier = ">=4.66.0" },
 ]
-provides-extras = ["dev", "notebooks", "tokenizers"]
+provides-extras = ["dev", "notebooks"]
 
 [[package]]
 name = "kiwisolver"
