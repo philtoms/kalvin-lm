@@ -10,6 +10,7 @@ Can optionally load and extend an existing model.
 import argparse
 import re
 import sys
+import signal
 from pathlib import Path
 from tqdm import tqdm
 import pyarrow.parquet as pq
@@ -20,6 +21,17 @@ from typing import Iterator
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from kalvin import Kalvin
+
+
+# Global state for interrupt handling
+_interrupted = False
+
+
+def signal_handler(signum, frame):
+    """Handle Ctrl+C gracefully."""
+    global _interrupted
+    _interrupted = True
+    print("\n\nInterrupt received, saving model...")
 
 
 def split_into_sentences(text: str) -> list[str]:
@@ -70,6 +82,9 @@ def stream_text(text_file: str):
     return text_iterator()
 
 def main():
+    # Set up signal handler for graceful interrupt
+    signal.signal(signal.SIGINT, signal_handler)
+
     parser = argparse.ArgumentParser(
         description="Encode text files into Kalvin embeddings"
     )
@@ -104,11 +119,16 @@ def main():
 
 
     for text in stream_text(args.text_file):
+        if _interrupted:
+            break
+
         # Split into sentences
         sentences = split_into_sentences(text)
 
         # Encode all sentences in batch
         for sentence in tqdm(sentences, desc=f"Encoding {len(sentences):,} sentences..."):
+            if _interrupted:
+                break
             kalvin.encode(sentence)
 
     # Report model size
