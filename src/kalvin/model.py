@@ -126,7 +126,7 @@ class Model:
             kline: KLine to add
 
         Returns:
-            True if added, False if rejected (exact duplicate)
+            index if added, None if rejected (exact duplicate)
         """
         kline.s_key |= HIGH_BIT_MASK
         if kline.s_key in self._signatures:
