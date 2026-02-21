@@ -6,7 +6,7 @@ from struct import pack, unpack
 from typing import Literal
 import json
 
-from kalvin.model import KLine, KNode, Model
+from kalvin.model import KLine, KNode, Model, KLineType, get_node_type, create_embedding_key
 from kalvin.tokenizer import Tokenizer
 
 
@@ -25,31 +25,11 @@ class Kalvin:
             tokenizer: Optional Tokenizer instance
         """
         self.model = model if model else Model()
-        self.tokenizer = tokenizer if tokenizer else Tokenizer()
-
-    def train_tokenizer(
-        self,
-        texts: list[str],
-        vocab_size: int = 4096,
-        pattern: str | None = None,
-    ) -> None:
-        """Train the BPE tokenizer on a corpus.
-
-        Args:
-            texts: List of training strings
-            vocab_size: Target vocabulary size (default 4096)
-            pattern: Optional custom regex pattern for pre-tokenization
-        """
-        self.tokenizer.train(texts, vocab_size=vocab_size, pattern=pattern)
-
-    @property
-    def vocab_size(self) -> int:
-        """Return the tokenizer vocabulary size."""
-        return self.tokenizer.vocab_size
+        self.tokenizer = tokenizer if tokenizer else Tokenizer.from_directory()
 
     # === Tokenization ===
 
-    def encode(self, text: str) -> list[KNode]:
+    def encode(self, text: str) -> int:
         """Encode a string to a list of KNodes (token IDs).
 
         Args:
@@ -58,9 +38,27 @@ class Kalvin:
         Returns:
             List of KNode integers (token IDs)
         """
-        return self.tokenizer.encode(text)
+        tokens = self.tokenizer.encode(text)
+        build_token = 0
+        for token in tokens:
+            assert get_node_type(token) == KLineType.EMBEDDING
+            self.model.add_embedding(KLine(s_key=token, nodes=[token]))
+            build_token += token
+        self.model.add_embedding(KLine(s_key=build_token, nodes=tokens))
+        return build_token
 
-    def decode(self, nodes: list[KNode]) -> str:
+    def encode_batch(self, texts: list[str]) -> list[int]:
+        """Encode a batch of strings to their token signatures.
+
+        Args:
+            texts: List of input strings to encode
+
+        Returns:
+            List of token signatures (one per input text)
+        """
+        return [self.encode(text) for text in texts]
+
+    def decode(self, token_sig: int) -> str:
         """Decode a list of KNodes (token IDs) back to a string.
 
         Args:
@@ -69,7 +67,18 @@ class Kalvin:
         Returns:
             Decoded string
         """
-        return self.tokenizer.decode(nodes)
+        kline = self.model.find_by_key(token_sig)
+        if kline is None:
+            return ""
+        return self.tokenizer.decode(kline.nodes)
+
+    def model_size(self) -> int:
+        """Return the number of KLines in the model.
+
+        Returns:
+            Number of KLines stored in the model
+        """
+        return len(self.model)
 
     # === Serialization ===
 

@@ -226,18 +226,18 @@ class TestSignificanceComparison:
         # S1: exact match
         q = KLine(s_key=0x1000, nodes=[0x100, 0x200])
         t1 = KLine(s_key=0x2000, nodes=[0x100, 0x200])
-        m.add(q)
-        m.add(t1)
+        m.add_signature(q)
+        m.add_signature(t1)
         sig_s1 = calculate_significance(m,q, t1)
 
         # S2: partial match
         t2 = KLine(s_key=0x3000, nodes=[0x100, 0x300])
-        m.add(t2)
+        m.add_signature(t2)
         sig_s2 = calculate_significance(m,q, t2)
 
         # S4: no match
         t3 = KLine(s_key=0x4000, nodes=[0x999])
-        m.add(t3)
+        m.add_signature(t3)
         sig_s4 = calculate_significance(m,q, t3)
 
         assert sig_s1 > sig_s2 > sig_s4
