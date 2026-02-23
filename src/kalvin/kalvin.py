@@ -48,7 +48,7 @@ class Kalvin:
             assert get_node_type(token) == KLineType.EMBEDDING
             self.model.add_embedding(KLine(s_key=token, nodes=[token]))
             build_token += token
-        self.model.add_embedding(KLine(s_key=build_token, nodes=tokens))
+        self.model.add_embedding(KLine(s_key=build_token, nodes=tokens.copy()))
         tokens.append(build_token)
         self.activity.update(tokens)
 

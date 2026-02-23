@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import TypeAlias, Iterator
-from collections import deque
 
 
 
@@ -109,10 +108,10 @@ class Model:
         Args:
             klines: Optional list of KLines to initialize with
         """
-        self._klines: deque[KLine] = deque()
-        if klines:
-            self._klines.extend(klines)
-        self._signatures = set(kline.s_key for kline in self._klines)
+        self._klines: list[KLine] = klines if klines else []
+        self._signatures: dict[int, int] = {
+            kline.s_key: i for i, kline in enumerate(self._klines)
+        }
 
     def add_signature(self, kline: KLine) -> bool:
         """Add a KLine, enforcing the duplicate key invariant.
@@ -134,10 +133,9 @@ class Model:
             if existing and nodes_equal(existing.nodes, kline.nodes):
                 return False  # Exact duplicate, reject
 
-        self._klines.insert(0,kline)
-        self._signatures.add(kline.s_key)
+        self._signatures[kline.s_key] = len(self._klines)
+        self._klines.append(kline)
         return True
-    
 
     def add_embedding(self, kline: KLine) -> bool:
         """Add a KLine, enforcing the duplicate key invariant.
@@ -156,10 +154,9 @@ class Model:
         if kline.s_key in self._signatures:
             return False  # Exact duplicate, reject
 
-        self._klines.insert(0,kline)
-        self._signatures.add(kline.s_key)
+        self._signatures[kline.s_key] = len(self._klines)
+        self._klines.append(kline)
         return True
-    
 
     def find_by_key(self, key: int) -> KLine | None:
         """Find a KLine by its s_key.
@@ -170,9 +167,9 @@ class Model:
         Returns:
             KLine if found, None otherwise
         """
-        for kline in self._klines:
-            if kline.s_key == key:
-                return kline
+        index = self._signatures.get(key)
+        if index is not None:
+            return self._klines[index]
         return None
 
     def query(
@@ -195,10 +192,12 @@ class Model:
             Tuple of (fast_generator, slow_generator) that yield KLines.
         """
         klines = self._klines
+        n = len(klines)
 
         def fast_generator() -> Iterator[KLine]:
             count = 0
-            for kline in klines:
+            for i in range(n - 1, -1, -1):
+                kline = klines[i]
                 if kline.signifies(query):
                     if focus_limit > 0 and count >= focus_limit:
                         break
@@ -209,7 +208,8 @@ class Model:
             if focus_limit <= 0:
                 return  # No slow when focus_limit is 0
             count = 0
-            for kline in klines:
+            for i in range(n - 1, -1, -1):
+                kline = klines[i]
                 if kline.signifies(query):
                     if count >= focus_limit:
                         yield kline

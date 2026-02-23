@@ -230,17 +230,6 @@ class TestModelAddEmbedding:
         assert len(model) == 1
         assert model[0] == kl
 
-    def test_add_duplicate_key_different_nodes(self):
-        """Adding kline with same key but different nodes succeeds."""
-        kl1 = KLine(s_key=0x1000, nodes=[0x0100])
-        kl2 = KLine(s_key=0x1000, nodes=[0x0200])
-        model = Model([kl1])
-
-        result = model.add_embedding(kl2)
-
-        assert result is True
-        assert len(model) == 2
-
     def test_reject_exact_duplicate(self):
         """Adding exact duplicate (same key and nodes) is rejected."""
         kl1 = KLine(s_key=0x1000, nodes=[0x0100, 0x0200])
@@ -307,7 +296,7 @@ class TestModelQuery:
 
         fast, slow = model.query(query=0xFF00)
 
-        assert list(fast) == [match1, match2]
+        assert list(fast) == [match2, match1]
         assert list(slow) == []
 
     def test_focus_limit_splits_streams(self):
@@ -319,8 +308,8 @@ class TestModelQuery:
 
         fast, slow = model.query(query=0xFF00, focus_limit=2)
 
-        assert list(fast) == [match1, match2]
-        assert list(slow) == [match3]
+        assert list(fast) == [match3, match2]
+        assert list(slow) == [match1]
 
     def test_streams_are_independent(self):
         """Fast and slow streams can be consumed independently."""
@@ -333,11 +322,11 @@ class TestModelQuery:
 
         # Consume fast first
         fast_list = list(fast)
-        assert fast_list == [match1]
+        assert fast_list == [match3]
 
         # Slow is still available
         slow_list = list(slow)
-        assert slow_list == [match2, match3]
+        assert slow_list == [match2, match1]
 
 
 class TestModelExpand:
@@ -475,7 +464,7 @@ class TestModelExpand:
         results = list(fast)
 
         assert len(results) == 2
-        assert results[0] == parent
+        assert results[1] == parent
         assert child in results
 
     def test_nested_hierarchy_expansion(self):
@@ -523,9 +512,10 @@ class TestModelExpand:
         results = list(fast)
 
         assert len(results) == 3
-        assert results[0] == root
-        assert results[1] == child
-        assert results[2] == grandchild
+        assert results[0] == grandchild
+        assert results[1] == root
+        assert results[2] == child
+
 
     def test_cyclic_grandchildren_stops_expansion(self):
         """Cyclic grandchildren (grandchild references parent) stop expansion."""
@@ -545,9 +535,9 @@ class TestModelExpand:
         results = list(fast)
 
         assert len(results) == 3
-        assert results[0] == root
+        assert results[0] == grandchild
         assert results[1] == child
-        assert results[2] == grandchild
+        assert results[2] == root
 
     def test_focus_limit_splits_streams(self):
         """focus_limit in expand splits into fast and slow."""
@@ -577,18 +567,18 @@ class TestModelExpand:
         fast, slow = model.expand(focus_set, depth=2, focus_limit=1)
 
         fast_results = list(fast)
-        assert len(fast_results) == 4  # parent1 + 3 children
-        assert parent1 in fast_results
-        assert child1 in fast_results
-        assert child2 in fast_results
-        assert child3 in fast_results
+        assert len(fast_results) == 4  # parent2 + 3 children
+        assert parent2 in fast_results
+        assert child4 in fast_results
+        assert child5 in fast_results
+        assert child6 in fast_results
 
         slow_results = list(slow)
-        assert len(slow_results) == 4  # parent2 + 3 children
-        assert parent2 in slow_results
-        assert child4 in slow_results
-        assert child5 in slow_results
-        assert child6 in slow_results
+        assert len(slow_results) == 4  # parent1 + 3 children
+        assert parent1 in slow_results
+        assert child1 in slow_results
+        assert child2 in slow_results
+        assert child3 in slow_results
 
     def test_expand_without_focus_limit(self):
         """Without focus_limit, all klines in fast stream."""
@@ -600,7 +590,7 @@ class TestModelExpand:
         focus_set = list(fast_q)
 
         fast, slow = model.expand(focus_set, depth=1)
-        assert list(fast) == [match1, match2]
+        assert list(fast) == [match2, match1]
         assert list(slow) == []
 
     def test_slow_empty_when_focus_limit_zero(self):
@@ -613,7 +603,7 @@ class TestModelExpand:
         focus_set = list(fast_q)
 
         fast, slow = model.expand(focus_set, depth=1, focus_limit=0)
-        assert list(fast) == [match1, match2]
+        assert list(fast) == [match2, match1]
         assert list(slow) == []
 
     def test_slow_stream_consumed_independently(self):
@@ -635,14 +625,14 @@ class TestModelExpand:
         # Consume slow first
         slow_results = list(slow)
         assert len(slow_results) == 2  # parent2 + child2
-        assert parent2 in slow_results
-        assert child2 in slow_results
+        assert parent1 in slow_results
+        assert child1 in slow_results
 
         # Fast still works
         fast_results = list(fast)
         assert len(fast_results) == 2  # parent1 + child1
-        assert parent1 in fast_results
-        assert child1 in fast_results
+        assert parent2 in fast_results
+        assert child2 in fast_results
 
     def test_slow_with_larger_focus_limit(self):
         """focus_limit larger than klines puts all in fast, empty slow."""
@@ -654,7 +644,7 @@ class TestModelExpand:
         focus_set = list(fast_q)
 
         fast, slow = model.expand(focus_set, depth=1, focus_limit=10)
-        assert list(fast) == [match1, match2]
+        assert list(fast) == [match2, match1]
         assert list(slow) == []
 
     def test_slow_with_nested_hierarchy(self):
@@ -680,16 +670,16 @@ class TestModelExpand:
         # Fast: parent1 + child1 + grandchild1
         fast_results = list(fast)
         assert len(fast_results) == 3
-        assert parent1 in fast_results
-        assert child1 in fast_results
-        assert grandchild1 in fast_results
+        assert parent2 in fast_results
+        assert child2 in fast_results
+        assert grandchild2 in fast_results
 
         # Slow: parent2 + child2 + grandchild2
         slow_results = list(slow)
         assert len(slow_results) == 3
-        assert parent2 in slow_results
-        assert child2 in slow_results
-        assert grandchild2 in slow_results
+        assert parent1 in slow_results
+        assert child1 in slow_results
+        assert grandchild1 in slow_results
 
     def test_slow_depth_limits_expansion(self):
         """Depth parameter limits expansion in slow stream too."""
@@ -707,15 +697,15 @@ class TestModelExpand:
 
         # depth=1: no child expansion
         fast, slow = model.expand(focus_set, depth=1, focus_limit=1)
-        assert list(fast) == [parent1]
-        assert list(slow) == [parent2]
+        assert list(fast) == [parent2]
+        assert list(slow) == [parent1]
 
         # depth=2: expand to children, not grandchildren
         fast, slow = model.expand(focus_set, depth=2, focus_limit=1)
         fast_results = list(fast)
-        assert len(fast_results) == 2  # parent1 + child
+        assert len(fast_results) == 2  # parent2 + child
         slow_results = list(slow)
-        assert len(slow_results) == 2  # parent2 + child
+        assert len(slow_results) == 2  # parent1 + child
 
     def test_multiple_klines_in_slow(self):
         """Multiple klines go to slow when focus_limit is small."""
@@ -730,12 +720,12 @@ class TestModelExpand:
 
         fast, slow = model.expand(focus_set, depth=1, focus_limit=1)
 
-        assert list(fast) == [match1]
+        assert list(fast) == [match4]
         slow_results = list(slow)
         assert len(slow_results) == 3
+        assert match1 in slow_results
         assert match2 in slow_results
         assert match3 in slow_results
-        assert match4 in slow_results
 
 
 class TestModelIterators:

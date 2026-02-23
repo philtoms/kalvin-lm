@@ -43,8 +43,8 @@ class TestKalvinToBytes:
 
         data = kalvin.to_bytes()
 
-        # 4 bytes for kline count (0)
-        assert data == b"\x00\x00\x00\x00"
+        # 4 bytes for kline count + 4 bytes for activity (0)
+        assert data == b"\x00\x00\x00\x00\x00\x00\x00\x00"
 
     def test_to_bytes_single_kline_no_nodes(self):
         """Single KLine with no nodes serializes correctly."""
@@ -54,14 +54,16 @@ class TestKalvinToBytes:
 
         data = kalvin.to_bytes()
 
-        # 4 bytes count + 8 bytes s_key + 4 bytes node count (0)
-        assert len(data) == 16
+        # 4 bytes count + 8 bytes s_key + 4 bytes node count + 4 bytes for activity  (0)
+        assert len(data) == 20
         # Verify count (little-endian uint32)
         assert data[:4] == b"\x01\x00\x00\x00"
         # Verify s_key (little-endian uint64)
         assert data[4:12] == b"\xF0\xDE\xBC\x9A\x78\x56\x34\x12"
         # Verify node count
         assert data[12:16] == b"\x00\x00\x00\x00"
+        # Verify node count
+        assert data[16:20] == b"\x00\x00\x00\x00"
 
     def test_to_bytes_single_kline_with_nodes(self):
         """Single KLine with nodes serializes correctly."""
@@ -73,8 +75,8 @@ class TestKalvinToBytes:
 
         data = kalvin.to_bytes()
 
-        # 4 bytes count + 8 bytes s_key + 4 bytes node count + 3*8 bytes nodes
-        assert len(data) == 4 + 8 + 4 + 24
+        # 4 bytes count + 8 bytes s_key + 4 bytes node count + 3*8 bytes nodes + 4 bytes activity
+        assert len(data) == 4 + 8 + 4 + 24 + 4
         # Verify node count is 3
         assert data[12:16] == b"\x03\x00\x00\x00"
 
@@ -91,7 +93,7 @@ class TestKalvinToBytes:
         data = kalvin.to_bytes()
 
         # 4 bytes count + (8+4+8) + (8+4+16) + (8+4)
-        assert len(data) == 4 + 20 + 28 + 12
+        assert len(data) == 4 + 20 + 28 + 12 + 4
         # Verify kline count is 3
         assert data[:4] == b"\x03\x00\x00\x00"
 
@@ -120,7 +122,7 @@ class TestKalvinFromBytes:
 
     def test_from_bytes_empty(self):
         """Empty bytes deserializes to empty Kalvin."""
-        data = b"\x00\x00\x00\x00"
+        data = b"\x00\x00\x00\x00\x00\x00\x00\x00"
 
         kalvin = Kalvin.from_bytes(data)
 
@@ -174,7 +176,7 @@ class TestKalvinToDict:
 
         data = kalvin.to_dict()
 
-        assert data == {"klines": []}
+        assert data == {"klines": [], "activity": {}}
 
     def test_to_dict_single_kline(self):
         """Single KLine serializes to dict correctly."""
@@ -186,7 +188,8 @@ class TestKalvinToDict:
         assert data == {
             "klines": [
                 {"s_key": 0x1000, "nodes": [0x0100, 0x0200]}
-            ]
+            ],
+            "activity": {}
         }
 
     def test_to_dict_multiple_klines(self):
@@ -203,7 +206,8 @@ class TestKalvinToDict:
             "klines": [
                 {"s_key": 0x1000, "nodes": [0x0100]},
                 {"s_key": 0x2000, "nodes": []},
-            ]
+            ],
+            "activity": {}
         }
 
     def test_to_dict_is_json_serializable(self):
