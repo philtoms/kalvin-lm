@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from struct import pack, unpack
 from typing import Literal
+from collections import Counter
 import json
 
 from kalvin.model import KLine, KNode, Model, KLineType, get_node_type, create_embedding_key
@@ -16,6 +17,7 @@ class Kalvin:
     def __init__(
         self,
         model: Model | None = None,
+        activity: Counter | None = None,
         tokenizer: Tokenizer | None = None,
     ):
         """Initialize Kalvin with optional model and tokenizer.
@@ -26,7 +28,9 @@ class Kalvin:
         """
         self.model = model if model else Model()
         self.tokenizer = tokenizer if tokenizer else Tokenizer.from_directory()
+        self.activity = activity if activity else Counter()
 
+        
     # === Tokenization ===
 
     def encode(self, text: str) -> int:
@@ -45,22 +49,11 @@ class Kalvin:
             self.model.add_embedding(KLine(s_key=token, nodes=[token]))
             build_token += token
         self.model.add_embedding(KLine(s_key=build_token, nodes=tokens))
+        tokens.append(build_token)
+        self.activity.update(tokens)
+
         return build_token
 
-<<<<<<< ours
-=======
-    def encode_batch(self, texts: list[str]) -> list[int]:
-        """Encode a batch of strings to their token signatures.
-
-        Args:
-            texts: List of input strings to encode
-
-        Returns:
-            List of token signatures (one per input text)
-        """
-        return [self.encode(text) for text in texts]
-
->>>>>>> theirs
     def decode(self, token_sig: int) -> str:
         """Decode a list of KNodes (token IDs) back to a string.
 
@@ -94,6 +87,10 @@ class Kalvin:
           - 8 bytes: s_key (uint64)
           - 4 bytes: node count (uint32)
           - N * 8 bytes: nodes (uint64 each)
+        - 4 bytes: number of activity entries (uint32)
+        - For each activity entry:
+          - 8 bytes: key (uint64)
+          - 4 bytes: count (uint32)
         """
         klines = self.model._klines
         parts = [pack("<I", len(klines))]
@@ -102,11 +99,21 @@ class Kalvin:
             parts.append(pack("<I", len(kline.nodes)))
             for node in kline.nodes:
                 parts.append(pack("<Q", node))
+
+        # Serialize activity Counter
+        activity = self.activity
+        parts.append(pack("<I", len(activity)))
+        for key, count in activity.items():
+            parts.append(pack("<Q", key))
+            parts.append(pack("<I", count))
+
         return b"".join(parts)
 
     @classmethod
     def from_bytes(cls, data: bytes) -> "Kalvin":
         """Deserialize model from binary format."""
+        from collections import Counter
+
         offset = 0
         kline_count = unpack("<I", data[offset:offset + 4])[0]
         offset += 4
@@ -124,7 +131,19 @@ class Kalvin:
                 nodes.append(node)
             klines.append(KLine(s_key=s_key, nodes=nodes))
 
-        return cls(Model(klines=klines))
+        # Deserialize activity Counter
+        activity_count = unpack("<I", data[offset:offset + 4])[0]
+        offset += 4
+        activity: Counter = Counter()
+        for _ in range(activity_count):
+            key = unpack("<Q", data[offset:offset + 8])[0]
+            offset += 8
+            count = unpack("<I", data[offset:offset + 4])[0]
+            offset += 4
+            activity[key] = count
+
+        model = Model(klines=klines)
+        return cls(model, activity)
 
     def to_dict(self) -> dict:
         """Serialize model to dict (for JSON)."""
@@ -133,17 +152,24 @@ class Kalvin:
             "klines": [
                 {"s_key": kline.s_key, "nodes": kline.nodes}
                 for kline in klines
-            ]
+            ],
+            "activity": {str(k): v for k, v in self.activity.items()}
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "Kalvin":
         """Deserialize model from dict."""
+        from collections import Counter
+
         klines = [
             KLine(s_key=item["s_key"], nodes=item["nodes"])
             for item in data["klines"]
         ]
-        return cls(Model(klines=klines))
+        model = Model(klines=klines)
+        activity = Counter()
+        if "activity" in data:
+            activity.update({int(k): v for k, v in data["activity"].items()})
+        return cls(model, activity)
 
     def save(
         self,
@@ -170,7 +196,7 @@ class Kalvin:
     @classmethod
     def load(
         cls,
-        path: str | Path,
+        path: str | Path = "data/kalvin.bin",
         format: Literal["binary", "json"] | None = None,
     ) -> "Kalvin":
         """Load model from file.

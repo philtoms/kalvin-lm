@@ -102,18 +102,20 @@ def main():
         help="Model format (default: binary)",
     )
     args = parser.parse_args()
+    model = args.model if args.model else "data/kalvin.bin"
 
     # Load or initialize Kalvin
-    model_path = Path(args.model)
+    model_path = Path(model)
     model_size = 0
-    if model_path:
+    if model_path and model_path.exists():
         print(f"\nLoading model from: {model_path}")
         kalvin = Kalvin.load(model_path, format=args.format)
         model_size = kalvin.model_size()
         print(f"Loaded model size: {model_size:,} KLines")
     else:
         print("\nInitializing new model...")
-        model_path = "data/kalvin.bin"
+        if not model_path:
+            model_path = "data/kalvin.bin" 
         kalvin = Kalvin()
         print(f"Initial model size: {kalvin.model_size():,} KLines")
 
