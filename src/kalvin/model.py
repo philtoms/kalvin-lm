@@ -92,33 +92,39 @@ def nodes_equal(nodes1: list[KNode], nodes2: list[KNode]) -> bool:
 class Model:
     """A collection of KLines with query and expansion operations.
 
-    Internal structure: dict[KSig, KLine] mapping signature to KLine.
-    The dict maintains insertion order (Python 3.7+).
-    Query iteration follows reverse insertion order (newest first).
+    Optimized internal structure:
+    - _klines: list[KLine] - flat list for O(1) iteration and indexing
+    - _by_key: dict[int, list[int]] - maps s_key to indices in _klines
+    - _dedup: set[tuple[int, tuple[int, ...]]] - O(1) duplicate detection
 
-    The model supports two-stream processing for concurrent consumption:
-    - Fast stream: for immediate processing by a fast thread
-    - Slow stream: for deferred processing by a slow thread
+    Query iteration follows reverse insertion order (newest first).
     """
 
-    def __init__(self, klines: list[KLine] | None = None):
-        """Initialize the model with optional existing KLines.
+    __slots__ = ('_klines', '_by_key', '_dedup')
 
-        Args:
-            klines: Optional list of KLines to initialize with
-        """
-        self._klines: dict[int, KLine] = {}
+    def __init__(self, klines: list[KLine] | None = None):
+        """Initialize the model with optional existing KLines."""
+        self._klines: list[KLine] = []  # Flat list for O(1) iteration
+        self._by_key: dict[int, list[int]] = {}  # s_key -> list of indices
+        self._dedup: set[tuple[int, tuple[int, ...]]] = set()  # For O(1) duplicate check
         if klines:
             for kline in klines:
-                self._klines[kline.s_key] = kline
+                self._add_kline_internal(kline)
+
+    def _add_kline_internal(self, kline: KLine) -> None:
+        """Internal method to add a kline without duplicate checking."""
+        idx = len(self._klines)
+        self._klines.append(kline)
+        if kline.s_key not in self._by_key:
+            self._by_key[kline.s_key] = []
+        self._by_key[kline.s_key].append(idx)
+        # Store (s_key, tuple(nodes)) for O(1) dedup
+        self._dedup.add((kline.s_key, tuple(kline.nodes)))
 
     def add_kline(self, kline: KLine) -> bool:
         """Add a KLine, enforcing the duplicate key invariant.
 
-        Invariant: Duplicate keys are allowed, but nodes must differ.
-        - If s_key is new: add the kline
-        - If s_key exists with different nodes: add the kline (allowed)
-        - If s_key exists with same nodes: reject (would be exact duplicate)
+        O(1) duplicate check using hashed set.
 
         Args:
             kline: KLine to add
@@ -126,11 +132,10 @@ class Model:
         Returns:
             True if added, False if rejected (exact duplicate)
         """
-        if kline.s_key in self._klines:
-            if nodes_equal(self._klines[kline.s_key].nodes, kline.nodes):
-                return False  # Exact duplicate, reject
-
-        self._klines[kline.s_key] = kline
+        key_nodes = (kline.s_key, tuple(kline.nodes))
+        if key_nodes in self._dedup:
+            return False  # O(1) duplicate check
+        self._add_kline_internal(kline)
         return True
 
     def add_signature(self, kline: KLine) -> KSig:
@@ -153,15 +158,19 @@ class Model:
     def find_by_key(self, key: int | None) -> KLine | None:
         """Find a KLine by its s_key.
 
+        Returns the most recently added KLine with the given key.
+        O(1) lookup.
+
         Args:
             key: The s_key to search for
 
         Returns:
             KLine if found, None otherwise
         """
-        if key is None:
+        if key is None or key not in self._by_key:
             return None
-        return self._klines.get(key)
+        # Return the most recently added (last index in the list)
+        return self._klines[self._by_key[key][-1]]
 
     def query(
         self,
@@ -175,23 +184,22 @@ class Model:
         2. Slow stream: yields remaining matching KLines
 
         Iteration follows reverse insertion order (newest first).
+        O(1) setup, O(N) iteration.
 
         Args:
             query: The query value to match (AND operation on s_key)
             focus_limit: Number of top-level matches in fast (0 = all in fast)
-                - focus_limit=2: first 2 matches in fast, rest in slow
 
         Returns:
             Tuple of (fast_generator, slow_generator) that yield KLines.
         """
-        # Get klines in insertion order, then iterate in reverse
-        klines_list = list(self._klines.values())
-        n = len(klines_list)
+        klines = self._klines
+        n = len(klines)
 
         def fast_generator() -> Iterator[KLine]:
             count = 0
             for i in range(n - 1, -1, -1):
-                kline = klines_list[i]
+                kline = klines[i]
                 if kline.signifies(query):
                     if focus_limit > 0 and count >= focus_limit:
                         break
@@ -200,10 +208,10 @@ class Model:
 
         def slow_generator() -> Iterator[KLine]:
             if focus_limit <= 0:
-                return  # No slow when focus_limit is 0
+                return
             count = 0
             for i in range(n - 1, -1, -1):
-                kline = klines_list[i]
+                kline = klines[i]
                 if kline.signifies(query):
                     if count >= focus_limit:
                         yield kline
@@ -228,13 +236,8 @@ class Model:
 
         Args:
             focus_set: List of KLines to expand (e.g., from query)
-            depth: Maximum recursion depth for expanding child nodes:
-                - depth=0: yield nothing
-                - depth=1: yield klines only (no child expansion)
-                - depth=2: yield klines + their direct children
-                - depth=N: expand N levels of children
+            depth: Maximum recursion depth for expanding child nodes
             focus_limit: Number of klines in fast (0 = all in fast)
-                - focus_limit=2: first 2 klines in fast, rest in slow
 
         Returns:
             Tuple of (fast_generator, slow_generator) that yield expanded KLines.
@@ -260,8 +263,6 @@ class Model:
             visited: set[int],
         ) -> Iterator[KLine]:
             """Expand a KLine and yield results immediately."""
-
-            # Check for cycle - if kline already visited, stop this branch
             if kline.s_key in visited:
                 v_kline = model.find_by_key(kline.s_key)
                 if v_kline and nodes_equal(v_kline.nodes, kline.nodes):
@@ -271,11 +272,9 @@ class Model:
 
             yield kline
 
-            # Stop if we've reached max depth
             if current_depth >= depth:
                 return
 
-            # Expand child NODE klines
             for child in get_node_klines(kline.nodes):
                 yield from expand_kline_generator(child, current_depth + 1, visited)
 
@@ -290,7 +289,7 @@ class Model:
 
         def slow_generator() -> Iterator[KLine]:
             if focus_limit <= 0:
-                return  # No slow when focus_limit is 0
+                return
             visited: set[int] = set()
             count = 0
             for kline in focus_set:
@@ -302,18 +301,17 @@ class Model:
 
     def duplicate(self) -> "Model":
         """Create a duplicate of this model."""
-        klines = [KLine(s_key=kline.s_key, nodes=kline.nodes.copy())
-                  for kline in self._klines.values()]
+        klines = [KLine(s_key=k.s_key, nodes=k.nodes.copy()) for k in self._klines]
         return Model(klines)
 
     def __len__(self) -> int:
-        """Return the number of KLines in the model."""
+        """Return the number of KLines in the model. O(1)."""
         return len(self._klines)
 
     def __iter__(self) -> Iterator[KLine]:
-        """Iterate over all KLines in insertion order."""
-        return iter(self._klines.values())
+        """Iterate over all KLines in insertion order. O(1) setup."""
+        return iter(self._klines)
 
     def __getitem__(self, index: int) -> KLine:
-        """Get a KLine by insertion order index."""
-        return list(self._klines.values())[index]
+        """Get a KLine by index. O(1)."""
+        return self._klines[index]
