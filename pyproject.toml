@@ -3,7 +3,7 @@ name = "kalvin"
 version = "0.1.0"
 description = "PyTorch development project with MPS support"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 dependencies = [
     "torch>=2.2.0",
     "torchvision>=0.17.0",
@@ -16,6 +16,7 @@ dependencies = [
     "rustbpe>=0.1.0",
     "tiktoken>=0.7.0",
     "pyarrow>=15.0.0",
+    "spacy[apple]>=3.8.11",
 ]
 
 [project.optional-dependencies]
