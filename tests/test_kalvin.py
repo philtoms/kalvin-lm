@@ -4,6 +4,7 @@ import json
 import pytest
 import tempfile
 from pathlib import Path
+from collections import Counter
 
 from kalvin.kalvin import Kalvin
 from kalvin.model import KLine, KLineType, Model, create_signature_key, create_embedding_key
@@ -495,11 +496,11 @@ class TestKalvinEmbeddings:
 
     def test_add_new_encoding(self):
         kalvin = Kalvin()
-        token_sig = kalvin.encode("hello")
+        token_sig = kalvin.encode("hello there")
         assert token_sig is not None
 
         decoded = kalvin.decode(token_sig)
-        assert decoded == "hello"
+        assert decoded == "hello there"
 
 
     def test_add_very_long_string(self):
@@ -516,10 +517,10 @@ class TestKalvinEmbeddings:
 
     def test_add_duplicate_encoding(self):
         kalvin = Kalvin()
-        token_sig1 = kalvin.encode("hello")
-        token_sig2 = kalvin.encode("hello")
+        token_sig1 = kalvin.encode("hello there")
+        token_sig2 = kalvin.encode("hello there")
 
-        assert token_sig1 == token_sig2
+        assert token_sig1 != token_sig2
 
     def test_add_encoded_string(self):
         kalvin = Kalvin()
@@ -547,10 +548,178 @@ class TestKalvinEmbeddings:
         """
         kalvin = Kalvin()
         kalvin.encode(vl_str)
-        model1 = kalvin.model._klines.copy()
-        kalvin.encode("Mary had a little lamb,")
-        kalvin.encode(" was white")
+        model1 = kalvin.model.duplicate()
+        kalvin.encode("Mary had a little lamb,") # + 2
+        kalvin.encode(" was white") # + 2
 
-        assert len(kalvin.model._klines) == len(model1) + 2
+        assert len(kalvin.model) == len(model1) + 4
 
 
+    def test_intermediate_signature_count(self):
+        
+        kalvin = Kalvin()
+        kalvin.encode("a b c d")    # 4 + 2 + 1
+        kalvin.encode("a b c")      # _ + _ + 1
+        kalvin.encode("b c d")      # 1 + 1 + 1
+
+        assert kalvin.model_size() == 11
+
+    
+class TestKalvinPrune:
+    def test_prune_empty_model(self):
+        """Pruning an empty model returns empty model."""
+        model = Kalvin()
+
+        pruned = model.prune()
+
+        assert len(pruned.model) == 0
+
+    def test_prune_keeps_all_at_level_one(self):
+        """With level=1, all klines with activity >= 1 are kept."""
+        kl1 = KLine(s_key=0x1000, nodes=[])
+        kl2 = KLine(s_key=0x2000, nodes=[])
+        kl3 = KLine(s_key=0x3000, nodes=[])
+        model = Model([kl1, kl2, kl3])
+        activity = Counter({0x1000: 1, 0x2000: 2, 0x3000: 5})
+
+        pruned = Kalvin(model, activity).prune(level=1)
+
+        assert len(pruned.model) == 3
+
+    def test_prune_filters_by_level(self):
+        """KLines with activity < level are removed."""
+        kl1 = KLine(s_key=0x1000, nodes=[])
+        kl2 = KLine(s_key=0x2000, nodes=[])
+        kl3 = KLine(s_key=0x3000, nodes=[])
+        model = Model([kl1, kl2, kl3])
+        activity = Counter({0x1000: 1, 0x2000: 3, 0x3000: 5})
+
+        pruned = Kalvin(model, activity).prune(level=3)
+
+        assert len(pruned.model) == 2
+        found = model.find_by_key(0x2000)
+        assert found in list(pruned.model)
+        found = model.find_by_key(0x3000)
+        assert found in list(pruned.model)
+
+    def test_prune_removes_all_when_level_high(self):
+        """When level is higher than all activities, result is empty."""
+        kl1 = KLine(s_key=0x1000, nodes=[])
+        kl2 = KLine(s_key=0x2000, nodes=[])
+        model = Model([kl1, kl2])
+        activity = Counter({0x1000: 1, 0x2000: 2})
+
+        pruned = Kalvin(model, activity).prune(level=10)
+
+        assert len(pruned.model) == 0
+
+    def test_prune_with_empty_activity(self):
+        """Pruning with empty activity counter returns empty model."""
+        kl1 = KLine(s_key=0x1000, nodes=[])
+        kl2 = KLine(s_key=0x2000, nodes=[])
+        model = Model([kl1, kl2])
+        activity = Counter()
+
+        pruned = Kalvin(model, activity).prune()
+
+        assert len(pruned.model) == 0
+
+    def test_prune_ignores_keys_not_in_model(self):
+        """Activity keys not in model are ignored."""
+        kl1 = KLine(s_key=0x1000, nodes=[])
+        model = Model([kl1])
+        activity = Counter({0x1000: 5, 0x9999: 10})  # 0x9999 not in model
+
+        pruned = Kalvin(model, activity).prune()
+
+        assert len(pruned.model) == 1
+        assert model.find_by_key(0x1000) in list(pruned.model)
+
+    def test_prune_preserves_original_model(self):
+        """Pruning does not modify the original model."""
+        kl1 = KLine(s_key=0x1000, nodes=[])
+        kl2 = KLine(s_key=0x2000, nodes=[])
+        model = Model([kl1, kl2])
+        activity = Counter({0x1000: 5})
+
+        pruned = Kalvin(model, activity).prune()
+
+        assert len(model) == 2
+        assert len(pruned.model) == 1
+
+    def test_prune_returns_new_model_instance(self):
+        """Prune returns a new Model instance."""
+        kl1 = KLine(s_key=0x1000, nodes=[])
+        model = Model([kl1])
+        activity = Counter({0x1000: 5})
+
+        pruned = Kalvin(model, activity).prune()
+
+        assert pruned is not model
+        assert isinstance(pruned.model, Model)
+
+    def test_prune_level_boundary(self):
+        """KLines with activity exactly at level are kept."""
+        kl1 = KLine(s_key=0x1000, nodes=[])  # activity = 3
+        kl2 = KLine(s_key=0x2000, nodes=[])  # activity = 2
+        model = Model([kl1, kl2])
+        activity = Counter({0x1000: 3, 0x2000: 2})
+
+        pruned = Kalvin(model, activity).prune(level=2)
+
+        assert len(pruned.model) == 2  # Both kept (3 >= 2 and 2 >= 2)
+
+    def test_prune_level_excludes_below(self):
+        """KLines with activity below level are excluded."""
+        kl1 = KLine(s_key=0x1000, nodes=[])  # activity = 3
+        kl2 = KLine(s_key=0x2000, nodes=[])  # activity = 1
+        model = Model([kl1, kl2])
+        activity = Counter({0x1000: 3, 0x2000: 1})
+
+        pruned = Kalvin(model, activity).prune(level=2)
+
+        assert len(pruned.model) == 1
+        found = model.find_by_key(0x1000)
+        assert found in list(pruned.model)
+
+    def test_prune_with_signature_keys(self):
+        """Prune works with signature (high bit) keys."""
+        key1 = create_signature_key(0x1000)
+        key2 = create_signature_key(0x2000)
+        kl1 = KLine(s_key=key1, nodes=[])
+        kl2 = KLine(s_key=key2, nodes=[])
+        model = Model([kl1, kl2])
+        activity = Counter({key1: 5, key2: 1})
+
+        pruned = Kalvin(model, activity).prune(level=2)
+
+        assert len(pruned.model) == 1
+        found = model.find_by_key(key1)
+        assert found in list(pruned.model)
+
+    def test_prune_with_embedding_keys(self):
+        """Prune works with embedding (no high bit) keys."""
+        key1 = create_embedding_key(0x1000)
+        key2 = create_embedding_key(0x2000)
+        kl1 = KLine(s_key=key1, nodes=[])
+        kl2 = KLine(s_key=key2, nodes=[])
+        model = Model([kl1, kl2])
+        activity = Counter({key1: 5, key2: 1})
+
+        pruned = Kalvin(model, activity).prune(level=2)
+
+        assert len(pruned.model) == 1
+        found = model.find_by_key(key1)
+        assert found in list(pruned.model)
+
+    def test_prune_keeps_kline_reference(self):
+        """Pruned model keeps references to original klines."""
+        kl1 = KLine(s_key=0x1000, nodes=[0x0100, 0x0200])
+        model = Model([kl1])
+        activity = Counter({0x1000: 5})
+
+        pruned = Kalvin(model, activity).prune()
+
+        # Same kline object referenced
+        assert pruned.model[0] is kl1
+        assert pruned.model[0].nodes == [0x0100, 0x0200]

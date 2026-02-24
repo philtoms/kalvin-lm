@@ -33,7 +33,7 @@ class Kalvin:
         
     # === Tokenization ===
 
-    def encode(self, text: str) -> int:
+    def encode(self, text: str) -> KNode|None:
         """Encode a string to a list of KNodes (token IDs).
 
         Args:
@@ -43,18 +43,23 @@ class Kalvin:
             List of KNode integers (token IDs)
         """
         tokens = self.tokenizer.encode(text)
+        t_end = len(tokens) - 1
         build_token = 0
-        for token in tokens:
+        prefix = None
+        suffix = 0
+        for idx, token in enumerate(tokens):
             assert get_node_type(token) == KLineType.EMBEDDING
             self.model.add_embedding(KLine(s_key=token, nodes=[token]))
-            build_token += token
-        self.model.add_embedding(KLine(s_key=build_token, nodes=tokens.copy()))
-        tokens.append(build_token)
+            if prefix and idx < t_end:
+                suffix = tokens[idx+1]
+                self.model.add_signature(KLine(s_key=token, nodes=[prefix, token, suffix]))
+            prefix = token
+            build_token |= token
+
         self.activity.update(tokens)
+        return self.model.add_signature(KLine(s_key=build_token, nodes=tokens))
 
-        return build_token
-
-    def decode(self, token_sig: int) -> str:
+    def decode(self, token_sig: int | None) -> str:
         """Decode a list of KNodes (token IDs) back to a string.
 
         Args:
@@ -67,6 +72,30 @@ class Kalvin:
         if kline is None:
             return ""
         return self.tokenizer.decode(kline.nodes)
+
+    def prune(
+        self,
+        level: int = 1
+    ) -> "Kalvin":
+        """Prune model to activity level.
+
+        Args:
+            level: activity level to keep
+        """
+        pruned_model: list[KLine] = []
+        for kline in self.model:
+            if kline.s_key not in self.activity:
+                pruned_model.append(kline)
+        pruned_activity = Counter()
+        for key, count in self.activity.items():
+            if count >= level:
+                kline = self.model.find_by_key(key)
+                if kline:
+                    pruned_model.append(kline)
+                    pruned_activity[key]=count
+        model = Model(pruned_model)
+        return Kalvin(model, pruned_activity)
+
 
     def model_size(self) -> int:
         """Return the number of KLines in the model.
@@ -92,9 +121,8 @@ class Kalvin:
           - 8 bytes: key (uint64)
           - 4 bytes: count (uint32)
         """
-        klines = self.model._klines
-        parts = [pack("<I", len(klines))]
-        for kline in klines:
+        parts = [pack("<I", len(self.model))]
+        for kline in self.model:
             parts.append(pack("<Q", kline.s_key))
             parts.append(pack("<I", len(kline.nodes)))
             for node in kline.nodes:
@@ -147,11 +175,10 @@ class Kalvin:
 
     def to_dict(self) -> dict:
         """Serialize model to dict (for JSON)."""
-        klines = self.model._klines
         return {
             "klines": [
                 {"s_key": kline.s_key, "nodes": kline.nodes}
-                for kline in klines
+                for kline in self.model
             ],
             "activity": {str(k): v for k, v in self.activity.items()}
         }

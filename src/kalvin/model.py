@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import TypeAlias, Iterator
-
+from collections import Counter
 
 
 # High bit mask (bit 63)
@@ -18,6 +18,7 @@ class KLineType(IntEnum):
 
 # Type alias for a KNode (64-bit int with high bit reserved for type)
 KNode: TypeAlias = int
+KSig: TypeAlias = int | None
 
 
 def get_node_type(node: KNode) -> KLineType:
@@ -108,12 +109,12 @@ class Model:
         Args:
             klines: Optional list of KLines to initialize with
         """
-        self._klines: list[KLine] = klines if klines else []
+        self._klines: list[KLine] = klines.copy() if klines else []
         self._signatures: dict[int, int] = {
             kline.s_key: i for i, kline in enumerate(self._klines)
         }
 
-    def add_signature(self, kline: KLine) -> bool:
+    def add_kline(self, kline: KLine) -> bool:
         """Add a KLine, enforcing the duplicate key invariant.
 
         Invariant: Duplicate keys are allowed, but nodes must differ.
@@ -127,38 +128,34 @@ class Model:
         Returns:
             index if added, None if rejected (exact duplicate)
         """
-        kline.s_key |= HIGH_BIT_MASK
         if kline.s_key in self._signatures:
             existing = self.find_by_key(kline.s_key)
             if existing and nodes_equal(existing.nodes, kline.nodes):
                 return False  # Exact duplicate, reject
 
+        # All klines have signatures
         self._signatures[kline.s_key] = len(self._klines)
+        # classic LIFO operation for focus
         self._klines.append(kline)
         return True
 
-    def add_embedding(self, kline: KLine) -> bool:
-        """Add a KLine, enforcing the duplicate key invariant.
-
-        Invariant: Duplicate keys are not allowed (f(key) iso nodes)
-        - If s_key is new: add the kline
-        - If s_key exists: reject (would be exact duplicate)
-
+    def add_signature(self, kline: KLine) -> KSig:
+        """Add a Signature KLine, enforcing the signature key invariant.
         Args:
             kline: KLine to add
 
         Returns:
             index if added, None if rejected (exact duplicate)
         """
+        kline.s_key |= HIGH_BIT_MASK
+        return kline.s_key if self.add_kline(kline) else None
+
+    def add_embedding(self, kline: KLine) -> bool:
+        """Add an embedding KLine, enforcing the embedding key invariant."""
         kline.s_key &= ~HIGH_BIT_MASK
-        if kline.s_key in self._signatures:
-            return False  # Exact duplicate, reject
+        return self.add_kline(kline)
 
-        self._signatures[kline.s_key] = len(self._klines)
-        self._klines.append(kline)
-        return True
-
-    def find_by_key(self, key: int) -> KLine | None:
+    def find_by_key(self, key: int | None) -> KLine | None:
         """Find a KLine by its s_key.
 
         Args:
@@ -167,6 +164,9 @@ class Model:
         Returns:
             KLine if found, None otherwise
         """
+        if key is None:
+            return None
+        
         index = self._signatures.get(key)
         if index is not None:
             return self._klines[index]
@@ -306,6 +306,10 @@ class Model:
 
         return fast_generator(), slow_generator()
 
+
+    def duplicate(self) -> "Model":
+        return Model(self._klines)
+    
     def __len__(self) -> int:
         """Return the number of KLines in the model."""
         return len(self._klines)

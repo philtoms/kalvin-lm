@@ -168,7 +168,7 @@ class TestModelAddSignature:
 
         result = model.add_signature(kl)
 
-        assert result is True
+        assert result is not None
         assert len(model) == 1
         assert model[0] == kl
 
@@ -180,7 +180,7 @@ class TestModelAddSignature:
 
         result = model.add_signature(kl2)
 
-        assert result is True
+        assert result is not None
         assert len(model) == 2
 
     def test_reject_exact_duplicate(self):
@@ -191,7 +191,7 @@ class TestModelAddSignature:
 
         result = model.add_signature(kl2)
 
-        assert result is False
+        assert result is None
         assert len(model) == 1
 
     def test_reject_exact_duplicate_empty_nodes(self):
@@ -202,7 +202,7 @@ class TestModelAddSignature:
 
         result = model.add_signature(kl2)
 
-        assert result is False
+        assert result is None
         assert len(model) == 1
 
     def test_multiple_keys_all_added(self):
@@ -212,9 +212,9 @@ class TestModelAddSignature:
         kl2 = KLine(s_key=0x2000, nodes=[])
         kl3 = KLine(s_key=0x3000, nodes=[])
 
-        assert model.add_signature(kl1) is True
-        assert model.add_signature(kl2) is True
-        assert model.add_signature(kl3) is True
+        assert model.add_signature(kl1) is not None
+        assert model.add_signature(kl2) is not None
+        assert model.add_signature(kl3) is not None
         assert len(model) == 3
 
 
@@ -760,3 +760,4 @@ class TestModelIterators:
 
         not_found = model.find_by_key(0x3000)
         assert not_found is None
+

@@ -139,6 +139,14 @@ def main():
     if final_size > model_size:       
         print(f"Extended by: {final_size - model_size:,} KLines")
 
+    kalvin = kalvin.prune()
+
+    # Report model size
+    final_size = kalvin.model_size()
+    print(f"\nFinal model size after pruning: {final_size:,} KLines")
+    if final_size > model_size:       
+        print(f"Extended by: {final_size - model_size:,} KLines")
+
     # Save model
     print(f"\nSaving model to: {model_path}")
     kalvin.save(model_path, format=args.format)
