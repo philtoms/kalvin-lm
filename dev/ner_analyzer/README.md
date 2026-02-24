@@ -61,6 +61,11 @@ Extend existing dictionaries:
 uv run python dev/ner_analyzer/ner_analyzer.py -i input.json -e existing.json -v
 ```
 
+Use high-bit mode for NLP types (useful for combining with other bit patterns):
+```bash
+uv run python dev/ner_analyzer/ner_analyzer.py -v --high-bits
+```
+
 ### CLI Options
 
 | Flag | Description |
@@ -72,6 +77,7 @@ uv run python dev/ner_analyzer/ner_analyzer.py -i input.json -e existing.json -v
 | `-b, --batch-size` | Batch size for processing (default: 50) |
 | `-v, --verbose` | Print detailed output |
 | `-e, --existing` | Extend existing dictionary files |
+| `--high-bits` | Use high bits for NLP types (bits 32-63 for 32-bit, 16-63 for 48-bit) |
 
 ## Input Format
 
@@ -125,10 +131,15 @@ Hardcoded flags that always fit in 32 bits:
 }
 ```
 
-**32-bit bit layout:**
+**32-bit bit layout (default low-bit mode):**
 - Bits 0-16: Coarse POS tags (17 Universal POS tags)
 - Bits 17-24: Simplified dependency groups (8 groups)
 - Bits 25-31: Simplified morph features (7 features)
+
+**32-bit bit layout (high-bit mode with `--high-bits`):**
+- Bits 32-48: Coarse POS tags (17 Universal POS tags)
+- Bits 49-56: Simplified dependency groups (8 groups)
+- Bits 57-63: Simplified morph features (7 features)
 
 ### `{stem}_nlp_type48.json` - 48-bit finer NLP type legend
 
@@ -147,10 +158,15 @@ Hardcoded flags with more granular DEP and MORPH:
 }
 ```
 
-**48-bit bit layout:**
+**48-bit bit layout (default low-bit mode):**
 - Bits 0-16: Coarse POS tags (17 Universal POS tags, same as 32-bit)
 - Bits 17-31: Finer dependency groups (15 groups)
 - Bits 32-47: Finer morph features (16 features)
+
+**48-bit bit layout (high-bit mode with `--high-bits`):**
+- Bits 16-32: Coarse POS tags (17 Universal POS tags)
+- Bits 33-47: Finer dependency groups (15 groups)
+- Bits 48-63: Finer morph features (16 features)
 
 **Finer DEP groups (48-bit):**
 | Group | Dependencies |

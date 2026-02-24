@@ -22,349 +22,382 @@ import spacy
 from tqdm import tqdm
 
 
-class NLPType32(IntFlag):
+def create_nlp_type32(high_bits: bool = False) -> type:
     """
-    32-bit NLP type encoding with coarse-grained features.
+    Create 32-bit NLP type IntFlag class with configurable bit positioning.
 
-    Bit layout:
+    Args:
+        high_bits: If True, use bits 32-63 (leaving bits 0-31 free).
+                   If False, use bits 0-31 (default, leaving bits 32-63 free).
+
+    Returns:
+        Dynamically created IntFlag class.
+
+    Bit layout (low_bits mode, default):
     - Bits 0-16: Coarse POS tags (17 Universal POS tags)
     - Bits 17-24: Simplified dependency groups (8 groups)
     - Bits 25-31: Simplified morphological features (7 features)
+
+    Bit layout (high_bits mode):
+    - Bits 32-48: Coarse POS tags (17 Universal POS tags)
+    - Bits 49-56: Simplified dependency groups (8 groups)
+    - Bits 57-63: Simplified morphological features (7 features)
     """
+    offset = 32 if high_bits else 0
 
-    # Coarse POS tags (bits 0-16) - Universal POS Tags
-    POS_ADJ = 1 << 0      # Adjective
-    POS_ADP = 1 << 1      # Adposition
-    POS_ADV = 1 << 2      # Adverb
-    POS_AUX = 1 << 3      # Auxiliary
-    POS_CCONJ = 1 << 4    # Coordinating conjunction
-    POS_DET = 1 << 5      # Determiner
-    POS_INTJ = 1 << 6     # Interjection
-    POS_NOUN = 1 << 7     # Noun
-    POS_NUM = 1 << 8      # Numeral
-    POS_PART = 1 << 9     # Particle
-    POS_PRON = 1 << 10    # Pronoun
-    POS_PROPN = 1 << 11   # Proper noun
-    POS_PUNCT = 1 << 12   # Punctuation
-    POS_SCONJ = 1 << 13   # Subordinating conjunction
-    POS_SYM = 1 << 14     # Symbol
-    POS_VERB = 1 << 15    # Verb
-    POS_X = 1 << 16       # Other
+    return IntFlag("NLPType32", [
+        # Coarse POS tags (bits 0-16 + offset) - Universal POS Tags
+        ("POS_ADJ", 1 << (0 + offset)),      # Adjective
+        ("POS_ADP", 1 << (1 + offset)),      # Adposition
+        ("POS_ADV", 1 << (2 + offset)),      # Adverb
+        ("POS_AUX", 1 << (3 + offset)),      # Auxiliary
+        ("POS_CCONJ", 1 << (4 + offset)),    # Coordinating conjunction
+        ("POS_DET", 1 << (5 + offset)),      # Determiner
+        ("POS_INTJ", 1 << (6 + offset)),     # Interjection
+        ("POS_NOUN", 1 << (7 + offset)),     # Noun
+        ("POS_NUM", 1 << (8 + offset)),      # Numeral
+        ("POS_PART", 1 << (9 + offset)),     # Particle
+        ("POS_PRON", 1 << (10 + offset)),    # Pronoun
+        ("POS_PROPN", 1 << (11 + offset)),   # Proper noun
+        ("POS_PUNCT", 1 << (12 + offset)),   # Punctuation
+        ("POS_SCONJ", 1 << (13 + offset)),   # Subordinating conjunction
+        ("POS_SYM", 1 << (14 + offset)),     # Symbol
+        ("POS_VERB", 1 << (15 + offset)),    # Verb
+        ("POS_X", 1 << (16 + offset)),       # Other
 
-    # Simplified dependency groups (bits 17-24)
-    DEP_SUBJ = 1 << 17    # Subjects: nsubj, nsubjpass, csubj, csubjpass, agent
-    DEP_OBJ = 1 << 18     # Objects: obj, iobj, dobj
-    DEP_OBL = 1 << 19     # Oblique/adjunct: obl, iobl, nmod (non-possessive)
-    DEP_COMP = 1 << 20    # Complements: ccomp, xcomp, advcl, acl, relcl
-    DEP_MOD = 1 << 21     # Modifiers: amod, advmod, nummod, appos
-    DEP_FUNC = 1 << 22    # Function words: det, case, mark, aux, cop, expl
-    DEP_STRUCT = 1 << 23  # Structure: root, conj, cc, compound, flat, fixed, list
-    DEP_PUNCT = 1 << 24   # Punctuation/other: punct, goeswith, reparandum
+        # Simplified dependency groups (bits 17-24 + offset)
+        ("DEP_SUBJ", 1 << (17 + offset)),    # Subjects: nsubj, nsubjpass, csubj, csubjpass, agent
+        ("DEP_OBJ", 1 << (18 + offset)),     # Objects: obj, iobj, dobj
+        ("DEP_OBL", 1 << (19 + offset)),     # Oblique/adjunct: obl, iobl, nmod (non-possessive)
+        ("DEP_COMP", 1 << (20 + offset)),    # Complements: ccomp, xcomp, advcl, acl, relcl
+        ("DEP_MOD", 1 << (21 + offset)),     # Modifiers: amod, advmod, nummod, appos
+        ("DEP_FUNC", 1 << (22 + offset)),    # Function words: det, case, mark, aux, cop, expl
+        ("DEP_STRUCT", 1 << (23 + offset)),  # Structure: root, conj, cc, compound, flat, fixed, list
+        ("DEP_PUNCT", 1 << (24 + offset)),   # Punctuation/other: punct, goeswith, reparandum
 
-    # Simplified morphological features (bits 25-31)
-    MORPH_SING = 1 << 25      # Number=Sing
-    MORPH_PLUR = 1 << 26      # Number=Plur
-    MORPH_PAST = 1 << 27      # Tense=Past
-    MORPH_PRES = 1 << 28      # Tense=Pres
-    MORPH_PASS = 1 << 29      # Voice=Pass
-    MORPH_PERSON_3 = 1 << 30  # Person=3
-    MORPH_PERF = 1 << 31      # Aspect=Perf
+        # Simplified morphological features (bits 25-31 + offset)
+        ("MORPH_SING", 1 << (25 + offset)),      # Number=Sing
+        ("MORPH_PLUR", 1 << (26 + offset)),      # Number=Plur
+        ("MORPH_PAST", 1 << (27 + offset)),      # Tense=Past
+        ("MORPH_PRES", 1 << (28 + offset)),      # Tense=Pres
+        ("MORPH_PASS", 1 << (29 + offset)),      # Voice=Pass
+        ("MORPH_PERSON_3", 1 << (30 + offset)),  # Person=3
+        ("MORPH_PERF", 1 << (31 + offset)),      # Aspect=Perf
+    ])
 
 
-class NLPType48(IntFlag):
+def create_nlp_type48(high_bits: bool = False) -> type:
     """
-    48-bit NLP type encoding with finer-grained features.
+    Create 48-bit NLP type IntFlag class with configurable bit positioning.
 
-    Bit layout:
-    - Bits 0-16: Coarse POS tags (17 Universal POS tags, same as NLPType32)
+    Args:
+        high_bits: If True, use bits 16-63 (leaving bits 0-15 free).
+                   If False, use bits 0-47 (default, leaving bits 48-63 free).
+
+    Returns:
+        Dynamically created IntFlag class.
+
+    Bit layout (low_bits mode, default):
+    - Bits 0-16: Coarse POS tags (17 Universal POS tags)
     - Bits 17-31: Finer dependency groups (15 groups)
     - Bits 32-47: Finer morphological features (16 features)
+
+    Bit layout (high_bits mode):
+    - Bits 16-32: Coarse POS tags (17 Universal POS tags)
+    - Bits 33-47: Finer dependency groups (15 groups)
+    - Bits 48-63: Finer morphological features (16 features)
     """
+    offset = 16 if high_bits else 0
 
-    # Coarse POS tags (bits 0-16) - Universal POS Tags (same as NLPType32)
-    POS_ADJ = 1 << 0      # Adjective
-    POS_ADP = 1 << 1      # Adposition
-    POS_ADV = 1 << 2      # Adverb
-    POS_AUX = 1 << 3      # Auxiliary
-    POS_CCONJ = 1 << 4    # Coordinating conjunction
-    POS_DET = 1 << 5      # Determiner
-    POS_INTJ = 1 << 6     # Interjection
-    POS_NOUN = 1 << 7     # Noun
-    POS_NUM = 1 << 8      # Numeral
-    POS_PART = 1 << 9     # Particle
-    POS_PRON = 1 << 10    # Pronoun
-    POS_PROPN = 1 << 11   # Proper noun
-    POS_PUNCT = 1 << 12   # Punctuation
-    POS_SCONJ = 1 << 13   # Subordinating conjunction
-    POS_SYM = 1 << 14     # Symbol
-    POS_VERB = 1 << 15    # Verb
-    POS_X = 1 << 16       # Other
+    return IntFlag("NLPType48", [
+        # Coarse POS tags (bits 0-16 + offset) - Universal POS Tags
+        ("POS_ADJ", 1 << (0 + offset)),      # Adjective
+        ("POS_ADP", 1 << (1 + offset)),      # Adposition
+        ("POS_ADV", 1 << (2 + offset)),      # Adverb
+        ("POS_AUX", 1 << (3 + offset)),      # Auxiliary
+        ("POS_CCONJ", 1 << (4 + offset)),    # Coordinating conjunction
+        ("POS_DET", 1 << (5 + offset)),      # Determiner
+        ("POS_INTJ", 1 << (6 + offset)),     # Interjection
+        ("POS_NOUN", 1 << (7 + offset)),     # Noun
+        ("POS_NUM", 1 << (8 + offset)),      # Numeral
+        ("POS_PART", 1 << (9 + offset)),     # Particle
+        ("POS_PRON", 1 << (10 + offset)),    # Pronoun
+        ("POS_PROPN", 1 << (11 + offset)),   # Proper noun
+        ("POS_PUNCT", 1 << (12 + offset)),   # Punctuation
+        ("POS_SCONJ", 1 << (13 + offset)),   # Subordinating conjunction
+        ("POS_SYM", 1 << (14 + offset)),     # Symbol
+        ("POS_VERB", 1 << (15 + offset)),    # Verb
+        ("POS_X", 1 << (16 + offset)),       # Other
 
-    # Finer dependency groups (bits 17-31)
-    DEP_SUBJ = 1 << 17    # Subjects: nsubj, nsubjpass, csubj, csubjpass, agent
-    DEP_OBJ = 1 << 18     # Objects: obj, iobj, dobj
-    DEP_OBL = 1 << 19     # Oblique: obl, obl:*
-    DEP_NMOD = 1 << 20    # Nominal modifier: nmod, nmod:*
-    DEP_CCOMP = 1 << 21   # Clausal complement: ccomp
-    DEP_XCOMP = 1 << 22   # Open clausal complement: xcomp
-    DEP_ADVCL = 1 << 23   # Adverbial clause: advcl
-    DEP_ACL = 1 << 24     # Adnominal clause: acl, acl:relcl
-    DEP_AMOD = 1 << 25    # Adjectival modifier: amod
-    DEP_ADVMOD = 1 << 26  # Adverbial modifier: advmod
-    DEP_NUMMOD = 1 << 27  # Numeral modifier: nummod, nummod:*
-    DEP_APPOS = 1 << 28   # Apposition: appos
-    DEP_FUNC = 1 << 29    # Function words: det, case, mark, aux, auxpass, cop, expl, neg
-    DEP_STRUCT = 1 << 30  # Structure: root, conj, cc, compound, flat, fixed, list, parataxis, discourse
-    DEP_PUNCT = 1 << 31   # Punctuation: punct, goeswith, reparandum, orphan
+        # Finer dependency groups (bits 17-31 + offset)
+        ("DEP_SUBJ", 1 << (17 + offset)),    # Subjects: nsubj, nsubjpass, csubj, csubjpass, agent
+        ("DEP_OBJ", 1 << (18 + offset)),     # Objects: obj, iobj, dobj
+        ("DEP_OBL", 1 << (19 + offset)),     # Oblique: obl, obl:*
+        ("DEP_NMOD", 1 << (20 + offset)),    # Nominal modifier: nmod, nmod:*
+        ("DEP_CCOMP", 1 << (21 + offset)),   # Clausal complement: ccomp
+        ("DEP_XCOMP", 1 << (22 + offset)),   # Open clausal complement: xcomp
+        ("DEP_ADVCL", 1 << (23 + offset)),   # Adverbial clause: advcl
+        ("DEP_ACL", 1 << (24 + offset)),     # Adnominal clause: acl, acl:relcl
+        ("DEP_AMOD", 1 << (25 + offset)),    # Adjectival modifier: amod
+        ("DEP_ADVMOD", 1 << (26 + offset)),  # Adverbial modifier: advmod
+        ("DEP_NUMMOD", 1 << (27 + offset)),  # Numeral modifier: nummod, nummod:*
+        ("DEP_APPOS", 1 << (28 + offset)),   # Apposition: appos
+        ("DEP_FUNC", 1 << (29 + offset)),    # Function words: det, case, mark, aux, auxpass, cop, expl, neg
+        ("DEP_STRUCT", 1 << (30 + offset)),  # Structure: root, conj, cc, compound, flat, fixed, list, parataxis, discourse
+        ("DEP_PUNCT", 1 << (31 + offset)),   # Punctuation: punct, goeswith, reparandum, orphan
 
-    # Finer morphological features (bits 32-47)
-    MORPH_SING = 1 << 32      # Number=Sing
-    MORPH_PLUR = 1 << 33      # Number=Plur
-    MORPH_PAST = 1 << 34      # Tense=Past
-    MORPH_PRES = 1 << 35      # Tense=Pres
-    MORPH_FUT = 1 << 36       # Tense=Fut
-    MORPH_PASS = 1 << 37      # Voice=Pass
-    MORPH_PERSON_1 = 1 << 38  # Person=1
-    MORPH_PERSON_2 = 1 << 39  # Person=2
-    MORPH_PERSON_3 = 1 << 40  # Person=3
-    MORPH_PERF = 1 << 41      # Aspect=Perf
-    MORPH_PROG = 1 << 42      # Aspect=Prog
-    MORPH_IND = 1 << 43       # Mood=Ind
-    MORPH_IMP = 1 << 44       # Mood=Imp
-    MORPH_INF = 1 << 45       # VerbForm=Inf
-    MORPH_PART = 1 << 46      # VerbForm=Part
-    MORPH_GER = 1 << 47       # VerbForm=Ger
-
-
-# Mapping from fine-grained spaCy dependencies to 32-bit coarse DEP groups
-DEP_TO_COARSE32: dict[str, int] = {
-    # Subjects
-    "nsubj": NLPType32.DEP_SUBJ,
-    "nsubjpass": NLPType32.DEP_SUBJ,
-    "csubj": NLPType32.DEP_SUBJ,
-    "csubjpass": NLPType32.DEP_SUBJ,
-    "agent": NLPType32.DEP_SUBJ,
-
-    # Objects
-    "obj": NLPType32.DEP_OBJ,
-    "iobj": NLPType32.DEP_OBJ,
-    "dobj": NLPType32.DEP_OBJ,
-
-    # Oblique/adjunct
-    "obl": NLPType32.DEP_OBL,
-    "obl:agent": NLPType32.DEP_OBL,
-    "obl:tmod": NLPType32.DEP_OBL,
-    "iobl": NLPType32.DEP_OBL,
-    "nmod": NLPType32.DEP_OBL,
-    "nmod:npmod": NLPType32.DEP_OBL,
-    "nmod:tmod": NLPType32.DEP_OBL,
-    "nmod:poss": NLPType32.DEP_OBL,
-
-    # Complements
-    "ccomp": NLPType32.DEP_COMP,
-    "xcomp": NLPType32.DEP_COMP,
-    "advcl": NLPType32.DEP_COMP,
-    "acl": NLPType32.DEP_COMP,
-    "acl:relcl": NLPType32.DEP_COMP,
-    "relcl": NLPType32.DEP_COMP,
-
-    # Modifiers
-    "amod": NLPType32.DEP_MOD,
-    "advmod": NLPType32.DEP_MOD,
-    "nummod": NLPType32.DEP_MOD,
-    "nummod:gov": NLPType32.DEP_MOD,
-    "nummod:entity": NLPType32.DEP_MOD,
-    "appos": NLPType32.DEP_MOD,
-
-    # Function words
-    "det": NLPType32.DEP_FUNC,
-    "det:predet": NLPType32.DEP_FUNC,
-    "case": NLPType32.DEP_FUNC,
-    "mark": NLPType32.DEP_FUNC,
-    "aux": NLPType32.DEP_FUNC,
-    "auxpass": NLPType32.DEP_FUNC,
-    "cop": NLPType32.DEP_FUNC,
-    "expl": NLPType32.DEP_FUNC,
-    "neg": NLPType32.DEP_FUNC,
-
-    # Structure
-    "root": NLPType32.DEP_STRUCT,
-    "conj": NLPType32.DEP_STRUCT,
-    "cc": NLPType32.DEP_STRUCT,
-    "cc:preconj": NLPType32.DEP_STRUCT,
-    "compound": NLPType32.DEP_STRUCT,
-    "compound:prt": NLPType32.DEP_STRUCT,
-    "flat": NLPType32.DEP_STRUCT,
-    "flat:foreign": NLPType32.DEP_STRUCT,
-    "fixed": NLPType32.DEP_STRUCT,
-    "list": NLPType32.DEP_STRUCT,
-    "parataxis": NLPType32.DEP_STRUCT,
-    "discourse": NLPType32.DEP_STRUCT,
-    "vocative": NLPType32.DEP_STRUCT,
-    "dislocated": NLPType32.DEP_STRUCT,
-
-    # Punctuation/other
-    "punct": NLPType32.DEP_PUNCT,
-    "goeswith": NLPType32.DEP_PUNCT,
-    "reparandum": NLPType32.DEP_PUNCT,
-    "orphan": NLPType32.DEP_PUNCT,
-}
-
-# Mapping from fine-grained morph features to 32-bit coarse MORPH flags
-MORPH_TO_COARSE32: dict[str, int] = {
-    # Number
-    "Number=Sing": NLPType32.MORPH_SING,
-    "Number=Plur": NLPType32.MORPH_PLUR,
-
-    # Tense
-    "Tense=Past": NLPType32.MORPH_PAST,
-    "Tense=Pres": NLPType32.MORPH_PRES,
-
-    # Voice
-    "Voice=Pass": NLPType32.MORPH_PASS,
-
-    # Person
-    "Person=3": NLPType32.MORPH_PERSON_3,
-
-    # Aspect
-    "Aspect=Perf": NLPType32.MORPH_PERF,
-}
-
-# POS tag to NLPType32 mapping (shared between 32-bit and 48-bit)
-POS_TO_COARSE: dict[str, int] = {
-    "ADJ": NLPType32.POS_ADJ,
-    "ADP": NLPType32.POS_ADP,
-    "ADV": NLPType32.POS_ADV,
-    "AUX": NLPType32.POS_AUX,
-    "CCONJ": NLPType32.POS_CCONJ,
-    "DET": NLPType32.POS_DET,
-    "INTJ": NLPType32.POS_INTJ,
-    "NOUN": NLPType32.POS_NOUN,
-    "NUM": NLPType32.POS_NUM,
-    "PART": NLPType32.POS_PART,
-    "PRON": NLPType32.POS_PRON,
-    "PROPN": NLPType32.POS_PROPN,
-    "PUNCT": NLPType32.POS_PUNCT,
-    "SCONJ": NLPType32.POS_SCONJ,
-    "SYM": NLPType32.POS_SYM,
-    "VERB": NLPType32.POS_VERB,
-    "X": NLPType32.POS_X,
-}
+        # Finer morphological features (bits 32-47 + offset)
+        ("MORPH_SING", 1 << (32 + offset)),      # Number=Sing
+        ("MORPH_PLUR", 1 << (33 + offset)),      # Number=Plur
+        ("MORPH_PAST", 1 << (34 + offset)),      # Tense=Past
+        ("MORPH_PRES", 1 << (35 + offset)),      # Tense=Pres
+        ("MORPH_FUT", 1 << (36 + offset)),       # Tense=Fut
+        ("MORPH_PASS", 1 << (37 + offset)),      # Voice=Pass
+        ("MORPH_PERSON_1", 1 << (38 + offset)),  # Person=1
+        ("MORPH_PERSON_2", 1 << (39 + offset)),  # Person=2
+        ("MORPH_PERSON_3", 1 << (40 + offset)),  # Person=3
+        ("MORPH_PERF", 1 << (41 + offset)),      # Aspect=Perf
+        ("MORPH_PROG", 1 << (42 + offset)),      # Aspect=Prog
+        ("MORPH_IND", 1 << (43 + offset)),       # Mood=Ind
+        ("MORPH_IMP", 1 << (44 + offset)),       # Mood=Imp
+        ("MORPH_INF", 1 << (45 + offset)),       # VerbForm=Inf
+        ("MORPH_PART", 1 << (46 + offset)),      # VerbForm=Part
+        ("MORPH_GER", 1 << (47 + offset)),       # VerbForm=Ger
+    ])
 
 
-# ============================================================================
-# 48-bit NLP type mappings (finer-grained)
-# ============================================================================
+def build_dep_to_coarse32(nlp_type32: type) -> dict[str, int]:
+    """Build mapping from spaCy dependencies to 32-bit coarse DEP groups."""
+    return {
+        # Subjects
+        "nsubj": nlp_type32.DEP_SUBJ,
+        "nsubjpass": nlp_type32.DEP_SUBJ,
+        "csubj": nlp_type32.DEP_SUBJ,
+        "csubjpass": nlp_type32.DEP_SUBJ,
+        "agent": nlp_type32.DEP_SUBJ,
+        # Objects
+        "obj": nlp_type32.DEP_OBJ,
+        "iobj": nlp_type32.DEP_OBJ,
+        "dobj": nlp_type32.DEP_OBJ,
+        # Oblique/adjunct
+        "obl": nlp_type32.DEP_OBL,
+        "obl:agent": nlp_type32.DEP_OBL,
+        "obl:tmod": nlp_type32.DEP_OBL,
+        "iobl": nlp_type32.DEP_OBL,
+        "nmod": nlp_type32.DEP_OBL,
+        "nmod:npmod": nlp_type32.DEP_OBL,
+        "nmod:tmod": nlp_type32.DEP_OBL,
+        "nmod:poss": nlp_type32.DEP_OBL,
+        # Complements
+        "ccomp": nlp_type32.DEP_COMP,
+        "xcomp": nlp_type32.DEP_COMP,
+        "advcl": nlp_type32.DEP_COMP,
+        "acl": nlp_type32.DEP_COMP,
+        "acl:relcl": nlp_type32.DEP_COMP,
+        "relcl": nlp_type32.DEP_COMP,
+        # Modifiers
+        "amod": nlp_type32.DEP_MOD,
+        "advmod": nlp_type32.DEP_MOD,
+        "nummod": nlp_type32.DEP_MOD,
+        "nummod:gov": nlp_type32.DEP_MOD,
+        "nummod:entity": nlp_type32.DEP_MOD,
+        "appos": nlp_type32.DEP_MOD,
+        # Function words
+        "det": nlp_type32.DEP_FUNC,
+        "det:predet": nlp_type32.DEP_FUNC,
+        "case": nlp_type32.DEP_FUNC,
+        "mark": nlp_type32.DEP_FUNC,
+        "aux": nlp_type32.DEP_FUNC,
+        "auxpass": nlp_type32.DEP_FUNC,
+        "cop": nlp_type32.DEP_FUNC,
+        "expl": nlp_type32.DEP_FUNC,
+        "neg": nlp_type32.DEP_FUNC,
+        # Structure
+        "root": nlp_type32.DEP_STRUCT,
+        "conj": nlp_type32.DEP_STRUCT,
+        "cc": nlp_type32.DEP_STRUCT,
+        "cc:preconj": nlp_type32.DEP_STRUCT,
+        "compound": nlp_type32.DEP_STRUCT,
+        "compound:prt": nlp_type32.DEP_STRUCT,
+        "flat": nlp_type32.DEP_STRUCT,
+        "flat:foreign": nlp_type32.DEP_STRUCT,
+        "fixed": nlp_type32.DEP_STRUCT,
+        "list": nlp_type32.DEP_STRUCT,
+        "parataxis": nlp_type32.DEP_STRUCT,
+        "discourse": nlp_type32.DEP_STRUCT,
+        "vocative": nlp_type32.DEP_STRUCT,
+        "dislocated": nlp_type32.DEP_STRUCT,
+        # Punctuation/other
+        "punct": nlp_type32.DEP_PUNCT,
+        "goeswith": nlp_type32.DEP_PUNCT,
+        "reparandum": nlp_type32.DEP_PUNCT,
+        "orphan": nlp_type32.DEP_PUNCT,
+    }
 
-# Mapping from fine-grained spaCy dependencies to 48-bit finer DEP groups
-DEP_TO_COARSE48: dict[str, int] = {
-    # Subjects
-    "nsubj": NLPType48.DEP_SUBJ,
-    "nsubjpass": NLPType48.DEP_SUBJ,
-    "csubj": NLPType48.DEP_SUBJ,
-    "csubjpass": NLPType48.DEP_SUBJ,
-    "agent": NLPType48.DEP_SUBJ,
 
-    # Objects
-    "obj": NLPType48.DEP_OBJ,
-    "iobj": NLPType48.DEP_OBJ,
-    "dobj": NLPType48.DEP_OBJ,
+def build_morph_to_coarse32(nlp_type32: type) -> dict[str, int]:
+    """Build mapping from morph features to 32-bit coarse MORPH flags."""
+    return {
+        "Number=Sing": nlp_type32.MORPH_SING,
+        "Number=Plur": nlp_type32.MORPH_PLUR,
+        "Tense=Past": nlp_type32.MORPH_PAST,
+        "Tense=Pres": nlp_type32.MORPH_PRES,
+        "Voice=Pass": nlp_type32.MORPH_PASS,
+        "Person=3": nlp_type32.MORPH_PERSON_3,
+        "Aspect=Perf": nlp_type32.MORPH_PERF,
+    }
 
-    # Oblique
-    "obl": NLPType48.DEP_OBL,
-    "obl:agent": NLPType48.DEP_OBL,
-    "obl:tmod": NLPType48.DEP_OBL,
 
-    # Nominal modifiers
-    "nmod": NLPType48.DEP_NMOD,
-    "nmod:npmod": NLPType48.DEP_NMOD,
-    "nmod:tmod": NLPType48.DEP_NMOD,
-    "nmod:poss": NLPType48.DEP_NMOD,
+def build_pos_to_coarse(nlp_type: type) -> dict[str, int]:
+    """Build mapping from POS tags to NLP type flags (shared between 32-bit and 48-bit)."""
+    return {
+        "ADJ": nlp_type.POS_ADJ,
+        "ADP": nlp_type.POS_ADP,
+        "ADV": nlp_type.POS_ADV,
+        "AUX": nlp_type.POS_AUX,
+        "CCONJ": nlp_type.POS_CCONJ,
+        "DET": nlp_type.POS_DET,
+        "INTJ": nlp_type.POS_INTJ,
+        "NOUN": nlp_type.POS_NOUN,
+        "NUM": nlp_type.POS_NUM,
+        "PART": nlp_type.POS_PART,
+        "PRON": nlp_type.POS_PRON,
+        "PROPN": nlp_type.POS_PROPN,
+        "PUNCT": nlp_type.POS_PUNCT,
+        "SCONJ": nlp_type.POS_SCONJ,
+        "SYM": nlp_type.POS_SYM,
+        "VERB": nlp_type.POS_VERB,
+        "X": nlp_type.POS_X,
+    }
 
-    # Clausal complements
-    "ccomp": NLPType48.DEP_CCOMP,
-    "xcomp": NLPType48.DEP_XCOMP,
 
-    # Clauses
-    "advcl": NLPType48.DEP_ADVCL,
-    "acl": NLPType48.DEP_ACL,
-    "acl:relcl": NLPType48.DEP_ACL,
-    "relcl": NLPType48.DEP_ACL,
+def build_dep_to_coarse48(nlp_type48: type) -> dict[str, int]:
+    """Build mapping from spaCy dependencies to 48-bit finer DEP groups."""
+    return {
+        # Subjects
+        "nsubj": nlp_type48.DEP_SUBJ,
+        "nsubjpass": nlp_type48.DEP_SUBJ,
+        "csubj": nlp_type48.DEP_SUBJ,
+        "csubjpass": nlp_type48.DEP_SUBJ,
+        "agent": nlp_type48.DEP_SUBJ,
+        # Objects
+        "obj": nlp_type48.DEP_OBJ,
+        "iobj": nlp_type48.DEP_OBJ,
+        "dobj": nlp_type48.DEP_OBJ,
+        # Oblique
+        "obl": nlp_type48.DEP_OBL,
+        "obl:agent": nlp_type48.DEP_OBL,
+        "obl:tmod": nlp_type48.DEP_OBL,
+        # Nominal modifiers
+        "nmod": nlp_type48.DEP_NMOD,
+        "nmod:npmod": nlp_type48.DEP_NMOD,
+        "nmod:tmod": nlp_type48.DEP_NMOD,
+        "nmod:poss": nlp_type48.DEP_NMOD,
+        # Clausal complements
+        "ccomp": nlp_type48.DEP_CCOMP,
+        "xcomp": nlp_type48.DEP_XCOMP,
+        # Clauses
+        "advcl": nlp_type48.DEP_ADVCL,
+        "acl": nlp_type48.DEP_ACL,
+        "acl:relcl": nlp_type48.DEP_ACL,
+        "relcl": nlp_type48.DEP_ACL,
+        # Modifiers (separate groups)
+        "amod": nlp_type48.DEP_AMOD,
+        "advmod": nlp_type48.DEP_ADVMOD,
+        "nummod": nlp_type48.DEP_NUMMOD,
+        "nummod:gov": nlp_type48.DEP_NUMMOD,
+        "nummod:entity": nlp_type48.DEP_NUMMOD,
+        "appos": nlp_type48.DEP_APPOS,
+        # Function words
+        "det": nlp_type48.DEP_FUNC,
+        "det:predet": nlp_type48.DEP_FUNC,
+        "case": nlp_type48.DEP_FUNC,
+        "mark": nlp_type48.DEP_FUNC,
+        "aux": nlp_type48.DEP_FUNC,
+        "auxpass": nlp_type48.DEP_FUNC,
+        "cop": nlp_type48.DEP_FUNC,
+        "expl": nlp_type48.DEP_FUNC,
+        "neg": nlp_type48.DEP_FUNC,
+        # Structure
+        "root": nlp_type48.DEP_STRUCT,
+        "conj": nlp_type48.DEP_STRUCT,
+        "cc": nlp_type48.DEP_STRUCT,
+        "cc:preconj": nlp_type48.DEP_STRUCT,
+        "compound": nlp_type48.DEP_STRUCT,
+        "compound:prt": nlp_type48.DEP_STRUCT,
+        "flat": nlp_type48.DEP_STRUCT,
+        "flat:foreign": nlp_type48.DEP_STRUCT,
+        "fixed": nlp_type48.DEP_STRUCT,
+        "list": nlp_type48.DEP_STRUCT,
+        "parataxis": nlp_type48.DEP_STRUCT,
+        "discourse": nlp_type48.DEP_STRUCT,
+        "vocative": nlp_type48.DEP_STRUCT,
+        "dislocated": nlp_type48.DEP_STRUCT,
+        # Punctuation/other
+        "punct": nlp_type48.DEP_PUNCT,
+        "goeswith": nlp_type48.DEP_PUNCT,
+        "reparandum": nlp_type48.DEP_PUNCT,
+        "orphan": nlp_type48.DEP_PUNCT,
+    }
 
-    # Modifiers (separate groups)
-    "amod": NLPType48.DEP_AMOD,
-    "advmod": NLPType48.DEP_ADVMOD,
-    "nummod": NLPType48.DEP_NUMMOD,
-    "nummod:gov": NLPType48.DEP_NUMMOD,
-    "nummod:entity": NLPType48.DEP_NUMMOD,
-    "appos": NLPType48.DEP_APPOS,
 
-    # Function words
-    "det": NLPType48.DEP_FUNC,
-    "det:predet": NLPType48.DEP_FUNC,
-    "case": NLPType48.DEP_FUNC,
-    "mark": NLPType48.DEP_FUNC,
-    "aux": NLPType48.DEP_FUNC,
-    "auxpass": NLPType48.DEP_FUNC,
-    "cop": NLPType48.DEP_FUNC,
-    "expl": NLPType48.DEP_FUNC,
-    "neg": NLPType48.DEP_FUNC,
+def build_morph_to_coarse48(nlp_type48: type) -> dict[str, int]:
+    """Build mapping from morph features to 48-bit finer MORPH flags."""
+    return {
+        "Number=Sing": nlp_type48.MORPH_SING,
+        "Number=Plur": nlp_type48.MORPH_PLUR,
+        "Tense=Past": nlp_type48.MORPH_PAST,
+        "Tense=Pres": nlp_type48.MORPH_PRES,
+        "Tense=Fut": nlp_type48.MORPH_FUT,
+        "Voice=Pass": nlp_type48.MORPH_PASS,
+        "Person=1": nlp_type48.MORPH_PERSON_1,
+        "Person=2": nlp_type48.MORPH_PERSON_2,
+        "Person=3": nlp_type48.MORPH_PERSON_3,
+        "Aspect=Perf": nlp_type48.MORPH_PERF,
+        "Aspect=Prog": nlp_type48.MORPH_PROG,
+        "Mood=Ind": nlp_type48.MORPH_IND,
+        "Mood=Imp": nlp_type48.MORPH_IMP,
+        "VerbForm=Inf": nlp_type48.MORPH_INF,
+        "VerbForm=Part": nlp_type48.MORPH_PART,
+        "VerbForm=Ger": nlp_type48.MORPH_GER,
+    }
 
-    # Structure
-    "root": NLPType48.DEP_STRUCT,
-    "conj": NLPType48.DEP_STRUCT,
-    "cc": NLPType48.DEP_STRUCT,
-    "cc:preconj": NLPType48.DEP_STRUCT,
-    "compound": NLPType48.DEP_STRUCT,
-    "compound:prt": NLPType48.DEP_STRUCT,
-    "flat": NLPType48.DEP_STRUCT,
-    "flat:foreign": NLPType48.DEP_STRUCT,
-    "fixed": NLPType48.DEP_STRUCT,
-    "list": NLPType48.DEP_STRUCT,
-    "parataxis": NLPType48.DEP_STRUCT,
-    "discourse": NLPType48.DEP_STRUCT,
-    "vocative": NLPType48.DEP_STRUCT,
-    "dislocated": NLPType48.DEP_STRUCT,
 
-    # Punctuation/other
-    "punct": NLPType48.DEP_PUNCT,
-    "goeswith": NLPType48.DEP_PUNCT,
-    "reparandum": NLPType48.DEP_PUNCT,
-    "orphan": NLPType48.DEP_PUNCT,
-}
+# Global NLP type classes and mappings (initialized with defaults, updated by init_nlp_types)
+NLPType32: type = create_nlp_type32(high_bits=False)
+NLPType48: type = create_nlp_type48(high_bits=False)
+POS_TO_COARSE: dict[str, int] = {}
+DEP_TO_COARSE32: dict[str, int] = {}
+MORPH_TO_COARSE32: dict[str, int] = {}
+DEP_TO_COARSE48: dict[str, int] = {}
+MORPH_TO_COARSE48: dict[str, int] = {}
 
-# Mapping from fine-grained morph features to 48-bit finer MORPH flags
-MORPH_TO_COARSE48: dict[str, int] = {
-    # Number
-    "Number=Sing": NLPType48.MORPH_SING,
-    "Number=Plur": NLPType48.MORPH_PLUR,
 
-    # Tense
-    "Tense=Past": NLPType48.MORPH_PAST,
-    "Tense=Pres": NLPType48.MORPH_PRES,
-    "Tense=Fut": NLPType48.MORPH_FUT,
+def init_nlp_types(high_bits: bool = False) -> None:
+    """
+    Initialize NLP type classes and mappings with specified bit positioning.
 
-    # Voice
-    "Voice=Pass": NLPType48.MORPH_PASS,
+    Args:
+        high_bits: If True, use high bits (32-63 for 32-bit, 16-63 for 48-bit).
+                   If False, use low bits (default, 0-31 for 32-bit, 0-47 for 48-bit).
+    """
+    global NLPType32, NLPType48, POS_TO_COARSE
+    global DEP_TO_COARSE32, MORPH_TO_COARSE32, DEP_TO_COARSE48, MORPH_TO_COARSE48
 
-    # Person
-    "Person=1": NLPType48.MORPH_PERSON_1,
-    "Person=2": NLPType48.MORPH_PERSON_2,
-    "Person=3": NLPType48.MORPH_PERSON_3,
+    # Create IntFlag classes with appropriate bit offsets
+    NLPType32 = create_nlp_type32(high_bits=high_bits)
+    NLPType48 = create_nlp_type48(high_bits=high_bits)
 
-    # Aspect
-    "Aspect=Perf": NLPType48.MORPH_PERF,
-    "Aspect=Prog": NLPType48.MORPH_PROG,
+    # Build mapping dictionaries
+    POS_TO_COARSE = build_pos_to_coarse(NLPType32)
+    DEP_TO_COARSE32 = build_dep_to_coarse32(NLPType32)
+    MORPH_TO_COARSE32 = build_morph_to_coarse32(NLPType32)
+    DEP_TO_COARSE48 = build_dep_to_coarse48(NLPType48)
+    MORPH_TO_COARSE48 = build_morph_to_coarse48(NLPType48)
 
-    # Mood
-    "Mood=Ind": NLPType48.MORPH_IND,
-    "Mood=Imp": NLPType48.MORPH_IMP,
 
-    # VerbForm
-    "VerbForm=Inf": NLPType48.MORPH_INF,
-    "VerbForm=Part": NLPType48.MORPH_PART,
-    "VerbForm=Ger": NLPType48.MORPH_GER,
-}
+# Initialize with default low-bit mode
+init_nlp_types(high_bits=False)
 
 
 def compute_nlp_type32(pos: str, dep: str, morph: str) -> int:
@@ -437,12 +470,12 @@ def compute_nlp_type48(pos: str, dep: str, morph: str) -> int:
 
 def get_nlp_type32_legend() -> dict[str, int]:
     """Return legend mapping flag names to bit values for NLPType32."""
-    return {flag.name: int(flag.value) for flag in NLPType32}
+    return {name: int(getattr(NLPType32, name).value) for name in dir(NLPType32) if not name.startswith("_")}
 
 
 def get_nlp_type48_legend() -> dict[str, int]:
     """Return legend mapping flag names to bit values for NLPType48."""
-    return {flag.name: int(flag.value) for flag in NLPType48}
+    return {name: int(getattr(NLPType48, name).value) for name in dir(NLPType48) if not name.startswith("_")}
 
 
 # ============================================================================
@@ -972,8 +1005,19 @@ def main() -> None:
         default=None,
         help="Existing text or JSON file"
     )
+    parser.add_argument(
+        "--high-bits",
+        action="store_true",
+        help="Use high bits for NLP type encodings (bits 32-63 for 32-bit, bits 16-63 for 48-bit). "
+             "Default uses low bits (bits 0-31 for 32-bit, bits 0-47 for 48-bit)."
+    )
 
     args = parser.parse_args()
+
+    # Initialize NLP type system with specified bit positioning
+    init_nlp_types(high_bits=args.high_bits)
+    if args.verbose and args.high_bits:
+        print("Using high-bit mode for NLP type encodings")
 
     # Set default output directory
     if args.output is None:
