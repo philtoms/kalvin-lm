@@ -614,7 +614,7 @@ class TestKalvinPrune:
         assert len(pruned.model) == 0
 
     def test_prune_with_empty_activity(self):
-        """Pruning with empty activity counter returns empty model."""
+        """Pruning with empty activity counter returns model unchanged."""
         kl1 = KLine(s_key=0x1000, nodes=[])
         kl2 = KLine(s_key=0x2000, nodes=[])
         model = Model([kl1, kl2])
@@ -622,7 +622,7 @@ class TestKalvinPrune:
 
         pruned = Kalvin(model, activity).prune()
 
-        assert len(pruned.model) == 0
+        assert len(pruned.model) == 2
 
     def test_prune_ignores_keys_not_in_model(self):
         """Activity keys not in model are ignored."""
@@ -645,7 +645,7 @@ class TestKalvinPrune:
         pruned = Kalvin(model, activity).prune()
 
         assert len(model) == 2
-        assert len(pruned.model) == 1
+        assert len(pruned.model) == 2
 
     def test_prune_returns_new_model_instance(self):
         """Prune returns a new Model instance."""

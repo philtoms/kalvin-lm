@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import TypeAlias, Iterator
-from collections import Counter
 
 
 # High bit mask (bit 63)
@@ -93,10 +92,9 @@ def nodes_equal(nodes1: list[KNode], nodes2: list[KNode]) -> bool:
 class Model:
     """A collection of KLines with query and expansion operations.
 
-    Maintains an ordered list of KLines and provides methods for:
-    - Adding KLines with duplicate detection
-    - Querying by significance (AND operation on s_key)
-    - Expanding KLines to traverse their children
+    Internal structure: dict[KSig, KLine] mapping signature to KLine.
+    The dict maintains insertion order (Python 3.7+).
+    Query iteration follows reverse insertion order (newest first).
 
     The model supports two-stream processing for concurrent consumption:
     - Fast stream: for immediate processing by a fast thread
@@ -109,10 +107,10 @@ class Model:
         Args:
             klines: Optional list of KLines to initialize with
         """
-        self._klines: list[KLine] = klines.copy() if klines else []
-        self._signatures: dict[int, int] = {
-            kline.s_key: i for i, kline in enumerate(self._klines)
-        }
+        self._klines: dict[int, KLine] = {}
+        if klines:
+            for kline in klines:
+                self._klines[kline.s_key] = kline
 
     def add_kline(self, kline: KLine) -> bool:
         """Add a KLine, enforcing the duplicate key invariant.
@@ -126,26 +124,23 @@ class Model:
             kline: KLine to add
 
         Returns:
-            index if added, None if rejected (exact duplicate)
+            True if added, False if rejected (exact duplicate)
         """
-        if kline.s_key in self._signatures:
-            existing = self.find_by_key(kline.s_key)
-            if existing and nodes_equal(existing.nodes, kline.nodes):
+        if kline.s_key in self._klines:
+            if nodes_equal(self._klines[kline.s_key].nodes, kline.nodes):
                 return False  # Exact duplicate, reject
 
-        # All klines have signatures
-        self._signatures[kline.s_key] = len(self._klines)
-        # classic LIFO operation for focus
-        self._klines.append(kline)
+        self._klines[kline.s_key] = kline
         return True
 
     def add_signature(self, kline: KLine) -> KSig:
         """Add a Signature KLine, enforcing the signature key invariant.
+
         Args:
             kline: KLine to add
 
         Returns:
-            index if added, None if rejected (exact duplicate)
+            s_key if added, None if rejected (exact duplicate)
         """
         kline.s_key |= HIGH_BIT_MASK
         return kline.s_key if self.add_kline(kline) else None
@@ -166,11 +161,7 @@ class Model:
         """
         if key is None:
             return None
-        
-        index = self._signatures.get(key)
-        if index is not None:
-            return self._klines[index]
-        return None
+        return self._klines.get(key)
 
     def query(
         self,
@@ -183,6 +174,8 @@ class Model:
         1. Fast stream: yields matching KLines immediately (up to focus_limit)
         2. Slow stream: yields remaining matching KLines
 
+        Iteration follows reverse insertion order (newest first).
+
         Args:
             query: The query value to match (AND operation on s_key)
             focus_limit: Number of top-level matches in fast (0 = all in fast)
@@ -191,13 +184,14 @@ class Model:
         Returns:
             Tuple of (fast_generator, slow_generator) that yield KLines.
         """
-        klines = self._klines
-        n = len(klines)
+        # Get klines in insertion order, then iterate in reverse
+        klines_list = list(self._klines.values())
+        n = len(klines_list)
 
         def fast_generator() -> Iterator[KLine]:
             count = 0
             for i in range(n - 1, -1, -1):
-                kline = klines[i]
+                kline = klines_list[i]
                 if kline.signifies(query):
                     if focus_limit > 0 and count >= focus_limit:
                         break
@@ -209,7 +203,7 @@ class Model:
                 return  # No slow when focus_limit is 0
             count = 0
             for i in range(n - 1, -1, -1):
-                kline = klines[i]
+                kline = klines_list[i]
                 if kline.signifies(query):
                     if count >= focus_limit:
                         yield kline
@@ -306,18 +300,20 @@ class Model:
 
         return fast_generator(), slow_generator()
 
-
     def duplicate(self) -> "Model":
-        return Model(self._klines)
-    
+        """Create a duplicate of this model."""
+        klines = [KLine(s_key=kline.s_key, nodes=kline.nodes.copy())
+                  for kline in self._klines.values()]
+        return Model(klines)
+
     def __len__(self) -> int:
         """Return the number of KLines in the model."""
         return len(self._klines)
 
     def __iter__(self) -> Iterator[KLine]:
-        """Iterate over all KLines in the model."""
-        return iter(self._klines)
+        """Iterate over all KLines in insertion order."""
+        return iter(self._klines.values())
 
     def __getitem__(self, index: int) -> KLine:
-        """Get a KLine by index."""
-        return self._klines[index]
+        """Get a KLine by insertion order index."""
+        return list(self._klines.values())[index]

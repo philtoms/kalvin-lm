@@ -77,22 +77,25 @@ class Kalvin:
         self,
         level: int = 1
     ) -> "Kalvin":
-        """Prune model to activity level.
+        """Prune model to activity level + untracked activity.
 
         Args:
             level: activity level to keep
         """
         pruned_model: list[KLine] = []
-        for kline in self.model:
+        pruned_activity = Counter()
+
+        for kline in self.model: # retain untracked activity
             if kline.s_key not in self.activity:
                 pruned_model.append(kline)
-        pruned_activity = Counter()
+        
         for key, count in self.activity.items():
             if count >= level:
                 kline = self.model.find_by_key(key)
                 if kline:
                     pruned_model.append(kline)
                     pruned_activity[key]=count
+        
         model = Model(pruned_model)
         return Kalvin(model, pruned_activity)
 
