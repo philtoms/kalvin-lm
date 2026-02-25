@@ -623,6 +623,20 @@ def load_texts_from_json(file_path: Path) -> list[str]:
         raise ValueError(f"Unsupported JSON structure in {file_path}")
 
 
+def filter_empty_texts(texts: list[str], verbose: bool = False) -> list[str]:
+    """
+    Filter out empty or whitespace-only text segments.
+
+    Empty texts can cause crashes with transformer models (e.g., en_core_web_trf).
+    """
+    original_count = len(texts)
+    filtered = [t for t in texts if t and t.strip()]
+    removed_count = original_count - len(filtered)
+    if verbose and removed_count > 0:
+        print(f"Filtered out {removed_count:,} empty text segments ({original_count:,} -> {len(filtered):,})")
+    return filtered
+
+
 def load_texts_from_file(file_path: Path) -> list[str]:
     """Load texts from a file (JSON or plain text)."""
     if file_path.suffix.lower() == ".json":
@@ -1082,6 +1096,9 @@ def main() -> None:
     if args.verbose:
         print(f"Reading file: {args.input}")
     texts = load_texts_from_file(args.input)
+
+    # Filter out empty texts (can crash transformer models)
+    texts = filter_empty_texts(texts, verbose=args.verbose)
 
     if args.verbose:
         total_chars = sum(len(t) for t in texts)
