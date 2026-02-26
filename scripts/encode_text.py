@@ -25,15 +25,20 @@ from kalvin import Kalvin
 
 # Global state for interrupt handling
 _interrupted = False
-
+_signalled = False;
 
 def signal_handler(signum, frame):
     """Handle Ctrl+C gracefully."""
     global _interrupted
-    _interrupted = True
-    print("\n\nInterrupt received, saving model...")
-
-
+    global _signalled
+    if not _interrupted:
+        _interrupted = True
+        print("\n\nInterrupt received, saving model...")
+    else:
+        _interrupted = False
+        _signalled = True
+        raise Exception("Already signalled - closing")
+    
 def split_into_sentences(text: str) -> list[str]:
     """Split text into sentences using simple regex-based splitting.
 

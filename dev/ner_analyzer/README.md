@@ -169,43 +169,43 @@ Hardcoded flags with more granular DEP and MORPH:
 - Bits 48-63: Finer morph features (16 features)
 
 **Finer DEP groups (48-bit):**
-| Group | Dependencies |
-|-------|--------------|
-| `DEP_SUBJ` | nsubj, nsubjpass, csubj, csubjpass, agent |
-| `DEP_OBJ` | obj, iobj, dobj |
-| `DEP_OBL` | obl, obl:* |
-| `DEP_NMOD` | nmod, nmod:* |
-| `DEP_CCOMP` | ccomp |
-| `DEP_XCOMP` | xcomp |
-| `DEP_ADVCL` | advcl |
-| `DEP_ACL` | acl, acl:relcl |
-| `DEP_AMOD` | amod |
-| `DEP_ADVMOD` | advmod |
-| `DEP_NUMMOD` | nummod, nummod:* |
-| `DEP_APPOS` | appos |
-| `DEP_FUNC` | det, case, mark, aux, auxpass, cop, expl, neg |
-| `DEP_STRUCT` | root, conj, cc, compound, flat, fixed, list, parataxis, discourse |
-| `DEP_PUNCT` | punct, goeswith, reparandum, orphan |
+| Group | Dependencies | Description |
+|-------|--------------|-------------|
+| `DEP_SUBJ` | nsubj, nsubjpass, csubj, csubjpass, agent | Clause subjects |
+| `DEP_OBJ` | obj, iobj, dobj | Direct/indirect objects |
+| `DEP_OBL` | obl, obl:* | Oblique nominals (adjuncts) |
+| `DEP_NMOD` | nmod, nmod:* | Nominal modifiers |
+| `DEP_CCOMP` | ccomp | Clausal complements |
+| `DEP_XCOMP` | xcomp | Open clausal complements |
+| `DEP_ADVCL` | advcl | Adverbial clause modifiers |
+| `DEP_ACL` | acl, acl:relcl | Adnominal clause modifiers |
+| `DEP_AMOD` | amod | Adjectival modifiers |
+| `DEP_ADVMOD` | advmod | Adverbial modifiers |
+| `DEP_NUMMOD` | nummod, nummod:* | Numeral modifiers |
+| `DEP_APPOS` | appos | Appositional modifiers |
+| `DEP_FUNC` | det, case, mark, aux, auxpass, cop, expl, neg | Function words |
+| `DEP_STRUCT` | root, conj, cc, compound, flat, fixed, list, parataxis, discourse | Structural relations |
+| `DEP_PUNCT` | punct, goeswith, reparandum, orphan | Punctuation and repairs |
 
 **Finer MORPH features (48-bit):**
-| Flag | Feature |
-|------|---------|
-| `MORPH_SING` | Number=Sing |
-| `MORPH_PLUR` | Number=Plur |
-| `MORPH_PAST` | Tense=Past |
-| `MORPH_PRES` | Tense=Pres |
-| `MORPH_FUT` | Tense=Fut |
-| `MORPH_PASS` | Voice=Pass |
-| `MORPH_PERSON_1` | Person=1 |
-| `MORPH_PERSON_2` | Person=2 |
-| `MORPH_PERSON_3` | Person=3 |
-| `MORPH_PERF` | Aspect=Perf |
-| `MORPH_PROG` | Aspect=Prog |
-| `MORPH_IND` | Mood=Ind |
-| `MORPH_IMP` | Mood=Imp |
-| `MORPH_INF` | VerbForm=Inf |
-| `MORPH_PART` | VerbForm=Part |
-| `MORPH_GER` | VerbForm=Ger |
+| Flag | Feature | Description |
+|------|---------|-------------|
+| `MORPH_SING` | Number=Sing | Singular number |
+| `MORPH_PLUR` | Number=Plur | Plural number |
+| `MORPH_PAST` | Tense=Past | Past tense |
+| `MORPH_PRES` | Tense=Pres | Present tense |
+| `MORPH_FUT` | Tense=Fut | Future tense |
+| `MORPH_PASS` | Voice=Pass | Passive voice |
+| `MORPH_PERSON_1` | Person=1 | First person |
+| `MORPH_PERSON_2` | Person=2 | Second person |
+| `MORPH_PERSON_3` | Person=3 | Third person |
+| `MORPH_PERF` | Aspect=Perf | Perfective aspect |
+| `MORPH_PROG` | Aspect=Prog | Progressive aspect |
+| `MORPH_IND` | Mood=Ind | Indicative mood |
+| `MORPH_IMP` | Mood=Imp | Imperative mood |
+| `MORPH_INF` | VerbForm=Inf | Infinitive verb form |
+| `MORPH_PART` | VerbForm=Part | Participle verb form |
+| `MORPH_GER` | VerbForm=Ger | Gerund verb form |
 
 ### `{stem}_nlp_fine_types.json` - Fine-grained NLP type legend
 

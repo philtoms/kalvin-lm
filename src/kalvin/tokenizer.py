@@ -3,7 +3,7 @@
 import base64
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING, Any, Iterator, cast
 
 if TYPE_CHECKING:
     import rustbpe
@@ -48,13 +48,15 @@ class PyarrowNotInstalledError(Exception):
 class Tokenizer:
     """BPE tokenizer wrapper supporting rustbpe (training) and tiktoken (inference)."""
 
-    def __init__(self, tokenizer: Any = None):
+    def __init__(self, tokenizer: Any = None, word_aligned: bool = False):
         """Initialize with optional pre-trained tokenizer.
 
         Args:
             tokenizer: Optional rustbpe.Tokenizer or tiktoken.Encoding instance
+            word_aligned: If True, encode returns word-aligned token groups (excludes spaces)
         """
         self._tokenizer = tokenizer
+        self._word_aligned = word_aligned
 
     def _check_available(self) -> None:
         """Raise if tokenizer is not available."""
@@ -227,29 +229,75 @@ class Tokenizer:
             return self._tokenizer.vocab_size
         return self._tokenizer.n_vocab
 
-    def encode(self, text: str) -> list[int]:
+    @property
+    def word_aligned(self) -> bool:
+        """Return whether encode returns word-aligned token groups."""
+        return self._word_aligned
+
+    @word_aligned.setter
+    def word_aligned(self, value: bool) -> None:
+        """Set whether encode returns word-aligned token groups."""
+        self._word_aligned = value
+
+    def encode(self, text: str, word_aligned: bool | None = None) -> list[int] | list[list[int]]:
         """Encode a string to token IDs.
 
         Args:
             text: Input string to encode
+            word_aligned: Override instance word_aligned setting
 
         Returns:
-            List of token IDs
+            List of token IDs, or list of token groups if word_aligned=True
         """
         self._check_available()
-        return self._tokenizer.encode(text)
+        use_word_aligned = word_aligned if word_aligned is not None else self._word_aligned
 
-    def decode(self, ids: list[int]) -> str:
+        if not use_word_aligned:
+            return self._tokenizer.encode(text)
+
+        # Word-aligned mode: group tokens by word, exclude pure whitespace tokens
+        tokens = self._tokenizer.encode(text)
+
+        if not tokens:
+            return []
+
+        # Decode each token to check if it's whitespace
+        groups: list[list[int]] = []
+        current_group: list[int] = []
+
+        for token in tokens:
+            decoded = self._tokenizer.decode([token])
+            if decoded.strip() == "":
+                # Pure whitespace token - save current group if not empty
+                if current_group:
+                    groups.append(current_group)
+                    current_group = []
+            else:
+                current_group.append(token)
+
+        # Don't forget the last group
+        if current_group:
+            groups.append(current_group)
+
+        return groups
+
+    def decode(self, ids: list[int] | list[list[int]]) -> str:
         """Decode token IDs back to a string.
 
         Args:
-            ids: List of token IDs
+            ids: List of token IDs or list of token groups
 
         Returns:
             Decoded string
         """
         self._check_available()
-        return self._tokenizer.decode(ids)
+        # Handle grouped format: flatten first
+        if ids and ids[0] and isinstance(ids[0], list):
+            grouped = cast(list[list[int]], ids)
+            flat_ids: list[int] = [t for group in grouped for t in group]
+            return self._tokenizer.decode(flat_ids)
+        # ids is list[int] here
+        return self._tokenizer.decode(cast(list[int], ids))
 
     def batch_encode(self, texts: list[str]) -> list[list[int]]:
         """Encode multiple strings in parallel.
