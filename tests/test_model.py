@@ -1,60 +1,9 @@
 import pytest
 from kalvin.model import (
     KLine,
-    KLineType,
     Model,
-    HIGH_BIT_MASK,
-    get_node_type,
-    create_signature_key,
-    create_embedding_key,
     nodes_equal,
 )
-
-
-class TestKLineType:
-    def test_kline_type_values(self):
-        """Test KLineType enum values."""
-        assert KLineType.SIGNATURE == 1
-        assert KLineType.EMBEDDING == 0
-
-    def test_high_bit_mask(self):
-        """Test that HIGH_BIT_MASK is the correct bit 63 mask."""
-        assert HIGH_BIT_MASK == 0x8000_0000_0000_0000
-        assert HIGH_BIT_MASK == (1 << 63)
-
-
-class TestKNode:
-    def test_get_node_type_node(self):
-        """Test get_node_type returns NODE for high bit = 1."""
-        node = 0x8000_0000_0000_0000
-        assert get_node_type(node) == KLineType.SIGNATURE
-
-    def test_get_node_type_embedding(self):
-        """Test get_node_type returns EMBEDDING for high bit = 0."""
-        node = 0x7FFF_FFFF_FFFF_FFFF
-        assert get_node_type(node) == KLineType.EMBEDDING
-
-    def test_create_signature_key(self):
-        """Test create_signature_key sets high bit."""
-        key = create_signature_key(0x7FFF_0000_0000_0000)
-        assert key == 0xFFFF_0000_0000_0000
-        assert get_node_type(key) == KLineType.SIGNATURE
-
-    def test_create_embedding_key(self):
-        """Test create_embedding_key clears high bit."""
-        key = create_embedding_key(0x7FFF_0000_0000_0000)
-        assert key == 0x7FFF_0000_0000_0000
-        assert get_node_type(key) == KLineType.EMBEDDING
-
-    def test_create_signature_key_rejects_high_bit(self):
-        """Test create_signature_key raises AssertionError when high bit already set."""
-        with pytest.raises(AssertionError, match="Key value must not use high bit"):
-            create_signature_key(0x8000_0000_0000_0001)
-
-    def test_create_embedding_key_rejects_high_bit(self):
-        """Test create_embedding_key raises AssertionError when high bit already set."""
-        with pytest.raises(AssertionError, match="Key value must not use high bit"):
-            create_embedding_key(0x8000_0000_0000_0001)
 
 
 class TestKLine:
@@ -68,45 +17,36 @@ class TestKLine:
         assert kl.s_key == s_key
         assert kl.nodes == [0x1000, 0x2000]
 
-    def test_type_property_node(self):
-        """Test that type property returns NODE when high bit is 1."""
-        kl = KLine(s_key=0x8000_0000_0000_0000, nodes=[])
-        assert kl.type == KLineType.SIGNATURE
+    def test_create_factory(self):
+        """Test KLine.create factory method combines significance and token."""
+        significance = 0xFF00
+        token = 0x00FF
+        nodes = [0x1000, 0x2000]
 
-    def test_type_property_embedding(self):
-        """Test that type property returns EMBEDDING when high bit is 0."""
-        kl = KLine(s_key=0x7FFF_FFFF_FFFF_FFFF, nodes=[])
-        assert kl.type == KLineType.EMBEDDING
+        kl = KLine.create(significance=significance, token=token, nodes=nodes)
 
-    def test_create_signature_factory(self):
-        """Test create_signature factory sets high bit."""
-        kl = KLine.create_signature(s_key=0x7FFF_0000_0000_0000, nodes=[0x100, 0x200])
+        assert kl.s_key == 0xFFFF  # significance | token
+        assert kl.nodes == [0x1000, 0x2000]
 
-        assert kl.type == KLineType.SIGNATURE
-        assert kl.s_key == 0xFFFF_0000_0000_0000
-        assert kl.nodes == [0x100, 0x200]
+    def test_create_factory_with_zero_significance(self):
+        """Test KLine.create with zero significance."""
+        significance = 0x0000
+        token = 0x1234
+        nodes = []
 
-    def test_create_signature_factory_preserves_high_bit(self):
-        """Test create_signature preserves key when high bit already set."""
-        kl = KLine.create_signature(s_key=0x9234_5678_9ABC_DEF0, nodes=[])
+        kl = KLine.create(significance=significance, token=token, nodes=nodes)
 
-        assert kl.type == KLineType.SIGNATURE
-        assert kl.s_key == 0x9234_5678_9ABC_DEF0
+        assert kl.s_key == 0x1234
 
-    def test_create_embedding_factory(self):
-        """Test create_embedding factory clears high bit."""
-        kl = KLine.create_embedding(s_key=0x9234_5678_9ABC_DEF0, nodes=[0x100])
+    def test_create_factory_with_zero_token(self):
+        """Test KLine.create with zero token."""
+        significance = 0xFF00
+        token = 0x0000
+        nodes = [0x100]
 
-        assert kl.type == KLineType.EMBEDDING
-        assert kl.s_key == 0x1234_5678_9ABC_DEF0
-        assert kl.nodes == [0x100]
+        kl = KLine.create(significance=significance, token=token, nodes=nodes)
 
-    def test_create_embedding_factory_idempotent(self):
-        """Test create_embedding is idempotent when high bit already cleared."""
-        kl = KLine.create_embedding(s_key=0x7FFF_0000_0000_0001, nodes=[])
-
-        assert kl.type == KLineType.EMBEDDING
-        assert kl.s_key == 0x7FFF_0000_0000_0001
+        assert kl.s_key == 0xFF00
 
     def test_store_in_list(self):
         """Test storing KLine objects in a list."""
@@ -160,13 +100,13 @@ class TestNodesEqual:
         assert nodes_equal([0x1000, 0x2000], [0x1000, 0x3000]) is False
 
 
-class TestModelAddSignature:
+class TestModelAddKLine:
     def test_add_new_key(self):
         """Adding a kline with new key succeeds."""
         model = Model()
         kl = KLine(s_key=0x1000, nodes=[])
 
-        result = model.add_signature(kl)
+        result = model.add(kl)
 
         assert result is not None
         assert len(model) == 1
@@ -178,57 +118,10 @@ class TestModelAddSignature:
         kl2 = KLine(s_key=0x1000, nodes=[0x0200])
         model = Model([kl1])
 
-        result = model.add_signature(kl2)
+        result = model.add(kl2)
 
         assert result is not None
         assert len(model) == 2
-
-    def test_reject_exact_duplicate(self):
-        """Adding exact duplicate (same key and nodes) is rejected."""
-        kl1 = KLine.create_signature(s_key=0x1000, nodes=[0x0100, 0x0200])
-        kl2 = KLine.create_signature(s_key=0x1000, nodes=[0x0100, 0x0200])
-        model = Model([kl1])
-
-        result = model.add_signature(kl2)
-
-        assert result is None
-        assert len(model) == 1
-
-    def test_reject_exact_duplicate_empty_nodes(self):
-        """Adding exact duplicate with empty nodes is rejected."""
-        kl1 = KLine.create_signature(s_key=0x1000, nodes=[])
-        kl2 = KLine.create_signature(s_key=0x1000, nodes=[])
-        model = Model([kl1])
-
-        result = model.add_signature(kl2)
-
-        assert result is None
-        assert len(model) == 1
-
-    def test_multiple_keys_all_added(self):
-        """Multiple klines with different keys are all added."""
-        model = Model()
-        kl1 = KLine(s_key=0x1000, nodes=[])
-        kl2 = KLine(s_key=0x2000, nodes=[])
-        kl3 = KLine(s_key=0x3000, nodes=[])
-
-        assert model.add_signature(kl1) is not None
-        assert model.add_signature(kl2) is not None
-        assert model.add_signature(kl3) is not None
-        assert len(model) == 3
-
-
-class TestModelAddEmbedding:    
-    def test_add_new_key(self):
-        """Adding a kline with new key succeeds."""
-        model = Model()
-        kl = KLine(s_key=0x1000, nodes=[])
-
-        result = model.add_embedding(kl)
-
-        assert result is True
-        assert len(model) == 1
-        assert model[0] == kl
 
     def test_reject_exact_duplicate(self):
         """Adding exact duplicate (same key and nodes) is rejected."""
@@ -236,9 +129,9 @@ class TestModelAddEmbedding:
         kl2 = KLine(s_key=0x1000, nodes=[0x0100, 0x0200])
         model = Model([kl1])
 
-        result = model.add_embedding(kl2)
+        result = model.add(kl2)
 
-        assert result is False
+        assert result is None
         assert len(model) == 1
 
     def test_reject_exact_duplicate_empty_nodes(self):
@@ -247,9 +140,9 @@ class TestModelAddEmbedding:
         kl2 = KLine(s_key=0x1000, nodes=[])
         model = Model([kl1])
 
-        result = model.add_embedding(kl2)
+        result = model.add(kl2)
 
-        assert result is False
+        assert result is None
         assert len(model) == 1
 
     def test_multiple_keys_all_added(self):
@@ -259,9 +152,9 @@ class TestModelAddEmbedding:
         kl2 = KLine(s_key=0x2000, nodes=[])
         kl3 = KLine(s_key=0x3000, nodes=[])
 
-        assert model.add_embedding(kl1) is True
-        assert model.add_embedding(kl2) is True
-        assert model.add_embedding(kl3) is True
+        assert model.add(kl1) is not None
+        assert model.add(kl2) is not None
+        assert model.add(kl3) is not None
         assert len(model) == 3
 
 
@@ -332,7 +225,7 @@ class TestModelQuery:
 class TestModelExpand:
     def test_depth_one_returns_klines_only(self):
         """depth=1 returns focus_set without expansion."""
-        key_child = create_signature_key(0x0010)
+        key_child = 0x0010
         parent = KLine(s_key=0xFF00, nodes=[key_child])
         child = KLine(s_key=key_child, nodes=[])
         model = Model([parent, child])
@@ -348,8 +241,8 @@ class TestModelExpand:
 
     def test_depth_expands_children(self):
         """depth=2 expands direct children."""
-        key_child1 = create_signature_key(0x0010)
-        key_child2 = create_signature_key(0x0020)
+        key_child1 = 0x0010
+        key_child2 = 0x0020
 
         child1 = KLine(s_key=key_child1, nodes=[])
         child2 = KLine(s_key=key_child2, nodes=[])
@@ -369,9 +262,9 @@ class TestModelExpand:
 
     def test_depth_limits_expansion(self):
         """Depth parameter limits how many levels of children are expanded."""
-        key_grandchild = create_signature_key(0x0100)
-        key_child = create_signature_key(0x0010)
-        key_parent = create_signature_key(0xF000)
+        key_grandchild = 0x0100
+        key_child = 0x0010
+        key_parent = 0xF000
 
         grandchild = KLine(s_key=key_grandchild, nodes=[])
         child = KLine(s_key=key_child, nodes=[key_grandchild])
@@ -416,8 +309,8 @@ class TestModelExpand:
 
     def test_cycle_detection_stops_expansion(self):
         """Circular references stop expansion."""
-        key_a = create_signature_key(0x0001)
-        key_b = create_signature_key(0x0002)
+        key_a = 0x0001
+        key_b = 0x0002
 
         kl_a = KLine(s_key=key_a, nodes=[key_b])
         kl_b = KLine(s_key=key_b, nodes=[key_a])
@@ -435,7 +328,7 @@ class TestModelExpand:
 
     def test_self_reference_stops_expansion(self):
         """Self-referencing KLine stops expansion."""
-        key = create_signature_key(0xFF00)
+        key = 0xFF00
         kl = KLine(s_key=key, nodes=[key])
         model = Model([kl])
 
@@ -448,31 +341,12 @@ class TestModelExpand:
         assert len(results) == 1
         assert results[0] == kl
 
-    def test_embedding_keys_not_expanded(self):
-        """EMBEDDING keys in nodes list are not expanded."""
-        embedding_key = create_embedding_key(0x1000)
-        node_key = create_signature_key(0x2000)
-
-        child = KLine(s_key=node_key, nodes=[])
-        parent = KLine(s_key=0xFF00, nodes=[embedding_key, node_key])
-        model = Model([parent, child])
-
-        fast_q, _ = model.query(query=0xFF00)
-        focus_set = list(fast_q)
-
-        fast, _ = model.expand(focus_set, depth=2)
-        results = list(fast)
-
-        assert len(results) == 2
-        assert results[1] == parent
-        assert child in results
-
     def test_nested_hierarchy_expansion(self):
         """Test deeply nested hierarchy is expanded correctly."""
-        key_leaf1 = create_signature_key(0x1000)
-        key_leaf2 = create_signature_key(0x2000)
-        key_leaf3 = create_signature_key(0x3000)
-        key_intermediate = create_signature_key(0x0010)
+        key_leaf1 = 0x1000
+        key_leaf2 = 0x2000
+        key_leaf3 = 0x3000
+        key_intermediate = 0x0010
 
         leaf1 = KLine(s_key=key_leaf1, nodes=[])
         leaf2 = KLine(s_key=key_leaf2, nodes=[])
@@ -496,9 +370,9 @@ class TestModelExpand:
 
     def test_cyclic_children_stops_expansion(self):
         """Cyclic children (child references ancestor) stop expansion."""
-        key_root = create_signature_key(0xFF00)
-        key_child = create_signature_key(0x0010)
-        key_grandchild = create_signature_key(0x0100)
+        key_root = 0xFF00
+        key_child = 0x0010
+        key_grandchild = 0x0100
 
         grandchild = KLine(s_key=key_grandchild, nodes=[key_root])
         child = KLine(s_key=key_child, nodes=[key_grandchild])
@@ -516,12 +390,11 @@ class TestModelExpand:
         assert results[1] == root
         assert results[2] == child
 
-
     def test_cyclic_grandchildren_stops_expansion(self):
         """Cyclic grandchildren (grandchild references parent) stop expansion."""
-        key_root = create_signature_key(0xFF00)
-        key_child = create_signature_key(0x0010)
-        key_grandchild = create_signature_key(0x0100)
+        key_root = 0xFF00
+        key_child = 0x0010
+        key_grandchild = 0x0100
 
         grandchild = KLine(s_key=key_grandchild, nodes=[key_child])
         child = KLine(s_key=key_child, nodes=[key_grandchild])
@@ -541,18 +414,18 @@ class TestModelExpand:
 
     def test_focus_limit_splits_streams(self):
         """focus_limit in expand splits into fast and slow."""
-        key_child1 = create_signature_key(0x0010)
-        key_child2 = create_signature_key(0x0020)
-        key_child3 = create_signature_key(0x0030)
+        key_child1 = 0x0010
+        key_child2 = 0x0020
+        key_child3 = 0x0030
 
         child1 = KLine(s_key=key_child1, nodes=[])
         child2 = KLine(s_key=key_child2, nodes=[])
         child3 = KLine(s_key=key_child3, nodes=[])
         parent1 = KLine(s_key=0xF000, nodes=[key_child1, key_child2, key_child3])
 
-        key_child4 = create_signature_key(0x0040)
-        key_child5 = create_signature_key(0x0050)
-        key_child6 = create_signature_key(0x0060)
+        key_child4 = 0x0040
+        key_child5 = 0x0050
+        key_child6 = 0x0060
 
         child4 = KLine(s_key=key_child4, nodes=[])
         child5 = KLine(s_key=key_child5, nodes=[])
@@ -608,8 +481,8 @@ class TestModelExpand:
 
     def test_slow_stream_consumed_independently(self):
         """Slow stream can be consumed before fast stream."""
-        key_child1 = create_signature_key(0x0010)
-        key_child2 = create_signature_key(0x0020)
+        key_child1 = 0x0010
+        key_child2 = 0x0020
 
         child1 = KLine(s_key=key_child1, nodes=[])
         child2 = KLine(s_key=key_child2, nodes=[])
@@ -649,10 +522,10 @@ class TestModelExpand:
 
     def test_slow_with_nested_hierarchy(self):
         """Slow stream expands nested hierarchy correctly."""
-        key_grandchild1 = create_signature_key(0x0100)
-        key_grandchild2 = create_signature_key(0x0200)
-        key_child1 = create_signature_key(0x0010)
-        key_child2 = create_signature_key(0x0020)
+        key_grandchild1 = 0x0100
+        key_grandchild2 = 0x0200
+        key_child1 = 0x0010
+        key_child2 = 0x0020
 
         grandchild1 = KLine(s_key=key_grandchild1, nodes=[])
         grandchild2 = KLine(s_key=key_grandchild2, nodes=[])
@@ -683,8 +556,8 @@ class TestModelExpand:
 
     def test_slow_depth_limits_expansion(self):
         """Depth parameter limits expansion in slow stream too."""
-        key_grandchild = create_signature_key(0x0100)
-        key_child = create_signature_key(0x0010)
+        key_grandchild = 0x0100
+        key_child = 0x0010
 
         grandchild = KLine(s_key=key_grandchild, nodes=[])
         child = KLine(s_key=key_child, nodes=[key_grandchild])
@@ -760,4 +633,3 @@ class TestModelIterators:
 
         not_found = model.find_by_key(0x3000)
         assert not_found is None
-

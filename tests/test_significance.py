@@ -103,7 +103,7 @@ class TestCalculateSignificance:
         model_kline = KLine(s_key=0x2000, nodes=[0x100, 0x200])
         m = Model([query, model_kline])
 
-        sig = calculate_significance(m,query, model_kline)
+        sig = calculate_significance(m, query, model_kline)
         assert has_s1(sig) is True
 
     def test_s1_prefix_match_query_shorter(self):
@@ -112,7 +112,7 @@ class TestCalculateSignificance:
         model_kline = KLine(s_key=0x2000, nodes=[0x100, 0x200])
         m = Model([query, model_kline])
 
-        sig = calculate_significance(m,query, model_kline)
+        sig = calculate_significance(m, query, model_kline)
         assert has_s1(sig) is True  # All prefix nodes match
 
     def test_s1_prefix_match_query_longer(self):
@@ -121,7 +121,7 @@ class TestCalculateSignificance:
         model_kline = KLine(s_key=0x2000, nodes=[0x100])
         m = Model([query, model_kline])
 
-        sig = calculate_significance(m,query, model_kline)
+        sig = calculate_significance(m, query, model_kline)
         assert has_s1(sig) is True  # All prefix nodes match
 
     def test_s1_empty_both(self):
@@ -130,7 +130,7 @@ class TestCalculateSignificance:
         model_kline = KLine(s_key=0x2000, nodes=[])
         m = Model([query, model_kline])
 
-        sig = calculate_significance(m,query, model_kline)
+        sig = calculate_significance(m, query, model_kline)
         assert has_s1(sig) is True
 
     def test_s4_query_empty_model_not(self):
@@ -139,7 +139,7 @@ class TestCalculateSignificance:
         model_kline = KLine(s_key=0x2000, nodes=[0x100])
         m = Model([query, model_kline])
 
-        sig = calculate_significance(m,query, model_kline)
+        sig = calculate_significance(m, query, model_kline)
         assert sig == S4_VALUE
 
     def test_s4_model_empty_query_not(self):
@@ -148,7 +148,7 @@ class TestCalculateSignificance:
         model_kline = KLine(s_key=0x2000, nodes=[])
         m = Model([query, model_kline])
 
-        sig = calculate_significance(m,query, model_kline)
+        sig = calculate_significance(m, query, model_kline)
         assert sig == S4_VALUE
 
     def test_s2_partial_match(self):
@@ -157,7 +157,7 @@ class TestCalculateSignificance:
         model_kline = KLine(s_key=0x2000, nodes=[0x100, 0x300])
         m = Model([query, model_kline])
 
-        sig = calculate_significance(m,query, model_kline)
+        sig = calculate_significance(m, query, model_kline)
         assert has_s1(sig) is False  # Not S1
         assert get_s2_s1_percentage(sig) == 127  # 50% positional match
 
@@ -167,7 +167,7 @@ class TestCalculateSignificance:
         model_kline = KLine(s_key=0x2000, nodes=[0x100, 0x300, 0x200])  # 0x200 at pos 2
         m = Model([query, model_kline])
 
-        sig = calculate_significance(m,query, model_kline)
+        sig = calculate_significance(m, query, model_kline)
         assert has_s1(sig) is False  # Not S1
         assert get_s2_s1_percentage(sig) == 127  # 50% positional
         assert get_s2_s2_percentage(sig) == 127  # 50% non-positional
@@ -178,7 +178,7 @@ class TestCalculateSignificance:
         model_kline = KLine(s_key=0x2000, nodes=[0x200])
         m = Model([query, model_kline])
 
-        sig = calculate_significance(m,query, model_kline)
+        sig = calculate_significance(m, query, model_kline)
         assert sig == S4_VALUE
 
 
@@ -226,19 +226,19 @@ class TestSignificanceComparison:
         # S1: exact match
         q = KLine(s_key=0x1000, nodes=[0x100, 0x200])
         t1 = KLine(s_key=0x2000, nodes=[0x100, 0x200])
-        m.add_signature(q)
-        m.add_signature(t1)
-        sig_s1 = calculate_significance(m,q, t1)
+        m.add(q)
+        m.add(t1)
+        sig_s1 = calculate_significance(m, q, t1)
 
         # S2: partial match
         t2 = KLine(s_key=0x3000, nodes=[0x100, 0x300])
-        m.add_signature(t2)
-        sig_s2 = calculate_significance(m,q, t2)
+        m.add(t2)
+        sig_s2 = calculate_significance(m, q, t2)
 
         # S4: no match
         t3 = KLine(s_key=0x4000, nodes=[0x999])
-        m.add_signature(t3)
-        sig_s4 = calculate_significance(m,q, t3)
+        m.add(t3)
+        sig_s4 = calculate_significance(m, q, t3)
 
         assert sig_s1 > sig_s2 > sig_s4
 
@@ -277,7 +277,7 @@ class TestCalculateSignificanceS3:
         model_kline = KLine(s_key=0x2000, nodes=[0x300, 0x100])  # 0x100 at different position
         m = Model([query, model_kline])
 
-        sig = calculate_significance(m,query, model_kline)
+        sig = calculate_significance(m, query, model_kline)
         assert has_s1(sig) is False  # Not S1
         assert get_s2(sig) == 0  # Not S2 (no positional matches)
         assert get_s3_s1_percentage(sig) > 0  # Has unordered S1 matches
@@ -288,7 +288,7 @@ class TestCalculateSignificanceS3:
         model_kline = KLine(s_key=0x2000, nodes=[0x200, 0x100])  # Reversed
         m = Model([query, model_kline])
 
-        sig = calculate_significance(m,query, model_kline)
+        sig = calculate_significance(m, query, model_kline)
         assert get_s3_s1_percentage(sig) == 255  # 100% unordered match
 
     def test_s3_generational_match(self):
@@ -300,7 +300,7 @@ class TestCalculateSignificanceS3:
         k2 = KLine(s_key=0x2000, nodes=[0x0020, 0x0030])  # K2 has N2 and N3
         m = Model([n3, n1, k1, k2])
 
-        sig = calculate_significance(m,k1, k2)
+        sig = calculate_significance(m, k1, k2)
         # K1's node N1 has child N3 which matches K2's node N3
         assert get_s3_s2_percentage(sig) > 0  # Child match
 
@@ -310,7 +310,7 @@ class TestCalculateSignificanceS3:
         model_kline = KLine(s_key=0x2000, nodes=[0x200])
         m = Model([query, model_kline])
 
-        sig = calculate_significance(m,query, model_kline)
+        sig = calculate_significance(m, query, model_kline)
         assert sig == S4_VALUE
 
 
@@ -367,9 +367,9 @@ class TestSignificanceComparisonS3:
 
         m = Model([n3, q, t1, t2, t3, t4])
 
-        sig_s1 = calculate_significance(m,q, t1)
-        sig_s2 = calculate_significance(m,q, t2)
-        sig_s3 = calculate_significance(m,q, t3)
-        sig_s4 = calculate_significance(m,q, t4)
+        sig_s1 = calculate_significance(m, q, t1)
+        sig_s2 = calculate_significance(m, q, t2)
+        sig_s3 = calculate_significance(m, q, t3)
+        sig_s4 = calculate_significance(m, q, t4)
 
         assert sig_s1 > sig_s2 > sig_s3 > sig_s4

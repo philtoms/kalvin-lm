@@ -1,71 +1,41 @@
 """KLine model for knowledge graph operations."""
 
 from dataclasses import dataclass
-from enum import IntEnum
 from typing import TypeAlias, Iterator
 
 
-# High bit mask (bit 63)
-HIGH_BIT_MASK = 0x8000_0000_0000_0000
-
-
-class KLineType(IntEnum):
-    """Type based on the high bit of a key."""
-    SIGNATURE = 1  # high bit = 1 (branch)
-    EMBEDDING = 0  # high bit = 0 (leaf)
-
-
-# Type alias for a KNode (64-bit int with high bit reserved for type)
+# Type alias for a KNode (64-bit int)
 KNode: TypeAlias = int
 KSig: TypeAlias = int | None
-
-
-def get_node_type(node: KNode) -> KLineType:
-    """Get the type of a KNode based on its high bit."""
-    return KLineType.SIGNATURE if (node & HIGH_BIT_MASK) else KLineType.EMBEDDING
-
-
-def create_signature_key(key: int) -> KNode:
-    """Create a NODE key (sets high bit to 1)."""
-    assert not (key & HIGH_BIT_MASK), "Key value must not use high bit"
-    return key | HIGH_BIT_MASK
-
-
-def create_embedding_key(key: int) -> KNode:
-    """Create an EMBEDDING key (ensures high bit is 0)."""
-    assert not (key & HIGH_BIT_MASK), "Key value must not use high bit"
-    return key & ~HIGH_BIT_MASK
 
 
 @dataclass
 class KLine:
     """A structure with a 64-bit significance s_key and list of child KNodes.
 
-    The high bit of s_key indicates the type:
-    - 1: NODE (branch - can have children)
-    - 0: EMBEDDING (leaf - no children)
-
     Attributes:
-        s_key: 64-bit integer s_key (high bit reserved for type)
-        nodes: List of child KNode integers (high bit indicates type)
+        s_key: 64-bit integer s_key
+        nodes: List of child KNode integers
     """
-    s_key: int           # 64-bit s_key
-    nodes: list[KNode]   # list of child KNodes (ints with type bit)
 
-    @property
-    def type(self) -> KLineType:
-        """Return the type based on the high bit of s_key."""
-        return KLineType.SIGNATURE if (self.s_key & HIGH_BIT_MASK) else KLineType.EMBEDDING
+    s_key: int  # 64-bit s_key
+    nodes: list[KNode]  # list of child KNodes
 
     @classmethod
-    def create_signature(cls, s_key: int, nodes: list[KNode]) -> "KLine":
-        """Create a NODE KLine (sets high bit to 1)."""
-        return cls(s_key=s_key | HIGH_BIT_MASK, nodes=nodes)
+    def create(cls, significance: int, token: int, nodes: list[KNode]) -> "KLine":
+        """Create a KLine from significance, token, and nodes.
 
-    @classmethod
-    def create_embedding(cls, s_key: int, nodes: list[KNode]) -> "KLine":
-        """Create an EMBEDDING KLine (ensures high bit is 0)."""
-        return cls(s_key=s_key & ~HIGH_BIT_MASK, nodes=nodes)
+        The s_key is constructed from significance | token.
+
+        Args:
+            significance: Significance value to OR with token
+            token: Token value to OR with significance
+            nodes: List of child KNode integers
+
+        Returns:
+            KLine with s_key = significance | token
+        """
+        return cls(s_key=significance | token, nodes=nodes)
 
     def signifies(self, query: int) -> bool:
         """Check if this KLine signifies a query via AND operation.
@@ -100,7 +70,7 @@ class Model:
     Query iteration follows reverse insertion order (newest first).
     """
 
-    __slots__ = ('_klines', '_by_key', '_dedup')
+    __slots__ = ("_klines", "_by_key", "_dedup")
 
     def __init__(self, klines: list[KLine] | None = None):
         """Initialize the model with optional existing KLines."""
@@ -121,25 +91,8 @@ class Model:
         # Store (s_key, tuple(nodes)) for O(1) dedup
         self._dedup.add((kline.s_key, tuple(kline.nodes)))
 
-    def add_kline(self, kline: KLine) -> bool:
-        """Add a KLine, enforcing the duplicate key invariant.
-
-        O(1) duplicate check using hashed set.
-
-        Args:
-            kline: KLine to add
-
-        Returns:
-            True if added, False if rejected (exact duplicate)
-        """
-        key_nodes = (kline.s_key, tuple(kline.nodes))
-        if key_nodes in self._dedup:
-            return False  # O(1) duplicate check
-        self._add_kline_internal(kline)
-        return True
-
-    def add_signature(self, kline: KLine) -> KSig:
-        """Add a Signature KLine, enforcing the signature key invariant.
+    def add(self, kline: KLine) -> KSig:
+        """Add a KLine, enforcing the key invariant.
 
         Args:
             kline: KLine to add
@@ -147,13 +100,11 @@ class Model:
         Returns:
             s_key if added, None if rejected (exact duplicate)
         """
-        kline.s_key |= HIGH_BIT_MASK
-        return kline.s_key if self.add_kline(kline) else None
-
-    def add_embedding(self, kline: KLine) -> bool:
-        """Add an embedding KLine, enforcing the embedding key invariant."""
-        kline.s_key &= ~HIGH_BIT_MASK
-        return self.add_kline(kline)
+        key_nodes = (kline.s_key, tuple(kline.nodes))
+        if key_nodes in self._dedup:
+            return None  # O(1) duplicate check
+        self._add_kline_internal(kline)
+        return kline.s_key
 
     def find_by_key(self, key: int | None) -> KLine | None:
         """Find a KLine by its s_key.
@@ -231,9 +182,6 @@ class Model:
         1. Fast stream: yields first `focus_limit` KLines and their descendants
         2. Slow stream: yields remaining KLines and their descendants
 
-        Only NODE type KLines (high bit = 1) are traversed for children.
-        EMBEDDING nodes (high bit = 0) are leaves and not expanded.
-
         Args:
             focus_set: List of KLines to expand (e.g., from query)
             depth: Maximum recursion depth for expanding child nodes
@@ -248,13 +196,12 @@ class Model:
         model = self
 
         def get_node_klines(nodes: list[KNode]) -> list[KLine]:
-            """Get all NODE type KLines from a list of node keys."""
+            """Get all KLines from a list of node keys."""
             found = []
             for node_key in nodes:
-                if get_node_type(node_key) == KLineType.SIGNATURE:
-                    kline = model.find_by_key(node_key)
-                    if kline is not None:
-                        found.append(kline)
+                kline = model.find_by_key(node_key)
+                if kline is not None:
+                    found.append(kline)
             return found
 
         def expand_kline_generator(
