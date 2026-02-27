@@ -236,7 +236,7 @@ class Tokenizer:
             List of token IDs
         """
         self._check_available()
-        return self._tokenizer.encode(text)
+        return self._tokenizer.encode(text.strip()+" ")
 
     def decode(self, ids: list[int]) -> str:
         """Decode token IDs back to a string.

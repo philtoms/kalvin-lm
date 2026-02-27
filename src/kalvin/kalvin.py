@@ -10,6 +10,7 @@ import json
 from kalvin.model import KLine, KNode, Model
 from kalvin.tokenizer import Tokenizer
 
+nlp_path = "/Volumes/USB-Backup/ai/data/tidy-ts/tinystories.v1.summary_"
 
 @dataclass
 class Kalvin:
@@ -27,10 +28,26 @@ class Kalvin:
         """
         self.model = model if model else Model()
         self.tokenizer = tokenizer if tokenizer else Tokenizer.from_directory()
+        self.ws_token = self.tokenizer.encode(" ")[0]
         self.activity = activity if activity else Counter()
 
+        with open(nlp_path + "grammar.json", "r") as f:
+            self.grammar = json.load(f)
+        with open(nlp_path + "nlp_type48.json", "r") as f:
+            self.nlp_type = json.load(f)
     # === Tokenization ===
 
+    def _encode_significance(self, word: str):
+        suffix = ""
+        if word not in self.grammar:
+            if word.endswith(("'",",",".","?","!")):
+                suffix = word[-1:]
+                word = word[0:-1]
+                if word not in self.grammar:
+                    return self.nlp_type["POS_X"], suffix
+        entry = self.grammar[word]
+        return entry["nlp_type48"], suffix
+    
     def encode(self, text: str) -> KNode | None:
         """Encode a string to a list of KNodes (token IDs).
 
@@ -40,21 +57,28 @@ class Kalvin:
         Returns:
             List of KNode integers (token IDs)
         """
+        s_key = 0
+        nodes = []
+        ks_key = 0
+        ks_nodes = []
         tokens = self.tokenizer.encode(text)
-        t_end = len(tokens) - 1
-        build_token = 0
-        prefix = None
-        suffix = 0
-        for idx, token in enumerate(tokens):
-            self.model.add(KLine(s_key=token, nodes=[token]))
-            if prefix and idx < t_end:
-                suffix = tokens[idx + 1]
-                self.model.add(KLine(s_key=token, nodes=[prefix, token, suffix]))
-            prefix = token
-            build_token |= token
+        words = list(reversed(text.split(" ")))
+        node, suffix = self._encode_significance(words.pop())
+        for token in tokens:
+            if token == self.ws_token:
+                self.model.add(KLine(s_key, nodes))
+                ks_nodes += nodes
+                ks_key |= s_key
+                nodes = []
+                s_key = 0
+                node, suffix = self._encode_significance(suffix or words.pop())
+                continue
+            node |= token
+            s_key |= node
+            nodes.append(node)
 
         self.activity.update(tokens)
-        return self.model.add(KLine(s_key=build_token, nodes=tokens))
+        return self.model.add(KLine(s_key=ks_key, nodes=ks_nodes))
 
     def decode(self, token_sig: int | None) -> str:
         """Decode a list of KNodes (token IDs) back to a string.
