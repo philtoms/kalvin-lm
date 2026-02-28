@@ -14,12 +14,64 @@ GPU Support:
 
 import argparse
 import json
+import subprocess
 from dataclasses import dataclass, field
 from enum import IntFlag
 from pathlib import Path
 
 import spacy
 from tqdm import tqdm
+
+from kalvin.tokenizer import Tokenizer
+
+# spaCy model versions for auto-download
+SPACY_MODEL_VERSIONS = {
+    "en_core_web_sm": "3.8.0",
+    "en_core_web_md": "3.8.0",
+    "en_core_web_lg": "3.8.0",
+    "en_core_web_trf": "3.8.0",
+}
+
+
+def download_spacy_model(model_name: str, verbose: bool = False) -> bool:
+    """Download a spaCy model if not available.
+
+    Args:
+        model_name: Name of the spaCy model (e.g., 'en_core_web_trf')
+        verbose: Print download progress
+
+    Returns:
+        True if model was downloaded or already exists, False on failure
+    """
+    try:
+        spacy.load(model_name)
+        return True  # Already installed
+    except OSError:
+        pass  # Need to download
+
+    version = SPACY_MODEL_VERSIONS.get(model_name, "3.8.0")
+    url = f"https://github.com/explosion/spacy-models/releases/download/{model_name}-{version}/{model_name}-{version}-py3-none-any.whl"
+
+    if verbose:
+        print(f"Downloading spaCy model: {model_name}...")
+
+    try:
+        # Use uv pip to install the model
+        result = subprocess.run(
+            ["uv", "pip", "install", url],
+            capture_output=not verbose,
+            text=True,
+        )
+        if result.returncode != 0:
+            print(f"Failed to download model: {result.stderr}")
+            return False
+        if verbose:
+            print(f"Successfully installed {model_name}")
+        return True
+    except FileNotFoundError:
+        print("Error: 'uv' not found. Please install uv or manually run:")
+        print(f"  uv pip install {url}")
+        return False
 
 
 def create_nlp_type32(high_bits: bool = False) -> type:
@@ -654,7 +706,7 @@ def load_existing_dict(file_path: Path) -> dict | None:
         return json.load(f)
 
 
-def load_existing_grammar(file_path: Path) -> dict[str, dict]:
+def load_existing_grammar(file_path: Path) -> dict[int, dict]:
     """Load existing grammar dictionary from JSON file."""
     data = load_existing_dict(file_path)
     if data is None:
@@ -676,7 +728,7 @@ class LinguisticAnalysis:
     # Named entities: entity text -> NER label
     ner: dict[str, str] = field(default_factory=dict)
     # Combined grammatical table: word -> {pos, pos_fine, dep, morph, count, frequency_pct, nlp_type, nlp_fine_type}
-    grammar: dict[str, dict] = field(default_factory=dict)
+    grammar: dict[int, dict] = field(default_factory=dict)
     # Noun chunks: chunk text -> count
     noun_chunks: dict[str, int] = field(default_factory=dict)
     # Verb lemmas: lemma -> count
@@ -693,7 +745,7 @@ class LinguisticAnalysis:
     new_verb_entries: int = 0
     new_noun_chunk_entries: int = 0
 
-    def top_frequency(self, n: int = 100) -> list[tuple[str, int, float]]:
+    def top_frequency(self, n: int = 100) -> list[tuple[int, int, float]]:
         """
         Return top N most frequent words.
 
@@ -783,7 +835,7 @@ def analyze_texts(
     texts: list[str],
     batch_size: int = 50,
     verbose: bool = False,
-    existing_grammar: dict[str, dict] | None = None,
+    existing_grammar: dict[int, dict] | None = None,
     existing_ner: dict[str, str] | None = None,
     existing_verbs: dict[str, int] | None = None,
     existing_noun_chunks: dict[str, int] | None = None,
@@ -795,6 +847,7 @@ def analyze_texts(
     Can extend existing dictionaries with new entries.
     """
     analysis = LinguisticAnalysis()
+    tokenizer = Tokenizer.from_directory(path="data/tokenizer")
 
     # Initialize with existing dictionaries if provided
     if existing_grammar:
@@ -835,18 +888,22 @@ def analyze_texts(
                 morph=morph_str
             )
 
-            # Add or update word in grammar dictionary
-            if token.text not in analysis.grammar:
-                analysis.grammar[token.text] = {
+            # Add or update word in grammar dictionary (keyed by first BPE token)
+            bpe_tokens = tokenizer.encode(token.text)
+            bpe_key = bpe_tokens[0]
+            if bpe_key not in analysis.grammar:
+                analysis.grammar[bpe_key] = {
+                    "text": token.text,
                     "pos": token.pos_,
                     "pos_fine": token.tag_,
                     "dep": token.dep_,
                     "morph": morph_str,
                     "count": 1,
+                    "tokens": bpe_tokens,
                 }
                 analysis.new_grammar_entries += 1
             else:
-                analysis.grammar[token.text]["count"] += 1
+                analysis.grammar[bpe_key]["count"] += 1
 
             # Verb lemmas (always increment count, but track new ones)
             if token.pos_ == "VERB":
@@ -1080,7 +1137,7 @@ def main() -> None:
             if args.verbose:
                 print(f"  Loaded {len(existing_noun_chunks)} existing noun chunk entries")
 
-    # Load spaCy model
+    # Load spaCy model (auto-download if not available)
     if args.verbose:
         print(f"Loading spaCy model: {args.model}")
 
@@ -1090,7 +1147,13 @@ def main() -> None:
         if not gpu_enabled and args.verbose:
             print("Warning: GPU requested but not available, falling back to CPU")
 
-    nlp = spacy.load(args.model)
+    try:
+        nlp = spacy.load(args.model)
+    except OSError:
+        if not download_spacy_model(args.model, verbose=args.verbose):
+            print(f"Error: Could not load spaCy model '{args.model}'")
+            return
+        nlp = spacy.load(args.model)
 
     # Load texts
     if args.verbose:

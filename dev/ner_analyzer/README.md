@@ -24,15 +24,21 @@ Extract named entities and grammatical tags from text files using spaCy NLP.
 **Apple Silicon (M1/M2/M3):**
 ```bash
 uv add "spacy[apple]"
-uv pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
-uv pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl
 ```
 
 **NVIDIA CUDA:**
 ```bash
 uv add "spacy[cuda11x]"  # Replace 11x with your CUDA version
-# Install models as above
 ```
+
+**CPU only:**
+```bash
+uv add spacy
+```
+
+2. spaCy models are **auto-downloaded** on first use. No manual installation needed!
+
+   Supported models: `en_core_web_sm`, `en_core_web_md`, `en_core_web_lg`, `en_core_web_trf`
 
 ## Usage
 
@@ -91,14 +97,19 @@ Supports:
 Creates separate JSON files for each analysis type:
 
 ### `{stem}_grammar.json` - Combined grammatical table
+
+Keys are BPE token IDs (first token of the word's BPE encoding):
+
 ```json
 {
-  "Tea": {
+  "1234": {
+    "text": "Tea",
     "pos": "PROPN",
     "pos_fine": "NNP",
     "dep": "nsubj",
     "morph": "Number=Sing",
     "count": 2,
+    "tokens": [1234],
     "frequency_pct": 0.0001,
     "nlp_type32": 33685632,
     "nlp_type48": 33685632,
@@ -237,19 +248,20 @@ with open("output_nlp_type48.json") as f:
 with open("output_grammar.json") as f:
     grammar = json.load(f)
 
-# Check 32-bit coarse features
-nlp_type32 = grammar["ran"]["nlp_type32"]
+# Check 32-bit coarse features for a word
+entry = next(e for e in grammar.values() if e["text"] == "ran")
+nlp_type32 = entry["nlp_type32"]
 if nlp_type32 & type32_legend["POS_VERB"]:
     print("'ran' is a verb (32-bit)")
 
 # Check 48-bit finer features
-nlp_type48 = grammar["ran"]["nlp_type48"]
+nlp_type48 = entry["nlp_type48"]
 if nlp_type48 & type48_legend["MORPH_PROG"]:
     print("'ran' has progressive aspect (48-bit)")
 
 # Find all verbs using 32-bit type
 VERB_FLAG = type32_legend["POS_VERB"]
-verbs = {word: data for word, data in grammar.items()
+verbs = {data["text"]: data for data in grammar.values()
          if data["nlp_type32"] & VERB_FLAG}
 ```
 

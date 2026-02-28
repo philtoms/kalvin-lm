@@ -15,7 +15,7 @@ from pathlib import Path
 from tqdm import tqdm
 import pyarrow.parquet as pq
 from typing import Iterator
-
+import json
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -54,9 +54,9 @@ def split_into_sentences(text: str) -> list[str]:
     # Filter out empty sentences
     return [s.strip() for s in sentences if s.strip()]
 
-def stream_text(text_file: str):
+def stream_text(input_file: str):
 
-    text_path = Path(text_file)
+    text_path = Path(input_file)
 
     if not text_path.exists():
         print(f"Error: File not found: {text_path}")
@@ -78,6 +78,14 @@ def stream_text(text_file: str):
                     if text is not None:
                         column.append(text)
                 text = "\n".join(column)
+            elif text_path.suffix == ".json":
+                print(f"Loading {file_path}")
+                with open(text_path,"r") as f:
+                    data = json.load(f)
+                    if "summaries" in data:
+                        data = data["summaries"]
+                    row = [item["summary"] for item in data]
+                    text = "\n".join(row)
             else:
                 print(f"Loading {file_path}")
                 text = text_path.read_text(encoding="utf-8")
@@ -93,10 +101,10 @@ def main():
     parser = argparse.ArgumentParser(
         description="Encode text files into Kalvin embeddings"
     )
-    parser.add_argument("text_file", help="Path to the text file to encode")
+    parser.add_argument("-i", "--input_file", default="/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1.json", help="Path to the text file to encode")
     parser.add_argument(
-        "model",
-        nargs="?",
+        "--model",
+        default="data/kalvin.bin",
         help="Path to load/save the model (default: data/kalvin.bin)",
     )
 
@@ -107,7 +115,7 @@ def main():
         help="Model format (default: binary)",
     )
     args = parser.parse_args()
-    model = args.model if args.model else "data/kalvin.bin"
+    model = args.model
 
     # Load or initialize Kalvin
     model_path = Path(model)
@@ -125,7 +133,7 @@ def main():
         print(f"Initial model size: {kalvin.model_size():,} KLines")
 
 
-    for text in stream_text(args.text_file):
+    for text in stream_text(args.input_file):
         if _interrupted:
             break
 
@@ -143,6 +151,11 @@ def main():
     print(f"\nFinal model size: {final_size:,} KLines")
     if final_size > model_size:       
         print(f"Extended by: {final_size - model_size:,} KLines")
+
+    # Unrecognised tokens
+    print(f"\nUnrecognised tokens: {len(kalvin.unrecognised_tokens)}")
+    for token in kalvin.unrecognised_tokens:
+        print(f"{token}: {kalvin.tokenizer.decode([token])}")
 
     kalvin = kalvin.prune()
 

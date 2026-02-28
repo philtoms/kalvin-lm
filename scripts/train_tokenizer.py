@@ -15,19 +15,33 @@ Supports:
 import argparse
 import json
 import sys
+import pyarrow.parquet as pq
 from pathlib import Path
+from typing import Iterator
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from kalvin.tokenizer import Tokenizer
 
-# Pattern that does NOT encode leading spaces (spaces are separate tokens)
-# Unlike GPT-2 pattern which creates tokens like " hello", this creates "hello" + " "
-NO_LEADING_SPACE_PATTERN = r"'(?:[sdmt]|ll|ve|re)|\p{L}+|\p{N}{1,3}|[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s++"
+# Pattern that splits words, punctuation, and suffixes into separate tokens:
+# - Contractions: 's, 'd, 'm, 't, 'll, 've, 're, 'cause, 'em, etc.
+# - Punctuation: ! ? ; . , (each as separate token)
+# - Unlike GPT-2 pattern which creates tokens like " hello", this creates "hello" + " "
+SPLIT_WORDS_PATTERN = r"n't|'(?:[sdmt]|ll|ve|re|cause|em|twas|tis|neath|round|cos|cuz)|\p{L}+|\p{N}{1,3}|[!?;.,]|[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s++"
 
 
-def load_json_texts(file_path: Path, text_field: str = "summary") -> list[str]:
+
+def parquet_texts_iterator(files: list[Path], text_column: str) -> Iterator[str]:
+    for file_path in files:
+        print(f"  Loading {file_path.name}...")
+        table = pq.read_table(file_path, columns=[text_column])
+        for text in table[text_column].to_pylist():
+            if text is not None:
+                yield text
+
+
+def json_texts_iterator(files: list[Path], text_field: str = "summary") -> Iterator[str]:
     """Load texts from a JSON file.
 
     Supports two formats:
@@ -39,28 +53,33 @@ def load_json_texts(file_path: Path, text_field: str = "summary") -> list[str]:
         text_field: Field name containing the text (default: "summary")
 
     Returns:
-        List of text strings
+        iterator that yields text strings
     """
-    data = json.loads(file_path.read_text(encoding="utf-8"))
-    items = []
+    for file_path in files:
+        print(f"  Loading {file_path.name}...")
+        data = json.loads(file_path.read_text(encoding="utf-8"))
+        items = []
 
-    # Format 1: {"summaries": [...]}
-    if isinstance(data, dict) and "summaries" in data:
-        items = data["summaries"]
-    # Format 2: [...]
-    elif isinstance(data, list):
-        items = data
-    else:
-        print(f"Unsupported JSON format in {file_path}")
-        
-    texts = []
-    for item in items:
-        if isinstance(item, dict) and text_field in item:
-            text = item[text_field]
-            if text is not None:
-                texts.append(text)
+        # Format 1: {"summaries": [...]}
+        if isinstance(data, dict) and "summaries" in data:
+            items = data["summaries"]
+        # Format 2: [...]
+        elif isinstance(data, list):
+            items = data
+        else:
+            print(f"Unsupported JSON format in {file_path}")
+            
+        for item in items:
+            if isinstance(item, dict) and text_field in item:
+                text = item[text_field]
+                if text is not None:
+                    yield text
 
-    return texts
+
+def txt_texts_iterator(files: list[Path]):
+    for file_path in files:
+        print(f"  Loading {file_path.name}...")
+        yield file_path.read_text(encoding="utf-8")
 
 
 def main():
@@ -77,6 +96,11 @@ def main():
         nargs="?",
         default=4096,
         help="Target vocabulary size (default: 4096)",
+    )
+    parser.add_argument(
+        "-g","--glob-pattern",
+        default="*.parquet",
+        help="Glob pattern (default: *.parquet)",
     )
     parser.add_argument(
         "-o", "--output",
@@ -99,14 +123,14 @@ def main():
         help="Field name for text data in JSON files (default: summary)",
     )
     parser.add_argument(
-        "--no-leading-space",
+        "--split-words",
         action="store_true",
-        help="Use a pattern that keeps spaces as separate tokens (no ' hello' tokens)",
+        help="Use a pattern that splits words, punctuation, and suffixes into separate tokens",
     )
     args = parser.parse_args()
 
     # Determine pattern
-    pattern = NO_LEADING_SPACE_PATTERN if args.no_leading_space else None
+    pattern = SPLIT_WORDS_PATTERN if args.split_words else None
 
     data_path = Path(args.path)
     output_path = Path(args.output)
@@ -115,62 +139,28 @@ def main():
         print(f"Error: Path not found: {data_path}")
         sys.exit(1)
 
+    train_files = list(data_path.glob(args.glob_pattern))
+
+    if not train_files:
+        print(f"Error: Training data not found: {data_path}/{args.glob_pattern}")
+        sys.exit(1)
+
     # Determine if we're training from parquet, json, or text files
-    if data_path.is_dir():
-        parquet_files = list(data_path.glob("*.parquet"))
-        json_files = list(data_path.glob("*.json"))
-        txt_files = list(data_path.glob("*.txt"))
-        if parquet_files:
-            print(f"Training from {len(parquet_files)} parquet file(s)...")
-            tokenizer = Tokenizer()
-            tokenizer.train_from_parquet(
-                data_path,
-                text_column=args.text_column,
-                vocab_size=args.vocab_size,
-                pattern=pattern,
-            )
-        elif json_files:
-            print(f"Training from {len(json_files)} JSON file(s)...")
-            texts = []
-            for json_file in json_files:
-                print(f"  Loading {json_file.name}...")
-                text = load_json_texts(json_file, text_field=args.json_field)
-                if text:
-                    texts.extend(text)
-            print(f"  Loaded {len(texts)} texts")
-            tokenizer = Tokenizer()
-            tokenizer.train(texts, vocab_size=args.vocab_size, pattern=pattern)
-        elif txt_files:
-            print(f"Training from {len(txt_files)} text file(s)...")
-            texts = []
-            for txt_file in txt_files:
-                print(f"  Loading {txt_file.name}...")
-                texts.append(txt_file.read_text(encoding="utf-8"))
-            tokenizer = Tokenizer()
-            tokenizer.train(texts, vocab_size=args.vocab_size, pattern=pattern)
-        else:
-            print(f"Error: No .txt, .json, or .parquet files found in {data_path}")
-            sys.exit(1)
-    elif data_path.suffix == ".parquet":
-        print(f"Training from parquet file: {data_path}...")
-        tokenizer = Tokenizer()
-        tokenizer.train_from_parquet(
-            data_path,
-            text_column=args.text_column,
-            vocab_size=args.vocab_size,
-            pattern=pattern,
-        )
-    elif data_path.suffix == ".json":
-        print(f"Training from JSON file: {data_path}...")
-        texts = load_json_texts(data_path, text_field=args.json_field)
-        print(f"  Loaded {len(texts)} texts")
-        tokenizer = Tokenizer()
-        tokenizer.train(texts, vocab_size=args.vocab_size, pattern=pattern)
+    if args.glob_pattern.endswith(".parquet"):
+        print(f"Training from {len(train_files)} parquet file(s)...")
+        train_iterator = parquet_texts_iterator(train_files, args.text_column)
+    elif args.glob_pattern.endswith(".json"):
+        print(f"Training from {len(train_files)} JSON file(s)...")
+        train_iterator = json_texts_iterator(train_files, args.json_field)
+    elif args.glob_pattern.endswith(".txt"):
+        print(f"Training from {len(train_files)} text file(s)...")
+        train_iterator = txt_texts_iterator(train_files)
     else:
-        print(f"Training from text file: {data_path}...")
-        text = data_path.read_text(encoding="utf-8")
-        tokenizer = Tokenizer()
-        tokenizer.train([text], vocab_size=args.vocab_size, pattern=pattern)
+        print(f"Error: No .txt, .json, or .parquet files found in {data_path}")
+        sys.exit(1)
+
+    tokenizer = Tokenizer()
+    tokenizer.train(train_iterator, vocab_size=args.vocab_size, pattern=pattern)
 
     # Save tokenizer
     output_path.mkdir(parents=True, exist_ok=True)

@@ -7,18 +7,18 @@ from typing import Literal
 from collections import Counter
 import json
 
-from kalvin.model import KLine, KNode, Model, KLineType, get_node_type, create_embedding_key
+from kalvin.model import KLine, KNode, Model
 from kalvin.tokenizer import Tokenizer
 
 
 @dataclass
 class Kalvin:
-
     def __init__(
         self,
         model: Model | None = None,
         activity: Counter | None = None,
         tokenizer: Tokenizer | None = None,
+        dictionary: str | None = None
     ):
         """Initialize Kalvin with optional model and tokenizer.
 
@@ -28,12 +28,25 @@ class Kalvin:
         """
         self.model = model if model else Model()
         self.tokenizer = tokenizer if tokenizer else Tokenizer.from_directory()
+        self.ws_token = self.tokenizer.encode(" ")[0]
         self.activity = activity if activity else Counter()
+        self.unrecognised_tokens = set()
 
-        
+        if not dictionary:
+            dictionary = "/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1_grammar.json"
+        with open(dictionary, "r") as f:
+            str_dict = json.load(f)
+            self.dictionary = {}
+
+        for key, value in str_dict.items():
+            key = int(key)
+            self.dictionary[key] = value
+
+        with open(dictionary.replace("grammar", "nlp_type48"), "r") as f:
+            self.nlp_type = json.load(f)
     # === Tokenization ===
 
-    def encode(self, text: str) -> KNode|None:
+    def encode(self, text: str) -> KNode | None:
         """Encode a string to a list of KNodes (token IDs).
 
         Args:
@@ -42,22 +55,25 @@ class Kalvin:
         Returns:
             List of KNode integers (token IDs)
         """
+        ks_key = 0
+        ks_nodes = []
         tokens = self.tokenizer.encode(text)
-        t_end = len(tokens) - 1
-        build_token = 0
-        prefix = None
-        suffix = 0
-        for idx, token in enumerate(tokens):
-            assert get_node_type(token) == KLineType.EMBEDDING
-            self.model.add_embedding(KLine(s_key=token, nodes=[token]))
-            if prefix and idx < t_end:
-                suffix = tokens[idx+1]
-                self.model.add_signature(KLine(s_key=token, nodes=[prefix, token, suffix]))
-            prefix = token
-            build_token |= token
-
         self.activity.update(tokens)
-        return self.model.add_signature(KLine(s_key=build_token, nodes=tokens))
+        for token in tokens:
+            if token in self.dictionary:
+                entry = self.dictionary[token]
+                s_key = entry["nlp_type48"]
+            elif token == self.ws_token:
+                s_key = token
+            else:
+                s_key = self.nlp_type["POS_X"]
+                self.unrecognised_tokens.add(token)
+
+            self.model.add(KLine(s_key  | token, [token]), True)
+            ks_nodes.append(s_key)
+            ks_key |= s_key
+
+        return self.model.add(KLine(s_key=ks_key, nodes=ks_nodes), True)
 
     def decode(self, token_sig: int | None) -> str:
         """Decode a list of KNodes (token IDs) back to a string.
@@ -73,10 +89,7 @@ class Kalvin:
             return ""
         return self.tokenizer.decode(kline.nodes)
 
-    def prune(
-        self,
-        level: int = 1
-    ) -> "Kalvin":
+    def prune(self, level: int = 1) -> "Kalvin":
         """Prune model to activity level + untracked activity.
 
         Args:
@@ -85,20 +98,19 @@ class Kalvin:
         pruned_model: list[KLine] = []
         pruned_activity = Counter()
 
-        for kline in self.model: # retain untracked activity
+        for kline in self.model:  # retain untracked activity
             if kline.s_key not in self.activity:
                 pruned_model.append(kline)
-        
+
         for key, count in self.activity.items():
             if count >= level:
                 kline = self.model.find_by_key(key)
                 if kline:
                     pruned_model.append(kline)
-                    pruned_activity[key]=count
-        
+                    pruned_activity[key] = count
+
         model = Model(pruned_model)
         return Kalvin(model, pruned_activity)
-
 
     def model_size(self) -> int:
         """Return the number of KLines in the model.
@@ -146,30 +158,30 @@ class Kalvin:
         from collections import Counter
 
         offset = 0
-        kline_count = unpack("<I", data[offset:offset + 4])[0]
+        kline_count = unpack("<I", data[offset : offset + 4])[0]
         offset += 4
 
         klines: list[KLine] = []
         for _ in range(kline_count):
-            s_key = unpack("<Q", data[offset:offset + 8])[0]
+            s_key = unpack("<Q", data[offset : offset + 8])[0]
             offset += 8
-            node_count = unpack("<I", data[offset:offset + 4])[0]
+            node_count = unpack("<I", data[offset : offset + 4])[0]
             offset += 4
             nodes: list[KNode] = []
             for _ in range(node_count):
-                node = unpack("<Q", data[offset:offset + 8])[0]
+                node = unpack("<Q", data[offset : offset + 8])[0]
                 offset += 8
                 nodes.append(node)
             klines.append(KLine(s_key=s_key, nodes=nodes))
 
         # Deserialize activity Counter
-        activity_count = unpack("<I", data[offset:offset + 4])[0]
+        activity_count = unpack("<I", data[offset : offset + 4])[0]
         offset += 4
         activity: Counter = Counter()
         for _ in range(activity_count):
-            key = unpack("<Q", data[offset:offset + 8])[0]
+            key = unpack("<Q", data[offset : offset + 8])[0]
             offset += 8
-            count = unpack("<I", data[offset:offset + 4])[0]
+            count = unpack("<I", data[offset : offset + 4])[0]
             offset += 4
             activity[key] = count
 
@@ -179,11 +191,8 @@ class Kalvin:
     def to_dict(self) -> dict:
         """Serialize model to dict (for JSON)."""
         return {
-            "klines": [
-                {"s_key": kline.s_key, "nodes": kline.nodes}
-                for kline in self.model
-            ],
-            "activity": {str(k): v for k, v in self.activity.items()}
+            "klines": [{"s_key": kline.s_key, "nodes": kline.nodes} for kline in self.model],
+            "activity": {str(k): v for k, v in self.activity.items()},
         }
 
     @classmethod
@@ -191,10 +200,7 @@ class Kalvin:
         """Deserialize model from dict."""
         from collections import Counter
 
-        klines = [
-            KLine(s_key=item["s_key"], nodes=item["nodes"])
-            for item in data["klines"]
-        ]
+        klines = [KLine(s_key=item["s_key"], nodes=item["nodes"]) for item in data["klines"]]
         model = Model(klines=klines)
         activity = Counter()
         if "activity" in data:

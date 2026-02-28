@@ -61,23 +61,6 @@ class TestTokenizerInit:
         tokenizer = Tokenizer()
         assert tokenizer._tokenizer is None
 
-    def test_init_with_word_aligned_default(self):
-        """word_aligned defaults to False."""
-        tokenizer = Tokenizer()
-        assert tokenizer.word_aligned is False
-
-    def test_init_with_word_aligned_true(self):
-        """word_aligned can be set to True."""
-        tokenizer = Tokenizer(word_aligned=True)
-        assert tokenizer.word_aligned is True
-
-    def test_word_aligned_property_setter(self):
-        """word_aligned can be changed after initialization."""
-        tokenizer = Tokenizer()
-        assert tokenizer.word_aligned is False
-        tokenizer.word_aligned = True
-        assert tokenizer.word_aligned is True
-
 
 class TestTokenizerTrain:
     """Tests for tokenizer training."""
@@ -136,37 +119,6 @@ class TestTokenizerEncode:
         ids = trained_tokenizer.encode("")
         assert ids == []
 
-    @pytest.mark.skipif(not HAS_RUSTBPE, reason="rustbpe not installed")
-    def test_encode_word_aligned_returns_groups(self, trained_tokenizer):
-        """encode with word_aligned=True returns list of lists."""
-        ids = trained_tokenizer.encode("Hello, world!", word_aligned=True)
-        assert isinstance(ids, list)
-        assert all(isinstance(g, list) for g in ids)
-
-    @pytest.mark.skipif(not HAS_RUSTBPE, reason="rustbpe not installed")
-    def test_encode_word_aligned_groups_non_empty_tokens(self, trained_tokenizer):
-        """word_aligned groups contain only non-whitespace tokens."""
-        ids = trained_tokenizer.encode("Hello world", word_aligned=True)
-        # Should have 2 groups (Hello and world)
-        assert len(ids) == 2
-
-    @pytest.mark.skipif(not HAS_RUSTBPE, reason="rustbpe not installed")
-    def test_encode_word_aligned_instance_setting(self, trained_tokenizer):
-        """word_aligned can be set on instance and affects encode."""
-        trained_tokenizer.word_aligned = True
-        ids = trained_tokenizer.encode("Hello world")
-        assert isinstance(ids, list)
-        assert all(isinstance(g, list) for g in ids)
-
-    @pytest.mark.skipif(not HAS_RUSTBPE, reason="rustbpe not installed")
-    def test_encode_word_aligned_override(self, trained_tokenizer):
-        """word_aligned parameter overrides instance setting."""
-        trained_tokenizer.word_aligned = True
-        # Override to False
-        ids = trained_tokenizer.encode("Hello world", word_aligned=False)
-        assert isinstance(ids, list)
-        assert all(isinstance(i, int) for i in ids)
-
 
 class TestTokenizerDecode:
     """Tests for decoding."""
@@ -191,28 +143,12 @@ class TestTokenizerDecode:
         assert result == ""
 
     @pytest.mark.skipif(not HAS_RUSTBPE, reason="rustbpe not installed")
-    def test_decode_grouped_format(self, trained_tokenizer):
-        """decode handles grouped format from word_aligned encode."""
-        ids = trained_tokenizer.encode("Hello, world!", word_aligned=True)
-        result = trained_tokenizer.decode(ids)
-        assert isinstance(result, str)
-
-    @pytest.mark.skipif(not HAS_RUSTBPE, reason="rustbpe not installed")
     def test_encode_decode_roundtrip(self, trained_tokenizer):
         """encode/decode roundtrip preserves text."""
         original = "Hello, world!"
         ids = trained_tokenizer.encode(original)
         decoded = trained_tokenizer.decode(ids)
         assert decoded == original
-
-    @pytest.mark.skipif(not HAS_RUSTBPE, reason="rustbpe not installed")
-    def test_encode_decode_roundtrip_word_aligned_loses_spaces(self, trained_tokenizer):
-        """encode/decode with word_aligned loses whitespace (expected behavior)."""
-        original = "Hello, world!"
-        ids = trained_tokenizer.encode(original, word_aligned=True)
-        decoded = trained_tokenizer.decode(ids)
-        # Spaces are stripped in word_aligned mode
-        assert decoded == "Hello,world!"
 
 
 class TestTokenizerSaveLoad:

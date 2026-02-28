@@ -3,7 +3,7 @@
 import base64
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterator, cast
+from typing import TYPE_CHECKING, Any, Iterator
 
 if TYPE_CHECKING:
     import rustbpe
@@ -27,36 +27,38 @@ except ImportError:
 
 class TokenizerNotTrainedError(Exception):
     """Raised when encoding/decoding before training the tokenizer."""
+
     pass
 
 
 class RustbpeNotInstalledError(Exception):
     """Raised when rustbpe operations are attempted without rustbpe installed."""
+
     pass
 
 
 class TiktokenNotInstalledError(Exception):
     """Raised when loading from directory without tiktoken installed."""
+
     pass
 
 
 class PyarrowNotInstalledError(Exception):
     """Raised when training from parquet without pyarrow installed."""
+
     pass
 
 
 class Tokenizer:
     """BPE tokenizer wrapper supporting rustbpe (training) and tiktoken (inference)."""
 
-    def __init__(self, tokenizer: Any = None, word_aligned: bool = False):
+    def __init__(self, tokenizer: Any = None):
         """Initialize with optional pre-trained tokenizer.
 
         Args:
             tokenizer: Optional rustbpe.Tokenizer or tiktoken.Encoding instance
-            word_aligned: If True, encode returns word-aligned token groups (excludes spaces)
         """
         self._tokenizer = tokenizer
-        self._word_aligned = word_aligned
 
     def _check_available(self) -> None:
         """Raise if tokenizer is not available."""
@@ -67,15 +69,15 @@ class Tokenizer:
 
     def train(
         self,
-        texts: list[str],
-        vocab_size: int = 4096,
+        texts_iterator: Iterator,
+        vocab_size: int = 32768,
         pattern: str | None = None,
     ) -> None:
         """Train the BPE tokenizer on a corpus.
 
         Args:
             texts: List of training strings
-            vocab_size: Target vocabulary size (default 4096)
+            vocab_size: Target vocabulary size (default 32768)
             pattern: Optional custom regex pattern for pre-tokenization
         """
         if _rustbpe is None:
@@ -84,68 +86,11 @@ class Tokenizer:
             )
         self._tokenizer = _rustbpe.Tokenizer()
         self._tokenizer.train_from_iterator(
-            texts,
+            texts_iterator,
             vocab_size=vocab_size,
             pattern=pattern,
         )
 
-    def train_from_parquet(
-        self,
-        paths: str | Path | list[str | Path],
-        text_column: str = "text",
-        vocab_size: int = 4096,
-        pattern: str | None = None,
-        glob_pattern: str = "*.parquet",
-    ) -> None:
-        """Train the BPE tokenizer from parquet files.
-
-        Streams text data from parquet files for memory-efficient training.
-
-        Args:
-            paths: Single directory path, single file path, or list of file paths
-            text_column: Name of the column containing text data
-            vocab_size: Target vocabulary size (default 4096)
-            pattern: Optional custom regex pattern for pre-tokenization
-            glob_pattern: Glob pattern for matching files when paths is a directory
-        """
-        if _rustbpe is None:
-            raise RustbpeNotInstalledError(
-                "rustbpe is not installed. Install with: pip install rustbpe"
-            )
-
-        try:
-            import pyarrow.parquet as pq
-        except ImportError:
-            raise PyarrowNotInstalledError(
-                "pyarrow is not installed. Install with: pip install pyarrow"
-            )
-
-        # Resolve file paths
-        if isinstance(paths, (str, Path)):
-            path = Path(paths)
-            if path.is_dir():
-                files = sorted(path.glob(glob_pattern))
-            else:
-                files = [path]
-        else:
-            files = [Path(p) for p in paths]
-
-        if not files:
-            raise ValueError(f"No parquet files found at {paths}")
-
-        def text_iterator() -> Iterator[str]:
-            for file_path in files:
-                table = pq.read_table(file_path, columns=[text_column])
-                for text in table[text_column].to_pylist():
-                    if text is not None:
-                        yield text
-
-        self._tokenizer = _rustbpe.Tokenizer()
-        self._tokenizer.train_from_iterator(
-            text_iterator(),
-            vocab_size=vocab_size,
-            pattern=pattern,
-        )
 
     def save_to_directory(self, path: str | Path, name: str = "tokenizer") -> None:
         """Save the trained tokenizer to a directory for later loading.
@@ -175,14 +120,11 @@ class Tokenizer:
 
         # Save mergeable ranks as base64-encoded JSON
         # Format: [{"b64": "<base64_bytes>", "rank": int}, ...]
-        ranks_data = [
-            {"b64": base64.b64encode(b).decode("ascii"), "rank": r}
-            for b, r in ranks
-        ]
+        ranks_data = [{"b64": base64.b64encode(b).decode("ascii"), "rank": r} for b, r in ranks]
         (path / f"{name}.bin").write_text(json.dumps(ranks_data))
 
     @classmethod
-    def from_directory(cls, path: str | Path = "data", name: str = "tokenizer") -> "Tokenizer":
+    def from_directory(cls, path: str | Path = "data/tokenizer", name: str = "tokenizer-32768") -> "Tokenizer":
         """Load a pre-trained tokenizer from a directory.
 
         Uses tiktoken for fast inference (recommended by rustbpe).
@@ -207,9 +149,7 @@ class Tokenizer:
 
         # Load mergeable ranks
         ranks_data = json.loads((path / f"{name}.bin").read_text())
-        mergeable_ranks = {
-            base64.b64decode(item["b64"]): item["rank"] for item in ranks_data
-        }
+        mergeable_ranks = {base64.b64decode(item["b64"]): item["rank"] for item in ranks_data}
 
         # Create tiktoken Encoding
         encoding = _tiktoken.Encoding(
@@ -229,75 +169,33 @@ class Tokenizer:
             return self._tokenizer.vocab_size
         return self._tokenizer.n_vocab
 
-    @property
-    def word_aligned(self) -> bool:
-        """Return whether encode returns word-aligned token groups."""
-        return self._word_aligned
-
-    @word_aligned.setter
-    def word_aligned(self, value: bool) -> None:
-        """Set whether encode returns word-aligned token groups."""
-        self._word_aligned = value
-
-    def encode(self, text: str, word_aligned: bool | None = None) -> list[int] | list[list[int]]:
+    def encode(self, text: str, pad_ws: bool = False) -> list[int]:
         """Encode a string to token IDs.
 
         Args:
             text: Input string to encode
-            word_aligned: Override instance word_aligned setting
 
         Returns:
-            List of token IDs, or list of token groups if word_aligned=True
+            List of token IDs
         """
         self._check_available()
-        use_word_aligned = word_aligned if word_aligned is not None else self._word_aligned
 
-        if not use_word_aligned:
-            return self._tokenizer.encode(text)
+        if pad_ws:
+            text = text.strip()+" "
 
-        # Word-aligned mode: group tokens by word, exclude pure whitespace tokens
-        tokens = self._tokenizer.encode(text)
+        return self._tokenizer.encode(text) 
 
-        if not tokens:
-            return []
-
-        # Decode each token to check if it's whitespace
-        groups: list[list[int]] = []
-        current_group: list[int] = []
-
-        for token in tokens:
-            decoded = self._tokenizer.decode([token])
-            if decoded.strip() == "":
-                # Pure whitespace token - save current group if not empty
-                if current_group:
-                    groups.append(current_group)
-                    current_group = []
-            else:
-                current_group.append(token)
-
-        # Don't forget the last group
-        if current_group:
-            groups.append(current_group)
-
-        return groups
-
-    def decode(self, ids: list[int] | list[list[int]]) -> str:
+    def decode(self, ids: list[int]) -> str:
         """Decode token IDs back to a string.
 
         Args:
-            ids: List of token IDs or list of token groups
+            ids: List of token IDs
 
         Returns:
             Decoded string
         """
         self._check_available()
-        # Handle grouped format: flatten first
-        if ids and ids[0] and isinstance(ids[0], list):
-            grouped = cast(list[list[int]], ids)
-            flat_ids: list[int] = [t for group in grouped for t in group]
-            return self._tokenizer.decode(flat_ids)
-        # ids is list[int] here
-        return self._tokenizer.decode(cast(list[int], ids))
+        return self._tokenizer.decode(ids)
 
     def batch_encode(self, texts: list[str]) -> list[list[int]]:
         """Encode multiple strings in parallel.
