@@ -82,6 +82,8 @@ def stream_text(input_file: str):
                 print(f"Loading {file_path}")
                 with open(text_path,"r") as f:
                     data = json.load(f)
+                    if "summaries" in data:
+                        data = data["summaries"]
                     row = [item["summary"] for item in data]
                     text = "\n".join(row)
             else:
@@ -149,6 +151,11 @@ def main():
     print(f"\nFinal model size: {final_size:,} KLines")
     if final_size > model_size:       
         print(f"Extended by: {final_size - model_size:,} KLines")
+
+    # Unrecognised tokens
+    print(f"\nUnrecognised tokens: {len(kalvin.unrecognised_tokens)}")
+    for token in kalvin.unrecognised_tokens:
+        print(f"{token}: {kalvin.tokenizer.decode([token])}")
 
     kalvin = kalvin.prune()
 

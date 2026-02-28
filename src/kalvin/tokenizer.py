@@ -69,15 +69,15 @@ class Tokenizer:
 
     def train(
         self,
-        texts: list[str],
-        vocab_size: int = 4096,
+        texts_iterator: Iterator,
+        vocab_size: int = 32768,
         pattern: str | None = None,
     ) -> None:
         """Train the BPE tokenizer on a corpus.
 
         Args:
             texts: List of training strings
-            vocab_size: Target vocabulary size (default 4096)
+            vocab_size: Target vocabulary size (default 32768)
             pattern: Optional custom regex pattern for pre-tokenization
         """
         if _rustbpe is None:
@@ -86,68 +86,11 @@ class Tokenizer:
             )
         self._tokenizer = _rustbpe.Tokenizer()
         self._tokenizer.train_from_iterator(
-            texts,
+            texts_iterator,
             vocab_size=vocab_size,
             pattern=pattern,
         )
 
-    def train_from_parquet(
-        self,
-        paths: str | Path | list[str | Path],
-        text_column: str = "text",
-        vocab_size: int = 4096,
-        pattern: str | None = None,
-        glob_pattern: str = "*.parquet",
-    ) -> None:
-        """Train the BPE tokenizer from parquet files.
-
-        Streams text data from parquet files for memory-efficient training.
-
-        Args:
-            paths: Single directory path, single file path, or list of file paths
-            text_column: Name of the column containing text data
-            vocab_size: Target vocabulary size (default 4096)
-            pattern: Optional custom regex pattern for pre-tokenization
-            glob_pattern: Glob pattern for matching files when paths is a directory
-        """
-        if _rustbpe is None:
-            raise RustbpeNotInstalledError(
-                "rustbpe is not installed. Install with: pip install rustbpe"
-            )
-
-        try:
-            import pyarrow.parquet as pq
-        except ImportError:
-            raise PyarrowNotInstalledError(
-                "pyarrow is not installed. Install with: pip install pyarrow"
-            )
-
-        # Resolve file paths
-        if isinstance(paths, (str, Path)):
-            path = Path(paths)
-            if path.is_dir():
-                files = sorted(path.glob(glob_pattern))
-            else:
-                files = [path]
-        else:
-            files = [Path(p) for p in paths]
-
-        if not files:
-            raise ValueError(f"No parquet files found at {paths}")
-
-        def text_iterator() -> Iterator[str]:
-            for file_path in files:
-                table = pq.read_table(file_path, columns=[text_column])
-                for text in table[text_column].to_pylist():
-                    if text is not None:
-                        yield text
-
-        self._tokenizer = _rustbpe.Tokenizer()
-        self._tokenizer.train_from_iterator(
-            text_iterator(),
-            vocab_size=vocab_size,
-            pattern=pattern,
-        )
 
     def save_to_directory(self, path: str | Path, name: str = "tokenizer") -> None:
         """Save the trained tokenizer to a directory for later loading.
@@ -181,7 +124,7 @@ class Tokenizer:
         (path / f"{name}.bin").write_text(json.dumps(ranks_data))
 
     @classmethod
-    def from_directory(cls, path: str | Path = "data", name: str = "tokenizer") -> "Tokenizer":
+    def from_directory(cls, path: str | Path = "data/tokenizer", name: str = "tokenizer-32768") -> "Tokenizer":
         """Load a pre-trained tokenizer from a directory.
 
         Uses tiktoken for fast inference (recommended by rustbpe).
@@ -226,7 +169,7 @@ class Tokenizer:
             return self._tokenizer.vocab_size
         return self._tokenizer.n_vocab
 
-    def encode(self, text: str) -> list[int]:
+    def encode(self, text: str, pad_ws: bool = False) -> list[int]:
         """Encode a string to token IDs.
 
         Args:
@@ -236,7 +179,11 @@ class Tokenizer:
             List of token IDs
         """
         self._check_available()
-        return self._tokenizer.encode(text.strip()+" ")
+
+        if pad_ws:
+            text = text.strip()+" "
+
+        return self._tokenizer.encode(text) 
 
     def decode(self, ids: list[int]) -> str:
         """Decode token IDs back to a string.

@@ -93,7 +93,7 @@ Train a BPE tokenizer on text data. Supports `.txt`, `.json`, and `.parquet` fil
 - `[{"summary": "..."}]`
 
 ```bash
-# Train from a text file/directory (default vocab_size: 4096)
+# Train from a text file/directory (default vocab_size: 32768)
 uv run python scripts/train_tokenizer.py path/to/data.txt
 
 # Train from JSON file/directory
@@ -110,6 +110,9 @@ uv run python scripts/train_tokenizer.py data.json 4096 --json-field text
 
 # Custom output location
 uv run python scripts/train_tokenizer.py data.txt 4096 -o my_tokenizer -n my_tok
+
+# Use split-words pattern (separates contractions and punctuation into individual tokens)
+uv run python scripts/train_tokenizer.py data.txt 4096 --split-words
 ```
 
 ## Project Structure

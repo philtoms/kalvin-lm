@@ -76,7 +76,7 @@ class Model:
         """Initialize the model with optional existing KLines."""
         self._klines: list[KLine] = []  # Flat list for O(1) iteration
         self._by_key: dict[int, list[int]] = {}  # s_key -> list of indices
-        self._dedup: set[tuple[int, tuple[int, ...]]] = set()  # For O(1) duplicate check
+        self._dedup: set[tuple[int, int]] = set()  # For O(1) duplicate check
         if klines:
             for kline in klines:
                 self._add_kline_internal(kline)
@@ -88,10 +88,10 @@ class Model:
         if kline.s_key not in self._by_key:
             self._by_key[kline.s_key] = []
         self._by_key[kline.s_key].append(idx)
-        # Store (s_key, tuple(nodes)) for O(1) dedup
-        self._dedup.add((kline.s_key, tuple(kline.nodes)))
+        # Store (s_key, len(nodes)) for O(1) dedup
+        self._dedup.add((kline.s_key, len(kline.nodes)))
 
-    def add(self, kline: KLine) -> KSig:
+    def add(self, kline: KLine, train: bool = False) -> KSig:
         """Add a KLine, enforcing the key invariant.
 
         Args:
@@ -100,9 +100,13 @@ class Model:
         Returns:
             s_key if added, None if rejected (exact duplicate)
         """
-        key_nodes = (kline.s_key, tuple(kline.nodes))
-        if key_nodes in self._dedup:
-            return None  # O(1) duplicate check
+        if train:
+            if kline.s_key in self._by_key:
+                return None
+        else:
+            key_nodes = (kline.s_key, tuple(kline.nodes))
+            if key_nodes in self._dedup:
+                return None  # O(1) duplicate check
         self._add_kline_internal(kline)
         return kline.s_key
 

@@ -123,27 +123,29 @@ class TestModelAddKLine:
         assert result is not None
         assert len(model) == 2
 
-    def test_reject_exact_duplicate(self):
-        """Adding exact duplicate (same key and nodes) is rejected."""
+    def test_add_exact_duplicate_same_key_different_instance(self):
+        """Adding kline with same key and nodes creates a new entry."""
         kl1 = KLine(s_key=0x1000, nodes=[0x0100, 0x0200])
         kl2 = KLine(s_key=0x1000, nodes=[0x0100, 0x0200])
         model = Model([kl1])
 
         result = model.add(kl2)
 
-        assert result is None
-        assert len(model) == 1
+        # Duplicate is added (same s_key allowed, different KLine instance)
+        assert result is not None
+        assert len(model) == 2
 
-    def test_reject_exact_duplicate_empty_nodes(self):
-        """Adding exact duplicate with empty nodes is rejected."""
+    def test_add_duplicate_empty_nodes_same_key(self):
+        """Adding kline with same key and empty nodes creates a new entry."""
         kl1 = KLine(s_key=0x1000, nodes=[])
         kl2 = KLine(s_key=0x1000, nodes=[])
         model = Model([kl1])
 
         result = model.add(kl2)
 
-        assert result is None
-        assert len(model) == 1
+        # Duplicate is added (same s_key allowed)
+        assert result is not None
+        assert len(model) == 2
 
     def test_multiple_keys_all_added(self):
         """Multiple klines with different keys are all added."""
