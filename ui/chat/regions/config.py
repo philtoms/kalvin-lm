@@ -8,7 +8,7 @@ from textual.app import ComposeResult
 from textual.containers import Container, Horizontal
 from textual.widgets import Button, Input, Label
 
-from ui.chat.dialogs import FileLoadDialog
+from ui.chat.dialogs import OpenDialog
 
 
 class ConfigRegion(Container):
@@ -96,14 +96,14 @@ class ConfigRegion(Container):
     def _open_model_dialog(self) -> None:
         """Open the model file selection dialog."""
         self.app.push_screen(
-            FileLoadDialog("Select Model File", self.get_model_path()),
+            OpenDialog(title="Select Model File", initial_path=self.get_model_path()),
             lambda path: self._set_model_path(path)
         )
 
     def _open_grammar_dialog(self) -> None:
         """Open the grammar file selection dialog."""
         self.app.push_screen(
-            FileLoadDialog("Select Grammar File", self.get_grammar_path()),
+            OpenDialog(title="Select Grammar File", initial_path=self.get_grammar_path()),
             lambda path: self._set_grammar_path(path)
         )
 

@@ -33,11 +33,32 @@ The app has two configurable fields in the **Config** region:
 
 ## Key Bindings
 
-| Key      | Action                  |
-| -------- | ----------------------- |
-| `Ctrl+Q` | Quit the application    |
-| `Ctrl+L` | Clear the response area |
-| `Enter`  | Send message            |
+| Key      | Action                                            |
+| -------- | ------------------------------------------------- |
+| `Ctrl+Q` | Quit the application                              |
+| `Ctrl+R` | Restart the app (full module reload)              |
+| `Ctrl+L` | Clear the response area                           |
+| `Ctrl+S` | Save chat (saves directly if file open, else Save As) |
+| `Ctrl+A` | Save As (always prompts for filename)             |
+| `Ctrl+O` | Open a saved chat file                            |
+| `Enter`  | Send message                                      |
+
+## Chat Management
+
+Chats are saved as JSON files in `data/chats/` with the following format:
+
+```json
+{
+  "chats": [
+    {"chat": "user input", "response": "model response"},
+    ...
+  ]
+}
+```
+
+- **Save**: If a chat is already open, saves directly. Otherwise opens Save As dialog.
+- **Save As**: Always prompts for a new filename.
+- **Open**: Browse and select a `.json` chat file to load.
 
 ## Structure
 
@@ -46,22 +67,46 @@ ui/chat/
 ├── __init__.py         # Package exports
 ├── __main__.py         # Entry point
 ├── app.py              # Main KalvinApp class
-├── dialogs.py          # FileLoadDialog component
+├── dialogs.py          # FileDialog, OpenDialog, SaveDialog
 ├── README.md           # This file
 └── regions/
     ├── __init__.py     # Region exports
     ├── config.py       # ConfigRegion component
-    └── chat.py         # ChatRegion component
+    ├── chat.py         # ChatRegion component
+    └── history.py      # ChatHistoryRegion component
 ```
+
+## Layout
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Configuration                                           │
+│ Model: [path________________] [Browse]                  │
+│ Grammar: [path_______________] [Browse]                  │
+├─────────────────────────────┬───────────────────────────┤
+│ Chat                        │ History                   │
+│                             │                           │
+│ [Response Area - Editable]  │ [Previous chats list]     │
+│                             │                           │
+│ [Input____________] [Send]  │                           │
+│                    [Submit] │                           │
+└─────────────────────────────┴───────────────────────────┘
+```
+
+- **Left panel**: Chat input and editable response area
+- **Right panel**: Chat history - click to load a previous response
 
 ## Components
 
-| Component       | Module                 | Description                                |
-| --------------- | ---------------------- | ------------------------------------------ |
-| `KalvinApp`     | `app.py`               | Main application                           |
-| `FileLoadDialog`| `dialogs.py`           | Modal file browser with mount navigation   |
-| `ConfigRegion`  | `regions/config.py`    | Model/grammar path inputs with browse      |
-| `ChatRegion`    | `regions/chat.py`      | Chat input and response display            |
+| Component          | Module                 | Description                                |
+| ------------------ | ---------------------- | ------------------------------------------ |
+| `KalvinApp`        | `app.py`               | Main application with save/load actions    |
+| `FileDialog`       | `dialogs.py`           | Base class for file dialogs                |
+| `OpenDialog`       | `dialogs.py`           | File browser for opening files             |
+| `SaveDialog`       | `dialogs.py`           | File browser with filename input for saving|
+| `ConfigRegion`     | `regions/config.py`    | Model/grammar path inputs with browse      |
+| `ChatRegion`       | `regions/chat.py`      | Chat input and editable response display   |
+| `ChatHistoryRegion`| `regions/history.py`   | Selectable list of chat history            |
 
 ## Development
 
