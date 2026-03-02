@@ -306,3 +306,62 @@ verbs = {data["text"]: data for data in grammar.values()
 3. **Standard model (`en_core_web_sm`)** is CPU-optimized and already fast without GPU
 
 4. **Transformer model (`en_core_web_trf`)** benefits significantly from GPU acceleration
+
+## Glossary
+
+### Dependency (DEP) Groups
+
+Dependencies describe the grammatical relationships between words in a sentence.
+
+| Group | Dependencies | Description | Example |
+|-------|--------------|-------------|---------|
+| **DEP_SUBJ** | nsubj, nsubjpass, csubj, csubjpass, agent | Clause subjects - the "doer" of an action | "*The cat* sleeps" → "cat" is nsubj |
+| **DEP_OBJ** | obj, iobj, dobj | Direct/indirect objects - recipients of action | "She gave *him* a book" → "him" is iobj |
+| **DEP_OBL** | obl, obl:* | Oblique nominals - adjunct phrases with prepositions | "She walked *down the street*" → "street" is obl |
+| **DEP_NMOD** | nmod, nmod:* | Nominal modifiers - nouns modifying other nouns | "The *city's* lights" → "city's" is nmod |
+| **DEP_CCOMP** | ccomp | Clausal complements - full clauses as complements | "She said *that she would come*" → "that...come" is ccomp |
+| **DEP_XCOMP** | xcomp | Open clausal complements - clauses without subjects | "She wants *to leave*" → "to leave" is xcomp |
+| **DEP_ADVCL** | advcl | Adverbial clause modifiers - clauses modifying verbs | "She left *when it rained*" → "when...rained" is advcl |
+| **DEP_ACL** | acl, acl:relcl | Adnominal clause modifiers - clauses modifying nouns | "The book *that I read*" → "that I read" is acl:relcl |
+| **DEP_AMOD** | amod | Adjectival modifiers - adjectives modifying nouns | "The *red* car" → "red" is amod |
+| **DEP_ADVMOD** | advmod | Adverbial modifiers - adverbs modifying verbs/adjectives | "She ran *quickly*" → "quickly" is advmod |
+| **DEP_NUMMOD** | nummod, nummod:* | Numeral modifiers - numbers modifying nouns | "*Three* cats" → "Three" is nummod |
+| **DEP_APPOS** | appos | Appositional modifiers - noun phrases renaming nouns | "Paris, *the capital of France*" → "the...France" is appos |
+| **DEP_FUNC** | det, case, mark, aux, auxpass, cop, expl, neg | Function words - grammatical markers | "*The* cat *is* sleeping" → "The" is det, "is" is aux |
+| **DEP_STRUCT** | root, conj, cc, compound, flat, fixed, list, parataxis, discourse | Structural relations - sentence organization | "Cats *and* dogs" → "and" is cc (coord) |
+| **DEP_PUNCT** | punct, goeswith, reparandum, orphan | Punctuation and repairs | "Hello*,* world" → "," is punct |
+
+### Morphological (MORPH) Features
+
+Morphological features describe grammatical properties of individual words.
+
+| Flag | Feature | Description | Example |
+|------|---------|-------------|---------|
+| **MORPH_SING** | Number=Sing | Singular number - one item | "*cat*, *dog*, *house*" |
+| **MORPH_PLUR** | Number=Plur | Plural number - multiple items | "*cats*, *dogs*, *houses*" |
+| **MORPH_PAST** | Tense=Past | Past tense - completed actions | "She *walked*, *ran*, *ate*" |
+| **MORPH_PRES** | Tense=Pres | Present tense - current/habitual actions | "She *walks*, *runs*, *eats*" |
+| **MORPH_FUT** | Tense=Fut | Future tense - will happen | "She *will walk*" |
+| **MORPH_PASS** | Voice=Pass | Passive voice - subject receives action | "The cake *was eaten*" |
+| **MORPH_PERSON_1** | Person=1 | First person - speaker | "*I* walk, *we* walk" |
+| **MORPH_PERSON_2** | Person=2 | Second person - addressee | "*You* walk" |
+| **MORPH_PERSON_3** | Person=3 | Third person - other entities | "*He/she/it* walks, *they* walk" |
+| **MORPH_PERF** | Aspect=Perf | Perfective aspect - completed whole | "She *has eaten*" |
+| **MORPH_PROG** | Aspect=Prog | Progressive aspect - ongoing action | "She *is eating*" |
+| **MORPH_IND** | Mood=Ind | Indicative mood - statements of fact | "She *walks* home" |
+| **MORPH_IMP** | Mood=Imp | Imperative mood - commands | "*Walk* home!" |
+| **MORPH_INF** | VerbForm=Inf | Infinitive verb form | "to *walk*, to *eat*" |
+| **MORPH_PART** | VerbForm=Part | Participle verb form | "*walking*, *eaten*, *written*" |
+| **MORPH_GER** | VerbForm=Ger | Gerund verb form - noun-like | "*Swimming* is fun" |
+
+### Quick Reference: Combining Features
+
+A single word can have multiple morphological features. Examples:
+
+| Word | Features | Combined Meaning |
+|------|----------|------------------|
+| "walked" | PAST + SING | Past tense, singular |
+| "running" | PRES + PROG + SING | Present progressive, singular |
+| "eaten" | PAST + PASS + PART | Past passive participle |
+| "am" | PRES + IND + PERSON_1 | Present indicative, first person |
+| "were" | PAST + IND + PLUR + PERSON_2/3 | Past indicative plural
