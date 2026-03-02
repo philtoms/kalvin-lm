@@ -1039,7 +1039,7 @@ def main() -> None:
     parser.add_argument(
         "-i", "--input",
         type=Path,
-        default=Path("/Volumes/USB-Backup/ai/data/tidy-ts/tinystories.v1.summary.json"),
+        default=Path("/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1.json"),
         help="Input text or JSON file (default: %(default)s)"
     )
     parser.add_argument(
@@ -1051,7 +1051,7 @@ def main() -> None:
     parser.add_argument(
         "-m", "--model",
         type=str,
-        default="en_core_web_sm",
+        default="en_core_web_trf",
         help="spaCy model to use (default: %(default)s). Use 'en_core_web_trf' for transformer model with better GPU utilization."
     )
     parser.add_argument(
