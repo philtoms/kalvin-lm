@@ -69,7 +69,7 @@ class Kalvin:
                 s_key = self.nlp_type["POS_X"]
                 self.unrecognised_tokens.add(token)
 
-            self.model.add(KLine(s_key  | token, [token]), True)
+            self.model.add(KLine(s_key | token, [token]), True)
             ks_nodes.append(s_key)
             ks_key |= s_key
 
