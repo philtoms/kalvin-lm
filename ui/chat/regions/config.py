@@ -34,18 +34,14 @@ class ConfigRegion(Container):
 
     ConfigRegion .config-label {
         width: 10;
+        height: 3;
         text-align: right;
         padding-right: 1;
+        content-align: right middle;
     }
 
     ConfigRegion Input {
         width: 1fr;
-    }
-
-    ConfigRegion .browse-btn {
-        width: auto;
-        min-width: 8;
-        margin-left: 1;
     }
 
     ConfigRegion Input:hover {
@@ -67,11 +63,11 @@ class ConfigRegion(Container):
         with Horizontal(classes="config-row"):
             yield Label("Model:", classes="config-label")
             yield Input(value=self.model_path, placeholder="Path to model file", id="model-input")
-            yield Button("Browse", id="browse-model", classes="browse-btn")
+            yield Button("Browse", id="browse-model")
         with Horizontal(classes="config-row"):
             yield Label("Grammar:", classes="config-label")
             yield Input(value=self.grammar_path, placeholder="Path to grammar file", id="grammar-input")
-            yield Button("Browse", id="browse-grammar", classes="browse-btn")
+            yield Button("Browse", id="browse-grammar")
 
     def on_click(self, event: events.Click) -> None:
         """Handle click events on input fields - double-click opens file dialog."""

@@ -1,5 +1,7 @@
 """Kalvin Textual Chat Application."""
 
+import os
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -23,10 +25,22 @@ class KalvinApp(App):
         height: 1fr;
         padding: 1;
     }
+
+    /* Global button styles */
+    Button {
+        min-width: 8;
+        margin-left: 1;
+        margin-right: 1;
+    }
+
+    Button:focus {
+        text-style: bold;
+    }
     """
 
     TITLE = "Kalvin Chat"
     BINDINGS = [
+        ("ctrl+r", "restart", "Restart"),
         ("ctrl+q", "quit", "Quit"),
         ("ctrl+l", "clear_response", "Clear"),
     ]
@@ -46,6 +60,8 @@ class KalvinApp(App):
         """Handle button press events."""
         if event.button.id == "send-btn":
             self._handle_send()
+        elif event.button.id == "submit-response-btn":
+            self._handle_response_submit()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle input submission (Enter key)."""
@@ -71,10 +87,26 @@ class KalvinApp(App):
         response = f"[Model: {Path(model_path).name}]\nProcessing: {user_input}"
         chat_region.append_response(response)
 
+    def _handle_response_submit(self) -> None:
+        """Handle submitting the response text."""
+        chat_region = self.query_one(ChatRegion)
+        response_text = chat_region.get_response()
+        if not response_text.strip():
+            return
+
+        # TODO: Process the submitted response (e.g., send to model, save, etc.)
+        # For now, just log it
+        self.log(f"Response submitted: {response_text[:50]}...")
+
     def action_clear_response(self) -> None:
         """Clear the response area."""
         chat_region = self.query_one(ChatRegion)
-        chat_region.set_response("")
+        chat_region.clear_response()
+
+    def action_restart(self) -> None:
+        """Restart the app with fresh module reload."""
+        self.exit()
+        os.execv(sys.executable, [sys.executable, "-m", "ui.chat"])
 
 
 def main() -> None:

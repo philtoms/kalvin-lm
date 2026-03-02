@@ -36,11 +36,6 @@ class FileLoadDialog(ModalScreen):
         margin-bottom: 1;
     }
 
-    FileLoadDialog .mount-btn {
-        min-width: 10;
-        margin-right: 1;
-    }
-
     FileLoadDialog DirectoryTree {
         height: 1fr;
         border: solid $panel;
@@ -50,11 +45,6 @@ class FileLoadDialog(ModalScreen):
     FileLoadDialog .dialog-buttons {
         align: center middle;
         height: 3;
-    }
-
-    FileLoadDialog Button {
-        width: auto;
-        margin: 0 1;
     }
 
     FileLoadDialog #current-path {
@@ -85,11 +75,11 @@ class FileLoadDialog(ModalScreen):
             yield Label(self.title_text, classes="dialog-title")
             with Horizontal(classes="mount-points"):
                 for _, label in self.MOUNT_POINTS:
-                    yield Button(label, id=f"mount-{label.lower()}", classes="mount-btn")
+                    yield Button(label, id=f"mount-{label.lower()}")
             yield Label(self.initial_path, id="current-path")
             yield DirectoryTree(self.initial_path, id="file-tree")
             with Horizontal(classes="dialog-buttons"):
-                yield Button("Cancel", id="cancel-btn", variant="default")
+                yield Button("Cancel", id="cancel-btn")
                 yield Button("Select", id="select-btn", variant="primary")
 
     def on_mount(self) -> None:
