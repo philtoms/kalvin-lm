@@ -2,7 +2,7 @@
 
 import pytest
 
-from kalvin.kscript import (
+from kscript import (
     CompileResult,
     KLineExpr,
     KScript,
