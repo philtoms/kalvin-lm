@@ -83,6 +83,26 @@ uv run python scripts/encode_text.py path/to/data.txt
 uv run python scripts/encode_text.py path/to/data.txt data/kalvin.bin
 ```
 
+### ks_run.py
+
+Run KScript files to create or update Kalvin models:
+
+```bash
+# Create a new model from script
+uv run python scripts/ks_run.py my-script.ks
+
+# Update an existing model
+uv run python scripts/ks_run.py my-script.ks --model existing.bin
+
+# Save as JSON format
+uv run python scripts/ks_run.py my-script.ks --format json
+
+# Verbose output
+uv run python scripts/ks_run.py my-script.ks -v
+```
+
+See [src/kscript/README.md](src/kscript/README.md) for KScript syntax documentation.
+
 ### train_tokenizer.py
 
 Train a BPE tokenizer on text data. Supports `.txt`, `.json`, and `.parquet` files.

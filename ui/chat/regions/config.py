@@ -68,7 +68,9 @@ class ConfigRegion(Container):
             yield Button("Browse", id="browse-model")
         with Horizontal(classes="config-row"):
             yield Label("Grammar:", classes="config-label")
-            yield Input(value=self.grammar_path, placeholder="Path to grammar file", id="grammar-input")
+            yield Input(
+                value=self.grammar_path, placeholder="Path to grammar file", id="grammar-input"
+            )
             yield Button("Browse", id="browse-grammar")
 
     def on_click(self, event: events.Click) -> None:
@@ -99,14 +101,14 @@ class ConfigRegion(Container):
         """Open the model file selection dialog."""
         self.app.push_screen(
             OpenDialog(title="Select Model File", initial_path=self.get_model_path()),
-            lambda path: self._set_model_path(path)
+            lambda path: self._set_model_path(path),
         )
 
     def _open_grammar_dialog(self) -> None:
         """Open the grammar file selection dialog."""
         self.app.push_screen(
             OpenDialog(title="Select Grammar File", initial_path=self.get_grammar_path()),
-            lambda path: self._set_grammar_path(path)
+            lambda path: self._set_grammar_path(path),
         )
 
     def _set_model_path(self, path: Optional[str]) -> None:

@@ -1,4 +1,4 @@
-"""Kalvin Textual Chat Application."""
+"""Kalvin Textual Chat Application with KScript integration."""
 
 import json
 import os
@@ -11,6 +11,7 @@ from textual.containers import Container, Horizontal
 from textual.widgets import Button, Footer, Header, Input, ListView
 
 from kalvin import Kalvin
+from kscript import compile_script
 from ui.chat.dialogs import OpenDialog, SaveDialog
 from ui.chat.regions import ChatHistoryRegion, ChatRegion, ConfigRegion
 
@@ -20,7 +21,7 @@ DEFAULT_GRAMMAR_PATH = "/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1_gram
 
 
 class KalvinApp(App):
-    """Kalvin Chat Application."""
+    """Kalvin Chat Application with KScript support."""
 
     CSS = """
     Screen {
@@ -54,18 +55,20 @@ class KalvinApp(App):
     BINDINGS = [
         ("ctrl+r", "restart", "Restart"),
         ("ctrl+q", "quit", "Quit"),
-        ("ctrl+l", "clear_response", "Clear"),
+        ("ctrl+l", "clear_script", "Clear Script"),
         ("ctrl+s", "save", "Save"),
         ("ctrl+a", "save_as", "Save As"),
         ("ctrl+o", "open", "Open"),
+        ("ctrl+e", "run_script", "Run Script"),
     ]
 
     def __init__(self) -> None:
         super().__init__()
         self._kalvin: Optional[Kalvin] = None
         self._model_error: Optional[str] = None
-        self._chat_history: list[dict] = []
+        self._history: list[dict] = []
         self._current_file: Optional[str] = None
+        self._current_file_type: str = "json"  # "json" or "ks"
 
     def _ensure_chats_dir(self) -> None:
         """Ensure the chats directory exists."""
@@ -73,7 +76,6 @@ class KalvinApp(App):
 
     def _load_dictionary(self, grammar_path: str) -> dict | None:
         """Load dictionary from grammar file."""
-        import json
         try:
             grammar_path_expanded = Path(grammar_path).expanduser()
             if not grammar_path_expanded.exists():
@@ -91,7 +93,6 @@ class KalvinApp(App):
 
     def _load_nlp_type(self, grammar_path: str, nlp_detail: str = "nlp_type32") -> dict | None:
         """Load NLP type mapping from grammar file."""
-        import json
         try:
             nlp_path = grammar_path.replace("grammar", nlp_detail)
             nlp_path_expanded = Path(nlp_path).expanduser()
@@ -141,37 +142,38 @@ class KalvinApp(App):
         """Load model on app start."""
         self._load_model(str(DEFAULT_MODEL_PATH), DEFAULT_GRAMMAR_PATH)
 
-    def _save_to_file(self, filename: str) -> None:
-        """Save chat history to the specified file."""
+    def _save_to_file(self, filename: str, file_type: str = "json") -> None:
+        """Save to the specified file."""
         chat_region = self.query_one(ChatRegion)
-        response_text = chat_region.get_response()
+        script = chat_region.get_script()
 
-        # Add current exchange to history
-        current_exchange = {
-            "chat": chat_region.get_input(),
-            "response": response_text
-        }
-
-        # Include any previous history plus current
-        chats = self._chat_history.copy()
-        if current_exchange["chat"] or current_exchange["response"]:
-            chats.append(current_exchange)
-
-        filepath = DEFAULT_CHATS_DIR / f"{filename}.json"
-        with open(filepath, "w") as f:
-            json.dump({"chats": chats}, f, indent=2)
+        if file_type == "ks":
+            # Save as KScript file
+            filepath = DEFAULT_CHATS_DIR / f"{filename}.ks"
+            with open(filepath, "w") as f:
+                f.write(script if script else "")
+        else:
+            # Save as JSON chat file (includes script and history)
+            data = {
+                "script": script,
+                "history": self._history,
+            }
+            filepath = DEFAULT_CHATS_DIR / f"{filename}.json"
+            with open(filepath, "w") as f:
+                json.dump(data, f, indent=2)
 
         self._current_file = filename
+        self._current_file_type = file_type
 
     def action_save(self) -> None:
-        """Save chat history - save if opened, save as if new."""
+        """Save - save if opened, save as if new."""
         self._ensure_chats_dir()
         if self._current_file:
-            self._save_to_file(self._current_file)
+            self._save_to_file(self._current_file, self._current_file_type)
         else:
             self.push_screen(
                 SaveDialog(
-                    title="Save Chat",
+                    title="Save",
                     initial_path=str(DEFAULT_CHATS_DIR),
                     file_type=".json",
                 ),
@@ -183,7 +185,7 @@ class KalvinApp(App):
         self._ensure_chats_dir()
         self.push_screen(
             SaveDialog(
-                title="Save Chat As",
+                title="Save As",
                 initial_path=str(DEFAULT_CHATS_DIR),
                 file_type=".json",
             ),
@@ -195,16 +197,17 @@ class KalvinApp(App):
         if not filepath:
             return
         path = Path(filepath)
-        self._save_to_file(path.stem)
+        file_type = "ks" if path.suffix == ".ks" else "json"
+        self._save_to_file(path.stem, file_type)
 
     def action_open(self) -> None:
-        """Open chat history from file."""
+        """Open file."""
         self._ensure_chats_dir()
         self.push_screen(
             OpenDialog(
-                title="Open Chat",
+                title="Open",
                 initial_path=str(DEFAULT_CHATS_DIR),
-                file_type=".json",
+                file_type=None,  # Allow all files
             ),
             self._handle_open,
         )
@@ -218,18 +221,29 @@ class KalvinApp(App):
         if not path.exists():
             return
 
-        with open(path, "r") as f:
-            data = json.load(f)
+        if path.suffix == ".ks":
+            # Open as KScript file
+            with open(path, "r") as f:
+                script = f.read()
+            chat_region = self.query_one(ChatRegion)
+            chat_region.set_script(script)
+            self._current_file_type = "ks"
+        else:
+            # Open as JSON chat file
+            with open(path, "r") as f:
+                data = json.load(f)
 
-        self._chat_history = data.get("chats", [])
+            # Load script if present
+            chat_region = self.query_one(ChatRegion)
+            if "script" in data:
+                chat_region.set_script(data["script"])
+
+            # Load history if present
+            self._history = data.get("history", data.get("chats", []))
+            self._current_file_type = "json"
+
         self._current_file = path.stem
-
-        # Update history view and display the last chat
         self._update_history_view()
-        chat_region = self.query_one(ChatRegion)
-        if self._chat_history:
-            last = self._chat_history[-1]
-            chat_region.set_response(last.get("response", ""))
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -248,8 +262,10 @@ class KalvinApp(App):
         """Handle button press events."""
         if event.button.id == "send-btn":
             self._handle_send()
-        elif event.button.id == "submit-response-btn":
-            self._handle_response_submit()
+        elif event.button.id == "run-script-btn":
+            self._handle_run_script()
+        elif event.button.id == "clear-script-btn":
+            self.action_clear_script()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle input submission (Enter key)."""
@@ -261,25 +277,26 @@ class KalvinApp(App):
         if event.list_view.id == "history-list":
             history_region = self.query_one(ChatHistoryRegion)
             index = history_region.get_selected_index()
-            chat = history_region.get_chat_at(index)
-            if chat:
-                chat_region = self.query_one(ChatRegion)
-                chat_region.set_response(chat.get("response", ""))
+            entry = history_region.get_entry_at(index)
+            if entry:
+                # If it's a script entry, load the script into the editor
+                if entry.get("type") == "script":
+                    chat_region = self.query_one(ChatRegion)
+                    chat_region.set_script(entry.get("script", ""))
 
     def _update_history_view(self) -> None:
-        """Update the history region with current chats."""
+        """Update the history region with current entries."""
         history_region = self.query_one(ChatHistoryRegion)
-        history_region.update_history(self._chat_history)
+        history_region.update_history(self._history)
 
     def _handle_send(self) -> None:
-        """Handle sending a message."""
+        """Handle sending a direct chat message."""
         chat_region = self.query_one(ChatRegion)
 
         user_input = chat_region.get_input()
         if not user_input.strip():
             return
 
-        chat_region.append_response(f"> {user_input}")
         chat_region.clear_input()
 
         # Generate response using loaded model
@@ -287,7 +304,6 @@ class KalvinApp(App):
             try:
                 result = self._kalvin.encode(user_input)
                 if result:
-                    # result is a KLine with s_key attribute
                     s_key = result.s_key
                     if s_key:
                         response = self._kalvin.decode(s_key)
@@ -304,27 +320,75 @@ class KalvinApp(App):
         else:
             response = "[Model not loaded]"
 
-        chat_region.append_response(response)
-
-        # Track in history
-        self._chat_history.append({"chat": user_input, "response": response})
+        # Add to history
+        entry = {
+            "type": "chat",
+            "chat": user_input,
+            "response": response,
+        }
+        self._history.append(entry)
         self._update_history_view()
 
-    def _handle_response_submit(self) -> None:
-        """Handle submitting the response text."""
+    def _handle_run_script(self) -> None:
+        """Handle running the KScript."""
         chat_region = self.query_one(ChatRegion)
-        response_text = chat_region.get_response()
-        if not response_text.strip():
+        script = chat_region.get_script()
+
+        if not script.strip():
             return
 
-        # TODO: Process the submitted response (e.g., send to model, save, etc.)
-        # For now, just log it
-        self.log(f"Response submitted: {response_text[:50]}...")
+        # Compile the script
+        try:
+            result = compile_script(script)
 
-    def action_clear_response(self) -> None:
-        """Clear the response area."""
+            # Build output summary
+            output_lines = [
+                f"Compiled {len(result.model)} KLines",
+                f"Symbol table: {len(result.symbol_table)} entries",
+            ]
+
+            if result.load_paths:
+                output_lines.append(f"Load paths: {result.load_paths}")
+            if result.save_path:
+                output_lines.append(f"Save path: {result.save_path}")
+            if result.attention_klines:
+                output_lines.append(f"Attention KLines: {len(result.attention_klines)}")
+
+            # Show some symbol table entries
+            if result.symbol_table:
+                symbols = list(result.symbol_table.keys())[:5]
+                output_lines.append("Symbols: " + ", ".join(symbols))
+                if len(result.symbol_table) > 5:
+                    output_lines.append(f"  ... and {len(result.symbol_table) - 5} more")
+
+            output = "\n".join(output_lines)
+
+            # If we have a model loaded, integrate the compiled model
+            if self._kalvin:
+                for kline in result.model:
+                    self._kalvin.model.add(kline)
+                output += f"\n\nIntegrated into model (total: {len(self._kalvin.model)} KLines)"
+
+        except Exception as e:
+            output = f"Compilation error:\n{e}"
+
+        # Add to history
+        entry = {
+            "type": "script",
+            "script": script,
+            "output": output,
+        }
+        self._history.append(entry)
+        self._update_history_view()
+
+    def action_clear_script(self) -> None:
+        """Clear the script area."""
         chat_region = self.query_one(ChatRegion)
-        chat_region.clear_response()
+        chat_region.clear_script()
+
+    def action_run_script(self) -> None:
+        """Run the current script."""
+        self._handle_run_script()
 
     def action_restart(self) -> None:
         """Restart the app with fresh module reload."""

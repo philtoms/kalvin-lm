@@ -137,7 +137,7 @@ class FileDialog(ModalScreen):
 
         def find_and_select_node(node) -> bool:
             """Recursively find and select the target file node."""
-            if hasattr(node, 'data') and node.data and hasattr(node.data, 'path'):
+            if hasattr(node, "data") and node.data and hasattr(node.data, "path"):
                 if node.data.path == self._target_file:
                     tree.select_node(node)
                     self._selected_path = self._target_file

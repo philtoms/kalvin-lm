@@ -1,14 +1,16 @@
-"""Chat region component."""
+"""Chat region component with KScript editor."""
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Button, Input, Label, TextArea
 
-PLACEHOLDER_TEXT = "Response will appear here..."
+SCRIPT_PLACEHOLDER = (
+    "# Enter KScript here...\n# Example:\n#   greeting = hello world\n#   question > greeting ?"
+)
 
 
 class ChatRegion(Container):
-    """Chat region with input and response display."""
+    """Chat region with KScript editor and direct chat input."""
 
     DEFAULT_CSS = """
     ChatRegion {
@@ -22,22 +24,22 @@ class ChatRegion(Container):
         margin-bottom: 1;
     }
 
-    ChatRegion .response-container {
+    ChatRegion .editor-container {
         height: 1fr;
     }
 
-    ChatRegion .response-area {
+    ChatRegion .script-editor {
         height: 1fr;
         padding: 1;
         background: $surface;
         border: solid $panel;
     }
 
-    ChatRegion .response-area:focus {
+    ChatRegion .script-editor:focus {
         border: solid $accent;
     }
 
-    ChatRegion .response-buttons {
+    ChatRegion .editor-buttons {
         height: auto;
         margin-top: 1;
         align-horizontal: right;
@@ -56,59 +58,57 @@ class ChatRegion(Container):
     _placeholder_active: bool = True
 
     def compose(self) -> ComposeResult:
-        yield Label("Chat", classes="chat-title")
-        with Vertical(classes="response-container"):
-            yield TextArea(PLACEHOLDER_TEXT, id="response-text", classes="response-area")
-            with Horizontal(classes="response-buttons"):
-                yield Button("Submit", id="submit-response-btn", variant="primary")
+        yield Label("Script Editor", classes="chat-title")
+        with Vertical(classes="editor-container"):
+            yield TextArea(
+                SCRIPT_PLACEHOLDER,
+                id="script-text",
+                classes="script-editor",
+                language="python",  # Use Python highlighting as closest match
+            )
+            with Horizontal(classes="editor-buttons"):
+                yield Button("Clear", id="clear-script-btn", variant="default")
+                yield Button("Run", id="run-script-btn", variant="success")
         with Horizontal(classes="input-row"):
-            yield Input(placeholder="Type your message...", id="chat-input")
-            yield Button("Send", id="send-btn", variant="primary")
+            yield Input(placeholder="Direct chat message...", id="chat-input")
+            yield Button("Chat", id="send-btn", variant="primary")
 
     def on_descendant_focus(self, event) -> None:
         """Clear placeholder when TextArea gets focus."""
-        if event.widget and event.widget.id == "response-text" and self._placeholder_active:
-            self.query_one("#response-text", TextArea).text = ""
+        if event.widget and event.widget.id == "script-text" and self._placeholder_active:
+            self.query_one("#script-text", TextArea).text = ""
             self._placeholder_active = False
 
-    def on_descendant_blur(self, event) -> None:
-        """Show placeholder if empty when TextArea loses focus."""
-        if event.widget and event.widget.id == "response-text":
-            text_area = self.query_one("#response-text", TextArea)
-            if not text_area.text.strip():
-                text_area.text = PLACEHOLDER_TEXT
-                self._placeholder_active = True
-
     def get_input(self) -> str:
-        """Get the current input text."""
+        """Get the current chat input text."""
         return self.query_one("#chat-input", Input).value
 
     def clear_input(self) -> None:
-        """Clear the input field."""
+        """Clear the chat input field."""
         self.query_one("#chat-input", Input).value = ""
 
-    def get_response(self) -> str:
-        """Get the current response text (excludes placeholder)."""
+    def get_script(self) -> str:
+        """Get the current script text (excludes placeholder)."""
         if self._placeholder_active:
             return ""
-        return self.query_one("#response-text", TextArea).text
+        return self.query_one("#script-text", TextArea).text
 
-    def set_response(self, text: str) -> None:
-        """Set the response text."""
+    def set_script(self, text: str) -> None:
+        """Set the script text."""
         self._placeholder_active = False
-        self.query_one("#response-text", TextArea).text = text
+        self.query_one("#script-text", TextArea).text = text
 
-    def append_response(self, text: str) -> None:
-        """Append text to the response."""
+    def append_script(self, text: str) -> None:
+        """Append text to the script."""
         if self._placeholder_active:
             self._placeholder_active = False
-            self.query_one("#response-text", TextArea).text = text
+            self.query_one("#script-text", TextArea).text = text
         else:
-            current = self.query_one("#response-text", TextArea).text
+            current = self.query_one("#script-text", TextArea).text
             new_text = current + "\n" + text if current else text
-            self.query_one("#response-text", TextArea).text = new_text
+            self.query_one("#script-text", TextArea).text = new_text
 
-    def clear_response(self) -> None:
-        """Clear the response area."""
+    def clear_script(self) -> None:
+        """Clear the script area."""
         self._placeholder_active = True
-        self.query_one("#response-text", TextArea).text = PLACEHOLDER_TEXT
+        self.query_one("#script-text", TextArea).text = SCRIPT_PLACEHOLDER
