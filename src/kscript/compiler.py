@@ -45,19 +45,22 @@ class Compiler:
     2. Second pass: Build KLines with resolved references
     """
 
-    def __init__(self, tokenizer=None):
+    def __init__(self, tokenizer=None, model: Model | None = None):
         """
         Initialize compiler.
 
         Args:
             tokenizer: Optional tokenizer for string-to-token conversion.
                       If None, identifiers are hashed to create token IDs.
+            model: Optional existing Model to add KLines to.
+                   If None, creates a new empty Model.
         """
         self.tokenizer = tokenizer
+        self.model = model
 
     def compile(self, script: KScript) -> CompileResult:
         """Compile a KScript AST to a Model."""
-        model = Model()
+        model = self.model if self.model else Model()
         symbol_table: SymbolTable = {}
         load_paths: list[str] = []
         save_path: str | None = None

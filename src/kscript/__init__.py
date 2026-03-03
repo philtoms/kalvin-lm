@@ -24,6 +24,9 @@ __all__ = [
     # Parser
     "Parser",
     "ParseError",
+    # Convenience functions
+    "parse",
+    "compile_script",
 ]
 
 
@@ -32,8 +35,19 @@ def parse(source: str) -> KScript:
     return Parser.from_source(source).parse()
 
 
-def compile_script(source: str, tokenizer=None) -> CompileResult:
-    """Parse and compile KScript source to Model."""
+def compile_script(
+    source: str, tokenizer=None, model=None
+) -> CompileResult:
+    """Parse and compile KScript source to Model.
+
+    Args:
+        source: KScript source code
+        tokenizer: Optional tokenizer for string-to-token conversion
+        model: Optional existing Model to add KLines to
+
+    Returns:
+        CompileResult with model, symbol_table, load_paths, save_path
+    """
     script = parse(source)
-    compiler = Compiler(tokenizer)
+    compiler = Compiler(tokenizer, model)
     return compiler.compile(script)
