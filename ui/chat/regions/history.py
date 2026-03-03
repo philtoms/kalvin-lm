@@ -65,7 +65,6 @@ class ChatHistoryRegion(Container):
             list_view.append(
                 ListItem(
                     Static(preview or f"Chat {i + 1}", classes="chat-preview"),
-                    id=f"chat-item-{i}"
                 )
             )
 
@@ -73,9 +72,10 @@ class ChatHistoryRegion(Container):
         """Get the index of the selected item."""
         list_view = self.query_one("#history-list", ListView)
         if list_view.highlighted_child:
-            item_id = list_view.highlighted_child.id
-            if item_id:
-                return int(item_id.replace("chat-item-", ""))
+            # Get index from ListView's child list
+            for i, child in enumerate(list_view.children):
+                if child is list_view.highlighted_child:
+                    return i
         return -1
 
     def get_chat_at(self, index: int) -> dict | None:

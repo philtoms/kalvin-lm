@@ -10,10 +10,13 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal
 from textual.widgets import Button, Footer, Header, Input, ListView
 
+from kalvin import Kalvin
 from ui.chat.dialogs import OpenDialog, SaveDialog
 from ui.chat.regions import ChatHistoryRegion, ChatRegion, ConfigRegion
 
 DEFAULT_CHATS_DIR = Path("data/chats")
+DEFAULT_MODEL_PATH = Path("~/dev/ai/kalvin/data/kalvin.bin").expanduser()
+DEFAULT_GRAMMAR_PATH = "/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1_grammar.json"
 
 
 class KalvinApp(App):
@@ -59,13 +62,84 @@ class KalvinApp(App):
 
     def __init__(self) -> None:
         super().__init__()
-        self._model: Optional[object] = None
+        self._kalvin: Optional[Kalvin] = None
+        self._model_error: Optional[str] = None
         self._chat_history: list[dict] = []
         self._current_file: Optional[str] = None
 
     def _ensure_chats_dir(self) -> None:
         """Ensure the chats directory exists."""
         DEFAULT_CHATS_DIR.mkdir(parents=True, exist_ok=True)
+
+    def _load_dictionary(self, grammar_path: str) -> dict | None:
+        """Load dictionary from grammar file."""
+        import json
+        try:
+            grammar_path_expanded = Path(grammar_path).expanduser()
+            if not grammar_path_expanded.exists():
+                self.log(f"Grammar file not found: {grammar_path}")
+                return None
+            with open(grammar_path_expanded, "r") as f:
+                str_dict = json.load(f)
+            dictionary = {}
+            for key, value in str_dict.items():
+                dictionary[int(key)] = value
+            return dictionary
+        except Exception as e:
+            self.log(f"Failed to load dictionary: {e}")
+            return None
+
+    def _load_nlp_type(self, grammar_path: str, nlp_detail: str = "nlp_type32") -> dict | None:
+        """Load NLP type mapping from grammar file."""
+        import json
+        try:
+            nlp_path = grammar_path.replace("grammar", nlp_detail)
+            nlp_path_expanded = Path(nlp_path).expanduser()
+            if not nlp_path_expanded.exists():
+                self.log(f"NLP type file not found: {nlp_path}")
+                return None
+            with open(nlp_path_expanded, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            self.log(f"Failed to load NLP type: {e}")
+            return None
+
+    def _load_model(self, model_path: str, grammar_path: str) -> None:
+        """Load or reload the Kalvin model with the given paths."""
+        self._kalvin = None
+        self._model_error = None
+
+        try:
+            model_path_expanded = Path(model_path).expanduser()
+            if not model_path_expanded.exists():
+                self._model_error = f"Model file not found: {model_path}"
+                self.log(self._model_error)
+                return
+
+            # Load model from file
+            self._kalvin = Kalvin.load(model_path_expanded)
+
+            # Update dictionary and nlp_type from grammar path
+            dictionary = self._load_dictionary(grammar_path)
+            if dictionary:
+                self._kalvin.dictionary = dictionary
+
+            nlp_type = self._load_nlp_type(grammar_path)
+            if nlp_type:
+                self._kalvin.nlp_type = nlp_type
+
+            self.log(f"Model loaded: {model_path}")
+        except Exception as e:
+            self._model_error = f"Failed to load model: {e}"
+            self.log(self._model_error)
+
+    def _on_config_change(self, model_path: str, grammar_path: str) -> None:
+        """Handle config changes - reload model."""
+        self._load_model(model_path, grammar_path)
+
+    def on_mount(self) -> None:
+        """Load model on app start."""
+        self._load_model(str(DEFAULT_MODEL_PATH), DEFAULT_GRAMMAR_PATH)
 
     def _save_to_file(self, filename: str) -> None:
         """Save chat history to the specified file."""
@@ -160,7 +234,11 @@ class KalvinApp(App):
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(classes="main-container"):
-            yield ConfigRegion()
+            yield ConfigRegion(
+                str(DEFAULT_MODEL_PATH),
+                DEFAULT_GRAMMAR_PATH,
+                on_config_change=self._on_config_change,
+            )
             with Horizontal(classes="chat-container"):
                 yield ChatRegion()
                 yield ChatHistoryRegion()
@@ -196,20 +274,36 @@ class KalvinApp(App):
     def _handle_send(self) -> None:
         """Handle sending a message."""
         chat_region = self.query_one(ChatRegion)
-        config_region = self.query_one(ConfigRegion)
 
         user_input = chat_region.get_input()
         if not user_input.strip():
             return
 
-        model_path = config_region.get_model_path()
-        grammar_path = config_region.get_grammar_path()
-
         chat_region.append_response(f"> {user_input}")
         chat_region.clear_input()
 
-        # TODO: Load model and generate response
-        response = f"[Model: {Path(model_path).name}]\nProcessing: {user_input}"
+        # Generate response using loaded model
+        if self._kalvin:
+            try:
+                result = self._kalvin.encode(user_input)
+                if result:
+                    # result is a KLine with s_key attribute
+                    s_key = result.s_key
+                    if s_key:
+                        response = self._kalvin.decode(s_key)
+                        if not response:
+                            response = f"[Encoded: s_key={s_key}]"
+                    else:
+                        response = "[No s_key in result]"
+                else:
+                    response = "[No result from encode]"
+            except Exception as e:
+                response = f"[Error: {e}]"
+        elif self._model_error:
+            response = f"[Model Error: {self._model_error}]"
+        else:
+            response = "[Model not loaded]"
+
         chat_region.append_response(response)
 
         # Track in history

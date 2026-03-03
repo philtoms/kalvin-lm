@@ -1,7 +1,7 @@
 """Configuration region component."""
 
 import time
-from typing import Optional
+from typing import Callable, Optional
 
 from textual import events
 from textual.app import ComposeResult
@@ -51,12 +51,14 @@ class ConfigRegion(Container):
 
     def __init__(
         self,
-        model_path: str = "~/dev/ai/kalvin/data/kalvin.bin",
-        grammar_path: str = "/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1_grammar.json",
+        model_path: str,
+        grammar_path: str,
+        on_config_change: Optional[Callable[[str, str], None]] = None,
     ) -> None:
         super().__init__()
         self.model_path = model_path
         self.grammar_path = grammar_path
+        self._on_config_change = on_config_change
 
     def compose(self) -> ComposeResult:
         yield Label("Configuration", classes="config-title")
@@ -111,11 +113,18 @@ class ConfigRegion(Container):
         """Set the model path after file selection."""
         if path:
             self.query_one("#model-input", Input).value = path
+            self._notify_config_change()
 
     def _set_grammar_path(self, path: Optional[str]) -> None:
         """Set the grammar path after file selection."""
         if path:
             self.query_one("#grammar-input", Input).value = path
+            self._notify_config_change()
+
+    def _notify_config_change(self) -> None:
+        """Notify listener of config change."""
+        if self._on_config_change:
+            self._on_config_change(self.get_model_path(), self.get_grammar_path())
 
     def get_model_path(self) -> str:
         """Get the current model path."""
