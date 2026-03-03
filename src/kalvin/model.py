@@ -6,7 +6,6 @@ from typing import TypeAlias, Iterator
 
 # Type alias for a KNode (64-bit int)
 KNode: TypeAlias = int
-KSig: TypeAlias = int | None
 
 
 @dataclass
@@ -89,27 +88,28 @@ class Model:
             self._by_key[kline.s_key] = []
         self._by_key[kline.s_key].append(idx)
 
-    def add(self, kline: KLine, train: bool = False) -> KSig:
+    def add(self, kline: KLine, train: bool = False) -> bool:
         """Add a KLine, enforcing the key invariant.
 
         Args:
             kline: KLine to add
+            train: If True, enforce training mode (dedup by s_key only)
 
         Returns:
-            s_key if added, None if rejected (exact duplicate)
+            True if added, False if rejected (duplicate)
         """
         if train:
             if kline.s_key in self._by_key:
-                return None
+                return False
 
         key_nodes = (kline.s_key, tuple(kline.nodes))
         if key_nodes in self._dedup:
-            return None  # O(1) duplicate check
+            return False  # O(1) duplicate check
         self._add_kline_internal(kline)
         if train:
             self._dedup.add(key_nodes)
 
-        return kline.s_key
+        return True
 
     def find_by_key(self, key: int | None) -> KLine | None:
         """Find a KLine by its s_key.
@@ -255,6 +255,37 @@ class Model:
         """Create a duplicate of this model."""
         klines = [KLine(s_key=k.s_key, nodes=k.nodes.copy()) for k in self._klines]
         return Model(klines)
+
+    def get_all_descendants(self, node_key: int, visited: set[int] | None = None) -> set[int]:
+        """Recursively collect all descendant nodes.
+
+        Args:
+            node_key: The node to start from
+            visited: Set of already visited nodes (cycle detection)
+
+        Returns:
+            Set of all descendant node keys
+        """
+        if visited is None:
+            visited = set()
+
+        if node_key in visited:
+            return set()
+        visited.add(node_key)
+
+        descendants: set[int] = set()
+        kline = self.find_by_key(node_key)
+
+        if kline is None:
+            return descendants
+
+        for child in kline.nodes:
+            descendants.add(child)
+            # Recursively get child's descendants
+            child_descendants = self.get_all_descendants(child, visited.copy())
+            descendants.update(child_descendants)
+
+        return descendants
 
     def __len__(self) -> int:
         """Return the number of KLines in the model. O(1)."""

@@ -127,35 +127,6 @@ def build_s3(s1_pct: int, s2_pct: int, gen_pct: int) -> Significance:
 
 # === Significance Calculation ===
 
-def _get_all_descendants(model: "Model", node_key: int, visited: set[int]) -> set[int]:
-    """Recursively collect all descendant nodes.
-
-    Args:
-        model: The Model to search for KLines
-        node_key: The node to start from
-        visited: Set of already visited nodes (cycle detection)
-
-    Returns:
-        Set of all descendant node keys
-    """
-    if node_key in visited:
-        return set()
-    visited.add(node_key)
-
-    descendants: set[int] = set()
-    kline = model.find_by_key(node_key)
-
-    if kline is None:
-        return descendants
-
-    for child in kline.nodes:
-        descendants.add(child)
-        # Recursively get child's descendants
-        child_descendants = _get_all_descendants(model, child, visited.copy())
-        descendants.update(child_descendants)
-
-    return descendants
-
 
 def calculate_significance(model: "Model", query: "KLine", target: "KLine") -> Significance:
     """Calculate significance between query and target KLines.
@@ -238,7 +209,7 @@ def calculate_significance(model: "Model", query: "KLine", target: "KLine") -> S
         if node in target_set:
             continue  # Already S1 match
         # Collect all descendants of this node
-        descendants = _get_all_descendants(model, node, visited=set())
+        descendants = model.get_all_descendants(node)
         if descendants & target_set:
             gen_matches += 1
 

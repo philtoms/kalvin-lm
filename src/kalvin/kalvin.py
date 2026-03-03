@@ -81,7 +81,7 @@ class Kalvin:
             ks_key |= s_key
 
         kline = KLine(s_key=ks_key, nodes=ks_nodes)
-        return kline if self.model.add(kline, True) is not None else None
+        return kline if self.model.add(kline, True) else None
 
     def decode(self, token_sig: int | None) -> str:
         """Decode a list of KNodes (token IDs) back to a string.

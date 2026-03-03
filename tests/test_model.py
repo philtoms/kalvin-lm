@@ -108,7 +108,7 @@ class TestModelAddKLine:
 
         result = model.add(kl)
 
-        assert result is not None
+        assert result is True
         assert len(model) == 1
         assert model[0] == kl
 
@@ -120,7 +120,7 @@ class TestModelAddKLine:
 
         result = model.add(kl2)
 
-        assert result is not None
+        assert result is True
         assert len(model) == 2
 
     def test_add_exact_duplicate_same_key_different_instance(self):
@@ -132,7 +132,7 @@ class TestModelAddKLine:
         result = model.add(kl2)
 
         # Duplicate is added (same s_key allowed, different KLine instance)
-        assert result is not None
+        assert result is True
         assert len(model) == 2
 
     def test_add_duplicate_empty_nodes_same_key(self):
@@ -144,7 +144,7 @@ class TestModelAddKLine:
         result = model.add(kl2)
 
         # Duplicate is added (same s_key allowed)
-        assert result is not None
+        assert result is True
         assert len(model) == 2
 
     def test_multiple_keys_all_added(self):
@@ -154,9 +154,9 @@ class TestModelAddKLine:
         kl2 = KLine(s_key=0x2000, nodes=[])
         kl3 = KLine(s_key=0x3000, nodes=[])
 
-        assert model.add(kl1) is not None
-        assert model.add(kl2) is not None
-        assert model.add(kl3) is not None
+        assert model.add(kl1) is True
+        assert model.add(kl2) is True
+        assert model.add(kl3) is True
         assert len(model) == 3
 
 
@@ -635,3 +635,71 @@ class TestModelIterators:
 
         not_found = model.find_by_key(0x3000)
         assert not_found is None
+
+
+class TestGetAllDescendants:
+    """Tests for Model.get_all_descendants method."""
+
+    def test_no_descendants(self):
+        """KLine with no nodes returns empty set."""
+        kline = KLine(s_key=0x1000, nodes=[])
+        model = Model([kline])
+
+        descendants = model.get_all_descendants(0x1000)
+
+        assert descendants == set()
+
+    def test_direct_children_only(self):
+        """Returns direct children when no deeper hierarchy."""
+        kline = KLine(s_key=0x1000, nodes=[0x0100, 0x0200, 0x0300])
+        model = Model([kline])
+
+        descendants = model.get_all_descendants(0x1000)
+
+        assert descendants == {0x0100, 0x0200, 0x0300}
+
+    def test_nested_descendants(self):
+        """Recursively collects all descendants at any depth."""
+        grandchild = KLine(s_key=0x0010, nodes=[0x0001])
+        child = KLine(s_key=0x0100, nodes=[0x0010])
+        parent = KLine(s_key=0x1000, nodes=[0x0100])
+        model = Model([parent, child, grandchild])
+
+        descendants = model.get_all_descendants(0x1000)
+
+        assert descendants == {0x0100, 0x0010, 0x0001}
+
+    def test_cycle_detection(self):
+        """Handles cycles without infinite recursion."""
+        # A -> B -> A (cycle)
+        # Descendants of A: B (direct child), A (via B's reference back to A)
+        kline_a = KLine(s_key=0x1000, nodes=[0x2000])
+        kline_b = KLine(s_key=0x2000, nodes=[0x1000])
+        model = Model([kline_a, kline_b])
+
+        descendants = model.get_all_descendants(0x1000)
+
+        # A's descendants include B and A (via the cycle back from B)
+        assert descendants == {0x1000, 0x2000}
+
+    def test_nonexistent_key(self):
+        """Returns empty set for nonexistent key."""
+        model = Model([])
+
+        descendants = model.get_all_descendants(0x1000)
+
+        assert descendants == set()
+
+    def test_multiple_branches(self):
+        """Collects descendants from all branches."""
+        leaf1 = KLine(s_key=0x0100, nodes=[])
+        leaf2 = KLine(s_key=0x0200, nodes=[])
+        leaf3 = KLine(s_key=0x0300, nodes=[])
+        branch1 = KLine(s_key=0x0010, nodes=[0x0100, 0x0200])
+        branch2 = KLine(s_key=0x0020, nodes=[0x0300])
+        root = KLine(s_key=0x1000, nodes=[0x0010, 0x0020])
+        model = Model([root, branch1, branch2, leaf1, leaf2, leaf3])
+
+        descendants = model.get_all_descendants(0x1000)
+
+        assert descendants == {0x0010, 0x0020, 0x0100, 0x0200, 0x0300}
