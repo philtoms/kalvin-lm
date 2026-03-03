@@ -26,6 +26,8 @@ class Kalvin:
         Args:
             model: Optional Model instance
             tokenizer: Optional Tokenizer instance
+            dictionary: Path to grammar dictionary JSON file
+            nlp_detail: NLP detail type (e.g., "nlp_type32")
         """
         self.model = model if model else Model()
         self.tokenizer = tokenizer if tokenizer else Tokenizer.from_directory()
@@ -37,6 +39,7 @@ class Kalvin:
         # === Tokenization ===
         if not dictionary:
             dictionary = "/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1_grammar.json"
+        self.dictionary_path = dictionary
         with open(dictionary, "r") as f:
             str_dict = json.load(f)
             self.dictionary = {}
@@ -49,14 +52,14 @@ class Kalvin:
             self.nlp_type = json.load(f)
     # === Tokenization ===
 
-    def encode(self, text: str, nlp_detail: str = "nlp_type32") -> KNode | None:
-        """Encode a string to a list of KNodes (token IDs).
+    def encode(self, text: str, nlp_detail: str = "nlp_type32") -> KLine | None:
+        """Encode a string to a KLine.
 
         Args:
             text: Input string to encode
 
         Returns:
-            List of KNode integers (token IDs)
+            KLine representing the encoded text, or None if duplicate
         """
         ks_key = 0
         ks_nodes = []
@@ -77,7 +80,8 @@ class Kalvin:
             ks_nodes.append(s_key)
             ks_key |= s_key
 
-        return self.model.add(KLine(s_key=ks_key, nodes=ks_nodes), True)
+        kline = KLine(s_key=ks_key, nodes=ks_nodes)
+        return kline if self.model.add(kline, True) is not None else None
 
     def decode(self, token_sig: int | None) -> str:
         """Decode a list of KNodes (token IDs) back to a string.
@@ -91,7 +95,12 @@ class Kalvin:
         kline = self.model.find_by_key(token_sig)
         if kline is None:
             return ""
-        return self.tokenizer.decode(kline.nodes)
+        knodes = []
+        for node in kline.nodes:
+            knode = self.model.find_by_key(node)
+            if knode:
+                knodes.append(knode.nodes[0])
+        return self.tokenizer.decode(knodes)
 
     def prune(self, level: int = 1) -> "Kalvin":
         """Prune model to activity level + untracked activity.
@@ -130,6 +139,8 @@ class Kalvin:
         """Serialize model to binary format.
 
         Binary layout:
+        - 4 bytes: metadata length (uint32)
+        - N bytes: JSON-encoded metadata (UTF-8)
         - 4 bytes: number of klines (uint32)
         - For each kline:
           - 8 bytes: s_key (uint64)
@@ -140,7 +151,16 @@ class Kalvin:
           - 8 bytes: key (uint64)
           - 4 bytes: count (uint32)
         """
-        parts = [pack("<I", len(self.model))]
+        # Serialize metadata
+        metadata = {
+            "dictionary": self.dictionary_path,
+            "nlp_detail": self.nlp_detail,
+        }
+        metadata_bytes = json.dumps(metadata).encode("utf-8")
+        parts = [pack("<I", len(metadata_bytes)), metadata_bytes]
+
+        # Serialize klines
+        parts.append(pack("<I", len(self.model)))
         for kline in self.model:
             parts.append(pack("<Q", kline.s_key))
             parts.append(pack("<I", len(kline.nodes)))
@@ -162,6 +182,16 @@ class Kalvin:
         from collections import Counter
 
         offset = 0
+
+        # Deserialize metadata
+        metadata_len = unpack("<I", data[offset : offset + 4])[0]
+        offset += 4
+        metadata = json.loads(data[offset : offset + metadata_len].decode("utf-8"))
+        offset += metadata_len
+        dictionary = metadata.get("dictionary")
+        nlp_detail = metadata.get("nlp_detail", "nlp_type32")
+
+        # Deserialize klines
         kline_count = unpack("<I", data[offset : offset + 4])[0]
         offset += 4
 
@@ -190,11 +220,15 @@ class Kalvin:
             activity[key] = count
 
         model = Model(klines=klines)
-        return cls(model, activity)
+        return cls(model, activity, dictionary=dictionary, nlp_detail=nlp_detail)
 
     def to_dict(self) -> dict:
         """Serialize model to dict (for JSON)."""
         return {
+            "metadata": {
+                "dictionary": self.dictionary_path,
+                "nlp_detail": self.nlp_detail,
+            },
             "klines": [{"s_key": kline.s_key, "nodes": kline.nodes} for kline in self.model],
             "activity": {str(k): v for k, v in self.activity.items()},
         }
@@ -204,12 +238,17 @@ class Kalvin:
         """Deserialize model from dict."""
         from collections import Counter
 
+        # Extract metadata if present
+        metadata = data.get("metadata", {})
+        dictionary = metadata.get("dictionary")
+        nlp_detail = metadata.get("nlp_detail", "nlp_type32")
+
         klines = [KLine(s_key=item["s_key"], nodes=item["nodes"]) for item in data["klines"]]
         model = Model(klines=klines)
         activity = Counter()
         if "activity" in data:
             activity.update({int(k): v for k, v in data["activity"].items()})
-        return cls(model, activity)
+        return cls(model, activity, dictionary=dictionary, nlp_detail=nlp_detail)
 
     def save(
         self,
