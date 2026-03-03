@@ -128,11 +128,11 @@ def create_nlp_type32(high_bits: bool = False) -> type:
         ("DEP_PUNCT", 1 << (24 + offset)),   # Punctuation/other: punct, goeswith, reparandum
 
         # Simplified morphological features (bits 25-31 + offset)
-        ("MORPH_SING", 1 << (25 + offset)),      # Number=Sing
-        ("MORPH_PLUR", 1 << (26 + offset)),      # Number=Plur
-        ("MORPH_PAST", 1 << (27 + offset)),      # Tense=Past
-        ("MORPH_PRES", 1 << (28 + offset)),      # Tense=Pres
-        ("MORPH_PASS", 1 << (29 + offset)),      # Voice=Pass
+        ("MORPH_PLUR", 1 << (25 + offset)),      # Number=Plur
+        ("MORPH_PRES", 1 << (26 + offset)),      # Tense=Pres
+        ("MORPH_IMP", 1 << (27 + offset)),       # Mood=Imp
+        ("MORPH_PERSON_1", 1 << (28 + offset)),  # Person=1
+        ("MORPH_PERSON_2", 1 << (29 + offset)),  # Person=2
         ("MORPH_PERSON_3", 1 << (30 + offset)),  # Person=3
         ("MORPH_PERF", 1 << (31 + offset)),      # Aspect=Perf
     ])
@@ -290,11 +290,11 @@ def build_dep_to_coarse32(nlp_type32: type) -> dict[str, int]:
 def build_morph_to_coarse32(nlp_type32: type) -> dict[str, int]:
     """Build mapping from morph features to 32-bit coarse MORPH flags."""
     return {
-        "Number=Sing": nlp_type32.MORPH_SING,
         "Number=Plur": nlp_type32.MORPH_PLUR,
-        "Tense=Past": nlp_type32.MORPH_PAST,
         "Tense=Pres": nlp_type32.MORPH_PRES,
-        "Voice=Pass": nlp_type32.MORPH_PASS,
+        "Mood=Imp": nlp_type32.MORPH_IMP,
+        "Person=1": nlp_type32.MORPH_PERSON_1,
+        "Person=2": nlp_type32.MORPH_PERSON_2,
         "Person=3": nlp_type32.MORPH_PERSON_3,
         "Aspect=Perf": nlp_type32.MORPH_PERF,
     }

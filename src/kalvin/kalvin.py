@@ -18,7 +18,8 @@ class Kalvin:
         model: Model | None = None,
         activity: Counter | None = None,
         tokenizer: Tokenizer | None = None,
-        dictionary: str | None = None
+        dictionary: str | None = None,
+        nlp_detail: str = "nlp_type32"
     ):
         """Initialize Kalvin with optional model and tokenizer.
 
@@ -31,7 +32,9 @@ class Kalvin:
         self.ws_token = self.tokenizer.encode(" ")[0]
         self.activity = activity if activity else Counter()
         self.unrecognised_tokens = set()
+        self.nlp_detail = nlp_detail
 
+        # === Tokenization ===
         if not dictionary:
             dictionary = "/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1_grammar.json"
         with open(dictionary, "r") as f:
@@ -42,11 +45,11 @@ class Kalvin:
             key = int(key)
             self.dictionary[key] = value
 
-        with open(dictionary.replace("grammar", "nlp_type48"), "r") as f:
+        with open(dictionary.replace("grammar", self.nlp_detail), "r") as f:
             self.nlp_type = json.load(f)
     # === Tokenization ===
 
-    def encode(self, text: str) -> KNode | None:
+    def encode(self, text: str, nlp_detail: str = "nlp_type32") -> KNode | None:
         """Encode a string to a list of KNodes (token IDs).
 
         Args:
@@ -62,14 +65,15 @@ class Kalvin:
         for token in tokens:
             if token in self.dictionary:
                 entry = self.dictionary[token]
-                s_key = entry["nlp_type48"]
+                s_key = entry[nlp_detail]
             elif token == self.ws_token:
                 s_key = token
             else:
                 s_key = self.nlp_type["POS_X"]
                 self.unrecognised_tokens.add(token)
 
-            self.model.add(KLine(s_key | token, [token]), True)
+            s_key |= token
+            self.model.add(KLine(s_key, [token]), True)
             ks_nodes.append(s_key)
             ks_key |= s_key
 
