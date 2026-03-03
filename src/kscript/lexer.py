@@ -1,4 +1,4 @@
-"""Lexer for KScript source code."""
+"""Lexer for KScript source code with indentation support."""
 
 from typing import Generator
 
@@ -10,7 +10,7 @@ KEYWORDS = {
     "save": TokenType.SAVE,
 }
 
-# Multi-character operators (must check before single-char)
+# Multi-character operators (must check before single_char)
 MULTI_CHAR_OPS = {
     "=>": TokenType.S2,
     "!=": TokenType.S4,
@@ -36,10 +36,19 @@ class LexerError(Exception):
 
 class Lexer:
     """
-    Tokenizer for KScript source code.
+    Tokenizer for KScript source code with Python-style indentation.
 
-    Uses a generator pattern for memory-efficient streaming tokenization.
-    Comments in parentheses can appear anywhere, even mid-identifier.
+    Uses indentation tracking to support multi-line KLines:
+        MHALL = SVO =>
+            S < M
+            V < H
+            O < ALL
+
+    Indentation rules:
+    - Consistent indentation within a block
+    - INDENT token when indentation increases
+    - DEDENT token(s) when indentation decreases
+    - Blank lines and comment-only lines are ignored
     """
 
     def __init__(self, source: str):
@@ -48,6 +57,11 @@ class Lexer:
         self.line = 1
         self.column = 1
         self._tokens: list[Token] | None = None
+        # Indentation tracking
+        self._indent_stack: list[int] = [0]  # Start at indentation level 0
+        self._at_start_of_line = True
+        self._pending_dedents = 0  # DEDENT tokens to emit
+        self._in_block = False  # Track if we're in an indented block
 
     def tokenize(self) -> list[Token]:
         """Tokenize entire source and return list of tokens."""
@@ -63,20 +77,83 @@ class Lexer:
             yield from self._generate_tokens()
 
     def _generate_tokens(self) -> Generator[Token, None, None]:
-        """Generate tokens from source."""
+        """Generate tokens from source with indentation tracking."""
         while not self._at_end():
+            # Handle pending DEDENTs first
+            if self._pending_dedents > 0:
+                self._pending_dedents -= 1
+                self._indent_stack.pop()
+                yield Token(TokenType.DEDENT, "", self.line, 1)
+                continue
+
+            # At start of line: check indentation
+            if self._at_start_of_line:
+                self._at_start_of_line = False
+                indent = self._count_indent()
+
+                # Skip blank lines and comment-only lines
+                if self._is_blank_or_comment_line():
+                    self._skip_line()
+                    self._at_start_of_line = True
+                    continue
+
+                # Compare with current indentation level
+                current_indent = self._indent_stack[-1]
+
+                if indent > current_indent:
+                    # Increased indentation - emit INDENT
+                    self._indent_stack.append(indent)
+                    yield Token(TokenType.INDENT, " " * indent, self.line, 1)
+                elif indent < current_indent:
+                    # Decreased indentation - emit DEDENT(s)
+                    while self._indent_stack and self._indent_stack[-1] > indent:
+                        self._pending_dedents += 1
+
+                    # Validate indentation matches a previous level
+                    if not self._indent_stack or self._indent_stack[-1] != indent:
+                        raise LexerError(
+                            f"Unindent does not match any outer indentation level",
+                            self.line,
+                            1,
+                        )
+
+                    # Emit first DEDENT
+                    self._pending_dedents -= 1
+                    self._indent_stack.pop()
+                    yield Token(TokenType.DEDENT, "", self.line, 1)
+                    continue
+
+                # Now skip the indent whitespace we counted
+                for _ in range(indent):
+                    self._advance()
+
             # Skip whitespace (but not newlines) and comments
             self._skip_whitespace_and_comments()
             if self._at_end():
                 break
 
-            # Check for newline (statement separator)
+            # Check for newline (statement/line separator)
             if self._current() == "\n":
                 start_line, start_col = self.line, self.column
                 self._advance()
-                # Skip any additional newlines
+                # Skip any additional blank lines
                 while self._current() == "\n":
+                    # Check if next line is blank/comment
+                    saved_pos = self.pos
+                    saved_line = self.line
+                    saved_col = self.column
                     self._advance()
+                    indent = self._count_indent()
+                    if self._is_blank_or_comment_line():
+                        self._skip_line()
+                    else:
+                        # Restore position - this line has content
+                        self.pos = saved_pos
+                        self.line = saved_line
+                        self.column = saved_col
+                        break
+
+                self._at_start_of_line = True
                 yield Token(TokenType.NEWLINE, "\n", start_line, start_col)
                 continue
 
@@ -96,7 +173,64 @@ class Lexer:
                     self.column,
                 )
 
+        # Emit remaining DEDENTs at EOF
+        while len(self._indent_stack) > 1:
+            self._indent_stack.pop()
+            yield Token(TokenType.DEDENT, "", self.line, 1)
+
         yield Token(TokenType.EOF, "", self.line, self.column)
+
+    def _count_indent(self) -> int:
+        """Count indentation at current position (spaces/tabs)."""
+        indent = 0
+        pos = self.pos
+        while pos < len(self.source):
+            c = self.source[pos]
+            if c == " ":
+                indent += 1
+                pos += 1
+            elif c == "\t":
+                indent += 4  # Treat tab as 4 spaces
+                pos += 1
+            else:
+                break
+        return indent
+
+    def _is_blank_or_comment_line(self) -> bool:
+        """Check if current line is blank or comment-only."""
+        pos = self.pos
+        while pos < len(self.source):
+            c = self.source[pos]
+            if c in " \t":
+                pos += 1
+            elif c == "(":
+                # Comment - skip to end of comment
+                depth = 1
+                pos += 1
+                while pos < len(self.source) and depth > 0:
+                    if self.source[pos] == "(":
+                        depth += 1
+                    elif self.source[pos] == ")":
+                        depth -= 1
+                    pos += 1
+            elif c in "\n\r":
+                # End of line - it was blank/comment-only
+                return True
+            else:
+                # Found actual content
+                return False
+        return True  # EOF - consider it blank
+
+    def _skip_line(self) -> None:
+        """Skip to the end of the current line."""
+        while not self._at_end() and self._current() != "\n":
+            if self._current() == "(":
+                self._skip_comment()
+            else:
+                self._advance()
+        if self._current() == "\n":
+            self._advance()
+            self._at_start_of_line = True
 
     def _current(self) -> str:
         """Get current character or empty string at end."""

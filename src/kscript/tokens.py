@@ -27,6 +27,10 @@ class TokenType(Enum):
     # Statement separator
     NEWLINE = auto()  # newline character
 
+    # Indentation tracking (Python-style)
+    INDENT = auto()  # increase in indentation
+    DEDENT = auto()  # decrease in indentation
+
     # End of file
     EOF = auto()
 

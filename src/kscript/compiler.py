@@ -8,6 +8,7 @@ from kalvin.significance import S4_VALUE, build_s1, build_s2, build_s3
 from .ast import (
     Identifier,
     KLineExpr,
+    KLineRelationship,
     KScript,
     KNodeRef,
     LoadStatement,
@@ -100,21 +101,35 @@ class Compiler:
 
         for stmt in script.statements:
             if isinstance(stmt, KLineExpr):
-                # Add the KSig identifier
-                if isinstance(stmt.sig, Identifier):
-                    name = stmt.sig.name
-                    if name not in token_map:
-                        token_map[name] = self._name_to_token(name, next_token)
-                        next_token += 1
-
-                # Add all node identifiers
-                for node_ref in stmt.nodes:
-                    name = node_ref.identifier.name
-                    if name not in token_map:
-                        token_map[name] = self._name_to_token(name, next_token)
-                        next_token += 1
+                self._collect_kline_identifiers(stmt, token_map, next_token)
+                # Update next_token based on new entries
+                next_token = len(token_map) + 1
 
         return token_map
+
+    def _collect_kline_identifiers(
+        self,
+        expr: KLineExpr,
+        token_map: dict[str, int],
+        next_token: int,
+    ) -> None:
+        """Recursively collect identifiers from a KLine expression."""
+        # Add the KSig identifier
+        if isinstance(expr.sig, Identifier):
+            name = expr.sig.name
+            if name not in token_map:
+                token_map[name] = self._name_to_token(name, next_token + len(token_map))
+
+        # Add all node identifiers from all relationships (including nested KLines)
+        for relationship in expr.relationships:
+            for node_ref in relationship.nodes:
+                name = node_ref.identifier.name
+                if name and name not in token_map:
+                    token_map[name] = self._name_to_token(name, next_token + len(token_map))
+
+                # Recursively collect from nested KLines
+                if node_ref.nested_kline:
+                    self._collect_kline_identifiers(node_ref.nested_kline, token_map, next_token)
 
     def _name_to_token(self, name: str, fallback: int) -> int:
         """
@@ -138,45 +153,69 @@ class Compiler:
         model: Model,
     ) -> KLine | None:
         """
-        Compile a KLine expression to a KLine and add to model.
+        Compile a KLine expression to KLine(s) and add to model.
 
-        Returns the created KLine, or None if duplicate.
+        For KLines with multiple relationships, creates one KLine per relationship.
+        Returns the first created KLine, or None if all are duplicates.
         """
         # Get the token for this KLine's sig
         if isinstance(expr.sig, Identifier):
             name = expr.sig.name
             token = token_map.get(name, self._name_to_token(name, 0))
         else:
-            # Nested KLineExpr - compile recursively
+            # Nested KLineExpr as sig - compile recursively
             nested = self._compile_kline_expr(expr.sig, token_map, symbol_table, model)
             if nested is None:
                 return None
             token = nested.s_key
 
-        # Build significance value
-        sig_value = self._build_significance(expr.significance)
+        first_kline: KLine | None = None
 
-        # Build node list (convert identifiers to s_keys)
-        nodes: list[int] = []
-        for node_ref in expr.nodes:
-            node_name = node_ref.identifier.name
-            node_token = token_map.get(node_name, self._name_to_token(node_name, 0))
-            # Each node is a simple KLine with token as s_key
-            node_s_key = node_token  # Simple: just the token
-            nodes.append(node_s_key)
+        # Compile each relationship as a separate KLine
+        for relationship in expr.relationships:
+            # Build significance value
+            sig_value = self._build_significance(relationship.significance)
 
-        # Create KLine: s_key = significance | token
-        s_key = sig_value | token
-        kline = KLine(s_key=s_key, nodes=nodes)
+            # Build node list (convert identifiers to s_keys)
+            nodes: list[int] = []
+            for node_ref in relationship.nodes:
+                # If there's a nested KLine, compile it first
+                if node_ref.nested_kline:
+                    nested_kline = self._compile_kline_expr(
+                        node_ref.nested_kline, token_map, symbol_table, model
+                    )
+                    if nested_kline:
+                        nodes.append(nested_kline.s_key)
+                else:
+                    # Simple node reference
+                    node_name = node_ref.identifier.name
+                    node_token = token_map.get(node_name, self._name_to_token(node_name, 0))
+                    # Each node is a simple KLine with token as s_key
+                    node_s_key = node_token  # Simple: just the token
+                    nodes.append(node_s_key)
 
-        # Add to model
-        if model.add(kline):
-            # Record in symbol table
-            if isinstance(expr.sig, Identifier):
-                symbol_table[expr.sig.name] = s_key
-            return kline
+            # Create KLine: s_key = significance | token
+            s_key = sig_value | token
+            kline = KLine(s_key=s_key, nodes=nodes)
 
-        return None
+            # Add to model
+            if model.add(kline):
+                # Record in symbol table (use first relationship's s_key)
+                if first_kline is None:
+                    first_kline = kline
+                    if isinstance(expr.sig, Identifier):
+                        symbol_table[expr.sig.name] = s_key
+
+        # If no relationships, create a simple KLine with just the sig
+        if not expr.relationships:
+            s_key = token  # No significance, just the token
+            kline = KLine(s_key=s_key, nodes=[])
+            if model.add(kline):
+                first_kline = kline
+                if isinstance(expr.sig, Identifier):
+                    symbol_table[expr.sig.name] = s_key
+
+        return first_kline
 
     def _build_significance(self, sig_type: SignificanceType | None) -> int:
         """Convert SignificanceType to the corresponding significance value."""

@@ -267,3 +267,17 @@ class TestIntegration:
         # Comments should be stripped
         assert len(result.model) >= 3
         assert len(result.attention_klines) == 1
+
+    def test_multiline_kline(self):
+        """Test multi-line KLine with indented nodes."""
+        source = """
+            MHALL = SVO =>
+                S < M
+                V < H
+                O < ALL
+        """
+        result = compile_script(source)
+
+        # Should have multiple KLines
+        assert len(result.model) >= 4  # MHALL, S, V, O (at minimum)
+

@@ -51,9 +51,18 @@ class KScript:
 
 @dataclass
 class KNodeRef:
-    """Reference to a KNode by identifier name."""
+    """
+    Reference to a KNode.
+
+    Can be either:
+    - A simple identifier reference: `hello`
+    - A nested KLine expression: `S < M` (when used in indented blocks)
+    """
 
     identifier: Identifier
+    # Optional nested KLine - when set, this node is actually a nested KLine
+    # that should be compiled and then referenced
+    nested_kline: "KLineExpr | None" = None
 
 
 # KSig can be either an identifier or a nested KLine expression
@@ -61,9 +70,17 @@ KSig = Union[Identifier, "KLineExpr"]
 
 
 @dataclass
+class KLineRelationship:
+    """A single significance relationship in a KLine."""
+
+    significance: SignificanceType
+    nodes: list[KNodeRef] = field(default_factory=list)
+
+
+@dataclass
 class KLineExpr:
     """
-    KLine expression with optional significance relationship.
+    KLine expression with optional significance relationships.
 
     Forms:
     - `name` -> Simple KLine with just a name
@@ -74,11 +91,29 @@ class KLineExpr:
     - `name != node` -> KLine with S4 relationship
     - `name ?` -> KLine with attention marker
     - `kline1 > nodes` -> KLine referencing another KLine
+
+    Multi-line form:
+        MHALL = SVO =>
+            S < M
+            V < H
+            O < ALL
+
+    This creates MHALL with S1->SVO and S2->[S<M, V<H, O<ALL]
     """
 
     sig: KSig  # Identifier or nested KLineExpr
-    significance: SignificanceType | None = None
-    nodes: list[KNodeRef] = field(default_factory=list)
+    relationships: list[KLineRelationship] = field(default_factory=list)
     attention: bool = False
     line: int = 0
     column: int = 0
+
+    # Convenience properties for backward compatibility
+    @property
+    def significance(self) -> SignificanceType | None:
+        """Get the first relationship's significance, if any."""
+        return self.relationships[0].significance if self.relationships else None
+
+    @property
+    def nodes(self) -> list[KNodeRef]:
+        """Get the first relationship's nodes, if any."""
+        return self.relationships[0].nodes if self.relationships else []

@@ -35,9 +35,7 @@ def parse(source: str) -> KScript:
     return Parser.from_source(source).parse()
 
 
-def compile_script(
-    source: str, tokenizer=None, model=None
-) -> CompileResult:
+def compile_script(source: str, tokenizer=None, model=None) -> CompileResult:
     """Parse and compile KScript source to Model.
 
     Args:
