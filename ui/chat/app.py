@@ -337,9 +337,9 @@ class KalvinApp(App):
         if not script.strip():
             return
 
-        # Compile the script
+        # Compile the script using Kalvin agent
         try:
-            result = compile_script(script)
+            result = compile_script(script, agent=self._kalvin)
 
             # Build output summary
             output_lines = [
@@ -363,11 +363,9 @@ class KalvinApp(App):
 
             output = "\n".join(output_lines)
 
-            # If we have a model loaded, integrate the compiled model
+            # KLines are already integrated via the Kalvin agent
             if self._kalvin:
-                for kline in result.model:
-                    self._kalvin.model.add(kline)
-                output += f"\n\nIntegrated into model (total: {len(self._kalvin.model)} KLines)"
+                output += f"\n\nModel now has {len(self._kalvin.model)} KLines"
 
         except Exception as e:
             output = f"Compilation error:\n{e}"

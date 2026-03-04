@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 from textual.app import App, ComposeResult
 from textual.widgets import Input, TextArea, ListView, ListItem, Button
 
-from ui.chat.regions.chat import ChatRegion
+from ui.chat.regions.chat import ChatRegion, SCRIPT_PLACEHOLDER
 from ui.chat.regions.config import ConfigRegion
 from ui.chat.regions.history import ChatHistoryRegion
 from ui.chat.dialogs import FileDialog, OpenDialog, SaveDialog
@@ -77,9 +77,9 @@ class TestChatRegion:
         app = ChatRegionTestApp()
         async with app.run_test() as pilot:
             assert pilot.app.query_one("#chat-input", Input) is not None
-            assert pilot.app.query_one("#response-text", TextArea) is not None
+            assert pilot.app.query_one("#script-text", TextArea) is not None
             assert pilot.app.query_one("#send-btn") is not None
-            assert pilot.app.query_one("#submit-response-btn") is not None
+            assert pilot.app.query_one("#run-script-btn") is not None
 
     @pytest.mark.asyncio
     async def test_get_input_returns_current_value(self):
@@ -114,97 +114,97 @@ class TestChatRegion:
             assert input_widget.value == ""
 
     @pytest.mark.asyncio
-    async def test_get_response_returns_empty_when_placeholder(self):
-        """get_response returns empty string when placeholder is active."""
+    async def test_get_script_returns_empty_when_placeholder(self):
+        """get_script returns empty string when placeholder is active."""
         app = ChatRegionTestApp()
         async with app.run_test() as pilot:
             chat_region = pilot.app.query_one(ChatRegion)
             # By default, placeholder is active
-            assert chat_region.get_response() == ""
+            assert chat_region.get_script() == ""
 
     @pytest.mark.asyncio
-    async def test_set_response_updates_textarea(self):
-        """set_response updates the response textarea."""
+    async def test_set_script_updates_textarea(self):
+        """set_script updates the script textarea."""
         app = ChatRegionTestApp()
         async with app.run_test() as pilot:
             chat_region = pilot.app.query_one(ChatRegion)
-            chat_region.set_response("Test response")
+            chat_region.set_script("Test script")
 
-            textarea = pilot.app.query_one("#response-text", TextArea)
-            assert textarea.text == "Test response"
-            assert chat_region.get_response() == "Test response"
+            textarea = pilot.app.query_one("#script-text", TextArea)
+            assert textarea.text == "Test script"
+            assert chat_region.get_script() == "Test script"
 
     @pytest.mark.asyncio
-    async def test_set_response_clears_placeholder(self):
-        """set_response clears the placeholder flag."""
+    async def test_set_script_clears_placeholder(self):
+        """set_script clears the placeholder flag."""
         app = ChatRegionTestApp()
         async with app.run_test() as pilot:
             chat_region = pilot.app.query_one(ChatRegion)
-            chat_region.set_response("New response")
+            chat_region.set_script("New script")
             assert not chat_region._placeholder_active
-            assert chat_region.get_response() == "New response"
+            assert chat_region.get_script() == "New script"
 
     @pytest.mark.asyncio
-    async def test_append_response_when_placeholder(self):
-        """append_response replaces placeholder text."""
+    async def test_append_script_when_placeholder(self):
+        """append_script replaces placeholder text."""
         app = ChatRegionTestApp()
         async with app.run_test() as pilot:
             chat_region = pilot.app.query_one(ChatRegion)
-            chat_region.append_response("First line")
+            chat_region.append_script("First line")
 
-            textarea = pilot.app.query_one("#response-text", TextArea)
+            textarea = pilot.app.query_one("#script-text", TextArea)
             assert textarea.text == "First line"
             assert not chat_region._placeholder_active
 
     @pytest.mark.asyncio
-    async def test_append_response_adds_newline(self):
-        """append_response adds newline between existing and new text."""
+    async def test_append_script_adds_newline(self):
+        """append_script adds newline between existing and new text."""
         app = ChatRegionTestApp()
         async with app.run_test() as pilot:
             chat_region = pilot.app.query_one(ChatRegion)
-            chat_region.append_response("Line 1")
-            chat_region.append_response("Line 2")
+            chat_region.append_script("Line 1")
+            chat_region.append_script("Line 2")
 
-            textarea = pilot.app.query_one("#response-text", TextArea)
+            textarea = pilot.app.query_one("#script-text", TextArea)
             assert textarea.text == "Line 1\nLine 2"
 
     @pytest.mark.asyncio
     async def test_append_multiple_lines(self):
-        """append_response handles multiple appends correctly."""
+        """append_script handles multiple appends correctly."""
         app = ChatRegionTestApp()
         async with app.run_test() as pilot:
             chat_region = pilot.app.query_one(ChatRegion)
-            chat_region.append_response("A")
-            chat_region.append_response("B")
-            chat_region.append_response("C")
+            chat_region.append_script("A")
+            chat_region.append_script("B")
+            chat_region.append_script("C")
 
-            textarea = pilot.app.query_one("#response-text", TextArea)
+            textarea = pilot.app.query_one("#script-text", TextArea)
             assert textarea.text == "A\nB\nC"
 
     @pytest.mark.asyncio
-    async def test_clear_response_resets_to_placeholder(self):
-        """clear_response resets textarea to placeholder."""
+    async def test_clear_script_resets_to_placeholder(self):
+        """clear_script resets textarea to placeholder."""
         app = ChatRegionTestApp()
         async with app.run_test() as pilot:
             chat_region = pilot.app.query_one(ChatRegion)
-            chat_region.set_response("Some text")
-            chat_region.clear_response()
+            chat_region.set_script("Some text")
+            chat_region.clear_script()
 
-            textarea = pilot.app.query_one("#response-text", TextArea)
+            textarea = pilot.app.query_one("#script-text", TextArea)
             assert chat_region._placeholder_active
-            assert textarea.text == "Response will appear here..."
+            assert textarea.text == SCRIPT_PLACEHOLDER
 
     @pytest.mark.asyncio
-    async def test_clear_response_allows_new_appends(self):
-        """clear_response allows new appends after clearing."""
+    async def test_clear_script_allows_new_appends(self):
+        """clear_script allows new appends after clearing."""
         app = ChatRegionTestApp()
         async with app.run_test() as pilot:
             chat_region = pilot.app.query_one(ChatRegion)
-            chat_region.set_response("Old text")
-            chat_region.clear_response()
-            chat_region.append_response("New text")
+            chat_region.set_script("Old text")
+            chat_region.clear_script()
+            chat_region.append_script("New text")
 
-            assert chat_region.get_response() == "New text"
+            assert chat_region.get_script() == "New text"
 
 
 # ============================================================================
@@ -229,8 +229,8 @@ class TestChatHistoryRegion:
         async with app.run_test() as pilot:
             history_region = pilot.app.query_one(ChatHistoryRegion)
             chats = [
-                {"chat": "Hello", "response": "Hi there"},
-                {"chat": "Goodbye", "response": "See you"},
+                {"type": "chat", "chat": "Hello", "response": "Hi there"},
+                {"type": "chat", "chat": "Goodbye", "response": "See you"},
             ]
 
             history_region.update_history(chats)
@@ -246,9 +246,9 @@ class TestChatHistoryRegion:
         app = ChatHistoryTestApp()
         async with app.run_test() as pilot:
             history_region = pilot.app.query_one(ChatHistoryRegion)
-            history_region.update_history([{"chat": "A", "response": "B"}])
+            history_region.update_history([{"type": "chat", "chat": "A", "response": "B"}])
             await pilot.pause()
-            history_region.update_history([{"chat": "C", "response": "D"}])
+            history_region.update_history([{"type": "chat", "chat": "C", "response": "D"}])
             await pilot.pause()
 
             list_view = pilot.app.query_one("#history-list", ListView)
@@ -269,54 +269,54 @@ class TestChatHistoryRegion:
             assert len(list_view.children) == 0
 
     @pytest.mark.asyncio
-    async def test_get_chat_at_valid_index(self):
-        """get_chat_at returns chat at valid index."""
+    async def test_get_entry_at_valid_index(self):
+        """get_entry_at returns entry at valid index."""
         app = ChatHistoryTestApp()
         async with app.run_test() as pilot:
             history_region = pilot.app.query_one(ChatHistoryRegion)
             chats = [
-                {"chat": "First", "response": "Response 1"},
-                {"chat": "Second", "response": "Response 2"},
+                {"type": "chat", "chat": "First", "response": "Response 1"},
+                {"type": "chat", "chat": "Second", "response": "Response 2"},
             ]
 
             history_region.update_history(chats)
             await pilot.pause()
 
-            assert history_region.get_chat_at(0) == chats[0]
-            assert history_region.get_chat_at(1) == chats[1]
+            assert history_region.get_entry_at(0) == chats[0]
+            assert history_region.get_entry_at(1) == chats[1]
 
     @pytest.mark.asyncio
-    async def test_get_chat_at_negative_index(self):
-        """get_chat_at returns None for negative index."""
+    async def test_get_entry_at_negative_index(self):
+        """get_entry_at returns None for negative index."""
         app = ChatHistoryTestApp()
         async with app.run_test() as pilot:
             history_region = pilot.app.query_one(ChatHistoryRegion)
-            history_region.update_history([{"chat": "Test", "response": "Resp"}])
+            history_region.update_history([{"type": "chat", "chat": "Test", "response": "Resp"}])
             await pilot.pause()
 
-            assert history_region.get_chat_at(-1) is None
+            assert history_region.get_entry_at(-1) is None
 
     @pytest.mark.asyncio
-    async def test_get_chat_at_out_of_range(self):
-        """get_chat_at returns None for out of range index."""
+    async def test_get_entry_at_out_of_range(self):
+        """get_entry_at returns None for out of range index."""
         app = ChatHistoryTestApp()
         async with app.run_test() as pilot:
             history_region = pilot.app.query_one(ChatHistoryRegion)
-            history_region.update_history([{"chat": "Test", "response": "Resp"}])
+            history_region.update_history([{"type": "chat", "chat": "Test", "response": "Resp"}])
             await pilot.pause()
 
-            assert history_region.get_chat_at(10) is None
+            assert history_region.get_entry_at(10) is None
 
     @pytest.mark.asyncio
-    async def test_get_chat_at_empty_history(self):
-        """get_chat_at returns None when history is empty."""
+    async def test_get_entry_at_empty_history(self):
+        """get_entry_at returns None when history is empty."""
         app = ChatHistoryTestApp()
         async with app.run_test() as pilot:
             history_region = pilot.app.query_one(ChatHistoryRegion)
             history_region.update_history([])
             await pilot.pause()
 
-            assert history_region.get_chat_at(0) is None
+            assert history_region.get_entry_at(0) is None
 
     @pytest.mark.asyncio
     async def test_get_selected_index_default(self):
@@ -324,23 +324,23 @@ class TestChatHistoryRegion:
         app = ChatHistoryTestApp()
         async with app.run_test() as pilot:
             history_region = pilot.app.query_one(ChatHistoryRegion)
-            history_region.update_history([{"chat": "A", "response": "B"}])
+            history_region.update_history([{"type": "chat", "chat": "A", "response": "B"}])
             await pilot.pause()
 
             assert history_region.get_selected_index() == -1
 
     @pytest.mark.asyncio
-    async def test_stores_chats_internally(self):
-        """ChatHistoryRegion stores chats for retrieval."""
+    async def test_stores_history_internally(self):
+        """ChatHistoryRegion stores history for retrieval."""
         app = ChatHistoryTestApp()
         async with app.run_test() as pilot:
             history_region = pilot.app.query_one(ChatHistoryRegion)
-            chats = [{"chat": "Test", "response": "Response"}]
+            chats = [{"type": "chat", "chat": "Test", "response": "Response"}]
 
             history_region.update_history(chats)
             await pilot.pause()
 
-            assert history_region._chats == chats
+            assert history_region.get_history() == chats
 
     @pytest.mark.asyncio
     async def test_long_chat_truncated(self):
@@ -349,7 +349,7 @@ class TestChatHistoryRegion:
         async with app.run_test() as pilot:
             history_region = pilot.app.query_one(ChatHistoryRegion)
             long_message = "x" * 100
-            chats = [{"chat": long_message, "response": "Response"}]
+            chats = [{"type": "chat", "chat": long_message, "response": "Response"}]
 
             history_region.update_history(chats)
             await pilot.pause()
@@ -592,15 +592,15 @@ class TestChatIntegration:
             history_region = pilot.app.query_one(ChatHistoryRegion)
 
             # Simulate user input
-            chat_region.set_response("User message and response")
+            chat_region.set_script("User script")
 
             # Simulate adding to history
-            chats = [{"chat": "Hello", "response": "Hi there"}]
+            chats = [{"type": "script", "script": "Hello", "output": "Hi there"}]
             history_region.update_history(chats)
             await pilot.pause()
 
             # Verify history contains the chat
-            assert history_region.get_chat_at(0) == chats[0]
+            assert history_region.get_entry_at(0) == chats[0]
 
     @pytest.mark.asyncio
     async def test_config_change_updates_paths(self):
@@ -654,13 +654,13 @@ class TestEdgeCases:
         async with app.run_test() as pilot:
             history_region = pilot.app.query_one(ChatHistoryRegion)
             chats = [
-                {"chat": "Hello! @#$%^&*()", "response": "Hi! <>?/.,;'"},
+                {"type": "chat", "chat": "Hello! @#$%^&*()", "response": "Hi! <>?/.,;'"},
             ]
 
             history_region.update_history(chats)
             await pilot.pause()
 
-            assert history_region.get_chat_at(0) == chats[0]
+            assert history_region.get_entry_at(0) == chats[0]
 
     @pytest.mark.asyncio
     async def test_config_region_with_tilde_paths(self):
@@ -678,6 +678,6 @@ class TestEdgeCases:
         app = ChatRegionTestApp()
         async with app.run_test() as pilot:
             chat_region = pilot.app.query_one(ChatRegion)
-            chat_region.set_response("Hello 世界 🌍")
+            chat_region.set_script("Hello 世界 🌍")
 
-            assert chat_region.get_response() == "Hello 世界 🌍"
+            assert chat_region.get_script() == "Hello 世界 🌍"

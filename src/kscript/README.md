@@ -44,13 +44,13 @@ hello
 
 KLines can have relationships to other nodes using significance operators:
 
-| Operator | Name | Meaning |
-|----------|------|---------|
-| `=` | S1 | Prefix match |
-| `=>` | S2 | Partial positional |
-| `>` | S3 Forward | Unordered (forward) |
-| `<` | S3 Backward | Unordered (backward) |
-| `!=` | S4 | No match |
+| Operator | Name        | Meaning              |
+| -------- | ----------- | -------------------- |
+| `=`      | S1          | Prefix match         |
+| `=>`     | S2          | Partial positional   |
+| `>`      | S3 Forward  | Unordered (forward)  |
+| `<`      | S3 Backward | Unordered (backward) |
+| `!=`     | S4          | No match             |
 
 ```kscript
 # S1: Prefix match
@@ -95,6 +95,7 @@ MHALL = SVO =>
 ```
 
 This creates:
+
 - `MHALL` with S1 relationship to `SVO`
 - `MHALL` with S2 relationship to the indented KLines
 - Nested KLines: `S < M`, `V < H`, `O < ALL`
@@ -150,27 +151,37 @@ from kscript import parse
 ast = parse("greeting = hello")
 ```
 
-### `compile_script(source: str, tokenizer=None, model=None) -> CompileResult`
+### `compile_script(source: str, kalvin=None) -> CompileResult`
 
-Compile KScript source into a Kalvin model.
+Compile KScript source using a Kalvin agent.
+
+**Parameters:**
+
+- `source`: KScript source code
+- `kalvin`: Optional Kalvin agent instance. If not provided, creates a new Kalvin agent with default settings.
 
 ```python
 from kscript import compile_script
+from kalvin import Kalvin
 
-result = compile_script(source)
+# Use existing Kalvin agent
+kalvin = Kalvin.load("model.bin")
+result = compile_script(source, agent=kalvin)
 print(f"KLines: {len(result.model)}")
-print(f"Symbols: {result.symbol_table}")
+
+# Or create a new agent automatically
+result = compile_script(source)
 ```
 
 ### `CompileResult`
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `model` | `Model` | Compiled Kalvin model with KLines |
-| `symbol_table` | `dict[str, int]` | Maps sig names to s_keys |
-| `load_paths` | `list[str]` | Paths from load statements |
-| `save_path` | `str \| None` | Path from save statement |
-| `attention_klines` | `list[int]` | s_keys of KLines with attention |
+| Field              | Type             | Description                       |
+| ------------------ | ---------------- | --------------------------------- |
+| `model`            | `Model`          | Compiled Kalvin model with KLines |
+| `symbol_table`     | `dict[str, int]` | Maps sig names to s_keys          |
+| `load_paths`       | `list[str]`      | Paths from load statements        |
+| `save_path`        | `str \| None`    | Path from save statement          |
+| `attention_klines` | `list[int]`      | s_keys of KLines with attention   |
 
 ## Examples
 

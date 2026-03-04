@@ -66,7 +66,7 @@ Examples:
         print(f"Loaded script: {script_path}")
         print(f"Script length: {len(source)} bytes")
 
-    # Load or create model
+    # Load or create Kalvin agent
     if args.model:
         model_path = Path(args.model)
         if not model_path.exists():
@@ -77,22 +77,18 @@ Examples:
             print(f"Loading model: {model_path}")
 
         kalvin = Kalvin.load(model_path)
-        tokenizer = kalvin.tokenizer
-        model = kalvin.model
     else:
         # Create new Kalvin instance with default tokenizer
         if args.verbose:
-            print("Creating new model with default tokenizer")
+            print("Creating new Kalvin agent with default tokenizer")
 
         kalvin = Kalvin()  # Uses default tokenizer
-        tokenizer = kalvin.tokenizer
-        model = kalvin.model
 
     # Compile the script
     if args.verbose:
         print("Compiling script...")
 
-    result = compile_script(source, tokenizer=tokenizer, model=model)
+    result = compile_script(source, agent=kalvin)
 
     if args.verbose:
         print(f"KLines in model: {len(result.model)}")
@@ -115,10 +111,7 @@ Examples:
         # Use script name with .bin extension
         output_path = script_path.with_suffix(".bin")
 
-    # Update kalvin model reference
-    kalvin.model = result.model
-
-    # Save the model
+    # Save the model (KLines already added via Kalvin agent)
     if args.verbose:
         print(f"Saving model to: {output_path}")
 

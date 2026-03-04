@@ -1,10 +1,17 @@
 """KScript parser and compiler for Kalvin models."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from .ast import Identifier, KLineExpr, KNodeRef, KScript, SignificanceType
 from .compiler import CompileResult, Compiler
 from .lexer import Lexer, LexerError
 from .parser import ParseError, Parser
 from .tokens import Token, TokenType
+
+if TYPE_CHECKING:
+    from kalvin.agent import KAgent
 
 __all__ = [
     # AST
@@ -35,17 +42,20 @@ def parse(source: str) -> KScript:
     return Parser.from_source(source).parse()
 
 
-def compile_script(source: str, tokenizer=None, model=None) -> CompileResult:
-    """Parse and compile KScript source to Model.
+def compile_script(source: str, agent: KAgent | None = None) -> CompileResult:
+    """Parse and compile KScript source using a KAgent.
 
     Args:
         source: KScript source code
-        tokenizer: Optional tokenizer for string-to-token conversion
-        model: Optional existing Model to add KLines to
+        agent: Optional KAgent instance. If not provided,
+               creates a new Kalvin agent with default settings.
 
     Returns:
         CompileResult with model, symbol_table, load_paths, save_path
     """
+    from kalvin import Kalvin as KalvinClass
+
+    agent_instance = agent if agent is not None else KalvinClass()
     script = parse(source)
-    compiler = Compiler(tokenizer, model)
+    compiler = Compiler(agent=agent_instance)
     return compiler.compile(script)

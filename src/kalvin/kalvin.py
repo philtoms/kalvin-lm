@@ -1,18 +1,21 @@
 """Kalvin - Knowledge graph with tokenization support."""
 
-from dataclasses import dataclass
+from __future__ import annotations
+
 from pathlib import Path
 from struct import pack, unpack
 from typing import Literal
 from collections import Counter
 import json
 
+from kalvin.agent import KAgent
 from kalvin.model import KLine, KNode, Model
 from kalvin.tokenizer import Tokenizer
 
 
-@dataclass
-class Kalvin:
+class Kalvin(KAgent):
+    """Kalvin agent with NLP features for knowledge graph operations."""
+
     def __init__(
         self,
         model: Model | None = None,
@@ -29,28 +32,86 @@ class Kalvin:
             dictionary: Path to grammar dictionary JSON file
             nlp_detail: NLP detail type (e.g., "nlp_type32")
         """
-        self.model = model if model else Model()
-        self.tokenizer = tokenizer if tokenizer else Tokenizer.from_directory()
-        self.ws_token = self.tokenizer.encode(" ")[0]
-        self.activity = activity if activity else Counter()
-        self.unrecognised_tokens = set()
-        self.nlp_detail = nlp_detail
+        self._model = model if model else Model()
+        self._tokenizer = tokenizer if tokenizer else Tokenizer.from_directory()
+        self._ws_token = self._tokenizer.encode(" ")[0]
+        self._activity = activity if activity else Counter()
+        self._unrecognised_tokens = set()
+        self._nlp_detail = nlp_detail
 
         # === Tokenization ===
         if not dictionary:
             dictionary = "/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1_grammar.json"
-        self.dictionary_path = dictionary
+        self._dictionary_path = dictionary
         with open(dictionary, "r") as f:
             str_dict = json.load(f)
-            self.dictionary = {}
+            self._dictionary = {}
 
         for key, value in str_dict.items():
             key = int(key)
-            self.dictionary[key] = value
+            self._dictionary[key] = value
 
-        with open(dictionary.replace("grammar", self.nlp_detail), "r") as f:
-            self.nlp_type = json.load(f)
-    # === Tokenization ===
+        with open(dictionary.replace("grammar", self._nlp_detail), "r") as f:
+            self._nlp_type = json.load(f)
+
+    # === KAgent interface ===
+
+    @property
+    def model(self) -> Model:
+        """Get the knowledge graph model."""
+        return self._model
+
+    @model.setter
+    def model(self, value: Model) -> None:
+        """Set the knowledge graph model."""
+        self._model = value
+
+    @property
+    def tokenizer(self) -> Tokenizer:
+        """Get the tokenizer for encoding/decoding text."""
+        return self._tokenizer
+
+    # === Kalvin-specific properties ===
+
+    @property
+    def activity(self) -> Counter:
+        """Get the activity counter."""
+        return self._activity
+
+    @activity.setter
+    def activity(self, value: Counter) -> None:
+        """Set the activity counter."""
+        self._activity = value
+
+    @property
+    def dictionary(self) -> dict:
+        """Get the grammar dictionary."""
+        return self._dictionary
+
+    @property
+    def dictionary_path(self) -> str:
+        """Get the grammar dictionary path."""
+        return self._dictionary_path
+
+    @property
+    def nlp_type(self) -> dict:
+        """Get the NLP type mapping."""
+        return self._nlp_type
+
+    @property
+    def nlp_detail(self) -> str:
+        """Get the NLP detail type."""
+        return self._nlp_detail
+
+    @property
+    def ws_token(self) -> int:
+        """Get the whitespace token."""
+        return self._ws_token
+
+    @property
+    def unrecognised_tokens(self) -> set:
+        """Get the set of unrecognised tokens."""
+        return self._unrecognised_tokens
 
     def encode(self, text: str, nlp_detail: str = "nlp_type32") -> KLine | None:
         """Encode a string to a KLine.
