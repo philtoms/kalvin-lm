@@ -105,29 +105,29 @@ class TestParser:
         """Test parsing load statement."""
         script = parse("load /path/to/model.bin")
         assert len(script.statements) == 1
-        stmt = script.statements[0]
-        assert isinstance(stmt, type(parse("load x").statements[0]))
+        stmt = script.root
+        assert isinstance(stmt, type(parse("load x").root))
         assert stmt.path.name == "/path/to/model.bin"
 
     def test_parse_save(self):
         """Test parsing save statement."""
         script = parse("save /path/to/output.bin")
         assert len(script.statements) == 1
-        stmt = script.statements[0]
+        stmt = script.root
         assert stmt.path.name == "/path/to/output.bin"
 
     def test_parse_save_without_path(self):
         """Test parsing save without path."""
         script = parse("save")
         assert len(script.statements) == 1
-        stmt = script.statements[0]
+        stmt = script.root
         assert stmt.path is None
 
     def test_parse_simple_kline(self):
         """Test parsing simple KLine."""
         script = parse("hello")
         assert len(script.statements) == 1
-        kline = script.statements[0]
+        kline = script.root
         assert isinstance(kline, KLineExpr)
         assert kline.sig.name == "hello"
         assert kline.significance is None
@@ -136,7 +136,7 @@ class TestParser:
     def test_parse_kline_with_s1(self):
         """Test parsing KLine with S1 significance."""
         script = parse("greeting = hello world")
-        kline = script.statements[0]
+        kline = script.root
         assert kline.significance.value == "="
         assert len(kline.nodes) == 2
         assert kline.nodes[0].identifier.name == "hello"
@@ -145,37 +145,37 @@ class TestParser:
     def test_parse_kline_with_s2(self):
         """Test parsing KLine with S2 significance."""
         script = parse("greeting => hello")
-        kline = script.statements[0]
+        kline = script.root
         assert kline.significance.value == "=>"
 
     def test_parse_kline_with_s3_forward(self):
         """Test parsing KLine with S3 forward significance."""
         script = parse("greeting > hello")
-        kline = script.statements[0]
+        kline = script.root
         assert kline.significance.value == ">"
 
     def test_parse_kline_with_s3_backward(self):
         """Test parsing KLine with S3 backward significance."""
         script = parse("greeting < hello")
-        kline = script.statements[0]
+        kline = script.root
         assert kline.significance.value == "<"
 
     def test_parse_kline_with_s4(self):
         """Test parsing KLine with S4 significance."""
         script = parse("greeting != hello")
-        kline = script.statements[0]
+        kline = script.root
         assert kline.significance.value == "!="
 
     def test_parse_kline_with_attention(self):
         """Test parsing KLine with attention marker."""
         script = parse("hello ?")
-        kline = script.statements[0]
+        kline = script.root
         assert kline.attention is True
 
     def test_parse_kline_with_significance_and_attention(self):
         """Test parsing KLine with significance and attention."""
         script = parse("question > greeting ?")
-        kline = script.statements[0]
+        kline = script.root
         assert kline.significance.value == ">"
         assert kline.attention is True
 
@@ -192,7 +192,7 @@ class TestParser:
     def test_parse_with_inline_comments(self):
         """Test parsing with inline comments."""
         script = parse("sit > V(erb)")
-        kline = script.statements[0]
+        kline = script.root
         assert kline.sig.name == "sit"
         assert kline.nodes[0].identifier.name == "V"
 

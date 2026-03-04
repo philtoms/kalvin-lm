@@ -48,6 +48,11 @@ class KScript:
 
     statements: list[KScriptStatement] = field(default_factory=list)
 
+    # Convenience properties for backward compatibility
+    @property
+    def root(self) -> KScriptStatement | None:
+        """Get the first relationship's significance, if any."""
+        return self.statements[0] if self.statements else None
 
 @dataclass
 class KNodeRef:
