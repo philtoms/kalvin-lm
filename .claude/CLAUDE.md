@@ -36,10 +36,10 @@ Kalvin is a knowledge graph model with BPE tokenization for text encoding and si
 
 ### Core Components (`src/kalvin/`)
 
-- **KLine** (`model.py`): Fundamental unit with a 64-bit `s_key` (significance key) and list of child `nodes` (token IDs). Supports bitwise significance matching via `signifies(query)`.
+- **KLine** (`model.py`): Fundamental unit with a 64-bit `signature` (significance key) and list of child `nodes` (token IDs). Supports bitwise significance matching via `signifies(query)`.
 
-- **Model** (`model.py`): Collection of KLines with O(1) lookup by `s_key`. Key operations:
-  - `query(sig)`: Returns KLines where `s_key & sig != 0` (bitwise AND match)
+- **Model** (`model.py`): Collection of KLines with O(1) lookup by `signature`. Key operations:
+  - `query(sig)`: Returns KLines where `signature & sig != 0` (bitwise AND match)
   - `expand(klines, depth)`: Recursively expands KLines and their descendants
   - Uses dual-stream generators (fast/slow) for concurrent processing
 
@@ -66,6 +66,7 @@ Kalvin is a knowledge graph model with BPE tokenization for text encoding and si
 ### UI (`ui/chat/`)
 
 Textual TUI application with modular structure:
+
 - `app.py` - Main KalvinApp
 - `dialogs.py` - FileLoadDialog with mount point navigation
 - `regions/config.py` - Model/grammar path configuration
@@ -74,5 +75,5 @@ Textual TUI application with modular structure:
 ## Key Patterns
 
 - Activity tracking: `Counter` tracks token usage frequency for pruning decisions
-- Bitwise significance: `s_key` encodes match priority in upper bits for efficient comparison
+- Bitwise significance: `signature` encodes match priority in upper bits for efficient comparison
 - Dual-stream iteration: `query()` and `expand()` return (fast, slow) generators for prioritized processing

@@ -90,7 +90,7 @@ class Compiler:
                 kline = self._compile_kline_expr(stmt, token_map, symbol_table)
                 if kline:
                     if stmt.attention:
-                        attention_klines.append(kline.s_key)
+                        attention_klines.append(kline.signature)
 
         return CompileResult(
             model=self.model,
@@ -176,7 +176,7 @@ class Compiler:
             nested = self._compile_kline_expr(expr.sig, token_map, symbol_table)
             if nested is None:
                 return None
-            token = nested.s_key
+            token = nested.signature
 
         first_kline: KLine | None = None
 
@@ -194,35 +194,35 @@ class Compiler:
                         node_ref.nested_kline, token_map, symbol_table
                     )
                     if nested_kline:
-                        nodes.append(nested_kline.s_key)
+                        nodes.append(nested_kline.signature)
                 else:
                     # Simple node reference
                     node_name = node_ref.identifier.name
                     node_token = token_map.get(node_name, self._name_to_token(node_name, 0))
-                    # Each node is a simple KLine with token as s_key
+                    # Each node is a simple KLine with token as signature
                     node_s_key = node_token  # Simple: just the token
                     nodes.append(node_s_key)
 
-            # Create KLine: s_key = significance | token
-            s_key = sig_value | token
-            kline = KLine(s_key=s_key, nodes=nodes)
+            # Create KLine: signature = significance | token
+            signature = sig_value | token
+            kline = KLine(signature=signature, nodes=nodes)
 
             # Add to model
             if self.model.add(kline):
-                # Record in symbol table (use first relationship's s_key)
+                # Record in symbol table (use first relationship's signature)
                 if first_kline is None:
                     first_kline = kline
                     if isinstance(expr.sig, Identifier):
-                        symbol_table[expr.sig.name] = s_key
+                        symbol_table[expr.sig.name] = signature
 
         # If no relationships, create a simple KLine with just the sig
         if not expr.relationships:
-            s_key = token  # No significance, just the token
-            kline = KLine(s_key=s_key, nodes=[])
+            signature = token  # No significance, just the token
+            kline = KLine(signature=signature, nodes=[])
             if self.model.add(kline):
                 first_kline = kline
                 if isinstance(expr.sig, Identifier):
-                    symbol_table[expr.sig.name] = s_key
+                    symbol_table[expr.sig.name] = signature
 
         return first_kline
 

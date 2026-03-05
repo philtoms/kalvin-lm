@@ -129,19 +129,19 @@ class Kalvin(KAgent):
         for token in tokens:
             if token in self.dictionary:
                 entry = self.dictionary[token]
-                s_key = entry[nlp_detail]
+                signature = entry[nlp_detail]
             elif token == self.ws_token:
-                s_key = token
+                signature = token
             else:
-                s_key = self.nlp_type["POS_X"]
+                signature = self.nlp_type["POS_X"]
                 self.unrecognised_tokens.add(token)
 
-            s_key |= token
-            self.model.add(KLine(s_key, [token]), True)
-            ks_nodes.append(s_key)
-            ks_key |= s_key
+            signature |= token
+            self.model.add(KLine(signature, [token]), True)
+            ks_nodes.append(signature)
+            ks_key |= signature
 
-        kline = KLine(s_key=ks_key, nodes=ks_nodes)
+        kline = KLine(signature=ks_key, nodes=ks_nodes)
         return kline if self.model.add(kline, True) else None
 
     def decode(self, token_sig: int | None) -> str:
@@ -173,7 +173,7 @@ class Kalvin(KAgent):
         pruned_activity = Counter()
 
         for kline in self.model:  # retain untracked activity
-            if kline.s_key not in self.activity:
+            if kline.signature not in self.activity:
                 pruned_model.append(kline)
 
         for key, count in self.activity.items():
@@ -204,7 +204,7 @@ class Kalvin(KAgent):
         - N bytes: JSON-encoded metadata (UTF-8)
         - 4 bytes: number of klines (uint32)
         - For each kline:
-          - 8 bytes: s_key (uint64)
+          - 8 bytes: signature (uint64)
           - 4 bytes: node count (uint32)
           - N * 8 bytes: nodes (uint64 each)
         - 4 bytes: number of activity entries (uint32)
@@ -223,7 +223,7 @@ class Kalvin(KAgent):
         # Serialize klines
         parts.append(pack("<I", len(self.model)))
         for kline in self.model:
-            parts.append(pack("<Q", kline.s_key))
+            parts.append(pack("<Q", kline.signature))
             parts.append(pack("<I", len(kline.nodes)))
             for node in kline.nodes:
                 parts.append(pack("<Q", node))
@@ -258,7 +258,7 @@ class Kalvin(KAgent):
 
         klines: list[KLine] = []
         for _ in range(kline_count):
-            s_key = unpack("<Q", data[offset : offset + 8])[0]
+            signature = unpack("<Q", data[offset : offset + 8])[0]
             offset += 8
             node_count = unpack("<I", data[offset : offset + 4])[0]
             offset += 4
@@ -267,7 +267,7 @@ class Kalvin(KAgent):
                 node = unpack("<Q", data[offset : offset + 8])[0]
                 offset += 8
                 nodes.append(node)
-            klines.append(KLine(s_key=s_key, nodes=nodes))
+            klines.append(KLine(signature=signature, nodes=nodes))
 
         # Deserialize activity Counter
         activity_count = unpack("<I", data[offset : offset + 4])[0]
@@ -290,7 +290,7 @@ class Kalvin(KAgent):
                 "dictionary": self.dictionary_path,
                 "nlp_detail": self.nlp_detail,
             },
-            "klines": [{"s_key": kline.s_key, "nodes": kline.nodes} for kline in self.model],
+            "klines": [{"signature": kline.signature, "nodes": kline.nodes} for kline in self.model],
             "activity": {str(k): v for k, v in self.activity.items()},
         }
 
@@ -304,7 +304,7 @@ class Kalvin(KAgent):
         dictionary = metadata.get("dictionary")
         nlp_detail = metadata.get("nlp_detail", "nlp_type32")
 
-        klines = [KLine(s_key=item["s_key"], nodes=item["nodes"]) for item in data["klines"]]
+        klines = [KLine(signature=item["signature"], nodes=item["nodes"]) for item in data["klines"]]
         model = Model(klines=klines)
         activity = Counter()
         if "activity" in data:

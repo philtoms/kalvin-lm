@@ -8,13 +8,13 @@ from kalvin.model import (
 
 class TestKLine:
     def test_create_kline(self):
-        """Test creating a KLine with int s_key and list of KNode ints."""
-        s_key = 0x123456789ABCDEF0
+        """Test creating a KLine with int signature and list of KNode ints."""
+        signature = 0x123456789ABCDEF0
         nodes = [0x1000, 0x2000]
 
-        kl = KLine(s_key=s_key, nodes=nodes)
+        kl = KLine(signature=signature, nodes=nodes)
 
-        assert kl.s_key == s_key
+        assert kl.signature == signature
         assert kl.nodes == [0x1000, 0x2000]
 
     def test_create_factory(self):
@@ -25,7 +25,7 @@ class TestKLine:
 
         kl = KLine.create(significance=significance, token=token, nodes=nodes)
 
-        assert kl.s_key == 0xFFFF  # significance | token
+        assert kl.signature == 0xFFFF  # significance | token
         assert kl.nodes == [0x1000, 0x2000]
 
     def test_create_factory_with_zero_significance(self):
@@ -36,7 +36,7 @@ class TestKLine:
 
         kl = KLine.create(significance=significance, token=token, nodes=nodes)
 
-        assert kl.s_key == 0x1234
+        assert kl.signature == 0x1234
 
     def test_create_factory_with_zero_token(self):
         """Test KLine.create with zero token."""
@@ -46,33 +46,33 @@ class TestKLine:
 
         kl = KLine.create(significance=significance, token=token, nodes=nodes)
 
-        assert kl.s_key == 0xFF00
+        assert kl.signature == 0xFF00
 
     def test_store_in_list(self):
         """Test storing KLine objects in a list."""
         kl_list = []
 
-        kl1 = KLine(s_key=0x1000000000000000, nodes=[])
-        kl2 = KLine(s_key=0x1000000000000001, nodes=[])
-        kl3 = KLine(s_key=0x2000000000000000, nodes=[])
+        kl1 = KLine(signature=0x1000000000000000, nodes=[])
+        kl2 = KLine(signature=0x1000000000000001, nodes=[])
+        kl3 = KLine(signature=0x2000000000000000, nodes=[])
 
         kl_list.append(kl1)
         kl_list.append(kl2)
         kl_list.append(kl3)
 
         assert len(kl_list) == 3
-        assert kl_list[0].s_key == 0x1000000000000000
-        assert kl_list[1].s_key == 0x1000000000000001
-        assert kl_list[2].s_key == 0x2000000000000000
+        assert kl_list[0].signature == 0x1000000000000000
+        assert kl_list[1].signature == 0x1000000000000001
+        assert kl_list[2].signature == 0x2000000000000000
 
     def test_nested_klines_structure(self):
         """Test nested KLine structure with node references."""
-        leaf1 = KLine(s_key=0x0100, nodes=[])
-        leaf2 = KLine(s_key=0x0200, nodes=[])
-        leaf3 = KLine(s_key=0x0300, nodes=[])
+        leaf1 = KLine(signature=0x0100, nodes=[])
+        leaf2 = KLine(signature=0x0200, nodes=[])
+        leaf3 = KLine(signature=0x0300, nodes=[])
 
-        intermediate = KLine(s_key=0x0010, nodes=[0x0100, 0x0200])
-        root = KLine(s_key=0x0001, nodes=[0x0010, 0x0300])
+        intermediate = KLine(signature=0x0010, nodes=[0x0100, 0x0200])
+        root = KLine(signature=0x0001, nodes=[0x0010, 0x0300])
 
         assert len(root.nodes) == 2
         assert root.nodes[0] == 0x0010
@@ -104,7 +104,7 @@ class TestModelAddKLine:
     def test_add_new_key(self):
         """Adding a kline with new key succeeds."""
         model = Model()
-        kl = KLine(s_key=0x1000, nodes=[])
+        kl = KLine(signature=0x1000, nodes=[])
 
         result = model.add(kl)
 
@@ -114,8 +114,8 @@ class TestModelAddKLine:
 
     def test_add_duplicate_key_different_nodes(self):
         """Adding kline with same key but different nodes succeeds."""
-        kl1 = KLine(s_key=0x1000, nodes=[0x0100])
-        kl2 = KLine(s_key=0x1000, nodes=[0x0200])
+        kl1 = KLine(signature=0x1000, nodes=[0x0100])
+        kl2 = KLine(signature=0x1000, nodes=[0x0200])
         model = Model([kl1])
 
         result = model.add(kl2)
@@ -125,34 +125,34 @@ class TestModelAddKLine:
 
     def test_add_exact_duplicate_same_key_different_instance(self):
         """Adding kline with same key and nodes creates a new entry."""
-        kl1 = KLine(s_key=0x1000, nodes=[0x0100, 0x0200])
-        kl2 = KLine(s_key=0x1000, nodes=[0x0100, 0x0200])
+        kl1 = KLine(signature=0x1000, nodes=[0x0100, 0x0200])
+        kl2 = KLine(signature=0x1000, nodes=[0x0100, 0x0200])
         model = Model([kl1])
 
         result = model.add(kl2)
 
-        # Duplicate is added (same s_key allowed, different KLine instance)
+        # Duplicate is added (same signature allowed, different KLine instance)
         assert result is True
         assert len(model) == 2
 
     def test_add_duplicate_empty_nodes_same_key(self):
         """Adding kline with same key and empty nodes creates a new entry."""
-        kl1 = KLine(s_key=0x1000, nodes=[])
-        kl2 = KLine(s_key=0x1000, nodes=[])
+        kl1 = KLine(signature=0x1000, nodes=[])
+        kl2 = KLine(signature=0x1000, nodes=[])
         model = Model([kl1])
 
         result = model.add(kl2)
 
-        # Duplicate is added (same s_key allowed)
+        # Duplicate is added (same signature allowed)
         assert result is True
         assert len(model) == 2
 
     def test_multiple_keys_all_added(self):
         """Multiple klines with different keys are all added."""
         model = Model()
-        kl1 = KLine(s_key=0x1000, nodes=[])
-        kl2 = KLine(s_key=0x2000, nodes=[])
-        kl3 = KLine(s_key=0x3000, nodes=[])
+        kl1 = KLine(signature=0x1000, nodes=[])
+        kl2 = KLine(signature=0x2000, nodes=[])
+        kl3 = KLine(signature=0x3000, nodes=[])
 
         assert model.add(kl1) is True
         assert model.add(kl2) is True
@@ -163,8 +163,8 @@ class TestModelAddKLine:
 class TestModelQuery:
     def test_no_match_returns_empty(self):
         """If no kline matches, both streams are empty."""
-        kl1 = KLine(s_key=0x0001, nodes=[])
-        kl2 = KLine(s_key=0x0002, nodes=[])
+        kl1 = KLine(signature=0x0001, nodes=[])
+        kl2 = KLine(signature=0x0002, nodes=[])
         model = Model([kl1, kl2])
 
         fast, slow = model.query(query=0xFF00)
@@ -173,8 +173,8 @@ class TestModelQuery:
 
     def test_single_match_in_fast(self):
         """If match found, it's in the fast stream."""
-        matching = KLine(s_key=0xFF00, nodes=[])
-        non_matching = KLine(s_key=0x0001, nodes=[])
+        matching = KLine(signature=0xFF00, nodes=[])
+        non_matching = KLine(signature=0x0001, nodes=[])
         model = Model([non_matching, matching])
 
         fast, slow = model.query(query=0xFF00)
@@ -184,9 +184,9 @@ class TestModelQuery:
 
     def test_all_matches_in_fast_when_no_limit(self):
         """All matching klines in fast when focus_limit=0."""
-        match1 = KLine(s_key=0xFF00, nodes=[])
-        match2 = KLine(s_key=0xFF01, nodes=[])
-        non_matching = KLine(s_key=0x0001, nodes=[])
+        match1 = KLine(signature=0xFF00, nodes=[])
+        match2 = KLine(signature=0xFF01, nodes=[])
+        non_matching = KLine(signature=0x0001, nodes=[])
         model = Model([non_matching, match1, match2])
 
         fast, slow = model.query(query=0xFF00)
@@ -196,9 +196,9 @@ class TestModelQuery:
 
     def test_focus_limit_splits_streams(self):
         """focus_limit splits matches into fast and slow streams."""
-        match1 = KLine(s_key=0xFF00, nodes=[])
-        match2 = KLine(s_key=0xFF01, nodes=[])
-        match3 = KLine(s_key=0xFF02, nodes=[])
+        match1 = KLine(signature=0xFF00, nodes=[])
+        match2 = KLine(signature=0xFF01, nodes=[])
+        match3 = KLine(signature=0xFF02, nodes=[])
         model = Model([match1, match2, match3])
 
         fast, slow = model.query(query=0xFF00, focus_limit=2)
@@ -208,9 +208,9 @@ class TestModelQuery:
 
     def test_streams_are_independent(self):
         """Fast and slow streams can be consumed independently."""
-        match1 = KLine(s_key=0xFF00, nodes=[])
-        match2 = KLine(s_key=0xFF01, nodes=[])
-        match3 = KLine(s_key=0xFF02, nodes=[])
+        match1 = KLine(signature=0xFF00, nodes=[])
+        match2 = KLine(signature=0xFF01, nodes=[])
+        match3 = KLine(signature=0xFF02, nodes=[])
         model = Model([match1, match2, match3])
 
         fast, slow = model.query(query=0xFF00, focus_limit=1)
@@ -228,8 +228,8 @@ class TestModelExpand:
     def test_depth_one_returns_klines_only(self):
         """depth=1 returns focus_set without expansion."""
         key_child = 0x0010
-        parent = KLine(s_key=0xFF00, nodes=[key_child])
-        child = KLine(s_key=key_child, nodes=[])
+        parent = KLine(signature=0xFF00, nodes=[key_child])
+        child = KLine(signature=key_child, nodes=[])
         model = Model([parent, child])
 
         fast_q, _ = model.query(query=0xFF00)
@@ -246,9 +246,9 @@ class TestModelExpand:
         key_child1 = 0x0010
         key_child2 = 0x0020
 
-        child1 = KLine(s_key=key_child1, nodes=[])
-        child2 = KLine(s_key=key_child2, nodes=[])
-        parent = KLine(s_key=0xFF00, nodes=[key_child1, key_child2])
+        child1 = KLine(signature=key_child1, nodes=[])
+        child2 = KLine(signature=key_child2, nodes=[])
+        parent = KLine(signature=0xFF00, nodes=[key_child1, key_child2])
         model = Model([parent, child1, child2])
 
         fast_q, _ = model.query(query=0xFF00)
@@ -268,9 +268,9 @@ class TestModelExpand:
         key_child = 0x0010
         key_parent = 0xF000
 
-        grandchild = KLine(s_key=key_grandchild, nodes=[])
-        child = KLine(s_key=key_child, nodes=[key_grandchild])
-        parent = KLine(s_key=key_parent, nodes=[key_child])
+        grandchild = KLine(signature=key_grandchild, nodes=[])
+        child = KLine(signature=key_child, nodes=[key_grandchild])
+        parent = KLine(signature=key_parent, nodes=[key_child])
         model = Model([parent, child, grandchild])
 
         fast_q, _ = model.query(query=0xF000)
@@ -299,7 +299,7 @@ class TestModelExpand:
 
     def test_depth_zero_returns_empty(self):
         """depth=0 returns empty streams."""
-        matching = KLine(s_key=0xFF00, nodes=[])
+        matching = KLine(signature=0xFF00, nodes=[])
         model = Model([matching])
 
         fast_q, _ = model.query(query=0xFF00)
@@ -314,8 +314,8 @@ class TestModelExpand:
         key_a = 0x0001
         key_b = 0x0002
 
-        kl_a = KLine(s_key=key_a, nodes=[key_b])
-        kl_b = KLine(s_key=key_b, nodes=[key_a])
+        kl_a = KLine(signature=key_a, nodes=[key_b])
+        kl_b = KLine(signature=key_b, nodes=[key_a])
         model = Model([kl_a, kl_b])
 
         fast_q, _ = model.query(query=key_a)
@@ -331,7 +331,7 @@ class TestModelExpand:
     def test_self_reference_stops_expansion(self):
         """Self-referencing KLine stops expansion."""
         key = 0xFF00
-        kl = KLine(s_key=key, nodes=[key])
+        kl = KLine(signature=key, nodes=[key])
         model = Model([kl])
 
         fast_q, _ = model.query(query=key)
@@ -350,11 +350,11 @@ class TestModelExpand:
         key_leaf3 = 0x3000
         key_intermediate = 0x0010
 
-        leaf1 = KLine(s_key=key_leaf1, nodes=[])
-        leaf2 = KLine(s_key=key_leaf2, nodes=[])
-        leaf3 = KLine(s_key=key_leaf3, nodes=[])
-        intermediate = KLine(s_key=key_intermediate, nodes=[key_leaf1, key_leaf2])
-        root = KLine(s_key=0xFF00, nodes=[key_intermediate, key_leaf3])
+        leaf1 = KLine(signature=key_leaf1, nodes=[])
+        leaf2 = KLine(signature=key_leaf2, nodes=[])
+        leaf3 = KLine(signature=key_leaf3, nodes=[])
+        intermediate = KLine(signature=key_intermediate, nodes=[key_leaf1, key_leaf2])
+        root = KLine(signature=0xFF00, nodes=[key_intermediate, key_leaf3])
         model = Model([root, intermediate, leaf1, leaf2, leaf3])
 
         fast_q, _ = model.query(query=0xFF00)
@@ -376,9 +376,9 @@ class TestModelExpand:
         key_child = 0x0010
         key_grandchild = 0x0100
 
-        grandchild = KLine(s_key=key_grandchild, nodes=[key_root])
-        child = KLine(s_key=key_child, nodes=[key_grandchild])
-        root = KLine(s_key=key_root, nodes=[key_child])
+        grandchild = KLine(signature=key_grandchild, nodes=[key_root])
+        child = KLine(signature=key_child, nodes=[key_grandchild])
+        root = KLine(signature=key_root, nodes=[key_child])
         model = Model([root, child, grandchild])
 
         fast_q, _ = model.query(query=0xFF00)
@@ -398,9 +398,9 @@ class TestModelExpand:
         key_child = 0x0010
         key_grandchild = 0x0100
 
-        grandchild = KLine(s_key=key_grandchild, nodes=[key_child])
-        child = KLine(s_key=key_child, nodes=[key_grandchild])
-        root = KLine(s_key=key_root, nodes=[key_child])
+        grandchild = KLine(signature=key_grandchild, nodes=[key_child])
+        child = KLine(signature=key_child, nodes=[key_grandchild])
+        root = KLine(signature=key_root, nodes=[key_child])
         model = Model([root, child, grandchild])
 
         fast_q, _ = model.query(query=0xFF00)
@@ -420,19 +420,19 @@ class TestModelExpand:
         key_child2 = 0x0020
         key_child3 = 0x0030
 
-        child1 = KLine(s_key=key_child1, nodes=[])
-        child2 = KLine(s_key=key_child2, nodes=[])
-        child3 = KLine(s_key=key_child3, nodes=[])
-        parent1 = KLine(s_key=0xF000, nodes=[key_child1, key_child2, key_child3])
+        child1 = KLine(signature=key_child1, nodes=[])
+        child2 = KLine(signature=key_child2, nodes=[])
+        child3 = KLine(signature=key_child3, nodes=[])
+        parent1 = KLine(signature=0xF000, nodes=[key_child1, key_child2, key_child3])
 
         key_child4 = 0x0040
         key_child5 = 0x0050
         key_child6 = 0x0060
 
-        child4 = KLine(s_key=key_child4, nodes=[])
-        child5 = KLine(s_key=key_child5, nodes=[])
-        child6 = KLine(s_key=key_child6, nodes=[])
-        parent2 = KLine(s_key=0xF001, nodes=[key_child4, key_child5, key_child6])
+        child4 = KLine(signature=key_child4, nodes=[])
+        child5 = KLine(signature=key_child5, nodes=[])
+        child6 = KLine(signature=key_child6, nodes=[])
+        parent2 = KLine(signature=0xF001, nodes=[key_child4, key_child5, key_child6])
 
         model = Model([parent1, parent2, child1, child2, child3, child4, child5, child6])
         fast_q, _ = model.query(query=0xF000)
@@ -457,8 +457,8 @@ class TestModelExpand:
 
     def test_expand_without_focus_limit(self):
         """Without focus_limit, all klines in fast stream."""
-        match1 = KLine(s_key=0xFF00, nodes=[])
-        match2 = KLine(s_key=0xFF01, nodes=[])
+        match1 = KLine(signature=0xFF00, nodes=[])
+        match2 = KLine(signature=0xFF01, nodes=[])
         model = Model([match1, match2])
 
         fast_q, _ = model.query(query=0xFF00)
@@ -470,8 +470,8 @@ class TestModelExpand:
 
     def test_slow_empty_when_focus_limit_zero(self):
         """When focus_limit=0, slow is empty (all in fast)."""
-        match1 = KLine(s_key=0xFF00, nodes=[])
-        match2 = KLine(s_key=0xFF01, nodes=[])
+        match1 = KLine(signature=0xFF00, nodes=[])
+        match2 = KLine(signature=0xFF01, nodes=[])
         model = Model([match1, match2])
 
         fast_q, _ = model.query(query=0xFF00)
@@ -486,10 +486,10 @@ class TestModelExpand:
         key_child1 = 0x0010
         key_child2 = 0x0020
 
-        child1 = KLine(s_key=key_child1, nodes=[])
-        child2 = KLine(s_key=key_child2, nodes=[])
-        parent1 = KLine(s_key=0xF000, nodes=[key_child1])
-        parent2 = KLine(s_key=0xF001, nodes=[key_child2])
+        child1 = KLine(signature=key_child1, nodes=[])
+        child2 = KLine(signature=key_child2, nodes=[])
+        parent1 = KLine(signature=0xF000, nodes=[key_child1])
+        parent2 = KLine(signature=0xF001, nodes=[key_child2])
         model = Model([parent1, parent2, child1, child2])
 
         fast_q, _ = model.query(query=0xF000)
@@ -511,8 +511,8 @@ class TestModelExpand:
 
     def test_slow_with_larger_focus_limit(self):
         """focus_limit larger than klines puts all in fast, empty slow."""
-        match1 = KLine(s_key=0xFF00, nodes=[])
-        match2 = KLine(s_key=0xFF01, nodes=[])
+        match1 = KLine(signature=0xFF00, nodes=[])
+        match2 = KLine(signature=0xFF01, nodes=[])
         model = Model([match1, match2])
 
         fast_q, _ = model.query(query=0xFF00)
@@ -529,12 +529,12 @@ class TestModelExpand:
         key_child1 = 0x0010
         key_child2 = 0x0020
 
-        grandchild1 = KLine(s_key=key_grandchild1, nodes=[])
-        grandchild2 = KLine(s_key=key_grandchild2, nodes=[])
-        child1 = KLine(s_key=key_child1, nodes=[key_grandchild1])
-        child2 = KLine(s_key=key_child2, nodes=[key_grandchild2])
-        parent1 = KLine(s_key=0xF000, nodes=[key_child1])
-        parent2 = KLine(s_key=0xF001, nodes=[key_child2])
+        grandchild1 = KLine(signature=key_grandchild1, nodes=[])
+        grandchild2 = KLine(signature=key_grandchild2, nodes=[])
+        child1 = KLine(signature=key_child1, nodes=[key_grandchild1])
+        child2 = KLine(signature=key_child2, nodes=[key_grandchild2])
+        parent1 = KLine(signature=0xF000, nodes=[key_child1])
+        parent2 = KLine(signature=0xF001, nodes=[key_child2])
         model = Model([parent1, parent2, child1, child2, grandchild1, grandchild2])
 
         fast_q, _ = model.query(query=0xF000)
@@ -561,10 +561,10 @@ class TestModelExpand:
         key_grandchild = 0x0100
         key_child = 0x0010
 
-        grandchild = KLine(s_key=key_grandchild, nodes=[])
-        child = KLine(s_key=key_child, nodes=[key_grandchild])
-        parent1 = KLine(s_key=0xF000, nodes=[key_child])
-        parent2 = KLine(s_key=0xF001, nodes=[key_child])
+        grandchild = KLine(signature=key_grandchild, nodes=[])
+        child = KLine(signature=key_child, nodes=[key_grandchild])
+        parent1 = KLine(signature=0xF000, nodes=[key_child])
+        parent2 = KLine(signature=0xF001, nodes=[key_child])
         model = Model([parent1, parent2, child, grandchild])
 
         fast_q, _ = model.query(query=0xF000)
@@ -584,10 +584,10 @@ class TestModelExpand:
 
     def test_multiple_klines_in_slow(self):
         """Multiple klines go to slow when focus_limit is small."""
-        match1 = KLine(s_key=0xFF00, nodes=[])
-        match2 = KLine(s_key=0xFF01, nodes=[])
-        match3 = KLine(s_key=0xFF02, nodes=[])
-        match4 = KLine(s_key=0xFF03, nodes=[])
+        match1 = KLine(signature=0xFF00, nodes=[])
+        match2 = KLine(signature=0xFF01, nodes=[])
+        match3 = KLine(signature=0xFF02, nodes=[])
+        match4 = KLine(signature=0xFF03, nodes=[])
         model = Model([match1, match2, match3, match4])
 
         fast_q, _ = model.query(query=0xFF00)
@@ -606,8 +606,8 @@ class TestModelExpand:
 class TestModelIterators:
     def test_iterate_over_model(self):
         """Can iterate over all KLines in model."""
-        kl1 = KLine(s_key=0x1000, nodes=[])
-        kl2 = KLine(s_key=0x2000, nodes=[])
+        kl1 = KLine(signature=0x1000, nodes=[])
+        kl2 = KLine(signature=0x2000, nodes=[])
         model = Model([kl1, kl2])
 
         klines = list(model)
@@ -617,17 +617,17 @@ class TestModelIterators:
 
     def test_getitem_access(self):
         """Can access KLines by index."""
-        kl1 = KLine(s_key=0x1000, nodes=[])
-        kl2 = KLine(s_key=0x2000, nodes=[])
+        kl1 = KLine(signature=0x1000, nodes=[])
+        kl2 = KLine(signature=0x2000, nodes=[])
         model = Model([kl1, kl2])
 
         assert model[0] == kl1
         assert model[1] == kl2
 
     def test_find_by_key(self):
-        """Can find KLine by its s_key."""
-        kl1 = KLine(s_key=0x1000, nodes=[0x0100])
-        kl2 = KLine(s_key=0x2000, nodes=[0x0200])
+        """Can find KLine by its signature."""
+        kl1 = KLine(signature=0x1000, nodes=[0x0100])
+        kl2 = KLine(signature=0x2000, nodes=[0x0200])
         model = Model([kl1, kl2])
 
         found = model.find_by_key(0x1000)
@@ -642,7 +642,7 @@ class TestGetAllDescendants:
 
     def test_no_descendants(self):
         """KLine with no nodes returns empty set."""
-        kline = KLine(s_key=0x1000, nodes=[])
+        kline = KLine(signature=0x1000, nodes=[])
         model = Model([kline])
 
         descendants = model.get_all_descendants(0x1000)
@@ -651,7 +651,7 @@ class TestGetAllDescendants:
 
     def test_direct_children_only(self):
         """Returns direct children when no deeper hierarchy."""
-        kline = KLine(s_key=0x1000, nodes=[0x0100, 0x0200, 0x0300])
+        kline = KLine(signature=0x1000, nodes=[0x0100, 0x0200, 0x0300])
         model = Model([kline])
 
         descendants = model.get_all_descendants(0x1000)
@@ -660,9 +660,9 @@ class TestGetAllDescendants:
 
     def test_nested_descendants(self):
         """Recursively collects all descendants at any depth."""
-        grandchild = KLine(s_key=0x0010, nodes=[0x0001])
-        child = KLine(s_key=0x0100, nodes=[0x0010])
-        parent = KLine(s_key=0x1000, nodes=[0x0100])
+        grandchild = KLine(signature=0x0010, nodes=[0x0001])
+        child = KLine(signature=0x0100, nodes=[0x0010])
+        parent = KLine(signature=0x1000, nodes=[0x0100])
         model = Model([parent, child, grandchild])
 
         descendants = model.get_all_descendants(0x1000)
@@ -673,8 +673,8 @@ class TestGetAllDescendants:
         """Handles cycles without infinite recursion."""
         # A -> B -> A (cycle)
         # Descendants of A: B (direct child), A (via B's reference back to A)
-        kline_a = KLine(s_key=0x1000, nodes=[0x2000])
-        kline_b = KLine(s_key=0x2000, nodes=[0x1000])
+        kline_a = KLine(signature=0x1000, nodes=[0x2000])
+        kline_b = KLine(signature=0x2000, nodes=[0x1000])
         model = Model([kline_a, kline_b])
 
         descendants = model.get_all_descendants(0x1000)
@@ -692,12 +692,12 @@ class TestGetAllDescendants:
 
     def test_multiple_branches(self):
         """Collects descendants from all branches."""
-        leaf1 = KLine(s_key=0x0100, nodes=[])
-        leaf2 = KLine(s_key=0x0200, nodes=[])
-        leaf3 = KLine(s_key=0x0300, nodes=[])
-        branch1 = KLine(s_key=0x0010, nodes=[0x0100, 0x0200])
-        branch2 = KLine(s_key=0x0020, nodes=[0x0300])
-        root = KLine(s_key=0x1000, nodes=[0x0010, 0x0020])
+        leaf1 = KLine(signature=0x0100, nodes=[])
+        leaf2 = KLine(signature=0x0200, nodes=[])
+        leaf3 = KLine(signature=0x0300, nodes=[])
+        branch1 = KLine(signature=0x0010, nodes=[0x0100, 0x0200])
+        branch2 = KLine(signature=0x0020, nodes=[0x0300])
+        root = KLine(signature=0x1000, nodes=[0x0010, 0x0020])
         model = Model([root, branch1, branch2, leaf1, leaf2, leaf3])
 
         descendants = model.get_all_descendants(0x1000)

@@ -10,21 +10,21 @@ KNode: TypeAlias = int
 
 @dataclass
 class KLine:
-    """A structure with a 64-bit significance s_key and list of child KNodes.
+    """A structure with a 64-bit significance signature and list of child KNodes.
 
     Attributes:
-        s_key: 64-bit integer s_key
+        signature: 64-bit integer signature
         nodes: List of child KNode integers
     """
 
-    s_key: int  # 64-bit s_key
+    signature: int  # 64-bit signature
     nodes: list[KNode]  # list of child KNodes
 
     @classmethod
     def create(cls, significance: int, token: int, nodes: list[KNode]) -> "KLine":
         """Create a KLine from significance, token, and nodes.
 
-        The s_key is constructed from significance | token.
+        The signature is constructed from significance | token.
 
         Args:
             significance: Significance value to OR with token
@@ -32,9 +32,9 @@ class KLine:
             nodes: List of child KNode integers
 
         Returns:
-            KLine with s_key = significance | token
+            KLine with signature = significance | token
         """
-        return cls(s_key=significance | token, nodes=nodes)
+        return cls(signature=significance | token, nodes=nodes)
 
     def signifies(self, query: int) -> bool:
         """Check if this KLine signifies a query via AND operation.
@@ -43,9 +43,9 @@ class KLine:
             query: The query node to signify
 
         Returns:
-            True if (s_key & query) != 0
+            True if (signature & query) != 0
         """
-        return (self.s_key & query) != 0
+        return (self.signature & query) != 0
 
 
 def nodes_equal(nodes1: list[KNode], nodes2: list[KNode]) -> bool:
@@ -63,7 +63,7 @@ class Model:
 
     Optimized internal structure:
     - _klines: list[KLine] - flat list for O(1) iteration and indexing
-    - _by_key: dict[int, list[int]] - maps s_key to indices in _klines
+    - _by_key: dict[int, list[int]] - maps signature to indices in _klines
     - _dedup: set[tuple[int, tuple[int, ...]]] - O(1) duplicate detection
 
     Query iteration follows reverse insertion order (newest first).
@@ -74,7 +74,7 @@ class Model:
     def __init__(self, klines: list[KLine] | None = None):
         """Initialize the model with optional existing KLines."""
         self._klines: list[KLine] = []  # Flat list for O(1) iteration
-        self._by_key: dict[int, list[int]] = {}  # s_key -> list of indices
+        self._by_key: dict[int, list[int]] = {}  # signature -> list of indices
         self._dedup: set[tuple[int, tuple[int, ...]]] = set()  # For O(1) duplicate check
         if klines:
             for kline in klines:
@@ -84,25 +84,25 @@ class Model:
         """Internal method to add a kline without duplicate checking."""
         idx = len(self._klines)
         self._klines.append(kline)
-        if kline.s_key not in self._by_key:
-            self._by_key[kline.s_key] = []
-        self._by_key[kline.s_key].append(idx)
+        if kline.signature not in self._by_key:
+            self._by_key[kline.signature] = []
+        self._by_key[kline.signature].append(idx)
 
     def add(self, kline: KLine, train: bool = False) -> bool:
         """Add a KLine, enforcing the key invariant.
 
         Args:
             kline: KLine to add
-            train: If True, enforce training mode (dedup by s_key only)
+            train: If True, enforce training mode (dedup by signature only)
 
         Returns:
             True if added, False if rejected (duplicate)
         """
         if train:
-            if kline.s_key in self._by_key:
+            if kline.signature in self._by_key:
                 return False
 
-        key_nodes = (kline.s_key, tuple(kline.nodes))
+        key_nodes = (kline.signature, tuple(kline.nodes))
         if key_nodes in self._dedup:
             return False  # O(1) duplicate check
         self._add_kline_internal(kline)
@@ -112,13 +112,13 @@ class Model:
         return True
 
     def find_by_key(self, key: int | None) -> KLine | None:
-        """Find a KLine by its s_key.
+        """Find a KLine by its signature.
 
         Returns the most recently added KLine with the given key.
         O(1) lookup.
 
         Args:
-            key: The s_key to search for
+            key: The signature to search for
 
         Returns:
             KLine if found, None otherwise
@@ -143,7 +143,7 @@ class Model:
         O(1) setup, O(N) iteration.
 
         Args:
-            query: The query value to match (AND operation on s_key)
+            query: The query value to match (AND operation on signature)
             focus_limit: Number of top-level matches in fast (0 = all in fast)
 
         Returns:
@@ -215,12 +215,12 @@ class Model:
             visited: set[int],
         ) -> Iterator[KLine]:
             """Expand a KLine and yield results immediately."""
-            if kline.s_key in visited:
-                v_kline = model.find_by_key(kline.s_key)
+            if kline.signature in visited:
+                v_kline = model.find_by_key(kline.signature)
                 if v_kline and nodes_equal(v_kline.nodes, kline.nodes):
                     return
             else:
-                visited.add(kline.s_key)
+                visited.add(kline.signature)
 
             yield kline
 
@@ -253,7 +253,7 @@ class Model:
 
     def duplicate(self) -> "Model":
         """Create a duplicate of this model."""
-        klines = [KLine(s_key=k.s_key, nodes=k.nodes.copy()) for k in self._klines]
+        klines = [KLine(signature=k.signature, nodes=k.nodes.copy()) for k in self._klines]
         return Model(klines)
 
     def get_all_descendants(self, node_key: int, visited: set[int] | None = None) -> set[int]:

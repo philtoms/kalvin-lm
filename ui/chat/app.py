@@ -304,13 +304,13 @@ class KalvinApp(App):
             try:
                 result = self._kalvin.encode(user_input)
                 if result:
-                    s_key = result.s_key
-                    if s_key:
-                        response = self._kalvin.decode(s_key)
+                    signature = result.signature
+                    if signature:
+                        response = self._kalvin.decode(signature)
                         if not response:
-                            response = f"[Encoded: s_key={s_key}]"
+                            response = f"[Encoded: signature={signature}]"
                     else:
-                        response = "[No s_key in result]"
+                        response = "[No signature in result]"
                 else:
                     response = "[No result from encode]"
             except Exception as e:
