@@ -1,11 +1,10 @@
-"""KScript parser and compiler for Kalvin models."""
+"""KScript parser and interpreter for Kalvin models."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 from .ast import Identifier, KLineExpr, KNodeRef, KScript, SignificanceType
-from .compiler import CompileResult, Compiler
 from .interpreter import InterpretError, InterpretResult, Interpreter
 from .lexer import Lexer, LexerError
 from .parser import ParseError, Parser
@@ -21,9 +20,6 @@ __all__ = [
     "KNodeRef",
     "Identifier",
     "SignificanceType",
-    # Compiler
-    "Compiler",
-    "CompileResult",
     # Interpreter
     "Interpreter",
     "InterpretResult",
@@ -38,7 +34,6 @@ __all__ = [
     "ParseError",
     # Convenience functions
     "parse",
-    "compile_script",
     "interpret_script",
 ]
 
@@ -48,29 +43,9 @@ def parse(source: str) -> KScript:
     return Parser.from_source(source).parse()
 
 
-def compile_script(source: str, agent: KAgent | None = None) -> CompileResult:
-    """Parse and compile KScript source using a KAgent.
-
-    Args:
-        source: KScript source code
-        agent: Optional KAgent instance. If not provided,
-               creates a new Kalvin agent with default settings.
-
-    Returns:
-        CompileResult with model, symbol_table, load_paths, save_path
-    """
-    from kalvin import Kalvin as KalvinClass
-
-    agent_instance = agent if agent is not None else KalvinClass()
-    script = parse(source)
-    compiler = Compiler(agent=agent_instance)
-    return compiler.compile(script)
-
-
 def interpret_script(source: str, agent: KAgent | None = None) -> InterpretResult:
-    """Parse and interpret KScript source using new identity/compound semantics.
+    """Parse and interpret KScript source using identity/compound semantics.
 
-    Key differences from compile_script():
     - Single-char identifiers become Identity KLines (S1 | token, nodes=[token])
     - Multi-char identifiers become Compound KLines (S1 | S2 | all_tokens)
     - Operators call agent.signify() to establish relationships

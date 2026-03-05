@@ -1,9 +1,9 @@
-"""Tests for KScript lexer, parser, and compiler."""
+"""Tests for KScript lexer, parser, and interpreter."""
 
 import pytest
 
 from kscript import (
-    CompileResult,
+    InterpretResult,
     KLineExpr,
     KScript,
     Lexer,
@@ -11,7 +11,7 @@ from kscript import (
     ParseError,
     Parser,
     TokenType,
-    compile_script,
+    interpret_script,
     parse,
 )
 
@@ -197,44 +197,6 @@ class TestParser:
         assert kline.nodes[0].identifier.name == "V"
 
 
-class TestCompiler:
-    """Tests for the KScript compiler."""
-
-    def test_compile_simple_kline(self):
-        """Test compiling simple KLine."""
-        result = compile_script("hello")
-        assert len(result.model) == 1
-
-    def test_compile_kline_with_nodes(self):
-        """Test compiling KLine with nodes."""
-        result = compile_script("greeting = hello world")
-        assert len(result.model) >= 1
-        # The main kline should have nodes
-        kline = result.model[0]
-        assert len(kline.nodes) == 2
-
-    def test_compile_load_save_paths(self):
-        """Test that load/save paths are captured."""
-        result = compile_script("""
-            load /input.bin
-            save /output.bin
-        """)
-        assert result.load_paths == ["/input.bin"]
-        assert result.save_path == "/output.bin"
-
-    def test_compile_attention_tracking(self):
-        """Test that attention markers are tracked."""
-        result = compile_script("hello ?")
-        assert len(result.attention_klines) == 1
-
-    def test_compile_symbol_table(self):
-        """Test that symbol table is populated with KLine sig names."""
-        result = compile_script("greeting = hello")
-        assert "greeting" in result.symbol_table
-        # Note: "hello" is a node, not a KLine sig, so it's not in symbol_table
-        # but it is tracked in the token_map internally
-
-
 class TestIntegration:
     """End-to-end integration tests."""
 
@@ -248,7 +210,7 @@ class TestIntegration:
 
             save /path/to/output.bin
         """
-        result = compile_script(source)
+        result = interpret_script(source)
 
         assert result.load_paths == ["/path/to/model.bin"]
         assert result.save_path == "/path/to/output.bin"
@@ -262,7 +224,7 @@ class TestIntegration:
             N(oun) = cat dog
             S(entence) => sit N(oun) ?
         """
-        result = compile_script(source)
+        result = interpret_script(source)
 
         # Comments should be stripped
         assert len(result.model) >= 3
@@ -276,8 +238,7 @@ class TestIntegration:
                 V < H
                 O < ALL
         """
-        result = compile_script(source)
+        result = interpret_script(source)
 
         # Should have multiple KLines
         assert len(result.model) >= 4  # MHALL, S, V, O (at minimum)
-

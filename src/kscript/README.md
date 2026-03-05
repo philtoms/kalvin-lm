@@ -4,7 +4,7 @@ A domain-specific scripting language for creating and manipulating Kalvin knowle
 
 ## Overview
 
-KScript provides a concise syntax for defining KLines (knowledge lines) with significance relationships, enabling you to build knowledge graphs that can be compiled into Kalvin models.
+KScript provides a concise syntax for defining KLines (knowledge lines) with significance relationships, enabling you to build knowledge graphs that can be interpreted into Kalvin models.
 
 ## Installation
 
@@ -17,16 +17,16 @@ uv sync
 ## Quick Start
 
 ```python
-from kscript import parse, compile_script
+from kscript import parse, interpret_script
 
-# Parse and compile a script
+# Parse and interpret a script
 source = """
     greeting = hello world
     question > greeting ?
 """
-result = compile_script(source)
+result = interpret_script(source)
 
-print(f"Compiled {len(result.model)} KLines")
+print(f"Interpreted {len(result.model)} KLines")
 print(f"Symbols: {list(result.symbol_table.keys())}")
 ```
 
@@ -69,11 +69,20 @@ different != opposite
 
 ### Attention Marker
 
-The `?` operator marks a KLine for attention:
+The `?` operator marks a yield/attention point. It tells Kalvin to attend to what has been processed so far:
 
 ```kscript
+# Attend to A first, then process relationship to B
+A? => B
+
+# Two attention points: attend to A, then attend to B
+A? => B?
+
+# Attention as a yield for interactive querying
 important > node1 node2 ?
 ```
+
+Attention is processed before relationships, allowing the model to be updated incrementally. In future UI integration, attention points will enable Kalvin to query script intentions.
 
 ### Multiple Relationships
 
@@ -151,37 +160,37 @@ from kscript import parse
 ast = parse("greeting = hello")
 ```
 
-### `compile_script(source: str, kalvin=None) -> CompileResult`
+### `interpret_script(source: str, agent=None) -> InterpretResult`
 
-Compile KScript source using a Kalvin agent.
+Interpret KScript source using a Kalvin agent.
 
 **Parameters:**
 
 - `source`: KScript source code
-- `kalvin`: Optional Kalvin agent instance. If not provided, creates a new Kalvin agent with default settings.
+- `agent`: Optional Kalvin agent instance. If not provided, creates a new Kalvin agent with default settings.
 
 ```python
-from kscript import compile_script
+from kscript import interpret_script
 from kalvin import Kalvin
 
 # Use existing Kalvin agent
 kalvin = Kalvin.load("model.bin")
-result = compile_script(source, agent=kalvin)
+result = interpret_script(source, agent=kalvin)
 print(f"KLines: {len(result.model)}")
 
 # Or create a new agent automatically
-result = compile_script(source)
+result = interpret_script(source)
 ```
 
-### `CompileResult`
+### `InterpretResult`
 
 | Field              | Type             | Description                       |
 | ------------------ | ---------------- | --------------------------------- |
-| `model`            | `Model`          | Compiled Kalvin model with KLines |
-| `symbol_table`     | `dict[str, int]` | Maps sig names to s_keys          |
+| `model`            | `Model`          | Kalvin model with KLines          |
+| `symbol_table`     | `dict[str, int]` | Maps sig names to signatures      |
 | `load_paths`       | `list[str]`      | Paths from load statements        |
 | `save_path`        | `str \| None`    | Path from save statement          |
-| `attention_klines` | `list[int]`      | s_keys of KLines with attention   |
+| `attention_klines` | `list[int]`      | signatures of KLines with attention |
 
 ## Examples
 

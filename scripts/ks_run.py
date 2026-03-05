@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from kalvin.kalvin import Kalvin
-from kscript import compile_script
+from kscript import interpret_script
 
 
 def main():
@@ -84,11 +84,11 @@ Examples:
 
         kalvin = Kalvin()  # Uses default tokenizer
 
-    # Compile the script
+    # Interpret the script
     if args.verbose:
-        print("Compiling script...")
+        print("Interpreting script...")
 
-    result = compile_script(source, agent=kalvin)
+    result = interpret_script(source, agent=kalvin)
 
     if args.verbose:
         print(f"KLines in model: {len(result.model)}")

@@ -222,38 +222,27 @@ class TestComplexScripts:
         assert result.load_paths == ["/input.bin"]
         assert result.save_path == "/output.bin"
 
-    def test_attention_tracking(self):
-        """Test that attention markers are tracked."""
-        result = interpret_script("A ?")
+    def test_attention_before_relationship(self):
+        """Test attention is processed before relationships (yield point semantics)."""
+        result = interpret_script("A? => B")
+
+        # A should be attended first (yield), then relationship to B
+        assert "A" in result.symbol_table
+        assert "B" in result.symbol_table
+
+        # Attention point should be recorded for A
         assert len(result.attention_klines) == 1
+        # Check that A was processed (model updated)
+        # The relationship should also be processed
+        assert "B" in result.symbol_table
 
+    def test_attention_after_relationship(self):
+        """Test attention after relationship."""
+        result = interpret_script("A => B?")
 
-class TestInterpreterVsCompiler:
-    """Tests comparing Interpreter vs Compiler behavior."""
+        # Both should be processed
+        assert "A" in result.symbol_table
+        assert "B" in result.symbol_table
 
-    def test_interpreter_creates_identity_klines(self):
-        """Interpreter creates identity klines for single chars."""
-        from kscript import compile_script
-
-        # Using interpreter
-        interp_result = interpret_script("M")
-        m_sig = interp_result.symbol_table["M"]
-        m_kline = interp_result.model.find_by_key(m_sig)
-
-        # Identity kline should have S1 bit and one node
-        assert has_s1(m_kline.signature)
-        assert len(m_kline.nodes) == 1
-
-    def test_interpreter_creates_compound_klines(self):
-        """Interpreter creates compound klines for multi-char identifiers."""
-        # Using interpreter
-        result = interpret_script("ABC")
-
-        abc_sig = result.symbol_table["ABC"]
-        abc_kline = result.model.find_by_key(abc_sig)
-
-        # Compound kline should have 3 nodes
-        assert len(abc_kline.nodes) == 3
-        # Each node should be an identity signature
-        for node in abc_kline.nodes:
-            assert has_s1(node)
+        # Attention point should be recorded for B
+        assert len(result.attention_klines) == 1

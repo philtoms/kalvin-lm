@@ -44,12 +44,12 @@ class InterpretResult:
 
 class Interpreter:
     """
-    Interprets KScript AST with new identity/compound KLine semantics.
+    Interprets KScript AST with identity/compound KLine semantics.
 
-    Key differences from Compiler:
     - Single-char identifiers become Identity KLines (S1 | token, nodes=[token])
     - Multi-char identifiers become Compound KLines (S1 | S2 | all_tokens, nodes=identity_sigs)
     - Operators call agent.signify() to establish relationships
+    - Attention (?) is a yield point that processes what has been seen so far
 
     Requires a KAgent instance for tokenization, model storage, and signify().
     """
@@ -75,7 +75,7 @@ class Interpreter:
         symbol_table: SymbolTable = {}
         load_paths: list[str] = []
         save_path: str | None = None
-        attention_klines: list[int] = []
+        attention_points: list[int] = []  # Signatures at each attention/yield point
 
         for stmt in script.statements:
             if isinstance(stmt, LoadStatement):
@@ -83,16 +83,14 @@ class Interpreter:
             elif isinstance(stmt, SaveStatement):
                 save_path = stmt.path.name if stmt.path else None
             elif isinstance(stmt, KLineExpr):
-                kline = self._interpret_kline_expr(stmt, symbol_table)
-                if kline and stmt.attention:
-                    attention_klines.append(kline.signature)
+                self._interpret_kline_expr(stmt, symbol_table, attention_points)
 
         return InterpretResult(
             model=self.model,
             symbol_table=symbol_table,
             load_paths=load_paths,
             save_path=save_path,
-            attention_klines=attention_klines,
+            attention_klines=attention_points,
         )
 
     def create_kline(self, name: str) -> KLine:
@@ -148,12 +146,17 @@ class Interpreter:
         self,
         expr: KLineExpr,
         symbol_table: SymbolTable,
+        attention_points: list[int],
     ) -> KLine | None:
         """
         Interpret a KLine expression with new semantics.
 
         Creates the sig KLine (identity or compound) and establishes
         relationships via agent.signify().
+
+        Attention (?) is a yield point:
+        - `A? => B` - attend to A first, then process relationship to B
+        - `A? => B?` - attend to A, then attend to B (two yield points)
         """
         # Step 1: Create the sig KLine
         if isinstance(expr.sig, Identifier):
@@ -169,11 +172,16 @@ class Interpreter:
                 symbol_table[name] = sig_kline.signature
         else:
             # Nested KLineExpr as sig - interpret recursively
-            sig_kline = self._interpret_kline_expr(expr.sig, symbol_table)
+            sig_kline = self._interpret_kline_expr(expr.sig, symbol_table, attention_points)
             if sig_kline is None:
                 return None
 
-        # Step 2: Process relationships using signify()
+        # Step 2: If attention marker on sig, yield/attend before relationships
+        if expr.attention:
+            attention_points.append(sig_kline.signature)
+            # This is a yield point - model has been updated, Kalvin can query
+
+        # Step 3: Process relationships using signify()
         for relationship in expr.relationships:
             # Get significance level for this relationship
             s = self._significance_type_to_value(relationship.significance)
@@ -182,9 +190,9 @@ class Interpreter:
             node_klines = []
             for node_ref in relationship.nodes:
                 if node_ref.nested_kline:
-                    # Nested KLine expression
+                    # Nested KLine expression - may have its own attention
                     node_kline = self._interpret_kline_expr(
-                        node_ref.nested_kline, symbol_table
+                        node_ref.nested_kline, symbol_table, attention_points
                     )
                 else:
                     # Simple identifier

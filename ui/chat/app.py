@@ -11,7 +11,7 @@ from textual.containers import Container, Horizontal
 from textual.widgets import Button, Footer, Header, Input, ListView
 
 from kalvin import Kalvin
-from kscript import compile_script
+from kscript import interpret_script
 from ui.chat.dialogs import OpenDialog, SaveDialog
 from ui.chat.regions import ChatHistoryRegion, ChatRegion, ConfigRegion
 
@@ -337,13 +337,13 @@ class KalvinApp(App):
         if not script.strip():
             return
 
-        # Compile the script using Kalvin agent
+        # Interpret the script using Kalvin agent
         try:
-            result = compile_script(script, agent=self._kalvin)
+            result = interpret_script(script, agent=self._kalvin)
 
             # Build output summary
             output_lines = [
-                f"Compiled {len(result.model)} KLines",
+                f"Interpreted {len(result.model)} KLines",
                 f"Symbol table: {len(result.symbol_table)} entries",
             ]
 
