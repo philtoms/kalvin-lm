@@ -97,8 +97,6 @@ Examples:
             print(f"Load paths: {result.load_paths}")
         if result.save_path:
             print(f"Script save path: {result.save_path}")
-        if result.attention_klines:
-            print(f"Attention KLines: {len(result.attention_klines)}")
 
     # Determine output path
     if args.output:

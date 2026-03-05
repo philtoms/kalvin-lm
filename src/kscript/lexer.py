@@ -21,7 +21,6 @@ SINGLE_CHAR_OPS = {
     "=": TokenType.S1,
     ">": TokenType.S3_FORWARD,
     "<": TokenType.S3_BACKWARD,
-    "?": TokenType.ATTENTION,
 }
 
 

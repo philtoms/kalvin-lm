@@ -67,23 +67,6 @@ inverse < source target
 different != opposite
 ```
 
-### Attention Marker
-
-The `?` operator marks a yield/attention point. It tells Kalvin to attend to what has been processed so far:
-
-```kscript
-# Attend to A first, then process relationship to B
-A? => B
-
-# Two attention points: attend to A, then attend to B
-A? => B?
-
-# Attention as a yield for interactive querying
-important > node1 node2 ?
-```
-
-Attention is processed before relationships, allowing the model to be updated incrementally. In future UI integration, attention points will enable Kalvin to query script intentions.
-
 ### Multiple Relationships
 
 A KLine can have chained relationships:
@@ -184,13 +167,12 @@ result = interpret_script(source)
 
 ### `InterpretResult`
 
-| Field              | Type             | Description                       |
-| ------------------ | ---------------- | --------------------------------- |
-| `model`            | `Model`          | Kalvin model with KLines          |
-| `symbol_table`     | `dict[str, int]` | Maps sig names to signatures      |
-| `load_paths`       | `list[str]`      | Paths from load statements        |
-| `save_path`        | `str \| None`    | Path from save statement          |
-| `attention_klines` | `list[int]`      | signatures of KLines with attention |
+| Field          | Type             | Description                  |
+| -------------- | ---------------- | ---------------------------- |
+| `model`        | `Model`          | Kalvin model with KLines     |
+| `symbol_table` | `dict[str, int]` | Maps sig names to signatures |
+| `load_paths`   | `list[str]`      | Paths from load statements   |
+| `save_path`    | `str \| None`    | Path from save statement     |
 
 ## Examples
 
@@ -244,12 +226,11 @@ statement   ::= load_stmt | save_stmt | kline_expr
 load_stmt   ::= "load" IDENTIFIER
 save_stmt   ::= "save" [IDENTIFIER]
 kline_expr  ::= KSig kline_tail*
-kline_tail  ::= significance nodes [attention]
+kline_tail  ::= significance nodes
 nodes       ::= inline_nodes | indented_klines
 inline_nodes ::= IDENTIFIER+
 indented_klines ::= INDENT kline_expr+ DEDENT
 significance ::= "=" | "=>" | ">" | "<" | "!="
-attention   ::= "?"
 ```
 
 ## File Extension

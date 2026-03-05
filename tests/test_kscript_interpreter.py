@@ -221,28 +221,3 @@ class TestComplexScripts:
         """)
         assert result.load_paths == ["/input.bin"]
         assert result.save_path == "/output.bin"
-
-    def test_attention_before_relationship(self):
-        """Test attention is processed before relationships (yield point semantics)."""
-        result = interpret_script("A? => B")
-
-        # A should be attended first (yield), then relationship to B
-        assert "A" in result.symbol_table
-        assert "B" in result.symbol_table
-
-        # Attention point should be recorded for A
-        assert len(result.attention_klines) == 1
-        # Check that A was processed (model updated)
-        # The relationship should also be processed
-        assert "B" in result.symbol_table
-
-    def test_attention_after_relationship(self):
-        """Test attention after relationship."""
-        result = interpret_script("A => B?")
-
-        # Both should be processed
-        assert "A" in result.symbol_table
-        assert "B" in result.symbol_table
-
-        # Attention point should be recorded for B
-        assert len(result.attention_klines) == 1

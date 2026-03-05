@@ -94,7 +94,6 @@ class KLineExpr:
     - `name > node1 node2` -> KLine with S3 forward relationship
     - `name < node1 node2` -> KLine with S3 backward relationship
     - `name != node` -> KLine with S4 relationship
-    - `name ?` -> KLine with attention marker
     - `kline1 > nodes` -> KLine referencing another KLine
 
     Multi-line form:
@@ -108,7 +107,6 @@ class KLineExpr:
 
     sig: KSig  # Identifier or nested KLineExpr
     relationships: list[KLineRelationship] = field(default_factory=list)
-    attention: bool = False
     line: int = 0
     column: int = 0
 

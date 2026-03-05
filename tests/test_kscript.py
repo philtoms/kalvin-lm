@@ -38,12 +38,6 @@ class TestLexer:
         assert tokens[3].type == TokenType.S3_BACKWARD
         assert tokens[4].type == TokenType.S4
 
-    def test_tokenize_attention(self):
-        """Test tokenizing attention operator."""
-        lexer = Lexer("?")
-        tokens = lexer.tokenize()
-        assert tokens[0].type == TokenType.ATTENTION
-
     def test_tokenize_identifiers(self):
         """Test tokenizing identifiers."""
         lexer = Lexer("hello world")
@@ -166,25 +160,12 @@ class TestParser:
         kline = script.root
         assert kline.significance.value == "!="
 
-    def test_parse_kline_with_attention(self):
-        """Test parsing KLine with attention marker."""
-        script = parse("hello ?")
-        kline = script.root
-        assert kline.attention is True
-
-    def test_parse_kline_with_significance_and_attention(self):
-        """Test parsing KLine with significance and attention."""
-        script = parse("question > greeting ?")
-        kline = script.root
-        assert kline.significance.value == ">"
-        assert kline.attention is True
-
     def test_parse_multiple_statements(self):
         """Test parsing multiple statements."""
         script = parse("""
             load /path/to/model.bin
             greeting = hello world
-            question > greeting ?
+            question > greeting
             save /path/to/output.bin
         """)
         assert len(script.statements) == 4
@@ -206,7 +187,7 @@ class TestIntegration:
             load /path/to/model.bin
 
             greeting = hello world
-            question > greeting ?
+            question > greeting
 
             save /path/to/output.bin
         """
@@ -215,20 +196,18 @@ class TestIntegration:
         assert result.load_paths == ["/path/to/model.bin"]
         assert result.save_path == "/path/to/output.bin"
         assert len(result.model) >= 1
-        assert len(result.attention_klines) == 1
 
     def test_nlp_style_script(self):
         """Test NLP-style script with inline comments."""
         source = """
             sit > V(erb)
             N(oun) = cat dog
-            S(entence) => sit N(oun) ?
+            S(entence) => sit N(oun)
         """
         result = interpret_script(source)
 
         # Comments should be stripped
         assert len(result.model) >= 3
-        assert len(result.attention_klines) == 1
 
     def test_multiline_kline(self):
         """Test multi-line KLine with indented nodes."""

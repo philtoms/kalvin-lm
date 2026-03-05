@@ -351,8 +351,6 @@ class KalvinApp(App):
                 output_lines.append(f"Load paths: {result.load_paths}")
             if result.save_path:
                 output_lines.append(f"Save path: {result.save_path}")
-            if result.attention_klines:
-                output_lines.append(f"Attention KLines: {len(result.attention_klines)}")
 
             # Show some symbol table entries
             if result.symbol_table:

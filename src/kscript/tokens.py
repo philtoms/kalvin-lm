@@ -18,9 +18,6 @@ class TokenType(Enum):
     S3_BACKWARD = auto()  # "<"
     S4 = auto()  # "!="
 
-    # Attention operator
-    ATTENTION = auto()  # "?"
-
     # Identifiers (unquoted strings)
     IDENTIFIER = auto()  # e.g., "hello", "world", "/path/to/file"
 

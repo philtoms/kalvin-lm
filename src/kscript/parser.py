@@ -33,12 +33,11 @@ class Parser:
         load_stmt   ::= "load" IDENTIFIER
         save_stmt   ::= "save" [IDENTIFIER]
         kline_expr  ::= KSig kline_tail*
-        kline_tail  ::= significance nodes [attention]
+        kline_tail  ::= significance nodes
         nodes       ::= inline_nodes | indented_klines
         inline_nodes ::= IDENTIFIER+
         indented_klines ::= INDENT kline_expr+ DEDENT
         significance ::= "=" | "=>" | ">" | "<" | "!="
-        attention   ::= "?"
 
     Multi-line example:
         MHALL = SVO =>
@@ -140,29 +139,16 @@ class Parser:
 
         Forms:
         - identifier
-        - identifier attention
         - identifier significance nodes
         - identifier significance nodes significance nodes ...
-        - identifier significance nodes attention
         """
         start_token = self._current()
         sig = self._parse_ksig()
-
-        # Check for attention directly after identifier (no significance)
-        if self._match(TokenType.ATTENTION):
-            return KLineExpr(
-                sig=sig,
-                relationships=[],
-                attention=True,
-                line=start_token.line,
-                column=start_token.column,
-            )
 
         # Collect all chained relationships
         # e.g., MHALL = SVO => [indented] means:
         #   MHALL with S1->SVO and S2->[indented klines]
         chained_relationships: list[tuple[SignificanceType, list[KNodeRef]]] = []
-        final_attention = False
 
         while self._check(
             TokenType.S1, TokenType.S2, TokenType.S3_FORWARD, TokenType.S3_BACKWARD, TokenType.S4
@@ -185,11 +171,6 @@ class Parser:
             nodes = self._parse_nodes()
             chained_relationships.append((significance, nodes))
 
-            # Check for attention after nodes
-            if self._match(TokenType.ATTENTION):
-                final_attention = True
-                break  # Attention terminates the chain
-
         # Build relationships list from chained relationships
         relationships = [
             KLineRelationship(significance=sig, nodes=nodes) for sig, nodes in chained_relationships
@@ -198,7 +179,6 @@ class Parser:
         return KLineExpr(
             sig=sig,
             relationships=relationships,
-            attention=final_attention,
             line=start_token.line,
             column=start_token.column,
         )
