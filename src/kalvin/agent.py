@@ -63,6 +63,26 @@ class KAgent(ABC):
         """
         ...
 
+    @abstractmethod
+    def signify(self, k1: "KLine", k2: "KLine", s: int | None = None) -> int:
+        """Establish significance relationship between two KLines.
+
+        Calculates internal significance of k1:k2 relationship.
+        If requested s is higher (more significant) than internal:
+        - S1: Adds bidirectional links, returns S1
+        - S2: Verifies compound signature of k2.nodes == k1.signature
+        - S3: Adds bidirectional links, returns S3
+
+        Args:
+            k1: First KLine
+            k2: Second KLine
+            s: Optional requested significance level (S1/S2/S3 bit flags)
+
+        Returns:
+            The resulting significance value
+        """
+        ...
+
     # === Serialization ===
 
     @abstractmethod

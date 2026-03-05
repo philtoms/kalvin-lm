@@ -10,6 +10,15 @@ import json
 
 from kalvin.agent import KAgent
 from kalvin.model import KLine, KNode, Model
+from kalvin.significance import (
+    build_s1,
+    build_s2,
+    build_s3,
+    calculate_significance,
+    get_s2,
+    get_s3,
+    has_s1,
+)
 from kalvin.tokenizer import Tokenizer
 
 
@@ -185,6 +194,53 @@ class Kalvin(KAgent):
 
         model = Model(pruned_model)
         return Kalvin(model, pruned_activity)
+
+    def signify(self, k1: KLine, k2: KLine, s: int | None = None) -> int:
+        """Establish significance relationship between two KLines.
+
+        Calculates internal significance of k1:k2 relationship.
+        If requested s is higher (more significant) than internal:
+        - S1: Adds bidirectional links, returns S1
+        - S2: Verifies compound signature of k2.nodes == k1.signature
+        - S3: Adds bidirectional links, returns S3
+
+        Args:
+            k1: First KLine
+            k2: Second KLine
+            s: Optional requested significance level (S1/S2/S3 bit flags)
+
+        Returns:
+            The resulting significance value
+        """
+        # Calculate internal significance
+        internal = calculate_significance(self.model, k1, k2)
+
+        # No requested level or internal already sufficient
+        if s is None or internal >= s:
+            return internal
+
+        # S1 requested and higher than internal
+        if has_s1(s):
+            self.model.add(KLine(signature=k1.signature, nodes=k2.nodes.copy()))
+            self.model.add(KLine(signature=k2.signature, nodes=k1.nodes.copy()))
+            return build_s1(100)
+
+        # S2 requested - verify compound signature
+        if get_s2(s) > 0:
+            compound = 0
+            for node in k2.nodes:
+                compound |= node
+            if compound == k1.signature:
+                return build_s2(100, 0)
+            # Verification failed, continue to S3 check
+
+        # S3 requested and higher than internal
+        if get_s3(s) > 0:
+            self.model.add(KLine(signature=k1.signature, nodes=k2.nodes.copy()))
+            self.model.add(KLine(signature=k2.signature, nodes=k1.nodes.copy()))
+            return build_s3(100, 0, 0)
+
+        return internal
 
     def model_size(self) -> int:
         """Return the number of KLines in the model.
