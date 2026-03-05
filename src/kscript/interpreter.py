@@ -119,20 +119,17 @@ class Interpreter:
             signature = S1_BIT | token
             nodes = [token]
         else:
-            # Compound KLine: S1 | S2 | all tokens
+            # Build compound signature: S1 | S2 | all tokens
+            signature = S1_BIT | build_s2(100, 100)
+            nodes = []
             # First ensure identity klines exist for each char
             for token in tokens:
                 identity_sig = S1_BIT | token
                 identity_kline = KLine(signature=identity_sig, nodes=[token])
                 self.model.add(identity_kline)
 
-            # Build compound signature: S1 | S2 | all tokens
-            signature = S1_BIT | build_s2(100, 100)
-            for token in tokens:
                 signature |= token
-
-            # Nodes are identity signatures for each character
-            nodes = [S1_BIT | t for t in tokens]
+                nodes.append(identity_sig)
 
         kline = KLine(signature=signature, nodes=nodes)
         self.model.add(kline)
@@ -155,7 +152,7 @@ class Interpreter:
             # Check if already exists in symbol table
             if name in symbol_table:
                 existing_sig = symbol_table[name]
-                sig_kline = self.model.find_by_key(existing_sig)
+                sig_kline = self.model.find_kline(existing_sig)
                 if sig_kline is None:
                     sig_kline = self.create_kline(name)
             else:
@@ -167,7 +164,7 @@ class Interpreter:
             if sig_kline is None:
                 return None
 
-        # Step 2: Process relationships using signify()        # Step 3: Process relationships using signify()
+        # Step 2: Process relationships using signify()
         for relationship in expr.relationships:
             # Get significance level for this relationship
             s = self._significance_type_to_value(relationship.significance)
@@ -185,7 +182,7 @@ class Interpreter:
                     node_name = node_ref.identifier.name
                     if node_name in symbol_table:
                         existing_sig = symbol_table[node_name]
-                        node_kline = self.model.find_by_key(existing_sig)
+                        node_kline = self.model.find_kline(existing_sig)
                         if node_kline is None:
                             node_kline = self.create_kline(node_name)
                     else:

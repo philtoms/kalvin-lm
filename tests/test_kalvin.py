@@ -660,9 +660,9 @@ class TestKalvinPrune:
         pruned = Kalvin(model, activity).prune(level=3)
 
         assert len(pruned.model) == 2
-        found = model.find_by_key(0x2000)
+        found = model.find_kline(0x2000)
         assert found in list(pruned.model)
-        found = model.find_by_key(0x3000)
+        found = model.find_kline(0x3000)
         assert found in list(pruned.model)
 
     def test_prune_removes_all_when_level_high(self):
@@ -696,7 +696,7 @@ class TestKalvinPrune:
         pruned = Kalvin(model, activity).prune()
 
         assert len(pruned.model) == 1
-        assert model.find_by_key(0x1000) in list(pruned.model)
+        assert model.find_kline(0x1000) in list(pruned.model)
 
     def test_prune_preserves_original_model(self):
         """Pruning does not modify the original model."""
@@ -742,7 +742,7 @@ class TestKalvinPrune:
         pruned = Kalvin(model, activity).prune(level=2)
 
         assert len(pruned.model) == 1
-        found = model.find_by_key(0x1000)
+        found = model.find_kline(0x1000)
         assert found in list(pruned.model)
 
     def test_prune_with_large_keys(self):
@@ -757,7 +757,7 @@ class TestKalvinPrune:
         pruned = Kalvin(model, activity).prune(level=2)
 
         assert len(pruned.model) == 1
-        found = model.find_by_key(key1)
+        found = model.find_kline(key1)
         assert found in list(pruned.model)
 
     def test_prune_with_small_keys(self):
@@ -772,7 +772,7 @@ class TestKalvinPrune:
         pruned = Kalvin(model, activity).prune(level=2)
 
         assert len(pruned.model) == 1
-        found = model.find_by_key(key1)
+        found = model.find_kline(key1)
         assert found in list(pruned.model)
 
     def test_prune_keeps_kline_reference(self):

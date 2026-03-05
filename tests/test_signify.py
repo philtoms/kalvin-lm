@@ -87,7 +87,7 @@ class TestSignifyS1:
         kalvin.signify(k1, k2, s1_request)
 
         # Check that k1.signature now has k2's nodes
-        link1 = kalvin.model.find_by_key(k1.signature)
+        link1 = kalvin.model.find_kline(k1.signature)
         assert link1 is not None
         # Should find the most recently added one with k2's nodes
         found_k2_nodes = False

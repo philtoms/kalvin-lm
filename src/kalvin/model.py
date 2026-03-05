@@ -111,7 +111,7 @@ class Model:
 
         return True
 
-    def find_by_key(self, key: int | None) -> KLine | None:
+    def find_kline(self, key: int | None) -> KLine | None:
         """Find a KLine by its signature.
 
         Returns the most recently added KLine with the given key.
@@ -127,6 +127,23 @@ class Model:
             return None
         # Return the most recently added (last index in the list)
         return self._klines[self._by_key[key][-1]]
+
+    def find_signed_klines(self, signature: int | None) -> list[KLine]:
+        """Find all KLines matching the given signature.
+
+        Returns the most recently added KLine with the given key.
+        O(1) lookup.
+
+        Args:
+            key: The signature to search for
+
+        Returns:
+            KLine list
+        """
+        if signature is None or signature not in self._by_key:
+            return []
+
+        return [self._klines[idx] for idx in self._by_key[signature]]
 
     def query(
         self,
@@ -204,7 +221,7 @@ class Model:
             """Get all KLines from a list of node keys."""
             found = []
             for node_key in nodes:
-                kline = model.find_by_key(node_key)
+                kline = model.find_kline(node_key)
                 if kline is not None:
                     found.append(kline)
             return found
@@ -216,7 +233,7 @@ class Model:
         ) -> Iterator[KLine]:
             """Expand a KLine and yield results immediately."""
             if kline.signature in visited:
-                v_kline = model.find_by_key(kline.signature)
+                v_kline = model.find_kline(kline.signature)
                 if v_kline and nodes_equal(v_kline.nodes, kline.nodes):
                     return
             else:
@@ -274,7 +291,7 @@ class Model:
         visited.add(node_key)
 
         descendants: set[int] = set()
-        kline = self.find_by_key(node_key)
+        kline = self.find_kline(node_key)
 
         if kline is None:
             return descendants

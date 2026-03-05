@@ -221,3 +221,44 @@ class TestIntegration:
 
         # Should have multiple KLines
         assert len(result.model) >= 4  # MHALL, S, V, O (at minimum)
+
+    def test_parse_with_nested_statements(self):
+        """Test parsing with inline comments."""
+        script = parse(
+        """(Mary had a little lamb - anything in brackets is a comment btw)
+        MHALL = SVO =>
+            M = S(ubject)
+            H = V(erb)
+            ALL = O(bject) =>
+                A = D(et)
+                L = M(od)
+                L = O
+        """)
+        kline = script.root
+        assert kline.sig.name == "MHALL"
+        # First relationship (=) has SVO as identifier
+        assert kline.nodes[0].identifier.name == "SVO"
+        # Second relationship (=>) has nested KLines
+        assert len(kline.relationships) == 2
+        nested = kline.relationships[1].nodes
+        # M, H, ALL are children of MHALL's =>
+        assert len(nested) == 3  # M, H, ALL
+        # Check M = S
+        assert nested[0].nested_kline.sig.name == "M"
+        assert nested[0].nested_kline.nodes[0].identifier.name == "S"
+        # Check H = V
+        assert nested[1].nested_kline.sig.name == "H"
+        assert nested[1].nested_kline.nodes[0].identifier.name == "V"
+        # Check ALL = O => (nested S2 with A, L, L)
+        all_kline = nested[2].nested_kline
+        assert all_kline.sig.name == "ALL"
+        assert all_kline.nodes[0].identifier.name == "O"
+        # ALL has 2 relationships: = O, => [A, L, L]
+        assert len(all_kline.relationships) == 2
+        # The => relationship has A, L, L as siblings
+        all_s2 = all_kline.relationships[1]
+        assert all_s2.significance.value == "=>"
+        assert len(all_s2.nodes) == 3  # A, L, L
+        assert all_s2.nodes[0].nested_kline.sig.name == "A"
+        assert all_s2.nodes[1].nested_kline.sig.name == "L"
+        assert all_s2.nodes[2].nested_kline.sig.name == "L"

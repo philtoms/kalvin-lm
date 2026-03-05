@@ -20,7 +20,7 @@ class TestIdentityKLines:
         # Find the M kline
         assert "M" in result.symbol_table
         m_sig = result.symbol_table["M"]
-        m_kline = result.model.find_by_key(m_sig)
+        m_kline = result.model.find_kline(m_sig)
 
         assert m_kline is not None
         # Identity kline has S1 bit set
@@ -33,7 +33,7 @@ class TestIdentityKLines:
         result = interpret_script("A")
 
         a_sig = result.symbol_table["A"]
-        a_kline = result.model.find_by_key(a_sig)
+        a_kline = result.model.find_kline(a_sig)
 
         # The signature should have S1_BIT
         assert a_kline.signature & S1_BIT != 0
@@ -60,7 +60,7 @@ class TestCompoundKLines:
 
         assert "ALL" in result.symbol_table
         all_sig = result.symbol_table["ALL"]
-        all_kline = result.model.find_by_key(all_sig)
+        all_kline = result.model.find_kline(all_sig)
 
         assert all_kline is not None
         # Compound kline has 3 nodes (A, L, L identity signatures)
@@ -74,7 +74,7 @@ class TestCompoundKLines:
         result = interpret_script("AB")
 
         ab_sig = result.symbol_table["AB"]
-        ab_kline = result.model.find_by_key(ab_sig)
+        ab_kline = result.model.find_kline(ab_sig)
 
         # Should have S1 bit
         assert has_s1(ab_kline.signature)
@@ -90,11 +90,11 @@ class TestCompoundKLines:
         # They won't be in symbol_table by name, but they should be in model
         # as nodes of the compound kline
         abc_sig = result.symbol_table["ABC"]
-        abc_kline = result.model.find_by_key(abc_sig)
+        abc_kline = result.model.find_kline(abc_sig)
 
         # Each node is an identity signature
         for node_sig in abc_kline.nodes:
-            node_kline = result.model.find_by_key(node_sig)
+            node_kline = result.model.find_kline(node_sig)
             assert node_kline is not None
             assert has_s1(node_kline.signature)
 
@@ -109,8 +109,8 @@ class TestSignifyRelationships:
         a_sig = result.symbol_table["A"]
         b_sig = result.symbol_table["B"]
 
-        a_kline = result.model.find_by_key(a_sig)
-        b_kline = result.model.find_by_key(b_sig)
+        a_kline = result.model.find_kline(a_sig)
+        b_kline = result.model.find_kline(b_sig)
 
         # S1 relationship creates bidirectional links
         # After signify(A, B, S1):
@@ -130,7 +130,7 @@ class TestSignifyRelationships:
         result = interpret_script("AB => A B")
 
         ab_sig = result.symbol_table["AB"]
-        ab_kline = result.model.find_by_key(ab_sig)
+        ab_kline = result.model.find_kline(ab_sig)
 
         assert ab_kline is not None
 
@@ -141,8 +141,8 @@ class TestSignifyRelationships:
         m_sig = result.symbol_table["M"]
         s_sig = result.symbol_table["S"]
 
-        m_kline = result.model.find_by_key(m_sig)
-        s_kline = result.model.find_by_key(s_sig)
+        m_kline = result.model.find_kline(m_sig)
+        s_kline = result.model.find_kline(s_sig)
 
         assert m_kline is not None
         assert s_kline is not None
@@ -159,8 +159,8 @@ class TestSignifyRelationships:
         a_sig = result.symbol_table["A"]
         b_sig = result.symbol_table["B"]
 
-        a_kline = result.model.find_by_key(a_sig)
-        b_kline = result.model.find_by_key(b_sig)
+        a_kline = result.model.find_kline(a_sig)
+        b_kline = result.model.find_kline(b_sig)
 
         assert a_kline is not None
         assert b_kline is not None
@@ -180,8 +180,8 @@ class TestComplexScripts:
         mhall_sig = result.symbol_table["MHALL"]
         svo_sig = result.symbol_table["SVO"]
 
-        mhall_kline = result.model.find_by_key(mhall_sig)
-        svo_kline = result.model.find_by_key(svo_sig)
+        mhall_kline = result.model.find_kline(mhall_sig)
+        svo_kline = result.model.find_kline(svo_sig)
 
         # Compound klines should have multiple nodes
         assert len(mhall_kline.nodes) >= 1
@@ -221,3 +221,41 @@ class TestComplexScripts:
         """)
         assert result.load_paths == ["/input.bin"]
         assert result.save_path == "/output.bin"
+
+    def test_deeply_nested_s2_statements(self):
+        """Test multiple nested statements with cascading S2 (=>) operators."""
+        result = interpret_script(
+        """(Mary had a little lamb - anything in brackets is a comment btw)
+        MHALL = SVO =>
+            M = S(ubject)
+            H = V(erb)
+            ALL = O(bject) =>
+                A = D(et)
+                L = M(od)
+                L = O
+        """)
+
+        # Should have klines for all identifiers
+        assert "MHALL" in result.symbol_table
+        assert "SVO" in result.symbol_table
+        assert "M" in result.symbol_table
+        assert "S" in result.symbol_table
+        assert "H" in result.symbol_table
+        assert "V" in result.symbol_table
+        assert "ALL" in result.symbol_table
+        assert "O" in result.symbol_table
+        assert "A" in result.symbol_table
+        assert "D" in result.symbol_table
+        assert "L" in result.symbol_table
+
+        # Verify MHALL compound kline
+        mhall_sig = result.symbol_table["MHALL"]
+        mhall_kline = result.model.find_kline(mhall_sig)
+        assert mhall_kline is not None
+        assert len(mhall_kline.nodes) >= 1  # MHALL has M, H, A, L, L nodes
+
+        # Verify ALL compound kline
+        all_sig = result.symbol_table["ALL"]
+        all_kline = result.model.find_kline(all_sig)
+        assert all_kline is not None
+        assert len(all_kline.nodes) >= 1  # ALL has A, L, L nodes

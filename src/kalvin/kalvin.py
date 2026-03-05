@@ -162,12 +162,12 @@ class Kalvin(KAgent):
         Returns:
             Decoded string
         """
-        kline = self.model.find_by_key(token_sig)
+        kline = self.model.find_kline(token_sig)
         if kline is None:
             return ""
         knodes = []
         for node in kline.nodes:
-            knode = self.model.find_by_key(node)
+            knode = self.model.find_kline(node)
             if knode:
                 knodes.append(knode.nodes[0])
         return self.tokenizer.decode(knodes)
@@ -187,7 +187,7 @@ class Kalvin(KAgent):
 
         for key, count in self.activity.items():
             if count >= level:
-                kline = self.model.find_by_key(key)
+                kline = self.model.find_kline(key)
                 if kline:
                     pruned_model.append(kline)
                     pruned_activity[key] = count
@@ -230,7 +230,9 @@ class Kalvin(KAgent):
             compound = 0
             for node in k2.nodes:
                 compound |= node
-            if compound == k1.signature:
+            verify_sig = compound & k1.signature
+            # Signatures must be fully overlapping
+            if compound == verify_sig or k1.signature == verify_sig:
                 return build_s2(100, 0)
             # Verification failed, continue to S3 check
 

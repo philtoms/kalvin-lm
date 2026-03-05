@@ -624,17 +624,28 @@ class TestModelIterators:
         assert model[0] == kl1
         assert model[1] == kl2
 
-    def test_find_by_key(self):
+    def test_find_kline(self):
         """Can find KLine by its signature."""
         kl1 = KLine(signature=0x1000, nodes=[0x0100])
         kl2 = KLine(signature=0x2000, nodes=[0x0200])
         model = Model([kl1, kl2])
 
-        found = model.find_by_key(0x1000)
+        found = model.find_kline(0x1000)
         assert found == kl1
 
-        not_found = model.find_by_key(0x3000)
+        not_found = model.find_kline(0x3000)
         assert not_found is None
+
+    def test_find_signed_klines(self):
+        """Can find all KLines with same signature."""
+        kl1 = KLine(signature=0x1000, nodes=[0x0100])
+        kl2 = KLine(signature=0x1000, nodes=[0x0200])
+        model = Model([kl1, kl2])
+
+        found = model.find_signed_klines(0x1000)
+        assert kl1 in found
+        assert kl2 in found
+        assert len(found) == 2
 
 
 class TestGetAllDescendants:

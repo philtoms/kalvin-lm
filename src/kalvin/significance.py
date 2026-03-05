@@ -161,6 +161,12 @@ def calculate_significance(model: "Model", query: "KLine", target: "KLine") -> S
         percentage = 100  # All matched
         return build_s1(percentage)
 
+    # S1: countersigned
+    for kline in model.find_signed_klines(target.signature):
+        if kline.signature == query.signature:
+            percentage = 100  # All matched
+            return build_s1(percentage)
+
     # S2: Partial match (some positional matches exist)
     if s1_matches > 0:
         s1_pct = (s1_matches * 100) // min_len
@@ -193,7 +199,7 @@ def calculate_significance(model: "Model", query: "KLine", target: "KLine") -> S
         if node in target_set:
             continue  # Already S1 match
         # Check if node's children intersect with target
-        node_kline = model.find_by_key(node)
+        node_kline = model.find_kline(node)
         if node_kline:
             node_children = set(node_kline.nodes)
             if node_children & target_set:
