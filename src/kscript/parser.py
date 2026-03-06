@@ -5,7 +5,7 @@ from .ast import (
     KLineExpr,
     KLineRelationship,
     KNodeRef,
-    KScript,
+    KScriptAst,
     KScriptStatement,
     LoadStatement,
     SaveStatement,
@@ -61,7 +61,7 @@ class Parser:
         lexer = Lexer(source)
         return cls(lexer.tokenize())
 
-    def parse(self) -> KScript:
+    def parse(self) -> KScriptAst:
         """Parse the token stream into a KScript AST."""
         statements: list[KScriptStatement] = []
 
@@ -77,7 +77,7 @@ class Parser:
             while self._match(TokenType.NEWLINE, TokenType.INDENT):
                 pass
 
-        return KScript(statements=statements)
+        return KScriptAst(statements=statements)
 
     def _current(self) -> Token:
         """Get current token."""

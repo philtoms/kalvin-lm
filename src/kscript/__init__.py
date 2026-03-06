@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .ast import Identifier, KLineExpr, KNodeRef, KScript, SignificanceType
+from .ast import Identifier, KLineExpr, KNodeRef, KScriptAst, SignificanceType
 from .interpreter import InterpretError, InterpretResult, Interpreter
 from .lexer import Lexer, LexerError
 from .parser import ParseError, Parser
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     # AST
-    "KScript",
+    "KScriptAst",
     "KLineExpr",
     "KNodeRef",
     "Identifier",
@@ -43,7 +43,7 @@ __all__ = [
 ]
 
 
-def parse(source: str) -> KScript:
+def parse(source: str) -> KScriptAst:
     """Parse KScript source to AST."""
     return Parser.from_source(source).parse()
 

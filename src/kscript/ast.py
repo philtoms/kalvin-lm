@@ -43,7 +43,7 @@ KScriptStatement = Union["LoadStatement", "SaveStatement", "KLineExpr"]
 
 
 @dataclass
-class KScript:
+class KScriptAst:
     """Root node containing a sequence of statements."""
 
     statements: list[KScriptStatement] = field(default_factory=list)

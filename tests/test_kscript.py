@@ -5,7 +5,7 @@ import pytest
 from kscript import (
     InterpretResult,
     KLineExpr,
-    KScript,
+    KScriptAst,
     Lexer,
     LexerError,
     ParseError,

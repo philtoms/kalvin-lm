@@ -11,7 +11,7 @@ from kalvin.significance import S1_BIT, S4_VALUE, build_s1, build_s2, build_s3
 from .ast import (
     Identifier,
     KLineExpr,
-    KScript,
+    KScriptAst,
     KNodeRef,
     LoadStatement,
     SaveStatement,
@@ -72,13 +72,13 @@ class Interpreter:
         """Get the KAgent."""
         return self._agent
 
-    def interpret(self, script: KScript) -> InterpretResult:
+    def interpret(self, ast: KScriptAst) -> InterpretResult:
         """Interpret a KScript AST."""
         symbol_table: SymbolTable = {}
         load_paths: list[str] = []
         save_path: str | None = None
 
-        for stmt in script.statements:
+        for stmt in ast.statements:
             if isinstance(stmt, LoadStatement):
                 load_paths.append(stmt.path.name)
             elif isinstance(stmt, SaveStatement):
