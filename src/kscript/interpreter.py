@@ -165,6 +165,11 @@ class Interpreter:
                 return None
 
         # Step 2: Process relationships using signify()
+        # Relationships chain: MHALL = SVO => [S, V, O] means:
+        #   MHALL -> SVO (S1)
+        #   SVO -> [S, V, O] (S2)
+        current_subject = sig_kline
+
         for relationship in expr.relationships:
             # Get significance level for this relationship
             s = self._significance_type_to_value(relationship.significance)
@@ -194,7 +199,11 @@ class Interpreter:
 
             # Establish significance relationships
             for node_kline in node_klines:
-                self.agent.signify(sig_kline, node_kline, s)
+                self.agent.signify(current_subject, node_kline, s)
+
+            # Chain: last node becomes subject for next relationship
+            if node_klines:
+                current_subject = node_klines[-1]
 
         return sig_kline
 

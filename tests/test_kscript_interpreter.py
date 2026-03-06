@@ -134,6 +134,51 @@ class TestSignifyRelationships:
 
         assert ab_kline is not None
 
+    def test_s2_overfitting_more_nodes_than_compound(self):
+        """S2 overfitting: more nodes provided than compound contains.
+
+        AB => A B C (AB has 2 chars, but 3 nodes provided)
+        Should still establish relationships but with extra node.
+        """
+        result = interpret_script("AB => A B C")
+
+        ab_sig = result.symbol_table["AB"]
+        ab_kline = result.model.find_kline(ab_sig)
+
+        assert ab_kline is not None
+        # AB compound has 2 nodes (A, B)
+        assert len(ab_kline.nodes) == 2
+
+        # All three identifiers should be in symbol table
+        assert "A" in result.symbol_table
+        assert "B" in result.symbol_table
+        assert "C" in result.symbol_table
+
+        # The relationship was established with all 3 nodes
+        # This is overfitting - the S2 includes C which isn't part of AB
+        # The relationship should still exist but be less precise
+
+    def test_s2_underfitting_fewer_nodes_than_compound(self):
+        """S2 underfitting: fewer nodes provided than compound contains.
+
+        ABC => A (ABC has 3 chars, but only 1 node provided)
+        Should establish relationship but be incomplete.
+        """
+        result = interpret_script("ABC => A")
+
+        abc_sig = result.symbol_table["ABC"]
+        abc_kline = result.model.find_kline(abc_sig)
+
+        assert abc_kline is not None
+        # ABC compound has 3 nodes (A, B, C)
+        assert len(abc_kline.nodes) == 3
+
+        # A should be in symbol table
+        assert "A" in result.symbol_table
+
+        # B and C are part of the compound but not in the S2 relationship
+        # This is underfitting - the S2 only covers A, not the full ABC
+
     def test_s3_connotative_relationship(self):
         """S3 (<) operator establishes 'is a kind of' relationship."""
         result = interpret_script("M < S")
@@ -227,9 +272,9 @@ class TestComplexScripts:
         result = interpret_script(
         """(Mary had a little lamb - anything in brackets is a comment btw)
         MHALL = SVO =>
-            M = S(ubject)
-            H = V(erb)
-            ALL = O(bject) =>
+            S(ubject) = M
+            V(erb) = H
+            O(bject) = ALL =>
                 A = D(et)
                 L = M(od)
                 L = O
@@ -259,3 +304,59 @@ class TestComplexScripts:
         all_kline = result.model.find_kline(all_sig)
         assert all_kline is not None
         assert len(all_kline.nodes) >= 1  # ALL has A, L, L nodes
+
+    def test_doubly_nested_s2_relationships(self):
+        """Test doubly nested S2 relationships with chaining.
+
+        XY =>
+            X = AB =>
+                A = 1
+                B = 2
+            Y = CD =>
+                C = 3
+                D = 4
+
+        Relationships:
+            XY => X Y
+            X = AB, then AB => A B
+            Y = CD, then CD => C D
+        """
+        result = interpret_script("""
+            XY =>
+                X = AB =>
+                    A = 1
+                    B = 2
+                Y = CD =>
+                    C = 3
+                    D = 4
+        """)
+
+        # All identifiers should be in symbol table
+        assert "XY" in result.symbol_table
+        assert "X" in result.symbol_table
+        assert "Y" in result.symbol_table
+        assert "AB" in result.symbol_table
+        assert "CD" in result.symbol_table
+        assert "A" in result.symbol_table
+        assert "B" in result.symbol_table
+        assert "C" in result.symbol_table
+        assert "D" in result.symbol_table
+        assert "1" in result.symbol_table
+        assert "2" in result.symbol_table
+        assert "3" in result.symbol_table
+        assert "4" in result.symbol_table
+
+        # Verify compound klines
+        xy_sig = result.symbol_table["XY"]
+        xy_kline = result.model.find_kline(xy_sig)
+        assert xy_kline is not None
+
+        ab_sig = result.symbol_table["AB"]
+        ab_kline = result.model.find_kline(ab_sig)
+        assert ab_kline is not None
+        assert len(ab_kline.nodes) == 2  # A, B
+
+        cd_sig = result.symbol_table["CD"]
+        cd_kline = result.model.find_kline(cd_sig)
+        assert cd_kline is not None
+        assert len(cd_kline.nodes) == 2  # C, D

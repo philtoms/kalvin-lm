@@ -53,8 +53,8 @@ class TestSignifyReturnsInternal:
 class TestSignifyS1:
     """Tests for S1 significance handling."""
 
-    def test_signify_s1_creates_bidirectional_links(self):
-        """S1 request creates bidirectional links in the model."""
+    def test_signify_s1_creates_countersigned_link(self):
+        """S1 request creates countersigned link in the model."""
         kalvin = Kalvin.__new__(Kalvin)
         kalvin._model = Kalvin()._model
 
@@ -70,11 +70,11 @@ class TestSignifyS1:
         # Should return S1
         assert has_s1(result)
 
-        # Should have added 2 new KLines (bidirectional links)
-        assert len(kalvin.model) == initial_count + 2
+        # Should have added 1 new KLines (countersigned link)
+        assert len(kalvin.model) == initial_count + 1
 
     def test_signify_s1_link_content(self):
-        """Verify the content of S1 bidirectional links."""
+        """Verify the content of S1 countersigned link."""
         kalvin = Kalvin.__new__(Kalvin)
         kalvin._model = Kalvin()._model
 
@@ -86,15 +86,11 @@ class TestSignifyS1:
         s1_request = build_s1(100)
         kalvin.signify(k1, k2, s1_request)
 
-        # Check that k1.signature now has k2's nodes
+        # Check that k1 now has k2's signature
         link1 = kalvin.model.find_kline(k1.signature)
         assert link1 is not None
-        # Should find the most recently added one with k2's nodes
-        found_k2_nodes = False
-        for kline in kalvin.model:
-            if kline.signature == k1.signature and kline.nodes == k2.nodes:
-                found_k2_nodes = True
-        assert found_k2_nodes
+        # Should find the most recently added one with k2's signature
+        assert link1.nodes[-1] == k2.signature
 
 
 class TestSignifyS2:
@@ -147,8 +143,8 @@ class TestSignifyS2:
 class TestSignifyS3:
     """Tests for S3 significance handling."""
 
-    def test_signify_s3_creates_bidirectional_links(self):
-        """S3 request creates bidirectional links."""
+    def test_signify_s3_creates_countersigned_link(self):
+        """S3 request creates countersigned link."""
         kalvin = Kalvin.__new__(Kalvin)
         kalvin._model = Kalvin()._model
 
@@ -165,8 +161,8 @@ class TestSignifyS3:
         from kalvin.significance import get_s3
         assert get_s3(result) > 0
 
-        # Should have added 2 new KLines
-        assert len(kalvin.model) == initial_count + 2
+        # Should have added 1 new KLines
+        assert len(kalvin.model) == initial_count + 1
 
 
 class TestSignifyEdgeCases:
@@ -202,4 +198,4 @@ class TestSignifyEdgeCases:
         # Second signify with same params
         # Note: model.add with train=False doesn't dedupe, so links are added again
         kalvin.signify(k1, k2, s1_request)
-        assert len(kalvin.model) == count_after_first + 2  # 2 more links added
+        assert len(kalvin.model) == count_after_first + 1  # 1 more link added

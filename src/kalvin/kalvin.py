@@ -221,8 +221,7 @@ class Kalvin(KAgent):
 
         # S1 requested and higher than internal
         if has_s1(s):
-            self.model.add(KLine(signature=k1.signature, nodes=k2.nodes.copy()))
-            self.model.add(KLine(signature=k2.signature, nodes=k1.nodes.copy()))
+            self.model.add(KLine(signature=k1.signature, nodes=[k2.signature]))
             return build_s1(100)
 
         # S2 requested - verify compound signature
@@ -238,8 +237,7 @@ class Kalvin(KAgent):
 
         # S3 requested and higher than internal
         if get_s3(s) > 0:
-            self.model.add(KLine(signature=k1.signature, nodes=k2.nodes.copy()))
-            self.model.add(KLine(signature=k2.signature, nodes=k1.nodes.copy()))
+            self.model.add(KLine(signature=k1.signature, nodes=[k2.signature]))
             return build_s3(100, 0, 0)
 
         return internal

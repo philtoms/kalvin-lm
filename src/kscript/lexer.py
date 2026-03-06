@@ -106,6 +106,7 @@ class Lexer:
                 elif indent < current_indent:
                     # Decreased indentation - emit DEDENT(s)
                     while self._indent_stack and self._indent_stack[-1] > indent:
+                        self._indent_stack.pop()
                         self._pending_dedents += 1
 
                     # Validate indentation matches a previous level
@@ -118,7 +119,6 @@ class Lexer:
 
                     # Emit first DEDENT
                     self._pending_dedents -= 1
-                    self._indent_stack.pop()
                     yield Token(TokenType.DEDENT, "", self.line, 1)
                     continue
 
