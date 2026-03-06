@@ -13,6 +13,11 @@ from kscript import (
     TokenType,
     interpret_script,
     parse,
+    Token,
+    CHAR_BIT,
+    BIT_CHAR,
+    encode_mod,
+    decode_mod,
 )
 
 
@@ -176,6 +181,89 @@ class TestParser:
         kline = script.root
         assert kline.sig.name == "sit"
         assert kline.nodes[0].identifier.name == "V"
+
+
+class TestSingleCharEncoding:
+    """Tests for single character encoding/decoding."""
+
+    def test_char_bit_a_returns_1(self):
+        """CHAR_BIT['A'] returns 1 (bit 0)."""
+        assert CHAR_BIT["A"] == 1
+
+    def test_char_bit_b_returns_2(self):
+        """CHAR_BIT['B'] returns 2 (bit 1)."""
+        assert CHAR_BIT["B"] == 2
+
+    def test_char_bit_c_returns_4(self):
+        """CHAR_BIT['C'] returns 4 (bit 2)."""
+        assert CHAR_BIT["C"] == 4
+
+    def test_char_bit_z_returns_correct_bit(self):
+        """CHAR_BIT['Z'] returns bit 25."""
+        assert CHAR_BIT["Z"] == 1 << 25
+
+    def test_char_bit_6_same_as_a(self):
+        """Digit 6 maps to same bit as A (position 32 % 32 = 0)."""
+        assert CHAR_BIT["6"] == CHAR_BIT["A"] == 1
+
+    def test_char_bit_0_returns_bit_26(self):
+        """CHAR_BIT['0'] returns bit 26."""
+        assert CHAR_BIT["0"] == 1 << 26
+
+    def test_char_bit_5_returns_bit_31(self):
+        """CHAR_BIT['5'] returns bit 31."""
+        assert CHAR_BIT["5"] == 1 << 31
+
+    def test_bit_char_1_returns_a(self):
+        """BIT_CHAR[1] returns 'A'."""
+        assert BIT_CHAR[1] == "A"
+
+    def test_bit_char_2_returns_b(self):
+        """BIT_CHAR[2] returns 'B'."""
+        assert BIT_CHAR[2] == "B"
+
+    def test_encode_mod_without_training(self):
+        """Encoding single char works without trained """
+        result = encode_mod("A")
+        assert result == 1
+
+    def test_encode_mod_uppercase(self):
+        """Encoding uppercase A returns 1."""
+        result = encode_mod("A")
+        assert result == 1
+
+    def test_encode_mod_lowercase(self):
+        """Encoding lowercase 'a' returns same as 'A'."""
+        assert encode_mod("a") == encode_mod("A")
+
+    def test_encode_mod_b(self):
+        """Encoding 'B' returns 2."""
+        assert encode_mod("B") == 2
+
+    def test_decode_mod_without_training(self):
+        """Decoding single bit works without trained """
+        result = decode_mod(1)
+        assert result == "A"
+
+    def test_decode_mod_2_returns_b(self):
+        """Decoding 2 returns 'B'."""
+        assert decode_mod(2) == "B"
+
+    def test_decode_mod_4_returns_c(self):
+        """Decoding 4 returns 'C'."""
+        assert decode_mod(4) == "C"
+
+    def test_single_char_roundtrip_a(self):
+        """Roundtrip single 'A' works without training."""
+        encoded = encode_mod("A")
+        decoded = decode_mod(encoded)
+        assert decoded == "A"
+
+    def test_single_char_roundtrip_z(self):
+        """Roundtrip single 'Z' works without training."""
+        encoded = encode_mod("Z")
+        decoded = decode_mod(encoded)
+        assert decoded == "Z"
 
 
 class TestIntegration:

@@ -18,6 +18,10 @@ from .ast import (
     SignificanceType,
 )
 
+from .tokens import (
+    encode_mod,
+)
+
 if TYPE_CHECKING:
     from kalvin.agent import KAgent
 
@@ -94,11 +98,11 @@ class Interpreter:
         Create an identity or compound KLine for an identifier.
 
         Identity KLine (single char like 'M'):
-            signature = S1_BIT | token(M)
+            signature = S1_BIT | identity_sig(M)
             nodes = [token(M)]
 
         Compound KLine (multi-char like 'ALL'):
-            signature = S1_BIT | S2_BITS | token(A) | token(L) | token(L)
+            signature = S1_BIT | S2_BITS | identity_sig(A) | identity_sig(L) | identity_sig(L)
             nodes = [identity_sig(A), identity_sig(L), identity_sig(L)]
 
         Args:
@@ -109,28 +113,27 @@ class Interpreter:
         """
         # Tokenize each character
         tokens = []
+        sigs = []
         for char in name:
+            sigs.append(encode_mod(char))
             encoded = self.tokenizer.encode(char)
-            tokens.append(encoded[0] if encoded else hash(char) & 0xFFFF)
+            tokens.append(encoded[0])
 
-        if len(name) == 1:
-            # Identity KLine: S1 | token, nodes = [token]
-            token = tokens[0]
-            signature = S1_BIT | token
-            nodes = [token]
-        else:
-            # Build compound signature: S1 | S2 | all tokens
-            signature = S1_BIT | build_s2(100, 100)
-            nodes = []
-            # First ensure identity klines exist for each char
-            for token in tokens:
-                identity_sig = S1_BIT | token
-                identity_kline = KLine(signature=identity_sig, nodes=[token])
-                self.model.add(identity_kline)
+        signature = S1_BIT
+        nodes = []
+        # First ensure identity klines exist for each char
+        for idx, token in enumerate(tokens):
+            identity_sig = S1_BIT | sigs[idx]
+            identity_kline = KLine(signature=identity_sig, nodes=[token])
+            self.model.add(identity_kline)
 
-                signature |= token
-                nodes.append(identity_sig)
+            signature |= identity_sig
+            nodes.append(identity_sig)
 
+        if len(name) > 1:
+            signature |= build_s2(100, 100)
+
+        # Build compound signature: S1 | S2 | all sig tokens
         kline = KLine(signature=signature, nodes=nodes)
         self.model.add(kline)
         return kline

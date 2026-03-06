@@ -174,6 +174,7 @@ class Tokenizer:
 
         Args:
             text: Input string to encode
+            pad_ws: If True, strip and add trailing space
 
         Returns:
             List of token IDs
@@ -181,9 +182,9 @@ class Tokenizer:
         self._check_available()
 
         if pad_ws:
-            text = text.strip()+" "
+            text = text.strip() + " "
 
-        return self._tokenizer.encode(text) 
+        return self._tokenizer.encode(text)
 
     def decode(self, ids: list[int]) -> str:
         """Decode token IDs back to a string.

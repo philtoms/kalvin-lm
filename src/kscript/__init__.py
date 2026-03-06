@@ -8,7 +8,8 @@ from .ast import Identifier, KLineExpr, KNodeRef, KScript, SignificanceType
 from .interpreter import InterpretError, InterpretResult, Interpreter
 from .lexer import Lexer, LexerError
 from .parser import ParseError, Parser
-from .tokens import Token, TokenType
+from .tokens import Token, TokenType,CHAR_BIT,BIT_CHAR,encode_mod,decode_mod
+
 
 if TYPE_CHECKING:
     from kalvin.agent import KAgent
@@ -35,6 +36,10 @@ __all__ = [
     # Convenience functions
     "parse",
     "interpret_script",
+    "CHAR_BIT",
+    "BIT_CHAR",
+    "encode_mod",
+    "decode_mod",
 ]
 
 
