@@ -17,11 +17,13 @@ class KLine:
         nodes: List of child KNode integers
     """
 
-    signature: int  # 64-bit signature
-    nodes: list[KNode]  # list of child KNodes
+    def __init__(self, signature: int, nodes: list[KNode], dbg_text: str = ""):
+        self.signature = signature
+        self.nodes = nodes
+        self.dbg_text = dbg_text
 
     @classmethod
-    def create(cls, significance: int, token: int, nodes: list[KNode]) -> "KLine":
+    def create(cls, significance: int, token: int, nodes: list[KNode], dbg_text: str = "") -> "KLine":
         """Create a KLine from significance, token, and nodes.
 
         The signature is constructed from significance | token.
@@ -34,7 +36,7 @@ class KLine:
         Returns:
             KLine with signature = significance | token
         """
-        return cls(signature=significance | token, nodes=nodes)
+        return cls(signature=significance | token, nodes=nodes, dbg_text=dbg_text)
 
     def signifies(self, query: int) -> bool:
         """Check if this KLine signifies a query via AND operation.
@@ -46,6 +48,8 @@ class KLine:
             True if (signature & query) != 0
         """
         return (self.signature & query) != 0
+
+KNone = KLine(signature=0, nodes=[], dbg_text="")
 
 
 def nodes_equal(nodes1: list[KNode], nodes2: list[KNode]) -> bool:
@@ -111,10 +115,10 @@ class Model:
 
         return True
 
-    def find_kline(self, key: int | None) -> KLine | None:
+    def find_kline(self, signature: int | None, significance: int | None = None) -> KLine:
         """Find a KLine by its signature.
 
-        Returns the most recently added KLine with the given key.
+        Returns the most recently added KLine with the given signature.
         O(1) lookup.
 
         Args:
@@ -123,15 +127,22 @@ class Model:
         Returns:
             KLine if found, None otherwise
         """
-        if key is None or key not in self._by_key:
-            return None
+        if signature is None or signature not in self._by_key:
+            return KNone
+        
+        if significance is not None:
+            for idx in self._by_key[signature]:
+                kline = self._klines[idx]
+                if kline.signifies(significance):
+                    return kline
+
         # Return the most recently added (last index in the list)
-        return self._klines[self._by_key[key][-1]]
+        return self._klines[self._by_key[signature][-1]]
 
     def find_signed_klines(self, signature: int | None) -> list[KLine]:
         """Find all KLines matching the given signature.
 
-        Returns the most recently added KLine with the given key.
+        Returns all KLines with the given signature.
         O(1) lookup.
 
         Args:
@@ -220,8 +231,8 @@ class Model:
         def get_node_klines(nodes: list[KNode]) -> list[KLine]:
             """Get all KLines from a list of node keys."""
             found = []
-            for node_key in nodes:
-                kline = model.find_kline(node_key)
+            for node in nodes:
+                kline = model.find_kline(node)
                 if kline is not None:
                     found.append(kline)
             return found
@@ -270,14 +281,14 @@ class Model:
 
     def duplicate(self) -> "Model":
         """Create a duplicate of this model."""
-        klines = [KLine(signature=k.signature, nodes=k.nodes.copy()) for k in self._klines]
+        klines = [KLine(signature=k.signature, nodes=k.nodes.copy(), dbg_text=k.dbg_text) for k in self._klines]
         return Model(klines)
 
-    def get_all_descendants(self, node_key: int, visited: set[int] | None = None) -> set[int]:
+    def get_all_descendants(self, node: int, visited: set[int] | None = None) -> set[int]:
         """Recursively collect all descendant nodes.
 
         Args:
-            node_key: The node to start from
+            node: The node to start from
             visited: Set of already visited nodes (cycle detection)
 
         Returns:
@@ -286,12 +297,12 @@ class Model:
         if visited is None:
             visited = set()
 
-        if node_key in visited:
+        if node in visited:
             return set()
-        visited.add(node_key)
+        visited.add(node)
 
         descendants: set[int] = set()
-        kline = self.find_kline(node_key)
+        kline = self.find_kline(node)
 
         if kline is None:
             return descendants
@@ -312,6 +323,26 @@ class Model:
         """Iterate over all KLines in insertion order. O(1) setup."""
         return iter(self._klines)
 
-    def __getitem__(self, index: int) -> KLine:
+    def __getitem__(self, signature: int) -> KLine:
         """Get a KLine by index. O(1)."""
-        return self._klines[index]
+        return self.find_kline(signature)
+
+    @property
+    def kline(self) -> "_KLineAccessor":
+        """Return an accessor for finding KLines by signature via bracket notation.
+
+        Usage: model.kline[signature] == model.find_kline(signature)
+        """
+        return _KLineAccessor(self)
+
+
+class _KLineAccessor:
+    """Helper class for model.kline[signature] access."""
+
+    __slots__ = ("_model",)
+
+    def __init__(self, model: Model):
+        self._model = model
+
+    def __getitem__(self, signature: int | None) -> KLine:
+        return self._model.find_kline(signature)

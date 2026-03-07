@@ -102,31 +102,31 @@ class TestParser:
 
     def test_parse_load(self):
         """Test parsing load statement."""
-        script = parse("load /path/to/model.bin")
-        assert len(script.statements) == 1
-        stmt = script.root
+        ast = parse("load /path/to/model.bin")
+        assert len(ast.statements) == 1
+        stmt = ast.root
         assert isinstance(stmt, type(parse("load x").root))
         assert stmt.path.name == "/path/to/model.bin"
 
     def test_parse_save(self):
         """Test parsing save statement."""
-        script = parse("save /path/to/output.bin")
-        assert len(script.statements) == 1
-        stmt = script.root
+        ast = parse("save /path/to/output.bin")
+        assert len(ast.statements) == 1
+        stmt = ast.root
         assert stmt.path.name == "/path/to/output.bin"
 
     def test_parse_save_without_path(self):
         """Test parsing save without path."""
-        script = parse("save")
-        assert len(script.statements) == 1
-        stmt = script.root
+        ast = parse("save")
+        assert len(ast.statements) == 1
+        stmt = ast.root
         assert stmt.path is None
 
     def test_parse_simple_kline(self):
         """Test parsing simple KLine."""
-        script = parse("hello")
-        assert len(script.statements) == 1
-        kline = script.root
+        ast = parse("hello")
+        assert len(ast.statements) == 1
+        kline = ast.root
         assert isinstance(kline, KLineExpr)
         assert kline.sig.name == "hello"
         assert kline.significance is None
@@ -134,8 +134,8 @@ class TestParser:
 
     def test_parse_kline_with_s1(self):
         """Test parsing KLine with S1 significance."""
-        script = parse("greeting = hello world")
-        kline = script.root
+        ast = parse("greeting = hello world")
+        kline = ast.root
         assert kline.significance.value == "="
         assert len(kline.nodes) == 2
         assert kline.nodes[0].identifier.name == "hello"
@@ -143,44 +143,62 @@ class TestParser:
 
     def test_parse_kline_with_s2(self):
         """Test parsing KLine with S2 significance."""
-        script = parse("greeting => hello")
-        kline = script.root
+        ast = parse("greeting => hello")
+        kline = ast.root
         assert kline.significance.value == "=>"
 
     def test_parse_kline_with_s3_forward(self):
         """Test parsing KLine with S3 forward significance."""
-        script = parse("greeting > hello")
-        kline = script.root
+        ast = parse("greeting > hello")
+        kline = ast.root
         assert kline.significance.value == ">"
 
     def test_parse_kline_with_s3_backward(self):
         """Test parsing KLine with S3 backward significance."""
-        script = parse("greeting < hello")
-        kline = script.root
+        ast = parse("greeting < hello")
+        kline = ast.root
         assert kline.significance.value == "<"
 
     def test_parse_kline_with_s4(self):
         """Test parsing KLine with S4 significance."""
-        script = parse("greeting != hello")
-        kline = script.root
+        ast = parse("greeting != hello")
+        kline = ast.root
         assert kline.significance.value == "!="
 
     def test_parse_multiple_statements(self):
         """Test parsing multiple statements."""
-        script = parse("""
+        ast = parse("""
             load /path/to/model.bin
             greeting = hello world
             question > greeting
             save /path/to/output.bin
         """)
-        assert len(script.statements) == 4
+        assert len(ast.statements) == 4
 
     def test_parse_with_inline_comments(self):
         """Test parsing with inline comments."""
-        script = parse("sit > V(erb)")
-        kline = script.root
+        ast = parse("sit > V(erb)")
+        kline = ast.root
         assert kline.sig.name == "sit"
         assert kline.nodes[0].identifier.name == "V"
+
+
+    def test_parse_nested_connotations(self):
+        """Test parsing with nested connotations."""
+        script = """
+            (Mary had a little lamb - anything in brackets is a comment btw)
+            MHALL = SVO =>
+                S(ubject) = M
+                V(verb) = H
+                O(bject) = ALL =>
+                    A = D(et)
+                    L = M(od)
+                    L = O
+            """
+        ast = parse(script)
+        kline = ast.root
+        assert kline.sig.name == "MHALL"
+        assert kline.nodes[0].identifier.name == "SVO"
 
 
 class TestSingleCharEncoding:

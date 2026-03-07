@@ -101,7 +101,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Encode text files into Kalvin embeddings"
     )
-    parser.add_argument("-i", "--input_file", default="/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1.json", help="Path to the text file to encode")
+    parser.add_argument("-i", "--input_file", default="data/tokenizer/simplestories-1.json", help="Path to the text file to encode")
     parser.add_argument(
         "--model",
         default="data/kalvin.bin",

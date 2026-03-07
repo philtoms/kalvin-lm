@@ -17,7 +17,7 @@ from ui.chat.regions import ChatHistoryRegion, ChatRegion, ConfigRegion
 
 DEFAULT_CHATS_DIR = Path("data/chats")
 DEFAULT_MODEL_PATH = Path("~/dev/ai/kalvin/data/kalvin.bin").expanduser()
-DEFAULT_GRAMMAR_PATH = "/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1_grammar.json"
+DEFAULT_GRAMMAR_PATH = "data/tokenizer/simplestories-1_grammar.json"
 
 
 class KalvinApp(App):

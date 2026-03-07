@@ -5,11 +5,11 @@ from kalvin.model import (
 )
 from kalvin.significance import (
     Significance,
-    S1_BIT,
+    S1,
     S1_PCT_SHIFT,
     S2_SHIFT,
     S3_SHIFT,
-    S4_VALUE,
+    S4,
     has_s1,
     get_s1_percentage,
     get_s2,
@@ -66,7 +66,7 @@ class TestSignificanceHelpers:
     def test_s1_bit_value(self):
         """S1 bit is at position 56."""
         sig = build_s1()
-        assert sig == S1_BIT | (127 << S1_PCT_SHIFT)
+        assert sig == S1 | (127 << S1_PCT_SHIFT)
 
     def test_build_s2_full(self):
         """S2 with both percentages gives correct values."""
@@ -93,7 +93,7 @@ class TestSignificanceHelpers:
 
     def test_s4_value_is_zero(self):
         """S4 (no significance) is 0."""
-        assert S4_VALUE == 0
+        assert S4 == 0
 
 
 class TestCalculateSignificance:
@@ -140,7 +140,7 @@ class TestCalculateSignificance:
         m = Model([query, model_kline])
 
         sig = calculate_significance(m, query, model_kline)
-        assert sig == S4_VALUE
+        assert sig == S4
 
     def test_s4_model_empty_query_not(self):
         """Model empty, query not empty returns S4."""
@@ -149,7 +149,7 @@ class TestCalculateSignificance:
         m = Model([query, model_kline])
 
         sig = calculate_significance(m, query, model_kline)
-        assert sig == S4_VALUE
+        assert sig == S4
 
     def test_s2_partial_match(self):
         """Partial positional match returns S2."""
@@ -179,7 +179,7 @@ class TestCalculateSignificance:
         m = Model([query, model_kline])
 
         sig = calculate_significance(m, query, model_kline)
-        assert sig == S4_VALUE
+        assert sig == S4
 
 
 class TestSignificanceComparison:
@@ -198,7 +198,7 @@ class TestSignificanceComparison:
     def test_s2_greater_than_s4(self):
         """S2 is more significant than S4."""
         s2_sig = build_s2(1, 1)
-        assert s2_sig > S4_VALUE
+        assert s2_sig > S4
 
     def test_s2_higher_s1_pct_more_significant(self):
         """S2 with higher S1% is more significant."""
@@ -216,7 +216,7 @@ class TestSignificanceComparison:
         """Full ordering: S1 > S2 > S4."""
         s1 = build_s1(100)
         s2 = build_s2(100, 100)
-        s4 = S4_VALUE
+        s4 = S4
         assert s1 > s2 > s4
 
     def test_calculated_significance_ordering(self):
@@ -311,7 +311,7 @@ class TestCalculateSignificanceS3:
         m = Model([query, model_kline])
 
         sig = calculate_significance(m, query, model_kline)
-        assert sig == S4_VALUE
+        assert sig == S4
 
 
 class TestSignificanceComparisonS3:
@@ -324,7 +324,7 @@ class TestSignificanceComparisonS3:
     def test_s3_greater_than_s4(self):
         """S3 is more significant than S4."""
         s3_sig = build_s3(1, 0, 0)
-        assert s3_sig > S4_VALUE
+        assert s3_sig > S4
 
     def test_s3_higher_s1_pct_more_significant(self):
         """S3 with higher S1% is more significant."""
@@ -343,7 +343,7 @@ class TestSignificanceComparisonS3:
         s1 = build_s1(100)
         s2 = build_s2(100, 100)
         s3 = build_s3(100, 100, 100)
-        s4 = S4_VALUE
+        s4 = S4
         assert s1 > s2 > s3 > s4
 
     def test_calculated_full_ordering(self):

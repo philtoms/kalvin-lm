@@ -20,10 +20,10 @@ python -m ui.chat
 
 The app has two configurable fields in the **Config** region:
 
-| Field   | Default                                                                    | Description                   |
-| ------- | -------------------------------------------------------------------------- | ----------------------------- |
-| Model   | `~/dev/ai/kalvin/data/kalvin.bin`                                          | Path to the Kalvin model file |
-| Grammar | `/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1_grammar.json`        | Path to the grammar file      |
+| Field   | Default                                       | Description                   |
+| ------- | --------------------------------------------- | ----------------------------- |
+| Model   | `~/dev/ai/kalvin/data/kalvin.bin`             | Path to the Kalvin model file |
+| Grammar | `data/tokenizer/simplestories-1_grammar.json` | Path to the grammar file      |
 
 ### File Selection
 
@@ -33,15 +33,15 @@ The app has two configurable fields in the **Config** region:
 
 ## Key Bindings
 
-| Key      | Action                                            |
-| -------- | ------------------------------------------------- |
-| `Ctrl+Q` | Quit the application                              |
-| `Ctrl+R` | Restart the app (full module reload)              |
-| `Ctrl+L` | Clear the response area                           |
+| Key      | Action                                                |
+| -------- | ----------------------------------------------------- |
+| `Ctrl+Q` | Quit the application                                  |
+| `Ctrl+R` | Restart the app (full module reload)                  |
+| `Ctrl+L` | Clear the response area                               |
 | `Ctrl+S` | Save chat (saves directly if file open, else Save As) |
-| `Ctrl+A` | Save As (always prompts for filename)             |
-| `Ctrl+O` | Open a saved chat file                            |
-| `Enter`  | Send message                                      |
+| `Ctrl+A` | Save As (always prompts for filename)                 |
+| `Ctrl+O` | Open a saved chat file                                |
+| `Enter`  | Send message                                          |
 
 ## Chat Management
 
@@ -98,15 +98,15 @@ ui/chat/
 
 ## Components
 
-| Component          | Module                 | Description                                |
-| ------------------ | ---------------------- | ------------------------------------------ |
-| `KalvinApp`        | `app.py`               | Main application with save/load actions    |
-| `FileDialog`       | `dialogs.py`           | Base class for file dialogs                |
-| `OpenDialog`       | `dialogs.py`           | File browser for opening files             |
-| `SaveDialog`       | `dialogs.py`           | File browser with filename input for saving|
-| `ConfigRegion`     | `regions/config.py`    | Model/grammar path inputs with browse      |
-| `ChatRegion`       | `regions/chat.py`      | Chat input and editable response display   |
-| `ChatHistoryRegion`| `regions/history.py`   | Selectable list of chat history            |
+| Component           | Module               | Description                                 |
+| ------------------- | -------------------- | ------------------------------------------- |
+| `KalvinApp`         | `app.py`             | Main application with save/load actions     |
+| `FileDialog`        | `dialogs.py`         | Base class for file dialogs                 |
+| `OpenDialog`        | `dialogs.py`         | File browser for opening files              |
+| `SaveDialog`        | `dialogs.py`         | File browser with filename input for saving |
+| `ConfigRegion`      | `regions/config.py`  | Model/grammar path inputs with browse       |
+| `ChatRegion`        | `regions/chat.py`    | Chat input and editable response display    |
+| `ChatHistoryRegion` | `regions/history.py` | Selectable list of chat history             |
 
 ## Development
 

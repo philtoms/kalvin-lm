@@ -22,7 +22,7 @@ from kscript import interpret_script
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run a KScript file and save the resulting model",
+        description="Run a KScript file and (by default) save the rationalised model",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -45,9 +45,12 @@ Examples:
     parser.add_argument(
         "--format",
         "-f",
-        choices=["binary", "json"],
-        default="binary",
-        help="Output format (default: binary)",
+        choices=["bin", "json"],
+        default="bin",
+        help="Output format (default: bin)",
+    )
+    parser.add_argument(
+        "--save", "-s", action="store_true", help="Save rationalised model."
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Print verbose output"
@@ -99,24 +102,25 @@ Examples:
             print(f"Script save path: {result.save_path}")
 
     # Determine output path
-    if args.output:
-        output_path = Path(args.output)
-    elif args.model:
-        output_path = Path(args.model)
-    elif result.save_path:
-        output_path = Path(result.save_path)
-    else:
-        # Use script name with .bin extension
-        output_path = script_path.with_suffix(".bin")
+    if args.save:
+        if args.output:
+            output_path = Path(args.output)
+        elif args.model:
+            output_path = Path(args.model)
+        elif result.save_path:
+            output_path = Path(result.save_path)
+        else:
+            # Use script name with format extension
+            output_path = script_path.with_suffix(f".{args.format}")
 
-    # Save the model (KLines already added via Kalvin agent)
-    if args.verbose:
-        print(f"Saving model to: {output_path}")
+        # Save the model (KLines already added via Kalvin agent)
+        if args.verbose:
+            print(f"Saving model to: {output_path}")
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    kalvin.save(output_path, format=args.format)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        kalvin.save(output_path, format=args.format)
 
-    print(f"Model saved: {output_path} ({len(result.model)} KLines)")
+        print(f"Model saved: {output_path} ({len(result.model)} KLines)")
 
 
 if __name__ == "__main__":

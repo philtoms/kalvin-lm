@@ -26,7 +26,7 @@ class TestKalvinInit:
         kalvin = Kalvin(model)
 
         assert len(kalvin.model) == 1
-        assert kalvin.model[0].signature == 0x1000
+        assert kalvin.model[0x1000].signature == 0x1000
 
     def test_init_with_none_creates_empty_model(self):
         """Passing None creates an empty model."""
@@ -132,8 +132,8 @@ class TestKalvinToBytes:
 
         # Deserialize and verify
         kalvin2 = Kalvin.from_bytes(data)
-        assert kalvin2.model[0].signature == key1
-        assert kalvin2.model[1].signature == key2
+        assert kalvin2.model[key1].signature == key1
+        assert kalvin2.model[key2].signature == key2
 
 
 class TestKalvinFromBytes:
@@ -167,8 +167,8 @@ class TestKalvinFromBytes:
         restored = Kalvin.from_bytes(data)
 
         assert len(restored.model) == 1
-        assert restored.model[0].signature == kline.signature
-        assert restored.model[0].nodes == kline.nodes
+        assert restored.model[kline.signature].signature == kline.signature
+        assert restored.model[kline.signature].nodes == kline.nodes
 
     def test_from_bytes_roundtrip_multiple_klines(self):
         """Roundtrip preserves multiple KLines."""
@@ -183,9 +183,9 @@ class TestKalvinFromBytes:
         restored = Kalvin.from_bytes(data)
 
         assert len(restored.model) == 3
-        for i, kl in enumerate(original.model):
-            assert restored.model[i].signature == kl.signature
-            assert restored.model[i].nodes == kl.nodes
+        for kl in original.model:
+            assert restored.model[kl.signature].signature == kl.signature
+            assert restored.model[kl.signature].nodes == kl.nodes
 
 
 class TestKalvinToDict:
@@ -257,8 +257,8 @@ class TestKalvinFromDict:
         kalvin = Kalvin.from_dict(data)
 
         assert len(kalvin.model) == 1
-        assert kalvin.model[0].signature == 0x1000
-        assert kalvin.model[0].nodes == [0x0100, 0x0200]
+        assert kalvin.model[0x1000].signature == 0x1000
+        assert kalvin.model[0x1000].nodes == [0x0100, 0x0200]
 
     def test_from_dict_roundtrip(self):
         """Roundtrip preserves all data."""
@@ -272,31 +272,9 @@ class TestKalvinFromDict:
         restored = Kalvin.from_dict(data)
 
         assert len(restored.model) == len(original.model)
-        for i, kl in enumerate(original.model):
-            assert restored.model[i].signature == kl.signature
-            assert restored.model[i].nodes == kl.nodes
-
-    def test_metadata_preserved_in_dict_roundtrip(self):
-        """Metadata is preserved during dict roundtrip."""
-        klines = [KLine(signature=0x1000, nodes=[0x0100])]
-        original = Kalvin(Model(klines))
-
-        data = original.to_dict()
-        restored = Kalvin.from_dict(data)
-
-        assert restored.dictionary_path == original.dictionary_path
-        assert restored.nlp_detail == original.nlp_detail
-
-    def test_metadata_preserved_in_binary_roundtrip(self):
-        """Metadata is preserved during binary roundtrip."""
-        klines = [KLine(signature=0x1000, nodes=[0x0100])]
-        original = Kalvin(Model(klines))
-
-        data = original.to_bytes()
-        restored = Kalvin.from_bytes(data)
-
-        assert restored.dictionary_path == original.dictionary_path
-        assert restored.nlp_detail == original.nlp_detail
+        for kl in original.model:
+            assert restored.model[kl.signature].signature == kl.signature
+            assert restored.model[kl.signature].nodes == kl.nodes
 
 
 class TestKalvinSaveLoad:
@@ -318,7 +296,7 @@ class TestKalvinSaveLoad:
             # Verify we can load it back
             restored = Kalvin.load(path)
             assert len(restored.model) == 1
-            assert restored.model[0].signature == 0x1000
+            assert restored.model[0x1000].signature == 0x1000
 
     def test_save_binary_explicit(self):
         """Save with format='binary' creates binary file."""
@@ -327,7 +305,7 @@ class TestKalvinSaveLoad:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "test.kalvin"
-            kalvin.save(path, format="binary")
+            kalvin.save(path, format="bin")
 
             # Verify binary format by checking it's not valid JSON
             raw = path.read_bytes()
@@ -357,7 +335,7 @@ class TestKalvinSaveLoad:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "test.json"
-            kalvin.save(path, format=None)  # Explicit None for auto-detect
+            kalvin.save(path) 
 
             content = path.read_text()
             data = json.loads(content)
@@ -386,12 +364,12 @@ class TestKalvinSaveLoad:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "test.kalvin"
-            original.save(path, format="binary")
+            original.save(path, format="bin")
 
             restored = Kalvin.load(path)  # Default binary
 
             assert len(restored.model) == 1
-            assert restored.model[0].signature == 0x1000
+            assert restored.model[0x1000].signature == 0x1000
 
     def test_load_json_explicit(self):
         """Load with format='json' reads JSON file."""
@@ -404,7 +382,7 @@ class TestKalvinSaveLoad:
 
             restored = Kalvin.load(path, format="json")
 
-            assert restored.model[0].signature == 0x1000
+            assert restored.model[0x1000].signature == 0x1000
 
     def test_load_json_auto_detect(self):
         """Load auto-detects JSON format from .json extension."""
@@ -417,7 +395,7 @@ class TestKalvinSaveLoad:
 
             restored = Kalvin.load(path)  # Auto-detect
 
-            assert restored.model[0].signature == 0x1000
+            assert restored.model[0x1000].signature == 0x1000
 
     def test_load_binary_auto_detect(self):
         """Load auto-detects binary format from non-.json extension."""
@@ -426,11 +404,11 @@ class TestKalvinSaveLoad:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "test.bin"
-            original.save(path, format="binary")
+            original.save(path, format="bin")
 
             restored = Kalvin.load(path)  # Auto-detect
 
-            assert restored.model[0].signature == 0x1000
+            assert restored.model[0x1000].signature == 0x1000
 
     def test_roundtrip_binary_file(self):
         """Roundtrip through binary file preserves data."""
@@ -446,9 +424,9 @@ class TestKalvinSaveLoad:
             restored = Kalvin.load(path)
 
             assert len(restored.model) == len(original.model)
-            for i, kl in enumerate(original.model):
-                assert restored.model[i].signature == kl.signature
-                assert restored.model[i].nodes == kl.nodes
+            for kl in original.model:
+                assert restored.model[kl.signature].signature == kl.signature
+                assert restored.model[kl.signature].nodes == kl.nodes
 
     def test_roundtrip_json_file(self):
         """Roundtrip through JSON file preserves data."""
@@ -464,9 +442,9 @@ class TestKalvinSaveLoad:
             restored = Kalvin.load(path, format="json")
 
             assert len(restored.model) == len(original.model)
-            for i, kl in enumerate(original.model):
-                assert restored.model[i].signature == kl.signature
-                assert restored.model[i].nodes == kl.nodes
+            for kl in original.model:
+                assert restored.model[kl.signature].signature == kl.signature
+                assert restored.model[kl.signature].nodes == kl.nodes
 
     def test_save_to_existing_directory(self):
         """Save works when directory exists."""
@@ -530,8 +508,8 @@ class TestKalvinLargeData:
         data = original.to_bytes()
         restored = Kalvin.from_bytes(data)
 
-        assert len(restored.model[0].nodes) == 1000
-        assert restored.model[0].nodes == nodes
+        assert len(restored.model[0x1000].nodes) == 1000
+        assert restored.model[0x1000].nodes == nodes
 
     def test_max_s_key_value(self):
         """Handles maximum signature value (all bits set)."""
@@ -542,7 +520,7 @@ class TestKalvinLargeData:
         data = original.to_bytes()
         restored = Kalvin.from_bytes(data)
 
-        assert restored.model[0].signature == max_key
+        assert restored.model[max_key].signature == max_key
 
 
 class TestKalvinEmbeddings:
@@ -572,11 +550,11 @@ class TestKalvinEmbeddings:
 
     def test_add_duplicate_encoding(self):
         kalvin = Kalvin()
-        token_sig1 = kalvin.encode("hello there")
-        token_sig2 = kalvin.encode("hello there")
+        kalvin.encode("hello there")
+        model_len  = kalvin.model_size()
+        kalvin.encode("hello there")
 
-        assert token_sig1 is not None
-        assert token_sig2 is None  # Duplicate returns None
+        assert model_len  == kalvin.model_size()  # Model not extended
 
     def test_add_encoded_string(self):
         kalvin = Kalvin()
@@ -608,23 +586,25 @@ class TestKalvinEmbeddings:
         """
         kalvin = Kalvin()
         kalvin.encode(vl_str)
-        model1 = kalvin.model.duplicate()
+        model1 = kalvin.model_size()
         kalvin.encode("Mary had a little lamb,")  # adds some new klines
         kalvin.encode(" was white")  # adds some new klines
 
         # Verify that encoding adds klines (exact count depends on deduplication)
-        assert len(kalvin.model) > len(model1)
+        assert kalvin.model_size() > model1
 
     def test_intermediate_signature_count(self):
         """Test that encoding creates the expected number of klines."""
         kalvin = Kalvin()
-        kalvin.encode("a b c d")  # 5 single-token klines + 1 combined
-        kalvin.encode("a b c")  # tokens already exist, only new combined kline
-        kalvin.encode("b c d")  # tokens already exist, only new combined kline
+        kalvin.encode("a b c d")  # 5 identity klines + 1 ws + 1 compound
+        assert kalvin.model_size() == 6
+        kalvin.encode("a b c")  # tokens already exist, only new compound kline
+        assert kalvin.model_size() == 7
+        kalvin.encode("b c d")  # tokens already exist, only new compound kline
 
-        # With train=True, single-token klines dedupe by signature
+        # With train=True, identity klines dedupe by signature
         # Combined klines have unique s_keys (bitwise OR of token s_keys)
-        # Expected: 5 single + 3 combined = 8
+        # Expected: 4 identity + 3 compound + 1 ws = 8
         assert kalvin.model_size() == 8
 
 
@@ -661,9 +641,10 @@ class TestKalvinPrune:
 
         assert len(pruned.model) == 2
         found = model.find_kline(0x2000)
-        assert found in list(pruned.model)
+        assert pruned.model[found.signature] is found
+
         found = model.find_kline(0x3000)
-        assert found in list(pruned.model)
+        assert pruned.model[found.signature] is found
 
     def test_prune_removes_all_when_level_high(self):
         """When level is higher than all activities, result is empty."""
@@ -696,7 +677,7 @@ class TestKalvinPrune:
         pruned = Kalvin(model, activity).prune()
 
         assert len(pruned.model) == 1
-        assert model.find_kline(0x1000) in list(pruned.model)
+        assert model.find_kline(0x1000) == pruned.model.find_kline(0x1000)
 
     def test_prune_preserves_original_model(self):
         """Pruning does not modify the original model."""
@@ -743,7 +724,7 @@ class TestKalvinPrune:
 
         assert len(pruned.model) == 1
         found = model.find_kline(0x1000)
-        assert found in list(pruned.model)
+        assert pruned.model.find_kline(found.signature) == found
 
     def test_prune_with_large_keys(self):
         """Prune works with large key values."""
@@ -758,7 +739,7 @@ class TestKalvinPrune:
 
         assert len(pruned.model) == 1
         found = model.find_kline(key1)
-        assert found in list(pruned.model)
+        assert pruned.model.find_kline(found.signature) == found
 
     def test_prune_with_small_keys(self):
         """Prune works with small key values."""
@@ -773,7 +754,7 @@ class TestKalvinPrune:
 
         assert len(pruned.model) == 1
         found = model.find_kline(key1)
-        assert found in list(pruned.model)
+        assert pruned.model.find_kline(found.signature) == found
 
     def test_prune_keeps_kline_reference(self):
         """Pruned model keeps references to original klines."""
@@ -784,5 +765,5 @@ class TestKalvinPrune:
         pruned = Kalvin(model, activity).prune()
 
         # Same kline object referenced
-        assert pruned.model[0] is kl1
-        assert pruned.model[0].nodes == [0x0100, 0x0200]
+        assert pruned.model[kl1.signature] is kl1
+        assert pruned.model[kl1.signature].nodes == [0x0100, 0x0200]

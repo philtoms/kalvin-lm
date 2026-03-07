@@ -5,8 +5,7 @@ import pytest
 from kalvin import Kalvin
 from kalvin.model import KLine
 from kalvin.significance import (
-    S4_VALUE,
-    build_s1,
+    S1,S2, S4,
     build_s2,
     build_s3,
     calculate_significance,
@@ -64,14 +63,13 @@ class TestSignifyS1:
         kalvin.model.add(k2)
 
         initial_count = len(kalvin.model)
-        s1_request = build_s1(100)
-        result = kalvin.signify(k1, k2, s1_request)
+        result = kalvin.signify(k1, k2, S1)
 
         # Should return S1
         assert has_s1(result)
 
-        # Should have added 1 new KLines (countersigned link)
-        assert len(kalvin.model) == initial_count + 1
+        # Should have added 2 new KLines (countersigned link)
+        assert len(kalvin.model) == initial_count + 2
 
     def test_signify_s1_link_content(self):
         """Verify the content of S1 countersigned link."""
@@ -83,8 +81,7 @@ class TestSignifyS1:
         kalvin.model.add(k1)
         kalvin.model.add(k2)
 
-        s1_request = build_s1(100)
-        kalvin.signify(k1, k2, s1_request)
+        kalvin.signify(k1, k2, S1)
 
         # Check that k1 now has k2's signature
         link1 = kalvin.model.find_kline(k1.signature)
@@ -191,11 +188,10 @@ class TestSignifyEdgeCases:
         kalvin.model.add(k2)
 
         # First signify
-        s1_request = build_s1(100)
-        kalvin.signify(k1, k2, s1_request)
+        kalvin.signify(k1, k2, S1)
         count_after_first = len(kalvin.model)
 
         # Second signify with same params
         # Note: model.add with train=False doesn't dedupe, so links are added again
-        kalvin.signify(k1, k2, s1_request)
-        assert len(kalvin.model) == count_after_first + 1  # 1 more link added
+        kalvin.signify(k1, k2, S1)
+        assert len(kalvin.model) == count_after_first + 2  # 2 more linkw added

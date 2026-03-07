@@ -11,17 +11,23 @@ if TYPE_CHECKING:
 # Higher bits = more significant: S1 > S2 > S3 > S4
 
 # S1: single bit (bit 56) - prefix match indicator
-S1_BIT = 1 << 56
+S1 = 1 << 56
 
 # S1%: 7 bits (bits 57-63) for degree/percentage
 S1_PCT_SHIFT = 57
 S1_PCT_MASK = 0x7F << S1_PCT_SHIFT
+
+# S2: single bit (bit 40)
+S2 = 1 << 40
 
 # S2: 16 bits (bits 40-55)
 S2_SHIFT = 40
 S2_MASK = 0xFFFF << S2_SHIFT
 S2_S1_PCT_SHIFT = 40   # S1 percentage within S2
 S2_S2_PCT_SHIFT = 48   # S2 percentage within S2
+
+# S3: single bit (bit 16)
+S3 = 1 << 16
 
 # S3: 24 bits (bits 16-39)
 S3_SHIFT = 16
@@ -31,7 +37,7 @@ S3_S2_PCT_SHIFT = 24   # S2% for unordered matches (bits 24-31)
 S3_GEN_PCT_SHIFT = 32  # Generational S1% (bits 32-39)
 
 # S4: no significance
-S4_VALUE = 0
+S4 = 0
 
 
 # Type alias for Significance (64-bit int with S1/S2/S3/S4 encoding)
@@ -42,7 +48,7 @@ Significance: TypeAlias = int
 
 def has_s1(sig: Significance) -> bool:
     """Check if S1 bit is set (prefix match)."""
-    return bool(sig & S1_BIT)
+    return bool(sig & S1)
 
 
 def get_s1_percentage(sig: Significance) -> int:
@@ -72,7 +78,7 @@ def build_s1(percentage: int = 100) -> Significance:
         percentage: Match percentage (0-100), default 100
     """
     scaled = max(0, min(100, percentage)) * 127 // 100  # Scale to 7 bits
-    return S1_BIT | (scaled << S1_PCT_SHIFT)
+    return S1 | (scaled << S1_PCT_SHIFT)
 
 
 def build_s2(s1_pct: int, s2_pct: int) -> Significance:
@@ -144,9 +150,9 @@ def calculate_significance(model: "Model", query: "KLine", target: "KLine") -> S
     """
     # Handle empty node lists
     if not query.nodes and not target.nodes:
-        return build_s1(100)  # Perfect match
+        return S1  # Perfect match
     if not query.nodes or not target.nodes:
-        return S4_VALUE
+        return S4
 
     min_len = min(len(query.nodes), len(target.nodes))
 
@@ -158,14 +164,12 @@ def calculate_significance(model: "Model", query: "KLine", target: "KLine") -> S
 
     # S1: All prefix nodes match
     if s1_matches == min_len:
-        percentage = 100  # All matched
-        return build_s1(percentage)
+        return S1  # All matched
 
     # S1: countersigned
     for kline in model.find_signed_klines(target.signature):
         if kline.signature == query.signature:
-            percentage = 100  # All matched
-            return build_s1(percentage)
+            return S1  # All matched
 
     # S2: Partial match (some positional matches exist)
     if s1_matches > 0:
@@ -225,4 +229,4 @@ def calculate_significance(model: "Model", query: "KLine", target: "KLine") -> S
         return build_s3(s3_s1_pct, s3_s2_pct, gen_pct)
 
     # S4: No match
-    return S4_VALUE
+    return S4

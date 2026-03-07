@@ -1039,7 +1039,7 @@ def main() -> None:
     parser.add_argument(
         "-i", "--input",
         type=Path,
-        default=Path("/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1.json"),
+        default=Path("data/tokenizer/simplestories-1.json"),
         help="Input text or JSON file (default: %(default)s)"
     )
     parser.add_argument(

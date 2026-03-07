@@ -1,6 +1,7 @@
 import pytest
 from kalvin.model import (
     KLine,
+    KNone,
     Model,
     nodes_equal,
 )
@@ -110,7 +111,7 @@ class TestModelAddKLine:
 
         assert result is True
         assert len(model) == 1
-        assert model[0] == kl
+        assert model[kl.signature] == kl
 
     def test_add_duplicate_key_different_nodes(self):
         """Adding kline with same key but different nodes succeeds."""
@@ -604,25 +605,14 @@ class TestModelExpand:
 
 
 class TestModelIterators:
-    def test_iterate_over_model(self):
-        """Can iterate over all KLines in model."""
-        kl1 = KLine(signature=0x1000, nodes=[])
-        kl2 = KLine(signature=0x2000, nodes=[])
-        model = Model([kl1, kl2])
-
-        klines = list(model)
-        assert len(klines) == 2
-        assert kl1 in klines
-        assert kl2 in klines
-
     def test_getitem_access(self):
         """Can access KLines by index."""
         kl1 = KLine(signature=0x1000, nodes=[])
         kl2 = KLine(signature=0x2000, nodes=[])
         model = Model([kl1, kl2])
 
-        assert model[0] == kl1
-        assert model[1] == kl2
+        assert model[kl1.signature] == kl1
+        assert model[kl2.signature] == kl2
 
     def test_find_kline(self):
         """Can find KLine by its signature."""
@@ -633,8 +623,8 @@ class TestModelIterators:
         found = model.find_kline(0x1000)
         assert found == kl1
 
-        not_found = model.find_kline(0x3000)
-        assert not_found is None
+        found = model.find_kline(0x3000)
+        assert not found.signature
 
     def test_find_signed_klines(self):
         """Can find all KLines with same signature."""

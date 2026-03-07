@@ -60,7 +60,7 @@ Kalvin is a knowledge graph model with BPE tokenization for text encoding and si
 
 ### Data Dependencies
 
-- Grammar dictionary: `/Volumes/USB-Backup/ai/data/tidy-ts/simplestories-1_grammar.json` - maps token IDs to NLP types
+- Grammar dictionary: `data/tokenizer/simplestories-1_grammar.json` - maps token IDs to NLP types
 - Default tokenizer: `data/tokenizer/tokenizer-32768`
 
 ### UI (`ui/chat/`)

@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from kalvin.model import KLine
-from kalvin.significance import S1_BIT, S4_VALUE, build_s1, build_s2, build_s3
+from kalvin.model import KLine, Model
+from kalvin.significance import S1, S2, S3, S4
 
 from .ast import (
     Identifier,
@@ -39,7 +39,7 @@ class InterpretError(Exception):
 class InterpretResult:
     """Result of interpretation."""
 
-    model: "Model"
+    model: Model
     symbol_table: SymbolTable
     load_paths: list[str] = field(default_factory=list)
     save_path: str | None = None
@@ -119,11 +119,11 @@ class Interpreter:
             encoded = self.tokenizer.encode(char)
             tokens.append(encoded[0])
 
-        signature = S1_BIT
+        signature = S1
         nodes = []
         # First ensure identity klines exist for each char
         for idx, token in enumerate(tokens):
-            identity_sig = S1_BIT | sigs[idx]
+            identity_sig = S1 | sigs[idx]
             identity_kline = KLine(signature=identity_sig, nodes=[token])
             self.model.add(identity_kline)
 
@@ -131,7 +131,7 @@ class Interpreter:
             nodes.append(identity_sig)
 
         if len(name) > 1:
-            signature |= build_s2(100, 100)
+            signature |= S2
 
         # Build compound signature: S1 | S2 | all sig tokens
         kline = KLine(signature=signature, nodes=nodes)
@@ -142,7 +142,7 @@ class Interpreter:
         self,
         expr: KLineExpr,
         symbol_table: SymbolTable,
-    ) -> KLine | None:
+    ) -> KLine:
         """
         Interpret a KLine expression with new semantics.
 
@@ -152,20 +152,11 @@ class Interpreter:
         # Step 1: Create the sig KLine
         if isinstance(expr.sig, Identifier):
             name = expr.sig.name
-            # Check if already exists in symbol table
-            if name in symbol_table:
-                existing_sig = symbol_table[name]
-                sig_kline = self.model.find_kline(existing_sig)
-                if sig_kline is None:
-                    sig_kline = self.create_kline(name)
-            else:
-                sig_kline = self.create_kline(name)
-                symbol_table[name] = sig_kline.signature
+            sig_kline = self.create_kline(name)
+            symbol_table[name] = sig_kline.signature
         else:
             # Nested KLineExpr as sig - interpret recursively
             sig_kline = self._interpret_kline_expr(expr.sig, symbol_table)
-            if sig_kline is None:
-                return None
 
         # Step 2: Process relationships using signify()
         # Relationships chain: MHALL = SVO => [S, V, O] means:
@@ -175,7 +166,7 @@ class Interpreter:
 
         for relationship in expr.relationships:
             # Get significance level for this relationship
-            s = self._significance_type_to_value(relationship.significance)
+            S = self._significance_type_to_value(relationship.significance)
 
             # Interpret nodes and create their KLines
             node_klines = []
@@ -188,21 +179,14 @@ class Interpreter:
                 else:
                     # Simple identifier
                     node_name = node_ref.identifier.name
-                    if node_name in symbol_table:
-                        existing_sig = symbol_table[node_name]
-                        node_kline = self.model.find_kline(existing_sig)
-                        if node_kline is None:
-                            node_kline = self.create_kline(node_name)
-                    else:
-                        node_kline = self.create_kline(node_name)
-                        symbol_table[node_name] = node_kline.signature
+                    node_kline = self.create_kline(node_name)
+                    symbol_table[node_name] = node_kline.signature
 
-                if node_kline:
-                    node_klines.append(node_kline)
+                node_klines.append(node_kline)
 
             # Establish significance relationships
             for node_kline in node_klines:
-                self.agent.signify(current_subject, node_kline, s)
+                self.agent.signify(current_subject, node_kline, S)
 
             # Chain: last node becomes subject for next relationship
             if node_klines:
@@ -216,12 +200,12 @@ class Interpreter:
             return 0
 
         if sig_type == SignificanceType.S1:
-            return build_s1(100)
+            return S1
         elif sig_type == SignificanceType.S2:
-            return build_s2(100, 100)
+            return S2
         elif sig_type in (SignificanceType.S3_FORWARD, SignificanceType.S3_BACKWARD):
-            return build_s3(100, 100, 100)
+            return S3
         elif sig_type == SignificanceType.S4:
-            return S4_VALUE
+            return S4
 
         return 0

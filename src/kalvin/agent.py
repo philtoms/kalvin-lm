@@ -39,12 +39,22 @@ class KAgent(ABC):
     # === Core operations ===
 
     @abstractmethod
-    def encode(self, text: str, nlp_detail: str = "nlp_type32") -> KLine | None:
+    def rationalise(self, kline: KLine, train: bool) -> KLine | None:
+        """Rationalise a KLine.
+
+        Args:
+            kline: KLine to rationalize
+            train: If True, enforce training    
+        """
+        ...
+
+    @abstractmethod
+    def encode(self, text: str, nlp_detail: str) -> KLine | None:
         """Encode text into a KLine and add it to the model.
 
         Args:
             text: Input string to encode
-            nlp_detail: NLP detail type for encoding
+            nlp_detail: NLP detail level for type encoding
 
         Returns:
             KLine representing the encoded text, or None if duplicate
@@ -89,13 +99,13 @@ class KAgent(ABC):
     def save(
         self,
         path: str | Path,
-        format: Literal["binary", "json"] = "binary",
+        format: Literal["bin", "json"] = "bin",
     ) -> None:
         """Save model to file.
 
         Args:
             path: File path to save to
-            format: 'binary' (default, compact) or 'json' (human-readable)
+            format: 'bin' (default, compact) or 'json' (human-readable)
         """
         ...
 
@@ -104,13 +114,13 @@ class KAgent(ABC):
     def load(
         cls,
         path: str | Path,
-        format: Literal["binary", "json"] | None = None,
+        format: Literal["bin", "json"] | None = None,
     ) -> "KAgent":
         """Load model from file.
 
         Args:
             path: File path to load from
-            format: 'binary', 'json', or None (auto-detect from extension)
+            format: 'bin', 'json', or None (auto-detect from extension)
 
         Returns:
             Loaded KAgent instance
