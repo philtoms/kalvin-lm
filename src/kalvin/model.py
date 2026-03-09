@@ -1,85 +1,29 @@
 """KLine model for knowledge graph operations."""
 
-from dataclasses import dataclass
-from typing import TypeAlias, Iterator
+from typing import Iterator
+
+from kalvin.abstract import KLine, KModel, KNode, KNone, KSig
 
 
-# Type alias for a KNode (64-bit int)
-KNode: TypeAlias = int
-
-
-@dataclass
-class KLine:
-    """A structure with a 64-bit significance signature and list of child KNodes.
-
-    Attributes:
-        signature: 64-bit integer signature
-        nodes: List of child KNode integers
-    """
-
-    def __init__(self, signature: int, nodes: list[KNode], dbg_text: str = ""):
-        self.signature = signature
-        self.nodes = nodes
-        self.dbg_text = dbg_text
-
-    @classmethod
-    def create(cls, significance: int, token: int, nodes: list[KNode], dbg_text: str = "") -> "KLine":
-        """Create a KLine from significance, token, and nodes.
-
-        The signature is constructed from significance | token.
-
-        Args:
-            significance: Significance value to OR with token
-            token: Token value to OR with significance
-            nodes: List of child KNode integers
-
-        Returns:
-            KLine with signature = significance | token
-        """
-        return cls(signature=significance | token, nodes=nodes, dbg_text=dbg_text)
-
-    def signifies(self, query: int) -> bool:
-        """Check if this KLine signifies a query via AND operation.
-
-        Args:
-            query: The query node to signify
-
-        Returns:
-            True if (signature & query) != 0
-        """
-        return (self.signature & query) != 0
-
-KNone = KLine(signature=0, nodes=[], dbg_text="")
-
-
-def nodes_equal(nodes1: list[KNode], nodes2: list[KNode]) -> bool:
-    """Check if two node lists are equal."""
-    if len(nodes1) != len(nodes2):
-        return False
-    for i in range(len(nodes1)):
-        if nodes1[i] != nodes2[i]:
-            return False
-    return True
-
-
-class Model:
+class Model(KModel):
     """A collection of KLines with query and expansion operations.
 
     Optimized internal structure:
     - _klines: list[KLine] - flat list for O(1) iteration and indexing
-    - _by_key: dict[int, list[int]] - maps signature to indices in _klines
-    - _dedup: set[tuple[int, tuple[int, ...]]] - O(1) duplicate detection
+    - _by_key: dict[KSig, list[KNode]] - maps signature to indices in _klines
+    - _dedup: set[tuple[KSig, tuple[KNode, ...]]] - O(1) duplicate detection
 
     Query iteration follows reverse insertion order (newest first).
     """
 
     __slots__ = ("_klines", "_by_key", "_dedup")
 
-    def __init__(self, klines: list[KLine] | None = None):
+    def __init__(self, klines: list[KLine] | None = None, frame: KModel | None = None):
+        self.frame = frame
         """Initialize the model with optional existing KLines."""
         self._klines: list[KLine] = []  # Flat list for O(1) iteration
-        self._by_key: dict[int, list[int]] = {}  # signature -> list of indices
-        self._dedup: set[tuple[int, tuple[int, ...]]] = set()  # For O(1) duplicate check
+        self._by_key: dict[KSig, list[KNode]] = {}  # signature -> list of indices
+        self._dedup: set[tuple[KSig, tuple[KNode, ...]]] = set()  # For O(1) duplicate check
         if klines:
             for kline in klines:
                 self._add_kline_internal(kline)
@@ -115,21 +59,24 @@ class Model:
 
         return True
 
-    def find_kline(self, signature: int | None, significance: int | None = None) -> KLine:
+    def find_kline(self, signature: KSig, significance: KSig | None = None) -> KLine:
         """Find a KLine by its signature.
 
         Returns the most recently added KLine with the given signature.
         O(1) lookup.
 
         Args:
-            key: The signature to search for
+            signature: The signature to search for
+            significance: Optional significance filter
 
         Returns:
-            KLine if found, None otherwise
+            KLine if found, KNone otherwise
         """
-        if signature is None or signature not in self._by_key:
+        if signature not in self._by_key:
+            if self.frame:
+                return self.frame.find_kline(signature, significance)
             return KNone
-        
+
         if significance is not None:
             for idx in self._by_key[signature]:
                 kline = self._klines[idx]
@@ -139,26 +86,28 @@ class Model:
         # Return the most recently added (last index in the list)
         return self._klines[self._by_key[signature][-1]]
 
-    def find_signed_klines(self, signature: int | None) -> list[KLine]:
+    def find_signed_klines(self, signature: KSig) -> list[KLine]:
         """Find all KLines matching the given signature.
 
         Returns all KLines with the given signature.
         O(1) lookup.
 
         Args:
-            key: The signature to search for
+            signature: The signature to search for
 
         Returns:
             KLine list
         """
-        if signature is None or signature not in self._by_key:
+        if signature not in self._by_key:
+            if self.frame:
+                return self.frame.find_signed_klines(signature)
             return []
 
         return [self._klines[idx] for idx in self._by_key[signature]]
 
     def query(
         self,
-        query: int,
+        query: KSig,
         focus_limit: int = 0,
     ) -> tuple[Iterator[KLine], Iterator[KLine]]:
         """Query KLines by ANDing significance with a query.
@@ -189,6 +138,10 @@ class Model:
                         break
                     yield kline
                     count += 1
+            if self.frame and count < focus_limit:
+                fast, _ = self.frame.query(query, focus_limit - count)
+                for kline in fast:
+                    yield kline
 
         def slow_generator() -> Iterator[KLine]:
             if focus_limit <= 0:
@@ -200,6 +153,10 @@ class Model:
                     if count >= focus_limit:
                         yield kline
                     count += 1
+            if self.frame and count < focus_limit:
+                _, slow = self.frame.query(query, focus_limit - count)
+                for kline in slow:
+                    yield kline
 
         return fast_generator(), slow_generator()
 
@@ -233,7 +190,7 @@ class Model:
             found = []
             for node in nodes:
                 kline = model.find_kline(node)
-                if kline is not None:
+                if kline is not KNone:
                     found.append(kline)
             return found
 
@@ -244,9 +201,7 @@ class Model:
         ) -> Iterator[KLine]:
             """Expand a KLine and yield results immediately."""
             if kline.signature in visited:
-                v_kline = model.find_kline(kline.signature)
-                if v_kline and nodes_equal(v_kline.nodes, kline.nodes):
-                    return
+                return
             else:
                 visited.add(kline.signature)
 
@@ -259,23 +214,31 @@ class Model:
                 yield from expand_kline_generator(child, current_depth + 1, visited)
 
         def fast_generator() -> Iterator[KLine]:
-            visited: set[int] = set()
+            visited: set[KSig] = set()
             count = 0
             for kline in focus_set:
                 if focus_limit > 0 and count >= focus_limit:
                     break
                 yield from expand_kline_generator(kline, 1, visited)
                 count += 1
+            if self.frame and count < focus_limit:
+                fast, _ = self.frame.expand(focus_set, depth, focus_limit - count)
+                for kline in fast:
+                    yield kline
 
         def slow_generator() -> Iterator[KLine]:
             if focus_limit <= 0:
                 return
-            visited: set[int] = set()
+            visited: set[KSig] = set()
             count = 0
             for kline in focus_set:
                 if count >= focus_limit:
                     yield from expand_kline_generator(kline, 1, visited)
                 count += 1
+            if self.frame and count < focus_limit:
+                _, slow = self.frame.expand(focus_set, depth, focus_limit - count)
+                for kline in slow:
+                    yield kline
 
         return fast_generator(), slow_generator()
 
@@ -284,7 +247,7 @@ class Model:
         klines = [KLine(signature=k.signature, nodes=k.nodes.copy(), dbg_text=k.dbg_text) for k in self._klines]
         return Model(klines)
 
-    def get_all_descendants(self, node: int, visited: set[int] | None = None) -> set[int]:
+    def get_all_descendants(self, node: KNode, visited: set[KSig] | None = None) -> set[KSig]:
         """Recursively collect all descendant nodes.
 
         Args:
@@ -301,10 +264,10 @@ class Model:
             return set()
         visited.add(node)
 
-        descendants: set[int] = set()
+        descendants: set[KSig] = set()
         kline = self.find_kline(node)
 
-        if kline is None:
+        if kline is KNone:
             return descendants
 
         for child in kline.nodes:
@@ -315,6 +278,7 @@ class Model:
 
         return descendants
 
+
     def __len__(self) -> int:
         """Return the number of KLines in the model. O(1)."""
         return len(self._klines)
@@ -323,7 +287,7 @@ class Model:
         """Iterate over all KLines in insertion order. O(1) setup."""
         return iter(self._klines)
 
-    def __getitem__(self, signature: int) -> KLine:
+    def __getitem__(self, signature: KSig) -> KLine:
         """Get a KLine by index. O(1)."""
         return self.find_kline(signature)
 
@@ -344,5 +308,5 @@ class _KLineAccessor:
     def __init__(self, model: Model):
         self._model = model
 
-    def __getitem__(self, signature: int | None) -> KLine:
+    def __getitem__(self, signature: KSig) -> KLine:
         return self._model.find_kline(signature)

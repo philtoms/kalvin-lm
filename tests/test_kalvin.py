@@ -6,8 +6,9 @@ import tempfile
 from pathlib import Path
 from collections import Counter
 
+from kalvin.abstract import KLine
 from kalvin.kalvin import Kalvin
-from kalvin.model import KLine, Model
+from kalvin.model import Model
 
 
 class TestKalvinInit:

@@ -2,9 +2,13 @@
 
 import pytest
 
-from kalvin.model import KLine
-from kalvin.significance import S1, S2, S3, has_s1
+from kalvin import Kalvin
+from kalvin.abstract import KLine
+from kalvin.significance import Int64Significance
 from kscript import interpret_script, Interpreter
+
+
+_sig = Int64Significance()
 
 
 class TestIdentityKLines:
@@ -24,7 +28,7 @@ class TestIdentityKLines:
 
         assert m_kline is not None
         # Identity kline has S1 bit set
-        assert has_s1(m_kline.signature)
+        assert _sig.has_s1(m_kline.signature)
         # Identity kline has exactly one node (the token)
         assert len(m_kline.nodes) == 1
 
@@ -36,11 +40,11 @@ class TestIdentityKLines:
         a_kline = result.model.find_kline(a_sig)
 
         # The signature should have S1_BIT
-        assert a_kline.signature & S1 != 0
+        assert a_kline.signature & _sig.S1 != 0
         # The lower bits should be the token
         token = a_kline.nodes[0]
         # signature should be S1_BIT | token
-        assert a_kline.signature == (S1 | token)
+        assert a_kline.signature == (_sig.S1 | token)
 
     def test_multiple_identity_klines(self):
         """Multiple single-char identifiers create separate identity klines."""
@@ -67,7 +71,7 @@ class TestCompoundKLines:
         assert len(all_kline.nodes) == 3
         # Each node should have S1 bit (identity signature)
         for node in all_kline.nodes:
-            assert has_s1(node)
+            assert _sig.has_s1(node)
 
     def test_compound_signature_includes_s1_and_s2(self):
         """Compound KLine signature includes S1 and S2 bits."""
@@ -77,10 +81,9 @@ class TestCompoundKLines:
         ab_kline = result.model.find_kline(ab_sig)
 
         # Should have S1 bit
-        assert has_s1(ab_kline.signature)
+        assert _sig.has_s1(ab_kline.signature)
         # Should have S2 bits (non-zero S2 portion)
-        from kalvin.significance import get_s2
-        assert get_s2(ab_kline.signature) > 0
+        assert _sig.get_s2(ab_kline.signature) > 0
 
     def test_compound_includes_identity_klines(self):
         """Compound KLine creation also creates identity klines for each char."""
@@ -96,7 +99,7 @@ class TestCompoundKLines:
         for node_sig in abc_kline.nodes:
             node_kline = result.model.find_kline(node_sig)
             assert node_kline is not None
-            assert has_s1(node_kline.signature)
+            assert _sig.has_s1(node_kline.signature)
 
 
 class TestSignifyRelationships:
@@ -233,9 +236,9 @@ class TestComplexScripts:
         assert len(svo_kline.nodes) >= 1
         # Each node should be an identity signature (has S1 bit)
         for node in mhall_kline.nodes:
-            assert has_s1(node)
+            assert _sig.has_s1(node)
         for node in svo_kline.nodes:
-            assert has_s1(node)
+            assert _sig.has_s1(node)
 
     def test_complex_multiline_script(self):
         """Test complex multi-line script with nested relationships."""
@@ -295,14 +298,12 @@ class TestComplexScripts:
 
         # Verify MHALL compound kline
         mhall_sig = result.symbol_table["MHALL"]
-        mhall_kline = result.model.find_kline(mhall_sig, S2)
-        assert mhall_kline is not None
-        assert len(mhall_kline.nodes) ==5  # MHALL has M, H, A, L, L nodes
+        mhall_kline = result.model.find_kline(mhall_sig, _sig.S2)
+        assert len(mhall_kline.nodes) == 5  # MHALL has M, H, A, L, L nodes
 
         # Verify ALL compound kline
         all_sig = result.symbol_table["ALL"]
-        all_kline = result.model.find_kline(all_sig, S2)
-        assert all_kline is not None
+        all_kline = result.model.find_kline(all_sig, _sig.S2)
         assert len(all_kline.nodes) == 3  # ALL has A, L, L nodes
 
     def test_doubly_nested_s2_relationships(self):
@@ -348,16 +349,13 @@ class TestComplexScripts:
 
         # Verify compound klines
         xy_sig = result.symbol_table["XY"]
-        xy_kline = result.model.find_kline(xy_sig, S2)
-        assert xy_kline is not None
+        xy_kline = result.model.find_kline(xy_sig, _sig.S2)
         assert len(xy_kline.nodes) == 2  # X, Y
 
         ab_sig = result.symbol_table["AB"]
-        ab_kline = result.model.find_kline(ab_sig, S2)
-        assert ab_kline is not None
+        ab_kline = result.model.find_kline(ab_sig, _sig.S2)
         assert len(ab_kline.nodes) == 2  # A, B
 
         cd_sig = result.symbol_table["CD"]
-        cd_kline = result.model.find_kline(cd_sig, S2)
-        assert cd_kline is not None
+        cd_kline = result.model.find_kline(cd_sig, _sig.S2)
         assert len(cd_kline.nodes) == 2  # C, D

@@ -1,0 +1,103 @@
+from kalvin.abstract import KTokenizer
+
+mod_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789\"',.;:!?\n\t/%{}[]()<>#$@£^&*+-_=abcdefghijklmnopqrstuvwxyz"
+
+def _build_char_bit_maps(modulo: int = 32) -> tuple[dict[str, int], dict[int, str]]:
+    """Build character-to-bit and bit-to-character mappings.
+
+    mod 32:
+        Uses modulo 32 bit positions:
+        - Letters A-Z: positions 0-25
+        - Digits 0-9: positions 26-35 (wraps: 26-31, then 0-4)
+        - Other printable ASCII: positions based on ord() % 32
+
+    Returns:
+        Tuple of (char_bit, bit_char) dictionaries
+    """
+    char_bit: dict[str, int] = {}
+    bit_char: dict[int, str] = {}
+
+    # Helper to add mapping, prioritizing uppercase letters for reverse mapping
+    def add_mapping(char: str, bit_value: int) -> None:
+        char_bit[char] = bit_value
+        # Only set reverse mapping if not already set (prioritize earlier additions)
+        if bit_value not in bit_char:
+            bit_char[bit_value] = char
+
+    # Uppercase letters A-Z, Digits 0-9, Lowercase letters a-z: positions 0-31 mod 32 (highest priority for reverse mapping)
+    for i, c in enumerate(mod_alphabet):
+        add_mapping(c, 1 << (i % modulo))
+
+    # Other printable ASCII characters
+    for j in range(32, 127):
+        c = chr(j)
+        if c not in char_bit:
+            add_mapping(c, 1 << (i % modulo))
+            i+=1
+
+    return char_bit, bit_char
+
+
+class ModTokenizer(KTokenizer):
+
+    CHAR_BIT, BIT_CHAR = _build_char_bit_maps(32)
+
+    @property
+    def vocab_size(self) -> int:
+        """Return the number of unique tokens in the vocabulary."""
+        return len(self.CHAR_BIT)
+
+    def encode(self, text: str, pad_ws: bool = False) -> list[int]:
+        """Encode a string to token IDs.
+
+        Args:
+            text: Input string to encode
+            pad_ws: If True, strip and add trailing space
+
+        Returns:
+            List of token IDs
+        """
+        if pad_ws:
+            text = text.strip() + " "
+
+        if len(text) > 1:
+            return self.batch_encode(text.split())[0]
+
+        return [self.CHAR_BIT[text]]
+
+    def decode(self, ids: list[int]) -> str:
+        """Decode token IDs back to a string.
+
+        Args:
+            ids: List of token IDs
+
+        Returns:
+            Decoded string
+        """
+        return ("").join([self.BIT_CHAR[i] for i in ids])
+
+    def batch_encode(self, texts: list[str]) -> list[list[int]]:
+        """Encode multiple strings in parallel.
+
+        Args:
+            texts: List of strings to encode
+
+        Returns:
+            List of token ID lists
+        """
+        return [self.encode(t) for t in texts]
+
+class Mod32Tokenizer(ModTokenizer):
+    """Mod32 tokenizer"""
+
+    CHAR_BIT, BIT_CHAR = _build_char_bit_maps(32)
+
+class Mod64Tokenizer(ModTokenizer):
+    """Mod64 tokenizer"""
+
+    CHAR_BIT, BIT_CHAR = _build_char_bit_maps(64)
+
+class Mod128Tokenizer(ModTokenizer):
+    """Mod128 tokenizer"""
+
+    CHAR_BIT, BIT_CHAR = _build_char_bit_maps(128)

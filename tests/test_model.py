@@ -1,10 +1,7 @@
 import pytest
-from kalvin.model import (
-    KLine,
-    KNone,
-    Model,
-    nodes_equal,
-)
+from kalvin.abstract import KLine, KNone
+from kalvin.model import Model
+
 
 
 class TestKLine:
@@ -81,24 +78,6 @@ class TestKLine:
 
         kl_list = [root, intermediate, leaf1, leaf2, leaf3]
         assert len(kl_list) == 5
-
-
-class TestNodesEqual:
-    def test_empty_lists_equal(self):
-        """Empty node lists are equal."""
-        assert nodes_equal([], []) is True
-
-    def test_same_lists_equal(self):
-        """Identical node lists are equal."""
-        assert nodes_equal([0x1000, 0x2000], [0x1000, 0x2000]) is True
-
-    def test_different_lengths_not_equal(self):
-        """Lists of different lengths are not equal."""
-        assert nodes_equal([0x1000], [0x1000, 0x2000]) is False
-
-    def test_different_values_not_equal(self):
-        """Lists with different values are not equal."""
-        assert nodes_equal([0x1000, 0x2000], [0x1000, 0x3000]) is False
 
 
 class TestModelAddKLine:

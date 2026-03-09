@@ -2,11 +2,11 @@
 """Run a KScript file and save the resulting model.
 
 Usage:
-    python scripts/ks_run.py script.ks [--model path/to/model.bin]
+    python scripts/ks_run.py script.ks [--model path/to/model.json]
 
 Examples:
     python scripts/ks_run.py my-script.ks
-    python scripts/ks_run.py my-script.ks --model existing-model.bin
+    python scripts/ks_run.py my-script.ks --model existing-model.json
 """
 
 import argparse
@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from kalvin.kalvin import Kalvin
-from kscript import interpret_script
+from kscript import interpret_script, Mod32Tokenizer as mod_tokenizer
 
 
 def main():
@@ -46,8 +46,8 @@ Examples:
         "--format",
         "-f",
         choices=["bin", "json"],
-        default="bin",
-        help="Output format (default: bin)",
+        default="json",
+        help="Output format (default: json)",
     )
     parser.add_argument(
         "--save", "-s", action="store_true", help="Save rationalised model."
@@ -81,11 +81,12 @@ Examples:
 
         kalvin = Kalvin.load(model_path)
     else:
-        # Create new Kalvin instance with default tokenizer
+        # Create new Kalvin instance
         if args.verbose:
-            print("Creating new Kalvin agent with default tokenizer")
+            print("Creating new Kalvin agent")
 
-        kalvin = Kalvin()  # Uses default tokenizer
+        tokenizer = mod_tokenizer()
+        kalvin = Kalvin(tokenizer=tokenizer)
 
     # Interpret the script
     if args.verbose:

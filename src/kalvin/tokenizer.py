@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterator
 
+from kalvin.abstract import KTokenizer
+
 if TYPE_CHECKING:
     import rustbpe
     import tiktoken
@@ -49,7 +51,7 @@ class PyarrowNotInstalledError(Exception):
     pass
 
 
-class Tokenizer:
+class Tokenizer(KTokenizer):
     """BPE tokenizer wrapper supporting rustbpe (training) and tiktoken (inference)."""
 
     def __init__(self, tokenizer: Any = None):

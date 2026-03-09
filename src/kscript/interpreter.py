@@ -5,8 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from kalvin.model import KLine, Model
-from kalvin.significance import S1, S2, S3, S4
+from kalvin.abstract import KLine, KModel
 
 from .ast import (
     Identifier,
@@ -18,12 +17,8 @@ from .ast import (
     SignificanceType,
 )
 
-from .tokens import (
-    encode_mod,
-)
-
 if TYPE_CHECKING:
-    from kalvin.agent import KAgent
+    from kalvin.abstract import KAgent
 
 # Type for the symbol table (maps names to signatures)
 SymbolTable = dict[str, int]
@@ -39,7 +34,7 @@ class InterpretError(Exception):
 class InterpretResult:
     """Result of interpretation."""
 
-    model: Model
+    model: KModel
     symbol_table: SymbolTable
     load_paths: list[str] = field(default_factory=list)
     save_path: str | None = None
@@ -115,15 +110,15 @@ class Interpreter:
         tokens = []
         sigs = []
         for char in name:
-            sigs.append(encode_mod(char))
-            encoded = self.tokenizer.encode(char)
-            tokens.append(encoded[0])
+            encoded = self.tokenizer.encode(char)[0]
+            sigs.append(encoded)
+            tokens.append(encoded)
 
-        signature = S1
+        signature = self.agent.significance.S1
         nodes = []
         # First ensure identity klines exist for each char
         for idx, token in enumerate(tokens):
-            identity_sig = S1 | sigs[idx]
+            identity_sig = self.agent.significance.S1 | sigs[idx]
             identity_kline = KLine(signature=identity_sig, nodes=[token])
             self.model.add(identity_kline)
 
@@ -131,7 +126,7 @@ class Interpreter:
             nodes.append(identity_sig)
 
         if len(name) > 1:
-            signature |= S2
+            signature |= self.agent.significance.S2
 
         # Build compound signature: S1 | S2 | all sig tokens
         kline = KLine(signature=signature, nodes=nodes)
@@ -199,13 +194,14 @@ class Interpreter:
         if sig_type is None:
             return 0
 
+        sig = self.agent.significance
         if sig_type == SignificanceType.S1:
-            return S1
+            return sig.S1
         elif sig_type == SignificanceType.S2:
-            return S2
+            return sig.S2
         elif sig_type in (SignificanceType.S3_FORWARD, SignificanceType.S3_BACKWARD):
-            return S3
+            return sig.S3
         elif sig_type == SignificanceType.S4:
-            return S4
+            return sig.S4
 
         return 0
