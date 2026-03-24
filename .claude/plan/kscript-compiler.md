@@ -2,11 +2,11 @@
 
 ## Overview
 
-Build a **new** KScript compiler in `src/ksc/` that compiles `.ks` script files into KLine graphs, outputting JSONL or binary format.
+Build a **new** KScript compiler in `src/kscipt/` that compiles `.ks` script files into KLine graphs, outputting JSONL or binary format.
 
 ## Key Decisions
 
-- **New module**: Fresh implementation in `src/ksc/` folder (separate from existing `src/kscript/`)
+- **New module**: Fresh implementation in `src/kscript/` folder)
 - **Output**: JSONL format (default) or binary format (`.bin` suffix)
 - **Signatures**: Literal A-Z identifiers (e.g., `M`, `ALL`), tokenized for binary output
 - **Operators**: Use spec operators with defined semantics
@@ -96,10 +96,10 @@ KScripts are always valid. This does not mean that parsers should ignore bad syn
 | `  B > 2` | AND `{B: [2]}` | indent if any                                               |
 | `A == 1`  | `{A: 1}`       | literal countersign: recover undersign                      |
 
-## Module Structure: `src/ksc/`
+## Module Structure: `src/kscript/`
 
 ```
-src/ksc/
+src/kscript/
 ├── __init__.py        # Module exports
 ├── __main__.py        # CLI and API entry points
 ├── token.py           # Token types and Token dataclass
@@ -427,24 +427,21 @@ class KScript:
         """Return entries as list of dicts (preserves duplicate signatures)."""
         ...
 
-    def to_dict(self) -> dict[str, str | None | list[str]]:
-        """Merge entries into dict format (later entries override earlier)."""
-        ...
 ```
 
 ## Files to Create
 
-| File                  | Purpose                             |
-| --------------------- | ----------------------------------- |
-| `src/ksc/__init__.py` | Module exports + KScript API        |
-| `src/ksc/__main__.py` | CLI entry point                     |
-| `src/ksc/token.py`    | Token types and dataclass           |
-| `src/ksc/lexer.py`    | Lexer with indentation              |
-| `src/ksc/ast.py`      | AST node definitions                |
-| `src/ksc/parser.py`   | Recursive descent parser            |
-| `src/ksc/compiler.py` | AST to compiled entries (tokenized) |
-| `src/ksc/output.py`   | JSON/JSONL/binary reader/writer     |
-| `tests/test_ksc.py`   | Test suite                          |
+| File                      | Purpose                             |
+| ------------------------- | ----------------------------------- |
+| `src/kscript/__init__.py` | Module exports + KScript API        |
+| `src/kscript/__main__.py` | CLI entry point                     |
+| `src/kscript/token.py`    | Token types and dataclass           |
+| `src/kscript/lexer.py`    | Lexer with indentation              |
+| `src/kscript/ast.py`      | AST node definitions                |
+| `src/kscript/parser.py`   | Recursive descent parser            |
+| `src/kscript/compiler.py` | AST to compiled entries (tokenized) |
+| `src/kscript/output.py`   | JSON/JSONL/binary reader/writer     |
+| `tests/test_kscript.py`   | Test suite                          |
 
 ## Dependencies
 
@@ -492,25 +489,25 @@ X==
 
 ```bash
 # Compile and output to terminal
-python -m ksc script.ks
+python -m kscript script.ks
 
 # Compile to JSON (array format, preserves duplicates)
-python -m ksc script.ks -out output.json
+python -m kscript script.ks -out output.json
 
 # Compile to JSONL (line-delimited)
-python -m ksc script.ks -out output.jsonl
+python -m kscript script.ks -out output.jsonl
 
 # Compile to binary format (tokenized)
-python -m ksc script.ks -out output.bin
+python -m kscript script.ks -out output.bin
 
 # Load binary model
-python -m ksc model.bin
+python -m kscript model.bin
 
 # Extend existing model from JSON/JSONL/binary
-python -m ksc script.ks -base base.json -out extended.json
+python -m kscript script.ks -base base.json -out extended.json
 
 # Load and extend JSON/JSONL models
-python -m ksc model.json -base base.jsonl -out merged.json
+python -m kscript model.json -base base.jsonl -out merged.json
 ```
 
 ### API Usage Examples
@@ -518,7 +515,7 @@ python -m ksc model.json -base base.jsonl -out merged.json
 In addition to CLI usage, the compiler can be used programmatically:
 
 ```python
-from ksc import KScript
+from kscript import KScript
 
 # Inline model generation from string
 model1 = KScript("A == B")
@@ -558,9 +555,6 @@ extended = KScript("more.ks", base=loaded)
 
 # Get model as list (preserves duplicates)
 model.to_model()  # -> [{"A": "B"}, {"B": "A"}]
-
-# Get model as dict (last wins)
-model.to_dict()   # -> {"A": "B", "B": "A"}
 
 # Inspect entries (token IDs)
 for entry in model.entries:

@@ -1,276 +1,256 @@
-"""Recursive descent parser for KScript with multi-line support."""
+"""Recursive descent parser for KScript language."""
 
 from .ast import (
-    Identifier,
-    KLineExpr,
-    KLineRelationship,
-    KNodeRef,
-    KScriptAst,
-    KScriptStatement,
-    LoadStatement,
-    SaveStatement,
-    SignificanceType,
+    Construct,
+    ConstructType,
+    KScriptFile,
+    Node,
+    NumberLiteral,
+    Script,
+    Signature,
+    StringLiteral,
 )
-from .lexer import Lexer
-from .tokens import Token, TokenType
+from .token import Token, TokenType
 
 
 class ParseError(Exception):
-    """Parser error with position information."""
+    """Error during parsing."""
 
     def __init__(self, message: str, token: Token):
-        super().__init__(f"Line {token.line}, Column {token.column}: {message}")
+        super().__init__(f"Line {token.line}, column {token.column}: {message}")
         self.token = token
 
 
 class Parser:
-    """
-    Recursive descent parser for KScript with indentation support.
-
-    Grammar:
-        script      ::= statement*
-        statement   ::= load_stmt | save_stmt | kline_expr
-        load_stmt   ::= "load" IDENTIFIER
-        save_stmt   ::= "save" [IDENTIFIER]
-        kline_expr  ::= KSig kline_tail*
-        kline_tail  ::= significance nodes
-        nodes       ::= inline_nodes | indented_klines
-        inline_nodes ::= IDENTIFIER+
-        indented_klines ::= INDENT kline_expr+ DEDENT
-        significance ::= "=" | "=>" | ">" | "<" | "!="
-
-    Multi-line example:
-        MHALL = SVO =>
-            S < M
-            V < H
-            O < ALL
-
-    This parses as:
-        MHALL
-        = SVO          (S1 relationship to SVO)
-        => [S<M, V<H, O<ALL]  (S2 relationship to indented KLines)
-    """
+    """Recursive descent parser for KScript."""
 
     def __init__(self, tokens: list[Token]):
         self.tokens = tokens
         self.pos = 0
 
-    @classmethod
-    def from_source(cls, source: str) -> "Parser":
-        """Create parser from source string."""
-        lexer = Lexer(source)
-        return cls(lexer.tokenize())
+    def parse(self) -> KScriptFile:
+        """Parse tokens into a KScriptFile AST."""
+        scripts: list[Script] = []
 
-    def parse(self) -> KScriptAst:
-        """Parse the token stream into a KScript AST."""
-        statements: list[KScriptStatement] = []
+        while not self._at_end():
+            # Skip newlines and comments at top level
+            if self._check(TokenType.NEWLINE) or self._check(TokenType.COMMENT):
+                self._advance()
+                continue
 
-        # Skip leading newlines and indents
-        while self._match(TokenType.NEWLINE, TokenType.INDENT):
-            pass
+            # Parse top-level script (starts at column 1)
+            if self._check(TokenType.SIGNATURE):
+                script = self._parse_script(is_top_level=True)
+                scripts.append(script)
+            else:
+                # Skip unexpected tokens at top level
+                self._advance()
 
-        while not self._check(TokenType.EOF, TokenType.DEDENT):
-            if stmt := self._parse_statement():
-                statements.append(stmt)
+        return KScriptFile(scripts)
 
-            # Skip newlines and indents between statements
-            while self._match(TokenType.NEWLINE, TokenType.INDENT):
-                pass
+    def _parse_script(self, is_top_level: bool = False) -> Script:
+        """Parse a script: signature followed by constructs and optional subscripts."""
+        sig_token = self._expect(TokenType.SIGNATURE)
+        signature = self._make_signature(sig_token)
 
-        return KScriptAst(statements=statements)
+        # Parse constructs on the same line
+        constructs: list[Construct] = []
 
-    def _current(self) -> Token:
-        """Get current token."""
-        return self.tokens[self.pos] if self.pos < len(self.tokens) else self.tokens[-1]
+        while not self._at_end() and not self._check(TokenType.NEWLINE):
+            # Check for backward canonize pattern: nodes before <=
+            leading_nodes = self._try_collect_leading_nodes()
+            if leading_nodes and self._check(TokenType.CANONIZE_BWD):
+                # Backward canonize with leading nodes: B C D <= A
+                construct = self._parse_backward_canonize_with_leading(leading_nodes)
+                if construct:
+                    constructs.append(construct)
+                continue
 
-    def _check(self, *types: TokenType) -> bool:
-        """Check if current token is one of the given types."""
-        return self._current().type in types
-
-    def _advance(self) -> Token:
-        """Advance and return the current token."""
-        token = self._current()
-        if not self._check(TokenType.EOF):
-            self.pos += 1
-        return token
-
-    def _match(self, *types: TokenType) -> Token | None:
-        """If current token matches, consume and return it."""
-        if self._check(*types):
-            return self._advance()
-        return None
-
-    def _expect(self, token_type: TokenType, message: str) -> Token:
-        """Expect a specific token type or raise error."""
-        if self._check(token_type):
-            return self._advance()
-        raise ParseError(message, self._current())
-
-    def _parse_statement(self) -> KScriptStatement | None:
-        """Parse a single statement."""
-        if self._check(TokenType.LOAD):
-            return self._parse_load()
-        elif self._check(TokenType.SAVE):
-            return self._parse_save()
-        else:
-            return self._parse_kline_expr()
-
-    def _parse_load(self) -> LoadStatement:
-        """Parse: load <path>"""
-        self._expect(TokenType.LOAD, "Expected 'load'")
-        path_token = self._expect(TokenType.IDENTIFIER, "Expected file path after 'load'")
-        return LoadStatement(path=Identifier(path_token.value, path_token.line, path_token.column))
-
-    def _parse_save(self) -> SaveStatement:
-        """Parse: save [path]"""
-        self._expect(TokenType.SAVE, "Expected 'save'")
-
-        # Path is optional
-        if path_token := self._match(TokenType.IDENTIFIER):
-            return SaveStatement(
-                path=Identifier(path_token.value, path_token.line, path_token.column)
-            )
-
-        return SaveStatement()
-
-    def _parse_kline_expr(self) -> KLineExpr:
-        """
-        Parse a KLine expression with optional chained significance relationships.
-
-        Forms:
-        - identifier
-        - identifier significance nodes
-        - identifier significance nodes significance nodes ...
-        """
-        start_token = self._current()
-        sig = self._parse_ksig()
-
-        # Collect all chained relationships
-        # e.g., MHALL = SVO => [indented] means:
-        #   MHALL with S1->SVO and S2->[indented klines]
-        chained_relationships: list[tuple[SignificanceType, list[KNodeRef]]] = []
-
-        while self._check(
-            TokenType.S1, TokenType.S2, TokenType.S3_FORWARD, TokenType.S3_BACKWARD, TokenType.S4
-        ):
-            # Parse significance operator
-            if token := self._match(TokenType.S1):
-                significance = SignificanceType.S1
-            elif token := self._match(TokenType.S2):
-                significance = SignificanceType.S2
-            elif token := self._match(TokenType.S3_FORWARD):
-                significance = SignificanceType.S3_FORWARD
-            elif token := self._match(TokenType.S3_BACKWARD):
-                significance = SignificanceType.S3_BACKWARD
-            elif token := self._match(TokenType.S4):
-                significance = SignificanceType.S4
+            construct = self._try_parse_construct()
+            if construct:
+                constructs.append(construct)
             else:
                 break
 
-            # Parse nodes (inline or indented)
-            nodes = self._parse_nodes()
-            chained_relationships.append((significance, nodes))
+        # Consume newline if present
+        if self._check(TokenType.NEWLINE):
+            self._advance()
 
-        # Build relationships list from chained relationships
-        relationships = [
-            KLineRelationship(significance=sig, nodes=nodes) for sig, nodes in chained_relationships
-        ]
+        # Parse subscripts (indented scripts)
+        subscripts: list[Script] = []
+        while self._check(TokenType.INDENT):
+            self._advance()  # consume INDENT
+            # Parse subscript scripts
+            while (
+                not self._at_end()
+                and not self._check(TokenType.DEDENT)
+                and not self._check(TokenType.EOF)
+            ):
+                # Skip newlines and comments within subscript block
+                if self._check(TokenType.NEWLINE) or self._check(TokenType.COMMENT):
+                    self._advance()
+                    continue
 
-        return KLineExpr(
-            sig=sig,
-            relationships=relationships,
-            line=start_token.line,
-            column=start_token.column,
-        )
+                if self._check(TokenType.SIGNATURE):
+                    subscript = self._parse_script(is_top_level=False)
+                    subscripts.append(subscript)
+                else:
+                    # Unexpected token - skip
+                    self._advance()
 
-    def _parse_ksig(self) -> Identifier:
-        """Parse a KSig (identifier)."""
-        token = self._expect(TokenType.IDENTIFIER, "Expected identifier for KLine")
-        return Identifier(token.value, token.line, token.column)
+            # Consume DEDENT if present
+            if self._check(TokenType.DEDENT):
+                self._advance()
 
-    def _parse_nodes(self) -> list[KNodeRef]:
+        return Script(signature, constructs, subscripts, signature.line)
+
+    def _try_collect_leading_nodes(self) -> list[Node]:
+        """Collect nodes (signatures) that appear before a backward canonize operator.
+
+        Look ahead to see if there are signatures followed by <= without consuming them.
+        Returns empty list if no leading nodes found or next token is not <=.
         """
-        Parse nodes after a significance operator.
+        # Save position for lookahead
+        saved_pos = self.pos
+        nodes: list[Node] = []
 
-        Nodes can be:
-        1. Inline identifiers on the same line: = hello world
-        2. Indented KLine expressions on following lines:
-           =>
-               S < M
-               V < H
-
-        For indented KLines, we create KNodeRefs from the KLine's sig identifier.
-        """
-        # Skip any trailing whitespace/newlines before checking for indented block
-        # This handles the case: "MHALL = SVO =>\n    S < M"
-        self._match(TokenType.NEWLINE)
-
-        # Check for indented block
-        if self._check(TokenType.INDENT):
-            return self._parse_indented_klines_as_nodes()
-
-        # Otherwise, parse inline identifiers
-        return self._parse_inline_nodes()
-
-    def _parse_inline_nodes(self) -> list[KNodeRef]:
-        """Parse inline identifiers as nodes."""
-        nodes: list[KNodeRef] = []
-
-        # At least one node required after significance
-        first = self._expect(
-            TokenType.IDENTIFIER, "Expected at least one node after significance operator"
-        )
-        nodes.append(KNodeRef(Identifier(first.value, first.line, first.column)))
-
-        # Collect additional inline nodes
-        while self._check(TokenType.IDENTIFIER):
+        # Collect signatures until we hit an operator or end
+        while self._check(TokenType.SIGNATURE):
             token = self._advance()
-            nodes.append(KNodeRef(Identifier(token.value, token.line, token.column)))
+            nodes.append(self._make_signature(token))
 
-        return nodes
+        # Check if next token is <= (backward canonize)
+        if nodes and self._check(TokenType.CANONIZE_BWD):
+            # Found backward canonize pattern - keep the nodes and position
+            return nodes
 
-    def _parse_indented_klines_as_nodes(self) -> list[KNodeRef]:
-        """
-        Parse an indented block of KLine expressions as nodes.
+        # Not a backward canonize pattern - restore position and return empty
+        self.pos = saved_pos
+        return []
 
-        Each KLine in the block becomes a node reference with the full KLine
-        expression stored for compilation.
+    def _parse_backward_canonize_with_leading(self, leading_nodes: list[Node]) -> Construct | None:
+        """Parse backward canonize with leading nodes already collected."""
+        if not self._check(TokenType.CANONIZE_BWD):
+            return None
 
-        Example:
-            =>
-                S < M      -> node "S" (KLine with S3_BACKWARD to M)
-                V < H      -> node "V" (KLine with S3_BACKWARD to H)
+        line = self._peek().line
+        self._advance()  # consume <=
 
-        The nested KLines will be compiled and their sig identifiers used as
-        node references.
-        """
-        nodes: list[KNodeRef] = []
+        # Parse trailing nodes
+        trailing_nodes = self._parse_nodes(multi=True)
 
-        # Consume INDENT
-        indent_token = self._expect(TokenType.INDENT, "Expected INDENT")
+        # Combine: leading nodes + trailing nodes
+        all_nodes = leading_nodes + trailing_nodes
 
-        # Skip any newlines after INDENT
-        while self._match(TokenType.NEWLINE):
-            pass
+        return Construct(ConstructType.CANONIZE_BWD, all_nodes, line, has_leading_nodes=True)
 
-        # Parse KLines until DEDENT
-        while not self._check(TokenType.DEDENT, TokenType.EOF):
-            kline = self._parse_kline_expr()
-            # Create node reference from the KLine's sig identifier
-            # and store the full KLine for compilation
-            if isinstance(kline.sig, Identifier):
-                nodes.append(KNodeRef(kline.sig, nested_kline=kline))
-            # If sig is a KLineExpr, we need to handle that too
+    def _try_parse_construct(self) -> Construct | None:
+        """Try to parse a construct. Returns None if no operator found."""
+        op_type = self._try_parse_operator()
+        if not op_type:
+            return None
+
+        line = self._peek().line
+
+        # Parse nodes
+        nodes: list[Node] = []
+
+        # Canonize constructs can have multiple nodes
+        if op_type in (ConstructType.CANONIZE_FWD, ConstructType.CANONIZE_BWD):
+            nodes = self._parse_nodes(multi=True)
+        else:
+            nodes = self._parse_nodes(multi=False)
+
+        # Create construct even with no nodes - compiler will use subscript signatures
+        return Construct(op_type, nodes, line)
+
+    def _try_parse_operator(self) -> ConstructType | None:
+        """Try to parse a construct operator. Returns None if not found."""
+        if self._check(TokenType.COUNTERSIGN):
+            self._advance()
+            return ConstructType.COUNTERSIGN
+
+        if self._check(TokenType.CANONIZE_FWD):
+            self._advance()
+            return ConstructType.CANONIZE_FWD
+
+        if self._check(TokenType.CANONIZE_BWD):
+            self._advance()
+            return ConstructType.CANONIZE_BWD
+
+        if self._check(TokenType.CONNOTATE_FWD):
+            self._advance()
+            return ConstructType.CONNOTATE_FWD
+
+        if self._check(TokenType.CONNOTATE_BWD):
+            self._advance()
+            return ConstructType.CONNOTATE_BWD
+
+        if self._check(TokenType.UNDERSIGN):
+            self._advance()
+            return ConstructType.UNDERSIGN
+
+        return None
+
+    def _parse_nodes(self, multi: bool) -> list[Node]:
+        """Parse one or more nodes."""
+        nodes: list[Node] = []
+
+        while not self._at_end():
+            node = self._try_parse_node()
+            if node:
+                nodes.append(node)
+                if not multi:
+                    break  # Single node only
             else:
-                # For nested KLineExpr as sig, just use a placeholder
-                # This is a more complex case
-                nodes.append(KNodeRef(Identifier("", kline.line, kline.column), nested_kline=kline))
-
-            # Skip newlines between indented KLines
-            while self._match(TokenType.NEWLINE):
-                pass
-
-        # Consume DEDENT
-        self._expect(TokenType.DEDENT, "Expected DEDENT to close indented block")
+                break
 
         return nodes
+
+    def _try_parse_node(self) -> Node | None:
+        """Try to parse a single node (signature, string, or number)."""
+        if self._check(TokenType.SIGNATURE):
+            token = self._advance()
+            return self._make_signature(token)
+
+        if self._check(TokenType.STRING):
+            token = self._advance()
+            return StringLiteral(token.value, token.line, token.column)
+
+        if self._check(TokenType.NUMBER):
+            token = self._advance()
+            return NumberLiteral(token.value, token.line, token.column)
+
+        return None
+
+    def _make_signature(self, token: Token) -> Signature:
+        """Create a Signature from a token."""
+        return Signature(token.value, None, token.line, token.column)
+
+    def _peek(self) -> Token:
+        """Return current token without advancing."""
+        return self.tokens[self.pos]
+
+    def _check(self, token_type: TokenType) -> bool:
+        """Check if current token is of given type."""
+        if self._at_end():
+            return False
+        return self._peek().type == token_type
+
+    def _advance(self) -> Token:
+        """Advance and return current token."""
+        if not self._at_end():
+            token = self.tokens[self.pos]
+            self.pos += 1
+            return token
+        return self.tokens[-1]  # EOF
+
+    def _expect(self, token_type: TokenType) -> Token:
+        """Expect a specific token type, raise error if not found."""
+        if self._check(token_type):
+            return self._advance()
+        raise ParseError(f"Expected {token_type.name}", self._peek())
+
+    def _at_end(self) -> bool:
+        """Check if at end of tokens."""
+        return self._peek().type == TokenType.EOF

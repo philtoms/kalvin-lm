@@ -1,7 +1,7 @@
 """Compiler for KScript AST to compiled entries."""
 
 from kalvin.abstract import KLine, KNodes, KSig
-from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer
+from kalvin.mod_tokenizer import ModTokenizer, Mod64Tokenizer
 
 from .ast import (
     Construct,
@@ -12,6 +12,7 @@ from .ast import (
     Script,
     Signature,
     StringLiteral,
+    NodeType,
 )
 
 
@@ -29,31 +30,59 @@ class CompiledEntry(KLine):
 
     @classmethod
     def encode(
-        cls, sig: str, nodes: str | None | list[str], tokenizer: ModTokenizer
+        cls, sig: str, nodes: str | None | list[str], tokenizer: ModTokenizer, *, nodes_are_literals: bool = False
     ) -> "CompiledEntry":
-        """Encode string signature/nodes to token IDs using packed encoding."""
+        """Encode string signature/nodes to token IDs.
+
+        Signatures are always packed (PACKED_BIT set) using tokenizer.
+        Nodes are packed by default, but literals are unpacked (no PACKED_BIT).
+        For literals, each character is encoded as (ord(char) << 1), leaving bit 0 clear.
+        """
         sig_id = tokenizer.encode(sig, pack=True)[0]
 
         if nodes is None:
             return cls(signature=sig_id, nodes=None)
         elif isinstance(nodes, str):
-            node_id = tokenizer.encode(nodes, pack=True)[0]
-            return cls(signature=sig_id, nodes=node_id)
+            if nodes_are_literals:
+                # Literal: encode each char as (ord << 1)
+                node_ids = [ord(c) << 1 for c in nodes]
+                return cls(signature=sig_id, nodes=node_ids)
+            else:
+                # Signature: single packed token
+                node_id = tokenizer.encode(nodes, pack=True)[0]
+                return cls(signature=sig_id, nodes=node_id)
         else:
-            # For list of nodes: each node gets its own packed token
-            node_ids = [tokenizer.encode(n, pack=True)[0] for n in nodes]
-            return cls(signature=sig_id, nodes=node_ids)
+            # For list of nodes: each node gets its own token(s)
+            all_node_ids: list[int] = []
+            for n in nodes:
+                if nodes_are_literals:
+                    all_node_ids.extend(ord(c) << 1 for c in n)
+                else:
+                    all_node_ids.append(tokenizer.encode(n, pack=True)[0])
+            return cls(signature=sig_id, nodes=all_node_ids)
 
     def decode(self, tokenizer: ModTokenizer) -> tuple[str, str | None | list[str]]:
-        """Decode token IDs back to strings using packed decoding."""
-        sig = tokenizer.decode([self.signature], pack=True)
+        """Decode token IDs back to strings using auto-detection of packed/literal."""
+        from kalvin.mod_tokenizer import PACKED_BIT
+
+        # Auto-detect packed vs literal based on PACKED_BIT
+        sig = tokenizer.decode([self.signature], pack=None)
         # Use _nodes to get raw value (None, int, or list) not the normalized list
         if self._nodes is None:
             return sig, None
         elif isinstance(self._nodes, int):
-            return sig, tokenizer.decode([self._nodes], pack=True)
+            decoded = tokenizer.decode([self._nodes], pack=None)
+            return sig, decoded
         else:
-            return sig, [tokenizer.decode([n], pack=True) for n in self._nodes]
+            # Check if all tokens are unpacked (literal) or packed (signatures)
+            all_unpacked = all((n & PACKED_BIT) == 0 for n in self._nodes)
+            if all_unpacked:
+                # Literal: each token is (ord << 1), decode by shifting right
+                decoded = "".join(chr(n >> 1) for n in self._nodes)
+                return sig, decoded
+            else:
+                # Multiple packed signatures: return list
+                return sig, [tokenizer.decode([n], pack=None) for n in self._nodes]
 
 
 class Compiler:
@@ -61,7 +90,7 @@ class Compiler:
 
     def __init__(self, tokenizer: ModTokenizer | None = None):
         self.entries: list[CompiledEntry] = []
-        self.tokenizer = tokenizer or Mod32Tokenizer()
+        self.tokenizer = tokenizer or Mod64Tokenizer()
 
     def compile(self, file: KScriptFile) -> list[CompiledEntry]:
         """Compile a KScriptFile to entries."""
@@ -71,10 +100,10 @@ class Compiler:
 
     def _compile_script(self, script: Script) -> None:
         """Compile a single script with immediate binding semantics."""
-        sig_name = script.signature.name
+        sig = script.signature
 
         # Get all nodes for constructs, using subscript signatures if needed
-        constructs_with_nodes = []
+        constructs_with_nodes: list[tuple[Construct, list[Node]]] = []
         for i, construct in enumerate(script.constructs):
             is_last = i == len(script.constructs) - 1
             nodes = self._get_construct_nodes(construct, script, is_last)
@@ -86,12 +115,12 @@ class Compiler:
         if not has_valid_constructs:
             # Identity script: {sig: None}
             self.entries.append(
-                CompiledEntry.encode(sig_name, None, self.tokenizer)
+                CompiledEntry.encode(sig.id, None, self.tokenizer)
             )
         else:
             # Process constructs with immediate binding
-            current_sig = sig_name
-            previous_nodes: list[str] = []
+            current_sig = sig
+            previous_nodes: list[Node] = []
 
             for construct, nodes in constructs_with_nodes:
                 if nodes:
@@ -100,7 +129,7 @@ class Compiler:
                     # Update for next construct
                     previous_nodes = nodes
                     last_node = nodes[-1]
-                    if self._is_signature_like(last_node):
+                    if isinstance(last_node, Signature):
                         current_sig = last_node
 
         # Compile subscripts
@@ -109,19 +138,19 @@ class Compiler:
 
     def _get_construct_nodes(
         self, construct: Construct, script: Script, is_last: bool
-    ) -> list[str]:
+    ) -> list[Node]:
         """Get nodes for a construct, including subscript signatures if needed."""
         # Start with inline nodes
-        nodes = [self._node_to_string(n) for n in construct.nodes]
+        nodes: list[Node] = construct.nodes
 
         # If no inline nodes and this is the last construct, use subscript signatures
         if not nodes and is_last and script.subscripts:
-            nodes = [sub.signature.name for sub in script.subscripts]
+            nodes = [sub.signature for sub in script.subscripts]
 
         return nodes
 
     def _compile_construct(
-        self, sig: str, construct: Construct, nodes: list[str], previous_nodes: list[str]
+        self, sig: Signature, construct: Construct, nodes: list[Node], previous_nodes: list[Node]
     ) -> None:
         """Compile a construct to entries based on its type."""
         construct_type = construct.type
@@ -129,13 +158,14 @@ class Compiler:
             # Bidirectional: {sig: node} AND {node: sig}
             # But if node is a literal, recover undersign (no reverse)
             for node in nodes:
+                is_literal = not isinstance(node, Signature)
                 self.entries.append(
-                    CompiledEntry.encode(sig, node, self.tokenizer)
+                    CompiledEntry.encode(sig.id, node.id, self.tokenizer, nodes_are_literals=is_literal)
                 )
                 # Only add reverse if node is signature-like (not a literal)
-                if self._is_signature_like(node):
+                if isinstance(node, Signature):
                     self.entries.append(
-                        CompiledEntry.encode(node, sig, self.tokenizer)
+                        CompiledEntry.encode(node.id, sig.id, self.tokenizer)
                     )
 
         elif construct_type in (ConstructType.CANONIZE_FWD, ConstructType.CANONIZE_BWD):
@@ -156,55 +186,46 @@ class Compiler:
                         # No nodes before parent, use previous nodes as children
                         children = previous_nodes if previous_nodes else [sig]
 
+                    child_node_ids = [n.id for n in children]
+
                     self.entries.append(
-                        CompiledEntry.encode(parent, children, self.tokenizer)
+                        CompiledEntry.encode(parent.id, child_node_ids, self.tokenizer)
                     )
             else:
                 # Forward canonize: {sig: [nodes...]}
                 self.entries.append(
-                    CompiledEntry.encode(sig, nodes, self.tokenizer)
+                    CompiledEntry.encode(sig.id, [n.id for n in nodes], self.tokenizer)
                 )
 
         elif construct_type == ConstructType.CONNOTATE_FWD:
             # Forward connotate: {sig: [node]} AND {node: None}
             for node in nodes:
+                is_literal = not isinstance(node, Signature)
                 self.entries.append(
-                    CompiledEntry.encode(sig, [node], self.tokenizer)
+                    CompiledEntry.encode(sig.id, [node.id], self.tokenizer, nodes_are_literals=is_literal)
                 )
                 self.entries.append(
-                    CompiledEntry.encode(node, None, self.tokenizer)
+                    CompiledEntry.encode(node.id, None, self.tokenizer)
                 )
 
         elif construct_type == ConstructType.CONNOTATE_BWD:
             # Backward connotate: {node: [sig]} AND {sig: None}
             for node in nodes:
+                is_literal = not isinstance(node, Signature)
                 self.entries.append(
-                    CompiledEntry.encode(node, [sig], self.tokenizer)
+                    CompiledEntry.encode(node.id, [sig.id], self.tokenizer, nodes_are_literals=is_literal)
                 )
             self.entries.append(
-                CompiledEntry.encode(sig, None, self.tokenizer)
+                CompiledEntry.encode(sig.id, None, self.tokenizer)
             )
 
         elif construct_type == ConstructType.UNDERSIGN:
             # Undersign: {sig: node} AND {node: None}
             for node in nodes:
+                is_literal = not isinstance(node, Signature)
                 self.entries.append(
-                    CompiledEntry.encode(sig, node, self.tokenizer)
+                    CompiledEntry.encode(sig.id, node.id, self.tokenizer, nodes_are_literals=is_literal)
                 )
                 self.entries.append(
-                    CompiledEntry.encode(node, None, self.tokenizer)
+                    CompiledEntry.encode(node.id, None, self.tokenizer)
                 )
-
-    def _node_to_string(self, node: Node) -> str:
-        """Convert a node to its string representation."""
-        if isinstance(node, Signature):
-            return node.name
-        elif isinstance(node, StringLiteral):
-            return node.value
-        elif isinstance(node, NumberLiteral):
-            return node.value
-        return str(node)
-
-    def _is_signature_like(self, value: str) -> bool:
-        """Check if a value looks like a signature (all uppercase)."""
-        return value.isupper() and value.isalpha()

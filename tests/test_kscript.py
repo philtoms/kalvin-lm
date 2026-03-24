@@ -1,283 +1,414 @@
-"""Tests for KScript lexer, parser, and interpreter."""
+"""Tests for KScript compiler."""
 
-import pytest
+import json
+from pathlib import Path
+from textwrap import dedent
 
-from kscript import (
-    InterpretResult,
-    KLineExpr,
-    KScriptAst,
-    Lexer,
-    LexerError,
-    ParseError,
-    Parser,
-    TokenType,
-    interpret_script,
-    parse,
-    Token,
-)
+from kalvin.mod_tokenizer import Mod64Tokenizer
+from kscript import KScript
+from kscript.compiler import Compiler, CompiledEntry
+from kscript.lexer import Lexer
+from kscript.parser import Parser
+
+# Shared tokenizer for tests (Mod64 for full ASCII support)
+_tokenizer = Mod64Tokenizer()
+
+
+def compile_source(source: str) -> list[CompiledEntry]:
+    """Helper to compile source string to entries."""
+    tokens = Lexer(source).tokenize()
+    kscript_file = Parser(tokens).parse()
+    return Compiler(_tokenizer).compile(kscript_file)
+
+
+def entries_to_dict(entries: list[CompiledEntry]) -> dict[str, list[str] | str | None]:
+    """Convert entries to dict for easier comparison (decoded)."""
+    result = {}
+    for e in entries:
+        sig, nodes = e.decode(_tokenizer)
+        result[sig] = nodes
+    return result
 
 
 class TestLexer:
-    """Tests for the KScript lexer."""
+    """Tests for the lexer."""
 
-    def test_tokenize_keywords(self):
-        """Test tokenizing load and save keywords."""
-        lexer = Lexer("load save")
-        tokens = lexer.tokenize()
-        assert len(tokens) == 3  # load, save, EOF
-        assert tokens[0].type == TokenType.LOAD
-        assert tokens[1].type == TokenType.SAVE
-        assert tokens[2].type == TokenType.EOF
+    def test_tokenize_signature(self) -> None:
+        """Test tokenizing a simple signature."""
+        tokens = Lexer("A").tokenize()
+        assert len(tokens) == 2  # SIGNATURE + EOF
+        assert tokens[0].type.name == "SIGNATURE"
+        assert tokens[0].value == "A"
 
-    def test_tokenize_significance_operators(self):
-        """Test tokenizing significance operators."""
-        lexer = Lexer("= => > < !=")
-        tokens = lexer.tokenize()
-        assert tokens[0].type == TokenType.S1
-        assert tokens[1].type == TokenType.S2
-        assert tokens[2].type == TokenType.S3_FORWARD
-        assert tokens[3].type == TokenType.S3_BACKWARD
-        assert tokens[4].type == TokenType.S4
+    def test_tokenize_operators(self) -> None:
+        """Test tokenizing operators."""
+        tokens = Lexer("A == B").tokenize()
+        assert tokens[1].type.name == "COUNTERSIGN"
+        assert tokens[1].value == "=="
 
-    def test_tokenize_identifiers(self):
-        """Test tokenizing identifiers."""
-        lexer = Lexer("hello world")
-        tokens = lexer.tokenize()
-        assert tokens[0].type == TokenType.IDENTIFIER
-        assert tokens[0].value == "hello"
-        assert tokens[1].type == TokenType.IDENTIFIER
-        assert tokens[1].value == "world"
+    def test_tokenize_string(self) -> None:
+        """Test tokenizing string literals."""
+        tokens = Lexer('A = "hello"').tokenize()
+        assert any(t.type.name == "STRING" and t.value == '"hello"' for t in tokens)
 
-    def test_tokenize_paths(self):
-        """Test tokenizing file paths."""
-        lexer = Lexer("/path/to/file.bin")
-        tokens = lexer.tokenize()
-        assert tokens[0].type == TokenType.IDENTIFIER
-        assert tokens[0].value == "/path/to/file.bin"
+    def test_tokenize_string_with_escape(self) -> None:
+        """Test tokenizing string with escape."""
+        tokens = Lexer(r'A = "\"hello\""').tokenize()
+        assert any(t.type.name == "STRING" for t in tokens)
 
-    def test_tokenize_inline_comment(self):
-        """Test that comments in parentheses are stripped."""
-        lexer = Lexer("V(erb)")
-        tokens = lexer.tokenize()
-        assert len(tokens) == 2  # V, EOF
-        assert tokens[0].type == TokenType.IDENTIFIER
-        assert tokens[0].value == "V"
+    def test_tokenize_number(self) -> None:
+        """Test tokenizing number literals."""
+        tokens = Lexer("A = 42").tokenize()
+        assert any(t.type.name == "NUMBER" and t.value == "42" for t in tokens)
 
-    def test_tokenize_comment_splice(self):
-        """Test that inline comments splice identifiers."""
-        lexer = Lexer("hel(comment)lo")
-        tokens = lexer.tokenize()
-        assert tokens[0].type == TokenType.IDENTIFIER
-        assert tokens[0].value == "hello"
+    def test_tokenize_comment(self) -> None:
+        """Test tokenizing comments."""
+        tokens = Lexer("(this is a comment)").tokenize()
+        assert tokens[0].type.name == "COMMENT"
 
-    def test_tokenize_comment_between_tokens(self):
-        """Test comments between tokens."""
-        lexer = Lexer("hello (this is a comment) world")
-        tokens = lexer.tokenize()
-        assert len(tokens) == 3  # hello, world, EOF
-        assert tokens[0].value == "hello"
-        assert tokens[1].value == "world"
+    def test_tokenize_nested_comment(self) -> None:
+        """Test nested comments (greedy match)."""
+        tokens = Lexer("(comment (nested))").tokenize()
+        assert tokens[0].type.name == "COMMENT"
+        assert tokens[0].value == "(comment (nested))"
 
-    def test_tokenize_nested_comments(self):
-        """Test nested parentheses in comments."""
-        lexer = Lexer("hello (nested (comment) here) world")
-        tokens = lexer.tokenize()
-        assert len(tokens) == 3
-        assert tokens[0].value == "hello"
-        assert tokens[1].value == "world"
+    def test_tokenize_unterminated_comment(self) -> None:
+        """Test unterminated comment (greedy to EOL)."""
+        tokens = Lexer("(no closing").tokenize()
+        assert tokens[0].type.name == "COMMENT"
 
-    def test_unterminated_comment_raises_error(self):
-        """Test that unterminated comments raise LexerError."""
-        lexer = Lexer("hello (unterminated")
-        with pytest.raises(LexerError):
-            lexer.tokenize()
+    def test_tokenize_indentation(self) -> None:
+        """Test tokenizing indentation."""
+        source = "A\n  B"
+        tokens = Lexer(source).tokenize()
+        assert any(t.type.name == "INDENT" for t in tokens)
+        assert any(t.type.name == "DEDENT" for t in tokens)
 
 
 class TestParser:
-    """Tests for the KScript parser."""
+    """Tests for the parser."""
 
-    def test_parse_load(self):
-        """Test parsing load statement."""
-        ast = parse("load /path/to/model.bin")
-        assert len(ast.statements) == 1
-        stmt = ast.root
-        assert isinstance(stmt, type(parse("load x").root))
-        assert stmt.path.name == "/path/to/model.bin"
+    def test_parse_identity_script(self) -> None:
+        """Test parsing an identity script."""
+        tokens = Lexer("A").tokenize()
+        kscript = Parser(tokens).parse()
+        assert len(kscript.scripts) == 1
+        assert kscript.scripts[0].signature.id == "A"
+        assert len(kscript.scripts[0].constructs) == 0
 
-    def test_parse_save(self):
-        """Test parsing save statement."""
-        ast = parse("save /path/to/output.bin")
-        assert len(ast.statements) == 1
-        stmt = ast.root
-        assert stmt.path.name == "/path/to/output.bin"
+    def test_parse_countersign(self) -> None:
+        """Test parsing a countersign construct."""
+        tokens = Lexer("A == B").tokenize()
+        kscript = Parser(tokens).parse()
+        assert len(kscript.scripts) == 1
+        script = kscript.scripts[0]
+        assert len(script.constructs) == 1
+        construct = script.constructs[0]
+        assert construct.type.name == "COUNTERSIGN"
+        assert len(construct.nodes) == 1
 
-    def test_parse_save_without_path(self):
-        """Test parsing save without path."""
-        ast = parse("save")
-        assert len(ast.statements) == 1
-        stmt = ast.root
-        assert stmt.path is None
+    def test_parse_multiple_scripts(self) -> None:
+        """Test parsing multiple scripts."""
+        tokens = Lexer("A\nB").tokenize()
+        kscript = Parser(tokens).parse()
+        assert len(kscript.scripts) == 2
 
-    def test_parse_simple_kline(self):
-        """Test parsing simple KLine."""
-        ast = parse("hello")
-        assert len(ast.statements) == 1
-        kline = ast.root
-        assert isinstance(kline, KLineExpr)
-        assert kline.sig.name == "hello"
-        assert kline.significance is None
-        assert kline.nodes == []
+    def test_parse_canonize_multi(self) -> None:
+        """Test parsing multi-node canonize."""
+        tokens = Lexer("A => B C D").tokenize()
+        kscript = Parser(tokens).parse()
+        script = kscript.scripts[0]
+        assert script.constructs[0].type.name == "CANONIZE_FWD"
+        assert len(script.constructs[0].nodes) == 3
 
-    def test_parse_kline_with_s1(self):
-        """Test parsing KLine with S1 significance."""
-        ast = parse("greeting = hello world")
-        kline = ast.root
-        assert kline.significance.value == "="
-        assert len(kline.nodes) == 2
-        assert kline.nodes[0].identifier.name == "hello"
-        assert kline.nodes[1].identifier.name == "world"
-
-    def test_parse_kline_with_s2(self):
-        """Test parsing KLine with S2 significance."""
-        ast = parse("greeting => hello")
-        kline = ast.root
-        assert kline.significance.value == "=>"
-
-    def test_parse_kline_with_s3_forward(self):
-        """Test parsing KLine with S3 forward significance."""
-        ast = parse("greeting > hello")
-        kline = ast.root
-        assert kline.significance.value == ">"
-
-    def test_parse_kline_with_s3_backward(self):
-        """Test parsing KLine with S3 backward significance."""
-        ast = parse("greeting < hello")
-        kline = ast.root
-        assert kline.significance.value == "<"
-
-    def test_parse_kline_with_s4(self):
-        """Test parsing KLine with S4 significance."""
-        ast = parse("greeting != hello")
-        kline = ast.root
-        assert kline.significance.value == "!="
-
-    def test_parse_multiple_statements(self):
-        """Test parsing multiple statements."""
-        ast = parse("""
-            load /path/to/model.bin
-            greeting = hello world
-            question > greeting
-            save /path/to/output.bin
-        """)
-        assert len(ast.statements) == 4
-
-    def test_parse_with_inline_comments(self):
-        """Test parsing with inline comments."""
-        ast = parse("sit > V(erb)")
-        kline = ast.root
-        assert kline.sig.name == "sit"
-        assert kline.nodes[0].identifier.name == "V"
+    def test_parse_subscript(self) -> None:
+        """Test parsing subscripts."""
+        source = "A =>\n  B\n  C"
+        tokens = Lexer(source).tokenize()
+        kscript = Parser(tokens).parse()
+        script = kscript.scripts[0]
+        assert len(script.subscripts) == 2
 
 
-    def test_parse_nested_connotations(self):
-        """Test parsing with nested connotations."""
-        script = """
-            (Mary had a little lamb - anything in brackets is a comment btw)
-            MHALL = SVO =>
-                S(ubject) = M
-                V(verb) = H
-                O(bject) = ALL =>
-                    A = D(et)
-                    L = M(od)
-                    L = O
-            """
-        ast = parse(script)
-        kline = ast.root
-        assert kline.sig.name == "MHALL"
-        assert kline.nodes[0].identifier.name == "SVO"
+class TestCompiler:
+    """Tests for the compiler."""
+
+    def test_compile_identity(self) -> None:
+        """Test compiling identity script."""
+        entries = compile_source("A")
+        assert len(entries) == 1
+        sig, nodes = entries[0].decode(_tokenizer)
+        assert sig == "A"
+        assert nodes is None
+
+    def test_compile_countersign(self) -> None:
+        """Test compiling countersign (bidirectional)."""
+        entries = compile_source("A == B")
+        d = entries_to_dict(entries)
+        assert d["A"] == "B"
+        assert d["B"] == "A"
+
+    def test_compile_undersign(self) -> None:
+        """Test compiling undersign."""
+        entries = compile_source("A = B")
+        # Should produce 2 entries: {A: B} and {B: None}
+        assert len(entries) == 2
+        sig1, nodes1 = entries[0].decode(_tokenizer)
+        sig2, nodes2 = entries[1].decode(_tokenizer)
+        assert sig1 == "A" and nodes1 == "B"
+        assert sig2 == "B" and nodes2 is None
+
+    def test_compile_connotate_fwd(self) -> None:
+        """Test compiling forward connotate."""
+        entries = compile_source("A > B")
+        # Should produce 2 entries: {A: [B]} and {B: None}
+        assert len(entries) == 2
+        sig1, nodes1 = entries[0].decode(_tokenizer)
+        sig2, nodes2 = entries[1].decode(_tokenizer)
+        assert sig1 == "A" and nodes1 == ["B"]
+        assert sig2 == "B" and nodes2 is None
+
+    def test_compile_connotate_bwd(self) -> None:
+        """Test compiling backward connotate."""
+        entries = compile_source("A < B")
+        # Should produce 2 entries: {B: [A]} and {A: None}
+        assert len(entries) == 2
+        sig1, nodes1 = entries[0].decode(_tokenizer)
+        sig2, nodes2 = entries[1].decode(_tokenizer)
+        assert sig1 == "B" and nodes1 == ["A"]
+        assert sig2 == "A" and nodes2 is None
+
+    def test_compile_canonize_fwd(self) -> None:
+        """Test compiling forward canonize."""
+        entries = compile_source("AB => C D")
+        d = entries_to_dict(entries)
+        assert d["AB"] == ["C", "D"]
+
+    def test_compile_canonize_bwd(self) -> None:
+        """Test compiling backward canonize."""
+        # Backward canonize: A <= B C means {A: [B, C]}
+        # The last node is the parent, the rest are children
+        entries = compile_source("X <= A B")
+        d = entries_to_dict(entries)
+        assert d["B"] == ["A"]
+
+    def test_compile_string_literal(self) -> None:
+        """Test compiling string literal.
+
+        Literals are encoded unpacked (one token per char, no PACKED_BIT).
+        They decode to their original string value, preserving character order.
+        """
+        entries = compile_source(r'A = "\"hello\""')
+        d = entries_to_dict(entries)
+        # Literals decode to original value including escape sequences
+        assert d["A"] == r'"\"hello\""'
+
+    def test_compile_number_literal(self) -> None:
+        """Test compiling number literal.
+
+        Literals are encoded unpacked (one token per char, no PACKED_BIT).
+        They decode to their original string value, preserving character order.
+        """
+        entries = compile_source("A = 42")
+        d = entries_to_dict(entries)
+        # Literals now decode to original value "42", not "24"
+        assert d["A"] == "42"
+
+    def test_compile_incomplete_construct(self) -> None:
+        """Test incomplete construct falls back to identity."""
+        entries = compile_source("A ==")
+        d = entries_to_dict(entries)
+        assert d["A"] is None
+
+    def test_compile_literal_countersign(self) -> None:
+        """Test literal countersign recovers undersign.
+
+        Per recovery semantics: A == 1 => {A: 1} only (no reverse)
+        Literals should never be used as signatures.
+        """
+        entries = compile_source("A == 1")
+        # Should produce only 1 entry: {A: 1}, not {1: A}
+        assert len(entries) == 1
+        sig, nodes = entries[0].decode(_tokenizer)
+        assert sig == "A"
+        assert nodes == "1"  # "1" decodes as "1" (single char)
+
+    def test_compile_multiple_constructs(self) -> None:
+        """Test multiple constructs with immediate binding."""
+        entries = compile_source("A => B => C")
+        d = entries_to_dict(entries)
+        assert d["A"] == ["B"]
+        assert d["B"] == ["C"]
+
+    def test_compile_subscript_as_nodes(self) -> None:
+        """Test subscript signatures as nodes."""
+        source = "A =>\n  B\n  C"
+        entries = compile_source(source)
+        d = entries_to_dict(entries)
+        assert d["A"] == ["B", "C"]
+        assert d["B"] is None
+        assert d["C"] is None
+
+
+class TestKScriptAPI:
+    """Tests for the KScript API class."""
+
+    def test_inline_source(self) -> None:
+        """Test inline source compilation."""
+        model = KScript("A == B")
+        assert len(model.entries) == 2
+        d = entries_to_dict(model.entries)
+        assert d["A"] == "B"
+        assert d["B"] == "A"
+
+    def test_extend_base(self) -> None:
+        """Test extending a base model."""
+        base = KScript("A == B")
+        extended = KScript("C => A D", base)
+        assert len(extended.entries) == 3
+        d = entries_to_dict(extended.entries)
+        assert "A" in d
+        assert "B" in d
+        assert "C" in d
+        # Canonize doesn't create identity for nodes, so D is in C's nodes
+        assert d["C"] == ["A", "D"]
+
+    def test_to_jsonl_with_duplicates(self) -> None:
+        """Test to_jsonl preserves multiple entries with same signature."""
+        model = KScript("A > B\nA > C")
+        m = model.to_jsonl()
+        # Both connotate entries should be preserved
+        assert '{"A": ["B"]}' in m
+        assert '{"A": ["C"]}' in m
+
+
+class TestJSONIO:
+    """Tests for JSON/JSONL input/output."""
+
+    def test_write_json(self, tmp_path: Path) -> None:
+        """Test writing to JSON file."""
+        model = KScript("A == B")
+        json_path = tmp_path / "model.json"
+        model.output(json_path)
+
+        content = json_path.read_text()
+        data = json.loads(content)
+        assert len(data) == 2
+        assert {"A": "B"} in data
+        assert {"B": "A"} in data
+
+    def test_write_jsonl(self, tmp_path: Path) -> None:
+        """Test writing to JSONL file."""
+        model = KScript("A == B")
+        jsonl_path = tmp_path / "model.jsonl"
+        model.output(jsonl_path)
+
+        lines = jsonl_path.read_text().strip().split("\n")
+        assert len(lines) == 2
+        assert json.loads(lines[0]) == {"A": "B"}
+        assert json.loads(lines[1]) == {"B": "A"}
+
+    def test_load_json(self, tmp_path: Path) -> None:
+        """Test loading from JSON file."""
+        # Write JSON file manually
+        json_path = tmp_path / "model.json"
+        json_path.write_text('[{"A": "B"}, {"B": "A"}]')
+
+        model = KScript(json_path)
+        assert len(model.entries) == 2
+        d = entries_to_dict(model.entries)
+        assert d["A"] == "B"
+        assert d["B"] == "A"
+
+    def test_load_jsonl(self, tmp_path: Path) -> None:
+        """Test loading from JSONL file."""
+        jsonl_path = tmp_path / "model.jsonl"
+        jsonl_path.write_text('{"A": "B"}\n{"B": "A"}\n')
+
+        model = KScript(jsonl_path)
+        assert len(model.entries) == 2
+        d = entries_to_dict(model.entries)
+        assert d["A"] == "B"
+        assert d["B"] == "A"
+
+    def test_roundtrip_json(self, tmp_path: Path) -> None:
+        """Test roundtrip through JSON."""
+        original = KScript("A == B")
+        json_path = tmp_path / "model.json"
+        original.output(json_path)
+
+        loaded = KScript(json_path)
+        assert loaded.to_jsonl() == original.to_jsonl()
+
+    def test_roundtrip_jsonl(self, tmp_path: Path) -> None:
+        """Test roundtrip through JSONL."""
+        original = KScript("A == B")
+        jsonl_path = tmp_path / "model.jsonl"
+        original.output(jsonl_path)
+
+        loaded = KScript(jsonl_path)
+        assert loaded.to_jsonl() == original.to_jsonl()
+
+    def test_extend_from_json(self, tmp_path: Path) -> None:
+        """Test extending model from JSON file."""
+        base_path = tmp_path / "base.json"
+        base_path.write_text('[{"A": "B"}]')
+
+        extended = KScript("C == D", KScript(base_path))
+        assert len(extended.entries) == 3  # A:B, C:D, D:C
+        d = entries_to_dict(extended.entries)
+        assert d["A"] == "B"
+        assert d["C"] == "D"
 
 
 class TestIntegration:
-    """End-to-end integration tests."""
+    """Integration tests."""
 
-    def test_full_script(self):
-        """Test a complete KScript example."""
-        source = """
-            load /path/to/model.bin
+    def test_example_compilation(self) -> None:
+        """Test the example from the plan.
 
-            greeting = hello world
-            question > greeting
-
-            save /path/to/output.bin
+        Note: Multi-character signatures are encoded by OR-ing character bits together.
+        When decoded, characters are sorted by bit position, not original order.
+        E.g., "MHALL" decodes as "AHLM" (A, H, L, M sorted by bit position).
         """
-        result = interpret_script(source)
+        source = dedent("""\
+            (Mary had a little lamb)
+            MHALL == SVO =>
+               S(ubject) = M
+               V(erb) = H
+               O(bject) = ALL =>
+                 A = D(et)
+                 L = M(od)
+                 L > O
+            X==
+            """)
+        entries = compile_source(source)
 
-        assert result.load_paths == ["/path/to/model.bin"]
-        assert result.save_path == "/path/to/output.bin"
-        assert len(result.model) >= 1
+        # Verify we get entries
+        assert len(entries) > 0
 
-    def test_nlp_style_script(self):
-        """Test NLP-style script with inline comments."""
-        source = """
-            sit > V(erb)
-            N(oun) = cat dog
-            S(entence) => sit N(oun)
-        """
-        result = interpret_script(source)
+        # Decode entries for easier checking
+        # Note: multi-char signatures decode with chars sorted by bit position
+        decoded = [e.decode(_tokenizer) for e in entries]
+        sigs = [sig for sig, _ in decoded]
 
-        # Comments should be stripped
-        assert len(result.model) >= 3
+        # Verify specific signatures exist (decoded order may differ from source)
+        # MHALL -> AHLM (sorted by bit position)
+        # SVO -> OSV (sorted by bit position)
+        assert "AHLM" in sigs
+        assert "OSV" in sigs
+        assert "X" in sigs
 
-    def test_multiline_kline(self):
-        """Test multi-line KLine with indented nodes."""
-        source = """
-            MHALL = SVO =>
-                S < M
-                V < H
-                O < ALL
-        """
-        result = interpret_script(source)
+        # Check countersign entries (bidirectional)
+        mhall_entries = [nodes for sig, nodes in decoded if sig == "AHLM"]
+        assert "OSV" in mhall_entries
 
-        # Should have multiple KLines
-        assert len(result.model) >= 4  # MHALL, S, V, O (at minimum)
+        # SVO has two entries: one from countersign, one from canonize
+        svo_entries = [nodes for sig, nodes in decoded if sig == "OSV"]
+        assert "AHLM" in svo_entries  # countersign
+        # canonize entries preserve source order: S,V,O
+        assert ["S", "V", "O"] in svo_entries
 
-    def test_parse_with_nested_statements(self):
-        """Test parsing with inline comments."""
-        script = parse(
-        """(Mary had a little lamb - anything in brackets is a comment btw)
-        MHALL = SVO =>
-            M = S(ubject)
-            H = V(erb)
-            ALL = O(bject) =>
-                A = D(et)
-                L = M(od)
-                L = O
-        """)
-        kline = script.root
-        assert kline.sig.name == "MHALL"
-        # First relationship (=) has SVO as identifier
-        assert kline.nodes[0].identifier.name == "SVO"
-        # Second relationship (=>) has nested KLines
-        assert len(kline.relationships) == 2
-        nested = kline.relationships[1].nodes
-        # M, H, ALL are children of MHALL's =>
-        assert len(nested) == 3  # M, H, ALL
-        # Check M = S
-        assert nested[0].nested_kline.sig.name == "M"
-        assert nested[0].nested_kline.nodes[0].identifier.name == "S"
-        # Check H = V
-        assert nested[1].nested_kline.sig.name == "H"
-        assert nested[1].nested_kline.nodes[0].identifier.name == "V"
-        # Check ALL = O => (nested S2 with A, L, L)
-        all_kline = nested[2].nested_kline
-        assert all_kline.sig.name == "ALL"
-        assert all_kline.nodes[0].identifier.name == "O"
-        # ALL has 2 relationships: = O, => [A, L, L]
-        assert len(all_kline.relationships) == 2
-        # The => relationship has A, L, L as siblings
-        all_s2 = all_kline.relationships[1]
-        assert all_s2.significance.value == "=>"
-        assert len(all_s2.nodes) == 3  # A, L, L
-        assert all_s2.nodes[0].nested_kline.sig.name == "A"
-        assert all_s2.nodes[1].nested_kline.sig.name == "L"
-        assert all_s2.nodes[2].nested_kline.sig.name == "L"
+        # Verify X is identity (incomplete construct)
+        x_entries = [nodes for sig, nodes in decoded if sig == "X"]
+        assert None in x_entries

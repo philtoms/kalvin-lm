@@ -11,7 +11,7 @@ from textual.containers import Container, Horizontal
 from textual.widgets import Button, Footer, Header, Input, ListView
 
 from kalvin import Kalvin
-from kscript import interpret_script
+from kscript import KScript
 from ui.chat.dialogs import OpenDialog, SaveDialog
 from ui.chat.regions import ChatHistoryRegion, ChatRegion, ConfigRegion
 
@@ -337,33 +337,11 @@ class KalvinApp(App):
         if not script.strip():
             return
 
-        # Interpret the script using Kalvin agent
         try:
-            result = interpret_script(script, agent=self._kalvin)
+            model = KScript(script)
 
             # Build output summary
-            output_lines = [
-                f"Interpreted {len(result.model)} KLines",
-                f"Symbol table: {len(result.symbol_table)} entries",
-            ]
-
-            if result.load_paths:
-                output_lines.append(f"Load paths: {result.load_paths}")
-            if result.save_path:
-                output_lines.append(f"Save path: {result.save_path}")
-
-            # Show some symbol table entries
-            if result.symbol_table:
-                symbols = list(result.symbol_table.keys())[:5]
-                output_lines.append("Symbols: " + ", ".join(symbols))
-                if len(result.symbol_table) > 5:
-                    output_lines.append(f"  ... and {len(result.symbol_table) - 5} more")
-
-            output = "\n".join(output_lines)
-
-            # KLines are already integrated via the Kalvin agent
-            if self._kalvin:
-                output += f"\n\nModel now has {len(self._kalvin.model)} KLines"
+            output = model.to_jsonl()
 
         except Exception as e:
             output = f"Compilation error:\n{e}"

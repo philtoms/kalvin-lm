@@ -179,12 +179,11 @@ class KModel(ABC):
     """
 
     @abstractmethod
-    def add(self, kline: KLine, train: bool = False) -> bool:
+    def add(self, kline: KLine) -> bool:
         """Add a KLine to the model.
 
         Args:
             kline: KLine to add
-            train: If True, enforce training mode (dedup by signature only)
 
         Returns:
             True if added, False if rejected (duplicate)
@@ -332,12 +331,12 @@ class KAgent(ABC):
     # === Core operations ===
 
     @abstractmethod
-    def rationalise(self, kline: KLine, train: bool) -> KLine | None:
+    def rationalise(self, kline: KLine, frame: KModel | None = None) -> KLine | None:
         """Rationalise a KLine.
 
         Args:
             kline: KLine to rationalize
-            train: If True, enforce training    
+            frame: existing model context    
         """
         ...
 

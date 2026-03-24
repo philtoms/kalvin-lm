@@ -1,122 +1,66 @@
-"""AST node dataclasses for KScript parser."""
+"""AST node definitions for KScript language."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Union
-
-
-class SignificanceType(Enum):
-    """Significance level for KLine relationships."""
-
-    S1 = "="  # Prefix match
-    S2 = "=>"  # Partial positional
-    S3_FORWARD = ">"  # Unordered (forward)
-    S3_BACKWARD = "<"  # Unordered (backward)
-    S4 = "!="  # No match
-
+from typing import TypeAlias
 
 @dataclass
-class Identifier:
-    """An unquoted string identifier (KNode name or file path)."""
-
-    name: str
+class NodeType:
+    id: str
     line: int
     column: int
 
+@dataclass 
+class Signature(NodeType):
+    """A signature identifier [A-Z]+ with optional comment."""
+
+    comment: str | None  # optional (...)
 
 @dataclass
-class LoadStatement:
-    """Load command: load <path>"""
-
-    path: Identifier
-
+class StringLiteral(NodeType):
+    """A string literal "..."."""
 
 @dataclass
-class SaveStatement:
-    """Save command: save [path]"""
+class NumberLiteral(NodeType):
+    """A number literal [0-9]+."""
 
-    path: Identifier | None = None
-
-
-# Forward reference for recursive types
-KScriptStatement = Union["LoadStatement", "SaveStatement", "KLineExpr"]
+# Node types that can appear in constructs
+Node: TypeAlias = Signature | StringLiteral | NumberLiteral
 
 
-@dataclass
-class KScriptAst:
-    """Root node containing a sequence of statements."""
+class ConstructType(Enum):
+    """Types of construct operators."""
 
-    statements: list[KScriptStatement] = field(default_factory=list)
-
-    # Convenience properties for backward compatibility
-    @property
-    def root(self) -> KScriptStatement | None:
-        """Get the first relationship's significance, if any."""
-        return self.statements[0] if self.statements else None
-
-@dataclass
-class KNodeRef:
-    """
-    Reference to a KNode.
-
-    Can be either:
-    - A simple identifier reference: `hello`
-    - A nested KLine expression: `S < M` (when used in indented blocks)
-    """
-
-    identifier: Identifier
-    # Optional nested KLine - when set, this node is actually a nested KLine
-    # that should be compiled and then referenced
-    nested_kline: "KLineExpr | None" = None
-
-
-# KSig can be either an identifier or a nested KLine expression
-KSig = Union[Identifier, "KLineExpr"]
+    COUNTERSIGN = "=="  # bidirectional
+    CANONIZE_FWD = "=>"  # forward canonization
+    CANONIZE_BWD = "<="  # backward canonization
+    CONNOTATE_FWD = ">"  # forward connotation
+    CONNOTATE_BWD = "<"  # backward connotation
+    UNDERSIGN = "="  # undersign
 
 
 @dataclass
-class KLineRelationship:
-    """A single significance relationship in a KLine."""
+class Construct:
+    """A construct: operator followed by nodes."""
 
-    significance: SignificanceType
-    nodes: list[KNodeRef] = field(default_factory=list)
+    type: ConstructType
+    nodes: list[Node]
+    line: int
+    has_leading_nodes: bool = False  # True if nodes include signatures before operator
 
 
 @dataclass
-class KLineExpr:
-    """
-    KLine expression with optional significance relationships.
+class Script:
+    """A script: signature with constructs and optional subscripts."""
 
-    Forms:
-    - `name` -> Simple KLine with just a name
-    - `name = node` -> KLine with S1 relationship to node
-    - `name => node1 node2` -> KLine with S2 relationship to nodes
-    - `name > node1 node2` -> KLine with S3 forward relationship
-    - `name < node1 node2` -> KLine with S3 backward relationship
-    - `name != node` -> KLine with S4 relationship
-    - `kline1 > nodes` -> KLine referencing another KLine
+    signature: Signature
+    constructs: list[Construct]
+    subscripts: list["Script"]
+    line: int
 
-    Multi-line form:
-        MHALL = SVO =>
-            S < M
-            V < H
-            O < ALL
 
-    This creates MHALL with S1->SVO and S2->[S<M, V<H, O<ALL]
-    """
+@dataclass
+class KScriptFile:
+    """A complete KScript file with multiple top-level scripts."""
 
-    sig: KSig  # Identifier or nested KLineExpr
-    relationships: list[KLineRelationship] = field(default_factory=list)
-    line: int = 0
-    column: int = 0
-
-    # Convenience properties for backward compatibility
-    @property
-    def significance(self) -> SignificanceType | None:
-        """Get the first relationship's significance, if any."""
-        return self.relationships[0].significance if self.relationships else None
-
-    @property
-    def nodes(self) -> list[KNodeRef]:
-        """Get the first relationship's nodes, if any."""
-        return self.relationships[0].nodes if self.relationships else []
+    scripts: list[Script]

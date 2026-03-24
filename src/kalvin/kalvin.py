@@ -181,37 +181,37 @@ class Kalvin(KAgent):
         self.__frames.append(model)
         return model
 
-    def rationalise(self, kline: KLine, train: bool = False, fm: KModel | None = None) -> KLine | None:
+    def rationalise(self, kline: KLine, frame: KModel | None = None) -> KLine | None:
         """Rationalise a KLine in frame context.
 
         Args:
             kline: KLine to rationalise
             train: If True, enforce training mode
-            fm: Optional KModel frame context (internal use)
+            frame: Optional KModel frame context (internal use)
 
         Returns:
             Rationalised KLine, or KNone if not found
         """
-        if fm is None:
-            fm = self.new_frame()
+        if frame is None:
+            frame = self.new_frame()
 
         #bring nodes into frame
         for n in kline.nodes:
             nk = self._model.find_kline(n)
             if nk == KNone:
                 nk = KLine(signature=n, nodes=[]) # new token node (also at S4)
-            self.rationalise(nk, train=train, fm=fm)
+            self.rationalise(nk, frame=frame)
 
-        fast, slow = fm.query(kline.signature)
+        fast, slow = frame.query(kline.signature)
         self.__backlog = [(kline, slow)] + self.__backlog
         for fk in fast:
             for cs in self.signify(kline, fk):
                 if self._significance.has_s1(cs.signature):
-                    sv = self._significance.calculate(fm, kline, cs)
-                    fm.upgrade(cs, sv)
+                    sv = self._significance.calculate(frame, kline, cs)
+                    frame.upgrade(cs, sv)
                     return fk
 
-        fm.add(kline, train=train)
+        frame.add(kline)
         return KNone
     
     def cogitate(self):

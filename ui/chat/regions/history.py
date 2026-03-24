@@ -27,9 +27,9 @@ class ChatHistoryRegion(Container):
         background: $surface;
     }
 
-    ChatHistoryRegion ListItem {
-        padding: 1;
-    }
+    # ChatHistoryRegion ListItem {
+    #     padding: 1;
+    # }
 
     ChatHistoryRegion ListItem:hover {
         background: $accent 20%;
@@ -77,32 +77,12 @@ class ChatHistoryRegion(Container):
         list_view.clear()
 
         for i, entry in enumerate(history):
-            entry_type = entry.get("type", "chat")
-            preview = self._make_preview(entry, i)
-            list_view.append(
-                ListItem(
-                    Static(preview, classes="chat-preview"),
+            for preview in entry.get("output", []):
+                list_view.append(
+                    ListItem(
+                        Static(preview, classes="chat-preview"),
+                    )
                 )
-            )
-
-    def _make_preview(self, entry: dict, index: int) -> str:
-        """Create a preview string for a history entry."""
-        entry_type = entry.get("type", "chat")
-
-        if entry_type == "script":
-            # KScript compilation result
-            script = entry.get("script", "")
-            preview = script[:40].replace("\n", " ")
-            if len(script) > 40:
-                preview += "..."
-            return f"[Script] {preview}"
-        else:
-            # Direct chat
-            chat = entry.get("chat", "")
-            preview = chat[:40]
-            if len(chat) > 40:
-                preview += "..."
-            return f"[Chat] {preview}"
 
     def get_selected_index(self) -> int:
         """Get the index of the selected item."""
