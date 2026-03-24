@@ -2,14 +2,15 @@
 
 ## Overview
 
-Build a **new** KScript compiler in `src/ksc/` that compiles `.ks` script files into KLine graphs, outputting JSONL format.
+Build a **new** KScript compiler in `src/ksc/` that compiles `.ks` script files into KLine graphs, outputting JSONL or binary format.
 
 ## Key Decisions
 
 - **New module**: Fresh implementation in `src/ksc/` folder (separate from existing `src/kscript/`)
-- **Output**: JSONL format
-- **Signatures**: Literal A-Z identifiers (e.g., `M`, `ALL`), not tokenized
+- **Output**: JSONL format (default) or binary format (`.bin` suffix)
+- **Signatures**: Literal A-Z identifiers (e.g., `M`, `ALL`), tokenized for binary output
 - **Operators**: Use spec operators with defined semantics
+- **Tokenizer**: `Mod32Tokenizer` from `src/kalvin/mod_tokenizer.py` for encoding signatures to token IDs
 
 ## Grammar (from spec)
 
@@ -219,21 +220,45 @@ Recursive descent parser handling:
 ### Phase 5: Compiler (`compiler.py`)
 
 ```python
+from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer
+
 @dataclass
 class CompiledEntry:
     """A single compiled KLine entry.
 
     nodes semantics:
     - None: identity entry (sig exists with no children)
-    - str: single signature link (countersign, undersign)
-    - list[str]: nodes list (connotate, canonize)
+    - int: single token ID link (countersign, undersign)
+    - list[int]: nodes list (connotate, canonize)
     """
-    signature: str
-    nodes: str | None | list[str]
+    signature: int
+    nodes: int | None | list[int]
+
+    @classmethod
+    def encode(cls, sig: str, nodes: str | None | list[str], tokenizer: ModTokenizer) -> "CompiledEntry":
+        """Encode string signature/nodes to token IDs."""
+        sig_id = tokenizer.encode(sig)[0]
+        if nodes is None:
+            return cls(signature=sig_id, nodes=None)
+        elif isinstance(nodes, str):
+            return cls(signature=sig_id, nodes=tokenizer.encode(nodes)[0])
+        else:
+            return cls(signature=sig_id, nodes=tokenizer.encode("".join(nodes)))
+
+    def decode(self, tokenizer: ModTokenizer) -> tuple[str, str | None | list[str]]:
+        """Decode token IDs back to strings."""
+        sig = tokenizer.decode([self.signature])
+        if self.nodes is None:
+            return sig, None
+        elif isinstance(self.nodes, int):
+            return sig, tokenizer.decode([self.nodes])
+        else:
+            return sig, [tokenizer.decode([n]) for n in self.nodes]
 
 class Compiler:
-    def __init__(self):
+    def __init__(self, tokenizer: ModTokenizer | None = None):
         self.entries: list[CompiledEntry] = []
+        self.tokenizer = tokenizer or Mod32Tokenizer()
 
     def compile(self, file: KScriptFile) -> list[CompiledEntry]:
         """Compile KScript file."""
@@ -246,7 +271,10 @@ class Compiler:
 ### Phase 6: Output (`output.py`)
 
 ```python
-def write_jsonl(entries: list[CompiledEntry], path: Path) -> None:
+import struct
+from pathlib import Path
+
+def write_jsonl(entries: list[CompiledEntry], path: Path, tokenizer: ModTokenizer) -> None:
     """Write entries to JSONL file.
 
     Each entry becomes a separate line:
@@ -255,7 +283,57 @@ def write_jsonl(entries: list[CompiledEntry], path: Path) -> None:
     """
     with open(path, 'w') as f:
         for entry in entries:
-            f.write(json.dumps({entry.signature: entry.nodes}) + '\n')
+            sig, nodes = entry.decode(tokenizer)
+            f.write(json.dumps({sig: nodes}) + '\n')
+
+def write_bin(entries: list[CompiledEntry], path: Path) -> None:
+    """Write entries to binary file.
+
+    Binary format:
+    - Header: 4 bytes magic "KSC1"
+    - Entry count: 4 bytes (uint32, little-endian)
+    - Per entry:
+      - signature: 8 bytes (uint64, little-endian)
+      - node_type: 1 byte (0=None, 1=int, 2=list)
+      - if int: 8 bytes (uint64)
+      - if list: 4 bytes count + N*8 bytes (uint64 each)
+    """
+    with open(path, 'wb') as f:
+        f.write(b'KSC1')
+        f.write(struct.pack('<I', len(entries)))
+        for entry in entries:
+            f.write(struct.pack('<Q', entry.signature))
+            if entry.nodes is None:
+                f.write(struct.pack('<B', 0))
+            elif isinstance(entry.nodes, int):
+                f.write(struct.pack('<B', 1))
+                f.write(struct.pack('<Q', entry.nodes))
+            else:
+                f.write(struct.pack('<B', 2))
+                f.write(struct.pack('<I', len(entry.nodes)))
+                for node_id in entry.nodes:
+                    f.write(struct.pack('<Q', node_id))
+
+def read_bin(path: Path) -> list[CompiledEntry]:
+    """Read entries from binary file."""
+    entries = []
+    with open(path, 'rb') as f:
+        magic = f.read(4)
+        if magic != b'KSC1':
+            raise ValueError(f"Invalid magic: {magic}")
+        count = struct.unpack('<I', f.read(4))[0]
+        for _ in range(count):
+            sig = struct.unpack('<Q', f.read(8))[0]
+            node_type = struct.unpack('<B', f.read(1))[0]
+            if node_type == 0:
+                nodes = None
+            elif node_type == 1:
+                nodes = struct.unpack('<Q', f.read(8))[0]
+            else:
+                list_len = struct.unpack('<I', f.read(4))[0]
+                nodes = [struct.unpack('<Q', f.read(8))[0] for _ in range(list_len)]
+            entries.append(CompiledEntry(signature=sig, nodes=nodes))
+    return entries
 ```
 
 ### Phase 7: CLI and API (`__main__.py`, `__init__.py`)
@@ -284,18 +362,43 @@ def main():
 ```
 
 ```python __init__.py
+from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer
+
 class KScript:
     """Compiled KScript model supporting incremental construction."""
 
-    def __init__(self, source: str | Path, base: KScript | None = None):
+    def __init__(self, source: str | Path, base: KScript | None = None, tokenizer: ModTokenizer | None = None):
         """Compile KScript from string or file path.
 
         Args:
             source: KScript source string or path to file.
-                    Supported: .ks, .json, .jsonl
+                    Supported: .ks, .json, .jsonl, .bin
             base: Optional existing KScript to extend
+            tokenizer: Tokenizer for encoding (default: ModTokenizer)
         """
-        ...
+        self.tokenizer = tokenizer or Mod32Tokenizer()
+        self._entries: list[CompiledEntry] = []
+
+        path = Path(source)
+        if path.exists():
+            suffix = path.suffix.lower()
+            if suffix == ".bin":
+                self._entries = read_bin(path)
+            elif suffix in (".json", ".jsonl"):
+                self._entries = self._read_json(path)
+            elif suffix == ".ks":
+                self._compile(path.read_text())
+        else:
+            # Treat as inline source
+            self._compile(str(source))
+
+        if base:
+            self._entries = base._entries + self._entries
+
+    def _read_json(self, path: Path) -> list[CompiledEntry]:
+        """Read JSON/JSONL and encode to CompiledEntry."""
+        # ... decode JSON strings to token IDs
+        pass
 
     @property
     def entries(self) -> list[CompiledEntry]:
@@ -303,8 +406,21 @@ class KScript:
         ...
 
     def output(self, path: str | Path) -> None:
-        """Write entries to JSON or JSONL file based on suffix."""
-        ...
+        """Write entries to file based on suffix.
+
+        Suffix determines format:
+        - .json: JSON array
+        - .jsonl: JSONL (line-delimited)
+        - .bin: Binary format
+        """
+        path = Path(path)
+        if path.suffix == ".bin":
+            write_bin(self._entries, path)
+        elif path.suffix == ".jsonl":
+            write_jsonl(self._entries, path, self.tokenizer)
+        else:
+            # JSON array format
+            ...
 
     def to_model(self) -> list[dict[str, str | None | list[str]]]:
         """Return entries as list of dicts (preserves duplicate signatures)."""
@@ -317,17 +433,21 @@ class KScript:
 
 ## Files to Create
 
-| File                  | Purpose                      |
-| --------------------- | ---------------------------- |
-| `src/ksc/__init__.py` | Module exports + KScript API |
-| `src/ksc/__main__.py` | CLI entry point              |
-| `src/ksc/token.py`    | Token types and dataclass    |
-| `src/ksc/lexer.py`    | Lexer with indentation       |
-| `src/ksc/ast.py`      | AST node definitions         |
-| `src/ksc/parser.py`   | Recursive descent parser     |
-| `src/ksc/compiler.py` | AST to compiled entries      |
-| `src/ksc/output.py`   | JSON/JSONL reader/writer     |
-| `tests/test_ksc.py`   | Test suite                   |
+| File                  | Purpose                             |
+| --------------------- | ----------------------------------- |
+| `src/ksc/__init__.py` | Module exports + KScript API        |
+| `src/ksc/__main__.py` | CLI entry point                     |
+| `src/ksc/token.py`    | Token types and dataclass           |
+| `src/ksc/lexer.py`    | Lexer with indentation              |
+| `src/ksc/ast.py`      | AST node definitions                |
+| `src/ksc/parser.py`   | Recursive descent parser            |
+| `src/ksc/compiler.py` | AST to compiled entries (tokenized) |
+| `src/ksc/output.py`   | JSON/JSONL/binary reader/writer     |
+| `tests/test_ksc.py`   | Test suite                          |
+
+## Dependencies
+
+- `kalvin.mod_tokenizer.ModTokenizer` - Tokenizer for encoding signatures to token IDs
 
 ## Example Compilation
 
@@ -373,7 +493,13 @@ python -m ksc script.ks -out output.json
 # Compile to JSONL (line-delimited)
 python -m ksc script.ks -out output.jsonl
 
-# Extend existing model from JSON/JSONL
+# Compile to binary format (tokenized)
+python -m ksc script.ks -out output.bin
+
+# Load binary model
+python -m ksc model.bin
+
+# Extend existing model from JSON/JSONL/binary
 python -m ksc script.ks -base base.json -out extended.json
 
 # Load and extend JSON/JSONL models
@@ -389,16 +515,22 @@ from ksc import KScript
 
 # Inline model generation from string
 model1 = KScript("A == B")
-# -> KScript object containing: [{A: "B"}, {B: "A"}]
+# -> KScript object containing: [{sig: token_id_A, nodes: token_id_B}, ...]
 
 # Load from JSON/JSONL file
 model2 = KScript("path/to/model.json")
 
+# Load from binary file (tokenized)
+model3 = KScript("path/to/model.bin")
+
 # Extend model with script
-model3 = KScript("path/to/script.ks", model1)
+model4 = KScript("path/to/script.ks", model1)
 
 # Save to JSON or JSONL (based on suffix)
-model3.output("/path/to/output.json")
+model4.output("/path/to/output.json")
+
+# Save to binary (tokenized)
+model4.output("/path/to/output.bin")
 ```
 
 ```python
@@ -406,14 +538,15 @@ model3.output("/path/to/output.json")
 model = KScript("A == B C")
 model.output("output.json")  # -> JSON array
 model.output("output.jsonl") # -> JSONL
+model.output("output.bin")   # -> Binary (tokenized)
 
 # Chain multiple sources
 base = KScript("A == B")
 extended = KScript("C => A D", base)
-extended.output("extended.json")
+extended.output("extended.bin")
 
-# Load from JSON/JSONL
-loaded = KScript("existing_model.json")
+# Load from binary
+loaded = KScript("existing_model.bin")
 extended = KScript("more.ks", base=loaded)
 
 # Get model as list (preserves duplicates)
@@ -422,7 +555,8 @@ model.to_model()  # -> [{"A": "B"}, {"B": "A"}]
 # Get model as dict (last wins)
 model.to_dict()   # -> {"A": "B", "B": "A"}
 
-# Inspect entries
+# Inspect entries (token IDs)
 for entry in model.entries:
-    print(f"{entry.signature}: {entry.nodes}")
+    sig, nodes = entry.decode(model.tokenizer)
+    print(f"{sig}: {nodes}")
 ```

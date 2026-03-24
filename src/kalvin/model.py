@@ -2,7 +2,7 @@
 
 from typing import Iterator
 
-from kalvin.abstract import KLine, KModel, KNode, KNone, KSig
+from kalvin.abstract import KLine, KModel, KNode, KNone, KNodes, KSig
 
 
 class Model(KModel):
@@ -10,7 +10,7 @@ class Model(KModel):
 
     Optimized internal structure:
     - _klines: list[KLine] - flat list for O(1) iteration and indexing
-    - _by_key: dict[KSig, list[KNode]] - maps signature to indices in _klines
+    - _by_key: dict[KSig, KNodes] - maps signature to indices in _klines
     - _dedup: set[tuple[KSig, tuple[KNode, ...]]] - O(1) duplicate detection
 
     Query iteration follows reverse insertion order (newest first).
@@ -22,7 +22,7 @@ class Model(KModel):
         self.frame = frame
         """Initialize the model with optional existing KLines."""
         self._klines: list[KLine] = []  # Flat list for O(1) iteration
-        self._by_key: dict[KSig, list[KNode]] = {}  # signature -> list of indices
+        self._by_key: dict[KSig, KNodes] = {}  # signature -> list of indices
         self._dedup: set[tuple[KSig, tuple[KNode, ...]]] = set()  # For O(1) duplicate check
         if klines:
             for kline in klines:
@@ -58,6 +58,15 @@ class Model(KModel):
             self._dedup.add(key_nodes)
 
         return True
+
+    def upgrade(self, kline: KLine, significance: KSig) -> None:
+        """Upgrade the significance of a kline.
+
+        Args:
+            kline: KLine to upgrade
+            significance: New significance value to OR with existing signature
+        """
+        kline.signature |= significance
 
     def find_kline(self, signature: KSig, significance: KSig | None = None) -> KLine:
         """Find a KLine by its signature.
@@ -185,9 +194,17 @@ class Model(KModel):
 
         model = self
 
-        def get_node_klines(nodes: list[KNode]) -> list[KLine]:
+        def get_node_klines(nodes: KNodes) -> list[KLine]:
             """Get all KLines from a list of node keys."""
             found = []
+            # Handle all three KNodes subtypes
+            if nodes is None:
+                return found
+            if isinstance(nodes, int):
+                kline = model.find_kline(nodes)
+                if kline is not KNone:
+                    found.append(kline)
+                return found
             for node in nodes:
                 kline = model.find_kline(node)
                 if kline is not KNone:

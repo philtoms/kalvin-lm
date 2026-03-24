@@ -47,11 +47,13 @@ class ModTokenizer(KTokenizer):
         """Return the number of unique tokens in the vocabulary."""
         return len(self.BIT_CHAR)
 
-    def encode(self, text: str, pad_ws: bool = False) -> list[int]:
+    def encode(self, text: str, pack: bool = True, pad_ws: bool = False) -> list[int]:
         """Encode a string to token IDs.
 
         Args:
             text: Input string to encode
+            pack: If True, multi-char strings are packed into single token (OR-ed bits).
+                  If False, returns one token per character.
             pad_ws: If True, strip and add trailing space
 
         Returns:
@@ -60,32 +62,62 @@ class ModTokenizer(KTokenizer):
         if pad_ws:
             text = text.strip() + " "
 
-        if len(text) > 1:
-            return self.batch_encode(text.split())[0]
+        if not text:
+            return []
 
-        return [self.CHAR_BIT[text]]
+        if pack:
+            # Pack all characters into a single token by OR-ing their bits
+            token_id = 0
+            for c in text:
+                token_id |= self.CHAR_BIT[c]
+            return [token_id]
+        else:
+            # Return one token per character
+            return [self.CHAR_BIT[c] for c in text]
 
-    def decode(self, ids: list[int]) -> str:
+    def decode(self, ids: list[int], pack: bool = True) -> str:
         """Decode token IDs back to a string.
 
         Args:
             ids: List of token IDs
+            pack: If True, treat each ID as packed (multiple bits set).
+                  If False, treat each ID as a single character.
 
         Returns:
             Decoded string
         """
-        return ("").join([self.BIT_CHAR[i] for i in ids])
+        if pack:
+            # Each ID may have multiple bits set - decode all
+            chars = []
+            for token_id in ids:
+                chars.append(self._decode_packed(token_id))
+            return "".join(chars)
+        else:
+            # Each ID is a single character
+            return "".join(self.BIT_CHAR[i] for i in ids)
 
-    def batch_encode(self, texts: list[str]) -> list[list[int]]:
+    def _decode_packed(self, token_id: int) -> str:
+        """Decode a packed token ID to string by finding all set bits."""
+        chars = []
+        for bit_pos in range(self.vocab_size):
+            bit_value = 1 << bit_pos
+            if token_id & bit_value:
+                char = self.BIT_CHAR.get(bit_value)
+                if char:
+                    chars.append(char)
+        return "".join(chars)
+
+    def batch_encode(self, texts: list[str], pack: bool = True) -> list[list[int]]:
         """Encode multiple strings in parallel.
 
         Args:
             texts: List of strings to encode
+            pack: If True, pack multi-char strings into single tokens
 
         Returns:
             List of token ID lists
         """
-        return [self.encode(t) for t in texts]
+        return [self.encode(t, pack=pack) for t in texts]
 
 class Mod32Tokenizer(ModTokenizer):
     """Mod32 tokenizer"""

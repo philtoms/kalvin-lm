@@ -9,7 +9,7 @@ from .interpreter import InterpretError, InterpretResult, Interpreter
 from .lexer import Lexer, LexerError
 from .parser import ParseError, Parser
 from .tokens import Token, TokenType
-from .mod_tokenizer import Mod32Tokenizer, Mod64Tokenizer, Mod128Tokenizer
+from ..kalvin.mod_tokenizer import Mod32Tokenizer, Mod64Tokenizer, Mod128Tokenizer
 
 
 if TYPE_CHECKING:

@@ -11,9 +11,13 @@ from . import KScript
 def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="KScript compiler")
-    parser.add_argument("input", help="Input file (.ks, .json, .jsonl)")
-    parser.add_argument("-out", dest="output", help="Output file (.json or .jsonl)")
-    parser.add_argument("-base", dest="base", help="Base model file to extend (.json or .jsonl)")
+    parser.add_argument("input", help="Input file (.ks, .json, .jsonl, .bin)")
+    parser.add_argument(
+        "-out", dest="output", help="Output file (.json, .jsonl, or .bin)"
+    )
+    parser.add_argument(
+        "-base", dest="base", help="Base model file to extend (.json, .jsonl, or .bin)"
+    )
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -30,9 +34,10 @@ def main() -> None:
             kscript.output(output_path)
             print(f"Compiled {input_path} -> {output_path}")
         else:
-            # Output formatted model to terminal
+            # Output formatted model to terminal (decoded)
             for entry in kscript.entries:
-                print(json.dumps({entry.signature: entry.nodes}))
+                sig, nodes = entry.decode(kscript.tokenizer)
+                print(json.dumps({sig: nodes}))
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

@@ -10,7 +10,7 @@ from typing import Iterator, Tuple
 
 import json
 
-from kalvin.abstract import KAgent, KLine, KModel, KNode, KNone, KSignificance, KSig, KTokenizer
+from kalvin.abstract import KAgent, KLine, KModel, KNodes, KNone, KSignificance, KSig, KTokenizer
 from kalvin.model import Model
 from kalvin.significance import Int64Significance, S1, S2, S3, S4
 from kalvin.tokenizer import Tokenizer
@@ -139,7 +139,10 @@ class Kalvin(KAgent):
         for node in kline.nodes:
             knode = self.model.find_kline(node)
             if knode:
-                knodes.append(knode.nodes[0])
+                # Get first node from knode's node list
+                node_list = knode.as_node_list()
+                if node_list:
+                    knodes.append(node_list[0])
         return self._tokenizer.decode(knodes)
 
     def prune(self, level: int = 1) -> "Kalvin":
@@ -178,36 +181,37 @@ class Kalvin(KAgent):
         self.__frames.append(model)
         return model
 
-    def rationalise(self, qk: KLine, fm: KModel) -> KLine:
+    def rationalise(self, kline: KLine, train: bool = False, fm: KModel | None = None) -> KLine | None:
         """Rationalise a KLine in frame context.
 
         Args:
-            qk: KLine to rationalise
-            fm: KModel frame context
+            kline: KLine to rationalise
+            train: If True, enforce training mode
+            fm: Optional KModel frame context (internal use)
 
         Returns:
-            Rationalised KLine, or S4:KNone if not found
+            Rationalised KLine, or KNone if not found
         """
-        if not fm:
+        if fm is None:
             fm = self.new_frame()
 
         #bring nodes into frame
-        for n in qk.nodes:
+        for n in kline.nodes:
             nk = self._model.find_kline(n)
-            if nk == KNone:                
+            if nk == KNone:
                 nk = KLine(signature=n, nodes=[]) # new token node (also at S4)
-            self.rationalise(nk, fm)
+            self.rationalise(nk, train=train, fm=fm)
 
-        fast, slow = fm.query(qk.signature)
-        self.__backlog = [(qk, slow)] + self.__backlog
+        fast, slow = fm.query(kline.signature)
+        self.__backlog = [(kline, slow)] + self.__backlog
         for fk in fast:
-            for cs in self.signify(qk, fk):
+            for cs in self.signify(kline, fk):
                 if self._significance.has_s1(cs.signature):
-                    sv = self._significance.calculate(fm, qk, cs)
+                    sv = self._significance.calculate(fm, kline, cs)
                     fm.upgrade(cs, sv)
                     return fk
 
-        fm.add(qk)
+        fm.add(kline, train=train)
         return KNone
     
     def cogitate(self):
@@ -307,9 +311,10 @@ class Kalvin(KAgent):
         # Serialize klines
         parts.append(pack("<I", len(self._model)))
         for kline in self._model:
+            node_list = kline.as_node_list()
             parts.append(pack("<Q", kline.signature))
-            parts.append(pack("<I", len(kline.nodes)))
-            for node in kline.nodes:
+            parts.append(pack("<I", len(node_list)))
+            for node in node_list:
                 parts.append(pack("<Q", node))
 
         # Serialize activity Counter
@@ -346,7 +351,7 @@ class Kalvin(KAgent):
             offset += 8
             node_count = unpack("<I", data[offset : offset + 4])[0]
             offset += 4
-            nodes: list[KNode] = []
+            nodes: KNodes = []
             for _ in range(node_count):
                 node = unpack("<Q", data[offset : offset + 8])[0]
                 offset += 8

@@ -1,6 +1,7 @@
 """Compiler for KScript AST to compiled entries."""
 
-from dataclasses import dataclass
+from kalvin.abstract import KLine, KNodes, KSig
+from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer
 
 from .ast import (
     Construct,
@@ -14,25 +15,52 @@ from .ast import (
 )
 
 
-@dataclass
-class CompiledEntry:
+class CompiledEntry(KLine):
     """A single compiled KLine entry.
 
     nodes semantics:
     - None: identity entry (sig exists with no children)
-    - str: single child link (countersign ==, undersign =)
-    - list[str]: connotate (>, <) or canonize (=>, <=) with multiple children
+    - int: single token ID link (countersign, undersign)
+    - list[int]: nodes list (connotate, canonize)
     """
 
-    signature: str
-    nodes: str | None | list[str]
+    def __init__(self, signature: KSig, nodes: KNodes, dbg_text: str = ""):
+        super().__init__(signature=signature, nodes=nodes, dbg_text=dbg_text)
+
+    @classmethod
+    def encode(
+        cls, sig: str, nodes: str | None | list[str], tokenizer: ModTokenizer
+    ) -> "CompiledEntry":
+        """Encode string signature/nodes to token IDs using packed encoding."""
+        sig_id = tokenizer.encode(sig, pack=True)[0]
+
+        if nodes is None:
+            return cls(signature=sig_id, nodes=None)
+        elif isinstance(nodes, str):
+            node_id = tokenizer.encode(nodes, pack=True)[0]
+            return cls(signature=sig_id, nodes=node_id)
+        else:
+            # For list of nodes: each node gets its own packed token
+            node_ids = [tokenizer.encode(n, pack=True)[0] for n in nodes]
+            return cls(signature=sig_id, nodes=node_ids)
+
+    def decode(self, tokenizer: ModTokenizer) -> tuple[str, str | None | list[str]]:
+        """Decode token IDs back to strings using packed decoding."""
+        sig = tokenizer.decode([self.signature], pack=True)
+        if self.nodes is None:
+            return sig, None
+        elif isinstance(self.nodes, int):
+            return sig, tokenizer.decode([self.nodes], pack=True)
+        else:
+            return sig, [tokenizer.decode([n], pack=True) for n in self.nodes]
 
 
 class Compiler:
     """Compiles KScript AST to list of CompiledEntry objects."""
 
-    def __init__(self):
+    def __init__(self, tokenizer: ModTokenizer | None = None):
         self.entries: list[CompiledEntry] = []
+        self.tokenizer = tokenizer or Mod32Tokenizer()
 
     def compile(self, file: KScriptFile) -> list[CompiledEntry]:
         """Compile a KScriptFile to entries."""
@@ -56,7 +84,9 @@ class Compiler:
 
         if not has_valid_constructs:
             # Identity script: {sig: None}
-            self.entries.append(CompiledEntry(sig_name, None))
+            self.entries.append(
+                CompiledEntry.encode(sig_name, None, self.tokenizer)
+            )
         else:
             # Process constructs with immediate binding
             current_sig = sig_name
@@ -97,8 +127,12 @@ class Compiler:
         if construct_type == ConstructType.COUNTERSIGN:
             # Bidirectional: {sig: node} AND {node: sig}
             for node in nodes:
-                self.entries.append(CompiledEntry(sig, node))
-                self.entries.append(CompiledEntry(node, sig))
+                self.entries.append(
+                    CompiledEntry.encode(sig, node, self.tokenizer)
+                )
+                self.entries.append(
+                    CompiledEntry.encode(node, sig, self.tokenizer)
+                )
 
         elif construct_type in (ConstructType.CANONIZE_FWD, ConstructType.CANONIZE_BWD):
             # Canonize: {sig: [nodes...]}
@@ -118,25 +152,35 @@ class Compiler:
                         # No nodes before parent, use previous nodes as children
                         children = previous_nodes if previous_nodes else [sig]
 
-                    self.entries.append(CompiledEntry(parent, children))
+                    self.entries.append(
+                        CompiledEntry.encode(parent, children, self.tokenizer)
+                    )
             else:
                 # Forward canonize: {sig: [nodes...]}
-                self.entries.append(CompiledEntry(sig, nodes))
+                self.entries.append(
+                    CompiledEntry.encode(sig, nodes, self.tokenizer)
+                )
 
         elif construct_type == ConstructType.CONNOTATE_FWD:
             # Forward connotate: {sig: [node]}
             for node in nodes:
-                self.entries.append(CompiledEntry(sig, [node]))
+                self.entries.append(
+                    CompiledEntry.encode(sig, [node], self.tokenizer)
+                )
 
         elif construct_type == ConstructType.CONNOTATE_BWD:
             # Backward connotate: {node: [sig]}
             for node in nodes:
-                self.entries.append(CompiledEntry(node, [sig]))
+                self.entries.append(
+                    CompiledEntry.encode(node, [sig], self.tokenizer)
+                )
 
         elif construct_type == ConstructType.UNDERSIGN:
             # Undersign: {sig: node}
             for node in nodes:
-                self.entries.append(CompiledEntry(sig, node))
+                self.entries.append(
+                    CompiledEntry.encode(sig, node, self.tokenizer)
+                )
 
     def _node_to_string(self, node: Node) -> str:
         """Convert a node to its string representation."""

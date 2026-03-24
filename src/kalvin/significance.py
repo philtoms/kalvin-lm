@@ -143,17 +143,21 @@ class Int64Significance(KSignificance):
         Returns:
             64-bit significance value
         """
+        # Get nodes as lists for comparison
+        query_nodes = query.as_node_list()
+        target_nodes = target.as_node_list()
+
         # Handle empty node lists
-        if not query.nodes and not target.nodes:
+        if not query_nodes and not target_nodes:
             return self._S1  # Perfect match
-        if not query.nodes or not target.nodes:
+        if not query_nodes or not target_nodes:
             return self._S4
 
-        min_len = min(len(query.nodes), len(target.nodes))
+        min_len = min(len(query_nodes), len(target_nodes))
 
         # Count S1 matches: positional equality (up to min length)
         s1_match_positions = set(
-            i for i in range(min_len) if query.nodes[i] == target.nodes[i]
+            i for i in range(min_len) if query_nodes[i] == target_nodes[i]
         )
         s1_matches = len(s1_match_positions)
 
@@ -171,20 +175,20 @@ class Int64Significance(KSignificance):
             s1_pct = (s1_matches * 100) // min_len
 
             # S2 matches: nodes at different positions
-            target_set = set(target.nodes)
+            target_set = set(target_nodes)
             s2_matches = 0
-            for i, node in enumerate(query.nodes):
+            for i, node in enumerate(query_nodes):
                 if i in s1_match_positions:
                     continue  # Already counted as S1
                 if node in target_set:
                     s2_matches += 1
 
-            s2_pct = (s2_matches * 100) // len(query.nodes) if query.nodes else 0
+            s2_pct = (s2_matches * 100) // len(query_nodes) if query_nodes else 0
             return self.build_s2(s1_pct, s2_pct)
 
         # S3: No positional matches, check unordered and generational
-        target_set = set(target.nodes)
-        query_set = set(query.nodes)
+        target_set = set(target_nodes)
+        query_set = set(query_nodes)
 
         # S3-Unordered S1: query nodes that exist in target (any position)
         unordered_s1_matches = query_set & target_set
@@ -194,23 +198,23 @@ class Int64Significance(KSignificance):
 
         # S3-Unordered S2: query nodes whose children match target nodes
         s3_s2_matches = 0
-        for node in query.nodes:
+        for node in query_nodes:
             if node in target_set:
                 continue  # Already S1 match
             # Check if node's children intersect with target
             node_kline = model.find_kline(node)
             if node_kline is not KNone:
-                node_children = set(node_kline.nodes)
+                node_children = set(node_kline.as_node_list())
                 if node_children & target_set:
                     s3_s2_matches += 1
 
         s3_s2_pct = (
-            (s3_s2_matches * 100) // len(query.nodes) if query.nodes else 0
+            (s3_s2_matches * 100) // len(query_nodes) if query_nodes else 0
         )
 
         # S3-Generational: query nodes whose descendants (at any depth) match target nodes
         gen_matches = 0
-        for node in query.nodes:
+        for node in query_nodes:
             if node in target_set:
                 continue  # Already S1 match
             # Collect all descendants of this node
@@ -218,7 +222,7 @@ class Int64Significance(KSignificance):
             if descendants & target_set:
                 gen_matches += 1
 
-        gen_pct = (gen_matches * 100) // len(query.nodes) if query.nodes else 0
+        gen_pct = (gen_matches * 100) // len(query_nodes) if query_nodes else 0
 
         if s3_s1_pct > 0 or s3_s2_pct > 0 or gen_pct > 0:
             return self.build_s3(s3_s1_pct, s3_s2_pct, gen_pct)

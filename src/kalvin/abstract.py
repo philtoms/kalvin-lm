@@ -3,17 +3,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Literal, TypeAlias
+from typing import Iterator, Literal
 
-# === Core Types ===
+from kalvin.kline import KLine, KNode, KNodes, KSig, KNone
 
-# Type alias for a KNode (64-bit int)
-KNode: TypeAlias = int
-
-# Type alias for Significance (64-bit int with S1/S2/S3/S4 encoding)
-KSig: TypeAlias = int
+# Re-export for backwards compatibility
+__all__ = ["KLine", "KNode", "KNodes", "KSig", "KNone", "KSignificance", "KTokenizer", "KModel", "KAgent"]
 
 
 # === Abstract Significance ===
@@ -133,90 +129,6 @@ class KSignificance(ABC):
         ...
 
 
-@dataclass
-class KLine:
-    """A structure with a 64-bit significance signature and list of child KNodes.
-
-    Attributes:
-        signature: 64-bit integer signature
-        nodes: List of child KNode integers
-    """
-
-    def __init__(self, signature: KSig, nodes: list[KNode], dbg_text: str = ""):
-        self.signature = signature
-        self.nodes = nodes
-        self.dbg_text = dbg_text
-
-    @classmethod
-    def create(cls, significance: KSig, token: KNode, nodes: list[KNode], dbg_text: str = "") -> "KLine":
-        """Create a KLine from significance, token, and nodes.
-
-        The signature is constructed from significance | token.
-
-        Args:
-            significance: Significance value to OR with token
-            token: Token value to OR with significance
-            nodes: List of child KNode integers
-
-        Returns:
-            KLine with signature = significance | token
-        """
-        return cls(signature=significance | token, nodes=nodes, dbg_text=dbg_text)
-
-    def signifies(self, query: KSig) -> bool:
-        """Check if this KLine signifies a query via AND operation.
-
-        Args:
-            query: The query node to signify
-
-        Returns:
-            True if (signature & query) != 0
-        """
-        return (self.signature & query) != 0
-
-    def contains(self, signature: KSig) -> bool:
-        """Check if this KLine contains a specific signature
-
-        Args:
-            signature: The signature value to look up
-
-        Returns:
-            True if signature in nodes
-        """
-        return signature in self.nodes
-    
-    def filter(self, signature: KSig) -> list[KSig]:
-        """Return a list of nodes with signature removed
-        
-        Args:
-            signature: The signature value to remove
-
-        Returns:
-            nodes with signature removed 
-        """
-        return [node for node in self.nodes if node != signature]
-    
-    def mask(self, keep: set) -> list[KSig]:
-        """Return a list of nodes with mask removed
-        
-        Args:
-            keep: The set of signatures to (index) preserve
-
-        Returns:
-            nodes with mask applied 
-        """
-        masked = []
-        for node in self.nodes:
-            if node in keep:
-                masked.append(node)
-            else:
-                masked.append(0)
-        return masked
-        
-# Singleton for null/empty KLine
-KNone = KLine(signature=0, nodes=[], dbg_text="")
-
-
 # === Abstract Tokenizer ===
 
 class KTokenizer(ABC):
@@ -233,7 +145,7 @@ class KTokenizer(ABC):
         ...
 
     @abstractmethod
-    def encode(self, text: str, pad_ws: bool = False) -> list[KNode]:
+    def encode(self, text: str, pad_ws: bool = False) -> KNodes:
         """Encode a string to token IDs.
 
         Args:
@@ -246,7 +158,7 @@ class KTokenizer(ABC):
         ...
 
     @abstractmethod
-    def decode(self, ids: list[KNode]) -> str:
+    def decode(self, ids: KNodes) -> str:
         """Decode token IDs back to a string.
 
         Args:

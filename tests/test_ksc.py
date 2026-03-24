@@ -4,22 +4,30 @@ import json
 from pathlib import Path
 from textwrap import dedent
 
+from kalvin.mod_tokenizer import Mod32Tokenizer
 from ksc import KScript
 from ksc.compiler import Compiler, CompiledEntry
 from ksc.lexer import Lexer
 from ksc.parser import Parser
+
+# Shared tokenizer for tests
+_tokenizer = Mod32Tokenizer()
 
 
 def compile_source(source: str) -> list[CompiledEntry]:
     """Helper to compile source string to entries."""
     tokens = Lexer(source).tokenize()
     kscript_file = Parser(tokens).parse()
-    return Compiler().compile(kscript_file)
+    return Compiler(_tokenizer).compile(kscript_file)
 
 
-def entries_to_dict(entries: list[CompiledEntry]) -> dict[str, list[str]]:
-    """Convert entries to dict for easier comparison."""
-    return {e.signature: e.nodes for e in entries}
+def entries_to_dict(entries: list[CompiledEntry]) -> dict[str, list[str] | str | None]:
+    """Convert entries to dict for easier comparison (decoded)."""
+    result = {}
+    for e in entries:
+        sig, nodes = e.decode(_tokenizer)
+        result[sig] = nodes
+    return result
 
 
 class TestLexer:
@@ -129,8 +137,9 @@ class TestCompiler:
         """Test compiling identity script."""
         entries = compile_source("A")
         assert len(entries) == 1
-        assert entries[0].signature == "A"
-        assert entries[0].nodes is None
+        sig, nodes = entries[0].decode(_tokenizer)
+        assert sig == "A"
+        assert nodes is None
 
     def test_compile_countersign(self) -> None:
         """Test compiling countersign (bidirectional)."""
@@ -172,16 +181,26 @@ class TestCompiler:
         assert d["B"] == ["A"]
 
     def test_compile_string_literal(self) -> None:
-        """Test compiling string literal."""
+        """Test compiling string literal.
+
+        Note: String characters are encoded by OR-ing bits together.
+        When decoded, characters are sorted by bit position.
+        """
         entries = compile_source(r'A = "\"hello\""')
         d = entries_to_dict(entries)
-        assert d["A"] == r'"\"hello\""'
+        # Original: "\"hello\"" -> decoded order: FILPS2 (sorted by bit pos)
+        assert d["A"] == "FILPS2"
 
     def test_compile_number_literal(self) -> None:
-        """Test compiling number literal."""
+        """Test compiling number literal.
+
+        Note: Number characters are encoded by OR-ing bits together.
+        When decoded, characters are sorted by bit position.
+        """
         entries = compile_source("A = 42")
         d = entries_to_dict(entries)
-        assert d["A"] == "42"
+        # Original: "42" -> decoded order: "24" (sorted by bit pos)
+        assert d["A"] == "24"
 
     def test_compile_incomplete_construct(self) -> None:
         """Test incomplete construct falls back to identity."""
@@ -334,7 +353,12 @@ class TestIntegration:
     """Integration tests."""
 
     def test_example_compilation(self) -> None:
-        """Test the example from the plan."""
+        """Test the example from the plan.
+
+        Note: Multi-character signatures are encoded by OR-ing character bits together.
+        When decoded, characters are sorted by bit position, not original order.
+        E.g., "MHALL" decodes as "AHLM" (A, H, L, M sorted by bit position).
+        """
         source = dedent("""\
             (Mary had a little lamb)
             MHALL == SVO =>
@@ -351,21 +375,28 @@ class TestIntegration:
         # Verify we get entries
         assert len(entries) > 0
 
-        # Verify specific signatures exist in entries
-        sigs = [e.signature for e in entries]
-        assert "MHALL" in sigs
-        assert "SVO" in sigs
+        # Decode entries for easier checking
+        # Note: multi-char signatures decode with chars sorted by bit position
+        decoded = [e.decode(_tokenizer) for e in entries]
+        sigs = [sig for sig, _ in decoded]
+
+        # Verify specific signatures exist (decoded order may differ from source)
+        # MHALL -> AHLM (sorted by bit position)
+        # SVO -> OSV (sorted by bit position)
+        assert "AHLM" in sigs
+        assert "OSV" in sigs
         assert "X" in sigs
 
-        # Check countersign entries (MHALL and SVO are bidirectional)
-        mhall_entries = [e for e in entries if e.signature == "MHALL"]
-        assert any(e.nodes == "SVO" for e in mhall_entries)
+        # Check countersign entries (bidirectional)
+        mhall_entries = [nodes for sig, nodes in decoded if sig == "AHLM"]
+        assert "OSV" in mhall_entries
 
         # SVO has two entries: one from countersign, one from canonize
-        svo_entries = [e for e in entries if e.signature == "SVO"]
-        assert any(e.nodes == "MHALL" for e in svo_entries)  # countersign
-        assert any(e.nodes == ["S", "V", "O"] for e in svo_entries)  # canonize
+        svo_entries = [nodes for sig, nodes in decoded if sig == "OSV"]
+        assert "AHLM" in svo_entries  # countersign
+        # canonize entries preserve source order: S,V,O
+        assert ["S", "V", "O"] in svo_entries
 
         # Verify X is identity (incomplete construct)
-        x_entries = [e for e in entries if e.signature == "X"]
-        assert any(e.nodes is None for e in x_entries)
+        x_entries = [nodes for sig, nodes in decoded if sig == "X"]
+        assert None in x_entries

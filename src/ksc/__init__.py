@@ -1,14 +1,16 @@
 """KScript compiler module.
 
-Provides both CLI and Python API for compiling .ks files to JSON/JSONL format.
+Provides both CLI and Python API for compiling .ks files to JSON/JSONL/binary format.
 """
 
 from pathlib import Path
 
+from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer
+
 from .ast import KScriptFile
 from .compiler import CompiledEntry, Compiler
 from .lexer import Lexer
-from .output import read_model, write_json, write_jsonl
+from .output import read_bin, read_json, write_bin, write_json, write_jsonl
 from .parser import Parser
 
 __all__ = [
@@ -20,7 +22,9 @@ __all__ = [
     "KScriptFile",
     "write_json",
     "write_jsonl",
-    "read_model",
+    "write_bin",
+    "read_json",
+    "read_bin",
 ]
 
 
@@ -30,20 +34,27 @@ class KScript:
     Usage:
         # Inline model generation from string
         model1 = KScript("A == B")
-        # -> KScript object containing: [{A: "B"}, {B: "A"}]
+        # -> KScript object containing: [{sig: token_id_A, nodes: token_id_B}, ...]
 
         # Load from JSON/JSONL file
         model2 = KScript("model.json")  # or .jsonl
 
-        # Extend model with script
-        model3 = KScript("script.ks", base=model1)
+        # Load from binary file (tokenized)
+        model3 = KScript("model.bin")
 
-        # Save to JSON or JSONL (based on suffix)
-        model3.output("output.json")
+        # Extend model with script
+        model4 = KScript("script.ks", base=model1)
+
+        # Save to JSON, JSONL or binary (based on suffix)
+        model4.output("output.json")
+        model4.output("output.bin")
     """
 
     def __init__(
-        self, source: str | Path, base: "KScript | None" = None
+        self,
+        source: str | Path,
+        base: "KScript | None" = None,
+        tokenizer: ModTokenizer | None = None,
     ):
         """Compile KScript from string or file path.
 
@@ -53,34 +64,33 @@ class KScript:
                     - .ks: KScript source file
                     - .json: JSON model file
                     - .jsonl: JSONL model file
+                    - .bin: Binary model file (tokenized)
                     If Path(source).exists() returns True, treats as file path.
             base: Optional existing KScript to extend.
+            tokenizer: Tokenizer for encoding (default: Mod32Tokenizer).
         """
-        # Start with base entries if provided
+        self.tokenizer = tokenizer or Mod32Tokenizer()
         self._entries: list[CompiledEntry] = list(base._entries) if base else []
 
-        # Determine if source is a file path or inline string
-        source_str = str(source)
-        source_path = Path(source_str)
-
+        source_path = Path(source)
         if source_path.exists():
             suffix = source_path.suffix.lower()
-            if suffix in (".json", ".jsonl"):
-                # Load from model file
-                self._entries.extend(read_model(source_path))
+            if suffix == ".bin":
+                self._entries.extend(read_bin(source_path))
+            elif suffix in (".json", ".jsonl"):
+                self._entries.extend(read_json(source_path, self.tokenizer))
             else:
-                # Compile from source file
                 source_code = source_path.read_text()
                 self._compile_source(source_code)
         else:
             # Treat as inline source string
-            self._compile_source(source_str)
+            self._compile_source(str(source))
 
     def _compile_source(self, source: str) -> None:
         """Compile source code and append entries."""
         tokens = Lexer(source).tokenize()
         kscript_file = Parser(tokens).parse()
-        new_entries = Compiler().compile(kscript_file)
+        new_entries = Compiler(self.tokenizer).compile(kscript_file)
         self._entries.extend(new_entries)
 
     @property
@@ -89,21 +99,34 @@ class KScript:
         return self._entries
 
     def output(self, path: str | Path) -> None:
-        """Write entries to JSON or JSONL file based on suffix."""
+        """Write entries to file based on suffix.
+
+        Suffix determines format:
+        - .json: JSON array
+        - .jsonl: JSONL (line-delimited)
+        - .bin: Binary format (tokenized)
+        """
         output_path = Path(path)
         suffix = output_path.suffix.lower()
-        if suffix == ".json":
-            write_json(self._entries, output_path)
+        if suffix == ".bin":
+            write_bin(self._entries, output_path)
+        elif suffix == ".json":
+            write_json(self._entries, output_path, self.tokenizer)
         else:
-            write_jsonl(self._entries, output_path)
+            write_jsonl(self._entries, output_path, self.tokenizer)
 
     def to_model(self) -> list[dict[str, str | None | list[str]]]:
         """Return entries as list of dicts (preserves duplicate signatures)."""
-        return [{e.signature: e.nodes} for e in self._entries]
+        result = []
+        for entry in self._entries:
+            sig, nodes = entry.decode(self.tokenizer)
+            result.append({sig: nodes})
+        return result
 
     def to_dict(self) -> dict[str, str | None | list[str]]:
         """Merge entries into dict format (later entries override earlier)."""
         result: dict[str, str | None | list[str]] = {}
         for entry in self._entries:
-            result[entry.signature] = entry.nodes
+            sig, nodes = entry.decode(self.tokenizer)
+            result[sig] = nodes
         return result
