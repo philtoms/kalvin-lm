@@ -42,32 +42,32 @@ comment     ::= "(" printable ascii chars ")"
 - **Compilation order**: Multi-pass; source order is NOT a semantic requirement
 - **Identity scripts**: A signature-only script/subscript creates `{sig: None}`
   - `A` → `{"A": None}`
-- **Duplicate signatures**: Always output as separate lines (never merged)
+- **Duplicate signatures**: Always output as separate klines (never merged)
 - **Nested subscripts**: Arbitrary depth
 - **Node ordering**: Nodes in output preserve source order
-- **Node binding**: Nodes bind the the immediate LHS signature:
-  - `A => B => C` → `{A: ["B"]}` AND `{"B": ["C"]}`
+- **Node binding**: Nodes bind to the immediate LHS signature:
+  - `A => B C => D` → `{A: ["B", "C]}` AND `{"C": ["D"]}`
 
 ## Construct Semantics
 
-| Syntax               | Output                                                   | Comments                                  |
-| -------------------- | -------------------------------------------------------- | ----------------------------------------- |
-| `A`                  | `{A: None}`                                              | identity kline                            |
-| `A == B`             | `{A: B}` AND `{B: A}`                                    | countersigned (signature)                 |
-| `A ==`               | `{A: B}` AND `{B: A}` AND `{B: None}`                    | multi-line with indented subscript        |
-| `  B`                |                                                          | subscripted identity                      |
-| `AB => C D`          | `{AB: [C, D]}`                                           | multi-node canonization (nodes)           |
-| `C D <= AB`          | `{AB: [C, D]}`                                           | multi-node canonization (nodes)           |
-| `AB =>`              | `{AB: [C, D]}` AND `{C: None}` AND `{D: 1}` AND `{1: D}` | multi-line canonization                   |
-| ` C`                 |                                                          | subscripted identity                      |
-| ` D == 1`            |                                                          | subscripted countersignature              |
-| `A > B`              | `{A: [B]}`                                               | connotated (nodes)                        |
-| `A < B`              | `{B: [A]}`                                               | connotated (nodes)                        |
-| `A = B`              | `{A: B}`                                                 | undersigned (signature)                   |
-| `A = "\"hello\""`    | `{A: "\"hello\""}`                                       | literal string (with escape char)         |
-| `(comment (nested))` |                                                          | nested comment: greedy match              |
-| `(comment `          |                                                          | unterminated comment: greedy match to EOL |
-| `()`                 |                                                          | empty comment                             |
+| Syntax               | Output                     | Comments                                  |
+| -------------------- | -------------------------- | ----------------------------------------- |
+| `A`                  | `{A: None}`                | identity kline                            |
+| `A == B`             | `{A: B}` AND `{B: A}`      | countersigned (signature)                 |
+| `A ==`               | `{A: B}` AND `{B: A}`      | multi-line with indented subscript        |
+| `  B`                | AND `{B: None}`            | + subscripted identity                    |
+| `AB => C D`          | `{AB: [C, D]}`             | multi-node canonization (nodes)           |
+| `C D <= AB`          | `{AB: [C, D]}`             | multi-node canonization (nodes)           |
+| `AB =>`              | `{AB: [C, D]}`             | multi-line canonization                   |
+| ` C`                 | AND `{C: None}`            | + subscripted identity                    |
+| ` D == 1`            | AND `{D: 1}`               | + subscripted under-signature (recovery)  |
+| `A > B`              | `{A: [B]}` AND `{B: None}` | connotated (nodes) + identity             |
+| `A < B`              | `{B: [A]}` AND `{A: None}` | connotated (nodes) + identity             |
+| `A = B`              | `{A: B}`AND `{B: None}`    | undersigned (signature) + identity        |
+| `A = "\"hello\""`    | `{A: "\"hello\""}`         | literal string (with escape char)         |
+| `(comment (nested))` |                            | nested comment: greedy match              |
+| `(comment `          |                            | unterminated comment: greedy match to EOL |
+| `()`                 |                            | empty comment                             |
 
 ### Node Output Types
 
@@ -85,15 +85,16 @@ KScripts are always valid. This does not mean that parsers should ignore bad syn
 
 ## Recovery Semantics
 
-| Syntax    | Output                    | Comments                                                    |
-| --------- | ------------------------- | ----------------------------------------------------------- |
-|           |                           | empty file: empty output                                    |
-| `A ==`    | `{A: None}`               | incomplete construct: recover identity                      |
-| `A =>`    | `{A: None}`               | incomplete construct: recover identity                      |
-| `1 > A`   | `{1: None}`               | unsupported literal in signature position: recover identity |
-| `A < 1`   | `{A: None}`               | unsupported literal in signature position: recover identity |
-| `A > 1`   | `{A: [1]}` AND `{B: [2]}` | unexpected indent across multi-lines: revert to previous    |
-| `  B > 2` |                           | indent if any                                               |
+| Syntax    | Output         | Comments                                                    |
+| --------- | -------------- | ----------------------------------------------------------- |
+|           |                | empty file: empty output                                    |
+| `A ==`    | `{A: None}`    | incomplete construct: recover identity                      |
+| `A =>`    | `{A: None}`    | incomplete construct: recover identity                      |
+| `1 > A`   | `{1: None}`    | unsupported literal in signature position: recover identity |
+| `A < 1`   | `{A: None}`    | unsupported literal in signature position: recover identity |
+| `A > 1`   | `{A: [1]}`     | unexpected indent across multi-lines: revert to previous    |
+| `  B > 2` | AND `{B: [2]}` | indent if any                                               |
+| `A == 1`  | `{A: 1}`       | literal countersign: recover undersign                      |
 
 ## Module Structure: `src/ksc/`
 
@@ -472,12 +473,18 @@ X==
 {"SVO": "MHALL"}
 {"SVO": ["S", "V", "O"]}
 {"S": "M"}
+{"M": null}
 {"V": "H"}
+{"H": null}
 {"O": "ALL"}
+{"ALL": null}
 {"ALL": ["A", "L", "L"]}
 {"A": "D"}
+{"D": null}
 {"L": "M"}
+{"M": null}
 {"L": ["O"]}
+{"O": null}
 {"X": null}
 ```
 

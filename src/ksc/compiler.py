@@ -47,12 +47,13 @@ class CompiledEntry(KLine):
     def decode(self, tokenizer: ModTokenizer) -> tuple[str, str | None | list[str]]:
         """Decode token IDs back to strings using packed decoding."""
         sig = tokenizer.decode([self.signature], pack=True)
-        if self.nodes is None:
+        # Use _nodes to get raw value (None, int, or list) not the normalized list
+        if self._nodes is None:
             return sig, None
-        elif isinstance(self.nodes, int):
-            return sig, tokenizer.decode([self.nodes], pack=True)
+        elif isinstance(self._nodes, int):
+            return sig, tokenizer.decode([self._nodes], pack=True)
         else:
-            return sig, [tokenizer.decode([n], pack=True) for n in self.nodes]
+            return sig, [tokenizer.decode([n], pack=True) for n in self._nodes]
 
 
 class Compiler:
@@ -126,13 +127,16 @@ class Compiler:
         construct_type = construct.type
         if construct_type == ConstructType.COUNTERSIGN:
             # Bidirectional: {sig: node} AND {node: sig}
+            # But if node is a literal, recover undersign (no reverse)
             for node in nodes:
                 self.entries.append(
                     CompiledEntry.encode(sig, node, self.tokenizer)
                 )
-                self.entries.append(
-                    CompiledEntry.encode(node, sig, self.tokenizer)
-                )
+                # Only add reverse if node is signature-like (not a literal)
+                if self._is_signature_like(node):
+                    self.entries.append(
+                        CompiledEntry.encode(node, sig, self.tokenizer)
+                    )
 
         elif construct_type in (ConstructType.CANONIZE_FWD, ConstructType.CANONIZE_BWD):
             # Canonize: {sig: [nodes...]}
@@ -162,24 +166,33 @@ class Compiler:
                 )
 
         elif construct_type == ConstructType.CONNOTATE_FWD:
-            # Forward connotate: {sig: [node]}
+            # Forward connotate: {sig: [node]} AND {node: None}
             for node in nodes:
                 self.entries.append(
                     CompiledEntry.encode(sig, [node], self.tokenizer)
                 )
+                self.entries.append(
+                    CompiledEntry.encode(node, None, self.tokenizer)
+                )
 
         elif construct_type == ConstructType.CONNOTATE_BWD:
-            # Backward connotate: {node: [sig]}
+            # Backward connotate: {node: [sig]} AND {sig: None}
             for node in nodes:
                 self.entries.append(
                     CompiledEntry.encode(node, [sig], self.tokenizer)
                 )
+            self.entries.append(
+                CompiledEntry.encode(sig, None, self.tokenizer)
+            )
 
         elif construct_type == ConstructType.UNDERSIGN:
-            # Undersign: {sig: node}
+            # Undersign: {sig: node} AND {node: None}
             for node in nodes:
                 self.entries.append(
                     CompiledEntry.encode(sig, node, self.tokenizer)
+                )
+                self.entries.append(
+                    CompiledEntry.encode(node, None, self.tokenizer)
                 )
 
     def _node_to_string(self, node: Node) -> str:

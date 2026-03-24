@@ -151,20 +151,32 @@ class TestCompiler:
     def test_compile_undersign(self) -> None:
         """Test compiling undersign."""
         entries = compile_source("A = B")
-        d = entries_to_dict(entries)
-        assert d["A"] == "B"
+        # Should produce 2 entries: {A: B} and {B: None}
+        assert len(entries) == 2
+        sig1, nodes1 = entries[0].decode(_tokenizer)
+        sig2, nodes2 = entries[1].decode(_tokenizer)
+        assert sig1 == "A" and nodes1 == "B"
+        assert sig2 == "B" and nodes2 is None
 
     def test_compile_connotate_fwd(self) -> None:
         """Test compiling forward connotate."""
         entries = compile_source("A > B")
-        d = entries_to_dict(entries)
-        assert d["A"] == ["B"]
+        # Should produce 2 entries: {A: [B]} and {B: None}
+        assert len(entries) == 2
+        sig1, nodes1 = entries[0].decode(_tokenizer)
+        sig2, nodes2 = entries[1].decode(_tokenizer)
+        assert sig1 == "A" and nodes1 == ["B"]
+        assert sig2 == "B" and nodes2 is None
 
     def test_compile_connotate_bwd(self) -> None:
         """Test compiling backward connotate."""
         entries = compile_source("A < B")
-        d = entries_to_dict(entries)
-        assert d["B"] == ["A"]
+        # Should produce 2 entries: {B: [A]} and {A: None}
+        assert len(entries) == 2
+        sig1, nodes1 = entries[0].decode(_tokenizer)
+        sig2, nodes2 = entries[1].decode(_tokenizer)
+        assert sig1 == "B" and nodes1 == ["A"]
+        assert sig2 == "A" and nodes2 is None
 
     def test_compile_canonize_fwd(self) -> None:
         """Test compiling forward canonize."""
@@ -207,6 +219,19 @@ class TestCompiler:
         entries = compile_source("A ==")
         d = entries_to_dict(entries)
         assert d["A"] is None
+
+    def test_compile_literal_countersign(self) -> None:
+        """Test literal countersign recovers undersign.
+
+        Per recovery semantics: A == 1 => {A: 1} only (no reverse)
+        Literals should never be used as signatures.
+        """
+        entries = compile_source("A == 1")
+        # Should produce only 1 entry: {A: 1}, not {1: A}
+        assert len(entries) == 1
+        sig, nodes = entries[0].decode(_tokenizer)
+        assert sig == "A"
+        assert nodes == "1"  # "1" decodes as "1" (single char)
 
     def test_compile_multiple_constructs(self) -> None:
         """Test multiple constructs with immediate binding."""
@@ -264,10 +289,13 @@ class TestKScriptAPI:
         """Test to_model preserves multiple entries with same signature."""
         model = KScript("A > B\nA > C")
         m = model.to_model()
-        assert len(m) == 2
-        # Both entries should be preserved
+        assert len(m) == 4
+        # Both connotate entries should be preserved
         assert {"A": ["B"]} in m
         assert {"A": ["C"]} in m
+        # Plus identity entries for B and C
+        assert {"B": None} in m
+        assert {"C": None} in m
 
 
 class TestJSONIO:
