@@ -12,7 +12,7 @@ import json
 import sys
 from pathlib import Path
 
-from kalvin.mod_tokenizer import Mod64Tokenizer
+from kalvin.mod_tokenizer import Mod32Tokenizer
 
 from . import KScript
 

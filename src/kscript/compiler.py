@@ -1,7 +1,7 @@
 """Compiler for KScript AST to compiled entries."""
 
 from kalvin.abstract import KLine, KNodes, KSig
-from kalvin.mod_tokenizer import ModTokenizer, Mod64Tokenizer, PACKED_BIT
+from kalvin.mod_tokenizer import Mod32Tokenizer, ModTokenizer, PACKED_BIT
 
 from .ast import (
     Construct,
@@ -102,7 +102,7 @@ class Compiler:
 
     def __init__(self, tokenizer: ModTokenizer | None = None):
         self.entries: list[CompiledEntry] = []
-        self.tokenizer = tokenizer or Mod64Tokenizer()
+        self.tokenizer = tokenizer or Mod32Tokenizer()
 
     def compile(self, file: KScriptFile) -> list[CompiledEntry]:
         """Compile a KScriptFile to entries."""

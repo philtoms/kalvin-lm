@@ -111,6 +111,13 @@ source.ks → Lexer → Parser → Compiler → CompiledEntry[] → JSON/JSONL/B
 - Immediate binding: Each construct binds to the most recent signature
 - Subscripts as nodes: Indented signatures become nodes when construct has no inline nodes
 
+**64-bit Signature Allocation:**
+| Bits | Purpose |
+|------|---------|
+| 0 | PACKED_BIT flag (1 = packed, 0 = literal) |
+| 1-32 | Character tokenization (Mod32Tokenizer) |
+| 33-63 | Reserved for significance encoding |
+
 ## Key Patterns
 
 - Activity tracking: `Counter` tracks token usage frequency for pruning decisions

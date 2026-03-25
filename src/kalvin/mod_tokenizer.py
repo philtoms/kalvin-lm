@@ -3,6 +3,13 @@ from kalvin.abstract import KTokenizer
 # Bit 0 is reserved for PACKED flag: 1 = packed, 0 = literal
 PACKED_BIT = 1
 
+# 64-bit Signature Allocation:
+# ┌─────────────────────────────────────────────────────────────────┐
+# │ Bit 0      │ PACKED_BIT: 1=packed signature, 0=literal         │
+# │ Bits 1-32  │ Character tokenization (Mod32Tokenizer default)   │
+# │ Bits 33-63 │ Reserved for significance encoding (future use)   │
+# └─────────────────────────────────────────────────────────────────┘
+
 # Alphabet with alphanumeric characters first, then common punctuation including backslash
 # A-Z (26) + a-z (26) + 0-9 (10) + space + backslash + common = fits in mod64 without collision
 # Backslash placed early to ensure it doesn't collide with alphanumeric
