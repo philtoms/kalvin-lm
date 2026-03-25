@@ -28,6 +28,12 @@ uv run mypy src/
 
 # Run chat TUI
 python -m ui.chat
+
+# Run kscript TUI
+python -m ui.kscript
+
+# Compile KScript file
+python -m kscript script.ks -out output.jsonl
 ```
 
 ## Architecture
@@ -71,6 +77,39 @@ Textual TUI application with modular structure:
 - `dialogs.py` - FileLoadDialog with mount point navigation
 - `regions/config.py` - Model/grammar path configuration
 - `regions/chat.py` - Chat input and response display
+
+### KScript Compiler (`src/kscript/`)
+
+A domain-specific language compiler for defining knowledge graph relationships:
+
+```
+source.ks → Lexer → Parser → Compiler → CompiledEntry[] → JSON/JSONL/Binary
+```
+
+**Module Structure:**
+- `token.py` - TokenType enum (14 types) and Token dataclass
+- `lexer.py` - Tokenization with Python-style INDENT/DEDENT handling
+- `ast.py` - AST nodes: Signature, StringLiteral, NumberLiteral, Construct, Script, KScriptFile
+- `parser.py` - Recursive descent parser with immediate binding semantics
+- `compiler.py` - CompiledEntry (extends KLine) and Compiler class
+- `output.py` - JSON, JSONL, and binary (KSC1) I/O
+- `__init__.py` - KScript API class
+- `__main__.py` - CLI entry point
+
+**Construct Operators:**
+| Operator | Name | Semantics |
+|----------|------|-----------|
+| `==` | Countersign | `{A: B}` AND `{B: A}` (bidirectional) |
+| `=>` | Canonize Fwd | `{A: [B, C, ...]}` (multi-node) |
+| `<=` | Canonize Bwd | `{B: [A]}` or `{A: [B, C, ...]}` with leading nodes |
+| `>` | Connotate Fwd | `{A: [B]}` AND `{B: null}` |
+| `<` | Connotate Bwd | `{B: [A]}` AND `{A: null}` |
+| `=` | Undersign | `{A: B}` AND `{B: null}` (unidirectional) |
+
+**Key Patterns:**
+- PACKED_BIT (bit 0): Signatures have it set, literals have it clear - enables decode auto-detection
+- Immediate binding: Each construct binds to the most recent signature
+- Subscripts as nodes: Indented signatures become nodes when construct has no inline nodes
 
 ## Key Patterns
 

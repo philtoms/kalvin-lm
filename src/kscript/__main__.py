@@ -1,43 +1,50 @@
-"""CLI entry point for KScript compiler."""
+"""CLI entry point for KScript compiler.
+
+Usage:
+    python -m kscript script.ks              # -> script.jsonl
+    python -m kscript script.ks -out out.json
+    python -m kscript script.ks -out out.bin
+    python -m kscript model.bin              # Load and display
+"""
 
 import argparse
 import json
 import sys
 from pathlib import Path
 
+from kalvin.mod_tokenizer import Mod64Tokenizer
+
 from . import KScript
 
 
 def main() -> None:
-    """Main CLI entry point."""
-    parser = argparse.ArgumentParser(description="KScript compiler")
-    parser.add_argument("input", help="Input file (.ks, .json, .jsonl, .bin)")
-    parser.add_argument(
-        "-out", dest="output", help="Output file (.json, .jsonl, or .bin)"
+    """Run KScript CLI."""
+    parser = argparse.ArgumentParser(
+        description="KScript compiler - compile .ks files to KLine graph format"
     )
-    parser.add_argument(
-        "-base", dest="base", help="Base model file to extend (.json, .jsonl, or .bin)"
-    )
+    parser.add_argument("input", help="Input file (.ks, .json, .jsonl, or .bin)")
+    parser.add_argument("-out", dest="output", help="Output file path")
     args = parser.parse_args()
 
     input_path = Path(args.input)
 
+    if not input_path.exists():
+        print(f"Error: Input file not found: {input_path}", file=sys.stderr)
+        sys.exit(1)
+
     try:
-        # Load base model if provided
-        base_model = KScript(args.base) if args.base else None
+        # Load/compile the input
+        model = KScript(input_path)
 
-        # Compile or load input
-        kscript = KScript(input_path, base=base_model)
-
+        # Determine output path
         if args.output:
             output_path = Path(args.output)
-            kscript.output(output_path)
-            print(f"Compiled {input_path} -> {output_path}")
         else:
-            # Output formatted model to terminal (decoded)
-            for entry in kscript.entries:
-                sig, nodes = entry.decode(kscript.tokenizer)
-                print(json.dumps({sig: nodes}))
+            output_path = input_path.with_suffix(".jsonl")
+
+        # Write output
+        model.output(output_path)
+        print(f"Compiled {len(model.entries)} entries to {output_path}")
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

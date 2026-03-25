@@ -1,4 +1,4 @@
-"""Output writers for compiled KScript entries."""
+"""Output module for JSON/JSONL/binary I/O."""
 
 import json
 import struct
@@ -9,30 +9,42 @@ from kalvin.mod_tokenizer import ModTokenizer
 from .compiler import CompiledEntry
 
 
-def write_json(
-    entries: list[CompiledEntry], path: Path, tokenizer: ModTokenizer
-) -> None:
-    """Write entries to JSON file as a list.
+# =============================================================================
+# Write functions
+# =============================================================================
 
-    Output format:
-    [{"L": "M"}, {"L": "O"}]
+def write_json(entries: list[CompiledEntry], path: Path, tokenizer: ModTokenizer) -> None:
+    """Write entries to JSON array file.
+
+    Each entry becomes an object in a JSON array:
+    [{"A": "B"}, {"B": "A"}, {"C": ["D", "E"]}]
+
+    Args:
+        entries: List of CompiledEntry objects
+        path: Output file path
+        tokenizer: Tokenizer for decoding
     """
-    model = []
-    for e in entries:
-        sig, nodes = e.decode(tokenizer)
-        model.append({sig: nodes})
+    data = []
+    for entry in entries:
+        sig, nodes = entry.decode(tokenizer)
+        data.append({sig: nodes})
+
     with open(path, "w") as f:
-        json.dump(model, f, indent=2)
+        json.dump(data, f, indent=2)
 
 
-def write_jsonl(
-    entries: list[CompiledEntry], path: Path, tokenizer: ModTokenizer
-) -> None:
-    """Write entries to JSONL file.
+def write_jsonl(entries: list[CompiledEntry], path: Path, tokenizer: ModTokenizer) -> None:
+    """Write entries to JSONL (line-delimited JSON) file.
 
     Each entry becomes a separate line:
-    {"L": "M"}
-    {"L": "O"}
+    {"A": "B"}
+    {"B": "A"}
+    {"C": ["D", "E"]}
+
+    Args:
+        entries: List of CompiledEntry objects
+        path: Output file path
+        tokenizer: Tokenizer for decoding
     """
     with open(path, "w") as f:
         for entry in entries:
@@ -41,9 +53,9 @@ def write_jsonl(
 
 
 def write_bin(entries: list[CompiledEntry], path: Path) -> None:
-    """Write entries to binary file.
+    """Write entries to binary format file.
 
-    Binary format:
+    Binary format (KSC1):
     - Header: 4 bytes magic "KSC1"
     - Entry count: 4 bytes (uint32, little-endian)
     - Per entry:
@@ -51,35 +63,93 @@ def write_bin(entries: list[CompiledEntry], path: Path) -> None:
       - node_type: 1 byte (0=None, 1=int, 2=list)
       - if int: 8 bytes (uint64)
       - if list: 4 bytes count + N*8 bytes (uint64 each)
+
+    Args:
+        entries: List of CompiledEntry objects
+        path: Output file path
     """
     with open(path, "wb") as f:
+        # Header
         f.write(b"KSC1")
         f.write(struct.pack("<I", len(entries)))
+
         for entry in entries:
+            # Signature
             f.write(struct.pack("<Q", entry.signature))
-            if entry.nodes is None:
+
+            # Node type and value
+            if entry._nodes is None:
                 f.write(struct.pack("<B", 0))
-            elif isinstance(entry.nodes, int):
+            elif isinstance(entry._nodes, int):
                 f.write(struct.pack("<B", 1))
-                f.write(struct.pack("<Q", entry.nodes))
+                f.write(struct.pack("<Q", entry._nodes))
             else:
                 f.write(struct.pack("<B", 2))
-                f.write(struct.pack("<I", len(entry.nodes)))
-                for node_id in entry.nodes:
+                f.write(struct.pack("<I", len(entry._nodes)))
+                for node_id in entry._nodes:
                     f.write(struct.pack("<Q", node_id))
 
 
+# =============================================================================
+# Read functions
+# =============================================================================
+
+def read_json(path: Path, tokenizer: ModTokenizer) -> list[CompiledEntry]:
+    """Read entries from JSON or JSONL file.
+
+    Args:
+        path: Input file path (.json or .jsonl)
+        tokenizer: Tokenizer for encoding strings to token IDs
+
+    Returns:
+        List of CompiledEntry objects
+    """
+    content = path.read_text()
+
+    # Try JSON array first
+    try:
+        data = json.loads(content)
+        if not isinstance(data, list):
+            data = [data]
+    except json.JSONDecodeError:
+        # Fall back to JSONL
+        data = [json.loads(line) for line in content.strip().split("\n") if line.strip()]
+
+    entries: list[CompiledEntry] = []
+    for obj in data:
+        for sig, nodes in obj.items():
+            entry = CompiledEntry.encode(sig, nodes, tokenizer)
+            entries.append(entry)
+
+    return entries
+
+
 def read_bin(path: Path) -> list[CompiledEntry]:
-    """Read entries from binary file."""
-    entries = []
+    """Read entries from binary format file.
+
+    Args:
+        path: Input file path (.bin)
+
+    Returns:
+        List of CompiledEntry objects
+
+    Raises:
+        ValueError: If file is not valid KSC1 format
+    """
+    entries: list[CompiledEntry] = []
+
     with open(path, "rb") as f:
+        # Header
         magic = f.read(4)
         if magic != b"KSC1":
-            raise ValueError(f"Invalid magic: {magic}")
+            raise ValueError(f"Invalid magic: {magic!r}, expected b'KSC1'")
+
         count = struct.unpack("<I", f.read(4))[0]
+
         for _ in range(count):
             sig = struct.unpack("<Q", f.read(8))[0]
             node_type = struct.unpack("<B", f.read(1))[0]
+
             if node_type == 0:
                 nodes = None
             elif node_type == 1:
@@ -87,29 +157,7 @@ def read_bin(path: Path) -> list[CompiledEntry]:
             else:
                 list_len = struct.unpack("<I", f.read(4))[0]
                 nodes = [struct.unpack("<Q", f.read(8))[0] for _ in range(list_len)]
+
             entries.append(CompiledEntry(signature=sig, nodes=nodes))
-    return entries
 
-
-def read_json(path: Path, tokenizer: ModTokenizer) -> list[CompiledEntry]:
-    """Read entries from JSON or JSONL file based on suffix.
-
-    JSON format: [{"A": "B"}, {"B": "A"}]
-    JSONL format: {"A": "B"}\\n{"B": "A"}\\n
-    """
-    suffix = path.suffix.lower()
-    entries = []
-    with open(path) as f:
-        if suffix == ".json":
-            model = json.load(f)
-            for item in model:
-                for sig, nodes in item.items():
-                    entries.append(CompiledEntry.encode(sig, nodes, tokenizer))
-        else:  # .jsonl or any other extension
-            for line in f:
-                line = line.strip()
-                if line:
-                    item = json.loads(line)
-                    for sig, nodes in item.items():
-                        entries.append(CompiledEntry.encode(sig, nodes, tokenizer))
     return entries

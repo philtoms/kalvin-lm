@@ -1,7 +1,7 @@
 """Compiler for KScript AST to compiled entries."""
 
 from kalvin.abstract import KLine, KNodes, KSig
-from kalvin.mod_tokenizer import ModTokenizer, Mod64Tokenizer
+from kalvin.mod_tokenizer import ModTokenizer, Mod64Tokenizer, PACKED_BIT
 
 from .ast import (
     Construct,
@@ -12,14 +12,13 @@ from .ast import (
     Script,
     Signature,
     StringLiteral,
-    NodeType,
 )
 
 
 class CompiledEntry(KLine):
     """A single compiled KLine entry.
 
-    nodes semantics:
+    Nodes semantics:
     - None: identity entry (sig exists with no children)
     - int: single token ID link (countersign, undersign)
     - list[int]: nodes list (connotate, canonize)
@@ -30,13 +29,27 @@ class CompiledEntry(KLine):
 
     @classmethod
     def encode(
-        cls, sig: str, nodes: str | None | list[str], tokenizer: ModTokenizer, *, nodes_are_literals: bool = False
+        cls,
+        sig: str,
+        nodes: str | None | list[str],
+        tokenizer: ModTokenizer,
+        *,
+        nodes_are_literals: bool = False
     ) -> "CompiledEntry":
         """Encode string signature/nodes to token IDs.
 
         Signatures are always packed (PACKED_BIT set) using tokenizer.
         Nodes are packed by default, but literals are unpacked (no PACKED_BIT).
         For literals, each character is encoded as (ord(char) << 1), leaving bit 0 clear.
+
+        Args:
+            sig: Signature string to encode
+            nodes: Node(s) to encode - None, string, or list of strings
+            tokenizer: Tokenizer for encoding
+            nodes_are_literals: If True, encode nodes as literals (no PACKED_BIT)
+
+        Returns:
+            CompiledEntry with encoded signature and nodes
         """
         sig_id = tokenizer.encode(sig, pack=True)[0]
 
@@ -63,10 +76,9 @@ class CompiledEntry(KLine):
 
     def decode(self, tokenizer: ModTokenizer) -> tuple[str, str | None | list[str]]:
         """Decode token IDs back to strings using auto-detection of packed/literal."""
-        from kalvin.mod_tokenizer import PACKED_BIT
-
         # Auto-detect packed vs literal based on PACKED_BIT
         sig = tokenizer.decode([self.signature], pack=None)
+
         # Use _nodes to get raw value (None, int, or list) not the normalized list
         if self._nodes is None:
             return sig, None
@@ -154,6 +166,7 @@ class Compiler:
     ) -> None:
         """Compile a construct to entries based on its type."""
         construct_type = construct.type
+
         if construct_type == ConstructType.COUNTERSIGN:
             # Bidirectional: {sig: node} AND {node: sig}
             # But if node is a literal, recover undersign (no reverse)

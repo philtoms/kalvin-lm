@@ -13,19 +13,37 @@ class LexerError(Exception):
 
 
 class Lexer:
-    """Tokenizes KScript source code with indentation tracking."""
+    """Tokenizes KScript source code with indentation tracking.
+
+    The lexer handles:
+    - Multi-character operators (==, =>, <=) before single-char
+    - Signatures [A-Z]+ with optional inline comment
+    - String literals "..." with escape support
+    - Number literals [0-9]+
+    - Comments (...) with nested paren handling
+    - Python-style INDENT/DEDENT tokens
+    """
 
     def __init__(self, source: str):
+        """Initialize lexer with source string.
+
+        Args:
+            source: The KScript source code to tokenize
+        """
         self.source = source
         self.pos = 0
         self.line = 1
         self.column = 1
-        self.indent_stack: list[int] = [0]  # track indentation levels
+        self.indent_stack: list[int] = [0]  # Track indentation levels
         self.pending_tokens: list[Token] = []  # INDENT/DEDENT to emit
         self.at_line_start = True
 
     def tokenize(self) -> list[Token]:
-        """Tokenize the entire source and return list of tokens."""
+        """Tokenize the entire source and return list of tokens.
+
+        Returns:
+            List of Token objects ending with EOF token
+        """
         tokens: list[Token] = []
 
         while self.pos < len(self.source) or self.pending_tokens:
@@ -49,7 +67,7 @@ class Lexer:
         return tokens
 
     def _next_token(self) -> Token | None:
-        """Get the next token, skipping whitespace (except at line start)."""
+        """Get the next token, handling indentation at line start."""
         # Handle indentation at line start
         if self.at_line_start:
             self.at_line_start = False
@@ -156,11 +174,9 @@ class Lexer:
         while self.pos < len(self.source) and self.source[self.pos].isupper():
             name += self._advance()
 
-        # Check for inline comment
-        comment = None
+        # Check for inline comment - consume but don't attach
         if self.pos < len(self.source) and self.source[self.pos] == "(":
-            comment_token = self._read_comment()
-            comment = comment_token.value
+            self._read_comment()  # Consumes and discards
 
         return Token(
             TokenType.SIGNATURE,

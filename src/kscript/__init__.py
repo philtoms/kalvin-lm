@@ -3,16 +3,16 @@
 Provides both CLI and Python API for compiling .ks files to JSON/JSONL/binary format.
 """
 
+import json
 from pathlib import Path
 
-from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer
+from kalvin.mod_tokenizer import ModTokenizer, Mod64Tokenizer
 
 from .ast import KScriptFile
 from .compiler import CompiledEntry, Compiler
 from .lexer import Lexer
 from .output import read_bin, read_json, write_bin, write_json, write_jsonl
 from .parser import Parser
-import json
 
 __all__ = [
     "KScript",
@@ -68,9 +68,9 @@ class KScript:
                     - .bin: Binary model file (tokenized)
                     If Path(source).exists() returns True, treats as file path.
             base: Optional existing KScript to extend.
-            tokenizer: Tokenizer for encoding (default: Mod32Tokenizer).
+            tokenizer: Tokenizer for encoding (default: Mod64Tokenizer).
         """
-        self.tokenizer = tokenizer or Mod32Tokenizer()
+        self.tokenizer = tokenizer or Mod64Tokenizer()
         self._entries: list[CompiledEntry] = list(base._entries) if base else []
 
         source_path = Path(source)

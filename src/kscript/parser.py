@@ -22,14 +22,31 @@ class ParseError(Exception):
 
 
 class Parser:
-    """Recursive descent parser for KScript."""
+    """Recursive descent parser for KScript.
+
+    Handles:
+    - Multiple top-level scripts (column 1 signatures)
+    - Construct parsing with operator detection
+    - Immediate binding for chained constructs
+    - Backward canonize with leading nodes detection
+    - Recursive subscript parsing with INDENT/DEDENT
+    """
 
     def __init__(self, tokens: list[Token]):
+        """Initialize parser with token list.
+
+        Args:
+            tokens: List of tokens from lexer (ending with EOF)
+        """
         self.tokens = tokens
         self.pos = 0
 
     def parse(self) -> KScriptFile:
-        """Parse tokens into a KScriptFile AST."""
+        """Parse tokens into a KScriptFile AST.
+
+        Returns:
+            KScriptFile containing all top-level scripts
+        """
         scripts: list[Script] = []
 
         while not self._at_end():
@@ -49,7 +66,14 @@ class Parser:
         return KScriptFile(scripts)
 
     def _parse_script(self, is_top_level: bool = False) -> Script:
-        """Parse a script: signature followed by constructs and optional subscripts."""
+        """Parse a script: signature followed by constructs and optional subscripts.
+
+        Args:
+            is_top_level: True if this is a top-level script (column 1)
+
+        Returns:
+            Script AST node
+        """
         sig_token = self._expect(TokenType.SIGNATURE)
         signature = self._make_signature(sig_token)
 
@@ -193,7 +217,11 @@ class Parser:
         return None
 
     def _parse_nodes(self, multi: bool) -> list[Node]:
-        """Parse one or more nodes."""
+        """Parse one or more nodes.
+
+        Args:
+            multi: If True, parse multiple nodes; if False, parse single node
+        """
         nodes: list[Node] = []
 
         while not self._at_end():
