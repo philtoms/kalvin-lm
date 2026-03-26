@@ -1,6 +1,5 @@
 """Responses region for displaying Kalvin response KLines."""
 
-import json
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.message import Message
@@ -10,7 +9,7 @@ from kalvin.abstract import KLine
 
 
 class ResponseItem(ListItem):
-    """A single response item in the list."""
+    """A single response item in the list displaying decompiled KScript."""
 
     DEFAULT_CSS = """
     ResponseItem {
@@ -21,27 +20,19 @@ class ResponseItem(ListItem):
     }
     """
 
-    def __init__(self, kline: KLine) -> None:
-        """Initialize with a KLine.
+    def __init__(self, kline: KLine, decompiled_source: str) -> None:
+        """Initialize with a KLine and its decompiled source.
 
         Args:
-            kline: The KLine response to display.
+            kline: The KLine response.
+            decompiled_source: The decompiled KScript source to display.
         """
         self.kline = kline
+        self.decompiled_source = decompiled_source
         super().__init__()
 
     def compose(self) -> ComposeResult:
-        # Format as JSON: {"signature": nodes}
-        nodes = self.kline.nodes
-        if nodes is None:
-            node_repr = None
-        elif isinstance(nodes, int):
-            node_repr = nodes
-        else:
-            node_repr = nodes
-
-        json_str = json.dumps({str(self.kline.signature): node_repr})
-        yield Static(json_str)
+        yield Static(self.decompiled_source)
 
 
 class ResponsesRegion(Vertical):
@@ -62,21 +53,24 @@ class ResponsesRegion(Vertical):
 
     class ResponseClicked(Message):
         """Emitted when a response item is clicked."""
-        def __init__(self, kline: KLine) -> None:
+
+        def __init__(self, kline: KLine, decompiled_source: str) -> None:
             self.kline = kline
+            self.decompiled_source = decompiled_source
             super().__init__()
 
     def compose(self) -> ComposeResult:
         yield ListView(id="responses-list")
 
-    def add_response(self, kline: KLine) -> None:
-        """Append a KLine response to the list.
+    def add_response(self, kline: KLine, decompiled_source: str) -> None:
+        """Append a KLine response with its decompiled source to the list.
 
         Args:
             kline: The KLine response to add.
+            decompiled_source: The decompiled KScript source to display.
         """
         list_view = self.query_one("#responses-list", ListView)
-        item = ResponseItem(kline)
+        item = ResponseItem(kline, decompiled_source)
         list_view.append(item)
         # Scroll to the new item
         list_view.index = len(list_view) - 1
@@ -89,4 +83,6 @@ class ResponsesRegion(Vertical):
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         """Handle selection of a response item."""
         if event.list_view.id == "responses-list" and isinstance(event.item, ResponseItem):
-            self.post_message(self.ResponseClicked(event.item.kline))
+            self.post_message(
+                self.ResponseClicked(event.item.kline, event.item.decompiled_source)
+            )

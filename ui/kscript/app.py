@@ -2,7 +2,6 @@
 
 import argparse
 import asyncio
-import json
 import logging
 import os
 import sys
@@ -16,6 +15,7 @@ from textual.widgets import Footer, Header
 from kalvin import Kalvin
 from kalvin.abstract import KLine
 from kscript import KScript, CompiledEntry
+from kscript.decompiler import Decompiler
 from ui.kscript.dialogs import LoadScriptDialog, SaveStateDialog, LoadStateDialog
 from ui.kscript.hotreload import (
     HotReloadManager,
@@ -71,6 +71,7 @@ class KScriptApp(App):
         self._dev_mode = dev_mode
         self._hot_reload_manager: Optional[HotReloadManager] = None
         self._kalvin: Optional[Kalvin] = None
+        self._decompiler: Decompiler = Decompiler()
         self._execution_state: ExecutionState = ExecutionState.IDLE
         self._pending_entries: list[CompiledEntry] = []
         self._current_entry_index: int = 0
@@ -144,19 +145,9 @@ class KScriptApp(App):
             self._cancelled = True
             self._set_state(ExecutionState.HALTED)
 
-        # Append JSON to editor
-        kline = event.kline
-        nodes = kline.nodes
-        if nodes is None:
-            node_repr = None
-        elif isinstance(nodes, int):
-            node_repr = nodes
-        else:
-            node_repr = nodes
-        json_str = json.dumps({str(kline.signature): node_repr})
-
+        # Append decompiled KScript source to editor
         editor = self.query_one(EditorRegion)
-        editor.append_to_script(json_str)
+        editor.append_to_script(event.decompiled_source)
 
     # === State Management ===
 
@@ -258,6 +249,19 @@ class KScriptApp(App):
         """
         return entry
 
+    def _decompile_response(self, klines: list[KLine]) -> str:
+        """Decompile a list of KLines to KScript source.
+
+        Args:
+            klines: List of KLines from rationalise response.
+
+        Returns:
+            Decompile KScript source string.
+        """
+        if not klines:
+            return ""
+        return self._decompiler.decompile(klines)
+
     # === Execution Engine ===
 
     async def _feed_klines(self) -> None:
@@ -273,11 +277,12 @@ class KScriptApp(App):
 
             # Feed to Kalvin and get response
             if self._kalvin:
-                response = self._kalvin.rationalise(kline)
-                if response is None:
+                response_klines = self._kalvin.rationalise(kline)
+                if response_klines is None or len(response_klines) == 0:
                     # No match found - create identity response
-                    response = kline
-                responses.add_response(response)
+                    response_klines = [kline]
+                decompiled = self._decompile_response(response_klines)
+                responses.add_response(kline, decompiled)
 
             self._current_entry_index += 1
 
@@ -416,11 +421,12 @@ class KScriptApp(App):
             kline = self._entry_to_kline(entry)
 
             if self._kalvin:
-                response = self._kalvin.rationalise(kline)
-                if response is None:
-                    response = kline
+                response_klines = self._kalvin.rationalise(kline)
+                if response_klines is None or len(response_klines) == 0:
+                    response_klines = [kline]
+                decompiled = self._decompile_response(response_klines)
                 responses = self.query_one(ResponsesRegion)
-                responses.add_response(response)
+                responses.add_response(kline, decompiled)
 
             self._current_entry_index += 1
 

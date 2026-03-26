@@ -1,7 +1,7 @@
 """Decompiler for KLines back to KScript source."""
 
 from kalvin.abstract import KLine
-from kalvin.mod_tokenizer import ModTokenizer
+from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer
 from kalvin.significance import Int32Significance
 
 
@@ -21,8 +21,8 @@ class Decompiler:
         - S4 (no bits): undersign (=)
     """
 
-    def __init__(self, tokenizer: ModTokenizer):
-        self.tokenizer = tokenizer
+    def __init__(self, tokenizer: ModTokenizer | None = None):
+        self.tokenizer = tokenizer if tokenizer else Mod32Tokenizer()
         self._sig = Int32Significance()
         self._by_sig: dict[int, KLine] = {}  # Full sig -> KLine
         self._by_token: dict[int, list[int]] = {}  # Base token -> list of full sigs
