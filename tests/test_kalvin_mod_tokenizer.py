@@ -1,20 +1,26 @@
 """Tests for ModTokenizer classes (Mod32, Mod64, Mod128)."""
 
 import pytest
-from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer,Mod64Tokenizer, Mod128Tokenizer, _build_char_bit_maps, mod_alphabet
+from kalvin.mod_tokenizer import (
+    ModTokenizer, Mod32Tokenizer, Mod64Tokenizer, Mod128Tokenizer,
+    _build_char_bit_maps, _MOD_ALPHABET, PACKED_BIT
+)
+
+# Alias for backward compatibility in tests
+mod_alphabet = _MOD_ALPHABET
 
 class TestBuildCharBitMaps:
     """Tests for _build_char_bit_maps helper function."""
 
     def test_returns_tuple_of_dicts(self):
         """Function returns tuple of two dictionaries."""
-        char_bit, bit_char = _build_char_bit_maps(32)
+        char_bit, bit_char = _build_char_bit_maps(mod_alphabet, 32)
         assert isinstance(char_bit, dict)
         assert isinstance(bit_char, dict)
 
     def test_bit_char_reverse_mapping(self):
         """bit_char provides reverse mapping from bit to char."""
-        char_bit, bit_char = _build_char_bit_maps(32)
+        char_bit, bit_char = _build_char_bit_maps(mod_alphabet, 32)
         # Check that each bit_char entry maps to a valid char_bit entry
         for bit, char in bit_char.items():
             assert char in char_bit
@@ -22,18 +28,18 @@ class TestBuildCharBitMaps:
 
     def test_uppercase_priority_in_reverse_mapping(self):
         """Uppercase letters have priority in reverse mapping."""
-        char_bit, bit_char = _build_char_bit_maps(32)
+        char_bit, bit_char = _build_char_bit_maps(mod_alphabet, 32)
         # 'A' and 'a' may map to same bit position (mod 32)
         # But 'A' should be in bit_char because it comes first
         assert bit_char.get(char_bit['A']) == 'A'
 
     def test_mod32_bit_positions_unique(self):
         """With mod 32, bit positions are unique within 0-31 range."""
-        char_bit, _ = _build_char_bit_maps(32)
-        # First 32 characters should have unique positions
-        first_32 = mod_alphabet[0:31]
+        char_bit, _ = _build_char_bit_maps(mod_alphabet, 32)
+        # First 31 characters should have unique positions
+        first_31 = mod_alphabet[0:31]
         seen_positions = set()
-        for c in first_32:
+        for c in first_31:
             pos = char_bit[c]
             # Check it's a power of 2 (single bit)
             assert pos & (pos - 1) == 0 or pos == 0, f"Char {c} not a power of 2: {pos}"
@@ -41,19 +47,19 @@ class TestBuildCharBitMaps:
 
     def test_mod64_creates_more_unique_positions(self):
         """With mod 64, more characters get unique bit positions."""
-        char_bit, _ = _build_char_bit_maps(64)
-        # First 64 characters should have unique positions
-        first_64 = mod_alphabet[0:64]
+        char_bit, _ = _build_char_bit_maps(mod_alphabet, 64)
+        # First 63 characters should have unique positions (bits 1-63)
+        first_63 = mod_alphabet[0:63]
         seen_positions = set()
-        for c in first_64:
+        for c in first_63:
             pos = char_bit[c]
             assert pos not in seen_positions, f"Duplicate position for {c}"
             seen_positions.add(pos)
-        assert len(seen_positions) == 64
+        assert len(seen_positions) == 63
 
     def test_mod128_creates_even_more_unique_positions(self):
         """With mod 128, even more characters get unique positions."""
-        char_bit, _ = _build_char_bit_maps(128)
+        char_bit, _ = _build_char_bit_maps(mod_alphabet, 128)
         chars = mod_alphabet
         seen_positions = set()
         for c in chars:
@@ -63,7 +69,7 @@ class TestBuildCharBitMaps:
 
     def test_printable_ascii_included(self):
         """All printable ASCII characters are mapped."""
-        char_bit, _ = _build_char_bit_maps(32)
+        char_bit, _ = _build_char_bit_maps(mod_alphabet, 32)
         for code in range(32, 127):
             c = chr(code)
             assert c in char_bit, f"Missing printable ASCII: {repr(c)}"
@@ -77,15 +83,29 @@ class TestModTokenizerBase:
         from kalvin.abstract import KTokenizer
         assert issubclass(ModTokenizer, KTokenizer)
 
-    def test_has_char_bit_mapping(self):
-        """ModTokenizer has CHAR_BIT class attribute."""
-        assert hasattr(ModTokenizer, 'CHAR_BIT')
-        assert isinstance(ModTokenizer.CHAR_BIT, dict)
+    def test_instance_has_char_bit_mapping(self):
+        """ModTokenizer instance has CHAR_BIT property."""
+        tokenizer = Mod32Tokenizer()
+        assert hasattr(tokenizer, 'CHAR_BIT')
+        assert isinstance(tokenizer.CHAR_BIT, dict)
 
-    def test_has_bit_char_mapping(self):
-        """ModTokenizer has BIT_CHAR class attribute."""
-        assert hasattr(ModTokenizer, 'BIT_CHAR')
-        assert isinstance(ModTokenizer.BIT_CHAR, dict)
+    def test_instance_has_bit_char_mapping(self):
+        """ModTokenizer instance has BIT_CHAR property."""
+        tokenizer = Mod32Tokenizer()
+        assert hasattr(tokenizer, 'BIT_CHAR')
+        assert isinstance(tokenizer.BIT_CHAR, dict)
+
+    def test_has_alphabet_property(self):
+        """ModTokenizer has alphabet property."""
+        tokenizer = Mod32Tokenizer()
+        assert hasattr(tokenizer, 'alphabet')
+        assert tokenizer.alphabet == _MOD_ALPHABET
+
+    def test_custom_alphabet(self):
+        """ModTokenizer accepts custom alphabet."""
+        custom = "abc"
+        tokenizer = Mod32Tokenizer(alphabet=custom)
+        assert tokenizer.alphabet == custom
 
 
 class TestMod32Tokenizer:
@@ -103,32 +123,33 @@ class TestMod32Tokenizer:
         assert len(result) == 1
 
     def test_encode_single_char_returns_bit_value(self, tokenizer):
-        """encode returns correct bit value for single character."""
+        """encode returns correct bit value for single character (with PACKED_BIT)."""
         result = tokenizer.encode('A')
-        # A is at position 0, so bit value is 1 << 0 = 1
-        assert result == [1]
+        # A is at index 0 in mod_alphabet, bit value is 1 << 1 = 2, plus PACKED_BIT = 3
+        assert result == [PACKED_BIT | tokenizer.CHAR_BIT['A']]
 
     def test_encode_b_returns_correct_bit(self, tokenizer):
-        """encode returns correct bit for B."""
+        """encode returns correct bit for B (with PACKED_BIT)."""
         result = tokenizer.encode('B')
-        # B is at position 1, so bit value is 1 << 1 = 2
-        assert result == [2]
+        # B is at index 1 in mod_alphabet, bit value is 1 << 2 = 4, plus PACKED_BIT = 5
+        assert result == [PACKED_BIT | tokenizer.CHAR_BIT['B']]
 
     def test_encode_z_returns_correct_bit(self, tokenizer):
-        """encode returns correct bit for Z."""
+        """encode returns correct bit for Z (with PACKED_BIT)."""
         result = tokenizer.encode('Z')
-        # Z is at position 25, so bit value is 1 << 25
-        assert result == [1 << 25]
+        # Z is at index 25 in mod_alphabet
+        assert result == [PACKED_BIT | tokenizer.CHAR_BIT['Z']]
 
     def test_decode_single_token(self, tokenizer):
         """decode returns correct character for single token."""
-        result = tokenizer.decode([1])  # bit position 0 = 'A'
+        # Use CHAR_BIT for literal decoding (pack=False)
+        result = tokenizer.decode([tokenizer.CHAR_BIT['A']], pack=False)
         assert result == 'A'
 
     def test_decode_multiple_tokens(self, tokenizer):
         """decode concatenates characters from multiple tokens."""
-        # A=1, B=2
-        result = tokenizer.decode([1, 2])
+        # Use CHAR_BIT values for literal decoding (pack=False)
+        result = tokenizer.decode([tokenizer.CHAR_BIT['A'], tokenizer.CHAR_BIT['B']], pack=False)
         assert result == 'AB'
 
     def test_encode_decode_roundtrip_single_char(self, tokenizer):
@@ -139,14 +160,10 @@ class TestMod32Tokenizer:
         assert decoded == original
 
     def test_encode_multi_char_returns_first_word_tokens(self, tokenizer):
-        """encode for multi-char string returns tokens for first word via batch_encode.
-
-        Note: The current implementation has a quirk where multi-char strings
-        go through batch_encode(text.split()) which splits on whitespace.
-        """
-        # Single word - returns its token
+        """encode for multi-char string returns packed token."""
+        # Single word - returns its token with PACKED_BIT
         result = tokenizer.encode('A')  # Single char
-        assert result == [tokenizer.CHAR_BIT['A']]
+        assert result == [PACKED_BIT | tokenizer.CHAR_BIT['A']]
 
     def test_encode_with_pad_ws_strips_and_adds_space(self, tokenizer):
         """encode with pad_ws=True strips and adds trailing space."""
@@ -172,10 +189,10 @@ class TestMod32Tokenizer:
         """batch_encode preserves input order."""
         texts = ['A', 'B', 'C']
         result = tokenizer.batch_encode(texts)
-        # Each should be a single-element list
-        assert result[0] == [tokenizer.CHAR_BIT['A']]
-        assert result[1] == [tokenizer.CHAR_BIT['B']]
-        assert result[2] == [tokenizer.CHAR_BIT['C']]
+        # Each should be a single-element list with PACKED_BIT
+        assert result[0] == [PACKED_BIT | tokenizer.CHAR_BIT['A']]
+        assert result[1] == [PACKED_BIT | tokenizer.CHAR_BIT['B']]
+        assert result[2] == [PACKED_BIT | tokenizer.CHAR_BIT['C']]
 
     def test_encode_empty_string(self, tokenizer):
         """encode with empty string returns empty list."""
@@ -194,7 +211,8 @@ class TestMod32Tokenizer:
         """All lowercase letters can be encoded and decoded."""
         for c in "abcdefghijklmnopqrstuvwxyz":
             encoded = tokenizer.encode(c)
-            assert encoded[0] <= 1 << 32
+            # With PACKED_BIT and mod32 encoding, value should fit in 33 bits
+            assert encoded[0] <= (1 << 33)
 
 class TestMod64Tokenizer:
     """Tests for Mod64Tokenizer."""
@@ -207,7 +225,8 @@ class TestMod64Tokenizer:
     def test_encode_single_char(self, tokenizer):
         """encode returns correct bit value for single character."""
         result = tokenizer.encode('A')
-        assert result == [1]  # A is still at position 0
+        # A is at index 0 in mod_alphabet, with PACKED_BIT
+        assert result == [PACKED_BIT | tokenizer.CHAR_BIT['A']]
 
     def test_all_digits_encodable(self, tokenizer):
         """All digits can be encoded and decoded."""
@@ -243,7 +262,8 @@ class TestMod128Tokenizer:
     def test_encode_single_char(self, tokenizer):
         """encode returns correct bit value for single character."""
         result = tokenizer.encode('A')
-        assert result == [1]  # A is still at position 0
+        # A is at index 0 in mod_alphabet, with PACKED_BIT
+        assert result == [PACKED_BIT | tokenizer.CHAR_BIT['A']]
 
     def test_encode_decode_roundtrip(self, tokenizer):
         """encode/decode roundtrip works."""
@@ -275,13 +295,14 @@ class TestModTokenizerComparison:
             assert t32.encode(c) == t64.encode(c) == t128.encode(c), f"Mismatch for {c}"
 
     def test_digits_same_across_modulos(self):
-        """Digits 0-4 have same encoding across all modulos (positions 27-32)."""
-        t32 = Mod32Tokenizer()
+        """Digits have same encoding across mod64 and mod128 (no collision in that range)."""
         t64 = Mod64Tokenizer()
         t128 = Mod128Tokenizer()
 
-        for c in "01234":
-            assert t32.encode(c) == t64.encode(c) == t128.encode(c), f"Mismatch for {c}"
+        # Digits 0-9 are at positions 52-61 in mod_alphabet
+        # Mod64 and Mod128 both keep these unique (no wrapping)
+        for c in "0123456789":
+            assert t64.encode(c) == t128.encode(c), f"Mismatch for {c}"
 
     def test_vocab_size_difference(self):
         """Different modulos have different vocab sizes."""
@@ -373,17 +394,18 @@ class TestPackEncoding:
     # === encode with pack=True (default) ===
 
     def test_encode_pack_true_single_char(self, tokenizer):
-        """encode with pack=True returns single token for single char."""
+        """encode with pack=True returns single token for single char (with PACKED_BIT)."""
         result = tokenizer.encode('A', pack=True)
         assert len(result) == 1
-        assert result[0] == tokenizer.CHAR_BIT['A']
+        # PACKED_BIT is added when pack=True
+        assert result[0] == PACKED_BIT | tokenizer.CHAR_BIT['A']
 
     def test_encode_pack_true_multi_char_returns_single_token(self, tokenizer):
-        """encode with pack=True returns single token for multi-char string."""
+        """encode with pack=True returns single token for multi-char string (with PACKED_BIT)."""
         result = tokenizer.encode('ABC', pack=True)
         assert len(result) == 1
-        # Should be OR of A, B, C bits
-        expected = tokenizer.CHAR_BIT['A'] | tokenizer.CHAR_BIT['B'] | tokenizer.CHAR_BIT['C']
+        # Should be OR of A, B, C bits plus PACKED_BIT
+        expected = PACKED_BIT | tokenizer.CHAR_BIT['A'] | tokenizer.CHAR_BIT['B'] | tokenizer.CHAR_BIT['C']
         assert result[0] == expected
 
     def test_encode_pack_true_default(self, tokenizer):
@@ -445,9 +467,10 @@ class TestPackEncoding:
         assert len(result) == 3
 
     def test_decode_pack_true_default(self, tokenizer):
-        """pack=True is the default for decode."""
-        packed = tokenizer.CHAR_BIT['A'] | tokenizer.CHAR_BIT['B']
-        result_default = tokenizer.decode([packed])
+        """pack=None (default) auto-detects from PACKED_BIT."""
+        # Include PACKED_BIT so auto-detect treats it as packed
+        packed = PACKED_BIT | tokenizer.CHAR_BIT['A'] | tokenizer.CHAR_BIT['B']
+        result_default = tokenizer.decode([packed])  # pack=None auto-detects
         result_explicit = tokenizer.decode([packed], pack=True)
         assert result_default == result_explicit
 

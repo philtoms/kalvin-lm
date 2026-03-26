@@ -292,6 +292,11 @@ class KModel(ABC):
         """Iterate over all KLines in insertion order."""
         ...
 
+    @property
+    @abstractmethod
+    def klines(self) -> list[KLine]:
+        """Return internal kline graph"""
+        ...
 
 # === KAgent ===
 

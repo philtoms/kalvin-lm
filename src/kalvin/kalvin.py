@@ -115,12 +115,15 @@ class Kalvin(KAgent):
                 self._unrecognised_tokens.add(token)
 
             signature |= token
-            self.rationalise(KLine(signature, nodes=[token], dbg_text=decode), True)
+            self.rationalise(KLine(signature, nodes=[token], dbg_text=decode))
+            # Add token kline to model
+            self._model.add(KLine(signature, nodes=[token], dbg_text=decode))
             ks_nodes.append(signature)
             ks_key |= signature
 
         kline = KLine(signature=ks_key, nodes=ks_nodes, dbg_text=text)
-        self.rationalise(kline, True) 
+        self.rationalise(kline)
+        self._model.add(kline)
         return kline
 
     def decode(self, token_sig: KSig) -> str:
@@ -181,13 +184,13 @@ class Kalvin(KAgent):
         self.__frames.append(model)
         return model
 
-    def rationalise(self, kline: KLine, frame: KModel | None = None) -> KLine | None:
+    def rationalise(self, kline: KLine, frame: KModel | None = None, _seen: set[KSig] | None = None) -> list[KLine]:
         """Rationalise a KLine in frame context.
 
         Args:
             kline: KLine to rationalise
-            train: If True, enforce training mode
             frame: Optional KModel frame context (internal use)
+            _seen: Internal set of already-processed signatures (prevents recursion)
 
         Returns:
             Rationalised KLine, or KNone if not found
@@ -195,83 +198,99 @@ class Kalvin(KAgent):
         if frame is None:
             frame = self.new_frame()
 
+        # Prevent infinite recursion
+        if _seen is None:
+            _seen = set()
+        if kline.signature in _seen:
+            return frame.klines
+        _seen.add(kline.signature)
+
         #bring nodes into frame
         for n in kline.nodes:
             nk = self._model.find_kline(n)
             if nk == KNone:
                 nk = KLine(signature=n, nodes=[]) # new token node (also at S4)
-            self.rationalise(nk, frame=frame)
+            self.rationalise(nk, frame=frame, _seen=_seen)
 
         fast, slow = frame.query(kline.signature)
         self.__backlog = [(kline, slow)] + self.__backlog
         for fk in fast:
-            for cs in self.signify(kline, fk):
-                if self._significance.has_s1(cs.signature):
-                    sv = self._significance.calculate(frame, kline, cs)
-                    frame.upgrade(cs, sv)
-                    return fk
+            sig = self.signify(kline, fk)
+            if self._significance.has_s1(sig):
+                # Create a KLine with the significance for upgrading
+                cs = KLine(signature=sig, nodes=fk.nodes)
+                sv = self._significance.calculate(frame, kline, cs)
+                frame.upgrade(cs, sv)
+                return frame.klines
 
         frame.add(kline)
-        return KNone
+        return frame.klines
     
     def cogitate(self):
         while self.__backlog:
             qk, slow = self.__backlog[0]
             self.__backlog = self.__backlog[1:]
             for sk in slow:
-                for cs in self.signify(qk, sk):
-                    if self._significance.has_s1(cs.signature):
-                        sv = self._significance.calculate(self._model, qk, cs)
-                        self._model.upgrade(cs, sv)
-                        continue
+                sig = self.signify(qk, sk)
+                if self._significance.has_s1(sig):
+                    cs = KLine(signature=sig, nodes=sk.nodes)
+                    sv = self._significance.calculate(self._model, qk, cs)
+                    self._model.upgrade(cs, sv)
+                    continue
             
 
-    def signify(self, k1: KLine, k2: KLine) -> list[KLine]:
+    def signify(self, k1: KLine, k2: KLine, s: KSig | None = None) -> KSig:
         """Establish significance relationship between two KLines.
 
         Calculates internal significance of k1:k2 relationship.
+        If s is provided and less significant than internal, returns internal.
+        Otherwise, creates links at the requested significance level.
 
         Args:
             k1: First KLine
             k2: Second KLine
+            s: Optional requested significance level. If None, returns internal.
 
         Returns:
-            A frame of graded significants:
-                S1 - identity: the klines share the same identity node pattern
-                S1 - countersigned: k1 and k2 are signed by each other
-                S2 - over|under fit
-                S3 - connotated:
-                S4 - no significance
+            Significance value (higher = more significant: S1 > S2 > S3 > S4)
         """
-        
-        k1_set = set(k1.nodes)
-        k2_set = set(k2.nodes)
-        if k1_set == k2_set and len(k1.nodes) == len(k2.nodes): # todo: investigate approximate identity performance
-            return [KLine(S1, k1.nodes)] # identity
+        # Calculate internal significance
+        internal = self._significance.calculate(self._model, k1, k2)
 
-        if k2.signature in k1_set and k1.signature in k2_set:
-            cs = k2.filter(k1.signature)
-            return [KLine(S1, cs)] # countersigned
+        # If no specific level requested, or internal is more significant, return internal
+        if s is None or internal >= s:
+            return internal
 
-        frame = []
-        s2_match = k1_set & k2_set
-        if s2_match:
-            cs = k1.mask(s2_match)
-            frame.append(KLine(S2, cs)) # over | under fit
-        
-        for q in k1_set - k2_set:
-            qk = set(self._model.find_kline(q).nodes)
-            if len(qk) == 0:
-                continue
-            for t in k2_set - k1_set:
-                tk = set(self._model.find_kline(t).nodes)
-                if qk & tk:
-                    return [KLine(S3, list(tk))]
-        
-        if len(frame) == 0:
-            frame.append(KLine(S4, []))
+        # Requested level is more significant than internal - create links at level s
 
-        return frame
+        # S1: Create countersigned links
+        if self._significance.has_s1(s):
+            # Add bidirectional links - k1 gets k2's signature as node, k2 gets k1's
+            link1 = KLine(k1.signature, [k2.signature])
+            link2 = KLine(k2.signature, [k1.signature])
+            self._model.add(link1)
+            self._model.add(link2)
+            return s
+
+        # S2: Check compound match (k2.nodes OR'd together equals k1.signature)
+        if self._significance.get_s2(s) > 0:
+            compound = 0
+            for node in k2.nodes:
+                compound |= node
+            if compound == k1.signature:
+                # S2 verified - create link
+                link = KLine(k1.signature, k2.nodes)
+                self._model.add(link)
+                return s
+
+        # S3: Create connotated link
+        if self._significance.get_s3(s) > 0:
+            link = KLine(k1.signature, [k2.signature])
+            self._model.add(link)
+            return s
+
+        # S4: No significance
+        return S4
 
 
     def model_size(self) -> int:

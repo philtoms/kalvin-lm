@@ -48,6 +48,7 @@ class Model(KModel):
         key_nodes = (kline.signature, tuple(kline.nodes))
         if key_nodes in self._dedup:
             return False  # O(1) duplicate check
+        self._dedup.add(key_nodes)
         self._add_kline_internal(kline)
 
         return True
@@ -300,6 +301,11 @@ class Model(KModel):
     def __getitem__(self, signature: KSig) -> KLine:
         """Get a KLine by index. O(1)."""
         return self.find_kline(signature)
+
+    @property
+    def klines(self) -> list[KLine]:
+        """Return the list of KLines."""
+        return self._klines
 
     @property
     def kline(self) -> "_KLineAccessor":

@@ -231,8 +231,74 @@ class Int64Significance(KSignificance):
         return self._S4
 
 
-# Module-level constants (class attributes for convenience)
+class Int32Significance:
+    """32-bit significance implementation for KScript constructs.
+
+    Layout (32-bit, before shift):
+    - Bit 31: S1 indicator (countersign)
+    - Bits 23-30: S2 range (8 bits, canonize)
+    - Bits 0-22: S3 range (22 bits, connotate)
+    - All clear: S4 (undersign)
+
+    Stored in bits 32-63 of 64-bit signature (shifted left 32).
+    Token space remains in bits 0-31 (unchanged).
+    """
+
+    # 32-bit values (conceptual, before shift)
+    _S1_32 = 1 << 31           # S1 indicator
+    _S2_IND_32 = 1 << 23       # S2 indicator
+    _S3_IND_32 = 1 << 0        # S3 indicator
+
+    # 64-bit constants (shifted left 32 for direct signature use)
+    S1: int = _S1_32 << 32              # bit 63
+    S2: int = _S2_IND_32 << 32          # bit 55
+    S3: int = _S3_IND_32 << 32          # bit 32
+
+    S2_RANGE: int = 0xFF << 55          # bits 55-62 (8 bits for S2)
+    S3_RANGE: int = 0x7F_FFFF << 32     # bits 32-54 (23 bits for S3)
+
+    # Masks
+    SIG_MASK: int = 0xFFFF_FFFF_0000_0000   # bits 32-63 (all significance)
+    TOKEN_MASK: int = (1 << 32) - 1         # bits 0-31 (token space)
+
+    def get_level(self, sig: int) -> str:
+        """Detect significance level from signature bits.
+
+        Hierarchical detection: S1 > S2 > S3 > S4
+        """
+        if sig & self.S1:           # bit 63 set
+            return "S1"
+        elif sig & self.S2_RANGE:   # any bit 55-62 set
+            return "S2"
+        elif sig & self.S3_RANGE:   # any bit 32-54 set
+            return "S3"
+        else:
+            return "S4"             # all significance bits clear
+
+    def get_construct_op(self, level: str) -> str:
+        """Map significance level to KScript construct operator."""
+        ops = {
+            "S1": "==",   # countersign
+            "S2": "=>",   # canonize
+            "S3": ">",    # connotate
+            "S4": "=",    # undersign
+        }
+        return ops.get(level, "")
+
+    def strip_significance(self, sig: int) -> int:
+        """Strip significance bits, returning only token bits."""
+        return sig & self.TOKEN_MASK
+
+    def get_significance_value(self, sig: int) -> int:
+        """Extract 32-bit significance value (shifted back down)."""
+        return (sig >> 32) & 0xFFFF_FFFF
+
+
+# Module-level constants (Int64Significance for backward compatibility)
 S1 = KSig(Int64Significance._S1)
 S2 = KSig(Int64Significance._S2)
 S3 = KSig(Int64Significance._S3)
 S4 = KSig(Int64Significance._S4)
+
+# Int32Significance instance for KScript use
+int32sig = Int32Significance()

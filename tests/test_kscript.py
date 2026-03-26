@@ -4,11 +4,17 @@ import json
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+from kalvin.abstract import KLine
 from kalvin.mod_tokenizer import Mod64Tokenizer
+from kalvin.significance import Int32Significance
 from kscript import KScript
 from kscript.compiler import Compiler, CompiledEntry
+from kscript.decompiler import Decompiler
 from kscript.lexer import Lexer
 from kscript.parser import Parser
+
+# Shared significance instance for tests
+_sig = Int32Significance()
 
 # Shared tokenizer for tests
 _tokenizer = Mod64Tokenizer()
@@ -679,3 +685,268 @@ class TestCLI:
         assert bin_file.exists()
         content = bin_file.read_bytes()
         assert content[:4] == b"KSC1"
+
+
+# =============================================================================
+# 9. Decompiler Module Tests
+# =============================================================================
+
+
+def make_kline(sig: int, nodes, tokenizer: Mod64Tokenizer) -> KLine:
+    """Helper to create a KLine with encoded signature and nodes."""
+    return KLine(signature=sig, nodes=nodes)
+
+
+def encode_sig(name: str, level: str, tokenizer: Mod64Tokenizer) -> int:
+    """Encode a signature name with significance bits.
+
+    Args:
+        name: Signature name to encode
+        level: Significance level ("S1", "S2", "S3", "S4")
+        tokenizer: Tokenizer for encoding
+    """
+    base = tokenizer.encode(name, pack=True)[0]
+    if level == "S1":
+        return base | _sig.S1
+    elif level == "S2":
+        return base | _sig.S2_RANGE  # Sets bit 55
+    elif level == "S3":
+        return base | _sig.S3_RANGE  # Sets bit 32
+    else:  # S4
+        return base  # No significance bits
+
+
+class TestDecompilerSignificance:
+    """Tests for significance level detection."""
+
+    def test_detect_s1_countersign(self) -> None:
+        """Test S1 (countersign) detection."""
+        decompiler = Decompiler(_tokenizer)
+        sig = encode_sig("A", "S1", _tokenizer)
+        level = decompiler._get_significance_level(sig)
+        assert level == "S1"
+
+    def test_detect_s2_canonize(self) -> None:
+        """Test S2 (canonize) detection."""
+        decompiler = Decompiler(_tokenizer)
+        sig = encode_sig("A", "S2", _tokenizer)
+        level = decompiler._get_significance_level(sig)
+        assert level == "S2"
+
+    def test_detect_s3_connotate(self) -> None:
+        """Test S3 (connotate) detection."""
+        decompiler = Decompiler(_tokenizer)
+        sig = encode_sig("A", "S3", _tokenizer)
+        level = decompiler._get_significance_level(sig)
+        assert level == "S3"
+
+    def test_detect_s4_undersign(self) -> None:
+        """Test S4 (undersign) detection - no bits set."""
+        decompiler = Decompiler(_tokenizer)
+        sig = _tokenizer.encode("A", pack=True)[0]  # No significance bits
+        level = decompiler._get_significance_level(sig)
+        assert level == "S4"
+
+
+class TestDecompilerCountersign:
+    """Tests for countersign pair handling."""
+
+    def test_countersign_pair_dedup(self) -> None:
+        """Test countersign pair emits once."""
+        sig_a = encode_sig("A", "S1", _tokenizer)
+        sig_b = encode_sig("B", "S1", _tokenizer)
+        node_a = _tokenizer.encode("A", pack=True)[0]
+        node_b = _tokenizer.encode("B", pack=True)[0]
+
+        klines = [
+            KLine(signature=sig_a, nodes=node_b),
+            KLine(signature=sig_b, nodes=node_a),
+        ]
+
+        decompiler = Decompiler(_tokenizer)
+        result = decompiler.decompile(klines)
+
+        # Should emit "A == B" once, not both directions
+        assert "A == B" in result
+        assert result.count("==") == 1
+
+    def test_countersign_single_emits(self) -> None:
+        """Test single countersign emits correctly."""
+        sig_a = encode_sig("A", "S1", _tokenizer)
+        node_b = _tokenizer.encode("B", pack=True)[0]
+
+        klines = [
+            KLine(signature=sig_a, nodes=node_b),
+        ]
+
+        decompiler = Decompiler(_tokenizer)
+        result = decompiler.decompile(klines)
+
+        assert "A == B" in result
+
+
+class TestDecompilerSubscripts:
+    """Tests for subscript reconstruction."""
+
+    def test_canonize_multi_node_subscripts(self) -> None:
+        """Test multi-node canonize uses subscripts."""
+        sig_cd = encode_sig("CD", "S2", _tokenizer)
+        sig_c = encode_sig("C", "S3", _tokenizer)
+        sig_d = encode_sig("D", "S3", _tokenizer)
+        node_c = _tokenizer.encode("C", pack=True)[0]
+        node_d = _tokenizer.encode("D", pack=True)[0]
+        node_1 = _tokenizer.encode("1", pack=True)[0]
+        node_2 = _tokenizer.encode("2", pack=True)[0]
+
+        klines = [
+            KLine(signature=sig_cd, nodes=[node_c, node_d]),
+            KLine(signature=sig_c, nodes=node_1),
+            KLine(signature=sig_d, nodes=node_2),
+        ]
+
+        decompiler = Decompiler(_tokenizer)
+        result = decompiler.decompile(klines)
+
+        # Should emit subscript structure
+        assert "CD =>" in result
+        assert "  C >" in result
+        assert "  D >" in result
+
+    def test_canonize_single_node_inline(self) -> None:
+        """Test single-node canonize emits inline."""
+        sig_a = encode_sig("A", "S2", _tokenizer)
+        node_b = _tokenizer.encode("B", pack=True)[0]
+
+        klines = [
+            KLine(signature=sig_a, nodes=[node_b]),
+        ]
+
+        decompiler = Decompiler(_tokenizer)
+        result = decompiler.decompile(klines)
+
+        # Should emit inline
+        assert "A => B" in result
+
+
+class TestDecompilerIdentity:
+    """Tests for identity recovery."""
+
+    def test_missing_entry_is_identity(self) -> None:
+        """Test missing entry emits as identity."""
+        sig_cd = encode_sig("CD", "S2", _tokenizer)
+        node_c = _tokenizer.encode("C", pack=True)[0]
+        node_d = _tokenizer.encode("D", pack=True)[0]
+
+        # CD => [C, D] but C and D have no entries
+        klines = [
+            KLine(signature=sig_cd, nodes=[node_c, node_d]),
+        ]
+
+        decompiler = Decompiler(_tokenizer)
+        result = decompiler.decompile(klines)
+
+        # Should emit C and D as identity subscripts
+        assert "CD =>" in result
+        assert "  C" in result
+        assert "  D" in result
+
+    def test_s4_undersign_emits_sig_only(self) -> None:
+        """Test S4 level emits just signature."""
+        sig_a = _tokenizer.encode("A", pack=True)[0]  # No significance bits
+
+        klines = [
+            KLine(signature=sig_a, nodes=None),
+        ]
+
+        decompiler = Decompiler(_tokenizer)
+        result = decompiler.decompile(klines)
+
+        # Should emit just "A"
+        lines = result.strip().split("\n")
+        assert "A" in lines[0]
+        assert "=>" not in lines[0]
+        assert "==" not in lines[0]
+        assert ">" not in lines[0]
+
+
+class TestDecompilerErrors:
+    """Tests for error surfacing."""
+
+    def test_orphan_detection(self) -> None:
+        """Test orphaned KLine detection."""
+        # Create: A == B, and orphaned X => Y
+        sig_a = encode_sig("A", "S1", _tokenizer)
+        sig_x = encode_sig("X", "S2", _tokenizer)  # Orphan - not reachable from A
+        node_b = _tokenizer.encode("B", pack=True)[0]
+        node_y = _tokenizer.encode("Y", pack=True)[0]
+
+        klines = [
+            KLine(signature=sig_a, nodes=node_b),  # A == B
+            KLine(signature=sig_x, nodes=[node_y]),  # X => Y (orphan - not reachable from A)
+        ]
+
+        decompiler = Decompiler(_tokenizer)
+        result = decompiler.decompile(klines)
+
+        # Should surface orphan
+        assert "!!! ORPHAN:" in result
+        assert "X" in result  # Orphan should mention X
+
+    def test_broken_chain_reference(self) -> None:
+        """Test broken chain reference - token that can't be decoded."""
+        from unittest.mock import Mock
+
+        # Create a mock tokenizer that raises an exception for certain tokens
+        mock_tokenizer = Mock()
+        mock_tokenizer.decode = Mock(side_effect=ValueError("Invalid token"))
+
+        sig_a = encode_sig("A", "S1", _tokenizer)
+        node_b = _tokenizer.encode("B", pack=True)[0]
+
+        klines = [
+            KLine(signature=sig_a, nodes=node_b),
+        ]
+
+        decompiler = Decompiler(mock_tokenizer)
+        result = decompiler.decompile(klines)
+
+        # Should surface broken reference since tokenizer raises exception
+        assert "!!! BROKEN:" in result
+
+
+class TestDecompilerIntegration:
+    """Integration tests for full decompilation."""
+
+    def test_roundtrip_countersign_canonize(self) -> None:
+        """Test decompilation of countersign + canonize chain."""
+        # Simulating: AB == CD => C D
+        # CD needs BOTH S1 (countersign pair) and S2 (canonize) - different sigs!
+        sig_ab_s1 = encode_sig("AB", "S1", _tokenizer)  # AB with countersign bit
+        sig_cd_s1 = encode_sig("CD", "S1", _tokenizer)  # CD with countersign bit (pair)
+        sig_cd_s2 = encode_sig("CD", "S2", _tokenizer)  # CD with canonize bit
+        sig_c_s3 = encode_sig("C", "S3", _tokenizer)
+        sig_d_s3 = encode_sig("D", "S3", _tokenizer)
+
+        node_ab = _tokenizer.encode("AB", pack=True)[0]
+        node_cd = _tokenizer.encode("CD", pack=True)[0]
+        node_c = _tokenizer.encode("C", pack=True)[0]
+        node_d = _tokenizer.encode("D", pack=True)[0]
+        node_1 = _tokenizer.encode("1", pack=True)[0]
+        node_2 = _tokenizer.encode("2", pack=True)[0]
+
+        klines = [
+            KLine(signature=sig_ab_s1, nodes=node_cd),  # AB == CD
+            KLine(signature=sig_cd_s1, nodes=node_ab),  # CD == AB (pair)
+            KLine(signature=sig_cd_s2, nodes=[node_c, node_d]),  # CD => [C, D]
+            KLine(signature=sig_c_s3, nodes=node_1),  # C > 1
+            KLine(signature=sig_d_s3, nodes=node_2),  # D > 2
+        ]
+
+        decompiler = Decompiler(_tokenizer)
+        result = decompiler.decompile(klines)
+
+        # Should emit: AB == CD => \n  C > 1\n  D > 2
+        assert "AB == CD" in result
+        assert "CD =>" in result
+        assert "C >" in result
+        assert "D >" in result

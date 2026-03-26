@@ -165,7 +165,7 @@ class TestSignifyEdgeCases:
         assert _sig.has_s1(result)
 
     def test_signify_adds_links_each_call(self):
-        """Verify that signify adds links (model allows duplicates with train=False)."""
+        """Verify that signify creates links on first call, deduped on subsequent calls."""
         kalvin = Kalvin()
 
         k1 = KLine(signature=0x100, nodes=[0x10])
@@ -173,11 +173,13 @@ class TestSignifyEdgeCases:
         kalvin.model.add(k1)
         kalvin.model.add(k2)
 
-        # First signify
+        initial_count = len(kalvin.model)
+
+        # First signify - adds 2 links
         kalvin.signify(k1, k2, _sig.S1)
         count_after_first = len(kalvin.model)
+        assert count_after_first == initial_count + 2  # 2 links added
 
-        # Second signify with same params
-        # Note: model.add with train=False doesn't dedupe, so links are added again
+        # Second signify with same params - links are deduplicated
         kalvin.signify(k1, k2, _sig.S1)
-        assert len(kalvin.model) == count_after_first + 2  # 2 more linkw added
+        assert len(kalvin.model) == count_after_first  # No new links (deduped)
