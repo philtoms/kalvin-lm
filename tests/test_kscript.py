@@ -44,9 +44,9 @@ class TestTokenTypes:
     """Tests for token types."""
 
     def test_token_type_count(self) -> None:
-        """Test all 14 token types defined."""
+        """Test all 15 token types defined."""
         from kscript.token import TokenType
-        assert len(TokenType) == 14
+        assert len(TokenType) == 15
 
     def test_token_creation(self) -> None:
         """Test Token dataclass creation."""
@@ -181,6 +181,44 @@ class TestLexer:
         tokens = Lexer(source).tokenize()
         assert any(t.type == TokenType.INDENT for t in tokens)
         assert any(t.type == TokenType.DEDENT for t in tokens)
+
+    def test_tokenize_string_literal_lowercase(self) -> None:
+        """Test tokenizing lowercase identifier as STRING_LITERAL."""
+        from kscript.token import TokenType
+        tokens = Lexer("zed").tokenize()
+        assert tokens[0].type == TokenType.STRING_LITERAL
+        assert tokens[0].value == "zed"
+
+    def test_tokenize_string_literal_mixed_case(self) -> None:
+        """Test tokenizing mixed case identifier as STRING_LITERAL."""
+        from kscript.token import TokenType
+        tokens = Lexer("Hello").tokenize()
+        assert tokens[0].type == TokenType.STRING_LITERAL
+        assert tokens[0].value == "Hello"
+
+    def test_tokenize_string_literal_alphanumeric(self) -> None:
+        """Test tokenizing alphanumeric identifier as STRING_LITERAL."""
+        from kscript.token import TokenType
+        tokens = Lexer("item123").tokenize()
+        assert tokens[0].type == TokenType.STRING_LITERAL
+        assert tokens[0].value == "item123"
+
+    def test_tokenize_uppercase_remains_signature(self) -> None:
+        """Test that uppercase-only identifier remains SIGNATURE."""
+        from kscript.token import TokenType
+        tokens = Lexer("FOO").tokenize()
+        assert tokens[0].type == TokenType.SIGNATURE
+        assert tokens[0].value == "FOO"
+
+    def test_tokenize_numeric_start_is_number(self) -> None:
+        """Test that numeric-start identifier is NUMBER."""
+        from kscript.token import TokenType
+        tokens = Lexer("123abc").tokenize()
+        # Numbers consume digits, so this is NUMBER "123" followed by STRING_LITERAL "abc"
+        assert tokens[0].type == TokenType.NUMBER
+        assert tokens[0].value == "123"
+        assert tokens[1].type == TokenType.STRING_LITERAL
+        assert tokens[1].value == "abc"
 
 
 class TestLexerIndentation:
@@ -323,6 +361,80 @@ class TestParserSubscripts:
         assert len(script.subscripts[0].subscripts) == 1
 
 
+
+    def test_parse_nested_subscripts(self) -> None:
+        """Test parsing nested subscripts."""
+        source = "A =>\n  B =>\n    C"
+        tokens = Lexer(source).tokenize()
+        kscript = Parser(tokens).parse()
+        script = kscript.scripts[0]
+        assert len(script.subscripts) == 1
+        assert len(script.subscripts[0].subscripts) == 1
+
+
+class TestParserStringLiterals:
+    """Tests for parsing string literal nodes."""
+
+    def test_parse_string_literal_node(self) -> None:
+        """Test parsing a string literal as a node."""
+        from kscript.ast import StringLiteral, Signature
+        tokens = Lexer("A => Y zed").tokenize()
+        kscript = Parser(tokens).parse()
+        script = kscript.scripts[0]
+        construct = script.constructs[0]
+        assert len(construct.nodes) == 2
+        # Y is SIGNATURE, zed is STRING_LITERAL
+        assert isinstance(construct.nodes[0], Signature)
+        assert isinstance(construct.nodes[1], StringLiteral)
+        assert construct.nodes[0].id == "Y"
+        assert construct.nodes[1].id == "zed"
+
+    def test_parse_mixed_string_literal_nodes(self) -> None:
+        """Test parsing mixed string literal and signature nodes."""
+        from kscript.ast import StringLiteral, Signature
+        tokens = Lexer("A => foo bar BAZ").tokenize()
+        kscript = Parser(tokens).parse()
+        script = kscript.scripts[0]
+        construct = script.constructs[0]
+        assert len(construct.nodes) == 3
+        # foo is STRING_LITERAL, bar is STRING_LITERAL, BAZ is SIGNATURE
+        assert isinstance(construct.nodes[0], StringLiteral)
+        assert isinstance(construct.nodes[1], StringLiteral)
+        assert isinstance(construct.nodes[2], Signature)
+        assert construct.nodes[0].id == "foo"
+        assert construct.nodes[1].id == "bar"
+        assert construct.nodes[2].id == "BAZ"
+
+    def test_parse_string_literal_in_countersign(self) -> None:
+        """Test parsing string literal in countersign."""
+        from kscript.ast import StringLiteral
+        tokens = Lexer("A == hello").tokenize()
+        kscript = Parser(tokens).parse()
+        script = kscript.scripts[0]
+        construct = script.constructs[0]
+        assert len(construct.nodes) == 1
+        assert isinstance(construct.nodes[0], StringLiteral)
+        assert construct.nodes[0].id == "hello"
+
+    def test_parse_backward_canonize_with_string_literal(self) -> None:
+        """Test backward canonize with string literal as child node.
+
+        Note: Scripts must start with SIGNATURE, so we test A <= zed
+        where A is the signature and zed is the string literal child.
+        """
+        from kscript.ast import StringLiteral
+        tokens = Lexer("A <= zed").tokenize()
+        kscript = Parser(tokens).parse()
+        script = kscript.scripts[0]
+        assert len(script.constructs) == 1
+        construct = script.constructs[0]
+        assert construct.type.name == "CANONIZE_BWD"
+        # zed is STRING_LITERAL (the parent in backward canonize)
+        assert len(construct.nodes) == 1
+        assert isinstance(construct.nodes[0], StringLiteral)
+        assert construct.nodes[0].id == "zed"
+
+
 # =============================================================================
 # 5. Compiler Module Tests
 # =============================================================================
@@ -419,6 +531,63 @@ class TestCompiler:
         assert d["A"] == ["B", "C"]
         assert d["B"] is None
         assert d["C"] is None
+
+    def test_compile_unquoted_string_literal_unpacked(self) -> None:
+        """Test unquoted string literal compiles to unpacked chars.
+
+        Spec: String literal compiles to unpacked chars
+        - WHEN compiler processes construct `A => zed` where `zed` is a StringLiteral
+        - THEN the nodes are encoded as [ord('z')<<1, ord('e')<<1, ord('d')<<1] = [244, 202, 204]
+        """
+        from kalvin.mod_tokenizer import PACKED_BIT
+        entries = compile_source("A => zed")
+        assert len(entries) == 1
+        entry = entries[0]
+
+        # Verify unpacked encoding (no PACKED_BIT set)
+        assert isinstance(entry._nodes, list)
+        for node_id in entry._nodes:
+            assert (node_id & PACKED_BIT) == 0, f"Node {node_id} has PACKED_BIT set"
+
+        # Verify specific encoding: ord(c) << 1
+        expected = [ord('z') << 1, ord('e') << 1, ord('d') << 1]
+        assert entry._nodes == expected, f"Expected {expected}, got {entry._nodes}"
+
+        # Decode to verify roundtrip works
+        sig, nodes = entry.decode(_tokenizer)
+        assert sig == "A"
+        # Note: all-literal nodes decode to a single string
+        assert nodes == "zed"
+
+    def test_compile_string_literal_no_reverse(self) -> None:
+        """Test string literal in countersign gets no reverse entry.
+
+        Spec: String literal gets no reverse entry
+        - WHEN compiler processes countersign `A == zed` where `zed` is a StringLiteral
+        - THEN only one entry is created {A: zed} without reverse {zed: A}
+        """
+        entries = compile_source("A == zed")
+        # Should only have ONE entry, not two (no reverse for literals)
+        assert len(entries) == 1, f"Expected 1 entry, got {len(entries)}"
+
+        sig, nodes = entries[0].decode(_tokenizer)
+        assert sig == "A"
+        # Literal nodes decode to string (all unpacked tokens form one value)
+        assert nodes == "zed"
+
+    def test_compile_mixed_signature_and_string_literal(self) -> None:
+        """Test canonize with both signature and string literal nodes.
+
+        The decode returns a list where:
+        - Signatures are decoded individually
+        - Consecutive literal chars are grouped into one string
+        """
+        entries = compile_source("A => B zed C")
+        assert len(entries) == 1
+        sig, nodes = entries[0].decode(_tokenizer)
+        assert sig == "A"
+        # Mixed nodes: B (signature), zed (literal), C (signature)
+        assert nodes == ["B", "zed", "C"]
 
 
 class TestCompilerIntegration:
@@ -950,3 +1119,195 @@ class TestDecompilerIntegration:
         assert "CD =>" in result
         assert "C >" in result
         assert "D >" in result
+
+
+# =============================================================================
+# 10. Multi-Character Signature (MCS) Tests
+# =============================================================================
+
+
+class TestMCSCanonization:
+    """Tests for multi-character signature expansion."""
+
+    def test_mcs_simple_expansion(self) -> None:
+        """Test simple MCS expansion emits canonization + identities.
+
+        Spec: Simple MCS expansion
+        - WHEN compiler processes signature `ABC`
+        - THEN entry `{ABC: [A, B, C]}` is emitted with S2 significance
+        - AND entries `{A: null}`, `{B: null}`, `{C: null}` are emitted with S4
+        """
+        entries = compile_source("ABC")
+
+        # Should have 4 entries: MCS canonization + 3 identities
+        assert len(entries) == 4
+
+        d = entries_to_dict(entries)
+
+        # MCS canonization: {ABC: [A, B, C]}
+        assert d["ABC"] == ["A", "B", "C"]
+
+        # Component identities
+        assert d["A"] is None
+        assert d["B"] is None
+        assert d["C"] is None
+
+    def test_mcs_in_construct_position(self) -> None:
+        """Test MCS in construct position.
+
+        Spec: MCS in construct position
+        - WHEN compiler processes `ABC => X`
+        - THEN entry `{ABC: [A, B, C]}` is emitted (implicit MCS expansion)
+        - AND entry `{ABC: [X]}` is emitted (explicit construct)
+        """
+        entries = compile_source("ABC => X")
+
+        # Should have: MCS canonization + 3 identities + construct
+        assert len(entries) == 5
+
+        # First entry is MCS canonization
+        sig, nodes = entries[0].decode(_tokenizer)
+        assert sig == "ABC"
+        assert nodes == ["A", "B", "C"]
+
+        # Next 3 are component identities
+        for i in range(1, 4):
+            sig, nodes = entries[i].decode(_tokenizer)
+            assert nodes is None
+            assert sig in "ABC"
+
+        # Last entry is the construct
+        sig, nodes = entries[4].decode(_tokenizer)
+        assert sig == "ABC"
+        assert nodes == ["X"]
+
+    def test_single_char_no_expansion(self) -> None:
+        """Test single-character signature bypass.
+
+        Spec: Single-character bypass
+        - WHEN compiler processes signature `A`
+        - THEN no MCS expansion entry is emitted (single-char is atomic)
+        """
+        entries = compile_source("A")
+
+        # Should have only 1 entry (identity), no MCS expansion
+        assert len(entries) == 1
+
+        d = entries_to_dict(entries)
+        assert d["A"] is None
+
+    def test_mcs_two_characters(self) -> None:
+        """Test two-character MCS expansion."""
+        entries = compile_source("AB")
+
+        # Should have 3 entries: canonization + 2 identities
+        assert len(entries) == 3
+
+        d = entries_to_dict(entries)
+        assert d["AB"] == ["A", "B"]
+        assert d["A"] is None
+        assert d["B"] is None
+
+    def test_mcs_with_countersign(self) -> None:
+        """Test MCS expansion with countersign construct."""
+        entries = compile_source("ABC == X")
+
+        # Should have: MCS canonization + 3 identities + 2 countersign entries
+        assert len(entries) == 6
+
+        # First entry is MCS canonization
+        sig, nodes = entries[0].decode(_tokenizer)
+        assert sig == "ABC"
+        assert nodes == ["A", "B", "C"]
+
+        # Next 3 are component identities
+        for i in range(1, 4):
+            sig, nodes = entries[i].decode(_tokenizer)
+            assert nodes is None
+            assert sig in "ABC"
+
+        # Last 2 are countersign entries
+        sig, nodes = entries[4].decode(_tokenizer)
+        assert sig == "ABC"
+        assert nodes == "X"
+
+        sig, nodes = entries[5].decode(_tokenizer)
+        assert sig == "X"
+        assert nodes == "ABC"
+
+
+class TestMCSOrdering:
+    """Tests for MCS entry ordering."""
+
+    def test_mcs_emitted_before_construct(self) -> None:
+        """Test MCS entries emitted before constructs that reference them.
+
+        Spec: Ordering with explicit constructs
+        - WHEN compiler processes `ABC == X`
+        - THEN entries are emitted in order:
+          1. {ABC: [A, B, C]} (MCS canonization)
+          2. {A: null}, {B: null}, {C: null} (identities)
+          3. {ABC: X}, {X: ABC} (countersign construct)
+        """
+        entries = compile_source("ABC == X")
+
+        # First 4 entries should be MCS-related
+        sig, nodes = entries[0].decode(_tokenizer)
+        assert sig == "ABC"
+        assert nodes == ["A", "B", "C"]
+
+        # Next 3 should be identities
+        for i in range(1, 4):
+            sig, nodes = entries[i].decode(_tokenizer)
+            assert nodes is None
+            assert sig in "ABC"
+
+        # Last 2 should be countersign entries
+        sig, nodes = entries[4].decode(_tokenizer)
+        assert sig == "ABC"
+        assert nodes == "X"
+
+        sig, nodes = entries[5].decode(_tokenizer)
+        assert sig == "X"
+        assert nodes == "ABC"
+
+
+class TestMCSSignificance:
+    """Tests for MCS significance levels."""
+
+    def test_mcs_canonization_s2_significance(self) -> None:
+        """Test MCS canonization uses S2 significance.
+
+        Spec: S2 significance encoding
+        - WHEN MCS canonization entry `{ABC: [A, B, C]}` is emitted
+        - THEN the signature has bit 55 set (S2 indicator)
+        """
+        entries = compile_source("ABC")
+
+        # First entry is MCS canonization
+        mcs_entry = entries[0]
+
+        # Check signature has S2 bit set
+        sig_token = mcs_entry.signature & _sig.TOKEN_MASK
+        sig_s2 = sig_token | _sig.S2
+
+        # The signature should have S2 bits (CANONIZE_FWD)
+        assert mcs_entry.signature == sig_s2 or (mcs_entry.signature & _sig.S2) != 0
+
+    def test_mcs_identity_s4_significance(self) -> None:
+        """Test component identities use S4 significance (no bits).
+
+        Spec: Component identities use S4
+        - WHEN component identity entries are emitted
+        - THEN they have no significance bits (S4)
+        """
+        entries = compile_source("ABC")
+
+        # Entries 1-3 are identities (A, B, C)
+        for i in range(1, 4):
+            entry = entries[i]
+            # S4 = no significance bits, just the token
+            sig_token = entry.signature & _sig.TOKEN_MASK
+            # Identity entries use UNDERSIGN which has no bits
+            # So signature should equal just the token (no extra bits)
+            assert entry.signature == sig_token or (entry.signature & ~_sig.TOKEN_MASK) == 0

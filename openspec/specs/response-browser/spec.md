@@ -2,35 +2,37 @@
 
 ## Purpose
 
-Display area for Kalvin responses in the KScript TUI. Shows responses as a scrollable list of JSON items with click-to-select functionality.
+Display area for Kalvin responses in the KScript TUI. Shows responses as a scrollable list of decompiled KScript blocks with click-to-select functionality.
 
 ## Requirements
 
 ### Requirement: Display responses as scrollable list
-The system SHALL display Kalvin responses as a vertically scrollable list of JSON items.
+The system SHALL display Kalvin responses as a vertically scrollable list of decompiled KScript blocks.
 
 #### Scenario: Response list grows during execution
 - **WHEN** KLines are being executed
-- **THEN** each response is appended to the response list
+- **THEN** each response is decompiled to KScript source
+- **AND** decompiled source is appended to the response list
 - **AND** the list is scrollable
 - **AND** the most recent response is visible
 
-### Requirement: Display KLine as JSON
-The system SHALL display each response KLine in JSON format.
+### Requirement: Display KLine as decompiled KScript
+The system SHALL display each response KLine as decompiled KScript source text.
 
-#### Scenario: JSON format display
+#### Scenario: KScript format display
 - **WHEN** a KLine response is received
-- **THEN** it is displayed as a JSON object
-- **AND** format is `{"signature": nodes}` where nodes can be null, string, or array
+- **THEN** it is decompiled using the shared Decompiler
+- **AND** displayed as multi-line KScript source text
+- **AND** preserves construct operators and subscript indentation
 
 ### Requirement: Click response to select
-The system SHALL allow user to click a response item in the list.
+The system SHALL allow user to click a response block in the list.
 
-#### Scenario: Click response item
-- **WHEN** user clicks a response item in the list
-- **THEN** the item is visually selected
+#### Scenario: Click response block
+- **WHEN** user clicks a response block in the list
+- **THEN** the block is visually selected
 - **AND** execution is halted if running
-- **AND** the item's JSON is appended to editor content
+- **AND** the decompiled KScript source is appended to editor content
 
 ### Requirement: Click halts execution
 The system SHALL halt automatic execution when a response is clicked.
@@ -39,7 +41,7 @@ The system SHALL halt automatic execution when a response is clicked.
 - **WHEN** execution is RUNNING
 - **AND** user clicks a response item
 - **THEN** execution halts immediately
-- **AND** clicked item's JSON is appended to editor
+- **AND** clicked item's KScript source is appended to editor
 
 ### Requirement: Clear responses list
 The system SHALL allow user to clear the responses list without affecting editor or Kalvin state.

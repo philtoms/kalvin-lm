@@ -105,13 +105,15 @@ class Lexer:
         if ch == "<":
             return self._make_token(TokenType.CONNOTATE_BWD, "<")
 
-        # Signature [A-Z]+
-        if ch.isupper():
-            return self._read_signature()
-
-        # Number [0-9]+
+        # Number [0-9]+ (check before string literal)
         if ch.isdigit():
             return self._read_number()
+
+        # Identifier: [a-zA-Z][a-zA-Z0-9]*
+        # If all uppercase → SIGNATURE
+        # If contains lowercase or mixed → STRING_LITERAL
+        if ch.isalpha():
+            return self._read_identifier()
 
         # String "..."
         if ch == '"':
@@ -167,7 +169,10 @@ class Lexer:
         return Token(TokenType.NEWLINE, "\n", line, col)
 
     def _read_signature(self) -> Token:
-        """Read a signature [A-Z]+ with optional inline comment."""
+        """Read a signature [A-Z]+ with optional inline comment.
+
+        Kept for backward compatibility - called by _read_identifier for all-uppercase case.
+        """
         start_line, start_col = self.line, self.column
         name = ""
 
@@ -184,6 +189,60 @@ class Lexer:
             start_line,
             start_col,
         )
+
+    def _read_identifier(self) -> Token:
+        """Read an identifier [a-zA-Z][a-zA-Z0-9]*.
+
+        Returns SIGNATURE if all uppercase, otherwise STRING_LITERAL.
+        """
+        start_line, start_col = self.line, self.column
+        name = ""
+
+        while self.pos < len(self.source) and self._is_ident_char(self.source[self.pos]):
+            name += self._advance()
+
+        # Check for inline comment - consume but don't attach
+        if self.pos < len(self.source) and self.source[self.pos] == "(":
+            self._read_comment()  # Consumes and discards
+
+        # All uppercase → SIGNATURE
+        if name.isupper():
+            return Token(
+                TokenType.SIGNATURE,
+                name,
+                start_line,
+                start_col,
+            )
+
+        # Contains lowercase or digits → STRING_LITERAL
+        return Token(
+            TokenType.STRING_LITERAL,
+            name,
+            start_line,
+            start_col,
+        )
+
+    def _is_ident_char(self, ch: str) -> bool:
+        """Check if character is valid in an identifier (alphanumeric)."""
+        return ch.isalnum()
+
+    def _read_string_literal(self) -> Token:
+        """Read a string literal [a-zA-Z0-9]+ (not all uppercase).
+
+        Called when we have an alphanumeric identifier that contains
+        lowercase letters or digits (i.e., not exclusively uppercase).
+        """
+        start_line, start_col = self.line, self.column
+        value = ""
+
+        while self.pos < len(self.source) and self._is_ident_char(self.source[self.pos]):
+            value += self._advance()
+
+        return Token(TokenType.STRING_LITERAL, value, start_line, start_col)
+
+    def _is_ident_char(self, ch: str) -> bool:
+        """Check if character is valid in an identifier (alphanumeric)."""
+        return ch.isalnum()
 
     def _read_number(self) -> Token:
         """Read a number [0-9]+."""

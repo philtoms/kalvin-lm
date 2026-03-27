@@ -39,7 +39,8 @@ The system SHALL define the following token types:
 | CONNOTATE_FWD | `>` | Forward connotation |
 | CONNOTATE_BWD | `<` | Backward connotation |
 | UNDERSIGN | `=` | Undersign link |
-| SIGNATURE | `[A-Z]+` | Uppercase identifier |
+| SIGNATURE | `[A-Z]+` | Uppercase-only identifier |
+| STRING_LITERAL | `[a-zA-Z0-9]+` (not all uppercase) | Unquoted string literal |
 | STRING | `"..."` | Double-quoted string |
 | NUMBER | `[0-9]+` | Numeric literal |
 | COMMENT | `(...)` | Parenthesized comment |
@@ -68,7 +69,7 @@ The lexer SHALL tokenize multi-character operators before single-character ones.
 ---
 
 ### Requirement: Lexer - Signatures
-The lexer SHALL tokenize uppercase letter sequences as SIGNATURE tokens.
+The lexer SHALL tokenize uppercase-only letter sequences as SIGNATURE tokens.
 
 #### Scenario: Single-letter signature
 - **WHEN** lexer encounters `A`
@@ -82,6 +83,27 @@ The lexer SHALL tokenize uppercase letter sequences as SIGNATURE tokens.
 - **WHEN** lexer encounters `S(ubject)`
 - **THEN** it produces SIGNATURE token with value `"S"`
 - **AND** the comment `(ubject)` is consumed but not attached
+
+---
+
+### Requirement: Lexer - Unquoted String Literals
+The lexer SHALL tokenize identifiers containing lowercase letters, digits, or mixed case as STRING_LITERAL tokens.
+
+#### Scenario: Lowercase identifier
+- **WHEN** lexer encounters `zed`
+- **THEN** it produces STRING_LITERAL token with value `"zed"`
+
+#### Scenario: Mixed case identifier
+- **WHEN** lexer encounters `Hello`
+- **THEN** it produces STRING_LITERAL token with value `"Hello"`
+
+#### Scenario: Alphanumeric identifier
+- **WHEN** lexer encounters `item123`
+- **THEN** it produces STRING_LITERAL token with value `"item123"`
+
+#### Scenario: Uppercase identifier remains signature
+- **WHEN** lexer encounters `FOO`
+- **THEN** it produces SIGNATURE token with value `"FOO"` (not STRING_LITERAL)
 
 ---
 
@@ -260,6 +282,23 @@ The parser SHALL support backward canonize patterns where nodes appear before th
 - **WHEN** parser processes `B C D <= A`
 - **THEN** a CANONIZE_BWD construct is created with nodes [B, C, D, A]
 - **AND** `has_leading_nodes` is True
+
+---
+
+### Requirement: Parser - STRING_LITERAL as Node
+The parser SHALL accept STRING_LITERAL tokens as nodes in any construct position.
+
+#### Scenario: String literal as node
+- **WHEN** parser processes `X => Y zed`
+- **THEN** it creates a construct with nodes `[Signature("Y"), StringLiteral("zed")]`
+
+#### Scenario: Multiple string literals
+- **WHEN** parser processes `A => foo bar BAZ`
+- **THEN** it creates a construct with nodes `[StringLiteral("foo"), StringLiteral("bar"), Signature("BAZ")]`
+
+#### Scenario: String literal in countersign
+- **WHEN** parser processes `A == hello`
+- **THEN** it creates a countersign construct with node `StringLiteral("hello")`
 
 ---
 

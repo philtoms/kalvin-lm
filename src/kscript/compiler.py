@@ -56,20 +56,18 @@ class CompiledEntry(KLine):
         nodes: str | None | list[str],
         tokenizer: ModTokenizer,
         *,
-        nodes_are_literals: bool = False,
         construct_type: ConstructType | None = None
     ) -> "CompiledEntry":
         """Encode string signature/nodes to token IDs.
 
-        Signatures are always packed (PACKED_BIT set) using tokenizer.
-        Nodes are packed by default, but literals are unpacked (no PACKED_BIT).
+        Signatures (uppercase strings) are packed (PACKED_BIT set) using tokenizer.
+        Literals (non-uppercase strings) are unpacked (no PACKED_BIT).
         For literals, each character is encoded as (ord(char) << 1), leaving bit 0 clear.
 
         Args:
             sig: Signature string to encode
             nodes: Node(s) to encode - None, string, or list of strings
             tokenizer: Tokenizer for encoding
-            nodes_are_literals: If True, encode nodes as literals (no PACKED_BIT)
             construct_type: If provided, add significance bits based on construct type
 
         Returns:
@@ -84,22 +82,24 @@ class CompiledEntry(KLine):
         if nodes is None:
             return cls(signature=sig_id, nodes=None)
         elif isinstance(nodes, str):
-            if nodes_are_literals:
-                # Literal: encode each char as (ord << 1)
-                node_ids = [ord(c) << 1 for c in nodes]
-                return cls(signature=sig_id, nodes=node_ids)
-            else:
+            if nodes.isupper():
                 # Signature: single packed token
                 node_id = tokenizer.encode(nodes, pack=True)[0]
                 return cls(signature=sig_id, nodes=node_id)
+            else:
+                # Literal: encode each char as (ord << 1)
+                node_ids = [ord(c) << 1 for c in nodes]
+                return cls(signature=sig_id, nodes=node_ids)
         else:
             # For list of nodes: each node gets its own token(s)
             all_node_ids: list[int] = []
             for n in nodes:
-                if nodes_are_literals:
-                    all_node_ids.extend(ord(c) << 1 for c in n)
-                else:
+                if n.isupper():
+                    # Signature: single packed token
                     all_node_ids.append(tokenizer.encode(n, pack=True)[0])
+                else:
+                    # Literal: encode each char as (ord << 1)
+                    all_node_ids.extend(ord(c) << 1 for c in n)
             return cls(signature=sig_id, nodes=all_node_ids)
 
     def decode(self, tokenizer: ModTokenizer) -> tuple[str, str | None | list[str]]:
@@ -115,15 +115,38 @@ class CompiledEntry(KLine):
             decoded = tokenizer.decode([self._nodes], pack=None)
             return sig, decoded
         else:
-            # Check if all tokens are unpacked (literal) or packed (signatures)
+            # Check if all tokens are unpacked (literal) or mixed
             all_unpacked = all((n & PACKED_BIT) == 0 for n in self._nodes)
+
             if all_unpacked:
-                # Literal: each token is (ord << 1), decode by shifting right
+                # All literal: decode as single string (for countersign/undersign)
                 decoded = "".join(chr(n >> 1) for n in self._nodes)
                 return sig, decoded
             else:
-                # Multiple packed signatures: return list
-                return sig, [tokenizer.decode([n], pack=None) for n in self._nodes]
+                # Mixed literal/signature tokens
+                # Literals: consecutive unpacked tokens form a string (each is ord << 1)
+                # Signatures: single packed token decoded via tokenizer
+                decoded_nodes: list[str] = []
+                literal_chars: list[int] = []
+
+                for n in self._nodes:
+                    if (n & PACKED_BIT) == 0:
+                        # Unpacked: part of a literal string
+                        literal_chars.append(n)
+                    else:
+                        # Packed: signature token
+                        # First, flush any accumulated literal chars
+                        if literal_chars:
+                            decoded_nodes.append("".join(chr(c >> 1) for c in literal_chars))
+                            literal_chars = []
+                        # Decode the signature
+                        decoded_nodes.append(tokenizer.decode([n], pack=None))
+
+                # Flush any remaining literal chars
+                if literal_chars:
+                    decoded_nodes.append("".join(chr(c >> 1) for c in literal_chars))
+
+                return sig, decoded_nodes
 
 
 class Compiler:
@@ -132,6 +155,30 @@ class Compiler:
     def __init__(self, tokenizer: ModTokenizer | None = None):
         self.entries: list[CompiledEntry] = []
         self.tokenizer = tokenizer or Mod32Tokenizer()
+
+    def _expand_mcs(self, sig: str) -> None:
+        """Emit MCS canonization and identity entries for multi-character signatures.
+
+        If sig has length > 1, emits:
+        - {sig: [component chars]} with S2 significance (CANONIZE_FWD)
+        - {component: null} for each char with S4 significance
+
+        Single-character signatures are not expanded (atomic).
+        """
+        if len(sig) <= 1:
+            return
+
+        # Emit MCS canonization: {sig: [A, B, C, ...]} with S2 significance
+        component_chars = list(sig)
+        self.entries.append(
+            CompiledEntry.encode(sig, component_chars, self.tokenizer, construct_type=ConstructType.CANONIZE_FWD)
+        )
+
+        # Emit component identities: {A: null}, {B: null}, ... with S4 significance
+        for char in component_chars:
+            self.entries.append(
+                CompiledEntry.encode(char, None, self.tokenizer, construct_type=ConstructType.UNDERSIGN)
+            )
 
     def compile(self, file: KScriptFile) -> list[CompiledEntry]:
         """Compile a KScriptFile to entries."""
@@ -142,6 +189,9 @@ class Compiler:
     def _compile_script(self, script: Script) -> None:
         """Compile a single script with immediate binding semantics."""
         sig = script.signature
+
+        # Expand MCS for script signature before processing constructs
+        self._expand_mcs(sig.id)
 
         # Get all nodes for constructs, using subscript signatures if needed
         constructs_with_nodes: list[tuple[Construct, list[Node]]] = []
@@ -155,9 +205,11 @@ class Compiler:
 
         if not has_valid_constructs:
             # Identity script: {sig: None}
-            self.entries.append(
-                CompiledEntry.encode(sig.id, None, self.tokenizer)
-            )
+            # Skip for multi-char signatures since MCS canonization already defines identity
+            if len(sig.id) <= 1:
+                self.entries.append(
+                    CompiledEntry.encode(sig.id, None, self.tokenizer)
+                )
         else:
             # Process constructs with immediate binding
             current_sig = sig
@@ -200,9 +252,8 @@ class Compiler:
             # Bidirectional: {sig: node} AND {node: sig}
             # But if node is a literal, recover undersign (no reverse)
             for node in nodes:
-                is_literal = not isinstance(node, Signature)
                 self.entries.append(
-                    CompiledEntry.encode(sig.id, node.id, self.tokenizer, nodes_are_literals=is_literal, construct_type=ConstructType.COUNTERSIGN)
+                    CompiledEntry.encode(sig.id, node.id, self.tokenizer, construct_type=ConstructType.COUNTERSIGN)
                 )
                 # Only add reverse if node is signature-like (not a literal)
                 if isinstance(node, Signature):
@@ -235,16 +286,16 @@ class Compiler:
                     )
             else:
                 # Forward canonize: {sig: [nodes...]}
+                node_ids = [n.id for n in nodes]
                 self.entries.append(
-                    CompiledEntry.encode(sig.id, [n.id for n in nodes], self.tokenizer, construct_type=ConstructType.CANONIZE_FWD)
+                    CompiledEntry.encode(sig.id, node_ids, self.tokenizer, construct_type=ConstructType.CANONIZE_FWD)
                 )
 
         elif construct_type == ConstructType.CONNOTATE_FWD:
             # Forward connotate: {sig: [node]} AND {node: None}
             for node in nodes:
-                is_literal = not isinstance(node, Signature)
                 self.entries.append(
-                    CompiledEntry.encode(sig.id, [node.id], self.tokenizer, nodes_are_literals=is_literal, construct_type=ConstructType.CONNOTATE_FWD)
+                    CompiledEntry.encode(sig.id, [node.id], self.tokenizer, construct_type=ConstructType.CONNOTATE_FWD)
                 )
                 self.entries.append(
                     CompiledEntry.encode(node.id, None, self.tokenizer, construct_type=ConstructType.CONNOTATE_FWD)
@@ -253,9 +304,8 @@ class Compiler:
         elif construct_type == ConstructType.CONNOTATE_BWD:
             # Backward connotate: {node: [sig]} AND {sig: None}
             for node in nodes:
-                is_literal = not isinstance(node, Signature)
                 self.entries.append(
-                    CompiledEntry.encode(node.id, [sig.id], self.tokenizer, nodes_are_literals=is_literal, construct_type=ConstructType.CONNOTATE_BWD)
+                    CompiledEntry.encode(node.id, [sig.id], self.tokenizer, construct_type=ConstructType.CONNOTATE_BWD)
                 )
             self.entries.append(
                 CompiledEntry.encode(sig.id, None, self.tokenizer, construct_type=ConstructType.CONNOTATE_BWD)
@@ -264,9 +314,8 @@ class Compiler:
         elif construct_type == ConstructType.UNDERSIGN:
             # Undersign: {sig: node} AND {node: None}
             for node in nodes:
-                is_literal = not isinstance(node, Signature)
                 self.entries.append(
-                    CompiledEntry.encode(sig.id, node.id, self.tokenizer, nodes_are_literals=is_literal, construct_type=ConstructType.UNDERSIGN)
+                    CompiledEntry.encode(sig.id, node.id, self.tokenizer, construct_type=ConstructType.UNDERSIGN)
                 )
                 self.entries.append(
                     CompiledEntry.encode(node.id, None, self.tokenizer, construct_type=ConstructType.UNDERSIGN)

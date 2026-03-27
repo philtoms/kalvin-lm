@@ -16,10 +16,11 @@ class TokenType(Enum):
         UNDERSIGN:     =   (undersign link)
 
     Literals:
-        SIGNATURE: [A-Z]+  (uppercase identifier)
-        STRING:    "..."   (double-quoted string)
-        NUMBER:    [0-9]+  (numeric literal)
-        COMMENT:   (...)   (parenthesized comment)
+        SIGNATURE:      [A-Z]+    (uppercase identifier)
+        STRING_LITERAL: [a-zA-Z0-9]+ (not all uppercase, unquoted)
+        STRING:         "..."     (double-quoted string)
+        NUMBER:         [0-9]+    (numeric literal)
+        COMMENT:        (...)     (parenthesized comment)
 
     Structure:
         NEWLINE: \\n       (line ending)
@@ -37,10 +38,11 @@ class TokenType(Enum):
     UNDERSIGN = auto()     # =
 
     # Literals
-    SIGNATURE = auto()  # [A-Z]+
-    STRING = auto()     # "..."
-    NUMBER = auto()     # [0-9]+
-    COMMENT = auto()    # (...)
+    SIGNATURE = auto()      # [A-Z]+
+    STRING_LITERAL = auto() # [a-zA-Z0-9]+ (not all uppercase)
+    STRING = auto()         # "..."
+    NUMBER = auto()         # [0-9]+
+    COMMENT = auto()        # (...)
 
     # Structure
     NEWLINE = auto()

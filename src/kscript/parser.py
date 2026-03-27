@@ -236,10 +236,14 @@ class Parser:
         return nodes
 
     def _try_parse_node(self) -> Node | None:
-        """Try to parse a single node (signature, string, or number)."""
+        """Try to parse a single node (signature, string literal, string, or number)."""
         if self._check(TokenType.SIGNATURE):
             token = self._advance()
             return self._make_signature(token)
+
+        if self._check(TokenType.STRING_LITERAL):
+            token = self._advance()
+            return StringLiteral(token.value, token.line, token.column)
 
         if self._check(TokenType.STRING):
             token = self._advance()

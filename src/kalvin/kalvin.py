@@ -184,11 +184,11 @@ class Kalvin(KAgent):
         self.__frames.append(model)
         return model
 
-    def rationalise(self, kline: KLine, frame: KModel | None = None, _seen: set[KSig] | None = None) -> list[KLine]:
-        """Rationalise a KLine in frame context.
+    def rationalise(self, query: KLine, frame: KModel | None = None, _seen: set[KSig] | None = None) -> list[KLine]:
+        """Rationalise a KLine query in frame context.
 
         Args:
-            kline: KLine to rationalise
+            query: KLine to rationalise
             frame: Optional KModel frame context (internal use)
             _seen: Internal set of already-processed signatures (prevents recursion)
 
@@ -201,29 +201,29 @@ class Kalvin(KAgent):
         # Prevent infinite recursion
         if _seen is None:
             _seen = set()
-        if kline.signature in _seen:
+        if query.signature in _seen:
             return frame.klines
-        _seen.add(kline.signature)
+        _seen.add(query.signature)
 
         #bring nodes into frame
-        for n in kline.nodes:
+        for n in query.nodes:
             nk = self._model.find_kline(n)
             if nk == KNone:
                 nk = KLine(signature=n, nodes=[]) # new token node (also at S4)
             self.rationalise(nk, frame=frame, _seen=_seen)
 
-        fast, slow = frame.query(kline.signature)
-        self.__backlog = [(kline, slow)] + self.__backlog
+        fast, slow = frame.query(query.signature)
+        self.__backlog = [(query, slow)] + self.__backlog
         for fk in fast:
-            sig = self.signify(kline, fk)
+            sig = self.signify(query, fk)
             if self._significance.has_s1(sig):
                 # Create a KLine with the significance for upgrading
                 cs = KLine(signature=sig, nodes=fk.nodes)
-                sv = self._significance.calculate(frame, kline, cs)
+                sv = self._significance.calculate(frame, query, cs)
                 frame.upgrade(cs, sv)
                 return frame.klines
 
-        frame.add(kline)
+        frame.add(query)
         return frame.klines
     
     def cogitate(self):
