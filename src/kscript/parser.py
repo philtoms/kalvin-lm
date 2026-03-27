@@ -1,14 +1,32 @@
-"""Recursive descent parser for KScript language."""
+"""Recursive descent parser for KScript language.
+
+Grammar:
+    script ::= construct+
+    construct ::=
+      | sig                              -- identity
+      | sig == node                      -- countersign
+      | sig > node                       -- connotate fwd
+      | sig = node                       -- undersign
+      | sig => construct                 -- canonize fwd (right-assoc)
+      | construct <= construct           -- canonize bwd
+      | construct < construct            -- connotate bwd
+      | construct construct*             -- sequence
+
+Key insight: BWD operators bind CONSTRUCTS, not nodes.
+The signature after BWD becomes the owner of a new construct.
+
+Another key insight: Only SIGNATURE tokens can be construct owners.
+LITERAL tokens can only appear in node positions.
+"""
 
 from .ast import (
     Construct,
     ConstructType,
     KScriptFile,
+    Literal,
     Node,
-    NumberLiteral,
     Script,
     Signature,
-    StringLiteral,
 )
 from .token import Token, TokenType
 
@@ -22,14 +40,16 @@ class ParseError(Exception):
 
 
 class Parser:
-    """Recursive descent parser for KScript.
+    """Recursive descent parser for KScript with construct-level BWD binding.
 
     Handles:
     - Multiple top-level scripts (column 1 signatures)
-    - Construct parsing with operator detection
-    - Immediate binding for chained constructs
-    - Backward canonize with leading nodes detection
-    - Recursive subscript parsing with INDENT/DEDENT
+    - BWD operators binding constructs (signature on RIGHT becomes owner)
+    - Subscript normalization (INDENT/DEDENT → inline sequence)
+    - Script boundary detection at column 1
+    - Error recovery (literals at start, empty constructs)
+
+    Key insight: _is_literal() = not _check(TokenType.SIGNATURE)
     """
 
     def __init__(self, tokens: list[Token]):
@@ -55,9 +75,15 @@ class Parser:
                 self._advance()
                 continue
 
-            # Parse top-level script (starts at column 1)
+            # Skip literals at top level until we find a signature
+            # (error recovery for literal at script start)
+            if self._is_literal():
+                self._advance()
+                continue
+
+            # Parse top-level script (starts at column 1 with signature)
             if self._check(TokenType.SIGNATURE):
-                script = self._parse_script(is_top_level=True)
+                script = self._parse_script()
                 scripts.append(script)
             else:
                 # Skip unexpected tokens at top level
@@ -65,131 +91,282 @@ class Parser:
 
         return KScriptFile(scripts)
 
-    def _parse_script(self, is_top_level: bool = False) -> Script:
-        """Parse a script: signature followed by constructs and optional subscripts.
+    def _parse_script(self) -> Script:
+        """Parse a script starting with a signature.
 
-        Args:
-            is_top_level: True if this is a top-level script (column 1)
+        A script consists of constructs, where each construct has an owner.
+        The primary signature is the first owner.
 
         Returns:
-            Script AST node
+            Script AST node with all constructs
         """
-        sig_token = self._expect(TokenType.SIGNATURE)
-        signature = self._make_signature(sig_token)
+        start_token = self._expect(TokenType.SIGNATURE)
+        primary_sig = self._make_signature(start_token)
 
-        # Parse constructs on the same line
+        # Collect all constructs in this script
         constructs: list[Construct] = []
 
+        # Current owner starts as primary signature
+        current_owner = primary_sig
+
+        # Track accumulated nodes for BWD binding
+        accumulated_nodes: list[Node] = []
+
+        # Track pending operator for subscript (when => has no inline nodes)
+        pending_operator: ConstructType | None = None
+
+        # Parse inline constructs until newline or end
         while not self._at_end() and not self._check(TokenType.NEWLINE):
-            # Check for backward canonize pattern: nodes before <=
-            leading_nodes = self._try_collect_leading_nodes()
-            if leading_nodes and self._check(TokenType.CANONIZE_BWD):
-                # Backward canonize with leading nodes: B C D <= A
-                construct = self._parse_backward_canonize_with_leading(leading_nodes)
-                if construct:
-                    constructs.append(construct)
+            # Check for BWD operators - these signal NEW owner
+            if self._check(TokenType.CANONIZE_BWD) or self._check(TokenType.CONNOTATE_BWD):
+                bwd_type = ConstructType.CANONIZE_BWD if self._check(TokenType.CANONIZE_BWD) else ConstructType.CONNOTATE_BWD
+                self._advance()  # consume operator
+
+                # Next SIGNATURE becomes the NEW owner
+                if self._check(TokenType.SIGNATURE):
+                    new_owner_token = self._advance()
+                    new_owner = self._make_signature(new_owner_token)
+
+                    # Determine target nodes based on BWD type
+                    # If no accumulated nodes, use current_owner as target
+                    if bwd_type == ConstructType.CANONIZE_BWD:
+                        # <= binds ALL accumulated nodes (or current owner if empty)
+                        target_nodes: list[Node] = list(accumulated_nodes) if accumulated_nodes else [current_owner]
+                    else:
+                        # < binds only CLOSEST (last) node (or current owner if empty)
+                        target_nodes = [accumulated_nodes[-1]] if accumulated_nodes else [current_owner]
+
+                    # Create BWD construct with new owner
+                    if target_nodes:
+                        constructs.append(Construct(
+                            owner=new_owner,
+                            type=bwd_type,
+                            nodes=target_nodes,
+                            line=new_owner.line
+                        ))
+
+                    # New owner becomes current
+                    current_owner = new_owner
+                    accumulated_nodes = []
+
+                    # Continue parsing - new owner may have FWD constructs
+                    continue
+                else:
+                    # BWD without following signature - error recovery, skip
+                    break
+
+            # Check for FWD operators
+            op_type = self._try_parse_operator()
+            if op_type:
+                # Parse nodes for this construct
+                nodes = self._parse_nodes(multi=(op_type == ConstructType.CANONIZE_FWD))
+
+                if nodes:
+                    # Create construct with current owner
+                    constructs.append(Construct(
+                        owner=current_owner,
+                        type=op_type,
+                        nodes=nodes,
+                        line=current_owner.line
+                    ))
+
+                    # Accumulate nodes for potential BWD
+                    accumulated_nodes = nodes
+
+                    # For => operator, the last node (if signature) becomes potential new owner
+                    if op_type == ConstructType.CANONIZE_FWD and nodes:
+                        last_node = nodes[-1]
+                        if isinstance(last_node, Signature):
+                            current_owner = last_node
+                    # Clear any pending operator since we handled it inline
+                    pending_operator = None
+                else:
+                    # No inline nodes - track pending operator for subscript
+                    pending_operator = op_type
+
                 continue
 
-            construct = self._try_parse_construct()
-            if construct:
-                constructs.append(construct)
-            else:
-                break
+            # Check for sequence (signature without operator starts new construct)
+            if self._check(TokenType.SIGNATURE):
+                sig_token = self._advance()
+                sig = self._make_signature(sig_token)
+                # This signature becomes the new current owner (sequence)
+                current_owner = sig
+                accumulated_nodes = [sig]
+                continue
+
+            # Check for literal in node position (add to accumulated nodes)
+            if self._is_literal():
+                node = self._parse_literal_node()
+                if node:
+                    accumulated_nodes.append(node)
+                continue
+
+            # Nothing recognized - break
+            break
 
         # Consume newline if present
         if self._check(TokenType.NEWLINE):
             self._advance()
 
-        # Parse subscripts (indented scripts)
-        subscripts: list[Script] = []
+        # Parse subscripts and normalize to inline constructs
+        self._parse_subscripts(constructs, current_owner, accumulated_nodes, pending_operator)
+
+        return Script(primary_sig, constructs, primary_sig.line)
+
+    def _parse_subscripts(
+        self,
+        constructs: list[Construct],
+        current_owner: Signature,
+        accumulated_nodes: list[Node],
+        pending_operator: ConstructType | None = None
+    ) -> None:
+        """Parse subscripts and append constructs inline.
+
+        Subscripts are layout sugar - they're normalized to the same
+        construct list as inline constructs.
+
+        Args:
+            constructs: List to append new constructs to
+            current_owner: Current owner signature (modified in place)
+            accumulated_nodes: Current accumulated nodes (modified in place)
+            pending_operator: Operator waiting for subscript nodes (e.g., => with no inline nodes)
+        """
         while self._check(TokenType.INDENT):
             self._advance()  # consume INDENT
-            # Parse subscript scripts
+
+            # If we have a pending operator, collect subscript content as nodes
+            if pending_operator:
+                subscript_nodes: list[Node] = []
+
+                # Collect nodes until DEDENT
+                while (
+                    not self._at_end()
+                    and not self._check(TokenType.DEDENT)
+                    and not self._check(TokenType.EOF)
+                ):
+                    # Skip newlines and comments
+                    if self._check(TokenType.NEWLINE) or self._check(TokenType.COMMENT):
+                        self._advance()
+                        continue
+
+                    # Collect signatures and literals as nodes
+                    if self._check(TokenType.SIGNATURE):
+                        sig_token = self._advance()
+                        subscript_nodes.append(self._make_signature(sig_token))
+                    elif self._is_literal():
+                        node = self._parse_literal_node()
+                        if node:
+                            subscript_nodes.append(node)
+                    else:
+                        # Skip unexpected tokens
+                        self._advance()
+
+                # Create the pending construct with collected nodes
+                if subscript_nodes:
+                    constructs.append(Construct(
+                        owner=current_owner,
+                        type=pending_operator,
+                        nodes=subscript_nodes,
+                        line=current_owner.line
+                    ))
+                    accumulated_nodes = subscript_nodes
+
+                    # For => operator, last signature becomes potential new owner
+                    if pending_operator == ConstructType.CANONIZE_FWD:
+                        last_node = subscript_nodes[-1]
+                        if isinstance(last_node, Signature):
+                            current_owner = last_node
+
+                # Consume DEDENT
+                if self._check(TokenType.DEDENT):
+                    self._advance()
+
+                # Pending operator handled, clear it
+                pending_operator = None
+                continue
+
+            # Normal subscript parsing (no pending operator)
+            # Parse subscript content
             while (
                 not self._at_end()
                 and not self._check(TokenType.DEDENT)
                 and not self._check(TokenType.EOF)
             ):
-                # Skip newlines and comments within subscript block
+                # Skip newlines and comments
                 if self._check(TokenType.NEWLINE) or self._check(TokenType.COMMENT):
                     self._advance()
                     continue
 
-                if self._check(TokenType.SIGNATURE):
-                    subscript = self._parse_script(is_top_level=False)
-                    subscripts.append(subscript)
-                else:
-                    # Unexpected token - skip
+                # Check for BWD operators in subscript
+                if self._check(TokenType.CANONIZE_BWD) or self._check(TokenType.CONNOTATE_BWD):
+                    bwd_type = ConstructType.CANONIZE_BWD if self._check(TokenType.CANONIZE_BWD) else ConstructType.CONNOTATE_BWD
                     self._advance()
 
-            # Consume DEDENT if present
+                    if self._check(TokenType.SIGNATURE):
+                        new_owner_token = self._advance()
+                        new_owner = self._make_signature(new_owner_token)
+
+                        if bwd_type == ConstructType.CANONIZE_BWD:
+                            target_nodes = list(accumulated_nodes)
+                        else:
+                            target_nodes = [accumulated_nodes[-1]] if accumulated_nodes else []
+
+                        if target_nodes:
+                            constructs.append(Construct(
+                                owner=new_owner,
+                                type=bwd_type,
+                                nodes=target_nodes,
+                                line=new_owner.line
+                            ))
+
+                        current_owner = new_owner
+                        accumulated_nodes = []
+                    continue
+
+                # Check for signature - sequence or construct start
+                if self._check(TokenType.SIGNATURE):
+                    sig_token = self._advance()
+                    sig = self._make_signature(sig_token)
+
+                    # Check if followed by operator
+                    op_type = self._try_parse_operator()
+                    if op_type:
+                        nodes = self._parse_nodes(multi=(op_type == ConstructType.CANONIZE_FWD))
+                        if nodes:
+                            constructs.append(Construct(
+                                owner=current_owner,
+                                type=op_type,
+                                nodes=nodes,
+                                line=current_owner.line
+                            ))
+                            accumulated_nodes = nodes
+                            if op_type == ConstructType.CANONIZE_FWD and nodes:
+                                last_node = nodes[-1]
+                                if isinstance(last_node, Signature):
+                                    current_owner = last_node
+                    else:
+                        # Sequence - signature becomes new owner
+                        current_owner = sig
+                        accumulated_nodes = [sig]
+                    continue
+
+                # Check for literal node
+                if self._is_literal():
+                    node = self._parse_literal_node()
+                    if node:
+                        accumulated_nodes.append(node)
+                    continue
+
+                # Skip unexpected tokens
+                self._advance()
+
+            # Consume DEDENT
             if self._check(TokenType.DEDENT):
                 self._advance()
 
-        return Script(signature, constructs, subscripts, signature.line)
-
-    def _try_collect_leading_nodes(self) -> list[Node]:
-        """Collect nodes (signatures) that appear before a backward canonize operator.
-
-        Look ahead to see if there are signatures followed by <= without consuming them.
-        Returns empty list if no leading nodes found or next token is not <=.
-        """
-        # Save position for lookahead
-        saved_pos = self.pos
-        nodes: list[Node] = []
-
-        # Collect signatures until we hit an operator or end
-        while self._check(TokenType.SIGNATURE):
-            token = self._advance()
-            nodes.append(self._make_signature(token))
-
-        # Check if next token is <= (backward canonize)
-        if nodes and self._check(TokenType.CANONIZE_BWD):
-            # Found backward canonize pattern - keep the nodes and position
-            return nodes
-
-        # Not a backward canonize pattern - restore position and return empty
-        self.pos = saved_pos
-        return []
-
-    def _parse_backward_canonize_with_leading(self, leading_nodes: list[Node]) -> Construct | None:
-        """Parse backward canonize with leading nodes already collected."""
-        if not self._check(TokenType.CANONIZE_BWD):
-            return None
-
-        line = self._peek().line
-        self._advance()  # consume <=
-
-        # Parse trailing nodes
-        trailing_nodes = self._parse_nodes(multi=True)
-
-        # Combine: leading nodes + trailing nodes
-        all_nodes = leading_nodes + trailing_nodes
-
-        return Construct(ConstructType.CANONIZE_BWD, all_nodes, line, has_leading_nodes=True)
-
-    def _try_parse_construct(self) -> Construct | None:
-        """Try to parse a construct. Returns None if no operator found."""
-        op_type = self._try_parse_operator()
-        if not op_type:
-            return None
-
-        line = self._peek().line
-
-        # Parse nodes
-        nodes: list[Node] = []
-
-        # Canonize constructs can have multiple nodes
-        if op_type in (ConstructType.CANONIZE_FWD, ConstructType.CANONIZE_BWD):
-            nodes = self._parse_nodes(multi=True)
-        else:
-            nodes = self._parse_nodes(multi=False)
-
-        # Create construct even with no nodes - compiler will use subscript signatures
-        return Construct(op_type, nodes, line)
-
     def _try_parse_operator(self) -> ConstructType | None:
-        """Try to parse a construct operator. Returns None if not found."""
+        """Try to parse a FWD construct operator. Returns None if not found."""
         if self._check(TokenType.COUNTERSIGN):
             self._advance()
             return ConstructType.COUNTERSIGN
@@ -198,17 +375,9 @@ class Parser:
             self._advance()
             return ConstructType.CANONIZE_FWD
 
-        if self._check(TokenType.CANONIZE_BWD):
-            self._advance()
-            return ConstructType.CANONIZE_BWD
-
         if self._check(TokenType.CONNOTATE_FWD):
             self._advance()
             return ConstructType.CONNOTATE_FWD
-
-        if self._check(TokenType.CONNOTATE_BWD):
-            self._advance()
-            return ConstructType.CONNOTATE_BWD
 
         if self._check(TokenType.UNDERSIGN):
             self._advance()
@@ -229,31 +398,36 @@ class Parser:
             if node:
                 nodes.append(node)
                 if not multi:
-                    break  # Single node only
+                    break
             else:
                 break
 
         return nodes
 
     def _try_parse_node(self) -> Node | None:
-        """Try to parse a single node (signature, string literal, string, or number)."""
+        """Try to parse a single node (signature or literal)."""
         if self._check(TokenType.SIGNATURE):
             token = self._advance()
             return self._make_signature(token)
 
-        if self._check(TokenType.STRING_LITERAL):
-            token = self._advance()
-            return StringLiteral(token.value, token.line, token.column)
-
-        if self._check(TokenType.STRING):
-            token = self._advance()
-            return StringLiteral(token.value, token.line, token.column)
-
-        if self._check(TokenType.NUMBER):
-            token = self._advance()
-            return NumberLiteral(token.value, token.line, token.column)
+        if self._is_literal():
+            return self._parse_literal_node()
 
         return None
+
+    def _parse_literal_node(self) -> Literal | None:
+        """Parse a literal token as a Literal node."""
+        if self._check(TokenType.LITERAL):
+            token = self._advance()
+            return Literal(token.value, token.line, token.column)
+        return None
+
+    def _is_literal(self) -> bool:
+        """Check if current token is a literal (not a signature).
+
+        Key insight: Any token in node position that is NOT a SIGNATURE is a LITERAL.
+        """
+        return self._check(TokenType.LITERAL)
 
     def _make_signature(self, token: Token) -> Signature:
         """Create a Signature from a token."""

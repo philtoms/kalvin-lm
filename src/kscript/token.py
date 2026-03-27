@@ -15,18 +15,18 @@ class TokenType(Enum):
         CONNOTATE_BWD: <   (backward connotation)
         UNDERSIGN:     =   (undersign link)
 
-    Literals:
-        SIGNATURE:      [A-Z]+    (uppercase identifier)
-        STRING_LITERAL: [a-zA-Z0-9]+ (not all uppercase, unquoted)
-        STRING:         "..."     (double-quoted string)
-        NUMBER:         [0-9]+    (numeric literal)
-        COMMENT:        (...)     (parenthesized comment)
+    Node types:
+        SIGNATURE: [A-Z]+    (uppercase identifier - can be construct owner)
+        LITERAL:   anything else (cannot be construct owner)
 
     Structure:
-        NEWLINE: \\n       (line ending)
+        COMMENT:  (...)     (parenthesized comment)
+        NEWLINE:  \\n       (line ending)
         INDENT:   -        (increased indentation)
         DEDENT:   -        (decreased indentation)
         EOF:      -        (end of file)
+
+    Key insight: Any token in node position that is NOT a SIGNATURE is a LITERAL.
     """
 
     # Construct operators
@@ -37,14 +37,12 @@ class TokenType(Enum):
     CONNOTATE_BWD = auto() # <
     UNDERSIGN = auto()     # =
 
-    # Literals
-    SIGNATURE = auto()      # [A-Z]+
-    STRING_LITERAL = auto() # [a-zA-Z0-9]+ (not all uppercase)
-    STRING = auto()         # "..."
-    NUMBER = auto()         # [0-9]+
-    COMMENT = auto()        # (...)
+    # Node types
+    SIGNATURE = auto()     # [A-Z]+
+    LITERAL = auto()       # anything not [A-Z]+
 
     # Structure
+    COMMENT = auto()       # (...)
     NEWLINE = auto()
     INDENT = auto()
     DEDENT = auto()

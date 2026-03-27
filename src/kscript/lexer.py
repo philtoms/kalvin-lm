@@ -18,10 +18,12 @@ class Lexer:
     The lexer handles:
     - Multi-character operators (==, =>, <=) before single-char
     - Signatures [A-Z]+ with optional inline comment
-    - String literals "..." with escape support
-    - Number literals [0-9]+
+    - Literals (anything not [A-Z]+): identifiers, numbers, quoted strings
     - Comments (...) with nested paren handling
     - Python-style INDENT/DEDENT tokens
+
+    Key insight: Only SIGNATURE tokens ([A-Z]+) can be construct owners.
+    Everything else is a LITERAL.
     """
 
     def __init__(self, source: str):
@@ -105,27 +107,26 @@ class Lexer:
         if ch == "<":
             return self._make_token(TokenType.CONNOTATE_BWD, "<")
 
-        # Number [0-9]+ (check before string literal)
-        if ch.isdigit():
-            return self._read_number()
-
         # Identifier: [a-zA-Z][a-zA-Z0-9]*
         # If all uppercase → SIGNATURE
-        # If contains lowercase or mixed → STRING_LITERAL
+        # Otherwise → LITERAL
         if ch.isalpha():
             return self._read_identifier()
 
-        # String "..."
+        # Number [0-9]+ → LITERAL
+        if ch.isdigit():
+            return self._read_number()
+
+        # Quoted string "..." → LITERAL
         if ch == '"':
-            return self._read_string()
+            return self._read_quoted_string()
 
         # Comment (...)
         if ch == "(":
             return self._read_comment()
 
-        # Unknown character - skip it
-        self._advance()
-        return None
+        # Unknown character - treat as LITERAL (single char)
+        return self._make_token(TokenType.LITERAL, self._advance())
 
     def _count_indent(self) -> int:
         """Count indentation at line start (spaces and tabs)."""
@@ -168,32 +169,10 @@ class Lexer:
         self.at_line_start = True
         return Token(TokenType.NEWLINE, "\n", line, col)
 
-    def _read_signature(self) -> Token:
-        """Read a signature [A-Z]+ with optional inline comment.
-
-        Kept for backward compatibility - called by _read_identifier for all-uppercase case.
-        """
-        start_line, start_col = self.line, self.column
-        name = ""
-
-        while self.pos < len(self.source) and self.source[self.pos].isupper():
-            name += self._advance()
-
-        # Check for inline comment - consume but don't attach
-        if self.pos < len(self.source) and self.source[self.pos] == "(":
-            self._read_comment()  # Consumes and discards
-
-        return Token(
-            TokenType.SIGNATURE,
-            name,
-            start_line,
-            start_col,
-        )
-
     def _read_identifier(self) -> Token:
         """Read an identifier [a-zA-Z][a-zA-Z0-9]*.
 
-        Returns SIGNATURE if all uppercase, otherwise STRING_LITERAL.
+        Returns SIGNATURE if all uppercase, otherwise LITERAL.
         """
         start_line, start_col = self.line, self.column
         name = ""
@@ -207,55 +186,27 @@ class Lexer:
 
         # All uppercase → SIGNATURE
         if name.isupper():
-            return Token(
-                TokenType.SIGNATURE,
-                name,
-                start_line,
-                start_col,
-            )
+            return Token(TokenType.SIGNATURE, name, start_line, start_col)
 
-        # Contains lowercase or digits → STRING_LITERAL
-        return Token(
-            TokenType.STRING_LITERAL,
-            name,
-            start_line,
-            start_col,
-        )
-
-    def _is_ident_char(self, ch: str) -> bool:
-        """Check if character is valid in an identifier (alphanumeric)."""
-        return ch.isalnum()
-
-    def _read_string_literal(self) -> Token:
-        """Read a string literal [a-zA-Z0-9]+ (not all uppercase).
-
-        Called when we have an alphanumeric identifier that contains
-        lowercase letters or digits (i.e., not exclusively uppercase).
-        """
-        start_line, start_col = self.line, self.column
-        value = ""
-
-        while self.pos < len(self.source) and self._is_ident_char(self.source[self.pos]):
-            value += self._advance()
-
-        return Token(TokenType.STRING_LITERAL, value, start_line, start_col)
+        # Otherwise → LITERAL
+        return Token(TokenType.LITERAL, name, start_line, start_col)
 
     def _is_ident_char(self, ch: str) -> bool:
         """Check if character is valid in an identifier (alphanumeric)."""
         return ch.isalnum()
 
     def _read_number(self) -> Token:
-        """Read a number [0-9]+."""
+        """Read a number [0-9]+ → LITERAL."""
         start_line, start_col = self.line, self.column
         value = ""
 
         while self.pos < len(self.source) and self.source[self.pos].isdigit():
             value += self._advance()
 
-        return Token(TokenType.NUMBER, value, start_line, start_col)
+        return Token(TokenType.LITERAL, value, start_line, start_col)
 
-    def _read_string(self) -> Token:
-        """Read a string literal "..." with escape support."""
+    def _read_quoted_string(self) -> Token:
+        """Read a quoted string "..." → LITERAL."""
         start_line, start_col = self.line, self.column
         value = self._advance()  # opening "
 
@@ -274,7 +225,7 @@ class Lexer:
             else:
                 value += self._advance()
 
-        return Token(TokenType.STRING, value, start_line, start_col)
+        return Token(TokenType.LITERAL, value, start_line, start_col)
 
     def _read_comment(self) -> Token:
         """Read a comment (...) - greedy match handling nested parens."""

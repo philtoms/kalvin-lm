@@ -44,9 +44,11 @@ class TestTokenTypes:
     """Tests for token types."""
 
     def test_token_type_count(self) -> None:
-        """Test all 15 token types defined."""
+        """Test all 13 token types defined (simplified from 15)."""
         from kscript.token import TokenType
-        assert len(TokenType) == 15
+        # Removed: STRING_LITERAL, STRING, NUMBER
+        # Added: LITERAL
+        assert len(TokenType) == 13
 
     def test_token_creation(self) -> None:
         """Test Token dataclass creation."""
@@ -128,24 +130,24 @@ class TestLexer:
         assert tokens[0].type == TokenType.UNDERSIGN
 
     def test_tokenize_string(self) -> None:
-        """Test tokenizing string literals."""
+        """Test tokenizing quoted string literals."""
         from kscript.token import TokenType
         tokens = Lexer('"hello"').tokenize()
-        assert tokens[0].type == TokenType.STRING
+        assert tokens[0].type == TokenType.LITERAL
         assert tokens[0].value == '"hello"'
 
     def test_tokenize_string_with_escape(self) -> None:
         """Test tokenizing string with escape."""
         from kscript.token import TokenType
         tokens = Lexer(r'"\"hello\""').tokenize()
-        assert tokens[0].type == TokenType.STRING
+        assert tokens[0].type == TokenType.LITERAL
         assert tokens[0].value == r'"\"hello\""'
 
     def test_tokenize_number(self) -> None:
         """Test tokenizing number literals."""
         from kscript.token import TokenType
         tokens = Lexer("42").tokenize()
-        assert tokens[0].type == TokenType.NUMBER
+        assert tokens[0].type == TokenType.LITERAL
         assert tokens[0].value == "42"
 
     def test_tokenize_comment(self) -> None:
@@ -183,24 +185,24 @@ class TestLexer:
         assert any(t.type == TokenType.DEDENT for t in tokens)
 
     def test_tokenize_string_literal_lowercase(self) -> None:
-        """Test tokenizing lowercase identifier as STRING_LITERAL."""
+        """Test tokenizing lowercase identifier as LITERAL."""
         from kscript.token import TokenType
         tokens = Lexer("zed").tokenize()
-        assert tokens[0].type == TokenType.STRING_LITERAL
+        assert tokens[0].type == TokenType.LITERAL
         assert tokens[0].value == "zed"
 
     def test_tokenize_string_literal_mixed_case(self) -> None:
-        """Test tokenizing mixed case identifier as STRING_LITERAL."""
+        """Test tokenizing mixed case identifier as LITERAL."""
         from kscript.token import TokenType
         tokens = Lexer("Hello").tokenize()
-        assert tokens[0].type == TokenType.STRING_LITERAL
+        assert tokens[0].type == TokenType.LITERAL
         assert tokens[0].value == "Hello"
 
     def test_tokenize_string_literal_alphanumeric(self) -> None:
-        """Test tokenizing alphanumeric identifier as STRING_LITERAL."""
+        """Test tokenizing alphanumeric identifier as LITERAL."""
         from kscript.token import TokenType
         tokens = Lexer("item123").tokenize()
-        assert tokens[0].type == TokenType.STRING_LITERAL
+        assert tokens[0].type == TokenType.LITERAL
         assert tokens[0].value == "item123"
 
     def test_tokenize_uppercase_remains_signature(self) -> None:
@@ -210,14 +212,14 @@ class TestLexer:
         assert tokens[0].type == TokenType.SIGNATURE
         assert tokens[0].value == "FOO"
 
-    def test_tokenize_numeric_start_is_number(self) -> None:
-        """Test that numeric-start identifier is NUMBER."""
+    def test_tokenize_numeric_start_is_literal(self) -> None:
+        """Test that numeric-start identifier is LITERAL."""
         from kscript.token import TokenType
         tokens = Lexer("123abc").tokenize()
-        # Numbers consume digits, so this is NUMBER "123" followed by STRING_LITERAL "abc"
-        assert tokens[0].type == TokenType.NUMBER
+        # Numbers are now LITERAL tokens
+        assert tokens[0].type == TokenType.LITERAL
         assert tokens[0].value == "123"
-        assert tokens[1].type == TokenType.STRING_LITERAL
+        assert tokens[1].type == TokenType.LITERAL
         assert tokens[1].value == "abc"
 
 
@@ -264,32 +266,28 @@ class TestAST:
         assert sig.id == "A"
         assert sig.comment is None
 
-    def test_string_literal_dataclass(self) -> None:
-        """Test StringLiteral dataclass."""
-        from kscript.ast import StringLiteral
-        lit = StringLiteral('"hello"', 1, 1)
-        assert lit.id == '"hello"'
-
-    def test_number_literal_dataclass(self) -> None:
-        """Test NumberLiteral dataclass."""
-        from kscript.ast import NumberLiteral
-        lit = NumberLiteral("42", 1, 1)
-        assert lit.id == "42"
+    def test_literal_dataclass(self) -> None:
+        """Test Literal dataclass (replaces StringLiteral and NumberLiteral)."""
+        from kscript.ast import Literal
+        lit = Literal("hello", 1, 1)
+        assert lit.id == "hello"
 
     def test_construct_type_enum(self) -> None:
         """Test ConstructType enum."""
         from kscript.ast import ConstructType
-        assert len(ConstructType) == 6
+        # Now includes IDENTITY
+        assert len(ConstructType) == 7
         assert ConstructType.COUNTERSIGN.value == "=="
 
     def test_construct_dataclass(self) -> None:
-        """Test Construct dataclass."""
+        """Test Construct dataclass with owner field."""
         from kscript.ast import Construct, ConstructType, Signature
-        sig = Signature("B", None, 1, 3)
-        construct = Construct(ConstructType.COUNTERSIGN, [sig], 1)
+        owner = Signature("A", None, 1, 1)
+        node = Signature("B", None, 1, 3)
+        construct = Construct(owner=owner, type=ConstructType.COUNTERSIGN, nodes=[node], line=1)
+        assert construct.owner == owner
         assert construct.type == ConstructType.COUNTERSIGN
         assert len(construct.nodes) == 1
-        assert construct.has_leading_nodes is False
 
 
 # =============================================================================
@@ -333,12 +331,17 @@ class TestParser:
         assert len(script.constructs[0].nodes) == 3
 
     def test_parse_subscript(self) -> None:
-        """Test parsing subscripts."""
+        """Test parsing subscripts - normalized to inline constructs."""
         source = "A =>\n  B\n  C"
         tokens = Lexer(source).tokenize()
         kscript = Parser(tokens).parse()
         script = kscript.scripts[0]
-        assert len(script.subscripts) == 2
+        # Subscripts are normalized to inline constructs
+        assert len(script.constructs) == 1
+        assert script.constructs[0].type.name == "CANONIZE_FWD"
+        assert len(script.constructs[0].nodes) == 2
+        assert script.constructs[0].nodes[0].id == "B"
+        assert script.constructs[0].nodes[1].id == "C"
 
     def test_parse_chained_constructs(self) -> None:
         """Test parsing chained constructs."""
@@ -349,90 +352,99 @@ class TestParser:
 
 
 class TestParserSubscripts:
-    """Tests for parser subscript handling."""
+    """Tests for parser subscript handling (normalized to inline constructs)."""
 
     def test_nested_subscripts(self) -> None:
-        """Test parsing nested subscripts."""
+        """Test parsing nested subscripts - normalized to inline constructs."""
         source = "A =>\n  B =>\n    C"
         tokens = Lexer(source).tokenize()
         kscript = Parser(tokens).parse()
         script = kscript.scripts[0]
-        assert len(script.subscripts) == 1
-        assert len(script.subscripts[0].subscripts) == 1
-
-
+        # Subscripts are normalized to inline - no subscripts field
+        # A => B => C creates chained constructs
+        assert len(script.constructs) >= 1  # Should have constructs from normalization
 
     def test_parse_nested_subscripts(self) -> None:
-        """Test parsing nested subscripts."""
+        """Test parsing nested subscripts - normalized to inline constructs."""
         source = "A =>\n  B =>\n    C"
         tokens = Lexer(source).tokenize()
         kscript = Parser(tokens).parse()
         script = kscript.scripts[0]
-        assert len(script.subscripts) == 1
-        assert len(script.subscripts[0].subscripts) == 1
+        # Subscripts are normalized to inline - should produce constructs
+        assert script.signature.id == "A"
+        # A => [B, C] with B => C chain
+        assert len(script.constructs) >= 1
+        # First construct should be A => [B, C]
+        assert script.constructs[0].type.name == "CANONIZE_FWD"
+        assert len(script.constructs[0].nodes) == 2  # B and C
 
 
 class TestParserStringLiterals:
-    """Tests for parsing string literal nodes."""
+    """Tests for parsing literal nodes (simplified: Literal instead of StringLiteral)."""
 
     def test_parse_string_literal_node(self) -> None:
-        """Test parsing a string literal as a node."""
-        from kscript.ast import StringLiteral, Signature
+        """Test parsing a literal as a node."""
+        from kscript.ast import Literal, Signature
         tokens = Lexer("A => Y zed").tokenize()
         kscript = Parser(tokens).parse()
         script = kscript.scripts[0]
         construct = script.constructs[0]
         assert len(construct.nodes) == 2
-        # Y is SIGNATURE, zed is STRING_LITERAL
+        # Y is SIGNATURE, zed is LITERAL
         assert isinstance(construct.nodes[0], Signature)
-        assert isinstance(construct.nodes[1], StringLiteral)
+        assert isinstance(construct.nodes[1], Literal)
         assert construct.nodes[0].id == "Y"
         assert construct.nodes[1].id == "zed"
 
     def test_parse_mixed_string_literal_nodes(self) -> None:
-        """Test parsing mixed string literal and signature nodes."""
-        from kscript.ast import StringLiteral, Signature
+        """Test parsing mixed literal and signature nodes."""
+        from kscript.ast import Literal, Signature
         tokens = Lexer("A => foo bar BAZ").tokenize()
         kscript = Parser(tokens).parse()
         script = kscript.scripts[0]
         construct = script.constructs[0]
         assert len(construct.nodes) == 3
-        # foo is STRING_LITERAL, bar is STRING_LITERAL, BAZ is SIGNATURE
-        assert isinstance(construct.nodes[0], StringLiteral)
-        assert isinstance(construct.nodes[1], StringLiteral)
+        # foo is LITERAL, bar is LITERAL, BAZ is SIGNATURE
+        assert isinstance(construct.nodes[0], Literal)
+        assert isinstance(construct.nodes[1], Literal)
         assert isinstance(construct.nodes[2], Signature)
         assert construct.nodes[0].id == "foo"
         assert construct.nodes[1].id == "bar"
         assert construct.nodes[2].id == "BAZ"
 
     def test_parse_string_literal_in_countersign(self) -> None:
-        """Test parsing string literal in countersign."""
-        from kscript.ast import StringLiteral
+        """Test parsing literal in countersign."""
+        from kscript.ast import Literal
         tokens = Lexer("A == hello").tokenize()
         kscript = Parser(tokens).parse()
         script = kscript.scripts[0]
         construct = script.constructs[0]
         assert len(construct.nodes) == 1
-        assert isinstance(construct.nodes[0], StringLiteral)
+        assert isinstance(construct.nodes[0], Literal)
         assert construct.nodes[0].id == "hello"
 
     def test_parse_backward_canonize_with_string_literal(self) -> None:
-        """Test backward canonize with string literal as child node.
+        """Test backward canonize with literal as child node.
 
-        Note: Scripts must start with SIGNATURE, so we test A <= zed
-        where A is the signature and zed is the string literal child.
+        In new grammar, BWD must follow a construct and be followed by SIGNATURE.
+        Test: A => hello <= B where B becomes owner pointing to 'hello' literal.
         """
-        from kscript.ast import StringLiteral
-        tokens = Lexer("A <= zed").tokenize()
+        from kscript.ast import Literal
+        tokens = Lexer("A => hello <= B").tokenize()
         kscript = Parser(tokens).parse()
         script = kscript.scripts[0]
-        assert len(script.constructs) == 1
-        construct = script.constructs[0]
-        assert construct.type.name == "CANONIZE_BWD"
-        # zed is STRING_LITERAL (the parent in backward canonize)
-        assert len(construct.nodes) == 1
-        assert isinstance(construct.nodes[0], StringLiteral)
-        assert construct.nodes[0].id == "zed"
+        # Two constructs: A => [hello] and B <= [hello]
+        assert len(script.constructs) == 2
+        # First construct: A => [hello]
+        assert script.constructs[0].type.name == "CANONIZE_FWD"
+        assert script.constructs[0].owner.id == "A"
+        assert len(script.constructs[0].nodes) == 1
+        assert isinstance(script.constructs[0].nodes[0], Literal)
+        # Second construct: B <= [hello] (BWD binds ALL left nodes)
+        assert script.constructs[1].type.name == "CANONIZE_BWD"
+        assert script.constructs[1].owner.id == "B"
+        assert len(script.constructs[1].nodes) == 1
+        assert isinstance(script.constructs[1].nodes[0], Literal)
 
 
 # =============================================================================
@@ -519,9 +531,13 @@ class TestCompiler:
     def test_compile_multiple_constructs(self) -> None:
         """Test multiple constructs with immediate binding."""
         entries = compile_source("A => B => C")
-        d = entries_to_dict(entries)
-        assert d["A"] == ["B"]
-        assert d["B"] == ["C"]
+        # Check first two construct entries (before entity emissions)
+        sig1, nodes1 = entries[0].decode(_tokenizer)
+        sig2, nodes2 = entries[1].decode(_tokenizer)
+        assert sig1 == "A" and nodes1 == ["B"]
+        assert sig2 == "B" and nodes2 == ["C"]
+        # Remaining entries are entities for B and C
+        assert len(entries) == 4  # 2 constructs + 2 entities
 
     def test_compile_subscript_as_nodes(self) -> None:
         """Test subscript signatures as nodes."""
@@ -583,11 +599,13 @@ class TestCompiler:
         - Consecutive literal chars are grouped into one string
         """
         entries = compile_source("A => B zed C")
-        assert len(entries) == 1
+        # First entry is the construct, rest are entities for B and C
         sig, nodes = entries[0].decode(_tokenizer)
         assert sig == "A"
         # Mixed nodes: B (signature), zed (literal), C (signature)
         assert nodes == ["B", "zed", "C"]
+        # Entities are emitted for B and C (signatures in node position)
+        assert len(entries) == 3  # 1 construct + 2 entities
 
 
 class TestCompilerIntegration:
@@ -742,7 +760,10 @@ class TestKScriptAPI:
         """Test extending a base model."""
         base = KScript("A == B")
         extended = KScript("C => A D", base)
-        assert len(extended.entries) == 3
+        # Base: 2 entries (A:B, B:A)
+        # Extended: 3 new entries (C:[A,D] construct + entities for A and D)
+        # Note: A entity is emitted even though A exists in base (different semantics)
+        assert len(extended.entries) == 5
         d = entries_to_dict(extended.entries)
         assert "A" in d
         assert "B" in d
@@ -1159,11 +1180,12 @@ class TestMCSCanonization:
         - WHEN compiler processes `ABC => X`
         - THEN entry `{ABC: [A, B, C]}` is emitted (implicit MCS expansion)
         - AND entry `{ABC: [X]}` is emitted (explicit construct)
+        - AND entity for X is emitted (X is in node position)
         """
         entries = compile_source("ABC => X")
 
-        # Should have: MCS canonization + 3 identities + construct
-        assert len(entries) == 5
+        # Should have: MCS canonization + 3 identities + construct + entity for X
+        assert len(entries) == 6
 
         # First entry is MCS canonization
         sig, nodes = entries[0].decode(_tokenizer)
@@ -1176,7 +1198,15 @@ class TestMCSCanonization:
             assert nodes is None
             assert sig in "ABC"
 
-        # Last entry is the construct
+        # Fifth entry is the construct
+        sig, nodes = entries[4].decode(_tokenizer)
+        assert sig == "ABC"
+        assert nodes == ["X"]
+
+        # Sixth entry is entity for X
+        sig, nodes = entries[5].decode(_tokenizer)
+        assert sig == "X"
+        assert nodes is None
         sig, nodes = entries[4].decode(_tokenizer)
         assert sig == "ABC"
         assert nodes == ["X"]

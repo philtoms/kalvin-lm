@@ -1,6 +1,26 @@
-"""AST node definitions for KScript language."""
+"""AST node definitions for KScript language.
 
-from dataclasses import dataclass
+Grammar:
+    script ::= construct+
+    construct ::=
+      | sig                              -- identity
+      | sig == node                      -- countersign
+      | sig > node                       -- connotate fwd
+      | sig = node                       -- undersign
+      | sig => construct                 -- canonize fwd (right-assoc)
+      | construct <= construct           -- canonize bwd
+      | construct < construct            -- connotate bwd
+      | construct construct*             -- sequence
+
+    sig ::= [A-Z]+
+    node ::= sig | literal
+    literal ::= ![A-Z]+
+
+Key insight: Only signatures ([A-Z]+) can be construct owners.
+Literals can only appear in node positions.
+"""
+
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import TypeAlias
 
@@ -12,6 +32,8 @@ from typing import TypeAlias
 @dataclass
 class Signature:
     """A signature identifier [A-Z]+ with optional comment.
+
+    Signatures can be construct owners (appear in signature position).
 
     Attributes:
         id: The uppercase identifier (e.g., "MHALL", "S")
@@ -26,25 +48,13 @@ class Signature:
 
 
 @dataclass
-class StringLiteral:
-    """A string literal "..." including the quotes.
+class Literal:
+    """A literal value (anything not [A-Z]+).
+
+    Literals can only appear in node positions, never as construct owners.
 
     Attributes:
-        id: The string value including quotes (e.g., '"hello"')
-        line: 1-based line number
-        column: 1-based column number
-    """
-    id: str
-    line: int
-    column: int
-
-
-@dataclass
-class NumberLiteral:
-    """A number literal [0-9]+.
-
-    Attributes:
-        id: The numeric string (e.g., "42")
+        id: The literal value (e.g., "hello", "42", '"quoted"')
         line: 1-based line number
         column: 1-based column number
     """
@@ -54,7 +64,7 @@ class NumberLiteral:
 
 
 # Union type for all node types
-Node: TypeAlias = Signature | StringLiteral | NumberLiteral
+Node: TypeAlias = Signature | Literal
 
 
 # =============================================================================
@@ -67,11 +77,13 @@ class ConstructType(Enum):
     Each operator creates different KLine relationships:
         COUNTERSIGN:   ==  Bidirectional signature link {A:B} AND {B:A}
         CANONIZE_FWD:  =>  Forward multi-node composition {A:[B,C,...]}
-        CANONIZE_BWD:  <=  Backward multi-node composition
+        CANONIZE_BWD:  <=  Backward: RIGHT sig points to ALL LEFT nodes
         CONNOTATE_FWD: >   Forward single-node annotation {A:[B]} AND {B:null}
-        CONNOTATE_BWD: <   Backward single-node annotation {B:[A]} AND {A:null}
+        CONNOTATE_BWD: <   Backward: RIGHT sig points to CLOSEST LEFT node
         UNDERSIGN:     =   Unidirectional signature link {A:B} AND {B:null}
+        IDENTITY:      -   Just a signature {sig: null}
     """
+    IDENTITY = ""
     COUNTERSIGN = "=="
     CANONIZE_FWD = "=>"
     CANONIZE_BWD = "<="
@@ -81,48 +93,47 @@ class ConstructType(Enum):
 
 
 # =============================================================================
-# Construct (operator + nodes)
+# Construct (operator + owner + nodes)
 # =============================================================================
 
 @dataclass
 class Construct:
-    """A construct: operator followed by nodes.
+    """A construct with a signature owner.
+
+    Key insight: Every construct has an OWNER signature.
+    - For FWD operators: owner is the signature on the left
+    - For BWD operators: owner is the signature on the RIGHT side
 
     Attributes:
+        owner: The Signature that owns this construct
         type: The ConstructType (operator)
         nodes: List of Node objects (signatures or literals)
         line: 1-based line number
-        has_leading_nodes: True if nodes appeared before the operator
-                          (only for CANONIZE_BWD patterns like "B C D <= A")
     """
+    owner: Signature
     type: ConstructType
-    nodes: list[Node]
-    line: int
-    has_leading_nodes: bool = False
+    nodes: list[Node] = field(default_factory=list)
+    line: int = 0
 
 
 # =============================================================================
-# Script (signature + constructs + subscripts)
+# Script (signature + constructs, no subscripts)
 # =============================================================================
 
 @dataclass
 class Script:
-    """A script: signature with constructs and optional subscripts.
+    """A script: primary signature with constructs.
 
-    A script represents a KLine definition:
-        SIGNATURE [CONSTRUCT...] [SUBSCRIPT...]
+    A script represents one or more constructs starting from a primary signature.
+    Subscripts are normalized to inline constructs during parsing.
 
     Examples:
-        A                    → identity script
-        A == B               → countersign construct
-        A => B C             → canonize construct
-        A =>                 → canonize with subscript nodes
-          B
-          C
+        A                    → Script(sig=A, constructs=[identity])
+        A => B               → Script(sig=A, constructs=[A=>B])
+        A => B <= C => D     → Script(sig=A, constructs=[A=>B, C<=B, C=>D])
     """
     signature: Signature
     constructs: list[Construct]
-    subscripts: list["Script"]
     line: int
 
 
