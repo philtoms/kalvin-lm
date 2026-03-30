@@ -24,6 +24,9 @@ def main() -> None:
     )
     parser.add_argument("input", help="Input file (.ks, .json, .jsonl, or .bin)")
     parser.add_argument("-out", dest="output", help="Output file path")
+    parser.add_argument("-dev", action="store_true", help="Enable dev mode")
+    args = parser.parse_args()
+
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -34,7 +37,7 @@ def main() -> None:
 
     try:
         # Load/compile the input
-        model = KScript(input_path)
+        model = KScript(input_path,dev=args.dev)
 
         # Determine output path
         if args.output:

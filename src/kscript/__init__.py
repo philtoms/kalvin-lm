@@ -56,6 +56,7 @@ class KScript:
         source: str | Path,
         base: "KScript | None" = None,
         tokenizer: ModTokenizer | None = None,
+        dev: bool = False,
     ):
         """Compile KScript from string or file path.
 
@@ -69,8 +70,10 @@ class KScript:
                     If Path(source).exists() returns True, treats as file path.
             base: Optional existing KScript to extend.
             tokenizer: Tokenizer for encoding (default: Mod32Tokenizer).
+            dev: Enable dev mode for debug text in compiled entries.
         """
         self.tokenizer = tokenizer or Mod32Tokenizer()
+        self.dev = dev
         self._entries: list[CompiledEntry] = list(base._entries) if base else []
 
         source_path = Path(source)
@@ -91,7 +94,7 @@ class KScript:
         """Compile source code and append entries."""
         tokens = Lexer(source).tokenize()
         kscript_file = Parser(tokens).parse()
-        new_entries = Compiler(self.tokenizer).compile(kscript_file)
+        new_entries = Compiler(self.tokenizer, dev=self.dev).compile(kscript_file)
         self._entries.extend(new_entries)
 
     @property
