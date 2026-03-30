@@ -11,6 +11,12 @@ Op mappings (using abbreviated property chains):
 Where:
   p = primary construct (left side)
   r = right (chain_right's primaries)
+
+Significance encoding (bitwise OR on signature position):
+  COUNTERSIGN   -> sig | S1
+  CANONIZE_*    -> sig | S2
+  CONNOTATE_*   -> sig | S3
+  UNDERSIGN     -> sig | S4 (S4=0, no bits)
 """
 
 from dataclasses import dataclass
@@ -33,7 +39,24 @@ from .parser import (
     Signature,
 )
 
-_sig = Int32Significance()
+# Significance constants from Int32Significance
+_S1 = Int32Significance.S1  # bit 63
+_S2 = Int32Significance.S2  # bit 55
+_S3 = Int32Significance.S3  # bit 32
+_S4 = 0                     # no bits
+
+# Significance level mapping by op type
+SIG_LEVELS = {
+    "COUNTERSIGN": _S1,
+    "CANONIZE_FWD": _S2,
+    "CANONIZE_BWD": _S2,
+    "CONNOTATE_FWD": _S3,
+    "CONNOTATE_BWD": _S3,
+    "UNDERSIGN": _S4,
+    "IDENTITY": _S4,
+    "MCS": _S2,       # MCS uses S2 like canonize
+    "MCS_CHAR": _S4,  # Component chars are S4 (identity-like)
+}
 
 
 @dataclass
@@ -41,13 +64,13 @@ class OpKLine:
     """A single op-mapped KLine with source context.
 
     Attributes:
-        sig: The signature (owner) string
-        nodes: None, str, or list of strings
+        sig: The encoded signature (token_id | significance_bits)
+        nodes: None, int, or list of encoded node IDs
         op: The operator that produced this entry
         dbg: Debug text representation
     """
-    sig: str
-    nodes: str | None | list[str]
+    sig: int
+    nodes: None | int | list[int]
     op: str
     dbg: str = ""
 
@@ -242,18 +265,70 @@ class CompilerV2:
         return False
 
     def _emit(self, sig: str, nodes: str | None | list[str], op: str) -> None:
-        """Emit an op-mapped entry."""
-        dbg = self._format_dbg(sig, nodes) if self.dev else ""
-        self.entries.append(OpKLine(sig=sig, nodes=nodes, op=op, dbg=dbg))
+        """Emit an op-mapped entry with significance encoding."""
+        # Encode signature with significance bits
+        sig_level = SIG_LEVELS.get(op, _S4)
+        sig_id = self._encode_sig(sig) | sig_level
 
-    def _format_dbg(self, sig: str, nodes: str | None | list[str]) -> str:
-        """Format debug representation."""
-        if nodes is None:
-            return f"{sig}: None"
-        elif isinstance(nodes, str):
-            return f"{sig}: {nodes}"
+        # Encode nodes
+        encoded_nodes = self._encode_nodes(nodes)
+
+        dbg = self._format_dbg(sig, nodes, op) if self.dev else ""
+        self.entries.append(OpKLine(sig=sig_id, nodes=encoded_nodes, op=op, dbg=dbg))
+
+    def _encode_sig(self, sig: str) -> int:
+        """Encode a signature string to token ID (no significance bits)."""
+        return self.tokenizer.encode(sig, pack=True)[0]
+
+    def _encode_node(self, node: str) -> int:
+        """Encode a single node string to token ID (no significance bits).
+
+        Signatures get packed, literals get character encoding.
+        """
+        if node.isupper() and node.isalpha():
+            return self.tokenizer.encode(node, pack=True)[0]
         else:
-            return f"{sig}: {nodes}"
+            # Literal: encode each char as (ord(char) << 1)
+            if len(node) == 1:
+                return ord(node) << 1
+            # Multi-char literal: return first char only for single node
+            # (caller should use _encode_nodes for list handling)
+            return ord(node[0]) << 1
+
+    def _encode_nodes(self, nodes: str | None | list[str]) -> None | int | list[int]:
+        """Encode nodes to token IDs (no significance bits)."""
+        if nodes is None:
+            return None
+        elif isinstance(nodes, str):
+            return self._encode_node(nodes)
+        else:
+            result: list[int] = []
+            for n in nodes:
+                if n.isupper() and n.isalpha():
+                    result.append(self.tokenizer.encode(n, pack=True)[0])
+                else:
+                    # Literal: encode each character
+                    result.extend(ord(c) << 1 for c in n)
+            return result
+
+    def _format_dbg(self, sig: str, nodes: str | None | list[str], op: str) -> str:
+        """Format debug representation with significance level."""
+        sig_val = SIG_LEVELS.get(op, _S4)
+        if sig_val == _S1:
+            level = "S1"
+        elif sig_val == _S2:
+            level = "S2"
+        elif sig_val == _S3:
+            level = "S3"
+        else:
+            level = "S4"
+
+        if nodes is None:
+            return f"[{level}] {sig}: None"
+        elif isinstance(nodes, str):
+            return f"[{level}] {sig}: {nodes}"
+        else:
+            return f"[{level}] {sig}: {nodes}"
 
 
 def compile_v2(source: str, dev: bool = False) -> list[OpKLine]:
