@@ -1,28 +1,9 @@
-import importlib, sys
-
-# Prevent kscript __init__ from loading (it imports compiler which imports old parser types)
-# We'll import lexer and parser directly
-import importlib.util
-
-def load_module(name, path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[name] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-load_module('kscript.token', 'src/kscript/token.py')
-load_module('kscript.lexer', 'src/kscript/lexer.py')
-load_module('kscript.parser', 'src/kscript/parser.py')
+import sys
+sys.path.insert(0, 'src')
 
 from kscript.lexer import Lexer
 from kscript.parser import Block, Parser
-
-# Load compiler_v2 directly
-spec = importlib.util.spec_from_file_location('kscript.compiler_v2', 'src/kscript/compiler_v2.py')
-compiler_v2 = importlib.util.module_from_spec(spec)
-sys.modules['kscript.compiler_v2'] = compiler_v2
-spec.loader.exec_module(compiler_v2)
+from kscript.compiler import Compiler
 
 source = '''
 A =>
@@ -86,8 +67,9 @@ def show(node, indent=0):
 
 show(kfile)
 
-print('\n=== Compiler V2 Output ===\n')
-compiler = compiler_v2.CompilerV2(dev=True)
+print('\n=== Compiler Output ===\n')
+from kalvin.mod_tokenizer import Mod32Tokenizer
+compiler = Compiler(Mod32Tokenizer(), dev=True)
 entries = compiler.compile(kfile)
 for e in entries:
-    print(f'{e.op:14s} {e.dbg}')
+    print(f'{e.dbg_text}')
