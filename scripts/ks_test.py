@@ -18,9 +18,15 @@ load_module('kscript.parser', 'src/kscript/parser.py')
 from kscript.lexer import Lexer
 from kscript.parser import Block, Parser
 
+# Load compiler_v2 directly
+spec = importlib.util.spec_from_file_location('kscript.compiler_v2', 'src/kscript/compiler_v2.py')
+compiler_v2 = importlib.util.module_from_spec(spec)
+sys.modules['kscript.compiler_v2'] = compiler_v2
+spec.loader.exec_module(compiler_v2)
+
 source = '''
-A => 
-  B 
+A =>
+  B
   C <= D
   E
 (Mary had a little lamb)
@@ -33,9 +39,9 @@ MHALL == SVO =>
     L > O < BS =>
       B = "baby"
       S = "sheep"
-  EXT => 
-    E 
-    X 
+  EXT =>
+    E
+    X
     T <= EXTRA => E X T R A > O
 '''
 
@@ -79,3 +85,9 @@ def show(node, indent=0):
         print(f'{pad}{type(node).__name__}({node.id})')
 
 show(kfile)
+
+print('\n=== Compiler V2 Output ===\n')
+compiler = compiler_v2.CompilerV2(dev=True)
+entries = compiler.compile(kfile)
+for e in entries:
+    print(f'{e.op:14s} {e.dbg}')
