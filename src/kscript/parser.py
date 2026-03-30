@@ -127,9 +127,11 @@ class Parser:
         if self._check(TokenType.INDENT):
             return self._parse_block()
 
-        # primary_construct+ (one or more)
+        # primary_construct+ (one or more at current => indent)
+        indent = self._peek().column
         primaries = [self._parse_primary_construct()]
-        while self._is_primary_construct_start():
+        while self._is_primary_construct_start() and self._peek().column >= indent:
+            c = self._peek().column
             primaries.append(self._parse_primary_construct())
 
         # ( ( "=>" | "<=" | "<" ) construct )?

@@ -19,13 +19,17 @@ from kscript.lexer import Lexer
 from kscript.parser import Block, Parser
 
 source = '''
+A => 
+  B 
+  C <= D
+  E
 (Mary had a little lamb)
-MHALL = SVO =>
+MHALL == SVO =>
   S(ubject) = M
   V = H
   O = ALL =>
     A = D
-    L = M
+    L = M < MOD => A B
     L > O < BS =>
       B = "baby"
       S = "sheep"

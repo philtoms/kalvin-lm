@@ -79,27 +79,61 @@ class Parser:
         scripts = []
         while not self._at_end():
             if self._check(TokenType.SIGNATURE):
-                scripts.append(self._parse_script())
+                scripts.append(self._parse_script(self._advance()))
             else:
                 self._advance()  # skip garbage
         return KScriptFile(scripts)
 
-    def _parse_script(self) -> Script:
+    def _parse_script(self, sig_tok: Token) -> Script:
+        sig = self._make_signature(sig_tok)
+        constructs = self._parse_construct(sig)
+        return Script(sig, constructs, sig.line)
+        
+    def _parse_construct(self, sig: Signature) -> list[Construct]:
+
+        # Parse primary signature
         # Step 1: Collect signature and CLNs
-        sig = self._make_signature(self._expect(TokenType.SIGNATURE))
-        constructs = []
+        # if len(sig.id) > 1: # MCS
+        #     constructs.append(Construct(sig=sig, op="=>", line=sig.line, clns=[char for char in sig.id]))
+        #     for char in sig.id:
+        #         char_sig = Signature(id=char, line=sig.line, column=sig.column)
+        #         constructs.append(Construct(sig=char_sig, op="identity", line=sig.line, clns=[]))
+        clns = []
+        op = "identity"
+        if self._check(TokenType.SIGNATURE, TokenType.LITERAL):
+            clns.append(Construct(sig=sig, op=op, line=sig.line))
+            next_sig = self._make_signature(self._advance())
+            clns += self._parse_construct(next_sig)
 
-        while not self._at_end() and not self._check(TokenType.NEWLINE):
+        if self._check_fwd_op():
+            op = self._parse_fwd_op()
 
-        self._parse_inline_chain(sig, constructs)
+        if self._check_bwd_op():
+            op = self._parse_bwd_op()
+            construct = Construct(sig=sig, op=op, clns=[sig], line=sig.line)
+            constructs.append(construct)
 
-        self._consume_newlines()
+        while not self._at_end(): 
+            if self._check(TokenType.SIGNATURE):
+                clns.append(self._make_signature(self._advance()))
+            elif self._check(TokenType.LITERAL):
+                clns.append(self._make_literal(self._advance()))
+            elif clns:
+                subscripts.append(self._parse_script(clns[-1]))
+            else:
+                if self._check_fwd_op():
+                    op = self._parse_fwd_op()
+                    clns = self._parse_nodes()
+                break
+
+        construct = Construct(sig=sig, op=op, clns=clns, bwd=bwd, line=owner.line)
+        constructs.append(construct)
 
         # Step 2: Parse subscripts (attaches CLNs, creates independent constructs)
         if constructs:
             self._parse_subscripts(constructs[-1])
 
-        return Script(sig, constructs, sig.line)
+        return constructs
 
     def _parse_inline_chain(self, first_sig: Signature, constructs: list) -> None:
         """Parse chain of constructs (handles right-assoc =>)."""
