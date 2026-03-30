@@ -27,18 +27,18 @@ from kalvin.abstract import KLine, KNodes, KSig
 from kalvin.mod_tokenizer import Mod32Tokenizer, ModTokenizer, PACKED_BIT
 from kalvin.significance import Int32Significance
 
-from .token import TokenType
-from .parser import (
+from .ast import (
     Block,
     Construct,
     KScriptFile,
     Literal,
     Node,
-    Parser,
     PrimaryConstruct,
     Script,
     Signature,
 )
+from .parser import Parser
+from .token import TokenType
 
 # Significance constants from Int32Significance
 _S1 = Int32Significance.S1  # bit 63

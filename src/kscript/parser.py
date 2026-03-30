@@ -14,75 +14,17 @@ NEWLINE and COMMENT tokens are treated as insignificant whitespace
 and skipped between constructs and at construct boundaries.
 """
 
-from dataclasses import dataclass
-from typing import TypeAlias
-
+from .ast import (
+    Block,
+    Construct,
+    KScriptFile,
+    Literal,
+    Node,
+    PrimaryConstruct,
+    Script,
+    Signature,
+)
 from .token import Token, TokenType
-
-
-# =============================================================================
-# AST Nodes
-# =============================================================================
-
-@dataclass
-class Signature:
-    """sig ::= [A-Z]+"""
-    id: str
-    line: int
-    column: int
-
-
-@dataclass
-class Literal:
-    """literal ::= ![A-Z]+"""
-    id: str
-    line: int
-    column: int
-
-
-Node: TypeAlias = Signature | Literal
-
-
-@dataclass
-class PrimaryConstruct:
-    """primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
-
-    If op is None, this is an identity (bare signature).
-    """
-    sig: Signature
-    op: TokenType | None = None  # COUNTERSIGN, CONNOTATE_FWD, UNDERSIGN, or None
-    node: Node | None = None
-
-
-@dataclass
-class Block:
-    """block ::= <INDENT> construct+ <DEDENT>"""
-    constructs: list["Construct"]
-
-
-@dataclass
-class Construct:
-    """construct ::= block | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
-
-    inner:      The block or list of primary_constructs (first alternative matched).
-    chain_op:   CANONIZE_FWD, CANONIZE_BWD, CONNOTATE_BWD, or None if no chain.
-    chain_right: The right-hand construct of the chain, if any.
-    """
-    inner: Block | list[PrimaryConstruct]
-    chain_op: TokenType | None = None
-    chain_right: "Construct | None" = None
-
-
-@dataclass
-class Script:
-    """script ::= construct+"""
-    constructs: list[Construct]
-
-
-@dataclass
-class KScriptFile:
-    """Top-level file container (one script per file)."""
-    scripts: list[Script]
 
 
 # =============================================================================

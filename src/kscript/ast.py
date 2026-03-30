@@ -1,48 +1,41 @@
 """AST node definitions for KScript language.
 
-Grammar:
-    script ::= construct+
-    construct ::=
-      | sig                              -- identity
-      | sig == node                      -- countersign
-      | sig > node                       -- connotate fwd
-      | sig = node                       -- undersign
-      | sig => construct                 -- canonize fwd (right-assoc)
-      | construct <= construct           -- canonize bwd
-      | construct < construct            -- connotate bwd
-      | construct construct*             -- sequence
+Grammar (left recursion eliminated):
 
-    sig ::= [A-Z]+
+    script ::= construct+
+    construct ::= block | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
+    block ::= <INDENT> construct+ <DEDENT>
+    primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
     node ::= sig | literal
+    sig ::= [A-Z]+
     literal ::= ![A-Z]+
 
-Key insight: Only signatures ([A-Z]+) can be construct owners.
-Literals can only appear in node positions.
+NEWLINE and COMMENT tokens are treated as insignificant whitespace
+and skipped between constructs and at construct boundaries.
 """
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
 from typing import TypeAlias
+
+from .token import TokenType
 
 
 # =============================================================================
-# Node Types (leaf nodes in constructs)
+# Leaf Nodes
 # =============================================================================
 
 @dataclass
 class Signature:
-    """A signature identifier [A-Z]+ with optional comment.
+    """A signature identifier [A-Z]+.
 
     Signatures can be construct owners (appear in signature position).
 
     Attributes:
         id: The uppercase identifier (e.g., "MHALL", "S")
-        comment: Optional parenthesized comment (e.g., "(ubject)")
         line: 1-based line number
         column: 1-based column number
     """
     id: str
-    comment: str | None
     line: int
     column: int
 
@@ -68,83 +61,89 @@ Node: TypeAlias = Signature | Literal
 
 
 # =============================================================================
-# Construct Types (operators)
+# Construct Nodes
 # =============================================================================
 
-class ConstructType(Enum):
-    """Types of construct operators.
+@dataclass
+class PrimaryConstruct:
+    """primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
 
-    Each operator creates different KLine relationships:
-        COUNTERSIGN:   ==  Bidirectional signature link {A:B} AND {B:A}
-        CANONIZE_FWD:  =>  Forward multi-node composition {A:[B,C,...]}
-        CANONIZE_BWD:  <=  Backward: RIGHT sig points to ALL LEFT nodes
-        CONNOTATE_FWD: >   Forward single-node annotation {A:[B]} AND {B:null}
-        CONNOTATE_BWD: <   Backward: RIGHT sig points to CLOSEST LEFT node
-        UNDERSIGN:     =   Unidirectional signature link {A:B} AND {B:null}
-        IDENTITY:      -   Just a signature {sig: null}
+    A primary construct with optional inline operator.
+
+    If op is None, this is an identity (bare signature).
+
+    Attributes:
+        sig: The signature that owns this construct
+        op: The inline operator (COUNTERSIGN, CONNOTATE_FWD, UNDERSIGN), or None
+        node: The node on the right side of the operator, if any
     """
-    IDENTITY = ""
-    COUNTERSIGN = "=="
-    CANONIZE_FWD = "=>"
-    CANONIZE_BWD = "<="
-    CONNOTATE_FWD = ">"
-    CONNOTATE_BWD = "<"
-    UNDERSIGN = "="
+    sig: Signature
+    op: TokenType | None = None
+    node: Node | None = None
 
 
-# =============================================================================
-# Construct (operator + owner + nodes)
-# =============================================================================
+@dataclass
+class Block:
+    """block ::= <INDENT> construct+ <DEDENT>
+
+    A block of indented constructs.
+
+    Attributes:
+        constructs: List of constructs in this block
+    """
+    constructs: list["Construct"]
+
 
 @dataclass
 class Construct:
-    """A construct with a signature owner.
+    """construct ::= block | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
 
-    Key insight: Every construct has an OWNER signature.
-    - For FWD operators: owner is the signature on the left
-    - For BWD operators: owner is the signature on the RIGHT side
+    A construct is either a block or a sequence of primary constructs
+    with an optional chain operator.
 
     Attributes:
-        owner: The Signature that owns this construct
-        type: The ConstructType (operator)
-        nodes: List of Node objects (signatures or literals)
-        line: 1-based line number
+        inner: Either a Block or a list of PrimaryConstruct
+        chain_op: The chain operator (CANONIZE_FWD, CANONIZE_BWD, CONNOTATE_BWD), or None
+        chain_right: The right-hand construct of the chain, if any
     """
-    owner: Signature
-    type: ConstructType
-    nodes: list[Node] = field(default_factory=list)
-    line: int = 0
+    inner: Block | list[PrimaryConstruct]
+    chain_op: TokenType | None = None
+    chain_right: "Construct | None" = None
 
-
-# =============================================================================
-# Script (signature + constructs, no subscripts)
-# =============================================================================
 
 @dataclass
 class Script:
-    """A script: primary signature with constructs.
+    """script ::= construct+
 
-    A script represents one or more constructs starting from a primary signature.
-    Subscripts are normalized to inline constructs during parsing.
+    A script is a sequence of constructs.
 
-    Examples:
-        A                    → Script(sig=A, constructs=[identity])
-        A => B               → Script(sig=A, constructs=[A=>B])
-        A => B <= C => D     → Script(sig=A, constructs=[A=>B, C<=B, C=>D])
+    Attributes:
+        constructs: List of constructs in this script
     """
-    signature: Signature
     constructs: list[Construct]
-    line: int
 
-
-# =============================================================================
-# File (top-level container)
-# =============================================================================
 
 @dataclass
 class KScriptFile:
-    """A complete KScript file with multiple top-level scripts.
+    """Top-level file container (one script per file).
 
-    Each script starts at column 1 (no indentation).
+    Attributes:
+        scripts: List of scripts (typically just one)
     """
     scripts: list[Script]
+
+
+# =============================================================================
+# Re-exports for backwards compatibility
+# =============================================================================
+
+__all__ = [
+    "Signature",
+    "Literal",
+    "Node",
+    "PrimaryConstruct",
+    "Block",
+    "Construct",
+    "Script",
+    "KScriptFile",
+]
