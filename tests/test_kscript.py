@@ -10,7 +10,7 @@ from kalvin.significance import Int32Significance
 from kscript.lexer import Lexer
 from kscript.parser import Parser, Signature, Literal, Construct, Script, KScriptFile, Block, PrimaryConstruct
 from kscript.compiler import Compiler, CompiledEntry, compile_source
-from kscript.decompiler import Decompiler
+from kscript.decompiler import Decompiler, DecompiledEntry
 from kscript.token import TokenType
 
 # Shared significance instance for tests
@@ -448,17 +448,17 @@ class TestBackwardCompatibility:
 class TestDecompiler:
     """Tests for decompiling KLines back to KScript source."""
 
-    def _roundtrip(self, source: str) -> list:
+    def _roundtrip(self, source: str) -> list[DecompiledEntry]:
         """Helper: compile source, then decompile back."""
         entries = compile_test_source(source)
         decompiler = Decompiler(_tokenizer)
         return decompiler.decompile(entries)
 
-    def _find_entry(self, entries: list, sig: str, significance: str | None = None) -> dict | None:
+    def _find_entry(self, entries: list, sig: str, level: str | None = None) -> dict | None:
         """Find an entry by signature name, optionally filtered by significance."""
         for e in entries:
             if e.sig == sig:
-                if significance is None or e.significance == significance:
+                if level is None or e.level == level:
                     return e.to_dict()
         return None
 
@@ -467,7 +467,7 @@ class TestDecompiler:
         result = self._roundtrip("A")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["significance"] == "S4"
+        assert entry["level"] == "S4"
         assert entry["nodes"] is None
 
     def test_decompile_undersign(self) -> None:
@@ -475,7 +475,7 @@ class TestDecompiler:
         result = self._roundtrip("A = B")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["significance"] == "S4"
+        assert entry["level"] == "S4"
         assert entry["nodes"] == "B"
 
     def test_decompile_countersign(self) -> None:
@@ -483,7 +483,7 @@ class TestDecompiler:
         result = self._roundtrip("A == B")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["significance"] == "S1"
+        assert entry["level"] == "S1"
         assert entry["nodes"] == "B"
 
     def test_decompile_connotate(self) -> None:
@@ -491,7 +491,7 @@ class TestDecompiler:
         result = self._roundtrip("A > B")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["significance"] == "S3"
+        assert entry["level"] == "S3"
         assert entry["nodes"] == "B"
 
     def test_decompile_canonize_single(self) -> None:
@@ -499,7 +499,7 @@ class TestDecompiler:
         result = self._roundtrip("A => B")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["significance"] == "S2"
+        assert entry["level"] == "S2"
         assert entry["nodes"] == "B"
 
     def test_decompile_canonize_multi(self) -> None:
@@ -507,7 +507,7 @@ class TestDecompiler:
         result = self._roundtrip("A => B C")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["significance"] == "S2"
+        assert entry["level"] == "S2"
         assert entry["nodes"] == ["B", "C"]
 
     def test_decompile_mcs_preserves_name(self) -> None:
@@ -525,7 +525,7 @@ class TestDecompiler:
         """MCS in construct position preserves name."""
         result = self._roundtrip("ABC => X")
         # Find the canonize entry (S2), not the MCS entry
-        entry = self._find_entry(result, "ABC", significance="S2")
+        entry = self._find_entry(result, "ABC", level="S2")
         assert entry is not None
         assert entry["nodes"] == "X"
 
@@ -542,17 +542,17 @@ class TestDecompiler:
         result = self._roundtrip("A => B => C")
         entry_a = self._find_entry(result, "A")
         assert entry_a is not None
-        assert entry_a["significance"] == "S2"
+        assert entry_a["level"] == "S2"
 
 
 class TestDecompilerMCS:
     """Tests specifically for MCS handling in decompiler."""
 
-    def _find_entry(self, entries: list, sig: str, significance: str | None = None) -> dict | None:
+    def _find_entry(self, entries: list, sig: str, level: str | None = None) -> dict | None:
         """Find an entry by signature name, optionally filtered by significance."""
         for e in entries:
             if e.sig == sig:
-                if significance is None or e.significance == significance:
+                if level is None or e.level == level:
                     return e.to_dict()
         return None
 
@@ -586,7 +586,7 @@ class TestDecompilerMCS:
         # Check that AB entry exists with MCS significance
         entry = self._find_entry(result, "AB")
         assert entry is not None
-        assert entry["significance"] == "MCS"
+        assert entry["level"] == "MCS"
         assert entry["nodes"] == ["A", "B"]
 
     def test_mcs_with_mod32_tokenizer(self) -> None:
@@ -606,7 +606,7 @@ class TestDecompilerMCS:
 
         # Should recover "ABC" from MCS nodes and have the construct
         # Find the construct entry (S2), not the MCS entry
-        entry = self._find_entry(result, "ABC", significance="S2")
+        entry = self._find_entry(result, "ABC", level="S2")
         assert entry is not None
         # The construct entry should have nodes "X"
         assert entry["nodes"] == "X"
@@ -622,9 +622,9 @@ class TestDecompilerMCS:
         assert self._has_sig(decompiled, "AB")
         assert self._has_sig(decompiled, "CD")
         # Check for countersign (S1) entries (not MCS entries)
-        entry_ab = self._find_entry(decompiled, "AB", significance="S1")
+        entry_ab = self._find_entry(decompiled, "AB", level="S1")
         assert entry_ab is not None
-        assert entry_ab["significance"] == "S1"
+        assert entry_ab["level"] == "S1"
 
 
 class TestDecompilerEdgeCases:
@@ -636,11 +636,11 @@ class TestDecompilerEdgeCases:
         decompiler = Decompiler(_tokenizer)
         return decompiler.decompile(entries)
 
-    def _find_entry(self, entries: list, sig: str, significance: str | None = None) -> dict | None:
-        """Find an entry by signature name, optionally filtered by significance."""
+    def _find_entry(self, entries: list[DecompiledEntry], sig: str, level: str | None = None) -> dict | None:
+        """Find an entry by signature name, optionally filtered by level."""
         for e in entries:
             if e.sig == sig:
-                if significance is None or e.significance == significance:
+                if level is None or e.level == level:
                     return e.to_dict()
         return None
 
@@ -670,7 +670,7 @@ class TestDecompilerEdgeCases:
         # Check that A has nodes B and C
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["significance"] == "S2"
+        assert entry["level"] == "S2"
         assert entry["nodes"] == ["B", "C"]
         # Check that B and C exist as entries
         assert self._has_sig(result, "B")

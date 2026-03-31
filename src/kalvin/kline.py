@@ -24,7 +24,7 @@ class KLine:
         nodes: List of child KNode integers
     """
 
-    def __init__(self, signature: KSig, nodes: KNodes, dbg_text: str = ""):
+    def __init__(self, signature: KSig, nodes: KNodes | KNode | None, dbg_text: str = ""):
         self.signature = signature
         self._nodes = nodes
         self.dbg_text = dbg_text
@@ -73,7 +73,7 @@ class KLine:
         return self._nodes
 
     @classmethod
-    def create(cls, significance: KSig, token: KNode, nodes: KNodes, dbg_text: str = "") -> "KLine":
+    def create(cls, significance: KSig, token: KNode, nodes: KNodes | KNode | None, dbg_text: str = "") -> "KLine":
         """Create a KLine from significance, token, and nodes.
 
         The signature is constructed from significance | token.
@@ -144,4 +144,4 @@ class KLine:
 
 
 # Singleton for null/empty KLine
-KNone = KLine(signature=0, nodes=[], dbg_text="")
+KNone = KLine(signature=0, nodes=None, dbg_text="")

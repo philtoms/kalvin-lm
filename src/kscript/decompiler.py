@@ -13,14 +13,14 @@ from kalvin.kline import KLine
 @dataclass
 class DecompiledEntry:
     """A single decompiled KLine."""
-    significance: str  # S1, S2, S3, S4
+    level: str  # S1, S2, S3, S4
     sig: str  # Decoded signature name
     nodes: list[str] | str | None  # Decoded node names
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
-            "significance": self.significance,
+            "level": self.level,
             "sig": self.sig,
             "nodes": self.nodes,
         }
@@ -34,7 +34,7 @@ class DecompiledEntry:
             "S4": "=",
         }
 
-        op = op_map.get(self.significance, "=")
+        op = op_map.get(self.level, "=")
 
         if self.nodes is None:
             return self.sig
@@ -81,9 +81,6 @@ class Decompiler:
         if not klines:
             return []
 
-        # Reset state
-        self._mcs_names = {}
-
         # First pass: build MCS name mapping
         self._build_mcs_names(klines)
 
@@ -95,6 +92,10 @@ class Decompiler:
                 result.append(entry)
 
         return result
+
+    def clear(self) -> None:
+        """Clear state."""
+        self._mcs_names = {}
 
     def _build_mcs_names(self, klines: list[KLine]) -> None:
         """Build mapping from packed tokens to original MCS names.
@@ -168,7 +169,7 @@ class Decompiler:
         if level == "S2" and self._is_mcs_entry(kline):
             node_strs = self._decode_nodes(nodes)
             return DecompiledEntry(
-                significance="MCS",
+                level="MCS",
                 sig=sig_str,
                 nodes=node_strs,
             )
@@ -176,7 +177,7 @@ class Decompiler:
         if not nodes:
             # Identity
             return DecompiledEntry(
-                significance=level,
+                level=level,
                 sig=sig_str,
                 nodes=None,
             )
@@ -186,7 +187,7 @@ class Decompiler:
         # Single result -> string, multiple -> list
         node_output: list[str] | str = node_strs[0] if len(node_strs) == 1 else node_strs
         return DecompiledEntry(
-            significance=level,
+            level=level,
             sig=sig_str,
             nodes=node_output,
         )

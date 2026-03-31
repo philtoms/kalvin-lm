@@ -184,13 +184,12 @@ class Kalvin(KAgent):
         self.__frames.append(model)
         return model
 
-    def rationalise(self, query: KLine, frame: KModel | None = None, _seen: set[KSig] | None = None) -> list[KLine]:
+    def rationalise(self, query: KLine, frame: KModel | None = None) -> list[KLine]:
         """Rationalise a KLine query in frame context.
 
         Args:
             query: KLine to rationalise
             frame: Optional KModel frame context (internal use)
-            _seen: Internal set of already-processed signatures (prevents recursion)
 
         Returns:
             Rationalised KLine, or KNone if not found
@@ -198,19 +197,16 @@ class Kalvin(KAgent):
         if frame is None:
             frame = self.new_frame()
 
-        # Prevent infinite recursion
-        if _seen is None:
-            _seen = set()
-        if query.signature in _seen:
+        # Add early to prevent infinite recursion
+        if not frame.add(query):
             return frame.klines
-        _seen.add(query.signature)
 
         #bring nodes into frame
         for n in query.nodes:
             nk = self._model.find_kline(n)
             if nk == KNone:
-                nk = KLine(signature=n, nodes=[]) # new token node (also at S4)
-            self.rationalise(nk, frame=frame, _seen=_seen)
+                nk = KLine(signature=n, nodes=None) # new token node (also at S4)
+            self.rationalise(nk, frame=frame)
 
         fast, slow = frame.query(query.signature)
         self.__backlog = [(query, slow)] + self.__backlog
@@ -223,7 +219,6 @@ class Kalvin(KAgent):
                 frame.upgrade(cs, sv)
                 return frame.klines
 
-        frame.add(query)
         return frame.klines
     
     def cogitate(self):

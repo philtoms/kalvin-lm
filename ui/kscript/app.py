@@ -2,8 +2,9 @@
 
 import argparse
 import asyncio
+import json
 import logging
-import os
+import signal
 import sys
 from pathlib import Path
 from typing import Optional
@@ -15,23 +16,19 @@ from textual.widgets import Footer, Header
 from kalvin import Kalvin
 from kalvin.abstract import KLine
 from kscript import KScript, CompiledEntry
-from kscript.decompiler import Decompiler, DecompiledEntry
+from kscript.decompiler import Decompiler
 from ui.kscript.dialogs import LoadScriptDialog, SaveStateDialog, LoadStateDialog
-from ui.kscript.hotreload import (
-    HotReloadManager,
-    cleanup_state_files,
-    load_state,
-    load_ui_state,
-    restart_app,
-    save_state,
-    save_ui_state,
-)
 from ui.kscript.regions import EditorRegion, ResponsesRegion, ToolbarRegion
 from ui.kscript.regions.toolbar import ExecutionState
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_SCRIPTS_DIR = Path("data/scripts")
+
+# State file paths for dev mode (harness-driven save/restore)
+_STATE_DIR = Path(__file__).parent.parent.parent  # project root
+MODEL_STATE_FILE = _STATE_DIR / ".tmp.bin"
+UI_STATE_FILE = _STATE_DIR / ".tmp.json"
 
 
 class KScriptApp(App):
@@ -68,35 +65,26 @@ class KScriptApp(App):
     def __init__(self, dev_mode: bool = True, auto_compile_interval: float = 1.0) -> None:
         super().__init__()
         self._dev_mode = dev_mode
-        self._hot_reload_manager: Optional[HotReloadManager] = None
         self._kalvin: Optional[Kalvin] = None
         self._decompiler: Decompiler = Decompiler()
         self._execution_state: ExecutionState = ExecutionState.IDLE
         self._pending_entries: list[CompiledEntry] = []
         self._current_entry_index: int = 0
         self._cancelled: bool = False
-        self._hot_reload_pending: bool = False
         self._last_script_dir: Path = DEFAULT_SCRIPTS_DIR
         self._last_state_dir: Path = Path("data")
         self._auto_compile_interval: float = auto_compile_interval
 
     def on_mount(self) -> None:
         """Initialize Kalvin instance on app start."""
-        # Ensure default directories exist
         DEFAULT_SCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
         Path("data").mkdir(parents=True, exist_ok=True)
 
-        # In dev mode, try to restore state from temp files
         if self._dev_mode:
-            self._restore_hot_reload_state()
-            self._start_hot_reload()
+            self._restore_state()
+            signal.signal(signal.SIGTERM, self._on_sigterm)
         else:
             self._kalvin = Kalvin()
-
-    def on_unmount(self) -> None:
-        """Clean up on app exit."""
-        if self._hot_reload_manager:
-            self._hot_reload_manager.stop()
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -154,75 +142,62 @@ class KScriptApp(App):
         toolbar = self.query_one(ToolbarRegion)
         toolbar.set_state(state)
 
-    # === Hot Reload ===
+    # === Dev Mode State (SIGTERM save, mount restore) ===
 
-    def _start_hot_reload(self) -> None:
-        """Start the hot reload file watcher."""
-        self._hot_reload_manager = HotReloadManager(on_reload=self._trigger_hot_reload)
-        self._hot_reload_manager.start()
-        self.log("Hot reload enabled - watching for file changes")
+    def _on_sigterm(self, signum, frame) -> None:
+        """Handle SIGTERM from harness: save state and exit."""
+        self._save_state()
+        sys.exit(0)
 
-    def _trigger_hot_reload(self) -> None:
-        """Save state and restart the app, or defer if execution in progress."""
-        if self._pending_entries:
-            self._hot_reload_pending = True
-            self.log("Hot reload deferred - execution in progress")
-            return
-        self._save_hot_reload_state()
-        restart_app()
-
-    def _check_pending_hot_reload(self) -> None:
-        """Check and execute a pending hot reload after execution finishes."""
-        if self._hot_reload_pending:
-            self._hot_reload_pending = False
-            self.log("Executing deferred hot reload")
-            self._save_hot_reload_state()
-            restart_app()
-
-    def _save_hot_reload_state(self) -> None:
+    def _save_state(self) -> None:
         """Save Kalvin model and UI state to temp files."""
         if self._kalvin:
-            save_state(self._kalvin)
+            self._kalvin.save(MODEL_STATE_FILE)
 
-        # Gather UI state
         editor = self.query_one(EditorRegion)
         ui_state = {
             "editor_content": editor.get_script(),
-            "cursor_line": 0,  # Textual doesn't expose cursor position easily
-            "cursor_column": 0,
-            "scroll_y": 0,
             "last_script_dir": str(self._last_script_dir),
             "last_state_dir": str(self._last_state_dir),
             "execution_state": self._execution_state.name,
         }
-        save_ui_state(ui_state)
+        with open(UI_STATE_FILE, "w") as f:
+            json.dump(ui_state, f, indent=2)
 
-    def _restore_hot_reload_state(self) -> None:
+    def _restore_state(self) -> None:
         """Restore Kalvin model and UI state from temp files."""
         # Restore Kalvin model
-        model = load_state()
-        if model is not None:
-            self._kalvin = model
-            self.log("Restored Kalvin model state")
+        if MODEL_STATE_FILE.exists():
+            try:
+                self._kalvin = Kalvin.load(MODEL_STATE_FILE)
+                self.log("Restored Kalvin model state")
+            except Exception as e:
+                self.log(f"Failed to load model state: {e}")
+                self._kalvin = Kalvin()
         else:
             self._kalvin = Kalvin()
 
         # Restore UI state
-        ui_state = load_ui_state()
-        if ui_state is not None:
-            editor = self.query_one(EditorRegion)
-            if "editor_content" in ui_state:
-                editor.set_script(ui_state["editor_content"])
-            if "last_script_dir" in ui_state:
-                self._last_script_dir = Path(ui_state["last_script_dir"])
-            if "last_state_dir" in ui_state:
-                self._last_state_dir = Path(ui_state["last_state_dir"])
-            if "execution_state" in ui_state:
-                self._execution_state = ExecutionState[ui_state["execution_state"]]
-            self.log("Restored UI state")
+        if UI_STATE_FILE.exists():
+            try:
+                with open(UI_STATE_FILE) as f:
+                    ui_state = json.load(f)
+                editor = self.query_one(EditorRegion)
+                if "editor_content" in ui_state:
+                    editor.set_script(ui_state["editor_content"])
+                if "last_script_dir" in ui_state:
+                    self._last_script_dir = Path(ui_state["last_script_dir"])
+                if "last_state_dir" in ui_state:
+                    self._last_state_dir = Path(ui_state["last_state_dir"])
+                if "execution_state" in ui_state:
+                    self._execution_state = ExecutionState[ui_state["execution_state"]]
+                self.log("Restored UI state")
+            except (json.JSONDecodeError, Exception) as e:
+                self.log(f"Failed to load UI state: {e}")
 
-        # Clean up temp files after successful restore
-        cleanup_state_files()
+        # Clean up temp files
+        MODEL_STATE_FILE.unlink(missing_ok=True)
+        UI_STATE_FILE.unlink(missing_ok=True)
 
     # === Script Compilation ===
 
@@ -271,39 +246,6 @@ class KScriptApp(App):
             return ""
         entries = self._decompiler.decompile(klines)
         return "\n".join(e.to_kscript() for e in entries)
-
-    # === Execution Engine ===
-
-    async def _feed_klines(self) -> None:
-        """Feed pending KLines to Kalvin one at a time."""
-        responses = self.query_one(ResponsesRegion)
-
-        while self._current_entry_index < len(self._pending_entries):
-            if self._cancelled:
-                return
-
-            entry = self._pending_entries[self._current_entry_index]
-            kline = self._entry_to_kline(entry)
-
-            # Feed to Kalvin and get response
-            if self._kalvin:
-                response_klines = self._kalvin.rationalise(kline)
-                if response_klines is None or len(response_klines) == 0:
-                    # No match found - create identity response
-                    response_klines = [kline]
-                decompiled = self._decompile_response(response_klines)
-                responses.add_response(kline, decompiled)
-
-            self._current_entry_index += 1
-
-            # Yield to event loop to keep UI responsive
-            await asyncio.sleep(0)
-
-        # All entries processed
-        self._set_state(ExecutionState.IDLE)
-        self._pending_entries = []
-        self._current_entry_index = 0
-        self._check_pending_hot_reload()
 
     # === Actions ===
 
@@ -392,7 +334,11 @@ class KScriptApp(App):
         # Start the loop
         self._cancelled = False
         self._set_state(ExecutionState.RUNNING)
-        self.run_worker(self._auto_compile_loop())
+        if self._dev_mode:
+            self.run_worker(self._auto_compile_tick())
+            self._set_state(ExecutionState.IDLE)
+        else:
+            self.run_worker(self._auto_compile_loop())
 
     async def _auto_compile_loop(self) -> None:
         """Periodically compile editor content and submit new entries."""
@@ -455,7 +401,6 @@ class KScriptApp(App):
                 self._set_state(ExecutionState.IDLE)
                 self._pending_entries = []
                 self._current_entry_index = 0
-                self._check_pending_hot_reload()
             else:
                 self._set_state(ExecutionState.HALTED)
 
@@ -463,6 +408,7 @@ class KScriptApp(App):
         """Clear the responses list."""
         responses = self.query_one(ResponsesRegion)
         responses.clear()
+        self._decompiler.clear()
 
 
 def main() -> None:
@@ -471,7 +417,7 @@ def main() -> None:
     parser.add_argument(
         "--dev",
         action="store_true",
-        help="Enable hot reload for development (watches for file changes)",
+        help="Enable dev mode (state restore, SIGTERM handler for harness)",
     )
     args = parser.parse_args()
 
