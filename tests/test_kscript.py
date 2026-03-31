@@ -5,11 +5,12 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from kalvin.abstract import KLine
-from kalvin.mod_tokenizer import Mod64Tokenizer, PACKED_BIT
+from kalvin.mod_tokenizer import Mod64Tokenizer, Mod32Tokenizer, PACKED_BIT
 from kalvin.significance import Int32Significance
 from kscript.lexer import Lexer
 from kscript.parser import Parser, Signature, Literal, Construct, Script, KScriptFile, Block, PrimaryConstruct
 from kscript.compiler import Compiler, CompiledEntry, compile_source
+from kscript.decompiler import Decompiler
 from kscript.token import TokenType
 
 # Shared significance instance for tests
@@ -438,3 +439,257 @@ class TestBackwardCompatibility:
         assert d["A"] == ["B", "C"]
         assert d["B"] is None
         assert d["C"] is None
+
+
+# =============================================================================
+# 8. Decompiler Tests
+# =============================================================================
+
+class TestDecompiler:
+    """Tests for decompiling KLines back to KScript source."""
+
+    def _roundtrip(self, source: str) -> list:
+        """Helper: compile source, then decompile back."""
+        entries = compile_test_source(source)
+        decompiler = Decompiler(_tokenizer)
+        return decompiler.decompile(entries)
+
+    def _find_entry(self, entries: list, sig: str, significance: str | None = None) -> dict | None:
+        """Find an entry by signature name, optionally filtered by significance."""
+        for e in entries:
+            if e.sig == sig:
+                if significance is None or e.significance == significance:
+                    return e.to_dict()
+        return None
+
+    def test_decompile_identity(self) -> None:
+        """Decompile identity: A -> A"""
+        result = self._roundtrip("A")
+        entry = self._find_entry(result, "A")
+        assert entry is not None
+        assert entry["significance"] == "S4"
+        assert entry["nodes"] is None
+
+    def test_decompile_undersign(self) -> None:
+        """Decompile undersign: A = B -> A = B"""
+        result = self._roundtrip("A = B")
+        entry = self._find_entry(result, "A")
+        assert entry is not None
+        assert entry["significance"] == "S4"
+        assert entry["nodes"] == "B"
+
+    def test_decompile_countersign(self) -> None:
+        """Decompile countersign: A == B -> A == B"""
+        result = self._roundtrip("A == B")
+        entry = self._find_entry(result, "A")
+        assert entry is not None
+        assert entry["significance"] == "S1"
+        assert entry["nodes"] == "B"
+
+    def test_decompile_connotate(self) -> None:
+        """Decompile connotate: A > B -> A > B"""
+        result = self._roundtrip("A > B")
+        entry = self._find_entry(result, "A")
+        assert entry is not None
+        assert entry["significance"] == "S3"
+        assert entry["nodes"] == "B"
+
+    def test_decompile_canonize_single(self) -> None:
+        """Decompile canonize with single node: A => B -> A => B"""
+        result = self._roundtrip("A => B")
+        entry = self._find_entry(result, "A")
+        assert entry is not None
+        assert entry["significance"] == "S2"
+        assert entry["nodes"] == "B"
+
+    def test_decompile_canonize_multi(self) -> None:
+        """Decompile canonize with multiple nodes: A => B C -> list of nodes."""
+        result = self._roundtrip("A => B C")
+        entry = self._find_entry(result, "A")
+        assert entry is not None
+        assert entry["significance"] == "S2"
+        assert entry["nodes"] == ["B", "C"]
+
+    def test_decompile_mcs_preserves_name(self) -> None:
+        """MCS signatures preserve original name using MCS entry nodes.
+
+        This is the key test: ABC encoded with mod32 loses order/collapses,
+        but the MCS entry stores [A, B, C] as nodes which we use for the name.
+        """
+        result = self._roundtrip("ABC")
+        # Should reconstruct "ABC" from MCS nodes, not decode the packed token
+        entry = self._find_entry(result, "ABC")
+        assert entry is not None
+
+    def test_decompile_mcs_in_construct(self) -> None:
+        """MCS in construct position preserves name."""
+        result = self._roundtrip("ABC => X")
+        # Find the canonize entry (S2), not the MCS entry
+        entry = self._find_entry(result, "ABC", significance="S2")
+        assert entry is not None
+        assert entry["nodes"] == "X"
+
+    def test_decompile_literal_nodes(self) -> None:
+        """Decompile with literal string nodes."""
+        result = self._roundtrip('A = "hello"')
+        entry = self._find_entry(result, "A")
+        assert entry is not None
+        # String literals are stored with quotes
+        assert entry["nodes"] == '"hello"'
+
+    def test_decompile_multi_construct(self) -> None:
+        """Decompile multiple constructs."""
+        result = self._roundtrip("A => B => C")
+        entry_a = self._find_entry(result, "A")
+        assert entry_a is not None
+        assert entry_a["significance"] == "S2"
+
+
+class TestDecompilerMCS:
+    """Tests specifically for MCS handling in decompiler."""
+
+    def _find_entry(self, entries: list, sig: str, significance: str | None = None) -> dict | None:
+        """Find an entry by signature name, optionally filtered by significance."""
+        for e in entries:
+            if e.sig == sig:
+                if significance is None or e.significance == significance:
+                    return e.to_dict()
+        return None
+
+    def _has_sig(self, entries: list, sig: str) -> bool:
+        """Check if signature exists in entries."""
+        return any(e.sig == sig for e in entries)
+
+    def test_mcs_name_recovery(self) -> None:
+        """MCS entry provides name for packed token.
+
+        With mod32, 'AB' and 'BA' may encode to the same token (OR of bits).
+        The decompiler must use MCS nodes to recover the original name.
+        """
+        # Compile AB which creates MCS entry {AB: [A, B]}
+        entries = compile_test_source("AB")
+
+        # Find the MCS entry
+        mcs_entry = None
+        for e in entries:
+            sig, nodes = e.decode(_tokenizer)
+            if nodes == ["A", "B"]:
+                mcs_entry = e
+                break
+
+        assert mcs_entry is not None, "MCS entry not found"
+
+        # Decompile should recover "AB" from the MCS nodes
+        decompiler = Decompiler(_tokenizer)
+        result = decompiler.decompile(entries)
+
+        # Check that AB entry exists with MCS significance
+        entry = self._find_entry(result, "AB")
+        assert entry is not None
+        assert entry["significance"] == "MCS"
+        assert entry["nodes"] == ["A", "B"]
+
+    def test_mcs_with_mod32_tokenizer(self) -> None:
+        """Test MCS handling with Mod32Tokenizer specifically.
+
+        Mod32 has more collisions than Mod64, making MCS recovery critical.
+        """
+        tokenizer32 = Mod32Tokenizer()
+
+        source = "ABC => X"
+        tokens = Lexer(source).tokenize()
+        kscript_file = Parser(tokens).parse()
+        entries = Compiler(tokenizer32, dev=True).compile(kscript_file)
+
+        decompiler = Decompiler(tokenizer32)
+        result = decompiler.decompile(entries)
+
+        # Should recover "ABC" from MCS nodes and have the construct
+        # Find the construct entry (S2), not the MCS entry
+        entry = self._find_entry(result, "ABC", significance="S2")
+        assert entry is not None
+        # The construct entry should have nodes "X"
+        assert entry["nodes"] == "X"
+
+    def test_mcs_countersign_roundtrip(self) -> None:
+        """MCS with countersign: AB == CD"""
+        result = compile_test_source("AB == CD")
+
+        decompiler = Decompiler(_tokenizer)
+        decompiled = decompiler.decompile(result)
+
+        # Both MCS names should be recovered
+        assert self._has_sig(decompiled, "AB")
+        assert self._has_sig(decompiled, "CD")
+        # Check for countersign (S1) entries (not MCS entries)
+        entry_ab = self._find_entry(decompiled, "AB", significance="S1")
+        assert entry_ab is not None
+        assert entry_ab["significance"] == "S1"
+
+
+class TestDecompilerEdgeCases:
+    """Edge case tests for decompiler."""
+
+    def _roundtrip(self, source: str) -> list:
+        """Helper: compile source, then decompile back."""
+        entries = compile_test_source(source)
+        decompiler = Decompiler(_tokenizer)
+        return decompiler.decompile(entries)
+
+    def _find_entry(self, entries: list, sig: str, significance: str | None = None) -> dict | None:
+        """Find an entry by signature name, optionally filtered by significance."""
+        for e in entries:
+            if e.sig == sig:
+                if significance is None or e.significance == significance:
+                    return e.to_dict()
+        return None
+
+    def _has_sig(self, entries: list, sig: str) -> bool:
+        """Check if signature exists in entries."""
+        return any(e.sig == sig for e in entries)
+
+    def test_empty_input(self) -> None:
+        """Decompile empty input."""
+        decompiler = Decompiler(_tokenizer)
+        result = decompiler.decompile([])
+        assert result == []
+
+    def test_single_char_no_mcs(self) -> None:
+        """Single char signatures don't create MCS entries."""
+        entries = compile_test_source("A")
+        # Should only have identity entry, no MCS
+        assert len(entries) == 1
+        sig, nodes = entries[0].decode(_tokenizer)
+        assert sig == "A"
+        assert nodes is None
+
+    def test_subscript_block(self) -> None:
+        """Decompile subscript block."""
+        source = "A =>\n  B\n  C"
+        result = self._roundtrip(source)
+        # Check that A has nodes B and C
+        entry = self._find_entry(result, "A")
+        assert entry is not None
+        assert entry["significance"] == "S2"
+        assert entry["nodes"] == ["B", "C"]
+        # Check that B and C exist as entries
+        assert self._has_sig(result, "B")
+        assert self._has_sig(result, "C")
+
+    def test_complex_nested_script(self) -> None:
+        """Compile and decompile complex nested KScript."""
+        source = '''MHALL == SVO =>
+  S(ubject) = M
+  V = H
+  O = ALL =>
+    A = D
+    L = M < MOD => A B
+    L > O < BS =>
+      B = "baby"
+      S = "sheep"
+'''
+        result = self._roundtrip(source)
+        # Check key signatures are present
+        assert self._has_sig(result, "MHALL")
+        # SVO should be the countersign partner
+        assert self._has_sig(result, "SVO")

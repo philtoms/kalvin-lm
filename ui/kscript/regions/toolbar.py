@@ -66,11 +66,7 @@ class ToolbarRegion(Horizontal):
         pass
 
     class Run(Message):
-        """Request to run/compile the script."""
-        pass
-
-    class Halt(Message):
-        """Request to halt execution."""
+        """Request to toggle run/compile loop."""
         pass
 
     class Step(Message):
@@ -90,7 +86,6 @@ class ToolbarRegion(Horizontal):
         yield Button("Save.k", id="save-state-btn")
         yield Button("Load.k", id="load-state-btn")
         yield Button("Run", id="run-btn")
-        yield Button("Halt", id="halt-btn")
         yield Button("Step", id="step-btn")
         yield Button("Clear", id="clear-btn")
         yield Static(self._get_status_text(), id="status-indicator", classes="status-indicator status-idle")
@@ -132,11 +127,9 @@ class ToolbarRegion(Horizontal):
         state = self.execution_state
 
         run_btn = self.query_one("#run-btn", Button)
-        halt_btn = self.query_one("#halt-btn", Button)
         step_btn = self.query_one("#step-btn", Button)
 
-        run_btn.disabled = state == ExecutionState.RUNNING
-        halt_btn.disabled = state != ExecutionState.RUNNING
+        run_btn.label = "Stop" if state == ExecutionState.RUNNING else "Run"
         step_btn.disabled = state == ExecutionState.RUNNING
 
     def on_mount(self) -> None:
@@ -155,8 +148,6 @@ class ToolbarRegion(Horizontal):
             self.post_message(self.LoadState())
         elif button_id == "run-btn":
             self.post_message(self.Run())
-        elif button_id == "halt-btn":
-            self.post_message(self.Halt())
         elif button_id == "step-btn":
             self.post_message(self.Step())
         elif button_id == "clear-btn":

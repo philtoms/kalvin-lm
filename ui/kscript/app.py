@@ -15,7 +15,7 @@ from textual.widgets import Footer, Header
 from kalvin import Kalvin
 from kalvin.abstract import KLine
 from kscript import KScript, CompiledEntry
-from kscript.decompiler import Decompiler
+from kscript.decompiler import Decompiler, DecompiledEntry
 from ui.kscript.dialogs import LoadScriptDialog, SaveStateDialog, LoadStateDialog
 from ui.kscript.hotreload import (
     HotReloadManager,
@@ -57,8 +57,7 @@ class KScriptApp(App):
     TITLE = "KScript TUI"
     BINDINGS = [
         ("ctrl+q", "quit", "Quit"),
-        ("ctrl+r", "run_script", "Run"),
-        ("ctrl+h", "halt_script", "Halt"),
+        ("ctrl+r", "run_script", "Run/Stop"),
         ("ctrl+s", "step_script", "Step"),
         ("ctrl+o", "load_script", "Load.ks"),
         ("ctrl+shift+s", "save_state", "Save.k"),
@@ -66,7 +65,7 @@ class KScriptApp(App):
         ("ctrl+l", "clear_responses", "Clear"),
     ]
 
-    def __init__(self, dev_mode: bool = True) -> None:
+    def __init__(self, dev_mode: bool = True, auto_compile_interval: float = 1.0) -> None:
         super().__init__()
         self._dev_mode = dev_mode
         self._hot_reload_manager: Optional[HotReloadManager] = None
@@ -76,8 +75,10 @@ class KScriptApp(App):
         self._pending_entries: list[CompiledEntry] = []
         self._current_entry_index: int = 0
         self._cancelled: bool = False
+        self._hot_reload_pending: bool = False
         self._last_script_dir: Path = DEFAULT_SCRIPTS_DIR
         self._last_state_dir: Path = Path("data")
+        self._auto_compile_interval: float = auto_compile_interval
 
     def on_mount(self) -> None:
         """Initialize Kalvin instance on app start."""
@@ -121,12 +122,8 @@ class KScriptApp(App):
         self.action_load_state()
 
     def on_toolbar_region_run(self, event: ToolbarRegion.Run) -> None:
-        """Handle Run button."""
+        """Handle Run/Stop toggle button."""
         self.action_run_script()
-
-    def on_toolbar_region_halt(self, event: ToolbarRegion.Halt) -> None:
-        """Handle Halt button."""
-        self.action_halt_script()
 
     def on_toolbar_region_step(self, event: ToolbarRegion.Step) -> None:
         """Handle Step button."""
@@ -140,10 +137,10 @@ class KScriptApp(App):
 
     def on_responses_region_response_clicked(self, event: ResponsesRegion.ResponseClicked) -> None:
         """Handle click on a response item - halt and append to editor."""
-        # Halt if running
+        # Stop if running
         if self._execution_state == ExecutionState.RUNNING:
             self._cancelled = True
-            self._set_state(ExecutionState.HALTED)
+            self._set_state(ExecutionState.IDLE)
 
         # Append decompiled KScript source to editor
         editor = self.query_one(EditorRegion)
@@ -166,9 +163,21 @@ class KScriptApp(App):
         self.log("Hot reload enabled - watching for file changes")
 
     def _trigger_hot_reload(self) -> None:
-        """Save state and restart the app."""
+        """Save state and restart the app, or defer if execution in progress."""
+        if self._pending_entries:
+            self._hot_reload_pending = True
+            self.log("Hot reload deferred - execution in progress")
+            return
         self._save_hot_reload_state()
         restart_app()
+
+    def _check_pending_hot_reload(self) -> None:
+        """Check and execute a pending hot reload after execution finishes."""
+        if self._hot_reload_pending:
+            self._hot_reload_pending = False
+            self.log("Executing deferred hot reload")
+            self._save_hot_reload_state()
+            restart_app()
 
     def _save_hot_reload_state(self) -> None:
         """Save Kalvin model and UI state to temp files."""
@@ -230,7 +239,7 @@ class KScriptApp(App):
             return None
 
         try:
-            model = KScript(script)
+            model = KScript(script, dev=self._dev_mode)
             return model.entries
         except Exception as e:
             self.log(f"Compilation error: {e}")
@@ -260,7 +269,8 @@ class KScriptApp(App):
         """
         if not klines:
             return ""
-        return self._decompiler.decompile(klines)
+        entries = self._decompiler.decompile(klines)
+        return "\n".join(e.to_kscript() for e in entries)
 
     # === Execution Engine ===
 
@@ -293,6 +303,7 @@ class KScriptApp(App):
         self._set_state(ExecutionState.IDLE)
         self._pending_entries = []
         self._current_entry_index = 0
+        self._check_pending_hot_reload()
 
     # === Actions ===
 
@@ -371,36 +382,45 @@ class KScriptApp(App):
         self.log(f"Loaded Kalvin state from {path}")
 
     def action_run_script(self) -> None:
-        """Run/compile the script and start automatic execution."""
+        """Toggle auto-compile loop on/off."""
         if self._execution_state == ExecutionState.RUNNING:
+            # Stop the loop
+            self._cancelled = True
+            self._set_state(ExecutionState.IDLE)
             return
 
-        # If halted with pending entries, resume
-        if self._execution_state == ExecutionState.HALTED and self._pending_entries:
-            self._cancelled = False
-            self._set_state(ExecutionState.RUNNING)
-            self.run_worker(self._feed_klines())
-            return
+        # Start the loop
+        self._cancelled = False
+        self._set_state(ExecutionState.RUNNING)
+        self.run_worker(self._auto_compile_loop())
 
-        # Compile new script
+    async def _auto_compile_loop(self) -> None:
+        """Periodically compile editor content and submit new entries."""
+        # Immediate first tick
+        await self._auto_compile_tick()
+        while not self._cancelled:
+            await asyncio.sleep(self._auto_compile_interval)
+            if self._cancelled:
+                return
+            await self._auto_compile_tick()
+
+    async def _auto_compile_tick(self) -> None:
+        """Compile current editor content and add new responses."""
         entries = self._compile_script()
         if not entries:
             return
-
-        self._pending_entries = entries
-        self._current_entry_index = 0
-        self._cancelled = False
-
-        self._set_state(ExecutionState.RUNNING)
-        self.run_worker(self._feed_klines())
-
-    def action_halt_script(self) -> None:
-        """Halt automatic execution."""
-        if self._execution_state != ExecutionState.RUNNING:
-            return
-
-        self._cancelled = True
-        self._set_state(ExecutionState.HALTED)
+        responses = self.query_one(ResponsesRegion)
+        for entry in entries:
+            if self._cancelled:
+                return
+            kline = self._entry_to_kline(entry)
+            if self._kalvin:
+                response_klines = self._kalvin.rationalise(kline)
+                if response_klines is None or len(response_klines) == 0:
+                    response_klines = [kline]
+                decompiled = self._decompile_response(response_klines)
+                responses.add_response(kline, decompiled)
+            await asyncio.sleep(0)
 
     def action_step_script(self) -> None:
         """Execute one KLine at a time."""
@@ -435,6 +455,7 @@ class KScriptApp(App):
                 self._set_state(ExecutionState.IDLE)
                 self._pending_entries = []
                 self._current_entry_index = 0
+                self._check_pending_hot_reload()
             else:
                 self._set_state(ExecutionState.HALTED)
 

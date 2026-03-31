@@ -51,6 +51,10 @@ class ResponsesRegion(Vertical):
     }
     """
 
+    def __init__(self) -> None:
+        self._seen_responses: set[str] = set()
+        super().__init__()
+
     class ResponseClicked(Message):
         """Emitted when a response item is clicked."""
 
@@ -65,10 +69,15 @@ class ResponsesRegion(Vertical):
     def add_response(self, kline: KLine, decompiled_source: str) -> None:
         """Append a KLine response with its decompiled source to the list.
 
+        Only adds the response if its signature hasn't been seen before.
+
         Args:
             kline: The KLine response to add.
             decompiled_source: The decompiled KScript source to display.
         """
+        if decompiled_source in self._seen_responses:
+            return
+        self._seen_responses.add(decompiled_source)
         list_view = self.query_one("#responses-list", ListView)
         item = ResponseItem(kline, decompiled_source)
         list_view.append(item)
@@ -77,6 +86,7 @@ class ResponsesRegion(Vertical):
 
     def clear(self) -> None:
         """Clear all responses from the list."""
+        self._seen_responses.clear()
         list_view = self.query_one("#responses-list", ListView)
         list_view.clear()
 

@@ -69,3 +69,4 @@ Thumbs.db
 # Local
 .env
 *.local
+tmp.*
