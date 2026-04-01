@@ -4,11 +4,11 @@ import pytest
 
 from kalvin import Kalvin
 from kalvin.abstract import KLine
-from kalvin.significance import Int64Significance
+from kalvin.significance import Int32Significance
 
 
 # Create a shared significance instance for tests
-_sig = Int64Significance()
+_sig = Int32Significance()
 
 
 class TestSignifyReturnsInternal:
@@ -103,7 +103,7 @@ class TestSignifyS2:
         result = kalvin.signify(k1, k2, s2_request)
 
         # Should return S2 since compound matches
-        assert _sig.get_s2(result) > 0
+        assert _sig.has_s2(result)
 
     def test_signify_s2_falls_through_on_mismatch(self):
         """S2 verification failure continues to S3 check."""
@@ -144,7 +144,7 @@ class TestSignifyS3:
         result = kalvin.signify(k1, k2, s3_request)
 
         # Should return S3
-        assert _sig.get_s3(result) > 0
+        assert _sig.has_s3(result)
 
         # Should have added 1 new KLines
         assert len(kalvin.model) == initial_count + 1

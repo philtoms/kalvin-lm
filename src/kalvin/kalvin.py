@@ -10,9 +10,9 @@ from typing import Iterator, Tuple
 
 import json
 
-from kalvin.abstract import KAgent, KLine, KModel, KNodes, KNone, KSignificance, KSig, KTokenizer
+from kalvin.abstract import KAgent, KLine, KModel, KNodes, KNone, KSig, KTokenizer
 from kalvin.model import Model
-from kalvin.significance import Int64Significance, S1, S2, S3, S4
+from kalvin.significance import IntSignificance, Int32Significance
 from kalvin.tokenizer import Tokenizer
 
 
@@ -30,7 +30,7 @@ class Kalvin(KAgent):
         model: Model | None = None,
         activity: Counter | None = None,
         tokenizer: KTokenizer | None = None,
-        significance: KSignificance | None = None,
+        significance: IntSignificance | None = None,
         dictionary: str | None = None,
         nlp_detail: str = "nlp_type32"
     ):
@@ -40,13 +40,13 @@ class Kalvin(KAgent):
             model: Optional Model instance
             activity: Optional Counter for tracking token activity
             tokenizer: Optional KTokenizer instance
-            significance: Optional KSignificance instance (defaults to Int64Significance)
+            significance: Optional KSignificance instance (defaults to Int32Significance)
             dictionary: Path to grammar dictionary JSON file
             nlp_detail: NLP detail level for type encoding (e.g., "nlp_type32")
         """
         self._model = model if model else Model()
         self._tokenizer = tokenizer if tokenizer else Tokenizer.from_directory()
-        self._significance = significance if significance else Int64Significance()
+        self._significance = significance if significance else Int32Significance()
         self._ws_token = self._tokenizer.encode(" ")[0]
         self._activity = activity if activity else Counter()
         self._unrecognised_tokens = set()
@@ -84,7 +84,7 @@ class Kalvin(KAgent):
         return self._tokenizer
 
     @property
-    def significance(self) -> KSignificance:
+    def significance(self) -> "IntSignificance":
         """Get the significance instance for S1-S4 operations."""
         return self._significance
 
@@ -269,7 +269,7 @@ class Kalvin(KAgent):
             return s
 
         # S2: Check compound match (k2.nodes OR'd together equals k1.signature)
-        if self._significance.get_s2(s) > 0:
+        if self._significance.has_s2(s):
             compound = 0
             for node in k2.nodes:
                 compound |= node
@@ -280,13 +280,13 @@ class Kalvin(KAgent):
                 return s
 
         # S3: Create connotated link
-        if self._significance.get_s3(s) > 0:
+        if self._significance.has_s3(s):
             link = KLine(k1.signature, [k2.signature])
             self._model.add(link)
             return s
 
         # S4: No significance
-        return S4
+        return self._significance.S4
 
 
     def model_size(self) -> int:

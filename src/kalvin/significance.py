@@ -2,130 +2,66 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
+
 from kalvin.abstract import KLine, KModel, KSignificance, KSig, KNone
 
 
-class Int64Significance(KSignificance):
-    """64-bit integer-based significance implementation.
+class IntSignificance(ABC):
+    """Abstract base for integer-based significance implementations.
 
-    Layout: S1(bit56) | S1%(bits57-63) | S2(bits40-55) | S3(bits16-39) | Reserved(bits0-15)
-    Higher bits = more significant: S1 > S2 > S3 > S4
+    Provides the common S1-S4 level interface and calculate() method shared
+    by all integer significance strategies. Higher = more significant: S1 > S2 > S3 > S4.
     """
 
-    # S1: single bit (bit 56) - prefix match indicator
-    _S1 = 1 << 56
-
-    # S1%: 7 bits (bits 57-63) for degree/percentage
-    _S1_PCT_SHIFT = 57
-    _S1_PCT_MASK = 0x7F << _S1_PCT_SHIFT
-
-    # S2: single bit (bit 40)
-    _S2 = 1 << 40
-
-    # S2: 16 bits (bits 40-55)
-    _S2_SHIFT = 40
-    _S2_MASK = 0xFFFF << _S2_SHIFT
-    _S2_S1_PCT_SHIFT = 40   # S1 percentage within S2
-    _S2_S2_PCT_SHIFT = 48   # S2 percentage within S2
-
-    # S3: single bit (bit 16)
-    _S3 = 1 << 16
-
-    # S3: 24 bits (bits 16-39)
-    _S3_SHIFT = 16
-    _S3_MASK = 0xFFFFFF << _S3_SHIFT
-    _S3_S1_PCT_SHIFT = 16   # S1% for unordered matches (bits 16-23)
-    _S3_S2_PCT_SHIFT = 24   # S2% for unordered matches (bits 24-31)
-    _S3_GEN_PCT_SHIFT = 32  # Generational S1% (bits 32-39)
-
-    # S4: no significance
-    _S4 = 0
-
-    # === Significance level constants ===
-
     @property
+    @abstractmethod
     def S1(self) -> KSig:
-        """S1 significance level (highest - prefix match)."""
-        return self._S1
+        """S1 significance level (highest)."""
+        ...
 
     @property
+    @abstractmethod
     def S2(self) -> KSig:
-        """S2 significance level (partial positional match)."""
-        return self._S2
+        """S2 significance level."""
+        ...
 
     @property
+    @abstractmethod
     def S3(self) -> KSig:
-        """S3 significance level (unordered/generational match)."""
-        return self._S3
+        """S3 significance level."""
+        ...
 
     @property
     def S4(self) -> KSig:
-        """S4 significance level (no match)."""
-        return self._S4
+        """S4 significance level (no match). Defaults to 0."""
+        return KSig(0)
 
-    # === S1 operations ===
+    # === Level detection ===
 
     def has_s1(self, sig: KSig) -> bool:
-        """Check if S1 bit is set (prefix match)."""
-        return bool(sig & self._S1)
+        """Check if S1 bit is set."""
+        return bool(sig & self.S1)
 
-    def get_s1_percentage(self, sig: KSig) -> int:
-        """Extract S1 percentage (0-127)."""
-        return (sig >> self._S1_PCT_SHIFT) & 0x7F
+    def has_s2(self, sig: KSig) -> bool:
+        """Check if S2 bit is set."""
+        return bool(sig & self.S2)
 
-    def build_s1(self, percentage: int = 100) -> KSig:
-        """Build S1 significance with optional percentage."""
-        scaled = max(0, min(100, percentage)) * 127 // 100  # Scale to 7 bits
-        return self._S1 | (scaled << self._S1_PCT_SHIFT)
+    def has_s3(self, sig: KSig) -> bool:
+        """Check if S3 bit is set."""
+        return bool(sig & self.S3)
 
-    # === S2 operations ===
+    # === Level builders (subclass overrides for richer encoding) ===
 
-    def get_s2(self, sig: KSig) -> KSig:
-        """Extract full S2 value (0-65535)."""
-        return (sig >> self._S2_SHIFT) & 0xFFFF
-
-    def get_s2_s1_percentage(self, sig: KSig) -> int:
-        """Extract S2's S1 percentage (0-255)."""
-        return (sig >> self._S2_S1_PCT_SHIFT) & 0xFF
-
-    def get_s2_s2_percentage(self, sig: KSig) -> int:
-        """Extract S2's S2 percentage (0-255)."""
-        return (sig >> self._S2_S2_PCT_SHIFT) & 0xFF
-
+    @abstractmethod
     def build_s2(self, s1_pct: int, s2_pct: int) -> KSig:
-        """Build S2 significance."""
-        s1_scaled = max(0, min(100, s1_pct)) * 255 // 100
-        s2_scaled = max(0, min(100, s2_pct)) * 255 // 100
-        return (s1_scaled << self._S2_S1_PCT_SHIFT) | (s2_scaled << self._S2_S2_PCT_SHIFT)
+        """Build S2 significance from match percentages."""
+        ...
 
-    # === S3 operations ===
-
-    def get_s3(self, sig: KSig) -> KSig:
-        """Extract full S3 value (0-16777215)."""
-        return (sig >> self._S3_SHIFT) & 0xFFFFFF
-
-    def get_s3_s1_percentage(self, sig: KSig) -> int:
-        """Extract S3's S1 percentage for unordered matches (0-255)."""
-        return (sig >> self._S3_S1_PCT_SHIFT) & 0xFF
-
-    def get_s3_s2_percentage(self, sig: KSig) -> int:
-        """Extract S3's S2 percentage for unordered matches (0-255)."""
-        return (sig >> self._S3_S2_PCT_SHIFT) & 0xFF
-
-    def get_s3_gen_percentage(self, sig: KSig) -> int:
-        """Extract S3's generational S1 percentage (0-255)."""
-        return (sig >> self._S3_GEN_PCT_SHIFT) & 0xFF
-
+    @abstractmethod
     def build_s3(self, s1_pct: int, s2_pct: int, gen_pct: int) -> KSig:
-        """Build S3 significance."""
-        s1_scaled = max(0, min(100, s1_pct)) * 255 // 100
-        s2_scaled = max(0, min(100, s2_pct)) * 255 // 100
-        gen_scaled = max(0, min(100, gen_pct)) * 255 // 100
-        return (
-            (s1_scaled << self._S3_S1_PCT_SHIFT)
-            | (s2_scaled << self._S3_S2_PCT_SHIFT)
-            | (gen_scaled << self._S3_GEN_PCT_SHIFT)
-        )
+        """Build S3 significance from match percentages."""
+        ...
 
     # === Significance calculation ===
 
@@ -141,7 +77,7 @@ class Int64Significance(KSignificance):
             target: The target KLine to compare against
 
         Returns:
-            64-bit significance value
+            Significance value
         """
         # Get nodes as lists for comparison
         query_nodes = query.as_node_list()
@@ -149,9 +85,9 @@ class Int64Significance(KSignificance):
 
         # Handle empty node lists
         if not query_nodes and not target_nodes:
-            return self._S1  # Perfect match
+            return self.S1  # Perfect match
         if not query_nodes or not target_nodes:
-            return self._S4
+            return self.S4
 
         min_len = min(len(query_nodes), len(target_nodes))
 
@@ -163,12 +99,12 @@ class Int64Significance(KSignificance):
 
         # S1: All prefix nodes match
         if s1_matches == min_len:
-            return self._S1  # All matched
+            return self.S1  # All matched
 
         # S1: countersigned
         for kline in model.find_signed_klines(target.signature):
             if kline.signature == query.signature:
-                return self._S1  # All matched
+                return self.S1  # All matched
 
         # S2: Partial match (some positional matches exist)
         if s1_matches > 0:
@@ -228,10 +164,130 @@ class Int64Significance(KSignificance):
             return self.build_s3(s3_s1_pct, s3_s2_pct, gen_pct)
 
         # S4: No match
-        return self._S4
+        return self.S4
 
 
-class Int32Significance:
+class Int64Significance(IntSignificance, KSignificance):
+    """64-bit integer-based significance implementation.
+
+    Layout: S1(bit56) | S1%(bits57-63) | S2(bits40-55) | S3(bits16-39) | Reserved(bits0-15)
+    Higher bits = more significant: S1 > S2 > S3 > S4
+    """
+
+    # S1: single bit (bit 56) - prefix match indicator
+    _S1 = 1 << 56
+
+    # S1%: 7 bits (bits 57-63) for degree/percentage
+    _S1_PCT_SHIFT = 57
+    _S1_PCT_MASK = 0x7F << _S1_PCT_SHIFT
+
+    # S2: single bit (bit 40)
+    _S2 = 1 << 40
+
+    # S2: 16 bits (bits 40-55)
+    _S2_SHIFT = 40
+    _S2_MASK = 0xFFFF << _S2_SHIFT
+    _S2_S1_PCT_SHIFT = 40   # S1 percentage within S2
+    _S2_S2_PCT_SHIFT = 48   # S2 percentage within S2
+
+    # S3: single bit (bit 16)
+    _S3 = 1 << 16
+
+    # S3: 24 bits (bits 16-39)
+    _S3_SHIFT = 16
+    _S3_MASK = 0xFFFFFF << _S3_SHIFT
+    _S3_S1_PCT_SHIFT = 16   # S1% for unordered matches (bits 16-23)
+    _S3_S2_PCT_SHIFT = 24   # S2% for unordered matches (bits 24-31)
+    _S3_GEN_PCT_SHIFT = 32  # Generational S1% (bits 32-39)
+
+    # === Significance level constants ===
+
+    @property
+    def S1(self) -> KSig:
+        """S1 significance level (highest - prefix match)."""
+        return self._S1
+
+    @property
+    def S2(self) -> KSig:
+        """S2 significance level (partial positional match)."""
+        return self._S2
+
+    @property
+    def S3(self) -> KSig:
+        """S3 significance level (unordered/generational match)."""
+        return self._S3
+
+    @property
+    def S4(self) -> KSig:
+        """S4 significance level (no match)."""
+        return 0
+
+    # === S1 operations ===
+
+    def has_s1(self, sig: KSig) -> bool:
+        """Check if S1 bit is set (prefix match)."""
+        return bool(sig & self._S1)
+
+    def get_s1_percentage(self, sig: KSig) -> int:
+        """Extract S1 percentage (0-127)."""
+        return (sig >> self._S1_PCT_SHIFT) & 0x7F
+
+    def build_s1(self, percentage: int = 100) -> KSig:
+        """Build S1 significance with optional percentage."""
+        scaled = max(0, min(100, percentage)) * 127 // 100  # Scale to 7 bits
+        return self._S1 | (scaled << self._S1_PCT_SHIFT)
+
+    # === S2 operations ===
+
+    def get_s2(self, sig: KSig) -> KSig:
+        """Extract full S2 value (0-65535)."""
+        return (sig >> self._S2_SHIFT) & 0xFFFF
+
+    def get_s2_s1_percentage(self, sig: KSig) -> int:
+        """Extract S2's S1 percentage (0-255)."""
+        return (sig >> self._S2_S1_PCT_SHIFT) & 0xFF
+
+    def get_s2_s2_percentage(self, sig: KSig) -> int:
+        """Extract S2's S2 percentage (0-255)."""
+        return (sig >> self._S2_S2_PCT_SHIFT) & 0xFF
+
+    def build_s2(self, s1_pct: int, s2_pct: int) -> KSig:
+        """Build S2 significance with percentage encoding."""
+        s1_scaled = max(0, min(100, s1_pct)) * 255 // 100
+        s2_scaled = max(0, min(100, s2_pct)) * 255 // 100
+        return (s1_scaled << self._S2_S1_PCT_SHIFT) | (s2_scaled << self._S2_S2_PCT_SHIFT)
+
+    # === S3 operations ===
+
+    def get_s3(self, sig: KSig) -> KSig:
+        """Extract full S3 value (0-16777215)."""
+        return (sig >> self._S3_SHIFT) & 0xFFFFFF
+
+    def get_s3_s1_percentage(self, sig: KSig) -> int:
+        """Extract S3's S1 percentage for unordered matches (0-255)."""
+        return (sig >> self._S3_S1_PCT_SHIFT) & 0xFF
+
+    def get_s3_s2_percentage(self, sig: KSig) -> int:
+        """Extract S3's S2 percentage for unordered matches (0-255)."""
+        return (sig >> self._S3_S2_PCT_SHIFT) & 0xFF
+
+    def get_s3_gen_percentage(self, sig: KSig) -> int:
+        """Extract S3's generational S1 percentage (0-255)."""
+        return (sig >> self._S3_GEN_PCT_SHIFT) & 0xFF
+
+    def build_s3(self, s1_pct: int, s2_pct: int, gen_pct: int) -> KSig:
+        """Build S3 significance with percentage encoding."""
+        s1_scaled = max(0, min(100, s1_pct)) * 255 // 100
+        s2_scaled = max(0, min(100, s2_pct)) * 255 // 100
+        gen_scaled = max(0, min(100, gen_pct)) * 255 // 100
+        return (
+            (s1_scaled << self._S3_S1_PCT_SHIFT)
+            | (s2_scaled << self._S3_S2_PCT_SHIFT)
+            | (gen_scaled << self._S3_GEN_PCT_SHIFT)
+        )
+
+
+class Int32Significance(IntSignificance):
     """32-bit significance implementation for KScript constructs.
 
     Layout (32-bit, before shift):
@@ -244,33 +300,58 @@ class Int32Significance:
     Token space remains in bits 0-31 (unchanged).
     """
 
-    # 32-bit values (conceptual, before shift)
-    _S1_32 = 1 << 31           # S1 indicator
-    _S2_IND_32 = 1 << 23       # S2 indicator
-    _S3_IND_32 = 1 << 0        # S3 indicator
+    def __init__(self) -> None:
+        # 32-bit values (conceptual, before shift)
+        s1_32 = 1 << 31
+        s2_ind_32 = 1 << 23
+        s3_ind_32 = 1 << 0
 
-    # 64-bit constants (shifted left 32 for direct signature use)
-    S1: int = _S1_32 << 32              # bit 63
-    S2: int = _S2_IND_32 << 32          # bit 55
-    S3: int = _S3_IND_32 << 32          # bit 32
+        # 64-bit instance constants (shifted left 32 for direct signature use)
+        self._s1: int = s1_32 << 32              # bit 63
+        self._s2: int = s2_ind_32 << 32          # bit 55
+        self._s3: int = s3_ind_32 << 32          # bit 32
 
-    S2_RANGE: int = 0xFF << 55          # bits 55-62 (8 bits for S2)
-    S3_RANGE: int = 0x7F_FFFF << 32     # bits 32-54 (23 bits for S3)
+        self._s2_range: int = 0xFF << 55          # bits 55-62 (8 bits for S2)
+        self._s3_range: int = 0x7F_FFFF << 32     # bits 32-54 (23 bits for S3)
 
-    # Masks
-    SIG_MASK: int = 0xFFFF_FFFF_0000_0000   # bits 32-63 (all significance)
-    TOKEN_MASK: int = (1 << 32) - 1         # bits 0-31 (token space)
+        # Masks
+        self._sig_mask: int = 0xFFFF_FFFF_0000_0000   # bits 32-63 (all significance)
+        self._token_mask: int = (1 << 32) - 1         # bits 0-31 (token space)
+
+    # === IntSignificance interface ===
+
+    @property
+    def S1(self) -> KSig:
+        return KSig(self._s1)
+
+    @property
+    def S2(self) -> KSig:
+        return KSig(self._s2)
+
+    @property
+    def S3(self) -> KSig:
+        return KSig(self._s3)
+
+    def build_s2(self, s1_pct: int, s2_pct: int) -> KSig:
+        """Build S2 significance (simple indicator, no percentage encoding)."""
+        return self.S2
+
+    def build_s3(self, s1_pct: int, s2_pct: int, gen_pct: int) -> KSig:
+        """Build S3 significance (simple indicator, no percentage encoding)."""
+        return self.S3
+
+    # === Int32-specific operations ===
 
     def get_level(self, sig: int) -> str:
         """Detect significance level from signature bits.
 
         Hierarchical detection: S1 > S2 > S3 > S4
         """
-        if sig & self.S1:           # bit 63 set
+        if sig & self._s1:           # bit 63 set
             return "S1"
-        elif sig & self.S2_RANGE:   # any bit 55-62 set
+        elif sig & self._s2_range:   # any bit 55-62 set
             return "S2"
-        elif sig & self.S3_RANGE:   # any bit 32-54 set
+        elif sig & self._s3_range:   # any bit 32-54 set
             return "S3"
         else:
             return "S4"             # all significance bits clear
@@ -287,18 +368,8 @@ class Int32Significance:
 
     def strip_significance(self, sig: int) -> int:
         """Strip significance bits, returning only token bits."""
-        return sig & self.TOKEN_MASK
+        return sig & self._token_mask
 
     def get_significance_value(self, sig: int) -> int:
         """Extract 32-bit significance value (shifted back down)."""
         return (sig >> 32) & 0xFFFF_FFFF
-
-
-# Module-level constants (Int64Significance for backward compatibility)
-S1 = KSig(Int64Significance._S1)
-S2 = KSig(Int64Significance._S2)
-S3 = KSig(Int64Significance._S3)
-S4 = KSig(Int64Significance._S4)
-
-# Int32Significance instance for KScript use
-int32sig = Int32Significance()

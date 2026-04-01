@@ -25,7 +25,7 @@ from typing import TypeAlias
 
 from kalvin.abstract import KLine, KNodes, KSig
 from kalvin.mod_tokenizer import Mod32Tokenizer, ModTokenizer, PACKED_BIT
-from kalvin.significance import Int32Significance
+from kalvin.significance import IntSignificance, Int32Significance
 
 from .ast import (
     Block,
@@ -39,26 +39,6 @@ from .ast import (
 )
 from .parser import Parser
 from .token import TokenType
-
-# Significance constants from Int32Significance
-_S1 = Int32Significance.S1  # bit 63
-_S2 = Int32Significance.S2  # bit 55
-_S3 = Int32Significance.S3  # bit 32
-_S4 = 0                     # no bits
-
-# Significance level mapping by op type
-SIG_LEVELS = {
-    "COUNTERSIGN": _S1,
-    "CANONIZE_FWD": _S2,
-    "CANONIZE_BWD": _S2,
-    "CONNOTATE_FWD": _S3,
-    "CONNOTATE_BWD": _S3,
-    "UNDERSIGN": _S4,
-    "IDENTITY": _S4,
-    "MCS": _S2,       # MCS uses S2 like canonize
-    "MCS_CHAR": _S4,  # Component chars are S4 (identity-like)
-}
-
 
 class CompiledEntry(KLine):
     """A compiled KLine entry with decode support.
@@ -80,6 +60,7 @@ class CompiledEntry(KLine):
         tokenizer: ModTokenizer,
         *,
         sig_level: str = "S4",
+        significance: IntSignificance | None = None,
         dbg_text: str = ""
     ) -> "CompiledEntry":
         """Encode string signature/nodes to token IDs.
@@ -87,8 +68,9 @@ class CompiledEntry(KLine):
         Signatures (uppercase strings) are packed (PACKED_BIT set).
         Literals are unpacked: each char encoded as (ord(char) << 1).
         """
+        sig_obj = significance or Int32Significance()
         sig_id = tokenizer.encode(sig, pack=True)[0]
-        sig_id = cls._add_significance(sig_id, sig_level)
+        sig_id = cls._add_significance(sig_id, sig_level, sig_obj)
 
         if nodes is None:
             return cls(signature=sig_id, nodes=None, dbg_text=dbg_text)
@@ -109,14 +91,14 @@ class CompiledEntry(KLine):
             return cls(signature=sig_id, nodes=all_node_ids, dbg_text=dbg_text)
 
     @staticmethod
-    def _add_significance(token_id: int, sig_level: str) -> int:
+    def _add_significance(token_id: int, sig_level: str, sig: IntSignificance) -> int:
         """Add significance bits to token ID based on sig level."""
         if sig_level == "S1":
-            return token_id | _S1
+            return token_id | sig.S1
         elif sig_level == "S2":
-            return token_id | _S2
+            return token_id | sig.S2
         elif sig_level == "S3":
-            return token_id | _S3
+            return token_id | sig.S3
         else:  # S4 or unknown
             return token_id
 
@@ -173,6 +155,18 @@ class Compiler:
         self.tokenizer = tokenizer or Mod32Tokenizer()
         self.dev = dev
         self._emitted_sigs: set[str] = set()  # Track emitted MCS to avoid duplicates
+        self._sig = Int32Significance()
+        self._sig_levels = {
+            "COUNTERSIGN": self._sig.S1,
+            "CANONIZE_FWD": self._sig.S2,
+            "CANONIZE_BWD": self._sig.S2,
+            "CONNOTATE_FWD": self._sig.S3,
+            "CONNOTATE_BWD": self._sig.S3,
+            "UNDERSIGN": self._sig.S4,
+            "IDENTITY": self._sig.S4,
+            "MCS": self._sig.S2,       # MCS uses S2 like canonize
+            "MCS_CHAR": self._sig.S4,  # Component chars are S4 (identity-like)
+        }
 
     def compile(self, file: KScriptFile) -> list[CompiledEntry]:
         """Compile a KScriptFile to entries."""
@@ -353,7 +347,7 @@ class Compiler:
     def _emit(self, sig: str, nodes: str | None | list[str], op: str) -> None:
         """Emit an entry with significance encoding."""
         # Encode signature with significance bits
-        sig_level = SIG_LEVELS.get(op, _S4)
+        sig_level = self._sig_levels.get(op, self._sig.S4)
         sig_id = self._encode_sig(sig) | sig_level
 
         # Encode nodes
@@ -408,12 +402,12 @@ class Compiler:
 
     def _format_dbg(self, sig: str, nodes: str | None | list[str], op: str) -> str:
         """Format debug representation with significance level."""
-        sig_val = SIG_LEVELS.get(op, _S4)
-        if sig_val == _S1:
+        sig_val = self._sig_levels.get(op, self._sig.S4)
+        if sig_val == self._sig.S1:
             level = "S1"
-        elif sig_val == _S2:
+        elif sig_val == self._sig.S2:
             level = "S2"
-        elif sig_val == _S3:
+        elif sig_val == self._sig.S3:
             level = "S3"
         else:
             level = "S4"
