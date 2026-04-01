@@ -91,6 +91,9 @@ class ModTokenizer(KTokenizer):
         """Return the number of unique character tokens (excluding PACKED_BIT)."""
         return len(self._bit_char)
 
+    def is_literal(self, token_id: int) -> bool:
+        return not bool(token_id & PACKED_BIT)
+
     def encode(self, text: str, pack: bool = True, pad_ws: bool = False) -> list[int]:
         """Encode a string to token IDs.
 

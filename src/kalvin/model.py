@@ -28,6 +28,14 @@ class Model(KModel):
             for kline in klines:
                 self._add_kline_internal(kline)
 
+    def exists(self, kline: KLine):
+        """Check if a kline already exists in the model."""
+        if kline.signature in self._by_key:
+            key_nodes = (kline.signature, tuple(kline.nodes))
+            if key_nodes in self._dedup:
+                return True
+        return False
+
     def _add_kline_internal(self, kline: KLine) -> None:
         """Internal method to add a kline without duplicate checking."""
         idx = len(self._klines)
@@ -110,7 +118,7 @@ class Model(KModel):
 
     def query(
         self,
-        query: KSig,
+        query: KLine,
         focus_limit: int = 0,
     ) -> tuple[Iterator[KLine], Iterator[KLine]]:
         """Query KLines by ANDing significance with a query.
@@ -136,7 +144,7 @@ class Model(KModel):
             count = 0
             for i in range(n - 1, -1, -1):
                 kline = klines[i]
-                if kline.signifies(query):
+                if kline.signifies(query.signature):
                     if focus_limit > 0 and count >= focus_limit:
                         break
                     yield kline
@@ -152,7 +160,7 @@ class Model(KModel):
             count = 0
             for i in range(n - 1, -1, -1):
                 kline = klines[i]
-                if kline.signifies(query):
+                if kline.signifies(query.signature):
                     if count >= focus_limit:
                         yield kline
                     count += 1

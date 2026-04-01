@@ -107,13 +107,13 @@ class TestCalculateSignificance:
         assert _sig.has_s1(sig) is True  # All prefix nodes match
 
     def test_s1_empty_both(self):
-        """Both empty nodes returns S1."""
+        """Both empty nodes returns S4."""
         query = KLine(signature=0x1000, nodes=[])
         model_kline = KLine(signature=0x2000, nodes=[])
         m = Model([query, model_kline])
 
         sig = _sig.calculate(m, query, model_kline)
-        assert _sig.has_s1(sig) is True
+        assert _sig.has_s4(sig) is True
 
     def test_s4_query_empty_model_not(self):
         """Query empty, model not empty returns S4."""

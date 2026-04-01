@@ -88,16 +88,24 @@ class KLine:
         """
         return cls(signature=significance | token, nodes=nodes, dbg_text=dbg_text)
 
+    def equals(self, other: KLine) -> bool:
+        if len(self.nodes) == len(other.nodes):
+            for i in range(len(self.nodes)):
+                if self.nodes[i] != other.nodes[i]:
+                    return False
+            return True
+        return False
+    
     def signifies(self, query: KSig) -> bool:
         """Check if this KLine signifies a query via AND operation.
 
         Args:
-            query: The query node to signify
+            query: The query signature to signify
 
         Returns:
-            True if (signature & query) != 0
+            True if (self & query) != 0
         """
-        return (self.signature & query) != 0
+        return  (self.signature & query) != 0
 
     def contains(self, signature: KSig) -> bool:
         """Check if this KLine contains a specific signature

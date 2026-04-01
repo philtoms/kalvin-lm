@@ -74,7 +74,7 @@ class PrimaryConstruct:
 
     Attributes:
         sig: The signature that owns this construct
-        op: The inline operator (COUNTERSIGN, CONNOTATE_FWD, UNDERSIGN), or None
+        op: The inline operator (COUNTERSIGN, CONNOTATE_FWD, UNDERSIGN, IDENTITY), or None
         node: The node on the right side of the operator, if any
     """
     sig: Signature

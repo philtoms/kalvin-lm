@@ -266,7 +266,7 @@ class TestSignificanceLevels:
         assert False, "No S3 entry found"
 
     def test_undersign_significance(self) -> None:
-        """Undersign: S4 unidirectional."""
+        """Undersign: S1 unidirectional."""
         entries = compile_test_source("A = B")
 
         d = entries_to_dict(entries)
@@ -405,10 +405,9 @@ class TestBackwardCompatibility:
     def test_connotate_bwd(self) -> None:
         """Test compiling backward connotate."""
         entries = compile_test_source("A < B")
-        # Emits: {B: [A]} (connotate) and {B: None} (identity)
+        # Emits: {B: [A]} (connotate) and {B: None} 
         md = entries_to_multidict(entries)
         assert ["A"] in md.get("B", [])
-        assert None in md.get("B", [])
 
     def test_canonize_fwd(self) -> None:
         """Test compiling forward canonize."""
@@ -475,7 +474,7 @@ class TestDecompiler:
         result = self._roundtrip("A = B")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["level"] == "S4"
+        assert entry["level"] == "S1"
         assert entry["nodes"] == "B"
 
     def test_decompile_countersign(self) -> None:

@@ -14,18 +14,19 @@ Where:
 
 Significance encoding (bitwise OR on signature position):
   COUNTERSIGN   -> sig | S1
+  UNDERSIGN     -> sig | S1
   CANONIZE_*    -> sig | S2
   CONNOTATE_*   -> sig | S3
-  UNDERSIGN     -> sig | S4 (S4=0, no bits)
+  IDENTITY      -> sig | S4 (S4=0, no bits)
 """
 
 from __future__ import annotations
 
 from typing import TypeAlias
 
-from kalvin.abstract import KLine, KNodes, KSig
+from kalvin.abstract import KLine, KNodes, KSig, KSignificance
 from kalvin.mod_tokenizer import Mod32Tokenizer, ModTokenizer, PACKED_BIT
-from kalvin.significance import IntSignificance, Int32Significance
+from kalvin.significance import Int32Significance
 
 from .ast import (
     Block,
@@ -60,7 +61,7 @@ class CompiledEntry(KLine):
         tokenizer: ModTokenizer,
         *,
         sig_level: str = "S4",
-        significance: IntSignificance | None = None,
+        significance: KSignificance | None = None,
         dbg_text: str = ""
     ) -> "CompiledEntry":
         """Encode string signature/nodes to token IDs.
@@ -91,7 +92,7 @@ class CompiledEntry(KLine):
             return cls(signature=sig_id, nodes=all_node_ids, dbg_text=dbg_text)
 
     @staticmethod
-    def _add_significance(token_id: int, sig_level: str, sig: IntSignificance) -> int:
+    def _add_significance(token_id: int, sig_level: str, sig: KSignificance) -> int:
         """Add significance bits to token ID based on sig level."""
         if sig_level == "S1":
             return token_id | sig.S1
@@ -154,7 +155,6 @@ class Compiler:
         self.entries: list[CompiledEntry] = []
         self.tokenizer = tokenizer or Mod32Tokenizer()
         self.dev = dev
-        self._emitted_sigs: set[str] = set()  # Track emitted MCS to avoid duplicates
         self._sig = Int32Significance()
         self._sig_levels = {
             "COUNTERSIGN": self._sig.S1,
@@ -162,7 +162,7 @@ class Compiler:
             "CANONIZE_BWD": self._sig.S2,
             "CONNOTATE_FWD": self._sig.S3,
             "CONNOTATE_BWD": self._sig.S3,
-            "UNDERSIGN": self._sig.S4,
+            "UNDERSIGN": self._sig.S1,
             "IDENTITY": self._sig.S4,
             "MCS": self._sig.S2,       # MCS uses S2 like canonize
             "MCS_CHAR": self._sig.S4,  # Component chars are S4 (identity-like)
@@ -190,10 +190,6 @@ class Compiler:
         """
         if len(sig) <= 1:
             return False
-        if sig in self._emitted_sigs:
-            return False
-
-        self._emitted_sigs.add(sig)
 
         # MCS canonization: {sig: [A, B, C, ...]}
         chars = list(sig)
@@ -201,9 +197,7 @@ class Compiler:
 
         # Component identities: {char: None} for each
         for char in chars:
-            if char not in self._emitted_sigs:
-                self._emit(char, None, "MCS_CHAR")
-                self._emitted_sigs.add(char)
+            self._emit(char, None, "MCS_CHAR")
 
         return True
 
@@ -228,7 +222,6 @@ class Compiler:
     def _process_primaries(self, primaries: list[PrimaryConstruct]) -> None:
         """Process primary constructs with inline operators."""
         for pc in primaries:
-            self._emit_mcs(pc.sig.id)
             self._emit_primary(pc)
 
     def _emit_primary(self, pc: PrimaryConstruct) -> None:
@@ -237,6 +230,7 @@ class Compiler:
         Note: MCS emission for pc.sig should be done by caller.
         """
         sig = pc.sig.id
+        self._emit_mcs(sig)
 
         if pc.op is None:
             # Identity: bare signature
@@ -250,7 +244,6 @@ class Compiler:
             # {sig: node}, {node: sig}
             self._emit(sig, node_str, "COUNTERSIGN")
             if self._is_signature(node):
-                self._emit_mcs(node_str)
                 self._emit(node_str, sig, "COUNTERSIGN")
 
         elif pc.op == TokenType.UNDERSIGN:
@@ -270,7 +263,6 @@ class Compiler:
         """Process a chain construct (=>, <=, <)."""
         # Process all left primaries (emits MCS + inline ops)
         for pc in left_primaries:
-            self._emit_mcs(pc.sig.id)
             if pc.op is not None:
                 self._emit_primary(pc)
 
@@ -294,7 +286,6 @@ class Compiler:
             # CANONIZE_BWD: {r[0].sig: [p.sig for p in left_primaries]}
             if right_primaries:
                 owner = right_primaries[0].sig.id
-                self._emit_mcs(owner)
                 nodes = [pc.sig.id for pc in left_primaries]
                 self._emit(owner, nodes, "CANONIZE_BWD")
 
@@ -305,7 +296,6 @@ class Compiler:
             # CONNOTATE_BWD: {r[0].sig: [left_primaries[-1].sig]}
             if right_primaries:
                 owner = right_primaries[0].sig.id
-                self._emit_mcs(owner)
                 last_left = left_primaries[-1].sig.id
                 self._emit(owner, [last_left], "CONNOTATE_BWD")
 

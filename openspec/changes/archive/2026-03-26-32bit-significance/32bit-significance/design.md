@@ -24,12 +24,14 @@ The 64-bit signature is divided into two regions:
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Clean separation: tokens in bits 0-31, significance in bits 32-63
 - Graded significance with appropriate granularity per level
 - Natural mapping to KScript construct types
 - Add `Int32Significance` class for decompiler use
 
 **Non-Goals:**
+
 - Changing token encoding (Mod32Tokenizer unchanged)
 - Changing KScript syntax or semantics
 - Replacing `Int64Significance` (currently unused, left as-is)
@@ -51,6 +53,7 @@ The 64-bit signature is divided into two regions:
 ```
 
 **Rationale:**
+
 - S1 is binary (highest significance or not)
 - S2 is 8 bits for near neighbors (coarse granularity)
 - S3 is 22 bits for far neighbors (fine granularity)
@@ -74,6 +77,7 @@ class Int32Significance:
 ```
 
 **Rationale:**
+
 - Constants are directly usable with 64-bit signatures
 - No shifting needed at call sites
 - Clear mapping from 32-bit concept to 64-bit storage
@@ -95,6 +99,7 @@ def get_level(self, sig: int) -> str:
 ```
 
 **Rationale:**
+
 - Higher bits take precedence
 - Simpler than checking each range independently
 - Naturally ordered: S1 > S2 > S3 > S4
@@ -103,21 +108,24 @@ def get_level(self, sig: int) -> str:
 
 **Decision:** Significance levels map directly to construct operators.
 
-| Significance | Construct | Operator | Semantic |
-|--------------|-----------|----------|----------|
-| S1 | countersign | `==` | Direct bidirectional link |
-| S2 | canonize | `=>` | Near neighbor composition |
-| S3 | connotate | `>` | Far neighbor annotation |
-| S4 | undersign | `=` | Unrecognized but accepted |
+| Significance | Construct   | Operator | Semantic                   |
+| ------------ | ----------- | -------- | -------------------------- |
+| S1           | countersign | `==`     | Direct bidirectional link  |
+| S1           | undersign   | `=`      | Direct unidirectional link |
+| S2           | canonize    | `=>`     | Near neighbor composition  |
+| S3           | connotate   | `>`      | Far neighbor annotation    |
+| S4           | identity    |          | Identity semantic          |
 
 **Rationale:**
+
 - Countersign is the strongest relationship (S1)
 - Canonize composes near neighbors (S2)
 - Connotate annotates at greater distance (S3)
-- Undersign accepts existence without recognition (S4)
+- Undersign accepts existence without recognition (S1)
 
 **Terminology:**
-- **Undersign** = the S4 construct (operator `=`)
+
+- **Undersign** = the S1 construct (operator `=`)
 - **Identity kline** = result of undersign construct (rationalizes to itself)
 - **S4 identity semantic**: "I do not recognize this kline - but I accept that it exists!"
 
@@ -139,6 +147,7 @@ def get_level(self, sig: int) -> str:
 ```
 
 **Rationale:**
+
 - Near neighbors cluster coarsely (fewer bits needed)
 - Far neighbors spread finely (more bits to distinguish)
 - As distance increases, you need more granularity
@@ -169,8 +178,8 @@ sig_value = (signature >> 32) & 0xFFFF_FFFF
 
 ## Risks / Trade-offs
 
-| Risk | Mitigation |
-|------|------------|
-| Breaking existing compiled KScripts | Accept as MVP - recompile from source |
+| Risk                                        | Mitigation                                 |
+| ------------------------------------------- | ------------------------------------------ |
+| Breaking existing compiled KScripts         | Accept as MVP - recompile from source      |
 | S2 range smaller than old Int64Significance | 8 bits sufficient for near neighbor degree |
-| Bit manipulation errors | Comprehensive tests for all edge cases |
+| Bit manipulation errors                     | Comprehensive tests for all edge cases     |

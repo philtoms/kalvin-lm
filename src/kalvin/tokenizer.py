@@ -171,6 +171,9 @@ class Tokenizer(KTokenizer):
             return self._tokenizer.vocab_size
         return self._tokenizer.n_vocab
 
+    def is_literal(self, token_id: int) -> bool:
+        return False
+    
     def encode(self, text: str, pad_ws: bool = False) -> list[int]:
         """Encode a string to token IDs.
 

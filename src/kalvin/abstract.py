@@ -66,6 +66,11 @@ class KSignificance(ABC):
     # === S2 operations ===
 
     @abstractmethod
+    def has_s2(self, sig: KSig) -> bool:
+        """Check if S2 bit is set (prefix match)."""
+        ...
+
+    @abstractmethod
     def get_s2(self, sig: KSig) -> int:
         """Extract full S2 value."""
         ...
@@ -86,6 +91,11 @@ class KSignificance(ABC):
         ...
 
     # === S3 operations ===
+
+    @abstractmethod
+    def has_s3(self, sig: KSig) -> bool:
+        """Check if S3 bit is set (prefix match)."""
+        ...
 
     @abstractmethod
     def get_s3(self, sig: KSig) -> int:
@@ -110,6 +120,19 @@ class KSignificance(ABC):
     @abstractmethod
     def build_s3(self, s1_pct: int, s2_pct: int, gen_pct: int) -> KSig:
         """Build S3 significance."""
+        ...
+
+
+    # === S4 operations ===
+
+    @abstractmethod
+    def has_s4(self, sig: KSig) -> bool:
+        """Check if all bits clear."""
+        ...
+
+    @abstractmethod
+    def get_s4(self, sig: KSig) -> int:
+        """Extract full S4 value."""
         ...
 
     # === Significance calculation ===
@@ -145,7 +168,12 @@ class KTokenizer(ABC):
         ...
 
     @abstractmethod
-    def encode(self, text: str, pad_ws: bool = False) -> KNodes:
+    def is_literal(self, token_id: int) -> bool:
+        """Returns token literal status"""
+        ...
+
+    @abstractmethod
+    def encode(self, text: str, pad_ws: bool = False) -> list[int]:
         """Encode a string to token IDs.
 
         Args:
@@ -158,7 +186,7 @@ class KTokenizer(ABC):
         ...
 
     @abstractmethod
-    def decode(self, ids: KNodes) -> str:
+    def decode(self, ids: list[int]) -> str:
         """Decode token IDs back to a string.
 
         Args:
@@ -177,6 +205,11 @@ class KModel(ABC):
 
     A KModel provides the essential interface for storing and querying KLines.
     """
+
+    @abstractmethod
+    def exists(self, kline: KLine) -> bool:
+        """Check if a kline already exists in the model."""
+        ...
 
     @abstractmethod
     def add(self, kline: KLine) -> bool:
@@ -227,13 +260,13 @@ class KModel(ABC):
     @abstractmethod
     def query(
         self,
-        query: KSig,
+        query: KLine,
         focus_limit: int = 0,
     ) -> tuple[Iterator[KLine], Iterator[KLine]]:
         """Query KLines by ANDing significance with a query.
 
         Args:
-            query: The query value to match (AND operation on signature)
+            query: The query kline to match
             focus_limit: Number of top-level matches in fast (0 = all in fast)
 
         Returns:

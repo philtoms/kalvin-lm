@@ -87,6 +87,7 @@ source.ks → Lexer → Parser → Compiler → CompiledEntry[] → JSON/JSONL/B
 ```
 
 **Module Structure:**
+
 - `token.py` - TokenType enum (14 types) and Token dataclass
 - `lexer.py` - Tokenization with Python-style INDENT/DEDENT handling
 - `ast.py` - AST nodes: Signature, StringLiteral, NumberLiteral, Construct, Script, KScriptFile
@@ -104,9 +105,10 @@ source.ks → Lexer → Parser → Compiler → CompiledEntry[] → JSON/JSONL/B
 | `<=` | Canonize Bwd | `{B: [A]}` or `{A: [B, C, ...]}` with leading nodes |
 | `>` | Connotate Fwd | `{A: [B]}` AND `{B: null}` |
 | `<` | Connotate Bwd | `{B: [A]}` AND `{A: null}` |
-| `=` | Undersign | `{A: B}` AND `{B: null}` (unidirectional) |
+| `=` | Undersign | `{A: B}`(unidirectional) |
 
 **Key Patterns:**
+
 - PACKED_BIT (bit 0): Signatures have it set, literals have it clear - enables decode auto-detection
 - Immediate binding: Each construct binds to the most recent signature
 - Subscripts as nodes: Indented signatures become nodes when construct has no inline nodes

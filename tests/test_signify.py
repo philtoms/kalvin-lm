@@ -161,8 +161,8 @@ class TestSignifyEdgeCases:
         k2 = KLine(signature=0x200, nodes=[])
 
         result = kalvin.signify(k1, k2, None)
-        # Empty nodes get S1 (perfect match) per calculate_significance
-        assert _sig.has_s1(result)
+        # Empty nodes get S4 (perfect match) per calculate_significance
+        assert _sig.has_s4(result)
 
     def test_signify_adds_links_each_call(self):
         """Verify that signify creates links on first call, deduped on subsequent calls."""

@@ -59,9 +59,10 @@ class Decompiler:
 
     Significance bits determine construct types:
         - S1 (bit 63): countersign (==)
+        - S1 (bit 63): undersign (=)
         - S2 (bits 55-62): canonize (=>)
         - S3 (bits 32-54): connotate (>)
-        - S4 (no bits): undersign (=)
+        - S4 (no bits): identity
     """
 
     def __init__(self, tokenizer: ModTokenizer | None = None):
@@ -198,6 +199,9 @@ class Decompiler:
 
         if base_token in self._mcs_names:
             return self._mcs_names[base_token]
+
+        if (base_token & PACKED_BIT) == 0:
+            return self._decode_node(base_token)
 
         result = self.tokenizer.decode([base_token], pack=None)
         return result if result else f"<{base_token}>"

@@ -10,9 +10,9 @@ from typing import Iterator, Tuple
 
 import json
 
-from kalvin.abstract import KAgent, KLine, KModel, KNodes, KNone, KSig, KTokenizer
+from kalvin.abstract import KAgent, KLine, KModel, KNodes, KNone, KSig, KTokenizer, KSignificance
 from kalvin.model import Model
-from kalvin.significance import IntSignificance, Int32Significance
+from kalvin.significance import Int32Significance
 from kalvin.tokenizer import Tokenizer
 
 
@@ -27,10 +27,10 @@ class Kalvin(KAgent):
 
     def __init__(
         self,
+        tokenizer: KTokenizer | None = None,
         model: Model | None = None,
         activity: Counter | None = None,
-        tokenizer: KTokenizer | None = None,
-        significance: IntSignificance | None = None,
+        significance: KSignificance | None = None,
         dictionary: str | None = None,
         nlp_detail: str = "nlp_type32"
     ):
@@ -84,7 +84,7 @@ class Kalvin(KAgent):
         return self._tokenizer
 
     @property
-    def significance(self) -> "IntSignificance":
+    def significance(self) -> KSignificance:
         """Get the significance instance for S1-S4 operations."""
         return self._significance
 
@@ -185,7 +185,7 @@ class Kalvin(KAgent):
         self.__frames.append(frame)
         return frame
 
-    def rationalise(self, query: KLine, frame: KModel | None = None) -> list[KLine]:
+    def rationalise(self, kline: KLine, frame: KModel | None = None) -> list[KLine]:
         """Rationalise a KLine query in frame context.
 
         Args:
@@ -198,28 +198,32 @@ class Kalvin(KAgent):
         if frame is None:
             frame = self.get_frame()
 
-        # Add early to prevent infinite recursion
-        if not frame.add(query):
+        # Test early to prevent infinite recursion
+        if frame.exists(kline):
             return frame.klines
 
         #bring nodes into frame
-        for n in query.nodes:
+        for n in kline.nodes:
+            if self.tokenizer.is_literal(n):
+                continue
+
             nk = self._model.find_kline(n)
             if nk == KNone:
                 nk = KLine(signature=n, nodes=None) # new token node (also at S4)
             self.rationalise(nk, frame=frame)
 
-        fast, slow = frame.query(query.signature)
-        self.__backlog = [(query, slow)] + self.__backlog
+        fast, slow = frame.query(kline)
+        self.__backlog = [(kline, slow)] + self.__backlog
         for fk in fast:
-            sig = self.signify(query, fk)
+            sig = self.signify(kline, fk)
             if self._significance.has_s1(sig):
                 # Create a KLine with the significance for upgrading
                 cs = KLine(signature=sig, nodes=fk.nodes)
-                sv = self._significance.calculate(frame, query, cs)
+                sv = self._significance.calculate(frame, kline, cs)
                 frame.upgrade(cs, sv)
                 return frame.klines
 
+        frame.add(kline)
         return frame.klines
     
     def cogitate(self):

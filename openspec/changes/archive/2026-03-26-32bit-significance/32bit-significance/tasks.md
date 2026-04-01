@@ -20,7 +20,7 @@
 - [x] 3.1 Replace ad-hoc bit constants with `Int32Significance` instance
 - [x] 3.2 Update `TOKEN_MASK` to `(1 << 32) - 1`
 - [x] 3.3 Update `_get_significance_level()` to use hierarchical detection
-- [x] 3.4 Update `_get_construct_op()` to map S4 to `=` (undersign)
+- [x] 3.4 Update `_get_construct_op()` to map S1 to `=` (undersign)
 - [x] 3.5 Verify countersign deduplication still works with new bit positions
 
 ## 4. Testing

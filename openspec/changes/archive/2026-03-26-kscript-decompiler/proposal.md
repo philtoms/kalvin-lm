@@ -8,10 +8,10 @@ This change introduces a decompiler that reverses the compilation process: order
 
 - New `Decompiler` class that converts ordered KLines to KScript source
 - Support for all significance levels (always set, S4 = no bits):
-  - S1 (bit 63): countersign (`==`)
+  - S1 (bit 63): countersign (`==`) or undersign (`=`) depending on node S1 existence
   - S2 (bit 62): canonize (`=>`)
   - S3 (bit 61): connotate (`>`)
-  - S4 (no bits): undersign identity (`X` for `{X: None}`)
+  - S4 (no bits): identity (`X` for `{X: None}`)
 - Subscript reconstruction for multi-node canonize constructs
 - Identity recovery for nodes without entries
 - Error surfacing for invalid/malformed KLines (development tool mentality)
