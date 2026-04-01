@@ -233,7 +233,7 @@ class KScriptApp(App):
         """
         return entry
 
-    def _decompile_response(self, klines: list[KLine]) -> str:
+    def _decompile_response(self, klines: list[KLine]) -> list[tuple[str, str]]:
         """Decompile a list of KLines to KScript source.
 
         Args:
@@ -243,9 +243,9 @@ class KScriptApp(App):
             Decompile KScript source string.
         """
         if not klines:
-            return ""
+            return []
         entries = self._decompiler.decompile(klines)
-        return "\n".join(e.to_kscript() for e in entries)
+        return [(e.level, e.to_kscript())  for e in entries]
 
     # === Actions ===
 
@@ -364,8 +364,8 @@ class KScriptApp(App):
                 response_klines = self._kalvin.rationalise(kline)
                 if response_klines is None or len(response_klines) == 0:
                     response_klines = [kline]
-                decompiled = self._decompile_response(response_klines)
-                responses.add_response(kline, decompiled)
+                for level, decompiled in self._decompile_response(response_klines):
+                    responses.add_response(level, decompiled)
             await asyncio.sleep(0)
 
     def action_step_script(self) -> None:

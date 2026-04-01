@@ -1,5 +1,7 @@
 """Responses region for displaying Kalvin response KLines."""
 
+import time
+
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.message import Message
@@ -54,17 +56,15 @@ class ResponseItem(ListItem):
     }
     """
 
-    def __init__(self, kline: KLine, decompiled_source: str, level: str) -> None:
+    def __init__(self, level: str, decompiled_source: str) -> None:
         """Initialize with a KLine and its decompiled source.
 
         Args:
-            kline: The KLine response.
-            decompiled_source: The decompiled KScript source to display.
             level: The significance level (S1, S2, S3, S4, MCS).
+            decompiled_source: The decompiled KScript source to display.
         """
-        self.kline = kline
-        self.decompiled_source = decompiled_source
         self.level = level
+        self.decompiled_source = decompiled_source
         super().__init__()
 
     def compose(self) -> ComposeResult:
@@ -97,21 +97,23 @@ class ResponsesRegion(Vertical):
     def __init__(self) -> None:
         self._seen_responses: set[str] = set()
         self._sig = Int32Significance()
-        # Filter state: default S1 on
+        # Filter state: default on
         self._filters: dict[str, bool] = {
             "S1": True,
-            "S2": False,
-            "S3": False,
-            "S4": False,
-            "MCS": False,
+            "S2": True,
+            "S3": True,
+            "S4": True,
+            "MCS": True,
         }
+        # Track last click time for double-click detection
+        self._last_click_time: float = time.time()
+        self._double_click_threshold: float = 0.5  # secs
         super().__init__()
 
     class ResponseClicked(Message):
         """Emitted when a response item is clicked."""
 
-        def __init__(self, kline: KLine, decompiled_source: str) -> None:
-            self.kline = kline
+        def __init__(self, decompiled_source: str) -> None:
             self.decompiled_source = decompiled_source
             super().__init__()
 
@@ -135,16 +137,15 @@ class ResponsesRegion(Vertical):
     def _get_kline_level(self, kline: KLine) -> str:
         """Get the significance level for a KLine."""
         level = self._sig.get_level(kline.signature)
-        # Check for MCS: S2 with signature == OR of all nodes
+        # Check for MCS: S2 with signature == AND of all nodes
         if level == "S2":
             nodes = kline.as_node_list()
             if len(nodes) >= 2:
                 base_token = self._sig.strip_significance(kline.signature)
-                nodes_or = 0
                 for node in nodes:
-                    nodes_or |= node
-                if base_token == nodes_or:
-                    return "MCS"
+                    if not base_token & node:
+                        break
+                return "MCS"
         return level
 
     def _is_filter_active(self, level: str) -> bool:
@@ -152,19 +153,40 @@ class ResponsesRegion(Vertical):
         return self._filters.get(level, False)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle filter button press."""
+        """Handle filter button press (single: toggle, double: solo)."""
         button_id = event.button.id
         if button_id and button_id.startswith("filter-"):
             level = button_id.replace("filter-", "").upper()
             if level in self._filters:
-                # Toggle state
-                new_state = not self._filters[level]
-                self._filters[level] = new_state
-                # Update button classes
-                event.button.set_class(new_state, "active")
-                event.button.set_class(not new_state, "inactive")
+                now = time.time()
+
+                # Check for double-click
+                dc_time = now - self._last_click_time
+                self._last_click_time = now
+                if dc_time < self._double_click_threshold:
+                    # Double-click: solo this level (ON), all others OFF
+                    for lvl in self._filters:
+                        self._filters[lvl] = (lvl == level)
+                    # Update all button classes
+                    for btn in self.query(Button):
+                        btn_id = btn.id or ""
+                        if btn_id.startswith("filter-"):
+                            btn_level = btn_id.replace("filter-", "").upper()
+                            self._filters[btn_level] = False
+                            btn.set_class(False, "active")
+                            btn.set_class(True, "inactive")
+                    event.button.set_class(True, "active")
+                    event.button.set_class(False, "inactive")
+                else:
+
+                    # Single click: toggle this level
+                    new_state = not self._filters[level]
+                    self._filters[level] = new_state
+                    event.button.set_class(new_state, "active")
+                    event.button.set_class(not new_state, "inactive")
+
                 self._update_list_visibility()
-                self.post_message(self.FilterToggled(level, new_state))
+                self.post_message(self.FilterToggled(level, self._filters[level]))
 
     def _update_list_visibility(self) -> None:
         """Update visibility of items based on active filters."""
@@ -174,10 +196,10 @@ class ResponsesRegion(Vertical):
                 item.set_class(self._is_filter_active(item.level), "visible")
                 item.set_class(not self._is_filter_active(item.level), "hidden")
 
-    def add_response(self, kline: KLine, decompiled_source: str) -> None:
+    def add_response(self, level: str, decompiled_source: str) -> None:
         """Append a KLine response with its decompiled source to the list.
 
-        Only adds the response if its signature hasn't been seen before.
+        Only adds the response if it hasn't been seen before.
 
         Args:
             kline: The KLine response to add.
@@ -186,11 +208,10 @@ class ResponsesRegion(Vertical):
         if decompiled_source in self._seen_responses:
             return
 
-        level = self._get_kline_level(kline)
         self._seen_responses.add(decompiled_source)
 
         list_view = self.query_one("#responses-list", ListView)
-        item = ResponseItem(kline, decompiled_source, level)
+        item = ResponseItem(level, decompiled_source)
 
         # Set visibility based on current filter state
         is_visible = self._is_filter_active(level)
@@ -210,4 +231,4 @@ class ResponsesRegion(Vertical):
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         """Handle selection of a response item."""
         if event.list_view.id == "responses-list" and isinstance(event.item, ResponseItem):
-            self.post_message(self.ResponseClicked(event.item.kline, event.item.decompiled_source))
+            self.post_message(self.ResponseClicked(event.item.decompiled_source))

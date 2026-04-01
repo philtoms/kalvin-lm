@@ -171,18 +171,19 @@ class Kalvin(KAgent):
         model = Model(pruned_model)
         return Kalvin(model, pruned_activity)
 
-    def new_frame(self, klines: list[KLine] | None = None) -> KModel:
-        """Create a new frame context.
-
-        Args:
-            klines: Optional list of KLines to add to frame
+    def get_frame(self) -> KModel:
+        """Return the current frame context if it is in bounds, otherwise create a new one.
 
         Returns:
-            New KModel instance
+            New KModel frame instance
         """
-        model = Model(klines, self._model)
-        self.__frames.append(model)
-        return model
+        if len(self.__frames) > 0 and len(self.__frames[-1].klines) < 100:
+            frame = self.__frames.pop()
+        else:
+            frame = Model([], self._model)
+
+        self.__frames.append(frame)
+        return frame
 
     def rationalise(self, query: KLine, frame: KModel | None = None) -> list[KLine]:
         """Rationalise a KLine query in frame context.
@@ -195,7 +196,7 @@ class Kalvin(KAgent):
             Rationalised KLine, or KNone if not found
         """
         if frame is None:
-            frame = self.new_frame()
+            frame = self.get_frame()
 
         # Add early to prevent infinite recursion
         if not frame.add(query):
