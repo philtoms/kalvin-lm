@@ -27,10 +27,15 @@ compiler = Compiler(tokenizer, dev=True)
 decompiler = Decompiler(tokenizer)
 klines = compiler.compile(kast)
 kalvin = Kalvin(tokenizer)
+
+results = []
+kalvin.events.subscribe(lambda e: results.append(e))
+
 for k in klines:
-    print(f'{k.dbg_text}')
-    rks = kalvin.rationalise(k)
-    # for rk in decompiler.decompile(rks):
-    #     print(rk.to_kscript())
+    # print(f'{k.dbg_text}')
+    kalvin.rationalise(k)
+    for e in results:
+        print(f'  {e.kind}: {e.kline.dbg_text}')
+    results.clear()
 
 print("Done!")

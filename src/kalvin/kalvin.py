@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from struct import pack, unpack
 from typing import Literal, Any
@@ -11,6 +12,7 @@ from typing import Iterator, Tuple
 import json
 
 from kalvin.abstract import KAgent, KLine, KModel, KNodes, KNone, KSig, KTokenizer, KSignificance
+from kalvin.events import EventBus, RationaliseEvent
 from kalvin.model import Model
 from kalvin.significance import Int32Significance
 from kalvin.tokenizer import Tokenizer
@@ -22,8 +24,6 @@ class Kalvin(KAgent):
     __dictionary: dict[str, Any] = {}
     __nlp_type: dict[str, Any] = {}
     __frames: list[KModel] = []
-    __backlog: list[tuple[KLine, Iterator[KLine]]] = []
-
 
     def __init__(
         self,
@@ -56,6 +56,15 @@ class Kalvin(KAgent):
         self._nlp_type: dict[str, Any] = {}
         self.__frames.append(self._model)
 
+        # Pub/sub
+        self._event_bus = EventBus()
+        self._backlog_lock = threading.Lock()
+        self._backlog_condition = threading.Condition(self._backlog_lock)
+        self._backlog: list[tuple[KLine, Iterator[KLine]]] = []
+        self._cogitate_stop = threading.Event()
+        self._cogitate_thread = threading.Thread(target=self._cogitate, daemon=True)
+        self._cogitate_thread.start()
+
         # === Tokenization ===
         if not self._dictionary_path:
             self._dictionary = Kalvin.__dictionary
@@ -87,6 +96,15 @@ class Kalvin(KAgent):
     def significance(self) -> KSignificance:
         """Get the significance instance for S1-S4 operations."""
         return self._significance
+
+    @property
+    def events(self) -> EventBus:
+        """Get the event bus for subscribing to rationalisation events."""
+        return self._event_bus
+
+    def _emit(self, kind: str, kline: KLine, query: KLine) -> None:
+        """Emit a rationalisation event."""
+        self._event_bus.publish(RationaliseEvent(kind, kline, query))
 
     def encode(self, text: str, nlp_detail: str = "nlp_type32") -> KLine | None:
         """Encode a string to a KLine.
@@ -169,7 +187,7 @@ class Kalvin(KAgent):
                     pruned_activity[key] = count
 
         model = Model(pruned_model)
-        return Kalvin(model, pruned_activity)
+        return Kalvin(model=model, activity=pruned_activity)
 
     def get_frame(self) -> KModel:
         """Return the current frame context if it is in bounds, otherwise create a new one.
@@ -185,22 +203,26 @@ class Kalvin(KAgent):
         self.__frames.append(frame)
         return frame
 
-    def rationalise(self, kline: KLine, frame: KModel | None = None) -> list[KLine]:
+    def rationalise(self, kline: KLine, frame: KModel | None = None) -> None:
         """Rationalise a KLine query in frame context.
 
-        Args:
-            query: KLine to rationalise
-            frame: Optional KModel frame context (internal use)
+        Emits events via the event bus as significance is established.
+        Fast kline results are emitted inline; slow kline results are 
+        queued for the cogitate background thread.
 
-        Returns:
-            Rationalised KLine, or KNone if not found
+        Args:
+            kline: KLine to rationalise
+            frame: Optional KModel frame context
         """
-        if frame is None:
+        is_top_level = frame is None
+        if is_top_level:
             frame = self.get_frame()
 
         # Test early to prevent infinite recursion
         if frame.exists(kline):
-            return frame.klines
+            if is_top_level:
+                self._emit("complete", kline, kline)
+            return
 
         #bring nodes into frame
         for n in kline.nodes:
@@ -213,30 +235,53 @@ class Kalvin(KAgent):
             self.rationalise(nk, frame=frame)
 
         fast, slow = frame.query(kline)
-        self.__backlog = [(kline, slow)] + self.__backlog
+
+        # Queue slow stream for cogitate background thread
+        with self._backlog_condition:
+            self._backlog.append((kline, slow))
+            self._backlog_condition.notify()
+
         for fk in fast:
             sig = self.signify(kline, fk)
+            self._emit("fast", fk, kline)
             if self._significance.has_s1(sig):
                 # Create a KLine with the significance for upgrading
                 cs = KLine(signature=sig, nodes=fk.nodes)
                 sv = self._significance.calculate(frame, kline, cs)
                 frame.upgrade(cs, sv)
-                return frame.klines
+                if is_top_level:
+                    self._emit("complete", cs, kline)
+                return
 
         frame.add(kline)
-        return frame.klines
-    
-    def cogitate(self):
-        while self.__backlog:
-            qk, slow = self.__backlog[0]
-            self.__backlog = self.__backlog[1:]
+        if is_top_level:
+            self._emit("complete", kline, kline)
+
+    def _cogitate(self) -> None:
+        """Background thread that processes slow stream klines.
+        """
+        while not self._cogitate_stop.is_set():
+            with self._backlog_condition:
+                while not self._backlog and not self._cogitate_stop.is_set():
+                    self._backlog_condition.wait(timeout=0.5)
+                if self._cogitate_stop.is_set() and not self._backlog:
+                    return
+                qk, slow = self._backlog.pop(0)
+
             for sk in slow:
                 sig = self.signify(qk, sk)
                 if self._significance.has_s1(sig):
                     cs = KLine(signature=sig, nodes=sk.nodes)
                     sv = self._significance.calculate(self._model, qk, cs)
                     self._model.upgrade(cs, sv)
-                    continue
+                self._emit("slow", sk, qk)
+
+    def cogitate_join(self, timeout: float | None = None) -> None:
+        """Stop the cogitate background thread and wait for it to finish."""
+        self._cogitate_stop.set()
+        with self._backlog_condition:
+            self._backlog_condition.notify()
+        self._cogitate_thread.join(timeout=timeout)
             
 
     def signify(self, k1: KLine, k2: KLine, s: KSig | None = None) -> KSig:
@@ -389,7 +434,7 @@ class Kalvin(KAgent):
             activity[key] = count
 
         model = Model(klines=klines)
-        return cls(model, activity, dictionary=dictionary, nlp_detail=nlp_detail)
+        return cls(model=model, activity=activity, dictionary=dictionary, nlp_detail=nlp_detail)
 
     def to_dict(self) -> dict:
         """Serialize model to dict (for JSON)."""
@@ -417,7 +462,7 @@ class Kalvin(KAgent):
         activity = Counter()
         if "activity" in data:
             activity.update({KSig(k): v for k, v in data["activity"].items()})
-        return cls(model, activity, dictionary=dictionary, nlp_detail=nlp_detail)
+        return cls(model=model, activity=activity, dictionary=dictionary, nlp_detail=nlp_detail)
 
     def save(
         self,

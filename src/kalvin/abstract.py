@@ -369,7 +369,7 @@ class KAgent(ABC):
     # === Core operations ===
 
     @abstractmethod
-    def rationalise(self, kline: KLine, frame: KModel | None = None) -> KLine | None:
+    def rationalise(self, kline: KLine, frame: KModel | None = None) -> None:
         """Rationalise a KLine.
 
         Args:

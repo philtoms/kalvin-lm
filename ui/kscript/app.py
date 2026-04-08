@@ -74,6 +74,7 @@ class KScriptApp(App):
         self._last_script_dir: Path = DEFAULT_SCRIPTS_DIR
         self._last_state_dir: Path = Path("data")
         self._auto_compile_interval: float = auto_compile_interval
+        self._rationalise_buffer: list[KLine] = []
 
     def on_mount(self) -> None:
         """Initialize Kalvin instance on app start."""
@@ -85,6 +86,24 @@ class KScriptApp(App):
             signal.signal(signal.SIGTERM, self._on_sigterm)
         else:
             self._kalvin = Kalvin()
+            self._setup_events()
+
+    def _setup_events(self) -> None:
+        """Subscribe to Kalvin rationalisation events."""
+        if not self._kalvin:
+            return
+
+        def on_event(event):
+            if event.kind == "complete":
+                klines = self._rationalise_buffer or [event.query]
+                self._rationalise_buffer = []
+                decompiled = self._decompile_response(klines)
+                responses = self.query_one(ResponsesRegion)
+                responses.add_response(event.query, decompiled)
+            else:
+                self._rationalise_buffer.append(event.kline)
+
+        self._kalvin.events.subscribe(on_event)
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -176,6 +195,8 @@ class KScriptApp(App):
                 self._kalvin = Kalvin()
         else:
             self._kalvin = Kalvin()
+
+        self._setup_events()
 
         # Restore UI state
         if UI_STATE_FILE.exists():
@@ -321,6 +342,7 @@ class KScriptApp(App):
 
         # Load Kalvin model
         self._kalvin = Kalvin.load(path)
+        self._setup_events()
         self.log(f"Loaded Kalvin state from {path}")
 
     def action_run_script(self) -> None:
@@ -355,17 +377,12 @@ class KScriptApp(App):
         entries = self._compile_script()
         if not entries:
             return
-        responses = self.query_one(ResponsesRegion)
         for entry in entries:
             if self._cancelled:
                 return
             kline = self._entry_to_kline(entry)
             if self._kalvin:
-                response_klines = self._kalvin.rationalise(kline)
-                if response_klines is None or len(response_klines) == 0:
-                    response_klines = [kline]
-                for level, decompiled in self._decompile_response(response_klines):
-                    responses.add_response(level, decompiled)
+                self._kalvin.rationalise(kline)
             await asyncio.sleep(0)
 
     def action_step_script(self) -> None:
@@ -387,12 +404,7 @@ class KScriptApp(App):
             kline = self._entry_to_kline(entry)
 
             if self._kalvin:
-                response_klines = self._kalvin.rationalise(kline)
-                if response_klines is None or len(response_klines) == 0:
-                    response_klines = [kline]
-                decompiled = self._decompile_response(response_klines)
-                responses = self.query_one(ResponsesRegion)
-                responses.add_response(kline, decompiled)
+                self._kalvin.rationalise(kline)
 
             self._current_entry_index += 1
 
