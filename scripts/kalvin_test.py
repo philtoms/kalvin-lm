@@ -9,7 +9,7 @@ from kalvin import Kalvin
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
 source = '''
-MHALL == SVO =>
+MHALL = SVO =>
   S < M
   V < H
   O < ALL =>
@@ -22,10 +22,11 @@ MHALL == SVO =>
 
 tokens = Lexer(source).tokenize()
 kast = Parser(tokens).parse()
-compiler = Compiler(Mod32Tokenizer(), dev=True)
-decompiler = Decompiler(Mod32Tokenizer())
+tokenizer = Mod32Tokenizer()
+compiler = Compiler(tokenizer, dev=True)
+decompiler = Decompiler(tokenizer)
 klines = compiler.compile(kast)
-kalvin = Kalvin(Mod32Tokenizer())
+kalvin = Kalvin(tokenizer)
 for k in klines:
     print(f'{k.dbg_text}')
     rks = kalvin.rationalise(k)

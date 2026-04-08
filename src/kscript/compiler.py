@@ -167,6 +167,7 @@ class Compiler:
             "MCS": self._sig.S2,       # MCS uses S2 like canonize
             "MCS_CHAR": self._sig.S4,  # Component chars are S4 (identity-like)
         }
+        self._seen: set[tuple[int, None | int | tuple[int, ...]]] = set()
 
     def compile(self, file: KScriptFile) -> list[CompiledEntry]:
         """Compile a KScriptFile to entries."""
@@ -178,28 +179,6 @@ class Compiler:
         """Compile a script's constructs."""
         for construct in script.constructs:
             self._compile_construct(construct)
-
-    def _emit_mcs(self, sig: str) -> bool:
-        """Emit MCS entries for multi-character signatures.
-
-        Emits:
-          {sig: [char for char in sig]}
-          {char: None} for each char
-
-        Returns True if MCS was emitted, False for single-char sigs.
-        """
-        if len(sig) <= 1:
-            return False
-
-        # MCS canonization: {sig: [A, B, C, ...]}
-        chars = list(sig)
-        self._emit(sig, chars, "MCS")
-
-        # Component identities: {char: None} for each
-        for char in chars:
-            self._emit(char, None, "MCS_CHAR")
-
-        return True
 
     def _compile_construct(self, construct: Construct) -> None:
         """Compile a construct, handling blocks, chains, and primaries."""
@@ -224,6 +203,29 @@ class Compiler:
         for pc in primaries:
             self._emit_primary(pc)
 
+    def _emit_mcs(self, sig: str) -> bool:
+        """Emit MCS entries for multi-character signatures.
+
+        Emits:
+          {char: None} for each char (first)
+          {sig: [char for char in sig]} (second)
+
+        Returns True if MCS was emitted, False for single-char sigs.
+        """
+        if len(sig) <= 1:
+            return False
+
+        chars = list(sig)
+
+        # Component identities: {char: None} for each (emitted first)
+        for char in chars:
+            self._emit(char, None, "MCS_CHAR")
+
+        # MCS canonization: {sig: [A, B, C, ...]} (emitted second)
+        self._emit(sig, chars, "MCS")
+
+        return True
+
     def _emit_primary(self, pc: PrimaryConstruct) -> None:
         """Emit entries for a primary construct based on its inline op.
 
@@ -239,6 +241,8 @@ class Compiler:
 
         node = pc.node
         node_str = self._node_to_string(node)
+        if node_str.isupper() and node_str.isalpha():
+            self._emit_mcs(node_str)
 
         if pc.op == TokenType.COUNTERSIGN:
             # {sig: node}, {node: sig}
@@ -342,6 +346,13 @@ class Compiler:
 
         # Encode nodes
         encoded_nodes = self._encode_nodes(nodes)
+
+        # Dedup: check if full entry already exists
+        key = (sig_id, None if encoded_nodes is None else
+               encoded_nodes if isinstance(encoded_nodes, int) else tuple(encoded_nodes))
+        if key in self._seen:
+            return
+        self._seen.add(key)
 
         dbg = self._format_dbg(sig, nodes, op) if self.dev else ""
         self.entries.append(CompiledEntry(signature=sig_id, nodes=encoded_nodes, dbg_text=dbg))

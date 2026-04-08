@@ -174,19 +174,19 @@ class TestMCSExpansion:
         """MCS in construct position."""
         entries = compile_test_source("ABC => X")
 
-        # Should have: MCS canonization + 3 identities + construct + entity
+        # Should have: 3 identities (first) + MCS canonization + construct + entity
         assert len(entries) >= 5
 
-        # First entry should be MCS canonization
-        sig, nodes = entries[0].decode(_tokenizer)
-        assert sig == "ABC"
-        assert nodes == ["A", "B", "C"]
-
-        # Next 3 should be component identities
-        for i in range(1, 4):
+        # First 3 entries should be component identities (chars emitted before compound)
+        for i in range(0, 3):
             sig, nodes = entries[i].decode(_tokenizer)
             assert sig in "ABC"
             assert nodes is None
+
+        # Fourth entry should be MCS canonization
+        sig, nodes = entries[3].decode(_tokenizer)
+        assert sig == "ABC"
+        assert nodes == ["A", "B", "C"]
 
         # Fifth entry should be the construct
         sig, nodes = entries[4].decode(_tokenizer)
@@ -205,20 +205,20 @@ class TestMCSExpansion:
         """MCS expansion with countersign construct."""
         entries = compile_test_source("ABC == X")
 
-        # Should have: MCS canonization + 3 identities + 2 countersign entries
+        # Should have: 3 identities + MCS canonization + 2 countersign entries
         assert len(entries) == 6
 
         # Check entries in order (dict would overwrite duplicate keys)
-        # Entry 0: MCS canonization {ABC: [A, B, C]}
-        sig, nodes = entries[0].decode(_tokenizer)
-        assert sig == "ABC"
-        assert nodes == ["A", "B", "C"]
-
-        # Entries 1-3: Component identities
-        for i in range(1, 4):
+        # Entries 0-2: Component identities (chars emitted before compound)
+        for i in range(0, 3):
             sig, nodes = entries[i].decode(_tokenizer)
             assert sig in "ABC"
             assert nodes is None
+
+        # Entry 3: MCS canonization {ABC: [A, B, C]}
+        sig, nodes = entries[3].decode(_tokenizer)
+        assert sig == "ABC"
+        assert nodes == ["A", "B", "C"]
 
         # Entries 4-5: Countersign bidirectional
         sig, nodes = entries[4].decode(_tokenizer)
