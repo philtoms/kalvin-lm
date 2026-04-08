@@ -142,87 +142,53 @@ class TestModelAddKLine:
 
 class TestModelQuery:
     def test_no_match_returns_empty(self):
-        """If no kline matches, both streams are empty."""
+        """If no kline matches, result is empty."""
         kl1 = KLine(signature=0x0001, nodes=[])
         kl2 = KLine(signature=0x0002, nodes=[])
         query = KLine(signature=0xFF00, nodes=[])
         model = Model([kl1, kl2])
 
-        fast, slow = model.query(query)
-        assert list(fast) == []
-        assert list(slow) == []
+        assert list(model.query(query)) == []
 
-    def test_single_match_in_fast(self):
-        """If match found, it's in the fast stream."""
+    def test_single_match(self):
+        """If match found, it's returned."""
         matching = KLine(signature=0xFF00, nodes=[])
         non_matching = KLine(signature=0x0001, nodes=[])
         query = KLine(signature=0xFF00, nodes=[])
         model = Model([non_matching, matching])
 
-        fast, slow = model.query(query)
+        assert list(model.query(query)) == [matching]
 
-        assert list(fast) == [matching]
-        assert list(slow) == []
-
-    def test_all_matches_in_fast_when_no_limit(self):
-        """All matching klines in fast when focus_limit=0."""
+    def test_all_matches_returned(self):
+        """All matching klines are returned."""
         match1 = KLine(signature=0xFF00, nodes=[])
         match2 = KLine(signature=0xFF01, nodes=[])
         query = KLine(signature=0xFF00, nodes=[])
         non_matching = KLine(signature=0x0001, nodes=[])
         model = Model([non_matching, match1, match2])
 
-        fast, slow = model.query(query)
+        assert list(model.query(query)) == [match2, match1]
 
-        assert list(fast) == [match2, match1]
-        assert list(slow) == []
-
-    def test_focus_limit_splits_streams(self):
-        """focus_limit splits matches into fast and slow streams."""
+    def test_reverse_insertion_order(self):
+        """Results follow reverse insertion order (newest first)."""
         match1 = KLine(signature=0xFF00, nodes=[])
         match2 = KLine(signature=0xFF01, nodes=[])
         match3 = KLine(signature=0xFF02, nodes=[])
         query = KLine(signature=0xFF00, nodes=[])
         model = Model([match1, match2, match3])
 
-        fast, slow = model.query(query, focus_limit=2)
-
-        assert list(fast) == [match3, match2]
-        assert list(slow) == [match1]
-
-    def test_streams_are_independent(self):
-        """Fast and slow streams can be consumed independently."""
-        match1 = KLine(signature=0xFF00, nodes=[])
-        match2 = KLine(signature=0xFF01, nodes=[])
-        match3 = KLine(signature=0xFF02, nodes=[])
-        query = KLine(signature=0xFF00, nodes=[])
-        model = Model([match1, match2, match3])
-
-        fast, slow = model.query(query, focus_limit=1)
-
-        # Consume fast first
-        fast_list = list(fast)
-        assert fast_list == [match3]
-
-        # Slow is still available
-        slow_list = list(slow)
-        assert slow_list == [match2, match1]
+        assert list(model.query(query)) == [match3, match2, match1]
 
 
 class TestModelExpand:
-    def test_depth_one_returns_klines_only(self):
-        """depth=1 returns focus_set without expansion."""
+    def test_depth_one_returns_kline_only(self):
+        """depth=1 returns the kline without expansion."""
         key_child = 0x0010
         parent = KLine(signature=0xFF00, nodes=[key_child])
         child = KLine(signature=key_child, nodes=[])
-        query = KLine(signature=0xFF00, nodes=[])
         model = Model([parent, child])
 
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, slow = model.expand(focus_set, depth=1)
-        results = list(fast)
+        results = list(model.expand(parent, depth=1))
 
         assert len(results) == 1
         assert results[0] == parent
@@ -235,14 +201,9 @@ class TestModelExpand:
         child1 = KLine(signature=key_child1, nodes=[])
         child2 = KLine(signature=key_child2, nodes=[])
         parent = KLine(signature=0xFF00, nodes=[key_child1, key_child2])
-        query = KLine(signature=0xFF00, nodes=[])
         model = Model([parent, child1, child2])
 
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, slow = model.expand(focus_set, depth=2)
-        results = list(fast)
+        results = list(model.expand(parent, depth=2))
 
         assert len(results) == 3
         assert results[0] == parent
@@ -258,45 +219,32 @@ class TestModelExpand:
         grandchild = KLine(signature=key_grandchild, nodes=[])
         child = KLine(signature=key_child, nodes=[key_grandchild])
         parent = KLine(signature=key_parent, nodes=[key_child])
-        query = KLine(signature=0xF000, nodes=[])
         model = Model([parent, child, grandchild])
 
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
         # depth=1: only parent, no child expansion
-        fast, _ = model.expand(focus_set, depth=1)
-        results = list(fast)
+        results = list(model.expand(parent, depth=1))
         assert len(results) == 1
         assert results[0] == parent
 
         # depth=2: parent + child, no grandchild
-        fast, _ = model.expand(focus_set, depth=2)
-        results = list(fast)
+        results = list(model.expand(parent, depth=2))
         assert len(results) == 2
         assert results[0] == parent
         assert results[1] == child
 
         # depth=3: parent + child + grandchild
-        fast, _ = model.expand(focus_set, depth=3)
-        results = list(fast)
+        results = list(model.expand(parent, depth=3))
         assert len(results) == 3
         assert results[0] == parent
         assert results[1] == child
         assert results[2] == grandchild
 
     def test_depth_zero_returns_empty(self):
-        """depth=0 returns empty streams."""
+        """depth=0 returns empty."""
         matching = KLine(signature=0xFF00, nodes=[])
-        query = KLine(signature=0xFF00, nodes=[])
         model = Model([matching])
 
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, slow = model.expand(focus_set, depth=0)
-        assert list(fast) == []
-        assert list(slow) == []
+        assert list(model.expand(matching, depth=0)) == []
 
     def test_cycle_detection_stops_expansion(self):
         """Circular references stop expansion."""
@@ -305,14 +253,9 @@ class TestModelExpand:
 
         kl_a = KLine(signature=key_a, nodes=[key_b])
         kl_b = KLine(signature=key_b, nodes=[key_a])
-        query = KLine(signature=key_a, nodes=[])
         model = Model([kl_a, kl_b])
 
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, _ = model.expand(focus_set, depth=100)
-        results = list(fast)
+        results = list(model.expand(kl_a, depth=100))
 
         assert len(results) == 2
         assert kl_a in results
@@ -322,14 +265,9 @@ class TestModelExpand:
         """Self-referencing KLine stops expansion."""
         key = 0xFF00
         kl = KLine(signature=key, nodes=[key])
-        query = KLine(signature=key, nodes=[])
         model = Model([kl])
 
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, _ = model.expand(focus_set, depth=100)
-        results = list(fast)
+        results = list(model.expand(kl, depth=100))
 
         assert len(results) == 1
         assert results[0] == kl
@@ -344,16 +282,11 @@ class TestModelExpand:
         leaf1 = KLine(signature=key_leaf1, nodes=[])
         leaf2 = KLine(signature=key_leaf2, nodes=[])
         leaf3 = KLine(signature=key_leaf3, nodes=[])
-        query = KLine(signature=0xFF00, nodes=[])
         intermediate = KLine(signature=key_intermediate, nodes=[key_leaf1, key_leaf2])
         root = KLine(signature=0xFF00, nodes=[key_intermediate, key_leaf3])
         model = Model([root, intermediate, leaf1, leaf2, leaf3])
 
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, _ = model.expand(focus_set, depth=3)
-        results = list(fast)
+        results = list(model.expand(root, depth=3))
 
         assert len(results) == 5
         assert root in results
@@ -371,19 +304,14 @@ class TestModelExpand:
         grandchild = KLine(signature=key_grandchild, nodes=[key_root])
         child = KLine(signature=key_child, nodes=[key_grandchild])
         root = KLine(signature=key_root, nodes=[key_child])
-        query = KLine(signature=0xFF00, nodes=[])
         model = Model([root, child, grandchild])
 
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, _ = model.expand(focus_set, depth=10)
-        results = list(fast)
+        results = list(model.expand(root, depth=10))
 
         assert len(results) == 3
-        assert results[0] == grandchild
-        assert results[1] == root
-        assert results[2] == child
+        assert root in results
+        assert child in results
+        assert grandchild in results
 
     def test_cyclic_grandchildren_stops_expansion(self):
         """Cyclic grandchildren (grandchild references parent) stop expansion."""
@@ -396,213 +324,41 @@ class TestModelExpand:
         root = KLine(signature=key_root, nodes=[key_child])
         model = Model([root, child, grandchild])
 
-        query = KLine(signature=0xFF00, nodes=[])
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, _ = model.expand(focus_set, depth=10)
-        results = list(fast)
+        results = list(model.expand(root, depth=10))
 
         assert len(results) == 3
-        assert results[0] == grandchild
-        assert results[1] == child
-        assert results[2] == root
+        assert root in results
+        assert child in results
+        assert grandchild in results
 
-    def test_focus_limit_splits_streams(self):
-        """focus_limit in expand splits into fast and slow."""
-        key_child1 = 0x0010
-        key_child2 = 0x0020
-        key_child3 = 0x0030
+    def test_kline_with_no_nodes(self):
+        """Expanding a leaf kline returns just itself."""
+        leaf = KLine(signature=0xFF00, nodes=[])
+        model = Model([leaf])
 
-        child1 = KLine(signature=key_child1, nodes=[])
-        child2 = KLine(signature=key_child2, nodes=[])
-        child3 = KLine(signature=key_child3, nodes=[])
-        parent1 = KLine(signature=0xF000, nodes=[key_child1, key_child2, key_child3])
+        results = list(model.expand(leaf, depth=3))
 
-        key_child4 = 0x0040
-        key_child5 = 0x0050
-        key_child6 = 0x0060
+        assert results == [leaf]
 
-        child4 = KLine(signature=key_child4, nodes=[])
-        child5 = KLine(signature=key_child5, nodes=[])
-        child6 = KLine(signature=key_child6, nodes=[])
-        parent2 = KLine(signature=0xF001, nodes=[key_child4, key_child5, key_child6])
+    def test_missing_child_nodes_skipped(self):
+        """Child nodes not in the model are skipped."""
+        parent = KLine(signature=0xFF00, nodes=[0x0010, 0x0020])
+        model = Model([parent])  # children not added
 
-        model = Model([parent1, parent2, child1, child2, child3, child4, child5, child6])
-        query = KLine(signature=0xF000, nodes=[])
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
+        results = list(model.expand(parent, depth=2))
 
-        # focus_limit=1: parent1 + children in fast, parent2 + children in slow
-        fast, slow = model.expand(focus_set, depth=2, focus_limit=1)
+        assert results == [parent]
 
-        fast_results = list(fast)
-        assert len(fast_results) == 4  # parent2 + 3 children
-        assert parent2 in fast_results
-        assert child4 in fast_results
-        assert child5 in fast_results
-        assert child6 in fast_results
+    def test_shared_child_deduplicated(self):
+        """Shared child across multiple parents is only yielded once."""
+        key_shared = 0x0010
+        shared = KLine(signature=key_shared, nodes=[])
+        parent = KLine(signature=0xFF00, nodes=[key_shared, key_shared])
+        model = Model([parent, shared])
 
-        slow_results = list(slow)
-        assert len(slow_results) == 4  # parent1 + 3 children
-        assert parent1 in slow_results
-        assert child1 in slow_results
-        assert child2 in slow_results
-        assert child3 in slow_results
+        results = list(model.expand(parent, depth=2))
 
-    def test_expand_without_focus_limit(self):
-        """Without focus_limit, all klines in fast stream."""
-        match1 = KLine(signature=0xFF00, nodes=[])
-        match2 = KLine(signature=0xFF01, nodes=[])
-        model = Model([match1, match2])
-
-        query = KLine(signature=0xFF00, nodes=[])
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, slow = model.expand(focus_set, depth=1)
-        assert list(fast) == [match2, match1]
-        assert list(slow) == []
-
-    def test_slow_empty_when_focus_limit_zero(self):
-        """When focus_limit=0, slow is empty (all in fast)."""
-        match1 = KLine(signature=0xFF00, nodes=[])
-        match2 = KLine(signature=0xFF01, nodes=[])
-        model = Model([match1, match2])
-
-        query = KLine(signature=0xFF00, nodes=[])
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, slow = model.expand(focus_set, depth=1, focus_limit=0)
-        assert list(fast) == [match2, match1]
-        assert list(slow) == []
-
-    def test_slow_stream_consumed_independently(self):
-        """Slow stream can be consumed before fast stream."""
-        key_child1 = 0x0010
-        key_child2 = 0x0020
-
-        child1 = KLine(signature=key_child1, nodes=[])
-        child2 = KLine(signature=key_child2, nodes=[])
-        parent1 = KLine(signature=0xF000, nodes=[key_child1])
-        parent2 = KLine(signature=0xF001, nodes=[key_child2])
-        model = Model([parent1, parent2, child1, child2])
-
-        query = KLine(signature=0xF000, nodes=[])
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, slow = model.expand(focus_set, depth=2, focus_limit=1)
-
-        # Consume slow first
-        slow_results = list(slow)
-        assert len(slow_results) == 2  # parent2 + child2
-        assert parent1 in slow_results
-        assert child1 in slow_results
-
-        # Fast still works
-        fast_results = list(fast)
-        assert len(fast_results) == 2  # parent1 + child1
-        assert parent2 in fast_results
-        assert child2 in fast_results
-
-    def test_slow_with_larger_focus_limit(self):
-        """focus_limit larger than klines puts all in fast, empty slow."""
-        match1 = KLine(signature=0xFF00, nodes=[])
-        match2 = KLine(signature=0xFF01, nodes=[])
-        model = Model([match1, match2])
-
-        query = KLine(signature=0xFF00, nodes=[])
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, slow = model.expand(focus_set, depth=1, focus_limit=10)
-        assert list(fast) == [match2, match1]
-        assert list(slow) == []
-
-    def test_slow_with_nested_hierarchy(self):
-        """Slow stream expands nested hierarchy correctly."""
-        key_grandchild1 = 0x0100
-        key_grandchild2 = 0x0200
-        key_child1 = 0x0010
-        key_child2 = 0x0020
-
-        grandchild1 = KLine(signature=key_grandchild1, nodes=[])
-        grandchild2 = KLine(signature=key_grandchild2, nodes=[])
-        child1 = KLine(signature=key_child1, nodes=[key_grandchild1])
-        child2 = KLine(signature=key_child2, nodes=[key_grandchild2])
-        parent1 = KLine(signature=0xF000, nodes=[key_child1])
-        parent2 = KLine(signature=0xF001, nodes=[key_child2])
-        model = Model([parent1, parent2, child1, child2, grandchild1, grandchild2])
-
-        query = KLine(signature=0xF000, nodes=[])
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, slow = model.expand(focus_set, depth=3, focus_limit=1)
-
-        # Fast: parent1 + child1 + grandchild1
-        fast_results = list(fast)
-        assert len(fast_results) == 3
-        assert parent2 in fast_results
-        assert child2 in fast_results
-        assert grandchild2 in fast_results
-
-        # Slow: parent2 + child2 + grandchild2
-        slow_results = list(slow)
-        assert len(slow_results) == 3
-        assert parent1 in slow_results
-        assert child1 in slow_results
-        assert grandchild1 in slow_results
-
-    def test_slow_depth_limits_expansion(self):
-        """Depth parameter limits expansion in slow stream too."""
-        key_grandchild = 0x0100
-        key_child = 0x0010
-
-        grandchild = KLine(signature=key_grandchild, nodes=[])
-        child = KLine(signature=key_child, nodes=[key_grandchild])
-        parent1 = KLine(signature=0xF000, nodes=[key_child])
-        parent2 = KLine(signature=0xF001, nodes=[key_child])
-        model = Model([parent1, parent2, child, grandchild])
-
-        query = KLine(signature=0xF000, nodes=[])
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        # depth=1: no child expansion
-        fast, slow = model.expand(focus_set, depth=1, focus_limit=1)
-        assert list(fast) == [parent2]
-        assert list(slow) == [parent1]
-
-        # depth=2: expand to children, not grandchildren
-        fast, slow = model.expand(focus_set, depth=2, focus_limit=1)
-        fast_results = list(fast)
-        assert len(fast_results) == 2  # parent2 + child
-        slow_results = list(slow)
-        assert len(slow_results) == 2  # parent1 + child
-
-    def test_multiple_klines_in_slow(self):
-        """Multiple klines go to slow when focus_limit is small."""
-        match1 = KLine(signature=0xFF00, nodes=[])
-        match2 = KLine(signature=0xFF01, nodes=[])
-        match3 = KLine(signature=0xFF02, nodes=[])
-        match4 = KLine(signature=0xFF03, nodes=[])
-        model = Model([match1, match2, match3, match4])
-
-        query = KLine(signature=0xFF00, nodes=[])
-        fast_q, _ = model.query(query)
-        focus_set = list(fast_q)
-
-        fast, slow = model.expand(focus_set, depth=1, focus_limit=1)
-
-        assert list(fast) == [match4]
-        slow_results = list(slow)
-        assert len(slow_results) == 3
-        assert match1 in slow_results
-        assert match2 in slow_results
-        assert match3 in slow_results
+        assert results == [parent, shared]
 
 
 class TestModelIterators:

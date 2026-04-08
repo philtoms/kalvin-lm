@@ -116,90 +116,54 @@ class Model(KModel):
 
         return [self._klines[idx] for idx in self._by_key[signature]]
 
-    def query(
-        self,
-        query: KLine,
-        focus_limit: int = 0,
-    ) -> tuple[Iterator[KLine], Iterator[KLine]]:
+    def query(self, query: KLine) -> Iterator[KLine]:
         """Query KLines by ANDing significance with a query.
-
-        Returns two independent generators for concurrent processing:
-        1. Fast stream: yields matching KLines immediately (up to focus_limit)
-        2. Slow stream: yields remaining matching KLines
 
         Iteration follows reverse insertion order (newest first).
         O(1) setup, O(N) iteration.
 
         Args:
             query: The query value to match (AND operation on signature)
-            focus_limit: Number of top-level matches in fast (0 = all in fast)
 
         Returns:
-            Tuple of (fast_generator, slow_generator) that yield KLines.
+            Generator that yields matching KLines.
         """
         klines = self._klines
         n = len(klines)
 
-        def fast_generator() -> Iterator[KLine]:
-            count = 0
+        def generator() -> Iterator[KLine]:
             for i in range(n - 1, -1, -1):
                 kline = klines[i]
                 if kline.signifies(query.signature):
-                    if focus_limit > 0 and count >= focus_limit:
-                        break
                     yield kline
-                    count += 1
-            if self.frame and count < focus_limit:
-                fast, _ = self.frame.query(query, focus_limit - count)
-                for kline in fast:
+            if self.frame:
+                for kline in self.frame.query(query):
                     yield kline
 
-        def slow_generator() -> Iterator[KLine]:
-            if focus_limit <= 0:
-                return
-            count = 0
-            for i in range(n - 1, -1, -1):
-                kline = klines[i]
-                if kline.signifies(query.signature):
-                    if count >= focus_limit:
-                        yield kline
-                    count += 1
-            if self.frame and count < focus_limit:
-                _, slow = self.frame.query(query, focus_limit - count)
-                for kline in slow:
-                    yield kline
-
-        return fast_generator(), slow_generator()
+        return generator()
 
     def expand(
         self,
-        focus_set: list[KLine],
+        kline: KLine,
         depth: int = 1,
-        focus_limit: int = 0,
-    ) -> tuple[Iterator[KLine], Iterator[KLine]]:
-        """Expand KLines and their descendants up to a given depth.
-
-        Returns two independent generators for concurrent processing:
-        1. Fast stream: yields first `focus_limit` KLines and their descendants
-        2. Slow stream: yields remaining KLines and their descendants
+    ) -> Iterator[KLine]:
+        """Expand a KLine and its descendants up to a given depth.
 
         Args:
-            focus_set: List of KLines to expand (e.g., from query)
+            kline: KLine to expand
             depth: Maximum recursion depth for expanding child nodes
-            focus_limit: Number of klines in fast (0 = all in fast)
 
         Returns:
-            Tuple of (fast_generator, slow_generator) that yield expanded KLines.
+            Generator that yields expanded KLines.
         """
         if depth <= 0:
-            return iter([]), iter([])
+            return iter([])
 
         model = self
 
         def get_node_klines(nodes: KNodes) -> list[KLine]:
             """Get all KLines from a list of node keys."""
             found = []
-            # Handle all three KNodes subtypes
             if nodes is None:
                 return found
             if isinstance(nodes, int):
@@ -213,53 +177,23 @@ class Model(KModel):
                     found.append(kline)
             return found
 
-        def expand_kline_generator(
-            kline: KLine,
-            current_depth: int,
-            visited: set[int],
-        ) -> Iterator[KLine]:
-            """Expand a KLine and yield results immediately."""
-            if kline.signature in visited:
-                return
-            else:
-                visited.add(kline.signature)
+        visited: set[KSig] = set()
 
-            yield kline
+        def expand_inner(kl: KLine, current_depth: int) -> Iterator[KLine]:
+            """Expand a KLine and yield results immediately."""
+            if kl.signature in visited:
+                return
+            visited.add(kl.signature)
+
+            yield kl
 
             if current_depth >= depth:
                 return
 
-            for child in get_node_klines(kline.nodes):
-                yield from expand_kline_generator(child, current_depth + 1, visited)
+            for child in get_node_klines(kl.nodes):
+                yield from expand_inner(child, current_depth + 1)
 
-        def fast_generator() -> Iterator[KLine]:
-            visited: set[KSig] = set()
-            count = 0
-            for kline in focus_set:
-                if focus_limit > 0 and count >= focus_limit:
-                    break
-                yield from expand_kline_generator(kline, 1, visited)
-                count += 1
-            if self.frame and count < focus_limit:
-                fast, _ = self.frame.expand(focus_set, depth, focus_limit - count)
-                for kline in fast:
-                    yield kline
-
-        def slow_generator() -> Iterator[KLine]:
-            if focus_limit <= 0:
-                return
-            visited: set[KSig] = set()
-            count = 0
-            for kline in focus_set:
-                if count >= focus_limit:
-                    yield from expand_kline_generator(kline, 1, visited)
-                count += 1
-            if self.frame and count < focus_limit:
-                _, slow = self.frame.expand(focus_set, depth, focus_limit - count)
-                for kline in slow:
-                    yield kline
-
-        return fast_generator(), slow_generator()
+        return expand_inner(kline, 1)
 
     def duplicate(self) -> "Model":
         """Create a duplicate of this model."""

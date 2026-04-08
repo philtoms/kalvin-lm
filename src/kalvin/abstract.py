@@ -258,38 +258,31 @@ class KModel(ABC):
         ...
 
     @abstractmethod
-    def query(
-        self,
-        query: KLine,
-        focus_limit: int = 0,
-    ) -> tuple[Iterator[KLine], Iterator[KLine]]:
+    def query(self, query: KLine) -> Iterator[KLine]:
         """Query KLines by ANDing significance with a query.
 
         Args:
             query: The query kline to match
-            focus_limit: Number of top-level matches in fast (0 = all in fast)
 
         Returns:
-            Tuple of (fast_generator, slow_generator) that yield KLines.
+            Generator that yields matching KLines.
         """
         ...
 
     @abstractmethod
     def expand(
         self,
-        focus_set: list[KLine],
+        kline: KLine,
         depth: int = 1,
-        focus_limit: int = 0,
-    ) -> tuple[Iterator[KLine], Iterator[KLine]]:
-        """Expand KLines and their descendants up to a given depth.
+    ) -> Iterator[KLine]:
+        """Expand a KLine and its descendants up to a given depth.
 
         Args:
-            focus_set: List of KLines to expand (e.g., from query)
+            kline: KLine to expand
             depth: Maximum recursion depth for expanding child nodes
-            focus_limit: Number of klines in fast (0 = all in fast)
 
         Returns:
-            Tuple of (fast_generator, slow_generator) that yield expanded KLines.
+            Generator that yields expanded KLines.
         """
         ...
 

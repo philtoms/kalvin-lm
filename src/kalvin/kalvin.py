@@ -7,7 +7,6 @@ from pathlib import Path
 from struct import pack, unpack
 from typing import Literal, Any
 from collections import Counter
-from typing import Iterator, Tuple
 
 import json
 
@@ -60,7 +59,7 @@ class Kalvin(KAgent):
         self._event_bus = EventBus()
         self._backlog_lock = threading.Lock()
         self._backlog_condition = threading.Condition(self._backlog_lock)
-        self._backlog: list[tuple[KLine, Iterator[KLine]]] = []
+        self._backlog: list[tuple[KLine, KLine]] = []
         self._cogitate_stop = threading.Event()
         self._cogitate_thread = threading.Thread(target=self._cogitate, daemon=True)
         self._cogitate_thread.start()
@@ -234,31 +233,32 @@ class Kalvin(KAgent):
                 nk = KLine(signature=n, nodes=None) # new token node (also at S4)
             self.rationalise(nk, frame=frame)
 
-        fast, slow = frame.query(kline)
+        results = frame.query(kline)
 
-        # Queue slow stream for cogitate background thread
-        with self._backlog_condition:
-            self._backlog.append((kline, slow))
-            self._backlog_condition.notify()
-
-        for fk in fast:
+        for fk in results:
             sig = self.signify(kline, fk)
-            self._emit("fast", fk, kline)
             if self._significance.has_s1(sig):
                 # Create a KLine with the significance for upgrading
                 cs = KLine(signature=sig, nodes=fk.nodes)
                 sv = self._significance.calculate(frame, kline, cs)
                 frame.upgrade(cs, sv)
+                self._emit("fast", fk, kline)
                 if is_top_level:
                     self._emit("complete", cs, kline)
                 return
+            else:
+                # Failed has_s1 — queue for cogitate background thread
+                with self._backlog_condition:
+                    self._backlog.append((kline, fk))
+                    self._backlog_condition.notify()
+                self._emit("fast", fk, kline)
 
         frame.add(kline)
         if is_top_level:
             self._emit("complete", kline, kline)
 
     def _cogitate(self) -> None:
-        """Background thread that processes slow stream klines.
+        """Background thread that processes backlog klines (failed has_s1).
         """
         while not self._cogitate_stop.is_set():
             with self._backlog_condition:
@@ -266,15 +266,14 @@ class Kalvin(KAgent):
                     self._backlog_condition.wait(timeout=0.5)
                 if self._cogitate_stop.is_set() and not self._backlog:
                     return
-                qk, slow = self._backlog.pop(0)
+                qk, sk = self._backlog.pop(0)
 
-            for sk in slow:
-                sig = self.signify(qk, sk)
-                if self._significance.has_s1(sig):
-                    cs = KLine(signature=sig, nodes=sk.nodes)
-                    sv = self._significance.calculate(self._model, qk, cs)
-                    self._model.upgrade(cs, sv)
-                self._emit("slow", sk, qk)
+            sig = self.signify(qk, sk)
+            if self._significance.has_s1(sig):
+                cs = KLine(signature=sig, nodes=sk.nodes)
+                sv = self._significance.calculate(self._model, qk, cs)
+                self._model.upgrade(cs, sv)
+            self._emit("slow", sk, qk)
 
     def cogitate_join(self, timeout: float | None = None) -> None:
         """Stop the cogitate background thread and wait for it to finish."""
