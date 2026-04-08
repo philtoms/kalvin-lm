@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Encode a text file into Kalvin embeddings.
+"""Encode a text file into Model embeddings.
 
 This script loads a text file, splits it into sentences, encodes them
-using Kalvin's batch encoding, and reports model statistics.
+using Model's batch encoding, and reports model statistics.
 
 Can optionally load and extend an existing model.
 """
@@ -20,7 +20,7 @@ import json
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from kalvin import Kalvin
+from kalvin import Model
 
 
 # Global state for interrupt handling
@@ -99,7 +99,7 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     parser = argparse.ArgumentParser(
-        description="Encode text files into Kalvin embeddings"
+        description="Encode text files into Model embeddings"
     )
     parser.add_argument("-i", "--input_file", default="data/tokenizer/simplestories-1.json", help="Path to the text file to encode")
     parser.add_argument(
@@ -117,20 +117,20 @@ def main():
     args = parser.parse_args()
     model = args.model
 
-    # Load or initialize Kalvin
+    # Load or initialize Model
     model_path = Path(model)
     model_size = 0
     if model_path and model_path.exists():
         print(f"\nLoading model from: {model_path}")
-        kalvin = Kalvin.load(model_path, format=args.format)
-        model_size = kalvin.model_size()
+        model = Model.load(model_path, format=args.format)
+        model_size = model.model_size()
         print(f"Loaded model size: {model_size:,} KLines")
     else:
         print("\nInitializing new model...")
         if not model_path:
-            model_path = "data/kalvin.bin" 
-        kalvin = Kalvin()
-        print(f"Initial model size: {kalvin.model_size():,} KLines")
+            model_path = "data/kalvin.bin"
+        model = Model()
+        print(f"Initial model size: {model.model_size():,} KLines")
 
 
     for text in stream_text(args.input_file):
@@ -144,30 +144,30 @@ def main():
         for sentence in tqdm(sentences, desc=f"Encoding {len(sentences):,} sentences..."):
             if _interrupted:
                 break
-            kalvin.encode(sentence)
+            model.encode(sentence)
 
     # Report model size
-    final_size = kalvin.model_size()
+    final_size = model.model_size()
     print(f"\nFinal model size: {final_size:,} KLines")
-    if final_size > model_size:       
+    if final_size > model_size:
         print(f"Extended by: {final_size - model_size:,} KLines")
 
     # Unrecognised tokens
-    print(f"\nUnrecognised tokens: {len(kalvin.unrecognised_tokens)}")
-    for token in kalvin.unrecognised_tokens:
-        print(f"{token}: {kalvin.tokenizer.decode([token])}")
+    print(f"\nUnrecognised tokens: {len(model.unrecognised_tokens)}")
+    for token in model.unrecognised_tokens:
+        print(f"{token}: {model.tokenizer.decode([token])}")
 
-    kalvin = kalvin.prune()
+    model = model.prune()
 
     # Report model size
-    final_size = kalvin.model_size()
+    final_size = model.model_size()
     print(f"\nFinal model size after pruning: {final_size:,} KLines")
-    if final_size > model_size:       
+    if final_size > model_size:
         print(f"Extended by: {final_size - model_size:,} KLines")
 
     # Save model
     print(f"\nSaving model to: {model_path}")
-    kalvin.save(model_path, format=args.format)
+    model.save(model_path, format=args.format)
     actual_size = Path(model_path).stat().st_size
     print(f"Saved: {actual_size / 1024:.1f} KB ({actual_size / 1024 / 1024:.2f} MB)")
 

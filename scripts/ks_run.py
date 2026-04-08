@@ -16,7 +16,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from kalvin.kalvin import Kalvin
+from kalvin.model import Model
 from kscript import interpret_script, Mod32Tokenizer as mod_tokenizer
 
 
@@ -69,7 +69,7 @@ Examples:
         print(f"Loaded script: {script_path}")
         print(f"Script length: {len(source)} bytes")
 
-    # Load or create Kalvin agent
+    # Load or create Model agent
     if args.model:
         model_path = Path(args.model)
         if not model_path.exists():
@@ -79,20 +79,20 @@ Examples:
         if args.verbose:
             print(f"Loading model: {model_path}")
 
-        kalvin = Kalvin.load(model_path)
+        model = Model.load(model_path)
     else:
-        # Create new Kalvin instance
+        # Create new Model instance
         if args.verbose:
-            print("Creating new Kalvin agent")
+            print("Creating new Model agent")
 
         tokenizer = mod_tokenizer()
-        kalvin = Kalvin(tokenizer=tokenizer)
+        model = Model(tokenizer=tokenizer)
 
     # Interpret the script
     if args.verbose:
         print("Interpreting script...")
 
-    result = interpret_script(source, agent=kalvin)
+    result = interpret_script(source, agent=model)
 
     if args.verbose:
         print(f"KLines in model: {len(result.model)}")
@@ -114,12 +114,12 @@ Examples:
             # Use script name with format extension
             output_path = script_path.with_suffix(f".{args.format}")
 
-        # Save the model (KLines already added via Kalvin agent)
+        # Save the model (KLines already added via Model agent)
         if args.verbose:
             print(f"Saving model to: {output_path}")
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        kalvin.save(output_path, format=args.format)
+        model.save(output_path, format=args.format)
 
         print(f"Model saved: {output_path} ({len(result.model)} KLines)")
 

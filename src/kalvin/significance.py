@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 
-from kalvin.abstract import KLine, KModel, KSignificance, KSig, KNone, KSignificance
+from kalvin.abstract import KLine, KFrame, KSignificance, KSig, KNone, KSignificance
 
 
 class IntSignificance(KSignificance):
@@ -136,14 +136,22 @@ class IntSignificance(KSignificance):
 
     # === Significance calculation ===
 
-    def calculate(self, model: "KModel", query: "KLine", target: "KLine") -> KSig:
+    def is_significant(self, sig: KSig) -> bool:
+        """Is S1 or S4 significant"""
+        return self.has_s1(sig) or self.has_s4(sig)
+
+    def is_rational(self, sig: KSig) -> bool:
+        """Is S2 or S3 significant"""
+        return not self.is_significant(sig)
+
+    def calculate(self, frame: "KFrame", query: "KLine", target: "KLine") -> KSig:
         """Calculate significance between query and target KLines.
 
         Significance is comparable as integers - higher = more significant.
         S1 > S2 > S3 > S4.
 
         Args:
-            model: The Model containing the KLines (for descendant lookup)
+            frame: The Frame containing the KLines (for descendant lookup)
             query: The query KLine
             target: The target KLine to compare against
 
@@ -171,7 +179,7 @@ class IntSignificance(KSignificance):
             return self.S1  # All matched
 
         # S1: countersigned
-        for kline in model.find_signed_klines(target.signature):
+        for kline in frame.find_signed_klines(target.signature):
             if kline.signature == query.signature:
                 return self.S1  # All matched
 
@@ -207,7 +215,7 @@ class IntSignificance(KSignificance):
             if node in target_set:
                 continue  # Already S1 match
             # Check if node's children intersect with target
-            node_kline = model.find_kline(node)
+            node_kline = frame.find_kline(node)
             if node_kline is not KNone:
                 node_children = set(node_kline.as_node_list())
                 if node_children & target_set:
@@ -223,7 +231,7 @@ class IntSignificance(KSignificance):
             if node in target_set:
                 continue  # Already S1 match
             # Collect all descendants of this node
-            descendants = model.get_all_descendants(node)
+            descendants = frame.get_all_descendants(node)
             if descendants & target_set:
                 gen_matches += 1
 

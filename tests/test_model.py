@@ -1,463 +1,766 @@
+"""Tests for Model class - serialization and file operations."""
+
+import json
 import pytest
-from kalvin.abstract import KLine, KNone
+import tempfile
+from pathlib import Path
+from collections import Counter
+
+from kalvin.abstract import KLine
 from kalvin.model import Model
+from kalvin.frame import Frame
 
 
+class TestModelInit:
+    """Tests for Model initialization."""
 
-class TestKLine:
-    def test_create_kline(self):
-        """Test creating a KLine with int signature and list of KNode ints."""
-        signature = 0x123456789ABCDEF0
-        nodes = [0x1000, 0x2000]
-
-        kl = KLine(signature=signature, nodes=nodes)
-
-        assert kl.signature == signature
-        assert kl.nodes == [0x1000, 0x2000]
-
-    def test_create_factory(self):
-        """Test KLine.create factory method combines significance and token."""
-        significance = 0xFF00
-        token = 0x00FF
-        nodes = [0x1000, 0x2000]
-
-        kl = KLine.create(significance=significance, token=token, nodes=nodes)
-
-        assert kl.signature == 0xFFFF  # significance | token
-        assert kl.nodes == [0x1000, 0x2000]
-
-    def test_create_factory_with_zero_significance(self):
-        """Test KLine.create with zero significance."""
-        significance = 0x0000
-        token = 0x1234
-        nodes = []
-
-        kl = KLine.create(significance=significance, token=token, nodes=nodes)
-
-        assert kl.signature == 0x1234
-
-    def test_create_factory_with_zero_token(self):
-        """Test KLine.create with zero token."""
-        significance = 0xFF00
-        token = 0x0000
-        nodes = [0x100]
-
-        kl = KLine.create(significance=significance, token=token, nodes=nodes)
-
-        assert kl.signature == 0xFF00
-
-    def test_store_in_list(self):
-        """Test storing KLine objects in a list."""
-        kl_list = []
-
-        kl1 = KLine(signature=0x1000000000000000, nodes=[])
-        kl2 = KLine(signature=0x1000000000000001, nodes=[])
-        kl3 = KLine(signature=0x2000000000000000, nodes=[])
-
-        kl_list.append(kl1)
-        kl_list.append(kl2)
-        kl_list.append(kl3)
-
-        assert len(kl_list) == 3
-        assert kl_list[0].signature == 0x1000000000000000
-        assert kl_list[1].signature == 0x1000000000000001
-        assert kl_list[2].signature == 0x2000000000000000
-
-    def test_nested_klines_structure(self):
-        """Test nested KLine structure with node references."""
-        leaf1 = KLine(signature=0x0100, nodes=[])
-        leaf2 = KLine(signature=0x0200, nodes=[])
-        leaf3 = KLine(signature=0x0300, nodes=[])
-
-        intermediate = KLine(signature=0x0010, nodes=[0x0100, 0x0200])
-        root = KLine(signature=0x0001, nodes=[0x0010, 0x0300])
-
-        assert len(root.nodes) == 2
-        assert root.nodes[0] == 0x0010
-        assert root.nodes[1] == 0x0300
-
-        kl_list = [root, intermediate, leaf1, leaf2, leaf3]
-        assert len(kl_list) == 5
-
-
-class TestModelAddKLine:
-    def test_add_new_key(self):
-        """Adding a kline with new key succeeds."""
+    def test_init_empty(self):
+        """Model can be initialized without a frame."""
         model = Model()
-        kl = KLine(signature=0x1000, nodes=[])
+        assert model.frame is not None
+        assert len(model.frame) == 0
 
-        result = model.add(kl)
+    def test_init_with_frame(self):
+        """Model can be initialized with an existing frame."""
+        klines = [KLine(signature=0x1000, nodes=[0x0100])]
+        frame = Frame(klines)
+        model = Model(frame=frame)
 
-        assert result is True
-        assert len(model) == 1
-        assert model[kl.signature] == kl
+        assert len(model.frame) == 1
+        assert model.frame[0x1000].signature == 0x1000
 
-    def test_add_duplicate_key_different_nodes(self):
-        """Adding kline with same key but different nodes succeeds."""
-        kl1 = KLine(signature=0x1000, nodes=[0x0100])
-        kl2 = KLine(signature=0x1000, nodes=[0x0200])
-        model = Model([kl1])
+    def test_init_with_none_creates_empty_frame(self):
+        """Passing None creates an empty frame."""
+        model = Model(None)
+        assert model.frame is not None
+        assert len(model.frame) == 0
 
-        result = model.add(kl2)
 
-        assert result is True
-        assert len(model) == 2
+class TestModelToBytes:
+    """Tests for binary serialization."""
 
-    def test_add_exact_duplicate_same_key_different_instance(self):
-        """Adding kline with same key and nodes creates a new entry."""
-        kl1 = KLine(signature=0x1000, nodes=[0x0100, 0x0200])
-        kl2 = KLine(signature=0x1000, nodes=[0x0100, 0x0200])
-        model = Model([kl1])
-
-        result = model.add(kl2)
-
-        # Duplicate is added (same signature allowed, different KLine instance)
-        assert result is True
-        assert len(model) == 2
-
-    def test_add_duplicate_empty_nodes_same_key(self):
-        """Adding kline with same key and empty nodes creates a new entry."""
-        kl1 = KLine(signature=0x1000, nodes=[])
-        kl2 = KLine(signature=0x1000, nodes=[])
-        model = Model([kl1])
-
-        result = model.add(kl2)
-
-        # Duplicate is added (same signature allowed)
-        assert result is True
-        assert len(model) == 2
-
-    def test_multiple_keys_all_added(self):
-        """Multiple klines with different keys are all added."""
+    def test_to_bytes_empty(self):
+        """Empty Model serializes to minimal bytes."""
         model = Model()
+
+        data = model.to_bytes()
+
+        # Metadata (4 bytes len + JSON) + 4 bytes for kline count + 4 bytes for activity (0)
+        # Metadata JSON is ~110 bytes
+        assert len(data) > 8
+        # Verify kline count is 0 (after metadata)
+        metadata_len = int.from_bytes(data[:4], 'little')
+        offset = 4 + metadata_len
+        assert data[offset:offset+4] == b"\x00\x00\x00\x00"
+
+    def test_to_bytes_single_kline_no_nodes(self):
+        """Single KLine with no nodes serializes correctly."""
+        kline = KLine(signature=0x123456789ABCDEF0, nodes=[])
+        frame = Frame([kline])
+        model = Model(frame=frame)
+
+        data = model.to_bytes()
+
+        # Calculate offset after metadata
+        metadata_len = int.from_bytes(data[:4], 'little')
+        offset = 4 + metadata_len
+
+        # Verify count (little-endian uint32)
+        assert data[offset:offset+4] == b"\x01\x00\x00\x00"
+        offset += 4
+        # Verify signature (little-endian uint64)
+        assert data[offset:offset+8] == b"\xf0\xde\xbc\x9a\x78\x56\x34\x12"
+        offset += 8
+        # Verify node count
+        assert data[offset:offset+4] == b"\x00\x00\x00\x00"
+        offset += 4
+        # Verify activity count
+        assert data[offset:offset+4] == b"\x00\x00\x00\x00"
+
+    def test_to_bytes_single_kline_with_nodes(self):
+        """Single KLine with nodes serializes correctly."""
+        signature = 0x1000
+        nodes = [0x0100, 0x0200, 0x0300]
+        kline = KLine(signature=signature, nodes=nodes)
+        frame = Frame([kline])
+        model = Model(frame=frame)
+
+        data = model.to_bytes()
+
+        # Calculate offset after metadata
+        metadata_len = int.from_bytes(data[:4], 'little')
+        offset = 4 + metadata_len
+
+        # Skip kline count
+        offset += 4
+        # Skip signature
+        offset += 8
+        # Verify node count is 3
+        assert data[offset:offset+4] == b"\x03\x00\x00\x00"
+
+    def test_to_bytes_multiple_klines(self):
+        """Multiple KLines serialize correctly."""
+        klines = [
+            KLine(signature=0x1000, nodes=[0x0100]),
+            KLine(signature=0x2000, nodes=[0x0200, 0x0300]),
+            KLine(signature=0x3000, nodes=[]),
+        ]
+        frame = Frame(klines)
+        model = Model(frame=frame)
+
+        data = model.to_bytes()
+
+        # Calculate offset after metadata
+        metadata_len = int.from_bytes(data[:4], 'little')
+        offset = 4 + metadata_len
+
+        # Verify kline count is 3
+        assert data[offset:offset+4] == b"\x03\x00\x00\x00"
+
+    def test_to_bytes_preserves_s_key(self):
+        """signature values are preserved during serialization."""
+        key1 = 0x1000
+        key2 = 0x2000
+
+        klines = [
+            KLine(signature=key1, nodes=[]),
+            KLine(signature=key2, nodes=[]),
+        ]
+        frame = Frame(klines)
+        model = Model(frame=frame)
+
+        data = model.to_bytes()
+
+        # Deserialize and verify
+        model2 = Model.from_bytes(data)
+        assert model2.frame[key1].signature == key1
+        assert model2.frame[key2].signature == key2
+
+
+class TestModelFromBytes:
+    """Tests for binary deserialization."""
+
+    def test_from_bytes_empty(self):
+        """Empty bytes deserializes to empty Model."""
+        # Create empty model and serialize it to get valid bytes
+        original = Model()
+        data = original.to_bytes()
+
+        model = Model.from_bytes(data)
+
+        assert len(model.frame) == 0
+
+    def test_from_bytes_roundtrip_empty(self):
+        """Roundtrip serialization preserves empty Model."""
+        original = Model()
+
+        data = original.to_bytes()
+        restored = Model.from_bytes(data)
+
+        assert len(restored.frame) == len(original.frame)
+
+    def test_from_bytes_roundtrip_single_kline(self):
+        """Roundtrip preserves single KLine."""
+        kline = KLine(signature=0x123456789ABCDEF0, nodes=[0x0100, 0x0200])
+        original = Model(frame=Frame([kline]))
+
+        data = original.to_bytes()
+        restored = Model.from_bytes(data)
+
+        assert len(restored.frame) == 1
+        assert restored.frame[kline.signature].signature == kline.signature
+        assert restored.frame[kline.signature].nodes == kline.nodes
+
+    def test_from_bytes_roundtrip_multiple_klines(self):
+        """Roundtrip preserves multiple KLines."""
+        klines = [
+            KLine(signature=0x1000, nodes=[0x0100]),
+            KLine(signature=0x2000, nodes=[0x0200, 0x0300]),
+            KLine(signature=0x3000, nodes=[]),
+        ]
+        original = Model(frame=Frame(klines))
+
+        data = original.to_bytes()
+        restored = Model.from_bytes(data)
+
+        assert len(restored.frame) == 3
+        for kl in original.frame:
+            assert restored.frame[kl.signature].signature == kl.signature
+            assert restored.frame[kl.signature].nodes == kl.nodes
+
+
+class TestModelToDict:
+    """Tests for dictionary serialization."""
+
+    def test_to_dict_empty(self):
+        """Empty Model serializes to dict with empty klines."""
+        model = Model()
+
+        data = model.to_dict()
+
+        assert "metadata" in data
+        assert data["klines"] == []
+        assert data["activity"] == {}
+
+    def test_to_dict_single_kline(self):
+        """Single KLine serializes to dict correctly."""
+        kline = KLine(signature=0x1000, nodes=[0x0100, 0x0200])
+        model = Model(frame=Frame([kline]))
+
+        data = model.to_dict()
+
+        assert "metadata" in data
+        assert data["klines"] == [{"signature": 0x1000, "nodes": [0x0100, 0x0200]}]
+        assert data["activity"] == {}
+
+    def test_to_dict_multiple_klines(self):
+        """Multiple KLines serialize to dict correctly."""
+        klines = [
+            KLine(signature=0x1000, nodes=[0x0100]),
+            KLine(signature=0x2000, nodes=[]),
+        ]
+        model = Model(frame=Frame(klines))
+
+        data = model.to_dict()
+
+        assert "metadata" in data
+        assert data["klines"] == [
+            {"signature": 0x1000, "nodes": [0x0100]},
+            {"signature": 0x2000, "nodes": []},
+        ]
+        assert data["activity"] == {}
+
+    def test_to_dict_is_json_serializable(self):
+        """Dict output is JSON serializable."""
+        klines = [KLine(signature=0x1000, nodes=[0x0100])]
+        model = Model(frame=Frame(klines))
+
+        data = model.to_dict()
+
+        # Should not raise
+        json_str = json.dumps(data)
+        assert json.loads(json_str) == data
+
+
+class TestModelFromDict:
+    """Tests for dictionary deserialization."""
+
+    def test_from_dict_empty(self):
+        """Empty dict creates empty Model."""
+        model = Model.from_dict({"klines": []})
+
+        assert len(model.frame) == 0
+
+    def test_from_dict_single_kline(self):
+        """Single KLine deserializes from dict correctly."""
+        data = {"klines": [{"signature": 0x1000, "nodes": [0x0100, 0x0200]}]}
+
+        model = Model.from_dict(data)
+
+        assert len(model.frame) == 1
+        assert model.frame[0x1000].signature == 0x1000
+        assert model.frame[0x1000].nodes == [0x0100, 0x0200]
+
+    def test_from_dict_roundtrip(self):
+        """Roundtrip preserves all data."""
+        klines = [
+            KLine(signature=0x1000, nodes=[0x0100]),
+            KLine(signature=0x2000, nodes=[0x0200, 0x0300]),
+        ]
+        original = Model(frame=Frame(klines))
+
+        data = original.to_dict()
+        restored = Model.from_dict(data)
+
+        assert len(restored.frame) == len(original.frame)
+        for kl in original.frame:
+            assert restored.frame[kl.signature].signature == kl.signature
+            assert restored.frame[kl.signature].nodes == kl.nodes
+
+
+class TestModelSaveLoad:
+    """Tests for file operations."""
+
+    def test_save_binary_default(self):
+        """Save uses binary format by default."""
+        klines = [KLine(signature=0x1000, nodes=[0x0100])]
+        model = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.kalvin"
+            model.save(path)
+
+            # Verify binary format by checking it's not valid JSON and can be loaded
+            raw = path.read_bytes()
+            # First 4 bytes should be metadata length (not a JSON start character)
+            assert raw[0] != ord('{')
+            # Verify we can load it back
+            restored = Model.load(path)
+            assert len(restored.frame) == 1
+            assert restored.frame[0x1000].signature == 0x1000
+
+    def test_save_binary_explicit(self):
+        """Save with format='binary' creates binary file."""
+        klines = [KLine(signature=0x1000, nodes=[0x0100])]
+        model = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.kalvin"
+            model.save(path, format="bin")
+
+            # Verify binary format by checking it's not valid JSON
+            raw = path.read_bytes()
+            assert raw[0] != ord('{')
+            # Verify we can load it back
+            restored = Model.load(path)
+            assert len(restored.frame) == 1
+
+    def test_save_json_explicit(self):
+        """Save with format='json' creates JSON file."""
+        klines = [KLine(signature=0x1000, nodes=[0x0100])]
+        model = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.kalvin"
+            model.save(path, format="json")
+
+            # Should be valid JSON
+            content = path.read_text()
+            data = json.loads(content)
+            assert data["klines"][0]["signature"] == 0x1000
+
+    def test_save_json_auto_detect(self):
+        """Save with format=None auto-detects JSON from .json extension."""
+        klines = [KLine(signature=0x1000, nodes=[0x0100])]
+        model = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.json"
+            model.save(path)
+
+            content = path.read_text()
+            data = json.loads(content)
+            assert data["klines"][0]["signature"] == 0x1000
+
+    def test_save_binary_auto_detect(self):
+        """Save auto-detects binary format from non-.json extension."""
+        klines = [KLine(signature=0x1000, nodes=[0x0100])]
+        model = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.bin"
+            model.save(path)  # format=None, auto-detect
+
+            # Verify binary format by checking it's not valid JSON
+            raw = path.read_bytes()
+            assert raw[0] != ord('{')
+            # Verify we can load it back
+            restored = Model.load(path)
+            assert len(restored.frame) == 1
+
+    def test_load_binary_default(self):
+        """Load uses binary format by default."""
+        klines = [KLine(signature=0x1000, nodes=[0x0100])]
+        original = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.kalvin"
+            original.save(path, format="bin")
+
+            restored = Model.load(path)  # Default binary
+
+            assert len(restored.frame) == 1
+            assert restored.frame[0x1000].signature == 0x1000
+
+    def test_load_json_explicit(self):
+        """Load with format='json' reads JSON file."""
+        klines = [KLine(signature=0x1000, nodes=[0x0100])]
+        original = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.kalvin"
+            original.save(path, format="json")
+
+            restored = Model.load(path, format="json")
+
+            assert restored.frame[0x1000].signature == 0x1000
+
+    def test_load_json_auto_detect(self):
+        """Load auto-detects JSON format from .json extension."""
+        klines = [KLine(signature=0x1000, nodes=[0x0100])]
+        original = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.json"
+            original.save(path, format="json")
+
+            restored = Model.load(path)  # Auto-detect
+
+            assert restored.frame[0x1000].signature == 0x1000
+
+    def test_load_binary_auto_detect(self):
+        """Load auto-detects binary format from non-.json extension."""
+        klines = [KLine(signature=0x1000, nodes=[0x0100])]
+        original = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.bin"
+            original.save(path, format="bin")
+
+            restored = Model.load(path)  # Auto-detect
+
+            assert restored.frame[0x1000].signature == 0x1000
+
+    def test_roundtrip_binary_file(self):
+        """Roundtrip through binary file preserves data."""
+        klines = [
+            KLine(signature=0x1000, nodes=[0x0100, 0x0200]),
+            KLine(signature=0x2000, nodes=[]),
+        ]
+        original = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.kalvin"
+            original.save(path)
+            restored = Model.load(path)
+
+            assert len(restored.frame) == len(original.frame)
+            for kl in original.frame:
+                assert restored.frame[kl.signature].signature == kl.signature
+                assert restored.frame[kl.signature].nodes == kl.nodes
+
+    def test_roundtrip_json_file(self):
+        """Roundtrip through JSON file preserves data."""
+        klines = [
+            KLine(signature=0x1000, nodes=[0x0100, 0x0200]),
+            KLine(signature=0x2000, nodes=[]),
+        ]
+        original = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.json"
+            original.save(path, format="json")
+            restored = Model.load(path, format="json")
+
+            assert len(restored.frame) == len(original.frame)
+            for kl in original.frame:
+                assert restored.frame[kl.signature].signature == kl.signature
+                assert restored.frame[kl.signature].nodes == kl.nodes
+
+    def test_save_to_existing_directory(self):
+        """Save works when directory exists."""
+        klines = [KLine(signature=0x1000, nodes=[])]
+        model = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create subdirectory first
+            subdir = Path(tmpdir) / "subdir"
+            subdir.mkdir()
+            path = subdir / "test.kalvin"
+            model.save(path)
+
+            assert path.exists()
+
+    def test_save_with_string_path(self):
+        """Save accepts string path."""
+        klines = [KLine(signature=0x1000, nodes=[])]
+        model = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = str(Path(tmpdir) / "test.kalvin")
+            model.save(path)
+
+            assert Path(path).exists()
+
+    def test_load_with_string_path(self):
+        """Load accepts string path."""
+        klines = [KLine(signature=0x1000, nodes=[])]
+        original = Model(frame=Frame(klines))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = str(Path(tmpdir) / "test.kalvin")
+            original.save(path)
+            restored = Model.load(path)
+
+            assert len(restored.frame) == 1
+
+
+class TestModelLargeData:
+    """Tests for handling larger data sets."""
+
+    def test_large_kline_count(self):
+        """Handles hundreds of KLines."""
+        klines = [KLine(signature=i, nodes=[i * 100]) for i in range(500)]
+        original = Model(frame=Frame(klines))
+
+        data = original.to_bytes()
+        restored = Model.from_bytes(data)
+
+        assert len(restored.frame) == 500
+        assert restored.frame[0].signature == 0
+        assert restored.frame[499].signature == 499
+
+    def test_large_node_count(self):
+        """Handles KLines with many nodes."""
+        nodes = list(range(1000))
+        kline = KLine(signature=0x1000, nodes=nodes)
+        original = Model(frame=Frame([kline]))
+
+        data = original.to_bytes()
+        restored = Model.from_bytes(data)
+
+        assert len(restored.frame[0x1000].nodes) == 1000
+        assert restored.frame[0x1000].nodes == nodes
+
+    def test_max_s_key_value(self):
+        """Handles maximum signature value (all bits set)."""
+        max_key = 0xFFFF_FFFF_FFFF_FFFF
+        kline = KLine(signature=max_key, nodes=[])
+        original = Model(frame=Frame([kline]))
+
+        data = original.to_bytes()
+        restored = Model.from_bytes(data)
+
+        assert restored.frame[max_key].signature == max_key
+
+
+class TestModelEmbeddings:
+    """Tests for embedding handling."""
+
+    def test_add_new_encoding(self):
+        model = Model()
+        token_sig = model.encode("hello there")
+        assert token_sig is not None
+        # Verify that encoding adds klines to the frame
+        assert model.frame_size() > 0
+
+    def test_add_very_long_string(self):
+        vl_str = """
+          Mary had a little lamb,
+          Its fleece was white as snow,
+          And everywhere that Mary went,
+          The lamb was sure to go.
+        """
+        model = Model()
+        token_sig = model.encode(vl_str)
+
+        # Verify encoding returns a valid signature
+        assert token_sig is not None
+        # Verify that the frame grew
+        assert model.frame_size() > 0
+
+    def test_add_duplicate_encoding(self):
+        model = Model()
+        model.encode("hello there")
+        frame_len  = model.frame_size()
+        model.encode("hello there")
+
+        assert frame_len  == model.frame_size()  # Frame not extended
+
+    def test_add_encoded_string(self):
+        model = Model()
+        token_sig = model.encode("hello there!")
+
+        # Verify encoding returns a valid signature
+        assert token_sig is not None
+        # Verify that the frame grew
+        assert model.frame_size() > 0
+
+    def test_add_encoded_strings(self):
+        model = Model()
+        token_sig1 = model.encode("hello there!")
+        token_sig2 = model.encode("hello dolly!")
+
+        # Verify both encodings return valid KLines
+        assert token_sig1 is not None
+        assert token_sig2 is not None
+        # Different strings should produce different s_keys
+        assert token_sig1.signature != token_sig2.signature
+
+    def test_existing_substring(self):
+        """Existing sub-strings do not create new klines"""
+
+        vl_str = """Mary had a little lamb,
+          Its fleece was white as snow,
+          And everywhere that Mary went,
+          The lamb was sure to go.
+        """
+        model = Model()
+        model.encode(vl_str)
+        frame1 = model.frame_size()
+        model.encode("Mary had a little lamb,")  # adds some new klines
+        model.encode(" was white")  # adds some new klines
+
+        # Verify that encoding adds klines (exact count depends on deduplication)
+        assert model.frame_size() > frame1
+
+    def test_intermediate_signature_count(self):
+        """Test that encoding creates the expected number of klines."""
+        model = Model()
+        model.encode("a b c d")  # 4 identity + 2 ws + 1 compound = 11
+        assert model.frame_size() == 7
+        model.encode("a b c")  # tokens already exist, only new compound kline
+        assert model.frame_size() == 8
+        model.encode("b c d")  # tokens already exist, only new compound kline
+        assert model.frame_size() == 9
+
+
+class TestModelPrune:
+    def test_prune_empty_model(self):
+        """Pruning an empty model returns empty model."""
+        model = Model()
+
+        pruned = model.prune()
+
+        assert len(pruned.frame) == 0
+
+    def test_prune_keeps_all_at_level_one(self):
+        """With level=1, all klines with activity >= 1 are kept."""
         kl1 = KLine(signature=0x1000, nodes=[])
         kl2 = KLine(signature=0x2000, nodes=[])
         kl3 = KLine(signature=0x3000, nodes=[])
+        frame = Frame([kl1, kl2, kl3])
+        activity = Counter({0x1000: 1, 0x2000: 2, 0x3000: 5})
 
-        assert model.add(kl1) is True
-        assert model.add(kl2) is True
-        assert model.add(kl3) is True
-        assert len(model) == 3
+        pruned = Model(frame=frame, activity=activity).prune(level=1)
 
+        assert len(pruned.frame) == 3
 
-class TestModelQuery:
-    def test_no_match_returns_empty(self):
-        """If no kline matches, result is empty."""
-        kl1 = KLine(signature=0x0001, nodes=[])
-        kl2 = KLine(signature=0x0002, nodes=[])
-        query = KLine(signature=0xFF00, nodes=[])
-        model = Model([kl1, kl2])
-
-        assert list(model.query(query)) == []
-
-    def test_single_match(self):
-        """If match found, it's returned."""
-        matching = KLine(signature=0xFF00, nodes=[])
-        non_matching = KLine(signature=0x0001, nodes=[])
-        query = KLine(signature=0xFF00, nodes=[])
-        model = Model([non_matching, matching])
-
-        assert list(model.query(query)) == [matching]
-
-    def test_all_matches_returned(self):
-        """All matching klines are returned."""
-        match1 = KLine(signature=0xFF00, nodes=[])
-        match2 = KLine(signature=0xFF01, nodes=[])
-        query = KLine(signature=0xFF00, nodes=[])
-        non_matching = KLine(signature=0x0001, nodes=[])
-        model = Model([non_matching, match1, match2])
-
-        assert list(model.query(query)) == [match2, match1]
-
-    def test_reverse_insertion_order(self):
-        """Results follow reverse insertion order (newest first)."""
-        match1 = KLine(signature=0xFF00, nodes=[])
-        match2 = KLine(signature=0xFF01, nodes=[])
-        match3 = KLine(signature=0xFF02, nodes=[])
-        query = KLine(signature=0xFF00, nodes=[])
-        model = Model([match1, match2, match3])
-
-        assert list(model.query(query)) == [match3, match2, match1]
-
-
-class TestModelExpand:
-    def test_depth_one_returns_kline_only(self):
-        """depth=1 returns the kline without expansion."""
-        key_child = 0x0010
-        parent = KLine(signature=0xFF00, nodes=[key_child])
-        child = KLine(signature=key_child, nodes=[])
-        model = Model([parent, child])
-
-        results = list(model.expand(parent, depth=1))
-
-        assert len(results) == 1
-        assert results[0] == parent
-
-    def test_depth_expands_children(self):
-        """depth=2 expands direct children."""
-        key_child1 = 0x0010
-        key_child2 = 0x0020
-
-        child1 = KLine(signature=key_child1, nodes=[])
-        child2 = KLine(signature=key_child2, nodes=[])
-        parent = KLine(signature=0xFF00, nodes=[key_child1, key_child2])
-        model = Model([parent, child1, child2])
-
-        results = list(model.expand(parent, depth=2))
-
-        assert len(results) == 3
-        assert results[0] == parent
-        assert child1 in results
-        assert child2 in results
-
-    def test_depth_limits_expansion(self):
-        """Depth parameter limits how many levels of children are expanded."""
-        key_grandchild = 0x0100
-        key_child = 0x0010
-        key_parent = 0xF000
-
-        grandchild = KLine(signature=key_grandchild, nodes=[])
-        child = KLine(signature=key_child, nodes=[key_grandchild])
-        parent = KLine(signature=key_parent, nodes=[key_child])
-        model = Model([parent, child, grandchild])
-
-        # depth=1: only parent, no child expansion
-        results = list(model.expand(parent, depth=1))
-        assert len(results) == 1
-        assert results[0] == parent
-
-        # depth=2: parent + child, no grandchild
-        results = list(model.expand(parent, depth=2))
-        assert len(results) == 2
-        assert results[0] == parent
-        assert results[1] == child
-
-        # depth=3: parent + child + grandchild
-        results = list(model.expand(parent, depth=3))
-        assert len(results) == 3
-        assert results[0] == parent
-        assert results[1] == child
-        assert results[2] == grandchild
-
-    def test_depth_zero_returns_empty(self):
-        """depth=0 returns empty."""
-        matching = KLine(signature=0xFF00, nodes=[])
-        model = Model([matching])
-
-        assert list(model.expand(matching, depth=0)) == []
-
-    def test_cycle_detection_stops_expansion(self):
-        """Circular references stop expansion."""
-        key_a = 0x0001
-        key_b = 0x0002
-
-        kl_a = KLine(signature=key_a, nodes=[key_b])
-        kl_b = KLine(signature=key_b, nodes=[key_a])
-        model = Model([kl_a, kl_b])
-
-        results = list(model.expand(kl_a, depth=100))
-
-        assert len(results) == 2
-        assert kl_a in results
-        assert kl_b in results
-
-    def test_self_reference_stops_expansion(self):
-        """Self-referencing KLine stops expansion."""
-        key = 0xFF00
-        kl = KLine(signature=key, nodes=[key])
-        model = Model([kl])
-
-        results = list(model.expand(kl, depth=100))
-
-        assert len(results) == 1
-        assert results[0] == kl
-
-    def test_nested_hierarchy_expansion(self):
-        """Test deeply nested hierarchy is expanded correctly."""
-        key_leaf1 = 0x1000
-        key_leaf2 = 0x2000
-        key_leaf3 = 0x3000
-        key_intermediate = 0x0010
-
-        leaf1 = KLine(signature=key_leaf1, nodes=[])
-        leaf2 = KLine(signature=key_leaf2, nodes=[])
-        leaf3 = KLine(signature=key_leaf3, nodes=[])
-        intermediate = KLine(signature=key_intermediate, nodes=[key_leaf1, key_leaf2])
-        root = KLine(signature=0xFF00, nodes=[key_intermediate, key_leaf3])
-        model = Model([root, intermediate, leaf1, leaf2, leaf3])
-
-        results = list(model.expand(root, depth=3))
-
-        assert len(results) == 5
-        assert root in results
-        assert intermediate in results
-        assert leaf1 in results
-        assert leaf2 in results
-        assert leaf3 in results
-
-    def test_cyclic_children_stops_expansion(self):
-        """Cyclic children (child references ancestor) stop expansion."""
-        key_root = 0xFF00
-        key_child = 0x0010
-        key_grandchild = 0x0100
-
-        grandchild = KLine(signature=key_grandchild, nodes=[key_root])
-        child = KLine(signature=key_child, nodes=[key_grandchild])
-        root = KLine(signature=key_root, nodes=[key_child])
-        model = Model([root, child, grandchild])
-
-        results = list(model.expand(root, depth=10))
-
-        assert len(results) == 3
-        assert root in results
-        assert child in results
-        assert grandchild in results
-
-    def test_cyclic_grandchildren_stops_expansion(self):
-        """Cyclic grandchildren (grandchild references parent) stop expansion."""
-        key_root = 0xFF00
-        key_child = 0x0010
-        key_grandchild = 0x0100
-
-        grandchild = KLine(signature=key_grandchild, nodes=[key_child])
-        child = KLine(signature=key_child, nodes=[key_grandchild])
-        root = KLine(signature=key_root, nodes=[key_child])
-        model = Model([root, child, grandchild])
-
-        results = list(model.expand(root, depth=10))
-
-        assert len(results) == 3
-        assert root in results
-        assert child in results
-        assert grandchild in results
-
-    def test_kline_with_no_nodes(self):
-        """Expanding a leaf kline returns just itself."""
-        leaf = KLine(signature=0xFF00, nodes=[])
-        model = Model([leaf])
-
-        results = list(model.expand(leaf, depth=3))
-
-        assert results == [leaf]
-
-    def test_missing_child_nodes_skipped(self):
-        """Child nodes not in the model are skipped."""
-        parent = KLine(signature=0xFF00, nodes=[0x0010, 0x0020])
-        model = Model([parent])  # children not added
-
-        results = list(model.expand(parent, depth=2))
-
-        assert results == [parent]
-
-    def test_shared_child_deduplicated(self):
-        """Shared child across multiple parents is only yielded once."""
-        key_shared = 0x0010
-        shared = KLine(signature=key_shared, nodes=[])
-        parent = KLine(signature=0xFF00, nodes=[key_shared, key_shared])
-        model = Model([parent, shared])
-
-        results = list(model.expand(parent, depth=2))
-
-        assert results == [parent, shared]
-
-
-class TestModelIterators:
-    def test_getitem_access(self):
-        """Can access KLines by index."""
+    def test_prune_filters_by_level(self):
+        """KLines with activity < level are removed."""
         kl1 = KLine(signature=0x1000, nodes=[])
         kl2 = KLine(signature=0x2000, nodes=[])
-        model = Model([kl1, kl2])
+        kl3 = KLine(signature=0x3000, nodes=[])
+        frame = Frame([kl1, kl2, kl3])
+        activity = Counter({0x1000: 1, 0x2000: 3, 0x3000: 5})
 
-        assert model[kl1.signature] == kl1
-        assert model[kl2.signature] == kl2
+        pruned = Model(frame=frame, activity=activity).prune(level=3)
 
-    def test_find_kline(self):
-        """Can find KLine by its signature."""
-        kl1 = KLine(signature=0x1000, nodes=[0x0100])
-        kl2 = KLine(signature=0x2000, nodes=[0x0200])
-        model = Model([kl1, kl2])
+        assert len(pruned.frame) == 2
+        found = frame.find_kline(0x2000)
+        assert pruned.frame[found.signature] is found
 
-        found = model.find_kline(0x1000)
-        assert found == kl1
+        found = frame.find_kline(0x3000)
+        assert pruned.frame[found.signature] is found
 
-        found = model.find_kline(0x3000)
-        assert not found.signature
+    def test_prune_removes_all_when_level_high(self):
+        """When level is higher than all activities, result is empty."""
+        kl1 = KLine(signature=0x1000, nodes=[])
+        kl2 = KLine(signature=0x2000, nodes=[])
+        frame = Frame([kl1, kl2])
+        activity = Counter({0x1000: 1, 0x2000: 2})
 
-    def test_find_signed_klines(self):
-        """Can find all KLines with same signature."""
-        kl1 = KLine(signature=0x1000, nodes=[0x0100])
-        kl2 = KLine(signature=0x1000, nodes=[0x0200])
-        model = Model([kl1, kl2])
+        pruned = Model(frame=frame, activity=activity).prune(level=10)
 
-        found = model.find_signed_klines(0x1000)
-        assert kl1 in found
-        assert kl2 in found
-        assert len(found) == 2
+        assert len(pruned.frame) == 0
 
+    def test_prune_with_empty_activity(self):
+        """Pruning with empty activity counter returns model unchanged."""
+        kl1 = KLine(signature=0x1000, nodes=[])
+        kl2 = KLine(signature=0x2000, nodes=[])
+        frame = Frame([kl1, kl2])
+        activity = Counter()
 
-class TestGetAllDescendants:
-    """Tests for Model.get_all_descendants method."""
+        pruned = Model(frame=frame, activity=activity).prune()
 
-    def test_no_descendants(self):
-        """KLine with no nodes returns empty set."""
-        kline = KLine(signature=0x1000, nodes=[])
-        model = Model([kline])
+        assert len(pruned.frame) == 2
 
-        descendants = model.get_all_descendants(0x1000)
+    def test_prune_ignores_keys_not_in_model(self):
+        """Activity keys not in model are ignored."""
+        kl1 = KLine(signature=0x1000, nodes=[])
+        frame = Frame([kl1])
+        activity = Counter({0x1000: 5, 0x9999: 10})  # 0x9999 not in model
 
-        assert descendants == set()
+        pruned = Model(frame=frame, activity=activity).prune()
 
-    def test_direct_children_only(self):
-        """Returns direct children when no deeper hierarchy."""
-        kline = KLine(signature=0x1000, nodes=[0x0100, 0x0200, 0x0300])
-        model = Model([kline])
+        assert len(pruned.frame) == 1
+        assert frame.find_kline(0x1000) == pruned.frame.find_kline(0x1000)
 
-        descendants = model.get_all_descendants(0x1000)
+    def test_prune_preserves_original_model(self):
+        """Pruning does not modify the original model."""
+        kl1 = KLine(signature=0x1000, nodes=[])
+        kl2 = KLine(signature=0x2000, nodes=[])
+        frame = Frame([kl1, kl2])
+        activity = Counter({0x1000: 5})
 
-        assert descendants == {0x0100, 0x0200, 0x0300}
+        pruned = Model(frame=frame, activity=activity).prune()
 
-    def test_nested_descendants(self):
-        """Recursively collects all descendants at any depth."""
-        grandchild = KLine(signature=0x0010, nodes=[0x0001])
-        child = KLine(signature=0x0100, nodes=[0x0010])
-        parent = KLine(signature=0x1000, nodes=[0x0100])
-        model = Model([parent, child, grandchild])
+        assert len(frame) == 2
+        assert len(pruned.frame) == 2
 
-        descendants = model.get_all_descendants(0x1000)
+    def test_prune_returns_new_model_instance(self):
+        """Prune returns a new Model instance."""
+        kl1 = KLine(signature=0x1000, nodes=[])
+        frame = Frame([kl1])
+        activity = Counter({0x1000: 5})
 
-        assert descendants == {0x0100, 0x0010, 0x0001}
+        pruned = Model(frame=frame, activity=activity).prune()
 
-    def test_cycle_detection(self):
-        """Handles cycles without infinite recursion."""
-        # A -> B -> A (cycle)
-        # Descendants of A: B (direct child), A (via B's reference back to A)
-        kline_a = KLine(signature=0x1000, nodes=[0x2000])
-        kline_b = KLine(signature=0x2000, nodes=[0x1000])
-        model = Model([kline_a, kline_b])
+        assert pruned is not frame
+        assert isinstance(pruned.frame, Frame)
 
-        descendants = model.get_all_descendants(0x1000)
+    def test_prune_level_boundary(self):
+        """KLines with activity exactly at level are kept."""
+        kl1 = KLine(signature=0x1000, nodes=[])  # activity = 3
+        kl2 = KLine(signature=0x2000, nodes=[])  # activity = 2
+        frame = Frame([kl1, kl2])
+        activity = Counter({0x1000: 3, 0x2000: 2})
 
-        # A's descendants include B and A (via the cycle back from B)
-        assert descendants == {0x1000, 0x2000}
+        pruned = Model(frame=frame, activity=activity).prune(level=2)
 
-    def test_nonexistent_key(self):
-        """Returns empty set for nonexistent key."""
-        model = Model([])
+        assert len(pruned.frame) == 2  # Both kept (3 >= 2 and 2 >= 2)
 
-        descendants = model.get_all_descendants(0x1000)
+    def test_prune_level_excludes_below(self):
+        """KLines with activity below level are excluded."""
+        kl1 = KLine(signature=0x1000, nodes=[])  # activity = 3
+        kl2 = KLine(signature=0x2000, nodes=[])  # activity = 1
+        frame = Frame([kl1, kl2])
+        activity = Counter({0x1000: 3, 0x2000: 1})
 
-        assert descendants == set()
+        pruned = Model(frame=frame, activity=activity).prune(level=2)
 
-    def test_multiple_branches(self):
-        """Collects descendants from all branches."""
-        leaf1 = KLine(signature=0x0100, nodes=[])
-        leaf2 = KLine(signature=0x0200, nodes=[])
-        leaf3 = KLine(signature=0x0300, nodes=[])
-        branch1 = KLine(signature=0x0010, nodes=[0x0100, 0x0200])
-        branch2 = KLine(signature=0x0020, nodes=[0x0300])
-        root = KLine(signature=0x1000, nodes=[0x0010, 0x0020])
-        model = Model([root, branch1, branch2, leaf1, leaf2, leaf3])
+        assert len(pruned.frame) == 1
+        found = frame.find_kline(0x1000)
+        assert pruned.frame.find_kline(found.signature) == found
 
-        descendants = model.get_all_descendants(0x1000)
+    def test_prune_with_large_keys(self):
+        """Prune works with large key values."""
+        key1 = 0x8000_1000  # Large key value
+        key2 = 0x8000_2000  # Large key value
+        kl1 = KLine(signature=key1, nodes=[])
+        kl2 = KLine(signature=key2, nodes=[])
+        frame = Frame([kl1, kl2])
+        activity = Counter({key1: 5, key2: 1})
 
-        assert descendants == {0x0010, 0x0020, 0x0100, 0x0200, 0x0300}
+        pruned = Model(frame=frame, activity=activity).prune(level=2)
+
+        assert len(pruned.frame) == 1
+        found = frame.find_kline(key1)
+        assert pruned.frame.find_kline(found.signature) == found
+
+    def test_prune_with_small_keys(self):
+        """Prune works with small key values."""
+        key1 = 0x1000
+        key2 = 0x2000
+        kl1 = KLine(signature=key1, nodes=[])
+        kl2 = KLine(signature=key2, nodes=[])
+        frame = Frame([kl1, kl2])
+        activity = Counter({key1: 5, key2: 1})
+
+        pruned = Model(frame=frame, activity=activity).prune(level=2)
+
+        assert len(pruned.frame) == 1
+        found = frame.find_kline(key1)
+        assert pruned.frame.find_kline(found.signature) == found
+
+    def test_prune_keeps_kline_reference(self):
+        """Pruned model keeps references to original klines."""
+        kl1 = KLine(signature=0x1000, nodes=[0x0100, 0x0200])
+        frame = Frame([kl1])
+        activity = Counter({0x1000: 5})
+
+        pruned = Model(frame=frame, activity=activity).prune()
+
+        # Same kline object referenced
+        assert pruned.frame[kl1.signature] is kl1
+        assert pruned.frame[kl1.signature].nodes == [0x0100, 0x0200]

@@ -1,4 +1,4 @@
-"""KScript TUI Application - Interactive development environment for KScript and Kalvin."""
+"""KScript TUI Application - Interactive development environment for KScript and Model."""
 
 import argparse
 import asyncio
@@ -13,7 +13,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal
 from textual.widgets import Footer, Header
 
-from kalvin import Kalvin
+from kalvin import Model
 from kalvin.abstract import KLine
 from kscript import KScript, CompiledEntry
 from kscript.decompiler import Decompiler
@@ -65,7 +65,7 @@ class KScriptApp(App):
     def __init__(self, dev_mode: bool = True, auto_compile_interval: float = 1.0) -> None:
         super().__init__()
         self._dev_mode = dev_mode
-        self._kalvin: Optional[Kalvin] = None
+        self._model: Optional[Model] = None
         self._decompiler: Decompiler = Decompiler()
         self._execution_state: ExecutionState = ExecutionState.IDLE
         self._pending_entries: list[CompiledEntry] = []
@@ -77,7 +77,7 @@ class KScriptApp(App):
         self._rationalise_buffer: list[KLine] = []
 
     def on_mount(self) -> None:
-        """Initialize Kalvin instance on app start."""
+        """Initialize Model instance on app start."""
         DEFAULT_SCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
         Path("data").mkdir(parents=True, exist_ok=True)
 
@@ -85,12 +85,12 @@ class KScriptApp(App):
             self._restore_state()
             signal.signal(signal.SIGTERM, self._on_sigterm)
         else:
-            self._kalvin = Kalvin()
+            self._model = Model()
             self._setup_events()
 
     def _setup_events(self) -> None:
-        """Subscribe to Kalvin rationalisation events."""
-        if not self._kalvin:
+        """Subscribe to Model rationalisation events."""
+        if not self._model:
             return
 
         def on_event(event):
@@ -103,7 +103,7 @@ class KScriptApp(App):
             else:
                 self._rationalise_buffer.append(event.kline)
 
-        self._kalvin.events.subscribe(on_event)
+        self._model.events.subscribe(on_event)
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -169,9 +169,9 @@ class KScriptApp(App):
         sys.exit(0)
 
     def _save_state(self) -> None:
-        """Save Kalvin model and UI state to temp files."""
-        if self._kalvin:
-            self._kalvin.save(MODEL_STATE_FILE)
+        """Save Model and UI state to temp files."""
+        if self._model:
+            self._model.save(MODEL_STATE_FILE)
 
         editor = self.query_one(EditorRegion)
         ui_state = {
@@ -184,17 +184,17 @@ class KScriptApp(App):
             json.dump(ui_state, f, indent=2)
 
     def _restore_state(self) -> None:
-        """Restore Kalvin model and UI state from temp files."""
-        # Restore Kalvin model
+        """Restore Model and UI state from temp files."""
+        # Restore Model
         if MODEL_STATE_FILE.exists():
             try:
-                self._kalvin = Kalvin.load(MODEL_STATE_FILE)
-                self.log("Restored Kalvin model state")
+                self._model = Model.load(MODEL_STATE_FILE)
+                self.log("Restored Model state")
             except Exception as e:
                 self.log(f"Failed to load model state: {e}")
-                self._kalvin = Kalvin()
+                self._model = Model()
         else:
-            self._kalvin = Kalvin()
+            self._model = Model()
 
         self._setup_events()
 
@@ -242,7 +242,7 @@ class KScriptApp(App):
             return None
 
     def _entry_to_kline(self, entry: CompiledEntry) -> KLine:
-        """Convert a CompiledEntry to a KLine for Kalvin.
+        """Convert a CompiledEntry to a KLine for Model.
 
         Since CompiledEntry extends KLine, this is a simple cast.
 
@@ -298,10 +298,10 @@ class KScriptApp(App):
         editor.set_script(content)
 
     def action_save_state(self) -> None:
-        """Open dialog to save Kalvin model state."""
+        """Open dialog to save Model state."""
         self.push_screen(
             SaveStateDialog(
-                title="Save Kalvin State",
+                title="Save Model State",
                 initial_path=str(self._last_state_dir),
             ),
             self._handle_save_state,
@@ -309,21 +309,21 @@ class KScriptApp(App):
 
     def _handle_save_state(self, filepath: Optional[str]) -> None:
         """Handle result from SaveStateDialog."""
-        if not filepath or not self._kalvin:
+        if not filepath or not self._model:
             return
 
         path = Path(filepath)
         self._last_state_dir = path.parent
 
-        # Save Kalvin model
-        self._kalvin.save(path)
-        self.log(f"Saved Kalvin state to {path}")
+        # Save Model
+        self._model.save(path)
+        self.log(f"Saved Model state to {path}")
 
     def action_load_state(self) -> None:
-        """Open dialog to load Kalvin model state."""
+        """Open dialog to load Model state."""
         self.push_screen(
             LoadStateDialog(
-                title="Load Kalvin State",
+                title="Load Model State",
                 initial_path=str(self._last_state_dir),
             ),
             self._handle_load_state,
@@ -340,10 +340,10 @@ class KScriptApp(App):
 
         self._last_state_dir = path.parent
 
-        # Load Kalvin model
-        self._kalvin = Kalvin.load(path)
+        # Load Model
+        self._model = Model.load(path)
         self._setup_events()
-        self.log(f"Loaded Kalvin state from {path}")
+        self.log(f"Loaded Model state from {path}")
 
     def action_run_script(self) -> None:
         """Toggle auto-compile loop on/off."""
@@ -381,8 +381,8 @@ class KScriptApp(App):
             if self._cancelled:
                 return
             kline = self._entry_to_kline(entry)
-            if self._kalvin:
-                self._kalvin.rationalise(kline)
+            if self._model:
+                self._model.rationalise(kline)
             await asyncio.sleep(0)
 
     def action_step_script(self) -> None:
@@ -403,8 +403,8 @@ class KScriptApp(App):
             entry = self._pending_entries[self._current_entry_index]
             kline = self._entry_to_kline(entry)
 
-            if self._kalvin:
-                self._kalvin.rationalise(kline)
+            if self._model:
+                self._model.rationalise(kline)
 
             self._current_entry_index += 1
 

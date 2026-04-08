@@ -1,4 +1,4 @@
-"""Event bus for Kalvin pub/sub pattern."""
+"""Event bus for Model pub/sub pattern."""
 
 from __future__ import annotations
 

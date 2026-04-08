@@ -210,11 +210,11 @@ class LoadScriptDialog(FileDialog):
 
 
 class SaveStateDialog(FileDialog):
-    """Modal dialog for saving Kalvin model state."""
+    """Modal dialog for saving Model model state."""
 
     def __init__(
         self,
-        title: str = "Save Kalvin State",
+        title: str = "Save Model State",
         initial_path: str = "data",
     ) -> None:
         super().__init__(title, initial_path, file_type=None)  # Allow .bin or .json
@@ -267,11 +267,11 @@ class SaveStateDialog(FileDialog):
 
 
 class LoadStateDialog(FileDialog):
-    """Modal dialog for loading Kalvin model state."""
+    """Modal dialog for loading Model model state."""
 
     def __init__(
         self,
-        title: str = "Load Kalvin State",
+        title: str = "Load Model State",
         initial_path: str = "data",
     ) -> None:
         super().__init__(title, initial_path, file_type=None)  # Allow .bin or .json

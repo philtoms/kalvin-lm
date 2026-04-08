@@ -1,4 +1,4 @@
-"""KAgent - Base class for agents that work with KScript and knowledge graphs."""
+"""KModel - Base class for agents that work with KScript and knowledge graphs."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Iterator, Literal
 from kalvin.kline import KLine, KNode, KNodes, KSig, KNone
 
 # Re-export for backwards compatibility
-__all__ = ["KLine", "KNode", "KNodes", "KSig", "KNone", "KSignificance", "KTokenizer", "KModel", "KAgent"]
+__all__ = ["KLine", "KNode", "KNodes", "KSig", "KNone", "KSignificance", "KTokenizer", "KFrame", "KModel"]
 
 
 # === Abstract Significance ===
@@ -138,11 +138,21 @@ class KSignificance(ABC):
     # === Significance calculation ===
 
     @abstractmethod
-    def calculate(self, model: "KModel", query: "KLine", target: "KLine") -> KSig:
+    def is_significant(self, sig: KSig) -> bool:
+        """Is S1 or S4 significant"""
+        ...
+    
+    @abstractmethod
+    def is_rational(self, sig: KSig) -> bool:
+        """Is S2 or S3 significant"""
+        ...
+
+    @abstractmethod
+    def calculate(self, frame: "KFrame", query: "KLine", target: "KLine") -> KSig:
         """Calculate significance between query and target KLines.
 
         Args:
-            model: The Model containing the KLines (for descendant lookup)
+            frame: The Frame containing the KLines (for descendant lookup)
             query: The query KLine
             target: The target KLine to compare against
 
@@ -198,22 +208,22 @@ class KTokenizer(ABC):
         ...
 
 
-# === Abstract Model ===
+# === Abstract Frame ===
 
-class KModel(ABC):
-    """Abstract base class for knowledge graph models.
+class KFrame(ABC):
+    """Abstract base class for knowledge graph frames.
 
-    A KModel provides the essential interface for storing and querying KLines.
+    A KFrame provides the essential interface for storing and querying KLines.
     """
 
     @abstractmethod
     def exists(self, kline: KLine) -> bool:
-        """Check if a kline already exists in the model."""
+        """Check if a kline already exists in the frame."""
         ...
 
     @abstractmethod
     def add(self, kline: KLine) -> bool:
-        """Add a KLine to the model.
+        """Add a KLine to the frame.
 
         Args:
             kline: KLine to add
@@ -287,11 +297,11 @@ class KModel(ABC):
         ...
 
     @abstractmethod
-    def duplicate(self) -> "KModel":
-        """Create a duplicate of this model.
+    def duplicate(self) -> "KFrame":
+        """Create a duplicate of this frame.
 
         Returns:
-            A new KModel with copied KLines
+            A new KFrame with copied KLines
         """
         ...
 
@@ -310,7 +320,7 @@ class KModel(ABC):
 
     @abstractmethod
     def __len__(self) -> int:
-        """Return the number of KLines in the model."""
+        """Return the number of KLines in the frame."""
         ...
 
     @abstractmethod
@@ -324,16 +334,16 @@ class KModel(ABC):
         """Return internal kline graph"""
         ...
 
-# === KAgent ===
+# === KModel ===
 
 
-class KAgent(ABC):
+class KModel(ABC):
     """
     Abstract base class for agents that can work with KScript.
 
-    A KAgent provides the essential interface needed by the KScript compiler:
+    A KModel provides the essential interface needed by the KScript compiler:
     - A tokenizer for encoding text to tokens
-    - A model for storing and retrieving KLines
+    - A frame for storing and retrieving KLines
     - A significance instance for S1-S4 operations
     - Methods for encoding/decoding text and serialization
 
@@ -343,8 +353,8 @@ class KAgent(ABC):
 
     @property
     @abstractmethod
-    def model(self) -> KModel:
-        """Get the knowledge graph model."""
+    def frame(self) -> KFrame:
+        """Get the knowledge graph frame."""
         ...
 
     @property
@@ -362,18 +372,18 @@ class KAgent(ABC):
     # === Core operations ===
 
     @abstractmethod
-    def rationalise(self, kline: KLine, frame: KModel | None = None) -> None:
+    def rationalise(self, kline: KLine, frame: KFrame | None = None) -> None:
         """Rationalise a KLine.
 
         Args:
             kline: KLine to rationalize
-            frame: existing model context    
+            frame: existing frame context
         """
         ...
 
     @abstractmethod
     def encode(self, text: str, nlp_detail: str) -> KLine | None:
-        """Encode text into a KLine and add it to the model.
+        """Encode text into a KLine and add it to the frame.
 
         Args:
             text: Input string to encode
@@ -438,7 +448,7 @@ class KAgent(ABC):
         cls,
         path: str | Path,
         format: Literal["bin", "json"] | None = None,
-    ) -> "KAgent":
+    ) -> "KModel":
         """Load model from file.
 
         Args:
@@ -446,6 +456,6 @@ class KAgent(ABC):
             format: 'bin', 'json', or None (auto-detect from extension)
 
         Returns:
-            Loaded KAgent instance
+            Loaded KModel instance
         """
         ...

@@ -1,1 +1,1 @@
-"""UI package for Kalvin TUI applications."""
+"""UI package for Model TUI applications."""

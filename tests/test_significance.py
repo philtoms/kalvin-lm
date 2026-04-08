@@ -1,6 +1,6 @@
 import pytest
 from kalvin.abstract import KLine
-from kalvin.model import Model
+from kalvin.frame import Frame
 from kalvin.significance import Int64Significance
 
 
@@ -83,63 +83,63 @@ class TestCalculateSignificance:
         """Exact node match returns S1."""
         query = KLine(signature=0x1000, nodes=[0x100, 0x200])
         model_kline = KLine(signature=0x2000, nodes=[0x100, 0x200])
-        m = Model([query, model_kline])
+        f = Frame([query, model_kline])
 
-        sig = _sig.calculate(m, query, model_kline)
+        sig = _sig.calculate(f, query, model_kline)
         assert _sig.has_s1(sig) is True
 
     def test_s1_prefix_match_query_shorter(self):
         """Query prefix matches model (query shorter)."""
         query = KLine(signature=0x1000, nodes=[0x100])
         model_kline = KLine(signature=0x2000, nodes=[0x100, 0x200])
-        m = Model([query, model_kline])
+        f = Frame([query, model_kline])
 
-        sig = _sig.calculate(m, query, model_kline)
+        sig = _sig.calculate(f, query, model_kline)
         assert _sig.has_s1(sig) is True  # All prefix nodes match
 
     def test_s1_prefix_match_query_longer(self):
         """Query prefix matches model (query longer)."""
         query = KLine(signature=0x1000, nodes=[0x100, 0x200])
         model_kline = KLine(signature=0x2000, nodes=[0x100])
-        m = Model([query, model_kline])
+        f = Frame([query, model_kline])
 
-        sig = _sig.calculate(m, query, model_kline)
+        sig = _sig.calculate(f, query, model_kline)
         assert _sig.has_s1(sig) is True  # All prefix nodes match
 
     def test_s1_empty_both(self):
         """Both empty nodes returns S4."""
         query = KLine(signature=0x1000, nodes=[])
         model_kline = KLine(signature=0x2000, nodes=[])
-        m = Model([query, model_kline])
+        f = Frame([query, model_kline])
 
-        sig = _sig.calculate(m, query, model_kline)
+        sig = _sig.calculate(f, query, model_kline)
         assert _sig.has_s4(sig) is True
 
     def test_s4_query_empty_model_not(self):
         """Query empty, model not empty returns S4."""
         query = KLine(signature=0x1000, nodes=[])
         model_kline = KLine(signature=0x2000, nodes=[0x100])
-        m = Model([query, model_kline])
+        f = Frame([query, model_kline])
 
-        sig = _sig.calculate(m, query, model_kline)
+        sig = _sig.calculate(f, query, model_kline)
         assert sig == _sig.S4
 
     def test_s4_model_empty_query_not(self):
         """Model empty, query not empty returns S4."""
         query = KLine(signature=0x1000, nodes=[0x100])
         model_kline = KLine(signature=0x2000, nodes=[])
-        m = Model([query, model_kline])
+        f = Frame([query, model_kline])
 
-        sig = _sig.calculate(m, query, model_kline)
+        sig = _sig.calculate(f, query, model_kline)
         assert sig == _sig.S4
 
     def test_s2_partial_match(self):
         """Partial positional match returns S2."""
         query = KLine(signature=0x1000, nodes=[0x100, 0x200])
         model_kline = KLine(signature=0x2000, nodes=[0x100, 0x300])
-        m = Model([query, model_kline])
+        f = Frame([query, model_kline])
 
-        sig = _sig.calculate(m, query, model_kline)
+        sig = _sig.calculate(f, query, model_kline)
         assert _sig.has_s1(sig) is False  # Not S1
         assert _sig.get_s2_s1_percentage(sig) == 127  # 50% positional match
 
@@ -147,9 +147,9 @@ class TestCalculateSignificance:
         """S2 includes non-positional matches."""
         query = KLine(signature=0x1000, nodes=[0x100, 0x200])
         model_kline = KLine(signature=0x2000, nodes=[0x100, 0x300, 0x200])  # 0x200 at pos 2
-        m = Model([query, model_kline])
+        f = Frame([query, model_kline])
 
-        sig = _sig.calculate(m, query, model_kline)
+        sig = _sig.calculate(f, query, model_kline)
         assert _sig.has_s1(sig) is False  # Not S1
         assert _sig.get_s2_s1_percentage(sig) == 127  # 50% positional
         assert _sig.get_s2_s2_percentage(sig) == 127  # 50% non-positional
@@ -158,9 +158,9 @@ class TestCalculateSignificance:
         """No matching nodes returns S4."""
         query = KLine(signature=0x1000, nodes=[0x100])
         model_kline = KLine(signature=0x2000, nodes=[0x200])
-        m = Model([query, model_kline])
+        f = Frame([query, model_kline])
 
-        sig = _sig.calculate(m, query, model_kline)
+        sig = _sig.calculate(f, query, model_kline)
         assert sig == _sig.S4
 
 
@@ -203,24 +203,24 @@ class TestSignificanceComparison:
 
     def test_calculated_significance_ordering(self):
         """Real calculated significances maintain ordering."""
-        m = Model()
+        f = Frame()
 
         # S1: exact match
         q = KLine(signature=0x1000, nodes=[0x100, 0x200])
         t1 = KLine(signature=0x2000, nodes=[0x100, 0x200])
-        m.add(q)
-        m.add(t1)
-        sig_s1 = _sig.calculate(m, q, t1)
+        f.add(q)
+        f.add(t1)
+        sig_s1 = _sig.calculate(f, q, t1)
 
         # S2: partial match
         t2 = KLine(signature=0x3000, nodes=[0x100, 0x300])
-        m.add(t2)
-        sig_s2 = _sig.calculate(m, q, t2)
+        f.add(t2)
+        sig_s2 = _sig.calculate(f, q, t2)
 
         # S4: no match
         t3 = KLine(signature=0x4000, nodes=[0x999])
-        m.add(t3)
-        sig_s4 = _sig.calculate(m, q, t3)
+        f.add(t3)
+        sig_s4 = _sig.calculate(f, q, t3)
 
         assert sig_s1 > sig_s2 > sig_s4
 
@@ -257,9 +257,9 @@ class TestCalculateSignificanceS3:
         # Query: [a, b], Model: [b, c, a] - a and b exist but not at same positions
         query = KLine(signature=0x1000, nodes=[0x100, 0x200])
         model_kline = KLine(signature=0x2000, nodes=[0x300, 0x100])  # 0x100 at different position
-        m = Model([query, model_kline])
+        f = Frame([query, model_kline])
 
-        sig = _sig.calculate(m, query, model_kline)
+        sig = _sig.calculate(f, query, model_kline)
         assert _sig.has_s1(sig) is False  # Not S1
         assert _sig.get_s2(sig) == 0  # Not S2 (no positional matches)
         assert _sig.get_s3_s1_percentage(sig) > 0  # Has unordered S1 matches
@@ -268,9 +268,9 @@ class TestCalculateSignificanceS3:
         """S3 when nodes are in reverse order."""
         query = KLine(signature=0x1000, nodes=[0x100, 0x200])
         model_kline = KLine(signature=0x2000, nodes=[0x200, 0x100])  # Reversed
-        m = Model([query, model_kline])
+        f = Frame([query, model_kline])
 
-        sig = _sig.calculate(m, query, model_kline)
+        sig = _sig.calculate(f, query, model_kline)
         assert _sig.get_s3_s1_percentage(sig) == 255  # 100% unordered match
 
     def test_s3_generational_match(self):
@@ -280,9 +280,9 @@ class TestCalculateSignificanceS3:
         n1 = KLine(signature=0x0010, nodes=[0x0030])  # N1 has child N3
         k1 = KLine(signature=0x1000, nodes=[0x0010])  # K1 has child N1
         k2 = KLine(signature=0x2000, nodes=[0x0020, 0x0030])  # K2 has N2 and N3
-        m = Model([n3, n1, k1, k2])
+        f = Frame([n3, n1, k1, k2])
 
-        sig = _sig.calculate(m, k1, k2)
+        sig = _sig.calculate(f, k1, k2)
         # K1's node N1 has child N3 which matches K2's node N3
         assert _sig.get_s3_s2_percentage(sig) > 0  # Child match
 
@@ -290,9 +290,9 @@ class TestCalculateSignificanceS3:
         """No unordered or generational match returns S4."""
         query = KLine(signature=0x1000, nodes=[0x100])
         model_kline = KLine(signature=0x2000, nodes=[0x200])
-        m = Model([query, model_kline])
+        f = Frame([query, model_kline])
 
-        sig = _sig.calculate(m, query, model_kline)
+        sig = _sig.calculate(f, query, model_kline)
         assert sig == _sig.S4
 
 
@@ -347,11 +347,11 @@ class TestSignificanceComparisonS3:
         # S4: no match
         t4 = KLine(signature=0x5000, nodes=[0x999])
 
-        m = Model([n3, q, t1, t2, t3, t4])
+        f = Frame([n3, q, t1, t2, t3, t4])
 
-        sig_s1 = _sig.calculate(m, q, t1)
-        sig_s2 = _sig.calculate(m, q, t2)
-        sig_s3 = _sig.calculate(m, q, t3)
-        sig_s4 = _sig.calculate(m, q, t4)
+        sig_s1 = _sig.calculate(f, q, t1)
+        sig_s2 = _sig.calculate(f, q, t2)
+        sig_s3 = _sig.calculate(f, q, t3)
+        sig_s4 = _sig.calculate(f, q, t4)
 
         assert sig_s1 > sig_s2 > sig_s3 > sig_s4

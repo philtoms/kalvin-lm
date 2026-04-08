@@ -58,11 +58,11 @@ class ToolbarRegion(Horizontal):
         pass
 
     class SaveState(Message):
-        """Request to save Kalvin model state."""
+        """Request to save Model model state."""
         pass
 
     class LoadState(Message):
-        """Request to load Kalvin model state."""
+        """Request to load Model model state."""
         pass
 
     class Run(Message):

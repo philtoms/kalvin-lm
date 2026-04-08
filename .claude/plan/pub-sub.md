@@ -9,7 +9,7 @@
 1. New `events.py` - single-channel EventBus + RationaliseEvent
 2. Rewrite `rationalise()` - returns `None`, emits fast events, accumulates slow in backlog
 3. Rewrite `cogitate()` - runs on its own thread, emits slow events as it processes the backlog
-4. Update `KAgent` abstract - fix return type
+4. Update `KModel` abstract - fix return type
 5. Update TUI and scripts - subscribe to single event channel
 
 ## Step 1: Create `src/kalvin/events.py`
@@ -71,7 +71,7 @@ Thread safety:
 - EventBus.publish must be safe to call from the cogitate thread
 - Model mutations (`upgrade`) must be thread-safe or synchronized
 
-## Step 5: Update KAgent abstract (abstract.py:372)
+## Step 5: Update KModel abstract (abstract.py:372)
 
 Change: `def rationalise(...) -> KLine | None` → `def rationalise(...) -> None`
 
