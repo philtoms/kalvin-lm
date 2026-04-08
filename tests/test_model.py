@@ -1,10 +1,7 @@
 import pytest
-from kalvin.model import (
-    KLine,
-    KNone,
-    Model,
-    nodes_equal,
-)
+from kalvin.abstract import KLine, KNone
+from kalvin.model import Model
+
 
 
 class TestKLine:
@@ -83,24 +80,6 @@ class TestKLine:
         assert len(kl_list) == 5
 
 
-class TestNodesEqual:
-    def test_empty_lists_equal(self):
-        """Empty node lists are equal."""
-        assert nodes_equal([], []) is True
-
-    def test_same_lists_equal(self):
-        """Identical node lists are equal."""
-        assert nodes_equal([0x1000, 0x2000], [0x1000, 0x2000]) is True
-
-    def test_different_lengths_not_equal(self):
-        """Lists of different lengths are not equal."""
-        assert nodes_equal([0x1000], [0x1000, 0x2000]) is False
-
-    def test_different_values_not_equal(self):
-        """Lists with different values are not equal."""
-        assert nodes_equal([0x1000, 0x2000], [0x1000, 0x3000]) is False
-
-
 class TestModelAddKLine:
     def test_add_new_key(self):
         """Adding a kline with new key succeeds."""
@@ -166,9 +145,10 @@ class TestModelQuery:
         """If no kline matches, both streams are empty."""
         kl1 = KLine(signature=0x0001, nodes=[])
         kl2 = KLine(signature=0x0002, nodes=[])
+        query = KLine(signature=0xFF00, nodes=[])
         model = Model([kl1, kl2])
 
-        fast, slow = model.query(query=0xFF00)
+        fast, slow = model.query(query)
         assert list(fast) == []
         assert list(slow) == []
 
@@ -176,9 +156,10 @@ class TestModelQuery:
         """If match found, it's in the fast stream."""
         matching = KLine(signature=0xFF00, nodes=[])
         non_matching = KLine(signature=0x0001, nodes=[])
+        query = KLine(signature=0xFF00, nodes=[])
         model = Model([non_matching, matching])
 
-        fast, slow = model.query(query=0xFF00)
+        fast, slow = model.query(query)
 
         assert list(fast) == [matching]
         assert list(slow) == []
@@ -187,10 +168,11 @@ class TestModelQuery:
         """All matching klines in fast when focus_limit=0."""
         match1 = KLine(signature=0xFF00, nodes=[])
         match2 = KLine(signature=0xFF01, nodes=[])
+        query = KLine(signature=0xFF00, nodes=[])
         non_matching = KLine(signature=0x0001, nodes=[])
         model = Model([non_matching, match1, match2])
 
-        fast, slow = model.query(query=0xFF00)
+        fast, slow = model.query(query)
 
         assert list(fast) == [match2, match1]
         assert list(slow) == []
@@ -200,9 +182,10 @@ class TestModelQuery:
         match1 = KLine(signature=0xFF00, nodes=[])
         match2 = KLine(signature=0xFF01, nodes=[])
         match3 = KLine(signature=0xFF02, nodes=[])
+        query = KLine(signature=0xFF00, nodes=[])
         model = Model([match1, match2, match3])
 
-        fast, slow = model.query(query=0xFF00, focus_limit=2)
+        fast, slow = model.query(query, focus_limit=2)
 
         assert list(fast) == [match3, match2]
         assert list(slow) == [match1]
@@ -212,9 +195,10 @@ class TestModelQuery:
         match1 = KLine(signature=0xFF00, nodes=[])
         match2 = KLine(signature=0xFF01, nodes=[])
         match3 = KLine(signature=0xFF02, nodes=[])
+        query = KLine(signature=0xFF00, nodes=[])
         model = Model([match1, match2, match3])
 
-        fast, slow = model.query(query=0xFF00, focus_limit=1)
+        fast, slow = model.query(query, focus_limit=1)
 
         # Consume fast first
         fast_list = list(fast)
@@ -231,9 +215,10 @@ class TestModelExpand:
         key_child = 0x0010
         parent = KLine(signature=0xFF00, nodes=[key_child])
         child = KLine(signature=key_child, nodes=[])
+        query = KLine(signature=0xFF00, nodes=[])
         model = Model([parent, child])
 
-        fast_q, _ = model.query(query=0xFF00)
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, slow = model.expand(focus_set, depth=1)
@@ -250,9 +235,10 @@ class TestModelExpand:
         child1 = KLine(signature=key_child1, nodes=[])
         child2 = KLine(signature=key_child2, nodes=[])
         parent = KLine(signature=0xFF00, nodes=[key_child1, key_child2])
+        query = KLine(signature=0xFF00, nodes=[])
         model = Model([parent, child1, child2])
 
-        fast_q, _ = model.query(query=0xFF00)
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, slow = model.expand(focus_set, depth=2)
@@ -272,9 +258,10 @@ class TestModelExpand:
         grandchild = KLine(signature=key_grandchild, nodes=[])
         child = KLine(signature=key_child, nodes=[key_grandchild])
         parent = KLine(signature=key_parent, nodes=[key_child])
+        query = KLine(signature=0xF000, nodes=[])
         model = Model([parent, child, grandchild])
 
-        fast_q, _ = model.query(query=0xF000)
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         # depth=1: only parent, no child expansion
@@ -301,9 +288,10 @@ class TestModelExpand:
     def test_depth_zero_returns_empty(self):
         """depth=0 returns empty streams."""
         matching = KLine(signature=0xFF00, nodes=[])
+        query = KLine(signature=0xFF00, nodes=[])
         model = Model([matching])
 
-        fast_q, _ = model.query(query=0xFF00)
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, slow = model.expand(focus_set, depth=0)
@@ -317,9 +305,10 @@ class TestModelExpand:
 
         kl_a = KLine(signature=key_a, nodes=[key_b])
         kl_b = KLine(signature=key_b, nodes=[key_a])
+        query = KLine(signature=key_a, nodes=[])
         model = Model([kl_a, kl_b])
 
-        fast_q, _ = model.query(query=key_a)
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, _ = model.expand(focus_set, depth=100)
@@ -333,9 +322,10 @@ class TestModelExpand:
         """Self-referencing KLine stops expansion."""
         key = 0xFF00
         kl = KLine(signature=key, nodes=[key])
+        query = KLine(signature=key, nodes=[])
         model = Model([kl])
 
-        fast_q, _ = model.query(query=key)
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, _ = model.expand(focus_set, depth=100)
@@ -354,11 +344,12 @@ class TestModelExpand:
         leaf1 = KLine(signature=key_leaf1, nodes=[])
         leaf2 = KLine(signature=key_leaf2, nodes=[])
         leaf3 = KLine(signature=key_leaf3, nodes=[])
+        query = KLine(signature=0xFF00, nodes=[])
         intermediate = KLine(signature=key_intermediate, nodes=[key_leaf1, key_leaf2])
         root = KLine(signature=0xFF00, nodes=[key_intermediate, key_leaf3])
         model = Model([root, intermediate, leaf1, leaf2, leaf3])
 
-        fast_q, _ = model.query(query=0xFF00)
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, _ = model.expand(focus_set, depth=3)
@@ -380,9 +371,10 @@ class TestModelExpand:
         grandchild = KLine(signature=key_grandchild, nodes=[key_root])
         child = KLine(signature=key_child, nodes=[key_grandchild])
         root = KLine(signature=key_root, nodes=[key_child])
+        query = KLine(signature=0xFF00, nodes=[])
         model = Model([root, child, grandchild])
 
-        fast_q, _ = model.query(query=0xFF00)
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, _ = model.expand(focus_set, depth=10)
@@ -404,7 +396,8 @@ class TestModelExpand:
         root = KLine(signature=key_root, nodes=[key_child])
         model = Model([root, child, grandchild])
 
-        fast_q, _ = model.query(query=0xFF00)
+        query = KLine(signature=0xFF00, nodes=[])
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, _ = model.expand(focus_set, depth=10)
@@ -436,7 +429,8 @@ class TestModelExpand:
         parent2 = KLine(signature=0xF001, nodes=[key_child4, key_child5, key_child6])
 
         model = Model([parent1, parent2, child1, child2, child3, child4, child5, child6])
-        fast_q, _ = model.query(query=0xF000)
+        query = KLine(signature=0xF000, nodes=[])
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         # focus_limit=1: parent1 + children in fast, parent2 + children in slow
@@ -462,7 +456,8 @@ class TestModelExpand:
         match2 = KLine(signature=0xFF01, nodes=[])
         model = Model([match1, match2])
 
-        fast_q, _ = model.query(query=0xFF00)
+        query = KLine(signature=0xFF00, nodes=[])
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, slow = model.expand(focus_set, depth=1)
@@ -475,7 +470,8 @@ class TestModelExpand:
         match2 = KLine(signature=0xFF01, nodes=[])
         model = Model([match1, match2])
 
-        fast_q, _ = model.query(query=0xFF00)
+        query = KLine(signature=0xFF00, nodes=[])
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, slow = model.expand(focus_set, depth=1, focus_limit=0)
@@ -493,7 +489,8 @@ class TestModelExpand:
         parent2 = KLine(signature=0xF001, nodes=[key_child2])
         model = Model([parent1, parent2, child1, child2])
 
-        fast_q, _ = model.query(query=0xF000)
+        query = KLine(signature=0xF000, nodes=[])
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, slow = model.expand(focus_set, depth=2, focus_limit=1)
@@ -516,7 +513,8 @@ class TestModelExpand:
         match2 = KLine(signature=0xFF01, nodes=[])
         model = Model([match1, match2])
 
-        fast_q, _ = model.query(query=0xFF00)
+        query = KLine(signature=0xFF00, nodes=[])
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, slow = model.expand(focus_set, depth=1, focus_limit=10)
@@ -538,7 +536,8 @@ class TestModelExpand:
         parent2 = KLine(signature=0xF001, nodes=[key_child2])
         model = Model([parent1, parent2, child1, child2, grandchild1, grandchild2])
 
-        fast_q, _ = model.query(query=0xF000)
+        query = KLine(signature=0xF000, nodes=[])
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, slow = model.expand(focus_set, depth=3, focus_limit=1)
@@ -568,7 +567,8 @@ class TestModelExpand:
         parent2 = KLine(signature=0xF001, nodes=[key_child])
         model = Model([parent1, parent2, child, grandchild])
 
-        fast_q, _ = model.query(query=0xF000)
+        query = KLine(signature=0xF000, nodes=[])
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         # depth=1: no child expansion
@@ -591,7 +591,8 @@ class TestModelExpand:
         match4 = KLine(signature=0xFF03, nodes=[])
         model = Model([match1, match2, match3, match4])
 
-        fast_q, _ = model.query(query=0xFF00)
+        query = KLine(signature=0xFF00, nodes=[])
+        fast_q, _ = model.query(query)
         focus_set = list(fast_q)
 
         fast, slow = model.expand(focus_set, depth=1, focus_limit=1)

@@ -6,51 +6,55 @@ from pathlib import Path
 from struct import pack, unpack
 from typing import Literal, Any
 from collections import Counter
+from typing import Iterator, Tuple
+
 import json
 
-from kalvin.agent import KAgent
-from kalvin.model import KLine, KNode, KNone, Model
-from kalvin.significance import (
-    calculate_significance,
-    has_s1,
-    get_s2,
-    get_s3,
-    S1, S2, S3, S4
-)
+from kalvin.abstract import KAgent, KLine, KModel, KNodes, KNone, KSig, KTokenizer, KSignificance
+from kalvin.model import Model
+from kalvin.significance import Int32Significance
 from kalvin.tokenizer import Tokenizer
 
 
 class Kalvin(KAgent):
     """Kalvin agent with NLP features for knowledge graph operations."""
 
-    __dictionary: dict[int, Any] = {}
+    __dictionary: dict[str, Any] = {}
     __nlp_type: dict[str, Any] = {}
+    __frames: list[KModel] = []
+    __backlog: list[tuple[KLine, Iterator[KLine]]] = []
+
 
     def __init__(
         self,
+        tokenizer: KTokenizer | None = None,
         model: Model | None = None,
         activity: Counter | None = None,
-        tokenizer: Tokenizer | None = None,
+        significance: KSignificance | None = None,
         dictionary: str | None = None,
         nlp_detail: str = "nlp_type32"
     ):
-        """Initialize Kalvin with optional model and tokenizer.
+        """Initialize Kalvin with optional model, tokenizer, and significance.
 
         Args:
             model: Optional Model instance
-            tokenizer: Optional Tokenizer instance
+            activity: Optional Counter for tracking token activity
+            tokenizer: Optional KTokenizer instance
+            significance: Optional KSignificance instance (defaults to Int32Significance)
             dictionary: Path to grammar dictionary JSON file
             nlp_detail: NLP detail level for type encoding (e.g., "nlp_type32")
         """
         self._model = model if model else Model()
         self._tokenizer = tokenizer if tokenizer else Tokenizer.from_directory()
+        self._significance = significance if significance else Int32Significance()
         self._ws_token = self._tokenizer.encode(" ")[0]
         self._activity = activity if activity else Counter()
         self._unrecognised_tokens = set()
         self._dictionary_path = dictionary
         self._nlp_detail = nlp_detail
-        self._dictionary: dict[int, Any] = {}
+        self._dictionary: dict[str, Any] = {}
         self._nlp_type: dict[str, Any] = {}
+        self.__frames.append(self._model)
 
         # === Tokenization ===
         if not self._dictionary_path:
@@ -60,13 +64,8 @@ class Kalvin(KAgent):
 
         if not self._dictionary:
             with open(self._dictionary_path, "r") as f:
-                str_dict = json.load(f)
-                self._dictionary = {}
-
-            for key, value in str_dict.items():
-                key = int(key)
-                self._dictionary[key] = value
-            Kalvin.__dictionary = self._dictionary
+                self._dictionary = json.load(f)
+                Kalvin.__dictionary = self._dictionary
 
             with open(self._dictionary_path.replace("grammar", self._nlp_detail), "r") as f:
                 self._nlp_type = json.load(f)
@@ -80,9 +79,14 @@ class Kalvin(KAgent):
         return self._model
 
     @property
-    def tokenizer(self) -> Tokenizer:
+    def tokenizer(self) -> KTokenizer:
         """Get the tokenizer for encoding/decoding text."""
         return self._tokenizer
+
+    @property
+    def significance(self) -> KSignificance:
+        """Get the significance instance for S1-S4 operations."""
+        return self._significance
 
     def encode(self, text: str, nlp_detail: str = "nlp_type32") -> KLine | None:
         """Encode a string to a KLine.
@@ -111,15 +115,18 @@ class Kalvin(KAgent):
                 self._unrecognised_tokens.add(token)
 
             signature |= token
-            self.rationalise(KLine(signature, nodes=[token], dbg_text=decode), True)
+            self.rationalise(KLine(signature, nodes=[token], dbg_text=decode))
+            # Add token kline to model
+            self._model.add(KLine(signature, nodes=[token], dbg_text=decode))
             ks_nodes.append(signature)
             ks_key |= signature
 
         kline = KLine(signature=ks_key, nodes=ks_nodes, dbg_text=text)
-        self.rationalise(kline, True) 
+        self.rationalise(kline)
+        self._model.add(kline)
         return kline
 
-    def decode(self, token_sig: int | None) -> str:
+    def decode(self, token_sig: KSig) -> str:
         """Decode a list of KNodes (token IDs) back to a string.
 
         Args:
@@ -135,7 +142,10 @@ class Kalvin(KAgent):
         for node in kline.nodes:
             knode = self.model.find_kline(node)
             if knode:
-                knodes.append(knode.nodes[0])
+                # Get first node from knode's node list
+                node_list = knode.as_node_list()
+                if node_list:
+                    knodes.append(node_list[0])
         return self._tokenizer.decode(knodes)
 
     def prune(self, level: int = 1) -> "Kalvin":
@@ -161,74 +171,127 @@ class Kalvin(KAgent):
         model = Model(pruned_model)
         return Kalvin(model, pruned_activity)
 
-    def rationalise(self, kline: KLine, train: bool = False):
-        """Rationalise a KLine.
+    def get_frame(self) -> KModel:
+        """Return the current frame context if it is in bounds, otherwise create a new one.
+
+        Returns:
+            New KModel frame instance
+        """
+        if len(self.__frames) > 0 and len(self.__frames[-1].klines) < 100:
+            frame = self.__frames.pop()
+        else:
+            frame = Model([], self._model)
+
+        self.__frames.append(frame)
+        return frame
+
+    def rationalise(self, kline: KLine, frame: KModel | None = None) -> list[KLine]:
+        """Rationalise a KLine query in frame context.
 
         Args:
-            kline: KLine to rationalise
-            train: If True, enforce training mode (dedup by signature only)
+            query: KLine to rationalise
+            frame: Optional KModel frame context (internal use)
+
+        Returns:
+            Rationalised KLine, or KNone if not found
         """
-        fast, slow = self._model.query(kline.signature)
-        for kf in fast:
-            if kf.signature == self._ws_token:
+        if frame is None:
+            frame = self.get_frame()
+
+        # Test early to prevent infinite recursion
+        if frame.exists(kline):
+            return frame.klines
+
+        #bring nodes into frame
+        for n in kline.nodes:
+            if self.tokenizer.is_literal(n):
                 continue
 
-            if kf.signature == kline.signature:
-                return
+            nk = self._model.find_kline(n)
+            if nk == KNone:
+                nk = KLine(signature=n, nodes=None) # new token node (also at S4)
+            self.rationalise(nk, frame=frame)
 
-            # CS = calculate_significance(self.model,kline,kf)
-            # if has_s1(CS):
-            #     return
+        fast, slow = frame.query(kline)
+        self.__backlog = [(kline, slow)] + self.__backlog
+        for fk in fast:
+            sig = self.signify(kline, fk)
+            if self._significance.has_s1(sig):
+                # Create a KLine with the significance for upgrading
+                cs = KLine(signature=sig, nodes=fk.nodes)
+                sv = self._significance.calculate(frame, kline, cs)
+                frame.upgrade(cs, sv)
+                return frame.klines
 
-        if not self._model.add(kline, train):
-            return
+        frame.add(kline)
+        return frame.klines
+    
+    def cogitate(self):
+        while self.__backlog:
+            qk, slow = self.__backlog[0]
+            self.__backlog = self.__backlog[1:]
+            for sk in slow:
+                sig = self.signify(qk, sk)
+                if self._significance.has_s1(sig):
+                    cs = KLine(signature=sig, nodes=sk.nodes)
+                    sv = self._significance.calculate(self._model, qk, cs)
+                    self._model.upgrade(cs, sv)
+                    continue
+            
 
-    def signify(self, k1: KLine, k2: KLine, S: int | None = None) -> int:
+    def signify(self, k1: KLine, k2: KLine, s: KSig | None = None) -> KSig:
         """Establish significance relationship between two KLines.
 
         Calculates internal significance of k1:k2 relationship.
-        If requested s is higher (more significant) than internal:
-        - S1: Adds bidirectional links, returns S1
-        - S2: Verifies compound signature of k2.nodes == k1.signature
-        - S3: Adds bidirectional links, returns S3
+        If s is provided and less significant than internal, returns internal.
+        Otherwise, creates links at the requested significance level.
 
         Args:
             k1: First KLine
             k2: Second KLine
-            s: Optional requested significance level (S1/S2/S3 bit flags)
+            s: Optional requested significance level. If None, returns internal.
 
         Returns:
-            The resulting significance value
+            Significance value (higher = more significant: S1 > S2 > S3 > S4)
         """
         # Calculate internal significance
-        CS = calculate_significance(self._model, k1, k2)
+        internal = self._significance.calculate(self._model, k1, k2)
 
-        # No requested level or internal already sufficient
-        if S is None or CS >= S:
-            return CS
+        # If no specific level requested, or internal is more significant, return internal
+        if s is None or internal >= s:
+            return internal
 
-        # S1 requested and higher than internal
-        if has_s1(S):
-            self._model.add(KLine(signature=k1.signature, nodes=[k2.signature]))
-            self._model.add(KLine(signature=k2.signature, nodes=[k1.signature]))
-            return S1
-        # S2 requested - verify compound signature
-        if get_s2(S) > 0:
+        # Requested level is more significant than internal - create links at level s
+
+        # S1: Create countersigned links
+        if self._significance.has_s1(s):
+            # Add bidirectional links - k1 gets k2's signature as node, k2 gets k1's
+            link1 = KLine(k1.signature, [k2.signature])
+            link2 = KLine(k2.signature, [k1.signature])
+            self._model.add(link1)
+            self._model.add(link2)
+            return s
+
+        # S2: Check compound match (k2.nodes OR'd together equals k1.signature)
+        if self._significance.has_s2(s):
             compound = 0
             for node in k2.nodes:
                 compound |= node
-            verify_sig = compound & k1.signature
-            # Signatures must be fully overlapping
-            if compound == verify_sig or k1.signature == verify_sig:
-                return S2
-            # Verification failed, continue to S3 check
+            if compound == k1.signature:
+                # S2 verified - create link
+                link = KLine(k1.signature, k2.nodes)
+                self._model.add(link)
+                return s
 
-        # S3 requested and higher than internal
-        if get_s3(S) > 0:
-            self._model.add(KLine(signature=k1.signature, nodes=[k2.signature]))
-            return S3
+        # S3: Create connotated link
+        if self._significance.has_s3(s):
+            link = KLine(k1.signature, [k2.signature])
+            self._model.add(link)
+            return s
 
-        return CS
+        # S4: No significance
+        return self._significance.S4
+
 
     def model_size(self) -> int:
         """Return the number of KLines in the model.
@@ -267,9 +330,10 @@ class Kalvin(KAgent):
         # Serialize klines
         parts.append(pack("<I", len(self._model)))
         for kline in self._model:
+            node_list = kline.as_node_list()
             parts.append(pack("<Q", kline.signature))
-            parts.append(pack("<I", len(kline.nodes)))
-            for node in kline.nodes:
+            parts.append(pack("<I", len(node_list)))
+            for node in node_list:
                 parts.append(pack("<Q", node))
 
         # Serialize activity Counter
@@ -306,7 +370,7 @@ class Kalvin(KAgent):
             offset += 8
             node_count = unpack("<I", data[offset : offset + 4])[0]
             offset += 4
-            nodes: list[KNode] = []
+            nodes: KNodes = []
             for _ in range(node_count):
                 node = unpack("<Q", data[offset : offset + 8])[0]
                 offset += 8
@@ -352,7 +416,7 @@ class Kalvin(KAgent):
         model = Model(klines=klines)
         activity = Counter()
         if "activity" in data:
-            activity.update({int(k): v for k, v in data["activity"].items()})
+            activity.update({KSig(k): v for k, v in data["activity"].items()})
         return cls(model, activity, dictionary=dictionary, nlp_detail=nlp_detail)
 
     def save(

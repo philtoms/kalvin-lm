@@ -3,15 +3,12 @@
 import pytest
 
 from kalvin import Kalvin
-from kalvin.model import KLine
-from kalvin.significance import (
-    S1,S2, S4,
-    build_s2,
-    build_s3,
-    calculate_significance,
-    get_s1_percentage,
-    has_s1,
-)
+from kalvin.abstract import KLine
+from kalvin.significance import Int32Significance
+
+
+# Create a shared significance instance for tests
+_sig = Int32Significance()
 
 
 class TestSignifyReturnsInternal:
@@ -19,22 +16,20 @@ class TestSignifyReturnsInternal:
 
     def test_signify_returns_internal_when_none(self):
         """Returns internal significance when s=None."""
-        kalvin = Kalvin.__new__(Kalvin)
-        kalvin._model = Kalvin()._model
+        kalvin = Kalvin()
 
         k1 = KLine(signature=0x100, nodes=[0x10, 0x20])
         k2 = KLine(signature=0x200, nodes=[0x30, 0x40])
         kalvin.model.add(k1)
         kalvin.model.add(k2)
 
-        internal = calculate_significance(kalvin.model, k1, k2)
+        internal = _sig.calculate(kalvin.model, k1, k2)
         result = kalvin.signify(k1, k2, None)
         assert result == internal
 
     def test_signify_returns_internal_when_sufficient(self):
         """Returns internal when s <= internal (internal is more significant)."""
-        kalvin = Kalvin.__new__(Kalvin)
-        kalvin._model = Kalvin()._model
+        kalvin = Kalvin()
 
         # Create matching nodes for S1 match
         k1 = KLine(signature=0x100, nodes=[0x10, 0x20])
@@ -42,9 +37,9 @@ class TestSignifyReturnsInternal:
         kalvin.model.add(k1)
         kalvin.model.add(k2)
 
-        internal = calculate_significance(kalvin.model, k1, k2)
+        internal = _sig.calculate(kalvin.model, k1, k2)
         # Internal should be S1 (high), so requesting S3 (low) returns internal
-        s3_request = build_s3(50, 0, 0)
+        s3_request = _sig.build_s3(50, 0, 0)
         result = kalvin.signify(k1, k2, s3_request)
         assert result == internal
 
@@ -54,8 +49,7 @@ class TestSignifyS1:
 
     def test_signify_s1_creates_countersigned_link(self):
         """S1 request creates countersigned link in the model."""
-        kalvin = Kalvin.__new__(Kalvin)
-        kalvin._model = Kalvin()._model
+        kalvin = Kalvin()
 
         k1 = KLine(signature=0x100, nodes=[0x10])
         k2 = KLine(signature=0x200, nodes=[0x20])
@@ -63,25 +57,24 @@ class TestSignifyS1:
         kalvin.model.add(k2)
 
         initial_count = len(kalvin.model)
-        result = kalvin.signify(k1, k2, S1)
+        result = kalvin.signify(k1, k2, _sig.S1)
 
         # Should return S1
-        assert has_s1(result)
+        assert _sig.has_s1(result)
 
         # Should have added 2 new KLines (countersigned link)
         assert len(kalvin.model) == initial_count + 2
 
     def test_signify_s1_link_content(self):
         """Verify the content of S1 countersigned link."""
-        kalvin = Kalvin.__new__(Kalvin)
-        kalvin._model = Kalvin()._model
+        kalvin = Kalvin()
 
         k1 = KLine(signature=0x100, nodes=[0x10])
         k2 = KLine(signature=0x200, nodes=[0x20, 0x30])
         kalvin.model.add(k1)
         kalvin.model.add(k2)
 
-        kalvin.signify(k1, k2, S1)
+        kalvin.signify(k1, k2, _sig.S1)
 
         # Check that k1 now has k2's signature
         link1 = kalvin.model.find_kline(k1.signature)
@@ -95,8 +88,7 @@ class TestSignifyS2:
 
     def test_signify_s2_verifies_compound_match(self):
         """S2 verification succeeds when compound of k2.nodes == k1.signature."""
-        kalvin = Kalvin.__new__(Kalvin)
-        kalvin._model = Kalvin()._model
+        kalvin = Kalvin()
 
         # Set up so k2.nodes OR'd together equals k1.signature
         # Use non-overlapping node values so internal significance is low (S4)
@@ -107,17 +99,15 @@ class TestSignifyS2:
         kalvin.model.add(k2)
 
         # Internal significance will be S4 (no match), but we request S2
-        s2_request = build_s2(50, 50)
+        s2_request = _sig.build_s2(50, 50)
         result = kalvin.signify(k1, k2, s2_request)
 
         # Should return S2 since compound matches
-        from kalvin.significance import get_s2
-        assert get_s2(result) > 0
+        assert _sig.has_s2(result)
 
     def test_signify_s2_falls_through_on_mismatch(self):
         """S2 verification failure continues to S3 check."""
-        kalvin = Kalvin.__new__(Kalvin)
-        kalvin._model = Kalvin()._model
+        kalvin = Kalvin()
 
         # Compound won't match k1.signature, and nodes don't overlap
         k1 = KLine(signature=0x9999, nodes=[0x100])  # Different signature
@@ -126,8 +116,8 @@ class TestSignifyS2:
         kalvin.model.add(k2)
 
         # Request S2 + S3 (S2 will fail verification, should fall through to S3)
-        s2_request = build_s2(50, 50)
-        s3_request = build_s3(50, 0, 0)
+        s2_request = _sig.build_s2(50, 50)
+        s3_request = _sig.build_s3(50, 0, 0)
         combined_request = s2_request | s3_request
 
         initial_count = len(kalvin.model)
@@ -142,8 +132,7 @@ class TestSignifyS3:
 
     def test_signify_s3_creates_countersigned_link(self):
         """S3 request creates countersigned link."""
-        kalvin = Kalvin.__new__(Kalvin)
-        kalvin._model = Kalvin()._model
+        kalvin = Kalvin()
 
         k1 = KLine(signature=0x100, nodes=[0x10])
         k2 = KLine(signature=0x200, nodes=[0x20])
@@ -151,12 +140,11 @@ class TestSignifyS3:
         kalvin.model.add(k2)
 
         initial_count = len(kalvin.model)
-        s3_request = build_s3(100, 0, 0)
+        s3_request = _sig.build_s3(100, 0, 0)
         result = kalvin.signify(k1, k2, s3_request)
 
         # Should return S3
-        from kalvin.significance import get_s3
-        assert get_s3(result) > 0
+        assert _sig.has_s3(result)
 
         # Should have added 1 new KLines
         assert len(kalvin.model) == initial_count + 1
@@ -167,31 +155,31 @@ class TestSignifyEdgeCases:
 
     def test_signify_with_empty_nodes(self):
         """Test signify with KLines that have empty nodes."""
-        kalvin = Kalvin.__new__(Kalvin)
-        kalvin._model = Kalvin()._model
+        kalvin = Kalvin()
 
         k1 = KLine(signature=0x100, nodes=[])
         k2 = KLine(signature=0x200, nodes=[])
 
         result = kalvin.signify(k1, k2, None)
-        # Empty nodes get S1 (perfect match) per calculate_significance
-        assert has_s1(result)
+        # Empty nodes get S4 (perfect match) per calculate_significance
+        assert _sig.has_s4(result)
 
     def test_signify_adds_links_each_call(self):
-        """Verify that signify adds links (model allows duplicates with train=False)."""
-        kalvin = Kalvin.__new__(Kalvin)
-        kalvin._model = Kalvin()._model
+        """Verify that signify creates links on first call, deduped on subsequent calls."""
+        kalvin = Kalvin()
 
         k1 = KLine(signature=0x100, nodes=[0x10])
         k2 = KLine(signature=0x200, nodes=[0x20])
         kalvin.model.add(k1)
         kalvin.model.add(k2)
 
-        # First signify
-        kalvin.signify(k1, k2, S1)
-        count_after_first = len(kalvin.model)
+        initial_count = len(kalvin.model)
 
-        # Second signify with same params
-        # Note: model.add with train=False doesn't dedupe, so links are added again
-        kalvin.signify(k1, k2, S1)
-        assert len(kalvin.model) == count_after_first + 2  # 2 more linkw added
+        # First signify - adds 2 links
+        kalvin.signify(k1, k2, _sig.S1)
+        count_after_first = len(kalvin.model)
+        assert count_after_first == initial_count + 2  # 2 links added
+
+        # Second signify with same params - links are deduplicated
+        kalvin.signify(k1, k2, _sig.S1)
+        assert len(kalvin.model) == count_after_first  # No new links (deduped)

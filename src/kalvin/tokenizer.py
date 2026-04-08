@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterator
 
+from kalvin.abstract import KTokenizer
+
 if TYPE_CHECKING:
     import rustbpe
     import tiktoken
@@ -49,7 +51,7 @@ class PyarrowNotInstalledError(Exception):
     pass
 
 
-class Tokenizer:
+class Tokenizer(KTokenizer):
     """BPE tokenizer wrapper supporting rustbpe (training) and tiktoken (inference)."""
 
     def __init__(self, tokenizer: Any = None):
@@ -169,6 +171,9 @@ class Tokenizer:
             return self._tokenizer.vocab_size
         return self._tokenizer.n_vocab
 
+    def is_literal(self, token_id: int) -> bool:
+        return False
+    
     def encode(self, text: str, pad_ws: bool = False) -> list[int]:
         """Encode a string to token IDs.
 

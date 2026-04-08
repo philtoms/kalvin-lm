@@ -1,122 +1,149 @@
-"""AST node dataclasses for KScript parser."""
+"""AST node definitions for KScript language.
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Union
+Grammar (left recursion eliminated):
+
+    script ::= construct+
+    construct ::= block | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
+    block ::= <INDENT> construct+ <DEDENT>
+    primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
+    node ::= sig | literal
+    sig ::= [A-Z]+
+    literal ::= ![A-Z]+
+
+NEWLINE and COMMENT tokens are treated as insignificant whitespace
+and skipped between constructs and at construct boundaries.
+"""
+
+from dataclasses import dataclass
+from typing import TypeAlias
+
+from .token import TokenType
 
 
-class SignificanceType(Enum):
-    """Significance level for KLine relationships."""
-
-    S1 = "="  # Prefix match
-    S2 = "=>"  # Partial positional
-    S3_FORWARD = ">"  # Unordered (forward)
-    S3_BACKWARD = "<"  # Unordered (backward)
-    S4 = "!="  # No match
-
+# =============================================================================
+# Leaf Nodes
+# =============================================================================
 
 @dataclass
-class Identifier:
-    """An unquoted string identifier (KNode name or file path)."""
+class Signature:
+    """A signature identifier [A-Z]+.
 
-    name: str
+    Signatures can be construct owners (appear in signature position).
+
+    Attributes:
+        id: The uppercase identifier (e.g., "MHALL", "S")
+        line: 1-based line number
+        column: 1-based column number
+    """
+    id: str
     line: int
     column: int
 
 
 @dataclass
-class LoadStatement:
-    """Load command: load <path>"""
+class Literal:
+    """A literal value (anything not [A-Z]+).
 
-    path: Identifier
+    Literals can only appear in node positions, never as construct owners.
 
-
-@dataclass
-class SaveStatement:
-    """Save command: save [path]"""
-
-    path: Identifier | None = None
-
-
-# Forward reference for recursive types
-KScriptStatement = Union["LoadStatement", "SaveStatement", "KLineExpr"]
-
-
-@dataclass
-class KScriptAst:
-    """Root node containing a sequence of statements."""
-
-    statements: list[KScriptStatement] = field(default_factory=list)
-
-    # Convenience properties for backward compatibility
-    @property
-    def root(self) -> KScriptStatement | None:
-        """Get the first relationship's significance, if any."""
-        return self.statements[0] if self.statements else None
-
-@dataclass
-class KNodeRef:
+    Attributes:
+        id: The literal value (e.g., "hello", "42", '"quoted"')
+        line: 1-based line number
+        column: 1-based column number
     """
-    Reference to a KNode.
+    id: str
+    line: int
+    column: int
 
-    Can be either:
-    - A simple identifier reference: `hello`
-    - A nested KLine expression: `S < M` (when used in indented blocks)
+
+# Union type for all node types
+Node: TypeAlias = Signature | Literal
+
+
+# =============================================================================
+# Construct Nodes
+# =============================================================================
+
+@dataclass
+class PrimaryConstruct:
+    """primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
+
+    A primary construct with optional inline operator.
+
+    If op is None, this is an identity (bare signature).
+
+    Attributes:
+        sig: The signature that owns this construct
+        op: The inline operator (COUNTERSIGN, CONNOTATE_FWD, UNDERSIGN, IDENTITY), or None
+        node: The node on the right side of the operator, if any
     """
-
-    identifier: Identifier
-    # Optional nested KLine - when set, this node is actually a nested KLine
-    # that should be compiled and then referenced
-    nested_kline: "KLineExpr | None" = None
-
-
-# KSig can be either an identifier or a nested KLine expression
-KSig = Union[Identifier, "KLineExpr"]
+    sig: Signature
+    op: TokenType | None = None
+    node: Node | None = None
 
 
 @dataclass
-class KLineRelationship:
-    """A single significance relationship in a KLine."""
+class Block:
+    """block ::= <INDENT> construct+ <DEDENT>
 
-    significance: SignificanceType
-    nodes: list[KNodeRef] = field(default_factory=list)
+    A block of indented constructs.
+
+    Attributes:
+        constructs: List of constructs in this block
+    """
+    constructs: list["Construct"]
 
 
 @dataclass
-class KLineExpr:
+class Construct:
+    """construct ::= block | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
+
+    A construct is either a block or a sequence of primary constructs
+    with an optional chain operator.
+
+    Attributes:
+        inner: Either a Block or a list of PrimaryConstruct
+        chain_op: The chain operator (CANONIZE_FWD, CANONIZE_BWD, CONNOTATE_BWD), or None
+        chain_right: The right-hand construct of the chain, if any
     """
-    KLine expression with optional significance relationships.
+    inner: Block | list[PrimaryConstruct]
+    chain_op: TokenType | None = None
+    chain_right: "Construct | None" = None
 
-    Forms:
-    - `name` -> Simple KLine with just a name
-    - `name = node` -> KLine with S1 relationship to node
-    - `name => node1 node2` -> KLine with S2 relationship to nodes
-    - `name > node1 node2` -> KLine with S3 forward relationship
-    - `name < node1 node2` -> KLine with S3 backward relationship
-    - `name != node` -> KLine with S4 relationship
-    - `kline1 > nodes` -> KLine referencing another KLine
 
-    Multi-line form:
-        MHALL = SVO =>
-            S < M
-            V < H
-            O < ALL
+@dataclass
+class Script:
+    """script ::= construct+
 
-    This creates MHALL with S1->SVO and S2->[S<M, V<H, O<ALL]
+    A script is a sequence of constructs.
+
+    Attributes:
+        constructs: List of constructs in this script
     """
+    constructs: list[Construct]
 
-    sig: KSig  # Identifier or nested KLineExpr
-    relationships: list[KLineRelationship] = field(default_factory=list)
-    line: int = 0
-    column: int = 0
 
-    # Convenience properties for backward compatibility
-    @property
-    def significance(self) -> SignificanceType | None:
-        """Get the first relationship's significance, if any."""
-        return self.relationships[0].significance if self.relationships else None
+@dataclass
+class KScriptFile:
+    """Top-level file container (one script per file).
 
-    @property
-    def nodes(self) -> list[KNodeRef]:
-        """Get the first relationship's nodes, if any."""
-        return self.relationships[0].nodes if self.relationships else []
+    Attributes:
+        scripts: List of scripts (typically just one)
+    """
+    scripts: list[Script]
+
+
+# =============================================================================
+# Re-exports for backwards compatibility
+# =============================================================================
+
+__all__ = [
+    "Signature",
+    "Literal",
+    "Node",
+    "PrimaryConstruct",
+    "Block",
+    "Construct",
+    "Script",
+    "KScriptFile",
+]

@@ -6,8 +6,9 @@ import tempfile
 from pathlib import Path
 from collections import Counter
 
+from kalvin.abstract import KLine
 from kalvin.kalvin import Kalvin
-from kalvin.model import KLine, Model
+from kalvin.model import Model
 
 
 class TestKalvinInit:
@@ -596,16 +597,14 @@ class TestKalvinEmbeddings:
     def test_intermediate_signature_count(self):
         """Test that encoding creates the expected number of klines."""
         kalvin = Kalvin()
-        kalvin.encode("a b c d")  # 5 identity klines + 1 ws + 1 compound
-        assert kalvin.model_size() == 6
+        kalvin.encode("a b c d")  # 4 identity + 1 ws + 1 compound + 4 rationalise links
+        assert kalvin.model_size() == 10
         kalvin.encode("a b c")  # tokens already exist, only new compound kline
-        assert kalvin.model_size() == 7
+        assert kalvin.model_size() == 11
         kalvin.encode("b c d")  # tokens already exist, only new compound kline
 
-        # With train=True, identity klines dedupe by signature
-        # Combined klines have unique s_keys (bitwise OR of token s_keys)
-        # Expected: 4 identity + 3 compound + 1 ws = 8
-        assert kalvin.model_size() == 8
+        # 4 identity + 3 compound + 1 ws + 4 rationalise links = 12
+        assert kalvin.model_size() == 12
 
 
 class TestKalvinPrune:
