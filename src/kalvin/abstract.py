@@ -131,36 +131,62 @@ class KSignificance(ABC):
         ...
 
     @abstractmethod
-    def get_s4(self, sig: KSig) -> int:
+    def get_s4(self, sig: KSig) -> KSig:
         """Extract full S4 value."""
         ...
 
-    # === Significance calculation ===
+    # === helper functions ===
 
     @abstractmethod
-    def is_significant(self, sig: KSig) -> bool:
-        """Is S1 or S4 significant"""
-        ...
-    
-    @abstractmethod
-    def is_rational(self, sig: KSig) -> bool:
-        """Is S2 or S3 significant"""
-        ...
+    def get_level(self, sig: KSig) -> str:
+        """Detect significance level from signature bits.
 
-    @abstractmethod
-    def calculate(self, frame: "KFrame", query: "KLine", target: "KLine") -> KSig:
-        """Calculate significance between query and target KLines.
-
-        Args:
-            frame: The Frame containing the KLines (for descendant lookup)
-            query: The query KLine
-            target: The target KLine to compare against
-
-        Returns:
-            Significance value (higher = more significant)
+        Hierarchical detection: S1 > S2 > S3 > S4
         """
         ...
 
+    @abstractmethod
+    def strip(self, sig: KSig) -> KSig:
+        """Strip significance bits, returning only token bits.
+
+        """
+        ...
+
+    @abstractmethod
+    def equal(self, sig1: KSig | KNodes, sig2: KSig| KNodes) -> bool:
+        """test if two signatures are equal
+
+        Args:
+            sig1: first signature
+            sig2: second signature
+
+        Returns:
+            True if equal, False otherwise"""
+        ...
+
+    @abstractmethod
+    def is_signed(self, sig) -> bool:
+        """Test signature is KSig
+
+        Args:
+            sig: value to test
+
+        Returns:
+            True if KSig, False otherwise
+        """
+        ...
+
+    @abstractmethod
+    def is_unsigned(self, sig) -> bool:
+        """Test signature is unsigned
+
+        Args:
+            sig: value to test
+
+        Returns:
+            True if unsigned, False otherwise
+        """
+        ...
 
 # === Abstract Tokenizer ===
 
@@ -268,11 +294,12 @@ class KFrame(ABC):
         ...
 
     @abstractmethod
-    def query(self, query: KLine) -> Iterator[KLine]:
+    def query(self, query: KLine, depth: int = 1) -> Iterator[KLine]:
         """Query KLines by ANDing significance with a query.
 
         Args:
             query: The query kline to match
+            depth: Maximum recursion depth for expanding child nodes
 
         Returns:
             Generator that yields matching KLines.
@@ -372,12 +399,15 @@ class KModel(ABC):
     # === Core operations ===
 
     @abstractmethod
-    def rationalise(self, kline: KLine, frame: KFrame | None = None) -> None:
+    def rationalise(self, kline: KLine, frame: KFrame | None = None) -> bool:
         """Rationalise a KLine.
 
         Args:
             kline: KLine to rationalize
             frame: existing frame context
+        
+        Returns:
+            True if significant (S1, S4), False if rational (S2, S3)
         """
         ...
 
@@ -403,26 +433,6 @@ class KModel(ABC):
 
         Returns:
             Decoded string
-        """
-        ...
-
-    @abstractmethod
-    def signify(self, k1: KLine, k2: KLine, S: KSig | None = None) -> KSig:
-        """Establish significance relationship between two KLines.
-
-        Calculates internal significance of k1:k2 relationship.
-        If requested s is higher (more significant) than internal:
-        - S1: Adds bidirectional links, returns S1
-        - S2: Verifies compound signature of k2.nodes == k1.signature
-        - S3: Adds bidirectional links, returns S3
-
-        Args:
-            k1: First KLine
-            k2: Second KLine
-            S: Optional requested significance level (S1/S2/S3 bit flags)
-
-        Returns:
-            The resulting significance value
         """
         ...
 

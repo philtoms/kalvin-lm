@@ -5,7 +5,7 @@ from kscript.lexer import Lexer
 from kscript.parser import Parser
 from kscript.compiler import Compiler
 from kscript.decompiler import Decompiler
-from kalvin import Model
+from kalvin.model import Model
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
 source = '''
@@ -21,18 +21,17 @@ MHALL = SVO =>
 '''
 
 tokens = Lexer(source).tokenize()
-kast = Parser(tokens).parse()
+ast = Parser(tokens).parse()
 tokenizer = Mod32Tokenizer()
-compiler = Compiler(tokenizer, dev=True)
-decompiler = Decompiler(tokenizer)
-klines = compiler.compile(kast)
-model = Model(tokenizer)
+klines = Compiler(tokenizer, dev=True).compile(ast)
+# decompiler = Decompiler(tokenizer)
+model = Model(tokenizer, dev=True)
 
 results = []
 model.events.subscribe(lambda e: results.append(e))
 
 for k in klines:
-    # print(f'{k.dbg_text}')
+    print(f'{k.dbg_text}')
     model.rationalise(k)
     for e in results:
         print(f'  {e.kind}: {e.kline.dbg_text}')

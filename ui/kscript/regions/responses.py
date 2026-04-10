@@ -141,7 +141,7 @@ class ResponsesRegion(Vertical):
         if level == "S2":
             nodes = kline.as_node_list()
             if len(nodes) >= 2:
-                base_token = self._sig.strip_significance(kline.signature)
+                base_token = self._sig.strip(kline.signature)
                 for node in nodes:
                     if not base_token & node:
                         break

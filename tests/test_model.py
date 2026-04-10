@@ -597,7 +597,7 @@ class TestModelEmbeddings:
     def test_intermediate_signature_count(self):
         """Test that encoding creates the expected number of klines."""
         model = Model()
-        model.encode("a b c d")  # 4 identity + 2 ws + 1 compound = 11
+        model.encode("a b c d")  # 4 unsigned + 2 ws + 1 compound = 11
         assert model.frame_size() == 7
         model.encode("a b c")  # tokens already exist, only new compound kline
         assert model.frame_size() == 8

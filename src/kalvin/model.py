@@ -31,7 +31,8 @@ class Model(KModel):
         activity: Counter | None = None,
         significance: KSignificance | None = None,
         dictionary: str | None = None,
-        nlp_detail: str = "nlp_type32"
+        nlp_detail: str = "nlp_type32",
+        dev: bool = False,
     ):
         """Initialize Model with optional frame, tokenizer, and significance.
 
@@ -43,6 +44,7 @@ class Model(KModel):
             dictionary: Path to grammar dictionary JSON file
             nlp_detail: NLP detail level for type encoding (e.g., "nlp_type32")
         """
+        self._dev = dev
         self._frame = frame if frame else Frame()
         self._tokenizer = tokenizer if tokenizer else Tokenizer.from_directory()
         self._significance = significance if significance else Int32Significance()
@@ -59,7 +61,7 @@ class Model(KModel):
         self._event_bus = EventBus()
         self._backlog_lock = threading.Lock()
         self._backlog_condition = threading.Condition(self._backlog_lock)
-        self._backlog: list[tuple[KLine, KLine]] = []
+        self._backlog: list[tuple[KFrame, KLine, KLine, int]] = []
         self._cogitate_stop = threading.Event()
         self._cogitate_thread = threading.Thread(target=self._cogitate, daemon=True)
         self._cogitate_thread.start()
@@ -79,6 +81,113 @@ class Model(KModel):
                 self._nlp_type = json.load(f)
                 Model.__nlp_type = self._nlp_type
 
+    def _get_frame(self) -> KFrame:
+        """Return the current frame context if it is in bounds, otherwise create a new one.
+
+        Returns:
+            New KFrame frame instance
+        """
+        if len(self.__frames) > 1 and len(self.__frames[-1].klines) < 100:
+            return self.__frames[-1]
+        
+        frame = Frame([], self._frame)
+        self.__frames.append(frame)
+        return frame
+    
+    def _signify(self, frame: KFrame, query: KLine, target: KLine) -> KSig:
+        """Calculate significance between query and target KLines.
+
+        Significance is comparable - higher = more significant.
+        S1 > S2 > S3 > S4.
+
+        Args:
+            frame: The Frame containing the KLines (for descendant lookup)
+            query: The query KLine
+            target: The target KLine to compare against
+
+        Returns:
+            Significance value
+        """
+        # Get nodes as lists for comparison
+        query_nodes = query.as_node_list()
+        target_nodes = target.as_node_list()
+
+        # Handle empty node lists
+        if not query_nodes or not target_nodes:
+            return self._significance.S4
+
+        min_len = min(len(query_nodes), len(target_nodes))
+
+        # Count S1 matches: positional equality (up to min length)
+        s1_match_positions = set(
+            i for i in range(min_len) if self._significance.equal(query_nodes[i], target_nodes[i])
+        )
+        s1_matches = len(s1_match_positions)
+
+        # S2 -> S1: All nodes match
+        if s1_matches == min_len and len(query_nodes) == len(target_nodes):
+                return self._significance.S1
+
+        # S2: Partial match (some positional matches exist)
+        if s1_matches > 0:
+            s1_pct = (s1_matches * 100) // min_len
+
+            # S2 matches: nodes at different positions
+            target_set = set(target_nodes)
+            s2_matches = 0
+            for i, node in enumerate(query_nodes):
+                if i in s1_match_positions:
+                    continue  # Already counted as S1
+                if node in target_set:
+                    s2_matches += 1
+
+            s2_pct = (s2_matches * 100) // len(query_nodes) if query_nodes else 0
+            return self._significance.build_s2(s1_pct, s2_pct)
+
+        # S3: No positional matches, check unordered and generational
+        target_set = set(target_nodes)
+        query_set = set(query_nodes)
+
+        # S3-Unordered S1: query nodes that exist in target (any position)
+        unordered_s1_matches = query_set & target_set
+        s3_s1_pct = (
+            (len(unordered_s1_matches) * 100) // len(query_set) if query_set else 0
+        )
+
+        # S3-Unordered S2: query nodes whose children match target nodes
+        s3_s2_matches = 0
+        for node in query_nodes:
+            if node in target_set:
+                continue  # Already S1 match
+            # Check if node's children intersect with target
+            node_kline = frame.find_kline(node)
+            if node_kline is not KNone:
+                node_children = set(node_kline.as_node_list())
+                if node_children & target_set:
+                    s3_s2_matches += 1
+
+        s3_s2_pct = (
+            (s3_s2_matches * 100) // len(query_nodes) if query_nodes else 0
+        )
+
+        # S3-Generational: query nodes whose descendants (at any depth) match target nodes
+        gen_matches = 0
+        for node in query_nodes:
+            if node in target_set:
+                continue  # Already S1 match
+            # Collect all descendants of this node
+            descendants = frame.get_all_descendants(node)
+            if descendants & target_set:
+                gen_matches += 1
+
+        gen_pct = (gen_matches * 100) // len(query_nodes) if query_nodes else 0
+
+        if s3_s1_pct > 0 or s3_s2_pct > 0 or gen_pct > 0:
+            return self._significance.build_s3(s3_s1_pct, s3_s2_pct, gen_pct)
+
+        # S4: No match
+        return self._significance.S4
+    
     # === KModel interface ===
 
     @property
@@ -156,7 +265,7 @@ class Model(KModel):
         if kline is None:
             return ""
         knodes = []
-        for node in kline.nodes:
+        for node in kline.as_node_list():
             knode = self.frame.find_kline(node)
             if knode:
                 # Get first node from knode's node list
@@ -188,77 +297,60 @@ class Model(KModel):
         frame = Frame(pruned_frame)
         return Model(frame=frame, activity=pruned_activity)
 
-    def get_frame(self) -> KFrame:
-        """Return the current frame context if it is in bounds, otherwise create a new one.
-
-        Returns:
-            New KFrame frame instance
-        """
-        if len(self.__frames) > 0 and len(self.__frames[-1].klines) < 100:
-            frame = self.__frames.pop()
-        else:
-            frame = Frame([], self._frame)
-
-        self.__frames.append(frame)
-        return frame
-
-    def rationalise(self, kline: KLine, frame: KFrame | None = None) -> None:
+    def rationalise(self, qk: KLine, frame: KFrame | None = None) -> bool:
         """Rationalise a KLine query in frame context.
 
         Emits events via the event bus as significance is established.
-        S1 and S4 results are emitted inline; S2 and S3 results are
-        queued for the cogitate background thread.
+        - S1 and S4 results (significants) are fast tracked
+        - S2 and S3 results (rationals) are queued for cogitation.
 
         Args:
             kline: KLine to rationalise
             frame: Optional KFrame frame context
+        
+        Returns:
+            True if significant (S1, S4), False if rational (S2, S3)
         """
+
         is_top_level = frame is None
         if is_top_level:
-            frame = self.get_frame()
+            frame = self._get_frame()
 
         # Test early to prevent infinite recursion
-        if frame.exists(kline):
+        if frame.exists(qk):
             if is_top_level:
-                self._emit("complete", kline, kline)
-            return
+                self._emit("complete", qk, qk)
+            return True
 
-        #bring nodes into frame
-        for n in kline.nodes:
-            if self.tokenizer.is_literal(n):
-                continue
+        # Identity (S1)
+        if self._significance.equal(qk.signature, qk.nodes):
+            frame.add(qk)
+            self._emit("fast", qk, qk)
+            return True
 
-            nk = self._frame.find_kline(n)
-            if nk == KNone:
-                nk = KLine(signature=n, nodes=None) # new token node (also at S4)
-            self.rationalise(nk, frame=frame)
+        # Unsigned (S4)
+        if self._significance.is_unsigned(qk.nodes):
+            frame.add(qk)
+            self._emit("fast", qk, qk)
+            return True
 
-        results = frame.query(kline)
-
-        for fk in results:
-            sig = self.signify(kline, fk)       
-            if self._significance.is_significant(sig):
-                # S1, S4: Create a KLine with the significance for upgrading
-                cs = KLine(signature=sig, nodes=fk.nodes)
-                sv = self._significance.calculate(frame, kline, cs)
-                frame.upgrade(cs, sv)
-                self._emit("fast", fk, kline)
-                if is_top_level:
-                    self._emit("complete", cs, kline)
-                return
+        # Expand query into frame and rationalise
+        fk_list = list(frame.query(qk, 100)) if self._dev else frame.query(qk, 100)
+        for fk in fk_list:
+            sig = self._signify(frame, qk, fk)
+            if sig == self._significance.S1 or sig == self._significance.S4:
+                self._frame.add(qk)
+                self._emit("fast", qk, fk)
             else:
                 # rational (S2, S3): queue for cogitate background thread
                 with self._backlog_condition:
-                    self._backlog.append((kline, fk))
+                    self._backlog.append((frame, qk, fk, sig))
                     self._backlog_condition.notify()
-                self._emit("fast", fk, kline)
 
-        frame.add(kline)
-        if is_top_level:
-            self._emit("complete", kline, kline)
+        return False
 
     def _cogitate(self) -> None:
-        """Background thread that processes rational klines.
+        """Background thread that processes rational klines (S2, S3).
         """
         while not self._cogitate_stop.is_set():
             with self._backlog_condition:
@@ -266,14 +358,9 @@ class Model(KModel):
                     self._backlog_condition.wait(timeout=0.5)
                 if self._cogitate_stop.is_set() and not self._backlog:
                     return
-                qk, sk = self._backlog.pop(0)
+                frame, qk, sk, sig = self._backlog.pop()
 
-            sig = self.signify(qk, sk)
-            if self._significance.has_s1(sig):
-                cs = KLine(signature=sig, nodes=sk.nodes)
-                sv = self._significance.calculate(self._frame, qk, cs)
-                self._frame.upgrade(cs, sv)
-            self._emit("slow", sk, qk)
+            self.rationalise(qk, frame)
 
     def cogitate_join(self, timeout: float | None = None) -> None:
         """Stop the cogitate background thread and wait for it to finish."""
@@ -283,59 +370,7 @@ class Model(KModel):
         self._cogitate_thread.join(timeout=timeout)
 
 
-    def signify(self, k1: KLine, k2: KLine, s: KSig | None = None) -> KSig:
-        """Establish significance relationship between two KLines.
-
-        Calculates internal significance of k1:k2 relationship.
-        If s is provided and less significant than internal, returns internal.
-        Otherwise, creates links at the requested significance level.
-
-        Args:
-            k1: First KLine
-            k2: Second KLine
-            s: Optional requested significance level. If None, returns internal.
-
-        Returns:
-            Significance value (higher = more significant: S1 > S2 > S3 > S4)
-        """
-        # Calculate internal significance
-        internal = self._significance.calculate(self._frame, k1, k2)
-
-        # If no specific level requested, or internal is more significant, return internal
-        if s is None or internal >= s:
-            return internal
-
-        # Requested level is more significant than internal - create links at level s
-
-        # S1: Create countersigned links
-        if self._significance.has_s1(s):
-            # Add bidirectional links - k1 gets k2's signature as node, k2 gets k1's
-            link1 = KLine(k1.signature, [k2.signature])
-            link2 = KLine(k2.signature, [k1.signature])
-            self._frame.add(link1)
-            self._frame.add(link2)
-            return s
-
-        # S2: Check compound match (k2.nodes OR'd together equals k1.signature)
-        if self._significance.has_s2(s):
-            compound = 0
-            for node in k2.nodes:
-                compound |= node
-            if compound == k1.signature:
-                # S2 verified - create link
-                link = KLine(k1.signature, k2.nodes)
-                self._frame.add(link)
-                return s
-
-        # S3: Create connotated link
-        if self._significance.has_s3(s):
-            link = KLine(k1.signature, [k2.signature])
-            self._frame.add(link)
-            return s
-
-        # S4: No significance
-        return self._significance.S4
-
+     # === Significance calculation ===
 
     def frame_size(self) -> int:
         """Return the number of KLines in the frame.
@@ -442,7 +477,7 @@ class Model(KModel):
                 "dictionary": self._dictionary_path,
                 "nlp_detail": self._nlp_detail,
             },
-            "klines": [{"signature": kline.signature, "nodes": kline.nodes} for kline in self._frame],
+            "klines": [{"signature": kline.signature, "nodes": kline.as_node_list()} for kline in self._frame],
             "activity": {str(k): v for k, v in self._activity.items()},
         }
 

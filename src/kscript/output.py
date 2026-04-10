@@ -78,15 +78,15 @@ def write_bin(entries: list[CompiledEntry], path: Path) -> None:
             f.write(struct.pack("<Q", entry.signature))
 
             # Node type and value
-            if entry._nodes is None:
+            if entry.nodes is None:
                 f.write(struct.pack("<B", 0))
-            elif isinstance(entry._nodes, int):
+            elif isinstance(entry.nodes, int):
                 f.write(struct.pack("<B", 1))
-                f.write(struct.pack("<Q", entry._nodes))
+                f.write(struct.pack("<Q", entry.nodes))
             else:
                 f.write(struct.pack("<B", 2))
-                f.write(struct.pack("<I", len(entry._nodes)))
-                for node_id in entry._nodes:
+                f.write(struct.pack("<I", len(entry.nodes)))
+                for node_id in entry.nodes:
                     f.write(struct.pack("<Q", node_id))
 
 

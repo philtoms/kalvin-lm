@@ -373,8 +373,8 @@ class TestComplexExamples:
 class TestBackwardCompatibility:
     """Tests for backward compatibility with existing behavior."""
 
-    def test_identity(self) -> None:
-        """Test compiling identity script."""
+    def test_unsigned(self) -> None:
+        """Test compiling unsigned script."""
         entries = compile_test_source("A")
         assert len(entries) == 1
         sig, nodes = entries[0].decode(_tokenizer)
@@ -461,8 +461,8 @@ class TestDecompiler:
                     return e.to_dict()
         return None
 
-    def test_decompile_identity(self) -> None:
-        """Decompile identity: A -> A"""
+    def test_decompile_unsigned(self) -> None:
+        """Decompile unsigned: A -> A"""
         result = self._roundtrip("A")
         entry = self._find_entry(result, "A")
         assert entry is not None
@@ -656,7 +656,7 @@ class TestDecompilerEdgeCases:
     def test_single_char_no_mcs(self) -> None:
         """Single char signatures don't create MCS entries."""
         entries = compile_test_source("A")
-        # Should only have identity entry, no MCS
+        # Should only have unsigned entry, no MCS
         assert len(entries) == 1
         sig, nodes = entries[0].decode(_tokenizer)
         assert sig == "A"

@@ -70,11 +70,11 @@ class PrimaryConstruct:
 
     A primary construct with optional inline operator.
 
-    If op is None, this is an identity (bare signature).
+    If op is None, this is an unsigned kline (bare signature).
 
     Attributes:
         sig: The signature that owns this construct
-        op: The inline operator (COUNTERSIGN, CONNOTATE_FWD, UNDERSIGN, IDENTITY), or None
+        op: The inline operator (COUNTERSIGN, CONNOTATE_FWD, UNDERSIGN, UNSIGNED), or None
         node: The node on the right side of the operator, if any
     """
     sig: Signature

@@ -62,7 +62,7 @@ class Decompiler:
         - S1 (bit 63): undersign (=)
         - S2 (bits 55-62): canonize (=>)
         - S3 (bits 32-54): connotate (>)
-        - S4 (no bits): identity
+        - S4 (no bits): unsigned 
     """
 
     def __init__(self, tokenizer: ModTokenizer | None = None):
@@ -127,7 +127,7 @@ class Decompiler:
                 continue
 
             # Key check: MCS signature token == OR of all node tokens
-            base_token = self._sig.strip_significance(kline.signature)
+            base_token = self._sig.strip(kline.signature)
             nodes_or = 0
             for node in nodes:
                 nodes_or |= node
@@ -152,7 +152,7 @@ class Decompiler:
         if not nodes or len(nodes) < 2:
             return False
 
-        base_token = self._sig.strip_significance(kline.signature)
+        base_token = self._sig.strip(kline.signature)
         nodes_or = 0
         for node in nodes:
             nodes_or |= node
@@ -176,7 +176,7 @@ class Decompiler:
             )
 
         if not nodes:
-            # Identity
+            # Unsigned
             return DecompiledEntry(
                 level=level,
                 sig=sig_str,
@@ -195,7 +195,7 @@ class Decompiler:
 
     def _decode_sig(self, sig: int) -> str:
         """Decode signature to string, using MCS name if available."""
-        base_token = self._sig.strip_significance(sig)
+        base_token = self._sig.strip(sig)
 
         if base_token in self._mcs_names:
             return self._mcs_names[base_token]

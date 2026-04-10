@@ -17,7 +17,7 @@ Significance encoding (bitwise OR on signature position):
   UNDERSIGN     -> sig | S1
   CANONIZE_*    -> sig | S2
   CONNOTATE_*   -> sig | S3
-  IDENTITY      -> sig | S4 (S4=0, no bits)
+  UNSIGNED      -> sig | S4 (S4=0, no bits)
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ class CompiledEntry(KLine):
     """A compiled KLine entry with decode support.
 
     Nodes semantics:
-    - None: identity entry (sig exists with no children)
+    - None: unsigned entry (sig exists with no children)
     - int: single token ID link (countersign, undersign)
     - list[int]: nodes list (connotate, canonize)
     """
@@ -110,27 +110,27 @@ class CompiledEntry(KLine):
         sig_token = self.signature & token_mask
         sig = tokenizer.decode([sig_token], pack=None)
 
-        if self._nodes is None:
+        if self.nodes is None:
             return sig, None
-        elif isinstance(self._nodes, int):
+        elif isinstance(self.nodes, int):
             # Check if packed (signature) or unpacked (literal char)
-            if self._nodes & PACKED_BIT:
-                decoded = tokenizer.decode([self._nodes], pack=None)
+            if self.nodes & PACKED_BIT:
+                decoded = tokenizer.decode([self.nodes], pack=None)
                 return sig, decoded
             else:
                 # Literal char: decode as chr(n >> 1)
-                return sig, chr(self._nodes >> 1)
+                return sig, chr(self.nodes >> 1)
         else:
-            all_unpacked = all((n & PACKED_BIT) == 0 for n in self._nodes)
+            all_unpacked = all((n & PACKED_BIT) == 0 for n in self.nodes)
 
             if all_unpacked:
-                decoded = "".join(chr(n >> 1) for n in self._nodes)
+                decoded = "".join(chr(n >> 1) for n in self.nodes)
                 return sig, decoded
             else:
                 decoded_nodes: list[str] = []
                 literal_chars: list[int] = []
 
-                for n in self._nodes:
+                for n in self.nodes:
                     if (n & PACKED_BIT) == 0:
                         literal_chars.append(n)
                     else:
@@ -163,9 +163,9 @@ class Compiler:
             "CONNOTATE_FWD": self._sig.S3,
             "CONNOTATE_BWD": self._sig.S3,
             "UNDERSIGN": self._sig.S1,
-            "IDENTITY": self._sig.S4,
+            "UNSIGNED": self._sig.S4,
             "MCS": self._sig.S2,       # MCS uses S2 like canonize
-            "MCS_CHAR": self._sig.S4,  # Component chars are S4 (identity-like)
+            "MCS_CHAR": self._sig.S1,  # Component chars are S1 (identity-like)
         }
         self._seen: set[tuple[int, None | int | tuple[int, ...]]] = set()
 
@@ -207,8 +207,8 @@ class Compiler:
         """Emit MCS entries for multi-character signatures.
 
         Emits:
-          {char: None} for each char (first)
-          {sig: [char for char in sig]} (second)
+          Identity -> {char: char} for char in sig
+          MCS -> {sig: [char for char in sig]} (second)
 
         Returns True if MCS was emitted, False for single-char sigs.
         """
@@ -219,7 +219,7 @@ class Compiler:
 
         # Component identities: {char: None} for each (emitted first)
         for char in chars:
-            self._emit(char, None, "MCS_CHAR")
+            self._emit(char, char, "MCS_CHAR")
 
         # MCS canonization: {sig: [A, B, C, ...]} (emitted second)
         self._emit(sig, chars, "MCS")
@@ -235,8 +235,8 @@ class Compiler:
         self._emit_mcs(sig)
 
         if pc.op is None:
-            # Identity: bare signature
-            self._emit(sig, None, "IDENTITY")
+            # Unsigned: bare signature
+            self._emit(sig, None, "UNSIGNED")
             return
 
         node = pc.node
@@ -252,7 +252,10 @@ class Compiler:
 
         elif pc.op == TokenType.UNDERSIGN:
             # {sig: node}
-            self._emit(sig, node_str, "UNDERSIGN")
+            if sig == node_str:
+                self._emit(sig, None, "IDENTITY")
+            else:
+                self._emit(sig, node_str, "UNDERSIGN")
 
         elif pc.op == TokenType.CONNOTATE_FWD:
             # {sig: [node]}
@@ -262,13 +265,16 @@ class Compiler:
         self,
         left_primaries: list[PrimaryConstruct],
         chain_op: TokenType,
-        right: Construct
+        right: Construct | None
     ) -> None:
         """Process a chain construct (=>, <=, <)."""
         # Process all left primaries (emits MCS + inline ops)
         for pc in left_primaries:
             if pc.op is not None:
                 self._emit_primary(pc)
+
+        if right is None:
+            return
 
         # Get right primaries (flatten if right is also a chain)
         right_primaries = self._flatten_to_primaries(right)
@@ -322,7 +328,7 @@ class Compiler:
             return self._node_to_string(pc.node)
         return pc.sig.id
 
-    def _node_to_string(self, node: Node) -> str:
+    def _node_to_string(self, node: Node | None) -> str:
         """Convert a Node to its string representation."""
         if isinstance(node, Signature):
             return node.id
@@ -330,7 +336,7 @@ class Compiler:
             return node.id
         return str(node)
 
-    def _is_signature(self, node: Node) -> bool:
+    def _is_signature(self, node: Node| None) -> bool:
         """Check if a node is a signature (uppercase alpha)."""
         if isinstance(node, Signature):
             return True

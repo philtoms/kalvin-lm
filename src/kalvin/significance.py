@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 
-from kalvin.abstract import KLine, KFrame, KSignificance, KSig, KNone, KSignificance
+from kalvin.abstract import KSignificance, KSig, KNodes, KSignificance
 
 
 class IntSignificance(KSignificance):
@@ -134,115 +134,6 @@ class IntSignificance(KSignificance):
         """Extract full S4 value."""
         return sig
 
-    # === Significance calculation ===
-
-    def is_significant(self, sig: KSig) -> bool:
-        """Is S1 or S4 significant"""
-        return self.has_s1(sig) or self.has_s4(sig)
-
-    def is_rational(self, sig: KSig) -> bool:
-        """Is S2 or S3 significant"""
-        return not self.is_significant(sig)
-
-    def calculate(self, frame: "KFrame", query: "KLine", target: "KLine") -> KSig:
-        """Calculate significance between query and target KLines.
-
-        Significance is comparable as integers - higher = more significant.
-        S1 > S2 > S3 > S4.
-
-        Args:
-            frame: The Frame containing the KLines (for descendant lookup)
-            query: The query KLine
-            target: The target KLine to compare against
-
-        Returns:
-            Significance value
-        """
-        # Get nodes as lists for comparison
-        query_nodes = query.as_node_list()
-        target_nodes = target.as_node_list()
-
-        # Handle empty node lists
-        if not query_nodes or not target_nodes:
-            return self.S4
-
-        min_len = min(len(query_nodes), len(target_nodes))
-
-        # Count S1 matches: positional equality (up to min length)
-        s1_match_positions = set(
-            i for i in range(min_len) if query_nodes[i] == target_nodes[i]
-        )
-        s1_matches = len(s1_match_positions)
-
-        # S1: All prefix nodes match
-        if s1_matches == min_len:
-            return self.S1  # All matched
-
-        # S1: countersigned
-        for kline in frame.find_signed_klines(target.signature):
-            if kline.signature == query.signature:
-                return self.S1  # All matched
-
-        # S2: Partial match (some positional matches exist)
-        if s1_matches > 0:
-            s1_pct = (s1_matches * 100) // min_len
-
-            # S2 matches: nodes at different positions
-            target_set = set(target_nodes)
-            s2_matches = 0
-            for i, node in enumerate(query_nodes):
-                if i in s1_match_positions:
-                    continue  # Already counted as S1
-                if node in target_set:
-                    s2_matches += 1
-
-            s2_pct = (s2_matches * 100) // len(query_nodes) if query_nodes else 0
-            return self.build_s2(s1_pct, s2_pct)
-
-        # S3: No positional matches, check unordered and generational
-        target_set = set(target_nodes)
-        query_set = set(query_nodes)
-
-        # S3-Unordered S1: query nodes that exist in target (any position)
-        unordered_s1_matches = query_set & target_set
-        s3_s1_pct = (
-            (len(unordered_s1_matches) * 100) // len(query_set) if query_set else 0
-        )
-
-        # S3-Unordered S2: query nodes whose children match target nodes
-        s3_s2_matches = 0
-        for node in query_nodes:
-            if node in target_set:
-                continue  # Already S1 match
-            # Check if node's children intersect with target
-            node_kline = frame.find_kline(node)
-            if node_kline is not KNone:
-                node_children = set(node_kline.as_node_list())
-                if node_children & target_set:
-                    s3_s2_matches += 1
-
-        s3_s2_pct = (
-            (s3_s2_matches * 100) // len(query_nodes) if query_nodes else 0
-        )
-
-        # S3-Generational: query nodes whose descendants (at any depth) match target nodes
-        gen_matches = 0
-        for node in query_nodes:
-            if node in target_set:
-                continue  # Already S1 match
-            # Collect all descendants of this node
-            descendants = frame.get_all_descendants(node)
-            if descendants & target_set:
-                gen_matches += 1
-
-        gen_pct = (gen_matches * 100) // len(query_nodes) if query_nodes else 0
-
-        if s3_s1_pct > 0 or s3_s2_pct > 0 or gen_pct > 0:
-            return self.build_s3(s3_s1_pct, s3_s2_pct, gen_pct)
-
-        # S4: No match
-        return self.S4
-
     # === helper functions ===
 
     def get_level(self, sig: int) -> str:
@@ -259,10 +150,46 @@ class IntSignificance(KSignificance):
         else:
             return "S4"             # all significance bits clear
 
-    def strip_significance(self, sig: int) -> int:
+    def strip(self, sig: KSig) -> KSig:
         """Strip significance bits, returning only token bits."""
         return sig & self._TOKEN_MASK
 
+    def equal(self, sig1: KSig | KNodes, sig2: KSig| KNodes) -> bool:
+        """test if two signatures are equal
+
+        Args:
+            sig1: first signature
+            sig2: second signature
+
+        Returns:
+            True if equal, False otherwise
+        """
+        if not isinstance(sig1, KSig) or not isinstance(sig2, KSig):
+            return False
+        
+        return self.strip(sig1) == self.strip(sig2)
+
+    def is_signed(self, sig) -> bool:
+        """Test signature is KSig
+
+        Args:
+            sig: value to test
+
+        Returns:
+            True if KSig, False otherwise
+        """
+        return isinstance(sig, KSig)
+
+    def is_unsigned(self, sig) -> bool:
+        """Test signature is unsigned
+
+        Args:
+            sig: value to test
+
+        Returns:
+            True if unsigned, False otherwise
+        """
+        return sig == None
 
 class Int64Significance(IntSignificance):
     """64-bit integer-based significance implementation.
@@ -336,7 +263,7 @@ class Int32Significance(IntSignificance):
     - Bit 31: S1 indicator (countersign)
     - Bits 23-30: S2 range (8 bits, canonize)
     - Bits 0-22: S3 range (23 bits, connotate)
-    - All clear: S4 (identity)
+    - All clear: S4 (unsigned)
 
     Stored in bits 32-63 of 64-bit signature (shifted left 32).
     Token space remains in bits 0-31 (unchanged).
@@ -372,7 +299,7 @@ class Int32Significance(IntSignificance):
 
     # === build operations ===
 
-    def build_s1(self, s1_pct: int, s2_pct: int) -> KSig:
+    def build_s1(self, percentage: int = 100) -> KSig:
         """Build S1 significance (no percentage encoding)."""
         return self._S1
 

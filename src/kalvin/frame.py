@@ -22,7 +22,7 @@ class Frame(KFrame):
         self.parent = parent
         """Initialize the frame with optional existing KLines."""
         self._klines: list[KLine] = []  # Flat list for O(1) iteration
-        self._by_key: dict[KSig, KNodes] = {}  # signature -> list of indices
+        self._by_key: dict[KSig, list[int]] = {}  # signature -> list of indices
         self._dedup: set[tuple[KSig, tuple[KNode, ...]]] = set()  # For O(1) duplicate check
         if klines:
             for kline in klines:
@@ -31,9 +31,13 @@ class Frame(KFrame):
     def exists(self, kline: KLine):
         """Check if a kline already exists in the frame."""
         if kline.signature in self._by_key:
-            key_nodes = (kline.signature, tuple(kline.nodes))
+            key_nodes = (kline.signature, tuple(kline.as_node_list()))
             if key_nodes in self._dedup:
                 return True
+        
+        if self.parent:
+            return self.parent.exists(kline)
+        
         return False
 
     def _add_kline_internal(self, kline: KLine) -> None:
@@ -53,7 +57,7 @@ class Frame(KFrame):
         Returns:
             True if added, False if rejected (duplicate)
         """
-        key_nodes = (kline.signature, tuple(kline.nodes))
+        key_nodes = (kline.signature, tuple(kline.as_node_list()))
         if key_nodes in self._dedup:
             return False  # O(1) duplicate check
         self._dedup.add(key_nodes)
@@ -116,7 +120,7 @@ class Frame(KFrame):
 
         return [self._klines[idx] for idx in self._by_key[signature]]
 
-    def query(self, query: KLine) -> Iterator[KLine]:
+    def query(self, query: KLine, depth: int = 1) -> Iterator[KLine]:
         """Query KLines by ANDing significance with a query.
 
         Iteration follows reverse insertion order (newest first).
@@ -124,6 +128,8 @@ class Frame(KFrame):
 
         Args:
             query: The query value to match (AND operation on signature)
+            depth: Maximum recursion depth for expanding child nodes
+
 
         Returns:
             Generator that yields matching KLines.
@@ -136,6 +142,9 @@ class Frame(KFrame):
                 kline = klines[i]
                 if kline.signifies(query.signature):
                     yield kline
+                    for child in self.expand(kline, depth):
+                        yield child
+
             if self.parent:
                 for kline in self.parent.query(query):
                     yield kline
@@ -145,7 +154,7 @@ class Frame(KFrame):
     def expand(
         self,
         kline: KLine,
-        depth: int = 1,
+        depth: int = 2,
     ) -> Iterator[KLine]:
         """Expand a KLine and its descendants up to a given depth.
 
@@ -185,19 +194,22 @@ class Frame(KFrame):
                 return
             visited.add(kl.signature)
 
-            yield kl
-
             if current_depth >= depth:
                 return
 
             for child in get_node_klines(kl.nodes):
+                yield child
                 yield from expand_inner(child, current_depth + 1)
+
+            if self.parent:
+                for kline in self.parent.expand(kl):
+                    yield kline
 
         return expand_inner(kline, 1)
 
     def duplicate(self) -> "Frame":
         """Create a duplicate of this frame."""
-        klines = [KLine(signature=k.signature, nodes=k.nodes.copy(), dbg_text=k.dbg_text) for k in self._klines]
+        klines = [KLine(signature=k.signature, nodes=k.nodes.copy() if isinstance(k.nodes, list) else k.nodes, dbg_text=k.dbg_text) for k in self._klines]
         return Frame(klines)
 
     def get_all_descendants(self, node: KNode, visited: set[KSig] | None = None) -> set[KSig]:
@@ -223,7 +235,7 @@ class Frame(KFrame):
         if kline is KNone:
             return descendants
 
-        for child in kline.nodes:
+        for child in kline.as_node_list():
             descendants.add(child)
             # Recursively get child's descendants
             child_descendants = self.get_all_descendants(child, visited.copy())
