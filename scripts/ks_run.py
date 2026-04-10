@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Run a KScript file and save the resulting model.
+"""Run a KScript file and save the resulting agent.
 
 Usage:
-    python scripts/ks_run.py script.ks [--model path/to/model.json]
+    python scripts/ks_run.py script.ks [--agent path/to/model.json]
 
 Examples:
     python scripts/ks_run.py my-script.ks
-    python scripts/ks_run.py my-script.ks --model existing-model.json
+    python scripts/ks_run.py my-script.ks --agent existing-model.json
 """
 
 import argparse
@@ -16,31 +16,31 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from kalvin.model import Model
+from kalvin.agent import Agent
 from kscript import interpret_script, Mod32Tokenizer as mod_tokenizer
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run a KScript file and (by default) save the rationalised model",
+        description="Run a KScript file and (by default) save the rationalised agent",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   %(prog)s my-script.ks                    # Creates my-script.bin
-  %(prog)s my-script.ks --model model.bin  # Loads, updates, and saves model.bin
+  %(prog)s my-script.ks --agent model.bin  # Loads, updates, and saves model.bin
         """,
     )
     parser.add_argument("script", help="Path to .ks script file")
     parser.add_argument(
-        "--model",
+        "--agent",
         "-m",
-        help="Path to existing model file (.bin or .json). "
-        "If not provided, creates a new model named after the script.",
+        help="Path to existing agent file (.bin or .json). "
+        "If not provided, creates a new agent named after the script.",
     )
     parser.add_argument(
         "--output",
         "-o",
-        help="Output path for the model. Defaults to model path or script name.",
+        help="Output path for the agent. Defaults to agent path or script name.",
     )
     parser.add_argument(
         "--format",
@@ -50,7 +50,7 @@ Examples:
         help="Output format (default: json)",
     )
     parser.add_argument(
-        "--save", "-s", action="store_true", help="Save rationalised model."
+        "--save", "-s", action="store_true", help="Save rationalised agent."
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Print verbose output"
@@ -69,33 +69,33 @@ Examples:
         print(f"Loaded script: {script_path}")
         print(f"Script length: {len(source)} bytes")
 
-    # Load or create Model agent
-    if args.model:
-        model_path = Path(args.model)
-        if not model_path.exists():
-            print(f"Error: Model file not found: {model_path}", file=sys.stderr)
+    # Load or create Agent
+    if args.agent:
+        agent_path = Path(args.agent)
+        if not agent_path.exists():
+            print(f"Error: Agent file not found: {agent_path}", file=sys.stderr)
             sys.exit(1)
 
         if args.verbose:
-            print(f"Loading model: {model_path}")
+            print(f"Loading agent: {agent_path}")
 
-        model = Model.load(model_path)
+        agent = Agent.load(agent_path)
     else:
-        # Create new Model instance
+        # Create new Agent instance
         if args.verbose:
-            print("Creating new Model agent")
+            print("Creating new Agent")
 
         tokenizer = mod_tokenizer()
-        model = Model(tokenizer=tokenizer)
+        agent = Agent(tokenizer=tokenizer)
 
     # Interpret the script
     if args.verbose:
         print("Interpreting script...")
 
-    result = interpret_script(source, agent=model)
+    result = interpret_script(source, agent=agent)
 
     if args.verbose:
-        print(f"KLines in model: {len(result.model)}")
+        print(f"KLines in agent: {len(result.agent)}")
         print(f"Symbol table entries: {len(result.symbol_table)}")
         if result.load_paths:
             print(f"Load paths: {result.load_paths}")
@@ -106,22 +106,22 @@ Examples:
     if args.save:
         if args.output:
             output_path = Path(args.output)
-        elif args.model:
-            output_path = Path(args.model)
+        elif args.agent:
+            output_path = Path(args.agent)
         elif result.save_path:
             output_path = Path(result.save_path)
         else:
             # Use script name with format extension
             output_path = script_path.with_suffix(f".{args.format}")
 
-        # Save the model (KLines already added via Model agent)
+        # Save the agent (KLines already added via Agent)
         if args.verbose:
-            print(f"Saving model to: {output_path}")
+            print(f"Saving agent: {output_path}")
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        model.save(output_path, format=args.format)
+        agent.save(output_path, format=args.format)
 
-        print(f"Model saved: {output_path} ({len(result.model)} KLines)")
+        print(f"Agent saved: {output_path} ({len(result.agent)} KLines)")
 
 
 if __name__ == "__main__":

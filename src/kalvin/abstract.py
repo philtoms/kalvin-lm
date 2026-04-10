@@ -1,4 +1,4 @@
-"""KModel - Base class for agents that work with KScript and knowledge graphs."""
+"""KAgent - Base class for agents that work with KScript and knowledge graphs."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Iterator, Literal
 from kalvin.kline import KLine, KNode, KNodes, KSig, KNone
 
 # Re-export for backwards compatibility
-__all__ = ["KLine", "KNode", "KNodes", "KSig", "KNone", "KSignificance", "KTokenizer", "KFrame", "KModel"]
+__all__ = ["KLine", "KNode", "KNodes", "KSig", "KNone", "KSignificance", "KTokenizer", "KModel", "KAgent"]
 
 
 # === Abstract Significance ===
@@ -234,12 +234,12 @@ class KTokenizer(ABC):
         ...
 
 
-# === Abstract Frame ===
+# === Abstract Model ===
 
-class KFrame(ABC):
-    """Abstract base class for knowledge graph frames.
+class KModel(ABC):
+    """Abstract base class for knowledge graph models.
 
-    A KFrame provides the essential interface for storing and querying KLines.
+    A KModel provides the essential interface for storing and querying KLines.
     """
 
     @abstractmethod
@@ -324,11 +324,11 @@ class KFrame(ABC):
         ...
 
     @abstractmethod
-    def duplicate(self) -> "KFrame":
-        """Create a duplicate of this frame.
+    def duplicate(self) -> "KModel":
+        """Create a duplicate of this model.
 
         Returns:
-            A new KFrame with copied KLines
+            A new KModel with copied KLines
         """
         ...
 
@@ -361,14 +361,14 @@ class KFrame(ABC):
         """Return internal kline graph"""
         ...
 
-# === KModel ===
+# === KAgent ===
 
 
-class KModel(ABC):
+class KAgent(ABC):
     """
     Abstract base class for agents that can work with KScript.
 
-    A KModel provides the essential interface needed by the KScript compiler:
+    A KAgent provides the essential interface needed by the KScript compiler:
     - A tokenizer for encoding text to tokens
     - A frame for storing and retrieving KLines
     - A significance instance for S1-S4 operations
@@ -380,8 +380,8 @@ class KModel(ABC):
 
     @property
     @abstractmethod
-    def frame(self) -> KFrame:
-        """Get the knowledge graph frame."""
+    def model(self) -> KModel:
+        """Get the knowledge graph model (base frame)."""
         ...
 
     @property
@@ -399,7 +399,7 @@ class KModel(ABC):
     # === Core operations ===
 
     @abstractmethod
-    def rationalise(self, kline: KLine, frame: KFrame | None = None) -> bool:
+    def rationalise(self, kline: KLine, frame: KModel | None = None) -> bool:
         """Rationalise a KLine.
 
         Args:
@@ -444,7 +444,7 @@ class KModel(ABC):
         path: str | Path,
         format: Literal["bin", "json"] = "bin",
     ) -> None:
-        """Save model to file.
+        """Save agent to file.
 
         Args:
             path: File path to save to
@@ -458,14 +458,14 @@ class KModel(ABC):
         cls,
         path: str | Path,
         format: Literal["bin", "json"] | None = None,
-    ) -> "KModel":
-        """Load model from file.
+    ) -> "KAgent":
+        """Load agent from file.
 
         Args:
             path: File path to load from
             format: 'bin', 'json', or None (auto-detect from extension)
 
         Returns:
-            Loaded KModel instance
+            Loaded KAgent instance
         """
         ...

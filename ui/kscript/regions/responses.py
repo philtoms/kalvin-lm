@@ -1,4 +1,4 @@
-"""Responses region for displaying Model response KLines."""
+"""Responses region for displaying Agent response KLines."""
 
 import time
 
@@ -72,7 +72,7 @@ class ResponseItem(ListItem):
 
 
 class ResponsesRegion(Vertical):
-    """Scrollable list of Model response KLines with sig level filters."""
+    """Scrollable list of Agent response KLines with sig level filters."""
 
     DEFAULT_CSS = """
     ResponsesRegion {

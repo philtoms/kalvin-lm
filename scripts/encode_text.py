@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Encode a text file into Model embeddings.
+"""Encode a text file into Agent embeddings.
 
 This script loads a text file, splits it into sentences, encodes them
-using Model's batch encoding, and reports model statistics.
+using Agent's batch encoding, and reports agent statistics.
 
-Can optionally load and extend an existing model.
+Can optionally load and extend an existing agent.
 """
 
 import argparse
@@ -20,7 +20,7 @@ import json
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from kalvin import Model
+from kalvin import Agent
 
 
 # Global state for interrupt handling
@@ -33,7 +33,7 @@ def signal_handler(signum, frame):
     global _signalled
     if not _interrupted:
         _interrupted = True
-        print("\n\nInterrupt received, saving model...")
+        print("\n\nInterrupt received, saving agent...")
     else:
         _interrupted = False
         _signalled = True
@@ -99,38 +99,38 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     parser = argparse.ArgumentParser(
-        description="Encode text files into Model embeddings"
+        description="Encode text files into Agent embeddings"
     )
     parser.add_argument("-i", "--input_file", default="data/tokenizer/simplestories-1.json", help="Path to the text file to encode")
     parser.add_argument(
-        "--model",
+        "--agent",
         default="data/kalvin.bin",
-        help="Path to load/save the model (default: data/kalvin.bin)",
+        help="Path to load/save the agent (default: data/kalvin.bin)",
     )
 
     parser.add_argument(
         "-f", "--format",
         choices=["binary", "json"],
         default="binary",
-        help="Model format (default: binary)",
+        help="Agent format (default: binary)",
     )
     args = parser.parse_args()
-    model = args.model
+    agent_path = args.agent
 
-    # Load or initialize Model
-    model_path = Path(model)
-    model_size = 0
-    if model_path and model_path.exists():
-        print(f"\nLoading model from: {model_path}")
-        model = Model.load(model_path, format=args.format)
-        model_size = model.model_size()
-        print(f"Loaded model size: {model_size:,} KLines")
+    # Load or initialize Agent
+    agent_path = Path(agent_path)
+    agent_size = 0
+    if agent_path and agent_path.exists():
+        print(f"\nLoading agent from: {agent_path}")
+        agent = Agent.load(agent_path, format=args.format)
+        agent_size = agent.frame_size()
+        print(f"Loaded agent size: {agent_size:,} KLines")
     else:
-        print("\nInitializing new model...")
-        if not model_path:
-            model_path = "data/kalvin.bin"
-        model = Model()
-        print(f"Initial model size: {model.model_size():,} KLines")
+        print("\nInitializing new agent...")
+        if not agent_path:
+            agent_path = "data/kalvin.bin"
+        agent = Agent()
+        print(f"Initial agent size: {agent.frame_size():,} KLines")
 
 
     for text in stream_text(args.input_file):
@@ -144,31 +144,31 @@ def main():
         for sentence in tqdm(sentences, desc=f"Encoding {len(sentences):,} sentences..."):
             if _interrupted:
                 break
-            model.encode(sentence)
+            agent.encode(sentence)
 
-    # Report model size
-    final_size = model.model_size()
-    print(f"\nFinal model size: {final_size:,} KLines")
-    if final_size > model_size:
-        print(f"Extended by: {final_size - model_size:,} KLines")
+    # Report agent size
+    final_size = agent.frame_size()
+    print(f"\nFinal agent size: {final_size:,} KLines")
+    if final_size > agent_size:
+        print(f"Extended by: {final_size - agent_size:,} KLines")
 
     # Unrecognised tokens
-    print(f"\nUnrecognised tokens: {len(model.unrecognised_tokens)}")
-    for token in model.unrecognised_tokens:
-        print(f"{token}: {model.tokenizer.decode([token])}")
+    print(f"\nUnrecognised tokens: {len(agent.unrecognised_tokens)}")
+    for token in agent.unrecognised_tokens:
+        print(f"{token}: {agent.tokenizer.decode([token])}")
 
-    model = model.prune()
+    agent = agent.prune()
 
-    # Report model size
-    final_size = model.model_size()
-    print(f"\nFinal model size after pruning: {final_size:,} KLines")
-    if final_size > model_size:
-        print(f"Extended by: {final_size - model_size:,} KLines")
+    # Report agent size
+    final_size = agent.frame_size()
+    print(f"\nFinal agent size after pruning: {final_size:,} KLines")
+    if final_size > agent_size:
+        print(f"Extended by: {final_size - agent_size:,} KLines")
 
-    # Save model
-    print(f"\nSaving model to: {model_path}")
-    model.save(model_path, format=args.format)
-    actual_size = Path(model_path).stat().st_size
+    # Save agent
+    print(f"\nSaving agent to: {agent_path}")
+    agent.save(agent_path, format=args.format)
+    actual_size = Path(agent_path).stat().st_size
     print(f"Saved: {actual_size / 1024:.1f} KB ({actual_size / 1024 / 1024:.2f} MB)")
 
 if __name__ == "__main__":

@@ -58,11 +58,11 @@ class ToolbarRegion(Horizontal):
         pass
 
     class SaveState(Message):
-        """Request to save Model model state."""
+        """Request to save Agent state."""
         pass
 
     class LoadState(Message):
-        """Request to load Model model state."""
+        """Request to load Agent state."""
         pass
 
     class Run(Message):

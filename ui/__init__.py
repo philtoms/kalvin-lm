@@ -1,1 +1,1 @@
-"""UI package for Model TUI applications."""
+"""UI package for Agent TUI applications."""

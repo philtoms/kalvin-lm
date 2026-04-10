@@ -1,4 +1,4 @@
-"""KScript TUI Package - Interactive development environment for KScript and Model."""
+"""KScript TUI Package - Interactive development environment for KScript and Agent."""
 
 from ui.kscript.app import KScriptApp, main
 

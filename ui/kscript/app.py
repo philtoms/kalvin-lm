@@ -1,4 +1,4 @@
-"""KScript TUI Application - Interactive development environment for KScript and Model."""
+"""KScript TUI Application - Interactive development environment for KScript and Agent."""
 
 import argparse
 import asyncio
@@ -13,7 +13,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal
 from textual.widgets import Footer, Header
 
-from kalvin import Model
+from kalvin import Agent
 from kalvin.abstract import KLine
 from kscript import KScript, CompiledEntry
 from kscript.decompiler import Decompiler
@@ -27,7 +27,7 @@ DEFAULT_SCRIPTS_DIR = Path("data/scripts")
 
 # State file paths for dev mode (harness-driven save/restore)
 _STATE_DIR = Path(__file__).parent.parent.parent  # project root
-MODEL_STATE_FILE = _STATE_DIR / ".tmp.bin"
+AGENT_STATE_FILE = _STATE_DIR / ".tmp.bin"
 UI_STATE_FILE = _STATE_DIR / ".tmp.json"
 
 
@@ -65,7 +65,7 @@ class KScriptApp(App):
     def __init__(self, dev_mode: bool = True, auto_compile_interval: float = 1.0) -> None:
         super().__init__()
         self._dev_mode = dev_mode
-        self._model: Optional[Model] = None
+        self._agent: Optional[Agent] = None
         self._decompiler: Decompiler = Decompiler()
         self._execution_state: ExecutionState = ExecutionState.IDLE
         self._pending_entries: list[CompiledEntry] = []
@@ -77,7 +77,7 @@ class KScriptApp(App):
         self._rationalise_buffer: list[KLine] = []
 
     def on_mount(self) -> None:
-        """Initialize Model instance on app start."""
+        """Initialize Agent instance on app start."""
         DEFAULT_SCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
         Path("data").mkdir(parents=True, exist_ok=True)
 
@@ -85,12 +85,12 @@ class KScriptApp(App):
             self._restore_state()
             signal.signal(signal.SIGTERM, self._on_sigterm)
         else:
-            self._model = Model()
+            self._agent = Agent()
             self._setup_events()
 
     def _setup_events(self) -> None:
-        """Subscribe to Model rationalisation events."""
-        if not self._model:
+        """Subscribe to Agent rationalisation events."""
+        if not self._agent:
             return
 
         def on_event(event):
@@ -103,7 +103,7 @@ class KScriptApp(App):
             else:
                 self._rationalise_buffer.append(event.kline)
 
-        self._model.events.subscribe(on_event)
+        self._agent.events.subscribe(on_event)
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -169,9 +169,9 @@ class KScriptApp(App):
         sys.exit(0)
 
     def _save_state(self) -> None:
-        """Save Model and UI state to temp files."""
-        if self._model:
-            self._model.save(MODEL_STATE_FILE)
+        """Save Agent and UI state to temp files."""
+        if self._agent:
+            self._agent.save(AGENT_STATE_FILE)
 
         editor = self.query_one(EditorRegion)
         ui_state = {
@@ -184,17 +184,17 @@ class KScriptApp(App):
             json.dump(ui_state, f, indent=2)
 
     def _restore_state(self) -> None:
-        """Restore Model and UI state from temp files."""
-        # Restore Model
-        if MODEL_STATE_FILE.exists():
+        """Restore Agent and UI state from temp files."""
+        # Restore Agent
+        if AGENT_STATE_FILE.exists():
             try:
-                self._model = Model.load(MODEL_STATE_FILE)
-                self.log("Restored Model state")
+                self._agent = Agent.load(AGENT_STATE_FILE)
+                self.log("Restored Agent state")
             except Exception as e:
-                self.log(f"Failed to load model state: {e}")
-                self._model = Model()
+                self.log("Failed to load agent state: {e}")
+                self._agent = Agent()
         else:
-            self._model = Model()
+            self._agent = Agent()
 
         self._setup_events()
 
@@ -217,7 +217,7 @@ class KScriptApp(App):
                 self.log(f"Failed to load UI state: {e}")
 
         # Clean up temp files
-        MODEL_STATE_FILE.unlink(missing_ok=True)
+        AGENT_STATE_FILE.unlink(missing_ok=True)
         UI_STATE_FILE.unlink(missing_ok=True)
 
     # === Script Compilation ===
@@ -235,14 +235,14 @@ class KScriptApp(App):
             return None
 
         try:
-            model = KScript(script, dev=self._dev_mode)
-            return model.entries
+            agent = KScript(script, dev=self._dev_mode)
+            return agent.entries
         except Exception as e:
             self.log(f"Compilation error: {e}")
             return None
 
     def _entry_to_kline(self, entry: CompiledEntry) -> KLine:
-        """Convert a CompiledEntry to a KLine for Model.
+        """Convert a CompiledEntry to a KLine for Agent.
 
         Since CompiledEntry extends KLine, this is a simple cast.
 
@@ -298,10 +298,10 @@ class KScriptApp(App):
         editor.set_script(content)
 
     def action_save_state(self) -> None:
-        """Open dialog to save Model state."""
+        """Open dialog to save Agent state."""
         self.push_screen(
             SaveStateDialog(
-                title="Save Model State",
+                title="Save Agent State",
                 initial_path=str(self._last_state_dir),
             ),
             self._handle_save_state,
@@ -309,21 +309,21 @@ class KScriptApp(App):
 
     def _handle_save_state(self, filepath: Optional[str]) -> None:
         """Handle result from SaveStateDialog."""
-        if not filepath or not self._model:
+        if not filepath or not self._agent:
             return
 
         path = Path(filepath)
         self._last_state_dir = path.parent
 
-        # Save Model
-        self._model.save(path)
-        self.log(f"Saved Model state to {path}")
+        # Save Agent
+        self._agent.save(path)
+        self.log(f"Saved Agent state to {path}")
 
     def action_load_state(self) -> None:
-        """Open dialog to load Model state."""
+        """Open dialog to load Agent state."""
         self.push_screen(
             LoadStateDialog(
-                title="Load Model State",
+                title="Load Agent State",
                 initial_path=str(self._last_state_dir),
             ),
             self._handle_load_state,
@@ -340,10 +340,10 @@ class KScriptApp(App):
 
         self._last_state_dir = path.parent
 
-        # Load Model
-        self._model = Model.load(path)
+        # Load Agent
+        self._agent = Agent.load(path)
         self._setup_events()
-        self.log(f"Loaded Model state from {path}")
+        self.log(f"Loaded Agent state from {path}")
 
     def action_run_script(self) -> None:
         """Toggle auto-compile loop on/off."""
@@ -381,8 +381,8 @@ class KScriptApp(App):
             if self._cancelled:
                 return
             kline = self._entry_to_kline(entry)
-            if self._model:
-                self._model.rationalise(kline)
+            if self._agent:
+                self._agent.rationalise(kline)
             await asyncio.sleep(0)
 
     def action_step_script(self) -> None:
@@ -403,8 +403,8 @@ class KScriptApp(App):
             entry = self._pending_entries[self._current_entry_index]
             kline = self._entry_to_kline(entry)
 
-            if self._model:
-                self._model.rationalise(kline)
+            if self._agent:
+                self._agent.rationalise(kline)
 
             self._current_entry_index += 1
 
