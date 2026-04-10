@@ -228,7 +228,7 @@ class Lexer:
         return Token(TokenType.LITERAL, value, start_line, start_col)
 
     def _read_comment(self) -> Token:
-        """Read a comment (...) - greedy match handling nested parens."""
+        """Read a comment (...) - multi-line, handles nested parens."""
         start_line, start_col = self.line, self.column
         value = self._advance()  # opening (
         depth = 1  # Track nesting depth
@@ -240,8 +240,11 @@ class Lexer:
             elif ch == ")":
                 depth -= 1
             elif ch == "\n":
-                # Unterminated comment - stop at newline
-                break
+                self._advance()
+                self.line += 1
+                self.column = 1
+                value += "\n"
+                continue
             value += self._advance()
 
         return Token(TokenType.COMMENT, value, start_line, start_col)

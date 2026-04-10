@@ -11,15 +11,16 @@ from kalvin.kline import KLine
 class RationaliseEvent:
     """Event emitted during rationalisation processing."""
 
-    __slots__ = ("kind", "kline", "query")
+    __slots__ = ("kind", "query", "value", "significance")
 
-    def __init__(self, kind: str, kline: KLine, query: KLine):
+    def __init__(self, kind: str, query: KLine, value: KLine, significance: int):
         self.kind = kind
-        self.kline = kline
         self.query = query
+        self.value = value
+        self.significance = significance
 
     def __repr__(self) -> str:
-        return f"RationaliseEvent({self.kind!r}, {self.kline!r})"
+        return f"RationaliseEvent({self.kind!r}, {self.query!r}, {self.value!r}, {self.significance!r})"
 
 
 class EventBus:

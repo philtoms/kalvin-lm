@@ -81,9 +81,9 @@ class Agent(KAgent):
                 self._nlp_type = json.load(f)
                 Agent.__nlp_type = self._nlp_type
 
-    def _emit(self, kind: str, kline: KLine, query: KLine) -> None:
+    def _emit(self, kind: str, query: KLine, value: KLine, significance: int) -> None:
         """Emit a rationalisation event."""
-        self._event_bus.publish(RationaliseEvent(kind, kline, query))
+        self._event_bus.publish(RationaliseEvent(kind, query, value,significance))
 
     def _get_frame(self) -> KModel:
         """Return the current frame context if it is in bounds, otherwise create a new one.
@@ -128,8 +128,14 @@ class Agent(KAgent):
         )
         s1_matches = len(s1_match_positions)
 
+        # S1: signed nodes match
+        if query.is_signed() and target.is_signed():
+            if self._sig.equal(query.nodes, target.nodes):
+                return self._sig.S1
+            
         # S2 -> S1: All nodes match
-        if s1_matches == min_len and len(query_nodes) == len(target_nodes):
+        if query.is_canonized() and target.is_canonized():                
+            if s1_matches == min_len and len(query_nodes) == len(target_nodes):
                 return self._sig.S1
 
         # S2: Partial match (some positional matches exist)
@@ -321,30 +327,30 @@ class Agent(KAgent):
 
         # Test early to prevent infinite recursion
         if frame.exists(qk):
-            if is_top_level:
-                self._emit("complete", qk, qk)
+            # self._emit("ground", qk, qk, self._sig.S1)
             return True
 
         # Identity (S1)
         if self._sig.equal(qk.signature, qk.nodes):
             frame.add(qk)
-            self._emit("fast", qk, qk)
+            self._emit("frame", qk, qk, self._sig.S1)
             return True
 
         # Unsigned (S4)
         if self._sig.is_unsigned(qk.nodes):
             frame.add(qk)
-            self._emit("fast", qk, qk)
+            self._emit("frame", qk, qk, self._sig.S4)
             return True
 
         # Expand query into frame and rationalise
         fk_list = list(frame.query(qk, 100)) if self._dev else frame.query(qk, 100)
         for fk in fk_list:
             sig = self._signify(frame, qk, fk)
-            if sig == self._sig.S1 or sig == self._sig.S4:
-                self._model.add(qk)
-                self._emit("fast", qk, fk)
-            else:
+            if sig == self._sig.S1:
+                self._signify(frame, qk, fk)
+                self._model.add(fk)
+                self._emit("ground", qk, fk, sig)
+            elif sig != self._sig.S4:
                 # rational (S2, S3): queue for cogitate background thread
                 with self._backlog_condition:
                     self._backlog.append((frame, qk, fk, sig))

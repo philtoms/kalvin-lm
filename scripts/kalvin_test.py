@@ -9,7 +9,8 @@ from kalvin.agent import Agent
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
 source = '''
-MHALL = SVO =>
+AB = C => A B
+(MHALL = SVO =>
   S < M
   V < H
   O < ALL =>
@@ -17,7 +18,7 @@ MHALL = SVO =>
     L > M
     L > O < BS =>
       B = "baby"
-      S = "sheep"
+      S = "sheep")
 '''
 
 tokens = Lexer(source).tokenize()
@@ -34,7 +35,7 @@ for k in klines:
     print(f'{k.dbg_text}')
     agent.rationalise(k)
     for e in results:
-        print(f'  {e.kind}: {e.kline.dbg_text}')
+        print(f'  {e.kind}: {e.query.dbg_text} -> {e.value.dbg_text}, {e.significance:#018x}')
     results.clear()
 
 print("Done!")

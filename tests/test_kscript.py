@@ -121,9 +121,39 @@ class TestParserAST:
         # Should parse without error
         assert len(script.constructs) >= 1
 
+    def test_single_line_comment(self) -> None:
+        """Single-line comment (...) is consumed."""
+        source = "A (inline comment) => B"
+        tokens = Lexer(source).tokenize()
+        types = [t.type for t in tokens]
+        from kscript.token import TokenType
+        assert TokenType.COMMENT in types
+        # Comment doesn't break parsing
+        kscript_file = Parser(tokens).parse()
+        assert len(kscript_file.scripts[0].constructs) >= 1
 
-# =============================================================================
-# 2. Eager Emit Tests
+    def test_multi_line_comment(self) -> None:
+        """Multi-line comment (...) spans newlines."""
+        source = "A => B\n(this is\na\ncomment)\nC => D"
+        tokens = Lexer(source).tokenize()
+        comments = [t for t in tokens if t.type.name == "COMMENT"]
+        assert len(comments) == 1
+        assert "this is" in comments[0].value
+        assert "\n" in comments[0].value
+        # Comment doesn't break parsing
+        kscript_file = Parser(tokens).parse()
+        script = kscript_file.scripts[0]
+        sigs = [c.inner[0].sig.id for c in script.constructs]
+        assert "A" in sigs
+        assert "C" in sigs
+
+    def test_nested_parens_in_comment(self) -> None:
+        """Nested parens in multi-line comment are handled."""
+        source = "A => B\n(outer (inner)\nstill outer)\nC => D"
+        tokens = Lexer(source).tokenize()
+        comments = [t for t in tokens if t.type.name == "COMMENT"]
+        assert len(comments) == 1
+        assert "inner" in comments[0].value
 # =============================================================================
 
 class TestEagerEmit:
