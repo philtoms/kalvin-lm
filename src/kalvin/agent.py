@@ -330,17 +330,25 @@ class Agent(KAgent):
             # self._emit("ground", qk, qk, self._sig.S1)
             return True
 
-        # Identity (S1)
-        if self._sig.equal(qk.signature, qk.nodes):
-            frame.add(qk)
-            self._emit("frame", qk, qk, self._sig.S1)
-            return True
+        if is_top_level:
+            # Identity (S1)
+            if self._sig.equal(qk.signature, qk.nodes):
+                frame.add(qk)
+                self._emit("frame", qk, qk, self._sig.S1)
+                return True
 
-        # Unsigned (S4)
-        if self._sig.is_unsigned(qk.nodes):
-            frame.add(qk)
-            self._emit("frame", qk, qk, self._sig.S4)
-            return True
+            # Unsigned (S4)
+            if self._sig.is_unsigned(qk.nodes):
+                frame.add(qk)
+                self._emit("frame", qk, qk, self._sig.S4)
+                return True
+
+            #bring nodes into frame
+            for n in qk.as_node_list():
+                if self.tokenizer.is_literal(n):
+                    continue
+                nk = KLine(signature=n, nodes=None) # new token node (also at S4)
+                frame.add(nk)
 
         # Expand query into frame and rationalise
         fk_list = list(frame.query(qk, 100)) if self._dev else frame.query(qk, 100)

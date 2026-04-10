@@ -146,6 +146,19 @@ class KSignificance(ABC):
         ...
 
     @abstractmethod
+    def set_level(self, sig: KSig, level: int) -> KSig:
+        """Set significance level.
+
+        Args:
+            sig: signature
+            level: significance level
+        
+        Returns:
+            Signature with level set
+        """
+        ...
+
+    @abstractmethod
     def strip(self, sig: KSig) -> KSig:
         """Strip significance bits, returning only token bits.
 

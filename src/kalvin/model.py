@@ -40,13 +40,16 @@ class Model(KModel):
         
         return False
 
-    def _add_kline_internal(self, kline: KLine) -> None:
+    def _add_kline_internal(self, kline: KLine) -> bool:
         """Internal method to add a kline without duplicate checking."""
         idx = len(self._klines)
-        self._klines.append(kline)
         if kline.signature not in self._by_key:
             self._by_key[kline.signature] = []
+        elif not kline.nodes: # already signed
+            return False
+        self._klines.append(kline)
         self._by_key[kline.signature].append(idx)
+        return True
 
     def add(self, kline: KLine) -> bool:
         """Add a KLine, enforcing the key invariant.
@@ -58,12 +61,11 @@ class Model(KModel):
             True if added, False if rejected (duplicate)
         """
         key_nodes = (kline.signature, tuple(kline.as_node_list()))
-        if key_nodes in self._dedup:
-            return False  # O(1) duplicate check
-        self._dedup.add(key_nodes)
-        self._add_kline_internal(kline)
-
-        return True
+        if key_nodes not in self._dedup:
+            if self._add_kline_internal(kline):
+                self._dedup.add(key_nodes)
+                return True
+        return False
 
     def upgrade(self, kline: KLine, significance: KSig) -> None:
         """Upgrade the significance of a kline.

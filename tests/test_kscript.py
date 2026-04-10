@@ -263,38 +263,37 @@ class TestMCSExpansion:
 # =============================================================================
 
 class TestSignificanceLevels:
-    """Tests for significance level emission."""
+    """Tests for significance level inference from node structure."""
 
     def test_countersign_significance(self) -> None:
-        """Countersign: S1 bidirectional."""
+        """Countersign produces int node (S1 when decompiled)."""
         entries = compile_test_source("A == B")
 
-        # Check significance bits
+        # Check that countersign entries have int nodes
         for e in entries:
-            if e.signature & _sig.S1:
-                # Found S1 entry
+            if isinstance(e.nodes, int):
                 return
-        assert False, "No S1 entry found"
+        assert False, "No int-node entry found"
 
     def test_canonize_significance(self) -> None:
-        """Canonize: S2 multi-node."""
+        """Canonize produces multi-node list."""
         entries = compile_test_source("AB => C D")
 
-        # Check for S2 entry
+        # Check for multi-node list entry
         for e in entries:
-            if e.signature & _sig.S2:
+            if isinstance(e.nodes, list) and len(e.nodes) > 1:
                 return
-        assert False, "No S2 entry found"
+        assert False, "No multi-node entry found"
 
     def test_connotate_significance(self) -> None:
-        """Connotate: S3 single-node."""
+        """Connotate produces single-node list."""
         entries = compile_test_source("A > B")
 
-        # Check for S3 entry
+        # Check for single-node list entry
         for e in entries:
-            if e.signature & _sig.S3:
+            if isinstance(e.nodes, list) and len(e.nodes) == 1:
                 return
-        assert False, "No S3 entry found"
+        assert False, "No single-node entry found"
 
     def test_undersign_significance(self) -> None:
         """Undersign: S1 unidirectional."""
@@ -525,11 +524,12 @@ class TestDecompiler:
         assert entry["nodes"] == "B"
 
     def test_decompile_canonize_single(self) -> None:
-        """Decompile canonize with single node: A => B -> A => B"""
+        """Decompile canonize with single node: A => B."""
         result = self._roundtrip("A => B")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["level"] == "S2"
+        # Single-node canonize: node differs from sig → S3
+        assert entry["level"] == "S3"
         assert entry["nodes"] == "B"
 
     def test_decompile_canonize_multi(self) -> None:
@@ -554,8 +554,8 @@ class TestDecompiler:
     def test_decompile_mcs_in_construct(self) -> None:
         """MCS in construct position preserves name."""
         result = self._roundtrip("ABC => X")
-        # Find the canonize entry (S2), not the MCS entry
-        entry = self._find_entry(result, "ABC", level="S2")
+        # Find the construct entry (single-node, node != sig → S3), not the MCS entry
+        entry = self._find_entry(result, "ABC", level="S3")
         assert entry is not None
         assert entry["nodes"] == "X"
 
@@ -572,7 +572,8 @@ class TestDecompiler:
         result = self._roundtrip("A => B => C")
         entry_a = self._find_entry(result, "A")
         assert entry_a is not None
-        assert entry_a["level"] == "S2"
+        # Single-node chain, node != sig → S3
+        assert entry_a["level"] == "S3"
 
 
 class TestDecompilerMCS:
@@ -635,8 +636,8 @@ class TestDecompilerMCS:
         result = decompiler.decompile(entries)
 
         # Should recover "ABC" from MCS nodes and have the construct
-        # Find the construct entry (S2), not the MCS entry
-        entry = self._find_entry(result, "ABC", level="S2")
+        # Find the construct entry (single-node, node != sig → S3)
+        entry = self._find_entry(result, "ABC", level="S3")
         assert entry is not None
         # The construct entry should have nodes "X"
         assert entry["nodes"] == "X"

@@ -71,8 +71,6 @@ class CompiledEntry(KLine):
         """
         sig_obj = significance or Int32Significance()
         sig_id = tokenizer.encode(sig, pack=True)[0]
-        sig_id = cls._add_significance(sig_id, sig_level, sig_obj)
-
         if nodes is None:
             return cls(signature=sig_id, nodes=None, dbg_text=dbg_text)
         elif isinstance(nodes, str):
@@ -90,18 +88,6 @@ class CompiledEntry(KLine):
                 else:
                     all_node_ids.extend(ord(c) << 1 for c in n)
             return cls(signature=sig_id, nodes=all_node_ids, dbg_text=dbg_text)
-
-    @staticmethod
-    def _add_significance(token_id: int, sig_level: str, sig: KSignificance) -> int:
-        """Add significance bits to token ID based on sig level."""
-        if sig_level == "S1":
-            return token_id | sig.S1
-        elif sig_level == "S2":
-            return token_id | sig.S2
-        elif sig_level == "S3":
-            return token_id | sig.S3
-        else:  # S4 or unknown
-            return token_id
 
     def decode(self, tokenizer: ModTokenizer) -> tuple[str, str | None | list[str]]:
         """Decode token IDs back to strings."""
@@ -347,8 +333,7 @@ class Compiler:
     def _emit(self, sig: str, nodes: str | None | list[str], op: str) -> None:
         """Emit an entry with significance encoding."""
         # Encode signature with significance bits
-        sig_level = self._sig_levels.get(op, self._sig.S4)
-        sig_id = self._encode_sig(sig) | sig_level
+        sig_id = self._encode_sig(sig)
 
         # Encode nodes
         encoded_nodes = self._encode_nodes(nodes)

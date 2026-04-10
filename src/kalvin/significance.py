@@ -136,7 +136,7 @@ class IntSignificance(KSignificance):
 
     # === helper functions ===
 
-    def get_level(self, sig: int) -> str:
+    def get_level(self, sig: KSig) -> str:
         """Detect significance level from signature bits.
 
         Hierarchical detection: S1 > S2 > S3 > S4
@@ -149,6 +149,18 @@ class IntSignificance(KSignificance):
             return "S3"
         else:
             return "S4"             # all significance bits clear
+
+    def set_level(self, sig: KSig, level: int) -> KSig:
+        """Set significance level.
+
+        Args:
+            sig: signature
+            level: significance level
+        
+        Returns:
+            Signature with level set
+        """
+        return sig | level
 
     def strip(self, sig: KSig) -> KSig:
         """Strip significance bits, returning only token bits."""

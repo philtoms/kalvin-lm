@@ -9,7 +9,8 @@ from kalvin.agent import Agent
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
 source = '''
-AB = C => A B
+A = B
+(AB = C => A B)
 (MHALL = SVO =>
   S < M
   V < H
@@ -25,8 +26,9 @@ tokens = Lexer(source).tokenize()
 ast = Parser(tokens).parse()
 tokenizer = Mod32Tokenizer()
 klines = Compiler(tokenizer, dev=True).compile(ast)
-# decompiler = Decompiler(tokenizer)
+decompiler = Decompiler(tokenizer)
 agent = Agent(tokenizer, dev=True)
+sig = agent.significance
 
 results = []
 agent.events.subscribe(lambda e: results.append(e))
@@ -35,7 +37,7 @@ for k in klines:
     print(f'{k.dbg_text}')
     agent.rationalise(k)
     for e in results:
-        print(f'  {e.kind}: {e.query.dbg_text} -> {e.value.dbg_text}, {e.significance:#018x}')
+        print(f'  {e.kind}: {e.query.dbg_text} -> {e.value.dbg_text}, {sig.get_level(e.significance)}')
     results.clear()
 
 print("Done!")

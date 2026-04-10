@@ -107,10 +107,7 @@ class Decompiler:
         - The signature token equals the OR of all node tokens
         """
         for kline in klines:
-            level = self._sig.get_level(kline.signature)
-            if level != "S2":
-                continue
-
+            # Check for MCS: signature == OR of all nodes, all nodes are packed single chars
             nodes = kline.as_node_list()
             if not nodes or len(nodes) < 2:
                 continue
@@ -127,7 +124,7 @@ class Decompiler:
                 continue
 
             # Key check: MCS signature token == OR of all node tokens
-            base_token = self._sig.strip(kline.signature)
+            base_token = kline.signature
             nodes_or = 0
             for node in nodes:
                 nodes_or |= node
@@ -152,7 +149,7 @@ class Decompiler:
         if not nodes or len(nodes) < 2:
             return False
 
-        base_token = self._sig.strip(kline.signature)
+        base_token = kline.signature
         nodes_or = 0
         for node in nodes:
             nodes_or |= node
@@ -162,18 +159,20 @@ class Decompiler:
     def _decompile_kline(self, kline: KLine) -> DecompiledEntry | None:
         """Decompile a single KLine to entry. Returns None for MCS entries."""
         sig = kline.signature
-        level = self._sig.get_level(sig)
         sig_str = self._decode_sig(sig)
         nodes = kline.as_node_list()
 
         # MCS entries get special significance
-        if level == "S2" and self._is_mcs_entry(kline):
+        if self._is_mcs_entry(kline):
             node_strs = self._decode_nodes(nodes)
             return DecompiledEntry(
                 level="MCS",
                 sig=sig_str,
                 nodes=node_strs,
             )
+
+        # Determine level from node structure
+        level = self._infer_level(kline)
 
         if not nodes:
             # Unsigned
@@ -193,18 +192,36 @@ class Decompiler:
             nodes=node_output,
         )
 
+    def _infer_level(self, kline: KLine) -> str:
+        """Infer significance level from node structure.
+
+        S1: int node (countersign/undersign)
+        S2: list where single node equals signature (canonize)
+        S3: list where single node differs from signature (connotate)
+        S4: no nodes (unsigned)
+        """
+        nodes = kline.nodes
+        if nodes is None:
+            return "S4"
+        if isinstance(nodes, int):
+            return "S1"
+        if len(nodes) > 1:
+            return "S2"
+        # Single node: S2 if node == sig, S3 otherwise
+        if nodes[0] == kline.signature:
+            return "S2"
+        return "S3"
+
     def _decode_sig(self, sig: int) -> str:
         """Decode signature to string, using MCS name if available."""
-        base_token = self._sig.strip(sig)
+        if sig in self._mcs_names:
+            return self._mcs_names[sig]
 
-        if base_token in self._mcs_names:
-            return self._mcs_names[base_token]
+        if (sig & PACKED_BIT) == 0:
+            return self._decode_node(sig)
 
-        if (base_token & PACKED_BIT) == 0:
-            return self._decode_node(base_token)
-
-        result = self.tokenizer.decode([base_token], pack=None)
-        return result if result else f"<{base_token}>"
+        result = self.tokenizer.decode([sig], pack=None)
+        return result if result else f"<{sig}>"
 
     def _decode_node(self, node: int) -> str:
         """Decode a node value to string."""

@@ -103,20 +103,8 @@ class TestModelAddKLine:
         assert result is True
         assert len(frame) == 2
 
-    def test_add_exact_duplicate_same_key_different_instance(self):
-        """Adding kline with same key and nodes creates a new entry."""
-        kl1 = KLine(signature=0x1000, nodes=[0x0100, 0x0200])
-        kl2 = KLine(signature=0x1000, nodes=[0x0100, 0x0200])
-        frame = Model([kl1])
-
-        result = frame.add(kl2)
-
-        # Duplicate is added (same signature allowed, different KLine instance)
-        assert result is True
-        assert len(frame) == 2
-
     def test_add_duplicate_empty_nodes_same_key(self):
-        """Adding kline with same key and empty nodes creates a new entry."""
+        """Adding kline with same key and empty nodes does not create a new entry."""
         kl1 = KLine(signature=0x1000, nodes=[])
         kl2 = KLine(signature=0x1000, nodes=[])
         frame = Model([kl1])
@@ -124,8 +112,8 @@ class TestModelAddKLine:
         result = frame.add(kl2)
 
         # Duplicate is added (same signature allowed)
-        assert result is True
-        assert len(frame) == 2
+        assert result is False
+        assert len(frame) == 1
 
     def test_multiple_keys_all_added(self):
         """Multiple klines with different keys are all added."""
