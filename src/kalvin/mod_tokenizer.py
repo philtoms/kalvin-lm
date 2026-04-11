@@ -1,11 +1,11 @@
 from kalvin.abstract import KTokenizer
 
-# Bit 0 is reserved for PACKED flag: 1 = packed, 0 = literal
+# Bit 0 is reserved for PACKED flag: 1 = literal, 0 = packed (signature)
 PACKED_BIT = 1
 
 # 64-bit Signature Allocation:
 # ┌─────────────────────────────────────────────────────────────────┐
-# │ Bit 0      │ PACKED_BIT: 1=packed signature, 0=literal         │
+# │ Bit 0      │ PACKED_BIT: 1=literal, 0=packed (signature)        │
 # │ Bits 1-32  │ Character tokenization (Mod32Tokenizer default)   │
 # │ Bits 33-63 │ Reserved for significance encoding (future use)   │
 # └─────────────────────────────────────────────────────────────────┘
@@ -92,7 +92,7 @@ class ModTokenizer(KTokenizer):
         return len(self._bit_char)
 
     def is_literal(self, token_id: int) -> bool:
-        return not bool(token_id & PACKED_BIT)
+        return bool(token_id & PACKED_BIT)
 
     def encode(self, text: str, pack: bool = True, pad_ws: bool = False) -> list[int]:
         """Encode a string to token IDs.
@@ -100,8 +100,8 @@ class ModTokenizer(KTokenizer):
         Args:
             text: Input string to encode
             pack: If True, multi-char strings are packed into single token (OR-ed bits)
-                  and PACKED_BIT is set. If False, returns one token per character
-                  without PACKED_BIT (literal encoding).
+                  without PACKED_BIT. If False, returns one token per character
+                  with PACKED_BIT set (literal encoding).
             pad_ws: If True, strip and add trailing space
 
         Returns:
@@ -114,12 +114,12 @@ class ModTokenizer(KTokenizer):
             return []
 
         if pack:
-            token_id = PACKED_BIT
+            token_id = 0
             for c in text:
                 token_id |= self._char_bit[c]
             return [token_id]
         else:
-            return [self._char_bit[c] for c in text]
+            return [self._char_bit[c] | PACKED_BIT for c in text]
 
     def decode(self, ids: list[int], pack: bool | None = None) -> str:
         """Decode token IDs back to a string.
@@ -136,14 +136,14 @@ class ModTokenizer(KTokenizer):
         chars = []
         for token_id in ids:
             if pack is None:
-                is_packed = bool(token_id & PACKED_BIT)
+                is_packed = not bool(token_id & PACKED_BIT)
             else:
                 is_packed = pack
 
             if is_packed:
-                chars.append(self._decode_packed(token_id & ~PACKED_BIT))
+                chars.append(self._decode_packed(token_id))
             else:
-                chars.append(self._bit_char[token_id])
+                chars.append(self._bit_char[token_id & ~PACKED_BIT])
         return "".join(chars)
 
     def _decode_packed(self, token_id: int) -> str:

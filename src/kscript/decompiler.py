@@ -135,7 +135,7 @@ class Decompiler:
 
     def _try_decode_packed_single_char(self, node: int) -> str | None:
         """Try to decode a node as a packed single-char token."""
-        if (node & PACKED_BIT) == 0:
+        if (node & PACKED_BIT) != 0:
             return None
 
         decoded = self.tokenizer.decode([node], pack=None)
@@ -217,7 +217,7 @@ class Decompiler:
         if sig in self._mcs_names:
             return self._mcs_names[sig]
 
-        if (sig & PACKED_BIT) == 0:
+        if (sig & PACKED_BIT) != 0:
             return self._decode_node(sig)
 
         result = self.tokenizer.decode([sig], pack=None)
@@ -225,7 +225,7 @@ class Decompiler:
 
     def _decode_node(self, node: int) -> str:
         """Decode a node value to string."""
-        if (node & PACKED_BIT) == 0:
+        if (node & PACKED_BIT) != 0:
             return chr(node >> 1)
 
         if node in self._mcs_names:
@@ -240,7 +240,7 @@ class Decompiler:
         literal_chars: list[str] = []
 
         for node in nodes:
-            if (node & PACKED_BIT) == 0:
+            if (node & PACKED_BIT) != 0:
                 literal_chars.append(chr(node >> 1))
             else:
                 if literal_chars:

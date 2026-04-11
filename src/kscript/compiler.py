@@ -78,7 +78,7 @@ class CompiledEntry(KLine):
                 node_id = tokenizer.encode(nodes, pack=True)[0]
                 return cls(signature=sig_id, nodes=node_id, dbg_text=dbg_text)
             else:
-                node_ids = [ord(c) << 1 for c in nodes]
+                node_ids = [ord(c) << 1 | PACKED_BIT for c in nodes]
                 return cls(signature=sig_id, nodes=node_ids, dbg_text=dbg_text)
         else:
             all_node_ids: list[int] = []
@@ -86,7 +86,7 @@ class CompiledEntry(KLine):
                 if n.isupper() and n.isalpha():
                     all_node_ids.append(tokenizer.encode(n, pack=True)[0])
                 else:
-                    all_node_ids.extend(ord(c) << 1 for c in n)
+                    all_node_ids.extend(ord(c) << 1 | PACKED_BIT for c in n)
             return cls(signature=sig_id, nodes=all_node_ids, dbg_text=dbg_text)
 
     def decode(self, tokenizer: ModTokenizer) -> tuple[str, str | None | list[str]]:
@@ -99,17 +99,17 @@ class CompiledEntry(KLine):
         if self.nodes is None:
             return sig, None
         elif isinstance(self.nodes, int):
-            # Check if packed (signature) or unpacked (literal char)
+            # Check if literal (PACKED_BIT set) or packed signature (PACKED_BIT unset)
             if self.nodes & PACKED_BIT:
-                decoded = tokenizer.decode([self.nodes], pack=None)
-                return sig, decoded
-            else:
                 # Literal char: decode as chr(n >> 1)
                 return sig, chr(self.nodes >> 1)
+            else:
+                decoded = tokenizer.decode([self.nodes], pack=None)
+                return sig, decoded
         else:
-            all_unpacked = all((n & PACKED_BIT) == 0 for n in self.nodes)
+            all_literals = all((n & PACKED_BIT) != 0 for n in self.nodes)
 
-            if all_unpacked:
+            if all_literals:
                 decoded = "".join(chr(n >> 1) for n in self.nodes)
                 return sig, decoded
             else:
@@ -117,7 +117,7 @@ class CompiledEntry(KLine):
                 literal_chars: list[int] = []
 
                 for n in self.nodes:
-                    if (n & PACKED_BIT) == 0:
+                    if (n & PACKED_BIT) != 0:
                         literal_chars.append(n)
                     else:
                         if literal_chars:
@@ -362,10 +362,10 @@ class Compiler:
         else:
             # Literal: encode each char as (ord(char) << 1)
             if len(node) == 1:
-                return ord(node) << 1
+                return ord(node) << 1 | PACKED_BIT
             # Multi-char literal: return first char only for single node
             # (caller should use _encode_nodes for list handling)
-            return ord(node[0]) << 1
+            return ord(node[0]) << 1 | PACKED_BIT
 
     def _encode_nodes(self, nodes: str | None | list[str]) -> None | int | list[int]:
         """Encode nodes to token IDs (no significance bits)."""
@@ -378,10 +378,10 @@ class Compiler:
                 return self.tokenizer.encode(nodes, pack=True)[0]
             elif len(nodes) == 1:
                 # Single char literal
-                return ord(nodes) << 1
+                return ord(nodes) << 1 | PACKED_BIT
             else:
                 # Multi-char literal: list of encoded chars
-                return [ord(c) << 1 for c in nodes]
+                return [ord(c) << 1 | PACKED_BIT for c in nodes]
         else:
             result: list[int] = []
             for n in nodes:
@@ -389,7 +389,7 @@ class Compiler:
                     result.append(self.tokenizer.encode(n, pack=True)[0])
                 else:
                     # Literal: encode each character
-                    result.extend(ord(c) << 1 for c in n)
+                    result.extend(ord(c) << 1 | PACKED_BIT for c in n)
             return result
 
     def _format_dbg(self, sig: str, nodes: str | None | list[str], op: str) -> str:
