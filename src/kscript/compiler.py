@@ -151,7 +151,7 @@ class Compiler:
             "UNDERSIGN": self._sig.S1,
             "UNSIGNED": self._sig.S4,
             "MCS": self._sig.S2,       # MCS uses S2 like canonize
-            "MCS_CHAR": self._sig.S1,  # Component chars are S1 (identity-like)
+            "MCS_CHAR": self._sig.S4,  # Component chars are S4 (unsigned)
         }
         self._seen: set[tuple[int, None | int | tuple[int, ...]]] = set()
 
@@ -205,7 +205,7 @@ class Compiler:
 
         # Component identities: {char: None} for each (emitted first)
         for char in chars:
-            self._emit(char, char, "MCS_CHAR")
+            self._emit(char, None, "MCS_CHAR")
 
         # MCS canonization: {sig: [A, B, C, ...]} (emitted second)
         self._emit(sig, chars, "MCS")
