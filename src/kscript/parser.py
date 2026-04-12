@@ -3,7 +3,7 @@
 Grammar (left recursion eliminated):
 
     script ::= construct+
-    construct ::= block | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
+    construct ::= block | literal | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
     block ::= <INDENT> construct+ <DEDENT>
     primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
     node ::= sig | literal
@@ -17,6 +17,7 @@ and skipped between constructs and at construct boundaries.
 from .ast import (
     Block,
     Construct,
+    ConstructItem,
     KScriptFile,
     Literal,
     Node,
@@ -61,7 +62,7 @@ class Parser:
         constructs = self._parse_constructs_until(TokenType.EOF)
         return Script(constructs)
 
-    # construct ::= block | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
+    # construct ::= block | literal | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
     def _parse_construct(self) -> Construct:
         self._skip_insignificant()
 
@@ -69,11 +70,14 @@ class Parser:
         if self._check(TokenType.INDENT):
             return self._parse_block()
 
-        # primary_construct+ (one or more at current => indent)
+        # literal: bare literal, no chain ops
+        if self._check(TokenType.LITERAL):
+            return self._parse_literal_construct()
+
+        # primary_construct+ with optional chain (one or more at current indent)
         indent = self._peek().column
         primaries = [self._parse_primary_construct()]
         while self._is_primary_construct_start() and self._peek().column >= indent:
-            c = self._peek().column
             primaries.append(self._parse_primary_construct())
 
         # ( ( "=>" | "<=" | "<" ) construct )?
@@ -83,6 +87,12 @@ class Parser:
             return Construct(primaries, chain_op, right)
 
         return Construct(primaries)
+
+    # literal (as a bare construct — no chain ops allowed)
+    def _parse_literal_construct(self) -> Construct:
+        """Parse a literal as a bare construct (unsigned identity)."""
+        literal = self._parse_literal()
+        return Construct(literal)
 
     # block ::= <INDENT> construct+ <DEDENT>
     def _parse_block(self) -> Construct:
@@ -183,4 +193,3 @@ class Parser:
 
     def _at_end(self) -> bool:
         return self._peek().type == TokenType.EOF
-

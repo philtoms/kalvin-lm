@@ -31,6 +31,7 @@ from kalvin.significance import Int32Significance
 from .ast import (
     Block,
     Construct,
+    ConstructItem,
     KScriptFile,
     Literal,
     Node,
@@ -91,10 +92,8 @@ class CompiledEntry(KLine):
 
     def decode(self, tokenizer: ModTokenizer) -> tuple[str, str | None | list[str]]:
         """Decode token IDs back to strings."""
-        # Mask off significance bits to get raw token
-        token_mask = ~(0xFFFFFFFF << 32)  # Lower 32 bits for token
-        sig_token = self.signature & token_mask
-        sig = tokenizer.decode([sig_token], pack=None)
+        # Use signature token directly (significance bits not yet implemented)
+        sig = tokenizer.decode([self.signature], pack=None)
 
         if self.nodes is None:
             return sig, None
@@ -166,14 +165,19 @@ class Compiler:
             self._compile_construct(construct)
 
     def _compile_construct(self, construct: Construct) -> None:
-        """Compile a construct, handling blocks, chains, and primaries."""
+        """Compile a construct, handling blocks, literals, chains, and primaries."""
         if isinstance(construct.inner, Block):
             # Block: recurse into nested constructs
             for c in construct.inner.constructs:
                 self._compile_construct(c)
             return
 
-        # list[PrimaryConstruct]
+        if isinstance(construct.inner, Literal):
+            # Bare literal: emit unsigned identity
+            self._emit(construct.inner.id, None, "UNSIGNED")
+            return
+
+        # list[PrimaryConstruct] with optional chain
         primaries = construct.inner
 
         if construct.chain_op is None:
@@ -252,8 +256,13 @@ class Compiler:
         chain_op: TokenType,
         right: Construct | None
     ) -> None:
-        """Process a chain construct (=>, <=, <)."""
-        # Process all left primaries (emits MCS + inline ops)
+        """Process a chain construct (=>, <=, <).
+
+        Left side is always primary_constructs (only they can have chain ops).
+        Right side can be any construct: block (may contain mixed literals + primaries),
+        a single literal, or primary_constructs.
+        """
+        # Process all left primaries with inline ops
         for pc in left_primaries:
             if pc.op is not None:
                 self._emit_primary(pc)
@@ -261,26 +270,27 @@ class Compiler:
         if right is None:
             return
 
-        # Get right primaries (flatten if right is also a chain)
-        right_primaries = self._flatten_to_primaries(right)
+        # Get right items (flatten blocks, handle literal/primaries)
+        right_items = self._flatten_to_items(right)
 
         if chain_op == TokenType.CANONIZE_FWD:
-            # CANONIZE_FWD: {p[-1].(node or sig): [p.sig for p in r.primaries]}
+            # CANONIZE_FWD: {p[-1].(node or sig): [items from right]}
             last = left_primaries[-1]
             owner = self._get_owner(last)  # node if present, else sig
             # Emit MCS for owner if it's a sig
             if last.node is None or isinstance(last.node, Signature):
                 self._emit_mcs(owner)
-            nodes = [pc.sig.id for pc in right_primaries]
+            nodes = [self._item_id(item) for item in right_items]
             self._emit(owner, nodes, "CANONIZE_FWD")
 
             # Recurse into right
             self._compile_construct(right)
 
         elif chain_op == TokenType.CANONIZE_BWD:
-            # CANONIZE_BWD: {r[0].sig: [p.sig for p in left_primaries]}
-            if right_primaries:
-                owner = right_primaries[0].sig.id
+            # CANONIZE_BWD: {r[0].id: [p.sig for p in left_primaries]}
+            if right_items:
+                owner = self._item_id(right_items[0])
+                self._emit_mcs(owner)
                 nodes = [pc.sig.id for pc in left_primaries]
                 self._emit(owner, nodes, "CANONIZE_BWD")
 
@@ -288,24 +298,49 @@ class Compiler:
             self._compile_construct(right)
 
         elif chain_op == TokenType.CONNOTATE_BWD:
-            # CONNOTATE_BWD: {r[0].sig: [left_primaries[-1].sig]}
-            if right_primaries:
-                owner = right_primaries[0].sig.id
+            # CONNOTATE_BWD: {r[0].id: [left_primaries[-1].sig]}
+            if right_items:
+                owner = self._item_id(right_items[0])
+                self._emit_mcs(owner)
                 last_left = left_primaries[-1].sig.id
                 self._emit(owner, [last_left], "CONNOTATE_BWD")
 
             # Recurse into right
             self._compile_construct(right)
 
-    def _flatten_to_primaries(self, construct: Construct) -> list[PrimaryConstruct]:
-        """Extract all primaries from a construct, handling nested chains."""
+    def _flatten_to_items(self, construct: Construct) -> list[ConstructItem]:
+        """Extract all items from a construct.
+
+        Handles:
+        - Block: recursively flattens all nested constructs (may mix literals + primaries)
+        - Literal: returns [literal] as a single item
+        - list[PrimaryConstruct]: returns the primaries directly
+        """
         if isinstance(construct.inner, Block):
-            # Block - collect primaries from all nested constructs
-            primaries = []
+            items: list[ConstructItem] = []
             for c in construct.inner.constructs:
-                primaries.extend(self._flatten_to_primaries(c))
-            return primaries
+                items.extend(self._flatten_to_items(c))
+            return items
+        if isinstance(construct.inner, Literal):
+            return [construct.inner]
         return construct.inner
+
+    def _flatten_to_primaries(self, construct: Construct) -> list[PrimaryConstruct]:
+        """Extract only PrimaryConstruct items from a construct."""
+        items = self._flatten_to_items(construct)
+        return [item for item in items if isinstance(item, PrimaryConstruct)]
+
+    def _item_id(self, item: ConstructItem) -> str:
+        """Get the string ID from a construct item.
+
+        PrimaryConstruct -> sig.id
+        Literal -> literal id
+        """
+        if isinstance(item, PrimaryConstruct):
+            return item.sig.id
+        elif isinstance(item, Literal):
+            return item.id
+        return str(item)
 
     def _get_owner(self, pc: PrimaryConstruct) -> str:
         """Get owner for CANONIZE_FWD: node if present, else sig."""

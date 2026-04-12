@@ -3,7 +3,7 @@
 Grammar (left recursion eliminated):
 
     script ::= construct+
-    construct ::= block | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
+    construct ::= block | literal | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
     block ::= <INDENT> construct+ <DEDENT>
     primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
     node ::= sig | literal
@@ -44,7 +44,8 @@ class Signature:
 class Literal:
     """A literal value (anything not [A-Z]+).
 
-    Literals can only appear in node positions, never as construct owners.
+    Literals can appear as bare constructs (unsigned identities) or as
+    node positions within primary constructs. They cannot own chain operators.
 
     Attributes:
         id: The literal value (e.g., "hello", "42", '"quoted"')
@@ -58,6 +59,9 @@ class Literal:
 
 # Union type for all node types
 Node: TypeAlias = Signature | Literal
+
+# Union type for items extracted from constructs (blocks may mix types)
+ConstructItem: TypeAlias = "PrimaryConstruct | Literal"
 
 
 # =============================================================================
@@ -96,17 +100,20 @@ class Block:
 
 @dataclass
 class Construct:
-    """construct ::= block | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
+    """construct ::= block | literal | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
 
-    A construct is either a block or a sequence of primary constructs
-    with an optional chain operator.
+    A construct is one of:
+    - Block: indented sub-constructs
+    - Literal: a bare literal (unsigned identity, no chain ops allowed)
+    - PrimaryConstruct list with optional chain: signatures with inline ops
+      and/or chain operators (=>, <=, <)
 
     Attributes:
-        inner: Either a Block or a list of PrimaryConstruct
+        inner: Block, Literal, or list of PrimaryConstruct
         chain_op: The chain operator (CANONIZE_FWD, CANONIZE_BWD, CONNOTATE_BWD), or None
         chain_right: The right-hand construct of the chain, if any
     """
-    inner: Block | list[PrimaryConstruct]
+    inner: Block | Literal | list[PrimaryConstruct]
     chain_op: TokenType | None = None
     chain_right: "Construct | None" = None
 
@@ -141,6 +148,7 @@ __all__ = [
     "Signature",
     "Literal",
     "Node",
+    "ConstructItem",
     "PrimaryConstruct",
     "Block",
     "Construct",

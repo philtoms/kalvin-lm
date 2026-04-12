@@ -4,11 +4,13 @@ import json
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+import pytest
+
 from kalvin.abstract import KLine
 from kalvin.mod_tokenizer import Mod64Tokenizer, Mod32Tokenizer
 from kalvin.significance import Int32Significance
 from kscript.lexer import Lexer
-from kscript.parser import Parser, Signature, Literal, Construct, Script, KScriptFile, Block, PrimaryConstruct
+from kscript.parser import Parser, ParseError, Signature, Literal, Construct, Script, KScriptFile, Block, PrimaryConstruct
 from kscript.compiler import Compiler, CompiledEntry, compile_source
 from kscript.decompiler import Decompiler, DecompiledEntry
 from kscript.token import TokenType
@@ -397,7 +399,205 @@ class TestComplexExamples:
 
 
 # =============================================================================
-# 7. Backward Compatibility Tests
+# 7b. S2 Literal Tests
+# =============================================================================
+
+class TestS2Literals:
+    """Tests for S2 literal support in constructions.
+
+    Grammar: construct ::= block | literal | primary_construct+ (...)?
+
+    - Literals are bare constructs (unsigned identities) with NO chain ops.
+    - In inline chains (A => 1), the literal is a separate construct consumed
+      as the single right-hand item.
+    - In blocks, literals and primary_constructs are siblings (mixed flattening).
+    - Literals CANNOT own chain ops: '1 => A' and 'A => 1 => B' are errors.
+    """
+
+    # --- Inline chain with literal right side ---
+
+    def test_canonize_fwd_single_literal(self) -> None:
+        """A => 1: literal is the right construct -> {A: [1]}."""
+        entries = compile_test_source("A => 1")
+        d = entries_to_dict(entries)
+        assert d["A"] == "1"
+        assert d["1"] is None
+
+    def test_canonize_fwd_literal_consumes_one(self) -> None:
+        """A => 1 2: literal(1) is the right construct, 2 is separate.
+
+        Inline literal constructs consume only themselves.
+        """
+        entries = compile_test_source("A => 1 2")
+        md = entries_to_multidict(entries)
+        # A => 1 (literal construct consumed as right)
+        assert "1" in md.get("A", [])
+        # 2 is a separate bare literal identity
+        assert None in md.get("2", [])
+
+    def test_canonize_fwd_sig_then_literal(self) -> None:
+        """A => B 1: primary_construct[B] is the right, 1 is separate.
+
+        Inline primary_construct+ stops when it hits a literal.
+        """
+        entries = compile_test_source("A => B 1")
+        md = entries_to_multidict(entries)
+        assert ["B"] in md.get("A", [])
+        assert None in md.get("B", [])
+        assert None in md.get("1", [])
+
+    def test_canonize_fwd_literal_then_sig(self) -> None:
+        """A => 1 B: literal(1) is the right, B is separate.
+
+        Inline literal is a standalone construct alternative.
+        """
+        entries = compile_test_source("A => 1 B")
+        md = entries_to_multidict(entries)
+        assert "1" in md.get("A", [])
+        assert None in md.get("1", [])
+        assert None in md.get("B", [])
+
+    # --- Block: literals as siblings with constructs ---
+
+    def test_block_mixed_literal_and_sig(self) -> None:
+        """A => block(1, B): literals and sigs are siblings in blocks.
+
+        This is the key use case: block flattening produces mixed items.
+        """
+        source = "A =>\n  1\n  B"
+        entries = compile_test_source(source)
+        d = entries_to_dict(entries)
+        assert d["A"] == ["1", "B"]
+        assert d["1"] is None
+        assert d["B"] is None
+
+    def test_block_all_literals(self) -> None:
+        """A => block(1, 2, 3): all-literal block.
+
+        All-literal items are decoded as a single string.
+        """
+        source = "A =>\n  1\n  2\n  3"
+        entries = compile_test_source(source)
+        d = entries_to_dict(entries)
+        assert d["A"] == "123"
+        assert d["1"] is None
+        assert d["2"] is None
+        assert d["3"] is None
+
+    def test_block_mixed_literal_literal_sig(self) -> None:
+        """A => block(1, 2, B): consecutive literals group, sigs separate.
+
+        Mixed items: consecutive literals decode as grouped strings,
+        signatures decode individually.
+        """
+        source = "A =>\n  1\n  2\n  B"
+        entries = compile_test_source(source)
+        d = entries_to_dict(entries)
+        assert d["A"] == ["12", "B"]
+
+    def test_block_nested(self) -> None:
+        """Nested blocks with literals."""
+        source = "A =>\n  B =>\n    1\n    C"
+        entries = compile_test_source(source)
+        d = entries_to_dict(entries)
+        assert d["A"] == ["B"]
+        assert d["B"] == ["1", "C"]
+
+    # --- BWD / CONNOTATE_BWD with literal owner ---
+
+    def test_canonize_bwd_literal_owner(self) -> None:
+        """A <= 1: BWD with literal as right owner -> {1: [A]}."""
+        entries = compile_test_source("A <= 1")
+        md = entries_to_multidict(entries)
+        assert ["A"] in md.get("1", [])
+
+    def test_connotate_bwd_literal_owner(self) -> None:
+        """A < 1: CONNOTATE_BWD with literal owner -> {1: [A]}."""
+        entries = compile_test_source("A < 1")
+        md = entries_to_multidict(entries)
+        assert ["A"] in md.get("1", [])
+
+    def test_canonize_bwd_multiple_left_literal_owner(self) -> None:
+        """A B <= 1: multiple left primaries, literal owner -> {1: [A, B]}."""
+        entries = compile_test_source("A B <= 1")
+        md = entries_to_multidict(entries)
+        assert ["A", "B"] in md.get("1", [])
+
+    # --- Bare literal identities ---
+
+    def test_bare_literal_identity(self) -> None:
+        """Bare literal '1' emits unsigned identity."""
+        entries = compile_test_source("1")
+        assert len(entries) == 1
+        sig, nodes = entries[0].decode(_tokenizer)
+        assert sig == "1"
+        assert nodes is None
+
+    def test_bare_literal_multiple_identities(self) -> None:
+        """Multiple bare literals each emit unsigned identities."""
+        entries = compile_test_source("1 2 3")
+        assert len(entries) == 3
+        sigs = [e.decode(_tokenizer)[0] for e in entries]
+        assert sigs == ["1", "2", "3"]
+
+    # --- Literal cannot own chain ops (error cases) ---
+
+    def test_literal_cannot_own_canonize_fwd(self) -> None:
+        """1 => A: literal cannot own => chain -> ParseError."""
+        tokens = Lexer("1 => A").tokenize()
+        with pytest.raises(ParseError):
+            Parser(tokens).parse()
+
+    def test_literal_cannot_own_canonize_bwd(self) -> None:
+        """1 <= A: literal cannot own <= chain -> ParseError."""
+        tokens = Lexer("1 <= A").tokenize()
+        with pytest.raises(ParseError):
+            Parser(tokens).parse()
+
+    def test_literal_cannot_own_connotate_bwd(self) -> None:
+        """1 < A: literal cannot own < chain -> ParseError."""
+        tokens = Lexer("1 < A").tokenize()
+        with pytest.raises(ParseError):
+            Parser(tokens).parse()
+
+    def test_cannot_chain_through_literal(self) -> None:
+        """A => 1 => B: cannot chain through literal -> ParseError."""
+        tokens = Lexer("A => 1 => B").tokenize()
+        with pytest.raises(ParseError):
+            Parser(tokens).parse()
+
+    # --- Pre-existing: literal as inline op node ---
+
+    def test_literal_with_undersign(self) -> None:
+        """A = 1: undersign with literal node (pre-existing behavior)."""
+        entries = compile_test_source("A = 1")
+        d = entries_to_dict(entries)
+        assert d["A"] == "1"
+
+    def test_literal_with_countersign(self) -> None:
+        """A == 1: countersign with literal node (pre-existing behavior).
+
+        Note: reverse direction not emitted for literal nodes.
+        """
+        entries = compile_test_source("A == 1")
+        md = entries_to_multidict(entries)
+        assert "1" in md.get("A", [])
+
+    def test_literal_with_connotate_fwd(self) -> None:
+        """A > 1: connotate with literal node (pre-existing behavior)."""
+        entries = compile_test_source("A > 1")
+        d = entries_to_dict(entries)
+        assert d["A"] == "1"
+
+    def test_literal_with_quoted_string(self) -> None:
+        """A => \"hello\": quoted string as literal right construct."""
+        entries = compile_test_source('A => "hello"')
+        d = entries_to_dict(entries)
+        assert d["A"] == '"hello"'
+
+
+# =============================================================================
+# 8. Backward Compatibility Tests
 # =============================================================================
 
 class TestBackwardCompatibility:
