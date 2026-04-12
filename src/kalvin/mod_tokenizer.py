@@ -1,11 +1,11 @@
 from kalvin.abstract import KTokenizer
 
-# Bit 0 is reserved for PACKED flag: 1 = literal, 0 = packed (signature)
-PACKED_BIT = 1
+# Bit 0 is reserved for LITERAL flag: 1 = literal, 0 = packed (signature)
+LITERAL_BIT = 1
 
 # 64-bit Signature Allocation:
 # ┌─────────────────────────────────────────────────────────────────┐
-# │ Bit 0      │ PACKED_BIT: 1=literal, 0=packed (signature)        │
+# │ Bit 0      │ LITERAL_BIT: 1=literal, 0=packed (signature)       │
 # │ Bits 1-32  │ Character tokenization (Mod32Tokenizer default)   │
 # │ Bits 33-63 │ Reserved for significance encoding (future use)   │
 # └─────────────────────────────────────────────────────────────────┘
@@ -24,7 +24,7 @@ def _build_char_bit_maps(
         alphabet: String of characters to map (order determines bit priority)
         modulo: Number of bit positions (bits 1 to modulo-1 are used)
 
-    Bit 0 is reserved for the PACKED flag, so character bits start at bit 1.
+    Bit 0 is reserved for the LITERAL flag, so character bits start at bit 1.
 
     Returns:
         Tuple of (char_bit, bit_char) dictionaries
@@ -57,7 +57,7 @@ class ModTokenizer(KTokenizer):
     """Modular tokenizer that maps characters to bit positions.
 
     Characters are assigned to bit positions 1 to (modulo-1), wrapping.
-    Bit 0 is reserved for PACKED_BIT to distinguish packed vs literal encoding.
+    Bit 0 is reserved for LITERAL_BIT to distinguish packed vs literal encoding.
     """
 
     def __init__(self, alphabet: str | None = None, modulo: int = 32):
@@ -88,11 +88,11 @@ class ModTokenizer(KTokenizer):
 
     @property
     def vocab_size(self) -> int:
-        """Return the number of unique character tokens (excluding PACKED_BIT)."""
+        """Return the number of unique character tokens (excluding LITERAL_BIT)."""
         return len(self._bit_char)
 
     def is_literal(self, token_id: int) -> bool:
-        return bool(token_id & PACKED_BIT)
+        return bool(token_id & LITERAL_BIT)
 
     def encode(self, text: str, pack: bool = True, pad_ws: bool = False) -> list[int]:
         """Encode a string to token IDs.
@@ -100,8 +100,8 @@ class ModTokenizer(KTokenizer):
         Args:
             text: Input string to encode
             pack: If True, multi-char strings are packed into single token (OR-ed bits)
-                  without PACKED_BIT. If False, returns one token per character
-                  with PACKED_BIT set (literal encoding).
+                  without LITERAL_BIT. If False, returns one token per character
+                  with LITERAL_BIT set (literal encoding).
             pad_ws: If True, strip and add trailing space
 
         Returns:
@@ -119,14 +119,14 @@ class ModTokenizer(KTokenizer):
                 token_id |= self._char_bit[c]
             return [token_id]
         else:
-            return [self._char_bit[c] | PACKED_BIT for c in text]
+            return [(ord(c) << 1) | LITERAL_BIT for c in text]
 
     def decode(self, ids: list[int], pack: bool | None = None) -> str:
         """Decode token IDs back to a string.
 
         Args:
             ids: List of token IDs
-            pack: If None (default), auto-detect from PACKED_BIT in token.
+            pack: If None (default), auto-detect from LITERAL_BIT in token.
                   If True, treat each ID as packed (multiple bits set).
                   If False, treat each ID as a single character.
 
@@ -136,14 +136,14 @@ class ModTokenizer(KTokenizer):
         chars = []
         for token_id in ids:
             if pack is None:
-                is_packed = not bool(token_id & PACKED_BIT)
+                is_packed = not bool(token_id & LITERAL_BIT)
             else:
                 is_packed = pack
 
             if is_packed:
                 chars.append(self._decode_packed(token_id))
             else:
-                chars.append(self._bit_char[token_id & ~PACKED_BIT])
+                chars.append(chr(token_id >> 1))
         return "".join(chars)
 
     def _decode_packed(self, token_id: int) -> str:

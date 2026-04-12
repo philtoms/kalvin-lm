@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer, PACKED_BIT
+from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer
 from kalvin.significance import Int32Significance
 from kalvin.kline import KLine
 
@@ -135,7 +135,7 @@ class Decompiler:
 
     def _try_decode_packed_single_char(self, node: int) -> str | None:
         """Try to decode a node as a packed single-char token."""
-        if (node & PACKED_BIT) != 0:
+        if self.tokenizer.is_literal(node):
             return None
 
         decoded = self.tokenizer.decode([node], pack=None)
@@ -217,7 +217,7 @@ class Decompiler:
         if sig in self._mcs_names:
             return self._mcs_names[sig]
 
-        if (sig & PACKED_BIT) != 0:
+        if self.tokenizer.is_literal(sig):
             return self._decode_node(sig)
 
         result = self.tokenizer.decode([sig], pack=None)
@@ -225,8 +225,8 @@ class Decompiler:
 
     def _decode_node(self, node: int) -> str:
         """Decode a node value to string."""
-        if (node & PACKED_BIT) != 0:
-            return chr(node >> 1)
+        if self.tokenizer.is_literal(node):
+            return self.tokenizer.decode([node])
 
         if node in self._mcs_names:
             return self._mcs_names[node]
@@ -237,22 +237,22 @@ class Decompiler:
     def _decode_nodes(self, nodes: list[int]) -> list[str]:
         """Decode a list of nodes to strings, grouping consecutive literal chars."""
         result: list[str] = []
-        literal_chars: list[str] = []
+        literal_ids: list[int] = []
 
         for node in nodes:
-            if (node & PACKED_BIT) != 0:
-                literal_chars.append(chr(node >> 1))
+            if self.tokenizer.is_literal(node):
+                literal_ids.append(node)
             else:
-                if literal_chars:
-                    result.append("".join(literal_chars))
-                    literal_chars = []
+                if literal_ids:
+                    result.append(self.tokenizer.decode(literal_ids))
+                    literal_ids = []
                 if node in self._mcs_names:
                     result.append(self._mcs_names[node])
                 else:
                     decoded = self.tokenizer.decode([node], pack=None)
                     result.append(decoded if decoded else f"<{node}>")
 
-        if literal_chars:
-            result.append("".join(literal_chars))
+        if literal_ids:
+            result.append(self.tokenizer.decode(literal_ids))
 
         return result

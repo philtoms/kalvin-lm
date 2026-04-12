@@ -3,7 +3,7 @@
 import pytest
 from kalvin.mod_tokenizer import (
     ModTokenizer, Mod32Tokenizer, Mod64Tokenizer, Mod128Tokenizer,
-    _build_char_bit_maps, _MOD_ALPHABET, PACKED_BIT
+    _build_char_bit_maps, _MOD_ALPHABET, LITERAL_BIT
 )
 
 # Alias for backward compatibility in tests
@@ -123,33 +123,31 @@ class TestMod32Tokenizer:
         assert len(result) == 1
 
     def test_encode_single_char_returns_bit_value(self, tokenizer):
-        """encode returns correct bit value for single character (without PACKED_BIT)."""
+        """encode returns correct bit value for single character (without LITERAL_BIT)."""
         result = tokenizer.encode('A')
-        # A is at index 0 in mod_alphabet, bit value is 1 << 1 = 2, no PACKED_BIT for packed encoding
+        # A is at index 0 in mod_alphabet, bit value is 1 << 1 = 2, no LITERAL_BIT for packed encoding
         assert result == [tokenizer.CHAR_BIT['A']]
 
     def test_encode_b_returns_correct_bit(self, tokenizer):
-        """encode returns correct bit for B (without PACKED_BIT)."""
+        """encode returns correct bit for B (without LITERAL_BIT)."""
         result = tokenizer.encode('B')
-        # B is at index 1 in mod_alphabet, bit value is 1 << 2 = 4, no PACKED_BIT for packed encoding
+        # B is at index 1 in mod_alphabet, bit value is 1 << 2 = 4, no LITERAL_BIT for packed encoding
         assert result == [tokenizer.CHAR_BIT['B']]
 
     def test_encode_z_returns_correct_bit(self, tokenizer):
-        """encode returns correct bit for Z (without PACKED_BIT)."""
+        """encode returns correct bit for Z (without LITERAL_BIT)."""
         result = tokenizer.encode('Z')
         # Z is at index 25 in mod_alphabet
         assert result == [tokenizer.CHAR_BIT['Z']]
 
     def test_decode_single_token(self, tokenizer):
-        """decode returns correct character for single token."""
-        # Use CHAR_BIT for literal decoding (pack=False)
-        result = tokenizer.decode([tokenizer.CHAR_BIT['A']], pack=False)
+        """decode returns correct character for literal token."""
+        result = tokenizer.decode(tokenizer.encode('A', pack=False))
         assert result == 'A'
 
     def test_decode_multiple_tokens(self, tokenizer):
-        """decode concatenates characters from multiple tokens."""
-        # Use CHAR_BIT values for literal decoding (pack=False)
-        result = tokenizer.decode([tokenizer.CHAR_BIT['A'], tokenizer.CHAR_BIT['B']], pack=False)
+        """decode concatenates characters from multiple literal tokens."""
+        result = tokenizer.decode(tokenizer.encode('AB', pack=False))
         assert result == 'AB'
 
     def test_encode_decode_roundtrip_single_char(self, tokenizer):
@@ -161,7 +159,7 @@ class TestMod32Tokenizer:
 
     def test_encode_multi_char_returns_first_word_tokens(self, tokenizer):
         """encode for multi-char string returns packed token."""
-        # Single word - returns its token without PACKED_BIT
+        # Single word - returns its token without LITERAL_BIT
         result = tokenizer.encode('A')  # Single char
         assert result == [tokenizer.CHAR_BIT['A']]
 
@@ -189,7 +187,7 @@ class TestMod32Tokenizer:
         """batch_encode preserves input order."""
         texts = ['A', 'B', 'C']
         result = tokenizer.batch_encode(texts)
-        # Each should be a single-element list without PACKED_BIT
+        # Each should be a single-element list without LITERAL_BIT
         assert result[0] == [tokenizer.CHAR_BIT['A']]
         assert result[1] == [tokenizer.CHAR_BIT['B']]
         assert result[2] == [tokenizer.CHAR_BIT['C']]
@@ -211,7 +209,7 @@ class TestMod32Tokenizer:
         """All lowercase letters can be encoded and decoded."""
         for c in "abcdefghijklmnopqrstuvwxyz":
             encoded = tokenizer.encode(c)
-            # With packed encoding (no PACKED_BIT), value should fit in 32 bits
+            # With packed encoding (no LITERAL_BIT), value should fit in 32 bits
             assert encoded[0] <= (1 << 32)
 
 class TestMod64Tokenizer:
@@ -225,7 +223,7 @@ class TestMod64Tokenizer:
     def test_encode_single_char(self, tokenizer):
         """encode returns correct bit value for single character."""
         result = tokenizer.encode('A')
-        # A is at index 0 in mod_alphabet, no PACKED_BIT for packed encoding
+        # A is at index 0 in mod_alphabet, no LITERAL_BIT for packed encoding
         assert result == [tokenizer.CHAR_BIT['A']]
 
     def test_all_digits_encodable(self, tokenizer):
@@ -262,7 +260,7 @@ class TestMod128Tokenizer:
     def test_encode_single_char(self, tokenizer):
         """encode returns correct bit value for single character."""
         result = tokenizer.encode('A')
-        # A is at index 0 in mod_alphabet, no PACKED_BIT for packed encoding
+        # A is at index 0 in mod_alphabet, no LITERAL_BIT for packed encoding
         assert result == [tokenizer.CHAR_BIT['A']]
 
     def test_encode_decode_roundtrip(self, tokenizer):
@@ -394,17 +392,17 @@ class TestPackEncoding:
     # === encode with pack=True (default) ===
 
     def test_encode_pack_true_single_char(self, tokenizer):
-        """encode with pack=True returns single token for single char (without PACKED_BIT)."""
+        """encode with pack=True returns single token for single char (without LITERAL_BIT)."""
         result = tokenizer.encode('A', pack=True)
         assert len(result) == 1
-        # No PACKED_BIT for packed encoding
+        # No LITERAL_BIT for packed encoding
         assert result[0] == tokenizer.CHAR_BIT['A']
 
     def test_encode_pack_true_multi_char_returns_single_token(self, tokenizer):
-        """encode with pack=True returns single token for multi-char string (without PACKED_BIT)."""
+        """encode with pack=True returns single token for multi-char string (without LITERAL_BIT)."""
         result = tokenizer.encode('ABC', pack=True)
         assert len(result) == 1
-        # Should be OR of A, B, C bits without PACKED_BIT
+        # Should be OR of A, B, C bits without LITERAL_BIT
         expected = tokenizer.CHAR_BIT['A'] | tokenizer.CHAR_BIT['B'] | tokenizer.CHAR_BIT['C']
         assert result[0] == expected
 
@@ -422,26 +420,26 @@ class TestPackEncoding:
     # === encode with pack=False ===
 
     def test_encode_pack_false_single_char(self, tokenizer):
-        """encode with pack=False returns single token with PACKED_BIT set (literal)."""
+        """encode with pack=False returns single token with LITERAL_BIT set."""
         result = tokenizer.encode('A', pack=False)
         assert len(result) == 1
-        assert result[0] == tokenizer.CHAR_BIT['A'] | PACKED_BIT
+        assert result[0] == (ord('A') << 1) | LITERAL_BIT
 
     def test_encode_pack_false_multi_char_returns_multiple_tokens(self, tokenizer):
-        """encode with pack=False returns one token per character with PACKED_BIT."""
+        """encode with pack=False returns one token per character with LITERAL_BIT."""
         result = tokenizer.encode('ABC', pack=False)
         assert len(result) == 3
-        assert result[0] == tokenizer.CHAR_BIT['A'] | PACKED_BIT
-        assert result[1] == tokenizer.CHAR_BIT['B'] | PACKED_BIT
-        assert result[2] == tokenizer.CHAR_BIT['C'] | PACKED_BIT
+        assert result[0] == (ord('A') << 1) | LITERAL_BIT
+        assert result[1] == (ord('B') << 1) | LITERAL_BIT
+        assert result[2] == (ord('C') << 1) | LITERAL_BIT
 
     def test_encode_pack_false_preserves_order(self, tokenizer):
         """encode with pack=False preserves character order."""
         result = tokenizer.encode('XYZ', pack=False)
         assert result == [
-            tokenizer.CHAR_BIT['X'] | PACKED_BIT,
-            tokenizer.CHAR_BIT['Y'] | PACKED_BIT,
-            tokenizer.CHAR_BIT['Z'] | PACKED_BIT
+            (ord('X') << 1) | LITERAL_BIT,
+            (ord('Y') << 1) | LITERAL_BIT,
+            (ord('Z') << 1) | LITERAL_BIT
         ]
 
     def test_encode_pack_false_empty_string(self, tokenizer):
@@ -467,8 +465,8 @@ class TestPackEncoding:
         assert len(result) == 3
 
     def test_decode_pack_true_default(self, tokenizer):
-        """pack=None (default) auto-detects from PACKED_BIT."""
-        # No PACKED_BIT so auto-detect treats it as packed
+        """pack=None (default) auto-detects from LITERAL_BIT."""
+        # No LITERAL_BIT so auto-detect treats it as packed
         packed = tokenizer.CHAR_BIT['A'] | tokenizer.CHAR_BIT['B']
         result_default = tokenizer.decode([packed])  # pack=None auto-detects
         result_explicit = tokenizer.decode([packed], pack=True)
@@ -486,19 +484,19 @@ class TestPackEncoding:
     # === decode with pack=False ===
 
     def test_decode_pack_false_single_token(self, tokenizer):
-        """decode with pack=False decodes single token to char."""
-        result = tokenizer.decode([tokenizer.CHAR_BIT['A']], pack=False)
+        """decode with pack=False decodes literal token to char."""
+        result = tokenizer.decode(tokenizer.encode('A', pack=False), pack=False)
         assert result == 'A'
 
     def test_decode_pack_false_multiple_tokens(self, tokenizer):
-        """decode with pack=False decodes each token as single char."""
-        tokens = [tokenizer.CHAR_BIT['A'], tokenizer.CHAR_BIT['B'], tokenizer.CHAR_BIT['C']]
+        """decode with pack=False decodes each literal token as single char."""
+        tokens = tokenizer.encode('ABC', pack=False)
         result = tokenizer.decode(tokens, pack=False)
         assert result == 'ABC'
 
     def test_decode_pack_false_preserves_order(self, tokenizer):
         """decode with pack=False preserves token order."""
-        tokens = [tokenizer.CHAR_BIT['X'], tokenizer.CHAR_BIT['Y'], tokenizer.CHAR_BIT['Z']]
+        tokens = tokenizer.encode('XYZ', pack=False)
         result = tokenizer.decode(tokens, pack=False)
         assert result == 'XYZ'
 

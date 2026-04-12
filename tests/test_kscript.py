@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from kalvin.abstract import KLine
-from kalvin.mod_tokenizer import Mod64Tokenizer, Mod32Tokenizer, PACKED_BIT
+from kalvin.mod_tokenizer import Mod64Tokenizer, Mod32Tokenizer
 from kalvin.significance import Int32Significance
 from kscript.lexer import Lexer
 from kscript.parser import Parser, Signature, Literal, Construct, Script, KScriptFile, Block, PrimaryConstruct
