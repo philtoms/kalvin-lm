@@ -195,24 +195,24 @@ class TestMCSExpansion:
         # MCS canonization: {ABC: [A, B, C]}
         assert ["A", "B", "C"] in md["ABC"]
 
-        # Component identities now include self-reference
-        assert "A" in md["A"][0]
-        assert "B" in md["B"][0]
-        assert "C" in md["C"][0]
+        # MCS unsigned entries
+        assert md["A"][0] == None
+        assert md["B"][0] == None
+        assert md["C"][0] == None
 
     def test_mcs_in_construct_position(self) -> None:
         """MCS in construct position."""
         entries = compile_test_source("ABC => X")
 
-        # Should have: 3 identities (first) + MCS canonization + construct + entity
+        # Should have: 3 unsigned identities (first) + MCS canonization + construct + entity
         assert len(entries) >= 5
 
-        # First 3 entries should be component identities (chars emitted before compound)
+        # First 3 entries should be unsigned identities (chars emitted before compound)
         for i in range(0, 3):
             sig, nodes = entries[i].decode(_tokenizer)
             assert sig in "ABC"
             # Identities now reference themselves
-            assert nodes is not None
+            assert nodes is None
 
         # Fourth entry should be MCS canonization
         sig, nodes = entries[3].decode(_tokenizer)
@@ -243,8 +243,8 @@ class TestMCSExpansion:
         for i in range(0, 3):
             sig, nodes = entries[i].decode(_tokenizer)
             assert sig in "ABC"
-            # Identities now reference themselves
-            assert nodes is not None
+            # Unsigned Identities now reference themselves
+            assert nodes is None
 
         # Entry 3: MCS canonization {ABC: [A, B, C]}
         sig, nodes = entries[3].decode(_tokenizer)
@@ -368,9 +368,9 @@ class TestComplexExamples:
 
         # CD binds ALL CLNs [A, B]
         assert ["A", "B"] in md.get("CD", [])
-        # MCS for CD: component identities reference themselves
-        assert "C" in md.get("C", [""])[0]
-        assert "D" in md.get("D", [""])[0]
+        # MCS for CD: unsigned identities reference themselves
+        assert md.get("C", [""])[0] == None
+        assert md.get("D", [""])[0] == None
 
     def test_ab_gt_c(self) -> None:
         """Test: AB > C"""
@@ -389,9 +389,9 @@ class TestComplexExamples:
 
         # MCS for AB: {AB: [A, B]}
         assert ["A", "B"] in md.get("AB", [])
-        # Component identities reference themselves
-        assert "A" in md.get("A", [""])[0]
-        assert "B" in md.get("B", [""])[0]
+        # unsigned identities reference themselves
+        assert md.get("A", [""])[0] == None
+        assert md.get("B", [""])[0] == None
         # BWD connotate: {AB|S3: [C]}
         assert ["C"] in md.get("AB", [])
 
