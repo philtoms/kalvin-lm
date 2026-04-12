@@ -366,8 +366,8 @@ class Compiler:
 
     def _emit(self, sig: str, nodes: str | None | list[str], op: str) -> None:
         """Emit an entry with significance encoding."""
-        # Encode signature with significance bits
-        sig_id = self._encode_sig(sig)
+        # Encode signature as significant or literal
+        sig_id = self._encode_node(sig)
 
         # Encode nodes
         encoded_nodes = self._encode_nodes(nodes)
@@ -392,7 +392,7 @@ class Compiler:
         Signatures get packed, literals get character encoding.
         """
         if node.isupper() and node.isalpha():
-            return self.tokenizer.encode(node, pack=True)[0]
+            return self._encode_sig(node)
         else:
             # Literal: encode via tokenizer
             return self.tokenizer.encode(node[0] if len(node) > 1 else node, pack=False)[0]

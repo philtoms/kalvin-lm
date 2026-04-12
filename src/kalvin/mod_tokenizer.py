@@ -94,7 +94,7 @@ class ModTokenizer(KTokenizer):
     def is_literal(self, token_id: int) -> bool:
         return bool(token_id & LITERAL_BIT)
 
-    def encode(self, text: str, pack: bool = True, pad_ws: bool = False) -> list[int]:
+    def encode(self, text: str|int, pack: bool = True, pad_ws: bool = False) -> list[int]:
         """Encode a string to token IDs.
 
         Args:
@@ -107,19 +107,21 @@ class ModTokenizer(KTokenizer):
         Returns:
             List of token IDs
         """
-        if pad_ws:
+        if pad_ws and isinstance(text, str):
             text = text.strip() + " "
 
         if not text:
             return []
 
-        if pack:
+        if pack and isinstance(text, str):
             token_id = 0
             for c in text:
                 token_id |= self._char_bit[c]
             return [token_id]
-        else:
+        elif isinstance(text, str):
             return [(ord(c) << 1) | LITERAL_BIT for c in text]
+        else:
+            return [(text << 1) | LITERAL_BIT]
 
     def decode(self, ids: list[int], pack: bool | None = None) -> str:
         """Decode token IDs back to a string.
