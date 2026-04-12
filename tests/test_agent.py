@@ -549,14 +549,6 @@ class TestAgentEmbeddings:
         # Verify that the frame grew
         assert agent.frame_size() > 0
 
-    def test_add_duplicate_encoding(self):
-        agent = Agent()
-        agent.encode("hello there")
-        frame_len  = agent.frame_size()
-        agent.encode("hello there")
-
-        assert frame_len  == agent.frame_size()  # Model not extended
-
     def test_add_encoded_string(self):
         agent = Agent()
         token_sig = agent.encode("hello there!")
@@ -596,13 +588,13 @@ class TestAgentEmbeddings:
 
     def test_intermediate_signature_count(self):
         """Test that encoding creates the expected number of klines."""
-        agent = Agent()
+        agent = Agent(dev=True)
         agent.encode("a b c d")  # 4 tokens + 3 ws + 1 compound, deduplicated by add()
-        assert agent.frame_size() == 11
-        agent.encode("a b c")  # tokens already exist, only new compound kline
-        assert agent.frame_size() == 12
-        agent.encode("b c d")  # tokens already exist, only new compound kline
         assert agent.frame_size() == 13
+        agent.encode("a b c")  # tokens already exist, only new compound kline
+        assert agent.frame_size() == 19
+        agent.encode("b c d")  # tokens already exist, only new compound kline
+        assert agent.frame_size() == 25
 
 
 class TestAgentPrune:

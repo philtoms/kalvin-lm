@@ -196,8 +196,8 @@ class Decompiler:
         """Infer significance level from node structure.
 
         S1: int node (countersign/undersign)
-        S2: list where single node equals signature (canonize)
-        S3: list where single node differs from signature (connotate)
+        S2: (signature | OR of node values) != 0 (canonize)
+        S3: (signature | OR of node values) == 0 (connotate)
         S4: no nodes (unsigned)
         """
         nodes = kline.nodes
@@ -205,12 +205,12 @@ class Decompiler:
             return "S4"
         if isinstance(nodes, int):
             return "S1"
-        if len(nodes) > 1:
-            return "S2"
-        # Single node: S2 if node == sig, S3 otherwise
-        if nodes[0] == kline.signature:
-            return "S2"
-        return "S3"
+        if not nodes:
+            return "S4"
+        combined = kline.signature
+        for node in nodes:
+            combined |= node
+        return "S2" if combined != 0 else "S3"
 
     def _decode_sig(self, sig: int) -> str:
         """Decode signature to string, using MCS name if available."""

@@ -7,8 +7,8 @@ state — model changes between calls are always reflected.
 Significance levels are inferred from KLine node structure:
 
     S1  signed        single int node       (countersign / undersign)
-    S2  canonized     list with >1 nodes     (canonize)
-    S3  connotated    list with 1 node       (connotate)
+    S2  canonized     (signature | nodes) != 0   (canonize)
+    S3  connotated    (signature | nodes) == 0   (connotate)
     S4  unsigned      None or empty list     (unsigned leaf)
 
 Depth semantics
@@ -52,8 +52,8 @@ if TYPE_CHECKING:
 # ── Significance-level constants ────────────────────────────────────────────
 
 S1 = "S1"   # signed       — single int node
-S2 = "S2"   # canonized    — list with >1 elements
-S3 = "S3"   # connotated   — list with exactly 1 element
+S2 = "S2"   # canonized    — (signature | nodes) != 0
+S3 = "S3"   # connotated   — (signature | nodes) == 0
 S4 = "S4"   # unsigned     — None or empty list
 
 
@@ -64,10 +64,12 @@ def infer_level(kline: KLine) -> str:
     if isinstance(kline.nodes, int):
         return S1
     if isinstance(kline.nodes, list):
-        if len(kline.nodes) > 1:
-            return S2
-        if len(kline.nodes) == 1:
-            return S3
+        if not kline.nodes:
+            return S4
+        combined = kline.signature
+        for node in kline.nodes:
+            combined |= node
+        return S2 if combined != 0 else S3
     return S4
 
 

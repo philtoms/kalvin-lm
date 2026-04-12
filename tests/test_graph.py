@@ -92,7 +92,7 @@ class TestQueryDepth:
         nodes = g.query(C, 1)
         assert len(nodes) == 1
         assert nodes[0].sig == C
-        assert nodes[0].level == S3
+        assert nodes[0].level == S2
         assert nodes[0].nodes == [D]
 
     def test_d2_root_plus_children(self) -> None:
@@ -101,7 +101,7 @@ class TestQueryDepth:
         nodes = g.query(C, 2)
         assert len(nodes) == 3
         assert [(n.sig, n.level, n.nodes) for n in nodes] == [
-            (C, S3, [D]),
+            (C, S2, [D]),
             (D, S2, [_2, _3]),
             (D, S1, E),
         ]
@@ -112,7 +112,7 @@ class TestQueryDepth:
         nodes = g.query(C, 3)
         assert len(nodes) == 6
         assert [(n.sig, n.level, n.nodes) for n in nodes] == [
-            (C, S3, [D]),
+            (C, S2, [D]),
             (D, S2, [_2, _3]),
             (D, S1, E),
             (_2, S4, None),
@@ -125,7 +125,7 @@ class TestQueryDepth:
         g = KLineGraph(_example_model())
         nodes = g.query(C, 4)
         assert [(n.sig, n.level, n.nodes) for n in nodes] == [
-            (C, S3, [D]),
+            (C, S2, [D]),
             (D, S2, [_2, _3]),
             (D, S1, E),
             (_2, S4, None),
@@ -257,12 +257,20 @@ class TestInferLevel:
     def test_int_node_is_s1(self) -> None:
         assert infer_level(KLine(1, 42)) == S1
 
-    def test_single_node_list_is_s3(self) -> None:
-        assert infer_level(KLine(1, [42])) == S3
+    def test_single_node_list_is_s2(self) -> None:
+        """Single-node list with non-zero signature|nodes is S2."""
+        assert infer_level(KLine(1, [42])) == S2
 
-    def test_multi_node_list_is_s2(self) -> None:
+    def test_single_node_list_all_zero_is_s3(self) -> None:
+        """Single-node list with all-zero signature|nodes is S3."""
+        assert infer_level(KLine(0, [0])) == S3
+
+    def test_multi_node_list_nonzero_is_s2(self) -> None:
         assert infer_level(KLine(1, [42, 43])) == S2
         assert infer_level(KLine(1, [42, 43, 44])) == S2
+
+    def test_multi_node_list_all_zero_is_s3(self) -> None:
+        assert infer_level(KLine(0, [0, 0])) == S3
 
     def test_empty_list_is_s4(self) -> None:
         assert infer_level(KLine(1, [])) == S4
@@ -278,7 +286,7 @@ class TestQueryNode:
         nodes = g.query(C, 1)
         d = nodes[0].to_dict()
         assert d["sig"] == C
-        assert d["level"] == S3
+        assert d["level"] == S2
         assert d["nodes"] == [D]
         assert d["path"] == [C]
 

@@ -720,7 +720,7 @@ class TestDecompiler:
         result = self._roundtrip("A > B")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["level"] == "S3"
+        assert entry["level"] == "S2"
         assert entry["nodes"] == "B"
 
     def test_decompile_canonize_single(self) -> None:
@@ -728,8 +728,8 @@ class TestDecompiler:
         result = self._roundtrip("A => B")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        # Single-node canonize: node differs from sig → S3
-        assert entry["level"] == "S3"
+        # Single-node list with non-zero signature|nodes → S2
+        assert entry["level"] == "S2"
         assert entry["nodes"] == "B"
 
     def test_decompile_canonize_multi(self) -> None:
@@ -754,8 +754,8 @@ class TestDecompiler:
     def test_decompile_mcs_in_construct(self) -> None:
         """MCS in construct position preserves name."""
         result = self._roundtrip("ABC => X")
-        # Find the construct entry (single-node, node != sig → S3), not the MCS entry
-        entry = self._find_entry(result, "ABC", level="S3")
+        # Find the construct entry (single-node, non-zero sig|nodes → S2), not the MCS entry
+        entry = self._find_entry(result, "ABC", level="S2")
         assert entry is not None
         assert entry["nodes"] == "X"
 
@@ -772,8 +772,8 @@ class TestDecompiler:
         result = self._roundtrip("A => B => C")
         entry_a = self._find_entry(result, "A")
         assert entry_a is not None
-        # Single-node chain, node != sig → S3
-        assert entry_a["level"] == "S3"
+        # Single-node chain, non-zero sig|nodes → S2
+        assert entry_a["level"] == "S2"
 
 
 class TestDecompilerMCS:
@@ -836,8 +836,8 @@ class TestDecompilerMCS:
         result = decompiler.decompile(entries)
 
         # Should recover "ABC" from MCS nodes and have the construct
-        # Find the construct entry (single-node, node != sig → S3)
-        entry = self._find_entry(result, "ABC", level="S3")
+        # Find the construct entry (single-node, non-zero sig|nodes → S2)
+        entry = self._find_entry(result, "ABC", level="S2")
         assert entry is not None
         # The construct entry should have nodes "X"
         assert entry["nodes"] == "X"
