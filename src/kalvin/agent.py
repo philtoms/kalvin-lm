@@ -343,7 +343,7 @@ class Agent(KAgent):
         #bring nodes into frame
         for n in qk.as_node_list():
             nk = frame.find_kline(n) or KLine(signature=n, nodes=None)
-            self.rationalise(nk)
+            self.rationalise(nk, frame)
 
         # Expand query into frame and rationalise
         fk_list = list(frame.query(qk, 100)) if self._dev else frame.query(qk, 100)

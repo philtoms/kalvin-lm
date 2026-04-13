@@ -60,7 +60,7 @@ class ResponseItem(ListItem):
         """Initialize with a KLine and its decompiled source.
 
         Args:
-            level: The significance level (S1, S2, S3, S4, MCS).
+            level: The significance level (S1, S2, S3, S4).
             decompiled_source: The decompiled KScript source to display.
         """
         self.level = level
@@ -103,7 +103,6 @@ class ResponsesRegion(Vertical):
             "S2": True,
             "S3": True,
             "S4": True,
-            "MCS": True,
         }
         # Track last click time for double-click detection
         self._last_click_time: float = time.time()
@@ -131,22 +130,11 @@ class ResponsesRegion(Vertical):
             yield Button("S2", id="filter-s2", classes="active" if self._filters["S2"] else "inactive")
             yield Button("S3", id="filter-s3", classes="active" if self._filters["S3"] else "inactive")
             yield Button("S4", id="filter-s4", classes="active" if self._filters["S4"] else "inactive")
-            yield Button("MCS", id="filter-mcs", classes="active" if self._filters["MCS"] else "inactive")
         yield ListView(id="responses-list")
 
     def _get_kline_level(self, kline: KLine) -> str:
         """Get the significance level for a KLine."""
-        level = self._sig.get_level(kline.signature)
-        # Check for MCS: S2 with signature == AND of all nodes
-        if level == "S2":
-            nodes = kline.as_node_list()
-            if len(nodes) >= 2:
-                base_token = self._sig.strip(kline.signature)
-                for node in nodes:
-                    if not base_token & node:
-                        break
-                return "MCS"
-        return level
+        return self._sig.get_level(kline.signature)
 
     def _is_filter_active(self, level: str) -> bool:
         """Check if a filter level is active."""

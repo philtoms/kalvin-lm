@@ -691,6 +691,14 @@ class TestDecompiler:
                     return e.to_dict()
         return None
 
+    def _find_entry_by_nodes(self, entries: list, nodes: list, level: str | None = None) -> dict | None:
+        """Find an entry by signature name, optionally filtered by significance."""
+        for e in entries:
+            if e.nodes == nodes:
+                if level is None or e.level == level:
+                    return e.to_dict()
+        return None
+
     def test_decompile_unsigned(self) -> None:
         """Decompile unsigned: A -> A"""
         result = self._roundtrip("A")
@@ -720,7 +728,7 @@ class TestDecompiler:
         result = self._roundtrip("A > B")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["level"] == "S2"
+        assert entry["level"] == "S3"
         assert entry["nodes"] == "B"
 
     def test_decompile_canonize_single(self) -> None:
@@ -728,15 +736,24 @@ class TestDecompiler:
         result = self._roundtrip("A => B")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        # Single-node list with non-zero signature|nodes → S2
-        assert entry["level"] == "S2"
+        # Single-node list with non-zero signature|nodes → S3
+        assert entry["level"] == "S3"
         assert entry["nodes"] == "B"
 
     def test_decompile_canonize_multi(self) -> None:
-        """Decompile canonize with multiple nodes: A => B C -> list of nodes."""
-        result = self._roundtrip("A => B C")
-        entry = self._find_entry(result, "A")
+        """Decompile canonize with multiple nodes: BC => B C -> list of nodes."""
+        result = self._roundtrip("BC => B C")
+        entry = self._find_entry_by_nodes(result, ["B", "C"])
         assert entry is not None
+        assert entry["level"] == "S2"
+        assert entry["nodes"] == ["B", "C"]
+
+    def test_decompile_canonize_multi_underfit(self) -> None:
+        """Decompile canonize with multiple nodes: ABC => B C -> list of nodes."""
+        result = self._roundtrip("ABC => B C")
+        entry = self._find_entry_by_nodes(result, ["B", "C"])
+        assert entry is not None
+        assert entry["sig"] == "ABC"
         assert entry["level"] == "S2"
         assert entry["nodes"] == ["B", "C"]
 
@@ -753,11 +770,11 @@ class TestDecompiler:
 
     def test_decompile_mcs_in_construct(self) -> None:
         """MCS in construct position preserves name."""
-        result = self._roundtrip("ABC => X")
-        # Find the construct entry (single-node, non-zero sig|nodes → S2), not the MCS entry
+        result = self._roundtrip("ABC => A B C")
+        # Find the construct entry (single-node, non-zero sig|nodes → S3), not the MCS entry
         entry = self._find_entry(result, "ABC", level="S2")
         assert entry is not None
-        assert entry["nodes"] == "X"
+        assert entry["nodes"] == ["A", "B", "C"]
 
     def test_decompile_literal_nodes(self) -> None:
         """Decompile with literal string nodes."""
@@ -772,8 +789,8 @@ class TestDecompiler:
         result = self._roundtrip("A => B => C")
         entry_a = self._find_entry(result, "A")
         assert entry_a is not None
-        # Single-node chain, non-zero sig|nodes → S2
-        assert entry_a["level"] == "S2"
+        # Single-node chain, non-zero sig|nodes → S3
+        assert entry_a["level"] == "S3"
 
 
 class TestDecompilerMCS:
@@ -817,7 +834,7 @@ class TestDecompilerMCS:
         # Check that AB entry exists with MCS significance
         entry = self._find_entry(result, "AB")
         assert entry is not None
-        assert entry["level"] == "MCS"
+        assert entry["level"] == "S2"
         assert entry["nodes"] == ["A", "B"]
 
     def test_mcs_with_mod32_tokenizer(self) -> None:
@@ -837,7 +854,7 @@ class TestDecompilerMCS:
 
         # Should recover "ABC" from MCS nodes and have the construct
         # Find the construct entry (single-node, non-zero sig|nodes → S2)
-        entry = self._find_entry(result, "ABC", level="S2")
+        entry = self._find_entry(result, "ABC", level="S3")
         assert entry is not None
         # The construct entry should have nodes "X"
         assert entry["nodes"] == "X"
@@ -901,7 +918,7 @@ class TestDecompilerEdgeCases:
         # Check that A has nodes B and C
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["level"] == "S2"
+        assert entry["level"] == "S3"
         assert entry["nodes"] == ["B", "C"]
         # Check that B and C exist as entries
         assert self._has_sig(result, "B")

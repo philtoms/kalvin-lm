@@ -166,7 +166,7 @@ class Decompiler:
         if self._is_mcs_entry(kline):
             node_strs = self._decode_nodes(nodes)
             return DecompiledEntry(
-                level="MCS",
+                level="S2",
                 sig=sig_str,
                 nodes=node_strs,
             )
@@ -207,9 +207,11 @@ class Decompiler:
             return "S1"
         if not nodes:
             return "S4"
-        combined = kline.signature
+        nodes_sig = 0
         for node in nodes:
-            combined |= node
+            nodes_sig |= node
+
+        combined = kline.signature & nodes_sig
         return "S2" if combined != 0 else "S3"
 
     def _decode_sig(self, sig: int) -> str:
