@@ -122,7 +122,3 @@ class KLine:
         elif self.nodes == other.nodes:
             return True
         return False
-
-
-# Singleton for null/empty KLine
-KNone = KLine(signature=0, nodes=None, dbg_text="")

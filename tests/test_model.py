@@ -1,5 +1,5 @@
 import pytest
-from kalvin.abstract import KLine, KNone
+from kalvin.abstract import KLine
 from kalvin.model import Model
 
 
@@ -367,7 +367,7 @@ class TestModelIterators:
         assert found == kl1
 
         found = frame.find_kline(0x3000)
-        assert not found.signature
+        assert found == None
 
     def test_find_signed_klines(self):
         """Can find all KLines with same signature."""

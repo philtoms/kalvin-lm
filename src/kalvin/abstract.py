@@ -6,10 +6,10 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Iterator, Literal
 
-from kalvin.kline import KLine, KNode, KNodes, KSig, KNone
+from kalvin.kline import KLine, KNode, KNodes, KSig
 
 # Re-export for backwards compatibility
-__all__ = ["KLine", "KNode", "KNodes", "KSig", "KNone", "KSignificance", "KTokenizer", "KModel", "KAgent"]
+__all__ = ["KLine", "KNode", "KNodes", "KSig","KSignificance", "KTokenizer", "KModel", "KAgent"]
 
 
 # === Abstract Significance ===
@@ -283,7 +283,7 @@ class KModel(ABC):
         ...
 
     @abstractmethod
-    def find_kline(self, signature: KSig, significance: KSig | None = None) -> KLine:
+    def find_kline(self, signature: KSig, significance: KSig | None = None) -> KLine | None:
         """Find a KLine by its signature.
 
         Args:
@@ -291,7 +291,7 @@ class KModel(ABC):
             significance: Optional significance filter
 
         Returns:
-            KLine if found, KNone otherwise
+            KLine if found, None otherwise
         """
         ...
 

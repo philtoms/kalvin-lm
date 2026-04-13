@@ -2,7 +2,7 @@
 
 from typing import Iterator
 
-from kalvin.abstract import KLine, KModel, KNode, KNone, KNodes, KSig
+from kalvin.abstract import KLine, KModel, KNode, KNodes, KSig
 
 
 class Model(KModel):
@@ -26,7 +26,7 @@ class Model(KModel):
         self._dedup: set[tuple[KSig, tuple[KNode, ...]]] = set()  # For O(1) duplicate check
         if klines:
             for kline in klines:
-                self._add_kline_internal(kline)
+                self.add(kline)
 
     def exists(self, kline: KLine):
         """Check if a kline already exists in the frame."""
@@ -40,17 +40,6 @@ class Model(KModel):
         
         return False
 
-    def _add_kline_internal(self, kline: KLine) -> bool:
-        """Internal method to add a kline without duplicate checking."""
-        idx = len(self._klines)
-        if kline.signature not in self._by_key:
-            self._by_key[kline.signature] = []
-        elif not kline.nodes: # already signed
-            return False
-        self._klines.append(kline)
-        self._by_key[kline.signature].append(idx)
-        return True
-
     def add(self, kline: KLine, dedup: bool = False) -> bool:
         """Add a KLine, enforcing the key invariant.
 
@@ -62,9 +51,15 @@ class Model(KModel):
         """
         key_nodes = (kline.signature, tuple(kline.as_node_list()))
         if not dedup or key_nodes not in self._dedup:
-            if self._add_kline_internal(kline):
-                self._dedup.add(key_nodes)
-                return True
+            idx = len(self._klines)
+            if kline.signature not in self._by_key:
+                self._by_key[kline.signature] = []
+            elif not kline.nodes: # already signed
+                return False
+            self._klines.append(kline)
+            self._by_key[kline.signature].append(idx)
+            self._dedup.add(key_nodes)
+            return True
         return False
 
     def upgrade(self, kline: KLine, significance: KSig) -> None:
@@ -76,7 +71,7 @@ class Model(KModel):
         """
         kline.signature |= significance
 
-    def find_kline(self, signature: KSig, significance: KSig | None = None) -> KLine:
+    def find_kline(self, signature: KSig, significance: KSig | None = None) -> KLine | None:
         """Find a KLine by its signature.
 
         Returns the most recently added KLine with the given signature.
@@ -87,12 +82,12 @@ class Model(KModel):
             significance: Optional significance filter
 
         Returns:
-            KLine if found, KNone otherwise
+            KLine if found, None otherwise
         """
         if signature not in self._by_key:
             if self.parent:
                 return self.parent.find_kline(signature, significance)
-            return KNone
+            return None
 
         if significance is not None:
             for idx in self._by_key[signature]:
@@ -179,12 +174,12 @@ class Model(KModel):
                 return found
             if isinstance(nodes, int):
                 kline = frame.find_kline(nodes)
-                if kline is not KNone:
+                if kline:
                     found.append(kline)
                 return found
             for node in nodes:
                 kline = frame.find_kline(node)
-                if kline is not KNone:
+                if kline:
                     found.append(kline)
             return found
 
@@ -234,7 +229,7 @@ class Model(KModel):
         descendants: set[KSig] = set()
         kline = self.find_kline(node)
 
-        if kline is KNone:
+        if not kline:
             return descendants
 
         for child in kline.as_node_list():

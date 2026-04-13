@@ -10,7 +10,7 @@ from collections import Counter
 
 import json
 
-from kalvin.abstract import KAgent, KLine, KModel, KNodes, KNone, KSig, KTokenizer, KSignificance
+from kalvin.abstract import KAgent, KLine, KModel, KNodes, KSig, KTokenizer, KSignificance
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.model import Model
 from kalvin.significance import Int32Significance
@@ -171,7 +171,7 @@ class Agent(KAgent):
                 continue  # Already S1 match
             # Check if node's children intersect with target
             node_kline = frame.find_kline(node)
-            if node_kline is not KNone:
+            if node_kline:
                 node_children = set(node_kline.as_node_list())
                 if node_children & target_set:
                     s3_s2_matches += 1
@@ -299,7 +299,7 @@ class Agent(KAgent):
         for key, count in self._activity.items():
             if count >= level:
                 kline = self._model.find_kline(key)
-                if kline.signature:
+                if kline:
                     pruned_frame.append(kline)
                     pruned_activity[key] = count
 
@@ -330,25 +330,20 @@ class Agent(KAgent):
             # self._emit("ground", qk, qk, self._sig.S1)
             return True
 
-        if is_top_level:
-            # Identity (S1)
-            if self._sig.equal(qk.signature, qk.nodes):
-                frame.add(qk)
-                self._emit("frame", qk, qk, self._sig.S1)
-                return True
+        # Identity (S1)
+        if self._sig.equal(qk.signature, qk.nodes) and frame.add(qk, dedup=True):
+            self._emit("frame", qk, qk, self._sig.S1)
+            return True
 
-            # Unsigned (S4)
-            if self._sig.is_unsigned(qk.nodes):
-                frame.add(qk)
-                self._emit("frame", qk, qk, self._sig.S4)
-                return True
+        # Unsigned (S4)
+        if self._sig.is_unsigned(qk.nodes) and frame.add(qk, dedup=True):
+            self._emit("frame", qk, qk, self._sig.S4)
+            return True
 
-            #bring nodes into frame
-            for n in qk.as_node_list():
-                if self.tokenizer.is_literal(n):
-                    continue
-                nk = KLine(signature=n, nodes=None) # new token node (also at S4)
-                frame.add(nk)
+        #bring nodes into frame
+        for n in qk.as_node_list():
+            nk = frame.find_kline(n) or KLine(signature=n, nodes=None)
+            self.rationalise(nk)
 
         # Expand query into frame and rationalise
         fk_list = list(frame.query(qk, 100)) if self._dev else frame.query(qk, 100)
