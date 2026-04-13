@@ -261,11 +261,12 @@ class KModel(ABC):
         ...
 
     @abstractmethod
-    def add(self, kline: KLine) -> bool:
+    def add(self, kline: KLine, dedup: bool = False) -> bool:
         """Add a KLine to the frame.
 
         Args:
             kline: KLine to add
+            dedup: prevent duplicate entry
 
         Returns:
             True if added, False if rejected (duplicate)

@@ -250,7 +250,7 @@ class Agent(KAgent):
                 self._unrecognised_tokens.add(token)
 
             signature |= token
-            self.rationalise(KLine(signature, nodes=[token], dbg_text=decode))
+            # self.rationalise(KLine(signature, nodes=[token], dbg_text=decode))
             # Add token kline to frame
             self._model.add(KLine(signature, nodes=[token], dbg_text=decode))
             ks_nodes.append(signature)

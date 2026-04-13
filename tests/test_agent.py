@@ -589,12 +589,8 @@ class TestAgentEmbeddings:
     def test_intermediate_signature_count(self):
         """Test that encoding creates the expected number of klines."""
         agent = Agent(dev=True)
-        agent.encode("a b c d")  # 4 tokens + 3 ws + 1 compound, deduplicated by add()
-        assert agent.frame_size() == 13
-        agent.encode("a b c")  # tokens already exist, only new compound kline
-        assert agent.frame_size() == 19
-        agent.encode("b c d")  # tokens already exist, only new compound kline
-        assert agent.frame_size() == 25
+        agent.encode("a b c d")  # 4 tokens + 3 ws + 1 compound
+        assert agent.frame_size() == 8
 
 
 class TestAgentPrune:

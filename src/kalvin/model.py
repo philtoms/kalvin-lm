@@ -51,7 +51,7 @@ class Model(KModel):
         self._by_key[kline.signature].append(idx)
         return True
 
-    def add(self, kline: KLine) -> bool:
+    def add(self, kline: KLine, dedup: bool = False) -> bool:
         """Add a KLine, enforcing the key invariant.
 
         Args:
@@ -61,7 +61,7 @@ class Model(KModel):
             True if added, False if rejected (duplicate)
         """
         key_nodes = (kline.signature, tuple(kline.as_node_list()))
-        if key_nodes not in self._dedup:
+        if not dedup or key_nodes not in self._dedup:
             if self._add_kline_internal(kline):
                 self._dedup.add(key_nodes)
                 return True
