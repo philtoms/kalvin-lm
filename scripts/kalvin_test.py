@@ -9,6 +9,7 @@ from kalvin.agent import Agent
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
 source = '''
+A = B
 A > 1 < B
 (A = BC => A B C
  AB > B
@@ -38,7 +39,7 @@ agent.events.subscribe(lambda e: results.append(e))
 
 for k in klines:
     print(f'{k.dbg_text}')
-    agent.query(k)
+    agent.rationalise(k)
 for e in results:
     print(f'  {e.kind}: {e.query.dbg_text} -> {e.value.dbg_text}, {sig.get_level(e.significance)}')
 

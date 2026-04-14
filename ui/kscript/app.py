@@ -382,7 +382,7 @@ class KScriptApp(App):
                 return
             kline = self._entry_to_kline(entry)
             if self._agent:
-                self._agent.query(kline)
+                self._agent.rationalise(kline)
             await asyncio.sleep(0)
 
     def action_step_script(self) -> None:
@@ -404,7 +404,7 @@ class KScriptApp(App):
             kline = self._entry_to_kline(entry)
 
             if self._agent:
-                self._agent.query(kline)
+                self._agent.rationalise(kline)
 
             self._current_entry_index += 1
 

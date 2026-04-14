@@ -116,13 +116,17 @@ class Agent(KAgent):
         if self._sig.is_unsigned(nodes):
             return self._sig.S4
 
-        # Undersigned (and countersigned): S1
+        # Signed: S1 | S3
         if self._sig.is_signed(nodes):
-            nodes_sig = cast(KSig, nodes)
-            if frame.find_kline(nodes_sig) or self._tokenizer.is_literal(nodes_sig):
-                return self._sig.S1
+            if frame.exists(kline):
+                nodes_sig = cast(KSig, nodes)
+                if self._tokenizer.is_literal(nodes_sig):
+                    return self._sig.S1
+                if frame.exists(KLine(nodes_sig, sig)):
+                    return self._sig.S1
+            return self._sig.S3
 
-        # Canonisation: S1 ~ S2 
+        # Canonisation: S1 | S2 
                   
         nodes_sig = self._tokenizer.make_signature(cast(list,nodes))
         
@@ -142,7 +146,7 @@ class Agent(KAgent):
         # Connotation: S3
         return self._sig.S3
 
-    def _rationalise(self, qk: KLine, level: KSig, frame: KModel, graph: KGraph) -> bool:
+    def _rational_signify(self, qk: KLine, level: KSig, frame: KModel, graph: KGraph) -> bool:
         # Expand query into frame and rationalise
         for fk in graph:
             sig = self._calculate(qk, fk, frame)
@@ -310,7 +314,7 @@ class Agent(KAgent):
             ks_key |= signature
 
         kline = KLine(signature=ks_key, nodes=ks_nodes, dbg_text=text)
-        self.query(kline)
+        self.rationalise(kline)
         self._model.add(kline)
         return kline
 
@@ -359,8 +363,8 @@ class Agent(KAgent):
         frame = Model(pruned_frame)
         return Agent(model=frame, activity=pruned_activity)
 
-    def query(self, qk: KLine, frame: KModel | None = None, graph: KGraph | None = None) -> bool:
-        """Query a KLine for significance in frame context.
+    def rationalise(self, qk: KLine, frame: KModel | None = None, graph: KGraph | None = None) -> bool:
+        """Rationalise a KLine for significance in frame context.
 
         Emits events via the event bus as significance is established.
         - S1 and S4 results (significants) are fast tracked
@@ -399,8 +403,8 @@ class Agent(KAgent):
         # Rational (S2, S3): 
         if (sig_level == self._sig.S2 or sig_level == self._sig.S3):
             # try rational significance before committing to long term cogitation
-            if self._rationalise(qk, sig_level, frame, graph):
-                if self.query(qk, frame, graph):
+            if self._rational_signify(qk, sig_level, frame, graph):
+                if self.rationalise(qk, frame, graph):
                     return True
 
         # Queue for cogitation
@@ -422,7 +426,7 @@ class Agent(KAgent):
                     return
                 qk, frame = self._backlog.pop()
 
-            self.query(qk, frame)
+            self.rationalise(qk, frame)
 
     def cogitate_join(self, timeout: float | None = None) -> None:
         """Stop the cogitate background thread and wait for it to finish."""

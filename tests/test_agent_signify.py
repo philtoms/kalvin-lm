@@ -1,13 +1,11 @@
 """Tests for Agent._signify - internal significance calculation of a single KLine.
 
 _signify evaluates a KLine against a frame to determine its significance level:
-- S1: Identity, undersigned (in frame / literal), or fully canonised
-- S2: Partially canonised, or underfit/overfit (sig & nodes_sig != 0)
-- S3: Connotation (no bit overlap between sig and nodes_sig)
-- S4: Unsigned (nodes is None)
+- S1: Identity, countersigned, or fully canonised (full overlap between sig and nodes)
+- S2: Partially canonised, or underfit/overfit (overlap between sig and nodes)
+- S3: Connotation (no overlap between sig and nodes)
+  - S4: Unsigned (nodes is None)
 
-Uses Mod32Tokenizer with symbolic signatures (see test_graph.py) to avoid
-collisions between token bits and significance bits (32-63).
 """
 
 from __future__ import annotations
@@ -143,6 +141,7 @@ class TestSignifyUndersigned:
         """
         agent, frame = _agent()
         kline = KLine(signature=_sig.S2 | A, nodes=LIT_B)
+        frame.add(kline)
         assert agent._signify(kline, frame) == _sig.S1
 
     def test_in_frame_and_literal(self):
@@ -154,6 +153,7 @@ class TestSignifyUndersigned:
         frame = Model([KLine(signature=LIT_B, nodes=[])])
         agent, frame = _agent(model=frame)
         kline = KLine(signature=_sig.S3 | A, nodes=LIT_B)
+        frame.add(kline)
         assert agent._signify(kline, frame) == _sig.S1
 
     def test_neither_in_frame_nor_literal_raises(self):
@@ -568,11 +568,6 @@ class TestDynamicUndersignedRise:
 
     def test_s3_then_s1_by_adding_node(self):
         """Signed int node goes from S3 (connotation) → S1 when grounded.
-
-        Uses different token values for sig and nodes so identity check
-        doesn't short-circuit (is_identity compares stripped token bits).
-        With Mod32Tokenizer, the ungrounded int node falls through to
-        canonisation which produces S3 (no overlap) instead of TypeError.
         """
         agent, frame = _agent()
         kline = KLine(signature=B, nodes=A)  # sig≠nodes tokens
@@ -580,33 +575,35 @@ class TestDynamicUndersignedRise:
         # Step 1: node not in frame → falls through → S3 (no overlap)
         assert agent._signify(kline, frame) == _sig.S3
 
-        # Step 2: ground the node
-        frame.add(KLine(signature=A, nodes=[]))
+        # Step 2: not grounded, still S3
+        frame.add(kline)
+        assert agent._signify(kline, frame) == _sig.S3
+
+        # Step 3: ground the node
+        frame.add(KLine(signature=A, nodes=B))
         assert agent._signify(kline, frame) == _sig.S1
 
     def test_multiple_undersigned_rise_independently(self):
         """Different undersigned klines with different nodes rise
         independently as their respective nodes are grounded.
-
-        With Mod32Tokenizer, ungrounded int nodes produce S3 (connotation)
-        instead of TypeError.
         """
         agent, frame = _agent()
 
-        ka = KLine(signature=B, nodes=A)  # references A
-        kb = KLine(signature=A, nodes=B)  # references B
+        ka = KLine(signature=A, nodes=B)  # references B
+        kb = KLine(signature=B, nodes=A)  # references A
 
         # Both S3 initially (no overlap → connotation)
         assert agent._signify(ka, frame) == _sig.S3
         assert agent._signify(kb, frame) == _sig.S3
 
-        # Ground A — ka rises, kb still S3
-        frame.add(KLine(signature=A, nodes=[]))
-        assert agent._signify(ka, frame) == _sig.S1
+        # Ground A — ka kb still S3
+        frame.add(KLine(signature=A, nodes=B))
+        assert agent._signify(ka, frame) == _sig.S3
         assert agent._signify(kb, frame) == _sig.S3
 
-        # Ground B — kb also rises
-        frame.add(KLine(signature=B, nodes=[]))
+        # Ground B — ka kb rise
+        frame.add(KLine(signature=B, nodes=A))
+        assert agent._signify(ka, frame) == _sig.S1
         assert agent._signify(kb, frame) == _sig.S1
 
 

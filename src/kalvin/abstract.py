@@ -424,7 +424,7 @@ class KAgent(ABC):
     # === Core operations ===
 
     @abstractmethod
-    def query(self, kline: KLine, frame: KModel | None = None, graph: KGraph | None = None) -> bool:
+    def rationalise(self, kline: KLine, frame: KModel | None = None, graph: KGraph | None = None) -> bool:
         """Query a KLine for significance.
 
         Args:

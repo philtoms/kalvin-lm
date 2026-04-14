@@ -590,7 +590,7 @@ class TestAgentEmbeddings:
         """Test that encoding creates the expected number of klines."""
         agent = Agent(dev=True)
         agent.encode("a b c d")  # 4 tokens + 3 ws + 1 compound
-        assert agent.frame_size() == 8
+        assert agent.frame_size() == 9
 
 
 class TestAgentPrune:

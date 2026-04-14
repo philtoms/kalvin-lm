@@ -57,14 +57,14 @@ class Model(KModel):
                 return False
 
             # A frame remembers all signatures
-            if self.base:
+            if self.base != None:
                 node_sig = 0 # TODO refactor into signature module
                 for node in kline.as_node_list():
                     node_sig |= node
-                    if not self.find_kline(node):
-                        return self.add(KLine(signature=node, nodes=None))
-                if not self.find_kline(node_sig):
-                    return self.add(KLine(signature=node_sig, nodes=kline.nodes))
+                if node_sig and node_sig != kline.signature:
+                    for node in kline.as_node_list():
+                        self.add(KLine(signature=node, nodes=None), dedup=True)
+                    self.add(KLine(signature=node_sig, nodes=kline.nodes), dedup=True)
 
             idx = len(self._klines)
             self._klines.append(kline)
@@ -95,7 +95,7 @@ class Model(KModel):
         Returns:
             KLine if found, None otherwise
         """
-        if signature not in self._by_key:
+        if signature not in self._by_key or not len(self._by_key[signature]):
             if self.base:
                 return self.base.find_kline(signature, significance)
             return None
