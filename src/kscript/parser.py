@@ -156,8 +156,8 @@ class Parser:
         return self._check(TokenType.SIGNATURE)
 
     def _try_chain_op(self) -> TokenType | None:
-        """Try to match CANONIZE_FWD | CANONIZE_BWD | CONNOTATE_BWD."""
-        for tt in (TokenType.CANONIZE_FWD, TokenType.CANONIZE_BWD, TokenType.CONNOTATE_BWD):
+        """Try to match CANONIZE_FWD | CANONIZE_BWD | CONNOTATE_FWD | CONNOTATE_BWD."""
+        for tt in (TokenType.CANONIZE_FWD, TokenType.CANONIZE_BWD, TokenType.CONNOTATE_FWD, TokenType.CONNOTATE_BWD):
             if self._check(tt):
                 self._advance()
                 return tt

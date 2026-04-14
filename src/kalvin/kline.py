@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TypeAlias
+from typing import TypeAlias, Iterator
 
 # === Core Types ===
 
@@ -14,7 +14,6 @@ KNodes: TypeAlias = int | None | list[int]
 
 # Type alias for Significance (64-bit int with S1/S2/S3/S4 encoding)
 KSig: TypeAlias = int
-
 
 class KLine:
     """A structure with a 64-bit significance signature and list of child KNodes.
@@ -122,3 +121,5 @@ class KLine:
         elif self.nodes == other.nodes:
             return True
         return False
+
+KGraph: TypeAlias = Iterator[KLine]

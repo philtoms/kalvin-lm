@@ -2,7 +2,7 @@
 
 from typing import Iterator
 
-from kalvin.abstract import KLine, KModel, KNode, KNodes, KSig
+from kalvin.abstract import KLine, KModel, KNode, KNodes, KSig, KGraph
 
 
 class Model(KModel):
@@ -18,8 +18,8 @@ class Model(KModel):
 
     __slots__ = ("_klines", "_by_key", "_dedup")
 
-    def __init__(self, klines: list[KLine] | None = None, parent: "KModel | None" = None):
-        self.parent = parent
+    def __init__(self, klines: list[KLine] | None = None, base: "KModel | None" = None):
+        self.base = base
         """Initialize the model with optional existing KLines."""
         self._klines: list[KLine] = []  # Flat list for O(1) iteration
         self._by_key: dict[KSig, list[int]] = {}  # signature -> list of indices
@@ -34,9 +34,9 @@ class Model(KModel):
             key_nodes = (kline.signature, tuple(kline.as_node_list()))
             if key_nodes in self._dedup:
                 return True
-        
-        if self.parent:
-            return self.parent.exists(kline)
+
+        if self.base:
+            return self.base.exists(kline)
         
         return False
 
@@ -51,11 +51,22 @@ class Model(KModel):
         """
         key_nodes = (kline.signature, tuple(kline.as_node_list()))
         if not dedup or key_nodes not in self._dedup:
-            idx = len(self._klines)
             if kline.signature not in self._by_key:
                 self._by_key[kline.signature] = []
             elif not kline.nodes: # already signed
                 return False
+
+            # A frame remembers all signatures
+            if self.base:
+                node_sig = 0 # TODO refactor into signature module
+                for node in kline.as_node_list():
+                    node_sig |= node
+                    if not self.find_kline(node):
+                        return self.add(KLine(signature=node, nodes=None))
+                if not self.find_kline(node_sig):
+                    return self.add(KLine(signature=node_sig, nodes=kline.nodes))
+
+            idx = len(self._klines)
             self._klines.append(kline)
             self._by_key[kline.signature].append(idx)
             self._dedup.add(key_nodes)
@@ -85,8 +96,8 @@ class Model(KModel):
             KLine if found, None otherwise
         """
         if signature not in self._by_key:
-            if self.parent:
-                return self.parent.find_kline(signature, significance)
+            if self.base:
+                return self.base.find_kline(signature, significance)
             return None
 
         if significance is not None:
@@ -111,20 +122,20 @@ class Model(KModel):
             KLine list
         """
         if signature not in self._by_key:
-            if self.parent:
-                return self.parent.find_signed_klines(signature)
+            if self.base:
+                return self.base.find_signed_klines(signature)
             return []
 
         return [self._klines[idx] for idx in self._by_key[signature]]
 
-    def query(self, query: KLine, depth: int = 1) -> Iterator[KLine]:
+    def query_graph(self, query: KSig, depth: int = 1) -> KGraph:
         """Query KLines by ANDing significance with a query.
 
         Iteration follows reverse insertion order (newest first).
         O(1) setup, O(N) iteration.
 
         Args:
-            query: The query value to match (AND operation on signature)
+            query: The signature value to match (AND operation on signature)
             depth: Maximum recursion depth for expanding child nodes
 
 
@@ -134,16 +145,16 @@ class Model(KModel):
         klines = self._klines
         n = len(klines)
 
-        def generator() -> Iterator[KLine]:
+        def generator() -> KGraph:
             for i in range(n - 1, -1, -1):
                 kline = klines[i]
-                if kline.signifies(query.signature):
+                if kline.signifies(query):
                     yield kline
                     for child in self.expand(kline, depth):
                         yield child
 
-            if self.parent:
-                for kline in self.parent.query(query):
+            if self.base:
+                for kline in self.base.query_graph(query):
                     yield kline
 
         return generator()
@@ -152,7 +163,7 @@ class Model(KModel):
         self,
         kline: KLine,
         depth: int = 2,
-    ) -> Iterator[KLine]:
+    ) -> KGraph:
         """Expand a KLine and its descendants up to a given depth.
 
         Args:
@@ -165,27 +176,9 @@ class Model(KModel):
         if depth <= 0:
             return iter([])
 
-        frame = self
-
-        def get_node_klines(nodes: KNodes) -> list[KLine]:
-            """Get all KLines from a list of node keys."""
-            found = []
-            if nodes is None:
-                return found
-            if isinstance(nodes, int):
-                kline = frame.find_kline(nodes)
-                if kline:
-                    found.append(kline)
-                return found
-            for node in nodes:
-                kline = frame.find_kline(node)
-                if kline:
-                    found.append(kline)
-            return found
-
         visited: set[KSig] = set()
 
-        def expand_inner(kl: KLine, current_depth: int) -> Iterator[KLine]:
+        def expand_inner(kl: KLine, current_depth: int) -> KGraph:
             """Expand a KLine and yield results immediately."""
             if kl.signature in visited:
                 return
@@ -194,12 +187,14 @@ class Model(KModel):
             if current_depth >= depth:
                 return
 
-            for child in get_node_klines(kl.nodes):
-                yield child
-                yield from expand_inner(child, current_depth + 1)
-
-            if self.parent:
-                for kline in self.parent.expand(kl):
+            for node in kl.as_node_list():
+                child = self.find_kline(node)
+                if child:
+                    yield child
+                    yield from expand_inner(child, current_depth + 1)
+ 
+            if self.base:
+                for kline in self.base.expand(kl):
                     yield kline
 
         return expand_inner(kline, 1)
@@ -268,9 +263,9 @@ class Model(KModel):
 
 
 class _KLineAccessor:
-    """Helper class for frame.kline[signature] access."""
+    """Helper class for model.kline[signature] access."""
 
-    __slots__ = ("_frame",)
+    __slots__ = ("_model",)
 
     def __init__(self, model: Model):
         self._model = model

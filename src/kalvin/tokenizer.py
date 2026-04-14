@@ -174,6 +174,18 @@ class Tokenizer(KTokenizer):
     def is_literal(self, token_id: int) -> bool:
         return False
     
+    def make_signature(self, nodes: list[int] | int) -> int:
+        """Constructs an S1 signature from a set of nodes
+        
+        Args:
+            nodes: the set of integer nodes
+        
+        Returns:
+            An S1 signature construction
+        """
+        sig = 0
+        return sig
+    
     def encode(self, text: str, pad_ws: bool = False) -> list[int]:
         """Encode a string to token IDs.
 

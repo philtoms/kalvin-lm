@@ -149,12 +149,8 @@ class Decompiler:
         if not nodes or len(nodes) < 2:
             return False
 
-        base_token = kline.signature
-        nodes_or = 0
-        for node in nodes:
-            nodes_or |= node
-
-        return base_token == nodes_or
+        nodes_sig = self.tokenizer.make_signature(nodes)
+        return kline.signature == nodes_sig
 
     def _decompile_kline(self, kline: KLine) -> DecompiledEntry | None:
         """Decompile a single KLine to entry. Returns None for MCS entries."""
@@ -205,12 +201,8 @@ class Decompiler:
             return "S4"
         if isinstance(nodes, int):
             return "S1"
-        if not nodes:
-            return "S4"
-        nodes_sig = 0
-        for node in nodes:
-            nodes_sig |= node
 
+        nodes_sig = self.tokenizer.make_signature(nodes)
         combined = kline.signature & nodes_sig
         return "S2" if combined != 0 else "S3"
 

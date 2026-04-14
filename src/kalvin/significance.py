@@ -166,7 +166,7 @@ class IntSignificance(KSignificance):
         """Strip significance bits, returning only token bits."""
         return sig & self._TOKEN_MASK
 
-    def equal(self, sig1: KSig | KNodes, sig2: KSig| KNodes) -> bool:
+    def is_identity(self, sig1: KSig | KNodes, sig2: KSig| KNodes) -> bool:
         """test if two signatures are equal
 
         Args:

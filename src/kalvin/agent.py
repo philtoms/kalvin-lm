@@ -5,12 +5,12 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 from struct import pack, unpack
-from typing import Literal, Any
+from typing import Literal, Any, cast
 from collections import Counter
 
 import json
 
-from kalvin.abstract import KAgent, KLine, KModel, KNodes, KSig, KTokenizer, KSignificance
+from kalvin.abstract import KAgent, KLine, KModel, KNodes, KSig, KTokenizer, KSignificance, KGraph
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.model import Model
 from kalvin.significance import Int32Significance
@@ -61,7 +61,7 @@ class Agent(KAgent):
         self._event_bus = EventBus()
         self._backlog_lock = threading.Lock()
         self._backlog_condition = threading.Condition(self._backlog_lock)
-        self._backlog: list[tuple[KModel, KLine, KLine, KSig]] = []
+        self._backlog: list[tuple[KLine, KModel]] = []
         self._cogitate_stop = threading.Event()
         self._cogitate_thread = threading.Thread(target=self._cogitate, daemon=True)
         self._cogitate_thread.start()
@@ -98,8 +98,61 @@ class Agent(KAgent):
         self.__frames.append(frame)
         return frame
     
-    def _signify(self, frame: KModel, query: KLine, target: KLine) -> KSig:
-        """Calculate significance between query and target KLines.
+    def _signify(self, kline: KLine, frame: KModel) -> KSig:
+        """Calculate the significance of a kline signature if it exists.
+        
+        Args:
+            kline: the kline to be signified
+            frame: the current model frame used to ground S1
+        """
+        sig = kline.signature
+        nodes = kline.nodes
+
+        # Identity: S1
+        if self._sig.is_identity(sig, nodes):
+            return self._sig.S1
+
+        # Unsigned: S4
+        if self._sig.is_unsigned(nodes):
+            return self._sig.S4
+
+        # Undersigned (and countersigned): S1
+        if self._sig.is_signed(nodes):
+            nodes_sig = cast(KSig, nodes)
+            if frame.find_kline(nodes_sig) or self._tokenizer.is_literal(nodes_sig):
+                return self._sig.S1
+
+        # Canonisation: S1 ~ S2 
+                  
+        nodes_sig = self._tokenizer.make_signature(cast(list,nodes))
+        
+        if sig == nodes_sig:
+            for n in kline.as_node_list():
+                if not frame.find_kline(nodes_sig) and not self._tokenizer.is_literal(n):
+                    # Partially canonised: S2
+                    return self._sig.S2
+                
+            # Fully canonised: S1
+            return self._sig.S1
+
+        # Underfit|Overfit: S2
+        if sig & nodes_sig:
+            return self._sig.S2 #if sig.bit_count() > n_sig.bit_count() else self._sig.S3 
+
+        # Connotation: S3
+        return self._sig.S3
+
+    def _rationalise(self, qk: KLine, level: KSig, frame: KModel, graph: KGraph) -> bool:
+        # Expand query into frame and rationalise
+        for fk in graph:
+            sig = self._calculate(qk, fk, frame)
+            if sig == self._sig.S1:
+                self._model.add(fk)
+                return True
+        return False
+        
+    def _calculate(self, query: KLine, target: KLine, frame: KModel) -> KSig:
+        """Calculate rational significance between query and target KLines.
 
         Significance is comparable - higher = more significant.
         S1 > S2 > S3 > S4.
@@ -124,13 +177,13 @@ class Agent(KAgent):
 
         # Count S1 matches: positional equality (up to min length)
         s1_match_positions = set(
-            i for i in range(min_len) if self._sig.equal(query_nodes[i], target_nodes[i])
+            i for i in range(min_len) if self._sig.is_identity(query_nodes[i], target_nodes[i])
         )
         s1_matches = len(s1_match_positions)
 
         # S1: signed nodes match
         if query.is_signed() and target.is_signed():
-            if self._sig.equal(query.nodes, target.nodes):
+            if self._sig.is_identity(query.nodes, target.nodes):
                 return self._sig.S1
             
         # S2 -> S1: All nodes match
@@ -257,7 +310,7 @@ class Agent(KAgent):
             ks_key |= signature
 
         kline = KLine(signature=ks_key, nodes=ks_nodes, dbg_text=text)
-        self.rationalise(kline)
+        self.query(kline)
         self._model.add(kline)
         return kline
 
@@ -306,8 +359,8 @@ class Agent(KAgent):
         frame = Model(pruned_frame)
         return Agent(model=frame, activity=pruned_activity)
 
-    def rationalise(self, qk: KLine, frame: KModel | None = None) -> bool:
-        """Rationalise a KLine query in frame context.
+    def query(self, qk: KLine, frame: KModel | None = None, graph: KGraph | None = None) -> bool:
+        """Query a KLine for significance in frame context.
 
         Emits events via the event bus as significance is established.
         - S1 and S4 results (significants) are fast tracked
@@ -324,40 +377,37 @@ class Agent(KAgent):
         is_top_level = frame is None
         if is_top_level:
             frame = self._get_frame()
+        
+        if graph is None:
+            graph = frame.query_graph(qk.signature, 100)
 
         # Test early to prevent infinite recursion
         if frame.exists(qk):
-            # self._emit("ground", qk, qk, self._sig.S1)
+            if is_top_level:
+                self._emit("ground", qk, qk, self._sig.S1)
             return True
 
-        # Identity (S1)
-        if self._sig.equal(qk.signature, qk.nodes) and frame.add(qk, dedup=True):
-            self._emit("frame", qk, qk, self._sig.S1)
+        sig_level = self._signify(qk, frame)
+
+        # Significant (S1, S4):
+        if sig_level == self._sig.S1 or sig_level == self._sig.S4:
+            # bring query kline to attention (dedup=FALSE)
+            self._model.add(qk, dedup=False)
+            self._emit("frame", qk, qk, sig_level)
             return True
 
-        # Unsigned (S4)
-        if self._sig.is_unsigned(qk.nodes) and frame.add(qk, dedup=True):
-            self._emit("frame", qk, qk, self._sig.S4)
-            return True
+        # Rational (S2, S3): 
+        if (sig_level == self._sig.S2 or sig_level == self._sig.S3):
+            # try rational significance before committing to long term cogitation
+            if self._rationalise(qk, sig_level, frame, graph):
+                if self.query(qk, frame, graph):
+                    return True
 
-        #bring nodes into frame
-        for n in qk.as_node_list():
-            nk = frame.find_kline(n) or KLine(signature=n, nodes=None)
-            self.rationalise(nk, frame)
-
-        # Expand query into frame and rationalise
-        fk_list = list(frame.query(qk, 100)) if self._dev else frame.query(qk, 100)
-        for fk in fk_list:
-            sig = self._signify(frame, qk, fk)
-            if sig == self._sig.S1:
-                self._signify(frame, qk, fk)
-                self._model.add(fk)
-                self._emit("ground", qk, fk, sig)
-            elif sig != self._sig.S4:
-                # rational (S2, S3): queue for cogitate background thread
-                with self._backlog_condition:
-                    self._backlog.append((frame, qk, fk, sig))
-                    self._backlog_condition.notify()
+        # Queue for cogitation
+        with self._backlog_condition:
+            frame.add(qk, dedup=True)
+            self._backlog.append((qk, frame))
+            self._backlog_condition.notify()
 
         return False
 
@@ -370,9 +420,9 @@ class Agent(KAgent):
                     self._backlog_condition.wait(timeout=0.5)
                 if self._cogitate_stop.is_set() and not self._backlog:
                     return
-                frame, qk, sk, sig = self._backlog.pop()
+                qk, frame = self._backlog.pop()
 
-            self.rationalise(qk, frame)
+            self.query(qk, frame)
 
     def cogitate_join(self, timeout: float | None = None) -> None:
         """Stop the cogitate background thread and wait for it to finish."""

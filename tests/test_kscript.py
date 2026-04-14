@@ -63,11 +63,89 @@ def decoded_entries(entries: list[CompiledEntry]) -> list[tuple[str, list[str] |
 
 
 # =============================================================================
-# 1. Parser AST Tests (New AST Structure)
+# 1. Parser AST Tests 
 # =============================================================================
 
 class TestParserAST:
-    """Tests for the new parser AST structure."""
+    """Tests for the parser AST structure."""
+
+    def test_chain_construct_fwd(self) -> None:
+        """Chain construct: A => B"""
+        source = "A => B"
+        tokens = Lexer(source).tokenize()
+        kscript_file = Parser(tokens).parse()
+
+        assert len(kscript_file.scripts) == 1
+        script = kscript_file.scripts[0]
+        assert len(script.constructs) >= 1
+
+        # First construct should be a chain with CANONIZE_FWD
+        construct = script.constructs[0]
+        assert isinstance(construct.inner, list)
+        assert len(construct.inner) == 1
+        assert construct.inner[0].sig.id == "A"
+        assert construct.chain_op == TokenType.CANONIZE_FWD
+
+        # Right side should be a primary construct
+        right = construct.chain_right
+        assert right is not None
+        assert isinstance(right.inner, list)
+        assert len(right.inner) >= 1
+        assert right.chain_op == None
+        assert right.inner[0].sig.id == "B"
+
+    def test_chain_construct_bwd(self) -> None:
+        """Chain construct: A < B"""
+        source = "A < B"
+        tokens = Lexer(source).tokenize()
+        kscript_file = Parser(tokens).parse()
+
+        assert len(kscript_file.scripts) == 1
+        script = kscript_file.scripts[0]
+        assert len(script.constructs) >= 1
+
+        # First construct should be a chain with CONNOTATE_BWD
+        construct = script.constructs[0]
+        assert isinstance(construct.inner, list)
+        assert len(construct.inner) == 1
+        assert construct.inner[0].sig.id == "A"
+        assert construct.chain_op == TokenType.CONNOTATE_BWD
+
+        # Right side should be a primary construct
+        right = construct.chain_right
+        assert right is not None
+        assert isinstance(right.inner, list)
+        assert len(right.inner) >= 1
+        assert right.chain_op == None
+        assert right.inner[0].sig.id == "B"
+
+    def test_chain_construct_fwd_bwd(self) -> None:
+        """Chain construct: A > 1 < B"""
+        source = "A > 1 < B"
+        tokens = Lexer(source).tokenize()
+        kscript_file = Parser(tokens).parse()
+
+        assert len(kscript_file.scripts) == 1
+        script = kscript_file.scripts[0]
+        assert len(script.constructs) >= 1
+
+        # First construct should be a chain with CONNOTATE_BWD
+        construct = script.constructs[0]
+        assert isinstance(construct.inner, list)
+        assert len(construct.inner) == 1
+        assert construct.inner[0].sig.id == "A"
+        assert construct.inner[0].node.id == "1"
+        assert construct.chain_op == TokenType.CONNOTATE_BWD
+
+        # Right side should be a primary construct
+        right = construct.chain_right
+        assert right is not None
+        assert isinstance(right.inner, list)
+        assert len(right.inner) >= 1
+        assert right.chain_op == None
+        assert right.inner[0].sig.id == "B"
+        assert right.inner[0].node == None
+        assert construct.chain_op == TokenType.CONNOTATE_BWD
 
     def test_chain_construct(self) -> None:
         """Chain construct: A => B C <= D"""
@@ -267,42 +345,98 @@ class TestMCSExpansion:
 class TestSignificanceLevels:
     """Tests for significance level inference from node structure."""
 
-    def test_countersign_significance(self) -> None:
-        """Countersign produces int node (S1 when decompiled)."""
+    def test_countersign(self) -> None:
+        """Test compiling countersign (bidirectional)."""
         entries = compile_test_source("A == B")
-
-        # Check that countersign entries have int nodes
-        for e in entries:
-            if isinstance(e.nodes, int):
-                return
-        assert False, "No int-node entry found"
-
-    def test_canonize_significance(self) -> None:
-        """Canonize produces multi-node list."""
-        entries = compile_test_source("AB => C D")
-
-        # Check for multi-node list entry
-        for e in entries:
-            if isinstance(e.nodes, list) and len(e.nodes) > 1:
-                return
-        assert False, "No multi-node entry found"
-
-    def test_connotate_significance(self) -> None:
-        """Connotate produces single-node list."""
-        entries = compile_test_source("A > B")
-
-        # Check for single-node list entry
-        for e in entries:
-            if isinstance(e.nodes, list) and len(e.nodes) == 1:
-                return
-        assert False, "No single-node entry found"
-
-    def test_undersign_significance(self) -> None:
-        """Undersign: S1 unidirectional."""
-        entries = compile_test_source("A = B")
-
         d = entries_to_dict(entries)
+        assert len(entries) == 2
         assert d["A"] == "B"
+        assert d["B"] == "A"
+
+    def test_undersign(self) -> None:
+        """Test compiling undersign."""
+        entries = compile_test_source("A = B")
+        assert len(entries) == 1
+        sig, nodes = entries[0].decode(_tokenizer)
+        assert sig == "A" and nodes == "B"
+
+    def test_canonize_fwd(self) -> None:
+        """Test compiling forward canonize."""
+        entries = compile_test_source("AB => C D")
+        d = entries_to_dict(entries)
+        assert d["AB"] == ["C", "D"]
+
+    def test_canonize_bwd(self) -> None:
+        """Test compiling backward canonize."""
+        entries = compile_test_source("A <= B")
+        # Emits: {B: [A]} (connotate) and {B: None} 
+        assert len(entries) == 2
+        md = entries_to_multidict(entries)
+        assert ["A"] in md.get("B", [])
+
+    def test_connotate_fwd(self) -> None:
+        """Test compiling forward connotate."""
+        entries = compile_test_source("A > B")
+        assert len(entries) == 1
+        sig, nodes = entries[0].decode(_tokenizer)
+        assert sig == "A" and nodes == ["B"]
+
+    def test_connotate_bwd(self) -> None:
+        """Test compiling backward connotate."""
+        entries = compile_test_source("A < B")
+        # Emits: {B: [A]} (connotate) and {B: None} 
+        assert len(entries) == 2
+        md = entries_to_multidict(entries)
+        assert ["A"] in md.get("B", [])
+
+    def test_literals(self) -> None:
+        """Test compiling string and number literals."""
+        d = entries_to_dict(compile_test_source(r'A = "hello"'))
+        assert d["A"] == '"hello"'
+        d = entries_to_dict(compile_test_source("A = 42"))
+        assert d["A"] == "42"
+
+    def test_canon_chain(self) -> None:
+        """Test canon chain with immediate binding."""
+        entries = compile_test_source("A => B => C")
+        # Check S2 construct entries
+        md = entries_to_multidict(entries)
+        assert ["B"] in md.get("A", [])
+        assert ["C"] in md.get("B", [])
+
+    def test_canon_target(self) -> None:
+        """Test canon chain with immediate binding."""
+        entries = compile_test_source("A => B <= C")
+        # Check S2 construct entries
+        md = entries_to_multidict(entries)
+        assert ["B"] in md.get("A", [])
+        assert ["B"] in md.get("C", [])
+
+
+    def test_connotate_chain(self) -> None:
+        """Test connotate chain with immediate binding."""
+        entries = compile_test_source("A > B > C")
+        # Check S2 construct entries
+        md = entries_to_multidict(entries)
+        assert ["B"] in md.get("A", [])
+        assert ["C"] in md.get("B", [])
+
+    def test_connotate_target(self) -> None:
+        """Test connotate chain with immediate binding."""
+        entries = compile_test_source("A > B < C")
+        # Check S2 construct entries
+        md = entries_to_multidict(entries)
+        assert ["B"] in md.get("A", [])
+        assert ["B"] in md.get("C", [])
+
+    def test_subscript_as_nodes(self) -> None:
+        """Test subscript signatures as nodes."""
+        source = "A =>\n  B\n  C"
+        entries = compile_test_source(source)
+        d = entries_to_dict(entries)
+        assert d["A"] == ["B", "C"]
+        assert d["B"] is None
+        assert d["C"] is None
 
 
 # =============================================================================
@@ -594,80 +728,6 @@ class TestS2Literals:
         entries = compile_test_source('A => "hello"')
         d = entries_to_dict(entries)
         assert d["A"] == '"hello"'
-
-
-# =============================================================================
-# 8. Backward Compatibility Tests
-# =============================================================================
-
-class TestBackwardCompatibility:
-    """Tests for backward compatibility with existing behavior."""
-
-    def test_unsigned(self) -> None:
-        """Test compiling unsigned script."""
-        entries = compile_test_source("A")
-        assert len(entries) == 1
-        sig, nodes = entries[0].decode(_tokenizer)
-        assert sig == "A"
-        assert nodes is None
-
-    def test_countersign(self) -> None:
-        """Test compiling countersign (bidirectional)."""
-        entries = compile_test_source("A == B")
-        d = entries_to_dict(entries)
-        assert d["A"] == "B"
-        assert d["B"] == "A"
-
-    def test_undersign(self) -> None:
-        """Test compiling undersign."""
-        entries = compile_test_source("A = B")
-        assert len(entries) == 1
-        sig, nodes = entries[0].decode(_tokenizer)
-        assert sig == "A" and nodes == "B"
-
-    def test_connotate_fwd(self) -> None:
-        """Test compiling forward connotate."""
-        entries = compile_test_source("A > B")
-        assert len(entries) == 1
-        sig, nodes = entries[0].decode(_tokenizer)
-        assert sig == "A" and nodes == ["B"]
-
-    def test_connotate_bwd(self) -> None:
-        """Test compiling backward connotate."""
-        entries = compile_test_source("A < B")
-        # Emits: {B: [A]} (connotate) and {B: None} 
-        md = entries_to_multidict(entries)
-        assert ["A"] in md.get("B", [])
-
-    def test_canonize_fwd(self) -> None:
-        """Test compiling forward canonize."""
-        entries = compile_test_source("AB => C D")
-        d = entries_to_dict(entries)
-        assert d["AB"] == ["C", "D"]
-
-    def test_literals(self) -> None:
-        """Test compiling string and number literals."""
-        d = entries_to_dict(compile_test_source(r'A = "hello"'))
-        assert d["A"] == '"hello"'
-        d = entries_to_dict(compile_test_source("A = 42"))
-        assert d["A"] == "42"
-
-    def test_multiple_constructs(self) -> None:
-        """Test multiple constructs with immediate binding."""
-        entries = compile_test_source("A => B => C")
-        # Check S2 construct entries
-        md = entries_to_multidict(entries)
-        assert ["B"] in md.get("A", [])
-        assert ["C"] in md.get("B", [])
-
-    def test_subscript_as_nodes(self) -> None:
-        """Test subscript signatures as nodes."""
-        source = "A =>\n  B\n  C"
-        entries = compile_test_source(source)
-        d = entries_to_dict(entries)
-        assert d["A"] == ["B", "C"]
-        assert d["B"] is None
-        assert d["C"] is None
 
 
 # =============================================================================

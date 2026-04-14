@@ -94,6 +94,25 @@ class ModTokenizer(KTokenizer):
     def is_literal(self, token_id: int) -> bool:
         return bool(token_id & LITERAL_BIT)
 
+    def make_signature(self, nodes: list[int] | int) -> int:
+        """Constructs an S1 signature from a set of nodes
+        
+        Args:
+            nodes: the set of integer nodes
+        
+        Returns:
+            An S1 signature construction
+        """
+        sig = 0
+        if isinstance(nodes, list):
+            for node in nodes:                  
+                if not self.is_literal(node):
+                    sig |= node
+        else:
+            sig = nodes
+        
+        return sig
+
     def encode(self, text: str|int, pack: bool = True, pad_ws: bool = False) -> list[int]:
         """Encode a string to token IDs.
 

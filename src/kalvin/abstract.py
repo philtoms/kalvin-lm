@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Iterator, Literal
+from typing import Iterator, Literal, cast
 
-from kalvin.kline import KLine, KNode, KNodes, KSig
+from kalvin.kline import KLine, KNode, KNodes, KSig, KGraph
 
 # Re-export for backwards compatibility
-__all__ = ["KLine", "KNode", "KNodes", "KSig","KSignificance", "KTokenizer", "KModel", "KAgent"]
+__all__ = ["KLine", "KNode", "KNodes", "KSig","KSignificance", "KTokenizer", "KModel", "KAgent", "KGraph"]
 
 
 # === Abstract Significance ===
@@ -166,7 +166,7 @@ class KSignificance(ABC):
         ...
 
     @abstractmethod
-    def equal(self, sig1: KSig | KNodes, sig2: KSig| KNodes) -> bool:
+    def is_identity(self, sig1: KSig | KNodes, sig2: KSig| KNodes) -> bool:
         """test if two signatures are equal
 
         Args:
@@ -219,6 +219,17 @@ class KTokenizer(ABC):
     @abstractmethod
     def is_literal(self, token_id: int) -> bool:
         """Returns token literal status"""
+        ...
+    @abstractmethod
+    def make_signature(self, nodes: list[int] | int) -> int:
+        """Constructs an S1 signature from a set of nodes
+        
+        Args:
+            nodes: the set of integer nodes
+        
+        Returns:
+            An S1 signature construction
+        """
         ...
 
     @abstractmethod
@@ -308,11 +319,11 @@ class KModel(ABC):
         ...
 
     @abstractmethod
-    def query(self, query: KLine, depth: int = 1) -> Iterator[KLine]:
+    def query_graph(self, query: KSig, depth: int = 1) -> KGraph:
         """Query KLines by ANDing significance with a query.
 
         Args:
-            query: The query kline to match
+            query: The query signature to match
             depth: Maximum recursion depth for expanding child nodes
 
         Returns:
@@ -413,12 +424,13 @@ class KAgent(ABC):
     # === Core operations ===
 
     @abstractmethod
-    def rationalise(self, kline: KLine, frame: KModel | None = None) -> bool:
-        """Rationalise a KLine.
+    def query(self, kline: KLine, frame: KModel | None = None, graph: KGraph | None = None) -> bool:
+        """Query a KLine for significance.
 
         Args:
-            kline: KLine to rationalize
+            kline: KLine to query
             frame: existing frame context
+            graph: existing query graph
         
         Returns:
             True if significant (S1, S4), False if rational (S2, S3)

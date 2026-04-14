@@ -136,7 +136,7 @@ class TestModelQuery:
         query = KLine(signature=0xFF00, nodes=[])
         frame = Model([kl1, kl2])
 
-        assert list(frame.query(query)) == []
+        assert list(frame.query_graph(query.signature)) == []
 
     def test_single_match(self):
         """If match found, it's returned."""
@@ -145,7 +145,7 @@ class TestModelQuery:
         query = KLine(signature=0xFF00, nodes=[])
         frame = Model([non_matching, matching])
 
-        assert list(frame.query(query)) == [matching]
+        assert list(frame.query_graph(query.signature)) == [matching]
 
     def test_all_matches_returned(self):
         """All matching klines are returned."""
@@ -155,7 +155,7 @@ class TestModelQuery:
         non_matching = KLine(signature=0x0001, nodes=[])
         frame = Model([non_matching, match1, match2])
 
-        assert list(frame.query(query)) == [match2, match1]
+        assert list(frame.query_graph(query.signature)) == [match2, match1]
 
     def test_reverse_insertion_order(self):
         """Results follow reverse insertion order (newest first)."""
@@ -165,7 +165,7 @@ class TestModelQuery:
         query = KLine(signature=0xFF00, nodes=[])
         frame = Model([match1, match2, match3])
 
-        assert list(frame.query(query)) == [match3, match2, match1]
+        assert list(frame.query_graph(query.signature)) == [match3, match2, match1]
 
 
 class TestModelExpand:

@@ -206,10 +206,10 @@ class Compiler:
 
         # Component identities: {char: None} for each (emitted first)
         for char in chars:
-            self._emit(char, None, "S4")
+            self._emit(char, None, "UNSIGNED")
 
         # MCS canonization: {sig: [A, B, C, ...]} (emitted second)
-        self._emit(sig, chars, "S2")
+        self._emit(sig, chars, "CANONIZE_FWD")
 
         return True
 
@@ -295,12 +295,23 @@ class Compiler:
             # Recurse into right
             self._compile_construct(right)
 
+        elif chain_op == TokenType.CONNOTATE_FWD:
+            # CONNOTATE_FWD chain: {owner: [right_items]}
+            last = left_primaries[-1]
+            owner = self._get_owner(last)
+            nodes = [self._item_id(item) for item in right_items]
+            self._emit(owner, nodes, "CONNOTATE_FWD")
+
+            # Recurse into right
+            self._compile_construct(right)
+
         elif chain_op == TokenType.CONNOTATE_BWD:
-            # CONNOTATE_BWD: {r[0].id: [left_primaries[-1].sig]}
+            # CONNOTATE_BWD: {r[0].id: [owner of last left primary]}
             if right_items:
                 owner = self._item_id(right_items[0])
                 self._emit_mcs(owner)
-                last_left = left_primaries[-1].sig.id
+                last = left_primaries[-1]
+                last_left = self._get_owner(last)
                 self._emit(owner, [last_left], "CONNOTATE_BWD")
 
             # Recurse into right
