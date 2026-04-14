@@ -386,6 +386,12 @@ class KModel(ABC):
         """Return internal kline graph"""
         ...
 
+    @property
+    @abstractmethod
+    def base(self) -> KModel:
+        """Return base model"""
+        ...
+
 # === KAgent ===
 
 
@@ -424,13 +430,12 @@ class KAgent(ABC):
     # === Core operations ===
 
     @abstractmethod
-    def rationalise(self, kline: KLine, frame: KModel | None = None, graph: KGraph | None = None) -> bool:
-        """Query a KLine for significance.
+    def rationalise(self, kline: KLine, frame: KModel | None = None) -> bool:
+        """Rationalise a KLine for significance.
 
         Args:
             kline: KLine to query
             frame: existing frame context
-            graph: existing query graph
         
         Returns:
             True if significant (S1, S4), False if rational (S2, S3)

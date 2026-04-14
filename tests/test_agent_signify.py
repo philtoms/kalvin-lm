@@ -1,8 +1,8 @@
 """Tests for Agent._signify - internal significance calculation of a single KLine.
 
 _signify evaluates a KLine against a frame to determine its significance level:
-- S1: Identity, countersigned, or fully canonised (full overlap between sig and nodes)
-- S2: Partially canonised, or underfit/overfit (overlap between sig and nodes)
+- S1: Identity, countersigned, or fully canonized (full overlap between sig and nodes)
+- S2: Partially canonized, or underfit/overfit (overlap between sig and nodes)
 - S3: Connotation (no overlap between sig and nodes)
   - S4: Unsigned (nodes is None)
 
@@ -86,7 +86,7 @@ class TestSignifyIdentity:
         """Different token values fall through to later checks.
 
         sig ≠ nodes (stripped) → not identity.  Nodes is int (signed) but
-        not in frame and not literal → falls through to canonisation.
+        not in frame and not literal → falls through to canonization.
         make_signature handles int nodes gracefully, producing S3 (connotation)
         when there is no bit overlap.
         """
@@ -158,7 +158,7 @@ class TestSignifyUndersigned:
 
     def test_neither_in_frame_nor_literal_raises(self):
         """Signed int node not in frame and not literal falls through to
-        canonisation.  make_signature handles int nodes gracefully.
+        canonization.  make_signature handles int nodes gracefully.
 
         In normal usage this path is unreachable because the kline would
         already exist in the frame (rationalise checks before calling
@@ -175,17 +175,17 @@ class TestSignifyUndersigned:
 
 
 # ===================================================================
-# 4. Canonisation – fully canonised → S1
-#    nodes is a list, ns (OR of non-literal nodes via make_signature)
-#    == sig, and every node is resolvable (ns is in frame, or all
+# 4. Canonization – fully canonized → S1
+#    nodes is a list, node_sig (OR of non-literal nodes via make_signature)
+#    == sig, and every node is resolvable (node_sig is in frame, or all
 #    nodes are literals).
 # ===================================================================
 
-class TestSignifyCanonisedS1:
-    """Canonised nodes that are fully grounded → S1."""
+class TestSignifyCanonizedS1:
+    """Canonized nodes that are fully grounded → S1."""
 
     def test_ns_in_frame(self):
-        """ns (OR of all nodes) exists as a key in the frame → S1."""
+        """node_sig (OR of all nodes) exists as a key in the frame → S1."""
         frame = Model([KLine(signature=AB, nodes=[])])
         agent, frame = _agent(model=frame)
         kline = KLine(signature=AB, nodes=[A, B])
@@ -195,7 +195,7 @@ class TestSignifyCanonisedS1:
         """All nodes are literal tokens → S1.
 
         make_signature skips literal nodes (returns 0), so sig must also
-        be 0 for the canonisation path to activate.  Since every node
+        be 0 for the canonization path to activate.  Since every node
         is literal, the inner loop's ``not is_literal(n)`` is False for
         all nodes → S1.
         """
@@ -204,7 +204,7 @@ class TestSignifyCanonisedS1:
         assert agent._signify(kline, frame) == _sig.S1
 
     def test_ns_in_frame_single_node(self):
-        """Single-node list where ns matches sig and is in frame → S1.
+        """Single-node list where node_sig matches sig and is in frame → S1.
 
         Identity is skipped because sig is int, nodes is list
         (is_identity needs both int).  make_signature([A]) = A = sig,
@@ -217,13 +217,13 @@ class TestSignifyCanonisedS1:
 
 
 # ===================================================================
-# 5. Canonisation – partially canonised → S2
-#    nodes is a list, ns == sig, ns is NOT in frame, and at least one
+# 5. Canonization – partially canonized → S2
+#    nodes is a list, node_sig == sig, node_sig is NOT in frame, and at least one
 #    node is not a literal.
 # ===================================================================
 
-class TestSignifyCanonisedS2:
-    """Partially canonised nodes → S2."""
+class TestSignifyCanonizedS2:
+    """Partially canonized nodes → S2."""
 
     def test_ns_not_in_frame_non_literal_node(self):
         agent, frame = _agent()
@@ -231,10 +231,10 @@ class TestSignifyCanonisedS2:
         assert agent._signify(kline, frame) == _sig.S2
 
     def test_mixed_literal_and_non_literal(self):
-        """One literal, one non-literal, ns not in frame → S2.
+        """One literal, one non-literal, node_sig not in frame → S2.
 
         make_signature([A, LIT_B]) = A (literal skipped).  sig=A,
-        nodes_sig=A → canonised path.  A not in frame and A not literal
+        nodes_sig=A → canonized path.  A not in frame and A not literal
         → S2.
         """
         agent, frame = _agent()
@@ -247,7 +247,7 @@ class TestSignifyCanonisedS2:
         assert agent._signify(kline, frame) == _sig.S2
 
     def test_ns_in_frame_overrides_non_literal(self):
-        """Even with non-literal nodes, if ns is in frame → S1 (not S2)."""
+        """Even with non-literal nodes, if node_sig is in frame → S1 (not S2)."""
         frame = Model([KLine(signature=AB, nodes=[])])
         agent, frame = _agent(model=frame)
         kline = KLine(signature=AB, nodes=[A, B])
@@ -256,27 +256,27 @@ class TestSignifyCanonisedS2:
 
 # ===================================================================
 # 6. Underfit → S2
-#    nodes is a list, ns != sig (from make_signature), sig & ns != 0.
+#    nodes is a list, node_sig != sig (from make_signature), sig & node_sig != 0.
 # ===================================================================
 
 class TestSignifyUnderfitS2:
-    """sig and ns share bits but ns != sig → S2."""
+    """sig and node_sig share bits but node_sig != sig → S2."""
 
     def test_basic_underfit(self):
         """sig has extra bits beyond nodes → underfit → S2.
 
-        AF = A|F has bits 1 and 6; nodes [F] → ns = F (bit 6 only).
-        sig & ns = F (non-zero), sig != ns → S2.
+        AF = A|F has bits 1 and 6; nodes [F] → node_sig = F (bit 6 only).
+        sig & node_sig = F (non-zero), sig != node_sig → S2.
         """
         agent, frame = _agent()
         kline = KLine(signature=AF, nodes=[F])
         assert agent._signify(kline, frame) == _sig.S2
 
     def test_sig_extra_bits(self):
-        """sig = ABC (3 bits), ns = AB (2 bits) → S2.
+        """sig = ABC (3 bits), node_sig = AB (2 bits) → S2.
 
-        make_signature([B, A]) = B|A = AB.  sig = ABC != ns.
-        sig & ns = AB (non-zero) → S2.
+        make_signature([B, A]) = B|A = AB.  sig = ABC != node_sig.
+        sig & node_sig = AB (non-zero) → S2.
         """
         agent, frame = _agent()
         kline = KLine(signature=ABC, nodes=[B, A])
@@ -285,7 +285,7 @@ class TestSignifyUnderfitS2:
 
 # ===================================================================
 # 7. Connotation → S3
-#    nodes is a list, ns != sig, and sig & ns == 0 (no bit overlap).
+#    nodes is a list, node_sig != sig, and sig & node_sig == 0 (no bit overlap).
 # ===================================================================
 
 class TestSignifyConnotationS3:
@@ -312,7 +312,7 @@ class TestSignifyConnotationS3:
         assert agent._signify(kline, frame) == _sig.S3
 
     def test_zero_sig_empty_nodes(self):
-        """Both zero: ns=0 == sig=0 → canonisation path,
+        """Both zero: node_sig=0 == sig=0 → canonization path,
         empty node list → loop doesn't execute → S1.
         """
         agent, frame = _agent()
@@ -321,16 +321,16 @@ class TestSignifyConnotationS3:
 
 
 # ===================================================================
-# 8. Significance bits in sig during canonisation
+# 8. Significance bits in sig during canonization
 # ===================================================================
 
 class TestSignifyWithSignificanceBits:
-    """sig may carry significance-level bits; canonisation compares
+    """sig may carry significance-level bits; canonization compares
     the full 64-bit values."""
 
     def test_sig_has_s2_bit(self):
         """sig = S2 | A, nodes = [A]: make_signature([A]) = A.
-        sig != ns (S2 bit present).  sig & ns = A (non-zero) → S2.
+        sig != node_sig (S2 bit present).  sig & node_sig = A (non-zero) → S2.
         """
         agent, frame = _agent()
         kline = KLine(signature=_sig.S2 | A, nodes=[A])
@@ -339,7 +339,7 @@ class TestSignifyWithSignificanceBits:
 
     def test_sig_has_s3_bit(self):
         """sig = S3 | A, nodes = [A]: make_signature([A]) = A.
-        sig != ns (S3 bit present).  sig & ns = A (non-zero) → S2.
+        sig != node_sig (S3 bit present).  sig & node_sig = A (non-zero) → S2.
         """
         agent, frame = _agent()
         kline = KLine(signature=_sig.S3 | A, nodes=[A])
@@ -363,7 +363,7 @@ class TestSignifyPrecedence:
         kline = KLine(signature=0, nodes=None)
         assert agent._signify(kline, frame) == _sig.S4
 
-    def test_signed_before_canonisation(self):
+    def test_signed_before_canonization(self):
         """A signed int node that IS in frame returns S1, not S2/S3."""
         frame = Model([KLine(signature=A, nodes=[])])
         agent, frame = _agent(model=frame)
@@ -371,16 +371,16 @@ class TestSignifyPrecedence:
         # Identity catches this first (same stripped value) → S1
         assert agent._signify(kline, frame) == _sig.S1
 
-    def test_canonisation_before_underfit(self):
-        """If ns == sig, we never reach the underfit check."""
+    def test_canonization_before_underfit(self):
+        """If node_sig == sig, we never reach the underfit check."""
         frame = Model([KLine(signature=AB, nodes=[])])
         agent, frame = _agent(model=frame)
         kline = KLine(signature=AB, nodes=[A, B])
-        # ns = make_signature([A,B]) = AB == sig, ns in frame → S1
+        # node_sig = make_signature([A,B]) = AB == sig, node_sig in frame → S1
         assert agent._signify(kline, frame) == _sig.S1
 
     def test_underfit_before_s3(self):
-        """sig & ns != 0 yields S2, not S3 (connotation)."""
+        """sig & node_sig != 0 yields S2, not S3 (connotation)."""
         agent, frame = _agent()
         kline = KLine(signature=AF, nodes=[F])
         # make_signature([F]) = F.  AF != F, AF & F = F (non-zero) → S2
@@ -390,12 +390,12 @@ class TestSignifyPrecedence:
 # ===================================================================
 # 10. Dynamic tests – significance rises as model grows
 #
-#    The canonisation and undersigned branches query the frame,
+#    The canonization and undersigned branches query the frame,
 #    so adding klines between _signify calls can raise the result.
 #
 #    Rising paths:
-#      Canonisation (ns == sig):
-#        S2 (ns not grounded) → S1 (ns grounded in frame)
+#      Canonization (node_sig == sig):
+#        S2 (node_sig not grounded) → S1 (node_sig grounded in frame)
 #      Undersigned (int node):
 #        TypeError (node missing) → S1 (node grounded in frame)
 #
@@ -404,24 +404,14 @@ class TestSignifyPrecedence:
 # ===================================================================
 
 
-class TestDynamicCanonisationRise:
-    """Canonised klines rise from S2 → S1 when ns is added to frame.
-
-    In the canonisation branch (_signify):
-        ns = make_signature(nodes)
-        if sig == ns:
-            for n in nodes:
-                if not frame.find_kline(ns) and not is_literal(n):
-                    return S2  # partially canonised
-            return S1          # fully canonised
-
-    So the result depends on whether ns is resolvable in the frame.
+class TestDynamicCanonizationRise:
+    """Canonized klines rise from S2 → S1 when node_sig is added to frame.
     """
 
     def test_two_node_s2_then_s1_by_adding_ns(self):
-        """S2 → S1 when ns is added to frame.
+        """S2 → S1 when node_sig is added to frame.
 
-        kline(sig=AB, nodes=[A, B]): ns = make_signature([A,B]) = AB
+        kline(sig=AB, nodes=[A, B]): node_sig = make_signature([A,B]) = AB
         Empty frame → S2.  Add AB to frame → S1.
         """
         agent, frame = _agent()
@@ -430,14 +420,14 @@ class TestDynamicCanonisationRise:
         # Step 1: empty frame → S2
         assert agent._signify(kline, frame) == _sig.S2
 
-        # Step 2: ground ns in frame
+        # Step 2: ground node_sig in frame
         frame.add(KLine(signature=AB, nodes=[]))
         assert agent._signify(kline, frame) == _sig.S1
 
     def test_three_node_s2_then_s1_by_adding_ns(self):
-        """Three-node canonised kline rises from S2 → S1.
+        """Three-node canonized kline rises from S2 → S1.
 
-        kline(sig=ABC, nodes=[A, B, C]): ns = make_signature([A,B,C]) = ABC
+        kline(sig=ABC, nodes=[A, B, C]): node_sig = make_signature([A,B,C]) = ABC
         """
         agent, frame = _agent()
         kline = KLine(signature=ABC, nodes=[A, B, C])
@@ -450,7 +440,7 @@ class TestDynamicCanonisationRise:
     def test_single_node_s2_then_s1_by_adding_ns(self):
         """Single-node list rises from S2 → S1.
 
-        kline(sig=A, nodes=[A]): ns = make_signature([A]) = A.
+        kline(sig=A, nodes=[A]): node_sig = make_signature([A]) = A.
         Identity is skipped because sig is int, nodes is list
         (is_identity needs both int).
         """
@@ -474,12 +464,12 @@ class TestDynamicCanonisationRise:
         frame.add(KLine(signature=D, nodes=[]))
         assert agent._signify(kline, frame) == _sig.S2
 
-        # Now add the actual ns
+        # Now add the actual node_sig
         frame.add(KLine(signature=AB, nodes=[]))
         assert agent._signify(kline, frame) == _sig.S1
 
     def test_multiple_klines_rise_together_when_ns_shared(self):
-        """Several klines with the same ns all rise when ns is grounded."""
+        """Several klines with the same node_sig all rise when node_sig is grounded."""
         agent, frame = _agent()
 
         k1 = KLine(signature=AB, nodes=[A, B])
@@ -494,19 +484,19 @@ class TestDynamicCanonisationRise:
         assert agent._signify(k2, frame) == _sig.S1
 
     def test_sequential_grounding_multiple_ns(self):
-        """Different klines with different ns values rise independently."""
+        """Different klines with different node_sig values rise independently."""
         agent, frame = _agent()
 
-        ka = KLine(signature=A, nodes=[A])      # ns = A
-        kab = KLine(signature=AB, nodes=[A, B])  # ns = AB
-        kabc = KLine(signature=ABC, nodes=[A, B, C])  # ns = ABC
+        ka = KLine(signature=A, nodes=[A])      # node_sig = A
+        kab = KLine(signature=AB, nodes=[A, B])  # node_sig = AB
+        kabc = KLine(signature=ABC, nodes=[A, B, C])  # node_sig = ABC
 
         # All start at S2
         assert agent._signify(ka, frame) == _sig.S2
         assert agent._signify(kab, frame) == _sig.S2
         assert agent._signify(kabc, frame) == _sig.S2
 
-        # Ground A — only ka rises (ab and abc still missing their ns)
+        # Ground A — only ka rises (ab and abc still missing their node_sig)
         frame.add(KLine(signature=A, nodes=[]))
         assert agent._signify(ka, frame) == _sig.S1
         assert agent._signify(kab, frame) == _sig.S2
@@ -524,7 +514,7 @@ class TestDynamicCanonisationRise:
     def test_rise_does_not_affect_static_underfit(self):
         """Grounding a kline in the frame does not change underfit results.
 
-        Underfit path (ns != sig, sig & ns != 0) is pure bit math —
+        Underfit path (node_sig != sig, sig & node_sig != 0) is pure bit math —
         no frame lookup.
         """
         agent, frame = _agent()
@@ -542,7 +532,7 @@ class TestDynamicCanonisationRise:
     def test_rise_does_not_affect_static_s3_no_overlap(self):
         """Grounding klines does not change S3 no-overlap results.
 
-        Connotation path (ns != sig, sig & ns == 0) is pure bit math.
+        Connotation path (node_sig != sig, sig & node_sig == 0) is pure bit math.
         """
         agent, frame = _agent()
         kline = KLine(signature=E, nodes=[A, B])
@@ -557,17 +547,11 @@ class TestDynamicCanonisationRise:
 
 
 class TestDynamicUndersignedRise:
-    """Undersigned (int node) klines become S1 when node is added to frame.
-
-    In the undersigned branch:
-        if frame.find_kline(ns) or is_literal(ns):
-            return S1
-    When the node is absent and non-literal, execution falls through to
-    the canonisation code which iterates the int → TypeError.
+    """Undersigned (S3) klines become S1 when node is added to frame.
     """
 
     def test_s3_then_s1_by_adding_node(self):
-        """Signed int node goes from S3 (connotation) → S1 when grounded.
+        """Signed kline goes from S3 (connotation) → S1 when grounded.
         """
         agent, frame = _agent()
         kline = KLine(signature=B, nodes=A)  # sig≠nodes tokens
@@ -596,10 +580,10 @@ class TestDynamicUndersignedRise:
         assert agent._signify(ka, frame) == _sig.S3
         assert agent._signify(kb, frame) == _sig.S3
 
-        # Ground A — ka kb still S3
+        # Ground A — ka still S3, kb rises to S1
         frame.add(KLine(signature=A, nodes=B))
         assert agent._signify(ka, frame) == _sig.S3
-        assert agent._signify(kb, frame) == _sig.S3
+        assert agent._signify(kb, frame) == _sig.S1
 
         # Ground B — ka kb rise
         frame.add(KLine(signature=B, nodes=A))
@@ -613,11 +597,11 @@ class TestDynamicRiseStability:
     """
 
     def test_s1_remains_s1_after_more_additions(self):
-        """A canonised kline at S1 stays S1 regardless of new klines."""
+        """A canonized kline at S1 stays S1 regardless of new klines."""
         agent, frame = _agent()
         kline = KLine(signature=AB, nodes=[A, B])
 
-        # Ground ns → S1
+        # Ground node_sig → S1
         frame.add(KLine(signature=AB, nodes=[]))
         assert agent._signify(kline, frame) == _sig.S1
 

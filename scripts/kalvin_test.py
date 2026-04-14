@@ -1,4 +1,6 @@
 import sys
+import threading
+
 sys.path.insert(0, 'src')
 
 from kscript.lexer import Lexer
@@ -9,8 +11,9 @@ from kalvin.agent import Agent
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
 source = '''
-A = B
+(S3 ~> S1)
 A > 1 < B
+A = B
 (A = BC => A B C
  AB > B
  C = 2)
@@ -34,13 +37,17 @@ decompiler = Decompiler(tokenizer)
 agent = Agent(tokenizer, dev=True)
 sig = agent.significance
 
-results = []
-agent.events.subscribe(lambda e: results.append(e))
+done_event = threading.Event()
+
+agent.events.subscribe(lambda e:
+    (print(f'  {e.kind}: {e.query.dbg_text} -> {e.value.dbg_text}, {sig.get_level(e.significance)}')
+     if e.kind != 'done' else done_event.set())
+)
 
 for k in klines:
     print(f'{k.dbg_text}')
     agent.rationalise(k)
-for e in results:
-    print(f'  {e.kind}: {e.query.dbg_text} -> {e.value.dbg_text}, {sig.get_level(e.significance)}')
 
+done_event.wait()
+agent.cogitate_join()
 print("Done!")

@@ -1,4 +1,4 @@
-"""Agent - Knowledge graph with tokenization support."""
+"""Agent - Knowledge graph with significant edges"""
 
 from __future__ import annotations
 
@@ -81,9 +81,15 @@ class Agent(KAgent):
                 self._nlp_type = json.load(f)
                 Agent.__nlp_type = self._nlp_type
 
-    def _emit(self, kind: str, query: KLine, value: KLine, significance: int) -> None:
-        """Emit a rationalisation event."""
-        self._event_bus.publish(RationaliseEvent(kind, query, value,significance))
+    def _publish(self, kind: str, query: KLine, value: KLine, sig: int, frame: KModel) -> None:
+        """Publish a rationalisation event."""
+
+        # Raise base level attention if it is a significant event
+        if sig == self._sig.S1 or sig == self._sig.S4:
+            if frame.base:
+                frame.base.add(value, dedup=False)
+
+        self._event_bus.publish(RationaliseEvent(kind, query, value, sig))
 
     def _get_frame(self) -> KModel:
         """Return the current frame context if it is in bounds, otherwise create a new one.
@@ -118,25 +124,24 @@ class Agent(KAgent):
 
         # Signed: S1 | S3
         if self._sig.is_signed(nodes):
-            if frame.exists(kline):
-                nodes_sig = cast(KSig, nodes)
-                if self._tokenizer.is_literal(nodes_sig):
-                    return self._sig.S1
-                if frame.exists(KLine(nodes_sig, sig)):
-                    return self._sig.S1
+            nodes_sig = cast(KSig, nodes)
+            if self._tokenizer.is_literal(nodes_sig):
+                return self._sig.S1
+            if frame.exists(KLine(nodes_sig, sig)):
+                return self._sig.S1
             return self._sig.S3
 
-        # Canonisation: S1 | S2 
                   
         nodes_sig = self._tokenizer.make_signature(cast(list,nodes))
         
+        # Canonization: S1 | S2 
         if sig == nodes_sig:
             for n in kline.as_node_list():
                 if not frame.find_kline(nodes_sig) and not self._tokenizer.is_literal(n):
-                    # Partially canonised: S2
+                    # Partially canonized: S2
                     return self._sig.S2
                 
-            # Fully canonised: S1
+            # Fully canonized: S1
             return self._sig.S1
 
         # Underfit|Overfit: S2
@@ -146,15 +151,6 @@ class Agent(KAgent):
         # Connotation: S3
         return self._sig.S3
 
-    def _rational_signify(self, qk: KLine, level: KSig, frame: KModel, graph: KGraph) -> bool:
-        # Expand query into frame and rationalise
-        for fk in graph:
-            sig = self._calculate(qk, fk, frame)
-            if sig == self._sig.S1:
-                self._model.add(fk)
-                return True
-        return False
-        
     def _calculate(self, query: KLine, target: KLine, frame: KModel) -> KSig:
         """Calculate rational significance between query and target KLines.
 
@@ -190,9 +186,12 @@ class Agent(KAgent):
             if self._sig.is_identity(query.nodes, target.nodes):
                 return self._sig.S1
             
-        # S2 -> S1: All nodes match
+        # S2-> S1: All grounded nodes match
         if query.is_canonized() and target.is_canonized():                
             if s1_matches == min_len and len(query_nodes) == len(target_nodes):
+                for node in query_nodes:
+                    if not frame.find_kline(node):
+                        return self._sig.S2
                 return self._sig.S1
 
         # S2: Partial match (some positional matches exist)
@@ -262,7 +261,7 @@ class Agent(KAgent):
 
     @property
     def model(self) -> Model:
-        """Get the knowledge graph model (base frame)."""
+        """Get the model (base frame)."""
         return self._model
 
     @property
@@ -363,7 +362,7 @@ class Agent(KAgent):
         frame = Model(pruned_frame)
         return Agent(model=frame, activity=pruned_activity)
 
-    def rationalise(self, qk: KLine, frame: KModel | None = None, graph: KGraph | None = None) -> bool:
+    def rationalise(self, qk: KLine, frame: KModel | None = None) -> bool:
         """Rationalise a KLine for significance in frame context.
 
         Emits events via the event bus as significance is established.
@@ -382,32 +381,20 @@ class Agent(KAgent):
         if is_top_level:
             frame = self._get_frame()
         
-        if graph is None:
-            graph = frame.query_graph(qk.signature, 100)
-
         # Test early to prevent infinite recursion
         if frame.exists(qk):
             if is_top_level:
-                self._emit("ground", qk, qk, self._sig.S1)
+                self._publish("ground", qk, qk, self._sig.S1, frame)
             return True
 
         sig_level = self._signify(qk, frame)
 
         # Significant (S1, S4):
         if sig_level == self._sig.S1 or sig_level == self._sig.S4:
-            # bring query kline to attention (dedup=FALSE)
-            self._model.add(qk, dedup=False)
-            self._emit("frame", qk, qk, sig_level)
+            self._publish("frame", qk, qk, sig_level, frame)
             return True
 
-        # Rational (S2, S3): 
-        if (sig_level == self._sig.S2 or sig_level == self._sig.S3):
-            # try rational significance before committing to long term cogitation
-            if self._rational_signify(qk, sig_level, frame, graph):
-                if self.rationalise(qk, frame, graph):
-                    return True
-
-        # Queue for cogitation
+        # Rational (S2, S3): Queue for cogitation
         with self._backlog_condition:
             frame.add(qk, dedup=True)
             self._backlog.append((qk, frame))
@@ -418,15 +405,31 @@ class Agent(KAgent):
     def _cogitate(self) -> None:
         """Background thread that processes rational klines (S2, S3).
         """
+        timeout=2
+        count_up = 0
         while not self._cogitate_stop.is_set():
             with self._backlog_condition:
                 while not self._backlog and not self._cogitate_stop.is_set():
                     self._backlog_condition.wait(timeout=0.5)
+                    count_up +=0.5
+                    # Publish "done" when backlog remains empty
+                    if count_up >= timeout:
+                        done_k = KLine(signature=0, nodes=[], dbg_text="done")
+                        self._publish("done", done_k, done_k, 0, self._get_frame())
+                        return
+                count_up = 0
                 if self._cogitate_stop.is_set() and not self._backlog:
                     return
                 qk, frame = self._backlog.pop()
 
+            # Expand query into frame and rationalise
+            for fk in frame.query_graph(qk.signature, 100):
+                sig = self._calculate(qk, fk, frame)
+                if sig == self._sig.S1:
+                    frame.add(fk, dedup=False)
+
             self.rationalise(qk, frame)
+
 
     def cogitate_join(self, timeout: float | None = None) -> None:
         """Stop the cogitate background thread and wait for it to finish."""

@@ -18,12 +18,12 @@ class Model(KModel):
 
     __slots__ = ("_klines", "_by_key", "_dedup")
 
-    def __init__(self, klines: list[KLine] | None = None, base: "KModel | None" = None):
-        self.base = base
+    def __init__(self, klines: list[KLine] | None = None, base: KModel | None = None):
         """Initialize the model with optional existing KLines."""
         self._klines: list[KLine] = []  # Flat list for O(1) iteration
         self._by_key: dict[KSig, list[int]] = {}  # signature -> list of indices
         self._dedup: set[tuple[KSig, tuple[KNode, ...]]] = set()  # For O(1) duplicate check
+        self._base = base
         if klines:
             for kline in klines:
                 self.add(kline)
@@ -35,8 +35,8 @@ class Model(KModel):
             if key_nodes in self._dedup:
                 return True
 
-        if self.base:
-            return self.base.exists(kline)
+        if self._base:
+            return self._base.exists(kline)
         
         return False
 
@@ -57,7 +57,7 @@ class Model(KModel):
                 return False
 
             # A frame remembers all signatures
-            if self.base != None:
+            if self._base != None:
                 node_sig = 0 # TODO refactor into signature module
                 for node in kline.as_node_list():
                     node_sig |= node
@@ -96,8 +96,8 @@ class Model(KModel):
             KLine if found, None otherwise
         """
         if signature not in self._by_key or not len(self._by_key[signature]):
-            if self.base:
-                return self.base.find_kline(signature, significance)
+            if self._base:
+                return self._base.find_kline(signature, significance)
             return None
 
         if significance is not None:
@@ -122,8 +122,8 @@ class Model(KModel):
             KLine list
         """
         if signature not in self._by_key:
-            if self.base:
-                return self.base.find_signed_klines(signature)
+            if self._base:
+                return self._base.find_signed_klines(signature)
             return []
 
         return [self._klines[idx] for idx in self._by_key[signature]]
@@ -153,8 +153,8 @@ class Model(KModel):
                     for child in self.expand(kline, depth):
                         yield child
 
-            if self.base:
-                for kline in self.base.query_graph(query):
+            if self._base:
+                for kline in self._base.query_graph(query):
                     yield kline
 
         return generator()
@@ -193,8 +193,8 @@ class Model(KModel):
                     yield child
                     yield from expand_inner(child, current_depth + 1)
  
-            if self.base:
-                for kline in self.base.expand(kl):
+            if self._base:
+                for kline in self._base.expand(kl):
                     yield kline
 
         return expand_inner(kline, 1)
@@ -244,7 +244,7 @@ class Model(KModel):
         """Iterate over all KLines in insertion order. O(1) setup."""
         return iter(self._klines)
 
-    def __getitem__(self, signature: KSig) -> KLine:
+    def __getitem__(self, signature: KSig) -> KLine | None:
         """Get a KLine by index. O(1)."""
         return self.find_kline(signature)
 
@@ -261,6 +261,12 @@ class Model(KModel):
         """
         return _KLineAccessor(self)
 
+    @property
+    def base(self) -> KModel | None:
+        """Return the base mode."""
+        return self._base
+
+
 
 class _KLineAccessor:
     """Helper class for model.kline[signature] access."""
@@ -270,5 +276,5 @@ class _KLineAccessor:
     def __init__(self, model: Model):
         self._model = model
 
-    def __getitem__(self, signature: KSig) -> KLine:
+    def __getitem__(self, signature: KSig) -> KLine | None:
         return self._model.find_kline(signature)
