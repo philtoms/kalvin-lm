@@ -14,7 +14,8 @@ from kalvin.abstract import KAgent, KLine, KModel, KNodes, KSig, KTokenizer, KSi
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.model import Model
 from kalvin.significance import Int32Significance
-from kalvin.tokenizer import Tokenizer
+from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.stm import STM
 
 
 class Agent(KAgent):
@@ -46,7 +47,7 @@ class Agent(KAgent):
         """
         self._dev = dev
         self._model = model if model else Model()
-        self._tokenizer = tokenizer if tokenizer else Tokenizer.from_directory()
+        self._tokenizer = tokenizer if tokenizer else Mod32Tokenizer()
         self._sig = significance if significance else Int32Significance()
         self._ws_token = self._tokenizer.encode(" ")[0]
         self._activity = activity if activity else Counter()
@@ -56,6 +57,7 @@ class Agent(KAgent):
         self._dictionary: dict[str, Any] = {}
         self._nlp_type: dict[str, Any] = {}
         self.__frames.append(self._model)
+        self._stm = STM(self._tokenizer)
 
         # Pub/sub
         self._event_bus = EventBus()
@@ -111,30 +113,42 @@ class Agent(KAgent):
             kline: the kline to be signified
             frame: the current model frame used to ground S1
         """
-        sig = kline.signature
-        nodes = kline.nodes
-
-        # Identity: S1
-        if self._sig.is_identity(sig, nodes):
-            return self._sig.S1
 
         # Unsigned: S4
-        if self._sig.is_unsigned(nodes):
+        if not kline.nodes:
             return self._sig.S4
+        
+        sig = kline.signature
+        nodes = kline.nodes
+        nodes_sig = self._tokenizer.make_signature(nodes)
 
+        # Identity: S1
+        if sig == nodes_sig:
+            return self._sig.S1
+
+        # Countersigned: S1 
+        if frame.exists(KLine(nodes_sig, sig)):
+            return self._sig.S1
+
+        # Undersigned: S1 
+        if self._tokenizer.is_literal(nodes_sig) or frame.find_kline(nodes_sig):
+            return self._sig.S1
+
+        # Connotated: S3 ~> S1
+        for k in self._stm.get(nodes_sig):
+            for n in k.as_node_list():
+                if n != sig and frame.find_kline(n):
+                    return self._sig.S1
+        
         # Signed: S1 | S3
         if self._sig.is_signed(nodes):
-            nodes_sig = cast(KSig, nodes)
             if self._tokenizer.is_literal(nodes_sig):
                 return self._sig.S1
             if frame.exists(KLine(nodes_sig, sig)):
                 return self._sig.S1
             return self._sig.S3
-
-                  
-        nodes_sig = self._tokenizer.make_signature(cast(list,nodes))
-        
-        # Canonization: S1 | S2 
+           
+        # Canon: S1 | S2 
         if sig == nodes_sig:
             for n in kline.as_node_list():
                 if not frame.find_kline(nodes_sig) and not self._tokenizer.is_literal(n):
@@ -154,8 +168,9 @@ class Agent(KAgent):
     def _calculate(self, query: KLine, target: KLine, frame: KModel) -> KSig:
         """Calculate rational significance between query and target KLines.
 
-        Significance is comparable - higher = more significant.
-        S1 > S2 > S3 > S4.
+        Subtractive model: starts from the ideal value for the detected
+        level and subtracts (clears bits) proportionally to match
+        imperfection.  Higher = more significant.  S1 > S2 > S3 > S4.
 
         Args:
             frame: The Model containing the KLines (for descendant lookup)
@@ -163,13 +178,13 @@ class Agent(KAgent):
             target: The target KLine to compare against
 
         Returns:
-            Significance value
+            Significance value (ideal minus subtractions)
         """
         # Get nodes as lists for comparison
         query_nodes = query.as_node_list()
         target_nodes = target.as_node_list()
 
-        # Handle empty node lists
+        # Handle empty node lists → S4 (nothing to match)
         if not query_nodes or not target_nodes:
             return self._sig.S4
 
@@ -186,7 +201,7 @@ class Agent(KAgent):
             if self._sig.is_identity(query.nodes, target.nodes):
                 return self._sig.S1
             
-        # S2-> S1: All grounded nodes match
+        # S2→S1: All grounded nodes match 
         if query.is_canonized() and target.is_canonized():                
             if s1_matches == min_len and len(query_nodes) == len(target_nodes):
                 for node in query_nodes:
@@ -194,7 +209,7 @@ class Agent(KAgent):
                         return self._sig.S2
                 return self._sig.S1
 
-        # S2: Partial match (some positional matches exist)
+        # S2: Partial positional match
         if s1_matches > 0:
             s1_pct = (s1_matches * 100) // min_len
 
@@ -211,6 +226,7 @@ class Agent(KAgent):
             return self._sig.build_s2(s1_pct, s2_pct)
 
         # S3: No positional matches, check unordered and generational
+        #     → subtract from ideal S3
         target_set = set(target_nodes)
         query_set = set(query_nodes)
 
@@ -254,7 +270,7 @@ class Agent(KAgent):
         if s3_s1_pct > 0 or s3_s2_pct > 0 or gen_pct > 0:
             return self._sig.build_s3(s3_s1_pct, s3_s2_pct, gen_pct)
 
-        # S4: No match
+        # S4: No match → fully subtracted (all bits clear)
         return self._sig.S4
     
     # === KAgent interface ===
@@ -381,6 +397,10 @@ class Agent(KAgent):
         if is_top_level:
             frame = self._get_frame()
         
+        if not qk.signature:
+            qk.signature = self._tokenizer.make_signature(qk.nodes)
+
+
         # Test early to prevent infinite recursion
         if frame.exists(qk):
             if is_top_level:
@@ -388,6 +408,7 @@ class Agent(KAgent):
             return True
 
         sig_level = self._signify(qk, frame)
+        self._stm.add(qk)
 
         # Significant (S1, S4):
         if sig_level == self._sig.S1 or sig_level == self._sig.S4:
@@ -395,10 +416,10 @@ class Agent(KAgent):
             return True
 
         # Rational (S2, S3): Queue for cogitation
-        with self._backlog_condition:
-            frame.add(qk, dedup=True)
-            self._backlog.append((qk, frame))
-            self._backlog_condition.notify()
+        # with self._backlog_condition:
+        #     frame.add(qk, dedup=True)
+        #     self._backlog.append((qk, frame))
+        #     self._backlog_condition.notify()
 
         return False
 

@@ -72,19 +72,20 @@ def _calculate_significance(model: Model, query: KLine, target: KLine) -> int:
 
 class TestSignificanceHelpers:
     def test_build_s1_100_percent(self):
-        """S1 at 100% sets S1 bit with max percentage (127)."""
+        """S1 at 100% returns ideal S1 (all 64 bits set)."""
         sig = _sig.build_s1(100)
         assert _sig.has_s1(sig) is True
-        assert _sig.get_s1_percentage(sig) == 127
+        assert sig == _sig.S1
+        assert _sig.get_s1_percentage(sig) == 100
 
     def test_build_s1_50_percent(self):
-        """S1 at 50% sets S1 bit with 63 in percentage bits."""
+        """S1 at 50% sets S1 range bits and half the quality bits."""
         sig = _sig.build_s1(50)
         assert _sig.has_s1(sig) is True
-        assert _sig.get_s1_percentage(sig) == 63
+        assert _sig.get_s1_percentage(sig) == 50
 
     def test_build_s1_0_percent(self):
-        """S1 at 0% still sets S1 bit with 0 percentage."""
+        """S1 at 0% still sets S1 range bits with 0 percentage."""
         sig = _sig.build_s1(0)
         assert _sig.has_s1(sig) is True
         assert _sig.get_s1_percentage(sig) == 0
@@ -99,45 +100,49 @@ class TestSignificanceHelpers:
         """Percentage over 100 is clamped to 100."""
         sig = _sig.build_s1(150)
         assert _sig.has_s1(sig) is True
-        assert _sig.get_s1_percentage(sig) == 127
+        assert _sig.get_s1_percentage(sig) == 100
 
     def test_build_s1_default(self):
         """S1 with no percentage defaults to 100%."""
         sig = _sig.build_s1()
         assert _sig.has_s1(sig) is True
-        assert _sig.get_s1_percentage(sig) == 127
+        assert _sig.get_s1_percentage(sig) == 100
 
-    def test_s1_bit_value(self):
-        """S1 bit is at position 56."""
-        sig = _sig.build_s1()
-        assert sig == _sig.S1 | (127 << Int64Significance._S1_PCT_SHIFT)
+    def test_s1_ideal_is_all_bits(self):
+        """S1 ideal = all 64 bits set."""
+        assert _sig.S1 == (1 << 64) - 1
 
     def test_build_s2_full(self):
-        """S2 with both percentages gives correct values."""
-        sig = _sig.build_s2(50, 50)
-        assert _sig.get_s2_s1_percentage(sig) == 127
-        assert _sig.get_s2_s2_percentage(sig) == 127
+        """S2 with both at 100% returns ideal S2."""
+        sig = _sig.build_s2(100, 100)
+        assert sig == _sig.S2
+        assert _sig.get_s2_s1_percentage(sig) == 100
+        assert _sig.get_s2_s2_percentage(sig) == 100
 
     def test_build_s2_zero_s1(self):
         """S2 with zero S1%."""
         sig = _sig.build_s2(0, 100)
         assert _sig.get_s2_s1_percentage(sig) == 0
-        assert _sig.get_s2_s2_percentage(sig) == 255
+        assert _sig.get_s2_s2_percentage(sig) == 100
 
     def test_build_s2_zero_s2(self):
         """S2 with zero S2%."""
         sig = _sig.build_s2(100, 0)
-        assert _sig.get_s2_s1_percentage(sig) == 255
+        assert _sig.get_s2_s1_percentage(sig) == 100
         assert _sig.get_s2_s2_percentage(sig) == 0
 
     def test_get_s2_returns_combined(self):
-        """get_s2 returns the full 16-bit S2 value."""
+        """get_s2 returns the full S2-level value."""
         sig = _sig.build_s2(100, 100)
-        assert _sig.get_s2(sig) == 0xFFFF
+        assert _sig.get_s2(sig) == _sig.S2
 
     def test_s4_value_is_zero(self):
         """S4 (no significance) is 0."""
         assert _sig.S4 == 0
+
+    def test_ideals_ordering(self):
+        """S1 ideal > S2 ideal > S3 ideal > S4."""
+        assert _sig.S1 > _sig.S2 > _sig.S3 > _sig.S4
 
 
 class TestCalculateSignificance:
@@ -203,7 +208,7 @@ class TestCalculateSignificance:
 
         sig = _calculate_significance(f, query, model_kline)
         assert _sig.has_s1(sig) is False  # Not S1
-        assert _sig.get_s2_s1_percentage(sig) == 127  # 50% positional match
+        assert _sig.get_s2_s1_percentage(sig) == 50  # 50% positional match
 
     def test_s2_with_non_positional_match(self):
         """S2 includes non-positional matches."""
@@ -213,8 +218,8 @@ class TestCalculateSignificance:
 
         sig = _calculate_significance(f, query, model_kline)
         assert _sig.has_s1(sig) is False  # Not S1
-        assert _sig.get_s2_s1_percentage(sig) == 127  # 50% positional
-        assert _sig.get_s2_s2_percentage(sig) == 127  # 50% non-positional
+        assert _sig.get_s2_s1_percentage(sig) == 50  # 50% positional
+        assert _sig.get_s2_s2_percentage(sig) == 50  # 50% non-positional
 
     def test_s4_no_match(self):
         """No matching nodes returns S4."""
@@ -289,28 +294,31 @@ class TestSignificanceComparison:
 
 class TestSignificanceHelpersS3:
     def test_build_s3_full(self):
-        """S3 with all percentages gives correct values."""
+        """S3 with all percentages at 100% returns ideal S3."""
         sig = _sig.build_s3(100, 100, 100)
-        assert _sig.get_s3_s1_percentage(sig) == 255
-        assert _sig.get_s3_s2_percentage(sig) == 255
-        assert _sig.get_s3_gen_percentage(sig) == 255
+        assert sig == _sig.S3
+        assert _sig.get_s3_s1_percentage(sig) == 100
+        assert _sig.get_s3_s2_percentage(sig) == 100
+        assert _sig.get_s3_gen_percentage(sig) == 100
 
     def test_build_s3_partial(self):
         """S3 with partial percentages."""
         sig = _sig.build_s3(50, 50, 50)
-        assert _sig.get_s3_s1_percentage(sig) == 127
-        assert _sig.get_s3_s2_percentage(sig) == 127
-        assert _sig.get_s3_gen_percentage(sig) == 127
+        assert _sig.get_s3_s1_percentage(sig) == 50
+        assert _sig.get_s3_s2_percentage(sig) == 50
+        assert _sig.get_s3_gen_percentage(sig) == 50
 
     def test_build_s3_zero(self):
-        """S3 with zero percentages."""
+        """S3 with zero percentages returns indicator-only value (not S4)."""
         sig = _sig.build_s3(0, 0, 0)
-        assert _sig.get_s3(sig) == 0
+        # Indicator bit still set so it's S3 level, not S4
+        assert _sig.has_s3(sig) is True
+        assert _sig.get_s3(sig) == _sig._S3_INDICATOR
 
     def test_get_s3_returns_combined(self):
-        """get_s3 returns the full 24-bit S3 value."""
+        """get_s3 returns the full S3-level value."""
         sig = _sig.build_s3(100, 100, 100)
-        assert _sig.get_s3(sig) == 0xFFFFFF
+        assert _sig.get_s3(sig) == _sig.S3
 
 
 class TestCalculateSignificanceS3:
@@ -323,7 +331,8 @@ class TestCalculateSignificanceS3:
 
         sig = _calculate_significance(f, query, model_kline)
         assert _sig.has_s1(sig) is False  # Not S1
-        assert _sig.get_s2(sig) == 0  # Not S2 (no positional matches)
+        assert _sig.has_s2(sig) is False  # Not S2 (no S2-range bits set)
+        assert _sig.has_s3(sig) is True   # Is S3
         assert _sig.get_s3_s1_percentage(sig) > 0  # Has unordered S1 matches
 
     def test_s3_reversed_nodes(self):
@@ -333,7 +342,7 @@ class TestCalculateSignificanceS3:
         f = Model([query, model_kline])
 
         sig = _calculate_significance(f, query, model_kline)
-        assert _sig.get_s3_s1_percentage(sig) == 255  # 100% unordered match
+        assert _sig.get_s3_s1_percentage(sig) == 100  # 100% unordered match
 
     def test_s3_generational_match(self):
         """S3 generational match through child nodes."""

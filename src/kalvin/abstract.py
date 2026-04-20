@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Iterator, Literal, cast
+from typing import Iterator, Literal, Any
 
 from kalvin.kline import KLine, KNode, KNodes, KSig, KGraph
 
@@ -55,7 +55,7 @@ class KSignificance(ABC):
 
     @abstractmethod
     def get_s1_percentage(self, sig: KSig) -> int:
-        """Extract S1 percentage (0-127)."""
+        """Extract S1 percentage (0-100)."""
         ...
 
     @abstractmethod
@@ -221,7 +221,7 @@ class KTokenizer(ABC):
         """Returns token literal status"""
         ...
     @abstractmethod
-    def make_signature(self, nodes: list[int] | int) -> int:
+    def make_signature(self, nodes: Any) -> int:
         """Constructs an S1 signature from a set of nodes
         
         Args:
@@ -265,6 +265,12 @@ class KModel(ABC):
 
     A KModel provides the essential interface for storing and querying KLines.
     """
+
+    @abstractmethod
+    def as_kline_list(self, limit: int = 0) -> KGraph:
+        """Iterate over all KLines in reverse insertion order.
+        """
+        ...
 
     @abstractmethod
     def exists(self, kline: KLine) -> bool:

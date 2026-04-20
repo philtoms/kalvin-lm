@@ -2,15 +2,17 @@
 
 Op mappings (using abbreviated property chains):
   COUNTERSIGN   -> {sig: node}, {node: sig}
-  UNDERSIGN     -> {sig: node}
-  CANONIZE_FWD  -> {p[-1].(node or sig): [p.sig for p in r.primaries]}
-  CONNOTATE_FWD -> {sig: [node]}
-  CANONIZE_BWD  -> {r[0].sig: [p.sig for p in left_primaries]}
-  CONNOTATE_BWD -> {r[0].sig: [left_primaries[-1].sig]}
+  CANONIZE_FWD  -> {p[-1].(node or sig): p.sig for p in r.primaries}
+  CONNOTATE_FWD -> {sig: node}
+  CANONIZE_BWD  -> {r[0].sig: p.sig for p in left_primaries}
+  CONNOTATE_BWD -> {r[0].sig: left_primaries[-1].sig}
+  UNSIGNED      -> sig | S4 (S4=0, no bits)
 
 Where:
   p = primary construct (left side)
   r = right (chain_right's primaries)
+
+Singleton rule: nodes lists with length 1 are unwrapped to single values.
 
 Significance encoding (bitwise OR on signature position):
   COUNTERSIGN   -> sig | S1
@@ -194,8 +196,8 @@ class Compiler:
         """Emit MCS entries for multi-character signatures.
 
         Emits:
-          Identity -> {char: char} for char in sig
-          MCS -> {sig: [char for char in sig]} (second)
+          Unsigned -> {char: None} for each char in sig
+          MCS CANONIZE_FWD -> {sig: [chars]} (list preserves order & duplicates)
 
         Returns True if MCS was emitted, False for single-char sigs.
         """
@@ -208,7 +210,7 @@ class Compiler:
         for char in chars:
             self._emit(char, None, "UNSIGNED")
 
-        # MCS canonization: {sig: [A, B, C, ...]} (emitted second)
+        # MCS canonization: {sig: [A, B, C, ...]} (list preserves order & duplicates)
         self._emit(sig, chars, "CANONIZE_FWD")
 
         return True
@@ -245,8 +247,8 @@ class Compiler:
                 self._emit(sig, node_str, "UNDERSIGN")
 
         elif pc.op == TokenType.CONNOTATE_FWD:
-            # {sig: [node]}
-            self._emit(sig, [node_str], "CONNOTATE_FWD")
+            # {sig: node}
+            self._emit(sig, node_str, "CONNOTATE_FWD")
 
     def _process_chain(
         self,
@@ -272,25 +274,27 @@ class Compiler:
         right_items = self._flatten_to_items(right)
 
         if chain_op == TokenType.CANONIZE_FWD:
-            # CANONIZE_FWD: {p[-1].(node or sig): [items from right]}
+            # CANONIZE_FWD: {p[-1].(node or sig): p.sig for p in r.primaries}
             last = left_primaries[-1]
             owner = self._get_owner(last)  # node if present, else sig
             # Emit MCS for owner if it's a sig
             if last.node is None or isinstance(last.node, Signature):
                 self._emit_mcs(owner)
-            nodes = [self._item_id(item) for item in right_items]
-            self._emit(owner, nodes, "CANONIZE_FWD")
+            # Emit per-item: one entry per right item
+            for item in right_items:
+                self._emit(owner, self._item_id(item), "CANONIZE_FWD")
 
             # Recurse into right
             self._compile_construct(right)
 
         elif chain_op == TokenType.CANONIZE_BWD:
-            # CANONIZE_BWD: {r[0].id: [p.sig for p in left_primaries]}
+            # CANONIZE_BWD: {r[0].sig: p.sig for p in left_primaries}
             if right_items:
                 owner = self._item_id(right_items[0])
                 self._emit_mcs(owner)
-                nodes = [pc.sig.id for pc in left_primaries]
-                self._emit(owner, nodes, "CANONIZE_BWD")
+                # Emit per-left-primary: one entry per left primary
+                for pc in left_primaries:
+                    self._emit(owner, pc.sig.id, "CANONIZE_BWD")
 
             # Recurse into right
             self._compile_construct(right)
@@ -306,13 +310,13 @@ class Compiler:
             self._compile_construct(right)
 
         elif chain_op == TokenType.CONNOTATE_BWD:
-            # CONNOTATE_BWD: {r[0].id: [owner of last left primary]}
+            # CONNOTATE_BWD: {r[0].sig: left_primaries[-1].sig}
             if right_items:
                 owner = self._item_id(right_items[0])
                 self._emit_mcs(owner)
                 last = left_primaries[-1]
                 last_left = self._get_owner(last)
-                self._emit(owner, [last_left], "CONNOTATE_BWD")
+                self._emit(owner, last_left, "CONNOTATE_BWD")
 
             # Recurse into right
             self._compile_construct(right)
@@ -374,7 +378,13 @@ class Compiler:
         return False
 
     def _emit(self, sig: str, nodes: str | None | list[str], op: str) -> None:
-        """Emit an entry with significance encoding."""
+        """Emit an entry with significance encoding.
+
+        Singleton rule: if nodes is a list with length 1, unwrap to single value.
+        """
+        # Singleton check: unwrap single-element lists
+        if isinstance(nodes, list) and len(nodes) == 1:
+            nodes = nodes[0]
         # Encode signature as significant or literal
         sig_id = self._encode_node(sig)
 

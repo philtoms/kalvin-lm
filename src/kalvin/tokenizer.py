@@ -174,7 +174,7 @@ class Tokenizer(KTokenizer):
     def is_literal(self, token_id: int) -> bool:
         return False
     
-    def make_signature(self, nodes: list[int] | int) -> int:
+    def make_signature(self, nodes: Any) -> int:
         """Constructs an S1 signature from a set of nodes
         
         Args:

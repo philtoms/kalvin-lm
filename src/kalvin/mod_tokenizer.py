@@ -1,4 +1,5 @@
 from kalvin.abstract import KTokenizer
+from typing import Any
 
 # Bit 0 is reserved for LITERAL flag: 1 = literal, 0 = packed (signature)
 LITERAL_BIT = 1
@@ -94,7 +95,7 @@ class ModTokenizer(KTokenizer):
     def is_literal(self, token_id: int) -> bool:
         return bool(token_id & LITERAL_BIT)
 
-    def make_signature(self, nodes: list[int] | int) -> int:
+    def make_signature(self, nodes: Any) -> int:
         """Constructs an S1 signature from a set of nodes
         
         Args:

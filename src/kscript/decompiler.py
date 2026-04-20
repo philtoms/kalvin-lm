@@ -101,18 +101,17 @@ class Decompiler:
     def _build_mcs_names(self, klines: list[KLine]) -> None:
         """Build mapping from packed tokens to original MCS names.
 
-        An MCS entry has:
-        - S2 significance (canonize level)
-        - Multiple nodes that are all packed single-char tokens
-        - The signature token equals the OR of all node tokens
+        Detects two MCS patterns:
+        1. Legacy: single entry with multiple packed single-char nodes, sig == OR of nodes
+        2. Per-char: consecutive entries with same sig, each having a single
+           packed single-char node, where OR of all char tokens == sig
         """
+        # Pattern 1: Legacy multi-node MCS entry
         for kline in klines:
-            # Check for MCS: signature == OR of all nodes, all nodes are packed single chars
             nodes = kline.as_node_list()
             if not nodes or len(nodes) < 2:
                 continue
 
-            # Check if all nodes are packed single-char tokens
             chars = []
             for node in nodes:
                 char = self._try_decode_packed_single_char(node)
@@ -123,7 +122,6 @@ class Decompiler:
             if len(chars) != len(nodes):
                 continue
 
-            # Key check: MCS signature token == OR of all node tokens
             base_token = kline.signature
             nodes_or = 0
             for node in nodes:
@@ -132,6 +130,54 @@ class Decompiler:
             if base_token == nodes_or:
                 original_name = "".join(chars)
                 self._mcs_names[base_token] = original_name
+
+        # Pattern 2: Per-char MCS entries (consecutive same-sig single-char nodes)
+        i = 0
+        while i < len(klines):
+            kline = klines[i]
+            sig = kline.signature
+            if sig in self._mcs_names:
+                i += 1
+                continue
+
+            nodes = kline.as_node_list()
+            if len(nodes) != 1:
+                i += 1
+                continue
+
+            char = self._try_decode_packed_single_char(nodes[0])
+            if char is None:
+                i += 1
+                continue
+
+            # Collect consecutive same-sig, single-char packed entries
+            chars: list[str] = [char]
+            nodes_or = nodes[0]
+            j = i + 1
+            while j < len(klines):
+                next_kline = klines[j]
+                if next_kline.signature != sig:
+                    break
+                next_nodes = next_kline.as_node_list()
+                if len(next_nodes) != 1:
+                    break
+                next_char = self._try_decode_packed_single_char(next_nodes[0])
+                if next_char is None:
+                    break
+                new_or = nodes_or | next_nodes[0]
+                if new_or != (new_or & sig):
+                    # New bits not in sig - stop collecting
+                    break
+                chars.append(next_char)
+                nodes_or = new_or
+                j += 1
+
+            if len(chars) >= 2 and nodes_or == sig:
+                self._mcs_names[sig] = "".join(chars)
+                i = j
+                continue
+
+            i += 1
 
     def _try_decode_packed_single_char(self, node: int) -> str | None:
         """Try to decode a node as a packed single-char token."""
@@ -191,16 +237,21 @@ class Decompiler:
     def _infer_level(self, kline: KLine) -> str:
         """Infer significance level from node structure.
 
-        S1: int node (countersign/undersign)
-        S2: (signature | OR of node values) != 0 (canonize)
-        S3: (signature | OR of node values) == 0 (connotate)
+        S1: countersign/undersign (single non-overlapping node, heuristic)
+        S2: (signature & node values) != 0 (canonize)
+        S3: (signature & node values) == 0 (connotate)
         S4: no nodes (unsigned)
+
+        Note: With singleton unwrapping, int nodes can be any op type.
+        We use bit overlap as the primary heuristic for int nodes.
         """
         nodes = kline.nodes
         if nodes is None:
             return "S4"
         if isinstance(nodes, int):
-            return "S1"
+            # Single node: use bit overlap to distinguish canonize (S2) from others
+            combined = kline.signature & nodes
+            return "S2" if combined != 0 else "S3"
 
         nodes_sig = self.tokenizer.make_signature(nodes)
         combined = kline.signature & nodes_sig

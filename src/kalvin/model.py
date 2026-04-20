@@ -199,6 +199,22 @@ class Model(KModel):
 
         return expand_inner(kline, 1)
 
+    def as_kline_list(self, limit: int = 0) -> KGraph:
+        """Iterate over all KLines in reverse insertion order.
+        """
+        klines = self._klines
+        n = len(klines)
+        
+        def generator() -> KGraph:
+            count = 0
+            for i in range(n - 1, -1, -1):
+                count += 1
+                if limit > 0 and count >= limit:
+                    return
+                yield klines[i]
+
+        return generator()
+
     def duplicate(self) -> "Model":
         """Create a duplicate of this model."""
         klines = [KLine(signature=k.signature, nodes=k.nodes.copy() if isinstance(k.nodes, list) else k.nodes, dbg_text=k.dbg_text) for k in self._klines]

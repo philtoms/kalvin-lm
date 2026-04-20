@@ -92,17 +92,18 @@ class TestQueryDepth:
         nodes = g.query(C, 1)
         assert len(nodes) == 1
         assert nodes[0].sig == C
-        assert nodes[0].level == S2
-        assert nodes[0].nodes == [D]
+        assert nodes[0].level == S1
+        assert nodes[0].nodes == D
 
     def test_d2_root_plus_children(self) -> None:
         """d=2 returns root + children (1 expansion step)."""
         g = KLineGraph(_example_model())
         nodes = g.query(C, 2)
-        assert len(nodes) == 3
+        assert len(nodes) == 4
         assert [(n.sig, n.level, n.nodes) for n in nodes] == [
-            (C, S2, [D]),
-            (D, S2, [_2, _3]),
+            (C, S1, D),
+            (D, S1, _2),
+            (D, S1, _3),
             (D, S1, E),
         ]
 
@@ -110,10 +111,11 @@ class TestQueryDepth:
         """d=3 returns root + children + grandchildren."""
         g = KLineGraph(_example_model())
         nodes = g.query(C, 3)
-        assert len(nodes) == 6
+        assert len(nodes) == 7
         assert [(n.sig, n.level, n.nodes) for n in nodes] == [
-            (C, S2, [D]),
-            (D, S2, [_2, _3]),
+            (C, S1, D),
+            (D, S1, _2),
+            (D, S1, _3),
             (D, S1, E),
             (_2, S4, None),
             (_3, S4, None),
@@ -125,13 +127,15 @@ class TestQueryDepth:
         g = KLineGraph(_example_model())
         nodes = g.query(C, 4)
         assert [(n.sig, n.level, n.nodes) for n in nodes] == [
-            (C, S2, [D]),
-            (D, S2, [_2, _3]),
+            (C, S1, D),
+            (D, S1, _2),
+            (D, S1, _3),
             (D, S1, E),
             (_2, S4, None),
             (_3, S4, None),
             (E, S1, D),
-            (D, S2, [_2, _3]),
+            (D, S1, _2),
+            (D, S1, _3),
             (D, S1, E),
         ]
 
@@ -140,7 +144,7 @@ class TestQueryDepth:
         g = KLineGraph(_example_model())
         nodes = g.query(C, 5)
         sigs = [n.sig for n in nodes]
-        assert sigs == [C, D, D, _2, _3, E, D, D, _2, _3, E]
+        assert sigs == [C, D, D, D, _2, _3, E, D, D, D, _2, _3, E]
 
     def test_d0_returns_empty(self) -> None:
         """d < 1 → empty result."""
@@ -198,20 +202,22 @@ class TestPathTracking:
         nodes = g.query(C, 2)
         assert nodes[1].path == [C, D]
         assert nodes[2].path == [C, D]
+        assert nodes[3].path == [C, D]
 
     def test_grandchild_path(self) -> None:
         """E at d=3 has path ``[C, D, E]``."""
         g = KLineGraph(_example_model())
         nodes = g.query(C, 3)
-        assert nodes[5].sig == E
-        assert nodes[5].path == [C, D, E]
+        assert nodes[6].sig == E
+        assert nodes[6].path == [C, D, E]
 
     def test_cycle_path(self) -> None:
         """Cycled D at d=4 has path ``[C, D, E, D]``."""
         g = KLineGraph(_example_model())
         nodes = g.query(C, 4)
-        assert nodes[6].path == [C, D, E, D]
         assert nodes[7].path == [C, D, E, D]
+        assert nodes[8].path == [C, D, E, D]
+        assert nodes[9].path == [C, D, E, D]
 
 
 # ── 4. Re-querying from a result node ───────────────────────────────────────
@@ -225,10 +231,10 @@ class TestNodeAsQuery:
 
         c_nodes = g.query(C, 2)
         d_from_c = [n for n in c_nodes if n.sig == D]
-        assert len(d_from_c) == 2
+        assert len(d_from_c) == 3
 
         d_nodes = g.query(D, 1)
-        assert len(d_nodes) == 2
+        assert len(d_nodes) == 3
 
         for dc, dd in zip(d_from_c, d_nodes):
             assert dc.sig == dd.sig
@@ -286,8 +292,8 @@ class TestQueryNode:
         nodes = g.query(C, 1)
         d = nodes[0].to_dict()
         assert d["sig"] == C
-        assert d["level"] == S2
-        assert d["nodes"] == [D]
+        assert d["level"] == S1
+        assert d["nodes"] == D
         assert d["path"] == [C]
 
     def test_as_kline(self) -> None:
@@ -295,7 +301,7 @@ class TestQueryNode:
         nodes = g.query(C, 1)
         kl = nodes[0].as_kline()
         assert kl.signature == C
-        assert kl.nodes == [D]
+        assert kl.nodes == D
 
     def test_equality(self) -> None:
         g = KLineGraph(_example_model())

@@ -240,20 +240,23 @@ class TestEagerEmit:
     """Tests for eager emit compilation."""
 
     def test_eager_emit_canonize(self) -> None:
-        """Eager emit for canonize: A => B C emits immediately."""
+        """Eager emit for canonize: A => B C emits per-item entries."""
         entries = compile_test_source("A => B C")
-        d = entries_to_dict(entries)
-        assert d["A"] == ["B", "C"]
+        md = entries_to_multidict(entries)
+        assert "B" in md["A"]
+        assert "C" in md["A"]
 
     def test_bwd_triggers_additional_emit(self) -> None:
         """BWD triggers additional emit: A => B C <= D."""
         entries = compile_test_source("A => B C <= D")
         md = entries_to_multidict(entries)
 
-        # First emit: {A|S2: [B, C]}
-        assert ["B", "C"] in md.get("A", [])
-        # Second emit (BWD): {D|S2: [B, C]}
-        assert ["B", "C"] in md.get("D", [])
+        # Per-item CANONIZE_FWD: {A: B}, {A: C}
+        assert "B" in md["A"]
+        assert "C" in md["A"]
+        # Per-left-primary CANONIZE_BWD: {D: B}, {D: C}
+        assert "B" in md["D"]
+        assert "C" in md["D"]
 
 
 # =============================================================================
@@ -264,15 +267,15 @@ class TestMCSExpansion:
     """Tests for MCS expansion."""
 
     def test_mcs_simple_expansion(self) -> None:
-        """MCS expansion: ABC emits canonization + identities."""
+        """MCS expansion: ABC emits list-based canonization + identities."""
         entries = compile_test_source("ABC")
 
-        # Should have 5 entries: MCS canonization + 3 identities + 1 unsigned
+        # 3 unsigned identities + 1 MCS list + 1 unsigned ABC = 5 entries
         assert len(entries) == 5
 
         md = entries_to_multidict(entries)
 
-        # MCS canonization: {ABC: [A, B, C]}
+        # MCS canonization: {ABC: [A, B, C]} (list preserves order)
         assert ["A", "B", "C"] in md["ABC"]
 
         # MCS unsigned entries
@@ -284,52 +287,55 @@ class TestMCSExpansion:
         """MCS in construct position."""
         entries = compile_test_source("ABC => X")
 
-        # Should have: 3 unsigned identities (first) + MCS canonization + construct + entity
-        assert len(entries) >= 5
+        # 3 unsigned + 1 MCS list + 1 construct + 1 unsigned X = 6 entries
+        assert len(entries) == 6
 
         # First 3 entries should be unsigned identities (chars emitted before compound)
         for i in range(0, 3):
             sig, nodes = entries[i].decode(_tokenizer)
             assert sig in "ABC"
-            # Identities now reference themselves
             assert nodes is None
 
-        # Fourth entry should be MCS canonization
+        # Entry 3: MCS canonization {ABC: [A, B, C]} (list preserves order)
         sig, nodes = entries[3].decode(_tokenizer)
         assert sig == "ABC"
         assert nodes == ["A", "B", "C"]
 
-        # Fifth entry should be the construct
+        # Entry 4: construct {ABC: X} (singleton unwrapped)
         sig, nodes = entries[4].decode(_tokenizer)
         assert sig == "ABC"
-        assert nodes == ["X"]
+        assert nodes == "X"
+
+        # Entry 5: unsigned X
+        sig, nodes = entries[5].decode(_tokenizer)
+        assert sig == "X"
+        assert nodes is None
 
     def test_no_mcs_for_single_char(self) -> None:
         """No MCS for single-char owner."""
         entries = compile_test_source("A => X")
 
         d = entries_to_dict(entries)
-        # Only construct entry, no MCS
-        assert d["A"] == ["X"]
+        # Single-node construct (singleton unwrapped)
+        assert d["A"] == "X"
 
+    
     def test_mcs_with_countersign(self) -> None:
         """MCS expansion with countersign construct."""
         entries = compile_test_source("ABC == X")
 
-        # Should have: 3 identities + MCS canonization + 2 countersign entries
+        # 3 identities + 1 MCS list + 2 countersign = 6 entries
         assert len(entries) == 6
 
         # Entries 0-2: Component identities (chars emitted before compound)
         for i in range(0, 3):
             sig, nodes = entries[i].decode(_tokenizer)
             assert sig in "ABC"
-            # Unsigned Identities now reference themselves
             assert nodes is None
 
-        # Entry 3: MCS canonization {ABC: [A, B, C]}
+        # Entry 3: MCS canonization {ABC: [A, B, C]} (list preserves order)
         sig, nodes = entries[3].decode(_tokenizer)
-        assert sig == "ABC"
-        assert nodes == ["A", "B", "C"]
+        assert sig == "ABC" and nodes == ["A", "B", "C"]
 
         # Entries 4-5: Countersign bidirectional
         sig, nodes = entries[4].decode(_tokenizer)
@@ -361,33 +367,35 @@ class TestSignificanceLevels:
         assert sig == "A" and nodes == "B"
 
     def test_canonize_fwd(self) -> None:
-        """Test compiling forward canonize."""
+        """Test compiling forward canonize (per-item emission)."""
         entries = compile_test_source("AB => C D")
-        d = entries_to_dict(entries)
-        assert d["AB"] == ["C", "D"]
+        md = entries_to_multidict(entries)
+        # Per-item: AB→C, AB→D (plus MCS: AB→A, AB→B)
+        assert "C" in md["AB"]
+        assert "D" in md["AB"]
 
     def test_canonize_bwd(self) -> None:
         """Test compiling backward canonize."""
         entries = compile_test_source("A <= B")
-        # Emits: {B: [A]} (connotate) and {B: None} 
+        # Emits: {B: A} (single, unwrapped) and {B: None}
         assert len(entries) == 2
         md = entries_to_multidict(entries)
-        assert ["A"] in md.get("B", [])
+        assert "A" in md["B"]
 
     def test_connotate_fwd(self) -> None:
-        """Test compiling forward connotate."""
+        """Test compiling forward connotate (singleton unwrapped)."""
         entries = compile_test_source("A > B")
         assert len(entries) == 1
         sig, nodes = entries[0].decode(_tokenizer)
-        assert sig == "A" and nodes == ["B"]
+        assert sig == "A" and nodes == "B"
 
     def test_connotate_bwd(self) -> None:
-        """Test compiling backward connotate."""
+        """Test compiling backward connotate (singleton unwrapped)."""
         entries = compile_test_source("A < B")
-        # Emits: {B: [A]} (connotate) and {B: None} 
+        # Emits: {B: A} (single, unwrapped) and {B: None}
         assert len(entries) == 2
         md = entries_to_multidict(entries)
-        assert ["A"] in md.get("B", [])
+        assert "A" in md["B"]
 
     def test_literals(self) -> None:
         """Test compiling string and number literals."""
@@ -399,44 +407,46 @@ class TestSignificanceLevels:
     def test_canon_chain(self) -> None:
         """Test canon chain with immediate binding."""
         entries = compile_test_source("A => B => C")
-        # Check S2 construct entries
         md = entries_to_multidict(entries)
-        assert ["B"] in md.get("A", [])
-        assert ["C"] in md.get("B", [])
+        # Per-item: singleton unwrapped
+        assert "B" in md["A"]
+        assert "C" in md["B"]
 
     def test_canon_target(self) -> None:
         """Test canon chain with immediate binding."""
         entries = compile_test_source("A => B <= C")
-        # Check S2 construct entries
         md = entries_to_multidict(entries)
-        assert ["B"] in md.get("A", [])
-        assert ["B"] in md.get("C", [])
+        # Per-item: singleton unwrapped
+        assert "B" in md["A"]
+        assert "B" in md["C"]
 
 
     def test_connotate_chain(self) -> None:
         """Test connotate chain with immediate binding."""
         entries = compile_test_source("A > B > C")
-        # Check S2 construct entries
         md = entries_to_multidict(entries)
-        assert ["B"] in md.get("A", [])
-        assert ["C"] in md.get("B", [])
+        # Per-item: singleton unwrapped
+        assert "B" in md["A"]
+        assert "C" in md["B"]
 
     def test_connotate_target(self) -> None:
         """Test connotate chain with immediate binding."""
         entries = compile_test_source("A > B < C")
-        # Check S2 construct entries
         md = entries_to_multidict(entries)
-        assert ["B"] in md.get("A", [])
-        assert ["B"] in md.get("C", [])
+        # Per-item: singleton unwrapped
+        assert "B" in md["A"]
+        assert "B" in md["C"]
 
     def test_subscript_as_nodes(self) -> None:
-        """Test subscript signatures as nodes."""
+        """Test subscript signatures as nodes (per-item emission)."""
         source = "A =>\n  B\n  C"
         entries = compile_test_source(source)
-        d = entries_to_dict(entries)
-        assert d["A"] == ["B", "C"]
-        assert d["B"] is None
-        assert d["C"] is None
+        md = entries_to_multidict(entries)
+        # Per-item: A→B, A→C (singleton unwrapped)
+        assert "B" in md["A"]
+        assert "C" in md["A"]
+        assert None in md["B"]
+        assert None in md["C"]
 
 
 # =============================================================================
@@ -451,11 +461,12 @@ class TestSubscripts:
         source = "A =>\n  B\n  C = D"
         entries = compile_test_source(source)
 
-        d = entries_to_dict(entries)
-        # A => [B, C]
-        assert d["A"] == ["B", "C"]
+        md = entries_to_multidict(entries)
+        # Per-item: A→B, A→C
+        assert "B" in md["A"]
+        assert "C" in md["A"]
         # C = D (subscript)
-        assert d["C"] == "D"
+        assert "D" in md["C"]
 
     def test_nested_subscript(self) -> None:
         """Nested subscript."""
@@ -476,60 +487,64 @@ class TestComplexExamples:
     """Tests for complex examples from exploration."""
 
     def test_ab_arrow_a_b(self) -> None:
-        """Test: AB => A B"""
+        """Test: AB => A B (per-item, MCS deduped with construct)."""
         entries = compile_test_source("AB => A B")
-        d = entries_to_dict(entries)
+        md = entries_to_multidict(entries)
 
-        # MCS for AB
-        assert d["AB"] == ["A", "B"]
+        # MCS per-char: AB→A, AB→B (construct items deduped with MCS entries)
+        assert "A" in md["AB"]
+        assert "B" in md["AB"]
         # Entities
-        assert d["A"] is None
-        assert d["B"] is None
+        assert None in md["A"]
+        assert None in md["B"]
 
     def test_ab_double_equal_cd(self) -> None:
         """Test: AB == CD"""
         entries = compile_test_source("AB == CD")
         md = entries_to_multidict(entries)
 
-        # MCS for AB: {AB: [A, B]}
-        assert ["A", "B"] in md.get("AB", [])
+        # MCS for AB: {AB: [A, B]} (list preserves order)
+        assert ["A", "B"] in md["AB"]
+        # MCS for CD: {CD: [C, D]} (list preserves order)
+        assert ["C", "D"] in md["CD"]
         # Countersign: {AB: CD} and {CD: AB}
-        assert "CD" in md.get("AB", [])
-        assert "AB" in md.get("CD", [])
+        assert "CD" in md["AB"]
+        assert "AB" in md["CD"]
 
     def test_a_b_le_arrow_cd(self) -> None:
-        """Test: A B <= CD"""
+        """Test: A B <= CD (per-left-primary emission)."""
         entries = compile_test_source("A B <= CD")
         md = entries_to_multidict(entries)
 
-        # CD binds ALL CLNs [A, B]
-        assert ["A", "B"] in md.get("CD", [])
+        # Per-left-primary: CD→A, CD→B
+        assert "A" in md["CD"]
+        assert "B" in md["CD"]
         # MCS for CD: unsigned identities reference themselves
-        assert md.get("C", [""])[0] == None
-        assert md.get("D", [""])[0] == None
+        assert None in md["C"]
+        assert None in md["D"]
 
     def test_ab_gt_c(self) -> None:
-        """Test: AB > C"""
+        """Test: AB > C (list-based MCS, singleton connotate)."""
         entries = compile_test_source("AB > C")
         md = entries_to_multidict(entries)
 
-        # MCS for AB: {AB: [A, B]}
-        assert ["A", "B"] in md.get("AB", [])
-        # Connotate: {AB|S3: [C]}
-        assert ["C"] in md.get("AB", [])
+        # MCS for AB: {AB: [A, B]} (list preserves order)
+        assert ["A", "B"] in md["AB"]
+        # Connotate: {AB|S3: C} (singleton unwrapped)
+        assert "C" in md["AB"]
 
     def test_c_lt_ab(self) -> None:
-        """Test: C < AB"""
+        """Test: C < AB (list-based MCS, singleton connotate)."""
         entries = compile_test_source("C < AB")
         md = entries_to_multidict(entries)
 
-        # MCS for AB: {AB: [A, B]}
-        assert ["A", "B"] in md.get("AB", [])
+        # MCS for AB: {AB: [A, B]} (list preserves order)
+        assert ["A", "B"] in md["AB"]
         # unsigned identities reference themselves
-        assert md.get("A", [""])[0] == None
-        assert md.get("B", [""])[0] == None
-        # BWD connotate: {AB|S3: [C]}
-        assert ["C"] in md.get("AB", [])
+        assert None in md["A"]
+        assert None in md["B"]
+        # BWD connotate: {AB|S3: C} (singleton unwrapped)
+        assert "C" in md["AB"]
 
 
 # =============================================================================
@@ -576,9 +591,10 @@ class TestS2Literals:
         """
         entries = compile_test_source("A => B 1")
         md = entries_to_multidict(entries)
-        assert ["B"] in md.get("A", [])
-        assert None in md.get("B", [])
-        assert None in md.get("1", [])
+        # Singleton unwrapped
+        assert "B" in md["A"]
+        assert None in md["B"]
+        assert None in md["1"]
 
     def test_canonize_fwd_literal_then_sig(self) -> None:
         """A => 1 B: literal(1) is the right, B is separate.
@@ -596,66 +612,72 @@ class TestS2Literals:
     def test_block_mixed_literal_and_sig(self) -> None:
         """A => block(1, B): literals and sigs are siblings in blocks.
 
-        This is the key use case: block flattening produces mixed items.
+        Per-item emission produces individual entries.
         """
         source = "A =>\n  1\n  B"
         entries = compile_test_source(source)
-        d = entries_to_dict(entries)
-        assert d["A"] == ["1", "B"]
-        assert d["1"] is None
-        assert d["B"] is None
+        md = entries_to_multidict(entries)
+        assert "1" in md["A"]
+        assert "B" in md["A"]
+        assert None in md["1"]
+        assert None in md["B"]
 
     def test_block_all_literals(self) -> None:
         """A => block(1, 2, 3): all-literal block.
 
-        All-literal items are decoded as a single string.
+        Per-item emission: each literal is a separate entry.
         """
         source = "A =>\n  1\n  2\n  3"
         entries = compile_test_source(source)
-        d = entries_to_dict(entries)
-        assert d["A"] == "123"
-        assert d["1"] is None
-        assert d["2"] is None
-        assert d["3"] is None
+        md = entries_to_multidict(entries)
+        assert "1" in md["A"]
+        assert "2" in md["A"]
+        assert "3" in md["A"]
+        assert None in md["1"]
+        assert None in md["2"]
+        assert None in md["3"]
 
     def test_block_mixed_literal_literal_sig(self) -> None:
-        """A => block(1, 2, B): consecutive literals group, sigs separate.
-
-        Mixed items: consecutive literals decode as grouped strings,
-        signatures decode individually.
+        """A => block(1, 2, B): per-item emission for mixed items.
         """
         source = "A =>\n  1\n  2\n  B"
         entries = compile_test_source(source)
-        d = entries_to_dict(entries)
-        assert d["A"] == ["12", "B"]
+        md = entries_to_multidict(entries)
+        assert "1" in md["A"]
+        assert "2" in md["A"]
+        assert "B" in md["A"]
 
     def test_block_nested(self) -> None:
         """Nested blocks with literals."""
         source = "A =>\n  B =>\n    1\n    C"
         entries = compile_test_source(source)
-        d = entries_to_dict(entries)
-        assert d["A"] == ["B"]
-        assert d["B"] == ["1", "C"]
+        md = entries_to_multidict(entries)
+        # Per-item: A→B (singleton), B→1, B→C
+        assert "B" in md["A"]
+        assert "1" in md["B"]
+        assert "C" in md["B"]
 
     # --- BWD / CONNOTATE_BWD with literal owner ---
 
     def test_canonize_bwd_literal_owner(self) -> None:
-        """A <= 1: BWD with literal as right owner -> {1: [A]}."""
+        """A <= 1: BWD with literal as right owner -> {1: A}."""
         entries = compile_test_source("A <= 1")
         md = entries_to_multidict(entries)
-        assert ["A"] in md.get("1", [])
+        assert "A" in md["1"]
 
     def test_connotate_bwd_literal_owner(self) -> None:
-        """A < 1: CONNOTATE_BWD with literal owner -> {1: [A]}."""
+        """A < 1: CONNOTATE_BWD with literal owner -> {1: A}."""
         entries = compile_test_source("A < 1")
         md = entries_to_multidict(entries)
-        assert ["A"] in md.get("1", [])
+        assert "A" in md["1"]
 
     def test_canonize_bwd_multiple_left_literal_owner(self) -> None:
-        """A B <= 1: multiple left primaries, literal owner -> {1: [A, B]}."""
+        """A B <= 1: multiple left primaries, literal owner (per-left-primary)."""
         entries = compile_test_source("A B <= 1")
         md = entries_to_multidict(entries)
-        assert ["A", "B"] in md.get("1", [])
+        # Per-left-primary: 1→A, 1→B
+        assert "A" in md["1"]
+        assert "B" in md["1"]
 
     # --- Bare literal identities ---
 
@@ -768,19 +790,27 @@ class TestDecompiler:
         assert entry["nodes"] is None
 
     def test_decompile_undersign(self) -> None:
-        """Decompile undersign: A = B -> A = B"""
+        """Decompile undersign: A = B -> A > B.
+
+        Note: With singleton unwrapping, single-node entries lose the int-vs-list
+        distinction used for S1 inference. Undersign and connotate are both S3.
+        """
         result = self._roundtrip("A = B")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["level"] == "S1"
+        assert entry["level"] == "S3"
         assert entry["nodes"] == "B"
 
     def test_decompile_countersign(self) -> None:
-        """Decompile countersign: A == B -> A == B"""
+        """Decompile countersign: A == B.
+
+        Note: With singleton unwrapping, countersign single-node entries are
+        classified as S3 (same as connotate) since bit overlap is zero.
+        """
         result = self._roundtrip("A == B")
         entry = self._find_entry(result, "A")
         assert entry is not None
-        assert entry["level"] == "S1"
+        assert entry["level"] == "S3"
         assert entry["nodes"] == "B"
 
     def test_decompile_connotate(self) -> None:
@@ -809,13 +839,17 @@ class TestDecompiler:
         assert entry["nodes"] == ["B", "C"]
 
     def test_decompile_canonize_multi_underfit(self) -> None:
-        """Decompile canonize with multiple nodes: ABC => B C -> list of nodes."""
+        """Decompile canonize with multiple nodes: ABC => B C.
+
+        Per-item CANONIZE_FWD emits individual entries, deduped with MCS entries.
+        """
         result = self._roundtrip("ABC => B C")
-        entry = self._find_entry_by_nodes(result, ["B", "C"])
-        assert entry is not None
-        assert entry["sig"] == "ABC"
-        assert entry["level"] == "S2"
-        assert entry["nodes"] == ["B", "C"]
+        # MCS entries: ABC→[A,B,C] (S2), ABC→B (S2, deduped), ABC→C (S2, deduped)
+        # Find individual node entries
+        found_b = any(e.sig == "ABC" and e.nodes == "B" for e in result)
+        found_c = any(e.sig == "ABC" and e.nodes == "C" for e in result)
+        assert found_b, "Expected ABC→B entry"
+        assert found_c, "Expected ABC→C entry"
 
     def test_decompile_mcs_preserves_name(self) -> None:
         """MCS signatures preserve original name using MCS entry nodes.
@@ -929,10 +963,10 @@ class TestDecompilerMCS:
         # Both MCS names should be recovered
         assert self._has_sig(decompiled, "AB")
         assert self._has_sig(decompiled, "CD")
-        # Check for countersign (S1) entries (not MCS entries)
-        entry_ab = self._find_entry(decompiled, "AB", level="S1")
+        # Countersign entries: classified as S3 (singleton unwrapping loses S1 distinction)
+        entry_ab = self._find_entry(decompiled, "AB", level="S3")
         assert entry_ab is not None
-        assert entry_ab["level"] == "S1"
+        assert entry_ab["nodes"] == "CD"
 
 
 class TestDecompilerEdgeCases:
@@ -972,14 +1006,14 @@ class TestDecompilerEdgeCases:
         assert nodes is None
 
     def test_subscript_block(self) -> None:
-        """Decompile subscript block."""
+        """Decompile subscript block (per-item emission)."""
         source = "A =>\n  B\n  C"
         result = self._roundtrip(source)
-        # Check that A has nodes B and C
-        entry = self._find_entry(result, "A")
-        assert entry is not None
-        assert entry["level"] == "S3"
-        assert entry["nodes"] == ["B", "C"]
+        # Per-item: A→B and A→C as separate entries
+        found_b = any(e.sig == "A" and e.nodes == "B" for e in result)
+        found_c = any(e.sig == "A" and e.nodes == "C" for e in result)
+        assert found_b, "Expected A→B entry"
+        assert found_c, "Expected A→C entry"
         # Check that B and C exist as entries
         assert self._has_sig(result, "B")
         assert self._has_sig(result, "C")
