@@ -13,6 +13,7 @@ A Kline consists of:
 |------------|---------------|------------------------------------------------|
 | signature  | uint64        | Identity key.                                  |
 | nodes      | sequence of uint64 | Zero or more child nodes. Ordered.        |
+| literal    | bool          | Whether this kline represents an exact token.  |
 
 ### Nodes
 
@@ -20,6 +21,16 @@ A Kline consists of:
 - Nodes are **opaque** — the kline does not inspect or interpret node values.
 - Node order is significant. `[A, B]` and `[B, A]` are different klines.
 - `nodes` may be empty (zero nodes).
+
+### Literal
+
+- A literal kline represents an exact, atomic token — e.g. a single word or
+  symbol produced by the tokeniser.
+- A non-literal kline is a composed structure — its nodes reference other
+  klines.
+- The literal flag is set at construction time and is immutable.
+- The model uses `is_literal()` to determine deduplication behaviour
+  (see @model spec).
 
 ### Signature
 
@@ -32,14 +43,15 @@ A Kline consists of:
 
 ## Construction
 
-A Kline is constructed from a signature and a sequence of nodes:
+A Kline is constructed from a signature, a sequence of nodes, and a literal flag:
 
 ```
-Kline(signature, nodes)
+Kline(signature, nodes, literal)
 ```
 
 - `signature` — required, uint64.
 - `nodes` — required, zero or more uint64 values.
+- `literal` — required, bool. Defaults to `false`.
 
 Implementations may accept multiple input representations for `nodes`
 (single value, empty, list) provided the result is semantically identical:
@@ -51,6 +63,8 @@ Two Klines are equal if and only if:
 
 1. Their signatures are equal, **and**
 2. Their node sequences are equal (same length, same order, same values).
+
+The `literal` flag does not participate in equality.
 
 ## Operations
 
@@ -70,6 +84,14 @@ len(kline.nodes) → int ≥ 0
 
 The number of nodes. Equivalent to `len(kline.nodes)`.
 
+### Is literal
+
+```
+kline.is_literal() → bool
+```
+
+Returns whether this kline is literal.
+
 ## What a Kline is Not
 
 The following are explicitly **out of scope** for this spec:
@@ -81,6 +103,8 @@ The following are explicitly **out of scope** for this spec:
   concerns, not kline operations.
 - **Debug metadata.** Labels, source text, or other diagnostic information
   is implementation-level.
+- **Deduplication.** The literal flag signals deduplication eligibility, but
+  the model owns deduplication logic (@model spec).
 
 ## Dependencies
 
