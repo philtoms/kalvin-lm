@@ -1,4 +1,7 @@
-"""BPE tokenizer wrapper using rustbpe."""
+"""BPE tokenizer wrapper using rustbpe.
+
+BPE tokens are never literal: is_literal(node) → False.
+"""
 
 import base64
 import json
@@ -15,13 +18,11 @@ _rustbpe: Any = None
 _tiktoken: Any = None
 try:
     import rustbpe as _rustbpe_module
-
     _rustbpe = _rustbpe_module
 except ImportError:
     pass
 try:
     import tiktoken as _tiktoken_module
-
     _tiktoken = _tiktoken_module
 except ImportError:
     pass
@@ -29,25 +30,21 @@ except ImportError:
 
 class TokenizerNotTrainedError(Exception):
     """Raised when encoding/decoding before training the tokenizer."""
-
     pass
 
 
 class RustbpeNotInstalledError(Exception):
     """Raised when rustbpe operations are attempted without rustbpe installed."""
-
     pass
 
 
 class TiktokenNotInstalledError(Exception):
     """Raised when loading from directory without tiktoken installed."""
-
     pass
 
 
 class PyarrowNotInstalledError(Exception):
     """Raised when training from parquet without pyarrow installed."""
-
     pass
 
 
@@ -55,15 +52,9 @@ class Tokenizer(KTokenizer):
     """BPE tokenizer wrapper supporting rustbpe (training) and tiktoken (inference)."""
 
     def __init__(self, tokenizer: Any = None):
-        """Initialize with optional pre-trained tokenizer.
-
-        Args:
-            tokenizer: Optional rustbpe.Tokenizer or tiktoken.Encoding instance
-        """
         self._tokenizer = tokenizer
 
     def _check_available(self) -> None:
-        """Raise if tokenizer is not available."""
         if self._tokenizer is None:
             raise TokenizerNotTrainedError(
                 "Tokenizer not trained. Call train() or from_directory() first."
@@ -75,157 +66,75 @@ class Tokenizer(KTokenizer):
         vocab_size: int = 32768,
         pattern: str | None = None,
     ) -> None:
-        """Train the BPE tokenizer on a corpus.
-
-        Args:
-            texts: List of training strings
-            vocab_size: Target vocabulary size (default 32768)
-            pattern: Optional custom regex pattern for pre-tokenization
-        """
         if _rustbpe is None:
             raise RustbpeNotInstalledError(
                 "rustbpe is not installed. Install with: pip install rustbpe"
             )
         self._tokenizer = _rustbpe.Tokenizer()
-        self._tokenizer.train_from_iterator(
+        self._tokenizer.train_fromIterator(
             texts_iterator,
             vocab_size=vocab_size,
             pattern=pattern,
         )
 
-
     def save_to_directory(self, path: str | Path, name: str = "tokenizer") -> None:
-        """Save the trained tokenizer to a directory for later loading.
-
-        Saves two files:
-        - {name}.json: metadata (pattern, vocab_size)
-        - {name}.bin: mergeable ranks (base64-encoded)
-
-        Args:
-            path: Directory path to save to
-            name: Base name for saved files (default "tokenizer")
-        """
         self._check_available()
         path = Path(path)
         path.mkdir(parents=True, exist_ok=True)
 
-        # Get tokenizer info
         pattern = self._tokenizer.get_pattern()
         ranks = self._tokenizer.get_mergeable_ranks()
 
-        # Save metadata
-        meta = {
-            "pattern": pattern,
-            "vocab_size": len(ranks),
-        }
+        meta = {"pattern": pattern, "vocab_size": len(ranks)}
         (path / f"{name}.json").write_text(json.dumps(meta, indent=2))
 
-        # Save mergeable ranks as base64-encoded JSON
-        # Format: [{"b64": "<base64_bytes>", "rank": int}, ...]
         ranks_data = [{"b64": base64.b64encode(b).decode("ascii"), "rank": r} for b, r in ranks]
         (path / f"{name}.bin").write_text(json.dumps(ranks_data))
 
     @classmethod
     def from_directory(cls, path: str | Path = "data/tokenizer", name: str = "tokenizer-32768") -> "Tokenizer":
-        """Load a pre-trained tokenizer from a directory.
-
-        Uses tiktoken for fast inference (recommended by rustbpe).
-
-        Args:
-            path: Directory path containing saved tokenizer
-            name: Base name of saved files (default "tokenizer")
-
-        Returns:
-            Tokenizer instance with loaded tiktoken.Encoding
-        """
         if _tiktoken is None:
             raise TiktokenNotInstalledError(
                 "tiktoken is not installed. Install with: pip install tiktoken"
             )
-
         path = Path(path)
-
-        # Load metadata
         meta = json.loads((path / f"{name}.json").read_text())
         pattern = meta["pattern"]
 
-        # Load mergeable ranks
         ranks_data = json.loads((path / f"{name}.bin").read_text())
         mergeable_ranks = {base64.b64decode(item["b64"]): item["rank"] for item in ranks_data}
 
-        # Create tiktoken Encoding
         encoding = _tiktoken.Encoding(
             name=name,
             pat_str=pattern,
             mergeable_ranks=mergeable_ranks,
             special_tokens={},
         )
-
         return cls(tokenizer=encoding)
 
     @property
     def vocab_size(self) -> int:
-        """Return the tokenizer vocabulary size."""
         self._check_available()
         if hasattr(self._tokenizer, "vocab_size"):
             return self._tokenizer.vocab_size
         return self._tokenizer.n_vocab
 
     def is_literal(self, token_id: int) -> bool:
+        """BPE tokens are never literal."""
         return False
-    
-    def make_signature(self, nodes: Any) -> int:
-        """Constructs an S1 signature from a set of nodes
-        
-        Args:
-            nodes: the set of integer nodes
-        
-        Returns:
-            An S1 signature construction
-        """
-        sig = 0
-        return sig
-    
+
     def encode(self, text: str, pad_ws: bool = False) -> list[int]:
-        """Encode a string to token IDs.
-
-        Args:
-            text: Input string to encode
-            pad_ws: If True, strip and add trailing space
-
-        Returns:
-            List of token IDs
-        """
         self._check_available()
-
         if pad_ws:
             text = text.strip() + " "
-
         return self._tokenizer.encode(text)
 
     def decode(self, ids: list[int]) -> str:
-        """Decode token IDs back to a string.
-
-        Args:
-            ids: List of token IDs
-
-        Returns:
-            Decoded string
-        """
         self._check_available()
         return self._tokenizer.decode(ids)
 
     def batch_encode(self, texts: list[str]) -> list[list[int]]:
-        """Encode multiple strings in parallel.
-
-        Args:
-            texts: List of strings to encode
-
-        Returns:
-            List of token ID lists
-        """
         self._check_available()
         if hasattr(self._tokenizer, "batch_encode"):
             return self._tokenizer.batch_encode(texts)
-        # tiktoken doesn't have batch_encode, encode sequentially
         return [self._tokenizer.encode(t) for t in texts]

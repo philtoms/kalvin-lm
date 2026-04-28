@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer
+from kalvin.signature import make_signature
 from kalvin.significance import Int32Significance
 from kalvin.kline import KLine
 
@@ -195,7 +196,7 @@ class Decompiler:
         if not nodes or len(nodes) < 2:
             return False
 
-        nodes_sig = self.tokenizer.make_signature(nodes)
+        nodes_sig = make_signature(nodes, self.tokenizer.is_literal)
         return kline.signature == nodes_sig
 
     def _decompile_kline(self, kline: KLine) -> DecompiledEntry | None:
@@ -253,7 +254,7 @@ class Decompiler:
             combined = kline.signature & nodes
             return "S2" if combined != 0 else "S3"
 
-        nodes_sig = self.tokenizer.make_signature(nodes)
+        nodes_sig = make_signature(nodes, self.tokenizer.is_literal)
         combined = kline.signature & nodes_sig
         return "S2" if combined != 0 else "S3"
 

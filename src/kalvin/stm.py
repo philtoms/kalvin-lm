@@ -1,77 +1,79 @@
-"""Short-Term Memory (STM) — dual-keyed dictionary for KLine lookup.
+"""Short-Term Memory (STM) — bounded, dual-keyed KLine index.
 
-The STM indexes KLines by two distinct keys so the agent can retrieve
-them efficiently by either their *signature* or their *nodes signature*:
+The STM indexes KLines by two keys:
+  1. signature — kline.signature
+  2. nodes_signature — make_signature(kline.nodes)
 
-    * **signature**      — ``kline.signature``  (the KLine's own signature)
-    * **nodes_signature** — ``make_signature(kline.nodes)``  (derived from nodes)
+Both keys map into the same backing store. When the two keys are identical
+the KLine is stored under a single key.
 
-Both keys map into the same backing store ``dict[KSig, list[KLine]]``.  If the
-two keys are identical the KLine is stored only once under that key.
+The STM has a configurable bound (default 256). When the bound is exceeded,
+the oldest entries are evicted.
 """
 
 from __future__ import annotations
 
-from kalvin.abstract import KLine, KNodes, KSig, KTokenizer
-from kalvin.mod_tokenizer import Mod32Tokenizer
+from typing import Callable
+
+from kalvin.kline import KLine, KSig, KNode
 
 
 class STM:
-    """Short-Term Memory: dual-keyed KLine dictionary.
-
-    Structure
-    ---------
-    ``_store: dict[KSig, list[KLine]]``
-
-    A single entry holds *multiple* KLines so that different KLines sharing
-    the same key are not silently deduplicated.
-
-    ``_order: list[KLine]`` tracks insertion order so that ``query()``
-    can return results deterministically.
+    """Short-Term Memory: bounded, dual-keyed KLine dictionary.
 
     Parameters
     ----------
-    tokenizer:
-        The KTokenizer used to derive *nodes signatures* from node lists
-        via ``tokenizer.make_signature(nodes)``.
+    is_literal_fn:
+        Callable used to derive nodes signatures from node lists.
+    bound:
+        Maximum number of KLines to retain. Default 256.
     """
 
-    __slots__ = ("_store", "_order", "_dedup", "_tokenizer")
+    __slots__ = ("_store", "_order", "_dedup", "_is_literal_fn", "_bound")
 
-    def __init__(self, tokenizer: KTokenizer):
+    def __init__(
+        self,
+        is_literal_fn: Callable[[int], bool] | None = None,
+        bound: int = 256,
+    ):
         self._store: dict[KSig, list[KLine]] = {}
         self._order: list[KLine] = []
         self._dedup: set[tuple[KSig, tuple[int, ...]]] = set()
-        self._tokenizer = tokenizer if tokenizer else Mod32Tokenizer()
+        self._is_literal_fn = is_literal_fn or (lambda _: False)
+        self._bound = bound
+
+    def _make_signature(self, nodes: list[int]) -> int:
+        """Derive a nodes signature from a node list."""
+        from kalvin.signature import make_signature
+        return make_signature(nodes, self._is_literal_fn)
 
     # ── Core API ────────────────────────────────────────────────────────
 
     def add(self, kline: KLine, dedup: bool = True) -> bool:
-        """Add a KLine to the STM, indexed by both signature and nodes signature.
+        """Add a KLine to the STM.
 
-        1. Compute *nodes_sig* from ``kline.nodes`` via ``make_signature``.
-        2. Index by ``kline.signature`` (always).
-        3. Index by *nodes_sig* when it differs from ``kline.signature``.
-
-        Args:
-            kline: KLine to add.
-            dedup: If True, reject klines with identical (signature, nodes).
+        Indexes by both signature and nodes signature. Enforces bound
+        via FIFO eviction.
 
         Returns:
-            True if the kline was added, False if rejected as a duplicate.
+            True if added, False if rejected as duplicate.
         """
-        nodes_sig = self._tokenizer.make_signature(kline.nodes)
-        sig = kline.signature or nodes_sig
-
         if dedup:
-            key = (sig, tuple(kline.as_node_list()))
+            key = (kline.signature, tuple(kline.nodes))
             if key in self._dedup:
                 return False
             self._dedup.add(key)
 
+        # Evict oldest if at bound
+        while len(self._order) >= self._bound:
+            self._evict_oldest()
+
+        nodes_sig = self._make_signature(kline.nodes) if kline.nodes else 0
+        sig = kline.signature or nodes_sig
+
         self._order.append(kline)
         self._append(sig, kline)
-        if nodes_sig != sig:
+        if nodes_sig and nodes_sig != sig:
             self._append(nodes_sig, kline)
         return True
 
@@ -80,37 +82,20 @@ class STM:
         return list(self._store.get(key, []))
 
     def get_kline(self, key: KSig) -> KLine | None:
-        """Return the most recently added KLine under *key*, or ``None``."""
+        """Return the most recently added KLine under *key*, or None."""
         bucket = self._store.get(key)
         if bucket:
             return bucket[-1]
         return None
 
     def find_by_signature(self, signature: KSig) -> list[KLine]:
-        """Look up KLines by their KLine signature."""
         return self.get(signature)
 
-    def find_by_nodes(self, nodes: KNodes) -> list[KLine]:
-        """Look up KLines by a nodes signature derived from *nodes*.
-
-        This mirrors the key that ``add()`` computes via
-        ``tokenizer.make_signature(nodes)``.
-        """
-        nodes_sig = self._tokenizer.make_signature(
-            nodes if isinstance(nodes, list) else [nodes] if nodes is not None else []
-        )
-        return self.get(nodes_sig)
+    def find_by_nodes(self, nodes_signature: KSig) -> list[KLine]:
+        return self.get(nodes_signature)
 
     def query(self, sig: KSig) -> list[KLine]:
-        """Return all KLines whose signatures overlap *sig* (AND ≠ 0).
-
-        Scans every KLine in lifo order, returning those whose
-        ``kline.signature & sig != 0``.  Results are deduplicated by
-        identity (the same KLine indexed under two keys appears once).
-
-        Returns:
-            List of matching KLines in lifo order.
-        """
+        """Return all KLines whose signatures overlap *sig* (AND ≠ 0)."""
         if sig == 0:
             return []
         seen: set[int] = set()
@@ -125,43 +110,47 @@ class STM:
         return results
 
     def remove(self, kline: KLine) -> None:
-        """Remove a specific KLine from all index entries.
-
-        Only the *first* matching entry per key is removed (identity check).
-        """
+        """Remove a KLine from all index entries."""
         sig = kline.signature
-        nodes_sig = self._tokenizer.make_signature(kline.nodes)
+        nodes_sig = self._make_signature(kline.nodes) if kline.nodes else 0
         self._remove_from(sig, kline)
-        if nodes_sig != sig:
+        if nodes_sig and nodes_sig != sig:
             self._remove_from(nodes_sig, kline)
-        # Remove from insertion-order list and dedup set
         try:
             self._order.remove(kline)
         except ValueError:
             pass
-        self._dedup.discard((sig, tuple(kline.as_node_list())))
+        self._dedup.discard((sig, tuple(kline.nodes)))
 
     def clear(self) -> None:
-        """Remove all entries."""
         self._store.clear()
         self._order.clear()
         self._dedup.clear()
 
     def __len__(self) -> int:
-        """Return the number of unique keys in the STM."""
-        return len(self._store)
+        return len(self._order)
 
     def __contains__(self, key: KSig) -> bool:
-        """Check if *key* has any indexed KLines."""
         return key in self._store
 
     def __repr__(self) -> str:
-        return f"STM(keys={len(self._store)}, klines={len(self._order)}, tokenizer={type(self._tokenizer).__name__})"
+        return f"STM(klines={len(self._order)}, bound={self._bound})"
 
     # ── Internals ───────────────────────────────────────────────────────
 
+    def _evict_oldest(self) -> None:
+        """Evict the oldest KLine from the STM."""
+        if not self._order:
+            return
+        oldest = self._order.pop(0)
+        sig = oldest.signature
+        nodes_sig = self._make_signature(oldest.nodes) if oldest.nodes else 0
+        self._remove_from(sig, oldest)
+        if nodes_sig and nodes_sig != sig:
+            self._remove_from(nodes_sig, oldest)
+        self._dedup.discard((sig, tuple(oldest.nodes)))
+
     def _append(self, key: KSig, kline: KLine) -> None:
-        """Append *kline* to the bucket at *key*, creating the bucket if needed."""
         bucket = self._store.get(key)
         if bucket is None:
             self._store[key] = [kline]
@@ -169,7 +158,6 @@ class STM:
             bucket.append(kline)
 
     def _remove_from(self, key: KSig, kline: KLine) -> None:
-        """Remove the first occurrence of *kline* (identity) from *key*'s bucket."""
         bucket = self._store.get(key)
         if not bucket:
             return

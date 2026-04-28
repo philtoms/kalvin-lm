@@ -1,428 +1,137 @@
+"""Tests for Significance Pipeline — openspec/significance.md conformance."""
+
 import pytest
-from kalvin.abstract import KLine
-from kalvin.model import Model
-from kalvin.significance import Int64Significance
+from kalvin.kline import KLine
+from kalvin.model import Model, D_BOUNDARY, D_MAX
+from kalvin.significance import (
+    compute_significance,
+    significance_pipeline,
+    no_candidates_result,
+    D_BOUNDARY as SIG_D_BOUNDARY,
+    D_MAX as SIG_D_MAX,
+)
+from kalvin.mod_tokenizer import Mod32Tokenizer
+
+MASK64 = 0xFFFF_FFFF_FFFF_FFFF
 
 
-# Create a shared significance instance for tests
-_sig = Int64Significance()
+def make_model() -> Model:
+    t = Mod32Tokenizer()
+    return Model(is_literal_fn=t.is_literal)
 
 
-def _calculate_significance(model: Model, query: KLine, target: KLine) -> int:
-    """Replicate Agent._signify logic for testing significance calculation."""
-    query_nodes = query.as_node_list()
-    target_nodes = target.as_node_list()
+class TestComputeSignificance:
+    def test_s1_all_nodes_match(self):
+        m = make_model()
+        # Query nodes that equal candidate signature
+        q = KLine(5, [10, 20])
+        c = KLine(10, [1, 2])
+        # Node 10 matches candidate.signature (10) → S1 for that node
+        # Node 20 does not match candidate.signature (10)
+        # So s1_count = 1 out of 2 → S2
+        result = compute_significance(q, c, m)
+        assert result.s1_count == 1
+        assert result.level == "S2"
 
-    if not query_nodes or not target_nodes:
-        return _sig.S4
+    def test_s1_all_match(self):
+        m = make_model()
+        # Both nodes equal candidate sig
+        q = KLine(10, [10, 10])
+        c = KLine(10, [1, 2])
+        result = compute_significance(q, c, m)
+        assert result.s1_count == 2
+        assert result.level == "S1"
+        assert result.distance == 0
+        assert result.significance == MASK64
 
-    min_len = min(len(query_nodes), len(target_nodes))
+    def test_s3_no_match(self):
+        m = make_model()
+        q = KLine(5, [1, 2])
+        c = KLine(100, [3, 4])
+        result = compute_significance(q, c, m)
+        assert result.s1_count == 0
+        assert result.level == "S3"
+        assert D_BOUNDARY <= result.distance < D_MAX
 
-    s1_match_positions = set(
-        i for i in range(min_len) if _sig.is_identity(query_nodes[i], target_nodes[i])
-    )
-    s1_matches = len(s1_match_positions)
+    def test_empty_query(self):
+        m = make_model()
+        q = KLine(0, [])
+        c = KLine(10, [1])
+        result = compute_significance(q, c, m)
+        assert result.level == "S4"
 
-    if s1_matches == min_len and len(query_nodes) == len(target_nodes):
-        return _sig.S1
+    def test_s1_significance_is_max(self):
+        m = make_model()
+        q = KLine(10, [10])
+        c = KLine(10, [])
+        result = compute_significance(q, c, m)
+        assert result.significance == MASK64
 
-    if s1_matches > 0:
-        s1_pct = (s1_matches * 100) // min_len
-        target_set = set(target_nodes)
-        s2_matches = 0
-        for i, node in enumerate(query_nodes):
-            if i in s1_match_positions:
-                continue
-            if node in target_set:
-                s2_matches += 1
-        s2_pct = (s2_matches * 100) // len(query_nodes) if query_nodes else 0
-        return _sig.build_s2(s1_pct, s2_pct)
+    def test_s4_significance_is_zero(self):
+        result = no_candidates_result()
+        assert result.significance == 0
+        assert result.level == "S4"
 
-    target_set = set(target_nodes)
-    query_set = set(query_nodes)
+    def test_distance_clamped_s2(self):
+        m = make_model()
+        q = KLine(5, [1, 2])
+        c = KLine(1, [3, 4])
+        result = compute_significance(q, c, m)
+        assert 1 <= result.distance < D_BOUNDARY
 
-    unordered_s1_matches = query_set & target_set
-    s3_s1_pct = (len(unordered_s1_matches) * 100) // len(query_set) if query_set else 0
-
-    s3_s2_matches = 0
-    for node in query_nodes:
-        if node in target_set:
-            continue
-        node_kline = model.find_kline(node)
-        if node_kline is not None and node_kline.signature != 0:
-            node_children = set(node_kline.as_node_list())
-            if node_children & target_set:
-                s3_s2_matches += 1
-    s3_s2_pct = (s3_s2_matches * 100) // len(query_nodes) if query_nodes else 0
-
-    gen_matches = 0
-    for node in query_nodes:
-        if node in target_set:
-            continue
-        descendants = model.get_all_descendants(node)
-        if descendants & target_set:
-            gen_matches += 1
-    gen_pct = (gen_matches * 100) // len(query_nodes) if query_nodes else 0
-
-    if s3_s1_pct > 0 or s3_s2_pct > 0 or gen_pct > 0:
-        return _sig.build_s3(s3_s1_pct, s3_s2_pct, gen_pct)
-
-    return _sig.S4
-
-
-class TestSignificanceHelpers:
-    def test_build_s1_100_percent(self):
-        """S1 at 100% returns ideal S1 (all 64 bits set)."""
-        sig = _sig.build_s1(100)
-        assert _sig.has_s1(sig) is True
-        assert sig == _sig.S1
-        assert _sig.get_s1_percentage(sig) == 100
-
-    def test_build_s1_50_percent(self):
-        """S1 at 50% sets S1 range bits and half the quality bits."""
-        sig = _sig.build_s1(50)
-        assert _sig.has_s1(sig) is True
-        assert _sig.get_s1_percentage(sig) == 50
-
-    def test_build_s1_0_percent(self):
-        """S1 at 0% still sets S1 range bits with 0 percentage."""
-        sig = _sig.build_s1(0)
-        assert _sig.has_s1(sig) is True
-        assert _sig.get_s1_percentage(sig) == 0
-
-    def test_build_s1_clamps_negative(self):
-        """Negative percentage is clamped to 0."""
-        sig = _sig.build_s1(-10)
-        assert _sig.has_s1(sig) is True
-        assert _sig.get_s1_percentage(sig) == 0
-
-    def test_build_s1_clamps_over_100(self):
-        """Percentage over 100 is clamped to 100."""
-        sig = _sig.build_s1(150)
-        assert _sig.has_s1(sig) is True
-        assert _sig.get_s1_percentage(sig) == 100
-
-    def test_build_s1_default(self):
-        """S1 with no percentage defaults to 100%."""
-        sig = _sig.build_s1()
-        assert _sig.has_s1(sig) is True
-        assert _sig.get_s1_percentage(sig) == 100
-
-    def test_s1_ideal_is_all_bits(self):
-        """S1 ideal = all 64 bits set."""
-        assert _sig.S1 == (1 << 64) - 1
-
-    def test_build_s2_full(self):
-        """S2 with both at 100% returns ideal S2."""
-        sig = _sig.build_s2(100, 100)
-        assert sig == _sig.S2
-        assert _sig.get_s2_s1_percentage(sig) == 100
-        assert _sig.get_s2_s2_percentage(sig) == 100
-
-    def test_build_s2_zero_s1(self):
-        """S2 with zero S1%."""
-        sig = _sig.build_s2(0, 100)
-        assert _sig.get_s2_s1_percentage(sig) == 0
-        assert _sig.get_s2_s2_percentage(sig) == 100
-
-    def test_build_s2_zero_s2(self):
-        """S2 with zero S2%."""
-        sig = _sig.build_s2(100, 0)
-        assert _sig.get_s2_s1_percentage(sig) == 100
-        assert _sig.get_s2_s2_percentage(sig) == 0
-
-    def test_get_s2_returns_combined(self):
-        """get_s2 returns the full S2-level value."""
-        sig = _sig.build_s2(100, 100)
-        assert _sig.get_s2(sig) == _sig.S2
-
-    def test_s4_value_is_zero(self):
-        """S4 (no significance) is 0."""
-        assert _sig.S4 == 0
-
-    def test_ideals_ordering(self):
-        """S1 ideal > S2 ideal > S3 ideal > S4."""
-        assert _sig.S1 > _sig.S2 > _sig.S3 > _sig.S4
+    def test_distance_clamped_s3(self):
+        m = make_model()
+        q = KLine(5, [1, 2])
+        c = KLine(100, [3, 4])
+        result = compute_significance(q, c, m)
+        assert D_BOUNDARY <= result.distance < D_MAX
 
 
-class TestCalculateSignificance:
-    def test_s1_exact_match(self):
-        """Exact node match returns S1."""
-        query = KLine(signature=0x1000, nodes=[0x100, 0x200])
-        model_kline = KLine(signature=0x2000, nodes=[0x100, 0x200])
-        f = Model([query, model_kline])
+class TestSignificanceOrdering:
+    """S1 > S2 > S3 > S4 by significance value."""
 
-        sig = _calculate_significance(f, query, model_kline)
-        assert _sig.has_s1(sig) is True
-
-    def test_s1_prefix_match_query_shorter(self):
-        """Query prefix matches but is shorter -> S2 (not S1, lengths differ)."""
-        query = KLine(signature=0x1000, nodes=[0x100])
-        model_kline = KLine(signature=0x2000, nodes=[0x100, 0x200])
-        f = Model([query, model_kline])
-
-        sig = _calculate_significance(f, query, model_kline)
-        assert _sig.has_s2(sig) is True  # All prefix nodes match but lengths differ
-
-    def test_s1_prefix_match_query_longer(self):
-        """Query prefix matches but is longer -> S2 (not S1, lengths differ)."""
-        query = KLine(signature=0x1000, nodes=[0x100, 0x200])
-        model_kline = KLine(signature=0x2000, nodes=[0x100])
-        f = Model([query, model_kline])
-
-        sig = _calculate_significance(f, query, model_kline)
-        assert _sig.has_s2(sig) is True  # All prefix nodes match but lengths differ
-
-    def test_s1_empty_both(self):
-        """Both empty nodes returns S4."""
-        query = KLine(signature=0x1000, nodes=[])
-        model_kline = KLine(signature=0x2000, nodes=[])
-        f = Model([query, model_kline])
-
-        sig = _calculate_significance(f, query, model_kline)
-        assert _sig.has_s4(sig) is True
-
-    def test_s4_query_empty_model_not(self):
-        """Query empty, model not empty returns S4."""
-        query = KLine(signature=0x1000, nodes=[])
-        model_kline = KLine(signature=0x2000, nodes=[0x100])
-        f = Model([query, model_kline])
-
-        sig = _calculate_significance(f, query, model_kline)
-        assert sig == _sig.S4
-
-    def test_s4_model_empty_query_not(self):
-        """Model empty, query not empty returns S4."""
-        query = KLine(signature=0x1000, nodes=[0x100])
-        model_kline = KLine(signature=0x2000, nodes=[])
-        f = Model([query, model_kline])
-
-        sig = _calculate_significance(f, query, model_kline)
-        assert sig == _sig.S4
-
-    def test_s2_partial_match(self):
-        """Partial positional match returns S2."""
-        query = KLine(signature=0x1000, nodes=[0x100, 0x200])
-        model_kline = KLine(signature=0x2000, nodes=[0x100, 0x300])
-        f = Model([query, model_kline])
-
-        sig = _calculate_significance(f, query, model_kline)
-        assert _sig.has_s1(sig) is False  # Not S1
-        assert _sig.get_s2_s1_percentage(sig) == 50  # 50% positional match
-
-    def test_s2_with_non_positional_match(self):
-        """S2 includes non-positional matches."""
-        query = KLine(signature=0x1000, nodes=[0x100, 0x200])
-        model_kline = KLine(signature=0x2000, nodes=[0x100, 0x300, 0x200])  # 0x200 at pos 2
-        f = Model([query, model_kline])
-
-        sig = _calculate_significance(f, query, model_kline)
-        assert _sig.has_s1(sig) is False  # Not S1
-        assert _sig.get_s2_s1_percentage(sig) == 50  # 50% positional
-        assert _sig.get_s2_s2_percentage(sig) == 50  # 50% non-positional
-
-    def test_s4_no_match(self):
-        """No matching nodes returns S4."""
-        query = KLine(signature=0x1000, nodes=[0x100])
-        model_kline = KLine(signature=0x2000, nodes=[0x200])
-        f = Model([query, model_kline])
-
-        sig = _calculate_significance(f, query, model_kline)
-        assert sig == _sig.S4
-
-
-class TestSignificanceComparison:
     def test_s1_greater_than_s2(self):
-        """S1 is more significant than S2."""
-        s1_sig = _sig.build_s1(50)
-        s2_sig = _sig.build_s2(100, 100)
-        assert s1_sig > s2_sig
+        m = make_model()
+        q_s1 = KLine(10, [10])
+        c = KLine(10, [])
+        r_s1 = compute_significance(q_s1, c, m)
 
-    def test_s1_100_greater_than_s1_50(self):
-        """Higher S1% is more significant."""
-        sig_high = _sig.build_s1(100)
-        sig_low = _sig.build_s1(50)
-        assert sig_high > sig_low
+        q_s2 = KLine(10, [10, 20])
+        r_s2 = compute_significance(q_s2, c, m)
 
-    def test_s2_greater_than_s4(self):
-        """S2 is more significant than S4."""
-        s2_sig = _sig.build_s2(1, 1)
-        assert s2_sig > _sig.S4
+        assert r_s1.significance > r_s2.significance
 
-    def test_s2_higher_s1_pct_more_significant(self):
-        """S2 with higher S1% is more significant."""
-        sig_high = _sig.build_s2(100, 0)
-        sig_low = _sig.build_s2(50, 0)
-        assert sig_high > sig_low
-
-    def test_s2_higher_s2_pct_more_significant(self):
-        """S2 with higher S2% is more significant (same S1%)."""
-        sig_high = _sig.build_s2(50, 100)
-        sig_low = _sig.build_s2(50, 50)
-        assert sig_high > sig_low
-
-    def test_s1_s2_s4_ordering(self):
-        """Full ordering: S1 > S2 > S4."""
-        s1 = _sig.build_s1(100)
-        s2 = _sig.build_s2(100, 100)
-        s4 = _sig.S4
-        assert s1 > s2 > s4
-
-    def test_calculated_significance_ordering(self):
-        """Real calculated significances maintain ordering."""
-        f = Model()
-
-        # S1: exact match
-        q = KLine(signature=0x1000, nodes=[0x100, 0x200])
-        t1 = KLine(signature=0x2000, nodes=[0x100, 0x200])
-        f.add(q)
-        f.add(t1)
-        sig_s1 = _calculate_significance(f, q, t1)
-
-        # S2: partial match
-        t2 = KLine(signature=0x3000, nodes=[0x100, 0x300])
-        f.add(t2)
-        sig_s2 = _calculate_significance(f, q, t2)
-
-        # S4: no match
-        t3 = KLine(signature=0x4000, nodes=[0x999])
-        f.add(t3)
-        sig_s4 = _calculate_significance(f, q, t3)
-
-        assert sig_s1 > sig_s2 > sig_s4
-
-
-class TestSignificanceHelpersS3:
-    def test_build_s3_full(self):
-        """S3 with all percentages at 100% returns ideal S3."""
-        sig = _sig.build_s3(100, 100, 100)
-        assert sig == _sig.S3
-        assert _sig.get_s3_s1_percentage(sig) == 100
-        assert _sig.get_s3_s2_percentage(sig) == 100
-        assert _sig.get_s3_gen_percentage(sig) == 100
-
-    def test_build_s3_partial(self):
-        """S3 with partial percentages."""
-        sig = _sig.build_s3(50, 50, 50)
-        assert _sig.get_s3_s1_percentage(sig) == 50
-        assert _sig.get_s3_s2_percentage(sig) == 50
-        assert _sig.get_s3_gen_percentage(sig) == 50
-
-    def test_build_s3_zero(self):
-        """S3 with zero percentages returns indicator-only value (not S4)."""
-        sig = _sig.build_s3(0, 0, 0)
-        # Indicator bit still set so it's S3 level, not S4
-        assert _sig.has_s3(sig) is True
-        assert _sig.get_s3(sig) == _sig._S3_INDICATOR
-
-    def test_get_s3_returns_combined(self):
-        """get_s3 returns the full S3-level value."""
-        sig = _sig.build_s3(100, 100, 100)
-        assert _sig.get_s3(sig) == _sig.S3
-
-
-class TestCalculateSignificanceS3:
-    def test_s3_unordered_match(self):
-        """S3 when nodes match but at different positions (no positional overlap)."""
-        # Query: [a, b], Model: [b, c, a] - a and b exist but not at same positions
-        query = KLine(signature=0x1000, nodes=[0x100, 0x200])
-        model_kline = KLine(signature=0x2000, nodes=[0x300, 0x100])  # 0x100 at different position
-        f = Model([query, model_kline])
-
-        sig = _calculate_significance(f, query, model_kline)
-        assert _sig.has_s1(sig) is False  # Not S1
-        assert _sig.has_s2(sig) is False  # Not S2 (no S2-range bits set)
-        assert _sig.has_s3(sig) is True   # Is S3
-        assert _sig.get_s3_s1_percentage(sig) > 0  # Has unordered S1 matches
-
-    def test_s3_reversed_nodes(self):
-        """S3 when nodes are in reverse order."""
-        query = KLine(signature=0x1000, nodes=[0x100, 0x200])
-        model_kline = KLine(signature=0x2000, nodes=[0x200, 0x100])  # Reversed
-        f = Model([query, model_kline])
-
-        sig = _calculate_significance(f, query, model_kline)
-        assert _sig.get_s3_s1_percentage(sig) == 100  # 100% unordered match
-
-    def test_s3_generational_match(self):
-        """S3 generational match through child nodes."""
-        # K1 -> N1 -> N3, K2 has N3 directly
-        n3 = KLine(signature=0x0030, nodes=[])
-        n1 = KLine(signature=0x0010, nodes=[0x0030])  # N1 has child N3
-        k1 = KLine(signature=0x1000, nodes=[0x0010])  # K1 has child N1
-        k2 = KLine(signature=0x2000, nodes=[0x0020, 0x0030])  # K2 has N2 and N3
-        f = Model([n3, n1, k1, k2])
-
-        sig = _calculate_significance(f, k1, k2)
-        # K1's node N1 has child N3 which matches K2's node N3
-        assert _sig.get_s3_s2_percentage(sig) > 0  # Child match
-
-    def test_s3_no_match_returns_s4(self):
-        """No unordered or generational match returns S4."""
-        query = KLine(signature=0x1000, nodes=[0x100])
-        model_kline = KLine(signature=0x2000, nodes=[0x200])
-        f = Model([query, model_kline])
-
-        sig = _calculate_significance(f, query, model_kline)
-        assert sig == _sig.S4
-
-
-class TestSignificanceComparisonS3:
     def test_s2_greater_than_s3(self):
-        """S2 is more significant than S3."""
-        s2_sig = _sig.build_s2(1, 1)
-        s3_sig = _sig.build_s3(100, 100, 100)
-        assert s2_sig > s3_sig
+        m = make_model()
+        q_s2 = KLine(5, [5, 100])  # One S1 match
+        q_s3 = KLine(5, [200, 300])  # No S1 match
+        c = KLine(5, [])
+
+        r_s2 = compute_significance(q_s2, c, m)
+        r_s3 = compute_significance(q_s3, c, m)
+
+        assert r_s2.significance > r_s3.significance
 
     def test_s3_greater_than_s4(self):
-        """S3 is more significant than S4."""
-        s3_sig = _sig.build_s3(1, 0, 0)
-        assert s3_sig > _sig.S4
+        m = make_model()
+        q = KLine(5, [1, 2])
+        c = KLine(100, [3, 4])
+        r_s3 = compute_significance(q, c, m)
+        r_s4 = no_candidates_result()
+        assert r_s3.significance > r_s4.significance
 
-    def test_s3_higher_s1_pct_more_significant(self):
-        """S3 with higher S1% is more significant."""
-        sig_high = _sig.build_s3(100, 0, 0)
-        sig_low = _sig.build_s3(50, 0, 0)
-        assert sig_high > sig_low
 
-    def test_s3_higher_gen_pct_more_significant(self):
-        """S3 with higher gen% is more significant."""
-        sig_high = _sig.build_s3(0, 0, 100)
-        sig_low = _sig.build_s3(0, 0, 50)
-        assert sig_high > sig_low
+class TestSignificancePipeline:
+    def test_pipeline_returns_results(self):
+        m = make_model()
+        q = KLine(5, [1, 2])
+        c1 = KLine(1, [3])
+        c2 = KLine(2, [4])
+        results = significance_pipeline(q, [c1, c2], m)
+        assert len(results) == 2
 
-    def test_full_ordering(self):
-        """Full ordering: S1 > S2 > S3 > S4."""
-        s1 = _sig.build_s1(100)
-        s2 = _sig.build_s2(100, 100)
-        s3 = _sig.build_s3(100, 100, 100)
-        s4 = _sig.S4
-        assert s1 > s2 > s3 > s4
-
-    def test_calculated_full_ordering(self):
-        """Real calculated significances maintain full ordering."""
-        # Build a model with various KLines for testing
-        n3 = KLine(signature=0x0030, nodes=[])
-
-        q = KLine(signature=0x1000, nodes=[0x100, 0x200])  # Query
-
-        # S1: exact match
-        t1 = KLine(signature=0x2000, nodes=[0x100, 0x200])
-
-        # S2: partial positional match
-        t2 = KLine(signature=0x3000, nodes=[0x100, 0x300])
-
-        # S3: only unordered match (reversed)
-        t3 = KLine(signature=0x4000, nodes=[0x200, 0x100])
-
-        # S4: no match
-        t4 = KLine(signature=0x5000, nodes=[0x999])
-
-        f = Model([n3, q, t1, t2, t3, t4])
-
-        sig_s1 = _calculate_significance(f, q, t1)
-        sig_s2 = _calculate_significance(f, q, t2)
-        sig_s3 = _calculate_significance(f, q, t3)
-        sig_s4 = _calculate_significance(f, q, t4)
-
-        assert sig_s1 > sig_s2 > sig_s3 > sig_s4
+    def test_pipeline_empty_candidates(self):
+        m = make_model()
+        q = KLine(5, [1, 2])
+        results = significance_pipeline(q, [], m)
+        assert results == []

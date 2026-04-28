@@ -1,125 +1,95 @@
-"""KLine - Fundamental unit for knowledge graph operations."""
+"""KLine - Fundamental unit of the knowledge graph.
+
+A Kline is an identified, ordered sequence of zero or more nodes.
+See openspec/kline.md for the full specification.
+"""
 
 from __future__ import annotations
 
-from typing import TypeAlias, Iterator
+from typing import TypeAlias
 
 # === Core Types ===
 
-# Type alias for a KNode (64-bit int)
 KNode: TypeAlias = int
 
-# Type alias for KNodes
+# Type alias for KNodes — accepted input representations
 KNodes: TypeAlias = int | None | list[int]
 
-# Type alias for Significance (64-bit int with S1/S2/S3/S4 encoding)
+# Type alias for Signatures (uint64)
 KSig: TypeAlias = int
 
+
 class KLine:
-    """A structure with a 64-bit significance signature and list of child KNodes.
+    """An identified, ordered sequence of zero or more nodes.
 
     Attributes:
-        signature: 64-bit integer signature
-        nodes: List of child KNode integers
+        signature: uint64 identity key (produced by make_signature).
+        nodes: list of uint64 node values (always a list, never None).
+        literal: whether this kline represents an exact token.
+        dbg_text: optional debug label (not spec'd).
     """
 
-    def __init__(self, signature: KSig, nodes: KNodes | KNode | None, dbg_text: str = ""):
+    __slots__ = ("signature", "nodes", "literal", "dbg_text")
+
+    def __init__(
+        self,
+        signature: KSig,
+        nodes: KNodes | KNode | None = None,
+        literal: bool = False,
+        dbg_text: str = "",
+    ):
         self.signature = signature
-        self.nodes = nodes
+        self.nodes = _normalize_nodes(nodes)
+        self.literal = literal
         self.dbg_text = dbg_text
 
-    # === Subtype helpers ===
+    def is_literal(self) -> bool:
+        """Return whether this kline is literal."""
+        return self.literal
 
-    def is_unsigned(self) -> bool:
-        """Check if this is an unsigned KLine (nodes is None)."""
-        return self.nodes is None
-
-    def is_signed(self) -> bool:
-        """Check if this is a signed KLine (nodes is a single KNode)."""
-        return isinstance(self.nodes, int)
-
-    def is_canonized(self) -> bool:
-        """Check if this is a canonized KLine (nodes is a list of KNodes)."""
-        return isinstance(self.nodes, list)
+    # ── Backwards-compatible helpers ──────────────────────────────────
 
     def as_node_list(self) -> list[KNode]:
-        """Get nodes as a list, handling all three subtypes.
-
-        Returns:
-        - Empty list if nodes is None
-        - Single-element list if nodes is int
-        - The list itself if nodes is list
-        """
-        if self.nodes is None:
-            return []
-        if isinstance(self.nodes, int):
-            return [self.nodes]
+        """Get nodes as a list. Always returns self.nodes (already a list)."""
         return self.nodes
-    
-    def signifies(self, query: KSig) -> bool:
-        """Check if this KLine signifies a query via AND operation.
 
-        Args:
-            query: The query signature to signify
+    # ── Equality, hashing ─────────────────────────────────────────────
 
-        Returns:
-            True if (self & query) != 0
-        """
-        return  (self.signature & query) != 0
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, KLine):
+            return NotImplemented
+        if self.signature != other.signature:
+            return False
+        if len(self.nodes) != len(other.nodes):
+            return False
+        return self.nodes == other.nodes
 
-    def filter(self, signature: KSig) -> list[KSig]:
-        """Return a list of nodes with signature removed
+    def __hash__(self) -> int:
+        return hash((self.signature, tuple(self.nodes)))
 
-        Args:
-            signature: The signature value to remove
+    # ── Repr ──────────────────────────────────────────────────────────
 
-        Returns:
-            nodes with signature removed
-        """
-        return [node for node in self.as_node_list() if node != signature]
+    def __repr__(self) -> str:
+        text = f" {self.dbg_text!r}" if self.dbg_text else ""
+        return f"KLine(sig={self.signature:#x}, nodes={self.nodes!r}, lit={self.literal}{text})"
 
-    def mask(self, keep: set) -> list[KSig]:
-        """Return a list of nodes with mask removed
+    def __len__(self) -> int:
+        return len(self.nodes)
 
-        Args:
-            keep: The set of signatures to (index) preserve
 
-        Returns:
-            nodes with mask applied
-        """
-        masked = []
-        for node in self.as_node_list():
-            if node in keep:
-                masked.append(node)
-            else:
-                masked.append(0)
-        return masked
+# Type alias for an iterator of KLines
+KGraph: TypeAlias = "object"  # Iterator[KLine] — for compat
 
-    @classmethod
-    def create(cls, significance: KSig, token: KNode, nodes: KNodes | KNode | None, dbg_text: str = "") -> "KLine":
-        """Create a KLine from significance, token, and nodes.
 
-        The signature is constructed from significance | token.
+def _normalize_nodes(nodes: KNodes | KNode | None) -> list[KNode]:
+    """Normalize node input to a list[int].
 
-        Args:
-            significance: Significance value to OR with token
-            token: Token value to OR with significance
-            nodes: List of child KNode integers
-
-        Returns:
-            KLine with signature = significance | token
-        """
-        return cls(signature=significance | token, nodes=nodes, dbg_text=dbg_text)
-
-    def equals(self, other: KLine) -> bool:
-        if isinstance(self.nodes, list) and isinstance(other.nodes, list):
-            if len(self.nodes) == len(other.nodes):
-                for i in range(len(self.nodes)):
-                    if self.nodes[i] != other.nodes[i]:
-                        return False
-                return True
-        elif self.nodes == other.nodes:
-            return True
-        return False
-
-KGraph: TypeAlias = Iterator[KLine]
+    - None → []
+    - int → [int]
+    - list → list (as-is)
+    """
+    if nodes is None:
+        return []
+    if isinstance(nodes, int):
+        return [nodes]
+    return list(nodes)
