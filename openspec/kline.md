@@ -9,11 +9,11 @@ ordered sequence of zero or more nodes.
 
 A Kline consists of:
 
-| Field      | Type          | Description                                    |
-|------------|---------------|------------------------------------------------|
-| signature  | uint64        | Identity key.                                  |
-| nodes      | sequence of uint64 | Zero or more child nodes. Ordered.        |
-| literal    | bool          | Whether this kline represents an exact token.  |
+| Field     | Type               | Description                                   |
+| --------- | ------------------ | --------------------------------------------- |
+| signature | uint64             | Identity key.                                 |
+| nodes     | sequence of uint64 | Zero or more child nodes. Ordered.            |
+| literal   | bool               | Whether this kline represents an exact token. |
 
 ### Nodes
 
@@ -35,9 +35,9 @@ A Kline consists of:
 ### Signature
 
 - The signature is a 64-bit unsigned integer that identifies the kline.
+- Signatures are non-literal nodes (bit 0 clear). See the @signature spec
+  for the full definition, including creation and properties.
 - It is assigned at construction time.
-- How signatures are produced (hash, counter, tokeniser output, etc.) is
-  outside this spec. See the tokeniser spec.
 - Signatures are not inherently unique. Duplication handling is a model
   responsibility.
 

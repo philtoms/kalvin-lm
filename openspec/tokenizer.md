@@ -2,9 +2,8 @@
 
 ## Overview
 
-The tokenizer converts between text and KNodes, and produces KLine signatures
-from node sets. It is the sole authority for how text becomes nodes and how
-node sets become signatures.
+The tokenizer converts between text and nodes. It is the sole authority
+for how text becomes nodes.
 
 Two tokenizer types are defined, both conforming to the same interface:
 
@@ -14,17 +13,22 @@ Two tokenizer types are defined, both conforming to the same interface:
 - **Mod** — modular bit-packed encoding. Vocabulary is a fixed character set.
   Tokens are bit positions with bitwise OR/AND semantics.
 
-Both types ultimately produce the same kind of output: a KLine where the
-signature is an OR-reduction of its typed nodes.
+Both types ultimately produce the same kind of output: typed nodes
+suitable for signature construction (defined in the @signature spec).
 
 ## Dependencies
 
 ### Kline (@kline spec)
-- **KNode**: a 64-bit unsigned integer. The tokenizer produces KNodes.
-- **KSig**: a 64-bit unsigned integer. The tokenizer produces KSigs via
-  `make_signature`.
 
-The tokenizer does not interpret KNodes or KSigs beyond its own encoding.
+- **node**: a 64-bit unsigned integer. The tokenizer produces nodes.
+
+The tokenizer does not interpret nodes beyond its own encoding.
+
+### Signature (@signature spec)
+
+- Signature creation (`make_signature`) depends on the tokenizer's
+  `is_literal` function to determine which nodes contribute.
+- The tokenizer does not create signatures itself. See the @signature spec.
 
 ## Interface
 
@@ -34,51 +38,22 @@ All tokenizer types implement:
 
 The number of distinct tokens the vocabulary defines.
 
-### `encode(text: str) → list[KNode]`
+### `encode(text: str) → list[node]`
 
-Convert a string to an ordered sequence of KNodes.
+Convert a string to an ordered sequence of nodes.
 
 - Empty string → empty list.
-- Each KNode carries enough information to reconstruct the original text
+- Each node carries enough information to reconstruct the original text
   via `decode`.
 
-### `decode(nodes: list[KNode]) → str`
+### `decode(nodes: list[node]) → str`
 
-Convert a sequence of KNodes back to a string.
+Convert a sequence of nodes back to a string.
 
 - Empty list → empty string.
 - `decode(encode(text)) == text` for any string the tokenizer can represent.
 
-### `make_signature(nodes) → KSig`
-
-Produce a kline signature from a node set by OR-reduction of non-literal
-nodes.
-
-Properties:
-
-| Property        | Rule                                          |
-|-----------------|-----------------------------------------------|
-| Deterministic   | Same node set → same signature                |
-| Commutative     | Node order does not affect the result         |
-| Empty           | `make_signature([]) == 0`                     |
-| Identity        | `make_signature([node]) == node` for non-literal node |
-| Literal-exclude | Literal nodes do not contribute               |
-
-```
-sig = 0
-for node in nodes:
-    if not is_literal(node):
-        sig |= node
-return sig
-```
-
-> **Design note.** `make_signature` bridges the tokenizer and agent
-> domains: the encoding is tokenizer-dependent but the operation
-> conceptually belongs to the agent layer, which has knowledge of node
-> semantics. This spec defines the contract; implementation placement is
-> flexible.
-
-### `is_literal(node: KNode) → bool`
+### `is_literal(node: int) → bool`
 
 Returns whether the node represents a literal token.
 
@@ -93,9 +68,9 @@ A vocabulary is the ordered set of symbols the tokenizer can encode.
 Both tokenizer types provide a default vocabulary. The default may be
 overridden at initialisation.
 
-| Type | Default                                              |
-|------|------------------------------------------------------|
-| BPE  | 4096 entries (learned from corpus)                   |
+| Type | Default                                               |
+| ---- | ----------------------------------------------------- |
+| BPE  | 4096 entries (learned from corpus)                    |
 | Mod  | 95 printable ASCII characters (codes 32–126), ordered |
 
 ## BPE Tokenizer
@@ -166,18 +141,6 @@ encode("hello world") → [15496, 995]
 The returned values are raw BPE token IDs. Type prefix combination
 happens at the agent layer.
 
-### Signature Construction
-
-`make_signature` performs OR-reduction over non-literal nodes, identical
-to the Mod algorithm. Since BPE nodes have already been combined with
-type prefixes at encode time, the OR-reduction produces a signature that
-captures both token identity and linguistic type:
-
-```
-make_signature([POS_NOUN | 500, POS_DET | 257])
-    → (POS_NOUN | 500) | (POS_DET | 257)
-```
-
 ### Literal Test
 
 BPE tokens are never literal:
@@ -211,21 +174,24 @@ Signature captures: token IDs 257 and 500 are present,
 with POS_DET and POS_NOUN | DEP_OBJ type information.
 ```
 
+> **Note.** `make_signature` is defined in the @signature spec, not here.
+> This example illustrates how typed BPE nodes feed into it.
+
 ## Mod Tokenizer
 
 ### Overview
 
-A Mod tokenizer maps characters to bit positions within a KNode. Strings
+A Mod tokenizer maps characters to bit positions within a node. Strings
 are encoded as the bitwise OR of constituent character bits, producing a
 single node. Individual characters can also be encoded as literal tokens
 that preserve order and identity.
 
 Two encoding modes produce two token categories:
 
-| Mode     | Tokens    | Bit 0 | Order preserved | Use                    |
-|----------|-----------|-------|-----------------|------------------------|
-| Packed   | Single    | 0     | No              | Signatures, AND match  |
-| Literal  | Per-char  | 1     | Yes             | Exact text, sequence   |
+| Mode    | Tokens   | Bit 0 | Order preserved | Use                   |
+| ------- | -------- | ----- | --------------- | --------------------- |
+| Packed  | Single   | 0     | No              | Signatures, AND match |
+| Literal | Per-char | 1     | Yes             | Exact text, sequence  |
 
 ### Bit Layout
 
@@ -239,10 +205,10 @@ Two encoding modes produce two token categories:
 
 ### Variants
 
-| Variant | Character bits | Bit range  | Fits uint64 |
-|---------|---------------|------------|-------------|
-| Mod32   | 31            | Bits 1–31  | Yes         |
-| Mod64   | 63            | Bits 1–63  | Yes         |
+| Variant | Character bits | Bit range | Fits uint64 |
+| ------- | -------------- | --------- | ----------- |
+| Mod32   | 31             | Bits 1–31 | Yes         |
+| Mod64   | 63             | Bits 1–63 | Yes         |
 
 ### Vocabulary
 
@@ -251,6 +217,7 @@ a single bit position (bit 1, bit 2, …, bit N). When the character count
 exceeds N, positions wrap.
 
 Default vocabulary:
+
 ```
 ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \"',.;:!?/\n\t%{}[]()<>#$@£^&*+-_=
 ```
@@ -261,21 +228,22 @@ bit position (wrapping).
 
 ### Packed Encoding
 
-Multi-character strings are OR-ed into a single KNode. Bit 0 is clear.
+Multi-character strings are OR-ed into a single node. Bit 0 is clear.
 
 ```
 encode("ABC") → [CHAR_BIT['A'] | CHAR_BIT['B'] | CHAR_BIT['C']]
 ```
 
 Properties:
-- Exactly one KNode per string.
+
+- Exactly one node per string.
 - Order is lost: `"AB"` and `"BA"` produce the same node.
 - Multiplicity is lost: `"AA"` and `"A"` produce the same node.
 - Suitable for signature construction and bitwise AND matching.
 
 ### Literal Encoding
 
-Each character becomes a separate KNode. Bit 0 is set. Upper bits store
+Each character becomes a separate node. Bit 0 is set. Upper bits store
 the Unicode code point.
 
 ```
@@ -285,7 +253,8 @@ encode("ABC", literal=True) → [(ord('A') << 1) | 1,
 ```
 
 Properties:
-- One KNode per character.
+
+- One node per character.
 - Order is preserved.
 - Identity is preserved (distinct characters → distinct tokens).
 - Bypasses the vocabulary: any character with a valid code point can be
@@ -295,7 +264,7 @@ Properties:
 
 ### Decoding
 
-Auto-detects encoding mode from bit 0 of each KNode:
+Auto-detects encoding mode from bit 0 of each node:
 
 ```
 if bit 0 == 0  →  packed: find all set bits, map each to character
@@ -304,22 +273,6 @@ if bit 0 == 1  →  literal: chr(node >> 1)
 
 Packed decode returns characters in bit-position order (lowest bit first),
 not in the original text order.
-
-### Signature Construction
-
-`make_signature` performs OR-reduction over all non-literal nodes:
-
-```
-sig = 0
-for node in nodes:
-    if not is_literal(node):
-        sig |= node
-return sig
-```
-
-This produces a KSig where each set bit represents a character present in
-at least one packed node. The signature supports bitwise AND matching:
-a kline with signature S *signifies* a query Q if `(S & Q) != 0`.
 
 ### Literal Test
 
@@ -331,7 +284,7 @@ Bit 0 is the discriminator.
 
 ### Worked Examples
 
-#### Packed encoding and signature (Mod32)
+#### Packed encoding (Mod32)
 
 ```
 Vocabulary: "ABC" → bit 1, bit 2, bit 3
@@ -340,11 +293,6 @@ encode("A")       → [0b10]                  = [2]
 encode("B")       → [0b100]                 = [4]
 encode("AB")      → [0b10 | 0b100]          = [6]
 encode("ABC")     → [0b10 | 0b100 | 0b1000] = [14]
-
-make_signature([2, 4])    → 2 | 4 = 6
-make_signature([2, 4, 8]) → 2 | 4 | 8 = 14
-make_signature([2])       → 2
-make_signature([])        → 0
 ```
 
 #### Literal encoding (Mod32)
@@ -359,27 +307,24 @@ is_literal(131) → True
 is_literal(2)   → False
 ```
 
-#### Signature excludes literals
+#### Bitwise properties of packed nodes
+
+Packed (non-literal) nodes can be combined with bitwise OR and tested
+with bitwise AND. These properties are used by signature construction
+(@signature spec) and candidate retrieval (@model spec):
 
 ```
-nodes = [2, 131, 4]      # packed 'A', literal 'A', packed 'B'
-
-make_signature(nodes) → 2 | 4 = 6    (131 excluded: is_literal)
-```
-
-#### Bitwise matching
-
-```
-kline_signature = make_signature([2, 4]) = 6    # "AB"
-query           = make_signature([2])     = 2    # "A"
-
-kline.signifies(query) → (6 & 2) != 0 → True   # "AB" signifies "A"
+2 | 4 = 6              # 'A' | 'B' = combined
+(6 & 2) != 0 → True   # combined contains 'A'
 ```
 
 ## What a Tokenizer is Not
 
 The following are explicitly **out of scope** for this spec:
 
+- **Signature creation.** Signature construction (`make_signature`) is
+  defined in the @signature spec. The tokenizer provides `is_literal` but
+  does not produce signatures.
 - **Significance computation.** Significance is defined in the
   @significance spec. The tokenizer does not compute or store significance.
 - **Type prefix assignment.** How linguistic types are assigned to BPE
@@ -391,8 +336,10 @@ The following are explicitly **out of scope** for this spec:
 
 ## Referenced By
 
-- **Kline** (@kline spec) — signatures are produced by the tokenizer.
+- **Signature** (@signature spec) — signature creation depends on the
+  tokenizer's `is_literal` function.
+- **Kline** (@kline spec) — klines contain nodes produced by the tokenizer.
 - **Agent** (@agent spec) — uses the tokenizer to encode input, apply type
   prefixes, and construct klines.
-- **Significance** (@significance spec) — consumes KNodes produced by the
+- **Significance** (@significance spec) — consumes nodes produced by the
   tokenizer (nodes are opaque to significance).
