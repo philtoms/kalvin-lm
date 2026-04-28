@@ -2,7 +2,9 @@
 
 ## 1. The Core Premise
 
-Kalvin is a rationalizing agent that integrates new information into a growing knowledge graph. It manages the tension between incoming ideas and established knowledge through a process called **Rationalisation** — determining how a new structure relates to what is already known, and deciding what to do about it.
+Kalvin is an **agent** — a system with the capacity to make autonomous choices about how it receives, evaluates, and integrates new information. This capacity for choice is called **Agency**, and it is the defining property of the system. Agency is not bolted on; it arises from the structure itself, through a mechanism called **Significance**.
+
+When confronted with a new idea, Kalvin performs an internal rationalisation — a graduated assessment of how that idea relates to what it already knows. This assessment ranges from full comprehension ("I fully understand this idea") through partial recognition ("I understand some of the idea", "Aspects of this idea are reminiscent") to complete novelty ("This idea is completely new to me"). Each of these outcomes — S1, S2, S3, S4 — is not merely a label but a mathematically derived consequence of the graph's topology, and each carries a distinct structural signature that determines what the agent does next. Agency is thus expressed through **Rationalisation**: the process of determining significance and acting on it.
 
 The system operates on a fundamental distinction: **nodes** (uint64 values) are the atoms — static, opaque integers. **KLines** are the structures — dynamic arrangements of nodes into identified, ordered sequences. The model grows not by creating new kinds of matter, but by composing existing matter into increasingly complex hierarchies, and by refining how those compositions relate to each other.
 
@@ -14,8 +16,17 @@ The system is built upon a small, precise set of concepts:
 
 A **node** is a 64-bit unsigned integer. Nodes are opaque — the system does not inspect or interpret them beyond bitwise operations. They come in two flavours:
 
-- **Literal nodes** — bit 0 is set (`node & 1 == 1`). These represent exact, atomic tokens (individual characters or raw values). They preserve identity and order. Literal nodes _do not_ participate in signature construction.
-- **Non-literal (packed) nodes** — bit 0 is clear (`node & 1 == 0`). These carry structural or type information. They _do_ participate in signature construction via bitwise OR.
+- **Literal nodes** — carry a 32-bit literal mask (`0xFFFFFFFF`) in the
+  lower bits, with the character code point in the upper 32 bits. These
+  represent exact, atomic tokens (individual characters or raw values). They
+  preserve identity and order.
+- **Non-literal (packed) nodes** — bit 0 is clear (`node & 1 == 0`). These
+  carry structural or type information.
+
+Both node types participate in signature construction via `make_signature`.
+The distinction is an encoding concern — it affects *how* nodes contribute
+(literal nodes contribute bit 0; non-literal nodes contribute their full
+value), not *whether* they contribute.
 
 ### KLines
 
@@ -33,7 +44,7 @@ KLine equality is defined as: same signature **and** same node sequence (same le
 
 ### Signatures
 
-A **signature** is a 64-bit unsigned integer whose bit 0 is clear (`node & 1 == 0`). Signatures serve two roles: as kline heads (identifying a kline) and as kline nodes (referencing other klines, forming graph edges). Signatures are created by OR-reduction of non-literal nodes — see the @signature spec for full definition.
+A **signature** is a 64-bit unsigned integer. Bit 0 is the **literal-content flag** — set when the kline contains literal nodes. Signatures serve two roles: as kline heads (identifying a kline) and as kline nodes (referencing other klines, forming graph edges). Signatures are created by `make_signature` — an OR-reduction over all nodes. See the @signature spec for full definition.
 
 ### The Model (Knowledge Graph)
 
@@ -57,7 +68,42 @@ STM → Frame → Base
 
 Lookups search tiers in order: STM → Frame → Base. Callers see a single unified Model API; tiering is managed internally.
 
-## 3. The Engine of Agency: Significance
+## 3. Agency
+
+Kalvin has **agency** — the capacity to make choices about how new information is received and integrated. This agency operates through **Significance**: a mathematical distance function that evaluates how a new idea relates to what is already known. The result of this computation is not merely a number — it leaves traces in the structure of the model that can be usefully rationalised as an internal dialogue:
+
+| Level | Internal Rationalisation                | Label(s)                    |
+| ----- | --------------------------------------- | --------------------------- |
+| S1    | "I fully understand this idea."         | Canonical or Countersigned  |
+| S2    | "I understand some of the idea."        | Underfitting or Overfitting |
+| S3    | "Aspects of this idea are reminiscent." | Connotational               |
+| S4    | "This idea is completely new to me."    | Unsigned                    |
+
+Each significance level corresponds to a distinct structural relationship between a KLine and the model. These are not arbitrary labels — they are the observable consequences of the distance function applied to graph topology:
+
+### S1 — Canonical or Countersigned
+
+An S1 KLine is either fully **canonical**, or it is **countersigned** by another KLine. Both represent complete comprehension — the agent has full structural account of the idea.
+
+- A **canonical KLine** is one whose signature fully represents its nodes — the `make_signature` reduction of its nodes produces a signature identical to the KLine's own signature. The structure is self-consistent: nothing is missing and nothing is extraneous. This includes all-literal klines: because `make_signature` sets bit 0 for each literal node, an all-literal kline produces signature `1`, which is a valid canonical signature.
+- A **countersigned KLine** is one whose nodes reference another KLine whose nodes reciprocally reference the first. This mutual cross-reference establishes a grounded equivalence — each structure vouches for the other. Countersignature is a **latent** structural relationship: it is not visible from a single KLine's perspective and is typically discovered through **cogitation** (see §6). An S2 result during initial rationalisation may, upon deeper graph traversal, reveal a countersigned relationship and be promoted to S1.
+
+### S2 — Underfitting or Overfitting
+
+An S2 KLine would be S1 but for a mismatch between signature and node content. It falls into one of two sub-categories:
+
+- An **underfitting KLine** has a signature that contains more information than its nodes warrant. The signature promises structure that the nodes don't deliver — the KLine over-represents its content.
+- An **overfitting KLine** has a signature that contains less information than its nodes provide. The nodes carry structure that the signature doesn't capture — the KLine under-represents its content.
+
+### S3 — Connotational
+
+An S3 KLine is **connotational**: its nodes are unrelated to its signature. There is no direct structural alignment — the connection, if any, is by association rather than by composition. The KLine evokes rather than describes.
+
+### S4 — Unsigned
+
+An S4 KLine is **unsigned**: it does not have any nodes of its own. Without nodes, there is nothing to ground, nothing to compare, and nothing to fit. It is pure potential — a named absence awaiting content.
+
+## 4. The Engine of Agency: Significance
 
 Agency in Kalvin is driven by **Significance** — a 64-bit unsigned integer that measures how well a candidate KLine answers a query KLine.
 
@@ -105,7 +151,7 @@ candidates = model.where(k => (k.signature & query.signature) != 0)
 
 A KLine whose signature shares _any_ set bit with the query's signature is a candidate. This is a necessary but not sufficient condition — it pre-filters the model before the more expensive significance pipeline runs.
 
-## 4. The Process of Rationalisation
+## 5. The Process of Rationalisation
 
 Rationalisation is the agent's core loop: determining how a new KLine relates to existing knowledge and deciding what action to take. It proceeds in six phases:
 
@@ -149,11 +195,12 @@ Test whether an equal KLine (same signature, same node sequence) already exists 
 
 ### Phase 3: Assess
 
-Structural fast-paths that bypass the full significance pipeline:
+Structural fast-paths that bypass the full significance pipeline. Each corresponds to an agency category:
 
-- **Unsigned**: zero nodes → S4, no information content.
-- **All-literal**: every node is literal → S1, pure token sequence.
-- **Self-grounded**: every non-literal node resolves to an existing KLine in the model → S1, fully grounded composition.
+- **Unsigned** (S4): zero nodes → no information content, no signature.
+- **Canonical — all-literal** (S1): every node is literal → `make_signature` produces `1`, a canonical signature representing the presence of literal content.
+- **Canonical — self-grounded** (S1): every non-literal node resolves to an existing KLine in the model, and the kline's signature equals its `make_signature` → fully grounded composition. (Literal nodes always contribute to the canonical test via bit 0; only non-literal nodes require resolution.)
+- **Ground** (S1): exact duplicate already in the model (handled in Phase 2).
 
 If none apply, proceed to candidate retrieval.
 
@@ -169,25 +216,33 @@ For each candidate, run the significance pipeline: per-node S1 testing, routing,
 
 Add the KLine to the model (both STM and frame). Select the best result (highest significance value). If S1 or S4, promote to the base model. If S2 or S3, queue for cogitation.
 
-## 5. Cogitation
+## 6. Cogitation
 
-Cogitation is background processing of rational KLines (S2/S3). It performs deeper graph traversal to find candidates that the initial bitwise-AND retrieval may have missed:
+Cogitation is background processing of rational KLines (S2/S3). It performs deeper graph traversal to find candidates that the initial bitwise-AND retrieval may have missed, and specifically to discover **latent countersignature** relationships:
 
 ```
 Cogitate(Q):
   1. Expand Q's graph context:
      candidates = model.query(Q.signature, depth=D_cogitate)
 
-  2. For each candidate, run significance pipeline.
+  2. For each candidate Cᵢ:
+     a. Run significance pipeline.
+     b. Test for countersignature:
+        Q's nodes reference Cᵢ's signature, AND
+        Cᵢ's nodes reference Q's signature.
+     c. If countersigned → upgrade to S1.
 
-  3. If any candidate achieves S1, add it to the model.
+  3. If any candidate achieves S1 (via significance or countersignature):
+     - Add candidate to model.
 
   4. Re-rationalise Q.
 ```
 
+Countersignature discovery is the primary mechanism by which cogitation promotes S2 to S1. A KLine that appears to be underfitting or overfitting during initial rationalisation may, upon deeper traversal, turn out to be part of a mutual cross-reference that the initial bitwise AND retrieval could not detect. The countersignature test is structural: it examines whether two KLines reference each other through their nodes. (Literal tokens cannot match a signature — their 32-bit literal mask in the lower bits is distinct from any signature value — so the test naturally considers only non-literal matches, but this is enforced by the encoding, not by an explicit filter.)
+
 `D_cogitate` (default 2) controls traversal depth. If Q has been cogitated more than a configurable maximum (default 3 passes) without reaching a significant result, it is abandoned. The cogitation thread runs asynchronously and emits a `"done"` event when the backlog has been empty for a timeout (default 2 seconds).
 
-## 6. Tokenizers
+## 7. Tokenizers
 
 Two tokenizer types produce the same output kind — typed nodes:
 
@@ -196,7 +251,7 @@ Two tokenizer types produce the same output kind — typed nodes:
 
 Signatures are constructed from tokenizer output via `make_signature`, defined in the @signature spec.
 
-## 7. Supporting Mechanisms
+## 8. Supporting Mechanisms
 
 ### Deduplication
 
@@ -223,7 +278,7 @@ The agent publishes events during rationalisation for observers:
 
 Subscribers receive events synchronously in publication order.
 
-## 8. The Governing Properties
+## 9. The Governing Properties
 
 ### Pessimism
 
@@ -247,13 +302,12 @@ Promotion is the bridge: only S1 (confirmed) and S4 (novel) KLines are promoted,
 
 Candidate retrieval uses bitwise AND on signatures as a fast pre-filter. This is lossy — it can miss relevant candidates (false negatives) and include irrelevant ones (false positives). The significance pipeline handles the precision; the AND filter handles the recall.
 
-## 9. Open Questions
+## 10. Open Questions
 
 The following have TBD semantics in the current specs:
 
-1. **`model.is_s1(node, candidate)`** — What does "perfect match" mean for a single node against a candidate? The routing depends on this, but the comparison semantics are undefined.
-2. **`model.s2_distance(query, candidate)`** — How is partial-alignment distance computed? Must return a value in `[1, D_boundary)`.
-3. **`model.s3_distance(query, candidate)`** — How is weak-recognition distance computed? Must return a value in `[D_boundary, MAX)`.
+1. **`model.is_s1(node, candidate)`** — What does "perfect match" mean for a single node against a candidate? The agency framing suggests: a canonical match where the node's contribution to the query's signature is fully represented in the candidate's signature (`node & candidate.signature == node`), or a countersigned match (see `model.is_countersigned`). The routing depends on this, but the full comparison semantics are not yet defined.
+2. **`model.s2_distance(query, candidate)`** — How is partial-alignment distance computed? The agency framing characterises this as the distance between an underfitting or overfitting KLine and S1: the degree of misalignment between signature information and node content. Must return a value in `[1, D_boundary)`.
+3. **`model.s3_distance(query, candidate)`** — How is weak-recognition distance computed? The agency framing characterises this as connotational distance: how far the query's nodes are from the candidate's structure, absent direct alignment. Must return a value in `[D_boundary, MAX)`.
 4. **Candidate retrieval efficiency** — `model.where(predicate)` performs a linear scan. A dedicated `candidates_for(signature)` method with an inverted bit-to-signature index may be needed for large models.
-
-These gaps mean the significance pipeline's routing framework is fully specified, but the actual comparison mechanics inside the model are not yet defined.
+5. **Mod literal encoding capacity** — The new literal encoding `(char << 32) | 0xFFFFFFFF` places the character code point in the upper 32 bits, limiting code points to the range [0, 2³²−1]. This covers the entire Unicode range (max code point 0x10FFFF) with substantial headroom.

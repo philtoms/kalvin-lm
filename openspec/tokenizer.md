@@ -243,13 +243,15 @@ Properties:
 
 ### Literal Encoding
 
-Each character becomes a separate node. Bit 0 is set. Upper bits store
-the Unicode code point.
+Each character becomes a separate node. The upper 32 bits store the
+Unicode code point. The lower 32 bits are all set (`0xFFFFFFFF`) as a
+**literal mask** — a bit pattern that uniquely identifies the node as
+literal and distinguishes it from packed nodes and signature values.
 
 ```
-encode("ABC", literal=True) → [(ord('A') << 1) | 1,
-                                (ord('B') << 1) | 1,
-                                (ord('C') << 1) | 1]
+encode("ABC", literal=True) → [(65 << 32) | 0xFFFFFFFF,
+                                (66 << 32) | 0xFFFFFFFF,
+                                (67 << 32) | 0xFFFFFFFF]
 ```
 
 Properties:
@@ -259,16 +261,20 @@ Properties:
 - Identity is preserved (distinct characters → distinct tokens).
 - Bypasses the vocabulary: any character with a valid code point can be
   encoded, including characters not in the vocabulary.
+- The literal mask (`0xFFFFFFFF`) occupies the lower 32 bits, keeping the
+  character code point in the upper 32 bits. This avoids collision with
+  packed nodes (which use bits 1–31 or 1–63) and with signatures (where
+  bit 0 is the literal-content flag, not a full 32-bit mask).
 - A raw integer may also be encoded: `encode(42, literal=True)`
-  → `[(42 << 1) | 1]`.
+  → `[(42 << 32) | 0xFFFFFFFF]`.
 
 ### Decoding
 
-Auto-detects encoding mode from bit 0 of each node:
+Auto-detects encoding mode from the literal mask:
 
 ```
-if bit 0 == 0  →  packed: find all set bits, map each to character
-if bit 0 == 1  →  literal: chr(node >> 1)
+if (node & 0xFFFFFFFF) == 0xFFFFFFFF  →  literal: chr(node >> 32)
+else                                   →  packed: find all set bits, map each to character
 ```
 
 Packed decode returns characters in bit-position order (lowest bit first),
@@ -277,10 +283,13 @@ not in the original text order.
 ### Literal Test
 
 ```
-is_literal(node) → (node & 1) == 1
+is_literal(node) → (node & 0xFFFFFFFF) == 0xFFFFFFFF
 ```
 
-Bit 0 is the discriminator.
+The lower 32 bits being all set is the literal mask. This distinguishes
+literal tokens from packed nodes (which have bit 0 clear) and from
+signature values (where bit 0 may be set but the lower 32 bits are not all
+1s).
 
 ### Worked Examples
 
@@ -298,12 +307,12 @@ encode("ABC")     → [0b10 | 0b100 | 0b1000] = [14]
 #### Literal encoding (Mod32)
 
 ```
-encode("AB", literal=True) → [(65 << 1) | 1, (66 << 1) | 1]
-                            → [131, 133]
+encode("AB", literal=True) → [(65 << 32) | 0xFFFFFFFF, (66 << 32) | 0xFFFFFFFF]
+                            → [4294967361, 4294967362]
 
-decode([131, 133])         → "AB"
+decode([4294967361, 4294967362]) → "AB"
 
-is_literal(131) → True
+is_literal(4294967361) → True
 is_literal(2)   → False
 ```
 

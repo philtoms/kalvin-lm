@@ -65,9 +65,9 @@ When the bound is exceeded, the oldest entries are evicted.
 STM indexes each Kline by two keys:
 
 1. **signature** — `kline.signature`
-2. **nodes signature** — the OR-reduction of all non-literal nodes in
-   `kline.nodes`, equivalent to `make_signature(kline.nodes)` as defined
-   in the @signature spec.
+2. **nodes signature** — the OR-reduction of all nodes in `kline.nodes`,
+   equivalent to `make_signature(kline.nodes)` as defined in the @signature
+   spec.
 
 Both keys map to the same Kline. When the two keys are identical the Kline
 is stored under a single key.
@@ -185,7 +185,9 @@ model.find_by_nodes(nodes_signature) → Kline | none
 
 Returns the most recently added Kline whose nodes signature matches.
 
-- The nodes signature is the OR-reduction of a Kline's non-literal nodes.
+- The nodes signature is the OR-reduction of all nodes in a Kline's node
+  sequence, equivalent to `make_signature(kline.nodes)` as defined in the
+  @signature spec.
 - Searches STM first (primary index for nodes signatures), then frame,
   then base.
 - Returns `none` if no Kline with that nodes signature exists.
@@ -366,7 +368,8 @@ match to `depth`.
 ## Model API (Significance)
 
 The following functions are consumed by the significance pipeline
-(@significance spec). Their semantics are defined here; their implementation
+(@significance spec) and by cogitation countersignature discovery
+(@agent spec). Their semantics are defined here; their implementation
 is TBD.
 
 ### Is S1
@@ -412,6 +415,29 @@ Returns a distance value when no nodes achieve S1 against the candidate.
 - Values outside range are clamped.
 - `D_boundary` is a hyperparameter (default `0x8000_0000_0000_0000`).
 - Semantics are **TBD**.
+
+### Is Countersigned
+
+```
+model.is_countersigned(A, B) → bool
+```
+
+Returns whether two Klines are **countersigned** — each references the
+other through its nodes.
+
+- `A`, `B` — two Klines.
+- Returns `true` if `B.signature` appears in `A.nodes` AND
+  `A.signature` appears in `B.nodes`.
+- This is a structural test on node values, not a significance computation.
+- Literal nodes cannot match a signature (literal tokens use a 32-bit mask
+  in the lower bits, which does not equal any signature value), so the test
+  naturally considers only non-literal matches — but this is enforced by
+  the encoding, not by an explicit filter.
+- Countersignature is a latent relationship typically discovered during
+  cogitation, not during initial rationalisation.
+
+This function is composed from existing model primitives (`find`, `resolve`)
+and is provided as a convenience for the cogitation pipeline.
 
 ## STM Eviction Details
 

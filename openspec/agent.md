@@ -25,7 +25,8 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Signature (@signature spec)
 
-- Provides `make_signature(nodes) → KSig` (OR-reduction of non-literal nodes).
+- Provides `make_signature(nodes) → KSig` (OR-reduction over all nodes,
+  with bit 0 as the literal-content flag).
 - Provides bitwise AND matching for candidate retrieval.
 - Depends on the tokenizer's `is_literal` function.
 
@@ -146,13 +147,17 @@ candidate retrieval or significance computation.
 **Unsigned**: If Q has zero nodes, it carries no information. Emit a
 `"frame"` event at S4. Return `True`.
 
-**All-literal**: If every node in Q is a literal (per `tokenizer.is_literal`),
-Q is a pure token sequence. Emit a `"frame"` event at S1. Return `True`.
+**Canonical — all-literal**: If every node in Q is a literal (per
+`tokenizer.is_literal`), Q is a pure token sequence. Because
+`make_signature` contributes bit 0 for each literal node, Q's signature
+is `1` — a valid canonical signature. Emit a `"frame"` event at S1.
+Return `True`.
 
-**Self-grounded**: If `Q.signature == make_signature(Q.nodes)` (as defined
-in the @signature spec) and every non-literal node resolves in the model
-(exists as a Kline signature in the model), Q is fully grounded. Emit a
-`"frame"` event at S1. Return `True`.
+**Canonical — self-grounded**: If `Q.signature == make_signature(Q.nodes)`
+(as defined in the @signature spec) and every node that could resolve does
+resolve in the model (exists as a Kline signature), Q is fully grounded.
+The signature faithfully represents the nodes — nothing is missing and
+nothing is extraneous. Emit a `"frame"` event at S1. Return `True`.
 
 If none of the above, proceed to candidate retrieval.
 
@@ -212,7 +217,28 @@ deeper investigation via cogitation.
 
 Cogitation is the background processing of rational Klines (S2/S3). It
 performs deeper graph traversal to find additional candidates that the
-initial retrieval may have missed.
+initial retrieval may have missed, and specifically to discover **latent
+countersignature** relationships that are not visible from a single
+Kline's perspective.
+
+### Countersignature
+
+A **countersigned** Kline is one whose nodes reference another Kline whose
+nodes reciprocally reference the first:
+
+```
+is_countersigned(Q, C, model):
+    return (C.signature in Q.nodes) and (Q.signature in C.nodes)
+```
+
+Both Klines must reference each other through their nodes. This is a stronger
+condition than mere signature overlap — it requires mutual structural
+acknowledgement. Literal nodes cannot match a signature (literal tokens
+use a 32-bit mask in the lower bits, which does not equal any signature
+value), so the test naturally considers only non-literal matches — but
+this is enforced by the encoding, not by an explicit filter.
+enforced by the bit layout, not by an explicit filter. Countersignature is
+the primary mechanism by which cogitation promotes S2 results to S1.
 
 ### Cogitation Pipeline
 
@@ -222,17 +248,31 @@ Cogitate(Q):
      candidates = model.query(Q.signature, depth=D_cogitate)
 
   2. For each candidate Cᵢ:
-     (significance, level) = significance_pipeline(Q, Cᵢ, model)
+     a. Run significance pipeline:
+        (significance, level) = significance_pipeline(Q, Cᵢ, model)
+     b. Test for countersignature:
+        if is_countersigned(Q, Cᵢ, model):
+            level = S1, significance = MAX
+     c. If level == S1:
+        - Add candidate to model.
 
-  3. If any candidate achieves S1:
-     - Add candidate to model.
-
-  4. Re-rationalise Q.
+  3. Re-rationalise Q.
 ```
+
+Countersignature testing (step 2b) runs alongside the significance
+pipeline (step 2a). A candidate that achieves S1 via either pathway
+triggers integration. This means cogitation has two theories of success:
+
+- **Significance recovery**: deeper traversal finds candidates that the
+  initial bitwise AND retrieval missed, and those candidates achieve S1
+  through the standard significance pipeline.
+- **Countersignature discovery**: deeper traversal reveals that Q and a
+  candidate are mutually referencing, establishing a latent structural
+  relationship that upgrades S2 to S1.
 
 `D_cogitate` is a configurable depth parameter (default: **2**).
 
-Re-rationalisation in step 4 may itself queue Q for further cogitation if
+Re-rationalisation in step 3 may itself queue Q for further cogitation if
 the result remains S2/S3. The Agent must detect cycles: if Q has been
 cogitated more than a configurable maximum (default: **3** passes) without
 reaching a significant result, it is abandoned and remains at its last

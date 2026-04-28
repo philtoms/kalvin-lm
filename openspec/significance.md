@@ -90,6 +90,24 @@ This is exhaustive. Every Kline with at least one candidate is S1, S2, or S3.
 The overall level (S1–S4) is returned alongside the significance value for use
 by the caller.
 
+### Agency Rationalisation
+
+The routing levels correspond to structural agency categories defined in
+the overview:
+
+| Route | Agency category | Structural reason                                              |
+| ----- | --------------- | -------------------------------------------------------------- |
+| S1    | Canonical       | Signature fully represents nodes; all nodes match              |
+| S1    | Countersigned   | Mutual cross-reference discovered via cogitation               |
+| S2    | Underfitting    | Signature contains more information than nodes confirm         |
+| S2    | Overfitting     | Signature contains less information than nodes provide         |
+| S3    | Connotational   | Nodes unrelated to signature; association without composition  |
+| S4    | Unsigned        | No nodes at all; no information content                        |
+
+Countersigned S1 is not detected by the significance pipeline itself — it
+is a latent relationship discovered during cogitation (see @agent spec).
+The significance pipeline detects canonical S1 (all nodes match).
+
 ## Significance Representation
 
 Significance is a **64-bit unsigned integer**, calculated as `~distance`.
