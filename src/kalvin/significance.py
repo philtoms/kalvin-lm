@@ -8,13 +8,13 @@ Routing:
   - No nodes S1 → s3_distance → S3
   - No candidates → distance = MAX → S4
 
-See openspec/significance.md for the full specification.
+See specs/significance.md for the full specification.
 """
-
 from __future__ import annotations
 
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
+from kalvin.abstract import KModel
 from kalvin.kline import KLine, KSig
 
 MASK64 = 0xFFFF_FFFF_FFFF_FFFF
@@ -36,22 +36,25 @@ class SignificanceResult(NamedTuple):
 def significance_pipeline(
     query: KLine,
     candidates: list[KLine],
-    model: object,
-) -> list[tuple[KLine, SignificanceResult]]:
+    model: KModel,
+) -> list[tuple[Optional[KLine], SignificanceResult]]:
     """Run significance computation for a query against all candidates.
+
+    Handles all significance levels including S4.
 
     Args:
         query: The query KLine Q.
-        candidates: Candidate KLines from the model.
+        candidates: Candidate KLines from the model (possibly empty).
         model: Model providing is_s1, s2_distance, s3_distance.
 
     Returns:
         List of (candidate, SignificanceResult) tuples.
+        When candidates is empty, returns [(None, S4_result)].
     """
     if not candidates:
-        return []
+        return [(None, no_candidates_result())]
 
-    results: list[tuple[KLine, SignificanceResult]] = []
+    results: list[tuple[Optional[KLine], SignificanceResult]] = []
 
     for candidate in candidates:
         result = compute_significance(query, candidate, model)
@@ -63,7 +66,7 @@ def significance_pipeline(
 def compute_significance(
     query: KLine,
     candidate: KLine,
-    model: object,
+    model: KModel,
 ) -> SignificanceResult:
     """Compute significance of a single query-candidate pair.
 

@@ -79,13 +79,6 @@ class TestMod32LiteralEncoding:
         node = t.encode("A", pack=False)[0]
         assert (node & 0xFFFF_FFFF) == 0xFFFF_FFFF
 
-    def test_raw_integer_literal(self):
-        t = Mod32Tokenizer()
-        result = t.encode(42, pack=False)
-        expected = (42 << 32) | LITERAL_MASK
-        assert result == [expected]
-
-
 class TestMod32IsLiteral:
     """is_literal: (node & 0xFFFFFFFF) == 0xFFFFFFFF."""
 
@@ -108,12 +101,6 @@ class TestMod32IsLiteral:
     def test_zero_not_literal(self):
         t = Mod32Tokenizer()
         assert t.is_literal(0) is False
-
-    def test_small_int_not_literal(self):
-        t = Mod32Tokenizer()
-        assert t.is_literal(42) is False
-        assert t.is_literal(0xFFFF_FFFE) is False
-
 
 class TestMod32Decode:
     """Decode: auto-detect literal mask vs packed."""

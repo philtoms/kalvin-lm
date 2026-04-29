@@ -22,16 +22,19 @@ across all tiers transparently.
 This spec depends on the following concepts, defined elsewhere:
 
 ### Kline (@kline spec)
+
 - A Kline is an identified, ordered sequence of zero or more nodes.
 - Signatures are uint64, not inherently unique.
 - Nodes are opaque uint64 values.
 
 ### Significance (@significance spec)
+
 - Significance calls three Model API functions: `is_s1`, `s2_distance`,
   `s3_distance`.
 - Significance does not manage model state.
 
 ### Agent (@agent spec)
+
 - The agent calls model operations (`add`, `find`, `exists`, `query`, etc.)
   without knowledge of internal tiering.
 - The agent is responsible for calling model operations; the model is
@@ -41,20 +44,20 @@ This spec depends on the following concepts, defined elsewhere:
 
 A Model consists of:
 
-| Component   | Type                          | Description                              |
-|-------------|-------------------------------|------------------------------------------|
-| stm         | STM                           | Short-term memory. Bounded, recent.      |
-| frame       | Frame                         | Per-session write layer over base.        |
-| base        | Model \| none                 | Optional long-term knowledge store.       |
-| index       | signature → [Kline, …]       | Unified index across all tiers.          |
+| Component | Type                   | Description                         |
+| --------- | ---------------------- | ----------------------------------- |
+| stm       | STM                    | Short-term memory. Bounded, recent. |
+| frame     | Frame                  | Per-session write layer over base.  |
+| base      | Model \| none          | Optional long-term knowledge store. |
+| index     | signature → [Kline, …] | Unified index across all tiers.     |
 
 ### Tier Summary
 
-| Tier   | Purpose                  | Bounded | Lifetime          | Modified by add |
-|--------|--------------------------|---------|-------------------|-----------------|
-| STM    | Transitive grounding     | Yes     | Rolling window    | Yes             |
-| Frame  | Session write surface    | No      | Per-session       | Yes             |
-| Base   | Long-term knowledge      | No      | Persistent        | No (promotion)  |
+| Tier  | Purpose               | Bounded | Lifetime       | Modified by add |
+| ----- | --------------------- | ------- | -------------- | --------------- |
+| STM   | Transitive grounding  | Yes     | Rolling window | Yes             |
+| Frame | Session write surface | No      | Per-session    | Yes             |
+| Base  | Long-term knowledge   | No      | Persistent     | No (promotion)  |
 
 ### STM (Short-Term Memory)
 
@@ -86,12 +89,14 @@ non-rejected Klines are added to the frame. The frame has no fixed bound
 — it grows as Klines are added during a session.
 
 The frame is a read-through layer over the base:
+
 - Lookups that miss in the STM or frame fall through to the base.
 - Additions to the frame do **not** modify the base.
 
 ### Base Model
 
 A model may optionally reference a **base model**.
+
 - The base is **read-through**: lookups that miss in STM and frame fall
   through to the base.
 - The base model is **not directly modified** by `add`. Klines are
@@ -297,7 +302,7 @@ model.where(predicate) → sequence of Kline
 
 Returns Klines matching a predicate, in reverse insertion order.
 
-- `predicate` — a function `(Kline) → bool`.
+- `predicate` — a function `(Kline) → bool`, or an int (KSig) for AND matching.
 - Searches all tiers. Duplicates suppressed.
 - The model does not define what predicates are valid. That is caller-defined.
 

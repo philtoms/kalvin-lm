@@ -134,4 +134,17 @@ class TestSignificancePipeline:
         m = make_model()
         q = KLine(5, [1, 2])
         results = significance_pipeline(q, [], m)
-        assert results == []
+        assert len(results) == 1
+        candidate, result = results[0]
+        assert candidate is None
+        assert result.significance == 0
+        assert result.level == "S4"
+        assert result.distance == SIG_D_MAX
+
+    def test_pipeline_s4_result_is_no_candidates_result(self):
+        """Pipeline S4 result matches no_candidates_result()."""
+        m = make_model()
+        q = KLine(5, [1, 2])
+        results = significance_pipeline(q, [], m)
+        _, pipeline_result = results[0]
+        assert pipeline_result == no_candidates_result()

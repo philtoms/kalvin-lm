@@ -66,7 +66,6 @@ An Agent consists of:
 | tokenizer | Tokenizer | Encodes text ↔ nodes.                  |
 | model     | Model     | Layered knowledge graph (STM → Frame → |
 |           |           | Base). Agent sees a single Model API.  |
-| activity  | Counter   | Tracks Kline access frequency.         |
 
 ## Construction
 
@@ -175,24 +174,27 @@ candidate. This is a necessary (but not sufficient) condition for
 significance — bitwise AND matching pre-filters the model before the more
 expensive significance pipeline runs.
 
-If no candidates are found, the result is S4 (novel). Add Q to the model,
-emit a `"frame"` event at S4. Return `True`.
+If no candidates are found, proceed to Phase 5. The significance pipeline
+handles the empty-candidates case by returning an S4 result (candidate =
+`None`).
 
 ### Phase 5: Compute Significance
 
-For each candidate Cᵢ, run the significance pipeline defined in the
-@significance spec:
+Run the significance pipeline defined in the @significance spec:
 
 ```
-for each candidate Cᵢ:
-    (significance, level) = significance_pipeline(Q, Cᵢ, model)
+results = significance_pipeline(Q, candidates, model)
 ```
+
+The pipeline handles all significance levels including S4:
+- If `candidates` is empty, the pipeline returns a single `(None, S4)` result.
+- Otherwise, it returns one result per candidate.
 
 The significance pipeline performs per-node S1 testing, routes to the
 appropriate distance function, and inverts the distance to yield a
 significance value.
 
-Collect all `(Cᵢ, significance, level)` triples.
+Collect all `(candidate, SignificanceResult)` tuples.
 
 ### Phase 6: Integrate
 
@@ -204,7 +206,7 @@ Select the best result (highest significance value). Act based on its level:
 | Best level | Action                                      | Return |
 | ---------- | ------------------------------------------- | ------ |
 | S1         | Promote Q to base. Emit `"frame"` S1 event. | True   |
-| S4         | Promote Q to base. Emit `"frame"` S4 event. | True   |
+| S4         | Q is novel. Promote Q to base. Emit `"frame"` S4 event. | True   |
 | S2         | Queue Q for cogitation.                     | False  |
 | S3         | Queue Q for cogitation.                     | False  |
 

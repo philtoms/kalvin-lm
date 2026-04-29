@@ -38,14 +38,19 @@ Preconditions (agent responsibility):
 
 Significance computation:
 
-    No candidates? → S4 (stop)
+    No candidates? → return single S4 result (candidate = None)
 
     For each candidate Cᵢ:
         Calculate significance(Q, Cᵢ)
           = per-node significance test → route → distance → inversion
 
-Output: list of (Cᵢ, significance, level) triples
+Output: list of (candidate, SignificanceResult) tuples
+  - With candidates: one tuple per candidate
+  - No candidates: single (None, S4_result) tuple
 ```
+
+The pipeline handles all significance levels including S4. Callers pass
+candidates directly without pre-testing for empty.
 
 ## Per-node Significance
 
@@ -102,7 +107,10 @@ the overview:
 | S2    | Underfitting    | Signature contains more information than nodes confirm         |
 | S2    | Overfitting     | Signature contains less information than nodes provide         |
 | S3    | Connotational   | Nodes unrelated to signature; association without composition  |
-| S4    | Unsigned        | No nodes at all; no information content                        |
+| S4    | Unsigned        | No candidates found; no information content                    |
+
+S4 is produced by the pipeline itself (not the caller) when no candidates
+are provided.
 
 Countersigned S1 is not detected by the significance pipeline itself — it
 is a latent relationship discovered during cogitation (see @agent spec).

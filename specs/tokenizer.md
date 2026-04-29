@@ -249,7 +249,7 @@ Unicode code point. The lower 32 bits are all set (`0xFFFFFFFF`) as a
 literal and distinguishes it from packed nodes and signature values.
 
 ```
-encode("ABC", literal=True) → [(65 << 32) | 0xFFFFFFFF,
+encode("ABC", pack=False) → [(65 << 32) | 0xFFFFFFFF,
                                 (66 << 32) | 0xFFFFFFFF,
                                 (67 << 32) | 0xFFFFFFFF]
 ```
@@ -265,8 +265,6 @@ Properties:
   character code point in the upper 32 bits. This avoids collision with
   packed nodes (which use bits 1–31 or 1–63) and with signatures (where
   bit 0 is the literal-content flag, not a full 32-bit mask).
-- A raw integer may also be encoded: `encode(42, literal=True)`
-  → `[(42 << 32) | 0xFFFFFFFF]`.
 
 ### Decoding
 
@@ -307,7 +305,7 @@ encode("ABC")     → [0b10 | 0b100 | 0b1000] = [14]
 #### Literal encoding (Mod32)
 
 ```
-encode("AB", literal=True) → [(65 << 32) | 0xFFFFFFFF, (66 << 32) | 0xFFFFFFFF]
+encode("AB", pack=False) → [(65 << 32) | 0xFFFFFFFF, (66 << 32) | 0xFFFFFFFF]
                             → [4294967361, 4294967362]
 
 decode([4294967361, 4294967362]) → "AB"

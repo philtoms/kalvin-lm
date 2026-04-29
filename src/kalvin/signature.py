@@ -1,6 +1,6 @@
 """Signature — OR-reduction of nodes with bit-0 literal-content flag.
 
-See openspec/signature.md for the full specification.
+See specs/signature.md for the full specification.
 
 Key invariants:
   - Non-literal nodes contribute their full value via OR.

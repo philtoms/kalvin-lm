@@ -1,7 +1,7 @@
 """KLine - Fundamental unit of the knowledge graph.
 
 A Kline is an identified, ordered sequence of zero or more nodes.
-See openspec/kline.md for the full specification.
+See specs/kline.md for the full specification.
 """
 
 from __future__ import annotations

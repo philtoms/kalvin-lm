@@ -5,7 +5,7 @@ Characters map to bit positions. Two encoding modes:
   - Literal: one node per character, upper 32 bits = code point,
     lower 32 bits = 0xFFFFFFFF (literal mask).
 
-See openspec/tokenizer.md for the full specification.
+See specs/tokenizer.md for the full specification.
 """
 
 from __future__ import annotations
@@ -91,11 +91,11 @@ class ModTokenizer(KTokenizer):
 
     # ── Encode ────────────────────────────────────────────────────────
 
-    def encode(self, text: str | int, pack: bool = True, pad_ws: bool = False) -> list[int]:
+    def encode(self, text: str, pack: bool = True, pad_ws: bool = False) -> list[int]:
         """Encode text to a list of nodes.
 
         Args:
-            text: Input string or integer to encode.
+            text: Input string to encode.
             pack: If True, multi-char strings are OR'd into a single packed
                   node. If False, each character becomes a literal node.
             pad_ws: If True, strip and add trailing space.
@@ -103,22 +103,19 @@ class ModTokenizer(KTokenizer):
         Returns:
             List of uint64 node values.
         """
-        if pad_ws and isinstance(text, str):
+        if pad_ws:
             text = text.strip() + " "
 
         if not text:
             return []
 
-        if pack and isinstance(text, str):
+        if pack:
             token_id = 0
             for c in text:
                 token_id |= self._char_bit[c]
             return [token_id]
-        elif isinstance(text, str):
-            return [(ord(c) << 32) | LITERAL_MASK for c in text]
         else:
-            # Raw integer literal encoding
-            return [(text << 32) | LITERAL_MASK]
+            return [(ord(c) << 32) | LITERAL_MASK for c in text]
 
     # ── Decode ────────────────────────────────────────────────────────
 

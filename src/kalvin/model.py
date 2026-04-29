@@ -3,7 +3,7 @@
 The model provides storage, deduplication, lookup by signature, graph
 traversal, and the significance API functions consumed by the pipeline.
 
-See openspec/model.md for the full specification.
+See specs/model.md for the full specification.
 """
 
 from __future__ import annotations

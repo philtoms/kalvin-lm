@@ -5,7 +5,7 @@ computation, and integrates results back into the knowledge graph.
 Encoding is the caller's responsibility — the Agent consumes KLines
 produced externally via the Tokenizer.
 
-See openspec/agent.md for the full specification.
+See specs/agent.md for the full specification.
 """
 
 from __future__ import annotations
@@ -136,21 +136,11 @@ class Agent:
         # Phase 4: Retrieve candidates
         candidates = self._model.where(kline.signature)
 
-        if not candidates:
-            # S4 — novel
-            self._model.add(kline)
-            self._publish("frame", kline, kline, 0)  # S4
-            return True
-
         # Phase 5: Compute significance
         results = significance_pipeline(kline, candidates, self._model)
 
         # Phase 6: Integrate
         self._model.add(kline)
-
-        if not results:
-            self._publish("frame", kline, kline, 0)  # S4
-            return True
 
         # Find best result
         best_candidate, best_result = max(results, key=lambda r: r[1].significance)
@@ -160,7 +150,7 @@ class Agent:
             self._publish("frame", kline, best_candidate, best_result.significance)
             return True
         elif best_result.level == "S4":
-            # No candidates case handled above; but if all candidates gave S4:
+            # Novel — no candidates matched (pipeline returned S4)
             self._publish("frame", kline, kline, 0)
             return True
         else:
