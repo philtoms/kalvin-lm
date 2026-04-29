@@ -9,11 +9,10 @@ ordered sequence of zero or more nodes.
 
 A Kline consists of:
 
-| Field     | Type               | Description                                   |
-| --------- | ------------------ | --------------------------------------------- |
-| signature | uint64             | Identity key.                                 |
-| nodes     | sequence of uint64 | Zero or more child nodes. Ordered.            |
-| literal   | bool               | Whether this kline represents an exact token. |
+| Field     | Type               | Description                        |
+| --------- | ------------------ | ---------------------------------- |
+| signature | uint64             | Identity key.                      |
+| nodes     | sequence of uint64 | Zero or more child nodes. Ordered. |
 
 ### Nodes
 
@@ -24,11 +23,11 @@ A Kline consists of:
 
 ### Literal
 
-- A literal kline represents an exact, atomic token — e.g. a single word or
-  symbol produced by the tokeniser.
-- A non-literal kline is a composed structure — its nodes reference other
-  klines.
-- The literal flag is set at construction time and is immutable.
+- A kline is **literal** if every one of its nodes is a literal token
+  (per `tokenizer.is_literal`, @tokenizer spec). A kline is **non-literal**
+  otherwise.
+- Literal status is not stored — it is computed from nodes on demand.
+- An empty kline (zero nodes) is non-literal.
 - The model uses `is_literal()` to determine deduplication behaviour
   (see @model spec).
 
@@ -43,15 +42,14 @@ A Kline consists of:
 
 ## Construction
 
-A Kline is constructed from a signature, a sequence of nodes, and a literal flag:
+A Kline is constructed from a signature and a sequence of nodes:
 
 ```
-Kline(signature, nodes, literal)
+Kline(signature, nodes)
 ```
 
 - `signature` — required, uint64.
 - `nodes` — required, zero or more uint64 values.
-- `literal` — required, bool. Defaults to `false`.
 
 Implementations may accept multiple input representations for `nodes`
 (single value, empty, list) provided the result is semantically identical:
@@ -63,8 +61,6 @@ Two Klines are equal if and only if:
 
 1. Their signatures are equal, **and**
 2. Their node sequences are equal (same length, same order, same values).
-
-The `literal` flag does not participate in equality.
 
 ## Operations
 
@@ -90,7 +86,9 @@ The number of nodes. Equivalent to `len(kline.nodes)`.
 kline.is_literal() → bool
 ```
 
-Returns whether this kline is literal.
+Returns whether every node in this kline is a literal token.
+Equivalent to `all(tokenizer.is_literal(node) for node in kline.nodes)`.
+An empty kline returns `false`.
 
 ## What a Kline is Not
 
@@ -103,12 +101,14 @@ The following are explicitly **out of scope** for this spec:
   concerns, not kline operations.
 - **Debug metadata.** Labels, source text, or other diagnostic information
   is implementation-level.
-- **Deduplication.** The literal flag signals deduplication eligibility, but
-  the model owns deduplication logic (@model spec).
+- **Deduplication.** The computed literal property signals deduplication
+  eligibility, but the model owns deduplication logic (@model spec).
 
 ## Dependencies
 
-None. The kline is a leaf concept.
+- **Tokenizer** (@tokenizer spec) — `is_literal(node) → bool` determines
+  whether a node is a literal token. The kline's `is_literal()` operation
+  delegates to this.
 
 ## Referenced By
 

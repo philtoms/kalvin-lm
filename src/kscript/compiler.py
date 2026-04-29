@@ -26,9 +26,9 @@ from __future__ import annotations
 
 from typing import TypeAlias
 
-from kalvin.abstract import KLine, KNodes, KSig, KSignificance
+from kalvin.kline import KLine, KNodes, KSig
 from kalvin.mod_tokenizer import Mod32Tokenizer, ModTokenizer
-from kalvin.significance import Int32Significance
+from kalvin.significance import D_BOUNDARY, D_MAX
 
 from .ast import (
     Block,
@@ -64,7 +64,7 @@ class CompiledEntry(KLine):
         tokenizer: ModTokenizer,
         *,
         sig_level: str = "S4",
-        significance: KSignificance | None = None,
+        significance: object | None = None,
         dbg_text: str = ""
     ) -> "CompiledEntry":
         """Encode string signature/nodes to token IDs.
@@ -72,7 +72,7 @@ class CompiledEntry(KLine):
         Signatures (uppercase strings) are packed.
         Literals are unpacked via tokenizer.encode(..., pack=False).
         """
-        sig_obj = significance or Int32Significance()
+        # significance param kept for API compat; encoding is pure tokenizer now
         sig_id = tokenizer.encode(sig, pack=True)[0]
         if nodes is None:
             return cls(signature=sig_id, nodes=None, dbg_text=dbg_text)
@@ -141,15 +141,15 @@ class Compiler:
         self.entries: list[CompiledEntry] = []
         self.tokenizer = tokenizer or Mod32Tokenizer()
         self.dev = dev
-        self._sig = Int32Significance()
         self._sig_levels = {
-            "COUNTERSIGN": self._sig.S1,
-            "CANONIZE_FWD": self._sig.S2,
-            "CANONIZE_BWD": self._sig.S2,
-            "CONNOTATE_FWD": self._sig.S3,
-            "CONNOTATE_BWD": self._sig.S3,
-            "UNDERSIGN": self._sig.S1,
-            "UNSIGNED": self._sig.S4,
+            "COUNTERSIGN": "S1",
+            "CANONIZE_FWD": "S2",
+            "CANONIZE_BWD": "S2",
+            "CONNOTATE_FWD": "S3",
+            "CONNOTATE_BWD": "S3",
+            "UNDERSIGN": "S1",
+            "UNSIGNED": "S4",
+            "IDENTITY": "S1",
         }
         self._seen: set[tuple[int, None | int | tuple[int, ...]]] = set()
 
@@ -443,15 +443,7 @@ class Compiler:
 
     def _format_dbg(self, sig: str, nodes: str | None | list[str], op: str) -> str:
         """Format debug representation with significance level."""
-        sig_val = self._sig_levels.get(op, self._sig.S4)
-        if sig_val == self._sig.S1:
-            level = "S1"
-        elif sig_val == self._sig.S2:
-            level = "S2"
-        elif sig_val == self._sig.S3:
-            level = "S3"
-        else:
-            level = "S4"
+        level = self._sig_levels.get(op, "S4")
 
         if nodes is None:
             return f"[{level}] {sig}: None"

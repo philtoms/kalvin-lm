@@ -2,7 +2,7 @@
 
 **Generated from:** `openspec/` specification suite  
 **Existing codebase:** `src/kalvin/` (prototype, non-conforming to specs)  
-**Date:** 2026-04-28 (revision 2 — literal encoding rework)
+**Date:** 2026-04-29 (revision 3 — kline literal is computed, not stored)
 
 ---
 
@@ -18,14 +18,14 @@ The existing codebase has implementations of all six, but they **diverge substan
 
 ### Key changes since last plan revision
 
-The specs were reworked around **literal node encoding**, with cascading effects on signatures, tokenizers, and the bit-layout invariants that the rest of the system depends on:
+The Kline spec was updated to **remove the stored `literal` flag**. Literal status is now a computed property derived from nodes:
 
-1. **Signature spec: literal nodes now contribute bit 0** (not bit 1). `make_signature` changed from `sig |= 0b10` to `sig |= 1`. All-literal klines now produce signature `1` instead of `0b10`. The `is_signature` predicate has been removed entirely — any uint64 may serve as a signature.
-2. **Tokenizer spec: literal encoding completely reworked.** Literal nodes now use `(codepoint << 32) | 0xFFFFFFFF` instead of `(codepoint << 1) | 1`. The `is_literal` test changed from `(node & 1) == 1` to `(node & 0xFFFFFFFF) == 0xFFFFFFFF`. This is a **32-bit literal mask** in the lower bits, with the code point in the upper 32 bits.
-3. **Kline spec: signatures no longer described as "non-literal nodes (bit 0 clear)".** They are simply `make_signature` outputs — any uint64 value.
-4. **Model/Agent specs: countersignature wording updated** to reference the 32-bit literal mask instead of "bit 0 differs".
+1. **Kline spec: `literal` field removed.** A kline is now `(signature, nodes)` only. `is_literal()` is computed as `all(tokenizer.is_literal(node) for node in nodes)`. Empty klines are non-literal. Kline now has a dependency on the tokenizer (it is no longer a leaf concept).
+2. **Kline construction: `Kline(signature, nodes)`** — no `literal` parameter.
+3. **Model deduplication:** uses the computed `is_literal()` result, same behaviour, no structural change.
+4. **Agent fast-paths (all-literal canonical test):** unchanged logic — check whether all nodes are literal via `tokenizer.is_literal`.
 
-These changes resolve the **bit 1 conflict** flagged in the previous plan (§3.1) and the **bit 0 ambiguity** between tokenizer `is_literal` and signature construction. The new design creates a clean separation:
+The bit layout, signature construction, and tokenizer encoding are unchanged from revision 2. The separation is still clean:
 
 | Concept | Bit pattern | Test |
 |---------|------------|------|
@@ -37,17 +37,19 @@ These changes resolve the **bit 1 conflict** flagged in the previous plan (§3.1
 
 ## 1. Specification → Existing Code: Gap Analysis
 
-### 1.1 Kline — minor wording update
+### 1.1 Kline — literal removed from structure
 
 | Spec Requirement | Existing Code | Gap |
 |---|---|---|
-| `Kline(signature, nodes, literal)` with `literal: bool` | No `literal` param; uses None/int/list subtypes | **Rewrite needed.** |
-| `kline.is_literal()` → bool | No equivalent on Kline | **Missing.** |
+| `Kline(signature, nodes)` — no `literal` field | No `literal` param; uses None/int/list subtypes | **Rewrite needed.** |
+| `kline.is_literal()` → computed from nodes via `tokenizer.is_literal` | No equivalent on Kline | **Missing.** |
+| Empty kline → `is_literal()` returns `false` | N/A | **New.** |
 | `nodes` always a sequence of uint64 | `None`, `int`, or `list[int]` | **Contradiction.** |
-| Equality: signature + node sequence (literal excluded) | `equals()` exists but handles subtypes | Close. |
+| Equality: signature + node sequence | `equals()` exists but handles subtypes | Close. |
 | Signature = `make_signature` output (any uint64) | Existing code assumed signatures have bit 0 clear | **Changed.** Signatures can now have bit 0 set (if kline contains literals). |
+| Depends on tokenizer (`is_literal`) | No dependency | **New.** Kline is no longer a leaf concept. |
 
-**Verdict:** Rewrite. Same as previous plans, but now the Model must handle signatures with bit 0 set.
+**Verdict:** Rewrite. No stored `literal` flag — `is_literal()` delegates to `tokenizer.is_literal` for each node.
 
 ### 1.2 Signature — **fundamentally reworked again**
 
@@ -105,26 +107,38 @@ No spec changes since last revision.
 
 ## 2. Implementation Phases
 
-### Phase 1: Kline (leaf, no dependencies)
-**Files:** `src/kalvin/kline.py`  
-**Estimate:** 1 day  
-**Spec:** `openspec/kline.md` (minor update)
+### Phase 1: Kline (depends on Tokenizer `is_literal`)
+**Files:** `src/kalvin/kline.py`
+**Estimate:** 1 day
+**Spec:** `openspec/kline.md` (literal field removed, computed from nodes)
 
 #### Changes
-1. Add `literal: bool` parameter to `__init__`.
+1. Remove `literal: bool` parameter from `__init__`. Constructor is now
+   `Kline(signature, nodes)` only.
 2. Normalize `nodes` to always be a `list[int]` (empty list, not None).
-3. Add `is_literal()` method that returns the `literal` flag.
-4. Add `__eq__` based on signature + node sequence (exclude literal flag).
+3. Add `is_literal()` method that computes `all(is_literal_fn(node) for node
+   in self.nodes)`. The `is_literal_fn` is injected at construction time
+   (defaulting to the tokenizer's `is_literal`). Empty kline returns `false`.
+4. Add `__eq__` based on signature + node sequence.
 5. Add `__hash__` for use in sets/dicts.
 6. Remove subtype helpers (`is_unsigned`, `is_signed`, `is_canonized`).
 7. Remove `signifies()`, `filter()`, `mask()` — belong to Model/Signature.
 8. Keep `dbg_text` as implementation-level (not spec'd).
 
-**Note:** Signatures can now be any uint64 (including values with bit 0 set). The Kline doesn't enforce any bit-pattern constraint on its signature field.
+**Note:** Kline is no longer a leaf concept — it depends on the tokenizer's
+`is_literal` function. In practice, `is_literal_fn` is injected so the kline
+module doesn't import the tokenizer directly. This keeps the dependency
+invertible and testable.
+
+**Note:** Signatures can be any uint64 (including values with bit 0 set).
+The Kline doesn't enforce any bit-pattern constraint on its signature field.
 
 #### Tests
 - Construction, equality, hash, empty kline, single-node kline.
 - Kline with signature that has bit 0 set (from literal-content flag).
+- `is_literal()` returns `true` when all nodes are literal, `false` otherwise.
+- `is_literal()` returns `false` for empty kline.
+- `is_literal()` with mixed literal/non-literal nodes returns `false`.
 
 ---
 
@@ -410,15 +424,15 @@ Remove device imports to unblock testing.
 ## 4. Dependency Graph & Build Order
 
 ```
-Phase 1: Kline          ← no deps (leaf)
+Phase 1: Kline          ← depends on tokenizer.is_literal (injected)
 Phase 2: Signature      ← depends on tokenizer.is_literal (injected)
-Phase 3: Tokenizer      ← depends on Kline, Signature (produces nodes)
+Phase 3: Tokenizer      ← produces nodes, provides is_literal
 Phase 4: Model          ← depends on Kline, Signature
 Phase 5: Significance   ← depends on Model
 Phase 6: Agent          ← depends on everything
 
-Phase 2 and 3 can proceed in parallel.
-Phase 3 has increased scope due to literal encoding rework.
+Phase 1, 2, and 3 can proceed in parallel (is_literal injected in all cases).
+Phase 3 has increased scope due to literal encoding rework (from rev 2).
 ```
 
 ## 5. Recommended Execution Order
@@ -426,7 +440,7 @@ Phase 3 has increased scope due to literal encoding rework.
 | Step | Phase | Deliverable | Key Risk |
 |------|-------|-------------|----------|
 | 1 | Cleanup | Remove torch deps from `__init__.py`; fix test runner | Blocks everything |
-| 2 | Phase 1 | New `Kline` with `literal` flag, normalized `nodes` | Subtype removal cascades |
+| 2 | Phase 1 | New `Kline` — no `literal` flag; `is_literal()` computed from nodes | Dependency injection of `is_literal_fn` |
 | 3 | Phase 2 | `signature.py` with bit-0 literal-content flag | All signature values change |
 | 4 | Phase 3 | Refactored tokenizers with **new literal encoding** | Biggest change in this revision |
 | 5 | Phase 4 | Three-tier `Model` + `is_countersigned` | Largest phase |
@@ -452,7 +466,7 @@ Phase 3 has increased scope due to literal encoding rework.
 - `src/kalvin/signature.py` — standalone signature functions (bit-0 literal-content flag)
 
 ### Major rewrites
-- `src/kalvin/kline.py` — literal flag, normalized nodes
+- `src/kalvin/kline.py` — no stored literal; `is_literal()` computed from nodes via injected `is_literal_fn`
 - `src/kalvin/mod_tokenizer.py` — **new literal encoding format** (32-bit mask)
 - `src/kalvin/significance.py` — complete rewrite (pipeline, not class hierarchy)
 - `src/kalvin/model.py` — three-tier architecture + `is_countersigned`

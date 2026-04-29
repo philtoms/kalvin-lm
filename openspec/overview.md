@@ -36,11 +36,12 @@ A **KLine** is the fundamental unit of the knowledge graph. It consists of:
 | --------- | ---------------------- | ------------------------------------------- |
 | signature | uint64                 | Identity key. The "name" of this structure. |
 | nodes     | ordered list of uint64 | Zero or more child nodes. Order matters.    |
-| literal   | bool                   | Whether this represents an exact token.     |
 
 KLines form a directed graph: when a node value equals the signature of another KLine, that's an **edge**. A KLine's nodes _reference_ other KLines, creating compositional hierarchies.
 
-KLine equality is defined as: same signature **and** same node sequence (same length, same order, same values). The `literal` flag does not participate in equality.
+KLine equality is defined as: same signature **and** same node sequence (same length, same order, same values).
+
+A KLine is **literal** when all of its nodes are literal tokens (per `tokenizer.is_literal`). This is a computed property, not stored. Literal KLines represent exact, atomic token sequences; non-literal KLines are composed structures whose nodes reference other KLines.
 
 ### Signatures
 

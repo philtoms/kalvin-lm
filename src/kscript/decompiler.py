@@ -7,7 +7,7 @@ from typing import Any
 
 from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer
 from kalvin.signature import make_signature
-from kalvin.significance import Int32Significance
+from kalvin.significance import D_BOUNDARY, D_MAX
 from kalvin.kline import KLine
 
 
@@ -68,7 +68,6 @@ class Decompiler:
 
     def __init__(self, tokenizer: ModTokenizer | None = None):
         self.tokenizer = tokenizer if tokenizer else Mod32Tokenizer()
-        self._sig = Int32Significance()
         self._mcs_names: dict[int, str] = {}
 
     def decompile(self, klines: list[KLine]) -> list[DecompiledEntry]:

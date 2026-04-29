@@ -20,8 +20,8 @@ This spec depends on the following concepts, defined elsewhere:
 
 - A Kline is an identified, ordered sequence of zero or more nodes.
 - Nodes are opaque uint64 values.
-- Literal klines represent exact tokens; non-literal klines are composed
-  structures.
+- Literal klines (all nodes are literal tokens) represent exact tokens;
+  non-literal klines are composed structures.
 
 ### Signature (@signature spec)
 
