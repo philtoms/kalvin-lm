@@ -1,5 +1,9 @@
 """Tests for Agent — openspec/agent.md conformance."""
 
+import json
+import tempfile
+from pathlib import Path
+
 import pytest
 from kalvin.kline import KLine
 from kalvin.agent import Agent
@@ -134,3 +138,86 @@ class TestAgentCogitate:
         result = a.rationalise(k)
         # Should still work without cogitation thread
         assert isinstance(result, bool)
+
+
+class TestAgentSerialization:
+    def _make_agent_with_klines(self) -> Agent:
+        a = Agent()
+        a.rationalise(KLine(5, [1, 2]))
+        a.rationalise(KLine(10, [3, 4]))
+        a.rationalise(KLine(0, []))
+        return a
+
+    def test_to_bytes_roundtrip(self):
+        a = self._make_agent_with_klines()
+        data = a.to_bytes()
+        assert isinstance(data, bytes)
+        assert len(data) > 0
+
+        loaded = Agent.from_bytes(data)
+        assert len(loaded.model) == len(a.model)
+
+    def test_to_dict_roundtrip(self):
+        a = self._make_agent_with_klines()
+        d = a.to_dict()
+        assert isinstance(d, dict)
+        assert "klines" in d
+        assert "activity" in d
+
+        loaded = Agent.from_dict(d)
+        assert len(loaded.model) == len(a.model)
+
+    def test_to_dict_structure(self):
+        a = Agent()
+        a.rationalise(KLine(5, [1, 2]))
+        d = a.to_dict()
+        assert len(d["klines"]) == 1
+        assert d["klines"][0]["signature"] == 5
+        assert d["klines"][0]["nodes"] == [1, 2]
+
+    def test_save_and_load_json(self):
+        a = self._make_agent_with_klines()
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = Path(f.name)
+        try:
+            a.save(path)
+            loaded = Agent.load(path)
+            assert len(loaded.model) == len(a.model)
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_save_and_load_bin(self):
+        a = self._make_agent_with_klines()
+        with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:
+            path = Path(f.name)
+        try:
+            a.save(path, format="bin")
+            loaded = Agent.load(path, format="bin")
+            assert len(loaded.model) == len(a.model)
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_save_auto_detect_json(self):
+        a = Agent()
+        a.rationalise(KLine(5, [1]))
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = Path(f.name)
+        try:
+            a.save(path)  # format=None → auto-detect from .json suffix
+            content = path.read_text()
+            data = json.loads(content)
+            assert isinstance(data, dict)
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_empty_agent_serialization(self):
+        a = Agent()
+        data = a.to_bytes()
+        loaded = Agent.from_bytes(data)
+        assert len(loaded.model) == 0
+
+    def test_empty_agent_dict(self):
+        a = Agent()
+        d = a.to_dict()
+        loaded = Agent.from_dict(d)
+        assert len(loaded.model) == 0
