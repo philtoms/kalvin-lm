@@ -49,7 +49,8 @@ Input Text → Tokenizer → Nodes → KLine → Agent → Model (Knowledge Grap
 │  Depends on: Tokenizer, Model, Signature, Significance, Events   │
 ├──────────────────────────────────────────────────────────────────┤
 │  Significance Pipeline                                            │
-│  Depends on: Model (is_s1, s2_distance, s3_distance)             │
+│  Depends on: Model (s2_distance, s3_distance)                    │
+│  Routing is self-contained (node-membership, no model call)       │
 ├──────────────────────────────────────────────────────────────────┤
 │  Model (STM → Frame → Base)                                      │
 │  Depends on: Kline, Signature, STM                               │
@@ -456,13 +457,24 @@ model.promote_all() → int      # Promote all frame KLines to base.
 **Significance API (consumed by significance pipeline):**
 
 ```python
-model.is_s1(node, candidate) → bool
 model.s2_distance(query, candidate) → int   # [1, D_BOUNDARY)
 model.s3_distance(query, candidate) → int   # [D_BOUNDARY, D_MAX)
 model.is_countersigned(a, b) → bool
 ```
 
-See §4 for the semantics of these functions.
+Routing in the significance pipeline is self-contained (node-membership
+testing) and does not call any model function. Only the distance step
+consumes `s2_distance` and `s3_distance`. See §4 for the semantics of
+these functions.
+
+**Model-internal functions:**
+
+```python
+model.is_s1(node, candidate) → bool
+```
+
+`is_s1` is used internally by the model's distance implementations (see §4.2)
+but is not called by the significance pipeline directly.
 
 ---
 
@@ -472,16 +484,27 @@ Computes how well a candidate KLine answers a query KLine.
 
 **Core formula:** `significance = ~distance` (bitwise NOT on uint64).
 
-**Routing (per-node S1 test):**
+**Three-step pipeline: Route → Distance → Invert**
+
+**Step 1: Route** — For each node in Q, test whether that node value exists
+in the candidate's node sequence. This is a straightforward membership test
+that does **not** call any model function. Count matched nodes and route:
 
 ```
-s1_count = count of nodes in Q where model.is_s1(node, candidate) is True
+match_count = number of nodes in Q that exist in C's node sequence
 
-All candidates absent → S4 (distance = MAX)
-All nodes S1           → S1 (distance = 0)
-Some nodes S1           → S2 (distance = model.s2_distance(Q, C))
-No nodes S1             → S3 (distance = model.s3_distance(Q, C))
+All candidates absent  → S4 (distance = MAX)
+All nodes match         → S1 (distance = 0)
+Some nodes match        → S2 (distance = model.s2_distance(Q, C))
+No nodes match          → S3 (distance = model.s3_distance(Q, C))
 ```
+
+Routing is self-contained and pessimistic: any unmatched node prevents S1.
+
+**Step 2: Distance** — Only S2 and S3 routes call the model's distance
+functions. S1 sets distance = 0 directly; S4 sets distance = MAX directly.
+
+**Step 3: Invert** — `significance = ~distance`
 
 **Output:**
 
@@ -491,7 +514,7 @@ class SignificanceResult:
     significance: int   # ~distance (uint64)
     distance: int       # raw distance
     level: str          # "S1", "S2", "S3", or "S4"
-    s1_count: int       # number of nodes at S1
+    match_count: int    # number of nodes matched in routing
     total_nodes: int    # total nodes in query
 ```
 
@@ -512,8 +535,10 @@ of `[]`. Callers pass candidates directly without pre-testing for empty.
 
 **Properties:**
 
+- Three-step pipeline: Route → Distance → Invert. Each step is independent.
+- Routing is self-contained: uses node-membership testing, no model function.
 - Inverted metric: higher significance = closer match.
-- Pessimistic: overall can only drop below per-node ideal.
+- Pessimistic: any unmatched node prevents S1.
 - Arithmetic ordering: S1 > S2 > S3 > S4 by unsigned comparison.
 
 ---
@@ -595,7 +620,8 @@ Phase 4: RETRIEVE CANDIDATES
 
 Phase 5: COMPUTE SIGNIFICANCE
   results = significance_pipeline(Q, candidates, model)
-  # Pipeline handles empty candidates → [(None, S4_result)]
+  # Pipeline: route (node-membership) → distance → invert
+  # Handles empty candidates → [(None, S4_result)]
 
 Phase 6: INTEGRATE
   model.add(Q)
@@ -645,9 +671,15 @@ def is_countersigned(Q, C):
 
 ## 4. Model Significance API — Resolved Semantics
 
-The specs mark `is_s1`, `s2_distance`, and `s3_distance` as **TBD**. This section defines their semantics for the initial implementation.
+The specs mark `s2_distance` and `s3_distance` as **TBD**. This section defines
+their semantics for the initial implementation. `is_s1` is also defined here as a
+model-internal function used by the distance implementations.
 
-### 4.1 `is_s1(node, candidate) → bool`
+### 4.1 `is_s1(node, candidate) → bool` (model-internal)
+
+**Note:** This function is used internally by the model's distance implementations.
+It is **not** called by the significance pipeline — routing uses simple
+node-membership testing instead (see §3.6).
 
 **Semantics:** A node achieves S1 against a candidate if the node **subsumes** the candidate's signature — i.e., all bits set in the candidate's signature are also set in the node.
 
@@ -735,7 +767,7 @@ All all-literal KLines produce `make_signature = 1`. This means:
 - They are distinguishable only by their node sequences.
 - The model's signature index will have many KLines under key `1`.
 
-**Decision:** Accept this. All-literal KLines are fast-tracked in Phase 3 (Assess) and never reach candidate retrieval. If they do reach retrieval during cogitation, the significance pipeline will quickly reject irrelevant candidates because literal nodes won't achieve `is_s1` against non-literal candidates.
+**Decision:** Accept this. All-literal KLines are fast-tracked in Phase 3 (Assess) and never reach candidate retrieval. If they do reach retrieval during cogitation, the significance pipeline's routing will count zero matches (literal nodes won't exist in non-literal candidates' node sequences) and route to S3.
 
 **Mitigation:** Document that all-literal KLines should be promoted to base to avoid repeated processing.
 
@@ -1057,6 +1089,9 @@ def significance_value(distance) -> int:
 | is_countersigned   | Mutual reference detected      |
 | Not countersigned  | One-way reference → False      |
 
+**Note:** `is_s1` is tested here as a model-internal function. The significance
+pipeline does not call it directly — routing uses node-membership testing.
+
 ---
 
 ### Phase 6: Significance Pipeline
@@ -1069,15 +1104,17 @@ def significance_value(distance) -> int:
 
 | Test                     | Description                                    |
 | ------------------------ | ---------------------------------------------- |
-| All nodes S1             | Returns S1, distance 0, significance MAX       |
-| Some nodes S1            | Returns S2, distance in range                  |
-| No nodes S1              | Returns S3, distance in range                  |
+| All nodes match          | Returns S1, distance 0, significance MAX       |
+| Some nodes match         | Returns S2, distance in range                  |
+| No nodes match           | Returns S3, distance in range                  |
 | No candidates            | Returns [(None, S4_result)], distance MAX, significance 0 |
 | Empty query              | Returns S4                                     |
-| Single node S1           | Returns S1                                     |
+| Single node match        | Returns S1                                     |
 | Clamping                 | Out-of-range distances clamped                 |
 | Best candidate selection | Pipeline returns all results; caller picks max |
 | Significance ordering    | S1 > S2 > S3 > S4 numerically                  |
+| Routing is self-contained | Verify no model.is_s1 calls during routing   |
+| Routing uses membership  | Node in candidate.nodes → match; not in → no match |
 
 ---
 
@@ -1276,8 +1313,9 @@ Before starting implementation, confirm the following with the system owner:
 2. **Persistence format:** Is JSON sufficient, or is binary serialization required from day one?
    - _Recommendation:_ JSON for development; binary for production.
 
-3. **is_s1 semantics:** The subsumption check `(node & candidate.signature) == candidate.signature` is the initial definition. Is this acceptable, or should it be stricter (exact equality only)?
+3. **is_s1 semantics:** The subsumption check `(node & candidate.signature) == candidate.signature` is the initial definition for the model-internal `is_s1` function (used by distance implementations, not by significance routing). Is this acceptable, or should it be stricter (exact equality only)?
    - _Recommendation:_ Start with subsumption; tighten if it produces too many false S1 results.
+   - _Note:_ The significance pipeline's routing no longer uses `is_s1`; it uses simple node-membership testing against the candidate's node sequence. This question only affects the model's internal distance calculations.
 
 4. **Thread model for cogitation:** Should cogitation use a background thread (as specified), or would async/await be preferred?
    - _Recommendation:_ Background thread for simplicity. The spec's "done" event requires some concurrency primitive.

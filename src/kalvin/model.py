@@ -308,7 +308,9 @@ class Model:
     def is_s1(self, node: int, candidate: KLine) -> bool:
         """Test whether a node achieves S1 match against candidate.
 
-        Initial simple semantics: node == candidate.signature (exact match).
+        Model-internal function used by distance implementations.
+        Not called by the significance pipeline — routing uses
+        simple node-membership testing instead.
         """
         return node == candidate.signature
 

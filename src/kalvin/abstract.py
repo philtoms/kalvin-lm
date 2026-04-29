@@ -124,7 +124,12 @@ class KModel(ABC):
 
     @abstractmethod
     def is_s1(self, node: int, candidate: KLine) -> bool:
-        """Test whether a node achieves S1 match against candidate."""
+        """Test whether a node achieves S1 match against candidate.
+
+        Model-internal function used by distance implementations.
+        Not called by the significance pipeline (routing uses
+        simple node-membership testing instead).
+        """
         ...
 
     @abstractmethod

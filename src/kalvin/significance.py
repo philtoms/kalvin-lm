@@ -2,10 +2,12 @@
 
 Significance is the inverse of distance: significance = ~distance.
 
-Routing:
-  - All nodes S1 → distance = 0 → S1
-  - Some nodes S1 → s2_distance → S2
-  - No nodes S1 → s3_distance → S3
+Three-step pipeline: Route → Distance → Invert.
+
+Route (self-contained, no model call):
+  - All nodes match (exist in candidate) → distance = 0 → S1
+  - Some nodes match → s2_distance → S2
+  - No nodes match → s3_distance → S3
   - No candidates → distance = MAX → S4
 
 See specs/significance.md for the full specification.
@@ -29,7 +31,7 @@ class SignificanceResult(NamedTuple):
     significance: int     # ~distance (uint64)
     distance: int         # raw distance
     level: str            # "S1", "S2", "S3", or "S4"
-    s1_count: int         # number of nodes at S1
+    match_count: int      # number of nodes matched during routing
     total_nodes: int      # total nodes in query
 
 
@@ -45,7 +47,7 @@ def significance_pipeline(
     Args:
         query: The query KLine Q.
         candidates: Candidate KLines from the model (possibly empty).
-        model: Model providing is_s1, s2_distance, s3_distance.
+        model: Model providing s2_distance, s3_distance.
 
     Returns:
         List of (candidate, SignificanceResult) tuples.
@@ -82,36 +84,38 @@ def compute_significance(
             significance=0,
             distance=D_MAX,
             level="S4",
-            s1_count=0,
+            match_count=0,
             total_nodes=0,
         )
 
-    # Per-node S1 test
-    s1_count = sum(1 for n in nodes if model.is_s1(n, candidate))
+    # Step 1: Route — node-membership test (no model call)
+    candidate_nodes = set(candidate.nodes)
+    match_count = sum(1 for n in nodes if n in candidate_nodes)
 
-    # Route to distance function
-    if s1_count == total:
-        # All nodes S1 → S1
+    # Step 2: Distance — route to appropriate function
+    if match_count == total:
+        # All nodes match → S1
         distance = 0
         level = "S1"
-    elif s1_count > 0:
-        # Some S1 → S2
+    elif match_count > 0:
+        # Some match → S2
         raw_distance = model.s2_distance(query, candidate)
         distance = max(1, min(raw_distance, D_BOUNDARY - 1))
         level = "S2"
     else:
-        # No S1 → S3
+        # No match → S3
         raw_distance = model.s3_distance(query, candidate)
         distance = max(D_BOUNDARY, min(raw_distance, D_MAX - 1))
         level = "S3"
 
+    # Step 3: Invert
     significance = (~distance) & MASK64
 
     return SignificanceResult(
         significance=significance,
         distance=distance,
         level=level,
-        s1_count=s1_count,
+        match_count=match_count,
         total_nodes=total,
     )
 
@@ -122,6 +126,6 @@ def no_candidates_result() -> SignificanceResult:
         significance=0,
         distance=D_MAX,
         level="S4",
-        s1_count=0,
+        match_count=0,
         total_nodes=0,
     )

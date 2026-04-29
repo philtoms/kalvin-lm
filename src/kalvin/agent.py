@@ -205,7 +205,7 @@ class Agent:
                         significance=D_MAX - 1,
                         distance=0,
                         level="S1",
-                        s1_count=len(kline.nodes),
+                        match_count=len(kline.nodes),
                         total_nodes=len(kline.nodes),
                     )
 

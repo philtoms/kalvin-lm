@@ -24,9 +24,9 @@ A **node** is a 64-bit unsigned integer. Nodes are opaque — the system does no
   carry structural or type information.
 
 Both node types participate in signature construction via `make_signature`.
-The distinction is an encoding concern — it affects *how* nodes contribute
+The distinction is an encoding concern — it affects _how_ nodes contribute
 (literal nodes contribute bit 0; non-literal nodes contribute their full
-value), not *whether* they contribute.
+value), not _whether_ they contribute.
 
 ### KLines
 
@@ -129,19 +129,6 @@ Higher significance = closer match = less work needed. The ordering is strict: *
 
 Key insight: **S1 and S4 are "significants"** — the KLine is either confirmed or entirely novel. No further processing needed. **S2 and S3 are "rationals"** — partial relationships that require deeper investigation through **cogitation**.
 
-### Per-Node Significance Routing
-
-Significance is computed through per-node testing, not holistic comparison:
-
-1. For each node in the query KLine, test: does this node achieve S1 against the candidate? (via `model.is_s1(node, candidate)`).
-2. Count the S1 nodes and **route**:
-   - All nodes S1 → distance = 0 → **S1**
-   - Some nodes S1 → `model.s2_distance(query, candidate)` → **S2**
-   - No nodes S1 → `model.s3_distance(query, candidate)` → **S3**
-   - No candidates → distance = MAX → **S4**
-
-This routing is **pessimistic**: the presence of any node that doesn't achieve S1 pulls the overall level down. Only S2 and S3 routes call model distance functions.
-
 ### Candidate Retrieval
 
 Candidates are found via **bitwise AND matching**:
@@ -151,6 +138,18 @@ candidates = model.where(k => (k.signature & query.signature) != 0)
 ```
 
 A KLine whose signature shares _any_ set bit with the query's signature is a candidate. This is a necessary but not sufficient condition — it pre-filters the model before the more expensive significance pipeline runs.
+
+### Significance Routing
+
+Before a distance calculation can be applied to establish significance between two KLines, a simple routing algorithm is applied.
+
+1. For each node in the query KLine, test: does this node exist in the candidate?.
+2. Count the matched nodes and **route**:
+   - All nodes match → distance = 0 → **S1**
+   - Some nodes match → `model.s2_distance(query, candidate)` → **S2**
+   - No nodes match → `model.s3_distance(query, candidate)` → **S3**
+
+This routing is **pessimistic**: the presence of any node in either KLine that doesn't exist in the other pulls the overall level down. Only S2 and S3 routes call model distance functions.
 
 ## 5. The Process of Rationalisation
 
@@ -177,7 +176,7 @@ Rationalisation is the agent's core loop: determining how a new KLine relates to
 │    → No candidates: S4 (novel), done.            │
 ├─────────────────────────────────────────────────┤
 │ 5. COMPUTE SIGNIFICANCE                         │
-│    Per-node S1 test → route → distance → invert. │
+│    Route → distance → invert.                   │
 ├─────────────────────────────────────────────────┤
 │ 6. INTEGRATE                                    │
 │    Add Q to model. Act on best result.           │

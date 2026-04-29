@@ -17,7 +17,7 @@ This spec depends on the following concepts, defined elsewhere:
   inspection.
 
 ### Model (@model spec)
-- The model provides three functions (see Model API section).
+- The model provides distance functions (see Model API section).
 - The model may be stateful: two calls with identical arguments may return
   different results if the model has been updated between calls. Significance
   does not manage this state — it is the model's responsibility.
@@ -41,8 +41,10 @@ Significance computation:
     No candidates? → return single S4 result (candidate = None)
 
     For each candidate Cᵢ:
-        Calculate significance(Q, Cᵢ)
-          = per-node significance test → route → distance → inversion
+        Calculate significance(Q, Cᵢ):
+          1. Route   — per-node match test → determine route (S1/S2/S3)
+          2. Distance — call appropriate distance function (or 0 for S1)
+          3. Invert  — significance = ~distance
 
 Output: list of (candidate, SignificanceResult) tuples
   - With candidates: one tuple per candidate
@@ -52,41 +54,46 @@ Output: list of (candidate, SignificanceResult) tuples
 The pipeline handles all significance levels including S4. Callers pass
 candidates directly without pre-testing for empty.
 
-## Per-node Significance
+## Step 1: Route
 
-For each node in Q, the model answers a binary question: **does this node
-achieve S1 significance against Cᵢ or not?** Two nodes at S1 significance
-represent a perfect match at that point in the kline.
+Routing is the first step of the significance pipeline. It is a simple,
+independent algorithm that determines which distance function (if any) to
+call.
 
-Nodes do not retain individual significance values — they contribute to the
-kline-level result. Because the algorithm is **pessimistic**, overall kline
-significance can only drop below the ideal. Even if some nodes achieve S1, the
-presence of any node that does not pulls the overall level down.
+For each node in Q, a binary test is applied: **does this node exist in the
+candidate?** The test checks whether the node value appears in the candidate's
+node sequence. This is a straightforward membership test — it does not
+involve significance, distance, or any model function.
 
-The S1 test is a model function (`is_s1`). Significance routing depends only
-on its boolean return value, not on how it computes it. Semantics of the test
-are defined in the model spec.
+The matched nodes are counted and the result is routed:
 
-## Routing to Distance Function
+- **All nodes match** → S1 route (distance = 0, no function call)
+- **Some nodes match** → S2 route (calls `model.s2_distance`)
+- **No nodes match** → S3 route (calls `model.s3_distance`)
 
-The pattern of per-node significance across all nodes routes to the appropriate
-distance function:
+Routing is **pessimistic**: the presence of any node in Q that doesn't exist
+in the candidate prevents an S1 result. Only S2 and S3 routes invoke model
+distance functions.
+
+## Step 2: Distance
+
+The routing result determines the distance computation:
 
 ```
-s1_count = number of nodes in Q at S1 significance vs Cᵢ
+match_count = number of nodes in Q that exist in Cᵢ's node sequence
 
-if no candidates:                 distance = 0xFFFF_FFFF_FFFF_FFFF   → S4
-elif s1_count == len(Q.nodes):    distance = 0                        → S1
-elif s1_count > 0:                distance = model.s2_distance(Q, Cᵢ) → S2
-elif s1_count == 0:               distance = model.s3_distance(Q, Cᵢ) → S3
+if no candidates:                  distance = 0xFFFF_FFFF_FFFF_FFFF   → S4
+elif match_count == len(Q.nodes):  distance = 0                        → S1
+elif match_count > 0:              distance = model.s2_distance(Q, Cᵢ) → S2
+elif match_count == 0:             distance = model.s3_distance(Q, Cᵢ) → S3
 ```
 
-| Node significance pattern | Routes to                          | Result |
-| ------------------------- | ---------------------------------- | ------ |
-| All nodes S1              | distance = 0 (no function call)    | S1     |
-| Some nodes S1, some not   | `model.s2_distance(Q, Cᵢ)`         | S2     |
-| No nodes S1               | `model.s3_distance(Q, Cᵢ)`         | S3     |
-| No candidates             | distance = MAX_UINT64 (no call)    | S4     |
+| Routing result              | Distance computation             | Result |
+| --------------------------- | -------------------------------- | ------ |
+| All nodes match             | distance = 0 (no function call)  | S1     |
+| Some nodes match, some not  | `model.s2_distance(Q, Cᵢ)`       | S2     |
+| No nodes match              | `model.s3_distance(Q, Cᵢ)`       | S3     |
+| No candidates               | distance = MAX_UINT64 (no call)  | S4     |
 
 Only S2 and S3 routes call the model API.
 
@@ -116,9 +123,15 @@ Countersigned S1 is not detected by the significance pipeline itself — it
 is a latent relationship discovered during cogitation (see @agent spec).
 The significance pipeline detects canonical S1 (all nodes match).
 
-## Significance Representation
+## Step 3: Invert
 
-Significance is a **64-bit unsigned integer**, calculated as `~distance`.
+The final step converts distance to significance by bitwise NOT:
+
+```
+significance = ~distance
+```
+
+Significance is a **64-bit unsigned integer**.
 
 ### Arithmetic note
 
@@ -168,10 +181,10 @@ ranges.
 Distance is produced by a single call to the appropriate model function:
 
 ```
-# Routed by per-node significance pattern
-if all nodes S1:      distance = 0
-if some nodes S1:     distance = model.s2_distance(Q, Cᵢ)
-if no nodes S1:       distance = model.s3_distance(Q, Cᵢ)
+# Routed by per-node match count
+if all nodes match:   distance = 0
+if some nodes match:  distance = model.s2_distance(Q, Cᵢ)
+if no nodes match:    distance = model.s3_distance(Q, Cᵢ)
 ```
 
 The model function returns a 64-bit distance value:
@@ -194,11 +207,11 @@ significance = ~distance
 Q = [node_a, node_b, node_c]
 C = candidate
 
-node_a → S1
-node_b → S1
-node_c → not S1
+node_a → match (exists in C)
+node_b → match (exists in C)
+node_c → no match
 
-s1_count = 2, total = 3  →  some S1 → S2 route
+match_count = 2, total = 3  →  S2 route
 
 distance     = model.s2_distance(Q, C)  = 0x0000_0000_0000_0005
 significance = ~distance = 0xFFFF_FFFF_FFFF_FFFA   → S2 level
@@ -208,9 +221,9 @@ significance = ~distance = 0xFFFF_FFFF_FFFF_FFFA   → S2 level
 Q = [node_a]
 C = candidate
 
-node_a → S1
+node_a → match (exists in C)
 
-s1_count = 1, total = 1  →  all S1 → S1 route
+match_count = 1, total = 1  →  S1 route
 
 distance     = 0
 significance = ~0 = 0xFFFF_FFFF_FFFF_FFFF   → S1 level
@@ -220,10 +233,10 @@ significance = ~0 = 0xFFFF_FFFF_FFFF_FFFF   → S1 level
 Q = [node_a, node_b]
 C = candidate
 
-node_a → not S1
-node_b → not S1
+node_a → no match
+node_b → no match
 
-s1_count = 0  →  no S1 → S3 route
+match_count = 0  →  S3 route
 
 distance     = model.s3_distance(Q, C)  = 0x0000_0000_FFFF_FFFF
 significance = ~distance = 0xFFFF_FFFF_0000_0000   → S3 level
@@ -238,16 +251,16 @@ significance = 0x0000_0000_0000_0000   → S4 level (no computation)
 
 ## Model API
 
-The model provides:
+Routing (Step 1) is performed entirely within the significance pipeline using
+simple node-membership testing. It does not call any model function.
+
+Steps 2 and 3 consume the following model functions:
 
 ```
-model.is_s1(node, C) → bool                # does this node achieve S1 vs C?
-model.s2_distance(Q, C) → uint64           # distance when some nodes are S1
-model.s3_distance(Q, C) → uint64           # distance when no nodes are S1
+model.s2_distance(Q, C) → uint64           # distance when some nodes match
+model.s3_distance(Q, C) → uint64           # distance when no nodes match
 ```
 
-- `is_s1` — returns whether a node achieves S1 match against candidate C.
-  Semantics defined in the **model spec**.
 - `s2_distance` — returns a distance in [1, D_boundary). Semantics defined in
   the **model spec**.
 - `s3_distance` — returns a distance in [D_boundary, 0xFFFF_FFFF_FFFF_FFFF).
@@ -258,14 +271,15 @@ model.s3_distance(Q, C) → uint64           # distance when no nodes are S1
 ## Summary of Properties
 
 1. **Inverted metric**: significance = ~distance. Higher is more significant.
-2. **Pessimistic**: overall significance can only drop below the per-node ideal.
-3. **Routing-based**: per-node significance pattern routes to the appropriate
-   distance function.
-4. **Arithmetically comparable**: S1 > S2 > S3 > S4 by unsigned integer
+2. **Three-step pipeline**: Route → distance → invert. Each step is independent.
+3. **Routing is self-contained**: routing uses simple node-membership testing
+   and does not call any model function.
+4. **Pessimistic**: the presence of any unmatched node prevents S1.
+5. **Arithmetically comparable**: S1 > S2 > S3 > S4 by unsigned integer
    comparison.
-5. **State-aware**: significance may change if the model is updated between
+6. **State-aware**: significance may change if the model is updated between
    calls. State management is the model's responsibility.
-6. **Exhaustive**: every Kline with candidates is S1, S2, or S3.
-7. **Hyperparameter boundary**: `D_boundary` separates S2 and S3 distance
+7. **Exhaustive**: every Kline with candidates is S1, S2, or S3.
+8. **Hyperparameter boundary**: `D_boundary` separates S2 and S3 distance
    ranges. Default is the midpoint.
-8. **S1 is trivial**: all nodes S1 → distance = 0, no function call needed.
+9. **S1 is trivial**: all nodes match → distance = 0, no function call needed.
