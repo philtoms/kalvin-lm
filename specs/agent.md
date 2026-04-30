@@ -187,6 +187,7 @@ results = significance_pipeline(Q, candidates, model)
 ```
 
 The pipeline handles all significance levels including S4:
+
 - If `candidates` is empty, the pipeline returns a single `(None, S4)` result.
 - Otherwise, it returns one result per candidate.
 
@@ -203,12 +204,12 @@ memory tiers (STM, frame, base) as it sees fit.
 
 Select the best result (highest significance value). Act based on its level:
 
-| Best level | Action                                      | Return |
-| ---------- | ------------------------------------------- | ------ |
-| S1         | Promote Q to base. Emit `"frame"` S1 event. | True   |
+| Best level | Action                                                  | Return |
+| ---------- | ------------------------------------------------------- | ------ |
+| S1         | Promote Q to base. Emit `"frame"` S1 event.             | True   |
 | S4         | Q is novel. Promote Q to base. Emit `"frame"` S4 event. | True   |
-| S2         | Queue Q for cogitation.                     | False  |
-| S3         | Queue Q for cogitation.                     | False  |
+| S2         | Queue Q for cogitation.                                 | False  |
+| S3         | Queue Q for cogitation.                                 | False  |
 
 S1 and S4 are **significants** — the Kline is either confirmed or novel,
 and no further processing is needed. S2 and S3 are **rationals** — the
@@ -339,7 +340,7 @@ appropriate index.
 
 ### 2. Model Significance API Semantics
 
-The model spec defines `is_s1(node, candidate)`, `s2_distance(Q, C)`,
+The model spec defines `is_s1(node)`, `s2_distance(Q, C)`,
 `s3_distance(Q, C)` with semantics marked **TBD**. These are the functions
 consumed by the significance pipeline.
 

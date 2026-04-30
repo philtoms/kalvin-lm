@@ -2,7 +2,7 @@
 
 import pytest
 from kalvin.kline import KLine
-from kalvin.model import Model, D_BOUNDARY, D_MAX
+from kalvin.model import Model, D_BOUNDARY, D_MAX, MAX_HOP
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
 
@@ -211,24 +211,157 @@ class TestModelPromote:
         assert len(base) == 2
 
 
-class TestModelSignificanceAPI:
-    def test_is_s1_exact_match(self):
+class TestIsS1:
+    def test_is_s1_resolves(self):
+        """Node that matches a kline signature in the model → True."""
         m = make_model()
         k = KLine(5, [1, 2])
         m.add(k)
-        assert m.is_s1(5, k) is True
+        assert m.is_s1(5) is True
 
-    def test_is_s1_no_match(self):
+    def test_is_s1_no_resolve(self):
+        """Node with no matching kline in the model → False."""
         m = make_model()
         k = KLine(5, [1, 2])
-        assert m.is_s1(42, k) is False
+        assert m.is_s1(42) is False
 
-    def test_s2_distance(self):
+    def test_is_s1_node_not_signature(self):
+        """Node that exists in kline.nodes but not as a signature → False."""
+        m = make_model()
+        k = KLine(5, [10, 20])
+        m.add(k)
+        # Node 10 is in k.nodes but no kline with sig 10 exists
+        assert m.is_s1(10) is False
+
+
+class TestIsCanon:
+    def test_canon_match(self):
+        """sig == make_signature(nodes) → canonical."""
+        m = make_model()
+        k = KLine(10, [10])  # make_signature([10]) = 10 (non-literal)
+        assert m._is_canon(k) is True
+
+    def test_canon_mismatch(self):
+        """sig != make_signature(nodes) → non-canonical."""
+        m = make_model()
+        k = KLine(5, [10])  # make_signature([10]) = 10 ≠ 5
+        assert m._is_canon(k) is False
+
+
+class TestEdgeHops:
+    def test_edge_hops_unresolvable(self):
+        """Node that doesn't resolve → 0 hops."""
+        m = make_model()
+        assert m._edge_hops(99) == 0
+
+    def test_edge_hops_canonical(self):
+        """Node that resolves to canonical → 0 hops."""
+        m = make_model()
+        m.add(KLine(10, [10]))  # canonical
+        assert m._edge_hops(10) == 0
+
+    def test_edge_hops_chain(self):
+        """Non-canonical chain: 5→10→20→30(canonical)."""
+        m = make_model()
+        m.add(KLine(30, [30]))  # canonical
+        m.add(KLine(20, [30]))  # non-canon: sig=20, make_sig([30])=30
+        m.add(KLine(10, [20]))  # non-canon: sig=10, make_sig([20])=20
+        m.add(KLine(5, [10]))   # non-canon: sig=5,  make_sig([10])=10
+        assert m._edge_hops(5) == 3   # 5→10→20→30
+        assert m._edge_hops(10) == 2  # 10→20→30
+        assert m._edge_hops(20) == 1  # 20→30
+        assert m._edge_hops(30) == 0  # canonical
+        assert m._edge_hops(99) == 0  # unresolvable
+
+
+class TestS2Distance:
+    def test_s2_distance_self_no_model(self):
+        """Self-comparison with no model entries: mismatch=0, grounded credit only."""
         m = make_model()
         k = KLine(10, [10, 20, 30])
         d = m.s2_distance(k, k)
         assert 1 <= d < D_BOUNDARY
 
+    def test_s2_distance_empty_query(self):
+        """Empty query → minimum distance 1."""
+        m = make_model()
+        q = KLine(0, [])
+        c = KLine(10, [1, 2])
+        assert m.s2_distance(q, c) == 1
+
+    def test_s2_distance_no_resolution(self):
+        """Mismatched nodes with no model entries → MAX_HOP each."""
+        m = make_model()
+        q = KLine(5, [1, 2, 3])
+        c = KLine(6, [1, 4, 5])
+        # matched: {1}, mismatched_q: {2,3}, mismatched_c: {4,5}
+        # edge_hops all 0 → MAX_HOP penalty
+        # grounded: find(1) → None → no credit
+        expected = 4 * 100  # 4 mismatched × MAX_HOP
+        assert m.s2_distance(q, c) == expected
+
+    def test_s2_distance_with_grounding_credit(self):
+        """Matched node that resolves → grounding credit."""
+        m = make_model()
+        m.add(KLine(1, [10]))  # node 1 resolves
+        q = KLine(5, [1, 2])
+        c = KLine(6, [1, 3])
+        # matched: {1}, mismatched_q: {2}, mismatched_c: {3}
+        # mismatched: 2 × MAX_HOP = 200
+        # grounded: find(1) → kline → -1
+        expected = 200 - 1
+        assert m.s2_distance(q, c) == expected
+
+    def test_s2_distance_mismatched_with_edge_hops(self):
+        """Mismatched node with resolution chain gets proportional distance."""
+        m = make_model()
+        # Chain: 5→10→20→30(canonical), 3 hops from 5
+        m.add(KLine(30, [30]))
+        m.add(KLine(20, [30]))
+        m.add(KLine(10, [20]))
+        m.add(KLine(5, [10]))
+
+        q = KLine(100, [5, 2, 3])  # 3 is in c
+        c = KLine(200, [3, 4])     # 3 matches
+        # matched: {3}, mismatched_q: {5, 2}, mismatched_c: {4}
+        # edge_hops(5): 3 hops → +3
+        # edge_hops(2): 0 → MAX_HOP → +100
+        # edge_hops(4): 0 → MAX_HOP → +100
+        # matched 3: find(3) → None → no credit
+        expected = 3 + 100 + 100
+        assert m.s2_distance(q, c) == expected
+
+    def test_s2_distance_all_matched_grounded(self):
+        """All nodes match and all resolve → distance clamped to 1."""
+        m = make_model()
+        m.add(KLine(10, [10]))  # canonical, node 10 resolves
+        m.add(KLine(20, [20]))  # canonical, node 20 resolves
+        q = KLine(5, [10, 20])
+        c = KLine(6, [10, 20])
+        # matched: {10, 20}, mismatched: none
+        # grounded: find(10) and find(20) → grounded → -2
+        # distance = -2, clamped to 1
+        assert m.s2_distance(q, c) == 1
+
+    def test_s2_distance_clamped_to_boundary(self):
+        """Result is always < D_BOUNDARY."""
+        m = make_model()
+        # Many mismatched nodes, none resolve
+        q = KLine(5, [1])
+        c = KLine(6, list(range(1000)))  # many mismatched candidate nodes
+        d = m.s2_distance(q, c)
+        assert d < D_BOUNDARY
+
+    def test_s2_distance_range(self):
+        """S2 distance is always in [1, D_BOUNDARY)."""
+        m = make_model()
+        q = KLine(5, [1, 2])
+        c = KLine(1, [1, 3, 4])
+        d = m.s2_distance(q, c)
+        assert 1 <= d < D_BOUNDARY
+
+
+class TestModelSignificanceAPI:
     def test_s3_distance(self):
         m = make_model()
         q = KLine(5, [1, 2])

@@ -18,6 +18,9 @@ from kalvin.signature import make_signature, signifies
 D_BOUNDARY = 0x8000_0000_0000_0000
 D_MAX = 0xFFFF_FFFF_FFFF_FFFF
 
+# MAX_HOP hyperparameter — upper bound on edge hop chain depth
+MAX_HOP = 100
+
 
 class Model:
     """Three-tier Model: STM → Frame → Base.
@@ -305,24 +308,68 @@ class Model:
 
     # ── Significance API ──────────────────────────────────────────────
 
-    def is_s1(self, node: int, candidate: KLine) -> bool:
-        """Test whether a node achieves S1 match against candidate.
+    def is_s1(self, node: int) -> bool:
+        """Test whether a node value resolves to a kline in the model.
 
-        Model-internal function used by distance implementations.
-        Not called by the significance pipeline — routing uses
-        simple node-membership testing instead.
+        A node achieves S1 when its value equals the signature of some
+        kline stored in any tier.
         """
-        return node == candidate.signature
+        return self.find(node) is not None
+
+    def _is_canon(self, kline: KLine) -> bool:
+        """Test whether a kline is canonical (signature = make_signature of nodes)."""
+        return kline.signature == self._make_sig(kline.nodes)
+
+    def _edge_hops(self, sig: int) -> int:
+        """Count non-canonical resolution chain hops.
+
+        Follows: resolve sig → kline → make_signature(kline.nodes) → repeat.
+        Stops at a dead end (unresolvable) or a canonical kline.
+        Returns the number of hops taken (0 = dead end or immediately canon).
+        """
+        hop_count = 0
+        while hop_count < MAX_HOP:
+            kline = self.find(sig)
+            if kline is None:
+                break
+            if self._is_canon(kline):
+                break
+            hop_count += 1
+            sig = self._make_sig(kline.nodes)
+        return hop_count
 
     def s2_distance(self, query: KLine, candidate: KLine) -> int:
-        """Distance when some nodes achieve S1. Returns value in [1, D_BOUNDARY)."""
+        """Distance when some nodes match. Returns value in [1, D_BOUNDARY).
+
+        Per-node hop-distance algorithm with grounding credit:
+        - Mismatched nodes contribute edge_hops (0 hops = MAX_HOP penalty)
+        - Matched nodes that resolve to known klines credit -1 each
+        """
         if not query.nodes:
             return 1
-        s1_count = sum(1 for n in query.nodes if self.is_s1(n, candidate))
-        s1_ratio = s1_count / len(query.nodes)
-        distance = int((1 - s1_ratio) * D_BOUNDARY)
-        # Clamp to [1, D_BOUNDARY)
-        return max(1, min(distance, D_BOUNDARY - 1))
+
+        q_set = set(query.nodes)
+        c_set = set(candidate.nodes)
+        mismatched_q = q_set - c_set
+        mismatched_c = c_set - q_set
+        matched = q_set & c_set
+
+        distance = 0
+
+        # Mismatched nodes: hop-based distance (0 hops = max penalty)
+        for n in mismatched_q:
+            hops = self._edge_hops(n)
+            distance += hops if hops > 0 else MAX_HOP
+        for n in mismatched_c:
+            hops = self._edge_hops(n)
+            distance += hops if hops > 0 else MAX_HOP
+
+        # Grounding credit: matched nodes that resolve to known klines
+        for n in matched:
+            if self.is_s1(n) is not None:
+                distance -= 1
+
+        return max(1, min(int(distance), D_BOUNDARY - 1))
 
     def s3_distance(self, query: KLine, candidate: KLine) -> int:
         """Distance when no nodes achieve S1. Returns value in [D_BOUNDARY, D_MAX)."""

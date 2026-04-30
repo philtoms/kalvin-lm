@@ -376,22 +376,24 @@ match to `depth`.
 
 The following functions are consumed by the significance pipeline
 (@significance spec) and by cogitation countersignature discovery
-(@agent spec). Their semantics are defined here; their implementation
-is TBD.
+(@agent spec). Their semantics are defined here.
 
 ### Is S1
 
 ```
-model.is_s1(node, candidate) → bool
+model.is_s1(node) → bool
 ```
 
-Returns whether a single node achieves S1 significance against a candidate
-Kline.
+Returns whether a node value resolves to a kline in the model.
 
 - `node` — a uint64 value from the query Kline's node sequence.
-- `candidate` — a Kline from the model.
-- S1 represents a **perfect match** at that position.
-- Semantics of the match test are **TBD**.
+- `candidate` — a KLine from the model. **Unused** — S1 status depends
+  only on the node value and the model's current state.
+- A node achieves S1 when its value equals the signature of some kline
+  stored in any tier: `model.find(node) is not None`.
+- This is a stateful test: adding or removing klines changes the result.
+- S1 represents a **grounded node** — one that corresponds to known
+  structure in the model.
 
 ### S2 Distance
 
@@ -399,14 +401,90 @@ Kline.
 model.s2_distance(query, candidate) → uint64
 ```
 
-Returns a distance value when some (but not all) nodes achieve S1 against
-the candidate.
+Returns a distance value when some (but not all) query nodes exist in the
+candidate's node sequence. S2 distance has been selected because there is
+a node mismatch between query and candidate klines.
 
 - `query` — the query Kline.
 - `candidate` — a candidate Kline.
 - Must return a value in `[1, D_boundary)`.
 - Values outside range are clamped.
-- Semantics are **TBD**.
+
+#### Definitions
+
+- **is_s1(node)** — `model.find(node) is not None`. The node resolves to a
+  known kline in any tier.
+- **is_canon(kline)** — `kline.signature == make_signature(kline.nodes)`.
+  The kline's signature exactly represents its nodes.
+- **edge_hops(sig)** — the number of non-canonical resolution steps from a
+  signature:
+  ```
+  edge_hops(sig):
+      hop_count = 0
+      while is_s1(sig) and not is_canon(find(sig)):
+          hop_count += 1
+          sig = make_signature(find(sig).nodes)
+      return hop_count
+  ```
+  Follows the chain: resolve `sig` → kline → `make_signature(kline.nodes)`
+  → resolve again. Stops at a dead end (unresolvable) or a canonical kline.
+  Returns the number of hops taken.
+- **MAX_HOP** — hyperparameter (default 100). Upper bound on chain depth
+  and the penalty for unresolvable mismatched nodes.
+
+#### Algorithm
+
+Starting distance is 0 (all S2 bits clear). Distance grows with mismatch
+and discovery. All calculations are additive (positive drives toward S3
+boundary) except the grounding credit which is subtractive (drives toward
+S1).
+
+```
+s2_distance(query, candidate):
+    q_set   = set(query.nodes)
+    c_set   = set(candidate.nodes)
+    mismatched_q = q_set - c_set
+    mismatched_c = c_set - q_set
+    matched      = q_set ∩ c_set
+
+    distance = 0
+
+    # Mismatched nodes: hop-based distance (0 hops = MAX_HOP penalty)
+    for n in mismatched_q:
+        hops = edge_hops(n)
+        distance += hops if hops > 0 else MAX_HOP
+    for n in mismatched_c:
+        hops = edge_hops(n)
+        distance += hops if hops > 0 else MAX_HOP
+
+    # Grounding credit: matched nodes that resolve to known klines
+    for n in matched:
+        if is_s1(n):
+            distance -= 1
+
+    return clamp(distance, 1, D_boundary - 1)
+```
+
+#### Per-node contributions
+
+| Node state                               | Contribution | Rationale                      |
+| ---------------------------------------- | ------------ | ------------------------------ |
+| Mismatched, edge_hops = 0 (unresolvable) | +MAX_HOP     | No path to grounded knowledge  |
+| Mismatched, edge_hops = N                | +N           | N hops from grounded knowledge |
+| Matched + grounded (is_s1)               | −1           | Cancels one hop-distance unit  |
+| Matched + ungrounded                     | 0            | Neutral                        |
+
+#### Properties
+
+1. **Starting distance = 0** — all S2 bits clear. Distance grows with
+   mismatch and discovery.
+2. **Hop distance is the distance** — each mismatched node contributes
+   `1..MAX_HOP` based on its edge hop depth. A node 1 hop from grounded
+   knowledge contributes 1. An unresolvable node contributes MAX_HOP.
+3. **Grounding credit is same-scale** — each matched node that resolves
+   subtracts 1, directly offsetting one hop-distance unit.
+4. **Bidirectional** — mismatched nodes from both query and candidate
+   contribute to distance, ensuring symmetry of information gaps.
 
 ### S3 Distance
 

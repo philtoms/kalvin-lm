@@ -470,11 +470,19 @@ these functions.
 **Model-internal functions:**
 
 ```python
-model.is_s1(node, candidate) → bool
+model.is_s1(node) → bool             # checks model.find(node)
+model._is_canon(kline) → bool        # sig == make_signature(nodes)
+model._edge_hops(sig) → int          # non-canonical chain depth
 ```
 
-`is_s1` is used internally by the model's distance implementations (see §4.2)
-but is not called by the significance pipeline directly.
+`is_s1` returns `True` when the node value resolves to a kline in any tier
+(`model.find(node) is not None`).
+
+`_is_canon` tests whether a kline is canonical (its signature equals the
+`make_signature` reduction of its nodes).
+
+`_edge_hops` follows the non-canonical resolution chain from a signature,
+returning the number of hops taken. See §4.2.
 
 ---
 
@@ -671,51 +679,116 @@ def is_countersigned(Q, C):
 
 ## 4. Model Significance API — Resolved Semantics
 
-The specs mark `s2_distance` and `s3_distance` as **TBD**. This section defines
-their semantics for the initial implementation. `is_s1` is also defined here as a
-model-internal function used by the distance implementations.
+This section defines the semantics of the model functions consumed by the
+significance pipeline and used internally for distance computation.
 
-### 4.1 `is_s1(node, candidate) → bool` (model-internal)
+### 4.1 `is_s1(node) → bool` (model-internal)
 
 **Note:** This function is used internally by the model's distance implementations.
 It is **not** called by the significance pipeline — routing uses simple
 node-membership testing instead (see §3.6).
 
-**Semantics:** A node achieves S1 against a candidate if the node **subsumes** the candidate's signature — i.e., all bits set in the candidate's signature are also set in the node.
+**Semantics:** A node achieves S1 when its value resolves to a kline in the
+model — i.e., `model.find(node) is not None`. This is a stateful test: adding or
+removing klines changes the result.
 
 ```python
-def is_s1(self, node: int, candidate: KLine) -> bool:
-    # Exact match: node equals candidate's signature
-    if node == candidate.signature:
-        return True
-    # Subsumption: node contains all bits of candidate's signature
-    if (node & candidate.signature) == candidate.signature:
-        return True
-    return False
+def is_s1(self, node: int) -> bool:
+    return self.find(node) is not None
 ```
 
-**Rationale:** If a query node contains all the bits of a candidate's signature, the query node fully represents the candidate's identity. This is the bitwise analogue of "perfect match" — the node's information content covers the candidate's identity completely.
-
-**Edge cases:**
-
-- Literal nodes: `node` has lower 32 bits = `0xFFFFFFFF`. A candidate signature (which is at most 64 bits with bit 0 possibly set) will not have all lower 32 bits set, so `(literal_node & sig) == sig` is extremely unlikely and would require `sig == 0xFFFFFFFF`, which won't happen from `make_signature` of normal tokens. This is correct — literal nodes should not match non-literal candidates.
-- Node = 0: `(0 & anything) == anything` is only true when `anything == 0`. So node 0 matches only unsigned candidates. Correct.
+**Rationale:** A grounded node — one that corresponds to known structure in the
+model — has achieved S1 significance. The test is whether the node value serves
+as a signature for some stored kline, regardless of which candidate is being
+compared.
 
 ### 4.2 `s2_distance(query, candidate) → int`
 
-**Semantics:** Distance is proportional to the fraction of nodes that are **not** S1, scaled to `[1, D_BOUNDARY)`.
+S2 distance has been selected because there is a node mismatch between query
+and candidate klines. The algorithm is a **per-node hop-distance** with
+grounding credit.
+
+#### Definitions
+
+- **is_s1(node)** — `model.find(node) is not None`. The node resolves to a
+  known kline in any tier.
+- **is_canon(kline)** — `kline.signature == make_signature(kline.nodes)`.
+  The kline's signature exactly represents its nodes. Canonical klines are
+  terminals in the resolution chain.
+- **edge_hops(sig)** — the number of non-canonical resolution steps from a
+  signature. Follows the chain: resolve `sig` → kline → `make_signature(kline.nodes)`
+  → resolve again. Stops at a dead end (unresolvable) or a canonical kline.
+  Returns the number of hops taken (0 = dead end or immediately canonical).
+- **MAX_HOP** — hyperparameter (default 100). Upper bound on chain depth and
+  the penalty for unresolvable mismatched nodes.
+
+```python
+def _edge_hops(self, sig: int) -> int:
+    hop_count = 0
+    while hop_count < MAX_HOP:
+        kline = self.find(sig)
+        if kline is None or self._is_canon(kline):
+            break
+        hop_count += 1
+        sig = self._make_sig(kline.nodes)
+    return hop_count
+```
+
+#### Algorithm
+
+Starting distance is 0 (all S2 bits clear). Distance grows with mismatch
+and discovery. All calculations are additive (positive drives toward S3
+boundary) except the grounding credit which is subtractive (drives toward S1).
 
 ```python
 def s2_distance(self, query: KLine, candidate: KLine) -> int:
     if not query.nodes:
         return 1
-    s1_count = sum(1 for n in query.nodes if self.is_s1(n, candidate))
-    s1_ratio = s1_count / len(query.nodes)
-    distance = int((1 - s1_ratio) * D_BOUNDARY)
-    return max(1, min(distance, D_BOUNDARY - 1))
+
+    q_set = set(query.nodes)
+    c_set = set(candidate.nodes)
+    mismatched_q = q_set - c_set
+    mismatched_c = c_set - q_set
+    matched = q_set & c_set
+
+    distance = 0
+
+    # Mismatched nodes: hop-based distance (0 hops = MAX_HOP penalty)
+    for n in mismatched_q:
+        hops = self._edge_hops(n)
+        distance += hops if hops > 0 else MAX_HOP
+    for n in mismatched_c:
+        hops = self._edge_hops(n)
+        distance += hops if hops > 0 else MAX_HOP
+
+    # Grounding credit: matched nodes that resolve to known klines
+    for n in matched:
+        if self.find(n) is not None:
+            distance -= 1
+
+    return max(1, min(int(distance), D_BOUNDARY - 1))
 ```
 
-**Rationale:** When some nodes match (S2), distance should reflect how far the query is from S1 (all nodes matching). The non-matching fraction maps linearly to the S2 distance range. One non-matching node in ten is close to S1 (low distance). Nine non-matching in ten is far from S1 (high distance).
+#### Per-node contributions
+
+| Node state                               | Contribution | Rationale                      |
+| ---------------------------------------- | ------------ | ------------------------------ |
+| Mismatched, edge_hops = 0 (unresolvable) | +MAX_HOP     | No path to grounded knowledge  |
+| Mismatched, edge_hops = N                | +N           | N hops from grounded knowledge |
+| Matched + grounded (is_s1)               | −1           | Cancels one hop-distance unit  |
+| Matched + ungrounded                     | 0            | Neutral                        |
+
+#### Properties
+
+1. **Starting distance = 0** — all S2 bits clear. Distance grows with
+   mismatch and discovery.
+2. **Hop distance is the distance** — each mismatched node contributes
+   `1..MAX_HOP` based on its edge hop depth. A node 1 hop from grounded
+   knowledge contributes 1. An unresolvable node contributes MAX_HOP.
+3. **Grounding credit is same-scale** — each matched node that resolves
+   subtracts 1, directly offsetting one hop-distance unit.
+4. **Bidirectional** — mismatched nodes from both query and candidate
+   contribute to distance, ensuring symmetry of information gaps.
 
 ### 4.3 `s3_distance(query, candidate) → int`
 
@@ -723,7 +796,7 @@ def s2_distance(self, query: KLine, candidate: KLine) -> int:
 
 ```python
 def s3_distance(self, query: KLine, candidate: KLine) -> int:
-    q_sig = query.signature
+    q_sig = self._make_sig(query.nodes)
     c_sig = candidate.signature
     if q_sig == 0:
         return D_MAX - 1
@@ -1078,19 +1151,29 @@ def significance_value(distance) -> int:
 
 #### Significance API
 
-| Test               | Description                    |
-| ------------------ | ------------------------------ |
-| is_s1 exact match  | `node == candidate.signature`  |
-| is_s1 subsumption  | `(node & sig) == sig`          |
-| is_s1 no match     | Returns False                  |
-| s2_distance range  | Value in `[1, D_BOUNDARY)`     |
-| s2_distance scales | More matches → lower distance  |
-| s3_distance range  | Value in `[D_BOUNDARY, D_MAX)` |
-| is_countersigned   | Mutual reference detected      |
-| Not countersigned  | One-way reference → False      |
+| Test                      | Description                                        |
+| ------------------------- | -------------------------------------------------- |
+| is_s1 resolves            | `model.find(node) is not None` → True              |
+| is_s1 no resolve          | Node not in model → False                          |
+| is_s1 node not signature  | Node in kline.nodes but no kline with that sig     |
+| \_is_canon match          | `sig == make_signature(nodes)` → True              |
+| \_is_canon mismatch       | `sig != make_signature(nodes)` → False             |
+| \_edge_hops unresolvable  | Node doesn't resolve → 0 hops                      |
+| \_edge_hops canonical     | Resolves to canonical → 0 hops                     |
+| \_edge_hops chain         | N non-canonical hops before dead end or canonical  |
+| s2_distance empty query   | Returns 1                                          |
+| s2_distance no resolution | All mismatched unresolvable → MAX_HOP each         |
+| s2_distance grounding     | Matched node that resolves → −1 credit             |
+| s2_distance edge hops     | Mismatched node with chain → proportional distance |
+| s2_distance range         | Value in `[1, D_BOUNDARY)`                         |
+| s2_distance clamped       | Large results clamped to D_BOUNDARY - 1            |
+| s3_distance range         | Value in `[D_BOUNDARY, D_MAX)`                     |
+| is_countersigned          | Mutual reference detected                          |
+| Not countersigned         | One-way reference → False                          |
 
-**Note:** `is_s1` is tested here as a model-internal function. The significance
-pipeline does not call it directly — routing uses node-membership testing.
+**Note:** `is_s1`, `_is_canon`, and `_edge_hops` are tested as model-internal
+functions. The significance pipeline does not call them directly — routing
+uses node-membership testing.
 
 ---
 
@@ -1102,19 +1185,19 @@ pipeline does not call it directly — routing uses node-membership testing.
 
 **Test cases:**
 
-| Test                     | Description                                    |
-| ------------------------ | ---------------------------------------------- |
-| All nodes match          | Returns S1, distance 0, significance MAX       |
-| Some nodes match         | Returns S2, distance in range                  |
-| No nodes match           | Returns S3, distance in range                  |
-| No candidates            | Returns [(None, S4_result)], distance MAX, significance 0 |
-| Empty query              | Returns S4                                     |
-| Single node match        | Returns S1                                     |
-| Clamping                 | Out-of-range distances clamped                 |
-| Best candidate selection | Pipeline returns all results; caller picks max |
-| Significance ordering    | S1 > S2 > S3 > S4 numerically                  |
-| Routing is self-contained | Verify no model.is_s1 calls during routing   |
-| Routing uses membership  | Node in candidate.nodes → match; not in → no match |
+| Test                      | Description                                               |
+| ------------------------- | --------------------------------------------------------- |
+| All nodes match           | Returns S1, distance 0, significance MAX                  |
+| Some nodes match          | Returns S2, distance in range                             |
+| No nodes match            | Returns S3, distance in range                             |
+| No candidates             | Returns [(None, S4_result)], distance MAX, significance 0 |
+| Empty query               | Returns S4                                                |
+| Single node match         | Returns S1                                                |
+| Clamping                  | Out-of-range distances clamped                            |
+| Best candidate selection  | Pipeline returns all results; caller picks max            |
+| Significance ordering     | S1 > S2 > S3 > S4 numerically                             |
+| Routing is self-contained | Verify no model.is_s1 calls during routing                |
+| Routing uses membership   | Node in candidate.nodes → match; not in → no match        |
 
 ---
 
@@ -1170,10 +1253,10 @@ pipeline does not call it directly — routing uses node-membership testing.
 
 #### Phase 4: Retrieve candidates
 
-| Test             | Description                            |
-| ---------------- | -------------------------------------- |
+| Test             | Description                                             |
+| ---------------- | ------------------------------------------------------- |
 | No candidates    | Pipeline returns S4 result; agent handles via Phase 5/6 |
-| Candidates found | Proceeds to Phase 5                    |
+| Candidates found | Proceeds to Phase 5                                     |
 
 #### Phase 5 + 6: Significance + Integrate
 
@@ -1259,6 +1342,7 @@ S4_VALUE = 0x0000_0000_0000_0000     # Minimum significance
 
 # Model
 STM_BOUND_DEFAULT = 256              # STM capacity
+MAX_HOP = 100                        # S2 edge hop chain depth / unresolvable penalty
 D_COGITATE_DEFAULT = 2               # Cogitation traversal depth
 MAX_COGITATE_PASSES = 3              # Max re-rationalisation attempts
 COGITATE_TIMEOUT = 2.0               # Seconds before "done" event
@@ -1272,14 +1356,14 @@ MOD64_BITS = 63
 
 ## 9. Risk Assessment
 
-| Risk                                                    | Severity | Mitigation                                                            |
-| ------------------------------------------------------- | -------- | --------------------------------------------------------------------- |
-| Model significance API semantics may need iteration     | High     | Start with simple definitions (§4); evolve based on real data         |
-| All-literal signature collision (sig=1 for all)         | Medium   | Fast-path in Assess phase; accept degenerate indexing                 |
-| Candidate retrieval O(N) scan too slow for large models | Medium   | Profile first; add inverted bit index if needed                       |
-| Cogitation thread safety bugs                           | Medium   | Thorough concurrent testing; keep thread logic simple                 |
-| Literal mask accidental collision                       | Low      | Only `0xFFFFFFFF` lower 32 bits triggers; verified for all node types |
-| BPE tokenizer optional deps fragile                     | Low      | Make BPE entirely optional; core system works with Mod only           |
+| Risk                                                    | Severity | Mitigation                                                                             |
+| ------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
+| Model significance API semantics may need iteration     | High     | S2 distance now uses per-node hop-distance algorithm (§4.2); evolve based on real data |
+| All-literal signature collision (sig=1 for all)         | Medium   | Fast-path in Assess phase; accept degenerate indexing                                  |
+| Candidate retrieval O(N) scan too slow for large models | Medium   | Profile first; add inverted bit index if needed                                        |
+| Cogitation thread safety bugs                           | Medium   | Thorough concurrent testing; keep thread logic simple                                  |
+| Literal mask accidental collision                       | Low      | Only `0xFFFFFFFF` lower 32 bits triggers; verified for all node types                  |
+| BPE tokenizer optional deps fragile                     | Low      | Make BPE entirely optional; core system works with Mod only                            |
 
 ---
 
@@ -1313,9 +1397,7 @@ Before starting implementation, confirm the following with the system owner:
 2. **Persistence format:** Is JSON sufficient, or is binary serialization required from day one?
    - _Recommendation:_ JSON for development; binary for production.
 
-3. **is_s1 semantics:** The subsumption check `(node & candidate.signature) == candidate.signature` is the initial definition for the model-internal `is_s1` function (used by distance implementations, not by significance routing). Is this acceptable, or should it be stricter (exact equality only)?
-   - _Recommendation:_ Start with subsumption; tighten if it produces too many false S1 results.
-   - _Note:_ The significance pipeline's routing no longer uses `is_s1`; it uses simple node-membership testing against the candidate's node sequence. This question only affects the model's internal distance calculations.
+3. **is_s1 semantics:** ~~The subsumption check~~ Now resolved: `is_s1(node)` returns `model.find(node) is not None`. A grounded node (one that resolves to a known kline in any tier) achieves S1. See §4.1.
 
 4. **Thread model for cogitation:** Should cogitation use a background thread (as specified), or would async/await be preferred?
    - _Recommendation:_ Background thread for simplicity. The spec's "done" event requires some concurrency primitive.
