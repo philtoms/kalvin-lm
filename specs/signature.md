@@ -192,7 +192,8 @@ The following are explicitly **out of scope** for this spec:
 - **Literal test implementation.** `is_literal` is defined in the
   @tokenizer spec. This spec depends on it but does not define it.
 - **Significance computation.** How signatures contribute to distance and
-  significance values is defined in the @significance spec.
+  significance values is defined in the @significance spec. The inversion
+  `(~distance) & MASK64` is performed in `agent.py`.
 - **Storage and indexing.** How the model indexes and retrieves klines by
   signature is defined in the @model spec.
 - **Kline construction.** How signatures are assigned to klines at build

@@ -233,15 +233,12 @@ def signifies(a: int, b: int) -> bool:
 
 The basis for candidate retrieval. Commutative. Vacuous for 0.
 
-**`significance_value(distance) → int`:**
-
-```python
-def significance_value(distance: int) -> int:
-    return (~distance) & 0xFFFF_FFFF_FFFF_FFFF
-```
-
 **Important:** No `is_signature` predicate. Any uint64 may serve as a signature.
 It is identified by role (the `signature` field of a KLine), not by bit pattern.
+
+**Note:** The `significance_value` function has been removed from this module.
+Significance inversion (`(~distance) & MASK64`) is performed inline in
+`agent.py`. See `specs/significance.md` for the conceptual specification.
 
 ### Test Cases
 
@@ -257,8 +254,6 @@ It is identified by role (the `signature` field of a KLine), not by bit pattern.
 | `signifies(1, 1)`                        | `True`                  |
 | `signifies(0b110, 0b10)`                 | `True`                  |
 | `signifies(0b110, 0b1)`                  | `False`                 |
-| `significance_value(0)`                  | `0xFFFF_FFFF_FFFF_FFFF` |
-| `significance_value(MAX)`                | `0`                     |
 
 ---
 
