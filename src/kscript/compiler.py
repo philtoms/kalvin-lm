@@ -2,15 +2,17 @@
 
 Op mappings (using abbreviated property chains):
   COUNTERSIGN   -> {sig: node}, {node: sig}
-  UNDERSIGN     -> {sig: node}
-  CANONIZE_FWD  -> {p[-1].(node or sig): [p.sig for p in r.primaries]}
-  CONNOTATE_FWD -> {sig: [node]}
-  CANONIZE_BWD  -> {r[0].sig: [p.sig for p in left_primaries]}
-  CONNOTATE_BWD -> {r[0].sig: [left_primaries[-1].sig]}
+  CANONIZE_FWD  -> {p[-1].(node or sig): p.sig for p in r.primaries}
+  CONNOTATE_FWD -> {sig: node}
+  CANONIZE_BWD  -> {r[0].sig: p.sig for p in left_primaries}
+  CONNOTATE_BWD -> {r[0].sig: left_primaries[-1].sig}
+  UNSIGNED      -> sig | S4 (S4=0, no bits)
 
 Where:
   p = primary construct (left side)
   r = right (chain_right's primaries)
+
+Singleton rule: nodes lists with length 1 are unwrapped to single values.
 
 Significance encoding (bitwise OR on signature position):
   COUNTERSIGN   -> sig | S1
@@ -24,9 +26,9 @@ from __future__ import annotations
 
 from typing import TypeAlias
 
-from kalvin.abstract import KLine, KNodes, KSig, KSignificance
+from kalvin.kline import KLine, KNodes, KSig
 from kalvin.mod_tokenizer import Mod32Tokenizer, ModTokenizer
-from kalvin.significance import Int32Significance
+from kalvin.significance import D_MAX
 
 from .ast import (
     Block,
@@ -62,7 +64,7 @@ class CompiledEntry(KLine):
         tokenizer: ModTokenizer,
         *,
         sig_level: str = "S4",
-        significance: KSignificance | None = None,
+        significance: object | None = None,
         dbg_text: str = ""
     ) -> "CompiledEntry":
         """Encode string signature/nodes to token IDs.
@@ -70,7 +72,7 @@ class CompiledEntry(KLine):
         Signatures (uppercase strings) are packed.
         Literals are unpacked via tokenizer.encode(..., pack=False).
         """
-        sig_obj = significance or Int32Significance()
+        # significance param kept for API compat; encoding is pure tokenizer now
         sig_id = tokenizer.encode(sig, pack=True)[0]
         if nodes is None:
             return cls(signature=sig_id, nodes=None, dbg_text=dbg_text)
@@ -139,17 +141,15 @@ class Compiler:
         self.entries: list[CompiledEntry] = []
         self.tokenizer = tokenizer or Mod32Tokenizer()
         self.dev = dev
-        self._sig = Int32Significance()
         self._sig_levels = {
-            "COUNTERSIGN": self._sig.S1,
-            "CANONIZE_FWD": self._sig.S2,
-            "CANONIZE_BWD": self._sig.S2,
-            "CONNOTATE_FWD": self._sig.S3,
-            "CONNOTATE_BWD": self._sig.S3,
-            "UNDERSIGN": self._sig.S1,
-            "UNSIGNED": self._sig.S4,
-            "MCS": self._sig.S2,       # MCS uses S2 like canonize
-            "MCS_CHAR": self._sig.S4,  # Component chars are S4 (unsigned)
+            "COUNTERSIGN": "S1",
+            "CANONIZE_FWD": "S2",
+            "CANONIZE_BWD": "S2",
+            "CONNOTATE_FWD": "S3",
+            "CONNOTATE_BWD": "S3",
+            "UNDERSIGN": "S1",
+            "UNSIGNED": "S4",
+            "IDENTITY": "S1",
         }
         self._seen: set[tuple[int, None | int | tuple[int, ...]]] = set()
 
@@ -196,8 +196,8 @@ class Compiler:
         """Emit MCS entries for multi-character signatures.
 
         Emits:
-          Identity -> {char: char} for char in sig
-          MCS -> {sig: [char for char in sig]} (second)
+          Unsigned -> {char: None} for each char in sig
+          MCS CANONIZE_FWD -> {sig: [chars]} (list preserves order & duplicates)
 
         Returns True if MCS was emitted, False for single-char sigs.
         """
@@ -208,10 +208,10 @@ class Compiler:
 
         # Component identities: {char: None} for each (emitted first)
         for char in chars:
-            self._emit(char, None, "MCS_CHAR")
+            self._emit(char, None, "UNSIGNED")
 
-        # MCS canonization: {sig: [A, B, C, ...]} (emitted second)
-        self._emit(sig, chars, "MCS")
+        # MCS canonization: {sig: [A, B, C, ...]} (list preserves order & duplicates)
+        self._emit(sig, chars, "CANONIZE_FWD")
 
         return True
 
@@ -247,8 +247,8 @@ class Compiler:
                 self._emit(sig, node_str, "UNDERSIGN")
 
         elif pc.op == TokenType.CONNOTATE_FWD:
-            # {sig: [node]}
-            self._emit(sig, [node_str], "CONNOTATE_FWD")
+            # {sig: node}
+            self._emit(sig, node_str, "CONNOTATE_FWD")
 
     def _process_chain(
         self,
@@ -274,36 +274,49 @@ class Compiler:
         right_items = self._flatten_to_items(right)
 
         if chain_op == TokenType.CANONIZE_FWD:
-            # CANONIZE_FWD: {p[-1].(node or sig): [items from right]}
+            # CANONIZE_FWD: {p[-1].(node or sig): p.sig for p in r.primaries}
             last = left_primaries[-1]
             owner = self._get_owner(last)  # node if present, else sig
             # Emit MCS for owner if it's a sig
             if last.node is None or isinstance(last.node, Signature):
                 self._emit_mcs(owner)
-            nodes = [self._item_id(item) for item in right_items]
-            self._emit(owner, nodes, "CANONIZE_FWD")
+            # Emit per-item: one entry per right item
+            for item in right_items:
+                self._emit(owner, self._item_id(item), "CANONIZE_FWD")
 
             # Recurse into right
             self._compile_construct(right)
 
         elif chain_op == TokenType.CANONIZE_BWD:
-            # CANONIZE_BWD: {r[0].id: [p.sig for p in left_primaries]}
+            # CANONIZE_BWD: {r[0].sig: p.sig for p in left_primaries}
             if right_items:
                 owner = self._item_id(right_items[0])
                 self._emit_mcs(owner)
-                nodes = [pc.sig.id for pc in left_primaries]
-                self._emit(owner, nodes, "CANONIZE_BWD")
+                # Emit per-left-primary: one entry per left primary
+                for pc in left_primaries:
+                    self._emit(owner, pc.sig.id, "CANONIZE_BWD")
+
+            # Recurse into right
+            self._compile_construct(right)
+
+        elif chain_op == TokenType.CONNOTATE_FWD:
+            # CONNOTATE_FWD chain: {owner: [right_items]}
+            last = left_primaries[-1]
+            owner = self._get_owner(last)
+            nodes = [self._item_id(item) for item in right_items]
+            self._emit(owner, nodes, "CONNOTATE_FWD")
 
             # Recurse into right
             self._compile_construct(right)
 
         elif chain_op == TokenType.CONNOTATE_BWD:
-            # CONNOTATE_BWD: {r[0].id: [left_primaries[-1].sig]}
+            # CONNOTATE_BWD: {r[0].sig: left_primaries[-1].sig}
             if right_items:
                 owner = self._item_id(right_items[0])
                 self._emit_mcs(owner)
-                last_left = left_primaries[-1].sig.id
-                self._emit(owner, [last_left], "CONNOTATE_BWD")
+                last = left_primaries[-1]
+                last_left = self._get_owner(last)
+                self._emit(owner, last_left, "CONNOTATE_BWD")
 
             # Recurse into right
             self._compile_construct(right)
@@ -365,7 +378,13 @@ class Compiler:
         return False
 
     def _emit(self, sig: str, nodes: str | None | list[str], op: str) -> None:
-        """Emit an entry with significance encoding."""
+        """Emit an entry with significance encoding.
+
+        Singleton rule: if nodes is a list with length 1, unwrap to single value.
+        """
+        # Singleton check: unwrap single-element lists
+        if isinstance(nodes, list) and len(nodes) == 1:
+            nodes = nodes[0]
         # Encode signature as significant or literal
         sig_id = self._encode_node(sig)
 
@@ -424,15 +443,7 @@ class Compiler:
 
     def _format_dbg(self, sig: str, nodes: str | None | list[str], op: str) -> str:
         """Format debug representation with significance level."""
-        sig_val = self._sig_levels.get(op, self._sig.S4)
-        if sig_val == self._sig.S1:
-            level = "S1"
-        elif sig_val == self._sig.S2:
-            level = "S2"
-        elif sig_val == self._sig.S3:
-            level = "S3"
-        else:
-            level = "S4"
+        level = self._sig_levels.get(op, "S4")
 
         if nodes is None:
             return f"[{level}] {sig}: None"

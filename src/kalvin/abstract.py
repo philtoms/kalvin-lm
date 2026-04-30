@@ -1,213 +1,28 @@
-"""KAgent - Base class for agents that work with KScript and knowledge graphs."""
+"""Abstract base classes for Kalvin.
+
+Provides the minimum interface contracts for tokenizers, models, and agents.
+"""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Iterator, Literal
+from typing import Iterator, Any
 
-from kalvin.kline import KLine, KNode, KNodes, KSig, KNone
+from kalvin.kline import KLine, KNode, KSig
 
-# Re-export for backwards compatibility
-__all__ = ["KLine", "KNode", "KNodes", "KSig", "KNone", "KSignificance", "KTokenizer", "KModel", "KAgent"]
+__all__ = [
+    "KLine", "KNode", "KSig",
+    "KTokenizer", "KModel", "KAgent",
+]
 
-
-# === Abstract Significance ===
-
-class KSignificance(ABC):
-    """Abstract base class for significance calculations.
-
-    A KSignificance provides the interface for encoding, decoding, and
-    comparing significance values between KLines.
-    """
-
-    # === Significance level constants ===
-    @property
-    @abstractmethod
-    def S1(self) -> KSig:
-        """S1 significance level (highest - prefix match)."""
-        ...
-
-    @property
-    @abstractmethod
-    def S2(self) -> KSig:
-        """S2 significance level (partial positional match)."""
-        ...
-
-    @property
-    @abstractmethod
-    def S3(self) -> KSig:
-        """S3 significance level (unordered/generational match)."""
-        ...
-
-    @property
-    @abstractmethod
-    def S4(self) -> KSig:
-        """S4 significance level (no match)."""
-        ...
-
-    # === S1 operations ===
-
-    @abstractmethod
-    def has_s1(self, sig: KSig) -> bool:
-        """Check if S1 bit is set (prefix match)."""
-        ...
-
-    @abstractmethod
-    def get_s1_percentage(self, sig: KSig) -> int:
-        """Extract S1 percentage (0-127)."""
-        ...
-
-    @abstractmethod
-    def build_s1(self, percentage: int = 100) -> KSig:
-        """Build S1 significance with optional percentage."""
-        ...
-
-    # === S2 operations ===
-
-    @abstractmethod
-    def has_s2(self, sig: KSig) -> bool:
-        """Check if S2 bit is set (prefix match)."""
-        ...
-
-    @abstractmethod
-    def get_s2(self, sig: KSig) -> int:
-        """Extract full S2 value."""
-        ...
-
-    @abstractmethod
-    def get_s2_s1_percentage(self, sig: KSig) -> int:
-        """Extract S2's S1 percentage."""
-        ...
-
-    @abstractmethod
-    def get_s2_s2_percentage(self, sig: KSig) -> int:
-        """Extract S2's S2 percentage."""
-        ...
-
-    @abstractmethod
-    def build_s2(self, s1_pct: int, s2_pct: int) -> KSig:
-        """Build S2 significance."""
-        ...
-
-    # === S3 operations ===
-
-    @abstractmethod
-    def has_s3(self, sig: KSig) -> bool:
-        """Check if S3 bit is set (prefix match)."""
-        ...
-
-    @abstractmethod
-    def get_s3(self, sig: KSig) -> int:
-        """Extract full S3 value."""
-        ...
-
-    @abstractmethod
-    def get_s3_s1_percentage(self, sig: KSig) -> int:
-        """Extract S3's S1 percentage for unordered matches."""
-        ...
-
-    @abstractmethod
-    def get_s3_s2_percentage(self, sig: KSig) -> int:
-        """Extract S3's S2 percentage for unordered matches."""
-        ...
-
-    @abstractmethod
-    def get_s3_gen_percentage(self, sig: KSig) -> int:
-        """Extract S3's generational S1 percentage."""
-        ...
-
-    @abstractmethod
-    def build_s3(self, s1_pct: int, s2_pct: int, gen_pct: int) -> KSig:
-        """Build S3 significance."""
-        ...
-
-
-    # === S4 operations ===
-
-    @abstractmethod
-    def has_s4(self, sig: KSig) -> bool:
-        """Check if all bits clear."""
-        ...
-
-    @abstractmethod
-    def get_s4(self, sig: KSig) -> KSig:
-        """Extract full S4 value."""
-        ...
-
-    # === helper functions ===
-
-    @abstractmethod
-    def get_level(self, sig: KSig) -> str:
-        """Detect significance level from signature bits.
-
-        Hierarchical detection: S1 > S2 > S3 > S4
-        """
-        ...
-
-    @abstractmethod
-    def set_level(self, sig: KSig, level: int) -> KSig:
-        """Set significance level.
-
-        Args:
-            sig: signature
-            level: significance level
-        
-        Returns:
-            Signature with level set
-        """
-        ...
-
-    @abstractmethod
-    def strip(self, sig: KSig) -> KSig:
-        """Strip significance bits, returning only token bits.
-
-        """
-        ...
-
-    @abstractmethod
-    def equal(self, sig1: KSig | KNodes, sig2: KSig| KNodes) -> bool:
-        """test if two signatures are equal
-
-        Args:
-            sig1: first signature
-            sig2: second signature
-
-        Returns:
-            True if equal, False otherwise"""
-        ...
-
-    @abstractmethod
-    def is_signed(self, sig) -> bool:
-        """Test signature is KSig
-
-        Args:
-            sig: value to test
-
-        Returns:
-            True if KSig, False otherwise
-        """
-        ...
-
-    @abstractmethod
-    def is_unsigned(self, sig) -> bool:
-        """Test signature is unsigned
-
-        Args:
-            sig: value to test
-
-        Returns:
-            True if unsigned, False otherwise
-        """
-        ...
 
 # === Abstract Tokenizer ===
 
 class KTokenizer(ABC):
     """Abstract base class for tokenizers.
 
-    A KTokenizer provides the essential interface for encoding text to tokens
-    and decoding tokens back to text.
+    A KTokenizer converts between text and nodes, and provides the
+    is_literal test used by signature construction.
     """
 
     @property
@@ -217,268 +32,149 @@ class KTokenizer(ABC):
         ...
 
     @abstractmethod
-    def is_literal(self, token_id: int) -> bool:
-        """Returns token literal status"""
+    def is_literal(self, node: int) -> bool:
+        """Return whether a node represents a literal token."""
         ...
 
     @abstractmethod
     def encode(self, text: str, pad_ws: bool = False) -> list[int]:
-        """Encode a string to token IDs.
-
-        Args:
-            text: Input string to encode
-            pad_ws: If True, strip and add trailing space
-
-        Returns:
-            List of token IDs (KNodes)
-        """
+        """Encode a string to a list of node IDs."""
         ...
 
     @abstractmethod
     def decode(self, ids: list[int]) -> str:
-        """Decode token IDs back to a string.
-
-        Args:
-            ids: List of token IDs
-
-        Returns:
-            Decoded string
-        """
+        """Decode node IDs back to a string."""
         ...
 
 
 # === Abstract Model ===
 
 class KModel(ABC):
-    """Abstract base class for knowledge graph models.
-
-    A KModel provides the essential interface for storing and querying KLines.
-    """
+    """Abstract base class for knowledge graph models."""
 
     @abstractmethod
     def exists(self, kline: KLine) -> bool:
-        """Check if a kline already exists in the frame."""
+        """Check if an equal KLine already exists in any tier."""
         ...
 
     @abstractmethod
-    def add(self, kline: KLine) -> bool:
-        """Add a KLine to the frame.
+    def add(self, kline: KLine, dedup: bool = False) -> bool:
+        """Add a KLine. Returns True if added, False if rejected."""
+        ...
 
-        Args:
-            kline: KLine to add
+    @abstractmethod
+    def find(self, signature: KSig) -> KLine | None:
+        """Find a KLine by signature (most recently added)."""
+        ...
 
-        Returns:
-            True if added, False if rejected (duplicate)
+    @abstractmethod
+    def find_all(self, signature: KSig) -> list[KLine]:
+        """Find all KLines with the given signature."""
+        ...
+
+    @abstractmethod
+    def find_by_nodes(self, nodes_signature: KSig) -> KLine | None:
+        """Find KLine by nodes signature."""
+        ...
+
+    @abstractmethod
+    def remove(self, signature: KSig) -> bool:
+        """Remove the most recently added KLine with given signature."""
+        ...
+
+    @abstractmethod
+    def where(self, predicate: Any) -> list[KLine]:
+        """Return KLines matching a predicate."""
+        ...
+
+    @abstractmethod
+    def resolve(self, node: int) -> KLine | None:
+        """Resolve a node value to the KLine whose signature matches."""
+        ...
+
+    @abstractmethod
+    def expand(self, kline: KLine, depth: int = 2) -> list[KLine]:
+        """Expand a KLine's graph context up to *depth* levels."""
+        ...
+
+    @abstractmethod
+    def descendants(self, node: int) -> set[int]:
+        """Recursively collect all descendant node values."""
+        ...
+
+    @abstractmethod
+    def query(self, signature: KSig, depth: int = 1) -> list[KLine]:
+        """Find all KLines with signature, then expand each to depth."""
+        ...
+
+    @abstractmethod
+    def promote(self, kline: KLine) -> bool:
+        """Promote a KLine to the base model."""
+        ...
+
+    @abstractmethod
+    def promote_all(self) -> int:
+        """Promote all frame KLines to the base model."""
+        ...
+
+    @abstractmethod
+    def klines(self) -> list[KLine]:
+        """Return all KLines in reverse insertion order."""
+        ...
+
+    @abstractmethod
+    def is_s1(self, node: int) -> bool:
+        """Test whether a node value resolves to a kline in the model.
+
+        the node value and the model's current state.
         """
         ...
 
     @abstractmethod
-    def upgrade(self, kline: KLine, significance: KSig):
-        """Upgrade the significance of a kline
-
-        Args:
-            kline: KLine to upgrade
-        """
+    def distance(self, query: KLine, candidate: KLine, level: str) -> int:
+        """Packed distance (S2 and S3 components). Level is "S2" or "S3"."""
         ...
 
     @abstractmethod
-    def find_kline(self, signature: KSig, significance: KSig | None = None) -> KLine:
-        """Find a KLine by its signature.
-
-        Args:
-            signature: The signature to search for
-            significance: Optional significance filter
-
-        Returns:
-            KLine if found, KNone otherwise
-        """
-        ...
-
-    @abstractmethod
-    def find_signed_klines(self, signature: KSig) -> list[KLine]:
-        """Find all KLines matching the given signature.
-
-        Args:
-            signature: The signature to search for
-
-        Returns:
-            List of matching KLines
-        """
-        ...
-
-    @abstractmethod
-    def query(self, query: KLine, depth: int = 1) -> Iterator[KLine]:
-        """Query KLines by ANDing significance with a query.
-
-        Args:
-            query: The query kline to match
-            depth: Maximum recursion depth for expanding child nodes
-
-        Returns:
-            Generator that yields matching KLines.
-        """
-        ...
-
-    @abstractmethod
-    def expand(
-        self,
-        kline: KLine,
-        depth: int = 1,
-    ) -> Iterator[KLine]:
-        """Expand a KLine and its descendants up to a given depth.
-
-        Args:
-            kline: KLine to expand
-            depth: Maximum recursion depth for expanding child nodes
-
-        Returns:
-            Generator that yields expanded KLines.
-        """
-        ...
-
-    @abstractmethod
-    def duplicate(self) -> "KModel":
-        """Create a duplicate of this model.
-
-        Returns:
-            A new KModel with copied KLines
-        """
-        ...
-
-    @abstractmethod
-    def get_all_descendants(self, node: KNode, visited: set[KSig] | None = None) -> set[KNode]:
-        """Recursively collect all descendant nodes.
-
-        Args:
-            node: The node to start from
-            visited: Set of already visited nodes (cycle detection)
-
-        Returns:
-            Set of all descendant node keys
-        """
+    def is_countersigned(self, a: KLine, b: KLine) -> bool:
+        """Test whether two Klines are countersigned."""
         ...
 
     @abstractmethod
     def __len__(self) -> int:
-        """Return the number of KLines in the frame."""
+        """Number of KLines in the frame."""
         ...
 
     @abstractmethod
     def __iter__(self) -> Iterator[KLine]:
-        """Iterate over all KLines in insertion order."""
+        """Iterate over all KLines."""
         ...
 
     @property
     @abstractmethod
-    def klines(self) -> list[KLine]:
-        """Return internal kline graph"""
+    def base(self) -> "KModel | None":
+        """Return the base model."""
         ...
+
 
 # === KAgent ===
 
-
 class KAgent(ABC):
-    """
-    Abstract base class for agents that can work with KScript.
-
-    A KAgent provides the essential interface needed by the KScript compiler:
-    - A tokenizer for encoding text to tokens
-    - A frame for storing and retrieving KLines
-    - A significance instance for S1-S4 operations
-    - Methods for encoding/decoding text and serialization
-
-    Subclasses can extend this interface with additional capabilities
-    (e.g., NLP features, activity tracking).
-    """
+    """Abstract base class for agents."""
 
     @property
     @abstractmethod
     def model(self) -> KModel:
-        """Get the knowledge graph model (base frame)."""
+        """Get the knowledge graph model."""
         ...
 
     @property
     @abstractmethod
     def tokenizer(self) -> KTokenizer:
-        """Get the tokenizer for encoding/decoding text."""
-        ...
-
-    @property
-    @abstractmethod
-    def significance(self) -> "KSignificance":
-        """Get the significance instance for S1-S4 operations."""
-        ...
-
-    # === Core operations ===
-
-    @abstractmethod
-    def rationalise(self, kline: KLine, frame: KModel | None = None) -> bool:
-        """Rationalise a KLine.
-
-        Args:
-            kline: KLine to rationalize
-            frame: existing frame context
-        
-        Returns:
-            True if significant (S1, S4), False if rational (S2, S3)
-        """
+        """Get the tokenizer."""
         ...
 
     @abstractmethod
-    def encode(self, text: str, nlp_detail: str) -> KLine | None:
-        """Encode text into a KLine and add it to the frame.
-
-        Args:
-            text: Input string to encode
-            nlp_detail: NLP detail level for type encoding
-
-        Returns:
-            KLine representing the encoded text, or None if duplicate
-        """
-        ...
-
-    @abstractmethod
-    def decode(self, token_sig: KNode) -> str:
-        """Decode a signature key back to text.
-
-        Args:
-            token_sig: signature key to decode
-
-        Returns:
-            Decoded string
-        """
-        ...
-
-    # === Serialization ===
-
-    @abstractmethod
-    def save(
-        self,
-        path: str | Path,
-        format: Literal["bin", "json"] = "bin",
-    ) -> None:
-        """Save agent to file.
-
-        Args:
-            path: File path to save to
-            format: 'bin' (default, compact) or 'json' (human-readable)
-        """
-        ...
-
-    @classmethod
-    @abstractmethod
-    def load(
-        cls,
-        path: str | Path,
-        format: Literal["bin", "json"] | None = None,
-    ) -> "KAgent":
-        """Load agent from file.
-
-        Args:
-            path: File path to load from
-            format: 'bin', 'json', or None (auto-detect from extension)
-
-        Returns:
-            Loaded KAgent instance
-        """
+    def rationalise(self, kline: KLine) -> bool:
+        """Rationalise a KLine. Returns True if significant (S1, S4)."""
         ...

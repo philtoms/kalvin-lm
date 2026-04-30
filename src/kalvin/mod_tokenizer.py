@@ -1,18 +1,31 @@
+"""Mod Tokenizer — modular bit-packed encoding.
+
+Characters map to bit positions. Two encoding modes:
+  - Packed: multi-char strings OR'd into single node, bit 0 clear.
+  - Literal: one node per character, upper 32 bits = code point,
+    lower 32 bits = 0xFFFFFFFF (literal mask).
+
+See specs/tokenizer.md for the full specification.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
 from kalvin.abstract import KTokenizer
 
-# Bit 0 is reserved for LITERAL flag: 1 = literal, 0 = packed (signature)
-LITERAL_BIT = 1
+# ── Literal mask ──────────────────────────────────────────────────────────
+# Lower 32 bits all set — unambiguous discriminator for literal nodes.
+LITERAL_MASK = 0xFFFF_FFFF
 
-# 64-bit Signature Allocation:
-# ┌─────────────────────────────────────────────────────────────────┐
-# │ Bit 0      │ LITERAL_BIT: 1=literal, 0=packed (signature)       │
-# │ Bits 1-32  │ Character tokenization (Mod32Tokenizer default)   │
-# │ Bits 33-63 │ Reserved for significance encoding (future use)   │
-# └─────────────────────────────────────────────────────────────────┘
-
-# Default alphabet with alphanumeric characters first, then common punctuation
-# A-Z (26) + a-z (26) + 0-9 (10) + space + backslash + common = fits in mod64 without collision
-_MOD_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \\\"',.;:!?/\n\t%{}[]()<>#$@£^&*+-_="
+# ── Default alphabet ──────────────────────────────────────────────────────
+# All printable ASCII (codes 32–126), order determines bit priority.
+_MOD_ALPHABET = (
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "abcdefghijklmnopqrstuvwxyz"
+    "0123456789"
+    " \\\"',.;:!?/\n\t%{}[]()<>#$@£^&*+-_="
+)
 
 
 def _build_char_bit_maps(
@@ -20,14 +33,8 @@ def _build_char_bit_maps(
 ) -> tuple[dict[str, int], dict[int, str]]:
     """Build character-to-bit and bit-to-character mappings.
 
-    Args:
-        alphabet: String of characters to map (order determines bit priority)
-        modulo: Number of bit positions (bits 1 to modulo-1 are used)
-
-    Bit 0 is reserved for the LITERAL flag, so character bits start at bit 1.
-
-    Returns:
-        Tuple of (char_bit, bit_char) dictionaries
+    Bit 0 is not used for packed nodes (it is clear). Character bits
+    start at bit 1 and wrap at (modulo - 1).
     """
     char_bit: dict[str, int] = {}
     bit_char: dict[int, str] = {}
@@ -37,13 +44,12 @@ def _build_char_bit_maps(
         if bit_value not in bit_char:
             bit_char[bit_value] = char
 
-    # Characters map to bit positions 1 to (modulo-1), wrapping
     i = 0
     for c in alphabet:
         add_mapping(c, 1 << ((i % (modulo - 1)) + 1))
         i += 1
 
-    # Other printable ASCII characters not in alphabet
+    # Other printable ASCII not in alphabet
     for j in range(32, 127):
         c = chr(j)
         if c not in char_bit:
@@ -54,102 +60,86 @@ def _build_char_bit_maps(
 
 
 class ModTokenizer(KTokenizer):
-    """Modular tokenizer that maps characters to bit positions.
-
-    Characters are assigned to bit positions 1 to (modulo-1), wrapping.
-    Bit 0 is reserved for LITERAL_BIT to distinguish packed vs literal encoding.
-    """
+    """Modular tokenizer that maps characters to bit positions."""
 
     def __init__(self, alphabet: str | None = None, modulo: int = 32):
-        """Initialize the tokenizer.
-
-        Args:
-            alphabet: Character sequence for mapping (default: _MOD_ALPHABET)
-            modulo: Number of bit positions (default: 32)
-        """
         self._alphabet = alphabet if alphabet is not None else _MOD_ALPHABET
         self._modulo = modulo
         self._char_bit, self._bit_char = _build_char_bit_maps(self._alphabet, modulo)
 
     @property
     def alphabet(self) -> str:
-        """Return the character alphabet used for tokenization."""
         return self._alphabet
 
     @property
     def CHAR_BIT(self) -> dict[str, int]:
-        """Character to bit value mapping."""
         return self._char_bit
 
     @property
     def BIT_CHAR(self) -> dict[int, str]:
-        """Bit value to character mapping."""
         return self._bit_char
 
     @property
     def vocab_size(self) -> int:
-        """Return the number of unique character tokens (excluding LITERAL_BIT)."""
         return len(self._bit_char)
 
-    def is_literal(self, token_id: int) -> bool:
-        return bool(token_id & LITERAL_BIT)
+    # ── Literal test ──────────────────────────────────────────────────
 
-    def encode(self, text: str|int, pack: bool = True, pad_ws: bool = False) -> list[int]:
-        """Encode a string to token IDs.
+    def is_literal(self, node: int) -> bool:
+        """Return True if node is a literal token (lower 32 bits all set)."""
+        return (node & LITERAL_MASK) == LITERAL_MASK
+
+    # ── Encode ────────────────────────────────────────────────────────
+
+    def encode(self, text: str, pack: bool = True, pad_ws: bool = False) -> list[int]:
+        """Encode text to a list of nodes.
 
         Args:
-            text: Input string to encode
-            pack: If True, multi-char strings are packed into single token (OR-ed bits)
-                  without LITERAL_BIT. If False, returns one token per character
-                  with LITERAL_BIT set (literal encoding).
-            pad_ws: If True, strip and add trailing space
+            text: Input string to encode.
+            pack: If True, multi-char strings are OR'd into a single packed
+                  node. If False, each character becomes a literal node.
+            pad_ws: If True, strip and add trailing space.
 
         Returns:
-            List of token IDs
+            List of uint64 node values.
         """
-        if pad_ws and isinstance(text, str):
+        if pad_ws:
             text = text.strip() + " "
 
         if not text:
             return []
 
-        if pack and isinstance(text, str):
+        if pack:
             token_id = 0
             for c in text:
                 token_id |= self._char_bit[c]
             return [token_id]
-        elif isinstance(text, str):
-            return [(ord(c) << 1) | LITERAL_BIT for c in text]
         else:
-            return [(text << 1) | LITERAL_BIT]
+            return [(ord(c) << 32) | LITERAL_MASK for c in text]
+
+    # ── Decode ────────────────────────────────────────────────────────
 
     def decode(self, ids: list[int], pack: bool | None = None) -> str:
-        """Decode token IDs back to a string.
+        """Decode node IDs back to a string.
 
-        Args:
-            ids: List of token IDs
-            pack: If None (default), auto-detect from LITERAL_BIT in token.
-                  If True, treat each ID as packed (multiple bits set).
-                  If False, treat each ID as a single character.
-
-        Returns:
-            Decoded string
+        Auto-detects literal vs packed from the literal mask unless
+        *pack* is explicitly True or False.
         """
         chars = []
-        for token_id in ids:
+        for node in ids:
             if pack is None:
-                is_packed = not bool(token_id & LITERAL_BIT)
+                is_packed = not ((node & LITERAL_MASK) == LITERAL_MASK)
             else:
                 is_packed = pack
 
             if is_packed:
-                chars.append(self._decode_packed(token_id))
+                chars.append(self._decode_packed(node))
             else:
-                chars.append(chr(token_id >> 1))
+                chars.append(chr(node >> 32))
         return "".join(chars)
 
     def _decode_packed(self, token_id: int) -> str:
-        """Decode a packed token ID to string by finding all set bits."""
+        """Decode a packed node by finding all set bits."""
         chars = []
         for bit_pos in range(1, self.vocab_size + 1):
             bit_value = 1 << bit_pos
@@ -160,26 +150,18 @@ class ModTokenizer(KTokenizer):
         return "".join(chars)
 
     def batch_encode(self, texts: list[str], pack: bool = True) -> list[list[int]]:
-        """Encode multiple strings."""
         return [self.encode(t, pack=pack) for t in texts]
 
 
 class Mod32Tokenizer(ModTokenizer):
-    """Mod32 tokenizer with 31 bit positions (bits 1-31)."""
+    """Mod32 tokenizer — 31 character bit positions (bits 1–31)."""
 
     def __init__(self, alphabet: str | None = None):
         super().__init__(alphabet=alphabet, modulo=32)
 
 
 class Mod64Tokenizer(ModTokenizer):
-    """Mod64 tokenizer with 63 bit positions (bits 1-63)."""
+    """Mod64 tokenizer — 63 character bit positions (bits 1–63)."""
 
     def __init__(self, alphabet: str | None = None):
         super().__init__(alphabet=alphabet, modulo=64)
-
-
-class Mod128Tokenizer(ModTokenizer):
-    """Mod128 tokenizer with 127 bit positions (bits 1-127)."""
-
-    def __init__(self, alphabet: str | None = None):
-        super().__init__(alphabet=alphabet, modulo=128)

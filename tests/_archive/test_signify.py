@@ -27,7 +27,7 @@ def _calculate_significance(model, query: KLine, target: KLine) -> int:
     min_len = min(len(query_nodes), len(target_nodes))
 
     s1_match_positions = set(
-        i for i in range(min_len) if _sig.equal(query_nodes[i], target_nodes[i])
+        i for i in range(min_len) if _sig.is_identity(query_nodes[i], target_nodes[i])
     )
     s1_matches = len(s1_match_positions)
 

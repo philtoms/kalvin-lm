@@ -20,15 +20,13 @@ class RationaliseEvent:
         self.significance = significance
 
     def __repr__(self) -> str:
-        return f"RationaliseEvent({self.kind!r}, {self.query!r}, {self.value!r}, {self.significance!r})"
+        return f"RationaliseEvent({self.kind!r}, sig={self.significance:#x})"
 
 
 class EventBus:
     """Single-channel pub/sub for rationalisation events.
 
-    Thread-safe: publish() may be called from any thread (e.g. the cogitate
-    background thread). Callbacks are invoked synchronously under a lock so
-    subscribers always see a consistent event order.
+    Thread-safe: publish() may be called from any thread.
     """
 
     def __init__(self) -> None:
@@ -36,12 +34,10 @@ class EventBus:
         self._subscribers: list[Callable[[RationaliseEvent], None]] = []
 
     def subscribe(self, callback: Callable[[RationaliseEvent], None]) -> None:
-        """Register a callback that receives ALL events."""
         with self._lock:
             self._subscribers.append(callback)
 
     def publish(self, event: RationaliseEvent) -> None:
-        """Publish an event to all subscribers."""
         with self._lock:
             subscribers = list(self._subscribers)
         for cb in subscribers:
