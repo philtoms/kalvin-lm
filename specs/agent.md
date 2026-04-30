@@ -280,9 +280,11 @@ This re-rationalisation runs on the cogitation thread.
 
 The Cogitator runs asynchronously. When the backlog has been empty for a
 configurable timeout (default: **2 seconds**), the Cogitator emits a
-`"done"` event and stops the thread.
+`"done"` event so that subscribers can realign. The Cogitator does **not**
+halt on timeout — it resets its idle timer and continues processing new
+work items as they arrive. Each timeout expiry emits another `"done"` event.
 
-The Cogitator can be stopped explicitly via `join(timeout)`.
+The Cogitator can only be stopped explicitly via `join(timeout)`.
 
 ## Events
 

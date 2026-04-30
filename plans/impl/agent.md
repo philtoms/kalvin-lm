@@ -234,7 +234,9 @@ to S1 during cogitation.
 
 - Runs in a background daemon thread.
 - Pulls work items from a backlog queue.
-- When backlog is empty for `timeout` seconds → emit `"done"`, stop thread.
+- When backlog is empty for `timeout` seconds → emit `"done"` event so
+  subscribers can realign. Does **not** halt — resets idle timer and
+  continues processing new work items.
 - Can be stopped via `cogitate_join(timeout)`.
 
 ### Countersignature Test

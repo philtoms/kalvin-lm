@@ -57,7 +57,8 @@ class Cogitator:
         Callback invoked when cogitation discovers an S1 result.
         Receives (query_kline, candidate_kline).
     timeout:
-        Idle seconds before emitting "done" and stopping. Default 2.0.
+        Idle seconds before emitting "done" so subscribers can realign.
+        Does not halt the thread. Default 2.0.
     """
 
     def __init__(
@@ -105,7 +106,7 @@ class Cogitator:
                         self._event_bus.publish(
                             RationaliseEvent("done", done_k, done_k, 0)
                         )
-                        return
+                        idle_time = 0.0
                 idle_time = 0.0
                 if self._stop.is_set() and not self._backlog:
                     return
