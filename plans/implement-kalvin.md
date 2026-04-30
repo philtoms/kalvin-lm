@@ -472,7 +472,7 @@ these functions.
 ```python
 model.is_s1(node) → bool             # checks model.find(node)
 model._is_canon(kline) → bool        # sig == make_signature(nodes)
-model._edge_hops(sig) → int          # non-canonical chain depth
+model._edge_hops(sig) → Iterator    # yields (hop_count, next_sig)
 ```
 
 `is_s1` returns `True` when the node value resolves to a kline in any tier
@@ -481,8 +481,9 @@ model._edge_hops(sig) → int          # non-canonical chain depth
 `_is_canon` tests whether a kline is canonical (its signature equals the
 `make_signature` reduction of its nodes).
 
-`_edge_hops` follows the non-canonical resolution chain from a signature,
-returning the number of hops taken. See §4.2.
+`_edge_hops` is a generator that yields `(hop_count, next_sig)` pairs for
+each non-canonical resolution step. The `s2_distance` algorithm consumes
+it to find the first hop that lands in the opposing kline's mismatch set.
 
 ---
 
@@ -718,12 +719,13 @@ grounding credit.
 - **edge_hops(sig)** — the number of non-canonical resolution steps from a
   signature. Follows the chain: resolve `sig` → kline → `make_signature(kline.nodes)`
   → resolve again. Stops at a dead end (unresolvable) or a canonical kline.
-  Returns the number of hops taken (0 = dead end or immediately canonical).
+  Yields `(hop_count, next_sig)` at each step, where `next_sig` is the
+  signature produced by `make_signature(kline.nodes)` at that hop.
 - **MAX_HOP** — hyperparameter (default 100). Upper bound on chain depth and
   the penalty for unresolvable mismatched nodes.
 
 ```python
-def _edge_hops(self, sig: int) -> int:
+def _edge_hops(self, sig: int) -> Iterator[tuple[int, int]]:
     hop_count = 0
     while hop_count < MAX_HOP:
         kline = self.find(sig)
@@ -731,7 +733,7 @@ def _edge_hops(self, sig: int) -> int:
             break
         hop_count += 1
         sig = self._make_sig(kline.nodes)
-    return hop_count
+        yield hop_count, sig
 ```
 
 #### Algorithm
@@ -753,13 +755,23 @@ def s2_distance(self, query: KLine, candidate: KLine) -> int:
 
     distance = 0
 
-    # Mismatched nodes: hop-based distance (0 hops = MAX_HOP penalty)
+    # Mismatched query nodes: find hops that land in mismatched_c
     for n in mismatched_q:
-        hops = self._edge_hops(n)
-        distance += hops if hops > 0 else MAX_HOP
+        hop_distance = MAX_HOP
+        for hops, match_sig in self._edge_hops(n):
+            if match_sig in mismatched_c:
+                hop_distance = hops
+                break
+        distance += hop_distance
+
+    # Mismatched candidate nodes: find hops that land in mismatched_q
     for n in mismatched_c:
-        hops = self._edge_hops(n)
-        distance += hops if hops > 0 else MAX_HOP
+        hop_distance = MAX_HOP
+        for hops, match_sig in self._edge_hops(n):
+            if match_sig in mismatched_q:
+                hop_distance = hops
+                break
+        distance += hop_distance
 
     # Grounding credit: matched nodes that resolve to known klines
     for n in matched:
@@ -1158,9 +1170,9 @@ def significance_value(distance) -> int:
 | is_s1 node not signature  | Node in kline.nodes but no kline with that sig     |
 | \_is_canon match          | `sig == make_signature(nodes)` → True              |
 | \_is_canon mismatch       | `sig != make_signature(nodes)` → False             |
-| \_edge_hops unresolvable  | Node doesn't resolve → 0 hops                      |
-| \_edge_hops canonical     | Resolves to canonical → 0 hops                     |
-| \_edge_hops chain         | N non-canonical hops before dead end or canonical  |
+| \_edge_hops unresolvable  | Node doesn't resolve → empty generator                   |
+| \_edge_hops canonical     | Resolves to canonical → empty generator                  |
+| \_edge_hops chain         | Yields (hop_count, next_sig) at each non-canonical step  |
 | s2_distance empty query   | Returns 1                                          |
 | s2_distance no resolution | All mismatched unresolvable → MAX_HOP each         |
 | s2_distance grounding     | Matched node that resolves → −1 credit             |

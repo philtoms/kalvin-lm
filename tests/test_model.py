@@ -250,37 +250,38 @@ class TestIsCanon:
 
 class TestEdgeHops:
     def test_edge_hops_unresolvable(self):
-        """Node that doesn't resolve → 0 hops."""
+        """Node that doesn't resolve → empty generator."""
         m = make_model()
-        assert m._edge_hops(99) == 0
+        assert list(m._edge_hops(99)) == []
 
     def test_edge_hops_canonical(self):
-        """Node that resolves to canonical → 0 hops."""
+        """Node that resolves to canonical → empty generator."""
         m = make_model()
         m.add(KLine(10, [10]))  # canonical
-        assert m._edge_hops(10) == 0
+        assert list(m._edge_hops(10)) == []
 
     def test_edge_hops_chain(self):
-        """Non-canonical chain: 5→10→20→30(canonical)."""
+        """Non-canonical chain: 5→(1,10)→(2,20)→(3,30) where 30 is canonical."""
         m = make_model()
         m.add(KLine(30, [30]))  # canonical
         m.add(KLine(20, [30]))  # non-canon: sig=20, make_sig([30])=30
         m.add(KLine(10, [20]))  # non-canon: sig=10, make_sig([20])=20
         m.add(KLine(5, [10]))   # non-canon: sig=5,  make_sig([10])=10
-        assert m._edge_hops(5) == 3   # 5→10→20→30
-        assert m._edge_hops(10) == 2  # 10→20→30
-        assert m._edge_hops(20) == 1  # 20→30
-        assert m._edge_hops(30) == 0  # canonical
-        assert m._edge_hops(99) == 0  # unresolvable
+        assert list(m._edge_hops(5))  == [(1, 10), (2, 20), (3, 30)]
+        assert list(m._edge_hops(10)) == [(1, 20), (2, 30)]
+        assert list(m._edge_hops(20)) == [(1, 30)]
+        assert list(m._edge_hops(30)) == []  # canonical
+        assert list(m._edge_hops(99)) == []  # unresolvable
 
 
 class TestS2Distance:
     def test_s2_distance_self_no_model(self):
-        """Self-comparison with no model entries: mismatch=0, grounded credit only."""
+        """Self-comparison: all nodes match, grounding credit only."""
         m = make_model()
         k = KLine(10, [10, 20, 30])
         d = m.s2_distance(k, k)
-        assert 1 <= d < D_BOUNDARY
+        # All nodes match, no resolution → distance = -3 (no grounding), clamped to 1
+        assert d == 1
 
     def test_s2_distance_empty_query(self):
         """Empty query → minimum distance 1."""
@@ -295,7 +296,7 @@ class TestS2Distance:
         q = KLine(5, [1, 2, 3])
         c = KLine(6, [1, 4, 5])
         # matched: {1}, mismatched_q: {2,3}, mismatched_c: {4,5}
-        # edge_hops all 0 → MAX_HOP penalty
+        # No chains → all MAX_HOP
         # grounded: find(1) → None → no credit
         expected = 4 * 100  # 4 mismatched × MAX_HOP
         assert m.s2_distance(q, c) == expected
@@ -307,28 +308,54 @@ class TestS2Distance:
         q = KLine(5, [1, 2])
         c = KLine(6, [1, 3])
         # matched: {1}, mismatched_q: {2}, mismatched_c: {3}
-        # mismatched: 2 × MAX_HOP = 200
+        # No chains reach opposing mismatch → 2 × MAX_HOP = 200
         # grounded: find(1) → kline → -1
         expected = 200 - 1
         assert m.s2_distance(q, c) == expected
 
-    def test_s2_distance_mismatched_with_edge_hops(self):
-        """Mismatched node with resolution chain gets proportional distance."""
+    def test_s2_distance_hop_reaches_opposing_mismatch(self):
+        """Mismatched node whose chain reaches the opposing mismatch set."""
         m = make_model()
-        # Chain: 5→10→20→30(canonical), 3 hops from 5
-        m.add(KLine(30, [30]))
-        m.add(KLine(20, [30]))
-        m.add(KLine(10, [20]))
-        m.add(KLine(5, [10]))
+        # Chain: 5→10→20→30(canonical)
+        # make_sig chain: find(5)→nodes[10]→make_sig=10, find(10)→nodes[20]→make_sig=20, etc.
+        m.add(KLine(30, [30]))  # canonical
+        m.add(KLine(20, [30]))  # non-canon
+        m.add(KLine(10, [20]))  # non-canon
+        m.add(KLine(5, [10]))   # non-canon
 
-        q = KLine(100, [5, 2, 3])  # 3 is in c
-        c = KLine(200, [3, 4])     # 3 matches
-        # matched: {3}, mismatched_q: {5, 2}, mismatched_c: {4}
-        # edge_hops(5): 3 hops → +3
-        # edge_hops(2): 0 → MAX_HOP → +100
-        # edge_hops(4): 0 → MAX_HOP → +100
-        # matched 3: find(3) → None → no credit
-        expected = 3 + 100 + 100
+        q = KLine(100, [5, 2])    # mismatched_q: {5, 2}
+        c = KLine(200, [10, 3])   # mismatched_c: {10, 3}
+        # matched: {}, no grounding credit
+        #
+        # mismatched_q node 5: edge_hops yields (1,10),(2,20),(3,30)
+        #   hop 1 → sig 10 ∈ mismatched_c → hop_distance = 1
+        # mismatched_q node 2: no resolution → MAX_HOP
+        # mismatched_c node 10: edge_hops yields (1,20),(2,30)
+        #   neither 20 nor 30 ∈ mismatched_q → MAX_HOP
+        # mismatched_c node 3: no resolution → MAX_HOP
+        expected = 1 + 100 + 100 + 100  # = 301
+        assert m.s2_distance(q, c) == expected
+
+    def test_s2_distance_bidirectional_hop_match(self):
+        """Both query and candidate mismatched nodes reach opposing sets."""
+        m = make_model()
+        # Chain: 5→(1,10), 10 is canonical
+        m.add(KLine(10, [10]))  # canonical
+        m.add(KLine(5, [10]))   # non-canon
+
+        # Chain: 20→(1,30), 30 is canonical
+        m.add(KLine(30, [30]))  # canonical
+        m.add(KLine(20, [30]))  # non-canon
+
+        q = KLine(100, [5, 20])     # mismatched_q: {5, 20}
+        c = KLine(200, [10, 30])    # mismatched_c: {10, 30}
+        # matched: {}
+        #
+        # q-node 5: edge_hops yields (1,10). 10 ∈ mismatched_c → hop_distance=1
+        # q-node 20: edge_hops yields (1,30). 30 ∈ mismatched_c → hop_distance=1
+        # c-node 10: canonical → no hops → MAX_HOP
+        # c-node 30: canonical → no hops → MAX_HOP
+        expected = 1 + 1 + 100 + 100  # = 202
         assert m.s2_distance(q, c) == expected
 
     def test_s2_distance_all_matched_grounded(self):

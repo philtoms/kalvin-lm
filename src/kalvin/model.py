@@ -8,7 +8,7 @@ See specs/model.md for the full specification.
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import Callable, Iterator
 
 from kalvin.kline import KLine, KSig
 from kalvin.stm import STM
@@ -320,23 +320,21 @@ class Model:
         """Test whether a kline is canonical (signature = make_signature of nodes)."""
         return kline.signature == self._make_sig(kline.nodes)
 
-    def _edge_hops(self, sig: int) -> int:
-        """Count non-canonical resolution chain hops.
+    def _edge_hops(self, sig: int) -> Iterator[tuple[int, int]]:
+        """Yield (hop_count, next_sig) for each non-canonical resolution step.
 
         Follows: resolve sig → kline → make_signature(kline.nodes) → repeat.
         Stops at a dead end (unresolvable) or a canonical kline.
-        Returns the number of hops taken (0 = dead end or immediately canon).
+        Yields (hop_count, next_sig) at each step.
         """
         hop_count = 0
         while hop_count < MAX_HOP:
             kline = self.find(sig)
-            if kline is None:
-                break
-            if self._is_canon(kline):
+            if kline is None or self._is_canon(kline):
                 break
             hop_count += 1
             sig = self._make_sig(kline.nodes)
-        return hop_count
+            yield hop_count, sig
 
     def s2_distance(self, query: KLine, candidate: KLine) -> int:
         """Distance when some nodes match. Returns value in [1, D_BOUNDARY).
@@ -356,17 +354,27 @@ class Model:
 
         distance = 0
 
-        # Mismatched nodes: hop-based distance (0 hops = max penalty)
+        # Mismatched query nodes: find hops that land in mismatched_c
         for n in mismatched_q:
-            hops = self._edge_hops(n)
-            distance += hops if hops > 0 else MAX_HOP
+            hop_distance = MAX_HOP
+            for hops, match_sig in self._edge_hops(n):
+                if match_sig in mismatched_c:
+                    hop_distance = hops
+                    break
+            distance += hop_distance
+
+        # Mismatched candidate nodes: find hops that land in mismatched_q
         for n in mismatched_c:
-            hops = self._edge_hops(n)
-            distance += hops if hops > 0 else MAX_HOP
+            hop_distance = MAX_HOP
+            for hops, match_sig in self._edge_hops(n):
+                if match_sig in mismatched_q:
+                    hop_distance = hops
+                    break
+            distance += hop_distance
 
         # Grounding credit: matched nodes that resolve to known klines
         for n in matched:
-            if self.is_s1(n) is not None:
+            if self.is_s1(n):
                 distance -= 1
 
         return max(1, min(int(distance), D_BOUNDARY - 1))

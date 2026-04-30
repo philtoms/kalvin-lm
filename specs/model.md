@@ -416,19 +416,23 @@ a node mismatch between query and candidate klines.
   known kline in any tier.
 - **is_canon(kline)** — `kline.signature == make_signature(kline.nodes)`.
   The kline's signature exactly represents its nodes.
-- **edge_hops(sig)** — the number of non-canonical resolution steps from a
-  signature:
+- **edge_hops(sig)** — a generator that yields `(hop_count, next_sig)` pairs
+  for each non-canonical resolution step from a signature:
   ```
   edge_hops(sig):
       hop_count = 0
-      while is_s1(sig) and not is_canon(find(sig)):
+      while hop_count < MAX_HOP:
+          kline = find(sig)
+          if kline is None or is_canon(kline):
+              break
           hop_count += 1
-          sig = make_signature(find(sig).nodes)
-      return hop_count
+          sig = make_signature(kline.nodes)
+          yield (hop_count, sig)
   ```
   Follows the chain: resolve `sig` → kline → `make_signature(kline.nodes)`
   → resolve again. Stops at a dead end (unresolvable) or a canonical kline.
-  Returns the number of hops taken.
+  Yields `(hop_count, next_sig)` at each step, where `next_sig` is the
+  signature produced by `make_signature(kline.nodes)` at that hop.
 - **MAX_HOP** — hyperparameter (default 100). Upper bound on chain depth
   and the penalty for unresolvable mismatched nodes.
 
@@ -449,13 +453,23 @@ s2_distance(query, candidate):
 
     distance = 0
 
-    # Mismatched nodes: hop-based distance (0 hops = MAX_HOP penalty)
+    # Mismatched query nodes: find hops that land in mismatched_c
     for n in mismatched_q:
-        hops = edge_hops(n)
-        distance += hops if hops > 0 else MAX_HOP
+        hop_distance = MAX_HOP
+        for hops, match_sig in edge_hops(n):
+            if match_sig in mismatched_c:
+                hop_distance = hops
+                break
+        distance += hop_distance
+
+    # Mismatched candidate nodes: find hops that land in mismatched_q
     for n in mismatched_c:
-        hops = edge_hops(n)
-        distance += hops if hops > 0 else MAX_HOP
+        hop_distance = MAX_HOP
+        for hops, match_sig in edge_hops(n):
+            if match_sig in mismatched_q:
+                hop_distance = hops
+                break
+        distance += hop_distance
 
     # Grounding credit: matched nodes that resolve to known klines
     for n in matched:
@@ -467,20 +481,21 @@ s2_distance(query, candidate):
 
 #### Per-node contributions
 
-| Node state                               | Contribution | Rationale                      |
-| ---------------------------------------- | ------------ | ------------------------------ |
-| Mismatched, edge_hops = 0 (unresolvable) | +MAX_HOP     | No path to grounded knowledge  |
-| Mismatched, edge_hops = N                | +N           | N hops from grounded knowledge |
-| Matched + grounded (is_s1)               | −1           | Cancels one hop-distance unit  |
-| Matched + ungrounded                     | 0            | Neutral                        |
+| Node state                                              | Contribution | Rationale                        |
+| ------------------------------------------------------- | ------------ | -------------------------------- |
+| Mismatched, chain reaches opposing mismatch set at hop N | +N           | N hops to bridge the gap         |
+| Mismatched, chain never reaches opposing mismatch set   | +MAX_HOP     | No path between mismatched nodes |
+| Matched + grounded (is_s1)                              | −1           | Cancels one hop-distance unit    |
+| Matched + ungrounded                                    | 0            | Neutral                          |
 
 #### Properties
 
 1. **Starting distance = 0** — all S2 bits clear. Distance grows with
    mismatch and discovery.
-2. **Hop distance is the distance** — each mismatched node contributes
-   `1..MAX_HOP` based on its edge hop depth. A node 1 hop from grounded
-   knowledge contributes 1. An unresolvable node contributes MAX_HOP.
+2. **Hop distance bridges the gap** — each mismatched node follows its
+   resolution chain looking for a signature in the opposing kline's
+   mismatch set. If found at hop N, the distance is N (proportional to
+   how far apart the nodes are). If never found, MAX_HOP (no connection).
 3. **Grounding credit is same-scale** — each matched node that resolves
    subtracts 1, directly offsetting one hop-distance unit.
 4. **Bidirectional** — mismatched nodes from both query and candidate
