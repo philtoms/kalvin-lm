@@ -121,11 +121,11 @@ Higher significance = closer match = less work needed. The ordering is strict: *
 | State | Condition                            | Distance          | Significance     | Agent Action         |
 | ----- | ------------------------------------ | ----------------- | ---------------- | -------------------- |
 | S1    | All nodes match perfectly            | 0                 | MAX (all bits 1) | Confirm. Promote.    |
-| S2    | Some nodes match, some don't         | [1, D_boundary)   | High             | Queue for cogitation |
-| S3    | No nodes match, but candidates exist | [D_boundary, MAX) | Low              | Queue for cogitation |
+| S2    | Some nodes match, some don't         | Packed (lower)    | High             | Queue for cogitation |
+| S3    | No nodes match, but candidates exist | Packed (upper)    | Low              | Queue for cogitation |
 | S4    | No candidates found at all           | MAX               | 0 (all bits 0)   | Novel. Promote.      |
 
-`D_boundary` (default `0x8000_0000_0000_0000`, the midpoint) is a hyperparameter that separates S2 and S3 distance ranges.
+Distance is a packed 64-bit value: `(s3_component << D_PACK_SHIFT) + s2_component`, where `D_PACK_SHIFT` (default 32) is a hyperparameter defining the bit boundary between S2 (lower bits) and S3 (upper bits) components. Each component is clamped to `(1 << D_PACK_SHIFT) - 1` before packing.
 
 Key insight: **S1 and S4 are "significants"** — the KLine is either confirmed or entirely novel. No further processing needed. **S2 and S3 are "rationals"** — partial relationships that require deeper investigation through **cogitation**.
 
@@ -146,8 +146,8 @@ Before a distance calculation can be applied to establish significance between t
 1. For each node in the query KLine, test: does this node exist in the candidate?.
 2. Count the matched nodes and **route**:
    - All nodes match → distance = 0 → **S1**
-   - Some nodes match → `model.s2_distance(query, candidate)` → **S2**
-   - No nodes match → `model.s3_distance(query, candidate)` → **S3**
+   - Some nodes match → `model.distance(query, candidate, "S2")` → **S2**
+   - No nodes match → `model.distance(query, candidate, "S3")` → **S3**
 
 This routing is **pessimistic**: the presence of any node in either KLine that doesn't exist in the other pulls the overall level down. Only S2 and S3 routes call model distance functions.
 
@@ -307,7 +307,7 @@ Candidate retrieval uses bitwise AND on signatures as a fast pre-filter. This is
 The following have TBD semantics in the current specs:
 
 1. **`model.is_s1(node)`** — What does "perfect match" mean for a single node against a candidate? The agency framing suggests: a canonical match where the node's contribution to the query's signature is fully represented in the candidate's signature (`node & candidate.signature == node`), or a countersigned match (see `model.is_countersigned`). The routing depends on this, but the full comparison semantics are not yet defined.
-2. **`model.s2_distance(query, candidate)`** — How is partial-alignment distance computed? The agency framing characterises this as the distance between an underfitting or overfitting KLine and S1: the degree of misalignment between signature information and node content. Must return a value in `[1, D_boundary)`.
-3. **`model.s3_distance(query, candidate)`** — How is weak-recognition distance computed? The agency framing characterises this as connotational distance: how far the query's nodes are from the candidate's structure, absent direct alignment. Must return a value in `[D_boundary, MAX)`.
+2. ~~**`model.s2_distance(query, candidate)`**~~ — Resolved. Replaced by `model.distance(query, candidate, level)` with per-node hop-distance and connotation bridging. See @model spec.
+3. ~~**`model.s3_distance(query, candidate)`**~~ — Resolved. Replaced by `model.distance(query, candidate, level)` with connotation bridging for indirect node connections. See @model spec.
 4. **Candidate retrieval efficiency** — `model.where(predicate)` performs a linear scan. A dedicated `candidates_for(signature)` method with an inverted bit-to-signature index may be needed for large models.
 5. **Mod literal encoding capacity** — The new literal encoding `(char << 32) | 0xFFFFFFFF` places the character code point in the upper 32 bits, limiting code points to the range [0, 2³²−1]. This covers the entire Unicode range (max code point 0x10FFFF) with substantial headroom.

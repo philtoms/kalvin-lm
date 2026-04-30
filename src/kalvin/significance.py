@@ -6,8 +6,8 @@ Three-step pipeline: Route → Distance → Invert.
 
 Route (self-contained, no model call):
   - All nodes match (exist in candidate) → distance = 0 → S1
-  - Some nodes match → s2_distance → S2
-  - No nodes match → s3_distance → S3
+  - Some nodes match → distance → S2
+  - No nodes match → distance → S3
   - No candidates → distance = MAX → S4
 
 See specs/significance.md for the full specification.
@@ -21,8 +21,6 @@ from kalvin.kline import KLine, KSig
 
 MASK64 = 0xFFFF_FFFF_FFFF_FFFF
 
-# D_boundary separates S2 and S3 distance ranges
-D_BOUNDARY = 0x8000_0000_0000_0000
 D_MAX = 0xFFFF_FFFF_FFFF_FFFF
 
 
@@ -47,7 +45,7 @@ def significance_pipeline(
     Args:
         query: The query KLine Q.
         candidates: Candidate KLines from the model (possibly empty).
-        model: Model providing s2_distance, s3_distance.
+        model: Model providing distance().
 
     Returns:
         List of (candidate, SignificanceResult) tuples.
@@ -99,13 +97,11 @@ def compute_significance(
         level = "S1"
     elif match_count > 0:
         # Some match → S2
-        raw_distance = model.s2_distance(query, candidate)
-        distance = max(1, min(raw_distance, D_BOUNDARY - 1))
+        distance = model.distance(query, candidate, "S2")
         level = "S2"
     else:
         # No match → S3
-        raw_distance = model.s3_distance(query, candidate)
-        distance = max(D_BOUNDARY, min(raw_distance, D_MAX - 1))
+        distance = model.distance(query, candidate, "S3")
         level = "S3"
 
     # Step 3: Invert

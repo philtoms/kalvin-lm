@@ -49,7 +49,7 @@ Input Text → Tokenizer → Nodes → KLine → Agent → Model (Knowledge Grap
 │  Depends on: Tokenizer, Model, Signature, Significance, Events   │
 ├──────────────────────────────────────────────────────────────────┤
 │  Significance Pipeline                                            │
-│  Depends on: Model (s2_distance, s3_distance)                    │
+│  Depends on: Model (distance)                                     │
 │  Routing is self-contained (node-membership, no model call)       │
 ├──────────────────────────────────────────────────────────────────┤
 │  Model (STM → Frame → Base)                                      │
@@ -164,7 +164,7 @@ is_signature(x)  = NO TEST — any uint64 can be a signature
 | ----------------------- | -------------------- | -------------------------------------------------------- |
 | `0`                     | `UNSIGNED`           | No nodes. Empty kline. Cannot be found via AND matching. |
 | `1`                     | `LITERAL_ONLY`       | Contains literal content only (no non-literal nodes).    |
-| `0x8000_0000_0000_0000` | `D_BOUNDARY`         | Midpoint. Separates S2 and S3 distance ranges.           |
+| 32                      | `D_PACK_SHIFT`       | Bit position separating S2 and S3 components in packed distance. |
 | `0xFFFF_FFFF_FFFF_FFFF` | `D_MAX` / `S1_VALUE` | Maximum distance / maximum significance.                 |
 | `0x0000_0000_0000_0000` | `S4_VALUE`           | Zero significance / maximum distance.                    |
 
@@ -457,15 +457,13 @@ model.promote_all() → int      # Promote all frame KLines to base.
 **Significance API (consumed by significance pipeline):**
 
 ```python
-model.s2_distance(query, candidate) → int   # [1, D_BOUNDARY)
-model.s3_distance(query, candidate) → int   # [D_BOUNDARY, D_MAX)
+model.distance(query, candidate, level) → int  # packed (S2 lower, S3 upper)
 model.is_countersigned(a, b) → bool
 ```
 
 Routing in the significance pipeline is self-contained (node-membership
 testing) and does not call any model function. Only the distance step
-consumes `s2_distance` and `s3_distance`. See §4 for the semantics of
-these functions.
+consumes `distance`. See §4 for the semantics.
 
 **Model-internal functions:**
 
@@ -482,7 +480,7 @@ model._edge_hops(sig) → Iterator    # yields (hop_count, next_sig)
 `make_signature` reduction of its nodes).
 
 `_edge_hops` is a generator that yields `(hop_count, next_sig)` pairs for
-each non-canonical resolution step. The `s2_distance` algorithm consumes
+each non-canonical resolution step. The `distance` algorithm consumes
 it to find the first hop that lands in the opposing kline's mismatch set.
 
 ---
@@ -504,14 +502,15 @@ match_count = number of nodes in Q that exist in C's node sequence
 
 All candidates absent  → S4 (distance = MAX)
 All nodes match         → S1 (distance = 0)
-Some nodes match        → S2 (distance = model.s2_distance(Q, C))
-No nodes match          → S3 (distance = model.s3_distance(Q, C))
+Some nodes match        → S2 (distance = model.distance(Q, C, "S2"))
+No nodes match          → S3 (distance = model.distance(Q, C, "S3"))
 ```
 
 Routing is self-contained and pessimistic: any unmatched node prevents S1.
 
-**Step 2: Distance** — Only S2 and S3 routes call the model's distance
-functions. S1 sets distance = 0 directly; S4 sets distance = MAX directly.
+**Step 2: Distance** — Only S2 and S3 routes call the model's `distance`
+function. S1 sets distance = 0 directly; S4 sets distance = MAX directly.
+The model returns a packed value: `(s3_component << D_PACK_SHIFT) + s2_component`.
 
 **Step 3: Invert** — `significance = ~distance`
 
@@ -538,9 +537,14 @@ compute_significance(query, candidate, model) → SignificanceResult
 S4. When `candidates` is empty, it returns `[(None, S4_result)]` instead
 of `[]`. Callers pass candidates directly without pre-testing for empty.
 
-**D_boundary:** `0x8000_0000_0000_0000` (midpoint). Configurable hyperparameter.
+**D_PACK_SHIFT:** 32 (default). Bit position separating S2 (lower) and S3
+(upper) components in the packed distance encoding. S2 is clamped to
+`(1 << D_PACK_SHIFT) - 1` and S3 to `(1 << (64 - D_PACK_SHIFT)) - 1`
+before packing. Configurable hyperparameter.
 
-**Clamping:** Model functions that return out-of-range distances are clamped to the valid range for their level.
+**Clamping:** The model clamps each component independently before packing,
+then clamps the final packed value to `D_MAX - 1`. The significance pipeline
+does not need to clamp further.
 
 **Properties:**
 
@@ -703,11 +707,25 @@ model — has achieved S1 significance. The test is whether the node value serve
 as a signature for some stored kline, regardless of which candidate is being
 compared.
 
-### 4.2 `s2_distance(query, candidate) → int`
+### 4.2 `distance(query, candidate, level) → int`
 
-S2 distance has been selected because there is a node mismatch between query
-and candidate klines. The algorithm is a **per-node hop-distance** with
-grounding credit.
+A unified distance function that handles both S2 and S3 routing. Computes
+both distance components simultaneously using per-node hop-distance,
+connotation bridging, and ungrounded penalty.
+
+- `level` — either `"S2"` or `"S3"`, determined by the significance pipeline's
+  routing step.
+- Returns a packed 64-bit value: `(s3_component << D_PACK_SHIFT) +
+  s2_component`, clamped to `D_MAX - 1`.
+
+#### Hyperparameters
+
+- **MAX_HOP** — upper bound on edge hop chain depth (default 100). Also
+  the penalty for unresolvable mismatched nodes.
+- **D_PACK_SHIFT** — bit position separating S2 and S3 components in the
+  packed distance encoding (default 32). S2 is clamped to
+  `(1 << D_PACK_SHIFT) - 1` and S3 to `(1 << (64 - D_PACK_SHIFT)) - 1`
+  before packing.
 
 #### Definitions
 
@@ -716,13 +734,10 @@ grounding credit.
 - **is_canon(kline)** — `kline.signature == make_signature(kline.nodes)`.
   The kline's signature exactly represents its nodes. Canonical klines are
   terminals in the resolution chain.
-- **edge_hops(sig)** — the number of non-canonical resolution steps from a
-  signature. Follows the chain: resolve `sig` → kline → `make_signature(kline.nodes)`
-  → resolve again. Stops at a dead end (unresolvable) or a canonical kline.
-  Yields `(hop_count, next_sig)` at each step, where `next_sig` is the
-  signature produced by `make_signature(kline.nodes)` at that hop.
-- **MAX_HOP** — hyperparameter (default 100). Upper bound on chain depth and
-  the penalty for unresolvable mismatched nodes.
+- **edge_hops(sig)** — yields `(hop_count, next_sig)` pairs for each
+  non-canonical resolution step from a signature. Follows the chain:
+  resolve `sig` → kline → `make_signature(kline.nodes)` → resolve again.
+  Stops at a dead end or canonical kline.
 
 ```python
 def _edge_hops(self, sig: int) -> Iterator[tuple[int, int]]:
@@ -738,92 +753,113 @@ def _edge_hops(self, sig: int) -> Iterator[tuple[int, int]]:
 
 #### Algorithm
 
-Starting distance is 0 (all S2 bits clear). Distance grows with mismatch
-and discovery. All calculations are additive (positive drives toward S3
-boundary) except the grounding credit which is subtractive (drives toward S1).
+The algorithm computes two distance components simultaneously:
+
+- **S2 component** (lower bits): per-node hop-distance for direct matches,
+  plus ungrounded penalty for matched nodes.
+- **S3 component** (upper bits): connotation bridging for indirect matches —
+  query nodes that reach intermediate signatures, which candidate nodes
+  then reach in turn.
+
+The routing level (`"S2"` or `"S3"`) determines where the primary
+hop-distance contribution lands. Connotation bridging always contributes
+to S3. Ungrounded penalty always contributes to S2.
 
 ```python
-def s2_distance(self, query: KLine, candidate: KLine) -> int:
-    if not query.nodes:
-        return 1
-
+def distance(self, query: KLine, candidate: KLine, level: str) -> int:
     q_set = set(query.nodes)
     c_set = set(candidate.nodes)
     mismatched_q = q_set - c_set
     mismatched_c = c_set - q_set
     matched = q_set & c_set
 
-    distance = 0
+    level_distance = 0
+    s2_distance = 0
+    s3_distance = 0
+    s3_connotations = {}  # sig → min hops from any query node
 
-    # Mismatched query nodes: find hops that land in mismatched_c
+    # Pass 1: mismatched query nodes
     for n in mismatched_q:
         hop_distance = MAX_HOP
         for hops, match_sig in self._edge_hops(n):
             if match_sig in mismatched_c:
                 hop_distance = hops
                 break
-        distance += hop_distance
+            elif (match_sig not in s3_connotations
+                  or hops < s3_connotations[match_sig]):
+                s3_connotations[match_sig] = hops
+        level_distance += hop_distance
 
-    # Mismatched candidate nodes: find hops that land in mismatched_q
+    # Pass 2: mismatched candidate nodes
     for n in mismatched_c:
         hop_distance = MAX_HOP
         for hops, match_sig in self._edge_hops(n):
             if match_sig in mismatched_q:
                 hop_distance = hops
                 break
-        distance += hop_distance
+            elif match_sig in s3_connotations:
+                s3_distance += s3_connotations[match_sig] + hops
+                hop_distance = 0
+                break
+        level_distance += hop_distance
 
-    # Grounding credit: matched nodes that resolve to known klines
+    # Matched but not grounded → S2 penalty
     for n in matched:
-        if self.find(n) is not None:
-            distance -= 1
+        if not self.is_s1(n):
+            s2_distance += 1
 
-    return max(1, min(int(distance), D_BOUNDARY - 1))
+    # Route primary hop-distance to appropriate component
+    if level == "S2":
+        s2_distance += level_distance
+    else:
+        s3_distance += level_distance
+
+    # Clamp each component to its bit budget
+    s2_distance = min(s2_distance, (1 << D_PACK_SHIFT) - 1)
+    s3_distance = min(s3_distance, (1 << (64 - D_PACK_SHIFT)) - 1)
+
+    return min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
 ```
 
 #### Per-node contributions
 
-| Node state                               | Contribution | Rationale                      |
-| ---------------------------------------- | ------------ | ------------------------------ |
-| Mismatched, edge_hops = 0 (unresolvable) | +MAX_HOP     | No path to grounded knowledge  |
-| Mismatched, edge_hops = N                | +N           | N hops from grounded knowledge |
-| Matched + grounded (is_s1)               | −1           | Cancels one hop-distance unit  |
-| Matched + ungrounded                     | 0            | Neutral                        |
+| Node state                                                    | Contribution          | Target component  |
+| ------------------------------------------------------------- | --------------------- | ----------------- |
+| Mismatched, chain reaches opposing mismatch set at hop N      | +N to level_distance  | S2 or S3 (routed) |
+| Mismatched, chain never reaches opposing mismatch set         | +MAX_HOP              | S2 or S3 (routed) |
+| Mismatched candidate, chain bridges via connotation           | round-trip, hop = 0   | S3 (always)       |
+| Matched + grounded (is_s1)                                    | 0                     | neutral           |
+| Matched + ungrounded                                          | +1                    | S2 (always)       |
+
+#### Connotation bridging
+
+When no direct hop path exists between mismatched query and candidate
+nodes, the algorithm attempts **connotation bridging**: query nodes that
+reach intermediate signatures during their hop chains record the minimum
+hop count to each intermediate. Candidate nodes then check whether their
+hop chains reach any of these intermediates. If so, the round-trip
+distance (query hops + candidate hops) contributes to the S3 component.
+
+Connotation bridging always contributes to S3 regardless of the routing
+level. This captures indirect, associative connections between query and
+candidate — the "reminiscent" relationship that characterises S3.
 
 #### Properties
 
-1. **Starting distance = 0** — all S2 bits clear. Distance grows with
-   mismatch and discovery.
-2. **Hop distance is the distance** — each mismatched node contributes
-   `1..MAX_HOP` based on its edge hop depth. A node 1 hop from grounded
-   knowledge contributes 1. An unresolvable node contributes MAX_HOP.
-3. **Grounding credit is same-scale** — each matched node that resolves
-   subtracts 1, directly offsetting one hop-distance unit.
-4. **Bidirectional** — mismatched nodes from both query and candidate
-   contribute to distance, ensuring symmetry of information gaps.
+1. **Packed encoding** — a single uint64 encodes both S2 and S3 distance
+   components, separated at bit `D_PACK_SHIFT`.
+2. **Level determines primary contribution** — mismatched node hop distances
+   contribute to S2 or S3 based on the routing level.
+3. **Connotation is always S3** — indirect bridging always adds to the S3
+   component, capturing associative distance.
+4. **Ungrounded penalty is always S2** — matched but ungrounded nodes always
+   add to the S2 component, capturing grounding deficit.
+5. **Bidirectional** — mismatched nodes from both query and candidate
+   contribute to distance.
+6. **32-bit clamp** — each component is independently clamped before packing,
+   preventing overflow into the other component.
 
-### 4.3 `s3_distance(query, candidate) → int`
-
-**Semantics:** Distance is based on **signature bit overlap** between query and candidate, mapped to `[D_BOUNDARY, D_MAX)`.
-
-```python
-def s3_distance(self, query: KLine, candidate: KLine) -> int:
-    q_sig = self._make_sig(query.nodes)
-    c_sig = candidate.signature
-    if q_sig == 0:
-        return D_MAX - 1
-    overlap = bin(q_sig & c_sig).count("1")
-    total = bin(q_sig | c_sig).count("1")
-    if total == 0:
-        return D_MAX - 1
-    ratio = overlap / total
-    distance = D_BOUNDARY + int((1 - ratio) * (D_MAX - D_BOUNDARY))
-    return max(D_BOUNDARY, min(distance, D_MAX - 1))
-```
-
-**Rationale:** When no nodes match (S3), we still know the signatures overlap (that's how the candidate was found). The degree of overlap provides a weak signal: more shared bits = more connotational similarity = closer to S2. No overlap (which shouldn't happen given AND-based retrieval, but handled) is maximally far.
-
-### 4.4 `is_countersigned(a, b) → bool`
+### 4.3 `is_countersigned(a, b) → bool`
 
 ```python
 def is_countersigned(self, a: KLine, b: KLine) -> bool:
@@ -1173,13 +1209,15 @@ def significance_value(distance) -> int:
 | \_edge_hops unresolvable  | Node doesn't resolve → empty generator                   |
 | \_edge_hops canonical     | Resolves to canonical → empty generator                  |
 | \_edge_hops chain         | Yields (hop_count, next_sig) at each non-canonical step  |
-| s2_distance empty query   | Returns 1                                          |
-| s2_distance no resolution | All mismatched unresolvable → MAX_HOP each         |
-| s2_distance grounding     | Matched node that resolves → −1 credit             |
-| s2_distance edge hops     | Mismatched node with chain → proportional distance |
-| s2_distance range         | Value in `[1, D_BOUNDARY)`                         |
-| s2_distance clamped       | Large results clamped to D_BOUNDARY - 1            |
-| s3_distance range         | Value in `[D_BOUNDARY, D_MAX)`                     |
+| distance self no model    | All match, ungrounded → s2 = N ungrounded nodes    |
+| distance no resolution    | All mismatched unresolvable → MAX_HOP each         |
+| distance grounding        | Matched node that resolves → no ungrounded penalty |
+| distance edge hops        | Mismatched node with chain → proportional distance |
+| distance range            | Valid packed value                                 |
+| distance clamped          | Large results clamped to D_MAX - 1                 |
+| distance S3 route         | level_distance in upper bits                       |
+| distance connotation      | Indirect path through intermediate → S3 component  |
+| distance component clamp  | S2 ≤ (1 << D_PACK_SHIFT) - 1, S3 ≤ (1 << (64 - D_PACK_SHIFT)) - 1 |
 | is_countersigned          | Mutual reference detected                          |
 | Not countersigned         | One-way reference → False                          |
 
@@ -1347,7 +1385,7 @@ UNSIGNED = 0                         # No nodes
 LITERAL_ONLY = 1                     # All-literal content
 
 # Significance
-D_BOUNDARY = 0x8000_0000_0000_0000   # S2/S3 separator (midpoint)
+D_PACK_SHIFT = 32                       # Bit position separating S2/S3 components
 D_MAX = 0xFFFF_FFFF_FFFF_FFFF        # Maximum distance
 S1_VALUE = 0xFFFF_FFFF_FFFF_FFFF     # Maximum significance
 S4_VALUE = 0x0000_0000_0000_0000     # Minimum significance
@@ -1409,7 +1447,7 @@ Before starting implementation, confirm the following with the system owner:
 2. **Persistence format:** Is JSON sufficient, or is binary serialization required from day one?
    - _Recommendation:_ JSON for development; binary for production.
 
-3. **is_s1 semantics:** ~~The subsumption check~~ Now resolved: `is_s1(node)` returns `model.find(node) is not None`. A grounded node (one that resolves to a known kline in any tier) achieves S1. See §4.1.
+3. **is_s1 semantics:** Now resolved: `is_s1(node)` returns `model.find(node) is not None`. A grounded node (one that resolves to a known kline in any tier) achieves S1. See §4.1.
 
 4. **Thread model for cogitation:** Should cogitation use a background thread (as specified), or would async/await be preferred?
    - _Recommendation:_ Background thread for simplicity. The spec's "done" event requires some concurrency primitive.

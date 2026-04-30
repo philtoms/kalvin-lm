@@ -28,7 +28,7 @@ from typing import TypeAlias
 
 from kalvin.kline import KLine, KNodes, KSig
 from kalvin.mod_tokenizer import Mod32Tokenizer, ModTokenizer
-from kalvin.significance import D_BOUNDARY, D_MAX
+from kalvin.significance import D_MAX
 
 from .ast import (
     Block,

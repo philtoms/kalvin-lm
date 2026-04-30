@@ -1,8 +1,8 @@
-"""Tests for Model — openspec/model.md conformance."""
+"""Tests for Model — specs/model.md conformance."""
 
 import pytest
 from kalvin.kline import KLine
-from kalvin.model import Model, D_BOUNDARY, D_MAX, MAX_HOP
+from kalvin.model import Model, D_PACK_SHIFT, D_MAX, MAX_HOP
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
 
@@ -274,50 +274,45 @@ class TestEdgeHops:
         assert list(m._edge_hops(99)) == []  # unresolvable
 
 
-class TestS2Distance:
-    def test_s2_distance_self_no_model(self):
-        """Self-comparison: all nodes match, grounding credit only."""
+class TestDistance:
+    def test_distance_self_no_model(self):
+        """Self-comparison: all nodes match, ungrounded penalty only."""
         m = make_model()
         k = KLine(10, [10, 20, 30])
-        d = m.s2_distance(k, k)
-        # All nodes match, no resolution → distance = -3 (no grounding), clamped to 1
-        assert d == 1
+        d = m.distance(k, k, "S2")
+        # All nodes match, none resolve → s2 = 3 (ungrounded), s3 = 0
+        # packed: (0 << 32) + 3 = 3
+        assert d == 3
 
-    def test_s2_distance_empty_query(self):
-        """Empty query → minimum distance 1."""
-        m = make_model()
-        q = KLine(0, [])
-        c = KLine(10, [1, 2])
-        assert m.s2_distance(q, c) == 1
-
-    def test_s2_distance_no_resolution(self):
+    def test_distance_no_resolution(self):
         """Mismatched nodes with no model entries → MAX_HOP each."""
         m = make_model()
         q = KLine(5, [1, 2, 3])
         c = KLine(6, [1, 4, 5])
         # matched: {1}, mismatched_q: {2,3}, mismatched_c: {4,5}
         # No chains → all MAX_HOP
-        # grounded: find(1) → None → no credit
-        expected = 4 * 100  # 4 mismatched × MAX_HOP
-        assert m.s2_distance(q, c) == expected
+        # ungrounded: find(1) → None → s2 += 1
+        # level_distance = 4 * MAX_HOP = 400
+        # s2 = 400 + 1 = 401, s3 = 0
+        expected = 401
+        assert m.distance(q, c, "S2") == expected
 
-    def test_s2_distance_with_grounding_credit(self):
-        """Matched node that resolves → grounding credit."""
+    def test_distance_with_grounding(self):
+        """Matched node that resolves → no ungrounded penalty."""
         m = make_model()
         m.add(KLine(1, [10]))  # node 1 resolves
         q = KLine(5, [1, 2])
         c = KLine(6, [1, 3])
         # matched: {1}, mismatched_q: {2}, mismatched_c: {3}
         # No chains reach opposing mismatch → 2 × MAX_HOP = 200
-        # grounded: find(1) → kline → -1
-        expected = 200 - 1
-        assert m.s2_distance(q, c) == expected
+        # grounded: find(1) → kline → no ungrounded penalty
+        # s2 = 200, s3 = 0
+        expected = 200
+        assert m.distance(q, c, "S2") == expected
 
-    def test_s2_distance_hop_reaches_opposing_mismatch(self):
+    def test_distance_hop_reaches_opposing_mismatch(self):
         """Mismatched node whose chain reaches the opposing mismatch set."""
         m = make_model()
-        # Chain: 5→10→20→30(canonical)
-        # make_sig chain: find(5)→nodes[10]→make_sig=10, find(10)→nodes[20]→make_sig=20, etc.
         m.add(KLine(30, [30]))  # canonical
         m.add(KLine(20, [30]))  # non-canon
         m.add(KLine(10, [20]))  # non-canon
@@ -325,7 +320,7 @@ class TestS2Distance:
 
         q = KLine(100, [5, 2])    # mismatched_q: {5, 2}
         c = KLine(200, [10, 3])   # mismatched_c: {10, 3}
-        # matched: {}, no grounding credit
+        # matched: {}, no ungrounded penalty
         #
         # mismatched_q node 5: edge_hops yields (1,10),(2,20),(3,30)
         #   hop 1 → sig 10 ∈ mismatched_c → hop_distance = 1
@@ -333,17 +328,16 @@ class TestS2Distance:
         # mismatched_c node 10: edge_hops yields (1,20),(2,30)
         #   neither 20 nor 30 ∈ mismatched_q → MAX_HOP
         # mismatched_c node 3: no resolution → MAX_HOP
-        expected = 1 + 100 + 100 + 100  # = 301
-        assert m.s2_distance(q, c) == expected
+        # level_distance = 1 + 100 + 100 + 100 = 301
+        # s2 = 301, s3 = 0
+        expected = 301
+        assert m.distance(q, c, "S2") == expected
 
-    def test_s2_distance_bidirectional_hop_match(self):
+    def test_distance_bidirectional_hop_match(self):
         """Both query and candidate mismatched nodes reach opposing sets."""
         m = make_model()
-        # Chain: 5→(1,10), 10 is canonical
         m.add(KLine(10, [10]))  # canonical
         m.add(KLine(5, [10]))   # non-canon
-
-        # Chain: 20→(1,30), 30 is canonical
         m.add(KLine(30, [30]))  # canonical
         m.add(KLine(20, [30]))  # non-canon
 
@@ -355,47 +349,107 @@ class TestS2Distance:
         # q-node 20: edge_hops yields (1,30). 30 ∈ mismatched_c → hop_distance=1
         # c-node 10: canonical → no hops → MAX_HOP
         # c-node 30: canonical → no hops → MAX_HOP
-        expected = 1 + 1 + 100 + 100  # = 202
-        assert m.s2_distance(q, c) == expected
+        # level_distance = 1 + 1 + 100 + 100 = 202
+        expected = 202
+        assert m.distance(q, c, "S2") == expected
 
-    def test_s2_distance_all_matched_grounded(self):
-        """All nodes match and all resolve → distance clamped to 1."""
+    def test_distance_all_matched_grounded(self):
+        """All nodes match and all resolve → no ungrounded penalty."""
         m = make_model()
         m.add(KLine(10, [10]))  # canonical, node 10 resolves
         m.add(KLine(20, [20]))  # canonical, node 20 resolves
         q = KLine(5, [10, 20])
         c = KLine(6, [10, 20])
-        # matched: {10, 20}, mismatched: none
-        # grounded: find(10) and find(20) → grounded → -2
-        # distance = -2, clamped to 1
-        assert m.s2_distance(q, c) == 1
+        # matched: {10, 20}, both grounded → no ungrounded penalty
+        # level_distance = 0
+        # s2 = 0
+        assert m.distance(q, c, "S2") == 0
 
-    def test_s2_distance_clamped_to_boundary(self):
-        """Result is always < D_BOUNDARY."""
+    def test_distance_clamped_to_max(self):
+        """Result is clamped to D_MAX - 1."""
         m = make_model()
-        # Many mismatched nodes, none resolve
         q = KLine(5, [1])
-        c = KLine(6, list(range(1000)))  # many mismatched candidate nodes
-        d = m.s2_distance(q, c)
-        assert d < D_BOUNDARY
+        c = KLine(6, list(range(1000)))
+        d = m.distance(q, c, "S2")
+        assert d < D_MAX
 
-    def test_s2_distance_range(self):
-        """S2 distance is always in [1, D_BOUNDARY)."""
+    def test_distance_range_s2(self):
+        """S2 distance returns a valid packed value."""
         m = make_model()
         q = KLine(5, [1, 2])
         c = KLine(1, [1, 3, 4])
-        d = m.s2_distance(q, c)
-        assert 1 <= d < D_BOUNDARY
+        d = m.distance(q, c, "S2")
+        assert d >= 0
 
-
-class TestModelSignificanceAPI:
-    def test_s3_distance(self):
+    def test_distance_s3_route(self):
+        """S3 route puts level_distance in upper bits."""
         m = make_model()
         q = KLine(5, [1, 2])
         c = KLine(100, [3, 4])
-        d = m.s3_distance(q, c)
-        assert D_BOUNDARY <= d < D_MAX
+        d = m.distance(q, c, "S3")
+        # 4 mismatched nodes × MAX_HOP = 400 in s3 component
+        # packed: (400 << 32) + 0
+        assert d >= (1 << D_PACK_SHIFT)
 
+    def test_distance_packed_encoding(self):
+        """Verify packed encoding: s3 in upper bits, s2 in lower bits."""
+        m = make_model()
+        m.add(KLine(10, [10]))  # canonical
+        m.add(KLine(5, [10]))   # non-canon
+
+        q = KLine(100, [5, 2])     # mismatched_q: {5, 2}
+        c = KLine(200, [10, 3])    # mismatched_c: {10, 3}
+        d = m.distance(q, c, "S2")
+        # q-node 5: hops → (1,10). 10 ∈ mismatched_c → hop_distance = 1
+        # q-node 2: no resolution → MAX_HOP
+        # c-node 10: canonical → MAX_HOP
+        # c-node 3: no resolution → MAX_HOP
+        # level_distance = 301 → s2 = 301
+        s2_component = d & ((1 << D_PACK_SHIFT) - 1)
+        s3_component = d >> D_PACK_SHIFT
+        assert s2_component == 301
+        assert s3_component == 0
+
+    def test_distance_connotation_bridging(self):
+        """Connotation bridging: indirect path through intermediate signature."""
+        m = make_model()
+        # Chain: 50 → (1, 60) where 60 is canonical
+        m.add(KLine(60, [60]))  # canonical
+        m.add(KLine(50, [60]))  # non-canon: edge_hops(50) = [(1, 60)]
+
+        # Chain: 70 → (1, 60) where 60 is canonical
+        m.add(KLine(70, [60]))  # non-canon: edge_hops(70) = [(1, 60)]
+
+        q = KLine(100, [50])     # mismatched_q: {50}
+        c = KLine(200, [70])     # mismatched_c: {70}
+        # q-node 50: edge_hops yields (1, 60). 60 ∉ mismatched_c → connotation[60] = 1
+        #   No more hops → hop_distance = MAX_HOP. level_distance += 100
+        # c-node 70: edge_hops yields (1, 60). 60 ∉ mismatched_q, but 60 ∈ connotation →
+        #   s3_distance += 1 + 1 = 2, hop_distance = 0. level_distance += 0
+        # For S2: s2 = 100 (level_distance), s3 = 2 (connotation)
+        d_s2 = m.distance(q, c, "S2")
+        assert d_s2 == (2 << D_PACK_SHIFT) + 100
+
+        # For S3: s3 = 2 (connotation) + 100 (level_distance)
+        d_s3 = m.distance(q, c, "S3")
+        assert d_s3 == (102 << D_PACK_SHIFT) + 0
+
+    def test_distance_component_clamp(self):
+        """Each component is clamped to its bit budget."""
+        m = make_model()
+        # Create massive mismatch to overflow component budgets
+        q = KLine(5, list(range(1000)))
+        c = KLine(6, list(range(1000, 2000)))
+        d = m.distance(q, c, "S2")
+        s2_component = d & ((1 << D_PACK_SHIFT) - 1)
+        s3_component = d >> D_PACK_SHIFT
+        s2_max = (1 << D_PACK_SHIFT) - 1
+        s3_max = (1 << (64 - D_PACK_SHIFT)) - 1
+        assert s2_component <= s2_max
+        assert s3_component <= s3_max
+
+
+class TestModelSignificanceAPI:
     def test_is_countersigned(self):
         m = make_model()
         a = KLine(5, [10, 20])

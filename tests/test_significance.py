@@ -6,12 +6,11 @@ candidate's node sequence? No model function is called during routing.
 
 import pytest
 from kalvin.kline import KLine
-from kalvin.model import Model, D_BOUNDARY, D_MAX
+from kalvin.model import Model, D_PACK_SHIFT, D_MAX
 from kalvin.significance import (
     compute_significance,
     significance_pipeline,
     no_candidates_result,
-    D_BOUNDARY as SIG_D_BOUNDARY,
     D_MAX as SIG_D_MAX,
 )
 from kalvin.mod_tokenizer import Mod32Tokenizer
@@ -46,7 +45,7 @@ class TestRouting:
         result = compute_significance(q, c, m)
         assert result.match_count == 2
         assert result.level == "S2"
-        assert 1 <= result.distance < D_BOUNDARY
+        assert result.distance > 0
 
     def test_no_nodes_match_s3(self):
         """No query nodes exist in candidate → S3."""
@@ -56,7 +55,7 @@ class TestRouting:
         result = compute_significance(q, c, m)
         assert result.match_count == 0
         assert result.level == "S3"
-        assert D_BOUNDARY <= result.distance < D_MAX
+        assert result.distance > 0
 
     def test_single_node_match_s1(self):
         """Single query node exists in candidate → S1."""
@@ -140,20 +139,22 @@ class TestSignificanceOrdering:
         assert r_s3.significance > r_s4.significance
 
 
-class TestDistanceClamping:
+class TestDistancePacking:
     def test_s2_distance_in_range(self):
         m = make_model()
         q = KLine(5, [1, 2])
         c = KLine(1, [1, 3, 4])  # node 1 matches → S2
         result = compute_significance(q, c, m)
-        assert 1 <= result.distance < D_BOUNDARY
+        assert result.distance > 0
+        assert result.distance < D_MAX
 
     def test_s3_distance_in_range(self):
         m = make_model()
         q = KLine(5, [1, 2])
         c = KLine(100, [3, 4])  # no nodes match → S3
         result = compute_significance(q, c, m)
-        assert D_BOUNDARY <= result.distance < D_MAX
+        assert result.distance > 0
+        assert result.distance < D_MAX
 
 
 class TestPipelineMultipleCandidates:

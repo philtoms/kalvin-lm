@@ -14,8 +14,8 @@ from kalvin.kline import KLine, KSig
 from kalvin.stm import STM
 from kalvin.signature import make_signature, signifies
 
-# D_boundary hyperparameter — midpoint between S2 and S3 distance ranges
-D_BOUNDARY = 0x8000_0000_0000_0000
+# D_PACK_SHIFT hyperparameter — bit position separating S2 and S3 distance components
+D_PACK_SHIFT = 32
 D_MAX = 0xFFFF_FFFF_FFFF_FFFF
 
 # MAX_HOP hyperparameter — upper bound on edge hop chain depth
@@ -336,65 +336,69 @@ class Model:
             sig = self._make_sig(kline.nodes)
             yield hop_count, sig
 
-    def s2_distance(self, query: KLine, candidate: KLine) -> int:
-        """Distance when some nodes match. Returns value in [1, D_BOUNDARY).
+    def distance(self, query: KLine, candidate: KLine, level: str) -> int:
+        """Packed distance for a query-candidate pair.
 
-        Per-node hop-distance algorithm with grounding credit:
-        - Mismatched nodes contribute edge_hops (0 hops = MAX_HOP penalty)
-        - Matched nodes that resolve to known klines credit -1 each
+        Computes both S2 and S3 components simultaneously using per-node
+        hop-distance, connotation bridging, and ungrounded penalty.
+
+        Returns (s3_component << D_PACK_SHIFT) + s2_component, clamped to D_MAX - 1.
         """
-        if not query.nodes:
-            return 1
-
         q_set = set(query.nodes)
         c_set = set(candidate.nodes)
         mismatched_q = q_set - c_set
         mismatched_c = c_set - q_set
         matched = q_set & c_set
 
-        distance = 0
+        level_distance = 0
+        s2_distance = 0
+        s3_distance = 0
+        s3_connotations = {}  # sig → min hops from any query node
 
-        # Mismatched query nodes: find hops that land in mismatched_c
+        # Mismatched query nodes
         for n in mismatched_q:
             hop_distance = MAX_HOP
             for hops, match_sig in self._edge_hops(n):
                 if match_sig in mismatched_c:
                     hop_distance = hops
                     break
-            distance += hop_distance
+                elif (match_sig not in s3_connotations
+                      or hops < s3_connotations[match_sig]):
+                    s3_connotations[match_sig] = hops
+            level_distance += hop_distance
 
-        # Mismatched candidate nodes: find hops that land in mismatched_q
+        # Mismatched candidate nodes
         for n in mismatched_c:
             hop_distance = MAX_HOP
             for hops, match_sig in self._edge_hops(n):
                 if match_sig in mismatched_q:
                     hop_distance = hops
                     break
-            distance += hop_distance
+                elif match_sig in s3_connotations:
+                    s3_distance += s3_connotations[match_sig] + hops
+                    hop_distance = 0
+                    break
+            level_distance += hop_distance
 
-        # Grounding credit: matched nodes that resolve to known klines
+        # Matched but not grounded (S2 component)
         for n in matched:
-            if self.is_s1(n):
-                distance -= 1
+            if not self.is_s1(n):
+                s2_distance += 1
 
-        return max(1, min(int(distance), D_BOUNDARY - 1))
+        # Route determines where level_distance lands
+        if level == "S2":
+            s2_distance += level_distance
+        else:
+            s3_distance += level_distance
 
-    def s3_distance(self, query: KLine, candidate: KLine) -> int:
-        """Distance when no nodes achieve S1. Returns value in [D_BOUNDARY, D_MAX)."""
-        # Simple heuristic: use bit overlap ratio
-        if not query.nodes:
-            return D_BOUNDARY
-        q_sig = self._make_sig(query.nodes)
-        c_sig = candidate.signature
-        if q_sig == 0:
-            return D_MAX - 1
-        overlap = bin(q_sig & c_sig).count("1")
-        total = bin(q_sig | c_sig).count("1")
-        if total == 0:
-            return D_MAX - 1
-        ratio = overlap / total
-        distance = D_BOUNDARY + int((1 - ratio) * (D_MAX - D_BOUNDARY))
-        return max(D_BOUNDARY, min(distance, D_MAX - 1))
+        # Clamp each component to its bit budget
+        s2_component_max = (1 << D_PACK_SHIFT) - 1
+        s3_component_max = (1 << (64 - D_PACK_SHIFT)) - 1
+        s2_distance = min(s2_distance, s2_component_max)
+        s3_distance = min(s3_distance, s3_component_max)
+
+        # Pack: S3 in upper bits, S2 in lower bits
+        return min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
 
     def is_countersigned(self, a: KLine, b: KLine) -> bool:
         """Test whether two Klines are countersigned (mutual reference)."""

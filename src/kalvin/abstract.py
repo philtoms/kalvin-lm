@@ -131,13 +131,8 @@ class KModel(ABC):
         ...
 
     @abstractmethod
-    def s2_distance(self, query: KLine, candidate: KLine) -> int:
-        """Distance when some nodes match. Per-node hop-distance algorithm."""
-        ...
-
-    @abstractmethod
-    def s3_distance(self, query: KLine, candidate: KLine) -> int:
-        """Distance when no nodes achieve S1."""
+    def distance(self, query: KLine, candidate: KLine, level: str) -> int:
+        """Packed distance (S2 and S3 components). Level is "S2" or "S3"."""
         ...
 
     @abstractmethod

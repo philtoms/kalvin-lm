@@ -68,8 +68,8 @@ involve significance, distance, or any model function.
 The matched nodes are counted and the result is routed:
 
 - **All nodes match** → S1 route (distance = 0, no function call)
-- **Some nodes match** → S2 route (calls `model.s2_distance`)
-- **No nodes match** → S3 route (calls `model.s3_distance`)
+- **Some nodes match** → S2 route (calls `model.distance(Q, Cᵢ, "S2")`)
+- **No nodes match** → S3 route (calls `model.distance(Q, Cᵢ, "S3")`)
 
 Routing is **pessimistic**: the presence of any node in Q that doesn't exist
 in the candidate prevents an S1 result. Only S2 and S3 routes invoke model
@@ -82,18 +82,18 @@ The routing result determines the distance computation:
 ```
 match_count = number of nodes in Q that exist in Cᵢ's node sequence
 
-if no candidates:                  distance = 0xFFFF_FFFF_FFFF_FFFF   → S4
-elif match_count == len(Q.nodes):  distance = 0                        → S1
-elif match_count > 0:              distance = model.s2_distance(Q, Cᵢ) → S2
-elif match_count == 0:             distance = model.s3_distance(Q, Cᵢ) → S3
+if no candidates:                  distance = 0xFFFF_FFFF_FFFF_FFFF          → S4
+elif match_count == len(Q.nodes):  distance = 0                               → S1
+elif match_count > 0:              distance = model.distance(Q, Cᵢ, "S2")    → S2
+elif match_count == 0:             distance = model.distance(Q, Cᵢ, "S3")    → S3
 ```
 
 | Routing result              | Distance computation             | Result |
 | --------------------------- | -------------------------------- | ------ |
-| All nodes match             | distance = 0 (no function call)  | S1     |
-| Some nodes match, some not  | `model.s2_distance(Q, Cᵢ)`       | S2     |
-| No nodes match              | `model.s3_distance(Q, Cᵢ)`       | S3     |
-| No candidates               | distance = MAX_UINT64 (no call)  | S4     |
+| All nodes match             | distance = 0 (no function call)       | S1     |
+| Some nodes match, some not  | `model.distance(Q, Cᵢ, "S2")`        | S2     |
+| No nodes match              | `model.distance(Q, Cᵢ, "S3")`        | S3     |
+| No candidates               | distance = MAX_UINT64 (no call)       | S4     |
 
 Only S2 and S3 routes call the model API.
 
@@ -145,17 +145,19 @@ significance = (~distance) & 0xFFFF_FFFF_FFFF_FFFF
 
 ### Distance range
 
-Distance is a single 64-bit unsigned integer. A boundary value `D_boundary`
-partitions the range:
+Distance is a packed 64-bit unsigned integer. The model returns a single
+value encoding both S2 and S3 components:
 
 ```
-  0                 D_boundary                  0xFFFF_FFFF_FFFF_FFFF
-  ├─────── S2 ──────────┼──────────── S3 ─────────────┤
+  Bits [0, D_PACK_SHIFT-1]     → S2 component
+  Bits [D_PACK_SHIFT, 63]      → S3 component
 ```
 
 - S1: distance = 0 (all nodes match, no computation)
-- S2: distance ∈ [1, D_boundary)
-- S3: distance ∈ [D_boundary, 0xFFFF_FFFF_FFFF_FFFF)
+- S2: distance = model.distance(Q, Cᵢ, "S2") — packed value with significant
+  lower bits
+- S3: distance = model.distance(Q, Cᵢ, "S3") — packed value with significant
+  upper bits
 - S4: distance = 0xFFFF_FFFF_FFFF_FFFF (no candidates, no computation)
 - Arithmetic ordering is guaranteed: `S1 > S2 > S3 > S4` because `~distance`
   is monotonically decreasing.
@@ -167,33 +169,37 @@ S1 = 0xFFFF_FFFF_FFFF_FFFF   (all 64 bits set, zero distance)
 S4 = 0x0000_0000_0000_0000   (all 64 bits clear, maximum distance)
 ```
 
-### D_boundary
+### D_PACK_SHIFT
 
-`D_boundary` is a **hyperparameter** that separates the S2 and S3 distance
-ranges.
+`D_PACK_SHIFT` is a **hyperparameter** that defines the bit position
+separating S2 and S3 components in the packed distance encoding.
 
-- Default: `0x8000_0000_0000_0000` (the midpoint, giving S2 and S3 equal
-  range).
+- Default: 32 (S2 occupies lower 32 bits, S3 occupies upper 32 bits).
+- The model packs: `(s3_component << D_PACK_SHIFT) + s2_component`.
+- Each component is clamped to its bit budget before packing: S2 to
+  `(1 << D_PACK_SHIFT) - 1`, S3 to `(1 << (64 - D_PACK_SHIFT)) - 1`.
 - Configurable at initialisation.
 
 ### Distance calculation
 
-Distance is produced by a single call to the appropriate model function:
+Distance is produced by a single call to the model's distance function:
 
 ```
 # Routed by per-node match count
 if all nodes match:   distance = 0
-if some nodes match:  distance = model.s2_distance(Q, Cᵢ)
-if no nodes match:    distance = model.s3_distance(Q, Cᵢ)
+if some nodes match:  distance = model.distance(Q, Cᵢ, "S2")
+if no nodes match:    distance = model.distance(Q, Cᵢ, "S3")
 ```
 
-The model function returns a 64-bit distance value:
+The model function returns a packed 64-bit distance value:
 
-- `s2_distance` must return a value in [1, D_boundary).
-- `s3_distance` must return a value in [D_boundary, 0xFFFF_FFFF_FFFF_FFFF).
+- `distance(Q, Cᵢ, level)` returns `(s3_component << D_PACK_SHIFT) +
+  s2_component`, clamped to `D_MAX - 1`.
+- Each component is clamped to its bit budget: S2 to
+  `(1 << D_PACK_SHIFT) - 1`, S3 to `(1 << (64 - D_PACK_SHIFT)) - 1`.
 
-If a model function returns a value outside its required range, the result is
-**clamped** to the nearest valid value.
+The significance pipeline does not need to clamp further — the model
+guarantees a valid packed value.
 
 ### Conversion
 
@@ -213,7 +219,7 @@ node_c → no match
 
 match_count = 2, total = 3  →  S2 route
 
-distance     = model.s2_distance(Q, C)  = 0x0000_0000_0000_0005
+distance     = model.distance(Q, C, "S2")  = 0x0000_0000_0000_0005
 significance = ~distance = 0xFFFF_FFFF_FFFF_FFFA   → S2 level
 ```
 
@@ -238,7 +244,7 @@ node_b → no match
 
 match_count = 0  →  S3 route
 
-distance     = model.s3_distance(Q, C)  = 0x0000_0000_FFFF_FFFF
+distance     = model.distance(Q, C, "S3")  = 0x0000_0000_FFFF_FFFF
 significance = ~distance = 0xFFFF_FFFF_0000_0000   → S3 level
 ```
 
@@ -254,19 +260,16 @@ significance = 0x0000_0000_0000_0000   → S4 level (no computation)
 Routing (Step 1) is performed entirely within the significance pipeline using
 simple node-membership testing. It does not call any model function.
 
-Steps 2 and 3 consume the following model functions:
+Steps 2 and 3 consume the following model function:
 
 ```
-model.s2_distance(Q, C) → uint64           # distance when some nodes match
-model.s3_distance(Q, C) → uint64           # distance when no nodes match
+model.distance(Q, C, level) → uint64       # packed distance (S2 and S3 components)
 ```
 
-- `s2_distance` — returns a distance in [1, D_boundary). Semantics defined in
-  the **model spec**.
-- `s3_distance` — returns a distance in [D_boundary, 0xFFFF_FFFF_FFFF_FFFF).
-  Semantics defined in the **model spec**.
-- Distance values are clamped to their required range if the model returns
-  out-of-bounds.
+- `distance` — returns a packed 64-bit distance value. `level` is "S2" or
+  "S3", determined by routing. Semantics defined in the **model spec**.
+- The packed value encodes both S2 (lower bits) and S3 (upper bits) components.
+- The model clamps the result to `[0, D_MAX - 1]`.
 
 ## Summary of Properties
 
@@ -280,6 +283,6 @@ model.s3_distance(Q, C) → uint64           # distance when no nodes match
 6. **State-aware**: significance may change if the model is updated between
    calls. State management is the model's responsibility.
 7. **Exhaustive**: every Kline with candidates is S1, S2, or S3.
-8. **Hyperparameter boundary**: `D_boundary` separates S2 and S3 distance
-   ranges. Default is the midpoint.
+8. **Hyperparameter packing**: `D_PACK_SHIFT` defines the bit boundary
+   between S2 and S3 distance components. Default is 32.
 9. **S1 is trivial**: all nodes match → distance = 0, no function call needed.
