@@ -4,13 +4,16 @@
 
 The Agent is the orchestrator of the Kalvin rationalisation pipeline. It
 receives input, encodes it into Klines, retrieves candidates from the Model,
-delegates significance computation, and integrates results back into the
+routes each query-candidate pair, and integrates results back into the
 knowledge graph.
 
 The Agent's principal function is **rationalisation**: determining how a new
-Kline relates to existing knowledge and deciding what action to take. All
-computational detail is delegated — encoding to the Tokenizer, storage and
-lookup to the Model, distance and match testing to the Significance pipeline.
+Kline relates to existing knowledge and deciding what action to take. The
+pipeline is split into a **fast path** (routing — no model calls) and a
+**slow path** (cogitation — background distance computation).
+
+All computational detail is delegated — encoding to the Tokenizer, storage
+and lookup to the Model, distance calculation to the Model's distance API.
 
 ## Dependencies
 
@@ -43,19 +46,13 @@ This spec depends on the following concepts, defined elsewhere:
 - Provides candidate retrieval via `find`, `find_all`, `query`, `where`.
 - Provides `find_by_nodes` for transitive grounding via nodes signature.
 - Provides `promote` and `promote_all` for persisting Klines to the base.
-- Provides the significance API: `is_s1`, `s2_distance`, `s3_distance`.
+- Provides `distance(Q, C, level)` for packed distance computation.
+- Provides `is_countersigned(Q, C)` for mutual-reference detection.
 - Manages a three-tier memory internally (STM → Frame → Base). The agent
   sees a single Model API; tiering is invisible to the agent.
 - The model decides how and where Klines are stored. The agent is
   responsible for calling model operations; the model is responsible
   for managing its internal memory tiers.
-
-### Significance (@significance spec)
-
-- Computes `significance(Q, C)` between a query Kline Q and a candidate C.
-- Returns a `(significance: uint64, level: S1|S2|S3|S4)` pair.
-- Routing is based on per-node S1 testing; distance is inverted to yield
-  significance.
 
 ## Definition
 
@@ -66,6 +63,8 @@ An Agent consists of:
 | tokenizer | Tokenizer | Encodes text ↔ nodes.                  |
 | model     | Model     | Layered knowledge graph (STM → Frame → |
 |           |           | Base). Agent sees a single Model API.  |
+| cogitator | Cogitator | Background processor for S2/S3 work    |
+|           |           | items.                                 |
 
 ## Construction
 
@@ -80,41 +79,51 @@ Agent(
 - `model` — a Model instance serving as the base knowledge graph. Defaults
   to an empty Model.
 
-A newly constructed Agent contains zero Klines in its model.
+A newly constructed Agent contains zero Klines in its model. The Cogitator
+is created internally and starts its background thread immediately.
 
 ## Rationalisation
 
 Rationalisation is the process of integrating a Kline into the knowledge
-graph. It proceeds in phases:
+graph. It proceeds in phases with a fast/slow split:
 
 ```
 Rationalise(Q):
-  ┌─────────────────────────────────────────────────┐
-  │ 1. PREPARE                                      │
-  │    Assign signature if missing.                  │
-  ├─────────────────────────────────────────────────┤
-  │ 2. GROUND CHECK                                 │
-  │    Does Q already exist in the model?            │
-  │    → Yes: emit "ground" event, done.             │
-  ├─────────────────────────────────────────────────┤
-  │ 3. ASSESS                                       │
-  │    Evaluate Q's structural grounding:            │
-  │    → Unsigned (no nodes): emit "frame" S4, done. │
-  │    → All-literal: emit "frame" S1, done.         │
-  │    → Otherwise: proceed to retrieval.            │
-  ├─────────────────────────────────────────────────┤
-  │ 4. RETRIEVE CANDIDATES                           │
-  │    Find candidate Klines from the model.         │
-  ├─────────────────────────────────────────────────┤
-  │ 5. COMPUTE SIGNIFICANCE                         │
-  │    For each candidate, run significance pipeline.│
-  ├─────────────────────────────────────────────────┤
-  │ 6. INTEGRATE                                    │
-  │    Add Q to model. Act on significance result.   │
-  │    → S1: confirm.                                │
-  │    → S4: novel.                                  │
-  │    → S2/S3: queue for cogitation.               │
-  └─────────────────────────────────────────────────┘
+  ┌─── FAST PATH ────────────────────────────────────────────┐
+  │ 1. PREPARE                                               │
+  │    Assign signature if missing.                           │
+  ├───────────────────────────────────────────────────────────┤
+  │ 2. GROUND CHECK                                          │
+  │    Does Q already exist in the model?                     │
+  │    → Yes: emit "ground" event, return True.              │
+  ├───────────────────────────────────────────────────────────┤
+  │ 3. ASSESS                                                │
+  │    Evaluate Q's structural grounding:                     │
+  │    → Unsigned (no nodes): emit "frame" S4, return True.  │
+  │    → All-literal: emit "frame" S1, return True.          │
+  │    → Self-grounded: emit "frame" S1, return True.        │
+  ├───────────────────────────────────────────────────────────┤
+  │ 4. RETRIEVE CANDIDATES                                    │
+  │    candidates = model.where(Q.signature)                  │
+  │    → No candidates: emit "frame" S4, return True.        │
+  ├───────────────────────────────────────────────────────────┤
+  │ 5. ROUTE EACH CANDIDATE                                   │
+  │    For each candidate Cᵢ:                                │
+  │      level = route(Q, Cᵢ)   ← node membership, no model │
+  │      S1 → promote, emit "frame", return True (done)      │
+  │      S2 → submit WorkItem(Q, Cᵢ, "S2") to cogitator     │
+  │      S3 → submit WorkItem(Q, Cᵢ, "S3") to cogitator     │
+  │    return False                                           │
+  └───────────────────────────────────────────────────────────┘
+
+  ┌─── SLOW PATH (Cogitator, background thread) ────────────┐
+  │ For each WorkItem(Q, C, level):                          │
+  │   distance = model.distance(Q, C, level)                 │
+  │   significance = ~distance                               │
+  │   if model.is_countersigned(Q, C):                       │
+  │     add C to model                                       │
+  │     re-rationalise Q                                     │
+  └───────────────────────────────────────────────────────────┘
 ```
 
 ### Phase 1: Prepare
@@ -172,123 +181,108 @@ candidates = model.where(k => (k.signature & Q.signature) != 0)
 A Kline whose signature shares any set bit with Q's signature is a
 candidate. This is a necessary (but not sufficient) condition for
 significance — bitwise AND matching pre-filters the model before the more
-expensive significance pipeline runs.
+expensive routing runs.
 
-If no candidates are found, proceed to Phase 5. The significance pipeline
-handles the empty-candidates case by returning an S4 result (candidate =
-`None`).
+If no candidates are found, Q is novel. Emit a `"frame"` S4 event,
+add Q to the model, and return `True`.
 
-### Phase 5: Compute Significance
+### Phase 5: Route Each Candidate
 
-Run the significance pipeline defined in the @significance spec:
+Add Q to the model. Then for each candidate, perform routing — a fast
+node-membership test with no model calls:
+
+#### Routing
 
 ```
-results = significance_pipeline(Q, candidates, model)
+route(Q, C):
+  if Q has no nodes:   return "S4"
+  match_count = number of Q.nodes that exist in C.nodes
+  if match_count == len(Q.nodes):  return "S1"
+  if match_count > 0:              return "S2"
+  else:                            return "S3"
 ```
 
-The pipeline handles all significance levels including S4:
+Routing is a pure function. It checks whether each query node value appears
+in the candidate's node sequence. No model function is called.
 
-- If `candidates` is empty, the pipeline returns a single `(None, S4)` result.
-- Otherwise, it returns one result per candidate.
+#### Per-Candidate Action
 
-The significance pipeline performs per-node S1 testing, routes to the
-appropriate distance function, and inverts the distance to yield a
-significance value.
+| Route | Action | Model call? |
+| ----- | ------ | ----------- |
+| S1    | Promote Q, emit `"frame"` S1, return `True` | No |
+| S2    | Submit `WorkItem(Q, C, "S2")` to Cogitator | No |
+| S3    | Submit `WorkItem(Q, C, "S3")` to Cogitator | No |
 
-Collect all `(candidate, SignificanceResult)` tuples.
+**S1 short-circuits**: the first candidate that routes as S1 terminates the
+loop immediately. No further candidates are routed. No distance is computed.
 
-### Phase 6: Integrate
+If all candidates route as S2 or S3, each becomes an individual work item
+for the Cogitator. Return `False`.
 
-Add Q to the model via `model.add(Q)`. The model manages its internal
-memory tiers (STM, frame, base) as it sees fit.
+## Work Items
 
-Select the best result (highest significance value). Act based on its level:
+A WorkItem is a single query-candidate-level tuple queued for background
+processing:
 
-| Best level | Action                                                  | Return |
-| ---------- | ------------------------------------------------------- | ------ |
-| S1         | Promote Q to base. Emit `"frame"` S1 event.             | True   |
-| S4         | Q is novel. Promote Q to base. Emit `"frame"` S4 event. | True   |
-| S2         | Queue Q for cogitation.                                 | False  |
-| S3         | Queue Q for cogitation.                                 | False  |
+```
+WorkItem:
+  query:      KLine
+  candidate:  KLine
+  level:      str    # "S2" or "S3"
+```
 
-S1 and S4 are **significants** — the Kline is either confirmed or novel,
-and no further processing is needed. S2 and S3 are **rationals** — the
-Kline has a partial or weak relationship to existing knowledge and requires
-deeper investigation via cogitation.
+The agent submits one WorkItem per routed S2/S3 candidate. The Cogitator
+processes each independently.
 
 ## Cogitation
 
-Cogitation is the background processing of rational Klines (S2/S3). It
-performs deeper graph traversal to find additional candidates that the
-initial retrieval may have missed, and specifically to discover **latent
-countersignature** relationships that are not visible from a single
-Kline's perspective.
+Cogitation is the background processing of individual query-candidate work
+items. The Cogitator receives pre-routed work items, computes deep
+significance via model distance, and checks for countersignature.
 
-### Countersignature
-
-A **countersigned** Kline is one whose nodes reference another Kline whose
-nodes reciprocally reference the first:
+### Cogitator
 
 ```
-is_countersigned(Q, C, model):
-    return (C.signature in Q.nodes) and (Q.signature in C.nodes)
+Cogitator:
+  model:      Model
+  event_bus:  EventBus
+  on_s1:      callback(query, candidate)
+  timeout:    float (default 2.0)
+  backlog:    queue of WorkItem
+  thread:     background
 ```
 
-Both Klines must reference each other through their nodes. This is a stronger
-condition than mere signature overlap — it requires mutual structural
-acknowledgement. Literal nodes cannot match a signature (literal tokens
-use a 32-bit mask in the lower bits, which does not equal any signature
-value), so the test naturally considers only non-literal matches — but
-this is enforced by the encoding, not by an explicit filter.
-enforced by the bit layout, not by an explicit filter. Countersignature is
-the primary mechanism by which cogitation promotes S2 results to S1.
+The Cogitator runs on a background daemon thread. It pulls work items from
+the backlog and processes each one.
 
-### Cogitation Pipeline
+### Work Item Processing
 
 ```
-Cogitate(Q):
-  1. Expand Q's graph context:
-     candidates = model.query(Q.signature, depth=D_cogitate)
-
-  2. For each candidate Cᵢ:
-     a. Run significance pipeline:
-        (significance, level) = significance_pipeline(Q, Cᵢ, model)
-     b. Test for countersignature:
-        if is_countersigned(Q, Cᵢ, model):
-            level = S1, significance = MAX
-     c. If level == S1:
-        - Add candidate to model.
-
-  3. Re-rationalise Q.
+process(WorkItem(query, candidate, level)):
+  1. distance = model.distance(query, candidate, level)
+  2. significance = (~distance) & MASK64
+  3. if model.is_countersigned(query, candidate):
+       model.add(candidate)
+       on_s1(query, candidate)    # triggers re-rationalisation
 ```
 
-Countersignature testing (step 2b) runs alongside the significance
-pipeline (step 2a). A candidate that achieves S1 via either pathway
-triggers integration. This means cogitation has two theories of success:
+The MVP preserves the routed level (S2 or S3) without re-routing based on
+the computed significance. Countersignature is the only mechanism that can
+promote to S1 during cogitation.
 
-- **Significance recovery**: deeper traversal finds candidates that the
-  initial bitwise AND retrieval missed, and those candidates achieve S1
-  through the standard significance pipeline.
-- **Countersignature discovery**: deeper traversal reveals that Q and a
-  candidate are mutually referencing, establishing a latent structural
-  relationship that upgrades S2 to S1.
+### S1 Callback
 
-`D_cogitate` is a configurable depth parameter (default: **2**).
-
-Re-rationalisation in step 3 may itself queue Q for further cogitation if
-the result remains S2/S3. The Agent must detect cycles: if Q has been
-cogitated more than a configurable maximum (default: **3** passes) without
-reaching a significant result, it is abandoned and remains at its last
-computed level.
+When the Cogitator discovers an S1 via countersignature, it calls the
+`on_s1` callback, which triggers `agent.rationalise(query)` on the agent.
+This re-rationalisation runs on the cogitation thread.
 
 ### Cogitation Lifecycle
 
-Cogitation runs asynchronously. The Agent manages a backlog queue of
-Klines. When the backlog has been empty for a configurable timeout
-(default: **2 seconds**), the Agent emits a `"done"` event and stops the
-cogitation thread.
+The Cogitator runs asynchronously. When the backlog has been empty for a
+configurable timeout (default: **2 seconds**), the Cogitator emits a
+`"done"` event and stops the thread.
 
-The cogitation thread can be stopped explicitly and joined with a timeout.
+The Cogitator can be stopped explicitly via `join(timeout)`.
 
 ## Events
 
@@ -314,78 +308,81 @@ RationaliseEvent:
 
 Subscribers receive events synchronously in publication order.
 
-## Open Questions
+## Resolved Questions
 
-The following gaps exist across the spec spectrum. They require resolution
-before implementation.
+### 1. Routing in Agent vs Significance Module
+
+Routing (node-membership classification) is now performed by the agent
+directly. The significance module is reduced to constants (`D_MAX`,
+`MASK64`). This eliminates the `significance_pipeline`,
+`compute_significance`, and `SignificanceResult` abstractions.
+
+**Rationale**: Routing is a fast, model-free operation that directly
+determines agent control flow. Wrapping it in a separate pipeline added
+indirection without benefit. Distance computation is now only invoked in
+the Cogitator's slow path.
+
+### 2. No "Best Candidate" Selection
+
+The previous architecture computed significance for all candidates then
+selected the best result. The current architecture routes each candidate
+independently. The first S1 terminates immediately. All S2/S3 candidates
+are submitted as individual work items.
+
+**Rationale**: Best-candidate selection forced full computation before the
+agent could act. The per-candidate routing model enables short-circuit on
+S1 and parallel processing of S2/S3.
+
+### 3. Cogitator Receives Pre-Routed Work Items
+
+The Cogitator no longer retrieves candidates or expands graph context.
+It receives a WorkItem with a pre-routed level and computes distance
+for that single pair.
+
+**Rationale**: Separating routing (agent, fast) from distance computation
+(cogitator, slow) gives a clean workload split. Future iterations can
+evolve the Cogitator to perform additional graph expansion and re-routing.
+
+## Open Questions
 
 ### 1. Candidate Retrieval in the Model
 
-The significance spec requires the Agent to provide candidates, and this
-spec defines candidate retrieval as signature-overlap filtering. However,
-the model spec's `where(predicate)` performs a linear scan, which may be
+The model spec's `where(predicate)` performs a linear scan, which may be
 too slow for large models.
 
-**Options:**
+**Recommendation:** Add a `model.candidates_for(signature)` method that
+returns all Klines whose signatures share at least one bit with the query
+signature. The model can implement this efficiently using an inverted
+bit-to-signature index.
 
-- (a) Add a `model.candidates_for(signature)` method to the model spec
-  that returns all Klines whose signatures share at least one bit with
-  the query signature. The model can implement this efficiently using an
-  inverted bit-to-signature index.
-- (b) Accept the linear scan for now and optimise later.
+### 2. Cogitation Evolution
 
-**Recommendation:** (a). Candidate retrieval is the hottest path in
-rationalisation. A dedicated method allows the model to maintain an
-appropriate index.
+The MVP Cogitator processes work items individually with no graph expansion
+or pass tracking. Future iterations may add:
 
-### 2. Model Significance API Semantics
-
-The model spec defines `is_s1(node)`, `s2_distance(Q, C)`,
-`s3_distance(Q, C)` with semantics marked **TBD**. These are the functions
-consumed by the significance pipeline.
-
-**Question:** Who defines the semantics of these functions?
-
-**Options:**
-
-- (a) The model spec itself defines them (they are model-level operations).
-- (b) A new "comparison" or "distance" spec defines them.
-- (c) The agent spec defines them (they are agent-level concerns).
-
-**Recommendation:** (a). The model owns its data and should define how
-comparisons work. The significance spec defines the routing and inversion;
-the model spec defines the actual comparison mechanics.
+- Graph expansion via `model.query(depth=D_cogitate)` to find additional
+  candidates for each work item.
+- Pass tracking to limit re-processing of the same query.
+- Significance-based re-routing (using the computed distance to adjust the
+  level).
 
 ### 3. Grounding Assessment Formalisation
 
 This spec defines grounding checks (self-grounded, all-literal, unsigned)
-as fast-path optimisations that bypass the full significance pipeline. An
-alternative design would route everything through the significance pipeline,
-with the model's `is_s1` function handling these cases internally.
-
-**Question:** Should grounding be a separate agent-level concept, or should
-it be unified with the significance pipeline?
+as fast-path optimisations. An alternative design would route everything
+through routing, with the model's `is_s1` function handling these cases
+internally.
 
 **Recommendation:** Keep as agent-level fast paths. Grounding is about
 structural properties of a single Kline, not about comparison between two
-Klines. Conflating them would make the significance spec more complex
-without adding clarity.
-
-### 4. Cogitation Depth and Pass Limit
-
-`D_cogitate` (default 2) and the maximum cogitation passes (default 3) are
-configurable but their interaction with model size and Kline complexity is
-not analysed.
-
-**Recommendation:** Make both configurable. Document that deeper cogitation
-is more expensive but may resolve more rationals.
+Klines.
 
 ## What an Agent is Not
 
 The following are explicitly **out of scope** for this spec:
 
-- **Significance computation.** The Agent orchestrates the pipeline but
-  delegates distance calculation and inversion to the @significance spec.
+- **Distance computation.** The Agent delegates distance calculation to
+  the Model's `distance()` API. The Cogitator invokes it in the background.
 - **Tokenization internals.** How text is segmented into tokens is defined
   in the @tokenizer spec. The Agent consumes the tokenizer's output.
 - **Model internals.** How Klines are stored, indexed, and retrieved is
@@ -399,10 +396,8 @@ The following are explicitly **out of scope** for this spec:
 
 ## Referenced By
 
-- **Significance** (@significance spec) — the Agent provides query Klines,
-  candidates, and consumes significance results.
 - **Model** (@model spec) — the Agent stores and retrieves Klines, and
-  calls the model's significance API.
+  calls the model's distance and countersignature API.
 - **Signature** (@signature spec) — the Agent creates signatures during
   the prepare phase and uses bitwise AND matching for candidate retrieval.
 - **Tokenizer** (@tokenizer spec) — the Agent uses the tokenizer for
