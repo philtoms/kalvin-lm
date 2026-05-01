@@ -18,9 +18,58 @@ import json
 
 from kalvin.kline import KLine
 from kalvin.events import EventBus, RationaliseEvent
-from kalvin.model import Model, QueryCandidate, D_MAX
+from kalvin.model import Model, QueryCandidate, D_MAX, MASK64
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.signature import make_signature
+
+
+# ── Sampling ─────────────────────────────────────────────────────────
+
+class Sampling:
+    """Response sampling parameters for cogitation.
+
+    Values follow LLM convention so user intuition transfers directly.
+    Applied per-yield inside the cogitation stream — no batch collection.
+
+    Attributes
+    ----------
+    temperature:
+        Significance scaling. (0, ∞). Default 1.0 (identity).
+        < 1 conservative (only high-significance connotations pass),
+        > 1 exploratory (low-significance connotations pass more freely).
+    top_k:
+        Maximum connotations processed per work item. Default 40.
+        0 = unlimited.
+    top_p:
+        Cumulative significance threshold for early stopping. Default 0.95.
+        When accumulated significance reaches this fraction of D_MAX,
+        further connotations are demoted (never processed).
+        1.0 = no early stopping.
+    """
+
+    __slots__ = ("temperature", "top_k", "top_p")
+
+    def __init__(
+        self,
+        temperature: float = 1.0,
+        top_k: int = 40,
+        top_p: float = 0.95,
+    ) -> None:
+        if temperature <= 0:
+            raise ValueError(f"temperature must be > 0, got {temperature}")
+        if top_k < 0:
+            raise ValueError(f"top_k must be >= 0, got {top_k}")
+        if not (0.0 < top_p <= 1.0):
+            raise ValueError(f"top_p must be in (0, 1.0], got {top_p}")
+        self.temperature = temperature
+        self.top_k = top_k
+        self.top_p = top_p
+
+    def __repr__(self) -> str:
+        return (
+            f"Sampling(temperature={self.temperature}, "
+            f"top_k={self.top_k}, top_p={self.top_p})"
+        )
 
 
 # ── Work Item ─────────────────────────────────────────────────────────
@@ -39,6 +88,9 @@ class Cogitator:
 
     Receives individual query|candidate|level work items,
     computes deep significance (model.expand), and processes results.
+    Sampling parameters control the streaming consumption of expand()
+    yields — temperature gates per-yield quality, top_k caps exploration
+    budget, and top_p triggers early stopping on sufficient evidence.
 
     Parameters
     ----------
@@ -52,6 +104,9 @@ class Cogitator:
     timeout:
         Idle seconds before emitting "done" so subscribers can realign.
         Does not halt the thread. Default 2.0.
+    sampling:
+        Sampling parameters. Defaults to temperature=1.0, top_k=40,
+        top_p=0.95.
     """
 
     def __init__(
@@ -60,11 +115,14 @@ class Cogitator:
         event_bus: EventBus,
         on_s1: Any,  # Callable[[KLine, KLine], None]
         timeout: float = 2.0,
+        sampling: Sampling | None = None,
     ):
         self._model = model
         self._event_bus = event_bus
         self._on_s1 = on_s1
         self._timeout = timeout
+        self.sampling = sampling if sampling is not None else Sampling()
+        self.publish_threshold: int = D_MAX - 1
 
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
@@ -105,16 +163,58 @@ class Cogitator:
                     return
                 item = self._backlog.pop(0)
 
-            # Expand query-candidate and process each result
-            query, candidate, level = item
-            for qc in self._model.expand(query, candidate, level):
-                self._process(qc)
+            self._run_work_item(item)
+
+    def _adjust(self, significance: int) -> int:
+        """Apply temperature to a significance value.
+
+        Works in distance space where division by τ is natural:
+          τ < 1 → distance increases → significance drops → conservative
+          τ = 1 → identity
+          τ > 1 → distance decreases → significance rises → exploratory
+        """
+        if self.sampling.temperature == 1.0:
+            return significance
+        distance = (~significance) & MASK64
+        adjusted = min(int(distance / self.sampling.temperature), D_MAX)
+        return (~adjusted) & MASK64
+
+    def _run_work_item(self, item: WorkItem) -> None:
+        """Expand a work item with streaming sampling.
+
+        Consumes expand() yields one at a time. Temperature gates
+        per-yield quality, top_k caps the exploration budget, and top_p
+        triggers early stopping when sufficient evidence has accumulated.
+        """
+        query, candidate, level = item
+        s = self.sampling
+
+        evidence_target = int(s.top_p * D_MAX)
+        count = 0
+        cumulative = 0
+
+        for qc in self._model.expand(query, candidate, level):
+            # Temperature gate — per-yield quality filter
+            adjusted = self._adjust(qc.significance)
+            if adjusted < self.publish_threshold:
+                continue  # demote: insufficient significance after temperature
+
+            count += 1
+            cumulative += adjusted
+
+            self._process(qc)
+
+            # Top-p: sufficient evidence accumulated?
+            if s.top_p < 1.0 and cumulative >= evidence_target:
+                break  # demote remainder — diminishing returns
+
+            # Top-k: exploration budget exhausted?
+            if 0 < s.top_k <= count:
+                break  # demote remainder — budget spent
 
     def _process(self, item: QueryCandidate) -> None:
         """Process a single expanded result: check countersignature."""
         query, candidate, significance = item
-
-        # MVP: level stays as routed — significance stored but not used for re-routing
 
         # Check countersignature — may upgrade to S1
         if self._model.is_countersigned(query, candidate):
@@ -176,6 +276,15 @@ class Agent:
     @property
     def cogitator(self) -> Cogitator:
         return self._cogitator
+
+    @property
+    def sampling(self) -> Sampling:
+        """Cogitation sampling parameters (temperature, top_k, top_p)."""
+        return self._cogitator.sampling
+
+    @sampling.setter
+    def sampling(self, value: Sampling) -> None:
+        self._cogitator.sampling = value
 
     # ── Routing ───────────────────────────────────────────────────────
 

@@ -220,28 +220,111 @@ Add the KLine to the model (STM only). Select the best result (highest significa
 
 Cogitation is background processing of rational KLines (S2/S3). The Cogitator
 receives pre-routed work items, expands each through `model.expand()` to
-discover intermediate connotations, and checks each result for countersignature:
+discover intermediate connotations, and checks each result for countersignature.
+Expansion yields are consumed as a **stream** — sampling parameters control
+which yields are processed and when exploration stops.
+
+### Response Sampling
+
+The Cogitator applies three sampling parameters to the `expand()` stream.
+Values follow LLM convention so user intuition transfers directly:
+
+| Parameter     | Type    | Default | Range          | Purpose                    |
+| ------------- | ------- | ------- | -------------- | -------------------------- |
+| `temperature` | float   | 1.0     | (0, ∞)         | Per-yield significance gate|
+| `top_k`       | int     | 40      | [0, ∞). 0=∞    | Exploration budget per item|
+| `top_p`       | float   | 0.95    | (0, 1.0]       | Cumulative evidence cutoff |
+
+Temperature is applied first to each yielded significance value. Top-k and
+top-p then truncate the stream. All three compose in a single pass with O(1)
+state — no batch collection.
+
+#### Temperature
+
+Rescales significance in distance space:
 
 ```
-Cogitate(Q, C, level):
-  for qc in model.expand(Q, C, level):
-    process(qc)
-
-process(QueryCandidate(query, candidate, distance)):
-  1. significance = (~distance) & MASK64
-  2. Test for countersignature:
-     query's nodes reference candidate's signature, AND
-     candidate's nodes reference query's signature.
-  3. If countersigned → upgrade to S1, re-rationalise query.
+adjusted_distance = raw_distance / temperature
+adjusted_significance = ~adjusted_distance
 ```
 
-`model.expand()` yields intermediate `QueryCandidate` items for each discovered
-connotation — both S2 (direct hop between mismatched nodes) and S3 (indirect
-bridge through intermediate signatures). Each connotation is processed
-identically, enabling countersignature discovery across the full expansion
-graph. The terminal yield carries the packed distance for the original pair.
+- τ < 1: distances grow → significance drops → conservative (only
+  high-significance connotations pass)
+- τ = 1: identity (no adjustment)
+- τ > 1: distances shrink → significance rises → exploratory (even
+  low-significance connotations pass)
 
-Countersignature discovery is the primary mechanism by which cogitation promotes S2 to S1. A KLine that appears to be underfitting or overfitting during initial rationalisation may, upon deeper traversal, turn out to be part of a mutual cross-reference that the initial bitwise AND retrieval could not detect.
+Temperature gates the **publishing window**: a high τ can bring near-S1 S2
+connotations above the publish threshold, making them immediately visible
+without waiting for full countersignature resolution.
+
+#### Top-k
+
+Caps the number of connotations processed per work item. Each QC that passes
+the temperature gate increments a counter; when it reaches `k`, the generator
+is broken out of. Everything after is demoted — never checked for
+countersignature, never considered for promotion.
+
+Top-k is the **promotion budget**: it directly controls how many chances each
+work item gets to discover an S1.
+
+#### Top-p
+
+Tracks cumulative adjusted significance across the stream. When the total
+reaches `top_p × D_MAX`, the generator is broken out of. This is an adaptive
+quality gate: when the first few connotations carry high significance, the
+target is reached quickly (the agent "locks on"). When significance is diffuse,
+the agent explores more widely.
+
+Top-p is the **demotion threshold**: it decides when further exploration has
+diminishing returns.
+
+### Streaming Pipeline
+
+```
+run_work_item(WorkItem(query, candidate, level)):
+  evidence_target = top_p × D_MAX
+  count = 0, cumulative = 0
+
+  for qc in model.expand(query, candidate, level):
+    adjusted = adjust(qc.significance, temperature)
+    if adjusted < publish_threshold:
+      continue                    # demote: insufficient significance
+
+    count += 1
+    cumulative += adjusted
+
+    process(qc)                   # countersignature check
+
+    if cumulative >= evidence_target:
+      break                       # demote: sufficient evidence
+    if 0 < top_k <= count:
+      break                       # demote: budget exhausted
+```
+
+### Countersignature
+
+```
+process(QueryCandidate(query, candidate, significance)):
+  if model.is_countersigned(query, candidate):
+    model.add(candidate)
+    re-rationalise(query)          # may inject new work items
+```
+
+Countersignature discovery is the primary mechanism by which cogitation
+promotes S2 to S1. A KLine that appears to be underfitting or overfitting
+during initial rationalisation may, upon deeper traversal, turn out to be
+part of a mutual cross-reference that the initial bitwise AND retrieval could
+not detect.
+
+### Reentrant Rationalisation
+
+When `process()` discovers a countersignature and calls `on_s1()` →
+`agent.rationalise(query)`, that re-rationalisation may produce new S2/S3
+candidates that are appended to the backlog. The streaming approach handles
+this naturally: each `expand()` call operates on the model state at the time
+of the yield, and re-rationalisation adds new work items processed in their
+own turn. Sampling parameters apply independently to each work item's stream.
 
 The cogitation thread runs asynchronously and emits a `"done"` event when
 the backlog has been empty for a timeout (default 2 seconds).

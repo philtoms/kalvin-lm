@@ -263,7 +263,56 @@ directly without any inversion.
 
 Cogitation is the background processing of individual query-candidate work
 items. The Cogitator receives pre-routed work items, expands each through
-`model.expand()` to discover connotations, and checks for countersignature.
+`model.expand()` to discover connotations, applies **response sampling** to
+the stream of yields, and checks surviving results for countersignature.
+
+### Sampling
+
+Response sampling parameters control how the Cogitator consumes the
+`expand()` generator stream. Values follow LLM convention.
+
+```
+Sampling:
+  temperature: float   # (0, ∞). Default 1.0.
+  top_k:       int     # [0, ∞). 0 = unlimited. Default 40.
+  top_p:       float   # (0, 1.0]. Default 0.95.
+```
+
+| Parameter     | Streaming role         | Mechanism                               |
+| ------------- | ---------------------- | --------------------------------------- |
+| `temperature` | Per-yield quality gate | Rescale significance in distance space. |
+| `top_k`       | Exploration budget    | Cap processed connotations per work item|
+| `top_p`       | Evidence threshold    | Stop when cumulative significance ≥ p   |
+
+Applied in order per-yield: temperature first (gate), then top-p (evidence
+check), then top-k (budget check). O(1) state per work item.
+
+#### Temperature
+
+Adjusts a raw significance by converting to distance, dividing by τ,
+and inverting back:
+
+```
+adjust(significance, τ):
+  distance = (~significance) & MASK64
+  adjusted = min(distance / τ, D_MAX)
+  return (~adjusted) & MASK64
+```
+
+- τ < 1: conservative — only high-significance connotations pass
+- τ = 1: identity
+- τ > 1: exploratory — low-significance connotations pass more freely
+
+#### Top-k
+
+Maximum number of connotations processed per work item. After `k` results
+pass the temperature gate, the generator is exhausted. 0 means unlimited.
+
+#### Top-p
+
+Cumulative significance threshold. After processing, if the running sum of
+adjusted significance reaches `top_p × D_MAX`, the generator is exhausted.
+When `top_p = 1.0`, no early stopping occurs.
 
 ### Cogitator
 
@@ -273,6 +322,7 @@ Cogitator:
   event_bus:  EventBus
   on_s1:      callback(query, candidate)
   timeout:    float (default 2.0)
+  sampling:   Sampling (default: temperature=1.0, top_k=40, top_p=0.95)
   backlog:    queue of WorkItem
   thread:     background
 ```
@@ -282,29 +332,43 @@ the backlog and processes each one.
 
 ### Work Item Processing
 
-The Cogitator expands each WorkItem into a sequence of QueryCandidates.
-Each QueryCandidate is processed individually:
+The Cogitator expands each WorkItem into a stream of QueryCandidates.
+Sampling parameters gate which candidates are processed:
 
 ```
-run(WorkItem(query, candidate, level)):
+run_work_item(WorkItem(query, candidate, level)):
+  evidence_target = sampling.top_p × D_MAX
+  count = 0, cumulative = 0
+
   for qc in model.expand(query, candidate, level):
+    adjusted = adjust(qc.significance, sampling.temperature)
+    if adjusted < publish_threshold:
+      continue                    # demote
+    count += 1
+    cumulative += adjusted
     process(qc)
+    if cumulative >= evidence_target:
+      break                       # sufficient evidence
+    if 0 < sampling.top_k <= count:
+      break                       # budget exhausted
 
 process(QueryCandidate(query, candidate, significance)):
-  1. if model.is_countersigned(query, candidate):
-       model.add(candidate)
-       on_s1(query, candidate)    # triggers re-rationalisation
+  if model.is_countersigned(query, candidate):
+    model.add(candidate)
+    on_s1(query, candidate)       # triggers re-rationalisation
 ```
 
-Each QueryCandidate carries pre-computed significance (the model performs
-the distance→significance inversion internally). Countersignature is checked
-for every yielded result, enabling discovery across the full expansion graph.
+The `publish_threshold` is the minimum adjusted significance for a cogitation
+result to be processed. Currently `D_MAX - 1` (S1 level). Temperature is
+applied before comparison, so high τ can bring near-S1 S2 results above
+this threshold.
 
 ### S1 Callback
 
 When the Cogitator discovers an S1 via countersignature, it calls the
 `on_s1` callback, which triggers `agent.rationalise(query)` on the agent.
-This re-rationalisation runs on the cogitation thread.
+This re-rationalisation runs on the cogitation thread and may inject new
+work items into the backlog.
 
 ### Cogitation Lifecycle
 
@@ -388,16 +452,11 @@ returns all Klines whose signatures share at least one bit with the query
 signature. The model can implement this efficiently using an inverted
 bit-to-signature index.
 
-### 2. Cogitation Evolution
+### 2. ~~Cogitation Evolution~~ — Resolved
 
-The Cogitator now expands each work item through `model.expand()`, yielding
-intermediate connotations alongside the terminal distance. Future iterations
-may add:
-
-- Pass tracking to limit re-processing of the same query.
-- Significance-based re-routing (using the computed distance to adjust the
-  level).
-- Top-k/top-p selection of connotation results for refinement.
+Top-k/top-p/temperature sampling has been added to the Cogitator. The
+`expand()` stream is now consumed with per-yield temperature gating, top-k
+budget capping, and top-p cumulative evidence early stopping. See §Cogitation.
 
 ### 3. Grounding Assessment Formalisation
 

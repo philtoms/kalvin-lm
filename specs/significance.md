@@ -118,3 +118,5 @@ model.expand(Q, C, level) → Iterator[QueryCandidate]
 | Routing | `src/kalvin/agent.py` | `Agent._route()` |
 | Significance inversion | `src/kalvin/model.py` | `Model.expand()` |
 | Distance computation | `src/kalvin/model.py` | `Model.expand()` |
+| Sampling (temperature) | `src/kalvin/agent.py` | `Cogitator._adjust()` |
+| Sampling (top-k, top-p) | `src/kalvin/agent.py` | `Cogitator._run_work_item()` |

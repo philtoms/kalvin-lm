@@ -204,42 +204,58 @@ class WorkItem(NamedTuple):
 ### Cogitator Spec
 
 Background work-item processor. Receives pre-routed WorkItems, computes deep
-significance, checks countersignature.
+significance, checks countersignature. Response sampling controls stream
+consumption.
 
 ```python
+class Sampling:
+    temperature: float   # (0, ∞). Default 1.0.
+    top_k:       int     # [0, ∞). 0 = unlimited. Default 40.
+    top_p:       float   # (0, 1.0]. Default 0.95.
+
 class Cogitator:
     model: Model
     event_bus: EventBus
     on_s1: Callable          # callback for S1 discovery
     timeout: float           # default 2.0s
+    sampling: Sampling       # response sampling parameters
     backlog: queue[WorkItem]
     thread: daemon thread
 ```
 
-**Processing per work item:**
+**Processing per work item — streaming sampling:**
 
 ```
-run(WorkItem(query, candidate, level)):
+run_work_item(WorkItem(query, candidate, level)):
+  evidence_target = sampling.top_p × D_MAX
+  count = 0, cumulative = 0
+
   for qc in model.expand(query, candidate, level):
-    process(qc)
+    adjusted = adjust(qc.significance, sampling.temperature)
+    if adjusted < publish_threshold:
+      continue                    # demote
+    count += 1
+    cumulative += adjusted
+    process(qc)                   # countersignature check
+    if cumulative >= evidence_target:
+      break                       # sufficient evidence
+    if 0 < sampling.top_k <= count:
+      break                       # budget exhausted
+
+adjust(significance, τ):
+  distance = (~significance) & MASK64
+  adjusted = min(distance / τ, D_MAX)
+  return (~adjusted) & MASK64
 
 process(QueryCandidate(query, candidate, significance)):
-  1. if model.is_countersigned(query, candidate):
-       model.add(candidate)
-       on_s1(query, candidate)    # triggers re-rationalisation
+  if model.is_countersigned(query, candidate):
+    model.add(candidate)
+    on_s1(query, candidate)       # re-rationalise
 ```
 
-`model.expand()` yields intermediate `QueryCandidate` items for each
-discovered connotation (S2 and S3 indirect relationships), followed by a
-terminal `QueryCandidate` with the computed significance. Each is processed
-identically — countersignature is checked for every yielded result. The
-significance inversion is performed inside `expand()`; the Cogitator
-uses `QueryCandidate.significance` directly.
-
-**MVP:** The routed level (S2/S3) is preserved — significance is computed but
-not used for re-routing. Countersignature is the only mechanism that can promote
-to S1 during cogitation. Connotation expansion via `model.expand()` provides
-graph exploration beyond the initial query-candidate pair.
+The `publish_threshold` is currently `D_MAX - 1`. Temperature is applied
+before comparison, so high τ can bring near-S1 S2 results into the
+publishing window.
 
 **Lifecycle:**
 
@@ -328,6 +344,22 @@ def is_countersigned(Q, C):
 | Join                        | Thread stops cleanly                           |
 | S2 submits work item        | WorkItem queued with correct fields            |
 | Rationalise after join      | Works without cogitation thread                |
+
+### Sampling
+
+| Test                        | Description                                    |
+| --------------------------- | ---------------------------------------------- |
+| Default values              | temperature=1.0, top_k=40, top_p=0.95          |
+| Validation rejects bad      | temp≤0, top_k<0, top_p∉(0,1]                   |
+| Agent.sampling property     | Read/write proxy to cogitator                  |
+| Temperature identity        | τ=1.0 → adjust(sig) == sig                     |
+| Temperature conservative    | τ<1 → adjust(sig) ≤ sig                        |
+| Temperature exploratory     | τ>1 → adjust(sig) ≥ sig                        |
+| Top-k budget                | k=1 processes at most 1 QC per work item       |
+| Top-k unlimited             | k=0 processes all QCs                          |
+| Top-p early stop            | p<1.0 stops before exhausting generator        |
+| Top-p no stop               | p=1.0 never triggers early stop                |
+| Streaming composition       | temperature gates, top-k caps, top-p stops     |
 
 ### Events
 
