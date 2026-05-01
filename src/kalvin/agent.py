@@ -361,6 +361,7 @@ class Agent:
         model = Model(is_literal_fn=Mod32Tokenizer().is_literal)
         for kl in klines:
             model.add(kl)
+            model.promote(kl)
         agent = cls(model=model)
         agent._activity = activity
         return agent
@@ -383,6 +384,7 @@ class Agent:
         model = Model(is_literal_fn=Mod32Tokenizer().is_literal)
         for kl in klines:
             model.add(kl)
+            model.promote(kl)
         agent = cls(model=model)
         if "activity" in data:
             agent._activity = Counter({int(k): v for k, v in data["activity"].items()})

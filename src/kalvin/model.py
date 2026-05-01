@@ -32,9 +32,9 @@ class QueryCandidate(NamedTuple):
 class Model:
     """Three-tier Model: STM → Frame → Base.
 
-    - STM: bounded rolling window (default 256).
-    - Frame: unbounded session write surface.
-    - Base: optional long-term knowledge store (read-through).
+    - STM: bounded rolling window (default 256). add() writes here.
+    - Frame: populated by promote() from STM.
+    - Base: optional long-term knowledge store (read-only, set at construction).
 
     The caller sees a single unified API.
     """
@@ -56,7 +56,7 @@ class Model:
     # ── Storage Operations ────────────────────────────────────────────
 
     def add(self, kline: KLine, dedup: bool = False) -> bool:
-        """Add a KLine to both STM and frame.
+        """Add a KLine to STM only.
 
         If kline.is_literal() and dedup=True, reject if an equal KLine
         exists in any tier. Non-literal Klines are always accepted.
@@ -67,16 +67,11 @@ class Model:
             if self._exists_any(kline):
                 return False
 
-        # Add to frame
-        idx = len(self._frame_list)
-        self._frame_list.append(kline)
-        if kline.signature not in self._frame_by_sig:
-            self._frame_by_sig[kline.signature] = []
-        self._frame_by_sig[kline.signature].append(idx)
-        self._frame_dedup.add((kline.signature, tuple(kline.nodes)))
-
-        # Add to STM
+        # Add to STM only
         self._stm.add(kline, dedup=False)
+        # Track in STM dedup for promote / _exists_any lookups
+        key = (kline.signature, tuple(kline.nodes))
+        self._stm._dedup.add(key)
 
         return True
 
@@ -85,8 +80,10 @@ class Model:
         return self._exists_any(kline)
 
     def _exists_any(self, kline: KLine) -> bool:
-        """Check frame, then base (STM is a window over frame)."""
+        """Check STM, frame, then base."""
         key = (kline.signature, tuple(kline.nodes))
+        if key in self._stm._dedup:
+            return True
         if key in self._frame_dedup:
             return True
         if self._base:
@@ -94,11 +91,17 @@ class Model:
         return False
 
     def find(self, signature: KSig) -> KLine | None:
-        """Find the most recently added KLine by signature."""
-        # Frame first (exact signature match)
+        """Find the most recently added KLine by signature.
+
+        Searches STM, then frame, then base.
+        """
+        # STM first — filter for actual signature match (STM is dual-keyed)
+        for kl in reversed(self._stm.find_by_signature(signature)):
+            if kl.signature == signature:
+                return kl
+        # Frame
         indices = self._frame_by_sig.get(signature)
         if indices:
-            # Walk backwards to find a non-None entry
             for idx in reversed(indices):
                 kl = self._frame_list[idx]
                 if kl is not None:
@@ -113,10 +116,21 @@ class Model:
         results: list[KLine] = []
         seen: set[tuple[KSig, tuple[int, ...]]] = set()
 
+        # STM results — filter for actual signature match (STM is dual-keyed)
+        for kl in self._stm.find_by_signature(signature):
+            if kl.signature != signature:
+                continue
+            key = (kl.signature, tuple(kl.nodes))
+            if key not in seen:
+                seen.add(key)
+                results.append(kl)
+
         # Frame results
         indices = self._frame_by_sig.get(signature, [])
         for idx in indices:
             kl = self._frame_list[idx]
+            if kl is None:
+                continue
             key = (kl.signature, tuple(kl.nodes))
             if key not in seen:
                 seen.add(key)
@@ -153,10 +167,13 @@ class Model:
 
         Removal never affects the base model.
         """
+        removed = False
+
         # Try STM
         stm_klines = self._stm.find_by_signature(signature)
         if stm_klines:
             self._stm.remove(stm_klines[-1])
+            removed = True
 
         # Try frame
         indices = self._frame_by_sig.get(signature)
@@ -168,8 +185,9 @@ class Model:
             self._frame_list[idx] = None  # type: ignore
             if not indices:
                 del self._frame_by_sig[signature]
-            return True
-        return False
+            removed = True
+
+        return removed
 
     # ── Count ─────────────────────────────────────────────────────────
 
@@ -230,18 +248,32 @@ class Model:
     # ── Promotion ─────────────────────────────────────────────────────
 
     def promote(self, kline: KLine) -> bool:
-        """Promote a KLine to the base model."""
-        if self._base is None:
+        """Promote a KLine from STM to the frame.
+
+        The KLine must currently be in STM. Returns True if added to frame,
+        False if not in STM or already in frame.
+        """
+        key = (kline.signature, tuple(kline.nodes))
+        # Must be in STM
+        if key not in self._stm._dedup:
             return False
-        return self._base.add(kline, dedup=True)
+        # Already in frame
+        if key in self._frame_dedup:
+            return False
+        # Add to frame
+        idx = len(self._frame_list)
+        self._frame_list.append(kline)
+        if kline.signature not in self._frame_by_sig:
+            self._frame_by_sig[kline.signature] = []
+        self._frame_by_sig[kline.signature].append(idx)
+        self._frame_dedup.add(key)
+        return True
 
     def promote_all(self) -> int:
-        """Promote all frame KLines to the base model."""
-        if self._base is None:
-            return 0
+        """Promote all STM KLines to the frame."""
         count = 0
-        for kl in self._frame_list:
-            if kl is not None and self._base.add(kl, dedup=True):
+        for kl in list(self._stm._order):
+            if self.promote(kl):
                 count += 1
         return count
 
@@ -501,6 +533,7 @@ class Model:
         m = Model(is_literal_fn=self._is_literal_fn)
         for kl in klines:
             m.add(kl)
+            m.promote(kl)
         return m
 
     def get_all_descendants(self, node: int, visited: set[int] | None = None) -> set[int]:

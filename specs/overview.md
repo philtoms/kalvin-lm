@@ -57,15 +57,15 @@ The model has a **three-tier memory architecture**, invisible to callers:
 STM → Frame → Base
 ```
 
-| Tier  | Purpose               | Bounded   | Lifetime       | Written by add |
-| ----- | --------------------- | --------- | -------------- | -------------- |
-| STM   | Transitive grounding  | Yes (256) | Rolling window | Yes            |
-| Frame | Session write surface | No        | Per-session    | Yes            |
-| Base  | Long-term knowledge   | No        | Persistent     | No (promotion) |
+| Tier  | Purpose               | Bounded   | Lifetime       | Written by add | Written by promote |
+| ----- | --------------------- | --------- | -------------- | -------------- | ------------------ |
+| STM   | Transitive grounding  | Yes (256) | Rolling window | Yes            | No                 |
+| Frame | Session write surface | No        | Per-session    | No             | Yes (from STM)     |
+| Base  | Long-term knowledge   | No        | Persistent     | No             | No                  |
 
-- **STM** (Short-Term Memory) is a bounded, dual-keyed index over the most recently added KLines. It indexes each KLine by both its signature _and_ its nodes signature, enabling **transitive grounding** — finding KLines that share node structure even when their signatures differ. When the bound is exceeded, the oldest entries are evicted (they remain in the frame). See the @stm spec for full definition.
-- **Frame** is the primary write surface for the current session. All non-rejected KLines are added here. Lookups that miss in STM fall through to the frame.
-- **Base** is an optional long-term knowledge store. It is **read-only** during a session — Klines reach the base through **promotion**, a separate mechanism triggered by the agent on significant results (S1 and S4). Each session layers a fresh frame over a shared base, giving isolated writes with shared knowledge.
+- **STM** (Short-Term Memory) is a bounded, dual-keyed index over the most recently added KLines. It indexes each KLine by both its signature _and_ its nodes signature, enabling **transitive grounding** — finding KLines that share node structure even when their signatures differ. When the bound is exceeded, the oldest entries are evicted. See the @stm spec for full definition.
+- **Frame** is populated by **promotion** from STM. When the agent determines a KLine is significant (S1 or S4), it promotes the KLine from STM to the frame. Lookups that miss in STM fall through to the frame.
+- **Base** is an optional long-term knowledge store. It is **read-only** during a session — established at model instantiation and never modified by `add` or `promote`. Each session layers a fresh model over a shared base, giving isolated writes with shared knowledge.
 
 Lookups search tiers in order: STM → Frame → Base. Callers see a single unified Model API; tiering is managed internally.
 
@@ -180,7 +180,7 @@ Rationalisation is the agent's core loop: determining how a new KLine relates to
 ├─────────────────────────────────────────────────┤
 │ 6. INTEGRATE                                    │
 │    Add Q to model. Act on best result.           │
-│    → S1/S4: promote to base.                    │
+│    → S1/S4: promote to frame.                   │
 │    → S2/S3: queue for cogitation.               │
 └─────────────────────────────────────────────────┘
 ```
@@ -214,7 +214,7 @@ For each candidate, run the significance pipeline: routing, graph expansion, dis
 
 ### Phase 6: Integrate
 
-Add the KLine to the model (both STM and frame). Select the best result (highest significance value). If S1 or S4, promote to the base model. If S2 or S3, queue for cogitation.
+Add the KLine to the model (STM only). Select the best result (highest significance value). If S1 or S4, promote to the frame. If S2 or S3, queue for cogitation.
 
 ## 6. Cogitation
 
@@ -268,7 +268,10 @@ model.promote(kline) → bool
 model.promote_all() → int
 ```
 
-Promotion moves KLines from the frame to the base model, making them persistent across sessions. The agent triggers promotion on significant results (S1 = confirmed knowledge, S4 = novel knowledge).
+Promotion moves KLines from STM to the frame, persisting them for the
+session. The agent triggers promotion on significant results (S1 =
+confirmed knowledge, S4 = novel knowledge). The base model is never
+modified — it is established at model instantiation and remains read-only.
 
 ### Events
 
@@ -300,7 +303,7 @@ The three-tier architecture provides the system's temporal structure:
 - **Frame** (session-scoped) captures the current session's work without polluting the long-term store.
 - **Base** (persistent) grounds future sessions in accumulated knowledge.
 
-Promotion is the bridge: only S1 (confirmed) and S4 (novel) KLines are promoted, ensuring the base model grows only through validated knowledge.
+Promotion is the bridge: only S1 (confirmed) and S4 (novel) KLines are promoted from STM to the frame, ensuring the frame grows only through validated knowledge.
 
 ### Bitwise AND as Necessary Condition
 

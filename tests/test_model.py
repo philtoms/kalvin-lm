@@ -92,10 +92,18 @@ class TestModelFindAll:
 
 
 class TestModelRemove:
-    def test_remove(self):
+    def test_remove_from_stm(self):
         m = make_model()
         k = KLine(5, [1])
         m.add(k)
+        assert m.remove(5) is True
+        assert m.find(5) is None
+
+    def test_remove_from_frame(self):
+        m = make_model()
+        k = KLine(5, [1])
+        m.add(k)
+        m.promote(k)
         assert m.remove(5) is True
         assert m.find(5) is None
 
@@ -109,9 +117,17 @@ class TestModelLen:
         m = make_model()
         assert len(m) == 0
 
-    def test_len_after_add(self):
+    def test_len_counts_frame_only(self):
+        """add() goes to STM, not frame. len counts frame entries."""
         m = make_model()
         m.add(KLine(5, [1]))
+        assert len(m) == 0  # STM only, not promoted to frame
+
+    def test_len_after_promote(self):
+        m = make_model()
+        k = KLine(5, [1])
+        m.add(k)
+        m.promote(k)
         assert len(m) == 1
 
 
@@ -179,36 +195,52 @@ class TestModelThreeTier:
         base = make_model()
         k = KLine(5, [1])
         base.add(k)
+        base.promote(k)
 
         frame = Model(base=base, is_literal_fn=Mod32Tokenizer().is_literal)
         assert frame.find(5) is k
 
-    def test_add_goes_to_frame_not_base(self):
+    def test_add_goes_to_stm_not_frame(self):
         base = make_model()
-        frame = Model(base=base, is_literal_fn=Mod32Tokenizer().is_literal)
+        session = Model(base=base, is_literal_fn=Mod32Tokenizer().is_literal)
         k = KLine(5, [1])
-        frame.add(k)
+        session.add(k)
         assert len(base) == 0
-        assert len(frame) == 1
+        assert len(session) == 0  # frame is empty — kline is in STM only
+        assert session.find(5) is k  # but still discoverable via STM
 
 
 class TestModelPromote:
-    def test_promote_to_base(self):
-        base = make_model()
-        frame = Model(base=base, is_literal_fn=Mod32Tokenizer().is_literal)
+    def test_promote_to_frame(self):
+        m = make_model()
         k = KLine(5, [1])
-        frame.add(k)
-        assert frame.promote(k) is True
-        assert base.find(5) is k
+        m.add(k)
+        assert len(m) == 0  # STM only
+        assert m.promote(k) is True
+        assert len(m) == 1  # now in frame
+
+    def test_promote_requires_stm(self):
+        """promote() rejects klines not in STM."""
+        m = make_model()
+        k = KLine(5, [1])
+        assert m.promote(k) is False  # never added to STM
+
+    def test_promote_idempotent(self):
+        """Promoting same kline twice is a no-op."""
+        m = make_model()
+        k = KLine(5, [1])
+        m.add(k)
+        assert m.promote(k) is True
+        assert m.promote(k) is False  # already in frame
 
     def test_promote_all(self):
-        base = make_model()
-        frame = Model(base=base, is_literal_fn=Mod32Tokenizer().is_literal)
-        frame.add(KLine(5, [1]))
-        frame.add(KLine(6, [2]))
-        count = frame.promote_all()
+        m = make_model()
+        m.add(KLine(5, [1]))
+        m.add(KLine(6, [2]))
+        assert len(m) == 0  # STM only
+        count = m.promote_all()
         assert count == 2
-        assert len(base) == 2
+        assert len(m) == 2  # now in frame
 
 
 class TestIsS1:

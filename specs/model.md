@@ -14,7 +14,8 @@ STM → Frame → Base
 ```
 
 Callers see a single unified Model API. The model manages the tiers
-internally, routing adds to the appropriate tier and merging lookups
+internally: `add` writes to STM only; `promote` moves from STM to the
+frame; the base is read-only, established at construction. Lookups merge
 across all tiers transparently.
 
 ## Dependencies
@@ -57,11 +58,11 @@ A Model consists of:
 
 ### Tier Summary
 
-| Tier  | Purpose               | Bounded | Lifetime       | Modified by add |
-| ----- | --------------------- | ------- | -------------- | --------------- |
-| STM   | Transitive grounding  | Yes     | Rolling window | Yes             |
-| Frame | Session write surface | No      | Per-session    | Yes             |
-| Base  | Long-term knowledge   | No      | Persistent     | No (promotion)  |
+| Tier  | Purpose               | Bounded | Lifetime       | Written by add | Written by promote |
+| ----- | --------------------- | ------- | -------------- | -------------- | ------------------ |
+| STM   | Transitive grounding  | Yes     | Rolling window | Yes            | No                 |
+| Frame | Session write surface | No      | Per-session    | No             | Yes (from STM)     |
+| Base  | Long-term knowledge   | No      | Persistent     | No             | No                  |
 
 ### STM (Short-Term Memory)
 
@@ -69,20 +70,23 @@ See the **@stm spec** for the full definition. Summary:
 
 - Bounded, dual-keyed index over recently added KLines (default bound: **256**).
 - Indexes each KLine by **signature** and **nodes signature** (via `make_signature`).
-- FIFO eviction when bound is exceeded; evicted KLines remain in the Frame.
+- FIFO eviction when bound is exceeded; evicted KLines are discarded unless
+  they have been promoted to the frame.
 - Enables **transitive grounding** — finding KLines that share node structure
   even when their signatures differ.
+- `add` writes to STM only.
 
 ### Frame
 
-The frame is the primary write surface for the current session. All
-non-rejected Klines are added to the frame. The frame has no fixed bound
-— it grows as Klines are added during a session.
+The frame is populated by **promotion** from STM. When the agent
+determines a KLine is significant (S1 or S4), it promotes the KLine from
+STM to the frame. The frame has no fixed bound — it grows as KLines are
+promoted during a session.
 
 The frame is a read-through layer over the base:
 
 - Lookups that miss in the STM or frame fall through to the base.
-- Additions to the frame do **not** modify the base.
+- Additions to the frame (via promote) do **not** modify the base.
 
 ### Base Model
 
@@ -90,8 +94,9 @@ A model may optionally reference a **base model**.
 
 - The base is **read-through**: lookups that miss in STM and frame fall
   through to the base.
-- The base model is **not directly modified** by `add`. Klines are
-  promoted to the base via a separate mechanism (see Promotion).
+- The base model is **never modified** by `add` or `promote`. It is
+  established at model instantiation and remains read-only for the
+  session's lifetime.
 - A user request instantiates a new model layered over a shared base, so
   each session has an isolated write surface with access to shared
   knowledge.
@@ -138,17 +143,16 @@ priority, then frame, then base).
 model.add(kline) → bool
 ```
 
-Adds a Kline to the model.
+Adds a KLine to the model.
 
-- Returns `true` if the Kline was added.
-- Returns `false` if the Kline was rejected.
-- The Kline is added to **both** the STM and the frame.
+- Returns `true` if the KLine was added.
+- Returns `false` if the KLine was rejected.
+- The KLine is added to **STM only** (not the frame or base).
 - If `kline.is_literal()` is `true` (all nodes are literal tokens,
   per @tokenizer spec), a duplicate check is performed
   (see Deduplication). Non-literal Klines are always accepted.
 - If adding to the STM would exceed `stm_bound`, the oldest STM entry
-  is evicted. The evicted Kline remains in the frame.
-- The base model is **not modified** by `add`.
+  is evicted. Evicted KLines that have not been promoted are discarded.
 
 ### Exists
 
@@ -219,14 +223,13 @@ Removes the most recently added Kline with the given signature.
 len(model) → int ≥ 0
 ```
 
-The total number of Klines in the frame (excluding STM and base). STM is
-a rolling window over the frame's Klines and does not contribute
-independently to the count.
+The total number of Klines in the frame (excluding STM and base). STM
+entries that have not been promoted do not contribute to the count.
 
 ## Promotion
 
-Promotion moves Klines from the frame to the base model, making them
-persistent across sessions.
+Promotion moves Klines from STM to the frame, persisting them for the
+session's lifetime.
 
 ### Promote
 
@@ -234,14 +237,14 @@ persistent across sessions.
 model.promote(kline) → bool
 ```
 
-Adds a Kline directly to the base model.
+Moves a KLine from STM to the frame.
 
-- Returns `true` if the Kline was added to the base.
-- Returns `false` if the Kline was rejected (e.g., duplicate in base).
-- The Kline remains in the frame and STM.
+- Returns `true` if the KLine was added to the frame.
+- Returns `false` if the KLine is not in STM or is already in the frame.
+- The KLine remains in STM (STM eviction handles removal naturally).
 - Promotion is typically triggered by the agent on significant results
-  (S1 or S4), ensuring confirmed and novel knowledge propagates to the
-  long-term store.
+  (S1 or S4), ensuring confirmed and novel knowledge persists in the
+  session.
 
 ### Promote All
 
@@ -249,11 +252,10 @@ Adds a Kline directly to the base model.
 model.promote_all() → int
 ```
 
-Promotes all Klines in the frame to the base model.
+Promotes all Klines currently in STM to the frame.
 
 - Returns the number of Klines promoted.
-- Klines that duplicate entries in the base are skipped.
-- Useful for session-end persistence.
+- Klines already in the frame are skipped.
 
 ## Deduplication
 
@@ -617,12 +619,12 @@ consequences:
 STM eviction removes the oldest Kline from the STM when `add` would cause
 the STM to exceed its bound.
 
-- Eviction removes from the STM index only. The Kline remains in the frame.
+- Eviction removes from the STM index only.
 - The evicted Kline's signature and nodes signature entries are removed from
   the STM's dual-keyed index.
 - Eviction does not affect the frame or base model.
-- After eviction, the evicted Kline is still discoverable via frame and base
-  lookups, but no longer via STM-specific nodes-signature indexing.
+- If the evicted Kline was promoted to the frame, it remains discoverable via
+  frame and base lookups. If it was not promoted, it is discarded.
 
 ## What a Model is Not
 
