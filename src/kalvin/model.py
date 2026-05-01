@@ -440,44 +440,42 @@ class Model:
         # Mismatched query nodes
         for n in mismatched_q:
             hop_distance = MAX_HOP
-            for hops, match_sig in self._edge_hops(n):
-                if match_sig in mismatched_c:
-                    hop_distance = hops
-                    q_kline = self._as_kline(n)
-                    c_kline = self._as_kline(match_sig)
-                    if q_kline is not None and c_kline is not None:
+            q_kline = self.find(n)
+            if q_kline is not None:
+                for hops, match_sig in self._edge_hops(n):
+                    if match_sig in mismatched_c:
+                        hop_distance = hops
+                        c_kline = self._as_kline(match_sig)
                         yield from self.expand(
                             q_kline, c_kline, "S2", hops, _visited=_visited,
                         )
-                    break
-                elif (match_sig not in s3_connotations
-                      or hops < s3_connotations[match_sig]):
-                    s3_connotations[match_sig] = hops
+                        break
+                    elif (match_sig not in s3_connotations
+                        or hops < s3_connotations[match_sig]):
+                        s3_connotations[match_sig] = hops
             level_distance += hop_distance
 
         # Mismatched candidate nodes
         for n in mismatched_c:
             hop_distance = MAX_HOP
-            for hops, match_sig in self._edge_hops(n):
-                if match_sig in mismatched_q:
-                    hop_distance = hops
-                    q_kline = self._as_kline(n)
-                    c_kline = self._as_kline(match_sig)
-                    if q_kline is not None and c_kline is not None:
+            q_kline = self.find(n)
+            if q_kline is not None:
+                for hops, match_sig in self._edge_hops(n):
+                    if match_sig in mismatched_q:
+                        hop_distance = hops
+                        c_kline = self._as_kline(match_sig)
                         yield from self.expand(
                             q_kline, c_kline, "S2", hops, _visited=_visited,
                         )
-                    break
-                elif match_sig in s3_connotations:
-                    hop_distance += s3_connotations[match_sig] + hops
-                    q_kline = self._as_kline(n)
-                    c_kline = self._as_kline(match_sig)
-                    if q_kline is not None and c_kline is not None:
+                        break
+                    elif match_sig in s3_connotations:
+                        hop_distance += s3_connotations[match_sig] + hops
+                        c_kline = self._as_kline(match_sig)
                         yield from self.expand(
                             q_kline, c_kline, "S3", hop_distance, _visited=_visited,
                         )
-                    hop_distance = 0
-                    break
+                        hop_distance = 0
+                        break
             level_distance += hop_distance
 
         # Matched but not grounded (S2 component)
