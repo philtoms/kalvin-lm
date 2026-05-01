@@ -3,13 +3,13 @@
 **Parent:** [`plans/implement-kalvin.md`](../implement-kalvin.md)
 **Phase:** 5
 **Estimate:** 2–3 days
-**Depends on:** Foundations (KLine, Signature, STM)
+**Depends on:** Foundations (KLine, Signature, STM — see @stm spec)
 
 ---
 
 ## 1. Model Spec
 
-Three-tier layered knowledge graph: `STM → Frame → Base`.
+Three-tier layered knowledge graph: `STM → Frame → Base`. STM is defined in the **@stm spec**.
 
 ### Tier Roles
 

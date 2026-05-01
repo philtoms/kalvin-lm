@@ -334,9 +334,12 @@ Learns subword vocabulary from a training corpus.
 
 **Files:** `src/kalvin/stm.py`, `tests/test_stm.py`
 **Depends on:** Kline, Signature (for `make_signature`)
+**Spec:** @stm spec
 **Estimate:** 1 day
 
 ### Spec
+
+Full definition in **specs/stm.md**. Summary:
 
 Short-Term Memory: a bounded, dual-keyed index over recently added KLines.
 

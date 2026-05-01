@@ -27,6 +27,11 @@ This spec depends on the following concepts, defined elsewhere:
 - Signatures are uint64, not inherently unique.
 - Nodes are opaque uint64 values.
 
+### STM (@stm spec)
+
+- STM is a bounded, dual-keyed index over recently added KLines.
+- The Model manages the STM internally; callers never interact with it directly.
+
 ### Significance (@significance spec)
 
 - Significance calls two Model API functions: `is_s1`, `distance`.
@@ -60,26 +65,13 @@ A Model consists of:
 
 ### STM (Short-Term Memory)
 
-STM is a bounded, dual-keyed index over the most recently added Klines.
-It retains only the N most recently added Klines (default bound: **256**).
-When the bound is exceeded, the oldest entries are evicted.
+See the **@stm spec** for the full definition. Summary:
 
-STM indexes each Kline by two keys:
-
-1. **signature** — `kline.signature`
-2. **nodes signature** — the OR-reduction of all nodes in `kline.nodes`,
-   equivalent to `make_signature(kline.nodes)` as defined in the @signature
-   spec.
-
-Both keys map to the same Kline. When the two keys are identical the Kline
-is stored under a single key.
-
-STM enables **transitive grounding**: when a Kline is added, its
-nodes signature is indexed alongside its signature. A subsequent lookup
-by nodes signature retrieves Klines that share the same node structure,
-providing grounding evidence even when the signatures differ.
-
-The STM bound is configurable at construction time.
+- Bounded, dual-keyed index over recently added KLines (default bound: **256**).
+- Indexes each KLine by **signature** and **nodes signature** (via `make_signature`).
+- FIFO eviction when bound is exceeded; evicted KLines remain in the Frame.
+- Enables **transitive grounding** — finding KLines that share node structure
+  even when their signatures differ.
 
 ### Frame
 
@@ -618,6 +610,9 @@ This function is composed from existing model primitives (`find`, `resolve`)
 and is provided as a convenience for the cogitation pipeline.
 
 ## STM Eviction Details
+
+STM eviction is defined in the **@stm spec**. Summary of Model-level
+consequences:
 
 STM eviction removes the oldest Kline from the STM when `add` would cause
 the STM to exceed its bound.

@@ -46,7 +46,7 @@ Literal mode is for exact text sequences.
 ### 1.4 STM Nodes-Signature Indexing for All-Literal KLines
 
 All all-literal KLines produce `nodes_sig = 1`. STM's `find_by_nodes(1)`
-returns the most recently added.
+returns the most recently added. See **@stm spec** for full indexing semantics.
 
 **Decision:** Accept this degenerate case. It's correct behavior — same as
 multiple KLines sharing any signature.
@@ -115,7 +115,7 @@ at U+10FFFF (21 bits). Upper 32 bits provide ample room.
 **Estimate:** 1.5 days
 **Deliverables:** `src/kalvin/mod_tokenizer.py`, `src/kalvin/tokenizer.py`, `tests/test_tokenizer.py`
 
-### Phase 4: STM → **foundations.md §5**
+### Phase 4: STM → **foundations.md §5**, **specs/stm.md**
 
 **Estimate:** 1 day
 **Deliverables:** `src/kalvin/stm.py`, `tests/test_stm.py`

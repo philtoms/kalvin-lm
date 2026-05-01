@@ -64,7 +64,7 @@ Input Text → Tokenizer → Nodes → KLine → Agent → Model (Knowledge Grap
 │  Processes: countersignature check per QueryCandidate              │
 ├──────────────────────────────────────────────────────────────────┤
 │  Model (STM → Frame → Base)                                      │
-│  Depends on: Kline, Signature, STM                               │
+│  Depends on: Kline, Signature, STM (@stm spec)                   │
 ├──────────┬──────────┬──────────────┬──────────────────────────────┤
 │ Kline    │ Signature│   Tokenizer  │   Events                     │
 │          │          │  (Mod / BPE) │   (EventBus)                 │
@@ -84,7 +84,7 @@ Phase 0: Project scaffold       — directories, dependencies, test runner
 Phase 1: Kline                  — fundamental data unit
 Phase 2: Signature              — OR-reduction identity computation
 Phase 3: Tokenizer (Mod + BPE)  — text ↔ node conversion
-Phase 4: STM                    — bounded dual-keyed index
+Phase 4: STM                    — bounded dual-keyed index (@stm spec)
 Phase 5: Model                  — three-tier knowledge graph
 Phase 6: Significance Constants — D_MAX, MASK64
 Phase 7: Events                 — pub/sub for rationalisation
@@ -136,6 +136,9 @@ its dependencies are satisfied.
 | Sub-plan | Scope | Source Phases | Depends On |
 |----------|-------|---------------|------------|
 | [`plans/impl/foundations.md`](impl/foundations.md) | Bit layout, KLine, Signature, Tokenizer, STM | 0–4 | Nothing |
+
+> **STM spec:** The full STM specification is in `specs/stm.md`. The
+> foundations plan provides the implementation skeleton and test cases.
 | [`plans/impl/model.md`](impl/model.md) | Model + distance algorithm | 5 | Foundations |
 | [`plans/impl/agent.md`](impl/agent.md) | Significance constants, Events, Agent, Cogitator | 6–8 | Foundations, Model |
 | [`plans/impl/build-phases.md`](impl/build-phases.md) | Resolved design decisions, phased build, test cases | 0–9 | All (execution plan) |
@@ -161,7 +164,7 @@ circular dependencies and keep components testable in isolation, use
 Kline.is_literal(is_literal_fn)     # Passed at call time
 make_signature(nodes, is_literal_fn) # Passed at call time
 Model(is_literal_fn=fn)              # Stored at construction
-STM(is_literal_fn=fn)                # Stored at construction
+STM(is_literal_fn=fn)                # Stored at construction (@stm spec)
 Agent(tokenizer=tok)                 # Uses tok.is_literal
 ```
 

@@ -63,7 +63,7 @@ STM → Frame → Base
 | Frame | Session write surface | No        | Per-session    | Yes            |
 | Base  | Long-term knowledge   | No        | Persistent     | No (promotion) |
 
-- **STM** (Short-Term Memory) is a bounded, dual-keyed index over the most recently added KLines. It indexes each KLine by both its signature _and_ its nodes signature, enabling **transitive grounding** — finding KLines that share node structure even when their signatures differ. When the bound is exceeded, the oldest entries are evicted (they remain in the frame).
+- **STM** (Short-Term Memory) is a bounded, dual-keyed index over the most recently added KLines. It indexes each KLine by both its signature _and_ its nodes signature, enabling **transitive grounding** — finding KLines that share node structure even when their signatures differ. When the bound is exceeded, the oldest entries are evicted (they remain in the frame). See the @stm spec for full definition.
 - **Frame** is the primary write surface for the current session. All non-rejected KLines are added here. Lookups that miss in STM fall through to the frame.
 - **Base** is an optional long-term knowledge store. It is **read-only** during a session — Klines reach the base through **promotion**, a separate mechanism triggered by the agent on significant results (S1 and S4). Each session layers a fresh frame over a shared base, giving isolated writes with shared knowledge.
 

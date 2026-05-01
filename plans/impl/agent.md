@@ -3,7 +3,7 @@
 **Parent:** [`plans/implement-kalvin.md`](../implement-kalvin.md)
 **Phases:** 6–8
 **Estimate:** 3 days
-**Depends on:** Foundations (KLine, Signature, Tokenizer, STM), Model
+**Depends on:** Foundations (KLine, Signature, Tokenizer, STM — see @stm spec), Model
 
 ---
 
