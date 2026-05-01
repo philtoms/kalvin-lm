@@ -7,7 +7,7 @@ from typing import Any
 
 from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer
 from kalvin.signature import make_signature
-from kalvin.significance import D_MAX
+from kalvin.model import D_MAX
 from kalvin.kline import KLine
 
 

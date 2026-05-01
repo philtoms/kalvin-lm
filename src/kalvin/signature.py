@@ -14,12 +14,6 @@ from __future__ import annotations
 
 from typing import Callable, Sequence
 
-MASK64 = 0xFFFF_FFFF_FFFF_FFFF
-
-# Well-known signature values
-SIGNED_EMPTY = 0   # No nodes at all (unsigned)
-LITERAL_ONLY = 1   # Contains literal content only
-
 
 def make_signature(
     nodes: Sequence[int],
@@ -54,8 +48,3 @@ def signifies(a: int, b: int) -> bool:
     considered potentially significant.
     """
     return (a & b) != 0
-
-
-def significance_value(distance: int) -> int:
-    """Convert distance to significance: significance = ~distance."""
-    return (~distance) & MASK64

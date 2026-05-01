@@ -1,7 +1,9 @@
 """Tests for Signature — openspec/signature.md conformance."""
 
 import pytest
-from kalvin.signature import make_signature, signifies, significance_value, MASK64
+from kalvin.signature import make_signature, signifies
+
+MASK64 = 0xFFFF_FFFF_FFFF_FFFF
 
 
 # Mock is_literal function for testing
@@ -110,16 +112,4 @@ class TestSignifies:
         assert signifies(0b110, 0b010) == signifies(0b010, 0b110)
 
 
-class TestSignificanceValue:
-    """significance = ~distance & MASK64."""
 
-    def test_zero_distance(self):
-        assert significance_value(0) == MASK64  # S1
-
-    def test_max_distance(self):
-        assert significance_value(MASK64) == 0  # S4
-
-    def test_inversion(self):
-        d = 0x0000_0000_0000_0005
-        s = significance_value(d)
-        assert (~d) & MASK64 == s

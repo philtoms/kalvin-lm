@@ -8,26 +8,36 @@ See specs/model.md for the full specification.
 
 from __future__ import annotations
 
-from typing import Callable, Iterator
+from typing import Callable, Iterator, NamedTuple
 
 from kalvin.kline import KLine, KSig
 from kalvin.stm import STM
 from kalvin.signature import make_signature, signifies
 
-# D_PACK_SHIFT hyperparameter — bit position separating S2 and S3 distance components
-D_PACK_SHIFT = 32
-D_MAX = 0xFFFF_FFFF_FFFF_FFFF
+# _D_PACK_SHIFT — internal bit position separating S2 and S3 distance components
+_D_PACK_SHIFT = 32
+
+# Public significance constants
+D_MAX = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance, also the significance of zero distance
+MASK64 = 0xFFFF_FFFF_FFFF_FFFF  # 64-bit mask for bitwise inversion
 
 # MAX_HOP hyperparameter — upper bound on edge hop chain depth
 MAX_HOP = 100
 
 
+class QueryCandidate(NamedTuple):
+    """A single query|candidate pair yielded by graph expansion."""
+    query: KLine
+    candidate: KLine
+    significance: int
+
+
 class Model:
     """Three-tier Model: STM → Frame → Base.
 
-    - STM: bounded rolling window (default 256).
-    - Frame: unbounded session write surface.
-    - Base: optional long-term knowledge store (read-through).
+    - STM: bounded rolling window (default 256). add() writes here.
+    - Frame: populated by promote() from STM.
+    - Base: optional long-term knowledge store (read-only, set at construction).
 
     The caller sees a single unified API.
     """
@@ -49,7 +59,7 @@ class Model:
     # ── Storage Operations ────────────────────────────────────────────
 
     def add(self, kline: KLine, dedup: bool = False) -> bool:
-        """Add a KLine to both STM and frame.
+        """Add a KLine to STM only.
 
         If kline.is_literal() and dedup=True, reject if an equal KLine
         exists in any tier. Non-literal Klines are always accepted.
@@ -60,16 +70,11 @@ class Model:
             if self._exists_any(kline):
                 return False
 
-        # Add to frame
-        idx = len(self._frame_list)
-        self._frame_list.append(kline)
-        if kline.signature not in self._frame_by_sig:
-            self._frame_by_sig[kline.signature] = []
-        self._frame_by_sig[kline.signature].append(idx)
-        self._frame_dedup.add((kline.signature, tuple(kline.nodes)))
-
-        # Add to STM
+        # Add to STM only
         self._stm.add(kline, dedup=False)
+        # Track in STM dedup for promote / _exists_any lookups
+        key = (kline.signature, tuple(kline.nodes))
+        self._stm._dedup.add(key)
 
         return True
 
@@ -78,8 +83,10 @@ class Model:
         return self._exists_any(kline)
 
     def _exists_any(self, kline: KLine) -> bool:
-        """Check frame, then base (STM is a window over frame)."""
+        """Check STM, frame, then base."""
         key = (kline.signature, tuple(kline.nodes))
+        if key in self._stm._dedup:
+            return True
         if key in self._frame_dedup:
             return True
         if self._base:
@@ -87,11 +94,17 @@ class Model:
         return False
 
     def find(self, signature: KSig) -> KLine | None:
-        """Find the most recently added KLine by signature."""
-        # Frame first (exact signature match)
+        """Find the most recently added KLine by signature.
+
+        Searches STM, then frame, then base.
+        """
+        # STM first — filter for actual signature match (STM is dual-keyed)
+        for kl in reversed(self._stm.find_by_signature(signature)):
+            if kl.signature == signature:
+                return kl
+        # Frame
         indices = self._frame_by_sig.get(signature)
         if indices:
-            # Walk backwards to find a non-None entry
             for idx in reversed(indices):
                 kl = self._frame_list[idx]
                 if kl is not None:
@@ -106,10 +119,21 @@ class Model:
         results: list[KLine] = []
         seen: set[tuple[KSig, tuple[int, ...]]] = set()
 
+        # STM results — filter for actual signature match (STM is dual-keyed)
+        for kl in self._stm.find_by_signature(signature):
+            if kl.signature != signature:
+                continue
+            key = (kl.signature, tuple(kl.nodes))
+            if key not in seen:
+                seen.add(key)
+                results.append(kl)
+
         # Frame results
         indices = self._frame_by_sig.get(signature, [])
         for idx in indices:
             kl = self._frame_list[idx]
+            if kl is None:
+                continue
             key = (kl.signature, tuple(kl.nodes))
             if key not in seen:
                 seen.add(key)
@@ -146,10 +170,13 @@ class Model:
 
         Removal never affects the base model.
         """
+        removed = False
+
         # Try STM
         stm_klines = self._stm.find_by_signature(signature)
         if stm_klines:
             self._stm.remove(stm_klines[-1])
+            removed = True
 
         # Try frame
         indices = self._frame_by_sig.get(signature)
@@ -161,8 +188,9 @@ class Model:
             self._frame_list[idx] = None  # type: ignore
             if not indices:
                 del self._frame_by_sig[signature]
-            return True
-        return False
+            removed = True
+
+        return removed
 
     # ── Count ─────────────────────────────────────────────────────────
 
@@ -223,18 +251,32 @@ class Model:
     # ── Promotion ─────────────────────────────────────────────────────
 
     def promote(self, kline: KLine) -> bool:
-        """Promote a KLine to the base model."""
-        if self._base is None:
+        """Promote a KLine from STM to the frame.
+
+        The KLine must currently be in STM. Returns True if added to frame,
+        False if not in STM or already in frame.
+        """
+        key = (kline.signature, tuple(kline.nodes))
+        # Must be in STM
+        if key not in self._stm._dedup:
             return False
-        return self._base.add(kline, dedup=True)
+        # Already in frame
+        if key in self._frame_dedup:
+            return False
+        # Add to frame
+        idx = len(self._frame_list)
+        self._frame_list.append(kline)
+        if kline.signature not in self._frame_by_sig:
+            self._frame_by_sig[kline.signature] = []
+        self._frame_by_sig[kline.signature].append(idx)
+        self._frame_dedup.add(key)
+        return True
 
     def promote_all(self) -> int:
-        """Promote all frame KLines to the base model."""
-        if self._base is None:
-            return 0
+        """Promote all STM KLines to the frame."""
         count = 0
-        for kl in self._frame_list:
-            if kl is not None and self._base.add(kl, dedup=True):
+        for kl in list(self._stm._order):
+            if self.promote(kl):
                 count += 1
         return count
 
@@ -244,7 +286,7 @@ class Model:
         """Resolve a node value to a KLine."""
         return self.find(node)
 
-    def expand(self, kline: KLine, depth: int = 2) -> list[KLine]:
+    def query_expand(self, kline: KLine, depth: int = 2) -> list[KLine]:
         """Expand graph from kline up to *depth* levels.
 
         depth=0 → []
@@ -256,10 +298,10 @@ class Model:
             return []
         visited: set[int] = set()
         results: list[KLine] = []
-        self._expand_inner(kline, depth, 1, visited, results)
+        self._query_expand_inner(kline, depth, 1, visited, results)
         return results
 
-    def _expand_inner(
+    def _query_expand_inner(
         self,
         kline: KLine,
         max_depth: int,
@@ -278,7 +320,7 @@ class Model:
             child = self.find(node)
             if child is not None:
                 results.append(child)
-                self._expand_inner(child, max_depth, current_depth + 1, visited, results)
+                self._query_expand_inner(child, max_depth, current_depth + 1, visited, results)
 
     def descendants(self, node: int) -> set[int]:
         """Recursively collect all descendant node values."""
@@ -303,7 +345,7 @@ class Model:
         matches = self.find_all(signature)
         results: list[KLine] = list(matches)
         for kl in matches:
-            results.extend(self.expand(kl, depth))
+            results.extend(self.query_expand(kl, depth))
         return results
 
     # ── Significance API ──────────────────────────────────────────────
@@ -336,24 +378,64 @@ class Model:
             sig = self._make_sig(kline.nodes)
             yield hop_count, sig
 
-    def distance(self, query: KLine, candidate: KLine, level: str) -> int:
-        """Packed distance for a query-candidate pair.
+    def _as_kline(self, node: int) -> KLine:
+        """Resolve a node value to a KLine.
 
-        Computes both S2 and S3 components simultaneously using per-node
-        hop-distance, connotation bridging, and ungrounded penalty.
-
-        Returns (s3_component << D_PACK_SHIFT) + s2_component, clamped to D_MAX - 1.
+        Raises ValueError if the node does not resolve.
         """
+        kline = self.find(node)
+        if kline is None:
+            raise ValueError(f"Node {node:#x} does not resolve to any KLine")
+        return kline
+
+    def expand(
+        self,
+        query: KLine,
+        candidate: KLine,
+        level: str,
+        distance: int = 0,
+        *,
+        _visited: set[tuple[int, int]] | None = None,
+    ) -> Iterator[QueryCandidate]:
+        """Expand a query-candidate pair, yielding connotations and terminal distance.
+
+        For each discovered connotation (S2/S3 indirect relationship), recursively
+        yields QueryCandidate items for the connotation pair.  The final yield is
+        always the terminal QueryCandidate with the packed distance for the
+        original pair.
+
+        Parameters
+        ----------
+        query: The query KLine.
+        candidate: The candidate KLine.
+        level: Routing level (``"S2"`` or ``"S3"``).
+        distance: Accumulated hop distance (internal, for recursive calls).
+        _visited: Internal cycle-detection set.
+
+        Yields
+        ------
+        QueryCandidate
+            Intermediate connotations (from recursive calls) followed by the
+            terminal packed distance.
+        """
+        if _visited is None:
+            _visited = set()
+
+        key = (query.signature, candidate.signature)
+        if key in _visited:
+            return  # cycle detected
+        _visited.add(key)
+
         q_set = set(query.nodes)
         c_set = set(candidate.nodes)
         mismatched_q = q_set - c_set
         mismatched_c = c_set - q_set
         matched = q_set & c_set
 
-        level_distance = 0
+        level_distance = distance
         s2_distance = 0
         s3_distance = 0
-        s3_connotations = {}  # sig → min hops from any query node
+        s3_connotations: dict[int, int] = {}  # sig → min hops from any query node
 
         # Mismatched query nodes
         for n in mismatched_q:
@@ -361,6 +443,12 @@ class Model:
             for hops, match_sig in self._edge_hops(n):
                 if match_sig in mismatched_c:
                     hop_distance = hops
+                    q_kline = self._as_kline(n)
+                    c_kline = self._as_kline(match_sig)
+                    if q_kline is not None and c_kline is not None:
+                        yield from self.expand(
+                            q_kline, c_kline, "S2", hops, _visited=_visited,
+                        )
                     break
                 elif (match_sig not in s3_connotations
                       or hops < s3_connotations[match_sig]):
@@ -373,9 +461,21 @@ class Model:
             for hops, match_sig in self._edge_hops(n):
                 if match_sig in mismatched_q:
                     hop_distance = hops
+                    q_kline = self._as_kline(n)
+                    c_kline = self._as_kline(match_sig)
+                    if q_kline is not None and c_kline is not None:
+                        yield from self.expand(
+                            q_kline, c_kline, "S2", hops, _visited=_visited,
+                        )
                     break
                 elif match_sig in s3_connotations:
-                    s3_distance += s3_connotations[match_sig] + hops
+                    hop_distance += s3_connotations[match_sig] + hops
+                    q_kline = self._as_kline(n)
+                    c_kline = self._as_kline(match_sig)
+                    if q_kline is not None and c_kline is not None:
+                        yield from self.expand(
+                            q_kline, c_kline, "S3", hop_distance, _visited=_visited,
+                        )
                     hop_distance = 0
                     break
             level_distance += hop_distance
@@ -392,13 +492,15 @@ class Model:
             s3_distance += level_distance
 
         # Clamp each component to its bit budget
-        s2_component_max = (1 << D_PACK_SHIFT) - 1
-        s3_component_max = (1 << (64 - D_PACK_SHIFT)) - 1
+        s2_component_max = (1 << _D_PACK_SHIFT) - 1
+        s3_component_max = (1 << (64 - _D_PACK_SHIFT)) - 1
         s2_distance = min(s2_distance, s2_component_max)
         s3_distance = min(s3_distance, s3_component_max)
 
-        # Pack: S3 in upper bits, S2 in lower bits
-        return min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
+        # Pack: S3 in upper bits, S2 in lower bits, then invert to significance
+        packed = min((s3_distance << _D_PACK_SHIFT) + s2_distance, D_MAX - 1)
+        significance = (~packed) & MASK64
+        yield QueryCandidate(query, candidate, significance)
 
     def is_countersigned(self, a: KLine, b: KLine) -> bool:
         """Test whether two Klines are countersigned (mutual reference)."""
@@ -435,6 +537,7 @@ class Model:
         m = Model(is_literal_fn=self._is_literal_fn)
         for kl in klines:
             m.add(kl)
+            m.promote(kl)
         return m
 
     def get_all_descendants(self, node: int, visited: set[int] | None = None) -> set[int]:

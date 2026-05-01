@@ -14,7 +14,8 @@ STM → Frame → Base
 ```
 
 Callers see a single unified Model API. The model manages the tiers
-internally, routing adds to the appropriate tier and merging lookups
+internally: `add` writes to STM only; `promote` moves from STM to the
+frame; the base is read-only, established at construction. Lookups merge
 across all tiers transparently.
 
 ## Dependencies
@@ -27,9 +28,15 @@ This spec depends on the following concepts, defined elsewhere:
 - Signatures are uint64, not inherently unique.
 - Nodes are opaque uint64 values.
 
+### STM (@stm spec)
+
+- STM is a bounded, dual-keyed index over recently added KLines.
+- The Model manages the STM internally; callers never interact with it directly.
+
 ### Significance (@significance spec)
 
-- Significance calls two Model API functions: `is_s1`, `distance`.
+- Significance calls the Model's `expand` API, which yields `QueryCandidate`
+  results with pre-computed significance values.
 - Significance does not manage model state.
 
 ### Agent (@agent spec)
@@ -52,45 +59,35 @@ A Model consists of:
 
 ### Tier Summary
 
-| Tier  | Purpose               | Bounded | Lifetime       | Modified by add |
-| ----- | --------------------- | ------- | -------------- | --------------- |
-| STM   | Transitive grounding  | Yes     | Rolling window | Yes             |
-| Frame | Session write surface | No      | Per-session    | Yes             |
-| Base  | Long-term knowledge   | No      | Persistent     | No (promotion)  |
+| Tier  | Purpose               | Bounded | Lifetime       | Written by add | Written by promote |
+| ----- | --------------------- | ------- | -------------- | -------------- | ------------------ |
+| STM   | Transitive grounding  | Yes     | Rolling window | Yes            | No                 |
+| Frame | Session write surface | No      | Per-session    | No             | Yes (from STM)     |
+| Base  | Long-term knowledge   | No      | Persistent     | No             | No                  |
 
 ### STM (Short-Term Memory)
 
-STM is a bounded, dual-keyed index over the most recently added Klines.
-It retains only the N most recently added Klines (default bound: **256**).
-When the bound is exceeded, the oldest entries are evicted.
+See the **@stm spec** for the full definition. Summary:
 
-STM indexes each Kline by two keys:
-
-1. **signature** — `kline.signature`
-2. **nodes signature** — the OR-reduction of all nodes in `kline.nodes`,
-   equivalent to `make_signature(kline.nodes)` as defined in the @signature
-   spec.
-
-Both keys map to the same Kline. When the two keys are identical the Kline
-is stored under a single key.
-
-STM enables **transitive grounding**: when a Kline is added, its
-nodes signature is indexed alongside its signature. A subsequent lookup
-by nodes signature retrieves Klines that share the same node structure,
-providing grounding evidence even when the signatures differ.
-
-The STM bound is configurable at construction time.
+- Bounded, dual-keyed index over recently added KLines (default bound: **256**).
+- Indexes each KLine by **signature** and **nodes signature** (via `make_signature`).
+- FIFO eviction when bound is exceeded; evicted KLines are discarded unless
+  they have been promoted to the frame.
+- Enables **transitive grounding** — finding KLines that share node structure
+  even when their signatures differ.
+- `add` writes to STM only.
 
 ### Frame
 
-The frame is the primary write surface for the current session. All
-non-rejected Klines are added to the frame. The frame has no fixed bound
-— it grows as Klines are added during a session.
+The frame is populated by **promotion** from STM. When the agent
+determines a KLine is significant (S1 or S4), it promotes the KLine from
+STM to the frame. The frame has no fixed bound — it grows as KLines are
+promoted during a session.
 
 The frame is a read-through layer over the base:
 
 - Lookups that miss in the STM or frame fall through to the base.
-- Additions to the frame do **not** modify the base.
+- Additions to the frame (via promote) do **not** modify the base.
 
 ### Base Model
 
@@ -98,8 +95,9 @@ A model may optionally reference a **base model**.
 
 - The base is **read-through**: lookups that miss in STM and frame fall
   through to the base.
-- The base model is **not directly modified** by `add`. Klines are
-  promoted to the base via a separate mechanism (see Promotion).
+- The base model is **never modified** by `add` or `promote`. It is
+  established at model instantiation and remains read-only for the
+  session's lifetime.
 - A user request instantiates a new model layered over a shared base, so
   each session has an isolated write surface with access to shared
   knowledge.
@@ -146,17 +144,16 @@ priority, then frame, then base).
 model.add(kline) → bool
 ```
 
-Adds a Kline to the model.
+Adds a KLine to the model.
 
-- Returns `true` if the Kline was added.
-- Returns `false` if the Kline was rejected.
-- The Kline is added to **both** the STM and the frame.
+- Returns `true` if the KLine was added.
+- Returns `false` if the KLine was rejected.
+- The KLine is added to **STM only** (not the frame or base).
 - If `kline.is_literal()` is `true` (all nodes are literal tokens,
   per @tokenizer spec), a duplicate check is performed
   (see Deduplication). Non-literal Klines are always accepted.
 - If adding to the STM would exceed `stm_bound`, the oldest STM entry
-  is evicted. The evicted Kline remains in the frame.
-- The base model is **not modified** by `add`.
+  is evicted. Evicted KLines that have not been promoted are discarded.
 
 ### Exists
 
@@ -227,14 +224,13 @@ Removes the most recently added Kline with the given signature.
 len(model) → int ≥ 0
 ```
 
-The total number of Klines in the frame (excluding STM and base). STM is
-a rolling window over the frame's Klines and does not contribute
-independently to the count.
+The total number of Klines in the frame (excluding STM and base). STM
+entries that have not been promoted do not contribute to the count.
 
 ## Promotion
 
-Promotion moves Klines from the frame to the base model, making them
-persistent across sessions.
+Promotion moves Klines from STM to the frame, persisting them for the
+session's lifetime.
 
 ### Promote
 
@@ -242,14 +238,14 @@ persistent across sessions.
 model.promote(kline) → bool
 ```
 
-Adds a Kline directly to the base model.
+Moves a KLine from STM to the frame.
 
-- Returns `true` if the Kline was added to the base.
-- Returns `false` if the Kline was rejected (e.g., duplicate in base).
-- The Kline remains in the frame and STM.
+- Returns `true` if the KLine was added to the frame.
+- Returns `false` if the KLine is not in STM or is already in the frame.
+- The KLine remains in STM (STM eviction handles removal naturally).
 - Promotion is typically triggered by the agent on significant results
-  (S1 or S4), ensuring confirmed and novel knowledge propagates to the
-  long-term store.
+  (S1 or S4), ensuring confirmed and novel knowledge persists in the
+  session.
 
 ### Promote All
 
@@ -257,11 +253,10 @@ Adds a Kline directly to the base model.
 model.promote_all() → int
 ```
 
-Promotes all Klines in the frame to the base model.
+Promotes all Klines currently in STM to the frame.
 
 - Returns the number of Klines promoted.
-- Klines that duplicate entries in the base are skipped.
-- Useful for session-end persistence.
+- Klines already in the frame are skipped.
 
 ## Deduplication
 
@@ -327,7 +322,7 @@ Resolves a node value to the Kline whose signature matches, if one exists.
 ### Expand
 
 ```
-model.expand(kline, depth=2) → sequence of Kline
+model.query_expand(kline, depth=2) → sequence of Kline
 ```
 
 Traverses the graph starting from `kline`, resolving each node to a child
@@ -374,8 +369,20 @@ match to `depth`.
 ## Model API (Significance)
 
 The following functions are consumed by the significance pipeline
-(@significance spec) and by cogitation countersignature discovery
-(@agent spec). Their semantics are defined here.
+(@significance spec) and by cogitation (@agent spec). Their semantics are
+defined here.
+
+### QueryCandidate
+
+```
+QueryCandidate(query: Kline, candidate: Kline, significance: int)
+```
+
+A named tuple representing a single query-candidate-significance result.
+Yielded by `model.expand()` for both intermediate connotations and the
+terminal significance. The model computes significance internally as
+`(~packed_distance) & MASK64`, where `packed_distance` encodes S2 and S3
+components. Callers never see raw distance.
 
 ### Is S1
 
@@ -394,31 +401,37 @@ Returns whether a node value resolves to a kline in the model.
 - S1 represents a **grounded node** — one that corresponds to known
   structure in the model.
 
-### Distance
+### Expand (Significance)
 
 ```
-model.distance(query, candidate, level) → uint64
+model.expand(query, candidate, level, distance=0) → Iterator[QueryCandidate]
 ```
 
-Returns a packed distance value for a query-candidate pair. A single
-function handles both S2 and S3 routing, computing both distance
-components simultaneously.
+A generator that expands a query-candidate pair, yielding `QueryCandidate`
+results for each discovered connotation and a terminal yield with the
+computed significance.
 
 - `query` — the query Kline.
 - `candidate` — a candidate Kline.
-- `level` — either `"S2"` or `"S3"`, determined by the significance
-  pipeline's routing step.
-- Returns a packed 64-bit value: `(s3_component << D_PACK_SHIFT) +
-  s2_component`, clamped to `D_MAX - 1`.
+- `level` — either `"S2"` or `"S3"`, determined by the Agent's routing step.
+- `distance` — accumulated hop distance for recursive calls (default 0).
+- **Yields** intermediate `QueryCandidate` items for each discovered
+  connotation (S2 and S3 indirect relationships), followed by a terminal
+  `QueryCandidate` with the computed significance for the original pair.
+- **Recursive**: intermediate connotations are discovered by recursively
+  calling `expand()` via `yield from`. Cycle detection prevents infinite
+  recursion via a visited set of `(query.signature, candidate.signature)`
+  pairs.
+- **Significance** — the model computes significance internally by
+  packing S2 and S3 distance components into a single uint64, then
+  inverting: `(~packed) & MASK64`. Higher significance means closer match.
 
 #### Hyperparameters
 
-- **MAX_HOP** — upper bound on edge hop chain depth (default 100). Also
-  the penalty for unresolvable mismatched nodes.
-- **D_PACK_SHIFT** — bit position separating S2 and S3 components in
-  the packed distance encoding (default 32). S2 is clamped to
-  `(1 << D_PACK_SHIFT) - 1` and S3 to `(1 << (64 - D_PACK_SHIFT)) - 1`
-  before packing.
+- **D_MAX** — maximum distance and maximum significance value
+  (`0xFFFF_FFFF_FFFF_FFFF`). Also used as the penalty for unresolvable
+  mismatched nodes.
+- **MASK64** — 64-bit mask for bitwise inversion (`0xFFFF_FFFF_FFFF_FFFF`).
 
 #### Definitions
 
@@ -446,39 +459,46 @@ components simultaneously.
 
 #### Algorithm
 
-The algorithm computes two distance components simultaneously:
+The algorithm computes two distance components simultaneously, yielding
+intermediate connotation results at each discovery point:
 
 - **S2 component** (lower bits): per-node hop-distance for direct matches,
   plus ungrounded penalty for matched nodes.
-- **S3 component** (upper bits): connotation bridging for indirect matches
-  — query nodes that reach intermediate signatures, which candidate nodes
-  then reach in turn.
+- **S3 component** (upper bits): connotation bridging for indirect matches.
 
 The routing level (`"S2"` or `"S3"`) determines where the primary
 hop-distance contribution lands. Connotation bridging always contributes
 to S3.
 
 ```
-distance(query, candidate, level):
+expand(query, candidate, level, distance=0, _visited=None):
+    if _visited is None:
+        _visited = set()
+    key = (query.signature, candidate.signature)
+    if key in _visited:
+        return                          # cycle detection
+    _visited.add(key)
+
     q_set = set(query.nodes)
     c_set = set(candidate.nodes)
     mismatched_q = q_set - c_set
     mismatched_c = c_set - q_set
     matched      = q_set ∩ c_set
 
-    level_distance = 0
+    level_distance = distance
     s2_distance = 0
     s3_distance = 0
     s3_connotations = {}   # sig → min hops from any query node
 
     # Pass 1: mismatched query nodes
-    #   - Direct match in mismatched_c → hop_distance = hops
+    #   - Direct match in mismatched_c → yield S2 connotation
     #   - No direct match → record in s3_connotations for bridging
     for n in mismatched_q:
         hop_distance = MAX_HOP
         for hops, match_sig in edge_hops(n):
             if match_sig in mismatched_c:
                 hop_distance = hops
+                yield from expand(find(n), find(match_sig), "S2", hops)
                 break
             elif match_sig not in s3_connotations
                  or hops < s3_connotations[match_sig]:
@@ -486,16 +506,18 @@ distance(query, candidate, level):
         level_distance += hop_distance
 
     # Pass 2: mismatched candidate nodes
-    #   - Direct match in mismatched_q → hop_distance = hops
-    #   - Connotation bridge → round-trip to s3_distance, hop_distance = 0
+    #   - Direct match in mismatched_q → yield S2 connotation
+    #   - Connotation bridge → yield S3 connotation
     for n in mismatched_c:
         hop_distance = MAX_HOP
         for hops, match_sig in edge_hops(n):
             if match_sig in mismatched_q:
                 hop_distance = hops
+                yield from expand(find(n), find(match_sig), "S2", hops)
                 break
             elif match_sig in s3_connotations:
-                s3_distance += s3_connotations[match_sig] + hops
+                hop_distance += s3_connotations[match_sig] + hops
+                yield from expand(find(n), find(match_sig), "S3", hop_distance)
                 hop_distance = 0
                 break
         level_distance += hop_distance
@@ -515,8 +537,10 @@ distance(query, candidate, level):
     s2_distance = min(s2_distance, (1 << D_PACK_SHIFT) - 1)
     s3_distance = min(s3_distance, (1 << (64 - D_PACK_SHIFT)) - 1)
 
-    # Pack and return
-    return min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
+    # Pack distance, invert to significance, and yield terminal result
+    packed = min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
+    significance = (~packed) & MASK64
+    yield QueryCandidate(query, candidate, significance)
 ```
 
 #### Per-node contributions
@@ -529,33 +553,48 @@ distance(query, candidate, level):
 | Matched + grounded (is_s1)                                    | 0                     | neutral           |
 | Matched + ungrounded                                          | +1                    | S2 (always)       |
 
-#### Connotation bridging
+#### Connotation expansion
 
-When no direct hop path exists between mismatched query and candidate
-nodes, the algorithm attempts **connotation bridging**: query nodes that
-reach intermediate signatures during their hop chains record the minimum
-hop count to each intermediate. Candidate nodes then check whether their
-hop chains reach any of these intermediates. If so, the round-trip
-distance (query hops + candidate hops) contributes to the S3 component.
+When `expand()` discovers a direct hop between a mismatched query node
+and a mismatched candidate node, it **yields an S2 connotation**: a
+recursive `expand()` call on the resolved KLines of those two nodes.
+This connotation represents a direct structural relationship between
+sub-graphs of the query and candidate.
 
-Connotation bridging always contributes to S3 regardless of the routing
-level. This captures indirect, associative connections between query and
-candidate — the "reminiscent" relationship that characterises S3.
+When connotation bridging succeeds (query node reaches an intermediate
+signature that a candidate node also reaches), `expand()` **yields an S3
+connotation**: a recursive `expand()` call on the resolved KLines with the
+round-trip distance. This captures indirect, associative connections.
+
+Each connotation is a `QueryCandidate` processed by the Cogitator
+identically to the terminal result — countersignature is checked for every
+yielded item, enabling discovery across the full expansion graph.
+
+The `_visited` set prevents cycles: if a (query.signature, candidate.signature)
+pair has already been expanded, subsequent encounters return immediately.
 
 #### Properties
 
-1. **Packed encoding** — a single uint64 encodes both S2 and S3 distance
-   components, separated at bit `D_PACK_SHIFT`.
-2. **Level determines primary contribution** — mismatched node hop
+1. **Packed encoding (internal)** — a single uint64 encodes both S2 and S3
+   distance components, separated at bit `D_PACK_SHIFT`. This encoding is
+   internal to the model; callers receive significance.
+2. **Significance is inverted distance** — the model inverts packed distance
+   to produce significance: `(~packed) & MASK64`. Higher is more significant.
+3. **Level determines primary contribution** — mismatched node hop
    distances contribute to S2 or S3 based on the routing level.
-3. **Connotation is always S3** — indirect bridging always adds to the
+4. **Connotation is always S3** — indirect bridging always adds to the
    S3 component, capturing associative distance.
-4. **Ungrounded penalty is always S2** — matched but ungrounded nodes
+5. **Ungrounded penalty is always S2** — matched but ungrounded nodes
    always add to the S2 component, capturing grounding deficit.
-5. **Bidirectional** — mismatched nodes from both query and candidate
+6. **Bidirectional** — mismatched nodes from both query and candidate
    contribute to distance.
-6. **32-bit clamp** — each component is independently clamped before
+7. **32-bit clamp** — each component is independently clamped before
    packing, preventing overflow into the other component.
+8. **Recursive expansion** — each discovered connotation is yielded as a
+   `QueryCandidate` for immediate processing, enabling deep graph
+   exploration.
+9. **Cycle detection** — visited signature pairs prevent infinite
+   recursion.
 
 ### Is Countersigned
 
@@ -582,23 +621,26 @@ and is provided as a convenience for the cogitation pipeline.
 
 ## STM Eviction Details
 
+STM eviction is defined in the **@stm spec**. Summary of Model-level
+consequences:
+
 STM eviction removes the oldest Kline from the STM when `add` would cause
 the STM to exceed its bound.
 
-- Eviction removes from the STM index only. The Kline remains in the frame.
+- Eviction removes from the STM index only.
 - The evicted Kline's signature and nodes signature entries are removed from
   the STM's dual-keyed index.
 - Eviction does not affect the frame or base model.
-- After eviction, the evicted Kline is still discoverable via frame and base
-  lookups, but no longer via STM-specific nodes-signature indexing.
+- If the evicted Kline was promoted to the frame, it remains discoverable via
+  frame and base lookups. If it was not promoted, it is discarded.
 
 ## What a Model is Not
 
 The following are explicitly **out of scope** for this spec:
 
-- **Significance computation.** The model provides raw comparison functions;
-  routing, distance-to-significance conversion, and level assignment are
-  defined in the significance spec.
+- **Significance computation.** The model computes significance internally
+  via `expand()`. Routing and level assignment are defined in the
+  significance spec.
 - **Encoding.** Converting text or other input into Klines is the agent's
   responsibility (@agent spec).
 - **Tokenisation.** Producing nodes from input is defined in the
@@ -613,6 +655,6 @@ The following are explicitly **out of scope** for this spec:
 
 ## Referenced By
 
-- **Significance** (@significance spec) — calls `is_s1`, `distance`.
+- **Significance** (@significance spec) — calls `is_s1`, `expand`.
 - **Agent** (@agent spec) — stores encoded Klines, retrieves candidates,
   traverses the graph, promotes significant Klines.
