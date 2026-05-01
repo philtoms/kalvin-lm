@@ -35,7 +35,8 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Significance (@significance spec)
 
-- Significance calls two Model API functions: `is_s1`, `distance`.
+- Significance calls the Model's `expand` API, which yields `QueryCandidate`
+  results with pre-computed significance values.
 - Significance does not manage model state.
 
 ### Agent (@agent spec)
@@ -374,12 +375,14 @@ defined here.
 ### QueryCandidate
 
 ```
-QueryCandidate(query: Kline, candidate: Kline, distance: int)
+QueryCandidate(query: Kline, candidate: Kline, significance: int)
 ```
 
-A named tuple representing a single query-candidate-distance result. Yielded
-by `model.expand()` for both intermediate connotations and the terminal
-packed distance.
+A named tuple representing a single query-candidate-significance result.
+Yielded by `model.expand()` for both intermediate connotations and the
+terminal significance. The model computes significance internally as
+`(~packed_distance) & MASK64`, where `packed_distance` encodes S2 and S3
+components. Callers never see raw distance.
 
 ### Is S1
 
@@ -405,8 +408,8 @@ model.expand(query, candidate, level, distance=0) → Iterator[QueryCandidate]
 ```
 
 A generator that expands a query-candidate pair, yielding `QueryCandidate`
-results for each discovered connotation and a terminal yield with the packed
-distance.
+results for each discovered connotation and a terminal yield with the
+computed significance.
 
 - `query` — the query Kline.
 - `candidate` — a candidate Kline.
@@ -414,20 +417,21 @@ distance.
 - `distance` — accumulated hop distance for recursive calls (default 0).
 - **Yields** intermediate `QueryCandidate` items for each discovered
   connotation (S2 and S3 indirect relationships), followed by a terminal
-  `QueryCandidate` with the packed distance for the original pair.
+  `QueryCandidate` with the computed significance for the original pair.
 - **Recursive**: intermediate connotations are discovered by recursively
   calling `expand()` via `yield from`. Cycle detection prevents infinite
   recursion via a visited set of `(query.signature, candidate.signature)`
   pairs.
+- **Significance** — the model computes significance internally by
+  packing S2 and S3 distance components into a single uint64, then
+  inverting: `(~packed) & MASK64`. Higher significance means closer match.
 
 #### Hyperparameters
 
-- **MAX_HOP** — upper bound on edge hop chain depth (default 100). Also
-  the penalty for unresolvable mismatched nodes.
-- **D_PACK_SHIFT** — bit position separating S2 and S3 components in
-  the packed distance encoding (default 32). S2 is clamped to
-  `(1 << D_PACK_SHIFT) - 1` and S3 to `(1 << (64 - D_PACK_SHIFT)) - 1`
-  before packing.
+- **D_MAX** — maximum distance and maximum significance value
+  (`0xFFFF_FFFF_FFFF_FFFF`). Also used as the penalty for unresolvable
+  mismatched nodes.
+- **MASK64** — 64-bit mask for bitwise inversion (`0xFFFF_FFFF_FFFF_FFFF`).
 
 #### Definitions
 
@@ -533,9 +537,10 @@ expand(query, candidate, level, distance=0, _visited=None):
     s2_distance = min(s2_distance, (1 << D_PACK_SHIFT) - 1)
     s3_distance = min(s3_distance, (1 << (64 - D_PACK_SHIFT)) - 1)
 
-    # Pack and yield terminal result
+    # Pack distance, invert to significance, and yield terminal result
     packed = min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
-    yield QueryCandidate(query, candidate, packed)
+    significance = (~packed) & MASK64
+    yield QueryCandidate(query, candidate, significance)
 ```
 
 #### Per-node contributions
@@ -570,22 +575,25 @@ pair has already been expanded, subsequent encounters return immediately.
 
 #### Properties
 
-1. **Packed encoding** — a single uint64 encodes both S2 and S3 distance
-   components, separated at bit `D_PACK_SHIFT`.
-2. **Level determines primary contribution** — mismatched node hop
+1. **Packed encoding (internal)** — a single uint64 encodes both S2 and S3
+   distance components, separated at bit `D_PACK_SHIFT`. This encoding is
+   internal to the model; callers receive significance.
+2. **Significance is inverted distance** — the model inverts packed distance
+   to produce significance: `(~packed) & MASK64`. Higher is more significant.
+3. **Level determines primary contribution** — mismatched node hop
    distances contribute to S2 or S3 based on the routing level.
-3. **Connotation is always S3** — indirect bridging always adds to the
+4. **Connotation is always S3** — indirect bridging always adds to the
    S3 component, capturing associative distance.
-4. **Ungrounded penalty is always S2** — matched but ungrounded nodes
+5. **Ungrounded penalty is always S2** — matched but ungrounded nodes
    always add to the S2 component, capturing grounding deficit.
-5. **Bidirectional** — mismatched nodes from both query and candidate
+6. **Bidirectional** — mismatched nodes from both query and candidate
    contribute to distance.
-6. **32-bit clamp** — each component is independently clamped before
+7. **32-bit clamp** — each component is independently clamped before
    packing, preventing overflow into the other component.
-7. **Recursive expansion** — each discovered connotation is yielded as a
+8. **Recursive expansion** — each discovered connotation is yielded as a
    `QueryCandidate` for immediate processing, enabling deep graph
    exploration.
-8. **Cycle detection** — visited signature pairs prevent infinite
+9. **Cycle detection** — visited signature pairs prevent infinite
    recursion.
 
 ### Is Countersigned
@@ -630,9 +638,9 @@ the STM to exceed its bound.
 
 The following are explicitly **out of scope** for this spec:
 
-- **Significance computation.** The model provides raw comparison functions;
-  routing, distance-to-significance conversion, and level assignment are
-  defined in the significance spec.
+- **Significance computation.** The model computes significance internally
+  via `expand()`. Routing and level assignment are defined in the
+  significance spec.
 - **Encoding.** Converting text or other input into Klines is the agent's
   responsibility (@agent spec).
 - **Tokenisation.** Producing nodes from input is defined in the
@@ -647,6 +655,6 @@ The following are explicitly **out of scope** for this spec:
 
 ## Referenced By
 
-- **Significance** (@significance spec) — calls `is_s1`, `distance`.
+- **Significance** (@significance spec) — calls `is_s1`, `expand`.
 - **Agent** (@agent spec) — stores encoded Klines, retrieves candidates,
   traverses the graph, promotes significant Klines.

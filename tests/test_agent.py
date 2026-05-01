@@ -10,10 +10,8 @@ from kalvin.kline import KLine
 from kalvin.agent import Agent, Cogitator, WorkItem
 from kalvin.model import QueryCandidate
 from kalvin.mod_tokenizer import Mod32Tokenizer
-from kalvin.model import Model
+from kalvin.model import Model, D_MAX
 from kalvin.signature import make_signature
-
-MASK64 = 0xFFFF_FFFF_FFFF_FFFF
 
 
 class TestAgentInit:

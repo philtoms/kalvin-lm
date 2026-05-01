@@ -1,30 +1,32 @@
 # Significance Specification
 
 > **Note:** Significance is a *conceptual* specification. The constants (`D_MAX`,
-> `MASK64`) and routing logic live in `agent.py`. Graph expansion (including
-> distance computation) lives in `model.py`. There is no standalone
-> `significance` module.
+> `MASK64`) and the distance→significance inversion live in `model.py`.
+> Routing logic lives in `agent.py`. There is no standalone `significance` module.
 
 ## Overview
 
 Significance is a metric that describes how well a candidate Kline answers a
-query Kline. It is computed as the inverse of a distance in a metric space:
+query Kline. It is the bitwise inverse of a packed distance:
 
 ```
-significance = ~distance
+significance = (~packed_distance) & MASK64
 ```
+
+The model's `expand()` generator computes this internally and yields
+`QueryCandidate` results with significance (not distance). The inversion is a
+model-internal concern — callers of `expand()` receive significance directly.
 
 Routing (determining S1/S2/S3/S4 from node membership) is performed by the
-Agent's `_route(Q, C)` method. The constants and arithmetic definitions used
-by the Agent and the Model are defined in `agent.py`.
+Agent's `_route(Q, C)` method.
 
 ## Constants
 
-Defined in `agent.py`:
+Defined in `model.py`:
 
 ```python
-D_MAX  = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance (S4)
-MASK64 = 0xFFFF_FFFF_FFFF_FFFF   # 64-bit mask for inversion
+D_MAX  = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance, also max significance
+MASK64 = 0xFFFF_FFFF_FFFF_FFFF   # 64-bit mask for bitwise inversion
 ```
 
 ## Routing
@@ -41,27 +43,20 @@ route(Q, C):
   else:                            return "S3"
 ```
 
-| Route | Condition | Distance |
-| ----- | --------- | -------- |
-| S1    | All query nodes exist in candidate | 0 |
+| Route | Condition | Significance |
+| ----- | --------- | ------------ |
+| S1    | All query nodes exist in candidate | `D_MAX` (zero distance) |
 | S2    | Some query nodes exist in candidate | `model.expand(Q, C, "S2")` → last yield |
 | S3    | No query nodes exist in candidate | `model.expand(Q, C, "S3")` → last yield |
-| S4    | No candidates or empty query | `D_MAX` |
+| S4    | No candidates or empty query | `0` (maximum distance) |
 
 ## Distance
 
-Distance is computed by `Model.expand(Q, C, level)`, a generator that yields
-intermediate connotation results followed by a terminal `QueryCandidate`
-with the packed distance. Semantics are defined in the @model spec.
-The significance layer performs the inversion on each yielded result:
+Distance is computed internally by `Model.expand()` as a packed 64-bit value.
+The model inverts this to significance before yielding. Callers never see raw
+distance — they receive `QueryCandidate.significance` directly.
 
-```
-for qc in model.expand(Q, C, level):
-    significance = (~qc.distance) & MASK64
-    # process qc (check countersignature, etc.)
-```
-
-### Packed Distance Encoding
+### Internal packed distance encoding
 
 Distance is a packed 64-bit unsigned integer encoding both S2 and S3
 components:
@@ -71,7 +66,7 @@ components:
   Bits [D_PACK_SHIFT, 63]      → S3 component
 ```
 
-`D_PACK_SHIFT` is a hyperparameter (default: 32).
+`D_PACK_SHIFT` is a model-internal hyperparameter (default: 32).
 
 ### Arithmetic Ordering
 
@@ -88,33 +83,38 @@ S4 = 0x0000_0000_0000_0000   (all 64 bits clear, maximum distance)
 
 ## Model API
 
-The significance layer consumes the following model function:
+The model's `expand()` generator computes significance internally and yields
+`QueryCandidate` results:
 
 ```
 model.expand(Q, C, level) → Iterator[QueryCandidate]
 ```
 
 - Yields intermediate `QueryCandidate` items for each discovered connotation,
-  followed by a terminal `QueryCandidate` with the packed distance.
+  followed by a terminal `QueryCandidate` with the computed significance.
 - `level` is `"S2"` or `"S3"`, determined by routing.
-- Each `QueryCandidate` has `.distance` clamped to `[0, D_MAX - 1]`.
+- Each `QueryCandidate.significance` is in range `[1, D_MAX]`.
+- The distance→significance inversion is performed inside `expand()`;
+  callers use `.significance` directly.
 
 ## Properties
 
-1. **Inverted metric**: significance = ~distance. Higher is more significant.
+1. **Inverted metric**: significance = `(~packed_distance) & MASK64`. Computed
+  internally by the model. Higher is more significant.
 2. **Routing is self-contained**: routing uses simple node-membership testing
   and does not call any model function.
 3. **Pessimistic**: the presence of any unmatched node prevents S1.
 4. **Arithmetically comparable**: S1 > S2 > S3 > S4 by unsigned integer
   comparison.
 5. **Exhaustive**: every Kline with candidates is S1, S2, or S3.
-6. **S1 is trivial**: all nodes match → distance = 0, no function call needed.
+6. **S1 is trivial**: all nodes match → distance = 0 → significance = D_MAX,
+  no function call needed.
 
 ## Code Locations
 
 | Concept | File | Symbol |
 | ------- | ---- | ------ |
-| Constants (`D_MAX`, `MASK64`) | `src/kalvin/agent.py` | module-level |
+| Constants (`D_MAX`, `MASK64`) | `src/kalvin/model.py` | module-level |
 | Routing | `src/kalvin/agent.py` | `Agent._route()` |
-| Significance inversion | `src/kalvin/agent.py` | `Cogitator._process()` |
+| Significance inversion | `src/kalvin/model.py` | `Model.expand()` |
 | Distance computation | `src/kalvin/model.py` | `Model.expand()` |

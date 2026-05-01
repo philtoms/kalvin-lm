@@ -18,16 +18,9 @@ import json
 
 from kalvin.kline import KLine
 from kalvin.events import EventBus, RationaliseEvent
-from kalvin.model import Model, QueryCandidate
+from kalvin.model import Model, QueryCandidate, D_MAX
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.signature import make_signature
-# ── Significance constants ───────────────────────────────────────────
-#
-# Significance is the inverse of distance: significance = ~distance.
-# See specs/significance.md for the full conceptual specification.
-
-MASK64 = 0xFFFF_FFFF_FFFF_FFFF  # 64-bit mask for bitwise inversion
-D_MAX = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance (S4)
 
 
 # ── Work Item ─────────────────────────────────────────────────────────
@@ -119,8 +112,7 @@ class Cogitator:
 
     def _process(self, item: QueryCandidate) -> None:
         """Process a single expanded result: check countersignature."""
-        query, candidate, distance = item
-        _significance = (~distance) & MASK64
+        query, candidate, significance = item
 
         # MVP: level stays as routed — significance stored but not used for re-routing
 

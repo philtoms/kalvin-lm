@@ -1,25 +1,25 @@
-# Kalvin: Build-From-Scratch Implementation Plan — Coordinator
+# Kalvin: Build-From-Scratch Implementation Plan - Coordinator
 
 **Purpose:** Master index for implementing Kalvin from zero. Each sub-plan is
 self-contained (spec + algorithm + test cases). This file provides the overview,
 build order, and cross-cutting concerns.
 
 **Date:** 2026-04-29
-**Updated:** 2026-05-01 — expand-through-cogitation refactoring
+**Updated:** 2026-05-01 - significance internalized in model (distance→significance inversion moved from Cogitator to Model.expand)
 
 ---
 
 ## 0. What is Kalvin?
 
-Kalvin is an **agent** — a system that receives new information, evaluates how it
+Kalvin is an **agent** - a system that receives new information, evaluates how it
 relates to existing knowledge, and autonomously decides what to do next. This
 capacity for choice is called **Agency**, and it arises from a mechanism called
 **Significance**.
 
 The system operates on two fundamental concepts:
 
-- **Nodes** — opaque 64-bit unsigned integers (the atoms).
-- **KLines** — identified, ordered sequences of nodes (the structures).
+- **Nodes** - opaque 64-bit unsigned integers (the atoms).
+- **KLines** - identified, ordered sequences of nodes (the structures).
 
 ### The Core Pipeline
 
@@ -60,18 +60,19 @@ Input Text → Tokenizer → Nodes → KLine → Agent → Model (Knowledge Grap
 ├──────────────────────────────────────────────────────────────────┤
 │  Cogitator (work-item processor)                                  │
 │  Receives pre-routed WorkItem(Q, C, level)                        │
-│  Expands: model.expand → QueryCandidate stream                    │
+│  Expands: model.expand → QueryCandidate stream (significance)     │
 │  Processes: countersignature check per QueryCandidate              │
 ├──────────────────────────────────────────────────────────────────┤
 │  Model (STM → Frame → Base)                                      │
 │  Depends on: Kline, Signature, STM (@stm spec)                   │
+│  Computes significance internally via expand()                    │
 ├──────────┬──────────┬──────────────┬──────────────────────────────┤
 │ Kline    │ Signature│   Tokenizer  │   Events                     │
 │          │          │  (Mod / BPE) │   (EventBus)                 │
 ├──────────┴──────────┴──────────────┴──────────────────────────────┤
-│  Significance constants (D_MAX, MASK64)                           │
+│  Significance constants (D_MAX, MASK64) - in model.py           │
 ├──────────────────────────────────────────────────────────────────┤
-│  Nodes (uint64) — the universal atom                              │
+│  Nodes (uint64) - the universal atom                              │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -80,16 +81,16 @@ Input Text → Tokenizer → Nodes → KLine → Agent → Model (Knowledge Grap
 Components must be built and tested from the leaves up:
 
 ```
-Phase 0: Project scaffold       — directories, dependencies, test runner
-Phase 1: Kline                  — fundamental data unit
-Phase 2: Signature              — OR-reduction identity computation
-Phase 3: Tokenizer (Mod + BPE)  — text ↔ node conversion
-Phase 4: STM                    — bounded dual-keyed index (@stm spec)
-Phase 5: Model                  — three-tier knowledge graph
-Phase 6: Significance Constants — D_MAX, MASK64
-Phase 7: Events                 — pub/sub for rationalisation
-Phase 8: Agent                  — fast/slow split + Cogitator + WorkItem
-Phase 9: Persistence            — serialisation, save/load
+Phase 0: Project scaffold       - directories, dependencies, test runner
+Phase 1: Kline                  - fundamental data unit
+Phase 2: Signature              - OR-reduction identity computation
+Phase 3: Tokenizer (Mod + BPE)  - text ↔ node conversion
+Phase 4: STM                    - bounded dual-keyed index (@stm spec)
+Phase 5: Model                  - three-tier knowledge graph
+Phase 6: Significance Constants - D_MAX, MASK64 (in model.py)
+Phase 7: Events                 - pub/sub for rationalisation
+Phase 8: Agent                  - fast/slow split + Cogitator + WorkItem
+Phase 9: Persistence            - serialisation, save/load
 ```
 
 Phases 1, 2, 3, and 6 can proceed in parallel (all are leaf components).
@@ -108,17 +109,17 @@ kalvin/
 │   │   ├── tokenizer.py         # BPE tokenizer
 │   │   ├── mod_tokenizer.py     # Mod tokenizer (Mod32, Mod64)
 │   │   ├── stm.py               # Short-Term Memory
-│   │   ├── model.py             # Three-tier Model
-│   │   ├── significance.py      # Significance constants (D_MAX, MASK64)
+│   │   ├── model.py             # Three-tier Model (includes D_MAX, MASK64)
+│   │   ├── significance.py      # (removed - constants in model.py)
 │   │   ├── events.py            # EventBus + RationaliseEvent
-│   │   └── agent.py             # Agent orchestrator
+│   │   └── agent.py             # Agent orchestrator (imports D_MAX from model)
 ├── tests/
 │   ├── test_kline.py
 │   ├── test_signature.py
 │   ├── test_tokenizer.py
 │   ├── test_stm.py
 │   ├── test_model.py
-│   ├── test_significance.py    # Constants only
+│   ├── test_significance.py    # (removed - constants tested in test_model.py)
 │   ├── test_events.py
 │   └── test_agent.py           # Routing, short-circuit, Cogitator, work items
 ├── pyproject.toml
@@ -135,20 +136,20 @@ its dependencies are satisfied.
 
 | Sub-plan | Scope | Source Phases | Depends On |
 |----------|-------|---------------|------------|
-| [`plans/impl/foundations.md`](impl/foundations.md) | Bit layout, KLine, Signature, Tokenizer, STM | 0–4 | Nothing |
+| [`plans/impl/foundations.md`](impl/foundations.md) | Bit layout, KLine, Signature, Tokenizer, STM | 0-4 | Nothing |
 
 > **STM spec:** The full STM specification is in `specs/stm.md`. The
 > foundations plan provides the implementation skeleton and test cases.
 | [`plans/impl/model.md`](impl/model.md) | Model + distance algorithm | 5 | Foundations |
-| [`plans/impl/agent.md`](impl/agent.md) | Significance constants, Events, Agent, Cogitator | 6–8 | Foundations, Model |
-| [`plans/impl/build-phases.md`](impl/build-phases.md) | Resolved design decisions, phased build, test cases | 0–9 | All (execution plan) |
+| [`plans/impl/agent.md`](impl/agent.md) | Significance constants, Events, Agent, Cogitator | 6-8 | Foundations, Model |
+| [`plans/impl/build-phases.md`](impl/build-phases.md) | Resolved design decisions, phased build, test cases | 0-9 | All (execution plan) |
 
 ### How to Use This Plan
 
 1. **Read** this coordinator for the big picture.
-2. **Implement** `plans/impl/foundations.md` (Phases 0–4).
+2. **Implement** `plans/impl/foundations.md` (Phases 0-4).
 3. **Implement** `plans/impl/model.md` (Phase 5).
-4. **Implement** `plans/impl/agent.md` (Phases 6–8).
+4. **Implement** `plans/impl/agent.md` (Phases 6-8).
 5. **Reference** `plans/impl/build-phases.md` for per-phase test cases and
    the resolved design decisions that apply across components.
 
@@ -168,7 +169,7 @@ STM(is_literal_fn=fn)                # Stored at construction (@stm spec)
 Agent(tokenizer=tok)                 # Uses tok.is_literal
 ```
 
-The Agent is the composition root — it creates the tokenizer and injects
+The Agent is the composition root - it creates the tokenizer and injects
 `tokenizer.is_literal` into all downstream components.
 
 ---
@@ -220,17 +221,17 @@ MOD64_BITS = 63
 
 | Phase | Component    | Files                              | Est.       | Depends On | Sub-plan |
 | ----- | ------------ | ---------------------------------- | ---------- | ---------- | -------- |
-| 0     | Scaffold     | `pyproject.toml`, dirs             | 0.5d       | —          | foundations |
-| 1     | KLine        | `kline.py`                         | 0.5d       | —          | foundations |
-| 2     | Signature    | `signature.py`                     | 0.5d       | —          | foundations |
-| 3     | Tokenizer    | `mod_tokenizer.py`, `tokenizer.py` | 1.5d       | —          | foundations |
+| 0     | Scaffold     | `pyproject.toml`, dirs             | 0.5d       | -          | foundations |
+| 1     | KLine        | `kline.py`                         | 0.5d       | -          | foundations |
+| 2     | Signature    | `signature.py`                     | 0.5d       | -          | foundations |
+| 3     | Tokenizer    | `mod_tokenizer.py`, `tokenizer.py` | 1.5d       | -          | foundations |
 | 4     | STM          | `stm.py`                           | 1d         | 1, 2, 3    | foundations |
-| 5     | Model        | `model.py`                         | 2–3d       | 1, 2, 4    | model |
-| 6     | Constants    | `significance.py`                  | 0.5d       | —          | agent |
+| 5     | Model        | `model.py`                         | 2-3d       | 1, 2, 4    | model |
+| 6     | Constants    | `model.py` (D_MAX, MASK64)          | 0.5d       | —          | model |
 | 7     | Events       | `events.py`                        | 0.5d       | 1          | agent |
-| 8     | Agent        | `agent.py` (routing + Cogitator)   | 2d         | 1–7        | agent |
+| 8     | Agent        | `agent.py` (routing + Cogitator)   | 2d         | 1-7        | agent |
 | 9     | Persistence  | `agent.py` (extend)                | 1d         | 8          | agent |
-|       | **Total**    |                                    | **11–13d** |            |          |
+|       | **Total**    |                                    | **11-13d** |            |          |
 
 ---
 

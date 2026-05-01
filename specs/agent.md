@@ -46,8 +46,11 @@ This spec depends on the following concepts, defined elsewhere:
 - Provides candidate retrieval via `find`, `find_all`, `query`, `where`.
 - Provides `find_by_nodes` for transitive grounding via nodes signature.
 - Provides `promote` and `promote_all` for persisting Klines to the base.
-- Provides `expand(Q, C, level)` generator for graph expansion yielding connotations and terminal packed distance.
-- Provides `QueryCandidate` named tuple for expansion results.
+- Provides `expand(Q, C, level)` generator for graph expansion yielding
+  connotations and terminal significance.
+- Provides `QueryCandidate` named tuple with `.significance` field
+  (pre-computed by the model).
+- Provides constants `D_MAX` and `MASK64` for significance values.
 - Provides `is_countersigned(Q, C)` for mutual-reference detection.
 - Manages a three-tier memory internally (STM → Frame → Base). The agent
   sees a single Model API; tiering is invisible to the agent.
@@ -119,15 +122,14 @@ Rationalise(Q):
 
   ┌─── SLOW PATH (Cogitator, background thread) ────────────┐
   │ For each WorkItem(Q, C, level):                          │
-  │   for qc in model.expand(Q, C, level):                   │
-  │     process(qc)                                          │
-  │                                                          │
-  │ process(QueryCandidate(query, candidate, distance)):     │
-  │   significance = ~distance                               │
-  │   if model.is_countersigned(query, candidate):           │
-  │     add candidate to model                               │
-  │     re-rationalise query                                 │
-  └───────────────────────────────────────────────────────────┘
+  │   for qc in model.expand(Q, C, level):                       │
+  │     process(qc)                                              │
+  │                                                              │
+  │ process(QueryCandidate(query, candidate, significance)):     │
+  │   if model.is_countersigned(query, candidate):               │
+  │     add candidate to model                                   │
+  │     re-rationalise query                                     │
+  └───────────────────────────────────────────────────────────────┘
 ```
 
 ### Phase 1: Prepare
@@ -244,15 +246,18 @@ A QueryCandidate is a single query-candidate-distance result yielded by
 `model.expand()`:
 
 ```
-QueryCandidate(query, candidate, distance):
-  query:      KLine
-  candidate:  KLine
-  distance:   int     # packed 64-bit distance
+QueryCandidate(query, candidate, significance):
+  query:        KLine
+  candidate:    KLine
+  significance: int     # pre-computed by the model (~packed_distance & MASK64)
 ```
 
 Intermediate yields represent discovered connotations — indirect relationships
 between nodes of the query and candidate. The final yield is always the
-terminal packed distance for the original pair.
+terminal significance for the original pair.
+
+The model computes significance internally; callers use `.significance`
+directly without any inversion.
 
 ## Cogitation
 
@@ -285,18 +290,15 @@ run(WorkItem(query, candidate, level)):
   for qc in model.expand(query, candidate, level):
     process(qc)
 
-process(QueryCandidate(query, candidate, distance)):
-  1. significance = (~distance) & MASK64
-  2. if model.is_countersigned(query, candidate):
+process(QueryCandidate(query, candidate, significance)):
+  1. if model.is_countersigned(query, candidate):
        model.add(candidate)
        on_s1(query, candidate)    # triggers re-rationalisation
 ```
 
-`model.expand()` yields intermediate QueryCandidates for each discovered
-connotation (S2 or S3 indirect relationship), followed by a terminal
-QueryCandidate with the packed distance for the original pair. Each is
-processed identically — countersignature is checked for every yielded
-result, enabling discovery across the full expansion graph.
+Each QueryCandidate carries pre-computed significance (the model performs
+the distance→significance inversion internally). Countersignature is checked
+for every yielded result, enabling discovery across the full expansion graph.
 
 ### S1 Callback
 
@@ -343,14 +345,15 @@ Subscribers receive events synchronously in publication order.
 ### 1. Routing in Agent vs Significance Module
 
 Routing (node-membership classification) is now performed by the agent
-directly. The significance module is reduced to constants (`D_MAX`,
-`MASK64`). This eliminates the `significance_pipeline`,
-`compute_significance`, and `SignificanceResult` abstractions.
+directly. The significance computation (distance→significance inversion) is
+performed by the model's `expand()` method. This eliminates the
+`significance_pipeline`, `compute_significance`, and `SignificanceResult`
+abstractions.
 
 **Rationale**: Routing is a fast, model-free operation that directly
-determines agent control flow. Wrapping it in a separate pipeline added
-indirection without benefit. Distance computation is now only invoked in
-the Cogitator's slow path.
+determines agent control flow. Significance inversion is now internalized in
+the model, keeping the cogitation path simple — it consumes
+`QueryCandidate.significance` directly.
 
 ### 2. No "Best Candidate" Selection
 
@@ -427,7 +430,8 @@ The following are explicitly **out of scope** for this spec:
 ## Referenced By
 
 - **Model** (@model spec) — the Agent stores and retrieves Klines, and
-  calls the model's distance and countersignature API.
+  calls the model's expand and countersignature API. The model computes
+  significance internally.
 - **Signature** (@signature spec) — the Agent creates signatures during
   the prepare phase and uses bitwise AND matching for candidate retrieval.
 - **Tokenizer** (@tokenizer spec) — the Agent uses the tokenizer for

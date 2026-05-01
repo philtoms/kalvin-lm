@@ -10,22 +10,22 @@
 ## 1. Significance Constants (Phase 6)
 
 > **Note:** The standalone `significance` module has been removed. Constants
-> are defined directly in `agent.py`. See `specs/significance.md` for the
-> full conceptual specification.
+> (`D_MAX`, `MASK64`) are defined in `model.py`. See `specs/significance.md`
+> for the full conceptual specification.
 
-**File:** `src/kalvin/agent.py` (module-level constants)
+**File:** `src/kalvin/model.py` (module-level constants)
 **Depends on:** Nothing
 **Estimate:** 0.5 day
 
 ### Spec
 
 Constants for distance/significance arithmetic, defined at the top of
-`agent.py`. Routing and distance computation are performed by the Agent
-and Cogitator directly.
+`model.py`. Routing is performed by the Agent, distance computation and
+significance inversion by the Model's `expand()`.
 
 ```python
-D_MAX  = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance (S4)
-MASK64 = 0xFFFF_FFFF_FFFF_FFFF   # 64-bit mask for inversion
+D_MAX  = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance, also max significance
+MASK64 = 0xFFFF_FFFF_FFFF_FFFF   # 64-bit mask for bitwise inversion
 ```
 
 **Routing** (performed by `Agent._route(Q, C)`) — pure node-membership test,
@@ -40,10 +40,11 @@ route(Q, C):
   else:                            return "S3"
 ```
 
-**Inversion** (performed by Cogitator):
+**Inversion** (performed by Model's `expand()`):
 
 ```python
-significance = (~distance) & MASK64
+significance = (~packed_distance) & MASK64
+# Inverted inside expand(), callers receive significance directly
 ```
 
 ### Test Cases
@@ -222,18 +223,18 @@ run(WorkItem(query, candidate, level)):
   for qc in model.expand(query, candidate, level):
     process(qc)
 
-process(QueryCandidate(query, candidate, distance)):
-  1. significance = (~distance) & MASK64
-  2. if model.is_countersigned(query, candidate):
+process(QueryCandidate(query, candidate, significance)):
+  1. if model.is_countersigned(query, candidate):
        model.add(candidate)
        on_s1(query, candidate)    # triggers re-rationalisation
 ```
 
 `model.expand()` yields intermediate `QueryCandidate` items for each
 discovered connotation (S2 and S3 indirect relationships), followed by a
-terminal `QueryCandidate` with the packed distance for the original pair.
-Each is processed identically — countersignature is checked for every
-yielded result.
+terminal `QueryCandidate` with the computed significance. Each is processed
+identically — countersignature is checked for every yielded result. The
+significance inversion is performed inside `expand()`; the Cogitator
+uses `QueryCandidate.significance` directly.
 
 **MVP:** The routed level (S2/S3) is preserved — significance is computed but
 not used for re-routing. Countersignature is the only mechanism that can promote

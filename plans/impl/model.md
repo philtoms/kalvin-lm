@@ -99,7 +99,7 @@ graph.
 class QueryCandidate(NamedTuple):
     query: KLine
     candidate: KLine
-    distance: int   # packed 64-bit
+    significance: int   # pre-computed by model: (~packed_distance) & MASK64
 ```
 
 ### Model-Internal Functions
@@ -238,7 +238,8 @@ def expand(self, query, candidate, level, distance=0, _visited=None):
     s3_distance = min(s3_distance, (1 << (64 - D_PACK_SHIFT)) - 1)
 
     packed = min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
-    yield QueryCandidate(query, candidate, packed)
+    significance = (~packed) & MASK64
+    yield QueryCandidate(query, candidate, significance)
 ```
 
 ### Per-Node Contributions
@@ -280,15 +281,18 @@ Cogitator — countersignature is checked for every yielded item.
 
 ### Properties
 
-1. **Packed encoding** — single uint64 for both S2 and S3.
-2. **Level determines primary contribution** — mismatched hop distances go to
+1. **Packed encoding (internal)** — single uint64 for both S2 and S3.
+   Callers receive significance, not distance.
+2. **Significance is inverted distance** — the model inverts packed
+   distance to produce significance: `(~packed) & MASK64`.
+3. **Level determines primary contribution** — mismatched hop distances go to
    S2 or S3 based on routing level.
-3. **Connotation is always S3** — indirect bridging always adds to S3.
-4. **Ungrounded penalty is always S2** — matched but ungrounded nodes always
+4. **Connotation is always S3** — indirect bridging always adds to S3.
+5. **Ungrounded penalty is always S2** — matched but ungrounded nodes always
    add to S2.
-5. **Bidirectional** — mismatched nodes from both query and candidate
+6. **Bidirectional** — mismatched nodes from both query and candidate
    contribute.
-6. **32-bit clamp** — each component independently clamped before packing.
+7. **32-bit clamp** — each component independently clamped before packing.
 
 ### `is_countersigned(a, b) → bool`
 
@@ -360,15 +364,15 @@ Structural test only. Literal nodes cannot match a signature.
 | \_edge_hops unresolvable  | Node doesn't resolve → empty generator             |
 | \_edge_hops canonical     | Resolves to canonical → empty generator            |
 | \_edge_hops chain         | Yields (hop_count, next_sig) at each step          |
-| expand self no model      | All match, ungrounded → terminal s2 = N ungrounded |
-| expand no resolution      | All mismatched unresolvable → MAX_HOP each         |
-| expand grounding          | Matched node that resolves → no ungrounded penalty |
+| expand self no model      | All match, ungrounded → significance reflects N ungrounded |
+| expand no resolution      | All mismatched unresolvable → low significance         |
+| expand grounding          | Matched node that resolves → higher significance |
 | expand edge hops          | Mismatched with chain → connotation yields + terminal |
-| expand range              | Valid packed value                                 |
-| expand clamped            | Large results clamped to D_MAX - 1                 |
-| expand S3 route           | level_distance in upper bits                       |
+| expand range              | Valid significance uint64                                 |
+| expand clamped            | Significance in [1, D_MAX]                 |
+| expand S3 route           | S3 yields lower significance than S2 for same mismatch |
 | expand connotation        | Indirect path → S3 connotation yield + terminal    |
-| expand component clamp    | Each component within bit budget                   |
+| expand significance range | Significance always in valid uint64 range |
 | expand bidirectional      | Both sides yield connotations + terminal           |
 | is_countersigned          | Mutual reference detected                          |
 | Not countersigned         | One-way reference → False                          |

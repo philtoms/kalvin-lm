@@ -14,9 +14,12 @@ from kalvin.kline import KLine, KSig
 from kalvin.stm import STM
 from kalvin.signature import make_signature, signifies
 
-# D_PACK_SHIFT hyperparameter — bit position separating S2 and S3 distance components
-D_PACK_SHIFT = 32
-D_MAX = 0xFFFF_FFFF_FFFF_FFFF
+# _D_PACK_SHIFT — internal bit position separating S2 and S3 distance components
+_D_PACK_SHIFT = 32
+
+# Public significance constants
+D_MAX = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance, also the significance of zero distance
+MASK64 = 0xFFFF_FFFF_FFFF_FFFF  # 64-bit mask for bitwise inversion
 
 # MAX_HOP hyperparameter — upper bound on edge hop chain depth
 MAX_HOP = 100
@@ -26,7 +29,7 @@ class QueryCandidate(NamedTuple):
     """A single query|candidate pair yielded by graph expansion."""
     query: KLine
     candidate: KLine
-    distance: int
+    significance: int
 
 
 class Model:
@@ -489,14 +492,15 @@ class Model:
             s3_distance += level_distance
 
         # Clamp each component to its bit budget
-        s2_component_max = (1 << D_PACK_SHIFT) - 1
-        s3_component_max = (1 << (64 - D_PACK_SHIFT)) - 1
+        s2_component_max = (1 << _D_PACK_SHIFT) - 1
+        s3_component_max = (1 << (64 - _D_PACK_SHIFT)) - 1
         s2_distance = min(s2_distance, s2_component_max)
         s3_distance = min(s3_distance, s3_component_max)
 
-        # Pack: S3 in upper bits, S2 in lower bits
-        packed = min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
-        yield QueryCandidate(query, candidate, packed)
+        # Pack: S3 in upper bits, S2 in lower bits, then invert to significance
+        packed = min((s3_distance << _D_PACK_SHIFT) + s2_distance, D_MAX - 1)
+        significance = (~packed) & MASK64
+        yield QueryCandidate(query, candidate, significance)
 
     def is_countersigned(self, a: KLine, b: KLine) -> bool:
         """Test whether two Klines are countersigned (mutual reference)."""
