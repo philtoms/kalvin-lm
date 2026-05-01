@@ -121,11 +121,14 @@ Higher significance = closer match = less work needed. The ordering is strict: *
 | State | Condition                            | Distance          | Significance     | Agent Action         |
 | ----- | ------------------------------------ | ----------------- | ---------------- | -------------------- |
 | S1    | All nodes match perfectly            | 0                 | MAX (all bits 1) | Confirm. Promote.    |
-| S2    | Some nodes match, some don't         | Packed (lower)    | High             | Queue for cogitation |
-| S3    | No nodes match, but candidates exist | Packed (upper)    | Low              | Queue for cogitation |
+| S2    | Some nodes match, some don't         | Low (hop count)   | High             | Queue for cogitation |
+| S3    | No nodes match, but candidates exist | High (biased)     | Low              | Queue for cogitation |
 | S4    | No candidates found at all           | MAX               | 0 (all bits 0)   | Novel. Promote.      |
 
-Distance is a packed 64-bit value: `(s3_component << D_PACK_SHIFT) + s2_component`, where `D_PACK_SHIFT` (default 32) is a hyperparameter defining the bit boundary between S2 (lower bits) and S3 (upper bits) components. Each component is clamped to `(1 << D_PACK_SHIFT) - 1` before packing.
+Distance is a single integer accumulated from graph hops. S3 connotation hops
+are biased by `1 << D_PACK_SHIFT` (default `1 << 32`), guaranteeing S3
+distances are astronomically larger than S2 distances. The topology naturally
+separates the bands — no routing-level distance assignment needed.
 
 Key insight: **S1 and S4 are "significants"** — the KLine is either confirmed or entirely novel. No further processing needed. **S2 and S3 are "rationals"** — partial relationships that require deeper investigation through **cogitation**.
 
@@ -220,9 +223,9 @@ Add the KLine to the model (STM only). Select the best result (highest significa
 
 Cogitation is background processing of rational KLines (S2/S3). The Cogitator
 receives pre-routed work items, expands each through `model.expand()` to
-discover intermediate connotations, and checks each result for countersignature.
-Expansion yields are consumed as a **stream** — sampling parameters control
-which yields are processed and when exploration stops.
+discover intermediate connotations, and classifies each result against
+significance boundaries. Expansion yields are consumed as a **stream** —
+sampling parameters control which yields are processed and when exploration stops.
 
 ### Response Sampling
 
@@ -231,50 +234,76 @@ Values follow LLM convention so user intuition transfers directly:
 
 | Parameter     | Type    | Default | Range          | Purpose                    |
 | ------------- | ------- | ------- | -------------- | -------------------------- |
-| `temperature` | float   | 1.0     | (0, ∞)         | Per-yield significance gate|
+| `temperature` | float   | 1.0     | (0, ∞)         | Boundary shift             |
 | `top_k`       | int     | 40      | [0, ∞). 0=∞    | Exploration budget per item|
 | `top_p`       | float   | 0.95    | (0, 1.0]       | Cumulative evidence cutoff |
 
-Temperature is applied first to each yielded significance value. Top-k and
-top-p then truncate the stream. All three compose in a single pass with O(1)
-state — no batch collection.
+Temperature shifts the three significance boundaries (S1|S2, S2|S3, S3|S4).
+Top-k and top-p then truncate the stream. All three compose in a single
+pass with O(1) state — no batch collection.
+
+#### Significance Boundaries
+
+Three boundaries classify yielded significance values:
+
+```
+D_MAX ── S1|S2 ──────── S2|S3 (HP) ──────── S3|S4 ── 0
+```
+
+Base positions (τ = 1):
+
+| Boundary | Position                    | Meaning                        |
+| -------- | --------------------------- | ------------------------------ |
+| S1\|S2   | `D_MAX - 1`                 | Only exact S1 qualifies as S1  |
+| S2\|S3   | `~(1 << _D_PACK_SHIFT)`     | HP boundary (S3 bias position) |
+| S3\|S4   | `0`                          | Only zero-significance is S4   |
+
+Classification is a cascade:
+
+```
+  sig >= S1|S2  →  S1
+  sig >= S2|S3  →  S2
+  sig >= S3|S4  →  S3
+  else          →  S4
+```
+
+Raw significance values are never mutated. Boundaries are computed once per
+work item and applied to every yield.
 
 #### Temperature
 
-Rescales significance in distance space:
+Temperature shifts all three boundaries by the same amount, with capping
+at the extremes:
 
-```
-adjusted_distance = raw_distance / temperature
-adjusted_significance = ~adjusted_distance
-```
+| Direction | S1\|S2         | S2\|S3       | S3\|S4     | Effect                      |
+| --------- | -------------- | ------------ | ---------- | --------------------------- |
+| τ > 1     | drops ↓        | drops ↓      | capped at 0 | More S2→S1, more S3→S2     |
+| τ < 1     | capped at D_MAX-1 | rises ↑   | rises ↑    | Fewer S2→S1, more S3→S4    |
 
-- τ < 1: distances grow → significance drops → conservative (only
-  high-significance connotations pass)
-- τ = 1: identity (no adjustment)
-- τ > 1: distances shrink → significance rises → exploratory (even
-  low-significance connotations pass)
+High temperature lowers the S1|S2 boundary, allowing near-S1 S2 connotations
+to be classified as S1 and immediately published. Low temperature raises
+the S3|S4 boundary, demoting weak S3 connotations to S4.
 
-Temperature gates the **publishing window**: a high τ can bring near-S1 S2
-connotations above the publish threshold, making them immediately visible
-without waiting for full countersignature resolution.
+The shift function is exploratory — linear, inverse, or per-boundary scaling
+are all options to tune. Currently: `shift = hp_distance × (τ - 1)`.
 
 #### Top-k
 
-Caps the number of connotations processed per work item. Each QC that passes
-the temperature gate increments a counter; when it reaches `k`, the generator
-is broken out of. Everything after is demoted — never checked for
-countersignature, never considered for promotion.
+Caps the number of connotations processed per work item. Each QC that is
+not demoted to S4 increments a counter; when it reaches `k`, the generator
+is broken out of. Everything after is demoted — never classified, never
+checked for countersignature.
 
 Top-k is the **promotion budget**: it directly controls how many chances each
 work item gets to discover an S1.
 
 #### Top-p
 
-Tracks cumulative adjusted significance across the stream. When the total
-reaches `top_p × D_MAX`, the generator is broken out of. This is an adaptive
-quality gate: when the first few connotations carry high significance, the
-target is reached quickly (the agent "locks on"). When significance is diffuse,
-the agent explores more widely.
+Tracks cumulative significance across the stream. When the total reaches
+`top_p × D_MAX`, the generator is broken out of. This is an adaptive quality
+gate: when the first few connotations carry high significance, the target is
+reached quickly (the agent "locks on"). When significance is diffuse, the
+agent explores more widely.
 
 Top-p is the **demotion threshold**: it decides when further exploration has
 diminishing returns.
@@ -283,18 +312,23 @@ diminishing returns.
 
 ```
 run_work_item(WorkItem(query, candidate, level)):
+  (s12, s23, s34) = boundaries(temperature)    # computed once
   evidence_target = top_p × D_MAX
   count = 0, cumulative = 0
 
   for qc in model.expand(query, candidate, level):
-    adjusted = adjust(qc.significance, temperature)
-    if adjusted < publish_threshold:
-      continue                    # demote: insufficient significance
+    band = classify(qc.significance, s12, s23, s34)
+
+    if band == "S4":
+      continue                    # demote: below S3|S4 boundary
 
     count += 1
-    cumulative += adjusted
+    cumulative += qc.significance
 
-    process(qc)                   # countersignature check
+    if band == "S1":
+      on_s1(query, candidate)     # promote immediately
+    else:
+      process(qc)                 # S2/S3: countersignature check
 
     if cumulative >= evidence_target:
       break                       # demote: sufficient evidence

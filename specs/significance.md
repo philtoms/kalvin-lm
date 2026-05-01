@@ -7,10 +7,10 @@
 ## Overview
 
 Significance is a metric that describes how well a candidate Kline answers a
-query Kline. It is the bitwise inverse of a packed distance:
+query Kline. It is the bitwise inverse of a distance:
 
 ```
-significance = (~packed_distance) & MASK64
+significance = (~distance) & MASK64
 ```
 
 The model's `expand()` generator computes this internally and yields
@@ -18,7 +18,8 @@ The model's `expand()` generator computes this internally and yields
 model-internal concern — callers of `expand()` receive significance directly.
 
 Routing (determining S1/S2/S3/S4 from node membership) is performed by the
-Agent's `_route(Q, C)` method.
+Agent's `_route(Q, C)` method. Classification against significance boundaries
+is performed by the Cogitator's `_classify()` method.
 
 ## Constants
 
@@ -52,21 +53,48 @@ route(Q, C):
 
 ## Distance
 
-Distance is computed internally by `Model.expand()` as a packed 64-bit value.
-The model inverts this to significance before yielding. Callers never see raw
-distance — they receive `QueryCandidate.significance` directly.
+Distance is computed by `Model.expand()` as a single accumulated integer.
 
-### Internal packed distance encoding
+### Distance accumulation
 
-Distance is a packed 64-bit unsigned integer encoding both S2 and S3
-components:
+For each mismatched node in the query and candidate:
+
+- **Direct edge resolution (S2):** The node resolves via `_edge_hops()` to a
+  node in the opposite set. Adds the hop count directly to distance.
+- **Connotation resolution (S3):** The node resolves via `_edge_hops()` to a
+  signature found in `s3_connotations`. The connotation hop count is biased by
+  `1 << _D_PACK_SHIFT` to guarantee S3 distances are astronomically larger
+  than S2 distances.
+- **Unresolved:** Adds `MAX_HOP` (default 100).
+
+Matched-but-ungrounded nodes (present in both but not resolving to an S1
+kline) add 1 each.
+
+### S3 bias
 
 ```
-  Bits [0, D_PACK_SHIFT-1]     → S2 component
-  Bits [D_PACK_SHIFT, 63]      → S3 component
+s3_hop = connotation_hops
+biased_distance = s3_hop << _D_PACK_SHIFT
 ```
 
-`D_PACK_SHIFT` is a model-internal hyperparameter (default: 32).
+The bias (`1 << 32 ≈ 4.3 billion`) guarantees that any S3 contribution
+produces a distance far exceeding any S2 distance (max S2 ≈ `N × MAX_HOP`).
+The topology naturally separates the bands — no explicit routing-level
+distance assignment needed.
+
+### Significance inversion
+
+```
+significance = (~min(distance, D_MAX - 1)) & MASK64
+```
+
+The topology guarantees the natural ordering:
+
+| Band | Typical distance range | Typical significance | Condition |
+| ---- | ---------------------- | -------------------- | --------- |
+| S2   | 0 – ~300               | Near `D_MAX`         | Upper 32 bits of significance all set |
+| S3   | `1 << 32` and up       | Mid-range            | Upper 32 bits of significance not all set |
+| S4   | `D_MAX`                | 0                    | No candidates |
 
 ### Arithmetic Ordering
 
@@ -81,6 +109,44 @@ S1 = 0xFFFF_FFFF_FFFF_FFFF   (all 64 bits set, zero distance)
 S4 = 0x0000_0000_0000_0000   (all 64 bits clear, maximum distance)
 ```
 
+## Significance Boundaries
+
+Classification of yielded significance values is performed against three
+boundaries, computed by `Cogitator._boundaries()` and classified by
+`Cogitator._classify()`.
+
+### Base boundaries (τ = 1)
+
+| Boundary  | Position                  | Meaning                           |
+| --------- | ------------------------- | --------------------------------- |
+| S1\|S2    | `D_MAX - 1`               | Only exact S1 qualifies as S1     |
+| S2\|S3    | `~(1 << _D_PACK_SHIFT)`   | HP boundary (S3 bias threshold)   |
+| S3\|S4    | `0`                       | Only zero-significance is S4      |
+
+### Temperature shift
+
+Temperature shifts all three boundaries in the same direction. Capping
+produces the asymmetric effect:
+
+| Direction | S1\|S2       | S2\|S3       | S3\|S4     | Effect                           |
+| --------- | ------------ | ------------ | ---------- | -------------------------------- |
+| τ > 1     | drops ↓      | drops ↓      | capped at 0 | More S2→S1, more S3→S2          |
+| τ < 1     | capped at D_MAX-1 | rises ↑ | rises ↑    | Fewer S2→S1, more S3→S4         |
+
+High temperature lowers the S1|S2 boundary, allowing near-S1 S2
+connotations to be classified as S1. Low temperature raises the S3|S4
+boundary, demoting weak S3 connotations to S4.
+
+### Classification
+
+```python
+def _classify(sig, s12, s23, s34):
+    if sig >= s12: return "S1"
+    if sig >= s23: return "S2"
+    if sig >= s34: return "S3"
+    return "S4"
+```
+
 ## Model API
 
 The model's `expand()` generator computes significance internally and yields
@@ -92,14 +158,15 @@ model.expand(Q, C, level) → Iterator[QueryCandidate]
 
 - Yields intermediate `QueryCandidate` items for each discovered connotation,
   followed by a terminal `QueryCandidate` with the computed significance.
-- `level` is `"S2"` or `"S3"`, determined by routing.
+- `level` is `"S2"` or `"S3"`, determined by routing. It is preserved for
+  recursive calls but does not affect distance computation.
 - Each `QueryCandidate.significance` is in range `[1, D_MAX]`.
 - The distance→significance inversion is performed inside `expand()`;
   callers use `.significance` directly.
 
 ## Properties
 
-1. **Inverted metric**: significance = `(~packed_distance) & MASK64`. Computed
+1. **Inverted metric**: significance = `(~distance) & MASK64`. Computed
   internally by the model. Higher is more significant.
 2. **Routing is self-contained**: routing uses simple node-membership testing
   and does not call any model function.
@@ -109,14 +176,23 @@ model.expand(Q, C, level) → Iterator[QueryCandidate]
 5. **Exhaustive**: every Kline with candidates is S1, S2, or S3.
 6. **S1 is trivial**: all nodes match → distance = 0 → significance = D_MAX,
   no function call needed.
+7. **Topology-driven**: distance is accumulated from graph hops. S3
+  connotation hops are biased by `1 << _D_PACK_SHIFT`, guaranteeing natural
+  S2/S3 separation without routing-level distance assignment.
+8. **Boundary classification**: significance values are classified against
+  three boundaries (S1|S2, S2|S3, S3|S4) shifted by temperature. Raw
+  significance is never mutated per-yield.
 
 ## Code Locations
 
 | Concept | File | Symbol |
 | ------- | ---- | ------ |
 | Constants (`D_MAX`, `MASK64`) | `src/kalvin/model.py` | module-level |
+| S3 bias (`_D_PACK_SHIFT`) | `src/kalvin/model.py` | module-level |
 | Routing | `src/kalvin/agent.py` | `Agent._route()` |
 | Significance inversion | `src/kalvin/model.py` | `Model.expand()` |
 | Distance computation | `src/kalvin/model.py` | `Model.expand()` |
-| Sampling (temperature) | `src/kalvin/agent.py` | `Cogitator._adjust()` |
+| Boundary computation | `src/kalvin/agent.py` | `Cogitator._boundaries()` |
+| Classification | `src/kalvin/agent.py` | `Cogitator._classify()` |
 | Sampling (top-k, top-p) | `src/kalvin/agent.py` | `Cogitator._run_work_item()` |
+| Sampling parameters | `src/kalvin/agent.py` | `Sampling` class |

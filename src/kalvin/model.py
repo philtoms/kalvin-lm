@@ -14,7 +14,9 @@ from kalvin.kline import KLine, KSig
 from kalvin.stm import STM
 from kalvin.signature import make_signature, signifies
 
-# _D_PACK_SHIFT — internal bit position separating S2 and S3 distance components
+# _D_PACK_SHIFT — S3 connotation bias. S3 hops are shifted left by this amount,
+# guaranteeing S3 distances are astronomically larger than S2 distances.
+# Also defines the HP (high-precision) boundary position in significance space.
 _D_PACK_SHIFT = 32
 
 # Public significance constants
@@ -401,8 +403,12 @@ class Model:
 
         For each discovered connotation (S2/S3 indirect relationship), recursively
         yields QueryCandidate items for the connotation pair.  The final yield is
-        always the terminal QueryCandidate with the packed distance for the
+        always the terminal QueryCandidate with the computed distance for the
         original pair.
+
+        Distance is a single integer. S3 connotation hops are biased by
+        ``1 << _D_PACK_SHIFT`` to guarantee S3 distances are astronomically
+        larger than S2 distances — the topology naturally separates the bands.
 
         Parameters
         ----------
@@ -416,7 +422,7 @@ class Model:
         ------
         QueryCandidate
             Intermediate connotations (from recursive calls) followed by the
-            terminal packed distance.
+            terminal distance.
         """
         if _visited is None:
             _visited = set()
@@ -432,10 +438,13 @@ class Model:
         mismatched_c = c_set - q_set
         matched = q_set & c_set
 
-        level_distance = distance
-        s2_distance = 0
-        s3_distance = 0
         s3_connotations: dict[int, int] = {}  # sig → min hops from any query node
+
+        # Accumulate distance from mismatched nodes
+        # Direct edge resolutions (S2) add hop count directly.
+        # Connotation resolutions (S3) add hop count << _D_PACK_SHIFT.
+        # Unresolved nodes add MAX_HOP.
+        total_distance = 0
 
         # Mismatched query nodes
         for n in mismatched_q:
@@ -453,7 +462,7 @@ class Model:
                     elif (match_sig not in s3_connotations
                         or hops < s3_connotations[match_sig]):
                         s3_connotations[match_sig] = hops
-            level_distance += hop_distance
+            total_distance += hop_distance
 
         # Mismatched candidate nodes
         for n in mismatched_c:
@@ -469,35 +478,27 @@ class Model:
                         )
                         break
                     elif match_sig in s3_connotations:
-                        hop_distance += s3_connotations[match_sig] + hops
+                        s3_hop = s3_connotations[match_sig] + hops
                         c_kline = self._as_kline(match_sig)
                         yield from self.expand(
-                            q_kline, c_kline, "S3", hop_distance, _visited=_visited,
+                            q_kline, c_kline, "S3",
+                            s3_hop << _D_PACK_SHIFT,
+                            _visited=_visited,
                         )
                         hop_distance = 0
                         break
-            level_distance += hop_distance
+            total_distance += hop_distance
 
-        # Matched but not grounded (S2 component)
+        # Matched but not grounded — small S2 penalty
         for n in matched:
             if not self.is_s1(n):
-                s2_distance += 1
+                total_distance += 1
 
-        # Route determines where level_distance lands
-        if level == "S2":
-            s2_distance += level_distance
-        else:
-            s3_distance += level_distance
+        # Carry forward the incoming distance
+        total_distance += distance
 
-        # Clamp each component to its bit budget
-        s2_component_max = (1 << _D_PACK_SHIFT) - 1
-        s3_component_max = (1 << (64 - _D_PACK_SHIFT)) - 1
-        s2_distance = min(s2_distance, s2_component_max)
-        s3_distance = min(s3_distance, s3_component_max)
-
-        # Pack: S3 in upper bits, S2 in lower bits, then invert to significance
-        packed = min((s3_distance << _D_PACK_SHIFT) + s2_distance, D_MAX - 1)
-        significance = (~packed) & MASK64
+        # Clamp to avoid overflow, then invert to significance
+        significance = (~min(total_distance, D_MAX - 1)) & MASK64
         yield QueryCandidate(query, candidate, significance)
 
     def is_countersigned(self, a: KLine, b: KLine) -> bool:

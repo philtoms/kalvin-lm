@@ -204,8 +204,8 @@ class WorkItem(NamedTuple):
 ### Cogitator Spec
 
 Background work-item processor. Receives pre-routed WorkItems, computes deep
-significance, checks countersignature. Response sampling controls stream
-consumption.
+significance, classifies against boundaries, checks countersignature. Response
+sampling controls stream consumption.
 
 ```python
 class Sampling:
@@ -223,29 +223,56 @@ class Cogitator:
     thread: daemon thread
 ```
 
-**Processing per work item — streaming sampling:**
+**Boundary computation:**
+
+```
+base_boundaries():
+  s12 = D_MAX - 1              # S1|S2: only exact S1 qualifies
+  s23 = ~(1 << _D_PACK_SHIFT)  # S2|S3: HP boundary
+  s34 = 0                       # S3|S4: only zero is S4
+  return (s12, s23, s34)
+
+boundaries(τ):
+  if τ == 1.0: return base_boundaries()
+  shift = (1 << _D_PACK_SHIFT) × (τ - 1.0)
+  s12 = clamp(s12_base - shift, 0, D_MAX - 1)
+  s23 = clamp(s23_base - shift, 0, D_MAX - 1)
+  s34 = clamp(s34_base - shift, 0, D_MAX - 1)
+  return (s12, s23, s34)
+
+classify(sig, s12, s23, s34):
+  if sig >= s12: return "S1"
+  if sig >= s23: return "S2"
+  if sig >= s34: return "S3"
+  return "S4"
+```
+
+**Processing per work item — boundary-based streaming:**
 
 ```
 run_work_item(WorkItem(query, candidate, level)):
+  (s12, s23, s34) = boundaries(sampling.temperature)
   evidence_target = sampling.top_p × D_MAX
   count = 0, cumulative = 0
 
   for qc in model.expand(query, candidate, level):
-    adjusted = adjust(qc.significance, sampling.temperature)
-    if adjusted < publish_threshold:
+    band = classify(qc.significance, s12, s23, s34)
+
+    if band == "S4":
       continue                    # demote
+
     count += 1
-    cumulative += adjusted
-    process(qc)                   # countersignature check
+    cumulative += qc.significance
+
+    if band == "S1":
+      on_s1(query, candidate)     # promote immediately
+    else:
+      process(qc)                 # S2/S3: countersignature check
+
     if cumulative >= evidence_target:
       break                       # sufficient evidence
     if 0 < sampling.top_k <= count:
       break                       # budget exhausted
-
-adjust(significance, τ):
-  distance = (~significance) & MASK64
-  adjusted = min(distance / τ, D_MAX)
-  return (~adjusted) & MASK64
 
 process(QueryCandidate(query, candidate, significance)):
   if model.is_countersigned(query, candidate):
@@ -253,9 +280,9 @@ process(QueryCandidate(query, candidate, significance)):
     on_s1(query, candidate)       # re-rationalise
 ```
 
-The `publish_threshold` is currently `D_MAX - 1`. Temperature is applied
-before comparison, so high τ can bring near-S1 S2 results into the
-publishing window.
+Boundaries are computed once per work item. Raw significance is never
+mutated — temperature acts on the boundaries, not on the values. High τ
+lowers S1|S2, allowing near-S1 S2 connotations to be classified as S1.
 
 **Lifecycle:**
 
@@ -347,19 +374,28 @@ def is_countersigned(Q, C):
 
 ### Sampling
 
-| Test                        | Description                                    |
-| --------------------------- | ---------------------------------------------- |
-| Default values              | temperature=1.0, top_k=40, top_p=0.95          |
-| Validation rejects bad      | temp≤0, top_k<0, top_p∉(0,1]                   |
-| Agent.sampling property     | Read/write proxy to cogitator                  |
-| Temperature identity        | τ=1.0 → adjust(sig) == sig                     |
-| Temperature conservative    | τ<1 → adjust(sig) ≤ sig                        |
-| Temperature exploratory     | τ>1 → adjust(sig) ≥ sig                        |
-| Top-k budget                | k=1 processes at most 1 QC per work item       |
-| Top-k unlimited             | k=0 processes all QCs                          |
-| Top-p early stop            | p<1.0 stops before exhausting generator        |
-| Top-p no stop               | p=1.0 never triggers early stop                |
-| Streaming composition       | temperature gates, top-k caps, top-p stops     |
+| Test                          | Description                                         |
+| ----------------------------- | --------------------------------------------------- |
+| Default values                | temperature=1.0, top_k=40, top_p=0.95               |
+| Validation rejects bad        | temp≤0, top_k<0, top_p∉(0,1]                        |
+| Agent.sampling property       | Read/write proxy to cogitator                       |
+| Base boundaries               | S1\|S2=D_MAX-1, S2\|S3=HP, S3\|S4=0                 |
+| Boundary identity at τ=1      | boundaries() == base_boundaries()                   |
+| High τ lowers S1\|S2          | τ>1 → S1\|S2 boundary drops                         |
+| High τ lowers S2\|S3          | τ>1 → S2\|S3 boundary drops                         |
+| High τ caps S3\|S4 at 0       | τ>1 → S3\|S4 stays at 0                             |
+| Low τ raises S2\|S3           | τ<1 → S2\|S3 boundary rises                         |
+| Low τ raises S3\|S4           | τ<1 → S3\|S4 boundary rises                         |
+| Low τ caps S1\|S2 at D_MAX-1  | τ<1 → S1\|S2 stays at D_MAX-1                       |
+| Monotonic S1\|S2 with τ       | Higher τ → lower S1\|S2 boundary                   |
+| Classify S1/S2/S3/S4          | Correct classification against boundaries           |
+| High τ promotes S2 to S1      | Near-S1 S2 QC classified as S1 at high τ            |
+| S4 demotion                   | Low τ raises S3\|S4, QCs below it demoted           |
+| Top-k budget                  | k=2 processes at most 2 QCs per work item           |
+| Top-k unlimited               | k=0 processes all QCs                               |
+| Top-p early stop              | p<1.0 stops before exhausting generator             |
+| Top-p no stop                 | p=1.0 never triggers early stop                     |
+| Boundary + top-k composition  | Classification filters, then top-k caps             |
 
 ### Events
 

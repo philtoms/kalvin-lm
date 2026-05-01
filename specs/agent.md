@@ -278,40 +278,55 @@ Sampling:
   top_p:       float   # (0, 1.0]. Default 0.95.
 ```
 
-| Parameter     | Streaming role         | Mechanism                               |
-| ------------- | ---------------------- | --------------------------------------- |
-| `temperature` | Per-yield quality gate | Rescale significance in distance space. |
-| `top_k`       | Exploration budget    | Cap processed connotations per work item|
-| `top_p`       | Evidence threshold    | Stop when cumulative significance ≥ p   |
+| Parameter     | Streaming role        | Mechanism                              |
+| ------------- | --------------------- | -------------------------------------- |
+| `temperature` | Boundary shift        | Shift S1\|S2, S2\|S3, S3\|S4 boundaries |
+| `top_k`       | Exploration budget   | Cap processed connotations per work item |
+| `top_p`       | Evidence threshold   | Stop when cumulative significance ≥ p   |
 
-Applied in order per-yield: temperature first (gate), then top-p (evidence
-check), then top-k (budget check). O(1) state per work item.
+Applied in order per-yield: boundary classification (S4 demotion), then
+top-p (evidence check), then top-k (budget check). O(1) state per work item.
+
+#### Significance Boundaries
+
+Three boundaries classify yielded significance values:
+
+```
+D_MAX ── S1|S2 ──────── S2|S3 (HP) ──────── S3|S4 ── 0
+```
+
+Base positions (τ = 1):
+
+| Boundary | Position                    | Meaning                        |
+| -------- | --------------------------- | ------------------------------ |
+| S1\|S2   | `D_MAX - 1`                 | Only exact S1 qualifies as S1  |
+| S2\|S3   | `~(1 << _D_PACK_SHIFT)`     | HP boundary (S3 bias position) |
+| S3\|S4   | `0`                          | Only zero-significance is S4   |
+
+Classification is a cascade: `sig ≥ S1|S2 → S1`, `sig ≥ S2|S3 → S2`,
+`sig ≥ S3|S4 → S3`, else S4. Raw significance values are never mutated.
 
 #### Temperature
 
-Adjusts a raw significance by converting to distance, dividing by τ,
-and inverting back:
+Shifts all three boundaries by the same amount, with capping:
 
-```
-adjust(significance, τ):
-  distance = (~significance) & MASK64
-  adjusted = min(distance / τ, D_MAX)
-  return (~adjusted) & MASK64
-```
+| Direction | S1\|S2         | S2\|S3       | S3\|S4     | Effect                      |
+| --------- | -------------- | ------------ | ---------- | --------------------------- |
+| τ > 1     | drops ↓        | drops ↓      | capped at 0 | More S2→S1, more S3→S2     |
+| τ < 1     | capped at D_MAX-1 | rises ↑   | rises ↑    | Fewer S2→S1, more S3→S4    |
 
-- τ < 1: conservative — only high-significance connotations pass
-- τ = 1: identity
-- τ > 1: exploratory — low-significance connotations pass more freely
+The shift function is: `shift = hp_distance × (τ - 1)`. This is
+exploratory — alternative shift functions may be tuned later.
 
 #### Top-k
 
 Maximum number of connotations processed per work item. After `k` results
-pass the temperature gate, the generator is exhausted. 0 means unlimited.
+pass the S4 demotion gate, the generator is exhausted. 0 means unlimited.
 
 #### Top-p
 
 Cumulative significance threshold. After processing, if the running sum of
-adjusted significance reaches `top_p × D_MAX`, the generator is exhausted.
+significance reaches `top_p × D_MAX`, the generator is exhausted.
 When `top_p = 1.0`, no early stopping occurs.
 
 ### Cogitator
@@ -333,20 +348,29 @@ the backlog and processes each one.
 ### Work Item Processing
 
 The Cogitator expands each WorkItem into a stream of QueryCandidates.
-Sampling parameters gate which candidates are processed:
+Boundaries are computed once per work item. Each yield is classified
+against the boundaries:
 
 ```
 run_work_item(WorkItem(query, candidate, level)):
+  (s12, s23, s34) = boundaries(sampling.temperature)
   evidence_target = sampling.top_p × D_MAX
   count = 0, cumulative = 0
 
   for qc in model.expand(query, candidate, level):
-    adjusted = adjust(qc.significance, sampling.temperature)
-    if adjusted < publish_threshold:
-      continue                    # demote
+    band = classify(qc.significance, s12, s23, s34)
+
+    if band == "S4":
+      continue                    # demote: below S3|S4 boundary
+
     count += 1
-    cumulative += adjusted
-    process(qc)
+    cumulative += qc.significance
+
+    if band == "S1":
+      on_s1(query, candidate)     # promote immediately
+    else:
+      process(qc)                 # S2/S3: countersignature check
+
     if cumulative >= evidence_target:
       break                       # sufficient evidence
     if 0 < sampling.top_k <= count:
@@ -358,10 +382,10 @@ process(QueryCandidate(query, candidate, significance)):
     on_s1(query, candidate)       # triggers re-rationalisation
 ```
 
-The `publish_threshold` is the minimum adjusted significance for a cogitation
-result to be processed. Currently `D_MAX - 1` (S1 level). Temperature is
-applied before comparison, so high τ can bring near-S1 S2 results above
-this threshold.
+Boundaries are computed once at the start of each work item. Raw significance
+is never mutated — temperature acts on the boundaries, not on the values.
+A high τ lowers S1|S2, allowing near-S1 S2 connotations to be classified
+as S1 and immediately published.
 
 ### S1 Callback
 

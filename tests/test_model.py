@@ -2,7 +2,7 @@
 
 import pytest
 from kalvin.kline import KLine
-from kalvin.model import Model, D_MAX, MASK64, MAX_HOP
+from kalvin.model import Model, D_MAX, MASK64, MAX_HOP, _D_PACK_SHIFT
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
 
@@ -395,20 +395,19 @@ class TestExpand:
         results = list(m.expand(q, c, "S2"))
         assert 0 < results[-1].significance <= D_MAX
 
-    def test_expand_s3_route(self):
-        """S3 route yields lower significance than equivalent S2 route."""
+    def test_expand_level_independent(self):
+        """Distance is topology-driven, not level-driven.
+
+        With the simplified distance model, the level parameter does not
+        affect distance computation. Same query/candidate → same significance
+        regardless of level.
+        """
         m = make_model()
         q = KLine(5, [1, 2])
         c = KLine(100, [3, 4])
-        results = list(m.expand(q, c, "S3"))
-        # S3 routes level_distance to the s3 (upper bits) component.
-        # distance=400 (packed in upper bits) → lower significance than if in S2.
-        # Significance should be less than the S2 equivalent with same mismatch.
-        sig_s3 = results[-1].significance
-        # Also run as S2 for comparison — same mismatched nodes, S2 distance is lower
-        results_s2 = list(m.expand(q, c, "S2"))
-        sig_s2 = results_s2[-1].significance
-        assert sig_s3 < sig_s2  # S3 is less significant than S2 for same mismatch
+        sig_s2 = list(m.expand(q, c, "S2"))[-1].significance
+        sig_s3 = list(m.expand(q, c, "S3"))[-1].significance
+        assert sig_s2 == sig_s3  # topology drives distance, not level
 
     def test_expand_significance_ordering(self):
         """Verify significance ordering: closer match → higher significance."""
@@ -423,7 +422,11 @@ class TestExpand:
         assert results[-1].significance == (~301) & MASK64
 
     def test_expand_connotation_bridging(self):
-        """Connotation bridging: indirect path through intermediate signature."""
+        """Connotation bridging: indirect path through intermediate signature.
+
+        S3 connotation hops are biased by 1 << _D_PACK_SHIFT, guaranteeing
+        connotation distances are astronomically larger than direct (S2) distances.
+        """
         m = make_model()
         m.add(KLine(60, [60]))  # canonical
         m.add(KLine(50, [60]))  # non-canon: edge_hops(50) = [(1, 60)]
@@ -431,37 +434,35 @@ class TestExpand:
 
         q = KLine(100, [50])     # mismatched_q: {50}
         c = KLine(200, [70])     # mismatched_c: {70}
-        # Terminal distance: s2=100 (level_distance), s3=0 → packed=100
-        # Connotation: packed=(102<<32)=4398046511104
+
+        # s3_connotations[60] = 1 (from q-node 50)
+        # c-node 70 resolves via s3_connotation: s3_hop = 1 + 1 = 2
+        # Connotation distance = 2 << _D_PACK_SHIFT (biased)
+        # Terminal distance = MAX_HOP = 100 (q-node 50 unresolved at terminal level)
+
         results = list(m.expand(q, c, "S2"))
         assert len(results) == 2
 
-        # S3 connotation yield: packed=(102<<32)
+        # S3 connotation yield: distance = 2 << _D_PACK_SHIFT
         connotation = results[0]
         assert connotation.query.signature == 70
         assert connotation.candidate.signature == 60
-        # Connotation has higher distance → lower significance than terminal
-        connotation_distance = (102 << 32)  # s3 component only
+        connotation_distance = 2 << _D_PACK_SHIFT
         assert connotation.significance == (~connotation_distance) & MASK64
 
-        # Terminal yield: packed=100
+        # Terminal yield: distance = 100 (MAX_HOP for unresolved q-node)
         terminal = results[1]
         assert terminal.query is q
         assert terminal.candidate is c
-        terminal_distance = 100  # s2 component only
-        assert terminal.significance == (~terminal_distance) & MASK64
-        # Terminal has lower distance → higher significance than connotation
+        assert terminal.significance == (~100) & MASK64
+
+        # Terminal has higher significance than connotation (closer match)
         assert terminal.significance > connotation.significance
 
-        # S3 route: level_distance goes to s3 instead
-        results_s3 = list(m.expand(q, c, "S3"))
-        assert len(results_s3) == 2
-        terminal_s3 = results_s3[-1]
-        # S3 terminal: s3=100, s2=0 → packed=(100<<32)=429496729600
-        s3_route_distance = (100 << 32)
-        assert terminal_s3.significance == (~s3_route_distance) & MASK64
-        # S3 route has higher distance (in upper bits) → lower significance than S2 route
-        assert terminal_s3.significance < terminal.significance
+        # Verify S2 vs S3 classification against HP boundary
+        hp_boundary = (~(1 << _D_PACK_SHIFT)) & MASK64
+        assert terminal.significance > hp_boundary    # S2
+        assert connotation.significance < hp_boundary  # S3
 
     def test_expand_significance_in_range(self):
         """Significance is always in valid uint64 range."""

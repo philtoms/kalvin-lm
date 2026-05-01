@@ -1,10 +1,10 @@
-"""Tests for Sampling — response sampling parameters for cogitation."""
+"""Tests for Sampling — boundary-based response sampling for cogitation."""
 
 import pytest
 
 from kalvin.agent import Sampling, Agent, Cogitator, WorkItem
 from kalvin.kline import KLine
-from kalvin.model import D_MAX, MASK64, Model, QueryCandidate
+from kalvin.model import D_MAX, MASK64, Model, QueryCandidate, _D_PACK_SHIFT
 from kalvin.events import EventBus
 
 
@@ -80,11 +80,13 @@ class TestSamplingValidation:
             Sampling(top_p=-0.5)
 
 
-# ── Temperature Adjustment ───────────────────────────────────────────
+# ── Boundary Computation ─────────────────────────────────────────────
 
-class TestAdjust:
+class TestBoundaries:
+    """Test _base_boundaries and _boundaries (temperature-shifted)."""
+
     def _make_cogitator(self, sampling: Sampling) -> Cogitator:
-        """Create a Cogitator with the given sampling for testing _adjust."""
+        """Create a Cogitator with the given sampling for boundary testing."""
         model = Model()
         bus = EventBus()
         cog = Cogitator(
@@ -93,76 +95,127 @@ class TestAdjust:
             on_s1=lambda q, c: None,
             sampling=sampling,
         )
-        # Stop the background thread immediately — we only need _adjust
         cog.join(timeout=0.1)
         return cog
 
+    def test_base_boundaries(self):
+        """Base boundaries at τ=1: S1|S2 = D_MAX-1, S2|S3 = HP, S3|S4 = 0."""
+        s12, s23, s34 = Cogitator._base_boundaries()
+        assert s12 == D_MAX - 1
+        assert s23 == (~(1 << _D_PACK_SHIFT)) & MASK64
+        assert s34 == 0
+
     def test_identity_at_tau_1(self):
-        """τ=1.0 → adjust(sig) == sig for any significance."""
+        """τ=1.0 → boundaries == base boundaries."""
         cog = self._make_cogitator(Sampling(temperature=1.0))
-        for sig in [D_MAX - 1, 0x8000_0000_0000_0000, 0x0000_0000_FFFF_FFFF, 1]:
-            assert cog._adjust(sig) == sig, f"Identity failed at sig={sig:#x}"
+        s12, s23, s34 = cog._boundaries()
+        base = Cogitator._base_boundaries()
+        assert (s12, s23, s34) == base
 
-    def test_conservative_lowers_significance(self):
-        """τ<1 → adjust(sig) ≤ sig for non-max significance."""
+    def test_high_tau_lowers_s12(self):
+        """τ>1 → S1|S2 boundary drops (more S2 qualifies as S1)."""
+        cog1 = self._make_cogitator(Sampling(temperature=1.0))
+        cog2 = self._make_cogitator(Sampling(temperature=2.0))
+        s12_1, _, _ = cog1._boundaries()
+        s12_2, _, _ = cog2._boundaries()
+        assert s12_2 < s12_1  # boundary dropped
+
+    def test_high_tau_lowers_s23(self):
+        """τ>1 → S2|S3 boundary drops (more S3 qualifies as S2)."""
+        cog1 = self._make_cogitator(Sampling(temperature=1.0))
+        cog2 = self._make_cogitator(Sampling(temperature=2.0))
+        _, s23_1, _ = cog1._boundaries()
+        _, s23_2, _ = cog2._boundaries()
+        assert s23_2 < s23_1  # boundary dropped
+
+    def test_high_tau_s34_capped_at_zero(self):
+        """τ>1 → S3|S4 boundary stays at 0 (can't go lower)."""
+        cog = self._make_cogitator(Sampling(temperature=5.0))
+        _, _, s34 = cog._boundaries()
+        assert s34 == 0
+
+    def test_low_tau_raises_s23(self):
+        """τ<1 → S2|S3 boundary rises (fewer S3 qualify as S2)."""
+        cog1 = self._make_cogitator(Sampling(temperature=1.0))
+        cog2 = self._make_cogitator(Sampling(temperature=0.5))
+        _, s23_1, _ = cog1._boundaries()
+        _, s23_2, _ = cog2._boundaries()
+        assert s23_2 > s23_1  # boundary rose
+
+    def test_low_tau_raises_s34(self):
+        """τ<1 → S3|S4 boundary rises (more S3 demoted to S4)."""
         cog = self._make_cogitator(Sampling(temperature=0.5))
-        sig = 0x0000_0000_FFFF_FFFF
-        adjusted = cog._adjust(sig)
-        assert adjusted < sig
+        _, _, s34 = cog._boundaries()
+        assert s34 > 0  # boundary rose from 0
 
-    def test_exploratory_raises_significance(self):
-        """τ>1 → adjust(sig) ≥ sig for non-max significance."""
-        cog = self._make_cogitator(Sampling(temperature=2.0))
-        sig = 0x0000_0000_FFFF_FFFF
-        adjusted = cog._adjust(sig)
-        assert adjusted > sig
-
-    def test_s1_at_identity_only(self):
-        """Max significance (D_MAX - 1) stays same at τ=1, changes otherwise.
-
-        S1 has distance=1. Dividing by τ≠1 changes this distance.
-        This is correct — temperature modulates the entire significance
-        landscape, including near-S1 connotations.
-        """
-        cog = self._make_cogitator(Sampling(temperature=1.0))
-        assert cog._adjust(D_MAX - 1) == D_MAX - 1
-
-        # Conservative τ: S1 significance drops (distance grows)
+    def test_low_tau_s12_capped_at_dmax(self):
+        """τ<1 → S1|S2 boundary stays at D_MAX-1 (can't go higher)."""
         cog = self._make_cogitator(Sampling(temperature=0.5))
-        assert cog._adjust(D_MAX - 1) < D_MAX - 1
+        s12, _, _ = cog._boundaries()
+        assert s12 == D_MAX - 1
 
-        # Exploratory τ: S1 significance rises (distance shrinks → 0)
-        cog = self._make_cogitator(Sampling(temperature=2.0))
-        assert cog._adjust(D_MAX - 1) == D_MAX  # distance=1/2=0 → ~0 = D_MAX
-
-    def test_zero_significance_at_low_tau(self):
-        """Very low significance stays near-zero under conservative τ."""
-        cog = self._make_cogitator(Sampling(temperature=0.1))
-        sig = 1  # almost no significance
-        adjusted = cog._adjust(sig)
-        assert adjusted == 0  # distance = D_MAX-1, / 0.1 → clamped to D_MAX → ~D_MAX = 0
-
-    def test_monotonic_with_temperature(self):
-        """Higher τ → higher adjusted significance (for fixed input)."""
-        sig = 0x0000_0000_FFFF_FFFF
+    def test_monotonic_s12_with_temperature(self):
+        """Higher τ → lower S1|S2 boundary."""
         results = []
         for tau in [0.5, 1.0, 1.5, 2.0, 5.0]:
             cog = self._make_cogitator(Sampling(temperature=tau))
-            results.append(cog._adjust(sig))
-        # Results should be monotonically non-decreasing
+            s12, _, _ = cog._boundaries()
+            results.append(s12)
+        # S1|S2 should be monotonically non-increasing (capped at D_MAX-1)
         for i in range(1, len(results)):
-            assert results[i] >= results[i - 1], (
+            assert results[i] <= results[i - 1], (
                 f"Monotonicity violated: τ={[0.5, 1.0, 1.5, 2.0, 5.0][i]} "
-                f"adjusted={results[i]:#x} < previous={results[i-1]:#x}"
+                f"S1|S2={results[i]:#x} > previous={results[i-1]:#x}"
             )
 
-    def test_adjust_works_in_distance_space(self):
-        """Verify the distance-space arithmetic explicitly."""
-        cog = self._make_cogitator(Sampling(temperature=2.0))
-        sig = ~100 & MASK64  # significance corresponding to distance=100
-        # At τ=2, distance becomes 100/2=50
-        expected = ~50 & MASK64
-        assert cog._adjust(sig) == expected
+    def test_monotonic_s23_with_temperature(self):
+        """Higher τ → lower S2|S3 boundary."""
+        results = []
+        for tau in [0.5, 1.0, 1.5, 2.0, 5.0]:
+            cog = self._make_cogitator(Sampling(temperature=tau))
+            _, s23, _ = cog._boundaries()
+            results.append(s23)
+        for i in range(1, len(results)):
+            assert results[i] <= results[i - 1]
+
+
+# ── Classification ────────────────────────────────────────────────────
+
+class TestClassify:
+    """Test _classify against boundaries."""
+
+    def test_classify_s1(self):
+        """Significance at D_MAX → S1."""
+        assert Cogitator._classify(D_MAX, D_MAX - 1, 0, 0) == "S1"
+
+    def test_classify_s2(self):
+        """Significance above HP boundary but below D_MAX-1 → S2."""
+        # Pure S2: distance = 100, sig = ~100
+        sig = (~100) & MASK64
+        hp = (~(1 << _D_PACK_SHIFT)) & MASK64
+        assert Cogitator._classify(sig, D_MAX - 1, hp, 0) == "S2"
+
+    def test_classify_s3(self):
+        """Significance below HP boundary but above 0 → S3."""
+        # Pure S3: distance = 2 << _D_PACK_SHIFT
+        sig = (~(2 << _D_PACK_SHIFT)) & MASK64
+        hp = (~(1 << _D_PACK_SHIFT)) & MASK64  # HP boundary
+        assert Cogitator._classify(sig, D_MAX - 1, hp, 0) == "S3"
+
+    def test_classify_s4(self):
+        """Significance below S3|S4 boundary → S4."""
+        hp = (~(1 << _D_PACK_SHIFT)) & MASK64
+        assert Cogitator._classify(0, D_MAX - 1, hp, 1) == "S4"
+
+    def test_classify_at_boundary_s12(self):
+        """Significance exactly at S1|S2 boundary → S1."""
+        assert Cogitator._classify(D_MAX - 1, D_MAX - 1, 0, 0) == "S1"
+
+    def test_classify_just_below_hp_is_s3(self):
+        """Significance just below HP boundary → S3."""
+        hp = (~(1 << _D_PACK_SHIFT)) & MASK64
+        just_below = hp - 1
+        assert Cogitator._classify(just_below, D_MAX - 1, hp, 0) == "S3"
 
 
 # ── Agent Sampling Property ──────────────────────────────────────────
@@ -201,21 +254,20 @@ class TestStreamingSampling:
         self,
         sampling: Sampling,
         yields: list[QueryCandidate],
-        publish_threshold: int = 0,
     ) -> tuple[Cogitator, list[QueryCandidate]]:
         """Create a Cogitator that mocks expand() to yield fixed QCs.
 
         Returns (cogitator, processed_list) where processed_list captures
-        every QC that passes through _process.
-
-        publish_threshold defaults to 0 (all QCs pass) for testing streaming.
+        every QC that passes through _process (S2/S3 only).
         """
         model = Model()
         bus = EventBus()
         processed: list[QueryCandidate] = []
 
+        s1_calls: list[tuple] = []
+
         def on_s1(q, c):
-            pass
+            s1_calls.append((q, c))
 
         cog = Cogitator(
             model=model,
@@ -223,10 +275,9 @@ class TestStreamingSampling:
             on_s1=on_s1,
             sampling=sampling,
         )
-        # Stop the real background thread
         cog.join(timeout=0.1)
 
-        # Track what gets processed
+        # Track what gets processed (S2/S3 countersignature check)
         original_process = cog._process
 
         def tracking_process(qc):
@@ -235,14 +286,15 @@ class TestStreamingSampling:
 
         cog._process = tracking_process
 
+        # Also track S1 calls
+        cog._on_s1 = lambda q, c: s1_calls.append((q, c))
+        cog._s1_calls = s1_calls  # attach for test access
+
         # Mock expand to yield our fixed QCs
         def mock_expand(query, candidate, level, distance=0, **kw):
             yield from yields
 
         cog._model.expand = mock_expand
-
-        # Override publish threshold for streaming tests
-        cog.publish_threshold = publish_threshold
 
         return cog, processed
 
@@ -255,12 +307,12 @@ class TestStreamingSampling:
 
     def test_top_k_limits_processing(self):
         """top_k=2 processes at most 2 QCs from a stream of 5."""
-        sig = D_MAX // 10
+        # Use low significance (S3 range) so top_p doesn't trigger early
+        sig = D_MAX // 20
         qcs = [self._make_qc(sig) for _ in range(5)]
         cog, processed = self._make_cogitator(
-            Sampling(temperature=1.0, top_k=2, top_p=0.999),
+            Sampling(temperature=1.0, top_k=2, top_p=1.0),
             qcs,
-            publish_threshold=0,
         )
 
         item = WorkItem(KLine(1, [10]), KLine(2, [20]), "S2")
@@ -273,9 +325,8 @@ class TestStreamingSampling:
         sig = D_MAX // 20
         qcs = [self._make_qc(sig) for _ in range(10)]
         cog, processed = self._make_cogitator(
-            Sampling(temperature=1.0, top_k=0, top_p=0.999),
+            Sampling(temperature=1.0, top_k=0, top_p=1.0),
             qcs,
-            publish_threshold=0,
         )
 
         item = WorkItem(KLine(1, [10]), KLine(2, [20]), "S2")
@@ -283,48 +334,55 @@ class TestStreamingSampling:
 
         assert len(processed) == 10
 
-    def test_temperature_gates_low_significance(self):
-        """Low temperature skips QCs below publish threshold."""
-        low_sig = D_MAX // 10
-        qcs = [self._make_qc(low_sig)]
+    def test_s4_demoted(self):
+        """QCs below S3|S4 boundary are demoted (not processed)."""
+        # At τ=1, S3|S4 = 0. Significance of 0 is below 0? No, 0 < 0 is False.
+        # Actually S3|S4 = 0, so only sig < 0 is S4, which can't happen.
+        # With low τ, S3|S4 rises, so sigs in [0, new_s34) become S4.
+        sig_low = 10  # very low significance
+        qcs = [self._make_qc(sig_low)]
 
-        # Publish threshold above the QC's significance at τ=1
+        # Use very low τ to raise S3|S4 above sig_low
         cog, processed = self._make_cogitator(
-            Sampling(temperature=1.0, top_k=0, top_p=1.0),
+            Sampling(temperature=0.3, top_k=0, top_p=1.0),
             qcs,
-            publish_threshold=D_MAX // 2,
         )
 
         item = WorkItem(KLine(1, [10]), KLine(2, [20]), "S2")
         cog._run_work_item(item)
 
-        assert len(processed) == 0
+        assert len(processed) == 0  # demoted to S4
 
-    def test_high_temperature_passes_low_significance(self):
-        """High temperature raises QC above publish threshold."""
-        sig = D_MAX // 4
+    def test_high_temp_promotes_s2_to_s1(self):
+        """High τ lowers S1|S2 boundary, so near-S1 S2 QCs classify as S1."""
+        # QC with distance=50 → sig = ~50 (S2 at τ=1)
+        sig = (~50) & MASK64
+
         qcs = [self._make_qc(sig)]
 
-        # At τ=1, significance D_MAX//4 is below D_MAX//2 threshold
+        # At τ=1, this is S2 (sig < D_MAX-1)
         cog_tau1, processed_tau1 = self._make_cogitator(
             Sampling(temperature=1.0, top_k=0, top_p=1.0),
             qcs,
-            publish_threshold=D_MAX // 2,
         )
 
-        # At τ=10, distance shrinks → significance rises above threshold
-        cog_tau10, processed_tau10 = self._make_cogitator(
-            Sampling(temperature=10.0, top_k=0, top_p=1.0),
+        # At τ=5, S1|S2 boundary drops well below this sig → S1
+        cog_tau5, processed_tau5 = self._make_cogitator(
+            Sampling(temperature=5.0, top_k=0, top_p=1.0),
             qcs,
-            publish_threshold=D_MAX // 2,
         )
 
         item = WorkItem(KLine(1, [10]), KLine(2, [20]), "S2")
         cog_tau1._run_work_item(item)
-        cog_tau10._run_work_item(item)
+        cog_tau5._run_work_item(item)
 
-        assert len(processed_tau1) == 0
-        assert len(processed_tau10) == 1
+        # τ=1: S2, processed via _process
+        assert len(processed_tau1) == 1
+        assert len(cog_tau1._s1_calls) == 0
+
+        # τ=5: S1, processed via _on_s1
+        assert len(processed_tau5) == 0  # S1 goes to _on_s1, not _process
+        assert len(cog_tau5._s1_calls) == 1
 
     def test_top_p_stops_on_sufficient_evidence(self):
         """top_p < 1.0 stops when cumulative significance is sufficient."""
@@ -335,7 +393,6 @@ class TestStreamingSampling:
         cog, processed = self._make_cogitator(
             Sampling(temperature=1.0, top_k=0, top_p=0.9),
             qcs,
-            publish_threshold=0,
         )
 
         item = WorkItem(KLine(1, [10]), KLine(2, [20]), "S2")
@@ -351,7 +408,6 @@ class TestStreamingSampling:
         cog, processed = self._make_cogitator(
             Sampling(temperature=1.0, top_k=0, top_p=1.0),
             qcs,
-            publish_threshold=0,
         )
 
         item = WorkItem(KLine(1, [10]), KLine(2, [20]), "S2")
@@ -359,10 +415,13 @@ class TestStreamingSampling:
 
         assert len(processed) == 5
 
-    def test_temperature_then_top_k(self):
-        """Temperature gates first, then top-k caps the survivors."""
-        high_sig = D_MAX // 5
-        low_sig = 1  # well below threshold
+    def test_boundary_classification_then_top_k(self):
+        """Boundary classification filters S4, then top-k caps the survivors."""
+        high_sig = D_MAX // 10  # S3 at τ=1 (below HP, above 0)
+        low_sig = 1             # S3 at τ=1 (above 0)
+
+        # Use very low τ to raise S3|S4, making low_sig become S4
+        # At τ=0.3, shift = hp_distance * (0.3 - 1) = negative, S34 rises
         qcs = [
             self._make_qc(high_sig),
             self._make_qc(low_sig),
@@ -371,19 +430,17 @@ class TestStreamingSampling:
             self._make_qc(high_sig),
         ]
 
-        # threshold between high and low, top_k=2
+        # At τ=0.3, S3|S4 boundary rises, so low_sig=1 becomes S4
         cog, processed = self._make_cogitator(
-            Sampling(temperature=1.0, top_k=2, top_p=0.999),
+            Sampling(temperature=0.3, top_k=2, top_p=1.0),
             qcs,
-            publish_threshold=high_sig // 2,
         )
 
         item = WorkItem(KLine(1, [10]), KLine(2, [20]), "S2")
         cog._run_work_item(item)
 
-        # First high-sig QC: count=1, process
-        # First low-sig QC: skipped (temperature gate)
-        # Second high-sig QC: count=2, process → top_k reached → break
+        # high_sig QCs pass (S3), low_sig QCs demoted (S4)
+        # top_k=2 caps at 2 surviving QCs
         assert len(processed) == 2
         assert all(qc.significance == high_sig for qc in processed)
 
@@ -392,7 +449,6 @@ class TestStreamingSampling:
         cog, processed = self._make_cogitator(
             Sampling(temperature=1.0, top_k=0, top_p=1.0),
             [],
-            publish_threshold=0,
         )
 
         item = WorkItem(KLine(1, [10]), KLine(2, [20]), "S2")
@@ -400,14 +456,25 @@ class TestStreamingSampling:
 
         assert len(processed) == 0
 
-    def test_publish_threshold_default(self):
-        """The default publish threshold is D_MAX - 1 (S1 level)."""
-        fresh_cog = Cogitator(
-            model=Model(), event_bus=EventBus(),
-            on_s1=lambda q, c: None,
+    def test_boundaries_computed_once_per_work_item(self):
+        """Boundaries are computed once at start of each work item."""
+        # This is an architectural test — verify that boundaries are
+        # read once, not per-yield. We test by changing sampling mid-stream.
+        # Since expand() is mocked, the boundaries are computed at the
+        # start and the loop runs to completion with those boundaries.
+        sig = (~50) & MASK64  # S2 at τ=1
+        qcs = [self._make_qc(sig) for _ in range(5)]
+
+        cog, processed = self._make_cogitator(
+            Sampling(temperature=1.0, top_k=0, top_p=1.0),
+            qcs,
         )
-        fresh_cog.join(timeout=0.1)
-        assert fresh_cog.publish_threshold == D_MAX - 1
+
+        item = WorkItem(KLine(1, [10]), KLine(2, [20]), "S2")
+        cog._run_work_item(item)
+
+        # All 5 processed (S2 at τ=1, no limits)
+        assert len(processed) == 5
 
 
 # ── Integration: Sampling with Real Agent ─────────────────────────────

@@ -18,7 +18,7 @@ import json
 
 from kalvin.kline import KLine
 from kalvin.events import EventBus, RationaliseEvent
-from kalvin.model import Model, QueryCandidate, D_MAX, MASK64
+from kalvin.model import Model, QueryCandidate, D_MAX, MASK64, _D_PACK_SHIFT
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.signature import make_signature
 
@@ -122,7 +122,6 @@ class Cogitator:
         self._on_s1 = on_s1
         self._timeout = timeout
         self.sampling = sampling if sampling is not None else Sampling()
-        self.publish_threshold: int = D_MAX - 1
 
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
@@ -165,44 +164,94 @@ class Cogitator:
 
             self._run_work_item(item)
 
-    def _adjust(self, significance: int) -> int:
-        """Apply temperature to a significance value.
+    # ── Boundary Computation ───────────────────────────────────────────
 
-        Works in distance space where division by τ is natural:
-          τ < 1 → distance increases → significance drops → conservative
-          τ = 1 → identity
-          τ > 1 → distance decreases → significance rises → exploratory
+    @staticmethod
+    def _base_boundaries() -> tuple[int, int, int]:
+        """Return the three base boundaries (S1|S2, S2|S3, S3|S4) at τ=1.
+
+        S1|S2 = D_MAX - 1   (only exact S1 qualifies)
+        S2|S3 = HP boundary  (~(1 << _D_PACK_SHIFT))
+        S3|S4 = 0            (only complete unresolvable is S4)
         """
-        if self.sampling.temperature == 1.0:
-            return significance
-        distance = (~significance) & MASK64
-        adjusted = min(int(distance / self.sampling.temperature), D_MAX)
-        return (~adjusted) & MASK64
+        s12 = D_MAX - 1
+        s23 = (~(1 << _D_PACK_SHIFT)) & MASK64
+        s34 = 0
+        return s12, s23, s34
+
+    def _boundaries(self) -> tuple[int, int, int]:
+        """Compute the three significance boundaries shifted by temperature.
+
+        Temperature shifts all three boundaries in the same direction.
+        Capping produces the asymmetric effect:
+          τ > 1: S1|S2 and S2|S3 drop (expand publish window)
+                 S3|S4 capped at 0 (no change)
+          τ < 1: S2|S3 and S3|S4 rise (contract publish window)
+                 S1|S2 capped at D_MAX-1 (no change)
+        """
+        tau = self.sampling.temperature
+        if tau == 1.0:
+            return self._base_boundaries()
+
+        s12_base, s23_base, s34_base = self._base_boundaries()
+
+        # Shift is proportional to tau deviation from 1.0
+        # Scale factor: fraction of the HP boundary per unit tau deviation
+        # This gives meaningful movement at moderate tau values
+        hp_distance = 1 << _D_PACK_SHIFT  # the S3 bias
+        shift = int(hp_distance * (tau - 1.0))
+
+        # Subtract shift from all boundaries, cap at extremes
+        s12 = max(0, min(D_MAX - 1, s12_base - shift))
+        s23 = max(0, min(D_MAX - 1, s23_base - shift))
+        s34 = max(0, min(D_MAX - 1, s34_base - shift))
+
+        return s12, s23, s34
+
+    @staticmethod
+    def _classify(sig: int, s12: int, s23: int, s34: int) -> str:
+        """Classify a significance value against three boundaries.
+
+        Returns "S1", "S2", "S3", or "S4".
+        """
+        if sig >= s12:
+            return "S1"
+        elif sig >= s23:
+            return "S2"
+        elif sig >= s34:
+            return "S3"
+        else:
+            return "S4"
 
     def _run_work_item(self, item: WorkItem) -> None:
         """Expand a work item with streaming sampling.
 
-        Consumes expand() yields one at a time. Temperature gates
-        per-yield quality, top_k caps the exploration budget, and top_p
-        triggers early stopping when sufficient evidence has accumulated.
+        Boundaries are computed once per work item from temperature.
+        Each yielded QC is classified against the boundaries — raw
+        significance, no per-yield mutation. Top-k caps the exploration
+        budget, and top-p triggers early stopping on sufficient evidence.
         """
         query, candidate, level = item
         s = self.sampling
 
+        s12, s23, s34 = self._boundaries()
         evidence_target = int(s.top_p * D_MAX)
         count = 0
         cumulative = 0
 
         for qc in self._model.expand(query, candidate, level):
-            # Temperature gate — per-yield quality filter
-            adjusted = self._adjust(qc.significance)
-            if adjusted < self.publish_threshold:
-                continue  # demote: insufficient significance after temperature
+            band = self._classify(qc.significance, s12, s23, s34)
+
+            if band == "S4":
+                continue  # demote: below S3|S4 boundary
 
             count += 1
-            cumulative += adjusted
+            cumulative += qc.significance
 
-            self._process(qc)
+            if band == "S1":
+                self._on_s1(query, candidate)
+            else:
+                self._process(qc)  # S2 or S3: countersignature check
 
             # Top-p: sufficient evidence accumulated?
             if s.top_p < 1.0 and cumulative >= evidence_target:
