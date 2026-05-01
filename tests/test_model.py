@@ -134,7 +134,7 @@ class TestModelGraphTraversal:
         m.add(k)
         assert m.resolve(5) is k
 
-    def test_expand(self):
+    def test_query_expand(self):
         m = make_model()
         parent = KLine(5, [10, 20])
         child1 = KLine(10, [30])
@@ -142,15 +142,15 @@ class TestModelGraphTraversal:
         m.add(parent)
         m.add(child1)
         m.add(child2)
-        expanded = m.expand(parent, depth=2)
+        expanded = m.query_expand(parent, depth=2)
         assert child1 in expanded
         assert child2 in expanded
 
-    def test_expand_depth_1_returns_empty(self):
+    def test_query_expand_depth_1_returns_empty(self):
         m = make_model()
         k = KLine(5, [10])
         m.add(k)
-        assert m.expand(k, depth=1) == []
+        assert m.query_expand(k, depth=1) == []
 
     def test_descendants(self):
         m = make_model()
@@ -274,17 +274,18 @@ class TestEdgeHops:
         assert list(m._edge_hops(99)) == []  # unresolvable
 
 
-class TestDistance:
-    def test_distance_self_no_model(self):
+class TestExpand:
+    def test_expand_self_no_model(self):
         """Self-comparison: all nodes match, ungrounded penalty only."""
         m = make_model()
         k = KLine(10, [10, 20, 30])
-        d = m.distance(k, k, "S2")
+        results = list(m.expand(k, k, "S2"))
         # All nodes match, none resolve → s2 = 3 (ungrounded), s3 = 0
         # packed: (0 << 32) + 3 = 3
-        assert d == 3
+        assert len(results) == 1
+        assert results[-1].distance == 3
 
-    def test_distance_no_resolution(self):
+    def test_expand_no_resolution(self):
         """Mismatched nodes with no model entries → MAX_HOP each."""
         m = make_model()
         q = KLine(5, [1, 2, 3])
@@ -295,9 +296,10 @@ class TestDistance:
         # level_distance = 4 * MAX_HOP = 400
         # s2 = 400 + 1 = 401, s3 = 0
         expected = 401
-        assert m.distance(q, c, "S2") == expected
+        results = list(m.expand(q, c, "S2"))
+        assert results[-1].distance == expected
 
-    def test_distance_with_grounding(self):
+    def test_expand_with_grounding(self):
         """Matched node that resolves → no ungrounded penalty."""
         m = make_model()
         m.add(KLine(1, [10]))  # node 1 resolves
@@ -308,9 +310,10 @@ class TestDistance:
         # grounded: find(1) → kline → no ungrounded penalty
         # s2 = 200, s3 = 0
         expected = 200
-        assert m.distance(q, c, "S2") == expected
+        results = list(m.expand(q, c, "S2"))
+        assert results[-1].distance == expected
 
-    def test_distance_hop_reaches_opposing_mismatch(self):
+    def test_expand_hop_reaches_opposing_mismatch(self):
         """Mismatched node whose chain reaches the opposing mismatch set."""
         m = make_model()
         m.add(KLine(30, [30]))  # canonical
@@ -322,18 +325,19 @@ class TestDistance:
         c = KLine(200, [10, 3])   # mismatched_c: {10, 3}
         # matched: {}, no ungrounded penalty
         #
-        # mismatched_q node 5: edge_hops yields (1,10),(2,20),(3,30)
-        #   hop 1 → sig 10 ∈ mismatched_c → hop_distance = 1
-        # mismatched_q node 2: no resolution → MAX_HOP
-        # mismatched_c node 10: edge_hops yields (1,20),(2,30)
-        #   neither 20 nor 30 ∈ mismatched_q → MAX_HOP
-        # mismatched_c node 3: no resolution → MAX_HOP
+        # q-node 5 → S2 connotation chain: (5,[10])→(10,[20])→(20,[30]) vs (10,[20])→(20,[30])→(30,[30])
+        #   Each level yields a connotation QueryCandidate
+        # q-node 2: no resolution → MAX_HOP
+        # c-node 10: canonical → MAX_HOP
+        # c-node 3: no resolution → MAX_HOP
         # level_distance = 1 + 100 + 100 + 100 = 301
         # s2 = 301, s3 = 0
-        expected = 301
-        assert m.distance(q, c, "S2") == expected
+        results = list(m.expand(q, c, "S2"))
+        # 3 connotation yields + 1 terminal
+        assert len(results) == 4
+        assert results[-1].distance == 301
 
-    def test_distance_bidirectional_hop_match(self):
+    def test_expand_bidirectional_hop_match(self):
         """Both query and candidate mismatched nodes reach opposing sets."""
         m = make_model()
         m.add(KLine(10, [10]))  # canonical
@@ -345,15 +349,17 @@ class TestDistance:
         c = KLine(200, [10, 30])    # mismatched_c: {10, 30}
         # matched: {}
         #
-        # q-node 5: edge_hops yields (1,10). 10 ∈ mismatched_c → hop_distance=1
-        # q-node 20: edge_hops yields (1,30). 30 ∈ mismatched_c → hop_distance=1
-        # c-node 10: canonical → no hops → MAX_HOP
-        # c-node 30: canonical → no hops → MAX_HOP
+        # q-node 5 → S2 connotation: expand(KLine(5,[10]), KLine(10,[10]), "S2", 1)
+        # q-node 20 → S2 connotation: expand(KLine(20,[30]), KLine(30,[30]), "S2", 1)
+        # c-node 10: canonical → MAX_HOP
+        # c-node 30: canonical → MAX_HOP
         # level_distance = 1 + 1 + 100 + 100 = 202
-        expected = 202
-        assert m.distance(q, c, "S2") == expected
+        results = list(m.expand(q, c, "S2"))
+        # 2 connotation yields + 1 terminal
+        assert len(results) == 3
+        assert results[-1].distance == 202
 
-    def test_distance_all_matched_grounded(self):
+    def test_expand_all_matched_grounded(self):
         """All nodes match and all resolve → no ungrounded penalty."""
         m = make_model()
         m.add(KLine(10, [10]))  # canonical, node 10 resolves
@@ -363,35 +369,37 @@ class TestDistance:
         # matched: {10, 20}, both grounded → no ungrounded penalty
         # level_distance = 0
         # s2 = 0
-        assert m.distance(q, c, "S2") == 0
+        results = list(m.expand(q, c, "S2"))
+        assert results[-1].distance == 0
 
-    def test_distance_clamped_to_max(self):
+    def test_expand_clamped_to_max(self):
         """Result is clamped to D_MAX - 1."""
         m = make_model()
         q = KLine(5, [1])
         c = KLine(6, list(range(1000)))
-        d = m.distance(q, c, "S2")
-        assert d < D_MAX
+        results = list(m.expand(q, c, "S2"))
+        assert results[-1].distance < D_MAX
 
-    def test_distance_range_s2(self):
+    def test_expand_range_s2(self):
         """S2 distance returns a valid packed value."""
         m = make_model()
         q = KLine(5, [1, 2])
         c = KLine(1, [1, 3, 4])
-        d = m.distance(q, c, "S2")
-        assert d >= 0
+        results = list(m.expand(q, c, "S2"))
+        assert results[-1].distance >= 0
 
-    def test_distance_s3_route(self):
+    def test_expand_s3_route(self):
         """S3 route puts level_distance in upper bits."""
         m = make_model()
         q = KLine(5, [1, 2])
         c = KLine(100, [3, 4])
-        d = m.distance(q, c, "S3")
+        results = list(m.expand(q, c, "S3"))
+        d = results[-1].distance
         # 4 mismatched nodes × MAX_HOP = 400 in s3 component
         # packed: (400 << 32) + 0
         assert d >= (1 << D_PACK_SHIFT)
 
-    def test_distance_packed_encoding(self):
+    def test_expand_packed_encoding(self):
         """Verify packed encoding: s3 in upper bits, s2 in lower bits."""
         m = make_model()
         m.add(KLine(10, [10]))  # canonical
@@ -399,8 +407,9 @@ class TestDistance:
 
         q = KLine(100, [5, 2])     # mismatched_q: {5, 2}
         c = KLine(200, [10, 3])    # mismatched_c: {10, 3}
-        d = m.distance(q, c, "S2")
-        # q-node 5: hops → (1,10). 10 ∈ mismatched_c → hop_distance = 1
+        results = list(m.expand(q, c, "S2"))
+        d = results[-1].distance
+        # q-node 5 → S2 connotation to find(10) → yields intermediate
         # q-node 2: no resolution → MAX_HOP
         # c-node 10: canonical → MAX_HOP
         # c-node 3: no resolution → MAX_HOP
@@ -410,7 +419,7 @@ class TestDistance:
         assert s2_component == 301
         assert s3_component == 0
 
-    def test_distance_connotation_bridging(self):
+    def test_expand_connotation_bridging(self):
         """Connotation bridging: indirect path through intermediate signature."""
         m = make_model()
         # Chain: 50 → (1, 60) where 60 is canonical
@@ -425,22 +434,49 @@ class TestDistance:
         # q-node 50: edge_hops yields (1, 60). 60 ∉ mismatched_c → connotation[60] = 1
         #   No more hops → hop_distance = MAX_HOP. level_distance += 100
         # c-node 70: edge_hops yields (1, 60). 60 ∉ mismatched_q, but 60 ∈ connotation →
-        #   s3_distance += 1 + 1 = 2, hop_distance = 0. level_distance += 0
-        # For S2: s2 = 100 (level_distance), s3 = 2 (connotation)
-        d_s2 = m.distance(q, c, "S2")
-        assert d_s2 == (2 << D_PACK_SHIFT) + 100
+        #   hop_distance = MAX_HOP + 1 + 1 = 102
+        #   S3 connotation: expand(KLine(70,[60]), KLine(60,[60]), "S3", 102)
+        #     → matched {60}, grounded, s3 += 102 → packed: (102 << 32)
+        #   hop_distance = 0. level_distance += 0
+        # Terminal: s2 = 100 (level_distance), s3 = 0 → packed: 100
+        results = list(m.expand(q, c, "S2"))
+        assert len(results) == 2
 
-        # For S3: s3 = 2 (connotation) + 100 (level_distance)
-        d_s3 = m.distance(q, c, "S3")
-        assert d_s3 == (102 << D_PACK_SHIFT) + 0
+        # S3 connotation yield
+        connotation = results[0]
+        assert connotation.query.signature == 70
+        assert connotation.candidate.signature == 60
+        s3_comp = connotation.distance >> D_PACK_SHIFT
+        s2_comp = connotation.distance & ((1 << D_PACK_SHIFT) - 1)
+        assert s3_comp == 102
+        assert s2_comp == 0
 
-    def test_distance_component_clamp(self):
+        # Terminal yield
+        terminal = results[1]
+        assert terminal.query is q
+        assert terminal.candidate is c
+        s3_comp = terminal.distance >> D_PACK_SHIFT
+        s2_comp = terminal.distance & ((1 << D_PACK_SHIFT) - 1)
+        assert s3_comp == 0
+        assert s2_comp == 100
+
+        # S3 route: level_distance goes to s3 instead
+        results_s3 = list(m.expand(q, c, "S3"))
+        assert len(results_s3) == 2
+        terminal_s3 = results_s3[-1]
+        s3_comp = terminal_s3.distance >> D_PACK_SHIFT
+        s2_comp = terminal_s3.distance & ((1 << D_PACK_SHIFT) - 1)
+        assert s3_comp == 100  # level_distance routed to s3
+        assert s2_comp == 0
+
+    def test_expand_component_clamp(self):
         """Each component is clamped to its bit budget."""
         m = make_model()
         # Create massive mismatch to overflow component budgets
         q = KLine(5, list(range(1000)))
         c = KLine(6, list(range(1000, 2000)))
-        d = m.distance(q, c, "S2")
+        results = list(m.expand(q, c, "S2"))
+        d = results[-1].distance
         s2_component = d & ((1 << D_PACK_SHIFT) - 1)
         s3_component = d >> D_PACK_SHIFT
         s2_max = (1 << D_PACK_SHIFT) - 1

@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 from kalvin.kline import KLine
 from kalvin.agent import Agent, Cogitator, WorkItem
+from kalvin.model import QueryCandidate
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.model import Model
 from kalvin.signature import make_signature
@@ -163,7 +164,7 @@ class TestAgentRationalise:
 # ── Short-Circuit Tests ───────────────────────────────────────────────
 
 class TestShortCircuit:
-    """S1 short-circuits — no model.distance() called."""
+    """S1 short-circuits — no model.expand() called."""
 
     def test_s1_skips_remaining_candidates(self):
         """First candidate is S1 → no further candidates processed."""
@@ -178,14 +179,14 @@ class TestShortCircuit:
         q = KLine(0, [10, 20])
         q.signature = make_signature([10, 20], a.tokenizer.is_literal)
 
-        # Patch model.distance to track calls
-        with patch.object(a.model, 'distance', side_effect=AssertionError("distance should not be called for S1")):
+        # Patch model.expand to track calls
+        with patch.object(a.model, 'expand', side_effect=AssertionError("expand should not be called for S1")):
             result = a.rationalise(q)
 
         assert result is True
 
     def test_s1_after_s2_still_short_circuits(self):
-        """If second candidate is S1, no distance called."""
+        """If second candidate is S1, no expand called."""
         a = Agent()
         # c1 will route S2, c2 will route S1
         c1 = KLine(5, [10, 30])
@@ -199,13 +200,13 @@ class TestShortCircuit:
         result = a.rationalise(q)
         assert result is True
 
-    def test_no_candidates_no_distance(self):
-        """No candidates → S4 directly, no distance call."""
+    def test_no_candidates_no_expand(self):
+        """No candidates → S4 directly, no expand call."""
         a = Agent()
         q = KLine(0, [999])
         q.signature = make_signature([999], a.tokenizer.is_literal)
 
-        with patch.object(a.model, 'distance', side_effect=AssertionError("distance should not be called for S4")):
+        with patch.object(a.model, 'expand', side_effect=AssertionError("expand should not be called for S4")):
             result = a.rationalise(q)
 
         assert result is True

@@ -5,7 +5,7 @@ self-contained (spec + algorithm + test cases). This file provides the overview,
 build order, and cross-cutting concerns.
 
 **Date:** 2026-04-29
-**Updated:** 2026-04-30 — fast/slow split refactoring
+**Updated:** 2026-05-01 — expand-through-cogitation refactoring
 
 ---
 
@@ -31,7 +31,9 @@ Input Text → Tokenizer → Nodes → KLine → Agent → Model (Knowledge Grap
                               S4 → fast response (novel)
                               S2/S3 → Cogitator (background)
                                          ↓
-                              Cogitator: model.distance + countersignature
+                              Cogitator: model.expand → connotations + distance
+                                         ↓
+                              Each QueryCandidate: check countersignature
 ```
 
 ### Significance Levels
@@ -58,7 +60,8 @@ Input Text → Tokenizer → Nodes → KLine → Agent → Model (Knowledge Grap
 ├──────────────────────────────────────────────────────────────────┤
 │  Cogitator (work-item processor)                                  │
 │  Receives pre-routed WorkItem(Q, C, level)                        │
-│  Computes: model.distance + countersignature                      │
+│  Expands: model.expand → QueryCandidate stream                    │
+│  Processes: countersignature check per QueryCandidate              │
 ├──────────────────────────────────────────────────────────────────┤
 │  Model (STM → Frame → Base)                                      │
 │  Depends on: Kline, Signature, STM                               │
@@ -204,7 +207,7 @@ MOD64_BITS = 63
 | All-literal signature collision (sig=1 for all)         | Medium   | Fast-path in Assess phase; accept degenerate indexing                                  |
 | Candidate retrieval O(N) scan too slow for large models | Medium   | Profile first; add inverted bit index if needed                                        |
 | Cogitation thread safety bugs                           | Medium   | Thorough concurrent testing; keep thread logic simple                                  |
-| Cogitator MVP too simple (no graph expansion)           | Medium   | Designed for incremental evolution; see plans/refactor-fast-slow-split.md              |
+| Cogitator MVP too simple (no graph expansion)           | Medium   | Now uses model.expand() for connotation discovery; see specs   |
 | Literal mask accidental collision                       | Low      | Only `0xFFFFFFFF` lower 32 bits triggers; verified for all node types                  |
 | BPE tokenizer optional deps fragile                     | Low      | Make BPE entirely optional; core system works with Mod only                            |
 
@@ -247,5 +250,5 @@ MOD64_BITS = 63
 6. **`abstract.py`:** Formal ABC classes or duck-typed protocols?
    - _Recommendation:_ `ABC` for Tokenizer (multiple implementations). Duck typing for Model/Agent.
 
-7. **Cogitator evolution:** Should future iterations add graph expansion, pass tracking, or significance-based re-routing?
-   - _Recommendation:_ Incremental evolution. See `plans/refactor-fast-slow-split.md`.
+7. **Cogitator evolution:** Should future iterations add pass tracking or significance-based re-routing?
+   - _Recommendation:_ Incremental evolution. Cogitation now expands via `model.expand()` yielding connotations. Next: top-k/top-p selection of connotation results.

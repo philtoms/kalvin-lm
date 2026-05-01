@@ -1,8 +1,9 @@
 # Significance Specification
 
 > **Note:** Significance is a *conceptual* specification. The constants (`D_MAX`,
-> `MASK64`) and routing logic live in `agent.py`. Distance computation lives in
-> `model.py`. There is no standalone `significance` module.
+> `MASK64`) and routing logic live in `agent.py`. Graph expansion (including
+> distance computation) lives in `model.py`. There is no standalone
+> `significance` module.
 
 ## Overview
 
@@ -43,17 +44,21 @@ route(Q, C):
 | Route | Condition | Distance |
 | ----- | --------- | -------- |
 | S1    | All query nodes exist in candidate | 0 |
-| S2    | Some query nodes exist in candidate | `model.distance(Q, C, "S2")` |
-| S3    | No query nodes exist in candidate | `model.distance(Q, C, "S3")` |
+| S2    | Some query nodes exist in candidate | `model.expand(Q, C, "S2")` → last yield |
+| S3    | No query nodes exist in candidate | `model.expand(Q, C, "S3")` → last yield |
 | S4    | No candidates or empty query | `D_MAX` |
 
 ## Distance
 
-Distance is computed by `Model.distance(Q, C, level)`. Semantics are defined
-in the @model spec. The significance layer performs the inversion:
+Distance is computed by `Model.expand(Q, C, level)`, a generator that yields
+intermediate connotation results followed by a terminal `QueryCandidate`
+with the packed distance. Semantics are defined in the @model spec.
+The significance layer performs the inversion on each yielded result:
 
 ```
-significance = (~distance) & MASK64
+for qc in model.expand(Q, C, level):
+    significance = (~qc.distance) & MASK64
+    # process qc (check countersignature, etc.)
 ```
 
 ### Packed Distance Encoding
@@ -86,12 +91,13 @@ S4 = 0x0000_0000_0000_0000   (all 64 bits clear, maximum distance)
 The significance layer consumes the following model function:
 
 ```
-model.distance(Q, C, level) → uint64
+model.expand(Q, C, level) → Iterator[QueryCandidate]
 ```
 
-- Returns a packed 64-bit distance value. `level` is "S2" or "S3",
-  determined by routing.
-- The model clamps the result to `[0, D_MAX - 1]`.
+- Yields intermediate `QueryCandidate` items for each discovered connotation,
+  followed by a terminal `QueryCandidate` with the packed distance.
+- `level` is `"S2"` or `"S3"`, determined by routing.
+- Each `QueryCandidate` has `.distance` clamped to `[0, D_MAX - 1]`.
 
 ## Properties
 
@@ -111,4 +117,4 @@ model.distance(Q, C, level) → uint64
 | Constants (`D_MAX`, `MASK64`) | `src/kalvin/agent.py` | module-level |
 | Routing | `src/kalvin/agent.py` | `Agent._route()` |
 | Significance inversion | `src/kalvin/agent.py` | `Cogitator._process()` |
-| Distance computation | `src/kalvin/model.py` | `Model.distance()` |
+| Distance computation | `src/kalvin/model.py` | `Model.expand()` |

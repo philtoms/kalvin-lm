@@ -2,7 +2,7 @@
 
 The Agent rationalises KLines against the Model using a fast/slow split:
   - Fast path: routing (node membership) — no model calls. S1/S4 resolve instantly.
-  - Slow path: cogitation — model.distance() per work item in a background thread.
+  - Slow path: cogitation — model.expand() per work item in a background thread.
 
 See specs/agent.md for the full specification.
 """
@@ -18,7 +18,7 @@ import json
 
 from kalvin.kline import KLine
 from kalvin.events import EventBus, RationaliseEvent
-from kalvin.model import Model
+from kalvin.model import Model, QueryCandidate
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.signature import make_signature
 # ── Significance constants ───────────────────────────────────────────
@@ -45,7 +45,7 @@ class Cogitator:
     """Background processor for rational work items (S2/S3).
 
     Receives individual query|candidate|level work items,
-    computes deep significance (model.distance), and processes results.
+    computes deep significance (model.expand), and processes results.
 
     Parameters
     ----------
@@ -112,14 +112,14 @@ class Cogitator:
                     return
                 item = self._backlog.pop(0)
 
-            self._process(item)
+            # Expand query-candidate and process each result
+            query, candidate, level = item
+            for qc in self._model.expand(query, candidate, level):
+                self._process(qc)
 
-    def _process(self, item: WorkItem) -> None:
-        """Process a single work item: compute distance, check countersignature."""
-        query, candidate, level = item
-
-        # Compute deep significance
-        distance = self._model.distance(query, candidate, level)
+    def _process(self, item: QueryCandidate) -> None:
+        """Process a single expanded result: check countersignature."""
+        query, candidate, distance = item
         _significance = (~distance) & MASK64
 
         # MVP: level stays as routed — significance stored but not used for re-routing

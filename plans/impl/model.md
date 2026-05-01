@@ -56,12 +56,12 @@ model.where(predicate) → list[KLine]  # Filtered; if predicate is int, AND mat
 
 ```python
 model.resolve(node) → KLine|None     # node → KLine lookup (= find)
-model.expand(kline, depth=2) → list[KLine]  # Graph expansion
+model.query_expand(kline, depth=2) → list[KLine]  # Graph expansion
 model.descendants(node) → set[int]   # Recursive node collection
 model.query(signature, depth=1) → list[KLine]  # Find + expand
 ```
 
-**Expand semantics:**
+**Query_expand semantics:**
 
 - `depth=0` → `[]`
 - `depth=1` → `[]`
@@ -81,13 +81,26 @@ model.promote_all() → int      # Promote all frame KLines to base.
 ### Significance API (consumed by Cogitator)
 
 ```python
-model.distance(query, candidate, level) → int  # packed (S2 lower, S3 upper)
+model.expand(query, candidate, level) → Iterator[QueryCandidate]  # connotation generator
 model.is_countersigned(a, b) → bool
 ```
 
 Routing is performed by the Agent's `_route()` method using node-membership
-testing — no model function is called during routing. Only the Cogitator
-consumes `distance` and `is_countersigned`.
+testing — no model function is called during routing. The Cogitator
+consumes `expand` and `is_countersigned`.
+
+`expand()` is a generator that yields intermediate `QueryCandidate` items
+for each discovered connotation, followed by a terminal yield with the
+packed distance. Each yielded result is processed by the Cogitator
+(checking countersignature), enabling discovery across the full expansion
+graph.
+
+```python
+class QueryCandidate(NamedTuple):
+    query: KLine
+    candidate: KLine
+    distance: int   # packed 64-bit
+```
 
 ### Model-Internal Functions
 
@@ -106,17 +119,21 @@ model._edge_hops(sig) → Iterator    # yields (hop_count, next_sig)
 
 ---
 
-## 2. Distance Algorithm
+## 2. Expand Algorithm
 
-### `distance(query, candidate, level) → int`
+### `expand(query, candidate, level, distance=0) → Iterator[QueryCandidate]`
 
-A unified distance function that computes both S2 and S3 distance components
-simultaneously using per-node hop-distance, connotation bridging, and
-ungrounded penalty.
+A generator that expands a query-candidate pair, yielding intermediate
+connotation results and a terminal packed distance. Replaces the previous
+`distance()` function with a richer expansion API.
 
 - `level` — `"S2"` or `"S3"`, determined by Agent routing.
-- Returns packed 64-bit: `(s3_component << D_PACK_SHIFT) + s2_component`,
-  clamped to `D_MAX - 1`.
+- `distance` — accumulated hop distance for recursive calls (default 0).
+- **Yields** intermediate `QueryCandidate` items for connotations, then a
+  terminal `QueryCandidate` with packed distance
+  `(s3_component << D_PACK_SHIFT) + s2_component`, clamped to `D_MAX - 1`.
+- **Recursive**: uses `yield from expand(...)` for connotation expansion.
+- **Cycle detection**: `_visited` set of `(query.sig, candidate.sig)` pairs.
 
 ### Hyperparameters
 
@@ -149,14 +166,21 @@ def _edge_hops(self, sig: int) -> Iterator[tuple[int, int]]:
 ### Algorithm
 
 ```python
-def distance(self, query: KLine, candidate: KLine, level: str) -> int:
+def expand(self, query, candidate, level, distance=0, _visited=None):
+    if _visited is None:
+        _visited = set()
+    key = (query.signature, candidate.signature)
+    if key in _visited:
+        return
+    _visited.add(key)
+
     q_set = set(query.nodes)
     c_set = set(candidate.nodes)
     mismatched_q = q_set - c_set
     mismatched_c = c_set - q_set
     matched = q_set & c_set
 
-    level_distance = 0
+    level_distance = distance
     s2_distance = 0
     s3_distance = 0
     s3_connotations = {}  # sig → min hops from any query node
@@ -167,6 +191,10 @@ def distance(self, query: KLine, candidate: KLine, level: str) -> int:
         for hops, match_sig in self._edge_hops(n):
             if match_sig in mismatched_c:
                 hop_distance = hops
+                q_kline = self.find(n)
+                c_kline = self.find(match_sig)
+                if q_kline and c_kline:
+                    yield from self.expand(q_kline, c_kline, "S2", hops)
                 break
             elif (match_sig not in s3_connotations
                   or hops < s3_connotations[match_sig]):
@@ -179,9 +207,17 @@ def distance(self, query: KLine, candidate: KLine, level: str) -> int:
         for hops, match_sig in self._edge_hops(n):
             if match_sig in mismatched_q:
                 hop_distance = hops
+                q_kline = self.find(n)
+                c_kline = self.find(match_sig)
+                if q_kline and c_kline:
+                    yield from self.expand(q_kline, c_kline, "S2", hops)
                 break
             elif match_sig in s3_connotations:
-                s3_distance += s3_connotations[match_sig] + hops
+                hop_distance += s3_connotations[match_sig] + hops
+                q_kline = self.find(n)
+                c_kline = self.find(match_sig)
+                if q_kline and c_kline:
+                    yield from self.expand(q_kline, c_kline, "S3", hop_distance)
                 hop_distance = 0
                 break
         level_distance += hop_distance
@@ -201,7 +237,8 @@ def distance(self, query: KLine, candidate: KLine, level: str) -> int:
     s2_distance = min(s2_distance, (1 << D_PACK_SHIFT) - 1)
     s3_distance = min(s3_distance, (1 << (64 - D_PACK_SHIFT)) - 1)
 
-    return min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
+    packed = min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
+    yield QueryCandidate(query, candidate, packed)
 ```
 
 ### Per-Node Contributions
@@ -226,6 +263,20 @@ reach any of these intermediates. If so, the round-trip distance
 Connotation bridging always contributes to S3 regardless of the routing level.
 This captures indirect, associative connections — the "reminiscent"
 relationship that characterises S3.
+
+### Connotation Expansion
+
+When `expand()` discovers a direct hop between a mismatched query node and a
+mismatched candidate node, it **yields an S2 connotation**: a recursive
+`expand()` call on the resolved KLines. This represents a direct structural
+relationship between sub-graphs.
+
+When connotation bridging succeeds, `expand()` **yields an S3 connotation**:
+a recursive call with the round-trip distance. This captures indirect,
+associative connections.
+
+Each connotation is a `QueryCandidate` processed identically by the
+Cogitator — countersignature is checked for every yielded item.
 
 ### Properties
 
@@ -309,14 +360,15 @@ Structural test only. Literal nodes cannot match a signature.
 | \_edge_hops unresolvable  | Node doesn't resolve → empty generator             |
 | \_edge_hops canonical     | Resolves to canonical → empty generator            |
 | \_edge_hops chain         | Yields (hop_count, next_sig) at each step          |
-| distance self no model    | All match, ungrounded → s2 = N ungrounded nodes    |
-| distance no resolution    | All mismatched unresolvable → MAX_HOP each         |
-| distance grounding        | Matched node that resolves → no ungrounded penalty |
-| distance edge hops        | Mismatched node with chain → proportional distance |
-| distance range            | Valid packed value                                 |
-| distance clamped          | Large results clamped to D_MAX - 1                 |
-| distance S3 route         | level_distance in upper bits                       |
-| distance connotation      | Indirect path through intermediate → S3 component  |
-| distance component clamp  | Each component within bit budget                   |
+| expand self no model      | All match, ungrounded → terminal s2 = N ungrounded |
+| expand no resolution      | All mismatched unresolvable → MAX_HOP each         |
+| expand grounding          | Matched node that resolves → no ungrounded penalty |
+| expand edge hops          | Mismatched with chain → connotation yields + terminal |
+| expand range              | Valid packed value                                 |
+| expand clamped            | Large results clamped to D_MAX - 1                 |
+| expand S3 route           | level_distance in upper bits                       |
+| expand connotation        | Indirect path → S3 connotation yield + terminal    |
+| expand component clamp    | Each component within bit budget                   |
+| expand bidirectional      | Both sides yield connotations + terminal           |
 | is_countersigned          | Mutual reference detected                          |
 | Not countersigned         | One-way reference → False                          |

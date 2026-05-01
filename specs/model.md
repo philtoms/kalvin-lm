@@ -327,7 +327,7 @@ Resolves a node value to the Kline whose signature matches, if one exists.
 ### Expand
 
 ```
-model.expand(kline, depth=2) → sequence of Kline
+model.query_expand(kline, depth=2) → sequence of Kline
 ```
 
 Traverses the graph starting from `kline`, resolving each node to a child
@@ -374,8 +374,18 @@ match to `depth`.
 ## Model API (Significance)
 
 The following functions are consumed by the significance pipeline
-(@significance spec) and by cogitation countersignature discovery
-(@agent spec). Their semantics are defined here.
+(@significance spec) and by cogitation (@agent spec). Their semantics are
+defined here.
+
+### QueryCandidate
+
+```
+QueryCandidate(query: Kline, candidate: Kline, distance: int)
+```
+
+A named tuple representing a single query-candidate-distance result. Yielded
+by `model.expand()` for both intermediate connotations and the terminal
+packed distance.
 
 ### Is S1
 
@@ -394,22 +404,27 @@ Returns whether a node value resolves to a kline in the model.
 - S1 represents a **grounded node** — one that corresponds to known
   structure in the model.
 
-### Distance
+### Expand (Significance)
 
 ```
-model.distance(query, candidate, level) → uint64
+model.expand(query, candidate, level, distance=0) → Iterator[QueryCandidate]
 ```
 
-Returns a packed distance value for a query-candidate pair. A single
-function handles both S2 and S3 routing, computing both distance
-components simultaneously.
+A generator that expands a query-candidate pair, yielding `QueryCandidate`
+results for each discovered connotation and a terminal yield with the packed
+distance.
 
 - `query` — the query Kline.
 - `candidate` — a candidate Kline.
-- `level` — either `"S2"` or `"S3"`, determined by the significance
-  pipeline's routing step.
-- Returns a packed 64-bit value: `(s3_component << D_PACK_SHIFT) +
-  s2_component`, clamped to `D_MAX - 1`.
+- `level` — either `"S2"` or `"S3"`, determined by the Agent's routing step.
+- `distance` — accumulated hop distance for recursive calls (default 0).
+- **Yields** intermediate `QueryCandidate` items for each discovered
+  connotation (S2 and S3 indirect relationships), followed by a terminal
+  `QueryCandidate` with the packed distance for the original pair.
+- **Recursive**: intermediate connotations are discovered by recursively
+  calling `expand()` via `yield from`. Cycle detection prevents infinite
+  recursion via a visited set of `(query.signature, candidate.signature)`
+  pairs.
 
 #### Hyperparameters
 
@@ -446,39 +461,46 @@ components simultaneously.
 
 #### Algorithm
 
-The algorithm computes two distance components simultaneously:
+The algorithm computes two distance components simultaneously, yielding
+intermediate connotation results at each discovery point:
 
 - **S2 component** (lower bits): per-node hop-distance for direct matches,
   plus ungrounded penalty for matched nodes.
-- **S3 component** (upper bits): connotation bridging for indirect matches
-  — query nodes that reach intermediate signatures, which candidate nodes
-  then reach in turn.
+- **S3 component** (upper bits): connotation bridging for indirect matches.
 
 The routing level (`"S2"` or `"S3"`) determines where the primary
 hop-distance contribution lands. Connotation bridging always contributes
 to S3.
 
 ```
-distance(query, candidate, level):
+expand(query, candidate, level, distance=0, _visited=None):
+    if _visited is None:
+        _visited = set()
+    key = (query.signature, candidate.signature)
+    if key in _visited:
+        return                          # cycle detection
+    _visited.add(key)
+
     q_set = set(query.nodes)
     c_set = set(candidate.nodes)
     mismatched_q = q_set - c_set
     mismatched_c = c_set - q_set
     matched      = q_set ∩ c_set
 
-    level_distance = 0
+    level_distance = distance
     s2_distance = 0
     s3_distance = 0
     s3_connotations = {}   # sig → min hops from any query node
 
     # Pass 1: mismatched query nodes
-    #   - Direct match in mismatched_c → hop_distance = hops
+    #   - Direct match in mismatched_c → yield S2 connotation
     #   - No direct match → record in s3_connotations for bridging
     for n in mismatched_q:
         hop_distance = MAX_HOP
         for hops, match_sig in edge_hops(n):
             if match_sig in mismatched_c:
                 hop_distance = hops
+                yield from expand(find(n), find(match_sig), "S2", hops)
                 break
             elif match_sig not in s3_connotations
                  or hops < s3_connotations[match_sig]:
@@ -486,16 +508,18 @@ distance(query, candidate, level):
         level_distance += hop_distance
 
     # Pass 2: mismatched candidate nodes
-    #   - Direct match in mismatched_q → hop_distance = hops
-    #   - Connotation bridge → round-trip to s3_distance, hop_distance = 0
+    #   - Direct match in mismatched_q → yield S2 connotation
+    #   - Connotation bridge → yield S3 connotation
     for n in mismatched_c:
         hop_distance = MAX_HOP
         for hops, match_sig in edge_hops(n):
             if match_sig in mismatched_q:
                 hop_distance = hops
+                yield from expand(find(n), find(match_sig), "S2", hops)
                 break
             elif match_sig in s3_connotations:
-                s3_distance += s3_connotations[match_sig] + hops
+                hop_distance += s3_connotations[match_sig] + hops
+                yield from expand(find(n), find(match_sig), "S3", hop_distance)
                 hop_distance = 0
                 break
         level_distance += hop_distance
@@ -515,8 +539,9 @@ distance(query, candidate, level):
     s2_distance = min(s2_distance, (1 << D_PACK_SHIFT) - 1)
     s3_distance = min(s3_distance, (1 << (64 - D_PACK_SHIFT)) - 1)
 
-    # Pack and return
-    return min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
+    # Pack and yield terminal result
+    packed = min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
+    yield QueryCandidate(query, candidate, packed)
 ```
 
 #### Per-node contributions
@@ -529,18 +554,25 @@ distance(query, candidate, level):
 | Matched + grounded (is_s1)                                    | 0                     | neutral           |
 | Matched + ungrounded                                          | +1                    | S2 (always)       |
 
-#### Connotation bridging
+#### Connotation expansion
 
-When no direct hop path exists between mismatched query and candidate
-nodes, the algorithm attempts **connotation bridging**: query nodes that
-reach intermediate signatures during their hop chains record the minimum
-hop count to each intermediate. Candidate nodes then check whether their
-hop chains reach any of these intermediates. If so, the round-trip
-distance (query hops + candidate hops) contributes to the S3 component.
+When `expand()` discovers a direct hop between a mismatched query node
+and a mismatched candidate node, it **yields an S2 connotation**: a
+recursive `expand()` call on the resolved KLines of those two nodes.
+This connotation represents a direct structural relationship between
+sub-graphs of the query and candidate.
 
-Connotation bridging always contributes to S3 regardless of the routing
-level. This captures indirect, associative connections between query and
-candidate — the "reminiscent" relationship that characterises S3.
+When connotation bridging succeeds (query node reaches an intermediate
+signature that a candidate node also reaches), `expand()` **yields an S3
+connotation**: a recursive `expand()` call on the resolved KLines with the
+round-trip distance. This captures indirect, associative connections.
+
+Each connotation is a `QueryCandidate` processed by the Cogitator
+identically to the terminal result — countersignature is checked for every
+yielded item, enabling discovery across the full expansion graph.
+
+The `_visited` set prevents cycles: if a (query.signature, candidate.signature)
+pair has already been expanded, subsequent encounters return immediately.
 
 #### Properties
 
@@ -556,6 +588,11 @@ candidate — the "reminiscent" relationship that characterises S3.
    contribute to distance.
 6. **32-bit clamp** — each component is independently clamped before
    packing, preventing overflow into the other component.
+7. **Recursive expansion** — each discovered connotation is yielded as a
+   `QueryCandidate` for immediate processing, enabling deep graph
+   exploration.
+8. **Cycle detection** — visited signature pairs prevent infinite
+   recursion.
 
 ### Is Countersigned
 

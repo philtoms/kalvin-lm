@@ -8,7 +8,7 @@ See specs/model.md for the full specification.
 
 from __future__ import annotations
 
-from typing import Callable, Iterator
+from typing import Callable, Iterator, NamedTuple
 
 from kalvin.kline import KLine, KSig
 from kalvin.stm import STM
@@ -20,6 +20,13 @@ D_MAX = 0xFFFF_FFFF_FFFF_FFFF
 
 # MAX_HOP hyperparameter — upper bound on edge hop chain depth
 MAX_HOP = 100
+
+
+class QueryCandidate(NamedTuple):
+    """A single query|candidate pair yielded by graph expansion."""
+    query: KLine
+    candidate: KLine
+    distance: int
 
 
 class Model:
@@ -244,7 +251,7 @@ class Model:
         """Resolve a node value to a KLine."""
         return self.find(node)
 
-    def expand(self, kline: KLine, depth: int = 2) -> list[KLine]:
+    def query_expand(self, kline: KLine, depth: int = 2) -> list[KLine]:
         """Expand graph from kline up to *depth* levels.
 
         depth=0 → []
@@ -256,10 +263,10 @@ class Model:
             return []
         visited: set[int] = set()
         results: list[KLine] = []
-        self._expand_inner(kline, depth, 1, visited, results)
+        self._query_expand_inner(kline, depth, 1, visited, results)
         return results
 
-    def _expand_inner(
+    def _query_expand_inner(
         self,
         kline: KLine,
         max_depth: int,
@@ -278,7 +285,7 @@ class Model:
             child = self.find(node)
             if child is not None:
                 results.append(child)
-                self._expand_inner(child, max_depth, current_depth + 1, visited, results)
+                self._query_expand_inner(child, max_depth, current_depth + 1, visited, results)
 
     def descendants(self, node: int) -> set[int]:
         """Recursively collect all descendant node values."""
@@ -303,7 +310,7 @@ class Model:
         matches = self.find_all(signature)
         results: list[KLine] = list(matches)
         for kl in matches:
-            results.extend(self.expand(kl, depth))
+            results.extend(self.query_expand(kl, depth))
         return results
 
     # ── Significance API ──────────────────────────────────────────────
@@ -336,24 +343,64 @@ class Model:
             sig = self._make_sig(kline.nodes)
             yield hop_count, sig
 
-    def distance(self, query: KLine, candidate: KLine, level: str) -> int:
-        """Packed distance for a query-candidate pair.
+    def _as_kline(self, node: int) -> KLine:
+        """Resolve a node value to a KLine.
 
-        Computes both S2 and S3 components simultaneously using per-node
-        hop-distance, connotation bridging, and ungrounded penalty.
-
-        Returns (s3_component << D_PACK_SHIFT) + s2_component, clamped to D_MAX - 1.
+        Raises ValueError if the node does not resolve.
         """
+        kline = self.find(node)
+        if kline is None:
+            raise ValueError(f"Node {node:#x} does not resolve to any KLine")
+        return kline
+
+    def expand(
+        self,
+        query: KLine,
+        candidate: KLine,
+        level: str,
+        distance: int = 0,
+        *,
+        _visited: set[tuple[int, int]] | None = None,
+    ) -> Iterator[QueryCandidate]:
+        """Expand a query-candidate pair, yielding connotations and terminal distance.
+
+        For each discovered connotation (S2/S3 indirect relationship), recursively
+        yields QueryCandidate items for the connotation pair.  The final yield is
+        always the terminal QueryCandidate with the packed distance for the
+        original pair.
+
+        Parameters
+        ----------
+        query: The query KLine.
+        candidate: The candidate KLine.
+        level: Routing level (``"S2"`` or ``"S3"``).
+        distance: Accumulated hop distance (internal, for recursive calls).
+        _visited: Internal cycle-detection set.
+
+        Yields
+        ------
+        QueryCandidate
+            Intermediate connotations (from recursive calls) followed by the
+            terminal packed distance.
+        """
+        if _visited is None:
+            _visited = set()
+
+        key = (query.signature, candidate.signature)
+        if key in _visited:
+            return  # cycle detected
+        _visited.add(key)
+
         q_set = set(query.nodes)
         c_set = set(candidate.nodes)
         mismatched_q = q_set - c_set
         mismatched_c = c_set - q_set
         matched = q_set & c_set
 
-        level_distance = 0
+        level_distance = distance
         s2_distance = 0
         s3_distance = 0
-        s3_connotations = {}  # sig → min hops from any query node
+        s3_connotations: dict[int, int] = {}  # sig → min hops from any query node
 
         # Mismatched query nodes
         for n in mismatched_q:
@@ -361,6 +408,12 @@ class Model:
             for hops, match_sig in self._edge_hops(n):
                 if match_sig in mismatched_c:
                     hop_distance = hops
+                    q_kline = self._as_kline(n)
+                    c_kline = self._as_kline(match_sig)
+                    if q_kline is not None and c_kline is not None:
+                        yield from self.expand(
+                            q_kline, c_kline, "S2", hops, _visited=_visited,
+                        )
                     break
                 elif (match_sig not in s3_connotations
                       or hops < s3_connotations[match_sig]):
@@ -373,9 +426,21 @@ class Model:
             for hops, match_sig in self._edge_hops(n):
                 if match_sig in mismatched_q:
                     hop_distance = hops
+                    q_kline = self._as_kline(n)
+                    c_kline = self._as_kline(match_sig)
+                    if q_kline is not None and c_kline is not None:
+                        yield from self.expand(
+                            q_kline, c_kline, "S2", hops, _visited=_visited,
+                        )
                     break
                 elif match_sig in s3_connotations:
-                    s3_distance += s3_connotations[match_sig] + hops
+                    hop_distance += s3_connotations[match_sig] + hops
+                    q_kline = self._as_kline(n)
+                    c_kline = self._as_kline(match_sig)
+                    if q_kline is not None and c_kline is not None:
+                        yield from self.expand(
+                            q_kline, c_kline, "S3", hop_distance, _visited=_visited,
+                        )
                     hop_distance = 0
                     break
             level_distance += hop_distance
@@ -398,7 +463,8 @@ class Model:
         s3_distance = min(s3_distance, s3_component_max)
 
         # Pack: S3 in upper bits, S2 in lower bits
-        return min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
+        packed = min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
+        yield QueryCandidate(query, candidate, packed)
 
     def is_countersigned(self, a: KLine, b: KLine) -> bool:
         """Test whether two Klines are countersigned (mutual reference)."""

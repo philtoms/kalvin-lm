@@ -218,17 +218,27 @@ class Cogitator:
 **Processing per work item:**
 
 ```
-process(WorkItem(query, candidate, level)):
-  1. distance = model.distance(query, candidate, level)
-  2. significance = (~distance) & MASK64
-  3. if model.is_countersigned(query, candidate):
+run(WorkItem(query, candidate, level)):
+  for qc in model.expand(query, candidate, level):
+    process(qc)
+
+process(QueryCandidate(query, candidate, distance)):
+  1. significance = (~distance) & MASK64
+  2. if model.is_countersigned(query, candidate):
        model.add(candidate)
        on_s1(query, candidate)    # triggers re-rationalisation
 ```
 
+`model.expand()` yields intermediate `QueryCandidate` items for each
+discovered connotation (S2 and S3 indirect relationships), followed by a
+terminal `QueryCandidate` with the packed distance for the original pair.
+Each is processed identically — countersignature is checked for every
+yielded result.
+
 **MVP:** The routed level (S2/S3) is preserved — significance is computed but
 not used for re-routing. Countersignature is the only mechanism that can promote
-to S1 during cogitation.
+to S1 during cogitation. Connotation expansion via `model.expand()` provides
+graph exploration beyond the initial query-candidate pair.
 
 **Lifecycle:**
 
@@ -289,7 +299,7 @@ def is_countersigned(Q, C):
 | Second candidate S1        | First routes S2, second S1, returns True             |
 | All S2                     | Returns False, all submitted as WorkItems            |
 | All S3                     | Returns False, all submitted as WorkItems            |
-| S1 short-circuits distance | model.distance never called when S1 found            |
+| S1 short-circuits expansion | model.expand never called when S1 found            |
 
 ### Routing (`_route`)
 

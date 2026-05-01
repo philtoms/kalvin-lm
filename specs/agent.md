@@ -10,10 +10,10 @@ knowledge graph.
 The Agent's principal function is **rationalisation**: determining how a new
 Kline relates to existing knowledge and deciding what action to take. The
 pipeline is split into a **fast path** (routing — no model calls) and a
-**slow path** (cogitation — background distance computation).
+**slow path** (cogitation — background graph expansion).
 
 All computational detail is delegated — encoding to the Tokenizer, storage
-and lookup to the Model, distance calculation to the Model's distance API.
+and lookup to the Model, graph expansion to the Model's expand API.
 
 ## Dependencies
 
@@ -46,7 +46,8 @@ This spec depends on the following concepts, defined elsewhere:
 - Provides candidate retrieval via `find`, `find_all`, `query`, `where`.
 - Provides `find_by_nodes` for transitive grounding via nodes signature.
 - Provides `promote` and `promote_all` for persisting Klines to the base.
-- Provides `distance(Q, C, level)` for packed distance computation.
+- Provides `expand(Q, C, level)` generator for graph expansion yielding connotations and terminal packed distance.
+- Provides `QueryCandidate` named tuple for expansion results.
 - Provides `is_countersigned(Q, C)` for mutual-reference detection.
 - Manages a three-tier memory internally (STM → Frame → Base). The agent
   sees a single Model API; tiering is invisible to the agent.
@@ -118,11 +119,14 @@ Rationalise(Q):
 
   ┌─── SLOW PATH (Cogitator, background thread) ────────────┐
   │ For each WorkItem(Q, C, level):                          │
-  │   distance = model.distance(Q, C, level)                 │
+  │   for qc in model.expand(Q, C, level):                   │
+  │     process(qc)                                          │
+  │                                                          │
+  │ process(QueryCandidate(query, candidate, distance)):     │
   │   significance = ~distance                               │
-  │   if model.is_countersigned(Q, C):                       │
-  │     add C to model                                       │
-  │     re-rationalise Q                                     │
+  │   if model.is_countersigned(query, candidate):           │
+  │     add candidate to model                               │
+  │     re-rationalise query                                 │
   └───────────────────────────────────────────────────────────┘
 ```
 
@@ -232,13 +236,29 @@ WorkItem:
 ```
 
 The agent submits one WorkItem per routed S2/S3 candidate. The Cogitator
-processes each independently.
+expands each WorkItem into a sequence of QueryCandidates via `model.expand()`.
+
+## Query Candidates
+
+A QueryCandidate is a single query-candidate-distance result yielded by
+`model.expand()`:
+
+```
+QueryCandidate(query, candidate, distance):
+  query:      KLine
+  candidate:  KLine
+  distance:   int     # packed 64-bit distance
+```
+
+Intermediate yields represent discovered connotations — indirect relationships
+between nodes of the query and candidate. The final yield is always the
+terminal packed distance for the original pair.
 
 ## Cogitation
 
 Cogitation is the background processing of individual query-candidate work
-items. The Cogitator receives pre-routed work items, computes deep
-significance via model distance, and checks for countersignature.
+items. The Cogitator receives pre-routed work items, expands each through
+`model.expand()` to discover connotations, and checks for countersignature.
 
 ### Cogitator
 
@@ -257,18 +277,26 @@ the backlog and processes each one.
 
 ### Work Item Processing
 
+The Cogitator expands each WorkItem into a sequence of QueryCandidates.
+Each QueryCandidate is processed individually:
+
 ```
-process(WorkItem(query, candidate, level)):
-  1. distance = model.distance(query, candidate, level)
-  2. significance = (~distance) & MASK64
-  3. if model.is_countersigned(query, candidate):
+run(WorkItem(query, candidate, level)):
+  for qc in model.expand(query, candidate, level):
+    process(qc)
+
+process(QueryCandidate(query, candidate, distance)):
+  1. significance = (~distance) & MASK64
+  2. if model.is_countersigned(query, candidate):
        model.add(candidate)
        on_s1(query, candidate)    # triggers re-rationalisation
 ```
 
-The MVP preserves the routed level (S2 or S3) without re-routing based on
-the computed significance. Countersignature is the only mechanism that can
-promote to S1 during cogitation.
+`model.expand()` yields intermediate QueryCandidates for each discovered
+connotation (S2 or S3 indirect relationship), followed by a terminal
+QueryCandidate with the packed distance for the original pair. Each is
+processed identically — countersignature is checked for every yielded
+result, enabling discovery across the full expansion graph.
 
 ### S1 Callback
 
@@ -341,7 +369,7 @@ The Cogitator no longer retrieves candidates or expands graph context.
 It receives a WorkItem with a pre-routed level and computes distance
 for that single pair.
 
-**Rationale**: Separating routing (agent, fast) from distance computation
+**Rationale**: Separating routing (agent, fast) from graph expansion
 (cogitator, slow) gives a clean workload split. Future iterations can
 evolve the Cogitator to perform additional graph expansion and re-routing.
 
@@ -359,14 +387,14 @@ bit-to-signature index.
 
 ### 2. Cogitation Evolution
 
-The MVP Cogitator processes work items individually with no graph expansion
-or pass tracking. Future iterations may add:
+The Cogitator now expands each work item through `model.expand()`, yielding
+intermediate connotations alongside the terminal distance. Future iterations
+may add:
 
-- Graph expansion via `model.query(depth=D_cogitate)` to find additional
-  candidates for each work item.
 - Pass tracking to limit re-processing of the same query.
 - Significance-based re-routing (using the computed distance to adjust the
   level).
+- Top-k/top-p selection of connotation results for refinement.
 
 ### 3. Grounding Assessment Formalisation
 
@@ -383,8 +411,8 @@ Klines.
 
 The following are explicitly **out of scope** for this spec:
 
-- **Distance computation.** The Agent delegates distance calculation to
-  the Model's `distance()` API. The Cogitator invokes it in the background.
+- **Graph expansion.** The Agent delegates graph expansion to
+  the Model's `expand()` generator. The Cogitator invokes it in the background.
 - **Tokenization internals.** How text is segmented into tokens is defined
   in the @tokenizer spec. The Agent consumes the tokenizer's output.
 - **Model internals.** How Klines are stored, indexed, and retrieved is
