@@ -292,7 +292,7 @@ top-p (evidence check), then top-k (budget check). O(1) state per work item.
 Three boundaries classify yielded significance values:
 
 ```
-D_MAX ── S1|S2 ──────── S2|S3 (HP) ──────── S3|S4 ── 0
+D_MAX ── S1|S2 ──────── S2|S3 ──────────── S3|S4 ── 0
 ```
 
 Base positions (τ = 1):
@@ -300,7 +300,7 @@ Base positions (τ = 1):
 | Boundary | Position                    | Meaning                        |
 | -------- | --------------------------- | ------------------------------ |
 | S1\|S2   | `D_MAX - 1`                 | Only exact S1 qualifies as S1  |
-| S2\|S3   | `~(1 << _D_PACK_SHIFT)`     | HP boundary (S3 bias position) |
+| S2\|S3   | `~_S2_S3_DISTANCE`          | Packed distance threshold (100)  |
 | S3\|S4   | `0`                          | Only zero-significance is S4   |
 
 Classification is a cascade: `sig ≥ S1|S2 → S1`, `sig ≥ S2|S3 → S2`,
@@ -315,7 +315,7 @@ Shifts all three boundaries by the same amount, with capping:
 | τ > 1     | drops ↓        | drops ↓      | capped at 0 | More S2→S1, more S3→S2     |
 | τ < 1     | capped at D_MAX-1 | rises ↑   | rises ↑    | Fewer S2→S1, more S3→S4    |
 
-The shift function is: `shift = hp_distance × (τ - 1)`. This is
+The shift function is: `shift = _TEMP_SCALE × (τ - 1)`. This is
 exploratory — alternative shift functions may be tuned later.
 
 #### Top-k

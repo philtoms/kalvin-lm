@@ -14,10 +14,25 @@ from kalvin.kline import KLine, KSig
 from kalvin.stm import STM
 from kalvin.signature import make_signature, signifies
 
-# _D_PACK_SHIFT — S3 connotation bias. S3 hops are shifted left by this amount,
-# guaranteeing S3 distances are astronomically larger than S2 distances.
-# Also defines the HP (high-precision) boundary position in significance space.
-_D_PACK_SHIFT = 32
+# _S3_BIAS — S3 connotation tier bias. Connotation hop counts are biased by this
+# amount before quadratic packing, ensuring S3 packed distances exceed S2 distances
+# for the same hop count while keeping both tiers close enough for temperature bridging.
+# With _S3_BIAS=9, minimum S3 packed distance = _pack(2+9) = 121 > MAX_HOP(100).
+_S3_BIAS = 9
+
+
+def _pack(distance: int) -> int:
+    """Non-linear distance packing via squaring.
+
+    Quadratic growth ensures:
+    - Small distances stay close together → temperature can discriminate finely
+    - Large distances spread apart → accumulation penalty grows super-linearly
+
+    d=0→0, d=1→1, d=5→25, d=10→100, d=20→400, d=100→10000
+    """
+    if distance <= 0:
+        return 0
+    return distance * distance
 
 # Public significance constants
 D_MAX = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance, also the significance of zero distance
@@ -407,8 +422,8 @@ class Model:
         original pair.
 
         Distance is a single integer. S3 connotation hops are biased by
-        ``1 << _D_PACK_SHIFT`` to guarantee S3 distances are astronomically
-        larger than S2 distances — the topology naturally separates the bands.
+        ``_pack(hop_count + _S3_BIAS)`` to ensure S3 distances moderately
+        exceed S2 distances — close enough for temperature to bridge.
 
         Parameters
         ----------
@@ -442,7 +457,7 @@ class Model:
 
         # Accumulate distance from mismatched nodes
         # Direct edge resolutions (S2) add hop count directly.
-        # Connotation resolutions (S3) add hop count << _D_PACK_SHIFT.
+        # Connotation resolutions (S3) add _pack(hop_count + _S3_BIAS).
         # Unresolved nodes add MAX_HOP.
         total_distance = 0
 
@@ -482,7 +497,7 @@ class Model:
                         c_kline = self._as_kline(match_sig)
                         yield from self.expand(
                             q_kline, c_kline, "S3",
-                            s3_hop << _D_PACK_SHIFT,
+                            _pack(s3_hop + _S3_BIAS),
                             _visited=_visited,
                         )
                         hop_distance = 0

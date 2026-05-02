@@ -62,9 +62,9 @@ For each mismatched node in the query and candidate:
 - **Direct edge resolution (S2):** The node resolves via `_edge_hops()` to a
   node in the opposite set. Adds the hop count directly to distance.
 - **Connotation resolution (S3):** The node resolves via `_edge_hops()` to a
-  signature found in `s3_connotations`. The connotation hop count is biased by
-  `1 << _D_PACK_SHIFT` to guarantee S3 distances are astronomically larger
-  than S2 distances.
+  signature found in `s3_connotations`. The connotation hop count is packed via
+  `_pack(hop_count + _S3_BIAS)` to ensure S3 distances moderately exceed S2
+  distances while remaining close enough for temperature to bridge.
 - **Unresolved:** Adds `MAX_HOP` (default 100).
 
 Matched-but-ungrounded nodes (present in both but not resolving to an S1
@@ -74,13 +74,16 @@ kline) add 1 each.
 
 ```
 s3_hop = connotation_hops
-biased_distance = s3_hop << _D_PACK_SHIFT
+biased_distance = _pack(s3_hop + _S3_BIAS)
 ```
 
-The bias (`1 << 32 ≈ 4.3 billion`) guarantees that any S3 contribution
-produces a distance far exceeding any S2 distance (max S2 ≈ `N × MAX_HOP`).
-The topology naturally separates the bands — no explicit routing-level
-distance assignment needed.
+The bias (`_S3_BIAS = 9`, minimum packed distance = `_pack(2+9) = 121`)
+ensures S3 distances moderately exceed S2 distances while keeping both tiers
+in the same order of magnitude. This closeness allows temperature to bridge
+the gap — a small rise in τ can promote S3 results into S2 significance range.
+The quadratic `_pack` function (d²) compresses small distances together and
+spreads large distances apart, ensuring accumulation penalties grow
+super-linearly.
 
 ### Significance inversion
 
@@ -92,8 +95,8 @@ The topology guarantees the natural ordering:
 
 | Band | Typical distance range | Typical significance | Condition |
 | ---- | ---------------------- | -------------------- | --------- |
-| S2   | 0 – ~300               | Near `D_MAX`         | Upper 32 bits of significance all set |
-| S3   | `1 << 32` and up       | Mid-range            | Upper 32 bits of significance not all set |
+| S2   | 0 – ~100               | Near `D_MAX`         | Above S2|S3 boundary |
+| S3   | `_pack(2+9)=121` and up | Mid-range            | Below S2|S3 boundary |
 | S4   | `D_MAX`                | 0                    | No candidates |
 
 ### Arithmetic Ordering
@@ -120,7 +123,7 @@ boundaries, computed by `Cogitator._boundaries()` and classified by
 | Boundary  | Position                  | Meaning                           |
 | --------- | ------------------------- | --------------------------------- |
 | S1\|S2    | `D_MAX - 1`               | Only exact S1 qualifies as S1     |
-| S2\|S3    | `~(1 << _D_PACK_SHIFT)`   | HP boundary (S3 bias threshold)   |
+| S2\|S3    | `~_S2_S3_DISTANCE`        | Packed distance threshold (100)   |
 | S3\|S4    | `0`                       | Only zero-significance is S4      |
 
 ### Temperature shift
@@ -177,8 +180,8 @@ model.expand(Q, C, level) → Iterator[QueryCandidate]
 6. **S1 is trivial**: all nodes match → distance = 0 → significance = D_MAX,
   no function call needed.
 7. **Topology-driven**: distance is accumulated from graph hops. S3
-  connotation hops are biased by `1 << _D_PACK_SHIFT`, guaranteeing natural
-  S2/S3 separation without routing-level distance assignment.
+  connotation hops are biased by `_pack(hop_count + _S3_BIAS)`, ensuring
+  S3 distances moderately exceed S2 while keeping temperature bridging feasible.
 8. **Boundary classification**: significance values are classified against
   three boundaries (S1|S2, S2|S3, S3|S4) shifted by temperature. Raw
   significance is never mutated per-yield.
@@ -188,7 +191,10 @@ model.expand(Q, C, level) → Iterator[QueryCandidate]
 | Concept | File | Symbol |
 | ------- | ---- | ------ |
 | Constants (`D_MAX`, `MASK64`) | `src/kalvin/model.py` | module-level |
-| S3 bias (`_D_PACK_SHIFT`) | `src/kalvin/model.py` | module-level |
+| S3 bias (`_S3_BIAS`) | `src/kalvin/model.py` | module-level |
+| Distance packing (`_pack`) | `src/kalvin/model.py` | module-level |
+| S2|S3 threshold (`_S2_S3_DISTANCE`) | `src/kalvin/agent.py` | module-level |
+| Temperature scale (`_TEMP_SCALE`) | `src/kalvin/agent.py` | module-level |
 | Routing | `src/kalvin/agent.py` | `Agent._route()` |
 | Significance inversion | `src/kalvin/model.py` | `Model.expand()` |
 | Distance computation | `src/kalvin/model.py` | `Model.expand()` |

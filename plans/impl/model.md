@@ -130,8 +130,7 @@ connotation results and a terminal packed distance. Replaces the previous
 - `level` — `"S2"` or `"S3"`, determined by Agent routing.
 - `distance` — accumulated hop distance for recursive calls (default 0).
 - **Yields** intermediate `QueryCandidate` items for connotations, then a
-  terminal `QueryCandidate` with packed distance
-  `(s3_component << D_PACK_SHIFT) + s2_component`, clamped to `D_MAX - 1`.
+  terminal `QueryCandidate` with the computed significance.
 - **Recursive**: uses `yield from expand(...)` for connotation expansion.
 - **Cycle detection**: `_visited` set of `(query.sig, candidate.sig)` pairs.
 
@@ -139,9 +138,10 @@ connotation results and a terminal packed distance. Replaces the previous
 
 - **MAX_HOP** — upper bound on edge hop chain depth (default 100). Also the
   penalty for unresolvable mismatched nodes.
-- **D_PACK_SHIFT** — bit position separating S2 and S3 components (default 32).
-  S2 clamped to `(1 << D_PACK_SHIFT) - 1`, S3 to
-  `(1 << (64 - D_PACK_SHIFT)) - 1`.
+- **_S3_BIAS** — tier bias for S3 connotation hops (default 9). Connotation
+  hop counts are biased by this amount before quadratic packing.
+- **_pack(distance)** — quadratic packing function: `d²`. Compresses small
+  distances together and spreads large distances apart.
 
 ### Definitions
 
@@ -222,23 +222,16 @@ def expand(self, query, candidate, level, distance=0, _visited=None):
                 break
         level_distance += hop_distance
 
-    # Matched but not grounded → S2 penalty
+    # Matched but not grounded → penalty
     for n in matched:
         if not self.is_s1(n):
-            s2_distance += 1
+            level_distance += 1
 
-    # Route primary hop-distance to appropriate component
-    if level == "S2":
-        s2_distance += level_distance
-    else:
-        s3_distance += level_distance
+    # Carry forward the incoming distance
+    total_distance = level_distance + distance
 
-    # Clamp each component to its bit budget
-    s2_distance = min(s2_distance, (1 << D_PACK_SHIFT) - 1)
-    s3_distance = min(s3_distance, (1 << (64 - D_PACK_SHIFT)) - 1)
-
-    packed = min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
-    significance = (~packed) & MASK64
+    # Clamp to avoid overflow, then invert to significance
+    significance = (~min(total_distance, D_MAX - 1)) & MASK64
     yield QueryCandidate(query, candidate, significance)
 ```
 
@@ -246,11 +239,11 @@ def expand(self, query, candidate, level, distance=0, _visited=None):
 
 | Node state                                                    | Contribution          | Target component  |
 | ------------------------------------------------------------- | --------------------- | ----------------- |
-| Mismatched, chain reaches opposing mismatch set at hop N      | +N to level_distance  | S2 or S3 (routed) |
-| Mismatched, chain never reaches opposing mismatch set         | +MAX_HOP              | S2 or S3 (routed) |
-| Mismatched candidate, chain bridges via connotation           | round-trip, hop = 0   | S3 (always)       |
-| Matched + grounded (is_s1)                                    | 0                     | neutral           |
-| Matched + ungrounded                                          | +1                    | S2 (always)       |
+| Mismatched, chain reaches opposing mismatch set at hop N      | +N to level_distance  | Accumulated directly  |
+| Mismatched, chain never reaches opposing mismatch set         | +MAX_HOP              | Accumulated directly  |
+| Mismatched candidate, chain bridges via connotation           | round-trip, hop = 0   | S3 packed (always)    |
+| Matched + grounded (is_s1)                                    | 0                     | Neutral               |
+| Matched + ungrounded                                          | +1                    | Accumulated directly  |
 
 ### Connotation Bridging
 
@@ -273,26 +266,26 @@ mismatched candidate node, it **yields an S2 connotation**: a recursive
 relationship between sub-graphs.
 
 When connotation bridging succeeds, `expand()` **yields an S3 connotation**:
-a recursive call with the round-trip distance. This captures indirect,
-associative connections.
+a recursive call with `_pack(round_trip_hops + _S3_BIAS)`. This captures
+indirect, associative connections with quadratic packing.
 
 Each connotation is a `QueryCandidate` processed identically by the
 Cogitator — countersignature is checked for every yielded item.
 
 ### Properties
 
-1. **Packed encoding (internal)** — single uint64 for both S2 and S3.
-   Callers receive significance, not distance.
-2. **Significance is inverted distance** — the model inverts packed
-   distance to produce significance: `(~packed) & MASK64`.
-3. **Level determines primary contribution** — mismatched hop distances go to
-   S2 or S3 based on routing level.
-4. **Connotation is always S3** — indirect bridging always adds to S3.
-5. **Ungrounded penalty is always S2** — matched but ungrounded nodes always
-   add to S2.
+1. **Single distance** — accumulated integer. S3 connotation hops biased
+   by `_pack(hops + _S3_BIAS)`. Callers receive significance, not distance.
+2. **Significance is inverted distance** — the model inverts distance
+   to produce significance: `(~distance) & MASK64`.
+3. **Level is preserved but distance is topology-driven** — mismatched hop
+   distances accumulate the same way regardless of routing level.
+4. **Connotation is always S3** — indirect bridging always uses packed distance.
+5. **Ungrounded penalty is always +1** — matched but ungrounded nodes add 1.
 6. **Bidirectional** — mismatched nodes from both query and candidate
    contribute.
-7. **32-bit clamp** — each component independently clamped before packing.
+7. **Quadratic packing** — `_pack(d) = d²` ensures small distances stay
+   close and large distances spread apart.
 
 ### `is_countersigned(a, b) → bool`
 

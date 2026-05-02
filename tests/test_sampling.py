@@ -2,9 +2,9 @@
 
 import pytest
 
-from kalvin.agent import Sampling, Agent, Cogitator, WorkItem
+from kalvin.agent import Sampling, Agent, Cogitator, WorkItem, _S2_S3_DISTANCE, _TEMP_SCALE
 from kalvin.kline import KLine
-from kalvin.model import D_MAX, MASK64, Model, QueryCandidate, _D_PACK_SHIFT
+from kalvin.model import D_MAX, MASK64, Model, QueryCandidate, _pack, _S3_BIAS
 from kalvin.events import EventBus
 
 
@@ -99,10 +99,10 @@ class TestBoundaries:
         return cog
 
     def test_base_boundaries(self):
-        """Base boundaries at τ=1: S1|S2 = D_MAX-1, S2|S3 = HP, S3|S4 = 0."""
+        """Base boundaries at τ=1: S1|S2 = D_MAX-1, S2|S3 = ~_S2_S3_DISTANCE, S3|S4 = 0."""
         s12, s23, s34 = Cogitator._base_boundaries()
         assert s12 == D_MAX - 1
-        assert s23 == (~(1 << _D_PACK_SHIFT)) & MASK64
+        assert s23 == (~_S2_S3_DISTANCE) & MASK64
         assert s34 == 0
 
     def test_identity_at_tau_1(self):
@@ -189,33 +189,33 @@ class TestClassify:
         assert Cogitator._classify(D_MAX, D_MAX - 1, 0, 0) == "S1"
 
     def test_classify_s2(self):
-        """Significance above HP boundary but below D_MAX-1 → S2."""
-        # Pure S2: distance = 100, sig = ~100
-        sig = (~100) & MASK64
-        hp = (~(1 << _D_PACK_SHIFT)) & MASK64
-        assert Cogitator._classify(sig, D_MAX - 1, hp, 0) == "S2"
+        """Significance above S2|S3 boundary but below D_MAX-1 → S2."""
+        # Pure S2: distance = 50, sig = ~50 (above _S2_S3_DISTANCE=80 boundary)
+        sig = (~50) & MASK64
+        s23 = (~_S2_S3_DISTANCE) & MASK64
+        assert Cogitator._classify(sig, D_MAX - 1, s23, 0) == "S2"
 
     def test_classify_s3(self):
-        """Significance below HP boundary but above 0 → S3."""
-        # Pure S3: distance = 2 << _D_PACK_SHIFT
-        sig = (~(2 << _D_PACK_SHIFT)) & MASK64
-        hp = (~(1 << _D_PACK_SHIFT)) & MASK64  # HP boundary
-        assert Cogitator._classify(sig, D_MAX - 1, hp, 0) == "S3"
+        """Significance below S2|S3 boundary but above 0 → S3."""
+        # Pure S3: distance = _pack(2 + _S3_BIAS) = 100
+        sig = (~_pack(2 + _S3_BIAS)) & MASK64
+        s23 = (~_S2_S3_DISTANCE) & MASK64
+        assert Cogitator._classify(sig, D_MAX - 1, s23, 0) == "S3"
 
     def test_classify_s4(self):
         """Significance below S3|S4 boundary → S4."""
-        hp = (~(1 << _D_PACK_SHIFT)) & MASK64
-        assert Cogitator._classify(0, D_MAX - 1, hp, 1) == "S4"
+        s23 = (~_S2_S3_DISTANCE) & MASK64
+        assert Cogitator._classify(0, D_MAX - 1, s23, 1) == "S4"
 
     def test_classify_at_boundary_s12(self):
         """Significance exactly at S1|S2 boundary → S1."""
         assert Cogitator._classify(D_MAX - 1, D_MAX - 1, 0, 0) == "S1"
 
-    def test_classify_just_below_hp_is_s3(self):
-        """Significance just below HP boundary → S3."""
-        hp = (~(1 << _D_PACK_SHIFT)) & MASK64
-        just_below = hp - 1
-        assert Cogitator._classify(just_below, D_MAX - 1, hp, 0) == "S3"
+    def test_classify_just_below_s23_is_s3(self):
+        """Significance just below S2|S3 boundary → S3."""
+        s23 = (~_S2_S3_DISTANCE) & MASK64
+        just_below = s23 - 1
+        assert Cogitator._classify(just_below, D_MAX - 1, s23, 0) == "S3"
 
 
 # ── Agent Sampling Property ──────────────────────────────────────────
@@ -421,7 +421,7 @@ class TestStreamingSampling:
         low_sig = 1             # S3 at τ=1 (above 0)
 
         # Use very low τ to raise S3|S4, making low_sig become S4
-        # At τ=0.3, shift = hp_distance * (0.3 - 1) = negative, S34 rises
+        # At τ=0.3, shift = _TEMP_SCALE * (0.3 - 1) = negative, S34 rises
         qcs = [
             self._make_qc(high_sig),
             self._make_qc(low_sig),

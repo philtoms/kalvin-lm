@@ -186,7 +186,9 @@ UNSIGNED = 0                         # No nodes
 LITERAL_ONLY = 1                     # All-literal content
 
 # Significance
-D_PACK_SHIFT = 32                    # Bit position separating S2/S3 components
+_S3_BIAS = 9                         # Tier bias for S3 connotation hops
+_S2_S3_DISTANCE = 100                 # S2|S3 boundary packed distance threshold
+_TEMP_SCALE = 100                     # Significance units shifted per unit τ
 D_MAX = 0xFFFF_FFFF_FFFF_FFFF        # Maximum distance
 S1_VALUE = 0xFFFF_FFFF_FFFF_FFFF     # Maximum significance
 S4_VALUE = 0x0000_0000_0000_0000     # Minimum significance

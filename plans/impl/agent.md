@@ -228,13 +228,13 @@ class Cogitator:
 ```
 base_boundaries():
   s12 = D_MAX - 1              # S1|S2: only exact S1 qualifies
-  s23 = ~(1 << _D_PACK_SHIFT)  # S2|S3: HP boundary
+  s23 = ~_S2_S3_DISTANCE        # S2|S3: packed distance threshold
   s34 = 0                       # S3|S4: only zero is S4
   return (s12, s23, s34)
 
 boundaries(τ):
   if τ == 1.0: return base_boundaries()
-  shift = (1 << _D_PACK_SHIFT) × (τ - 1.0)
+  shift = _TEMP_SCALE × (τ - 1.0)
   s12 = clamp(s12_base - shift, 0, D_MAX - 1)
   s23 = clamp(s23_base - shift, 0, D_MAX - 1)
   s34 = clamp(s34_base - shift, 0, D_MAX - 1)

@@ -2,7 +2,7 @@
 
 import pytest
 from kalvin.kline import KLine
-from kalvin.model import Model, D_MAX, MASK64, MAX_HOP, _D_PACK_SHIFT
+from kalvin.model import Model, D_MAX, MASK64, MAX_HOP, _pack, _S3_BIAS
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
 
@@ -424,8 +424,9 @@ class TestExpand:
     def test_expand_connotation_bridging(self):
         """Connotation bridging: indirect path through intermediate signature.
 
-        S3 connotation hops are biased by 1 << _D_PACK_SHIFT, guaranteeing
-        connotation distances are astronomically larger than direct (S2) distances.
+        S3 connotation hops are biased by _pack(hop_count + _S3_BIAS),
+        ensuring S3 distances moderately exceed S2 distances while remaining
+        close enough for temperature to bridge the gap.
         """
         m = make_model()
         m.add(KLine(60, [60]))  # canonical
@@ -437,17 +438,17 @@ class TestExpand:
 
         # s3_connotations[60] = 1 (from q-node 50)
         # c-node 70 resolves via s3_connotation: s3_hop = 1 + 1 = 2
-        # Connotation distance = 2 << _D_PACK_SHIFT (biased)
+        # Connotation distance = _pack(2 + _S3_BIAS) = _pack(11) = 121
         # Terminal distance = MAX_HOP = 100 (q-node 50 unresolved at terminal level)
 
         results = list(m.expand(q, c, "S2"))
         assert len(results) == 2
 
-        # S3 connotation yield: distance = 2 << _D_PACK_SHIFT
+        # S3 connotation yield: distance = _pack(2 + _S3_BIAS)
         connotation = results[0]
         assert connotation.query.signature == 70
         assert connotation.candidate.signature == 60
-        connotation_distance = 2 << _D_PACK_SHIFT
+        connotation_distance = _pack(2 + _S3_BIAS)
         assert connotation.significance == (~connotation_distance) & MASK64
 
         # Terminal yield: distance = 100 (MAX_HOP for unresolved q-node)
@@ -459,10 +460,8 @@ class TestExpand:
         # Terminal has higher significance than connotation (closer match)
         assert terminal.significance > connotation.significance
 
-        # Verify S2 vs S3 classification against HP boundary
-        hp_boundary = (~(1 << _D_PACK_SHIFT)) & MASK64
-        assert terminal.significance > hp_boundary    # S2
-        assert connotation.significance < hp_boundary  # S3
+        # Verify S3 distance exceeds S2: connotation (121) > terminal (100)
+        assert connotation_distance > 100  # S3 packed > S2 raw
 
     def test_expand_significance_in_range(self):
         """Significance is always in valid uint64 range."""

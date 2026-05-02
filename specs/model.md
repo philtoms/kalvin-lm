@@ -457,18 +457,26 @@ computed significance.
   Yields `(hop_count, next_sig)` at each step, where `next_sig` is the
   signature produced by `make_signature(kline.nodes)` at that hop.
 
+#### Hyperparameters
+
+- **D_MAX** — maximum distance and maximum significance value
+  (`0xFFFF_FFFF_FFFF_FFFF`). Also used as the penalty for unresolvable
+  mismatched nodes.
+- **MASK64** — 64-bit mask for bitwise inversion (`0xFFFF_FFFF_FFFF_FFFF`).
+- **_S3_BIAS** — tier bias for S3 connotation hops (default 9). Connotation
+  hop counts are biased by this amount before quadratic packing, ensuring
+  S3 distances moderately exceed S2 distances. With `_S3_BIAS=9`, minimum
+  S3 packed distance = `_pack(2+9) = 121 > MAX_HOP(100)`.
+- **_pack(distance)** — quadratic packing function: `d²`. Compresses small
+  distances together (enabling fine temperature discrimination) and spreads
+  large distances apart (super-linear accumulation penalty).
+
 #### Algorithm
 
-The algorithm computes two distance components simultaneously, yielding
-intermediate connotation results at each discovery point:
-
-- **S2 component** (lower bits): per-node hop-distance for direct matches,
-  plus ungrounded penalty for matched nodes.
-- **S3 component** (upper bits): connotation bridging for indirect matches.
-
-The routing level (`"S2"` or `"S3"`) determines where the primary
-hop-distance contribution lands. Connotation bridging always contributes
-to S3.
+The algorithm accumulates a single integer distance from graph hops.
+S3 connotation hops are biased by `_pack(hop_count + _S3_BIAS)` to ensure
+S3 distances moderately exceed S2 distances. The topology naturally separates
+the tiers while keeping them close enough for temperature to bridge.
 
 ```
 expand(query, candidate, level, distance=0, _visited=None):
@@ -517,29 +525,22 @@ expand(query, candidate, level, distance=0, _visited=None):
                 break
             elif match_sig in s3_connotations:
                 hop_distance += s3_connotations[match_sig] + hops
-                yield from expand(find(n), find(match_sig), "S3", hop_distance)
+                yield from expand(find(n), find(match_sig), "S3",
+                                  _pack(hop_distance + _S3_BIAS))
                 hop_distance = 0
                 break
         level_distance += hop_distance
 
-    # Pass 3: matched but ungrounded nodes (S2 component)
+    # Pass 3: matched but ungrounded nodes
     for n in matched:
         if not is_s1(n):
-            s2_distance += 1
+            level_distance += 1
 
-    # Route primary hop-distance to the appropriate component
-    if level == "S2":
-        s2_distance += level_distance
-    else:
-        s3_distance += level_distance
+    # Carry forward the incoming distance
+    total_distance = level_distance + distance
 
-    # Clamp each component to its bit budget
-    s2_distance = min(s2_distance, (1 << D_PACK_SHIFT) - 1)
-    s3_distance = min(s3_distance, (1 << (64 - D_PACK_SHIFT)) - 1)
-
-    # Pack distance, invert to significance, and yield terminal result
-    packed = min((s3_distance << D_PACK_SHIFT) + s2_distance, D_MAX - 1)
-    significance = (~packed) & MASK64
+    # Clamp to avoid overflow, then invert to significance
+    significance = (~min(total_distance, D_MAX - 1)) & MASK64
     yield QueryCandidate(query, candidate, significance)
 ```
 
@@ -547,11 +548,11 @@ expand(query, candidate, level, distance=0, _visited=None):
 
 | Node state                                                    | Contribution          | Target component  |
 | ------------------------------------------------------------- | --------------------- | ----------------- |
-| Mismatched, chain reaches opposing mismatch set at hop N      | +N to level_distance  | S2 or S3 (routed) |
-| Mismatched, chain never reaches opposing mismatch set         | +MAX_HOP              | S2 or S3 (routed) |
-| Mismatched candidate, chain bridges via connotation           | round-trip, hop = 0   | S3 (always)       |
-| Matched + grounded (is_s1)                                    | 0                     | neutral           |
-| Matched + ungrounded                                          | +1                    | S2 (always)       |
+| Mismatched, chain reaches opposing mismatch set at hop N      | +N to level_distance  | Accumulated directly  |
+| Mismatched, chain never reaches opposing mismatch set         | +MAX_HOP              | Accumulated directly  |
+| Mismatched candidate, chain bridges via connotation           | round-trip, hop = 0   | S3 packed (always)    |
+| Matched + grounded (is_s1)                                    | 0                     | Neutral               |
+| Matched + ungrounded                                          | +1                    | Accumulated directly  |
 
 #### Connotation expansion
 
@@ -575,21 +576,23 @@ pair has already been expanded, subsequent encounters return immediately.
 
 #### Properties
 
-1. **Packed encoding (internal)** — a single uint64 encodes both S2 and S3
-   distance components, separated at bit `D_PACK_SHIFT`. This encoding is
-   internal to the model; callers receive significance.
-2. **Significance is inverted distance** — the model inverts packed distance
-   to produce significance: `(~packed) & MASK64`. Higher is more significant.
-3. **Level determines primary contribution** — mismatched node hop
-   distances contribute to S2 or S3 based on the routing level.
-4. **Connotation is always S3** — indirect bridging always adds to the
-   S3 component, capturing associative distance.
-5. **Ungrounded penalty is always S2** — matched but ungrounded nodes
-   always add to the S2 component, capturing grounding deficit.
+1. **Single distance** — a single accumulated integer. S3 connotation hops
+   are biased by `_pack(hop_count + _S3_BIAS)` to ensure moderate S2/S3
+   separation. This encoding is internal to the model; callers receive
+   significance.
+2. **Significance is inverted distance** — the model inverts distance
+   to produce significance: `(~distance) & MASK64`. Higher is more significant.
+3. **Level is preserved but distance is topology-driven** — mismatched node
+   hop distances accumulate the same way regardless of routing level.
+4. **Connotation is always S3** — indirect bridging always uses packed
+   distance `_pack(hops + _S3_BIAS)`, capturing associative distance.
+5. **Ungrounded penalty is always +1** — matched but ungrounded nodes
+   always add 1 to distance.
 6. **Bidirectional** — mismatched nodes from both query and candidate
    contribute to distance.
-7. **32-bit clamp** — each component is independently clamped before
-   packing, preventing overflow into the other component.
+7. **Quadratic packing** — S3 hops are packed via `_pack(d) = d²`, ensuring
+   small distances stay close (temperature-sensitive) and large distances
+   spread apart (super-linear accumulation).
 8. **Recursive expansion** — each discovered connotation is yielded as a
    `QueryCandidate` for immediate processing, enabling deep graph
    exploration.

@@ -18,9 +18,21 @@ import json
 
 from kalvin.kline import KLine
 from kalvin.events import EventBus, RationaliseEvent
-from kalvin.model import Model, QueryCandidate, D_MAX, MASK64, _D_PACK_SHIFT
+from kalvin.model import Model, QueryCandidate, D_MAX, MASK64, _pack, _S3_BIAS
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.signature import make_signature
+
+
+# ── Distance & Temperature Constants ────────────────────────────────
+
+# S2|S3 boundary at τ=1 — packed distance threshold separating S2 from S3.
+# Sits between max single-node S2 distance (MAX_HOP=100) and min S3 packed
+# distance (_pack(2+_S3_BIAS)=121), ensuring clean separation at τ=1.
+_S2_S3_DISTANCE = 100
+
+# Temperature sensitivity — significance units shifted per unit τ deviation from 1.0.
+# Higher values make temperature more responsive.
+_TEMP_SCALE = 100
 
 
 # ── Sampling ─────────────────────────────────────────────────────────
@@ -170,12 +182,12 @@ class Cogitator:
     def _base_boundaries() -> tuple[int, int, int]:
         """Return the three base boundaries (S1|S2, S2|S3, S3|S4) at τ=1.
 
-        S1|S2 = D_MAX - 1   (only exact S1 qualifies)
-        S2|S3 = HP boundary  (~(1 << _D_PACK_SHIFT))
-        S3|S4 = 0            (only complete unresolvable is S4)
+        S1|S2 = D_MAX - 1              (only exact S1 qualifies)
+        S2|S3 = ~_S2_S3_DISTANCE       (packed distance threshold)
+        S3|S4 = 0                       (only complete unresolvable is S4)
         """
         s12 = D_MAX - 1
-        s23 = (~(1 << _D_PACK_SHIFT)) & MASK64
+        s23 = (~_S2_S3_DISTANCE) & MASK64
         s34 = 0
         return s12, s23, s34
 
@@ -195,11 +207,9 @@ class Cogitator:
 
         s12_base, s23_base, s34_base = self._base_boundaries()
 
-        # Shift is proportional to tau deviation from 1.0
-        # Scale factor: fraction of the HP boundary per unit tau deviation
-        # This gives meaningful movement at moderate tau values
-        hp_distance = 1 << _D_PACK_SHIFT  # the S3 bias
-        shift = int(hp_distance * (tau - 1.0))
+        # Shift is proportional to tau deviation from 1.0.
+        # _TEMP_SCALE controls responsiveness: higher = more sensitive.
+        shift = int(_TEMP_SCALE * (tau - 1.0))
 
         # Subtract shift from all boundaries, cap at extremes
         s12 = max(0, min(D_MAX - 1, s12_base - shift))

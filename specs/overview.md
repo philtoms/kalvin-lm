@@ -126,9 +126,10 @@ Higher significance = closer match = less work needed. The ordering is strict: *
 | S4    | No candidates found at all           | MAX               | 0 (all bits 0)   | Novel. Promote.      |
 
 Distance is a single integer accumulated from graph hops. S3 connotation hops
-are biased by `1 << D_PACK_SHIFT` (default `1 << 32`), guaranteeing S3
-distances are astronomically larger than S2 distances. The topology naturally
-separates the bands — no routing-level distance assignment needed.
+are packed via `_pack(hop_count + _S3_BIAS)` (quadratic with tier bias),
+ensuring S3 distances moderately exceed S2 distances while keeping both
+tiers close enough for temperature to bridge. The `_pack` function (d²)
+compresses small distances together and spreads large distances apart.
 
 Key insight: **S1 and S4 are "significants"** — the KLine is either confirmed or entirely novel. No further processing needed. **S2 and S3 are "rationals"** — partial relationships that require deeper investigation through **cogitation**.
 
@@ -247,7 +248,7 @@ pass with O(1) state — no batch collection.
 Three boundaries classify yielded significance values:
 
 ```
-D_MAX ── S1|S2 ──────── S2|S3 (HP) ──────── S3|S4 ── 0
+D_MAX ── S1|S2 ──────── S2|S3 ──────────── S3|S4 ── 0
 ```
 
 Base positions (τ = 1):
@@ -255,7 +256,7 @@ Base positions (τ = 1):
 | Boundary | Position                    | Meaning                        |
 | -------- | --------------------------- | ------------------------------ |
 | S1\|S2   | `D_MAX - 1`                 | Only exact S1 qualifies as S1  |
-| S2\|S3   | `~(1 << _D_PACK_SHIFT)`     | HP boundary (S3 bias position) |
+| S2\|S3   | `~_S2_S3_DISTANCE`         | Packed distance threshold (100)  |
 | S3\|S4   | `0`                          | Only zero-significance is S4   |
 
 Classification is a cascade:
@@ -285,7 +286,7 @@ to be classified as S1 and immediately published. Low temperature raises
 the S3|S4 boundary, demoting weak S3 connotations to S4.
 
 The shift function is exploratory — linear, inverse, or per-boundary scaling
-are all options to tune. Currently: `shift = hp_distance × (τ - 1)`.
+are all options to tune. Currently: `shift = _TEMP_SCALE × (τ - 1)`.
 
 #### Top-k
 
