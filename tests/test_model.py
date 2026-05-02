@@ -311,7 +311,7 @@ class TestExpand:
         """Self-comparison: all nodes match, ungrounded penalty only."""
         m = make_model()
         k = KLine(10, [10, 20, 30])
-        results = list(m.expand(k, k, "S2"))
+        results = list(m.expand(k, k))
         # All nodes match, none resolve → distance=3 → significance=~3
         assert len(results) == 1
         assert results[-1].significance == (~3) & MASK64
@@ -324,7 +324,7 @@ class TestExpand:
         # matched: {1}, mismatched_q: {2,3}, mismatched_c: {4,5}
         # No chains → all MAX_HOP, ungrounded +1 → distance=401
         expected_distance = 401
-        results = list(m.expand(q, c, "S2"))
+        results = list(m.expand(q, c))
         assert results[-1].significance == (~expected_distance) & MASK64
 
     def test_expand_with_grounding(self):
@@ -335,7 +335,7 @@ class TestExpand:
         c = KLine(6, [1, 3])
         # distance=200 (2 × MAX_HOP, grounded match)
         expected_distance = 200
-        results = list(m.expand(q, c, "S2"))
+        results = list(m.expand(q, c))
         assert results[-1].significance == (~expected_distance) & MASK64
 
     def test_expand_hop_reaches_opposing_mismatch(self):
@@ -349,7 +349,7 @@ class TestExpand:
         q = KLine(100, [5, 2])    # mismatched_q: {5, 2}
         c = KLine(200, [10, 3])   # mismatched_c: {10, 3}
         # distance=301 (1 hop + 3 × MAX_HOP), 3 connotations + terminal
-        results = list(m.expand(q, c, "S2"))
+        results = list(m.expand(q, c))
         assert len(results) == 4
         assert results[-1].significance == (~301) & MASK64
 
@@ -364,7 +364,7 @@ class TestExpand:
         q = KLine(100, [5, 20])     # mismatched_q: {5, 20}
         c = KLine(200, [10, 30])    # mismatched_c: {10, 30}
         # distance=202, 2 connotations + terminal
-        results = list(m.expand(q, c, "S2"))
+        results = list(m.expand(q, c))
         assert len(results) == 3
         assert results[-1].significance == (~202) & MASK64
 
@@ -376,7 +376,7 @@ class TestExpand:
         q = KLine(5, [10, 20])
         c = KLine(6, [10, 20])
         # distance=0 → significance=D_MAX (all bits set)
-        results = list(m.expand(q, c, "S2"))
+        results = list(m.expand(q, c))
         assert results[-1].significance == D_MAX
 
     def test_expand_clamped_to_valid(self):
@@ -384,7 +384,7 @@ class TestExpand:
         m = make_model()
         q = KLine(5, [1])
         c = KLine(6, list(range(1000)))
-        results = list(m.expand(q, c, "S2"))
+        results = list(m.expand(q, c))
         assert 0 < results[-1].significance <= D_MAX
 
     def test_expand_range_s2(self):
@@ -392,7 +392,7 @@ class TestExpand:
         m = make_model()
         q = KLine(5, [1, 2])
         c = KLine(1, [1, 3, 4])
-        results = list(m.expand(q, c, "S2"))
+        results = list(m.expand(q, c))
         assert 0 < results[-1].significance <= D_MAX
 
     def test_expand_level_independent(self):
@@ -405,9 +405,8 @@ class TestExpand:
         m = make_model()
         q = KLine(5, [1, 2])
         c = KLine(100, [3, 4])
-        sig_s2 = list(m.expand(q, c, "S2"))[-1].significance
-        sig_s3 = list(m.expand(q, c, "S3"))[-1].significance
-        assert sig_s2 == sig_s3  # topology drives distance, not level
+        sig = list(m.expand(q, c))[-1].significance
+        assert sig > 0  # topology drives distance
 
     def test_expand_significance_ordering(self):
         """Verify significance ordering: closer match → higher significance."""
@@ -418,7 +417,7 @@ class TestExpand:
         q = KLine(100, [5, 2])     # mismatched_q: {5, 2}
         c = KLine(200, [10, 3])    # mismatched_c: {10, 3}
         # distance=301 (q-node 5 reaches c-node 10 at hop 1, rest MAX_HOP)
-        results = list(m.expand(q, c, "S2"))
+        results = list(m.expand(q, c))
         assert results[-1].significance == (~301) & MASK64
 
     def test_expand_connotation_bridging(self):
@@ -441,7 +440,7 @@ class TestExpand:
         # Connotation distance = _pack(2 + _S3_BIAS) = _pack(11) = 121
         # Terminal distance = MAX_HOP = 100 (q-node 50 unresolved at terminal level)
 
-        results = list(m.expand(q, c, "S2"))
+        results = list(m.expand(q, c))
         assert len(results) == 2
 
         # S3 connotation yield: distance = _pack(2 + _S3_BIAS)
@@ -468,7 +467,7 @@ class TestExpand:
         m = make_model()
         q = KLine(5, list(range(1000)))
         c = KLine(6, list(range(1000, 2000)))
-        results = list(m.expand(q, c, "S2"))
+        results = list(m.expand(q, c))
         sig = results[-1].significance
         assert 0 < sig <= D_MAX
 

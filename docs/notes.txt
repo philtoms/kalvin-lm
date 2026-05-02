@@ -912,3 +912,36 @@ non-linearity that makes large hops even further apart but small hops increasing
 2 candidates,
 QC1 has 1 S2 match at 6 hops, and QC2 has 6 S3 matches at 1 hop.
 Intuitively, QC1 and QC2 are significantly close. QC1 is slightly more significant because it is S2. A small rise in temperature should bring QC2 into S2 significance range
+
+Opening out cogitation even further.
+The model expansion currently deals with mismatched query nodes on the basis of exact matching: `if match_sig in mismatched_c:` etc..
+But in order to start building new klines that better signify the query response, it is necessary to explore even further by using the signature signifies function. This additional cogitation will be applied after the existing matching. Here is some pseudo code:
+```pseudo code for mismatched query nodes in model.expand
+        # Mismatched query nodes
+        for n in mismatched_q:
+            hop_distance = MAX_HOP
+            q_kline = self.find(n)
+            if q_kline is not None:
+                for hops, match_sig in self._edge_hops(n):
+                    c_kline = self._as_kline(match_sig)
+                    if match_sig in mismatched_c:
+                        hop_distance = hops
+                        yield from self.expand(
+                            q_kline, c_kline, "S2", hops, _visited=_visited,
+                        )
+                        break
+                    else:
+                      if signifies(n, match_sig): # loose match, allow cogitation before further expansion
+                        total_distance = distance + hops
+                        significance =  = (~min(total_distance, D_MAX - 1)) & MASK64
+                        yield QueryCandidate(q_kline, c_kline, significance)
+                        break
+                      if (match_sig not in s3_connotations
+                          or hops < s3_connotations[match_sig]):
+                          s3_connotations[match_sig] = hops
+
+            total_distance += hop_distance
+```
+Notes:
+  signifies is an S2 match so it precedes S3 in the codebase.
+  appropriate signifies logic would be expected for mismatched candidate nodes block

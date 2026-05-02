@@ -409,7 +409,6 @@ class Model:
         self,
         query: KLine,
         candidate: KLine,
-        level: str,
         distance: int = 0,
         *,
         _visited: set[tuple[int, int]] | None = None,
@@ -429,7 +428,6 @@ class Model:
         ----------
         query: The query KLine.
         candidate: The candidate KLine.
-        level: Routing level (``"S2"`` or ``"S3"``).
         distance: Accumulated hop distance (internal, for recursive calls).
         _visited: Internal cycle-detection set.
 
@@ -471,7 +469,7 @@ class Model:
                         hop_distance = hops
                         c_kline = self._as_kline(match_sig)
                         yield from self.expand(
-                            q_kline, c_kline, "S2", hops, _visited=_visited,
+                            q_kline, c_kline, hops, _visited=_visited,
                         )
                         break
                     elif (match_sig not in s3_connotations
@@ -489,14 +487,14 @@ class Model:
                         hop_distance = hops
                         c_kline = self._as_kline(match_sig)
                         yield from self.expand(
-                            q_kline, c_kline, "S2", hops, _visited=_visited,
+                            q_kline, c_kline, hops, _visited=_visited,
                         )
                         break
                     elif match_sig in s3_connotations:
                         s3_hop = s3_connotations[match_sig] + hops
                         c_kline = self._as_kline(match_sig)
                         yield from self.expand(
-                            q_kline, c_kline, "S3",
+                            q_kline, c_kline,
                             _pack(s3_hop + _S3_BIAS),
                             _visited=_visited,
                         )

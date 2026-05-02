@@ -291,7 +291,7 @@ class TestStreamingSampling:
         cog._s1_calls = s1_calls  # attach for test access
 
         # Mock expand to yield our fixed QCs
-        def mock_expand(query, candidate, level, distance=0, **kw):
+        def mock_expand(query, candidate, distance=0, **kw):
             yield from yields
 
         cog._model.expand = mock_expand

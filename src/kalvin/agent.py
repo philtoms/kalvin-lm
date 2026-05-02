@@ -241,7 +241,7 @@ class Cogitator:
         significance, no per-yield mutation. Top-k caps the exploration
         budget, and top-p triggers early stopping on sufficient evidence.
         """
-        query, candidate, level = item
+        query, candidate, _level = item
         s = self.sampling
 
         s12, s23, s34 = self._boundaries()
@@ -249,7 +249,7 @@ class Cogitator:
         count = 0
         cumulative = 0
 
-        for qc in self._model.expand(query, candidate, level):
+        for qc in self._model.expand(query, candidate):
             band = self._classify(qc.significance, s12, s23, s34)
 
             if band == "S4":

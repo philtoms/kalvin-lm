@@ -93,7 +93,7 @@ class KModel(ABC):
         ...
 
     @abstractmethod
-    def expand(self, kline: KLine, depth: int = 2) -> list[KLine]:
+    def expand(self, kline: KLine) -> list[KLine]:
         """Expand a KLine's graph context up to *depth* levels."""
         ...
 
