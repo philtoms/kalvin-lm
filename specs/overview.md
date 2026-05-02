@@ -150,8 +150,8 @@ Before a distance calculation can be applied to establish significance between t
 1. For each node in the query KLine, test: does this node exist in the candidate?.
 2. Count the matched nodes and **route**:
    - All nodes match → distance = 0 → **S1**
-   - Some nodes match → `model.expand(query, candidate, "S2")` → **S2**
-   - No nodes match → `model.expand(query, candidate, "S3")` → **S3**
+   - Some nodes match → `model.expand(query, candidate)` → **S2**
+   - No nodes match → `model.expand(query, candidate)` → **S3**
 
 This routing is **pessimistic**: the presence of any node in either KLine that doesn't exist in the other pulls the overall level down. Only S2 and S3 routes invoke `model.expand()`.
 
@@ -214,7 +214,7 @@ Find all KLines in the model whose signatures share at least one bit with the qu
 
 ### Phase 5: Compute Significance
 
-For each candidate, run the significance pipeline: routing, graph expansion, distance extraction, inversion. Collect all `(candidate, significance, level)` triples.
+For each candidate, run the significance pipeline: routing, graph expansion, distance extraction, inversion. Collect all `(candidate, significance)` triples.
 
 ### Phase 6: Integrate
 
@@ -312,12 +312,12 @@ diminishing returns.
 ### Streaming Pipeline
 
 ```
-run_work_item(WorkItem(query, candidate, level)):
+run_work_item(WorkItem(query, candidate)):
   (s12, s23, s34) = boundaries(temperature)    # computed once
   evidence_target = top_p × D_MAX
   count = 0, cumulative = 0
 
-  for qc in model.expand(query, candidate, level):
+  for qc in model.expand(query, candidate):
     band = classify(qc.significance, s12, s23, s34)
 
     if band == "S4":
@@ -432,7 +432,7 @@ Candidate retrieval uses bitwise AND on signatures as a fast pre-filter. This is
 The following have TBD semantics in the current specs:
 
 1. **`model.is_s1(node)`** — What does "perfect match" mean for a single node against a candidate? The agency framing suggests: a canonical match where the node's contribution to the query's signature is fully represented in the candidate's signature (`node & candidate.signature == node`), or a countersigned match (see `model.is_countersigned`). The routing depends on this, but the full comparison semantics are not yet defined.
-2. ~~**`model.s2_distance(query, candidate)`**~~ — Resolved. Replaced by `model.expand(query, candidate, level)` with per-node hop-distance and connotation bridging. See @model spec.
-3. ~~**`model.s3_distance(query, candidate)`**~~ — Resolved. Replaced by `model.expand(query, candidate, level)` with connotation bridging for indirect node connections. See @model spec.
+2. ~~**`model.s2_distance(query, candidate)`**~~ — Resolved. Replaced by `model.expand(query, candidate)` with per-node hop-distance and connotation bridging. See @model spec.
+3. ~~**`model.s3_distance(query, candidate)`**~~ — Resolved. Replaced by `model.expand(query, candidate)` with connotation bridging for indirect node connections. See @model spec.
 4. **Candidate retrieval efficiency** — `model.where(predicate)` performs a linear scan. A dedicated `candidates_for(signature)` method with an inverted bit-to-signature index may be needed for large models.
 5. **Mod literal encoding capacity** — The new literal encoding `(char << 32) | 0xFFFFFFFF` places the character code point in the upper 32 bits, limiting code points to the range [0, 2³²−1]. This covers the entire Unicode range (max code point 0x10FFFF) with substantial headroom.

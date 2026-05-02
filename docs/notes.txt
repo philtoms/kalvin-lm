@@ -927,7 +927,7 @@ But in order to start building new klines that better signify the query response
                     if match_sig in mismatched_c:
                         hop_distance = hops
                         yield from self.expand(
-                            q_kline, c_kline, "S2", hops, _visited=_visited,
+                            q_kline, c_kline, hops, _visited=_visited,
                         )
                         break
                     else:

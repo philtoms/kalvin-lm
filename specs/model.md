@@ -404,7 +404,7 @@ Returns whether a node value resolves to a kline in the model.
 ### Expand (Significance)
 
 ```
-model.expand(query, candidate, level, distance=0) → Iterator[QueryCandidate]
+model.expand(query, candidate, distance=0) → Iterator[QueryCandidate]
 ```
 
 A generator that expands a query-candidate pair, yielding `QueryCandidate`
@@ -413,7 +413,6 @@ computed significance.
 
 - `query` — the query Kline.
 - `candidate` — a candidate Kline.
-- `level` — either `"S2"` or `"S3"`, determined by the Agent's routing step.
 - `distance` — accumulated hop distance for recursive calls (default 0).
 - **Yields** intermediate `QueryCandidate` items for each discovered
   connotation (S2 and S3 indirect relationships), followed by a terminal
@@ -479,7 +478,7 @@ S3 distances moderately exceed S2 distances. The topology naturally separates
 the tiers while keeping them close enough for temperature to bridge.
 
 ```
-expand(query, candidate, level, distance=0, _visited=None):
+expand(query, candidate, distance=0, _visited=None):
     if _visited is None:
         _visited = set()
     key = (query.signature, candidate.signature)
@@ -493,51 +492,65 @@ expand(query, candidate, level, distance=0, _visited=None):
     mismatched_c = c_set - q_set
     matched      = q_set ∩ c_set
 
-    level_distance = distance
-    s2_distance = 0
-    s3_distance = 0
+    total_distance = distance
     s3_connotations = {}   # sig → min hops from any query node
 
     # Pass 1: mismatched query nodes
-    #   - Direct match in mismatched_c → yield S2 connotation
-    #   - No direct match → record in s3_connotations for bridging
+    #   - Direct match in mismatched_c → yield S2 connotation (exact)
+    #   - Signifies match → yield S2 cogitation candidate (loose)
+    #   - No match → record in s3_connotations for bridging
     for n in mismatched_q:
         hop_distance = MAX_HOP
         for hops, match_sig in edge_hops(n):
             if match_sig in mismatched_c:
                 hop_distance = hops
-                yield from expand(find(n), find(match_sig), "S2", hops)
+                yield from expand(find(n), find(match_sig), hops)
+                break
+            elif signifies(n, match_sig):
+                c_kline = find(match_sig)
+                if c_kline is not None:
+                    sig_distance = distance + hops
+                    significance = (~min(sig_distance, D_MAX - 1)) & MASK64
+                    yield QueryCandidate(find(n), c_kline, significance)
                 break
             elif match_sig not in s3_connotations
                  or hops < s3_connotations[match_sig]:
                 s3_connotations[match_sig] = hops
-        level_distance += hop_distance
+        total_distance += hop_distance
 
     # Pass 2: mismatched candidate nodes
-    #   - Direct match in mismatched_q → yield S2 connotation
+    #   - Direct match in mismatched_q → yield S2 connotation (exact)
+    #   - Signifies match → yield S2 cogitation candidate (loose)
     #   - Connotation bridge → yield S3 connotation
     for n in mismatched_c:
         hop_distance = MAX_HOP
         for hops, match_sig in edge_hops(n):
             if match_sig in mismatched_q:
                 hop_distance = hops
-                yield from expand(find(n), find(match_sig), "S2", hops)
+                yield from expand(find(n), find(match_sig), hops)
+                break
+            elif signifies(n, match_sig):
+                c_kline = find(match_sig)
+                if c_kline is not None:
+                    sig_distance = distance + hops
+                    significance = (~min(sig_distance, D_MAX - 1)) & MASK64
+                    yield QueryCandidate(find(n), c_kline, significance)
                 break
             elif match_sig in s3_connotations:
                 hop_distance += s3_connotations[match_sig] + hops
-                yield from expand(find(n), find(match_sig), "S3",
+                yield from expand(find(n), find(match_sig),
                                   _pack(hop_distance + _S3_BIAS))
                 hop_distance = 0
                 break
-        level_distance += hop_distance
+        total_distance += hop_distance
 
     # Pass 3: matched but ungrounded nodes
     for n in matched:
         if not is_s1(n):
-            level_distance += 1
+            total_distance += 1
 
     # Carry forward the incoming distance
-    total_distance = level_distance + distance
+    total_distance += distance
 
     # Clamp to avoid overflow, then invert to significance
     significance = (~min(total_distance, D_MAX - 1)) & MASK64
@@ -548,7 +561,8 @@ expand(query, candidate, level, distance=0, _visited=None):
 
 | Node state                                                    | Contribution          | Target component  |
 | ------------------------------------------------------------- | --------------------- | ----------------- |
-| Mismatched, chain reaches opposing mismatch set at hop N      | +N to level_distance  | Accumulated directly  |
+| Mismatched, chain reaches opposing mismatch set at hop N      | +N to total_distance   | Accumulated directly  |
+| Mismatched, chain reaches signature with bitwise overlap      | yields QC, +MAX_HOP   | S2 signifies candidate |
 | Mismatched, chain never reaches opposing mismatch set         | +MAX_HOP              | Accumulated directly  |
 | Mismatched candidate, chain bridges via connotation           | round-trip, hop = 0   | S3 packed (always)    |
 | Matched + grounded (is_s1)                                    | 0                     | Neutral               |
@@ -561,6 +575,18 @@ and a mismatched candidate node, it **yields an S2 connotation**: a
 recursive `expand()` call on the resolved KLines of those two nodes.
 This connotation represents a direct structural relationship between
 sub-graphs of the query and candidate.
+
+When a mismatched node's edge hop reaches a signature that shares bits
+with the node value (`signifies(node, reached_sig) == true`), but the
+reached signature is not an exact match in the opposing mismatch set,
+`expand()` **yields an S2 signifies candidate**: a `QueryCandidate`
+with `significance = (~min(distance + hops, D_MAX - 1)) & MASK64`. This
+represents a loose structural relationship — the two signatures overlap
+in at least one bit, suggesting potential significance for cogitation.
+The node still contributes `MAX_HOP` to the terminal distance (signifies
+does not resolve the mismatch). Signifies matching short-circuits before
+S3 connotation recording, preventing the same hop from being recorded
+as both an S2 and an S3 path.
 
 When connotation bridging succeeds (query node reaches an intermediate
 signature that a candidate node also reaches), `expand()` **yields an S3
@@ -582,9 +608,14 @@ pair has already been expanded, subsequent encounters return immediately.
    significance.
 2. **Significance is inverted distance** — the model inverts distance
    to produce significance: `(~distance) & MASK64`. Higher is more significant.
-3. **Level is preserved but distance is topology-driven** — mismatched node
-   hop distances accumulate the same way regardless of routing level.
-4. **Connotation is always S3** — indirect bridging always uses packed
+3. **Distance is topology-driven** — mismatched node
+   hop distances accumulate purely from graph topology.
+4. **S2 signifies short-circuits before S3** — when a node's edge hop
+   reaches a signature with bitwise overlap, a `QueryCandidate` is yielded
+   for cogitation and the hop chain stops. The `s3_connotations` dict is
+   not populated for that hop, preventing S3 connotation bridging from
+   recording the same path.
+5. **Connotation is always S3** — indirect bridging always uses packed
    distance `_pack(hops + _S3_BIAS)`, capturing associative distance.
 5. **Ungrounded penalty is always +1** — matched but ungrounded nodes
    always add 1 to distance.
@@ -642,8 +673,7 @@ the STM to exceed its bound.
 The following are explicitly **out of scope** for this spec:
 
 - **Significance computation.** The model computes significance internally
-  via `expand()`. Routing and level assignment are defined in the
-  significance spec.
+  via `expand()`. Routing is defined in the significance spec.
 - **Encoding.** Converting text or other input into Klines is the agent's
   responsibility (@agent spec).
 - **Tokenisation.** Producing nodes from input is defined in the

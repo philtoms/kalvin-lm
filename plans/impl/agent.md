@@ -198,7 +198,6 @@ loop immediately. No further candidates are routed. No distance is computed.
 class WorkItem(NamedTuple):
     query: KLine
     candidate: KLine
-    level: str  # "S2" or "S3"
 ```
 
 ### Cogitator Spec
@@ -250,12 +249,12 @@ classify(sig, s12, s23, s34):
 **Processing per work item — boundary-based streaming:**
 
 ```
-run_work_item(WorkItem(query, candidate, level)):
+run_work_item(WorkItem(query, candidate)):
   (s12, s23, s34) = boundaries(sampling.temperature)
   evidence_target = sampling.top_p × D_MAX
   count = 0, cumulative = 0
 
-  for qc in model.expand(query, candidate, level):
+  for qc in model.expand(query, candidate):
     band = classify(qc.significance, s12, s23, s34)
 
     if band == "S4":
@@ -360,7 +359,7 @@ def is_countersigned(Q, C):
 
 | Test              | Description                      |
 | ----------------- | -------------------------------- |
-| Field access      | query, candidate, level correct  |
+| Field access      | query, candidate correct         |
 | Equality          | Same fields → equal              |
 
 ### Cogitation (Cogitator)

@@ -81,7 +81,7 @@ model.promote_all() → int      # Promote all frame KLines to base.
 ### Significance API (consumed by Cogitator)
 
 ```python
-model.expand(query, candidate, level) → Iterator[QueryCandidate]  # connotation generator
+model.expand(query, candidate) → Iterator[QueryCandidate]  # connotation generator
 model.is_countersigned(a, b) → bool
 ```
 
@@ -121,13 +121,12 @@ model._edge_hops(sig) → Iterator    # yields (hop_count, next_sig)
 
 ## 2. Expand Algorithm
 
-### `expand(query, candidate, level, distance=0) → Iterator[QueryCandidate]`
+### `expand(query, candidate, distance=0) → Iterator[QueryCandidate]`
 
 A generator that expands a query-candidate pair, yielding intermediate
 connotation results and a terminal packed distance. Replaces the previous
 `distance()` function with a richer expansion API.
 
-- `level` — `"S2"` or `"S3"`, determined by Agent routing.
 - `distance` — accumulated hop distance for recursive calls (default 0).
 - **Yields** intermediate `QueryCandidate` items for connotations, then a
   terminal `QueryCandidate` with the computed significance.
@@ -166,7 +165,7 @@ def _edge_hops(self, sig: int) -> Iterator[tuple[int, int]]:
 ### Algorithm
 
 ```python
-def expand(self, query, candidate, level, distance=0, _visited=None):
+def expand(self, query, candidate, distance=0, _visited=None):
     if _visited is None:
         _visited = set()
     key = (query.signature, candidate.signature)
@@ -180,12 +179,13 @@ def expand(self, query, candidate, level, distance=0, _visited=None):
     mismatched_c = c_set - q_set
     matched = q_set & c_set
 
-    level_distance = distance
-    s2_distance = 0
-    s3_distance = 0
+    total_distance = distance
     s3_connotations = {}  # sig → min hops from any query node
 
     # Pass 1: mismatched query nodes
+    #   - Direct match in mismatched_c → yield S2 connotation (exact)
+    #   - Signifies match → yield S2 cogitation candidate (loose)
+    #   - No match → record in s3_connotations for bridging
     for n in mismatched_q:
         hop_distance = MAX_HOP
         for hops, match_sig in self._edge_hops(n):
@@ -194,14 +194,24 @@ def expand(self, query, candidate, level, distance=0, _visited=None):
                 q_kline = self.find(n)
                 c_kline = self.find(match_sig)
                 if q_kline and c_kline:
-                    yield from self.expand(q_kline, c_kline, "S2", hops)
+                    yield from self.expand(q_kline, c_kline, hops)
+                break
+            elif signifies(n, match_sig):
+                c_kline = self.find(match_sig)
+                if c_kline is not None:
+                    sig_distance = distance + hops
+                    significance = (~min(sig_distance, D_MAX - 1)) & MASK64
+                    yield QueryCandidate(self.find(n), c_kline, significance)
                 break
             elif (match_sig not in s3_connotations
                   or hops < s3_connotations[match_sig]):
                 s3_connotations[match_sig] = hops
-        level_distance += hop_distance
+        total_distance += hop_distance
 
     # Pass 2: mismatched candidate nodes
+    #   - Direct match in mismatched_q → yield S2 connotation (exact)
+    #   - Signifies match → yield S2 cogitation candidate (loose)
+    #   - Connotation bridge → yield S3 connotation
     for n in mismatched_c:
         hop_distance = MAX_HOP
         for hops, match_sig in self._edge_hops(n):
@@ -210,25 +220,32 @@ def expand(self, query, candidate, level, distance=0, _visited=None):
                 q_kline = self.find(n)
                 c_kline = self.find(match_sig)
                 if q_kline and c_kline:
-                    yield from self.expand(q_kline, c_kline, "S2", hops)
+                    yield from self.expand(q_kline, c_kline, hops)
+                break
+            elif signifies(n, match_sig):
+                c_kline = self.find(match_sig)
+                if c_kline is not None:
+                    sig_distance = distance + hops
+                    significance = (~min(sig_distance, D_MAX - 1)) & MASK64
+                    yield QueryCandidate(self.find(n), c_kline, significance)
                 break
             elif match_sig in s3_connotations:
                 hop_distance += s3_connotations[match_sig] + hops
                 q_kline = self.find(n)
                 c_kline = self.find(match_sig)
                 if q_kline and c_kline:
-                    yield from self.expand(q_kline, c_kline, "S3", hop_distance)
+                    yield from self.expand(q_kline, c_kline, hop_distance)
                 hop_distance = 0
                 break
-        level_distance += hop_distance
+        total_distance += hop_distance
 
     # Matched but not grounded → penalty
     for n in matched:
         if not self.is_s1(n):
-            level_distance += 1
+            total_distance += 1
 
     # Carry forward the incoming distance
-    total_distance = level_distance + distance
+    total_distance += distance
 
     # Clamp to avoid overflow, then invert to significance
     significance = (~min(total_distance, D_MAX - 1)) & MASK64
@@ -239,7 +256,8 @@ def expand(self, query, candidate, level, distance=0, _visited=None):
 
 | Node state                                                    | Contribution          | Target component  |
 | ------------------------------------------------------------- | --------------------- | ----------------- |
-| Mismatched, chain reaches opposing mismatch set at hop N      | +N to level_distance  | Accumulated directly  |
+| Mismatched, chain reaches opposing mismatch set at hop N      | +N to total_distance   | Accumulated directly  |
+| Mismatched, chain reaches signature with bitwise overlap      | yields QC, +MAX_HOP   | S2 signifies candidate |
 | Mismatched, chain never reaches opposing mismatch set         | +MAX_HOP              | Accumulated directly  |
 | Mismatched candidate, chain bridges via connotation           | round-trip, hop = 0   | S3 packed (always)    |
 | Matched + grounded (is_s1)                                    | 0                     | Neutral               |
@@ -254,9 +272,25 @@ to each intermediate. Candidate nodes then check whether their hop chains
 reach any of these intermediates. If so, the round-trip distance
 (query hops + candidate hops) contributes to the S3 component.
 
-Connotation bridging always contributes to S3 regardless of the routing level.
+Connotation bridging always contributes to S3 regardless of routing.
 This captures indirect, associative connections — the "reminiscent"
 relationship that characterises S3.
+
+### S2 Signifies Cogitation
+
+Before connotation bridging is attempted, each hop in the chain is checked
+for **signifies** — whether the node value and the reached signature share
+at least one set bit (`signifies(node, reached_sig)`). If so, a
+`QueryCandidate` is yielded with `significance = (~min(distance + hops, D_MAX - 1)) & MASK64`.
+
+This captures a looser structural relationship than exact matching: the
+signatures are not identical, but they overlap in at least one bit,
+suggesting potential significance. The candidate is yielded for cogitation
+without further recursive expansion. The mismatched node still contributes
+`MAX_HOP` to the terminal distance — signifies does not resolve the mismatch.
+
+Signifies short-circuits before S3 connotation recording, preventing the
+same hop from being recorded as both an S2 and an S3 path.
 
 ### Connotation Expansion
 
@@ -279,12 +313,16 @@ Cogitator — countersignature is checked for every yielded item.
 2. **Significance is inverted distance** — the model inverts distance
    to produce significance: `(~distance) & MASK64`.
 3. **Level is preserved but distance is topology-driven** — mismatched hop
-   distances accumulate the same way regardless of routing level.
-4. **Connotation is always S3** — indirect bridging always uses packed distance.
-5. **Ungrounded penalty is always +1** — matched but ungrounded nodes add 1.
-6. **Bidirectional** — mismatched nodes from both query and candidate
+   distances accumulate purely from topology.
+4. **S2 signifies short-circuits before S3** — when a node's edge hop
+   reaches a signature with bitwise overlap, a `QueryCandidate` is yielded
+   for cogitation and the hop chain stops. The `s3_connotations` dict is
+   not populated for that hop.
+5. **Connotation is always S3** — indirect bridging always uses packed distance.
+6. **Ungrounded penalty is always +1** — matched but ungrounded nodes add 1.
+7. **Bidirectional** — mismatched nodes from both query and candidate
    contribute.
-7. **Quadratic packing** — `_pack(d) = d²` ensures small distances stay
+8. **Quadratic packing** — `_pack(d) = d²` ensures small distances stay
    close and large distances spread apart.
 
 ### `is_countersigned(a, b) → bool`
@@ -361,9 +399,11 @@ Structural test only. Literal nodes cannot match a signature.
 | expand no resolution      | All mismatched unresolvable → low significance         |
 | expand grounding          | Matched node that resolves → higher significance |
 | expand edge hops          | Mismatched with chain → connotation yields + terminal |
+| expand S2 signifies       | Signifies loose match yields QC, terminal still MAX_HOP |
+| expand S2 before S3       | Signifies short-circuits, s3_connotations not populated |
 | expand range              | Valid significance uint64                                 |
 | expand clamped            | Significance in [1, D_MAX]                 |
-| expand S3 route           | S3 yields lower significance than S2 for same mismatch |
+| expand S3 route           | S3 bias ensures S3 distances moderately exceed S2      |
 | expand connotation        | Indirect path → S3 connotation yield + terminal    |
 | expand significance range | Significance always in valid uint64 range |
 | expand bidirectional      | Both sides yield connotations + terminal           |

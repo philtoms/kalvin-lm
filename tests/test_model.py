@@ -348,10 +348,20 @@ class TestExpand:
 
         q = KLine(100, [5, 2])    # mismatched_q: {5, 2}
         c = KLine(200, [10, 3])   # mismatched_c: {10, 3}
-        # distance=301 (1 hop + 3 × MAX_HOP), 3 connotations + terminal
+        # distance=301 (1 hop + 3 × MAX_HOP)
+        # Results include:
+        #   - S2 exact-match chain yields (expand(20,30) → expand(10,20) → expand(5,10))
+        #   - S2 signifies yields from c-nodes: 10→30 in expand(5,10) and top level
+        #   - Terminal with significance (~301) & MASK64
         results = list(m.expand(q, c))
-        assert len(results) == 4
+        assert len(results) == 6
         assert results[-1].significance == (~301) & MASK64
+
+        # S2 signifies candidates: c-node 10 reaches sig 30 (10 & 30 ≠ 0)
+        # at distance 2 in both expand(5,10) and top-level
+        signifies_results = [r for r in results[:-1]
+                            if r.significance == (~2) & MASK64]
+        assert len(signifies_results) == 2
 
     def test_expand_bidirectional_hop_match(self):
         """Both query and candidate mismatched nodes reach opposing sets."""
@@ -426,27 +436,32 @@ class TestExpand:
         S3 connotation hops are biased by _pack(hop_count + _S3_BIAS),
         ensuring S3 distances moderately exceed S2 distances while remaining
         close enough for temperature to bridge the gap.
+
+        Uses powers-of-2 nodes (4, 2, 8) so that signifies() returns False,
+        ensuring the S3 connotation path is exercised (signifies short-circuits
+        before S3 when signatures share bits).
         """
         m = make_model()
-        m.add(KLine(60, [60]))  # canonical
-        m.add(KLine(50, [60]))  # non-canon: edge_hops(50) = [(1, 60)]
-        m.add(KLine(70, [60]))  # non-canon: edge_hops(70) = [(1, 60)]
+        m.add(KLine(8, [8]))    # canonical
+        m.add(KLine(4, [8]))    # non-canon: edge_hops(4) = [(1, 8)]
+        m.add(KLine(2, [8]))    # non-canon: edge_hops(2) = [(1, 8)]
 
-        q = KLine(100, [50])     # mismatched_q: {50}
-        c = KLine(200, [70])     # mismatched_c: {70}
+        q = KLine(100, [4])     # mismatched_q: {4}
+        c = KLine(200, [2])     # mismatched_c: {2}
 
-        # s3_connotations[60] = 1 (from q-node 50)
-        # c-node 70 resolves via s3_connotation: s3_hop = 1 + 1 = 2
+        # signifies(4, 8) = False, signifies(2, 8) = False → S3 path exercised
+        # s3_connotations[8] = 1 (from q-node 4)
+        # c-node 2 resolves via s3_connotation: s3_hop = 1 + 1 = 2
         # Connotation distance = _pack(2 + _S3_BIAS) = _pack(11) = 121
-        # Terminal distance = MAX_HOP = 100 (q-node 50 unresolved at terminal level)
+        # Terminal distance = MAX_HOP = 100 (q-node 4 unresolved at terminal level)
 
         results = list(m.expand(q, c))
         assert len(results) == 2
 
         # S3 connotation yield: distance = _pack(2 + _S3_BIAS)
         connotation = results[0]
-        assert connotation.query.signature == 70
-        assert connotation.candidate.signature == 60
+        assert connotation.query.signature == 2
+        assert connotation.candidate.signature == 8
         connotation_distance = _pack(2 + _S3_BIAS)
         assert connotation.significance == (~connotation_distance) & MASK64
 
@@ -461,6 +476,82 @@ class TestExpand:
 
         # Verify S3 distance exceeds S2: connotation (121) > terminal (100)
         assert connotation_distance > 100  # S3 packed > S2 raw
+
+    def test_expand_signifies_cogitation(self):
+        """S2 signifies loose match yields additional QueryCandidates.
+
+        When a mismatched node's edge hop reaches a signature that shares bits
+        (signifies) but isn't an exact match, a QueryCandidate is yielded for
+        cogitation. The mismatched node still contributes MAX_HOP to the
+        terminal distance (signifies doesn't resolve the mismatch).
+        """
+        m = make_model()
+        m.add(KLine(30, [30]))  # canonical
+        m.add(KLine(20, [30]))  # non-canon
+        m.add(KLine(10, [20]))  # non-canon
+        m.add(KLine(5, [10]))   # non-canon
+
+        q = KLine(100, [5])      # mismatched_q: {5}
+        c = KLine(200, [10])     # mismatched_c: {10}
+
+        # q-node 5: edge_hops(5) = [(1,10), (2,20), (3,30)]
+        #   hop 1: match_sig=10 IS in mismatched_c → exact match, expand
+        #   → expand(5, 10, 1) produces its own results
+        #
+        # c-node 10: edge_hops(10) = [(1,20), (2,30)]
+        #   hop 1: match_sig=20 not in mismatched_q, signifies(10,20)=False
+        #   hop 2: match_sig=30 not in mismatched_q, signifies(10,30)=True
+        #   → yields QueryCandidate(find(10), find(30), (~2) & MASK64)
+        #   hop_distance stays MAX_HOP
+        #
+        # Terminal: distance = 1 (exact match hop) + MAX_HOP (c-node unresolved)
+
+        results = list(m.expand(q, c))
+
+        # Find the signifies candidate from c-node 10→30
+        signifies_candidates = [r for r in results
+                                if r.query.signature == 10
+                                and r.candidate.signature == 30]
+        assert len(signifies_candidates) == 1
+        sig_cand = signifies_candidates[0]
+        assert sig_cand.significance == (~2) & MASK64
+
+        # Terminal: c-node 10 contributes MAX_HOP (signifies doesn't resolve)
+        assert results[-1].significance == (~101) & MASK64
+
+    def test_expand_signifies_before_s3(self):
+        """Signifies (S2) takes precedence over s3_connotations (S3).
+
+        When signifies matches, s3_connotations is not populated for that
+        signature, preventing S3 connotation bridging for the same hop.
+        """
+        m = make_model()
+        m.add(KLine(0b11100, [0b11100]))  # canonical (28)
+        m.add(KLine(0b10100, [0b11100]))  # non-canon: sig=20, make_sig=28
+        m.add(KLine(0b01100, [0b11100]))  # non-canon: sig=12, make_sig=28
+
+        q = KLine(100, [0b10100])  # mismatched_q: {20}
+        c = KLine(200, [0b01100])  # mismatched_c: {12}
+
+        # q-node 20: edge_hops(20) = [(1, 28)]
+        #   28 not in mismatched_c, signifies(20, 28) = True (20 & 28 = 20)
+        #   → S2 signifies candidate, break (s3_connotations NOT populated)
+        #
+        # c-node 12: edge_hops(12) = [(1, 28)]
+        #   28 not in mismatched_q, signifies(12, 28) = True (12 & 28 = 12)
+        #   → S2 signifies candidate, break
+
+        results = list(m.expand(q, c))
+        assert len(results) == 3  # 2 signifies + terminal
+
+        # Both signifies candidates reach sig 28 at distance 1
+        assert results[0].candidate.signature == 0b11100
+        assert results[0].significance == (~1) & MASK64
+        assert results[1].candidate.signature == 0b11100
+        assert results[1].significance == (~1) & MASK64
+
+        # Terminal: both mismatched nodes unresolved (2 × MAX_HOP)
+        assert results[-1].significance == (~(2 * MAX_HOP)) & MASK64
 
     def test_expand_significance_in_range(self):
         """Significance is always in valid uint64 range."""

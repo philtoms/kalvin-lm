@@ -47,8 +47,8 @@ route(Q, C):
 | Route | Condition | Significance |
 | ----- | --------- | ------------ |
 | S1    | All query nodes exist in candidate | `D_MAX` (zero distance) |
-| S2    | Some query nodes exist in candidate | `model.expand(Q, C, "S2")` → last yield |
-| S3    | No query nodes exist in candidate | `model.expand(Q, C, "S3")` → last yield |
+| S2    | Some query nodes exist in candidate | `model.expand(Q, C)` → last yield |
+| S3    | No query nodes exist in candidate | `model.expand(Q, C)` → last yield |
 | S4    | No candidates or empty query | `0` (maximum distance) |
 
 ## Distance
@@ -57,15 +57,24 @@ Distance is computed by `Model.expand()` as a single accumulated integer.
 
 ### Distance accumulation
 
-For each mismatched node in the query and candidate:
+For each mismatched node in the query and candidate, the hop chain is
+traversed with a three-tier priority:
 
-- **Direct edge resolution (S2):** The node resolves via `_edge_hops()` to a
-  node in the opposite set. Adds the hop count directly to distance.
-- **Connotation resolution (S3):** The node resolves via `_edge_hops()` to a
-  signature found in `s3_connotations`. The connotation hop count is packed via
-  `_pack(hop_count + _S3_BIAS)` to ensure S3 distances moderately exceed S2
-  distances while remaining close enough for temperature to bridge.
-- **Unresolved:** Adds `MAX_HOP` (default 100).
+1. **Exact match (S2 direct):** The node resolves via `_edge_hops()` to a
+   node in the opposite mismatch set. Adds the hop count directly to
+   distance and recursively yields an S2 connotation.
+2. **Signifies match (S2 loose):** The node resolves via `_edge_hops()` to a
+   signature that shares bits with the node value (`signifies(n, sig) ==
+   true`). Yields a `QueryCandidate` for cogitation with significance
+   `(~min(distance + hops, D_MAX - 1)) & MASK64`. The node still contributes
+   `MAX_HOP` to terminal distance. Short-circuits before S3 connotation
+   recording.
+3. **Connotation resolution (S3):** The node resolves via `_edge_hops()` to
+   a signature found in `s3_connotations`. The connotation hop count is
+   packed via `_pack(hop_count + _S3_BIAS)` to ensure S3 distances
+   moderately exceed S2 distances while remaining close enough for
+   temperature to bridge.
+4. **Unresolved:** Adds `MAX_HOP` (default 100).
 
 Matched-but-ungrounded nodes (present in both but not resolving to an S1
 kline) add 1 each.
@@ -156,13 +165,11 @@ The model's `expand()` generator computes significance internally and yields
 `QueryCandidate` results:
 
 ```
-model.expand(Q, C, level) → Iterator[QueryCandidate]
+model.expand(Q, C) → Iterator[QueryCandidate]
 ```
 
 - Yields intermediate `QueryCandidate` items for each discovered connotation,
   followed by a terminal `QueryCandidate` with the computed significance.
-- `level` is `"S2"` or `"S3"`, determined by routing. It is preserved for
-  recursive calls but does not affect distance computation.
 - Each `QueryCandidate.significance` is in range `[1, D_MAX]`.
 - The distance→significance inversion is performed inside `expand()`;
   callers use `.significance` directly.

@@ -46,7 +46,7 @@ This spec depends on the following concepts, defined elsewhere:
 - Provides candidate retrieval via `find`, `find_all`, `query`, `where`.
 - Provides `find_by_nodes` for transitive grounding via nodes signature.
 - Provides `promote` and `promote_all` for persisting Klines to the base.
-- Provides `expand(Q, C, level)` generator for graph expansion yielding
+- Provides `expand(Q, C)` generator for graph expansion yielding
   connotations and terminal significance.
 - Provides `QueryCandidate` named tuple with `.significance` field
   (pre-computed by the model).
@@ -115,14 +115,14 @@ Rationalise(Q):
   │    For each candidate Cᵢ:                                │
   │      level = route(Q, Cᵢ)   ← node membership, no model │
   │      S1 → promote, emit "frame", return True (done)      │
-  │      S2 → submit WorkItem(Q, Cᵢ, "S2") to cogitator     │
-  │      S3 → submit WorkItem(Q, Cᵢ, "S3") to cogitator     │
+  │      S2 → submit WorkItem(Q, Cᵢ) to cogitator            │
+  │      S3 → submit WorkItem(Q, Cᵢ) to cogitator            │
   │    return False                                           │
   └───────────────────────────────────────────────────────────┘
 
   ┌─── SLOW PATH (Cogitator, background thread) ────────────┐
-  │ For each WorkItem(Q, C, level):                          │
-  │   for qc in model.expand(Q, C, level):                       │
+  │ For each WorkItem(Q, C):                                  │
+  │   for qc in model.expand(Q, C):                             │
   │     process(qc)                                              │
   │                                                              │
   │ process(QueryCandidate(query, candidate, significance)):     │
@@ -216,8 +216,8 @@ in the candidate's node sequence. No model function is called.
 | Route | Action | Model call? |
 | ----- | ------ | ----------- |
 | S1    | Promote Q, emit `"frame"` S1, return `True` | No |
-| S2    | Submit `WorkItem(Q, C, "S2")` to Cogitator | No |
-| S3    | Submit `WorkItem(Q, C, "S3")` to Cogitator | No |
+| S2    | Submit `WorkItem(Q, C)` to Cogitator | No |
+| S3    | Submit `WorkItem(Q, C)` to Cogitator | No |
 
 **S1 short-circuits**: the first candidate that routes as S1 terminates the
 loop immediately. No further candidates are routed. No distance is computed.
@@ -227,14 +227,13 @@ for the Cogitator. Return `False`.
 
 ## Work Items
 
-A WorkItem is a single query-candidate-level tuple queued for background
+A WorkItem is a single query-candidate pair queued for background
 processing:
 
 ```
 WorkItem:
   query:      KLine
   candidate:  KLine
-  level:      str    # "S2" or "S3"
 ```
 
 The agent submits one WorkItem per routed S2/S3 candidate. The Cogitator
@@ -352,12 +351,12 @@ Boundaries are computed once per work item. Each yield is classified
 against the boundaries:
 
 ```
-run_work_item(WorkItem(query, candidate, level)):
+run_work_item(WorkItem(query, candidate)):
   (s12, s23, s34) = boundaries(sampling.temperature)
   evidence_target = sampling.top_p × D_MAX
   count = 0, cumulative = 0
 
-  for qc in model.expand(query, candidate, level):
+  for qc in model.expand(query, candidate):
     band = classify(qc.significance, s12, s23, s34)
 
     if band == "S4":
@@ -457,7 +456,7 @@ S1 and parallel processing of S2/S3.
 ### 3. Cogitator Receives Pre-Routed Work Items
 
 The Cogitator no longer retrieves candidates or expands graph context.
-It receives a WorkItem with a pre-routed level and computes distance
+It receives a WorkItem and computes distance
 for that single pair.
 
 **Rationale**: Separating routing (agent, fast) from graph expansion

@@ -59,7 +59,7 @@ Input Text → Tokenizer → Nodes → KLine → Agent → Model (Knowledge Grap
 │  Routing is inline (_route: node-membership, no model call)       │
 ├──────────────────────────────────────────────────────────────────┤
 │  Cogitator (work-item processor)                                  │
-│  Receives pre-routed WorkItem(Q, C, level)                        │
+│  Receives WorkItem(Q, C)                                          │
 │  Expands: model.expand → QueryCandidate stream (significance)     │
 │  Processes: countersignature check per QueryCandidate              │
 ├──────────────────────────────────────────────────────────────────┤

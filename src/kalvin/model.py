@@ -472,6 +472,13 @@ class Model:
                             q_kline, c_kline, hops, _visited=_visited,
                         )
                         break
+                    elif signifies(n, match_sig):
+                        c_kline = self.find(match_sig)
+                        if c_kline is not None:
+                            sig_distance = distance + hops
+                            significance = (~min(sig_distance, D_MAX - 1)) & MASK64
+                            yield QueryCandidate(q_kline, c_kline, significance)
+                        break
                     elif (match_sig not in s3_connotations
                         or hops < s3_connotations[match_sig]):
                         s3_connotations[match_sig] = hops
@@ -489,6 +496,13 @@ class Model:
                         yield from self.expand(
                             q_kline, c_kline, hops, _visited=_visited,
                         )
+                        break
+                    elif signifies(n, match_sig):
+                        c_kline = self.find(match_sig)
+                        if c_kline is not None:
+                            sig_distance = distance + hops
+                            significance = (~min(sig_distance, D_MAX - 1)) & MASK64
+                            yield QueryCandidate(q_kline, c_kline, significance)
                         break
                     elif match_sig in s3_connotations:
                         s3_hop = s3_connotations[match_sig] + hops
