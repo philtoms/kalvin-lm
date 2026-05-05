@@ -1,3 +1,5 @@
+NOT FOR AGENTS: Agents should not read this user generated document. It contains many conflicting incomplete and chaotic ideas. Agent BEWARE!
+
 Granularity and entropy
 The amount of entropy in a system is independent of the granularity of focus. Where entropy is a measure of information contained in a single packet. One might view a car, or the sub assembly of a car, a single component part, or even some aspect of its operation as all having a similar amount of information governed by entropy packet size regardless of granularity. This leads to the idea that in order to rationalisation more granularity is simply a function of packet count. 
 
@@ -945,3 +947,14 @@ But in order to start building new klines that better signify the query response
 Notes:
   signifies is an S2 match so it precedes S3 in the codebase.
   appropriate signifies logic would be expected for mismatched candidate nodes block
+
+@docs/overview.md adequately describes the system as it stands. We need to create a document that describes the system's future: kalvin is a trainable system that learns through inference and feedback. When kalvin rationalises a query kline, its goal is to understand this new information in terms of its grounded knowledge base. Internally it uses a graded significance to establish whether this is truly new information, or whether it already understands at least some part of it. Effectively, Kalvin strives to understand a query by raising its significance as far as it can in terms it does already understand. Significance ranges from S1, I already understand this query through to S4, I do not understand anything about this query. 
+
+Without training feedback, Kalvin would never be able to understand new information and would rely on externally controlled temperature to blur the line between understanding and not understanding. This is not how Kalvin works. Instead, it uses temperature as a training aide to propose a level of understanding that is less than full S1. The feedback system is then responsible for accepting or rejecting the proposal. But critically, it offers additional information that Kalvin can use to bridge the knowledge gap. This additional information goes through the same rationalisation process as the original query, so that Kalvin learns bit by bit, structure by structure, until it forms a fully rational understanding of the original query.
+
+The bridging metaphor works for the idea of kalvin filling its knowledge gap, but it is not a good metaphor for essentially what is a teaching opportunity. This might be a formal teaching session as experienced in a school or learning institution, or it might simply be gentle instruction as when a parent corrects a child. The underlying process is the same, but the sentiment is very different. Lets rewrite the feedback sections to be more sympathetic
+towards established anthropomorphic teacher / training methods.
+
+This is good, lets keep it as it is. But now I want to reintroduce the notion of agency. This is Kalvin's core principal of choice that it must use to do useful work. It is learnable (another way of saying that Kalvin's choices get better) because it is expressed through the same significance that training brings out, but it is always present. This is Kalvin's opportunity to study! A teacher might bring Kalvin's understanding up to a high S2 level, and might start to labour the wrong point. This is where study or homework is very important: Kalvin might not know that it already knows!
+
+And finally, to drive the anthropomorphic link home, Kalvin's agency to signify does not extend to full S1! (this is in contrast the the current system). This level of significance must be ratified by the feedback system. Only when Kalvin receives feedback that it can route directly to S1 without cogitation does it know that it knows. This slightly contradicts the previous idea about study in that it suggests that the trainer is always in the loop, and that until new information is ratified it must remain at S2.
