@@ -155,22 +155,38 @@ its dependencies are satisfied.
 
 ---
 
-## 3. Dependency Injection Pattern
+## 3. `is_literal` — Standalone Function
 
-Several components require `is_literal_fn` from the tokenizer. To avoid
-circular dependencies and keep components testable in isolation, use
-**constructor injection**:
+`is_literal(node)` is a standalone function defined by the node encoding
+layer (bit layout). It is **not** a tokenizer method. All components import
+it directly:
+
+```python
+def is_literal(node: int) -> bool:
+    return (node & 0xFFFF_FFFF) == 0xFFFF_FFFF
+```
+
+This eliminates the need for `is_literal_fn` injection:
 
 ```
+# Before (injection pattern):
 Kline.is_literal(is_literal_fn)     # Passed at call time
 make_signature(nodes, is_literal_fn) # Passed at call time
 Model(is_literal_fn=fn)              # Stored at construction
-STM(is_literal_fn=fn)                # Stored at construction (@stm spec)
+STM(is_literal_fn=fn)                # Stored at construction
 Agent(tokenizer=tok)                 # Uses tok.is_literal
+
+# After (direct import):
+from kalvin.kline import is_literal  # or wherever defined
+Kline.is_literal()                   # Uses is_literal internally
+make_signature(nodes)                # Uses is_literal internally
+Model()                              # No injection needed
+STM()                                # No injection needed
+Agent(tokenizer=tok)                 # No is_literal concern
 ```
 
-The Agent is the composition root - it creates the tokenizer and injects
-`tokenizer.is_literal` into all downstream components.
+The Agent is still the composition root for the tokenizer, but `is_literal`
+no longer flows through it to downstream components.
 
 ---
 

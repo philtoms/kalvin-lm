@@ -12,7 +12,7 @@ from typing import Callable, Iterator, NamedTuple
 
 from kalvin.kline import KLine, KSig
 from kalvin.stm import STM
-from kalvin.signature import make_signature, signifies
+from kalvin.signature import make_signature, signifies, is_literal_node
 
 # _S3_BIAS — S3 connotation tier bias. Connotation hop counts are biased by this
 # amount before quadratic packing, ensuring S3 packed distances exceed S2 distances
@@ -59,11 +59,9 @@ class Model:
     The caller sees a single unified API.
     """
 
-    def __init__(self, base: Model | None = None, stm_bound: int = 256,
-                 is_literal_fn: Callable[[int], bool] | None = None):
+    def __init__(self, base: Model | None = None, stm_bound: int = 256):
         self._base = base
-        self._stm = STM(is_literal_fn=is_literal_fn, bound=stm_bound)
-        self._is_literal_fn = is_literal_fn or (lambda _: False)
+        self._stm = STM(bound=stm_bound)
 
         # Frame storage — ordered dict for reverse-insertion-order iteration
         self._frame_list: list[KLine] = []
@@ -71,7 +69,7 @@ class Model:
         self._frame_dedup: set[tuple[KSig, tuple[int, ...]]] = set()
 
     def _make_sig(self, nodes: list[int]) -> int:
-        return make_signature(nodes, self._is_literal_fn)
+        return make_signature(nodes)
 
     # ── Storage Operations ────────────────────────────────────────────
 
@@ -560,7 +558,7 @@ class Model:
         """Create a duplicate of this model's frame."""
         klines = [KLine(kl.signature, list(kl.nodes), kl.literal, kl.dbg_text)
                    for kl in self._frame_list if kl is not None]
-        m = Model(is_literal_fn=self._is_literal_fn)
+        m = Model()
         for kl in klines:
             m.add(kl)
             m.promote(kl)

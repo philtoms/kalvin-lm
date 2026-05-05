@@ -24,7 +24,7 @@ Three-tier layered knowledge graph: `STM → Frame → Base`. STM is defined in 
 ### Construction
 
 ```python
-Model(base=None, stm_bound=256, is_literal_fn=None)
+Model(base=None, stm_bound=256)
 ```
 
 ### Storage Operations
@@ -41,7 +41,8 @@ len(model) → int                 # Frame count only
 
 ### Deduplication
 
-When `add` receives a literal KLine (all nodes literal per `is_literal`),
+When `add` receives a literal KLine (all nodes literal per the standalone
+`is_literal` function),
 check for an equal KLine in any tier. If duplicate exists, reject
 (return False). Non-literal KLines are always accepted.
 

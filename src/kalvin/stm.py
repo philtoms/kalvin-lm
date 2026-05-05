@@ -13,9 +13,8 @@ the oldest entries are evicted.
 
 from __future__ import annotations
 
-from typing import Callable
-
 from kalvin.kline import KLine, KSig, KNode
+from kalvin.signature import make_signature, is_literal_node
 
 
 class STM:
@@ -23,29 +22,21 @@ class STM:
 
     Parameters
     ----------
-    is_literal_fn:
-        Callable used to derive nodes signatures from node lists.
     bound:
         Maximum number of KLines to retain. Default 256.
     """
 
-    __slots__ = ("_store", "_order", "_dedup", "_is_literal_fn", "_bound")
+    __slots__ = ("_store", "_order", "_dedup", "_bound")
 
-    def __init__(
-        self,
-        is_literal_fn: Callable[[int], bool] | None = None,
-        bound: int = 256,
-    ):
+    def __init__(self, bound: int = 256):
         self._store: dict[KSig, list[KLine]] = {}
         self._order: list[KLine] = []
         self._dedup: set[tuple[KSig, tuple[int, ...]]] = set()
-        self._is_literal_fn = is_literal_fn or (lambda _: False)
         self._bound = bound
 
     def _make_signature(self, nodes: list[int]) -> int:
         """Derive a nodes signature from a node list."""
-        from kalvin.signature import make_signature
-        return make_signature(nodes, self._is_literal_fn)
+        return make_signature(nodes)
 
     # ── Core API ────────────────────────────────────────────────────────
 

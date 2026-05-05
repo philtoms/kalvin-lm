@@ -13,10 +13,7 @@ from __future__ import annotations
 from typing import Any
 
 from kalvin.abstract import KTokenizer
-
-# ── Literal mask ──────────────────────────────────────────────────────────
-# Lower 32 bits all set — unambiguous discriminator for literal nodes.
-LITERAL_MASK = 0xFFFF_FFFF
+from kalvin.signature import LITERAL_MASK
 
 # ── Default alphabet ──────────────────────────────────────────────────────
 # All printable ASCII (codes 32–126), order determines bit priority.
@@ -83,21 +80,17 @@ class ModTokenizer(KTokenizer):
     def vocab_size(self) -> int:
         return len(self._bit_char)
 
-    # ── Literal test ──────────────────────────────────────────────────
-
-    def is_literal(self, node: int) -> bool:
-        """Return True if node is a literal token (lower 32 bits all set)."""
-        return (node & LITERAL_MASK) == LITERAL_MASK
-
     # ── Encode ────────────────────────────────────────────────────────
 
-    def encode(self, text: str, pack: bool = True, pad_ws: bool = False) -> list[int]:
+    def encode(self, text: str, pad_ws: bool = False) -> list[int]:
         """Encode text to a list of nodes.
+
+        Encoding mode is determined automatically:
+        - All-uppercase-alpha strings → packed (single node, bit 0 clear)
+        - Everything else → literal (one node per character, literal mask)
 
         Args:
             text: Input string to encode.
-            pack: If True, multi-char strings are OR'd into a single packed
-                  node. If False, each character becomes a literal node.
             pad_ws: If True, strip and add trailing space.
 
         Returns:
@@ -109,28 +102,26 @@ class ModTokenizer(KTokenizer):
         if not text:
             return []
 
-        if pack:
+        if text.isupper() and text.isalpha():
+            # Packed encoding: OR all character bits into single node
             token_id = 0
             for c in text:
                 token_id |= self._char_bit[c]
             return [token_id]
         else:
+            # Literal encoding: one node per character
             return [(ord(c) << 32) | LITERAL_MASK for c in text]
 
     # ── Decode ────────────────────────────────────────────────────────
 
-    def decode(self, ids: list[int], pack: bool | None = None) -> str:
+    def decode(self, ids: list[int]) -> str:
         """Decode node IDs back to a string.
 
-        Auto-detects literal vs packed from the literal mask unless
-        *pack* is explicitly True or False.
+        Auto-detects literal vs packed from the literal mask.
         """
         chars = []
         for node in ids:
-            if pack is None:
-                is_packed = not ((node & LITERAL_MASK) == LITERAL_MASK)
-            else:
-                is_packed = pack
+            is_packed = not ((node & LITERAL_MASK) == LITERAL_MASK)
 
             if is_packed:
                 chars.append(self._decode_packed(node))
@@ -149,8 +140,8 @@ class ModTokenizer(KTokenizer):
                     chars.append(char)
         return "".join(chars)
 
-    def batch_encode(self, texts: list[str], pack: bool = True) -> list[list[int]]:
-        return [self.encode(t, pack=pack) for t in texts]
+    def batch_encode(self, texts: list[str]) -> list[list[int]]:
+        return [self.encode(t) for t in texts]
 
 
 class Mod32Tokenizer(ModTokenizer):

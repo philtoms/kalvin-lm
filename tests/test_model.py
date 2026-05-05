@@ -3,12 +3,10 @@
 import pytest
 from kalvin.kline import KLine
 from kalvin.model import Model, D_MAX, MASK64, MAX_HOP, _pack, _S3_BIAS
-from kalvin.mod_tokenizer import Mod32Tokenizer
 
 
 def make_model(stm_bound: int = 256) -> Model:
-    t = Mod32Tokenizer()
-    return Model(is_literal_fn=t.is_literal, stm_bound=stm_bound)
+    return Model(stm_bound=stm_bound)
 
 
 class TestModelAdd:
@@ -197,12 +195,12 @@ class TestModelThreeTier:
         base.add(k)
         base.promote(k)
 
-        frame = Model(base=base, is_literal_fn=Mod32Tokenizer().is_literal)
+        frame = Model(base=base)
         assert frame.find(5) is k
 
     def test_add_goes_to_stm_not_frame(self):
         base = make_model()
-        session = Model(base=base, is_literal_fn=Mod32Tokenizer().is_literal)
+        session = Model(base=base)
         k = KLine(5, [1])
         session.add(k)
         assert len(base) == 0

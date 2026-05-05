@@ -26,7 +26,7 @@ The tokenizer does not interpret nodes beyond its own encoding.
 
 ### Signature (@signature spec)
 
-- Signature creation (`make_signature`) depends on the tokenizer's
+- Signature creation (`make_signature`) depends on the standalone
   `is_literal` function to determine which nodes contribute.
 - The tokenizer does not create signatures itself. See the @signature spec.
 
@@ -43,6 +43,9 @@ The number of distinct tokens the vocabulary defines.
 Convert a string to an ordered sequence of nodes.
 
 - Empty string → empty list.
+- All-uppercase-alpha strings → **packed** encoding (single node, bit 0 clear).
+- All other strings → **literal** encoding (one node per character, literal mask).
+- The encoding mode is determined automatically from the input content.
 - Each node carries enough information to reconstruct the original text
   via `decode`.
 
@@ -52,8 +55,14 @@ Convert a sequence of nodes back to a string.
 
 - Empty list → empty string.
 - `decode(encode(text)) == text` for any string the tokenizer can represent.
+- Auto-detects literal vs packed from the literal mask on each node.
 
-### `is_literal(node: int) → bool`
+### `is_literal(node: int) → bool` *(deprecated — moved to node encoding)*
+
+> **Note:** `is_literal` is now a standalone function defined by the node
+> encoding layer, not the tokenizer. Tokenizers no longer implement this
+> method. It is documented here for historical reference only. See the
+> @kline spec for the current definition.
 
 Returns whether the node represents a literal token.
 
@@ -143,11 +152,9 @@ happens at the agent layer.
 
 ### Literal Test
 
-BPE tokens are never literal:
-
-```
-is_literal(node) → False   (always)
-```
+BPE tokens are never literal. The standalone `is_literal` function
+(defined in the @kline spec) returns `False` for all BPE nodes because
+their lower 32 bits are never all set (`0xFFFFFFFF`).
 
 ### Worked Examples
 
@@ -226,7 +233,21 @@ All printable ASCII characters (codes 32–126) must be mappable.
 Characters not in the explicit vocabulary are assigned the next available
 bit position (wrapping).
 
-### Packed Encoding
+### Encoding
+
+The encoding mode is determined automatically from the input text:
+
+- All-uppercase-alpha strings → **packed** (single node, bit 0 clear)
+- All other strings → **literal** (one node per character, literal mask set)
+
+No `pack` parameter is needed — the tokenizer works it out internally.
+
+```
+encode("ABC")     → [CHAR_BIT['A'] | CHAR_BIT['B'] | CHAR_BIT['C']]   # packed
+encode("hello")   → [(104<<32)|0xFFFFFFFF, (101<<32)|0xFFFFFFFF, ...]   # literal
+encode("123")     → [(49<<32)|0xFFFFFFFF, (50<<32)|0xFFFFFFFF, ...]    # literal
+encode('"hi"')    → [(34<<32)|0xFFFFFFFF, ...]                          # literal
+```
 
 Multi-character strings are OR-ed into a single node. Bit 0 is clear.
 
@@ -234,29 +255,16 @@ Multi-character strings are OR-ed into a single node. Bit 0 is clear.
 encode("ABC") → [CHAR_BIT['A'] | CHAR_BIT['B'] | CHAR_BIT['C']]
 ```
 
-Properties:
+#### Packed properties
 
-- Exactly one node per string.
+Applies to all-uppercase-alpha strings automatically:
 - Order is lost: `"AB"` and `"BA"` produce the same node.
 - Multiplicity is lost: `"AA"` and `"A"` produce the same node.
 - Suitable for signature construction and bitwise AND matching.
 
-### Literal Encoding
+#### Literal properties
 
-Each character becomes a separate node. The upper 32 bits store the
-Unicode code point. The lower 32 bits are all set (`0xFFFFFFFF`) as a
-**literal mask** — a bit pattern that uniquely identifies the node as
-literal and distinguishes it from packed nodes and signature values.
-
-```
-encode("ABC", pack=False) → [(65 << 32) | 0xFFFFFFFF,
-                                (66 << 32) | 0xFFFFFFFF,
-                                (67 << 32) | 0xFFFFFFFF]
-```
-
-Properties:
-
-- One node per character.
+Applies to all non-uppercase-alpha strings automatically:
 - Order is preserved.
 - Identity is preserved (distinct characters → distinct tokens).
 - Bypasses the vocabulary: any character with a valid code point can be
@@ -280,14 +288,10 @@ not in the original text order.
 
 ### Literal Test
 
-```
-is_literal(node) → (node & 0xFFFFFFFF) == 0xFFFFFFFF
-```
-
-The lower 32 bits being all set is the literal mask. This distinguishes
-literal tokens from packed nodes (which have bit 0 clear) and from
-signature values (where bit 0 may be set but the lower 32 bits are not all
-1s).
+The standalone `is_literal` function (defined in the @kline spec) returns
+`True` for literal Mod nodes because the lower 32 bits are the literal mask
+`0xFFFFFFFF`. Packed Mod nodes have bit 0 clear, so `is_literal` returns
+`False` for them.
 
 ### Worked Examples
 
@@ -305,13 +309,13 @@ encode("ABC")     → [0b10 | 0b100 | 0b1000] = [14]
 #### Literal encoding (Mod32)
 
 ```
-encode("AB", pack=False) → [(65 << 32) | 0xFFFFFFFF, (66 << 32) | 0xFFFFFFFF]
-                            → [4294967361, 4294967362]
+encode("12") → [(49 << 32) | 0xFFFFFFFF, (50 << 32) | 0xFFFFFFFF]
+               → [4294967345, 4294967346]
 
-decode([4294967361, 4294967362]) → "AB"
+decode([4294967345, 4294967346]) → "12"
 
-is_literal(4294967361) → True
-is_literal(2)   → False
+is_literal(4294967345) → True
+is_literal(2)          → False
 ```
 
 #### Bitwise properties of packed nodes
@@ -330,8 +334,8 @@ with bitwise AND. These properties are used by signature construction
 The following are explicitly **out of scope** for this spec:
 
 - **Signature creation.** Signature construction (`make_signature`) is
-  defined in the @signature spec. The tokenizer provides `is_literal` but
-  does not produce signatures.
+  defined in the @signature spec. The `is_literal` function is defined
+  in the @kline spec, not by the tokenizer.
 - **Significance computation.** Significance is defined in the
   @significance spec. The tokenizer does not compute or store significance.
 - **Type prefix assignment.** How linguistic types are assigned to BPE
@@ -344,8 +348,9 @@ The following are explicitly **out of scope** for this spec:
 ## Referenced By
 
 - **Signature** (@signature spec) — signature creation depends on the
-  tokenizer's `is_literal` function.
+  standalone `is_literal` function (defined in the @kline spec).
 - **Kline** (@kline spec) — klines contain nodes produced by the tokenizer.
+  Defines `is_literal` as a standalone function.
 - **Agent** (@agent spec) — uses the tokenizer to encode input, apply type
   prefixes, and construct klines.
 - **Significance** (@significance spec) — consumes nodes produced by the

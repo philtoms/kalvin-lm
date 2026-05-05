@@ -8,17 +8,38 @@ Key invariants:
   - An all-literal kline produces signature 1.
   - An empty kline produces signature 0.
   - Any uint64 may serve as a signature; there is no is_signature test.
+
+Literal testing is a Kalvin-level concern, not a tokenizer concern.
+The literal mask (lower 32 bits all set) is a standardized bit pattern
+that all tokenizers must respect. Kalvin tests for it directly.
 """
 
 from __future__ import annotations
 
-from typing import Callable, Sequence
+from typing import Sequence
+
+# ── Literal mask ──────────────────────────────────────────────────────────
+# Lower 32 bits all set — unambiguous discriminator for literal nodes.
+# This is a Kalvin convention: any uint64 whose lower 32 bits are all 1s
+# is a literal node, regardless of which tokenizer produced it.
+LITERAL_MASK = 0xFFFF_FFFF
 
 
-def make_signature(
-    nodes: Sequence[int],
-    is_literal_fn: Callable[[int], bool],
-) -> int:
+def is_literal_node(node: int) -> bool:
+    """Test whether a node carries the literal mask.
+
+    A literal node has its lower 32 bits all set (0xFFFFFFFF), with the
+    character code point stored in the upper 32 bits. This is a standardized
+    Kalvin bit pattern — the test does not depend on the tokenizer.
+
+    BPE tokens never produce this pattern (their vocab IDs are small integers
+    combined with type prefixes). Mod tokens produce it only when encoding
+    individual characters as literal nodes.
+    """
+    return (node & LITERAL_MASK) == LITERAL_MASK
+
+
+def make_signature(nodes: Sequence[int]) -> int:
     """Produce a signature from a sequence of nodes.
 
     Non-literal nodes contribute their full value via OR-reduction.
@@ -26,14 +47,13 @@ def make_signature(
 
     Args:
         nodes: Sequence of uint64 node values.
-        is_literal_fn: Tokenizer function to test whether a node is literal.
 
     Returns:
         uint64 signature value.
     """
     sig = 0
     for node in nodes:
-        if is_literal_fn(node):
+        if is_literal_node(node):
             sig |= 1          # bit 0: literal-content flag
         else:
             sig |= node       # non-literal contributes full value

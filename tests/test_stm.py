@@ -7,8 +7,7 @@ from kalvin.mod_tokenizer import Mod32Tokenizer
 
 
 def make_stm(bound: int = 256) -> STM:
-    t = Mod32Tokenizer()
-    return STM(is_literal_fn=t.is_literal, bound=bound)
+    return STM(bound=bound)
 
 
 class TestSTMAdd:
@@ -57,10 +56,10 @@ class TestSTMBound:
 class TestSTMDualKey:
     def test_indexed_by_signature_and_nodes_sig(self):
         t = Mod32Tokenizer()
-        stm = STM(is_literal_fn=t.is_literal, bound=256)
+        stm = STM(bound=256)
         # Create kline where sig != nodes_sig
-        packed_a = t.encode("A", pack=True)[0]  # e.g., 2
-        packed_b = t.encode("B", pack=True)[0]  # e.g., 4
+        packed_a = t.encode("A")[0]  # e.g., 2
+        packed_b = t.encode("B")[0]  # e.g., 4
         k = KLine(signature=100, nodes=[packed_a, packed_b])
         stm.add(k, dedup=False)
         # Should be found by signature

@@ -27,7 +27,7 @@ class TestAgentInit:
 
     def test_custom_model(self):
         t = Mod32Tokenizer()
-        m = Model(is_literal_fn=t.is_literal)
+        m = Model()
         a = Agent(tokenizer=t, model=m)
         assert a.model is m
 
@@ -90,7 +90,7 @@ class TestAgentRationalise:
         """All-literal kline → S1 (fast path)."""
         a = Agent()
         t = a.tokenizer
-        lit_nodes = t.encode("ABC", pack=False)
+        lit_nodes = t.encode("123")
         k = KLine(1, lit_nodes)
         result = a.rationalise(k)
         assert result is True
@@ -114,7 +114,7 @@ class TestAgentRationalise:
         """Novel kline with no candidates → S4."""
         a = Agent()
         t = a.tokenizer
-        packed = t.encode("XYZ", pack=True)[0]
+        packed = t.encode("XYZ")[0]
         k = KLine(packed, [packed])
         result = a.rationalise(k)
         assert result is True
@@ -129,9 +129,9 @@ class TestAgentRationalise:
         """Caller encodes text, builds kline, rationalises."""
         a = Agent()
         t = a.tokenizer
-        nodes = t.encode("hello", pack=True)
-        sig = make_signature(nodes, t.is_literal)
-        kline = KLine(sig, nodes, dbg_text="hello")
+        nodes = t.encode("HELLO")
+        sig = make_signature(nodes)
+        kline = KLine(sig, nodes, dbg_text="HELLO")
         result = a.rationalise(kline)
         assert result is True
         assert a.model.find(sig) is not None
@@ -144,7 +144,7 @@ class TestAgentRationalise:
         a.rationalise(candidate)
         # Query overlaps on [10] but not [20] → S2
         q = KLine(0, [10, 20])
-        q.signature = make_signature([10, 20], a.tokenizer.is_literal)
+        q.signature = make_signature([10, 20])
         result = a.rationalise(q)
         assert result is False
 
@@ -154,7 +154,7 @@ class TestAgentRationalise:
         candidate = KLine(5, [100, 200])
         a.rationalise(candidate)
         q = KLine(0, [1, 2])
-        q.signature = make_signature([1, 2], a.tokenizer.is_literal)
+        q.signature = make_signature([1, 2])
         result = a.rationalise(q)
         assert result is False
 
@@ -175,7 +175,7 @@ class TestShortCircuit:
 
         # Query that matches c1 fully
         q = KLine(0, [10, 20])
-        q.signature = make_signature([10, 20], a.tokenizer.is_literal)
+        q.signature = make_signature([10, 20])
 
         # Patch model.expand to track calls
         with patch.object(a.model, 'expand', side_effect=AssertionError("expand should not be called for S1")):
@@ -193,7 +193,7 @@ class TestShortCircuit:
         a.rationalise(c2)
 
         q = KLine(0, [10, 20])
-        q.signature = make_signature([10, 20], a.tokenizer.is_literal)
+        q.signature = make_signature([10, 20])
 
         result = a.rationalise(q)
         assert result is True
@@ -202,7 +202,7 @@ class TestShortCircuit:
         """No candidates → S4 directly, no expand call."""
         a = Agent()
         q = KLine(0, [999])
-        q.signature = make_signature([999], a.tokenizer.is_literal)
+        q.signature = make_signature([999])
 
         with patch.object(a.model, 'expand', side_effect=AssertionError("expand should not be called for S4")):
             result = a.rationalise(q)
@@ -280,7 +280,7 @@ class TestCogitator:
         a.rationalise(candidate)
 
         q = KLine(0, [10, 20])
-        q.signature = make_signature([10, 20], a.tokenizer.is_literal)
+        q.signature = make_signature([10, 20])
 
         # Capture submitted work items
         submitted = []

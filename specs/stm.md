@@ -23,7 +23,9 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Signature (@signature spec)
 
-- `make_signature(nodes, is_literal_fn) → int` — OR-reduction over nodes.
+- `make_signature(nodes) → int` — OR-reduction over nodes.
+- `is_literal(node) → bool` is defined in the @kline spec (standalone
+  bit-layout test, not tokenizer-specific).
 - Used to derive the nodes signature for dual-keyed indexing.
 
 ## Definition
@@ -36,26 +38,23 @@ An STM consists of:
 | `_order`    | `list[KLine]`                           | Insertion order (FIFO for eviction).    |
 | `_dedup`    | `set[tuple[KSig, tuple[int, ...]]]`    | Seen (signature, nodes) pairs.          |
 | `_bound`    | `int`                                   | Maximum retained KLines (default 256).  |
-| `_is_literal_fn` | `Callable[[int], bool]`           | Injected tokenizer function.            |
 
 ## Construction
 
 ```python
-STM(is_literal_fn=None, bound=256)
+STM(bound=256)
 ```
 
-- `is_literal_fn` — optional callable `(int) → bool`. Defaults to
-  `lambda _: False` (all nodes treated as non-literal). In production,
-  injected from the tokenizer by the Agent (composition root).
 - `bound` — maximum number of KLines to retain. Default **256**.
 - A newly constructed STM is empty.
+- `is_literal` is imported directly from the @kline spec — no injection needed.
 
 ## Dual-Keyed Indexing
 
 Each KLine is indexed under **two keys**:
 
 1. **Signature key** — `kline.signature`
-2. **Nodes signature key** — `make_signature(kline.nodes, is_literal_fn)`
+2. **Nodes signature key** — `make_signature(kline.nodes)`
 
 Both keys map into the same `_store` dictionary. When the two keys are
 identical (signature equals nodes signature), the KLine is stored under a
@@ -244,7 +243,7 @@ The following are explicitly **out of scope** for this spec:
 - **Thread safety.** Concurrent access management is an implementation
    concern.
 - **Nodes signature computation.** The STM delegates to `make_signature`
-  from the @signature spec.
+  from the @signature spec, which uses `is_literal` from the @kline spec.
 
 ## Referenced By
 

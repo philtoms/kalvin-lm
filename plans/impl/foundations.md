@@ -75,11 +75,16 @@ single most important design decision. Every component depends on it.
 ### 1.2 Discriminators
 
 ```python
-# Tokenizer-level test
-is_literal(node) = (node & 0xFFFFFFFF) == 0xFFFFFFFF
+# Standalone function — not a tokenizer method
+def is_literal(node: int) -> bool:
+    """Bit-layout test: lower 32 bits all set = literal node."""
+    return (node & 0xFFFF_FFFF) == 0xFFFF_FFFF
 
 # Derived properties
-is_packed(node)  = not is_literal(node) AND (node & 1) == 0
+def is_packed(node: int) -> bool:
+    return not is_literal(node) and (node & 1) == 0
+
+# No bit-pattern test for signatures
 is_signature(x)  = NO TEST — any uint64 can be a signature
 ```
 
@@ -107,7 +112,7 @@ The 32-bit literal mask (`0xFFFFFFFF` in the lower bits) creates a **wide moat**
 ## 2. KLine (Phase 1)
 
 **Files:** `src/kalvin/kline.py`, `tests/test_kline.py`
-**Depends on:** Nothing (leaf concept; `is_literal_fn` injected)
+**Depends on:** Nothing (leaf concept; `is_literal` is a standalone function)
 **Estimate:** 0.5 day
 
 ### Spec
@@ -134,7 +139,7 @@ KLine(signature, nodes)
 
 - `nodes` is always normalized to `list[int]` (empty list for no nodes, never None).
 - No `literal` field is stored. Literal status is computed on demand.
-- `is_literal()` requires an `is_literal_fn` injected at construction or call time.
+- `is_literal()` uses the standalone `is_literal` function (no injection needed).
 - Empty klines (no nodes) are non-literal.
 - Equality: same signature AND same node sequence (same length, order, values).
 - Hashable: `hash((signature, tuple(nodes)))`.
@@ -144,7 +149,7 @@ KLine(signature, nodes)
 ```python
 kline.nodes       → list[int]
 len(kline)        → int (node count)
-kline.is_literal(is_literal_fn) → bool
+kline.is_literal() → bool
 kline == other    → bool (signature + node sequence equality)
 hash(kline)       → int
 ```
@@ -164,10 +169,10 @@ class KLine:
         self.nodes = _normalize(nodes)  # Always list[int]
         self.dbg_text = dbg_text
 
-    def is_literal(self, is_literal_fn) -> bool:
+    def is_literal(self) -> bool:
         if not self.nodes:
             return False
-        return all(is_literal_fn(n) for n in self.nodes)
+        return all(is_literal(n) for n in self.nodes)
 
     def __eq__(self, other): ...
     def __hash__(self): ...
@@ -186,8 +191,8 @@ class KLine:
 | Inequality: different sig   | `KLine(5, [1]) != KLine(6, [1])`      |
 | Inequality: different nodes | `KLine(5, [1]) != KLine(5, [2])`      |
 | Hash consistency            | Equal KLines have equal hashes        |
-| is_literal: all literal     | With `lambda n: True` → True          |
-| is_literal: mixed           | With `lambda n: n > 100` → False      |
+| is_literal: all literal     | All nodes have literal mask → True    |
+| is_literal: mixed           | Some non-literal nodes → False        |
 | is_literal: empty           | Returns False                         |
 | Length                      | `len(KLine(5, [1, 2, 3])) == 3`       |
 
@@ -196,20 +201,20 @@ class KLine:
 ## 3. Signature (Phase 2)
 
 **Files:** `src/kalvin/signature.py`, `tests/test_signature.py`
-**Depends on:** `is_literal_fn` (injected)
+**Depends on:** `is_literal` (standalone function, same module or imported)
 **Estimate:** 0.5 day
 
 ### Spec
 
 Pure functions for computing and comparing signatures.
 
-**`make_signature(nodes, is_literal_fn) → int`:**
+**`make_signature(nodes) → int`:**
 
 ```python
-def make_signature(nodes: list[int], is_literal_fn: Callable[[int], bool]) -> int:
+def make_signature(nodes: list[int]) -> int:
     sig = 0
     for node in nodes:
-        if is_literal_fn(node):
+        if is_literal(node):
             sig |= 1       # bit 0: literal-content flag
         else:
             sig |= node    # non-literal contributes full value
@@ -244,12 +249,12 @@ Significance inversion (`(~distance) & MASK64`) is performed inline in
 
 | Test                                     | Expected                |
 | ---------------------------------------- | ----------------------- |
-| `make_signature([], fn)`                 | `0`                     |
-| `make_signature([literal], fn)`          | `1`                     |
-| `make_signature([literal, literal], fn)` | `1` (idempotent)        |
-| `make_signature([packed], fn)`           | `packed` (identity)     |
-| `make_signature([literal, packed], fn)`  | `1 \| packed`           |
-| `make_signature([A, B], fn)`             | `A \| B` (commutative)  |
+| `make_signature([])`                     | `0`                     |
+| `make_signature([literal])`              | `1`                     |
+| `make_signature([literal, literal])`     | `1` (idempotent)        |
+| `make_signature([packed])`               | `packed` (identity)     |
+| `make_signature([literal, packed])`      | `1 \| packed`           |
+| `make_signature([A, B])`                 | `A \| B` (commutative)  |
 | `signifies(0, anything)`                 | `False`                 |
 | `signifies(1, 1)`                        | `True`                  |
 | `signifies(0b110, 0b10)`                 | `True`                  |
@@ -272,35 +277,42 @@ class KTokenizer(ABC):
     vocab_size: int                    # Number of distinct tokens
     encode(text_or_int) → list[int]   # Text → nodes
     decode(ids) → str                 # Nodes → text
-    is_literal(node) → bool           # Literal test
 ```
+
+> **Note:** `is_literal` is no longer part of the tokenizer interface.
+> It is a standalone function defined in the node encoding layer
+> (see §1.2).
 
 ### Mod Tokenizer
 
 Maps characters to bit positions. Two encoding modes:
 
-**Packed encoding** (default):
+**Packed encoding** (auto-detected for all-uppercase-alpha strings):
 
 - All characters OR'd into a single node.
 - Bit 0 clear. Lossy: order and multiplicity lost.
 - `encode("ABC") → [CHAR_BIT['A'] | CHAR_BIT['B'] | CHAR_BIT['C']]`
 
-**Literal encoding** (`pack=False`):
+**Literal encoding** (auto-detected for all other strings):
 
 - One node per character: `(codepoint << 32) | 0xFFFFFFFF`
 - Preserves order and identity. Bypasses vocabulary.
-- `encode("AB", pack=False) → [(65<<32)|0xFFFFFFFF, (66<<32)|0xFFFFFFFF]`
+- `encode("123") → [(49<<32)|0xFFFFFFFF, (50<<32)|0xFFFFFFFF]`
+
+**No `pack` parameter** — the tokenizer determines encoding mode internally
+from the content: all-uppercase-alpha → packed, everything else → literal.
 
 **Variants:** Mod32 (31 character bits, default), Mod64 (63 character bits).
 
 **Default vocabulary:** `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \"',.;:!?/\n\t%{}[]()<>#$@£^&*+-_=`
 Characters not in the explicit vocabulary are assigned the next available bit position.
 
-**`is_literal(node) → bool`:**
+**`is_literal` test (standalone function, not tokenizer method):**
 
-```python
-(node & 0xFFFFFFFF) == 0xFFFFFFFF
-```
+The tokenizer does not implement `is_literal`. The standalone function
+`(node & 0xFFFFFFFF) == 0xFFFFFFFF` correctly identifies literal nodes
+produced by the Mod tokenizer. BPE nodes never have the lower 32 bits all
+set, so the function correctly returns `False` for them.
 
 **Decode:** Auto-detects literal vs packed from the literal mask.
 
@@ -308,7 +320,8 @@ Characters not in the explicit vocabulary are assigned the next available bit po
 
 Learns subword vocabulary from a training corpus.
 
-- BPE tokens are **never literal**: `is_literal(node) → False`.
+- BPE tokens are **never literal**: the standalone `is_literal` function
+  returns `False` for all BPE nodes (their lower 32 bits are never all set).
 - Raw BPE tokens are sequential IDs. Type prefixes applied at agent layer.
 - Optional dependency: requires `rustbpe` + `tiktoken`.
 
@@ -319,8 +332,9 @@ Learns subword vocabulary from a training corpus.
 | Packed encode single char | `encode("A") == [bit_A]`                                     |
 | Packed encode multi-char  | `encode("AB") == [bit_A \| bit_B]`                           |
 | Packed round-trip         | `decode(encode("ABC"))` contains A, B, C (order may differ)  |
-| Literal encode            | `encode("AB", pack=False)` → two nodes with literal mask     |
-| Literal round-trip        | `decode(encode("AB", pack=False)) == "AB"` (order preserved) |
+| Literal encode            | `encode("123")` → two nodes with literal mask     |
+| Literal round-trip        | `decode(encode("123")) == "123"` (order preserved) |
+| Auto-detection            | `encode("A")` → 1 packed node; `encode("1")` → 1 literal node |
 | Empty string              | `encode("") == []`, `decode([]) == ""`                       |
 | is_literal: literal node  | `is_literal((65 << 32) \| 0xFFFFFFFF) == True`               |
 | is_literal: packed node   | `is_literal(6) == False`                                     |
@@ -377,8 +391,8 @@ len(stm) → int
 (FIFO). Eviction removes from the STM index only — the KLine remains in the
 frame.
 
-**Dependency:** Requires `make_signature` from the signature module, and an
-`is_literal_fn` (injected) for computing nodes signatures.
+**Dependency:** Requires `make_signature` from the signature module.
+`is_literal` is imported directly from the node encoding layer (no injection).
 
 ### Test Cases
 

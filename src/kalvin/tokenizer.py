@@ -1,6 +1,9 @@
 """BPE tokenizer wrapper using rustbpe.
 
-BPE tokens are never literal: is_literal(node) → False.
+BPE tokens are never literal: they never carry the literal mask pattern
+(lower 32 bits = 0xFFFFFFFF). Literal testing is handled by is_literal_node()
+in the signature module — a Kalvin-level concern based on standardized bit
+patterns, not a tokenizer-specific one.
 """
 
 import base64
@@ -118,10 +121,6 @@ class Tokenizer(KTokenizer):
         if hasattr(self._tokenizer, "vocab_size"):
             return self._tokenizer.vocab_size
         return self._tokenizer.n_vocab
-
-    def is_literal(self, token_id: int) -> bool:
-        """BPE tokens are never literal."""
-        return False
 
     def encode(self, text: str, pad_ws: bool = False) -> list[int]:
         self._check_available()

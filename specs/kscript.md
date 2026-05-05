@@ -29,7 +29,7 @@ The pipeline is strictly one-directional. There is also a **decompiler** that be
 | **Signature** | A `uint64` identity key computed via OR-reduction of nodes |
 | **Significance** | A four-level classification (S1–S4) of how strongly one KLine relates to another |
 | **Signature (lexical)** | An uppercase identifier like `ABC` — becomes a packed node |
-| **Literal (lexical)** | Anything not uppercase alpha — numbers, lowercase text, quoted strings |
+| **Literal (lexical)** | Anything not uppercase alpha — numbers, quoted strings |
 
 ---
 
@@ -40,7 +40,7 @@ The pipeline is strictly one-directional. There is also a **decompiler** that be
 | Token | Pattern | Category |
 |-------|---------|----------|
 | `SIGNATURE` | `[A-Z]+` | Node (uppercase identifier) |
-| `LITERAL` | `[a-z][a-zA-Z0-9]*` or `[0-9]+` or `"..."` or any single char | Node (non-uppercase) |
+| `LITERAL` | `[0-9]+` or `"..."` | Node (non-uppercase) |
 | `COUNTERSIGN` | `==` | Construct operator |
 | `CANONIZE_FWD` | `=>` | Chain operator |
 | `CANONIZE_BWD` | `<=` | Chain operator |
@@ -73,14 +73,15 @@ Operators are divided into two groups by where they may appear:
 ### 2.3 Lexing Rules
 
 1. **Multi-character operators** (`==`, `=>`, `<=`) are matched before single-character operators (`=`, `>`, `<`).
-2. **Identifiers** `[a-zA-Z][a-zA-Z0-9]*` are classified as:
-   - `SIGNATURE` if all characters are uppercase (`isupper()`)
-   - `LITERAL` otherwise
+2. **Identifiers** `[A-Z][A-Z0-9]*` are classified as:
+   - `SIGNATURE` if all characters are uppercase alpha (`isupper() and isalpha()`)
+   - Non-uppercase identifiers are **not valid** as literals — use quoted strings instead
 3. **Numbers** `[0-9]+` are always `LITERAL`.
 4. **Quoted strings** `"..."` support backslash escapes and are `LITERAL`. Unterminated strings stop at newline.
 5. **Comments** `(...)` support nested parentheses and may span multiple lines.
 6. **Inline comments** after an identifier are consumed without emitting a token.
 7. **Indentation** uses Python-style INDENT/DEDENT tokens based on leading whitespace.
+8. **Unknown characters** (not matching any rule) raise a `LexerError`.
 
 ### 2.4 Indentation Rules
 
@@ -176,6 +177,9 @@ Strings are encoded to `uint64` values via a **Mod Tokenizer**:
   - `encode("hello") → [(104<<32)|0xFFFFFFFF, (101<<32)|0xFFFFFFFF, ...]`
 
 **Literal test:** `(node & 0xFFFFFFFF) == 0xFFFFFFFF`
+
+> **Note:** This is the standalone `is_literal` function defined in the
+> @kline spec. It is no longer a tokenizer method.
 
 ### 5.3 MCS (Multi-Character Signature) Expansion
 

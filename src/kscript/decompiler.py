@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer
-from kalvin.signature import make_signature
+from kalvin.signature import make_signature, is_literal_node
 from kalvin.model import D_MAX
 from kalvin.kline import KLine
 
@@ -181,10 +181,10 @@ class Decompiler:
 
     def _try_decode_packed_single_char(self, node: int) -> str | None:
         """Try to decode a node as a packed single-char token."""
-        if self.tokenizer.is_literal(node):
+        if is_literal_node(node):
             return None
 
-        decoded = self.tokenizer.decode([node], pack=None)
+        decoded = self.tokenizer.decode([node])
         if decoded and len(decoded) == 1 and decoded.isupper():
             return decoded
         return None
@@ -195,7 +195,7 @@ class Decompiler:
         if not nodes or len(nodes) < 2:
             return False
 
-        nodes_sig = make_signature(nodes, self.tokenizer.is_literal)
+        nodes_sig = make_signature(nodes)
         return kline.signature == nodes_sig
 
     def _decompile_kline(self, kline: KLine) -> DecompiledEntry | None:
@@ -253,7 +253,7 @@ class Decompiler:
             combined = kline.signature & nodes
             return "S2" if combined != 0 else "S3"
 
-        nodes_sig = make_signature(nodes, self.tokenizer.is_literal)
+        nodes_sig = make_signature(nodes)
         combined = kline.signature & nodes_sig
         return "S2" if combined != 0 else "S3"
 
@@ -262,21 +262,21 @@ class Decompiler:
         if sig in self._mcs_names:
             return self._mcs_names[sig]
 
-        if self.tokenizer.is_literal(sig):
+        if is_literal_node(sig):
             return self._decode_node(sig)
 
-        result = self.tokenizer.decode([sig], pack=None)
+        result = self.tokenizer.decode([sig])
         return result if result else f"<{sig}>"
 
     def _decode_node(self, node: int) -> str:
         """Decode a node value to string."""
-        if self.tokenizer.is_literal(node):
+        if is_literal_node(node):
             return self.tokenizer.decode([node])
 
         if node in self._mcs_names:
             return self._mcs_names[node]
 
-        result = self.tokenizer.decode([node], pack=None)
+        result = self.tokenizer.decode([node])
         return result if result else f"<{node}>"
 
     def _decode_nodes(self, nodes: list[int]) -> list[str]:
@@ -285,7 +285,7 @@ class Decompiler:
         literal_ids: list[int] = []
 
         for node in nodes:
-            if self.tokenizer.is_literal(node):
+            if is_literal_node(node):
                 literal_ids.append(node)
             else:
                 if literal_ids:
@@ -294,7 +294,7 @@ class Decompiler:
                 if node in self._mcs_names:
                     result.append(self._mcs_names[node])
                 else:
-                    decoded = self.tokenizer.decode([node], pack=None)
+                    decoded = self.tokenizer.decode([node])
                     result.append(decoded if decoded else f"<{node}>")
 
         if literal_ids:

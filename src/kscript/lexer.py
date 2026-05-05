@@ -18,12 +18,12 @@ class Lexer:
     The lexer handles:
     - Multi-character operators (==, =>, <=) before single-char
     - Signatures [A-Z]+ with optional inline comment
-    - Literals (anything not [A-Z]+): identifiers, numbers, quoted strings
+    - Literals: numbers [0-9]+ and quoted strings "..."
     - Comments (...) with nested paren handling
     - Python-style INDENT/DEDENT tokens
 
     Key insight: Only SIGNATURE tokens ([A-Z]+) can be construct owners.
-    Everything else is a LITERAL.
+    Literals are strictly numbers or quoted strings.
     """
 
     def __init__(self, source: str):
@@ -108,8 +108,8 @@ class Lexer:
             return self._make_token(TokenType.CONNOTATE_BWD, "<")
 
         # Identifier: [a-zA-Z][a-zA-Z0-9]*
-        # If all uppercase → SIGNATURE
-        # Otherwise → LITERAL
+        # If all uppercase alpha → SIGNATURE
+        # Otherwise → error (lowercase identifiers are not valid)
         if ch.isalpha():
             return self._read_identifier()
 
@@ -125,8 +125,8 @@ class Lexer:
         if ch == "(":
             return self._read_comment()
 
-        # Unknown character - treat as LITERAL (single char)
-        return self._make_token(TokenType.LITERAL, self._advance())
+        # Unknown character
+        raise LexerError(f"Unexpected character: {ch!r}", self.line, self.column)
 
     def _count_indent(self) -> int:
         """Count indentation at line start (spaces and tabs)."""
@@ -172,7 +172,8 @@ class Lexer:
     def _read_identifier(self) -> Token:
         """Read an identifier [a-zA-Z][a-zA-Z0-9]*.
 
-        Returns SIGNATURE if all uppercase, otherwise LITERAL.
+        Returns SIGNATURE if all uppercase alpha.
+        Raises LexerError for mixed/lowercase identifiers.
         """
         start_line, start_col = self.line, self.column
         name = ""
@@ -184,12 +185,16 @@ class Lexer:
         if self.pos < len(self.source) and self.source[self.pos] == "(":
             self._read_comment()  # Consumes and discards
 
-        # All uppercase → SIGNATURE
-        if name.isupper():
+        # All uppercase alpha → SIGNATURE
+        if name.isupper() and name.isalpha():
             return Token(TokenType.SIGNATURE, name, start_line, start_col)
 
-        # Otherwise → LITERAL
-        return Token(TokenType.LITERAL, name, start_line, start_col)
+        # Non-uppercase identifiers are not valid
+        raise LexerError(
+            f"Invalid identifier '{name}': identifiers must be all uppercase (signatures). "
+            f"Use a quoted string for non-signature values.",
+            start_line, start_col
+        )
 
     def _is_ident_char(self, ch: str) -> bool:
         """Check if character is valid in an identifier (alphanumeric)."""

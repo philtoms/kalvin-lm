@@ -66,7 +66,7 @@ class TokenType(Enum):
     CONNOTATE_BWD = auto()  # <
     UNDERSIGN = auto()      # =
     SIGNATURE = auto()      # [A-Z]+
-    LITERAL = auto()        # anything else
+    LITERAL = auto()        # numbers and quoted strings
     COMMENT = auto()        # (...)
     NEWLINE = auto()
     INDENT = auto()
@@ -107,12 +107,12 @@ class Lexer:
 
 1. At line start: count leading spaces/tabs → emit INDENT/DEDENT (§2.4)
 2. Multi-char operators **before** single-char: `==`, `=>`, `<=` before `=`, `>`, `<` (§2.3.1)
-3. Identifiers `[a-zA-Z][a-zA-Z0-9]*`: `SIGNATURE` if `isupper()`, else `LITERAL` (§2.3.2)
+3. Identifiers `[A-Z][A-Z0-9]*`: `SIGNATURE` if all uppercase alpha (`isupper() and isalpha()`), else **LexerError** (§2.3.2). Non-uppercase identifiers are not valid — use quoted strings instead.
 4. After an identifier, consume inline `(...)` comment without emitting (§2.3.6)
 5. Numbers `[0-9]+` → `LITERAL` (§2.3.3)
 6. Quoted strings `"..."` with backslash escapes, stop at newline if unterminated → `LITERAL` (§2.3.4)
 7. Comments `(...)` with nested parens, multi-line → `COMMENT` (§2.3.5)
-8. Any other single char → `LITERAL` (§2.1 LITERAL pattern)
+8. Any other character → `LexerError`
 9. At EOF: close all remaining indent levels with DEDENT, emit EOF (§2.4)
 
 ### Indentation algorithm
@@ -151,7 +151,7 @@ class LexerError(Exception):
 | 1 | `"A"` | `[SIGNATURE, EOF]` |
 | 2 | `"ABC"` | `[SIGNATURE(value="ABC"), EOF]` |
 | 3 | `"42"` | `[LITERAL(value="42"), EOF]` |
-| 4 | `"hello"` | `[LITERAL(value="hello"), EOF]` |
+| 4 | `"hello"` | `[LexerError]` — lowercase identifiers not valid, use quoted `"hello"` instead |
 | 5 | `'"hello world"'` | `[LITERAL(value='"hello world"'), EOF]` |
 | 6 | `"A == B"` | `[SIGNATURE, COUNTERSIGN, SIGNATURE, EOF]` |
 | 7 | `"A => B"` | `[SIGNATURE, CANONIZE_FWD, SIGNATURE, EOF]` |
@@ -371,9 +371,10 @@ class CompiledEntry(KLine):
 ```
 
 **Encoding rules (§5.2):**
-- Signature string → `tokenizer.encode(sig, pack=True)[0]` → single packed uint64, bit 0 clear
-- Literal string → `tokenizer.encode(lit, pack=False)` → list of `(char_cp << 32) | 0xFFFFFFFF`
+- Signature string → `tokenizer.encode(sig)[0]` → single packed uint64, bit 0 clear (all-uppercase-alpha auto-detected)
+- Literal string → `tokenizer.encode(lit)` → list of `(char_cp << 32) | 0xFFFFFFFF` (non-uppercase auto-detected)
 - **Literal test:** `(node & 0xFFFFFFFF) == 0xFFFFFFFF`
+- **No `pack` parameter needed** — the tokenizer determines encoding mode internally
 
 **Singleton rule (§5.1):**
 - If nodes is a list with 1 element → unwrap to single int
@@ -466,8 +467,8 @@ if op == CONNOTATE_FWD:
 | 3 | `"A = B"` | `{A: B}` |
 | 4 | `"A = A"` | `{A: None}` (identity, deduped to one entry) |
 | 5 | `"A > B"` | `{A: B}` |
-| 6 | `"A = 42"` | `{A: "42"}` (literal node) |
-| 7 | `"A > 1"` | `{A: "1"}` |
+| 6 | `'A = "42"'` | `{A: '"42"'}` (literal node — quoted string) |
+| 7 | `'A > "x"'` | `{A: '"x"'}` (quoted string literal) |
 | 8 | `'A => "hello"'` | `{A: '"hello"'}` |
 
 **MCS test cases:**
@@ -606,7 +607,7 @@ MHALL == SVO =>
 
 - **Dedup is by encoded pair, not source text.** `{A: B}` encoded twice = one entry. But `{A: B}` and `{A: C}` are different entries even if B and C have the same packed value.
 - **MCS dedup: `{L: None}` from MHALL's MCS is emitted once** even though L appears twice in "MHALL". Second is dropped by dedup.
-- **`_encode_node` for multi-char literals** must encode each character individually via `tokenizer.encode(char, pack=False)`, not just the first character.
+- **`_encode_node` for multi-char literals** must encode each character individually via `tokenizer.encode(char)`, not just the first character. The tokenizer auto-detects non-uppercase and uses literal encoding.
 - **Reverse countersign** is NOT emitted for literal nodes. `A == 42` → `{A: "42"}` only, no `{"42": A}`.
 
 ---
@@ -731,7 +732,7 @@ for each consecutive group of klines with same signature:
 **`_try_decode_packed_single_char(node)`:**
 ```
 if is_literal(node): return None
-decoded = tokenizer.decode([node], pack=None)
+decoded = tokenizer.decode([node])
 if decoded and len(decoded) == 1 and decoded.isupper():
     return decoded
 return None
@@ -764,7 +765,7 @@ if single int node:
     if (sig & node) != 0: → S2
     else:                  → S3
 if node list:
-    nodes_sig = make_signature(nodes, is_literal)
+    nodes_sig = make_signature(nodes)
     if (sig & nodes_sig) != 0: → S2
     else:                        → S3
 ```
@@ -1013,8 +1014,9 @@ KScript depends on these from Kalvin core. They must be built first.
 | `kalvin.kline.KLine` | Base class for CompiledEntry (signature, nodes, equality, hashing) | `compiler.py` |
 | `kalvin.kline.KNodes` | Type alias for node representations | `compiler.py` |
 | `kalvin.kline.KSig` | Type alias for uint64 signatures | `compiler.py` |
-| `kalvin.mod_tokenizer.ModTokenizer` | `encode(text, pack=True/False)`, `decode(ids, pack=)`, `is_literal(node)` | `compiler.py`, `decompiler.py`, `output.py` |
+| `kalvin.mod_tokenizer.ModTokenizer` | `encode(text)`, `decode(ids)` — mode auto-detected from content | `compiler.py`, `decompiler.py`, `output.py` |
 | `kalvin.mod_tokenizer.Mod32Tokenizer` | Default tokenizer variant (31 bit positions) | `compiler.py` |
-| `kalvin.signature.make_signature` | `make_signature(nodes, is_literal_fn) → uint64` | `decompiler.py` |
+| `kalvin.kline.is_literal` | `is_literal(node) → bool` (standalone function) | `compiler.py`, `decompiler.py` |
+| `kalvin.signature.make_signature` | `make_signature(nodes) → uint64` | `decompiler.py` |
 
 **Not depended on:** `kalvin.significance.D_BOUNDARY`, `D_MAX` — these are not used by KScript despite being imported in some implementations.

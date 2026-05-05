@@ -112,11 +112,18 @@ class TestLexer:
         assert len(lits) == 1
         assert lits[0].value == "42"
 
-    def test_literal_lowercase(self) -> None:
-        tokens = Lexer("hello").tokenize()
+    def test_literal_string(self) -> None:
+        tokens = Lexer('"hello"').tokenize()
         lits = [t for t in tokens if t.type == TokenType.LITERAL]
         assert len(lits) == 1
-        assert lits[0].value == "hello"
+        assert lits[0].value == '"hello"'
+
+    def test_literal_lowercase(self) -> None:
+        """Lowercase identifiers are now a lexer error.
+        Use quoted strings for non-signature text.
+        """
+        with pytest.raises(LexerError):
+            Lexer("hello").tokenize()
 
     def test_quoted_string(self) -> None:
         tokens = Lexer('"hello world"').tokenize()
@@ -302,9 +309,9 @@ class TestCompilerBasic:
         assert _has_node(md, "B", ["A"])
 
     def test_literal_node_undersign(self) -> None:
-        entries = compile64("A = 42")
+        entries = compile64('A = "hello"')
         md = _md(entries)
-        assert _has_node(md, "A", "42")
+        assert _has_node(md, "A", '"hello"')
 
     def test_literal_node_connotate(self) -> None:
         entries = compile64("A > 1")

@@ -150,7 +150,7 @@ Adds a KLine to the model.
 - Returns `false` if the KLine was rejected.
 - The KLine is added to **STM only** (not the frame or base).
 - If `kline.is_literal()` is `true` (all nodes are literal tokens,
-  per @tokenizer spec), a duplicate check is performed
+  per `is_literal` in the @kline spec), a duplicate check is performed
   (see Deduplication). Non-literal Klines are always accepted.
 - If adding to the STM would exceed `stm_bound`, the oldest STM entry
   is evicted. Evicted KLines that have not been promoted are discarded.
@@ -261,7 +261,7 @@ Promotes all Klines currently in STM to the frame.
 ## Deduplication
 
 When `add` receives a literal Kline (`is_literal()` returns `true`,
-meaning all nodes are literal tokens per @tokenizer spec), the model
+meaning all nodes are literal tokens per `is_literal` in the @kline spec), the model
 checks whether an equal Kline (same signature, same node sequence per
 kline equality) already exists in **any tier**. If so, `add` returns
 `false` and no entry is created.

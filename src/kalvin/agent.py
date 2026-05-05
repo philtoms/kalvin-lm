@@ -20,7 +20,7 @@ from kalvin.kline import KLine
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.model import Model, QueryCandidate, D_MAX, MASK64, _pack, _S3_BIAS
 from kalvin.mod_tokenizer import Mod32Tokenizer
-from kalvin.signature import make_signature
+from kalvin.signature import make_signature, is_literal_node
 
 
 # ── Distance & Temperature Constants ────────────────────────────────
@@ -290,8 +290,7 @@ class Agent:
     ----------
     tokenizer:
         Tokenizer instance. Defaults to Mod32Tokenizer.
-        Used for is_literal tests during signature construction and
-        the Assess phase.
+        Used for encoding text to nodes.
     model:
         Model instance serving as base knowledge graph. Defaults to empty Model.
     """
@@ -302,9 +301,7 @@ class Agent:
         model: Model | None = None,
     ):
         self._tokenizer = tokenizer if tokenizer else Mod32Tokenizer()
-        self._model = model if model is not None else Model(
-            is_literal_fn=self._tokenizer.is_literal,
-        )
+        self._model = model if model is not None else Model()
         self._activity: Counter = Counter()
 
         # Pub/sub
@@ -381,7 +378,7 @@ class Agent:
         """
         # Phase 1: Prepare
         if kline.signature == 0 and kline.nodes:
-            kline.signature = make_signature(kline.nodes, self._tokenizer.is_literal)
+            kline.signature = make_signature(kline.nodes)
 
         # Phase 2: Ground check
         if kline.signature != 0 and self._model.exists(kline):
@@ -394,15 +391,15 @@ class Agent:
             self._publish("frame", kline, kline, 0)  # S4
             return True
 
-        if all(self._tokenizer.is_literal(n) for n in kline.nodes):
+        if all(is_literal_node(n) for n in kline.nodes):
             self._model.add(kline)
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
 
-        expected_sig = make_signature(kline.nodes, self._tokenizer.is_literal)
+        expected_sig = make_signature(kline.nodes)
         if kline.signature == expected_sig:
             all_resolved = all(
-                self._tokenizer.is_literal(n) or self._model.find(n) is not None
+                is_literal_node(n) or self._model.find(n) is not None
                 for n in kline.nodes
             )
             if all_resolved:
@@ -518,7 +515,7 @@ class Agent:
             offset += 4
             activity[key] = count
 
-        model = Model(is_literal_fn=Mod32Tokenizer().is_literal)
+        model = Model()
         for kl in klines:
             model.add(kl)
             model.promote(kl)
@@ -541,7 +538,7 @@ class Agent:
             KLine(item["signature"], item["nodes"])
             for item in data.get("klines", [])
         ]
-        model = Model(is_literal_fn=Mod32Tokenizer().is_literal)
+        model = Model()
         for kl in klines:
             model.add(kl)
             model.promote(kl)

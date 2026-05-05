@@ -20,15 +20,14 @@ if literal content is present.
 
 This spec depends on the following concepts, defined elsewhere:
 
-### Tokenizer (@tokenizer spec)
+### Kline (@kline spec)
 
-- `is_literal(node) → bool` — determines whether a node is a literal token.
-  Signature creation uses this to determine how each node contributes:
+- `is_literal(node) → bool` — standalone function that determines whether
+  a node is a literal token. Defined in the @kline spec as a bit-layout
+  test: `(node & 0xFFFFFFFF) == 0xFFFFFFFF`.
+- Signature creation uses this to determine how each node contributes:
   non-literal nodes contribute their full value; literal nodes contribute
-  bit 0 only. The `is_literal` test is defined by the tokenizer and varies
-  by encoding — see @tokenizer spec.
-- Tokenizer encoding determines what non-literal and literal nodes look like.
-  The signature spec treats nodes as opaque beyond the `is_literal` test.
+  bit 0 only.
 
 ### Kline (@kline spec)
 
@@ -190,7 +189,8 @@ The following are explicitly **out of scope** for this spec:
   (character maps, type prefixes, literal masks, etc.) is defined in the
   @tokenizer spec.
 - **Literal test implementation.** `is_literal` is defined in the
-  @tokenizer spec. This spec depends on it but does not define it.
+  @kline spec as a standalone bit-layout test. This spec depends on it
+  but does not define it.
 - **Significance computation.** How signatures contribute to distance and
   significance values is defined in the @significance spec. The inversion
   `(~distance) & MASK64` is performed in `agent.py`.

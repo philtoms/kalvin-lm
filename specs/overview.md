@@ -41,7 +41,10 @@ KLines form a directed graph: when a node value equals the signature of another 
 
 KLine equality is defined as: same signature **and** same node sequence (same length, same order, same values).
 
-A KLine is **literal** when all of its nodes are literal tokens (per `tokenizer.is_literal`). This is a computed property, not stored. Literal KLines represent exact, atomic token sequences; non-literal KLines are composed structures whose nodes reference other KLines.
+A KLine is **literal** when all of its nodes are literal tokens (per `is_literal`,
+defined in the @kline spec as a standalone bit-layout test). This is a computed
+property, not stored. Literal KLines represent exact, atomic token sequences;
+non-literal KLines are composed structures whose nodes reference other KLines.
 
 ### Signatures
 

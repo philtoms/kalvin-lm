@@ -37,11 +37,16 @@ exist in non-literal candidates' node sequences) and route to S3.
 
 ### 1.3 Default Encode Mode
 
-**Decision:** `tokenizer.encode(text)` defaults to **packed** mode. Literal
-encoding is explicit via `encode(text, pack=False)`.
+**Decision:** `tokenizer.encode(text)` determines encoding mode automatically
+from the content — no `pack` parameter needed.
 
-**Rationale:** Packed mode produces the signature-friendly single-node output.
-Literal mode is for exact text sequences.
+- All-uppercase-alpha strings → packed (single node, bit 0 clear)
+- Everything else → literal (one node per character, literal mask set)
+
+**Rationale:** KScript literals are now strictly numbers or quoted strings.
+Since the tokenizer can unambiguously determine the encoding mode from the
+input content, the `pack` parameter is unnecessary. This simplifies all
+callers.
 
 ### 1.4 STM Nodes-Signature Indexing for All-Literal KLines
 

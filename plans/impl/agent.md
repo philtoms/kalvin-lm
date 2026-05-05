@@ -130,7 +130,7 @@ class Agent:
 
 ```python
 Agent(tokenizer=None, model=None)
-# Defaults: Mod32Tokenizer, empty Model with tokenizer's is_literal_fn
+# Defaults: Mod32Tokenizer, empty Model
 # Cogitator is created internally and starts immediately.
 ```
 
@@ -159,7 +159,7 @@ def _route(query: KLine, candidate: KLine) -> str:
 ```
 Phase 1: PREPARE
   If Q.signature == 0 and Q has nodes:
-    Q.signature = make_signature(Q.nodes, tokenizer.is_literal)
+    Q.signature = make_signature(Q.nodes)
 
 Phase 2: GROUND CHECK
   If model.exists(Q):

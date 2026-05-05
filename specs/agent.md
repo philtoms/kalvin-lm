@@ -31,12 +31,11 @@ This spec depends on the following concepts, defined elsewhere:
 - Provides `make_signature(nodes) → KSig` (OR-reduction over all nodes,
   with bit 0 as the literal-content flag).
 - Provides bitwise AND matching for candidate retrieval.
-- Depends on the tokenizer's `is_literal` function.
+- Uses `is_literal` from the @kline spec internally.
 
 ### Tokenizer (@tokenizer spec)
 
 - Provides `encode(text) → list[int]` and `decode(nodes) → str`.
-- Provides `is_literal(node) → bool`.
 - Nodes returned by `encode` are fully typed — the tokenizer handles all
   internal encoding details including type prefix combination.
 
@@ -162,7 +161,7 @@ candidate retrieval or significance computation.
 `"frame"` event at S4. Return `True`.
 
 **Canonical — all-literal**: If every node in Q is a literal (per
-`tokenizer.is_literal`), Q is a pure token sequence. Because
+`is_literal` from the @kline spec), Q is a pure token sequence. Because
 `make_signature` contributes bit 0 for each literal node, Q's signature
 is `1` — a valid canonical signature. Emit a `"frame"` event at S1.
 Return `True`.

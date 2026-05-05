@@ -24,8 +24,7 @@ A Kline consists of:
 ### Literal
 
 - A kline is **literal** if every one of its nodes is a literal token
-  (per `tokenizer.is_literal`, @tokenizer spec). A kline is **non-literal**
-  otherwise.
+  (per `is_literal`, defined below). A kline is **non-literal** otherwise.
 - Literal status is not stored — it is computed from nodes on demand.
 - An empty kline (zero nodes) is non-literal.
 - The model uses `is_literal()` to determine deduplication behaviour
@@ -87,8 +86,25 @@ kline.is_literal() → bool
 ```
 
 Returns whether every node in this kline is a literal token.
-Equivalent to `all(tokenizer.is_literal(node) for node in kline.nodes)`.
+Equivalent to `all(is_literal(node) for node in kline.nodes)`.
 An empty kline returns `false`.
+
+### `is_literal(node: int) → bool`
+
+A standalone function that tests whether a single node is a literal token.
+This is a bit-layout test, not a tokenizer method:
+
+```
+(node & 0xFFFFFFFF) == 0xFFFFFFFF
+```
+
+The lower 32 bits being all set is the **literal mask**. This distinguishes
+literal nodes from packed nodes (bit 0 clear) and from signature values
+(bit 0 may be set but the lower 32 bits are not all 1s).
+
+This function is the single authority for the literal/non-literal distinction.
+All components that need to classify nodes use this function directly — it
+is not injected from the tokenizer.
 
 ## What a Kline is Not
 
@@ -106,9 +122,9 @@ The following are explicitly **out of scope** for this spec:
 
 ## Dependencies
 
-- **Tokenizer** (@tokenizer spec) — `is_literal(node) → bool` determines
-  whether a node is a literal token. The kline's `is_literal()` operation
-  delegates to this.
+The kline spec is self-contained with respect to node classification.
+`is_literal(node) → bool` is defined here as a standalone bit-layout test.
+It is not imported from any other spec.
 
 ## Referenced By
 

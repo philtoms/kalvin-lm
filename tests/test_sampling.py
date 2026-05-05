@@ -508,7 +508,7 @@ class TestSamplingIntegration:
 
         q = KLine(0, [10, 20])
         from kalvin.signature import make_signature
-        q.signature = make_signature([10, 20], a.tokenizer.is_literal)
+        q.signature = make_signature([10, 20])
 
         result = a.rationalise(q)
         assert result is False  # S2 → queued
