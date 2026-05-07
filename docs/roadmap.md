@@ -1,0 +1,315 @@
+# Kalvin Development Roadmap: From Current System to Trainable Knowledge Agent
+
+**Date:** 2026-05-07  
+**Status:** Strategic planning document (updated)  
+**Scope:** Challenges and milestones for evolving Kalvin from its current rationalisation engine toward the trainable, feedback-driven learning system described in `docs/learning.md`
+
+**See also:** `docs/training-loop.md` — the detailed mechanism for the training loop, which resolved several challenges previously listed here.
+
+---
+
+## Executive Summary
+
+Kalvin today is a **knowledge rationalisation engine**: it receives klines, evaluates their significance against a model, and integrates them via a fast (routing) and slow (cogitation) path. `docs/learning.md` describes a **trainable agent that learns through recursive rationalisation, structured feedback, and self-directed study**.
+
+A detailed design pass on the training loop (`docs/training-loop.md`) resolved the central architectural questions. The gap between the current system and the learning vision is smaller than originally estimated:
+
+1. **The Training Interface** requires no new APIs. The teacher uses existing `rationalise()`, the event bus, and countersignature. Ratification is countersignature — the teacher rationalises the reciprocal kline.
+2. **Scaffolding** is not a new mechanism. Each scaffolding step is a new frame (a new kalvin instance layered over the previous frame as base). The frame stack handles recursive learning naturally.
+3. **Agency & Study** is the existing cogitator, viewed from the learning perspective. No new mechanism required.
+4. **The S1 Ratification Boundary** is a surgical change to the cogitator: distinguish true S1 from temperature-shifted S1 in the promotion logic. True S1 auto-promotes; t(S2)→S1 proposals stay in STM awaiting countersignature.
+5. **Curriculum & Session Management** is handled by the frame stack for the MVP. Each `rationalise()` call creates a frame. Future work adds temporal events and trajectory analysis.
+
+What remains are genuine implementation challenges: sharpening the S1 promotion logic, building a frame factory, calibrating boundaries, and evaluating model quality.
+
+---
+
+## Current State: What Exists Today
+
+| Capability | Status | Notes |
+|---|---|---|
+| KLine data model | ✅ Complete | `kline.py`, literal/non-literal node types |
+| Signature computation | ✅ Complete | `signature.py`, OR-reduction, `signifies()` |
+| Mod tokenizer (Mod32/Mod64) | ✅ Complete | Packed + literal encoding |
+| BPE tokenizer | ❌ Not started | Optional dependency; not needed for MVP |
+| STM (bounded rolling index) | ✅ Complete | `stm.py`, dual-keyed, eviction |
+| Model (3-tier: STM → Frame → Base) | ✅ Complete | `model.py`, ~600 lines |
+| `model.expand()` generator | ✅ Complete | Connotation discovery, S2 signifies, S3 bridging |
+| Significance pipeline | ✅ Complete | Distance → inversion → boundary classification |
+| Routing (`_route`) | ✅ Complete | Node-membership test, agent-level |
+| Agent rationalisation pipeline | ✅ Complete | 6-phase fast path |
+| Cogitator (background thread) | ✅ Complete | Work items, countersignature, re-rationalisation |
+| Response sampling (temperature, top-k, top-p) | ✅ Complete | Boundary shifting, streaming pipeline |
+| KScript DSL | ✅ Complete | Lexer, parser, compiler, decompiler |
+| Events (pub/sub) | ✅ Complete | `ground`, `frame`, `done` |
+| Persistence (JSON/binary) | ❓ Partial | Planned, not confirmed |
+| **Sharpened S1 promotion** | ❌ Not started | Distinguish true S1 from t(S2)→S1 in cogitator |
+| **Frame factory** | ❌ Not started | Method for creating new frames (kalvin instances) |
+| **Teacher implementation** | ❌ Not started | External coordinator using existing APIs |
+| **Model quality evaluation** | ❌ Not started | Test harness, metrics, calibration |
+
+---
+
+## Resolved Challenges
+
+The following were originally listed as challenges. The training loop design pass resolved them.
+
+### ~~Challenge 1: The Training Interface~~ — Resolved
+
+**Original assumption:** Required new APIs (`confirm`, `correct`, `instruct`), new data structures (`Proposal`), and transactional model mutations (rollback on `correct`).
+
+**Resolution:** The teacher uses existing APIs. No new protocol needed:
+
+- **Submit query:** `kalvin.rationalise(query_kline)` — already exists, returns True/False.
+- **Receive proposals:** Subscribe to the event bus, receive `frame` events — already exists.
+- **Ratify (confirm):** `kalvin.rationalise(reciprocal_kline)` — creates countersignature, achieving structural S1. Already exists.
+- **Correct:** No action. The t(S2)→S1 proposal stays in STM (not promoted). No rollback needed because no promotion occurred. The teacher simply ignores the proposal and moves on to scaffolding.
+- **Instruct (scaffold):** `kalvin.rationalise(scaffold_kline)` on a new frame — already exists.
+
+The teacher is an external coordinator that composes existing API calls. It does not need new agent methods, new data structures, or transactional semantics. See `docs/training-loop.md` §"The Teacher's Responsibilities".
+
+### ~~Challenge 2: Scaffolding & Recursive Learning~~ — Resolved
+
+**Original assumption:** Required a foreground interactive process where the agent pauses rationalisation, waits for feedback, and manages recursive depth limits. Also assumed monotonic significance tracking.
+
+**Resolution:** Scaffolding is a new frame. Each scaffolding kline goes through `rationalise()` on a new kalvin instance layered over the current frame as base. The frame stack is the recursion mechanism:
+
+```
+Frame 1: original query
+Frame 2: scaffolding for missing concept (base = Frame 1)
+Frame 3: deeper scaffolding (base = Frame 2)
+```
+
+No foreground pausing needed. The teacher creates frames, submits queries, and listens to events from all active frames. Frame cogitation runs independently and concurrently. Recursive depth is managed by the teacher (it decides how many frames to create).
+
+Monotonicity is a guarantee about grounded information, not significance values. Frames are append-only. See `docs/training-loop.md` §"Monotonicity: Constructive Grounding".
+
+### ~~Challenge 3: Agency & Self-Directed Study~~ — Resolved
+
+**Original assumption:** Required a new study mechanism with prioritisation, re-visitation, readiness flagging, and study budgets.
+
+**Resolution:** Study is the existing cogitator. The cogitator already processes S2/S3 work items in the background, checks countersignature, and re-rationalises. This *is* study. The distinction between "training" and "study" is teacher presence, not system behavior.
+
+The sharpened S1 promotion logic ensures that autonomous cogitation cannot reach true S1 via temperature shift — it can only produce proposals (t(S2)→S1 in STM) or discover structural S1 via countersignature. This naturally enforces the "study cannot reach S1" boundary.
+
+Future enhancements (prioritisation, re-visitation, readiness thresholds) may improve study quality but are not required for the MVP.
+
+### ~~Challenge 4: The S1 Ratification Boundary~~ — Resolved
+
+**Original assumption:** Required redefining S1 from computed to confirmed, introducing a `RatificationStatus` enum, breaking the fast path, making countersignature provisional, and solving a bootstrapping problem.
+
+**Resolution:** S1 remains computed. The change is surgical:
+
+1. **True S1** (distance = 0, all nodes match) auto-promotes as today. No change.
+2. **Canonical S1** (all-literal, self-grounded) auto-promotes as today. No change. These are self-ratifying.
+3. **Temperature-shifted S1** (distance > 0, but above τ-shifted boundary) is a **proposal**. Added to STM, event emitted, **not promoted**.
+
+Ratification is countersignature — the teacher rationalises the reciprocal kline, creating a mutual cross-reference that makes the proposal structurally S1. This is an existing mechanism, not a new one.
+
+No new enum, no new state, no backward compatibility issue, no bootstrapping problem. The fast path is unchanged. The only change is in the cogitator's `_run_work_item`: the `band == "S1"` path checks whether the result is true S1 or temperature-shifted S1 before promoting.
+
+### ~~Challenge 5: Convergence & Monotonicity~~ — Resolved
+
+**Original assumption:** Required proving that significance monotonically increases during training, and enforcing this invariant.
+
+**Resolution:** Monotonicity is a guarantee about **grounded information**, not significance values. Significance may fluctuate as the model grows (new candidates, altered distances). But grounded information is permanent: once a kline is promoted to a frame, it stays. The model can only grow richer — never poorer. The frame stack is append-only.
+
+Convergence is an empirical question, not a formal guarantee. The teacher decides when understanding is sufficient. The system provides the mechanisms (rationalise, events, countersignature, frame stack); the teacher provides the judgment.
+
+---
+
+## Remaining Challenges
+
+### Challenge 6: Sharpening S1 Promotion
+
+**Status:** Not started  
+**Effort:** Small (surgical change to cogitator)
+
+The cogitator's `_run_work_item` currently promotes any result classified as S1, including temperature-shifted S1. This needs to be sharpened so that only true S1 (distance = 0) promotes to frame. Temperature-shifted S1 proposals are added to STM and emit `frame` events, but are not promoted.
+
+**Detection:** True S1 is when the distance between query and candidate is zero — all query nodes exist in the candidate. Temperature-shifted S1 is when the significance value is above the shifted S1|S2 boundary but the underlying structural distance is non-zero.
+
+**Implementation:** In `_run_work_item`, when `band == "S1"`, check whether the result is true S1 or temperature-shifted before calling `on_s1()` (which triggers promotion). If temperature-shifted, emit the event and add to STM, but do not promote.
+
+**Risk:** Low. The change is contained within the cogitator's work item processing. Existing tests for true S1 behavior (canonical, all-literal, countersigned) remain valid. New tests needed for t(S2)→S1 proposal behavior.
+
+### Challenge 7: Frame Factory & Teacher Infrastructure
+
+**Status:** Not started  
+**Effort:** Small–medium
+
+The training loop requires a way to create new frames (kalvin instances) layered over previous frames. This is the frame factory:
+
+```
+frame_n = kalvin.new_frame(temperature=1.5, top_k=40, top_p=0.95)
+```
+
+Or equivalently, the teacher constructs:
+
+```
+frame_n = Agent(model=Model(base=frame_n_minus_1.model))
+```
+
+**Questions to resolve:**
+- Should frames share model state by reference (allowing inter-frame enrichment) or by snapshot (isolating frames)?
+- How does the teacher subscribe to events from multiple frames simultaneously?
+- Should the frame factory be a method on the Agent, or is manual construction sufficient?
+
+**The teacher** is an external coordinator (Python class, initially) that:
+1. Compiles KScript into queries and expectations
+2. Creates frames via the frame factory
+3. Subscribes to event buses for all active frames
+4. Compares proposals against expectations (kline equality for MVP)
+5. Countersigns by rationalising the reciprocal
+6. Constructs corrective scaffolding when proposals don't match
+7. Manages the frame stack
+
+**Risk:** Low–medium. The frame factory is straightforward. Teacher implementation is mostly orchestration of existing APIs. Event subscription from multiple agents needs testing.
+
+### Challenge 8: Model Quality & Evaluation
+
+**Status:** Not started  
+**Effort:** Medium–ongoing
+
+The training loop's effectiveness depends on model quality. No quality metrics exist today.
+
+**Needs:**
+1. **Test harness** — pairs of (query, model state, expected significance level). The current MHALL test is anecdotal.
+2. **Quality metrics** — coverage (fraction of expected klines that can be grounded), precision (when the system claims S1, is it correct?), learning rate (scaffolding rounds to reach S1).
+3. **Boundary calibration** — whether `_S3_BIAS`, `_pack`, `_S2_S3_DISTANCE`, and `_TEMP_SCALE` produce useful classifications for real learning.
+4. **Performance profiling** — candidate retrieval is O(N). The inverted bit-index optimization may be needed sooner than expected as the model grows through training.
+5. **Tokenizer capacity** — Mod(N) vocabulary saturation point for non-trivial domains.
+
+**Risk:** Medium. This is empirical work. The system may work well with current boundaries, or it may need significant tuning. The only way to find out is to run training sessions and measure.
+
+### Challenge 9: KScript Metadata (Future)
+
+**Status:** Not started  
+**Effort:** Small  
+**Priority:** Low (API-level sampling parameters work for MVP)
+
+KScript currently has no mechanism for encoding sampling parameters alongside a script. For the MVP, the teacher sets parameters API-level per frame. Future work may add metadata annotations to KScript:
+
+```
+@temp=1.5 @top_k=20
+MHALL => SVO
+  ...
+```
+
+This is polish, not a blocker. The training loop works without it.
+
+### Challenge 10: Temporal Events & Trajectory Analysis (Future)
+
+**Status:** Not started  
+**Effort:** Medium  
+**Priority:** Low (MVP uses frame stack without temporal analysis)
+
+The frame stack captures the full learning trajectory. Future work adds temporal metadata to events so the teacher (or a kalvin-as-tutor) can analyze the trajectory: rate of convergence, effectiveness of scaffolding, etc.
+
+This is the foundation for kalvin-as-tutor: a kalvin instance that acts as teacher for another kalvin instance, using reentrant rationalisation instead of exact kline equality for proposal evaluation.
+
+---
+
+## Dependency Graph (Updated)
+
+```
+Challenge 6: Sharpen S1 Promotion
+    ↓
+Challenge 7: Frame Factory & Teacher Infrastructure
+    ↓
+Challenge 8: Model Quality & Evaluation (ongoing, parallel)
+
+Challenge 9:  KScript Metadata          (future, low priority)
+Challenge 10: Temporal Events & Tutor    (future, low priority)
+```
+
+The dependency chain is now linear and shallow: sharpen S1 → build frame factory + teacher → evaluate quality. The future challenges (9, 10) are independent enhancements.
+
+---
+
+## Revised Phasing
+
+### Phase A: Sharpen S1 Promotion (Challenge 6)
+**Estimate:** 1–2 days  
+**Risk:** Low
+
+Distinguish true S1 from temperature-shifted S1 in the cogitator's promotion logic. Add tests for t(S2)→S1 proposal behavior.
+
+**Deliverables:**
+- Modified `_run_work_item` with true S1 vs. t(S2)→S1 detection
+- Tests: true S1 promotes, t(S2)→S1 stays in STM and emits event
+- No spec changes required (behavioral change within existing spec)
+
+### Phase B: Frame Factory & Teacher (Challenge 7)
+**Estimate:** 1–2 weeks  
+**Risk:** Low–medium
+
+Build the frame factory, implement a teacher class, and test the three training scenarios from `docs/training-loop.md`.
+
+**Deliverables:**
+- Frame factory (method on Agent or standalone)
+- `Teacher` class that orchestrates the training loop
+- Tests for Scenarios A, B, C from `docs/training-loop.md`
+- Multi-frame event subscription
+
+### Phase C: Model Quality & Evaluation (Challenge 8)
+**Estimate:** 2–3 weeks (ongoing)  
+**Risk:** Medium
+
+Build the evaluation infrastructure. Run training sessions. Calibrate boundaries.
+
+**Deliverables:**
+- Significance test suite
+- Quality metrics (coverage, precision, learning rate)
+- Boundary calibration data
+- Performance profiling results
+
+### Phase D: Future Enhancements (Challenges 9, 10)
+**Estimate:** TBD  
+**Priority:** After MVP is proven
+
+KScript metadata, temporal events, kalvin-as-tutor. These are not required for the training loop to work. They enhance the teacher's capability and the system's introspection.
+
+---
+
+## Summary of Open Technical Questions (Updated)
+
+| # | Question | Affects | Priority | Status |
+|---|---|---|---|---|
+| 1 | How to detect true S1 vs. t(S2)→S1 in the cogitator? | Challenge 6 | High | Design complete — check distance == 0 |
+| 2 | Frame factory: method on Agent or standalone? | Challenge 7 | High | TBD |
+| 3 | Frame model sharing: reference or snapshot? | Challenge 7 | High | Reference sharing for MVP (enables inter-frame enrichment) |
+| 4 | How to subscribe to events from multiple frames? | Challenge 7 | Medium | TBD |
+| 5 | How many klines before candidate retrieval O(N) becomes a bottleneck? | Challenge 8 | Medium | Empirical |
+| 6 | Are current boundary constants well-calibrated for training? | Challenge 8 | High | Empirical |
+| 7 | When does Mod(N) vocabulary saturation require BPE transition? | Challenge 8 | Low | Empirical |
+| 8 | What does a non-trivial training curriculum look like? | Challenge 10 | Medium | TBD |
+
+---
+
+## Resolved Questions (Previously Open)
+
+| # | Original Question | Resolution |
+|---|---|---|
+| 1 | How should `Proposal` represent partial understanding? | No `Proposal` type needed. Events carry the kline. The teacher compares using kline equality. |
+| 2 | Should `correct` roll back model mutations or prevent them entirely? | Neither. t(S2)→S1 proposals are not promoted, so there is nothing to roll back. The teacher simply moves on. |
+| 3 | Can Kalvin articulate what it doesn't know (scaffold requests)? | Not in MVP. The teacher diagnoses gaps and constructs scaffolding. |
+| 4 | Is the distance algorithm monotonic with respect to model growth? | Monotonicity is about grounded information (append-only frames), not significance values. No formal guarantee needed. |
+| 5 | What significance threshold indicates "ready for ratification"? | For MVP: exact kline equality. For future: reentrant rationalisation (kalvin-as-tutor). |
+| 6 | How to bootstrap S1 in an empty model under ratification? | Canonical S1 (all-literal, self-grounded) is self-ratifying. No bootstrapping problem. |
+| 7 | Should study and training run concurrently, or must they be serialised? | They already run concurrently. Each frame's cogitator is independent. |
+| 8 | What does a Kalvin curriculum look like for a non-trivial domain? | Deferred to Phase D. |
+
+---
+
+## Conclusion
+
+The original roadmap overestimated the gap between the current system and the learning vision. The detailed training loop design pass revealed that the existing architecture — rationalise, events, cogitation, countersignature — already provides most of what's needed. The training loop is an *usage pattern* over existing APIs, not a new subsystem.
+
+The two concrete implementation tasks are:
+1. **Sharpen S1 promotion** — a small change to the cogitator that makes temperature-shifted S1 a proposal rather than a conclusion.
+2. **Frame factory + teacher** — orchestration code that composes existing APIs into the training loop pattern.
+
+Everything else (model quality evaluation, boundary calibration, future enhancements) is empirical work and polish that follows from a working training loop.
+
+The central insight holds: **learning and rationalisation are the same process, applied recursively**. The training loop makes this concrete — each frame is a rationalisation, each countersignature is a ratification, and the frame stack is the learning trajectory.

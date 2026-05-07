@@ -7,7 +7,7 @@ rationalisation
 is a ratio - a number that approximates the relationship between the signatures of two or more klines. Thus 2 / 4 has the same significant relationship as 4 / 8 even though the node values are different. Rationalisation is a process that creates a function whose parameters are the significant nodes of the relationship.
 
 training
-is about pattern completion. Rationalisation is allowed to be noisy and imprecise S2-S3, and reentry improves the chances of pattern matching at S1-S4, but training ensures that the chances of hittig an expected pattern are higher than unexpected patterns.
+is about pattern completion. Rationalisation is allowed to be noisy and imprecise S2-S3, and reentry improves the chances of pattern matching at S1-S4, but training ensures that the chances of hitting an expected pattern are higher than unexpected patterns.
 
 geometry
 The geometry of a model dictates its performance, and in these terms - its capability. MW can be constructed in a 1D linear geometry (with a lot of reentry) and in this configuration behaves like a sort. A 2D planar geometry therefore is a sort of sorts, 3D is a sort of sorts of sorts and so on. As in maths, the more dimensions, the more granular and or composite the model, leading to less reentrant dependency at the exponential cost of size (assuming dense model). 
@@ -193,7 +193,7 @@ S1-S4 Association
       M:[M] identity = S1 
       M:[G] association = S3
       G:[M] association = S3
-        therfore M = G countersigned = S1
+        therefore M = G countersigned = S1
     S1 countersigned
       M = [G in focus] =>
         [G in focus]:[M]
@@ -358,14 +358,14 @@ AB == CD =>
 Significance rules and calculations.
 Kalvin employs an idea of significance to choose between two klines with one being more or less significant that another with respect to the current state of the model. Significance is a calculated value ranging from S1 (fully significant) through to S4 (fully insignificant). 
 
-The calculation is arrived as a metric distance between the nodes of two klines. Given a query that selectes two candidate answers, the answer closer to the query is the more significant.
+The calculation is arrived as a metric distance between the nodes of two klines. Given a query that selects two candidate answers, the answer closer to the query is the more significant.
 
 The same calculated value is also a measure of a kline's structural entropy. More work is required to move a kline from a low significance to a high one. 
 
 
 
 
-It is calculated as the measure of a kline's structural entropy. A highly significant kline is one where the entropy level is very low, and conversely a highly insignificant kline is one where the entroy level is very high.
+It is calculated as the measure of a kline's structural entropy. A highly significant kline is one where the entropy level is very low, and conversely a highly insignificant kline is one where the entropy level is very high.
 
 A signature that is closer to its nodes has lower entropy than one that is further away. Significance is expressed as the inverse of the entropy calculation so that for any two klines, it is possible to state which is the more significant through simple arithmetic.
 
@@ -391,12 +391,12 @@ Unsigned      ~> S4    ~> INV(FFF) ~> 000 eg: [{A: None}]
 
 ## Notes
 ### The Grounding Principle
-A KLine is grounded (S1) if all of its nodes are grounded. Literal nodes are implicitly grounded, but non literal nodes can only be grounded through reciprical kline reference (countersigning): KLines A and B reference each other through their nodes.
+A KLine is grounded (S1) if all of its nodes are grounded. Literal nodes are implicitly grounded, but non literal nodes can only be grounded through reciprocal kline reference (countersigning): KLines A and B reference each other through their nodes.
 
 ### Structural Entropy
 The relationship between a Signature and its Nodes can be viewed as a measure of its structural entropy. A signature that is closer to its nodes has lower entropy than one that is further away. Significance is expressed as the inverse of the entropy calculation so that for any two klines, it is possible to state which is the more significant through simple arithmetic.
 
-A signature's closeness to its nodes is a measure of entropy. A signature that has more information than its nodes suggest is overfitting, and the system will try to balance this by substituting klines with higher entropy with klines of lower entropy. 
+A signature's closeness to its nodes is a measure of entropy. A signature that has more information than its nodes suggest is over-fitting, and the system will try to balance this by substituting klines with higher entropy with klines of lower entropy. 
 
 Prefer to use the entropic terms rather than hub and spoke, less dense etc.
 Do not highlight one-to-many relationships. These are just examples. The importance is in the fit between the signature and the nodes. If the signature is too wide then it is an overfit, not wide enough then it is an underfit.
@@ -420,16 +420,16 @@ The signature is used to locate its canonical representation so that the calcula
 
 The calculation starts at full S4 - all bits set. S1 (all bits clear) can only be achieved if the nodes are fully grounded. The model will provide a method to determine if a node is grounded. The grounded value will be a measure of the distance between the nodes of the current kline and the grounded node. For example, given a kline {A: B} and a model that holds [{B: C}, {C: D}, {D: "X"}], the grounded value of B will be 2 (== 2 hops or edges between B and "X").
 
-# Algorithom
+# Algorithm
 sig = S4 # set all bits
-if all signodes match all knodes: # canon
+if all sig-nodes match all knodes: # canon
   sig = S1 # clear all bits
   accumulate the grounded values of the nodes
   set S2 of sig to G
 
-if some signodes match all knodes: # overfit
+if some sig-nodes match all knodes: # overfit
   sig = S2 # clear all S2 bits
-  for each overfit signodes
+  for each overfit sig-nodes
     increment s2
 
 return sig all bits inverted
@@ -489,7 +489,7 @@ Whilst significance ranges from S1 (fully significant) to S4 (fully insignifican
   S3 if all or some nodes are S3.
   S4 if there are no candidates to compare.
 
-Becuase it is descreet but not continuous, a kline's significance also represents its structural entropy as a measure of work required to move it towards S1. 
+Because it is discrete but not continuous, a kline's significance also represents its structural entropy as a measure of work required to move it towards S1. 
 
 Ignore the codebase entirely.
 Q1: the signature is used to find candidate klines. Significance is calculated per-node between the query and the candidate. The details of the calculation will be discussed later.
@@ -501,7 +501,7 @@ Q5: S4 is purely no candidates so yes it is a query step.
 Per node comparison.
 We can discuss the structure of significance. It resembles the current structure in the codebase.
 It is a 64 bit integer holding the inverse of the calculated aggregated distance between 2 klines. 
-All calculatiuon is performed in metric space, and converted to significance after aggregation. Starting with the most pessimistic significance value S4 (all bits set), the significant boundaries are used as masks to clear:
+All calculation is performed in metric space, and converted to significance after aggregation. Starting with the most pessimistic significance value S4 (all bits set), the significant boundaries are used as masks to clear:
   S4: INV(all bits set) ~> all bits clear
   S3: INV(some S3 bits clear) ~> some S3 bits set
   S2: INV(some S2 bits clear) ~> some S2 bits set
@@ -526,7 +526,7 @@ S2: partial = some nodes match
 S3: recognised = no nodes match
 S4: not recognised
 
-The recognised route is counter-intuative, but actually, it is an expression of previous work done. The reason that kalvin can recognise a kline with no matching nodes is because it's signature matches previously worked signatures. This very important part of Kalvin's rationalisation has not been properly specified yet becuase it is distinct from significance calculation.
+The recognised route is counter-intuitive, but actually, it is an expression of previous work done. The reason that kalvin can recognise a kline with no matching nodes is because it's signature matches previously worked signatures. This very important part of Kalvin's rationalisation has not been properly specified yet because it is distinct from significance calculation.
 
 create a new signature.md spec and reconcile it with the overview.md
 Signatures are those knodes whose bit 0 is clear. They can appear in kline head position (hence the name), and they can appear in kline nodes (they select new kline candidates). Signatures are therefore important components of the knowledge graph supported by the model. Signature creation is part of this spec so it depends on tokenzer.md
@@ -544,11 +544,11 @@ Kalvin has agency to make choices through a mechanism called significance. It ro
 A KLine's significance is mathematically calculated (it is basically a distance function), but it leaves traces in the structure of the model that can be usefully rationalised
 
 An S1 KLine is either fully canonical, or it is countersigned by another kline
-- a canonical kline is one where its signature fully rerpresents its nodes.
-- a countersigned kline is one whose signed nodes (make_signature) reference a kline whose signed nodes reciprocatively reference the first kline.   
-An S2 KLine is either underfitting or overfitting.
-- an underfitting kline would be S1 but for its signature containing more information than its signed nodes.
-- an overfitting kline would be S1 but for its signature containing less information than its signed nodes.
+- a canonical kline is one where its signature fully represents its nodes.
+- a countersigned kline is one whose signed nodes (make_signature) reference a kline whose signed nodes reciprocally reference the first kline.   
+An S2 KLine is either under-fitting or over-fitting.
+- an under-fitting kline would be S1 but for its signature containing more information than its signed nodes.
+- an over-fitting kline would be S1 but for its signature containing less information than its signed nodes.
 An S3 KLine is connotational .
 - a connotational kline is one whose nodes are unrelated to its signature.
 An S4 KLine is Unsigned.
@@ -580,7 +580,7 @@ notes to consider:
 
 confer with user before making any changes
 
-max_hop is hyperparam default 100
+max_hop is hyper-param default 100
 calc1 = (max_hop+1) * (mismatched_q + mismatched_c) / |query.nodes| 
 calc2 = |{(max_hop+1) * n ∈ matched_q : model.find(n) is not None}|
 calc3|4 limited to max_hop
@@ -607,11 +607,11 @@ consider alternative algorithms that support this intuition. Do not be tied to c
 
 specs: iterate on the model.s3_distance semantics that are currently **TBD**
 notes to consider:
-- s3_distance has been selected because there are no node matchs between query and candidate klines
+- s3_distance has been selected because there are no node matches between query and candidate klines
 - the starting distance for this algorithm is all S3 bits clear - S3 distance grows with mismatch and discovery.
 - Intuitively, the relationship between query and candidate nodes must be resolved graphically.
 - use the edge_hops algorithm for query and candidate nodes. Crucially, where hop > 0 < max_hops promote the distance to be an S2 distance (see below for reasoning)
-- important diference between S3 and S2: If a query edge hop matches a candidate edge hop return an S3 distance
+- important difference between S3 and S2: If a query edge hop matches a candidate edge hop return an S3 distance
 
  Proposed s3_distance Semantics
 
@@ -631,7 +631,7 @@ notes to consider:
  ### Promotion Rule (S3 → S2)
 
  If any node (query or candidate) has 0 < hops < MAX_HOP, the pair has graphical connectivity — there IS a path from the node to grounded knowledge. This promotes the hop distance into S2 range rather than S3. The reasoning: if edges
- resolve, the relationship isn't purely connotational anymore.
+ resolve, the relationship isn't purely connotational any more.
 
  ### Match Rule (Stays S3 with computed distance)
 
@@ -690,7 +690,7 @@ distance(query, candidate, level):
 
   if level == "S2" s2_distance = level_distance else s3_distance += level_distance
 
-  # move distance calculations into repective boundary slots  
+  # move distance calculations into respective boundary slots  
   return s2_distance << 32 + s3_distance
 ```
 
@@ -770,10 +770,10 @@ review the following code replacement for the model s2_distance and s3_distance 
 Currently cogitate handles all query-candidates. However, each query-candidate is capable of expanding into multiple connotations.
 Currently the distance function takes the first connotation that it finds and returns significance in terms of its combined hop count.
 Instead of exposing distance, the model should provide an expand() function generator that yields the next query-candidate + distance.
-The cogitator immediately pushes this result onto the top of the stack and reenters.
+The cogitator immediately pushes this result onto the top of the stack and re-enters.
 
 ```pseudo code for model.expand(query, candidate, level, distance=0) -> Iterator[QueryCandidate]:
-      # esentially the current distance function renamed and yielding at each distance established...
+      # essentially the current distance function renamed and yielding at each distance established...
       q_set = set(query.nodes)
       c_set = set(candidate.nodes)
       mismatched_q = q_set - c_set
@@ -876,7 +876,7 @@ The cogitator immediately pushes this result onto the top of the stack and reent
 
 ```
 Notes:
-- expand is a name clash with existing model function. Rename existing model.expand to queryexpand.
+- expand is a name clash with existing model function. Rename existing model.expand to query-expand.
 - QueryCandidate is a named tuple:
  ```
  class QueryCandidate(NamedTuple):
@@ -889,7 +889,7 @@ Notes:
 
 consult with user before implementing
 
-Response sampling: consider top_k, top_p and temperature. The challenge is to apply these well understood hyperparameters in the context of how kalvin rationalises user input. When kalvin rationalises a query, several candidates might be generated through expansion and reentrant rationalisation. Significance is already available to rank these candidates but it is a blunt instrument. Examples to consider:
+Response sampling: consider top_k, top_p and temperature. The challenge is to apply these well understood hyper-parameters in the context of how kalvin rationalises user input. When kalvin rationalises a query, several candidates might be generated through expansion and reentrant rationalisation. Significance is already available to rank these candidates but it is a blunt instrument. Examples to consider:
 - currently only S1 klines are published. which of these parameters is best aligned with moving S2 significance into this publishing window?
 - When kalvin cogitates S2/S3 which parameters are best aligned with the idea of promotion? 
 
@@ -908,7 +908,7 @@ This solution allows calculated signatures to be naturally gated, and importantl
 The underlying problem is the way that distance is computed. Currently it is computed by route so that different sections are updated. This is overcomplicated and wrong. The topology of the graph is enough to compute a universal distance between two nodes where S3 nodes are naturally further apart than S2 nodes because of the topology involved. Thus distance can be a simple integer that accumulates node hops (or max_hop if not resolved).
 
 _D_PACK_SHIFT prevents S3 being promoted to S2 when in temperature range because it makes the gap between a single S3 node hop and a single S2 node hop too big. We need topological distances that are close to each other to generate
-similar significance so that a small rise in temperature has a noticable operation effect. That being said S3 hops should still be further than S2 hops. Indeed all hops should become greater as they accumulate. Consider some
+similar significance so that a small rise in temperature has a noticeable operation effect. That being said S3 hops should still be further than S2 hops. Indeed all hops should become greater as they accumulate. Consider some
 non-linearity that makes large hops even further apart but small hops increasingly closer. A theoretical example:
 1 query,
 2 candidates,
@@ -972,3 +972,128 @@ The BPE Tokenizer (not yet completed) is designed for more robust and granular r
 In the Kalvin system, the granularity of a token is a measure of dimensionality. In the ModNTokenizer, this dimensionality is very course and quite wasteful amounting to a single dimension reserved for each encoded ASCII character (also allowing for character collisions). In the BPS Tokenizer, the same dimensionality is populated by a trained nlp part-of-speech encoding. In both schemes the purpose is not to encode knowledge directly but to encode granular dimensionality that kalvin can use to construct knowledge as a graph.
 
 Questions before writing?
+
+Create a roadmap detailing the challenges of developing kalvin further towards the future system described in @docs/learning.md
+
+How kalvin learns
+Significance is at the heart of how Kalvin learns. The calculation of significance is topological and invariant
+
+Here are some points to consider:
+- The training interface is not particularly complicated. Kalvin receives and rationalises klines. The rationalise function currently returns a boolean to indicate that it performed fast or slow rationalisation that correlates to True=rationalised, False=Cogitating.
+- the event sub-system is where the interface needs to be developed. It will provide feedback in the form of generated and signified klines. 
+
+Review the following detailed (but incomplete) account of the training loop using @docs for reference. The account is not complete so ask questions that you need to understand how it all fits together"
+
+The training loop concerns a teacher (human or automated) and a kalvin instance. The teacher creates training scripts (using KScript) that compile down to klines: a query and an expectation with optional intermediate nested query/expectations as required. The teacher delivers these to kalvin through the rationalisation API, and subscribes to kalvin's event bus to receive submissions.
+
+A teacher 
+  ~> controls learning rate by raising or lowering temperature
+  ~> controls learning effort through adjustments to top_p and top_k
+  ~> constructs kline queries and expectations
+  ~> encodes and delivers kline queries to kalvin
+  ~> receives submitted kline events from kalvin
+  ~> compares and contrasts event klines against expectations
+  ~> countersigns matching klines
+
+Kalvin 
+  ~> accepts and rationalises kline queries
+  ~> cogitates where understanding is lower than temperature dictates
+  ~> emits significant events guided by temperature
+  ~> promotes countersigned queries
+
+KScript can be used to construct suitable training scripts that encode queries, intermediate steps and expectations. 
+
+Each submitted training script initiates a new frame. The teacher uses this information to correlate and coordinate immediate and delayed events.
+
+The teacher feedback loop is synchronised by rationalisation response: True=immediate, False=cogitating. The teacher uses this response to coordinate event frames.
+
+Scenarios and strategies
+A. 
+  1. A teacher constructs a script and sets the query from the script that kalvin must rationalise. 
+  2. Kalvin rationalises the query to near S1 (t(S2) and immediately submits a response as a new event.
+  3. The teacher receives the event and compares its kline submission to the expectation.
+  4. The submission matches the expectation and the teacher countersigns and returns it to kalvin.
+  5. Kalvin promotes the countersigned response so that it is grounded.
+   
+B. 
+  1. A teacher constructs a script and sets the query from the script that kalvin must rationalise. 
+  2. Kalvin rationalises the query to S2+temp and immediately submits a response as a new event
+  3. The teacher receives the event and compares its kline to the expectation.
+  4. The kline does not reach expectations so the teacher creates a new script that covers the misaligned information and initiates a new training frame.
+  5. Kalvin rationalises and submits this new information which is accepted and promoted.
+  6. Kalvin continues to cogitate the original frame and submits a new response.
+  7. This time the response is accepted and kalvin is instructed to promote it.
+
+C. 
+  1. A teacher constructs a script and sets the query from the script that kalvin must rationalise. 
+  2. Kalvin is unable to rationalise the query to t(S2) and the event loop times out.
+  3. The teacher raises the temperature and tries again.
+  2. This time, Kalvin rationalises the query to near S1 (t(S2) and immediately submits a response as a new event.
+  4. The submission matches the expectation so the teacher drops the temperature back to its previous value.
+  5. Kalvin continues to cogitate the original frame and submits a new response.
+  6. This time the response is accepted and kalvin is instructed to promote it.
+   
+Summary of Key Questions
+
+ ┌────┬──────────────────────────────────────────────────────────────┬───────────────────────────────────────┐
+ │ #  │ Question                                                     │ Why it matters                        │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 1  │ What is top_t?                                               │ Doesn't exist in specs                │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 2  │ Is "countersign" trainer endorsement or structural property? │ Ambiguous term reuse                  │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 3  │ What does t(S2) mean precisely?                              │ Undefined notation                    │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 4  │ Is "frame" the model's frame or a training-round concept?    │ Different abstractions                │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 5  │ How are expectations encoded in KScript?                     │ KScript has no expectation concept    │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 6  │ Is "rationalisation API" a planned interface or conceptual?  │ Implementation question               │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 7  │ Does temperature gate cogitation or just classify yields?    │ Different mechanisms                  │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 8  │ How do concurrent training frames interact?                  │ No current support for this           │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 9  │ What does "event loop times out" mean per-query?             │ No per-query timeout exists           │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 10 │ Does temperature change affect in-flight work items?         │ Boundary computation is per-work-item │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 11 │ Who owns/controls sampling parameters?                       │ No external API exists                │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 12 │ Is "correct" (reject proposal) part of the loop?             │ Missing from scenarios                │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 13 │ Is scaffolding recursive in your model?                      │ Central to learning doc               │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 14 │ Computed S1 or ratified S1?                                  │ Fundamental semantic question         │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 15 │ Is study part of the training loop?                          │ Agency between sessions               │
+ ├────┼──────────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+ │ 16 │ Who ensures monotonicity?                                    │ Convergence guarantee                 │
+ └────┴──────────────────────────────────────────────────────────────┴───────────────────────────────────────┘
+
+ 1.top_t is top_k. It was a typo.
+ 2. Countersign is semantically an endorsement expressed  structurally. Simple example: kalvin submits {A: BC}, trainer countersigns by generating and sending {A:BC}, {BC: A} through kalvin.rationalise.
+ 3. t(S2) is not a precise term. It means 'this significance in the S2 range' at this temperature setting crosses the S1 boundary threshold. The code already exists for this.
+ 4. This is future work. The current system has STM -> Frame -> Base. We need it to support STM -> Frame(n) -> Frame(n-1)...Frame(1) -> Base. It might be as simple creating a new kalvin instance with frame as base. TBD
+ 5. A KScript is a nested structure of klines. By convention the top level is the query and the expectation (eg: MHALL => SVO). The optional nesting holds the intermediate query/expectations
+ 6. The rationalisation API already exists as Kalvin.rationalise.
+ 7. Temperature continues to work as implemented by kalvin.sampling. KScript might be modified to support temp, top_k, etc as metadata to be passed to kalvin.rationalise.
+ 8. Each frame cogitation continues to operate independently. There is no explicit communication between frames. However, the system is dynamic, and promotion in one frame is visible in another.
+ 9. event loop timeouts are already implemented in the cogitator. However they may need to be adjusted to better fit this scenario.
+ 10. TBD. The plan is for sampling parameters to be associated with a frame. They do not change in-flight.
+ 11. Sampling parameters will be encoded through KScript into metadata supplied to kalvin rationalise.
+ 12. "correct" roughly equates to submission kline matches expectation kline. The school analogy should not be enforced too rigorously.
+ 13. Scaffolding is a general term used in the learning doc as a place holder for this more detailed description of a training loop / pipeline
+ 14. Kalvin computes S1, Trainer ratifies S1
+ 15. Study is another loosely applied metaphor. It represents the cogitation that Kalvin will continue to perform at S2/S3
+ 16. Monotonicity is only a guarantee of grounded information.
+
+ 1. The current promote on S1 needs to be sharpened so that only true S1 promotes. t(S2) significance will be added to STM (if it isn't already)
+ 2. The MVP version of trainer ratification requires that the kline matches the expectation exactly (kline==expectation). Later, the rationalisation process itself will be reentrant (think kalvin as tutor)
+ 3. This is implementation detail. It might easily be resolved by sharing references to frames rather than deep copy
+ 4. API-level works well for now.
+ 5. C can be rewritten. All rationalise calls start new frames, so C.3 is same kline in a new frame. This gets promoted to original frame. Kalvin resubmits (through cogitation) on original frame. No frames are abandoned - ever. This
+ leads to a deeper understanding of the training loop: it grows as frame count increases. MVP ignores this but later on a temporal element will be added to the event so that the trainer can make judgements (again think kalvin as
+ tutor)
+ 6. explicit temp nesting and management is not required. Frame nesting as described handles this quite well.
+
