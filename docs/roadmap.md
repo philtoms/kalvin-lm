@@ -7,6 +7,7 @@
 **See also:**
 - `docs/training-loop.md` — the detailed mechanism for the training loop, which resolved several challenges previously listed here.
 - `docs/training-schedule.md` — the practical perspective on training: curriculum design, priming vs. querying, Mary's World (MW) reference scenario, and the operational harness.
+- `docs/extended-cogitation.md` — the design for S2 expansion: how the Cogitator reshapes partial understanding into proposals for ratification.
 
 ---
 
@@ -141,7 +142,42 @@ The current cogitator auto-promotes any result classified as S1. This needs to c
 - Modify the promotion path so that ratification triggers promotion of all participating STM klines, not just the ratified kline.
 - Ensure S4 identity klines are correctly promoted when involved in ratification.
 
-**Future work:** Over-fitting and under-fitting in the context of frames holding mixed significance levels will be outlined in a future document (`docs/future.md`) and detailed in a document about over-fitting and under-fitting.
+**Future work:** Over-fitting and under-fitting in the context of frames holding mixed significance levels is now covered in `docs/extended-cogitation.md` (Challenge 6b).
+
+### Challenge 6b: Extended Cogitation (S2 Expansion)
+
+**Status:** Design complete, implementation not started
+**Depends on:** Challenge 6 (Structural Grounding)
+**Effort:** Medium
+
+When countersignature fails for an S2 result, the Cogitator currently moves on.
+Extended cogitation adds a new phase: the Cogitator attempts to **expand** the
+candidate kline toward canonical status by reshaping its nodes to match its
+signature.
+
+For a candidate with signature `S` and nodes signature `N`:
+
+- **Underfitting** (`S & ~N != 0`): search the model for klines whose
+  signatures contribute to the gap, add their nodes.
+- **Overfitting** (`N & ~S != 0`): remove excess nodes, verify the removed
+  group's signature exists in the model.
+- **Dual misfit**: both operations may apply.
+
+**Universal constraint:** every signature generated during expansion must
+already exist in the model (no invention, no data loss, ratifiability).
+
+**Why:** This is the mechanism for self-directed study. The Cogitator works
+through partial understanding, generating proposals that a teacher can
+ratify. Without it, S2 klines that fail countersignature are simply abandoned.
+
+**Full design:** `docs/extended-cogitation.md`
+
+**Deliverables:**
+- Misfit classification in the Cogitator's `_process` method
+- `generate_expansions()` — searches model for valid node additions/removals
+- `validate_expansion()` — enforces universal constraint
+- Proposal emission via existing `frame` event mechanism
+- Tests: underfit expansion, overfit expansion, dual misfit, constraint violations
 
 ### Challenge 7: Frame Factory & Teacher Infrastructure
 
@@ -223,17 +259,19 @@ This is the foundation for kalvin-as-tutor: a kalvin instance that acts as teach
 ## Dependency Graph (Updated)
 
 ```
-Challenge 6: Structural Grounding
+Challenge 6:  Structural Grounding
     ↓
-Challenge 7: Frame Factory & Teacher Infrastructure
+Challenge 6b: Extended Cogitation (S2 Expansion)
     ↓
-Challenge 8: Model Quality & Evaluation (ongoing, parallel)
+Challenge 7:  Frame Factory & Teacher Infrastructure
+    ↓
+Challenge 8:  Model Quality & Evaluation (ongoing, parallel)
 
 Challenge 9:  KScript Metadata          (future, low priority)
 Challenge 10: Temporal Events & Tutor    (future, low priority)
 ```
 
-The dependency chain is now linear and shallow: structural grounding → build frame factory + teacher → evaluate quality. The future challenges (9, 10) are independent enhancements.
+The dependency chain is now linear and shallow: structural grounding → extended cogitation → build frame factory + teacher → evaluate quality. The future challenges (9, 10) are independent enhancements.
 
 ---
 
@@ -250,6 +288,22 @@ Implement structural grounding: S1 determined by structure, promotion after rati
 - Modified promotion path: ratification promotes all participating STM klines
 - Tests: structural S1 detection, S4 identity promotion, multi-significance frame contents
 - No spec changes required (behavioral change within existing spec)
+
+### Phase A+: Extended Cogitation (Challenge 6b)
+**Estimate:** 3–5 days
+**Risk:** Medium
+**Depends on:** Phase A
+
+Implement S2 expansion in the Cogitator: misfit classification, node addition/removal
+with universal constraint enforcement, proposal emission.
+
+**Deliverables:**
+- Misfit classification (underfit, overfit, dual) in `_process`
+- `generate_expansions()` with model search
+- `validate_expansion()` enforcing universal constraint
+- Proposal emission via existing `frame` events
+- Tests for all expansion types and constraint violations
+- Spec updated: `specs/agent.md` §S2 Expansion
 
 ### Phase B: Frame Factory & Teacher (Challenge 7)
 **Estimate:** 1–2 weeks  

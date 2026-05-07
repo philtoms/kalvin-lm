@@ -385,6 +385,36 @@ is never mutated — temperature acts on the boundaries, not on the values.
 A high τ lowers S1|S2, allowing near-S1 S2 connotations to be classified
 as S1 and immediately published.
 
+### S2 Expansion
+
+When countersignature fails for an S2 result, the Cogitator attempts to
+**expand** the candidate kline toward canonical status by reshaping its
+nodes to match its signature. This is the mechanism for self-directed
+study — the Cogitator works through partial understanding and emits
+proposals for the teacher to ratify.
+
+See `docs/extended-cogitation.md` for the full design.
+
+Given a candidate with signature `S` and nodes signature
+`N = make_signature(nodes)`:
+
+- **Underfitting** (`S & ~N != 0`): the Cogitator searches the model for
+  klines whose signatures contribute to the gap `S & ~N`, and attempts
+  to add their nodes to the candidate.
+- **Overfitting** (`N & ~S != 0`): the Cogitator identifies nodes whose
+  bits contribute to the excess `N & ~S`, removes them, and verifies
+  the removed group's signature exists in the model.
+- **Dual misfit**: both operations may apply to the same candidate.
+
+**Universal constraint:** every signature generated during expansion must
+already exist in the model. This guarantees no invention, no data loss,
+and ratifiability. When the constraint cannot be satisfied, no proposal
+is emitted — the teacher infers scaffolding is needed from the absence
+of a `frame` event.
+
+All expansion proposals are emitted as `frame` events and require
+teacher ratification via countersignature.
+
 ### S1 Callback
 
 When the Cogitator discovers an S1 via countersignature, it calls the

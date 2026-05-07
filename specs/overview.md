@@ -355,6 +355,26 @@ during initial rationalisation may, upon deeper traversal, turn out to be
 part of a mutual cross-reference that the initial bitwise AND retrieval could
 not detect.
 
+### S2 Expansion
+
+When countersignature fails for an S2 result, the Cogitator attempts to
+**expand** the candidate kline toward canonical status by reshaping its
+nodes to match its signature. This is the mechanism for self-directed study.
+
+See `docs/extended-cogitation.md` for the full design.
+
+For a candidate with signature `S` and nodes signature `N`:
+
+- **Underfitting** (`S & ~N != 0`): search the model for klines whose
+  signatures contribute to the gap `S & ~N`, add their nodes.
+- **Overfitting** (`N & ~S != 0`): remove excess nodes, verify the removed
+  group's signature exists in the model.
+- **Dual misfit**: both may apply to the same candidate.
+
+Every signature generated during expansion must already exist in the
+model (no invention, no data loss, ratifiability guaranteed). All expansion
+proposals are emitted as `frame` events requiring teacher ratification.
+
 ### Reentrant Rationalisation
 
 When `process()` discovers a countersignature and calls `on_s1()` →

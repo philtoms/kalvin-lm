@@ -37,7 +37,24 @@ Both auto-promote to S1. The trainer is telling Kalvin: "Accept this as known."
 A => B          ← KScript canonical forward link (S2)
 ```
 
-The `=>` operator compiles to a canonical forward link. If B is unknown to Kalvin, the result routes to S2 or S3. Cogitation follows. The event channel carries proposals. The trainer evaluates these against expectations and decides whether to countersign, scaffold, or adjust temperature.
+The `=>` operator compiles to a forward link. If B is unknown to Kalvin, the
+result routes to S2 or S3. Cogitation follows. The event channel carries
+proposals. The trainer evaluates these against expectations and decides
+whether to countersign, scaffold, or adjust temperature.
+
+The `=>` operator also produces **intentional S2 misfit**, which the
+Cogitator can expand through extended cogitation:
+
+| KScript           | Compiled kline                       | Misfit type  |
+| ----------------- | ------------------------------------ | ------------ |
+| `AB => C`         | `{AB: [C]}` — sig `A\|B`, nodes `C`  | Underfitting  |
+| `A => B C`        | `{A: [B, C]}` — sig `A`, nodes `B\|C` | Overfitting   |
+| `WDMH => MHALL`   | `{WDMH: [M, H, A, L, L]}`           | Dual misfit   |
+
+Underfitting klines act as **templates** — they have a known concept
+(signature) with holes to fill. Overfitting klines act as **sequencers** —
+they carry step-by-step structure under a single goal signature.
+See `docs/extended-cogitation.md`.
 
 The trainer is asking Kalvin: "Work this out."
 
@@ -226,6 +243,7 @@ The current Kalvin implementation is too restricted to utilise domain self-organ
 | `docs/training-loop.md` | The *mechanism* — how the training loop works in terms of existing APIs and data structures. |
 | This document | The *practice* — what to teach, how to plan training, and how training becomes operations. |
 | `docs/roadmap.md` | The *implementation plan* — challenges, phasing, and dependencies. |
+| `docs/extended-cogitation.md` | The *S2 expansion design* — how the Cogitator reshapes partial understanding into proposals. |
 
 The learning principles guarantee that training works. The training loop provides the API surface. The training schedule is what the trainer does with both.
 

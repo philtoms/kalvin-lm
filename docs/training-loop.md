@@ -314,7 +314,14 @@ Study is not a separate mechanism. It is the existing cogitator's S2/S3 backgrou
 - Each frame's cogitator continues processing its backlog independently.
 - Cogitation may discover countersignature relationships, triggering re-rationalisation.
 - The enriched model (from other frames' promotions) may cause earlier frames' cogitation to produce stronger results.
-- Study cannot achieve structural S1 on its own — it can produce proposals that await teacher countersignature, or discover structural S1 via countersignature in the existing sense (mutual cross-reference found during graph expansion).
+- Study cannot achieve structural S1 on its own — it can produce proposals
+  that await teacher countersignature, or discover structural S1 via
+  countersignature in the existing sense (mutual cross-reference found during
+  graph expansion).
+- **S2 expansion** extends study with the ability to reshape partial understanding:
+  when countersignature fails, the cogitator attempts to add missing nodes or
+  remove redundant ones, generating proposals that move S2 klines toward
+  canonical status. See `docs/extended-cogitation.md`.
 
 The distinction between "training" and "study" is a matter of teacher presence, not system behavior. The cogitator runs the same way regardless.
 
@@ -383,6 +390,7 @@ Already exists in the spec. The teacher uses it directly: `event_kline == expect
 | `docs/learning.md` | The *principles* — why the system learns, what agency means, and why S1 requires ratification. |
 | `docs/training-schedule.md` | The *practice* — what to teach (curriculum design), how to transition from training to operations (operational harness), and the Mary's World (MW) reference scenario. |
 | This document | The *mechanism* — how the training loop works in terms of existing APIs and data structures. |
+| `docs/extended-cogitation.md` | The *S2 expansion design* — how the Cogitator reshapes partial understanding into proposals. |
 
 The key connections:
 

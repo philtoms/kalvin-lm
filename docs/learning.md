@@ -122,6 +122,7 @@ When a training session leaves klines at S2 or S3, those klines represent materi
 - **Revisits** its own partial knowledge, re-rationalising S2 and S3 klines against a model that may have grown since they were last assessed.
 - **Discovers connections** between structures that were not apparent during training — the way a student working through practice problems suddenly sees how two concepts relate.
 - **Strengthens** significance through its own cogitation, bringing what was S3 up to S2, or a weak S2 up to a strong one, because the intervening graph traversal has closed the gap.
+- **Expands** S2 klines whose signatures don't match their nodes, adding missing nodes from the model or removing redundant ones, generating proposals that move toward canonical status. This is the deepest form of self-directed study — the Cogitator reshapes its own partial understanding and submits the result for ratification. See `docs/extended-cogitation.md`.
 
 Study cannot reach S1 — but it can bring a kline to the point where the *next* interaction with the trainer routes directly to S1 without scaffolding. This is the student who has done all the homework and arrives at the exam already knowing the answers. The exam does not teach; it ratifies. But without the homework, ratification would not be possible.
 

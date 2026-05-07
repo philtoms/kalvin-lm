@@ -192,6 +192,9 @@ model.expand(Q, C) → Iterator[QueryCandidate]
 8. **Boundary classification**: significance values are classified against
   three boundaries (S1|S2, S2|S3, S3|S4) shifted by temperature. Raw
   significance is never mutated per-yield.
+9. **S2 expansion**: when countersignature fails for an S2 result, the
+  Cogitator may attempt to reshape the candidate kline's nodes to better
+  match its signature. See `docs/extended-cogitation.md`.
 
 ## Code Locations
 
