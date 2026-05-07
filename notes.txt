@@ -1152,3 +1152,81 @@ if self._model.is_countersigned(query, candidate):
 4. The current implementation accepts a frame as a base. Thus handing over training responsibilities is conceptually the same as reentrant ratification. Serialisation simply relaxes the architectural constraints. Restarting a re-trained model has not been implemented yet however.
 
 5. This is an interesting question that MW hopes to answer. The intention is for Kalvin's capacity for learning to be independent of order. The design of Kalvin's understanding through significance and rationalisation is rooted in this very idea. Nevertheless, as with human focused curriculums, it is expected that an emergent order of learning will be more efficient. The level of order will be kline.
+
+Document amendment:
+The current documentation in @docs lists "Sharpen S1 Promotion" as a requisite for implementation. The requirement supports the notion of grounding as distinct from proposal. This needs to be replaced with the requirement for determining whether a kline is grounded by interrogating its  structure.
+
+A kline is S1 (grounded) if its signature fully describes its nodes or it is countersigned by another kline. In fact all significance is recoverable through structure.
+
+The reason why this has to change:
+Future Kalvin will promote all STM klines involved directly in the ratification process, not just the kline actually being ratified. Promotion occurs after ratification. Consequently a frame will hold all manner of significance from S4 through to S1. This is why S4 klines are called identity klines. A system that has never have encountered a kline before (S4) has just encountered it. Ratified S4 simply means that a system knows it exists, it has identity that can be verified.
+
+Ensuring that all of the klines involved in the ratification process are available to future rationalisation enhances kalvin's ability to cogitate beyond simple pattern matching. This will be outlined in an updated future.md document and details in a document about over-fitting and under-fitting. 
+
+Review the following account of extended cogitation using @docs for reference. The account is not complete so ask questions that you need to understand how it all fits together"
+
+terminology recap:
+- proposal: the kline selected through cogitation emitted to the subscribed teacher
+- overfitting: A kline overfits when its signature provides less information than its nodes (additional noisy nodes)
+- underfitting: A kine underfits when its signature provides more information than its nodes ((missing signal nodes)
+
+When the signature of a kline fully describes its nodes, it is called an S1 canon - the signature leads to the fully (and correctly) grounded set of nodes that encode some concept. Any mismatch between signature and nodes results in a lower S2 significance, either because of over-fitting (too many nodes) or under-fitting (too few nodes)
+
+Conceptually, S2 represents a graded idea of understanding. As a system learns to ground more and more of a kline's nodes, so its significance rises towards S1. Therefore it is useful to be able to say "I understand some or even most of this kline" as impetus for learning more, or for proposing alternative or partial ideas where temperature encourages it. In short, S2 leads to agency, the ability and sovereignty to make choices that underpins the purpose of a kalvin system.
+
+The current system recognises miss-fitting but does not act on it. When an S2 kline fails the countersignature test, kalvin simply moves on to the next kline candidate in the list. This suggests that S2 klines are somehow incomplete and will only become useful when fully canonised.
+
+Before kalvin can be fully operational it needs to expand its cogitation abilities by expanding or contracting S2 klines to match their signatures. These klines belong to the set of candidate klines passed thought to the cogitator pipeline. After failing to establish countersignature, the cogitator will try to establish if underfit or overfit cogitation applies. 
+
+This additional S2 processing captures the essence of self study. This is where kalvin might supply missing nodes, or remove redundant ones to better fit a signature. Under cogitation, it is the signature that is invariant and it is the nodes in this temporary working state that must change to match it. 
+
+The resulting kline is just a proposal, but by invoking the outside opinion of a mentor, it might generate alternative paths to S1 ratification. This is where the true power of cogitation takes hold. But there are constraints:
+- Kalvin is not allowed to throw away data. If it removes nodes then it must find a way to use them somewhere else. The redundant nodes must form a new kline or must complete some other underfitting kline.
+- Kalvin is not allowed to invent new data. If it adds nodes then they must already exist as klines in the model. 
+- Kalvin is allowed to replace whole subsets of nodes with different sized subsets provided it does not break either of the above rules.
+
+These cogitate operations allow kalvin to reshape a kline to better fit a signature and through this the ability to reason far more deeply than a simple pattern matching system can achieve. 
+
+How do S2 klines get into the system?
+Rationalisation through scripted training provides an opportunity to equip kalvin with S2 klines whose signatures indicate whether they are underfitting or overfitting. Underfitting klines act 
+act as templates with holes in them: they allow kalvin to match a question with a Question+answer. Overfitting klines act as sequencers or planners: They allow kalvin to rationalise a query in discrete steps.
+
+1. Terminology. No change to terminology is intended. Overfitting and underfiting as previously defined are central to extended cogitation.
+
+2. Signatures are actually invariant. In cogitation, candidate klines are malleable because they can only produce proposal klines. These can never be automatically added to the knowledge base without ratification. All klines must be ratified (which translates to all klines must have a contersigned kline already in the system).
+
+3. reshaping is not the preferred term (maybe expansion?). However it occurs after a test for countersignature fails. S2 status is cheaply established. A test for underfit | overfit determines subsequent expansion. 
+
+4. the proposed expansion is emitted as a frame. The teacher|mentor process is responsible for evaluating what has changed (if it needs to). However the MVP system will only require that the proposed kline matches the expectation. No additional reasoning is required.
+
+5 - removed nodes. The cogitator must generate a new signature from the nodes: make_signature. The new signature must exist in the model.
+5 - added nodes. The cogitator must generate a new signature: current_signature - make_signature(nodes). The new signature must exist in the model.
+
+6. KScript => operator is able to express underfitting and overfitting:
+```
+   AB => C (underfitting)
+   A => B C (overfitting)
+```
+therefore it is easy to generate a Q&A kline:
+```
+  (what did mary have?)
+  WDMH => MHALL 
+```
+
+7. it comes after structural grounding
+
+8. MVP: no relationship. TBD: temperature affects candidate selection
+
+9. see 3 above.
+
+Q5: your examples are both examples of S3 (no node match: signature AND make_signature(nodes) == 0). Use {A: [A, B, C]} and {ABC: [A]} respectively.
+5a. current_signature is the candidate signature. Finding a new node signature for missing nodes can involve the current signature through appropriate bitwise operation.
+5b. all generated signatures must exist in the model regardless of the generation procedure. This satisfies the search problem and ratification constraint also. It implies additional scaffolding
+KScript => and Signature Assignment: this is correct. However the example exposes a feature not yet documented. A kline can be both under and over fitting at the same time. The cogitator has to deal with each of these challenges.
+Multiple Expansion Steps: absolutely. Many proposals can arise from a single query. This is the normally expected operation profile for training.
+
+1. yes
+2. order of operation has not been identified as important. 
+3. cogitation expand uses model.expand. Its all the same to the model: signature bits are interesting. 
+4. MVP: The human-in-the-loop teacher is able to figure out what is required. TBD automated training needs to react to the proposal by first analysing it deterministically.
+5. This is basically correct.

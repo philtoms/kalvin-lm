@@ -20,12 +20,12 @@ grounding (see `docs/roadmap.md`, Challenge 6) being implemented first.
 Given a candidate kline with signature `S` and nodes signature
 `N = make_signature(nodes)`:
 
-| Condition            | Classification | Meaning                                       |
-| -------------------- | -------------- | --------------------------------------------- |
-| `S == N`             | Canonical (S1) | No expansion needed                           |
-| `S & ~N != 0`        | Underfitting   | Signature promises bits the nodes don't deliver |
-| `N & ~S != 0`        | Overfitting    | Nodes carry bits the signature doesn't capture  |
-| Both                 | Dual misfit    | Both conditions hold simultaneously            |
+| Condition     | Classification | Meaning                                         |
+| ------------- | -------------- | ----------------------------------------------- |
+| `S == N`      | Canonical (S1) | No expansion needed                             |
+| `S & ~N != 0` | Underfitting   | Signature promises bits the nodes don't deliver |
+| `N & ~S != 0` | Overfitting    | Nodes carry bits the signature doesn't capture  |
+| Both          | Dual misfit    | Both conditions hold simultaneously             |
 
 The **underfit gap** is `S & ~N` — the bits the candidate needs but doesn't
 have. The **overfit excess** is `N & ~S` — the bits the candidate carries
@@ -42,12 +42,13 @@ The Cogitator attempts three kinds of expansion, depending on misfit
 classification. Order of operations between underfit and overfit expansion
 is not specified; any order that satisfies the constraints is acceptable.
 
+Every expansion proposal must satisfy the **Ratification Constraint**
+(described below).
+
 ### Underfit Expansion — Add Nodes
 
 Compute `gap = S & ~N`. Search the model for klines whose signatures
-contribute to the gap. For each candidate addition, verify that
-`make_signature(addition_nodes)` exists in the model. Construct the
-expanded kline:
+contribute to the gap. Construct the expanded kline:
 
 ```
 {S: [original_nodes + addition_nodes]}
@@ -56,51 +57,68 @@ expanded kline:
 Verify the expanded kline moves toward canonical: `make_signature(expanded_nodes)`
 is closer to `S`.
 
+The proposed expanded kline is emitted as a proposal. The teacher ratifies
+it only if it matches a training expectation.
+
 ### Overfit Expansion — Remove Nodes
 
 Identify nodes whose bits contribute to `N & ~S`. Remove those nodes from
-the candidate. Verify that `make_signature(removed_nodes)` exists in the
-model — the removed nodes must have a home. Construct the trimmed kline:
+the candidate. Construct the trimmed kline:
 
 ```
 {S: [remaining_nodes]}
 ```
 
-The removed nodes must either form a new kline whose signature already
-exists in the model, or complete an existing underfitting kline.
+The Cogitator also constructs a **companion kline** from the removed
+nodes:
+
+```
+{make_signature(removed_nodes): [removed_nodes]}
+```
+
+Both the trimmed kline and the companion kline are emitted as proposals.
+The teacher ratifies each independently against its training expectations.
 
 ### Dual Expansion — Replace Nodes
 
 When a kline is both underfitting and overfitting, treat as a single
 atomic replacement: swap a subset of overfit nodes for a subset that
-fills the underfit gap. All generated signatures — the removed group,
-the added group, and the result — must exist in the model.
+fills the underfit gap.
+
+The replacement kline and the removed-group companion kline are both
+emitted as proposals. The teacher ratifies each independently against
+its training expectations.
 
 ---
 
-## Universal Constraint
+## Ratification Constraint
 
-**Every signature generated during expansion must already exist in the model.**
-This applies to:
+**Every expansion proposal must be ratified by the teacher against a
+training expectation.** The Cogitator emits proposals; the teacher decides
+which ones enter the model. This is the sole constraint on expansion.
 
-- `make_signature(added_nodes)` — must exist in the model
-- `make_signature(removed_nodes)` — must exist in the model
-- `make_signature(expanded_nodes)` — must exist in the model (this is the
-  proposal kline itself, whose ratification requires a countersigned kline
-  already present)
+### Proposals Emitted per Expansion Type
 
-This constraint guarantees:
+| Expansion type | Proposals emitted                                                    |
+| -------------- | -------------------------------------------------------------------- |
+| Added nodes    | The expanded kline                                                   |
+| Removed nodes  | The trimmed kline **and** the companion kline from removed nodes     |
+| Dual misfit    | The replacement kline **and** the companion kline from removed nodes |
 
-1. **No invention** — the Cogitator never creates new concepts, only
-   recombines existing ones.
-2. **No data loss** — removed nodes always have a destination that the
-   model already recognises.
-3. **Ratifiability** — the reciprocal kline required for countersignature
-   is already in the model.
+Each proposal is emitted as an independent `frame` event. The teacher
+ratifies (or rejects) each one individually.
 
-When the Cogitator cannot satisfy this constraint (the required signatures
-don't exist), it produces no proposals. The teacher, observing no `frame`
-event for that query before the `done` event, infers that scaffolding is
+### Guarantees
+
+1. **No invention** — the model only acquires klines the teacher expects.
+2. **No orphan nodes** — every removed-node group is proposed as a
+   companion kline, giving the teacher the opportunity to ratify it.
+3. **No separate existence check** — because only ratified klines enter
+   the model, every signature in the model is there by teacher approval.
+   The former "must exist in model" constraint is an implicit consequence.
+
+When the teacher rejects all proposals for a query — observed as no
+`frame` event before the `done` event — it infers that scaffolding is
 needed and provides the missing klines in a subsequent training round.
 
 ---
@@ -130,10 +148,11 @@ _process(QueryCandidate(query, candidate, significance)):
   underfit_gap = candidate_sig & ~nodes_sig
   overfit_mask = nodes_sig & ~candidate_sig
 
-  # Generate expansion proposals
+  # Generate and emit expansion proposals
   for expansion in generate_expansions(candidate, underfit_gap, overfit_mask):
-    if validate_expansion(expansion):   # all signatures exist in model
-      emit_proposal(expansion)          # frame event for teacher
+    emit_proposal(expansion.proposal)            # frame event for teacher
+    if expansion.has_removed_nodes:
+      emit_proposal(make_companion(expansion))   # companion kline
 ```
 
 `generate_expansions()` may yield multiple proposals per work item. The
@@ -165,11 +184,11 @@ countersign (ratify). If no, scaffold.
 
 KScript's `=>` operator naturally produces S2 klines:
 
-| KScript           | Compiled kline                      | Misfit type |
-| ----------------- | ----------------------------------- | ----------- |
-| `AB => C`         | `{AB: [C]}` — sig `A\|B`, nodes `C` | Underfitting |
-| `A => B C`        | `{A: [B, C]}` — sig `A`, nodes `B\|C` | Overfitting |
-| `WDMH => MHALL`   | `{WDMH: [M, H, A, L, L]}`          | Dual misfit |
+| KScript         | Compiled kline                        | Misfit type  |
+| --------------- | ------------------------------------- | ------------ |
+| `AB => A`       | `{AB: [A]}` — sig `A\|B`, nodes `A`   | Underfitting |
+| `A => A B`      | `{A: [A, B]}` — sig `A`, nodes `A\|B` | Overfitting  |
+| `WDMH => MHALL` | `{WDMH: [M, H, A, L, L]}`             | Dual misfit  |
 
 The training pipeline creates these deliberately:
 
@@ -213,12 +232,12 @@ matches.
 
 ## Relationship to Other Documents
 
-| Document                       | Relationship                                            |
-| ------------------------------ | ------------------------------------------------------- |
-| `specs/agent.md`               | Cogitation spec updated with S2 expansion phase         |
-| `specs/overview.md`            | Overview updated with expansion in cogitation section   |
-| `specs/significance.md`        | S2 description references expansion                     |
-| `docs/learning.md`             | Self-study now includes S2 expansion                    |
-| `docs/training-loop.md`        | Training loop references S2 expansion proposals         |
-| `docs/training-schedule.md`    | KScript `=>` documented as producing S2 templates       |
-| `docs/roadmap.md`              | Extended cogitation added as a challenge after Phase A  |
+| Document                    | Relationship                                           |
+| --------------------------- | ------------------------------------------------------ |
+| `specs/agent.md`            | Cogitation spec updated with S2 expansion phase        |
+| `specs/overview.md`         | Overview updated with expansion in cogitation section  |
+| `specs/significance.md`     | S2 description references expansion                    |
+| `docs/learning.md`          | Self-study now includes S2 expansion                   |
+| `docs/training-loop.md`     | Training loop references S2 expansion proposals        |
+| `docs/training-schedule.md` | KScript `=>` documented as producing S2 templates      |
+| `docs/roadmap.md`           | Extended cogitation added as a challenge after Phase A |
