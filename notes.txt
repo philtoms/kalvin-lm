@@ -1092,8 +1092,63 @@ Summary of Key Questions
  2. The MVP version of trainer ratification requires that the kline matches the expectation exactly (kline==expectation). Later, the rationalisation process itself will be reentrant (think kalvin as tutor)
  3. This is implementation detail. It might easily be resolved by sharing references to frames rather than deep copy
  4. API-level works well for now.
- 5. C can be rewritten. All rationalise calls start new frames, so C.3 is same kline in a new frame. This gets promoted to original frame. Kalvin resubmits (through cogitation) on original frame. No frames are abandoned - ever. This
- leads to a deeper understanding of the training loop: it grows as frame count increases. MVP ignores this but later on a temporal element will be added to the event so that the trainer can make judgements (again think kalvin as
- tutor)
+ 5. C can be rewritten. All rationalise calls start new frames, so C.3 is same kline in a new frame. This gets promoted to original frame. Kalvin resubmits (through cogitation) on original frame. No frames are abandoned - ever. This leads to a deeper understanding of the training loop: it grows as frame count increases. MVP ignores this but later on a temporal element will be added to the event so that the trainer can make judgements (again think kalvin as tutor)
  6. explicit temp nesting and management is not required. Frame nesting as described handles this quite well.
 
+
+Review the following account of a training schedue using @docs for reference. The account is not complete so ask questions that you need to understand how it all fits together"
+
+A training schedule.
+A training loop pipeline can be established fairly easily and would support the growth of a kalvin knowledge graph through reentrant rationalisation. The @docs/training-loop.md document describes how this might be achieved and sets the stage for implementation (via appropriate specs and planning).
+
+However, a more detailed exploration of the training schedule will be useful for developing a consistent set of training data. The first kalvin knowledge base will be empty (a clean slate), and so it will be important to script and deploy various countersigned klines appropriate to the bootstrapping of Kalvin towards a specific knowledge domain. 
+
+For example, in the MHALL scenario, it might be appropriate to deploy various countersigned grammar related klines so that Kalvin is even able to entertain rationalising that famous nursery rhyme. Or it might be sufficient for a fully interactive human-kalvin training session in which the human endorses Kalvin's own efforts for it to learn to understand syntax. The interesting point here is that these two approaches are not mutually exclusive, and the trainer is responsible for the overall management of training data - what to create, when to deploy it, and so on. This is the basic idea of a training schedule (perhaps training curriculum is a more appropriate term).
+
+
+When does a training schedule complete?
+The simple answer is that it completes when Kalvin has grounded enough of the information to satisfy the trainer. But Kalvin is not designed to operate in a training mode vs inference mode kind of way. For Kalvin, there is no training, but there is always learning. Kalvin recognises what it doesn't know when it reacts to novel information. So in an important sense from the management of a Kalvin instance perspective, training never really stops.
+
+Imagine a pre-trained operational kalvin deployment that receives some novel information that it is expected to process. Here, the idea of a training loop can now be seen as (or replaced by) an operational harness. Under the supervision of a capable harness, Kalvin might be encouraged to emit S2 for partial understanding. The harness is now acting as a mentor. It is programmed to handle the possibility of Kalvin baulking at novel information, so it is capable of notifying the organisation of the knowledge gap. It might be prudent to update Kalvin to close the gap: effectively training Kalvin on the job.
+
+1. The idea of a curriculum is flexible. A human in the loop training schedule will work well with a highly flexible reactive curriculum. In this configuration, the trainer will be expected to create new ks scripts appropriate to the current state of training. A fully automated training pipeline with specific training goals will need more structure, but this is entirely possible. Training as already outlined is fully deterministic so it is possible to script a reactive curriculum (in any suitable scripting language) that guides kalvin to an expected knowledge threshold.
+
+2. This is also dependent on the capability of the trainer. A human can guide Kalvin in any direction, can choose when to prime with S1 data and when to train with query/expectation data (note the only difference between these two concepts is structural: The kscript sentence A == B is an S1 countersignature that kalvin will immediately promote on trust. The sentence A => B where Kalvin has never encountered B would lead to cogitation).
+
+The MHALL example captures the idea of training from scratch. Best practices and rule of thumb training decisions are yet to evolve, so human-in-the-loop is probably the best way forward. When these "principles" are better established scripted curriculums become more approachable.
+
+3. When a trainer invokes kalvin rationalisation through the API. Deploy is probably the wrong term here - it has connotations with the misguided idea of mechanistically updating Kalvin with new data. What is important here is that Kalvin knowledge graphs are never updated externally. All information must flow through a rationalisation phase. Kalvin must prove that it knows what it knows. This is the principal of ratification.
+
+
+4. The MHALL curriculum embraces the idea of training an empty kalvin system to understand the nursery rhyme "Mary had a little Lamb....". By understand is meant: it should be able to answer simple questions like "What colour was the lambs fleece?". By introducing the Nursery rhyme one line at a time, Kalvin would be expected to ask for more and more information, and by the nature and quality of its submitted klines on the event channel it will be possible to guide it towards an understanding that can answer these kinds of questions.
+
+5. The idea of an operational harness is currently unexplored but it highlights the consistency with which Kalvin is deployed to any environment. Any such harness (training loop included) must provide kline encode|decode capability and significance routing via event subscription in some way.
+
+The idea of a harness notifying an organisation is out of scope, but it might be an agentic based harness that is capable of acting on levels of significance. This is very likely the way in which all kalvin installations will communicate with the outside world. 
+
+6. Digging into the detail of a production grade kalvin setup. Frame stacks are not expected to grow very often. The need to handle new information, update old information, and in both cases the stack must grow. However, operational procedures will exist for consolidation.
+
+7 and 8. Since it must handle significance routing, it is possible that it might hand off a gap request to a dedicated trainer. The current kline system is already capable of serialisation so this operation does not need to be synchronous.
+
+9. For MPV, "enough" equates to coverage. Since all training routes through KScript, coverage simply equates to the number of expectations that have been matched. A human in the loop trainer is free to make this decision arbitrary, but a scripted curriculum might define a simple target value.
+
+10. Currently, a specific knowledge domain is synonymous with the set of training scripts used to educate kalvin and as such has no structural relevance to kalvin's internal organisation or operation. However, the nature of STB -> Frame -> Base is compatible with the idea of a super-graph, and even within that extended structure the idea of regional specialisation (the topology supports neighbourhoods, even if the current Kalvin implementation is still too restricted to utilize them).
+
+The MHALL scenario is an area of active research development and it is expected that specific domains will "self organize" within a single knowledge graph. This is in fact the pressing development direction after the training loop has been implemented.
+
+1. This is exactly the intent. We do not know what order of training works best. What we do know is that kalvin will reliably signify what it knows and what it doesn't. We also know that MW (Mary's world - the code name for the knowledge graph that starts empty and evolves to understand MHALL) does not contain any understanding of syntax or semantics, so we expect kalvin to ask questions.
+
+The tokenizer for MHALL is the Mod32Tokenizer and this must be built into the training harness. Each token is initially novel in MW so we expect a lot of training. Patterns will emerge and future projects will be able to build on these patterns by basing their models on previously learned syntax and semantics.
+
+2. priming is order-sensitive. KScript compiles A==B into two countersigned klines. By rationalising these one by one kalvin is able to discover the pattern:
+```agent.py line 279
+if self._model.is_countersigned(query, candidate):
+            self._model.add(candidate)
+            self._on_s1(query, candidate)
+```
+
+3. Frame consolidation is TBD. Currently we just let frame stacks grow.
+
+4. The current implementation accepts a frame as a base. Thus handing over training responsibilities is conceptually the same as reentrant ratification. Serialisation simply relaxes the architectural constraints. Restarting a re-trained model has not been implemented yet however.
+
+5. This is an interesting question that MW hopes to answer. The intention is for Kalvin's capacity for learning to be independent of order. The design of Kalvin's understanding through significance and rationalisation is rooted in this very idea. Nevertheless, as with human focused curriculums, it is expected that an emergent order of learning will be more efficient. The level of order will be kline.

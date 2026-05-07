@@ -352,9 +352,13 @@ Already exists in the spec. The teacher uses it directly: `event_kline == expect
 
 ---
 
-## Relationship to `docs/learning.md`
+## Relationship to Other Documents
 
-This document describes the *mechanism* — how the training loop works in terms of existing APIs and data structures. `docs/learning.md` describes the *principles* — why the system learns, what agency means, and why S1 requires ratification.
+| Document | Relationship |
+|----------|-------------|
+| `docs/learning.md` | The *principles* — why the system learns, what agency means, and why S1 requires ratification. |
+| `docs/training-schedule.md` | The *practice* — what to teach (curriculum design), how to transition from training to operations (operational harness), and the Mary's World (MW) reference scenario. |
+| This document | The *mechanism* — how the training loop works in terms of existing APIs and data structures. |
 
 The key connections:
 
@@ -366,3 +370,5 @@ The key connections:
 | "Agency must be exercised" | Cogitation (study) runs on all frames independently |
 | "The system learns what it doesn't know" | S4 and failed proposals identify gaps for scaffolding |
 | "Learning is constructive" | Frame stack is append-only, grounding is permanent |
+
+For the practical perspective on training — curriculum design, priming vs. querying strategies, and the operational harness — see `docs/training-schedule.md`.

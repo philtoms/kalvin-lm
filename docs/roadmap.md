@@ -4,7 +4,9 @@
 **Status:** Strategic planning document (updated)  
 **Scope:** Challenges and milestones for evolving Kalvin from its current rationalisation engine toward the trainable, feedback-driven learning system described in `docs/learning.md`
 
-**See also:** `docs/training-loop.md` — the detailed mechanism for the training loop, which resolved several challenges previously listed here.
+**See also:**
+- `docs/training-loop.md` — the detailed mechanism for the training loop, which resolved several challenges previously listed here.
+- `docs/training-schedule.md` — the practical perspective on training: curriculum design, priming vs. querying, Mary's World (MW) reference scenario, and the operational harness.
 
 ---
 
@@ -283,7 +285,7 @@ KScript metadata, temporal events, kalvin-as-tutor. These are not required for t
 | 5 | How many klines before candidate retrieval O(N) becomes a bottleneck? | Challenge 8 | Medium | Empirical |
 | 6 | Are current boundary constants well-calibrated for training? | Challenge 8 | High | Empirical |
 | 7 | When does Mod(N) vocabulary saturation require BPE transition? | Challenge 8 | Low | Empirical |
-| 8 | What does a non-trivial training curriculum look like? | Challenge 10 | Medium | TBD |
+| 8 | What does a non-trivial training curriculum look like? | MW (`training-schedule.md`) | Medium | Active research |
 
 ---
 
