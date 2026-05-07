@@ -19,10 +19,10 @@ A detailed design pass on the training loop (`docs/training-loop.md`) resolved t
 1. **The Training Interface** requires no new APIs. The teacher uses existing `rationalise()`, the event bus, and countersignature. Ratification is countersignature — the teacher rationalises the reciprocal kline.
 2. **Scaffolding** is not a new mechanism. Each scaffolding step is a new frame (a new kalvin instance layered over the previous frame as base). The frame stack handles recursive learning naturally.
 3. **Agency & Study** is the existing cogitator, viewed from the learning perspective. No new mechanism required.
-4. **The S1 Ratification Boundary** is a surgical change to the cogitator: distinguish true S1 from temperature-shifted S1 in the promotion logic. True S1 auto-promotes; t(S2)→S1 proposals stay in STM awaiting countersignature.
+4. **Structural Grounding** replaces the sharpened S1 promotion. S1 is determined by structure (signature describes nodes or countersigned). After ratification, all STM klines involved in the ratification process are promoted to frame — including S4 identity klines. Frames hold S4–S1.
 5. **Curriculum & Session Management** is handled by the frame stack for the MVP. Each `rationalise()` call creates a frame. Future work adds temporal events and trajectory analysis.
 
-What remains are genuine implementation challenges: sharpening the S1 promotion logic, building a frame factory, calibrating boundaries, and evaluating model quality.
+What remains are genuine implementation challenges: implementing structural grounding, building a frame factory, calibrating boundaries, and evaluating model quality.
 
 ---
 
@@ -45,7 +45,7 @@ What remains are genuine implementation challenges: sharpening the S1 promotion 
 | KScript DSL | ✅ Complete | Lexer, parser, compiler, decompiler |
 | Events (pub/sub) | ✅ Complete | `ground`, `frame`, `done` |
 | Persistence (JSON/binary) | ❓ Partial | Planned, not confirmed |
-| **Sharpened S1 promotion** | ❌ Not started | Distinguish true S1 from t(S2)→S1 in cogitator |
+| **Structural grounding** | ❌ Not started | Determine S1 by structure; promote all participating klines after ratification |
 | **Frame factory** | ❌ Not started | Method for creating new frames (kalvin instances) |
 | **Teacher implementation** | ❌ Not started | External coordinator using existing APIs |
 | **Model quality evaluation** | ❌ Not started | Test harness, metrics, calibration |
@@ -65,7 +65,7 @@ The following were originally listed as challenges. The training loop design pas
 - **Submit query:** `kalvin.rationalise(query_kline)` — already exists, returns True/False.
 - **Receive proposals:** Subscribe to the event bus, receive `frame` events — already exists.
 - **Ratify (confirm):** `kalvin.rationalise(reciprocal_kline)` — creates countersignature, achieving structural S1. Already exists.
-- **Correct:** No action. The t(S2)→S1 proposal stays in STM (not promoted). No rollback needed because no promotion occurred. The teacher simply ignores the proposal and moves on to scaffolding.
+- **Correct:** No action. The proposal stays in STM. No rollback needed. The teacher simply ignores the proposal and moves on to scaffolding.
 - **Instruct (scaffold):** `kalvin.rationalise(scaffold_kline)` on a new frame — already exists.
 
 The teacher is an external coordinator that composes existing API calls. It does not need new agent methods, new data structures, or transactional semantics. See `docs/training-loop.md` §"The Teacher's Responsibilities".
@@ -92,7 +92,7 @@ Monotonicity is a guarantee about grounded information, not significance values.
 
 **Resolution:** Study is the existing cogitator. The cogitator already processes S2/S3 work items in the background, checks countersignature, and re-rationalises. This *is* study. The distinction between "training" and "study" is teacher presence, not system behavior.
 
-The sharpened S1 promotion logic ensures that autonomous cogitation cannot reach true S1 via temperature shift — it can only produce proposals (t(S2)→S1 in STM) or discover structural S1 via countersignature. This naturally enforces the "study cannot reach S1" boundary.
+Structural grounding ensures that promotion occurs after ratification and applies to all participating STM klines — not just S1 klines. S4 identity klines and S2/S3 partial klines involved in ratification are promoted alongside S1 klines, enriching the frame for future cogitation.
 
 Future enhancements (prioritisation, re-visitation, readiness thresholds) may improve study quality but are not required for the MVP.
 
@@ -100,15 +100,16 @@ Future enhancements (prioritisation, re-visitation, readiness thresholds) may im
 
 **Original assumption:** Required redefining S1 from computed to confirmed, introducing a `RatificationStatus` enum, breaking the fast path, making countersignature provisional, and solving a bootstrapping problem.
 
-**Resolution:** S1 remains computed. The change is surgical:
+**Resolution:** S1 remains computed. The change is structural:
 
-1. **True S1** (distance = 0, all nodes match) auto-promotes as today. No change.
-2. **Canonical S1** (all-literal, self-grounded) auto-promotes as today. No change. These are self-ratifying.
-3. **Temperature-shifted S1** (distance > 0, but above τ-shifted boundary) is a **proposal**. Added to STM, event emitted, **not promoted**.
+1. **Structural S1** — a kline is S1 if its signature fully describes its nodes (`make_signature(nodes) == signature`) or it is countersigned. This is a structural interrogation, not a boundary check.
+2. **Canonical S1** (all-literal, self-grounded) is self-ratifying. No change. These auto-promote immediately.
+3. **Promotion after ratification** — all STM klines involved in the ratification process are promoted to frame, regardless of their individual significance level. Frames hold S4–S1.
+4. **S4 identity klines** — ratified S4 means the system knows a kline exists with verified identity. Promoting S4 klines enriches the model for future cogitation.
 
-Ratification is countersignature — the teacher rationalises the reciprocal kline, creating a mutual cross-reference that makes the proposal structurally S1. This is an existing mechanism, not a new one.
+Ratification is countersignature — the teacher rationalises the reciprocal kline, creating a mutual cross-reference that makes the proposal structurally S1. After ratification, promotion applies to all participating klines.
 
-No new enum, no new state, no backward compatibility issue, no bootstrapping problem. The fast path is unchanged. The only change is in the cogitator's `_run_work_item`: the `band == "S1"` path checks whether the result is true S1 or temperature-shifted S1 before promoting.
+No new enum, no new state, no backward compatibility issue, no bootstrapping problem. The fast path is unchanged. The change is in the promotion logic: promotion follows ratification and is not restricted to S1.
 
 ### ~~Challenge 5: Convergence & Monotonicity~~ — Resolved
 
@@ -122,18 +123,25 @@ Convergence is an empirical question, not a formal guarantee. The teacher decide
 
 ## Remaining Challenges
 
-### Challenge 6: Sharpening S1 Promotion
+### Challenge 6: Structural Grounding
 
 **Status:** Not started  
-**Effort:** Small (surgical change to cogitator)
+**Effort:** Small–medium (changes to promotion logic and ratification path)
 
-The cogitator's `_run_work_item` currently promotes any result classified as S1, including temperature-shifted S1. This needs to be sharpened so that only true S1 (distance = 0) promotes to frame. Temperature-shifted S1 proposals are added to STM and emit `frame` events, but are not promoted.
+The current cogitator auto-promotes any result classified as S1. This needs to change to a model where:
 
-**Detection:** True S1 is when the distance between query and candidate is zero — all query nodes exist in the candidate. Temperature-shifted S1 is when the significance value is above the shifted S1|S2 boundary but the underlying structural distance is non-zero.
+1. **S1 is determined by structure** — a kline is S1 (grounded) if its signature fully describes its nodes or it is countersigned. This is a structural interrogation, not a boundary classification.
+2. **Promotion occurs after ratification** — all STM klines involved in the ratification process are promoted to frame, not just S1 klines.
+3. **Frames hold S4–S1** — S4 identity klines are promoted alongside S1 grounded klines. Ratified S4 means the system knows a kline exists with verified identity.
 
-**Implementation:** In `_run_work_item`, when `band == "S1"`, check whether the result is true S1 or temperature-shifted before calling `on_s1()` (which triggers promotion). If temperature-shifted, emit the event and add to STM, but do not promote.
+**Why:** Ensuring all klines involved in ratification are available to future rationalisation enhances Kalvin's ability to cogitate beyond simple pattern matching. A richer frame provides more graph topology for the cogitator to traverse.
 
-**Risk:** Low. The change is contained within the cogitator's work item processing. Existing tests for true S1 behavior (canonical, all-literal, countersigned) remain valid. New tests needed for t(S2)→S1 proposal behavior.
+**Implementation:**
+- Modify the structural grounding check: `make_signature(nodes) == signature` or `is_countersigned(query, candidate)`.
+- Modify the promotion path so that ratification triggers promotion of all participating STM klines, not just the ratified kline.
+- Ensure S4 identity klines are correctly promoted when involved in ratification.
+
+**Future work:** Over-fitting and under-fitting in the context of frames holding mixed significance levels will be outlined in a future document (`docs/future.md`) and detailed in a document about over-fitting and under-fitting.
 
 ### Challenge 7: Frame Factory & Teacher Infrastructure
 
@@ -215,7 +223,7 @@ This is the foundation for kalvin-as-tutor: a kalvin instance that acts as teach
 ## Dependency Graph (Updated)
 
 ```
-Challenge 6: Sharpen S1 Promotion
+Challenge 6: Structural Grounding
     ↓
 Challenge 7: Frame Factory & Teacher Infrastructure
     ↓
@@ -225,21 +233,22 @@ Challenge 9:  KScript Metadata          (future, low priority)
 Challenge 10: Temporal Events & Tutor    (future, low priority)
 ```
 
-The dependency chain is now linear and shallow: sharpen S1 → build frame factory + teacher → evaluate quality. The future challenges (9, 10) are independent enhancements.
+The dependency chain is now linear and shallow: structural grounding → build frame factory + teacher → evaluate quality. The future challenges (9, 10) are independent enhancements.
 
 ---
 
 ## Revised Phasing
 
-### Phase A: Sharpen S1 Promotion (Challenge 6)
+### Phase A: Structural Grounding (Challenge 6)
 **Estimate:** 1–2 days  
 **Risk:** Low
 
-Distinguish true S1 from temperature-shifted S1 in the cogitator's promotion logic. Add tests for t(S2)→S1 proposal behavior.
+Implement structural grounding: S1 determined by structure, promotion after ratification for all participating klines, frames holding S4–S1.
 
 **Deliverables:**
-- Modified `_run_work_item` with true S1 vs. t(S2)→S1 detection
-- Tests: true S1 promotes, t(S2)→S1 stays in STM and emits event
+- Structural grounding check (`make_signature(nodes) == signature` or countersigned)
+- Modified promotion path: ratification promotes all participating STM klines
+- Tests: structural S1 detection, S4 identity promotion, multi-significance frame contents
 - No spec changes required (behavioral change within existing spec)
 
 ### Phase B: Frame Factory & Teacher (Challenge 7)
@@ -278,7 +287,8 @@ KScript metadata, temporal events, kalvin-as-tutor. These are not required for t
 
 | # | Question | Affects | Priority | Status |
 |---|---|---|---|---|
-| 1 | How to detect true S1 vs. t(S2)→S1 in the cogitator? | Challenge 6 | High | Design complete — check distance == 0 |
+| 1 | How to determine structural S1 (signature describes nodes or countersigned)? | Challenge 6 | High | Design complete — structural interrogation |
+| 2 | How to identify all STM klines involved in a ratification process? | Challenge 6 | High | TBD |
 | 2 | Frame factory: method on Agent or standalone? | Challenge 7 | High | TBD |
 | 3 | Frame model sharing: reference or snapshot? | Challenge 7 | High | Reference sharing for MVP (enables inter-frame enrichment) |
 | 4 | How to subscribe to events from multiple frames? | Challenge 7 | Medium | TBD |
@@ -294,7 +304,7 @@ KScript metadata, temporal events, kalvin-as-tutor. These are not required for t
 | # | Original Question | Resolution |
 |---|---|---|
 | 1 | How should `Proposal` represent partial understanding? | No `Proposal` type needed. Events carry the kline. The teacher compares using kline equality. |
-| 2 | Should `correct` roll back model mutations or prevent them entirely? | Neither. t(S2)→S1 proposals are not promoted, so there is nothing to roll back. The teacher simply moves on. |
+| 2 | Should `correct` roll back model mutations or prevent them entirely? | Neither. Proposals that are not ratified are not promoted. The teacher simply moves on. |
 | 3 | Can Kalvin articulate what it doesn't know (scaffold requests)? | Not in MVP. The teacher diagnoses gaps and constructs scaffolding. |
 | 4 | Is the distance algorithm monotonic with respect to model growth? | Monotonicity is about grounded information (append-only frames), not significance values. No formal guarantee needed. |
 | 5 | What significance threshold indicates "ready for ratification"? | For MVP: exact kline equality. For future: reentrant rationalisation (kalvin-as-tutor). |
@@ -309,7 +319,7 @@ KScript metadata, temporal events, kalvin-as-tutor. These are not required for t
 The original roadmap overestimated the gap between the current system and the learning vision. The detailed training loop design pass revealed that the existing architecture — rationalise, events, cogitation, countersignature — already provides most of what's needed. The training loop is an *usage pattern* over existing APIs, not a new subsystem.
 
 The two concrete implementation tasks are:
-1. **Sharpen S1 promotion** — a small change to the cogitator that makes temperature-shifted S1 a proposal rather than a conclusion.
+1. **Structural grounding** — S1 determined by structure, promotion after ratification for all participating klines.
 2. **Frame factory + teacher** — orchestration code that composes existing APIs into the training loop pattern.
 
 Everything else (model quality evaluation, boundary calibration, future enhancements) is empirical work and polish that follows from a working training loop.

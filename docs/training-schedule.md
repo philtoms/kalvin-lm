@@ -245,7 +245,7 @@ The learning principles guarantee that training works. The training loop provide
 
 | Need | Status | Notes |
 |------|--------|-------|
-| Sharpened S1 promotion | Not started | Distinguish true S1 from temperature-shifted S1. Roadmap Challenge 6. |
+| Structural grounding | Not started | S1 determined by structure; promote all participating klines after ratification. Roadmap Challenge 6. |
 | Frame factory | Not started | Creating new kalvin instances over previous frames. Roadmap Challenge 7. |
 | Teacher class | Not started | External coordinator. Roadmap Challenge 7. |
 | KScript compile → rationalise pipeline | Needs verification | KScript compiles to klines; the teacher submits them via `rationalise()`. |
