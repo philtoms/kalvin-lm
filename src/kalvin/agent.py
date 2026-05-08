@@ -279,7 +279,7 @@ class Cogitator:
         query, candidate, significance = item
 
         candidate_sig = candidate.signature
-        nodes_sig = self._model._make_sig(candidate.nodes)
+        nodes_sig = make_signature(candidate.nodes)
 
         if candidate_sig == nodes_sig:
             return  # canonical — nothing to expand

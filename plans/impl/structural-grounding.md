@@ -34,13 +34,13 @@ These two changes enable the training loop described in
 
 ### What Changes
 
-| Area | Current Behavior | New Behavior |
-|------|-----------------|--------------|
-| S1 determination | Boundary classification in Cogitator | Structural: `make_signature(nodes) == signature` or countersigned |
-| Promotion trigger | Cogitator classifies as S1 → promote query | After ratification (countersignature), promote all participating STM klines |
-| Promotion scope | Single kline promoted | All STM klines involved in the ratification event promoted |
-| S2 post-countersignature | Nothing — candidate discarded | Extended cogitation: attempt underfit/overfit expansion |
-| Frame contents | S1 and S4 only | S4–S1: all klines promoted after ratification |
+| Area                     | Current Behavior                           | New Behavior                                                                |
+| ------------------------ | ------------------------------------------ | --------------------------------------------------------------------------- |
+| S1 determination         | Boundary classification in Cogitator       | Structural: `make_signature(nodes) == signature` or countersigned           |
+| Promotion trigger        | Cogitator classifies as S1 → promote query | After ratification (countersignature), promote all participating STM klines |
+| Promotion scope          | Single kline promoted                      | All STM klines involved in the ratification event promoted                  |
+| S2 post-countersignature | Nothing — candidate discarded              | Extended cogitation: attempt underfit/overfit expansion                     |
+| Frame contents           | S1 and S4 only                             | S4–S1: all klines promoted after ratification                               |
 
 ---
 
@@ -56,7 +56,7 @@ Add a method to Model that determines whether a kline is structurally S1:
 ```python
 def is_structural_s1(self, kline: KLine) -> bool:
     """Determine if a kline is structurally grounded (S1).
-    
+
     A kline is S1 if:
     1. Its signature fully describes its nodes (canonical), OR
     2. It is countersigned by another kline in the model.
@@ -73,7 +73,7 @@ signature:
 ```python
 def is_countersigned(self, kline: KLine) -> bool:
     """Check if kline is countersigned by any kline in the model."""
-    nodes_signature = self._make_sig(kline.nodes)
+    nodes_signature = make_signature(kline.nodes)
     for countersigner in self.find_all(nodes_signature):
         if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
             return True
@@ -89,6 +89,7 @@ Change the promotion path so that when a countersignature is discovered
 ratification process are promoted — not just the ratified kline.
 
 "Participating klines" are:
+
 1. The query kline
 2. The candidate kline
 3. Any klines in STM whose signatures or nodes overlap with the
@@ -97,12 +98,12 @@ ratification process are promoted — not just the ratified kline.
 ```python
 def promote_participating(self, query: KLine, candidate: KLine) -> int:
     """Promote all STM klines involved in a ratification event.
-    
+
     After countersignature is detected between query and candidate,
     promote both plus any STM klines whose signatures appear in the
     union of their nodes. This enriches the frame with S4 identity
     klines and S2/S3 partial klines involved in the ratification.
-    
+
     Returns the number of klines promoted.
     """
     # Collect all signatures from the participating pair
@@ -115,18 +116,18 @@ def promote_participating(self, query: KLine, candidate: KLine) -> int:
             node_sigs.add(n)
     node_sigs.add(query.signature)
     node_sigs.add(candidate.signature)
-    
+
     # Find all STM klines with matching signatures
     to_promote = []
     for kl in self._stm._order:
         if kl.signature in node_sigs:
             to_promote.append(kl)
-    
+
     # Also promote the query and candidate if they're in STM
     for kl in [query, candidate]:
         if kl not in to_promote:
             to_promote.append(kl)
-    
+
     count = 0
     for kl in to_promote:
         if self.promote(kl):
@@ -162,7 +163,7 @@ if level == "S1":
     ...
 ```
 
-#### agent.py: _publish()
+#### agent.py: \_publish()
 
 Remove the implicit promote from `_publish`. Promotion is now explicit
 at ratification points, not bundled into event emission:
@@ -179,12 +180,12 @@ def _publish(self, kind, query, proposal, significance):
     self._event_bus.publish(RationaliseEvent(kind, query, proposal, significance))
 ```
 
-#### agent.py: Cogitator._process() — S2 Expansion
+#### agent.py: Cogitator.\_process() — S2 Expansion
 
 The countersignature check has been moved to `rationalise()` Phase 3
 (Assess). `_process` now handles only S2 expansion:
 
-#### agent.py: Cogitator._run_work_item() — Boundary S1
+#### agent.py: Cogitator.\_run_work_item() — Boundary S1
 
 When a QC is classified as S1 by boundary but the candidate is not
 structurally S1 (e.g. temperature-promoted S2), don't promote. Still
@@ -208,21 +209,21 @@ The candidate is a model kline (from `model.where()`), so
 
 ### 1.5 Test Cases
 
-| Test | Description |
-|------|-------------|
-| `is_structural_s1` canonical | KLine with `sig == make_signature(nodes)` → True |
-| `is_structural_s1` countersigned | Two klines with mutual node references → True |
-| `is_structural_s1` neither | KLine that is not canonical or countersigned → False |
-| `is_structural_s1` all-literal | All-literal kline → True (canonical, sig=1) |
-| `promote_participating` basic | Query + candidate promoted |
-| `promote_participating` with S4 identity | S4 identity klines in STM also promoted |
-| `promote_participating` with S2/S3 | Partial klines in STM promoted |
-| `promote_participating` no double-promote | Already-promoted klines not re-promoted |
-| Frame holds S4–S1 | After ratification, frame contains mixed significance |
-| Cogitator countersignature promotes all | Countersignature discovery promotes participating |
-| Boundary S1 + structural check | Boundary S1 on non-structural kline → no promotion |
-| Boundary S1 + structural S1 | Boundary S1 on structural kline → promotion |
-| Existing tests unchanged | All 329 tests still pass |
+| Test                                      | Description                                           |
+| ----------------------------------------- | ----------------------------------------------------- |
+| `is_structural_s1` canonical              | KLine with `sig == make_signature(nodes)` → True      |
+| `is_structural_s1` countersigned          | Two klines with mutual node references → True         |
+| `is_structural_s1` neither                | KLine that is not canonical or countersigned → False  |
+| `is_structural_s1` all-literal            | All-literal kline → True (canonical, sig=1)           |
+| `promote_participating` basic             | Query + candidate promoted                            |
+| `promote_participating` with S4 identity  | S4 identity klines in STM also promoted               |
+| `promote_participating` with S2/S3        | Partial klines in STM promoted                        |
+| `promote_participating` no double-promote | Already-promoted klines not re-promoted               |
+| Frame holds S4–S1                         | After ratification, frame contains mixed significance |
+| Cogitator countersignature promotes all   | Countersignature discovery promotes participating     |
+| Boundary S1 + structural check            | Boundary S1 on non-structural kline → no promotion    |
+| Boundary S1 + structural S1               | Boundary S1 on structural kline → promotion           |
+| Existing tests unchanged                  | All 329 tests still pass                              |
 
 ---
 
@@ -239,12 +240,12 @@ Add to `model.py`:
 ```python
 def classify_misfit(self, kline: KLine) -> tuple[bool, bool]:
     """Classify a kline's misfit type.
-    
+
     Returns (underfitting, overfitting):
     - underfitting: True if S & ~N != 0 (signature promises more than nodes deliver)
     - overfitting: True if N & ~S != 0 (nodes carry more than signature captures)
     """
-    nodes_sig = self._make_sig(kline.nodes)
+    nodes_sig = make_signature(kline.nodes)
     underfit = (kline.signature & ~nodes_sig) != 0
     overfit = (nodes_sig & ~kline.signature) != 0
     return underfit, overfit
@@ -262,28 +263,28 @@ def generate_expansions(
     overfit_mask: int,
 ) -> Iterator[tuple[KLine, list[KLine]]]:
     """Generate expansion proposals for a misfit kline.
-    
+
     Each yield is (proposal_kline, companion_klines) where:
     - proposal_kline is the expanded version of the input
     - companion_klines are klines formed from removed nodes (may be empty)
-    
+
     Expansion proposals satisfy:
     - No invention: every signature used exists in the model
     - No orphan nodes: removed nodes form a companion kline
-    
+
     The caller (Cogitator) is responsible for emitting proposals as
     frame events and for the teacher to ratify them.
     """
-    nodes_sig = self._make_sig(kline.nodes)
-    
+    nodes_sig = make_signature(kline.nodes)
+
     # Underfit expansion: add nodes to fill the gap
     if underfit_gap:
         yield from self._underfit_expansions(kline, underfit_gap)
-    
+
     # Overfit expansion: remove excess nodes
     if overfit_mask:
         yield from self._overfit_expansions(kline, overfit_mask)
-    
+
     # Dual misfit: both operations may apply
     if underfit_gap and overfit_mask:
         yield from self._dual_expansions(kline, underfit_gap, overfit_mask)
@@ -295,15 +296,15 @@ def _underfit_expansions(
     """Add nodes whose signatures contribute to the gap."""
     # Find klines in the model whose signatures contribute to the gap
     contributors = self.where(lambda k: (k.signature & gap) != 0)
-    
+
     for contributor in contributors:
         # Build expanded nodes: original + contributor's nodes
         expanded_nodes = list(kline.nodes) + list(contributor.nodes)
         expanded_sig = kline.signature  # signature stays the same
         proposal = KLine(expanded_sig, expanded_nodes, kline.dbg_text)
-        
+
         # Verify the expansion moves toward canonical
-        new_nodes_sig = self._make_sig(expanded_nodes)
+        new_nodes_sig = make_signature(expanded_nodes)
         if (new_nodes_sig & expanded_sig) != 0:  # closer to canonical
             yield (proposal, [])
 
@@ -313,20 +314,20 @@ def _overfit_expansions(
 ) -> Iterator[tuple[KLine, list[KLine]]]:
     """Remove nodes whose bits contribute to the excess."""
     # Find nodes contributing to excess
-    excess_nodes = [n for n in kline.nodes 
+    excess_nodes = [n for n in kline.nodes
                      if not is_literal_node(n) and (n & excess) != 0]
-    
+
     if not excess_nodes:
         return
-    
+
     # Build trimmed kline: remaining nodes
     remaining = [n for n in kline.nodes if n not in excess_nodes]
     trimmed = KLine(kline.signature, remaining, kline.dbg_text)
-    
+
     # Build companion kline from removed nodes
-    companion_sig = self._make_sig(excess_nodes)
+    companion_sig = make_signature(excess_nodes)
     companion = KLine(companion_sig, excess_nodes)
-    
+
     yield (trimmed, [companion])
 
 
@@ -334,20 +335,20 @@ def _dual_expansions(
     self, kline: KLine, gap: int, excess: int
 ) -> Iterator[tuple[KLine, list[KLine]]]:
     """Atomic replacement: swap excess nodes for gap-filling nodes."""
-    excess_nodes = [n for n in kline.nodes 
+    excess_nodes = [n for n in kline.nodes
                      if not is_literal_node(n) and (n & excess) != 0]
     remaining = [n for n in kline.nodes if n not in excess_nodes]
-    
+
     # Find contributors to fill the gap
     contributors = self.where(lambda k: (k.signature & gap) != 0)
-    
+
     for contributor in contributors:
         replacement_nodes = remaining + list(contributor.nodes)
         replacement = KLine(kline.signature, replacement_nodes, kline.dbg_text)
-        
-        companion_sig = self._make_sig(excess_nodes)
+
+        companion_sig = make_signature(excess_nodes)
         companion = KLine(companion_sig, excess_nodes)
-        
+
         yield (replacement, [companion])
 ```
 
@@ -361,7 +362,7 @@ def _process(self, item: QueryCandidate) -> None:
 
     # S2 expansion only — ratification handled upstream in rationalise()
     candidate_sig = candidate.signature
-    nodes_sig = self._model._make_sig(candidate.nodes)
+    nodes_sig = make_signature(candidate.nodes)
 
     if candidate_sig == nodes_sig:
         return  # canonical — nothing to expand
@@ -401,23 +402,23 @@ moved upstream to rationalise):
 
 ### 2.5 Test Cases
 
-| Test | Description |
-|------|-------------|
-| `classify_misfit` canonical | `S == N` → (False, False) |
-| `classify_misfit` underfit | `S & ~N != 0` → (True, False) |
-| `classify_misfit` overfit | `N & ~S != 0` → (False, True) |
-| `classify_misfit` dual | Both conditions → (True, True) |
-| `generate_expansions` underfit | Returns proposal with added nodes |
-| `generate_expansions` overfit | Returns trimmed + companion |
-| `generate_expansions` dual | Returns replacement + companion |
-| `generate_expansions` no gap | No expansion proposals emitted |
-| Cogitator expansion proposal | frame event emitted for expansion |
-| Cogitator expansion companion | frame event emitted for companion |
-| Cogitator no expansion for canonical | Canonical kline → no expansion |
-| KScript S2 template | `AB => A` produces underfitting kline |
-| KScript sequencer | `A => A B` produces overfitting kline |
-| KScript dual misfit | `WDMH => MHALL` produces dual misfit |
-| Existing tests unchanged | All 329 tests + Phase A tests pass |
+| Test                                 | Description                           |
+| ------------------------------------ | ------------------------------------- |
+| `classify_misfit` canonical          | `S == N` → (False, False)             |
+| `classify_misfit` underfit           | `S & ~N != 0` → (True, False)         |
+| `classify_misfit` overfit            | `N & ~S != 0` → (False, True)         |
+| `classify_misfit` dual               | Both conditions → (True, True)        |
+| `generate_expansions` underfit       | Returns proposal with added nodes     |
+| `generate_expansions` overfit        | Returns trimmed + companion           |
+| `generate_expansions` dual           | Returns replacement + companion       |
+| `generate_expansions` no gap         | No expansion proposals emitted        |
+| Cogitator expansion proposal         | frame event emitted for expansion     |
+| Cogitator expansion companion        | frame event emitted for companion     |
+| Cogitator no expansion for canonical | Canonical kline → no expansion        |
+| KScript S2 template                  | `AB => A` produces underfitting kline |
+| KScript sequencer                    | `A => A B` produces overfitting kline |
+| KScript dual misfit                  | `WDMH => MHALL` produces dual misfit  |
+| Existing tests unchanged             | All 329 tests + Phase A tests pass    |
 
 ---
 
@@ -450,15 +451,15 @@ Phase A+: Extended Cogitation
 
 ## 4. Files Modified
 
-| File | Change |
-|------|--------|
+| File                  | Change                                                                                                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/kalvin/model.py` | Add `is_structural_s1`, `promote_participating`, `is_countersigned`, `classify_misfit`, `generate_expansions`, `_underfit_expansions`, `_overfit_expansions`, `_dual_expansions` |
-| `src/kalvin/agent.py` | Modify `_publish`, `rationalise()` Phase 3 (add ratification) and Phase 5, `Cogitator._process` (S2 expansion only), `Cogitator._run_work_item` |
-| `tests/test_model.py` | Add tests for new model methods |
-| `tests/test_agent.py` | Add tests for structural grounding in cogitation |
-| `specs/agent.md` | Update §Cogitation with S2 expansion phase |
-| `specs/model.md` | Add misfit classification and expansion API |
-| `docs/roadmap.md` | Update status of Challenge 6 and 6b |
+| `src/kalvin/agent.py` | Modify `_publish`, `rationalise()` Phase 3 (add ratification) and Phase 5, `Cogitator._process` (S2 expansion only), `Cogitator._run_work_item`                                  |
+| `tests/test_model.py` | Add tests for new model methods                                                                                                                                                  |
+| `tests/test_agent.py` | Add tests for structural grounding in cogitation                                                                                                                                 |
+| `specs/agent.md`      | Update §Cogitation with S2 expansion phase                                                                                                                                       |
+| `specs/model.md`      | Add misfit classification and expansion API                                                                                                                                      |
+| `docs/roadmap.md`     | Update status of Challenge 6 and 6b                                                                                                                                              |
 
 ---
 

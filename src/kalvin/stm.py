@@ -34,10 +34,6 @@ class STM:
         self._dedup: set[tuple[KSig, tuple[int, ...]]] = set()
         self._bound = bound
 
-    def _make_signature(self, nodes: list[int]) -> int:
-        """Derive a nodes signature from a node list."""
-        return make_signature(nodes)
-
     # ── Core API ────────────────────────────────────────────────────────
 
     def add(self, kline: KLine, dedup: bool = True) -> bool:
@@ -59,7 +55,7 @@ class STM:
         while len(self._order) >= self._bound:
             self._evict_oldest()
 
-        nodes_sig = self._make_signature(kline.nodes) if kline.nodes else 0
+        nodes_sig = make_signature(kline.nodes) if kline.nodes else 0
         sig = kline.signature or nodes_sig
 
         self._order.append(kline)
@@ -103,7 +99,7 @@ class STM:
     def remove(self, kline: KLine) -> None:
         """Remove a KLine from all index entries."""
         sig = kline.signature
-        nodes_sig = self._make_signature(kline.nodes) if kline.nodes else 0
+        nodes_sig = make_signature(kline.nodes) if kline.nodes else 0
         self._remove_from(sig, kline)
         if nodes_sig and nodes_sig != sig:
             self._remove_from(nodes_sig, kline)
@@ -135,7 +131,7 @@ class STM:
             return
         oldest = self._order.pop(0)
         sig = oldest.signature
-        nodes_sig = self._make_signature(oldest.nodes) if oldest.nodes else 0
+        nodes_sig = make_signature(oldest.nodes) if oldest.nodes else 0
         self._remove_from(sig, oldest)
         if nodes_sig and nodes_sig != sig:
             self._remove_from(nodes_sig, oldest)

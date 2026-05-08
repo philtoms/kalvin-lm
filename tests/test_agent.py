@@ -479,7 +479,7 @@ class TestCogitatorStructuralGrounding:
         """Canonical klines produce no expansion proposals."""
         m = Model()
         k = KLine(10, [10])  # canonical
-        nodes_sig = m._make_sig(k.nodes)
+        nodes_sig = make_signature(k.nodes)
         assert k.signature == nodes_sig  # canonical
         underfit, overfit = m.classify_misfit(k)
         assert not underfit and not overfit

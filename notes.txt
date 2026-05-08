@@ -1249,7 +1249,7 @@ tidy up:
 
 ```new is_countersigned
 def is_countersigned(self, kline: KLine) -> bool:
-  nodes_signature = self._make_sig(kline.nodes)
+  nodes_signature = make_signature(kline.nodes)
   for countersigned in self.find_all(nodes_signature):
     if len(countersigned.nodes == 1) and countersigned.nodes[0] == kline.signature:
       return True

@@ -68,9 +68,6 @@ class Model:
         self._frame_by_sig: dict[KSig, list[int]] = {}
         self._frame_dedup: set[tuple[KSig, tuple[int, ...]]] = set()
 
-    def _make_sig(self, nodes: list[int]) -> int:
-        return make_signature(nodes)
-
     # ── Storage Operations ────────────────────────────────────────────
 
     def add(self, kline: KLine, dedup: bool = False) -> bool:
@@ -172,7 +169,7 @@ class Model:
             return klines[-1]
         # Scan frame
         for kl in reversed(self._frame_list):
-            ns = self._make_sig(kl.nodes)
+            ns = make_signature(kl.nodes)
             if ns == nodes_signature:
                 return kl
         # Base
@@ -348,7 +345,7 @@ class Model:
 
     def _is_canon(self, kline: KLine) -> bool:
         """Test whether a kline is canonical (signature = make_signature of nodes)."""
-        return kline.signature == self._make_sig(kline.nodes)
+        return kline.signature == make_signature(kline.nodes)
 
     def _edge_hops(self, sig: int) -> Iterator[tuple[int, int]]:
         """Yield (hop_count, next_sig) for each non-canonical resolution step.
@@ -363,7 +360,7 @@ class Model:
             if kline is None or self._is_canon(kline):
                 break
             hop_count += 1
-            sig = self._make_sig(kline.nodes)
+            sig = make_signature(kline.nodes)
             yield hop_count, sig
 
     def _as_kline(self, node: int) -> KLine:
@@ -521,7 +518,7 @@ class Model:
         Query = {Q: [A, B]}
         Countersigner = {AB: [Q]}
         """
-        nodes_signature = self._make_sig(kline.nodes)
+        nodes_signature = make_signature(kline.nodes)
         for countersigner in self.find_all(nodes_signature):
             if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
                 return True
@@ -573,7 +570,7 @@ class Model:
         - underfitting: True if S & ~N != 0 (signature promises more than nodes deliver)
         - overfitting: True if N & ~S != 0 (nodes carry more than signature captures)
         """
-        nodes_sig = self._make_sig(kline.nodes)
+        nodes_sig = make_signature(kline.nodes)
         underfit = (kline.signature & ~nodes_sig) != 0
         overfit = (nodes_sig & ~kline.signature) != 0
         return underfit, overfit
@@ -614,7 +611,7 @@ class Model:
             expanded_sig = kline.signature
             proposal = KLine(expanded_sig, expanded_nodes, kline.dbg_text)
 
-            new_nodes_sig = self._make_sig(expanded_nodes)
+            new_nodes_sig = make_signature(expanded_nodes)
             if (new_nodes_sig & expanded_sig) != 0:
                 yield (proposal, [])
 
@@ -631,7 +628,7 @@ class Model:
         remaining = [n for n in kline.nodes if n not in excess_nodes]
         trimmed = KLine(kline.signature, remaining, kline.dbg_text)
 
-        companion_sig = self._make_sig(excess_nodes)
+        companion_sig = make_signature(excess_nodes)
         companion = KLine(companion_sig, excess_nodes)
 
         yield (trimmed, [companion])
@@ -650,7 +647,7 @@ class Model:
             replacement_nodes = remaining + list(contributor.nodes)
             replacement = KLine(kline.signature, replacement_nodes, kline.dbg_text)
 
-            companion_sig = self._make_sig(excess_nodes)
+            companion_sig = make_signature(excess_nodes)
             companion = KLine(companion_sig, excess_nodes)
 
             yield (replacement, [companion])

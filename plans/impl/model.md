@@ -138,9 +138,9 @@ connotation results and a terminal packed distance. Replaces the previous
 
 - **MAX_HOP** — upper bound on edge hop chain depth (default 100). Also the
   penalty for unresolvable mismatched nodes.
-- **_S3_BIAS** — tier bias for S3 connotation hops (default 9). Connotation
+- **\_S3_BIAS** — tier bias for S3 connotation hops (default 9). Connotation
   hop counts are biased by this amount before quadratic packing.
-- **_pack(distance)** — quadratic packing function: `d²`. Compresses small
+- **\_pack(distance)** — quadratic packing function: `d²`. Compresses small
   distances together and spreads large distances apart.
 
 ### Definitions
@@ -159,7 +159,7 @@ def _edge_hops(self, sig: int) -> Iterator[tuple[int, int]]:
         if kline is None or self._is_canon(kline):
             break
         hop_count += 1
-        sig = self._make_sig(kline.nodes)
+        sig = make_signature(kline.nodes)
         yield hop_count, sig
 ```
 
@@ -255,14 +255,14 @@ def expand(self, query, candidate, distance=0, _visited=None):
 
 ### Per-Node Contributions
 
-| Node state                                                    | Contribution          | Target component  |
-| ------------------------------------------------------------- | --------------------- | ----------------- |
-| Mismatched, chain reaches opposing mismatch set at hop N      | +N to total_distance   | Accumulated directly  |
-| Mismatched, chain reaches signature with bitwise overlap      | yields QC, +MAX_HOP   | S2 signifies candidate |
-| Mismatched, chain never reaches opposing mismatch set         | +MAX_HOP              | Accumulated directly  |
-| Mismatched candidate, chain bridges via connotation           | round-trip, hop = 0   | S3 packed (always)    |
-| Matched + grounded (is_s1)                                    | 0                     | Neutral               |
-| Matched + ungrounded                                          | +1                    | Accumulated directly  |
+| Node state                                               | Contribution         | Target component       |
+| -------------------------------------------------------- | -------------------- | ---------------------- |
+| Mismatched, chain reaches opposing mismatch set at hop N | +N to total_distance | Accumulated directly   |
+| Mismatched, chain reaches signature with bitwise overlap | yields QC, +MAX_HOP  | S2 signifies candidate |
+| Mismatched, chain never reaches opposing mismatch set    | +MAX_HOP             | Accumulated directly   |
+| Mismatched candidate, chain bridges via connotation      | round-trip, hop = 0  | S3 packed (always)     |
+| Matched + grounded (is_s1)                               | 0                    | Neutral                |
+| Matched + ungrounded                                     | +1                   | Accumulated directly   |
 
 ### Connotation Bridging
 
@@ -386,27 +386,27 @@ Structural test only. Literal nodes cannot match a signature.
 
 ### Significance API
 
-| Test                      | Description                                        |
-| ------------------------- | -------------------------------------------------- |
-| is_s1 resolves            | `model.find(node) is not None` → True              |
-| is_s1 no resolve          | Node not in model → False                          |
-| is_s1 node not signature  | Node in kline.nodes but no kline with that sig     |
-| \_is_canon match          | `sig == make_signature(nodes)` → True              |
-| \_is_canon mismatch       | `sig != make_signature(nodes)` → False             |
-| \_edge_hops unresolvable  | Node doesn't resolve → empty generator             |
-| \_edge_hops canonical     | Resolves to canonical → empty generator            |
-| \_edge_hops chain         | Yields (hop_count, next_sig) at each step          |
+| Test                      | Description                                                |
+| ------------------------- | ---------------------------------------------------------- |
+| is_s1 resolves            | `model.find(node) is not None` → True                      |
+| is_s1 no resolve          | Node not in model → False                                  |
+| is_s1 node not signature  | Node in kline.nodes but no kline with that sig             |
+| \_is_canon match          | `sig == make_signature(nodes)` → True                      |
+| \_is_canon mismatch       | `sig != make_signature(nodes)` → False                     |
+| \_edge_hops unresolvable  | Node doesn't resolve → empty generator                     |
+| \_edge_hops canonical     | Resolves to canonical → empty generator                    |
+| \_edge_hops chain         | Yields (hop_count, next_sig) at each step                  |
 | expand self no model      | All match, ungrounded → significance reflects N ungrounded |
-| expand no resolution      | All mismatched unresolvable → low significance         |
-| expand grounding          | Matched node that resolves → higher significance |
-| expand edge hops          | Mismatched with chain → connotation yields + terminal |
-| expand S2 signifies       | Signifies loose match yields QC, terminal still MAX_HOP |
-| expand S2 before S3       | Signifies short-circuits, s3_connotations not populated |
-| expand range              | Valid significance uint64                                 |
-| expand clamped            | Significance in [1, D_MAX]                 |
-| expand S3 route           | S3 bias ensures S3 distances moderately exceed S2      |
-| expand connotation        | Indirect path → S3 connotation yield + terminal    |
-| expand significance range | Significance always in valid uint64 range |
-| expand bidirectional      | Both sides yield connotations + terminal           |
-| is_countersigned          | Mutual reference detected                          |
-| Not countersigned         | One-way reference → False                          |
+| expand no resolution      | All mismatched unresolvable → low significance             |
+| expand grounding          | Matched node that resolves → higher significance           |
+| expand edge hops          | Mismatched with chain → connotation yields + terminal      |
+| expand S2 signifies       | Signifies loose match yields QC, terminal still MAX_HOP    |
+| expand S2 before S3       | Signifies short-circuits, s3_connotations not populated    |
+| expand range              | Valid significance uint64                                  |
+| expand clamped            | Significance in [1, D_MAX]                                 |
+| expand S3 route           | S3 bias ensures S3 distances moderately exceed S2          |
+| expand connotation        | Indirect path → S3 connotation yield + terminal            |
+| expand significance range | Significance always in valid uint64 range                  |
+| expand bidirectional      | Both sides yield connotations + terminal                   |
+| is_countersigned          | Mutual reference detected                                  |
+| Not countersigned         | One-way reference → False                                  |
