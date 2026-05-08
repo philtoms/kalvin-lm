@@ -20,12 +20,12 @@ Kalvin today is a **knowledge rationalisation engine**: it receives klines, eval
 A detailed design pass on the training loop (`docs/training-loop.md`) resolved the central architectural questions. The gap between the current system and the learning vision is smaller than originally estimated:
 
 1. **The Training Interface** requires no new APIs. The teacher uses existing `rationalise()`, the event bus, and countersignature. Ratification is countersignature — the teacher rationalises the reciprocal kline.
-2. **Scaffolding** is not a new mechanism. Each scaffolding step is a new frame (a new kalvin instance layered over the previous frame as base). The frame stack handles recursive learning naturally.
+2. **Scaffolding** is not a new mechanism. Each scaffolding step is rationalised through the same agent. All queries within a script share a single frame (STM → Frame → Base), so promotions from scaffolding are immediately visible to ongoing cogitation.
 3. **Agency & Study** is the existing cogitator, viewed from the learning perspective. No new mechanism required.
 4. **Structural Grounding** replaces the sharpened S1 promotion. S1 is determined by structure (signature describes nodes or countersigned). After ratification, all STM klines involved in the ratification process are promoted to frame — including S4 identity klines. Frames hold S4–S1.
-5. **Curriculum & Session Management** is handled by the frame stack for the MVP. Each `rationalise()` call creates a frame. Future work adds temporal events and trajectory analysis.
+5. **Curriculum & Session Management** is handled by one agent per script for the MVP. All queries within a script share the same frame. Future work adds temporal events and trajectory analysis.
 
-What remains are genuine implementation challenges: implementing structural grounding, building a frame factory, calibrating boundaries, and evaluating model quality.
+What remains are genuine implementation challenges: implementing structural grounding, building a teacher coordinator, calibrating boundaries, and evaluating model quality.
 
 ---
 
@@ -79,17 +79,11 @@ The teacher is an external coordinator that composes existing API calls. It does
 
 **Original assumption:** Required a foreground interactive process where the agent pauses rationalisation, waits for feedback, and manages recursive depth limits. Also assumed monotonic significance tracking.
 
-**Resolution:** Scaffolding is a new frame. Each scaffolding kline goes through `rationalise()` on a new kalvin instance layered over the current frame as base. The frame stack is the recursion mechanism:
+**Resolution:** Scaffolding uses the same agent. Each scaffolding kline goes through `rationalise()` on the same agent — there is one frame per script, not per rationalise call. All queries within a script share the same STM → Frame → Base, so promotions from scaffolding are immediately visible to ongoing cogitation without any cross-frame sharing mechanism.
 
-```
-Frame 1: original query
-Frame 2: scaffolding for missing concept (base = Frame 1)
-Frame 3: deeper scaffolding (base = Frame 2)
-```
+No foreground pausing needed. The teacher submits queries and listens to events from the single agent's event bus. Cogitation runs on the background thread. Recursive depth is managed by the teacher (it decides how many scaffolding rounds to attempt).
 
-No foreground pausing needed. The teacher creates frames, submits queries, and listens to events from all active frames. Frame cogitation runs independently and concurrently. Recursive depth is managed by the teacher (it decides how many frames to create).
-
-Monotonicity is a guarantee about grounded information, not significance values. Frames are append-only. See `docs/training-loop.md` §"Monotonicity: Constructive Grounding".
+Monotonicity is a guarantee about grounded information, not significance values. The frame is append-only. See `docs/training-loop.md` §"Monotonicity: Constructive Grounding".
 
 ### ~~Challenge 3: Agency & Self-Directed Study~~ — Resolved
 
@@ -120,9 +114,9 @@ No new enum, no new state, no backward compatibility issue, no bootstrapping pro
 
 **Original assumption:** Required proving that significance monotonically increases during training, and enforcing this invariant.
 
-**Resolution:** Monotonicity is a guarantee about **grounded information**, not significance values. Significance may fluctuate as the model grows (new candidates, altered distances). But grounded information is permanent: once a kline is promoted to a frame, it stays. The model can only grow richer — never poorer. The frame stack is append-only.
+**Resolution:** Monotonicity is a guarantee about **grounded information**, not significance values. Significance may fluctuate as the model grows (new candidates, altered distances). But grounded information is permanent: once a kline is promoted to a frame, it stays. The model can only grow richer — never poorer. The frame is append-only.
 
-Convergence is an empirical question, not a formal guarantee. The teacher decides when understanding is sufficient. The system provides the mechanisms (rationalise, events, countersignature, frame stack); the teacher provides the judgment.
+Convergence is an empirical question, not a formal guarantee. The teacher decides when understanding is sufficient. The system provides the mechanisms (rationalise, events, countersignature, agent frame); the teacher provides the judgment.
 
 ---
 
@@ -183,38 +177,35 @@ ratify. Without it, S2 klines that fail countersignature are simply abandoned.
 - Proposal emission via existing `frame` event mechanism
 - Tests: underfit expansion, overfit expansion, dual misfit, constraint violations
 
-### Challenge 7: Frame Factory & Teacher Infrastructure
+### Challenge 7: Teacher Infrastructure
 
 **Status:** Not started (next after Challenges 6 + 6b)  
 **Effort:** Small–medium
 
-The training loop requires a way to create new frames (kalvin instances) layered over previous frames. This is the frame factory:
+The training loop uses one agent per script — a single `Agent()` instance whose frame accumulates all ratified knowledge. No frame factory is needed; the teacher constructs agents directly:
 
 ```
-frame_n = kalvin.new_frame(temperature=1.5, top_k=40, top_p=0.95)
+agent = Agent(model=Model(base=existing_model))
 ```
 
-Or equivalently, the teacher constructs:
+Sampling parameters are agent-level properties, adjustable between rationalise calls:
 
 ```
-frame_n = Agent(model=Model(base=frame_n_minus_1.model))
+agent.sampling = Sampling(temperature=1.5, top_k=40, top_p=0.95)
 ```
 
-**Questions to resolve:**
-- Should frames share model state by reference (allowing inter-frame enrichment) or by snapshot (isolating frames)?
-- How does the teacher subscribe to events from multiple frames simultaneously?
-- Should the frame factory be a method on the Agent, or is manual construction sufficient?
+All queries for a script are rationalised through this single agent. There is no frame stack, no cross-frame sharing, and no multi-agent event subscription.
 
 **The teacher** is an external coordinator (Python class, initially) that:
 1. Compiles KScript into queries and expectations
-2. Creates frames via the frame factory
-3. Subscribes to event buses for all active frames
+2. Constructs an agent for each script
+3. Subscribes to the agent's event bus
 4. Compares proposals against expectations (kline equality for MVP)
 5. Countersigns by rationalising the reciprocal
 6. Constructs corrective scaffolding when proposals don't match
-7. Manages the frame stack
+7. Adjusts sampling parameters as needed
 
-**Risk:** Low–medium. The frame factory is straightforward. Teacher implementation is mostly orchestration of existing APIs. Event subscription from multiple agents needs testing.
+**Risk:** Low. The teacher is mostly orchestration of existing APIs. No new agent methods needed.
 
 ### Challenge 8: Model Quality & Evaluation
 
@@ -236,9 +227,9 @@ The training loop's effectiveness depends on model quality. No quality metrics e
 
 **Status:** Not started  
 **Effort:** Small  
-**Priority:** Low (API-level sampling parameters work for MVP)
+**Priority:** Low (agent-level sampling parameters work for MVP)
 
-KScript currently has no mechanism for encoding sampling parameters alongside a script. For the MVP, the teacher sets parameters API-level per frame. Future work may add metadata annotations to KScript:
+KScript currently has no mechanism for encoding sampling parameters alongside a script. For the MVP, the teacher sets parameters on the agent directly. Future work may add metadata annotations to KScript:
 
 ```
 @temp=1.5 @top_k=20
@@ -252,9 +243,9 @@ This is polish, not a blocker. The training loop works without it.
 
 **Status:** Not started  
 **Effort:** Medium  
-**Priority:** Low (MVP uses frame stack without temporal analysis)
+**Priority:** Low (MVP uses single-agent frame without temporal analysis)
 
-The frame stack captures the full learning trajectory. Future work adds temporal metadata to events so the teacher (or a kalvin-as-tutor) can analyze the trajectory: rate of convergence, effectiveness of scaffolding, etc.
+The agent's frame captures the full learning trajectory for a script. Future work adds temporal metadata to events so the teacher (or a kalvin-as-tutor) can analyze the trajectory: rate of convergence, effectiveness of scaffolding, etc.
 
 This is the foundation for kalvin-as-tutor: a kalvin instance that acts as teacher for another kalvin instance, using reentrant rationalisation instead of exact kline equality for proposal evaluation.
 
@@ -267,7 +258,7 @@ Challenge 6:  Structural Grounding
     ↓
 Challenge 6b: Extended Cogitation (S2 Expansion)
     ↓
-Challenge 7:  Frame Factory & Teacher Infrastructure
+Challenge 7:  Teacher Infrastructure
     ↓
 Challenge 8:  Model Quality & Evaluation (ongoing, parallel)
 
@@ -275,7 +266,7 @@ Challenge 9:  KScript Metadata          (future, low priority)
 Challenge 10: Temporal Events & Tutor    (future, low priority)
 ```
 
-The dependency chain is now linear and shallow: structural grounding → extended cogitation → build frame factory + teacher → evaluate quality. The future challenges (9, 10) are independent enhancements.
+The dependency chain is now linear and shallow: structural grounding → extended cogitation → build teacher → evaluate quality. The future challenges (9, 10) are independent enhancements.
 
 ---
 
@@ -312,17 +303,16 @@ with ratification constraint enforcement, proposal emission.
 - Tests for all expansion types
 - Spec updated: `specs/agent.md` §S2 Expansion, `specs/model.md` expansion API
 
-### Phase B: Frame Factory & Teacher (Challenge 7)
+### Phase B: Teacher (Challenge 7)
 **Estimate:** 1–2 weeks  
-**Risk:** Low–medium
+**Risk:** Low
 
-Build the frame factory, implement a teacher class, and test the three training scenarios from `docs/training-loop.md`.
+Implement a teacher class and test the three training scenarios from `docs/training-loop.md`.
 
 **Deliverables:**
-- Frame factory (method on Agent or standalone)
 - `Teacher` class that orchestrates the training loop
 - Tests for Scenarios A, B, C from `docs/training-loop.md`
-- Multi-frame event subscription
+- Single-agent event subscription
 
 ### Phase C: Model Quality & Evaluation (Challenge 8)
 **Estimate:** 2–3 weeks (ongoing)  
@@ -350,13 +340,11 @@ KScript metadata, temporal events, kalvin-as-tutor. These are not required for t
 |---|---|---|---|---|
 | 1 | How to determine structural S1 (signature describes nodes or countersigned)? | Challenge 6 | High | Design complete — structural interrogation |
 | 2 | How to identify all STM klines involved in a ratification process? | Challenge 6 | High | TBD |
-| 2 | Frame factory: method on Agent or standalone? | Challenge 7 | High | TBD |
-| 3 | Frame model sharing: reference or snapshot? | Challenge 7 | High | Reference sharing for MVP (enables inter-frame enrichment) |
-| 4 | How to subscribe to events from multiple frames? | Challenge 7 | Medium | TBD |
-| 5 | How many klines before candidate retrieval O(N) becomes a bottleneck? | Challenge 8 | Medium | Empirical |
-| 6 | Are current boundary constants well-calibrated for training? | Challenge 8 | High | Empirical |
-| 7 | When does Mod(N) vocabulary saturation require BPE transition? | Challenge 8 | Low | Empirical |
-| 8 | What does a non-trivial training curriculum look like? | MW (`training-schedule.md`) | Medium | Active research |
+| 3 | Frame factory: method on Agent or standalone? | Challenge 7 | High | Resolved — no frame factory needed, one agent per script |
+| 4 | How many klines before candidate retrieval O(N) becomes a bottleneck? | Challenge 8 | Medium | Empirical |
+| 5 | Are current boundary constants well-calibrated for training? | Challenge 8 | High | Empirical |
+| 6 | When does Mod(N) vocabulary saturation require BPE transition? | Challenge 8 | Low | Empirical |
+| 7 | What does a non-trivial training curriculum look like? | MW (`training-schedule.md`) | Medium | Active research |
 
 ---
 
@@ -381,8 +369,8 @@ The original roadmap overestimated the gap between the current system and the le
 
 The two concrete implementation tasks are:
 1. **Structural grounding** — S1 determined by structure, promotion after ratification for all participating klines.
-2. **Frame factory + teacher** — orchestration code that composes existing APIs into the training loop pattern.
+2. **Teacher** — orchestration code that composes existing APIs into the training loop pattern.
 
 Everything else (model quality evaluation, boundary calibration, future enhancements) is empirical work and polish that follows from a working training loop.
 
-The central insight holds: **learning and rationalisation are the same process, applied recursively**. The training loop makes this concrete — each frame is a rationalisation, each countersignature is a ratification, and the frame stack is the learning trajectory.
+The central insight holds: **learning and rationalisation are the same process, applied recursively**. The training loop makes this concrete — each rationalise call processes a query through the same frame, each countersignature is a ratification, and the growing frame is the learning trajectory.

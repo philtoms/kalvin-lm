@@ -1096,7 +1096,7 @@ Summary of Key Questions
  6. explicit temp nesting and management is not required. Frame nesting as described handles this quite well.
 
 
-Review the following account of a training schedue using @docs for reference. The account is not complete so ask questions that you need to understand how it all fits together"
+Review the following account of a training schedule using @docs for reference. The account is not complete so ask questions that you need to understand how it all fits together"
 
 A training schedule.
 A training loop pipeline can be established fairly easily and would support the growth of a kalvin knowledge graph through reentrant rationalisation. The @docs/training-loop.md document describes how this might be achieved and sets the stage for implementation (via appropriate specs and planning).
@@ -1255,3 +1255,8 @@ def is_countersigned(self, kline: KLine) -> bool:
       return True
   return False
 ```
+
+A simplification of frame semantics in training loops:
+The current training loop model describes how a frame is created for every call to rationalise and requires frame stack management as well as mechanism to share newer frame data with older frames. This design is complicated and can be simplified by reducing the number of frames down to one per script. This removes the need to create frames on a call to rationalise, to be replaced with a simple agent construction when a new script is processed. All training loop processing operates in the scope of a single frame so no additional sharing mechanism is required. Promotion is simply from STM to model frame.
+
+This does effect how sampling parameters are handled, but these can also be simplified to externally facing agent properties. 

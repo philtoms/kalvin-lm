@@ -215,11 +215,11 @@ The harness may itself be agentic — capable of autonomous action based on sign
 
 The agentic harness is the production analogue of the human-in-the-loop trainer. It uses the same API; its sophistication is a matter of implementation, not architecture.
 
-### Frame Stacks in Production
+### Frames in Production
 
-Frame stacks are not expected to grow rapidly in production. Each `rationalise()` call that creates a new frame represents a training event — a deliberate act of scaffolding or temperature adjustment. In a stable operational deployment, most queries will route to S1 through the fast path without creating new frames.
+Each agent has a single frame. In production, most queries will route to S1 through the fast path and accumulate in the frame without requiring scaffolding. The frame grows monotonically as new knowledge is grounded.
 
-Frame consolidation procedures are TBD. Currently, frame stacks are allowed to grow without bound.
+Frame consolidation (merging a trained frame back into a base model for reuse) is TBD. Currently, frames grow without bound within an agent's session.
 
 ---
 
@@ -259,14 +259,14 @@ The learning principles guarantee that training works. The training loop provide
 - Event bus — the single output channel for all proposals and results.
 - Countersignature — the ratification mechanism (both for priming and for accepting proposals).
 - KScript — the language for constructing training data.
-- Frame factory (planned) — the mechanism for creating new frames during scaffolding.
+- Agent construction — one agent per script, no frame factory needed.
 
 ### What MW Needs
 
 | Need | Status | Notes |
 |------|--------|-------|
 | Structural grounding | Not started | S1 determined by structure; promote all participating klines after ratification. Roadmap Challenge 6. |
-| Frame factory | Not started | Creating new kalvin instances over previous frames. Roadmap Challenge 7. |
+| Agent construction | Exists | `Agent(model=Model(base=...))` — one agent per script. |
 | Teacher class | Not started | External coordinator. Roadmap Challenge 7. |
 | KScript compile → rationalise pipeline | Needs verification | KScript compiles to klines; the teacher submits them via `rationalise()`. |
 | Mod32 tokenizer in harness | Needs verification | Tokenizer must be available to both the teacher (for encoding) and Kalvin (for significance computation). |
@@ -278,7 +278,7 @@ The learning principles guarantee that training works. The training loop provide
 |------|--------|-------|
 | Kline serialisation | Exists | Klines are already serializable. |
 | Base rebase (trained frame → new base) | Not implemented | Conceptual model is clear. |
-| Frame consolidation | TBD | Frame stacks currently grow without bound. |
+| Frame consolidation | TBD | Frames grow within agent session; base rebase is conceptual. |
 | Agentic harness infrastructure | Future | Depends on MW findings and production requirements. |
 
 ---
