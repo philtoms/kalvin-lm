@@ -450,7 +450,7 @@ The Agent publishes events during rationalisation for observers to consume.
 RationaliseEvent:
   kind:          str       # "ground", "frame", "done"
   query:         Kline     # The Kline being rationalised
-  value:         Kline     # The matching or resulting Kline
+  proposal:      Kline     # The matching or resulting Kline
   significance:  int       # Significance value
 ```
 

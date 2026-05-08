@@ -584,3 +584,214 @@ class TestModelSignificanceAPI:
         # a.sig (5) IS in b.nodes [5] → True
         # So they ARE countersigned
         assert m.is_countersigned(a, b) is True
+
+
+# ── Structural Grounding Tests ───────────────────────────────────────
+
+class TestIsStructuralS1:
+    def test_canonical_kline(self):
+        """KLine with sig == make_signature(nodes) → structural S1."""
+        m = Model()
+        k = KLine(10, [10])  # make_signature([10]) = 10
+        assert m.is_structural_s1(k) is True
+
+    def test_countersigned_in_model(self):
+        """Two klines with mutual node references → structural S1."""
+        m = Model()
+        a = KLine(5, [10])
+        b = KLine(10, [5])
+        m.add(a)
+        m.add(b)
+        # a is countersigned: a.nodes has 10, model.find(10)=b, b.nodes has 5=a.signature
+        assert m.is_structural_s1(a) is True
+
+    def test_neither_canonical_nor_countersigned(self):
+        """Non-canonical, non-countersigned kline → not structural S1."""
+        m = Model()
+        k = KLine(5, [10])  # not canonical (make_sig([10])=10≠5)
+        assert m.is_structural_s1(k) is False
+
+    def test_all_literal_canonical(self):
+        """All-literal kline → canonical (sig=1)."""
+        m = Model()
+        lit = (65 << 32) | 0xFFFF_FFFF
+        k = KLine(1, [lit])
+        assert m.is_structural_s1(k) is True
+
+    def test_countersigned_skips_literal_nodes(self):
+        """Literal nodes in kline.nodes are skipped in countersigned search."""
+        m = Model()
+        lit = (65 << 32) | 0xFFFF_FFFF
+        a = KLine(5, [lit])  # only literal nodes
+        m.add(a)
+        assert m.is_structural_s1(a) is False  # not canonical, no non-literal nodes to check
+
+
+class TestIsCountersignedInModel:
+    def test_mutual_reference(self):
+        m = Model()
+        a = KLine(5, [10, 20])
+        b = KLine(10, [5, 30])
+        m.add(a)
+        m.add(b)
+        assert m._is_countersigned_in_model(a) is True
+
+    def test_one_way_only(self):
+        m = Model()
+        a = KLine(5, [10])
+        b = KLine(10, [20, 30])  # b doesn't contain a.sig
+        m.add(a)
+        m.add(b)
+        assert m._is_countersigned_in_model(a) is False
+
+    def test_no_model_match(self):
+        m = Model()
+        a = KLine(5, [10])
+        assert m._is_countersigned_in_model(a) is False
+
+
+class TestPromoteParticipating:
+    def test_promotes_query_and_candidate(self):
+        """Both query and candidate are promoted."""
+        m = Model(stm_bound=256)
+        q = KLine(5, [10, 20])
+        c = KLine(10, [5, 30])
+        m.add(q)
+        m.add(c)
+        count = m.promote_participating(q, c)
+        assert count >= 2
+        assert len(m) >= 2
+
+    def test_promotes_stm_klines_with_matching_signatures(self):
+        """STM klines whose signatures appear in the node set are also promoted."""
+        m = Model(stm_bound=256)
+        # Identity kline (S4) with sig that appears in query nodes
+        identity = KLine(10, [100])  # sig=10 appears in query.nodes
+        m.add(identity)
+        q = KLine(5, [10, 20])
+        c = KLine(20, [5, 30])
+        m.add(q)
+        m.add(c)
+        count = m.promote_participating(q, c)
+        assert count >= 2  # at least query + candidate
+        # identity (sig=10) is in q.nodes, should also be promoted
+        assert any(kl.signature == 10 for kl in m)
+
+    def test_no_double_promote(self):
+        """Already-promoted klines are not re-promoted."""
+        m = Model(stm_bound=256)
+        q = KLine(5, [10])
+        c = KLine(10, [5])
+        m.add(q)
+        m.add(c)
+        m.promote(q)
+        m.promote(c)
+        count = m.promote_participating(q, c)
+        assert count == 0  # both already in frame
+
+
+# ── Misfit Classification Tests ──────────────────────────────────────
+
+class TestClassifyMisfit:
+    def test_canonical(self):
+        """S == N → (False, False)."""
+        m = Model()
+        k = KLine(10, [10])  # make_sig([10]) = 10
+        assert m.classify_misfit(k) == (False, False)
+
+    def test_underfitting(self):
+        """S & ~N != 0 → (True, False)."""
+        m = Model()
+        # sig=0b110, nodes=[0b100] → nodes_sig=0b100
+        # underfit: 0b110 & ~0b100 = 0b110 & 0x..011 = 0b010 ≠ 0
+        # overfit: 0b100 & ~0b110 = 0b100 & 0x..001 = 0 → False
+        k = KLine(0b110, [0b100])
+        assert m.classify_misfit(k) == (True, False)
+
+    def test_overfitting(self):
+        """N & ~S != 0 → (False, True)."""
+        m = Model()
+        # sig=0b100, nodes=[0b110] → nodes_sig=0b110
+        # underfit: 0b100 & ~0b110 = 0 → False
+        # overfit: 0b110 & ~0b100 = 0b010 ≠ 0 → True
+        k = KLine(0b100, [0b110])
+        assert m.classify_misfit(k) == (False, True)
+
+    def test_dual_misfit(self):
+        """Both conditions → (True, True)."""
+        m = Model()
+        # sig=0b101, nodes=[0b110] → nodes_sig=0b110
+        # underfit: 0b101 & ~0b110 = 0b101 & 0x..001 = 0b001 ≠ 0 → True
+        # overfit: 0b110 & ~0b101 = 0b110 & 0x..010 = 0b010 ≠ 0 → True
+        k = KLine(0b101, [0b110])
+        assert m.classify_misfit(k) == (True, True)
+
+
+class TestGenerateExpansions:
+    def _make_model_with_klines(self) -> Model:
+        m = Model()
+        # Canonical klines that can serve as contributors
+        m.add(KLine(0b010, [0b010]))  # canonical
+        m.add(KLine(0b001, [0b001]))  # canonical
+        m.promote_all()
+        return m
+
+    def test_underfit_expansion_adds_nodes(self):
+        """Underfit expansion yields proposals with added nodes."""
+        m = self._make_model_with_klines()
+        # sig=0b110, nodes=[0b100] → nodes_sig=0b100
+        # gap = 0b110 & ~0b100 = 0b010
+        # contributor with sig=0b010 should be found
+        k = KLine(0b110, [0b100])
+        underfit_gap = 0b010
+        overfit_mask = 0
+        results = list(m.generate_expansions(k, underfit_gap, overfit_mask))
+        assert len(results) >= 1
+        proposal, companions = results[0]
+        assert proposal.signature == 0b110  # signature stays the same
+        assert 0b010 in proposal.nodes or any(
+            0b010 in n if isinstance(n, int) else False for n in proposal.nodes
+        )
+        assert companions == []  # no companions for underfit
+
+    def test_overfit_expansion_removes_nodes(self):
+        """Overfit expansion yields trimmed kline + companion."""
+        m = Model()
+        # sig=0b100, nodes=[0b110] → nodes_sig=0b110
+        # excess = 0b110 & ~0b100 = 0b010
+        k = KLine(0b100, [0b110])
+        underfit_gap = 0
+        overfit_mask = 0b010
+        results = list(m.generate_expansions(k, underfit_gap, overfit_mask))
+        assert len(results) == 1
+        proposal, companions = results[0]
+        assert proposal.signature == 0b100
+        assert 0b110 not in proposal.nodes  # excess node removed
+        assert len(companions) == 1
+        assert companions[0].nodes == [0b110]  # removed node forms companion
+
+    def test_dual_expansion_atomic_replace(self):
+        """Dual expansion yields replacement + companion."""
+        m = self._make_model_with_klines()
+        # sig=0b101, nodes=[0b110] → nodes_sig=0b110
+        # gap = 0b101 & ~0b110 = 0b001
+        # excess = 0b110 & ~0b101 = 0b010
+        k = KLine(0b101, [0b110])
+        underfit_gap = 0b001
+        overfit_mask = 0b010
+        results = list(m.generate_expansions(k, underfit_gap, overfit_mask))
+        # Should produce underfit, overfit, and dual expansions
+        assert len(results) >= 2
+        # Find the dual expansion (has companions from excess removal AND added nodes from gap fill)
+        dual_results = [r for r in results if len(r[1]) > 0]
+        assert len(dual_results) >= 1
+        # At least one dual result should have contributor nodes added
+        has_replacement = any(0b010 in r[0].nodes or 0b001 in r[0].nodes for r in dual_results)
+        assert has_replacement
+
+    def test_no_gap_no_expansion(self):
+        """No gap and no excess → no expansion proposals."""
+        m = Model()
+        k = KLine(10, [10])  # canonical
+        results = list(m.generate_expansions(k, 0, 0))
+        assert len(results) == 0

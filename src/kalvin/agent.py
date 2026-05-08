@@ -259,6 +259,8 @@ class Cogitator:
             cumulative += qc.significance
 
             if band == "S1":
+                if self._model.is_structural_s1(candidate):
+                    self._model.promote_participating(query, candidate)
                 self._on_s1(query, candidate)
             else:
                 self._process(qc)  # S2 or S3: countersignature check
@@ -272,13 +274,41 @@ class Cogitator:
                 break  # demote remainder — budget spent
 
     def _process(self, item: QueryCandidate) -> None:
-        """Process a single expanded result: check countersignature."""
+        """Process a single expanded result: check countersignature, then expand."""
         query, candidate, significance = item
 
-        # Check countersignature — may upgrade to S1
+        # Phase 1: Countersignature — ratification event
         if self._model.is_countersigned(query, candidate):
             self._model.add(candidate)
+            self._model.promote_participating(query, candidate)
             self._on_s1(query, candidate)
+            return
+
+        # Phase 2: S2 Expansion — attempt to reshape misfit klines
+        candidate_sig = candidate.signature
+        nodes_sig = self._model._make_sig(candidate.nodes)
+
+        if candidate_sig == nodes_sig:
+            return  # canonical — nothing to expand
+
+        underfit, overfit = self._model.classify_misfit(candidate)
+
+        if not underfit and not overfit:
+            return  # neither — nothing to expand
+
+        underfit_gap = candidate_sig & ~nodes_sig
+        overfit_mask = nodes_sig & ~candidate_sig
+
+        for proposal, companions in self._model.generate_expansions(
+            candidate, underfit_gap, overfit_mask
+        ):
+            self._event_bus.publish(
+                RationaliseEvent("frame", query, proposal, significance)
+            )
+            for companion in companions:
+                self._event_bus.publish(
+                    RationaliseEvent("frame", query, companion, significance)
+                )
 
 
 # ── Agent ─────────────────────────────────────────────────────────────
@@ -388,11 +418,13 @@ class Agent:
         # Phase 3: Assess
         if not kline.nodes:
             self._model.add(kline)
+            self._model.promote(kline)
             self._publish("frame", kline, kline, 0)  # S4
             return True
 
         if all(is_literal_node(n) for n in kline.nodes):
             self._model.add(kline)
+            self._model.promote(kline)
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
 
@@ -404,6 +436,7 @@ class Agent:
             )
             if all_resolved:
                 self._model.add(kline)
+                self._model.promote(kline)
                 self._publish("frame", kline, kline, D_MAX - 1)  # S1
                 return True
 
@@ -413,6 +446,7 @@ class Agent:
         if not candidates:
             # S4 — novel, no candidates
             self._model.add(kline)
+            self._model.promote(kline)
             self._publish("frame", kline, kline, 0)
             return True
 
@@ -425,7 +459,7 @@ class Agent:
 
             if level == "S1":
                 # Fast response — confirmed, done
-                self._model.promote(kline)
+                self._model.promote_participating(kline, candidate)
                 self._publish("frame", kline, candidate, D_MAX - 1)
                 found_s1 = True
                 break
@@ -451,11 +485,9 @@ class Agent:
 
     # ── Events ────────────────────────────────────────────────────────
 
-    def _publish(self, kind: str, query: KLine, value: KLine, significance: int) -> None:
+    def _publish(self, kind: str, query: KLine, proposal: KLine, significance: int) -> None:
         """Publish a rationalisation event."""
-        if kind == "frame" and significance in (D_MAX - 1, 0):
-            self._model.promote(value)
-        self._event_bus.publish(RationaliseEvent(kind, query, value, significance))
+        self._event_bus.publish(RationaliseEvent(kind, query, proposal, significance))
 
     # ── Frame info ────────────────────────────────────────────────────
 

@@ -13,7 +13,7 @@ class TestRationaliseEvent:
         e = RationaliseEvent("frame", k1, k2, 42)
         assert e.kind == "frame"
         assert e.query is k1
-        assert e.value is k2
+        assert e.proposal is k2
         assert e.significance == 42
 
     def test_repr(self) -> None:

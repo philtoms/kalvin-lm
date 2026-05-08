@@ -194,7 +194,7 @@ Teacher                              Kalvin
 
 ### Event Correlation
 
-The `RationaliseEvent` carries `query` and `value` klines. The teacher correlates via signature — "I submitted a query with signature X, and I got back a frame event for a query with signature X." For the MVP, the teacher tracks one query per frame and uses signature matching to correlate events.
+The `RationaliseEvent` carries `query` and `proposal` klines. The teacher correlates via signature — "I submitted a query with signature X, and I got back a frame event for a query with signature X." For the MVP, the teacher tracks one query per frame and uses signature matching to correlate events.
 
 ### The Feedback Loop is Synchronised by Return Value
 

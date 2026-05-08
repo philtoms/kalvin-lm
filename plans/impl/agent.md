@@ -82,7 +82,7 @@ Pub/sub for rationalisation observers.
 class RationaliseEvent:
     kind: str           # "ground", "frame", "done"
     query: KLine        # The KLine being rationalised
-    value: KLine        # The matching or resulting KLine
+    proposal: KLine     # The matching or resulting KLine
     significance: int   # Significance value
 ```
 
@@ -100,7 +100,7 @@ class EventBus:
 | --------------------- | ---------------------------------------- |
 | Subscribe and publish | Callback receives event                  |
 | Multiple subscribers  | All receive event                        |
-| Event fields          | kind, query, value, significance correct |
+| Event fields          | kind, query, proposal, significance correct |
 | Thread safety         | Publish from another thread              |
 | Empty bus             | No crash on publish with no subscribers  |
 

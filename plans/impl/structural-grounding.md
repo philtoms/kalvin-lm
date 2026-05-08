@@ -175,14 +175,14 @@ at ratification points, not bundled into event emission:
 
 ```python
 # Before:
-def _publish(self, kind, query, value, significance):
+def _publish(self, kind, query, proposal, significance):
     if kind == "frame" and significance in (D_MAX - 1, 0):
-        self._model.promote(value)
+        self._model.promote(proposal)
     self._event_bus.publish(...)
 
 # After:
-def _publish(self, kind, query, value, significance):
-    self._event_bus.publish(RationaliseEvent(kind, query, value, significance))
+def _publish(self, kind, query, proposal, significance):
+    self._event_bus.publish(RationaliseEvent(kind, query, proposal, significance))
 ```
 
 #### agent.py: Cogitator._process() — Countersignature

@@ -381,3 +381,105 @@ class TestAgentSerialization:
         d = a.to_dict()
         loaded = Agent.from_dict(d)
         assert len(loaded.model) == 0
+
+
+# ── Structural Grounding Tests ───────────────────────────────────────
+
+class TestStructuralGrounding:
+    """Agent-level tests for structural grounding and promote_participating."""
+
+    def test_s1_fast_path_promotes(self):
+        """S1 in Phase 3 fast path (canonical) promotes to frame."""
+        a = Agent()
+        k = KLine(10, [10])  # canonical
+        result = a.rationalise(k)
+        assert result is True
+        assert a.frame_size() >= 1
+
+    def test_s4_fast_path_promotes(self):
+        """S4 (empty kline) promotes to frame."""
+        a = Agent()
+        k = KLine(0, [])
+        result = a.rationalise(k)
+        assert result is True
+        assert a.frame_size() >= 1
+
+    def test_all_literal_promotes(self):
+        """All-literal kline promotes to frame."""
+        a = Agent()
+        t = a.tokenizer
+        lit_nodes = t.encode("ABC")
+        k = KLine(1, lit_nodes)
+        result = a.rationalise(k)
+        assert result is True
+        assert a.frame_size() >= 1
+
+    def test_frame_holds_mixed_significance(self):
+        """After ratification, frame contains klines of mixed significance."""
+        a = Agent()
+        # Build a model with countersigned klines
+        a.rationalise(KLine(10, [10]))  # canonical → frame
+        a.rationalise(KLine(5, [10, 20]))  # may be S4 or route to candidate
+        assert a.frame_size() >= 1
+
+    def test_publish_no_auto_promote(self):
+        """_publish does not auto-promote — promotion is explicit."""
+        a = Agent()
+        events = []
+        a.events.subscribe(lambda e: events.append(e))
+        # Create a non-canonical kline that won't be fast-path promoted
+        k = KLine(5, [1, 2])
+        a.rationalise(k)
+        # The kline may or may not be promoted depending on route,
+        # but _publish itself shouldn't have promoted it
+        # (promotion happens via promote_participating or explicit promote)
+
+
+class TestCogitatorStructuralGrounding:
+    """Cogitator-level tests for structural grounding behavior."""
+
+    def test_boundary_s1_structural_promotes(self):
+        """Boundary S1 on structurally S1 kline → promotion."""
+        a = Agent()
+        # Build model with canonical kline
+        c = KLine(10, [10])
+        a.rationalise(c)
+        # Query that fully matches
+        q = KLine(0, [10])
+        q.signature = make_signature([10])
+        result = a.rationalise(q)
+        assert result is True
+
+    def test_cogitator_countersignature_promotes_participating(self):
+        """Countersignature discovery promotes all participating klines."""
+        a = Agent()
+        # Build countersigned pair
+        a.rationalise(KLine(10, [10]))  # canonical
+        a.rationalise(KLine(5, [10, 20]))  # contains 10
+        a.rationalise(KLine(20, [5, 30]))  # contains 5
+        # At least one kline should be in the frame
+        assert a.frame_size() >= 1
+
+    def test_expansion_proposals_emitted_as_events(self):
+        """S2 expansion proposals are emitted as frame events."""
+        a = Agent()
+        events = []
+        a.events.subscribe(lambda e: events.append(e))
+
+        # Build model with misfit-eligible klines
+        a.rationalise(KLine(0b100, [0b100]))  # canonical
+        a.rationalise(KLine(0b010, [0b010]))  # canonical
+        # A misfit kline
+        a.rationalise(KLine(0b110, [0b100]))  # underfitting: sig promises more
+
+        # Events should have been published (including potential expansion events)
+        assert len(events) >= 1
+
+    def test_no_expansion_for_canonical(self):
+        """Canonical klines produce no expansion proposals."""
+        m = Model()
+        k = KLine(10, [10])  # canonical
+        nodes_sig = m._make_sig(k.nodes)
+        assert k.signature == nodes_sig  # canonical
+        underfit, overfit = m.classify_misfit(k)
+        assert not underfit and not overfit

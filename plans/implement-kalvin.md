@@ -151,7 +151,7 @@ its dependencies are satisfied.
 2. **Implement** `plans/impl/foundations.md` (Phases 0-4). ✅ Complete
 3. **Implement** `plans/impl/model.md` (Phase 5). ✅ Complete
 4. **Implement** `plans/impl/agent.md` (Phases 6-8). ✅ Complete
-5. **Implement** `plans/impl/structural-grounding.md` (Phase A + A+). 🔄 Next step
+5. **Implement** `plans/impl/structural-grounding.md` (Phase A + A+). ✅ Complete
 6. **Reference** `plans/impl/build-phases.md` for per-phase test cases and
    the resolved design decisions that apply across components.
 
@@ -252,8 +252,8 @@ MOD64_BITS = 63
 | 8     | Agent        | `agent.py` (routing + Cogitator)   | 2d         | 1-7        | agent | ✅ |
 | 9     | Persistence  | `agent.py` (extend)                | 1d         | 8          | agent | ✅ |
 | —     | KScript      | `kscript/`                         | 5d         | 1-3        | kscript | ✅ |
-| A     | Struct. Grounding | `model.py`, `agent.py`        | 1-2d       | 1-8        | structural-grounding | 🔄 |
-| A+    | Ext. Cogitation    | `model.py`, `agent.py`        | 3-5d       | A          | structural-grounding | 🔄 |
+| A     | Struct. Grounding | `model.py`, `agent.py`        | 1-2d       | 1-8        | structural-grounding | ✅ |
+| A+    | Ext. Cogitation    | `model.py`, `agent.py`        | 3-5d       | A          | structural-grounding | ✅ |
 |       | **Total**    |                                    | **22-27d** |            |          |
 
 ---
