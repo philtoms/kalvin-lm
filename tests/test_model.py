@@ -220,29 +220,6 @@ class TestModelPromote:
         assert len(m) == 2  # now in frame
 
 
-class TestIsS1:
-    def test_is_s1_resolves(self):
-        """Node that matches a kline signature in the model → True."""
-        m = make_model()
-        k = KLine(5, [1, 2])
-        m.add(k)
-        assert m.is_s1(5) is True
-
-    def test_is_s1_no_resolve(self):
-        """Node with no matching kline in the model → False."""
-        m = make_model()
-        k = KLine(5, [1, 2])
-        assert m.is_s1(42) is False
-
-    def test_is_s1_node_not_signature(self):
-        """Node that exists in kline.nodes but not as a signature → False."""
-        m = make_model()
-        k = KLine(5, [10, 20])
-        m.add(k)
-        # Node 10 is in k.nodes but no kline with sig 10 exists
-        assert m.is_s1(10) is False
-
-
 class TestIsCanon:
     def test_canon_match(self):
         """sig == make_signature(nodes) → canonical."""
@@ -305,11 +282,11 @@ class TestExpand:
         assert results[-1].significance == (~expected_distance) & MASK64
 
     def test_expand_with_grounding(self):
-        """Matched node that resolves → no ungrounded penalty."""
+        """Matched node that resolves to structural S1 → no ungrounded penalty."""
         m = make_model()
-        m.add(KLine(1, [10]))  # node 1 resolves
-        q = KLine(5, [1, 2])
-        c = KLine(6, [1, 3])
+        m.add(KLine(10, [10]))  # canonical kline, node 10 is structural S1
+        q = KLine(5, [10, 2])
+        c = KLine(6, [10, 3])
         # distance=200 (2 × MAX_HOP, grounded match)
         expected_distance = 200
         results = list(m.expand(q, c))
@@ -545,35 +522,35 @@ class TestExpand:
 
 # ── Structural Grounding Tests ───────────────────────────────────────
 
-class TestIsStructuralS1:
+class TestIsS1:
     def test_canonical_kline(self):
-        """KLine with sig == make_signature(nodes) → structural S1."""
+        """KLine with sig == make_signature(nodes) → S1."""
         m = Model()
         k = KLine(10, [10])  # make_signature([10]) = 10
-        assert m.is_structural_s1(k) is True
+        assert m.is_s1(k) is True
 
     def test_countersigned_in_model(self):
-        """Two klines with mutual node references → structural S1."""
+        """Two klines with mutual node references → S1."""
         m = Model()
         a = KLine(5, [10])
         b = KLine(10, [5])
         m.add(a)
         m.add(b)
         # a is countersigned: a.nodes has 10, model.find(10)=b, b.nodes has 5=a.signature
-        assert m.is_structural_s1(a) is True
+        assert m.is_s1(a) is True
 
     def test_neither_canonical_nor_countersigned(self):
-        """Non-canonical, non-countersigned kline → not structural S1."""
+        """Non-canonical, non-countersigned kline → not S1."""
         m = Model()
         k = KLine(5, [10])  # not canonical (make_sig([10])=10≠5)
-        assert m.is_structural_s1(k) is False
+        assert m.is_s1(k) is False
 
     def test_all_literal_canonical(self):
         """All-literal kline → canonical (sig=1)."""
         m = Model()
         lit = (65 << 32) | 0xFFFF_FFFF
         k = KLine(1, [lit])
-        assert m.is_structural_s1(k) is True
+        assert m.is_s1(k) is True
 
     def test_countersigned_skips_literal_nodes(self):
         """Literal nodes in kline.nodes are skipped in countersigned search."""
@@ -581,7 +558,7 @@ class TestIsStructuralS1:
         lit = (65 << 32) | 0xFFFF_FFFF
         a = KLine(5, [lit])  # only literal nodes
         m.add(a)
-        assert m.is_structural_s1(a) is False  # not canonical, no non-literal nodes to check
+        assert m.is_s1(a) is False  # not canonical, no non-literal nodes to check
 
 
 class TestIsCountersigned:

@@ -335,13 +335,6 @@ class Model:
 
     # ── Significance API ──────────────────────────────────────────────
 
-    def is_s1(self, node: int) -> bool:
-        """Test whether a node value resolves to a kline in the model.
-
-        A node achieves S1 when its value equals the signature of some
-        kline stored in any tier.
-        """
-        return self.find(node) is not None
 
     def _is_canon(self, kline: KLine) -> bool:
         """Test whether a kline is canonical (signature = make_signature of nodes)."""
@@ -486,7 +479,8 @@ class Model:
 
         # Matched but not grounded — small S2 penalty
         for n in matched:
-            if not self.is_s1(n):
+            kl = self.find(n)
+            if kl is None or not self.is_s1(kl):
                 total_distance += 1
 
         # Carry forward the incoming distance
@@ -498,7 +492,7 @@ class Model:
 
     # ── Structural Grounding ──────────────────────────────────────────
 
-    def is_structural_s1(self, kline: KLine) -> bool:
+    def is_s1(self, kline: KLine) -> bool:
         """Determine if a kline is structurally grounded (S1).
 
         A kline is S1 if:

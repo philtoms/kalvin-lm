@@ -259,7 +259,7 @@ class Cogitator:
             cumulative += qc.significance
 
             if band == "S1":
-                if self._model.is_structural_s1(candidate):
+                if self._model.is_s1(candidate):
                     self._model.promote_participating(query, candidate)
                 self._on_s1(query, candidate)
             else:

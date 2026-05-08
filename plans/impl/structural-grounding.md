@@ -54,7 +54,7 @@ These two changes enable the training loop described in
 Add a method to Model that determines whether a kline is structurally S1:
 
 ```python
-def is_structural_s1(self, kline: KLine) -> bool:
+def is_s1(self, kline: KLine) -> bool:
     """Determine if a kline is structurally grounded (S1).
 
     A kline is S1 if:
@@ -199,22 +199,22 @@ if band == "S1":
 
 # After:
 if band == "S1":
-    if self._model.is_structural_s1(candidate):
+    if self._model.is_s1(candidate):
         self._model.promote_participating(query, candidate)
     self._on_s1(query, candidate)
 ```
 
 The candidate is a model kline (from `model.where()`), so
-`is_structural_s1(candidate)` works correctly.
+`is_s1(candidate)` works correctly.
 
 ### 1.5 Test Cases
 
 | Test                                      | Description                                           |
 | ----------------------------------------- | ----------------------------------------------------- |
-| `is_structural_s1` canonical              | KLine with `sig == make_signature(nodes)` → True      |
-| `is_structural_s1` countersigned          | Two klines with mutual node references → True         |
-| `is_structural_s1` neither                | KLine that is not canonical or countersigned → False  |
-| `is_structural_s1` all-literal            | All-literal kline → True (canonical, sig=1)           |
+| `is_s1` canonical                | KLine with `sig == make_signature(nodes)` → True      |
+| `is_s1` countersigned            | Two klines with mutual node references → True         |
+| `is_s1` neither                  | KLine that is not canonical or countersigned → False  |
+| `is_s1` all-literal              | All-literal kline → True (canonical, sig=1)           |
 | `promote_participating` basic             | Query + candidate promoted                            |
 | `promote_participating` with S4 identity  | S4 identity klines in STM also promoted               |
 | `promote_participating` with S2/S3        | Partial klines in STM promoted                        |
@@ -426,7 +426,7 @@ moved upstream to rationalise):
 
 ```
 Phase A: Structural Grounding
-  1. model.is_structural_s1()         — new method
+  1. model.is_s1()                 — structural grounding check
   2. model.promote_participating()    — new method
   3. model.is_countersigned()         — renamed from _is_countersigned_in_model
   4. agent._publish()                 — remove auto-promote
@@ -453,7 +453,7 @@ Phase A+: Extended Cogitation
 
 | File                  | Change                                                                                                                                                                           |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/kalvin/model.py` | Add `is_structural_s1`, `promote_participating`, `is_countersigned`, `classify_misfit`, `generate_expansions`, `_underfit_expansions`, `_overfit_expansions`, `_dual_expansions` |
+| `src/kalvin/model.py` | Add `is_s1` (structural grounding), `promote_participating`, `is_countersigned`, `classify_misfit`, `generate_expansions`, `_underfit_expansions`, `_overfit_expansions`, `_dual_expansions` |
 | `src/kalvin/agent.py` | Modify `_publish`, `rationalise()` Phase 3 (add ratification) and Phase 5, `Cogitator._process` (S2 expansion only), `Cogitator._run_work_item`                                  |
 | `tests/test_model.py` | Add tests for new model methods                                                                                                                                                  |
 | `tests/test_agent.py` | Add tests for structural grounding in cogitation                                                                                                                                 |

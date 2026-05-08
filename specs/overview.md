@@ -453,7 +453,7 @@ Candidate retrieval uses bitwise AND on signatures as a fast pre-filter. This is
 
 The following have TBD semantics in the current specs:
 
-1. **`model.is_s1(node)`** — What does "perfect match" mean for a single node against a candidate? The agency framing suggests: a canonical match where the node's contribution to the query's signature is fully represented in the candidate's signature (`node & candidate.signature == node`), or a countersigned match (see `model.is_countersigned`). The routing depends on this, but the full comparison semantics are not yet defined.
+1. ~~**`model.is_s1(node)`**~~ — Resolved. Renamed to `model.is_s1(kline)`: structural grounding check — a kline is S1 if canonical (`make_signature(nodes) == signature`) or countersigned.
 2. ~~**`model.s2_distance(query, candidate)`**~~ — Resolved. Replaced by `model.expand(query, candidate)` with per-node hop-distance and connotation bridging. See @model spec.
 3. ~~**`model.s3_distance(query, candidate)`**~~ — Resolved. Replaced by `model.expand(query, candidate)` with connotation bridging for indirect node connections. See @model spec.
 4. **Candidate retrieval efficiency** — `model.where(predicate)` performs a linear scan. A dedicated `candidates_for(signature)` method with an inverted bit-to-signature index may be needed for large models.

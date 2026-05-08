@@ -525,7 +525,8 @@ budget capping, and top-p cumulative evidence early stopping. See §Cogitation.
 This spec defines grounding checks (self-grounded, all-literal, unsigned)
 as fast-path optimisations. An alternative design would route everything
 through routing, with the model's `is_s1` function handling these cases
-internally.
+internally. `is_s1` now performs structural grounding (canonical or
+countersigned), which subsumes the earlier resolve-only check.
 
 **Recommendation:** Keep as agent-level fast paths. Grounding is about
 structural properties of a single Kline, not about comparison between two

@@ -266,7 +266,7 @@ MOD64_BITS = 63
 2. **Persistence format:** Is JSON sufficient, or is binary serialization required from day one?
    - _Recommendation:_ JSON for development; binary for production.
 
-3. **is_s1 semantics:** Resolved: `is_s1(node)` returns `model.find(node) is not None`.
+3. **is_s1 semantics:** Resolved: `is_s1(kline)` returns whether a kline is structurally grounded — canonical (`make_signature(nodes) == signature`) or countersigned.
 
 4. **Thread model for cogitation:** Background thread or async/await?
    - _Recommendation:_ Background thread for simplicity.

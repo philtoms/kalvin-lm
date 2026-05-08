@@ -120,10 +120,12 @@ class KModel(ABC):
         ...
 
     @abstractmethod
-    def is_s1(self, node: int) -> bool:
-        """Test whether a node value resolves to a kline in the model.
+    def is_s1(self, kline: KLine) -> bool:
+        """Determine if a kline is structurally grounded (S1).
 
-        the node value and the model's current state.
+        A kline is S1 if:
+        1. Its signature fully describes its nodes (canonical), OR
+        2. It is countersigned by another kline in the model.
         """
         ...
 

@@ -387,19 +387,19 @@ components. Callers never see raw distance.
 ### Is S1
 
 ```
-model.is_s1(node) → bool
+model.is_s1(kline) → bool
 ```
 
-Returns whether a node value resolves to a kline in the model.
+Determines whether a kline is structurally grounded (S1).
 
-- `node` — a uint64 value from the query Kline's node sequence.
-- `candidate` — a KLine from the model. **Unused** — S1 status depends
-  only on the node value and the model's current state.
-- A node achieves S1 when its value equals the signature of some kline
-  stored in any tier: `model.find(node) is not None`.
+- `kline` — a KLine to test.
+- A kline is S1 if:
+  1. Its signature fully describes its nodes (canonical):
+     `make_signature(kline.nodes) == kline.signature`, OR
+  2. It is countersigned by another kline in the model.
 - This is a stateful test: adding or removing klines changes the result.
-- S1 represents a **grounded node** — one that corresponds to known
-  structure in the model.
+- S1 represents a **structurally grounded kline** — one whose signature
+  and nodes are fully accounted for by the model's structure.
 
 ### Expand (Significance)
 
@@ -434,8 +434,9 @@ computed significance.
 
 #### Definitions
 
-- **is_s1(node)** — `model.find(node) is not None`. The node resolves to a
-  known kline in any tier.
+- **is_s1(kline)** — kline is structurally grounded: canonical
+  (`make_signature(nodes) == signature`) or countersigned by another kline
+  in the model.
 - **is_canon(kline)** — `kline.signature == make_signature(kline.nodes)`.
   The kline's signature exactly represents its nodes.
 - **edge_hops(sig)** — a generator that yields `(hop_count, next_sig)` pairs
@@ -546,7 +547,8 @@ expand(query, candidate, distance=0, _visited=None):
 
     # Pass 3: matched but ungrounded nodes
     for n in matched:
-        if not is_s1(n):
+        kl = find(n)
+        if kl is None or not is_s1(kl):
             total_distance += 1
 
     # Carry forward the incoming distance
@@ -565,7 +567,7 @@ expand(query, candidate, distance=0, _visited=None):
 | Mismatched, chain reaches signature with bitwise overlap      | yields QC, +MAX_HOP   | S2 signifies candidate |
 | Mismatched, chain never reaches opposing mismatch set         | +MAX_HOP              | Accumulated directly  |
 | Mismatched candidate, chain bridges via connotation           | round-trip, hop = 0   | S3 packed (always)    |
-| Matched + grounded (is_s1)                                    | 0                     | Neutral               |
+| Matched + structurally grounded (is_s1)                       | 0                     | Neutral               |
 | Matched + ungrounded                                          | +1                    | Accumulated directly  |
 
 #### Connotation expansion

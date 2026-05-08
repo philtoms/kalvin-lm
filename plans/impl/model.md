@@ -106,13 +106,13 @@ class QueryCandidate(NamedTuple):
 ### Model-Internal Functions
 
 ```python
-model.is_s1(node) → bool             # checks model.find(node)
-model._is_canon(kline) → bool        # sig == make_signature(nodes)
-model._edge_hops(sig) → Iterator    # yields (hop_count, next_sig)
+model.is_s1(kline) → bool              # structural grounding check
+model._is_canon(kline) → bool          # sig == make_signature(nodes)
+model._edge_hops(sig) → Iterator       # yields (hop_count, next_sig)
 ```
 
-- `is_s1`: `True` when the node value resolves to a kline in any tier
-  (`model.find(node) is not None`).
+- `is_s1`: `True` when a kline is structurally grounded — canonical
+  (`make_signature(nodes) == signature`) or countersigned by another kline.
 - `_is_canon`: tests whether a kline is canonical (its signature equals the
   `make_signature` reduction of its nodes).
 - `_edge_hops`: yields `(hop_count, next_sig)` pairs for each non-canonical
@@ -145,7 +145,8 @@ connotation results and a terminal packed distance. Replaces the previous
 
 ### Definitions
 
-- **is_s1(node)** — `model.find(node) is not None`.
+- **is_s1(kline)** — kline is structurally grounded: canonical
+  (`make_signature(nodes) == signature`) or countersigned.
 - **is_canon(kline)** — `kline.signature == make_signature(kline.nodes)`.
   Canonical klines are terminals in the resolution chain.
 - **edge_hops(sig)** — yields `(hop_count, next_sig)` for each non-canonical
@@ -242,7 +243,8 @@ def expand(self, query, candidate, distance=0, _visited=None):
 
     # Matched but not grounded → penalty
     for n in matched:
-        if not self.is_s1(n):
+        kl = self.find(n)
+        if kl is None or not self.is_s1(kl):
             total_distance += 1
 
     # Carry forward the incoming distance
@@ -261,7 +263,7 @@ def expand(self, query, candidate, distance=0, _visited=None):
 | Mismatched, chain reaches signature with bitwise overlap | yields QC, +MAX_HOP  | S2 signifies candidate |
 | Mismatched, chain never reaches opposing mismatch set    | +MAX_HOP             | Accumulated directly   |
 | Mismatched candidate, chain bridges via connotation      | round-trip, hop = 0  | S3 packed (always)     |
-| Matched + grounded (is_s1)                               | 0                    | Neutral                |
+| Matched + grounded (is_s1)                                | 0                     | Neutral               |
 | Matched + ungrounded                                     | +1                   | Accumulated directly   |
 
 ### Connotation Bridging
@@ -388,9 +390,9 @@ Structural test only. Literal nodes cannot match a signature.
 
 | Test                      | Description                                                |
 | ------------------------- | ---------------------------------------------------------- |
-| is_s1 resolves            | `model.find(node) is not None` → True                      |
-| is_s1 no resolve          | Node not in model → False                                  |
-| is_s1 node not signature  | Node in kline.nodes but no kline with that sig             |
+| is_s1 canonical            | `make_signature(nodes) == signature` → True                |
+| is_s1 countersigned        | Mutual cross-reference detected → True                     |
+| is_s1 neither              | Non-canonical, non-countersigned → False                   |
 | \_is_canon match          | `sig == make_signature(nodes)` → True                      |
 | \_is_canon mismatch       | `sig != make_signature(nodes)` → False                     |
 | \_edge_hops unresolvable  | Node doesn't resolve → empty generator                     |

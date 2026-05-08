@@ -289,7 +289,7 @@ The dependency chain is now linear and shallow: structural grounding → extende
 Implement structural grounding: S1 determined by structure, promotion after ratification for all participating klines, frames holding S4–S1.
 
 **Deliverables:**
-- `model.is_structural_s1()` — structural S1 check (canonical or countersigned)
+- `model.is_s1()` — structural S1 check (canonical or countersigned)
 - `model.promote_participating(query, candidate)` — promote all STM klines involved in ratification
 - Modified agent promotion path: explicit promotion in rationalise() and cogitation
 - Tests: structural S1 detection, S4 identity promotion, multi-significance frame contents
