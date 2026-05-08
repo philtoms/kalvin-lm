@@ -180,33 +180,6 @@ class Model:
             return self._base.find_by_nodes(nodes_signature)
         return None
 
-    def remove(self, signature: KSig) -> bool:
-        """Remove the most recently added KLine with the given signature.
-
-        Removal never affects the base model.
-        """
-        removed = False
-
-        # Try STM
-        stm_klines = self._stm.find_by_signature(signature)
-        if stm_klines:
-            self._stm.remove(stm_klines[-1])
-            removed = True
-
-        # Try frame
-        indices = self._frame_by_sig.get(signature)
-        if indices:
-            idx = indices.pop()
-            kline = self._frame_list[idx]
-            self._frame_dedup.discard((kline.signature, tuple(kline.nodes)))
-            # Don't remove from _frame_list to preserve indices; just clear slot
-            self._frame_list[idx] = None  # type: ignore
-            if not indices:
-                del self._frame_by_sig[signature]
-            removed = True
-
-        return removed
-
     # ── Count ─────────────────────────────────────────────────────────
 
     def __len__(self) -> int:

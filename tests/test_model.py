@@ -89,27 +89,6 @@ class TestModelFindAll:
         assert m.find_all(42) == []
 
 
-class TestModelRemove:
-    def test_remove_from_stm(self):
-        m = make_model()
-        k = KLine(5, [1])
-        m.add(k)
-        assert m.remove(5) is True
-        assert m.find(5) is None
-
-    def test_remove_from_frame(self):
-        m = make_model()
-        k = KLine(5, [1])
-        m.add(k)
-        m.promote(k)
-        assert m.remove(5) is True
-        assert m.find(5) is None
-
-    def test_remove_nonexistent(self):
-        m = make_model()
-        assert m.remove(42) is False
-
-
 class TestModelLen:
     def test_len_empty(self):
         m = make_model()
