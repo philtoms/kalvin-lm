@@ -526,10 +526,6 @@ class Model:
         significance = (~min(total_distance, D_MAX - 1)) & MASK64
         yield QueryCandidate(query, candidate, significance)
 
-    def is_countersigned(self, a: KLine, b: KLine) -> bool:
-        """Test whether two Klines are countersigned (mutual reference)."""
-        return (b.signature in a.nodes) and (a.signature in b.nodes)
-
     # ── Structural Grounding ──────────────────────────────────────────
 
     def is_structural_s1(self, kline: KLine) -> bool:
@@ -541,15 +537,20 @@ class Model:
         """
         if self._is_canon(kline):
             return True
-        return self._is_countersigned_in_model(kline)
+        return self.is_countersigned(kline)
 
-    def _is_countersigned_in_model(self, kline: KLine) -> bool:
-        """Check if kline is countersigned by any kline in the model."""
-        for node in kline.nodes:
-            if is_literal_node(node):
-                continue
-            other = self.find(node)
-            if other is not None and kline.signature in other.nodes:
+    def is_countersigned(self, kline: KLine) -> bool:
+        """Check if kline is countersigned by any kline in the model.
+
+        A kline is countersigned if its nodes_signature exists as a
+        countersigning kline with one node — the countersigned kline's signature.
+
+        Query = {Q: [A, B]}
+        Countersigner = {AB: [Q]}
+        """
+        nodes_signature = self._make_sig(kline.nodes)
+        for countersigner in self.find_all(nodes_signature):
+            if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
                 return True
         return False
 

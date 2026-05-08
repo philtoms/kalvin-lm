@@ -1230,3 +1230,28 @@ Multiple Expansion Steps: absolutely. Many proposals can arise from a single que
 3. cogitation expand uses model.expand. Its all the same to the model: signature bits are interesting. 
 4. MVP: The human-in-the-loop teacher is able to figure out what is required. TBD automated training needs to react to the proposal by first analysing it deterministically.
 5. This is basically correct.
+
+Important spec change for countersigned definition and code changes for model.is_countersigned and model._is_countersigned_in_model:
+A kline is countersigned if its nodes_signature exists as a countersigning kline with one node - the countersigned kline's signature.
+
+    Query = {Q: [A, B]}
+    Countersigner = {AB: [Q]}
+
+Note that both query and countersigning signatures can represent multiple klines. Countersigning klines are those that have one node that references the countersigned kline.
+
+This has important consequences for ratification. It means that ratification can be tested in the fast lane in rationalisation before any candidates are established.
+
+It also means that is_countersigned function is no longer required.
+tidy up: 
+- remove is_countersigned  
+- rename _is_countersigned_in_model to is_countersigned
+- modify is_countersigned for spec change
+
+```new is_countersigned
+def is_countersigned(self, kline: KLine) -> bool:
+  nodes_signature = self._make_sig(kline.nodes)
+  for countersigned in self.find_all(nodes_signature):
+    if len(countersigned.nodes == 1) and countersigned.nodes[0] == kline.signature:
+      return True
+  return False
+```

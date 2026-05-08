@@ -125,19 +125,15 @@ needed and provides the missing klines in a subsequent training round.
 
 ## The Extended Cogitator Pipeline
 
-Extended cogitation adds a new phase after countersignature checking in the
-existing `_process` method:
+The Cogitator's `_process` method handles S2 expansion. Countersignature
+(ratification) is checked upstream in `rationalise()` Phase 3 (Assess),
+before candidates are selected — so `_process` only needs to handle
+expansion:
 
 ```
 _process(QueryCandidate(query, candidate, significance)):
 
-  # Phase 1: Countersignature (existing behaviour)
-  if model.is_countersigned(query, candidate):
-    model.add(candidate)
-    on_s1(query, candidate)
-    return
-
-  # Phase 2: S2 Expansion (new)
+  # S2 Expansion
   candidate_sig = candidate.signature
   nodes_sig = make_signature(candidate.nodes)
 

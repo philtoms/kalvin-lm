@@ -176,6 +176,7 @@ Rationalisation is the agent's core loop: determining how a new KLine relates to
 │    → Unsigned (no nodes): S4, done.              │
 │    → All-literal: S1, done.                      │
 │    → Self-grounded (all nodes resolve): S1, done.│
+│    → Countersigned: S1, done.                    │
 │    → Otherwise: proceed to retrieval.            │
 ├─────────────────────────────────────────────────┤
 │ 4. RETRIEVE CANDIDATES                           │
@@ -207,6 +208,7 @@ Structural fast-paths that bypass the full significance pipeline. Each correspon
 - **Unsigned** (S4): zero nodes → no information content, no signature.
 - **Canonical — all-literal** (S1): every node is literal → `make_signature` produces `1`, a canonical signature representing the presence of literal content.
 - **Canonical — self-grounded** (S1): every non-literal node resolves to an existing KLine in the model, and the kline's signature equals its `make_signature` → fully grounded composition. (Literal nodes always contribute to the canonical test via bit 0; only non-literal nodes require resolution.)
+- **Countersigned — ratified** (S1): another kline in the model vouches for this one structurally — its signature equals `make_signature(nodes)` and its sole node equals the kline's signature. Ratification is checked in the fast lane before candidates are retrieved.
 - **Ground** (S1): exact duplicate already in the model (handled in Phase 2).
 
 If none apply, proceed to candidate retrieval.
@@ -342,24 +344,19 @@ run_work_item(WorkItem(query, candidate)):
 
 ### Countersignature
 
-```
-process(QueryCandidate(query, candidate, significance)):
-  if model.is_countersigned(query, candidate):
-    model.add(candidate)
-    re-rationalise(query)          # may inject new work items
-```
+Countersignature (ratification) is checked in the fast lane during
+`rationalise()` Phase 3 (Assess), before candidates are selected. A kline
+is countersigned if its `nodes_signature` exists as another kline in the
+model with one node — the countersigned kline's signature.
 
-Countersignature discovery is the primary mechanism by which cogitation
-promotes S2 to S1. A KLine that appears to be underfitting or overfitting
-during initial rationalisation may, upon deeper traversal, turn out to be
-part of a mutual cross-reference that the initial bitwise AND retrieval could
-not detect.
+The Cogitator's `process()` handles only S2 expansion: reshaping misfit
+klines toward canonical status and emitting proposals for teacher ratification.
 
 ### S2 Expansion
 
-When countersignature fails for an S2 result, the Cogitator attempts to
-**expand** the candidate kline toward canonical status by reshaping its
-nodes to match its signature. This is the mechanism for self-directed study.
+The Cogitator **expands** each S2/S3 candidate kline toward canonical
+status by reshaping its nodes to match its signature. This is the mechanism
+for self-directed study.
 
 See `docs/extended-cogitation.md` for the full design.
 
@@ -377,12 +374,14 @@ proposals are emitted as `frame` events requiring teacher ratification.
 
 ### Reentrant Rationalisation
 
-When `process()` discovers a countersignature and calls `on_s1()` →
-`agent.rationalise(query)`, that re-rationalisation may produce new S2/S3
-candidates that are appended to the backlog. The streaming approach handles
-this naturally: each `expand()` call operates on the model state at the time
-of the yield, and re-rationalisation adds new work items processed in their
-own turn. Sampling parameters apply independently to each work item's stream.
+When `process()` discovers an S1 via boundary classification and calls
+`on_s1()` → `agent.rationalise(query)`, that re-rationalisation may produce
+new S2/S3 candidates that are appended to the backlog. Countersignature
+(ratification) is checked during re-rationalisation in the fast lane
+(Phase 3: Assess). The streaming approach handles this naturally: each
+`expand()` call operates on the model state at the time of the yield, and
+re-rationalisation adds new work items processed in their own turn. Sampling
+parameters apply independently to each work item's stream.
 
 The cogitation thread runs asynchronously and emits a `"done"` event when
 the backlog has been empty for a timeout (default 2 seconds).

@@ -21,10 +21,12 @@ A == B          ← KScript mutual bidirectional link (S1)
 The `==` operator compiles to two countersigned klines. When submitted sequentially, the second kline discovers the first via `is_countersigned()`:
 
 ```python
-# agent.py line 279
-if self._model.is_countersigned(query, candidate):
-    self._model.add(candidate)
-    self._on_s1(query, candidate)
+# agent.py — rationalise() Phase 3: Assess
+if self._model.is_countersigned(kline):
+    self._model.add(kline)
+    self._model.promote(kline)
+    self._publish("frame", kline, kline, D_MAX - 1)  # S1
+    return True
 ```
 
 Both auto-promote to S1. The trainer is telling Kalvin: "Accept this as known."

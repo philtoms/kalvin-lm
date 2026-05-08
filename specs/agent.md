@@ -50,7 +50,7 @@ This spec depends on the following concepts, defined elsewhere:
 - Provides `QueryCandidate` named tuple with `.significance` field
   (pre-computed by the model).
 - Provides constants `D_MAX` and `MASK64` for significance values.
-- Provides `is_countersigned(Q, C)` for mutual-reference detection.
+- Provides `is_countersigned(kline)` to check if a kline is countersigned by any kline in the model.
 - Manages a three-tier memory internally (STM → Frame → Base). The agent
   sees a single Model API; tiering is invisible to the agent.
 - The model decides how and where Klines are stored. The agent is
@@ -105,6 +105,7 @@ Rationalise(Q):
   │    → Unsigned (no nodes): emit "frame" S4, return True.  │
   │    → All-literal: emit "frame" S1, return True.          │
   │    → Self-grounded: emit "frame" S1, return True.        │
+  │    → Countersigned: emit "frame" S1, return True.        │
   ├───────────────────────────────────────────────────────────┤
   │ 4. RETRIEVE CANDIDATES                                    │
   │    candidates = model.where(Q.signature)                  │
@@ -125,9 +126,8 @@ Rationalise(Q):
   │     process(qc)                                              │
   │                                                              │
   │ process(QueryCandidate(query, candidate, significance)):     │
-  │   if model.is_countersigned(query, candidate):               │
-  │     add candidate to model                                   │
-  │     re-rationalise query                                     │
+  │   S2 expansion: reshape misfit klines toward canonical,     │
+  │   emit proposals for teacher ratification.                   │
   └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -171,6 +171,14 @@ Return `True`.
 resolve in the model (exists as a Kline signature), Q is fully grounded.
 The signature faithfully represents the nodes — nothing is missing and
 nothing is extraneous. Emit a `"frame"` event at S1. Return `True`.
+
+**Countersigned — ratified**: If the model contains a kline whose signature
+equals `make_signature(Q.nodes)` and whose sole node equals `Q.signature`,
+then Q is countersigned — another kline vouches for it structurally. This is
+the **ratification** check. It runs in the fast lane before candidates are
+retrieved, because countersignature is a structural property of Q and the
+model, not dependent on any particular candidate. Emit a `"frame"` event at
+S1. Return `True`.
 
 If none of the above, proceed to candidate retrieval.
 
@@ -375,17 +383,18 @@ run_work_item(WorkItem(query, candidate)):
       break                       # budget exhausted
 
 process(QueryCandidate(query, candidate, significance)):
-  if model.is_countersigned(query, candidate):
-    model.add(candidate)
-    on_s1(query, candidate)       # triggers re-rationalisation
+  # S2 expansion only — ratification handled upstream in rationalise()
+  if candidate is canonical:
+    return                        # nothing to expand
+  for proposal, companions in model.generate_expansions(candidate):
+    emit frame event for proposal
+    emit frame events for companions
 ```
 
 Boundaries are computed once at the start of each work item. Raw significance
 is never mutated — temperature acts on the boundaries, not on the values.
 A high τ lowers S1|S2, allowing near-S1 S2 connotations to be classified
 as S1 and immediately published.
-
-### S2 Expansion
 
 When countersignature fails for an S2 result, the Cogitator attempts to
 **expand** the candidate kline toward canonical status by reshaping its
@@ -417,10 +426,11 @@ teacher ratification via countersignature.
 
 ### S1 Callback
 
-When the Cogitator discovers an S1 via countersignature, it calls the
-`on_s1` callback, which triggers `agent.rationalise(query)` on the agent.
-This re-rationalisation runs on the cogitation thread and may inject new
-work items into the backlog.
+When the Cogitator discovers an S1 via boundary classification, it calls
+the `on_s1` callback, which triggers `agent.rationalise(query)` on the
+agent. This re-rationalisation runs on the cogitation thread and may
+inject new work items into the backlog. Countersignature (ratification) is
+checked during re-rationalisation in the fast lane (Phase 3: Assess).
 
 ### Cogitation Lifecycle
 

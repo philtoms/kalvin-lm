@@ -133,8 +133,8 @@ class KModel(ABC):
         ...
 
     @abstractmethod
-    def is_countersigned(self, a: KLine, b: KLine) -> bool:
-        """Test whether two Klines are countersigned."""
+    def is_countersigned(self, kline: KLine) -> bool:
+        """Test whether a kline is countersigned by any kline in the model."""
         ...
 
     @abstractmethod

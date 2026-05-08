@@ -61,27 +61,21 @@ def is_structural_s1(self, kline: KLine) -> bool:
     1. Its signature fully describes its nodes (canonical), OR
     2. It is countersigned by another kline in the model.
     """
-    # Canonical: signature = make_signature(nodes)
     if self._is_canon(kline):
         return True
-    # Countersigned: exists another kline whose nodes contain this kline's
-    # signature and whose signature is in this kline's nodes
-    return self._is_countersigned_in_model(kline)
+    return self.is_countersigned(kline)
 ```
 
-The countersigned check searches the model for klines that reference and
-are referenced by the candidate:
+The countersigned check searches the model for a kline whose signature
+equals the kline's nodes_signature and whose sole node equals the kline's
+signature:
 
 ```python
-def _is_countersigned_in_model(self, kline: KLine) -> bool:
+def is_countersigned(self, kline: KLine) -> bool:
     """Check if kline is countersigned by any kline in the model."""
-    # kline's nodes must contain the signature of another kline B,
-    # and B's nodes must contain kline's signature
-    for node in kline.nodes:
-        if is_literal_node(node):
-            continue
-        other = self.find(node)
-        if other is not None and kline.signature in other.nodes:
+    nodes_signature = self._make_sig(kline.nodes)
+    for countersigner in self.find_all(nodes_signature):
+        if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
             return True
     return False
 ```
@@ -185,23 +179,10 @@ def _publish(self, kind, query, proposal, significance):
     self._event_bus.publish(RationaliseEvent(kind, query, proposal, significance))
 ```
 
-#### agent.py: Cogitator._process() — Countersignature
+#### agent.py: Cogitator._process() — S2 Expansion
 
-Countersignature discovery is a ratification event. Promote all
-participating klines:
-
-```python
-# Before:
-if self._model.is_countersigned(query, candidate):
-    self._model.add(candidate)
-    self._on_s1(query, candidate)
-
-# After:
-if self._model.is_countersigned(query, candidate):
-    self._model.add(candidate)
-    self._model.promote_participating(query, candidate)
-    self._on_s1(query, candidate)
-```
+The countersignature check has been moved to `rationalise()` Phase 3
+(Assess). `_process` now handles only S2 expansion:
 
 #### agent.py: Cogitator._run_work_item() — Boundary S1
 
@@ -377,29 +358,22 @@ Extend `Cogitator._process()` with S2 expansion:
 ```python
 def _process(self, item: QueryCandidate) -> None:
     query, candidate, significance = item
-    
-    # Phase 1: Countersignature (existing)
-    if self._model.is_countersigned(query, candidate):
-        self._model.add(candidate)
-        self._model.promote_participating(query, candidate)
-        self._on_s1(query, candidate)
-        return
-    
-    # Phase 2: S2 Expansion (new)
+
+    # S2 expansion only — ratification handled upstream in rationalise()
     candidate_sig = candidate.signature
     nodes_sig = self._model._make_sig(candidate.nodes)
-    
+
     if candidate_sig == nodes_sig:
         return  # canonical — nothing to expand
-    
+
     underfit, overfit = self._model.classify_misfit(candidate)
-    
+
     if not underfit and not overfit:
         return  # neither — nothing to expand
-    
+
     underfit_gap = candidate_sig & ~nodes_sig
     overfit_mask = nodes_sig & ~candidate_sig
-    
+
     for proposal, companions in self._model.generate_expansions(
         candidate, underfit_gap, overfit_mask
     ):
@@ -416,11 +390,9 @@ def _process(self, item: QueryCandidate) -> None:
 
 ### 2.4 Spec Updates
 
-**specs/agent.md** — add §S2 Expansion subsection to Cogitation:
-
-> When countersignature fails for an S2 result, the Cogitator attempts
-> to expand the candidate kline toward canonical status. This adds a
-> Phase 2 to `_process()` after the countersignature check.
+**specs/agent.md** — add countersigned check to Phase 3 (Assess), update
+§S2 Expansion to reflect that `_process` handles only expansion (ratification
+moved upstream to rationalise):
 
 **specs/model.md** — add `classify_misfit` and `generate_expansions`:
 
@@ -455,10 +427,10 @@ def _process(self, item: QueryCandidate) -> None:
 Phase A: Structural Grounding
   1. model.is_structural_s1()         — new method
   2. model.promote_participating()    — new method
-  3. model._is_countersigned_in_model() — new helper
+  3. model.is_countersigned()         — renamed from _is_countersigned_in_model
   4. agent._publish()                 — remove auto-promote
   5. agent.rationalise() Phase 5      — use promote_participating
-  6. Cogitator._process()             — promote participating on countersignature
+  6. agent.rationalise() Phase 3      — add ratification check
   7. Cogitator._run_work_item()       — structural check on boundary S1
   8. Tests for all new methods
   9. Verify all existing tests pass
@@ -466,7 +438,7 @@ Phase A: Structural Grounding
 Phase A+: Extended Cogitation
   1. model.classify_misfit()          — new method
   2. model.generate_expansions()      — new method + helpers
-  3. Cogitator._process() Phase 2     — S2 expansion
+  3. Cogitator._process()             — S2 expansion
   4. Tests for misfit classification
   5. Tests for expansion proposals
   6. Tests for Cogitator integration
@@ -480,8 +452,8 @@ Phase A+: Extended Cogitation
 
 | File | Change |
 |------|--------|
-| `src/kalvin/model.py` | Add `is_structural_s1`, `promote_participating`, `_is_countersigned_in_model`, `classify_misfit`, `generate_expansions`, `_underfit_expansions`, `_overfit_expansions`, `_dual_expansions` |
-| `src/kalvin/agent.py` | Modify `_publish`, `rationalise()` Phase 5, `Cogitator._process`, `Cogitator._run_work_item` |
+| `src/kalvin/model.py` | Add `is_structural_s1`, `promote_participating`, `is_countersigned`, `classify_misfit`, `generate_expansions`, `_underfit_expansions`, `_overfit_expansions`, `_dual_expansions` |
+| `src/kalvin/agent.py` | Modify `_publish`, `rationalise()` Phase 3 (add ratification) and Phase 5, `Cogitator._process` (S2 expansion only), `Cogitator._run_work_item` |
 | `tests/test_model.py` | Add tests for new model methods |
 | `tests/test_agent.py` | Add tests for structural grounding in cogitation |
 | `specs/agent.md` | Update §Cogitation with S2 expansion phase |

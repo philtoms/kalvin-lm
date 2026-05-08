@@ -173,6 +173,8 @@ Phase 3: ASSESS
   If Q.signature == make_signature(Q.nodes) AND
      all non-literal nodes resolve in model:
     model.add(Q), emit "frame" S1, return True
+  If model.is_countersigned(Q):
+    model.add(Q), emit "frame" S1, return True
 
 Phase 4: RETRIEVE CANDIDATES
   candidates = model.where(Q.signature)   # AND overlap
@@ -274,9 +276,11 @@ run_work_item(WorkItem(query, candidate)):
       break                       # budget exhausted
 
 process(QueryCandidate(query, candidate, significance)):
-  if model.is_countersigned(query, candidate):
-    model.add(candidate)
-    on_s1(query, candidate)       # re-rationalise
+  # S2 expansion only — ratification handled upstream in rationalise()
+  if candidate is canonical:
+    return
+  for proposal, companions in model.generate_expansions(candidate):
+    emit frame events for proposals and companions
 ```
 
 Boundaries are computed once per work item. Raw significance is never
@@ -295,8 +299,12 @@ lowers S1|S2, allowing near-S1 S2 connotations to be classified as S1.
 ### Countersignature Test
 
 ```python
-def is_countersigned(Q, C):
-    return (C.signature in Q.nodes) and (Q.signature in C.nodes)
+def is_countersigned(kline):
+    nodes_signature = make_signature(kline.nodes)
+    for countersigner in model.find_all(nodes_signature):
+        if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
+            return True
+    return False
 ```
 
 ---

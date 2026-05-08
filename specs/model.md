@@ -633,25 +633,26 @@ pair has already been expanded, subsequent encounters return immediately.
 ### Is Countersigned
 
 ```
-model.is_countersigned(A, B) → bool
+model.is_countersigned(kline) → bool
 ```
 
-Returns whether two Klines are **countersigned** — each references the
-other through its nodes.
+Returns whether a kline is **countersigned** by any kline in the model.
 
-- `A`, `B` — two Klines.
-- Returns `true` if `B.signature` appears in `A.nodes` AND
-  `A.signature` appears in `B.nodes`.
-- This is a structural test on node values, not a significance computation.
-- Literal nodes cannot match a signature (literal tokens use a 32-bit mask
-  in the lower bits, which does not equal any signature value), so the test
-  naturally considers only non-literal matches — but this is enforced by
-  the encoding, not by an explicit filter.
-- Countersignature is a latent relationship typically discovered during
-  cogitation, not during initial rationalisation.
+- `kline` — a KLine.
+- Returns `true` if the model contains a kline whose signature equals
+  `make_signature(kline.nodes)` and whose sole node equals `kline.signature`.
+- This is a structural test — it checks whether another kline vouches for
+  the given kline by having the kline's nodes_signature as its identity and
+  the kline's signature as its only node.
+- Ratification is checked in the fast lane during rationalise() Phase 3
+  (Assess), before candidates are selected.
 
-This function is composed from existing model primitives (`find`, `resolve`)
-and is provided as a convenience for the cogitation pipeline.
+Query = {Q: [A, B]}
+Countersigner = {AB: [Q]}
+
+Both query and countersigning signatures can represent multiple klines.
+Countersigning klines are those that have one node that references the
+countersigned kline.
 
 ## STM Eviction Details
 

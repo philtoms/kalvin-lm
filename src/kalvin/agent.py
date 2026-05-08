@@ -274,17 +274,10 @@ class Cogitator:
                 break  # demote remainder — budget spent
 
     def _process(self, item: QueryCandidate) -> None:
-        """Process a single expanded result: check countersignature, then expand."""
+        """Process a single expanded result: S2/S3 expansion only.
+        """
         query, candidate, significance = item
 
-        # Phase 1: Countersignature — ratification event
-        if self._model.is_countersigned(query, candidate):
-            self._model.add(candidate)
-            self._model.promote_participating(query, candidate)
-            self._on_s1(query, candidate)
-            return
-
-        # Phase 2: S2 Expansion — attempt to reshape misfit klines
         candidate_sig = candidate.signature
         nodes_sig = self._model._make_sig(candidate.nodes)
 
@@ -439,6 +432,13 @@ class Agent:
                 self._model.promote(kline)
                 self._publish("frame", kline, kline, D_MAX - 1)  # S1
                 return True
+
+        # Phase 3 (continued): Ratification — countersigned in the model → S1
+        if self._model.is_countersigned(kline):
+            self._model.add(kline)
+            self._model.promote(kline)
+            self._publish("frame", kline, kline, D_MAX - 1)  # S1
+            return True
 
         # Phase 4: Retrieve candidates
         candidates = self._model.where(kline.signature)

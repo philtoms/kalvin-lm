@@ -55,7 +55,7 @@ When a new KLine arrives, the agent runs it through a six-phase pipeline:
 
 1. **Prepare** — assign a signature if the KLine doesn't have one yet.
 2. **Ground check** — is this already known? If so, acknowledge and stop.
-3. **Assess** — can we classify this without searching? Empty KLines are S4. All-literal KLines are S1. Self-grounded KLines (every node resolves to existing knowledge) are S1.
+3. **Assess** — can we classify this without searching? Empty KLines are S4. All-literal KLines are S1. Self-grounded KLines (every node resolves to existing knowledge) are S1. Countersigned KLines (another kline in the model vouches for this one) are S1.
 4. **Retrieve candidates** — find existing KLines whose signatures overlap with the new one.
 5. **Compute significance** — for each candidate, measure how well it matches by traversing the graph and accumulating distance.
 6. **Integrate** — add the KLine. S1 and S4 are promoted to the frame immediately. S2 and S3 are queued for deeper investigation.
@@ -85,9 +85,9 @@ Two additional sampling parameters control how deeply the agent investigates eac
 
 ### Cogitation
 
-The **Cogitator** is a background processor that handles the S2/S3 work items. For each item, it expands the graph around the query-candidate pair, discovers intermediate relationships (called *connotations*), and checks for a special structural relationship called **countersignature** — when two KLines mutually reference each other through their nodes.
+The **Cogitator** is a background processor that handles the S2/S3 work items. For each item, it expands the graph around the query-candidate pair, discovers intermediate relationships (called *connotations*), and classifies each result against significance boundaries.
 
-Countersignature is the primary mechanism by which cogitation resolves ambiguity: a KLine that appeared to be a partial match (S2) may, upon deeper graph traversal, turn out to be part of a mutual cross-reference and be promoted to full comprehension (S1).
+Countersignature (ratification) is checked in the fast lane during rationalisation, before candidates are selected. The Cogitator's role is to reshape S2/S3 klines that don't match their signatures — adding missing nodes, removing redundant ones, or both — and emit the result as a proposal for the teacher to ratify.
 
 When cogitation discovers new relationships, it re-rationalises the original query, which may produce new work items. This creates a self-reinforcing cycle of understanding that eventually settles (the cogitator emits a "done" event when its backlog has been empty for a timeout period).
 

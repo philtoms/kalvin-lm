@@ -561,29 +561,7 @@ class TestExpand:
         assert 0 < sig <= D_MAX
 
 
-class TestModelSignificanceAPI:
-    def test_is_countersigned(self):
-        m = make_model()
-        a = KLine(5, [10, 20])
-        b = KLine(10, [5, 30])
-        assert m.is_countersigned(a, b) is True
 
-    def test_is_countersigned_one_way(self):
-        m = make_model()
-        a = KLine(5, [10, 20])
-        b = KLine(10, [30, 40])
-        assert m.is_countersigned(a, b) is False
-
-    def test_is_countersigned_with_literal_nodes(self):
-        """Literal nodes (with 0xFFFFFFFF mask) can't match a signature by value."""
-        m = make_model()
-        lit_node = (65 << 32) | 0xFFFF_FFFF
-        a = KLine(5, [lit_node, 10])
-        b = KLine(10, [5])
-        # b.sig (10) IS in a.nodes [lit_node, 10] → True
-        # a.sig (5) IS in b.nodes [5] → True
-        # So they ARE countersigned
-        assert m.is_countersigned(a, b) is True
 
 
 # ── Structural Grounding Tests ───────────────────────────────────────
@@ -627,27 +605,47 @@ class TestIsStructuralS1:
         assert m.is_structural_s1(a) is False  # not canonical, no non-literal nodes to check
 
 
-class TestIsCountersignedInModel:
-    def test_mutual_reference(self):
+class TestIsCountersigned:
+    def test_countersigned_in_model(self):
+        """Query = {5: [10, 20]}, Countersigner = {make_sig([10,20]): [5]}"""
         m = Model()
-        a = KLine(5, [10, 20])
-        b = KLine(10, [5, 30])
-        m.add(a)
-        m.add(b)
-        assert m._is_countersigned_in_model(a) is True
+        query = KLine(5, [10, 20])
+        # make_sig([10, 20]) = 30 (XOR)
+        countersigner = KLine(30, [5])
+        m.add(query)
+        m.add(countersigner)
+        assert m.is_countersigned(query) is True
 
     def test_one_way_only(self):
         m = Model()
         a = KLine(5, [10])
-        b = KLine(10, [20, 30])  # b doesn't contain a.sig
+        b = KLine(10, [20, 30])  # sig doesn't match make_sig(a.nodes)
         m.add(a)
         m.add(b)
-        assert m._is_countersigned_in_model(a) is False
+        assert m.is_countersigned(a) is False
 
     def test_no_model_match(self):
         m = Model()
         a = KLine(5, [10])
-        assert m._is_countersigned_in_model(a) is False
+        assert m.is_countersigned(a) is False
+
+    def test_countersigner_wrong_node(self):
+        """Countersigner has matching sig but wrong node → not countersigned."""
+        m = Model()
+        query = KLine(5, [10, 20])
+        countersigner = KLine(30, [99])  # make_sig([10,20])=30, but node != query.sig
+        m.add(query)
+        m.add(countersigner)
+        assert m.is_countersigned(query) is False
+
+    def test_countersigner_multiple_nodes(self):
+        """Countersigner has matching sig but more than one node → not countersigned."""
+        m = Model()
+        query = KLine(5, [10, 20])
+        countersigner = KLine(30, [5, 99])  # make_sig([10,20])=30, node has 5 but len>1
+        m.add(query)
+        m.add(countersigner)
+        assert m.is_countersigned(query) is False
 
 
 class TestPromoteParticipating:

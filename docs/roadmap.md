@@ -142,7 +142,7 @@ The current cogitator auto-promotes any result classified as S1. This needs to c
 **Why:** Ensuring all klines involved in ratification are available to future rationalisation enhances Kalvin's ability to cogitate beyond simple pattern matching. A richer frame provides more graph topology for the cogitator to traverse.
 
 **Implementation:**
-- Modify the structural grounding check: `make_signature(nodes) == signature` or `is_countersigned(query, candidate)`.
+- Modify the structural grounding check: `make_signature(nodes) == signature` or `is_countersigned(kline)`.
 - Modify the promotion path so that ratification triggers promotion of all participating STM klines, not just the ratified kline.
 - Ensure S4 identity klines are correctly promoted when involved in ratification.
 
