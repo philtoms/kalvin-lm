@@ -1,8 +1,10 @@
 # Kalvin Development Roadmap: From Current System to Trainable Knowledge Agent
 
-**Date:** 2026-05-07  
+**Date:** 2026-05-08  
 **Status:** Strategic planning document (updated)  
 **Scope:** Challenges and milestones for evolving Kalvin from its current rationalisation engine toward the trainable, feedback-driven learning system described in `docs/learning.md`
+
+**Implementation plan:** [`plans/impl/structural-grounding.md`](../plans/impl/structural-grounding.md) — detailed implementation plan for the current phase (Challenges 6 + 6b).
 
 **See also:**
 - `docs/training-loop.md` — the detailed mechanism for the training loop, which resolved several challenges previously listed here.
@@ -45,8 +47,10 @@ What remains are genuine implementation challenges: implementing structural grou
 | Response sampling (temperature, top-k, top-p) | ✅ Complete | Boundary shifting, streaming pipeline |
 | KScript DSL | ✅ Complete | Lexer, parser, compiler, decompiler |
 | Events (pub/sub) | ✅ Complete | `ground`, `frame`, `done` |
-| Persistence (JSON/binary) | ❓ Partial | Planned, not confirmed |
-| **Structural grounding** | ❌ Not started | Determine S1 by structure; promote all participating klines after ratification |
+| Persistence (JSON/binary) | ✅ Complete | JSON + binary serialization, save/load |
+| **All existing tests** | ✅ 329 passing | No regressions |
+| **Structural grounding** | 🔄 Plan ready | [`plans/impl/structural-grounding.md`](../plans/impl/structural-grounding.md) Phase A |
+| **Extended cogitation** | 🔄 Plan ready | [`plans/impl/structural-grounding.md`](../plans/impl/structural-grounding.md) Phase A+ |
 | **Frame factory** | ❌ Not started | Method for creating new frames (kalvin instances) |
 | **Teacher implementation** | ❌ Not started | External coordinator using existing APIs |
 | **Model quality evaluation** | ❌ Not started | Test harness, metrics, calibration |
@@ -126,7 +130,7 @@ Convergence is an empirical question, not a formal guarantee. The teacher decide
 
 ### Challenge 6: Structural Grounding
 
-**Status:** Not started  
+**Status:** Plan ready — [`plans/impl/structural-grounding.md`](../plans/impl/structural-grounding.md) Phase A  
 **Effort:** Small–medium (changes to promotion logic and ratification path)
 
 The current cogitator auto-promotes any result classified as S1. This needs to change to a model where:
@@ -146,7 +150,7 @@ The current cogitator auto-promotes any result classified as S1. This needs to c
 
 ### Challenge 6b: Extended Cogitation (S2 Expansion)
 
-**Status:** Design complete, implementation not started
+**Status:** Plan ready — [`plans/impl/structural-grounding.md`](../plans/impl/structural-grounding.md) Phase A+
 **Depends on:** Challenge 6 (Structural Grounding)
 **Effort:** Medium
 
@@ -181,7 +185,7 @@ ratify. Without it, S2 klines that fail countersignature are simply abandoned.
 
 ### Challenge 7: Frame Factory & Teacher Infrastructure
 
-**Status:** Not started  
+**Status:** Not started (next after Challenges 6 + 6b)  
 **Effort:** Small–medium
 
 The training loop requires a way to create new frames (kalvin instances) layered over previous frames. This is the frame factory:
@@ -279,13 +283,15 @@ The dependency chain is now linear and shallow: structural grounding → extende
 
 ### Phase A: Structural Grounding (Challenge 6)
 **Estimate:** 1–2 days  
-**Risk:** Low
+**Risk:** Low  
+**Implementation:** [`plans/impl/structural-grounding.md`](../plans/impl/structural-grounding.md) §1
 
 Implement structural grounding: S1 determined by structure, promotion after ratification for all participating klines, frames holding S4–S1.
 
 **Deliverables:**
-- Structural grounding check (`make_signature(nodes) == signature` or countersigned)
-- Modified promotion path: ratification promotes all participating STM klines
+- `model.is_structural_s1()` — structural S1 check (canonical or countersigned)
+- `model.promote_participating(query, candidate)` — promote all STM klines involved in ratification
+- Modified agent promotion path: explicit promotion in rationalise() and cogitation
 - Tests: structural S1 detection, S4 identity promotion, multi-significance frame contents
 - No spec changes required (behavioral change within existing spec)
 
@@ -293,17 +299,18 @@ Implement structural grounding: S1 determined by structure, promotion after rati
 **Estimate:** 3–5 days
 **Risk:** Medium
 **Depends on:** Phase A
+**Implementation:** [`plans/impl/structural-grounding.md`](../plans/impl/structural-grounding.md) §2
 
 Implement S2 expansion in the Cogitator: misfit classification, node addition/removal
-with universal constraint enforcement, proposal emission.
+with ratification constraint enforcement, proposal emission.
 
 **Deliverables:**
-- Misfit classification (underfit, overfit, dual) in `_process`
-- `generate_expansions()` with model search
-- `validate_expansion()` enforcing universal constraint
+- `model.classify_misfit()` — underfit/overfit/dual classification
+- `model.generate_expansions()` — proposal generation with model search
+- Cogitator `_process()` Phase 2 — expansion after failed countersignature
 - Proposal emission via existing `frame` events
-- Tests for all expansion types and constraint violations
-- Spec updated: `specs/agent.md` §S2 Expansion
+- Tests for all expansion types
+- Spec updated: `specs/agent.md` §S2 Expansion, `specs/model.md` expansion API
 
 ### Phase B: Frame Factory & Teacher (Challenge 7)
 **Estimate:** 1–2 weeks  

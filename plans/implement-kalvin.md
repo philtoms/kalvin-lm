@@ -142,15 +142,17 @@ its dependencies are satisfied.
 > foundations plan provides the implementation skeleton and test cases.
 | [`plans/impl/model.md`](impl/model.md) | Model + distance algorithm | 5 | Foundations |
 | [`plans/impl/agent.md`](impl/agent.md) | Significance constants, Events, Agent, Cogitator | 6-8 | Foundations, Model |
+| [`plans/impl/structural-grounding.md`](impl/structural-grounding.md) | Structural grounding + extended cogitation | A, A+ | Model, Agent |
 | [`plans/impl/build-phases.md`](impl/build-phases.md) | Resolved design decisions, phased build, test cases | 0-9 | All (execution plan) |
 
 ### How to Use This Plan
 
 1. **Read** this coordinator for the big picture.
-2. **Implement** `plans/impl/foundations.md` (Phases 0-4).
-3. **Implement** `plans/impl/model.md` (Phase 5).
-4. **Implement** `plans/impl/agent.md` (Phases 6-8).
-5. **Reference** `plans/impl/build-phases.md` for per-phase test cases and
+2. **Implement** `plans/impl/foundations.md` (Phases 0-4). ✅ Complete
+3. **Implement** `plans/impl/model.md` (Phase 5). ✅ Complete
+4. **Implement** `plans/impl/agent.md` (Phases 6-8). ✅ Complete
+5. **Implement** `plans/impl/structural-grounding.md` (Phase A + A+). 🔄 Next step
+6. **Reference** `plans/impl/build-phases.md` for per-phase test cases and
    the resolved design decisions that apply across components.
 
 ---
@@ -237,19 +239,22 @@ MOD64_BITS = 63
 
 ## 6. Summary of What Gets Built When
 
-| Phase | Component    | Files                              | Est.       | Depends On | Sub-plan |
-| ----- | ------------ | ---------------------------------- | ---------- | ---------- | -------- |
-| 0     | Scaffold     | `pyproject.toml`, dirs             | 0.5d       | -          | foundations |
-| 1     | KLine        | `kline.py`                         | 0.5d       | -          | foundations |
-| 2     | Signature    | `signature.py`                     | 0.5d       | -          | foundations |
-| 3     | Tokenizer    | `mod_tokenizer.py`, `tokenizer.py` | 1.5d       | -          | foundations |
-| 4     | STM          | `stm.py`                           | 1d         | 1, 2, 3    | foundations |
-| 5     | Model        | `model.py`                         | 2-3d       | 1, 2, 4    | model |
-| 6     | Constants    | `model.py` (D_MAX, MASK64)          | 0.5d       | —          | model |
-| 7     | Events       | `events.py`                        | 0.5d       | 1          | agent |
-| 8     | Agent        | `agent.py` (routing + Cogitator)   | 2d         | 1-7        | agent |
-| 9     | Persistence  | `agent.py` (extend)                | 1d         | 8          | agent |
-|       | **Total**    |                                    | **11-13d** |            |          |
+| Phase | Component    | Files                              | Est.       | Depends On | Sub-plan | Status |
+| ----- | ------------ | ---------------------------------- | ---------- | ---------- | -------- | ------ |
+| 0     | Scaffold     | `pyproject.toml`, dirs             | 0.5d       | -          | foundations | ✅ |
+| 1     | KLine        | `kline.py`                         | 0.5d       | -          | foundations | ✅ |
+| 2     | Signature    | `signature.py`                     | 0.5d       | -          | foundations | ✅ |
+| 3     | Tokenizer    | `mod_tokenizer.py`, `tokenizer.py` | 1.5d       | -          | foundations | ✅ |
+| 4     | STM          | `stm.py`                           | 1d         | 1, 2, 3    | foundations | ✅ |
+| 5     | Model        | `model.py`                         | 2-3d       | 1, 2, 4    | model | ✅ |
+| 6     | Constants    | `model.py` (D_MAX, MASK64)          | 0.5d       | —          | model | ✅ |
+| 7     | Events       | `events.py`                        | 0.5d       | 1          | agent | ✅ |
+| 8     | Agent        | `agent.py` (routing + Cogitator)   | 2d         | 1-7        | agent | ✅ |
+| 9     | Persistence  | `agent.py` (extend)                | 1d         | 8          | agent | ✅ |
+| —     | KScript      | `kscript/`                         | 5d         | 1-3        | kscript | ✅ |
+| A     | Struct. Grounding | `model.py`, `agent.py`        | 1-2d       | 1-8        | structural-grounding | 🔄 |
+| A+    | Ext. Cogitation    | `model.py`, `agent.py`        | 3-5d       | A          | structural-grounding | 🔄 |
+|       | **Total**    |                                    | **22-27d** |            |          |
 
 ---
 

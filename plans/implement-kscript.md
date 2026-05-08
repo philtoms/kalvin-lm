@@ -2,6 +2,7 @@
 
 **Source:** @kscript.md v2.0  
 **Date:** 2026-04-29  
+**Status:** ✅ Complete  
 **Assumes:** Kalvin core specs are implemented (`kalvin.kline`, `kalvin.mod_tokenizer`, `kalvin.signature`)  
 **Does NOT assume:** Any existing `kscript/` code
 
