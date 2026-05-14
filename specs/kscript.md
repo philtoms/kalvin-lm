@@ -233,13 +233,15 @@ A > B   → {A: B}           (unidirectional)
 
 #### CANONIZE chain (`=>`)
 
-The **owner** is the last primary construct's node (if present), or its signature. One entry is emitted **per right-hand item**:
+The **owner** is the last primary construct's node (if present), or its signature. A single entry is emitted with **all right-hand items** as the node list:
 
 ```
-A => B C       → {A: B}, {A: C}           (per-item)
-A > X => B C   → {A: X}, {X: B}, {X: C}   (owner is X, the node)
+A => B C       → {A: [B, C]}              (single entry, all items)
+A > X => B C   → {A: X}, {X: [B, C]}      (owner is X, the node)
 A = X => B C   → {X: A}, {X: [B, C]}      (owner is X, the node)
 ```
+
+Singleton unwrapping: if there is only one right-hand item, the list is unwrapped: `A => B → {A: B}`.
 
 The right-hand construct is then compiled recursively.
 
@@ -253,9 +255,9 @@ A =>
   C = D
 ```
 
-Flattens to items `[B, C = D]`. Then CANONIZE emits per-item:
+Flattens to items `[B, C = D]`. Then CANONIZE emits a single entry with all items:
 
-- `{A: B}`, `{A: C}` plus recursive compilation of C's inline op: `{D: C}`
+- `{A: [B, C]}` plus recursive compilation of C's inline op: `{D: C}`
 
 Blocks may mix literals and primary constructs:
 
@@ -266,7 +268,7 @@ A =>
   "hello"
 ```
 
-Flattens to `[Literal(1), PrimaryConstruct(B), Literal("hello")]` → per-item: `{A: "1"}`, `{A: B}`, `{A: '"hello"'}`
+Flattens to `[Literal(1), PrimaryConstruct(B), Literal("hello")]` → single entry: `{A: [1, B, "hello"]}`
 
 ### 5.7 Significance Level Assignment
 
@@ -461,21 +463,18 @@ Compiled (in order):
 {MCS for SVO}: {S: None}, {V: None}, {O: None}, {SVO: [S,V,O]}, {SVO: None}
 {MHALL: SVO}           (countersign, S1)
 {SVO: MHALL}           (countersign reverse, S1)
-{SVO: S}               (canonize fwd, per-item from subscript, S2)
-{SVO: V}               (canonize fwd, per-item, S2)
-{SVO: O}               (canonize fwd, per-item, S2)
+{SVO: [S, V, O]}       (canonize, single entry, S2 — deduplicated against MCS)
 {M: S}                 (undersign, S1)
 {H: V}                 (undersign, S1)
 {MCS for ALL}: {A: None}, {L: None}, {ALL: [A,L,L]}, {ALL: None}
 {ALL: O}               (undersign, S1)
-{ALL: A}               (canonize fwd, per-item from subscript, S2)
-{ALL: L}               (canonize fwd, per-item, S2)
+{ALL: [A, L, L]}       (canonize, single entry, S2 — deduplicated against MCS)
 {D: A}                 (undersign, S1)
 {M: L}                 (undersign, S1)
 {L: O}                 (connotate fwd, S3)
 ```
 
-> **Note on deduplication:** Duplicate `{A: None}` and `{L: None}` from ALL's MCS are silently dropped by the compiler (§5.4), as they were already emitted by MHALL's MCS. The `{SVO: S}`, `{SVO: V}`, `{SVO: O}` entries come from the CANONIZE chain emitting one entry per subscript item.
+> **Note on deduplication:** Duplicate `{A: None}` and `{L: None}` from ALL's MCS are silently dropped by the compiler (§5.4), as they were already emitted by MHALL's MCS. The CANONIZE entries `{SVO: [S, V, O]}` and `{ALL: [A, L, L]}` are also deduplicated against the MCS canonization entries, which encode identically.
 
 ### 9.4 Mixed Literal Block
 
@@ -489,15 +488,13 @@ A =>
 Compiled:
 
 ```
-{A: "1"}               (canonize fwd, per-item)
-{A: B}                 (canonize fwd, per-item)
-{A: '"hello"'}         (canonize fwd, per-item)
+{A: ["1", B, "hello"]} (canonize, single entry with all items, S2)
 {1: None}              (unsigned 1, from recursive block compilation)
 {B: None}              (unsigned B, from recursive block compilation)
 {"hello": None}        (unsigned "hello", from recursive block compilation)
 ```
 
-> **Note:** The right-hand subscript block is compiled recursively after chain emission. Each bare item in the block emits its own unsigned identity entry.
+> **Note:** CANONIZE emits a single entry with all right-hand items as the node list. The subscript block is then compiled recursively; each bare item emits its own unsigned identity entry.
 
 ### 9.5 Chained Constructs
 
@@ -532,9 +529,9 @@ Key structures:
 
 - `MHALL` countersigns `SVO` (bidirectional)
 - `S`, `V`, `O` undersign their values → `{M: S}`, `{H: V}`, `{ALL: O}`
-- `ALL` canonizes `A`, `L` (subscript items)
+- `ALL` canonizes `A`, `L` (subscript items) → `{ALL: [A, L, L]}` (deduplicated against MCS)
 - `L > O` connotates
-- `MOD => A B` canonizes both items: `{MOD: A}`, `{MOD: B}`
+- `MOD => A B` canonizes both items: `{MOD: [A, B]}`
 
 ---
 

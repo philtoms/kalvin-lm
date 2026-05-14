@@ -272,15 +272,16 @@ class Compiler:
         right_items = self._flatten_to_items(right)
 
         if chain_op == TokenType.CANONIZE:
-            # CANONIZE: {p[-1].(node or sig): p.sig for p in r.primaries}
+            # CANONIZE: {owner: [all items]} — single entry with all right-hand items
             last = left_primaries[-1]
             owner = self._get_owner(last)  # node if present, else sig
             # Emit MCS for owner if it's a sig
             if last.node is None or isinstance(last.node, Signature):
                 self._emit_mcs(owner)
-            # Emit per-item: one entry per right item
-            for item in right_items:
-                self._emit(owner, self._item_id(item), "CANONIZE")
+            # Emit single CANONIZE entry with all right items as a list
+            if right_items:
+                item_ids = [self._item_id(item) for item in right_items]
+                self._emit(owner, item_ids, "CANONIZE")
 
             # Recurse into right
             self._compile_construct(right)

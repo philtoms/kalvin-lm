@@ -25,15 +25,15 @@ The first captures the relationship between Q and V as nodes linking to their re
 KScript provides four different ways to build kline relationships. For brevity, identity klines are omitted from the table below:
 
 ┌────────────┬───────────────┬──────────────────────┐
-│ Syntax     │ Name          │ Output               │
+│ Syntax │ Name │ Output │
 ├────────────┼───────────────┼──────────────────────┤
-│ Q == V     │ COUNTERSIGN   │ {Q: [V]}, {V: [Q]}  │
+│ Q == V │ COUNTERSIGN │ {Q: [V]}, {V: [Q]} │
 ├────────────┼───────────────┼──────────────────────┤
-│ Q = V      │ UNDERSIGN     │ {V: [Q]}             │
+│ Q = V │ UNDERSIGN │ {V: [Q]} │
 ├────────────┼───────────────┼──────────────────────┤
-│ Q > V      │ CONNOTATE     │ {Q: [V]}             │
+│ Q > V │ CONNOTATE │ {Q: [V]} │
 ├────────────┼───────────────┼──────────────────────┤
-│ Q => V₁…Vₙ │ CANONIZE      │ {Q: [V₁,…Vₙ]}        │
+│ Q => V₁…Vₙ │ CANONIZE │ {Q: [V₁,…Vₙ]} │
 └────────────┴───────────────┴──────────────────────┘
 
 KScript also supports indented chaining, whereby a value node on one line becomes the query of an indented block that follows. Comments are allowed between brackets. A typical script:
@@ -44,8 +44,8 @@ KScript also supports indented chaining, whereby a value node on one line become
       M = S(ubject)
       H = V(erb)
       ALL = O(bject) =>
-        A = D(et)
-        L = M(od)
+        A > D(et)
+        L > M(od)
         L > O
 ```
 

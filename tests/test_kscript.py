@@ -338,15 +338,13 @@ class TestChains:
     def test_per_item_canonize(self) -> None:
         entries = compile64("A => B C")
         md = _md(entries)
-        assert _has_node(md, "A", ["B"])
-        assert _has_node(md, "A", ["C"])
+        assert _has_node(md, "A", ["B", "C"])
 
     def test_subscript_block(self) -> None:
         source = "A =>\n  B\n  C"
         entries = compile64(source)
         md = _md(entries)
-        assert _has_node(md, "A", ["B"])
-        assert _has_node(md, "A", ["C"])
+        assert _has_node(md, "A", ["B", "C"])
 
 
 # =============================================================================
@@ -359,15 +357,13 @@ class TestNestedSubscripts:
         entries = compile64(source)
         md = _md(entries)
         assert _has_node(md, "A", ["B"])
-        assert _has_node(md, "B", ["C"])
-        assert _has_node(md, "B", ["D"])
+        assert _has_node(md, "B", ["C", "D"])
 
     def test_subscript_with_inline_ops(self) -> None:
         source = "A =>\n  B\n  C = D"
         entries = compile64(source)
         md = _md(entries)
-        assert _has_node(md, "A", ["B"])
-        assert _has_node(md, "A", ["C"])
+        assert _has_node(md, "A", ["B", "C"])
         assert _has_node(md, "D", ["C"])
 
 
@@ -379,8 +375,7 @@ class TestComplexExamples:
     def test_ab_arrow_a_b(self) -> None:
         entries = compile64("AB => A B")
         md = _md(entries)
-        assert _has_node(md, "AB", ["A"])
-        assert _has_node(md, "AB", ["B"])
+        assert _has_node(md, "AB", ["A", "B"])
 
     def test_ab_double_equal_cd(self) -> None:
         entries = compile64("AB == CD")
@@ -423,16 +418,14 @@ class TestLiteralEdgeCases:
         source = "A =>\n  1\n  B"
         entries = compile64(source)
         md = _md(entries)
-        assert _has_node(md, "A", "1")
-        assert _has_node(md, "A", ["B"])
+        assert _has_node(md, "A", ["1", "B"])
 
     def test_block_all_literals(self) -> None:
         source = "A =>\n  1\n  2\n  3"
         entries = compile64(source)
         md = _md(entries)
-        assert _has_node(md, "A", "1")
-        assert _has_node(md, "A", "2")
-        assert _has_node(md, "A", "3")
+        # Consecutive literal tokens decode as a single concatenated string
+        assert _has_node(md, "A", "123")
 
     def test_literal_cannot_own_chain(self) -> None:
         with pytest.raises(ParseError):
