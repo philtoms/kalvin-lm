@@ -88,7 +88,7 @@ source.ks → Lexer → Parser → Compiler → CompiledEntry[] → JSON/JSONL/B
 
 **Module Structure:**
 
-- `token.py` - TokenType enum (14 types) and Token dataclass
+- `token.py` - TokenType enum (12 types) and Token dataclass
 - `lexer.py` - Tokenization with Python-style INDENT/DEDENT handling
 - `ast.py` - AST nodes: Signature, StringLiteral, NumberLiteral, Construct, Script, KScriptFile
 - `parser.py` - Recursive descent parser with immediate binding semantics
@@ -101,11 +101,9 @@ source.ks → Lexer → Parser → Compiler → CompiledEntry[] → JSON/JSONL/B
 | Operator | Name | Semantics |
 |----------|------|-----------|
 | `==` | Countersign | `{A: B}` AND `{B: A}` (bidirectional) |
-| `=>` | Canonize Fwd | `{A: [B, C, ...]}` (multi-node) |
-| `<=` | Canonize Bwd | `{B: [A]}` or `{A: [B, C, ...]}` with leading nodes |
-| `>` | Connotate Fwd | `{A: [B]}` AND `{B: null}` |
-| `<` | Connotate Bwd | `{B: [A]}` AND `{A: null}` |
-| `=` | Undersign | `{A: B}`(unidirectional) |
+| `=>` | Canonize | `{A: [B, C, ...]}` (multi-node per-item) |
+| `>` | Connotate | `{A: [B]}` (unidirectional) |
+| `=` | Undersign | `{A: B}` (unidirectional) |
 
 **Key Patterns:**
 

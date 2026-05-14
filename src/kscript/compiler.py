@@ -1,12 +1,11 @@
-"""KScript compiler with BWD construct binding semantics.
+"""KScript compiler with construct binding semantics.
 
 Op mappings (using abbreviated property chains):
-  COUNTERSIGN   -> {sig: node}, {node: sig}
-  CANONIZE_FWD  -> {p[-1].(node or sig): p.sig for p in r.primaries}
-  CONNOTATE_FWD -> {sig: node}
-  CANONIZE_BWD  -> {r[0].sig: p.sig for p in left_primaries}
-  CONNOTATE_BWD -> {r[0].sig: left_primaries[-1].sig}
-  UNSIGNED      -> sig | S4 (S4=0, no bits)
+  COUNTERSIGN  -> {sig: node}, {node: sig}
+  CANONIZE     -> {p[-1].(node or sig): p.sig for p in r.primaries}
+  CONNOTATE    -> {sig: node}
+  UNDERSIGN    -> {node: sig}
+  UNSIGNED     -> sig | S4 (S4=0, no bits)
 
 Where:
   p = primary construct (left side)
@@ -15,11 +14,11 @@ Where:
 Singleton rule: nodes lists with length 1 are unwrapped to single values.
 
 Significance encoding (bitwise OR on signature position):
-  COUNTERSIGN   -> sig | S1
-  UNDERSIGN     -> sig | S1
-  CANONIZE_*    -> sig | S2
-  CONNOTATE_*   -> sig | S3
-  UNSIGNED      -> sig | S4 (S4=0, no bits)
+  COUNTERSIGN  -> sig | S1
+  UNDERSIGN    -> sig | S1
+  CANONIZE     -> sig | S2
+  CONNOTATE    -> sig | S3
+  UNSIGNED     -> sig | S4 (S4=0, no bits)
 """
 
 from __future__ import annotations
@@ -144,10 +143,8 @@ class Compiler:
         self.dev = dev
         self._sig_levels = {
             "COUNTERSIGN": "S1",
-            "CANONIZE_FWD": "S2",
-            "CANONIZE_BWD": "S2",
-            "CONNOTATE_FWD": "S3",
-            "CONNOTATE_BWD": "S3",
+            "CANONIZE": "S2",
+            "CONNOTATE": "S3",
             "UNDERSIGN": "S1",
             "UNSIGNED": "S4",
             "IDENTITY": "S1",
@@ -198,7 +195,7 @@ class Compiler:
 
         Emits:
           Unsigned -> {char: None} for each char in sig
-          MCS CANONIZE_FWD -> {sig: [chars]} (list preserves order & duplicates)
+          MCS CANONIZE -> {sig: [chars]} (list preserves order & duplicates)
 
         Returns True if MCS was emitted, False for single-char sigs.
         """
@@ -212,7 +209,7 @@ class Compiler:
             self._emit(char, None, "UNSIGNED")
 
         # MCS canonization: {sig: [A, B, C, ...]} (list preserves order & duplicates)
-        self._emit(sig, chars, "CANONIZE_FWD")
+        self._emit(sig, chars, "CANONIZE")
 
         return True
 
@@ -241,15 +238,15 @@ class Compiler:
                 self._emit(node_str, sig, "COUNTERSIGN")
 
         elif pc.op == TokenType.UNDERSIGN:
-            # {sig: node}
+            # {node: sig} — value (right side) becomes signature, query (left side) becomes node
             if sig == node_str:
                 self._emit(sig, None, "IDENTITY")
             else:
-                self._emit(sig, node_str, "UNDERSIGN")
+                self._emit(node_str, sig, "UNDERSIGN")
 
-        elif pc.op == TokenType.CONNOTATE_FWD:
+        elif pc.op == TokenType.CONNOTATE:
             # {sig: node}
-            self._emit(sig, node_str, "CONNOTATE_FWD")
+            self._emit(sig, node_str, "CONNOTATE")
 
     def _process_chain(
         self,
@@ -257,7 +254,7 @@ class Compiler:
         chain_op: TokenType,
         right: Construct | None
     ) -> None:
-        """Process a chain construct (=>, <=, <).
+        """Process a chain construct (=>).
 
         Left side is always primary_constructs (only they can have chain ops).
         Right side can be any construct: block (may contain mixed literals + primaries),
@@ -274,8 +271,8 @@ class Compiler:
         # Get right items (flatten blocks, handle literal/primaries)
         right_items = self._flatten_to_items(right)
 
-        if chain_op == TokenType.CANONIZE_FWD:
-            # CANONIZE_FWD: {p[-1].(node or sig): p.sig for p in r.primaries}
+        if chain_op == TokenType.CANONIZE:
+            # CANONIZE: {p[-1].(node or sig): p.sig for p in r.primaries}
             last = left_primaries[-1]
             owner = self._get_owner(last)  # node if present, else sig
             # Emit MCS for owner if it's a sig
@@ -283,41 +280,7 @@ class Compiler:
                 self._emit_mcs(owner)
             # Emit per-item: one entry per right item
             for item in right_items:
-                self._emit(owner, self._item_id(item), "CANONIZE_FWD")
-
-            # Recurse into right
-            self._compile_construct(right)
-
-        elif chain_op == TokenType.CANONIZE_BWD:
-            # CANONIZE_BWD: {r[0].sig: p.sig for p in left_primaries}
-            if right_items:
-                owner = self._item_id(right_items[0])
-                self._emit_mcs(owner)
-                # Emit per-left-primary: one entry per left primary
-                for pc in left_primaries:
-                    self._emit(owner, pc.sig.id, "CANONIZE_BWD")
-
-            # Recurse into right
-            self._compile_construct(right)
-
-        elif chain_op == TokenType.CONNOTATE_FWD:
-            # CONNOTATE_FWD chain: {owner: [right_items]}
-            last = left_primaries[-1]
-            owner = self._get_owner(last)
-            nodes = [self._item_id(item) for item in right_items]
-            self._emit(owner, nodes, "CONNOTATE_FWD")
-
-            # Recurse into right
-            self._compile_construct(right)
-
-        elif chain_op == TokenType.CONNOTATE_BWD:
-            # CONNOTATE_BWD: {r[0].sig: left_primaries[-1].sig}
-            if right_items:
-                owner = self._item_id(right_items[0])
-                self._emit_mcs(owner)
-                last = left_primaries[-1]
-                last_left = self._get_owner(last)
-                self._emit(owner, last_left, "CONNOTATE_BWD")
+                self._emit(owner, self._item_id(item), "CANONIZE")
 
             # Recurse into right
             self._compile_construct(right)
@@ -357,7 +320,7 @@ class Compiler:
         return str(item)
 
     def _get_owner(self, pc: PrimaryConstruct) -> str:
-        """Get owner for CANONIZE_FWD: node if present, else sig."""
+        """Get owner for CANONIZE: node if present, else sig."""
         if pc.node is not None:
             return self._node_to_string(pc.node)
         return pc.sig.id

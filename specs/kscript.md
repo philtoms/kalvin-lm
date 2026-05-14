@@ -22,14 +22,14 @@ The pipeline is strictly one-directional. There is also a **decompiler** that be
 
 ### 1.2 Core Concepts
 
-| Concept | Description |
-|---------|-------------|
-| **Node** | An opaque `uint64` value — the universal atom |
-| **KLine** | An identified, ordered sequence of zero or more nodes: `{signature, nodes[]}` |
-| **Signature** | A `uint64` identity key computed via OR-reduction of nodes |
-| **Significance** | A four-level classification (S1–S4) of how strongly one KLine relates to another |
-| **Signature (lexical)** | An uppercase identifier like `ABC` — becomes a packed node |
-| **Literal (lexical)** | Anything not uppercase alpha — numbers, quoted strings |
+| Concept                 | Description                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| **Node**                | An opaque `uint64` value — the universal atom                                    |
+| **KLine**               | An identified, ordered sequence of zero or more nodes: `{signature, nodes[]}`    |
+| **Signature**           | A `uint64` identity key computed via OR-reduction of nodes                       |
+| **Significance**        | A four-level classification (S1–S4) of how strongly one KLine relates to another |
+| **Signature (lexical)** | An uppercase identifier like `ABC` — becomes a packed node                       |
+| **Literal (lexical)**   | Anything not uppercase alpha — numbers, quoted strings                           |
 
 ---
 
@@ -37,42 +37,37 @@ The pipeline is strictly one-directional. There is also a **decompiler** that be
 
 ### 2.1 Token Types
 
-| Token | Pattern | Category |
-|-------|---------|----------|
-| `SIGNATURE` | `[A-Z]+` | Node (uppercase identifier) |
-| `LITERAL` | `[0-9]+` or `"..."` | Node (non-uppercase) |
-| `COUNTERSIGN` | `==` | Construct operator |
-| `CANONIZE_FWD` | `=>` | Chain operator |
-| `CANONIZE_BWD` | `<=` | Chain operator |
-| `CONNOTATE_FWD` | `>` | Construct or chain operator |
-| `CONNOTATE_BWD` | `<` | Chain operator |
-| `UNDERSIGN` | `=` | Construct operator |
-| `COMMENT` | `(...)` with nested parens | Insignificant |
-| `NEWLINE` | `\n` | Insignificant |
-| `INDENT` | Increased indentation | Structure |
-| `DEDENT` | Decreased indentation | Structure |
-| `EOF` | End of file | Sentinel |
+| Token         | Pattern                    | Category                    |
+| ------------- | -------------------------- | --------------------------- |
+| `SIGNATURE`   | `[A-Z]+`                   | Node (uppercase identifier) |
+| `LITERAL`     | `[0-9]+` or `"..."`        | Node (non-uppercase)        |
+| `COUNTERSIGN` | `==`                       | Construct operator          |
+| `CANONIZE`    | `=>`                       | Chain operator              |
+| `CONNOTATE`   | `>`                        | Inline operator             |
+| `UNDERSIGN`   | `=`                        | Construct operator          |
+| `COMMENT`     | `(...)` with nested parens | Insignificant               |
+| `NEWLINE`     | `\n`                       | Insignificant               |
+| `INDENT`      | Increased indentation      | Structure                   |
+| `DEDENT`      | Decreased indentation      | Structure                   |
+| `EOF`         | End of file                | Sentinel                    |
 
 ### 2.2 Operator Classification
 
 Operators are divided into two groups by where they may appear:
 
 **Inline operators** (appear within a primary construct, between sig and node):
+
 - `==` (COUNTERSIGN) — bidirectional link
-- `>` (CONNOTATE_FWD) — forward connotation  
+- `>` (CONNOTATE) — connotation
 - `=` (UNDERSIGN) — unconditional link
 
 **Chain operators** (appear between construct groups, introducing a right-hand side):
-- `=>` (CANONIZE_FWD) — forward canonization
-- `<=` (CANONIZE_BWD) — backward canonization
-- `<` (CONNOTATE_BWD) — backward connotation
-- `>` (CONNOTATE_FWD) — classified as chain operator in the grammar, but **always consumed as inline by the parser** (see §5.5)
 
-> **Parser behavior:** The parser greedily consumes `>` as an inline operator after any primary construct. This means `A > B C` parses as `PrimaryConstruct(A, >, B)` + bare `C`, not as a chain. The chain-`>` code path exists in the compiler but is never reached through normal parsing.
+- `=>` (CANONIZE) — canonization
 
 ### 2.3 Lexing Rules
 
-1. **Multi-character operators** (`==`, `=>`, `<=`) are matched before single-character operators (`=`, `>`, `<`).
+1. **Multi-character operators** (`==`, `=>`) are matched before single-character operators (`=`, `>`).
 2. **Identifiers** `[A-Z][A-Z0-9]*` are classified as:
    - `SIGNATURE` if all characters are uppercase alpha (`isupper() and isalpha()`)
    - Non-uppercase identifiers are **not valid** as literals — use quoted strings instead
@@ -81,7 +76,7 @@ Operators are divided into two groups by where they may appear:
 5. **Comments** `(...)` support nested parentheses and may span multiple lines.
 6. **Inline comments** after an identifier are consumed without emitting a token.
 7. **Indentation** uses Python-style INDENT/DEDENT tokens based on leading whitespace.
-8. **Unknown characters** (not matching any rule) raise a `LexerError`.
+8. **Unknown characters** (not matching any rule, including `<`) raise a `LexerError`.
 
 ### 2.4 Indentation Rules
 
@@ -104,25 +99,25 @@ primary_construct ::= sig ( inline_op node )?
 node        ::= sig | literal
 sig         ::= SIGNATURE
 literal     ::= LITERAL
-chain_op    ::= CANONIZE_FWD | CANONIZE_BWD | CONNOTATE_FWD | CONNOTATE_BWD
-inline_op   ::= COUNTERSIGN | CONNOTATE_FWD | UNDERSIGN
+chain_op    ::= CANONIZE
+inline_op   ::= COUNTERSIGN | CONNOTATE | UNDERSIGN
 ```
 
 ### 3.1 Key Constraints
 
 1. **Only SIGNATUREs can own constructs.** A `LITERAL` in construct position is a bare unsigned identity — it cannot have inline operators or chain operators.
 2. **NEWLINE and COMMENT tokens are insignificant** — they are skipped between constructs.
-3. **Multiple primary_constructs at the same indentation level** form an implicit group (used for BWD chain emission).
+3. **Multiple primary_constructs at the same indentation level** form an implicit group.
 4. **Literal on the right of a chain operator** is valid: `A => 1` compiles, but `1 => A` is a parse error.
 
 ### 3.2 Parse Errors
 
-| Situation | Error |
-|-----------|-------|
-| `LITERAL` in position requiring `SIGNATURE` (e.g., construct owner) | `ParseError` |
-| `1 => A` — literal owning a chain | `ParseError` |
-| `A => 1 => B` — chaining through a literal | `ParseError` |
-| Empty source | Produces empty script (no error) |
+| Situation                                                           | Error                            |
+| ------------------------------------------------------------------- | -------------------------------- |
+| `LITERAL` in position requiring `SIGNATURE` (e.g., construct owner) | `ParseError`                     |
+| `1 => A` — literal owning a chain                                   | `ParseError`                     |
+| `A => 1 => B` — chaining through a literal                          | `ParseError`                     |
+| Empty source                                                        | Produces empty script (no error) |
 
 ---
 
@@ -171,9 +166,9 @@ CompiledEntry:
 
 Strings are encoded to `uint64` values via a **Mod Tokenizer**:
 
-- **Signatures** (uppercase alpha): *packed* encoding — characters are OR'd into a single `uint64` with bit 0 clear. Lossy: order and multiplicity are lost.
+- **Signatures** (uppercase alpha): _packed_ encoding — characters are OR'd into a single `uint64` with bit 0 clear. Lossy: order and multiplicity are lost.
   - `encode("ABC") → [bit_A | bit_B | bit_C]`
-- **Literals** (everything else): *literal* encoding — one `uint64` per character with lower 32 bits = `0xFFFFFFFF`. Preserves order and identity.
+- **Literals** (everything else): _literal_ encoding — one `uint64` per character with lower 32 bits = `0xFFFFFFFF`. Preserves order and identity.
   - `encode("hello") → [(104<<32)|0xFFFFFFFF, (101<<32)|0xFFFFFFFF, ...]`
 
 **Literal test:** `(node & 0xFFFFFFFF) == 0xFFFFFFFF`
@@ -191,7 +186,7 @@ When a signature has **more than one character**, the compiler automatically emi
    ```
 2. **MCS canonization:** One entry mapping the compound to its components.
    ```
-   ABC → emits: {ABC: [A, B, C]}  (CANONIZE_FWD)
+   ABC → emits: {ABC: [A, B, C]}  (CANONIZE)
    ```
 3. **Unsigned compound:** The compound itself as unsigned.
    ```
@@ -207,62 +202,46 @@ The compiler deduplicates entries by `(signature, nodes)` pair. If the same enco
 ### 5.5 Construct Compilation Rules
 
 #### Unsigned (bare signature or literal)
+
 ```
 A       → {A: None}        (plus MCS if multi-char)
 hello   → {hello: None}
 ```
 
 #### COUNTERSIGN (`==`)
+
 ```
 A == B  → {A: B}, {B: A}   (bidirectional)
 ```
+
 If the node is a signature, MCS expansion is applied to it too. Reverse direction is NOT emitted for literal nodes.
 
 #### UNDERSIGN (`=`)
+
 ```
-A = B   → {A: B}           (unidirectional)
+A = B   → {B: A}           (unidirectional, value becomes signature)
 A = A   → {A: None}        (self-identity collapsed to unsigned)
 ```
+
 Self-identity (`A = A`) is emitted with the internal op name `IDENTITY` (level S1), which collapses to an unsigned entry.
 
-#### CONNOTATE_FWD (`>`)
+#### CONNOTATE (`>`)
+
 ```
 A > B   → {A: B}           (unidirectional)
 ```
 
-#### CANONIZE_FWD chain (`=>`)
+#### CANONIZE chain (`=>`)
+
 The **owner** is the last primary construct's node (if present), or its signature. One entry is emitted **per right-hand item**:
+
 ```
 A => B C       → {A: B}, {A: C}           (per-item)
 A > X => B C   → {A: X}, {X: B}, {X: C}   (owner is X, the node)
+A = X => B C   → {X: A}, {X: [B, C]}      (owner is X, the node)
 ```
+
 The right-hand construct is then compiled recursively.
-
-#### CANONIZE_BWD chain (`<=`)
-One entry per **left-side primary construct**:
-```
-A B <= CD  → {CD: A}, {CD: B}
-```
-The right-hand construct is compiled recursively.
-
-#### CONNOTATE_FWD chain (`>` as chain)
-
-In the grammar, `>` may appear as a chain operator. However, in practice the parser **always consumes `>` as an inline operator** when it appears after a primary construct (see §2.2). The chain-`>` code path exists in the compiler but is unreachable from normal parsing. The construct `A > B C` is parsed as `PrimaryConstruct(A, >, B)` followed by bare `C`, yielding `{A: B}` and `{C: None}` — not `{A: [B, C]}`.
-
-To get a multi-node connotate list, use a subscript block:
-```
-A >
-  B
-  C     → parse error (C is bare, but > inline already consumed B)
-```
-
-In practice, use inline `>` for single-node connotation and `<` (CONNOTATE_BWD) for chain-based backward connotation.
-
-#### CONNOTATE_BWD chain (`<`)
-The first right-hand item becomes the owner; the last left-side owner is the node:
-```
-A B < C    → {C: last_owner_of(A B)}
-```
 
 ### 5.6 Subscript Blocks
 
@@ -274,31 +253,32 @@ A =>
   C = D
 ```
 
-Flattens to items `[B, C = D]`. Then CANONIZE_FWD emits per-item:
-- `{A: B}`, `{A: C}` plus recursive compilation of C's inline op: `{C: D}`
+Flattens to items `[B, C = D]`. Then CANONIZE emits per-item:
+
+- `{A: B}`, `{A: C}` plus recursive compilation of C's inline op: `{D: C}`
 
 Blocks may mix literals and primary constructs:
+
 ```
 A =>
   1
   B
   "hello"
 ```
+
 Flattens to `[Literal(1), PrimaryConstruct(B), Literal("hello")]` → per-item: `{A: "1"}`, `{A: B}`, `{A: '"hello"'}`
 
 ### 5.7 Significance Level Assignment
 
 Each emitted entry is tagged with a significance level based on the operator:
 
-| Operator | Level | Meaning |
-|----------|-------|---------|
-| COUNTERSIGN (`==`) | S1 | Mutual / bidirectional |
-| UNDERSIGN (`=`) | S1 | Unconditional |
-| CANONIZE_FWD (`=>`) | S2 | Canonical forward |
-| CANONIZE_BWD (`<=`) | S2 | Canonical backward |
-| CONNOTATE_FWD (`>`) | S3 | Connotative forward |
-| CONNOTATE_BWD (`<`) | S3 | Connotative backward |
-| UNSIGNED (bare) | S4 | Identity only |
+| Operator           | Level | Meaning                |
+| ------------------ | ----- | ---------------------- |
+| COUNTERSIGN (`==`) | S1    | Mutual / bidirectional |
+| UNDERSIGN (`=`)    | S1    | Unconditional          |
+| CANONIZE (`=>`)    | S2    | Canonical              |
+| CONNOTATE (`>`)    | S3    | Connotative            |
+| UNSIGNED (bare)    | S4    | Identity only          |
 
 > **Note:** In the current implementation, significance bits are NOT encoded into the token IDs during compilation. The level is used only for debug text and decompiler inference. The decompiler uses heuristic bit-overlap analysis to re-infer levels from compiled data.
 
@@ -322,14 +302,14 @@ Multi-character signatures encoded with Mod tokenizers lose character order (pac
 
 Without explicit significance bits, levels are heuristically inferred:
 
-| Condition | Level |
-|-----------|-------|
-| No nodes | S4 (unsigned) |
-| Single node with `(sig & node) != 0` | S2 (canonize) |
-| Single node with `(sig & node) == 0` | S3 (connotate/undersign) |
-| Multi-node list with `(sig & nodes_sig) != 0` | S2 (canonize) |
-| Multi-node list with `(sig & nodes_sig) == 0` | S3 (connotate) |
-| MCS entry (sig == OR of nodes) | S2 |
+| Condition                                     | Level                    |
+| --------------------------------------------- | ------------------------ |
+| No nodes                                      | S4 (unsigned)            |
+| Single node with `(sig & node) != 0`          | S2 (canonize)            |
+| Single node with `(sig & node) == 0`          | S3 (connotate/undersign) |
+| Multi-node list with `(sig & nodes_sig) != 0` | S2 (canonize)            |
+| Multi-node list with `(sig & nodes_sig) == 0` | S3 (connotate)           |
+| MCS entry (sig == OR of nodes)                | S2                       |
 
 > **Caveat:** S1 (countersign/undersign) cannot be reliably distinguished from S3 (connotate) without explicit significance bits, since singleton unwrapping collapses the structural distinction.
 
@@ -345,10 +325,10 @@ Plain text files containing KScript source.
 
 ```json
 [
-  {"MHALL": "SVO"},
-  {"SVO": "MHALL"},
-  {"S": "M"},
-  {"ABC": ["A", "B", "C"]}
+  { "MHALL": "SVO" },
+  { "SVO": "MHALL" },
+  { "S": "M" },
+  { "ABC": ["A", "B", "C"] }
 ]
 ```
 
@@ -451,6 +431,7 @@ decompiled = Decompiler(tokenizer).decompile(entries)
 ```
 A
 ```
+
 Compiled: `{A: None}` (unsigned identity)
 
 ### 9.2 Bidirectional Link
@@ -458,6 +439,7 @@ Compiled: `{A: None}` (unsigned identity)
 ```
 A == B
 ```
+
 Compiled: `{A: B}, {B: A}`
 
 ### 9.3 Canonization with Subscript
@@ -473,6 +455,7 @@ MHALL == SVO =>
 ```
 
 Compiled (in order):
+
 ```
 {MCS for MHALL}: {M: None}, {H: None}, {A: None}, {L: None}, {MHALL: [M,H,A,L,L]}, {MHALL: None}
 {MCS for SVO}: {S: None}, {V: None}, {O: None}, {SVO: [S,V,O]}, {SVO: None}
@@ -481,18 +464,18 @@ Compiled (in order):
 {SVO: S}               (canonize fwd, per-item from subscript, S2)
 {SVO: V}               (canonize fwd, per-item, S2)
 {SVO: O}               (canonize fwd, per-item, S2)
-{S: M}                 (undersign, S1)
-{V: H}                 (undersign, S1)
+{M: S}                 (undersign, S1)
+{H: V}                 (undersign, S1)
 {MCS for ALL}: {A: None}, {L: None}, {ALL: [A,L,L]}, {ALL: None}
-{O: ALL}               (undersign, S1)
+{ALL: O}               (undersign, S1)
 {ALL: A}               (canonize fwd, per-item from subscript, S2)
 {ALL: L}               (canonize fwd, per-item, S2)
-{A: D}                 (undersign, S1)
-{L: M}                 (undersign, S1)
+{D: A}                 (undersign, S1)
+{M: L}                 (undersign, S1)
 {L: O}                 (connotate fwd, S3)
 ```
 
-> **Note on deduplication:** Duplicate `{L: None}` from MHALL's MCS is silently dropped by the compiler (§5.4). The `{SVO: S}`, `{SVO: V}`, `{SVO: O}` entries come from the CANONIZE_FWD chain emitting one entry per subscript item.
+> **Note on deduplication:** Duplicate `{A: None}` and `{L: None}` from ALL's MCS are silently dropped by the compiler (§5.4), as they were already emitted by MHALL's MCS. The `{SVO: S}`, `{SVO: V}`, `{SVO: O}` entries come from the CANONIZE chain emitting one entry per subscript item.
 
 ### 9.4 Mixed Literal Block
 
@@ -504,6 +487,7 @@ A =>
 ```
 
 Compiled:
+
 ```
 {A: "1"}               (canonize fwd, per-item)
 {A: B}                 (canonize fwd, per-item)
@@ -522,6 +506,7 @@ A => B => C
 ```
 
 Compiled:
+
 ```
 {A: B}                 (canonize fwd, singleton)
 {B: C}                 (canonize fwd, singleton)
@@ -538,19 +523,18 @@ MHALL == SVO =>
   V = H
   O = ALL =>
     A = D
-    L = M < MOD => A B
-    L > O < BS =>
-      B = "baby"
-      S = "sheep"
+    L = M
+    L > O
+    MOD => A B
 ```
 
 Key structures:
+
 - `MHALL` countersigns `SVO` (bidirectional)
-- `S`, `V`, `O` undersign their values
-- `ALL` canonizes `A`, `L`, `L` (subscript items)
-- `L > O` connotates, then `< BS` chains backward: `{BS: O}`
+- `S`, `V`, `O` undersign their values → `{M: S}`, `{H: V}`, `{ALL: O}`
+- `ALL` canonizes `A`, `L` (subscript items)
+- `L > O` connotates
 - `MOD => A B` canonizes both items: `{MOD: A}`, `{MOD: B}`
-- `BS` subscript contains undersigns with quoted string literals
 
 ---
 
@@ -573,12 +557,12 @@ kscript/
 
 ### 10.2 Dependencies
 
-| Dependency | Used By | Required |
-|------------|---------|----------|
-| `kalvin.kline.KLine` | `CompiledEntry` base class | Yes |
-| `kalvin.mod_tokenizer.ModTokenizer` | Encoding/decoding | Yes |
-| `kalvin.mod_tokenizer.Mod32Tokenizer` | Default tokenizer | Yes |
-| `kalvin.signature.make_signature` | Decompiler MCS detection | Yes |
+| Dependency                            | Used By                    | Required |
+| ------------------------------------- | -------------------------- | -------- |
+| `kalvin.kline.KLine`                  | `CompiledEntry` base class | Yes      |
+| `kalvin.mod_tokenizer.ModTokenizer`   | Encoding/decoding          | Yes      |
+| `kalvin.mod_tokenizer.Mod32Tokenizer` | Default tokenizer          | Yes      |
+| `kalvin.signature.make_signature`     | Decompiler MCS detection   | Yes      |
 
 ### 10.3 Compiler Class
 
@@ -589,6 +573,7 @@ class Compiler:
 ```
 
 Internal state:
+
 - `self.entries` — accumulated output list
 - `self._seen` — deduplication set of `(sig_id, nodes_tuple)` pairs
 - `self._sig_levels` — mapping from operator name to significance level string
@@ -601,7 +586,7 @@ Extends `KLine` with encode/decode support:
 class CompiledEntry(KLine):
     @classmethod
     def encode(cls, sig, nodes, tokenizer, *, sig_level, significance, dbg_text) -> CompiledEntry
-    
+
     def decode(self, tokenizer) -> tuple[str, str | None | list[str]]
 ```
 
@@ -628,6 +613,7 @@ The compiler deduplicates by **encoded** `(signature, nodes)` pair, not by sourc
 ### 11.5 Decompiler is Lossy
 
 The decompiler uses **heuristic inference** for significance levels. Without explicit bits:
+
 - S1 and S3 are easily confused (both produce single nodes with zero bit overlap)
 - The best-effort reconstruction is useful for debugging but not for round-tripping
 
@@ -640,9 +626,10 @@ Like Python, indentation defines block structure. Mixed tabs and spaces will wor
 ## 12. Build-From-Scratch Implementation Plan
 
 ### Phase 1: Token Types & Lexer
+
 **Estimate:** 0.5 day
 
-1. Define `TokenType` enum (13 values)
+1. Define `TokenType` enum (11 values)
 2. Define `Token` frozen dataclass
 3. Implement `Lexer` with:
    - Multi-char operator priority (`==`, `=>`, `<=` before `=`, `>`, `<`)
@@ -652,6 +639,7 @@ Like Python, indentation defines block structure. Mixed tabs and spaces will wor
 4. **Tests:** Token classification, operator lexing, indent/dedent, comments, edge cases
 
 ### Phase 2: AST & Parser
+
 **Estimate:** 0.5 day
 
 1. Define AST nodes: `Signature`, `Literal`, `PrimaryConstruct`, `Block`, `Construct`, `Script`, `KScriptFile`
@@ -660,6 +648,7 @@ Like Python, indentation defines block structure. Mixed tabs and spaces will wor
 4. **Tests:** AST structure for each construct type, parse errors for invalid input
 
 ### Phase 3: Encoder (Mod Tokenizer dependency)
+
 **Estimate:** 0.5 day (assumes Mod Tokenizer already exists)
 
 1. Define `CompiledEntry` extending `KLine`
@@ -667,6 +656,7 @@ Like Python, indentation defines block structure. Mixed tabs and spaces will wor
 3. **Tests:** Encode/decode round-trips for signatures, literals, mixed
 
 ### Phase 4: Compiler
+
 **Estimate:** 1.5 days
 
 1. Implement `Compiler.compile()` traversing AST
@@ -677,6 +667,7 @@ Like Python, indentation defines block structure. Mixed tabs and spaces will wor
 6. **Tests:** Each operator type, MCS expansion, chains, nested subscripts, literals, dedup, complex examples
 
 ### Phase 5: Output Module
+
 **Estimate:** 0.5 day
 
 1. Implement `write_json`, `write_jsonl`, `write_bin`, `read_json`, `read_bin`
@@ -684,6 +675,7 @@ Like Python, indentation defines block structure. Mixed tabs and spaces will wor
 3. **Tests:** Write/read round-trips for each format, invalid magic detection
 
 ### Phase 6: Decompiler
+
 **Estimate:** 1 day
 
 1. Implement MCS name recovery (both patterns)
@@ -692,6 +684,7 @@ Like Python, indentation defines block structure. Mixed tabs and spaces will wor
 4. **Tests:** Round-trip for each operator, MCS name recovery, complex nested scripts
 
 ### Phase 7: Public API & CLI
+
 **Estimate:** 0.5 day
 
 1. Implement `KScript` class with source/file loading and output
@@ -719,18 +712,18 @@ Phases 1 and 2 can proceed in parallel with Phase 3. Phase 4 requires all three.
 
 ## 13. Test Matrix Summary
 
-| Category | Count | Key Tests |
-|----------|-------|-----------|
-| Lexer | 16 | Token types, operators, comments, indent/dedent, edge cases |
-| Parser AST | 9 | Chains, blocks, literals, parse errors |
-| Compiler Basic | 10 | Each operator, literals, quoted strings |
-| MCS Expansion | 4 | Multi-char sigs, no single-char MCS, countersign MCS |
-| Chains | 6 | FWD/BWD chains, per-item emission, subscript blocks |
-| Nested Subscripts | 2 | Nested blocks, mixed inline ops |
-| Complex Examples | 5 | AB=>A B, AB==CD, A B<=CD, AB>C, C<AB |
-| Literal Edge Cases | 8 | Bare literals, block mixing, parse error for literal owners |
-| Decompiler | 14 | Round-trips, MCS recovery, level inference, Mod32 compat |
-| Output I/O | 4 | Binary/JSON/JSONL round-trips |
-| Encode/Decode | 4 | Sig-only, sig-to-sig, sig-to-literal, list |
-| KScript API | 6 | Inline source, output formats, base extension, file loading |
-| **Total** | **~88** | |
+| Category           | Count   | Key Tests                                                   |
+| ------------------ | ------- | ----------------------------------------------------------- |
+| Lexer              | 14      | Token types, operators, comments, indent/dedent, edge cases |
+| Parser AST         | 5       | Chains, blocks, literals, parse errors                      |
+| Compiler Basic     | 8       | Each operator, literals, quoted strings                     |
+| MCS Expansion      | 4       | Multi-char sigs, no single-char MCS, countersign MCS        |
+| Chains             | 4       | CANONIZE chains, per-item emission, subscript blocks        |
+| Nested Subscripts  | 2       | Nested blocks, mixed inline ops                             |
+| Complex Examples   | 3       | AB=>A B, AB==CD, AB>C                                       |
+| Literal Edge Cases | 7       | Bare literals, block mixing, parse error for literal owners |
+| Decompiler         | 14      | Round-trips, MCS recovery, level inference, Mod32 compat    |
+| Output I/O         | 4       | Binary/JSON/JSONL round-trips                               |
+| Encode/Decode      | 4       | Sig-only, sig-to-sig, sig-to-literal, list                  |
+| KScript API        | 6       | Inline source, output formats, base extension, file loading |
+| **Total**          | **~72** |                                                             |

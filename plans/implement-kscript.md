@@ -61,10 +61,8 @@ from dataclasses import dataclass
 
 class TokenType(Enum):
     COUNTERSIGN = auto()    # ==
-    CANONIZE_FWD = auto()   # =>
-    CANONIZE_BWD = auto()   # <=
-    CONNOTATE_FWD = auto()  # >
-    CONNOTATE_BWD = auto()  # <
+    CANONIZE = auto()       # =>
+    CONNOTATE = auto()      # >
     UNDERSIGN = auto()      # =
     SIGNATURE = auto()      # [A-Z]+
     LITERAL = auto()        # numbers and quoted strings
@@ -84,7 +82,7 @@ class Token:
 
 ### Acceptance
 
-- [ ] 13 enum values defined
+- [ ] 11 enum values defined
 - [ ] `Token` is frozen (immutable, hashable)
 - [ ] All fields present: type, value, line, column
 
@@ -107,14 +105,15 @@ class Lexer:
 ### Rules (in priority order)
 
 1. At line start: count leading spaces/tabs → emit INDENT/DEDENT (§2.4)
-2. Multi-char operators **before** single-char: `==`, `=>`, `<=` before `=`, `>`, `<` (§2.3.1)
+2. Multi-char operators **before** single-char: `==`, `=>` before `=`, `>` (§2.3.1)
 3. Identifiers `[A-Z][A-Z0-9]*`: `SIGNATURE` if all uppercase alpha (`isupper() and isalpha()`), else **LexerError** (§2.3.2). Non-uppercase identifiers are not valid — use quoted strings instead.
 4. After an identifier, consume inline `(...)` comment without emitting (§2.3.6)
 5. Numbers `[0-9]+` → `LITERAL` (§2.3.3)
 6. Quoted strings `"..."` with backslash escapes, stop at newline if unterminated → `LITERAL` (§2.3.4)
 7. Comments `(...)` with nested parens, multi-line → `COMMENT` (§2.3.5)
-8. Any other character → `LexerError`
-9. At EOF: close all remaining indent levels with DEDENT, emit EOF (§2.4)
+8. `<` is an unexpected character → `LexerError`
+9. Any other character → `LexerError`
+10. At EOF: close all remaining indent levels with DEDENT, emit EOF (§2.4)
 
 ### Indentation algorithm
 
@@ -155,13 +154,12 @@ class LexerError(Exception):
 | 4 | `"hello"` | `[LexerError]` — lowercase identifiers not valid, use quoted `"hello"` instead |
 | 5 | `'"hello world"'` | `[LITERAL(value='"hello world"'), EOF]` |
 | 6 | `"A == B"` | `[SIGNATURE, COUNTERSIGN, SIGNATURE, EOF]` |
-| 7 | `"A => B"` | `[SIGNATURE, CANONIZE_FWD, SIGNATURE, EOF]` |
-| 8 | `"A <= B"` | `[SIGNATURE, CANONIZE_BWD, SIGNATURE, EOF]` |
-| 9 | `"A > B"` | `[SIGNATURE, CONNOTATE_FWD, SIGNATURE, EOF]` |
-| 10 | `"A < B"` | `[SIGNATURE, CONNOTATE_BWD, SIGNATURE, EOF]` |
-| 11 | `"A = B"` | `[SIGNATURE, UNDERSIGN, SIGNATURE, EOF]` |
-| 12 | `"A =>\n  B\n  C"` | `[SIGNATURE, CANONIZE_FWD, NEWLINE, INDENT, NEWLINE, SIGNATURE, NEWLINE, SIGNATURE, DEDENT, EOF]` |
-| 13 | `"A (inline) => B"` | `[SIGNATURE, COMMENT, CANONIZE_FWD, SIGNATURE, EOF]` |
+| 7 | `"A => B"` | `[SIGNATURE, CANONIZE, SIGNATURE, EOF]` |
+| 8 | `"A > B"` | `[SIGNATURE, CONNOTATE, SIGNATURE, EOF]` |
+| 9 | `"A < B"` | `[LexerError]` — `<` is not a valid operator |
+| 10 | `"A = B"` | `[SIGNATURE, UNDERSIGN, SIGNATURE, EOF]` |
+| 12 | `"A =>\n  B\n  C"` | `[SIGNATURE, CANONIZE, NEWLINE, INDENT, NEWLINE, SIGNATURE, NEWLINE, SIGNATURE, DEDENT, EOF]` |
+| 13 | `"A (inline) => B"` | `[SIGNATURE, COMMENT, CANONIZE, SIGNATURE, EOF]` |
 | 14 | `"A => B\n(multi\nline)\nC => D"` | COMMENT spans both newlines, value contains "multi" and "line" |
 | 15 | `"(outer (inner) outer)"` | Single COMMENT token with nested parens |
 | 16 | `""` | `[EOF]` only |
@@ -171,6 +169,7 @@ class LexerError(Exception):
 ### Gotchas
 
 - **`==` vs `=`**: Two-char match first. Source `A == B` must not produce SIGNATURE, UNDERSIGN, UNDERSIGN, SIGNATURE.
+- **`<` is invalid**: The `<` character is now a lexer error. Scripts must use `=` (UNDERSIGN) or `>` (CONNOTATE) instead of `<` (was CONNOTATE_BWD).
 - **Inline comments**: After reading an identifier, check for `(` and consume the whole comment without emitting. This means `A(comment)` produces just SIGNATURE("A").
 - **NEWLINE resets at_line_start**: After emitting NEWLINE, set flag so next token dispatch handles indentation.
 - **Pending INDENT/DEDENT**: Decreased indent may produce multiple DEDENT tokens. Buffer them and emit one per `_next_token()` call.
@@ -261,8 +260,8 @@ primary_construct ::= sig ( inline_op node )?
 node        ::= sig | literal
 sig         ::= SIGNATURE
 literal     ::= LITERAL
-chain_op    ::= CANONIZE_FWD | CANONIZE_BWD | CONNOTATE_FWD | CONNOTATE_BWD
-inline_op   ::= COUNTERSIGN | CONNOTATE_FWD | UNDERSIGN
+chain_op    ::= CANONIZE
+inline_op   ::= COUNTERSIGN | CONNOTATE | UNDERSIGN
 ```
 
 ### Parse algorithm (recursive descent)
@@ -312,9 +311,9 @@ parse_primary_construct():
 
 ### Key decisions
 
-1. **`>` is always inline.** `try_inline_op()` checks for COUNTERSIGN, CONNOTATE_FWD, UNDERSIGN — in that order. It is called before `try_chain_op()`, so `>` is consumed inline first. (§2.2)
+1. **`>` is always inline.** `try_inline_op()` checks for COUNTERSIGN, CONNOTATE, UNDERSIGN — in that order. It is called before `try_chain_op()`, so `>` is consumed inline first.
 
-2. **Multiple primaries at same indent.** After parsing the first primary_construct, keep parsing more while the next token is SIGNATURE and at the same/greater column. These form the implicit group for BWD chains.
+2. **Multiple primaries at same indent.** After parsing the first primary_construct, keep parsing more while the next token is SIGNATURE and at the same/greater column.
 
 3. **Insignificant tokens.** `skip_insignificant()` consumes NEWLINE and COMMENT tokens between grammar elements. Never skip inside a primary_construct (between sig and its operator).
 
@@ -332,14 +331,11 @@ parse_primary_construct():
 | # | Input | AST assertion |
 |---|-------|---------------|
 | 1 | `"A"` | `constructs[0].inner` is `[PrimaryConstruct(sig="A")]`, no chain |
-| 2 | `"A => B"` | `chain_op == CANONIZE_FWD`, `chain_right.inner` is `[PrimaryConstruct(sig="B")]` |
-| 3 | `"A < B"` | `chain_op == CONNOTATE_BWD` |
-| 4 | `"A > 1 < B"` | `inner[0].op == CONNOTATE_FWD`, `chain_op == CONNOTATE_BWD` |
-| 5 | `"A => B C <= D"` | Top-level `chain_op == CANONIZE_FWD`, `chain_right.chain_op == CANONIZE_BWD` |
-| 6 | `"A =>\n  B\n  C"` | `chain_right.inner` is `Block` with ≥1 construct |
-| 7 | `"A B <= CD"` | `inner` has 2 primaries |
-| 8 | `"1 => A"` | `ParseError` raised |
-| 9 | `""` | Empty constructs list, no error |
+| 2 | `"A => B"` | `chain_op == CANONIZE`, `chain_right.inner` is `[PrimaryConstruct(sig="B")]` |
+| 3 | `"A =>\n  B\n  C"` | `chain_right.inner` is `Block` with ≥1 construct |
+| 4 | `"A B => CD"` | `inner` has 2 primaries |
+| 5 | `"1 => A"` | `ParseError` raised |
+| 6 | `""` | Empty constructs list, no error |
 
 ---
 
@@ -405,8 +401,8 @@ class Compiler:
         self._seen: set[tuple[int, ...]] = set()
         self._sig_levels = {
             "COUNTERSIGN": "S1", "UNDERSIGN": "S1", "IDENTITY": "S1",
-            "CANONIZE_FWD": "S2", "CANONIZE_BWD": "S2",
-            "CONNOTATE_FWD": "S3", "CONNOTATE_BWD": "S3",
+            "CANONIZE": "S2",
+            "CONNOTATE": "S3",
             "UNSIGNED": "S4",
         }
 
@@ -430,7 +426,7 @@ class Compiler:
 if len(sig) <= 1: return False
 for each char in sig:
     _emit(char, None, "UNSIGNED")
-_emit(sig, list(sig_chars), "CANONIZE_FWD")    # {ABC: [A,B,C]}
+_emit(sig, list(sig_chars), "CANONIZE")    # {ABC: [A,B,C]}
 # Note: the unsigned compound {ABC: None} is emitted by the caller
 # via the normal unsigned path after _emit_mcs returns
 return True
@@ -455,8 +451,8 @@ if op == UNDERSIGN:
     if sig == node: emit(sig, None, "IDENTITY")
     else: emit(sig, node, "UNDERSIGN")
 
-if op == CONNOTATE_FWD:
-    emit(sig, node, "CONNOTATE_FWD")
+if op == CONNOTATE:
+    emit(sig, node, "CONNOTATE")
 ```
 
 **Test cases for basic ops:**
@@ -490,40 +486,13 @@ First: emit inline ops for all left primaries that have them.
 
 Then branch by chain_op:
 
-**CANONIZE_FWD (`=>`):**
+**CANONIZE (`=>`):**
 ```
 owner = last_primary.node if present, else last_primary.sig
 emit_mcs(owner) if owner is signature
 right_items = flatten_to_items(right_construct)
 for each item in right_items:
-    emit(owner, item_id(item), "CANONIZE_FWD")
-compile_construct(right)   # recursive
-```
-
-**CANONIZE_BWD (`<=`):**
-```
-owner = first right item's sig
-emit_mcs(owner)
-for each left_primary:
-    emit(owner, left_primary.sig, "CANONIZE_BWD")
-compile_construct(right)   # recursive
-```
-
-**CONNOTATE_BWD (`<`):**
-```
-owner = first right item's sig
-emit_mcs(owner)
-last_left_owner = get_owner(left_primaries[-1])
-emit(owner, last_left_owner, "CONNOTATE_BWD")
-compile_construct(right)   # recursive
-```
-
-**CONNOTATE_FWD chain (`>`):**
-```
-# UNREACHABLE in practice (§2.2 note), but implement for grammar completeness:
-owner = get_owner(left_primaries[-1])
-nodes = [item_id(item) for item in right_items]
-emit(owner, nodes, "CONNOTATE_FWD")
+    emit(owner, item_id(item), "CANONIZE")
 compile_construct(right)   # recursive
 ```
 
@@ -550,14 +519,9 @@ if Literal: return item.id
 | # | Source | Entries must include |
 |---|--------|---------------------|
 | 1 | `"A => B => C"` | `{A: B}`, `{B: C}`, `{C: None}` |
-| 2 | `"A => B <= C"` | `{A: B}`, `{C: B}` |
-| 3 | `"A > B > C"` | `{A: B}`, `{B: C}` |
-| 4 | `"A > B < C"` | `{A: B}`, `{C: B}` |
-| 5 | `"A => B C"` | `{A: B}`, `{A: C}` (per-item) |
-| 6 | `"A =>\n  B\n  C"` | `{A: B}`, `{A: C}` (subscript block) |
-| 7 | `"A B <= CD"` | `{CD: A}`, `{CD: B}` |
-| 8 | `"AB > C"` | `{AB: C}` (with MCS for AB) |
-| 9 | `"C < AB"` | `{AB: C}` (with MCS for AB) |
+| 2 | `"A => B C"` | `{A: B}`, `{A: C}` (per-item) |
+| 3 | `"A =>\n  B\n  C"` | `{A: B}`, `{A: C}` (subscript block) |
+| 4 | `"AB > C"` | `{AB: C}` (with MCS for AB) |
 
 ### 5D: Subscript blocks and nested chains (1h)
 
@@ -596,20 +560,11 @@ MHALL == SVO =>
   V = H
   O = ALL =>
     A = D
-    L = M < MOD => A B
-    L > O < BS =>
-      B = "baby"
-      S = "sheep"
+    L = M
+    L > O
 ```
 
 > **Tip:** Use Mod64Tokenizer for tests to avoid bit collisions in Mod32's smaller range. Write a helper `compile_and_dump(source)` that prints all decoded entries for comparison.
-
-### Gotchas
-
-- **Dedup is by encoded pair, not source text.** `{A: B}` encoded twice = one entry. But `{A: B}` and `{A: C}` are different entries even if B and C have the same packed value.
-- **MCS dedup: `{L: None}` from MHALL's MCS is emitted once** even though L appears twice in "MHALL". Second is dropped by dedup.
-- **`_encode_node` for multi-char literals** must encode each character individually via `tokenizer.encode(char)`, not just the first character. The tokenizer auto-detects non-uppercase and uses literal encoding.
-- **Reverse countersign** is NOT emitted for literal nodes. `A == 42` → `{A: "42"}` only, no `{"42": A}`.
 
 ---
 
@@ -887,14 +842,14 @@ Organize into classes matching the spec sections:
 
 ```
 TestTokenType        — §2.1 (2 tests)
-TestLexer            — §2   (16 tests)
-TestParserAST        — §3   (9 tests)
-TestCompilerBasic    — §5.5 (10 tests)
+TestLexer            — §2   (14 tests)
+TestParserAST        — §3   (5 tests)
+TestCompilerBasic    — §5.5 (8 tests)
 TestMCSExpansion     — §5.3 (4 tests)
-TestChains           — §5.5 (6 tests)
+TestChains           — §5.5 (4 tests)
 TestNestedSubscripts — §5.6 (2 tests)
-TestComplexExamples  — §9   (5 tests)
-TestLiteralEdgeCases — §3.1 (8 tests)
+TestComplexExamples  — §9   (3 tests)
+TestLiteralEdgeCases — §3.1 (7 tests)
 TestDecompiler       — §6   (12 tests)
 TestDecompilerMCS    — §6.1 (3 tests)
 TestOutputIO         — §7   (4 tests)
@@ -1001,8 +956,8 @@ kscript/
 ```
 
 **Total files:** 9  
-**Total LOC estimate:** ~1800  
-**Total test count:** ~92
+**Total LOC estimate:** ~1700  
+**Total test count:** ~83
 
 ---
 

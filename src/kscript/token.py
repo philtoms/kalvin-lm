@@ -8,12 +8,10 @@ class TokenType(Enum):
     """Token types for KScript language.
 
     Operators (construct types):
-        COUNTERSIGN:   ==  (bidirectional link)
-        CANONIZE_FWD:  =>  (forward canonization)
-        CANONIZE_BWD:  <=  (backward canonization)
-        CONNOTATE_FWD: >   (forward connotation)
-        CONNOTATE_BWD: <   (backward connotation)
-        UNDERSIGN:     =   (undersign link)
+        COUNTERSIGN:  ==  (bidirectional link)
+        CANONIZE:     =>  (canonization)
+        CONNOTATE:    >   (connotation)
+        UNDERSIGN:    =   (undersign link)
 
     Node types:
         SIGNATURE: [A-Z]+    (uppercase identifier - can be construct owner)
@@ -31,10 +29,8 @@ class TokenType(Enum):
 
     # Construct operators
     COUNTERSIGN = auto()   # ==
-    CANONIZE_FWD = auto()  # =>
-    CANONIZE_BWD = auto()  # <=
-    CONNOTATE_FWD = auto() # >
-    CONNOTATE_BWD = auto() # <
+    CANONIZE = auto()      # =>
+    CONNOTATE = auto()     # >
     UNDERSIGN = auto()     # =
 
     # Node types

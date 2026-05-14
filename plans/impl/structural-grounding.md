@@ -19,7 +19,7 @@ countersignature. Extended cogitation adds the ability to reshape these
 klines toward canonical status, emitting proposals for teacher ratification.
 
 These two changes enable the training loop described in
-`docs/training-loop.md`.
+`docs/learning-and-training.md`.
 
 ### What Stays the Same
 
@@ -27,7 +27,7 @@ These two changes enable the training loop described in
 - The fast path (Phases 1–5 of rationalisation) is unchanged.
 - Routing (`_route`) is unchanged — node-membership test, no model call.
 - The `expand()` algorithm and `QueryCandidate` are unchanged.
-- Sampling (temperature, top_k, top_p) is unchanged.
+- The Cogitator processes all yields without filtering.
 - Events, serialization, KScript are unchanged.
 - All specs (kline, signature, tokenizer, stm, significance, kscript) are
   unchanged.
@@ -44,7 +44,7 @@ These two changes enable the training loop described in
 
 ---
 
-## 1. Phase A: Structural Grounding (Challenge 6)
+## 1. Phase A: Structural Grounding (Challenge 1)
 
 **Estimate:** 1–2 days  
 **Risk:** Low
@@ -188,8 +188,8 @@ The countersignature check has been moved to `rationalise()` Phase 3
 #### agent.py: Cogitator.\_run_work_item() — Boundary S1
 
 When a QC is classified as S1 by boundary but the candidate is not
-structurally S1 (e.g. temperature-promoted S2), don't promote. Still
-call on_s1 for re-rationalisation — the re-rationalisation may discover
+structurally S1, don't promote. Still call on_s1 for re-rationalisation
+— the re-rationalisation may discover
 new structure:
 
 ```python
@@ -227,7 +227,7 @@ The candidate is a model kline (from `model.where()`), so
 
 ---
 
-## 2. Phase A+: Extended Cogitation (Challenge 6b)
+## 2. Phase A+: Extended Cogitation (Challenge 2)
 
 **Estimate:** 3–5 days  
 **Risk:** Medium  
@@ -459,7 +459,7 @@ Phase A+: Extended Cogitation
 | `tests/test_agent.py` | Add tests for structural grounding in cogitation                                                                                                                                 |
 | `specs/agent.md`      | Update §Cogitation with S2 expansion phase                                                                                                                                       |
 | `specs/model.md`      | Add misfit classification and expansion API                                                                                                                                      |
-| `docs/roadmap.md`     | Update status of Challenge 6 and 6b                                                                                                                                              |
+| `docs/roadmap.md`     | Update status of Challenges 1 and 2 |
 
 ---
 
@@ -475,10 +475,10 @@ Phase A+: Extended Cogitation
    the re-rationalisation may discover new structure. But it won't promote
    participating klines (only structural S1 does that).
 
-3. **Temperature-promoted S1 boundaries:** When τ > 1, the Cogitator may
-   classify S2 QCs as S1. These should NOT trigger promotion unless the
-   candidate is also structurally S1. The structural check guards against
-   premature promotion.
+3. **Boundary-classified S1 without structural S1:** When the Cogitator
+   classifies an S2 QC as S1 by boundary, it should NOT trigger promotion
+   unless the candidate is also structurally S1. The structural check guards
+   against premature promotion.
 
 4. **Performance of `promote_participating`:** Scanning all STM klines for
    matching signatures is O(STM size). For STM bound 256, this is fast.
@@ -494,7 +494,6 @@ Phase A+: Extended Cogitation
    model automatically, or only emitted as proposals? Current design:
    emitted as proposals only (teacher ratifies).
 
-7. **Interaction with sampling:** Should expansion proposals count against
-   top-k and top-p budgets? Current design: they're emitted after the
-   expand() stream completes, so they don't interact with sampling.
-   Future work may integrate them into the stream.
+7. **Expansion proposal depth:** How many expansion proposals to generate
+   per work item? Current design: all valid proposals are emitted. Future
+   work may add depth controls.

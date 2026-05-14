@@ -131,7 +131,7 @@ Higher significance = closer match = less work needed. The ordering is strict: *
 Distance is a single integer accumulated from graph hops. S3 connotation hops
 are packed via `_pack(hop_count + _S3_BIAS)` (quadratic with tier bias),
 ensuring S3 distances moderately exceed S2 distances while keeping both
-tiers close enough for temperature to bridge. The `_pack` function (d²)
+tiers close enough for bridging via graph expansion. The `_pack` function (d²)
 compresses small distances together and spreads large distances apart.
 
 Key insight: **S1 and S4 are "significants"** — the KLine is either confirmed or entirely novel. No further processing needed. **S2 and S3 are "rationals"** — partial relationships that require deeper investigation through **cogitation**.
@@ -231,32 +231,23 @@ Cogitation is background processing of rational KLines (S2/S3). The Cogitator
 receives pre-routed work items, expands each through `model.expand()` to
 discover intermediate connotations, and classifies each result against
 significance boundaries. Expansion yields are consumed as a **stream** —
-sampling parameters control which yields are processed and when exploration stops.
+all yields from `model.expand()` are processed without filtering.
 
-### Response Sampling
+### Response Processing
 
-The Cogitator applies three sampling parameters to the `expand()` stream.
-Values follow LLM convention so user intuition transfers directly:
-
-| Parameter     | Type    | Default | Range          | Purpose                    |
-| ------------- | ------- | ------- | -------------- | -------------------------- |
-| `temperature` | float   | 1.0     | (0, ∞)         | Boundary shift             |
-| `top_k`       | int     | 40      | [0, ∞). 0=∞    | Exploration budget per item|
-| `top_p`       | float   | 0.95    | (0, 1.0]       | Cumulative evidence cutoff |
-
-Temperature shifts the three significance boundaries (S1|S2, S2|S3, S3|S4).
-Top-k and top-p then truncate the stream. All three compose in a single
-pass with O(1) state — no batch collection.
+The Cogitator processes all yields from the `expand()` stream without
+filtering. Every connotation discovered during graph expansion is evaluated,
+and proposals can be emitted at any significance level. S1 and S4 are
+"significants" — confirmed or novel — and are acted on immediately.
+S2 and S3 are "rationals" — partial relationships that undergo expansion.
 
 #### Significance Boundaries
 
-Three boundaries classify yielded significance values:
+Three fixed boundaries classify yielded significance values:
 
 ```
 D_MAX ── S1|S2 ──────── S2|S3 ──────────── S3|S4 ── 0
 ```
-
-Base positions (τ = 1):
 
 | Boundary | Position                    | Meaning                        |
 | -------- | --------------------------- | ------------------------------ |
@@ -273,73 +264,25 @@ Classification is a cascade:
   else          →  S4
 ```
 
-Raw significance values are never mutated. Boundaries are computed once per
-work item and applied to every yield.
+Raw significance values are never mutated. Boundaries are fixed by the
+distance algorithm and are not parameterized.
 
-#### Temperature
+#### All Yields Processed
 
-Temperature shifts all three boundaries by the same amount, with capping
-at the extremes:
-
-| Direction | S1\|S2         | S2\|S3       | S3\|S4     | Effect                      |
-| --------- | -------------- | ------------ | ---------- | --------------------------- |
-| τ > 1     | drops ↓        | drops ↓      | capped at 0 | More S2→S1, more S3→S2     |
-| τ < 1     | capped at D_MAX-1 | rises ↑   | rises ↑    | Fewer S2→S1, more S3→S4    |
-
-High temperature lowers the S1|S2 boundary, allowing near-S1 S2 connotations
-to be classified as S1 and immediately published. Low temperature raises
-the S3|S4 boundary, demoting weak S3 connotations to S4.
-
-The shift function is exploratory — linear, inverse, or per-boundary scaling
-are all options to tune. Currently: `shift = _TEMP_SCALE × (τ - 1)`.
-
-#### Top-k
-
-Caps the number of connotations processed per work item. Each QC that is
-not demoted to S4 increments a counter; when it reaches `k`, the generator
-is broken out of. Everything after is demoted — never classified, never
-checked for countersignature.
-
-Top-k is the **promotion budget**: it directly controls how many chances each
-work item gets to discover an S1.
-
-#### Top-p
-
-Tracks cumulative significance across the stream. When the total reaches
-`top_p × D_MAX`, the generator is broken out of. This is an adaptive quality
-gate: when the first few connotations carry high significance, the target is
-reached quickly (the agent "locks on"). When significance is diffuse, the
-agent explores more widely.
-
-Top-p is the **demotion threshold**: it decides when further exploration has
-diminishing returns.
+The Cogitator processes all connotations yielded by `expand()`. There is no
+truncation or early stopping — every discovered relationship is evaluated for
+countersignature and expansion. This ensures the teacher receives the fullest
+possible set of proposals for each work item.
 
 ### Streaming Pipeline
 
 ```
 run_work_item(WorkItem(query, candidate)):
-  (s12, s23, s34) = boundaries(temperature)    # computed once
-  evidence_target = top_p × D_MAX
-  count = 0, cumulative = 0
-
   for qc in model.expand(query, candidate):
-    band = classify(qc.significance, s12, s23, s34)
-
-    if band == "S4":
-      continue                    # demote: below S3|S4 boundary
-
-    count += 1
-    cumulative += qc.significance
-
-    if band == "S1":
-      on_s1(query, candidate)     # promote immediately
+    if qc.significance >= s12:
+      on_s1(query, candidate)     # S1: promote immediately
     else:
-      process(qc)                 # S2/S3: countersignature check
-
-    if cumulative >= evidence_target:
-      break                       # demote: sufficient evidence
-    if 0 < top_k <= count:
-      break                       # demote: budget exhausted
+      process(qc)                 # S2/S3: expansion check
 ```
 
 ### Countersignature
@@ -380,8 +323,7 @@ new S2/S3 candidates that are appended to the backlog. Countersignature
 (ratification) is checked during re-rationalisation in the fast lane
 (Phase 3: Assess). The streaming approach handles this naturally: each
 `expand()` call operates on the model state at the time of the yield, and
-re-rationalisation adds new work items processed in their own turn. Sampling
-parameters apply independently to each work item's stream.
+re-rationalisation adds new work items processed in their own turn.
 
 The cogitation thread runs asynchronously and emits a `"done"` event when
 the backlog has been empty for a timeout (default 2 seconds).
