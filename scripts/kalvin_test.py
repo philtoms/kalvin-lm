@@ -6,13 +6,14 @@ sys.path.insert(0, 'src')
 from kscript.compiler import compile_source
 from kalvin.agent import Agent
 from kalvin.mod_tokenizer import Mod32Tokenizer
-from kalvin.significance import D_MAX
+from kalvin.model import D_MAX
 
 source = '''
-(S3 ~> S1)
+MHALL => SVO
+(S3 ~> S1
 A > 1 < B
 A = B
-(A = BC => A B C
+A = BC => A B C
  AB > B
  C = 2)
 
@@ -55,7 +56,7 @@ def on_event(e):
         done_event.set()
     else:
         level = significance_level(e.significance)
-        print(f'  {e.kind}: {e.query.dbg_text} -> {e.value.dbg_text}, {level}')
+        print(f'  {e.kind}: {e.query.dbg_text} -> {e.proposal.dbg_text}, {level}')
 
 
 agent.events.subscribe(on_event)

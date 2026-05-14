@@ -35,14 +35,14 @@ The sequence is:
 
 This replaces the previous model where only true S1 promoted to frame. The promotion trigger is ratification, not significance level.
 
-| Kline type | How it enters STM | Promoted? | When |
-|---|---|---|---|
-| Canonical S1 (all-literal, self-grounded) | Fast path | Yes | Immediately (self-ratifying) |
-| Countersigned S1 | Cogitation discovers countersignature | Yes | When countersignature detected |
-| Teacher-ratified kline | Cogitation → proposal → teacher countersigns | Yes | After teacher ratification |
-| S4 identity kline (involved in ratification) | No candidates → novel | Yes | After ratification of related kline |
-| S2/S3 kline (involved in ratification) | Cogitation | Yes | After ratification of related kline |
-| S2/S3 kline (not involved in ratification) | Cogitation | No | Stays in STM for further cogitation |
+| Kline type                                   | How it enters STM                            | Promoted? | When                                |
+| -------------------------------------------- | -------------------------------------------- | --------- | ----------------------------------- |
+| Canonical S1 (all-literal, self-grounded)    | Fast path                                    | Yes       | Immediately (self-ratifying)        |
+| Countersigned S1                             | Cogitation discovers countersignature        | Yes       | When countersignature detected      |
+| Teacher-ratified kline                       | Cogitation → proposal → teacher countersigns | Yes       | After teacher ratification          |
+| S4 identity kline (involved in ratification) | No candidates → novel                        | Yes       | After ratification of related kline |
+| S2/S3 kline (involved in ratification)       | Cogitation                                   | Yes       | After ratification of related kline |
+| S2/S3 kline (not involved in ratification)   | Cogitation                                   | No        | Stays in STM for further cogitation |
 
 ---
 
@@ -147,6 +147,7 @@ teacher countersigns:  agent.rationalise(Kline(B | C, [A]))
 ```
 
 This means:
+
 - **Grounding is structural.** S1 is determined by interrogating kline structure — signature describes nodes, or countersigned — not by boundary classification.
 - **Countersignature is ratification.** The teacher creates the structural relationship that makes the kline S1.
 - **Promotion follows ratification.** All klines involved in the ratification process are promoted, regardless of their individual significance level. This enriches the frame with S4 identity klines and S2/S3 partial klines that participated.
@@ -225,7 +226,7 @@ The `RationaliseEvent` carries `query` and `proposal` klines. The teacher correl
 
 ```
 Agent:
-  query:     {MHALL: [S, V, O]}
+  query:     {MHALL: [M, H, A, L, L]}
   candidate: {MHALL: [S, V, O]}  (exists in model)
   route:     S1 (all nodes match, signature describes nodes)
   action:    auto-promote (self-ratifying)
@@ -374,33 +375,33 @@ Already exists in the spec. The teacher uses it directly: `event_kline == expect
 
 ## MVP vs. Future
 
-| Capability | MVP | Future |
-|---|---|---|
-| Trainer comparison | Exact kline equality | Reentrant rationalisation (kalvin-as-tutor) |
-| Sampling parameters | Agent-level properties, adjustable between calls | KScript metadata encoding |
-| Frame model | One frame per script (single agent) | Multi-agent orchestration for complex curricula |
-| S1 promotion | Structural grounding, promotion after ratification | Full ratification semantics |
-| Monotonicity | Grounding is constructive | Verified convergence metrics |
-| Teacher | External coordinator | Kalvin-as-tutor (reentrant) |
+| Capability          | MVP                                                | Future                                          |
+| ------------------- | -------------------------------------------------- | ----------------------------------------------- |
+| Trainer comparison  | Exact kline equality                               | Reentrant rationalisation (kalvin-as-tutor)     |
+| Sampling parameters | Agent-level properties, adjustable between calls   | KScript metadata encoding                       |
+| Frame model         | One frame per script (single agent)                | Multi-agent orchestration for complex curricula |
+| S1 promotion        | Structural grounding, promotion after ratification | Full ratification semantics                     |
+| Monotonicity        | Grounding is constructive                          | Verified convergence metrics                    |
+| Teacher             | External coordinator                               | Kalvin-as-tutor (reentrant)                     |
 
 ---
 
 ## Relationship to Other Documents
 
-| Document | Relationship |
-|----------|-------------|
-| `docs/learning.md` | The *principles* — why the system learns, what agency means, and why S1 requires ratification. |
-| `docs/training-schedule.md` | The *practice* — what to teach (curriculum design), how to transition from training to operations (operational harness), and the Mary's World (MW) reference scenario. |
-| This document | The *mechanism* — how the training loop works in terms of existing APIs and data structures. |
-| `docs/extended-cogitation.md` | The *S2 expansion design* — how the Cogitator reshapes partial understanding into proposals. |
+| Document                      | Relationship                                                                                                                                                           |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/learning.md`            | The _principles_ — why the system learns, what agency means, and why S1 requires ratification.                                                                         |
+| `docs/training-schedule.md`   | The _practice_ — what to teach (curriculum design), how to transition from training to operations (operational harness), and the Mary's World (MW) reference scenario. |
+| This document                 | The _mechanism_ — how the training loop works in terms of existing APIs and data structures.                                                                           |
+| `docs/extended-cogitation.md` | The _S2 expansion design_ — how the Cogitator reshapes partial understanding into proposals.                                                                           |
 
 The key connections:
 
-| learning.md principle | training-loop.md mechanism |
-|---|---|
-| "Temperature proposes; the trainer disposes" | Proposals in STM, teacher countersigns to ratify |
-| "Learning is recursive rationalisation" | Each scaffolding step is rationalised through the same agent |
-| "S1 is ratified, not claimed" | Countersignature by teacher creates structural S1, all participating klines promoted |
-| "Agency must be exercised" | Cogitation (study) runs on the agent's background thread independently |
-| "The system learns what it doesn't know" | S4 identity klines and failed proposals identify gaps for scaffolding |
-| "Learning is constructive" | Frame is append-only, all ratified klines promoted regardless of significance |
+| learning.md principle                        | training-loop.md mechanism                                                           |
+| -------------------------------------------- | ------------------------------------------------------------------------------------ |
+| "Temperature proposes; the trainer disposes" | Proposals in STM, teacher countersigns to ratify                                     |
+| "Learning is recursive rationalisation"      | Each scaffolding step is rationalised through the same agent                         |
+| "S1 is ratified, not claimed"                | Countersignature by teacher creates structural S1, all participating klines promoted |
+| "Agency must be exercised"                   | Cogitation (study) runs on the agent's background thread independently               |
+| "The system learns what it doesn't know"     | S4 identity klines and failed proposals identify gaps for scaffolding                |
+| "Learning is constructive"                   | Frame is append-only, all ratified klines promoted regardless of significance        |

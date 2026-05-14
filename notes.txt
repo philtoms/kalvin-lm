@@ -1260,3 +1260,145 @@ A simplification of frame semantics in training loops:
 The current training loop model describes how a frame is created for every call to rationalise and requires frame stack management as well as mechanism to share newer frame data with older frames. This design is complicated and can be simplified by reducing the number of frames down to one per script. This removes the need to create frames on a call to rationalise, to be replaced with a simple agent construction when a new script is processed. All training loop processing operates in the scope of a single frame so no additional sharing mechanism is required. Promotion is simply from STM to model frame.
 
 This does effect how sampling parameters are handled, but these can also be simplified to externally facing agent properties. 
+
+Consider the following introduction to KScript and how it is used to train a Kalvin system. The intent is to give a high level overview without going into detail about kalvin, significance, or training loops etc.
+
+KScript is a small DSL for compiling scripted kline constructions for the purpose of training a Kalvin system to recognise and respond to user input. It is designed to work with the Mod32Tokenizer which supports a limited vocabulary of single character tokens. The KScript language is quite incapable of expressing semantic relationships beyond those provided by a limited set of operators that describe kline topological structure. In this way scripts, limited by vocabulary and topology, maintain focus on training Kalvin to recognise and understand kline relationships.
+
+Kalvin is a rationalising system that accepts, thinks and talks in klines. KLines are node-like structures that combine to describe the world in which Kalvin operates. There are only two kinds of kline structures: identities and relationships. A relationship kline is a node that links to other klines. An identity kline is a node with no further links. Therefore training a Kalvin system to understand some aspect of the world involves teaching it to construct its understanding in terms of kline relationships. 
+
+A relationship kline holds one or more nodes. The head node is called the query. The remaining nodes are collectively called the value. KScript compiles kline scripts into structures that preserve the relationships expressed through syntax. The simplest query-value kline script defines an acyclic relationship between two identities Q and V:
+
+```
+    Q = V
+```
+
+compiles to a set of three klines:
+
+```
+  [
+    {Q: [V]},
+    {Q: None},
+    {V: None},
+  ]
+```
+
+The first kline captures the relationship between Q and V as nodes that link to appropriate identity klines. The symbols Q and V represent the single value encodings for those characters. The remaining two klines are the identities.
+
+KScript provides six core relationship operators. For brevity, identity klines are omitted from the table below:
+
+┌────────────┬───────────────┬────────────────────┐
+│ Operator   │ Name          │ Output             │
+├────────────┼───────────────┼────────────────────┤
+│ Q = V      │ UNDERSIGN     │ {Q: [V]}           │
+├────────────┼───────────────┼────────────────────┤
+│ Q == V     │ COUNTERSIGN   │ {Q: [V]}, {V: [Q]} │
+├────────────┼───────────────┼────────────────────┤
+│ Q > V      │ CONNOTATE_FWD │ {Q: [V]}           │
+├────────────┼───────────────┼────────────────────┤
+│ Q => V₁ V₂ │ CANONIZE_FWD  │ {Q: [V₁, V₂]}      │
+├────────────┼───────────────┼────────────────────┤
+│ V < Q      │ CONNOTATE_REV │ {Q: [V]}           │
+├────────────┼───────────────┼────────────────────┤
+│ V₁ V₂ <= Q │ CANONIZE_REV  │ {Q: [V₁, V₂]}      │
+└────────────┴───────────────┴────────────────────┘
+
+UNDERSIGN and CONNOTATE_FWD (and their reversals) produce identical kline sets. The distinction between them is not structural but directional: UNDERSIGN expresses a named association, while CONNOTATE expresses a directed implication. The difference is meaningful to Kalvin during traversal but is not visible in the static kline output.
+
+KScript also supports indented chaining, whereby a value node on one line becomes the query of an indented block that follows. Finally, comments are allowed between brackets. A typical script:
+
+```
+    (Mary had a little lamb - anything in brackets is a comment btw)
+    MHALL = SVO =>
+      M < S(ubject)
+      H < V(verb)
+      ALL = O(bject) =>
+        A < D(et)
+        L < M(od)
+        L < O
+```
+
+The parenthetical annotations such as S(ubject) serve double duty: they are KScript comments that also convey human-readable meaning. The training value of this script is not so much to teach Kalvin the famous nursery rhyme, or even a rudimentary understanding of linguistics. It is to establish significant relationships that Kalvin will be able to reconstruct in the pursuit of understanding. The granularity of understanding is intentionally subjective. We see a nursery rhyme broken down and explained as SVO. Kalvin sees relationships between opaque numbers. Meaning for us is found in semantics. Meaning for Kalvin is found in shape. 
+
+Consider this next script that Kalvin might receive (after being compiled):
+
+```
+  (What did mary have?)
+  WDMH => M H W
+```
+
+Given the relationships established by the first script — MHALL = SVO, M < S, H < V, ALL = O — the query WDMH => M H W traces M and H back through subject and verb to MHALL, yielding MHALL as the response. The intention here is to get Kalvin to respond: MHALL.
+
+When Kalvin receives a kline, rationalises it and responds with a freshly generated kline, it attaches a summary of its own thoughts about this new kline. This summary is a single numerical indicator called a significance and it expresses how, or how much, a new kline relates to what Kalvin already knows. The higher the significance, the more certainty Kalvin attaches to the relationship it has constructed between the original query, its internal knowledge, and the generated response. 
+
+Training a Kalvin system therefore consists of scripting new and novel klines, compiling them into appropriate structures, passing these to Kalvin and waiting for its response. Then unpacking the response to consider a) Kalvin's own confidence in the response (does it need additional support?), and b) how well does the response fit the expected relationship generated by the compiler? The agent in the system, whether human-in-the-loop, or agentic-judge, is then tasked with deciding on the next training step.
+
+
+
+The main purpose of KScript is to compile training scripts into klines that can be used in the Kalvin training loop. 
+
+A script contains one or more expectations which when compiled produces a corresponding set of klines for each expectation. A kline encodes a structural relationship between a query and a value. If we script this simplest of expectations:
+```
+  Q = V 
+```
+KScript compiles it to:
+```
+[
+  {Q: [V]},   # expectation
+  {Q: None},  # query
+  {V: None},  # value
+]
+```
+
+The task set up by the training loop is for Kalvin to generate the full expectation when presented with just the query part. What the agent in the loop is looking for is not whether Kalvin understands what a Q or a V is, but simply that there is a relationship between Q and V that matches the expectation. Kalvin won't know this of course, especially as it starts off as an empty model, but it will try to find a solution. 
+
+What follows is a simplified description of a supervised training loop using this expectation to train Kalvin to recognise and respond to a query (assume the agent in the loop is human, and Kalvin is an empty model - a blank slate). 
+
+The agent wants to train Kalvin to respond to a query Q with a value V. The expectation kline is {Q: [V]} and this is the actual kline that Kalvin is expected to return. 
+
+The agent passes the query {Q: None} through Kalvin's rationaliser. If this is the first pass through the loop and Kalvin is an empty model, then the only response it can generate is S4, {Q: None}. S4 is an indicator of the significance that Kalvin attaches to this piece of information. It is basically saying: "I have never heard of Q before". The agent can use this proposal to determine what the next training step will be. Of the several options available at this juncture, the simplest is to figure out which part of the expectation is missing from the proposal and train on that, passing {V: None} back through the rationaliser. Kalvin generates S4, {V: None} -  "I have never heard of V before". But it also generates S3, {Q: [V]}, and this is interesting because it is the expectation returned as a proposal from a system that so far has rationalised just two klines, Q and V. Kalvin is using S3 significance to say: "Is Q related to V?". It asks this question because it is a) programmed to recognise the order of user input (Q then V), remembers that Q and V are insignificant, and tries to understand something about them by raising their significance. S3 is a step closer to full understanding at S1: it outlines a relationship. S2 raises understanding still further by filling in some of the details and S1 is full understanding (about the relationship, not about Q or V). The agent ratifies this proposal by countersigning the expectation through rationalisation. The expectation becomes the query. Kalvin is programmed to find relationships. When it finds a relationship that it holds at S3 already established in the query it is able to . Kalvin responds with S1:{Q: [V]}, the expected response (you can think of S1 here as Kalvin's way of saying: "Thanks for telling me that!").
+
+
+Here is a single query+expectation in script form:
+```
+  MHALL => SVO
+```
+
+This compiles to {MHALL: [SVO]}, a relationship kline where `MHALL` is the query and `SVO` is the value. If this is the first training step against an empty Kalvin model, then Kalvin is clearly going to fail to predict the value. It will respond with an S4 (I don't know anything about MHALL). Fortunately KScript will have compiled quite a set of klines from this single expectation and the harness can use these as scaffolding expectations to feed back into kalvin, expanding its knowledge to the point where it can predict the value directly from the original expectation.
+
+For the script `MHALL => SVO` KScript will have compiled the following ordered set of klines:
+```
+  [
+    {MHALL: [SVO]},
+    {M: None},
+    {H: None},
+    {A: None},
+    {L: None},
+    {L: None},
+    {MHALL: [M, H, A, L, L]},
+    {S: None},
+    {V: None},
+    {O: None},
+    {SVO: [S, V, O]}
+  ]
+```
+When Kalvin responds with {S4, {MHALL: None}}, the harness looks up 'MHALL' and finds  
+
+The query+expectation combination is one of two kline structures supported by KScript and it can be represented by its own single kline as:
+```
+  {MHALL: [SVO]}  ~ note that SVO is in signature form (token OR)
+```
+The other kline structure is the identity - a single char kline that compiles to a nodeless kline:
+```
+  A ~> {A: None}
+```
+```
+
+The operations supported by KScript bind two klines together in a way that captures structure and relationships in kline form:
+
+| operation        | script     | structure         | relationship|
+-------------------------------------------------------------------
+|  Countersignature| A == B     | {A: [A]}, {B: [B]}| {A: [B]}, {B: [A]}|
+|  Canon           | AB => A B  | {A: [A]}, {B: [B]}| {AB: [A, B]} |
+|  Overfit         | A => A B   | {A: [A]}, {B: [B]}| {A: [A, B]} |
+|  Underfit        | AB => A    | {A: [A]}, {B: [B]}| {AB: [A]} |
