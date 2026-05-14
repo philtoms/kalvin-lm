@@ -261,7 +261,7 @@ class TestCompilerBasic:
     def test_undersign(self) -> None:
         entries = compile64("A = B")
         md = _md(entries)
-        assert _has_node(md, "A", ["B"])
+        assert _has_node(md, "B", ["A"])
 
     def test_connotate(self) -> None:
         entries = compile64("A > B")
@@ -273,8 +273,8 @@ class TestCompilerBasic:
         md = _md(entries)
         assert _has_node(md, "A", ["B"])
 
-    def test_literal_node_undersign(self) -> None:
-        entries = compile64('A = "hello"')
+    def test_literal_node_connotate_string(self) -> None:
+        entries = compile64('A > "hello"')
         md = _md(entries)
         assert _has_node(md, "A", '"hello"')
 
@@ -368,7 +368,7 @@ class TestNestedSubscripts:
         md = _md(entries)
         assert _has_node(md, "A", ["B"])
         assert _has_node(md, "A", ["C"])
-        assert _has_node(md, "C", ["D"])
+        assert _has_node(md, "D", ["C"])
 
 
 # =============================================================================
@@ -471,9 +471,9 @@ class TestDecompiler:
 
     def test_decompile_undersign(self) -> None:
         result = self._roundtrip("A = B")
-        entry = self._find(result, "A")
+        entry = self._find(result, "B")
         assert entry is not None
-        assert entry["nodes"] == "B"
+        assert entry["nodes"] == "A"
 
     def test_decompile_countersign(self) -> None:
         result = self._roundtrip("A == B")
@@ -487,8 +487,8 @@ class TestDecompiler:
         assert entry is not None
         assert entry["nodes"] == "B"
 
-    def test_decompile_literal_nodes(self) -> None:
-        result = self._roundtrip('A = "hello"')
+    def test_decompile_literal_connotate(self) -> None:
+        result = self._roundtrip('A > "hello"')
         entry = self._find(result, "A")
         assert entry is not None
         assert entry["nodes"] == '"hello"'

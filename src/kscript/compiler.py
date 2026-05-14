@@ -4,6 +4,7 @@ Op mappings (using abbreviated property chains):
   COUNTERSIGN  -> {sig: node}, {node: sig}
   CANONIZE     -> {p[-1].(node or sig): p.sig for p in r.primaries}
   CONNOTATE    -> {sig: node}
+  UNDERSIGN    -> {node: sig}
   UNSIGNED     -> sig | S4 (S4=0, no bits)
 
 Where:
@@ -237,11 +238,11 @@ class Compiler:
                 self._emit(node_str, sig, "COUNTERSIGN")
 
         elif pc.op == TokenType.UNDERSIGN:
-            # {sig: node}
+            # {node: sig} — value (right side) becomes signature, query (left side) becomes node
             if sig == node_str:
                 self._emit(sig, None, "IDENTITY")
             else:
-                self._emit(sig, node_str, "UNDERSIGN")
+                self._emit(node_str, sig, "UNDERSIGN")
 
         elif pc.op == TokenType.CONNOTATE:
             # {sig: node}
