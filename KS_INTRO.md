@@ -58,14 +58,14 @@ The first is the relational entry. The second and third are unsigned identities 
 
 Four operators control compilation semantics and map to significance levels:
 
-| Operator | Name          | Direction      | Significance | Output                    |
-| -------- | ------------- | -------------- | ------------ | ------------------------- |
-| `=`      | UNDERSIGN     | Unidirectional | S1           | `{Q: [V]}`                |
-| `==`     | COUNTERSIGN   | Bidirectional  | S1           | `{Q: [V]}, {V: [Q]}`      |
-| `>`      | CONNOTATE_FWD | Unidirectional | S3           | `{Q: [V]}`                |
-| `=>`     | CANONIZE_FWD  | Per-item fwd   | S2           | `{Q: [V₁]}, {Q: [V₂]}, …` |
+| Operator | Name      | Direction     | Significance | Output                    |
+| -------- | --------- | ------------- | ------------ | ------------------------- |
+| `=`      | UNDERSIGN | Unidirectional | S1           | `{Q: [V]}`                |
+| `==`     | COUNTERSIGN | Bidirectional | S1           | `{Q: [V]}, {V: [Q]}`      |
+| `>`      | CONNOTATE | Unidirectional | S3           | `{Q: [V]}`                |
+| `=>`     | CANONIZE  | Per-item fwd  | S2           | `{Q: [V₁]}, {Q: [V₂]}, …` |
 
-Chains (`<=`, `<`) and subscript blocks produce additional entries of the same fundamental shape. The full grammar supports nested expectations but all constructs ultimately reduce to `{Key: [nodes]}` klines.
+Subscript blocks produce additional entries of the same fundamental shape. The full grammar supports nested expectations but all constructs ultimately reduce to `{Key: [nodes]}` klines.
 
 ## 5. The Model
 

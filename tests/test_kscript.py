@@ -74,8 +74,8 @@ def _has_node(md: dict[str, list], sig: str, node_value) -> bool:
 class TestTokenType:
     def test_all_token_types_exist(self) -> None:
         expected = [
-            "COUNTERSIGN", "CANONIZE_FWD", "CANONIZE_BWD",
-            "CONNOTATE_FWD", "CONNOTATE_BWD", "UNDERSIGN",
+            "COUNTERSIGN", "CANONIZE", "CONNOTATE",
+            "UNDERSIGN",
             "SIGNATURE", "LITERAL", "COMMENT",
             "NEWLINE", "INDENT", "DEDENT", "EOF",
         ]
@@ -136,30 +136,29 @@ class TestLexer:
         types = [t.type for t in tokens if t.type not in (TokenType.EOF, TokenType.SIGNATURE)]
         assert TokenType.COUNTERSIGN in types
 
-    def test_canonize_fwd(self) -> None:
+    def test_canonize(self) -> None:
         tokens = Lexer("A => B").tokenize()
         types = [t.type for t in tokens]
-        assert TokenType.CANONIZE_FWD in types
+        assert TokenType.CANONIZE in types
 
-    def test_canonize_bwd(self) -> None:
-        tokens = Lexer("A <= B").tokenize()
-        types = [t.type for t in tokens]
-        assert TokenType.CANONIZE_BWD in types
-
-    def test_connotate_fwd(self) -> None:
+    def test_connotate(self) -> None:
         tokens = Lexer("A > B").tokenize()
         types = [t.type for t in tokens]
-        assert TokenType.CONNOTATE_FWD in types
-
-    def test_connotate_bwd(self) -> None:
-        tokens = Lexer("A < B").tokenize()
-        types = [t.type for t in tokens]
-        assert TokenType.CONNOTATE_BWD in types
+        assert TokenType.CONNOTATE in types
 
     def test_underscore(self) -> None:
         tokens = Lexer("A = B").tokenize()
         types = [t.type for t in tokens]
         assert TokenType.UNDERSIGN in types
+
+    def test_less_than_is_error(self) -> None:
+        with pytest.raises(LexerError):
+            Lexer("A < B").tokenize()
+
+    def test_le_is_error(self) -> None:
+        """<= is no longer a valid operator, so <= should error on <."""
+        with pytest.raises(LexerError):
+            Lexer("A <= B").tokenize()
 
     def test_comment(self) -> None:
         tokens = Lexer("A (inline comment) => B").tokenize()
@@ -207,49 +206,25 @@ class TestParserAST:
         script = kfile.scripts[0]
         assert len(script.constructs) >= 1
 
-    def test_chain_construct_fwd(self) -> None:
+    def test_chain_construct_canonize(self) -> None:
         tokens = Lexer("A => B").tokenize()
         kfile = Parser(tokens).parse()
         construct = kfile.scripts[0].constructs[0]
         assert isinstance(construct.inner, list)
-        assert construct.chain_op == TokenType.CANONIZE_FWD
+        assert construct.chain_op == TokenType.CANONIZE
         assert construct.chain_right is not None
-
-    def test_chain_construct_bwd(self) -> None:
-        tokens = Lexer("A < B").tokenize()
-        kfile = Parser(tokens).parse()
-        construct = kfile.scripts[0].constructs[0]
-        assert isinstance(construct.inner, list)
-        assert construct.chain_op == TokenType.CONNOTATE_BWD
-
-    def test_inline_connotate_then_bwd(self) -> None:
-        tokens = Lexer("A > 1 < B").tokenize()
-        kfile = Parser(tokens).parse()
-        construct = kfile.scripts[0].constructs[0]
-        assert isinstance(construct.inner, list)
-        assert construct.inner[0].op == TokenType.CONNOTATE_FWD
-        assert construct.chain_op == TokenType.CONNOTATE_BWD
-
-    def test_chain_a_fwd_b_bwd_d(self) -> None:
-        tokens = Lexer("A => B C <= D").tokenize()
-        kfile = Parser(tokens).parse()
-        construct = kfile.scripts[0].constructs[0]
-        assert construct.chain_op == TokenType.CANONIZE_FWD
-        right = construct.chain_right
-        assert right is not None
-        assert right.chain_op == TokenType.CANONIZE_BWD
 
     def test_block_construct(self) -> None:
         tokens = Lexer("A =>\n  B\n  C").tokenize()
         kfile = Parser(tokens).parse()
         construct = kfile.scripts[0].constructs[0]
-        assert construct.chain_op == TokenType.CANONIZE_FWD
+        assert construct.chain_op == TokenType.CANONIZE
         right = construct.chain_right
         assert isinstance(right.inner, Block)
         assert len(right.inner.constructs) >= 1
 
-    def test_implicit_opening(self) -> None:
-        tokens = Lexer("A B <= CD").tokenize()
+    def test_implicit_group(self) -> None:
+        tokens = Lexer("A B => CD").tokenize()
         kfile = Parser(tokens).parse()
         assert len(kfile.scripts[0].constructs) >= 1
 
@@ -288,25 +263,15 @@ class TestCompilerBasic:
         md = _md(entries)
         assert _has_node(md, "A", ["B"])
 
-    def test_connotate_fwd(self) -> None:
+    def test_connotate(self) -> None:
         entries = compile64("A > B")
         md = _md(entries)
         assert _has_node(md, "A", ["B"])
 
-    def test_connotate_bwd(self) -> None:
-        entries = compile64("A < B")
-        md = _md(entries)
-        assert _has_node(md, "B", ["A"])
-
-    def test_canonize_fwd(self) -> None:
+    def test_canonize(self) -> None:
         entries = compile64("A => B")
         md = _md(entries)
         assert _has_node(md, "A", ["B"])
-
-    def test_canonize_bwd(self) -> None:
-        entries = compile64("A <= B")
-        md = _md(entries)
-        assert _has_node(md, "B", ["A"])
 
     def test_literal_node_undersign(self) -> None:
         entries = compile64('A = "hello"')
@@ -364,31 +329,13 @@ class TestMCSExpansion:
 # =============================================================================
 
 class TestChains:
-    def test_canonize_fwd_chain(self) -> None:
+    def test_canonize_chain(self) -> None:
         entries = compile64("A => B => C")
         md = _md(entries)
         assert _has_node(md, "A", ["B"])
         assert _has_node(md, "B", ["C"])
 
-    def test_canonize_target_bwd(self) -> None:
-        entries = compile64("A => B <= C")
-        md = _md(entries)
-        assert _has_node(md, "A", ["B"])
-        assert _has_node(md, "C", ["B"])
-
-    def test_connotate_fwd_chain(self) -> None:
-        entries = compile64("A > B > C")
-        md = _md(entries)
-        assert _has_node(md, "A", ["B"])
-        assert _has_node(md, "B", ["C"])
-
-    def test_connotate_target_bwd(self) -> None:
-        entries = compile64("A > B < C")
-        md = _md(entries)
-        assert _has_node(md, "A", ["B"])
-        assert _has_node(md, "C", ["B"])
-
-    def test_per_item_canonize_fwd(self) -> None:
+    def test_per_item_canonize(self) -> None:
         entries = compile64("A => B C")
         md = _md(entries)
         assert _has_node(md, "A", ["B"])
@@ -443,19 +390,8 @@ class TestComplexExamples:
         assert _has_node(md, "AB", ["CD"])      # countersign
         assert _has_node(md, "CD", ["AB"])      # reverse countersign
 
-    def test_a_b_le_cd(self) -> None:
-        entries = compile64("A B <= CD")
-        md = _md(entries)
-        assert _has_node(md, "CD", ["A"])
-        assert _has_node(md, "CD", ["B"])
-
     def test_ab_gt_c(self) -> None:
         entries = compile64("AB > C")
-        md = _md(entries)
-        assert _has_node(md, "AB", ["C"])
-
-    def test_c_lt_ab(self) -> None:
-        entries = compile64("C < AB")
         md = _md(entries)
         assert _has_node(md, "AB", ["C"])
 
@@ -478,7 +414,7 @@ class TestLiteralEdgeCases:
         sigs = [e.decode(_tok64)[0] for e in entries]
         assert sigs == ["1", "2", "3"]
 
-    def test_canonize_fwd_single_literal(self) -> None:
+    def test_canonize_single_literal(self) -> None:
         entries = compile64("A => 1")
         md = _md(entries)
         assert _has_node(md, "A", "1")
@@ -584,11 +520,8 @@ class TestDecompiler:
   V = H
   O = ALL =>
     A = D
-    L = M < MOD => A B
-    L > O < BS =>
-      B = "baby"
-      S = "sheep"
-"""
+    L = M
+    L > O"""
         result = self._roundtrip(source)
         assert self._has_sig(result, "MHALL")
         assert self._has_sig(result, "SVO")

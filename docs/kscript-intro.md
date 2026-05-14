@@ -22,7 +22,7 @@ This compiles to three klines:
 
 The first captures the relationship between Q and V as nodes linking to their respective identity klines. The symbols Q and V represent the single-value encodings for those characters. The remaining two klines are the identities.
 
-KScript provides six different ways to build kline relationships. For brevity, identity klines are omitted from the table below:
+KScript provides four different ways to build kline relationships. For brevity, identity klines are omitted from the table below:
 
 ┌────────────┬───────────────┬──────────────────────┐
 │ Syntax     │ Name          │ Output               │
@@ -31,13 +31,9 @@ KScript provides six different ways to build kline relationships. For brevity, i
 ├────────────┼───────────────┼──────────────────────┤
 │ Q = V      │ UNDERSIGN     │ {V: [Q]}             │
 ├────────────┼───────────────┼──────────────────────┤
-│ Q > V      │ CONNOTATE_FWD │ {Q: [V]}             │
+│ Q > V      │ CONNOTATE     │ {Q: [V]}             │
 ├────────────┼───────────────┼──────────────────────┤
-│ Q => V₁…Vₙ │ CANONIZE_FWD  │ {Q: [V₁,…Vₙ]}        │
-├────────────┼───────────────┼──────────────────────┤
-│ V < Q      │ CONNOTATE_REV │ {Q: [V]}             │
-├────────────┼───────────────┼──────────────────────┤
-│ V₁…Vₙ <= Q │ CANONIZE_REV  │ {Q: [V₁,…Vₙ]}        │
+│ Q => V₁…Vₙ │ CANONIZE      │ {Q: [V₁,…Vₙ]}        │
 └────────────┴───────────────┴──────────────────────┘
 
 KScript also supports indented chaining, whereby a value node on one line becomes the query of an indented block that follows. Comments are allowed between brackets. A typical script:
@@ -45,12 +41,12 @@ KScript also supports indented chaining, whereby a value node on one line become
 ```
     (Mary had a little lamb - anything in brackets is a comment btw)
     MHALL = SVO =>
-      M < S(ubject)
-      H < V(erb)
+      M = S(ubject)
+      H = V(erb)
       ALL = O(bject) =>
-        A < D(et)
-        L < M(od)
-        L < O
+        A = D(et)
+        L = M(od)
+        L > O
 ```
 
 The parenthetical annotations serve double duty: they are KScript comments that also convey human-readable meaning. The training value of this script is not to teach Kalvin the nursery rhyme, or even rudimentary linguistics. It is to establish structural relationships that Kalvin can later reconstruct in pursuit of understanding. The granularity of understanding is intentionally subjective. We see a nursery rhyme broken down and explained as SVO. Kalvin sees relationships between opaque numbers. Meaning for us is found in semantics. Meaning for Kalvin is found in shape.
@@ -66,4 +62,4 @@ Consider a second script that Kalvin might receive after compilation:
   WDMH => M H W
 ```
 
-Given the relationships established by the first script — `MHALL = SVO`, `M < S`, `H < V`, `ALL = O` — the query `WDMH => M H W` traces M and H back through subject and verb to MHALL, yielding MHALL as the response. The intention is for Kalvin to respond: MHALL with a high significance value. However, it is very likely that Kalvin would attach low significance to this kline if it has not found a way to handle the W in WDMH. The agent will clearly see that the response MHALL mismatches the expected response MHW and will be able to construct a new script that captures the relationship between W and ALL. In the long run it matters little whether the agent chooses to teach Kalvin that W UNDERSIGNs ALL (`W = ALL`) or W CONNOTATEs O (`W > O`) - the same object that L(amb) connotates. Both relationships help Kalvin rationalise a highly significant answer to the question: Does Kalvin know that Mary had a little lamb?
+Given the relationships established by the first script — `MHALL = SVO`, `M = S`, `H = V`, `ALL = O` — the query `WDMH => M H W` traces M and H back through subject and verb to MHALL, yielding MHALL as the response. The intention is for Kalvin to respond: MHALL with a high significance value. However, it is very likely that Kalvin would attach low significance to this kline if it has not found a way to handle the W in WDMH. The agent will clearly see that the response MHALL mismatches the expected response MHW and will be able to construct a new script that captures the relationship between W and ALL. In the long run it matters little whether the agent chooses to teach Kalvin that W UNDERSIGNs ALL (`W = ALL`) or W CONNOTATEs O (`W > O`) - the same object that L(amb) connotates. Both relationships help Kalvin rationalise a highly significant answer to the question: Does Kalvin know that Mary had a little lamb?
