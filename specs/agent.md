@@ -269,29 +269,14 @@ directly without any inversion.
 
 Cogitation is the background processing of individual query-candidate work
 items. The Cogitator receives pre-routed work items, expands each through
-`model.expand()` to discover connotations, applies **response sampling** to
-the stream of yields, and checks surviving results for countersignature.
+`model.expand()` to discover connotations, processes all yields, and emits proposals at any significance level.
 
-### Sampling
+### Processing
 
-Response sampling parameters control how the Cogitator consumes the
-`expand()` generator stream. Values follow LLM convention.
-
-```
-Sampling:
-  temperature: float   # (0, ∞). Default 1.0.
-  top_k:       int     # [0, ∞). 0 = unlimited. Default 40.
-  top_p:       float   # (0, 1.0]. Default 0.95.
-```
-
-| Parameter     | Streaming role        | Mechanism                              |
-| ------------- | --------------------- | -------------------------------------- |
-| `temperature` | Boundary shift        | Shift S1\|S2, S2\|S3, S3\|S4 boundaries |
-| `top_k`       | Exploration budget   | Cap processed connotations per work item |
-| `top_p`       | Evidence threshold   | Stop when cumulative significance ≥ p   |
-
-Applied in order per-yield: boundary classification (S4 demotion), then
-top-p (evidence check), then top-k (budget check). O(1) state per work item.
+The Cogitator processes all yields from `model.expand()` without filtering.
+Every connotation discovered during graph expansion is evaluated. Proposals
+can be emitted at any significance level — the teacher evaluates them against
+expectations regardless of their computed significance.
 
 #### Significance Boundaries
 
@@ -300,8 +285,6 @@ Three boundaries classify yielded significance values:
 ```
 D_MAX ── S1|S2 ──────── S2|S3 ──────────── S3|S4 ── 0
 ```
-
-Base positions (τ = 1):
 
 | Boundary | Position                    | Meaning                        |
 | -------- | --------------------------- | ------------------------------ |
@@ -312,28 +295,10 @@ Base positions (τ = 1):
 Classification is a cascade: `sig ≥ S1|S2 → S1`, `sig ≥ S2|S3 → S2`,
 `sig ≥ S3|S4 → S3`, else S4. Raw significance values are never mutated.
 
-#### Temperature
+#### All Yields Processed
 
-Shifts all three boundaries by the same amount, with capping:
-
-| Direction | S1\|S2         | S2\|S3       | S3\|S4     | Effect                      |
-| --------- | -------------- | ------------ | ---------- | --------------------------- |
-| τ > 1     | drops ↓        | drops ↓      | capped at 0 | More S2→S1, more S3→S2     |
-| τ < 1     | capped at D_MAX-1 | rises ↑   | rises ↑    | Fewer S2→S1, more S3→S4    |
-
-The shift function is: `shift = _TEMP_SCALE × (τ - 1)`. This is
-exploratory — alternative shift functions may be tuned later.
-
-#### Top-k
-
-Maximum number of connotations processed per work item. After `k` results
-pass the S4 demotion gate, the generator is exhausted. 0 means unlimited.
-
-#### Top-p
-
-Cumulative significance threshold. After processing, if the running sum of
-significance reaches `top_p × D_MAX`, the generator is exhausted.
-When `top_p = 1.0`, no early stopping occurs.
+The Cogitator processes all connotations yielded by `expand()`. There is no
+truncation or early stopping — every discovered relationship is evaluated.
 
 ### Cogitator
 
@@ -343,7 +308,6 @@ Cogitator:
   event_bus:  EventBus
   on_s1:      callback(query, candidate)
   timeout:    float (default 2.0)
-  sampling:   Sampling (default: temperature=1.0, top_k=40, top_p=0.95)
   backlog:    queue of WorkItem
   thread:     background
 ```
@@ -353,34 +317,16 @@ the backlog and processes each one.
 
 ### Work Item Processing
 
-The Cogitator expands each WorkItem into a stream of QueryCandidates.
-Boundaries are computed once per work item. Each yield is classified
-against the boundaries:
+The Cogitator expands each WorkItem, processing all yields from
+`model.expand()`:
 
 ```
 run_work_item(WorkItem(query, candidate)):
-  (s12, s23, s34) = boundaries(sampling.temperature)
-  evidence_target = sampling.top_p × D_MAX
-  count = 0, cumulative = 0
-
   for qc in model.expand(query, candidate):
-    band = classify(qc.significance, s12, s23, s34)
-
-    if band == "S4":
-      continue                    # demote: below S3|S4 boundary
-
-    count += 1
-    cumulative += qc.significance
-
-    if band == "S1":
-      on_s1(query, candidate)     # promote immediately
+    if qc.significance >= s12:
+      on_s1(query, candidate)     # S1: promote immediately
     else:
-      process(qc)                 # S2/S3: countersignature check
-
-    if cumulative >= evidence_target:
-      break                       # sufficient evidence
-    if 0 < sampling.top_k <= count:
-      break                       # budget exhausted
+      process(qc)                 # S2/S3: expansion check
 
 process(QueryCandidate(query, candidate, significance)):
   # S2 expansion only — ratification handled upstream in rationalise()
@@ -391,10 +337,8 @@ process(QueryCandidate(query, candidate, significance)):
     emit frame events for companions
 ```
 
-Boundaries are computed once at the start of each work item. Raw significance
-is never mutated — temperature acts on the boundaries, not on the values.
-A high τ lowers S1|S2, allowing near-S1 S2 connotations to be classified
-as S1 and immediately published.
+All yields are processed without filtering. Raw significance values are
+never mutated. Proposals can be emitted at any significance level.
 
 When countersignature fails for an S2 result, the Cogitator attempts to
 **expand** the candidate kline toward canonical status by reshaping its
@@ -516,9 +460,8 @@ bit-to-signature index.
 
 ### 2. ~~Cogitation Evolution~~ — Resolved
 
-Top-k/top-p/temperature sampling has been added to the Cogitator. The
-`expand()` stream is now consumed with per-yield temperature gating, top-k
-budget capping, and top-p cumulative evidence early stopping. See §Cogitation.
+The Cogitator processes all yields from `model.expand()` without filtering.
+Proposals can be emitted at any significance level. See §Cogitation.
 
 ### 3. Grounding Assessment Formalisation
 
