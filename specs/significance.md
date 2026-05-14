@@ -73,7 +73,7 @@ traversed with a three-tier priority:
    a signature found in `s3_connotations`. The connotation hop count is
    packed via `_pack(hop_count + _S3_BIAS)` to ensure S3 distances
    moderately exceed S2 distances while remaining close enough for
-   temperature to bridge.
+   potential bridging via further graph expansion.
 4. **Unresolved:** Adds `MAX_HOP` (default 100).
 
 Matched-but-ungrounded nodes (present in both but not resolving to an S1
@@ -88,8 +88,7 @@ biased_distance = _pack(s3_hop + _S3_BIAS)
 
 The bias (`_S3_BIAS = 9`, minimum packed distance = `_pack(2+9) = 121`)
 ensures S3 distances moderately exceed S2 distances while keeping both tiers
-in the same order of magnitude. This closeness allows temperature to bridge
-the gap — a small rise in τ can promote S3 results into S2 significance range.
+in the same order of magnitude.
 The quadratic `_pack` function (d²) compresses small distances together and
 spreads large distances apart, ensuring accumulation penalties grow
 super-linearly.
@@ -127,7 +126,7 @@ Classification of yielded significance values is performed against three
 boundaries, computed by `Cogitator._boundaries()` and classified by
 `Cogitator._classify()`.
 
-### Base boundaries (τ = 1)
+### Base boundaries
 
 | Boundary  | Position                  | Meaning                           |
 | --------- | ------------------------- | --------------------------------- |
@@ -135,19 +134,11 @@ boundaries, computed by `Cogitator._boundaries()` and classified by
 | S2\|S3    | `~_S2_S3_DISTANCE`        | Packed distance threshold (100)   |
 | S3\|S4    | `0`                       | Only zero-significance is S4      |
 
-### Temperature shift
+### Fixed Boundaries
 
-Temperature shifts all three boundaries in the same direction. Capping
-produces the asymmetric effect:
-
-| Direction | S1\|S2       | S2\|S3       | S3\|S4     | Effect                           |
-| --------- | ------------ | ------------ | ---------- | -------------------------------- |
-| τ > 1     | drops ↓      | drops ↓      | capped at 0 | More S2→S1, more S3→S2          |
-| τ < 1     | capped at D_MAX-1 | rises ↑ | rises ↑    | Fewer S2→S1, more S3→S4         |
-
-High temperature lowers the S1|S2 boundary, allowing near-S1 S2
-connotations to be classified as S1. Low temperature raises the S3|S4
-boundary, demoting weak S3 connotations to S4.
+The three boundaries are fixed by the distance algorithm and are not
+parameterized. Proposals can be emitted at any significance level —
+Kalvin does not suppress results below a threshold.
 
 ### Classification
 
@@ -188,10 +179,11 @@ model.expand(Q, C) → Iterator[QueryCandidate]
   no function call needed.
 7. **Topology-driven**: distance is accumulated from graph hops. S3
   connotation hops are biased by `_pack(hop_count + _S3_BIAS)`, ensuring
-  S3 distances moderately exceed S2 while keeping temperature bridging feasible.
+  S3 distances moderately exceed S2 while keeping both tiers in the same
+  order of magnitude.
 8. **Boundary classification**: significance values are classified against
-  three boundaries (S1|S2, S2|S3, S3|S4) shifted by temperature. Raw
-  significance is never mutated per-yield.
+  three fixed boundaries (S1|S2, S2|S3, S3|S4). Raw significance is never
+  mutated per-yield.
 9. **S2 expansion**: when countersignature fails for an S2 result, the
   Cogitator may attempt to reshape the candidate kline's nodes to better
   match its signature. See `docs/extended-cogitation.md`.
@@ -204,11 +196,6 @@ model.expand(Q, C) → Iterator[QueryCandidate]
 | S3 bias (`_S3_BIAS`) | `src/kalvin/model.py` | module-level |
 | Distance packing (`_pack`) | `src/kalvin/model.py` | module-level |
 | S2|S3 threshold (`_S2_S3_DISTANCE`) | `src/kalvin/agent.py` | module-level |
-| Temperature scale (`_TEMP_SCALE`) | `src/kalvin/agent.py` | module-level |
 | Routing | `src/kalvin/agent.py` | `Agent._route()` |
 | Significance inversion | `src/kalvin/model.py` | `Model.expand()` |
 | Distance computation | `src/kalvin/model.py` | `Model.expand()` |
-| Boundary computation | `src/kalvin/agent.py` | `Cogitator._boundaries()` |
-| Classification | `src/kalvin/agent.py` | `Cogitator._classify()` |
-| Sampling (top-k, top-p) | `src/kalvin/agent.py` | `Cogitator._run_work_item()` |
-| Sampling parameters | `src/kalvin/agent.py` | `Sampling` class |

@@ -468,7 +468,7 @@ computed significance.
   S3 distances moderately exceed S2 distances. With `_S3_BIAS=9`, minimum
   S3 packed distance = `_pack(2+9) = 121 > MAX_HOP(100)`.
 - **_pack(distance)** — quadratic packing function: `d²`. Compresses small
-  distances together (enabling fine temperature discrimination) and spreads
+  distances together (enabling fine-grained discrimination) and spreads
   large distances apart (super-linear accumulation penalty).
 
 #### Algorithm
@@ -476,7 +476,7 @@ computed significance.
 The algorithm accumulates a single integer distance from graph hops.
 S3 connotation hops are biased by `_pack(hop_count + _S3_BIAS)` to ensure
 S3 distances moderately exceed S2 distances. The topology naturally separates
-the tiers while keeping them close enough for temperature to bridge.
+the tiers while keeping them close enough for potential bridging via further graph expansion.
 
 ```
 expand(query, candidate, distance=0, _visited=None):
@@ -624,7 +624,7 @@ pair has already been expanded, subsequent encounters return immediately.
 6. **Bidirectional** — mismatched nodes from both query and candidate
    contribute to distance.
 7. **Quadratic packing** — S3 hops are packed via `_pack(d) = d²`, ensuring
-   small distances stay close (temperature-sensitive) and large distances
+   small distances stay close and large distances
    spread apart (super-linear accumulation).
 8. **Recursive expansion** — each discovered connotation is yielded as a
    `QueryCandidate` for immediate processing, enabling deep graph

@@ -11,7 +11,7 @@ the result as a proposal for the teacher to ratify.
 This is the mechanism by which Kalvin performs **self-directed study**: it
 works through its own partial understanding, generating proposals that a
 teacher can confirm or redirect. Extended cogitation depends on structural
-grounding (see `docs/roadmap.md`, Challenge 6) being implemented first.
+grounding (see `docs/roadmap.md`, Challenge 1) being implemented first.
 
 ---
 
@@ -153,8 +153,8 @@ _process(QueryCandidate(query, candidate, significance)):
 
 `generate_expansions()` may yield multiple proposals per work item. The
 Cogitator explores the model for different ways to satisfy the expansion
-constraints, subject to the existing sampling controls (top-k budget,
-top-p evidence threshold, temperature boundary shifts).
+constraints. The Cogitator processes all yields from `model.expand()`
+without filtering.
 
 ### Reentrant Rationalisation
 
@@ -217,12 +217,11 @@ Extended cogitation requires structural grounding for two reasons:
 
 ---
 
-## Temperature
+## Exploration Depth
 
-For the MVP, temperature does not affect expansion. Future work may allow
-temperature to influence candidate selection during expansion — higher τ
-broadening the search for node additions, lower τ restricting it to close
-matches.
+For the MVP, the Cogitator processes all yields from `model.expand()`
+without filtering. Future work may add exploration depth controls to limit
+how many expansion proposals are generated per work item.
 
 ---
 
@@ -233,7 +232,5 @@ matches.
 | `specs/agent.md`            | Cogitation spec updated with S2 expansion phase        |
 | `specs/overview.md`         | Overview updated with expansion in cogitation section  |
 | `specs/significance.md`     | S2 description references expansion                    |
-| `docs/learning.md`          | Self-study now includes S2 expansion                   |
-| `docs/training-loop.md`     | Training loop references S2 expansion proposals        |
-| `docs/training-schedule.md` | KScript `=>` documented as producing S2 templates      |
-| `docs/roadmap.md`           | Extended cogitation added as a challenge after Phase A |
+| `docs/learning-and-training.md` | S2 expansion in study context, proposals in training loop, KScript `=>` templates |
+| `docs/roadmap.md`           | Extended cogitation is Challenge 2 in the roadmap |
