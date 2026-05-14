@@ -16,7 +16,7 @@ class Lexer:
     """Tokenizes KScript source code with indentation tracking.
 
     The lexer handles:
-    - Multi-character operators (==, =>, <=) before single-char
+    - Multi-character operators (==, =>) before single-char
     - Signatures [A-Z]+ with optional inline comment
     - Literals: numbers [0-9]+ and quoted strings "..."
     - Comments (...) with nested paren handling
@@ -95,17 +95,15 @@ class Lexer:
             if two_char == "==":
                 return self._make_token(TokenType.COUNTERSIGN, "==")
             if two_char == "=>":
-                return self._make_token(TokenType.CANONIZE_FWD, "=>")
-            if two_char == "<=":
-                return self._make_token(TokenType.CANONIZE_BWD, "<=")
+                return self._make_token(TokenType.CANONIZE, "=>")
 
         # Single-char operators
         if ch == "=":
             return self._make_token(TokenType.UNDERSIGN, "=")
         if ch == ">":
-            return self._make_token(TokenType.CONNOTATE_FWD, ">")
+            return self._make_token(TokenType.CONNOTATE, ">")
         if ch == "<":
-            return self._make_token(TokenType.CONNOTATE_BWD, "<")
+            raise LexerError(f"Unexpected character: {ch!r}", self.line, self.column)
 
         # Identifier: [a-zA-Z][a-zA-Z0-9]*
         # If all uppercase alpha → SIGNATURE

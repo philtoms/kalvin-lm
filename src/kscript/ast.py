@@ -3,7 +3,7 @@
 Grammar (left recursion eliminated):
 
     script ::= construct+
-    construct ::= block | literal | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
+    construct ::= block | literal | primary_construct+ ( "=>" construct )?
     block ::= <INDENT> construct+ <DEDENT>
     primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
     node ::= sig | literal
@@ -78,7 +78,7 @@ class PrimaryConstruct:
 
     Attributes:
         sig: The signature that owns this construct
-        op: The inline operator (COUNTERSIGN, CONNOTATE_FWD, UNDERSIGN, UNSIGNED), or None
+        op: The inline operator (COUNTERSIGN, CONNOTATE, UNDERSIGN, UNSIGNED), or None
         node: The node on the right side of the operator, if any
     """
     sig: Signature
@@ -100,17 +100,17 @@ class Block:
 
 @dataclass
 class Construct:
-    """construct ::= block | literal | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
+    """construct ::= block | literal | primary_construct+ ( "=>" construct )?
 
     A construct is one of:
     - Block: indented sub-constructs
     - Literal: a bare literal (unsigned identity, no chain ops allowed)
     - PrimaryConstruct list with optional chain: signatures with inline ops
-      and/or chain operators (=>, <=, <)
+      and/or chain operator (=>)
 
     Attributes:
         inner: Block, Literal, or list of PrimaryConstruct
-        chain_op: The chain operator (CANONIZE_FWD, CANONIZE_BWD, CONNOTATE_BWD), or None
+        chain_op: The chain operator (CANONIZE), or None
         chain_right: The right-hand construct of the chain, if any
     """
     inner: Block | Literal | list[PrimaryConstruct]

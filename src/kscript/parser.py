@@ -3,7 +3,7 @@
 Grammar (left recursion eliminated):
 
     script ::= construct+
-    construct ::= block | literal | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
+    construct ::= block | literal | primary_construct+ ( "=>" construct )?
     block ::= <INDENT> construct+ <DEDENT>
     primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
     node ::= sig | literal
@@ -62,7 +62,7 @@ class Parser:
         constructs = self._parse_constructs_until(TokenType.EOF)
         return Script(constructs)
 
-    # construct ::= block | literal | primary_construct+ ( ( "=>" | "<=" | "<" ) construct )?
+    # construct ::= block | literal | primary_construct+ ( "=>" construct )?
     def _parse_construct(self) -> Construct:
         self._skip_insignificant()
 
@@ -80,7 +80,7 @@ class Parser:
         while self._is_primary_construct_start() and self._peek().column >= indent:
             primaries.append(self._parse_primary_construct())
 
-        # ( ( "=>" | "<=" | "<" ) construct )?
+        # ( "=>" construct )?
         chain_op = self._try_chain_op()
         if chain_op is not None:
             right = self._parse_construct()
@@ -143,8 +143,8 @@ class Parser:
         return constructs
 
     def _try_inline_op(self) -> TokenType | None:
-        """Try to match COUNTERSIGN | CONNOTATE_FWD | UNDERSIGN."""
-        for tt in (TokenType.COUNTERSIGN, TokenType.CONNOTATE_FWD, TokenType.UNDERSIGN):
+        """Try to match COUNTERSIGN | CONNOTATE | UNDERSIGN."""
+        for tt in (TokenType.COUNTERSIGN, TokenType.CONNOTATE, TokenType.UNDERSIGN):
             if self._check(tt):
                 self._advance()
                 return tt
@@ -156,8 +156,8 @@ class Parser:
         return self._check(TokenType.SIGNATURE)
 
     def _try_chain_op(self) -> TokenType | None:
-        """Try to match CANONIZE_FWD | CANONIZE_BWD | CONNOTATE_FWD | CONNOTATE_BWD."""
-        for tt in (TokenType.CANONIZE_FWD, TokenType.CANONIZE_BWD, TokenType.CONNOTATE_FWD, TokenType.CONNOTATE_BWD):
+        """Try to match CANONIZE."""
+        for tt in (TokenType.CANONIZE,):
             if self._check(tt):
                 self._advance()
                 return tt
