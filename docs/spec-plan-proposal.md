@@ -1,103 +1,115 @@
-# Proposal: Separating Concerns Between Origin, Specs, and Plans
+# Keeping Documentation Aligned, Consistent, and Up to Date
 
 **Date:** 2026-05-15  
-**Status:** ✅ Complete  
-**Scope:** Restructure `docs/`, `specs/`, and `plans/` to create a clean three-layer information hierarchy.
+**Status:** Active  
+**Audience:** Agents and humans editing `docs/`, `specs/`, or `plans/`
 
 ---
 
-## The Problem
+## The Three-Layer Model
 
-The current documents suffer from three kinds of confusion:
-
-### 1. specs/ mixes specification with design narrative
-
-- **`overview.md`** (400 lines) is a design document — it explains *why* the system works, the philosophy of agency, the four levels of significance, the rationalisation pipeline, and cogitation. It overlaps heavily with `docs/kalvin-origin.md`. It is not a testable specification.
-- **`significance.md`** (201 lines) opens with *"Significance is a conceptual specification"* and lists code locations (`model.py`, `agent.py`). It is half architecture guide, half spec.
-- **`model.md`** (696 lines) and **`agent.md`** (596 lines) include full algorithm pseudocode for `expand()` — this is implementation-level detail, not behavioral specification.
-
-### 2. plans/ duplicate and rehost spec content
-
-- Every sub-plan in `plans/impl/` starts with a "Spec" section that summarizes what's already in `specs/`. For example, `plans/impl/model.md` §1 repeats tier roles, construction, and deduplication rules from `specs/model.md`.
-- `plans/implement-kscript.md` (978 lines) contains a complete spec inline rather than referencing `specs/kscript.md`.
-- The coordinator `plans/implement-kalvin.md` includes architecture diagrams and constants tables that overlap with `specs/overview.md` and individual specs.
-
-### 3. Test matrices are scattered and inconsistent
-
-| Location | Has test matrices? | Format |
-|---|---|---|
-| `specs/kscript.md` | ✅ Yes (§13) | Summary table by category |
-| `specs/kline.md` | ❌ No | — |
-| `specs/signature.md` | ❌ No | — |
-| `specs/tokenizer.md` | ❌ No | — |
-| `specs/stm.md` | ❌ No | — |
-| `specs/model.md` | ❌ No | — |
-| `specs/agent.md` | ❌ No | — |
-| `plans/impl/foundations.md` | ✅ Yes | Per-component tables |
-| `plans/impl/model.md` | ✅ Yes | Per-section tables |
-| `plans/impl/agent.md` | ✅ Yes | Per-phase tables |
-| `plans/implement-kscript.md` | ✅ Yes | Per-task acceptance checkboxes |
-
-The specs that define the behavior don't contain acceptance criteria. The plans that are supposed to be implementation guides contain both spec summaries AND the tests. An agent implementing from a plan doesn't know whether the plan's spec summary is current or the spec itself has been updated.
-
----
-
-## The Proposal: Three Layers
+The project documentation is organised into three layers, each with a single responsibility:
 
 ```
-docs/kalvin-origin.md    ←  WHY the system exists, WHAT the concepts mean
+docs/kalvin-origin.md    ←  WHY — purpose, philosophy, conceptual model
         ↓
-specs/                   ←  WHAT each component must do (testable, no code)
+specs/                   ←  WHAT — testable behavioural contracts
         ↓
-plans/                   ←  HOW to build it (files, phases, test cases)
+plans/                   ←  HOW — implementation strategy, phasing, test mapping
 ```
 
-Each layer has a single responsibility, a standard structure, and clear references to the layer above it. An agent can:
-1. Read the **origin** to understand what the system is and keep specs aligned with the design vision.
-2. Read the **specs** to understand what must be true and keep plans aligned with requirements.
-3. Read the **plans** to implement code, mapping each test case to a spec acceptance criterion.
+Information belongs in exactly one layer. When it bleeds across layers, the
+documentation drifts out of sync and agents can no longer trust what they read.
+
+### Quick reference: what goes where
+
+| Information type | Origin | Spec | Plan |
+|---|:---:|:---:|:---:|
+| System purpose and philosophy | ✅ | — | — |
+| Conceptual model (nodes, klines, significance) | ✅ | — | — |
+| Teaching model (KScript, training loop) | ✅ | — | — |
+| Data structure definitions (fields, types, invariants) | — | ✅ | — |
+| API contracts (signatures, pre/postconditions) | — | ✅ | — |
+| Behavioural rules (equality, ordering, routing) | — | ✅ | — |
+| Acceptance criteria (test matrix) | — | ✅ | — |
+| Cross-component dependency declarations | — | ✅ | — |
+| Explicit scope boundaries ("out of scope") | — | ✅ | — |
+| Algorithm pseudocode / implementation strategy | — | — | ✅ |
+| File structure and code locations | — | — | ✅ |
+| Build order, phases, estimates | — | — | ✅ |
+| Test mapping (spec ID → test function) | — | — | ✅ |
+| Design decisions and rationale | — | — | ✅ |
+| Status tracking | — | — | ✅ |
 
 ---
 
-## Layer 1: Origin (`docs/kalvin-origin.md`)
+## Principles
 
-**Responsibility:** The authoritative description of the system's purpose, philosophy, and conceptual model.
+### 1. Single source of truth
 
-**Contains:**
-- What Kalvin is (a rationalising agent)
-- The conceptual model (klines, identities, relationships, significance)
-- The four levels (S1–S4) and what they mean conceptually
-- How teaching works (KScript → compilation → training loop)
-- KScript language semantics (operators, syntax, compilation rules)
-- The study model (S2 expansion, cogitation as self-directed study)
+Every fact lives in exactly one document. All other documents **reference**
+it — they do not paraphrase, summarise, or duplicate it.
 
-**Does NOT contain:**
-- Component APIs, data field tables, function signatures
-- Algorithm pseudocode
-- Code locations (file names, module names)
-- Test cases or acceptance criteria
-- Build order, phased estimates
+**Bad:** A plan opens with a "Spec" section restating what
+`specs/model.md` already says.  
+**Good:** The plan says `See @specs/model §Expand` and links to the spec.
 
-**Current state:** Already good. `docs/kalvin-origin.md` is well-written and clearly authoritative.
+When a spec changes, no plan text needs updating because the plan never
+copied the spec in the first place.
 
-**Changes needed:** Minimal. Keep as-is. Specs reference it for conceptual grounding.
+### 2. Downward references only
+
+- **Origin** is self-contained — it never references specs or plans.
+- **Specs** may reference the origin for conceptual grounding (`Origin §Klines`).
+- **Plans** reference specs and the origin but never redefine their content.
+
+Never create an upward dependency (e.g. a spec that says "as implemented in
+`src/model.py`").
+
+### 3. Testable specifications
+
+Every spec must contain a **Test Matrix** — a numbered table of acceptance
+criteria that fully describes the component's required behaviour.
+
+```markdown
+## Test Matrix
+
+| ID   | Criterion                                    | Origin ref     |
+| ---- | -------------------------------------------- | -------------- |
+| KL-1 | Construction with empty nodes → empty list   | Origin §Klines |
+| KL-2 | Construction with single int wraps into list | Origin §Klines |
+| KL-3 | Equality requires same signature AND nodes   | Origin §Klines |
+```
+
+Plans map their test cases to these IDs. This creates the traceability chain:
+
+```
+Origin concept  →  Spec criterion (KL-3)  →  Plan test mapping  →  Code + test
+```
+
+### 4. Spec IDs are stable identifiers
+
+Once assigned, a spec ID (e.g. `KL-3`, `MOD-12`) must not be renumbered or
+reused. If a criterion is removed, mark it `[removed]` rather than shifting
+IDs. New criteria are appended. This prevents plan test-mapping tables from
+silently going out of date.
 
 ---
 
-## Layer 2: Specifications (`specs/`)
+## Standard Templates
 
-**Responsibility:** Precise, testable specifications of each component. Define WHAT must be true, not HOW it is achieved.
+### Spec template
 
-### Standard structure (every spec follows this template):
+Every file in `specs/` follows this structure:
 
 ```markdown
 # [Component] Specification
 
 ## Overview
-(1–2 paragraphs. Brief. No philosophy — that's in the origin.)
+(1–2 paragraphs. No philosophy — just what this component is.)
 
 ## Dependencies
-(Cross-references to other specs this one depends on.)
+(Cross-references to other specs.)
 
 ## Definition
 (Data structures, fields, types, invariants.)
@@ -105,204 +117,143 @@ Each layer has a single responsibility, a standard structure, and clear referenc
 ## API
 (Function signatures, preconditions, postconditions.)
 
-## Behavioral Rules
-(Equality, ordering, deduplication, routing — precise rules
- stated as testable assertions.)
+## Behavioural Rules
+(Precise, testable assertions.)
 
 ## Test Matrix
-(Numbered acceptance criteria. Every criterion is testable.
- Reference: "Origin §X" for the conceptual basis.)
+(Numbered acceptance criteria with origin references.)
 
 ## Out of Scope
-(Explicit boundaries — what this spec does NOT define.)
+(Explicit boundaries.)
 ```
 
-### Key change: Every spec gets a Test Matrix
+### Plan template
 
-The test matrix is the contract between specs and plans. It defines the complete set of behaviors that any implementation must satisfy. Plans reference these by number.
-
-Example for `specs/kline.md`:
-```markdown
-## Test Matrix
-
-| ID   | Criterion                                          | Origin ref     |
-| ---- | -------------------------------------------------- | -------------- |
-| KL-1 | Construction with empty nodes produces empty list   | Origin §Klines |
-| KL-2 | Construction with single int wraps into list        | Origin §Klines |
-| KL-3 | Equality requires same signature AND same nodes     | Origin §Klines |
-| KL-4 | Inequality if signatures differ                     | Origin §Klines |
-| KL-5 | Inequality if node sequences differ                 | Origin §Klines |
-| KL-6 | Equal KLines have equal hashes                      | —              |
-| KL-7 | `is_literal` returns true for literal mask nodes    | Origin §Nodes  |
-| KL-8 | `is_literal` returns false for packed nodes         | Origin §Nodes  |
-| KL-9 | Empty kline is non-literal                          | —              |
-```
-
-### What moves out of specs/:
-
-| From | Move to | Reason |
-|---|---|---|
-| `overview.md` conceptual narrative (§1–§6) | Origin doc or delete | Design philosophy, not spec |
-| `overview.md` component summaries (§2–§9) | Individual specs (already there) | Redundant with component specs |
-| `significance.md` code locations table | `plans/` or delete | Implementation detail |
-| `significance.md` "conceptual" framing | Origin doc | Philosophy, not spec |
-| `model.md` expand() algorithm pseudocode | `plans/` | Implementation strategy |
-| `agent.md` cogitation pseudocode | `plans/` | Implementation strategy |
-| `stm.md` code location table | `plans/` or delete | Implementation detail |
-
-### What moves into specs/:
-
-| From | Move to | Reason |
-|---|---|---|
-| Plans' "Spec" summary sections | Delete (reference specs/ instead) | Eliminate duplication |
-| Plans' test cases | `specs/` test matrices | Acceptance criteria belong with the spec |
-| `docs/roadmap.md` component descriptions | Keep in docs/ | Roadmap is a planning doc, not a spec |
-
-### Revised specs/ contents:
-
-| File | Purpose | Test Matrix? |
-|---|---|---|
-| `specs/kline.md` | KLine data structure | ✅ KL-1..KL-N |
-| `specs/signature.md` | Signature creation and properties | ✅ SIG-1..SIG-N |
-| `specs/tokenizer.md` | Text ↔ node conversion | ✅ TOK-1..TOK-N |
-| `specs/stm.md` | Bounded dual-keyed index | ✅ STM-1..STM-N |
-| `specs/model.md` | Three-tier knowledge graph + API contracts | ✅ MOD-1..MOD-N |
-| `specs/agent.md` | Rationalisation pipeline + cogitation contracts | ✅ AGT-1..AGT-N |
-| `specs/significance.md` | Significance semantics (merged into model.md or kept thin) | ✅ SIGF-1..SIGF-N |
-| `specs/kscript.md` | KScript language spec | ✅ KS-1..KS-N |
-
-`overview.md` is **removed** — its conceptual content lives in the origin doc, its component summaries live in individual specs.
-
----
-
-## Layer 3: Implementation Plans (`plans/`)
-
-**Responsibility:** HOW to implement the specs in code. Phased, actionable, buildable.
-
-### Standard structure (every plan follows this template):
+Every file in `plans/` follows this structure:
 
 ```markdown
 # [Plan Name]
 
-**Parent:** [link to parent plan or "none"]
-**Phases:** [phase numbers]
-**Estimate:** [time]
-**Status:** [not started / in progress / complete]
-**Spec refs:** [links to relevant specs]
+**Parent:** [link or "none"]  
+**Status:** not started / in progress / complete  
+**Spec refs:** [links]
 
 ## Spec References
-(Links to specs. NOT copies. "See @model spec §Storage Operations" not a
- restatement of the API.)
+(Links. NOT copies.)
 
 ## Implementation Tasks
-(Per-file, per-function implementation guidance with pseudocode.)
-
 ### Task N: [Component] ([File])
 - **Spec ref:** @model spec §Expand
 - **Test mapping:** MOD-15..MOD-22
-- **Pseudocode:** [algorithm details that go beyond spec into implementation]
+- **Pseudocode:** [implementation details beyond the spec]
 
 ## Test Mapping
-(Which test files implement which spec acceptance criteria.)
-
 | Spec ID | Test file | Test function | Status |
 |---------|-----------|---------------|--------|
 | MOD-1   | test_model.py | test_add_literal | ✅ |
-| MOD-2   | test_model.py | test_add_nonliteral | ✅ |
 
 ## Design Decisions
-(Resolved questions with rationale — things not dictated by specs.)
+(Resolved questions with rationale.)
 
 ## Status
-(What's done, what's not, blockers.)
+(Progress, blockers.)
 ```
 
-### Key changes to plans/:
+---
 
-1. **Remove "Spec" sections** — replace with links to specs. Plans should say "See @model spec" not re-explain what the model does.
+## Consistency Checks
 
-2. **Move algorithm pseudocode here** — the `expand()` algorithm currently in `specs/model.md` belongs in the plan. The spec should say `expand(Q, C) → Iterator[QueryCandidate]` with behavioral rules; the plan should say "here's the step-by-step implementation algorithm."
+Run these checks whenever you edit documentation:
 
-3. **Test cases reference spec IDs** — each test case in a plan maps to a specific spec acceptance criterion by ID. This creates a traceable chain: origin → spec criterion → plan test → code.
+### After editing the origin (`docs/kalvin-origin.md`)
 
-4. **Remove spec summaries from coordinator** — `plans/implement-kalvin.md` should reference specs for component descriptions, not duplicate them.
+1. **Scan all specs** for origin references (`Origin §…`). If you renamed,
+   removed, or renumbered a section, update every spec that references it.
+2. **Check conceptual coverage.** Does every concept in the origin appear in
+   at least one spec's test matrix? If not, the concept is unspecified and
+   either the spec needs a new criterion or the origin content is aspirational
+   and should be marked as such.
+3. **No code.** If you added file names, function names, or algorithm details,
+   move them to the relevant plan.
 
-### Revised plans/ contents:
+### After editing a spec (`specs/*.md`)
 
-| File | Purpose |
-|---|---|
-| `plans/implement-kalvin.md` | Coordinator: build order, dependency graph, cross-cutting concerns |
-| `plans/implement-kscript.md` | KScript implementation (references `specs/kscript.md`, doesn't re-spec) |
-| `plans/impl/foundations.md` | Phases 0–4: bit layout, KLine, Signature, Tokenizer, STM |
-| `plans/impl/model.md` | Phase 5: Model + expand algorithm |
-| `plans/impl/agent.md` | Phases 6–8: Agent + Cogitator |
-| `plans/impl/build-phases.md` | Design decisions, execution plan |
-| `plans/impl/structural-grounding.md` | Challenges 6 + 6b |
+1. **Verify test matrix completeness.** Every behavioural rule in the spec
+   must have at least one test-matrix entry. If you added a new rule, add a
+   new criterion (append the next ID).
+2. **Check plan test mappings.** Every spec ID that appears in a plan's test
+   mapping must still exist in the spec. If you removed a criterion, update
+   the plan's mapping table (mark the test as `[removed]` or delete the row).
+3. **Check for plan-spec duplication.** Re-read the relevant plan sections.
+   If the plan contains a paragraph that says the same thing as the spec, replace
+   it with a reference link.
+4. **No pseudocode.** If you wrote algorithm steps or implementation strategy,
+   move that content to the plan and replace it with a behavioural contract.
+
+### After editing a plan (`plans/**/*.md`)
+
+1. **Verify spec references resolve.** Every `@specs/…` or spec ID mention
+   must point to an existing section or criterion. Broken references mean the
+   plan is describing behaviour that no longer matches the spec.
+2. **Verify test mapping accuracy.** Each row in the test mapping table should
+   name a real spec ID and a real test function. If the test was renamed or
+   moved, update the row.
+3. **No spec content.** If the plan contains a paragraph that restates what
+   the spec says (data structures, behavioural rules, API contracts), delete it
+   and replace with a reference.
+4. **No origin content.** If the plan contains philosophical or conceptual
+   explanation, move it to the origin doc or delete it.
+
+### When adding a new component
+
+1. Write the origin concept first (or verify it's already there).
+2. Create the spec from the template. Fill in the test matrix with IDs using
+   an appropriate prefix.
+3. Create or update the plan. Add implementation tasks and a test mapping
+   table referencing the new spec IDs.
+4. Verify the chain: origin section → spec criterion → plan task → test function.
 
 ---
 
-## The Traceability Chain
+## Common Drift Patterns and How to Fix Them
 
-```
-Origin: "A kline is a node-like structure..."
-         ↓ referenced by
-Spec:   KL-3 "Two Klines are equal iff same signature AND same nodes"
-         ↓ mapped by
-Plan:   test_kline.py::test_equality → MOD-3 → ✅ passing
-         ↓ implemented in
-Code:   kline.py::def __eq__(self, other)
-```
-
-An agent at any layer can work in one direction:
-- **Updating specs:** Read origin → check each spec aligns with origin concepts → update spec wording and test matrix.
-- **Updating plans:** Read specs → check plan references current spec IDs → update implementation tasks and test mapping.
-- **Updating code:** Read plan → implement task → write test mapped to spec ID → verify all acceptance criteria pass.
+| Symptom | Cause | Fix |
+|---|---|---|
+| Plan and spec disagree on a data structure | Spec was updated, plan was not | Delete the plan's description; replace with `See @specs/…` |
+| Spec contains algorithm pseudocode | Implementation detail leaked upward | Move to the plan; replace in spec with a behavioural contract |
+| Origin and spec both explain the same concept | Spec duplicates origin narrative | Thin the spec to 1–2 sentence overview + origin reference |
+| Test matrix has gaps (behavioural rules with no criterion) | Rules were added without matrix entries | Add new criteria (append IDs) for every uncovered rule |
+| Plan test mapping references spec IDs that don't exist | Spec was restructured | Reconcile: update mapping or restore missing criteria as `[removed]` |
+| Two specs define the same thing differently | Scope creep / unclear boundaries | Check each spec's "Dependencies" and "Out of Scope" sections; merge or split as needed |
 
 ---
 
-## Migration Steps
+## Structural Invariants
 
-1. **Add test matrices to all specs.** ✅ Extracted test cases from plans into the corresponding spec's test matrix with numbered IDs (KL-*, SIG-*, TOK-*, STM-*, MOD-*, AGT-*, SGF-*, KS-*).
-2. **Remove `specs/overview.md`.** ✅ Verified all content covered by origin doc + individual specs. Deleted.
-3. **Merge `specs/significance.md` into `specs/model.md`.** ✅ Added §Significance Semantics to model.md. Thinned significance.md to a redirect page.
-4. **Move algorithm pseudocode from specs to plans.** ✅ Replaced `expand()` algorithm in model.md with behavioral contract + pointer to plan. Removed §12 (Build Plan) from kscript.md (already in plans/).
-5. **Remove spec duplication from plans.** ✅ Replaced all "### Spec" sections in plans with "### Spec Reference" links. Coordinator plan references origin doc instead of restating system description.
-6. **Add spec-ID references to plan test cases.** ✅ Every test table in every plan now maps to a spec ID.
-7. **Verify end-to-end traceability.** ✅ All specs have test matrices, all plans reference specs, all test cases have spec IDs.
+These are always true. If you find a violation, fix it before making any other
+changes.
 
----
-
-## Migration Progress
-
-| Step | Description | Status |
-|------|-------------|--------|
-| 1 | Add test matrices to all specs | ✅ Done |
-| 2 | Remove `specs/overview.md` | ✅ Done |
-| 3 | Split `specs/significance.md` into model.md + origin | ✅ Done |
-| 4 | Move algorithm pseudocode from specs to plans | ✅ Done |
-| 5 | Remove spec duplication from plans | ✅ Done |
-| 6 | Add spec-ID references to plan test cases | ✅ Done |
-| 7 | Verify end-to-end traceability | ✅ Done |
+1. **No `specs/overview.md` exists.** Overview content belongs in the origin
+   doc or in individual specs.
+2. **Every spec has a Test Matrix section.** If a spec is missing one, add it.
+3. **No plan contains a "Spec" section that restates spec content.** Plans
+   contain "Spec Reference" sections with links only.
+4. **No spec mentions a file name or code location.** That belongs in plans.
+5. **No origin doc mentions a spec ID, file name, or test.** The origin is
+   purely conceptual.
+6. **Spec IDs are never renumbered.** Removed criteria are marked `[removed]`;
+   new criteria are appended.
 
 ---
 
-## Summary: What Goes Where
+## Filing Checklist
 
-| Information type | Origin | Spec | Plan |
-|---|---|---|---|
-| System purpose and philosophy | ✅ | — | — |
-| Conceptual model (nodes, klines, significance) | ✅ | — | — |
-| Teaching model (KScript, training loop) | ✅ | — | — |
-| Data structure definitions (fields, types) | — | ✅ | — |
-| API contracts (signatures, pre/post conditions) | — | ✅ | — |
-| Behavioral rules (equality, ordering, routing) | — | ✅ | — |
-| Test matrix (acceptance criteria) | — | ✅ | — |
-| Cross-component dependencies | — | ✅ | — |
-| Explicit scope boundaries | — | ✅ | — |
-| Algorithm pseudocode (implementation strategy) | — | — | ✅ |
-| File structure and code locations | — | — | ✅ |
-| Build order and phases | — | — | ✅ |
-| Test mapping (spec ID → test function) | — | — | ✅ |
-| Design decisions and rationale | — | — | ✅ |
-| Implementation skeletons | — | — | ✅ |
-| Status tracking | — | — | ✅ |
+Before committing any documentation change, confirm:
+
+- [ ] The change touches only one layer's content (origin, spec, or plan).
+- [ ] If it touches the origin: all spec origin-references are still valid.
+- [ ] If it touches a spec: the test matrix still covers every behavioural rule.
+- [ ] If it touches a spec: all plan test mappings referencing this spec are
+      still accurate.
+- [ ] If it touches a plan: all spec references and IDs resolve correctly.
+- [ ] No content has been duplicated across layers — only references added.
