@@ -19,7 +19,7 @@ countersignature. Extended cogitation adds the ability to reshape these
 klines toward canonical status, emitting proposals for teacher ratification.
 
 These two changes enable the training loop described in
-`docs/learning-and-training.md`.
+`docs/kalvin-origin.md`.
 
 ### What Stays the Same
 

@@ -5,10 +5,7 @@
 **Scope:** Implementation challenges for building the training system described in the origin documents.
 
 **See also:**
-- `docs/kscript-intro.md` — the training system from KScript's perspective.
-- `docs/kalvin-intro.md` — the training system from Kalvin's perspective.
-- `docs/learning-and-training.md` — learning, training, and the training loop mechanism.
-- `docs/extended-cogitation.md` — S2 expansion: how the Cogitator reshapes partial understanding.
+- `docs/kalvin-origin.md` — the authoritative description of the Kalvin system.
 - `plans/impl/structural-grounding.md` — detailed implementation plan for the current phase.
 
 ---
@@ -85,7 +82,7 @@ For a candidate with signature `S` and nodes signature `N`:
 
 Every signature generated during expansion must already exist in the model — no invention, no data loss.
 
-**Full design:** `docs/extended-cogitation.md`
+**Full design:** `docs/kalvin-origin.md` (Study → S2 Expansion) and `specs/agent.md` (§S2 Expansion).
 
 ### Challenge 3: Agent Infrastructure
 

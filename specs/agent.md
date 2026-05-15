@@ -127,7 +127,7 @@ Rationalise(Q):
   │                                                              │
   │ process(QueryCandidate(query, candidate, significance)):     │
   │   S2 expansion: reshape misfit klines toward canonical,     │
-  │   emit proposals for teacher ratification.                   │
+  │   emit proposals for agent ratification.                    │
   └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -275,7 +275,7 @@ items. The Cogitator receives pre-routed work items, expands each through
 
 The Cogitator processes all yields from `model.expand()` without filtering.
 Every connotation discovered during graph expansion is evaluated. Proposals
-can be emitted at any significance level — the teacher evaluates them against
+can be emitted at any significance level — the agent evaluates them against
 expectations regardless of their computed significance.
 
 #### Significance Boundaries
@@ -340,33 +340,124 @@ process(QueryCandidate(query, candidate, significance)):
 All yields are processed without filtering. Raw significance values are
 never mutated. Proposals can be emitted at any significance level.
 
+### S2 Expansion
+
 When countersignature fails for an S2 result, the Cogitator attempts to
 **expand** the candidate kline toward canonical status by reshaping its
 nodes to match its signature. This is the mechanism for self-directed
 study — the Cogitator works through partial understanding and emits
-proposals for the teacher to ratify.
+proposals for the agent to ratify.
 
-See `docs/extended-cogitation.md` for the full design.
+The conceptual description of S2 expansion (misfit types, templates,
+sequencers, guarantees) is defined in the [origin document]
+(`docs/kalvin-origin.md`, Study → S2 Expansion). This section specifies
+the implementation detail.
 
-Given a candidate with signature `S` and nodes signature
+#### Misfit Classification
+
+Given a candidate kline with signature `S` and nodes signature
 `N = make_signature(nodes)`:
 
-- **Underfitting** (`S & ~N != 0`): the Cogitator searches the model for
-  klines whose signatures contribute to the gap `S & ~N`, and attempts
-  to add their nodes to the candidate.
-- **Overfitting** (`N & ~S != 0`): the Cogitator identifies nodes whose
-  bits contribute to the excess `N & ~S`, removes them, and verifies
-  the removed group's signature exists in the model.
-- **Dual misfit**: both operations may apply to the same candidate.
+| Condition       | Classification | Meaning                                         |
+| --------------- | -------------- | ----------------------------------------------- |
+| `S == N`        | Canonical (S1) | No expansion needed                             |
+| `S & ~N != 0`   | Underfitting   | Signature promises bits the nodes don't deliver |
+| `N & ~S != 0`   | Overfitting    | Nodes carry bits the signature doesn't capture  |
+| Both            | Dual misfit    | Both conditions hold simultaneously             |
 
-**Universal constraint:** every signature generated during expansion must
-already exist in the model. This guarantees no invention, no data loss,
-and ratifiability. When the constraint cannot be satisfied, no proposal
-is emitted — the teacher infers scaffolding is needed from the absence
-of a `frame` event.
+The **underfit gap** is `S & ~N`. The **overfit excess** is `N & ~S`.
+A kline may be both underfitting and overfitting at the same time.
 
-All expansion proposals are emitted as `frame` events and require
-teacher ratification via countersignature.
+#### Underfit Expansion — Add Nodes
+
+Compute `gap = S & ~N`. Search the model for klines whose signatures
+contribute to the gap. Construct the expanded kline:
+
+```
+{S: [original_nodes + addition_nodes]}
+```
+
+Verify the expanded kline moves toward canonical: `make_signature(expanded_nodes)`
+is closer to `S`. The proposed expanded kline is emitted as a `frame` event.
+
+#### Overfit Expansion — Remove Nodes
+
+Identify nodes whose bits contribute to `N & ~S`. Remove those nodes from
+the candidate. Construct the trimmed kline:
+
+```
+{S: [remaining_nodes]}
+```
+
+Construct a **companion kline** from the removed nodes:
+
+```
+{make_signature(removed_nodes): [removed_nodes]}
+```
+
+Both the trimmed kline and the companion kline are emitted as independent
+`frame` events.
+
+#### Dual Expansion — Replace Nodes
+
+When a kline is both underfitting and overfitting, perform a single atomic
+replacement: swap a subset of overfit nodes for a subset that fills the
+underfit gap. Emit the replacement kline and the companion kline from
+removed nodes as independent `frame` events.
+
+#### Proposals Emitted per Expansion Type
+
+| Expansion type | Proposals emitted                                                |
+| -------------- | ---------------------------------------------------------------- |
+| Added nodes    | The expanded kline                                               |
+| Removed nodes  | The trimmed kline **and** the companion kline from removed nodes |
+| Dual misfit    | The replacement kline **and** the companion kline from removed nodes |
+
+Each proposal is an independent `frame` event. The agent ratifies (or
+rejects) each one individually.
+
+#### Universal Constraint
+
+Every signature generated during expansion must already exist in the model.
+This guarantees no invention, no data loss, and ratifiability. When the
+constraint cannot be satisfied, no proposal is emitted — the agent infers
+scaffolding is needed from the absence of a `frame` event.
+
+All expansion proposals require agent ratification via countersignature.
+
+#### S2 Klines from KScript
+
+KScript's `=>` operator naturally produces S2 klines:
+
+| KScript         | Compiled kline                        | Misfit type  |
+| --------------- | ------------------------------------- | ------------ |
+| `AB => A`       | `{AB: [A]}` — sig `A\|B`, nodes `A`   | Underfitting |
+| `A => A B`      | `{A: [A, B]}` — sig `A`, nodes `A\|B` | Overfitting  |
+| `WDMH => MHALL` | `{WDMH: [M, H, A, L, L]}`             | Dual misfit  |
+
+Underfit klines act as **templates** (known concept, holes to fill).
+Overfit klines act as **sequencers** (step-by-step structure under a single
+goal signature). The cogitator fills templates and decomposes sequencers.
+
+#### Dependence on Structural Grounding
+
+S2 expansion requires structural grounding for two reasons:
+
+1. **Promotion after ratification** — when the agent countersigns an
+   expansion proposal, all participating STM klines must be promoted to
+   frame (not just the ratified kline), including the added/removed node
+   groups and any S4 identity klines involved.
+
+2. **Frame richness** — the expansion search requires a model populated
+   with the signatures it needs to find. Structural grounding ensures that
+   frames hold S4–S1, giving the Cogitator more graph topology to traverse
+   and more candidate signatures to match against.
+
+#### Exploration Depth
+
+For the MVP, the Cogitator processes all yields from `model.expand()`
+without filtering. Future work may add exploration depth controls to limit
+how many expansion proposals are generated per work item.
 
 ### S1 Callback
 

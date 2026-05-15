@@ -301,8 +301,6 @@ The Cogitator **expands** each S2/S3 candidate kline toward canonical
 status by reshaping its nodes to match its signature. This is the mechanism
 for self-directed study.
 
-See `docs/extended-cogitation.md` for the full design.
-
 For a candidate with signature `S` and nodes signature `N`:
 
 - **Underfitting** (`S & ~N != 0`): search the model for klines whose

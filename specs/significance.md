@@ -186,7 +186,7 @@ model.expand(Q, C) → Iterator[QueryCandidate]
   mutated per-yield.
 9. **S2 expansion**: when countersignature fails for an S2 result, the
   Cogitator may attempt to reshape the candidate kline's nodes to better
-  match its signature. See `docs/extended-cogitation.md`.
+  match its signature. See @agent spec §S2 Expansion.
 
 ## Code Locations
 

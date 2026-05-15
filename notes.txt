@@ -1303,7 +1303,7 @@ KScript provides six core relationship operators. For brevity, identity klines a
 │ V₁ V₂ <= Q │ CANONIZE_REV  │ {Q: [V₁, V₂]}      │
 └────────────┴───────────────┴────────────────────┘
 
-UNDERSIGN and CONNOTATE_FWD (and their reversals) produce identical kline sets. The distinction between them is not structural but directional: UNDERSIGN expresses a named association, while CONNOTATE expresses a directed implication. The difference is meaningful to Kalvin during traversal but is not visible in the static kline output.
+UNDERSIGN and CONNOTATE_FWD (and their reversals) produce identical kline sets. The distinction between them is not structural but directional: UNDERSIGN expresses a named association, while CONNOTATE expresses a directed implication. The difference is not meaningful to Kalvin but it is useful in training to   during traversal but is not visible in the static kline output.
 
 KScript also supports indented chaining, whereby a value node on one line becomes the query of an indented block that follows. Finally, comments are allowed between brackets. A typical script:
 
