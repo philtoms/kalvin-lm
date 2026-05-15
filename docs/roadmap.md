@@ -46,9 +46,9 @@ What remains are four implementation challenges, addressed in dependency order.
 | KScript DSL | ✅ Complete | Lexer, parser, compiler, decompiler |
 | Events (pub/sub) | ✅ Complete | `ground`, `frame`, `done` |
 | Persistence (JSON/binary) | ✅ Complete | JSON + binary serialization |
-| **All existing tests** | ✅ 329 passing | No regressions |
-| **Structural grounding** | 🔄 Plan ready | `plans/impl/structural-grounding.md` Phase A |
-| **Extended cogitation** | 🔄 Plan ready | `plans/impl/structural-grounding.md` Phase A+ |
+| **All existing tests** | ✅ 294 passing | No regressions |
+| **Structural grounding** | ✅ Complete | `model.is_s1()`, `promote_participating()`, structural S1 check |
+| **Extended cogitation** | ✅ Complete | Misfit classification, expansion proposals, S2 reshaping |
 | **Agent infrastructure** | ❌ Not started | External coordinator using existing APIs |
 | **Model quality evaluation** | ❌ Not started | Test harness, metrics, calibration |
 
@@ -58,7 +58,7 @@ What remains are four implementation challenges, addressed in dependency order.
 
 ### Challenge 1: Structural Grounding
 
-**Status:** Plan ready — `plans/impl/structural-grounding.md` Phase A  
+**Status:** ✅ Complete  
 **Effort:** Small–medium
 
 The current cogitator auto-promotes any result classified as S1 by boundary check. Under the training model, S1 is determined by structure, not by classification: a kline is grounded if its signature fully describes its nodes (`make_signature(nodes) == signature`) or it is countersigned.
@@ -72,7 +72,7 @@ After ratification, all STM klines involved in the ratification process are prom
 
 ### Challenge 2: Extended Cogitation (S2 Expansion)
 
-**Status:** Plan ready — `plans/impl/structural-grounding.md` Phase A+  
+**Status:** ✅ Complete  
 **Depends on:** Challenge 1  
 **Effort:** Medium
 
@@ -89,8 +89,8 @@ Every signature generated during expansion must already exist in the model — n
 
 ### Challenge 3: Agent Infrastructure
 
-**Status:** Not started (next after Challenges 1 + 2)  
-**Depends on:** Challenge 2  
+**Status:** 🔄 Next  
+**Depends on:** Challenge 2 (✅)  
 **Effort:** Small–medium
 
 The agent is an external coordinator that compiles KScript, constructs one Kalvin instance per script, submits queries via `rationalise()`, subscribes to events, and ratifies proposals via countersignature. No new Kalvin APIs are needed — the agent orchestrates existing ones.
@@ -155,21 +155,21 @@ The dependency chain is linear and shallow. Challenges 1 and 2 are internal chan
 
 ## Phasing
 
-### Phase A: Structural Grounding (Challenge 1)
+### Phase A: Structural Grounding (Challenge 1) ✅ Complete
 **Estimate:** 1–2 days  
 **Risk:** Low  
 **Implementation:** `plans/impl/structural-grounding.md` §1
 
-### Phase A+: Extended Cogitation (Challenge 2)
+### Phase A+: Extended Cogitation (Challenge 2) ✅ Complete
 **Estimate:** 3–5 days  
 **Risk:** Medium  
-**Depends on:** Phase A  
+**Depends on:** Phase A (✅)  
 **Implementation:** `plans/impl/structural-grounding.md` §2
 
-### Phase B: Agent Infrastructure (Challenge 3)
+### Phase B: Agent Infrastructure (Challenge 3) — NEXT
 **Estimate:** 1–2 weeks  
 **Risk:** Low  
-**Depends on:** Phase A+
+**Depends on:** Phase A+ (✅)
 
 ### Phase C: Model Quality (Challenge 4)
 **Estimate:** 2–3 weeks (ongoing)  
@@ -185,7 +185,7 @@ KScript metadata, temporal events, Kalvin-as-tutor. Not required for the trainin
 
 | # | Question | Affects | Priority |
 |---|---|---|---|
-| 1 | How to identify all STM klines involved in a ratification process? | Challenge 1 | High |
+| 1 | ~~How to identify all STM klines involved in a ratification process?~~ Resolved: `promote_participating()` | Challenge 1 | ~~High~~ Done |
 | 2 | Are current boundary constants well-calibrated for training? | Challenge 4 | High |
 | 3 | How many klines before candidate retrieval O(N) becomes a bottleneck? | Challenge 4 | Medium |
 | 4 | What does a non-trivial training curriculum look like? | MW | Medium |

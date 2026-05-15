@@ -24,11 +24,9 @@ _S3_BIAS = 9
 def _pack(distance: int) -> int:
     """Non-linear distance packing via squaring.
 
-    Quadratic growth ensures:
-    - Small distances stay close together → temperature can discriminate finely
-    - Large distances spread apart → accumulation penalty grows super-linearly
-
-    d=0→0, d=1→1, d=5→25, d=10→100, d=20→400, d=100→10000
+    Quadratic growth keeps small distances close for fine-grained temperature
+    discrimination, while large distances spread apart so the accumulation
+    penalty grows super-linearly.
     """
     if distance <= 0:
         return 0
@@ -82,12 +80,9 @@ class Model:
             if self._exists_any(kline):
                 return False
 
-        # Add to STM only
-        self._stm.add(kline, dedup=False)
-        # Track in STM dedup for promote / _exists_any lookups
-        key = (kline.signature, tuple(kline.nodes))
-        self._stm._dedup.add(key)
-
+        # Add to STM — always track in STM's dedup set so promote() and
+        # _exists_any() can rely on it.  Model-level dedup is handled above.
+        self._stm.add(kline, True)
         return True
 
     def exists(self, kline: KLine) -> bool:
@@ -544,10 +539,8 @@ class Model:
             if kl.signature in node_sigs:
                 to_promote.append(kl)
 
-        # Also promote the query and candidate if they're in STM
-        for kl in [query, candidate]:
-            if kl not in to_promote:
-                to_promote.append(kl)
+        # Also promote the query and candidate
+        to_promote.extend([query, candidate])
 
         count = 0
         for kl in to_promote:
@@ -609,17 +602,23 @@ class Model:
             if (new_nodes_sig & expanded_sig) != 0:
                 yield (proposal, [])
 
+    def _split_excess(
+        self, kline: KLine, excess: int
+    ) -> tuple[list[int], list[int]]:
+        """Split kline nodes into (excess_nodes, remaining) by excess mask."""
+        excess_nodes = [n for n in kline.nodes
+                        if not is_literal_node(n) and (n & excess) != 0]
+        remaining = [n for n in kline.nodes if n not in excess_nodes]
+        return excess_nodes, remaining
+
     def _overfit_expansions(
         self, kline: KLine, excess: int
     ) -> Iterator[tuple[KLine, list[KLine]]]:
         """Remove nodes whose bits contribute to the excess."""
-        excess_nodes = [n for n in kline.nodes
-                        if not is_literal_node(n) and (n & excess) != 0]
+        excess_nodes, remaining = self._split_excess(kline, excess)
 
         if not excess_nodes:
             return
-
-        remaining = [n for n in kline.nodes if n not in excess_nodes]
         trimmed = KLine(kline.signature, remaining, kline.dbg_text)
 
         companion_sig = make_signature(excess_nodes)
@@ -631,9 +630,7 @@ class Model:
         self, kline: KLine, gap: int, excess: int
     ) -> Iterator[tuple[KLine, list[KLine]]]:
         """Atomic replacement: swap excess nodes for gap-filling nodes."""
-        excess_nodes = [n for n in kline.nodes
-                        if not is_literal_node(n) and (n & excess) != 0]
-        remaining = [n for n in kline.nodes if n not in excess_nodes]
+        excess_nodes, remaining = self._split_excess(kline, excess)
 
         contributors = self.where(lambda k: (k.signature & gap) != 0)
 
