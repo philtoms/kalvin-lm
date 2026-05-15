@@ -115,44 +115,17 @@ The 32-bit literal mask (`0xFFFFFFFF` in the lower bits) creates a **wide moat**
 **Depends on:** Nothing (leaf concept; `is_literal` is a standalone function)
 **Estimate:** 0.5 day
 
-### Spec
+### Spec Reference
 
-The fundamental unit of the knowledge graph.
+See **@kline spec** for full definition (structure, equality, construction, `is_literal`).
+Test matrix: KL-1 through KL-14.
 
-**Structure:**
+**Key rules (from spec):**
 
-```python
-class KLine:
-    signature: int          # uint64 identity key
-    nodes: list[int]        # ordered sequence of uint64 (always a list)
-```
-
-**Construction:**
-
-```python
-KLine(signature, nodes)
-# signature — required uint64
-# nodes — accepts: [], [int, ...], or int (normalized to list)
-```
-
-**Key rules:**
-
-- `nodes` is always normalized to `list[int]` (empty list for no nodes, never None).
-- No `literal` field is stored. Literal status is computed on demand.
-- `is_literal()` uses the standalone `is_literal` function (no injection needed).
-- Empty klines (no nodes) are non-literal.
-- Equality: same signature AND same node sequence (same length, order, values).
+- `nodes` always `list[int]` (empty list for no nodes, never None).
+- No `literal` field stored — computed on demand via `is_literal()`.
+- Equality: same signature AND same node sequence.
 - Hashable: `hash((signature, tuple(nodes)))`.
-
-**Required methods:**
-
-```python
-kline.nodes       → list[int]
-len(kline)        → int (node count)
-kline.is_literal() → bool
-kline == other    → bool (signature + node sequence equality)
-hash(kline)       → int
-```
 
 ### Implementation
 
@@ -182,19 +155,19 @@ class KLine:
 
 ### Test Cases
 
-| Test                        | Description                           |
-| --------------------------- | ------------------------------------- |
-| Construction: empty nodes   | `KLine(5, [])` → nodes = `[]`         |
-| Construction: single int    | `KLine(5, 3)` → nodes = `[3]`         |
-| Construction: list          | `KLine(5, [1, 2])` → nodes = `[1, 2]` |
-| Equality: same sig + nodes  | `KLine(5, [1]) == KLine(5, [1])`      |
-| Inequality: different sig   | `KLine(5, [1]) != KLine(6, [1])`      |
-| Inequality: different nodes | `KLine(5, [1]) != KLine(5, [2])`      |
-| Hash consistency            | Equal KLines have equal hashes        |
-| is_literal: all literal     | All nodes have literal mask → True    |
-| is_literal: mixed           | Some non-literal nodes → False        |
-| is_literal: empty           | Returns False                         |
-| Length                      | `len(KLine(5, [1, 2, 3])) == 3`       |
+| Spec ID | Test                        | Description                           |
+| ------- | --------------------------- | ------------------------------------- |
+| KL-1    | Construction: empty nodes   | `KLine(5, [])` → nodes = `[]`         |
+| KL-2    | Construction: single int    | `KLine(5, 3)` → nodes = `[3]`         |
+| KL-3    | Construction: list          | `KLine(5, [1, 2])` → nodes = `[1, 2]` |
+| KL-4    | Equality: same sig + nodes  | `KLine(5, [1]) == KLine(5, [1])`      |
+| KL-5    | Inequality: different sig   | `KLine(5, [1]) != KLine(6, [1])`      |
+| KL-6    | Inequality: different nodes | `KLine(5, [1]) != KLine(5, [2])`      |
+| KL-7    | Hash consistency            | Equal KLines have equal hashes        |
+| KL-8    | is_literal: all literal     | All nodes have literal mask → True    |
+| KL-9    | is_literal: mixed           | Some non-literal nodes → False        |
+| KL-10   | is_literal: empty           | Returns False                         |
+| KL-11   | Length                      | `len(KLine(5, [1, 2, 3])) == 3`       |
 
 ---
 
@@ -204,61 +177,35 @@ class KLine:
 **Depends on:** `is_literal` (standalone function, same module or imported)
 **Estimate:** 0.5 day
 
-### Spec
+### Spec Reference
 
-Pure functions for computing and comparing signatures.
+See **@signature spec** for full definition (creation, properties, bitwise AND matching).
+Test matrix: SIG-1 through SIG-10.
 
-**`make_signature(nodes) → int`:**
+**Key functions (from spec):**
 
-```python
-def make_signature(nodes: list[int]) -> int:
-    sig = 0
-    for node in nodes:
-        if is_literal(node):
-            sig |= 1       # bit 0: literal-content flag
-        else:
-            sig |= node    # non-literal contributes full value
-    return sig
-```
-
-**Properties:**
-
-- Deterministic and commutative (node order doesn't matter).
-- Lossy: order and multiplicity lost; literal nodes lose identity (contribute only bit 0).
-- `make_signature([]) == 0` (unsigned).
-- `make_signature([literal_A, literal_B]) == 1` (literal-content flag only).
-- `make_signature([non_literal]) == non_literal` (identity for single non-literal node).
-
-**`signifies(a, b) → bool`:**
-
-```python
-def signifies(a: int, b: int) -> bool:
-    return (a & b) != 0
-```
-
-The basis for candidate retrieval. Commutative. Vacuous for 0.
-
-**Important:** No `is_signature` predicate. Any uint64 may serve as a signature.
-It is identified by role (the `signature` field of a KLine), not by bit pattern.
+- `make_signature(nodes) → int`: OR-reduction with literal-content flag.
+- `signifies(a, b) → bool`: `(a & b) != 0`.
+- No `is_signature` predicate — any uint64 may serve as a signature.
 
 **Note:** The `significance_value` function has been removed from this module.
-Significance inversion (`(~distance) & MASK64`) is performed inline in
-`agent.py`. See `specs/significance.md` for the conceptual specification.
+Significance inversion is performed inline in `model.py`. See @model spec
+§Significance Semantics.
 
 ### Test Cases
 
-| Test                                     | Expected                |
-| ---------------------------------------- | ----------------------- |
-| `make_signature([])`                     | `0`                     |
-| `make_signature([literal])`              | `1`                     |
-| `make_signature([literal, literal])`     | `1` (idempotent)        |
-| `make_signature([packed])`               | `packed` (identity)     |
-| `make_signature([literal, packed])`      | `1 \| packed`           |
-| `make_signature([A, B])`                 | `A \| B` (commutative)  |
-| `signifies(0, anything)`                 | `False`                 |
-| `signifies(1, 1)`                        | `True`                  |
-| `signifies(0b110, 0b10)`                 | `True`                  |
-| `signifies(0b110, 0b1)`                  | `False`                 |
+| Spec ID | Test                                     | Expected                |
+| ------- | ---------------------------------------- | ----------------------- |
+| SIG-1   | `make_signature([])`                     | `0`                     |
+| SIG-2   | `make_signature([literal])`              | `1`                     |
+| SIG-3   | `make_signature([literal, literal])`     | `1` (idempotent)        |
+| SIG-4   | `make_signature([packed])`               | `packed` (identity)     |
+| SIG-5   | `make_signature([literal, packed])`      | `1 \| packed`           |
+| SIG-6   | `make_signature([A, B])`                 | `A \| B` (commutative)  |
+| SIG-7   | `signifies(0, anything)`                 | `False`                 |
+| SIG-8   | `signifies(1, 1)`                        | `True`                  |
+| SIG-9   | `signifies(0b110, 0b10)`                 | `True`                  |
+| SIG-10  | `signifies(0b110, 0b1)`                  | `False`                 |
 
 ---
 
@@ -268,79 +215,44 @@ Significance inversion (`(~distance) & MASK64`) is performed inline in
 **Depends on:** Abstract interface (can be inline or in `abstract.py`)
 **Estimate:** 1.5 days
 
-### Spec
+### Spec Reference
 
-Converts between text and nodes. Two types, both conforming to the same interface:
+See **@tokenizer spec** for full definition (interface, Mod/BPE variants, encoding modes).
+Test matrix: TOK-1 through TOK-12.
 
-```python
-class KTokenizer(ABC):
-    vocab_size: int                    # Number of distinct tokens
-    encode(text_or_int) → list[int]   # Text → nodes
-    decode(ids) → str                 # Nodes → text
-```
+**Key rules (from spec):**
+
+- Packed encoding: all-uppercase-alpha → single node, bit 0 clear, OR-reduced.
+- Literal encoding: everything else → one node per character, literal mask `(codepoint << 32) | 0xFFFFFFFF`.
+- No `pack` parameter — mode auto-detected from input content.
+- `is_literal` is a standalone function, not a tokenizer method.
+- Variants: Mod32 (31 bits, default), Mod64 (63 bits).
 
 > **Note:** `is_literal` is no longer part of the tokenizer interface.
-> It is a standalone function defined in the node encoding layer
-> (see §1.2).
-
-### Mod Tokenizer
-
-Maps characters to bit positions. Two encoding modes:
-
-**Packed encoding** (auto-detected for all-uppercase-alpha strings):
-
-- All characters OR'd into a single node.
-- Bit 0 clear. Lossy: order and multiplicity lost.
-- `encode("ABC") → [CHAR_BIT['A'] | CHAR_BIT['B'] | CHAR_BIT['C']]`
-
-**Literal encoding** (auto-detected for all other strings):
-
-- One node per character: `(codepoint << 32) | 0xFFFFFFFF`
-- Preserves order and identity. Bypasses vocabulary.
-- `encode("123") → [(49<<32)|0xFFFFFFFF, (50<<32)|0xFFFFFFFF]`
-
-**No `pack` parameter** — the tokenizer determines encoding mode internally
-from the content: all-uppercase-alpha → packed, everything else → literal.
-
-**Variants:** Mod32 (31 character bits, default), Mod64 (63 character bits).
-
-**Default vocabulary:** `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \"',.;:!?/\n\t%{}[]()<>#$@£^&*+-_=`
-Characters not in the explicit vocabulary are assigned the next available bit position.
-
-**`is_literal` test (standalone function, not tokenizer method):**
-
-The tokenizer does not implement `is_literal`. The standalone function
-`(node & 0xFFFFFFFF) == 0xFFFFFFFF` correctly identifies literal nodes
-produced by the Mod tokenizer. BPE nodes never have the lower 32 bits all
-set, so the function correctly returns `False` for them.
-
-**Decode:** Auto-detects literal vs packed from the literal mask.
+> It is a standalone function defined in the node encoding layer (see §1.2).
 
 ### BPE Tokenizer
 
-Learns subword vocabulary from a training corpus.
-
-- BPE tokens are **never literal**: the standalone `is_literal` function
-  returns `False` for all BPE nodes (their lower 32 bits are never all set).
-- Raw BPE tokens are sequential IDs. Type prefixes applied at agent layer.
-- Optional dependency: requires `rustbpe` + `tiktoken`.
+BPE tokens are **never literal**. Raw tokens are sequential IDs; type prefixes
+applied at agent layer. Optional dependency: `rustbpe` + `tiktoken`.
+See @tokenizer spec §BPE Tokenizer.
 
 ### Test Cases
 
-| Test                      | Description                                                  |
-| ------------------------- | ------------------------------------------------------------ |
-| Packed encode single char | `encode("A") == [bit_A]`                                     |
-| Packed encode multi-char  | `encode("AB") == [bit_A \| bit_B]`                           |
-| Packed round-trip         | `decode(encode("ABC"))` contains A, B, C (order may differ)  |
-| Literal encode            | `encode("123")` → two nodes with literal mask     |
-| Literal round-trip        | `decode(encode("123")) == "123"` (order preserved) |
-| Auto-detection            | `encode("A")` → 1 packed node; `encode("1")` → 1 literal node |
-| Empty string              | `encode("") == []`, `decode([]) == ""`                       |
-| is_literal: literal node  | `is_literal((65 << 32) \| 0xFFFFFFFF) == True`               |
-| is_literal: packed node   | `is_literal(6) == False`                                     |
-| is_literal: zero          | `is_literal(0) == False`                                     |
-| Vocab size                | Matches number of unique characters in alphabet              |
-| Characters not in vocab   | Still encodable (assigned next bit)                          |
+| Spec ID | Test                      | Description                                                  |
+| ------- | ------------------------- | ------------------------------------------------------------ |
+| TOK-1   | Packed encode single char | `encode("A") == [bit_A]`                                     |
+| TOK-2   | Packed encode multi-char  | `encode("AB") == [bit_A \| bit_B]`                           |
+| TOK-3   | Packed round-trip         | `decode(encode("ABC"))` contains A, B, C (order may differ)  |
+| TOK-4   | Literal encode            | `encode("123")` → two nodes with literal mask                |
+| TOK-5   | Literal round-trip        | `decode(encode("123")) == "123"` (order preserved)           |
+| TOK-6   | Auto-detection            | `encode("A")` → packed; `encode("1")` → literal              |
+| TOK-7   | Empty string              | `encode("") == []`, `decode([]) == ""`                       |
+| TOK-8   | is_literal: literal node  | `is_literal((65 << 32) \| 0xFFFFFFFF) == True`               |
+| TOK-9   | is_literal: packed node   | `is_literal(6) == False`                                     |
+| TOK-10  | is_literal: zero          | `is_literal(0) == False`                                     |
+| TOK-11  | Vocab size                | Matches number of unique characters in alphabet              |
+| TOK-12  | Characters not in vocab   | Still encodable (assigned next bit)                          |
 
 ---
 
@@ -351,31 +263,11 @@ Learns subword vocabulary from a training corpus.
 **Spec:** @stm spec
 **Estimate:** 1 day
 
-### Spec
+### Spec Reference
 
-Full definition in **specs/stm.md**. Summary:
+Full definition in **@stm spec**. Test matrix: STM-1 through STM-10.
 
-Short-Term Memory: a bounded, dual-keyed index over recently added KLines.
-
-**Structure:**
-
-```python
-class STM:
-    _store: dict[int, list[KLine]]   # key → bucket of KLines
-    _order: list[KLine]              # insertion order (FIFO for eviction)
-    _dedup: set[tuple[int, tuple[int,...]]]  # (sig, nodes) pairs
-    _bound: int                      # default 256
-```
-
-**Dual-keyed indexing:**
-Each KLine is indexed under two keys:
-
-1. **Signature:** `kline.signature`
-2. **Nodes signature:** `make_signature(kline.nodes)`
-
-When both keys are identical, stored under a single key.
-
-**API:**
+**Summary of key API (from spec):**
 
 ```python
 stm.add(kline, dedup=True) → bool      # Add, returns False if duplicate
@@ -387,24 +279,20 @@ stm.clear() → None
 len(stm) → int
 ```
 
-**Eviction:** When `add` would exceed the bound, the oldest entry is evicted
-(FIFO). Eviction removes from the STM index only — the KLine remains in the
-frame.
-
-**Dependency:** Requires `make_signature` from the signature module.
-`is_literal` is imported directly from the node encoding layer (no injection).
+**Dual-keyed indexing:** each KLine indexed under both signature and
+`make_signature(kline.nodes)`. FIFO eviction at bound. See @stm spec.
 
 ### Test Cases
 
-| Test                          | Description                                                   |
-| ----------------------------- | ------------------------------------------------------------- |
-| Add and retrieve by signature | `stm.add(kl); stm.find_by_signature(sig) == [kl]`             |
-| Add and retrieve by nodes sig | `stm.add(kl); stm.find_by_nodes(nodes_sig) == [kl]`           |
-| Bound enforcement             | Add `bound + 1` KLines; first is evicted                      |
-| Eviction correctness          | Evicted KLine not in STM but not in frame (frame is separate) |
-| Dedup                         | Adding same (sig, nodes) returns False                        |
-| Multiple KLines same sig      | All stored under one key                                      |
-| Remove                        | Remove clears from all indexes                                |
-| Clear                         | Everything removed                                            |
-| Empty STM                     | `len(stm) == 0`, all lookups return empty/None                |
-| Nodes signature indexing      | Two KLines with different sigs but same nodes_sig both found  |
+| Spec ID | Test                          | Description                                                   |
+| ------- | ----------------------------- | ------------------------------------------------------------- |
+| STM-1   | Add and retrieve by signature | `stm.add(kl); stm.find_by_signature(sig) == [kl]`             |
+| STM-2   | Add and retrieve by nodes sig | `stm.add(kl); stm.find_by_nodes(nodes_sig) == [kl]`           |
+| STM-3   | Bound enforcement             | Add `bound + 1` KLines; first is evicted                      |
+| STM-4   | Eviction correctness          | Evicted KLine not in STM but not in frame (frame is separate) |
+| STM-5   | Dedup                         | Adding same (sig, nodes) returns False                        |
+| STM-6   | Multiple KLines same sig      | All stored under one key                                      |
+| STM-7   | Remove                        | Remove clears from all indexes                                |
+| STM-8   | Clear                         | Everything removed                                            |
+| STM-9   | Empty STM                     | `len(stm) == 0`, all lookups return empty/None                |
+| STM-10  | Nodes signature indexing      | Two KLines with different sigs but same nodes_sig both found  |

@@ -7,116 +7,38 @@
 
 ---
 
-## 1. Model Spec
+## 1. Spec References
 
-Three-tier layered knowledge graph: `STM → Frame → Base`. STM is defined in the **@stm spec**.
+See **@model spec** for full definition (construction, storage operations, graph
+traversal, promotion, significance API, deduplication rules).
+Test matrix: MOD-1 through MOD-51.
 
-### Tier Roles
+See **@stm spec** for STM definition.
 
-| Tier  | Purpose               | Bounded   | Lifetime       | Modified by `add`   |
-| ----- | --------------------- | --------- | -------------- | ------------------- |
-| STM   | Transitive grounding  | Yes (256) | Rolling window | Yes                 |
-| Frame | Session write surface | No        | Per-session    | Yes                 |
-| Base  | Long-term knowledge   | No        | Persistent     | No (promotion only) |
-
-**Lookup order:** STM → Frame → Base. Callers see a single unified API.
-
-### Construction
+### Key API (from spec)
 
 ```python
-Model(base=None, stm_bound=256)
-```
-
-### Storage Operations
-
-```python
-model.add(kline) → bool           # Add to STM + Frame
+model.add(kline) → bool           # Add to STM
 model.exists(kline) → bool       # Check across all tiers
-model.find(signature) → KLine|None       # Most recent by sig
-model.find_all(signature) → list[KLine]  # All by sig
-model.find_by_nodes(nodes_sig) → KLine|None  # By nodes signature
-model.remove(signature) → bool   # Remove most recent, never from base
+model.find(signature) → KLine|None
+model.find_all(signature) → list[KLine]
+model.find_by_nodes(nodes_sig) → KLine|None
+model.remove(signature) → bool
 len(model) → int                 # Frame count only
+model.klines() → list[KLine]
+model.where(predicate) → list[KLine]
+model.resolve(node) → KLine|None
+model.query_expand(kline, depth=2) → list[KLine]
+model.descendants(node) → set[int]
+model.query(signature, depth=1) → list[KLine]
+model.promote(kline) → bool
+model.promote_all() → int
+model.expand(query, candidate) → Iterator[QueryCandidate]
+model.is_countersigned(kline) → bool
+model.is_s1(kline) → bool
+model.classify_misfit(kline) → tuple[bool, bool]
+model.generate_expansions(kline, underfit_gap, overfit_mask) → Iterator
 ```
-
-### Deduplication
-
-When `add` receives a literal KLine (all nodes literal per the standalone
-`is_literal` function),
-check for an equal KLine in any tier. If duplicate exists, reject
-(return False). Non-literal KLines are always accepted.
-
-### Iteration
-
-```python
-model.klines() → list[KLine]     # All KLines, reverse insertion order, deduped
-model.where(predicate) → list[KLine]  # Filtered; if predicate is int, AND match
-```
-
-### Graph Traversal
-
-```python
-model.resolve(node) → KLine|None     # node → KLine lookup (= find)
-model.query_expand(kline, depth=2) → list[KLine]  # Graph expansion
-model.descendants(node) → set[int]   # Recursive node collection
-model.query(signature, depth=1) → list[KLine]  # Find + expand
-```
-
-**Query_expand semantics:**
-
-- `depth=0` → `[]`
-- `depth=1` → `[]`
-- `depth=2` → direct children of kline
-- `depth=N` → N-1 levels deep
-- Cycle detection: visited KLines not re-visited.
-- Missing nodes skipped.
-- Order: node order, depth-first.
-
-### Promotion
-
-```python
-model.promote(kline) → bool    # Add to base. Returns False if no base.
-model.promote_all() → int      # Promote all frame KLines to base.
-```
-
-### Significance API (consumed by Cogitator)
-
-```python
-model.expand(query, candidate) → Iterator[QueryCandidate]  # connotation generator
-model.is_countersigned(a, b) → bool
-```
-
-Routing is performed by the Agent's `_route()` method using node-membership
-testing — no model function is called during routing. The Cogitator
-consumes `expand` and `is_countersigned`.
-
-`expand()` is a generator that yields intermediate `QueryCandidate` items
-for each discovered connotation, followed by a terminal yield with the
-packed distance. Each yielded result is processed by the Cogitator
-(checking countersignature), enabling discovery across the full expansion
-graph.
-
-```python
-class QueryCandidate(NamedTuple):
-    query: KLine
-    candidate: KLine
-    significance: int   # pre-computed by model: (~packed_distance) & MASK64
-```
-
-### Model-Internal Functions
-
-```python
-model.is_s1(kline) → bool              # structural grounding check
-model._is_canon(kline) → bool          # sig == make_signature(nodes)
-model._edge_hops(sig) → Iterator       # yields (hop_count, next_sig)
-```
-
-- `is_s1`: `True` when a kline is structurally grounded — canonical
-  (`make_signature(nodes) == signature`) or countersigned by another kline.
-- `_is_canon`: tests whether a kline is canonical (its signature equals the
-  `make_signature` reduction of its nodes).
-- `_edge_hops`: yields `(hop_count, next_sig)` pairs for each non-canonical
-  resolution step. The `distance` algorithm consumes it.
 
 ---
 
@@ -339,76 +261,71 @@ Structural test only. Literal nodes cannot match a signature.
 
 ---
 
-## 3. Test Cases
+## 3. Test Mapping
 
 ### Storage
 
-| Test                      | Description                      |
-| ------------------------- | -------------------------------- |
-| Add and find              | Add KLine, find by signature     |
-| Add returns True          | Normal case                      |
-| Literal dedup             | Duplicate literal KLine rejected |
-| Non-literal no dedup      | Duplicate non-literal accepted   |
-| Exists                    | True after add, False before     |
-| Find returns most recent  | Multiple KLines same sig         |
-| Find_all                  | Returns all KLines with sig      |
-| Find_by_nodes             | Returns by nodes signature       |
-| Remove                    | Removes most recent with sig     |
-| Remove never touches base | Verify base unchanged            |
-| Len                       | Frame count only                 |
+| Spec ID | Test                      | Description                      |
+| ------- | ------------------------- | -------------------------------- |
+| MOD-1   | Add and find              | Add KLine, find by signature     |
+| MOD-2   | Add returns True          | Normal case                      |
+| MOD-3   | Literal dedup             | Duplicate literal KLine rejected |
+| MOD-4   | Non-literal no dedup      | Duplicate non-literal accepted   |
+| MOD-5   | Exists                    | True after add, False before     |
+| MOD-6   | Find returns most recent  | Multiple KLines same sig         |
+| MOD-7   | Find_all                  | Returns all KLines with sig      |
+| MOD-8   | Find_by_nodes             | Returns by nodes signature       |
+| MOD-9   | Remove                    | Removes most recent with sig     |
+| MOD-10  | Remove never touches base | Verify base unchanged            |
+| MOD-11  | Len                       | Frame count only                 |
 
 ### Three-Tier Lookup
 
-| Test             | Description                            |
-| ---------------- | -------------------------------------- |
-| STM priority     | KLine in STM found before frame        |
-| Frame fallback   | KLine not in STM found in frame        |
-| Base fallback    | KLine not in STM/frame found in base   |
-| Cross-tier dedup | Literal KLine in base blocks frame add |
+| Spec ID | Test             | Description                            |
+| ------- | ---------------- | -------------------------------------- |
+| MOD-12  | STM priority     | KLine in STM found before frame        |
+| MOD-13  | Frame fallback   | KLine not in STM found in frame        |
+| MOD-14  | Base fallback    | KLine not in STM/frame found in base   |
+| MOD-15  | Cross-tier dedup | Literal KLine in base blocks frame add |
 
 ### Graph Traversal
 
-| Test                   | Description             |
-| ---------------------- | ----------------------- |
-| Resolve                | Node resolves to KLine  |
-| Expand depth 0         | Returns empty           |
-| Expand depth 2         | Returns direct children |
-| Expand cycle detection | No infinite loop        |
-| Descendants            | Recursive collection    |
-| Query                  | Find + expand           |
+| Spec ID | Test                   | Description             |
+| ------- | ---------------------- | ----------------------- |
+| MOD-16  | Resolve                | Node resolves to KLine  |
+| MOD-17  | Expand depth 0         | Returns empty           |
+| MOD-18  | Expand depth 2         | Returns direct children |
+| MOD-19  | Expand cycle detection | No infinite loop        |
+| MOD-20  | Descendants            | Recursive collection    |
+| MOD-21  | Query                  | Find + expand           |
 
 ### Promotion
 
-| Test                     | Description                          |
-| ------------------------ | ------------------------------------ |
-| Promote to base          | KLine appears in base                |
-| Promote without base     | Returns False                        |
-| Promote all              | All frame KLines promoted            |
-| Promote skips base dupes | Existing base KLines not overwritten |
+| Spec ID | Test                     | Description                          |
+| ------- | ------------------------ | ------------------------------------ |
+| MOD-22  | Promote to base          | KLine appears in base                |
+| MOD-23  | Promote without base     | Returns False                        |
+| MOD-24  | Promote all              | All frame KLines promoted            |
+| MOD-25  | Promote skips base dupes | Existing base KLines not overwritten |
 
 ### Significance API
 
-| Test                      | Description                                                |
-| ------------------------- | ---------------------------------------------------------- |
-| is_s1 canonical            | `make_signature(nodes) == signature` → True                |
-| is_s1 countersigned        | Mutual cross-reference detected → True                     |
-| is_s1 neither              | Non-canonical, non-countersigned → False                   |
-| \_is_canon match          | `sig == make_signature(nodes)` → True                      |
-| \_is_canon mismatch       | `sig != make_signature(nodes)` → False                     |
-| \_edge_hops unresolvable  | Node doesn't resolve → empty generator                     |
-| \_edge_hops canonical     | Resolves to canonical → empty generator                    |
-| \_edge_hops chain         | Yields (hop_count, next_sig) at each step                  |
-| expand self no model      | All match, ungrounded → significance reflects N ungrounded |
-| expand no resolution      | All mismatched unresolvable → low significance             |
-| expand grounding          | Matched node that resolves → higher significance           |
-| expand edge hops          | Mismatched with chain → connotation yields + terminal      |
-| expand S2 signifies       | Signifies loose match yields QC, terminal still MAX_HOP    |
-| expand S2 before S3       | Signifies short-circuits, s3_connotations not populated    |
-| expand range              | Valid significance uint64                                  |
-| expand clamped            | Significance in [1, D_MAX]                                 |
-| expand S3 route           | S3 bias ensures S3 distances moderately exceed S2          |
-| expand connotation        | Indirect path → S3 connotation yield + terminal            |
-| expand significance range | Significance always in valid uint64 range                  |
-| expand bidirectional      | Both sides yield connotations + terminal                   |
-| is_countersigned          | Mutual reference detected                                  |
-| Not countersigned         | One-way reference → False                                  |
+| Spec ID | Test                      | Description                                                |
+| ------- | ------------------------- | ---------------------------------------------------------- |
+| MOD-26  | is_s1 canonical            | `make_signature(nodes) == signature` → True                |
+| MOD-27  | is_s1 countersigned        | Mutual cross-reference detected → True                     |
+| MOD-28  | is_s1 neither              | Non-canonical, non-countersigned → False                   |
+| MOD-29  | expand self no model      | All match, ungrounded → significance reflects N ungrounded |
+| MOD-30  | expand no resolution      | All mismatched unresolvable → low significance             |
+| MOD-31  | expand grounding          | Matched node that resolves → higher significance           |
+| MOD-32  | expand edge hops          | Mismatched with chain → connotation yields + terminal      |
+| MOD-33  | expand S2 signifies       | Signifies loose match yields QC, terminal still MAX_HOP    |
+| MOD-34  | expand S2 before S3       | Signifies short-circuits, s3_connotations not populated    |
+| MOD-35  | expand range              | Valid significance uint64                                  |
+| MOD-36  | expand clamped            | Significance in [1, D_MAX]                                 |
+| MOD-37  | expand S3 route           | S3 bias ensures S3 distances moderately exceed S2          |
+| MOD-38  | expand connotation        | Indirect path → S3 connotation yield + terminal            |
+| MOD-39  | expand significance range | Significance always in valid uint64 range                  |
+| MOD-40  | expand bidirectional      | Both sides yield connotations + terminal                   |
+| MOD-41  | is_countersigned          | Mutual reference detected                                  |
+| MOD-42  | Not countersigned         | One-way reference → False                                  |

@@ -126,6 +126,25 @@ The kline spec is self-contained with respect to node classification.
 `is_literal(node) → bool` is defined here as a standalone bit-layout test.
 It is not imported from any other spec.
 
+## Test Matrix
+
+| ID   | Criterion                                                                | Origin ref |
+| ---- | ------------------------------------------------------------------------ | ---------- |
+| KL-1 | Construction with empty nodes produces empty list: `KLine(5, []).nodes == []` | — |
+| KL-2 | Construction with single int wraps into list: `KLine(5, 3).nodes == [3]` | — |
+| KL-3 | Construction with list preserves list: `KLine(5, [1,2]).nodes == [1,2]` | — |
+| KL-4 | Equality: same signature + same nodes → equal                            | — |
+| KL-5 | Inequality: different signatures → not equal                             | — |
+| KL-6 | Inequality: different node sequences → not equal                         | — |
+| KL-7 | Hash consistency: equal KLines produce equal hashes                      | — |
+| KL-8 | `is_literal()`: all nodes literal → True                                 | — |
+| KL-9 | `is_literal()`: mixed literal/non-literal nodes → False                  | — |
+| KL-10 | `is_literal()`: empty kline → False                                      | — |
+| KL-11 | `len()` returns node count                                                | — |
+| KL-12 | `is_literal(node)` standalone: literal mask `(0xFFFFFFFF)` → True         | — |
+| KL-13 | `is_literal(node)` standalone: packed node (bit 0 clear) → False         | — |
+| KL-14 | `is_literal(node)` standalone: zero → False                              | — |
+
 ## Referenced By
 
 - **Significance** (@significance spec) — compares query and candidate Klines.

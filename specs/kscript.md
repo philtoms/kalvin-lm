@@ -620,107 +620,40 @@ Like Python, indentation defines block structure. Mixed tabs and spaces will wor
 
 ---
 
-## 12. Build-From-Scratch Implementation Plan
+## 12. Test Matrix
 
-### Phase 1: Token Types & Lexer
-
-**Estimate:** 0.5 day
-
-1. Define `TokenType` enum (11 values)
-2. Define `Token` frozen dataclass
-3. Implement `Lexer` with:
-   - Multi-char operator priority (`==`, `=>`, `<=` before `=`, `>`, `<`)
-   - Identifier → SIGNATURE/LITERAL classification
-   - Number, quoted string, comment parsing
-   - Python-style INDENT/DEDENT tracking
-4. **Tests:** Token classification, operator lexing, indent/dedent, comments, edge cases
-
-### Phase 2: AST & Parser
-
-**Estimate:** 0.5 day
-
-1. Define AST nodes: `Signature`, `Literal`, `PrimaryConstruct`, `Block`, `Construct`, `Script`, `KScriptFile`
-2. Implement recursive descent `Parser` matching the grammar
-3. Handle: inline ops vs chain ops, block constructs, literal constructs, insignificant tokens
-4. **Tests:** AST structure for each construct type, parse errors for invalid input
-
-### Phase 3: Encoder (Mod Tokenizer dependency)
-
-**Estimate:** 0.5 day (assumes Mod Tokenizer already exists)
-
-1. Define `CompiledEntry` extending `KLine`
-2. Implement `encode()` and `decode()` with packed/literal discrimination
-3. **Tests:** Encode/decode round-trips for signatures, literals, mixed
-
-### Phase 4: Compiler
-
-**Estimate:** 1.5 days
-
-1. Implement `Compiler.compile()` traversing AST
-2. Implement per-operator emission rules (§5.5)
-3. Implement MCS expansion (§5.3)
-4. Implement deduplication (§5.4)
-5. Implement chain processing with flattening
-6. **Tests:** Each operator type, MCS expansion, chains, nested subscripts, literals, dedup, complex examples
-
-### Phase 5: Output Module
-
-**Estimate:** 0.5 day
-
-1. Implement `write_json`, `write_jsonl`, `write_bin`, `read_json`, `read_bin`
-2. Binary format: KSC1 with magic header
-3. **Tests:** Write/read round-trips for each format, invalid magic detection
-
-### Phase 6: Decompiler
-
-**Estimate:** 1 day
-
-1. Implement MCS name recovery (both patterns)
-2. Implement level inference heuristics
-3. Implement `DecompiledEntry` with `to_kscript()` and `to_dict()`
-4. **Tests:** Round-trip for each operator, MCS name recovery, complex nested scripts
-
-### Phase 7: Public API & CLI
-
-**Estimate:** 0.5 day
-
-1. Implement `KScript` class with source/file loading and output
-2. Implement `__main__.py` CLI
-3. Implement `compile_source()` convenience function
-4. **Tests:** API usage, file loading, output format selection, base extension
-
-**Total Estimate:** 5 days
-
-### Build Order Dependency
-
-```
-[Mod Tokenizer] ──→ Phase 3 (Encoder) ──→ Phase 4 (Compiler)
-                                                       ↓
-Phase 1 (Lexer) ──→ Phase 2 (Parser) ─────────────→ Phase 4
-                                                       ↓
-                                              Phase 5 (Output)
-                                              Phase 6 (Decompiler)
-                                              Phase 7 (API/CLI)
-```
-
-Phases 1 and 2 can proceed in parallel with Phase 3. Phase 4 requires all three. Phases 5–7 are independent of each other but depend on Phase 4.
-
----
-
-## 13. Test Matrix Summary
-
-| Category           | Count   | Key Tests                                                   |
-| ------------------ | ------- | ----------------------------------------------------------- |
-| Lexer              | 14      | Token types, operators, comments, indent/dedent, edge cases |
-| Parser AST         | 5       | Chains, blocks, literals, parse errors                      |
-| Compiler Basic     | 8       | Each operator, literals, quoted strings                     |
-| MCS Expansion      | 4       | Multi-char sigs, no single-char MCS, countersign MCS        |
-| Chains             | 4       | CANONIZE chains, per-item emission, subscript blocks        |
-| Nested Subscripts  | 2       | Nested blocks, mixed inline ops                             |
-| Complex Examples   | 3       | AB=>A B, AB==CD, AB>C                                       |
-| Literal Edge Cases | 7       | Bare literals, block mixing, parse error for literal owners |
-| Decompiler         | 14      | Round-trips, MCS recovery, level inference, Mod32 compat    |
-| Output I/O         | 4       | Binary/JSON/JSONL round-trips                               |
-| Encode/Decode      | 4       | Sig-only, sig-to-sig, sig-to-literal, list                  |
-| KScript API        | 6       | Inline source, output formats, base extension, file loading |
-| **Total**          | **~72** |                                                             |
+| ID    | Criterion                                                                  | Category |
+| ----- | -------------------------------------------------------------------------- | -------- |
+| KS-1  | Token classification: all 11 token types recognized                        | Lexer |
+| KS-2  | Multi-char operator priority: `==`, `=>` before `=`, `>`                    | Lexer |
+| KS-3  | Comment parsing: `(...)` stripped from token stream                        | Lexer |
+| KS-4  | Indent/dedent tracking: Python-style INDENT/DEDENT tokens                  | Lexer |
+| KS-5  | Edge cases: empty input, whitespace-only, consecutive operators            | Lexer |
+| KS-6  | AST structure for chains: operator + primary sequence                       | Parser |
+| KS-7  | AST structure for blocks: block construct with subscripts                   | Parser |
+| KS-8  | AST structure for literals: number and quoted string nodes                  | Parser |
+| KS-9  | Parse errors for invalid input: missing operators, bad nesting              | Parser |
+| KS-10 | COUNTERSIGN compilation: `Q == V` → `{Q:[V]}, {V:[Q]}`                      | Compiler |
+| KS-11 | CANONIZE compilation: `Q => V` → `{Q:[V]}`                                 | Compiler |
+| KS-12 | CONNOTATE compilation: `Q > V` → `{Q:[V]}`                                 | Compiler |
+| KS-13 | UNDERSIGN compilation: `Q = V` → `{V:[Q]}`                                 | Compiler |
+| KS-14 | MCS expansion: multi-char signatures expanded to identity + composite       | Compiler |
+| KS-15 | No MCS for single-char signatures                                           | Compiler |
+| KS-16 | CANONIZE chains: per-item emission                                          | Compiler |
+| KS-17 | Subscript blocks: nested constructs                                         | Compiler |
+| KS-18 | Dedup: identity klines not duplicated                                       | Compiler |
+| KS-19 | Complex examples: `AB=>A B`, `AB==CD`, `AB>C` round-trip correctly         | Compiler |
+| KS-20 | Bare literals in block context                                              | Literals |
+| KS-21 | Mixed literal and non-literal in same block                                 | Literals |
+| KS-22 | Parse error for literal-owned constructs                                    | Literals |
+| KS-23 | Decompiler round-trip: compile → decompile → compile produces same output   | Decompiler |
+| KS-24 | MCS name recovery: both patterns                                            | Decompiler |
+| KS-25 | Level inference: heuristics for operator recovery                           | Decompiler |
+| KS-26 | Binary output round-trip: write → read produces same klines                 | Output |
+| KS-27 | JSON output round-trip: write → read produces same klines                   | Output |
+| KS-28 | JSONL output round-trip: write → read produces same klines                  | Output |
+| KS-29 | Encode/decode: sig-only, sig-to-sig, sig-to-literal, list                   | Encoder |
+| KS-30 | API: inline source compilation                                              | API |
+| KS-31 | API: output format selection                                                | API |
+| KS-32 | API: base extension (appending to existing model)                           | API |
+| KS-33 | API: file loading from `.ks` source                                         | API |

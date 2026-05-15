@@ -1,49 +1,21 @@
 # Kalvin: Build-From-Scratch Implementation Plan - Coordinator
 
 **Purpose:** Master index for implementing Kalvin from zero. Each sub-plan is
-self-contained (spec + algorithm + test cases). This file provides the overview,
-build order, and cross-cutting concerns.
+self-contained (implementation + algorithm + test mapping). This file provides
+the overview, build order, and cross-cutting concerns.
+
+**Specs:** All component specs are in `specs/`. Sub-plans reference specs by ID
+(e.g., KL-1, MOD-5) rather than duplicating spec content.
 
 **Date:** 2026-04-29
-**Updated:** 2026-05-01 - significance internalized in model (distance→significance inversion moved from Cogitator to Model.expand)
+**Updated:** 2026-05-15 - spec/plan separation (see `docs/spec-plan-proposal.md`)
 
 ---
 
-## 0. What is Kalvin?
+## 0. System Architecture
 
-Kalvin is an **agent** - a system that receives new information, evaluates how it
-relates to existing knowledge, and autonomously decides what to do next. This
-capacity for choice is called **Agency**, and it arises from a mechanism called
-**Significance**.
-
-The system operates on two fundamental concepts:
-
-- **Nodes** - opaque 64-bit unsigned integers (the atoms).
-- **KLines** - identified, ordered sequences of nodes (the structures).
-
-### The Core Pipeline
-
-```
-Input Text → Tokenizer → Nodes → KLine → Agent → Model (Knowledge Graph)
-                                         ↓
-                              Route (node membership, no model call)
-                              S1 → fast response (promote)
-                              S4 → fast response (novel)
-                              S2/S3 → Cogitator (background)
-                                         ↓
-                              Cogitator: model.expand → connotations + distance
-                                         ↓
-                              Each QueryCandidate: check countersignature
-```
-
-### Significance Levels
-
-| Level | Meaning                    | Agent Action          |
-| ----- | -------------------------- | --------------------- |
-| S1    | "I fully understand this." | Confirm. Promote.     |
-| S2    | "I understand some."       | Queue for cogitation. |
-| S3    | "This is reminiscent."     | Queue for cogitation. |
-| S4    | "This is completely new."  | Novel. Promote.       |
+See `docs/kalvin-origin.md` for the authoritative description of what Kalvin is
+and how it works. Component specs in `specs/` define the behavioral contracts.
 
 ---
 

@@ -181,6 +181,21 @@ Properties:
   irrelevant (no shared bits).
 - **Vacuous for 0** — a signature of 0 never signifies anything.
 
+## Test Matrix
+
+| ID    | Criterion                                                    | Origin ref |
+| ----- | ------------------------------------------------------------ | ---------- |
+| SIG-1 | `make_signature([]) == 0` (empty → unsigned)                 | — |
+| SIG-2 | `make_signature([literal]) == 1` (literal-content flag)       | — |
+| SIG-3 | `make_signature([literal, literal]) == 1` (idempotent)        | — |
+| SIG-4 | `make_signature([packed]) == packed` (identity for non-lit)   | — |
+| SIG-5 | `make_signature([literal, packed]) == 1 \| packed`           | — |
+| SIG-6 | `make_signature([A, B]) == A \| B` (commutative, OR-reduce)   | — |
+| SIG-7 | `signifies(0, anything) == False` (vacuous for 0)             | — |
+| SIG-8 | `signifies(1, 1) == True`                                     | — |
+| SIG-9 | `signifies(0b110, 0b10) == True` (overlapping bits)           | — |
+| SIG-10 | `signifies(0b110, 0b1) == False` (no overlapping bits)       | — |
+
 ## What a Signature is Not
 
 The following are explicitly **out of scope** for this spec:

@@ -537,6 +537,93 @@ for that single pair.
 (cogitator, slow) gives a clean workload split. Future iterations can
 evolve the Cogitator to perform additional graph expansion and re-routing.
 
+## Test Matrix
+
+### Routing
+
+| ID    | Criterion                                                     | Origin ref |
+| ----- | ------------------------------------------------------------- | ---------- |
+| AGT-1 | All nodes match → returns "S1"                                 | — |
+| AGT-2 | Some nodes match → returns "S2"                                | — |
+| AGT-3 | No nodes match → returns "S3"                                  | — |
+| AGT-4 | Empty query → returns "S4"                                     | — |
+| AGT-5 | Single node match → returns "S1"                               | — |
+| AGT-6 | Routing independent of signature: only candidate nodes matter  | — |
+
+### Rationalisation — Phase 1: Prepare
+
+| ID     | Criterion                                                   | Origin ref |
+| ------ | ----------------------------------------------------------- | ---------- |
+| AGT-7  | Signature assigned: KLine with sig=0 gets `make_signature(nodes)` | — |
+| AGT-8  | Signature preserved: existing non-zero sig unchanged        | — |
+
+### Rationalisation — Phase 2: Ground Check
+
+| ID     | Criterion                                               | Origin ref |
+| ------ | ------------------------------------------------------- | ---------- |
+| AGT-9  | First rationalise: returns True, adds to model           | — |
+| AGT-10 | Duplicate rationalise: returns True, emits "ground" event | — |
+| AGT-11 | Different sig same nodes: not a ground (different KLine) | — |
+
+### Rationalisation — Phase 3: Assess
+
+| ID     | Criterion                                                  | Origin ref |
+| ------ | ---------------------------------------------------------- | ---------- |
+| AGT-12 | Unsigned (no nodes): returns True, emits "frame" S4         | — |
+| AGT-13 | All-literal: returns True, emits "frame" S1                | — |
+| AGT-14 | Self-grounded canonical: returns True when all nodes resolve | — |
+| AGT-15 | Not self-grounded: falls through to Phase 4               | — |
+
+### Rationalisation — Phase 4: Retrieve Candidates
+
+| ID     | Criterion                                         | Origin ref |
+| ------ | ------------------------------------------------- | ---------- |
+| AGT-16 | No candidates: returns True (S4 novel)             | — |
+| AGT-17 | Candidates found: proceeds to routing              | — |
+
+### Rationalisation — Phase 5: Route Each Candidate
+
+| ID     | Criterion                                                           | Origin ref |
+| ------ | ------------------------------------------------------------------- | ---------- |
+| AGT-18 | First candidate S1: returns True, promotes, no further routing      | — |
+| AGT-19 | Later candidate S1: earlier S2/S3 routed, then S1 terminates loop  | — |
+| AGT-20 | All S2: returns False, all submitted as WorkItems                   | — |
+| AGT-21 | All S3: returns False, all submitted as WorkItems                   | — |
+| AGT-22 | S1 short-circuits: `model.expand` never called when S1 found        | — |
+
+### Events
+
+| ID     | Criterion                                  | Origin ref |
+| ------ | ------------------------------------------ | ---------- |
+| AGT-23 | Subscribe and publish: callback receives event | — |
+| AGT-24 | Multiple subscribers: all receive event    | — |
+| AGT-25 | Event fields correct: kind, query, proposal, significance | — |
+| AGT-26 | Thread safety: publish from another thread | — |
+| AGT-27 | Empty bus: no crash on publish with no subscribers | — |
+| AGT-28 | Event delivery: all events received in order | — |
+
+### Cogitation
+
+| ID     | Criterion                                                           | Origin ref |
+| ------ | ------------------------------------------------------------------- | ---------- |
+| AGT-29 | Countersignature discovery: S2 → S1 via countersignature in cogitation | — |
+| AGT-30 | Cogitator join: thread stops cleanly                                | — |
+| AGT-31 | S2 submits work item: WorkItem queued with correct fields           | — |
+| AGT-32 | All yields processed: every QC from `expand()` evaluated            | — |
+| AGT-33 | S1 detection: high-significance QC triggers on_s1 callback          | — |
+| AGT-34 | S2/S3 expansion: non-canonical QC triggers expansion proposals      | — |
+| AGT-35 | Proposals at any significance: S2 and S3 proposals emitted as frame events | — |
+| AGT-36 | Boundary S1 + structural check: promotion only on structural S1     | — |
+| AGT-37 | Boundary S1 + structural S1: promotion occurs                       | — |
+
+### Serialization
+
+| ID     | Criterion                                         | Origin ref |
+| ------ | ------------------------------------------------- | ---------- |
+| AGT-38 | JSON round-trip: save/load preserves KLines        | — |
+| AGT-39 | Binary round-trip: save/load preserves KLines      | — |
+| AGT-40 | Empty agent: serializes and deserializes correctly | — |
+
 ## Open Questions
 
 ### 1. Candidate Retrieval in the Model

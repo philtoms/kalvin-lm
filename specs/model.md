@@ -432,132 +432,25 @@ computed significance.
   mismatched nodes.
 - **MASK64** — 64-bit mask for bitwise inversion (`0xFFFF_FFFF_FFFF_FFFF`).
 
-#### Definitions
+#### Behavioral Contract
 
-- **is_s1(kline)** — kline is structurally grounded: canonical
-  (`make_signature(nodes) == signature`) or countersigned by another kline
-  in the model.
-- **is_canon(kline)** — `kline.signature == make_signature(kline.nodes)`.
-  The kline's signature exactly represents its nodes.
-- **edge_hops(sig)** — a generator that yields `(hop_count, next_sig)` pairs
-  for each non-canonical resolution step from a signature:
-  ```
-  edge_hops(sig):
-      hop_count = 0
-      while hop_count < MAX_HOP:
-          kline = find(sig)
-          if kline is None or is_canon(kline):
-              break
-          hop_count += 1
-          sig = make_signature(kline.nodes)
-          yield (hop_count, sig)
-  ```
-  Follows the chain: resolve `sig` → kline → `make_signature(kline.nodes)`
-  → resolve again. Stops at a dead end (unresolvable) or a canonical kline.
-  Yields `(hop_count, next_sig)` at each step, where `next_sig` is the
-  signature produced by `make_signature(kline.nodes)` at that hop.
+`expand()` must satisfy these properties:
 
-#### Hyperparameters
+1. **Single distance** — accumulated integer. S3 connotation hops biased
+   by `_pack(hop_count + _S3_BIAS)`. Callers receive significance.
+2. **Significance is inverted distance** — `(~distance) & MASK64`.
+3. **Distance is topology-driven** — hop distances from graph topology.
+4. **S2 signifies short-circuits before S3** — overlap match yields QC and
+   stops chain; `s3_connotations` not populated.
+5. **Connotation is always S3** — indirect bridging always uses packed distance.
+6. **Ungrounded penalty is always +1** — matched but ungrounded nodes.
+7. **Bidirectional** — both query and candidate mismatched nodes contribute.
+8. **Quadratic packing** — `_pack(d) = d²`.
+9. **Recursive expansion** — connotations yielded as `QueryCandidate`.
+10. **Cycle detection** — visited signature pairs prevent infinite recursion.
 
-- **D_MAX** — maximum distance and maximum significance value
-  (`0xFFFF_FFFF_FFFF_FFFF`). Also used as the penalty for unresolvable
-  mismatched nodes.
-- **MASK64** — 64-bit mask for bitwise inversion (`0xFFFF_FFFF_FFFF_FFFF`).
-- **_S3_BIAS** — tier bias for S3 connotation hops (default 9). Connotation
-  hop counts are biased by this amount before quadratic packing, ensuring
-  S3 distances moderately exceed S2 distances. With `_S3_BIAS=9`, minimum
-  S3 packed distance = `_pack(2+9) = 121 > MAX_HOP(100)`.
-- **_pack(distance)** — quadratic packing function: `d²`. Compresses small
-  distances together (enabling fine-grained discrimination) and spreads
-  large distances apart (super-linear accumulation penalty).
-
-#### Algorithm
-
-The algorithm accumulates a single integer distance from graph hops.
-S3 connotation hops are biased by `_pack(hop_count + _S3_BIAS)` to ensure
-S3 distances moderately exceed S2 distances. The topology naturally separates
-the tiers while keeping them close enough for potential bridging via further graph expansion.
-
-```
-expand(query, candidate, distance=0, _visited=None):
-    if _visited is None:
-        _visited = set()
-    key = (query.signature, candidate.signature)
-    if key in _visited:
-        return                          # cycle detection
-    _visited.add(key)
-
-    q_set = set(query.nodes)
-    c_set = set(candidate.nodes)
-    mismatched_q = q_set - c_set
-    mismatched_c = c_set - q_set
-    matched      = q_set ∩ c_set
-
-    total_distance = distance
-    s3_connotations = {}   # sig → min hops from any query node
-
-    # Pass 1: mismatched query nodes
-    #   - Direct match in mismatched_c → yield S2 connotation (exact)
-    #   - Signifies match → yield S2 cogitation candidate (loose)
-    #   - No match → record in s3_connotations for bridging
-    for n in mismatched_q:
-        hop_distance = MAX_HOP
-        for hops, match_sig in edge_hops(n):
-            if match_sig in mismatched_c:
-                hop_distance = hops
-                yield from expand(find(n), find(match_sig), hops)
-                break
-            elif signifies(n, match_sig):
-                c_kline = find(match_sig)
-                if c_kline is not None:
-                    sig_distance = distance + hops
-                    significance = (~min(sig_distance, D_MAX - 1)) & MASK64
-                    yield QueryCandidate(find(n), c_kline, significance)
-                break
-            elif match_sig not in s3_connotations
-                 or hops < s3_connotations[match_sig]:
-                s3_connotations[match_sig] = hops
-        total_distance += hop_distance
-
-    # Pass 2: mismatched candidate nodes
-    #   - Direct match in mismatched_q → yield S2 connotation (exact)
-    #   - Signifies match → yield S2 cogitation candidate (loose)
-    #   - Connotation bridge → yield S3 connotation
-    for n in mismatched_c:
-        hop_distance = MAX_HOP
-        for hops, match_sig in edge_hops(n):
-            if match_sig in mismatched_q:
-                hop_distance = hops
-                yield from expand(find(n), find(match_sig), hops)
-                break
-            elif signifies(n, match_sig):
-                c_kline = find(match_sig)
-                if c_kline is not None:
-                    sig_distance = distance + hops
-                    significance = (~min(sig_distance, D_MAX - 1)) & MASK64
-                    yield QueryCandidate(find(n), c_kline, significance)
-                break
-            elif match_sig in s3_connotations:
-                hop_distance += s3_connotations[match_sig] + hops
-                yield from expand(find(n), find(match_sig),
-                                  _pack(hop_distance + _S3_BIAS))
-                hop_distance = 0
-                break
-        total_distance += hop_distance
-
-    # Pass 3: matched but ungrounded nodes
-    for n in matched:
-        kl = find(n)
-        if kl is None or not is_s1(kl):
-            total_distance += 1
-
-    # Carry forward the incoming distance
-    total_distance += distance
-
-    # Clamp to avoid overflow, then invert to significance
-    significance = (~min(total_distance, D_MAX - 1)) & MASK64
-    yield QueryCandidate(query, candidate, significance)
-```
+The implementation algorithm and pseudocode are in
+`plans/impl/model.md` §2.
 
 #### Per-node contributions
 
@@ -569,68 +462,6 @@ expand(query, candidate, distance=0, _visited=None):
 | Mismatched candidate, chain bridges via connotation           | round-trip, hop = 0   | S3 packed (always)    |
 | Matched + structurally grounded (is_s1)                       | 0                     | Neutral               |
 | Matched + ungrounded                                          | +1                    | Accumulated directly  |
-
-#### Connotation expansion
-
-When `expand()` discovers a direct hop between a mismatched query node
-and a mismatched candidate node, it **yields an S2 connotation**: a
-recursive `expand()` call on the resolved KLines of those two nodes.
-This connotation represents a direct structural relationship between
-sub-graphs of the query and candidate.
-
-When a mismatched node's edge hop reaches a signature that shares bits
-with the node value (`signifies(node, reached_sig) == true`), but the
-reached signature is not an exact match in the opposing mismatch set,
-`expand()` **yields an S2 signifies candidate**: a `QueryCandidate`
-with `significance = (~min(distance + hops, D_MAX - 1)) & MASK64`. This
-represents a loose structural relationship — the two signatures overlap
-in at least one bit, suggesting potential significance for cogitation.
-The node still contributes `MAX_HOP` to the terminal distance (signifies
-does not resolve the mismatch). Signifies matching short-circuits before
-S3 connotation recording, preventing the same hop from being recorded
-as both an S2 and an S3 path.
-
-When connotation bridging succeeds (query node reaches an intermediate
-signature that a candidate node also reaches), `expand()` **yields an S3
-connotation**: a recursive `expand()` call on the resolved KLines with the
-round-trip distance. This captures indirect, associative connections.
-
-Each connotation is a `QueryCandidate` processed by the Cogitator
-identically to the terminal result — countersignature is checked for every
-yielded item, enabling discovery across the full expansion graph.
-
-The `_visited` set prevents cycles: if a (query.signature, candidate.signature)
-pair has already been expanded, subsequent encounters return immediately.
-
-#### Properties
-
-1. **Single distance** — a single accumulated integer. S3 connotation hops
-   are biased by `_pack(hop_count + _S3_BIAS)` to ensure moderate S2/S3
-   separation. This encoding is internal to the model; callers receive
-   significance.
-2. **Significance is inverted distance** — the model inverts distance
-   to produce significance: `(~distance) & MASK64`. Higher is more significant.
-3. **Distance is topology-driven** — mismatched node
-   hop distances accumulate purely from graph topology.
-4. **S2 signifies short-circuits before S3** — when a node's edge hop
-   reaches a signature with bitwise overlap, a `QueryCandidate` is yielded
-   for cogitation and the hop chain stops. The `s3_connotations` dict is
-   not populated for that hop, preventing S3 connotation bridging from
-   recording the same path.
-5. **Connotation is always S3** — indirect bridging always uses packed
-   distance `_pack(hops + _S3_BIAS)`, capturing associative distance.
-5. **Ungrounded penalty is always +1** — matched but ungrounded nodes
-   always add 1 to distance.
-6. **Bidirectional** — mismatched nodes from both query and candidate
-   contribute to distance.
-7. **Quadratic packing** — S3 hops are packed via `_pack(d) = d²`, ensuring
-   small distances stay close and large distances
-   spread apart (super-linear accumulation).
-8. **Recursive expansion** — each discovered connotation is yielded as a
-   `QueryCandidate` for immediate processing, enabling deep graph
-   exploration.
-9. **Cycle detection** — visited signature pairs prevent infinite
-   recursion.
 
 ### Is Countersigned
 
@@ -670,6 +501,172 @@ the STM to exceed its bound.
 - Eviction does not affect the frame or base model.
 - If the evicted Kline was promoted to the frame, it remains discoverable via
   frame and base lookups. If it was not promoted, it is discarded.
+
+## Significance Semantics
+
+The model computes significance internally via `expand()`. This section
+defines the semantics of the significance computation.
+
+### Constants
+
+```python
+D_MAX  = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance and maximum significance
+MASK64 = 0xFFFF_FFFF_FFFF_FFFF   # 64-bit mask for bitwise inversion
+```
+
+### Significance Inversion
+
+```
+significance = (~min(distance, D_MAX - 1)) & MASK64
+```
+
+Higher significance = closer match. The ordering is strict:
+`S1 > S2 > S3 > S4` by unsigned integer comparison.
+
+- S1: distance = 0, significance = D_MAX (all bits set)
+- S4: distance = D_MAX, significance = 0 (no bits set)
+
+### Distance Accumulation
+
+Distance is a single accumulated integer from graph hops. For each
+mismatched node in the query and candidate, the hop chain is traversed
+with a three-tier priority:
+
+1. **Exact match (S2 direct):** Node resolves via `_edge_hops()` to a node
+   in the opposite mismatch set. Adds hop count directly.
+2. **Signifies match (S2 loose):** Node resolves to a signature sharing bits
+   with the node value. Yields a `QueryCandidate`. Node still contributes
+   `MAX_HOP` to terminal distance. Short-circuits before S3 connotation.
+3. **Connotation resolution (S3):** Node resolves to a signature found in
+   `s3_connotations`. Hop count packed via `_pack(hop_count + _S3_BIAS)`.
+4. **Unresolved:** Adds `MAX_HOP` (default 100).
+
+Matched-but-ungrounded nodes add 1 each.
+
+### S3 Bias and Packing
+
+```
+_S3_BIAS = 9
+_pack(distance) = distance²
+```
+
+The bias ensures S3 distances moderately exceed S2 distances while
+remaining in the same order of magnitude. Quadratic packing compresses
+small distances together and spreads large distances apart.
+
+### Boundaries
+
+Three fixed boundaries classify yielded significance values:
+
+| Boundary | Position                | Meaning                           |
+| -------- | ----------------------- | --------------------------------- |
+| S1\|S2   | `D_MAX - 1`             | Only exact S1 qualifies as S1     |
+| S2\|S3   | `~_S2_S3_DISTANCE`      | Packed distance threshold (100)   |
+| S3\|S4   | `0`                     | Only zero-significance is S4      |
+
+Classification cascade:
+
+```
+sig >= s12 → S1
+sig >= s23 → S2
+sig >= s34 → S3
+else       → S4
+```
+
+### Properties
+
+1. **Inverted metric**: significance = `(~distance) & MASK64`. Higher is more
+   significant.
+2. **Pessimistic**: the presence of any unmatched node prevents S1.
+3. **Arithmetically comparable**: S1 > S2 > S3 > S4 by unsigned comparison.
+4. **Exhaustive**: every Kline with candidates is S1, S2, or S3.
+5. **S1 is trivial**: all nodes match → distance = 0 → significance = D_MAX.
+6. **Topology-driven**: distance accumulated from graph hops.
+7. **Boundary classification**: three fixed boundaries. Raw significance
+   values are never mutated.
+
+## Test Matrix
+
+### Storage
+
+| ID    | Criterion                                                      | Origin ref |
+| ----- | -------------------------------------------------------------- | ---------- |
+| MOD-1 | Add and find: add KLine, find by signature returns it          | — |
+| MOD-2 | Add returns True on success                                     | — |
+| MOD-3 | Literal dedup: duplicate literal KLine rejected (returns False) | — |
+| MOD-4 | Non-literal no dedup: duplicate non-literal accepted           | — |
+| MOD-5 | Exists: True after add, False before                           | — |
+| MOD-6 | Find returns most recent KLine when multiple share signature   | — |
+| MOD-7 | Find_all: returns all KLines with given signature across tiers | — |
+| MOD-8 | Find_by_nodes: returns KLine by nodes signature                | — |
+| MOD-9 | Remove: removes most recent KLine with given signature         | — |
+| MOD-10 | Remove never touches base model                                | — |
+| MOD-11 | Len returns frame count only (excludes STM and base)          | — |
+
+### Three-Tier Lookup
+
+| ID     | Criterion                                           | Origin ref |
+| ------ | --------------------------------------------------- | ---------- |
+| MOD-12 | STM priority: KLine in STM found before frame       | — |
+| MOD-13 | Frame fallback: KLine not in STM found in frame     | — |
+| MOD-14 | Base fallback: KLine not in STM/frame found in base | — |
+| MOD-15 | Cross-tier dedup: literal KLine in base blocks add   | — |
+
+### Graph Traversal
+
+| ID     | Criterion                                   | Origin ref |
+| ------ | ------------------------------------------- | ---------- |
+| MOD-16 | Resolve: node resolves to KLine via find    | — |
+| MOD-17 | Query_expand depth 0: returns empty          | — |
+| MOD-18 | Query_expand depth 2: returns direct children | — |
+| MOD-19 | Query_expand cycle detection: no infinite loop | — |
+| MOD-20 | Descendants: recursive node collection       | — |
+| MOD-21 | Query: find + expand combined                | — |
+
+### Promotion
+
+| ID     | Criterion                                          | Origin ref |
+| ------ | -------------------------------------------------- | ---------- |
+| MOD-22 | Promote moves KLine from STM to frame              | — |
+| MOD-23 | Promote without STM entry returns False             | — |
+| MOD-24 | Promote_all promotes all STM KLines to frame        | — |
+| MOD-25 | Promote skips already-promoted KLines               | — |
+
+### Significance API
+
+| ID     | Criterion                                                              | Origin ref |
+| ------ | ---------------------------------------------------------------------- | ---------- |
+| MOD-26 | `is_s1` canonical: `make_signature(nodes) == signature` → True          | Origin §Significance |
+| MOD-27 | `is_s1` countersigned: mutual cross-reference → True                   | Origin §Significance |
+| MOD-28 | `is_s1` neither: non-canonical, non-countersigned → False              | — |
+| MOD-29 | `expand` all-match ungrounded: significance reflects ungrounded count   | — |
+| MOD-30 | `expand` all-mismatched unresolvable: low significance                  | — |
+| MOD-31 | `expand` with edge hops: connotation yields + terminal                  | — |
+| MOD-32 | `expand` S2 signifies: loose match yields QC, terminal still MAX_HOP    | — |
+| MOD-33 | `expand` S2 before S3: signifies short-circuits connotation recording   | — |
+| MOD-34 | `expand` S3 route: S3 bias ensures S3 distances exceed S2              | — |
+| MOD-35 | `expand` connotation: indirect path → S3 connotation yield + terminal   | — |
+| MOD-36 | `expand` significance always in valid uint64 range `[1, D_MAX]`        | — |
+| MOD-37 | `expand` bidirectional: both sides contribute connotations + terminal   | — |
+| MOD-38 | `is_countersigned`: mutual node reference detected                      | — |
+| MOD-39 | Not countersigned: one-way reference → False                            | — |
+
+### Structural Grounding
+
+| ID     | Criterion                                                                | Origin ref |
+| ------ | ------------------------------------------------------------------------ | ---------- |
+| MOD-40 | `promote_participating`: query + candidate promoted after ratification    | — |
+| MOD-41 | `promote_participating`: S4 identity klines in STM also promoted          | — |
+| MOD-42 | `promote_participating`: S2/S3 partial klines in STM promoted             | — |
+| MOD-43 | `promote_participating`: already-promoted klines not re-promoted           | — |
+| MOD-44 | `classify_misfit` canonical: `S == N` → (False, False)                    | — |
+| MOD-45 | `classify_misfit` underfit: `S & ~N != 0` → (True, False)                 | — |
+| MOD-46 | `classify_misfit` overfit: `N & ~S != 0` → (False, True)                  | — |
+| MOD-47 | `classify_misfit` dual: both conditions → (True, True)                     | — |
+| MOD-48 | `generate_expansions` underfit: returns proposal with added nodes          | — |
+| MOD-49 | `generate_expansions` overfit: returns trimmed + companion                 | — |
+| MOD-50 | `generate_expansions` dual: returns replacement + companion                | — |
+| MOD-51 | `generate_expansions` no gap: no expansion proposals emitted               | — |
 
 ## What a Model is Not
 

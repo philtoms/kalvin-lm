@@ -14,12 +14,9 @@ boundary check. Under the training model, this is wrong: **S1 is determined
 by structure, not by boundary classification.** A kline is grounded (S1) if
 its signature fully describes its nodes or it is countersigned.
 
-Additionally, the current Cogitator discards S2 results that fail
-countersignature. Extended cogitation adds the ability to reshape these
-klines toward canonical status, emitting proposals for teacher ratification.
-
-These two changes enable the training loop described in
-`docs/kalvin-origin.md`.
+See `docs/kalvin-origin.md` §Ratification and §Study for the conceptual basis.
+See **@model spec** §Significance Semantics and **@agent spec** §Cogitation
+for the current specification.
 
 ### What Stays the Same
 
@@ -29,7 +26,7 @@ These two changes enable the training loop described in
 - The `expand()` algorithm and `QueryCandidate` are unchanged.
 - The Cogitator processes all yields without filtering.
 - Events, serialization, KScript are unchanged.
-- All specs (kline, signature, tokenizer, stm, significance, kscript) are
+- All specs (kline, signature, tokenizer, stm, model, agent, kscript) are
   unchanged.
 
 ### What Changes
@@ -207,23 +204,23 @@ if band == "S1":
 The candidate is a model kline (from `model.where()`), so
 `is_s1(candidate)` works correctly.
 
-### 1.5 Test Cases
+### 1.5 Test Mapping
 
-| Test                                      | Description                                           |
-| ----------------------------------------- | ----------------------------------------------------- |
-| `is_s1` canonical                | KLine with `sig == make_signature(nodes)` → True      |
-| `is_s1` countersigned            | Two klines with mutual node references → True         |
-| `is_s1` neither                  | KLine that is not canonical or countersigned → False  |
-| `is_s1` all-literal              | All-literal kline → True (canonical, sig=1)           |
-| `promote_participating` basic             | Query + candidate promoted                            |
-| `promote_participating` with S4 identity  | S4 identity klines in STM also promoted               |
-| `promote_participating` with S2/S3        | Partial klines in STM promoted                        |
-| `promote_participating` no double-promote | Already-promoted klines not re-promoted               |
-| Frame holds S4–S1                         | After ratification, frame contains mixed significance |
-| Cogitator countersignature promotes all   | Countersignature discovery promotes participating     |
-| Boundary S1 + structural check            | Boundary S1 on non-structural kline → no promotion    |
-| Boundary S1 + structural S1               | Boundary S1 on structural kline → promotion           |
-| Existing tests unchanged                  | All 329 tests still pass                              |
+| Spec ID | Test                                      | Description                                           |
+| ------- | ----------------------------------------- | ----------------------------------------------------- |
+| MOD-26  | `is_s1` canonical                | KLine with `sig == make_signature(nodes)` → True      |
+| MOD-27  | `is_s1` countersigned            | Two klines with mutual node references → True         |
+| MOD-28  | `is_s1` neither                  | KLine that is not canonical or countersigned → False  |
+| MOD-26  | `is_s1` all-literal              | All-literal kline → True (canonical, sig=1)           |
+| MOD-40  | `promote_participating` basic             | Query + candidate promoted                            |
+| MOD-41  | `promote_participating` with S4 identity  | S4 identity klines in STM also promoted               |
+| MOD-42  | `promote_participating` with S2/S3        | Partial klines in STM promoted                        |
+| MOD-43  | `promote_participating` no double-promote | Already-promoted klines not re-promoted               |
+| —       | Frame holds S4–S1                         | After ratification, frame contains mixed significance |
+| AGT-29  | Cogitator countersignature promotes all   | Countersignature discovery promotes participating     |
+| AGT-36  | Boundary S1 + structural check            | Boundary S1 on non-structural kline → no promotion    |
+| AGT-37  | Boundary S1 + structural S1               | Boundary S1 on structural kline → promotion           |
+| —       | Existing tests unchanged                  | All 329 tests still pass                              |
 
 ---
 
@@ -400,25 +397,25 @@ moved upstream to rationalise):
 > The model provides misfit classification and expansion proposal
 > generation for the extended cogitation pipeline.
 
-### 2.5 Test Cases
+### 2.5 Test Mapping
 
-| Test                                 | Description                           |
-| ------------------------------------ | ------------------------------------- |
-| `classify_misfit` canonical          | `S == N` → (False, False)             |
-| `classify_misfit` underfit           | `S & ~N != 0` → (True, False)         |
-| `classify_misfit` overfit            | `N & ~S != 0` → (False, True)         |
-| `classify_misfit` dual               | Both conditions → (True, True)        |
-| `generate_expansions` underfit       | Returns proposal with added nodes     |
-| `generate_expansions` overfit        | Returns trimmed + companion           |
-| `generate_expansions` dual           | Returns replacement + companion       |
-| `generate_expansions` no gap         | No expansion proposals emitted        |
-| Cogitator expansion proposal         | frame event emitted for expansion     |
-| Cogitator expansion companion        | frame event emitted for companion     |
-| Cogitator no expansion for canonical | Canonical kline → no expansion        |
-| KScript S2 template                  | `AB => A` produces underfitting kline |
-| KScript sequencer                    | `A => A B` produces overfitting kline |
-| KScript dual misfit                  | `WDMH => MHALL` produces dual misfit  |
-| Existing tests unchanged             | All 329 tests + Phase A tests pass    |
+| Spec ID | Test                                 | Description                           |
+| ------- | ------------------------------------ | ------------------------------------- |
+| MOD-44  | `classify_misfit` canonical          | `S == N` → (False, False)             |
+| MOD-45  | `classify_misfit` underfit           | `S & ~N != 0` → (True, False)         |
+| MOD-46  | `classify_misfit` overfit            | `N & ~S != 0` → (False, True)         |
+| MOD-47  | `classify_misfit` dual               | Both conditions → (True, True)        |
+| MOD-48  | `generate_expansions` underfit       | Returns proposal with added nodes     |
+| MOD-49  | `generate_expansions` overfit        | Returns trimmed + companion           |
+| MOD-50  | `generate_expansions` dual           | Returns replacement + companion       |
+| MOD-51  | `generate_expansions` no gap         | No expansion proposals emitted        |
+| AGT-34  | Cogitator expansion proposal         | frame event emitted for expansion     |
+| AGT-34  | Cogitator expansion companion        | frame event emitted for companion     |
+| AGT-34  | Cogitator no expansion for canonical | Canonical kline → no expansion        |
+| KS-10   | KScript S2 template                  | `AB => A` produces underfitting kline |
+| KS-10   | KScript sequencer                    | `A => A B` produces overfitting kline |
+| KS-10   | KScript dual misfit                  | `WDMH => MHALL` produces dual misfit  |
+| —       | Existing tests unchanged             | All 329 tests + Phase A tests pass    |
 
 ---
 

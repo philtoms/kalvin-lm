@@ -230,6 +230,21 @@ existing entry. A duplicate is defined as a KLine with the same
 6. **No external side effects** — STM operations do not affect the Frame
    or Base. The Model manages cross-tier consistency.
 
+## Test Matrix
+
+| ID    | Criterion                                                                      | Origin ref |
+| ----- | ------------------------------------------------------------------------------ | ---------- |
+| STM-1 | Add and retrieve by signature: `stm.add(kl); stm.find_by_signature(sig) == [kl]` | — |
+| STM-2 | Add and retrieve by nodes signature: `stm.add(kl); stm.find_by_nodes(nodes_sig) == [kl]` | — |
+| STM-3 | Bound enforcement: add `bound + 1` KLines → first is evicted                    | — |
+| STM-4 | Eviction correctness: evicted KLine removed from STM index only                | — |
+| STM-5 | Dedup: adding same `(sig, nodes)` pair returns False                           | — |
+| STM-6 | Multiple KLines same signature: all stored under one key                       | — |
+| STM-7 | Remove clears from all indexes (signature, nodes sig, order, dedup)            | — |
+| STM-8 | Clear removes everything                                                        | — |
+| STM-9 | Empty STM: `len(stm) == 0`, all lookups return empty/None                      | — |
+| STM-10 | Dual-keyed: two KLines with different sigs but same nodes_sig both found       | — |
+
 ## What an STM is Not
 
 The following are explicitly **out of scope** for this spec:

@@ -329,6 +329,23 @@ with bitwise AND. These properties are used by signature construction
 (6 & 2) != 0 → True   # combined contains 'A'
 ```
 
+## Test Matrix
+
+| ID    | Criterion                                                                  | Origin ref |
+| ----- | -------------------------------------------------------------------------- | ---------- |
+| TOK-1 | Packed encode single char: `encode("A") == [bit_A]`                          | — |
+| TOK-2 | Packed encode multi-char: `encode("AB") == [bit_A \| bit_B]`                  | — |
+| TOK-3 | Packed round-trip: `decode(encode("ABC"))` contains A, B, C (order may differ) | — |
+| TOK-4 | Literal encode: `encode("123")` produces nodes with literal mask            | — |
+| TOK-5 | Literal round-trip: `decode(encode("123")) == "123"` (order preserved)      | — |
+| TOK-6 | Auto-detection: `encode("A")` → packed; `encode("1")` → literal            | — |
+| TOK-7 | Empty string: `encode("") == []`, `decode([]) == ""`                        | — |
+| TOK-8 | `is_literal` on literal node: `is_literal((65<<32)\|0xFFFFFFFF) == True`    | — |
+| TOK-9 | `is_literal` on packed node: `is_literal(6) == False`                      | — |
+| TOK-10 | `is_literal` on zero: `is_literal(0) == False`                             | — |
+| TOK-11 | Vocab size matches number of unique characters in alphabet                  | — |
+| TOK-12 | Characters not in vocab are still encodable (assigned next bit)            | — |
+
 ## What a Tokenizer is Not
 
 The following are explicitly **out of scope** for this spec:

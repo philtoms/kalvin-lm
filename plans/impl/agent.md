@@ -7,136 +7,76 @@
 
 ---
 
-## 1. Significance Constants (Phase 6)
+## 1. Spec References
 
-> **Note:** The standalone `significance` module has been removed. Constants
-> (`D_MAX`, `MASK64`) are defined in `model.py`. See `specs/significance.md`
-> for the full conceptual specification.
+See **@agent spec** for full definition (rationalisation pipeline, routing,
+cogitation, events, work items).
+Test matrix: AGT-1 through AGT-40.
 
-**File:** `src/kalvin/model.py` (module-level constants)
-**Depends on:** Nothing
-**Estimate:** 0.5 day
+See **@model spec** §Significance Semantics for constants and distance rules.
 
-### Spec
+### Key API (from spec)
 
-Constants for distance/significance arithmetic, defined at the top of
-`model.py`. Routing is performed by the Agent, distance computation and
-significance inversion by the Model's `expand()`.
-
+**Agent:**
 ```python
-D_MAX  = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance, also max significance
-MASK64 = 0xFFFF_FFFF_FFFF_FFFF   # 64-bit mask for bitwise inversion
+Agent(tokenizer=None, model=None)
+agent.rationalise(kline) → bool
+agent._route(query, candidate) → str   # "S1"/"S2"/"S3"/"S4"
 ```
 
-**Routing** (performed by `Agent._route(Q, C)`) — pure node-membership test,
-no model dependency:
-
-```
-route(Q, C):
-  if Q has no nodes:   return "S4"
-  match_count = |{n ∈ Q.nodes : n ∈ C.nodes}|
-  if match_count == len(Q.nodes):  return "S1"
-  if match_count > 0:              return "S2"
-  else:                            return "S3"
-```
-
-**Inversion** (performed by Model's `expand()`):
-
+**Events:**
 ```python
-significance = (~packed_distance) & MASK64
-# Inverted inside expand(), callers receive significance directly
+EventBus.subscribe(callback) → None
+EventBus.publish(event) → None
+RationaliseEvent(kind, query, proposal, significance)
 ```
 
-### Test Cases
+**WorkItem:**
+```python
+WorkItem(query=KLine, candidate=KLine)
+```
 
-Tests for these constants are inlined in `tests/test_agent.py`.
+**Cogitator:** background daemon thread, processes work items via `model.expand()`,
+emits `done` event after idle timeout.
 
-| Test               | Description                |
-| ------------------ | -------------------------- |
-| D_MAX value        | Equals 0xFFFF_FFFF_FFFF_FFFF |
-| MASK64 value       | Equals 0xFFFF_FFFF_FFFF_FFFF |
+### Significance Constants (Phase 6)
+
+> **Note:** Constants (`D_MAX`, `MASK64`) are defined in `model.py`.
+> See @model spec §Significance Semantics.
+
+### Test Mapping
+
+| Spec ID | Test               | Description                |
+| ------- | ------------------ | -------------------------- |
+| SGF-1   | D_MAX value        | Equals 0xFFFF_FFFF_FFFF_FFFF |
+| SGF-2   | MASK64 value       | Equals 0xFFFF_FFFF_FFFF_FFFF |
 
 ---
 
-## 2. Events (Phase 7)
+## 2. Events Implementation (Phase 7)
 
 **Files:** `src/kalvin/events.py`, `tests/test_events.py`
 **Depends on:** Kline (for RationaliseEvent)
 **Estimate:** 0.5 day
 
-### Spec
+See **@agent spec** §Events for event types, structure, and bus API.
+Test matrix: AGT-23 through AGT-27.
 
-Pub/sub for rationalisation observers.
-
-**Event types:**
-
-| Kind     | Trigger                  | Significance      |
-| -------- | ------------------------ | ----------------- |
-| `ground` | KLine already exists     | S1 (all bits set) |
-| `frame`  | KLine integrated         | S1–S4             |
-| `done`   | Cogitation backlog empty | 0                 |
-
-**Event structure:**
-
-```python
-class RationaliseEvent:
-    kind: str           # "ground", "frame", "done"
-    query: KLine        # The KLine being rationalised
-    proposal: KLine     # The matching or resulting KLine
-    significance: int   # Significance value
-```
-
-**Event bus:**
-
-```python
-class EventBus:
-    subscribe(callback) → None
-    publish(event) → None   # Thread-safe, synchronous delivery
-```
-
-### Test Cases
-
-| Test                  | Description                              |
-| --------------------- | ---------------------------------------- |
-| Subscribe and publish | Callback receives event                  |
-| Multiple subscribers  | All receive event                        |
-| Event fields          | kind, query, proposal, significance correct |
-| Thread safety         | Publish from another thread              |
-| Empty bus             | No crash on publish with no subscribers  |
+### Implementation Skeleton
 
 ---
 
-## 3. Agent + Cogitator (Phase 8)
+## 3. Agent + Cogitator Implementation (Phase 8)
 
 **Files:** `src/kalvin/agent.py`, `tests/test_agent.py`
 **Depends on:** Everything
 **Estimate:** 2 days
 
-### Agent Spec
+See **@agent spec** for full definition (rationalisation pipeline phases,
+routing, cogitation, work items, S2 expansion).
+Test matrix: AGT-1 through AGT-40.
 
-The orchestrator of the rationalisation pipeline with a fast/slow split.
-
-**Structure:**
-
-```python
-class Agent:
-    tokenizer: KTokenizer   # Default: Mod32Tokenizer
-    model: Model             # Three-tier knowledge graph
-    cogitator: Cogitator     # Background work-item processor
-    events: EventBus         # Pub/sub
-```
-
-**Construction:**
-
-```python
-Agent(tokenizer=None, model=None)
-# Defaults: Mod32Tokenizer, empty Model
-# Cogitator is created internally and starts immediately.
-```
-
-### Routing — `_route(query, candidate) → str`
-
-Inline static method. No model call.
+### Routing Implementation — `_route(query, candidate) → str`
 
 ```python
 @staticmethod
@@ -154,204 +94,107 @@ def _route(query: KLine, candidate: KLine) -> str:
         return "S3"
 ```
 
-### Rationalisation — Fast/Slow Split
+### Rationalisation Implementation
 
-```
-Phase 1: PREPARE
-  If Q.signature == 0 and Q has nodes:
-    Q.signature = make_signature(Q.nodes)
-
-Phase 2: GROUND CHECK
-  If model.exists(Q):
-    emit "ground" event, return True (S1)
-
-Phase 3: ASSESS
-  If Q has no nodes:
-    model.add(Q), emit "frame" S4, return True
-  If all nodes are literal:
-    model.add(Q), emit "frame" S1, return True
-  If Q.signature == make_signature(Q.nodes) AND
-     all non-literal nodes resolve in model:
-    model.add(Q), emit "frame" S1, return True
-  If model.is_countersigned(Q):
-    model.add(Q), emit "frame" S1, return True
-
-Phase 4: RETRIEVE CANDIDATES
-  candidates = model.where(Q.signature)   # AND overlap
-  If no candidates:
-    model.add(Q), emit "frame" S4, return True (novel)
-
-Phase 5: ROUTE EACH CANDIDATE
-  model.add(Q)
-  For each candidate C:
-    level = _route(Q, C)              # no model call
-    If S1: promote Q, emit "frame" S1, return True (done)
-    If S2: cogitator.submit(WorkItem(Q, C, "S2"))
-    If S3: cogitator.submit(WorkItem(Q, C, "S3"))
-  return False                        # all routed S2/S3
-```
-
-**S1 short-circuits**: the first candidate that routes as S1 terminates the
-loop immediately. No further candidates are routed. No distance is computed.
+See **@agent spec** §Rationalisation for the 6-phase pipeline with fast/slow split.
 
 ### WorkItem
 
-```python
-class WorkItem(NamedTuple):
-    query: KLine
-    candidate: KLine
-```
+See **@agent spec** §Work Items. Named tuple: `(query: KLine, candidate: KLine)`.
 
-### Cogitator Spec
+### Cogitator Implementation
 
-Background work-item processor. Receives pre-routed WorkItems, computes deep
-significance, processes all yields, checks countersignature. Proposals can
-be emitted at any significance level.
+See **@agent spec** §Cogitation for processing semantics.
 
-```python
-class Cogitator:
-    model: Model
-    event_bus: EventBus
-    on_s1: Callable          # callback for S1 discovery
-    timeout: float           # default 2.0s
-    backlog: queue[WorkItem]
-    thread: daemon thread
-```
-
-**Processing per work item:**
-
-```
-run_work_item(WorkItem(query, candidate)):
-  for qc in model.expand(query, candidate):
-    if qc.significance >= s12:
-      on_s1(query, candidate)     # S1: promote immediately
-    else:
-      process(qc)                 # S2/S3: expansion check
-
-process(QueryCandidate(query, candidate, significance)):
-  # S2 expansion only — ratification handled upstream in rationalise()
-  if candidate is canonical:
-    return
-  for proposal, companions in model.generate_expansions(candidate):
-    emit frame events for proposals and companions
-```
-
-All yields from `expand()` are processed without filtering. Raw significance
-values are never mutated. Proposals can be emitted at any significance level.
-
-**Lifecycle:**
-
-- Runs in a background daemon thread.
-- Pulls work items from a backlog queue.
-- When backlog is empty for `timeout` seconds → emit `"done"` event so
-  subscribers can realign. Does **not** halt — resets idle timer and
-  continues processing new work items.
-- Can be stopped via `cogitate_join(timeout)`.
-
-### Countersignature Test
-
-```python
-def is_countersigned(kline):
-    nodes_signature = make_signature(kline.nodes)
-    for countersigner in model.find_all(nodes_signature):
-        if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
-            return True
-    return False
-```
+**Key implementation detail:** `_process` handles S2 expansion only.
+Ratification handled upstream in `rationalise()`.
+See `plans/impl/structural-grounding.md` for full expansion algorithm.
 
 ---
 
-## 4. Test Cases
+## 4. Test Mapping
 
 ### Phase 1: Prepare
 
-| Test                | Description                                 |
-| ------------------- | ------------------------------------------- |
-| Signature assigned  | KLine with sig=0 gets make_signature(nodes) |
-| Signature preserved | KLine with existing sig unchanged           |
+| Spec ID | Test                | Description                                 |
+| ------- | ------------------- | ------------------------------------------- |
+| AGT-7   | Signature assigned  | KLine with sig=0 gets make_signature(nodes) |
+| AGT-8   | Signature preserved | KLine with existing sig unchanged           |
 
 ### Phase 2: Ground Check
 
-| Test                     | Description                        |
-| ------------------------ | ---------------------------------- |
-| First rationalise        | Returns True, adds to model        |
-| Duplicate rationalise    | Returns True, emits "ground" event |
-| Different sig same nodes | Not a ground (different KLine)     |
+| Spec ID | Test                     | Description                        |
+| ------- | ------------------------ | ---------------------------------- |
+| AGT-9   | First rationalise        | Returns True, adds to model        |
+| AGT-10  | Duplicate rationalise    | Returns True, emits "ground" event |
+| AGT-11  | Different sig same nodes | Not a ground (different KLine)     |
 
 ### Phase 3: Assess
 
-| Test                    | Description                         |
-| ----------------------- | ----------------------------------- |
-| Unsigned (no nodes)     | Returns True, emits "frame" S4      |
-| All-literal             | Returns True, emits "frame" S1      |
-| Self-grounded canonical | Returns True when all nodes resolve |
-| Not self-grounded       | Falls through to Phase 4            |
+| Spec ID | Test                    | Description                         |
+| ------- | ----------------------- | ----------------------------------- |
+| AGT-12  | Unsigned (no nodes)     | Returns True, emits "frame" S4      |
+| AGT-13  | All-literal             | Returns True, emits "frame" S1      |
+| AGT-14  | Self-grounded canonical | Returns True when all nodes resolve |
+| AGT-15  | Not self-grounded       | Falls through to Phase 4            |
 
 ### Phase 4: Retrieve Candidates
 
-| Test             | Description                          |
-| ---------------- | ------------------------------------ |
-| No candidates    | Agent returns True (S4 novel)        |
-| Candidates found | Proceeds to routing                  |
+| Spec ID | Test             | Description                          |
+| ------- | ---------------- | ------------------------------------ |
+| AGT-16  | No candidates    | Agent returns True (S4 novel)        |
+| AGT-17  | Candidates found | Proceeds to routing                  |
 
 ### Phase 5: Route Each Candidate
 
-| Test                       | Description                                          |
-| -------------------------- | ---------------------------------------------------- |
-| First candidate S1         | Returns True, promotes, no further candidates tested |
-| Second candidate S1        | First routes S2, second S1, returns True             |
-| All S2                     | Returns False, all submitted as WorkItems            |
-| All S3                     | Returns False, all submitted as WorkItems            |
-| S1 short-circuits expansion | model.expand never called when S1 found            |
+| Spec ID | Test                       | Description                                          |
+| ------- | -------------------------- | ---------------------------------------------------- |
+| AGT-18  | First candidate S1         | Returns True, promotes, no further candidates tested |
+| AGT-19  | Second candidate S1        | First routes S2, second S1, returns True             |
+| AGT-20  | All S2                     | Returns False, all submitted as WorkItems            |
+| AGT-21  | All S3                     | Returns False, all submitted as WorkItems            |
+| AGT-22  | S1 short-circuits expansion | model.expand never called when S1 found            |
 
 ### Routing (`_route`)
 
-| Test                              | Description                                |
-| --------------------------------- | ------------------------------------------ |
-| All nodes match                   | Returns "S1"                               |
-| Some nodes match                  | Returns "S2"                               |
-| No nodes match                    | Returns "S3"                               |
-| Empty query                       | Returns "S4"                               |
-| Single node match                 | Returns "S1"                               |
-| Routing independent of signature  | Only candidate nodes matter, not signature  |
-
-### WorkItem
-
-| Test              | Description                      |
-| ----------------- | -------------------------------- |
-| Field access      | query, candidate correct         |
-| Equality          | Same fields → equal              |
-
-### Cogitation (Cogitator)
-
-| Test                        | Description                                    |
-| --------------------------- | ---------------------------------------------- |
-| Countersignature discovery  | S2 → S1 via countersignature in cogitation      |
-| Join                        | Thread stops cleanly                           |
-| S2 submits work item        | WorkItem queued with correct fields            |
-| Rationalise after join      | Works without cogitation thread                |
-
-### Cogitation Processing
-
-| Test                          | Description                                         |
-| ----------------------------- | --------------------------------------------------- |
-| All yields processed           | Every QC from expand() is evaluated                  |
-| S1 detection                   | High-significance QC triggers on_s1 callback        |
-| S2/S3 expansion                | Non-canonical QC triggers expansion proposals       |
-| Proposals at any significance  | S2 and S3 proposals emitted as frame events         |
+| Spec ID | Test                              | Description                                |
+| ------- | --------------------------------- | ------------------------------------------ |
+| AGT-1   | All nodes match                   | Returns "S1"                               |
+| AGT-2   | Some nodes match                  | Returns "S2"                               |
+| AGT-3   | No nodes match                    | Returns "S3"                               |
+| AGT-4   | Empty query                       | Returns "S4"                               |
+| AGT-5   | Single node match                 | Returns "S1"                               |
+| AGT-6   | Routing independent of signature  | Only candidate nodes matter, not signature  |
 
 ### Events
 
-| Test           | Description                  |
-| -------------- | ---------------------------- |
-| Event delivery | All events received in order |
-| Ground event   | Correct kind + significance  |
-| Frame event    | Correct kind + significance  |
+| Spec ID | Test                  | Description                              |
+| ------- | --------------------- | ---------------------------------------- |
+| AGT-23  | Subscribe and publish | Callback receives event                  |
+| AGT-24  | Multiple subscribers  | All receive event                        |
+| AGT-25  | Event fields          | kind, query, proposal, significance correct |
+| AGT-26  | Thread safety         | Publish from another thread              |
+| AGT-27  | Empty bus             | No crash on publish with no subscribers  |
+| AGT-28  | Event delivery        | All events received in order             |
+
+### Cogitation
+
+| Spec ID | Test                        | Description                                    |
+| ------- | --------------------------- | ---------------------------------------------- |
+| AGT-29  | Countersignature discovery  | S2 → S1 via countersignature in cogitation      |
+| AGT-30  | Join                        | Thread stops cleanly                           |
+| AGT-31  | S2 submits work item        | WorkItem queued with correct fields            |
+| AGT-32  | All yields processed        | Every QC from expand() is evaluated            |
+| AGT-33  | S1 detection                | High-significance QC triggers on_s1 callback   |
+| AGT-34  | S2/S3 expansion             | Non-canonical QC triggers expansion proposals  |
+| AGT-35  | Proposals at any significance | S2 and S3 proposals emitted as frame events |
+| AGT-36  | Boundary S1 + structural check | Promotion only on structural S1            |
+| AGT-37  | Boundary S1 + structural S1 | Promotion occurs                              |
 
 ### Serialization
 
-| Test              | Description                           |
-| ----------------- | ------------------------------------- |
-| JSON round-trip   | Save/load preserves KLines            |
-| Binary round-trip | Save/load preserves KLines            |
-| Empty agent       | Serializes and deserializes correctly |
+| Spec ID | Test              | Description                           |
+| ------- | ----------------- | ------------------------------------- |
+| AGT-38  | JSON round-trip   | Save/load preserves KLines            |
+| AGT-39  | Binary round-trip | Save/load preserves KLines            |
+| AGT-40  | Empty agent       | Serializes and deserializes correctly |
