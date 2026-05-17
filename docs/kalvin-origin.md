@@ -4,7 +4,9 @@ This is the origin document for the Kalvin system. It defines what Kalvin is, ho
 
 ---
 
-Kalvin is a rationalising system that accepts, thinks, and talks in klines. It receives kline structures — compiled from KScript by an agent — and attempts to understand each one in terms of what it already knows. Understanding, for Kalvin, is not a matter of semantics. It is a matter of shape.
+Kalvin is a rationalising system that accepts, thinks, and talks in klines. It receives kline structures — compiled from KScript by an agent — and attempts to understand each one in terms of what it already knows.
+
+Understanding, for Kalvin, is the capacity to produce significant responses. Shape plays an essential role — it determines how close new information is to what Kalvin already knows and identifies which parts are not yet understood — but shape alone is not understanding. Understanding emerges from the interplay of structural fit, learned preferences, and the degree of fit made visible to other agents so they can act on it.
 
 ---
 
@@ -46,7 +48,7 @@ KScript also supports indented chaining, whereby a value node on one line become
         L > O
 ```
 
-The parenthetical annotations serve double duty: they are KScript comments that also convey human-readable meaning. The training value of this script is not to teach Kalvin the nursery rhyme, or even rudimentary linguistics. It is to establish structural relationships that Kalvin can later reconstruct in pursuit of understanding. The granularity of understanding is intentionally subjective. We see a nursery rhyme broken down and explained as SVO. Kalvin sees relationships between opaque numbers. Meaning for us is found in semantics. Meaning for Kalvin is found in shape.
+The parenthetical annotations serve double duty: they are KScript comments that also convey human-readable meaning. The training value of this script is not to teach Kalvin the nursery rhyme, or even rudimentary linguistics. It is to establish structural relationships that Kalvin can later reconstruct in pursuit of understanding. The granularity of understanding is intentionally subjective. We see a nursery rhyme broken down and explained as SVO. Kalvin sees relationships between opaque numbers. Meaning for us is found in semantics. Meaning for Kalvin is found in how those relationships fit — and how well that fit can be communicated to other agents.
 
 ### Compilation
 
@@ -103,7 +105,7 @@ Kalvin can publish proposals at any significance level. An S2 proposal is not a 
 
 ## The Dialog
 
-From Kalvin's perspective, the world is a dialog. Klines arrive, one after another. Some are familiar — Kalvin recognises the shape immediately, responds with high significance, and the exchange is straightforward. Others are partially familiar — Kalvin can trace some of the new kline's nodes through its existing knowledge, but not all. It responds with what it understands and attaches a significance that honestly reflects its confidence. And sometimes a kline arrives that Kalvin cannot connect to anything at all. It says so — low significance, no match, I don't understand. This is not a failure. It is an honest answer, and it is often the most useful one. A low-significance response tells the other side of the dialog exactly where Kalvin's knowledge ends, which is precisely where the next kline should begin.
+From Kalvin's perspective, the world is a dialog. Klines arrive, one after another. Some are familiar — Kalvin recognises the shape immediately, responds with high significance, and the exchange is straightforward. Others are partially familiar — Kalvin can trace some of the new kline's nodes through its existing knowledge, but not all. It responds with what it understands and attaches a significance that reflects how well the response is grounded in its knowledge. And sometimes a kline arrives that Kalvin cannot connect to anything at all. It says so — low significance, no match, I don't understand. This is not a failure. It is often the most useful response Kalvin can offer, because it tells the other side of the dialog exactly where Kalvin's knowledge ends, which is precisely where the next kline should begin.
 
 Consider the exchange:
 
