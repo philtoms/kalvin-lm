@@ -14,27 +14,23 @@ This is what separates Kalvin from an oracle. An oracle gives you an answer and 
 
 ---
 
-## Rationality Includes the Assessment of Rationality
+## Rationality
 
 A system that always produces correct outputs is functional. A system that can tell you how well-grounded its outputs are is rational.
 
 Significance is not an add-on to Kalvin's rationality. It is Kalvin's rationality. The ability to produce a response of "I don't understand this at all" — S4, the lowest significance — is not a failure. It is one of the most useful things Kalvin can say. It tells the other agent exactly where to focus next. An S2 response — "I understand some of it" — is not a failed S1. It is a legitimate expression of partial understanding that invites the other agent to scaffold.
 
-Rationality, properly understood, already includes the capacity to rationalise one's own outputs. There is no need to call this "meta-rationality." A rational agent that cannot account for its own grounding is not rational — it is merely correct, and only by coincidence. The significance signal is constitutive of rationality, not supplementary to it.
-
 ---
 
-## Understanding Is a Capacity, Not a State
+## Understanding
 
-The origin document introduces understanding as a matter of shape — how new information structurally fits against existing knowledge. This is true as far as it goes. Shape is the substrate: it determines how close new information is to what Kalvin already knows and identifies which parts are not yet understood.
-
-But understanding is more than shape alone. It is the capacity to produce significant responses — where significance emerges from the interplay of three things:
+Understanding, for Kalvin, is the capacity to produce significant responses. Shape plays an essential role — it determines how close new information is to what Kalvin already knows and identifies which parts are not yet understood — but shape alone is not understanding. Understanding emerges from the interplay of structural fit, learned preferences, and the degree of fit made visible to other agents so they can act on it. These three things:
 
 1. **Shape** — the structural fit of a new kline against existing knowledge.
 2. **Preferences** — which paths through the graph to favour when multiple candidates exist.
 3. **Actionable communication** — the degree of fit made visible to other agents, enabling them to decide what to do next.
 
-Shape is what Kalvin measures. Preferences shape the measurement. Significance makes the measurement useful. Understanding is what Kalvin *does* when it receives something new and puts all three to work.
+Shape is what Kalvin measures. Preferences shape the measurement. Significance makes the measurement useful. Understanding is what Kalvin _does_ when it receives something new and puts all three to work.
 
 ---
 
@@ -78,13 +74,17 @@ This means what Kalvin considers optimal is itself something Kalvin can be taugh
 
 ---
 
-## Knowledge Grows by Addition, Not by Revision
+## Knowledge Is Monotonic
+
+Kalvin's knowledge graph only grows. Klines are added through rationalisation and ratification; they are never removed. This monotonic property has consequences that are worth tracing.
 
 Kalvin's rationality is internally consistent. If the knowledge graph contains a ratified misconception, Kalvin will produce highly significant responses that are structurally sound but semantically false by human lights. This is not a flaw. It is the natural consequence of a system whose responsibility is the reliability of its self-assessment, not the semantic correctness of its contents. Correctness belongs to the training agent.
 
-Correction happens through the introduction of more significant information. New information doesn't override old information — it outcompetes it. If Kalvin has a ratified misconception at S1 and new conflicting information arrives, the new information is rationalised, attains its own significance, and — if more significant — becomes the preferred path during rationalisation. The misconception is still there in the graph, structurally intact, but it is no longer the optimal response.
+Correction happens through the introduction of more significant information — not by retracting what came before. New information doesn't override old information; it outcompetes it. If Kalvin has a ratified misconception at S1 and new conflicting information arrives, the new information is rationalised, attains its own significance, and — if more significant — becomes the preferred path during rationalisation. The misconception is still there in the graph, structurally intact, but it is no longer the optimal response. Nothing was deleted. The graph grew, and the balance of significance shifted.
 
-Kalvin's knowledge graph is append-only and layered. Kalvin doesn't forget — it supersedes. Truth, in Kalvin's world, is a matter of what is currently most significant, not what was ratified first. And because the correction mechanism is the same as the learning mechanism, Kalvin can self-correct when new, possibly conflicting, information is rationalised — without any external intervention. The best time to correct Kalvin is during training. But the capacity for self-correction is always present.
+Monotonicity is also what makes scaffolding irreversible. Each scaffold adds structure to the graph. Even if a particular training goal is abandoned, the scaffolding erected along the way remains, enriching the model for future rationalisation. Every round of training leaves the graph larger than it found it.
+
+And because correction uses the same mechanism as learning — rationalisation of new information — Kalvin can self-correct when new, possibly conflicting, information arrives, without any external intervention. The best time to correct Kalvin is during training. But the capacity for self-correction is always present, and it is a direct consequence of monotonic growth: the graph can always accept another kline, and that kline can always be more significant than what came before.
 
 ---
 

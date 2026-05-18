@@ -6,8 +6,6 @@ This is the origin document for the Kalvin system. It defines what Kalvin is, ho
 
 Kalvin is a rationalising system that accepts, thinks, and talks in klines. It receives kline structures — compiled from KScript by an agent — and attempts to understand each one in terms of what it already knows.
 
-Understanding, for Kalvin, is the capacity to produce significant responses. Shape plays an essential role — it determines how close new information is to what Kalvin already knows and identifies which parts are not yet understood — but shape alone is not understanding. Understanding emerges from the interplay of structural fit, learned preferences, and the degree of fit made visible to other agents so they can act on it.
-
 ---
 
 ## Klines
@@ -26,12 +24,12 @@ KScript is a small DSL for compiling scripted kline constructions into training 
 
 KScript provides four ways to build kline relationships. For brevity, identity klines are omitted from the table below:
 
-| Syntax | Name | Output |
-|--------|------|--------|
-| `Q == V` | COUNTERSIGN | `{Q: [V]}, {V: [Q]}` |
-| `Q = V` | UNDERSIGN | `{V: [Q]}` |
-| `Q > V` | CONNOTATE | `{Q: [V]}` |
-| `Q => V₁…Vₙ` | CANONIZE | `{Q: [V₁,…Vₙ]}` |
+| Syntax       | Name        | Output               |
+| ------------ | ----------- | -------------------- |
+| `Q == V`     | COUNTERSIGN | `{Q: [V]}, {V: [Q]}` |
+| `Q = V`      | UNDERSIGN   | `{V: [Q]}`           |
+| `Q > V`      | CONNOTATE   | `{Q: [V]}`           |
+| `Q => V₁…Vₙ` | CANONIZE    | `{Q: [V₁,…Vₙ]}`      |
 
 KScript also supports indented chaining, whereby a value node on one line becomes the query of an indented block that follows. Comments are allowed between brackets.
 
@@ -82,12 +80,12 @@ Significance falls on a spectrum. At one end, every node resolves to grounded kn
 
 In practice, significance falls into four levels, each with a distinct structural meaning:
 
-| Level | Internal Voice | What Kalvin Has Determined |
-|-------|---------------|----------------------------|
-| **S1** | "I know that I know this." | Every node resolves to grounded, ratified knowledge. |
-| **S2** | "I understand some of it." | Some nodes match existing knowledge; others need further resolution. |
-| **S3** | "I recognise aspects of it." | No direct node matches, but the graph topology connects the query to existing knowledge. |
-| **S4** | "I do not understand this at all." | No candidates found. Completely novel. |
+| Level  | Internal Voice                     | What Kalvin Has Determined                                                               |
+| ------ | ---------------------------------- | ---------------------------------------------------------------------------------------- |
+| **S1** | "I know that I know this."         | Every node resolves to grounded, ratified knowledge.                                     |
+| **S2** | "I understand some of it."         | Some nodes match existing knowledge; others need further resolution.                     |
+| **S3** | "I recognise aspects of it."       | No direct node matches, but the graph topology connects the query to existing knowledge. |
+| **S4** | "I do not understand this at all." | No candidates found. Completely novel.                                                   |
 
 S1 and S4 are **significants** — the kline is either confirmed or entirely novel. No further processing needed. S2 and S3 are **rationals** — partial relationships that Kalvin continues to work on.
 
@@ -136,11 +134,11 @@ Canonical S1 (all-literal or self-grounded klines) is self-ratifying — no coun
 
 The agent has two strategic tools. Both go through `rationalise()`, but they differ in intent:
 
-| | Priming | Querying |
-|---|---------|----------|
-| **Intent** | "Accept this as known." | "Work this out." |
-| **Typical route** | S1 (auto-promote) | S2/S3 (cogitation) |
-| **Agent action** | Submit and move on | Listen, evaluate, respond |
+|                   | Priming                 | Querying                  |
+| ----------------- | ----------------------- | ------------------------- |
+| **Intent**        | "Accept this as known." | "Work this out."          |
+| **Typical route** | S1 (auto-promote)       | S2/S3 (cogitation)        |
+| **Agent action**  | Submit and move on      | Listen, evaluate, respond |
 
 **Priming** injects trusted knowledge. A COUNTERSIGN (`==`) compiles to two countersigned klines. Submitted sequentially, the second discovers the first and establishes S1. The agent tells Kalvin: this is known.
 
@@ -241,11 +239,11 @@ A curriculum is the agent's plan for building a knowledge graph. It determines w
 
 A curriculum can range from fully reactive to fully scripted:
 
-| Mode | Description |
-|------|-------------|
-| **Human-in-the-loop** | A human watches the event channel and creates KScripts in response to proposals. |
+| Mode                  | Description                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Human-in-the-loop** | A human watches the event channel and creates KScripts in response to proposals.                       |
 | **Scripted reactive** | A program monitors events and selects pre-written KScript responses based on significance and content. |
-| **Fully scripted** | A fixed pipeline with deterministic submission order and defined coverage targets. |
+| **Fully scripted**    | A fixed pipeline with deterministic submission order and defined coverage targets.                     |
 
 All three modes use the same API: `rationalise()` and events.
 
@@ -259,12 +257,12 @@ MW starts from a blank slate: no klines, no tokens, no vocabulary of inquiry. Th
 
 MW will establish:
 
-| Question | Why It Matters |
-|----------|---------------|
+| Question                                                                  | Why It Matters                          |
+| ------------------------------------------------------------------------- | --------------------------------------- |
 | How many klines are needed to bootstrap from empty to question-answering? | Sets expectations for curriculum scale. |
-| What ordering of priming vs. querying is most efficient? | Informs future scripted curricula. |
-| What vocabulary of inquiry must be trained alongside domain content? | Determines curriculum scope. |
-| Does order-independence hold in practice? | Validates the core design assumption. |
+| What ordering of priming vs. querying is most efficient?                  | Informs future scripted curricula.      |
+| What vocabulary of inquiry must be trained alongside domain content?      | Determines curriculum scope.            |
+| Does order-independence hold in practice?                                 | Validates the core design assumption.   |
 
 The patterns that emerge from MW will inform future projects, which can build on previously learned structures rather than starting from scratch.
 
@@ -290,14 +288,14 @@ An agentic harness — one capable of autonomous action based on significance �
 
 The system is built from a small set of components, each with a clean responsibility:
 
-| Component | Role | Spec |
-|-----------|------|------|
-| **KLine** | The fundamental unit of knowledge — an identified, ordered sequence of nodes. | `specs/kline.md` |
-| **Signature** | OR-reduction of nodes into a single identity key with a literal-content flag. | `specs/signature.md` |
-| **Tokenizer** (Mod / BPE) | Converts text to nodes and back. | `specs/tokenizer.md` |
-| **STM** | Bounded rolling window for recent KLines, indexed by signature and nodes-signature. | `specs/stm.md` |
-| **Model** | Three-tier knowledge graph (STM → Frame → Base) with graph traversal and significance computation. | `specs/model.md` |
-| **Agent** | Orchestrates the rationalisation pipeline — receives KLines, evaluates significance, integrates results. | `specs/agent.md` |
-| **Cogitator** | Background processor for ambiguous (S2/S3) results, including S2 expansion. | `specs/agent.md` |
-| **KScript** | Domain-specific language for declaratively constructing knowledge graphs. | `specs/kscript.md` |
-| **Events** | Pub/sub mechanism allowing observers to react to rationalisation outcomes. | `specs/agent.md` |
+| Component                 | Role                                                                                                     | Spec                 |
+| ------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------- |
+| **KLine**                 | The fundamental unit of knowledge — an identified, ordered sequence of nodes.                            | `specs/kline.md`     |
+| **Signature**             | OR-reduction of nodes into a single identity key with a literal-content flag.                            | `specs/signature.md` |
+| **Tokenizer** (Mod / BPE) | Converts text to nodes and back.                                                                         | `specs/tokenizer.md` |
+| **STM**                   | Bounded rolling window for recent KLines, indexed by signature and nodes-signature.                      | `specs/stm.md`       |
+| **Model**                 | Three-tier knowledge graph (STM → Frame → Base) with graph traversal and significance computation.       | `specs/model.md`     |
+| **Agent**                 | Orchestrates the rationalisation pipeline — receives KLines, evaluates significance, integrates results. | `specs/agent.md`     |
+| **Cogitator**             | Background processor for ambiguous (S2/S3) results, including S2 expansion.                              | `specs/agent.md`     |
+| **KScript**               | Domain-specific language for declaratively constructing knowledge graphs.                                | `specs/kscript.md`   |
+| **Events**                | Pub/sub mechanism allowing observers to react to rationalisation outcomes.                               | `specs/agent.md`     |
