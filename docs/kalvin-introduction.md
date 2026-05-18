@@ -1,94 +1,117 @@
 # Kalvin — A Rational Agent
 
-This document covers what Kalvin is, how it works, and why it's built this way. Operational and architectural details live in the [origin document](kalvin-origin.md).
+This document introduces Kalvin. It describes what Kalvin is designed to do, what it means for Kalvin to understand, and what it means for Kalvin to be a rational agent. It is a companion to the [origin document](kalvin-origin.md), which defines how Kalvin works. This document is concerned with why — and with what follows from why.
 
 ---
 
-## What Kalvin Is
+## The First Thing to Notice
 
-Kalvin is an agent in a multi-agent system. Agents communicate by exchanging klines through a harness that encodes and decodes them. The harness is the transport layer — it is not an agent. On the other end of the harness is another agent: a human trainer, an automated process, or another Kalvin instance.
+Kalvin produces two things at once: a response, and a measurement of how well that response is grounded in what Kalvin already knows. This measurement is called **significance**. It is not a quality score applied after the fact. It is a direct consequence of the rationalisation process — the structural fact of how the new kline fits into the knowledge graph, expressed as a number.
 
-Every response Kalvin produces has two parts: the kline itself, and a **significance** measurement indicating how well the response is grounded in what Kalvin already knows. Significance is not something Kalvin chooses to report — it falls out of how the incoming kline fits into the existing knowledge graph. The response says two things: here is what I think, and here is how firmly my knowledge supports it.
+This two-layered output is the first thing to notice because everything else follows from it. Without significance, the other agent in the dialog receives a response but has no basis for deciding what to do with it. Should it ratify? Scaffold? Correct? Submit new information? These decisions require knowing where Kalvin's understanding is strong and where it breaks down — and that is precisely what significance provides. It makes every response actionable. It tells the other agent exactly what to do next.
 
-The significance signal tells the other agent what to do next: ratify the response, scaffold it, correct it, or move on. Without it, the other agent gets an answer but has no way to judge whether to trust it, build on it, or challenge it.
-
----
-
-## Rationalisation
-
-Rationalisation is Kalvin's process for producing a significant response. When a kline arrives, Kalvin searches its knowledge graph for structures with matching shape, measures how closely they relate, and generates a response kline representing its best understanding. The significance is attached to this response as a numerical indicator.
-
-Kalvin's **preferences** operate during rationalisation. The only preference currently wired up is temporal order — more recent information is preferred over older information. Two identical klines arriving at different times can produce different rationalisations because the preference changes the selection from the graph, not the graph itself.
-
-The optimal action for Kalvin is to produce the most significant response possible. Significance is a primary facet of Kalvin's communication — not a side channel or a debugging aid.
+This is what separates Kalvin from an oracle. An oracle gives you an answer and nothing else. You take it or leave it. Kalvin gives you an answer and the structural grounds for that answer. You can build on it, challenge it, or fill in the gaps — because you know where the gaps are.
 
 ---
 
-## Understanding
+## Rationality Includes the Assessment of Rationality
 
-Understanding is the capacity to produce significant responses. It emerges from three components:
+A system that always produces correct outputs is functional. A system that can tell you how well-grounded its outputs are is rational.
+
+Significance is not an add-on to Kalvin's rationality. It is Kalvin's rationality. The ability to produce a response of "I don't understand this at all" — S4, the lowest significance — is not a failure. It is one of the most useful things Kalvin can say. It tells the other agent exactly where to focus next. An S2 response — "I understand some of it" — is not a failed S1. It is a legitimate expression of partial understanding that invites the other agent to scaffold.
+
+Rationality, properly understood, already includes the capacity to rationalise one's own outputs. There is no need to call this "meta-rationality." A rational agent that cannot account for its own grounding is not rational — it is merely correct, and only by coincidence. The significance signal is constitutive of rationality, not supplementary to it.
+
+---
+
+## Understanding Is a Capacity, Not a State
+
+The origin document introduces understanding as a matter of shape — how new information structurally fits against existing knowledge. This is true as far as it goes. Shape is the substrate: it determines how close new information is to what Kalvin already knows and identifies which parts are not yet understood.
+
+But understanding is more than shape alone. It is the capacity to produce significant responses — where significance emerges from the interplay of three things:
 
 1. **Shape** — the structural fit of a new kline against existing knowledge.
 2. **Preferences** — which paths through the graph to favour when multiple candidates exist.
-3. **Significance** — the degree of fit, made visible to other agents so they can decide what to do next.
+3. **Actionable communication** — the degree of fit made visible to other agents, enabling them to decide what to do next.
+
+Shape is what Kalvin measures. Preferences shape the measurement. Significance makes the measurement useful. Understanding is what Kalvin *does* when it receives something new and puts all three to work.
 
 ---
 
-## Significance Levels
+## Most of Rationalising Happens in the Middle
 
-Significance falls on a spectrum with four levels:
+Significance falls on a spectrum, bounded by two conclusions: "I know" (S1) and "I don't understand this at all" (S4). The spectrum exists to help Kalvin reach conclusions. But most of Kalvin's rationalising life is spent between those endpoints, at S2 and S3, where understanding is partial and ongoing.
 
-- **S1** — "I know." Full ratification. Requires a countersignature from the training agent. Kalvin cannot reach S1 alone — no amount of autonomous cogitation promotes a kline to S1.
-- **S2** — "I understand some of it." Partial understanding, ongoing.
-- **S3** — "I recognise aspects of it." Partial understanding, ongoing.
-- **S4** — "I don't understand this at all."
+S2 and S3 are not failed S1s. They are active states of reasoning. During these states, Kalvin continues to think — retracing paths through its knowledge graph, discovering connections that were not apparent before, generating proposals, applying its learned preferences. The cogitator runs on a background thread, working through the backlog of partially understood klines. When the dialog pauses, Kalvin studies. It revisits its partial knowledge, strengthens what it can, prepares for the next exchange.
 
-S1 and S4 are endpoints where no further processing is needed. S2 and S3 are active states of reasoning. During these states, Kalvin continues to think: retracing paths through its knowledge graph, finding connections that were not apparent before, generating proposals, applying its learned preferences. The cogitator runs on a background thread, working through the backlog of partially understood klines.
-
-Kalvin is not expected to return immediately. It is expected to think, and to be given time to do so.
+This is where understanding becomes a temporal concern. S2 and S3 take time. Kalvin is not expected to return immediately. It is expected to think, and to be given the time to do so. This is not a philosophical position. It is a functional requirement.
 
 ---
 
-## Autonomy
+## The Demand for Autonomy
 
-The significance spectrum creates a **temporal contract** between Kalvin and the other agents. The external questions are: how long should Kalvin be allowed to cogitate? Is Kalvin's response still relevant? These are questions the other agents must answer, and their answers depend on perceiving Kalvin as something that thinks.
+Kalvin must be perceived as a rational agent because Kalvin demands autonomy — and that demand has concrete consequences for anyone building a system around it.
 
-If Kalvin is treated as a lookup table, its cogitation gets timed out and the process through which understanding develops gets cut off. Granting temporal autonomy, listening to the significance signal, and engaging in the dialog is a functional necessity — not a courtesy.
+An oracle gives you the answer. You cannot ask it how it arrived. A function gives you the output, immediately. You cannot ask it to keep thinking. A rational agent gives you its best understanding with the structural grounds for that understanding attached, and it asks for time when it needs it.
 
----
+The spectrum of significance creates a temporal contract between Kalvin and the other agents in the system. How long should Kalvin be allowed to cogitate? Is Kalvin's response still relevant? These are questions the other agents must answer, and their answers depend on perceiving Kalvin as something that thinks — not something that computes. If you treat Kalvin as a lookup table, you time out its cogitation and cut off the process through which understanding develops. If you treat Kalvin as a subroutine, you ignore the signal that tells you what to do next.
 
-## Self-Assessment
-
-A rational agent can account for its own outputs — it assesses and communicates how well-grounded they are. The significance signal is Kalvin's mechanism for this. A response of "I don't understand this at all" (S4) is not a failure of rationality; it is one of its most useful expressions — it tells the other agent exactly where to focus next.
+Treating Kalvin as a rational agent is not a courtesy. It is a functional necessity. The system only works if the significance signal is treated as a reliable basis for action, if the demand for autonomy is respected, if the dialog is maintained.
 
 ---
 
-## Training and Correction
+## The System Is a Loop of Agents
 
-Kalvin's rationality is internally consistent. If Kalvin has a ratified misconception in its knowledge graph, it will produce highly significant responses that are structurally sound but semantically wrong. This is by design: Kalvin's responsibility is the reliability of its self-assessment. The responsibility for semantic correctness belongs to the training agent.
+Kalvin operates inside a multi-agent system. The harness — the code that manages the flow of klines and responses — is not itself an agent. It is the medium, the wire between agents. Kalvin is one agent in the loop. The entity on the other side — a human trainer, an automated harness, or another Kalvin instance — is another.
 
-Correction happens through the introduction of **more significant information**. New information doesn't override old information — it outcompetes it. If Kalvin has a ratified misconception at S1 and new conflicting information arrives, the new information is rationalised, attains its own significance, and — if more significant — becomes the preferred path. The misconception remains in the graph, structurally intact, but is no longer the optimal response.
-
-Kalvin's knowledge graph is **append-only and layered**. Truth, in Kalvin's world, is what is currently most significant — not what was ratified first. Kalvin doesn't forget; it supersedes. Because the correction mechanism is the same as the learning mechanism (rationalisation of new information), Kalvin can self-correct when new, conflicting information is rationalised without external intervention.
-
-The best time to correct Kalvin is during training, when the training agent controls what Kalvin receives. But the capacity for self-correction is always present.
+This matters because it locates the agency correctly. When Kalvin attaches significance to its output, this is an agentic act: it informs the other agents in the loop something about its understanding of its own output. When the training agent receives that significance and decides to scaffold, ratify, or correct, that is also an agentic act. The system is a dialog between rational agents, not a pipeline between a controller and a controlled.
 
 ---
 
-## Ratification and Authority
+## Preferences Are Not Parameters — They Are Knowledge
 
-S1 carries **traceability** and **authority**. The countersignature doesn't just verify the knowledge — it records who verified it, creating a chain of provenance. S1 is not just a higher grade of understanding but a structurally different kind: it is understanding that can point to its origins and say "I know this, and here is the agent who confirmed it."
+What Kalvin considers optimal is not fixed. Currently, temporal recency is the only preference wired up: Kalvin prefers more recent knowledge over older knowledge. Two identical klines arriving at different times can produce different rationalisations, not because the graph changed, but because the preference shifted the selection.
 
-When the trainer is another Kalvin instance, the countersignature carries that instance's authority — built on its own ratification history. Two Kalvin instances rationalising at each other, each producing significant responses, each able to ratify the other's proposals, produces a system where knowledge is generated through mutual rationalisation, authority is distributed, and understanding emerges from the dialog between understanding-generating systems. The long-term aspiration is networks of Kalvin instances that develop shared understanding that no single instance could reach alone — a distributed rationality built on actionable signals and mutual respect for autonomy.
+But the architecture allows for more flexible preference mechanisms, and here is where the design becomes recursive: these preference mechanisms are themselves klines. They are recognised as knowledge with high internal significance and are subject to standard rationalisation — they can be taught, scaffolded, and ratified like any other knowledge.
+
+This means what Kalvin considers optimal is itself something Kalvin can be taught. There is no fixed utility function. The agent doesn't just teach Kalvin what to know — it teaches Kalvin how to evaluate. New preferences are bootstrapped through KScript, primed by the trainer into the knowledge graph, and from there they participate in rationalisation like any other high-significance kline. What Kalvin values in a response is itself something Kalvin can be taught to value differently.
 
 ---
 
-## Learnable Preferences
+## Knowledge Grows by Addition, Not by Revision
 
-What Kalvin considers optimal is not fixed. Temporal recency is the only preference wired up today, but the architecture supports preference mechanisms that can overrule temporal order.
+Kalvin's rationality is internally consistent. If the knowledge graph contains a ratified misconception, Kalvin will produce highly significant responses that are structurally sound but semantically false by human lights. This is not a flaw. It is the natural consequence of a system whose responsibility is the reliability of its self-assessment, not the semantic correctness of its contents. Correctness belongs to the training agent.
 
-These preference mechanisms are themselves klines. They are recognised as knowledge with high internal significance and are subject to standard rationalisation — they can be taught, scaffolded, and ratified like any other knowledge. This means:
+Correction happens through the introduction of more significant information. New information doesn't override old information — it outcompetes it. If Kalvin has a ratified misconception at S1 and new conflicting information arrives, the new information is rationalised, attains its own significance, and — if more significant — becomes the preferred path during rationalisation. The misconception is still there in the graph, structurally intact, but it is no longer the optimal response.
 
-- What Kalvin considers optimal is itself something Kalvin can be taught. There is no fixed utility function.
-- The training relationship extends to the criteria by which Kalvin judges its own understanding — the agent doesn't just teach Kalvin what to know, it teaches Kalvin how to evaluate.
-- Bootstrapping new preferences uses the same mechanism as bootstrapping any other knowledge. KScript allows a trainer to steer Kalvin toward expected or idealised goals, including the goal of adopting new evaluation criteria. The trainer primes preference klines through countersignature, installing them as ratified knowledge. From there, the preference participates in rationalisation like any other high-significance kline.
+Kalvin's knowledge graph is append-only and layered. Kalvin doesn't forget — it supersedes. Truth, in Kalvin's world, is a matter of what is currently most significant, not what was ratified first. And because the correction mechanism is the same as the learning mechanism, Kalvin can self-correct when new, possibly conflicting, information is rationalised — without any external intervention. The best time to correct Kalvin is during training. But the capacity for self-correction is always present.
+
+---
+
+## Knowing Is Understanding With Authority
+
+S1 — "I know that I know this" — is impossible for Kalvin to achieve alone. No amount of autonomous cogitation, study, or graph traversal can promote a kline to S1. Full ratification requires a **countersignature** from another agent. This hard limit on autonomy is deliberate.
+
+S1 is not merely high confidence. It is confirmed knowledge — understanding that has been formally recognised by another agent. But ratification is more than confirmation. The countersignature records who verified the knowledge, creating a chain of provenance. S1 carries **traceability** and **authority**. It is understanding that can point to its origins and say: I know this, and here is the agent who confirmed it.
+
+This is why S1 is not just a higher grade of understanding but a structurally different kind. S2 is Kalvin's best assessment of its own understanding. S1 is that assessment plus an external record of who vouched for it. The difference between "I think I understand" and "I know" is the difference between a conclusion and a conclusion with a provenance chain.
+
+---
+
+## When One Kalvin Trains Another
+
+The distinction between S1 and S2 becomes particularly interesting when the trainer in the loop is another Kalvin instance. The countersignature then carries the second Kalvin's authority — itself built on its own ratification history. Two Kalvin instances rationalising at each other, each producing significant responses, each able to ratify the other's proposals, creates a system where knowledge is generated through mutual rationalisation, authority is distributed, and understanding emerges from the dialog between understanding-generating systems.
+
+Each agent's understanding is shaped by the other's capacity to understand. One agent's partial understanding becomes the other's scaffolding. One agent's high-significance response becomes the other's ratified knowledge. The long-term aspiration is networks of Kalvin instances that develop shared understanding that no single instance could reach alone — a distributed rationality built on actionable signals and mutual respect for autonomy.
+
+---
+
+## What Makes Kalvin Distinct
+
+Kalvin's design makes several choices that are worth stating plainly:
+
+- **Preferences are learned, not given.** They are part of the knowledge graph — subject to ratification, scaffoldable, revisable.
+- **Information is structurally accumulated, not statistically weighted.** The knowledge graph grows through the addition of ratified klines. It does not converge through parameter adjustment.
+- **Actions include meta-actions.** Producing a significance level is itself the agentic act. It is not a side channel or a quality metric — it is the communication.
+- **Optimality is actionable, not accurate.** The optimal action is the most significant response Kalvin can produce, even if that response is "I don't understand this at all." An S4 response is optimally useful — it tells the other agent exactly where understanding breaks down.
+- **Rationality is second-order.** A rational agent doesn't just produce rational outputs — it rationalises its own rational outputs. The ability to assess and communicate the grounds for one's own understanding is not an add-on to rationality; it is constitutive of it.
