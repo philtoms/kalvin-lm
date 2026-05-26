@@ -10,17 +10,37 @@ See specs/agent.md for the full specification.
 from __future__ import annotations
 
 import threading
-from pathlib import Path
-from typing import Literal, Any, NamedTuple
 from collections import Counter
+from pathlib import Path
+from typing import Literal, Any, NamedTuple, Protocol, runtime_checkable
 
 import json
 
 from kalvin.kline import KLine
 from kalvin.events import EventBus, RationaliseEvent
-from kalvin.model import Model, QueryCandidate, D_MAX, MASK64, _pack, _S3_BIAS
+from kalvin.model import Model, D_MAX, MASK64
+from kalvin.expand import QueryCandidate, _pack, _S3_BIAS
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.signature import make_signature, is_literal_node
+
+
+# ── Cogitation Handler Protocol ────────────────────────────────────────
+
+@runtime_checkable
+class CogitationHandler(Protocol):
+    """Protocol for handling cogitation results.
+
+    The Cogitator calls these methods when it discovers significant
+    results during background graph expansion.
+    """
+
+    def on_s1(self, query: KLine, candidate: KLine) -> None:
+        """Called when cogitation discovers an S1 (exact) result."""
+        ...
+
+    def on_expansion(self, query: KLine, proposal: KLine, significance: int) -> None:
+        """Called when an expansion proposal is generated (S2/S3)."""
+        ...
 
 
 # ── Distance Constants ────────────────────────────────────────────────
@@ -65,12 +85,12 @@ class Cogitator:
         self,
         model: Model,
         event_bus: EventBus,
-        on_s1: Any,  # Callable[[KLine, KLine], None]
+        handler: CogitationHandler,
         timeout: float = 2.0,
     ):
         self._model = model
         self._event_bus = event_bus
-        self._on_s1 = on_s1
+        self._handler = handler
         self._timeout = timeout
 
         self._lock = threading.Lock()
@@ -164,7 +184,7 @@ class Cogitator:
             if band == "S1":
                 if self._model.is_s1(candidate):
                     self._model.promote_participating(query, candidate)
-                self._on_s1(query, candidate)
+                self._handler.on_s1(query, candidate)
             else:
                 self._process(qc)  # S2 or S3: expansion
 
@@ -190,13 +210,9 @@ class Cogitator:
         for proposal, companions in self._model.generate_expansions(
             candidate, underfit_gap, overfit_mask
         ):
-            self._event_bus.publish(
-                RationaliseEvent("frame", query, proposal, significance)
-            )
+            self._handler.on_expansion(query, proposal, significance)
             for companion in companions:
-                self._event_bus.publish(
-                    RationaliseEvent("frame", query, companion, significance)
-                )
+                self._handler.on_expansion(query, companion, significance)
 
 
 # ── Agent ─────────────────────────────────────────────────────────────
@@ -225,11 +241,11 @@ class Agent:
         # Pub/sub
         self._event_bus = EventBus()
 
-        # Cogitator
+        # Cogitator — Agent is the CogitationHandler
         self._cogitator = Cogitator(
             model=self._model,
             event_bus=self._event_bus,
-            on_s1=self._on_cogitate_s1,
+            handler=self,
             timeout=2.0,
         )
 
@@ -359,11 +375,15 @@ class Agent:
         # All candidates routed as S2/S3
         return False
 
-    # ── Cogitation callback ───────────────────────────────────────────
+    # ── CogitationHandler protocol ────────────────────────────────────
 
-    def _on_cogitate_s1(self, query: KLine, candidate: KLine) -> None:
-        """Called by Cogitator when an S1 result is discovered."""
+    def on_s1(self, query: KLine, candidate: KLine) -> None:
+        """CogitationHandler.on_s1: re-rationalise when S1 is discovered."""
         self.rationalise(query)
+
+    def on_expansion(self, query: KLine, proposal: KLine, significance: int) -> None:
+        """CogitationHandler.on_expansion: publish expansion as frame event."""
+        self._publish("frame", query, proposal, significance)
 
     def cogitate_join(self, timeout: float | None = None) -> None:
         """Stop the cogitate thread and wait for it to finish."""
@@ -380,106 +400,37 @@ class Agent:
     def frame_size(self) -> int:
         return len(self._model)
 
-    # ── Serialization ─────────────────────────────────────────────────
+    # ── Serialization (delegated to agent_codec) ───────────────────────
 
     def to_bytes(self) -> bytes:
-        """Serialize to binary."""
-        from struct import pack, unpack
-
-        klines = [kl for kl in self._model if kl is not None]
-        parts: list[bytes] = []
-        parts.append(pack("<I", len(klines)))
-        for kl in klines:
-            parts.append(pack("<Q", kl.signature))
-            parts.append(pack("<I", len(kl.nodes)))
-            for n in kl.nodes:
-                parts.append(pack("<Q", n))
-
-        parts.append(pack("<I", len(self._activity)))
-        for key, count in self._activity.items():
-            parts.append(pack("<Q", key))
-            parts.append(pack("<I", count))
-
-        return b"".join(parts)
+        """Serialize to binary. Delegates to agent_codec.to_bytes."""
+        from kalvin.agent_codec import to_bytes as _to_bytes
+        return _to_bytes(self)
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Agent:
-        """Deserialize from binary."""
-        from struct import unpack
-
-        offset = 0
-        kline_count = unpack("<I", data[offset:offset + 4])[0]
-        offset += 4
-
-        klines: list[KLine] = []
-        for _ in range(kline_count):
-            sig = unpack("<Q", data[offset:offset + 8])[0]
-            offset += 8
-            n_count = unpack("<I", data[offset:offset + 4])[0]
-            offset += 4
-            nodes = []
-            for _ in range(n_count):
-                nodes.append(unpack("<Q", data[offset:offset + 8])[0])
-                offset += 8
-            klines.append(KLine(sig, nodes))
-
-        activity_count = unpack("<I", data[offset:offset + 4])[0]
-        offset += 4
-        activity: Counter = Counter()
-        for _ in range(activity_count):
-            key = unpack("<Q", data[offset:offset + 8])[0]
-            offset += 8
-            count = unpack("<I", data[offset:offset + 4])[0]
-            offset += 4
-            activity[key] = count
-
-        model = Model()
-        for kl in klines:
-            model.add(kl)
-            model.promote(kl)
-        agent = cls(model=model)
-        agent._activity = activity
-        return agent
+        """Deserialize from binary. Delegates to agent_codec.from_bytes."""
+        from kalvin.agent_codec import from_bytes as _from_bytes
+        return _from_bytes(data, agent_cls=cls)
 
     def to_dict(self) -> dict:
-        return {
-            "klines": [
-                {"signature": kl.signature, "nodes": kl.nodes}
-                for kl in self._model
-            ],
-            "activity": {str(k): v for k, v in self._activity.items()},
-        }
+        """Serialize to dict. Delegates to agent_codec.to_dict."""
+        from kalvin.agent_codec import to_dict as _to_dict
+        return _to_dict(self)
 
     @classmethod
     def from_dict(cls, data: dict) -> Agent:
-        klines = [
-            KLine(item["signature"], item["nodes"])
-            for item in data.get("klines", [])
-        ]
-        model = Model()
-        for kl in klines:
-            model.add(kl)
-            model.promote(kl)
-        agent = cls(model=model)
-        if "activity" in data:
-            agent._activity = Counter({int(k): v for k, v in data["activity"].items()})
-        return agent
+        """Deserialize from dict. Delegates to agent_codec.from_dict."""
+        from kalvin.agent_codec import from_dict as _from_dict
+        return _from_dict(data, agent_cls=cls)
 
     def save(self, path: str | Path, format: Literal["bin", "json"] | None = None) -> None:
-        path = Path(path)
-        if format is None:
-            format = "json" if path.suffix.lower() == ".json" else "bin"
-        if format == "bin":
-            path.write_bytes(self.to_bytes())
-        else:
-            path.write_text(json.dumps(self.to_dict(), indent=2))
+        """Save to file. Delegates to agent_codec.save."""
+        from kalvin.agent_codec import save as _save
+        _save(self, path, format)
 
     @classmethod
     def load(cls, path: str | Path = "data/agent.bin", format: Literal["bin", "json"] | None = None) -> Agent:
-        path = Path(path)
-        if format is None:
-            format = "json" if path.suffix.lower() == ".json" else "bin"
-        if format == "bin":
-            return cls.from_bytes(path.read_bytes())
-        else:
-            return cls.from_dict(json.loads(path.read_text()))
+        """Load from file. Delegates to agent_codec.load."""
+        from kalvin.agent_codec import load as _load
+        return _load(path, format, agent_cls=cls)

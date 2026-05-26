@@ -109,6 +109,14 @@ class STM:
             pass
         self._dedup.discard((sig, tuple(kline.nodes)))
 
+    def contains(self, kline: KLine) -> bool:
+        """Check if an equal KLine is in the STM (by signature + nodes)."""
+        return (kline.signature, tuple(kline.nodes)) in self._dedup
+
+    def all_klines(self) -> list[KLine]:
+        """Return all KLines in insertion order."""
+        return list(self._order)
+
     def clear(self) -> None:
         self._store.clear()
         self._order.clear()
@@ -119,6 +127,12 @@ class STM:
 
     def __contains__(self, key: KSig) -> bool:
         return key in self._store
+
+    def __iter__(self):
+        return iter(self._order)
+
+    def __reversed__(self):
+        return reversed(self._order)
 
     def __repr__(self) -> str:
         return f"STM(klines={len(self._order)}, bound={self._bound})"

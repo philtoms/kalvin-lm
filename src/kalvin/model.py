@@ -1,7 +1,9 @@
 """Model — three-tier layered KLine collection (STM → Frame → Base).
 
-The model provides storage, deduplication, lookup by signature, graph
-traversal, and the significance API functions consumed by the pipeline.
+The model provides storage, deduplication, lookup by signature, and
+graph traversal. Significance computation and misfit classification
+live in expand.py and misfit.py respectively, and are re-exported here
+for backward compatibility.
 
 See specs/model.md for the full specification.
 """
@@ -14,37 +16,27 @@ from kalvin.kline import KLine, KSig
 from kalvin.stm import STM
 from kalvin.signature import make_signature, signifies, is_literal_node
 
-# _S3_BIAS — S3 connotation tier bias. Connotation hop counts are biased by this
-# amount before quadratic packing, ensuring S3 packed distances exceed S2 distances
-# for the same hop count while keeping both tiers close enough for temperature bridging.
-# With _S3_BIAS=9, minimum S3 packed distance = _pack(2+9) = 121 > MAX_HOP(100).
-_S3_BIAS = 9
+# Re-export from expand module for backward compatibility
+from kalvin.expand import (
+    QueryCandidate,
+    D_MAX,
+    MASK64,
+    MAX_HOP,
+    _S3_BIAS,
+    _pack,
+    expand as _expand_fn,
+    is_canon as _is_canon_fn,
+    is_s1 as _is_s1_fn,
+    is_countersigned as _is_countersigned_fn,
+    edge_hops as _edge_hops_fn,
+    promote_participating as _promote_participating_fn,
+)
 
-
-def _pack(distance: int) -> int:
-    """Non-linear distance packing via squaring.
-
-    Quadratic growth keeps small distances close for fine-grained temperature
-    discrimination, while large distances spread apart so the accumulation
-    penalty grows super-linearly.
-    """
-    if distance <= 0:
-        return 0
-    return distance * distance
-
-# Public significance constants
-D_MAX = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance, also the significance of zero distance
-MASK64 = 0xFFFF_FFFF_FFFF_FFFF  # 64-bit mask for bitwise inversion
-
-# MAX_HOP hyperparameter — upper bound on edge hop chain depth
-MAX_HOP = 100
-
-
-class QueryCandidate(NamedTuple):
-    """A single query|candidate pair yielded by graph expansion."""
-    query: KLine
-    candidate: KLine
-    significance: int
+# Re-export from misfit module for backward compatibility
+from kalvin.misfit import (
+    classify_misfit as _classify_misfit_fn,
+    generate_expansions as _generate_expansions_fn,
+)
 
 
 class Model:
@@ -54,7 +46,8 @@ class Model:
     - Frame: populated by promote() from STM.
     - Base: optional long-term knowledge store (read-only, set at construction).
 
-    The caller sees a single unified API.
+    The caller sees a single unified API. Significance and misfit logic
+    are delegated to expand.py and misfit.py.
     """
 
     def __init__(self, base: Model | None = None, stm_bound: int = 256):
@@ -80,8 +73,6 @@ class Model:
             if self._exists_any(kline):
                 return False
 
-        # Add to STM — always track in STM's dedup set so promote() and
-        # _exists_any() can rely on it.  Model-level dedup is handled above.
         self._stm.add(kline, True)
         return True
 
@@ -91,10 +82,9 @@ class Model:
 
     def _exists_any(self, kline: KLine) -> bool:
         """Check STM, frame, then base."""
-        key = (kline.signature, tuple(kline.nodes))
-        if key in self._stm._dedup:
+        if self._stm.contains(kline):
             return True
-        if key in self._frame_dedup:
+        if (kline.signature, tuple(kline.nodes)) in self._frame_dedup:
             return True
         if self._base:
             return self._base.exists(kline)
@@ -192,7 +182,7 @@ class Model:
         results: list[KLine] = []
 
         # STM entries (most recent)
-        for kl in reversed(self._stm._order):
+        for kl in reversed(self._stm):
             key = (kl.signature, tuple(kl.nodes))
             if key not in seen:
                 seen.add(key)
@@ -238,7 +228,7 @@ class Model:
         """
         key = (kline.signature, tuple(kline.nodes))
         # Must be in STM
-        if key not in self._stm._dedup:
+        if not self._stm.contains(kline):
             return False
         # Already in frame
         if key in self._frame_dedup:
@@ -255,7 +245,7 @@ class Model:
     def promote_all(self) -> int:
         """Promote all STM KLines to the frame."""
         count = 0
-        for kl in list(self._stm._order):
+        for kl in self._stm.all_klines():
             if self.promote(kl):
                 count += 1
         return count
@@ -328,34 +318,15 @@ class Model:
             results.extend(self.query_expand(kl, depth))
         return results
 
-    # ── Significance API ──────────────────────────────────────────────
-
+    # ── Significance API (delegated to expand.py) ─────────────────────
 
     def _is_canon(self, kline: KLine) -> bool:
-        """Test whether a kline is canonical (signature = make_signature of nodes)."""
-        return kline.signature == make_signature(kline.nodes)
+        return _is_canon_fn(kline)
 
     def _edge_hops(self, sig: int) -> Iterator[tuple[int, int]]:
-        """Yield (hop_count, next_sig) for each non-canonical resolution step.
-
-        Follows: resolve sig → kline → make_signature(kline.nodes) → repeat.
-        Stops at a dead end (unresolvable) or a canonical kline.
-        Yields (hop_count, next_sig) at each step.
-        """
-        hop_count = 0
-        while hop_count < MAX_HOP:
-            kline = self.find(sig)
-            if kline is None or self._is_canon(kline):
-                break
-            hop_count += 1
-            sig = make_signature(kline.nodes)
-            yield hop_count, sig
+        return _edge_hops_fn(self, sig)
 
     def _as_kline(self, node: int) -> KLine:
-        """Resolve a node value to a KLine.
-
-        Raises ValueError if the node does not resolve.
-        """
         kline = self.find(node)
         if kline is None:
             raise ValueError(f"Node {node:#x} does not resolve to any KLine")
@@ -369,198 +340,26 @@ class Model:
         *,
         _visited: set[tuple[int, int]] | None = None,
     ) -> Iterator[QueryCandidate]:
-        """Expand a query-candidate pair, yielding connotations and terminal distance.
-
-        For each discovered connotation (S2/S3 indirect relationship), recursively
-        yields QueryCandidate items for the connotation pair.  The final yield is
-        always the terminal QueryCandidate with the computed distance for the
-        original pair.
-
-        Distance is a single integer. S3 connotation hops are biased by
-        ``_pack(hop_count + _S3_BIAS)`` to ensure S3 distances moderately
-        exceed S2 distances — close enough for temperature to bridge.
-
-        Parameters
-        ----------
-        query: The query KLine.
-        candidate: The candidate KLine.
-        distance: Accumulated hop distance (internal, for recursive calls).
-        _visited: Internal cycle-detection set.
-
-        Yields
-        ------
-        QueryCandidate
-            Intermediate connotations (from recursive calls) followed by the
-            terminal distance.
-        """
-        if _visited is None:
-            _visited = set()
-
-        key = (query.signature, candidate.signature)
-        if key in _visited:
-            return  # cycle detected
-        _visited.add(key)
-
-        q_set = set(query.nodes)
-        c_set = set(candidate.nodes)
-        mismatched_q = q_set - c_set
-        mismatched_c = c_set - q_set
-        matched = q_set & c_set
-
-        s3_connotations: dict[int, int] = {}  # sig → min hops from any query node
-
-        # Accumulate distance from mismatched nodes
-        # Direct edge resolutions (S2) add hop count directly.
-        # Connotation resolutions (S3) add _pack(hop_count + _S3_BIAS).
-        # Unresolved nodes add MAX_HOP.
-        total_distance = 0
-
-        # Mismatched query nodes
-        for n in mismatched_q:
-            hop_distance = MAX_HOP
-            q_kline = self.find(n)
-            if q_kline is not None:
-                for hops, match_sig in self._edge_hops(n):
-                    if match_sig in mismatched_c:
-                        hop_distance = hops
-                        c_kline = self._as_kline(match_sig)
-                        yield from self.expand(
-                            q_kline, c_kline, hops, _visited=_visited,
-                        )
-                        break
-                    elif signifies(n, match_sig):
-                        c_kline = self.find(match_sig)
-                        if c_kline is not None:
-                            sig_distance = distance + hops
-                            significance = (~min(sig_distance, D_MAX - 1)) & MASK64
-                            yield QueryCandidate(q_kline, c_kline, significance)
-                        break
-                    elif (match_sig not in s3_connotations
-                        or hops < s3_connotations[match_sig]):
-                        s3_connotations[match_sig] = hops
-            total_distance += hop_distance
-
-        # Mismatched candidate nodes
-        for n in mismatched_c:
-            hop_distance = MAX_HOP
-            q_kline = self.find(n)
-            if q_kline is not None:
-                for hops, match_sig in self._edge_hops(n):
-                    if match_sig in mismatched_q:
-                        hop_distance = hops
-                        c_kline = self._as_kline(match_sig)
-                        yield from self.expand(
-                            q_kline, c_kline, hops, _visited=_visited,
-                        )
-                        break
-                    elif signifies(n, match_sig):
-                        c_kline = self.find(match_sig)
-                        if c_kline is not None:
-                            sig_distance = distance + hops
-                            significance = (~min(sig_distance, D_MAX - 1)) & MASK64
-                            yield QueryCandidate(q_kline, c_kline, significance)
-                        break
-                    elif match_sig in s3_connotations:
-                        s3_hop = s3_connotations[match_sig] + hops
-                        c_kline = self._as_kline(match_sig)
-                        yield from self.expand(
-                            q_kline, c_kline,
-                            _pack(s3_hop + _S3_BIAS),
-                            _visited=_visited,
-                        )
-                        hop_distance = 0
-                        break
-            total_distance += hop_distance
-
-        # Matched but not grounded — small S2 penalty
-        for n in matched:
-            kl = self.find(n)
-            if kl is None or not self.is_s1(kl):
-                total_distance += 1
-
-        # Carry forward the incoming distance
-        total_distance += distance
-
-        # Clamp to avoid overflow, then invert to significance
-        significance = (~min(total_distance, D_MAX - 1)) & MASK64
-        yield QueryCandidate(query, candidate, significance)
-
-    # ── Structural Grounding ──────────────────────────────────────────
+        """Expand a query-candidate pair. Delegates to expand.expand()."""
+        return _expand_fn(self, query, candidate, distance, _visited=_visited)
 
     def is_s1(self, kline: KLine) -> bool:
-        """Determine if a kline is structurally grounded (S1).
-
-        A kline is S1 if:
-        1. Its signature fully describes its nodes (canonical), OR
-        2. It is countersigned by another kline in the model.
-        """
-        if self._is_canon(kline):
-            return True
-        return self.is_countersigned(kline)
+        """Determine if a kline is structurally grounded (S1). Delegates to expand.is_s1()."""
+        return _is_s1_fn(self, kline)
 
     def is_countersigned(self, kline: KLine) -> bool:
-        """Check if kline is countersigned by any kline in the model.
-
-        A kline is countersigned if its nodes_signature exists as a
-        countersigning kline with one node — the countersigned kline's signature.
-
-        Query = {Q: [A, B]}
-        Countersigner = {AB: [Q]}
-        """
-        nodes_signature = make_signature(kline.nodes)
-        for countersigner in self.find_all(nodes_signature):
-            if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
-                return True
-        return False
+        """Check if kline is countersigned. Delegates to expand.is_countersigned()."""
+        return _is_countersigned_fn(self, kline)
 
     def promote_participating(self, query: KLine, candidate: KLine) -> int:
-        """Promote all STM klines involved in a ratification event.
+        """Promote all STM klines in a ratification event. Delegates to expand.promote_participating()."""
+        return _promote_participating_fn(self, query, candidate)
 
-        After countersignature is detected between query and candidate,
-        promote both plus any STM klines whose signatures appear in the
-        union of their nodes.
-
-        Returns the number of klines promoted.
-        """
-        # Collect all signatures from the participating pair
-        node_sigs: set[int] = set()
-        for n in query.nodes:
-            if not is_literal_node(n):
-                node_sigs.add(n)
-        for n in candidate.nodes:
-            if not is_literal_node(n):
-                node_sigs.add(n)
-        node_sigs.add(query.signature)
-        node_sigs.add(candidate.signature)
-
-        # Find all STM klines with matching signatures
-        to_promote: list[KLine] = []
-        for kl in self._stm._order:
-            if kl.signature in node_sigs:
-                to_promote.append(kl)
-
-        # Also promote the query and candidate
-        to_promote.extend([query, candidate])
-
-        count = 0
-        for kl in to_promote:
-            if self.promote(kl):
-                count += 1
-        return count
-
-    # ── Misfit Classification & Expansion ──────────────────────────────
+    # ── Misfit API (delegated to misfit.py) ────────────────────────────
 
     def classify_misfit(self, kline: KLine) -> tuple[bool, bool]:
-        """Classify a kline's misfit type.
-
-        Returns (underfitting, overfitting):
-        - underfitting: True if S & ~N != 0 (signature promises more than nodes deliver)
-        - overfitting: True if N & ~S != 0 (nodes carry more than signature captures)
-        """
-        nodes_sig = make_signature(kline.nodes)
-        underfit = (kline.signature & ~nodes_sig) != 0
-        overfit = (nodes_sig & ~kline.signature) != 0
-        return underfit, overfit
+        """Classify a kline's misfit type. Delegates to misfit.classify_misfit()."""
+        return _classify_misfit_fn(kline)
 
     def generate_expansions(
         self,
@@ -568,80 +367,8 @@ class Model:
         underfit_gap: int,
         overfit_mask: int,
     ) -> Iterator[tuple[KLine, list[KLine]]]:
-        """Generate expansion proposals for a misfit kline.
-
-        Each yield is (proposal_kline, companion_klines) where:
-        - proposal_kline is the expanded version of the input
-        - companion_klines are klines formed from removed nodes (may be empty)
-
-        Expansion proposals satisfy:
-        - No invention: every signature used exists in the model
-        - No orphan nodes: removed nodes form a companion kline
-        """
-        if underfit_gap:
-            yield from self._underfit_expansions(kline, underfit_gap)
-
-        if overfit_mask:
-            yield from self._overfit_expansions(kline, overfit_mask)
-
-        if underfit_gap and overfit_mask:
-            yield from self._dual_expansions(kline, underfit_gap, overfit_mask)
-
-    def _underfit_expansions(
-        self, kline: KLine, gap: int
-    ) -> Iterator[tuple[KLine, list[KLine]]]:
-        """Add nodes whose signatures contribute to the gap."""
-        contributors = self.where(lambda k: (k.signature & gap) != 0)
-
-        for contributor in contributors:
-            expanded_nodes = list(kline.nodes) + list(contributor.nodes)
-            expanded_sig = kline.signature
-            proposal = KLine(expanded_sig, expanded_nodes, kline.dbg_text)
-
-            new_nodes_sig = make_signature(expanded_nodes)
-            if (new_nodes_sig & expanded_sig) != 0:
-                yield (proposal, [])
-
-    def _split_excess(
-        self, kline: KLine, excess: int
-    ) -> tuple[list[int], list[int]]:
-        """Split kline nodes into (excess_nodes, remaining) by excess mask."""
-        excess_nodes = [n for n in kline.nodes
-                        if not is_literal_node(n) and (n & excess) != 0]
-        remaining = [n for n in kline.nodes if n not in excess_nodes]
-        return excess_nodes, remaining
-
-    def _overfit_expansions(
-        self, kline: KLine, excess: int
-    ) -> Iterator[tuple[KLine, list[KLine]]]:
-        """Remove nodes whose bits contribute to the excess."""
-        excess_nodes, remaining = self._split_excess(kline, excess)
-
-        if not excess_nodes:
-            return
-        trimmed = KLine(kline.signature, remaining, kline.dbg_text)
-
-        companion_sig = make_signature(excess_nodes)
-        companion = KLine(companion_sig, excess_nodes)
-
-        yield (trimmed, [companion])
-
-    def _dual_expansions(
-        self, kline: KLine, gap: int, excess: int
-    ) -> Iterator[tuple[KLine, list[KLine]]]:
-        """Atomic replacement: swap excess nodes for gap-filling nodes."""
-        excess_nodes, remaining = self._split_excess(kline, excess)
-
-        contributors = self.where(lambda k: (k.signature & gap) != 0)
-
-        for contributor in contributors:
-            replacement_nodes = remaining + list(contributor.nodes)
-            replacement = KLine(kline.signature, replacement_nodes, kline.dbg_text)
-
-            companion_sig = make_signature(excess_nodes)
-            companion = KLine(companion_sig, excess_nodes)
-
-            yield (replacement, [companion])
+        """Generate expansion proposals. Delegates to misfit.generate_expansions()."""
+        return _generate_expansions_fn(self, kline, underfit_gap, overfit_mask)
 
     # ── Properties ────────────────────────────────────────────────────
 

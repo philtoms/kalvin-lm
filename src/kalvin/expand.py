@@ -1,0 +1,283 @@
+"""Expand — graph expansion, significance computation, and structural grounding.
+
+This module owns the logic for expanding query-candidate pairs into
+connotations and terminal significance values. It reads from the Model
+(storage) but is a separate responsibility: Model indexes and retrieves;
+Expand computes how far apart two KLines are.
+
+Re-exported constants and types from the old model module:
+  D_MAX, MASK64, MAX_HOP, _S3_BIAS, _pack, QueryCandidate
+"""
+
+from __future__ import annotations
+
+from typing import Iterator, TYPE_CHECKING
+
+from kalvin.kline import KLine
+from kalvin.signature import make_signature, signifies, is_literal_node
+
+if TYPE_CHECKING:
+    from kalvin.model import Model
+
+# ── Distance Constants ────────────────────────────────────────────────
+
+# _S3_BIAS — S3 connotation tier bias. Connotation hop counts are biased by this
+# amount before quadratic packing, ensuring S3 packed distances exceed S2 distances
+# for the same hop count while keeping both tiers close enough for temperature bridging.
+# With _S3_BIAS=9, minimum S3 packed distance = _pack(2+9) = 121 > MAX_HOP(100).
+_S3_BIAS = 9
+
+
+def _pack(distance: int) -> int:
+    """Non-linear distance packing via squaring.
+
+    Quadratic growth keeps small distances close for fine-grained temperature
+    discrimination, while large distances spread apart so the accumulation
+    penalty grows super-linearly.
+    """
+    if distance <= 0:
+        return 0
+    return distance * distance
+
+
+# Public significance constants
+D_MAX = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance, also the significance of zero distance
+MASK64 = 0xFFFF_FFFF_FFFF_FFFF  # 64-bit mask for bitwise inversion
+
+# MAX_HOP hyperparameter — upper bound on edge hop chain depth
+MAX_HOP = 100
+
+
+class QueryCandidate:
+    """A single query|candidate pair yielded by graph expansion.
+
+    Replaces the NamedTuple from model.py with a class for forward
+    compatibility. Still usable as a tuple: (query, candidate, significance).
+    """
+    __slots__ = ("query", "candidate", "significance")
+
+    def __init__(self, query: KLine, candidate: KLine, significance: int):
+        self.query = query
+        self.candidate = candidate
+        self.significance = significance
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, QueryCandidate):
+            return NotImplemented
+        return (self.query is other.query
+                and self.candidate is other.candidate
+                and self.significance == other.significance)
+
+    def __repr__(self) -> str:
+        return f"QueryCandidate(q={self.query!r}, c={self.candidate!r}, sig={self.significance:#x})"
+
+    def __iter__(self):
+        return iter((self.query, self.candidate, self.significance))
+
+
+# ── Helper Functions ──────────────────────────────────────────────────
+
+def is_canon(kline: KLine) -> bool:
+    """Test whether a kline is canonical (signature = make_signature of nodes)."""
+    return kline.signature == make_signature(kline.nodes)
+
+
+def edge_hops(model: Model, sig: int) -> Iterator[tuple[int, int]]:
+    """Yield (hop_count, next_sig) for each non-canonical resolution step.
+
+    Follows: resolve sig → kline → make_signature(kline.nodes) → repeat.
+    Stops at a dead end (unresolvable) or a canonical kline.
+    """
+    hop_count = 0
+    while hop_count < MAX_HOP:
+        kline = model.find(sig)
+        if kline is None or is_canon(kline):
+            break
+        hop_count += 1
+        sig = make_signature(kline.nodes)
+        yield hop_count, sig
+
+
+def _as_kline(model: Model, node: int) -> KLine:
+    """Resolve a node value to a KLine. Raises ValueError if not resolvable."""
+    kline = model.find(node)
+    if kline is None:
+        raise ValueError(f"Node {node:#x} does not resolve to any KLine")
+    return kline
+
+
+# ── Structural Grounding ─────────────────────────────────────────────
+
+def is_s1(model: Model, kline: KLine) -> bool:
+    """Determine if a kline is structurally grounded (S1).
+
+    A kline is S1 if:
+    1. Its signature fully describes its nodes (canonical), OR
+    2. It is countersigned by another kline in the model.
+    """
+    if is_canon(kline):
+        return True
+    return is_countersigned(model, kline)
+
+
+def is_countersigned(model: Model, kline: KLine) -> bool:
+    """Check if kline is countersigned by any kline in the model.
+
+    A kline is countersigned if its nodes_signature exists as a
+    countersigning kline with one node — the countersigned kline's signature.
+
+    Query = {Q: [A, B]}
+    Countersigner = {AB: [Q]}
+    """
+    nodes_signature = make_signature(kline.nodes)
+    for countersigner in model.find_all(nodes_signature):
+        if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
+            return True
+    return False
+
+
+# ── Graph Expansion ───────────────────────────────────────────────────
+
+def expand(
+    model: Model,
+    query: KLine,
+    candidate: KLine,
+    distance: int = 0,
+    *,
+    _visited: set[tuple[int, int]] | None = None,
+) -> Iterator[QueryCandidate]:
+    """Expand a query-candidate pair, yielding connotations and terminal distance.
+
+    For each discovered connotation (S2/S3 indirect relationship), recursively
+    yields QueryCandidate items for the connotation pair.  The final yield is
+    always the terminal QueryCandidate with the computed distance for the
+    original pair.
+
+    Distance is a single integer. S3 connotation hops are biased by
+    ``_pack(hop_count + _S3_BIAS)`` to ensure S3 distances moderately
+    exceed S2 distances — close enough for temperature to bridge.
+    """
+    if _visited is None:
+        _visited = set()
+
+    key = (query.signature, candidate.signature)
+    if key in _visited:
+        return  # cycle detected
+    _visited.add(key)
+
+    q_set = set(query.nodes)
+    c_set = set(candidate.nodes)
+    mismatched_q = q_set - c_set
+    mismatched_c = c_set - q_set
+    matched = q_set & c_set
+
+    s3_connotations: dict[int, int] = {}  # sig → min hops from any query node
+
+    total_distance = 0
+
+    # Mismatched query nodes
+    for n in mismatched_q:
+        hop_distance = MAX_HOP
+        q_kline = model.find(n)
+        if q_kline is not None:
+            for hops, match_sig in edge_hops(model, n):
+                if match_sig in mismatched_c:
+                    hop_distance = hops
+                    c_kline = _as_kline(model, match_sig)
+                    yield from expand(
+                        model, q_kline, c_kline, hops, _visited=_visited,
+                    )
+                    break
+                elif signifies(n, match_sig):
+                    c_kline = model.find(match_sig)
+                    if c_kline is not None:
+                        sig_distance = distance + hops
+                        significance = (~min(sig_distance, D_MAX - 1)) & MASK64
+                        yield QueryCandidate(q_kline, c_kline, significance)
+                    break
+                elif (match_sig not in s3_connotations
+                    or hops < s3_connotations[match_sig]):
+                    s3_connotations[match_sig] = hops
+        total_distance += hop_distance
+
+    # Mismatched candidate nodes
+    for n in mismatched_c:
+        hop_distance = MAX_HOP
+        q_kline = model.find(n)
+        if q_kline is not None:
+            for hops, match_sig in edge_hops(model, n):
+                if match_sig in mismatched_q:
+                    hop_distance = hops
+                    c_kline = _as_kline(model, match_sig)
+                    yield from expand(
+                        model, q_kline, c_kline, hops, _visited=_visited,
+                    )
+                    break
+                elif signifies(n, match_sig):
+                    c_kline = model.find(match_sig)
+                    if c_kline is not None:
+                        sig_distance = distance + hops
+                        significance = (~min(sig_distance, D_MAX - 1)) & MASK64
+                        yield QueryCandidate(q_kline, c_kline, significance)
+                    break
+                elif match_sig in s3_connotations:
+                    s3_hop = s3_connotations[match_sig] + hops
+                    c_kline = _as_kline(model, match_sig)
+                    yield from expand(
+                        model, q_kline, c_kline,
+                        _pack(s3_hop + _S3_BIAS),
+                        _visited=_visited,
+                    )
+                    hop_distance = 0
+                    break
+        total_distance += hop_distance
+
+    # Matched but not grounded — small S2 penalty
+    for n in matched:
+        kl = model.find(n)
+        if kl is None or not is_s1(model, kl):
+            total_distance += 1
+
+    # Carry forward the incoming distance
+    total_distance += distance
+
+    # Clamp to avoid overflow, then invert to significance
+    significance = (~min(total_distance, D_MAX - 1)) & MASK64
+    yield QueryCandidate(query, candidate, significance)
+
+
+# ── Promotion Helpers ─────────────────────────────────────────────────
+
+def promote_participating(model: Model, query: KLine, candidate: KLine) -> int:
+    """Promote all STM klines involved in a ratification event.
+
+    After countersignature is detected between query and candidate,
+    promote both plus any STM klines whose signatures appear in the
+    union of their nodes.
+
+    Returns the number of klines promoted.
+    """
+    node_sigs: set[int] = set()
+    for n in query.nodes:
+        if not is_literal_node(n):
+            node_sigs.add(n)
+    for n in candidate.nodes:
+        if not is_literal_node(n):
+            node_sigs.add(n)
+    node_sigs.add(query.signature)
+    node_sigs.add(candidate.signature)
+
+    # Find all STM klines with matching signatures
+    to_promote: list[KLine] = []
+    for kl in model.stm:
+        if kl.signature in node_sigs:
+            to_promote.append(kl)
+
+    # Also promote the query and candidate
+    to_promote.extend([query, candidate])
+
+    count = 0
+    for kl in to_promote:
+        if model.promote(kl):
+            count += 1
+    return count

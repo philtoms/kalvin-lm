@@ -9,18 +9,24 @@ from pathlib import Path
 from kalvin.mod_tokenizer import Mod32Tokenizer, ModTokenizer
 
 from .ast import KScriptFile
-from .compiler import CompiledEntry, Compiler
+from .ast_emitter import ASTEmitter, SymbolicEntry
+from .compiler import CompiledEntry, Compiler, compile_source
 from .lexer import Lexer
 from .output import read_bin, read_json, write_bin, write_json, write_jsonl
 from .parser import Parser
+from .token_encoder import TokenEncoder
 
 __all__ = [
     "KScript",
     "CompiledEntry",
+    "ASTEmitter",
+    "SymbolicEntry",
+    "TokenEncoder",
     "Lexer",
     "Parser",
     "Compiler",
     "KScriptFile",
+    "compile_source",
     "write_json",
     "write_jsonl",
     "write_bin",

@@ -1,12 +1,16 @@
 """Abstract base classes for Kalvin.
 
-Provides the minimum interface contracts for tokenizers, models, and agents.
+Provides interface contracts for tokenizers, models, and agents.
+
+KTokenizer has two real adapters (Tokenizer, ModTokenizer) — a real seam.
+KModel and KAgent document the interface but have one adapter each (Model, Agent).
+They exist to formalize the contract and enable future adapters.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Iterator, Any
+from typing import Iterator, Any, Protocol, runtime_checkable
 
 from kalvin.kline import KLine, KNode, KSig
 
@@ -25,6 +29,8 @@ class KTokenizer(ABC):
     handled by is_literal_node() in the signature module — it is a
     Kalvin-level concern based on standardized bit patterns, not a
     tokenizer-specific one.
+
+    Two adapters: Tokenizer (BPE), ModTokenizer (modular bit-packed).
     """
 
     @property
@@ -47,7 +53,12 @@ class KTokenizer(ABC):
 # === Abstract Model ===
 
 class KModel(ABC):
-    """Abstract base class for knowledge graph models."""
+    """Abstract base class for knowledge graph models.
+
+    One adapter: Model (three-tier in-memory). The interface documents what
+    callers (Agent, tests) rely on. Methods mirror Model's actual surface
+    after the expand/misfit extraction.
+    """
 
     @abstractmethod
     def exists(self, kline: KLine) -> bool:
@@ -75,23 +86,13 @@ class KModel(ABC):
         ...
 
     @abstractmethod
-    def remove(self, signature: KSig) -> bool:
-        """Remove the most recently added KLine with given signature."""
-        ...
-
-    @abstractmethod
     def where(self, predicate: Any) -> list[KLine]:
-        """Return KLines matching a predicate."""
+        """Return KLines matching a predicate or signature overlap."""
         ...
 
     @abstractmethod
     def resolve(self, node: int) -> KLine | None:
         """Resolve a node value to the KLine whose signature matches."""
-        ...
-
-    @abstractmethod
-    def expand(self, kline: KLine) -> list[KLine]:
-        """Expand a KLine's graph context up to *depth* levels."""
         ...
 
     @abstractmethod
@@ -106,12 +107,12 @@ class KModel(ABC):
 
     @abstractmethod
     def promote(self, kline: KLine) -> bool:
-        """Promote a KLine to the base model."""
+        """Promote a KLine from STM to the frame."""
         ...
 
     @abstractmethod
     def promote_all(self) -> int:
-        """Promote all frame KLines to the base model."""
+        """Promote all STM KLines to the frame."""
         ...
 
     @abstractmethod
@@ -121,17 +122,7 @@ class KModel(ABC):
 
     @abstractmethod
     def is_s1(self, kline: KLine) -> bool:
-        """Determine if a kline is structurally grounded (S1).
-
-        A kline is S1 if:
-        1. Its signature fully describes its nodes (canonical), OR
-        2. It is countersigned by another kline in the model.
-        """
-        ...
-
-    @abstractmethod
-    def distance(self, query: KLine, candidate: KLine, level: str) -> int:
-        """Packed distance (S2 and S3 components). Level is "S2" or "S3"."""
+        """Determine if a kline is structurally grounded (S1)."""
         ...
 
     @abstractmethod
@@ -159,7 +150,10 @@ class KModel(ABC):
 # === KAgent ===
 
 class KAgent(ABC):
-    """Abstract base class for agents."""
+    """Abstract base class for agents.
+
+    One adapter: Agent. The interface documents the public contract.
+    """
 
     @property
     @abstractmethod
