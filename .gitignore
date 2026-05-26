@@ -61,6 +61,7 @@ models/
 *.pt
 *.pth
 *.ckpt
+.kb
 
 # OS
 .DS_Store
@@ -70,3 +71,4 @@ Thumbs.db
 .env
 *.local
 .tmp.*
+.worktrees

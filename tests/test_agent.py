@@ -5,12 +5,11 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-from kalvin.kline import KLine
 from kalvin.agent import Agent, Cogitator, WorkItem
-from kalvin.model import QueryCandidate
+from kalvin.agent_codec import AgentCodec
+from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer
-from kalvin.model import Model, D_MAX
+from kalvin.model import Model
 from kalvin.signature import make_signature
 
 
@@ -178,7 +177,10 @@ class TestShortCircuit:
         q.signature = make_signature([10, 20])
 
         # Patch model.expand to track calls
-        with patch.object(a.model, 'expand', side_effect=AssertionError("expand should not be called for S1")):
+        with patch.object(
+            a.model, 'expand',
+            side_effect=AssertionError("expand should not be called for S1"),
+        ):
             result = a.rationalise(q)
 
         assert result is True
@@ -204,7 +206,10 @@ class TestShortCircuit:
         q = KLine(0, [999])
         q.signature = make_signature([999])
 
-        with patch.object(a.model, 'expand', side_effect=AssertionError("expand should not be called for S4")):
+        with patch.object(
+            a.model, 'expand',
+            side_effect=AssertionError("expand should not be called for S4"),
+        ):
             result = a.rationalise(q)
 
         assert result is True
@@ -381,6 +386,16 @@ class TestAgentSerialization:
         d = a.to_dict()
         loaded = Agent.from_dict(d)
         assert len(loaded.model) == 0
+
+    def test_codec_returns_agent_codec(self):
+        """Agent.codec() returns an AgentCodec with the correct model and activity."""
+        a = Agent()
+        a.rationalise(KLine(5, [1, 2]))
+        codec = a.codec()
+        assert isinstance(codec, AgentCodec)
+        # Verify the codec's output matches the agent's
+        assert codec.to_bytes() == a.to_bytes()
+        assert codec.to_dict() == a.to_dict()
 
 
 # ── Structural Grounding Tests ───────────────────────────────────────

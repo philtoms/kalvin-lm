@@ -4,6 +4,8 @@ The Agent rationalises KLines against the Model using a fast/slow split:
   - Fast path: routing (node membership) — no model calls. S1/S4 resolve instantly.
   - Slow path: cogitation — model.expand() per work item in a background thread.
 
+Serialization is delegated to the AgentCodec module (see agent_codec.py).
+
 See specs/agent.md for the full specification.
 """
 
@@ -12,17 +14,14 @@ from __future__ import annotations
 import threading
 from collections import Counter
 from pathlib import Path
-from typing import Literal, Any, NamedTuple, Protocol, runtime_checkable
+from typing import Any, Literal, NamedTuple, Protocol, runtime_checkable
 
-import json
-
-from kalvin.kline import KLine
+from kalvin.agent_codec import AgentCodec
 from kalvin.events import EventBus, RationaliseEvent
-from kalvin.model import Model, D_MAX, MASK64
-from kalvin.expand import QueryCandidate, _pack, _S3_BIAS
+from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer
-from kalvin.signature import make_signature, is_literal_node
-
+from kalvin.model import D_MAX, MASK64, Model, QueryCandidate
+from kalvin.signature import is_literal_node, make_signature
 
 # ── Cogitation Handler Protocol ────────────────────────────────────────
 
@@ -400,37 +399,48 @@ class Agent:
     def frame_size(self) -> int:
         return len(self._model)
 
-    # ── Serialization (delegated to agent_codec) ───────────────────────
+    # ── Codec ──────────────────────────────────────────────────────────
+
+    def codec(self) -> AgentCodec:
+        """Return an AgentCodec for this agent's model and activity."""
+        return AgentCodec(self._model, self._activity)
+
+    # ── Serialization (delegates to AgentCodec) ───────────────────────
 
     def to_bytes(self) -> bytes:
-        """Serialize to binary. Delegates to agent_codec.to_bytes."""
-        from kalvin.agent_codec import to_bytes as _to_bytes
-        return _to_bytes(self)
+        """Serialize to binary."""
+        return self.codec().to_bytes()
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Agent:
-        """Deserialize from binary. Delegates to agent_codec.from_bytes."""
-        from kalvin.agent_codec import from_bytes as _from_bytes
-        return _from_bytes(data, agent_cls=cls)
+        """Deserialize from binary."""
+        model, activity = AgentCodec.from_bytes(data)
+        agent = cls(model=model)
+        agent._activity = activity
+        return agent
 
     def to_dict(self) -> dict:
-        """Serialize to dict. Delegates to agent_codec.to_dict."""
-        from kalvin.agent_codec import to_dict as _to_dict
-        return _to_dict(self)
+        """Serialize to dict."""
+        return self.codec().to_dict()
 
     @classmethod
     def from_dict(cls, data: dict) -> Agent:
-        """Deserialize from dict. Delegates to agent_codec.from_dict."""
-        from kalvin.agent_codec import from_dict as _from_dict
-        return _from_dict(data, agent_cls=cls)
+        """Deserialize from dict."""
+        model, activity = AgentCodec.from_dict(data)
+        agent = cls(model=model)
+        agent._activity = activity
+        return agent
 
     def save(self, path: str | Path, format: Literal["bin", "json"] | None = None) -> None:
-        """Save to file. Delegates to agent_codec.save."""
-        from kalvin.agent_codec import save as _save
-        _save(self, path, format)
+        """Persist to file."""
+        self.codec().save(path, format)
 
     @classmethod
-    def load(cls, path: str | Path = "data/agent.bin", format: Literal["bin", "json"] | None = None) -> Agent:
-        """Load from file. Delegates to agent_codec.load."""
-        from kalvin.agent_codec import load as _load
-        return _load(path, format, agent_cls=cls)
+    def load(
+        cls, path: str | Path = "data/agent.bin", format: Literal["bin", "json"] | None = None
+    ) -> Agent:
+        """Load from file."""
+        model, activity = AgentCodec.load(path, format)
+        agent = cls(model=model)
+        agent._activity = activity
+        return agent
