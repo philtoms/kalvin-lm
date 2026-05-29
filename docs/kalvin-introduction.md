@@ -28,7 +28,7 @@ Understanding, for Kalvin, is the capacity to produce significant responses. Sha
 
 1. **Shape** — the structural fit of a new kline against existing knowledge.
 2. **Preferences** — which paths through the graph to favour when multiple candidates exist.
-3. **Actionable communication** — the degree of fit made visible to other agents, enabling them to decide what to do next.
+3. **Significance** — the degree of fit made visible to other agents, enabling them to decide what to do next.
 
 Shape is what Kalvin measures. Preferences shape the measurement. Significance makes the measurement useful. Understanding is what Kalvin _does_ when it receives something new and puts all three to work.
 

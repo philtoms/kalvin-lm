@@ -1,6 +1,6 @@
 # Kalvin Development Roadmap
 
-**Date:** 2026-05-15  
+**Date:** 2026-05-26  
 **Status:** Active  
 **Scope:** Full build-from-scratch implementation of the Kalvin system.
 
@@ -42,7 +42,7 @@ The implementation consists of nine components built bottom-up from leaf nodes t
 | KScript DSL (lexer → parser → compiler) | ❌ Not started | `specs/kscript.md` (KS-1..KS-33) | `plans/implement-kscript.md` |
 | Structural grounding | ❌ Not started | `specs/model.md` (MOD-26..MOD-43) | `plans/impl/structural-grounding.md` §1 |
 | Extended cogitation (S2 expansion) | ❌ Not started | `specs/model.md` (MOD-44..MOD-51) | `plans/impl/structural-grounding.md` §2 |
-| External training agent | ❌ Not started | `specs/agent.md` §Training Relationship | — |
+| Test harness (repurposed KScript TUI) | ❌ Not started | `specs/harness.md` (HRN-1..HRN-18) | `plans/impl/harness.md` |
 | Model quality evaluation | ❌ Not started | — | — |
 
 ---
@@ -152,19 +152,21 @@ S1 is determined by structure, not by boundary classification. A kline is ground
 
 When countersignature fails for an S2 result, the Cogitator attempts to reshape the kline toward canonical status. Misfit classification: underfitting (signature promises more than nodes deliver), overfitting (nodes carry more than signature captures), dual (both). Expansion proposals are emitted for agent ratification. No invention — every signature used must already exist in the model.
 
-### Phase B: External Training Agent
-**Estimate:** 1–2 weeks  
-**Risk:** Low  
-**Depends on:** Phase A+
+### Phase B: Test Harness
+**Estimate:** 3–5 days  
+**Spec:** `specs/harness.md` — HRN-1 through HRN-18  
+**Plan:** `plans/impl/harness.md`  
+**Depends on:** Phase A+  
+**Risk:** Low
 
-An external coordinator that compiles KScript, constructs Kalvin instances, submits queries via `rationalise()`, subscribes to events, and ratifies proposals via countersignature. No new Kalvin APIs needed — the agent orchestrates existing ones. MVP uses kline equality for proposal evaluation.
+Repurpose the existing KScript TUI (`ui/kscript/`) into a training loop supervisor. The harness compiles KScript entries, submits only new entries to the Agent, tracks submission/satisfaction state monotonically, displays proposals with significance (raw hex + normalised 0.0–1.0), and provides ratification controls (auto in Run mode, manual in Step mode). Adds `Agent.countersign(kline)` for reciprocal kline generation. State persists through hot-reload cycles.
 
 ### Phase C: Model Quality and Evaluation
 **Estimate:** 2–3 weeks (ongoing)  
 **Risk:** Medium  
 **Depends on:** Phase B
 
-Test harness, quality metrics (coverage, precision, learning rate), boundary calibration, performance profiling, tokenizer capacity analysis. This is empirical work — the system may work well with current boundaries, or it may need significant tuning.
+Quality metrics (coverage, precision, learning rate), boundary calibration, performance profiling, tokenizer capacity analysis. Uses the test harness from Phase B to run Mary's World curriculum and measure Kalvin's learning behaviour. This is empirical work — the system may work well with current boundaries, or it may need significant tuning.
 
 ---
 
@@ -189,7 +191,7 @@ Phase 0: Scaffold
                                                                        │
                                                   Phase A+: Extended Cogitation
                                                                        │
-                                                  Phase B: External Training Agent
+                                                  Phase B: Test Harness
                                                                        │
                                                   Phase C: Model Quality (ongoing)
 ```
@@ -210,7 +212,8 @@ Phase 0: Scaffold
 | Events | `specs/agent.md` §Events | `plans/impl/agent.md` §2 | `src/kalvin/events.py` | AGT-23..AGT-28 | 0.5d |
 | Agent | `specs/agent.md` | `plans/impl/agent.md` §3 | `src/kalvin/agent.py` | AGT-1..AGT-40 | 2d |
 | KScript | `specs/kscript.md` | `plans/implement-kscript.md` | `kscript/` (9 files) | KS-1..KS-33 | 2d |
-| **Subtotal** | | | | **~220 test criteria** | **~11d** |
+| Test Harness | `specs/harness.md` | `plans/impl/harness.md` | `ui/kscript/` (7 files), `src/kalvin/agent.py` | HRN-1..HRN-18 | 3–5d |
+| **Subtotal** | | | | **~238 test criteria** | **~14–16d** |
 
 ---
 
@@ -227,7 +230,8 @@ Total spec IDs across all components:
 | `specs/model.md` | MOD-1..MOD-51 | 51 |
 | `specs/agent.md` | AGT-1..AGT-40 | 40 |
 | `specs/kscript.md` | KS-1..KS-33 | 33 |
-| **Total** | | **170** |
+| `specs/harness.md` | HRN-1..HRN-18 | 18 |
+| **Total** | | **188** |
 
 ---
 
