@@ -519,6 +519,64 @@ class TestExpand:
 
 
 
+# ── STM Interface Tests ─────────────────────────────────────────────
+
+class TestModelStmContains:
+    def test_stm_contains_true(self):
+        """stm_contains returns True for a KLine in STM."""
+        m = make_model()
+        k = KLine(5, [1, 2])
+        m.add(k)
+        assert m.stm_contains(k) is True
+
+    def test_stm_contains_false(self):
+        """stm_contains returns False for a never-added KLine."""
+        m = make_model()
+        assert m.stm_contains(KLine(99, [1])) is False
+
+    def test_stm_contains_after_eviction(self):
+        """stm_contains returns False after STM eviction."""
+        m = make_model(stm_bound=2)
+        k0 = KLine(0, [0])
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        m.add(k0, dedup=False)
+        m.add(k1, dedup=False)
+        m.add(k2, dedup=False)
+        # k0 evicted (bound=2, 3 added)
+        assert m.stm_contains(k0) is False
+        assert m.stm_contains(k1) is True
+        assert m.stm_contains(k2) is True
+
+
+class TestModelIterStm:
+    def test_iter_stm_empty(self):
+        """Empty model yields nothing."""
+        m = make_model()
+        assert list(m.iter_stm()) == []
+
+    def test_iter_stm_returns_added(self):
+        """Added klines appear in the iterator."""
+        m = make_model()
+        k1 = KLine(5, [1])
+        k2 = KLine(6, [2])
+        m.add(k1)
+        m.add(k2)
+        result = list(m.iter_stm())
+        assert k1 in result
+        assert k2 in result
+
+    def test_iter_stm_insertion_order(self):
+        """Klines appear in insertion order."""
+        m = make_model()
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        k3 = KLine(3, [3])
+        m.add(k1)
+        m.add(k2)
+        m.add(k3)
+        assert list(m.iter_stm()) == [k1, k2, k3]
+
 
 # ── Structural Grounding Tests ───────────────────────────────────────
 
