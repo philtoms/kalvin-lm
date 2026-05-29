@@ -112,6 +112,25 @@ Returns the **most recently added** KLine under `key`, or `None`.
 
 - Returns the last element of the bucket for `key`.
 
+### All KLines
+
+```python
+stm.all_klines() → list[KLine]
+```
+
+Returns all KLines in insertion order as a list.
+
+### Iterate All
+
+```python
+stm.iter_all() → Iterator[KLine]
+```
+
+Returns an iterator over all KLines in insertion order.
+
+- Returns a fresh iterator on each call.
+- Does not copy — callers see live insertion-order traversal.
+
 ### Find by Signature
 
 ```python

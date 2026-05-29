@@ -227,6 +227,38 @@ len(model) → int ≥ 0
 The total number of Klines in the frame (excluding STM and base). STM
 entries that have not been promoted do not contribute to the count.
 
+## STM Interface
+
+These methods provide read access to the STM tier without exposing the
+underlying STM object. External code must use these methods rather than
+accessing the STM directly.
+
+### STM Contains
+
+```
+model.stm_contains(kline) → bool
+```
+
+Returns whether an equal KLine exists in the STM tier only.
+
+- Unlike `exists()`, this checks the STM tier only — not the frame or base.
+- Uses the same equality semantics as `exists()`: same signature and node
+  sequence.
+
+### Iterate STM
+
+```
+model.iter_stm() → Iterator[KLine]
+```
+
+Returns an iterator over all KLines currently in the STM, in insertion
+order (oldest first).
+
+- Returns a fresh iterator on each call.
+- Does not copy — callers see live insertion-order traversal.
+- External code that needs to iterate STM entries (e.g., for promotion)
+  must use this method.
+
 ## Promotion
 
 Promotion moves Klines from STM to the frame, persisting them for the
