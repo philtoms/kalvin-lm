@@ -607,3 +607,52 @@ class TestCogitatorWithFakeHandler:
         cogitator.join(timeout=2.0)
 
         assert len(recorder.expansion_calls) >= 1
+
+
+# ── Countersign Tests ────────────────────────────────────────────────
+
+class TestCountersign:
+    """Agent.countersign: reciprocal kline construction and rationalisation."""
+
+    def test_countersign_returns_rationalise_result(self):
+        """countersign returns the result of rationalise for the reciprocal kline."""
+        a = Agent()
+        # Build a kline with non-empty nodes
+        kline = KLine(0xFF, [10, 20])
+        result = a.countersign(kline)
+        assert isinstance(result, bool)
+        # The reciprocal KLine(make_signature([10,20]), [0xFF]) should be
+        # rationalised as a novel kline → True (S4)
+        assert result is True
+
+    def test_countersign_reciprocal_construction(self):
+        """Reciprocal kline is built as KLine(make_signature(kline.nodes), [kline.signature])."""
+        a = Agent()
+        kline = KLine(0xAB, [10, 20, 30])
+        expected_reciprocal_sig = make_signature([10, 20, 30])
+        expected_reciprocal_nodes = [0xAB]
+
+        with patch.object(Agent, "rationalise", return_value=True) as mock_rationalise:
+            result = a.countersign(kline)
+
+        assert result is True
+        mock_rationalise.assert_called_once()
+        reciprocal = mock_rationalise.call_args[0][0]
+        assert reciprocal.signature == expected_reciprocal_sig
+        assert reciprocal.nodes == expected_reciprocal_nodes
+
+    def test_countersign_empty_nodes(self):
+        """Empty nodes → reciprocal_sig=0, reciprocal_nodes=[kline.signature]."""
+        a = Agent()
+        kline = KLine(0xCD, [])
+        expected_reciprocal_sig = 0  # make_signature([]) == 0
+        expected_reciprocal_nodes = [0xCD]
+
+        with patch.object(Agent, "rationalise", return_value=True) as mock_rationalise:
+            result = a.countersign(kline)
+
+        assert result is True
+        mock_rationalise.assert_called_once()
+        reciprocal = mock_rationalise.call_args[0][0]
+        assert reciprocal.signature == expected_reciprocal_sig
+        assert reciprocal.nodes == expected_reciprocal_nodes

@@ -375,6 +375,29 @@ class Agent:
         # All candidates routed as S2/S3
         return False
 
+    def countersign(self, kline: KLine) -> bool:
+        """Generate the reciprocal kline and rationalise it.
+
+        The reciprocal swaps signature and nodes:
+          - reciprocal_sig = make_signature(kline.nodes)
+          - reciprocal_nodes = [kline.signature]
+
+        This is the ratification primitive: by countersigning a proposal,
+        the Agent adds the reciprocal relationship to its model, enabling
+        future fast-path resolution via the countersigned check.
+
+        See specs/harness.md §Agent.countersign, HRN-9, HRN-16.
+
+        Args:
+            kline: The kline to countersign.
+
+        Returns:
+            The result of rationalise(reciprocal).
+        """
+        reciprocal_sig = make_signature(kline.nodes)
+        reciprocal = KLine(reciprocal_sig, [kline.signature])
+        return self.rationalise(reciprocal)
+
     # ── CogitationHandler protocol ────────────────────────────────────
 
     def on_s1(self, query: KLine, candidate: KLine) -> None:
