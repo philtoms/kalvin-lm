@@ -85,6 +85,8 @@ class KScriptApp(App):
         self._compiled_entries: list[CompiledEntry] = []
         self._expectations: dict[EntryKey, list[KLine]] = {}
         self._fast_path_results: dict[EntryKey, bool] = {}
+        # Run mode flag — distinguishes Run from Step in event callback
+        self._run_mode_active: bool = False
 
     def on_mount(self) -> None:
         """Initialize Agent instance on app start."""
@@ -385,7 +387,6 @@ class KScriptApp(App):
             significance=0,
         )
 
-
     # === Tracking State Helpers (KB-008) ===
 
     @staticmethod
@@ -418,6 +419,28 @@ class KScriptApp(App):
         """
         return a.signature == b.signature and a.nodes == b.nodes
 
+    # === Auto-Countersign (Run Mode) ===
+
+    def _auto_countersign(self, entry: CompiledEntry, proposal: KLine) -> bool:
+        """Auto-countersign a proposal if it structurally matches the entry.
+
+        Called from the event callback when a proposal arrives during Run
+        mode.  Checks structural match (HRN-4) and, on match, calls
+        agent.countersign() and marks the entry as satisfied.
+
+        Args:
+            entry: The compiled entry that the proposal is checked against.
+            proposal: The proposal kline from the rationalisation event.
+
+        Returns:
+            True if the proposal matched and was countersigned.
+            False if no match — entry stays pending for human review (HRN-17).
+        """
+        if self._structural_match(entry, proposal):
+            self._agent.countersign(proposal)
+            self._satisfied.add(self._entry_key(entry))
+            return True
+        return False
 
     # === Actions ===
 
@@ -497,51 +520,76 @@ class KScriptApp(App):
         self.log(f"Loaded Agent state from {path}")
 
     def action_run_script(self) -> None:
-        """Toggle auto-compile loop on/off."""
+        """Toggle Run mode: compile → diff → submit all pending.
+
+        Implements HRN-5: all pending entries are submitted sequentially
+        without pausing.  Replaces the old dev-mode vs non-dev-mode
+        branching with a single harness-aware logic path.
+        """
         if self._execution_state == ExecutionState.RUNNING:
-            # Stop the loop
+            # Toggle off — cancel in-flight submission
             self._cancelled = True
+            self._run_mode_active = False
             self._set_state(ExecutionState.IDLE)
             return
 
-        # Start the loop
+        # Toggle on
         self._cancelled = False
+        self._run_mode_active = True
         self._set_state(ExecutionState.RUNNING)
-        if self._dev_mode:
-            self.run_worker(self._auto_compile_tick())
-            self._set_state(ExecutionState.IDLE)
-        else:
-            self.run_worker(self._auto_compile_loop())
 
-    async def _auto_compile_loop(self) -> None:
-        """Periodically compile editor content and submit new entries."""
-        # Immediate first tick
-        await self._auto_compile_tick()
-        while not self._cancelled:
-            await asyncio.sleep(self._auto_compile_interval)
-            if self._cancelled:
-                return
-            await self._auto_compile_tick()
-
-    async def _auto_compile_tick(self) -> None:
-        """Compile current editor content and submit new entries."""
+        # Compile fresh entries from editor content
         entries = self._compile_script()
         if not entries:
+            self._run_mode_active = False
+            self._set_state(ExecutionState.IDLE)
             return
+
+        # Diff: find entries not yet submitted
+        pending = self._get_pending(entries)
+        if not pending:
+            # All entries already submitted — nothing to do
+            self._run_mode_active = False
+            self._set_state(ExecutionState.IDLE)
+            return
+
+        # Submit all pending entries via async worker
+        self.run_worker(self._submit_all_pending(pending))
+
+    async def _submit_all_pending(self, entries: list[CompiledEntry]) -> None:
+        """Submit all pending entries sequentially to the Agent.
+
+        Implements HRN-5: all pending entries are submitted without pausing.
+        For each entry:
+        - Convert to KLine and call rationalise
+        - Fast-path (True): add to _satisfied immediately (HRN-3)
+        - Slow-path (False): event callback handles the proposal;
+          auto-countersign happens there, not here
+        - Yield control between entries to keep UI responsive
+
+        Args:
+            entries: List of pending CompiledEntry objects to submit.
+        """
         for entry in entries:
             if self._cancelled:
-                return
-            key = self._entry_key(entry)
-            if key in self._submitted:
-                continue
+                break
+
             kline = self._entry_to_kline(entry)
+            key = self._entry_key(entry)
+
             if self._agent:
                 result = self._agent.rationalise(kline)
-                self._fast_path_results[key] = result
                 self._submitted.add(key)
+                self._fast_path_results[key] = result
                 if result:
+                    # Fast-path auto-satisfaction (HRN-3)
                     self._satisfied.add(key)
+
             await asyncio.sleep(0)
+
+        # Run complete — return to idle
+        self._run_mode_active = False
+        self._set_state(ExecutionState.IDLE)
 
     def action_step_script(self) -> None:
         """Execute one KLine at a time."""
@@ -595,7 +643,6 @@ class KScriptApp(App):
         self._satisfied.clear()
         self._pending_entries = []
         self._current_entry_index = 0
-
 
 
 def main() -> None:
