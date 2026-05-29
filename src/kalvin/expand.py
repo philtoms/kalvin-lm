@@ -269,7 +269,7 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> int:
 
     # Find all STM klines with matching signatures
     to_promote: list[KLine] = []
-    for kl in model.stm:
+    for kl in model.iter_stm():
         if kl.signature in node_sigs:
             to_promote.append(kl)
 

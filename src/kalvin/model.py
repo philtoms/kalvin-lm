@@ -376,9 +376,19 @@ class Model:
     def base(self) -> Model | None:
         return self._base
 
-    @property
-    def stm(self) -> STM:
-        return self._stm
+    # ── STM Interface ─────────────────────────────────────────────────
+
+    def stm_contains(self, kline: KLine) -> bool:
+        """Check if an equal KLine is in the STM (first tier only).
+
+        Unlike ``exists()``, this only checks the STM tier — not the frame
+        or base.
+        """
+        return self._stm.contains(kline)
+
+    def iter_stm(self) -> Iterator[KLine]:
+        """Iterate all KLines currently in the STM, in insertion order."""
+        return self._stm.iter_all()
 
     # ── Compatibility ─────────────────────────────────────────────────
 
