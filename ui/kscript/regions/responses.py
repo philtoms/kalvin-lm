@@ -63,7 +63,15 @@ class ResponseItem(ListItem):
     }
     """
 
-    def __init__(self, level: str, decompiled_source: str, status: str = "", significance: int = 0) -> None:
+    def __init__(
+        self,
+        level: str,
+        decompiled_source: str,
+        status: str = "",
+        significance: int = 0,
+        kline: KLine | None = None,
+        entry_key: tuple[int, tuple[int, ...]] | None = None,
+    ) -> None:
         """Initialize with a KLine and its decompiled source.
 
         Args:
@@ -71,11 +79,17 @@ class ResponseItem(ListItem):
             decompiled_source: The decompiled KScript source to display.
             status: Response status — "pass" (✓), "pending" (◌), "mismatch" (✗).
             significance: Raw 64-bit significance value for display.
+            kline: The proposal KLine from the rationalisation event, if any.
+                Carried so the Ratify handler can pass it to agent.countersign().
+            entry_key: The original expectation's tracking key (signature, nodes tuple).
+                Carried so ratification can add it to _satisfied.
         """
         self.level = level
         self.decompiled_source = decompiled_source
         self.status = status
         self.significance = significance
+        self.kline = kline
+        self.entry_key = entry_key
         super().__init__()
 
     def _format_display(self) -> str:
@@ -130,8 +144,15 @@ class ResponsesRegion(Vertical):
     class ResponseClicked(Message):
         """Emitted when a response item is clicked."""
 
-        def __init__(self, decompiled_source: str) -> None:
+        def __init__(
+            self,
+            decompiled_source: str,
+            kline: KLine | None = None,
+            entry_key: tuple[int, tuple[int, ...]] | None = None,
+        ) -> None:
             self.decompiled_source = decompiled_source
+            self.kline = kline
+            self.entry_key = entry_key
             super().__init__()
 
     class FilterToggled(Message):
@@ -202,7 +223,15 @@ class ResponsesRegion(Vertical):
                 item.set_class(self._is_filter_active(item.level), "visible")
                 item.set_class(not self._is_filter_active(item.level), "hidden")
 
-    def add_response(self, level: str, decompiled_source: str, status: str = "", significance: int = 0) -> None:
+    def add_response(
+        self,
+        level: str,
+        decompiled_source: str,
+        status: str = "",
+        significance: int = 0,
+        kline: KLine | None = None,
+        entry_key: tuple[int, tuple[int, ...]] | None = None,
+    ) -> None:
         """Append a KLine response with its decompiled source to the list.
 
         Only adds the response if it hasn't been seen before.
@@ -212,6 +241,8 @@ class ResponsesRegion(Vertical):
             decompiled_source: The decompiled KScript source to display.
             status: Response status — "pass" (✓), "pending" (◌), "mismatch" (✗).
             significance: Raw 64-bit significance value for display.
+            kline: The proposal KLine from the event, for ratification.
+            entry_key: The tracking key for the original expectation.
         """
         if decompiled_source in self._seen_responses:
             return
@@ -219,7 +250,10 @@ class ResponsesRegion(Vertical):
         self._seen_responses.add(decompiled_source)
 
         list_view = self.query_one("#responses-list", ListView)
-        item = ResponseItem(level, decompiled_source, status=status, significance=significance)
+        item = ResponseItem(
+            level, decompiled_source, status=status, significance=significance,
+            kline=kline, entry_key=entry_key,
+        )
 
         # Set visibility based on current filter state
         is_visible = self._is_filter_active(level)
@@ -239,4 +273,8 @@ class ResponsesRegion(Vertical):
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         """Handle selection of a response item."""
         if event.list_view.id == "responses-list" and isinstance(event.item, ResponseItem):
-            self.post_message(self.ResponseClicked(event.item.decompiled_source))
+            self.post_message(self.ResponseClicked(
+                event.item.decompiled_source,
+                kline=event.item.kline,
+                entry_key=event.item.entry_key,
+            ))

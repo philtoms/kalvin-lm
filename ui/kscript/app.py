@@ -11,7 +11,8 @@ from typing import Optional
 
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal
-from textual.widgets import Footer, Header
+from textual.css.query import NoMatches
+from textual.widgets import Footer, Header, ListView
 
 from kalvin.agent import Agent
 from kalvin.abstract import KLine
@@ -23,6 +24,7 @@ EntryKey = tuple[int, tuple[int, ...]]
 from kscript.decompiler import Decompiler
 from ui.kscript.dialogs import LoadScriptDialog, SaveStateDialog, LoadStateDialog
 from ui.kscript.regions import EditorRegion, ResponsesRegion, ToolbarRegion
+from ui.kscript.regions.responses import ResponseItem
 from ui.kscript.regions.toolbar import ExecutionState
 
 logger = logging.getLogger(__name__)
@@ -72,8 +74,6 @@ class KScriptApp(App):
         self._agent: Optional[Agent] = None
         self._decompiler: Decompiler = Decompiler()
         self._execution_state: ExecutionState = ExecutionState.IDLE
-        self._pending_entries: list[CompiledEntry] = []
-        self._current_entry_index: int = 0
         self._cancelled: bool = False
         self._last_script_dir: Path = DEFAULT_SCRIPTS_DIR
         self._last_state_dir: Path = Path("data")
@@ -81,6 +81,9 @@ class KScriptApp(App):
         # Tracking state for test harness (KB-008)
         self._submitted: set[EntryKey] = set()
         self._satisfied: set[EntryKey] = set()
+        # Selection tracking for ratification (KB-012)
+        self._selected_proposal: KLine | None = None
+        self._selected_entry_key: EntryKey | None = None
         # Event correlation state (KB-010)
         self._compiled_entries: list[CompiledEntry] = []
         self._expectations: dict[EntryKey, list[KLine]] = {}
@@ -146,7 +149,10 @@ class KScriptApp(App):
                 app._satisfied.add(matched_key)
                 decompiled = app._decompile_response([proposal])
                 for level, source in decompiled:
-                    app._add_event_response(level, source, "pass", significance)
+                    app._add_event_response(
+                        level, source, "pass", significance,
+                        kline=proposal, entry_key=matched_key,
+                    )
 
             elif matched_key is not None:
                 # Slow-path proposal for a known expectation (HRN-4, HRN-17)
@@ -156,7 +162,10 @@ class KScriptApp(App):
 
                 decompiled = app._decompile_response([proposal])
                 for level, source in decompiled:
-                    app._add_event_response(level, source, "pending", significance)
+                    app._add_event_response(
+                        level, source, "pending", significance,
+                        kline=proposal, entry_key=matched_key,
+                    )
 
             else:
                 # Unmatched event — no compiled entry correlates (HRN-17)
@@ -164,12 +173,21 @@ class KScriptApp(App):
                 app.log(f"Unmatched event: kind={event.kind} sig={significance:#x}")
                 decompiled = app._decompile_response([proposal])
                 for level, source in decompiled:
-                    app._add_event_response(level, source, "pending", significance)
+                    app._add_event_response(
+                        level, source, "pending", significance,
+                        kline=proposal, entry_key=None,
+                    )
 
         self._agent.events.subscribe(on_event)
 
     def _add_event_response(
-        self, level: str, decompiled_source: str, status: str, significance: int
+        self,
+        level: str,
+        decompiled_source: str,
+        status: str,
+        significance: int,
+        kline: KLine | None = None,
+        entry_key: EntryKey | None = None,
     ) -> None:
         """Add a response item from an event, with status and significance.
 
@@ -182,6 +200,8 @@ class KScriptApp(App):
             decompiled_source=decompiled_source,
             status=status,
             significance=significance,
+            kline=kline,
+            entry_key=entry_key,
         )
 
     def compose(self) -> ComposeResult:
@@ -219,18 +239,63 @@ class KScriptApp(App):
         """Handle Clear button."""
         self.action_clear_responses()
 
+    def on_toolbar_region_ratify(self, event: ToolbarRegion.Ratify) -> None:
+        """Handle Ratify button — countersign the selected proposal.
+
+        Implements HRN-9: calls agent.countersign(selected_proposal) with
+        the proposal as-is. On success, adds the entry key to _satisfied.
+        """
+        if self._selected_proposal is None or self._agent is None:
+            return
+
+        result = self._agent.countersign(self._selected_proposal)
+
+        if result and self._selected_entry_key is not None:
+            self._satisfied.add(self._selected_entry_key)
+            # Update the selected response item's status to "pass"
+            self._update_selected_response_status("pass")
+
+        # Clear selection state
+        self._selected_proposal = None
+        self._selected_entry_key = None
+
+        # Disable Ratify button
+        toolbar = self.query_one(ToolbarRegion)
+        toolbar.set_ratify_enabled(False)
+
+    def _update_selected_response_status(self, status: str) -> None:
+        """Update the status of the currently selected response item.
+
+        Finds the selected ResponseItem in the ResponsesRegion's ListView
+        and updates its status field, then refreshes the display.
+        """
+        try:
+            responses = self.query_one(ResponsesRegion)
+            list_view = responses.query_one("#responses-list", ListView)
+            if list_view.index is not None and list_view.index < len(list_view.children):
+                item = list_view.children[list_view.index]
+                if isinstance(item, ResponseItem):
+                    item.status = status
+                    item.refresh()
+        except (NoMatches, AttributeError):
+            pass  # Best-effort UI update — widget may not be mounted
+
     # === Responses Event Handlers ===
 
     def on_responses_region_response_clicked(self, event: ResponsesRegion.ResponseClicked) -> None:
-        """Handle click on a response item - halt and append to editor."""
-        # Stop if running
-        if self._execution_state == ExecutionState.RUNNING:
-            self._cancelled = True
-            self._set_state(ExecutionState.IDLE)
+        """Handle click on a response item — track selection for ratification.
 
-        # Append decompiled KScript source to editor
-        editor = self.query_one(EditorRegion)
-        editor.append_to_script(event.decompiled_source)
+        Stores the selected proposal KLine and entry key, and enables the
+        Ratify button. The old 'append to editor' behavior is removed:
+        Step mode is for inspection and ratification, not editing.
+        """
+        # Store selection state for ratification
+        self._selected_proposal = event.kline
+        self._selected_entry_key = event.entry_key
+
+        # Enable Ratify button
+        toolbar = self.query_one(ToolbarRegion)
+        toolbar.set_ratify_enabled(True)
 
     # === State Management ===
 
@@ -385,6 +450,8 @@ class KScriptApp(App):
             decompiled_source=error_message,
             status="mismatch",
             significance=0,
+            kline=None,
+            entry_key=None,
         )
 
     # === Tracking State Helpers (KB-008) ===
@@ -592,47 +659,40 @@ class KScriptApp(App):
         self._set_state(ExecutionState.IDLE)
 
     def action_step_script(self) -> None:
-        """Execute one KLine at a time."""
+        """Execute one pending KLine: compile → diff → submit first pending → halt.
+
+        Implements HRN-7 (Step submits one and halts).
+        """
+        # Step disabled during Run
         if self._execution_state == ExecutionState.RUNNING:
             return
 
-        # If no pending entries, compile fresh
-        if not self._pending_entries:
-            entries = self._compile_script()
-            if not entries:
-                return
-            self._pending_entries = entries
-            self._current_entry_index = 0
+        # Compile editor content
+        entries = self._compile_script()
+        if not entries:
+            # _compile_script already displayed the error response
+            return
 
-        # Execute single entry
-        if self._current_entry_index < len(self._pending_entries):
-            entry = self._pending_entries[self._current_entry_index]
-            key = self._entry_key(entry)
+        # Diff against submitted
+        pending = self._get_pending(entries)
+        if not pending:
+            return
 
-            if key in self._submitted:
-                # Already submitted, skip to next
-                self._current_entry_index += 1
-                self.action_step_script()
-                return
+        # Submit first pending entry
+        entry = pending[0]
+        kline = self._entry_to_kline(entry)
+        key = self._entry_key(entry)
 
-            kline = self._entry_to_kline(entry)
+        if self._agent:
+            result = self._agent.rationalise(kline)
+            self._submitted.add(key)
+            if result:
+                # Fast path: auto-satisfied (event handler displays ✓)
+                self._satisfied.add(key)
+            # Slow path: event handler displays ◌, user may ratify later
 
-            if self._agent:
-                result = self._agent.rationalise(kline)
-                self._fast_path_results[key] = result
-                self._submitted.add(key)
-                if result:
-                    self._satisfied.add(key)
-
-            self._current_entry_index += 1
-
-            # Check if done
-            if self._current_entry_index >= len(self._pending_entries):
-                self._set_state(ExecutionState.IDLE)
-                self._pending_entries = []
-                self._current_entry_index = 0
-            else:
-                self._set_state(ExecutionState.HALTED)
+        # Halt
+        self._set_state(ExecutionState.HALTED)
 
     def action_clear_responses(self) -> None:
         """Clear the responses list and reset all tracking state."""
@@ -641,8 +701,11 @@ class KScriptApp(App):
         self._decompiler.clear()
         self._submitted.clear()
         self._satisfied.clear()
-        self._pending_entries = []
-        self._current_entry_index = 0
+        # Reset selection state and disable Ratify button
+        self._selected_proposal = None
+        self._selected_entry_key = None
+        toolbar = self.query_one(ToolbarRegion)
+        toolbar.set_ratify_enabled(False)
 
 
 def main() -> None:

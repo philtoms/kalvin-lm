@@ -84,12 +84,17 @@ class ToolbarRegion(Horizontal):
         """Request to clear responses."""
         pass
 
+    class Ratify(Message):
+        """Request to ratify the selected proposal."""
+        pass
+
     def compose(self) -> ComposeResult:
         yield Button("Load.ks", id="load-script-btn")
         yield Button("Save.k", id="save-state-btn")
         yield Button("Load.k", id="load-state-btn")
         yield Button("Run", id="run-btn")
         yield Button("Step", id="step-btn")
+        yield Button("Ratify", id="ratify-btn", disabled=True)
         yield Button("Clear", id="clear-btn")
         yield Static(self._get_status_text(), id="status-indicator", classes="status-indicator status-idle")
 
@@ -158,6 +163,12 @@ class ToolbarRegion(Horizontal):
         run_btn.label = "Stop" if state == ExecutionState.RUNNING else "Run"
         step_btn.disabled = state == ExecutionState.RUNNING
 
+        # Ratify: force-disable during RUNNING, preserve selection-driven state otherwise.
+        # The enabled state is managed by set_ratify_enabled() from the app's selection handler.
+        ratify_btn = self.query_one("#ratify-btn", Button)
+        if state == ExecutionState.RUNNING:
+            ratify_btn.disabled = True
+
     def on_mount(self) -> None:
         """Initialize button states."""
         self._update_button_states()
@@ -176,8 +187,23 @@ class ToolbarRegion(Horizontal):
             self.post_message(self.Run())
         elif button_id == "step-btn":
             self.post_message(self.Step())
+        elif button_id == "ratify-btn":
+            self.post_message(self.Ratify())
         elif button_id == "clear-btn":
             self.post_message(self.Clear())
+
+    def set_ratify_enabled(self, enabled: bool) -> None:
+        """Enable or disable the Ratify button.
+
+        Called from KScriptApp when a response item is selected (enable)
+        or after ratification (disable). Does NOT override the force-disable
+        during RUNNING state — see _update_button_states.
+        """
+        try:
+            btn = self.query_one("#ratify-btn", Button)
+        except NoMatches:
+            return
+        btn.disabled = not enabled
 
     def set_state(self, state: ExecutionState) -> None:
         """Set the execution state."""

@@ -322,6 +322,8 @@ class TestCompilationError:
             decompiled_source="test error: bad syntax",
             status="mismatch",
             significance=0,
+            kline=None,
+            entry_key=None,
         )
 
 
