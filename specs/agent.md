@@ -306,7 +306,7 @@ truncation or early stopping — every discovered relationship is evaluated.
 Cogitator:
   model:      Model
   event_bus:  EventBus
-  on_s1:      callback(query, candidate)
+  handler:    CogitationHandler
   timeout:    float (default 2.0)
   backlog:    queue of WorkItem
   thread:     background
@@ -314,6 +314,18 @@ Cogitator:
 
 The Cogitator runs on a background daemon thread. It pulls work items from
 the backlog and processes each one.
+
+### CogitationHandler
+
+CogitationHandler is a `@runtime_checkable` Protocol defining the seam
+between the Cogitator and its consumers. The Agent is the primary
+implementation.
+
+```
+CogitationHandler:
+  on_s1(query, candidate)                      — called when an S1 (exact) result is discovered
+  on_expansion(query, proposal, significance)  — called when an expansion proposal is generated (S2/S3)
+```
 
 ### Work Item Processing
 
@@ -324,7 +336,7 @@ The Cogitator expands each WorkItem, processing all yields from
 run_work_item(WorkItem(query, candidate)):
   for qc in model.expand(query, candidate):
     if qc.significance >= s12:
-      on_s1(query, candidate)     # S1: promote immediately
+      handler.on_s1(query, candidate)   # S1: delegate to handler
     else:
       process(qc)                 # S2/S3: expansion check
 
@@ -462,10 +474,9 @@ how many expansion proposals are generated per work item.
 ### S1 Callback
 
 When the Cogitator discovers an S1 via boundary classification, it calls
-the `on_s1` callback, which triggers `agent.rationalise(query)` on the
-agent. This re-rationalisation runs on the cogitation thread and may
-inject new work items into the backlog. Countersignature (ratification) is
-checked during re-rationalisation in the fast lane (Phase 3: Assess).
+`handler.on_s1(query, candidate)` on the CogitationHandler. The Agent
+implementation of this method triggers `agent.rationalise(query)`,
+re-rationalising on the cogitation thread.
 
 ### Cogitation Lifecycle
 
@@ -610,7 +621,7 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 | AGT-30 | Cogitator join: thread stops cleanly                                | — |
 | AGT-31 | S2 submits work item: WorkItem queued with correct fields           | — |
 | AGT-32 | All yields processed: every QC from `expand()` evaluated            | — |
-| AGT-33 | S1 detection: high-significance QC triggers on_s1 callback          | — |
+| AGT-33 | S1 detection: high-significance QC triggers handler.on_s1          | — |
 | AGT-34 | S2/S3 expansion: non-canonical QC triggers expansion proposals      | — |
 | AGT-35 | Proposals at any significance: S2 and S3 proposals emitted as frame events | — |
 | AGT-36 | Boundary S1 + structural check: promotion only on structural S1     | — |
