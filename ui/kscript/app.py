@@ -13,8 +13,9 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal
 from textual.widgets import Footer, Header
 
-from kalvin import Agent
+from kalvin.agent import Agent
 from kalvin.abstract import KLine
+from kalvin.events import RationaliseEvent
 from kscript import KScript, CompiledEntry
 
 # Type alias for entry identity keys used in tracking sets
@@ -77,10 +78,13 @@ class KScriptApp(App):
         self._last_script_dir: Path = DEFAULT_SCRIPTS_DIR
         self._last_state_dir: Path = Path("data")
         self._auto_compile_interval: float = auto_compile_interval
-        self._rationalise_buffer: list[KLine] = []
         # Tracking state for test harness (KB-008)
         self._submitted: set[EntryKey] = set()
         self._satisfied: set[EntryKey] = set()
+        # Event correlation state (KB-010)
+        self._compiled_entries: list[CompiledEntry] = []
+        self._expectations: dict[EntryKey, list[KLine]] = {}
+        self._fast_path_results: dict[EntryKey, bool] = {}
 
     def on_mount(self) -> None:
         """Initialize Agent instance on app start."""
@@ -95,21 +99,88 @@ class KScriptApp(App):
             self._setup_events()
 
     def _setup_events(self) -> None:
-        """Subscribe to Agent rationalisation events."""
+        """Subscribe to Agent rationalisation events.
+
+        Implements event correlation (HRN-11), fast-path auto-satisfaction
+        (HRN-3), slow-path proposal display (HRN-4, HRN-17), and
+        multiple-proposal tracking (HRN-18).
+
+        Fast-path vs slow-path is determined from the event itself:
+        fast-path events always have query == proposal (the Agent passes
+        the same kline as both). This avoids a timing dependency on
+        _fast_path_results being stored before the callback fires.
+        """
         if not self._agent:
             return
 
-        def on_event(event):
-            if event.kind == "complete":
-                klines = self._rationalise_buffer or [event.query]
-                self._rationalise_buffer = []
-                decompiled = self._decompile_response(klines)
-                responses = self.query_one(ResponsesRegion)
-                responses.add_response(event.query, decompiled)
+        app = self
+
+        def on_event(event: RationaliseEvent) -> None:
+            # Ignore idle sentinel from cogitator
+            if event.kind == "done":
+                return
+
+            # Only handle ground/frame rationalisation events
+            if event.kind not in ("ground", "frame"):
+                app.log(f"Ignoring unknown event kind: {event.kind}")
+                return
+
+            query = event.query
+            proposal = event.proposal
+            significance = event.significance
+
+            # Determine fast-path: query == proposal structurally
+            is_fast_path = app._structural_match(query, proposal)
+
+            # Correlate event to a compiled entry (HRN-11)
+            matched_key: Optional[EntryKey] = None
+            for entry in app._compiled_entries:
+                if app._structural_match(query, entry):
+                    matched_key = app._entry_key(entry)
+                    break
+
+            if is_fast_path and matched_key is not None:
+                # Fast-path auto-satisfaction (HRN-3)
+                app._satisfied.add(matched_key)
+                decompiled = app._decompile_response([proposal])
+                for level, source in decompiled:
+                    app._add_event_response(level, source, "pass", significance)
+
+            elif matched_key is not None:
+                # Slow-path proposal for a known expectation (HRN-4, HRN-17)
+                if matched_key not in app._expectations:
+                    app._expectations[matched_key] = []
+                app._expectations[matched_key].append(proposal)
+
+                decompiled = app._decompile_response([proposal])
+                for level, source in decompiled:
+                    app._add_event_response(level, source, "pending", significance)
+
             else:
-                self._rationalise_buffer.append(event.kline)
+                # Unmatched event — no compiled entry correlates (HRN-17)
+                # Display as pending for human review, execution continues
+                app.log(f"Unmatched event: kind={event.kind} sig={significance:#x}")
+                decompiled = app._decompile_response([proposal])
+                for level, source in decompiled:
+                    app._add_event_response(level, source, "pending", significance)
 
         self._agent.events.subscribe(on_event)
+
+    def _add_event_response(
+        self, level: str, decompiled_source: str, status: str, significance: int
+    ) -> None:
+        """Add a response item from an event, with status and significance.
+
+        Centralises the call to ResponsesRegion.add_response so the
+        event callback stays clean.
+        """
+        responses = self.query_one(ResponsesRegion)
+        responses.add_response(
+            level=level,
+            decompiled_source=decompiled_source,
+            status=status,
+            significance=significance,
+        )
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -248,6 +319,10 @@ class KScriptApp(App):
     def _compile_script(self) -> Optional[list[CompiledEntry]]:
         """Compile the current editor content to KLine entries.
 
+        On success, stores the result in self._compiled_entries for event
+        correlation. On error, displays a ✗ response item (HRN-14) and
+        returns None.
+
         Returns:
             List of CompiledEntry objects, or None on error.
         """
@@ -259,9 +334,11 @@ class KScriptApp(App):
 
         try:
             agent = KScript(script, dev=self._dev_mode)
+            self._compiled_entries = agent.entries
             return agent.entries
         except Exception as e:
             self.log(f"Compilation error: {e}")
+            self._show_compilation_error(str(e))
             return None
 
     def _entry_to_kline(self, entry: CompiledEntry) -> KLine:
@@ -291,6 +368,24 @@ class KScriptApp(App):
         entries = self._decompiler.decompile(klines)
         return [(e.level, e.to_kscript())  for e in entries]
 
+    def _show_compilation_error(self, error_message: str) -> None:
+        """Display a compilation error as a ✗ response item in the panel.
+
+        HRN-14: Compilation errors are surfaced as mismatch response items
+        with status='mismatch' and significance=0.
+
+        Args:
+            error_message: The error message to display.
+        """
+        responses = self.query_one(ResponsesRegion)
+        responses.add_response(
+            level="S4",
+            decompiled_source=error_message,
+            status="mismatch",
+            significance=0,
+        )
+
+
     # === Tracking State Helpers (KB-008) ===
 
     @staticmethod
@@ -304,6 +399,25 @@ class KScriptApp(App):
     def _get_pending(self, entries: list[CompiledEntry]) -> list[CompiledEntry]:
         """Return entries not yet in _submitted, preserving input order."""
         return [e for e in entries if self._entry_key(e) not in self._submitted]
+
+    # === Structural Match Helper (KB-010) ===
+
+    @staticmethod
+    def _structural_match(a: KLine, b: KLine) -> bool:
+        """Check structural equality of two KLines by signature and nodes.
+
+        This is the canonical match function referenced in specs/harness.md
+        §Event Correlation (HRN-11) and §Satisfaction (HRN-4).
+
+        Args:
+            a: First KLine to compare.
+            b: Second KLine to compare.
+
+        Returns:
+            True if both signature and nodes match exactly.
+        """
+        return a.signature == b.signature and a.nodes == b.nodes
+
 
     # === Actions ===
 
@@ -410,16 +524,23 @@ class KScriptApp(App):
             await self._auto_compile_tick()
 
     async def _auto_compile_tick(self) -> None:
-        """Compile current editor content and add new responses."""
+        """Compile current editor content and submit new entries."""
         entries = self._compile_script()
         if not entries:
             return
         for entry in entries:
             if self._cancelled:
                 return
+            key = self._entry_key(entry)
+            if key in self._submitted:
+                continue
             kline = self._entry_to_kline(entry)
             if self._agent:
-                self._agent.rationalise(kline)
+                result = self._agent.rationalise(kline)
+                self._fast_path_results[key] = result
+                self._submitted.add(key)
+                if result:
+                    self._satisfied.add(key)
             await asyncio.sleep(0)
 
     def action_step_script(self) -> None:
@@ -438,10 +559,22 @@ class KScriptApp(App):
         # Execute single entry
         if self._current_entry_index < len(self._pending_entries):
             entry = self._pending_entries[self._current_entry_index]
+            key = self._entry_key(entry)
+
+            if key in self._submitted:
+                # Already submitted, skip to next
+                self._current_entry_index += 1
+                self.action_step_script()
+                return
+
             kline = self._entry_to_kline(entry)
 
             if self._agent:
-                self._agent.rationalise(kline)
+                result = self._agent.rationalise(kline)
+                self._fast_path_results[key] = result
+                self._submitted.add(key)
+                if result:
+                    self._satisfied.add(key)
 
             self._current_entry_index += 1
 
@@ -462,7 +595,7 @@ class KScriptApp(App):
         self._satisfied.clear()
         self._pending_entries = []
         self._current_entry_index = 0
-        self._update_toolbar_progress()
+
 
 
 def main() -> None:

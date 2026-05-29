@@ -418,6 +418,27 @@ class Agent:
         """Publish a rationalisation event."""
         self._event_bus.publish(RationaliseEvent(kind, query, proposal, significance))
 
+    # ── Countersign ───────────────────────────────────────────────────
+
+    def countersign(self, kline: KLine) -> bool:
+        """Generate the reciprocal kline and rationalise it.
+
+        For {Q: [V]}, the reciprocal is {V: [Q]}.
+
+        Precondition: kline.nodes is not empty.
+        Postcondition: A reciprocal kline is rationalised. Returns the result.
+
+        Args:
+            kline: The kline to countersign.
+
+        Returns:
+            Result of rationalise(reciprocal).
+        """
+        from kalvin.signature import make_signature
+        reciprocal_sig = make_signature(kline.nodes)
+        reciprocal = KLine(reciprocal_sig, [kline.signature])
+        return self.rationalise(reciprocal)
+
     # ── Frame info ────────────────────────────────────────────────────
 
     def frame_size(self) -> int:

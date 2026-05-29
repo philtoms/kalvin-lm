@@ -63,21 +63,14 @@ class ResponseItem(ListItem):
     }
     """
 
-    def __init__(
-        self,
-        level: str,
-        decompiled_source: str,
-        *,
-        status: str = "pending",
-        significance: int = 0,
-    ) -> None:
+    def __init__(self, level: str, decompiled_source: str, status: str = "", significance: int = 0) -> None:
         """Initialize with a KLine and its decompiled source.
 
         Args:
             level: The significance level (S1, S2, S3, S4).
             decompiled_source: The decompiled KScript source to display.
-            status: One of "pass", "pending", "mismatch". Default "pending".
-            significance: Raw 64-bit significance value. Default 0.
+            status: Response status — "pass" (✓), "pending" (◌), "mismatch" (✗).
+            significance: Raw 64-bit significance value for display.
         """
         self.level = level
         self.decompiled_source = decompiled_source
@@ -209,14 +202,7 @@ class ResponsesRegion(Vertical):
                 item.set_class(self._is_filter_active(item.level), "visible")
                 item.set_class(not self._is_filter_active(item.level), "hidden")
 
-    def add_response(
-        self,
-        level: str,
-        decompiled_source: str,
-        *,
-        status: str = "pending",
-        significance: int = 0,
-    ) -> None:
+    def add_response(self, level: str, decompiled_source: str, status: str = "", significance: int = 0) -> None:
         """Append a KLine response with its decompiled source to the list.
 
         Only adds the response if it hasn't been seen before.
@@ -224,8 +210,8 @@ class ResponsesRegion(Vertical):
         Args:
             level: The significance level (S1, S2, S3, S4).
             decompiled_source: The decompiled KScript source to display.
-            status: One of "pass", "pending", "mismatch". Default "pending".
-            significance: Raw 64-bit significance value. Default 0.
+            status: Response status — "pass" (✓), "pending" (◌), "mismatch" (✗).
+            significance: Raw 64-bit significance value for display.
         """
         if decompiled_source in self._seen_responses:
             return
@@ -233,12 +219,7 @@ class ResponsesRegion(Vertical):
         self._seen_responses.add(decompiled_source)
 
         list_view = self.query_one("#responses-list", ListView)
-        item = ResponseItem(
-            level,
-            decompiled_source,
-            status=status,
-            significance=significance,
-        )
+        item = ResponseItem(level, decompiled_source, status=status, significance=significance)
 
         # Set visibility based on current filter state
         is_visible = self._is_filter_active(level)
