@@ -2,21 +2,23 @@
 
 Provides interface contracts for tokenizers, models, and agents.
 
-KTokenizer has two real adapters (Tokenizer, ModTokenizer) — a real seam.
-KModel and KAgent document the interface but have one adapter each (Model, Agent).
-They exist to formalize the contract and enable future adapters.
+KTokenizer has two real adapters (Tokenizer, ModTokenizer) — a genuine seam.
+KAgent documents the interface with one adapter (Agent).
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Iterator, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING
 
 from kalvin.kline import KLine, KNode, KSig
 
+if TYPE_CHECKING:
+    from kalvin.model import Model
+
 __all__ = [
     "KLine", "KNode", "KSig",
-    "KTokenizer", "KModel", "KAgent",
+    "KTokenizer", "KAgent",
 ]
 
 
@@ -50,103 +52,6 @@ class KTokenizer(ABC):
         ...
 
 
-# === Abstract Model ===
-
-class KModel(ABC):
-    """Abstract base class for knowledge graph models.
-
-    One adapter: Model (three-tier in-memory). The interface documents what
-    callers (Agent, tests) rely on. Methods mirror Model's actual surface
-    after the expand/misfit extraction.
-    """
-
-    @abstractmethod
-    def exists(self, kline: KLine) -> bool:
-        """Check if an equal KLine already exists in any tier."""
-        ...
-
-    @abstractmethod
-    def add(self, kline: KLine, dedup: bool = False) -> bool:
-        """Add a KLine. Returns True if added, False if rejected."""
-        ...
-
-    @abstractmethod
-    def find(self, signature: KSig) -> KLine | None:
-        """Find a KLine by signature (most recently added)."""
-        ...
-
-    @abstractmethod
-    def find_all(self, signature: KSig) -> list[KLine]:
-        """Find all KLines with the given signature."""
-        ...
-
-    @abstractmethod
-    def find_by_nodes(self, nodes_signature: KSig) -> KLine | None:
-        """Find KLine by nodes signature."""
-        ...
-
-    @abstractmethod
-    def where(self, predicate: Any) -> list[KLine]:
-        """Return KLines matching a predicate or signature overlap."""
-        ...
-
-    @abstractmethod
-    def resolve(self, node: int) -> KLine | None:
-        """Resolve a node value to the KLine whose signature matches."""
-        ...
-
-    @abstractmethod
-    def descendants(self, node: int) -> set[int]:
-        """Recursively collect all descendant node values."""
-        ...
-
-    @abstractmethod
-    def query(self, signature: KSig, depth: int = 1) -> list[KLine]:
-        """Find all KLines with signature, then expand each to depth."""
-        ...
-
-    @abstractmethod
-    def promote(self, kline: KLine) -> bool:
-        """Promote a KLine from STM to the frame."""
-        ...
-
-    @abstractmethod
-    def promote_all(self) -> int:
-        """Promote all STM KLines to the frame."""
-        ...
-
-    @abstractmethod
-    def klines(self) -> list[KLine]:
-        """Return all KLines in reverse insertion order."""
-        ...
-
-    @abstractmethod
-    def is_s1(self, kline: KLine) -> bool:
-        """Determine if a kline is structurally grounded (S1)."""
-        ...
-
-    @abstractmethod
-    def is_countersigned(self, kline: KLine) -> bool:
-        """Test whether a kline is countersigned by any kline in the model."""
-        ...
-
-    @abstractmethod
-    def __len__(self) -> int:
-        """Number of KLines in the frame."""
-        ...
-
-    @abstractmethod
-    def __iter__(self) -> Iterator[KLine]:
-        """Iterate over all KLines."""
-        ...
-
-    @property
-    @abstractmethod
-    def base(self) -> "KModel | None":
-        """Return the base model."""
-        ...
-
-
 # === KAgent ===
 
 class KAgent(ABC):
@@ -157,7 +62,7 @@ class KAgent(ABC):
 
     @property
     @abstractmethod
-    def model(self) -> KModel:
+    def model(self) -> Model:
         """Get the knowledge graph model."""
         ...
 
