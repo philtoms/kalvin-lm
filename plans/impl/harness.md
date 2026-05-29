@@ -107,24 +107,24 @@
 
 | Spec ID | Test file | Test function | Status |
 |---------|-----------|---------------|--------|
-| HRN-1 | test_harness.py | test_recompile_only_new_submitted | ❌ |
-| HRN-2 | test_harness.py | test_submitted_monotonic | ❌ |
-| HRN-3 | test_harness.py | test_fast_path_auto_satisfied | ❌ |
-| HRN-4 | test_harness.py | test_structural_match_expectation | ❌ |
-| HRN-5 | test_harness.py | test_run_submits_all_pending | ❌ |
-| HRN-6 | test_harness.py | test_run_auto_countersigns | ❌ |
-| HRN-7 | test_harness.py | test_step_submits_one_halts | ❌ |
-| HRN-8 | test_harness.py | test_ratify_enabled_on_selection | ❌ |
-| HRN-9 | test_harness.py | test_ratify_calls_countersign | ❌ |
-| HRN-10 | test_harness.py | test_clear_resets_tracking | ❌ |
-| HRN-11 | test_harness.py | test_event_correlation_structural | ❌ |
-| HRN-12 | test_harness.py | test_state_persistence_hotreload | ❌ |
-| HRN-13 | test_harness.py | test_response_display_format | ❌ |
-| HRN-14 | test_harness.py | test_compilation_error_display | ❌ |
-| HRN-15 | test_harness.py | test_progress_count_display | ❌ |
-| HRN-16 | test_agent.py | test_agent_countersign | ❌ |
-| HRN-17 | test_harness.py | test_run_mismatch_flagged_pending | ❌ |
-| HRN-18 | test_harness.py | test_multiple_proposals_displayed | ❌ |
+| HRN-1 | test_harness.py | test_recompile_only_new_submitted | ✅ |
+| HRN-2 | test_harness.py | test_submitted_monotonic | ✅ |
+| HRN-3 | test_harness.py | test_fast_path_auto_satisfied | ✅ |
+| HRN-4 | test_harness.py | test_structural_match_expectation | ✅ |
+| HRN-5 | test_harness.py | test_run_submits_all_pending | ✅ |
+| HRN-6 | test_harness.py | test_run_auto_countersigns | ✅ |
+| HRN-7 | test_harness.py | test_step_submits_one_halts | ✅ |
+| HRN-8 | test_harness.py | test_ratify_enabled_on_selection | ✅ |
+| HRN-9 | test_harness.py | test_ratify_calls_countersign | ✅ |
+| HRN-10 | test_harness.py | test_clear_resets_tracking | ✅ |
+| HRN-11 | test_harness.py | test_event_correlation_structural | ✅ |
+| HRN-12 | test_harness.py | test_state_persistence_hotreload | ✅ |
+| HRN-13 | test_harness.py | test_response_display_format | ✅ |
+| HRN-14 | test_harness.py | test_compilation_error_display | ✅ |
+| HRN-15 | test_harness.py | test_progress_count_display | ✅ |
+| HRN-16 | test_agent.py | test_agent_countersign | ✅ |
+| HRN-17 | test_harness.py | test_run_mismatch_flagged_pending | ✅ |
+| HRN-18 | test_harness.py | test_multiple_proposals_displayed | ✅ |
 
 ## Design Decisions
 
@@ -136,4 +136,4 @@
 
 ## Status
 
-Not started.
+Tests complete (KB-015). Implementation tasks not started.
