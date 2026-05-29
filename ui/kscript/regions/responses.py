@@ -8,7 +8,14 @@ from textual.message import Message
 from textual.widgets import Button, ListView, ListItem, Static
 
 from kalvin.abstract import KLine
+from kalvin.expand import D_MAX
 from kalvin.significance import Int32Significance
+
+STATUS_SYMBOLS: dict[str, str] = {
+    "pass": "✓",
+    "pending": "◌",
+    "mismatch": "✗",
+}
 
 
 class FilterBar(Horizontal):
@@ -56,19 +63,37 @@ class ResponseItem(ListItem):
     }
     """
 
-    def __init__(self, level: str, decompiled_source: str) -> None:
+    def __init__(
+        self,
+        level: str,
+        decompiled_source: str,
+        *,
+        status: str = "pending",
+        significance: int = 0,
+    ) -> None:
         """Initialize with a KLine and its decompiled source.
 
         Args:
             level: The significance level (S1, S2, S3, S4).
             decompiled_source: The decompiled KScript source to display.
+            status: One of "pass", "pending", "mismatch". Default "pending".
+            significance: Raw 64-bit significance value. Default 0.
         """
         self.level = level
         self.decompiled_source = decompiled_source
+        self.status = status
+        self.significance = significance
         super().__init__()
 
+    def _format_display(self) -> str:
+        """Render the four-column display string."""
+        symbol = STATUS_SYMBOLS.get(self.status, "◌")
+        raw_hex = f"0x{self.significance:016X}"
+        normalised = f"{self.significance / D_MAX:.3f}"
+        return f"{symbol} {self.decompiled_source}  {raw_hex}  {normalised}"
+
     def compose(self) -> ComposeResult:
-        yield Static(self.decompiled_source)
+        yield Static(self._format_display())
 
 
 class ResponsesRegion(Vertical):
@@ -184,14 +209,23 @@ class ResponsesRegion(Vertical):
                 item.set_class(self._is_filter_active(item.level), "visible")
                 item.set_class(not self._is_filter_active(item.level), "hidden")
 
-    def add_response(self, level: str, decompiled_source: str) -> None:
+    def add_response(
+        self,
+        level: str,
+        decompiled_source: str,
+        *,
+        status: str = "pending",
+        significance: int = 0,
+    ) -> None:
         """Append a KLine response with its decompiled source to the list.
 
         Only adds the response if it hasn't been seen before.
 
         Args:
-            kline: The KLine response to add.
+            level: The significance level (S1, S2, S3, S4).
             decompiled_source: The decompiled KScript source to display.
+            status: One of "pass", "pending", "mismatch". Default "pending".
+            significance: Raw 64-bit significance value. Default 0.
         """
         if decompiled_source in self._seen_responses:
             return
@@ -199,7 +233,12 @@ class ResponsesRegion(Vertical):
         self._seen_responses.add(decompiled_source)
 
         list_view = self.query_one("#responses-list", ListView)
-        item = ResponseItem(level, decompiled_source)
+        item = ResponseItem(
+            level,
+            decompiled_source,
+            status=status,
+            significance=significance,
+        )
 
         # Set visibility based on current filter state
         is_visible = self._is_filter_active(level)
