@@ -5,8 +5,9 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from kalvin.agent import Agent, Cogitator, WorkItem
+from kalvin.agent import Agent, CogitationHandler, Cogitator, WorkItem
 from kalvin.agent_codec import AgentCodec
+from kalvin.events import EventBus
 from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.model import Model
@@ -498,3 +499,111 @@ class TestCogitatorStructuralGrounding:
         assert k.signature == nodes_sig  # canonical
         underfit, overfit = m.classify_misfit(k)
         assert not underfit and not overfit
+
+
+# ── Test Fake ─────────────────────────────────────────────────────────
+
+class RecordingCogitationHandler:
+    """Test fake: records all cogitation callbacks for assertion."""
+
+    def __init__(self):
+        self.s1_calls: list[tuple[KLine, KLine]] = []
+        self.expansion_calls: list[tuple[KLine, KLine, int]] = []
+
+    def on_s1(self, query: KLine, candidate: KLine) -> None:
+        self.s1_calls.append((query, candidate))
+
+    def on_expansion(self, query: KLine, proposal: KLine, significance: int) -> None:
+        self.expansion_calls.append((query, proposal, significance))
+
+
+# ── Protocol Conformance Tests ────────────────────────────────────────
+
+class TestCogitationHandlerProtocol:
+    """Protocol conformance — runtime_checkable isinstance checks."""
+
+    def test_agent_satisfies_protocol(self):
+        """Agent implements CogitationHandler (runtime_checkable)."""
+        a = Agent()
+        assert isinstance(a, CogitationHandler)
+
+    def test_recording_handler_satisfies_protocol(self):
+        """RecordingCogitationHandler implements CogitationHandler."""
+        handler = RecordingCogitationHandler()
+        assert isinstance(handler, CogitationHandler)
+
+    def test_recording_handler_on_s1(self):
+        """on_s1 records the query and candidate."""
+        handler = RecordingCogitationHandler()
+        q = KLine(5, [1, 2])
+        c = KLine(10, [3, 4])
+        handler.on_s1(q, c)
+        assert handler.s1_calls == [(q, c)]
+
+    def test_recording_handler_on_expansion(self):
+        """on_expansion records the query, proposal, and significance."""
+        handler = RecordingCogitationHandler()
+        q = KLine(5, [1, 2])
+        p = KLine(10, [3, 4])
+        handler.on_expansion(q, p, 42)
+        assert handler.expansion_calls == [(q, p, 42)]
+
+
+# ── Fake-Handler Integration Tests ────────────────────────────────────
+
+class TestCogitatorWithFakeHandler:
+    """Cogitator wired to RecordingCogitationHandler — proves the seam works."""
+
+    def test_fake_handler_receives_s1(self):
+        """Cogitator calls handler.on_s1 when expand yields an S1-classified result."""
+        m = Model()
+        # Build model with a canonical kline so expand yields a high-significance result
+        c = KLine(10, [10])  # canonical: sig == make_signature(nodes)
+        m.add(c)
+        m.promote(c)
+
+        recorder = RecordingCogitationHandler()
+        event_bus = EventBus()
+        cogitator = Cogitator(model=m, event_bus=event_bus, handler=recorder)
+
+        # Query fully matches candidate → S1 after expand
+        q = KLine(0, [10])
+        q.signature = make_signature([10])
+        m.add(q)
+
+        cogitator.submit(WorkItem(q, c, "S2"))
+        cogitator.join(timeout=2.0)
+
+        assert len(recorder.s1_calls) >= 1
+        assert recorder.s1_calls[0][0] is q
+        assert recorder.s1_calls[0][1] is c
+
+    def test_fake_handler_receives_expansion(self):
+        """Cogitator calls handler.on_expansion when a misfit kline expands."""
+        m = Model()
+        # Build model with canonical klines that resolve nodes
+        k1 = KLine(0b100, [0b100])  # canonical
+        m.add(k1)
+        m.promote(k1)
+        k2 = KLine(0b010, [0b010])  # canonical — resolves as a contributor
+        m.add(k2)
+        m.promote(k2)
+        # A misfit kline — underfitting: sig=0b110 but nodes only give 0b100
+        k3 = KLine(0b110, [0b100])
+        m.add(k3)
+        m.promote(k3)
+
+        recorder = RecordingCogitationHandler()
+        event_bus = EventBus()
+        cogitator = Cogitator(model=m, event_bus=event_bus, handler=recorder)
+
+        # Query with no overlapping nodes to k3 → S3 after expand,
+        # and k3 is misfit so _process triggers generate_expansions.
+        q = KLine(0, [0b010])
+        q.signature = make_signature([0b010])
+        m.add(q)
+
+        cogitator.submit(WorkItem(q, k3, "S3"))
+        cogitator.join(timeout=2.0)
+
+        assert len(recorder.expansion_calls) >= 1

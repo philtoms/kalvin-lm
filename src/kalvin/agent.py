@@ -72,9 +72,10 @@ class Cogitator:
         Model instance for distance computation and countersignature checks.
     event_bus:
         EventBus for publishing events.
-    on_s1:
-        Callback invoked when cogitation discovers an S1 result.
-        Receives (query_kline, candidate_kline).
+    handler:
+        CogitationHandler implementation. Called when cogitation discovers
+        significant results (S1 matches and S2/S3 expansion proposals).
+        The Agent is the primary implementation.
     timeout:
         Idle seconds before emitting "done" so subscribers can realign.
         Does not halt the thread. Default 2.0.
