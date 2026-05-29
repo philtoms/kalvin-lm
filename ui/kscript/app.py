@@ -16,6 +16,9 @@ from textual.widgets import Footer, Header
 from kalvin import Agent
 from kalvin.abstract import KLine
 from kscript import KScript, CompiledEntry
+
+# Type alias for entry identity keys used in tracking sets
+EntryKey = tuple[int, tuple[int, ...]]
 from kscript.decompiler import Decompiler
 from ui.kscript.dialogs import LoadScriptDialog, SaveStateDialog, LoadStateDialog
 from ui.kscript.regions import EditorRegion, ResponsesRegion, ToolbarRegion
@@ -75,6 +78,9 @@ class KScriptApp(App):
         self._last_state_dir: Path = Path("data")
         self._auto_compile_interval: float = auto_compile_interval
         self._rationalise_buffer: list[KLine] = []
+        # Tracking state for test harness (KB-008)
+        self._submitted: set[EntryKey] = set()
+        self._satisfied: set[EntryKey] = set()
 
     def on_mount(self) -> None:
         """Initialize Agent instance on app start."""
@@ -179,6 +185,8 @@ class KScriptApp(App):
             "last_script_dir": str(self._last_script_dir),
             "last_state_dir": str(self._last_state_dir),
             "execution_state": self._execution_state.name,
+            "submitted": [[sig, list(nodes)] for sig, nodes in self._submitted],
+            "satisfied": [[sig, list(nodes)] for sig, nodes in self._satisfied],
         }
         with open(UI_STATE_FILE, "w") as f:
             json.dump(ui_state, f, indent=2)
@@ -212,6 +220,10 @@ class KScriptApp(App):
                     self._last_state_dir = Path(ui_state["last_state_dir"])
                 if "execution_state" in ui_state:
                     self._execution_state = ExecutionState[ui_state["execution_state"]]
+                if "submitted" in ui_state:
+                    self._submitted = {(pair[0], tuple(pair[1])) for pair in ui_state["submitted"]}
+                if "satisfied" in ui_state:
+                    self._satisfied = {(pair[0], tuple(pair[1])) for pair in ui_state["satisfied"]}
                 self.log("Restored UI state")
             except (json.JSONDecodeError, Exception) as e:
                 self.log(f"Failed to load UI state: {e}")
@@ -267,6 +279,20 @@ class KScriptApp(App):
             return []
         entries = self._decompiler.decompile(klines)
         return [(e.level, e.to_kscript())  for e in entries]
+
+    # === Tracking State Helpers (KB-008) ===
+
+    @staticmethod
+    def _entry_key(entry: CompiledEntry) -> EntryKey:
+        """Return a hashable identity key for a compiled entry.
+
+        The key is (signature, tuple(nodes)), suitable for set membership tests.
+        """
+        return (entry.signature, tuple(entry.nodes))
+
+    def _get_pending(self, entries: list[CompiledEntry]) -> list[CompiledEntry]:
+        """Return entries not yet in _submitted, preserving input order."""
+        return [e for e in entries if self._entry_key(e) not in self._submitted]
 
     # === Actions ===
 
@@ -417,10 +443,14 @@ class KScriptApp(App):
                 self._set_state(ExecutionState.HALTED)
 
     def action_clear_responses(self) -> None:
-        """Clear the responses list."""
+        """Clear the responses list and reset all tracking state."""
         responses = self.query_one(ResponsesRegion)
         responses.clear()
         self._decompiler.clear()
+        self._submitted.clear()
+        self._satisfied.clear()
+        self._pending_entries = []
+        self._current_entry_index = 0
 
 
 def main() -> None:
