@@ -52,6 +52,9 @@ class ToolbarRegion(Horizontal):
     """
 
     execution_state: reactive[ExecutionState] = reactive(ExecutionState.IDLE)
+    satisfied_count: reactive[int] = reactive(0)
+    total_count: reactive[int] = reactive(0)
+    pending_count: reactive[int] = reactive(0)
 
     class LoadScript(Message):
         """Request to load a .ks script file."""
@@ -91,14 +94,17 @@ class ToolbarRegion(Horizontal):
         yield Static(self._get_status_text(), id="status-indicator", classes="status-indicator status-idle")
 
     def _get_status_text(self) -> str:
-        """Get status text based on current state."""
+        """Get status text based on current state and progress."""
         state = self.execution_state
         indicator = {
             ExecutionState.IDLE: "○",
             ExecutionState.RUNNING: "●",
             ExecutionState.HALTED: "◐",
         }
-        return f"{indicator[state]} {state.value}"
+        base = f"{indicator[state]} {state.value}"
+        if self.total_count > 0:
+            base += f"  {self.satisfied_count}/{self.total_count} | {self.pending_count} pending"
+        return base
 
     def _get_status_class(self) -> str:
         """Get CSS class based on current state."""
@@ -121,6 +127,26 @@ class ToolbarRegion(Horizontal):
 
         # Update button states
         self._update_button_states()
+
+    def _refresh_status_text(self) -> None:
+        """Update the status indicator widget text (for progress reactive changes)."""
+        try:
+            indicator = self.query_one("#status-indicator", Static)
+        except NoMatches:
+            return
+        indicator.update(self._get_status_text())
+
+    def watch_satisfied_count(self, old: int, new: int) -> None:
+        """Refresh status text when satisfied count changes."""
+        self._refresh_status_text()
+
+    def watch_total_count(self, old: int, new: int) -> None:
+        """Refresh status text when total count changes."""
+        self._refresh_status_text()
+
+    def watch_pending_count(self, old: int, new: int) -> None:
+        """Refresh status text when pending count changes."""
+        self._refresh_status_text()
 
     def _update_button_states(self) -> None:
         """Enable/disable buttons based on execution state."""
@@ -156,3 +182,9 @@ class ToolbarRegion(Horizontal):
     def set_state(self, state: ExecutionState) -> None:
         """Set the execution state."""
         self.execution_state = state
+
+    def set_progress(self, satisfied: int, total: int, pending: int) -> None:
+        """Set all progress counters in one call."""
+        self.satisfied_count = satisfied
+        self.total_count = total
+        self.pending_count = pending

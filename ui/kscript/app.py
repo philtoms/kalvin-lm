@@ -166,6 +166,17 @@ class KScriptApp(App):
         self._execution_state = state
         toolbar = self.query_one(ToolbarRegion)
         toolbar.set_state(state)
+        self._update_toolbar_progress()
+
+    def _update_toolbar_progress(self) -> None:
+        """Push satisfaction progress counts to the toolbar."""
+        toolbar = self.query_one(ToolbarRegion)
+        submitted = getattr(self, "_submitted", set())
+        satisfied = getattr(self, "_satisfied", set())
+        total = len(submitted)
+        sat = len(satisfied)
+        pending = total - sat
+        toolbar.set_progress(sat, total, pending)
 
     # === Dev Mode State (SIGTERM save, mount restore) ===
 
@@ -451,6 +462,7 @@ class KScriptApp(App):
         self._satisfied.clear()
         self._pending_entries = []
         self._current_entry_index = 0
+        self._update_toolbar_progress()
 
 
 def main() -> None:
