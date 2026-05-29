@@ -13,6 +13,8 @@ the oldest entries are evicted.
 
 from __future__ import annotations
 
+from typing import Iterator
+
 from kalvin.kline import KLine, KSig, KNode
 from kalvin.signature import make_signature, is_literal_node
 
@@ -116,6 +118,10 @@ class STM:
     def all_klines(self) -> list[KLine]:
         """Return all KLines in insertion order."""
         return list(self._order)
+
+    def iter_all(self) -> Iterator[KLine]:
+        """Iterate all KLines in insertion order."""
+        return iter(self._order)
 
     def clear(self) -> None:
         self._store.clear()

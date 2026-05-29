@@ -84,3 +84,30 @@ class TestSTMQuery:
         stm = make_stm()
         stm.add(KLine(5, [1]), dedup=False)
         assert stm.query(0) == []
+
+
+class TestSTMIterAll:
+    def test_iter_all_yields_insertion_order(self):
+        stm = make_stm()
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        k3 = KLine(3, [3])
+        stm.add(k1, dedup=False)
+        stm.add(k2, dedup=False)
+        stm.add(k3, dedup=False)
+        assert list(stm.iter_all()) == [k1, k2, k3]
+
+    def test_iter_all_returns_fresh_iterator(self):
+        stm = make_stm()
+        k1 = KLine(1, [1])
+        stm.add(k1, dedup=False)
+        it1 = stm.iter_all()
+        it2 = stm.iter_all()
+        assert list(it1) == [k1]
+        assert list(it2) == [k1]
+        # Iterators are independent objects
+        assert it1 is not it2
+
+    def test_iter_all_empty(self):
+        stm = make_stm()
+        assert list(stm.iter_all()) == []
