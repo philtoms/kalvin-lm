@@ -18,6 +18,8 @@ dependencies = [
     "pyarrow>=15.0.0",
     "spacy[apple]>=3.8.11",
     "watchdog>=4.0.0",
+    "websockets>=12.0",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
