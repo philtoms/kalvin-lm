@@ -42,3 +42,7 @@ class EventBus:
             subscribers = list(self._subscribers)
         for cb in subscribers:
             cb(event)
+
+    def on_event(self, event: RationaliseEvent) -> None:
+        """Adapter protocol: delegates to publish()."""
+        self.publish(event)

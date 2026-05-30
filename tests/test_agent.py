@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from kalvin.agent import Agent, CogitationHandler, Cogitator, WorkItem
+from kalvin.agent import KAgent, CogitationHandler, Cogitator, WorkItem
 from kalvin.agent_codec import AgentCodec
 from kalvin.events import EventBus
 from kalvin.kline import KLine
@@ -16,71 +16,71 @@ from kalvin.signature import make_signature
 
 class TestAgentInit:
     def test_default_init(self):
-        a = Agent()
+        a = KAgent()
         assert a.model is not None
         assert a.tokenizer is not None
 
     def test_custom_tokenizer(self):
         t = Mod32Tokenizer()
-        a = Agent(tokenizer=t)
+        a = KAgent(tokenizer=t)
         assert a.tokenizer is t
 
     def test_custom_model(self):
         t = Mod32Tokenizer()
         m = Model()
-        a = Agent(tokenizer=t, model=m)
+        a = KAgent(tokenizer=t, model=m)
         assert a.model is m
 
     def test_frame_size_empty(self):
-        a = Agent()
+        a = KAgent()
         assert a.frame_size() == 0
 
     def test_cogitator_accessible(self):
-        a = Agent()
+        a = KAgent()
         assert isinstance(a.cogitator, Cogitator)
 
 
 # ── Routing Tests ─────────────────────────────────────────────────────
 
 class TestRoute:
-    """Agent._route: fast node-membership classification. No model call."""
+    """KAgent._route: fast node-membership classification. No model call."""
 
     def test_all_nodes_match_s1(self):
         q = KLine(5, [10, 20])
         c = KLine(99, [10, 20, 30])
-        assert Agent._route(q, c) == "S1"
+        assert KAgent._route(q, c) == "S1"
 
     def test_some_nodes_match_s2(self):
         q = KLine(5, [10, 20, 99])
         c = KLine(99, [10, 20, 30])
-        assert Agent._route(q, c) == "S2"
+        assert KAgent._route(q, c) == "S2"
 
     def test_no_nodes_match_s3(self):
         q = KLine(5, [1, 2])
         c = KLine(100, [3, 4])
-        assert Agent._route(q, c) == "S3"
+        assert KAgent._route(q, c) == "S3"
 
     def test_single_node_match_s1(self):
         q = KLine(5, [10])
         c = KLine(99, [10, 20])
-        assert Agent._route(q, c) == "S1"
+        assert KAgent._route(q, c) == "S1"
 
     def test_empty_query_s4(self):
         q = KLine(0, [])
         c = KLine(10, [1])
-        assert Agent._route(q, c) == "S4"
+        assert KAgent._route(q, c) == "S4"
 
     def test_routing_independent_of_signature(self):
         """Routing only cares about candidate's node sequence."""
         q = KLine(5, [42])
         c = KLine(999, [42, 100])
-        assert Agent._route(q, c) == "S1"
+        assert KAgent._route(q, c) == "S1"
 
     def test_duplicate_nodes_in_query(self):
         """Duplicate query nodes are counted per-occurrence for membership."""
         q = KLine(5, [10, 10])
         c = KLine(99, [10, 20])
-        assert Agent._route(q, c) == "S1"
+        assert KAgent._route(q, c) == "S1"
 
 
 # ── Rationalisation Tests ─────────────────────────────────────────────
@@ -88,7 +88,7 @@ class TestRoute:
 class TestAgentRationalise:
     def test_all_literal_s1(self):
         """All-literal kline → S1 (fast path)."""
-        a = Agent()
+        a = KAgent()
         t = a.tokenizer
         lit_nodes = t.encode("123")
         k = KLine(1, lit_nodes)
@@ -97,14 +97,14 @@ class TestAgentRationalise:
 
     def test_unsigned_s4(self):
         """Empty kline → S4."""
-        a = Agent()
+        a = KAgent()
         k = KLine(0, [])
         result = a.rationalise(k)
         assert result is True
 
     def test_ground_check(self):
         """Already exists → ground event."""
-        a = Agent()
+        a = KAgent()
         k = KLine(5, [1, 2])
         a.rationalise(k)
         result = a.rationalise(KLine(5, [1, 2]))
@@ -112,7 +112,7 @@ class TestAgentRationalise:
 
     def test_novel_kline(self):
         """Novel kline with no candidates → S4."""
-        a = Agent()
+        a = KAgent()
         t = a.tokenizer
         packed = t.encode("XYZ")[0]
         k = KLine(packed, [packed])
@@ -120,14 +120,14 @@ class TestAgentRationalise:
         assert result is True
 
     def test_rationalise_adds_to_model(self):
-        a = Agent()
+        a = KAgent()
         k = KLine(5, [1, 2])
         a.rationalise(k)
         assert a.model.find(5) is not None
 
     def test_rationalise_with_external_encode(self):
         """Caller encodes text, builds kline, rationalises."""
-        a = Agent()
+        a = KAgent()
         t = a.tokenizer
         nodes = t.encode("HELLO")
         sig = make_signature(nodes)
@@ -138,7 +138,7 @@ class TestAgentRationalise:
 
     def test_s2_kline_returns_false(self):
         """Kline that routes S2 against all candidates → returns False."""
-        a = Agent()
+        a = KAgent()
         # Add a candidate that partially overlaps
         candidate = KLine(5, [10, 30])
         a.rationalise(candidate)
@@ -150,7 +150,7 @@ class TestAgentRationalise:
 
     def test_s3_kline_returns_false(self):
         """Kline that routes S3 against all candidates → returns False."""
-        a = Agent()
+        a = KAgent()
         candidate = KLine(5, [100, 200])
         a.rationalise(candidate)
         q = KLine(0, [1, 2])
@@ -166,7 +166,7 @@ class TestShortCircuit:
 
     def test_s1_skips_remaining_candidates(self):
         """First candidate is S1 → no further candidates processed."""
-        a = Agent()
+        a = KAgent()
         # Add two candidates to the model
         c1 = KLine(5, [10, 20])       # S1 match for query
         c2 = KLine(6, [10, 20, 30])   # Also S1 but shouldn't be reached
@@ -188,7 +188,7 @@ class TestShortCircuit:
 
     def test_s1_after_s2_still_short_circuits(self):
         """If second candidate is S1, no expand called."""
-        a = Agent()
+        a = KAgent()
         # c1 will route S2, c2 will route S1
         c1 = KLine(5, [10, 30])
         c2 = KLine(6, [10, 20])
@@ -203,7 +203,7 @@ class TestShortCircuit:
 
     def test_no_candidates_no_expand(self):
         """No candidates → S4 directly, no expand call."""
-        a = Agent()
+        a = KAgent()
         q = KLine(0, [999])
         q.signature = make_signature([999])
 
@@ -238,7 +238,7 @@ class TestWorkItem:
 
 class TestAgentEvents:
     def test_subscribe(self):
-        a = Agent()
+        a = KAgent()
         events = []
         a.events.subscribe(lambda e: events.append(e))
         k = KLine(0, [])
@@ -246,7 +246,7 @@ class TestAgentEvents:
         assert len(events) >= 1
 
     def test_ground_event(self):
-        a = Agent()
+        a = KAgent()
         events = []
         a.events.subscribe(lambda e: events.append(e))
         k = KLine(5, [1, 2])
@@ -256,7 +256,7 @@ class TestAgentEvents:
         assert "ground" in kinds
 
     def test_frame_event(self):
-        a = Agent()
+        a = KAgent()
         events = []
         a.events.subscribe(lambda e: events.append(e))
         k = KLine(0, [])
@@ -268,12 +268,12 @@ class TestAgentEvents:
 
 class TestCogitator:
     def test_cogitate_join(self):
-        a = Agent()
+        a = KAgent()
         a.cogitate_join(timeout=1.0)
         # Should not raise
 
     def test_rationalise_after_join(self):
-        a = Agent()
+        a = KAgent()
         a.cogitate_join(timeout=1.0)
         k = KLine(5, [1, 2])
         result = a.rationalise(k)
@@ -281,7 +281,7 @@ class TestCogitator:
 
     def test_s2_submits_work_item(self):
         """S2 kline submits a work item to the cogitator."""
-        a = Agent()
+        a = KAgent()
         candidate = KLine(5, [10, 30])
         a.rationalise(candidate)
 
@@ -309,8 +309,8 @@ class TestCogitator:
 # ── Serialization Tests ───────────────────────────────────────────────
 
 class TestAgentSerialization:
-    def _make_agent_with_klines(self) -> Agent:
-        a = Agent()
+    def _make_agent_with_klines(self) -> KAgent:
+        a = KAgent()
         a.rationalise(KLine(5, [1, 2]))
         a.rationalise(KLine(10, [3, 4]))
         a.rationalise(KLine(0, []))
@@ -321,7 +321,7 @@ class TestAgentSerialization:
         data = a.to_bytes()
         assert isinstance(data, bytes)
         assert len(data) > 0
-        loaded = Agent.from_bytes(data)
+        loaded = KAgent.from_bytes(data)
         assert len(loaded.model) == len(a.model)
 
     def test_to_dict_roundtrip(self):
@@ -330,11 +330,11 @@ class TestAgentSerialization:
         assert isinstance(d, dict)
         assert "klines" in d
         assert "activity" in d
-        loaded = Agent.from_dict(d)
+        loaded = KAgent.from_dict(d)
         assert len(loaded.model) == len(a.model)
 
     def test_to_dict_structure(self):
-        a = Agent()
+        a = KAgent()
         a.rationalise(KLine(5, [1, 2]))
         d = a.to_dict()
         assert len(d["klines"]) == 1
@@ -347,7 +347,7 @@ class TestAgentSerialization:
             path = Path(f.name)
         try:
             a.save(path)
-            loaded = Agent.load(path)
+            loaded = KAgent.load(path)
             assert len(loaded.model) == len(a.model)
         finally:
             path.unlink(missing_ok=True)
@@ -358,13 +358,13 @@ class TestAgentSerialization:
             path = Path(f.name)
         try:
             a.save(path, format="bin")
-            loaded = Agent.load(path, format="bin")
+            loaded = KAgent.load(path, format="bin")
             assert len(loaded.model) == len(a.model)
         finally:
             path.unlink(missing_ok=True)
 
     def test_save_auto_detect_json(self):
-        a = Agent()
+        a = KAgent()
         a.rationalise(KLine(5, [1]))
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
             path = Path(f.name)
@@ -377,20 +377,20 @@ class TestAgentSerialization:
             path.unlink(missing_ok=True)
 
     def test_empty_agent_serialization(self):
-        a = Agent()
+        a = KAgent()
         data = a.to_bytes()
-        loaded = Agent.from_bytes(data)
+        loaded = KAgent.from_bytes(data)
         assert len(loaded.model) == 0
 
     def test_empty_agent_dict(self):
-        a = Agent()
+        a = KAgent()
         d = a.to_dict()
-        loaded = Agent.from_dict(d)
+        loaded = KAgent.from_dict(d)
         assert len(loaded.model) == 0
 
     def test_codec_returns_agent_codec(self):
         """Agent.codec() returns an AgentCodec with the correct model and activity."""
-        a = Agent()
+        a = KAgent()
         a.rationalise(KLine(5, [1, 2]))
         codec = a.codec()
         assert isinstance(codec, AgentCodec)
@@ -406,7 +406,7 @@ class TestStructuralGrounding:
 
     def test_s1_fast_path_promotes(self):
         """S1 in Phase 3 fast path (canonical) promotes to frame."""
-        a = Agent()
+        a = KAgent()
         k = KLine(10, [10])  # canonical
         result = a.rationalise(k)
         assert result is True
@@ -414,7 +414,7 @@ class TestStructuralGrounding:
 
     def test_s4_fast_path_promotes(self):
         """S4 (empty kline) promotes to frame."""
-        a = Agent()
+        a = KAgent()
         k = KLine(0, [])
         result = a.rationalise(k)
         assert result is True
@@ -422,7 +422,7 @@ class TestStructuralGrounding:
 
     def test_all_literal_promotes(self):
         """All-literal kline promotes to frame."""
-        a = Agent()
+        a = KAgent()
         t = a.tokenizer
         lit_nodes = t.encode("ABC")
         k = KLine(1, lit_nodes)
@@ -432,7 +432,7 @@ class TestStructuralGrounding:
 
     def test_frame_holds_mixed_significance(self):
         """After ratification, frame contains klines of mixed significance."""
-        a = Agent()
+        a = KAgent()
         # Build a model with countersigned klines
         a.rationalise(KLine(10, [10]))  # canonical → frame
         a.rationalise(KLine(5, [10, 20]))  # may be S4 or route to candidate
@@ -440,7 +440,7 @@ class TestStructuralGrounding:
 
     def test_publish_no_auto_promote(self):
         """_publish does not auto-promote — promotion is explicit."""
-        a = Agent()
+        a = KAgent()
         events = []
         a.events.subscribe(lambda e: events.append(e))
         # Create a non-canonical kline that won't be fast-path promoted
@@ -456,7 +456,7 @@ class TestCogitatorStructuralGrounding:
 
     def test_boundary_s1_structural_promotes(self):
         """Boundary S1 on structurally S1 kline → promotion."""
-        a = Agent()
+        a = KAgent()
         # Build model with canonical kline
         c = KLine(10, [10])
         a.rationalise(c)
@@ -468,7 +468,7 @@ class TestCogitatorStructuralGrounding:
 
     def test_cogitator_countersignature_promotes_participating(self):
         """Countersignature discovery promotes all participating klines."""
-        a = Agent()
+        a = KAgent()
         # Build countersigned pair
         a.rationalise(KLine(10, [10]))  # canonical
         a.rationalise(KLine(5, [10, 20]))  # contains 10
@@ -478,7 +478,7 @@ class TestCogitatorStructuralGrounding:
 
     def test_expansion_proposals_emitted_as_events(self):
         """S2 expansion proposals are emitted as frame events."""
-        a = Agent()
+        a = KAgent()
         events = []
         a.events.subscribe(lambda e: events.append(e))
 
@@ -524,7 +524,7 @@ class TestCogitationHandlerProtocol:
 
     def test_agent_satisfies_protocol(self):
         """Agent implements CogitationHandler (runtime_checkable)."""
-        a = Agent()
+        a = KAgent()
         assert isinstance(a, CogitationHandler)
 
     def test_recording_handler_satisfies_protocol(self):
@@ -564,7 +564,7 @@ class TestCogitatorWithFakeHandler:
 
         recorder = RecordingCogitationHandler()
         event_bus = EventBus()
-        cogitator = Cogitator(model=m, event_bus=event_bus, handler=recorder)
+        cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder)
 
         # Query fully matches candidate → S1 after expand
         q = KLine(0, [10])
@@ -595,7 +595,7 @@ class TestCogitatorWithFakeHandler:
 
         recorder = RecordingCogitationHandler()
         event_bus = EventBus()
-        cogitator = Cogitator(model=m, event_bus=event_bus, handler=recorder)
+        cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder)
 
         # Query with no overlapping nodes to k3 → S3 after expand,
         # and k3 is misfit so _process triggers generate_expansions.
@@ -616,7 +616,7 @@ class TestCountersign:
 
     def test_countersign_returns_rationalise_result(self):
         """countersign returns the result of rationalise for the reciprocal kline."""
-        a = Agent()
+        a = KAgent()
         # Build a kline with non-empty nodes
         kline = KLine(0xFF, [10, 20])
         result = a.countersign(kline)
@@ -627,12 +627,12 @@ class TestCountersign:
 
     def test_countersign_reciprocal_construction(self):
         """Reciprocal kline is built as KLine(make_signature(kline.nodes), [kline.signature])."""
-        a = Agent()
+        a = KAgent()
         kline = KLine(0xAB, [10, 20, 30])
         expected_reciprocal_sig = make_signature([10, 20, 30])
         expected_reciprocal_nodes = [0xAB]
 
-        with patch.object(Agent, "rationalise", return_value=True) as mock_rationalise:
+        with patch.object(KAgent, "rationalise", return_value=True) as mock_rationalise:
             result = a.countersign(kline)
 
         assert result is True
@@ -643,12 +643,12 @@ class TestCountersign:
 
     def test_countersign_empty_nodes(self):
         """Empty nodes → reciprocal_sig=0, reciprocal_nodes=[kline.signature]."""
-        a = Agent()
+        a = KAgent()
         kline = KLine(0xCD, [])
         expected_reciprocal_sig = 0  # make_signature([]) == 0
         expected_reciprocal_nodes = [0xCD]
 
-        with patch.object(Agent, "rationalise", return_value=True) as mock_rationalise:
+        with patch.object(KAgent, "rationalise", return_value=True) as mock_rationalise:
             result = a.countersign(kline)
 
         assert result is True

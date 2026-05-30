@@ -28,7 +28,7 @@ for _mod_name in _MOCK_MODULES:
 
 # Ensure kalvin.Agent is importable (kalvin.__init__ doesn't export it)
 import kalvin as _kalvin_pkg
-from kalvin.agent import Agent as _RealAgent
+from kalvin.agent import KAgent as _RealAgent
 if not hasattr(_kalvin_pkg, "Agent"):
     _kalvin_pkg.Agent = _RealAgent
 

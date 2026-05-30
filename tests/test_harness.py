@@ -12,7 +12,7 @@ import json
 
 import pytest
 
-from kalvin.agent import Agent
+from kalvin.agent import KAgent
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX
 from kalvin.kline import KLine
@@ -43,7 +43,7 @@ class HarnessFixture:
 
     Attributes
     ----------
-    agent : Agent
+    agent : KAgent
         Real Agent instance used for rationalisation.
     submitted : set[tuple[int, tuple[int, ...]]]
         Entry keys fed to rationalise().  Monotonic; only ``clear()`` resets.
@@ -58,7 +58,7 @@ class HarnessFixture:
     """
 
     def __init__(self) -> None:
-        self._agent = Agent(tokenizer=_tok)
+        self._agent = KAgent(tokenizer=_tok)
         self._submitted: set[tuple[int, tuple[int, ...]]] = set()
         self._satisfied: set[tuple[int, tuple[int, ...]]] = set()
         self._responses: list[dict] = []
@@ -73,7 +73,7 @@ class HarnessFixture:
     # ── Properties ────────────────────────────────────────────────────
 
     @property
-    def agent(self) -> Agent:
+    def agent(self) -> KAgent:
         return self._agent
 
     @property
@@ -646,7 +646,7 @@ def test_agent_countersign():
     is_countersigned check because the original {Q: [V]} acts as
     countersigner for the reciprocal {V: [Q]}.
     """
-    a = Agent()
+    a = KAgent()
 
     # Add original kline to model
     original = KLine(42, [10])

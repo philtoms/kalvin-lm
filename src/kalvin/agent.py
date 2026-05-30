@@ -1,6 +1,6 @@
-"""Agent — orchestrator of the Kalvin rationalisation pipeline.
+"""KAgent — orchestrator of the Kalvin rationalisation pipeline.
 
-The Agent rationalises KLines against the Model using a fast/slow split:
+The KAgent rationalises KLines against the Model using a fast/slow split:
   - Fast path: routing (node membership) — no model calls. S1/S4 resolve instantly.
   - Slow path: cogitation — model.expand() per work item in a background thread.
 
@@ -70,12 +70,13 @@ class Cogitator:
     ----------
     model:
         Model instance for distance computation and countersignature checks.
-    event_bus:
-        EventBus for publishing events.
+    adapter:
+        Adapter for receiving events. Must implement ``on_event(event)``.
+        The EventBus class satisfies this protocol via its ``on_event`` method.
     handler:
         CogitationHandler implementation. Called when cogitation discovers
         significant results (S1 matches and S2/S3 expansion proposals).
-        The Agent is the primary implementation.
+        The KAgent is the primary implementation.
     timeout:
         Idle seconds before emitting "done" so subscribers can realign.
         Does not halt the thread. Default 2.0.
@@ -84,12 +85,12 @@ class Cogitator:
     def __init__(
         self,
         model: Model,
-        event_bus: EventBus,
+        adapter: Any,
         handler: CogitationHandler,
         timeout: float = 2.0,
     ):
         self._model = model
-        self._event_bus = event_bus
+        self._adapter = adapter
         self._handler = handler
         self._timeout = timeout
 
@@ -123,7 +124,7 @@ class Cogitator:
                     idle_time += 0.5
                     if idle_time >= self._timeout:
                         done_k = KLine(0, [], dbg_text="done")
-                        self._event_bus.publish(
+                        self._adapter.on_event(
                             RationaliseEvent("done", done_k, done_k, 0)
                         )
                         idle_time = 0.0
@@ -215,9 +216,9 @@ class Cogitator:
                 self._handler.on_expansion(query, companion, significance)
 
 
-# ── Agent ─────────────────────────────────────────────────────────────
+# ── KAgent ────────────────────────────────────────────────────────────
 
-class Agent:
+class KAgent:
     """Orchestrator of the rationalisation pipeline.
 
     Parameters
@@ -227,24 +228,28 @@ class Agent:
         Used for encoding text to nodes.
     model:
         Model instance serving as base knowledge graph. Defaults to empty Model.
+    adapter:
+        Adapter for receiving events. Must implement ``on_event(event)``.
+        Defaults to a new ``EventBus`` instance for backward compatibility.
     """
 
     def __init__(
         self,
         tokenizer: Any = None,
         model: Model | None = None,
+        adapter: Any = None,
     ):
         self._tokenizer = tokenizer if tokenizer else Mod32Tokenizer()
         self._model = model if model is not None else Model()
         self._activity: Counter = Counter()
 
-        # Pub/sub
-        self._event_bus = EventBus()
+        # Adapter — receives events via on_event()
+        self._adapter: Any = adapter if adapter is not None else EventBus()
 
-        # Cogitator — Agent is the CogitationHandler
+        # Cogitator — KAgent is the CogitationHandler
         self._cogitator = Cogitator(
             model=self._model,
-            event_bus=self._event_bus,
+            adapter=self._adapter,
             handler=self,
             timeout=2.0,
         )
@@ -260,8 +265,8 @@ class Agent:
         return self._tokenizer
 
     @property
-    def events(self) -> EventBus:
-        return self._event_bus
+    def events(self) -> Any:
+        return self._adapter
 
     @property
     def cogitator(self) -> Cogitator:
@@ -415,8 +420,8 @@ class Agent:
     # ── Events ────────────────────────────────────────────────────────
 
     def _publish(self, kind: str, query: KLine, proposal: KLine, significance: int) -> None:
-        """Publish a rationalisation event."""
-        self._event_bus.publish(RationaliseEvent(kind, query, proposal, significance))
+        """Publish a rationalisation event via the adapter."""
+        self._adapter.on_event(RationaliseEvent(kind, query, proposal, significance))
 
     # ── Countersign ───────────────────────────────────────────────────
 
@@ -457,7 +462,7 @@ class Agent:
         return self.codec().to_bytes()
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> Agent:
+    def from_bytes(cls, data: bytes) -> KAgent:
         """Deserialize from binary."""
         model, activity = AgentCodec.from_bytes(data)
         agent = cls(model=model)
@@ -469,7 +474,7 @@ class Agent:
         return self.codec().to_dict()
 
     @classmethod
-    def from_dict(cls, data: dict) -> Agent:
+    def from_dict(cls, data: dict) -> KAgent:
         """Deserialize from dict."""
         model, activity = AgentCodec.from_dict(data)
         agent = cls(model=model)
@@ -483,9 +488,13 @@ class Agent:
     @classmethod
     def load(
         cls, path: str | Path = "data/agent.bin", format: Literal["bin", "json"] | None = None
-    ) -> Agent:
+    ) -> KAgent:
         """Load from file."""
         model, activity = AgentCodec.load(path, format)
         agent = cls(model=model)
         agent._activity = activity
         return agent
+
+
+# Backward-compatible alias
+Agent = KAgent
