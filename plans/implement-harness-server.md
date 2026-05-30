@@ -1,7 +1,7 @@
 # Multi-Agent Harness Implementation Plan
 
 **Parent:** [`docs/roadmap.md`](../../docs/roadmap.md) Phase D
-**Status:** not started
+**Status:** complete
 **Spec refs:** `specs/harness-server.md`
 **Depends on:** Phase A+ (structural grounding, extended cogitation), Phase B (current TUI harness)
 
@@ -258,4 +258,4 @@ Task 1: KAgent rename + EventBus removal
 
 ## Status
 
-Not started. Awaiting spec review and roadmap update.
+**Complete.** All 12 tasks implemented. CLI entry point delivered in KB-025.

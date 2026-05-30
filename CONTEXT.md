@@ -40,7 +40,7 @@ The multi-agent runtime that loads participants and runs a dialogue loop between
 The KAgent's interface to the harness bus. Receives harness messages (submit, countersign) addressed to the KAgent, compiles KScript, and calls `kagent.rationalise()` or `kagent.countersign()`. The KAgent calls the adapter directly instead of publishing to an internal EventBus — the adapter wraps events into addressed harness messages and dispatches them to the sender. Maintains a sender map so it knows who to address responses to.
 
 **Harness Server**:
-The long-running harness process. Holds the message bus, loads configured participants, and manages the dialogue loop. Participants may be embedded (KAgent, Trainer) or connected clients (TUI, Slack agent).
+The long-running harness process. Holds the message bus, loads configured participants, and manages the dialogue loop. Participants may be embedded (KAgent, Trainer) or connected clients (TUI, Slack agent). Started via ``python -m harness --config harness.yaml``. Graceful shutdown on SIGTERM/SIGINT persists Trainer state.
 
 **TUI Participant**:
 A thin client participant that renders the KAgent's events for the human and provides ratification controls. Connects to the harness server like any other participant. Does not own the KAgent or make curriculum decisions — that's the Trainer's role. Launched by including it in the harness configuration.

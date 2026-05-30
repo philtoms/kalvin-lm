@@ -1,0 +1,28 @@
+# Harness configuration — all four participants
+# Usage: python -m harness --config harness.yaml
+
+server:
+  host: "localhost"
+  port: 8765
+
+trainer:
+  curriculum_path: ""          # Path to curriculum JSON (optional)
+  state_path: "trainer_state.json"  # Path for state persistence
+  max_reactive_rounds: 5
+
+participants:
+  - address: kalvin
+    type: embedded
+    class: KAgent
+
+  - address: trainer
+    type: embedded
+    class: Trainer
+
+  - address: slack
+    type: client
+    class: SlackParticipant
+
+  - address: ui
+    type: client
+    class: TUIParticipant
