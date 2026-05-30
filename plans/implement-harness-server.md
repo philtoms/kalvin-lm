@@ -182,8 +182,8 @@
 | HRNS-14 | tests/test_trainer.py | test_escalation_on_budget_exhaustion | ⬜ |
 | HRNS-15 | tests/test_curriculum.py | test_state_persistence_across_restart | ⬜ |
 | HRNS-16 | tests/test_trainer.py | test_one_session_at_a_time | ⬜ |
-| HRNS-17 | tests/test_slack_agent.py | test_forward_human_input_to_trainer | ⬜ |
-| HRNS-18 | tests/test_slack_agent.py | test_render_notify_to_slack | ⬜ |
+| HRNS-17 | tests/test_slack_agent.py | test_slack_forwards_human_input | ✅ |
+| HRNS-18 | tests/test_slack_agent.py | test_slack_renders_notify | ✅ |
 | HRNS-19 | tests/test_trainer.py | test_session_pause | ⬜ |
 | HRNS-20 | tests/test_trainer.py | test_session_stop | ⬜ |
 | HRNS-21 | tests/test_protocol.py | test_disconnect_silent_drop | ⬜ |
