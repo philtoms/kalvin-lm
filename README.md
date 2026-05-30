@@ -1,169 +1,155 @@
 # Kalvin
 
-PyTorch development project with MPS (Apple Silicon) support.
+A rationalising system whose entire world is built from **klines** — node-like structures with a signature (identity) and nodes (relationships). Kalvin receives new information, rationalises it against existing knowledge, and produces a response with a **significance** measurement indicating how well it understood.
 
-## Setup
+## What Kalvin Does
+
+Kalvin is not an oracle. Every response carries significance — a structural measurement of how grounded the response is in what Kalvin already knows:
+
+| Level | Meaning | Kalvin says |
+|-------|---------|-------------|
+| **S1** | Fully grounded | "I know this." |
+| **S2** | Partially understood | "I understand some of it." |
+| **S3** | Recognised aspects | "This reminds me of something." |
+| **S4** | Completely novel | "I've never seen this before." |
+
+This makes every response actionable. The other agent in the dialogue knows exactly where understanding is strong and where it breaks down.
+
+## The Multi-Agent System
+
+Kalvin operates inside a **harness** — a persistent server that loads agents and routes messages between them. All participants are equal: each has a unique address, sends addressed messages through the harness, and receives messages addressed to it.
+
+```
+Harness Server
+  ├── KAgent (Kalvin — the rationalisation engine)
+  ├── Trainer (drives the training loop, generates scaffolding)
+  ├── Slack agent (human-in-the-loop via Slack)
+  └── TUI agent (human-in-the-loop via terminal)
+```
+
+No participant knows it's in a training loop. Each simply receives and responds. The dialogue between them is the training.
+
+### How Training Works
+
+1. The **human** provides a goal and initial KScript via Slack.
+2. The **Trainer** breaks the goal into a curriculum and submits lessons to the KAgent.
+3. The **KAgent** rationalises each lesson, emitting events with significance.
+4. If lessons land at S1, the Trainer advances. If S2/S3, the Trainer enters reactive mode:
+   - Cogitates (via GLM-5.1) on what scaffolding to write.
+   - Submits reactive scaffolding to the KAgent.
+   - Auto-countersigns proposals that structurally match expectations.
+5. If stuck after N rounds, the Trainer **escalates** to the human via Slack.
+
+## KScript — The Language of Teaching
+
+KScript is a DSL for constructing knowledge graphs. It compiles declarative scripts into klines that the KAgent rationalises.
+
+```kscript
+(Mary had a little lamb)
+MHALL = SVO =>
+   S(ubject) = M
+   V(erb) = H
+   O(bject) = ALL =>
+     A > D(et)
+     L > M(od)
+     L > O
+```
+
+| Operator | Syntax | Significance | Meaning |
+|----------|--------|--------------|---------|
+| Countersign | `A == B` | S1 | Mutual / bidirectional |
+| Undersign | `A = B` | S1 | Unconditional |
+| Canonize | `A => B C` | S2 | Canonical |
+| Connotate | `A > B` | S3 | Connotative |
+| Unsigned | `A` | S4 | Identity only |
+
+Indented blocks are **scaffolding** — context that steers the KAgent toward understanding the parent line.
+
+## Getting Started
+
+### Install
 
 ```bash
-# Install dependencies
 uv sync
-
-# Install with dev tools
-uv sync --extra dev
-
-# Install with Jupyter support
-uv sync --extra notebooks
 ```
 
-## Usage
-
-### Device Management
-
-```python
-from kalvin import get_device, DeviceInfo
-from kalvin.device import print_device_status
-
-# Check available devices
-print_device_status()
-
-# Get the best available device
-device = get_device()
-print(f"Using device: {device}")
-
-# Move tensors to device
-import torch
-x = torch.randn(3, 3).to(device)
-```
-
-### Kalvin Model
-
-```python
-from kalvin import Kalvin
-
-# Initialize or load a model
-kalvin = Kalvin()
-kalvin = Kalvin.load("data/kalvin.bin")
-
-# Encode text
-embedding = kalvin.encode("Hello, world!")
-
-# Save model
-kalvin.save("data/kalvin.bin")
-```
-
-### Tokenizer
-
-```python
-from kalvin.tokenizer import Tokenizer
-
-# Train a new tokenizer
-tokenizer = Tokenizer()
-tokenizer.train(["text data...", "more text..."], vocab_size=4096)
-tokenizer.save_to_directory("data/tokenizer")
-
-# Load a trained tokenizer
-tokenizer = Tokenizer.from_directory("data/tokenizer")
-
-# Encode/decode
-ids = tokenizer.encode("Hello, world!")
-text = tokenizer.decode(ids)
-```
-
-## Scripts
-
-### encode_text.py
-
-Encode text files into Kalvin embeddings:
+### Run Tests
 
 ```bash
-# Encode a text file
-uv run python scripts/encode_text.py path/to/data.txt
-
-# Encode into an existing model
-uv run python scripts/encode_text.py path/to/data.txt data/kalvin.bin
+uv run pytest
 ```
 
-### ks_run.py
-
-Run KScript files to create or update Kalvin models:
+### KScript CLI
 
 ```bash
-# Create a new model from script
-uv run python scripts/ks_run.py my-script.ks
+# Compile a script
+uv run python -m kscript script.ks
 
-# Update an existing model
-uv run python scripts/ks_run.py my-script.ks --model existing.bin
-
-# Save as JSON format
-uv run python scripts/ks_run.py my-script.ks --format json
-
-# Verbose output
-uv run python scripts/ks_run.py my-script.ks -v
+# Output formats
+uv run python -m kscript script.ks -out output.json
+uv run python -m kscript script.ks -out output.bin
 ```
 
-See [src/kscript/README.md](src/kscript/README.md) for KScript syntax documentation.
-
-### train_tokenizer.py
-
-Train a BPE tokenizer on text data. Supports `.txt`, `.json`, and `.parquet` files.
-
-**JSON formats supported:**
-
-- `{"summaries": [{"summary": "..."}]}`
-- `[{"summary": "..."}]`
+### KScript TUI (standalone)
 
 ```bash
-# Train from a text file/directory (default vocab_size: 32768)
-uv run python scripts/train_tokenizer.py path/to/data.txt
+uv run python -m ui.kscript
+```
 
-# Train from JSON file/directory
-uv run python scripts/train_tokenizer.py path/to/data.json
+### Harness Server (multi-agent)
 
-# Train from parquet file/directory
-uv run python scripts/train_tokenizer.py path/to/parquets/
-
-# Train with custom vocab size
-uv run python scripts/train_tokenizer.py path/to/data.txt 8192
-
-# Custom JSON field name (default: summary)
-uv run python scripts/train_tokenizer.py data.json 4096 --json-field text
-
-# Custom output location
-uv run python scripts/train_tokenizer.py data.txt 4096 -o my_tokenizer -n my_tok
-
-# Use split-words pattern (separates contractions and punctuation into individual tokens)
-uv run python scripts/train_tokenizer.py data.txt 4096 --split-words
+```bash
+uv run python -m harness --config harness.yaml
 ```
 
 ## Project Structure
 
 ```
-kalvin/
-├── src/kalvin/
-│   ├── __init__.py      # Package exports
-│   ├── device.py        # Device detection and management
-│   ├── kalvin.py        # Main Kalvin model
-│   ├── model.py         # Model internals
-│   ├── tokenizer.py     # BPE tokenizer wrapper
-│   ├── significance.py  # Significance testing
-│   └── utils.py         # Utility functions
-├── scripts/
-│   ├── encode_text.py   # Text encoding script
-│   └── train_tokenizer.py  # Tokenizer training script
-├── tests/
-├── pyproject.toml
-└── README.md
+src/
+├── kalvin/               # Core rationalisation engine
+│   ├── kline.py          #   KLine data structure
+│   ├── signature.py      #   Signature computation
+│   ├── tokenizer.py      #   Tokenizer interface
+│   ├── mod_tokenizer.py  #   Mod32/Mod64 tokenizers
+│   ├── model.py          #   3-tier knowledge graph (STM → Frame → Base)
+│   ├── agent.py          #   KAgent — rationalisation pipeline + Cogitator
+│   ├── events.py         #   Event definitions
+│   └── ...
+├── kscript/              # KScript DSL
+│   ├── lexer.py          #   Lexer (source → tokens)
+│   ├── parser.py         #   Parser (tokens → AST)
+│   ├── compiler.py       #   Compiler (AST → compiled entries)
+│   └── decompiler.py     #   Decompiler (entries → KScript)
+├── harness/              # Multi-agent harness server
+│   ├── server.py         #   Harness server + config loading
+│   ├── bus.py            #   Addressed message bus
+│   ├── adapter.py        #   KAgent ↔ bus adapter
+│   └── protocol.py       #   WebSocket wire protocol
+├── trainer/              # Trainer participant
+│   ├── trainer.py        #   Curriculum execution + reactive mode
+│   ├── curriculum.py     #   Curriculum state + persistence
+│   └── cogitation.py     #   GLM-5.1 integration
+└── participants/         # Client participants
+    ├── slack_agent.py    #   Slack ↔ harness
+    └── tui_client.py     #   TUI ↔ harness
 ```
+
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [`CONTEXT.md`](CONTEXT.md) | Domain glossary — precise definitions of all terms |
+| [`docs/kalvin-introduction.md`](docs/kalvin-introduction.md) | What Kalvin is and why it works this way |
+| [`docs/kalvin-origin.md`](docs/kalvin-origin.md) | Conceptual model and philosophy |
+| [`docs/roadmap.md`](docs/roadmap.md) | Build phases, dependency graph, current status |
+| [`docs/adr/`](docs/adr/) | Architectural decision records |
+| [`specs/`](specs/) | Testable behavioural contracts |
+| [`plans/`](plans/) | Implementation strategy and test mapping |
 
 ## Development
 
 ```bash
-# Run tests
-uv run pytest
-
-# Format code
-uv run ruff format .
-
-# Type check
-uv run mypy src/
+uv run pytest                    # Run tests
+uv run ruff format .             # Format code
+uv run ruff check .              # Lint
 ```
