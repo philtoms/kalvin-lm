@@ -161,6 +161,15 @@ When countersignature fails for an S2 result, the Cogitator attempts to reshape 
 
 Repurpose the existing KScript TUI (`ui/kscript/`) into a training loop supervisor. The harness compiles KScript entries, submits only new entries to the Agent, tracks submission/satisfaction state monotonically, displays proposals with significance (raw hex + normalised 0.0–1.0), and provides ratification controls (auto in Run mode, manual in Step mode). Adds `Agent.countersign(kline)` for reciprocal kline generation. State persists through hot-reload cycles.
 
+### Phase D: Multi-Agent Harness Server
+**Estimate:** 12–17 days  
+**Spec:** `specs/harness-server.md` — HRNS-1 through HRNS-24  
+**Plan:** `plans/implement-harness-server.md`  
+**Depends on:** Phase B  
+**Risk:** Medium (GLM-5.1 integration quality unknown)
+
+Refactor the harness from a monolithic TUI into a persistent multi-agent server. The harness becomes a message broker: participants (KAgent, Trainer, Slack agent, TUI) communicate through addressed messages routed by the harness. Key changes: rename Agent → KAgent, remove internal EventBus in favour of direct adapter callbacks, add thread-safe message bus with single-dispatch event loop, add WebSocket protocol for client participants, build Trainer participant (curriculum execution, reactive scaffolding via GLM-5.1, ratification, escalation), build Slack participant (human↔Trainer communication), and thin the TUI into a rendering-only client.
+
 ### Phase C: Model Quality and Evaluation
 **Estimate:** 2–3 weeks (ongoing)  
 **Risk:** Medium  
@@ -193,6 +202,8 @@ Phase 0: Scaffold
                                                                        │
                                                   Phase B: Test Harness
                                                                        │
+                                                  Phase D: Multi-Agent Harness Server
+                                                                       │
                                                   Phase C: Model Quality (ongoing)
 ```
 
@@ -213,7 +224,8 @@ Phase 0: Scaffold
 | Agent | `specs/agent.md` | `plans/impl/agent.md` §3 | `src/kalvin/agent.py` | AGT-1..AGT-40 | 2d |
 | KScript | `specs/kscript.md` | `plans/implement-kscript.md` | `kscript/` (9 files) | KS-1..KS-33 | 2d |
 | Test Harness | `specs/harness.md` | `plans/impl/harness.md` | `ui/kscript/` (7 files), `src/kalvin/agent.py` | HRN-1..HRN-18 | 3–5d |
-| **Subtotal** | | | | **~238 test criteria** | **~14–16d** |
+| Harness Server | `specs/harness-server.md` | `plans/implement-harness-server.md` | `src/harness/`, `src/trainer/`, `src/participants/` | HRNS-1..HRNS-24 | 12–17d |
+| **Subtotal** | | | | **~262 test criteria** | **~26–33d** |
 
 ---
 
@@ -231,7 +243,8 @@ Total spec IDs across all components:
 | `specs/agent.md` | AGT-1..AGT-40 | 40 |
 | `specs/kscript.md` | KS-1..KS-33 | 33 |
 | `specs/harness.md` | HRN-1..HRN-18 | 18 |
-| **Total** | | **188** |
+| `specs/harness-server.md` | HRNS-1..HRNS-24 | 24 |
+| **Total** | | **212** |
 
 ---
 
@@ -242,6 +255,9 @@ Total spec IDs across all components:
 | `expand()` distance algorithm may need iteration | High | 5 | S2 distance uses per-node hop-distance; evolve based on real data from Phase C |
 | All-literal signature collision (sig=1 for all) | Medium | 5 | Fast-path in Assess phase; accept degenerate indexing |
 | Candidate retrieval O(N) scan too slow for large models | Medium | 5, C | Profile first; add inverted bit index if needed |
+| GLM-5.1 scaffolding quality unpredictable | High | D | Start with simple reactive scaffolding; iterate on prompt engineering |
+| Trainer reactive loop may not converge | Medium | D | Budget-based escalation; human always in the loop |
+| WebSocket client reconnection reliability | Low | D | Silent drop on disconnect; reconnect re-registers |
 | Cogitation thread safety bugs | Medium | 8 | Thorough concurrent testing; keep thread logic simple |
 | Expansion proposal quality (too many / too few) | Medium | A+ | Top-k limit or depth controls in future iteration |
 | BPE tokenizer optional deps fragile | Low | 3 | BPE entirely optional; core system works with Mod only |
@@ -260,6 +276,8 @@ Total spec IDs across all components:
 | 5 | Should expansion proposals have depth/k limits? | Phase A+ | Low |
 | 6 | BPE tokenizer priority: needed for MVP or Mod-only sufficient? | Phase 3 | Low |
 | 7 | Persistence: JSON sufficient from day one, or binary required? | Phase 8 | Low |
+| 8 | How well does GLM-5.1 generate scaffolding given misfit context? | Phase D | High |
+| 9 | Should the Trainer's reactive budget be configurable per curriculum? | Phase D | Medium |
 
 ---
 
@@ -272,3 +290,6 @@ These are not required for the training loop to work.
 - **Kalvin-as-tutor** — a Kalvin instance that acts as agent for another, using reentrant rationalisation for structural equivalence instead of exact kline matching
 - **Inverted bit-index** — for sub-linear candidate retrieval in large models
 - **BPE tokenizer** — for non-toy domains requiring larger vocabularies
+- **Dynamic participant registration** — join/leave at runtime, not just at startup
+- **Multiple concurrent training sessions** — interleaved curricula on a shared KAgent
+- **Trainer-as-curriculum-designer** — GLM-5.1 generates full curricula from natural language goals
