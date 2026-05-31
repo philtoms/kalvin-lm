@@ -6,7 +6,6 @@ server:
   port: 8765
 
 trainer:
-  curriculum_path: ""          # Path to curriculum JSON (optional)
   state_path: "trainer_state.json"  # Path for state persistence
   max_reactive_rounds: 5
 

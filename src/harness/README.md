@@ -23,16 +23,17 @@ Harness Server (python -m harness)
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
-2. [Configuration](#configuration)
-3. [API Keys & Environment Variables](#api-keys--environment-variables)
-4. [Running the Harness](#running-the-harness)
-5. [Architecture](#architecture)
-6. [Participants](#participants)
-7. [Wire Protocol](#wire-protocol)
-8. [How to Participate (Write a Custom Client)](#how-to-participate-write-a-custom-client)
-9. [Message Flow](#message-flow)
-10. [Graceful Shutdown & State Persistence](#graceful-shutdown--state-persistence)
-11. [Testing](#testing)
+2. [Curriculum](#curriculum)
+3. [Configuration](#configuration)
+4. [API Keys & Environment Variables](#api-keys--environment-variables)
+5. [Running the Harness](#running-the-harness)
+6. [Architecture](#architecture)
+7. [Participants](#participants)
+8. [Wire Protocol](#wire-protocol)
+9. [How to Participate (Write a Custom Client)](#how-to-participate-write-a-custom-client)
+10. [Message Flow](#message-flow)
+11. [Graceful Shutdown & State Persistence](#graceful-shutdown--state-persistence)
+12. [Testing](#testing)
 
 ---
 
@@ -55,6 +56,187 @@ uv run python -m harness --config harness.yaml
 
 The harness starts, loads the embedded Kalvin and Trainer, and listens for WebSocket connections from the Slack and TUI clients.
 
+To start training, send a goal via Slack or the TUI:
+
+```
+goal: build a curriculum around the nursery rhyme "Mary had a little lamb"
+```
+
+Or supply a path to an existing curriculum file:
+
+```
+goal: curricula/mary-had-a-little-lamb.md
+```
+
+See [Curriculum](#curriculum) for the full lifecycle.
+
+---
+
+## Curriculum
+
+A curriculum is a **living structured document** — a markdown file that drives the entire training session. It contains three sections:
+
+| Section | Purpose |
+|---------|----------|
+| **Objective** | What this curriculum teaches. One or two paragraphs. |
+| **Approach** | The pedagogical strategy — the order and rationale for the lessons. |
+| **Lessons** | Ordered KScript entries, each with a human-readable heading and context. |
+
+### Example
+
+```markdown
+# Curriculum: Syntactic Foundations of "Mary Had a Little Lamb"
+
+## Objective
+
+Teach Kalvin to decompose a simple English sentence into its grammatical
+components, so that it can recognise subject-verb-object structure in
+unfamiliar sentences later in the curriculum.
+
+## Approach
+
+Start by grounding the individual tokens as identities (S4). Then build
+the composite signature for the full sentence and decompose it into its
+constituent roles (Subject, Verb, Object). Each lesson introduces one
+layer of structure, with scaffolding that anticipates the countersign
+relationships.
+
+## Lessons
+
+### Lesson 1: Ground the tokens
+
+Establish each word as an identity kline so Kalvin has raw material
+to work with.
+
+```kscript
+Mary
+had
+a
+little
+lamb
+```
+
+### Lesson 2: Compose the full sentence
+
+Build the composite signature M-H-A-L-L and ground it as a
+self-referential unit.
+
+```kscript
+MHALL = M H A L L
+```
+
+### Lesson 3: Introduce grammatical roles
+
+Decompose the sentence into subject, verb, and object.
+
+```kscript
+MHALL => S V O
+  S(ubject) = M
+  V(erb) = H
+  O(bject) = ALL
+    A > D(et)
+    L > M(od)
+    L > O
+```
+
+### Lesson 4: Reinforce with countersigns
+
+Bidirectional links cement the relationships.
+
+```kscript
+M == S
+H == V
+ALL == O
+```
+```
+
+### Starting a New Curriculum
+
+There are three ways to start a training session:
+
+1. **Natural language goal.** Send a high-level request via Slack or the TUI:
+   ```
+   goal: build a curriculum around "Mary had a little lamb" that includes
+   steps to isolate the syntax of the text
+   ```
+   The Trainer uses GLM-5.1 to generate a full curriculum document, writes
+   it to the `curricula/` directory, and starts training immediately.
+
+2. **Existing file.** Supply the path to a pre-written curriculum:
+   ```
+   goal: curricula/mary-had-a-little-lamb.md
+   ```
+   The Trainer loads the file and starts training.
+
+3. **Resume.** If no goal is provided and the Trainer has persisted state
+   from a previous session, it resumes automatically from the saved position.
+
+### Reviewing Progress
+
+The Trainer publishes **progress events** after each lesson completes. These
+appear in the Slack channel and the TUI event log, showing:
+
+- Which lesson just completed (label and title)
+- Status: satisfied, pending, or escalated
+- A brief summary
+
+You can also open the curriculum file directly — since it's a regular
+markdown document, it's readable in any editor. The `curricula/` directory
+contains all generated and curated curriculum files.
+
+### Amending a Running Curriculum
+
+The curriculum is a **living document** — it can be changed at any time
+during a training session. Two approaches:
+
+1. **Edit the file directly.** Open the curriculum markdown file in any
+   editor and make your changes. The Trainer re-reads the file before each
+   lesson, so your changes are picked up at the next natural checkpoint.
+
+2. **Ask the Trainer.** Send a message via Slack or the TUI:
+   ```
+   Add a bridging lesson between lesson 2 and lesson 3 that grounds
+   the individual tokens as SVO components before composition
+   ```
+   The Trainer uses GLM-5.1 to generate the amendment and writes it into
+   the curriculum file.
+
+In both cases, the Trainer resumes from the first unsubmitted lesson in
+the updated document. Kalvin's monotonic submitted set ensures that only
+new klines are compiled and submitted — nothing re-runs.
+
+### Lesson Labelling
+
+Lessons are identified by stable labels derived from their headings:
+
+- **Whole numbers** (1, 2, 3) indicate distinct conceptual steps.
+- **Sub-labels** (2a, 2b) indicate lessons semantically related to their
+  parent — refinements, bridges, or remediations.
+- If a new lesson is logically subsequent but **not** semantically related,
+  the document is renumbered instead.
+
+```markdown
+### Lesson 2: Compose the full sentence
+### Lesson 2a: Bridge token identity to composition   ← refines lesson 2
+### Lesson 3: Introduce grammatical roles             ← renumbered, new concept
+```
+
+The curriculum should always read as a logical and temporal narrative.
+
+### Reactive Scaffolding
+
+When Kalvin hits an S2/S3 event (partial understanding), the Trainer
+enters reactive mode and generates scaffolding via GLM-5.1. This
+scaffolding is written into the curriculum as a new lesson — making the
+Trainer's reactive work visible, persistent, and auditable.
+
+### Rollback and Replay
+
+The curriculum **never** reverts — it only evolves forward. If Kalvin's
+performance is outside expectations, the operator resets Kalvin's model
+state and replays the current curriculum from lesson 1. Because the
+submitted set is monotonic, replay is safe and efficient.
+
 ---
 
 ## Configuration
@@ -71,7 +253,6 @@ server:
 
 # Trainer settings
 trainer:
-  curriculum_path: "" # Path to curriculum JSON (optional)
   state_path: "trainer_state.json" # Path for state persistence across restarts
   max_reactive_rounds: 5 # Max reactive scaffolding rounds before escalation
 
@@ -102,7 +283,6 @@ participants:
 | ---------------- | --------------------- | ---------------------- | ----------------------------------------------------------------------- |
 | `server`         | `host`                | `"localhost"`          | WebSocket server bind address                                           |
 | `server`         | `port`                | `8765`                 | WebSocket server bind port                                              |
-| `trainer`        | `curriculum_path`     | `""`                   | Path to a curriculum JSON file (optional)                               |
 | `trainer`        | `state_path`          | `"trainer_state.json"` | File for Trainer state persistence                                      |
 | `trainer`        | `max_reactive_rounds` | `5`                    | Reactive scaffolding budget before escalation                           |
 | `participants[]` | `address`             | —                      | Unique bus address for this participant                                 |
@@ -193,6 +373,8 @@ options:
 5. **WebSocket server started** — Listens on the configured host:port for client participants.
 6. **Blocked** — The main thread runs the async event loop, waiting for SIGINT / SIGTERM.
 
+After startup, the Trainer checks for saved state. If found, it resumes the previous session. Otherwise, it waits for a goal from a human participant (see [Curriculum](#curriculum)).
+
 ---
 
 ## Architecture
@@ -246,25 +428,30 @@ Events from Kalvin are routed back to the original sender (stored in a sender ma
 
 #### Trainer (`address: "trainer"`)
 
-Drives the training loop:
+Drives the training loop. Holds LLM access for curriculum generation and reactive scaffolding:
 
-| Incoming Action    | Behaviour                                                                                                               |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `ground` / `frame` | Kalvin events. S1 events auto-satisfy. S2/S3 events trigger reactive mode (auto-countersign → cogitation → escalation). |
-| `input`            | Human input from Slack. Supports commands: `goal: <text>`, `pause`, `stop`, `resume`, or freeform guidance text.        |
-| `error`            | Kalvin compilation error. Logged and counted toward lesson completion.                                                  |
+| Incoming Action       | Behaviour                                                                                                               |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `ground` / `frame`    | Kalvin events. S1 events auto-satisfy. S2/S3 events trigger reactive mode (auto-countersign → cogitation → escalation). |
+| `input`               | Human input from Slack/TUI. Supports: `goal: <text or path>`, `pause`, `stop`, `resume`, amendment requests, or guidance. |
+| `error`               | Kalvin compilation error. Logged and counted toward lesson completion.                                                  |
+| `progress`            | Published by the Trainer after each lesson completes. Consumed by TUI and Slack to display status.                      |
 
 **Trainer lifecycle:**
 
-1. Receives `goal:` input → starts a training session.
-2. Submits lessons from the curriculum to `"kalvin"` via `submit` messages.
-3. Listens for ground/frame events:
+1. **Startup** — checks for saved state (resume) or waits for a goal.
+2. **Goal received** — natural language → generate curriculum via GLM-5.1, or file path → load directly.
+3. Submits lessons from the curriculum to `"kalvin"` via `submit` messages. Re-reads the curriculum file before each lesson to pick up amendments.
+4. Listens for ground/frame events:
    - **S1** (fully grounded) → auto-satisfy, advance curriculum.
    - **S2/S3** → try auto-countersign, then reactive mode:
      - Up to `max_reactive_rounds` of cogitation.
-     - If cogitation generates scaffolding → submit to Kalvin.
+     - If cogitation generates scaffolding → write as a new lesson in the curriculum, then submit.
      - If stuck → **escalate** to human via `"slack"` with a `notify` message.
-4. When curriculum is complete → end session, persist state, process queued goals.
+5. Publishes **progress events** after each lesson completes.
+6. When curriculum is complete → end session, persist state, process queued goals.
+
+Any participant can request a curriculum amendment by messaging the Trainer. The Trainer uses GLM-5.1 to generate the amendment and writes it to the curriculum file. Amendments take effect at the next lesson boundary.
 
 ### Client Participants
 
@@ -527,12 +714,12 @@ The harness handles `SIGINT` (Ctrl+C) and `SIGTERM` gracefully:
 1. **WebSocket server** is closed — existing connections are dropped.
 2. **Bus event loop** is stopped.
 3. **Trainer state** is persisted to `trainer_state.json` (if `state_path` is configured). This includes:
-   - Curriculum position
-   - All lessons
+   - Curriculum file path
+   - Current lesson label (stable identity)
    - Submitted / satisfied / pending entry sets
    - Append-only event log
 
-On restart, the Trainer can call `CurriculumState.load(path)` to resume from the persisted state.
+On restart, the Trainer loads its persisted state and resumes the curriculum from the saved position. The curriculum file itself is never rolled back — only Kalvin's model state can be reset for a full replay.
 
 ---
 
