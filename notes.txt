@@ -1402,3 +1402,46 @@ The operations supported by KScript bind two klines together in a way that captu
 |  Canon           | AB => A B  | {A: [A]}, {B: [B]}| {AB: [A, B]} |
 |  Overfit         | A => A B   | {A: [A]}, {B: [B]}| {A: [A, B]} |
 |  Underfit        | AB => A    | {A: [A]}, {B: [B]}| {AB: [A]} |
+
+The purpose of Kalvin
+This opening paragraph introduces how kalvin operates but it does not attempt to describe what it is designed to do. Interrogate me to find out more about what kalvin is supposed to be used for.
+
+Kalvin, as a rationalising agent, engages in dialogue to answers questions, propose new ideas and act out instructions according to its own understanding. It can be trained to use tools.
+
+Kalvin is a rationalising agent, designed to interact and communicate with other rationalising agents. To be rational is to understand communicated ideas
+The information that flows between agents in a kalvin dialogue is a shared understanding of intent, planning, story telling, mentoring, and just about any other kind of information that grows out of  
+
+1. I cant answer this directly. Here is a list of things that Kalvin does differently: It engages in dialogue, it shows Reaching a shared understanding between active agents
+2. More interaction. A trained Kalvin will still be naturally inquisitive, will build and demonstrate understanding of a shared communication. Actions that 
+4. Its currently under research but its intended to be used as a product
+Kalvin is built around the idea of rationalisation. This is the ability to reason and hence understand communicated intent in its own terms.
+
+Kalvin is solving the same kinds of problems that more established AI addresses. The notable difference is that it is always ready to learn new things.
+The one thing that distinguishes Kalvin the idea that it always tests its own understanding. 
+is a shared understanding of an idea, not just as a response, but as it evolves into a solution. It is designed to act 
+
+Kalvin is a rationalizing agent that manages the tension between new information (the input) and established knowledge (its own world model). It functions as a dynamic, expanding graph where the "work" of the agent is to resolve entropy through Rationalization—transforming the representation of new ideas to achieve integration into the existing model.
+
+The current system uses OR'd token encodings as the nodes of its graph. This means that it is a structural representation of whatever token combinations are passed to it. There is no semantic understanding. It is pure mapping. The training support that needs to be added to Kalvin would allow it to learn its own semantics. Although this is similar to generalisation, the goal is different. 
+
+So this is the crux of the problem: The current system creates a hierarchy but it is just a mapping between generated tokens and so is limited to a single 64bit address space (Mod32 restricts it further but that is irrelevant). The system needs to evolve to address deeper hierarchies that require routing in 64 bit hops. This deeper hierarchy could in theory be mapped onto a high dimensional space but that would be prohibitively expensive. Instead, kalvin learns to cluster its neighbourhoods somehow so that the next hop is always < 64bits. That "somehow" is to be decided. I have suggested gradient descent but that was just an idea. There are 2 kinds of learning at play. The first is what Kalvin learns from the outside world - that's ratification. The second concerns how Kalvin learns to organise its internal structure - that's what we are trying to decide.
+
+Lets use the nursery rhyme "Mary had a little lamb" as an example of what we need Kalvin to learn and how this might be expressed through neighbourhood hopping. In MW where Kalvin starts with a blank slate, the concept of lamb will be very close to the line MHALL. Later in the training, when Kalvin has been taught that lamb can also refer to food, MHALL might be revisited. This time Kalvin needs to hop to the nursery rhyme cluster than the food cluster.  
+
+Neighbourhoods cannot split. This means that a new neighbourhood comes into existence. There are 2 strategies I have in mind.
+1. Kalvin experiments with new neighbourhoods during cogitation. This is where some kind of learning might be applied.
+2. New neighbourhoods are created on ratification. This is similar to how kalvin promotes all klines related to the ratified kline. This would produce a neighbourhood of related klines.
+
+These ideas may be 2 aspects of the same mechanism where 1) generates them and 2) promotes them. Or they may just be complimentary mechanisms, or maybe just one or the other will be used.
+
+I want to replace the token based signature generation with a learned value based generation scheme. Currently the shape of a signature is the OR'd token values of the nodes in a KLine. This produces a deterministic mapping of input to graph which has no semantic value. What is needed is a learned value scheme: signature still generated from OR'd node values, but these values will be the learned values, not the token values.
+
+The question of how does Kalvin learn immediately arises. This is the question that we need to discuss in order to reach agreement over how to proceed with development.
+
+Some of the parts of this puzzle are already there but hiding in plain sight. For example, the STM holds lots of klines related to the query. This can serve as the context. Its already implemented as a window, so this translates to a windowed context which becomes a temporal concern.
+
+When Kalvin's graph is empty, the klines in the STM have no semantic value whatsoever. But when a kline is ratified, suddenly the relationships in context gain semantic value: these are the klines associated with the ratification. 
+
+I want to create an agent-in-the-loop that runs the harness on behalf of a human user. It needs at a minimum to understand the structure of proposals so that it can create appropriate scaffolding. Ideally this agent would be able to communicate with a human through slack (the agent app already exists - details later) when it needs additional support and or information, or when it has made some significant progress and wants to update the human. The agent will likely have the assistance of a language model (GLM-5.1) when deciding what scaffolding is needed. This assistant may even propose writing the initial KScripts.
+
+We'll handle the details of glm cooperation in another grill session. For now it is enough to describe the architectural details: The harness needs to generate a prompt, set up tool calling, call the LLM API. It needs to be able to extract and compile the recommended scaffolding. The aim of this session is to understand the new architecture needed for sustained multi agent interaction. 

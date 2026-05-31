@@ -9,6 +9,10 @@ Test mapping:
   - RatifyBar: button state management
   - InputBar: Submitted message, clear method
   - TUIApp: countersign integration, event polling
+  - HRNS-25: test_renders_received_events — EventLog renders all incoming harness frames
+  - HRNS-26: test_sends_freeform_input_to_trainer — InputBar dispatches freeform input to trainer
+  - HRNS-27: test_sends_countersign_on_ratify — RatifyBar sends countersign to kalvin (ctrl+r)
+  - HRNS-28: test_input_bar_clears_after_send — InputBar clears text field after submission
 """
 
 from __future__ import annotations
@@ -388,6 +392,7 @@ async def test_tuiapp_input_sends_to_trainer():
 
             # Type text into the input bar and submit
             input_field = app.query_one("#input-bar-field")
+            input_field.focus()
             input_field.value = "hello from human"
             await pilot.press("enter")
             await asyncio.sleep(0.2)
@@ -427,3 +432,133 @@ async def test_tuiapp_ctrl_s_sends_input():
 
             # Input should be cleared
             assert input_field.value == ""
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# HRNS-25..28 TUI Participant capability tests
+# ═══════════════════════════════════════════════════════════════════════
+
+
+async def test_renders_received_events():
+    """HRNS-25: EventLog renders all received harness events in order.
+
+    The server sends multiple frames of different action types (event,
+    notify, proposal). All frames must appear in EventLog.events with
+    correct action and message fields, in order, with none dropped.
+    """
+    async with StubHarness() as stub:
+        app = TUIApp(harness_url=stub.url)
+
+        async with app.run_test() as pilot:
+            await stub.wait_for_frames(1)  # registration frame
+
+            # Server sends three frames of different action types
+            frames = [
+                {"address": "ui", "action": "event", "message": {"kind": "frame"}},
+                {"address": "ui", "action": "notify", "message": "session started"},
+                {"address": "ui", "action": "proposal", "message": {"sig": 42, "nodes": [1, 2]}},
+            ]
+            for frame in frames:
+                await stub.send_to_client(frame)
+
+            # Wait for event polling to pick up all frames
+            await asyncio.sleep(0.8)
+
+            event_log = app.query_one(EventLog)
+            assert len(event_log.events) >= 3
+
+            # Verify each frame is stored with correct action and message
+            stored = event_log.events
+            assert stored[0]["action"] == "event"
+            assert stored[0]["message"] == {"kind": "frame"}
+
+            assert stored[1]["action"] == "notify"
+            assert stored[1]["message"] == "session started"
+
+            assert stored[2]["action"] == "proposal"
+            assert stored[2]["message"] == {"sig": 42, "nodes": [1, 2]}
+
+
+async def test_sends_freeform_input_to_trainer():
+    """HRNS-26: InputBar dispatches freeform human input to the Trainer.
+
+    Simulates typing text and pressing Enter in the InputBar.
+    Verifies the stub server receives
+    ``{address: "trainer", action: "input", message: <typed_text>}``.
+    """
+    async with StubHarness() as stub:
+        app = TUIApp(harness_url=stub.url)
+
+        async with app.run_test() as pilot:
+            await stub.wait_for_frames(1)  # registration frame
+
+            input_field = app.query_one("#input-bar-field")
+            input_field.focus()
+            input_field.value = "what is the capital of France?"
+            await pilot.press("enter")
+            await asyncio.sleep(0.2)
+
+            await stub.wait_for_frames(2, timeout=3.0)
+
+            msg = stub.received_frames[1]
+            assert msg["address"] == "trainer"
+            assert msg["action"] == "input"
+            assert msg["message"] == "what is the capital of France?"
+
+
+async def test_sends_countersign_on_ratify():
+    """HRNS-27: RatifyBar sends countersign to kalvin on ctrl+r.
+
+    Enables ratify with event data, then presses ctrl+r to trigger
+    the ratify keyboard shortcut. Verifies the stub server receives
+    ``{address: "kalvin", action: "countersign", message: <event_data>}``.
+    """
+    async with StubHarness() as stub:
+        app = TUIApp(harness_url=stub.url)
+
+        async with app.run_test() as pilot:
+            await stub.wait_for_frames(1)  # registration frame
+
+            # Enable ratify with event data
+            event_data = {"sig": 99, "nodes": [5, 10]}
+            ratify_bar = app.query_one(RatifyBar)
+            ratify_bar.enable_ratify(event_data)
+
+            # Trigger ratify via ctrl+r keyboard shortcut
+            await pilot.press("ctrl+r")
+            await asyncio.sleep(0.2)
+
+            await stub.wait_for_frames(2, timeout=3.0)
+
+            msg = stub.received_frames[1]
+            assert msg["address"] == "kalvin"
+            assert msg["action"] == "countersign"
+            assert msg["message"] == {"sig": 99, "nodes": [5, 10]}
+
+
+async def test_input_bar_clears_after_send():
+    """HRNS-28: InputBar clears its text field after submission.
+
+    Types text into the InputBar, triggers submission, and verifies
+    the InputBar's text value is empty after the send completes.
+    """
+    async with StubHarness() as stub:
+        app = TUIApp(harness_url=stub.url)
+
+        async with app.run_test() as pilot:
+            await stub.wait_for_frames(1)  # registration frame
+
+            input_field = app.query_one("#input-bar-field")
+            input_field.focus()
+            input_field.value = "clear me after send"
+            await pilot.press("enter")
+            await asyncio.sleep(0.2)
+
+            # Verify the input field is cleared
+            assert input_field.value == ""
+
+            # Verify the message was actually sent (not just cleared)
+            await stub.wait_for_frames(2, timeout=3.0)
+            msg = stub.received_frames[1]
+            assert msg["action"] == "input"
+            assert msg["message"] == "clear me after send"

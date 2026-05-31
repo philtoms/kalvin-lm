@@ -193,10 +193,10 @@
 | HRNS-22 | tests/test_adapter.py | test_kagent_calls_adapter_directly | ⬜ |
 | HRNS-23 | tests/test_bus.py | test_single_dispatch_thread | ⬜ |
 | HRNS-24 | tests/test_trainer.py | test_entry_counting_lesson_complete | ⬜ |
-| HRNS-25 | tests/test_tui_client.py | test_renders_received_events | ⬜ |
-| HRNS-26 | tests/test_tui_client.py | test_sends_freeform_input_to_trainer | ⬜ |
-| HRNS-27 | tests/test_tui_client.py | test_sends_countersign_on_ratify | ⬜ |
-| HRNS-28 | tests/test_tui_client.py | test_input_bar_clears_after_send | ⬜ |
+| HRNS-25 | tests/test_tui_client.py | test_renders_received_events | ✅ |
+| HRNS-26 | tests/test_tui_client.py | test_sends_freeform_input_to_trainer | ✅ |
+| HRNS-27 | tests/test_tui_client.py | test_sends_countersign_on_ratify | ✅ |
+| HRNS-28 | tests/test_tui_client.py | test_input_bar_clears_after_send | ✅ |
 
 ## Design Decisions
 
