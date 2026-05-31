@@ -5,12 +5,12 @@
 
 ## Context
 
-The existing harness is a monolithic TUI that directly owns the KAgent, compiles KScript, submits entries, and handles ratification. This couples the training loop to a single UI framework and a single human interaction mode.
+The existing harness is a monolithic TUI that directly owns Kalvin, compiles KScript, submits entries, and handles ratification. This couples the training loop to a single UI framework and a single human interaction mode.
 
 The system needs to support:
 - A Trainer agent that drives the training loop autonomously
 - Multiple human-in-the-loop modalities (TUI, Slack)
-- The KAgent remaining unaware of the training loop
+- Kalvin remaining unaware of the training loop
 
 ## Decision
 
@@ -18,8 +18,8 @@ The harness becomes a persistent server with a thread-safe addressed message bus
 
 Key structural choices:
 1. **Addressed routing, not typed events.** No message type taxonomy — just address + action. Simpler, and participants interpret actions for themselves.
-2. **Single dispatch thread.** Thread-safe queue feeds a single event loop. The KAgent's Cogitator thread sends through the queue; handlers execute on the dispatch thread.
-3. **KAgent calls adapter directly.** No internal EventBus — the adapter implements the callback protocol and wraps events into bus messages.
+2. **Single dispatch thread.** Thread-safe queue feeds a single event loop. Kalvin's Cogitator thread sends through the queue; handlers execute on the dispatch thread.
+3. **Kalvin calls adapter directly.** No internal EventBus — the adapter implements the callback protocol and wraps events into bus messages.
 4. **Embedded Trainer, connected clients.** The Trainer lives in-process. The TUI and Slack agent connect via WebSocket.
 
 ## Alternatives Considered
@@ -36,6 +36,6 @@ No WebSocket; everything in one process. Rejected because the TUI is a Textual a
 ## Consequences
 
 - Adding a new participant type requires implementing the `Participant` protocol and listing it in the config — no harness code changes.
-- The KAgent loses its internal EventBus, requiring a refactor of event publishing.
-- The TUI becomes a thin WebSocket client, losing its direct ownership of the KAgent.
+- Kalvin loses its internal EventBus, requiring a refactor of event publishing.
+- The TUI becomes a thin WebSocket client, losing its direct ownership of Kalvin.
 - Wire protocol (WebSocket + JSON) adds a dependency on a WebSocket library.

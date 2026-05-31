@@ -168,7 +168,7 @@ Repurpose the existing KScript TUI (`ui/kscript/`) into a training loop supervis
 **Depends on:** Phase B  
 **Risk:** Medium (GLM-5.1 integration quality unknown)
 
-Refactor the harness from a monolithic TUI into a persistent multi-agent server. The harness becomes a message broker: participants (KAgent, Trainer, Slack agent, TUI) communicate through addressed messages routed by the harness. Key changes: rename Agent → KAgent, remove internal EventBus in favour of direct adapter callbacks, add thread-safe message bus with single-dispatch event loop, add WebSocket protocol for client participants, build Trainer participant (curriculum execution, reactive scaffolding via GLM-5.1, ratification, escalation), build Slack participant (human↔Trainer communication), and thin the TUI into a rendering-only client.
+Refactor the harness from a monolithic TUI into a persistent multi-agent server. The harness becomes a message broker: participants (Kalvin, Trainer, Slack agent, TUI) communicate through addressed messages routed by the harness. Key changes: rename Agent → KAgent, remove internal EventBus in favour of direct adapter callbacks, add thread-safe message bus with single-dispatch event loop, add WebSocket protocol for client participants, build Trainer participant (curriculum execution, reactive scaffolding via GLM-5.1, ratification, escalation), build Slack participant (human↔Trainer communication), and thin the TUI into a rendering-only client.
 
 ### Phase C: Model Quality and Evaluation
 **Estimate:** 2–3 weeks (ongoing)  
@@ -291,5 +291,5 @@ These are not required for the training loop to work.
 - **Inverted bit-index** — for sub-linear candidate retrieval in large models
 - **BPE tokenizer** — for non-toy domains requiring larger vocabularies
 - **Dynamic participant registration** — join/leave at runtime, not just at startup
-- **Multiple concurrent training sessions** — interleaved curricula on a shared KAgent
+- **Multiple concurrent training sessions** — interleaved curricula on a shared Kalvin instance
 - **Trainer-as-curriculum-designer** — GLM-5.1 generates full curricula from natural language goals

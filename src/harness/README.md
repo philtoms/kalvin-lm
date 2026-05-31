@@ -10,7 +10,7 @@ Harness Server (python -m harness)
   ├── MessageBus (thread-safe addressed router, runs on its own thread)
   │
   ├── Embedded participants (loaded in-process):
-  │     ├── KAgent   (address: "kalvin")   — rationalisation engine
+  │     ├── Kalvin   (address: "kalvin")   — rationalisation engine
   │     └── Trainer  (address: "trainer")  — curriculum driver + reactive scaffolding
   │
   └── WebSocket server (ws://host:port):
@@ -53,7 +53,7 @@ export SLACK_APP_TOKEN=xapp-...      # only if using Slack participant
 uv run python -m harness --config harness.yaml
 ```
 
-The harness starts, loads the embedded KAgent and Trainer, and listens for WebSocket connections from the Slack and TUI clients.
+The harness starts, loads the embedded Kalvin and Trainer, and listens for WebSocket connections from the Slack and TUI clients.
 
 ---
 
@@ -186,7 +186,7 @@ options:
 
 1. **Config loaded** — `harness.yaml` is read and validated.
 2. **Bus created** — A `MessageBus` is instantiated.
-3. **Embedded participants wired** — `KAgent` and `Trainer` factories are called:
+3. **Embedded participants wired** — Kalvin and Trainer factories are called:
    - `KAgentAdapter` subscribes to address `"kalvin"` on the bus.
    - `Trainer` subscribes to address `"trainer"` on the bus.
 4. **Bus thread started** — The bus event loop runs on a daemon thread.
@@ -205,7 +205,7 @@ options:
 | `server.py` | `HarnessServer` — loads config, instantiates embedded participants, starts WebSocket server, runs the bus. Also contains `load_config()` and `ConfigError`. |
 | `bus.py` | `MessageBus` — thread-safe addressed message router with single-dispatch event loop. Supports wildcard (`"*"`) subscribers for diagnostics. |
 | `message.py` | `Message` — immutable dataclass: `address`, `action`, `message`, `sender`. The bus routes by `address` only; `action` and `message` are interpreted by the recipient. |
-| `adapter.py` | `KAgentAdapter` — bridge between the KAgent rationalisation pipeline and the bus. Compiles KScript source, submits entries to KAgent, and routes events back to the original sender. |
+| `adapter.py` | `KAgentAdapter` — bridge between Kalvin's rationalisation pipeline and the bus. Compiles KScript source, submits entries to KAgent, and routes events back to the original sender. |
 | `protocol.py` | `WebSocketProtocol` — handles WebSocket client connections: registration, bidirectional JSON frame routing, silent-drop disconnect semantics. |
 | `protocols.py` | `Participant` protocol — the interface every participant must implement: `address` + `on_message(msg)`. |
 
@@ -218,7 +218,7 @@ WebSocket server               MessageBus.run()
   handle_connection()            _dispatch()
   _send_to_client_sync()         → handler.on_message()
   asyncio event loop               → KAgentAdapter.on_message()
-                                    → Trainer.on_message()
+                                   → Trainer.on_message()
 ```
 
 - `MessageBus.send()` is thread-safe (uses `queue.Queue`).
@@ -233,7 +233,7 @@ WebSocket server               MessageBus.run()
 
 These are loaded in-process and wired directly to the bus at startup.
 
-#### KAgent (`address: "kalvin"`)
+#### Kalvin (`address: "kalvin"`)
 
 The rationalisation engine. The `KAgentAdapter` receives bus messages and delegates to the core `KAgent`:
 
@@ -242,7 +242,7 @@ The rationalisation engine. The `KAgentAdapter` receives bus messages and delega
 | `submit` | Compile KScript source from `msg.message`, record sender per entry, call `kagent.rationalise(entry)` for each. Events flow back via `on_event()`. |
 | `countersign` | Call `kagent.countersign(kline)` with the KLine in `msg.message`. |
 
-Events from KAgent are routed back to the original sender (stored in a sender map keyed by entry identity).
+Events from Kalvin are routed back to the original sender (stored in a sender map keyed by entry identity).
 
 #### Trainer (`address: "trainer"`)
 
@@ -250,9 +250,9 @@ Drives the training loop:
 
 | Incoming Action | Behaviour |
 |-----------------|-----------|
-| `ground` / `frame` | KAgent events. S1 events auto-satisfy. S2/S3 events trigger reactive mode (auto-countersign → cogitation → escalation). |
+| `ground` / `frame` | Kalvin events. S1 events auto-satisfy. S2/S3 events trigger reactive mode (auto-countersign → cogitation → escalation). |
 | `input` | Human input from Slack. Supports commands: `goal: <text>`, `pause`, `stop`, `resume`, or freeform guidance text. |
-| `error` | KAgent compilation error. Logged and counted toward lesson completion. |
+| `error` | Kalvin compilation error. Logged and counted toward lesson completion. |
 
 **Trainer lifecycle:**
 
@@ -262,7 +262,7 @@ Drives the training loop:
    - **S1** (fully grounded) → auto-satisfy, advance curriculum.
    - **S2/S3** → try auto-countersign, then reactive mode:
      - Up to `max_reactive_rounds` of cogitation.
-     - If cogitation generates scaffolding → submit to KAgent.
+     - If cogitation generates scaffolding → submit to Kalvin.
      - If stuck → **escalate** to human via `"slack"` with a `notify` message.
 4. When curriculum is complete → end session, persist state, process queued goals.
 
@@ -294,7 +294,7 @@ await agent.start()
 
 #### TUI Participant (`address: "ui"`)
 
-A Textual TUI that displays KAgent events and provides ratification (countersign) controls:
+A Textual TUI that displays Kalvin's events and provides ratification (countersign) controls:
 
 - **EventLog** — scrollable log of all events received from the harness.
 - **RatifyBar** — button/keyboard shortcut (`Ctrl+R`) to send a `countersign` message to `"kalvin"`.
@@ -472,7 +472,7 @@ See the [Wire Protocol](#wire-protocol) section for frame formats.
 A typical training cycle looks like this:
 
 ```
- Human (Slack)          Trainer              KAgent
+ Human (Slack)          Trainer              Kalvin
      │                    │                    │
      │  "goal: teach      │                    │
      │   colours"         │                    │

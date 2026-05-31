@@ -2,11 +2,11 @@
 
 ## Overview
 
-The Harness Server is a multi-agent runtime that loads participants, routes addressed messages between them, and manages the dialogue loop. It runs as a persistent server — participants connect to it as clients (via WebSocket) or are embedded in-process (KAgent, Trainer). The harness itself is not a participant; it is the message broker.
+The Harness Server is a multi-agent runtime that loads participants, routes addressed messages between them, and manages the dialogue loop. It runs as a persistent server — participants connect to it as clients (via WebSocket) or are embedded in-process (Kalvin, Trainer). The harness itself is not a participant; it is the message broker.
 
 ## Dependencies
 
-- `specs/agent.md` — KAgent rationalisation API, events, Cogitator
+- `specs/agent.md` — Kalvin rationalisation API, events, Cogitator
 - `specs/kscript.md` — compilation pipeline (KScript source → CompiledEntry)
 - `specs/harness.md` — tracking state, satisfaction, ratification (absorbed into Trainer)
 
@@ -93,27 +93,27 @@ Connected clients communicate over WebSocket. JSON frames.
 
 After registration, all frames on that socket are implicitly from the registered address. The harness maps sockets to addresses internally.
 
-### KAgent Adapter
+### Kalvin Adapter
 
-The KAgent's interface to the harness bus. A thin layer that:
+Kalvin's interface to the harness bus. A thin layer that:
 
 1. Receives harness messages addressed to `kalvin`.
 2. Interprets the `action`:
    - `submit` — compile KScript source via the KScript pipeline, submit each compiled entry to `kagent.rationalise()` one at a time.
    - `countersign` — call `kagent.countersign(kline)` with the provided kline.
-3. Receives KAgent callbacks directly (no internal EventBus) and wraps them into addressed harness messages dispatched to the original sender.
-4. Maintains a sender map: when entries arrive from participant X, the adapter records X as the sender. KAgent callbacks are addressed back to X.
+3. Receives Kalvin's callbacks directly (no internal EventBus) and wraps them into addressed harness messages dispatched to the original sender.
+4. Maintains a sender map: when entries arrive from participant X, the adapter records X as the sender. Kalvin's callbacks are addressed back to X.
 
 ### Adapter Callback Interface
 
-The KAgent calls the adapter directly instead of publishing to an internal EventBus:
+Kalvin calls the adapter directly instead of publishing to an internal EventBus:
 
 ```
 KAgentAdapterCallback:
   on_event(event: RationaliseEvent) → None
 ```
 
-The KAgent is constructed with an adapter instance. The adapter's `on_event` wraps the event into a message and sends it to the sender via the bus.
+Kalvin is constructed with an adapter instance. The adapter's `on_event` wraps the event into a message and sends it to the sender via the bus.
 
 ### Compilation Errors
 
@@ -128,7 +128,7 @@ If a `submit` action contains KScript that fails to compile, the adapter sends a
 An embedded participant that drives the training loop. See `@specs/trainer.md` (TBD) for full specification.
 
 Key behaviours:
-- **Curriculum-driven mode**: submits the next lesson from the curriculum to the KAgent.
+- **Curriculum-driven mode**: submits the next lesson from the curriculum to Kalvin.
 - **Reactive mode**: cogitates (via GLM-5.1) on S2/S3 events and generates reactive scaffolding.
 - **Ratification**: auto-countersigns proposals that structurally match expectations.
 - **Escalation**: sends messages to the Slack participant when stuck (budget exhaustion or low GLM-5.1 confidence).
@@ -151,7 +151,7 @@ Uses a dedicated Slack channel. No addressing syntax needed — all human messag
 
 ### TUI Participant
 
-A client participant that renders events for the human, provides ratification controls, and allows the human to compose and send free-form text messages to the Trainer. Connects to the harness server via WebSocket. Does not own the KAgent or make curriculum decisions.
+A client participant that renders events for the human, provides ratification controls, and allows the human to compose and send free-form text messages to the Trainer. Connects to the harness server via WebSocket. Does not own Kalvin or make curriculum decisions.
 
 **Actions received from the bus:**
 - `notify` — render message content in the event log for the human.
@@ -159,12 +159,12 @@ A client participant that renders events for the human, provides ratification co
 
 **Actions sent to the bus:**
 - `input` — forward human-composed free-form text to the Trainer (`{address: "trainer", action: "input", message: <text>}`).
-- `countersign` — ratify a KAgent proposal (`{address: "kalvin", action: "countersign", message: <event_data>}`).
+- `countersign` — ratify a Kalvin proposal (`{address: "kalvin", action: "countersign", message: <event_data>}`).
 
 **UI regions:**
 - **EventLog** — scrollable log displaying all received harness events (timestamp, action, message summary).
 - **InputBar** — text input field where the human types free-form messages. Pressing Enter or a Send button dispatches the text as `{address: "trainer", action: "input", message: <text>}` via the WebSocket connection.
-- **RatifyBar** — button (disabled by default) that becomes active when a KAgent proposal event arrives. Clicking it sends a `countersign` action to the KAgent.
+- **RatifyBar** — button (disabled by default) that becomes active when a Kalvin proposal event arrives. Clicking it sends a `countersign` action to Kalvin.
 - **Header / Footer** — app title and keyboard shortcut hints (`ctrl+q` quit, `ctrl+r` ratify, `ctrl+s` send input).
 
 **Input behaviour:**
@@ -178,7 +178,7 @@ A client participant that renders events for the human, provides ratification co
 
 1. Messages are routed by `address` only. The harness does not inspect `action` or `message`.
 2. A message addressed to an unknown address results in an error sent back to the sender.
-3. The KAgent adapter always addresses KAgent responses to the original sender.
+3. Kalvin's adapter always addresses responses to the original sender.
 
 ### Participant Lifecycle
 
@@ -196,7 +196,7 @@ A client participant that renders events for the human, provides ratification co
 
 10. All message dispatch occurs on a single harness event loop.
 11. The internal bus queue is thread-safe — any thread may send.
-12. The KAgent's Cogitator thread calls the adapter directly; the adapter sends to the bus queue.
+12. Kalvin's Cogitator thread calls the adapter directly; the adapter sends to the bus queue.
 
 ## Test Matrix
 
@@ -208,10 +208,10 @@ A client participant that renders events for the human, provides ratification co
 | HRNS-4  | WebSocket client registers address; subsequent frames have implicit sender | — |
 | HRNS-5  | Harness loads embedded participants from config file on startup  | — |
 | HRNS-6  | Harness accepts WebSocket client connections                     | — |
-| HRNS-7  | KAgent adapter compiles KScript and submits entries one at a time | — |
-| HRNS-8  | KAgent adapter sends compilation errors back to sender           | — |
-| HRNS-9  | KAgent adapter maintains sender map; responses addressed to sender | — |
-| HRNS-10 | KAgent adapter handles countersign action                        | — |
+| HRNS-7  | Kalvin's adapter compiles KScript and submits entries one at a time | — |
+| HRNS-8  | Kalvin's adapter sends compilation errors back to sender           | — |
+| HRNS-9  | Kalvin's adapter maintains sender map; responses addressed to sender | — |
+| HRNS-10 | Kalvin's adapter handles countersign action                        | — |
 | HRNS-11 | Diagnostic listener receives all messages when subscribed to wildcard | — |
 | HRNS-12 | Trainer auto-countersigns structurally matching proposals        | — |
 | HRNS-13 | Trainer enters reactive mode on S2/S3 events                     | — |
@@ -223,12 +223,12 @@ A client participant that renders events for the human, provides ratification co
 | HRNS-19 | Session pause: Trainer stops submitting but stays active         | — |
 | HRNS-20 | Session stop: Trainer ends session, persists state, goes dormant | — |
 | HRNS-21 | Disconnected client: messages silently dropped until reconnect   | — |
-| HRNS-22 | KAgent calls adapter directly (no internal EventBus)             | — |
+| HRNS-22 | Kalvin calls adapter directly (no internal EventBus)             | — |
 | HRNS-23 | Single dispatch thread: all handlers execute on harness event loop | — |
 | HRNS-24 | Trainer counts submitted entries; knows when lesson is complete   | — |
 | HRNS-25 | TUI participant renders all received harness events in EventLog   | — |
 | HRNS-26 | TUI participant sends free-form human input to Trainer as `input` action | — |
-| HRNS-27 | TUI participant sends `countersign` to KAgent on ratify action     | — |
+| HRNS-27 | TUI participant sends `countersign` to Kalvin on ratify action     | — |
 | HRNS-28 | TUI InputBar clears after successful send                          | — |
 
 ## Out of Scope
@@ -239,4 +239,4 @@ A client participant that renders events for the human, provides ratification co
 - GLM-5.1 prompt engineering and response parsing (see `@specs/trainer.md` TBD)
 - Slack API integration details (webhook handling, rate limits, threading)
 - Authentication or access control between participants
-- KAgent internal changes (rationalisation pipeline, Cogitator, significance)
+- Kalvin internal changes (rationalisation pipeline, Cogitator, significance)

@@ -21,7 +21,7 @@ Kalvin operates inside a **harness** — a persistent server that loads agents a
 
 ```
 Harness Server
-  ├── KAgent (Kalvin — the rationalisation engine)
+  ├── Kalvin (the rationalisation engine)
   ├── Trainer (drives the training loop, generates scaffolding)
   ├── Slack agent (human-in-the-loop via Slack)
   └── TUI agent (human-in-the-loop via terminal)
@@ -32,17 +32,17 @@ No participant knows it's in a training loop. Each simply receives and responds.
 ### How Training Works
 
 1. The **human** provides a goal and initial KScript via Slack.
-2. The **Trainer** breaks the goal into a curriculum and submits lessons to the KAgent.
-3. The **KAgent** rationalises each lesson, emitting events with significance.
+2. The **Trainer** breaks the goal into a curriculum and submits lessons to Kalvin.
+3. **Kalvin** rationalises each lesson, emitting events with significance.
 4. If lessons land at S1, the Trainer advances. If S2/S3, the Trainer enters reactive mode:
    - Cogitates (via GLM-5.1) on what scaffolding to write.
-   - Submits reactive scaffolding to the KAgent.
+   - Submits reactive scaffolding to Kalvin.
    - Auto-countersigns proposals that structurally match expectations.
 5. If stuck after N rounds, the Trainer **escalates** to the human via Slack.
 
 ## KScript — The Language of Teaching
 
-KScript is a DSL for constructing knowledge graphs. It compiles declarative scripts into klines that the KAgent rationalises.
+KScript is a DSL for constructing knowledge graphs. It compiles declarative scripts into klines that Kalvin rationalises.
 
 ```kscript
 (Mary had a little lamb)
@@ -63,7 +63,7 @@ MHALL = SVO =>
 | Connotate | `A > B` | S3 | Connotative |
 | Unsigned | `A` | S4 | Identity only |
 
-Indented blocks are **scaffolding** — context that steers the KAgent toward understanding the parent line.
+Indented blocks are **scaffolding** — context that steers Kalvin toward understanding the parent line.
 
 ## Getting Started
 
