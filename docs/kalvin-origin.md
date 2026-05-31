@@ -249,6 +249,30 @@ All three modes use the same API: `rationalise()` and events.
 
 Completion is a trainer decision. Kalvin does not declare itself trained. For the MVP, completion is coverage: the fraction of expectations that have been matched.
 
+### The Living Curriculum
+
+A curriculum is a living structured document — not a static list, but a narrative that evolves as training progresses. It has three parts: an **objective** (what the curriculum teaches), an **approach** (the pedagogical strategy), and **lessons** (ordered KScript entries with human-readable context). The curriculum is the source of truth for training. It is never rolled back, only evolved forward.
+
+Kalvin's model state is disposable. At any point, resetting Kalvin and replaying the current curriculum from the first lesson is safe — the model will reconstruct itself identically, because every kline that entered it came from the curriculum's KScript. This is not a coincidence; it is a design constraint. The curriculum must contain everything Kalvin needs to learn.
+
+#### Lessons and Labels
+
+Each lesson in the curriculum carries a stable label — a simple identifier like "1", "2", "2a", or "3". Whole-number labels mark distinct conceptual steps. Sub-labels (with a trailing letter) mark lessons that are semantically related to their parent — refinements, bridges, or remediations of that concept. If a new lesson is logically subsequent but not semantically related to its predecessor, the document is renumbered instead. The curriculum must always read as a logical and temporal narrative for humans.
+
+#### Curriculum Amendment
+
+Any participant may request a change to a running curriculum — inserting, appending, or modifying lessons. These amendments are applied immediately, without human ratification. The Trainer, which holds LLM access, acts on amendment requests by rewriting the curriculum document in place.
+
+When an amendment is applied, the Trainer restarts lesson processing from the first unsatisfied lesson in the updated document. Because Kalvin's submitted set is monotonic — entries, once submitted, are never re-submitted — replaying is safe. Only new klines are compiled and submitted. The curriculum moves forward, and Kalvin's knowledge catches up.
+
+#### Curriculum Generation
+
+A curriculum can be generated from a natural language goal. The Trainer uses its LLM to construct a full structured document — objective, approach, and lessons — from a high-level description. The generated curriculum is a document, not a dialogue. It is written to durable storage and can be inspected, revised, and reused.
+
+#### Session Startup
+
+A training session begins in one of three ways: a runtime parameter supplies a curriculum file path, a previous session's saved state is resumed, or the Trainer polls its human participants for a goal. In every case, the result is the same: a curriculum document is loaded, and the Trainer begins submitting lessons from the first unsatisfied one.
+
 ### Mary's World (MW)
 
 Mary's World is the reference training curriculum. Its goal is to train an empty Kalvin instance to understand the nursery rhyme "Mary had a little lamb" — specifically, to answer questions like "What colour was the lamb's fleece?"

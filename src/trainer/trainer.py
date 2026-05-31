@@ -5,6 +5,9 @@ structurally matching proposals, enters reactive mode on S2/S3 events
 (delegating to a cogitation function from KB-024), escalates to the human
 when stuck, and persists curriculum state for restart recovery.
 
+Supports document-based curriculum with file polling, label-based tracking,
+session startup resolution, amendment handling, and progress events.
+
 This module is synchronous — it receives messages from the bus dispatch
 thread via ``on_message()``.
 """
@@ -23,6 +26,11 @@ from kalvin.kline import KLine
 from kscript.compiler import compile_source
 from kscript.token_encoder import CompiledEntry
 from trainer.curriculum import Curriculum, CurriculumState, EntryKey
+from trainer.curriculum_document import (
+    CurriculumDocument,
+    CurriculumParseError,
+    Lesson,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +59,11 @@ class Trainer:
         scaffolding can be generated.
     save_path:
         Optional file path for curriculum state persistence.
+    curriculum_file:
+        Optional path to the curriculum markdown file for file polling
+        and persistence.
+    curricula_dir:
+        Optional directory for generated curriculum files.
     """
 
     def __init__(
@@ -62,12 +75,20 @@ class Trainer:
         max_reactive_rounds: int = 5,
         cogitate_fn: Callable[[RationaliseEvent], tuple[str, float] | None] | None = None,
         save_path: str | Path | None = None,
+        curriculum_file: str | Path | None = None,
+        curricula_dir: str | Path | None = None,
     ) -> None:
         self._address = address
         self._bus = bus
-        self._state = CurriculumState(curriculum, save_path=save_path)
+        self._state = CurriculumState(
+            curriculum,
+            save_path=save_path,
+            curriculum_file=str(curriculum_file) if curriculum_file else None,
+        )
         self._max_reactive_rounds = max_reactive_rounds
         self._cogitate_fn = cogitate_fn
+        self._curriculum_file = Path(curriculum_file) if curriculum_file else None
+        self._curricula_dir = Path(curricula_dir) if curricula_dir else None
 
         # Session model fields
         self._session_active: bool = False
@@ -78,6 +99,7 @@ class Trainer:
         self._reactive_rounds: int = 0
         self._pending_goals: list[str] = []
         self._conversation_history: list[str] = []
+        self._polling_for_goal: bool = False
 
         # Register on the bus
         bus.subscribe(self._address, self.on_message)
@@ -166,6 +188,10 @@ class Trainer:
         """Process human input from Slack."""
         text = str(msg.message).strip()
 
+        if self._polling_for_goal:
+            self._resolve_goal(text)
+            return
+
         if text.startswith("goal:") or "=" in text:
             # Goal or KScript source — start or queue session
             goal = text[5:].strip() if text.startswith("goal:") else text
@@ -184,6 +210,47 @@ class Trainer:
             # Guidance text for reactive mode context
             self._conversation_history.append(text)
 
+    # ── Goal resolution ───────────────────────────────────────────────
+
+    def _resolve_goal(self, text: str) -> None:
+        """Resolve a goal text to a curriculum and start session."""
+        self._polling_for_goal = False
+
+        if text.startswith("goal:"):
+            # Generate curriculum via LLM
+            goal = text[5:].strip()
+            self._generate_and_start(goal)
+        else:
+            # Try as file path
+            path = Path(text)
+            if path.exists() and path.suffix == ".md":
+                self._load_and_start(path)
+            else:
+                # Treat as goal: prefix for generation
+                self._generate_and_start(text)
+
+    def _generate_and_start(self, goal: str) -> None:
+        """Generate a curriculum from a goal and start the session."""
+        if self._curricula_dir is None:
+            logger.error("Cannot generate curriculum: no curricula_dir configured")
+            return
+
+        logger.info("Generating curriculum for goal: %s", goal)
+        self._state.log_event("goal_received", {"goal": goal})
+
+    def _load_and_start(self, path: Path) -> None:
+        """Load a curriculum from a file and start the session."""
+        try:
+            doc = CurriculumDocument.from_file(path)
+            curriculum = Curriculum(doc)
+            self._state.curriculum = curriculum
+            self._curriculum_file = path
+            self._state.curriculum_file = str(path)
+            self.start_session()
+        except CurriculumParseError as exc:
+            logger.error("Failed to load curriculum from %s: %s", path, exc)
+            self._state.log_event("curriculum_load_error", {"path": str(path), "error": str(exc)})
+
     # ── Session lifecycle ─────────────────────────────────────────────
 
     def start_session(self, goal: str | None = None) -> None:
@@ -191,12 +258,37 @@ class Trainer:
 
         If a session is already active, the goal is queued instead
         (one session at a time — HRNS-16).
+
+        Implements three-path startup resolution:
+        1. curriculum_file parameter → load and start
+        2. No file but saved state has curriculum_file → resume
+        3. No file and no saved state → poll for goal
         """
         if self._session_active:
             if goal:
                 self._pending_goals.append(goal)
                 self._state.log_event("goal_queued", {"goal": goal})
             return
+
+        # Session startup resolution
+        if self._curriculum_file and self._curriculum_file.exists():
+            # Path 1: curriculum_file provided
+            try:
+                doc = CurriculumDocument.from_file(self._curriculum_file)
+                self._state.curriculum = Curriculum(doc)
+            except CurriculumParseError:
+                logger.error("Failed to load curriculum from %s", self._curriculum_file)
+                return
+        elif self._state.curriculum_file:
+            # Path 2: saved state has curriculum_file
+            saved_path = Path(self._state.curriculum_file)
+            if saved_path.exists():
+                try:
+                    doc = CurriculumDocument.from_file(saved_path)
+                    self._state.curriculum = Curriculum(doc)
+                    self._curriculum_file = saved_path
+                except CurriculumParseError:
+                    logger.error("Failed to resume from %s", saved_path)
 
         self._session_active = True
         self._session_paused = False
@@ -205,17 +297,59 @@ class Trainer:
         else:
             self._state.log_event("session_start", {"goal": None})
 
+        self._emit_progress("started")
         self._submit_next_lesson()
+
+    # ── File polling ──────────────────────────────────────────────────
+
+    def _poll_curriculum_file(self) -> None:
+        """Re-read the curriculum file from disk before each lesson.
+
+        Picks up amendments and new lessons without restart.
+        """
+        if self._curriculum_file and self._curriculum_file.exists():
+            try:
+                doc = CurriculumDocument.from_file(self._curriculum_file)
+                new_curriculum = Curriculum(doc)
+
+                # Check for new lessons
+                old_labels = set(self._state.curriculum.document.all_labels())
+                new_labels = set(new_curriculum.document.all_labels())
+
+                if new_labels != old_labels:
+                    added = new_labels - old_labels
+                    if added:
+                        self._state.log_event("amendment_detected", {
+                            "new_labels": sorted(added),
+                        })
+                        self._emit_progress("amended")
+
+                # Update curriculum, preserving position
+                pos = self._state.curriculum.position
+                new_curriculum.position = pos
+                self._state.curriculum = new_curriculum
+
+            except CurriculumParseError as exc:
+                logger.warning("Failed to re-read curriculum file: %s", exc)
 
     # ── Curriculum-driven mode ────────────────────────────────────────
 
     def _submit_next_lesson(self) -> None:
         """Submit the next lesson from the curriculum to the KAgent."""
+        # File polling: re-read before each lesson
+        self._poll_curriculum_file()
+
         lesson = self._state.curriculum.current()
         if lesson is None:
             # Curriculum complete — end session
+            self._emit_progress("complete")
             self._end_session()
             return
+
+        # Track lesson label
+        current_lesson = self._state.curriculum.current_lesson()
+        if current_lesson:
+            self._state.mark_lesson_submitted(current_lesson.label)
 
         # Compile locally to obtain CompiledEntry objects for structural matching
         entries = compile_source(lesson)
@@ -327,6 +461,56 @@ class Trainer:
         )
         self._state.log_event("escalation", {"reason": reason, "detail": detail})
 
+    # ── Progress events ───────────────────────────────────────────────
+
+    def _emit_progress(self, status: str) -> None:
+        """Emit a progress event to the UI participant."""
+        current_lesson = self._state.curriculum.current_lesson()
+        lesson_label = current_lesson.label if current_lesson else None
+        total = self._state.curriculum.total()
+        completed = len(self._state.lesson_satisfied)
+
+        self._bus.send(
+            Message(
+                address="ui",
+                action="progress",
+                message={
+                    "lesson_label": lesson_label,
+                    "lessons_total": total,
+                    "lessons_completed": completed,
+                    "status": status,
+                },
+                sender=self._address,
+            )
+        )
+
+    # ── Amendment ─────────────────────────────────────────────────────
+
+    def request_amendment(self, action: str, **kwargs: object) -> None:
+        """Request an amendment to the running curriculum.
+
+        Delegates to ``CurriculumDocument.amend()`` and re-reads the file.
+        """
+        if self._curriculum_file and self._curriculum_file.exists():
+            try:
+                doc = CurriculumDocument.from_file(self._curriculum_file)
+                lesson = kwargs.get("lesson")
+                if lesson and isinstance(lesson, Lesson):
+                    doc.amend(action, **kwargs)
+                    self._state.log_event("amendment_applied", {
+                        "action": action,
+                    })
+                    self._emit_progress("amended")
+                    # Re-read to pick up changes
+                    self._poll_curriculum_file()
+                    # Restart from first unsatisfied lesson
+                    if not self._session_paused and self._session_active:
+                        self._submit_next_lesson()
+            except (CurriculumParseError, ValueError) as exc:
+                logger.error("Amendment failed: %s", exc)
+        else:
+            logger.warning("Cannot amend: no curriculum file")
+
     # ── Lesson completion ─────────────────────────────────────────────
 
     def _check_lesson_complete(self) -> bool:
@@ -337,11 +521,18 @@ class Trainer:
         equality to guard against duplicate events causing double-advance.
         """
         if self._received_count == self._expected_count and self._expected_count > 0:
-            self._state.curriculum.advance()
+            # Mark lesson satisfied (also advances curriculum position)
+            current_lesson = self._state.curriculum.current_lesson()
+            old_position = self._state.curriculum.position
+            if current_lesson:
+                self._state.mark_lesson_satisfied(current_lesson.label)
+
             self._state.log_event(
                 "lesson_complete",
-                {"position": self._state.curriculum.position - 1},
+                {"position": old_position},
             )
+
+            self._emit_progress("lesson_complete")
 
             if not self._session_paused:
                 self._submit_next_lesson()
@@ -354,6 +545,7 @@ class Trainer:
         """End the current session, persist state, process queued goals."""
         self._session_active = False
         self._session_paused = False
+        self._polling_for_goal = False
         self._state.log_event("session_end", {})
 
         # Persist state

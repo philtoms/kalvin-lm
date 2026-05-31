@@ -545,3 +545,85 @@ class TestHRNS14EscalationOnBudgetExhaustion:
         result = cogitator.cogitate(request)
 
         assert Cogitator.should_escalate(result) is True
+
+
+# ── CRS-50..CRS-52: Structured context fields ────────────────────────
+
+
+class TestStructuredContextFields:
+    """CRS-50..CRS-52: CogitationRequest structured context fields."""
+
+    def test_cogitation_request_new_fields(self) -> None:
+        """CRS-50: CogitationRequest accepts objective, approach, and lesson_prose."""
+        req = CogitationRequest(
+            events=[_make_event()],
+            misfits=[_make_misfit()],
+            curriculum_context="legacy context",
+            conversation_history=[],
+            round_number=1,
+            objective="Teach SVO structure",
+            approach="Step by step introduction",
+            lesson_prose="This lesson introduces the subject.",
+        )
+        assert req.objective == "Teach SVO structure"
+        assert req.approach == "Step by step introduction"
+        assert req.lesson_prose == "This lesson introduces the subject."
+
+    def test_build_prompt_prefers_new_fields(self) -> None:
+        """CRS-51: build_prompt prefers objective + approach + lesson_prose."""
+        req = _make_request(
+            objective="Teach SVO structure",
+            approach="Step by step",
+            lesson_prose="This is lesson 1 about subjects.",
+            curriculum_context="legacy context that should not appear",
+        )
+        messages = build_prompt(req)
+
+        # Find context messages
+        context_msgs = [
+            m for m in messages
+            if "Teach SVO structure" in m.get("content", "")
+            or "legacy context" in m.get("content", "")
+        ]
+
+        # Should contain structured fields
+        structured_content = " ".join(m["content"] for m in context_msgs)
+        assert "Objective: Teach SVO structure" in structured_content
+        assert "Approach: Step by step" in structured_content
+        assert "Current lesson context:" in structured_content
+
+        # Should NOT contain legacy context
+        assert "legacy context that should not appear" not in structured_content
+
+    def test_build_prompt_falls_back_to_context(self) -> None:
+        """CRS-52: build_prompt falls back to curriculum_context when new fields empty."""
+        req = _make_request(
+            curriculum_context="Lesson 5: canonize",
+            objective="",
+            approach="",
+            lesson_prose="",
+        )
+        messages = build_prompt(req)
+
+        # Find context messages
+        ctx_msgs = [m for m in messages if "Lesson 5: canonize" in m["content"]]
+        assert len(ctx_msgs) == 1
+        assert "Current curriculum context" in ctx_msgs[0]["content"]
+
+    def test_build_prompt_no_context_when_both_empty(self) -> None:
+        """When both structured and legacy context are empty, no context message."""
+        req = _make_request(
+            curriculum_context="",
+            objective="",
+            approach="",
+            lesson_prose="",
+        )
+        messages = build_prompt(req)
+
+        # No context message at all
+        ctx_msgs = [
+            m for m in messages
+            if "curriculum context" in m.get("content", "").lower()
+            or "objective:" in m.get("content", "").lower()
+        ]
+        assert len(ctx_msgs) == 0

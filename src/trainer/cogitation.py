@@ -61,6 +61,11 @@ class CogitationRequest:
     Contains the S2/S3 events that triggered reactive mode, pre-computed
     misfit diagnoses, curriculum context, conversation history, and budget
     tracking information.
+
+    Supports both the legacy ``curriculum_context`` field and the new
+    structured fields (``objective``, ``approach``, ``lesson_prose``).
+    When the new fields are provided, ``build_prompt()`` prefers them
+    over ``curriculum_context``.
     """
 
     events: list[RationaliseEvent]
@@ -69,6 +74,9 @@ class CogitationRequest:
     conversation_history: list[ConversationTurn]
     round_number: int
     max_rounds: int = 3
+    objective: str = ""
+    approach: str = ""
+    lesson_prose: str = ""
 
 
 @dataclass(frozen=True)
@@ -181,8 +189,21 @@ def build_prompt(request: CogitationRequest) -> list[dict]:
 
         messages.append({"role": "user", "content": "\n".join(lines)})
 
-    # Curriculum context
-    if request.curriculum_context:
+    # Curriculum context — prefer structured fields, fall back to legacy
+    has_structured = bool(request.objective or request.approach or request.lesson_prose)
+    if has_structured:
+        parts: list[str] = []
+        if request.objective:
+            parts.append(f"Objective: {request.objective}")
+        if request.approach:
+            parts.append(f"Approach: {request.approach}")
+        if request.lesson_prose:
+            parts.append(f"Current lesson context: {request.lesson_prose}")
+        messages.append({
+            "role": "user",
+            "content": "\n".join(parts),
+        })
+    elif request.curriculum_context:
         messages.append({
             "role": "user",
             "content": f"Current curriculum context: {request.curriculum_context}",

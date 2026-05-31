@@ -6,6 +6,8 @@ server:
   port: 8765
 
 trainer:
+  curriculum_file: ""          # Path to curriculum markdown file (optional)
+  curricula_dir: "curricula"   # Directory for generated curriculum files
   state_path: "trainer_state.json"  # Path for state persistence
   max_reactive_rounds: 5
 

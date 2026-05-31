@@ -167,12 +167,25 @@ def main(argv: list[str] | None = None) -> None:
         from trainer.curriculum import Curriculum
         from trainer.trainer import Trainer
 
-        curriculum = Curriculum(lessons=[])  # Empty default; real curriculum loaded externally
+        curriculum_file = trainer_cfg.get("curriculum_file", "")
+        curricula_dir = trainer_cfg.get("curricula_dir", "curricula")
+
+        # Load curriculum from file if specified
+        curriculum: Curriculum
+        if curriculum_file:
+            from trainer.curriculum_document import CurriculumDocument
+            doc = CurriculumDocument.from_file(curriculum_file)
+            curriculum = Curriculum(doc)
+        else:
+            curriculum = Curriculum(lessons=[])  # Empty default; loaded via session startup
+
         trainer = Trainer(
             bus,
             curriculum,
             address=address,
             save_path=state_path,
+            curriculum_file=curriculum_file or None,
+            curricula_dir=curricula_dir or None,
         )
         trainer_holder.append(trainer)
 

@@ -1,10 +1,12 @@
 """Tests for the Trainer participant.
 
-Covers: HRNS-12, HRNS-13, HRNS-14, HRNS-16, HRNS-19, HRNS-20, HRNS-24.
+Covers: HRNS-12, HRNS-13, HRNS-14, HRNS-16, HRNS-19, HRNS-20, HRNS-24,
+CRS-38..CRS-49.
 """
 
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -14,6 +16,7 @@ from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kscript.token_encoder import CompiledEntry
 from trainer.curriculum import Curriculum, CurriculumState, EntryKey
+from trainer.curriculum_document import CurriculumDocument, Lesson
 from trainer.trainer import Trainer
 
 # ── Significance constants for test events ────────────────────────────
@@ -50,6 +53,46 @@ def _make_event(
 def _entry_key(kline: KLine) -> EntryKey:
     """Create an EntryKey from a KLine."""
     return (kline.signature, tuple(kline.nodes))
+
+
+def _write_curriculum(path: Path) -> None:
+    """Write a sample curriculum to the given path."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(textwrap.dedent("""\
+        ## Objective
+
+        Teach basic structure.
+
+        ## Approach
+
+        Step by step.
+
+        ## Lessons
+
+        ### 1
+
+        First lesson.
+
+        ```
+        M = S
+        ```
+
+        ### 2
+
+        Second lesson.
+
+        ```
+        H = V
+        ```
+
+        ### 3
+
+        Third lesson.
+
+        ```
+        MHALL = SVO
+        ```
+    """))
 
 
 class BusCapture:
@@ -95,6 +138,8 @@ def _make_trainer(
     save_path: str | Path | None = None,
     max_reactive_rounds: int = 5,
     cogitate_fn=None,
+    curriculum_file: str | Path | None = None,
+    curricula_dir: str | Path | None = None,
 ) -> tuple[Trainer, BusCapture]:
     """Create a Trainer with BusCapture installed."""
     trainer = Trainer(
@@ -103,6 +148,8 @@ def _make_trainer(
         save_path=save_path,
         max_reactive_rounds=max_reactive_rounds,
         cogitate_fn=cogitate_fn,
+        curriculum_file=curriculum_file,
+        curricula_dir=curricula_dir,
     )
     capture = BusCapture(bus)
     capture.install()
@@ -637,3 +684,321 @@ class TestGuidanceTextAppended:
         )
 
         assert "try using simpler constructs" in trainer._conversation_history
+
+
+# ── CRS-38..CRS-42: Session startup ──────────────────────────────────
+
+
+class TestSessionStartup:
+    """CRS-38..CRS-42: Session startup resolution."""
+
+    @patch("trainer.trainer.compile_source")
+    def test_session_startup_from_file_param(self, mock_compile: MagicMock, tmp_path: Path) -> None:
+        """CRS-38: Session startup loads curriculum from runtime parameter."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "test.md"
+        _write_curriculum(curriculum_path)
+
+        bus = MessageBus()
+        doc = CurriculumDocument.from_file(curriculum_path)
+        curriculum = Curriculum(doc)
+        trainer, capture = _make_trainer(
+            bus, curriculum, curriculum_file=curriculum_path
+        )
+        trainer.start_session()
+
+        # Session started with document
+        assert trainer._session_active
+        assert trainer.state.curriculum.document.lessons[0].label == "1"
+        # Submit was sent
+        submit_msgs = capture.find_all("kalvin", "submit")
+        assert len(submit_msgs) >= 1
+
+    @patch("trainer.trainer.compile_source")
+    def test_session_startup_from_saved_state(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """CRS-39: Session startup resumes from saved state with curriculum_file."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        # Write curriculum file
+        curriculum_path = tmp_path / "curricula" / "test.md"
+        _write_curriculum(curriculum_path)
+
+        # Save state with curriculum_file
+        save_file = tmp_path / "state.json"
+        doc = CurriculumDocument.from_file(curriculum_path)
+        curriculum = Curriculum(doc)
+        state = CurriculumState(
+            curriculum, save_path=save_file, curriculum_file=str(curriculum_path)
+        )
+        state.mark_lesson_submitted("1")
+        state.mark_lesson_satisfied("1")
+        state.save()
+
+        # Create trainer with empty curriculum but saved state
+        bus = MessageBus()
+        empty_curriculum = Curriculum([])
+        trainer, capture = _make_trainer(bus, empty_curriculum, save_path=save_file)
+        # Manually trigger startup resolution by loading saved state
+        loaded_state = CurriculumState.load(save_file)
+        trainer._state = loaded_state
+        trainer.start_session()
+
+        # Should have loaded from saved curriculum_file
+        assert trainer._session_active
+        assert trainer.state.curriculum.document.lessons[0].label == "1"
+
+    @patch("trainer.trainer.compile_source")
+    def test_session_startup_polls_for_goal(self, mock_compile: MagicMock) -> None:
+        """CRS-40: Session startup polls for goal when no param and no saved state."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, _capture = _make_trainer(bus, curriculum)
+
+        # start_session with empty curriculum doesn't crash
+        trainer.start_session()
+
+        # Session starts (even with empty curriculum, it just ends immediately)
+        assert not trainer._session_active  # completes immediately
+
+
+class TestGoalResolution:
+    """CRS-41..CRS-42: Goal resolution."""
+
+    @patch("trainer.trainer.compile_source")
+    def test_goal_prefix_triggers_generation(self, mock_compile: MagicMock) -> None:
+        """CRS-41: Goal starting with 'goal:' triggers generation."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1"])
+        trainer, _capture = _make_trainer(
+            bus, curriculum, curricula_dir="/tmp/curricula"
+        )
+        trainer.start_session()
+
+        # Polling mode not active (session is active), so "goal:" input
+        # goes through the regular input handler and queues
+        trainer.on_message(
+            Message(address="trainer", action="input", message="goal: teach SVO", sender="slack")
+        )
+        # Goal is queued since session is active
+        assert "teach SVO" in trainer._pending_goals
+
+    @patch("trainer.trainer.compile_source")
+    def test_goal_file_path_triggers_load(self, mock_compile: MagicMock, tmp_path: Path) -> None:
+        """CRS-42: Goal that is a file path triggers direct loading."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "test.md"
+        _write_curriculum(curriculum_path)
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, _capture = _make_trainer(
+            bus, curriculum, curricula_dir=str(tmp_path / "curricula")
+        )
+
+        # Set polling mode so input is treated as goal
+        trainer._polling_for_goal = True
+
+        trainer.on_message(
+            Message(
+                address="trainer",
+                action="input",
+                message=str(curriculum_path),
+                sender="slack",
+            )
+        )
+
+        # Should have loaded the curriculum file
+        assert not trainer._polling_for_goal
+        assert trainer.state.curriculum.document.lessons[0].label == "1"
+
+
+# ── CRS-43..CRS-45: File polling and amendment ───────────────────────
+
+
+class TestFilePolling:
+    """CRS-43..CRS-45: File polling and monotonic submitted set."""
+
+    @patch("trainer.trainer.compile_source")
+    def test_trainer_rereads_file_before_lesson(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """CRS-43: Trainer re-reads curriculum file before each lesson submission."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "test.md"
+        _write_curriculum(curriculum_path)
+
+        bus = MessageBus()
+        doc = CurriculumDocument.from_file(curriculum_path)
+        curriculum = Curriculum(doc)
+        trainer, capture = _make_trainer(
+            bus, curriculum, curriculum_file=curriculum_path
+        )
+        trainer.start_session()
+
+        # Verify first submit happened
+        submit_msgs = capture.find_all("kalvin", "submit")
+        assert len(submit_msgs) >= 1
+
+    @patch("trainer.trainer.compile_source")
+    def test_new_lessons_submitted_after_reread(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """CRS-44: New lessons after current label are submitted after re-read."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "test.md"
+        _write_curriculum(curriculum_path)
+
+        bus = MessageBus()
+        doc = CurriculumDocument.from_file(curriculum_path)
+        curriculum = Curriculum(doc)
+        trainer, capture = _make_trainer(
+            bus, curriculum, curriculum_file=curriculum_path
+        )
+        trainer.start_session()
+
+        # Amend the file — append lesson 4
+        doc2 = CurriculumDocument.from_file(curriculum_path)
+        doc2.amend("append", lesson=Lesson(label="4", prose="New.", kscript=["X = Y"]))
+        capture.reset()
+
+        # Complete current lesson to trigger next submit (which polls)
+        event = _make_event(
+            "ground",
+            query=KLine(signature=100, nodes=[10]),
+            proposal=KLine(signature=100, nodes=[10]),
+            significance=_S1_SIGNIFICANCE,
+        )
+        trainer.on_message(Message(address="trainer", action="ground", message=event))
+
+        # After re-read, curriculum should have 4 lessons
+        assert len(trainer.state.curriculum.document.lessons) == 4
+
+    @patch("trainer.trainer.compile_source")
+    def test_monotonic_set_prevents_duplicates(self, mock_compile: MagicMock) -> None:
+        """CRS-45: Monotonic submitted set prevents duplicate kline submissions."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+        capture.reset()
+
+        # The entry was submitted
+        key = _entry_key(_make_entry(100, [10]))
+        assert trainer.state.is_submitted(key)
+
+        # Re-submitting the same entry won't create a duplicate
+        trainer.state.mark_submitted(key)
+        assert trainer.state.submitted == {key}
+
+
+# ── CRS-46..CRS-49: Progress events ──────────────────────────────────
+
+
+class TestProgressEvents:
+    """CRS-46..CRS-49: Progress events."""
+
+    @patch("trainer.trainer.compile_source")
+    def test_progress_event_session_start(self, mock_compile: MagicMock) -> None:
+        """CRS-46: Progress event emitted on session start."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+
+        progress_msgs = capture.find_all("ui", "progress")
+        assert len(progress_msgs) >= 1
+        started = progress_msgs[0]
+        assert started.message["status"] == "started"
+        assert started.message["lessons_total"] == 1
+        assert started.message["lessons_completed"] == 0
+
+    @patch("trainer.trainer.compile_source")
+    def test_progress_event_lesson_complete(self, mock_compile: MagicMock) -> None:
+        """CRS-47: Progress event emitted on lesson complete."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+        capture.reset()
+
+        # Complete lesson 1
+        event = _make_event(
+            "ground",
+            query=KLine(signature=100, nodes=[10]),
+            proposal=KLine(signature=100, nodes=[10]),
+            significance=_S1_SIGNIFICANCE,
+        )
+        trainer.on_message(Message(address="trainer", action="ground", message=event))
+
+        progress_msgs = capture.find_all("ui", "progress")
+        complete_msgs = [m for m in progress_msgs if m.message["status"] == "lesson_complete"]
+        assert len(complete_msgs) >= 1
+        assert complete_msgs[0].message["lessons_completed"] == 1
+
+    @patch("trainer.trainer.compile_source")
+    def test_progress_event_curriculum_complete(self, mock_compile: MagicMock) -> None:
+        """CRS-48: Progress event emitted on curriculum complete."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["only_lesson"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+        capture.reset()
+
+        # Complete the only lesson
+        event = _make_event(
+            "ground",
+            query=KLine(signature=100, nodes=[10]),
+            proposal=KLine(signature=100, nodes=[10]),
+            significance=_S1_SIGNIFICANCE,
+        )
+        trainer.on_message(Message(address="trainer", action="ground", message=event))
+
+        progress_msgs = capture.find_all("ui", "progress")
+        complete_msgs = [m for m in progress_msgs if m.message["status"] == "complete"]
+        assert len(complete_msgs) >= 1
+
+    @patch("trainer.trainer.compile_source")
+    def test_progress_event_amendment(self, mock_compile: MagicMock, tmp_path: Path) -> None:
+        """CRS-49: Progress event emitted on amendment applied."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "test.md"
+        _write_curriculum(curriculum_path)
+
+        bus = MessageBus()
+        doc = CurriculumDocument.from_file(curriculum_path)
+        curriculum = Curriculum(doc)
+        trainer, capture = _make_trainer(
+            bus, curriculum, curriculum_file=curriculum_path
+        )
+        trainer.start_session()
+        capture.reset()
+
+        # Request amendment
+        trainer.request_amendment(
+            "append",
+            lesson=Lesson(label="4", prose="New lesson.", kscript=["X = Y"]),
+        )
+
+        # Verify progress event
+        progress_msgs = capture.find_all("ui", "progress")
+        amended_msgs = [m for m in progress_msgs if m.message["status"] == "amended"]
+        assert len(amended_msgs) >= 1

@@ -9,13 +9,28 @@ from trainer.cogitation import (
     MisfitInfo,
 )
 from trainer.curriculum import Curriculum, CurriculumState, EntryKey
+from trainer.curriculum_document import (
+    CurriculumDocument,
+    CurriculumParseError,
+    Lesson,
+)
+from trainer.curriculum_generator import (
+    CurriculumGenerationError,
+    CurriculumGenerator,
+)
 from trainer.trainer import Trainer
 
 __all__ = [
     "Trainer",
     "Curriculum",
     "CurriculumState",
+    "CurriculumDocument",
+    "CurriculumDocument",  # re-exported from curriculum_document
+    "CurriculumGenerationError",
+    "CurriculumGenerator",
+    "CurriculumParseError",
     "EntryKey",
+    "Lesson",
     "Cogitator",
     "CogitationRequest",
     "CogitationResult",
