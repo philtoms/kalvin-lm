@@ -92,6 +92,36 @@ def _build_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 
 
+def _build_llm_client(trainer_cfg: dict) -> Any:
+    """Build an LLM client from trainer config and environment.
+
+    Reads the ``llm`` section of the trainer config and the
+    ``KALVIN_LLM_API_KEY`` environment variable. Returns ``None``
+    when the API key is not set or the ``openai`` package is unavailable.
+    """
+    import os
+
+    api_key = os.environ.get("KALVIN_LLM_API_KEY")
+    if not api_key:
+        return None
+
+    llm_cfg = trainer_cfg.get("llm", {})
+    model = llm_cfg.get("model", "glm-5.1")
+    base_url = llm_cfg.get("base_url", "https://open.bigmodel.cn/api/paas/v4")
+
+    try:
+        from trainer.cogitation import OpenAICompatibleClient
+
+        return OpenAICompatibleClient(
+            api_key=api_key,
+            base_url=base_url,
+            model=model,
+        )
+    except ImportError:
+        logger.warning("openai package not available — LLM client disabled")
+        return None
+
+
 def _load_extras(path: str | Path) -> dict:
     """Load the full YAML config and return non-participants sections.
 
@@ -179,7 +209,7 @@ def main(argv: list[str] | None = None) -> None:
         else:
             curriculum = Curriculum(lessons=[])  # Empty default; loaded via session startup
 
-        # Set up LLM client if configured
+        # Build LLM client from config and environment
         llm_client = _build_llm_client(trainer_cfg)
 
         trainer = Trainer(

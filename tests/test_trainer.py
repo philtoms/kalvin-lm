@@ -15,8 +15,10 @@ from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kscript.token_encoder import CompiledEntry
+from trainer.cogitation import LLMResponse
 from trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from trainer.curriculum_document import CurriculumDocument, Lesson
+from trainer.curriculum_generator import CurriculumGenerationError
 from trainer.trainer import Trainer
 
 # ── Significance constants for test events ────────────────────────────
@@ -140,6 +142,7 @@ def _make_trainer(
     cogitate_fn=None,
     curriculum_file: str | Path | None = None,
     curricula_dir: str | Path | None = None,
+    llm_client=None,
 ) -> tuple[Trainer, BusCapture]:
     """Create a Trainer with BusCapture installed.
 
@@ -155,6 +158,7 @@ def _make_trainer(
         cogitate_fn=cogitate_fn,
         curriculum_file=curriculum_file,
         curricula_dir=curricula_dir,
+        llm_client=llm_client,
     )
     capture = BusCapture(bus)
     capture.install()
@@ -1212,3 +1216,534 @@ class TestProgressEvents:
         progress_msgs = capture.find_all("ui", "progress")
         amended_msgs = [m for m in progress_msgs if m.message["status"] == "amended"]
         assert len(amended_msgs) >= 1
+
+
+# ── LLM mock helper ──────────────────────────────────────────────────
+
+
+class _MockLLMClient:
+    """Mock LLM client for generation tests."""
+
+    def __init__(self, responses: list[LLMResponse] | None = None) -> None:
+        self._responses = list(responses or [])
+        self._call_count = 0
+
+    @property
+    def call_count(self) -> int:
+        return self._call_count
+
+    def complete(
+        self,
+        messages: list[dict],
+        tools: list[dict] | None = None,
+    ) -> LLMResponse:
+        self._call_count += 1
+        if self._call_count <= len(self._responses):
+            return self._responses[self._call_count - 1]
+        return LLMResponse(content=None, tool_calls=None, finish_reason="stop")
+
+
+# ── KB-032: _generate_and_start success path ─────────────────────────
+
+
+class TestGenerateAndStart:
+    """KB-032: _generate_and_start creates CurriculumGenerator, calls generate, loads result."""
+
+    @patch("trainer.trainer.compile_source")
+    def test_generate_and_start_success(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """_generate_and_start creates generator, calls generate, starts session."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        # Write a valid curriculum file for the generator to "return"
+        curriculum_path = tmp_path / "curricula" / "test-goal.md"
+        _write_curriculum(curriculum_path)
+
+        mock_llm = _MockLLMClient([
+            LLMResponse(content=curriculum_path.read_text(), tool_calls=None, finish_reason="stop"),
+        ])
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer(
+            bus,
+            curriculum,
+            curricula_dir=tmp_path / "curricula",
+            llm_client=mock_llm,
+        )
+
+        # Enter polling mode and trigger generation
+        trainer._polling_for_goal = True
+        trainer.on_message(
+            Message(
+                address="trainer",
+                action="input",
+                message="goal: teach Kalvin about SVO",
+                sender="slack",
+            )
+        )
+
+        # Should no longer be polling — session started
+        assert not trainer._polling_for_goal
+
+        # goal_received event logged
+        goal_events = [e for e in trainer.state.event_log if e["type"] == "goal_received"]
+        assert len(goal_events) == 1
+        assert goal_events[0]["data"]["goal"] == "teach Kalvin about SVO"
+
+        # curriculum_generated event logged
+        gen_events = [e for e in trainer.state.event_log if e["type"] == "curriculum_generated"]
+        assert len(gen_events) == 1
+
+        # Session should be active
+        assert trainer._session_active
+
+        # A submit should have been sent to kalvin (session started with loaded curriculum)
+        submit_msgs = capture.find_all("kalvin", "submit")
+        assert len(submit_msgs) >= 1
+
+    @patch("trainer.trainer.compile_source")
+    def test_generate_and_start_uses_llm_client_and_curricula_dir(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """CurriculumGenerator receives trainer's llm_client and curricula_dir."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curricula_dir = tmp_path / "curricula"
+
+        # Write a valid curriculum for the mock generator to return
+        curriculum_path = curricula_dir / "test-goal.md"
+        _write_curriculum(curriculum_path)
+
+        mock_llm = _MockLLMClient()
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer(
+            bus,
+            curriculum,
+            curricula_dir=curricula_dir,
+            llm_client=mock_llm,
+        )
+
+        # Patch at definition site — _generate_and_start imports from trainer.curriculum_generator
+        with patch(
+            "trainer.curriculum_generator.CurriculumGenerator"
+        ) as mock_gen:
+            mock_gen.return_value.generate.return_value = curriculum_path
+            trainer._generate_and_start("test goal")
+
+            # CurriculumGenerator was instantiated with our llm_client and curricula_dir
+            mock_gen.assert_called_once_with(mock_llm, curricula_dir)
+            mock_gen.return_value.generate.assert_called_once_with("test goal")
+
+    @patch("trainer.trainer.compile_source")
+    def test_generate_and_start_loads_generated_curriculum(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """After generate(), _load_and_start is called with the returned path."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "curricula" / "test-goal.md"
+        _write_curriculum(curriculum_path)
+
+        mock_llm = _MockLLMClient([
+            LLMResponse(content=curriculum_path.read_text(), tool_calls=None, finish_reason="stop"),
+        ])
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer(
+            bus,
+            curriculum,
+            curricula_dir=tmp_path / "curricula",
+            llm_client=mock_llm,
+        )
+
+        # Verify the curriculum was loaded
+        trainer._generate_and_start("test goal")
+        assert trainer._session_active
+        assert trainer.state.curriculum.document.lessons[0].label == "1"
+
+    @patch("trainer.trainer.compile_source")
+    def test_generate_and_start_emits_progress(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """Session start emits progress event to UI."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "curricula" / "test-goal.md"
+        _write_curriculum(curriculum_path)
+
+        mock_llm = _MockLLMClient([
+            LLMResponse(content=curriculum_path.read_text(), tool_calls=None, finish_reason="stop"),
+        ])
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer(
+            bus,
+            curriculum,
+            curricula_dir=tmp_path / "curricula",
+            llm_client=mock_llm,
+        )
+
+        trainer._generate_and_start("test goal")
+
+        # Progress event should have been emitted (session started)
+        progress_msgs = capture.find_all("ui", "progress")
+        assert any(m.message["status"] == "started" for m in progress_msgs)
+
+
+# ── KB-032: _generate_and_start error and guard paths ────────────────
+
+
+class TestGenerateAndStartGuards:
+    """KB-032: Guard checks in _generate_and_start."""
+
+    def test_no_curricula_dir_returns_early(self) -> None:
+        """When _curricula_dir is None, method returns with logger.error only."""
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        mock_llm = _MockLLMClient()
+        trainer, capture = _make_trainer(
+            bus,
+            curriculum,
+            curricula_dir=None,
+            llm_client=mock_llm,
+        )
+
+        trainer._generate_and_start("test goal")
+
+        # No CurriculumGenerator created (no LLM calls)
+        assert mock_llm.call_count == 0
+
+        # No session started
+        assert not trainer._session_active
+
+        # No events logged (guard is just logger.error, no state.log_event)
+        goal_events = [e for e in trainer.state.event_log if e["type"] == "goal_received"]
+        assert len(goal_events) == 0
+
+    @patch("trainer.trainer.compile_source")
+    def test_no_llm_client_returns_early(self, mock_compile: MagicMock) -> None:
+        """When _llm_client is None, method returns with error event."""
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer(
+            bus,
+            curriculum,
+            curricula_dir="/tmp/curricula",
+            llm_client=None,
+        )
+
+        trainer._generate_and_start("test goal")
+
+        # No session started
+        assert not trainer._session_active
+
+        # generation_failed event logged
+        failed_events = [e for e in trainer.state.event_log if e["type"] == "generation_failed"]
+        assert len(failed_events) == 1
+        assert "no LLM client configured" in failed_events[0]["data"]["error"]
+
+    @patch("trainer.trainer.compile_source")
+    def test_generation_error_re_enters_polling(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """CurriculumGenerationError caught, polling re-enabled, status emitted."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        mock_llm = _MockLLMClient()
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer(
+            bus,
+            curriculum,
+            curricula_dir=tmp_path / "curricula",
+            llm_client=mock_llm,
+        )
+
+        with patch(
+            "trainer.curriculum_generator.CurriculumGenerator"
+        ) as mock_gen:
+            mock_gen.return_value.generate.side_effect = CurriculumGenerationError(
+                "LLM returned invalid output"
+            )
+            trainer._generate_and_start("test goal")
+
+        # generation_failed event logged
+        failed_events = [e for e in trainer.state.event_log if e["type"] == "generation_failed"]
+        assert len(failed_events) == 1
+        assert "LLM returned invalid output" in failed_events[0]["data"]["error"]
+
+        # Should re-enter polling mode
+        assert trainer._polling_for_goal
+
+        # Polling status emitted to UI
+        polling_msgs = [
+            m for m in capture.messages
+            if m.address == "ui"
+            and m.action == "progress"
+            and m.message.get("status") == "polling_for_goal"
+        ]
+        assert len(polling_msgs) >= 1
+
+    @patch("trainer.trainer.compile_source")
+    def test_after_generation_failure_accepts_new_goal(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """After failure, Trainer re-enters polling and can accept new goal."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        # Write a valid curriculum
+        curriculum_path = tmp_path / "curricula" / "test-goal.md"
+        _write_curriculum(curriculum_path)
+
+        mock_llm = _MockLLMClient([
+            # First call: will be intercepted by side_effect
+            LLMResponse(content=None, tool_calls=None, finish_reason="stop"),
+            # Second call: valid response for retry
+            LLMResponse(
+                content=curriculum_path.read_text(),
+                tool_calls=None,
+                finish_reason="stop",
+            ),
+        ])
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer(
+            bus,
+            curriculum,
+            curricula_dir=tmp_path / "curricula",
+            llm_client=mock_llm,
+        )
+
+        # First attempt: force generation failure
+        with patch(
+            "trainer.curriculum_generator.CurriculumGenerator"
+        ) as mock_gen:
+            mock_gen.return_value.generate.side_effect = CurriculumGenerationError("fail")
+            trainer._generate_and_start("failing goal")
+
+        assert trainer._polling_for_goal
+
+        capture.reset()
+
+        # Second attempt via _handle_input while polling — should succeed
+        trainer.on_message(
+            Message(
+                address="trainer",
+                action="input",
+                message="goal: teach SVO",
+                sender="slack",
+            )
+        )
+
+        # After successful generation and session start, polling is off
+        assert not trainer._polling_for_goal
+        assert trainer._session_active
+
+
+# ── KB-032: _resolve_goal dispatching ─────────────────────────────────
+
+
+class TestResolveGoalDispatch:
+    """KB-032: _resolve_goal dispatches to _generate_and_start or _load_and_start."""
+
+    @patch("trainer.trainer.compile_source")
+    def test_goal_prefix_with_space(self, mock_compile: MagicMock, tmp_path: Path) -> None:
+        """Input 'goal: teach Kalvin about SVO' while polling → calls _generate_and_start."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "curricula" / "teach-kalvin-about-svo.md"
+        _write_curriculum(curriculum_path)
+
+        mock_llm = _MockLLMClient([
+            LLMResponse(
+                content=curriculum_path.read_text(),
+                tool_calls=None,
+                finish_reason="stop",
+            ),
+        ])
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer(
+            bus,
+            curriculum,
+            curricula_dir=tmp_path / "curricula",
+            llm_client=mock_llm,
+        )
+        trainer._polling_for_goal = True
+
+        trainer.on_message(
+            Message(
+                address="trainer",
+                action="input",
+                message="goal: teach Kalvin about SVO",
+                sender="slack",
+            )
+        )
+
+        # Should have generated and started session
+        assert not trainer._polling_for_goal
+        assert trainer._session_active
+        goal_events = [e for e in trainer.state.event_log if e["type"] == "goal_received"]
+        assert len(goal_events) == 1
+        assert goal_events[0]["data"]["goal"] == "teach Kalvin about SVO"
+
+    @patch("trainer.trainer.compile_source")
+    def test_goal_prefix_no_space(self, mock_compile: MagicMock, tmp_path: Path) -> None:
+        """Input 'goal:teach Kalvin' (no space after colon) calls _generate_and_start."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "curricula" / "teach-kalvin-about-svo.md"
+        _write_curriculum(curriculum_path)
+
+        mock_llm = _MockLLMClient([
+            LLMResponse(
+                content=curriculum_path.read_text(),
+                tool_calls=None,
+                finish_reason="stop",
+            ),
+        ])
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer(
+            bus,
+            curriculum,
+            curricula_dir=tmp_path / "curricula",
+            llm_client=mock_llm,
+        )
+        trainer._polling_for_goal = True
+
+        trainer.on_message(
+            Message(
+                address="trainer",
+                action="input",
+                message="goal:teach Kalvin about SVO",
+                sender="slack",
+            )
+        )
+
+        # Should have generated (goal prefix parsed, "teach Kalvin about SVO")
+        assert not trainer._polling_for_goal
+        assert trainer._session_active
+        goal_events = [e for e in trainer.state.event_log if e["type"] == "goal_received"]
+        assert len(goal_events) == 1
+        assert goal_events[0]["data"]["goal"] == "teach Kalvin about SVO"
+
+    @patch("trainer.trainer.compile_source")
+    def test_goal_prefix_whitespace_only(self, mock_compile: MagicMock, tmp_path: Path) -> None:
+        """Input 'goal: ' (whitespace only after strip) → no crash, generation fails gracefully."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer(
+            bus,
+            curriculum,
+            curricula_dir=tmp_path / "curricula",
+            llm_client=_MockLLMClient(),
+        )
+        trainer._polling_for_goal = True
+
+        # Should not crash — empty goal goes through generation and fails
+        trainer.on_message(
+            Message(
+                address="trainer",
+                action="input",
+                message="goal: ",
+                sender="slack",
+            )
+        )
+
+        # No crash — generation attempted with empty string, fails, re-enters polling
+        assert trainer._polling_for_goal  # re-entered polling after failure
+        assert not trainer._session_active
+
+    @patch("trainer.trainer.compile_source")
+    def test_file_path_triggers_load(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """Input that is a path to an existing .md file → calls _load_and_start."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "my_curriculum.md"
+        _write_curriculum(curriculum_path)
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer(
+            bus,
+            curriculum,
+            curricula_dir=tmp_path / "curricula",
+            llm_client=_MockLLMClient(),
+        )
+        trainer._polling_for_goal = True
+
+        trainer.on_message(
+            Message(
+                address="trainer",
+                action="input",
+                message=str(curriculum_path),
+                sender="slack",
+            )
+        )
+
+        # Should have loaded the curriculum file (not generated)
+        assert not trainer._polling_for_goal
+        assert trainer._session_active
+        assert trainer.state.curriculum.document.lessons[0].label == "1"
+        # No goal_received event (loaded, not generated)
+        goal_events = [e for e in trainer.state.event_log if e["type"] == "goal_received"]
+        assert len(goal_events) == 0
+
+    @patch("trainer.trainer.compile_source")
+    def test_non_goal_non_file_triggers_generate(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """Input that is neither goal: prefix nor valid file → calls _generate_and_start."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "curricula" / "some-free-text.md"
+        _write_curriculum(curriculum_path)
+
+        mock_llm = _MockLLMClient([
+            LLMResponse(
+                content=curriculum_path.read_text(),
+                tool_calls=None,
+                finish_reason="stop",
+            ),
+        ])
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer(
+            bus,
+            curriculum,
+            curricula_dir=tmp_path / "curricula",
+            llm_client=mock_llm,
+        )
+        trainer._polling_for_goal = True
+
+        trainer.on_message(
+            Message(
+                address="trainer",
+                action="input",
+                message="teach Kalvin about SVO",
+                sender="slack",
+            )
+        )
+
+        # Should have called _generate_and_start with the raw text
+        assert not trainer._polling_for_goal
+        assert trainer._session_active
+        goal_events = [e for e in trainer.state.event_log if e["type"] == "goal_received"]
+        assert len(goal_events) == 1
+        assert goal_events[0]["data"]["goal"] == "teach Kalvin about SVO"

@@ -26,6 +26,7 @@ from kalvin.expand import D_MAX
 from kalvin.kline import KLine
 from kscript.compiler import compile_source
 from kscript.token_encoder import CompiledEntry
+from trainer.cogitation import LLMClient
 from trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from trainer.curriculum_document import (
     CurriculumDocument,
@@ -60,7 +61,8 @@ class Trainer:
         scaffolding can be generated.
     llm_client:
         Optional LLM client for curriculum generation and reactive
-        scaffolding. When provided, enables goal-based curriculum
+        scaffolding. Must satisfy the :class:`~trainer.cogitation.LLMClient`
+        protocol. When provided, enables goal-based curriculum
         generation via the CurriculumGenerator.
     save_path:
         Optional file path for curriculum state persistence.
@@ -261,25 +263,40 @@ class Trainer:
         self._state.log_event("goal_received", {"goal": goal})
 
         try:
-            from trainer.curriculum_generator import CurriculumGenerator
+            from trainer.curriculum_generator import (
+                CurriculumGenerationError,
+                CurriculumGenerator,
+            )
 
             generator = CurriculumGenerator(self._llm_client, self._curricula_dir)
-            path = generator.generate(goal)
+            curriculum_path = generator.generate(goal)
 
-            logger.info("Curriculum generated: %s", path)
-            self._state.log_event("curriculum_generated", {"path": str(path)})
+            logger.info("Curriculum generated: %s", curriculum_path)
+            self._state.log_event("curriculum_generated", {"path": str(curriculum_path)})
 
-            # Load the generated curriculum and start the session
-            self._load_and_start(path)
-        except Exception as exc:
+            self._load_and_start(curriculum_path)
+        except CurriculumGenerationError as exc:
             logger.error("Curriculum generation failed: %s", exc)
             self._state.log_event("generation_failed", {
                 "goal": goal,
                 "error": str(exc),
             })
-            # Re-enter polling mode so the human can try again
-            self._polling_for_goal = True
-            self._emit_polling_status()
+        except CurriculumParseError as exc:
+            logger.error("Generated curriculum failed to parse: %s", exc)
+            self._state.log_event("generation_failed", {
+                "goal": goal,
+                "error": str(exc),
+            })
+        except Exception as exc:
+            logger.error("Unexpected error during curriculum generation: %s", exc)
+            self._state.log_event("generation_failed", {
+                "goal": goal,
+                "error": str(exc),
+            })
+
+        # Re-enter polling mode on any failure so the human can try again
+        self._polling_for_goal = True
+        self._emit_polling_status()
 
     def _load_and_start(self, path: Path) -> None:
         """Load a curriculum from a file and start the session."""
@@ -570,6 +587,25 @@ class Trainer:
                     "lessons_total": total,
                     "lessons_completed": completed,
                     "status": status,
+                },
+                sender=self._address,
+            )
+        )
+
+    def _emit_polling_status(self) -> None:
+        """Emit a polling status event to the UI participant.
+
+        Signals that the Trainer is waiting for a goal input.
+        """
+        self._bus.send(
+            Message(
+                address="ui",
+                action="progress",
+                message={
+                    "lesson_label": None,
+                    "lessons_total": self._state.curriculum.total(),
+                    "lessons_completed": len(self._state.lesson_satisfied),
+                    "status": "polling_for_goal",
                 },
                 sender=self._address,
             )
