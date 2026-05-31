@@ -264,7 +264,7 @@ class HarnessServer:
             # Poll every 200ms so we can check the threading event.
             try:
                 await asyncio.wait_for(stop_event.wait(), timeout=0.2)
-            except TimeoutError:
+            except (TimeoutError, asyncio.TimeoutError):
                 continue
 
         await self._async_stop()

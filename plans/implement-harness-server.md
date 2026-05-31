@@ -144,15 +144,18 @@
   - Slack webhook/event listener: forward human input as `{address: trainer, action: input, message: <text>}`
   - Dedicated training channel; no addressing syntax
 
-### Task 11: TUI Participant (`src/participants/tui_client.py`)
+### Task 11: TUI Participant (`src/participants/tui_client.py`, `src/participants/tui_regions.py`)
 
-- **Spec ref:** @specs/harness-server §TUI Participant
+- **Spec ref:** @specs/harness-server §TUI Participant — HRNS-25, HRNS-26, HRNS-27, HRNS-28
+- **Test mapping:** HRNS-25, HRNS-26, HRNS-27, HRNS-28
 - **Details:**
   - WebSocket client connecting to harness server
   - Registers as `"ui"` on connect
-  - Thin rendering layer: display KAgent events, provide ratification controls
-  - Based on existing `ui/kscript/` but stripped of harness logic (no KAgent ownership, no curriculum)
-  - MVP: minimal — event display and countersign button
+  - **EventLog** — renders all received harness events (timestamp, action, message summary)
+  - **InputBar** — text input + Send button for free-form messages to Trainer. On submit sends `{address: "trainer", action: "input", message: <text>}`, clears the field
+  - **RatifyBar** — ratification button (disabled by default), enables on KAgent proposal events. Sends `{address: "kalvin", action: "countersign", message: <event_data>}`
+  - Keyboard shortcuts: `ctrl+q` quit, `ctrl+r` ratify, `ctrl+s` send input
+  - Parity with Slack participant: human input routes to Trainer as `input` action
 
 ### Task 12: Harness Configuration and Entry Point (`src/harness/__main__.py`)
 
@@ -190,6 +193,10 @@
 | HRNS-22 | tests/test_adapter.py | test_kagent_calls_adapter_directly | ⬜ |
 | HRNS-23 | tests/test_bus.py | test_single_dispatch_thread | ⬜ |
 | HRNS-24 | tests/test_trainer.py | test_entry_counting_lesson_complete | ⬜ |
+| HRNS-25 | tests/test_tui_client.py | test_renders_received_events | ⬜ |
+| HRNS-26 | tests/test_tui_client.py | test_sends_freeform_input_to_trainer | ⬜ |
+| HRNS-27 | tests/test_tui_client.py | test_sends_countersign_on_ratify | ⬜ |
+| HRNS-28 | tests/test_tui_client.py | test_input_bar_clears_after_send | ⬜ |
 
 ## Design Decisions
 

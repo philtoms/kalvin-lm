@@ -272,3 +272,11 @@ class TUIApp(App):
             ratify_bar.on_button_pressed(
                 type("FakeButton", (), {"button": type("Btn", (), {"id": "ratify-btn"})()})()
             )
+
+
+if __name__ == "__main__":
+    import sys
+
+    url = sys.argv[1] if len(sys.argv) > 1 else "ws://localhost:8765"
+    app = TUIApp(harness_url=url)
+    app.run()

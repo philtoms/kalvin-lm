@@ -151,7 +151,26 @@ Uses a dedicated Slack channel. No addressing syntax needed — all human messag
 
 ### TUI Participant
 
-A thin client participant that renders the KAgent's events for the human and provides ratification controls. Connects to the harness server via WebSocket. Does not own the KAgent or make curriculum decisions.
+A client participant that renders events for the human, provides ratification controls, and allows the human to compose and send free-form text messages to the Trainer. Connects to the harness server via WebSocket. Does not own the KAgent or make curriculum decisions.
+
+**Actions received from the bus:**
+- `notify` — render message content in the event log for the human.
+- Any other action — render in the event log (address, action, and message summary).
+
+**Actions sent to the bus:**
+- `input` — forward human-composed free-form text to the Trainer (`{address: "trainer", action: "input", message: <text>}`).
+- `countersign` — ratify a KAgent proposal (`{address: "kalvin", action: "countersign", message: <event_data>}`).
+
+**UI regions:**
+- **EventLog** — scrollable log displaying all received harness events (timestamp, action, message summary).
+- **InputBar** — text input field where the human types free-form messages. Pressing Enter or a Send button dispatches the text as `{address: "trainer", action: "input", message: <text>}` via the WebSocket connection.
+- **RatifyBar** — button (disabled by default) that becomes active when a KAgent proposal event arrives. Clicking it sends a `countersign` action to the KAgent.
+- **Header / Footer** — app title and keyboard shortcut hints (`ctrl+q` quit, `ctrl+r` ratify, `ctrl+s` send input).
+
+**Input behaviour:**
+- The InputBar accepts single-line free-form text.
+- On submit (Enter key or Send button), the text is sent as an `input` action addressed to the Trainer, then the input field is cleared.
+- This mirrors the Slack participant's `_send_to_trainer` behaviour — no addressing syntax is needed; all human input routes to the Trainer.
 
 ## Behavioural Rules
 
@@ -207,12 +226,16 @@ A thin client participant that renders the KAgent's events for the human and pro
 | HRNS-22 | KAgent calls adapter directly (no internal EventBus)             | — |
 | HRNS-23 | Single dispatch thread: all handlers execute on harness event loop | — |
 | HRNS-24 | Trainer counts submitted entries; knows when lesson is complete   | — |
+| HRNS-25 | TUI participant renders all received harness events in EventLog   | — |
+| HRNS-26 | TUI participant sends free-form human input to Trainer as `input` action | — |
+| HRNS-27 | TUI participant sends `countersign` to KAgent on ratify action     | — |
+| HRNS-28 | TUI InputBar clears after successful send                          | — |
 
 ## Out of Scope
 
 - Dynamic participant registration at runtime (participants defined at startup only)
 - Multiple concurrent training sessions
-- TUI participant implementation details (rendering, keybindings)
+- TUI participant rendering internals (widget styling, layout)
 - GLM-5.1 prompt engineering and response parsing (see `@specs/trainer.md` TBD)
 - Slack API integration details (webhook handling, rate limits, threading)
 - Authentication or access control between participants
