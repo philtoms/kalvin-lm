@@ -2,7 +2,7 @@
 
 The harness is the persistent server that hosts Kalvin's multi-agent training system. It loads participants, routes addressed messages between them via a thread-safe message bus, and exposes a WebSocket endpoint for remote clients.
 
-All participants are **equal peers**: each has a unique address, sends addressed messages through the bus, and receives messages addressed to it. No participant knows it's in a training loop — the dialogue between them *is* the training.
+All participants are **equal peers**: each has a unique address, sends addressed messages through the bus, and receives messages addressed to it. No participant knows it's in a training loop — the dialogue between them _is_ the training.
 
 ```
 Harness Server (python -m harness)
@@ -71,9 +71,9 @@ server:
 
 # Trainer settings
 trainer:
-  curriculum_path: ""                # Path to curriculum JSON (optional)
-  state_path: "trainer_state.json"   # Path for state persistence across restarts
-  max_reactive_rounds: 5             # Max reactive scaffolding rounds before escalation
+  curriculum_path: "" # Path to curriculum JSON (optional)
+  state_path: "trainer_state.json" # Path for state persistence across restarts
+  max_reactive_rounds: 5 # Max reactive scaffolding rounds before escalation
 
 # Participant definitions
 participants:
@@ -98,16 +98,16 @@ participants:
 
 ### Configuration Sections
 
-| Section | Key | Default | Description |
-|---------|-----|---------|-------------|
-| `server` | `host` | `"localhost"` | WebSocket server bind address |
-| `server` | `port` | `8765` | WebSocket server bind port |
-| `trainer` | `curriculum_path` | `""` | Path to a curriculum JSON file (optional) |
-| `trainer` | `state_path` | `"trainer_state.json"` | File for Trainer state persistence |
-| `trainer` | `max_reactive_rounds` | `5` | Reactive scaffolding budget before escalation |
-| `participants[]` | `address` | — | Unique bus address for this participant |
-| `participants[]` | `type` | — | `"embedded"` (loaded in-process) or `"client"` (connects via WebSocket) |
-| `participants[]` | `class` | — | Registered class name (e.g. `KAgent`, `Trainer`, `SlackParticipant`) |
+| Section          | Key                   | Default                | Description                                                             |
+| ---------------- | --------------------- | ---------------------- | ----------------------------------------------------------------------- |
+| `server`         | `host`                | `"localhost"`          | WebSocket server bind address                                           |
+| `server`         | `port`                | `8765`                 | WebSocket server bind port                                              |
+| `trainer`        | `curriculum_path`     | `""`                   | Path to a curriculum JSON file (optional)                               |
+| `trainer`        | `state_path`          | `"trainer_state.json"` | File for Trainer state persistence                                      |
+| `trainer`        | `max_reactive_rounds` | `5`                    | Reactive scaffolding budget before escalation                           |
+| `participants[]` | `address`             | —                      | Unique bus address for this participant                                 |
+| `participants[]` | `type`                | —                      | `"embedded"` (loaded in-process) or `"client"` (connects via WebSocket) |
+| `participants[]` | `class`               | —                      | Registered class name (e.g. `KAgent`, `Trainer`, `SlackParticipant`)    |
 
 ### Validation Rules
 
@@ -124,32 +124,32 @@ The harness itself requires no API keys. API keys are only needed by specific pa
 
 ### Slack Participant (optional)
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `SLACK_BOT_TOKEN` | Yes (if using Slack) | Slack Bot OAuth token (`xoxb-...`). Used to post messages to channels. |
+| Variable          | Required             | Description                                                                         |
+| ----------------- | -------------------- | ----------------------------------------------------------------------------------- |
+| `SLACK_BOT_TOKEN` | Yes (if using Slack) | Slack Bot OAuth token (`xoxb-...`). Used to post messages to channels.              |
 | `SLACK_APP_TOKEN` | Yes (if using Slack) | Slack App-Level token (`xapp-...`). Used for Socket Mode to receive human messages. |
 
 These can also be passed as constructor arguments to `SlackParticipant` instead of environment variables.
 
 ### Trainer / Cogitation (optional)
 
-The Trainer's reactive mode uses the `Cogitator` with an `OpenAICompatibleClient` that calls a GLM-5.1-compatible LLM API. To enable this:
+The Trainer's reactive mode uses the `Cogitator` with an `OpenAICompatibleClient` that calls a openai-compatible LLM API. To enable this:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| *(API key)* | If using cogitation | Passed to `OpenAICompatibleClient(api_key=...)` — defaults to the ZhipuAI GLM-5.1 endpoint at `https://open.bigmodel.cn/api/paas/v4`. Any OpenAI-compatible endpoint works. |
+| Variable    | Required            | Description                                                                                                                                                                 |
+| ----------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| _(API key)_ | If using cogitation | Passed to `OpenAICompatibleClient(api_key=...)` — defaults to the ZhipuAI GLM-5.1 endpoint at `https://open.bigmodel.cn/api/paas/v4`. Any OpenAI-compatible endpoint works. |
 
-The API key is **not** read from an environment variable automatically — it must be injected via the cogitation function or client constructor. In the default wiring (`__main__.py`), the `Trainer` is created without a `cogitate_fn`, meaning reactive mode will immediately escalate to the human. To enable GLM-5.1 cogitation, wire a `Cogitator` with your API key into the Trainer factory.
+The API key is **not** read from an environment variable automatically — it must be injected via the cogitation function or client constructor. In the default wiring (`__main__.py`), the `Trainer` is created without a `cogitate_fn`, meaning reactive mode will immediately escalate to the human. To enable LLM cogitation, wire a `Cogitator` with your API key into the Trainer factory.
 
 ### Required Python Packages
 
-| Package | When Needed | Install |
-|---------|-------------|---------|
-| `websockets` | Always (harness core) | `uv sync` |
-| `pyyaml` | Always (config loading) | `uv sync` |
-| `openai` | Reactive scaffolding (GLM-5.1) | `uv sync --extra trainer` |
-| `slack-sdk` | Slack participant | `uv sync` |
-| `textual` | TUI participant | `uv sync` |
+| Package      | When Needed                      | Install                   |
+| ------------ | -------------------------------- | ------------------------- |
+| `websockets` | Always (harness core)            | `uv sync`                 |
+| `pyyaml`     | Always (config loading)          | `uv sync`                 |
+| `openai`     | Reactive scaffolding (LLM agent) | `uv sync --extra trainer` |
+| `slack-sdk`  | Slack participant                | `uv sync`                 |
+| `textual`    | TUI participant                  | `uv sync`                 |
 
 ---
 
@@ -199,15 +199,15 @@ options:
 
 ### Module Map
 
-| File | Purpose |
-|------|---------|
-| `__main__.py` | CLI entry point. Loads config, wires participant factories, runs the server. |
-| `server.py` | `HarnessServer` — loads config, instantiates embedded participants, starts WebSocket server, runs the bus. Also contains `load_config()` and `ConfigError`. |
-| `bus.py` | `MessageBus` — thread-safe addressed message router with single-dispatch event loop. Supports wildcard (`"*"`) subscribers for diagnostics. |
-| `message.py` | `Message` — immutable dataclass: `address`, `action`, `message`, `sender`. The bus routes by `address` only; `action` and `message` are interpreted by the recipient. |
-| `adapter.py` | `KAgentAdapter` — bridge between Kalvin's rationalisation pipeline and the bus. Compiles KScript source, submits entries to KAgent, and routes events back to the original sender. |
-| `protocol.py` | `WebSocketProtocol` — handles WebSocket client connections: registration, bidirectional JSON frame routing, silent-drop disconnect semantics. |
-| `protocols.py` | `Participant` protocol — the interface every participant must implement: `address` + `on_message(msg)`. |
+| File           | Purpose                                                                                                                                                                            |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `__main__.py`  | CLI entry point. Loads config, wires participant factories, runs the server.                                                                                                       |
+| `server.py`    | `HarnessServer` — loads config, instantiates embedded participants, starts WebSocket server, runs the bus. Also contains `load_config()` and `ConfigError`.                        |
+| `bus.py`       | `MessageBus` — thread-safe addressed message router with single-dispatch event loop. Supports wildcard (`"*"`) subscribers for diagnostics.                                        |
+| `message.py`   | `Message` — immutable dataclass: `address`, `action`, `message`, `sender`. The bus routes by `address` only; `action` and `message` are interpreted by the recipient.              |
+| `adapter.py`   | `KAgentAdapter` — bridge between Kalvin's rationalisation pipeline and the bus. Compiles KScript source, submits entries to KAgent, and routes events back to the original sender. |
+| `protocol.py`  | `WebSocketProtocol` — handles WebSocket client connections: registration, bidirectional JSON frame routing, silent-drop disconnect semantics.                                      |
+| `protocols.py` | `Participant` protocol — the interface every participant must implement: `address` + `on_message(msg)`.                                                                            |
 
 ### Thread Model
 
@@ -237,10 +237,10 @@ These are loaded in-process and wired directly to the bus at startup.
 
 The rationalisation engine. The `KAgentAdapter` receives bus messages and delegates to the core `KAgent`:
 
-| Incoming Action | Behaviour |
-|-----------------|-----------|
-| `submit` | Compile KScript source from `msg.message`, record sender per entry, call `kagent.rationalise(entry)` for each. Events flow back via `on_event()`. |
-| `countersign` | Call `kagent.countersign(kline)` with the KLine in `msg.message`. |
+| Incoming Action | Behaviour                                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `submit`        | Compile KScript source from `msg.message`, record sender per entry, call `kagent.rationalise(entry)` for each. Events flow back via `on_event()`. |
+| `countersign`   | Call `kagent.countersign(kline)` with the KLine in `msg.message`.                                                                                 |
 
 Events from Kalvin are routed back to the original sender (stored in a sender map keyed by entry identity).
 
@@ -248,11 +248,11 @@ Events from Kalvin are routed back to the original sender (stored in a sender ma
 
 Drives the training loop:
 
-| Incoming Action | Behaviour |
-|-----------------|-----------|
+| Incoming Action    | Behaviour                                                                                                               |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
 | `ground` / `frame` | Kalvin events. S1 events auto-satisfy. S2/S3 events trigger reactive mode (auto-countersign → cogitation → escalation). |
-| `input` | Human input from Slack. Supports commands: `goal: <text>`, `pause`, `stop`, `resume`, or freeform guidance text. |
-| `error` | Kalvin compilation error. Logged and counted toward lesson completion. |
+| `input`            | Human input from Slack. Supports commands: `goal: <text>`, `pause`, `stop`, `resume`, or freeform guidance text.        |
+| `error`            | Kalvin compilation error. Logged and counted toward lesson completion.                                                  |
 
 **Trainer lifecycle:**
 
@@ -274,10 +274,10 @@ These connect to the harness via WebSocket and register with an address.
 
 Bridges Slack and the harness:
 
-| Direction | Action | Behaviour |
-|-----------|--------|-----------|
-| Harness → Slack | `notify` | Posts the message content to the configured Slack channel. |
-| Slack → Harness | `input` | Forwards human messages to `"trainer"` as `{address: "trainer", action: "input", message: <text>}`. |
+| Direction       | Action   | Behaviour                                                                                           |
+| --------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| Harness → Slack | `notify` | Posts the message content to the configured Slack channel.                                          |
+| Slack → Harness | `input`  | Forwards human messages to `"trainer"` as `{address: "trainer", action: "input", message: <text>}`. |
 
 **Running the Slack participant:**
 
@@ -323,13 +323,13 @@ Client participants communicate with the harness over WebSocket using JSON frame
 ### Registration (first frame)
 
 ```json
-{"register": "slack"}
+{ "register": "slack" }
 ```
 
 The first frame from any client **must** be a registration frame. The address must be unique — duplicate registrations are rejected with:
 
 ```json
-{"error": "address 'slack' already registered"}
+{ "error": "address 'slack' already registered" }
 ```
 
 followed by a WebSocket close (code `4002`).
@@ -352,7 +352,11 @@ After registration, all outbound frames are messages. The `sender` field is set 
 {
   "address": "slack",
   "action": "notify",
-  "message": {"reason": "budget_exhaustion", "detail": "", "lesson_position": 3},
+  "message": {
+    "reason": "budget_exhaustion",
+    "detail": "",
+    "lesson_position": 3
+  },
   "sender": "trainer"
 }
 ```
@@ -362,7 +366,7 @@ Inbound frames are routed by `address` — the harness delivers them to the matc
 ### Error Frames
 
 ```json
-{"error": "malformed frame: not valid JSON"}
+{ "error": "malformed frame: not valid JSON" }
 ```
 
 Sent by the harness when a frame cannot be parsed or is structurally invalid.
@@ -547,15 +551,15 @@ uv run pytest tests/test_harness_run.py -v
 
 ### Test Files
 
-| File | Coverage |
-|------|----------|
-| `test_bus.py` | MessageBus subscribe, send, dispatch, wildcard, stop |
-| `test_harness.py` | Config loading, validation, ParticipantConfig |
-| `test_server.py` | HarnessServer setup, embedded participant wiring |
-| `test_adapter.py` | KAgentAdapter submit, countersign, event routing |
-| `test_protocol.py` | WebSocketProtocol registration, frame parsing |
-| `test_harness_run.py` | End-to-end: start harness, route messages through full stack |
-| `test_harness_cli.py` | CLI argument parsing |
-| `test_harness_events.py` | Event classification (S1/S2/S3) |
-| `test_harness_tracking.py` | CurriculumState tracking sets |
-| `test_harness_persistence.py` | State save/load round-trip |
+| File                          | Coverage                                                     |
+| ----------------------------- | ------------------------------------------------------------ |
+| `test_bus.py`                 | MessageBus subscribe, send, dispatch, wildcard, stop         |
+| `test_harness.py`             | Config loading, validation, ParticipantConfig                |
+| `test_server.py`              | HarnessServer setup, embedded participant wiring             |
+| `test_adapter.py`             | KAgentAdapter submit, countersign, event routing             |
+| `test_protocol.py`            | WebSocketProtocol registration, frame parsing                |
+| `test_harness_run.py`         | End-to-end: start harness, route messages through full stack |
+| `test_harness_cli.py`         | CLI argument parsing                                         |
+| `test_harness_events.py`      | Event classification (S1/S2/S3)                              |
+| `test_harness_tracking.py`    | CurriculumState tracking sets                                |
+| `test_harness_persistence.py` | State save/load round-trip                                   |

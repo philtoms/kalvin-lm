@@ -97,13 +97,13 @@
       - Fast path (S1): auto-satisfy, advance curriculum if lesson complete
       - Slow path (S2/S3): enter reactive mode
       - Compilation error: log and escalate
-    - From `slack` (`action: input`): interpret via GLM-5.1
+    - From `slack` (`action: input`): interpret via LLM agent
       - Goal + KScript: start new session
       - Guidance: generate reactive scaffolding
       - "pause": stop submitting, stay active
       - "stop": end session, persist, go dormant
   - Curriculum-driven mode: send next lesson to `{address: kalvin, action: submit, message: <kscript>}`
-  - Reactive mode: cogitate via GLM-5.1, send scaffolding to kalvin
+  - Reactive mode: cogitate via LLM agent, send scaffolding to kalvin
   - Escalation: send `{address: slack, action: notify, message: ...}`
   - Ratification: auto-countersign on structural match, send `{address: kalvin, action: countersign, message: <kline>}`
   - Entry counting: tracks how many entries submitted per lesson, counts events until all received
@@ -118,12 +118,12 @@
   - `save(path)` / `load(path)`: JSON persistence for restart recovery
   - Session management: one active session, queue for pending goals
 
-### Task 9: Trainer — GLM-5.1 Integration (`src/trainer/cogitation.py`)
+### Task 9: Trainer — LLM agent Integration (`src/trainer/cogitation.py`)
 
 - **Spec ref:** @specs/harness-server §Trainer Participant — HRNS-13, HRNS-14
 - **Test mapping:** HRNS-13, HRNS-14
 - **Details:**
-  - Generates prompts for GLM-5.1 with:
+  - Generates prompts for LLM agent with:
     - Current event context (misfit diagnosis, expectation vs proposal)
     - Curriculum context (what the Trainer is trying to teach)
     - Conversation history (previous human guidance)
@@ -167,36 +167,36 @@
 
 ## Test Mapping
 
-| Spec ID | Test file | Test function | Status |
-|---------|-----------|---------------|--------|
-| HRNS-1  | tests/test_bus.py | test_route_by_address | ⬜ |
-| HRNS-2  | tests/test_bus.py | test_threadsafe_send | ⬜ |
-| HRNS-3  | tests/test_bus.py | test_unknown_address_error | ⬜ |
-| HRNS-4  | tests/test_protocol.py | test_client_registration | ⬜ |
-| HRNS-5  | tests/test_server.py | test_load_embedded_participants | ⬜ |
-| HRNS-6  | tests/test_server.py | test_websocket_client_connect | ⬜ |
-| HRNS-7  | tests/test_adapter.py | test_submit_compiles_and_submits | ⬜ |
-| HRNS-8  | tests/test_adapter.py | test_compilation_error_response | ⬜ |
-| HRNS-9  | tests/test_adapter.py | test_sender_map_response_addressing | ⬜ |
-| HRNS-10 | tests/test_adapter.py | test_countersign_action | ⬜ |
-| HRNS-11 | tests/test_bus.py | test_wildcard_diagnostic_listener | ⬜ |
-| HRNS-12 | tests/test_trainer.py | test_auto_countersign_structural_match | ⬜ |
-| HRNS-13 | tests/test_trainer.py | test_reactive_mode_on_s2_s3 | ⬜ |
-| HRNS-14 | tests/test_trainer.py | test_escalation_on_budget_exhaustion | ⬜ |
-| HRNS-15 | tests/test_curriculum.py | test_state_persistence_across_restart | ⬜ |
-| HRNS-16 | tests/test_trainer.py | test_one_session_at_a_time | ⬜ |
-| HRNS-17 | tests/test_slack_agent.py | test_slack_forwards_human_input | ✅ |
-| HRNS-18 | tests/test_slack_agent.py | test_slack_renders_notify | ✅ |
-| HRNS-19 | tests/test_trainer.py | test_session_pause | ⬜ |
-| HRNS-20 | tests/test_trainer.py | test_session_stop | ⬜ |
-| HRNS-21 | tests/test_protocol.py | test_disconnect_silent_drop | ⬜ |
-| HRNS-22 | tests/test_adapter.py | test_kagent_calls_adapter_directly | ⬜ |
-| HRNS-23 | tests/test_bus.py | test_single_dispatch_thread | ⬜ |
-| HRNS-24 | tests/test_trainer.py | test_entry_counting_lesson_complete | ⬜ |
-| HRNS-25 | tests/test_tui_client.py | test_renders_received_events | ✅ |
-| HRNS-26 | tests/test_tui_client.py | test_sends_freeform_input_to_trainer | ✅ |
-| HRNS-27 | tests/test_tui_client.py | test_sends_countersign_on_ratify | ✅ |
-| HRNS-28 | tests/test_tui_client.py | test_input_bar_clears_after_send | ✅ |
+| Spec ID | Test file                 | Test function                          | Status |
+| ------- | ------------------------- | -------------------------------------- | ------ |
+| HRNS-1  | tests/test_bus.py         | test_route_by_address                  | ⬜     |
+| HRNS-2  | tests/test_bus.py         | test_threadsafe_send                   | ⬜     |
+| HRNS-3  | tests/test_bus.py         | test_unknown_address_error             | ⬜     |
+| HRNS-4  | tests/test_protocol.py    | test_client_registration               | ⬜     |
+| HRNS-5  | tests/test_server.py      | test_load_embedded_participants        | ⬜     |
+| HRNS-6  | tests/test_server.py      | test_websocket_client_connect          | ⬜     |
+| HRNS-7  | tests/test_adapter.py     | test_submit_compiles_and_submits       | ⬜     |
+| HRNS-8  | tests/test_adapter.py     | test_compilation_error_response        | ⬜     |
+| HRNS-9  | tests/test_adapter.py     | test_sender_map_response_addressing    | ⬜     |
+| HRNS-10 | tests/test_adapter.py     | test_countersign_action                | ⬜     |
+| HRNS-11 | tests/test_bus.py         | test_wildcard_diagnostic_listener      | ⬜     |
+| HRNS-12 | tests/test_trainer.py     | test_auto_countersign_structural_match | ⬜     |
+| HRNS-13 | tests/test_trainer.py     | test_reactive_mode_on_s2_s3            | ⬜     |
+| HRNS-14 | tests/test_trainer.py     | test_escalation_on_budget_exhaustion   | ⬜     |
+| HRNS-15 | tests/test_curriculum.py  | test_state_persistence_across_restart  | ⬜     |
+| HRNS-16 | tests/test_trainer.py     | test_one_session_at_a_time             | ⬜     |
+| HRNS-17 | tests/test_slack_agent.py | test_slack_forwards_human_input        | ✅     |
+| HRNS-18 | tests/test_slack_agent.py | test_slack_renders_notify              | ✅     |
+| HRNS-19 | tests/test_trainer.py     | test_session_pause                     | ⬜     |
+| HRNS-20 | tests/test_trainer.py     | test_session_stop                      | ⬜     |
+| HRNS-21 | tests/test_protocol.py    | test_disconnect_silent_drop            | ⬜     |
+| HRNS-22 | tests/test_adapter.py     | test_kagent_calls_adapter_directly     | ⬜     |
+| HRNS-23 | tests/test_bus.py         | test_single_dispatch_thread            | ⬜     |
+| HRNS-24 | tests/test_trainer.py     | test_entry_counting_lesson_complete    | ⬜     |
+| HRNS-25 | tests/test_tui_client.py  | test_renders_received_events           | ✅     |
+| HRNS-26 | tests/test_tui_client.py  | test_sends_freeform_input_to_trainer   | ✅     |
+| HRNS-27 | tests/test_tui_client.py  | test_sends_countersign_on_ratify       | ✅     |
+| HRNS-28 | tests/test_tui_client.py  | test_input_bar_clears_after_send       | ✅     |
 
 ## Design Decisions
 
@@ -216,7 +216,7 @@
 
 8. **Static participant configuration** — loaded at startup from YAML/JSON. Dynamic registration is out of scope for MVP.
 
-9. **GLM-5.1 details deferred** — the Trainer's cogitation module defines the interface (prompt → scaffolding + confidence) but the prompt engineering and tool calling specifics will be designed in a separate grill session.
+9. **LLM agent details deferred** — the Trainer's cogitation module defines the interface (prompt → scaffolding + confidence) but the prompt engineering and tool calling specifics will be designed in a separate grill session.
 
 10. **One session at a time** — prevents interleaving confusion for the KAgent and simplifies the Trainer's counting mechanism.
 
@@ -234,7 +234,7 @@ Task 1: KAgent rename + EventBus removal
   │                 └── Task 7: Trainer (core)
   │                       │
   │                       ├── Task 8: Curriculum state
-  │                       └── Task 9: GLM-5.1 integration
+  │                       └── Task 9: LLM agent integration
   │
   ├── Task 5: Harness Server
   │     │
@@ -250,18 +250,18 @@ Task 1: KAgent rename + EventBus removal
 
 ## Estimates
 
-| Task | Component | Estimate | Risk |
-|------|-----------|----------|------|
-| 1 | KAgent rename | 0.5 day | Low |
-| 2–3 | Message bus + dataclass | 1 day | Low |
-| 4 | KAgent adapter | 1.5 days | Medium (sender map, threading) |
-| 5–6 | Harness server + WebSocket | 2 days | Medium (async, WebSocket library) |
-| 7–8 | Trainer core + curriculum | 2–3 days | Medium (state machine, counting) |
-| 9 | GLM-5.1 integration | 2–3 days | High (prompt quality unknown) |
-| 10 | Slack participant | 1–2 days | Low |
-| 11 | TUI participant | 1–2 days | Low |
-| 12 | Config + entry point | 0.5 day | Low |
-| **Total** | | **12–17 days** | |
+| Task      | Component                  | Estimate       | Risk                              |
+| --------- | -------------------------- | -------------- | --------------------------------- |
+| 1         | KAgent rename              | 0.5 day        | Low                               |
+| 2–3       | Message bus + dataclass    | 1 day          | Low                               |
+| 4         | KAgent adapter             | 1.5 days       | Medium (sender map, threading)    |
+| 5–6       | Harness server + WebSocket | 2 days         | Medium (async, WebSocket library) |
+| 7–8       | Trainer core + curriculum  | 2–3 days       | Medium (state machine, counting)  |
+| 9         | LLM agent integration      | 2–3 days       | High (prompt quality unknown)     |
+| 10        | Slack participant          | 1–2 days       | Low                               |
+| 11        | TUI participant            | 1–2 days       | Low                               |
+| 12        | Config + entry point       | 0.5 day        | Low                               |
+| **Total** |                            | **12–17 days** |                                   |
 
 ## Status
 

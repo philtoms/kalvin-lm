@@ -6,12 +6,12 @@ A rationalising system whose entire world is built from **klines** — node-like
 
 Kalvin is not an oracle. Every response carries significance — a structural measurement of how grounded the response is in what Kalvin already knows:
 
-| Level | Meaning | Kalvin says |
-|-------|---------|-------------|
-| **S1** | Fully grounded | "I know this." |
-| **S2** | Partially understood | "I understand some of it." |
-| **S3** | Recognised aspects | "This reminds me of something." |
-| **S4** | Completely novel | "I've never seen this before." |
+| Level  | Meaning              | Kalvin says                     |
+| ------ | -------------------- | ------------------------------- |
+| **S1** | Fully grounded       | "I know this."                  |
+| **S2** | Partially understood | "I understand some of it."      |
+| **S3** | Recognised aspects   | "This reminds me of something." |
+| **S4** | Completely novel     | "I've never seen this before."  |
 
 This makes every response actionable. The other agent in the dialogue knows exactly where understanding is strong and where it breaks down.
 
@@ -35,7 +35,7 @@ No participant knows it's in a training loop. Each simply receives and responds.
 2. The **Trainer** breaks the goal into a curriculum and submits lessons to Kalvin.
 3. **Kalvin** rationalises each lesson, emitting events with significance.
 4. If lessons land at S1, the Trainer advances. If S2/S3, the Trainer enters reactive mode:
-   - Cogitates (via GLM-5.1) on what scaffolding to write.
+   - Cogitates (via LLM agent) on what scaffolding to write.
    - Submits reactive scaffolding to Kalvin.
    - Auto-countersigns proposals that structurally match expectations.
 5. If stuck after N rounds, the Trainer **escalates** to the human via Slack.
@@ -55,13 +55,13 @@ MHALL = SVO =>
      L > O
 ```
 
-| Operator | Syntax | Significance | Meaning |
-|----------|--------|--------------|---------|
-| Countersign | `A == B` | S1 | Mutual / bidirectional |
-| Undersign | `A = B` | S1 | Unconditional |
-| Canonize | `A => B C` | S2 | Canonical |
-| Connotate | `A > B` | S3 | Connotative |
-| Unsigned | `A` | S4 | Identity only |
+| Operator    | Syntax     | Significance | Meaning                |
+| ----------- | ---------- | ------------ | ---------------------- |
+| Countersign | `A == B`   | S1           | Mutual / bidirectional |
+| Undersign   | `A = B`    | S1           | Unconditional          |
+| Canonize    | `A => B C` | S2           | Canonical              |
+| Connotate   | `A > B`    | S3           | Connotative            |
+| Unsigned    | `A`        | S4           | Identity only          |
 
 Indented blocks are **scaffolding** — context that steers Kalvin toward understanding the parent line.
 
@@ -128,7 +128,7 @@ src/
 ├── trainer/              # Trainer participant
 │   ├── trainer.py        #   Curriculum execution + reactive mode
 │   ├── curriculum.py     #   Curriculum state + persistence
-│   └── cogitation.py     #   GLM-5.1 integration
+│   └── cogitation.py     #   LLM agent integration
 └── participants/         # Client participants
     ├── slack_agent.py    #   Slack ↔ harness
     └── tui_client.py     #   TUI ↔ harness
@@ -136,15 +136,15 @@ src/
 
 ## Documentation
 
-| Document | Purpose |
-|----------|---------|
-| [`CONTEXT.md`](CONTEXT.md) | Domain glossary — precise definitions of all terms |
-| [`docs/kalvin-introduction.md`](docs/kalvin-introduction.md) | What Kalvin is and why it works this way |
-| [`docs/kalvin-origin.md`](docs/kalvin-origin.md) | Conceptual model and philosophy |
-| [`docs/roadmap.md`](docs/roadmap.md) | Build phases, dependency graph, current status |
-| [`docs/adr/`](docs/adr/) | Architectural decision records |
-| [`specs/`](specs/) | Testable behavioural contracts |
-| [`plans/`](plans/) | Implementation strategy and test mapping |
+| Document                                                     | Purpose                                            |
+| ------------------------------------------------------------ | -------------------------------------------------- |
+| [`CONTEXT.md`](CONTEXT.md)                                   | Domain glossary — precise definitions of all terms |
+| [`docs/kalvin-introduction.md`](docs/kalvin-introduction.md) | What Kalvin is and why it works this way           |
+| [`docs/kalvin-origin.md`](docs/kalvin-origin.md)             | Conceptual model and philosophy                    |
+| [`docs/roadmap.md`](docs/roadmap.md)                         | Build phases, dependency graph, current status     |
+| [`docs/adr/`](docs/adr/)                                     | Architectural decision records                     |
+| [`specs/`](specs/)                                           | Testable behavioural contracts                     |
+| [`plans/`](plans/)                                           | Implementation strategy and test mapping           |
 
 ## Development
 
