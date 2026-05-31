@@ -306,3 +306,124 @@ async def test_tuiapp_event_polling_populates_log():
             assert len(event_log.events) >= 1
             assert event_log.events[0]["action"] == "event"
             assert event_log.events[0]["message"]["kind"] == "frame"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# InputBar headless widget tests
+# ═══════════════════════════════════════════════════════════════════════
+
+
+async def test_input_bar_submitted_clears_input():
+    """InputBar clears the input field after submission."""
+    from textual.app import App, ComposeResult
+
+    messages: list[InputBar.Submitted] = []
+
+    class _TestApp(App):
+        def compose(self) -> ComposeResult:
+            yield InputBar()
+
+        def on_input_bar_submitted(self, event: InputBar.Submitted) -> None:
+            messages.append(event)
+
+    async with _TestApp().run_test() as pilot:
+        input_field = pilot.app.query_one("#input-bar-field")
+        input_field.value = "hello trainer"
+        await pilot.press("enter")
+        await asyncio.sleep(0.1)
+
+        # Input should be cleared
+        assert input_field.value == ""
+        # Message should have been posted
+        assert len(messages) == 1
+        assert messages[0].text == "hello trainer"
+
+
+async def test_input_bar_ignores_empty_input():
+    """InputBar does not post Submitted for empty/whitespace input."""
+    from textual.app import App, ComposeResult
+
+    messages: list[InputBar.Submitted] = []
+
+    class _TestApp(App):
+        def compose(self) -> ComposeResult:
+            yield InputBar()
+
+        def on_input_bar_submitted(self, event: InputBar.Submitted) -> None:
+            messages.append(event)
+
+    async with _TestApp().run_test() as pilot:
+        input_field = pilot.app.query_one("#input-bar-field")
+
+        # Try submitting empty
+        input_field.value = ""
+        await pilot.press("enter")
+        await asyncio.sleep(0.1)
+        assert len(messages) == 0
+
+        # Try submitting whitespace only
+        input_field.value = "   "
+        await pilot.press("enter")
+        await asyncio.sleep(0.1)
+        assert len(messages) == 0
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# InputBar + TUIApp integration tests
+# ═══════════════════════════════════════════════════════════════════════
+
+
+async def test_tuiapp_input_sends_to_trainer():
+    """TUIApp's InputBar submission sends text to the Trainer.
+
+    Verifies that submitting text via the input bar sends
+    ``{address: "trainer", action: "input", message: <text>}``
+    through the HarnessClient.
+    """
+    async with StubHarness() as stub:
+        app = TUIApp(harness_url=stub.url)
+
+        async with app.run_test() as pilot:
+            await stub.wait_for_frames(1)
+
+            # Type text into the input bar and submit
+            input_field = app.query_one("#input-bar-field")
+            input_field.value = "hello from human"
+            await pilot.press("enter")
+            await asyncio.sleep(0.2)
+
+            # Wait for the input message to arrive at the stub
+            await stub.wait_for_frames(2, timeout=3.0)
+
+            msg = stub.received_frames[1]
+            assert msg["address"] == "trainer"
+            assert msg["action"] == "input"
+            assert msg["message"] == "hello from human"
+
+
+async def test_tuiapp_ctrl_s_sends_input():
+    """ctrl+s focuses the input bar and submits if text is present."""
+    async with StubHarness() as stub:
+        app = TUIApp(harness_url=stub.url)
+
+        async with app.run_test() as pilot:
+            await stub.wait_for_frames(1)
+
+            # Put text into the input field first
+            input_field = app.query_one("#input-bar-field")
+            input_field.value = "ctrl+s message"
+
+            # Press ctrl+s to submit
+            await pilot.press("ctrl+s")
+            await asyncio.sleep(0.2)
+
+            # Wait for the input message to arrive at the stub
+            await stub.wait_for_frames(2, timeout=3.0)
+
+            msg = stub.received_frames[1]
+            assert msg["address"] == "trainer"
+            assert msg["action"] == "input"
+            assert msg["message"] == "ctrl+s message"
+
+            # Input should be cleared
+            assert input_field.value == ""

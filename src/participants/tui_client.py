@@ -167,9 +167,9 @@ class HarnessClient:
 
 
 from textual.app import App, ComposeResult
-from textual.widgets import Footer, Header
+from textual.widgets import Footer, Header, Input
 
-from participants.tui_regions import EventLog, RatifyBar
+from participants.tui_regions import EventLog, InputBar, RatifyBar
 
 
 class TUIApp(App):
@@ -194,6 +194,7 @@ class TUIApp(App):
     BINDINGS = [
         ("ctrl+q", "quit", "Quit"),
         ("ctrl+r", "ratify", "Ratify"),
+        ("ctrl+s", "send_input", "Send Input"),
     ]
 
     def __init__(
@@ -211,6 +212,7 @@ class TUIApp(App):
         yield Header()
         yield EventLog()
         yield RatifyBar()
+        yield InputBar()
         yield Footer()
 
     async def on_mount(self) -> None:
@@ -272,6 +274,29 @@ class TUIApp(App):
             ratify_bar.on_button_pressed(
                 type("FakeButton", (), {"button": type("Btn", (), {"id": "ratify-btn"})()})()
             )
+
+    def on_input_bar_submitted(self, event: InputBar.Submitted) -> None:
+        """Handle InputBar submission — send free-form text to the Trainer.
+
+        Sends ``{address: "trainer", action: "input", message: <text>}``
+        via the HarnessClient. The input field is cleared by InputBar
+        automatically after submission (HRNS-28).
+        """
+        asyncio.create_task(
+            self._client.send("trainer", "input", event.text)
+        )
+
+    def action_send_input(self) -> None:
+        """Keyboard shortcut: focus the input bar and submit via ctrl+s.
+
+        Focuses the input field so the user can start typing immediately.
+        If the input already has text, submits it.
+        """
+        input_bar = self.query_one(InputBar)
+        input_field = input_bar.query_one("#input-bar-field", Input)
+        input_field.focus()
+        if input_field.value.strip():
+            input_bar._submit()
 
 
 if __name__ == "__main__":
