@@ -7,6 +7,7 @@ Test mapping:
   - HarnessClient: registration, send, receive, disconnect
   - EventLog: displays events
   - RatifyBar: button state management
+  - InputBar: Submitted message, clear method
   - TUIApp: countersign integration, event polling
 """
 
@@ -21,7 +22,7 @@ import pytest
 import websockets
 
 from participants.tui_client import HarnessClient, TUIApp
-from participants.tui_regions import EventLog, EventItem, RatifyBar
+from participants.tui_regions import EventLog, EventItem, InputBar, RatifyBar
 
 
 # ---------------------------------------------------------------------------
@@ -208,6 +209,36 @@ def test_ratify_button_disabled_after_disable():
     bar.enable_ratify({"sig": 42})
     bar.disable_ratify()
     assert bar._selected_event_data is None
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# InputBar widget tests (headless — no Textual app loop)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_input_bar_imports():
+    """InputBar is importable from participants.tui_regions."""
+    assert InputBar is not None
+    assert hasattr(InputBar, "Submitted")
+
+
+def test_input_bar_submitted_message_carries_text():
+    """InputBar.Submitted stores the submitted text."""
+    msg = InputBar.Submitted("hello")
+    assert msg.text == "hello"
+
+
+def test_input_bar_submitted_message_empty_string():
+    """InputBar.Submitted can carry an empty string."""
+    msg = InputBar.Submitted("")
+    assert msg.text == ""
+
+
+def test_input_bar_has_clear_method():
+    """InputBar instance has a clear() method."""
+    bar = InputBar()
+    assert hasattr(bar, "clear")
+    assert callable(bar.clear)
 
 
 # ═══════════════════════════════════════════════════════════════════════
