@@ -6,10 +6,18 @@ server:
   port: 8765
 
 trainer:
-  curriculum_file: ""          # Path to curriculum markdown file (optional)
+  # Option A: Point to a pre-made curriculum file — training starts immediately.
+  # Option B: Leave blank ("") — Trainer polls for a goal from the TUI input bar.
+  #   - Type "goal: teach Kalvin about Mary had a little lamb" in the TUI
+  #   - Or type a file path like "curricula/first-steps.md"
+  curriculum_file: "curricula/first-steps.md"
   curricula_dir: "curricula"   # Directory for generated curriculum files
   state_path: "trainer_state.json"  # Path for state persistence
   max_reactive_rounds: 5
+  # llm:                         # Uncomment to override defaults
+  #   base_url: "https://open.bigmodel.cn/api/paas/v4"
+  #   model: "glm-5.1"
+  # API key is read from KALVIN_LLM_API_KEY env var — never put it here
 
 participants:
   - address: kalvin

@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from harness.bus import MessageBus
 from harness.message import Message
@@ -57,6 +58,10 @@ class Trainer:
         ``(RationaliseEvent) -> tuple[str, float] | None``.
         Returns ``(kscript_source, confidence)`` or ``None`` if no
         scaffolding can be generated.
+    llm_client:
+        Optional LLM client for curriculum generation and reactive
+        scaffolding. When provided, enables goal-based curriculum
+        generation via the CurriculumGenerator.
     save_path:
         Optional file path for curriculum state persistence.
     curriculum_file:
@@ -74,6 +79,7 @@ class Trainer:
         address: str = "trainer",
         max_reactive_rounds: int = 5,
         cogitate_fn: Callable[[RationaliseEvent], tuple[str, float] | None] | None = None,
+        llm_client: Any | None = None,
         save_path: str | Path | None = None,
         curriculum_file: str | Path | None = None,
         curricula_dir: str | Path | None = None,
@@ -87,6 +93,7 @@ class Trainer:
         )
         self._max_reactive_rounds = max_reactive_rounds
         self._cogitate_fn = cogitate_fn
+        self._llm_client = llm_client
         self._curriculum_file = Path(curriculum_file) if curriculum_file else None
         self._curricula_dir = Path(curricula_dir) if curricula_dir else None
 
@@ -103,6 +110,17 @@ class Trainer:
 
         # Register on the bus
         bus.subscribe(self._address, self.on_message)
+
+        # Path 3: if no curriculum file AND no saved state, enter goal-polling mode
+        if (
+            not self._curriculum_file
+            and not self._state.curriculum_file
+            and len(self._state.curriculum.lessons) == 0
+        ):
+            self._polling_for_goal = True
+            logger.info("No curriculum configured — polling for goal")
+            self._state.log_event("polling_for_goal", {})
+            self._emit_polling_status()
 
     # ── Participant protocol ──────────────────────────────────────────
 
@@ -235,8 +253,37 @@ class Trainer:
             logger.error("Cannot generate curriculum: no curricula_dir configured")
             return
 
+        if self._llm_client is None:
+            logger.error("Cannot generate curriculum: no LLM client configured")
+            self._state.log_event("generation_failed", {
+                "goal": goal,
+                "error": "no LLM client configured",
+            })
+            return
+
         logger.info("Generating curriculum for goal: %s", goal)
         self._state.log_event("goal_received", {"goal": goal})
+
+        try:
+            from trainer.curriculum_generator import CurriculumGenerator
+
+            generator = CurriculumGenerator(self._llm_client, self._curricula_dir)
+            path = generator.generate(goal)
+
+            logger.info("Curriculum generated: %s", path)
+            self._state.log_event("curriculum_generated", {"path": str(path)})
+
+            # Load the generated curriculum and start the session
+            self._load_and_start(path)
+        except Exception as exc:
+            logger.error("Curriculum generation failed: %s", exc)
+            self._state.log_event("generation_failed", {
+                "goal": goal,
+                "error": str(exc),
+            })
+            # Re-enter polling mode so the human can try again
+            self._polling_for_goal = True
+            self._emit_polling_status()
 
     def _load_and_start(self, path: Path) -> None:
         """Load a curriculum from a file and start the session."""
@@ -246,7 +293,22 @@ class Trainer:
             self._state.curriculum = curriculum
             self._curriculum_file = path
             self._state.curriculum_file = str(path)
-            self.start_session()
+
+            # Start session directly (curriculum is now loaded)
+            self._session_active = True
+            self._session_paused = False
+            self._state.log_event("session_start", {
+                "goal": None,
+                "curriculum_file": str(path),
+            })
+            self._emit_progress("started")
+            self._submit_next_lesson()
+
+            # Persist state with the curriculum file path
+            try:
+                self._state.save()
+            except ValueError:
+                logger.debug("No save path configured — skipping state persistence")
         except CurriculumParseError as exc:
             logger.error("Failed to load curriculum from %s: %s", path, exc)
             self._state.log_event("curriculum_load_error", {"path": str(path), "error": str(exc)})
@@ -289,6 +351,14 @@ class Trainer:
                     self._curriculum_file = saved_path
                 except CurriculumParseError:
                     logger.error("Failed to resume from %s", saved_path)
+        elif not self._state.curriculum.lessons:
+            # Path 3: no curriculum resolved — poll for goal instead
+            self._session_active = False
+            self._polling_for_goal = True
+            logger.info("No curriculum resolved — polling for goal")
+            self._state.log_event("polling_for_goal", {})
+            self._emit_polling_status()
+            return
 
         self._session_active = True
         self._session_paused = False
@@ -462,6 +532,22 @@ class Trainer:
         self._state.log_event("escalation", {"reason": reason, "detail": detail})
 
     # ── Progress events ───────────────────────────────────────────────
+
+    def _emit_polling_status(self) -> None:
+        """Emit a polling status event to the UI participant."""
+        self._bus.send(
+            Message(
+                address="ui",
+                action="progress",
+                message={
+                    "lesson_label": None,
+                    "lessons_total": 0,
+                    "lessons_completed": 0,
+                    "status": "polling_for_goal",
+                },
+                sender=self._address,
+            )
+        )
 
     def _emit_progress(self, status: str) -> None:
         """Emit a progress event to the UI participant."""

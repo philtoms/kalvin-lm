@@ -43,6 +43,7 @@ env/
 htmlcov/
 .tox/
 .nox/
+pytest-of-phil/
 
 # Type checking
 .mypy_cache/

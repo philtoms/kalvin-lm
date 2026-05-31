@@ -6,8 +6,6 @@
 - **RatifyBar**: horizontal bar with a Ratify button (disabled by default) and
   a status indicator.
 - **EventItem**: a single event display item showing action and message summary.
-- **InputBar**: single-line text input with a Send button that posts
-  ``InputBar.Submitted`` messages on Enter or button click.
 """
 
 from __future__ import annotations
@@ -159,6 +157,15 @@ class InputBar(Horizontal):
         if event.button.id == "input-send-btn":
             self._submit()
 
+    def clear(self) -> None:
+        """Clear the input field."""
+        try:
+            input_widget = self.query_one("#input-bar-field", Input)
+            input_widget.value = ""
+        except Exception:
+            # Widget not mounted — nothing to do
+            pass
+
 
 class RatifyBar(Horizontal):
     """Horizontal bar with a Ratify button and status indicator.
@@ -239,70 +246,4 @@ class RatifyBar(Horizontal):
             pass
 
 
-class InputBar(Horizontal):
-    """Single-line text input with a Send button.
 
-    When the user presses Enter in the input field or clicks the Send button,
-    the widget posts an ``InputBar.Submitted`` message carrying the typed text
-    and clears the input field.
-    """
-
-    DEFAULT_CSS = """
-    InputBar {
-        height: 3;
-        padding: 0 1;
-        align: left middle;
-    }
-    InputBar Input {
-        width: 1fr;
-    }
-    InputBar Button {
-        min-width: 8;
-        margin-left: 1;
-    }
-    """
-
-    class Submitted(Message):
-        """Posted when the user submits text via Enter or Send button.
-
-        Attributes
-        ----------
-        text:
-            The text that was submitted.
-        """
-
-        def __init__(self, text: str) -> None:
-            self.text = text
-            super().__init__()
-
-    def compose(self) -> ComposeResult:
-        yield Input(placeholder="Type a message…", id="input-field")
-        yield Button("Send", id="send-btn")
-
-    def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Handle Enter key in the input field."""
-        if event.input.id == "input-field" and event.value:
-            self.post_message(self.Submitted(event.value))
-            event.input.value = ""
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle Send button click."""
-        if event.button.id == "send-btn":
-            try:
-                input_widget = self.query_one("#input-field", Input)
-                text = input_widget.value
-                if text:
-                    self.post_message(self.Submitted(text))
-                    input_widget.value = ""
-            except Exception:
-                # Widget not mounted — nothing to do
-                pass
-
-    def clear(self) -> None:
-        """Clear the input field."""
-        try:
-            input_widget = self.query_one("#input-field", Input)
-            input_widget.value = ""
-        except Exception:
-            # Widget not mounted — nothing to do
-            pass

@@ -179,6 +179,9 @@ def main(argv: list[str] | None = None) -> None:
         else:
             curriculum = Curriculum(lessons=[])  # Empty default; loaded via session startup
 
+        # Set up LLM client if configured
+        llm_client = _build_llm_client(trainer_cfg)
+
         trainer = Trainer(
             bus,
             curriculum,
@@ -186,6 +189,7 @@ def main(argv: list[str] | None = None) -> None:
             save_path=state_path,
             curriculum_file=curriculum_file or None,
             curricula_dir=curricula_dir or None,
+            llm_client=llm_client,
         )
         trainer_holder.append(trainer)
 
@@ -226,6 +230,51 @@ def _persist_trainer_state(trainer: Any) -> None:
         logger.debug("No save path configured — skipping Trainer state persistence")
     except Exception:
         logger.exception("Failed to persist Trainer state")
+
+
+def _build_llm_client(trainer_cfg: dict) -> Any | None:
+    """Build an LLM client from the trainer config, or return None.
+
+    The API key is read from the ``KALVIN_LLM_API_KEY`` environment variable.
+    The ``llm`` section in the trainer config is optional and only provides
+    ``base_url`` and ``model`` overrides — it should NOT contain ``api_key``.
+
+    Config keys (all optional):
+    - ``base_url``: defaults to OpenAI-compatible endpoint
+    - ``model``: defaults to "glm-5.1"
+    """
+    import os
+
+    api_key = os.environ.get("KALVIN_LLM_API_KEY", "").strip()
+    if not api_key:
+        logger.debug("KALVIN_LLM_API_KEY not set — LLM client disabled")
+        return None
+
+    llm_cfg = trainer_cfg.get("llm") or {}
+
+    try:
+        from trainer.cogitation import OpenAICompatibleClient
+
+        base_url = llm_cfg.get(
+            "base_url", "https://open.bigmodel.cn/api/paas/v4"
+        )
+        model = llm_cfg.get("model", "glm-5.1")
+        client = OpenAICompatibleClient(
+            api_key=api_key,
+            base_url=base_url,
+            model=model,
+        )
+        logger.info("LLM client configured (model=%s, base_url=%s)", model, base_url)
+        return client
+    except ImportError:
+        logger.warning(
+            "'openai' package not installed — LLM client unavailable. "
+            "Install with: pip install kalvin[trainer]"
+        )
+        return None
+    except Exception:
+        logger.exception("Failed to create LLM client")
+        return None
 
 
 if __name__ == "__main__":
