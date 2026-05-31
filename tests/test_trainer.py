@@ -141,7 +141,12 @@ def _make_trainer(
     curriculum_file: str | Path | None = None,
     curricula_dir: str | Path | None = None,
 ) -> tuple[Trainer, BusCapture]:
-    """Create a Trainer with BusCapture installed."""
+    """Create a Trainer with BusCapture installed.
+
+    BusCapture is installed AFTER construction, so constructor-time
+    bus.send() calls are NOT captured. Use ``_make_trainer_with_capture()``
+    when you need to capture constructor-time messages.
+    """
     trainer = Trainer(
         bus,
         curriculum,
@@ -153,6 +158,36 @@ def _make_trainer(
     )
     capture = BusCapture(bus)
     capture.install()
+    return trainer, capture
+
+
+def _make_trainer_with_capture(
+    bus: MessageBus,
+    curriculum: Curriculum,
+    *,
+    save_path: str | Path | None = None,
+    max_reactive_rounds: int = 5,
+    cogitate_fn=None,
+    curriculum_file: str | Path | None = None,
+    curricula_dir: str | Path | None = None,
+) -> tuple[Trainer, BusCapture]:
+    """Create a Trainer with BusCapture installed BEFORE construction.
+
+    Unlike ``_make_trainer()``, this installs the BusCapture on the bus
+    before calling ``Trainer.__init__()``, so constructor-time bus.send()
+    calls (e.g., the polling status emission from Path 3) are captured.
+    """
+    capture = BusCapture(bus)
+    capture.install()
+    trainer = Trainer(
+        bus,
+        curriculum,
+        save_path=save_path,
+        max_reactive_rounds=max_reactive_rounds,
+        cogitate_fn=cogitate_fn,
+        curriculum_file=curriculum_file,
+        curricula_dir=curricula_dir,
+    )
     return trainer, capture
 
 
@@ -314,6 +349,9 @@ class TestOneSessionAtATime:
         ]
         assert len(queued_events) == 1
         assert queued_events[0]["data"]["goal"] == "second"
+
+        # Polling mode was never active in this flow
+        assert trainer._polling_for_goal is False
 
 
 # ── HRNS-19: Session pause ───────────────────────────────────────────
@@ -752,18 +790,97 @@ class TestSessionStartup:
 
     @patch("trainer.trainer.compile_source")
     def test_session_startup_polls_for_goal(self, mock_compile: MagicMock) -> None:
-        """CRS-40: Session startup polls for goal when no param and no saved state."""
+        """CRS-40: Session startup polls for goal when no param and no saved state.
+
+        When no curriculum file and no saved state exist, start_session()
+        enters goal-polling mode instead of starting a session. The trainer
+        waits for human input to provide a goal or curriculum file path.
+        """
         mock_compile.return_value = [_make_entry(100, [10])]
 
         bus = MessageBus()
         curriculum = Curriculum([])
-        trainer, _capture = _make_trainer(bus, curriculum)
+        trainer, capture = _make_trainer_with_capture(bus, curriculum)
 
-        # start_session with empty curriculum doesn't crash
+        # Reset to capture only start_session messages (not constructor ones)
+        capture.reset()
+
         trainer.start_session()
 
-        # Session starts (even with empty curriculum, it just ends immediately)
-        assert not trainer._session_active  # completes immediately
+        # Trainer enters polling mode — session is NOT active
+        assert trainer._polling_for_goal is True
+        assert not trainer._session_active
+
+        # A polling_for_goal event was logged
+        polling_events = [
+            e for e in trainer.state.event_log if e["type"] == "polling_for_goal"
+        ]
+        assert len(polling_events) >= 1
+
+        # A progress message was emitted to "ui" with status "polling_for_goal"
+        progress_msgs = capture.find_all("ui", "progress")
+        polling_progress = [
+            m for m in progress_msgs if m.message["status"] == "polling_for_goal"
+        ]
+        assert len(polling_progress) >= 1
+
+    def test_constructor_enters_polling_mode(self) -> None:
+        """Constructor Path 3: no file, no saved state, empty curriculum → polling mode.
+
+        When the Trainer is constructed with no curriculum_file and an
+        empty curriculum, it immediately enters goal-polling mode without
+        waiting for start_session(). This allows the trainer to be ready
+        to receive goal input as soon as it's created.
+        """
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer_with_capture(bus, curriculum)
+
+        # After construction, polling mode is active
+        assert trainer._polling_for_goal is True
+
+        # A polling_for_goal event was logged
+        polling_events = [
+            e for e in trainer.state.event_log if e["type"] == "polling_for_goal"
+        ]
+        assert len(polling_events) >= 1
+
+        # A progress message to "ui" with status "polling_for_goal" was emitted
+        progress_msgs = capture.find_all("ui", "progress")
+        polling_progress = [
+            m for m in progress_msgs if m.message["status"] == "polling_for_goal"
+        ]
+        assert len(polling_progress) >= 1
+
+    @patch("trainer.trainer.compile_source")
+    def test_no_polling_when_curriculum_file_exists(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """When a valid curriculum file exists, polling mode is NOT entered.
+
+        Negative test: a trainer with a curriculum file parameter should
+        start a normal session, not enter goal-polling mode.
+        """
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "test.md"
+        _write_curriculum(curriculum_path)
+
+        bus = MessageBus()
+        doc = CurriculumDocument.from_file(curriculum_path)
+        curriculum = Curriculum(doc)
+        trainer, _capture = _make_trainer(
+            bus, curriculum, curriculum_file=curriculum_path
+        )
+
+        # Constructor should NOT enter polling mode
+        assert trainer._polling_for_goal is False
+
+        trainer.start_session()
+
+        # Session starts normally
+        assert trainer._session_active is True
+        assert trainer._polling_for_goal is False
 
 
 class TestGoalResolution:
@@ -818,6 +935,99 @@ class TestGoalResolution:
         # Should have loaded the curriculum file
         assert not trainer._polling_for_goal
         assert trainer.state.curriculum.document.lessons[0].label == "1"
+
+
+# ── Polling-mode input handling ──────────────────────────────────────
+
+
+class TestPollingModeInputHandling:
+    """Polling-mode input handling: goal text and file path resolution."""
+
+    @patch("trainer.trainer.compile_source")
+    def test_polling_mode_resolves_goal_input(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """When polling, a 'goal:' input resolves via _resolve_goal and starts session.
+
+        The trainer enters polling mode (empty curriculum, no file). When
+        a 'goal: teach X' input arrives, _resolve_goal is called, polling
+        mode ends, and the session starts with the generated curriculum.
+        """
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        # Provide a curriculum file so _load_and_start can succeed via
+        # the _resolve_goal path when the goal text triggers generation.
+        curriculum_path = tmp_path / "gen_curriculum.md"
+        _write_curriculum(curriculum_path)
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer_with_capture(
+            bus, curriculum, curricula_dir=str(tmp_path)
+        )
+
+        # Confirm polling mode is active from constructor
+        assert trainer._polling_for_goal is True
+        capture.reset()
+
+        # Send goal input
+        trainer.on_message(
+            Message(
+                address="trainer",
+                action="input",
+                message="goal: teach SVO patterns",
+                sender="slack",
+            )
+        )
+
+        # Polling mode should be cleared
+        assert trainer._polling_for_goal is False
+
+        # A goal_received event should have been logged
+        goal_events = [
+            e for e in trainer.state.event_log if e["type"] == "goal_received"
+        ]
+        assert len(goal_events) >= 1
+        assert "teach SVO patterns" in goal_events[0]["data"]["goal"]
+
+    @patch("trainer.trainer.compile_source")
+    def test_polling_mode_resolves_file_path_input(
+        self, mock_compile: MagicMock, tmp_path: Path
+    ) -> None:
+        """When polling, a valid .md file path input loads the curriculum and starts."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "test.md"
+        _write_curriculum(curriculum_path)
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, capture = _make_trainer_with_capture(
+            bus, curriculum, curricula_dir=str(tmp_path)
+        )
+
+        # Confirm polling mode is active
+        assert trainer._polling_for_goal is True
+        capture.reset()
+
+        # Send file path as input
+        trainer.on_message(
+            Message(
+                address="trainer",
+                action="input",
+                message=str(curriculum_path),
+                sender="slack",
+            )
+        )
+
+        # Polling mode cleared, session started with loaded curriculum
+        assert trainer._polling_for_goal is False
+        assert trainer._session_active is True
+        assert trainer.state.curriculum.document.lessons[0].label == "1"
+
+        # Submit was sent to kalvin
+        submit_msgs = capture.find_all("kalvin", "submit")
+        assert len(submit_msgs) >= 1
 
 
 # ── CRS-43..CRS-45: File polling and amendment ───────────────────────

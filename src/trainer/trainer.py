@@ -111,16 +111,12 @@ class Trainer:
         # Register on the bus
         bus.subscribe(self._address, self.on_message)
 
-        # Path 3: if no curriculum file AND no saved state, enter goal-polling mode
-        if (
-            not self._curriculum_file
-            and not self._state.curriculum_file
-            and len(self._state.curriculum.lessons) == 0
-        ):
+        # Constructor Path 3: no curriculum file and empty curriculum →
+        # enter goal-polling mode immediately.
+        if self._curriculum_file is None and self._state.curriculum.total() == 0:
             self._polling_for_goal = True
-            logger.info("No curriculum configured — polling for goal")
             self._state.log_event("polling_for_goal", {})
-            self._emit_polling_status()
+            self._emit_progress("polling_for_goal")
 
     # ── Participant protocol ──────────────────────────────────────────
 
@@ -358,6 +354,15 @@ class Trainer:
             logger.info("No curriculum resolved — polling for goal")
             self._state.log_event("polling_for_goal", {})
             self._emit_polling_status()
+            return
+
+        # Path 3: no curriculum file and no saved state → poll for goal.
+        # After path resolution, if the curriculum is still empty,
+        # enter polling mode instead of starting a session.
+        if self._state.curriculum.total() == 0:
+            self._polling_for_goal = True
+            self._state.log_event("polling_for_goal", {})
+            self._emit_progress("polling_for_goal")
             return
 
         self._session_active = True
