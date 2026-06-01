@@ -1445,3 +1445,19 @@ When Kalvin's graph is empty, the klines in the STM have no semantic value whats
 I want to create an agent-in-the-loop that runs the harness on behalf of a human user. It needs at a minimum to understand the structure of proposals so that it can create appropriate scaffolding. Ideally this agent would be able to communicate with a human through slack (the agent app already exists - details later) when it needs additional support and or information, or when it has made some significant progress and wants to update the human. The agent will likely have the assistance of a language model (GLM-5.1) when deciding what scaffolding is needed. This assistant may even propose writing the initial KScripts.
 
 We'll handle the details of glm cooperation in another grill session. For now it is enough to describe the architectural details: The harness needs to generate a prompt, set up tool calling, call the LLM API. It needs to be able to extract and compile the recommended scaffolding. The aim of this session is to understand the new architecture needed for sustained multi agent interaction. 
+
+/skill:grill-with-docs I want to evolve and formalize the idea of a curriculum into a structured guidance document. At a high level it will be similar to a chat template divided by roles. It will be loaded by the trainer and used to prime the LLM
+context. Its overall purpose is to keep all of the training participants focused on the curriculum so operationally it should be loaded by the harness and passed out to participants as part of the registration.
+
+However, because it is being used by the trainer as a context prompt we need to understand how to make the LLM aware of the different roles without confusing it with the more accepted system, assistant, user kinds of roles. In this sense it might be better to steer away from conventional template configuration, but we should discuss it before making an architectural decision.
+
+However it is structured, the curriculum will be the kind of document the LLM is able to construct from a very high level request: 
+```
+build a curriculum around the nursery rhyme "Mary had a little lamb"
+the curriculum should include steps to isolate the syntax of the text, so that kalvin learns which parts are important when answering more advanced questions further into the curriculum" 
+```
+
+This is just an example curriculum. The loose format means that it can be constructed to teach kalvin targeted domains across a growing general knowledge.
+
+trainer:  
+kalvin:

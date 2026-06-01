@@ -1,8 +1,23 @@
-# Kalvin — Domain Glossary
+# Kalvin — Context
+
+This document has two sections. **Operating Notes** contains process instructions and conventions. **Domain Glossary** defines the precise meaning of terms used across specs, plans, and code. Do not mix the two — glossary entries are domain terms only; operating notes are behavioral rules.
+
+---
+
+## Operating Notes
+
+- Never commit to git autonomously. Always ask for explicit confirmation before running any `git commit`.
+- When creating kb tasks for large features, decompose into discrete tasks with explicit `depends` chains. Each task should cover one coherent piece of work — a single spec, a single module, a single behavioural change. Do not create monolithic tasks that span multiple specs, plans, and implementation modules.
+- Follow the three-layer documentation model strictly (docs/spec-plan-proposal.md): origin → spec → plan. No content duplication across layers.
+- CONTEXT.md is a glossary plus operating notes. Keep the two sections separate. Do not add implementation details, spec content, or code to either section.
+
+---
+
+## Domain Glossary
 
 Kalvin is a rationalising system whose entire world is built from klines. This glossary defines the precise meaning of terms used across specs, plans, and code.
 
-## Agents and the Harness
+### Agents and the Harness
 
 **Kalvin**:
 The trainee — the rationalising system being trained. Receives klines, routes candidates, manages the Cogitator, and publishes events. The implementation class is `KAgent` (`src/kalvin/agent.py`). Calls its adapter directly instead of maintaining an internal EventBus — the adapter is responsible for routing events onto the harness bus.
@@ -82,31 +97,31 @@ The alternating exchange between participants in the harness loop. One participa
 **Participant**:
 Any agent loaded into the harness loop (Kalvin, Trainer, UI agent, Slack agent, etc.). Each participant has a unique address and subscribes to messages addressed to it. Diagnostic listeners may subscribe to any or all addresses. All participants are equal — no participant has special status or privileged access to the harness.
 
-## KLine
+### KLine
 
 A node-like structure with a **signature** (head) and **nodes** (value). The fundamental unit of Kalvin's knowledge graph. Two kinds: **identity** (no nodes) and **relationship** (one or more nodes).
 
-## Signature
+### Signature
 
 The head of a KLine. A bit-packed integer representing the identity of the KLine. Constructed via `make_signature(nodes)`.
 
-## Compiled Entry
+### Compiled Entry
 
 A KLine produced by the KScript compiler. Extends KLine with compilation metadata.
 
-## Expectation
+### Expectation
 
 A compiled entry that enters the slow path (S2/S3) during rationalisation and requires a matching proposal to be satisfied.
 
-## Proposal
+### Proposal
 
 A KLine emitted by the Agent (via event) as a candidate response during rationalisation.
 
-## Countersign
+### Countersign
 
 The reciprocal kline of a proposal. For `{Q: [V]}`, the countersignature is `{V: [Q]}`. Countersigning ratifies a proposal, promoting it toward S1.
 
-## Significance
+### Significance
 
 A 64-bit inverted distance representing how well a KLine relates to the model's current knowledge. Higher values indicate greater understanding. Ranges from S1 (fully grounded) to S4 (completely novel). Displayed as both a raw hex value and a normalised value between 0 (S4) and 1 (S1).
 
@@ -117,34 +132,34 @@ A 64-bit inverted distance representing how well a KLine relates to the model's 
 - **S3**: Recognised aspects — no node match but signature matches previously worked signatures.
 - **S4**: Completely novel — no candidates found.
 
-## Fast Path
+### Fast Path
 
 Rationalisation that resolves immediately (S1 ground, S4 identity, S1 canonical, S1 countersigned). Returns `True` from `kagent.rationalise()`. The Trainer auto-satisfies these.
 
-## Slow Path
+### Slow Path
 
 Rationalisation that requires cogitation (S2/S3). Returns `False` from `kagent.rationalise()`. The Trainer tracks these as pending expectations.
 
-## Submitted Set
+### Submitted Set
 
 The set of compiled entries that have been fed to `kagent.rationalise()`. Maintained by the Trainer per session. Monotonic within a session.
 
-## Satisfied Set
+### Satisfied Set
 
 The set of compiled entries whose proposals matched expectations and were countersigned. Maintained by the Trainer per session. Monotonic within a session.
 
-## Pending Set
+### Pending Set
 
 Compiled entries not yet in the submitted set. New entries are submitted; already-submitted entries are skipped.
 
-## Ratify
+### Ratify
 
 The action of countersigning a selected proposal. Performed by the Trainer during curriculum execution. The Trainer auto-countersigns on structural match; may choose to delay or reject in advanced scenarios.
 
-## MCS Entry
+### MCS Entry
 
 A multi-character signature entry where `signature == make_signature(nodes)`. Always S1 (canonical) — no misfit possible.
 
-## Structural Match
+### Structural Match
 
 Comparison of two KLines by signature and nodes: `a.signature == b.signature and a.nodes == b.nodes`. Used for proposal-expectation matching and event correlation.
