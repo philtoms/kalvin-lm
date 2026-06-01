@@ -430,13 +430,13 @@ class TestPromoteParticipating:
         assert any(kl.signature == 10 for kl in m)
 
     def test_no_double_promote(self):
-        """Already-promoted klines are not re-promoted."""
+        """Already-promoted literal klines are not re-promoted (LTM dedup)."""
         m = Model(stm_bound=256)
-        q = KLine(5, [10])
-        c = KLine(10, [5])
+        q = KLine(5, [10], literal=True)
+        c = KLine(10, [5], literal=True)
         m.add(q)
         m.add(c)
-        m.promote(q)
+        m.promote(q)  # promote to LTM first
         m.promote(c)
         count = promote_participating(m, q, c)
-        assert count == 0  # both already in frame
+        assert count == 0  # both already in LTM (literal dedup)

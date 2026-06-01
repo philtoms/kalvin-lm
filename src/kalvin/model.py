@@ -1,4 +1,4 @@
-"""Model — three-tier layered KLine collection (STM → Frame → Base).
+"""Model — four-tier layered KLine collection (STM → Frame → LTM → Base).
 
 The model provides storage, deduplication, lookup by signature, and
 graph traversal. Significance computation and misfit classification
@@ -107,40 +107,57 @@ from kalvin.misfit import (
 
 
 class Model:
-    """Three-tier Model: STM → Frame → Base.
+    """Four-tier Model: STM → Frame → LTM → Base.
 
-    - STM: bounded rolling window (default 256). add() writes here.
-    - Frame: populated by promote() from STM.
+    - STM: bounded rolling window (default 256). Written by add() and refresh_stm().
+    - Frame: working context. Written directly by add() alongside STM.
+    - LTM: long-term memory. Populated by promote() from Frame. Additive (Frame retains).
     - Base: optional long-term knowledge store (read-only, set at construction).
 
     The caller sees a single unified API. Significance and misfit logic
     are delegated to expand.py and misfit.py.
 
-    Frame storage is backed by ``KLineStore`` — a reusable indexed list
-    with dedup set that will also power the upcoming LTM tier.
+    Frame and LTM storage are backed by ``KLineStore`` — a reusable indexed list
+    with dedup set.
     """
 
-    def __init__(self, base: Model | None = None, stm_bound: int = 256):
+    def __init__(self, base: Model | None = None, ltm: Model | None = None, stm_bound: int = 256):
         self._base = base
         self._stm = STM(bound=stm_bound)
 
         # Frame storage — delegated to KLineStore
         self._frame: KLineStore = KLineStore()
 
+        # LTM (Long-Term Memory) storage — populated from a previous session's model
+        self._ltm: KLineStore = KLineStore()
+        if ltm is not None:
+            for kl in ltm.klines():
+                self._ltm.add(kl)
+
     # ── Storage Operations ────────────────────────────────────────────
 
     def add(self, kline: KLine, dedup: bool = False) -> bool:
-        """Add a KLine to STM only.
+        """Add a KLine to both STM and Frame.
 
-        If kline.is_literal() and dedup=True, reject if an equal KLine
-        exists in any tier. Non-literal Klines are always accepted.
+        Automatic cross-tier literal dedup: if kline.is_literal() is True,
+        check all four tiers (STM, Frame, LTM, Base) before adding.
+        If a matching literal exists anywhere, return False.
+        Non-literal klines are always accepted.
 
-        Returns True if added, False if rejected.
+        The ``dedup`` parameter is kept for backward compatibility but
+        literal dedup is now automatic regardless of its value.
+
+        Returns True if added, False if rejected (literal duplicate).
         """
-        if dedup and kline.is_literal():
+        if kline.is_literal():
             if self._exists_any(kline):
                 return False
 
+        # Write to Frame first (Frame retains even if STM evicts)
+        if not self._frame.contains(kline):
+            self._frame.add(kline)
+
+        # Then write to STM (may trigger FIFO eviction)
         self._stm.add(kline, True)
         return True
 
@@ -149,10 +166,12 @@ class Model:
         return self._exists_any(kline)
 
     def _exists_any(self, kline: KLine) -> bool:
-        """Check STM, frame, then base."""
+        """Check STM, Frame, LTM, then Base."""
         if self._stm.contains(kline):
             return True
         if self._frame.contains(kline):
+            return True
+        if self._ltm.contains(kline):
             return True
         if self._base:
             return self._base.exists(kline)
@@ -161,16 +180,20 @@ class Model:
     def find(self, signature: KSig) -> KLine | None:
         """Find the most recently added KLine by signature.
 
-        Searches STM, then frame, then base.
+        Searches STM, then Frame, then LTM, then Base.
         """
         # STM first — filter for actual signature match (STM is dual-keyed)
         for kl in reversed(self._stm.find_by_signature(signature)):
             if kl.signature == signature:
                 return kl
         # Frame
-        kl = self._frame.find(signature)
-        if kl is not None:
-            return kl
+        found = self._frame.find(signature)
+        if found is not None:
+            return found
+        # LTM
+        found = self._ltm.find(signature)
+        if found is not None:
+            return found
         # Base
         if self._base:
             return self._base.find(signature)
@@ -197,6 +220,13 @@ class Model:
                 seen.add(key)
                 results.append(kl)
 
+        # LTM results
+        for kl in self._ltm.find_all(signature):
+            key = (kl.signature, tuple(kl.nodes))
+            if key not in seen:
+                seen.add(key)
+                results.append(kl)
+
         # Base results
         if self._base:
             for kl in self._base.find_all(signature):
@@ -213,8 +243,13 @@ class Model:
         klines = self._stm.find_by_nodes(nodes_signature)
         if klines:
             return klines[-1]
-        # Scan frame
+        # Scan Frame
         for kl in reversed(self._frame):
+            ns = make_signature(kl.nodes)
+            if ns == nodes_signature:
+                return kl
+        # Scan LTM
+        for kl in reversed(self._ltm):
             ns = make_signature(kl.nodes)
             if ns == nodes_signature:
                 return kl
@@ -226,7 +261,7 @@ class Model:
     # ── Count ─────────────────────────────────────────────────────────
 
     def __len__(self) -> int:
-        """Number of KLines in the frame (excluding STM and base)."""
+        """Number of KLines in the Frame (excluding STM, LTM, and Base)."""
         return len(self._frame)
 
     def __iter__(self) -> Iterator[KLine]:
@@ -238,7 +273,11 @@ class Model:
     # ── Iteration ─────────────────────────────────────────────────────
 
     def klines(self) -> list[KLine]:
-        """All KLines in reverse insertion order, deduplicated across tiers."""
+        """All KLines in reverse insertion order, deduplicated across tiers.
+
+        STM entries first (most recent), then Frame entries not in STM,
+        then LTM entries not in Frame, then Base entries not in LTM.
+        """
         seen: set[tuple[KSig, tuple[int, ...]]] = set()
         results: list[KLine] = []
 
@@ -256,7 +295,14 @@ class Model:
                 seen.add(key)
                 results.append(kl)
 
-        # Base entries not in frame
+        # LTM entries not in Frame
+        for kl in reversed(self._ltm):
+            key = (kl.signature, tuple(kl.nodes))
+            if key not in seen:
+                seen.add(key)
+                results.append(kl)
+
+        # Base entries not in LTM
         if self._base:
             for kl in self._base.klines():
                 key = (kl.signature, tuple(kl.nodes))
@@ -280,28 +326,22 @@ class Model:
     # ── Promotion ─────────────────────────────────────────────────────
 
     def promote(self, kline: KLine) -> bool:
-        """Promote a KLine from STM to the frame.
+        """Promote a KLine from Frame to LTM.
 
-        The KLine must currently be in STM. Returns True if added to frame,
-        False if not in STM or already in frame.
+        Copies the kline to the LTM tier. The kline remains in Frame
+        (promotion is additive, not a move).
+
+        - No precondition — any kline may be promoted regardless of Frame membership.
+        - Literal dedup in LTM: if kline.is_literal() and an equal kline
+          already exists in LTM, returns False.
+        - Non-literal klines are always accepted by LTM.
+        - Returns True if added to LTM, False if rejected (literal duplicate).
         """
-        # Must be in STM
-        if not self._stm.contains(kline):
-            return False
-        # Already in frame
-        if self._frame.contains(kline):
-            return False
-        # Add to frame
-        self._frame.add(kline)
+        if kline.is_literal():
+            if self._ltm.contains(kline):
+                return False
+        self._ltm.add(kline)
         return True
-
-    def promote_all(self) -> int:
-        """Promote all STM KLines to the frame."""
-        count = 0
-        for kl in self._stm.all_klines():
-            if self.promote(kl):
-                count += 1
-        return count
 
     # ── Graph Traversal ───────────────────────────────────────────────
 
@@ -443,6 +483,20 @@ class Model:
         """Iterate all KLines currently in the STM, in insertion order."""
         return self._stm.iter_all()
 
+    def refresh_stm(self, kline: KLine) -> bool:
+        """Re-enter a KLine into STM with LRU-style freshness.
+
+        Removes the kline from STM if present, then re-adds it — refreshing
+        its FIFO position. Used by the cogitation pipeline to give recency
+        precedence to klines actively used in reasoning.
+
+        Returns True if the kline was added to STM.
+        Returns False if the kline could not be added.
+        Does NOT affect Frame, LTM, or Base.
+        """
+        self._stm.remove(kline)
+        return self._stm.add(kline, True)
+
     # ── Compatibility ─────────────────────────────────────────────────
 
     def find_kline(self, signature: KSig) -> KLine | None:
@@ -460,11 +514,10 @@ class Model:
     def duplicate(self) -> Model:
         """Create a duplicate of this model's frame."""
         klines = [KLine(kl.signature, list(kl.nodes), kl.literal, kl.dbg_text)
-                   for kl in self._frame]
+                   for kl in self._frame.all_klines()]
         m = Model()
         for kl in klines:
             m.add(kl)
-            m.promote(kl)
         return m
 
     def get_all_descendants(self, node: int, visited: set[int] | None = None) -> set[int]:
