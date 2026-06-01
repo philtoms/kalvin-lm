@@ -2,21 +2,22 @@
 
 ## Overview
 
-A Model is a mutable, indexed collection of Klines with a three-tier
+A Model is a mutable, indexed collection of Klines with a four-tier
 layered memory architecture. It provides storage, deduplication, lookup
 by signature, graph traversal, and the comparison functions consumed by
 the significance pipeline.
 
-The three tiers from newest to oldest are:
+The four tiers from newest to oldest are:
 
 ```
-STM → Frame → Base
+STM → Frame → LTM → Base
 ```
 
 Callers see a single unified Model API. The model manages the tiers
-internally: `add` writes to STM only; `promote` moves from STM to the
-frame; the base is read-only, established at construction. Lookups merge
-across all tiers transparently.
+internally: `add` writes to STM and Frame; `promote` copies from Frame to
+LTM; `refresh_stm` re-enters klines into STM (caller-driven). Base is
+read-only, established at construction. Lookups merge across all tiers
+transparently.
 
 ## Dependencies
 
@@ -32,6 +33,18 @@ This spec depends on the following concepts, defined elsewhere:
 
 - STM is a bounded, dual-keyed index over recently added KLines.
 - The Model manages the STM internally; callers never interact with it directly.
+
+### Frame (@CONTEXT.md §Frame)
+
+- Frame is working context — the klines that bias Kalvin's current reasoning.
+- Frame and STM together form working memory.
+- Populated directly by `add()` alongside STM.
+
+### LTM (@CONTEXT.md §LTM)
+
+- LTM (Long-Term Memory) holds grounded klines promoted from Frame.
+- Structurally identical to Frame — the distinction is semantic (grounded vs ungrounded).
+- Persisted across sessions, loaded at session start.
 
 ### Significance (@significance spec)
 
@@ -50,20 +63,22 @@ This spec depends on the following concepts, defined elsewhere:
 
 A Model consists of:
 
-| Component | Type                   | Description                         |
-| --------- | ---------------------- | ----------------------------------- |
-| stm       | STM                    | Short-term memory. Bounded, recent. |
-| frame     | Frame                  | Per-session write layer over base.  |
-| base      | Model \| none          | Optional long-term knowledge store. |
-| index     | signature → [Kline, …] | Unified index across all tiers.     |
+| Component | Type                   | Description                                  |
+| --------- | ---------------------- | -------------------------------------------- |
+| stm       | STM                    | Short-term memory. Bounded, recent.          |
+| frame     | Frame                  | Working context. Populated by `add()`.       |
+| ltm       | LTM                    | Long-term memory. Populated by `promote()`.  |
+| base      | Model \| none          | Optional read-only knowledge store.           |
+| index     | signature → [Kline, …] | Unified index across all tiers.              |
 
 ### Tier Summary
 
-| Tier  | Purpose               | Bounded | Lifetime       | Written by add | Written by promote |
-| ----- | --------------------- | ------- | -------------- | -------------- | ------------------ |
-| STM   | Transitive grounding  | Yes     | Rolling window | Yes            | No                 |
-| Frame | Session write surface | No      | Per-session    | No             | Yes (from STM)     |
-| Base  | Long-term knowledge   | No      | Persistent     | No             | No                  |
+| Tier  | Purpose               | Bounded | Lifetime       | Written by add | Written by promote | Written by refresh_stm |
+| ----- | --------------------- | ------- | -------------- | -------------- | ------------------ | ---------------------- |
+| STM   | Transitive grounding  | Yes     | Rolling window | Yes            | No                 | Yes                    |
+| Frame | Working context       | No      | Per-session    | Yes            | No                 | No                     |
+| LTM   | Grounded knowledge    | No      | Cross-session  | No             | Yes (from Frame)   | No                     |
+| Base  | Long-term knowledge   | No      | Persistent     | No             | No                 | No                     |
 
 ### STM (Short-Term Memory)
 
@@ -71,36 +86,42 @@ See the **@stm spec** for the full definition. Summary:
 
 - Bounded, dual-keyed index over recently added KLines (default bound: **256**).
 - Indexes each KLine by **signature** and **nodes signature** (via `make_signature`).
-- FIFO eviction when bound is exceeded; evicted KLines are discarded unless
-  they have been promoted to the frame.
+- FIFO eviction when bound is exceeded; evicted KLines remain in Frame and
+  deeper tiers.
 - Enables **transitive grounding** — finding KLines that share node structure
   even when their signatures differ.
-- `add` writes to STM only.
+- `add` writes to STM and Frame.
+- `refresh_stm` re-enters klines used in cogitation (caller-driven, LRU-style).
 
 ### Frame
 
-The frame is populated by **promotion** from STM. When the agent
-determines a KLine is significant (S1 or S4), it promotes the KLine from
-STM to the frame. The frame has no fixed bound — it grows as KLines are
-promoted during a session.
+The frame is populated directly by `add()` (alongside STM). It represents
+working context — the klines that bias Kalvin's current reasoning. The
+frame has no fixed bound — it grows as KLines are added during a session.
 
-The frame is a read-through layer over the base:
+Lookups that miss in STM fall through to Frame, then LTM, then Base.
+KLines in Frame take precedence over the same kline in LTM or Base.
 
-- Lookups that miss in the STM or frame fall through to the base.
-- Additions to the frame (via promote) do **not** modify the base.
+### LTM (Long-Term Memory)
+
+LTM holds grounded klines promoted from Frame. Structurally identical to
+Frame — the distinction is semantic (grounded vs ungrounded). Populated
+exclusively by `promote()` from Frame.
+
+- LTM is loaded at session start from the previous session's persisted state.
+- LTM is persisted at session end alongside Frame (separate sections, never merged).
+- Lookups that miss in Frame fall through to LTM.
+- Promotion is additive: klines promoted to LTM remain in Frame.
 
 ### Base Model
 
 A model may optionally reference a **base model**.
 
-- The base is **read-through**: lookups that miss in STM and frame fall
-  through to the base.
+- The base is **read-through**: lookups that miss in STM, Frame, and LTM
+  fall through to the base.
 - The base model is **never modified** by `add` or `promote`. It is
   established at model instantiation and remains read-only for the
   session's lifetime.
-- A user request instantiates a new model layered over a shared base, so
-  each session has an isolated write surface with access to shared
-  knowledge.
 
 ### Index
 
@@ -115,13 +136,16 @@ The index is a unified, derived structure maintained across all tiers:
 ## Construction
 
 ```
-Model(base=None, stm_bound=256)
+Model(base=None, ltm=None, stm_bound=256)
 ```
 
-- `base` — optional, an existing Model serving as the long-term store.
-  Defaults to none.
+- `base` — optional, an existing Model serving as the read-only knowledge
+  store. Defaults to none.
+- `ltm` — optional, an existing Model serving as the long-term memory.
+  Loaded from the previous session's persisted LTM. Defaults to none.
 - `stm_bound` — maximum number of Klines retained in STM. Defaults to 256.
-- A newly constructed model contains zero Klines in all tiers.
+- A newly constructed model contains zero Klines in STM and Frame. LTM and
+  Base are populated from their respective parameters.
 
 ## Lookup Semantics
 
@@ -129,12 +153,12 @@ All read operations (`find`, `find_all`, `exists`, `resolve`, `where`,
 `query`) search tiers in order:
 
 ```
-STM → Frame → Base
+STM → Frame → LTM → Base
 ```
 
 A Kline found in any tier is returned. If the same signature exists in
 multiple tiers, the most recently added Kline is returned (STM has
-priority, then frame, then base).
+priority, then Frame, then LTM, then Base).
 
 ## Storage Operations
 
@@ -148,12 +172,12 @@ Adds a KLine to the model.
 
 - Returns `true` if the KLine was added.
 - Returns `false` if the KLine was rejected.
-- The KLine is added to **STM only** (not the frame or base).
+- The KLine is added to **both STM and Frame** (not LTM or Base).
 - If `kline.is_literal()` is `true` (all nodes are literal tokens,
   per `is_literal` in the @kline spec), a duplicate check is performed
-  (see Deduplication). Non-literal Klines are always accepted.
+  across all four tiers (see Deduplication). Non-literal Klines are always accepted.
 - If adding to the STM would exceed `stm_bound`, the oldest STM entry
-  is evicted. Evicted KLines that have not been promoted are discarded.
+  is evicted. Evicted KLines remain in Frame and deeper tiers.
 
 ### Exists
 
@@ -165,7 +189,7 @@ Returns whether an equal Kline is already stored in any tier.
 
 - Two Klines are equal when their signatures and node sequences are equal
   (kline equality, @kline spec).
-- Searches STM, then frame, then base.
+- Searches STM, then Frame, then LTM, then Base.
 
 ### Find
 
@@ -176,7 +200,7 @@ model.find(signature) → Kline | none
 Returns a Kline by signature.
 
 - If multiple Klines share the signature across tiers, returns the
-  **most recently added** (STM first, then frame, then base).
+  **most recently added** (STM first, then Frame, then LTM, then Base).
 - Returns `none` if no Kline with that signature exists in any tier.
 
 ### Find by Nodes Signature
@@ -190,8 +214,8 @@ Returns the most recently added Kline whose nodes signature matches.
 - The nodes signature is the OR-reduction of all nodes in a Kline's node
   sequence, equivalent to `make_signature(kline.nodes)` as defined in the
   @signature spec.
-- Searches STM first (primary index for nodes signatures), then frame,
-  then base.
+- Searches STM first (primary index for nodes signatures), then Frame,
+  then LTM, then Base.
 - Returns `none` if no Kline with that nodes signature exists.
 
 ### Find All
@@ -203,7 +227,7 @@ model.find_all(signature) → sequence of Kline
 Returns all Klines with the given signature across all tiers.
 
 - Returns Klines in insertion order (oldest first).
-- STM results, frame results, and base results are merged.
+- STM results, Frame results, LTM results, and Base results are merged.
 
 ### Remove
 
@@ -224,8 +248,8 @@ Removes the most recently added Kline with the given signature.
 len(model) → int ≥ 0
 ```
 
-The total number of Klines in the frame (excluding STM and base). STM
-entries that have not been promoted do not contribute to the count.
+The total number of Klines in the Frame (excluding STM, LTM, and Base).
+STM entries and LTM entries do not contribute to the count.
 
 ## STM Interface
 
@@ -261,8 +285,9 @@ order (oldest first).
 
 ## Promotion
 
-Promotion moves Klines from STM to the frame, persisting them for the
-session's lifetime.
+Promotion copies Klines from Frame to LTM, persisting grounded knowledge
+across sessions. The kline remains in Frame (additive — Frame retains its
+full working context).
 
 ### Promote
 
@@ -270,41 +295,47 @@ session's lifetime.
 model.promote(kline) → bool
 ```
 
-Moves a KLine from STM to the frame.
+Copies a KLine from Frame to LTM.
 
-- Returns `true` if the KLine was added to the frame.
-- Returns `false` if the KLine is not in STM or is already in the frame.
-- The KLine remains in STM (STM eviction handles removal naturally).
-- Promotion is typically triggered by the agent on significant results
-  (S1 or S4), ensuring confirmed and novel knowledge persists in the
-  session.
+- Returns `true` if the KLine was added to LTM.
+- Returns `false` if the KLine is a literal that duplicates an existing
+  LTM entry (literal dedup only; non-literals are always accepted).
+- No precondition — any kline may be promoted regardless of Frame membership.
+- The KLine remains in Frame (promotion is additive, not a move).
+- Promotion is triggered by the agent on significant results (S1 or S4),
+  ensuring confirmed and novel knowledge persists across sessions.
 
-### Promote All
+## STM Refresh
+
+### Refresh STM
 
 ```
-model.promote_all() → int
+model.refresh_stm(kline) → bool
 ```
 
-Promotes all Klines currently in STM to the frame.
+Re-enters a KLine into STM with LRU-style freshness. Caller-driven — used
+by the cogitation pipeline to give recency precedence to klines actively
+used in reasoning.
 
-- Returns the number of Klines promoted.
-- Klines already in the frame are skipped.
+- Removes the kline from STM if present, then adds it fresh (refreshing
+  its FIFO position).
+- Returns `true` if the kline was added to STM.
+- Returns `false` if the kline could not be added.
+- Does not affect Frame, LTM, or Base.
 
 ## Deduplication
 
 When `add` receives a literal Kline (`is_literal()` returns `true`,
 meaning all nodes are literal tokens per `is_literal` in the @kline spec), the model
 checks whether an equal Kline (same signature, same node sequence per
-kline equality) already exists in **any tier**. If so, `add` returns
-`false` and no entry is created.
+kline equality) already exists in **any tier** (STM, Frame, LTM, Base).
+If so, `add` returns `false` and no entry is created.
 
 Non-literal Klines are always accepted — composed structures are never
 deduplicated.
 
 Deduplication is cross-tier: a literal Kline that duplicates an entry in
-the base model is rejected. To force-add a Kline that shadows the base,
-use `add` on a model without that base, or accept the deduplication
-behaviour.
+LTM or the base model is rejected.
 
 ## Iteration
 
@@ -317,7 +348,8 @@ model.klines() → sequence of Kline
 Returns all Klines in reverse insertion order (most recent first).
 
 - Includes Klines from all tiers: STM entries first (most recent), then
-  frame entries not in STM, then base entries not in frame.
+  Frame entries not in STM, then LTM entries not in Frame, then Base
+  entries not in LTM.
 - Duplicates across tiers are suppressed: each unique Kline appears once.
 
 ### Filtered Iteration
@@ -329,7 +361,7 @@ model.where(predicate) → sequence of Kline
 Returns Klines matching a predicate, in reverse insertion order.
 
 - `predicate` — a function `(Kline) → bool`, or an int (KSig) for AND matching.
-- Searches all tiers. Duplicates suppressed.
+- Searches all four tiers. Duplicates suppressed.
 - The model does not define what predicates are valid. That is caller-defined.
 
 ## Graph Traversal
@@ -524,15 +556,14 @@ countersigned kline.
 STM eviction is defined in the **@stm spec**. Summary of Model-level
 consequences:
 
-STM eviction removes the oldest Kline from the STM when `add` would cause
-the STM to exceed its bound.
+STM eviction removes the oldest Kline from the STM when `add` or
+`refresh_stm` would cause the STM to exceed its bound.
 
 - Eviction removes from the STM index only.
 - The evicted Kline's signature and nodes signature entries are removed from
   the STM's dual-keyed index.
-- Eviction does not affect the frame or base model.
-- If the evicted Kline was promoted to the frame, it remains discoverable via
-  frame and base lookups. If it was not promoted, it is discarded.
+- Eviction does not affect Frame, LTM, or Base.
+- If the evicted Evicted KLines remain discoverable via Frame, LTM, and Base lookups.
 
 ## Significance Semantics
 
@@ -635,53 +666,62 @@ else       → S4
 | MOD-10 | Remove never touches base model                                | — |
 | MOD-11 | Len returns frame count only (excludes STM and base)          | — |
 
-### Three-Tier Lookup
+### Four-Tier Lookup
 
 | ID     | Criterion                                           | Origin ref |
 | ------ | --------------------------------------------------- | ---------- |
-| MOD-12 | STM priority: KLine in STM found before frame       | — |
-| MOD-13 | Frame fallback: KLine not in STM found in frame     | — |
-| MOD-14 | Base fallback: KLine not in STM/frame found in base | — |
-| MOD-15 | Cross-tier dedup: literal KLine in base blocks add   | — |
+| MOD-12 | STM priority: KLine in STM found before Frame          | — |
+| MOD-13 | Frame fallback: KLine not in STM found in Frame        | — |
+| MOD-14 | LTM fallback: KLine not in STM/Frame found in LTM      | — |
+| MOD-15 | Base fallback: KLine not in STM/Frame/LTM found in Base| — |
+| MOD-16 | Cross-tier dedup: literal KLine in LTM or Base blocks add | — |
 
 ### Graph Traversal
 
 | ID     | Criterion                                   | Origin ref |
 | ------ | ------------------------------------------- | ---------- |
-| MOD-16 | Resolve: node resolves to KLine via find    | — |
-| MOD-17 | Query_expand depth 0: returns empty          | — |
-| MOD-18 | Query_expand depth 2: returns direct children | — |
-| MOD-19 | Query_expand cycle detection: no infinite loop | — |
-| MOD-20 | Descendants: recursive node collection       | — |
-| MOD-21 | Query: find + expand combined                | — |
+| MOD-17 | Resolve: node resolves to KLine via find    | — |
+| MOD-18 | Query_expand depth 0: returns empty          | — |
+| MOD-19 | Query_expand depth 2: returns direct children | — |
+| MOD-20 | Query_expand cycle detection: no infinite loop | — |
+| MOD-21 | Descendants: recursive node collection       | — |
+| MOD-22 | Query: find + expand combined                | — |
 
 ### Promotion
 
 | ID     | Criterion                                          | Origin ref |
 | ------ | -------------------------------------------------- | ---------- |
-| MOD-22 | Promote moves KLine from STM to frame              | — |
-| MOD-23 | Promote without STM entry returns False             | — |
-| MOD-24 | Promote_all promotes all STM KLines to frame        | — |
-| MOD-25 | Promote skips already-promoted KLines               | — |
+| MOD-23 | Promote copies KLine from Frame to LTM                  | — |
+| MOD-24 | Promote literal dedup: duplicate literal in LTM rejected| — |
+| MOD-25 | Promote non-literal always accepted                     | — |
+| MOD-26 | Promote additive: kline remains in Frame after promote  | — |
+
+### STM Refresh
+
+| ID     | Criterion                                                    | Origin ref |
+| ------ | ------------------------------------------------------------ | ---------- |
+| MOD-27 | refresh_stm removes then re-adds kline (LRU-style)           | — |
+| MOD-28 | refresh_stm evicts oldest when bound exceeded                 | — |
+| MOD-29 | refresh_stm does not affect Frame, LTM, or Base              | — |
 
 ### Significance API
 
 | ID     | Criterion                                                              | Origin ref |
 | ------ | ---------------------------------------------------------------------- | ---------- |
-| MOD-26 | `is_s1` canonical: `make_signature(nodes) == signature` → True          | Origin §Significance |
-| MOD-27 | `is_s1` countersigned: mutual cross-reference → True                   | Origin §Significance |
-| MOD-28 | `is_s1` neither: non-canonical, non-countersigned → False              | — |
-| MOD-29 | `expand` all-match ungrounded: significance reflects ungrounded count   | — |
-| MOD-30 | `expand` all-mismatched unresolvable: low significance                  | — |
-| MOD-31 | `expand` with edge hops: connotation yields + terminal                  | — |
-| MOD-32 | `expand` S2 signifies: loose match yields QC, terminal still MAX_HOP    | — |
-| MOD-33 | `expand` S2 before S3: signifies short-circuits connotation recording   | — |
-| MOD-34 | `expand` S3 route: S3 bias ensures S3 distances exceed S2              | — |
-| MOD-35 | `expand` connotation: indirect path → S3 connotation yield + terminal   | — |
-| MOD-36 | `expand` significance always in valid uint64 range `[1, D_MAX]`        | — |
-| MOD-37 | `expand` bidirectional: both sides contribute connotations + terminal   | — |
-| MOD-38 | `is_countersigned`: mutual node reference detected                      | — |
-| MOD-39 | Not countersigned: one-way reference → False                            | — |
+| MOD-30 | `is_s1` canonical: `make_signature(nodes) == signature` → True          | Origin §Significance |
+| MOD-31 | `is_s1` countersigned: mutual cross-reference → True                   | Origin §Significance |
+| MOD-32 | `is_s1` neither: non-canonical, non-countersigned → False              | — |
+| MOD-33 | `expand` all-match ungrounded: significance reflects ungrounded count   | — |
+| MOD-34 | `expand` all-mismatched unresolvable: low significance                  | — |
+| MOD-35 | `expand` with edge hops: connotation yields + terminal                  | — |
+| MOD-36 | `expand` S2 signifies: loose match yields QC, terminal still MAX_HOP    | — |
+| MOD-37 | `expand` S2 before S3: signifies short-circuits connotation recording   | — |
+| MOD-38 | `expand` S3 route: S3 bias ensures S3 distances exceed S2              | — |
+| MOD-39 | `expand` connotation: indirect path → S3 connotation yield + terminal   | — |
+| MOD-40 | `expand` significance always in valid uint64 range `[1, D_MAX]`        | — |
+| MOD-41 | `expand` bidirectional: both sides contribute connotations + terminal   | — |
+| MOD-42 | `is_countersigned`: mutual node reference detected                      | — |
+| MOD-43 | Not countersigned: one-way reference → False                            | — |
 
 ### Structural Grounding
 
@@ -711,8 +751,9 @@ The following are explicitly **out of scope** for this spec:
 - **Tokenisation.** Producing nodes from input is defined in the
   @tokenizer spec. Producing signatures from nodes is defined in the
   @signature spec.
-- **Persistence.** Serialisation and deserialisation are implementation-level
-  concerns.
+- **Persistence format.** The format of the serialised file (sections,
+  encoding, versioning) is an implementation-level concern. The spec defines
+  that all three mutable tiers (STM, Frame, LTM) are persisted.
 - **Debug metadata.** Labels, source text, timestamps, or other diagnostic
   data attached to entries.
 - **Thread management.** How concurrent access to tiers is managed is an

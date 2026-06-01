@@ -44,14 +44,15 @@ This spec depends on the following concepts, defined elsewhere:
 - Stores, indexes, and retrieves Klines.
 - Provides candidate retrieval via `find`, `find_all`, `query`, `where`.
 - Provides `find_by_nodes` for transitive grounding via nodes signature.
-- Provides `promote` and `promote_all` for persisting Klines to the base.
+- Provides `promote` for persisting Klines from Frame to LTM.
+- Provides `refresh_stm` for caller-driven STM refresh (LRU-style).
 - Provides `expand(Q, C)` generator for graph expansion yielding
   connotations and terminal significance.
 - Provides `QueryCandidate` named tuple with `.significance` field
   (pre-computed by the model).
 - Provides constants `D_MAX` and `MASK64` for significance values.
 - Provides `is_countersigned(kline)` to check if a kline is countersigned by any kline in the model.
-- Manages a three-tier memory internally (STM → Frame → Base). The agent
+- Manages a four-tier memory internally (STM → Frame → LTM → Base). The agent
   sees a single Model API; tiering is invisible to the agent.
 - The model decides how and where Klines are stored. The agent is
   responsible for calling model operations; the model is responsible
@@ -65,7 +66,7 @@ An Agent consists of:
 | --------- | --------- | -------------------------------------- |
 | tokenizer | Tokenizer | Encodes text ↔ nodes.                  |
 | model     | Model     | Layered knowledge graph (STM → Frame → |
-|           |           | Base). Agent sees a single Model API.  |
+|           |           | LTM → Base). Agent sees a single API. |
 | cogitator | Cogitator | Background processor for S2/S3 work    |
 |           |           | items.                                 |
 
@@ -228,6 +229,7 @@ in the candidate's node sequence. No model function is called.
 
 **S1 short-circuits**: the first candidate that routes as S1 terminates the
 loop immediately. No further candidates are routed. No distance is computed.
+The agent promotes participating klines from Frame to LTM.
 
 If all candidates route as S2 or S3, each becomes an individual work item
 for the Cogitator. Return `False`.
@@ -456,14 +458,17 @@ goal signature). The cogitator fills templates and decomposes sequencers.
 S2 expansion requires structural grounding for two reasons:
 
 1. **Promotion after ratification** — when the agent countersigns an
-   expansion proposal, all participating STM klines must be promoted to
-   frame (not just the ratified kline), including the added/removed node
+   expansion proposal, all participating klines must be promoted from
+   Frame to LTM (not just the ratified kline), including the added/removed node
    groups and any S4 identity klines involved.
 
 2. **Frame richness** — the expansion search requires a model populated
    with the signatures it needs to find. Structural grounding ensures that
    frames hold S4–S1, giving the Cogitator more graph topology to traverse
    and more candidate signatures to match against.
+
+The `promote_participating` function should be reviewed and made fit for
+purpose — ensuring only truly necessary klines are promoted from Frame to LTM.
 
 #### Exploration Depth
 

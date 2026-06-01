@@ -3,13 +3,16 @@
 ## Overview
 
 The STM is a **bounded, dual-keyed index** over recently added KLines. It is
-the first tier in the Model's three-tier memory architecture (STM → Frame →
-Base), providing fast, rolling-window indexing for transitive grounding.
+the first tier in the Model's four-tier memory architecture (STM → Frame → LTM → Base), providing fast, rolling-window indexing for transitive grounding.
 
 The STM is not a standalone knowledge store — it is an index that the Model
 manages internally. KLines added to the STM are always simultaneously added to
-the Frame; eviction from the STM removes only the index entry, not the
-underlying KLine.
+the Frame via `add()`. Eviction from the STM removes only the index entry,
+not the underlying KLine (which remains in Frame and deeper tiers).
+
+The STM also serves as a recency-sensitive index for klines actively used in
+cogitation, refreshed via the Model's `refresh_stm()` method (caller-driven,
+LRU-style).
 
 ## Dependencies
 
@@ -268,8 +271,9 @@ existing entry. A duplicate is defined as a KLine with the same
 
 The following are explicitly **out of scope** for this spec:
 
-- **Persistence.** STM state is not serialised; it is rebuilt from the
-  Frame on session start.
+- **Persistence.** STM state is persisted as part of the model file alongside
+  Frame and LTM. Normal session start loads an empty STM; session continuation
+  (future feature) may reload it.
 - **Significance computation.** The STM provides indexing; significance is
    computed by the Model and Agent.
 - **Cross-tier consistency.** The Model owns the STM/Frame/Base

@@ -1,4 +1,4 @@
-# Sub-Plan: Model — Three-Tier Knowledge Graph + Distance Algorithm
+# Sub-Plan: Model — Four-Tier Knowledge Graph + Distance Algorithm
 
 **Parent:** [`plans/implement-kalvin.md`](../implement-kalvin.md)
 **Phase:** 5
@@ -10,15 +10,15 @@
 ## 1. Spec References
 
 See **@model spec** for full definition (construction, storage operations, graph
-traversal, promotion, significance API, deduplication rules).
-Test matrix: MOD-1 through MOD-51.
+traversal, promotion, STM refresh, significance API, deduplication rules).
+Test matrix: MOD-1 through MOD-55.
 
 See **@stm spec** for STM definition.
 
 ### Key API (from spec)
 
 ```python
-model.add(kline) → bool           # Add to STM
+model.add(kline) → bool           # Add to STM and Frame
 model.exists(kline) → bool       # Check across all tiers
 model.find(signature) → KLine|None
 model.find_all(signature) → list[KLine]
@@ -31,8 +31,8 @@ model.resolve(node) → KLine|None
 model.query_expand(kline, depth=2) → list[KLine]
 model.descendants(node) → set[int]
 model.query(signature, depth=1) → list[KLine]
-model.promote(kline) → bool
-model.promote_all() → int
+model.promote(kline) → bool      # Frame → LTM
+model.refresh_stm(kline) → bool  # LRU-style re-insertion
 model.expand(query, candidate) → Iterator[QueryCandidate]
 model.is_countersigned(kline) → bool
 model.is_s1(kline) → bool
@@ -279,53 +279,62 @@ Structural test only. Literal nodes cannot match a signature.
 | MOD-10  | Remove never touches base | Verify base unchanged            |
 | MOD-11  | Len                       | Frame count only                 |
 
-### Three-Tier Lookup
+### Four-Tier Lookup
 
-| Spec ID | Test             | Description                            |
-| ------- | ---------------- | -------------------------------------- |
-| MOD-12  | STM priority     | KLine in STM found before frame        |
-| MOD-13  | Frame fallback   | KLine not in STM found in frame        |
-| MOD-14  | Base fallback    | KLine not in STM/frame found in base   |
-| MOD-15  | Cross-tier dedup | Literal KLine in base blocks frame add |
+| Spec ID | Test             | Description                                  |
+| ------- | ---------------- | -------------------------------------------- |
+| MOD-12  | STM priority     | KLine in STM found before Frame              |
+| MOD-13  | Frame fallback   | KLine not in STM found in Frame              |
+| MOD-14  | LTM fallback     | KLine not in STM/Frame found in LTM          |
+| MOD-15  | Base fallback    | KLine not in STM/Frame/LTM found in Base     |
+| MOD-16  | Cross-tier dedup | Literal KLine in LTM or Base blocks add      |
 
 ### Graph Traversal
 
 | Spec ID | Test                   | Description             |
 | ------- | ---------------------- | ----------------------- |
-| MOD-16  | Resolve                | Node resolves to KLine  |
-| MOD-17  | Expand depth 0         | Returns empty           |
-| MOD-18  | Expand depth 2         | Returns direct children |
-| MOD-19  | Expand cycle detection | No infinite loop        |
-| MOD-20  | Descendants            | Recursive collection    |
-| MOD-21  | Query                  | Find + expand           |
+| MOD-17  | Resolve                | Node resolves to KLine  |
+| MOD-18  | Expand depth 0         | Returns empty           |
+| MOD-19  | Expand depth 2         | Returns direct children |
+| MOD-20  | Expand cycle detection | No infinite loop        |
+| MOD-21  | Descendants            | Recursive collection    |
+| MOD-22  | Query                  | Find + expand           |
 
 ### Promotion
 
-| Spec ID | Test                     | Description                          |
-| ------- | ------------------------ | ------------------------------------ |
-| MOD-22  | Promote to base          | KLine appears in base                |
-| MOD-23  | Promote without base     | Returns False                        |
-| MOD-24  | Promote all              | All frame KLines promoted            |
-| MOD-25  | Promote skips base dupes | Existing base KLines not overwritten |
+| Spec ID | Test                       | Description                                |
+| ------- | -------------------------- | ------------------------------------------ |
+| MOD-23  | Promote Frame → LTM        | KLine appears in LTM                       |
+| MOD-24  | Promote literal dedup      | Duplicate literal in LTM rejected          |
+| MOD-25  | Promote non-literal accept | Non-literal always accepted                |
+| MOD-26  | Promote additive           | KLine remains in Frame after promote       |
+
+### STM Refresh
+
+| Spec ID | Test               | Description                                |
+| ------- | ------------------ | ------------------------------------------ |
+| MOD-27  | refresh_stm LRU    | Remove then re-add refreshes FIFO position |
+| MOD-28  | refresh_stm evict  | Oldest evicted when bound exceeded         |
+| MOD-29  | refresh_stm tiers  | Does not affect Frame, LTM, or Base        |
 
 ### Significance API
 
 | Spec ID | Test                      | Description                                                |
 | ------- | ------------------------- | ---------------------------------------------------------- |
-| MOD-26  | is_s1 canonical            | `make_signature(nodes) == signature` → True                |
-| MOD-27  | is_s1 countersigned        | Mutual cross-reference detected → True                     |
-| MOD-28  | is_s1 neither              | Non-canonical, non-countersigned → False                   |
-| MOD-29  | expand self no model      | All match, ungrounded → significance reflects N ungrounded |
-| MOD-30  | expand no resolution      | All mismatched unresolvable → low significance             |
-| MOD-31  | expand grounding          | Matched node that resolves → higher significance           |
-| MOD-32  | expand edge hops          | Mismatched with chain → connotation yields + terminal      |
-| MOD-33  | expand S2 signifies       | Signifies loose match yields QC, terminal still MAX_HOP    |
-| MOD-34  | expand S2 before S3       | Signifies short-circuits, s3_connotations not populated    |
-| MOD-35  | expand range              | Valid significance uint64                                  |
-| MOD-36  | expand clamped            | Significance in [1, D_MAX]                                 |
-| MOD-37  | expand S3 route           | S3 bias ensures S3 distances moderately exceed S2          |
-| MOD-38  | expand connotation        | Indirect path → S3 connotation yield + terminal            |
-| MOD-39  | expand significance range | Significance always in valid uint64 range                  |
-| MOD-40  | expand bidirectional      | Both sides yield connotations + terminal                   |
-| MOD-41  | is_countersigned          | Mutual reference detected                                  |
-| MOD-42  | Not countersigned         | One-way reference → False                                  |
+| MOD-30  | is_s1 canonical            | `make_signature(nodes) == signature` → True                |
+| MOD-31  | is_s1 countersigned        | Mutual cross-reference detected → True                     |
+| MOD-32  | is_s1 neither              | Non-canonical, non-countersigned → False                   |
+| MOD-33  | expand self no model      | All match, ungrounded → significance reflects N ungrounded |
+| MOD-34  | expand no resolution      | All mismatched unresolvable → low significance             |
+| MOD-35  | expand grounding          | Matched node that resolves → higher significance           |
+| MOD-36  | expand edge hops          | Mismatched with chain → connotation yields + terminal      |
+| MOD-37  | expand S2 signifies       | Signifies loose match yields QC, terminal still MAX_HOP    |
+| MOD-38  | expand S2 before S3       | Signifies short-circuits, s3_connotations not populated    |
+| MOD-39  | expand range              | Valid significance uint64                                  |
+| MOD-40  | expand clamped            | Significance in [1, D_MAX]                                 |
+| MOD-41  | expand S3 route           | S3 bias ensures S3 distances moderately exceed S2          |
+| MOD-42  | expand connotation        | Indirect path → S3 connotation yield + terminal            |
+| MOD-43  | expand significance range | Significance always in valid uint64 range                  |
+| MOD-44  | expand bidirectional      | Both sides yield connotations + terminal                   |
+| MOD-45  | is_countersigned          | Mutual reference detected                                  |
+| MOD-46  | Not countersigned         | One-way reference → False                                  |

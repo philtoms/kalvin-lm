@@ -6,4 +6,4 @@
 
 ## Documentation
 
-- Follow the three-layer model strictly (docs/spec-plan-proposal.md): origin → spec → plan. No content duplication across layers.
+- Follow the three-layer model strictly (docs/spec-plan-implement.md): origin → spec → plan. No content duplication across layers.

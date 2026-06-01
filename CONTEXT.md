@@ -6,6 +6,7 @@ This document has two sections. **Operating Notes** contains process instruction
 
 ## Operating Notes
 
+- Commit all work before creating any kb tasks.
 - Never commit to git autonomously. Always ask for explicit confirmation before running any `git commit`.
 - When creating kb tasks for large features, decompose into discrete tasks with explicit `depends` chains. Each task should cover one coherent piece of work — a single spec, a single module, a single behavioural change. Do not create monolithic tasks that span multiple specs, plans, and implementation modules.
 - Follow the three-layer documentation model strictly (docs/spec-plan-proposal.md): origin → spec → plan. No content duplication across layers.
@@ -131,6 +132,30 @@ A 64-bit inverted distance representing how well a KLine relates to the model's 
 - **S2**: Partially understood — some nodes match. Misfitting (overfit or underfit).
 - **S3**: Recognised aspects — no node match but signature matches previously worked signatures.
 - **S4**: Completely novel — no candidates found.
+
+### STM Read-Through
+
+Klines that are actively used in cogitation are re-entered into the STM to give them dual-keyed indexing and recency precedence. Re-insertion is caller-driven, not automatic — the cogitation pipeline determines which klines are useful and re-inserts them. Re-insertion removes the kline from STM if present, then adds it fresh — refreshing its FIFO position (LRU-style). The STM acts as both a write buffer (new klines land here) and a recency-sensitive index (cogitation-used klines are refreshed here). The rolling window naturally ages out less recently accessed entries.
+
+For MVP, the selection of which klines to re-insert will be straightforward — those actually picked up and used in cogitation. The exact criteria may be refined later.
+_Avoid_: STM caching (too vague — the mechanism is re-insertion, not caching), STM promotion (conflicts with the existing promote concept), read-through (implies automatic — it's selective and caller-driven)
+
+### Frame
+
+Working context — the klines that bias Kalvin's current reasoning. Frame and STM together form working memory: STM provides recency-sensitive indexing, Frame provides the context that shapes which answers Kalvin reaches for first. Searched before LTM and Base, so a kline in Frame takes precedence over the same kline in LTM. For MVP, one frame per session, persisted across sessions. Later, the model may support multiple frames, allowing cross-frame representation.
+_Avoid_: session log (Frame is not a log — it's an active context), session (the session is the temporal process, the Frame is its working context)
+
+### LTM (Long-Term Memory)
+
+Grounded klines promoted from the Frame. Structurally identical to a Frame — the distinction is semantic, not structural. LTM holds klines that have been confirmed (S1) or are known-identity (S4), persisted across sessions. Populated exclusively by `promote()` from Frame. Loaded at session start from the previous session's persisted LTM. Saved at session end alongside Frame (separate sections, never merged).
+_Avoid_: persistent store (too vague), knowledge base (conflicts with the informal use of "base"), LTM frame (it's not a frame — it's a distinct tier)
+
+### Model Persistence
+
+All three mutable tiers (STM, Frame, LTM) are persisted as separate sections in a single file. This enables session continuation under special conditions and session debriefing (future features, not MVP). Base is not persisted — it is loaded from an external source at construction.
+
+Normal session start: STM is empty, Frame and LTM are loaded from the persisted file. STM is populated during the session via `add()` and cogitation-driven `refresh_stm()` calls.
+_Avoid_: save state (too vague — specify which tiers), checkpoint (implies partial; the full model is persisted)
 
 ### Fast Path
 
