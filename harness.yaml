@@ -6,7 +6,8 @@ server:
   port: 8765
 
 trainer:
-  # Option A: Point to a pre-made curriculum file — training starts immediately.
+  # Option A: Point to a pre-made curriculum file.
+  #   Trainer loads it and waits. Type "start" in the TUI to begin.
   # Option B: Leave blank ("") — Trainer polls for a goal from the TUI input bar.
   #   - Type "goal: teach Kalvin about Mary had a little lamb" in the TUI
   #   - Or type a file path like "curricula/first-steps.md"

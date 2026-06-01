@@ -174,6 +174,7 @@ def _make_trainer_with_capture(
     cogitate_fn=None,
     curriculum_file: str | Path | None = None,
     curricula_dir: str | Path | None = None,
+    llm_client=None,
 ) -> tuple[Trainer, BusCapture]:
     """Create a Trainer with BusCapture installed BEFORE construction.
 
@@ -191,6 +192,7 @@ def _make_trainer_with_capture(
         cogitate_fn=cogitate_fn,
         curriculum_file=curriculum_file,
         curricula_dir=curricula_dir,
+        llm_client=llm_client,
     )
     return trainer, capture
 
@@ -966,8 +968,19 @@ class TestPollingModeInputHandling:
 
         bus = MessageBus()
         curriculum = Curriculum([])
+
+        # Provide a mock LLM that returns the pre-written curriculum content
+        mock_llm = _MockLLMClient([
+            LLMResponse(
+                content=curriculum_path.read_text(),
+                tool_calls=None,
+                finish_reason="stop",
+            ),
+        ])
+
         trainer, capture = _make_trainer_with_capture(
-            bus, curriculum, curricula_dir=str(tmp_path)
+            bus, curriculum, curricula_dir=str(tmp_path),
+            llm_client=mock_llm,
         )
 
         # Confirm polling mode is active from constructor

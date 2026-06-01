@@ -113,9 +113,11 @@ class Trainer:
         # Register on the bus
         bus.subscribe(self._address, self.on_message)
 
-        # Constructor Path 3: no curriculum file and empty curriculum →
-        # enter goal-polling mode immediately.
-        if self._curriculum_file is None and self._state.curriculum.total() == 0:
+        if self._curriculum_file is not None and self._state.curriculum.total() > 0:
+            # Curriculum loaded but not started — tell the UI we're ready
+            self._emit_progress("ready")
+        elif self._curriculum_file is None and self._state.curriculum.total() == 0:
+            # No curriculum at all — enter goal-polling mode
             self._polling_for_goal = True
             self._state.log_event("polling_for_goal", {})
             self._emit_progress("polling_for_goal")
@@ -201,14 +203,19 @@ class Trainer:
     # ── Input handling (from Slack / human) ───────────────────────────
 
     def _handle_input(self, msg: Message) -> None:
-        """Process human input from Slack."""
+        """Process human input from the TUI or Slack."""
         text = str(msg.message).strip()
 
         if self._polling_for_goal:
             self._resolve_goal(text)
             return
 
-        if text.startswith("goal:") or "=" in text:
+        if text == "start":
+            if not self._session_active:
+                self.start_session()
+            else:
+                logger.info("Session already active")
+        elif text.startswith("goal:") or "=" in text:
             # Goal or KScript source — start or queue session
             goal = text[5:].strip() if text.startswith("goal:") else text
             self.start_session(goal=goal)
@@ -281,22 +288,24 @@ class Trainer:
                 "goal": goal,
                 "error": str(exc),
             })
+            self._polling_for_goal = True
+            self._emit_polling_status()
         except CurriculumParseError as exc:
             logger.error("Generated curriculum failed to parse: %s", exc)
             self._state.log_event("generation_failed", {
                 "goal": goal,
                 "error": str(exc),
             })
+            self._polling_for_goal = True
+            self._emit_polling_status()
         except Exception as exc:
             logger.error("Unexpected error during curriculum generation: %s", exc)
             self._state.log_event("generation_failed", {
                 "goal": goal,
                 "error": str(exc),
             })
-
-        # Re-enter polling mode on any failure so the human can try again
-        self._polling_for_goal = True
-        self._emit_polling_status()
+            self._polling_for_goal = True
+            self._emit_polling_status()
 
     def _load_and_start(self, path: Path) -> None:
         """Load a curriculum from a file and start the session."""
@@ -554,22 +563,6 @@ class Trainer:
         self._state.log_event("escalation", {"reason": reason, "detail": detail})
 
     # ── Progress events ───────────────────────────────────────────────
-
-    def _emit_polling_status(self) -> None:
-        """Emit a polling status event to the UI participant."""
-        self._bus.send(
-            Message(
-                address="ui",
-                action="progress",
-                message={
-                    "lesson_label": None,
-                    "lessons_total": 0,
-                    "lessons_completed": 0,
-                    "status": "polling_for_goal",
-                },
-                sender=self._address,
-            )
-        )
 
     def _emit_progress(self, status: str) -> None:
         """Emit a progress event to the UI participant."""
