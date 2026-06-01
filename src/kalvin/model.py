@@ -16,6 +16,73 @@ from kalvin.kline import KLine, KSig
 from kalvin.stm import STM
 from kalvin.signature import make_signature, signifies, is_literal_node
 
+
+class KLineStore:
+    """Shared storage structure for Frame and LTM tiers.
+
+    Maintains an indexed list with dedup set — supports O(1) membership
+    checks and efficient lookup by signature while preserving insertion
+    order for iteration.
+    """
+
+    def __init__(self) -> None:
+        self._list: list[KLine | None] = []
+        self._by_sig: dict[KSig, list[int]] = {}
+        self._dedup: set[tuple[KSig, tuple[int, ...]]] = set()
+
+    def add(self, kline: KLine) -> None:
+        """Append a KLine to the store, indexing by signature and dedup key."""
+        idx = len(self._list)
+        self._list.append(kline)
+        if kline.signature not in self._by_sig:
+            self._by_sig[kline.signature] = []
+        self._by_sig[kline.signature].append(idx)
+        self._dedup.add((kline.signature, tuple(kline.nodes)))
+
+    def contains(self, kline: KLine) -> bool:
+        """Check if a KLine with matching signature and nodes exists."""
+        return (kline.signature, tuple(kline.nodes)) in self._dedup
+
+    def find(self, signature: KSig) -> KLine | None:
+        """Find the most recently added KLine by signature."""
+        indices = self._by_sig.get(signature)
+        if indices:
+            for idx in reversed(indices):
+                kl = self._list[idx]
+                if kl is not None:
+                    return kl
+        return None
+
+    def find_all(self, signature: KSig) -> list[KLine]:
+        """Return all KLines with the given signature in insertion order."""
+        indices = self._by_sig.get(signature, [])
+        results: list[KLine] = []
+        for idx in indices:
+            kl = self._list[idx]
+            if kl is not None:
+                results.append(kl)
+        return results
+
+    def __len__(self) -> int:
+        """Count non-None entries."""
+        return sum(1 for kl in self._list if kl is not None)
+
+    def __iter__(self):
+        """Yield non-None entries in insertion order."""
+        for kl in self._list:
+            if kl is not None:
+                yield kl
+
+    def __reversed__(self):
+        """Yield non-None entries in reverse insertion order."""
+        for kl in reversed(self._list):
+            if kl is not None:
+                yield kl
+
+    def all_klines(self) -> list[KLine]:
+        """Return list of all non-None entries in insertion order."""
+        return [kl for kl in self._list if kl is not None]
+
 # Re-export from expand module for backward compatibility
 from kalvin.expand import (
     QueryCandidate,
@@ -48,16 +115,17 @@ class Model:
 
     The caller sees a single unified API. Significance and misfit logic
     are delegated to expand.py and misfit.py.
+
+    Frame storage is backed by ``KLineStore`` — a reusable indexed list
+    with dedup set that will also power the upcoming LTM tier.
     """
 
     def __init__(self, base: Model | None = None, stm_bound: int = 256):
         self._base = base
         self._stm = STM(bound=stm_bound)
 
-        # Frame storage — ordered dict for reverse-insertion-order iteration
-        self._frame_list: list[KLine] = []
-        self._frame_by_sig: dict[KSig, list[int]] = {}
-        self._frame_dedup: set[tuple[KSig, tuple[int, ...]]] = set()
+        # Frame storage — delegated to KLineStore
+        self._frame: KLineStore = KLineStore()
 
     # ── Storage Operations ────────────────────────────────────────────
 
@@ -84,7 +152,7 @@ class Model:
         """Check STM, frame, then base."""
         if self._stm.contains(kline):
             return True
-        if (kline.signature, tuple(kline.nodes)) in self._frame_dedup:
+        if self._frame.contains(kline):
             return True
         if self._base:
             return self._base.exists(kline)
@@ -100,12 +168,9 @@ class Model:
             if kl.signature == signature:
                 return kl
         # Frame
-        indices = self._frame_by_sig.get(signature)
-        if indices:
-            for idx in reversed(indices):
-                kl = self._frame_list[idx]
-                if kl is not None:
-                    return kl
+        kl = self._frame.find(signature)
+        if kl is not None:
+            return kl
         # Base
         if self._base:
             return self._base.find(signature)
@@ -126,11 +191,7 @@ class Model:
                 results.append(kl)
 
         # Frame results
-        indices = self._frame_by_sig.get(signature, [])
-        for idx in indices:
-            kl = self._frame_list[idx]
-            if kl is None:
-                continue
+        for kl in self._frame.find_all(signature):
             key = (kl.signature, tuple(kl.nodes))
             if key not in seen:
                 seen.add(key)
@@ -153,7 +214,7 @@ class Model:
         if klines:
             return klines[-1]
         # Scan frame
-        for kl in reversed(self._frame_list):
+        for kl in reversed(self._frame):
             ns = make_signature(kl.nodes)
             if ns == nodes_signature:
                 return kl
@@ -166,10 +227,10 @@ class Model:
 
     def __len__(self) -> int:
         """Number of KLines in the frame (excluding STM and base)."""
-        return sum(1 for kl in self._frame_list if kl is not None)
+        return len(self._frame)
 
     def __iter__(self) -> Iterator[KLine]:
-        return iter(kl for kl in self._frame_list if kl is not None)
+        return iter(self._frame)
 
     def __getitem__(self, signature: KSig) -> KLine | None:
         return self.find(signature)
@@ -189,9 +250,7 @@ class Model:
                 results.append(kl)
 
         # Frame entries not in STM
-        for kl in reversed(self._frame_list):
-            if kl is None:
-                continue
+        for kl in reversed(self._frame):
             key = (kl.signature, tuple(kl.nodes))
             if key not in seen:
                 seen.add(key)
@@ -226,20 +285,14 @@ class Model:
         The KLine must currently be in STM. Returns True if added to frame,
         False if not in STM or already in frame.
         """
-        key = (kline.signature, tuple(kline.nodes))
         # Must be in STM
         if not self._stm.contains(kline):
             return False
         # Already in frame
-        if key in self._frame_dedup:
+        if self._frame.contains(kline):
             return False
         # Add to frame
-        idx = len(self._frame_list)
-        self._frame_list.append(kline)
-        if kline.signature not in self._frame_by_sig:
-            self._frame_by_sig[kline.signature] = []
-        self._frame_by_sig[kline.signature].append(idx)
-        self._frame_dedup.add(key)
+        self._frame.add(kline)
         return True
 
     def promote_all(self) -> int:
@@ -407,7 +460,7 @@ class Model:
     def duplicate(self) -> Model:
         """Create a duplicate of this model's frame."""
         klines = [KLine(kl.signature, list(kl.nodes), kl.literal, kl.dbg_text)
-                   for kl in self._frame_list if kl is not None]
+                   for kl in self._frame]
         m = Model()
         for kl in klines:
             m.add(kl)
@@ -421,11 +474,11 @@ class Model:
     @property
     def klines_prop(self) -> list[KLine]:
         """Backwards compat: return frame klines."""
-        return [kl for kl in self._frame_list if kl is not None]
+        return self._frame.all_klines()
 
     def as_kline_list(self, limit: int = 0):
         """Backwards compat: iterate KLines."""
-        items = [kl for kl in self._frame_list if kl is not None]
+        items = self._frame.all_klines()
         if limit > 0:
             items = items[:limit]
         return reversed(items)

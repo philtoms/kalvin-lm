@@ -3,6 +3,7 @@
 import pytest
 from kalvin.kline import KLine
 from kalvin.model import Model, D_MAX, MASK64, MAX_HOP, _pack, _S3_BIAS
+from kalvin.model import KLineStore
 
 
 def make_model(stm_bound: int = 256) -> Model:
@@ -807,3 +808,80 @@ class TestGenerateExpansions:
         k = KLine(10, [10])  # canonical
         results = list(m.generate_expansions(k, 0, 0))
         assert len(results) == 0
+
+
+class TestKLineStore:
+    """Unit tests for KLineStore in isolation."""
+
+    def test_add_and_find(self):
+        store = KLineStore()
+        k = KLine(0xA0, [1, 2])
+        store.add(k)
+        assert store.find(0xA0) is k
+
+    def test_add_multiple_same_sig(self):
+        store = KLineStore()
+        k1 = KLine(0xB0, [1])
+        k2 = KLine(0xB0, [2])
+        store.add(k1)
+        store.add(k2)
+        # find returns most recent
+        assert store.find(0xB0) is k2
+
+    def test_find_all(self):
+        store = KLineStore()
+        k1 = KLine(0xC0, [1])
+        k2 = KLine(0xC0, [2])
+        k3 = KLine(0xC0, [3])
+        store.add(k1)
+        store.add(k2)
+        store.add(k3)
+        result = store.find_all(0xC0)
+        assert result == [k1, k2, k3]
+
+    def test_contains(self):
+        store = KLineStore()
+        k = KLine(0xD0, [10, 20])
+        store.add(k)
+        assert store.contains(k) is True
+        assert store.contains(KLine(0xD0, [99])) is False
+
+    def test_len(self):
+        store = KLineStore()
+        assert len(store) == 0
+        store.add(KLine(1, [1]))
+        assert len(store) == 1
+        store.add(KLine(2, [2]))
+        assert len(store) == 2
+
+    def test_iter(self):
+        store = KLineStore()
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        k3 = KLine(3, [3])
+        store.add(k1)
+        store.add(k2)
+        store.add(k3)
+        assert list(store) == [k1, k2, k3]
+
+    def test_reversed(self):
+        store = KLineStore()
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        k3 = KLine(3, [3])
+        store.add(k1)
+        store.add(k2)
+        store.add(k3)
+        assert list(reversed(store)) == [k3, k2, k1]
+
+    def test_all_klines(self):
+        store = KLineStore()
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        store.add(k1)
+        store.add(k2)
+        assert store.all_klines() == [k1, k2]
+
+    def test_find_missing_returns_none(self):
+        store = KLineStore()
+        assert store.find(0xDEAD) is None
