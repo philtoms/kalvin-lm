@@ -5,6 +5,7 @@ sys.path.insert(0, 'src')
 
 from kscript.compiler import compile_source
 from kalvin.agent import Agent
+from kalvin.events import EventBus
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.expand import D_MAX
 
@@ -46,7 +47,7 @@ def significance_level(sig: int) -> str:
 
 tokenizer = Mod32Tokenizer()
 klines = compile_source(source, tokenizer, dev=True)
-agent = Agent(tokenizer)
+agent = Agent(tokenizer=tokenizer, adapter=EventBus())
 
 done_event = threading.Event()
 
