@@ -2,8 +2,7 @@
 
 The model provides storage, deduplication, lookup by signature, and
 graph traversal. Significance computation and misfit classification
-live in expand.py and misfit.py respectively, and are re-exported here
-for backward compatibility.
+live in expand.py and misfit.py respectively.
 
 See specs/model.md for the full specification.
 """
@@ -83,28 +82,6 @@ class KLineStore:
         """Return list of all non-None entries in insertion order."""
         return [kl for kl in self._list if kl is not None]
 
-# Re-export from expand module for backward compatibility
-from kalvin.expand import (
-    QueryCandidate,
-    D_MAX,
-    MASK64,
-    MAX_HOP,
-    _S3_BIAS,
-    _pack,
-    expand as _expand_fn,
-    is_canon as _is_canon_fn,
-    is_s1 as _is_s1_fn,
-    is_countersigned as _is_countersigned_fn,
-    edge_hops as _edge_hops_fn,
-    promote_participating as _promote_participating_fn,
-)
-
-# Re-export from misfit module for backward compatibility
-from kalvin.misfit import (
-    classify_misfit as _classify_misfit_fn,
-    generate_expansions as _generate_expansions_fn,
-)
-
 
 class Model:
     """Four-tier Model: STM → Frame → LTM → Base.
@@ -114,8 +91,7 @@ class Model:
     - LTM: long-term memory. Populated by promote() from Frame. Additive (Frame retains).
     - Base: optional long-term knowledge store (read-only, set at construction).
 
-    The caller sees a single unified API. Significance and misfit logic
-    are delegated to expand.py and misfit.py.
+    The caller sees a single unified API.
 
     Frame and LTM storage are backed by ``KLineStore`` — a reusable indexed list
     with dedup set.
@@ -410,58 +386,6 @@ class Model:
         for kl in matches:
             results.extend(self.query_expand(kl, depth))
         return results
-
-    # ── Significance API (delegated to expand.py) ─────────────────────
-
-    def _is_canon(self, kline: KLine) -> bool:
-        return _is_canon_fn(kline)
-
-    def _edge_hops(self, sig: int) -> Iterator[tuple[int, int]]:
-        return _edge_hops_fn(self, sig)
-
-    def _as_kline(self, node: int) -> KLine:
-        kline = self.find(node)
-        if kline is None:
-            raise ValueError(f"Node {node:#x} does not resolve to any KLine")
-        return kline
-
-    def expand(
-        self,
-        query: KLine,
-        candidate: KLine,
-        distance: int = 0,
-        *,
-        _visited: set[tuple[int, int]] | None = None,
-    ) -> Iterator[QueryCandidate]:
-        """Expand a query-candidate pair. Delegates to expand.expand()."""
-        return _expand_fn(self, query, candidate, distance, _visited=_visited)
-
-    def is_s1(self, kline: KLine) -> bool:
-        """Determine if a kline is structurally grounded (S1). Delegates to expand.is_s1()."""
-        return _is_s1_fn(self, kline)
-
-    def is_countersigned(self, kline: KLine) -> bool:
-        """Check if kline is countersigned. Delegates to expand.is_countersigned()."""
-        return _is_countersigned_fn(self, kline)
-
-    def promote_participating(self, query: KLine, candidate: KLine) -> int:
-        """Promote all STM klines in a ratification event. Delegates to expand.promote_participating()."""
-        return _promote_participating_fn(self, query, candidate)
-
-    # ── Misfit API (delegated to misfit.py) ────────────────────────────
-
-    def classify_misfit(self, kline: KLine) -> tuple[bool, bool]:
-        """Classify a kline's misfit type. Delegates to misfit.classify_misfit()."""
-        return _classify_misfit_fn(kline)
-
-    def generate_expansions(
-        self,
-        kline: KLine,
-        underfit_gap: int,
-        overfit_mask: int,
-    ) -> Iterator[tuple[KLine, list[KLine]]]:
-        """Generate expansion proposals. Delegates to misfit.generate_expansions()."""
-        return _generate_expansions_fn(self, kline, underfit_gap, overfit_mask)
 
     # ── Properties ────────────────────────────────────────────────────
 

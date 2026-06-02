@@ -18,9 +18,15 @@ from typing import Any, Literal, NamedTuple, Protocol, runtime_checkable
 
 from kalvin.agent_codec import AgentCodec
 from kalvin.events import EventBus, RationaliseEvent
+from kalvin.expand import (
+    D_MAX, MASK64, QueryCandidate,
+    expand as expand_fn,
+    is_s1, is_countersigned, promote_participating,
+)
 from kalvin.kline import KLine
+from kalvin.misfit import classify_misfit, generate_expansions
 from kalvin.mod_tokenizer import Mod32Tokenizer
-from kalvin.model import D_MAX, MASK64, Model, QueryCandidate
+from kalvin.model import Model
 from kalvin.signature import is_literal_node, make_signature
 
 # ── Cogitation Handler Protocol ────────────────────────────────────────
@@ -176,15 +182,15 @@ class Cogitator:
         query, candidate, _level = item
         s12, s23, s34 = self._boundaries()
 
-        for qc in self._model.expand(query, candidate):
+        for qc in expand_fn(self._model, query, candidate):
             band = self._classify(qc.significance, s12, s23, s34)
 
             if band == "S4":
                 continue  # demote: below S3|S4 boundary
 
             if band == "S1":
-                if self._model.is_s1(candidate):
-                    self._model.promote_participating(query, candidate)
+                if is_s1(self._model, candidate):
+                    promote_participating(self._model, query, candidate)
                 self._handler.on_s1(query, candidate)
             else:
                 self._process(qc)  # S2 or S3: expansion
@@ -200,7 +206,7 @@ class Cogitator:
         if candidate_sig == nodes_sig:
             return  # canonical — nothing to expand
 
-        underfit, overfit = self._model.classify_misfit(candidate)
+        underfit, overfit = classify_misfit(candidate)
 
         if not underfit and not overfit:
             return  # neither — nothing to expand
@@ -208,8 +214,8 @@ class Cogitator:
         underfit_gap = candidate_sig & ~nodes_sig
         overfit_mask = nodes_sig & ~candidate_sig
 
-        for proposal, companions in self._model.generate_expansions(
-            candidate, underfit_gap, overfit_mask
+        for proposal, companions in generate_expansions(
+            self._model, candidate, underfit_gap, overfit_mask
         ):
             self._handler.on_expansion(query, proposal, significance)
             for companion in companions:
@@ -341,7 +347,7 @@ class KAgent:
                 return True
 
         # Phase 3 (continued): Ratification — countersigned in the model → S1
-        if self._model.is_countersigned(kline):
+        if is_countersigned(self._model, kline):
             self._model.add(kline)
             self._model.promote(kline)
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
@@ -366,7 +372,7 @@ class KAgent:
 
             if level == "S1":
                 # Fast response — confirmed, done
-                self._model.promote_participating(kline, candidate)
+                promote_participating(self._model, kline, candidate)
                 self._publish("frame", kline, candidate, D_MAX - 1)
                 found_s1 = True
                 break

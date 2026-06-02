@@ -20,7 +20,7 @@ from typing import TypeAlias
 
 from kalvin.kline import KLine, KNodes, KSig
 from kalvin.mod_tokenizer import Mod32Tokenizer, ModTokenizer
-from kalvin.model import D_MAX
+from kalvin.expand import D_MAX
 from kalvin.signature import is_literal_node
 
 from .ast import (

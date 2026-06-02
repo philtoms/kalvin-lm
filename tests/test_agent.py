@@ -9,6 +9,7 @@ from kalvin.agent import KAgent, CogitationHandler, Cogitator, WorkItem
 from kalvin.agent_codec import AgentCodec
 from kalvin.events import EventBus
 from kalvin.kline import KLine
+from kalvin.misfit import classify_misfit
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.model import Model
 from kalvin.signature import make_signature
@@ -177,9 +178,9 @@ class TestShortCircuit:
         q = KLine(0, [10, 20])
         q.signature = make_signature([10, 20])
 
-        # Patch model.expand to track calls
-        with patch.object(
-            a.model, 'expand',
+        # Patch expand_fn in the agent module to track calls
+        with patch(
+            'kalvin.agent.expand_fn',
             side_effect=AssertionError("expand should not be called for S1"),
         ):
             result = a.rationalise(q)
@@ -207,8 +208,8 @@ class TestShortCircuit:
         q = KLine(0, [999])
         q.signature = make_signature([999])
 
-        with patch.object(
-            a.model, 'expand',
+        with patch(
+            'kalvin.agent.expand_fn',
             side_effect=AssertionError("expand should not be called for S4"),
         ):
             result = a.rationalise(q)
@@ -497,7 +498,7 @@ class TestCogitatorStructuralGrounding:
         k = KLine(10, [10])  # canonical
         nodes_sig = make_signature(k.nodes)
         assert k.signature == nodes_sig  # canonical
-        underfit, overfit = m.classify_misfit(k)
+        underfit, overfit = classify_misfit(k)
         assert not underfit and not overfit
 
 
