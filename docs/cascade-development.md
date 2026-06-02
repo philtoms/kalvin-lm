@@ -1,10 +1,10 @@
-# Spec → Plan → Implement
+# Cascade Development Model
 
-**Purpose:** Agent instructions for producing specs, plans, and implementation tasks using the three-layer documentation model.
+**Purpose:** Agent instructions for producing specs, plans, and implementation tasks using the cascade development model.
 
 ---
 
-## The Three-Layer Model
+## The Cascade
 
 ```
 docs/kalvin-origin.md    ←  WHY — purpose, philosophy, conceptual model
@@ -12,20 +12,22 @@ docs/kalvin-origin.md    ←  WHY — purpose, philosophy, conceptual model
 specs/                   ←  WHAT — testable behavioural contracts
         ↓
 plans/                   ←  HOW — implementation strategy, phasing, test mapping
+        ↓
+.kb/tasks                ←  INSTRUCT - task creation for kb triage
 ```
 
 Every fact lives in exactly one layer. Other layers **reference** it — never paraphrase, duplicate, or restate.
 
 ### Content ownership
 
-| Origin only | Spec only | Plan only |
-|---|---|---|
+| Origin only                | Spec only                              | Plan only                                     |
+| -------------------------- | -------------------------------------- | --------------------------------------------- |
 | System purpose, philosophy | Data structure definitions, invariants | Algorithm pseudocode, implementation strategy |
-| Conceptual model | API contracts, pre/postconditions | File structure, code locations |
-| Teaching model | Behavioural rules | Build order, phases, estimates |
-| | Acceptance criteria (test matrix) | Test mapping (spec ID → test function) |
-| | Cross-component dependencies | Design decisions and rationale |
-| | Explicit scope boundaries | Status tracking |
+| Conceptual model           | API contracts, pre/postconditions      | File structure, code locations                |
+| Teaching model             | Behavioural rules                      | Build order, phases, estimates                |
+|                            | Acceptance criteria (test matrix)      | Test mapping (spec ID → test function)        |
+|                            | Cross-component dependencies           | Design decisions and rationale                |
+|                            | Explicit scope boundaries              | Status tracking                               |
 
 ---
 

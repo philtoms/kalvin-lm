@@ -4,6 +4,6 @@
 
 - Never commit to git autonomously. Always ask for explicit confirmation before running any `git commit`.
 
-## Documentation
+## Development
 
-- Follow the three-layer model strictly (docs/spec-plan-implement.md): origin → spec → plan. No content duplication across layers.
+- Follow the cascade development model closely (docs/cascade-development.md): origin → spec → plan → triage. No content duplication across layers.
