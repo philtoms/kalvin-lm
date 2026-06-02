@@ -16,7 +16,7 @@ from textual.widgets import Footer, Header, ListView
 
 from kalvin.agent import Agent
 from kalvin.abstract import KLine
-from kalvin.events import RationaliseEvent
+from kalvin.events import EventBus, RationaliseEvent
 from kscript import KScript, CompiledEntry
 
 # Type alias for entry identity keys used in tracking sets
@@ -100,7 +100,7 @@ class KScriptApp(App):
             self._restore_state()
             signal.signal(signal.SIGTERM, self._on_sigterm)
         else:
-            self._agent = Agent()
+            self._agent = Agent(adapter=EventBus())
             self._setup_events()
 
     def _setup_events(self) -> None:
@@ -345,13 +345,13 @@ class KScriptApp(App):
         # Restore Agent
         if AGENT_STATE_FILE.exists():
             try:
-                self._agent = Agent.load(AGENT_STATE_FILE)
+                self._agent = Agent.load(AGENT_STATE_FILE, adapter=EventBus())
                 self.log("Restored Agent state")
             except Exception as e:
                 self.log("Failed to load agent state: {e}")
-                self._agent = Agent()
+                self._agent = Agent(adapter=EventBus())
         else:
-            self._agent = Agent()
+            self._agent = Agent(adapter=EventBus())
 
         self._setup_events()
 
@@ -582,7 +582,7 @@ class KScriptApp(App):
         self._last_state_dir = path.parent
 
         # Load Agent
-        self._agent = Agent.load(path)
+        self._agent = Agent.load(path, adapter=EventBus())
         self._setup_events()
         self.log(f"Loaded Agent state from {path}")
 

@@ -17,6 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from kalvin.agent import Agent
+from kalvin.events import EventBus
 from kscript import interpret_script, Mod32Tokenizer as mod_tokenizer
 
 
@@ -79,14 +80,14 @@ Examples:
         if args.verbose:
             print(f"Loading agent: {agent_path}")
 
-        agent = Agent.load(agent_path)
+        agent = Agent.load(agent_path, adapter=EventBus())
     else:
         # Create new Agent instance
         if args.verbose:
             print("Creating new Agent")
 
         tokenizer = mod_tokenizer()
-        agent = Agent(tokenizer=tokenizer)
+        agent = Agent(tokenizer=tokenizer, adapter=EventBus())
 
     # Interpret the script
     if args.verbose:

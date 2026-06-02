@@ -21,6 +21,7 @@ import json
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from kalvin.agent import KAgent
+from kalvin.events import EventBus
 from kalvin.kline import KLine
 from kalvin.signature import make_signature
 
@@ -124,14 +125,14 @@ def main():
     agent_size = 0
     if agent_path and agent_path.exists():
         print(f"\nLoading agent from: {agent_path}")
-        agent = KAgent.load(agent_path, format=args.format)
+        agent = KAgent.load(agent_path, format=args.format, adapter=EventBus())
         agent_size = agent.frame_size()
         print(f"Loaded agent size: {agent_size:,} KLines")
     else:
         print("\nInitializing new agent...")
         if not agent_path:
             agent_path = "data/kalvin.bin"
-        agent = KAgent()
+        agent = KAgent(adapter=EventBus())
         print(f"Initial agent size: {agent.frame_size():,} KLines")
 
 

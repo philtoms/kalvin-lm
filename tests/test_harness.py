@@ -13,7 +13,7 @@ import json
 import pytest
 
 from kalvin.agent import KAgent
-from kalvin.events import RationaliseEvent
+from kalvin.events import EventBus, RationaliseEvent
 from kalvin.expand import D_MAX
 from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod64Tokenizer
@@ -58,7 +58,7 @@ class HarnessFixture:
     """
 
     def __init__(self) -> None:
-        self._agent = KAgent(tokenizer=_tok)
+        self._agent = KAgent(tokenizer=_tok, adapter=EventBus())
         self._submitted: set[tuple[int, tuple[int, ...]]] = set()
         self._satisfied: set[tuple[int, tuple[int, ...]]] = set()
         self._responses: list[dict] = []
@@ -646,7 +646,7 @@ def test_agent_countersign():
     is_countersigned check because the original {Q: [V]} acts as
     countersigner for the reciprocal {V: [Q]}.
     """
-    a = KAgent()
+    a = KAgent(adapter=EventBus())
 
     # Add original kline to model
     original = KLine(42, [10])

@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Literal, NamedTuple, Protocol, runtime_checkable
 
 from kalvin.agent_codec import AgentCodec
-from kalvin.events import EventBus, RationaliseEvent
+from kalvin.events import EventBus, RationaliseEvent  # EventBus: test/dev fallback
 from kalvin.expand import (
     D_MAX,
     expand, is_s1, promote_participating, is_countersigned,
@@ -32,6 +32,25 @@ from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.model import Model
 from kalvin.signature import is_literal_node, make_signature
+
+# ── KAgentAdapter Protocol ─────────────────────────────────────────────
+
+@runtime_checkable
+class KAgentAdapter(Protocol):
+    """Protocol for receiving rationalisation events from KAgent.
+
+    Any object with an ``on_event(RationaliseEvent)`` method satisfies this
+    protocol.  The concrete ``KAgentAdapter`` in ``harness/adapter.py`` is
+    the canonical production implementation; ``EventBus`` (in ``events.py``)
+    is the standard test/dev adapter.
+
+    Note: the name ``KAgentAdapter`` intentionally mirrors the concrete class
+    in ``harness/adapter.py`` — that class satisfies this protocol implicitly.
+    """
+
+    def on_event(self, event: RationaliseEvent) -> None:
+        ...
+
 
 # ── Cogitation Handler Protocol ────────────────────────────────────────
 
@@ -87,7 +106,7 @@ class Cogitator:
     def __init__(
         self,
         model: Model,
-        adapter: Any,
+        adapter: KAgentAdapter,
         handler: CogitationHandler,
         timeout: float = 2.0,
     ):
@@ -177,21 +196,23 @@ class KAgent:
         Model instance serving as base knowledge graph. Defaults to empty Model.
     adapter:
         Adapter for receiving events. Must implement ``on_event(event)``.
-        Defaults to a new ``EventBus`` instance for backward compatibility.
+        Required — pass an ``EventBus`` for test/dev use, or a
+        ``KAgentAdapter`` (from ``harness.adapter``) for production.
     """
 
     def __init__(
         self,
         tokenizer: Any = None,
         model: Model | None = None,
-        adapter: Any = None,
+        *,
+        adapter: KAgentAdapter,
     ):
         self._tokenizer = tokenizer if tokenizer else Mod32Tokenizer()
         self._model = model if model is not None else Model()
         self._activity: Counter = Counter()
 
         # Adapter — receives events via on_event()
-        self._adapter: Any = adapter if adapter is not None else EventBus()
+        self._adapter: KAgentAdapter = adapter
 
         # Cogitator — KAgent is the CogitationHandler
         self._cogitator = Cogitator(
@@ -212,7 +233,8 @@ class KAgent:
         return self._tokenizer
 
     @property
-    def events(self) -> Any:
+    def events(self) -> KAgentAdapter:
+        """The adapter, exposed for event inspection (e.g. ``.subscribe()`` on EventBus)."""
         return self._adapter
 
     @property
@@ -383,10 +405,10 @@ class KAgent:
         return self.codec().to_bytes()
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> KAgent:
+    def from_bytes(cls, data: bytes, adapter: KAgentAdapter | None = None) -> KAgent:
         """Deserialize from binary."""
         model, activity = AgentCodec.from_bytes(data)
-        agent = cls(model=model)
+        agent = cls(model=model, adapter=adapter or EventBus())
         agent._activity = activity
         return agent
 
@@ -395,10 +417,10 @@ class KAgent:
         return self.codec().to_dict()
 
     @classmethod
-    def from_dict(cls, data: dict) -> KAgent:
+    def from_dict(cls, data: dict, adapter: KAgentAdapter | None = None) -> KAgent:
         """Deserialize from dict."""
         model, activity = AgentCodec.from_dict(data)
-        agent = cls(model=model)
+        agent = cls(model=model, adapter=adapter or EventBus())
         agent._activity = activity
         return agent
 
@@ -408,11 +430,12 @@ class KAgent:
 
     @classmethod
     def load(
-        cls, path: str | Path = "data/agent.bin", format: Literal["bin", "json"] | None = None
+        cls, path: str | Path = "data/agent.bin", format: Literal["bin", "json"] | None = None,
+        adapter: KAgentAdapter | None = None,
     ) -> KAgent:
         """Load from file."""
         model, activity = AgentCodec.load(path, format)
-        agent = cls(model=model)
+        agent = cls(model=model, adapter=adapter or EventBus())
         agent._activity = activity
         return agent
 

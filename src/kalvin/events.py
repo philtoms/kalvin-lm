@@ -1,4 +1,12 @@
-"""Event bus for Agent pub/sub pattern."""
+"""Event bus for Agent pub/sub pattern.
+
+EventBus is a test-friendly adapter that satisfies the KAgentAdapter protocol
+(defined in ``kalvin.agent``).  It provides ``on_event(event)`` for the
+adapter contract plus ``subscribe(callback)`` / ``publish(event)`` for
+pub/sub use in tests and the TUI dev mode.
+
+For production wiring, use ``KAgentAdapter`` from ``harness.adapter`` instead.
+"""
 
 from __future__ import annotations
 

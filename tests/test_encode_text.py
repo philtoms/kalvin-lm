@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from kalvin.agent import KAgent
+from kalvin.events import EventBus
 from kalvin.kline import KLine
 from kalvin.signature import make_signature
 
@@ -41,7 +42,7 @@ class TestEncodeSentenceRationalises:
     pattern should grow the agent's frame."""
 
     def test_encode_sentence_rationalises(self):
-        agent = KAgent()
+        agent = KAgent(adapter=EventBus())
         initial = agent.frame_size()
 
         sentence = "Hello world"
@@ -57,7 +58,7 @@ class TestEncodeEmptyString:
     gracefully (no crash)."""
 
     def test_encode_empty_string(self):
-        agent = KAgent()
+        agent = KAgent(adapter=EventBus())
         initial = agent.frame_size()
 
         nodes = agent.tokenizer.encode("")
@@ -105,7 +106,7 @@ class TestEncodeMultipleSentences:
     the expected count."""
 
     def test_encode_multiple_sentences(self):
-        agent = KAgent()
+        agent = KAgent(adapter=EventBus())
         initial = agent.frame_size()
 
         text = "The cat sat. The dog ran."
@@ -127,7 +128,7 @@ class TestAgentLoadSaveRoundtrip:
     AgentCodec, verify model size matches."""
 
     def test_roundtrip_after_encoding(self):
-        agent = KAgent()
+        agent = KAgent(adapter=EventBus())
 
         # Encode a sentence
         nodes = agent.tokenizer.encode("Test sentence for roundtrip")
@@ -146,7 +147,7 @@ class TestAgentLoadSaveRoundtrip:
         assert loaded.frame_size() == size_before
 
     def test_roundtrip_json_after_encoding(self):
-        agent = KAgent()
+        agent = KAgent(adapter=EventBus())
 
         # Encode a sentence
         nodes = agent.tokenizer.encode("JSON roundtrip test")
@@ -161,7 +162,7 @@ class TestAgentLoadSaveRoundtrip:
         assert loaded.frame_size() == size_before
 
     def test_roundtrip_file_after_encoding(self):
-        agent = KAgent()
+        agent = KAgent(adapter=EventBus())
 
         nodes = agent.tokenizer.encode("File roundtrip test")
         kline = KLine(signature=make_signature(nodes), nodes=nodes)
