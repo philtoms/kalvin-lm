@@ -2,7 +2,8 @@
 
 ## Git
 
-- Never commit to git autonomously. Always ask for explicit confirmation before running any `git commit`.
+- **Task work (kb tasks):** commit autonomously. No confirmation needed.
+- **Ad-hoc work:** ask for explicit confirmation before running any `git commit`.
 
 ## Development
 
