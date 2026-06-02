@@ -9,15 +9,11 @@ from kalvin.expand import D_MAX
 
 # -------------------------------------------------------------------
 # The production import chain requires modules that don't exist yet:
-#   kalvin.significance.Int32Significance
 #   kalvin.Agent  (pulled in by ui.kscript.__init__ → app.py)
 #   kscript.*     (pulled in by ui.kscript.app)
 #   ui.kscript.dialogs (pulled in by ui.kscript.app)
 # We stub all of these so we can load responses.py in isolation.
 # -------------------------------------------------------------------
-
-# Stub kalvin.significance
-sys.modules.setdefault("kalvin.significance", MagicMock())
 
 # Stub the kscript package and its submodules
 _kscript_mod = types.ModuleType("kscript")

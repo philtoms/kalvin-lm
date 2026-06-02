@@ -15,14 +15,6 @@ from ui.kscript.regions.toolbar import ExecutionState
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
 
-_MOCK_MODULES = [
-    "kalvin.significance",
-]
-
-for _mod_name in _MOCK_MODULES:
-    if _mod_name not in sys.modules:
-        sys.modules[_mod_name] = MagicMock()
-
 from ui.kscript.app import KScriptApp
 
 

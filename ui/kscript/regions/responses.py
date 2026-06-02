@@ -9,8 +9,6 @@ from textual.widgets import Button, ListView, ListItem, Static
 
 from kalvin.abstract import KLine
 from kalvin.expand import D_MAX
-from kalvin.significance import Int32Significance
-
 STATUS_SYMBOLS: dict[str, str] = {
     "pass": "✓",
     "pending": "◌",
@@ -128,7 +126,6 @@ class ResponsesRegion(Vertical):
 
     def __init__(self) -> None:
         self._seen_responses: set[str] = set()
-        self._sig = Int32Significance()
         # Filter state: default on
         self._filters: dict[str, bool] = {
             "S1": True,
@@ -170,10 +167,6 @@ class ResponsesRegion(Vertical):
             yield Button("S3", id="filter-s3", classes="active" if self._filters["S3"] else "inactive")
             yield Button("S4", id="filter-s4", classes="active" if self._filters["S4"] else "inactive")
         yield ListView(id="responses-list")
-
-    def _get_kline_level(self, kline: KLine) -> str:
-        """Get the significance level for a KLine."""
-        return self._sig.get_level(kline.signature)
 
     def _is_filter_active(self, level: str) -> bool:
         """Check if a filter level is active."""

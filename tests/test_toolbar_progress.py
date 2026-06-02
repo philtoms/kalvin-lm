@@ -6,17 +6,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
-# The UI module has dependencies (kalvin.significance, etc.) that may not
-# be available in the test environment.  Patch sys.modules before the
-# first import of ui.kscript.app.
-
-_MOCK_MODULES = [
-    "kalvin.significance",
-]
-
-for _mod_name in _MOCK_MODULES:
-    if _mod_name not in sys.modules:
-        sys.modules[_mod_name] = MagicMock()
+# The UI module has dependencies that may not be available in the test
+# environment.  Patch sys.modules before the first import of ui.kscript.app.
 
 import kalvin as _kalvin_pkg
 from kalvin.agent import KAgent as _RealAgent
