@@ -20,7 +20,9 @@ import json
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from kalvin import Agent
+from kalvin.agent import KAgent
+from kalvin.kline import KLine
+from kalvin.signature import make_signature
 
 
 # Global state for interrupt handling
@@ -122,14 +124,14 @@ def main():
     agent_size = 0
     if agent_path and agent_path.exists():
         print(f"\nLoading agent from: {agent_path}")
-        agent = Agent.load(agent_path, format=args.format)
+        agent = KAgent.load(agent_path, format=args.format)
         agent_size = agent.frame_size()
         print(f"Loaded agent size: {agent_size:,} KLines")
     else:
         print("\nInitializing new agent...")
         if not agent_path:
             agent_path = "data/kalvin.bin"
-        agent = Agent()
+        agent = KAgent()
         print(f"Initial agent size: {agent.frame_size():,} KLines")
 
 
@@ -144,24 +146,13 @@ def main():
         for sentence in tqdm(sentences, desc=f"Encoding {len(sentences):,} sentences..."):
             if _interrupted:
                 break
-            agent.encode(sentence)
+            nodes = agent.tokenizer.encode(sentence)
+            kline = KLine(signature=make_signature(nodes), nodes=nodes)
+            agent.rationalise(kline)
 
     # Report agent size
     final_size = agent.frame_size()
     print(f"\nFinal agent size: {final_size:,} KLines")
-    if final_size > agent_size:
-        print(f"Extended by: {final_size - agent_size:,} KLines")
-
-    # Unrecognised tokens
-    print(f"\nUnrecognised tokens: {len(agent.unrecognised_tokens)}")
-    for token in agent.unrecognised_tokens:
-        print(f"{token}: {agent.tokenizer.decode([token])}")
-
-    agent = agent.prune()
-
-    # Report agent size
-    final_size = agent.frame_size()
-    print(f"\nFinal agent size after pruning: {final_size:,} KLines")
     if final_size > agent_size:
         print(f"Extended by: {final_size - agent_size:,} KLines")
 
