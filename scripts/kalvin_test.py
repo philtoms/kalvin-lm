@@ -6,7 +6,7 @@ sys.path.insert(0, 'src')
 from kscript.compiler import compile_source
 from kalvin.agent import Agent
 from kalvin.mod_tokenizer import Mod32Tokenizer
-from kalvin.model import D_MAX
+from kalvin.expand import D_MAX
 
 source = '''
 MHALL => SVO

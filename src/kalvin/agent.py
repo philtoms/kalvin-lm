@@ -1,8 +1,13 @@
-"""KAgent — orchestrator of the Kalvin rationalisation pipeline.
+"""KAgent — orchestrator of the rationalisation pipeline.
 
 The KAgent rationalises KLines against the Model using a fast/slow split:
   - Fast path: routing (node membership) — no model calls. S1/S4 resolve instantly.
-  - Slow path: cogitation — model.expand() per work item in a background thread.
+  - Slow path: cogitation — expand() per work item in a background thread.
+
+The Cogitator is a thin threading dispatcher: it dequeues work items, calls
+functions from expand.py (boundaries, classify, expand, propose_expansions),
+and routes results to a CogitationHandler. All significance computation and
+expansion proposal logic lives in expand.py.
 
 Serialization is delegated to the AgentCodec module (see agent_codec.py).
 
@@ -19,12 +24,11 @@ from typing import Any, Literal, NamedTuple, Protocol, runtime_checkable
 from kalvin.agent_codec import AgentCodec
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.expand import (
-    D_MAX, MASK64, QueryCandidate,
-    expand as expand_fn,
-    is_s1, is_countersigned, promote_participating,
+    D_MAX,
+    expand, is_s1, promote_participating, is_countersigned,
+    boundaries, classify, propose_expansions,
 )
 from kalvin.kline import KLine
-from kalvin.misfit import classify_misfit, generate_expansions
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.model import Model
 from kalvin.signature import is_literal_node, make_signature
@@ -48,14 +52,6 @@ class CogitationHandler(Protocol):
         ...
 
 
-# ── Distance Constants ────────────────────────────────────────────────
-
-# S2|S3 boundary — packed distance threshold separating S2 from S3.
-# Sits between max single-node S2 distance (MAX_HOP=100) and min S3 packed
-# distance (_pack(2+_S3_BIAS)=121), ensuring clean separation.
-_S2_S3_DISTANCE = 100
-
-
 # ── Work Item ─────────────────────────────────────────────────────────
 
 class WorkItem(NamedTuple):
@@ -71,7 +67,7 @@ class Cogitator:
     """Background processor for rational work items (S2/S3).
 
     Receives individual query|candidate|level work items,
-    computes deep significance (model.expand), and processes results.
+    computes deep significance (expand()), and processes results.
     Parameters
     ----------
     model:
@@ -141,49 +137,13 @@ class Cogitator:
 
             self._run_work_item(item)
 
-    # ── Boundary Computation ───────────────────────────────────────────
-
-    @staticmethod
-    def _boundaries() -> tuple[int, int, int]:
-        """Return the three significance boundaries (S1|S2, S2|S3, S3|S4).
-
-        S1|S2 = D_MAX - 1              (only exact S1 qualifies)
-        S2|S3 = ~_S2_S3_DISTANCE       (packed distance threshold)
-        S3|S4 = 0                       (only complete unresolvable is S4)
-        """
-        s12 = D_MAX - 1
-        s23 = (~_S2_S3_DISTANCE) & MASK64
-        s34 = 0
-        return s12, s23, s34
-
-    @staticmethod
-    def _classify(sig: int, s12: int, s23: int, s34: int) -> str:
-        """Classify a significance value against three boundaries.
-
-        Returns "S1", "S2", "S3", or "S4".
-        """
-        if sig >= s12:
-            return "S1"
-        elif sig >= s23:
-            return "S2"
-        elif sig >= s34:
-            return "S3"
-        else:
-            return "S4"
-
     def _run_work_item(self, item: WorkItem) -> None:
-        """Expand a work item, classifying each yield against boundaries.
-
-        Each yielded QC is classified against fixed boundaries.
-        S4 results are demoted. S1 results trigger promotion (if structurally
-        grounded) and re-rationalisation. S2/S3 results are processed for
-        expansion.
-        """
+        """Expand a work item, classifying each yield against boundaries."""
         query, candidate, _level = item
-        s12, s23, s34 = self._boundaries()
+        s12, s23, s34 = boundaries()
 
-        for qc in expand_fn(self._model, query, candidate):
-            band = self._classify(qc.significance, s12, s23, s34)
+        for qc in expand(self._model, query, candidate):
+            band = classify(qc.significance, s12, s23, s34)
 
             if band == "S4":
                 continue  # demote: below S3|S4 boundary
@@ -193,33 +153,14 @@ class Cogitator:
                     promote_participating(self._model, query, candidate)
                 self._handler.on_s1(query, candidate)
             else:
-                self._process(qc)  # S2 or S3: expansion
-
-    def _process(self, item: QueryCandidate) -> None:
-        """Process a single expanded result: S2/S3 expansion only.
-        """
-        query, candidate, significance = item
-
-        candidate_sig = candidate.signature
-        nodes_sig = make_signature(candidate.nodes)
-
-        if candidate_sig == nodes_sig:
-            return  # canonical — nothing to expand
-
-        underfit, overfit = classify_misfit(candidate)
-
-        if not underfit and not overfit:
-            return  # neither — nothing to expand
-
-        underfit_gap = candidate_sig & ~nodes_sig
-        overfit_mask = nodes_sig & ~candidate_sig
-
-        for proposal, companions in generate_expansions(
-            self._model, candidate, underfit_gap, overfit_mask
-        ):
-            self._handler.on_expansion(query, proposal, significance)
-            for companion in companions:
-                self._handler.on_expansion(query, companion, significance)
+                # S2 or S3: propose expansions, route to handler
+                # Note: qc.candidate (not WorkItem.candidate) is the expanded
+                # candidate that may be a misfit. qc.query (not WorkItem.query)
+                # is the correct query context for connotation yields.
+                for proposal, sig in propose_expansions(
+                    self._model, qc.candidate, qc.significance
+                ):
+                    self._handler.on_expansion(qc.query, proposal, sig)
 
 
 # ── KAgent ────────────────────────────────────────────────────────────

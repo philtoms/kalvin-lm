@@ -163,7 +163,7 @@ class TestAgentRationalise:
 # ── Short-Circuit Tests ───────────────────────────────────────────────
 
 class TestShortCircuit:
-    """S1 short-circuits — no model.expand() called."""
+    """S1 short-circuits — no expand() called."""
 
     def test_s1_skips_remaining_candidates(self):
         """First candidate is S1 → no further candidates processed."""
@@ -178,9 +178,9 @@ class TestShortCircuit:
         q = KLine(0, [10, 20])
         q.signature = make_signature([10, 20])
 
-        # Patch expand_fn in the agent module to track calls
+        # Patch expand to track calls
         with patch(
-            'kalvin.agent.expand_fn',
+            'kalvin.agent.expand',
             side_effect=AssertionError("expand should not be called for S1"),
         ):
             result = a.rationalise(q)
@@ -209,7 +209,7 @@ class TestShortCircuit:
         q.signature = make_signature([999])
 
         with patch(
-            'kalvin.agent.expand_fn',
+            'kalvin.agent.expand',
             side_effect=AssertionError("expand should not be called for S4"),
         ):
             result = a.rationalise(q)
@@ -494,6 +494,8 @@ class TestCogitatorStructuralGrounding:
 
     def test_no_expansion_for_canonical(self):
         """Canonical klines produce no expansion proposals."""
+        from kalvin.misfit import classify_misfit
+
         m = Model()
         k = KLine(10, [10])  # canonical
         nodes_sig = make_signature(k.nodes)
@@ -599,7 +601,7 @@ class TestCogitatorWithFakeHandler:
         cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder)
 
         # Query with no overlapping nodes to k3 → S3 after expand,
-        # and k3 is misfit so _process triggers generate_expansions.
+        # and k3 is misfit so propose_expansions triggers generate_expansions.
         q = KLine(0, [0b010])
         q.signature = make_signature([0b010])
         m.add(q)

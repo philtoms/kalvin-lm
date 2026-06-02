@@ -10,10 +10,14 @@ from kalvin.expand import (
     is_s1,
     is_countersigned,
     promote_participating,
+    propose_expansions,
     QueryCandidate,
     D_MAX,
     MASK64,
     MAX_HOP,
+    S2_S3_DISTANCE,
+    boundaries,
+    classify,
     _pack,
     _S3_BIAS,
 )
@@ -440,3 +444,136 @@ class TestPromoteParticipating:
         m.promote(c)
         count = promote_participating(m, q, c)
         assert count == 0  # both already in LTM (literal dedup)
+
+
+# ── Significance Boundary Tests ───────────────────────────────────────
+
+class TestBoundaries:
+    """Verify boundaries() returns correct (S1|S2, S2|S3, S3|S4) thresholds."""
+
+    def test_boundaries_values(self):
+        """Boundaries are D_MAX-1, ~S2_S3_DISTANCE masked, and 0."""
+        s12, s23, s34 = boundaries()
+        assert s12 == D_MAX - 1
+        assert s23 == (~S2_S3_DISTANCE) & MASK64
+        assert s34 == 0
+
+    def test_all_values_valid_uint64(self):
+        """All boundary values are non-negative and within uint64 range."""
+        for val in boundaries():
+            assert 0 <= val <= MASK64
+
+    def test_s23_sits_between_max_hop_and_min_s3(self):
+        """S2|S3 boundary sits between MAX_HOP and _pack(2 + _S3_BIAS).
+
+        S2_S3_DISTANCE (100) < _pack(2 + _S3_BIAS) (121), ensuring S2 and S3
+        significance tiers are cleanly separated.
+        """
+        assert S2_S3_DISTANCE < _pack(2 + _S3_BIAS)
+
+
+class TestClassify:
+    """Verify classify() returns correct significance bands."""
+
+    @pytest.fixture()
+    def bounds(self):
+        return boundaries()
+
+    def test_classify_at_s1_boundary(self, bounds):
+        """sig = D_MAX → S1 (maximum significance)."""
+        s12, s23, s34 = bounds
+        assert classify(D_MAX, s12, s23, s34) == "S1"
+
+    def test_classify_at_s12_exact(self, bounds):
+        """sig = D_MAX - 1 → S1 (exact S1|S2 boundary)."""
+        s12, s23, s34 = bounds
+        assert classify(D_MAX - 1, s12, s23, s34) == "S1"
+
+    def test_classify_just_below_s12(self, bounds):
+        """sig = D_MAX - 2 → S2 (just below S1|S2 boundary)."""
+        s12, s23, s34 = bounds
+        assert classify(D_MAX - 2, s12, s23, s34) == "S2"
+
+    def test_classify_at_s23_boundary(self, bounds):
+        """sig = S2|S3 boundary value → S2."""
+        s12, s23, s34 = bounds
+        assert classify(s23, s12, s23, s34) == "S2"
+
+    def test_classify_in_s3_range(self, bounds):
+        """sig = 1 → S3 (above S3|S4)."""
+        s12, s23, s34 = bounds
+        assert classify(1, s12, s23, s34) == "S3"
+
+    def test_classify_at_s34_boundary(self, bounds):
+        """sig = 0 → S3 (0 >= 0 is True, S4 is unreachable for uint64).
+
+        Note: S4 is never produced by classify() since significance values
+        are always non-negative uint64 and s34 = 0. S4 only comes from
+        the routing path in KAgent._route().
+        """
+        s12, s23, s34 = bounds
+        assert classify(0, s12, s23, s34) == "S3"
+
+
+class TestProposeExpansions:
+    """Verify propose_expansions() yields (KLine, int) tuples for misfits."""
+
+    def test_canonical_yields_nothing(self):
+        """Canonical candidate (sig == make_signature(nodes)) → no proposals."""
+        m = Model()
+        k = KLine(10, [10])  # canonical: make_signature([10]) = 10
+        result = list(propose_expansions(m, k, 42))
+        assert result == []
+
+    def test_underfit_yields_proposals(self):
+        """Underfit candidate (sig promises more than nodes deliver) → proposals.
+
+        KLine(sig=0b110, nodes=[0b100]) has gap 0b010. With contributor
+        KLine(sig=0b010, nodes=[0b010]) in the model, propose_expansions
+        yields proposal klines with the passed significance.
+        """
+        m = Model()
+        # Contributor for the underfit gap 0b010
+        contributor = KLine(0b010, [0b010])
+        m.add(contributor)
+        m.promote(contributor)
+
+        # Underfit kline: sig=0b110 promises bits that nodes=[0b100] don't deliver
+        candidate = KLine(0b110, [0b100])
+        significance = 0xDEAD
+
+        results = list(propose_expansions(m, candidate, significance))
+        assert len(results) >= 1
+        for proposal, sig in results:
+            assert isinstance(proposal, KLine)
+            assert sig == significance
+
+    def test_overfit_yields_trimmed_and_companion(self):
+        """Overfit candidate (nodes carry more than sig) → trimmed + companion.
+
+        KLine(sig=0b100, nodes=[0b110]) has excess 0b010. Propose_expansions
+        yields trimmed kline and companion from removed nodes.
+        """
+        m = Model()
+        # Overfit: sig=0b100 but nodes=[0b110] carry extra 0b010
+        candidate = KLine(0b100, [0b110])
+        significance = 0xBEEF
+
+        results = list(propose_expansions(m, candidate, significance))
+        assert len(results) >= 2  # trimmed proposal + companion
+        for proposal, sig in results:
+            assert isinstance(proposal, KLine)
+            assert sig == significance
+
+    def test_yields_are_kline_int_tuples(self):
+        """Every yield is a (KLine, int) tuple."""
+        m = Model()
+        contributor = KLine(0b010, [0b010])
+        m.add(contributor)
+        candidate = KLine(0b110, [0b100])
+
+        for item in propose_expansions(m, candidate, 42):
+            assert isinstance(item, tuple)
+            assert len(item) == 2
+            assert isinstance(item[0], KLine)
+            assert isinstance(item[1], int)

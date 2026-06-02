@@ -9,7 +9,7 @@ See specs/model.md for the full specification.
 
 from __future__ import annotations
 
-from typing import Callable, Iterator, NamedTuple
+from typing import Callable, Iterator
 
 from kalvin.kline import KLine, KSig
 from kalvin.stm import STM
@@ -91,7 +91,8 @@ class Model:
     - LTM: long-term memory. Populated by promote() from Frame. Additive (Frame retains).
     - Base: optional long-term knowledge store (read-only, set at construction).
 
-    The caller sees a single unified API.
+    The caller sees a single unified API. Significance and misfit logic
+    live in expand.py and misfit.py respectively.
 
     Frame and LTM storage are backed by ``KLineStore`` — a reusable indexed list
     with dedup set.

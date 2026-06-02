@@ -1,9 +1,19 @@
-"""Expand — graph expansion, significance computation, and structural grounding.
+"""Expand — graph expansion, significance computation, classification, and
+expansion proposal pipeline.
 
-This module owns the logic for expanding query-candidate pairs into
-connotations and terminal significance values. It reads from the Model
-(storage) but is a separate responsibility: Model indexes and retrieves;
-Expand computes how far apart two KLines are.
+This module owns the full significance → classification → expansion proposal
+pipeline:
+
+  1. **Significance computation** — expand() computes packed distances and
+     yields QueryCandidate objects with connotation and terminal significance.
+  2. **Boundary constants** — S2_S3_DISTANCE, boundaries(), classify() map
+     significance values to S1/S2/S3/S4 bands.
+  3. **Expansion proposals** — propose_expansions() classifies misfits and
+     generates (proposal, significance) tuples for the caller to dispatch.
+  4. **Structural grounding** — is_s1(), is_countersigned() verify S1 status.
+
+The module reads from the Model (storage) but is a separate responsibility:
+Model indexes and retrieves; Expand computes how far apart two KLines are.
 
 Re-exported constants and types from the old model module:
   D_MAX, MASK64, MAX_HOP, _S3_BIAS, _pack, QueryCandidate
@@ -14,6 +24,7 @@ from __future__ import annotations
 from typing import Iterator, TYPE_CHECKING
 
 from kalvin.kline import KLine
+from kalvin.misfit import classify_misfit, generate_expansions
 from kalvin.signature import make_signature, signifies, is_literal_node
 
 if TYPE_CHECKING:
@@ -46,6 +57,41 @@ MASK64 = 0xFFFF_FFFF_FFFF_FFFF  # 64-bit mask for bitwise inversion
 
 # MAX_HOP hyperparameter — upper bound on edge hop chain depth
 MAX_HOP = 100
+
+# S2|S3 boundary — packed distance threshold separating S2 from S3.
+# Sits between max single-node S2 distance (MAX_HOP=100) and min S3 packed
+# distance (_pack(2+_S3_BIAS)=121), ensuring clean separation.
+S2_S3_DISTANCE = 100
+
+
+# ── Significance Boundaries ───────────────────────────────────────────
+
+def boundaries() -> tuple[int, int, int]:
+    """Return the three significance boundaries (S1|S2, S2|S3, S3|S4).
+
+    S1|S2 = D_MAX - 1              (only exact S1 qualifies)
+    S2|S3 = ~S2_S3_DISTANCE        (packed distance threshold)
+    S3|S4 = 0                       (only complete unresolvable is S4)
+    """
+    s12 = D_MAX - 1
+    s23 = (~S2_S3_DISTANCE) & MASK64
+    s34 = 0
+    return s12, s23, s34
+
+
+def classify(sig: int, s12: int, s23: int, s34: int) -> str:
+    """Classify a significance value against three boundaries.
+
+    Returns "S1", "S2", "S3", or "S4".
+    """
+    if sig >= s12:
+        return "S1"
+    elif sig >= s23:
+        return "S2"
+    elif sig >= s34:
+        return "S3"
+    else:
+        return "S4"
 
 
 class QueryCandidate:
@@ -281,3 +327,42 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> int:
         if model.promote(kl):
             count += 1
     return count
+
+
+# ── Expansion Proposal Pipeline ───────────────────────────────────────
+
+def propose_expansions(
+    model: Model,
+    candidate: KLine,
+    significance: int,
+) -> Iterator[tuple[KLine, int]]:
+    """Generate expansion proposals for a misfit candidate.
+
+    Classifies the candidate's misfit type (underfitting, overfitting, or both)
+    and generates expansion proposals. Each yield is ``(proposal_kline, significance)``.
+    Yields nothing if the candidate is canonical or not a misfit.
+
+    The caller is responsible for pairing proposals with the correct query kline
+    for handler dispatch — for connotation yields from ``expand()``, this is
+    ``qc.query``, not the original WorkItem's query.
+    """
+    candidate_sig = candidate.signature
+    nodes_sig = make_signature(candidate.nodes)
+
+    if candidate_sig == nodes_sig:
+        return  # canonical — nothing to expand
+
+    underfit, overfit = classify_misfit(candidate)
+
+    if not underfit and not overfit:
+        return  # neither — nothing to expand
+
+    underfit_gap = candidate_sig & ~nodes_sig
+    overfit_mask = nodes_sig & ~candidate_sig
+
+    for proposal, companions in generate_expansions(
+        model, candidate, underfit_gap, overfit_mask
+    ):
+        yield (proposal, significance)
+        for companion in companions:
+            yield (companion, significance)
