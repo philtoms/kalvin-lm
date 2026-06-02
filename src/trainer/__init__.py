@@ -18,10 +18,13 @@ from trainer.curriculum_generator import (
     CurriculumGenerationError,
     CurriculumGenerator,
 )
+from trainer.reactor import Action, Reactor
 from trainer.trainer import Trainer
 
 __all__ = [
+    "Action",
     "Trainer",
+    "Reactor",
     "Curriculum",
     "CurriculumState",
     "CurriculumDocument",

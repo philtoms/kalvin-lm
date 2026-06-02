@@ -1,9 +1,10 @@
 """Trainer participant — embedded harness component that drives the training loop.
 
-The Trainer submits curriculum lessons to the KAgent, auto-countersigns
-structurally matching proposals, enters reactive mode on S2/S3 events
-(delegating to a cogitation function from KB-024), escalates to the human
-when stuck, and persists curriculum state for restart recovery.
+The Trainer submits curriculum lessons to the KAgent and manages session
+lifecycle (start/stop/pause, curriculum loading, file polling, progress
+emission, message routing). Reactive handling of S2/S3 events — auto-
+countersign matching, scaffolding via ``cogitate_fn``, budget tracking,
+and escalation — is delegated to the :class:`~trainer.reactor.Reactor`.
 
 Supports document-based curriculum with file polling, label-based tracking,
 session startup resolution, amendment handling, and progress events.
@@ -25,14 +26,13 @@ from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX
 from kalvin.kline import KLine
 from kscript.compiler import compile_source
-from kscript.token_encoder import CompiledEntry
-from trainer.cogitation import LLMClient
 from trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from trainer.curriculum_document import (
     CurriculumDocument,
     CurriculumParseError,
     Lesson,
 )
+from trainer.reactor import Reactor
 
 logger = logging.getLogger(__name__)
 
@@ -93,19 +93,22 @@ class Trainer:
             save_path=save_path,
             curriculum_file=str(curriculum_file) if curriculum_file else None,
         )
-        self._max_reactive_rounds = max_reactive_rounds
-        self._cogitate_fn = cogitate_fn
         self._llm_client = llm_client
         self._curriculum_file = Path(curriculum_file) if curriculum_file else None
         self._curricula_dir = Path(curricula_dir) if curricula_dir else None
 
+        # Reactor handles S2/S3 event processing
+        self._reactor = Reactor(
+            bus,
+            self._state,
+            address=address,
+            max_reactive_rounds=max_reactive_rounds,
+            cogitate_fn=cogitate_fn,
+        )
+
         # Session model fields
         self._session_active: bool = False
         self._session_paused: bool = False
-        self._current_entries: list[CompiledEntry] = []
-        self._expected_count: int = 0
-        self._received_count: int = 0
-        self._reactive_rounds: int = 0
         self._pending_goals: list[str] = []
         self._conversation_history: list[str] = []
         self._polling_for_goal: bool = False
@@ -181,7 +184,7 @@ class Trainer:
     def _handle_kagent_event(self, msg: Message) -> None:
         """Process a KAgent ground or frame event."""
         event: RationaliseEvent = msg.message
-        self._received_count += 1
+        self._reactor.record_response()
 
         if self._is_s1(event):
             # S1 fast path: auto-satisfy by query match
@@ -189,15 +192,14 @@ class Trainer:
             self._state.mark_satisfied(key)
             self._check_lesson_complete()
         else:
-            # S2/S3 slow path: try auto-countersign first, then reactive
-            if not self._auto_countersign(event.proposal):
-                self._handle_reactive(event)
+            # S2/S3 slow path: delegate to reactor
+            self._reactor.process_s2_s3(event)
             self._check_lesson_complete()
 
     def _handle_kagent_error(self, msg: Message) -> None:
         """Log KAgent error and count toward lesson completion."""
         self._state.log_event("kagent_error", {"message": str(msg.message)})
-        self._received_count += 1
+        self._reactor.record_response()
         self._check_lesson_complete()
 
     # ── Input handling (from Slack / human) ───────────────────────────
@@ -454,10 +456,7 @@ class Trainer:
 
         # Compile locally to obtain CompiledEntry objects for structural matching
         entries = compile_source(lesson)
-        self._current_entries = entries
-        self._received_count = 0
-        self._expected_count = len(entries)
-        self._reactive_rounds = 0
+        self._reactor.load_lesson(entries)
 
         # Mark each entry as submitted
         for entry in entries:
@@ -473,94 +472,6 @@ class Trainer:
                 sender=self._address,
             )
         )
-
-    # ── Auto-countersign ──────────────────────────────────────────────
-
-    def _auto_countersign(self, proposal: KLine) -> bool:
-        """Check structural match and auto-countersign if found.
-
-        Uses ``KLine.__eq__`` (signature + nodes) for structural matching.
-        Returns ``True`` if a match was found and countersigned.
-        """
-        for entry in self._current_entries:
-            if entry == proposal:
-                key = _entry_key(entry)
-                # Guard against duplicate countersigns on already-satisfied entries
-                if self._state.is_satisfied(key):
-                    return True
-
-                self._bus.send(
-                    Message(
-                        address="kalvin",
-                        action="countersign",
-                        message=proposal,
-                        sender=self._address,
-                    )
-                )
-                self._state.mark_satisfied(key)
-                return True
-        return False
-
-    # ── Reactive mode ─────────────────────────────────────────────────
-
-    def _handle_reactive(self, event: RationaliseEvent) -> None:
-        """Reactive mode on S2/S3 proposals.
-
-        Increments reactive round counter. Escalates on budget exhaustion.
-        Otherwise attempts cogitation for reactive scaffolding.
-        """
-        self._reactive_rounds += 1
-
-        if self._reactive_rounds >= self._max_reactive_rounds:
-            self._escalate("budget_exhaustion")
-            return
-
-        scaffolding = self._cogitate(event)
-        if scaffolding is not None:
-            kscript_source, confidence = scaffolding
-            self._state.log_event(
-                "reactive_scaffolding",
-                {"confidence": confidence, "source": kscript_source},
-            )
-            # Submit reactive scaffolding to KAgent
-            self._bus.send(
-                Message(
-                    address="kalvin",
-                    action="submit",
-                    message=kscript_source,
-                    sender=self._address,
-                )
-            )
-        else:
-            self._escalate("low_confidence")
-
-    def _cogitate(self, event: RationaliseEvent) -> tuple[str, float] | None:
-        """Attempt to generate reactive scaffolding.
-
-        Delegates to the injected ``cogitate_fn`` if available.
-        Returns ``None`` when no cogitation is available (triggers escalation).
-        """
-        if self._cogitate_fn is not None:
-            return self._cogitate_fn(event)
-        return None
-
-    # ── Escalation ────────────────────────────────────────────────────
-
-    def _escalate(self, reason: str, detail: str = "") -> None:
-        """Escalate to the human via Slack notify message."""
-        self._bus.send(
-            Message(
-                address="slack",
-                action="notify",
-                message={
-                    "reason": reason,
-                    "detail": detail,
-                    "lesson_position": self._state.curriculum.position,
-                },
-                sender=self._address,
-            )
-        )
-        self._state.log_event("escalation", {"reason": reason, "detail": detail})
 
     # ── Progress events ───────────────────────────────────────────────
 
@@ -637,10 +548,9 @@ class Trainer:
         """Return ``True`` if the current lesson is complete.
 
         A lesson is complete when all submitted entries have received
-        responses (``_received_count == _expected_count``). Uses exact
-        equality to guard against duplicate events causing double-advance.
+        responses. Delegates to ``Reactor.is_lesson_complete``.
         """
-        if self._received_count == self._expected_count and self._expected_count > 0:
+        if self._reactor.is_lesson_complete:
             # Mark lesson satisfied (also advances curriculum position)
             current_lesson = self._state.curriculum.current_lesson()
             old_position = self._state.curriculum.position

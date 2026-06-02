@@ -138,8 +138,6 @@ def _make_trainer(
     curriculum: Curriculum,
     *,
     save_path: str | Path | None = None,
-    max_reactive_rounds: int = 5,
-    cogitate_fn=None,
     curriculum_file: str | Path | None = None,
     curricula_dir: str | Path | None = None,
     llm_client=None,
@@ -154,8 +152,6 @@ def _make_trainer(
         bus,
         curriculum,
         save_path=save_path,
-        max_reactive_rounds=max_reactive_rounds,
-        cogitate_fn=cogitate_fn,
         curriculum_file=curriculum_file,
         curricula_dir=curricula_dir,
         llm_client=llm_client,
@@ -170,8 +166,6 @@ def _make_trainer_with_capture(
     curriculum: Curriculum,
     *,
     save_path: str | Path | None = None,
-    max_reactive_rounds: int = 5,
-    cogitate_fn=None,
     curriculum_file: str | Path | None = None,
     curricula_dir: str | Path | None = None,
     llm_client=None,
@@ -188,133 +182,11 @@ def _make_trainer_with_capture(
         bus,
         curriculum,
         save_path=save_path,
-        max_reactive_rounds=max_reactive_rounds,
-        cogitate_fn=cogitate_fn,
         curriculum_file=curriculum_file,
         curricula_dir=curricula_dir,
         llm_client=llm_client,
     )
     return trainer, capture
-
-
-# ── HRNS-12: Auto-countersign on structural match ────────────────────
-
-
-class TestAutoCountersignStructuralMatch:
-    """HRNS-12: Trainer auto-countersigns structurally matching proposals."""
-
-    @patch("trainer.trainer.compile_source")
-    def test_auto_countersign_structural_match(self, mock_compile: MagicMock) -> None:
-        bus = MessageBus()
-        entry = _make_entry(100, [10, 20])
-        mock_compile.return_value = [entry]
-
-        curriculum = Curriculum(["MHALL = SVO"])
-        trainer, capture = _make_trainer(bus, curriculum)
-        trainer.start_session()
-
-        # Clear startup messages
-        capture.reset()
-
-        # Simulate KAgent frame event with matching proposal (non-S1)
-        proposal = KLine(signature=100, nodes=[10, 20])
-        query = KLine(signature=999, nodes=[1])
-        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
-
-        trainer.on_message(
-            Message(address="trainer", action="frame", message=event)
-        )
-
-        # Verify countersign was sent to kalvin
-        cs_msgs = capture.find_all("kalvin", "countersign")
-        assert len(cs_msgs) == 1
-        assert cs_msgs[0].sender == "trainer"
-        # The countersign message contains the proposal KLine
-        assert cs_msgs[0].message == proposal
-
-        # Verify entry is marked satisfied
-        key = _entry_key(entry)
-        assert trainer.state.is_satisfied(key)
-
-
-# ── HRNS-13: Reactive mode on S2/S3 ──────────────────────────────────
-
-
-class TestReactiveModeOnS2S3:
-    """HRNS-13: Trainer enters reactive mode on S2/S3 events."""
-
-    @patch("trainer.trainer.compile_source")
-    def test_reactive_mode_on_s2_s3(self, mock_compile: MagicMock) -> None:
-        bus = MessageBus()
-        entry = _make_entry(100, [10, 20])
-        mock_compile.return_value = [entry]
-
-        curriculum = Curriculum(["MHALL = SVO", "S = M / V = H"])
-        trainer, capture = _make_trainer(bus, curriculum)
-        trainer.start_session()
-
-        # Clear startup messages
-        capture.reset()
-
-        # Simulate KAgent frame event with non-matching proposal
-        proposal = KLine(signature=999, nodes=[88])  # doesn't match entry
-        query = KLine(signature=888, nodes=[1])
-        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
-
-        trainer.on_message(
-            Message(address="trainer", action="frame", message=event)
-        )
-
-        # Verify NO countersign was sent
-        cs_msgs = capture.find_all("kalvin", "countersign")
-        assert len(cs_msgs) == 0
-
-        # Verify escalation to slack (low_confidence since no cogitate_fn)
-        notify_msgs = capture.find_all("slack", "notify")
-        assert len(notify_msgs) >= 1
-        escalation = notify_msgs[0].message
-        assert escalation["reason"] == "low_confidence"
-
-
-# ── HRNS-14: Escalation on budget exhaustion ─────────────────────────
-
-
-class TestEscalationOnBudgetExhaustion:
-    """HRNS-14: Trainer escalates to Slack on budget exhaustion."""
-
-    @patch("trainer.trainer.compile_source")
-    def test_escalation_on_budget_exhaustion(self, mock_compile: MagicMock) -> None:
-        # Use max_reactive_rounds=3 and a lesson with 3 entries
-        # so reactive_rounds can reach 3 within a single lesson
-        entries = [
-            _make_entry(100 + i, [10 + i])
-            for i in range(3)
-        ]
-        mock_compile.return_value = entries
-
-        bus = MessageBus()
-        curriculum = Curriculum(["lesson1"])
-        trainer, capture = _make_trainer(
-            bus, curriculum, max_reactive_rounds=3
-        )
-        trainer.start_session()
-        capture.reset()
-
-        # Send 3 non-matching S2/S3 frame events
-        for i in range(3):
-            proposal = KLine(signature=900 + i, nodes=[99 + i])
-            query = KLine(signature=800 + i, nodes=[i])
-            event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
-            trainer.on_message(
-                Message(address="trainer", action="frame", message=event)
-            )
-
-        # Verify budget_exhaustion escalation
-        notify_msgs = capture.find_all("slack", "notify")
-        budget_esc = [
-            m for m in notify_msgs if m.message["reason"] == "budget_exhaustion"
-        ]
-        assert len(budget_esc) >= 1
 
 
 # ── HRNS-16: One session at a time ───────────────────────────────────
@@ -655,54 +527,6 @@ class TestStopPersistsState:
         assert loaded.curriculum.lessons == ["lesson1", "lesson2", "lesson3"]
         assert loaded.submitted == {key}
         assert loaded.satisfied == {key}
-
-
-class TestCogitateFnInjection:
-    """Provide a cogitate_fn that returns scaffolding — reactive mode uses it."""
-
-    @patch("trainer.trainer.compile_source")
-    def test_cogitate_fn_injection(self, mock_compile: MagicMock) -> None:
-        entry = _make_entry(100, [10])
-        mock_compile.return_value = [entry]
-
-        # Mock cogitate function that returns scaffolding
-        mock_cogitate = MagicMock(
-            return_value=("S = X / V = Y", 0.85)
-        )
-
-        bus = MessageBus()
-        curriculum = Curriculum(["lesson1", "lesson2"])
-        trainer, capture = _make_trainer(
-            bus, curriculum, cogitate_fn=mock_cogitate
-        )
-        trainer.start_session()
-        capture.reset()
-
-        # Non-matching S2/S3 event
-        proposal = KLine(signature=999, nodes=[88])
-        query = KLine(signature=888, nodes=[1])
-        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
-
-        trainer.on_message(
-            Message(address="trainer", action="frame", message=event)
-        )
-
-        # Cogitate was called
-        mock_cogitate.assert_called_once_with(event)
-
-        # Reactive scaffolding was submitted to kalvin
-        submit_msgs = capture.find_all("kalvin", "submit")
-        scaffolding_msgs = [m for m in submit_msgs if m.message == "S = X / V = Y"]
-        assert len(scaffolding_msgs) == 1
-        assert scaffolding_msgs[0].sender == "trainer"
-
-        # No escalation (low_confidence) should have occurred
-        notify_msgs = capture.find_all("slack", "notify")
-        escalation_msgs = [
-            m for m in notify_msgs
-            if m.message.get("reason") in ("low_confidence", "budget_exhaustion")
-        ]
-        assert len(escalation_msgs) == 0
 
 
 class TestGuidanceTextAppended:
