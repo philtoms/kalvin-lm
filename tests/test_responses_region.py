@@ -1,54 +1,86 @@
 """Tests for ResponseItem display formatting and ResponsesRegion.add_response."""
 
-import importlib
+import inspect
 import sys
 import types
+from types import SimpleNamespace
 from unittest.mock import MagicMock
+
+import pytest
 
 from kalvin.expand import D_MAX
 
-# -------------------------------------------------------------------
-# The production import chain requires modules that don't exist yet:
-#   kalvin.Agent  (pulled in by ui.kscript.__init__ → app.py)
-#   kscript.*     (pulled in by ui.kscript.app)
-#   ui.kscript.dialogs (pulled in by ui.kscript.app)
-# We stub all of these so we can load responses.py in isolation.
-# -------------------------------------------------------------------
+# Keys that the fixture will stub in sys.modules
+_STUB_KEYS = ("kscript", "kscript.decompiler", "kscript.compiler", "ui.kscript.dialogs")
 
-# Stub the kscript package and its submodules
-_kscript_mod = types.ModuleType("kscript")
-_kscript_mod.KScript = MagicMock()
-_kscript_mod.CompiledEntry = MagicMock()
-sys.modules.setdefault("kscript", _kscript_mod)
-sys.modules.setdefault("kscript.decompiler", MagicMock())
-sys.modules.setdefault("kscript.compiler", MagicMock())
 
-# Stub ui.kscript.dialogs
-sys.modules.setdefault("ui.kscript.dialogs", MagicMock())
+@pytest.fixture(scope="module")
+def responses():
+    """Install sys.modules stubs, import responses classes, then clean up."""
+    # --- Save pre-existing state ---
+    saved_modules: dict[str, object | None] = {}
+    newly_installed: set[str] = set()
+    for key in _STUB_KEYS:
+        saved_modules[key] = sys.modules.get(key)
+        newly_installed.add(key)
 
-# Stub kalvin.Agent
-_kalvin_mod = sys.modules.get("kalvin")
-if _kalvin_mod is None:
-    import kalvin as _kalvin_mod  # type: ignore[no-redef]
-if not hasattr(_kalvin_mod, "Agent"):
+    # Save kalvin.Agent state
+    import kalvin as _kalvin_mod  # noqa: F811
+    had_agent = hasattr(_kalvin_mod, "Agent")
+    saved_agent = getattr(_kalvin_mod, "Agent", None)
+
+    # --- Install stubs ---
+    _kscript_mod = types.ModuleType("kscript")
+    _kscript_mod.KScript = MagicMock()  # type: ignore[attr-defined]
+    _kscript_mod.CompiledEntry = MagicMock()  # type: ignore[attr-defined]
+    sys.modules["kscript"] = _kscript_mod
+    sys.modules["kscript.decompiler"] = MagicMock()
+    sys.modules["kscript.compiler"] = MagicMock()
+    sys.modules["ui.kscript.dialogs"] = MagicMock()
+
+    # Stub kalvin.Agent
     _kalvin_mod.Agent = MagicMock  # type: ignore[attr-defined]
 
-# Now safe to import
-from ui.kscript.regions.responses import ResponseItem, ResponsesRegion, STATUS_SYMBOLS  # noqa: E402
+    # --- Import under test ---
+    from ui.kscript.regions.responses import ResponseItem, ResponsesRegion, STATUS_SYMBOLS  # noqa: E402
+
+    try:
+        yield SimpleNamespace(
+            ResponseItem=ResponseItem,
+            ResponsesRegion=ResponsesRegion,
+            STATUS_SYMBOLS=STATUS_SYMBOLS,
+        )
+    finally:
+        # --- Restore sys.modules ---
+        for key in _STUB_KEYS:
+            if saved_modules[key] is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = saved_modules[key]
+
+        # Remove the responses module itself to avoid stale cached imports
+        sys.modules.pop("ui.kscript.regions.responses", None)
+
+        # --- Restore kalvin.Agent ---
+        if had_agent:
+            _kalvin_mod.Agent = saved_agent  # type: ignore[attr-defined]
+        else:
+            if hasattr(_kalvin_mod, "Agent"):
+                delattr(_kalvin_mod, "Agent")
 
 
 class TestStatusSymbols:
     """Verify the status symbol mapping."""
 
-    def test_symbols_defined(self) -> None:
-        assert STATUS_SYMBOLS == {"pass": "✓", "pending": "◌", "mismatch": "✗"}
+    def test_symbols_defined(self, responses) -> None:
+        assert responses.STATUS_SYMBOLS == {"pass": "✓", "pending": "◌", "mismatch": "✗"}
 
 
 class TestResponseItemFormat:
     """Test _format_display() output for each status."""
 
-    def test_response_item_pass_format(self) -> None:
-        item = ResponseItem(
+    def test_response_item_pass_format(self, responses) -> None:
+        item = responses.ResponseItem(
             level="S2",
             decompiled_source="MHALL => SVO",
             status="pass",
@@ -59,8 +91,8 @@ class TestResponseItemFormat:
         assert "0xFFFFFFFFFFFFFFFF" in text
         assert "1.000" in text
 
-    def test_response_item_pending_format(self) -> None:
-        item = ResponseItem(
+    def test_response_item_pending_format(self, responses) -> None:
+        item = responses.ResponseItem(
             level="S1",
             decompiled_source="QUERY => DB",
             status="pending",
@@ -72,8 +104,8 @@ class TestResponseItemFormat:
         # ≈ 0.500 (0x7FFF.../0xFFFF... = 0.5 exactly)
         assert "0.500" in text
 
-    def test_response_item_mismatch_format(self) -> None:
-        item = ResponseItem(
+    def test_response_item_mismatch_format(self, responses) -> None:
+        item = responses.ResponseItem(
             level="S3",
             decompiled_source="NOOP",
             status="mismatch",
@@ -88,8 +120,8 @@ class TestResponseItemFormat:
 class TestResponseItemBackwardCompat:
     """Default parameters preserve old behaviour."""
 
-    def test_response_item_backward_compat(self) -> None:
-        item = ResponseItem(level="S1", decompiled_source="HELLO")
+    def test_response_item_backward_compat(self, responses) -> None:
+        item = responses.ResponseItem(level="S1", decompiled_source="HELLO")
         text = item._format_display()
         # Defaults: status="pending" → ◌, significance=0
         assert text.startswith("◌")
@@ -101,17 +133,17 @@ class TestResponseItemBackwardCompat:
 class TestNormalisedRange:
     """Boundary and mid-point normalised significance values."""
 
-    def test_zero(self) -> None:
-        item = ResponseItem(level="S1", decompiled_source="A", significance=0)
+    def test_zero(self, responses) -> None:
+        item = responses.ResponseItem(level="S1", decompiled_source="A", significance=0)
         assert "0.000" in item._format_display()
 
-    def test_max(self) -> None:
-        item = ResponseItem(level="S1", decompiled_source="A", significance=D_MAX)
+    def test_max(self, responses) -> None:
+        item = responses.ResponseItem(level="S1", decompiled_source="A", significance=D_MAX)
         assert "1.000" in item._format_display()
 
-    def test_intermediate(self) -> None:
+    def test_intermediate(self, responses) -> None:
         half = D_MAX // 2
-        item = ResponseItem(level="S1", decompiled_source="A", significance=half)
+        item = responses.ResponseItem(level="S1", decompiled_source="A", significance=half)
         normalised_str = f"{half / D_MAX:.3f}"
         assert normalised_str in item._format_display()
 
@@ -119,8 +151,8 @@ class TestNormalisedRange:
 class TestResponseItemAttributes:
     """Verify constructor stores all fields correctly."""
 
-    def test_stores_all_fields(self) -> None:
-        item = ResponseItem(
+    def test_stores_all_fields(self, responses) -> None:
+        item = responses.ResponseItem(
             level="S2",
             decompiled_source="MHALL => SVO",
             status="pass",
@@ -131,8 +163,8 @@ class TestResponseItemAttributes:
         assert item.status == "pass"
         assert item.significance == D_MAX
 
-    def test_default_fields(self) -> None:
-        item = ResponseItem(level="S3", decompiled_source="X")
+    def test_default_fields(self, responses) -> None:
+        item = responses.ResponseItem(level="S3", decompiled_source="X")
         assert item.status == "pending"
         assert item.significance == 0
 
@@ -140,11 +172,9 @@ class TestResponseItemAttributes:
 class TestAddResponseSignature:
     """Verify add_response accepts new keyword parameters (unit-level)."""
 
-    def test_add_response_accepts_new_params(self) -> None:
+    def test_add_response_accepts_new_params(self, responses) -> None:
         """Smoke test: add_response signature accepts status and significance."""
-        import inspect
-
-        sig = inspect.signature(ResponsesRegion.add_response)
+        sig = inspect.signature(responses.ResponsesRegion.add_response)
         param_names = list(sig.parameters.keys())
         assert "status" in param_names
         assert "significance" in param_names
