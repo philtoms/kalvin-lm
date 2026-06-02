@@ -122,7 +122,7 @@ Pub/sub event bus with `RationaliseEvent` (kind, query, proposal, significance).
 **Plan:** `plans/impl/agent.md` §3  
 **Depends on:** All above
 
-The orchestrator. The `rationalise()` pipeline has six phases (Prepare → Ground Check → Assess → Retrieve Candidates → Route Each Candidate → background Cogitation). Fast path returns `True` (event already emitted). Slow path returns `False` (Cogitator processes work items on background thread). Routing is a pure node-membership test. Cogitation expands via `model.expand()` and emits proposals as frame events.
+The orchestrator. The `rationalise()` pipeline has six phases (Prepare → Ground Check → Assess → Retrieve Candidates → Route Each Candidate → background Cogitation). Fast path returns `True` (event already emitted). Slow path returns `False` (Cogitator processes work items on background thread). Routing is a pure node-membership test. Cogitation expands via the free function `expand()` (in `expand.py`) and emits proposals as frame events.
 
 Includes persistence: JSON and binary serialization for model save/load.
 
