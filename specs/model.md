@@ -123,6 +123,17 @@ A model may optionally reference a **base model**.
   established at model instantiation and remains read-only for the
   session's lifetime.
 
+### Cross-Tier Search (_TierChain)
+
+Cross-tier lookups across STM, Frame, LTM, and Base are centralised in
+the private `_TierChain` and `_TierAdapter` classes (internal to
+`model.py`). `_TierAdapter` normalises the heterogeneous tier interfaces
+(STM, `KLineStore`, and `Model`) into a uniform read surface.
+`_TierChain` holds an ordered list of adapters and delegates the five
+cascade methods (`find`, `find_all`, `find_by_nodes`, `_exists_any`,
+`klines`) to them. Adding a new tier requires editing one place instead
+of five.
+
 ### Index
 
 The index is a unified, derived structure maintained across all tiers:

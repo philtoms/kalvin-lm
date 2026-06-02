@@ -83,6 +83,113 @@ class KLineStore:
         return [kl for kl in self._list if kl is not None]
 
 
+class _TierAdapter:
+    """Uniform read interface over STM, KLineStore, or Model tiers."""
+
+    __slots__ = ("_tier", "_kind")
+
+    def __init__(self, tier):
+        self._tier = tier
+        if isinstance(tier, STM):
+            self._kind = "stm"
+        elif isinstance(tier, KLineStore):
+            self._kind = "store"
+        else:
+            self._kind = "model"
+
+    def contains(self, kline: KLine) -> bool:
+        if self._kind == "model":
+            return self._tier.exists(kline)
+        return self._tier.contains(kline)
+
+    def find_first(self, sig: KSig) -> KLine | None:
+        if self._kind == "stm":
+            matches = self._tier.find_by_signature(sig)
+            for kl in reversed(matches):
+                if kl.signature == sig:
+                    return kl
+            return None
+        # KLineStore and Model both have find(sig) → KLine|None
+        return self._tier.find(sig)
+
+    def find_all(self, sig: KSig) -> list[KLine]:
+        if self._kind == "stm":
+            return [kl for kl in self._tier.find_by_signature(sig) if kl.signature == sig]
+        return self._tier.find_all(sig)
+
+    def reversed_klines(self) -> Iterator[KLine]:
+        if self._kind == "model":
+            return iter(self._tier.klines())
+        return reversed(self._tier)
+
+    def find_by_nodes(self, nodes_sig: KSig) -> KLine | None:
+        if self._kind == "stm":
+            matches = self._tier.find_by_nodes(nodes_sig)
+            return matches[-1] if matches else None
+        if self._kind == "model":
+            return self._tier.find_by_nodes(nodes_sig)
+        # KLineStore: scan via __reversed__
+        for kl in reversed(self._tier):
+            if make_signature(kl.nodes) == nodes_sig:
+                return kl
+        return None
+
+
+class _TierChain:
+    """Ordered chain of tier adapters providing unified cross-tier search."""
+
+    __slots__ = ("_adapters",)
+
+    def __init__(self, tiers: list):
+        self._adapters = [_TierAdapter(t) for t in tiers]
+
+    def contains(self, kline: KLine) -> bool:
+        return any(a.contains(kline) for a in self._adapters)
+
+    def find_first(self, sig: KSig) -> KLine | None:
+        for a in self._adapters:
+            result = a.find_first(sig)
+            if result is not None:
+                return result
+        return None
+
+    def find_all(self, sig: KSig) -> list[KLine]:
+        results: list[KLine] = []
+        seen: set[tuple[KSig, tuple[int, ...]]] = set()
+        for a in self._adapters:
+            for kl in a.find_all(sig):
+                key = (kl.signature, tuple(kl.nodes))
+                if key not in seen:
+                    seen.add(key)
+                    results.append(kl)
+        return results
+
+    def all_klines(self) -> list[KLine]:
+        """Deduplicated klines in tier-priority order (STM first, base last).
+
+        Iterates adapters in forward order (stm → frame → ltm → base).
+        Each adapter yields its own entries in reverse-insertion order
+        (most recent first). Dedup ensures each unique kline appears once,
+        with higher-priority tiers winning.
+        """
+        seen: set[tuple[KSig, tuple[int, ...]]] = set()
+        results: list[KLine] = []
+        for a in self._adapters:
+            for kl in a.reversed_klines():
+                key = (kl.signature, tuple(kl.nodes))
+                if key not in seen:
+                    seen.add(key)
+                    results.append(kl)
+        return results
+
+    def find_by_nodes_first(self, nodes_sig: KSig) -> KLine | None:
+        for a in self._adapters:
+            result = a.find_by_nodes(nodes_sig)
+            if result is not None:
+                return result
+        return None
+
+
 class Model:
     """Four-tier Model: STM → Frame → LTM → Base.
 
@@ -110,6 +217,12 @@ class Model:
         if ltm is not None:
             for kl in ltm.klines():
                 self._ltm.add(kl)
+
+        # Tier chain — unified cross-tier search
+        tiers = [self._stm, self._frame, self._ltm]
+        if base is not None:
+            tiers.append(base)
+        self._chain = _TierChain(tiers)
 
     # ── Storage Operations ────────────────────────────────────────────
 
@@ -144,96 +257,22 @@ class Model:
 
     def _exists_any(self, kline: KLine) -> bool:
         """Check STM, Frame, LTM, then Base."""
-        if self._stm.contains(kline):
-            return True
-        if self._frame.contains(kline):
-            return True
-        if self._ltm.contains(kline):
-            return True
-        if self._base:
-            return self._base.exists(kline)
-        return False
+        return self._chain.contains(kline)
 
     def find(self, signature: KSig) -> KLine | None:
         """Find the most recently added KLine by signature.
 
         Searches STM, then Frame, then LTM, then Base.
         """
-        # STM first — filter for actual signature match (STM is dual-keyed)
-        for kl in reversed(self._stm.find_by_signature(signature)):
-            if kl.signature == signature:
-                return kl
-        # Frame
-        found = self._frame.find(signature)
-        if found is not None:
-            return found
-        # LTM
-        found = self._ltm.find(signature)
-        if found is not None:
-            return found
-        # Base
-        if self._base:
-            return self._base.find(signature)
-        return None
+        return self._chain.find_first(signature)
 
     def find_all(self, signature: KSig) -> list[KLine]:
         """Return all KLines with the given signature across all tiers."""
-        results: list[KLine] = []
-        seen: set[tuple[KSig, tuple[int, ...]]] = set()
-
-        # STM results — filter for actual signature match (STM is dual-keyed)
-        for kl in self._stm.find_by_signature(signature):
-            if kl.signature != signature:
-                continue
-            key = (kl.signature, tuple(kl.nodes))
-            if key not in seen:
-                seen.add(key)
-                results.append(kl)
-
-        # Frame results
-        for kl in self._frame.find_all(signature):
-            key = (kl.signature, tuple(kl.nodes))
-            if key not in seen:
-                seen.add(key)
-                results.append(kl)
-
-        # LTM results
-        for kl in self._ltm.find_all(signature):
-            key = (kl.signature, tuple(kl.nodes))
-            if key not in seen:
-                seen.add(key)
-                results.append(kl)
-
-        # Base results
-        if self._base:
-            for kl in self._base.find_all(signature):
-                key = (kl.signature, tuple(kl.nodes))
-                if key not in seen:
-                    seen.add(key)
-                    results.append(kl)
-
-        return results
+        return self._chain.find_all(signature)
 
     def find_by_nodes(self, nodes_signature: KSig) -> KLine | None:
         """Find the most recently added KLine whose nodes signature matches."""
-        # STM first
-        klines = self._stm.find_by_nodes(nodes_signature)
-        if klines:
-            return klines[-1]
-        # Scan Frame
-        for kl in reversed(self._frame):
-            ns = make_signature(kl.nodes)
-            if ns == nodes_signature:
-                return kl
-        # Scan LTM
-        for kl in reversed(self._ltm):
-            ns = make_signature(kl.nodes)
-            if ns == nodes_signature:
-                return kl
-        # Base
-        if self._base:
-            return self._base.find_by_nodes(nodes_signature)
-        return None
+        return self._chain.find_by_nodes_first(nodes_signature)
 
     # ── Count ─────────────────────────────────────────────────────────
 
@@ -255,39 +294,7 @@ class Model:
         STM entries first (most recent), then Frame entries not in STM,
         then LTM entries not in Frame, then Base entries not in LTM.
         """
-        seen: set[tuple[KSig, tuple[int, ...]]] = set()
-        results: list[KLine] = []
-
-        # STM entries (most recent)
-        for kl in reversed(self._stm):
-            key = (kl.signature, tuple(kl.nodes))
-            if key not in seen:
-                seen.add(key)
-                results.append(kl)
-
-        # Frame entries not in STM
-        for kl in reversed(self._frame):
-            key = (kl.signature, tuple(kl.nodes))
-            if key not in seen:
-                seen.add(key)
-                results.append(kl)
-
-        # LTM entries not in Frame
-        for kl in reversed(self._ltm):
-            key = (kl.signature, tuple(kl.nodes))
-            if key not in seen:
-                seen.add(key)
-                results.append(kl)
-
-        # Base entries not in LTM
-        if self._base:
-            for kl in self._base.klines():
-                key = (kl.signature, tuple(kl.nodes))
-                if key not in seen:
-                    seen.add(key)
-                    results.append(kl)
-
-        return results
+        return self._chain.all_klines()
 
     def where(self, predicate: Callable[[KLine], bool] | KSig) -> list[KLine]:
         """Return KLines matching a predicate or signature overlap.

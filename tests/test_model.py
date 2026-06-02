@@ -2,7 +2,9 @@
 
 import pytest
 from kalvin.kline import KLine
-from kalvin.model import Model, KLineStore
+from kalvin.model import Model, KLineStore, _TierChain, _TierAdapter
+from kalvin.stm import STM
+from kalvin.signature import make_signature
 
 
 def make_model(stm_bound: int = 256) -> Model:
@@ -526,3 +528,202 @@ class TestKLineStore:
     def test_find_missing_returns_none(self):
         store = KLineStore()
         assert store.find(0xDEAD) is None
+
+
+class TestTierChainContains:
+    """Tests for _TierChain.contains across tier types."""
+
+    def test_kline_store_only_found(self):
+        store = KLineStore()
+        k = KLine(0xA0, [1, 2])
+        store.add(k)
+        chain = _TierChain([store])
+        assert chain.contains(k) is True
+
+    def test_kline_store_only_not_found(self):
+        store = KLineStore()
+        chain = _TierChain([store])
+        assert chain.contains(KLine(0xA0, [1])) is False
+
+    def test_mixed_stm_and_store_found_in_second(self):
+        stm = STM(bound=10)
+        store = KLineStore()
+        k = KLine(0xA0, [1, 2])
+        store.add(k)
+        chain = _TierChain([stm, store])
+        assert chain.contains(k) is True
+
+    def test_model_base_uses_exists(self):
+        """Chain with a Model tier uses Model.exists() for contains."""
+        base = Model()
+        k = KLine(5, [1])
+        base.add(k)
+        chain = _TierChain([base])
+        assert chain.contains(k) is True
+
+
+class TestTierChainFindFirst:
+    """Tests for _TierChain.find_first across tier types."""
+
+    def test_single_store_returns_most_recent(self):
+        store = KLineStore()
+        k1 = KLine(0xB0, [1])
+        k2 = KLine(0xB0, [2])
+        store.add(k1)
+        store.add(k2)
+        chain = _TierChain([store])
+        assert chain.find_first(0xB0) is k2
+
+    def test_single_stm_returns_most_recent(self):
+        stm = STM(bound=10)
+        k1 = KLine(0xB0, [1])
+        k2 = KLine(0xB0, [2])
+        stm.add(k1, dedup=False)
+        stm.add(k2, dedup=False)
+        chain = _TierChain([stm])
+        assert chain.find_first(0xB0) is k2
+
+    def test_mixed_chain_first_tier_wins(self):
+        stm = STM(bound=10)
+        store = KLineStore()
+        k_stm = KLine(0xB0, [1])
+        k_store = KLine(0xB0, [2])
+        stm.add(k_stm, dedup=False)
+        store.add(k_store)
+        chain = _TierChain([stm, store])
+        assert chain.find_first(0xB0) is k_stm
+
+    def test_no_match_returns_none(self):
+        store = KLineStore()
+        chain = _TierChain([store])
+        assert chain.find_first(0xDEAD) is None
+
+
+class TestTierChainFindAll:
+    """Tests for _TierChain.find_all with dedup across tiers."""
+
+    def test_dedup_across_two_stores(self):
+        """Same kline object in two stores → appears once."""
+        store1 = KLineStore()
+        store2 = KLineStore()
+        k = KLine(0xC0, [1])
+        store1.add(k)
+        store2.add(k)
+        chain = _TierChain([store1, store2])
+        results = chain.find_all(0xC0)
+        assert len(results) == 1
+        assert results[0] is k
+
+    def test_multiple_matches_per_tier(self):
+        store = KLineStore()
+        k1 = KLine(0xC0, [1])
+        k2 = KLine(0xC0, [2])
+        store.add(k1)
+        store.add(k2)
+        chain = _TierChain([store])
+        results = chain.find_all(0xC0)
+        assert len(results) == 2
+
+    def test_empty_when_no_matches(self):
+        store = KLineStore()
+        chain = _TierChain([store])
+        assert chain.find_all(0xDEAD) == []
+
+
+class TestTierChainAllKlines:
+    """Tests for _TierChain.all_klines with ordering and dedup."""
+
+    def test_stm_first_ordering(self):
+        """STM entries appear before KLineStore entries."""
+        stm = STM(bound=10)
+        store = KLineStore()
+        k_stm = KLine(1, [1])
+        k_store = KLine(2, [2])
+        stm.add(k_stm, dedup=False)
+        store.add(k_store)
+        chain = _TierChain([stm, store])
+        results = chain.all_klines()
+        assert results[0] is k_stm
+        assert results[1] is k_store
+
+    def test_two_stores_first_tier_before_second(self):
+        store1 = KLineStore()
+        store2 = KLineStore()
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        store1.add(k1)
+        store2.add(k2)
+        chain = _TierChain([store1, store2])
+        results = chain.all_klines()
+        assert results[0] is k1
+        assert results[1] is k2
+
+    def test_dedup_same_in_two_tiers(self):
+        store1 = KLineStore()
+        store2 = KLineStore()
+        k = KLine(1, [1])
+        store1.add(k)
+        store2.add(k)
+        chain = _TierChain([store1, store2])
+        results = chain.all_klines()
+        assert len(results) == 1
+        assert results[0] is k
+
+    def test_model_base_uses_klines_path(self):
+        """Chain with Model base uses Model.klines() via iter(self._tier.klines())."""
+        base = Model()
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        base.add(k1)
+        base.add(k2)
+        chain = _TierChain([base])
+        results = chain.all_klines()
+        assert len(results) == 2
+
+    def test_empty_chain_returns_empty(self):
+        chain = _TierChain([])
+        assert chain.all_klines() == []
+
+
+class TestTierChainFindByNodesFirst:
+    """Tests for _TierChain.find_by_nodes_first across tier types."""
+
+    def test_stm_returns_last_match(self):
+        stm = STM(bound=10)
+        k1 = KLine(0x10, [1, 2])
+        k2 = KLine(0x20, [1, 2])
+        stm.add(k1, dedup=False)
+        stm.add(k2, dedup=False)
+        chain = _TierChain([stm])
+        nodes_sig = make_signature([1, 2])
+        result = chain.find_by_nodes_first(nodes_sig)
+        assert result is k2
+
+    def test_store_scans_reversed(self):
+        store = KLineStore()
+        k1 = KLine(0x10, [3, 4])
+        k2 = KLine(0x20, [3, 4])
+        store.add(k1)
+        store.add(k2)
+        chain = _TierChain([store])
+        nodes_sig = make_signature([3, 4])
+        result = chain.find_by_nodes_first(nodes_sig)
+        assert result is k2
+
+    def test_mixed_first_tier_wins(self):
+        stm = STM(bound=10)
+        store = KLineStore()
+        k_stm = KLine(0x10, [5, 6])
+        k_store = KLine(0x20, [5, 6])
+        stm.add(k_stm, dedup=False)
+        store.add(k_store)
+        chain = _TierChain([stm, store])
+        nodes_sig = make_signature([5, 6])
+        result = chain.find_by_nodes_first(nodes_sig)
+        assert result is k_stm
+
+    def test_no_match_returns_none(self):
+        store = KLineStore()
+        chain = _TierChain([store])
+        nodes_sig = make_signature([99])
+        assert chain.find_by_nodes_first(nodes_sig) is None
