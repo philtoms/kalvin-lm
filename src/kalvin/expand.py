@@ -323,7 +323,6 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
 
     for kl in to_promote:
         model.add_ltm(kl)
->>>>>>> kb/kb-086
 
 
 # ── Expansion Proposal Pipeline ───────────────────────────────────────
