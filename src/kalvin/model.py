@@ -417,6 +417,8 @@ class Model:
         """Iterate all KLines currently in the STM, in insertion order."""
         return self._stm.iter_all()
 
+
+
     # ── Compatibility ─────────────────────────────────────────────────
 
     def find_kline(self, signature: KSig) -> KLine | None:

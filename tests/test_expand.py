@@ -408,15 +408,15 @@ class TestIsCountersigned:
 
 class TestPromoteParticipating:
     def test_promotes_query_and_candidate(self):
-        """Both query and candidate are promoted."""
+        """Both query and candidate are promoted to LTM."""
         m = Model(stm_bound=256)
         q = KLine(5, [10, 20])
         c = KLine(10, [5, 30])
         m.add_frame(q)
         m.add_frame(c)
-        count = promote_participating(m, q, c)
-        assert count >= 2
-        assert len(m) >= 2
+        promote_participating(m, q, c)
+        assert m.find(q.signature) is not None
+        assert m.find(c.signature) is not None
 
     def test_promotes_stm_klines_with_matching_signatures(self):
         """STM klines whose signatures appear in the node set are also promoted."""
@@ -428,22 +428,33 @@ class TestPromoteParticipating:
         c = KLine(20, [5, 30])
         m.add_frame(q)
         m.add_frame(c)
-        count = promote_participating(m, q, c)
-        assert count >= 2  # at least query + candidate
-        # identity (sig=10) is in q.nodes, should also be promoted
-        assert any(kl.signature == 10 for kl in m)
+        promote_participating(m, q, c)
+        # identity (sig=10) is in q.nodes, should also be promoted via LTM cascade
+        assert m.find(10) is not None
 
     def test_no_double_promote(self):
-        """Already-promoted literal klines are not re-promoted (LTM dedup)."""
+        """Calling promote_participating on already-LTM klines is safe (idempotent)."""
         m = Model(stm_bound=256)
-        q = KLine(5, [10], literal=True)
-        c = KLine(10, [5], literal=True)
+        q = KLine(5, [10, 20])
+        c = KLine(10, [5, 30])
         m.add_frame(q)
         m.add_frame(c)
         m.add_ltm(q)  # promote to LTM first
         m.add_ltm(c)
-        count = promote_participating(m, q, c)
-        assert count == 0  # both already in LTM (literal dedup)
+        promote_participating(m, q, c)
+        # Klines still exist in the model after double promotion
+        assert m.find(q.signature) is not None
+        assert m.find(c.signature) is not None
+
+    def test_promote_participating_returns_none(self):
+        """promote_participating returns None (void)."""
+        m = Model(stm_bound=256)
+        q = KLine(5, [10, 20])
+        c = KLine(10, [5, 30])
+        m.add_frame(q)
+        m.add_frame(c)
+        result = promote_participating(m, q, c)
+        assert result is None
 
 
 # ── Significance Boundary Tests ───────────────────────────────────────

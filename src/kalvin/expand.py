@@ -294,14 +294,13 @@ def expand(
 
 # ── Promotion Helpers ─────────────────────────────────────────────────
 
-def promote_participating(model: Model, query: KLine, candidate: KLine) -> int:
+def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
     """Promote all STM klines involved in a ratification event.
 
     After countersignature is detected between query and candidate,
     promote both plus any STM klines whose signatures appear in the
-    union of their nodes.
-
-    Returns the number of klines promoted.
+    union of their nodes. Uses model.add_ltm() which cascades to
+    Frame and STM.
     """
     node_sigs: set[int] = set()
     for n in query.nodes:
@@ -322,13 +321,9 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> int:
     # Also promote the query and candidate
     to_promote.extend([query, candidate])
 
-    count = 0
     for kl in to_promote:
-        if kl.is_literal() and model.exists(kl):
-            continue  # literal already in a tier — add_ltm would be a no-op
         model.add_ltm(kl)
-        count += 1
-    return count
+>>>>>>> kb/kb-086
 
 
 # ── Expansion Proposal Pipeline ───────────────────────────────────────
