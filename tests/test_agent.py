@@ -5,11 +5,10 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from kalvin.agent import KAgent, CogitationHandler, Cogitator, WorkItem
+from kalvin.agent import CogitationHandler, Cogitator, KAgent, WorkItem
 from kalvin.agent_codec import AgentCodec
 from kalvin.events import EventBus
 from kalvin.kline import KLine
-from kalvin.misfit import classify_misfit
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.model import Model
 from kalvin.signature import make_signature
@@ -496,7 +495,6 @@ class TestCogitatorStructuralGrounding:
         """Canonical klines produce no expansion proposals."""
         from kalvin.misfit import classify_misfit
 
-        m = Model()
         k = KLine(10, [10])  # canonical
         nodes_sig = make_signature(k.nodes)
         assert k.signature == nodes_sig  # canonical
@@ -777,7 +775,7 @@ class TestCascadeWriteMethods:
             assert call[0][0] is not q, "add_frame should not be called for slow-path query"
 
     def test_agt29_cogitation_s1_promote_participating(self):
-        """AGT-29: on_s1 with structural S1 calls promote_participating() and publishes frame event."""
+        """AGT-29: on_s1 with structural S1 calls promote and publishes frame."""
         m = Model()
         events = []
         adapter = EventBus()
