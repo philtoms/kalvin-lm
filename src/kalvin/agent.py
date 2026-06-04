@@ -25,8 +25,13 @@ from kalvin.agent_codec import AgentCodec
 from kalvin.events import EventBus, RationaliseEvent  # EventBus: test/dev fallback
 from kalvin.expand import (
     D_MAX,
-    expand, is_s1, promote_participating, is_countersigned,
-    boundaries, classify, propose_expansions,
+    boundaries,
+    classify,
+    expand,
+    is_countersigned,
+    is_s1,
+    promote_participating,
+    propose_expansions,
 )
 from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer
@@ -168,8 +173,6 @@ class Cogitator:
                 continue  # demote: below S3|S4 boundary
 
             if band == "S1":
-                if is_s1(self._model, candidate):
-                    promote_participating(self._model, query, candidate)
                 self._handler.on_s1(query, candidate)
             else:
                 # S2 or S3: propose expansions, route to handler
@@ -281,6 +284,7 @@ class KAgent:
 
         # Phase 2: Ground check
         if kline.signature != 0 and self._model.exists(kline):
+            self._model.add_stm(kline)
             self._publish("ground", kline, kline, D_MAX - 1)
             return True
 
@@ -347,11 +351,14 @@ class KAgent:
     # ── CogitationHandler protocol ────────────────────────────────────
 
     def on_s1(self, query: KLine, candidate: KLine) -> None:
-        """CogitationHandler.on_s1: re-rationalise when S1 is discovered."""
-        self.rationalise(query)
+        """CogitationHandler.on_s1: structural check, promote, publish frame event."""
+        if is_s1(self._model, candidate):
+            promote_participating(self._model, query, candidate)
+        self._publish("frame", query, candidate, D_MAX - 1)
 
     def on_expansion(self, query: KLine, proposal: KLine, significance: int) -> None:
-        """CogitationHandler.on_expansion: publish expansion as frame event."""
+        """CogitationHandler.on_expansion: write proposal to Frame, publish frame event."""
+        self._model.add_frame(proposal)
         self._publish("frame", query, proposal, significance)
 
     def cogitate_join(self, timeout: float | None = None) -> None:

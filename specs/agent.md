@@ -494,9 +494,13 @@ how many expansion proposals are generated per work item.
 ### S1 Callback
 
 When the Cogitator discovers an S1 via boundary classification, it calls
-`handler.on_s1(query, candidate)` on the CogitationHandler. The Agent
-implementation of this method triggers `agent.rationalise(query)`,
-re-rationalising on the cogitation thread.
+`handler.on_s1(query, candidate)` on the CogitationHandler unconditionally.
+The Agent implementation checks `is_s1(model, candidate)` as a structural
+guard — if the candidate is structurally S1 (canonical or countersigned), it
+calls `promote_participating(model, query, candidate)` to cascade all
+participating STM klines to LTM via `add_ltm`. A frame event is always
+published (unconditional) with significance `D_MAX - 1`. The `_run_work_item`
+S1 branch delegates entirely to `on_s1`, keeping the dispatcher thin.
 
 ### Cogitation Lifecycle
 
