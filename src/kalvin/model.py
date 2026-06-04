@@ -248,7 +248,7 @@ class Model:
             self._frame.add(kline)
 
         # Then write to STM (may trigger FIFO eviction)
-        self._stm.add(kline, True)
+        self._stm.add(kline)
         return True
 
     def exists(self, kline: KLine) -> bool:
@@ -427,7 +427,8 @@ class Model:
         Does NOT affect Frame, LTM, or Base.
         """
         self._stm.remove(kline)
-        return self._stm.add(kline, True)
+        self._stm.add(kline)
+        return True
 
     # ── Compatibility ─────────────────────────────────────────────────
 

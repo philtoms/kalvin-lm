@@ -38,20 +38,22 @@ class STM:
 
     # ── Core API ────────────────────────────────────────────────────────
 
-    def add(self, kline: KLine, dedup: bool = True) -> bool:
+    def add(self, kline: KLine) -> None:
         """Add a KLine to the STM.
 
         Indexes by both signature and nodes signature. Enforces bound
-        via FIFO eviction.
-
-        Returns:
-            True if added, False if rejected as duplicate.
+        via FIFO eviction. If an equal KLine already exists (same
+        signature + nodes), the old entry is removed first and the
+        new one added fresh (FIFO position refreshed).
         """
-        if dedup:
-            key = (kline.signature, tuple(kline.nodes))
-            if key in self._dedup:
-                return False
-            self._dedup.add(key)
+        key = (kline.signature, tuple(kline.nodes))
+        if key in self._dedup:
+            # Find the actual stored object (identity may differ from kline)
+            for existing in reversed(self._order):
+                if existing == kline:
+                    self.remove(existing)
+                    break
+        self._dedup.add(key)
 
         # Evict oldest if at bound
         while len(self._order) >= self._bound:
@@ -64,7 +66,6 @@ class STM:
         self._append(sig, kline)
         if nodes_sig and nodes_sig != sig:
             self._append(nodes_sig, kline)
-        return True
 
     def get(self, key: KSig) -> list[KLine]:
         """Return all KLines indexed under *key*, or an empty list."""
@@ -169,7 +170,7 @@ class STM:
         if not bucket:
             return
         for i, existing in enumerate(bucket):
-            if existing is kline:
+            if existing == kline:
                 bucket.pop(i)
                 break
         if not bucket:
