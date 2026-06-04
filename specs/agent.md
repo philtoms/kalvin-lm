@@ -44,16 +44,17 @@ This spec depends on the following concepts, defined elsewhere:
 - Stores, indexes, and retrieves Klines.
 - Provides candidate retrieval via `find`, `find_all`, `query`, `where`.
 - Provides `find_by_nodes` for transitive grounding via nodes signature.
-- Provides `promote` for persisting Klines from Frame to LTM.
-- Provides `refresh_stm` for caller-driven STM refresh (LRU-style).
+- Provides `add_stm`, `add_frame`, `add_ltm` for tiered writes based on
+  significance outcome (STM only, STM+Frame, or STM+Frame+LTM).
 - Provides `expand(Q, C)` generator for graph expansion yielding
   connotations and terminal significance.
 - Provides `QueryCandidate` named tuple with `.significance` field
   (pre-computed by the model).
 - Provides constants `D_MAX` and `MASK64` for significance values.
 - Provides `is_countersigned(kline)` to check if a kline is countersigned by any kline in the model.
-- Manages a four-tier memory internally (STM → Frame → LTM → Base). The agent
-  sees a single Model API; tiering is invisible to the agent.
+- Manages a four-tier memory internally (STM → Frame → LTM → Base). The
+  agent selects the appropriate write method based on significance outcome;
+  tier cascade semantics are handled by the model.
 - The model decides how and where Klines are stored. The agent is
   responsible for calling model operations; the model is responsible
   for managing its internal memory tiers.
@@ -99,23 +100,29 @@ Rationalise(Q):
   ├───────────────────────────────────────────────────────────┤
   │ 2. GROUND CHECK                                          │
   │    Does Q already exist in the model?                     │
-  │    → Yes: emit "ground" event, return True.              │
+  │    → Yes: add_stm(Q), emit "ground" event, return True.  │
   ├───────────────────────────────────────────────────────────┤
   │ 3. ASSESS                                                │
   │    Evaluate Q's structural grounding:                     │
-  │    → Unsigned (no nodes): emit "frame" S4, return True.  │
-  │    → All-literal: emit "frame" S1, return True.          │
-  │    → Self-grounded: emit "frame" S1, return True.        │
-  │    → Countersigned: emit "frame" S1, return True.        │
+  │    → Unsigned (no nodes): add_ltm(Q), emit "frame" S4,   │
+  │       return True.                                       │
+  │    → All-literal: add_ltm(Q), emit "frame" S1,           │
+  │       return True.                                       │
+  │    → Self-grounded: add_ltm(Q), emit "frame" S1,         │
+  │       return True.                                       │
+  │    → Countersigned: add_ltm(Q), emit "frame" S1,         │
+  │       return True.                                       │
   ├───────────────────────────────────────────────────────────┤
   │ 4. RETRIEVE CANDIDATES                                    │
   │    candidates = model.where(Q.signature)                  │
-  │    → No candidates: emit "frame" S4, return True.        │
+  │    → No candidates: add_ltm(Q), emit "frame" S4,         │
+  │       return True.                                       │
   ├───────────────────────────────────────────────────────────┤
   │ 5. ROUTE EACH CANDIDATE                                   │
+  │    add_stm(Q)                                              │
   │    For each candidate Cᵢ:                                │
   │      level = route(Q, Cᵢ)   ← node membership, no model │
-  │      S1 → promote, emit "frame", return True (done)      │
+  │      S1 → add_ltm cascade, emit "frame", return True     │
   │      S2 → submit WorkItem(Q, Cᵢ) to cogitator            │
   │      S3 → submit WorkItem(Q, Cᵢ) to cogitator            │
   │    return False                                           │
@@ -147,6 +154,7 @@ is defined in the @kline spec (same signature, same node sequence).
 
 If grounded:
 
+- Call `model.add_stm(Q)` to register the event in STM.
 - Emit a `"ground"` event.
 - Return `True` (significant).
 - No further processing.
@@ -158,28 +166,29 @@ This prevents infinite recursion and avoids re-processing known knowledge.
 Structural assessment determines whether Q can be fast-tracked without
 candidate retrieval or significance computation.
 
-**Unsigned**: If Q has zero nodes, it carries no information. Emit a
-`"frame"` event at S4. Return `True`.
+**Unsigned**: If Q has zero nodes, it carries no information. Call
+`model.add_ltm(Q)`. Emit a `"frame"` event at S4. Return `True`.
 
 **Canonical — all-literal**: If every node in Q is a literal (per
 `is_literal` from the @kline spec), Q is a pure token sequence. Because
 `make_signature` contributes bit 0 for each literal node, Q's signature
-is `1` — a valid canonical signature. Emit a `"frame"` event at S1.
-Return `True`.
+is `1` — a valid canonical signature. Call `model.add_ltm(Q)`. Emit a
+`"frame"` event at S1. Return `True`.
 
 **Canonical — self-grounded**: If `Q.signature == make_signature(Q.nodes)`
 (as defined in the @signature spec) and every node that could resolve does
 resolve in the model (exists as a Kline signature), Q is fully grounded.
 The signature faithfully represents the nodes — nothing is missing and
-nothing is extraneous. Emit a `"frame"` event at S1. Return `True`.
+nothing is extraneous. Call `model.add_ltm(Q)`. Emit a `"frame"` event at
+S1. Return `True`.
 
 **Countersigned — ratified**: If the model contains a kline whose signature
 equals `make_signature(Q.nodes)` and whose sole node equals `Q.signature`,
 then Q is countersigned — another kline vouches for it structurally. This is
 the **ratification** check. It runs in the fast lane before candidates are
 retrieved, because countersignature is a structural property of Q and the
-model, not dependent on any particular candidate. Emit a `"frame"` event at
-S1. Return `True`.
+model, not dependent on any particular candidate. Call `model.add_ltm(Q)`.
+Emit a `"frame"` event at S1. Return `True`.
 
 If none of the above, proceed to candidate retrieval.
 
@@ -197,13 +206,13 @@ candidate. This is a necessary (but not sufficient) condition for
 significance — bitwise AND matching pre-filters the model before the more
 expensive routing runs.
 
-If no candidates are found, Q is novel. Emit a `"frame"` S4 event,
-add Q to the model, and return `True`.
+If no candidates are found, Q is novel. Call `model.add_ltm(Q)`. Emit a
+`"frame"` S4 event, and return `True`.
 
 ### Phase 5: Route Each Candidate
 
-Add Q to the model. Then for each candidate, perform routing — a fast
-node-membership test with no model calls:
+Add Q to STM via `model.add_stm(Q)`. Then for each candidate, perform
+routing — a fast node-membership test with no model calls:
 
 #### Routing
 
@@ -223,13 +232,14 @@ in the candidate's node sequence. No model function is called.
 
 | Route | Action | Model call? |
 | ----- | ------ | ----------- |
-| S1    | Promote Q, emit `"frame"` S1, return `True` | No |
+| S1    | `add_ltm` cascade via promote_participating, emit `"frame"` S1, return `True` | Yes (`add_ltm`) |
 | S2    | Submit `WorkItem(Q, C)` to Cogitator | No |
 | S3    | Submit `WorkItem(Q, C)` to Cogitator | No |
 
 **S1 short-circuits**: the first candidate that routes as S1 terminates the
 loop immediately. No further candidates are routed. No distance is computed.
-The agent promotes participating klines from Frame to LTM.
+The agent cascades participating klines to LTM via `promote_participating`
+(which calls `add_ltm` in a loop).
 
 If all candidates route as S2 or S3, each becomes an individual work item
 for the Cogitator. Return `False`.
@@ -347,8 +357,11 @@ process(QueryCandidate(query, candidate, significance)):
   if candidate is canonical:
     return                        # nothing to expand
   for proposal, companions in model.generate_expansions(candidate):
+    model.add_frame(proposal)      # write proposal to Frame + STM
     emit frame event for proposal
-    emit frame events for companions
+    for companion in companions:
+      model.add_frame(companion)   # write companion to Frame + STM
+      emit frame event for companion
 ```
 
 All yields are processed without filtering. Raw significance values are
@@ -458,9 +471,10 @@ goal signature). The cogitator fills templates and decomposes sequencers.
 S2 expansion requires structural grounding for two reasons:
 
 1. **Promotion after ratification** — when the agent countersigns an
-   expansion proposal, all participating klines must be promoted from
-   Frame to LTM (not just the ratified kline), including the added/removed node
-   groups and any S4 identity klines involved.
+   expansion proposal, all participating klines must be cascaded to LTM
+   via `add_ltm` (not just the ratified kline), including the added/removed node
+   groups and any S4 identity klines involved. `promote_participating` calls
+   `add_ltm` in a loop for each participating kline.
 
 2. **Frame richness** — the expansion search requires a model populated
    with the signatures it needs to find. Structural grounding ensures that
@@ -468,7 +482,8 @@ S2 expansion requires structural grounding for two reasons:
    and more candidate signatures to match against.
 
 The `promote_participating` function should be reviewed and made fit for
-purpose — ensuring only truly necessary klines are promoted from Frame to LTM.
+purpose — ensuring all participating klines are cascaded to LTM via
+`add_ltm` calls.
 
 #### Exploration Depth
 
@@ -577,35 +592,36 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 
 | ID     | Criterion                                               | Origin ref |
 | ------ | ------------------------------------------------------- | ---------- |
-| AGT-9  | First rationalise: returns True, adds to model           | — |
-| AGT-10 | Duplicate rationalise: returns True, emits "ground" event | — |
+| AGT-9  | First rationalise: returns True, kline in model via add_ltm   | — |
+| AGT-10 | Duplicate rationalise: returns True, emits "ground" event, STM refreshed | — |
 | AGT-11 | Different sig same nodes: not a ground (different KLine) | — |
 
 ### Rationalisation — Phase 3: Assess
 
 | ID     | Criterion                                                  | Origin ref |
 | ------ | ---------------------------------------------------------- | ---------- |
-| AGT-12 | Unsigned (no nodes): returns True, emits "frame" S4         | — |
-| AGT-13 | All-literal: returns True, emits "frame" S1                | — |
-| AGT-14 | Self-grounded canonical: returns True when all nodes resolve | — |
+| AGT-12 | Unsigned (no nodes): returns True, emits "frame" S4, kline in LTM | — |
+| AGT-13 | All-literal: returns True, emits "frame" S1, kline in LTM   | — |
+| AGT-14 | Self-grounded canonical: returns True when all nodes resolve, kline in LTM | — |
 | AGT-15 | Not self-grounded: falls through to Phase 4               | — |
 
 ### Rationalisation — Phase 4: Retrieve Candidates
 
 | ID     | Criterion                                         | Origin ref |
 | ------ | ------------------------------------------------- | ---------- |
-| AGT-16 | No candidates: returns True (S4 novel)             | — |
+| AGT-16 | No candidates: returns True (S4 novel), kline in LTM       | — |
 | AGT-17 | Candidates found: proceeds to routing              | — |
 
 ### Rationalisation — Phase 5: Route Each Candidate
 
 | ID     | Criterion                                                           | Origin ref |
 | ------ | ------------------------------------------------------------------- | ---------- |
-| AGT-18 | First candidate S1: returns True, promotes, no further routing      | — |
+| AGT-18 | First candidate S1: returns True, cascades to LTM, no further routing | — |
 | AGT-19 | Later candidate S1: earlier S2/S3 routed, then S1 terminates loop  | — |
 | AGT-20 | All S2: returns False, all submitted as WorkItems                   | — |
 | AGT-21 | All S3: returns False, all submitted as WorkItems                   | — |
 | AGT-22 | S1 short-circuits: `model.expand` never called when S1 found        | — |
+| AGT-22a | Slow path query: kline in STM only (not Frame or LTM)         | — |
 
 ### Events
 
@@ -622,15 +638,15 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 
 | ID     | Criterion                                                           | Origin ref |
 | ------ | ------------------------------------------------------------------- | ---------- |
-| AGT-29 | Countersignature discovery: S2 → S1 via countersignature in cogitation | — |
+| AGT-29 | Countersignature discovery: S2 → S1 via countersignature in cogitation, klines cascaded to LTM | — |
 | AGT-30 | Cogitator join: thread stops cleanly                                | — |
 | AGT-31 | S2 submits work item: WorkItem queued with correct fields           | — |
 | AGT-32 | All yields processed: every QC from `expand()` evaluated            | — |
 | AGT-33 | S1 detection: high-significance QC triggers handler.on_s1          | — |
-| AGT-34 | S2/S3 expansion: non-canonical QC triggers expansion proposals      | — |
+| AGT-34 | S2/S3 expansion: non-canonical QC triggers expansion proposals, proposals written to Frame | — |
 | AGT-35 | Proposals at any significance: S2 and S3 proposals emitted as frame events | — |
-| AGT-36 | Boundary S1 + structural check: promotion only on structural S1     | — |
-| AGT-37 | Boundary S1 + structural S1: promotion occurs                       | — |
+| AGT-36 | Boundary S1 + structural check: participating klines cascaded to LTM via add_ltm | — |
+| AGT-37 | Boundary S1 + structural S1: LTM cascade occurs                      | — |
 
 ### Serialization
 

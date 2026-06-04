@@ -13,11 +13,12 @@ The four tiers from newest to oldest are:
 STM → Frame → LTM → Base
 ```
 
-Callers see a single unified Model API. The model manages the tiers
-internally: `add` writes to STM and Frame; `promote` copies from Frame to
-LTM; `refresh_stm` re-enters klines into STM (caller-driven). Base is
-read-only, established at construction. Lookups merge across all tiers
-transparently.
+Callers see a single unified Model API with three write methods forming a
+cascade: `add_stm()` writes to STM only; `add_frame()` writes to Frame and
+cascades to STM; `add_ltm()` writes to LTM and cascades through Frame to
+STM. The caller selects the appropriate entry point based on the
+significance outcome of rationalisation. Base is read-only, established
+at construction. Lookups merge across all tiers transparently.
 
 ## Dependencies
 
@@ -36,15 +37,16 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Frame (@CONTEXT.md §Frame)
 
-- Frame is working context — the klines that bias Kalvin's current reasoning.
-- Frame and STM together form working memory.
-- Populated directly by `add()` alongside STM.
+- Frame is compressed working context — only recognised klines reach the Frame.
+- Written via `add_frame()`, which cascades to STM.
+- Monotonic — klines are appended, never removed.
 
 ### LTM (@CONTEXT.md §LTM)
 
-- LTM (Long-Term Memory) holds grounded klines promoted from Frame.
-- Structurally identical to Frame — the distinction is semantic (grounded vs ungrounded).
-- Persisted across sessions, loaded at session start.
+- LTM (Long-Term Memory) holds ratified (S1) and novel (S4) klines.
+- Written via `add_ltm()`, which cascades through Frame to STM.
+- Structurally identical to Frame — the distinction is semantic.
+- Persisted across sessions, loaded at session start. Monotonic.
 
 ### Significance (@significance spec)
 
@@ -54,10 +56,12 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Agent (@agent spec)
 
-- The agent calls model operations (`add`, `find`, `exists`, `query`, etc.)
-  without knowledge of internal tiering.
-- The agent is responsible for calling model operations; the model is
-  responsible for managing its internal memory tiers.
+- The agent calls model write operations (`add_stm`, `add_frame`, `add_ltm`)
+  and read operations (`find`, `exists`, `query`, etc.).
+- The agent selects the appropriate write method based on the significance
+  outcome of rationalisation.
+- The model is responsible for managing its internal memory tiers and the
+  cascade semantics of write operations.
 
 ## Definition
 
@@ -73,12 +77,12 @@ A Model consists of:
 
 ### Tier Summary
 
-| Tier  | Purpose               | Bounded | Lifetime       | Written by add | Written by promote | Written by refresh_stm |
-| ----- | --------------------- | ------- | -------------- | -------------- | ------------------ | ---------------------- |
-| STM   | Transitive grounding  | Yes     | Rolling window | Yes            | No                 | Yes                    |
-| Frame | Working context       | No      | Per-session    | Yes            | No                 | No                     |
-| LTM   | Grounded knowledge    | No      | Cross-session  | No             | Yes (from Frame)   | No                     |
-| Base  | Long-term knowledge   | No      | Persistent     | No             | No                 | No                     |
+| Tier  | Purpose               | Bounded | Lifetime       | add_stm | add_frame | add_ltm |
+| ----- | --------------------- | ------- | -------------- | ------- | --------- | ------- |
+| STM   | Event register        | Yes     | Rolling window | Yes     | Yes       | Yes     |
+| Frame | Compressed context    | No      | Per-session    | No      | Yes       | Yes     |
+| LTM   | Persistent knowledge  | No      | Cross-session  | No      | No        | Yes     |
+| Base  | Long-term knowledge   | No      | Persistent     | No      | No        | No      |
 
 ### STM (Short-Term Memory)
 
@@ -90,28 +94,31 @@ See the **@stm spec** for the full definition. Summary:
   deeper tiers.
 - Enables **transitive grounding** — finding KLines that share node structure
   even when their signatures differ.
-- `add` writes to STM and Frame.
-- `refresh_stm` re-enters klines used in cogitation (caller-driven, LRU-style).
+- `add_stm()` always refreshes FIFO position (removes-if-present then adds).
+- STM is populated via the write cascade: `add_ltm()` → Frame → `add_frame()` → STM → `add_stm()`.
 
 ### Frame
 
-The frame is populated directly by `add()` (alongside STM). It represents
-working context — the klines that bias Kalvin's current reasoning. The
-frame has no fixed bound — it grows as KLines are added during a session.
+The frame is populated by `add_frame()` and as a cascade from `add_ltm()`.
+Not all klines reach the Frame — only those from significant outcomes
+(expanded proposals, ratified klines, novel klines). The incoming query
+kline on the slow path goes to STM only. The frame has no fixed bound — it
+grows as KLines are written during a session. Frame is monotonic.
 
 Lookups that miss in STM fall through to Frame, then LTM, then Base.
 KLines in Frame take precedence over the same kline in LTM or Base.
 
 ### LTM (Long-Term Memory)
 
-LTM holds grounded klines promoted from Frame. Structurally identical to
-Frame — the distinction is semantic (grounded vs ungrounded). Populated
-exclusively by `promote()` from Frame.
+LTM holds ratified (S1) and novel (S4) klines. Structurally identical to
+Frame — the distinction is semantic. Populated by `add_ltm()`, which
+cascades through Frame to STM. LTM is monotonic.
 
 - LTM is loaded at session start from the previous session's persisted state.
 - LTM is persisted at session end alongside Frame (separate sections, never merged).
 - Lookups that miss in Frame fall through to LTM.
-- Promotion is additive: klines promoted to LTM remain in Frame.
+- `add_ltm()` cascades: writes LTM, then Frame, then STM. All three tiers
+  receive the kline.
 
 ### Base Model
 
@@ -173,22 +180,62 @@ priority, then Frame, then LTM, then Base).
 
 ## Storage Operations
 
-### Add
+The model provides three write methods forming a cascade:
 
 ```
-model.add(kline) → bool
+add_ltm()  →  writes LTM  →  calls add_frame()
+add_frame()  →  writes Frame  →  calls add_stm()
+add_stm()  →  writes STM only (always refreshes FIFO)
 ```
 
-Adds a KLine to the model.
+All three methods return void. The only early-return guard is literal dedup
+(see Deduplication).
 
-- Returns `true` if the KLine was added.
-- Returns `false` if the KLine was rejected.
-- The KLine is added to **both STM and Frame** (not LTM or Base).
-- If `kline.is_literal()` is `true` (all nodes are literal tokens,
-  per `is_literal` in the @kline spec), a duplicate check is performed
-  across all four tiers (see Deduplication). Non-literal Klines are always accepted.
-- If adding to the STM would exceed `stm_bound`, the oldest STM entry
-  is evicted. Evicted KLines remain in Frame and deeper tiers.
+### Add to STM
+
+```
+model.add_stm(kline) → None
+```
+
+Writes a KLine to STM only.
+
+- Always refreshes FIFO position: removes the kline from STM if present,
+  then adds it fresh.
+- If adding would exceed `stm_bound`, the oldest STM entry is evicted.
+  Evicted KLines remain in Frame and deeper tiers.
+- Literal dedup: if `kline.is_literal()` and an equal kline exists in any
+  tier, returns immediately without writing.
+- Absorbs the old `refresh_stm()` method — always refreshes unconditionally.
+
+### Add to Frame
+
+```
+model.add_frame(kline) → None
+```
+
+Writes a KLine to Frame, then cascades to `add_stm()`.
+
+- Frame is monotonic — klines are appended, never removed.
+- The KLineStore membership index (`_dedup`) provides fast `contains()`
+  checks but does not gate writes for non-literals.
+- Cascades to `add_stm()`, which refreshes STM FIFO position.
+- Literal dedup: if `kline.is_literal()` and an equal kline exists in any
+  tier, returns immediately without writing or cascading.
+
+### Add to LTM
+
+```
+model.add_ltm(kline) → None
+```
+
+Writes a KLine to LTM, then cascades to `add_frame()`.
+
+- LTM is monotonic — klines are appended, never removed.
+- The KLineStore membership index (`_dedup`) provides fast `contains()`
+  checks but does not gate writes for non-literals.
+- Cascades to `add_frame()`, which cascades to `add_stm()`.
+- Literal dedup: if `kline.is_literal()` and an equal kline exists in any
+  tier, returns immediately without writing or cascading.
 
 ### Exists
 
@@ -262,7 +309,7 @@ len(model) → int ≥ 0
 The total number of Klines in the Frame (excluding STM, LTM, and Base).
 STM entries and LTM entries do not contribute to the count.
 
-## STM Interface
+## STM Read Interface
 
 These methods provide read access to the STM tier without exposing the
 underlying STM object. External code must use these methods rather than
@@ -276,7 +323,7 @@ model.stm_contains(kline) → bool
 
 Returns whether an equal KLine exists in the STM tier only.
 
-- Unlike `exists()`, this checks the STM tier only — not the frame or base.
+- Unlike `exists()`, this checks the STM tier only — not Frame, LTM, or Base.
 - Uses the same equality semantics as `exists()`: same signature and node
   sequence.
 
@@ -291,62 +338,25 @@ order (oldest first).
 
 - Returns a fresh iterator on each call.
 - Does not copy — callers see live insertion-order traversal.
-- External code that needs to iterate STM entries (e.g., for promotion)
-  must use this method.
-
-## Promotion
-
-Promotion copies Klines from Frame to LTM, persisting grounded knowledge
-across sessions. The kline remains in Frame (additive — Frame retains its
-full working context).
-
-### Promote
-
-```
-model.promote(kline) → bool
-```
-
-Copies a KLine from Frame to LTM.
-
-- Returns `true` if the KLine was added to LTM.
-- Returns `false` if the KLine is a literal that duplicates an existing
-  LTM entry (literal dedup only; non-literals are always accepted).
-- No precondition — any kline may be promoted regardless of Frame membership.
-- The KLine remains in Frame (promotion is additive, not a move).
-- Promotion is triggered by the agent on significant results (S1 or S4),
-  ensuring confirmed and novel knowledge persists across sessions.
-
-## STM Refresh
-
-### Refresh STM
-
-```
-model.refresh_stm(kline) → bool
-```
-
-Re-enters a KLine into STM with LRU-style freshness. Caller-driven — used
-by the cogitation pipeline to give recency precedence to klines actively
-used in reasoning.
-
-- Removes the kline from STM if present, then adds it fresh (refreshing
-  its FIFO position).
-- Returns `true` if the kline was added to STM.
-- Returns `false` if the kline could not be added.
-- Does not affect Frame, LTM, or Base.
+- External code that needs to iterate STM entries (e.g., for `add_ltm()`
+  cascades) must use this method.
 
 ## Deduplication
 
-When `add` receives a literal Kline (`is_literal()` returns `true`,
-meaning all nodes are literal tokens per `is_literal` in the @kline spec), the model
-checks whether an equal Kline (same signature, same node sequence per
-kline equality) already exists in **any tier** (STM, Frame, LTM, Base).
-If so, `add` returns `false` and no entry is created.
+All three write methods (`add_stm`, `add_frame`, `add_ltm`) apply the same
+literal dedup guard: if `kline.is_literal()` is `true` and an equal KLine
+(same signature, same node sequence per kline equality) already exists in
+**any tier** (STM, Frame, LTM, Base), the method returns immediately
+without writing or cascading.
 
 Non-literal Klines are always accepted — composed structures are never
 deduplicated.
 
 Deduplication is cross-tier: a literal Kline that duplicates an entry in
-LTM or the base model is rejected.
+LTM or the base model is rejected. The check uses `_exists_any()` which
+searches all four tiers.
+
+This is the sole write guard. Frame and LTM are otherwise monotonic.
 
 ## Iteration
 
@@ -567,8 +577,8 @@ countersigned kline.
 STM eviction is defined in the **@stm spec**. Summary of Model-level
 consequences:
 
-STM eviction removes the oldest Kline from the STM when `add` or
-`refresh_stm` would cause the STM to exceed its bound.
+STM eviction removes the oldest Kline from the STM when `add_stm()`
+would cause the STM to exceed its bound.
 
 - Eviction removes from the STM index only.
 - The evicted Kline's signature and nodes signature entries are removed from
@@ -665,17 +675,16 @@ else       → S4
 
 | ID    | Criterion                                                      | Origin ref |
 | ----- | -------------------------------------------------------------- | ---------- |
-| MOD-1 | Add and find: add KLine, find by signature returns it          | — |
-| MOD-2 | Add returns True on success                                     | — |
-| MOD-3 | Literal dedup: duplicate literal KLine rejected (returns False) | — |
-| MOD-4 | Non-literal no dedup: duplicate non-literal accepted           | — |
-| MOD-5 | Exists: True after add, False before                           | — |
-| MOD-6 | Find returns most recent KLine when multiple share signature   | — |
-| MOD-7 | Find_all: returns all KLines with given signature across tiers | — |
-| MOD-8 | Find_by_nodes: returns KLine by nodes signature                | — |
-| MOD-9 | Remove: removes most recent KLine with given signature         | — |
-| MOD-10 | Remove never touches base model                                | — |
-| MOD-11 | Len returns frame count only (excludes STM and base)          | — |
+| MOD-1 | add_frame and find: add KLine via add_frame, find by signature returns it | — |
+| MOD-2 | Literal dedup: duplicate literal KLine rejected by add_frame (returns early) | — |
+| MOD-3 | Non-literal no dedup: duplicate non-literal accepted by add_frame | — |
+| MOD-4 | Exists: True after add_frame, False before                     | — |
+| MOD-5 | Find returns most recent KLine when multiple share signature   | — |
+| MOD-6 | Find_all: returns all KLines with given signature across tiers | — |
+| MOD-7 | Find_by_nodes: returns KLine by nodes signature                | — |
+| MOD-8 | Remove: removes most recent KLine with given signature         | — |
+| MOD-9 | Remove never touches base model                                | — |
+| MOD-10 | Len returns frame count only (excludes STM and base)          | — |
 
 ### Four-Tier Lookup
 
@@ -698,58 +707,65 @@ else       → S4
 | MOD-21 | Descendants: recursive node collection       | — |
 | MOD-22 | Query: find + expand combined                | — |
 
-### Promotion
-
-| ID     | Criterion                                          | Origin ref |
-| ------ | -------------------------------------------------- | ---------- |
-| MOD-23 | Promote copies KLine from Frame to LTM                  | — |
-| MOD-24 | Promote literal dedup: duplicate literal in LTM rejected| — |
-| MOD-25 | Promote non-literal always accepted                     | — |
-| MOD-26 | Promote additive: kline remains in Frame after promote  | — |
-
-### STM Refresh
+### Write Cascade
 
 | ID     | Criterion                                                    | Origin ref |
 | ------ | ------------------------------------------------------------ | ---------- |
-| MOD-27 | refresh_stm removes then re-adds kline (LRU-style)           | — |
-| MOD-28 | refresh_stm evicts oldest when bound exceeded                 | — |
-| MOD-29 | refresh_stm does not affect Frame, LTM, or Base              | — |
+| MOD-23 | add_stm: always refreshes FIFO (removes-if-present then adds) | — |
+| MOD-24 | add_stm: evicts oldest when bound exceeded                    | — |
+| MOD-25 | add_frame: writes Frame and cascades to add_stm               | — |
+| MOD-26 | add_ltm: writes LTM and cascades to add_frame                 | — |
+| MOD-27 | add_stm literal dedup: literal duplicate in any tier returns early | — |
+| MOD-28 | add_frame literal dedup: literal duplicate returns early, no cascade | — |
+| MOD-29 | add_ltm literal dedup: literal duplicate returns early, no cascade | — |
+| MOD-30 | add_frame: non-literal always writes Frame                    | — |
+| MOD-31 | add_ltm: non-literal always writes LTM                        | — |
+| MOD-32 | add_frame: Frame is monotonic (append-only)                   | — |
+| MOD-33 | add_ltm: LTM is monotonic (append-only)                       | — |
+
+### Removed Methods
+
+| ID     | Note                                              |
+| ------ | -------------------------------------------------- |
+| MOD-R1 | `model.add()` removed — replaced by cascade API   |
+| MOD-R2 | `model.promote()` removed — replaced by `add_ltm()` |
+| MOD-R3 | `model.refresh_stm()` removed — absorbed by `add_stm()` |
 
 ### Significance API
 
 | ID     | Criterion                                                              | Origin ref |
 | ------ | ---------------------------------------------------------------------- | ---------- |
-| MOD-30 | `is_s1` canonical: `make_signature(nodes) == signature` → True          | Origin §Significance |
-| MOD-31 | `is_s1` countersigned: mutual cross-reference → True                   | Origin §Significance |
-| MOD-32 | `is_s1` neither: non-canonical, non-countersigned → False              | — |
-| MOD-33 | `expand` all-match ungrounded: significance reflects ungrounded count   | — |
-| MOD-34 | `expand` all-mismatched unresolvable: low significance                  | — |
-| MOD-35 | `expand` with edge hops: connotation yields + terminal                  | — |
-| MOD-36 | `expand` S2 signifies: loose match yields QC, terminal still MAX_HOP    | — |
-| MOD-37 | `expand` S2 before S3: signifies short-circuits connotation recording   | — |
-| MOD-38 | `expand` S3 route: S3 bias ensures S3 distances exceed S2              | — |
-| MOD-39 | `expand` connotation: indirect path → S3 connotation yield + terminal   | — |
-| MOD-40 | `expand` significance always in valid uint64 range `[1, D_MAX]`        | — |
-| MOD-41 | `expand` bidirectional: both sides contribute connotations + terminal   | — |
-| MOD-42 | `is_countersigned`: mutual node reference detected                      | — |
-| MOD-43 | Not countersigned: one-way reference → False                            | — |
+| MOD-34 | `is_s1` canonical: `make_signature(nodes) == signature` → True          | Origin §Significance |
+| MOD-35 | `is_s1` countersigned: mutual cross-reference → True                   | Origin §Significance |
+| MOD-36 | `is_s1` neither: non-canonical, non-countersigned → False              | — |
+| MOD-37 | `expand` all-match ungrounded: significance reflects ungrounded count   | — |
+| MOD-38 | `expand` all-mismatched unresolvable: low significance                  | — |
+| MOD-39 | `expand` with edge hops: connotation yields + terminal                  | — |
+| MOD-40 | `expand` S2 signifies: loose match yields QC, terminal still MAX_HOP    | — |
+| MOD-41 | `expand` S2 before S3: signifies short-circuits connotation recording   | — |
+| MOD-42 | `expand` S3 route: S3 bias ensures S3 distances exceed S2              | — |
+| MOD-43 | `expand` connotation: indirect path → S3 connotation yield + terminal   | — |
+| MOD-44 | `expand` significance always in valid uint64 range `[1, D_MAX]`        | — |
+| MOD-45 | `expand` bidirectional: both sides contribute connotations + terminal   | — |
+| MOD-46 | `is_countersigned`: mutual node reference detected                      | — |
+| MOD-47 | Not countersigned: one-way reference → False                            | — |
 
 ### Structural Grounding
 
 | ID     | Criterion                                                                | Origin ref |
 | ------ | ------------------------------------------------------------------------ | ---------- |
-| MOD-40 | `promote_participating`: query + candidate promoted after ratification    | — |
-| MOD-41 | `promote_participating`: S4 identity klines in STM also promoted          | — |
-| MOD-42 | `promote_participating`: S2/S3 partial klines in STM promoted             | — |
-| MOD-43 | `promote_participating`: already-promoted klines not re-promoted           | — |
-| MOD-44 | `classify_misfit` canonical: `S == N` → (False, False)                    | — |
-| MOD-45 | `classify_misfit` underfit: `S & ~N != 0` → (True, False)                 | — |
-| MOD-46 | `classify_misfit` overfit: `N & ~S != 0` → (False, True)                  | — |
-| MOD-47 | `classify_misfit` dual: both conditions → (True, True)                     | — |
-| MOD-48 | `generate_expansions` underfit: returns proposal with added nodes          | — |
-| MOD-49 | `generate_expansions` overfit: returns trimmed + companion                 | — |
-| MOD-50 | `generate_expansions` dual: returns replacement + companion                | — |
-| MOD-51 | `generate_expansions` no gap: no expansion proposals emitted               | — |
+| MOD-48 | `promote_participating`: query + candidate promoted after ratification    | — |
+| MOD-49 | `promote_participating`: S4 identity klines in STM also promoted          | — |
+| MOD-50 | `promote_participating`: S2/S3 partial klines in STM promoted             | — |
+| MOD-51 | `promote_participating`: already-promoted klines not re-promoted           | — |
+| MOD-52 | `classify_misfit` canonical: `S == N` → (False, False)                    | — |
+| MOD-53 | `classify_misfit` underfit: `S & ~N != 0` → (True, False)                 | — |
+| MOD-54 | `classify_misfit` overfit: `N & ~S != 0` → (False, True)                  | — |
+| MOD-55 | `classify_misfit` dual: both conditions → (True, True)                     | — |
+| MOD-56 | `generate_expansions` underfit: returns proposal with added nodes          | — |
+| MOD-57 | `generate_expansions` overfit: returns trimmed + companion                 | — |
+| MOD-58 | `generate_expansions` dual: returns replacement + companion                | — |
+| MOD-59 | `generate_expansions` no gap: no expansion proposals emitted               | — |
 
 ## What a Model is Not
 

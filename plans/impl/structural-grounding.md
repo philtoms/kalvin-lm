@@ -3,6 +3,12 @@
 **Parent:** [`docs/roadmap.md`](../../docs/roadmap.md)
 **Challenges:** 6 (Structural Grounding) + 6b (Extended Cogitation)
 **Estimate:** 4–7 days
+
+> **Note (2026-06-02):** The model spec test matrix was renumbered to accommodate
+> the selective-write cascade API (MOD-23 through MOD-33 now cover the write
+> cascade, MOD-34+ cover significance/structural grounding). Test matrix IDs in
+> this plan reference the old numbering. When implementing, remap to the current
+> spec IDs in `specs/model.md`.
 **Depends on:** Current system (Phases 0–8 complete, 329 tests passing)
 
 ---
@@ -93,15 +99,15 @@ ratification process are promoted — not just the ratified kline.
    query-candidate pair's node set
 
 ```python
-def promote_participating(self, query: KLine, candidate: KLine) -> int:
-    """Promote all STM klines involved in a ratification event.
+def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
+    """Cascade all STM klines involved in a ratification event to LTM.
 
     After countersignature is detected between query and candidate,
-    promote both plus any STM klines whose signatures appear in the
-    union of their nodes. This enriches the frame with S4 identity
-    klines and S2/S3 partial klines involved in the ratification.
+    cascade both plus any STM klines whose signatures appear in the
+    union of their nodes to LTM via add_ltm(). This enriches LTM with
+    S4 identity klines and S2/S3 partial klines involved in the ratification.
 
-    Returns the number of klines promoted.
+    Returns void — add_ltm() cascades through Frame to STM.
     """
     # Collect all signatures from the participating pair
     node_sigs = set()
@@ -116,23 +122,18 @@ def promote_participating(self, query: KLine, candidate: KLine) -> int:
 
     # Find all STM klines with matching signatures
     to_promote = []
-    for kl in self._stm._order:
+    for kl in model.iter_stm():
         if kl.signature in node_sigs:
             to_promote.append(kl)
 
-    # Also promote the query and candidate if they're in STM
-    for kl in [query, candidate]:
-        if kl not in to_promote:
-            to_promote.append(kl)
+    # Also include the query and candidate
+    to_promote.extend([query, candidate])
 
-    count = 0
     for kl in to_promote:
-        if self.promote(kl):
-            count += 1
-    return count
+        model.add_ltm(kl)
 ```
 
-**Location:** `src/kalvin/model.py`
+**Location:** `src/kalvin/expand.py`
 
 ### 1.3 Agent: Use Structural Grounding
 
@@ -156,7 +157,7 @@ if level == "S1":
 
 # After:
 if level == "S1":
-    self._model.promote_participating(kline, candidate)
+    promote_participating(self._model, kline, candidate)
     ...
 ```
 
@@ -174,7 +175,7 @@ def _publish(self, kind, query, proposal, significance):
 
 # After:
 def _publish(self, kind, query, proposal, significance):
-    self._event_bus.publish(RationaliseEvent(kind, query, proposal, significance))
+    self._adapter.on_event(RationaliseEvent(kind, query, proposal, significance))
 ```
 
 #### agent.py: Cogitator.\_process() — S2 Expansion

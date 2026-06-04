@@ -18,12 +18,13 @@ See **@stm spec** for STM definition.
 ### Key API (from spec)
 
 ```python
-model.add(kline) → bool           # Add to STM and Frame
+model.add_stm(kline) → None       # STM only (always refreshes FIFO)
+model.add_frame(kline) → None     # Frame + cascades to add_stm()
+model.add_ltm(kline) → None       # LTM + cascades to add_frame()
 model.exists(kline) → bool       # Check across all tiers
 model.find(signature) → KLine|None
 model.find_all(signature) → list[KLine]
 model.find_by_nodes(nodes_sig) → KLine|None
-model.remove(signature) → bool
 len(model) → int                 # Frame count only
 model.klines() → list[KLine]
 model.where(predicate) → list[KLine]
@@ -31,8 +32,6 @@ model.resolve(node) → KLine|None
 model.query_expand(kline, depth=2) → list[KLine]
 model.descendants(node) → set[int]
 model.query(signature, depth=1) → list[KLine]
-model.promote(kline) → bool      # Frame → LTM
-model.refresh_stm(kline) → bool  # LRU-style re-insertion
 model.expand(query, candidate) → Iterator[QueryCandidate]
 model.is_countersigned(kline) → bool
 model.is_s1(kline) → bool
@@ -267,17 +266,16 @@ Structural test only. Literal nodes cannot match a signature.
 
 | Spec ID | Test                      | Description                      |
 | ------- | ------------------------- | -------------------------------- |
-| MOD-1   | Add and find              | Add KLine, find by signature     |
-| MOD-2   | Add returns True          | Normal case                      |
-| MOD-3   | Literal dedup             | Duplicate literal KLine rejected |
-| MOD-4   | Non-literal no dedup      | Duplicate non-literal accepted   |
-| MOD-5   | Exists                    | True after add, False before     |
-| MOD-6   | Find returns most recent  | Multiple KLines same sig         |
-| MOD-7   | Find_all                  | Returns all KLines with sig      |
-| MOD-8   | Find_by_nodes             | Returns by nodes signature       |
-| MOD-9   | Remove                    | Removes most recent with sig     |
-| MOD-10  | Remove never touches base | Verify base unchanged            |
-| MOD-11  | Len                       | Frame count only                 |
+| MOD-1   | add_frame and find         | Add KLine via add_frame, find returns it |
+| MOD-2   | Literal dedup             | Duplicate literal rejected by add_frame |
+| MOD-3   | Non-literal no dedup      | Duplicate non-literal accepted |
+| MOD-4   | Exists                    | True after add_frame, False before |
+| MOD-5   | Find returns most recent  | Multiple KLines same sig         |
+| MOD-6   | Find_all                  | Returns all KLines with sig      |
+| MOD-7   | Find_by_nodes             | Returns by nodes signature       |
+| MOD-8   | Remove                    | Removes most recent with sig     |
+| MOD-9   | Remove never touches base | Verify base unchanged            |
+| MOD-10  | Len                       | Frame count only                 |
 
 ### Four-Tier Lookup
 
@@ -300,41 +298,40 @@ Structural test only. Literal nodes cannot match a signature.
 | MOD-21  | Descendants            | Recursive collection    |
 | MOD-22  | Query                  | Find + expand           |
 
-### Promotion
+### Write Cascade
 
-| Spec ID | Test                       | Description                                |
-| ------- | -------------------------- | ------------------------------------------ |
-| MOD-23  | Promote Frame → LTM        | KLine appears in LTM                       |
-| MOD-24  | Promote literal dedup      | Duplicate literal in LTM rejected          |
-| MOD-25  | Promote non-literal accept | Non-literal always accepted                |
-| MOD-26  | Promote additive           | KLine remains in Frame after promote       |
-
-### STM Refresh
-
-| Spec ID | Test               | Description                                |
-| ------- | ------------------ | ------------------------------------------ |
-| MOD-27  | refresh_stm LRU    | Remove then re-add refreshes FIFO position |
-| MOD-28  | refresh_stm evict  | Oldest evicted when bound exceeded         |
-| MOD-29  | refresh_stm tiers  | Does not affect Frame, LTM, or Base        |
+| Spec ID | Test                | Description                                         |
+| ------- | ------------------- | --------------------------------------------------- |
+| MOD-23  | add_stm refresh     | Removes-if-present then adds, refreshing FIFO       |
+| MOD-24  | add_stm evict       | Oldest evicted when bound exceeded                  |
+| MOD-25  | add_frame cascade   | Writes Frame and cascades to add_stm                |
+| MOD-26  | add_ltm cascade     | Writes LTM and cascades to add_frame                |
+| MOD-27  | add_stm dedup       | Literal duplicate in any tier returns early          |
+| MOD-28  | add_frame dedup     | Literal duplicate returns early, no cascade         |
+| MOD-29  | add_ltm dedup       | Literal duplicate returns early, no cascade         |
+| MOD-30  | add_frame non-lit   | Non-literal always writes Frame                     |
+| MOD-31  | add_ltm non-lit     | Non-literal always writes LTM                       |
+| MOD-32  | add_frame monotonic | Frame is append-only                                |
+| MOD-33  | add_ltm monotonic   | LTM is append-only                                  |
 
 ### Significance API
 
 | Spec ID | Test                      | Description                                                |
 | ------- | ------------------------- | ---------------------------------------------------------- |
-| MOD-30  | is_s1 canonical            | `make_signature(nodes) == signature` → True                |
-| MOD-31  | is_s1 countersigned        | Mutual cross-reference detected → True                     |
-| MOD-32  | is_s1 neither              | Non-canonical, non-countersigned → False                   |
-| MOD-33  | expand self no model      | All match, ungrounded → significance reflects N ungrounded |
-| MOD-34  | expand no resolution      | All mismatched unresolvable → low significance             |
-| MOD-35  | expand grounding          | Matched node that resolves → higher significance           |
-| MOD-36  | expand edge hops          | Mismatched with chain → connotation yields + terminal      |
-| MOD-37  | expand S2 signifies       | Signifies loose match yields QC, terminal still MAX_HOP    |
-| MOD-38  | expand S2 before S3       | Signifies short-circuits, s3_connotations not populated    |
-| MOD-39  | expand range              | Valid significance uint64                                  |
-| MOD-40  | expand clamped            | Significance in [1, D_MAX]                                 |
-| MOD-41  | expand S3 route           | S3 bias ensures S3 distances moderately exceed S2          |
-| MOD-42  | expand connotation        | Indirect path → S3 connotation yield + terminal            |
-| MOD-43  | expand significance range | Significance always in valid uint64 range                  |
-| MOD-44  | expand bidirectional      | Both sides yield connotations + terminal                   |
-| MOD-45  | is_countersigned          | Mutual reference detected                                  |
-| MOD-46  | Not countersigned         | One-way reference → False                                  |
+| MOD-34  | is_s1 canonical            | `make_signature(nodes) == signature` → True                |
+| MOD-35  | is_s1 countersigned        | Mutual cross-reference detected → True                     |
+| MOD-36  | is_s1 neither              | Non-canonical, non-countersigned → False                   |
+| MOD-37  | expand self no model      | All match, ungrounded → significance reflects N ungrounded |
+| MOD-38  | expand no resolution      | All mismatched unresolvable → low significance             |
+| MOD-39  | expand grounding          | Matched node that resolves → higher significance           |
+| MOD-40  | expand edge hops          | Mismatched with chain → connotation yields + terminal      |
+| MOD-41  | expand S2 signifies       | Signifies loose match yields QC, terminal still MAX_HOP    |
+| MOD-42  | expand S2 before S3       | Signifies short-circuits, s3_connotations not populated    |
+| MOD-43  | expand range              | Valid significance uint64                                  |
+| MOD-44  | expand clamped            | Significance in [1, D_MAX]                                 |
+| MOD-45  | expand S3 route           | S3 bias ensures S3 distances moderately exceed S2          |
+| MOD-46  | expand connotation        | Indirect path → S3 connotation yield + terminal            |
+| MOD-47  | expand significance range | Significance always in valid uint64 range                  |
+| MOD-48  | expand bidirectional      | Both sides yield connotations + terminal                   |
+| MOD-49  | is_countersigned          | Mutual reference detected                                  |
+| MOD-50  | Not countersigned         | One-way reference → False                                  |

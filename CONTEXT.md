@@ -98,6 +98,21 @@ The alternating exchange between participants in the harness loop. One participa
 **Participant**:
 Any agent loaded into the harness loop (Kalvin, Trainer, UI agent, Slack agent, etc.). Each participant has a unique address and subscribes to messages addressed to it. Diagnostic listeners may subscribe to any or all addresses. All participants are equal — no participant has special status or privileged access to the harness.
 
+### Dimension
+
+A bit position in a packed node. Kalvin's world model is low-dimensional: Mod32 provides 31 dimensions (bits 1–31). Semantics are not assigned to dimensions — they emerge from the relationship patterns Kalvin learns through training. The user-agent discussion in `docs/user-agent.md` validates that ~35 dimensions is sufficient for a functional world model. Mod32's 31 is a developmental simplification; the architecture can scale to more.
+_Avoid_: feature, axis, latent variable (these imply pre-assigned meaning)
+
+### Compression
+
+Kalvin's compression mechanism is the selective write from STM to Frame. STM registers all kline activity — every query, candidate, proposal, and ratification event. Frame receives only what Kalvin recognises: expanded proposals (S2/S3), ratified klines (S1), and novel klines (S4). The slow-path query kline that triggers cogitation goes to STM only — if cogitation produces nothing, the event is registered but nothing is retained in working context. This is severe, lossy compression — Kalvin's world view is necessarily curated — but it produces understanding that aligns with the needs and expectations of external agents. Further compression occurs at the Frame→LTM boundary, where only ratified (S1) and novel (S4) klines persist across sessions. Decompression is the dialogue: the agent provides scaffolding to fill gaps, Kalvin re-rationalises, and understanding expands through conversation.
+_Avoid_: encoding (that's the tokenizer's job), projection (implies a mathematical operation, not a dialogue)
+
+### Manifold
+
+The STM in its role as Kalvin's active dimensional space. The manifold is not the STM's implementation (a bounded rolling window) but its function: the set of kline structures that define what Kalvin can currently perceive and reason about. When a new kline arrives, Kalvin compresses it into the shape established by the current manifold contents — not into fixed bit positions. The manifold is task-dependent: different STM contents produce a different dimensional space and therefore different compression. Cogitation refreshes the STM precisely because actively-used structures must remain in the manifold.
+_Avoid_: working memory (too vague), context window (implies a passive buffer, not an active projection surface)
+
 ### KLine
 
 A node-like structure with a **signature** (head) and **nodes** (value). The fundamental unit of Kalvin's knowledge graph. Two kinds: **identity** (no nodes) and **relationship** (one or more nodes).
@@ -133,28 +148,32 @@ A 64-bit inverted distance representing how well a KLine relates to the model's 
 - **S3**: Recognised aspects — no node match but signature matches previously worked signatures.
 - **S4**: Completely novel — no candidates found.
 
-### STM Read-Through
+### STM (Short-Term Memory)
 
-Klines that are actively used in cogitation are re-entered into the STM to give them dual-keyed indexing and recency precedence. Re-insertion is caller-driven, not automatic — the cogitation pipeline determines which klines are useful and re-inserts them. Re-insertion removes the kline from STM if present, then adds it fresh — refreshing its FIFO position (LRU-style). The STM acts as both a write buffer (new klines land here) and a recency-sensitive index (cogitation-used klines are refreshed here). The rolling window naturally ages out less recently accessed entries.
+Kalvin's event register — all klines encountered during a session pass through STM. Written via `add_stm()`, which always refreshes FIFO position (removes-if-present then adds). The STM is the manifold: the set of kline structures that define what Kalvin can currently perceive and reason about. When a new kline arrives, Kalvin compresses it into the shape established by the current manifold contents — not into fixed bit positions. The manifold is task-dependent: different STM contents produce a different dimensional space and therefore different compression.
 
-For MVP, the selection of which klines to re-insert will be straightforward — those actually picked up and used in cogitation. The exact criteria may be refined later.
-_Avoid_: STM caching (too vague — the mechanism is re-insertion, not caching), STM promotion (conflicts with the existing promote concept), read-through (implies automatic — it's selective and caller-driven)
+STM is the lowest tier in the write cascade: `add_ltm()` → Frame → `add_frame()` → STM → `add_stm()`. The cascade ensures every write refreshes STM FIFO position regardless of entry point.
+
+STM receives all kline activity: queries, retrieved candidates, expanded proposals, and ratified results. The rolling window naturally ages out structures that are no longer active in the current task.
+_Avoid_: STM caching (too vague), working memory (too vague — STM is one component of working memory), context window (implies a passive buffer, not an active projection surface)
 
 ### Frame
 
-Working context — the klines that bias Kalvin's current reasoning. Frame and STM together form working memory: STM provides recency-sensitive indexing, Frame provides the context that shapes which answers Kalvin reaches for first. Searched before LTM and Base, so a kline in Frame takes precedence over the same kline in LTM. For MVP, one frame per session, persisted across sessions. Later, the model may support multiple frames, allowing cross-frame representation.
-_Avoid_: session log (Frame is not a log — it's an active context), session (the session is the temporal process, the Frame is its working context)
+Compressed working context — the klines Kalvin has recognised during a session. Not all klines reach the Frame: only expanded proposals (S2/S3), ratified klines (S1), and novel klines (S4) are written here. The incoming query kline on the slow path goes to STM only — Frame receives it only if cogitation produces a result. This selective write is Kalvin's primary compression mechanism: STM registers all world events, Frame retains only what Kalvin "understands" well enough to match, expand, or ratify.
+
+Written via `add_frame()`, which cascades to STM. Searched before LTM and Base, so a kline in Frame takes precedence over the same kline in LTM. For MVP, one frame per session, persisted across sessions. Frame is monotonic — klines are appended, never removed. Later, the model may support multiple frames, allowing cross-frame representation.
+_Avoid_: session log (Frame is not a log — it's compressed context), session (the session is the temporal process, the Frame is its working context)
 
 ### LTM (Long-Term Memory)
 
-Grounded klines promoted from the Frame. Structurally identical to a Frame — the distinction is semantic, not structural. LTM holds klines that have been confirmed (S1) or are known-identity (S4), persisted across sessions. Populated exclusively by `promote()` from Frame. Loaded at session start from the previous session's persisted LTM. Saved at session end alongside Frame (separate sections, never merged).
+Persistent knowledge — klines confirmed (S1) or novel (S4) that survive across sessions. Written via `add_ltm()`, which cascades to Frame and STM. Structurally identical to Frame — the distinction is semantic, not structural. LTM is populated during rationalisation when a kline reaches S1 (ratified, canonical, countersigned, all-literal) or S4 (identity or novel). Loaded at session start from the previous session's persisted LTM. Saved at session end alongside Frame (separate sections, never merged). LTM is monotonic — klines are appended, never removed.
 _Avoid_: persistent store (too vague), knowledge base (conflicts with the informal use of "base"), LTM frame (it's not a frame — it's a distinct tier)
 
 ### Model Persistence
 
 All three mutable tiers (STM, Frame, LTM) are persisted as separate sections in a single file. This enables session continuation under special conditions and session debriefing (future features, not MVP). Base is not persisted — it is loaded from an external source at construction.
 
-Normal session start: STM is empty, Frame and LTM are loaded from the persisted file. STM is populated during the session via `add()` and cogitation-driven `refresh_stm()` calls.
+Normal session start: STM is empty, Frame and LTM are loaded from the persisted file. STM is populated during the session via the write cascade (`add_stm()`, `add_frame()`, `add_ltm()`).
 _Avoid_: save state (too vague — specify which tiers), checkpoint (implies partial; the full model is persisted)
 
 ### Fast Path

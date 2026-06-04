@@ -6,13 +6,15 @@ The STM is a **bounded, dual-keyed index** over recently added KLines. It is
 the first tier in the Model's four-tier memory architecture (STM → Frame → LTM → Base), providing fast, rolling-window indexing for transitive grounding.
 
 The STM is not a standalone knowledge store — it is an index that the Model
-manages internally. KLines added to the STM are always simultaneously added to
-the Frame via `add()`. Eviction from the STM removes only the index entry,
-not the underlying KLine (which remains in Frame and deeper tiers).
+manages internally. KLines added to the STM are managed by the Model's
+write cascade: `add_stm()` writes to STM only, `add_frame()` cascades to
+STM, `add_ltm()` cascades through Frame to STM. Eviction from the STM
+removes only the index entry, not the underlying KLine (which remains in
+Frame and deeper tiers).
 
-The STM also serves as a recency-sensitive index for klines actively used in
-cogitation, refreshed via the Model's `refresh_stm()` method (caller-driven,
-LRU-style).
+`add_stm()` always refreshes FIFO position: it removes the kline from STM
+if present, then adds it fresh. This absorbs the old `refresh_stm()`
+behavior — there is no separate refresh method.
 
 ## Dependencies
 
@@ -76,15 +78,17 @@ lookups would miss.
 ### Add
 
 ```python
-stm.add(kline, dedup=True) → bool
+stm.add(kline) → None
 ```
 
 Adds a KLine to the STM.
 
-- Returns `True` if the KLine was added.
-- Returns `False` if rejected as a duplicate (when `dedup=True`).
-- When `dedup=True`, checks whether `(kline.signature, tuple(kline.nodes))`
-  is already in `_dedup`. If so, returns `False` without modifying state.
+- Always refreshes FIFO position: removes the kline from STM if present
+  (via `remove()`), then adds it fresh.
+- Deduplication is always active: checks whether
+  `(kline.signature, tuple(kline.nodes))` is already in `_dedup`. If present,
+  the existing entry is removed first, then the new entry is added — refreshing
+  FIFO position.
 - Computes the nodes signature via `make_signature(kline.nodes)`. If the
   KLine has no nodes, the nodes signature is `0`.
 - The effective signature key is `kline.signature` if non-zero, otherwise
@@ -93,6 +97,7 @@ Adds a KLine to the STM.
   oldest entry (see Eviction).
 - Indexes the KLine under both the signature key and the nodes signature key
   (if different and non-zero).
+- Returns void — always succeeds.
 
 ### Get
 
@@ -229,9 +234,10 @@ element. On eviction:
 
 ## Deduplication
 
-When `dedup=True` (the default), `add` rejects KLines that duplicate an
-existing entry. A duplicate is defined as a KLine with the same
-`(signature, tuple(nodes))` pair already in `_dedup`.
+`add()` always deduplicates: if `(signature, tuple(nodes))` is already in
+`_dedup`, the existing entry is removed first, then the new entry is added.
+This ensures FIFO position is always refreshed — the kline moves to the
+front of the queue.
 
 - Deduplication is **within the STM only** — it does not check the Frame
   or Base (that is the Model's responsibility).
@@ -260,7 +266,7 @@ existing entry. A duplicate is defined as a KLine with the same
 | STM-2 | Add and retrieve by nodes signature: `stm.add(kl); stm.find_by_nodes(nodes_sig) == [kl]` | — |
 | STM-3 | Bound enforcement: add `bound + 1` KLines → first is evicted                    | — |
 | STM-4 | Eviction correctness: evicted KLine removed from STM index only                | — |
-| STM-5 | Dedup: adding same `(sig, nodes)` pair returns False                           | — |
+| STM-5 | Always-refresh: adding same `(sig, nodes)` pair refreshes FIFO position | — |
 | STM-6 | Multiple KLines same signature: all stored under one key                       | — |
 | STM-7 | Remove clears from all indexes (signature, nodes sig, order, dedup)            | — |
 | STM-8 | Clear removes everything                                                        | — |
