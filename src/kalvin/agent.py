@@ -286,14 +286,12 @@ class KAgent:
 
         # Phase 3: Assess
         if not kline.nodes:
-            self._model.add(kline)
-            self._model.promote(kline)
+            self._model.add_ltm(kline)
             self._publish("frame", kline, kline, 0)  # S4
             return True
 
         if all(is_literal_node(n) for n in kline.nodes):
-            self._model.add(kline)
-            self._model.promote(kline)
+            self._model.add_ltm(kline)
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
 
@@ -304,15 +302,13 @@ class KAgent:
                 for n in kline.nodes
             )
             if all_resolved:
-                self._model.add(kline)
-                self._model.promote(kline)
+                self._model.add_ltm(kline)
                 self._publish("frame", kline, kline, D_MAX - 1)  # S1
                 return True
 
         # Phase 3 (continued): Ratification — countersigned in the model → S1
         if is_countersigned(self._model, kline):
-            self._model.add(kline)
-            self._model.promote(kline)
+            self._model.add_ltm(kline)
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
 
@@ -321,13 +317,12 @@ class KAgent:
 
         if not candidates:
             # S4 — novel, no candidates
-            self._model.add(kline)
-            self._model.promote(kline)
+            self._model.add_ltm(kline)
             self._publish("frame", kline, kline, 0)
             return True
 
         # Phase 5: Route each candidate — fast path on S1, submit S2/S3
-        self._model.add(kline)
+        self._model.add_stm(kline)
 
         found_s1 = False
         for candidate in candidates:

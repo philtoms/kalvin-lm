@@ -45,9 +45,8 @@ class TestGenerateExpansions:
     def _make_model_with_klines(self) -> Model:
         m = Model()
         # Canonical klines that can serve as contributors
-        # add() now writes to both STM and Frame, so no promote needed
-        m.add(KLine(0b010, [0b010]))  # canonical
-        m.add(KLine(0b001, [0b001]))  # canonical
+        m.add_frame(KLine(0b010, [0b010]))  # canonical
+        m.add_frame(KLine(0b001, [0b001]))  # canonical
         return m
 
     def test_underfit_expansion_adds_nodes(self):

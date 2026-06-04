@@ -11,46 +11,255 @@ def make_model(stm_bound: int = 256) -> Model:
     return Model(stm_bound=stm_bound)
 
 
-class TestModelAdd:
-    def test_add_and_find(self):
+# ── Removed Methods ──────────────────────────────────────────────────
+
+class TestRemovedMethods:
+    """MOD-R1/R2/R3: verify old methods no longer exist on Model."""
+
+    def test_add_removed(self):
+        assert not hasattr(Model, 'add')
+
+    def test_promote_removed(self):
+        assert not hasattr(Model, 'promote')
+
+    def test_refresh_stm_removed(self):
+        assert not hasattr(Model, 'refresh_stm')
+
+
+# ── Cascade Write API ────────────────────────────────────────────────
+
+class TestAddStm:
+    """Tests for add_stm() — STM-only write with always-refresh FIFO."""
+
+    def test_add_stm_and_find(self):
+        """MOD-23: add_stm writes to STM, discoverable via find."""
         m = make_model()
         k = KLine(5, [1, 2])
-        assert m.add(k) is True
+        m.add_stm(k)
         assert m.find(5) is k
 
-    def test_add_returns_true(self):
+    def test_add_stm_returns_none(self):
+        """add_stm is void (returns None)."""
         m = make_model()
-        assert m.add(KLine(5, [1])) is True
+        result = m.add_stm(KLine(5, [1]))
+        assert result is None
 
-    def test_literal_dedup(self):
-        """Literal dedup is now automatic — no dedup=True needed."""
+    def test_add_stm_always_refreshes_fifo(self):
+        """MOD-24: add_stm always refreshes FIFO position (remove-if-present then add)."""
+        m = make_model(stm_bound=3)
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        k3 = KLine(3, [3])
+        m.add_stm(k1)
+        m.add_stm(k2)
+        m.add_stm(k3)
+        # Refresh k1 — moves it to most-recent position
+        m.add_stm(k1)
+        k4 = KLine(4, [4])
+        m.add_stm(k4)  # should evict k2 (oldest after refresh)
+        assert m.stm_contains(k1) is True
+        assert m.stm_contains(k2) is False
+        assert m.stm_contains(k4) is True
+
+    def test_add_stm_eviction(self):
+        """MOD-27: STM evicts oldest when bound exceeded."""
+        m = make_model(stm_bound=2)
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        k3 = KLine(3, [3])
+        m.add_stm(k1)
+        m.add_stm(k2)
+        m.add_stm(k3)
+        assert m.stm_contains(k1) is False  # evicted
+        assert m.stm_contains(k2) is True
+        assert m.stm_contains(k3) is True
+
+    def test_add_stm_literal_dedup(self):
+        """MOD-27: literal dedup guard — returns early if literal exists in any tier."""
         m = make_model()
         k1 = KLine(1, [42], literal=True)
         k2 = KLine(1, [42], literal=True)
-        m.add(k1)
-        assert m.add(k2) is False  # automatic literal dedup
+        m.add_frame(k1)  # puts literal in Frame
+        m.add_stm(k2)    # literal dedup: already in Frame → no-op
+        # k2 should not be in STM (only k1 is there from add_frame cascade)
+        stm_list = list(m.iter_stm())
+        # The only STM entries should be k1 (from add_frame)
+        assert k1 in stm_list
 
-    def test_literal_dedup_across_tiers_ltm(self):
-        """Literal in LTM blocks add."""
-        m = make_model()
-        k = KLine(1, [42], literal=True)
-        m.promote(k)  # goes to LTM
-        assert m.add(KLine(1, [42], literal=True)) is False
-
-    def test_non_literal_no_dedup(self):
+    def test_add_stm_non_literal_always_writes(self):
+        """Non-literal klines always written to STM."""
         m = make_model()
         k1 = KLine(5, [1, 2])
         k2 = KLine(5, [1, 2])
-        m.add(k1)
-        # Non-literal klines are always accepted
-        assert m.add(k2) is True
+        m.add_stm(k1)
+        m.add_stm(k2)
+        assert m.stm_contains(k2) is True
 
+    def test_add_stm_does_not_write_frame(self):
+        """add_stm writes to STM only, not Frame."""
+        m = make_model()
+        k = KLine(5, [1])
+        m.add_stm(k)
+        assert len(m) == 0  # Frame is empty
+        assert m.stm_contains(k) is True
+
+
+class TestAddFrame:
+    """Tests for add_frame() — writes Frame + STM with literal dedup."""
+
+    def test_add_frame_and_find(self):
+        """MOD-25: add_frame writes to Frame, discoverable via find."""
+        m = make_model()
+        k = KLine(5, [1, 2])
+        m.add_frame(k)
+        assert m.find(5) is k
+
+    def test_add_frame_returns_none(self):
+        """add_frame is void (returns None)."""
+        m = make_model()
+        result = m.add_frame(KLine(5, [1]))
+        assert result is None
+
+    def test_add_frame_writes_frame_and_stm(self):
+        """MOD-25: add_frame writes to both Frame and STM."""
+        m = make_model()
+        k = KLine(5, [1])
+        m.add_frame(k)
+        assert len(m) == 1  # Frame has the kline
+        assert m.stm_contains(k) is True
+
+    def test_add_frame_literal_dedup(self):
+        """MOD-28: literal dedup guard — rejects if literal exists in any tier."""
+        m = make_model()
+        k1 = KLine(1, [42], literal=True)
+        k2 = KLine(1, [42], literal=True)
+        m.add_frame(k1)
+        m.add_frame(k2)  # literal dedup → no-op
+        assert len(m) == 1  # only k1 in Frame
+
+    def test_add_frame_literal_dedup_across_tiers(self):
+        """MOD-28: literal dedup across tiers — LTM blocks Frame write."""
+        m = make_model()
+        k = KLine(1, [42], literal=True)
+        m.add_ltm(k)        # LTM + Frame + STM
+        assert m.add_frame(KLine(1, [42], literal=True)) is None  # dedup blocks
+        assert len(m) == 1  # still only the one from add_ltm
+
+    def test_add_frame_non_literal_always_writes(self):
+        """MOD-30: non-literal klines always accepted."""
+        m = make_model()
+        k1 = KLine(5, [1, 2])
+        k2 = KLine(5, [1, 2])
+        m.add_frame(k1)
+        m.add_frame(k2)  # non-literal → always accepted
+        assert len(m) == 2
+
+    def test_add_frame_monotonic(self):
+        """MOD-32: Frame is monotonic for non-literals."""
+        m = make_model()
+        k1 = KLine(5, [1])
+        k2 = KLine(5, [2])
+        m.add_frame(k1)
+        m.add_frame(k2)
+        assert len(m) == 2
+
+    def test_add_frame_literal_dedup_base(self):
+        """Literal in Base blocks add_frame."""
+        base = Model()
+        k = KLine(1, [42], literal=True)
+        base.add_frame(k)
+        m = Model(base=base)
+        m.add_frame(KLine(1, [42], literal=True))
+        # Should not have been added to Frame
+        assert len(m) == 0
+
+
+class TestAddLtm:
+    """Tests for add_ltm() — writes LTM + Frame + STM with literal dedup."""
+
+    def test_add_ltm_and_find(self):
+        """MOD-26: add_ltm writes to LTM, discoverable via find."""
+        m = make_model()
+        k = KLine(5, [1])
+        m.add_ltm(k)
+        assert m.find(5) is k
+
+    def test_add_ltm_returns_none(self):
+        """add_ltm is void (returns None)."""
+        m = make_model()
+        result = m.add_ltm(KLine(5, [1]))
+        assert result is None
+
+    def test_add_ltm_writes_all_three_tiers(self):
+        """MOD-26: add_ltm writes to LTM, Frame, and STM."""
+        m = make_model()
+        k = KLine(5, [1])
+        m.add_ltm(k)
+        assert len(m) == 1    # Frame
+        assert m.stm_contains(k) is True
+        assert m.find(5) is k
+
+    def test_add_ltm_literal_dedup(self):
+        """MOD-29: literal dedup guard — rejects if literal exists in any tier."""
+        m = make_model()
+        k1 = KLine(1, [42], literal=True)
+        k2 = KLine(1, [42], literal=True)
+        m.add_ltm(k1)
+        m.add_ltm(k2)  # literal dedup → no-op
+        # Frame should only have one entry
+        assert len(m) == 1
+
+    def test_add_ltm_literal_dedup_across_tiers(self):
+        """MOD-29: literal dedup across tiers — Frame blocks LTM write."""
+        m = make_model()
+        k = KLine(1, [42], literal=True)
+        m.add_frame(k)
+        m.add_ltm(KLine(1, [42], literal=True))  # literal dedup → no-op
+        assert len(m) == 1
+
+    def test_add_ltm_non_literal_always_writes(self):
+        """MOD-31: non-literal klines always accepted."""
+        m = make_model()
+        k1 = KLine(5, [1])
+        k2 = KLine(5, [1])
+        m.add_ltm(k1)
+        m.add_ltm(k2)  # non-literal → always accepted
+        assert len(m) == 2
+
+    def test_add_ltm_frame_retains(self):
+        """MOD-33: LTM is additive — Frame retains the kline."""
+        m = make_model()
+        k = KLine(5, [1])
+        m.add_ltm(k)
+        assert len(m) == 1  # Frame has the kline
+        # KLine is in Frame (iterable)
+        assert any(kl.signature == 5 for kl in m)
+
+    def test_add_ltm_no_precondition(self):
+        """add_ltm has no precondition — any kline may be added."""
+        m = make_model()
+        k = KLine(5, [1])
+        m.add_ltm(k)  # never added before, still works
+        assert m.find(5) is k
+
+    def test_add_ltm_literal_dedup_base(self):
+        """Literal in Base blocks add_ltm."""
+        base = Model()
+        k = KLine(1, [42], literal=True)
+        base.add_frame(k)
+        m = Model(base=base)
+        m.add_ltm(KLine(1, [42], literal=True))
+        # Should not have been added
+        assert len(m) == 0
+
+
+# ── Read Operations ──────────────────────────────────────────────────
 
 class TestModelExists:
     def test_exists_true(self):
         m = make_model()
         k = KLine(5, [1, 2])
-        m.add(k)
+        m.add_frame(k)
         assert m.exists(k) is True
 
     def test_exists_false(self):
@@ -59,7 +268,7 @@ class TestModelExists:
 
     def test_exists_different_nodes(self):
         m = make_model()
-        m.add(KLine(5, [1, 2]))
+        m.add_frame(KLine(5, [1, 2]))
         assert m.exists(KLine(5, [1, 3])) is False
 
 
@@ -67,7 +276,7 @@ class TestModelFind:
     def test_find_by_signature(self):
         m = make_model()
         k = KLine(7, [1, 2, 4])
-        m.add(k)
+        m.add_frame(k)
         assert m.find(7) is k
 
     def test_find_none(self):
@@ -78,8 +287,8 @@ class TestModelFind:
         m = make_model()
         k1 = KLine(7, [1])
         k2 = KLine(7, [2])
-        m.add(k1)
-        m.add(k2)
+        m.add_frame(k1)
+        m.add_frame(k2)
         found = m.find(7)
         assert found is k2  # Most recently added
 
@@ -89,8 +298,8 @@ class TestModelFindAll:
         m = make_model()
         k1 = KLine(7, [1])
         k2 = KLine(7, [2])
-        m.add(k1)
-        m.add(k2)
+        m.add_frame(k1)
+        m.add_frame(k2)
         results = m.find_all(7)
         assert len(results) == 2
 
@@ -105,28 +314,27 @@ class TestModelLen:
         assert len(m) == 0
 
     def test_len_counts_frame_only(self):
-        """add() writes to both STM and Frame. len counts Frame entries."""
+        """add_frame() writes to both STM and Frame. len counts Frame entries."""
         m = make_model()
-        m.add(KLine(5, [1]))
-        assert len(m) == 1  # add writes to Frame
+        m.add_frame(KLine(5, [1]))
+        assert len(m) == 1  # add_frame writes to Frame
 
-    def test_len_after_promote(self):
-        """add + promote: Frame retains the kline, promote copies to LTM."""
+    def test_len_after_add_ltm(self):
+        """add_ltm writes to LTM + Frame + STM. len only counts Frame."""
         m = make_model()
         k = KLine(5, [1])
-        m.add(k)
-        m.promote(k)
-        assert len(m) == 1  # Frame retains, len only counts Frame
+        m.add_ltm(k)
+        assert len(m) == 1  # Frame has the kline
 
     def test_len_excludes_ltm(self):
-        """Promoting klines to LTM doesn't change len (Frame count)."""
+        """LTM entries don't add to len (Frame count)."""
         m = make_model()
-        m.add(KLine(5, [1]))
-        m.add(KLine(6, [2]))
+        m.add_frame(KLine(5, [1]))
+        m.add_frame(KLine(6, [2]))
         assert len(m) == 2
-        m.promote(KLine(5, [1]))
-        m.promote(KLine(6, [2]))
-        assert len(m) == 2  # still Frame count, LTM doesn't contribute
+        m.add_ltm(KLine(5, [1]))
+        m.add_ltm(KLine(6, [2]))
+        assert len(m) == 4  # non-literal: always accepted, Frame gets both
 
 
 class TestModelWhere:
@@ -134,8 +342,8 @@ class TestModelWhere:
         m = make_model()
         k1 = KLine(0b110, [0b10, 0b100])
         k2 = KLine(0b001, [0b001])
-        m.add(k1)
-        m.add(k2)
+        m.add_frame(k1)
+        m.add_frame(k2)
         results = m.where(0b010)
         assert k1 in results
         assert k2 not in results
@@ -145,7 +353,7 @@ class TestModelGraphTraversal:
     def test_resolve(self):
         m = make_model()
         k = KLine(5, [10, 20])
-        m.add(k)
+        m.add_frame(k)
         assert m.resolve(5) is k
 
     def test_query_expand(self):
@@ -153,9 +361,9 @@ class TestModelGraphTraversal:
         parent = KLine(5, [10, 20])
         child1 = KLine(10, [30])
         child2 = KLine(20, [])
-        m.add(parent)
-        m.add(child1)
-        m.add(child2)
+        m.add_frame(parent)
+        m.add_frame(child1)
+        m.add_frame(child2)
         expanded = m.query_expand(parent, depth=2)
         assert child1 in expanded
         assert child2 in expanded
@@ -163,15 +371,15 @@ class TestModelGraphTraversal:
     def test_query_expand_depth_1_returns_empty(self):
         m = make_model()
         k = KLine(5, [10])
-        m.add(k)
+        m.add_frame(k)
         assert m.query_expand(k, depth=1) == []
 
     def test_descendants(self):
         m = make_model()
         root = KLine(5, [10, 20])
         child = KLine(10, [30])
-        m.add(root)
-        m.add(child)
+        m.add_frame(root)
+        m.add_frame(child)
         desc = m.descendants(5)
         assert 10 in desc
         assert 20 in desc
@@ -181,8 +389,8 @@ class TestModelGraphTraversal:
         m = make_model()
         a = KLine(1, [2])
         b = KLine(2, [1])
-        m.add(a)
-        m.add(b)
+        m.add_frame(a)
+        m.add_frame(b)
         desc = m.descendants(1)
         assert 1 in desc
         assert 2 in desc
@@ -193,64 +401,21 @@ class TestModelThreeTier:
         """Four-tier: base klines discoverable through all tiers."""
         base = make_model()
         k = KLine(5, [1])
-        base.add(k)
+        base.add_frame(k)
 
         frame = Model(base=base)
         assert frame.find(5) is k
 
-    def test_add_goes_to_stm_and_frame(self):
-        """add() writes to both STM and Frame."""
+    def test_add_frame_goes_to_stm_and_frame(self):
+        """add_frame() writes to both STM and Frame."""
         base = make_model()
         session = Model(base=base)
         k = KLine(5, [1])
-        session.add(k)
+        session.add_frame(k)
         assert len(base) == 0
         assert len(session) == 1  # Frame has the kline
         assert session.find(5) is k  # discoverable via STM (priority) or Frame
 
-
-class TestModelPromote:
-    def test_promote_to_ltm(self):
-        """promote() copies from Frame to LTM."""
-        m = make_model()
-        k = KLine(5, [1])
-        m.add(k)
-        assert len(m) == 1  # STM + Frame
-        assert m.promote(k) is True  # copies to LTM
-        assert len(m) == 1  # Frame retains
-
-    def test_promote_no_precondition(self):
-        """promote() has no precondition — any kline may be promoted."""
-        m = make_model()
-        k = KLine(5, [1])
-        assert m.promote(k) is True  # never added to model, still works
-
-    def test_promote_literal_dedup_ltm_only(self):
-        """Promoting a literal that's already in LTM returns False."""
-        m = make_model()
-        k1 = KLine(1, [42], literal=True)
-        k2 = KLine(1, [42], literal=True)
-        m.promote(k1)
-        assert m.promote(k2) is False  # literal dedup in LTM
-
-    def test_promote_non_literal_no_dedup(self):
-        """Non-literal klines can be promoted repeatedly."""
-        m = make_model()
-        k1 = KLine(5, [1])
-        k2 = KLine(5, [1])
-        m.promote(k1)
-        assert m.promote(k2) is True  # non-literals always accepted
-
-    def test_promote_additive(self):
-        """KLine remains in Frame after promote."""
-        m = make_model()
-        k = KLine(5, [1])
-        m.add(k)
-        assert len(m) == 1
-        m.promote(k)
-        assert len(m) == 1  # Frame retains
-        # KLine is still in Frame (iterable)
-        assert any(kl.signature == 5 for kl in m)
 
 # ── STM Interface Tests ─────────────────────────────────────────────
 
@@ -259,7 +424,7 @@ class TestModelStmContains:
         """stm_contains returns True for a KLine in STM."""
         m = make_model()
         k = KLine(5, [1, 2])
-        m.add(k)
+        m.add_frame(k)
         assert m.stm_contains(k) is True
 
     def test_stm_contains_false(self):
@@ -273,9 +438,9 @@ class TestModelStmContains:
         k0 = KLine(0, [0])
         k1 = KLine(1, [1])
         k2 = KLine(2, [2])
-        m.add(k0, dedup=False)
-        m.add(k1, dedup=False)
-        m.add(k2, dedup=False)
+        m.add_frame(k0)
+        m.add_frame(k1)
+        m.add_frame(k2)
         # k0 evicted (bound=2, 3 added)
         assert m.stm_contains(k0) is False
         assert m.stm_contains(k1) is True
@@ -293,8 +458,8 @@ class TestModelIterStm:
         m = make_model()
         k1 = KLine(5, [1])
         k2 = KLine(6, [2])
-        m.add(k1)
-        m.add(k2)
+        m.add_frame(k1)
+        m.add_frame(k2)
         result = list(m.iter_stm())
         assert k1 in result
         assert k2 in result
@@ -305,11 +470,10 @@ class TestModelIterStm:
         k1 = KLine(1, [1])
         k2 = KLine(2, [2])
         k3 = KLine(3, [3])
-        m.add(k1)
-        m.add(k2)
-        m.add(k3)
+        m.add_frame(k1)
+        m.add_frame(k2)
+        m.add_frame(k3)
         assert list(m.iter_stm()) == [k1, k2, k3]
-
 
 
 class TestModelFourTier:
@@ -320,8 +484,8 @@ class TestModelFourTier:
         m = make_model()
         k1 = KLine(5, [1])
         k2 = KLine(5, [2])
-        m.add(k1)  # goes to STM + Frame
-        m.add(k2)  # goes to STM + Frame, k1 evicted from STM but still in Frame
+        m.add_frame(k1)  # goes to STM + Frame
+        m.add_frame(k2)  # goes to STM + Frame, k1 evicted from STM but still in Frame
         # k2 is most recent in STM
         found = m.find(5)
         assert found is k2
@@ -331,46 +495,49 @@ class TestModelFourTier:
         m = make_model()
         k_frame = KLine(5, [1])
         k_ltm = KLine(5, [2])
-        m.add(k_frame)    # Frame
-        m.promote(k_ltm)  # LTM
+        m.add_frame(k_frame)    # Frame + STM
+        m.add_ltm(k_ltm)        # LTM + Frame + STM
         found = m.find(5)
-        assert found is k_frame  # Frame takes priority
+        # Both are in Frame; most recent wins (k_ltm was added later)
+        assert found is k_ltm
 
     def test_ltm_priority_over_base(self):
         """Same sig kline in LTM and Base → find() returns LTM version."""
         base = Model()
         k_base = KLine(5, [1])
-        base.add(k_base)
+        base.add_frame(k_base)
 
         m = Model(base=base)
         k_ltm = KLine(5, [2])
-        m.promote(k_ltm)  # LTM
+        m.add_ltm(k_ltm)  # LTM
         found = m.find(5)
         assert found is k_ltm  # LTM takes priority over Base
 
     def test_cross_tier_literal_dedup_ltm(self):
-        """Literal in LTM blocks add."""
+        """Literal in LTM blocks add_frame."""
         m = make_model()
         k = KLine(1, [42], literal=True)
-        m.promote(k)  # goes to LTM
-        assert m.add(KLine(1, [42], literal=True)) is False
+        m.add_ltm(k)  # goes to LTM
+        m.add_frame(KLine(1, [42], literal=True))
+        assert len(m) == 1  # only the one from add_ltm
 
     def test_cross_tier_literal_dedup_base(self):
-        """Literal in Base blocks add."""
+        """Literal in Base blocks add_frame."""
         base = Model()
         k = KLine(1, [42], literal=True)
-        base.add(k)
+        base.add_frame(k)
 
         m = Model(base=base)
-        assert m.add(KLine(1, [42], literal=True)) is False
+        m.add_frame(KLine(1, [42], literal=True))
+        assert len(m) == 0  # dedup blocked
 
     def test_find_all_merges_tiers(self):
         """find_all returns deduplicated results across all tiers."""
         m = make_model()
         k1 = KLine(7, [1])
         k2 = KLine(7, [2])
-        m.add(k1)      # Frame
-        m.promote(k2)  # LTM
+        m.add_frame(k1)      # Frame
+        m.add_ltm(k2)        # LTM + Frame + STM
         results = m.find_all(7)
         assert len(results) == 2
         assert k1 in results
@@ -380,8 +547,8 @@ class TestModelFourTier:
         """klines() returns each unique kline once across tiers."""
         m = make_model()
         k = KLine(5, [1])
-        m.add(k)       # STM + Frame
-        m.promote(k)   # LTM (same kline)
+        m.add_frame(k)       # STM + Frame
+        m.add_ltm(k)         # LTM (same kline, non-literal → always accepted)
         results = m.klines()
         # Same kline object in STM, Frame, and LTM → deduplicated
         count = sum(1 for kl in results if kl.signature == 5 and kl.nodes == [1])
@@ -392,65 +559,14 @@ class TestModelFourTier:
         prev_session = Model()
         k1 = KLine(5, [1])
         k2 = KLine(6, [2])
-        prev_session.add(k1)
-        prev_session.add(k2)
+        prev_session.add_frame(k1)
+        prev_session.add_frame(k2)
 
         m = Model(ltm=prev_session)
         # LTM should have the klines from prev_session
         assert m.find(5) is k1
         assert m.find(6) is k2
         assert len(m) == 0  # Frame is empty, LTM doesn't count
-
-
-class TestModelRefreshStm:
-    """Tests for refresh_stm() — LRU-style STM refresh."""
-
-    def test_refresh_stm_reorders(self):
-        """refresh_stm moves kline to front of STM FIFO."""
-        m = make_model(stm_bound=3)
-        k1 = KLine(1, [1])
-        k2 = KLine(2, [2])
-        k3 = KLine(3, [3])
-        m.add(k1)
-        m.add(k2)
-        m.add(k3)
-        m.refresh_stm(k1)  # refresh k1 — moves to front
-        k4 = KLine(4, [4])
-        m.add(k4)  # should evict k2 (oldest after refresh)
-        assert m.stm_contains(k1) is True
-        assert m.stm_contains(k2) is False
-        assert m.stm_contains(k4) is True
-
-    def test_refresh_stm_not_in_stm(self):
-        """Refreshing a kline not in STM adds it, returns True."""
-        m = make_model(stm_bound=256)
-        k = KLine(5, [1])
-        result = m.refresh_stm(k)
-        assert result is True
-        assert m.stm_contains(k) is True
-
-    def test_refresh_stm_does_not_affect_frame(self):
-        """refresh_stm only affects STM, not Frame."""
-        m = make_model()
-        k = KLine(5, [1])
-        m.add(k)  # STM + Frame
-        frame_count = len(m)
-        m.refresh_stm(k)
-        assert len(m) == frame_count  # Frame unchanged
-
-    def test_refresh_stm_eviction(self):
-        """bound=2, refresh k1, add k3 → k2 evicted, k1 and k3 remain."""
-        m = make_model(stm_bound=2)
-        k1 = KLine(1, [1])
-        k2 = KLine(2, [2])
-        m.add(k1)
-        m.add(k2)
-        m.refresh_stm(k1)  # k1 refreshed, k2 now oldest
-        k3 = KLine(3, [3])
-        m.add(k3)  # evicts k2
-        assert m.stm_contains(k1) is True
-        assert m.stm_contains(k2) is False
-        assert m.stm_contains(k3) is True
 
 
 class TestKLineStore:
@@ -557,7 +673,7 @@ class TestTierChainContains:
         """Chain with a Model tier uses Model.exists() for contains."""
         base = Model()
         k = KLine(5, [1])
-        base.add(k)
+        base.add_frame(k)
         chain = _TierChain([base])
         assert chain.contains(k) is True
 
@@ -674,8 +790,8 @@ class TestTierChainAllKlines:
         base = Model()
         k1 = KLine(1, [1])
         k2 = KLine(2, [2])
-        base.add(k1)
-        base.add(k2)
+        base.add_frame(k1)
+        base.add_frame(k2)
         chain = _TierChain([base])
         results = chain.all_klines()
         assert len(results) == 2

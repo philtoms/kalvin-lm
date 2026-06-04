@@ -193,10 +193,20 @@ class _TierChain:
 class Model:
     """Four-tier Model: STM → Frame → LTM → Base.
 
-    - STM: bounded rolling window (default 256). Written by add() and refresh_stm().
-    - Frame: working context. Written directly by add() alongside STM.
-    - LTM: long-term memory. Populated by promote() from Frame. Additive (Frame retains).
+    Write API (cascade methods):
+    - add_stm(kl) — STM only. Always refreshes FIFO position.
+    - add_frame(kl) — Frame + STM. Literal dedup guard on entry.
+    - add_ltm(kl) — LTM + Frame + STM. Literal dedup guard on entry.
+
+    Tier descriptions:
+    - STM: bounded rolling window (default 256). Fast recency index.
+    - Frame: working context. Additive, monotonic for non-literals.
+    - LTM: long-term memory. Populated via add_ltm(). Additive.
     - Base: optional long-term knowledge store (read-only, set at construction).
+
+    Read API (unchanged):
+    - exists(kl), find(sig), find_all(sig), find_by_nodes(sig), where(pred)
+    - klines(), iter_stm(), stm_contains(kl)
 
     The caller sees a single unified API. Significance and misfit logic
     live in expand.py and misfit.py respectively.
@@ -226,30 +236,40 @@ class Model:
 
     # ── Storage Operations ────────────────────────────────────────────
 
-    def add(self, kline: KLine, dedup: bool = False) -> bool:
-        """Add a KLine to both STM and Frame.
+    def add_stm(self, kline: KLine) -> None:
+        """Write to STM only. Always refreshes FIFO (remove-if-present then add).
 
-        Automatic cross-tier literal dedup: if kline.is_literal() is True,
-        check all four tiers (STM, Frame, LTM, Base) before adding.
-        If a matching literal exists anywhere, return False.
-        Non-literal klines are always accepted.
-
-        The ``dedup`` parameter is kept for backward compatibility but
-        literal dedup is now automatic regardless of its value.
-
-        Returns True if added, False if rejected (literal duplicate).
+        Literal dedup guard: returns early if literal exists in any tier.
+        Non-literal klines are always written.
         """
-        if kline.is_literal():
-            if self._exists_any(kline):
-                return False
-
-        # Write to Frame first (Frame retains even if STM evicts)
-        if not self._frame.contains(kline):
-            self._frame.add(kline)
-
-        # Then write to STM (may trigger FIFO eviction)
+        if kline.is_literal() and self._exists_any(kline):
+            return
         self._stm.add(kline)
-        return True
+
+    def add_frame(self, kline: KLine) -> None:
+        """Write to Frame and STM. Literal dedup guard on entry.
+
+        Frame and STM are both written unconditionally (after dedup check).
+        Frame _dedup set is a membership index, not a write guard.
+        Non-literal klines are always written.
+        """
+        if kline.is_literal() and self._exists_any(kline):
+            return
+        self._frame.add(kline)
+        self._stm.add(kline)
+
+    def add_ltm(self, kline: KLine) -> None:
+        """Write to LTM, Frame, and STM. Literal dedup guard on entry.
+
+        All three tiers written unconditionally (after dedup check).
+        LTM and Frame _dedup sets are membership indexes, not write guards.
+        Non-literal klines are always written.
+        """
+        if kline.is_literal() and self._exists_any(kline):
+            return
+        self._ltm.add(kline)
+        self._frame.add(kline)
+        self._stm.add(kline)
 
     def exists(self, kline: KLine) -> bool:
         """Check if an equal KLine exists in any tier."""
@@ -307,25 +327,7 @@ class Model:
             return [kl for kl in self.klines() if signifies(kl.signature, sig)]
         return [kl for kl in self.klines() if predicate(kl)]
 
-    # ── Promotion ─────────────────────────────────────────────────────
 
-    def promote(self, kline: KLine) -> bool:
-        """Promote a KLine from Frame to LTM.
-
-        Copies the kline to the LTM tier. The kline remains in Frame
-        (promotion is additive, not a move).
-
-        - No precondition — any kline may be promoted regardless of Frame membership.
-        - Literal dedup in LTM: if kline.is_literal() and an equal kline
-          already exists in LTM, returns False.
-        - Non-literal klines are always accepted by LTM.
-        - Returns True if added to LTM, False if rejected (literal duplicate).
-        """
-        if kline.is_literal():
-            if self._ltm.contains(kline):
-                return False
-        self._ltm.add(kline)
-        return True
 
     # ── Graph Traversal ───────────────────────────────────────────────
 
@@ -415,21 +417,6 @@ class Model:
         """Iterate all KLines currently in the STM, in insertion order."""
         return self._stm.iter_all()
 
-    def refresh_stm(self, kline: KLine) -> bool:
-        """Re-enter a KLine into STM with LRU-style freshness.
-
-        Removes the kline from STM if present, then re-adds it — refreshing
-        its FIFO position. Used by the cogitation pipeline to give recency
-        precedence to klines actively used in reasoning.
-
-        Returns True if the kline was added to STM.
-        Returns False if the kline could not be added.
-        Does NOT affect Frame, LTM, or Base.
-        """
-        self._stm.remove(kline)
-        self._stm.add(kline)
-        return True
-
     # ── Compatibility ─────────────────────────────────────────────────
 
     def find_kline(self, signature: KSig) -> KLine | None:
@@ -450,7 +437,7 @@ class Model:
                    for kl in self._frame.all_klines()]
         m = Model()
         for kl in klines:
-            m.add(kl)
+            m.add_frame(kl)
         return m
 
     def get_all_descendants(self, node: int, visited: set[int] | None = None) -> set[int]:

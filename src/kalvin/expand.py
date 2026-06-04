@@ -324,8 +324,10 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> int:
 
     count = 0
     for kl in to_promote:
-        if model.promote(kl):
-            count += 1
+        if kl.is_literal() and model.exists(kl):
+            continue  # literal already in a tier — add_ltm would be a no-op
+        model.add_ltm(kl)
+        count += 1
     return count
 
 

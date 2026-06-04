@@ -562,8 +562,7 @@ class TestCogitatorWithFakeHandler:
         m = Model()
         # Build model with a canonical kline so expand yields a high-significance result
         c = KLine(10, [10])  # canonical: sig == make_signature(nodes)
-        m.add(c)
-        m.promote(c)
+        m.add_ltm(c)
 
         recorder = RecordingCogitationHandler()
         event_bus = EventBus()
@@ -572,7 +571,7 @@ class TestCogitatorWithFakeHandler:
         # Query fully matches candidate → S1 after expand
         q = KLine(0, [10])
         q.signature = make_signature([10])
-        m.add(q)
+        m.add_frame(q)
 
         cogitator.submit(WorkItem(q, c, "S2"))
         cogitator.join(timeout=2.0)
@@ -586,15 +585,12 @@ class TestCogitatorWithFakeHandler:
         m = Model()
         # Build model with canonical klines that resolve nodes
         k1 = KLine(0b100, [0b100])  # canonical
-        m.add(k1)
-        m.promote(k1)
+        m.add_ltm(k1)
         k2 = KLine(0b010, [0b010])  # canonical — resolves as a contributor
-        m.add(k2)
-        m.promote(k2)
+        m.add_ltm(k2)
         # A misfit kline — underfitting: sig=0b110 but nodes only give 0b100
         k3 = KLine(0b110, [0b100])
-        m.add(k3)
-        m.promote(k3)
+        m.add_ltm(k3)
 
         recorder = RecordingCogitationHandler()
         event_bus = EventBus()
@@ -604,7 +600,7 @@ class TestCogitatorWithFakeHandler:
         # and k3 is misfit so propose_expansions triggers generate_expansions.
         q = KLine(0, [0b010])
         q.signature = make_signature([0b010])
-        m.add(q)
+        m.add_frame(q)
 
         cogitator.submit(WorkItem(q, k3, "S3"))
         cogitator.join(timeout=2.0)

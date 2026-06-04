@@ -14,12 +14,9 @@ from kalvin.model import Model
 def _make_model_with_klines() -> tuple[Model, Counter]:
     """Build a model with a few klines and a non-empty activity counter."""
     model = Model()
-    model.add(KLine(5, [1, 2]))
-    model.promote(KLine(5, [1, 2]))
-    model.add(KLine(10, [3, 4]))
-    model.promote(KLine(10, [3, 4]))
-    model.add(KLine(0, []))
-    model.promote(KLine(0, []))
+    model.add_ltm(KLine(5, [1, 2]))
+    model.add_ltm(KLine(10, [3, 4]))
+    model.add_ltm(KLine(0, []))
     activity = Counter({5: 3, 10: 1})
     return model, activity
 
@@ -28,31 +25,27 @@ def _make_model_with_all_tiers() -> tuple[Model, Counter]:
     """Build a model with distinct entries in STM, Frame, and LTM.
 
     Strategy:
-      1. Add klines (STM+Frame) — these are the base Frame set.
-      2. Promote a subset to LTM.
-      3. Add more klines so STM contains both promoted and un-promoted entries.
+      1. add_ltm for entries that should be in LTM + Frame + STM.
+      2. add_frame for entries that should be in Frame + STM only.
     """
     model = Model()
 
-    # Step 1: Add klines that go into STM+Frame
+    # Step 1: add_ltm — writes LTM + Frame + STM
     kl_a = KLine(5, [1, 2])
+    model.add_ltm(kl_a)
+
+    # Step 2: add_frame — writes Frame + STM (not LTM)
     kl_b = KLine(10, [3, 4])
-    model.add(kl_a)
-    model.add(kl_b)
-
-    # Step 2: Promote kl_a to LTM (Frame retains it)
-    model.promote(kl_a)
-
-    # Step 3: Add more klines (goes into STM+Frame)
     kl_c = KLine(15, [5, 6])
     kl_d = KLine(20, [7, 8])
-    model.add(kl_c)
-    model.add(kl_d)
+    model.add_frame(kl_b)
+    model.add_frame(kl_c)
+    model.add_frame(kl_d)
 
     # Now:
     #   STM = [kl_a, kl_b, kl_c, kl_d] (all four)
     #   Frame = [kl_a, kl_b, kl_c, kl_d] (all four)
-    #   LTM = [kl_a] (only promoted one)
+    #   LTM = [kl_a] (only add_ltm one)
 
     activity = Counter({5: 2, 15: 1})
     return model, activity
@@ -321,8 +314,8 @@ class TestLiteralPreservation:
         model = Model()
         kl_lit = KLine(100, [200], literal=True)
         kl_norm = KLine(200, [300], literal=False)
-        model.add(kl_lit)
-        model.add(kl_norm)
+        model.add_frame(kl_lit)
+        model.add_frame(kl_norm)
         activity = Counter()
 
         data = BinaryAdapter.encode(model, activity)
@@ -342,8 +335,8 @@ class TestLiteralPreservation:
         model = Model()
         kl_lit = KLine(100, [200], literal=True)
         kl_norm = KLine(200, [300], literal=False)
-        model.add(kl_lit)
-        model.add(kl_norm)
+        model.add_frame(kl_lit)
+        model.add_frame(kl_norm)
         activity = Counter()
 
         d = JsonAdapter.encode(model, activity)
@@ -364,17 +357,13 @@ class TestEmptyTiers:
     """Model with only Frame entries roundtrips correctly."""
 
     def test_empty_stm_ltm(self):
-        """Model with only Frame entries (no promote) roundtrips."""
+        """Model with only Frame entries (no add_ltm) roundtrips."""
         model = Model()
-        model.add(KLine(5, [1, 2]))
-        model.add(KLine(10, [3, 4]))
+        model.add_frame(KLine(5, [1, 2]))
+        model.add_frame(KLine(10, [3, 4]))
         activity = Counter({5: 1})
 
-        # At this point: STM has klines (from add), Frame has klines, LTM is empty
-        # We want to test that a model where STM and LTM are empty roundtrips.
-        # Since add() always writes to STM, create a model where we only promote
-        # (promote writes to LTM, not STM). But we need Frame entries first.
-        # Let's test binary roundtrip of this model where LTM is empty.
+        # STM has klines (from add_frame), Frame has klines, LTM is empty
         orig_frame = {(kl.signature, tuple(kl.nodes)) for kl in model}
 
         data = BinaryAdapter.encode(model, activity)

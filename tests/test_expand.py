@@ -48,16 +48,16 @@ class TestEdgeHops:
     def test_edge_hops_canonical(self):
         """Node that resolves to canonical → empty generator."""
         m = make_model()
-        m.add(KLine(10, [10]))  # canonical
+        m.add_frame(KLine(10, [10]))  # canonical
         assert list(edge_hops(m, 10)) == []
 
     def test_edge_hops_chain(self):
         """Non-canonical chain: 5→(1,10)→(2,20)→(3,30) where 30 is canonical."""
         m = make_model()
-        m.add(KLine(30, [30]))  # canonical
-        m.add(KLine(20, [30]))  # non-canon: sig=20, make_sig([30])=30
-        m.add(KLine(10, [20]))  # non-canon: sig=10, make_sig([20])=20
-        m.add(KLine(5, [10]))   # non-canon: sig=5,  make_sig([10])=10
+        m.add_frame(KLine(30, [30]))  # canonical
+        m.add_frame(KLine(20, [30]))  # non-canon: sig=20, make_sig([30])=30
+        m.add_frame(KLine(10, [20]))  # non-canon: sig=10, make_sig([20])=20
+        m.add_frame(KLine(5, [10]))   # non-canon: sig=5,  make_sig([10])=10
         assert list(edge_hops(m, 5))  == [(1, 10), (2, 20), (3, 30)]
         assert list(edge_hops(m, 10)) == [(1, 20), (2, 30)]
         assert list(edge_hops(m, 20)) == [(1, 30)]
@@ -89,7 +89,7 @@ class TestExpand:
     def test_expand_with_grounding(self):
         """Matched node that resolves to structural S1 → no ungrounded penalty."""
         m = make_model()
-        m.add(KLine(10, [10]))  # canonical kline, node 10 is structural S1
+        m.add_frame(KLine(10, [10]))  # canonical kline, node 10 is structural S1
         q = KLine(5, [10, 2])
         c = KLine(6, [10, 3])
         # distance=200 (2 × MAX_HOP, grounded match)
@@ -100,10 +100,10 @@ class TestExpand:
     def test_expand_hop_reaches_opposing_mismatch(self):
         """Mismatched node whose chain reaches the opposing mismatch set."""
         m = make_model()
-        m.add(KLine(30, [30]))  # canonical
-        m.add(KLine(20, [30]))  # non-canon
-        m.add(KLine(10, [20]))  # non-canon
-        m.add(KLine(5, [10]))   # non-canon
+        m.add_frame(KLine(30, [30]))  # canonical
+        m.add_frame(KLine(20, [30]))  # non-canon
+        m.add_frame(KLine(10, [20]))  # non-canon
+        m.add_frame(KLine(5, [10]))   # non-canon
 
         q = KLine(100, [5, 2])    # mismatched_q: {5, 2}
         c = KLine(200, [10, 3])   # mismatched_c: {10, 3}
@@ -125,10 +125,10 @@ class TestExpand:
     def test_expand_bidirectional_hop_match(self):
         """Both query and candidate mismatched nodes reach opposing sets."""
         m = make_model()
-        m.add(KLine(10, [10]))  # canonical
-        m.add(KLine(5, [10]))   # non-canon
-        m.add(KLine(30, [30]))  # canonical
-        m.add(KLine(20, [30]))  # non-canon
+        m.add_frame(KLine(10, [10]))  # canonical
+        m.add_frame(KLine(5, [10]))   # non-canon
+        m.add_frame(KLine(30, [30]))  # canonical
+        m.add_frame(KLine(20, [30]))  # non-canon
 
         q = KLine(100, [5, 20])     # mismatched_q: {5, 20}
         c = KLine(200, [10, 30])    # mismatched_c: {10, 30}
@@ -140,8 +140,8 @@ class TestExpand:
     def test_expand_all_matched_grounded(self):
         """All nodes match and all resolve → no ungrounded penalty → max significance."""
         m = make_model()
-        m.add(KLine(10, [10]))  # canonical, node 10 resolves
-        m.add(KLine(20, [20]))  # canonical, node 20 resolves
+        m.add_frame(KLine(10, [10]))  # canonical, node 10 resolves
+        m.add_frame(KLine(20, [20]))  # canonical, node 20 resolves
         q = KLine(5, [10, 20])
         c = KLine(6, [10, 20])
         # distance=0 → significance=D_MAX (all bits set)
@@ -180,8 +180,8 @@ class TestExpand:
     def test_expand_significance_ordering(self):
         """Verify significance ordering: closer match → higher significance."""
         m = make_model()
-        m.add(KLine(10, [10]))  # canonical
-        m.add(KLine(5, [10]))   # non-canon
+        m.add_frame(KLine(10, [10]))  # canonical
+        m.add_frame(KLine(5, [10]))   # non-canon
 
         q = KLine(100, [5, 2])     # mismatched_q: {5, 2}
         c = KLine(200, [10, 3])    # mismatched_c: {10, 3}
@@ -201,9 +201,9 @@ class TestExpand:
         before S3 when signatures share bits).
         """
         m = make_model()
-        m.add(KLine(8, [8]))    # canonical
-        m.add(KLine(4, [8]))    # non-canon: edge_hops(4) = [(1, 8)]
-        m.add(KLine(2, [8]))    # non-canon: edge_hops(2) = [(1, 8)]
+        m.add_frame(KLine(8, [8]))    # canonical
+        m.add_frame(KLine(4, [8]))    # non-canon: edge_hops(4) = [(1, 8)]
+        m.add_frame(KLine(2, [8]))    # non-canon: edge_hops(2) = [(1, 8)]
 
         q = KLine(100, [4])     # mismatched_q: {4}
         c = KLine(200, [2])     # mismatched_c: {2}
@@ -245,10 +245,10 @@ class TestExpand:
         terminal distance (signifies doesn't resolve the mismatch).
         """
         m = make_model()
-        m.add(KLine(30, [30]))  # canonical
-        m.add(KLine(20, [30]))  # non-canon
-        m.add(KLine(10, [20]))  # non-canon
-        m.add(KLine(5, [10]))   # non-canon
+        m.add_frame(KLine(30, [30]))  # canonical
+        m.add_frame(KLine(20, [30]))  # non-canon
+        m.add_frame(KLine(10, [20]))  # non-canon
+        m.add_frame(KLine(5, [10]))   # non-canon
 
         q = KLine(100, [5])      # mismatched_q: {5}
         c = KLine(200, [10])     # mismatched_c: {10}
@@ -285,9 +285,9 @@ class TestExpand:
         signature, preventing S3 connotation bridging for the same hop.
         """
         m = make_model()
-        m.add(KLine(0b11100, [0b11100]))  # canonical (28)
-        m.add(KLine(0b10100, [0b11100]))  # non-canon: sig=20, make_sig=28
-        m.add(KLine(0b01100, [0b11100]))  # non-canon: sig=12, make_sig=28
+        m.add_frame(KLine(0b11100, [0b11100]))  # canonical (28)
+        m.add_frame(KLine(0b10100, [0b11100]))  # non-canon: sig=20, make_sig=28
+        m.add_frame(KLine(0b01100, [0b11100]))  # non-canon: sig=12, make_sig=28
 
         q = KLine(100, [0b10100])  # mismatched_q: {20}
         c = KLine(200, [0b01100])  # mismatched_c: {12}
@@ -336,8 +336,8 @@ class TestIsS1:
         m = Model()
         a = KLine(5, [10])
         b = KLine(10, [5])
-        m.add(a)
-        m.add(b)
+        m.add_frame(a)
+        m.add_frame(b)
         # a is countersigned: a.nodes has 10, model.find(10)=b, b.nodes has 5=a.signature
         assert is_s1(m, a) is True
 
@@ -359,7 +359,7 @@ class TestIsS1:
         m = Model()
         lit = (65 << 32) | 0xFFFF_FFFF
         a = KLine(5, [lit])  # only literal nodes
-        m.add(a)
+        m.add_frame(a)
         assert is_s1(m, a) is False  # not canonical, no non-literal nodes to check
 
 
@@ -370,16 +370,16 @@ class TestIsCountersigned:
         query = KLine(5, [10, 20])
         # make_sig([10, 20]) = 30 (XOR)
         countersigner = KLine(30, [5])
-        m.add(query)
-        m.add(countersigner)
+        m.add_frame(query)
+        m.add_frame(countersigner)
         assert is_countersigned(m, query) is True
 
     def test_one_way_only(self):
         m = Model()
         a = KLine(5, [10])
         b = KLine(10, [20, 30])  # sig doesn't match make_sig(a.nodes)
-        m.add(a)
-        m.add(b)
+        m.add_frame(a)
+        m.add_frame(b)
         assert is_countersigned(m, a) is False
 
     def test_no_model_match(self):
@@ -392,8 +392,8 @@ class TestIsCountersigned:
         m = Model()
         query = KLine(5, [10, 20])
         countersigner = KLine(30, [99])  # make_sig([10,20])=30, but node != query.sig
-        m.add(query)
-        m.add(countersigner)
+        m.add_frame(query)
+        m.add_frame(countersigner)
         assert is_countersigned(m, query) is False
 
     def test_countersigner_multiple_nodes(self):
@@ -401,8 +401,8 @@ class TestIsCountersigned:
         m = Model()
         query = KLine(5, [10, 20])
         countersigner = KLine(30, [5, 99])  # make_sig([10,20])=30, node has 5 but len>1
-        m.add(query)
-        m.add(countersigner)
+        m.add_frame(query)
+        m.add_frame(countersigner)
         assert is_countersigned(m, query) is False
 
 
@@ -412,8 +412,8 @@ class TestPromoteParticipating:
         m = Model(stm_bound=256)
         q = KLine(5, [10, 20])
         c = KLine(10, [5, 30])
-        m.add(q)
-        m.add(c)
+        m.add_frame(q)
+        m.add_frame(c)
         count = promote_participating(m, q, c)
         assert count >= 2
         assert len(m) >= 2
@@ -423,11 +423,11 @@ class TestPromoteParticipating:
         m = Model(stm_bound=256)
         # Identity kline (S4) with sig that appears in query nodes
         identity = KLine(10, [100])  # sig=10 appears in query.nodes
-        m.add(identity)
+        m.add_frame(identity)
         q = KLine(5, [10, 20])
         c = KLine(20, [5, 30])
-        m.add(q)
-        m.add(c)
+        m.add_frame(q)
+        m.add_frame(c)
         count = promote_participating(m, q, c)
         assert count >= 2  # at least query + candidate
         # identity (sig=10) is in q.nodes, should also be promoted
@@ -438,10 +438,10 @@ class TestPromoteParticipating:
         m = Model(stm_bound=256)
         q = KLine(5, [10], literal=True)
         c = KLine(10, [5], literal=True)
-        m.add(q)
-        m.add(c)
-        m.promote(q)  # promote to LTM first
-        m.promote(c)
+        m.add_frame(q)
+        m.add_frame(c)
+        m.add_ltm(q)  # promote to LTM first
+        m.add_ltm(c)
         count = promote_participating(m, q, c)
         assert count == 0  # both already in LTM (literal dedup)
 
@@ -535,8 +535,8 @@ class TestProposeExpansions:
         m = Model()
         # Contributor for the underfit gap 0b010
         contributor = KLine(0b010, [0b010])
-        m.add(contributor)
-        m.promote(contributor)
+        m.add_frame(contributor)
+        m.add_ltm(contributor)
 
         # Underfit kline: sig=0b110 promises bits that nodes=[0b100] don't deliver
         candidate = KLine(0b110, [0b100])
@@ -569,7 +569,7 @@ class TestProposeExpansions:
         """Every yield is a (KLine, int) tuple."""
         m = Model()
         contributor = KLine(0b010, [0b010])
-        m.add(contributor)
+        m.add_frame(contributor)
         candidate = KLine(0b110, [0b100])
 
         for item in propose_expansions(m, candidate, 42):

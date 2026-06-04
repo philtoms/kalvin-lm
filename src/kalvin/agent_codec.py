@@ -179,15 +179,22 @@ class BinaryAdapter:
                            stm_klines: list[KLine]) -> Model:
         """Reconstruct a Model from three tiers in the correct order.
 
-        Order: add Frame → promote LTM → add STM.
+        Order: add_ltm → add_frame → add_stm. Since serialized tier lists
+        overlap (add_ltm writes LTM + Frame + STM), we check existence
+        before add_frame/add_stm to avoid Frame duplication for non-literals.
+        Literal dedup guards handle literal dedup automatically.
         """
         model = Model()
-        for kl in frame_klines:
-            model.add(kl)
         for kl in ltm_klines:
-            model.promote(kl)
+            model.add_ltm(kl)
+        for kl in frame_klines:
+            if model.exists(kl):
+                # Already written by add_ltm — just refresh STM position
+                model.add_stm(kl)
+            else:
+                model.add_frame(kl)
         for kl in stm_klines:
-            model.add(kl)
+            model.add_stm(kl)
         return model
 
     @staticmethod
@@ -265,33 +272,37 @@ class JsonAdapter:
     def decode(data: dict) -> tuple[Model, Counter]:
         """Deserialize a dict into (Model, Counter).
 
-        Reconstruction order: add Frame klines, promote LTM klines,
-        add STM klines.  Backward compatible with single-section JSON
-        (only "klines" + "activity").
+        Reconstruction order: add_ltm, add_frame, add_stm. Since serialized
+        tier lists overlap (add_ltm writes LTM + Frame + STM), we check
+        existence before add_frame to avoid Frame duplication for non-literals.
+        Backward compatible with single-section JSON (only "klines" + "activity").
         """
         model = Model()
 
-        # (a) Add Frame klines
-        frame_klines = [
-            JsonAdapter._kline_from_dict(item) for item in data.get("klines", [])
-        ]
-        for kl in frame_klines:
-            model.add(kl)
-
-        # (b) Promote LTM klines
+        # (a) Add LTM klines (writes LTM + Frame + STM)
         ltm_klines = [
             JsonAdapter._kline_from_dict(item) for item in data.get("ltm", [])
         ]
         for kl in ltm_klines:
-            model.promote(kl)
+            model.add_ltm(kl)
 
-        # (c) Re-populate STM entries (add() writes to STM + Frame;
-        #     Frame already has these so dedup handles it)
+        # (b) Add Frame klines — check existence first to avoid Frame duplicates
+        frame_klines = [
+            JsonAdapter._kline_from_dict(item) for item in data.get("klines", [])
+        ]
+        for kl in frame_klines:
+            if model.exists(kl):
+                # Already written by add_ltm — just refresh STM position
+                model.add_stm(kl)
+            else:
+                model.add_frame(kl)
+
+        # (c) Refresh STM entries (writes STM only; literal dedup skips those already present)
         stm_klines = [
             JsonAdapter._kline_from_dict(item) for item in data.get("stm", [])
         ]
         for kl in stm_klines:
-            model.add(kl)
+            model.add_stm(kl)
 
         activity: Counter = Counter()
         if "activity" in data:
