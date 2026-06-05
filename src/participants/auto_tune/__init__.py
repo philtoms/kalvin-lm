@@ -11,6 +11,7 @@ Exports:
     stop_harness — stop the harness server (SIGTERM → SIGKILL).
     start_supervisor — start the CLI supervisor as a background process.
     stop_supervisor — stop the CLI supervisor (shutdown cmd → SIGKILL).
+    reset — clear auto-tune session state for a fresh start.
 """
 
 
@@ -25,6 +26,9 @@ def __getattr__(name: str):
     if name in ("start_harness", "stop_harness", "start_supervisor", "stop_supervisor"):
         from participants.auto_tune import lifecycle as _lifecycle
         return getattr(_lifecycle, name)
+    if name == "reset":
+        from participants.auto_tune.snapshots import reset
+        return reset
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -35,4 +39,5 @@ __all__ = [
     "stop_harness",
     "start_supervisor",
     "stop_supervisor",
+    "reset",
 ]
