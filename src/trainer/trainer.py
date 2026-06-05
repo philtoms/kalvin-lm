@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from harness.bus import MessageBus
+from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX
@@ -50,8 +51,8 @@ class Trainer:
         The message bus to subscribe to and send messages on.
     curriculum:
         The :class:`Curriculum` instance with ordered lessons.
-    address:
-        Bus address for this participant (default ``"trainer"``).
+    role:
+        Bus role for this participant (default ``"trainer"``).
     max_reactive_rounds:
         Maximum reactive scaffolding rounds before budget-exhaustion escalation.
     cogitate_fn:
@@ -78,7 +79,7 @@ class Trainer:
         bus: MessageBus,
         curriculum: Curriculum,
         *,
-        address: str = "trainer",
+        role: str = "trainer",
         max_reactive_rounds: int = 5,
         cogitate_fn: Callable[[RationaliseEvent], tuple[str, float] | None] | None = None,
         llm_client: Any | None = None,
@@ -86,7 +87,7 @@ class Trainer:
         curriculum_file: str | Path | None = None,
         curricula_dir: str | Path | None = None,
     ) -> None:
-        self._address = address
+        self._role = role
         self._bus = bus
         self._state = CurriculumState(
             curriculum,
@@ -101,7 +102,7 @@ class Trainer:
         self._reactor = Reactor(
             bus,
             self._state,
-            address=address,
+            address=role,
             max_reactive_rounds=max_reactive_rounds,
             cogitate_fn=cogitate_fn,
         )
@@ -114,7 +115,7 @@ class Trainer:
         self._polling_for_goal: bool = False
 
         # Register on the bus
-        bus.subscribe(self._address, self.on_message)
+        bus.subscribe(self._role, self.on_message)
 
         if self._curriculum_file is not None and self._state.curriculum.total() > 0:
             # Curriculum loaded but not started — tell the UI we're ready
@@ -128,9 +129,9 @@ class Trainer:
     # ── Participant protocol ──────────────────────────────────────────
 
     @property
-    def address(self) -> str:
-        """Bus address for this participant."""
-        return self._address
+    def role(self) -> str:
+        """Bus role for this participant."""
+        return self._role
 
     @property
     def state(self) -> CurriculumState:
@@ -186,15 +187,39 @@ class Trainer:
         event: RationaliseEvent = msg.message
         self._reactor.record_response()
 
+        # Relay event to supervisor (HRNS-33)
+        self._bus.send(
+            Message(
+                role=SUPERVISOR_ROLE,
+                action="event",
+                message=event,
+                sender=self._role,
+            )
+        )
+
         if self._is_s1(event):
             # S1 fast path: auto-satisfy by query match
             key = _entry_key(event.query)
             self._state.mark_satisfied(key)
-            self._check_lesson_complete()
         else:
             # S2/S3 slow path: delegate to reactor
             self._reactor.process_s2_s3(event)
-            self._check_lesson_complete()
+
+            # Ratify request for S2/S3 proposals (HRNS-33)
+            self._bus.send(
+                Message(
+                    role=SUPERVISOR_ROLE,
+                    action="ratify_request",
+                    message={
+                        "proposal": event.proposal,
+                        "query": event.query,
+                        "significance": event.significance,
+                    },
+                    sender=self._role,
+                )
+            )
+
+        self._check_lesson_complete()
 
     def _handle_kagent_error(self, msg: Message) -> None:
         """Log KAgent error and count toward lesson completion."""
@@ -466,10 +491,10 @@ class Trainer:
         # Send raw KScript source — the adapter compiles independently
         self._bus.send(
             Message(
-                address="kalvin",
+                role=TRAINEE_ROLE,
                 action="submit",
                 message=lesson,
-                sender=self._address,
+                sender=self._role,
             )
         )
 
@@ -484,7 +509,7 @@ class Trainer:
 
         self._bus.send(
             Message(
-                address="ui",
+                role=SUPERVISOR_ROLE,
                 action="progress",
                 message={
                     "lesson_label": lesson_label,
@@ -492,7 +517,7 @@ class Trainer:
                     "lessons_completed": completed,
                     "status": status,
                 },
-                sender=self._address,
+                sender=self._role,
             )
         )
 
@@ -503,7 +528,7 @@ class Trainer:
         """
         self._bus.send(
             Message(
-                address="ui",
+                role=SUPERVISOR_ROLE,
                 action="progress",
                 message={
                     "lesson_label": None,
@@ -511,7 +536,7 @@ class Trainer:
                     "lessons_completed": len(self._state.lesson_satisfied),
                     "status": "polling_for_goal",
                 },
-                sender=self._address,
+                sender=self._role,
             )
         )
 

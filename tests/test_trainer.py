@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from harness.bus import MessageBus
+from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
@@ -115,17 +116,17 @@ class BusCapture:
 
         self._bus.send = capturing_send  # type: ignore[assignment]
 
-    def find_all(self, address: str, action: str) -> list[Message]:
-        """Return all captured messages matching address and action."""
+    def find_all(self, role: str, action: str) -> list[Message]:
+        """Return all captured messages matching role and action."""
         return [
             m
             for m in self.messages
-            if m.address == address and m.action == action
+            if m.role == role and m.action == action
         ]
 
-    def find_one(self, address: str, action: str) -> Message | None:
-        """Return the first captured message matching address and action, or None."""
-        matches = self.find_all(address, action)
+    def find_one(self, role: str, action: str) -> Message | None:
+        """Return the first captured message matching role and action, or None."""
+        matches = self.find_all(role, action)
         return matches[0] if matches else None
 
     def reset(self) -> None:
@@ -212,7 +213,7 @@ class TestOneSessionAtATime:
 
         # Send input with "goal: second" from slack
         trainer.on_message(
-            Message(address="trainer", action="input", message="goal: second", sender="slack")
+            Message(role=TRAINER_ROLE, action="input", message="goal: second", sender="slack")
         )
 
         # Verify second goal is queued
@@ -248,12 +249,12 @@ class TestSessionPause:
         trainer.start_session()
 
         # Verify first lesson submitted
-        submit_msgs = capture.find_all("kalvin", "submit")
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert len(submit_msgs) == 1
 
         # Send pause
         trainer.on_message(
-            Message(address="trainer", action="input", message="pause", sender="slack")
+            Message(role=TRAINER_ROLE, action="input", message="pause", sender="slack")
         )
         assert trainer._session_paused
 
@@ -264,24 +265,24 @@ class TestSessionPause:
         proposal = KLine(signature=100, nodes=[10])
         event = _make_event("ground", query, proposal, _S1_SIGNIFICANCE)
         trainer.on_message(
-            Message(address="trainer", action="ground", message=event)
+            Message(role=TRAINER_ROLE, action="ground", message=event)
         )
 
         # Curriculum position should advance (lesson complete)
         assert trainer.state.curriculum.position == 1
 
         # But NO auto-submit of next lesson (paused)
-        submit_after = capture.find_all("kalvin", "submit")
+        submit_after = capture.find_all(TRAINEE_ROLE, "submit")
         assert len(submit_after) == 0
 
         # Resume
         trainer.on_message(
-            Message(address="trainer", action="input", message="resume", sender="slack")
+            Message(role=TRAINER_ROLE, action="input", message="resume", sender="slack")
         )
         assert not trainer._session_paused
 
         # After resume, next lesson should be submitted
-        submit_resume = capture.find_all("kalvin", "submit")
+        submit_resume = capture.find_all(TRAINEE_ROLE, "submit")
         assert len(submit_resume) == 1
 
 
@@ -305,7 +306,7 @@ class TestSessionStop:
 
         # Send stop
         trainer.on_message(
-            Message(address="trainer", action="input", message="stop", sender="slack")
+            Message(role=TRAINER_ROLE, action="input", message="stop", sender="slack")
         )
 
         # Verify session ended
@@ -321,7 +322,7 @@ class TestSessionStop:
         proposal = KLine(signature=100, nodes=[10])
         event = _make_event("ground", query, proposal, _S1_SIGNIFICANCE)
         trainer.on_message(
-            Message(address="trainer", action="ground", message=event)
+            Message(role=TRAINER_ROLE, action="ground", message=event)
         )
 
         # No messages sent in response
@@ -361,14 +362,14 @@ class TestEntryCountingLessonComplete:
                 significance=_S1_SIGNIFICANCE,
             )
             trainer.on_message(
-                Message(address="trainer", action="ground", message=event)
+                Message(role=TRAINER_ROLE, action="ground", message=event)
             )
 
         # After 3 events: curriculum position advances
         assert trainer.state.curriculum.position == 1
 
         # Next lesson submitted (not paused, curriculum has more lessons)
-        submit_msgs = capture.find_all("kalvin", "submit")
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         # At least the submit for lesson2
         assert any(m.message == "lesson2" for m in submit_msgs)
 
@@ -399,7 +400,7 @@ class TestCurriculumCompleteEndsSession:
             significance=_S1_SIGNIFICANCE,
         )
         trainer.on_message(
-            Message(address="trainer", action="ground", message=event)
+            Message(role=TRAINER_ROLE, action="ground", message=event)
         )
 
         # Curriculum complete → session ends
@@ -430,7 +431,7 @@ class TestFastPathAutoSatisfy:
             significance=_S1_SIGNIFICANCE,
         )
         trainer.on_message(
-            Message(address="trainer", action="ground", message=event)
+            Message(role=TRAINER_ROLE, action="ground", message=event)
         )
 
         # Entry is satisfied
@@ -438,7 +439,7 @@ class TestFastPathAutoSatisfy:
         assert trainer.state.is_satisfied(key)
 
         # No countersign sent (fast path auto-satisfies, no countersign needed)
-        cs_msgs = capture.find_all("kalvin", "countersign")
+        cs_msgs = capture.find_all(TRAINEE_ROLE, "countersign")
         assert len(cs_msgs) == 0
 
 
@@ -460,7 +461,7 @@ class TestCompilationErrorFromKalvin:
         # Simulate error event from KAgent
         trainer.on_message(
             Message(
-                address="trainer",
+                role=TRAINER_ROLE,
                 action="error",
                 message="ParseError at line 1: unexpected token",
             )
@@ -477,7 +478,7 @@ class TestCompilationErrorFromKalvin:
         assert trainer.state.curriculum.position == 1
 
         # Next lesson submitted
-        submit_msgs = capture.find_all("kalvin", "submit")
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert any(m.message == "lesson2" for m in submit_msgs)
 
 
@@ -507,7 +508,7 @@ class TestStopPersistsState:
             significance=_S1_SIGNIFICANCE,
         )
         trainer.on_message(
-            Message(address="trainer", action="ground", message=event)
+            Message(role=TRAINER_ROLE, action="ground", message=event)
         )
 
         # Now at lesson 2 (position=1)
@@ -515,7 +516,7 @@ class TestStopPersistsState:
 
         # Stop session
         trainer.on_message(
-            Message(address="trainer", action="input", message="stop", sender="slack")
+            Message(role=TRAINER_ROLE, action="input", message="stop", sender="slack")
         )
 
         # Verify file persisted
@@ -544,7 +545,7 @@ class TestGuidanceTextAppended:
         # Send free-text guidance
         trainer.on_message(
             Message(
-                address="trainer",
+                role=TRAINER_ROLE,
                 action="input",
                 message="try using simpler constructs",
                 sender="slack",
@@ -580,7 +581,7 @@ class TestSessionStartup:
         assert trainer._session_active
         assert trainer.state.curriculum.document.lessons[0].label == "1"
         # Submit was sent
-        submit_msgs = capture.find_all("kalvin", "submit")
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert len(submit_msgs) >= 1
 
     @patch("trainer.trainer.compile_source")
@@ -648,7 +649,7 @@ class TestSessionStartup:
         assert len(polling_events) >= 1
 
         # A progress message was emitted to "ui" with status "polling_for_goal"
-        progress_msgs = capture.find_all("ui", "progress")
+        progress_msgs = capture.find_all(SUPERVISOR_ROLE, "progress")
         polling_progress = [
             m for m in progress_msgs if m.message["status"] == "polling_for_goal"
         ]
@@ -676,7 +677,7 @@ class TestSessionStartup:
         assert len(polling_events) >= 1
 
         # A progress message to "ui" with status "polling_for_goal" was emitted
-        progress_msgs = capture.find_all("ui", "progress")
+        progress_msgs = capture.find_all(SUPERVISOR_ROLE, "progress")
         polling_progress = [
             m for m in progress_msgs if m.message["status"] == "polling_for_goal"
         ]
@@ -731,7 +732,7 @@ class TestGoalResolution:
         # Polling mode not active (session is active), so "goal:" input
         # goes through the regular input handler and queues
         trainer.on_message(
-            Message(address="trainer", action="input", message="goal: teach SVO", sender="slack")
+            Message(role=TRAINER_ROLE, action="input", message="goal: teach SVO", sender="slack")
         )
         # Goal is queued since session is active
         assert "teach SVO" in trainer._pending_goals
@@ -755,7 +756,7 @@ class TestGoalResolution:
 
         trainer.on_message(
             Message(
-                address="trainer",
+                role=TRAINER_ROLE,
                 action="input",
                 message=str(curriculum_path),
                 sender="slack",
@@ -814,7 +815,7 @@ class TestPollingModeInputHandling:
         # Send goal input
         trainer.on_message(
             Message(
-                address="trainer",
+                role=TRAINER_ROLE,
                 action="input",
                 message="goal: teach SVO patterns",
                 sender="slack",
@@ -854,7 +855,7 @@ class TestPollingModeInputHandling:
         # Send file path as input
         trainer.on_message(
             Message(
-                address="trainer",
+                role=TRAINER_ROLE,
                 action="input",
                 message=str(curriculum_path),
                 sender="slack",
@@ -867,7 +868,7 @@ class TestPollingModeInputHandling:
         assert trainer.state.curriculum.document.lessons[0].label == "1"
 
         # Submit was sent to kalvin
-        submit_msgs = capture.find_all("kalvin", "submit")
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert len(submit_msgs) >= 1
 
 
@@ -896,7 +897,7 @@ class TestFilePolling:
         trainer.start_session()
 
         # Verify first submit happened
-        submit_msgs = capture.find_all("kalvin", "submit")
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert len(submit_msgs) >= 1
 
     @patch("trainer.trainer.compile_source")
@@ -929,7 +930,7 @@ class TestFilePolling:
             proposal=KLine(signature=100, nodes=[10]),
             significance=_S1_SIGNIFICANCE,
         )
-        trainer.on_message(Message(address="trainer", action="ground", message=event))
+        trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
 
         # After re-read, curriculum should have 4 lessons
         assert len(trainer.state.curriculum.document.lessons) == 4
@@ -970,7 +971,7 @@ class TestProgressEvents:
         trainer, capture = _make_trainer(bus, curriculum)
         trainer.start_session()
 
-        progress_msgs = capture.find_all("ui", "progress")
+        progress_msgs = capture.find_all(SUPERVISOR_ROLE, "progress")
         assert len(progress_msgs) >= 1
         started = progress_msgs[0]
         assert started.message["status"] == "started"
@@ -995,9 +996,9 @@ class TestProgressEvents:
             proposal=KLine(signature=100, nodes=[10]),
             significance=_S1_SIGNIFICANCE,
         )
-        trainer.on_message(Message(address="trainer", action="ground", message=event))
+        trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
 
-        progress_msgs = capture.find_all("ui", "progress")
+        progress_msgs = capture.find_all(SUPERVISOR_ROLE, "progress")
         complete_msgs = [m for m in progress_msgs if m.message["status"] == "lesson_complete"]
         assert len(complete_msgs) >= 1
         assert complete_msgs[0].message["lessons_completed"] == 1
@@ -1020,9 +1021,9 @@ class TestProgressEvents:
             proposal=KLine(signature=100, nodes=[10]),
             significance=_S1_SIGNIFICANCE,
         )
-        trainer.on_message(Message(address="trainer", action="ground", message=event))
+        trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
 
-        progress_msgs = capture.find_all("ui", "progress")
+        progress_msgs = capture.find_all(SUPERVISOR_ROLE, "progress")
         complete_msgs = [m for m in progress_msgs if m.message["status"] == "complete"]
         assert len(complete_msgs) >= 1
 
@@ -1050,7 +1051,7 @@ class TestProgressEvents:
         )
 
         # Verify progress event
-        progress_msgs = capture.find_all("ui", "progress")
+        progress_msgs = capture.find_all(SUPERVISOR_ROLE, "progress")
         amended_msgs = [m for m in progress_msgs if m.message["status"] == "amended"]
         assert len(amended_msgs) >= 1
 
@@ -1114,7 +1115,7 @@ class TestGenerateAndStart:
         trainer._polling_for_goal = True
         trainer.on_message(
             Message(
-                address="trainer",
+                role=TRAINER_ROLE,
                 action="input",
                 message="goal: teach Kalvin about SVO",
                 sender="slack",
@@ -1137,7 +1138,7 @@ class TestGenerateAndStart:
         assert trainer._session_active
 
         # A submit should have been sent to kalvin (session started with loaded curriculum)
-        submit_msgs = capture.find_all("kalvin", "submit")
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert len(submit_msgs) >= 1
 
     @patch("trainer.trainer.compile_source")
@@ -1229,7 +1230,7 @@ class TestGenerateAndStart:
         trainer._generate_and_start("test goal")
 
         # Progress event should have been emitted (session started)
-        progress_msgs = capture.find_all("ui", "progress")
+        progress_msgs = capture.find_all(SUPERVISOR_ROLE, "progress")
         assert any(m.message["status"] == "started" for m in progress_msgs)
 
 
@@ -1322,7 +1323,7 @@ class TestGenerateAndStartGuards:
         # Polling status emitted to UI
         polling_msgs = [
             m for m in capture.messages
-            if m.address == "ui"
+            if m.role == SUPERVISOR_ROLE
             and m.action == "progress"
             and m.message.get("status") == "polling_for_goal"
         ]
@@ -1373,7 +1374,7 @@ class TestGenerateAndStartGuards:
         # Second attempt via _handle_input while polling — should succeed
         trainer.on_message(
             Message(
-                address="trainer",
+                role=TRAINER_ROLE,
                 action="input",
                 message="goal: teach SVO",
                 sender="slack",
@@ -1419,7 +1420,7 @@ class TestResolveGoalDispatch:
 
         trainer.on_message(
             Message(
-                address="trainer",
+                role=TRAINER_ROLE,
                 action="input",
                 message="goal: teach Kalvin about SVO",
                 sender="slack",
@@ -1461,7 +1462,7 @@ class TestResolveGoalDispatch:
 
         trainer.on_message(
             Message(
-                address="trainer",
+                role=TRAINER_ROLE,
                 action="input",
                 message="goal:teach Kalvin about SVO",
                 sender="slack",
@@ -1493,7 +1494,7 @@ class TestResolveGoalDispatch:
         # Should not crash — empty goal goes through generation and fails
         trainer.on_message(
             Message(
-                address="trainer",
+                role=TRAINER_ROLE,
                 action="input",
                 message="goal: ",
                 sender="slack",
@@ -1526,7 +1527,7 @@ class TestResolveGoalDispatch:
 
         trainer.on_message(
             Message(
-                address="trainer",
+                role=TRAINER_ROLE,
                 action="input",
                 message=str(curriculum_path),
                 sender="slack",
@@ -1571,7 +1572,7 @@ class TestResolveGoalDispatch:
 
         trainer.on_message(
             Message(
-                address="trainer",
+                role=TRAINER_ROLE,
                 action="input",
                 message="teach Kalvin about SVO",
                 sender="slack",
@@ -1584,3 +1585,157 @@ class TestResolveGoalDispatch:
         goal_events = [e for e in trainer.state.event_log if e["type"] == "goal_received"]
         assert len(goal_events) == 1
         assert goal_events[0]["data"]["goal"] == "teach Kalvin about SVO"
+
+
+# ── HRNS-33: Event relay and ratify request ──────────────────────────
+
+
+class TestEventRelay:
+    """HRNS-33: Trainer relays events to supervisor, sends ratify_request for S2/S3."""
+
+    @patch("trainer.trainer.compile_source")
+    def test_relay_ground_event_to_supervisor(self, mock_compile: MagicMock) -> None:
+        """S1 ground event: event relay sent to supervisor, no ratify_request."""
+        entry = _make_entry(100, [10])
+        mock_compile.return_value = [entry]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+        capture.reset()
+
+        # Send S1 ground event (completes the lesson's only entry)
+        event = _make_event(
+            "ground",
+            query=KLine(signature=100, nodes=[10]),
+            proposal=KLine(signature=100, nodes=[10]),
+            significance=_S1_SIGNIFICANCE,
+        )
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="ground", message=event)
+        )
+
+        # Event relay was sent to supervisor
+        relay_msgs = capture.find_all(SUPERVISOR_ROLE, "event")
+        assert len(relay_msgs) == 1
+        assert relay_msgs[0].message is event
+
+        # NO ratify_request for S1 events
+        ratify_msgs = capture.find_all(SUPERVISOR_ROLE, "ratify_request")
+        assert len(ratify_msgs) == 0
+
+    @patch("trainer.trainer.process_s2_s3", create=True)
+    @patch("trainer.trainer.compile_source")
+    def test_relay_frame_event_with_ratify_request(
+        self, mock_compile: MagicMock, mock_process: MagicMock
+    ) -> None:
+        """S2/S3 frame event: event relay + ratify_request sent to supervisor.
+
+        Reactor.process_s2_s3 is patched because the Reactor still uses
+        Message(address=...) (KB-113/114, out of scope).
+        """
+        entry = _make_entry(100, [10])
+        mock_compile.return_value = [entry]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+        capture.reset()
+
+        # Patch the reactor's process_s2_s3 to avoid Message(address=...) crash
+        trainer._reactor.process_s2_s3 = MagicMock()
+
+        # Send S2/S3 frame event (low significance, non-matching signature)
+        event = _make_event(
+            "frame",
+            query=KLine(signature=999, nodes=[99]),
+            proposal=KLine(signature=999, nodes=[99]),
+            significance=_S2_SIGNIFICANCE,
+        )
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="frame", message=event)
+        )
+
+        # Event relay was sent to supervisor
+        relay_msgs = capture.find_all(SUPERVISOR_ROLE, "event")
+        assert len(relay_msgs) == 1
+        assert relay_msgs[0].message is event
+
+        # Ratify request was sent to supervisor
+        ratify_msgs = capture.find_all(SUPERVISOR_ROLE, "ratify_request")
+        assert len(ratify_msgs) == 1
+        payload = ratify_msgs[0].message
+        assert payload["proposal"] is event.proposal
+        assert payload["query"] is event.query
+        assert payload["significance"] == event.significance
+
+    @patch("trainer.trainer.compile_source")
+    def test_s1_event_relay_payload_and_sender(self, mock_compile: MagicMock) -> None:
+        """S1 event relay includes correct sender and RationaliseEvent payload."""
+        entry = _make_entry(100, [10])
+        mock_compile.return_value = [entry]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+        capture.reset()
+
+        event = _make_event(
+            "ground",
+            query=KLine(signature=100, nodes=[10]),
+            proposal=KLine(signature=100, nodes=[10]),
+            significance=_S1_SIGNIFICANCE,
+        )
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="ground", message=event)
+        )
+
+        relay_msgs = capture.find_all(SUPERVISOR_ROLE, "event")
+        assert len(relay_msgs) == 1
+
+        # Verify sender is the trainer's role
+        assert relay_msgs[0].sender == trainer.role
+        assert relay_msgs[0].sender == "trainer"
+
+        # Verify payload is the actual RationaliseEvent
+        assert relay_msgs[0].message is event
+        assert relay_msgs[0].message.kind == "ground"
+
+    @patch("trainer.trainer.compile_source")
+    def test_high_significance_frame_event_no_ratify_request(
+        self, mock_compile: MagicMock
+    ) -> None:
+        """High-significance frame event takes S1 path: relay but no ratify."""
+        from kalvin.expand import D_MAX
+
+        _S1_FRAME_THRESHOLD = D_MAX - 1
+        entry = _make_entry(100, [10])
+        mock_compile.return_value = [entry]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+        capture.reset()
+
+        # Frame event at S1 threshold → classified as S1
+        event = _make_event(
+            "frame",
+            query=KLine(signature=100, nodes=[10]),
+            proposal=KLine(signature=100, nodes=[10]),
+            significance=_S1_FRAME_THRESHOLD,
+        )
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="frame", message=event)
+        )
+
+        # Event relay IS sent (all events are relayed regardless of S1/S2/S3)
+        relay_msgs = capture.find_all(SUPERVISOR_ROLE, "event")
+        assert len(relay_msgs) == 1
+
+        # No ratify_request (went through S1 path)
+        ratify_msgs = capture.find_all(SUPERVISOR_ROLE, "ratify_request")
+        assert len(ratify_msgs) == 0
