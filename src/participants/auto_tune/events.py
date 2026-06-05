@@ -10,7 +10,7 @@ significance breakdown (raw, normalised, level).
 
 from __future__ import annotations
 
-from kalvin.expand import D_MAX, boundaries, classify
+from kalvin.expand import D_MAX, MASK64, boundaries, classify
 from kalvin.kline import KLine
 from kscript.decompiler import Decompiler
 
@@ -119,12 +119,20 @@ def _build_significance(raw_sig: int) -> dict:
     """Build a Significance Object (§Significance Object).
 
     Returns dict with raw, normalised, and level fields.
+
+    Normalisation uses the inverted distance (distance = ~raw) against
+    S2_S3_DISTANCE so that S1 → [0.99, 1.0], S2 → [0.0, 0.98],
+    S3/S4 → 0.0. This ensures S2 < S1 in the normalised value, unlike
+    raw/D_MAX which loses float64 precision for distances < 2^64.
     """
+    from kalvin.expand import S2_S3_DISTANCE
     s12, s23, s34 = boundaries()
-    normalised = raw_sig / D_MAX
-    # Clamp to [0.0, 1.0]
-    normalised = max(0.0, min(1.0, normalised))
     level = classify(raw_sig, s12, s23, s34)
+    if raw_sig == 0:
+        normalised = 0.0
+    else:
+        distance = (~raw_sig) & MASK64
+        normalised = max(0.0, 1.0 - distance / S2_S3_DISTANCE)
     return {
         "raw": raw_sig,
         "normalised": normalised,

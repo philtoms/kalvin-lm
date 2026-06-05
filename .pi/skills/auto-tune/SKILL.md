@@ -10,6 +10,7 @@ Auto-tune is a hands-free loop where you (pi) control training sessions against 
 ## Before Starting
 
 Read these files for context:
+
 - `specs/auto-tune.md` — full specification of the auto-tune system
 - `CONTEXT.md` — domain glossary (especially the Auto-Tune, CLI Supervisor, and Snapshot entries)
 
@@ -28,52 +29,53 @@ Do NOT proceed to session creation until the goal is clear and specific. Vague g
 ### Commands Reference
 
 All commands require `PYTHONPATH=src` and are invoked as:
+
 ```bash
 PYTHONPATH=src python -m participants.auto_tune <command> --session <name> [options]
 ```
 
-| Command | Purpose |
-|---------|---------|
+| Command                                                               | Purpose                                                              |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `init --session <name> --curriculum <path> [--host <h>] [--port <p>]` | Create session directory, config.json, git branch `auto-tune/<name>` |
-| `start-harness --session <name>` | Start harness server (background), wait for ready |
-| `stop-harness --session <name>` | Graceful shutdown (SIGTERM → SIGKILL on timeout) |
-| `start-supervisor --session <name>` | Start CLI supervisor (background), wait for connected |
-| `stop-supervisor --session <name>` | Send shutdown command, wait for exit |
-| `send --session <name> --command '<json>'` | Write command, return immediately |
-| `events --session <name> [--after <seq>]` | Print events after given sequence number |
-| `step --session <name> --command '<json>'` | Write command, block until next event, print it |
-| `status --session <name>` | Print status.json |
-| `snapshot --session <name>` | Capture state, events, model, git metadata to `runs/<n>/` |
-| `restore --session <name> --run <n>` | Restore state and model from a snapshot |
-| `reset --session <name> [--fresh-model]` | Delete curriculum state, truncate events, optionally delete model |
+| `start-harness --session <name>`                                      | Start harness server (background), wait for ready                    |
+| `stop-harness --session <name>`                                       | Graceful shutdown (SIGTERM → SIGKILL on timeout)                     |
+| `start-supervisor --session <name>`                                   | Start CLI supervisor (background), wait for connected                |
+| `stop-supervisor --session <name>`                                    | Send shutdown command, wait for exit                                 |
+| `send --session <name> --command '<json>'`                            | Write command, return immediately                                    |
+| `events --session <name> [--after <seq>]`                             | Print events after given sequence number                             |
+| `step --session <name> --command '<json>'`                            | Write command, block until next event, print it                      |
+| `status --session <name>`                                             | Print status.json                                                    |
+| `snapshot --session <name>`                                           | Capture state, events, model, git metadata to `runs/<n>/`            |
+| `restore --session <name> --run <n>`                                  | Restore state and model from a snapshot                              |
+| `reset --session <name> [--fresh-model]`                              | Delete curriculum state, truncate events, optionally delete model    |
 
 ### Supervisor Commands (sent via `step` or `send`)
 
-| Command JSON | Effect |
-|-------------|--------|
-| `{"action": "start"}` | Begin training session |
-| `{"action": "continue"}` | No-op — acknowledge event, wait for next |
-| `{"action": "ratify"}` | Countersign latest pending proposal |
-| `{"action": "restart"}` | Reset training state and restart |
-| `{"action": "pause"}` | Pause training |
-| `{"action": "resume"}` | Resume training |
-| `{"action": "stop"}` | End training session |
-| `{"action": "shutdown"}` | Graceful supervisor exit |
-| `{"action": "guidance", "text": "..."}` | Send guidance to trainer |
-| `{"action": "goal", "text": "..."}` | Set a training goal |
-| `{"action": "save"}` | Persist Kalvin model |
-| `{"action": "load"}` | Load Kalvin model |
+| Command JSON                            | Effect                                   |
+| --------------------------------------- | ---------------------------------------- |
+| `{"action": "start"}`                   | Begin training session                   |
+| `{"action": "continue"}`                | No-op — acknowledge event, wait for next |
+| `{"action": "ratify"}`                  | Countersign latest pending proposal      |
+| `{"action": "restart"}`                 | Reset training state and restart         |
+| `{"action": "pause"}`                   | Pause training                           |
+| `{"action": "resume"}`                  | Resume training                          |
+| `{"action": "stop"}`                    | End training session                     |
+| `{"action": "shutdown"}`                | Graceful supervisor exit                 |
+| `{"action": "guidance", "text": "..."}` | Send guidance to trainer                 |
+| `{"action": "goal", "text": "..."}`     | Set a training goal                      |
+| `{"action": "save"}`                    | Persist Kalvin model                     |
+| `{"action": "load"}`                    | Load Kalvin model                        |
 
 ### Event Types (received from supervisor)
 
-| Type | When |
-|------|------|
-| `connected` | Supervisor connected to harness |
-| `progress` | Training progress (started, lesson_complete, complete, amended, etc.) |
-| `rationalise` | Kalvin rationalisation event (ground or frame) |
-| `ratify_request` | S2/S3 proposal needing ratification |
-| `escalation` | Trainer stuck (budget_exhaustion or low_confidence) |
-| `disconnected` | Supervisor disconnected |
+| Type             | When                                                                  |
+| ---------------- | --------------------------------------------------------------------- |
+| `connected`      | Supervisor connected to harness                                       |
+| `progress`       | Training progress (started, lesson_complete, complete, amended, etc.) |
+| `rationalise`    | Kalvin rationalisation event (ground or frame)                        |
+| `ratify_request` | S2/S3 proposal needing ratification                                   |
+| `escalation`     | Trainer stuck (budget_exhaustion or low_confidence)                   |
+| `disconnected`   | Supervisor disconnected                                               |
 
 ### Typical Session Lifecycle
 
@@ -124,14 +126,41 @@ After each run:
 4. **Edit code** — make changes to address the goal
 5. **Snapshot before each code change** — so you can compare before/after
 
+### Fix Before Continuing
+
+If a training run crashes or produces unexpected errors (exceptions in harness.log, ValueError, traceback, etc.), **stop and fix the bug before continuing the tune session**. Do not work around failures or treat them as acceptable noise. The training pipeline must run cleanly.
+
+Steps:
+
+1. **Identify** — read the full traceback in harness.log. Trace the code path.
+2. **Reproduce** — write a minimal inline test (PYTHONPATH=src python -c "...") that triggers the failure.
+3. **Fix** — edit the source code.
+4. **Verify** — re-run the reproduction test and the existing test suite.
+5. **Re-run** — snapshot, reset, and run the training session again to confirm the fix.
+
+### Commit Regularly
+
+Commit each meaningful change to the auto-tune branch as you go. Do not accumulate a large diff across multiple runs. Good commit points include:
+
+- After fixing a bug found during a training run
+- After a code change that produces an observable difference in the training trace
+- After updating or adding tests
+- After any documentation update (spec, plan)
+
+Use descriptive commit messages that reference the session and the change:
+
+```
+fix(expand): cycle detection in edge_hops, null-safe _as_kline replacement
+```
+
 ### Key Files to Observe
 
-| File | What it tells you |
-|------|-------------------|
-| `auto-tune/<session>/harness.log` | Full server-side training trace (Trainer, Reactor, Adapter logging) |
-| `auto-tune/<session>/events.jsonl` | Structured event stream from supervisor's perspective |
-| `auto-tune/<session>/status.json` | Supervisor state (connected, last_event_seq, state) |
-| `auto-tune/<session>/runs/<n>/` | Snapshot directory (state, events, git metadata) |
+| File                               | What it tells you                                                   |
+| ---------------------------------- | ------------------------------------------------------------------- |
+| `auto-tune/<session>/harness.log`  | Full server-side training trace (Trainer, Reactor, Adapter logging) |
+| `auto-tune/<session>/events.jsonl` | Structured event stream from supervisor's perspective               |
+| `auto-tune/<session>/status.json`  | Supervisor state (connected, last_event_seq, state)                 |
+| `auto-tune/<session>/runs/<n>/`    | Snapshot directory (state, events, git metadata)                    |
 
 ## Phase 4: Document
 
@@ -156,22 +185,13 @@ Every auto-tune session must produce cascade documentation that integrates the w
 - Tests must cover spec criteria (TL-1 through TL-N style IDs)
 - The auto-tune session directory stays as evidence (don't clean it up)
 
-## Phase 5: Merge
-
-When the goal is met and documentation is complete:
-
-1. Verify all tests pass: `PYTHONPATH=src python -m pytest tests/test_<feature>.py -v`
-2. Commit any remaining changes on the auto-tune branch
-3. Merge to main: `git checkout main && git merge auto-tune/<session> --no-ff`
-4. Delete the branch: `git branch -d auto-tune/<session>`
-
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| `step` times out | Supervisor may be stuck. Check `status.json`. Kill stale processes: `lsof -ti :8765 \| xargs kill` |
-| Port 8765 in use | Kill stale harness: `lsof -ti :8765 \| xargs kill` |
-| `lessons_completed` already 3 on start | Stale curriculum state file. Delete `curricula/<slug>.json` and reset |
-| Supervisor won't connect | Harness not ready. Check `harness.pid`, wait, retry |
-| No rationalise events in log | Curriculum is all fast-path S1. That's correct but boring — consider a more complex curriculum |
-| Events.jsonl shows `lesson: null` | Minor enrichment bug in progress events — the data is still valid |
+| Problem                                | Solution                                                                                           |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `step` times out                       | Supervisor may be stuck. Check `status.json`. Kill stale processes: `lsof -ti :8765 \| xargs kill` |
+| Port 8765 in use                       | Kill stale harness: `lsof -ti :8765 \| xargs kill`                                                 |
+| `lessons_completed` already 3 on start | Stale curriculum state file. Delete `curricula/<slug>.json` and reset                              |
+| Supervisor won't connect               | Harness not ready. Check `harness.pid`, wait, retry                                                |
+| No rationalise events in log           | Curriculum is all fast-path S1. That's correct but boring — consider a more complex curriculum     |
+| Events.jsonl shows `lesson: null`      | Minor enrichment bug in progress events — the data is still valid                                  |

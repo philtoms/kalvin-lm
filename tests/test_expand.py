@@ -64,6 +64,29 @@ class TestEdgeHops:
         assert list(edge_hops(m, 30)) == []  # canonical
         assert list(edge_hops(m, 99)) == []  # unresolvable
 
+    def test_edge_hops_cycle_detection_er1(self):
+        """ER-1: Countersigned pair produces bounded hops, not MAX_HOP."""
+        m = make_model()
+        # {A: [B]} ↔ {B: [A]} — mutual non-canonical resolution
+        m.add_frame(KLine(5, [10]))   # sig=5, make_sig([10])=10
+        m.add_frame(KLine(10, [5]))   # sig=10, make_sig([5])=5
+        hops = list(edge_hops(m, 5))
+        # Without cycle detection: 100 hops alternating 10,5,10,5...
+        # With cycle detection: at most 2 hops before revisiting sig
+        assert len(hops) <= 3
+        assert hops == [(1, 10), (2, 5)]
+
+    def test_edge_hops_identity_kline_er2(self):
+        """ER-2: Identity kline {A: []} yields zero hops."""
+        m = make_model()
+        # Identity kline: sig > 0, nodes = []
+        # make_signature([]) = 0, so it's not canonical (sig ≠ 0)
+        m.add_frame(KLine(42, []))  # identity, not canonical
+        hops = list(edge_hops(m, 42))
+        # Without guard: yields (1, 0) which is a dead end
+        # With guard: yields nothing (breaks on sig == 0)
+        assert hops == []
+
 
 class TestExpand:
     def test_expand_self_no_model(self):
@@ -320,6 +343,43 @@ class TestExpand:
         results = list(expand(m, q, c))
         sig = results[-1].significance
         assert 0 < sig <= D_MAX
+
+    def test_expand_no_crash_on_unresolvable_match_sig_er6(self):
+        """ER-6: expand() does not crash when edge_hops yields an unresolvable sig."""
+        m = make_model()
+        # Build a scenario where edge_hops produces match_sig=0 from identity kline
+        # Identity kline {42: []} → make_sig([]) = 0, which doesn't resolve
+        m.add_ltm(KLine(42, []))  # identity
+        # Query and candidate that trigger the mismatched-node path
+        q = KLine(42 | 10, [42, 10])  # sig includes 42, nodes include 42
+        c = KLine(42 | 10, [10])      # partial overlap on 10, mismatched_c = {}
+        m.add_ltm(c)
+        # expand should complete without ValueError
+        results = list(expand(m, q, c))
+        assert len(results) >= 1  # at least terminal yield
+
+    def test_expand_countersign_cycle_no_crash_er7(self):
+        """ER-7: S2 scenario with countersigned klines completes without exception."""
+        m = make_model()
+        M = 0x2000
+        H = 0x100
+        A = 0x2
+        MH = M | H
+        # Identities
+        m.add_ltm(KLine(M, []))
+        m.add_ltm(KLine(H, []))
+        m.add_ltm(KLine(A, []))
+        # Countersign pair
+        m.add_ltm(KLine(M, [H]))
+        m.add_ltm(KLine(H, [M]))
+        # MCS canonical
+        m.add_ltm(KLine(MH, [M, H]))
+        # The S2 query
+        query = KLine(MH, [H, A])
+        candidate = KLine(M, [H])  # misfit, routes S2
+        # Must not raise ValueError
+        results = list(expand(m, query, candidate))
+        assert len(results) >= 1
 
 
 # ── Structural Grounding Tests ───────────────────────────────────────

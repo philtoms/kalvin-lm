@@ -9,6 +9,7 @@ Spec ref: specs/auto-tune.md §Session Configuration, §Session Initialisation
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
@@ -272,11 +273,18 @@ def _read_harness_defaults(config_path: Path) -> tuple[str, int]:
 
 def _git(*args: str, cwd: Path) -> str:
     """Run a git subprocess and return stdout. Raises on failure."""
+    env = {
+        **os.environ,
+        "GIT_CONFIG_NOSYSTEM": "1",
+    }
+    # Remove HOME to avoid .gitconfig access issues in sandboxed environments
+    env.pop("HOME", None)
     result = subprocess.run(
         ["git", *args],
         cwd=cwd,
         capture_output=True,
         text=True,
         check=True,
+        env=env,
     )
     return result.stdout
