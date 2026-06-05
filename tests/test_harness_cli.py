@@ -21,6 +21,7 @@ import websockets
 import yaml
 
 from harness.bus import MessageBus
+from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
 from harness.message import Message
 from harness.server import HarnessServer, load_config
 
@@ -30,7 +31,7 @@ from harness.server import HarnessServer, load_config
 
 
 def _make_self_subscribing_factory(
-    target_address: str,
+    target_role: str,
     received: dict[str, list[Message]],
     events: dict[str, threading.Event] | None = None,
 ):
@@ -40,13 +41,13 @@ def _make_self_subscribing_factory(
     won't double-dispatch.
     """
 
-    def factory(address: str, bus: MessageBus) -> object:
-        target = target_address
+    def factory(role: str, bus: MessageBus) -> object:
+        target = target_role
 
         class MockParticipant:
             @property
-            def address(self) -> str:
-                return address
+            def role(self) -> str:
+                return role
 
             def on_message(self, msg: Message) -> None:
                 received[target].append(msg)
@@ -54,12 +55,12 @@ def _make_self_subscribing_factory(
                     events[target].set()
 
         p = MockParticipant()
-        bus.subscribe(address, p.on_message)
+        bus.subscribe(role, p.on_message)
 
         class Wrapper:
             @property
-            def address(self) -> str:
-                return address
+            def role(self) -> str:
+                return role
 
             def on_message(self, msg: Message) -> None:
                 pass  # already subscribed above
@@ -72,22 +73,22 @@ def _make_self_subscribing_factory(
 def _make_noop_factory():
     """Create a factory that self-subscribes with a no-op handler."""
 
-    def factory(address: str, bus: MessageBus) -> object:
+    def factory(role: str, bus: MessageBus) -> object:
         class MockParticipant:
             @property
-            def address(self) -> str:
-                return address
+            def role(self) -> str:
+                return role
 
             def on_message(self, msg: Message) -> None:
                 pass
 
         p = MockParticipant()
-        bus.subscribe(address, p.on_message)
+        bus.subscribe(role, p.on_message)
 
         class Wrapper:
             @property
-            def address(self) -> str:
-                return address
+            def role(self) -> str:
+                return role
 
             def on_message(self, msg: Message) -> None:
                 pass
@@ -109,8 +110,8 @@ def sample_config(tmp_path: Path) -> Path:
         "server": {"host": "localhost", "port": 18765},
         "trainer": {"state_path": str(tmp_path / "trainer_state.json")},
         "participants": [
-            {"address": "kalvin", "type": "embedded", "class": "KAgent"},
-            {"address": "trainer", "type": "embedded", "class": "Trainer"},
+            {"role": TRAINEE_ROLE, "type": "embedded", "class": "KAgent"},
+            {"role": TRAINER_ROLE, "type": "embedded", "class": "Trainer"},
         ],
     }
     path = tmp_path / "harness.yaml"
@@ -125,10 +126,10 @@ def full_config(tmp_path: Path) -> Path:
         "server": {"host": "localhost", "port": 18766},
         "trainer": {"state_path": str(tmp_path / "trainer_state.json")},
         "participants": [
-            {"address": "kalvin", "type": "embedded", "class": "KAgent"},
-            {"address": "trainer", "type": "embedded", "class": "Trainer"},
-            {"address": "slack", "type": "client", "class": "SlackParticipant"},
-            {"address": "ui", "type": "client", "class": "TUIParticipant"},
+            {"role": TRAINEE_ROLE, "type": "embedded", "class": "KAgent"},
+            {"role": TRAINER_ROLE, "type": "embedded", "class": "Trainer"},
+            {"role": SUPERVISOR_ROLE, "type": "client", "class": "SlackParticipant"},
+            {"role": SUPERVISOR_ROLE, "type": "client", "class": "TUIParticipant"},
         ],
     }
     path = tmp_path / "full_harness.yaml"
@@ -149,23 +150,19 @@ class TestLoadConfigFromSampleYaml:
         config = load_config("harness.yaml")
         assert len(config.participants) == 4
 
-        by_address = {p.address: p for p in config.participants}
+        by_role: dict[str, list] = {}
+        for p in config.participants:
+            by_role.setdefault(p.role, []).append(p)
 
-        assert "kalvin" in by_address
-        assert by_address["kalvin"].type == "embedded"
-        assert by_address["kalvin"].class_name == "KAgent"
+        assert by_role[TRAINEE_ROLE][0].type == "embedded"
+        assert by_role[TRAINEE_ROLE][0].class_name == "KAgent"
 
-        assert "trainer" in by_address
-        assert by_address["trainer"].type == "embedded"
-        assert by_address["trainer"].class_name == "Trainer"
+        assert by_role[TRAINER_ROLE][0].type == "embedded"
+        assert by_role[TRAINER_ROLE][0].class_name == "Trainer"
 
-        assert "slack" in by_address
-        assert by_address["slack"].type == "client"
-        assert by_address["slack"].class_name == "SlackParticipant"
-
-        assert "ui" in by_address
-        assert by_address["ui"].type == "client"
-        assert by_address["ui"].class_name == "TUIParticipant"
+        supervisor_classes = {p.class_name for p in by_role[SUPERVISOR_ROLE]}
+        assert "SlackParticipant" in supervisor_classes
+        assert "TUIParticipant" in supervisor_classes
 
 
 # ---------------------------------------------------------------------------
@@ -224,17 +221,17 @@ class TestEmbeddedParticipantsRegistered:
         bus = MessageBus()
         server = HarnessServer(sample_config, bus)
 
-        received: dict[str, list[Message]] = {"kalvin": [], "trainer": []}
+        received: dict[str, list[Message]] = {TRAINEE_ROLE: [], TRAINER_ROLE: []}
         events: dict[str, threading.Event] = {
-            "kalvin": threading.Event(),
-            "trainer": threading.Event(),
+            TRAINEE_ROLE: threading.Event(),
+            TRAINER_ROLE: threading.Event(),
         }
 
         server.register_participant_class(
-            "KAgent", _make_self_subscribing_factory("kalvin", received, events)
+            "KAgent", _make_self_subscribing_factory(TRAINEE_ROLE, received, events)
         )
         server.register_participant_class(
-            "Trainer", _make_self_subscribing_factory("trainer", received, events)
+            "Trainer", _make_self_subscribing_factory(TRAINER_ROLE, received, events)
         )
 
         # Start bus in a background thread so we can send/receive
@@ -249,23 +246,23 @@ class TestEmbeddedParticipantsRegistered:
 
             # Send messages to each participant
             bus.send(
-                Message(address="kalvin", action="submit", message="test", sender="trainer")
+                Message(role=TRAINEE_ROLE, action="submit", message="test", sender=TRAINER_ROLE)
             )
             bus.send(
-                Message(address="trainer", action="event", message="data", sender="kalvin")
+                Message(role=TRAINER_ROLE, action="event", message="data", sender=TRAINEE_ROLE)
             )
 
             # Wait for dispatch via threading.Event (not time.sleep)
-            assert events["kalvin"].wait(timeout=2), "kalvin handler should have fired"
-            assert events["trainer"].wait(timeout=2), "trainer handler should have fired"
+            assert events[TRAINEE_ROLE].wait(timeout=2), "trainee handler should have fired"
+            assert events[TRAINER_ROLE].wait(timeout=2), "trainer handler should have fired"
 
-            assert len(received["kalvin"]) == 1
-            assert received["kalvin"][0].action == "submit"
-            assert received["kalvin"][0].message == "test"
+            assert len(received[TRAINEE_ROLE]) == 1
+            assert received[TRAINEE_ROLE][0].action == "submit"
+            assert received[TRAINEE_ROLE][0].message == "test"
 
-            assert len(received["trainer"]) == 1
-            assert received["trainer"][0].action == "event"
-            assert received["trainer"][0].message == "data"
+            assert len(received[TRAINER_ROLE]) == 1
+            assert received[TRAINER_ROLE][0].action == "event"
+            assert received[TRAINER_ROLE][0].message == "data"
         finally:
             bus.stop()
             bus_thread.join(timeout=2)
@@ -277,7 +274,7 @@ class TestEmbeddedParticipantsRegistered:
 
 
 class TestMessageRoutesBetweenParticipants:
-    """HRNS-1: Message bus routes by address to correct subscriber."""
+    """HRNS-1: Message bus routes by role to correct subscriber."""
 
     def test_message_routes_between_participants(self) -> None:
         """Create a MessageBus, register two handlers, verify message routing."""
@@ -295,35 +292,35 @@ class TestMessageRoutesBetweenParticipants:
             received_b.append(msg)
             event_b.set()
 
-        bus.subscribe("kalvin", handler_a)
-        bus.subscribe("trainer", handler_b)
+        bus.subscribe(TRAINEE_ROLE, handler_a)
+        bus.subscribe(TRAINER_ROLE, handler_b)
 
         # Start bus in a background thread
         bus_thread = threading.Thread(target=bus.run, daemon=True)
         bus_thread.start()
 
         try:
-            # Send from trainer → kalvin
+            # Send from trainer → trainee
             bus.send(
-                Message(address="kalvin", action="submit", message="MHALL = SVO", sender="trainer")
+                Message(role=TRAINEE_ROLE, action="submit", message="MHALL = SVO", sender=TRAINER_ROLE)
             )
             assert event_a.wait(timeout=2), "handler_a should have received the message"
             assert len(received_a) == 1
-            assert received_a[0].address == "kalvin"
+            assert received_a[0].role == TRAINEE_ROLE
             assert received_a[0].action == "submit"
             assert received_a[0].message == "MHALL = SVO"
-            assert received_a[0].sender == "trainer"
+            assert received_a[0].sender == TRAINER_ROLE
 
-            # Send from kalvin → trainer
+            # Send from trainee → trainer
             bus.send(
-                Message(address="trainer", action="event", message="ground", sender="kalvin")
+                Message(role=TRAINER_ROLE, action="event", message="ground", sender=TRAINEE_ROLE)
             )
             assert event_b.wait(timeout=2), "handler_b should have received the message"
             assert len(received_b) == 1
-            assert received_b[0].address == "trainer"
+            assert received_b[0].role == TRAINER_ROLE
             assert received_b[0].action == "event"
             assert received_b[0].message == "ground"
-            assert received_b[0].sender == "kalvin"
+            assert received_b[0].sender == TRAINEE_ROLE
         finally:
             bus.stop()
             bus_thread.join(timeout=2)
@@ -397,17 +394,17 @@ class TestFullLifecycleBusOnly:
         bus = MessageBus()
         server = HarnessServer(sample_config, bus)
 
-        received: dict[str, list[Message]] = {"kalvin": [], "trainer": []}
+        received: dict[str, list[Message]] = {TRAINEE_ROLE: [], TRAINER_ROLE: []}
         events: dict[str, threading.Event] = {
-            "kalvin": threading.Event(),
-            "trainer": threading.Event(),
+            TRAINEE_ROLE: threading.Event(),
+            TRAINER_ROLE: threading.Event(),
         }
 
         server.register_participant_class(
-            "KAgent", _make_self_subscribing_factory("kalvin", received, events)
+            "KAgent", _make_self_subscribing_factory(TRAINEE_ROLE, received, events)
         )
         server.register_participant_class(
-            "Trainer", _make_self_subscribing_factory("trainer", received, events)
+            "Trainer", _make_self_subscribing_factory(TRAINER_ROLE, received, events)
         )
 
         # NOTE: _setup() is private but is the only way to trigger
@@ -419,28 +416,28 @@ class TestFullLifecycleBusOnly:
         bus_thread.start()
 
         try:
-            # Simulate trainer sending to kalvin
+            # Simulate trainer sending to trainee
             bus.send(
-                Message(address="kalvin", action="submit", message="MHALL = SVO", sender="trainer")
+                Message(role=TRAINEE_ROLE, action="submit", message="MHALL = SVO", sender=TRAINER_ROLE)
             )
 
-            # Simulate kalvin responding to trainer
+            # Simulate trainee responding to trainer
             bus.send(
-                Message(address="trainer", action="ground", message="event_data", sender="kalvin")
+                Message(role=TRAINER_ROLE, action="ground", message="event_data", sender=TRAINEE_ROLE)
             )
 
             # Wait for dispatch via threading.Event
-            assert events["kalvin"].wait(timeout=2), "kalvin handler should have fired"
-            assert events["trainer"].wait(timeout=2), "trainer handler should have fired"
+            assert events[TRAINEE_ROLE].wait(timeout=2), "trainee handler should have fired"
+            assert events[TRAINER_ROLE].wait(timeout=2), "trainer handler should have fired"
 
             # Verify messages routed correctly
-            assert len(received["kalvin"]) == 1
-            assert received["kalvin"][0].action == "submit"
-            assert received["kalvin"][0].message == "MHALL = SVO"
+            assert len(received[TRAINEE_ROLE]) == 1
+            assert received[TRAINEE_ROLE][0].action == "submit"
+            assert received[TRAINEE_ROLE][0].message == "MHALL = SVO"
 
-            assert len(received["trainer"]) == 1
-            assert received["trainer"][0].action == "ground"
-            assert received["trainer"][0].message == "event_data"
+            assert len(received[TRAINER_ROLE]) == 1
+            assert received[TRAINER_ROLE][0].action == "ground"
+            assert received[TRAINER_ROLE][0].message == "event_data"
         finally:
             bus.stop()
             bus_thread.join(timeout=2)
@@ -459,8 +456,8 @@ class TestFullLifecycleWithWebSocketClient:
         """Start server, connect WS client, register, send message, verify receipt."""
         config = {
             "participants": [
-                {"address": "mock", "type": "embedded", "class": "MockParticipant"},
-                {"address": "ui", "type": "client", "class": "TUIParticipant"},
+                {"role": "mock", "type": "embedded", "class": "MockParticipant"},
+                {"role": SUPERVISOR_ROLE, "type": "client", "class": "TUIParticipant"},
             ],
         }
         config_path = tmp_path / "ws_test.yaml"
@@ -471,22 +468,22 @@ class TestFullLifecycleWithWebSocketClient:
 
         received: list[Message] = []
 
-        def mock_factory(address: str, bus: MessageBus) -> object:
+        def mock_factory(role: str, bus: MessageBus) -> object:
             class MockParticipant:
                 @property
-                def address(self) -> str:
-                    return address
+                def role(self) -> str:
+                    return role
 
                 def on_message(self, msg: Message) -> None:
                     received.append(msg)
 
             p = MockParticipant()
-            bus.subscribe(address, p.on_message)
+            bus.subscribe(role, p.on_message)
 
             class Wrapper:
                 @property
-                def address(self) -> str:
-                    return address
+                def role(self) -> str:
+                    return role
 
                 def on_message(self, msg: Message) -> None:
                     pass
@@ -512,16 +509,16 @@ class TestFullLifecycleWithWebSocketClient:
                 # Connect a WebSocket client
                 ws = await websockets.connect(f"ws://localhost:{port}")
 
-                # Register as "ui"
-                await ws.send(json.dumps({"register": "ui"}))
+                # Register as supervisor
+                await ws.send(json.dumps({"register": SUPERVISOR_ROLE}))
                 await asyncio.sleep(0.1)
 
-                # Send a message from ui to mock
+                # Send a message from supervisor to mock
                 await ws.send(
                     json.dumps({
-                        "address": "mock",
+                        "role": "mock",
                         "action": "test",
-                        "message": "hello from ui",
+                        "message": "hello from supervisor",
                     })
                 )
 
@@ -541,10 +538,10 @@ class TestFullLifecycleWithWebSocketClient:
 
                 # Verify the mock participant received the message
                 assert len(received) == 1
-                assert received[0].address == "mock"
+                assert received[0].role == "mock"
                 assert received[0].action == "test"
-                assert received[0].message == "hello from ui"
-                assert received[0].sender == "ui"
+                assert received[0].message == "hello from supervisor"
+                assert received[0].sender == SUPERVISOR_ROLE
 
                 # Disconnect client
                 await ws.close()
