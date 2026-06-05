@@ -1,6 +1,6 @@
 """KAgent adapter — bridge between the KAgent pipeline and the message bus.
 
-Receives harness messages addressed to ``kalvin``, compiles KScript source
+Receives harness messages sent to role ``trainee``, compiles KScript source
 into entries, submits them one at a time to :meth:`KAgent.rationalise`, and
 routes KAgent callbacks back to the original sender via the bus.
 
@@ -25,6 +25,7 @@ import logging
 from typing import TYPE_CHECKING, Optional, Protocol, runtime_checkable
 
 from harness.bus import MessageBus
+from harness.constants import TRAINEE_ROLE, TRAINER_ROLE, SUPERVISOR_ROLE
 from harness.message import Message
 from harness.protocols import Participant
 from kalvin.events import RationaliseEvent
@@ -48,14 +49,14 @@ EntryKey = tuple[int, tuple[int, ...]]
 
 
 class KAgentAdapter:
-    """Thin integration layer between KAgent and the addressed message bus.
+    """Thin integration layer between KAgent and the role-based message bus.
 
     Parameters
     ----------
     bus:
         The message bus to subscribe to and send responses on.
-    address:
-        The address to subscribe to on the bus (default ``"kalvin"``).
+    role:
+        The role to subscribe to on the bus (default ``"trainee"``).
     kagent:
         Optional KAgent instance.  Can also be set later via :meth:`bind`.
         This two-phase wiring avoids a circular construction dependency:
@@ -66,26 +67,26 @@ class KAgentAdapter:
     def __init__(
         self,
         bus: MessageBus,
-        address: str = "kalvin",
+        role: str = TRAINEE_ROLE,
         kagent: Optional[_KAgentLike] = None,
     ):
         self._bus = bus
-        self._address = address
+        self._role = role
         self._kagent: _KAgentLike | None = kagent
 
-        # Sender map: (entry.signature, tuple(entry.nodes)) → sender address.
+        # Sender map: (entry.signature, tuple(entry.nodes)) → sender role.
         # Populated in on_message (bus thread), read in on_event (cogitator thread).
         self._sender_map: dict[EntryKey, str] = {}
 
         # Subscribe to the bus at construction time.
-        bus.subscribe(self._address, self.on_message)
+        bus.subscribe(self._role, self.on_message)
 
     # ── Properties ─────────────────────────────────────────────────────
 
     @property
-    def address(self) -> str:
-        """The bus address this adapter is subscribed to."""
-        return self._address
+    def role(self) -> str:
+        """The bus role this adapter is subscribed to."""
+        return self._role
 
     @property
     def kagent(self) -> _KAgentLike | None:
@@ -105,7 +106,7 @@ class KAgentAdapter:
     # ── Participant protocol ───────────────────────────────────────────
 
     def on_message(self, msg: Message) -> None:
-        """Handle an incoming bus message addressed to this adapter.
+        """Handle an incoming bus message sent to this adapter's role.
 
         Actions
         -------
@@ -131,7 +132,7 @@ class KAgentAdapter:
 
         The KAgent calls this directly (via ``_publish``) instead of using
         an internal EventBus.  The event is wrapped into a :class:`Message`
-        addressed to the original sender (looked up in the sender map) and
+        routed to the original sender (looked up in the sender map) and
         sent via the bus.
 
         Orphan events (no sender in the map, e.g. "done" idle events from
@@ -145,7 +146,7 @@ class KAgentAdapter:
             return
 
         response = Message(
-            address=sender,
+            role=sender,
             action=event.kind,
             message=event,
         )
@@ -164,7 +165,7 @@ class KAgentAdapter:
         except Exception as exc:
             # Compilation error (LexerError, ParseError, etc.) — report back.
             error_msg = Message(
-                address=msg.sender or "",
+                role=msg.sender or "",
                 action="error",
                 message=str(exc),
             )
@@ -172,7 +173,7 @@ class KAgentAdapter:
             return
 
         for entry in entries:
-            # Record sender for this entry so callbacks can be addressed.
+            # Record sender for this entry so callbacks can be routed.
             key: EntryKey = (entry.signature, tuple(entry.nodes))
             sender = msg.sender or ""
             self._sender_map[key] = sender

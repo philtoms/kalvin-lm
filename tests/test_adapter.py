@@ -1,7 +1,7 @@
 """Tests for KAgent adapter — HRNS-7, HRNS-8, HRNS-9, HRNS-10, HRNS-22.
 
-The adapter bridges the KAgent rationalisation pipeline and the addressed
-message bus.  These tests verify compilation, sender-map addressing,
+The adapter bridges the KAgent rationalisation pipeline and the role-based
+message bus.  These tests verify compilation, sender-map routing,
 countersign forwarding, error handling, and direct KAgent→adapter callbacks.
 """
 
@@ -16,6 +16,7 @@ import pytest
 
 from harness.adapter import KAgentAdapter
 from harness.bus import MessageBus
+from harness.constants import TRAINEE_ROLE, TRAINER_ROLE
 from harness.message import Message
 from harness.protocols import Participant
 from kalvin.events import RationaliseEvent
@@ -49,9 +50,9 @@ class BusCapture:
 
         bus.send = capturing_send  # type: ignore[assignment]
 
-    def for_address(self, address: str) -> list[Message]:
-        """Return captured messages addressed to *address*."""
-        return [m for m in self.messages if m.address == address]
+    def for_role(self, role: str) -> list[Message]:
+        """Return captured messages for *role*."""
+        return [m for m in self.messages if m.role == role]
 
     def with_action(self, action: str) -> list[Message]:
         """Return captured messages with the given action."""
@@ -72,7 +73,7 @@ class TestHRNS7SubmitCompilesAndSubmits:
         adapter = KAgentAdapter(bus, kagent=kagent)
 
         adapter.on_message(
-            Message(address="kalvin", action="submit", message="MHALL = SVO", sender="trainer")
+            Message(role=TRAINEE_ROLE, action="submit", message="MHALL = SVO", sender="trainer")
         )
 
         # compile_source("MHALL = SVO") produces multiple entries
@@ -86,7 +87,7 @@ class TestHRNS7SubmitCompilesAndSubmits:
         adapter = KAgentAdapter(bus, kagent=kagent)
 
         adapter.on_message(
-            Message(address="kalvin", action="submit", message="MHALL = SVO", sender="trainer")
+            Message(role=TRAINEE_ROLE, action="submit", message="MHALL = SVO", sender="trainer")
         )
 
         for call in kagent.rationalise.call_args_list:
@@ -108,10 +109,10 @@ class TestHRNS8CompilationErrorResponse:
         adapter = KAgentAdapter(bus, kagent=kagent)
 
         adapter.on_message(
-            Message(address="kalvin", action="submit", message="!!! invalid !!", sender="trainer")
+            Message(role=TRAINEE_ROLE, action="submit", message="!!! invalid !!", sender="trainer")
         )
 
-        errors = capture.for_address("trainer")
+        errors = capture.for_role("trainer")
         assert len(errors) == 1, f"Expected 1 error message, got {len(errors)}"
         assert errors[0].action == "error"
         assert "invalid" in str(errors[0].message).lower() or errors[0].message != ""
@@ -124,20 +125,20 @@ class TestHRNS8CompilationErrorResponse:
         adapter = KAgentAdapter(bus, kagent=kagent)
 
         adapter.on_message(
-            Message(address="kalvin", action="submit", message="!!! bad !!", sender="trainer")
+            Message(role=TRAINEE_ROLE, action="submit", message="!!! bad !!", sender="trainer")
         )
 
         kagent.rationalise.assert_not_called()
 
 
-# ── HRNS-9: Sender map response addressing ──────────────────────────────
+# ── HRNS-9: Sender map response routing ──────────────────────────────
 
 
-class TestHRNS9SenderMapResponseAddressing:
-    """HRNS-9: KAgent adapter maintains sender map; responses addressed to sender."""
+class TestHRNS9SenderMapResponseRouting:
+    """HRNS-9: KAgent adapter maintains sender map; responses routed to sender."""
 
-    def test_sender_map_response_addressing(self) -> None:
-        """Callback event is addressed to the original sender."""
+    def test_sender_map_response_routing(self) -> None:
+        """Callback event is routed to the original sender."""
         bus = MessageBus()
         capture = BusCapture(bus)
         kagent = FakeKAgent()
@@ -145,7 +146,7 @@ class TestHRNS9SenderMapResponseAddressing:
 
         # Submit valid KScript from "trainer"
         adapter.on_message(
-            Message(address="kalvin", action="submit", message="A = B", sender="trainer")
+            Message(role=TRAINEE_ROLE, action="submit", message="A = B", sender="trainer")
         )
 
         # The rationalise mock captured the entries
@@ -156,8 +157,8 @@ class TestHRNS9SenderMapResponseAddressing:
         event = RationaliseEvent("frame", first_entry, first_entry, 0)
         adapter.on_event(event)
 
-        # Response should be addressed to "trainer"
-        responses = capture.for_address("trainer")
+        # Response should be routed to "trainer"
+        responses = capture.for_role("trainer")
         assert len(responses) == 1
         assert responses[0].action == "frame"
         assert responses[0].message is event
@@ -169,7 +170,7 @@ class TestHRNS9SenderMapResponseAddressing:
         adapter = KAgentAdapter(bus, kagent=kagent)
 
         adapter.on_message(
-            Message(address="kalvin", action="submit", message="A = B", sender="trainer")
+            Message(role=TRAINEE_ROLE, action="submit", message="A = B", sender="trainer")
         )
 
         first_entry = kagent.rationalise.call_args_list[0][0][0]
@@ -185,14 +186,14 @@ class TestHRNS9SenderMapResponseAddressing:
 
         # Submit from trainer
         adapter.on_message(
-            Message(address="kalvin", action="submit", message="A = B", sender="trainer")
+            Message(role=TRAINEE_ROLE, action="submit", message="A = B", sender="trainer")
         )
         entry_a = kagent.rationalise.call_args_list[0][0][0]
 
         # Submit from ui (reset mock to track separately)
         kagent.rationalise.reset_mock()
         adapter.on_message(
-            Message(address="kalvin", action="submit", message="X = Y", sender="ui")
+            Message(role=TRAINEE_ROLE, action="submit", message="X = Y", sender="ui")
         )
         entry_x = kagent.rationalise.call_args_list[0][0][0]
 
@@ -201,8 +202,8 @@ class TestHRNS9SenderMapResponseAddressing:
         # Callback for entry_x → ui
         adapter.on_event(RationaliseEvent("frame", entry_x, entry_x, 0))
 
-        trainer_msgs = capture.for_address("trainer")
-        ui_msgs = capture.for_address("ui")
+        trainer_msgs = capture.for_role("trainer")
+        ui_msgs = capture.for_role("ui")
 
         assert len(trainer_msgs) == 1
         assert len(ui_msgs) == 1
@@ -222,7 +223,7 @@ class TestHRNS10CountersignAction:
 
         kline = KLine(0xABCD, [0x1234])
         adapter.on_message(
-            Message(address="kalvin", action="countersign", message=kline, sender="trainer")
+            Message(role=TRAINEE_ROLE, action="countersign", message=kline, sender="trainer")
         )
 
         kagent.countersign.assert_called_once_with(kline)
@@ -235,7 +236,7 @@ class TestHRNS10CountersignAction:
 
         kline = KLine(0xABCD, [0x1234])
         adapter.on_message(
-            Message(address="kalvin", action="countersign", message=kline, sender="trainer")
+            Message(role=TRAINEE_ROLE, action="countersign", message=kline, sender="trainer")
         )
 
         kagent.rationalise.assert_not_called()
@@ -266,7 +267,7 @@ class TestHRNS22KAgentCallsAdapterDirectly:
         # Submit a simple KScript line via the adapter
         # "A = B" produces entries with tokenised nodes
         adapter.on_message(
-            Message(address="kalvin", action="submit", message="A = B", sender="trainer")
+            Message(role=TRAINEE_ROLE, action="submit", message="A = B", sender="trainer")
         )
 
         # The KAgent may produce fast-path events synchronously (S4/S1)
@@ -278,7 +279,7 @@ class TestHRNS22KAgentCallsAdapterDirectly:
         # through the adapter's on_event → bus.send path.
         # Note: if all entries hit S1 fast-path, events are published
         # synchronously during rationalise. S4 entries also publish synchronously.
-        assert len(received) > 0 or len(capture.for_address("trainer")) > 0, (
+        assert len(received) > 0 or len(capture.for_role("trainer")) > 0, (
             "Expected at least one event routed back to trainer via adapter.on_event"
         )
 
@@ -306,7 +307,7 @@ class TestHRNS22KAgentCallsAdapterDirectly:
 
         # Submit a KScript line — should trigger events
         adapter.on_message(
-            Message(address="kalvin", action="submit", message="A = B", sender="trainer")
+            Message(role=TRAINEE_ROLE, action="submit", message="A = B", sender="trainer")
         )
 
         kagent.cogitate_join(timeout=5.0)
@@ -331,7 +332,7 @@ class TestUnknownAction:
 
         # Should not raise
         adapter.on_message(
-            Message(address="kalvin", action="unknown_action", message="data", sender="trainer")
+            Message(role=TRAINEE_ROLE, action="unknown_action", message="data", sender="trainer")
         )
 
         kagent.rationalise.assert_not_called()
@@ -367,15 +368,15 @@ class TestAdapterRegistersOnBus:
         bus = MessageBus()
         adapter = KAgentAdapter(bus, kagent=FakeKAgent())
 
-        # The adapter should be registered for "kalvin" address
-        assert "kalvin" in bus._handlers
-        assert bus._handlers["kalvin"][-1] == adapter.on_message
+        # The adapter should be registered for the trainee role
+        assert TRAINEE_ROLE in bus._handlers
+        assert bus._handlers[TRAINEE_ROLE][-1] == adapter.on_message
 
-    def test_custom_address(self) -> None:
+    def test_custom_role(self) -> None:
         bus = MessageBus()
-        adapter = KAgentAdapter(bus, address="custom", kagent=FakeKAgent())
+        adapter = KAgentAdapter(bus, role="custom", kagent=FakeKAgent())
 
-        assert adapter.address == "custom"
+        assert adapter.role == "custom"
         assert "custom" in bus._handlers
 
 
@@ -389,7 +390,7 @@ class TestNoKAgentBound:
 
         # Should not raise
         adapter.on_message(
-            Message(address="kalvin", action="submit", message="A = B", sender="trainer")
+            Message(role=TRAINEE_ROLE, action="submit", message="A = B", sender="trainer")
         )
 
         # No error sent for submit (only compilation attempted if kagent exists)
@@ -402,5 +403,5 @@ class TestNoKAgentBound:
         kline = KLine(0xABCD, [0x1234])
         # Should not raise
         adapter.on_message(
-            Message(address="kalvin", action="countersign", message=kline, sender="trainer")
+            Message(role=TRAINEE_ROLE, action="countersign", message=kline, sender="trainer")
         )
