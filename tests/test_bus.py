@@ -27,10 +27,10 @@ def _wait_for(event: threading.Event, timeout: float = 2.0) -> None:
 # HRNS-1: Message bus routes by address to correct subscriber
 # ---------------------------------------------------------------------------
 
-class TestRouteByAddress:
-    """HRNS-1: route messages to the handler subscribed for the address."""
+class TestRouteByRole:
+    """HRNS-1: route messages to the handler subscribed for the role."""
 
-    def test_route_by_address(self) -> None:
+    def test_route_by_role(self) -> None:
         bus = MessageBus()
         kalvin_msgs: list[Message] = []
 
@@ -38,7 +38,7 @@ class TestRouteByAddress:
             kalvin_msgs.append(msg)
 
         bus.subscribe("kalvin", kalvin_handler)
-        msg = Message(address="kalvin", action="submit", message="MHALL = SVO")
+        msg = Message(role="kalvin", action="submit", message="MHALL = SVO")
         bus.send(msg)
 
         # Run inline (no thread needed for single-message test)
@@ -47,7 +47,7 @@ class TestRouteByAddress:
         assert len(kalvin_msgs) == 1
         assert kalvin_msgs[0] is msg
 
-    def test_other_address_does_not_receive(self) -> None:
+    def test_other_role_does_not_receive(self) -> None:
         bus = MessageBus()
         kalvin_msgs: list[Message] = []
         trainer_msgs: list[Message] = []
@@ -55,7 +55,7 @@ class TestRouteByAddress:
         bus.subscribe("kalvin", lambda m: kalvin_msgs.append(m))
         bus.subscribe("trainer", lambda m: trainer_msgs.append(m))
 
-        bus.send(Message(address="kalvin", action="submit", message="x"))
+        bus.send(Message(role="kalvin", action="submit", message="x"))
 
         bus._dispatch(bus._queue.get())  # noqa: SLF001
 
@@ -86,7 +86,7 @@ class TestThreadsafeSend:
         bus_thread.start()
 
         # Send from the main thread.
-        msg = Message(address="kalvin", action="submit", message="thread test")
+        msg = Message(role="kalvin", action="submit", message="thread test")
         bus.send(msg)
 
         _wait_for(event)
@@ -101,10 +101,10 @@ class TestThreadsafeSend:
 # HRNS-3: Unknown address produces error response to sender
 # ---------------------------------------------------------------------------
 
-class TestUnknownAddressError:
-    """HRNS-3: unknown address sends error back to sender."""
+class TestUnknownRoleError:
+    """HRNS-3: unknown role sends error back to sender."""
 
-    def test_unknown_address_error(self) -> None:
+    def test_unknown_role_error(self) -> None:
         bus = MessageBus()
         origin_msgs: list[Message] = []
         event = threading.Event()
@@ -116,8 +116,8 @@ class TestUnknownAddressError:
         # Subscribe "origin" to receive error responses.
         bus.subscribe("origin", origin_handler)
 
-        # Send to an unknown address with sender set.
-        bus.send(Message(address="nonexistent", action="ping", message="hi", sender="origin"))
+        # Send to an unknown role with sender set.
+        bus.send(Message(role="nonexistent", action="ping", message="hi", sender="origin"))
 
         # Run the bus loop in a background thread.
         bus_thread = threading.Thread(target=bus.run, daemon=True)
@@ -129,7 +129,7 @@ class TestUnknownAddressError:
 
         assert len(origin_msgs) == 1
         error = origin_msgs[0]
-        assert error.address == "origin"
+        assert error.role == "origin"
         assert error.action == "error"
         assert "nonexistent" in error.message
 
@@ -141,7 +141,7 @@ class TestUnknownAddressError:
 class TestWildcardDiagnosticListener:
     """HRNS-11: wildcard subscribers receive every dispatched message."""
 
-    def test_wildcard_receives_addressed_message(self) -> None:
+    def test_wildcard_receives_role_message(self) -> None:
         bus = MessageBus()
         handler_a_msgs: list[Message] = []
         handler_wild_msgs: list[Message] = []
@@ -157,7 +157,7 @@ class TestWildcardDiagnosticListener:
         bus.subscribe("kalvin", handler_a)
         bus.subscribe("*", handler_wild)
 
-        msg = Message(address="kalvin", action="submit", message="wild test")
+        msg = Message(role="kalvin", action="submit", message="wild test")
         bus.send(msg)
 
         bus_thread = threading.Thread(target=bus.run, daemon=True)
@@ -171,7 +171,7 @@ class TestWildcardDiagnosticListener:
         assert len(handler_wild_msgs) == 1
         assert handler_wild_msgs[0] is msg
 
-    def test_wildcard_receives_unknown_address_message(self) -> None:
+    def test_wildcard_receives_unknown_role_message(self) -> None:
         bus = MessageBus()
         wild_msgs: list[Message] = []
         origin_msgs: list[Message] = []
@@ -190,8 +190,8 @@ class TestWildcardDiagnosticListener:
         bus.subscribe("*", wild_handler)
         bus.subscribe("origin", origin_handler)
 
-        # Send to unknown address with a sender.
-        bus.send(Message(address="trainer", action="ping", message="?", sender="origin"))
+        # Send to unknown role with a sender.
+        bus.send(Message(role="trainer", action="ping", message="?", sender="origin"))
 
         bus_thread = threading.Thread(target=bus.run, daemon=True)
         bus_thread.start()
@@ -205,7 +205,7 @@ class TestWildcardDiagnosticListener:
         bus_thread.join(timeout=2)
 
         # Wildcard should have received the original message.
-        assert any(m.address == "trainer" for m in wild_msgs)
+        assert any(m.role == "trainer" for m in wild_msgs)
         # Origin handler should have received the error.
         assert len(origin_msgs) == 1
         assert origin_msgs[0].action == "error"
@@ -235,7 +235,7 @@ class TestSingleDispatchThread:
         bus_thread.start()
 
         for i in range(message_count):
-            bus.send(Message(address="test", action="tick", message=i))
+            bus.send(Message(role="test", action="tick", message=i))
 
         _wait_for(event)
         bus.stop()
@@ -256,12 +256,12 @@ class TestMessageDataclass:
     """Message immutability and repr."""
 
     def test_frozen(self) -> None:
-        msg = Message(address="a", action="b", message="c")
+        msg = Message(role="a", action="b", message="c")
         with pytest.raises(FrozenInstanceError):
-            msg.address = "z"  # type: ignore[misc]
+            msg.role = "z"  # type: ignore[misc]
 
     def test_repr(self) -> None:
-        msg = Message(address="kalvin", action="submit", message="data", sender="trainer")
+        msg = Message(role="kalvin", action="submit", message="data", sender="trainer")
         r = repr(msg)
         assert "kalvin" in r
         assert "submit" in r
@@ -270,11 +270,11 @@ class TestMessageDataclass:
         assert "data" not in r
 
     def test_sender_default_none(self) -> None:
-        msg = Message(address="a", action="b", message="c")
+        msg = Message(role="a", action="b", message="c")
         assert msg.sender is None
 
     def test_sender_set(self) -> None:
-        msg = Message(address="a", action="b", message="c", sender="origin")
+        msg = Message(role="a", action="b", message="c", sender="origin")
         assert msg.sender == "origin"
 
 
@@ -301,9 +301,9 @@ class TestGracefulShutdown:
 # ---------------------------------------------------------------------------
 
 class TestMultipleHandlers:
-    """Multiple handlers registered for the same address all receive messages."""
+    """Multiple handlers registered for the same role all receive messages."""
 
-    def test_multiple_handlers_per_address(self) -> None:
+    def test_multiple_handlers_per_role(self) -> None:
         bus = MessageBus()
         received_a: list[Message] = []
         received_b: list[Message] = []
@@ -319,7 +319,7 @@ class TestMultipleHandlers:
         bus.subscribe("kalvin", handler_a)
         bus.subscribe("kalvin", handler_b)
 
-        bus.send(Message(address="kalvin", action="submit", message="multi"))
+        bus.send(Message(role="kalvin", action="submit", message="multi"))
 
         bus_thread = threading.Thread(target=bus.run, daemon=True)
         bus_thread.start()
@@ -330,3 +330,42 @@ class TestMultipleHandlers:
 
         assert len(received_a) == 1
         assert len(received_b) == 1
+
+    def test_fan_out_dispatch(self) -> None:
+        """HRNS-29: two handlers subscribed to the same role both receive a message."""
+        bus = MessageBus()
+        received_a: list[Message] = []
+        received_b: list[Message] = []
+        event = threading.Event()
+        count = 0
+
+        def handler_a(msg: Message) -> None:
+            received_a.append(msg)
+            nonlocal count
+            count += 1
+            if count == 2:
+                event.set()
+
+        def handler_b(msg: Message) -> None:
+            received_b.append(msg)
+            nonlocal count
+            count += 1
+            if count == 2:
+                event.set()
+
+        bus.subscribe("supervisor", handler_a)
+        bus.subscribe("supervisor", handler_b)
+        msg = Message(role="supervisor", action="progress", message="50%")
+        bus.send(msg)
+
+        bus_thread = threading.Thread(target=bus.run, daemon=True)
+        bus_thread.start()
+
+        assert event.wait(timeout=2), "Timed out waiting for fan-out dispatch"
+        bus.stop()
+        bus_thread.join(timeout=2)
+
+        assert len(received_a) == 1
+        assert received_a[0] is msg
+        assert len(received_b) == 1
+        assert received_b[0] is msg

@@ -1,4 +1,4 @@
-"""Thread-safe addressed message bus for the multi-agent harness."""
+"""Thread-safe role-based message bus for the multi-agent harness."""
 
 from __future__ import annotations
 
@@ -11,12 +11,12 @@ from harness.message import Message
 # Sentinel value to signal the event loop to stop.
 _STOP_SENTINEL: Message | None = None
 
-# Address used for wildcard (diagnostic) subscribers.
-WILDCARD_ADDRESS = "*"
+# Role used for wildcard (diagnostic) subscribers.
+WILDCARD_ROLE = "*"
 
 
 class MessageBus:
-    """Addressed message router with single-dispatch event loop.
+    """Role-based message router with single-dispatch event loop.
 
     Thread-safe: ``send()`` may be called from any thread.  All handler
     dispatch occurs on the thread running ``run()``.
@@ -24,8 +24,8 @@ class MessageBus:
     Usage::
 
         bus = MessageBus()
-        bus.subscribe("kalvin", my_handler)
-        bus.send(Message(address="kalvin", action="submit", message="..."))
+        bus.subscribe("trainee", my_handler)
+        bus.send(Message(role="trainee", action="submit", message="..."))
         # In a dedicated thread:
         bus.run()
     """
@@ -38,17 +38,17 @@ class MessageBus:
 
     # -- public API ----------------------------------------------------------
 
-    def subscribe(self, address: str, handler: Callable[[Message], None]) -> None:
-        """Register *handler* for *address*.
+    def subscribe(self, role: str, handler: Callable[[Message], None]) -> None:
+        """Register *handler* for *role*.
 
-        Multiple handlers per address are allowed.  Use the wildcard address
+        Multiple handlers per role are allowed.  Use the wildcard role
         ``"*"`` to receive every dispatched message (for diagnostic listeners).
         """
         with self._lock:
-            if address == WILDCARD_ADDRESS:
+            if role == WILDCARD_ROLE:
                 self._wildcards.append(handler)
             else:
-                self._handlers.setdefault(address, []).append(handler)
+                self._handlers.setdefault(role, []).append(handler)
 
     def send(self, msg: Message) -> None:
         """Enqueue *msg* for dispatch.  Safe to call from any thread."""
@@ -72,13 +72,13 @@ class MessageBus:
     # -- internal ------------------------------------------------------------
 
     def _dispatch(self, msg: Message) -> None:
-        """Dispatch *msg* to address-specific and wildcard handlers."""
+        """Dispatch *msg* to role-specific and wildcard handlers."""
         # Collect wildcard handlers first (always invoked).
         with self._lock:
             wildcards = list(self._wildcards)
-            handlers = list(self._handlers.get(msg.address, []))
+            handlers = list(self._handlers.get(msg.role, []))
 
-        # Deliver to address-specific handlers.
+        # Deliver to role-specific handlers.
         for handler in handlers:
             handler(msg)
 
@@ -86,13 +86,13 @@ class MessageBus:
         for handler in wildcards:
             handler(msg)
 
-        # If no address-specific handler was found and the message has a
+        # If no role-specific handler was found and the message has a
         # sender, send an error back to the sender.
         if not handlers and msg.sender is not None:
             error_msg = Message(
-                address=msg.sender,
+                role=msg.sender,
                 action="error",
-                message=f"unknown address: {msg.address}",
+                message=f"unknown role: {msg.role}",
             )
             # Re-enqueue the error so it goes through the normal dispatch
             # path on the same event-loop thread.
