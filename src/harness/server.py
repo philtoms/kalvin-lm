@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 class ParticipantConfig:
     """A single participant entry from the harness config file."""
 
-    address: str
+    role: str
     type: str  # "embedded" | "client"
     class_name: str
 
@@ -82,22 +82,17 @@ def _validate_config(data: Any, path: Path) -> HarnessConfig:
         raise ConfigError(f"{path}: 'participants' must be a list")
 
     entries: list[ParticipantConfig] = []
-    seen_addresses: set[str] = set()
+    seen_embedded_roles: set[str] = set()
 
     for idx, entry in enumerate(participants_raw):
         if not isinstance(entry, dict):
             raise ConfigError(f"{path}: participants[{idx}] must be a mapping")
 
-        address = entry.get("address")
-        if not address or not isinstance(address, str):
+        role = entry.get("role")
+        if not role or not isinstance(role, str):
             raise ConfigError(
-                f"{path}: participants[{idx}] missing required 'address'"
+                f"{path}: participants[{idx}] missing required 'role'"
             )
-        if address in seen_addresses:
-            raise ConfigError(
-                f"{path}: duplicate address '{address}' in participants"
-            )
-        seen_addresses.add(address)
 
         ptype = entry.get("type")
         if ptype not in ("embedded", "client"):
@@ -106,6 +101,13 @@ def _validate_config(data: Any, path: Path) -> HarnessConfig:
                 f"(must be 'embedded' or 'client')"
             )
 
+        if ptype == "embedded":
+            if role in seen_embedded_roles:
+                raise ConfigError(
+                    f"{path}: duplicate role '{role}' for embedded participants"
+                )
+            seen_embedded_roles.add(role)
+
         class_name = entry.get("class")
         if not class_name or not isinstance(class_name, str):
             raise ConfigError(
@@ -113,7 +115,7 @@ def _validate_config(data: Any, path: Path) -> HarnessConfig:
             )
 
         entries.append(
-            ParticipantConfig(address=address, type=ptype, class_name=class_name)
+            ParticipantConfig(role=role, type=ptype, class_name=class_name)
         )
 
     return HarnessConfig(participants=entries)
@@ -127,7 +129,7 @@ class ConfigError(Exception):
 # Participant registry
 # ---------------------------------------------------------------------------
 
-# Type for factory callables: (address, bus) -> participant with .on_message(msg)
+# Type for factory callables: (role, bus) -> participant with .on_message(msg)
 ParticipantFactory = Callable[[str, MessageBus], Any]
 
 
@@ -167,7 +169,7 @@ class HarnessServer:
     ) -> None:
         """Register *factory* as the constructor for participant class *name*.
 
-        The factory is called as ``factory(address, bus)`` and must return an
+        The factory is called as ``factory(role, bus)`` and must return an
         object with ``on_message(msg)``.
         """
         self._participant_registry[name] = factory
@@ -178,8 +180,8 @@ class HarnessServer:
         """Instantiate embedded participants from the config.
 
         Each embedded participant's factory is looked up in the registry,
-        called with ``(address, bus)``, and the result is subscribed to the
-        bus for its address.
+        called with ``(role, bus)``, and the result is subscribed to the
+        bus for its role.
         """
         for pcfg in self._config.participants:
             if pcfg.type != "embedded":
@@ -188,16 +190,16 @@ class HarnessServer:
             if factory is None:
                 raise ConfigError(
                     f"no factory registered for embedded participant "
-                    f"class '{pcfg.class_name}' (address '{pcfg.address}')"
+                    f"class '{pcfg.class_name}' (role '{pcfg.role}')"
                 )
-            participant = factory(pcfg.address, self._bus)
-            self._bus.subscribe(pcfg.address, participant.on_message)
-            self._embedded_participants[pcfg.address] = participant
+            participant = factory(pcfg.role, self._bus)
+            self._bus.subscribe(pcfg.role, participant.on_message)
+            self._embedded_participants[pcfg.role] = participant
             logger.info(
                 "Embedded participant '%s' (%s) subscribed to '%s'",
                 pcfg.class_name,
                 id(participant),
-                pcfg.address,
+                pcfg.role,
             )
 
     # -- async server --------------------------------------------------------

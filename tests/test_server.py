@@ -40,17 +40,17 @@ def _sample_config() -> dict[str, Any]:
     return {
         "participants": [
             {
-                "address": "kalvin",
+                "role": "kalvin",
                 "type": "embedded",
                 "class": "KAgent",
             },
             {
-                "address": "trainer",
+                "role": "trainer",
                 "type": "embedded",
                 "class": "Trainer",
             },
             {
-                "address": "slack",
+                "role": "slack",
                 "type": "client",
                 "class": "SlackParticipant",
             },
@@ -61,8 +61,8 @@ def _sample_config() -> dict[str, Any]:
 class MockParticipant:
     """A mock participant for testing the registry and bus wiring."""
 
-    def __init__(self, address: str, bus: MessageBus) -> None:
-        self.address = address
+    def __init__(self, role: str, bus: MessageBus) -> None:
+        self.role = role
         self.bus = bus
         self.messages: list[Message] = []
 
@@ -88,7 +88,7 @@ class TestLoadConfigYamlAndJson:
 
         # Spot-check the parsed content.
         assert len(yaml_config.participants) == 3
-        assert yaml_config.participants[0].address == "kalvin"
+        assert yaml_config.participants[0].role == "kalvin"
         assert yaml_config.participants[0].type == "embedded"
         assert yaml_config.participants[0].class_name == "KAgent"
         assert yaml_config.participants[2].type == "client"
@@ -105,37 +105,37 @@ class TestConfigValidation:
         with pytest.raises(ConfigError, match="missing 'participants'"):
             load_config(path)
 
-    def test_participant_missing_address(self, tmp_path: Path) -> None:
+    def test_participant_missing_role(self, tmp_path: Path) -> None:
         data = {"participants": [{"type": "embedded", "class": "KAgent"}]}
         path = _write_yaml(tmp_path / "bad.yaml", data)
-        with pytest.raises(ConfigError, match="missing required 'address'"):
+        with pytest.raises(ConfigError, match="missing required 'role'"):
             load_config(path)
 
     def test_participant_invalid_type(self, tmp_path: Path) -> None:
         data = {
             "participants": [
-                {"address": "kalvin", "type": "invalid", "class": "KAgent"}
+                {"role": "kalvin", "type": "invalid", "class": "KAgent"}
             ]
         }
         path = _write_yaml(tmp_path / "bad.yaml", data)
         with pytest.raises(ConfigError, match="invalid type 'invalid'"):
             load_config(path)
 
-    def test_duplicate_addresses(self, tmp_path: Path) -> None:
+    def test_duplicate_embedded_roles(self, tmp_path: Path) -> None:
         data = {
             "participants": [
-                {"address": "kalvin", "type": "embedded", "class": "KAgent"},
-                {"address": "kalvin", "type": "client", "class": "TUI"},
+                {"role": "kalvin", "type": "embedded", "class": "KAgent"},
+                {"role": "kalvin", "type": "embedded", "class": "AnotherAgent"},
             ]
         }
         path = _write_yaml(tmp_path / "bad.yaml", data)
-        with pytest.raises(ConfigError, match="duplicate address 'kalvin'"):
+        with pytest.raises(ConfigError, match="duplicate role 'kalvin' for embedded"):
             load_config(path)
 
     def test_participant_missing_class(self, tmp_path: Path) -> None:
         data = {
             "participants": [
-                {"address": "kalvin", "type": "embedded"}
+                {"role": "kalvin", "type": "embedded"}
             ]
         }
         path = _write_yaml(tmp_path / "bad.yaml", data)
@@ -146,6 +146,32 @@ class TestConfigValidation:
         path = _write_yaml(tmp_path / "bad.yaml", {"participants": "nope"})
         with pytest.raises(ConfigError, match="'participants' must be a list"):
             load_config(path)
+
+    def test_duplicate_roles_allowed_for_clients(self, tmp_path: Path) -> None:
+        """Duplicate roles are allowed when all entries are type: client."""
+        data = {
+            "participants": [
+                {"role": "supervisor", "type": "client", "class": "TUI1"},
+                {"role": "supervisor", "type": "client", "class": "TUI2"},
+            ]
+        }
+        path = _write_yaml(tmp_path / "ok.yaml", data)
+        config = load_config(path)
+        assert len(config.participants) == 2
+        assert config.participants[0].role == "supervisor"
+        assert config.participants[1].role == "supervisor"
+
+    def test_mixed_duplicate_role_embedded_and_client_ok(self, tmp_path: Path) -> None:
+        """A client may share a role with an embedded participant."""
+        data = {
+            "participants": [
+                {"role": "kalvin", "type": "embedded", "class": "KAgent"},
+                {"role": "kalvin", "type": "client", "class": "TUI"},
+            ]
+        }
+        path = _write_yaml(tmp_path / "ok.yaml", data)
+        config = load_config(path)
+        assert len(config.participants) == 2
 
 
 # -- embedded participants -------------------------------------------------
@@ -158,7 +184,7 @@ class TestLoadEmbeddedParticipants:
         config_data = {
             "participants": [
                 {
-                    "address": "kalvin",
+                    "role": "kalvin",
                     "type": "embedded",
                     "class": "MockKAgent",
                 },
@@ -177,7 +203,7 @@ class TestLoadEmbeddedParticipants:
         assert "kalvin" in server._embedded_participants
         participant = server._embedded_participants["kalvin"]
         assert isinstance(participant, MockParticipant)
-        assert participant.address == "kalvin"
+        assert participant.role == "kalvin"
 
         # Verify bus dispatch triggers the participant's on_message.
         bus_thread = threading.Thread(target=bus.run, daemon=True)
@@ -186,7 +212,7 @@ class TestLoadEmbeddedParticipants:
         try:
             bus.send(
                 Message(
-                    address="kalvin",
+                    role="kalvin",
                     action="submit",
                     message="MHALL = SVO",
                     sender="trainer",
@@ -212,7 +238,7 @@ class TestParticipantRegistry:
         config_data = {
             "participants": [
                 {
-                    "address": "agent",
+                    "role": "agent",
                     "type": "embedded",
                     "class": "MockParticipant",
                 },
@@ -226,9 +252,9 @@ class TestParticipantRegistry:
         # Track factory invocations.
         factory_calls: list[tuple[str, Any]] = []
 
-        def factory(address: str, bus: MessageBus) -> MockParticipant:
-            factory_calls.append((address, bus))
-            return MockParticipant(address, bus)
+        def factory(role: str, bus: MessageBus) -> MockParticipant:
+            factory_calls.append((role, bus))
+            return MockParticipant(role, bus)
 
         server.register_participant_class("MockParticipant", factory)
         server._setup()
@@ -245,7 +271,7 @@ class TestUnregisteredEmbeddedClass:
         config_data = {
             "participants": [
                 {
-                    "address": "kalvin",
+                    "role": "kalvin",
                     "type": "embedded",
                     "class": "UnknownClass",
                 },
@@ -273,7 +299,7 @@ class TestWebSocketClientConnect:
         config_data = {
             "participants": [
                 {
-                    "address": "ui",
+                    "role": "ui",
                     "type": "client",
                     "class": "TUIParticipant",
                 },
@@ -296,6 +322,7 @@ class TestWebSocketClientConnect:
             # Send a ping to verify.
             await ws.send(
                 json.dumps(
+                    # TODO(KB-109): rename "address" → "role" in wire frame
                     {"address": "kalvin", "action": "submit", "message": "test"}
                 )
             )
