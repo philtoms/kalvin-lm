@@ -24,7 +24,7 @@ def _wait_for(event: threading.Event, timeout: float = 2.0) -> None:
 
 
 # ---------------------------------------------------------------------------
-# HRNS-1: Message bus routes by address to correct subscriber
+# HRNS-1: Message bus routes by role to correct subscriber
 # ---------------------------------------------------------------------------
 
 class TestRouteByRole:
@@ -98,7 +98,7 @@ class TestThreadsafeSend:
 
 
 # ---------------------------------------------------------------------------
-# HRNS-3: Unknown address produces error response to sender
+# HRNS-3: Unknown role produces error response to sender
 # ---------------------------------------------------------------------------
 
 class TestUnknownRoleError:
@@ -297,7 +297,7 @@ class TestGracefulShutdown:
 
 
 # ---------------------------------------------------------------------------
-# Additional: Multiple handlers per address
+# Additional: Multiple handlers per role
 # ---------------------------------------------------------------------------
 
 class TestMultipleHandlers:

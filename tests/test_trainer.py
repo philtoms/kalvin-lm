@@ -1632,8 +1632,8 @@ class TestEventRelay:
     ) -> None:
         """S2/S3 frame event: event relay + ratify_request sent to supervisor.
 
-        Reactor.process_s2_s3 is patched because the Reactor still uses
-        Message(address=...) (KB-113/114, out of scope).
+        Reactor.process_s2_s3 is patched because the Reactor's bus messages
+        are tested separately in test_reactor.py.
         """
         entry = _make_entry(100, [10])
         mock_compile.return_value = [entry]
@@ -1644,7 +1644,7 @@ class TestEventRelay:
         trainer.start_session()
         capture.reset()
 
-        # Patch the reactor's process_s2_s3 to avoid Message(address=...) crash
+        # Patch the reactor's process_s2_s3 to isolate Trainer-level testing
         trainer._reactor.process_s2_s3 = MagicMock()
 
         # Send S2/S3 frame event (low significance, non-matching signature)
@@ -1739,3 +1739,154 @@ class TestEventRelay:
         # No ratify_request (went through S1 path)
         ratify_msgs = capture.find_all(SUPERVISOR_ROLE, "ratify_request")
         assert len(ratify_msgs) == 0
+
+
+# ── HRNS-31: Trainer progress/escalation to all supervisor subscribers ──
+
+
+class TestTrainerProgressToAllSupervisors:
+    """HRNS-31: Trainer sends progress and escalation to role `supervisor`;
+    all supervisor subscribers receive."""
+
+    @patch("trainer.trainer.compile_source")
+    def test_progress_to_all_supervisor_subscribers(
+        self, mock_compile: MagicMock
+    ) -> None:
+        """Two handlers subscribed to supervisor both receive progress."""
+        import threading
+
+        entry = _make_entry(100, [10])
+        mock_compile.return_value = [entry]
+
+        bus = MessageBus()
+
+        # Two separate handlers subscribed to supervisor role
+        received_a: list[Message] = []
+        received_b: list[Message] = []
+        event = threading.Event()
+        count = 0
+
+        def handler_a(msg: Message) -> None:
+            nonlocal count
+            received_a.append(msg)
+            if msg.action == "progress":
+                count += 1
+                if count == 2:
+                    event.set()
+
+        def handler_b(msg: Message) -> None:
+            nonlocal count
+            received_b.append(msg)
+            if msg.action == "progress":
+                count += 1
+                if count == 2:
+                    event.set()
+
+        bus.subscribe(SUPERVISOR_ROLE, handler_a)
+        bus.subscribe(SUPERVISOR_ROLE, handler_b)
+
+        curriculum = Curriculum(["lesson1"])
+
+        # Run bus in background thread
+        bus_thread = threading.Thread(target=bus.run, daemon=True)
+        bus_thread.start()
+
+        try:
+            # Trainer constructor may emit progress — create AFTER bus running
+            trainer = Trainer(bus, curriculum)
+
+            # Starting a session emits a "started" progress event
+            trainer.start_session()
+
+            assert event.wait(timeout=2), "Both handlers should have received progress"
+
+            # Both handlers should have received the progress message
+            progress_in_a = [m for m in received_a if m.action == "progress"]
+            progress_in_b = [m for m in received_b if m.action == "progress"]
+
+            assert len(progress_in_a) >= 1, "handler_a should have received progress"
+            assert len(progress_in_b) >= 1, "handler_b should have received progress"
+
+            # Verify the progress message targets supervisor
+            for msg in progress_in_a + progress_in_b:
+                assert msg.role == SUPERVISOR_ROLE
+        finally:
+            bus.stop()
+            bus_thread.join(timeout=2)
+
+    @patch("trainer.trainer.compile_source")
+    def test_escalation_to_all_supervisor_subscribers(
+        self, mock_compile: MagicMock
+    ) -> None:
+        """Two handlers subscribed to supervisor both receive escalation."""
+        import threading
+
+        entry = _make_entry(100, [10])
+        mock_compile.return_value = [entry]
+
+        bus = MessageBus()
+
+        # Two separate handlers subscribed to supervisor role
+        received_a: list[Message] = []
+        received_b: list[Message] = []
+        event = threading.Event()
+        count = 0
+
+        def handler_a(msg: Message) -> None:
+            nonlocal count
+            received_a.append(msg)
+            if msg.action == "notify":
+                count += 1
+                if count == 2:
+                    event.set()
+
+        def handler_b(msg: Message) -> None:
+            nonlocal count
+            received_b.append(msg)
+            if msg.action == "notify":
+                count += 1
+                if count == 2:
+                    event.set()
+
+        bus.subscribe(SUPERVISOR_ROLE, handler_a)
+        bus.subscribe(SUPERVISOR_ROLE, handler_b)
+
+        curriculum = Curriculum(["lesson1"])
+
+        # Run bus in background thread
+        bus_thread = threading.Thread(target=bus.run, daemon=True)
+        bus_thread.start()
+
+        try:
+            trainer = Trainer(bus, curriculum)
+            trainer.start_session()
+
+            # Trigger escalation by sending enough non-matching S2/S3 events
+            # to exhaust the reactive budget (default max_reactive_rounds=5)
+            for _ in range(6):
+                ev = _make_event(
+                    "frame",
+                    query=KLine(signature=999, nodes=[99]),
+                    proposal=KLine(signature=999, nodes=[99]),
+                    significance=_S2_SIGNIFICANCE,
+                )
+                trainer.on_message(
+                    Message(role=TRAINER_ROLE, action="frame", message=ev)
+                )
+
+            assert event.wait(timeout=2), "Both handlers should have received escalation"
+
+            # Both handlers should have received the escalation (notify) message
+            notify_in_a = [m for m in received_a if m.action == "notify"]
+            notify_in_b = [m for m in received_b if m.action == "notify"]
+
+            assert len(notify_in_a) >= 1, "handler_a should have received escalation"
+            assert len(notify_in_b) >= 1, "handler_b should have received escalation"
+
+            # Verify escalation targets supervisor role
+            for msg in notify_in_a + notify_in_b:
+                assert msg.role == SUPERVISOR_ROLE
+                assert msg.message["reason"] in ("budget_exhaustion", "low_confidence")
+        finally:
+            bus.stop()
+            bus_thread.join(timeout=2)
