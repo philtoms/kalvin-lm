@@ -27,6 +27,7 @@ from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX
 from kalvin.kline import KLine
 from kscript.compiler import compile_source
+from kscript.decompiler import Decompiler
 from trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from trainer.curriculum_document import (
     CurriculumDocument,
@@ -237,6 +238,34 @@ class Trainer:
         """Process a KAgent ground or frame event."""
         event: RationaliseEvent = msg.message
         self._reactor.record_response()
+
+        # Decompile for log readability
+        try:
+            decompiled = Decompiler().decompile([event.query, event.proposal]
+                                                 if event.proposal else [event.query])
+            query_src = decompiled[0].to_kscript() if decompiled else repr(event.query)
+            proposal_src = decompiled[1].to_kscript() if len(decompiled) > 1 else None
+        except Exception:
+            query_src = repr(event.query)
+            proposal_src = repr(event.proposal) if event.proposal else None
+
+        sig_norm = event.significance / D_MAX if event.significance else 0.0
+
+        if self._is_s1(event):
+            logger.info(
+                "%s %s → S1 (fast path)%s",
+                event.kind.upper(),
+                query_src,
+                f" ← {proposal_src}" if proposal_src else "",
+            )
+        else:
+            logger.info(
+                "%s %s → %.2f%s",
+                event.kind.upper(),
+                query_src,
+                sig_norm,
+                f" | proposal: {proposal_src}" if proposal_src else "",
+            )
 
         # Relay event to supervisor (HRNS-33)
         self._bus.send(
@@ -478,6 +507,11 @@ class Trainer:
         else:
             self._state.log_event("session_start", {"goal": None})
 
+        logger.info(
+            "Session started — %d lessons, curriculum: %s",
+            self._state.curriculum.total(),
+            self._curriculum_file or "(none)",
+        )
         self._emit_progress("started")
         self._submit_next_lesson()
 
@@ -523,6 +557,7 @@ class Trainer:
         lesson = self._state.curriculum.current()
         if lesson is None:
             # Curriculum complete — end session
+            logger.info("Curriculum complete — all lessons submitted")
             self._emit_progress("complete")
             self._end_session()
             return
@@ -531,10 +566,23 @@ class Trainer:
         current_lesson = self._state.curriculum.current_lesson()
         if current_lesson:
             self._state.mark_lesson_submitted(current_lesson.label)
+            logger.info(
+                "Submitting lesson %s (%d/%d)",
+                current_lesson.label,
+                len(self._state.lesson_satisfied) + 1,
+                self._state.curriculum.total(),
+            )
+            logger.debug("Lesson %s kscript: %s", current_lesson.label, lesson.strip())
 
         # Compile locally to obtain CompiledEntry objects for structural matching
         entries = compile_source(lesson)
         self._reactor.load_lesson(entries)
+
+        logger.info(
+            "Compiled %d entries for lesson %s",
+            len(entries),
+            current_lesson.label if current_lesson else "?",
+        )
 
         # Mark each entry as submitted
         for entry in entries:
@@ -634,6 +682,17 @@ class Trainer:
             old_position = self._state.curriculum.position
             if current_lesson:
                 self._state.mark_lesson_satisfied(current_lesson.label)
+
+            satisfied = len(self._state.satisfied)
+            total_entries = len(self._state.submitted)
+            logger.info(
+                "Lesson %s complete — entries: %d/%d satisfied, %d/%d lessons done",
+                current_lesson.label if current_lesson else "?",
+                satisfied,
+                total_entries,
+                len(self._state.lesson_satisfied),
+                self._state.curriculum.total(),
+            )
 
             self._state.log_event(
                 "lesson_complete",

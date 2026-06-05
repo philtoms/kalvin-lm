@@ -101,10 +101,12 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
         raise ValueError(f"Cannot extract port from harness_url: {cfg.harness_url}")
 
     # 3. Start harness as background process
+    log_path = session_dir / "harness.log"
+    log_file = open(log_path, "w", encoding="utf-8")
     proc = subprocess.Popen(
         [sys.executable, "-m", "harness", "--config", "harness.yaml"],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stderr=log_file,
     )
 
     # 4. Write PID file

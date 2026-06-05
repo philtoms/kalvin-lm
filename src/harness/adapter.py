@@ -31,6 +31,7 @@ from harness.protocols import Participant
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kscript.compiler import compile_source
+from kscript.decompiler import Decompiler
 
 if TYPE_CHECKING:
     pass
@@ -174,6 +175,7 @@ class KAgentAdapter:
             entries = compile_source(msg.message)
         except Exception as exc:
             # Compilation error (LexerError, ParseError, etc.) — report back.
+            logger.error("Compilation error: %s", exc)
             error_msg = Message(
                 role=msg.sender or "",
                 action="error",
@@ -182,6 +184,7 @@ class KAgentAdapter:
             self._bus.send(error_msg)
             return
 
+        logger.info("Submitting %d compiled entries to KAgent", len(entries))
         for entry in entries:
             # Record sender for this entry so callbacks can be routed.
             key: EntryKey = (entry.signature, tuple(entry.nodes))
@@ -198,6 +201,7 @@ class KAgentAdapter:
             return
 
         kline = msg.message
+        logger.info("Countersign: %s", kline)
         self._kagent.countersign(kline)
 
     def _handle_save(self, msg: Message) -> None:
