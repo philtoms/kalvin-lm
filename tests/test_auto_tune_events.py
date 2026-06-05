@@ -223,9 +223,11 @@ class TestSignificanceObject:
         assert sig["level"] == "S3"
 
     def test_midrange_normalisation(self):
+        # raw = D_MAX // 2 has distance = D_MAX // 2, which is far beyond
+        # S2_S3_DISTANCE. Normalisation clamps to 0.0 for S3.
         raw = D_MAX // 2
         sig = _build_significance(raw)
-        assert sig["normalised"] == pytest.approx(0.5, rel=1e-6)
+        assert sig["normalised"] == 0.0  # S3 → clamped to 0
 
     def test_level_classification_matches_classify(self):
         s12, s23, s34 = boundaries()
@@ -235,11 +237,31 @@ class TestSignificanceObject:
         assert sig["level"] == expected_level
 
     def test_s23_boundary(self):
-        """At the S2|S3 boundary, level should be S2."""
+        """At the S2|S3 boundary, level should be S2, normalised should be 0.0."""
         _, s23, _ = boundaries()
         sig = _build_significance(s23)
         assert sig["level"] == "S2"
-        assert sig["normalised"] == pytest.approx(s23 / D_MAX, rel=1e-12)
+        # s23 = ~S2_S3_DISTANCE, so distance = S2_S3_DISTANCE → normalised = 0.0
+        assert sig["normalised"] == pytest.approx(0.0, abs=1e-6)
+
+    def test_s2_less_than_s1(self):
+        """S2 normalised significance must be strictly less than S1."""
+        from kalvin.expand import MASK64
+        s1_sig = D_MAX - 1  # S1 threshold, distance=1
+        s2_sig = (~2) & MASK64  # S2, distance=2
+        s1 = _build_significance(s1_sig)
+        s2 = _build_significance(s2_sig)
+        assert s1["level"] == "S1"
+        assert s2["level"] == "S2"
+        assert s2["normalised"] < s1["normalised"]
+        assert s2["normalised"] < 1.0
+
+    def test_s1_range_near_one(self):
+        """S1 events normalise close to 1.0."""
+        sig = _build_significance(D_MAX)  # distance=0
+        assert sig["normalised"] == 1.0
+        sig = _build_significance(D_MAX - 1)  # distance=1
+        assert sig["normalised"] == pytest.approx(0.99, rel=1e-6)
 
 
 # ── 7. KLine Display Object ──────────────────────────────────────────

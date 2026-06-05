@@ -132,15 +132,21 @@ def edge_hops(model: Model, sig: int) -> Iterator[tuple[int, int]]:
     """Yield (hop_count, next_sig) for each non-canonical resolution step.
 
     Follows: resolve sig → kline → make_signature(kline.nodes) → repeat.
-    Stops at a dead end (unresolvable) or a canonical kline.
+    Stops at a dead end (unresolvable), a canonical kline, or a cycle.
     """
     hop_count = 0
+    visited: set[int] = set()
     while hop_count < MAX_HOP:
+        if sig in visited:
+            break  # cycle detected
+        visited.add(sig)
         kline = model.find(sig)
         if kline is None or is_canon(kline):
             break
         hop_count += 1
         sig = make_signature(kline.nodes)
+        if sig == 0:
+            break  # identity kline — nowhere to go
         yield hop_count, sig
 
 
@@ -229,10 +235,11 @@ def expand(
             for hops, match_sig in edge_hops(model, n):
                 if match_sig in mismatched_c:
                     hop_distance = hops
-                    c_kline = _as_kline(model, match_sig)
-                    yield from expand(
-                        model, q_kline, c_kline, hops, _visited=_visited,
-                    )
+                    c_kline = model.find(match_sig)
+                    if c_kline is not None:
+                        yield from expand(
+                            model, q_kline, c_kline, hops, _visited=_visited,
+                        )
                     break
                 elif signifies(n, match_sig):
                     c_kline = model.find(match_sig)
@@ -254,10 +261,11 @@ def expand(
             for hops, match_sig in edge_hops(model, n):
                 if match_sig in mismatched_q:
                     hop_distance = hops
-                    c_kline = _as_kline(model, match_sig)
-                    yield from expand(
-                        model, q_kline, c_kline, hops, _visited=_visited,
-                    )
+                    c_kline = model.find(match_sig)
+                    if c_kline is not None:
+                        yield from expand(
+                            model, q_kline, c_kline, hops, _visited=_visited,
+                        )
                     break
                 elif signifies(n, match_sig):
                     c_kline = model.find(match_sig)
@@ -268,12 +276,13 @@ def expand(
                     break
                 elif match_sig in s3_connotations:
                     s3_hop = s3_connotations[match_sig] + hops
-                    c_kline = _as_kline(model, match_sig)
-                    yield from expand(
-                        model, q_kline, c_kline,
-                        _pack(s3_hop + _S3_BIAS),
-                        _visited=_visited,
-                    )
+                    c_kline = model.find(match_sig)
+                    if c_kline is not None:
+                        yield from expand(
+                            model, q_kline, c_kline,
+                            _pack(s3_hop + _S3_BIAS),
+                            _visited=_visited,
+                        )
                     hop_distance = 0
                     break
         total_distance += hop_distance
