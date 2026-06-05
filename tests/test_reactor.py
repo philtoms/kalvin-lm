@@ -10,6 +10,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from harness.bus import MessageBus
+from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
@@ -62,17 +63,17 @@ class BusCapture:
 
         self._bus.send = capturing_send  # type: ignore[assignment]
 
-    def find_all(self, address: str, action: str) -> list[Message]:
-        """Return all captured messages matching address and action."""
+    def find_all(self, role: str, action: str) -> list[Message]:
+        """Return all captured messages matching role and action."""
         return [
             m
             for m in self.messages
-            if m.address == address and m.action == action
+            if m.role == role and m.action == action
         ]
 
-    def find_one(self, address: str, action: str) -> Message | None:
-        """Return the first captured message matching address and action, or None."""
-        matches = self.find_all(address, action)
+    def find_one(self, role: str, action: str) -> Message | None:
+        """Return the first captured message matching role and action, or None."""
+        matches = self.find_all(role, action)
         return matches[0] if matches else None
 
     def reset(self) -> None:
@@ -94,7 +95,7 @@ def _make_reactor(
     reactor = Reactor(
         bus,
         state,
-        address="trainer",
+        role="trainer",
         max_reactive_rounds=max_reactive_rounds,
         cogitate_fn=cogitate_fn,
     )
@@ -171,11 +172,11 @@ class TestAutoCountersignStructuralMatch:
         event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
 
         trainer.on_message(
-            Message(address="trainer", action="frame", message=event)
+            Message(role="trainer", action="frame", message=event)
         )
 
         # Verify countersign was sent to kalvin
-        cs_msgs = capture.find_all("kalvin", "countersign")
+        cs_msgs = capture.find_all(TRAINEE_ROLE, "countersign")
         assert len(cs_msgs) == 1
         assert cs_msgs[0].sender == "trainer"
         # The countersign message contains the proposal KLine
@@ -208,15 +209,15 @@ class TestReactiveModeOnS2S3:
         event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
 
         trainer.on_message(
-            Message(address="trainer", action="frame", message=event)
+            Message(role="trainer", action="frame", message=event)
         )
 
         # Verify NO countersign was sent
-        cs_msgs = capture.find_all("kalvin", "countersign")
+        cs_msgs = capture.find_all(TRAINEE_ROLE, "countersign")
         assert len(cs_msgs) == 0
 
         # Verify escalation to slack (low_confidence since no cogitate_fn)
-        notify_msgs = capture.find_all("slack", "notify")
+        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
         assert len(notify_msgs) >= 1
         escalation = notify_msgs[0].message
         assert escalation["reason"] == "low_confidence"
@@ -249,11 +250,11 @@ class TestEscalationOnBudgetExhaustion:
             query = KLine(signature=800 + i, nodes=[i])
             event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
             trainer.on_message(
-                Message(address="trainer", action="frame", message=event)
+                Message(role="trainer", action="frame", message=event)
             )
 
         # Verify budget_exhaustion escalation
-        notify_msgs = capture.find_all("slack", "notify")
+        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
         budget_esc = [
             m for m in notify_msgs if m.message["reason"] == "budget_exhaustion"
         ]
@@ -287,20 +288,20 @@ class TestCogitateFnInjection:
         event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
 
         trainer.on_message(
-            Message(address="trainer", action="frame", message=event)
+            Message(role="trainer", action="frame", message=event)
         )
 
         # Cogitate was called
         mock_cogitate.assert_called_once_with(event)
 
         # Reactive scaffolding was submitted to kalvin
-        submit_msgs = capture.find_all("kalvin", "submit")
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         scaffolding_msgs = [m for m in submit_msgs if m.message == "S = X / V = Y"]
         assert len(scaffolding_msgs) == 1
         assert scaffolding_msgs[0].sender == "trainer"
 
         # No escalation (low_confidence) should have occurred
-        notify_msgs = capture.find_all("slack", "notify")
+        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
         escalation_msgs = [
             m for m in notify_msgs
             if m.message.get("reason") in ("low_confidence", "budget_exhaustion")
@@ -327,7 +328,7 @@ class TestAutoCountersign:
         reactor.process_s2_s3(event)
 
         # Countersign sent
-        cs_msgs = capture.find_all("kalvin", "countersign")
+        cs_msgs = capture.find_all(TRAINEE_ROLE, "countersign")
         assert len(cs_msgs) == 1
         assert cs_msgs[0].sender == "trainer"
         assert cs_msgs[0].message == proposal
@@ -350,7 +351,7 @@ class TestAutoCountersign:
 
         reactor.process_s2_s3(event)
 
-        notify_msgs = capture.find_all("slack", "notify")
+        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
         assert len(notify_msgs) == 0
 
 
@@ -370,11 +371,11 @@ class TestAutoCountersignNoMatch:
         reactor.process_s2_s3(event)
 
         # No countersign sent
-        cs_msgs = capture.find_all("kalvin", "countersign")
+        cs_msgs = capture.find_all(TRAINEE_ROLE, "countersign")
         assert len(cs_msgs) == 0
 
         # Escalation to slack (low_confidence since no cogitate_fn)
-        notify_msgs = capture.find_all("slack", "notify")
+        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
         assert len(notify_msgs) >= 1
         assert notify_msgs[0].message["reason"] == "low_confidence"
 
@@ -399,13 +400,13 @@ class TestReactiveScaffolding:
         mock_cogitate.assert_called_once_with(event)
 
         # Reactive scaffolding submitted
-        submit_msgs = capture.find_all("kalvin", "submit")
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         scaffolding_msgs = [m for m in submit_msgs if m.message == "S = X / V = Y"]
         assert len(scaffolding_msgs) == 1
         assert scaffolding_msgs[0].sender == "trainer"
 
         # No escalation
-        notify_msgs = capture.find_all("slack", "notify")
+        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
         escalation_msgs = [
             m
             for m in notify_msgs
@@ -431,12 +432,12 @@ class TestReactiveLowConfidence:
         reactor.process_s2_s3(event)
 
         # Escalation with low_confidence
-        notify_msgs = capture.find_all("slack", "notify")
+        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
         assert len(notify_msgs) >= 1
         assert notify_msgs[0].message["reason"] == "low_confidence"
 
         # No scaffolding submitted
-        submit_msgs = capture.find_all("kalvin", "submit")
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert len(submit_msgs) == 0
 
 
@@ -457,7 +458,7 @@ class TestBudgetExhaustion:
             reactor.process_s2_s3(event)
 
         # Verify budget_exhaustion escalation
-        notify_msgs = capture.find_all("slack", "notify")
+        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
         budget_esc = [
             m for m in notify_msgs if m.message["reason"] == "budget_exhaustion"
         ]

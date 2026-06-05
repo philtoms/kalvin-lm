@@ -21,6 +21,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from harness.bus import MessageBus
+from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
@@ -67,8 +68,8 @@ class Reactor:
         The message bus for sending countersign, submit, and escalation messages.
     state:
         The shared curriculum state for marking entries satisfied and logging events.
-    address:
-        Bus address of the owning Trainer (used as ``sender`` in bus messages).
+    role:
+        Bus role of the owning Trainer (used as ``sender`` in bus messages).
     max_reactive_rounds:
         Maximum reactive scaffolding rounds before budget-exhaustion escalation.
     cogitate_fn:
@@ -83,13 +84,13 @@ class Reactor:
         bus: MessageBus,
         state: CurriculumState,
         *,
-        address: str = "trainer",
+        role: str = "trainer",
         max_reactive_rounds: int = 5,
         cogitate_fn: Callable[[RationaliseEvent], tuple[str, float] | None] | None = None,
     ) -> None:
         self._bus = bus
         self._state = state
-        self._address = address
+        self._role = role
         self._max_reactive_rounds = max_reactive_rounds
         self._cogitate_fn = cogitate_fn
 
@@ -159,10 +160,10 @@ class Reactor:
 
                 self._bus.send(
                     Message(
-                        address="kalvin",
+                        role=TRAINEE_ROLE,
                         action="countersign",
                         message=proposal,
-                        sender=self._address,
+                        sender=self._role,
                     )
                 )
                 self._state.mark_satisfied(key)
@@ -193,10 +194,10 @@ class Reactor:
             # Submit reactive scaffolding to KAgent
             self._bus.send(
                 Message(
-                    address="kalvin",
+                    role=TRAINEE_ROLE,
                     action="submit",
                     message=kscript_source,
-                    sender=self._address,
+                    sender=self._role,
                 )
             )
         else:
@@ -215,17 +216,17 @@ class Reactor:
     # ── Escalation ────────────────────────────────────────────────────
 
     def _escalate(self, reason: str, detail: str = "") -> None:
-        """Escalate to the human via Slack notify message."""
+        """Escalate to supervisor subscribers via notify message."""
         self._bus.send(
             Message(
-                address="slack",
+                role=SUPERVISOR_ROLE,
                 action="notify",
                 message={
                     "reason": reason,
                     "detail": detail,
                     "lesson_position": self._state.curriculum.position,
                 },
-                sender=self._address,
+                sender=self._role,
             )
         )
         self._state.log_event("escalation", {"reason": reason, "detail": detail})

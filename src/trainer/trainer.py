@@ -102,7 +102,7 @@ class Trainer:
         self._reactor = Reactor(
             bus,
             self._state,
-            address=role,
+            role=role,
             max_reactive_rounds=max_reactive_rounds,
             cogitate_fn=cogitate_fn,
         )
