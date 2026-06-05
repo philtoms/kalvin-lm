@@ -1,0 +1,9 @@
+{
+  "session": "llm-misfix",
+  "curriculum": "curricula/first-steps-s2.md",
+  "harness_url": "ws://localhost:8765",
+  "model_path": "data/agent.bin",
+  "run_counter": 2,
+  "created_from_branch": "main",
+  "created_from_commit": "05451e5d68fbf4863136677f0f1ace6391448c65"
+}
