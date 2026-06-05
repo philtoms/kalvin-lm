@@ -131,7 +131,7 @@ class TestTrainerFactoryLLMWiring:
         trainer = Trainer(
             bus,
             curriculum,
-            address="trainer",
+            role="trainer",
             curricula_dir="/tmp/curricula",
             llm_client=mock_llm,
         )
@@ -156,7 +156,7 @@ class TestTrainerFactoryLLMWiring:
         trainer = Trainer(
             bus,
             curriculum,
-            address="trainer",
+            role="trainer",
             curricula_dir="/tmp/curricula",
             llm_client=llm_client,
         )
@@ -190,7 +190,7 @@ class TestTrainerFactoryLLMWiring:
             trainer = Trainer(
                 bus,
                 curriculum,
-                address="trainer",
+                role="trainer",
                 curricula_dir="/tmp/curricula",
                 llm_client=llm_client,
             )
