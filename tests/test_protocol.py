@@ -59,7 +59,7 @@ async def _stop_server(server: Any) -> None:
 
 
 class TestClientRegistration:
-    """HRNS-4: WebSocket client registers address; subsequent frames have
+    """HRNS-4: WebSocket client registers role; subsequent frames have
     implicit sender."""
 
     @pytest.mark.asyncio
@@ -74,7 +74,7 @@ class TestClientRegistration:
         try:
             async with websockets.connect("ws://localhost:18765") as ws:
                 # Register.
-                await ws.send(json.dumps({"register": "ui"}))
+                await ws.send(json.dumps({"register": "trainee"}))
                 # Give the server a moment to process.
                 await asyncio.sleep(0.05)
 
@@ -82,7 +82,7 @@ class TestClientRegistration:
                 await ws.send(
                     json.dumps(
                         {
-                            "address": "kalvin",
+                            "role": "supervisor",
                             "action": "submit",
                             "message": "MHALL = SVO",
                         }
@@ -95,14 +95,14 @@ class TestClientRegistration:
             await bus_thread
             await _stop_server(server)
 
-        # The bus should have received the message with sender="ui".
+        # The bus should have received the message with sender="trainee".
         submit_msgs = [m for m in recorder.messages if m.action == "submit"]
         assert len(submit_msgs) == 1
         msg = submit_msgs[0]
-        assert msg.address == "kalvin"
+        assert msg.role == "supervisor"
         assert msg.action == "submit"
         assert msg.message == "MHALL = SVO"
-        assert msg.sender == "ui"
+        assert msg.sender == "trainee"
 
     @staticmethod
     async def _run_bus(bus: MessageBus) -> None:
@@ -127,7 +127,7 @@ class TestDisconnectSilentDrop:
         bus = MessageBus()
         protocol, server = await _start_server(bus, port=18766)
 
-        # Subscribe a "still alive" handler for a different address.
+        # Subscribe a "still alive" handler for a different role.
         alive_messages: list[Message] = []
         bus.subscribe("trainer", lambda m: alive_messages.append(m))
 
@@ -151,7 +151,7 @@ class TestDisconnectSilentDrop:
             # dropped (no exception, no crash).
             bus.send(
                 Message(
-                    address="slack",
+                    role="slack",
                     action="notify",
                     message="hello",
                     sender="trainer",
@@ -161,7 +161,7 @@ class TestDisconnectSilentDrop:
             # Send to "trainer" — should still work.
             bus.send(
                 Message(
-                    address="trainer",
+                    role="trainer",
                     action="ping",
                     message="are you there?",
                     sender="kalvin",
@@ -177,40 +177,57 @@ class TestDisconnectSilentDrop:
         # No crash occurred (we got here).  Trainer should have received its
         # message.
         assert len(alive_messages) == 1
-        assert alive_messages[0].address == "trainer"
+        assert alive_messages[0].role == "trainer"
 
 
-class TestDuplicateRegistrationRejected:
-    """Second client attempting to register an already-taken address is
-    rejected with an error frame."""
+class TestMultipleClientsSameRole:
+    """Multiple clients registering for the same role both receive messages."""
 
     @pytest.mark.asyncio
-    async def test_duplicate_registration_rejected(self) -> None:
+    async def test_multiple_clients_same_role(self) -> None:
         bus = MessageBus()
         protocol, server = await _start_server(bus, port=18767)
 
+        import threading
+
+        bus_thread = threading.Thread(target=bus.run, daemon=True)
+        bus_thread.start()
+
         try:
-            # First client registers as "ui".
+            # Two clients register for the same role.
             ws1 = await websockets.connect("ws://localhost:18767")
-            await ws1.send(json.dumps({"register": "ui"}))
+            ws2 = await websockets.connect("ws://localhost:18767")
+
+            await ws1.send(json.dumps({"register": "supervisor"}))
+            await asyncio.sleep(0.05)
+            await ws2.send(json.dumps({"register": "supervisor"}))
             await asyncio.sleep(0.05)
 
-            # Second client attempts same address.
-            ws2 = await websockets.connect("ws://localhost:18767")
-            await ws2.send(json.dumps({"register": "ui"}))
-            response = await asyncio.wait_for(ws2.recv(), timeout=2.0)
-            frame = json.loads(response)
+            # Send a message to "supervisor" via the bus.
+            bus.send(
+                Message(
+                    role="supervisor",
+                    action="progress",
+                    message="50%",
+                    sender="trainer",
+                )
+            )
+            await asyncio.sleep(0.1)
 
-            assert "error" in frame
-            assert "already registered" in frame["error"]
+            # Both clients should receive the message.
+            frame1 = json.loads(await asyncio.wait_for(ws1.recv(), timeout=2.0))
+            frame2 = json.loads(await asyncio.wait_for(ws2.recv(), timeout=2.0))
 
-            # Second client should be closed by server.
-            # The server sends a close frame, so ws2 should close.
+            assert frame1["role"] == "supervisor"
+            assert frame1["action"] == "progress"
+            assert frame2["role"] == "supervisor"
+            assert frame2["action"] == "progress"
 
-            # Clean up.
             await ws1.close()
-
+            await ws2.close()
         finally:
+            bus.stop()
+            bus_thread.join(timeout=5)
             await _stop_server(server)
 
 
@@ -252,7 +269,7 @@ class TestSendToClient:
 
             # Send via the protocol.
             msg = Message(
-                address="ui",
+                role="ui",
                 action="event",
                 message={"type": "s1"},
                 sender="kalvin",
@@ -262,7 +279,7 @@ class TestSendToClient:
             response = await asyncio.wait_for(ws.recv(), timeout=2.0)
             frame = json.loads(response)
 
-            assert frame["address"] == "ui"
+            assert frame["role"] == "ui"
             assert frame["action"] == "event"
             assert frame["message"] == {"type": "s1"}
             assert frame["sender"] == "kalvin"
@@ -283,11 +300,108 @@ class TestSendToClientSilentDrop:
         try:
             # Send to a non-existent client — should not raise.
             msg = Message(
-                address="nobody",
+                role="nobody",
                 action="ping",
                 message="hello",
             )
             await protocol.send_to_client("nobody", msg)
             # If we get here without exception, the test passes.
         finally:
+            await _stop_server(server)
+
+
+class TestMultipleClientsSameRoleFanOut:
+    """HRNS-30: two WebSocket clients register for the same role and both
+    receive messages sent to that role."""
+
+    @pytest.mark.asyncio
+    async def test_multiple_clients_same_role_both_receive(self) -> None:
+        bus = MessageBus()
+        protocol, server = await _start_server(bus, port=18771)
+
+        import threading
+
+        bus_thread = threading.Thread(target=bus.run, daemon=True)
+        bus_thread.start()
+
+        try:
+            # Two clients connect and register for the same role.
+            ws1 = await websockets.connect("ws://localhost:18771")
+            ws2 = await websockets.connect("ws://localhost:18771")
+
+            await ws1.send(json.dumps({"register": "supervisor"}))
+            await asyncio.sleep(0.05)
+            await ws2.send(json.dumps({"register": "supervisor"}))
+            await asyncio.sleep(0.05)
+
+            # Send a message to "supervisor" via the bus.
+            bus.send(Message(
+                role="supervisor",
+                action="progress",
+                message="50%",
+                sender="trainer",
+            ))
+            await asyncio.sleep(0.1)
+
+            # Both clients should receive the message.
+            frame1 = json.loads(await asyncio.wait_for(ws1.recv(), timeout=2.0))
+            frame2 = json.loads(await asyncio.wait_for(ws2.recv(), timeout=2.0))
+
+            assert frame1["role"] == "supervisor"
+            assert frame1["action"] == "progress"
+            assert frame2["role"] == "supervisor"
+            assert frame2["action"] == "progress"
+
+            await ws1.close()
+            await ws2.close()
+        finally:
+            bus.stop()
+            bus_thread.join(timeout=5)
+            await _stop_server(server)
+
+
+class TestDisconnectOneOfTwoSameRole:
+    """When one of two clients for the same role disconnects, the remaining
+    client still receives messages."""
+
+    @pytest.mark.asyncio
+    async def test_disconnect_one_of_two_same_role(self) -> None:
+        bus = MessageBus()
+        protocol, server = await _start_server(bus, port=18772)
+
+        import threading
+
+        bus_thread = threading.Thread(target=bus.run, daemon=True)
+        bus_thread.start()
+
+        try:
+            ws1 = await websockets.connect("ws://localhost:18772")
+            ws2 = await websockets.connect("ws://localhost:18772")
+            await ws1.send(json.dumps({"register": "supervisor"}))
+            await asyncio.sleep(0.05)
+            await ws2.send(json.dumps({"register": "supervisor"}))
+            await asyncio.sleep(0.05)
+
+            # Disconnect ws1.
+            await ws1.close()
+            await asyncio.sleep(0.05)
+
+            # Send a message to "supervisor" via the bus.
+            bus.send(Message(
+                role="supervisor",
+                action="event",
+                message="still alive",
+                sender="trainer",
+            ))
+            await asyncio.sleep(0.1)
+
+            # ws2 should still receive.
+            frame = json.loads(await asyncio.wait_for(ws2.recv(), timeout=2.0))
+            assert frame["role"] == "supervisor"
+            assert frame["action"] == "event"
+
+            await ws2.close()
+        finally:
+            bus.stop()
+            bus_thread.join(timeout=5)
             await _stop_server(server)
