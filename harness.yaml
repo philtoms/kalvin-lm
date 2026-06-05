@@ -13,7 +13,6 @@ trainer:
   #   - Or type a file path like "curricula/first-steps.md"
   curriculum_file: "curricula/first-steps.md"
   curricula_dir: "curricula"   # Directory for generated curriculum files
-  state_path: "trainer_state.json"  # Path for state persistence
   max_reactive_rounds: 5
   # llm:                         # Uncomment to override defaults
   #   base_url: "https://open.bigmodel.cn/api/paas/v4"

@@ -396,7 +396,7 @@ class OpenAICompatibleClient:
     def __init__(
         self,
         api_key: str,
-        base_url: str = "https://open.bigmodel.cn/api/paas/v4",
+        base_url: str = "https://api.z.ai/api/coding/paas/v4",
         model: str = "glm-5.1",
     ) -> None:
         try:

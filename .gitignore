@@ -74,3 +74,4 @@ pytest-of-*
 .tmp.*
 .worktrees
 trainer_state.json
+curricula/*.json

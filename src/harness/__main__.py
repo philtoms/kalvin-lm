@@ -107,7 +107,7 @@ def _build_llm_client(trainer_cfg: dict) -> Any:
 
     llm_cfg = trainer_cfg.get("llm", {})
     model = llm_cfg.get("model", "glm-5.1")
-    base_url = llm_cfg.get("base_url", "https://open.bigmodel.cn/api/paas/v4")
+    base_url = llm_cfg.get("base_url", "https://api.z.ai/api/coding/paas/v4")
 
     try:
         from trainer.cogitation import OpenAICompatibleClient
@@ -166,7 +166,6 @@ def main(argv: list[str] | None = None) -> None:
 
     # Extract trainer settings
     trainer_cfg = extras.get("trainer", {})
-    state_path = trainer_cfg.get("state_path", "trainer_state.json")
 
     # -- Create bus and server -----------------------------------------------
     bus = MessageBus()
@@ -200,6 +199,12 @@ def main(argv: list[str] | None = None) -> None:
         curriculum_file = trainer_cfg.get("curriculum_file", "")
         curricula_dir = trainer_cfg.get("curricula_dir", "curricula")
 
+        # Derive state path from curriculum file: curricula/first-steps.md → curricula/first-steps.json
+        state_path: str | None = None
+        if curriculum_file:
+            curriculum_path = Path(curriculum_file)
+            state_path = str(curriculum_path.with_suffix(".json"))
+
         # Load curriculum from file if specified
         curriculum: Curriculum
         if curriculum_file:
@@ -226,7 +231,7 @@ def main(argv: list[str] | None = None) -> None:
         # Register state persistence as a shutdown callback
         if state_path:
             shutdown_callbacks.append(
-                lambda: _persist_trainer_state(trainer)
+                lambda t=trainer: _persist_trainer_state(t)
             )
 
         return _AlreadySubscribed(trainer)
@@ -286,7 +291,7 @@ def _build_llm_client(trainer_cfg: dict) -> Any | None:
         from trainer.cogitation import OpenAICompatibleClient
 
         base_url = llm_cfg.get(
-            "base_url", "https://open.bigmodel.cn/api/paas/v4"
+            "base_url", "https://api.z.ai/api/coding/paas/v4"
         )
         model = llm_cfg.get("model", "glm-5.1")
         client = OpenAICompatibleClient(

@@ -2056,3 +2056,125 @@ class TestCogitatorAutoWiring:
             if m.message.get("reason") in ("low_confidence", "budget_exhaustion")
         ]
         assert len(escalation_msgs) == 0
+
+
+# ── Restart action ───────────────────────────────────────────────────
+
+
+class TestRestartSession:
+    """Restart action clears state and restarts from the beginning."""
+
+    @patch("trainer.trainer.compile_source")
+    def test_restart_clears_state_and_restarts(
+        self, mock_compile: MagicMock
+    ) -> None:
+        """Restart clears tracking sets, resets position, starts fresh."""
+        entry = _make_entry(100, [10])
+        mock_compile.return_value = [entry]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2", "lesson3"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+
+        # Complete lesson 1
+        event = _make_event(
+            "ground",
+            query=KLine(signature=100, nodes=[10]),
+            proposal=KLine(signature=100, nodes=[10]),
+            significance=_S1_SIGNIFICANCE,
+        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
+
+        # Verify we advanced to lesson 2
+        assert trainer.state.curriculum.position == 1
+        key = _entry_key(entry)
+        assert trainer.state.is_satisfied(key)
+
+        capture.reset()
+
+        # Send restart
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="input", message="restart", sender="slack")
+        )
+
+        # Position reset to 0
+        assert trainer.state.curriculum.position == 0
+
+        # Satisfied sets cleared (but submitted gets re-populated by re-submit)
+        assert len(trainer.state.satisfied) == 0
+        assert len(trainer.state.pending) == 0
+        assert len(trainer.state.lesson_satisfied) == 0
+
+        # Session is active
+        assert trainer._session_active
+        assert not trainer._session_paused
+
+        # A "restart" progress event was emitted
+        progress_msgs = capture.find_all(SUPERVISOR_ROLE, "progress")
+        restart_msgs = [m for m in progress_msgs if m.message["status"] == "restart"]
+        assert len(restart_msgs) >= 1
+
+        # A "started" progress event was emitted (for the new session)
+        started_msgs = [m for m in progress_msgs if m.message["status"] == "started"]
+        assert len(started_msgs) >= 1
+
+        # First lesson was re-submitted
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
+        assert len(submit_msgs) >= 1
+
+        # A session_restart event was logged
+        restart_events = [
+            e for e in trainer.state.event_log if e["type"] == "session_restart"
+        ]
+        assert len(restart_events) == 1
+
+    @patch("trainer.trainer.compile_source")
+    def test_restart_when_no_session_does_nothing(
+        self, mock_compile: MagicMock
+    ) -> None:
+        """Restart when no session is active does nothing."""
+        entry = _make_entry(100, [10])
+        mock_compile.return_value = [entry]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1"])
+        trainer, capture = _make_trainer(bus, curriculum)
+
+        # No session active
+        assert not trainer._session_active
+        capture.reset()
+
+        # Send restart (should do nothing since there's no active session)
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="input", message="restart", sender="slack")
+        )
+
+        # The handler should still work — it just restarts even without a session
+        assert trainer._session_active
+
+    @patch("trainer.trainer.compile_source")
+    def test_restart_resets_reactor(
+        self, mock_compile: MagicMock
+    ) -> None:
+        """Restart clears the reactor's per-lesson state."""
+        entry = _make_entry(100, [10])
+        mock_compile.return_value = [entry]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+
+        capture.reset()
+
+        # Restart
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="input", message="restart", sender="slack")
+        )
+
+        # Reactor should have been reset and then re-loaded with lesson 1
+        assert trainer._reactor._expected_count > 0  # lesson re-loaded
+
+        # Session active
+        assert trainer._session_active

@@ -1459,5 +1459,20 @@ the curriculum should include steps to isolate the syntax of the text, so that k
 
 This is just an example curriculum. The loose format means that it can be constructed to teach kalvin targeted domains across a growing general knowledge.
 
-trainer:  
-kalvin:
+I think the compressor looks a lot like rationalisation, or more precisely rationalisation as part of a necessary dialogue. Kalvin only works with information that it already knows. It tentatively requests ratification for information that it has never seen before and cannot move on until such ratification is acquired. Kalvin takes a concept that in the real world has hundreds maybe thousands of connotations and associations, strips out everything except what it already recognises or what it attributes to what it already knows - then ask the world: "have I got this right?". This is quite severe compression. At this rate kalvin will only ever have a curated world view but it's a view that aligns with the needs and expectations of external agents. That is all Kalvin needs to survive. 
+
+So, here is what compression amounts to: It is the creation and evolution of the STM. It is an extremely lossy compression because new information can only be added to the STM if it is kline-related to existing information. For example the kline MHALP shares 4 nodes with MHALL, so it does get added to the STM. P is new (S4) information that kalvin has immediate access to. 
+
+Kalvin can only engage with the world compressed into a small dimensional manifold. It is 
+
+The LTM and STM contains the following klines
+LTM: `MHALL(Mary had a little lamb)`
+STM:
+```
+(Our dining experience last night)
+ODELN => 
+  MHB => M(ary) H(ad) B(eef) 
+  BHC => B(ob) H(ad) C(hicken)
+```
+
+When kalvin receives the question (What did mary have) `WDMH => MHW `, it is expected to return MHB because STM is more recent than LTM.

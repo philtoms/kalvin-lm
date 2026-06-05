@@ -300,6 +300,8 @@ class Trainer:
         elif text == "pause":
             self._session_paused = True
             self._state.log_event("pause", {})
+        elif text == "restart":
+            self._restart_session()
         elif text == "stop":
             self._end_session()
         elif text == "resume":
@@ -665,6 +667,39 @@ class Trainer:
         if self._pending_goals:
             next_goal = self._pending_goals.pop(0)
             self.start_session(goal=next_goal)
+
+    def _restart_session(self) -> None:
+        """Clear training state and restart the session from the beginning.
+
+        Resets curriculum position, all tracking sets, and the reactor,
+        then starts a fresh session with the current curriculum.
+        """
+        was_active = self._session_active
+
+        # End current session (without processing queued goals)
+        self._session_active = False
+        self._session_paused = False
+
+        # Reset curriculum position and tracking sets
+        self._state.curriculum.position = 0
+        self._state.submitted.clear()
+        self._state.satisfied.clear()
+        self._state.pending.clear()
+        self._state.lesson_submitted.clear()
+        self._state.lesson_satisfied.clear()
+
+        # Reset reactor
+        self._reactor.load_lesson([])
+
+        self._state.log_event("session_restart", {})
+        self._emit_progress("restart")
+
+        # Start fresh session
+        self._session_active = True
+        self._session_paused = False
+        self._state.log_event("session_start", {"goal": None})
+        self._emit_progress("started")
+        self._submit_next_lesson()
 
 
 # ── Module-level helpers ──────────────────────────────────────────────
