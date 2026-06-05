@@ -7,13 +7,7 @@ for automated training sessions driven by an LLM coding agent.
 Exports:
     SessionConfig — serialisable configuration for an auto-tune session.
     SessionDir — manages session directories, config files, and git branches.
-    start_harness — start the harness server as a background process.
-    stop_harness — stop the harness server (SIGTERM → SIGKILL).
-    start_supervisor — start the CLI supervisor as a background process.
-    stop_supervisor — stop the CLI supervisor (shutdown cmd → SIGKILL).
-    reset — clear auto-tune session state for a fresh start.
-    snapshot — capture a snapshot of session state.
-    restore — restore session state from a named run.
+    CLISupervisor — headless WebSocket client for auto-tune sessions.
 """
 
 
@@ -25,29 +19,10 @@ def __getattr__(name: str):
     if name == "SessionDir":
         from participants.auto_tune.session import SessionDir
         return SessionDir
-    if name in ("start_harness", "stop_harness", "start_supervisor", "stop_supervisor"):
-        from participants.auto_tune import lifecycle as _lifecycle
-        return getattr(_lifecycle, name)
-    if name == "reset":
-        from participants.auto_tune.snapshots import reset
-        return reset
-    if name == "snapshot":
-        from participants.auto_tune.snapshots import snapshot
-        return snapshot
-    if name == "restore":
-        from participants.auto_tune.snapshots import restore
-        return restore
+    if name == "CLISupervisor":
+        from participants.auto_tune.supervisor import CLISupervisor
+        return CLISupervisor
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-__all__ = [
-    "SessionConfig",
-    "SessionDir",
-    "start_harness",
-    "stop_harness",
-    "start_supervisor",
-    "stop_supervisor",
-    "reset",
-    "snapshot",
-    "restore",
-]
+__all__ = ["CLISupervisor", "SessionConfig", "SessionDir"]
