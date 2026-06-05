@@ -156,8 +156,10 @@ class Reactor:
                 key = _entry_key(entry)
                 # Guard against duplicate countersigns on already-satisfied entries
                 if self._state.is_satisfied(key):
+                    logger.debug("Auto-countersign: already satisfied %s", entry)
                     return True
 
+                logger.info("Auto-countersign: proposal matched expectation")
                 self._bus.send(
                     Message(
                         role=TRAINEE_ROLE,
@@ -168,6 +170,7 @@ class Reactor:
                 )
                 self._state.mark_satisfied(key)
                 return True
+        logger.debug("Auto-countersign: no match for proposal")
         return False
 
     # ── Reactive mode ─────────────────────────────────────────────────
@@ -181,12 +184,22 @@ class Reactor:
         self._reactive_rounds += 1
 
         if self._reactive_rounds >= self._max_reactive_rounds:
+            logger.warning(
+                "Reactive budget exhausted (%d rounds) — escalating",
+                self._reactive_rounds,
+            )
             self._escalate("budget_exhaustion")
             return
 
         scaffolding = self._cogitate(event)
         if scaffolding is not None:
             kscript_source, confidence = scaffolding
+            logger.info(
+                "Reactive scaffolding (round %d, confidence=%.2f): %s",
+                self._reactive_rounds,
+                confidence,
+                kscript_source[:100],
+            )
             self._state.log_event(
                 "reactive_scaffolding",
                 {"confidence": confidence, "source": kscript_source},
@@ -201,6 +214,7 @@ class Reactor:
                 )
             )
         else:
+            logger.warning("Cogitation produced no scaffolding — escalating")
             self._escalate("low_confidence")
 
     def _cogitate(self, event: RationaliseEvent) -> tuple[str, float] | None:
@@ -217,6 +231,7 @@ class Reactor:
 
     def _escalate(self, reason: str, detail: str = "") -> None:
         """Escalate to supervisor subscribers via notify message."""
+        logger.error("Escalation: %s %s", reason, f"({detail})" if detail else "")
         self._bus.send(
             Message(
                 role=SUPERVISOR_ROLE,
