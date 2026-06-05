@@ -5,6 +5,7 @@ Covers KB-032: LLM client construction from config/env and Trainer wiring.
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -251,3 +252,60 @@ class TestAlreadySubscribedWrapper:
         bus = MessageBus()
         adapter = KAgentAdapter(bus, role="trainee")
         assert adapter.role == "trainee"
+
+
+# ── TestStatePathDerivation ───────────────────────────────────────────
+
+
+class TestStatePathDerivation:
+    """KB-128: State file path is derived from curriculum_file (not a config key)."""
+
+    def test_state_path_derived_from_curriculum_file(self, tmp_path: Path) -> None:
+        """When curriculum_file is set, save_path follows <curriculum>.json convention."""
+        from harness.bus import MessageBus
+        from trainer.curriculum import Curriculum
+        from trainer.trainer import Trainer
+
+        # Simulate the derivation done in __main__.py trainer_factory
+        curriculum_file = str(tmp_path / "curricula" / "first-steps.md")
+        curriculum_path = Path(curriculum_file)
+        state_path = str(curriculum_path.with_suffix(".json"))
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2"])
+
+        trainer = Trainer(
+            bus,
+            curriculum,
+            role="trainer",
+            save_path=state_path,
+            curriculum_file=curriculum_file,
+        )
+
+        # Save state and verify file exists at derived path
+        trainer.state.save()
+        assert Path(state_path).exists()
+
+        # The derived path should be <curriculum_dir>/<name>.json
+        assert state_path == str(tmp_path / "curricula" / "first-steps.json")
+
+    def test_no_state_file_when_curriculum_file_empty(self) -> None:
+        """When curriculum_file is empty, save_path is None and save raises ValueError."""
+        from harness.bus import MessageBus
+        from trainer.curriculum import Curriculum
+        from trainer.trainer import Trainer
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+
+        trainer = Trainer(
+            bus,
+            curriculum,
+            role="trainer",
+            save_path=None,
+        )
+
+        # No save_path → save() raises ValueError
+        assert trainer.state._save_path is None
+        with pytest.raises(ValueError, match="No save path specified"):
+            trainer.state.save()

@@ -268,7 +268,7 @@ server:
 trainer:
   curriculum_file: "curricula/first-steps.md" # Pre-made curriculum, or "" to wait for a goal
   curricula_dir: "curricula" # Directory for generated curriculum files
-  state_path: "trainer_state.json" # Path for state persistence across restarts
+  # State file is auto-derived from curriculum_file: e.g. curricula/first-steps.md → curricula/first-steps.json
   max_reactive_rounds: 5 # Max reactive scaffolding rounds before escalation
   # llm:                                        # Uncomment to override defaults
   #   base_url: "https://api.z.ai/api/coding/paas/v4"
@@ -304,7 +304,6 @@ participants:
 | `server`         | `port`                | `8765`                 | WebSocket server bind port                                              |
 | `trainer`        | `curriculum_file`     | `""`                   | Path to a pre-made curriculum file; empty string waits for a goal       |
 | `trainer`        | `curricula_dir`       | `"curricula"`          | Directory for generated curriculum files                                |
-| `trainer`        | `state_path`          | `"trainer_state.json"` | File for Trainer state persistence                                      |
 | `trainer`        | `max_reactive_rounds` | `5`                    | Reactive scaffolding budget before escalation                           |
 | `trainer`        | `llm.base_url`        | _(see code)_           | OpenAI-compatible API endpoint                                          |
 | `trainer`        | `llm.model`           | `"glm-5.1"`            | Model name for LLM calls                                                |
@@ -730,7 +729,7 @@ The harness handles `SIGINT` (Ctrl+C) and `SIGTERM` gracefully:
 
 1. **WebSocket server** is closed — existing connections are dropped.
 2. **Bus event loop** is stopped.
-3. **Trainer state** is persisted to `trainer_state.json` (if `state_path` is configured). This includes:
+3. **Trainer state** is persisted to `<curriculum_file>.json` (e.g. `curricula/first-steps.md` → `curricula/first-steps.json`). The state file path is auto-derived from the curriculum filename — no separate config key is needed. This includes:
    - Curriculum file path
    - Current lesson label (stable identity)
    - Submitted / satisfied / pending entry sets

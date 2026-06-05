@@ -2178,3 +2178,50 @@ class TestRestartSession:
 
         # Session active
         assert trainer._session_active
+
+    @patch("trainer.trainer.compile_source")
+    def test_restart_while_paused(
+        self, mock_compile: MagicMock
+    ) -> None:
+        """Restart while paused unpauses, resets position, re-submits first lesson."""
+        entry = _make_entry(100, [10])
+        mock_compile.return_value = [entry]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2", "lesson3"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+
+        # Complete lesson 1 to advance position
+        event = _make_event(
+            "ground",
+            query=KLine(signature=100, nodes=[10]),
+            proposal=KLine(signature=100, nodes=[10]),
+            significance=_S1_SIGNIFICANCE,
+        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
+        assert trainer.state.curriculum.position == 1
+
+        # Pause the session
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="input", message="pause", sender="slack")
+        )
+        assert trainer._session_paused
+
+        capture.reset()
+
+        # Restart while paused
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="input", message="restart", sender="slack")
+        )
+
+        # Session is active and unpaused
+        assert trainer._session_active is True
+        assert trainer._session_paused is False
+
+        # Position reset to 0
+        assert trainer.state.curriculum.position == 0
+
+        # First lesson re-submitted
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
+        assert len(submit_msgs) >= 1
