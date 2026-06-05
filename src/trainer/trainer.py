@@ -119,39 +119,32 @@ class Trainer:
             def _cogitate_adapter(
                 event: RationaliseEvent,
             ) -> tuple[str, float] | None:
-                # Compute misfit diagnosis for the proposal
-                proposal_underfit, proposal_overfit = classify_misfit(event.proposal)
-                proposal_nodes_sig = make_signature(event.proposal.nodes)
-                underfit_gap = event.proposal.signature & ~proposal_nodes_sig
-                overfit_mask = proposal_nodes_sig & ~event.proposal.signature
+                # Compute misfit diagnosis on the ORIGINAL candidate
+                # (the one with the gap/excess), not the expansion proposal.
+                # event.candidate carries the original misfit candidate
+                # for S2/S3 expansion events; fall back to event.proposal
+                # for legacy events without the candidate field.
+                target = event.candidate if event.candidate is not None else event.proposal
+                target_underfit, target_overfit = classify_misfit(target)
+                target_nodes_sig = make_signature(target.nodes)
+                underfit_gap = target.signature & ~target_nodes_sig
+                overfit_mask = target_nodes_sig & ~target.signature
 
                 logger.info(
-                    "Cogitate adapter: event proposal=%r, query=%r, "
-                    "sig=%#x, nodes_sig=%#x",
-                    event.proposal, event.query,
-                    event.proposal.signature, proposal_nodes_sig,
+                    "Cogitate adapter: event query=%r, candidate=%r, "
+                    "proposal=%r",
+                    event.query, target, event.proposal,
                 )
                 logger.info(
                     "Cogitate misfit: underfit=%s, overfit=%s, "
                     "gap=%#x, mask=%#x",
-                    proposal_underfit, proposal_overfit,
+                    target_underfit, target_overfit,
                     underfit_gap, overfit_mask,
                 )
 
-                # Diagnose when misfit is "none" — the proposal may already
-                # be canonical (expansion proposal from propose_expansions),
-                # meaning the LLM gets no useful diagnostic information.
-                if not proposal_underfit and not proposal_overfit:
-                    logger.warning(
-                        "Cogitate adapter: misfit is 'none' — proposal "
-                        "appears canonical (sig=%#x, nodes_sig=%#x). "
-                        "LLM will receive no gap/excess diagnostic.",
-                        event.proposal.signature, proposal_nodes_sig,
-                    )
-
                 misfit_info = MisfitInfo(
-                    underfit=proposal_underfit,
-                    overfit=proposal_overfit,
+                    underfit=target_underfit,
+                    overfit=target_overfit,
                     underfit_gap=underfit_gap,
                     overfit_mask=overfit_mask,
                     expectation_summary=repr(event.query),

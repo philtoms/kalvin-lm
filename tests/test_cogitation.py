@@ -84,7 +84,7 @@ class TestBuildPrompt:
         event_msgs = [m for m in messages if "Event 1" in m["content"]]
         assert len(event_msgs) == 1
         content = event_msgs[0]["content"]
-        assert "S2" in content
+        assert "S3" in content
         assert "underfitting" in content
         assert "0xAB" in content or "0xFF" in content
 

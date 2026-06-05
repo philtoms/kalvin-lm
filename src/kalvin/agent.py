@@ -71,7 +71,13 @@ class CogitationHandler(Protocol):
         """Called when cogitation discovers an S1 (exact) result."""
         ...
 
-    def on_expansion(self, query: KLine, proposal: KLine, significance: int) -> None:
+    def on_expansion(
+        self,
+        query: KLine,
+        proposal: KLine,
+        significance: int,
+        original_candidate: KLine | None = None,
+    ) -> None:
         """Called when an expansion proposal is generated (S2/S3)."""
         ...
 
@@ -182,7 +188,9 @@ class Cogitator:
                 for proposal, sig in propose_expansions(
                     self._model, qc.candidate, qc.significance
                 ):
-                    self._handler.on_expansion(qc.query, proposal, sig)
+                    self._handler.on_expansion(
+                        qc.query, proposal, sig, original_candidate=qc.candidate,
+                    )
 
 
 # ── KAgent ────────────────────────────────────────────────────────────
@@ -356,10 +364,20 @@ class KAgent:
             promote_participating(self._model, query, candidate)
         self._publish("frame", query, candidate, D_MAX - 1)
 
-    def on_expansion(self, query: KLine, proposal: KLine, significance: int) -> None:
+    def on_expansion(
+        self,
+        query: KLine,
+        proposal: KLine,
+        significance: int,
+        original_candidate: KLine | None = None,
+    ) -> None:
         """CogitationHandler.on_expansion: write proposal to Frame, publish frame event."""
         self._model.add_frame(proposal)
-        self._publish("frame", query, proposal, significance)
+        event = RationaliseEvent(
+            "frame", query, proposal, significance,
+            candidate=original_candidate,
+        )
+        self._adapter.on_event(event)
 
     def cogitate_join(self, timeout: float | None = None) -> None:
         """Stop the cogitate thread and wait for it to finish."""

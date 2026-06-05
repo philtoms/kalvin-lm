@@ -144,6 +144,18 @@ confidence level (0.0–1.0), and a brief explanation of your reasoning.
 """
 
 
+def _classify_significance(significance: int) -> str:
+    """Classify a raw significance value into a band label (S1–S4).
+
+    Uses the same boundary constants as the KAgent expand module
+    so the LLM sees a meaningful band label instead of a raw 64-bit int.
+    """
+    from kalvin.expand import boundaries, classify as _classify
+
+    s12, s23, s34 = boundaries()
+    return _classify(significance, s12, s23, s34)
+
+
 def build_prompt(request: CogitationRequest) -> list[dict]:
     """Construct the chat message list for the LLM.
 
@@ -156,15 +168,10 @@ def build_prompt(request: CogitationRequest) -> list[dict]:
 
     # Event context — one block per event/misfit pair
     for i, (event, misfit) in enumerate(zip(request.events, request.misfits)):
-        sig_level = (
-            f"S{event.significance}"
-            if isinstance(event.significance, int)
-            else str(event.significance)
-        )
+        sig_level = _classify_significance(event.significance)
 
-        # BUG DIAGNOSTIC: log the raw significance to confirm it's a huge int
         _log.debug(
-            "build_prompt: event %d significance=%r → sig_level=%r",
+            "build_prompt: event %d significance=%#x → band=%s",
             i, event.significance, sig_level,
         )
 

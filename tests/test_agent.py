@@ -514,7 +514,13 @@ class RecordingCogitationHandler:
     def on_s1(self, query: KLine, candidate: KLine) -> None:
         self.s1_calls.append((query, candidate))
 
-    def on_expansion(self, query: KLine, proposal: KLine, significance: int) -> None:
+    def on_expansion(
+        self,
+        query: KLine,
+        proposal: KLine,
+        significance: int,
+        original_candidate: KLine | None = None,
+    ) -> None:
         self.expansion_calls.append((query, proposal, significance))
 
 

@@ -19,13 +19,24 @@ from kalvin.kline import KLine
 class RationaliseEvent:
     """Event emitted during rationalisation processing."""
 
-    __slots__ = ("kind", "query", "proposal", "significance")
+    __slots__ = ("kind", "query", "proposal", "significance", "candidate")
 
-    def __init__(self, kind: str, query: KLine, proposal: KLine, significance: int):
+    def __init__(
+        self,
+        kind: str,
+        query: KLine,
+        proposal: KLine,
+        significance: int,
+        candidate: KLine | None = None,
+    ):
         self.kind = kind
         self.query = query
         self.proposal = proposal
         self.significance = significance
+        # Original candidate kline for expansion events.
+        # For expansion proposals (S2/S3), this is the misfit candidate
+        # that triggered the expansion. None for fast-path events (S1/S4).
+        self.candidate = candidate
 
     def __repr__(self) -> str:
         return f"RationaliseEvent({self.kind!r}, sig={self.significance:#x})"
