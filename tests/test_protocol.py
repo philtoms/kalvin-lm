@@ -17,7 +17,6 @@ from harness.bus import MessageBus
 from harness.message import Message
 from harness.protocol import WebSocketProtocol
 
-
 # -- helpers ---------------------------------------------------------------
 
 # Use a fixed port range for tests to avoid conflicts.
