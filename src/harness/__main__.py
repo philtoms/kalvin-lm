@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 class _AlreadySubscribed:
     """Wrapper returned by factories for participants that self-subscribe.
 
-    ``HarnessServer._setup()`` calls ``bus.subscribe(address, result.on_message)``
+    ``HarnessServer._setup()`` calls ``bus.subscribe(role, result.on_message)``
     but the real participant already subscribed during construction.  This
     wrapper's ``on_message`` is a no-op to avoid double-dispatch.
     """
@@ -45,8 +45,8 @@ class _AlreadySubscribed:
         self._participant = participant
 
     @property
-    def address(self) -> str:
-        return self._participant.address
+    def role(self) -> str:
+        return self._participant.role
 
     @property
     def wrapped(self) -> Any:
@@ -182,7 +182,7 @@ def main(argv: list[str] | None = None) -> None:
         from harness.adapter import KAgentAdapter
         from kalvin.agent import KAgent
 
-        adapter = KAgentAdapter(bus, address=address)
+        adapter = KAgentAdapter(bus, role=address)
         kagent = KAgent(adapter=adapter)
         adapter.bind(kagent)
         return _AlreadySubscribed(adapter)
@@ -215,7 +215,7 @@ def main(argv: list[str] | None = None) -> None:
         trainer = Trainer(
             bus,
             curriculum,
-            address=address,
+            role=address,
             save_path=state_path,
             curriculum_file=curriculum_file or None,
             curricula_dir=curricula_dir or None,

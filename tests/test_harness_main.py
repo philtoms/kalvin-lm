@@ -214,3 +214,40 @@ class TestTrainerFactoryLLMWiring:
             llm_client=mock_llm,
         )
         assert trainer._reactor._cogitate_fn is not None
+
+
+# ── TestAlreadySubscribedWrapper ──────────────────────────────────────
+
+
+class TestAlreadySubscribedWrapper:
+    """KB-126: _AlreadySubscribed exposes .role (not .address)."""
+
+    def test_role_property_returns_participant_role(self) -> None:
+        """_AlreadySubscribed.role delegates to the wrapped participant's .role."""
+        from harness.__main__ import _AlreadySubscribed
+
+        mock_participant = MagicMock()
+        mock_participant.role = "trainer"
+
+        wrapper = _AlreadySubscribed(mock_participant)
+        assert wrapper.role == "trainer"
+
+    def test_trainer_constructed_with_role_keyword(self) -> None:
+        """Trainer(bus, curriculum, role='trainer') works — KB-126 contract."""
+        from harness.bus import MessageBus
+        from trainer.curriculum import Curriculum
+        from trainer.trainer import Trainer
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer = Trainer(bus, curriculum, role="trainer", llm_client=None)
+        assert trainer.role == "trainer"
+
+    def test_kagent_adapter_constructed_with_role_keyword(self) -> None:
+        """KAgentAdapter(bus, role='trainee') works — KB-126 contract."""
+        from harness.bus import MessageBus
+        from harness.adapter import KAgentAdapter
+
+        bus = MessageBus()
+        adapter = KAgentAdapter(bus, role="trainee")
+        assert adapter.role == "trainee"
