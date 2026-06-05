@@ -3,14 +3,15 @@
 Two client participants that connect to the harness server:
 
 - **SlackParticipant** — bridges Slack API and the harness message bus.
-  Renders ``notify`` messages to a Slack channel and forwards human input
-  to the Trainer.
+  Registers as the supervisor role and renders all supervisor actions
+  (progress, event, escalation, ratify_request) to Slack. Forwards human
+  commands through the shared command parser to the appropriate harness role.
 
 - **TUIParticipant** (``TUIApp`` / ``HarnessClient``) — a Textual TUI that
   displays KAgent events and provides ratification (countersign) controls.
 
 Both participants register on connect via the WebSocket wire protocol:
-``{"register": "<address>"}`` followed by bidirectional JSON message frames.
+``{"register": "<role>"}`` followed by bidirectional JSON message frames.
 
 Running
 -------

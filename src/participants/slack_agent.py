@@ -1,11 +1,13 @@
 """Slack Participant — bridges Slack API and the harness message bus.
 
-Registers as ``"slack"`` on connect to the harness WebSocket server.
-Renders ``notify`` messages to a Slack channel and forwards human Slack
-input to the Trainer as ``{address: "trainer", action: "input", message: <text>}``.
+Registers as ``"supervisor"`` on connect to the harness WebSocket server.
+Renders all supervisor actions (``progress``, ``event``, ``escalation``,
+``ratify_request``) to a Slack channel and forwards human Slack input
+through the shared command parser to the appropriate harness role.
 
-Spec reference: specs/harness-server.md §Slack Participant
-Test mapping: HRNS-17 (forward human input), HRNS-18 (render notify)
+Spec reference: specs/harness-server.md §Slack Participant, §Supervisor Participant
+Test mapping: HRNS-17 (forward human input), HRNS-18 (render supervisor actions),
+              HRNS-31 (supervisor registration), HRNS-34 (ratify countersign)
 """
 
 from __future__ import annotations
@@ -18,11 +20,19 @@ from typing import Any
 
 import websockets
 
+from harness.constants import TRAINEE_ROLE, TRAINER_ROLE
+from participants.commands import parse_command
+
 logger = logging.getLogger(__name__)
 
 
 class SlackParticipant:
     """WebSocket client participant that translates between Slack and harness messages.
+
+    Registers as ``"supervisor"`` on connect.  Receives supervisor actions
+    (progress, event, escalation, ratify_request) and renders them to Slack.
+    Human Slack input is parsed through the shared command parser and dispatched
+    to the appropriate harness role.
 
     Parameters
     ----------
@@ -54,6 +64,7 @@ class SlackParticipant:
         self._receive_task: asyncio.Task[None] | None = None
         self._slack_task: asyncio.Task[None] | None = None
         self._running = False
+        self._latest_ratify_request: Any = None
 
         # Lazy imports — only needed when actually talking to Slack.
         self._slack_web_client: Any = None
@@ -61,12 +72,12 @@ class SlackParticipant:
     # -- public API ----------------------------------------------------------
 
     async def start(self) -> None:
-        """Connect to the harness, register as ``"slack"``, and start loops."""
+        """Connect to the harness, register as ``"supervisor"``, and start loops."""
         self._ws = await websockets.connect(self._harness_url)
 
         # Send registration frame
-        await self._ws.send(json.dumps({"register": "slack"}))
-        logger.info("SlackParticipant registered on harness")
+        await self._ws.send(json.dumps({"register": "supervisor"}))
+        logger.info("SlackParticipant registered for role 'supervisor'")
 
         self._running = True
 
@@ -116,8 +127,10 @@ class SlackParticipant:
                 action = frame.get("action", "")
                 message = frame.get("message")
 
-                if action == "notify":
-                    await self._render_to_slack(message)
+                if action in ("progress", "event", "escalation", "ratify_request"):
+                    await self._render_to_slack(message, action)
+                    if action == "ratify_request":
+                        self._latest_ratify_request = message
                 else:
                     logger.debug("Ignoring action %r from harness", action)
 
@@ -128,12 +141,22 @@ class SlackParticipant:
 
     # -- Slack rendering (HRNS-18) ------------------------------------------
 
-    async def _render_to_slack(self, content: Any) -> None:
+    async def _render_to_slack(self, content: Any, action: str = "notify") -> None:
         """Post *content* to the configured Slack channel.
 
-        The content is stringified if not already a string.
+        Formats the message with an action-specific prefix. For
+        ``ratify_request``, appends a hint about the ``ratify`` command.
         """
-        text = str(content) if not isinstance(content, str) else content
+        prefixes = {
+            "progress": "📊 ",
+            "event": "🔬 ",
+            "escalation": "🚨 ",
+            "ratify_request": "✋ ",
+        }
+        prefix = prefixes.get(action, "")
+        text = f"{prefix}{content}"
+        if action == "ratify_request":
+            text += "\n→ Reply `ratify` to approve"
         try:
             client = self._get_slack_web_client()
             client.chat_postMessage(
@@ -157,8 +180,8 @@ class SlackParticipant:
     async def _start_slack_listener(self) -> None:
         """Listen for human messages in the training channel via Socket Mode.
 
-        On a human message, sends ``{address: "trainer", action: "input",
-        message: <text>}`` to the harness.
+        On a human message, dispatches through the shared command parser via
+        ``_dispatch_command``.
         """
         if not self._app_token:
             logger.warning("No SLACK_APP_TOKEN set; Slack listener disabled")
@@ -187,7 +210,7 @@ class SlackParticipant:
                 if not text:
                     return
 
-                await self._send_to_trainer(text)
+                await self._dispatch_command(text)
 
             await client.connect()  # type: ignore[union-attr]
 
@@ -202,16 +225,20 @@ class SlackParticipant:
         except Exception:
             logger.exception("Slack Socket Mode listener failed")
 
-    async def _send_to_trainer(self, text: str) -> None:
-        """Send a message to the Trainer via the harness WebSocket."""
+    async def _dispatch_command(self, text: str) -> None:
+        """Parse human input via shared command parser and send resulting messages."""
         if self._ws is None:
-            logger.warning("Cannot send to trainer: not connected")
+            logger.warning("Cannot send: not connected")
             return
 
-        frame = json.dumps({
-            "address": "trainer",
-            "action": "input",
-            "message": text,
-        })
-        await self._ws.send(frame)
-        logger.debug("Forwarded to trainer: %s", text[:100])
+        command = parse_command(text)
+        messages = command.to_messages(self._latest_ratify_request)
+
+        for target_role, action, payload in messages:
+            frame = json.dumps({
+                "role": target_role,
+                "action": action,
+                "message": payload,
+            })
+            await self._ws.send(frame)
+            logger.debug("Dispatched %s → %s: %s", action, target_role, str(payload)[:100])

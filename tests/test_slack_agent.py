@@ -1,4 +1,4 @@
-"""Tests for SlackParticipant — HRNS-17, HRNS-18.
+"""Tests for SlackParticipant — HRNS-17, HRNS-18, HRNS-31, HRNS-34.
 
 Uses a stub WebSocket server to avoid requiring a running harness.
 Mocks the Slack SDK to avoid real API calls.
@@ -89,12 +89,35 @@ class StubHarness:
 
 
 # ---------------------------------------------------------------------------
+# Helper to set up a connected participant with mocked Slack
+# ---------------------------------------------------------------------------
+
+
+async def _make_participant(stub: StubHarness) -> SlackParticipant:
+    """Create a SlackParticipant connected to *stub* with mocked Slack SDK."""
+    participant = SlackParticipant(
+        harness_url=stub.url,
+        slack_token="xoxb-fake",
+        channel_id="C123",
+    )
+    participant._start_slack_listener = AsyncMock()  # type: ignore[method-assign]
+
+    mock_client = MagicMock()
+    mock_client.chat_postMessage = MagicMock()
+    participant._slack_web_client = mock_client
+
+    await participant.start()
+    await stub.wait_for_frames(1)  # registration frame
+    return participant
+
+
+# ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
 
 
 async def test_slack_registers_on_connect():
-    """SlackParticipant sends ``{"register": "slack"}`` on connect."""
+    """HRNS-31: SlackParticipant sends ``{"register": "supervisor"}`` on connect."""
     async with StubHarness() as stub:
         participant = SlackParticipant(
             harness_url=stub.url,
@@ -109,66 +132,114 @@ async def test_slack_registers_on_connect():
 
         assert len(stub.received_frames) >= 1
         reg = stub.received_frames[0]
-        assert reg == {"register": "slack"}
+        assert reg == {"register": "supervisor"}
 
         await participant.stop()
 
 
-async def test_slack_renders_notify():
-    """HRNS-18: SlackParticipant renders ``notify`` messages to Slack."""
+async def test_slack_renders_progress():
+    """HRNS-18: SlackParticipant renders ``progress`` messages to Slack."""
     async with StubHarness() as stub:
-        participant = SlackParticipant(
-            harness_url=stub.url,
-            slack_token="xoxb-fake",
-            channel_id="C123",
-        )
-        participant._start_slack_listener = AsyncMock()  # type: ignore[method-assign]
+        participant = await _make_participant(stub)
 
-        # Mock the Slack WebClient
-        mock_client = MagicMock()
-        mock_client.chat_postMessage = MagicMock()
-        participant._slack_web_client = mock_client
-
-        await participant.start()
-        await stub.wait_for_frames(1)  # registration frame
-
-        # Harness sends a notify message
+        # Harness sends a progress message
         await stub.send_to_client({
-            "address": "slack",
-            "action": "notify",
+            "role": "supervisor",
+            "action": "progress",
             "message": "Training paused",
         })
         await asyncio.sleep(0.2)
 
-        mock_client.chat_postMessage.assert_called_once_with(
+        participant._slack_web_client.chat_postMessage.assert_called_once_with(
             channel="C123",
-            text="Training paused",
+            text="📊 Training paused",
         )
+
+        await participant.stop()
+
+
+async def test_slack_renders_event():
+    """HRNS-18: SlackParticipant renders ``event`` messages to Slack."""
+    async with StubHarness() as stub:
+        participant = await _make_participant(stub)
+
+        await stub.send_to_client({
+            "role": "supervisor",
+            "action": "event",
+            "message": "S2 proposal",
+        })
+        await asyncio.sleep(0.2)
+
+        participant._slack_web_client.chat_postMessage.assert_called_once_with(
+            channel="C123",
+            text="🔬 S2 proposal",
+        )
+
+        await participant.stop()
+
+
+async def test_slack_renders_escalation():
+    """HRNS-18: SlackParticipant renders ``escalation`` messages to Slack."""
+    async with StubHarness() as stub:
+        participant = await _make_participant(stub)
+
+        await stub.send_to_client({
+            "role": "supervisor",
+            "action": "escalation",
+            "message": "budget exhausted",
+        })
+        await asyncio.sleep(0.2)
+
+        participant._slack_web_client.chat_postMessage.assert_called_once_with(
+            channel="C123",
+            text="🚨 budget exhausted",
+        )
+
+        await participant.stop()
+
+
+async def test_slack_renders_ratify_request():
+    """HRNS-18: SlackParticipant renders ``ratify_request`` with hint and stores proposal."""
+    async with StubHarness() as stub:
+        participant = await _make_participant(stub)
+
+        proposal = {"proposal": "MHALL = SVO"}
+        await stub.send_to_client({
+            "role": "supervisor",
+            "action": "ratify_request",
+            "message": proposal,
+        })
+        await asyncio.sleep(0.2)
+
+        # Should have posted to Slack with ratify hint
+        participant._slack_web_client.chat_postMessage.assert_called_once()
+        call_args = participant._slack_web_client.chat_postMessage.call_args
+        assert call_args.kwargs["channel"] == "C123"
+        assert "MHALL = SVO" in call_args.kwargs["text"]
+        assert "ratify" in call_args.kwargs["text"]
+
+        # Should have stored the latest ratify request
+        assert participant._latest_ratify_request == proposal
 
         await participant.stop()
 
 
 async def test_slack_forwards_human_input():
-    """HRNS-17: SlackParticipant forwards human input to Trainer."""
+    """HRNS-17: SlackParticipant forwards human input via command parser.
+
+    "hello" is parsed as a GuidanceCommand, which sends input to trainer role.
+    """
     async with StubHarness() as stub:
-        participant = SlackParticipant(
-            harness_url=stub.url,
-            slack_token="xoxb-fake",
-            channel_id="C123",
-        )
-        participant._start_slack_listener = AsyncMock()  # type: ignore[method-assign]
+        participant = await _make_participant(stub)
 
-        await participant.start()
-        await stub.wait_for_frames(1)  # registration frame
-
-        # Simulate a human message from Slack
-        await participant._send_to_trainer("hello")
+        # Simulate a human message dispatched through the command parser
+        await participant._dispatch_command("hello")
         await stub.wait_for_frames(2)
 
-        # Second frame should be the trainer message
+        # Second frame should be dispatched via command parser
         msg_frame = stub.received_frames[1]
         assert msg_frame == {
-            "address": "trainer",
+            "role": "trainer",
             "action": "input",
             "message": "hello",
         }
@@ -176,32 +247,63 @@ async def test_slack_forwards_human_input():
         await participant.stop()
 
 
+async def test_slack_ratify_command_sends_countersign():
+    """HRNS-34: ``ratify`` command sends ``countersign`` to trainee role."""
+    async with StubHarness() as stub:
+        participant = await _make_participant(stub)
+
+        # Set a pending ratify request
+        proposal = {"proposal": "SVO → VCS"}
+        participant._latest_ratify_request = proposal
+
+        # Dispatch ratify command
+        await participant._dispatch_command("ratify")
+        await stub.wait_for_frames(2)
+
+        # Second frame should be countersign to trainee
+        msg_frame = stub.received_frames[1]
+        assert msg_frame == {
+            "role": "trainee",
+            "action": "countersign",
+            "message": proposal,
+        }
+
+        await participant.stop()
+
+
+async def test_slack_ratify_without_request_sends_nothing():
+    """Ratify with no pending proposal sends no frame."""
+    async with StubHarness() as stub:
+        participant = await _make_participant(stub)
+
+        # No ratify request pending (default None)
+        assert participant._latest_ratify_request is None
+
+        # Dispatch ratify command — should produce no messages
+        await participant._dispatch_command("ratify")
+        await asyncio.sleep(0.2)
+
+        # Only the registration frame should exist
+        assert len(stub.received_frames) == 1
+        assert stub.received_frames[0] == {"register": "supervisor"}
+
+        await participant.stop()
+
+
 async def test_slack_ignores_unknown_action():
     """Unknown actions are logged/ignored — no Slack API call, no crash."""
     async with StubHarness() as stub:
-        participant = SlackParticipant(
-            harness_url=stub.url,
-            slack_token="xoxb-fake",
-            channel_id="C123",
-        )
-        participant._start_slack_listener = AsyncMock()  # type: ignore[method-assign]
-
-        mock_client = MagicMock()
-        mock_client.chat_postMessage = MagicMock()
-        participant._slack_web_client = mock_client
-
-        await participant.start()
-        await stub.wait_for_frames(1)
+        participant = await _make_participant(stub)
 
         # Send a frame with an unknown action
         await stub.send_to_client({
-            "address": "slack",
+            "role": "supervisor",
             "action": "unknown",
             "message": "something",
         })
         await asyncio.sleep(0.2)
 
         # No Slack API call should have been made
-        mock_client.chat_postMessage.assert_not_called()
+        participant._slack_web_client.chat_postMessage.assert_not_called()
 
         await participant.stop()
