@@ -1,8 +1,8 @@
 """Auto-tune session management and process lifecycle.
 
 Provides session initialisation, configuration, directory management,
-and process lifecycle commands for automated training sessions driven
-by an LLM coding agent.
+orchestration functions, snapshot/restore, and process lifecycle commands
+for automated training sessions driven by an LLM coding agent.
 
 Exports:
     SessionConfig — serialisable configuration for an auto-tune session.
@@ -12,6 +12,8 @@ Exports:
     start_supervisor — start the CLI supervisor as a background process.
     stop_supervisor — stop the CLI supervisor (shutdown cmd → SIGKILL).
     reset — clear auto-tune session state for a fresh start.
+    snapshot — capture a snapshot of session state.
+    restore — restore session state from a named run.
 """
 
 
@@ -29,6 +31,12 @@ def __getattr__(name: str):
     if name == "reset":
         from participants.auto_tune.snapshots import reset
         return reset
+    if name == "snapshot":
+        from participants.auto_tune.snapshots import snapshot
+        return snapshot
+    if name == "restore":
+        from participants.auto_tune.snapshots import restore
+        return restore
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -40,4 +48,6 @@ __all__ = [
     "start_supervisor",
     "stop_supervisor",
     "reset",
+    "snapshot",
+    "restore",
 ]
