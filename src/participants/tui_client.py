@@ -3,8 +3,8 @@
 Provides:
 
 - **HarnessClient**: async WebSocket client that handles registration
-  (``{"register": "ui"}``) and bidirectional JSON message send/receive via
-  asyncio queues.
+  (``{"register": "supervisor"}``) and bidirectional JSON message send/receive
+  via asyncio queues.
 - **TUIApp**: Textual application that renders KAgent events and provides
   ratification (countersign) controls.
 
@@ -20,26 +20,29 @@ from typing import Any
 
 import websockets
 
+from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
+from participants.commands import parse_command
+
 logger = logging.getLogger(__name__)
 
 
 class HarnessClient:
     """Async WebSocket client for connecting to the harness server.
 
-    Handles registration (``{"register": "ui"}``) and provides queue-based
+    Handles registration (``{"register": "supervisor"}``) and provides queue-based
     bidirectional JSON message send/receive.
 
     Parameters
     ----------
     url:
         WebSocket URL of the harness server (e.g. ``"ws://localhost:8765"``).
-    address:
-        Registration address (default ``"ui"``).
+    role:
+        Registration role (default ``SUPERVISOR_ROLE``).
     """
 
-    def __init__(self, url: str, address: str = "ui") -> None:
+    def __init__(self, url: str, role: str = SUPERVISOR_ROLE) -> None:
         self._url = url
-        self._address = address
+        self._role = role
         self._ws: websockets.asyncio.client.ClientConnection | None = None
         self._send_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
         self._receive_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
@@ -59,8 +62,8 @@ class HarnessClient:
         self._ws = await websockets.connect(self._url)
 
         # Send registration frame
-        await self._ws.send(json.dumps({"register": self._address}))
-        logger.info("HarnessClient registered as %r", self._address)
+        await self._ws.send(json.dumps({"register": self._role}))
+        logger.info("HarnessClient registered as %r", self._role)
 
         self._connected = True
 
@@ -68,19 +71,19 @@ class HarnessClient:
         self._read_task = asyncio.create_task(self._read_loop())
         self._write_task = asyncio.create_task(self._write_loop())
 
-    async def send(self, address: str, action: str, message: Any) -> None:
+    async def send(self, role: str, action: str, message: Any) -> None:
         """Enqueue an outgoing JSON message to be sent to the harness.
 
         Parameters
         ----------
-        address:
-            Recipient address.
+        role:
+            Recipient role.
         action:
             Verb interpreted by the recipient.
         message:
             Arbitrary payload.
         """
-        frame = {"address": address, "action": action, "message": message}
+        frame = {"role": role, "action": action, "message": message}
         await self._send_queue.put(frame)
 
     async def receive(self) -> dict[str, Any] | None:
@@ -200,13 +203,14 @@ class TUIApp(App):
     def __init__(
         self,
         harness_url: str = "ws://localhost:8765",
-        address: str = "ui",
+        role: str = SUPERVISOR_ROLE,
     ) -> None:
         super().__init__()
         self._harness_url = harness_url
-        self._address = address
-        self._client = HarnessClient(harness_url, address)
+        self._role = role
+        self._client = HarnessClient(harness_url, role)
         self._poll_task: asyncio.Task[None] | None = None
+        self._latest_ratify_request: Any = None
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -234,7 +238,7 @@ class TUIApp(App):
     async def _poll_harness_events(self) -> None:
         """Background task: poll ``client.receive()`` and push to EventLog.
 
-        Stores the latest event's message payload for ratification.
+        Tracks the latest ratify_request message payload for the ratify command.
         """
         event_log = self.query_one(EventLog)
         ratify_bar = self.query_one(RatifyBar)
@@ -244,8 +248,10 @@ class TUIApp(App):
                 frame = await self._client.receive()
                 if frame is not None:
                     event_log.add_event(frame)
-                    # Auto-enable ratify for events that carry a message payload
-                    if frame.get("message") is not None:
+                    action = frame.get("action")
+                    if action == "ratify_request":
+                        # Track latest ratify request for ratify command
+                        self._latest_ratify_request = frame.get("message")
                         ratify_bar.enable_ratify(frame["message"])
                 else:
                     await asyncio.sleep(0.05)
@@ -255,13 +261,13 @@ class TUIApp(App):
     def on_ratify_bar_ratify_clicked(self, event: RatifyBar.RatifyClicked) -> None:
         """Handle Ratify button click — send countersign via HarnessClient.
 
-        Sends ``{address: "kalvin", action: "countersign", message: <event_data>}``
+        Sends ``{role: TRAINEE_ROLE, action: "countersign", message: <event_data>}``
         where ``event_data`` is the raw ``message`` payload from the selected
         harness event frame (a JSON-serializable value, not a KLine object).
         """
         # Schedule the async send as a background task
         asyncio.create_task(
-            self._client.send("kalvin", "countersign", event.event_data)
+            self._client.send(TRAINEE_ROLE, "countersign", event.event_data)
         )
         # Disable ratify after sending
         ratify_bar = self.query_one(RatifyBar)
@@ -276,15 +282,15 @@ class TUIApp(App):
             )
 
     def on_input_bar_submitted(self, event: InputBar.Submitted) -> None:
-        """Handle InputBar submission — send free-form text to the Trainer.
+        """Handle InputBar submission — parse and dispatch via shared command protocol.
 
-        Sends ``{address: "trainer", action: "input", message: <text>}``
-        via the HarnessClient. The input field is cleared by InputBar
-        automatically after submission (HRNS-28).
+        Feeds input text through ``parse_command()`` and dispatches the
+        resulting messages via the HarnessClient. The input field is cleared
+        by InputBar automatically after submission (HRNS-28).
         """
-        asyncio.create_task(
-            self._client.send("trainer", "input", event.text)
-        )
+        command = parse_command(event.text)
+        for role, action, message in command.to_messages(self._latest_ratify_request):
+            asyncio.create_task(self._client.send(role, action, message))
 
     def action_send_input(self) -> None:
         """Keyboard shortcut: focus the input bar and submit via ctrl+s.

@@ -10,8 +10,9 @@ Test mapping:
   - InputBar: Submitted message, clear method
   - TUIApp: countersign integration, event polling
   - HRNS-25: test_renders_received_events — EventLog renders all incoming harness frames
+  - HRNS-25a: test_input_uses_command_parser_start — InputBar dispatches via shared command parser
   - HRNS-26: test_sends_freeform_input_to_trainer — InputBar dispatches freeform input to trainer
-  - HRNS-27: test_sends_countersign_on_ratify — RatifyBar sends countersign to kalvin (ctrl+r)
+  - HRNS-27: test_sends_countersign_on_ratify — RatifyBar sends countersign to trainee (ctrl+r)
   - HRNS-28: test_input_bar_clears_after_send — InputBar clears text field after submission
 """
 
@@ -100,7 +101,7 @@ class StubHarness:
 
 
 async def test_tui_registers_on_connect():
-    """HarnessClient sends ``{"register": "ui"}`` on connect."""
+    """HarnessClient sends ``{"register": "supervisor"}`` on connect."""
     async with StubHarness() as stub:
         client = HarnessClient(stub.url)
         await client.connect()
@@ -108,7 +109,7 @@ async def test_tui_registers_on_connect():
         await stub.wait_for_frames(1)
         assert len(stub.received_frames) >= 1
         reg = stub.received_frames[0]
-        assert reg == {"register": "ui"}
+        assert reg == {"register": "supervisor"}
 
         await client.disconnect()
 
@@ -120,12 +121,12 @@ async def test_tui_sends_message():
         await client.connect()
         await stub.wait_for_frames(1)  # registration frame
 
-        await client.send("kalvin", "countersign", {"sig": 42})
+        await client.send("trainee", "countersign", {"sig": 42})
         await stub.wait_for_frames(2)
 
         msg = stub.received_frames[1]
         assert msg == {
-            "address": "kalvin",
+            "role": "trainee",
             "action": "countersign",
             "message": {"sig": 42},
         }
@@ -140,7 +141,7 @@ async def test_tui_receives_message():
         await client.connect()
         await stub.wait_for_frames(1)
 
-        event_data = {"address": "ui", "action": "event", "message": {"kind": "frame"}}
+        event_data = {"role": "supervisor", "action": "event", "message": {"kind": "frame"}}
         await stub.send_to_client(event_data)
 
         # Poll until we get a message
@@ -177,7 +178,7 @@ async def test_tui_disconnect():
 def test_event_log_stores_events():
     """EventLog.add_event stores frames and they are retrievable."""
     log = EventLog()
-    frame = {"address": "ui", "action": "event", "message": {"kind": "ground"}}
+    frame = {"role": "supervisor", "action": "event", "message": {"kind": "ground"}}
     log.add_event(frame)
     assert len(log.events) == 1
     assert log.events[0] == frame
@@ -254,7 +255,7 @@ async def test_tuiapp_ratify_sends_countersign():
     """TUIApp's ratify handler sends countersign via HarnessClient.
 
     Verifies that on ratify click, the app sends
-    ``{address: "kalvin", action: "countersign", message: <event_data>}``
+    ``{role: "trainee", action: "countersign", message: <event_data>}``
     through the HarnessClient.
     """
     async with StubHarness() as stub:
@@ -265,7 +266,7 @@ async def test_tuiapp_ratify_sends_countersign():
             # Wait for client to connect and register
             await stub.wait_for_frames(1)
             reg = stub.received_frames[0]
-            assert reg == {"register": "ui"}
+            assert reg == {"register": "supervisor"}
 
             # Simulate: enable ratify with event data
             event_data = {"signature": 42, "nodes": [10, 20]}
@@ -280,7 +281,7 @@ async def test_tuiapp_ratify_sends_countersign():
             await stub.wait_for_frames(2, timeout=3.0)
 
             msg = stub.received_frames[1]
-            assert msg["address"] == "kalvin"
+            assert msg["role"] == "trainee"
             assert msg["action"] == "countersign"
             assert msg["message"] == {"signature": 42, "nodes": [10, 20]}
 
@@ -298,7 +299,7 @@ async def test_tuiapp_event_polling_populates_log():
 
             # Server sends an event
             await stub.send_to_client({
-                "address": "ui",
+                "role": "supervisor",
                 "action": "event",
                 "message": {"kind": "frame", "sig": "0xABCD"},
             })
@@ -381,7 +382,7 @@ async def test_tuiapp_input_sends_to_trainer():
     """TUIApp's InputBar submission sends text to the Trainer.
 
     Verifies that submitting text via the input bar sends
-    ``{address: "trainer", action: "input", message: <text>}``
+    ``{role: "trainer", action: "input", message: <text>}``
     through the HarnessClient.
     """
     async with StubHarness() as stub:
@@ -401,7 +402,7 @@ async def test_tuiapp_input_sends_to_trainer():
             await stub.wait_for_frames(2, timeout=3.0)
 
             msg = stub.received_frames[1]
-            assert msg["address"] == "trainer"
+            assert msg["role"] == "trainer"
             assert msg["action"] == "input"
             assert msg["message"] == "hello from human"
 
@@ -426,7 +427,7 @@ async def test_tuiapp_ctrl_s_sends_input():
             await stub.wait_for_frames(2, timeout=3.0)
 
             msg = stub.received_frames[1]
-            assert msg["address"] == "trainer"
+            assert msg["role"] == "trainer"
             assert msg["action"] == "input"
             assert msg["message"] == "ctrl+s message"
 
@@ -454,9 +455,9 @@ async def test_renders_received_events():
 
             # Server sends three frames of different action types
             frames = [
-                {"address": "ui", "action": "event", "message": {"kind": "frame"}},
-                {"address": "ui", "action": "notify", "message": "session started"},
-                {"address": "ui", "action": "proposal", "message": {"sig": 42, "nodes": [1, 2]}},
+                {"role": "supervisor", "action": "event", "message": {"kind": "frame"}},
+                {"role": "supervisor", "action": "notify", "message": "session started"},
+                {"role": "supervisor", "action": "proposal", "message": {"sig": 42, "nodes": [1, 2]}},
             ]
             for frame in frames:
                 await stub.send_to_client(frame)
@@ -484,7 +485,7 @@ async def test_sends_freeform_input_to_trainer():
 
     Simulates typing text and pressing Enter in the InputBar.
     Verifies the stub server receives
-    ``{address: "trainer", action: "input", message: <typed_text>}``.
+    ``{role: "trainer", action: "input", message: <typed_text>}``.
     """
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)
@@ -501,17 +502,17 @@ async def test_sends_freeform_input_to_trainer():
             await stub.wait_for_frames(2, timeout=3.0)
 
             msg = stub.received_frames[1]
-            assert msg["address"] == "trainer"
+            assert msg["role"] == "trainer"
             assert msg["action"] == "input"
             assert msg["message"] == "what is the capital of France?"
 
 
 async def test_sends_countersign_on_ratify():
-    """HRNS-27: RatifyBar sends countersign to kalvin on ctrl+r.
+    """HRNS-27: RatifyBar sends countersign to trainee on ctrl+r.
 
     Enables ratify with event data, then presses ctrl+r to trigger
     the ratify keyboard shortcut. Verifies the stub server receives
-    ``{address: "kalvin", action: "countersign", message: <event_data>}``.
+    ``{role: "trainee", action: "countersign", message: <event_data>}``.
     """
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)
@@ -531,7 +532,7 @@ async def test_sends_countersign_on_ratify():
             await stub.wait_for_frames(2, timeout=3.0)
 
             msg = stub.received_frames[1]
-            assert msg["address"] == "kalvin"
+            assert msg["role"] == "trainee"
             assert msg["action"] == "countersign"
             assert msg["message"] == {"sig": 99, "nodes": [5, 10]}
 
@@ -562,3 +563,94 @@ async def test_input_bar_clears_after_send():
             msg = stub.received_frames[1]
             assert msg["action"] == "input"
             assert msg["message"] == "clear me after send"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# HRNS-25a: Command parser integration tests
+# ═══════════════════════════════════════════════════════════════════════
+
+
+async def test_input_uses_command_parser_start():
+    """HRNS-25a: typing "start" in InputBar sends to trainer via command parser.
+
+    The StartCommand from the shared parser routes to trainer with
+    action "input" and the original text as message.
+    """
+    async with StubHarness() as stub:
+        app = TUIApp(harness_url=stub.url)
+
+        async with app.run_test() as pilot:
+            await stub.wait_for_frames(1)
+
+            input_field = app.query_one("#input-bar-field")
+            input_field.focus()
+            input_field.value = "start"
+            await pilot.press("enter")
+            await asyncio.sleep(0.2)
+
+            await stub.wait_for_frames(2, timeout=3.0)
+
+            msg = stub.received_frames[1]
+            assert msg["role"] == "trainer"
+            assert msg["action"] == "input"
+            assert msg["message"] == "start"
+
+
+async def test_input_uses_command_parser_ratify():
+    """HRNS-25a: typing "ratify" in InputBar sends countersign to trainee.
+
+    Requires a pending _latest_ratify_request on the TUIApp. The RatifyCommand
+    from the shared parser routes to trainee with action "countersign".
+    """
+    async with StubHarness() as stub:
+        app = TUIApp(harness_url=stub.url)
+
+        async with app.run_test() as pilot:
+            await stub.wait_for_frames(1)
+
+            # Set up a pending ratify request
+            proposal = {"sig": 42, "nodes": [1, 2, 3]}
+            app._latest_ratify_request = proposal
+            ratify_bar = app.query_one(RatifyBar)
+            ratify_bar.enable_ratify(proposal)
+
+            # Type "ratify" in the input bar
+            input_field = app.query_one("#input-bar-field")
+            input_field.focus()
+            input_field.value = "ratify"
+            await pilot.press("enter")
+            await asyncio.sleep(0.2)
+
+            await stub.wait_for_frames(2, timeout=3.0)
+
+            msg = stub.received_frames[1]
+            assert msg["role"] == "trainee"
+            assert msg["action"] == "countersign"
+            assert msg["message"] == {"sig": 42, "nodes": [1, 2, 3]}
+
+
+async def test_tracks_latest_ratify_request():
+    """Receiving a ratify_request frame sets _latest_ratify_request and enables RatifyBar."""
+    async with StubHarness() as stub:
+        app = TUIApp(harness_url=stub.url)
+
+        async with app.run_test() as pilot:
+            await stub.wait_for_frames(1)
+
+            # Send a ratify_request frame from the server
+            proposal = {"sig": 77, "nodes": [10, 20]}
+            await stub.send_to_client({
+                "role": "trainer",
+                "action": "ratify_request",
+                "message": proposal,
+            })
+
+            # Wait for event polling to pick it up
+            await asyncio.sleep(0.5)
+
+            # Verify _latest_ratify_request is tracked
+            assert app._latest_ratify_request == proposal
+
+            # Verify RatifyBar is enabled with the proposal
+            ratify_bar = app.query_one(RatifyBar)
+            assert ratify_bar._selected_event_data == proposal

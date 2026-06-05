@@ -71,7 +71,7 @@ class EventLog(Vertical):
         Parameters
         ----------
         frame:
-            A full JSON frame dict with ``address``, ``action``, ``message``
+            A full JSON frame dict with ``role``, ``action``, ``message``
             keys.
         """
         self._events.append(frame)
