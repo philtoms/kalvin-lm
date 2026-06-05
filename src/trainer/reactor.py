@@ -2,8 +2,8 @@
 
 The Reactor owns all reactive behaviour during a training session:
 auto-countersign matching, reactive scaffolding via an injected
-``cogitate_fn``, budget tracking, and escalation to the human
-operator when stuck.
+``cogitate_fn``, budget tracking, and escalation to the supervisor
+when stuck.
 
 Per-lesson state (current entries, expected/received counts,
 reactive round budget) lives here rather than on the Trainer

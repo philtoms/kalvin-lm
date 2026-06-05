@@ -8,6 +8,8 @@ This document has two sections. **Operating Notes** contains process instruction
 
 - Commit all work before creating any kb tasks.
 - Never commit to git autonomously. Always ask for explicit confirmation before running any `git commit`.
+- Classification rule: work is "task work" (autonomous commit) only when the user explicitly put it through the task board. If you created the task yourself on a direct instruction, it is ad-hoc work.
+- Only create kb tasks when the user asks you to, or when work genuinely needs multi-step orchestration across sessions. Direct instructions are ad-hoc work — do not create tasks for them.
 - When creating kb tasks for large features, decompose into discrete tasks with explicit `depends` chains. Each task should cover one coherent piece of work — a single spec, a single module, a single behavioural change. Do not create monolithic tasks that span multiple specs, plans, and implementation modules.
 - Follow the three-layer documentation model strictly (docs/spec-plan-proposal.md): origin → spec → plan. No content duplication across layers.
 - CONTEXT.md is a glossary plus operating notes. Keep the two sections separate. Do not add implementation details, spec content, or code to either section.

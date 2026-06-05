@@ -98,7 +98,7 @@ class EventLog(Vertical):
 class InputBar(Horizontal):
     """Horizontal bar with a text input field and Send button.
 
-    The human types a free-form message and submits it via Enter key or the
+    The supervisor types a free-form message and submits it via Enter key or the
     Send button. On submission, an ``InputBar.Submitted`` message is posted
     carrying the text, and the input field is cleared. Empty or whitespace-only
     submissions are silently ignored.

@@ -36,7 +36,7 @@ class TestBuildLLMClient:
             assert result is mock_client
             mock_cls.assert_called_once_with(
                 api_key="test-key-123",
-                base_url="https://open.bigmodel.cn/api/paas/v4",
+                base_url="https://api.z.ai/api/coding/paas/v4",
                 model="test-model",
             )
 
@@ -75,7 +75,7 @@ class TestBuildLLMClient:
             assert result is mock_client
             mock_cls.assert_called_once_with(
                 api_key="test-key-123",
-                base_url="https://open.bigmodel.cn/api/paas/v4",
+                base_url="https://api.z.ai/api/coding/paas/v4",
                 model="glm-5.1",
             )
 
@@ -105,7 +105,7 @@ class TestBuildLLMClient:
             # Default model is "glm-5.1", default base_url is the GLM endpoint
             call_kwargs = mock_cls.call_args[1]
             assert call_kwargs["model"] == "glm-5.1"
-            assert call_kwargs["base_url"] == "https://open.bigmodel.cn/api/paas/v4"
+            assert call_kwargs["base_url"] == "https://api.z.ai/api/coding/paas/v4"
 
 
 # ── TestTrainerFactoryLLMWiring ───────────────────────────────────────

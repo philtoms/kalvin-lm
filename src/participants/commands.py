@@ -1,6 +1,6 @@
 """Shared command parser for supervisor participants.
 
-Maps human free-text input to structured commands, which are then dispatched
+Maps supervisor free-text input to structured commands, which are then dispatched
 as bus messages. Used by both TUI and Slack participants to interpret user
 input uniformly.
 

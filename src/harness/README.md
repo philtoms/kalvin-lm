@@ -298,18 +298,18 @@ participants:
 
 ### Configuration Sections
 
-| Section          | Key                   | Default                | Description                                                             |
-| ---------------- | --------------------- | ---------------------- | ----------------------------------------------------------------------- |
-| `server`         | `host`                | `"localhost"`          | WebSocket server bind address                                           |
-| `server`         | `port`                | `8765`                 | WebSocket server bind port                                              |
-| `trainer`        | `curriculum_file`     | `""`                   | Path to a pre-made curriculum file; empty string waits for a goal       |
-| `trainer`        | `curricula_dir`       | `"curricula"`          | Directory for generated curriculum files                                |
-| `trainer`        | `max_reactive_rounds` | `5`                    | Reactive scaffolding budget before escalation                           |
-| `trainer`        | `llm.base_url`        | _(see code)_           | OpenAI-compatible API endpoint                                          |
-| `trainer`        | `llm.model`           | `"glm-5.1"`            | Model name for LLM calls                                                |
-| `participants[]` | `role`                | —                      | Bus role for this participant (used for routing)                        |
-| `participants[]` | `type`                | —                      | `"embedded"` (loaded in-process) or `"client"` (connects via WebSocket) |
-| `participants[]` | `class`               | —                      | Registered class name (e.g. `KAgent`, `Trainer`, `SlackParticipant`)    |
+| Section          | Key                   | Default       | Description                                                             |
+| ---------------- | --------------------- | ------------- | ----------------------------------------------------------------------- |
+| `server`         | `host`                | `"localhost"` | WebSocket server bind address                                           |
+| `server`         | `port`                | `8765`        | WebSocket server bind port                                              |
+| `trainer`        | `curriculum_file`     | `""`          | Path to a pre-made curriculum file; empty string waits for a goal       |
+| `trainer`        | `curricula_dir`       | `"curricula"` | Directory for generated curriculum files                                |
+| `trainer`        | `max_reactive_rounds` | `5`           | Reactive scaffolding budget before escalation                           |
+| `trainer`        | `llm.base_url`        | _(see code)_  | OpenAI-compatible API endpoint                                          |
+| `trainer`        | `llm.model`           | `"glm-5.1"`   | Model name for LLM calls                                                |
+| `participants[]` | `role`                | —             | Bus role for this participant (used for routing)                        |
+| `participants[]` | `type`                | —             | `"embedded"` (loaded in-process) or `"client"` (connects via WebSocket) |
+| `participants[]` | `class`               | —             | Registered class name (e.g. `KAgent`, `Trainer`, `SlackParticipant`)    |
 
 ### Validation Rules
 
@@ -327,18 +327,18 @@ participants:
 
 The Trainer's reactive mode uses the `Cogitator` with an `OpenAICompatibleClient`. To enable this:
 
-| Variable             | Required | Description                                                                   |
-| -------------------- | -------- | ----------------------------------------------------------------------------- |
-| `KALVIN_LLM_API_KEY` | No       | API key passed to the LLM client. If unset, reactive mode escalates to human. |
+| Variable             | Required | Description                                                                        |
+| -------------------- | -------- | ---------------------------------------------------------------------------------- |
+| `KALVIN_LLM_API_KEY` | No       | API key passed to the LLM client. If unset, reactive mode escalates to supervisor. |
 
 The `base_url` and `model` are read from the `trainer.llm` config section and default to the ZhipuAI GLM-5.1 endpoint. Any OpenAI-compatible endpoint works.
 
 ### Slack Participant (optional)
 
-| Variable          | Required             | Description                                                                         |
-| ----------------- | -------------------- | ----------------------------------------------------------------------------------- |
-| `SLACK_BOT_TOKEN` | Yes (if using Slack) | Slack Bot OAuth token (`xoxb-...`). Used to post messages to channels.              |
-| `SLACK_APP_TOKEN` | Yes (if using Slack) | Slack App-Level token (`xapp-...`). Used for Socket Mode to receive human messages. |
+| Variable          | Required             | Description                                                                              |
+| ----------------- | -------------------- | ---------------------------------------------------------------------------------------- |
+| `SLACK_BOT_TOKEN` | Yes (if using Slack) | Slack Bot OAuth token (`xoxb-...`). Used to post messages to channels.                   |
+| `SLACK_APP_TOKEN` | Yes (if using Slack) | Slack App-Level token (`xapp-...`). Used for Socket Mode to receive supervisor messages. |
 
 These can also be passed as constructor arguments to `SlackParticipant` instead of environment variables.
 
@@ -394,7 +394,7 @@ options:
 5. **WebSocket server started** — Listens on the configured host:port for client participants.
 6. **Blocked** — The main thread runs the async event loop, waiting for SIGINT / SIGTERM.
 
-After startup, the Trainer checks for saved state. If found, it resumes the previous session. Otherwise, it waits for a goal from a human participant (see [Curriculum](#curriculum)).
+After startup, the Trainer checks for saved state. If found, it resumes the previous session. Otherwise, it waits for a goal from a supervising participant (see [Curriculum](#curriculum)).
 
 ---
 
@@ -452,12 +452,12 @@ Events from Kalvin are routed back to the original sender (stored in a sender ma
 
 Drives the training loop. Holds LLM access for curriculum generation and reactive scaffolding:
 
-| Incoming Action    | Behaviour                                                                                                                 |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `ground` / `frame` | Kalvin events. S1 events auto-satisfy. S2/S3 events trigger reactive mode (auto-countersign → cogitation → escalation).   |
-| `input`            | Human input from Slack/TUI. Supports: `goal: <text or path>`, `pause`, `stop`, `resume`, amendment requests, or guidance. |
-| `error`            | Kalvin compilation error. Logged and counted toward lesson completion.                                                    |
-| `progress`         | Published by the Trainer after each lesson completes. Consumed by TUI and Slack to display status.                        |
+| Incoming Action    | Behaviour                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `ground` / `frame` | Kalvin events. S1 events auto-satisfy. S2/S3 events trigger reactive mode (auto-countersign → cogitation → escalation).        |
+| `input`            | Supervisor input from Slack/TUI. Supports: `goal: <text or path>`, `pause`, `stop`, `resume`, amendment requests, or guidance. |
+| `error`            | Kalvin compilation error. Logged and counted toward lesson completion.                                                         |
+| `progress`         | Published by the Trainer after each lesson completes. Consumed by TUI and Slack to display status.                             |
 
 **Trainer lifecycle:**
 
@@ -469,7 +469,7 @@ Drives the training loop. Holds LLM access for curriculum generation and reactiv
    - **S2/S3** → try auto-countersign, then reactive mode:
      - Up to `max_reactive_rounds` of cogitation.
      - If cogitation generates scaffolding → write as a new lesson in the curriculum, then submit.
-     - If stuck → **escalate** to human via `"supervisor"` with a `notify` message.
+     - If stuck → **escalate** to `"supervisor"` with a `notify` message.
 5. Publishes **progress events** after each lesson completes.
 6. When curriculum is complete → end session, persist state, process queued goals.
 
@@ -483,10 +483,10 @@ These connect to the harness via WebSocket and register with a role.
 
 Bridges Slack and the harness:
 
-| Direction       | Action   | Behaviour                                                                                        |
-| --------------- | -------- | ------------------------------------------------------------------------------------------------ |
-| Harness → Slack | `notify` | Posts the message content to the configured Slack channel.                                       |
-| Slack → Harness | `input`  | Forwards human messages to `"trainer"` as `{role: "trainer", action: "input", message: <text>}`. |
+| Direction       | Action   | Behaviour                                                                                             |
+| --------------- | -------- | ----------------------------------------------------------------------------------------------------- |
+| Harness → Slack | `notify` | Posts the message content to the configured Slack channel.                                            |
+| Slack → Harness | `input`  | Forwards supervisor messages to `"trainer"` as `{role: "trainer", action: "input", message: <text>}`. |
 
 **Running the Slack participant:**
 
@@ -679,7 +679,7 @@ See the [Wire Protocol](#wire-protocol) section for frame formats.
 A typical training cycle looks like this:
 
 ```
- Human (Slack)          Trainer              Kalvin
+ Supervisor (Slack)     Trainer              Kalvin
      │                    │                    │
      │  "goal: teach      │                    │
      │   colours"         │                    │

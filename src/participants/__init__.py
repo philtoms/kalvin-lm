@@ -4,7 +4,7 @@ Two client participants that connect to the harness server:
 
 - **SlackParticipant** — bridges Slack API and the harness message bus.
   Registers as the supervisor role and renders all supervisor actions
-  (progress, event, escalation, ratify_request) to Slack. Forwards human
+  (progress, event, escalation, ratify_request) to Slack. Forwards supervisor
   commands through the shared command parser to the appropriate harness role.
 
 - **TUIParticipant** (``TUIApp`` / ``HarnessClient``) — a Textual TUI that

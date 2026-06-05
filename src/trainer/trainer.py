@@ -278,10 +278,10 @@ class Trainer:
         self._reactor.record_response()
         self._check_lesson_complete()
 
-    # ── Input handling (from Slack / human) ───────────────────────────
+    # ── Input handling (from Slack / supervisor) ───────────────────────────
 
     def _handle_input(self, msg: Message) -> None:
-        """Process human input from the TUI or Slack."""
+        """Process supervisor input from the TUI or Slack."""
         text = str(msg.message).strip()
 
         if self._polling_for_goal:

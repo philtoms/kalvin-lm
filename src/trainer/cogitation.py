@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 # ── Module constants ──────────────────────────────────────────────────
 
 ESCALATION_THRESHOLD: float = 0.5
-"""Confidence below this value triggers escalation to the human."""
+"""Confidence below this value triggers escalation to the supervisor."""
 
 
 # ── Data types ────────────────────────────────────────────────────────
@@ -48,9 +48,9 @@ class MisfitInfo:
 
 @dataclass(frozen=True)
 class ConversationTurn:
-    """A single turn in the human–Trainer conversation history."""
+    """A single turn in the supervisor–trainer conversation history."""
 
-    role: str  # "human" or "trainer"
+    role: str  # "supervisor" or "trainer"
     content: str
 
 
@@ -378,7 +378,7 @@ class Cogitator:
 
     @staticmethod
     def should_escalate(result: CogitationResult) -> bool:
-        """Return True if the result warrants escalation to the human."""
+        """Return True if the result warrants escalation to the supervisor."""
         return result.confidence < ESCALATION_THRESHOLD or result.scaffolding is None
 
 

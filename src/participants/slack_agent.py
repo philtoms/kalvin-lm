@@ -2,11 +2,11 @@
 
 Registers as ``"supervisor"`` on connect to the harness WebSocket server.
 Renders all supervisor actions (``progress``, ``event``, ``escalation``,
-``ratify_request``) to a Slack channel and forwards human Slack input
+``ratify_request``) to a Slack channel and forwards supervisor Slack input
 through the shared command parser to the appropriate harness role.
 
 Spec reference: specs/harness-server.md §Slack Participant, §Supervisor Participant
-Test mapping: HRNS-17 (forward human input), HRNS-18 (render supervisor actions),
+Test mapping: HRNS-17 (forward supervisor input), HRNS-18 (render supervisor actions),
               HRNS-31 (supervisor registration), HRNS-34 (ratify countersign)
 """
 
@@ -31,7 +31,7 @@ class SlackParticipant:
 
     Registers as ``"supervisor"`` on connect.  Receives supervisor actions
     (progress, event, escalation, ratify_request) and renders them to Slack.
-    Human Slack input is parsed through the shared command parser and dispatched
+    supervisor Slack input is parsed through the shared command parser and dispatched
     to the appropriate harness role.
 
     Parameters
@@ -178,9 +178,9 @@ class SlackParticipant:
     # -- Slack event listener (HRNS-17) -------------------------------------
 
     async def _start_slack_listener(self) -> None:
-        """Listen for human messages in the training channel via Socket Mode.
+        """Listen for supervisor messages in the training channel via Socket Mode.
 
-        On a human message, dispatches through the shared command parser via
+        On a supervisor message, dispatches through the shared command parser via
         ``_dispatch_command``.
         """
         if not self._app_token:
@@ -198,7 +198,7 @@ class SlackParticipant:
 
             @client.event  # type: ignore[misc]
             async def handle_message(event: dict[str, Any]) -> None:
-                # Only handle messages from humans (skip bot messages)
+                # Only handle messages from supervisors (skip bot messages)
                 if event.get("type") != "message":
                     return
                 if event.get("subtype") is not None:
@@ -226,7 +226,7 @@ class SlackParticipant:
             logger.exception("Slack Socket Mode listener failed")
 
     async def _dispatch_command(self, text: str) -> None:
-        """Parse human input via shared command parser and send resulting messages."""
+        """Parse supervisor input via shared command parser and send resulting messages."""
         if self._ws is None:
             logger.warning("Cannot send: not connected")
             return
