@@ -13,6 +13,7 @@ inject mock clients without hitting real APIs.
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -161,6 +162,12 @@ def build_prompt(request: CogitationRequest) -> list[dict]:
             else str(event.significance)
         )
 
+        # BUG DIAGNOSTIC: log the raw significance to confirm it's a huge int
+        _log.debug(
+            "build_prompt: event %d significance=%r → sig_level=%r",
+            i, event.significance, sig_level,
+        )
+
         if misfit.underfit and misfit.overfit:
             misfit_type = "dual (underfitting + overfitting)"
         elif misfit.underfit:
@@ -278,6 +285,9 @@ _KSCRIPT_LINE_PREFIXES = (
 )
 
 
+_log = logging.getLogger(__name__)
+
+
 def extract_result(response: LLMResponse) -> CogitationResult:
     """Parse the LLM response into a CogitationResult.
 
@@ -287,23 +297,58 @@ def extract_result(response: LLMResponse) -> CogitationResult:
        set low confidence (force escalation for unstructured responses).
     3. Otherwise return a failed result.
     """
+    _log.debug(
+        "extract_result: content=%r, tool_calls=%s, finish_reason=%r",
+        response.content[:200] if response.content else None,
+        [
+            tc.get("function", {}).get("name")
+            for tc in (response.tool_calls or [])
+        ],
+        response.finish_reason,
+    )
+
     # Strategy 1: structured tool call
     if response.tool_calls:
         for tc in response.tool_calls:
             fn = tc.get("function", {})
             if fn.get("name") == "submit_scaffolding":
                 args_raw = fn.get("arguments", "{}")
-                if isinstance(args_raw, str):
-                    args = json.loads(args_raw)
-                else:
-                    args = args_raw
+                try:
+                    if isinstance(args_raw, str):
+                        args = json.loads(args_raw)
+                    else:
+                        args = args_raw
+                except json.JSONDecodeError as e:
+                    _log.error(
+                        "extract_result: failed to parse tool call "
+                        "arguments: %s — raw: %r",
+                        e, args_raw[:200] if isinstance(args_raw, str) else args_raw,
+                    )
+                    return CogitationResult(
+                        scaffolding=None,
+                        confidence=0.0,
+                        reasoning=f"Failed to parse tool arguments: {e}",
+                        raw_response=response.content,
+                    )
 
+                _log.info(
+                    "extract_result: strategy 1 (tool call) — "
+                    "kscript=%r, confidence=%.2f",
+                    args.get("kscript_source", "")[:80],
+                    float(args.get("confidence", 0.0)),
+                )
                 return CogitationResult(
                     scaffolding=args.get("kscript_source", ""),
                     confidence=float(args.get("confidence", 0.0)),
                     reasoning=args.get("reasoning", ""),
                     raw_response=response.content,
                 )
+
+        _log.warning(
+            "extract_result: tool_calls present but no submit_scaffolding "
+            "found — tool names: %s",
+            [tc.get("function", {}).get("name") for tc in response.tool_calls],
+        )
 
     # Strategy 2: plain text — try to extract KScript
     if response.content:
@@ -315,14 +360,26 @@ def extract_result(response: LLMResponse) -> CogitationResult:
         ]
         if kscript_lines:
             scaffolding = "\n".join(kscript_lines)
+            _log.info(
+                "extract_result: strategy 2 (text extraction) — "
+                "%d KScript lines found",
+                len(kscript_lines),
+            )
             return CogitationResult(
                 scaffolding=scaffolding,
                 confidence=ESCALATION_THRESHOLD - 0.1,
                 reasoning="Extracted from unstructured text response",
                 raw_response=response.content,
             )
+        else:
+            _log.warning(
+                "extract_result: strategy 2 failed — no KScript lines "
+                "found in %d chars of content",
+                len(response.content),
+            )
 
     # Strategy 3: nothing usable
+    _log.warning("extract_result: strategy 3 — no usable content in LLM response")
     return CogitationResult(
         scaffolding=None,
         confidence=0.0,
@@ -357,7 +414,31 @@ class Cogitator:
         """
         messages = build_prompt(request)
         tools = build_tool_definitions()
+
+        _log.info(
+            "Cogitator.cogitate: calling LLM with %d messages, %d tools",
+            len(messages), len(tools),
+        )
+        for i, msg in enumerate(messages):
+            _log.debug(
+                "  msg[%d]: role=%s, content=%s",
+                i, msg["role"],
+                msg["content"][:200] if msg.get("content") else "(none)",
+            )
+
         response = self._client.complete(messages, tools=tools)
+
+        _log.info(
+            "Cogitator.cogitate: LLM response — content=%r, "
+            "tool_calls=%s, finish_reason=%r",
+            response.content[:200] if response.content else None,
+            [
+                tc.get("function", {}).get("name")
+                for tc in (response.tool_calls or [])
+            ],
+            response.finish_reason,
+        )
+
         result = extract_result(response)
 
         # Validate scaffolding compiles
@@ -366,7 +447,15 @@ class Cogitator:
                 from kscript.compiler import compile_source
 
                 compile_source(result.scaffolding)
+                _log.info(
+                    "Cogitator.cogitate: scaffolding compiled OK (%d chars)",
+                    len(result.scaffolding),
+                )
             except Exception as exc:
+                _log.error(
+                    "Cogitator.cogitate: scaffolding compilation failed: %s",
+                    exc,
+                )
                 result = CogitationResult(
                     scaffolding=None,
                     confidence=0.0,

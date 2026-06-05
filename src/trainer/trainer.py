@@ -125,6 +125,30 @@ class Trainer:
                 underfit_gap = event.proposal.signature & ~proposal_nodes_sig
                 overfit_mask = proposal_nodes_sig & ~event.proposal.signature
 
+                logger.info(
+                    "Cogitate adapter: event proposal=%r, query=%r, "
+                    "sig=%#x, nodes_sig=%#x",
+                    event.proposal, event.query,
+                    event.proposal.signature, proposal_nodes_sig,
+                )
+                logger.info(
+                    "Cogitate misfit: underfit=%s, overfit=%s, "
+                    "gap=%#x, mask=%#x",
+                    proposal_underfit, proposal_overfit,
+                    underfit_gap, overfit_mask,
+                )
+
+                # Diagnose when misfit is "none" — the proposal may already
+                # be canonical (expansion proposal from propose_expansions),
+                # meaning the LLM gets no useful diagnostic information.
+                if not proposal_underfit and not proposal_overfit:
+                    logger.warning(
+                        "Cogitate adapter: misfit is 'none' — proposal "
+                        "appears canonical (sig=%#x, nodes_sig=%#x). "
+                        "LLM will receive no gap/excess diagnostic.",
+                        event.proposal.signature, proposal_nodes_sig,
+                    )
+
                 misfit_info = MisfitInfo(
                     underfit=proposal_underfit,
                     overfit=proposal_overfit,
@@ -144,6 +168,13 @@ class Trainer:
                 )
 
                 result = _cogitator.cogitate(request)
+                logger.info(
+                    "Cogitate result: scaffolding=%s, confidence=%.2f, "
+                    "reasoning=%s",
+                    "None" if result.scaffolding is None else result.scaffolding[:80],
+                    result.confidence,
+                    result.reasoning[:80] if result.reasoning else "",
+                )
                 if result.scaffolding is not None:
                     return (result.scaffolding, result.confidence)
                 return None
