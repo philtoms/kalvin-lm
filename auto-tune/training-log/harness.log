@@ -1,0 +1,64 @@
+2026-06-05 19:55:30,495 [harness.server] INFO: Embedded participant 'KAgent' (4427974064) subscribed to 'trainee'
+2026-06-05 19:55:30,499 [harness.server] INFO: Embedded participant 'Trainer' (4428188208) subscribed to 'trainer'
+2026-06-05 19:55:30,502 [websockets.server] INFO: server listening on [::1]:8765
+2026-06-05 19:55:30,502 [websockets.server] INFO: server listening on 127.0.0.1:8765
+2026-06-05 19:55:30,502 [harness.server] INFO: WebSocket server listening on localhost:8765
+2026-06-05 19:55:30,667 [websockets.server] ERROR: opening handshake failed
+Traceback (most recent call last):
+  File "/Users/phil/.pyenv/versions/3.10.14/lib/python3.10/site-packages/websockets/http11.py", line 138, in parse
+    request_line = yield from parse_line(read_line)
+  File "/Users/phil/.pyenv/versions/3.10.14/lib/python3.10/site-packages/websockets/http11.py", line 320, in parse_line
+    line = yield from read_line(MAX_LINE_LENGTH)
+  File "/Users/phil/.pyenv/versions/3.10.14/lib/python3.10/site-packages/websockets/streams.py", line 46, in read_line
+    raise EOFError(f"stream ends after {p} bytes, before end of line")
+EOFError: stream ends after 0 bytes, before end of line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/phil/.pyenv/versions/3.10.14/lib/python3.10/site-packages/websockets/server.py", line 547, in parse
+    request = yield from Request.parse(
+  File "/Users/phil/.pyenv/versions/3.10.14/lib/python3.10/site-packages/websockets/http11.py", line 140, in parse
+    raise EOFError("connection closed while reading HTTP request line") from exc
+EOFError: connection closed while reading HTTP request line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/phil/.pyenv/versions/3.10.14/lib/python3.10/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/Users/phil/.pyenv/versions/3.10.14/lib/python3.10/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
+2026-06-05 19:55:30,954 [websockets.server] INFO: connection open
+2026-06-05 19:55:30,954 [harness.protocol] INFO: Client registered: supervisor
+2026-06-05 19:55:44,825 [trainer.trainer] INFO: Session started — 3 lessons, curriculum: curricula/first-steps.md
+2026-06-05 19:55:44,825 [trainer.trainer] INFO: Submitting lesson 1 (1/3)
+2026-06-05 19:55:44,826 [trainer.trainer] INFO: Compiled 1 entries for lesson 1
+2026-06-05 19:55:44,826 [harness.adapter] INFO: Submitting 1 compiled entries to KAgent
+2026-06-05 19:55:44,826 [trainer.trainer] INFO: FRAME M → 0.00
+2026-06-05 19:55:44,826 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-05 19:55:44,826 [trainer.trainer] INFO: Lesson 1 complete — entries: 1/1 satisfied, 1/3 lessons done
+2026-06-05 19:55:44,826 [trainer.trainer] INFO: Submitting lesson 2 (2/3)
+2026-06-05 19:55:44,826 [trainer.trainer] INFO: Compiled 1 entries for lesson 2
+2026-06-05 19:55:44,826 [harness.adapter] INFO: Countersign: KLine(sig=0x2000, nodes=[], lit=False)
+2026-06-05 19:55:44,826 [harness.adapter] INFO: Submitting 1 compiled entries to KAgent
+2026-06-05 19:55:44,826 [trainer.trainer] INFO: FRAME H → 0.00
+2026-06-05 19:55:44,826 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-05 19:55:44,826 [trainer.trainer] INFO: Lesson 2 complete — entries: 2/2 satisfied, 2/3 lessons done
+2026-06-05 19:55:44,827 [trainer.trainer] INFO: Submitting lesson 3 (3/3)
+2026-06-05 19:55:44,827 [trainer.trainer] INFO: Compiled 2 entries for lesson 3
+2026-06-05 19:55:44,827 [harness.adapter] INFO: Countersign: KLine(sig=0x100, nodes=[], lit=False)
+2026-06-05 19:55:44,827 [harness.adapter] INFO: Submitting 2 compiled entries to KAgent
+2026-06-05 19:55:44,827 [trainer.trainer] INFO: FRAME H > M → S1 (fast path) ← H > M
+2026-06-05 19:55:44,828 [trainer.trainer] INFO: FRAME M > H → 1.00 | proposal: H => M H
+2026-06-05 19:55:44,828 [trainer.reactor] WARNING: Cogitation produced no scaffolding — escalating
+2026-06-05 19:55:44,828 [trainer.reactor] ERROR: Escalation: low_confidence 
+2026-06-05 19:55:44,828 [trainer.trainer] INFO: Lesson 3 complete — entries: 3/4 satisfied, 3/3 lessons done
+2026-06-05 19:55:44,828 [trainer.trainer] INFO: Curriculum complete — all lessons submitted
+2026-06-05 19:56:19,146 [harness.protocol] INFO: Client disconnected: supervisor
+2026-06-05 19:56:19,390 [websockets.server] INFO: server closing
+2026-06-05 19:56:19,391 [websockets.server] INFO: server closed
+2026-06-05 19:56:19,391 [harness.server] INFO: WebSocket server stopped
+2026-06-05 19:56:19,391 [harness.server] INFO: Harness server stop requested
+2026-06-05 19:56:19,391 [__main__] INFO: Trainer state persisted
