@@ -21,18 +21,18 @@ trainer:
   # API key is read from KALVIN_LLM_API_KEY env var — never put it here
 
 participants:
-  - address: kalvin
+  - role: trainee
     type: embedded
     class: KAgent
 
-  - address: trainer
+  - role: trainer
     type: embedded
     class: Trainer
 
-  - address: slack
+  - role: supervisor
     type: client
     class: SlackParticipant
 
-  - address: ui
+  - role: supervisor
     type: client
     class: TUIParticipant
