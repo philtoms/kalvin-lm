@@ -81,11 +81,24 @@ class CLISupervisor:
     async def run(self) -> None:
         """Self-contained main entry point.
 
-        Connects to the harness, then enters the per-event blocking loop.
+        Connects to the harness, polls for an initial command (e.g. start),
+        then enters the per-event blocking loop.
         """
         await self.connect()
 
         try:
+            # After connected event, poll for initial command before
+            # waiting for harness events. This lets pi send "start"
+            # before any events arrive.
+            self._write_status(state="waiting_for_command")
+            cmd = await self._poll_command()
+            if cmd is None:
+                return
+            should_exit = await self._process_command(cmd)
+            if should_exit:
+                return
+            self._write_status(state="waiting_for_event")
+
             while self._connected:
                 # 1. Receive one WebSocket frame
                 try:
