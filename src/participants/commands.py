@@ -74,6 +74,34 @@ class ResumeCommand(Command):
 
 
 @dataclass
+class RestartCommand(Command):
+    """Clear training state and restart session from the beginning."""
+
+    def to_messages(self, latest_proposal: Any) -> list[tuple[str, str, Any]]:
+        return [(TRAINER_ROLE, "input", self.original_text)]
+
+
+@dataclass
+class SaveCommand(Command):
+    """Persist Kalvin's model to disk via agent_codec."""
+
+    path: str | None = None
+
+    def to_messages(self, latest_proposal: Any) -> list[tuple[str, str, Any]]:
+        return [(TRAINEE_ROLE, "save", self.path)]
+
+
+@dataclass
+class LoadCommand(Command):
+    """Load Kalvin's model from disk via agent_codec."""
+
+    path: str | None = None
+
+    def to_messages(self, latest_proposal: Any) -> list[tuple[str, str, Any]]:
+        return [(TRAINEE_ROLE, "load", self.path)]
+
+
+@dataclass
 class GoalCommand(Command):
     """Set a training goal."""
 
@@ -121,6 +149,9 @@ def parse_command(text: str) -> Command:
         - "stop" (case-insensitive, stripped) → StopCommand
         - "pause" (case-insensitive, stripped) → PauseCommand
         - "resume" (case-insensitive, stripped) → ResumeCommand
+        - "restart" (case-insensitive, stripped) → RestartCommand
+        - "save" or "save:<path>" (case-insensitive) → SaveCommand
+        - "load" or "load:<path>" (case-insensitive) → LoadCommand
         - starts with "goal:" or "goal " (case-insensitive) → GoalCommand
         - equals "ratify" (case-insensitive, stripped) → RatifyCommand
         - looks like a file path → FileGoalCommand
@@ -145,6 +176,16 @@ def parse_command(text: str) -> Command:
         return PauseCommand(original_text=original)
     if lower == "resume":
         return ResumeCommand(original_text=original)
+    if lower == "restart":
+        return RestartCommand(original_text=original)
+
+    # Model persistence
+    if lower == "save" or lower.startswith("save:") or lower.startswith("save "):
+        save_path = stripped[5:].strip() if len(stripped) > 4 else None
+        return SaveCommand(original_text=original, path=save_path or None)
+    if lower == "load" or lower.startswith("load:") or lower.startswith("load "):
+        load_path = stripped[5:].strip() if len(stripped) > 4 else None
+        return LoadCommand(original_text=original, path=load_path or None)
 
     # Goal prefix
     if lower.startswith("goal:") or lower.startswith("goal "):

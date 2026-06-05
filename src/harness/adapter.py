@@ -41,6 +41,8 @@ if TYPE_CHECKING:
 class _KAgentLike(Protocol):
     def rationalise(self, kline: KLine) -> bool: ...
     def countersign(self, kline: KLine) -> bool: ...
+    def save(self, path, format=None) -> None: ...
+    def codec(self) -> object: ...
 
 logger = logging.getLogger(__name__)
 
@@ -117,11 +119,19 @@ class KAgentAdapter:
         countersign:
             Call ``kagent.countersign(kline)`` with the KLine in
             ``msg.message``.
+        save:
+            Persist Kalvin's model to disk via agent_codec.
+        load:
+            Load Kalvin's model from disk via agent_codec.
         """
         if msg.action == "submit":
             self._handle_submit(msg)
         elif msg.action == "countersign":
             self._handle_countersign(msg)
+        elif msg.action == "save":
+            self._handle_save(msg)
+        elif msg.action == "load":
+            self._handle_load(msg)
         else:
             logger.warning("Unknown action %r from %s", msg.action, msg.sender)
 
@@ -189,3 +199,66 @@ class KAgentAdapter:
 
         kline = msg.message
         self._kagent.countersign(kline)
+
+    def _handle_save(self, msg: Message) -> None:
+        """Persist Kalvin's model to disk via agent_codec.
+
+        ``msg.message`` is the file path (or None for default).
+        Sends a confirmation or error back to the sender.
+        """
+        if self._kagent is None:
+            logger.error("No KAgent bound; cannot save")
+            return
+
+        path = msg.message or "data/agent.bin"
+        try:
+            self._kagent.save(path)
+            logger.info("Kalvin model saved to %s", path)
+            self._bus.send(Message(
+                role=msg.sender or SUPERVISOR_ROLE,
+                action="saved",
+                message={"path": str(path)},
+            ))
+        except Exception as exc:
+            logger.error("Failed to save Kalvin model: %s", exc)
+            self._bus.send(Message(
+                role=msg.sender or SUPERVISOR_ROLE,
+                action="error",
+                message=f"Save failed: {exc}",
+            ))
+
+    def _handle_load(self, msg: Message) -> None:
+        """Load Kalvin's model from disk via agent_codec.
+
+        ``msg.message`` is the file path (or None for default).
+        Reconstructs the KAgent with the loaded model, replacing the
+        current one. Sends a confirmation or error back to the sender.
+        """
+        if self._kagent is None:
+            logger.error("No KAgent bound; cannot load")
+            return
+
+        path = msg.message or "data/agent.bin"
+        try:
+            from kalvin.agent_codec import AgentCodec
+            model, activity = AgentCodec.load(path)
+
+            # Replace the KAgent's model and activity in-place
+            self._kagent._model = model
+            self._kagent._activity = activity
+            # Rebind the cogitator's model reference
+            self._kagent._cogitator._model = model
+
+            logger.info("Kalvin model loaded from %s", path)
+            self._bus.send(Message(
+                role=msg.sender or SUPERVISOR_ROLE,
+                action="loaded",
+                message={"path": str(path), "frame_size": len(model)},
+            ))
+        except Exception as exc:
+            logger.error("Failed to load Kalvin model: %s", exc)
+            self._bus.send(Message(
+                role=msg.sender or SUPERVISOR_ROLE,
+                action="error",
+                message=f"Load failed: {exc}",
+            ))

@@ -11,9 +11,12 @@ from participants.commands import (
     FileGoalCommand,
     GoalCommand,
     GuidanceCommand,
+    LoadCommand,
     PauseCommand,
     RatifyCommand,
+    RestartCommand,
     ResumeCommand,
+    SaveCommand,
     StartCommand,
     StopCommand,
     parse_command,
@@ -214,3 +217,100 @@ class TestWhitespace:
         cmd = parse_command("  goal:   learn SVO  ")
         assert isinstance(cmd, GoalCommand)
         assert cmd.text == "learn SVO"
+
+
+# ---------------------------------------------------------------------------
+# Restart command
+# ---------------------------------------------------------------------------
+
+
+class TestRestartCommand:
+    def test_parse(self):
+        cmd = parse_command("restart")
+        assert isinstance(cmd, RestartCommand)
+        assert cmd.original_text == "restart"
+
+    def test_to_messages(self):
+        cmd = parse_command("restart")
+        msgs = cmd.to_messages(None)
+        assert msgs == [(TRAINER_ROLE, "input", "restart")]
+
+    def test_case_insensitive(self):
+        assert isinstance(parse_command("RESTART"), RestartCommand)
+        assert isinstance(parse_command("Restart"), RestartCommand)
+
+    def test_whitespace(self):
+        cmd = parse_command("  restart  ")
+        assert isinstance(cmd, RestartCommand)
+
+
+# ---------------------------------------------------------------------------
+# Save command
+# ---------------------------------------------------------------------------
+
+
+class TestSaveCommand:
+    def test_parse_bare(self):
+        cmd = parse_command("save")
+        assert isinstance(cmd, SaveCommand)
+        assert cmd.path is None
+
+    def test_parse_with_path(self):
+        cmd = parse_command("save:data/my-model.bin")
+        assert isinstance(cmd, SaveCommand)
+        assert cmd.path == "data/my-model.bin"
+
+    def test_parse_with_space(self):
+        cmd = parse_command("save data/backup.json")
+        assert isinstance(cmd, SaveCommand)
+        assert cmd.path == "data/backup.json"
+
+    def test_to_messages_routes_to_trainee(self):
+        cmd = parse_command("save")
+        msgs = cmd.to_messages(None)
+        assert msgs == [(TRAINEE_ROLE, "save", None)]
+
+    def test_to_messages_with_path(self):
+        cmd = parse_command("save:data/model.bin")
+        msgs = cmd.to_messages(None)
+        assert msgs == [(TRAINEE_ROLE, "save", "data/model.bin")]
+
+    def test_case_insensitive(self):
+        assert isinstance(parse_command("SAVE"), SaveCommand)
+        assert isinstance(parse_command("Save"), SaveCommand)
+
+
+# ---------------------------------------------------------------------------
+# Load command
+# ---------------------------------------------------------------------------
+
+
+class TestLoadCommand:
+    def test_parse_bare(self):
+        cmd = parse_command("load")
+        assert isinstance(cmd, LoadCommand)
+        assert cmd.path is None
+
+    def test_parse_with_path(self):
+        cmd = parse_command("load:data/my-model.bin")
+        assert isinstance(cmd, LoadCommand)
+        assert cmd.path == "data/my-model.bin"
+
+    def test_parse_with_space(self):
+        cmd = parse_command("load data/backup.json")
+        assert isinstance(cmd, LoadCommand)
+        assert cmd.path == "data/backup.json"
+
+    def test_to_messages_routes_to_trainee(self):
+        cmd = parse_command("load")
+        msgs = cmd.to_messages(None)
+        assert msgs == [(TRAINEE_ROLE, "load", None)]
+
+    def test_to_messages_with_path(self):
+        cmd = parse_command("load:data/model.bin")
+        msgs = cmd.to_messages(None)
+        assert msgs == [(TRAINEE_ROLE, "load", "data/model.bin")]
+
+    def test_case_insensitive(self):
+        assert isinstance(parse_command("LOAD"), LoadCommand)
+        assert isinstance(parse_command("Load"), LoadCommand)

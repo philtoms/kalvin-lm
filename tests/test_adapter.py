@@ -34,6 +34,10 @@ class FakeKAgent:
     def __init__(self) -> None:
         self.rationalise = MagicMock(return_value=True)
         self.countersign = MagicMock(return_value=True)
+        self.save = MagicMock()
+        self._model = Model()
+        self._activity = {}
+        self._cogitator = MagicMock()
 
 
 class BusCapture:
@@ -404,4 +408,143 @@ class TestNoKAgentBound:
         # Should not raise
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="countersign", message=kline, sender="trainer")
+        )
+
+
+# ── Save / Load actions ──────────────────────────────────────────────
+
+
+class TestSaveAction:
+    """Save action persists Kalvin's model via agent_codec."""
+
+    def test_save_calls_kagent_save(self, tmp_path) -> None:
+        bus = MessageBus()
+        capture = BusCapture(bus)
+        kagent = FakeKAgent()
+        adapter = KAgentAdapter(bus, kagent=kagent)
+
+        save_path = str(tmp_path / "model.bin")
+        adapter.on_message(
+            Message(role=TRAINEE_ROLE, action="save", message=save_path, sender="supervisor")
+        )
+
+        kagent.save.assert_called_once_with(save_path)
+
+    def test_save_sends_confirmation(self, tmp_path) -> None:
+        bus = MessageBus()
+        capture = BusCapture(bus)
+        kagent = FakeKAgent()
+        adapter = KAgentAdapter(bus, kagent=kagent)
+
+        save_path = str(tmp_path / "model.bin")
+        adapter.on_message(
+            Message(role=TRAINEE_ROLE, action="save", message=save_path, sender="supervisor")
+        )
+
+        saved_msgs = capture.with_action("saved")
+        assert len(saved_msgs) == 1
+        assert saved_msgs[0].message["path"] == save_path
+
+    def test_save_uses_default_path(self) -> None:
+        bus = MessageBus()
+        capture = BusCapture(bus)
+        kagent = FakeKAgent()
+        adapter = KAgentAdapter(bus, kagent=kagent)
+
+        adapter.on_message(
+            Message(role=TRAINEE_ROLE, action="save", message=None, sender="supervisor")
+        )
+
+        kagent.save.assert_called_once_with("data/agent.bin")
+
+    def test_save_without_kagent(self) -> None:
+        bus = MessageBus()
+        adapter = KAgentAdapter(bus)  # No kagent
+
+        # Should not raise
+        adapter.on_message(
+            Message(role=TRAINEE_ROLE, action="save", message="test.bin", sender="supervisor")
+        )
+
+
+class TestLoadAction:
+    """Load action replaces Kalvin's model via agent_codec."""
+
+    def test_load_replaces_model(self, tmp_path) -> None:
+        from kalvin.agent import KAgent
+        from kalvin.events import EventBus
+
+        bus = MessageBus()
+        capture = BusCapture(bus)
+        adapter = KAgentAdapter(bus)
+        kagent = KAgent(adapter=adapter)
+        adapter.bind(kagent)
+
+        # Teach the agent something so the model is non-empty
+        kagent.rationalise(KLine(0xFF, []))
+        old_model = kagent._model
+        assert len(old_model) > 0
+
+        # Save to file
+        save_path = tmp_path / "model.bin"
+        kagent.save(str(save_path))
+
+        # Clear model to prove load restores it
+        kagent._model = Model()
+        assert len(kagent._model) == 0
+
+        # Load via adapter
+        adapter.on_message(
+            Message(role=TRAINEE_ROLE, action="load", message=str(save_path), sender="supervisor")
+        )
+
+        # Model should be restored
+        assert len(kagent._model) > 0
+
+    def test_load_sends_confirmation(self, tmp_path) -> None:
+        from kalvin.agent import KAgent
+
+        bus = MessageBus()
+        capture = BusCapture(bus)
+        adapter = KAgentAdapter(bus)
+        kagent = KAgent(adapter=adapter)
+        adapter.bind(kagent)
+
+        # Save a model first
+        save_path = tmp_path / "model.bin"
+        kagent.save(str(save_path))
+
+        adapter.on_message(
+            Message(role=TRAINEE_ROLE, action="load", message=str(save_path), sender="supervisor")
+        )
+
+        loaded_msgs = capture.with_action("loaded")
+        assert len(loaded_msgs) == 1
+        assert loaded_msgs[0].message["path"] == str(save_path)
+        assert "frame_size" in loaded_msgs[0].message
+
+    def test_load_sends_error_on_bad_path(self) -> None:
+        from kalvin.agent import KAgent
+
+        bus = MessageBus()
+        capture = BusCapture(bus)
+        adapter = KAgentAdapter(bus)
+        kagent = KAgent(adapter=adapter)
+        adapter.bind(kagent)
+
+        adapter.on_message(
+            Message(role=TRAINEE_ROLE, action="load", message="/nonexistent/path/model.bin", sender="supervisor")
+        )
+
+        error_msgs = capture.with_action("error")
+        assert len(error_msgs) == 1
+        assert "Load failed" in error_msgs[0].message
+
+    def test_load_without_kagent(self) -> None:
+        bus = MessageBus()
+        adapter = KAgentAdapter(bus)  # No kagent
+
+        # Should not raise
+        adapter.on_message(
+            Message(role=TRAINEE_ROLE, action="load", message="test.bin", sender="supervisor")
         )

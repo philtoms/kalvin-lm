@@ -100,7 +100,7 @@ A client participant registered with role `supervisor`. Renders all session even
 A client participant registered with role `supervisor`. Translates between Slack API and harness messages. Renders all session events in Slack and forwards human commands through the shared command protocol, including `ratify` for ratification. A dedicated training channel; no addressing syntax needed.
 
 **Shared Command Protocol**:
-The command parser (`src/participants/commands.py`) used by all supervisor participants to interpret free-text input. Maps commands (start, stop, pause, resume, goal, ratify, file paths, guidance) to bus messages. Ensures both TUI and Slack (and future AI agents) share the same command vocabulary.
+The command parser (`src/participants/commands.py`) used by all supervisor participants to interpret free-text input. Maps commands to bus messages: **start**, **stop**, **pause**, **resume**, **restart** (clear training state and restart session) route to the trainer role; **save** and **load** (Kalvin model persistence via agent_codec) route to the trainee role; **goal** (with prefix) sets a training goal; **ratify** countersigns the latest proposal; file paths load a curriculum; everything else is guidance text. Ensures TUI, Slack, and the CLI supervisor share the same command vocabulary.
 
 **Message**:
 A unit of inter-participant communication routed by the harness. Addressed to a role with an action: `{role: trainee, action: submit, message: "MHALL = SVO"}` or `{role: trainee, action: countersign, message: <kline>}`. Routing is by role; the action is interpreted by the recipient's adapter. Multiple participants subscribed to the same role all receive the message (fan-out). Kalvin always addresses its response to the sender's role.
@@ -110,6 +110,24 @@ The alternating exchange between participants in the harness loop. One participa
 
 **Participant**:
 Any agent loaded into the harness loop (Kalvin, Trainer, supervisor participant, etc.). Each participant subscribes to a role and receives all messages sent to that role. Multiple participants may share the same role — both TUI and Slack subscribe to role `supervisor`, for example, and both receive the same messages. Diagnostic listeners may subscribe to any or all roles. All participants are equal — no participant has special status or privileged access to the harness.
+
+### Auto-Tune
+
+A tuning loop where an LLM coding agent runs repeated training sessions against the codebase, observes results, edits code, and re-runs to converge on a goal. Not a training concept — auto-tune improves the *codebase*, not Kalvin's model. An auto-tune session is a working directory (`auto-tune/<codename>/`) that holds the file-mediated communication channel between pi and the CLI supervisor, plus snapshot history of successive runs.
+_Avoid_: tuning session (ambiguous with training session), auto-train (it's not training)
+
+### CLI Supervisor
+
+A supervisor participant that connects to the harness via WebSocket and communicates with pi through a file-mediated protocol (command file + event log) instead of a screen or Slack channel. Operates in per-event blocking mode — writes one event, waits for one command. Gives pi maximal granularity over training session observability and control. Lives in `src/participants/auto_tune/`.
+_Avoid_: auto-tune supervisor (the CLI includes the full auto-tune tool, not just the supervisor)
+
+### Auto-Tune Session Directory
+
+The working directory for a tuning loop: `auto-tune/<codename>/`. Contains `config.json` (session configuration), `cmd.json` (single-command file written by pi, consumed by supervisor), `status.json` (supervisor heartbeat), `events.jsonl` (append-only event stream), and `runs/` (numbered snapshot directories). Created by `auto-tune init`.
+
+### Auto-Tune Snapshot
+
+A captured state of a training run: curriculum tracking state, event log, Kalvin model, and git metadata. Stored in `auto-tune/<codename>/runs/<n>/`. Created by `auto-tune snapshot`, restored by `auto-tune restore`. Enables pi to compare behavior across code changes or undo a tuning step.
 
 ### Dimension
 
