@@ -210,47 +210,151 @@ class TestNonInitParsing:
 
 
 # ---------------------------------------------------------------------------
-# Non-init stubs raise NotImplementedError
+# Non-init handlers delegate to handler modules
 # ---------------------------------------------------------------------------
 
 
-class TestStubHandlers:
-    """All non-init handlers raise NotImplementedError."""
+class TestHandlerDelegation:
+    """All non-init handlers delegate to the correct handler module."""
 
-    STUB_COMMANDS = {
-        "start-harness": ["--session", "s1"],
-        "stop-harness": ["--session", "s1"],
-        "start-supervisor": ["--session", "s1"],
-        "stop-supervisor": ["--session", "s1"],
-        "send": ["--session", "s1", "--command", "{}"],
-        "events": ["--session", "s1"],
-        "step": ["--session", "s1", "--command", "{}"],
-        "status": ["--session", "s1"],
-        "snapshot": ["--session", "s1"],
-        "restore": ["--session", "s1", "--run", "1"],
-        "reset": ["--session", "s1"],
-    }
-
-    @pytest.mark.parametrize("cmd,extra", [
-        ("start-harness", ["--session", "s1"]),
-        ("stop-harness", ["--session", "s1"]),
-        ("start-supervisor", ["--session", "s1"]),
-        ("stop-supervisor", ["--session", "s1"]),
-        ("send", ["--session", "s1", "--command", "{}"]),
-        ("events", ["--session", "s1"]),
-        ("step", ["--session", "s1", "--command", "{}"]),
-        ("status", ["--session", "s1"]),
-        ("snapshot", ["--session", "s1"]),
-        ("restore", ["--session", "s1", "--run", "1"]),
-        ("reset", ["--session", "s1"]),
-    ])
+    @patch("participants.auto_tune.cli.lifecycle")
     @patch("participants.auto_tune.cli.SessionDir")
-    def test_stub_raises_not_implemented(self, mock_sd: MagicMock, cmd: str, extra: list[str]) -> None:
-        mock_sd.load.return_value = MagicMock()
+    def test_start_harness_delegates(self, mock_sd: MagicMock, mock_lifecycle: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_instance.config_path.parent = "/auto-tune/s1"
+        mock_sd.load.return_value = mock_instance
         parser = build_parser()
-        args = parser.parse_args([cmd] + extra)
-        with pytest.raises(NotImplementedError, match=f"{cmd} not yet implemented"):
-            args.func(args)
+        args = parser.parse_args(["start-harness", "--session", "s1"])
+        args._session_dir = mock_instance
+        args.func(args)
+        mock_lifecycle.start_harness.assert_called_once_with("/auto-tune/s1")
+
+    @patch("participants.auto_tune.cli.lifecycle")
+    @patch("participants.auto_tune.cli.SessionDir")
+    def test_stop_harness_delegates(self, mock_sd: MagicMock, mock_lifecycle: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_instance.config_path.parent = "/auto-tune/s1"
+        mock_sd.load.return_value = mock_instance
+        parser = build_parser()
+        args = parser.parse_args(["stop-harness", "--session", "s1"])
+        args._session_dir = mock_instance
+        args.func(args)
+        mock_lifecycle.stop_harness.assert_called_once_with("/auto-tune/s1")
+
+    @patch("participants.auto_tune.cli.lifecycle")
+    @patch("participants.auto_tune.cli.SessionDir")
+    def test_start_supervisor_delegates(self, mock_sd: MagicMock, mock_lifecycle: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_instance.config_path.parent = "/auto-tune/s1"
+        mock_sd.load.return_value = mock_instance
+        parser = build_parser()
+        args = parser.parse_args(["start-supervisor", "--session", "s1"])
+        args._session_dir = mock_instance
+        args.func(args)
+        mock_lifecycle.start_supervisor.assert_called_once_with("/auto-tune/s1")
+
+    @patch("participants.auto_tune.cli.lifecycle")
+    @patch("participants.auto_tune.cli.SessionDir")
+    def test_stop_supervisor_delegates(self, mock_sd: MagicMock, mock_lifecycle: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_instance.config_path.parent = "/auto-tune/s1"
+        mock_sd.load.return_value = mock_instance
+        parser = build_parser()
+        args = parser.parse_args(["stop-supervisor", "--session", "s1"])
+        args._session_dir = mock_instance
+        args.func(args)
+        mock_lifecycle.stop_supervisor.assert_called_once_with("/auto-tune/s1")
+
+    @patch("participants.auto_tune.cli.orchestrate")
+    @patch("participants.auto_tune.cli.SessionDir")
+    def test_send_delegates(self, mock_sd: MagicMock, mock_orch: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_sd.load.return_value = mock_instance
+        parser = build_parser()
+        args = parser.parse_args(["send", "--session", "s1", "--command", '{"action":"start"}'])
+        args._session_dir = mock_instance
+        args.func(args)
+        mock_orch.send_command.assert_called_once_with(mock_instance, {"action": "start"})
+
+    @patch("participants.auto_tune.cli.orchestrate")
+    @patch("participants.auto_tune.cli.SessionDir")
+    def test_events_delegates(self, mock_sd: MagicMock, mock_orch: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_sd.load.return_value = mock_instance
+        mock_orch.read_events.return_value = [{"seq": 1, "type": "connected"}]
+        parser = build_parser()
+        args = parser.parse_args(["events", "--session", "s1"])
+        args._session_dir = mock_instance
+        args.func(args)
+        mock_orch.read_events.assert_called_once_with(mock_instance, 0)
+
+    @patch("participants.auto_tune.cli.orchestrate")
+    @patch("participants.auto_tune.cli.SessionDir")
+    def test_step_delegates(self, mock_sd: MagicMock, mock_orch: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_sd.load.return_value = mock_instance
+        mock_orch.step.return_value = [{"seq": 2, "type": "progress"}]
+        parser = build_parser()
+        args = parser.parse_args(["step", "--session", "s1", "--command", '{"action":"continue"}'])
+        args._session_dir = mock_instance
+        args.func(args)
+        mock_orch.step.assert_called_once_with(mock_instance, {"action": "continue"})
+
+    @patch("participants.auto_tune.cli.orchestrate")
+    @patch("participants.auto_tune.cli.SessionDir")
+    def test_status_delegates(self, mock_sd: MagicMock, mock_orch: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_sd.load.return_value = mock_instance
+        mock_orch.read_status.return_value = {"state": "waiting_for_event"}
+        parser = build_parser()
+        args = parser.parse_args(["status", "--session", "s1"])
+        args._session_dir = mock_instance
+        args.func(args)
+        mock_orch.read_status.assert_called_once_with(mock_instance)
+
+    @patch("participants.auto_tune.cli.snapshots")
+    @patch("participants.auto_tune.cli.SessionDir")
+    def test_snapshot_delegates(self, mock_sd: MagicMock, mock_snap: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_sd.load.return_value = mock_instance
+        parser = build_parser()
+        args = parser.parse_args(["snapshot", "--session", "s1"])
+        args._session_dir = mock_instance
+        args.func(args)
+        mock_snap.snapshot.assert_called_once_with(mock_instance)
+
+    @patch("participants.auto_tune.cli.snapshots")
+    @patch("participants.auto_tune.cli.SessionDir")
+    def test_restore_delegates(self, mock_sd: MagicMock, mock_snap: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_sd.load.return_value = mock_instance
+        parser = build_parser()
+        args = parser.parse_args(["restore", "--session", "s1", "--run", "3"])
+        args._session_dir = mock_instance
+        args.func(args)
+        mock_snap.restore.assert_called_once_with(mock_instance, 3)
+
+    @patch("participants.auto_tune.cli.snapshots")
+    @patch("participants.auto_tune.cli.SessionDir")
+    def test_reset_delegates(self, mock_sd: MagicMock, mock_snap: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_sd.load.return_value = mock_instance
+        parser = build_parser()
+        args = parser.parse_args(["reset", "--session", "s1"])
+        args._session_dir = mock_instance
+        args.func(args)
+        mock_snap.reset.assert_called_once_with(mock_instance, fresh_model=False)
+
+    @patch("participants.auto_tune.cli.snapshots")
+    @patch("participants.auto_tune.cli.SessionDir")
+    def test_reset_fresh_model_delegates(self, mock_sd: MagicMock, mock_snap: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_sd.load.return_value = mock_instance
+        parser = build_parser()
+        args = parser.parse_args(["reset", "--session", "s1", "--fresh-model"])
+        args._session_dir = mock_instance
+        args.func(args)
+        mock_snap.reset.assert_called_once_with(mock_instance, fresh_model=True)
 
 
 # ---------------------------------------------------------------------------

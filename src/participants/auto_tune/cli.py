@@ -1,9 +1,9 @@
 """Argparse-based CLI for auto-tune workflow.
 
 Provides 12 subcommands for session management, process lifecycle,
-and the send/events/step interaction pattern.  The ``init`` subcommand
-is fully wired to :class:`SessionDir`; all other handlers are stubs
-pending KB-139.
+and the send/events/step interaction pattern.  Each subcommand resolves
+``--session`` to a :class:`SessionDir` instance, then delegates to the
+appropriate handler module.
 
 Usage::
 
@@ -14,63 +14,18 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from typing import Sequence
 
+from participants.auto_tune import lifecycle
+from participants.auto_tune import orchestrate
+from participants.auto_tune import snapshots
 from participants.auto_tune.session import SessionDir
 
 
 # ---------------------------------------------------------------------------
-# Stub handlers (to be replaced in KB-139)
-# ---------------------------------------------------------------------------
-
-
-def _handle_start_harness(args: argparse.Namespace) -> None:
-    raise NotImplementedError("start-harness not yet implemented (see KB-139)")
-
-
-def _handle_stop_harness(args: argparse.Namespace) -> None:
-    raise NotImplementedError("stop-harness not yet implemented (see KB-139)")
-
-
-def _handle_start_supervisor(args: argparse.Namespace) -> None:
-    raise NotImplementedError("start-supervisor not yet implemented (see KB-139)")
-
-
-def _handle_stop_supervisor(args: argparse.Namespace) -> None:
-    raise NotImplementedError("stop-supervisor not yet implemented (see KB-139)")
-
-
-def _handle_send(args: argparse.Namespace) -> None:
-    raise NotImplementedError("send not yet implemented (see KB-139)")
-
-
-def _handle_events(args: argparse.Namespace) -> None:
-    raise NotImplementedError("events not yet implemented (see KB-139)")
-
-
-def _handle_step(args: argparse.Namespace) -> None:
-    raise NotImplementedError("step not yet implemented (see KB-139)")
-
-
-def _handle_status(args: argparse.Namespace) -> None:
-    raise NotImplementedError("status not yet implemented (see KB-139)")
-
-
-def _handle_snapshot(args: argparse.Namespace) -> None:
-    raise NotImplementedError("snapshot not yet implemented (see KB-139)")
-
-
-def _handle_restore(args: argparse.Namespace) -> None:
-    raise NotImplementedError("restore not yet implemented (see KB-139)")
-
-
-def _handle_reset(args: argparse.Namespace) -> None:
-    raise NotImplementedError("reset not yet implemented (see KB-139)")
-
-
-# ---------------------------------------------------------------------------
-# Init handler (fully wired)
+# Handler functions
 # ---------------------------------------------------------------------------
 
 
@@ -83,6 +38,87 @@ def _handle_init(args: argparse.Namespace) -> None:
         port=args.port,
     )
     print(f"Session '{args.session}' initialised at {sd.config_path.parent}")
+
+
+def _handle_start_harness(args: argparse.Namespace) -> None:
+    """Start the harness server as a background process."""
+    sd: SessionDir = args._session_dir
+    lifecycle.start_harness(sd.config_path.parent)
+
+
+def _handle_stop_harness(args: argparse.Namespace) -> None:
+    """Gracefully stop the harness server."""
+    sd: SessionDir = args._session_dir
+    lifecycle.stop_harness(sd.config_path.parent)
+
+
+def _handle_start_supervisor(args: argparse.Namespace) -> None:
+    """Start the CLI supervisor as a background process."""
+    sd: SessionDir = args._session_dir
+    lifecycle.start_supervisor(sd.config_path.parent)
+
+
+def _handle_stop_supervisor(args: argparse.Namespace) -> None:
+    """Stop the CLI supervisor process."""
+    sd: SessionDir = args._session_dir
+    lifecycle.stop_supervisor(sd.config_path.parent)
+
+
+def _handle_send(args: argparse.Namespace) -> None:
+    """Write a command to cmd.json and return immediately."""
+    sd: SessionDir = args._session_dir
+    try:
+        command_json = json.loads(args.command_json)
+    except json.JSONDecodeError as exc:
+        print(f"Error: invalid JSON in --command: {exc}", file=sys.stderr)
+        sys.exit(1)
+    orchestrate.send_command(sd, command_json)
+
+
+def _handle_events(args: argparse.Namespace) -> None:
+    """Print events from events.jsonl, optionally filtered by seq."""
+    sd: SessionDir = args._session_dir
+    events_list = orchestrate.read_events(sd, args.after)
+    for event in events_list:
+        print(json.dumps(event))
+
+
+def _handle_step(args: argparse.Namespace) -> None:
+    """Write command, block until next event appears, print it."""
+    sd: SessionDir = args._session_dir
+    try:
+        command_json = json.loads(args.command_json)
+    except json.JSONDecodeError as exc:
+        print(f"Error: invalid JSON in --command: {exc}", file=sys.stderr)
+        sys.exit(1)
+    new_events = orchestrate.step(sd, command_json)
+    for event in new_events:
+        print(json.dumps(event))
+
+
+def _handle_status(args: argparse.Namespace) -> None:
+    """Print the session status as formatted JSON."""
+    sd: SessionDir = args._session_dir
+    status_data = orchestrate.read_status(sd)
+    print(json.dumps(status_data, indent=2))
+
+
+def _handle_snapshot(args: argparse.Namespace) -> None:
+    """Capture session state to runs/<n>/."""
+    sd: SessionDir = args._session_dir
+    snapshots.snapshot(sd)
+
+
+def _handle_restore(args: argparse.Namespace) -> None:
+    """Restore session state from a named run snapshot."""
+    sd: SessionDir = args._session_dir
+    snapshots.restore(sd, args.run)
+
+
+def _handle_reset(args: argparse.Namespace) -> None:
+    """Delete curriculum state, truncate events, optionally delete model."""
+    sd: SessionDir = args._session_dir
+    snapshots.reset(sd, fresh_model=args.fresh_model)
 
 
 # ---------------------------------------------------------------------------
@@ -187,7 +223,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     # Non-init commands require an existing session directory
     if args.command != "init":
         try:
-            SessionDir.load(args.session)
+            args._session_dir = SessionDir.load(args.session)
         except FileNotFoundError:
             print(
                 f"Error: session '{args.session}' not found. "
