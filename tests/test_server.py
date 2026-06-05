@@ -16,6 +16,7 @@ import pytest
 import yaml
 
 from harness.bus import MessageBus
+from harness.constants import SUPERVISOR_ROLE, TRAINER_ROLE
 from harness.message import Message
 from harness.server import ConfigError, HarnessConfig, HarnessServer, load_config
 
@@ -45,7 +46,7 @@ def _sample_config() -> dict[str, Any]:
                 "class": "KAgent",
             },
             {
-                "role": "trainer",
+                "role": TRAINER_ROLE,
                 "type": "embedded",
                 "class": "Trainer",
             },
@@ -151,15 +152,15 @@ class TestConfigValidation:
         """Duplicate roles are allowed when all entries are type: client."""
         data = {
             "participants": [
-                {"role": "supervisor", "type": "client", "class": "TUI1"},
-                {"role": "supervisor", "type": "client", "class": "TUI2"},
+                {"role": SUPERVISOR_ROLE, "type": "client", "class": "TUI1"},
+                {"role": SUPERVISOR_ROLE, "type": "client", "class": "TUI2"},
             ]
         }
         path = _write_yaml(tmp_path / "ok.yaml", data)
         config = load_config(path)
         assert len(config.participants) == 2
-        assert config.participants[0].role == "supervisor"
-        assert config.participants[1].role == "supervisor"
+        assert config.participants[0].role == SUPERVISOR_ROLE
+        assert config.participants[1].role == SUPERVISOR_ROLE
 
     def test_mixed_duplicate_role_embedded_and_client_ok(self, tmp_path: Path) -> None:
         """A client may share a role with an embedded participant."""
@@ -215,7 +216,7 @@ class TestLoadEmbeddedParticipants:
                     role="kalvin",
                     action="submit",
                     message="MHALL = SVO",
-                    sender="trainer",
+                    sender=TRAINER_ROLE,
                 )
             )
             # Give the bus time to dispatch.
@@ -228,7 +229,7 @@ class TestLoadEmbeddedParticipants:
 
         assert len(participant.messages) == 1
         assert participant.messages[0].action == "submit"
-        assert participant.messages[0].sender == "trainer"
+        assert participant.messages[0].sender == TRAINER_ROLE
 
 
 class TestParticipantRegistry:
@@ -322,8 +323,7 @@ class TestWebSocketClientConnect:
             # Send a ping to verify.
             await ws.send(
                 json.dumps(
-                    # TODO(KB-109): rename "address" → "role" in wire frame
-                    {"address": "kalvin", "action": "submit", "message": "test"}
+                    {"role": "kalvin", "action": "submit", "message": "test"}
                 )
             )
             await asyncio.sleep(0.05)
