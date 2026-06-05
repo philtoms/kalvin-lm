@@ -1,6 +1,6 @@
 # Training Log Implementation Plan
 
-**Status:** implemented (auto-tune session: training-log, run 1)
+**Status:** implemented (auto-tune session: training-log, run 1). Tests: TL-1 through TL-18 passing. TL-19 and TL-20 (auto-tune harness log capture) deferred.
 **Spec refs:** `specs/training-log.md`
 
 ## Spec References
