@@ -1,4 +1,4 @@
-"""Addressed message for the multi-agent harness."""
+"""Role-based message for the multi-agent harness."""
 
 from __future__ import annotations
 
@@ -8,25 +8,25 @@ from typing import Any
 
 @dataclass(frozen=True)
 class Message:
-    """A unit of inter-participant communication routed by address.
+    """A unit of inter-participant communication routed by role.
 
     The harness does not interpret ``action`` or ``message`` — it routes
-    by ``address`` only.
+    by ``role`` only.
 
     Attributes:
-        address: Recipient address string.
+        role: Recipient role string.
         action: Verb interpreted by the recipient.
         message: Arbitrary payload.
-        sender: Optional sender address, set by the bus or sender context.
+        sender: Optional sender role, set by the bus or sender context.
     """
 
-    address: str
+    role: str
     action: str
     message: Any
     sender: str | None = field(default=None)
 
     def __repr__(self) -> str:
         return (
-            f"Message(address={self.address!r}, action={self.action!r}, "
+            f"Message(role={self.role!r}, action={self.action!r}, "
             f"sender={self.sender!r})"
         )
