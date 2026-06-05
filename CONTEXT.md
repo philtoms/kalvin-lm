@@ -20,12 +20,20 @@ Kalvin is a rationalising system whose entire world is built from klines. This g
 
 ### Agents and the Harness
 
+**Role**:
+The routing key for inter-participant communication on the harness bus. Three defined roles: **trainee** (Kalvin), **trainer** (Trainer), **supervisor** (TUI, Slack, future AI agents). Multiple participants may subscribe to the same role — all receive messages sent to that role (fan-out). Roles are defined in `src/harness/constants.py`.
+_Avoid_: address (legacy), topic (legacy), type (ambiguous with config `type: embedded/client`)
+
+**Supervisor**:
+A participant subscribed to the `supervisor` role that monitors the training session and may intercede when needed. The supervisor role is independent of the medium — TUI, Slack, or a future AI agent all have the same capabilities: receive all session events (progress, Kalvin events, escalation, ratify requests) and send commands (session control, guidance, ratification) through a shared command protocol. An ideal training session sees the supervisor in a mostly monitoring role, interceding only on escalated events.
+_Avoid_: UI (too narrow — supervisor is not limited to user interfaces), human (a supervisor may be an AI agent)
+
 **Kalvin**:
-The trainee — the rationalising system being trained. Receives klines, routes candidates, manages the Cogitator, and publishes events. The implementation class is `KAgent` (`src/kalvin/agent.py`). Calls its adapter directly instead of maintaining an internal EventBus — the adapter is responsible for routing events onto the harness bus.
+The trainee — the rationalising system being trained. Receives klines, routes candidates, manages the Cogitator, and publishes events. The implementation class is `KAgent` (`src/kalvin/agent.py`). Calls its adapter directly instead of maintaining an internal EventBus — the adapter is responsible for routing events onto the harness bus. Registered on the harness bus with role `trainee`.
 _Avoid_: Agent (ambiguous), KAgent (that's the implementation class, not the trainee)
 
 **Trainer**:
-An agent-in-the-loop that drives the training loop on behalf of a human. Understands proposal structure, creates KScript scaffolding, and communicates with a human (e.g. via Slack) when it needs guidance or wants to report progress. May use a language model (LLM agent) to decide what scaffolding is needed.
+An agent-in-the-loop that drives the training loop on behalf of a supervisor. Understands proposal structure, creates KScript scaffolding, and communicates with supervisors when it needs guidance or wants to report progress. Relays Kalvin events to the `supervisor` role so supervisors observe the full training session. Escalates to the `supervisor` role when stuck (budget exhaustion or low confidence). May use a language model (LLM agent) to decide what scaffolding is needed. Registered on the harness bus with role `trainer`.
 _Avoid_: auto-agent, training bot
 
 **Scaffolding**:
@@ -75,28 +83,31 @@ The text passed to LLM agent when generating reactive scaffolding. Composed of t
 The Trainer signals the human (via Slack) when it cannot make progress. Two triggers: **budget exhaustion** (N rounds of reactive scaffolding without reaching S1) and **low confidence** (LLM agent signals it doesn't know what to write). Progress updates are separate — the Trainer reports milestones proactively.
 
 **Harness**:
-The multi-agent runtime that loads participants and runs a dialogue loop between them. Acts as a message broker: participants send addressed messages through the harness, and the harness routes them to the named recipient. Participants never communicate directly. Runs as a persistent server — participants connect to it as clients.
+The multi-agent runtime that loads participants and runs a dialogue loop between them. Acts as a message broker: participants send role-addressed messages through the harness, and the harness routes them to all subscribers of that role. Participants never communicate directly. Runs as a persistent server — participants connect to it as clients.
 
 **Adapter**:
-Kalvin's interface to the harness bus. Receives harness messages (submit, countersign) sent to topic `kalvin`, compiles KScript, and calls `kagent.rationalise()` or `kagent.countersign()`. Kalvin calls the adapter directly instead of publishing to an internal EventBus — the adapter wraps events into harness messages and dispatches them to the sender's topic. Maintains a sender map so it knows which topic to address responses to.
+Kalvin's interface to the harness bus. Receives harness messages (submit, countersign) sent to role `trainee`, compiles KScript, and calls `kagent.rationalise()` or `kagent.countersign()`. Kalvin calls the adapter directly instead of publishing to an internal EventBus — the adapter wraps events into harness messages and dispatches them to the sender's role. Maintains a sender map so it knows which role to address responses to.
 
 **Harness Server**:
-The long-running harness process. Holds the message bus, loads configured participants, and manages the dialogue loop. Participants may be embedded (Kalvin, Trainer) or connected clients (TUI, Slack agent). Started via `python -m harness --config harness.yaml`. Graceful shutdown on SIGTERM/SIGINT persists Trainer state.
+The long-running harness process. Holds the message bus, loads configured participants, and manages the dialogue loop. Participants may be embedded (Kalvin, Trainer) or connected clients (TUI, Slack agent). Participants register with a role (`trainee`, `trainer`, `supervisor`). Started via `python -m harness --config harness.yaml`. Graceful shutdown on SIGTERM/SIGINT persists Trainer state.
 
 **TUI Participant**:
-A thin client participant that renders Kalvin's events for the human and provides ratification controls. Connects to the harness server like any other participant. Does not own Kalvin or make curriculum decisions — that's the Trainer's role. Launched by including it in the harness configuration.
+A client participant registered with role `supervisor`. Renders all session events for the human and provides structured ratification controls. Uses the shared command protocol to parse input. Does not own Kalvin or make curriculum decisions.
 
 **Slack Participant**:
-A client participant that translates between Slack API and harness messages. Registers as topic `ui`, receiving the same messages as the TUI participant. Two actions: `notify` (render messages for the human in Slack) and `input` (forward human Slack messages to the Trainer). A dedicated training channel; no addressing syntax needed.
+A client participant registered with role `supervisor`. Translates between Slack API and harness messages. Renders all session events in Slack and forwards human commands through the shared command protocol, including `ratify` for ratification. A dedicated training channel; no addressing syntax needed.
+
+**Shared Command Protocol**:
+The command parser (`src/participants/commands.py`) used by all supervisor participants to interpret free-text input. Maps commands (start, stop, pause, resume, goal, ratify, file paths, guidance) to bus messages. Ensures both TUI and Slack (and future AI agents) share the same command vocabulary.
 
 **Message**:
-A unit of inter-participant communication routed by the harness. Routed to a topic (participant type) with an action: `{topic: kalvin, action: submit, message: "MHALL = SVO"}` or `{topic: kalvin, action: countersign, message: <kline>}`. Routing is by topic; the action is interpreted by the recipient. Multiple participants subscribed to the same topic all receive messages sent to that topic (fan-out). Kalvin always addresses its response to the sender's topic.
+A unit of inter-participant communication routed by the harness. Addressed to a role with an action: `{role: trainee, action: submit, message: "MHALL = SVO"}` or `{role: trainee, action: countersign, message: <kline>}`. Routing is by role; the action is interpreted by the recipient's adapter. Multiple participants subscribed to the same role all receive the message (fan-out). Kalvin always addresses its response to the sender's role.
 
 **Dialogue**:
 The alternating exchange between participants in the harness loop. One participant sends a message; another responds. No participant is aware it is in a training loop — each simply receives and responds.
 
 **Participant**:
-Any agent loaded into the harness loop (Kalvin, Trainer, UI agent, Slack agent, etc.). Each participant subscribes to a topic (participant type) and receives all messages sent to that topic. Multiple participants may share the same topic — both TUI and Slack subscribe to topic `ui`, for example, and both receive the same messages. Diagnostic listeners may subscribe to any or all topics. All participants are equal — no participant has special status or privileged access to the harness.
+Any agent loaded into the harness loop (Kalvin, Trainer, supervisor participant, etc.). Each participant subscribes to a role and receives all messages sent to that role. Multiple participants may share the same role — both TUI and Slack subscribe to role `supervisor`, for example, and both receive the same messages. Diagnostic listeners may subscribe to any or all roles. All participants are equal — no participant has special status or privileged access to the harness.
 
 ### Dimension
 
