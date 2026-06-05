@@ -1890,3 +1890,169 @@ class TestTrainerProgressToAllSupervisors:
         finally:
             bus.stop()
             bus_thread.join(timeout=2)
+
+
+# ── KB-125: Cogitator auto-wiring ────────────────────────────────────
+
+
+class TestCogitatorAutoWiring:
+    """KB-125: Trainer auto-wires Cogitator when llm_client is provided."""
+
+    def test_auto_wires_cogitator_when_llm_client_provided(self) -> None:
+        """When llm_client is provided without cogitate_fn, reactor gets wired."""
+        mock_llm = MagicMock()
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer = Trainer(bus, curriculum, llm_client=mock_llm)
+
+        assert trainer._reactor._cogitate_fn is not None
+
+    def test_explicit_cogitate_fn_not_overwritten(self) -> None:
+        """When both llm_client and cogitate_fn are provided, explicit fn wins."""
+        explicit_fn = MagicMock(return_value=("explicit", 0.9))
+        mock_llm = MagicMock()
+
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer = Trainer(
+            bus, curriculum, llm_client=mock_llm, cogitate_fn=explicit_fn,
+        )
+
+        assert trainer._reactor._cogitate_fn is explicit_fn
+
+    def test_no_llm_client_no_cogitate_fn(self) -> None:
+        """When neither is provided, cogitate_fn remains None."""
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer = Trainer(bus, curriculum)
+
+        assert trainer._reactor._cogitate_fn is None
+
+    def test_cogitate_adapter_calls_cogitator(self) -> None:
+        """Auto-wired adapter builds CogitationRequest and returns the right tuple."""
+        from trainer.cogitation import CogitationRequest, CogitationResult
+
+        mock_result = CogitationResult(
+            scaffolding="0x10 -> 0x20",
+            confidence=0.85,
+            reasoning="test reasoning",
+            raw_response=None,
+        )
+
+        mock_cogitator = MagicMock()
+        mock_cogitator.cogitate.return_value = mock_result
+
+        with patch("trainer.cogitation.Cogitator", return_value=mock_cogitator):
+            bus = MessageBus()
+            curriculum = Curriculum([])
+            trainer = Trainer(bus, curriculum, llm_client=MagicMock())
+
+        assert trainer._reactor._cogitate_fn is not None
+
+        # Call the adapter
+        query = KLine(signature=0xFF, nodes=[0x10])
+        proposal = KLine(signature=0x0F, nodes=[0x20])
+        event = RationaliseEvent(
+            kind="frame", query=query, proposal=proposal, significance=100,
+        )
+
+        result = trainer._reactor._cogitate_fn(event)
+
+        # Cogitator.cogitate was called once
+        mock_cogitator.cogitate.assert_called_once()
+
+        # Verify the CogitationRequest structure
+        call_args = mock_cogitator.cogitate.call_args[0][0]
+        assert isinstance(call_args, CogitationRequest)
+        assert call_args.events == [event]
+        assert len(call_args.misfits) == 1
+        assert call_args.curriculum_context == ""
+        assert call_args.round_number == 1
+        assert call_args.max_rounds == 3
+
+        # Result is the right tuple
+        assert result == ("0x10 -> 0x20", 0.85)
+
+    def test_cogitate_adapter_returns_none_on_no_scaffolding(self) -> None:
+        """Auto-wired adapter returns None when Cogitator produces no scaffolding."""
+        from trainer.cogitation import CogitationResult
+
+        mock_result = CogitationResult(
+            scaffolding=None,
+            confidence=0.0,
+            reasoning="failed",
+            raw_response=None,
+        )
+
+        mock_cogitator = MagicMock()
+        mock_cogitator.cogitate.return_value = mock_result
+
+        with patch("trainer.cogitation.Cogitator", return_value=mock_cogitator):
+            bus = MessageBus()
+            curriculum = Curriculum([])
+            trainer = Trainer(bus, curriculum, llm_client=MagicMock())
+
+        query = KLine(signature=0xFF, nodes=[0x10])
+        proposal = KLine(signature=0x0F, nodes=[0x20])
+        event = RationaliseEvent(
+            kind="frame", query=query, proposal=proposal, significance=100,
+        )
+
+        result = trainer._reactor._cogitate_fn(event)
+        assert result is None
+
+    @patch("trainer.trainer.compile_source")
+    def test_reactive_mode_uses_cogitator_end_to_end(
+        self, mock_compile: MagicMock,
+    ) -> None:
+        """S2/S3 event with auto-wired cogitator: scaffolding submitted, no escalation."""
+        from trainer.cogitation import CogitationResult
+
+        entry = _make_entry(100, [10])
+        mock_compile.return_value = [entry]
+
+        mock_result = CogitationResult(
+            scaffolding="0x10 -> 0x20",
+            confidence=0.85,
+            reasoning="test",
+            raw_response=None,
+        )
+
+        mock_cogitator = MagicMock()
+        mock_cogitator.cogitate.return_value = mock_result
+
+        with patch("trainer.cogitation.Cogitator", return_value=mock_cogitator):
+            bus = MessageBus()
+            curriculum = Curriculum(["lesson1", "lesson2"])
+            trainer = Trainer(bus, curriculum, llm_client=MagicMock())
+
+        capture = BusCapture(bus)
+        capture.install()
+        trainer.start_session()
+        capture.reset()
+
+        # Non-matching S2/S3 event
+        proposal = KLine(signature=999, nodes=[88])
+        query = KLine(signature=888, nodes=[1])
+        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
+
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="frame", message=event)
+        )
+
+        # Reactive scaffolding was submitted to kalvin
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
+        scaffolding_msgs = [
+            m for m in submit_msgs if m.message == "0x10 -> 0x20"
+        ]
+        assert len(scaffolding_msgs) == 1
+        assert scaffolding_msgs[0].sender == "trainer"
+
+        # No escalation (low_confidence or budget_exhaustion)
+        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
+        escalation_msgs = [
+            m
+            for m in notify_msgs
+            if m.message.get("reason") in ("low_confidence", "budget_exhaustion")
+        ]
+        assert len(escalation_msgs) == 0

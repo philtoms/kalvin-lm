@@ -195,3 +195,22 @@ class TestTrainerFactoryLLMWiring:
                 llm_client=llm_client,
             )
             assert trainer._llm_client is mock_client
+
+    def test_trainer_auto_wires_cogitate_fn_with_llm_client(self) -> None:
+        """KB-125: When llm_client is passed without cogitate_fn, reactor's cogitate_fn is wired."""
+        from harness.bus import MessageBus
+        from trainer.cogitation import LLMClient
+        from trainer.curriculum import Curriculum
+        from trainer.trainer import Trainer
+
+        mock_llm = MagicMock(spec=LLMClient)
+        bus = MessageBus()
+        curriculum = Curriculum([])
+
+        trainer = Trainer(
+            bus,
+            curriculum,
+            role="trainer",
+            llm_client=mock_llm,
+        )
+        assert trainer._reactor._cogitate_fn is not None

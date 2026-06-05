@@ -56,15 +56,21 @@ class Trainer:
     max_reactive_rounds:
         Maximum reactive scaffolding rounds before budget-exhaustion escalation.
     cogitate_fn:
-        Optional cogitation function injected by KB-024. Signature:
+        Optional cogitation function. Signature:
         ``(RationaliseEvent) -> tuple[str, float] | None``.
         Returns ``(kscript_source, confidence)`` or ``None`` if no
-        scaffolding can be generated.
+        scaffolding can be generated. When ``llm_client`` is provided
+        but ``cogitate_fn`` is not, a :class:`~trainer.cogitation.Cogitator`
+        is automatically constructed and its ``cogitate()`` method is
+        adapted into the ``cogitate_fn`` callable the
+        :class:`~trainer.reactor.Reactor` expects.
     llm_client:
         Optional LLM client for curriculum generation and reactive
         scaffolding. Must satisfy the :class:`~trainer.cogitation.LLMClient`
-        protocol. When provided, enables goal-based curriculum
-        generation via the CurriculumGenerator.
+        protocol. When provided without an explicit ``cogitate_fn``,
+        a :class:`~trainer.cogitation.Cogitator` is auto-wired for
+        reactive scaffolding on S2/S3 events. Also enables goal-based
+        curriculum generation via the CurriculumGenerator.
     save_path:
         Optional file path for curriculum state persistence.
     curriculum_file:
@@ -97,6 +103,51 @@ class Trainer:
         self._llm_client = llm_client
         self._curriculum_file = Path(curriculum_file) if curriculum_file else None
         self._curricula_dir = Path(curricula_dir) if curricula_dir else None
+
+        # Auto-wire Cogitator when llm_client is provided without an
+        # explicit cogitate_fn.  The adapter closes over a local
+        # Cogitator instance (not ``self``) so that cogitate_fn
+        # remains a plain callable.
+        if llm_client is not None and cogitate_fn is None:
+            from trainer.cogitation import Cogitator, CogitationRequest, MisfitInfo
+            from kalvin.misfit import classify_misfit
+            from kalvin.signature import make_signature
+
+            _cogitator = Cogitator(client=llm_client)
+
+            def _cogitate_adapter(
+                event: RationaliseEvent,
+            ) -> tuple[str, float] | None:
+                # Compute misfit diagnosis for the proposal
+                proposal_underfit, proposal_overfit = classify_misfit(event.proposal)
+                proposal_nodes_sig = make_signature(event.proposal.nodes)
+                underfit_gap = event.proposal.signature & ~proposal_nodes_sig
+                overfit_mask = proposal_nodes_sig & ~event.proposal.signature
+
+                misfit_info = MisfitInfo(
+                    underfit=proposal_underfit,
+                    overfit=proposal_overfit,
+                    underfit_gap=underfit_gap,
+                    overfit_mask=overfit_mask,
+                    expectation_summary=repr(event.query),
+                    proposal_summary=repr(event.proposal),
+                )
+
+                request = CogitationRequest(
+                    events=[event],
+                    misfits=[misfit_info],
+                    curriculum_context="",
+                    conversation_history=[],
+                    round_number=1,
+                    max_rounds=3,
+                )
+
+                result = _cogitator.cogitate(request)
+                if result.scaffolding is not None:
+                    return (result.scaffolding, result.confidence)
+                return None
+
+            cogitate_fn = _cogitate_adapter
 
         # Reactor handles S2/S3 event processing
         self._reactor = Reactor(
