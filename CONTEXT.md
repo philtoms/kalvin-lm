@@ -78,7 +78,7 @@ The Trainer signals the human (via Slack) when it cannot make progress. Two trig
 The multi-agent runtime that loads participants and runs a dialogue loop between them. Acts as a message broker: participants send addressed messages through the harness, and the harness routes them to the named recipient. Participants never communicate directly. Runs as a persistent server — participants connect to it as clients.
 
 **Adapter**:
-Kalvin's interface to the harness bus. Receives harness messages (submit, countersign) addressed to Kalvin, compiles KScript, and calls `kagent.rationalise()` or `kagent.countersign()`. Kalvin calls the adapter directly instead of publishing to an internal EventBus — the adapter wraps events into addressed harness messages and dispatches them to the sender. Maintains a sender map so it knows who to address responses to.
+Kalvin's interface to the harness bus. Receives harness messages (submit, countersign) sent to topic `kalvin`, compiles KScript, and calls `kagent.rationalise()` or `kagent.countersign()`. Kalvin calls the adapter directly instead of publishing to an internal EventBus — the adapter wraps events into harness messages and dispatches them to the sender's topic. Maintains a sender map so it knows which topic to address responses to.
 
 **Harness Server**:
 The long-running harness process. Holds the message bus, loads configured participants, and manages the dialogue loop. Participants may be embedded (Kalvin, Trainer) or connected clients (TUI, Slack agent). Started via `python -m harness --config harness.yaml`. Graceful shutdown on SIGTERM/SIGINT persists Trainer state.
@@ -87,16 +87,16 @@ The long-running harness process. Holds the message bus, loads configured partic
 A thin client participant that renders Kalvin's events for the human and provides ratification controls. Connects to the harness server like any other participant. Does not own Kalvin or make curriculum decisions — that's the Trainer's role. Launched by including it in the harness configuration.
 
 **Slack Participant**:
-A client participant that translates between Slack API and harness messages. Two actions: `notify` (render Trainer messages for the human) and `input` (forward human Slack messages to the Trainer). A dedicated training channel; no addressing syntax needed.
+A client participant that translates between Slack API and harness messages. Registers as topic `ui`, receiving the same messages as the TUI participant. Two actions: `notify` (render messages for the human in Slack) and `input` (forward human Slack messages to the Trainer). A dedicated training channel; no addressing syntax needed.
 
 **Message**:
-A unit of inter-participant communication routed by the harness. Addressed to a specific participant with an action: `{address: kalvin, action: submit, message: "MHALL = SVO"}` or `{address: kalvin, action: countersign, message: <kline>}`. Routing is purely by address; the action is interpreted by the recipient's adapter. Kalvin always addresses its response to the sender.
+A unit of inter-participant communication routed by the harness. Routed to a topic (participant type) with an action: `{topic: kalvin, action: submit, message: "MHALL = SVO"}` or `{topic: kalvin, action: countersign, message: <kline>}`. Routing is by topic; the action is interpreted by the recipient. Multiple participants subscribed to the same topic all receive messages sent to that topic (fan-out). Kalvin always addresses its response to the sender's topic.
 
 **Dialogue**:
 The alternating exchange between participants in the harness loop. One participant sends a message; another responds. No participant is aware it is in a training loop — each simply receives and responds.
 
 **Participant**:
-Any agent loaded into the harness loop (Kalvin, Trainer, UI agent, Slack agent, etc.). Each participant has a unique address and subscribes to messages addressed to it. Diagnostic listeners may subscribe to any or all addresses. All participants are equal — no participant has special status or privileged access to the harness.
+Any agent loaded into the harness loop (Kalvin, Trainer, UI agent, Slack agent, etc.). Each participant subscribes to a topic (participant type) and receives all messages sent to that topic. Multiple participants may share the same topic — both TUI and Slack subscribe to topic `ui`, for example, and both receive the same messages. Diagnostic listeners may subscribe to any or all topics. All participants are equal — no participant has special status or privileged access to the harness.
 
 ### Dimension
 
