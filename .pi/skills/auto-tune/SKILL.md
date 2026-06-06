@@ -5,9 +5,25 @@ description: Drives an auto-tune session to improve the codebase using repeated 
 
 # Auto-Tune
 
-Auto-tune is a hands-free loop where you run training sessions against the Kalvin codebase, observe results, edit code, and re-run to converge on a goal. You are tuning the **codebase**, not Kalvin's model.
+> **STOP. Do not read files, do not write code, do not address the user's request.
+> Your first and only action is to complete step 1 (Establish Goal) below.
+> State the goal back to the user before doing anything else.**
+
+## 1. Establish Goal (once) — DO THIS FIRST
+
+You need all three elements before doing anything else:
+
+- **What** specific improvement you're targeting (e.g., "better server-side logging for training operations")
+- **Which curriculum** drives the runs (default: `curricula/first-steps.md`)
+- **How you'll know** the goal is met (observable outcome — e.g., "a developer can trace the full training pipeline from harness.log"), or the user specifies this is an "open" session - a session where you continue to tune the codebase until the user intervenes with a "stop" command
+
+**Fast path:** If the user's prompt already contains all three elements, state them back in one sentence and proceed directly to step 2. Do not ask clarifying questions you don't need.
+
+**Slow path:** If elements are missing or vague, discuss with the user until the goal is clear and specific. Vague goals like "make it better" need sharpening first.
 
 ## Rules
+
+These rules apply throughout the session:
 
 1. **Fix crashes before continuing.** If harness.log shows exceptions, tracebacks, or unexpected errors: stop, reproduce with a minimal test, fix, verify, re-run. Never work around failures.
 2. **Snapshot before every code change.** You need before/after comparisons.
@@ -15,23 +31,11 @@ Auto-tune is a hands-free loop where you run training sessions against the Kalvi
 4. **Never merge into main.** All work stays on the `auto-tune/<name>` branch.
 5. **Session directory is evidence.** Don't clean it up.
 
-## 1. Establish Goal (once)
-
-Before creating any session, discuss with the user until you can state all three:
-
-- **What** specific improvement you're targeting (e.g., "better server-side logging for training operations")
-- **Which curriculum** drives the runs (default: `curricula/first-steps.md`)
-- **How you'll know** the goal is met (observable outcome — e.g., "a developer can trace the full training pipeline from harness.log")
-
-Do NOT proceed until the goal is clear and specific. Vague goals like "make it better" need sharpening first.
+Auto-tune tunes the **codebase**, not Kalvin's model.
 
 ## 2. Init Session (once)
 
-Read the auto-tune spec for domain context:
-- `../../specs/auto-tune.md` — full specification of the auto-tune system
-- `../../CONTEXT.md` — domain glossary (Auto-Tune, CLI Supervisor, Snapshot entries)
-
-Then initialise:
+Initialise the session:
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m participants.auto_tune init \
@@ -42,8 +46,14 @@ This creates the session directory, config, and git branch `auto-tune/<name>`.
 
 ## 3. Run Loop (repeat until goal met or stalled)
 
-For command syntax, read `references/commands.md`.
-For a copy-paste lifecycle script, read `references/lifecycle.md`.
+Read reference files **on demand** during the loop — not upfront:
+
+- `references/commands.md` — command syntax when you need it
+- `references/lifecycle.md` — copy-paste lifecycle script
+- `../../specs/auto-tune.md` — full auto-tune specification
+- `../../CONTEXT.md` — domain glossary
+
+Do not read all reference files before starting. Read them when you need an answer.
 
 Each iteration:
 
