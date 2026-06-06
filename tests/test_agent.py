@@ -201,6 +201,37 @@ class TestShortCircuit:
         result = a.rationalise(q)
         assert result is True
 
+    def test_s2_before_s1_no_cogitator_submit(self):
+        """S2 candidates before S1 should NOT be submitted to cogitator.
+
+        When Phase 5 iterates candidates, S2/S3 work items are deferred.
+        If a later candidate routes as S1, the deferred items are discarded
+        instead of being submitted to the background cogitator.
+        """
+        a = KAgent(adapter=EventBus())
+        # c1 routes S2 (partial match), c2 routes S1 (full match)
+        c1 = KLine(5, [10, 30])   # S2: only node 10 in common with query
+        c2 = KLine(6, [10, 20])   # S1: both query nodes present
+        a.rationalise(c1)
+        a.rationalise(c2)
+
+        q = KLine(0, [10, 20])
+        q.signature = make_signature([10, 20])
+
+        # Capture submitted work items
+        submitted = []
+        original_submit = a._cogitator.submit
+
+        def capture_submit(item):
+            submitted.append(item)
+            original_submit(item)
+
+        a._cogitator.submit = capture_submit
+        result = a.rationalise(q)
+
+        assert result is True  # S1 found
+        assert len(submitted) == 0  # No work items submitted despite S2 candidate
+
     def test_no_candidates_no_expand(self):
         """No candidates → S4 directly, no expand call."""
         a = KAgent(adapter=EventBus())
@@ -610,6 +641,34 @@ class TestCogitatorWithFakeHandler:
         cogitator.join(timeout=2.0)
 
         assert len(recorder.expansion_calls) >= 1
+
+    def test_cogitator_stops_on_s1(self):
+        """Cogitator._run_work_item breaks after finding S1 — no more handler calls.
+
+        Once S1 is discovered during expansion, the work item should stop
+        processing. No further on_s1 or on_expansion calls should happen
+        for that work item.
+        """
+        m = Model()
+        # Canonical kline that resolves via expand
+        c = KLine(10, [10])
+        m.add_ltm(c)
+
+        recorder = RecordingCogitationHandler()
+        event_bus = EventBus()
+        cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder)
+
+        q = KLine(0, [10])
+        q.signature = make_signature([10])
+        m.add_frame(q)
+
+        cogitator.submit(WorkItem(q, c, "S2"))
+        cogitator.join(timeout=2.0)
+
+        # S1 should be called exactly once (not multiple times)
+        assert len(recorder.s1_calls) == 1
+        # No expansion proposals should be generated after S1
+        assert len(recorder.expansion_calls) == 0
 
 
 # ── Countersign Tests ────────────────────────────────────────────────

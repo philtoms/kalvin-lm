@@ -1,0 +1,9 @@
+{
+  "session": "s1-batch-dedup",
+  "curriculum": "curricula/mhall-svo-single.md",
+  "harness_url": "ws://localhost:8765",
+  "model_path": "data/agent.bin",
+  "run_counter": 2,
+  "created_from_branch": "main",
+  "created_from_commit": "c2981931d47c02807bb666473f7525ae3fe95ec8"
+}

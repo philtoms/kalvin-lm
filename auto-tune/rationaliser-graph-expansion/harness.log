@@ -1,0 +1,79 @@
+2026-06-06 19:21:26,977 [harness.server] INFO: Embedded participant 'KAgent' (4408163056) subscribed to 'trainee'
+2026-06-06 19:21:27,232 [__main__] INFO: LLM client configured (model=glm-5.1, base_url=https://api.z.ai/api/coding/paas/v4)
+2026-06-06 19:21:27,232 [harness.server] INFO: Embedded participant 'Trainer' (4432341088) subscribed to 'trainer'
+2026-06-06 19:21:27,234 [websockets.server] INFO: server listening on 127.0.0.1:8765
+2026-06-06 19:21:27,234 [websockets.server] INFO: server listening on [::1]:8765
+2026-06-06 19:21:27,234 [harness.server] INFO: WebSocket server listening on localhost:8765
+2026-06-06 19:21:27,437 [websockets.server] ERROR: opening handshake failed
+Traceback (most recent call last):
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/http11.py", line 138, in parse
+    request_line = yield from parse_line(read_line)
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/http11.py", line 320, in parse_line
+    line = yield from read_line(MAX_LINE_LENGTH)
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/streams.py", line 46, in read_line
+    raise EOFError(f"stream ends after {p} bytes, before end of line")
+EOFError: stream ends after 0 bytes, before end of line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/server.py", line 547, in parse
+    request = yield from Request.parse(
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/http11.py", line 140, in parse
+    raise EOFError("connection closed while reading HTTP request line") from exc
+EOFError: connection closed while reading HTTP request line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
+2026-06-06 19:21:27,566 [websockets.server] INFO: connection open
+2026-06-06 19:21:27,567 [harness.protocol] INFO: Client registered: supervisor
+2026-06-06 19:21:31,143 [trainer.trainer] INFO: Session started — 1 lessons, curriculum: curricula/mhall-svo-single.md
+2026-06-06 19:21:31,143 [trainer.trainer] INFO: Submitting lesson 1 (1/1)
+2026-06-06 19:21:31,144 [trainer.trainer] INFO: Compiled 18 entries for lesson 1
+2026-06-06 19:21:31,144 [harness.adapter] INFO: Submitting 18 compiled entries to KAgent
+2026-06-06 19:21:31,145 [trainer.trainer] INFO: FRAME M → 0.00
+2026-06-06 19:21:31,145 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 19:21:31,145 [trainer.trainer] INFO: FRAME H → 0.00
+2026-06-06 19:21:31,145 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 19:21:31,145 [trainer.trainer] INFO: FRAME A → 0.00
+2026-06-06 19:21:31,145 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 19:21:31,145 [trainer.trainer] INFO: FRAME L → 0.00
+2026-06-06 19:21:31,145 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 19:21:31,145 [trainer.trainer] INFO: FRAME MHALL => M H A L L → S1 (fast path) ← MHALL => M H A L L
+2026-06-06 19:21:31,145 [trainer.trainer] INFO: FRAME S → 0.00
+2026-06-06 19:21:31,145 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 19:21:31,145 [trainer.trainer] INFO: FRAME V → 0.00
+2026-06-06 19:21:31,145 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 19:21:31,145 [trainer.trainer] INFO: FRAME O → 0.00
+2026-06-06 19:21:31,145 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 19:21:31,146 [trainer.trainer] INFO: FRAME SVO => S V O → S1 (fast path) ← SVO => S V O
+2026-06-06 19:21:31,146 [trainer.trainer] INFO: FRAME AHLM > OSV → S1 (fast path) ← AHLM > OSV
+2026-06-06 19:21:31,146 [trainer.trainer] INFO: FRAME OSV > AHLM → S1 (fast path) ← OSV > AHLM
+2026-06-06 19:21:31,146 [trainer.trainer] INFO: FRAME M > S → S1 (fast path) ← M > S
+2026-06-06 19:21:31,146 [trainer.trainer] INFO: FRAME H > V → S1 (fast path) ← H > V
+2026-06-06 19:21:31,146 [trainer.trainer] INFO: FRAME ALL => A L L → S1 (fast path) ← ALL => A L L
+2026-06-06 19:21:31,146 [trainer.trainer] INFO: FRAME AL > O → S1 (fast path) ← AL > O
+2026-06-06 19:21:31,146 [trainer.trainer] INFO: FRAME A > D → S1 (fast path) ← A > D
+2026-06-06 19:21:31,146 [trainer.trainer] INFO: FRAME L > M → S1 (fast path) ← MHALL => M H A L L
+2026-06-06 19:21:31,146 [trainer.trainer] INFO: GROUND L > O → S1 (fast path) ← L > O
+2026-06-06 19:21:31,146 [trainer.trainer] INFO: Lesson 1 complete — entries: 18/18 satisfied, 1/1 lessons done
+2026-06-06 19:21:31,147 [trainer.trainer] INFO: Curriculum complete — all lessons submitted
+2026-06-06 19:21:31,147 [harness.adapter] INFO: Countersign: KLine(sig=0x2000, nodes=[], lit=False)
+2026-06-06 19:21:31,147 [harness.adapter] INFO: Countersign: KLine(sig=0x100, nodes=[], lit=False)
+2026-06-06 19:21:31,147 [harness.adapter] INFO: Countersign: KLine(sig=0x2, nodes=[], lit=False)
+2026-06-06 19:21:31,147 [harness.adapter] INFO: Countersign: KLine(sig=0x1000, nodes=[], lit=False)
+2026-06-06 19:21:31,147 [harness.adapter] INFO: Countersign: KLine(sig=0x80000, nodes=[], lit=False)
+2026-06-06 19:21:31,147 [harness.adapter] INFO: Countersign: KLine(sig=0x400000, nodes=[], lit=False)
+2026-06-06 19:21:31,147 [harness.adapter] INFO: Countersign: KLine(sig=0x8000, nodes=[], lit=False)
+2026-06-06 19:21:51,870 [harness.protocol] INFO: Client disconnected: supervisor
+2026-06-06 19:21:51,952 [websockets.server] INFO: server closing
+2026-06-06 19:21:51,952 [websockets.server] INFO: server closed
+2026-06-06 19:21:51,952 [harness.server] INFO: WebSocket server stopped
+2026-06-06 19:21:51,953 [harness.server] INFO: Harness server stop requested
+2026-06-06 19:21:51,953 [__main__] INFO: Trainer state persisted

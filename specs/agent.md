@@ -236,13 +236,15 @@ in the candidate's node sequence. No model function is called.
 | S2    | Submit `WorkItem(Q, C)` to Cogitator | No |
 | S3    | Submit `WorkItem(Q, C)` to Cogitator | No |
 
-**S1 short-circuits**: the first candidate that routes as S1 terminates the
-loop immediately. No further candidates are routed. No distance is computed.
-The agent cascades participating klines to LTM via `promote_participating`
-(which calls `add_ltm` in a loop).
+**S1 short-circuits**: candidates are iterated in order. If a candidate
+routes as S1, the loop terminates immediately. S2/S3 candidates
+encountered earlier in the iteration are **deferred** — they are only
+submitted to the Cogitator if no S1 is found across the full candidate
+list. This prevents the Cogitator from processing work items for a query
+that has already been resolved as S1.
 
-If all candidates route as S2 or S3, each becomes an individual work item
-for the Cogitator. Return `False`.
+If all candidates route as S2 or S3, the deferred work items are submitted
+to the Cogitator. Return `False`.
 
 ## Work Items
 
@@ -285,9 +287,10 @@ items. The Cogitator receives pre-routed work items, expands each through
 
 ### Processing
 
-The Cogitator processes all yields from `model.expand()` without filtering.
-Every connotation discovered during graph expansion is evaluated. Proposals
-can be emitted at any significance level — the agent evaluates them against
+The Cogitator processes yields from `model.expand()` until S1 is found.
+When S1 is discovered, the work item stops (query fully resolved) and
+no further yields are evaluated. If no S1 is found, all yields are processed
+and S2/S3 expansion proposals are emitted as frame events.
 expectations regardless of their computed significance.
 
 #### Significance Boundaries
@@ -349,6 +352,7 @@ run_work_item(WorkItem(query, candidate)):
   for qc in model.expand(query, candidate):
     if qc.significance >= s12:
       handler.on_s1(query, candidate)   # S1: delegate to handler
+      break                             # query fully resolved — stop processing
     else:
       process(qc)                 # S2/S3: expansion check
 
@@ -364,7 +368,8 @@ process(QueryCandidate(query, candidate, significance)):
       emit frame event for companion
 ```
 
-All yields are processed without filtering. Raw significance values are
+All yields are processed until S1 is found, at which point the work item
+stops (the query is fully resolved). Raw significance values are
 never mutated. Proposals can be emitted at any significance level.
 
 ### S2 Expansion
@@ -488,6 +493,7 @@ purpose — ensuring all participating klines are cascaded to LTM via
 #### Exploration Depth
 
 For the MVP, the Cogitator processes all yields from `model.expand()`
+until S1 is found, at which point the work item stops.
 without filtering. Future work may add exploration depth controls to limit
 how many expansion proposals are generated per work item.
 
@@ -621,7 +627,7 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 | ID     | Criterion                                                           | Origin ref |
 | ------ | ------------------------------------------------------------------- | ---------- |
 | AGT-18 | First candidate S1: returns True, cascades to LTM, no further routing | — |
-| AGT-19 | Later candidate S1: earlier S2/S3 routed, then S1 terminates loop  | — |
+| AGT-19 | Later candidate S1: earlier S2/S3 deferred, discarded when S1 found; no cogitator work items submitted | — |
 | AGT-20 | All S2: returns False, all submitted as WorkItems                   | — |
 | AGT-21 | All S3: returns False, all submitted as WorkItems                   | — |
 | AGT-22 | S1 short-circuits: `model.expand` never called when S1 found        | — |
@@ -651,6 +657,8 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 | AGT-35 | Proposals at any significance: S2 and S3 proposals emitted as frame events | — |
 | AGT-36 | Boundary S1 + structural check: participating klines cascaded to LTM via add_ltm | — |
 | AGT-37 | Boundary S1 + structural S1: LTM cascade occurs                      | — |
+| AGT-38 | S2 before S1: deferred S2 work items discarded, zero cogitator submissions | auto-tune/s1-batch-dedup |
+| AGT-39 | Cogitator break-on-S1: on_s1 called exactly once, no expansion calls after | auto-tune/s1-batch-dedup |
 
 ### Serialization
 
@@ -674,7 +682,7 @@ bit-to-signature index.
 
 ### 2. ~~Cogitation Evolution~~ — Resolved
 
-The Cogitator processes all yields from `model.expand()` without filtering.
+The Cogitator processes yields from `model.expand()` until S1 is found.
 Proposals can be emitted at any significance level. See §Cogitation.
 
 ### 3. Grounding Assessment Formalisation
