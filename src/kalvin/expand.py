@@ -21,6 +21,7 @@ Re-exported constants and types from the old model module:
 
 from __future__ import annotations
 
+import logging
 from typing import Iterator, TYPE_CHECKING
 
 from kalvin.kline import KLine
@@ -29,6 +30,8 @@ from kalvin.signature import make_signature, signifies, is_literal_node
 
 if TYPE_CHECKING:
     from kalvin.model import Model
+
+_log = logging.getLogger(__name__)
 
 # ── Distance Constants ────────────────────────────────────────────────
 
@@ -304,13 +307,19 @@ def expand(
 # ── Promotion Helpers ─────────────────────────────────────────────────
 
 def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
-    """Promote all STM klines involved in a ratification event.
+    """Promote klines that structurally participated in a ratification event.
 
-    After countersignature is detected between query and candidate,
-    promote both plus any STM klines whose signatures appear in the
-    union of their nodes. Uses model.add_ltm() which cascades to
-    Frame and STM.
+    After S1 ratification between query and candidate, promote:
+    1. The query and candidate themselves (always)
+    2. Any STM kline whose signature is a node value in the query or
+       candidate AND whose nodes are empty (identity frame), a single
+       non-literal node (countersign/undersign pair), or a canonical
+       composition (canonization entry).
+
+    Does NOT promote cogitator expansion proposals (multi-node non-
+    canonical klines) that merely share signature bits.
     """
+    # Collect signatures of actual node values in query and candidate
     node_sigs: set[int] = set()
     for n in query.nodes:
         if not is_literal_node(n):
@@ -321,11 +330,34 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
     node_sigs.add(query.signature)
     node_sigs.add(candidate.signature)
 
-    # Find all STM klines with matching signatures
+    # Promote klines whose signature participates AND are structural
+    # (identity frames, single-node entries, or canonical compositions)
     to_promote: list[KLine] = []
     for kl in model.iter_stm():
-        if kl.signature in node_sigs:
+        if kl.signature not in node_sigs:
+            continue
+        if not kl.nodes:
+            # Identity frame — always promote
             to_promote.append(kl)
+        elif (isinstance(kl.nodes, int)
+              and not is_literal_node(kl.nodes)):
+            # Single-node entry (countersign/undersign) — promote
+            to_promote.append(kl)
+        elif (isinstance(kl.nodes, list)
+              and len(kl.nodes) == 1
+              and not is_literal_node(kl.nodes[0])):
+            # Single-node list entry — promote
+            to_promote.append(kl)
+        elif is_canon(kl):
+            # Canonical composition (canonization) — promote
+            to_promote.append(kl)
+
+    _log.info(
+        "promote_participating: query=%#x candidate=%#x "
+        "promoting %d structural + 2",
+        query.signature, candidate.signature,
+        len(to_promote),
+    )
 
     # Also promote the query and candidate
     to_promote.extend([query, candidate])
