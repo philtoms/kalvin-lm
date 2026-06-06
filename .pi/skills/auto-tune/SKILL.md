@@ -123,7 +123,7 @@ After each run:
 1. **Read `auto-tune/<session>/harness.log`** — the server-side training trace
 2. **Read events** — `auto-tune/<session>/events.jsonl` for the full event stream
 3. **Compare snapshots** — diff harness.log between runs to see impact of code changes
-4. **Edit code** — make changes to address the goal
+4. **Edit code** — make changes to address the goal. Check that you are on a branch and be aggressive
 5. **Snapshot before each code change** — so you can compare before/after
 
 ### Fix Before Continuing
@@ -151,6 +151,8 @@ Use descriptive commit messages that reference the session and the change:
 
 ```
 fix(expand): cycle detection in edge_hops, null-safe _as_kline replacement
+
+DO NOT MERGE INTO MAIN
 ```
 
 ### Key Files to Observe
@@ -162,7 +164,145 @@ fix(expand): cycle detection in edge_hops, null-safe _as_kline replacement
 | `auto-tune/<session>/status.json`  | Supervisor state (connected, last_event_seq, state)                 |
 | `auto-tune/<session>/runs/<n>/`    | Snapshot directory (state, events, git metadata)                    |
 
-## Phase 4: Document
+## Phase 4: Auto-Review
+
+After each run, **before** editing code for the session goal, automatically review the run artifacts for systemic issues in the auto-tune tooling itself. This is a self-improvement pass: the training pipeline and CLI are code too, and bugs or friction in them waste every subsequent run.
+
+### Why
+
+Auto-tune sessions produce structured evidence — logs, events, snapshots, git metadata — that reveal not just whether Kalvin is learning, but whether the auto-tune _machinery_ is working correctly. Session `llm-misfix` (runs 001–003) demonstrated six distinct tooling defects discovered only through post-run review: stale processes corrupting event data, a disconnected curriculum config, missing cmd.json cleanup, wrong git branch, absent LLM client, and null lesson labels.
+
+Auto-review catches these defects automatically and fixes them before they compound across future runs.
+
+### When to Run Auto-Review
+
+Run auto-review **after every snapshot**, before any goal-directed code editing. It is cheap (reads files, checks state) and catches problems that would otherwise surface as confusing failures mid-run.
+
+### Review Checklist
+
+For each item, check the evidence, classify the finding, and fix it immediately. All fixes go into `src/participants/auto_tune/` and `tests/test_auto_tune_*.py`.
+
+#### 1. Git Hygiene
+
+**Check:** `runs/<n>/meta.json` — is `git_branch` the expected `auto-tune/<session>` branch?
+
+```bash
+PYTHONPATH=src python -c "import json; m=json.load(open('auto-tune/<session>/runs/<n>/meta.json')); print(m['git_branch'])"
+```
+
+**If wrong:** The session is committing to the wrong branch. Fix `reset()` in `snapshots.py` to check out the correct branch. Commit the fix.
+
+**If `git_dirty: true` with unexpected files:** Check for files that should be gitignored or cleaned up by reset.
+
+#### 2. Process Hygiene
+
+**Check:** Were there duplicate supervisors or harnesses during the run?
+
+Evidence:
+
+- `harness.log` containing multiple `Client registered: supervisor` lines from different PIDs
+- `events.jsonl` with out-of-order or duplicate sequence numbers
+- `status.json` showing a PID that doesn't match `supervisor.pid`
+
+**If found:** The stale process detection in `lifecycle.py` (`_kill_stale_process`) missed something. Investigate why and strengthen the detection. Add a test.
+
+#### 3. Curriculum Integrity
+
+**Check:** Did the harness load the curriculum from `config.json`, or from the project's `harness.yaml`?
+
+Evidence:
+
+- `harness.log` line `Session started — N lessons, curriculum: <path>` — does the path match the session config?
+- The per-session `auto-tune/<session>/harness.yaml` should exist and have the correct `curriculum_file`
+
+**If wrong:** The per-session config generation (`_generate_session_harness_config`) is not being called or is failing silently. Fix `start_harness()` in `lifecycle.py`. Add a test.
+
+#### 4. Event Quality
+
+**Check:** `runs/<n>/events.jsonl` — are all events well-formed and complete?
+
+Evidence:
+
+- `lesson: null` on `lesson_complete` events → the Trainer advanced the curriculum position before emitting the progress event
+- `reason: ""` or `detail: ""` on escalation events → enrichment not capturing available context
+- Missing event types (no `rationalise` events when curriculum has S2 lessons)
+
+**If found:** Fix the event source. For null lesson labels, capture the label before advancing position (as done in `_check_lesson_complete`). For missing enrichment, trace the code path from harness → supervisor → events.jsonl. Add a test.
+
+#### 5. LLM Availability
+
+**Check:** `harness.log` for the warning `'openai' package not installed — LLM client unavailable`.
+
+**Cross-reference:** Does the curriculum contain lessons that trigger S2/S3 (slow path)? If yes and no LLM client is available, every S2 entry will escalate as `low_confidence` with no possibility of reactive scaffolding.
+
+**If found:** This is not a code fix — it's a session configuration issue. Either:
+
+- Install the LLM client (`pip install kalvin[trainer]`)
+- Switch to a curriculum that only uses S1 (fast path) lessons
+- Warn the user that the session will produce escalation-only results
+
+#### 6. Repeated Identical Escalations
+
+**Check:** Count consecutive escalation events with the same `reason` and `lesson_position`.
+
+```bash
+PYTHONPATH=src python -c "
+import json
+events = [json.loads(l) for l in open('auto-tune/<session>/runs/<n>/events.jsonl')]
+escalations = [e for e in events if e['type'] == 'escalation']
+for i, e in enumerate(escalations):
+    print(f'{i}: reason={e["reason"]} lesson_position={e["lesson_position"]}')
+"
+```
+
+**If found (3+ identical in a row):** The reactor is re-escalating without any intervening action. Consider:
+
+- Is the max_reactive_rounds budget being consumed uselessly?
+- Should the supervisor auto-continue duplicate escalations instead of stepping through each one?
+- Is there a code fix that would make escalation events more actionable (e.g., richer detail)?
+
+#### 7. Session Startup Friction
+
+**Check:** How many `step` commands timed out during the session? Were there immediate disconnects or shutdowns?
+
+Evidence:
+
+- `events.jsonl` starting with `connected` → `disconnected` (no training events)
+- `cmd.json` containing `{"action": "shutdown"}` before the session starts
+
+**If found:** `reset()` did not clean up `cmd.json`. Fix `reset()` in `snapshots.py` to delete stale command files. Add a test.
+
+### Applying Fixes
+
+For each finding:
+
+1. **Reproduce** — write a minimal test that demonstrates the issue.
+2. **Fix** — edit the auto-tune source code (`src/participants/auto_tune/`, `src/trainer/`, etc.).
+3. **Verify** — run the test suite (`PYTHONPATH=src python -m pytest tests/test_auto_tune_*.py`).
+4. **Commit** — commit with a message like:
+
+```
+fix(auto-tune): stale process detection in lifecycle start-harness
+
+Caught by auto-review in session llm-misfix run 003.
+Evidence: duplicate supervisor PIDs writing interleaved events.
+
+DO NOT MERGE INTO MAIN
+```
+
+5. **Re-run** — snapshot, reset, and run the training session again. Confirm the finding is gone in the next run's artifacts.
+
+### What NOT to Fix
+
+Auto-review targets the **auto-tune tooling and training pipeline**, not the Kalvin model or training curriculum. Do not use auto-review to:
+
+- Change the training curriculum
+- Modify Kalvin's rationalisation logic
+- Adjust the Trainer's pedagogical strategy
+
+Those are Phase 3 concerns driven by the session goal.
+
+## Phase 5: Document
 
 Every auto-tune session must produce cascade documentation that integrates the work into main development as if it had been developed interactively.
 
@@ -176,7 +316,7 @@ Every auto-tune session must produce cascade documentation that integrates the w
 
 3. **Tests** (`tests/test_<feature>.py`) — tests covering every spec criterion. Use `caplog` for log assertions, `BusCapture` for bus message capture. Follow patterns from existing test files.
 
-4. **Commit** — commit everything on the auto-tune branch with a descriptive message.
+4. **Commit** — commit everything on the auto-tune branch with a descriptive message. DO NOT MERGE INTO MAIN
 
 ### Documentation Rules
 
@@ -194,4 +334,4 @@ Every auto-tune session must produce cascade documentation that integrates the w
 | `lessons_completed` already 3 on start | Stale curriculum state file. Delete `curricula/<slug>.json` and reset                              |
 | Supervisor won't connect               | Harness not ready. Check `harness.pid`, wait, retry                                                |
 | No rationalise events in log           | Curriculum is all fast-path S1. That's correct but boring — consider a more complex curriculum     |
-| Events.jsonl shows `lesson: null`      | Minor enrichment bug in progress events — the data is still valid                                  |
+| Events.jsonl shows `lesson: null`      | Fixed — Trainer now captures label before advancing position. Run auto-review to catch regressions |

@@ -1,0 +1,181 @@
+{
+  "version": 2,
+  "position": 5,
+  "lessons": [
+    "M",
+    "H",
+    "M == H",
+    "A",
+    "MH => H A"
+  ],
+  "curriculum_file": "curricula/first-steps-s2.md",
+  "current_label": null,
+  "lesson_submitted": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "lesson_satisfied": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "submitted": [
+    [
+      2,
+      []
+    ],
+    [
+      256,
+      []
+    ],
+    [
+      256,
+      [
+        8192
+      ]
+    ],
+    [
+      8192,
+      []
+    ],
+    [
+      8192,
+      [
+        256
+      ]
+    ],
+    [
+      8448,
+      [
+        256,
+        2
+      ]
+    ],
+    [
+      8448,
+      [
+        8192,
+        256
+      ]
+    ]
+  ],
+  "satisfied": [
+    [
+      256,
+      []
+    ],
+    [
+      256,
+      [
+        8192
+      ]
+    ],
+    [
+      8192,
+      []
+    ]
+  ],
+  "pending": [],
+  "event_log": [
+    {
+      "timestamp": "2026-06-06T06:50:16.055370+00:00",
+      "type": "session_start",
+      "data": {
+        "goal": null
+      }
+    },
+    {
+      "timestamp": "2026-06-06T06:50:16.056469+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 0
+      }
+    },
+    {
+      "timestamp": "2026-06-06T06:50:16.057301+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 1
+      }
+    },
+    {
+      "timestamp": "2026-06-06T06:50:16.058679+00:00",
+      "type": "escalation",
+      "data": {
+        "reason": "low_confidence",
+        "detail": ""
+      }
+    },
+    {
+      "timestamp": "2026-06-06T06:50:16.058727+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 2
+      }
+    },
+    {
+      "timestamp": "2026-06-06T06:50:16.059119+00:00",
+      "type": "escalation",
+      "data": {
+        "reason": "low_confidence",
+        "detail": ""
+      }
+    },
+    {
+      "timestamp": "2026-06-06T06:50:16.059151+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 3
+      }
+    },
+    {
+      "timestamp": "2026-06-06T06:50:16.059506+00:00",
+      "type": "escalation",
+      "data": {
+        "reason": "low_confidence",
+        "detail": ""
+      }
+    },
+    {
+      "timestamp": "2026-06-06T06:50:16.059709+00:00",
+      "type": "escalation",
+      "data": {
+        "reason": "low_confidence",
+        "detail": ""
+      }
+    },
+    {
+      "timestamp": "2026-06-06T06:50:16.059827+00:00",
+      "type": "escalation",
+      "data": {
+        "reason": "low_confidence",
+        "detail": ""
+      }
+    },
+    {
+      "timestamp": "2026-06-06T06:50:16.059938+00:00",
+      "type": "escalation",
+      "data": {
+        "reason": "low_confidence",
+        "detail": ""
+      }
+    },
+    {
+      "timestamp": "2026-06-06T06:50:16.059969+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 4
+      }
+    },
+    {
+      "timestamp": "2026-06-06T06:50:16.060064+00:00",
+      "type": "session_end",
+      "data": {}
+    }
+  ]
+}

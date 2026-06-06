@@ -57,16 +57,20 @@ def fake_process() -> MagicMock:
 class TestStartHarness:
     """AT-4: start-harness starts harness and waits for WebSocket readiness."""
 
+    @patch("participants.auto_tune.lifecycle._generate_session_harness_config")
     @patch("participants.auto_tune.lifecycle.socket.socket")
     @patch("participants.auto_tune.lifecycle.subprocess.Popen")
     def test_starts_harness_and_returns_pid(
         self,
         mock_popen: MagicMock,
         mock_socket_cls: MagicMock,
+        mock_gen_config: MagicMock,
         session_dir: Path,
         fake_process: MagicMock,
     ) -> None:
         mock_popen.return_value = fake_process
+        session_config_path = session_dir / "harness.yaml"
+        mock_gen_config.return_value = session_config_path
 
         # Socket connect_ex returns 0 (success) immediately
         mock_sock = MagicMock()
@@ -79,11 +83,11 @@ class TestStartHarness:
         pid = start_harness(session_dir)
 
         assert pid == 99999
-        mock_popen.assert_called_once_with(
-            [sys.executable, "-m", "harness", "--config", "harness.yaml"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        mock_popen.assert_called_once()
+        call_args = mock_popen.call_args
+        assert call_args[0][0] == [
+            sys.executable, "-m", "harness", "--config", str(session_config_path),
+        ]
         # PID file written
         pid_path = session_dir / "harness.pid"
         assert pid_path.exists()
@@ -499,3 +503,222 @@ class TestHelpers:
             result = _wait_for_exit(12345, timeout=5.0)
 
         assert result is False
+
+
+# ---------------------------------------------------------------------------
+# Tests: stale process detection
+# ---------------------------------------------------------------------------
+
+
+class TestKillStaleProcess:
+    """_kill_stale_process detects and kills stale processes from PID files."""
+
+    def test_no_pid_file_is_noop(self, tmp_path: Path) -> None:
+        from participants.auto_tune.lifecycle import _kill_stale_process
+
+        pid_path = tmp_path / "nonexistent.pid"
+        _kill_stale_process(pid_path)  # Should not raise
+
+    def test_dead_process_cleans_up_pid(self, tmp_path: Path) -> None:
+        """PID file with a dead process is deleted."""
+        from participants.auto_tune.lifecycle import _kill_stale_process
+
+        pid_path = tmp_path / "test.pid"
+        pid_path.write_text("99999999", encoding="utf-8")  # Non-existent PID
+
+        _kill_stale_process(pid_path)
+
+        assert not pid_path.exists()
+
+    @patch("participants.auto_tune.lifecycle._wait_for_exit", return_value=True)
+    @patch("participants.auto_tune.lifecycle.os.kill")
+    def test_live_process_killed(
+        self, mock_kill: MagicMock, mock_wait: MagicMock, tmp_path: Path
+    ) -> None:
+        """Stale running process is sent SIGTERM."""
+        from participants.auto_tune.lifecycle import _kill_stale_process
+
+        pid_path = tmp_path / "test.pid"
+        pid_path.write_text("12345", encoding="utf-8")
+
+        _kill_stale_process(pid_path)
+
+        # First call: os.kill(pid, 0) probe, second: SIGTERM
+        assert mock_kill.call_count == 2
+        mock_kill.assert_any_call(12345, 0)
+        mock_kill.assert_any_call(12345, signal.SIGTERM)
+        assert not pid_path.exists()
+
+    @patch("participants.auto_tune.lifecycle._wait_for_exit", return_value=False)
+    @patch("participants.auto_tune.lifecycle.os.kill")
+    def test_live_process_sigkill_escalation(
+        self, mock_kill: MagicMock, mock_wait: MagicMock, tmp_path: Path
+    ) -> None:
+        """Stale process that won't die gets SIGKILL."""
+        from participants.auto_tune.lifecycle import _kill_stale_process
+
+        pid_path = tmp_path / "test.pid"
+        pid_path.write_text("12345", encoding="utf-8")
+
+        _kill_stale_process(pid_path)
+
+        # os.kill(pid, 0) probe + SIGTERM + SIGKILL
+        assert mock_kill.call_count == 3
+        mock_kill.assert_any_call(12345, 0)
+        mock_kill.assert_any_call(12345, signal.SIGTERM)
+        mock_kill.assert_any_call(12345, signal.SIGKILL)
+        assert not pid_path.exists()
+
+
+# ---------------------------------------------------------------------------
+# Tests: per-session harness config generation
+# ---------------------------------------------------------------------------
+
+
+class TestSessionHarnessConfig:
+    """_generate_session_harness_config overrides curriculum from session config."""
+
+    def test_overrides_curriculum_file(self, tmp_path: Path) -> None:
+        from participants.auto_tune.lifecycle import _generate_session_harness_config
+        from participants.auto_tune.session import SessionConfig
+        import yaml
+
+        # Create project harness.yaml
+        project_yaml = tmp_path / "harness.yaml"
+        project_yaml.write_text(
+            "server:\n  host: localhost\n  port: 8765\n"
+            "trainer:\n  curriculum_file: curricula/first-steps.md\n",
+            encoding="utf-8",
+        )
+
+        session_dir = tmp_path / "auto-tune" / "test"
+        session_dir.mkdir(parents=True)
+        (session_dir / "runs").mkdir()
+
+        cfg = SessionConfig(
+            session="test",
+            curriculum="curricula/custom.md",
+            harness_url="ws://localhost:8765",
+        )
+
+        result = _generate_session_harness_config(session_dir, cfg)
+
+        assert result == session_dir / "harness.yaml"
+        data = yaml.safe_load(result.read_text(encoding="utf-8"))
+        assert data["trainer"]["curriculum_file"] == "curricula/custom.md"
+
+    def test_preserves_other_config(self, tmp_path: Path) -> None:
+        from participants.auto_tune.lifecycle import _generate_session_harness_config
+        from participants.auto_tune.session import SessionConfig
+        import yaml
+
+        project_yaml = tmp_path / "harness.yaml"
+        project_yaml.write_text(
+            "server:\n  host: localhost\n  port: 8765\n"
+            "trainer:\n  curriculum_file: curricula/old.md\n  max_reactive_rounds: 5\n",
+            encoding="utf-8",
+        )
+
+        session_dir = tmp_path / "auto-tune" / "test"
+        session_dir.mkdir(parents=True)
+        (session_dir / "runs").mkdir()
+
+        cfg = SessionConfig(
+            session="test",
+            curriculum="curricula/new.md",
+            harness_url="ws://localhost:8765",
+        )
+
+        result = _generate_session_harness_config(session_dir, cfg)
+
+        data = yaml.safe_load(result.read_text(encoding="utf-8"))
+        assert data["trainer"]["curriculum_file"] == "curricula/new.md"
+        assert data["trainer"]["max_reactive_rounds"] == 5
+        assert data["server"]["port"] == 8765
+
+    def test_no_project_config_uses_minimal(self, tmp_path: Path) -> None:
+        from participants.auto_tune.lifecycle import _generate_session_harness_config
+        from participants.auto_tune.session import SessionConfig
+        import yaml
+
+        # No project harness.yaml
+        session_dir = tmp_path / "auto-tune" / "test"
+        session_dir.mkdir(parents=True)
+        (session_dir / "runs").mkdir()
+
+        cfg = SessionConfig(
+            session="test",
+            curriculum="curricula/custom.md",
+            harness_url="ws://localhost:8765",
+        )
+
+        result = _generate_session_harness_config(session_dir, cfg)
+
+        data = yaml.safe_load(result.read_text(encoding="utf-8"))
+        assert data["trainer"]["curriculum_file"] == "curricula/custom.md"
+
+
+# ---------------------------------------------------------------------------
+# Tests: start_harness and start_supervisor call _kill_stale_process
+# ---------------------------------------------------------------------------
+
+
+class TestStartKillsStaleProcesses:
+    """start_harness and start_supervisor kill stale processes before starting."""
+
+    @patch("participants.auto_tune.lifecycle._generate_session_harness_config")
+    @patch("participants.auto_tune.lifecycle._kill_stale_process")
+    @patch("participants.auto_tune.lifecycle.socket.socket")
+    @patch("participants.auto_tune.lifecycle.subprocess.Popen")
+    def test_start_harness_kills_stale(
+        self,
+        mock_popen: MagicMock,
+        mock_socket_cls: MagicMock,
+        mock_kill_stale: MagicMock,
+        mock_gen_config: MagicMock,
+        session_dir: Path,
+        fake_process: MagicMock,
+    ) -> None:
+        mock_popen.return_value = fake_process
+        mock_gen_config.return_value = session_dir / "harness.yaml"
+        mock_sock = MagicMock()
+        mock_sock.connect_ex.return_value = 0
+        mock_socket_cls.return_value.__enter__ = MagicMock(return_value=mock_sock)
+        mock_socket_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+        from participants.auto_tune.lifecycle import start_harness
+        start_harness(session_dir)
+
+        mock_kill_stale.assert_called_once_with(session_dir / "harness.pid")
+
+    @patch("participants.auto_tune.lifecycle._kill_stale_process")
+    @patch("participants.auto_tune.lifecycle.time.sleep")
+    @patch("participants.auto_tune.lifecycle.subprocess.Popen")
+    def test_start_supervisor_kills_stale(
+        self,
+        mock_popen: MagicMock,
+        mock_sleep: MagicMock,
+        mock_kill_stale: MagicMock,
+        session_dir: Path,
+        fake_process: MagicMock,
+    ) -> None:
+        mock_popen.return_value = fake_process
+
+        from participants.auto_tune.lifecycle import start_supervisor
+
+        call_count = [0]
+
+        def side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] >= 2:
+                status_path = session_dir / "status.json"
+                status_path.write_text(
+                    json.dumps({"connected": True, "pid": 99999}),
+                    encoding="utf-8",
+                )
+
+        mock_sleep.side_effect = side_effect
+
+        start_supervisor(session_dir)
+
+        mock_kill_stale.assert_called_once_with(session_dir / "supervisor.pid")

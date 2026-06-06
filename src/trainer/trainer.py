@@ -629,10 +629,13 @@ class Trainer:
 
     # ── Progress events ───────────────────────────────────────────────
 
-    def _emit_progress(self, status: str) -> None:
+    def _emit_progress(self, status: str, *, label_override: str | None = None) -> None:
         """Emit a progress event to the UI participant."""
-        current_lesson = self._state.curriculum.current_lesson()
-        lesson_label = current_lesson.label if current_lesson else None
+        if label_override is not None:
+            lesson_label = label_override
+        else:
+            current_lesson = self._state.curriculum.current_lesson()
+            lesson_label = current_lesson.label if current_lesson else None
         total = self._state.curriculum.total()
         completed = len(self._state.lesson_satisfied)
 
@@ -705,9 +708,11 @@ class Trainer:
         responses. Delegates to ``Reactor.is_lesson_complete``.
         """
         if self._reactor.is_lesson_complete:
-            # Mark lesson satisfied (also advances curriculum position)
+            # Capture lesson label BEFORE advancing position
             current_lesson = self._state.curriculum.current_lesson()
             old_position = self._state.curriculum.position
+            completed_label = current_lesson.label if current_lesson else None
+
             if current_lesson:
                 self._state.mark_lesson_satisfied(current_lesson.label)
 
@@ -715,7 +720,7 @@ class Trainer:
             total_entries = len(self._state.submitted)
             logger.info(
                 "Lesson %s complete — entries: %d/%d satisfied, %d/%d lessons done",
-                current_lesson.label if current_lesson else "?",
+                completed_label or "?",
                 satisfied,
                 total_entries,
                 len(self._state.lesson_satisfied),
@@ -727,7 +732,7 @@ class Trainer:
                 {"position": old_position},
             )
 
-            self._emit_progress("lesson_complete")
+            self._emit_progress("lesson_complete", label_override=completed_label)
 
             if not self._session_paused:
                 self._submit_next_lesson()

@@ -254,7 +254,34 @@ def reset(session_dir: SessionDir, *, fresh_model: bool = False) -> None:
     events_path = session_dir.events_path
     events_path.write_text("", encoding="utf-8")
 
-    # 3. Optionally delete model file
+    # 3. Delete stale cmd.json (prevents immediate shutdown on next supervisor start)
+    cmd_path = session_dir.cmd_path
+    if cmd_path.exists():
+        cmd_path.unlink()
+
+    # 4. Ensure we're on the session's auto-tune branch
+    branch_name = f"auto-tune/{config.session}"
+    try:
+        import subprocess
+        current = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        if current != branch_name:
+            # Check if the branch exists
+            result = subprocess.run(
+                ["git", "rev-parse", "--verify", branch_name],
+                capture_output=True, text=True,
+            )
+            if result.returncode == 0:
+                subprocess.run(
+                    ["git", "checkout", branch_name],
+                    check=True, capture_output=True, text=True,
+                )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass  # Not in a git repo or git unavailable — skip silently
+
+    # 5. Optionally delete model file
     if fresh_model and config.model_path:
         model = Path(config.model_path)
         if model.exists():

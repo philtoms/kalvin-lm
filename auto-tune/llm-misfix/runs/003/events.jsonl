@@ -12,4 +12,3 @@
 {"seq": 12, "type": "escalation", "reason": "low_confidence", "detail": "", "lesson_position": 4}
 {"seq": 13, "type": "progress", "status": "lesson_complete", "lesson": null, "lessons_total": 5, "lessons_completed": 5}
 {"seq": 14, "type": "progress", "status": "complete", "lesson": null, "lessons_total": 5, "lessons_completed": 5}
-{"seq": 15, "type": "disconnected"}

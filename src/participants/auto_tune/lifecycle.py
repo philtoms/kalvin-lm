@@ -56,6 +56,46 @@ def _wait_for_exit(pid: int, timeout: float = 5.0) -> bool:
     return False  # Still running after timeout
 
 
+def _kill_stale_process(pid_path: Path) -> None:
+    """Check PID file for a stale process and kill it if found.
+
+    If the PID file exists and the process is still running, sends
+    SIGTERM and waits, escalating to SIGKILL if needed.  Removes the
+    PID file regardless.
+    """
+    pid = _read_pid(pid_path)
+    if pid is None:
+        return
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        # Not running — just clean up PID file
+        _delete_pid_file(pid_path)
+        return
+    except PermissionError:
+        # Running but can't signal — warn and bail
+        import warnings
+        warnings.warn(
+            f"Stale process {pid} still running (no permission to kill). "
+            f"PID file: {pid_path}"
+        )
+        return
+    # Stale process found — kill it
+    import warnings
+    warnings.warn(f"Killing stale process {pid} from {pid_path}")
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        _delete_pid_file(pid_path)
+        return
+    if not _wait_for_exit(pid, timeout=5.0):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    _delete_pid_file(pid_path)
+
+
 def _delete_pid_file(path: Path) -> None:
     """Remove a PID file, ignoring errors if it's already gone."""
     try:
@@ -72,11 +112,13 @@ def _delete_pid_file(path: Path) -> None:
 def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     """Start the harness server as a background process.
 
-    1. Load ``SessionConfig`` from the session directory.
-    2. Extract the WebSocket port from ``harness_url``.
-    3. Start ``python -m harness`` as a background subprocess.
-    4. Write the PID to ``harness.pid``.
-    5. Poll the WebSocket port until it accepts connections.
+    1. Kill any stale harness process from a previous run.
+    2. Load ``SessionConfig`` from the session directory.
+    3. Extract the WebSocket port from ``harness_url``.
+    4. Generate a per-session harness config using the session's curriculum.
+    5. Start ``python -m harness`` as a background subprocess.
+    6. Write the PID to ``harness.pid``.
+    7. Poll the WebSocket port until it accepts connections.
 
     Args:
         session_dir: Path to the session directory.
@@ -89,6 +131,10 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
         TimeoutError: If the harness doesn't accept connections within
             *poll_timeout* seconds.
     """
+    # 0. Kill stale harness from previous run
+    pid_path = session_dir / "harness.pid"
+    _kill_stale_process(pid_path)
+
     # 1. Load config
     config_path = session_dir / "config.json"
     data = json.loads(config_path.read_text(encoding="utf-8"))
@@ -100,20 +146,22 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     if port is None:
         raise ValueError(f"Cannot extract port from harness_url: {cfg.harness_url}")
 
-    # 3. Start harness as background process
+    # 3. Generate per-session harness config
+    harness_config_path = _generate_session_harness_config(session_dir, cfg)
+
+    # 4. Start harness as background process
     log_path = session_dir / "harness.log"
     log_file = open(log_path, "w", encoding="utf-8")
     proc = subprocess.Popen(
-        [sys.executable, "-m", "harness", "--config", "harness.yaml"],
+        [sys.executable, "-m", "harness", "--config", str(harness_config_path)],
         stdout=subprocess.DEVNULL,
         stderr=log_file,
     )
 
-    # 4. Write PID file
-    pid_path = session_dir / "harness.pid"
+    # 5. Write PID file
     pid_path.write_text(str(proc.pid), encoding="utf-8")
 
-    # 5. Poll WebSocket port for readiness
+    # 6. Poll WebSocket port for readiness
     deadline = time.monotonic() + poll_timeout
     while time.monotonic() < deadline:
         try:
@@ -172,10 +220,11 @@ def stop_harness(session_dir: Path) -> None:
 def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     """Start the CLI supervisor as a background process.
 
-    1. Start ``python -m participants.auto_tune.supervisor`` as a
+    1. Kill any stale supervisor process from a previous run.
+    2. Start ``python -m participants.auto_tune.supervisor`` as a
        background subprocess.
-    2. Write the PID to ``supervisor.pid``.
-    3. Poll ``status.json`` until ``connected`` is ``true``.
+    3. Write the PID to ``supervisor.pid``.
+    4. Poll ``status.json`` until ``connected`` is ``true``.
 
     Args:
         session_dir: Path to the session directory.
@@ -188,6 +237,10 @@ def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
         TimeoutError: If the supervisor doesn't connect within
             *poll_timeout* seconds.
     """
+    # 0. Kill stale supervisor from previous run
+    pid_path = session_dir / "supervisor.pid"
+    _kill_stale_process(pid_path)
+
     # 1. Start supervisor as background process
     proc = subprocess.Popen(
         [
@@ -266,3 +319,46 @@ def stop_supervisor(session_dir: Path) -> None:
             pass
 
     _delete_pid_file(pid_path)
+
+
+# ---------------------------------------------------------------------------
+# Session harness config generation
+# ---------------------------------------------------------------------------
+
+
+def _generate_session_harness_config(
+    session_dir: Path, cfg: SessionConfig
+) -> Path:
+    """Generate a per-session harness.yaml from the project's harness.yaml.
+
+    Reads the project's ``harness.yaml`` and overrides the ``curriculum_file``
+    with the session's configured curriculum.  Writes the result to
+    ``<session_dir>/harness.yaml`` so the harness loads the correct curriculum.
+
+    Returns the path to the generated config.
+    """
+    import yaml
+
+    project_config = session_dir.parent.parent / "harness.yaml"
+    config_path = session_dir / "harness.yaml"
+
+    # Read project harness.yaml if it exists, otherwise use minimal defaults
+    if project_config.exists():
+        data = yaml.safe_load(project_config.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            data = {}
+    else:
+        data = {}
+
+    # Override curriculum_file with the session's curriculum
+    if "trainer" not in data:
+        data["trainer"] = {}
+    data["trainer"]["curriculum_file"] = cfg.curriculum
+
+    # Write per-session config
+    config_path.write_text(
+        yaml.dump(data, default_flow_style=False, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    return config_path

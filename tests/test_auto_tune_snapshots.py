@@ -299,3 +299,42 @@ class TestRestore:
             if not run_dir.exists():
                 snapshot(session_tree)
             restore(session_tree, 1)
+
+
+# ---------------------------------------------------------------------------
+# AT-42+: reset clears cmd.json and ensures correct git branch
+# ---------------------------------------------------------------------------
+
+
+class TestResetCmdCleanup:
+    """reset() deletes stale cmd.json to prevent immediate shutdown."""
+
+    def test_deletes_cmd_json(self, session_tree: SessionDir) -> None:
+        """reset removes cmd.json if it exists."""
+        # Write a stale cmd.json (e.g. from a previous stop-supervisor)
+        session_tree.cmd_path.write_text(
+            '{"action": "shutdown"}', encoding="utf-8"
+        )
+        assert session_tree.cmd_path.exists()
+
+        from participants.auto_tune.snapshots import reset
+        reset(session_tree)
+
+        assert not session_tree.cmd_path.exists()
+
+    def test_no_cmd_json_is_safe(self, session_tree: SessionDir) -> None:
+        """reset succeeds when cmd.json does not exist."""
+        assert not session_tree.cmd_path.exists()
+
+        from participants.auto_tune.snapshots import reset
+        reset(session_tree)  # Should not raise
+
+    def test_truncates_events(self, session_tree: SessionDir) -> None:
+        """reset truncates events.jsonl."""
+        # Verify events has content
+        assert session_tree.events_path.read_text(encoding="utf-8") != ""
+
+        from participants.auto_tune.snapshots import reset
+        reset(session_tree)
+
+        assert session_tree.events_path.read_text(encoding="utf-8") == ""
