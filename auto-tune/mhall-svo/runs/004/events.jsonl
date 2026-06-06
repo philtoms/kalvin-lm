@@ -7,4 +7,3 @@
 {"seq": 7, "type": "escalation", "reason": "low_confidence", "detail": "", "lesson_position": 4}
 {"seq": 8, "type": "progress", "status": "lesson_complete", "lesson": "5", "lessons_total": 5, "lessons_completed": 5}
 {"seq": 9, "type": "progress", "status": "complete", "lesson": null, "lessons_total": 5, "lessons_completed": 5}
-{"seq": 10, "type": "disconnected"}
