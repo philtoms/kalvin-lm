@@ -129,15 +129,19 @@ You are a KScript scaffolding generator. Analyze the misfit between \
 expectations and proposals, and write KScript that bridges the gap.
 
 KScript syntax overview:
-- Assignment: `name = expression`
-- Arrow construct: `sig -> node`  (countersign)
-- Arrow with MCS: `sig -> [node1, node2]`  (multi-countersign)
-- Connotate: `sig ~> node`
-- Canonize: `sig => node`
-- Undersign: `node <- sig`
+- Identity: `NAME`  (uppercase identifiers, e.g. M, H, MH)
+- Relationship: `NAME > N1 N2`  (nodes listed after >)
+- Countersign: `SIG == N1 N2`  (bidirectional mapping)
+- Canonize: `SIG => N1 N2`  (unidirectional mapping)
+- Assignment: `SIG = N1 N2`  (undersign/expansion)
 
-Signatures and nodes are hexadecimal integers prefixed with 0x.
-Each line defines one construct binding. Lines starting with # are comments.
+All identifiers are UPPERCASE LETTERS ONLY (A–Z). Never use hex literals \
+(0x...) or numbers — KScript only accepts uppercase names. Each line \
+defines one construct. Comments use parenthesised syntax: (this is a comment).
+
+The only valid operators are: == (countersign), => (canonize), \
+= (undersign), and > (relationship). Do not use ~>, <-, ->, or any \
+other operators.
 
 Use the submit_scaffolding tool to return your generated KScript, your \
 confidence level (0.0–1.0), and a brief explanation of your reasoning.
@@ -398,6 +402,19 @@ def extract_result(response: LLMResponse) -> CogitationResult:
 # ── Cogitator class ──────────────────────────────────────────────────
 
 
+def _strip_hash_comments(source: str) -> str:
+    """Remove ``#``-style comment lines from scaffolding source.
+
+    KScript uses parenthesised comments ``(…)``, not ``#``.  LLMs
+    sometimes produce ``#`` comments despite the system prompt, so
+    this strips them as a defensive measure before compilation.
+    Blank lines are also removed to keep the source compact.
+    """
+    lines = source.splitlines()
+    stripped = [line for line in lines if line.strip() and not line.strip().startswith("#")]
+    return "\n".join(stripped)
+
+
 class Cogitator:
     """Main entry point for reactive scaffolding generation.
 
@@ -450,6 +467,27 @@ class Cogitator:
 
         # Validate scaffolding compiles
         if result.scaffolding is not None:
+            # Strip # comments that LLMs may produce despite the prompt
+            sanitised = _strip_hash_comments(result.scaffolding)
+            if sanitised != result.scaffolding:
+                _log.info(
+                    "Cogitator.cogitate: stripped # comments from scaffolding "
+                    "(%d → %d chars)",
+                    len(result.scaffolding), len(sanitised),
+                )
+                result = CogitationResult(
+                    scaffolding=sanitised or None,
+                    confidence=result.confidence,
+                    reasoning=result.reasoning,
+                    raw_response=result.raw_response,
+                )
+                if result.scaffolding is None:
+                    _log.warning(
+                        "Cogitator.cogitate: scaffolding was all comments — "
+                        "nothing to compile",
+                    )
+                    return result
+
             try:
                 from kscript.compiler import compile_source
 

@@ -213,6 +213,7 @@ class Reactor:
                     sender=self._role,
                 )
             )
+            logger.info("submitted reactive scaffolding")
         else:
             logger.warning("Cogitation produced no scaffolding — escalating")
             self._escalate("low_confidence")

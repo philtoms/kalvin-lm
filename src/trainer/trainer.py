@@ -113,8 +113,10 @@ class Trainer:
             from trainer.cogitation import Cogitator, CogitationRequest, MisfitInfo
             from kalvin.misfit import classify_misfit
             from kalvin.signature import make_signature
+            from kscript.decompiler import Decompiler
 
             _cogitator = Cogitator(client=llm_client)
+            _decompiler = Decompiler()
 
             def _cogitate_adapter(
                 event: RationaliseEvent,
@@ -130,10 +132,22 @@ class Trainer:
                 underfit_gap = target.signature & ~target_nodes_sig
                 overfit_mask = target_nodes_sig & ~target.signature
 
+                # Decompile klines to human-readable KScript for the LLM
+                try:
+                    query_decompiled = _decompiler.decompile([event.query])
+                    query_src = query_decompiled[0].to_kscript() if query_decompiled else repr(event.query)
+                except Exception:
+                    query_src = repr(event.query)
+                try:
+                    proposal_decompiled = _decompiler.decompile([event.proposal]) if event.proposal else []
+                    proposal_src = proposal_decompiled[0].to_kscript() if proposal_decompiled else repr(event.proposal)
+                except Exception:
+                    proposal_src = repr(event.proposal) if event.proposal else "None"
+
                 logger.info(
-                    "Cogitate adapter: event query=%r, candidate=%r, "
-                    "proposal=%r",
-                    event.query, target, event.proposal,
+                    "Cogitate adapter: event query=%r (%s), candidate=%r, "
+                    "proposal=%r (%s)",
+                    event.query, query_src, target, event.proposal, proposal_src,
                 )
                 logger.info(
                     "Cogitate misfit: underfit=%s, overfit=%s, "
@@ -147,8 +161,8 @@ class Trainer:
                     overfit=target_overfit,
                     underfit_gap=underfit_gap,
                     overfit_mask=overfit_mask,
-                    expectation_summary=repr(event.query),
-                    proposal_summary=repr(event.proposal),
+                    expectation_summary=query_src,
+                    proposal_summary=proposal_src,
                 )
 
                 request = CogitationRequest(

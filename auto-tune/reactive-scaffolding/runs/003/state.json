@@ -1,0 +1,181 @@
+{
+  "version": 2,
+  "position": 5,
+  "lessons": [
+    "M",
+    "H",
+    "M == H",
+    "A",
+    "MH => H A"
+  ],
+  "curriculum_file": "curricula/first-steps-s2.md",
+  "current_label": null,
+  "lesson_submitted": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "lesson_satisfied": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "submitted": [
+    [
+      2,
+      []
+    ],
+    [
+      256,
+      []
+    ],
+    [
+      256,
+      [
+        8192
+      ]
+    ],
+    [
+      8192,
+      []
+    ],
+    [
+      8192,
+      [
+        256
+      ]
+    ],
+    [
+      8448,
+      [
+        256,
+        2
+      ]
+    ],
+    [
+      8448,
+      [
+        8192,
+        256
+      ]
+    ]
+  ],
+  "satisfied": [
+    [
+      256,
+      []
+    ],
+    [
+      256,
+      [
+        8192
+      ]
+    ],
+    [
+      8192,
+      []
+    ]
+  ],
+  "pending": [],
+  "event_log": [
+    {
+      "timestamp": "2026-06-06T14:41:34.706719+00:00",
+      "type": "session_start",
+      "data": {
+        "goal": null
+      }
+    },
+    {
+      "timestamp": "2026-06-06T14:41:34.707429+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 0
+      }
+    },
+    {
+      "timestamp": "2026-06-06T14:41:34.708226+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 1
+      }
+    },
+    {
+      "timestamp": "2026-06-06T14:42:23.986135+00:00",
+      "type": "reactive_scaffolding",
+      "data": {
+        "confidence": 0.72,
+        "source": "(restore relational primacy of M over H \u2014 addresses underfit)\nM > H\n(bind M and H into a shared countersign for parity)\nMH == M H\n(constrain H's canonical scope under MH \u2014 collapses overfit from H => M H)\nH = MH"
+      }
+    },
+    {
+      "timestamp": "2026-06-06T14:42:23.986220+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 2
+      }
+    },
+    {
+      "timestamp": "2026-06-06T14:43:03.129313+00:00",
+      "type": "escalation",
+      "data": {
+        "reason": "low_confidence",
+        "detail": ""
+      }
+    },
+    {
+      "timestamp": "2026-06-06T14:43:03.129402+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 3
+      }
+    },
+    {
+      "timestamp": "2026-06-06T14:43:40.137823+00:00",
+      "type": "escalation",
+      "data": {
+        "reason": "low_confidence",
+        "detail": ""
+      }
+    },
+    {
+      "timestamp": "2026-06-06T14:44:02.868970+00:00",
+      "type": "reactive_scaffolding",
+      "data": {
+        "confidence": 0.75,
+        "source": "(Dual misfit: expectation M > H vs proposal M => M)\n(Underfit: signature lacks H node; Overfit: self-mapping M=>M is redundant)\nMH\nM > H\nMH == M H"
+      }
+    },
+    {
+      "timestamp": "2026-06-06T14:44:50.732804+00:00",
+      "type": "escalation",
+      "data": {
+        "reason": "low_confidence",
+        "detail": ""
+      }
+    },
+    {
+      "timestamp": "2026-06-06T14:45:19.374775+00:00",
+      "type": "escalation",
+      "data": {
+        "reason": "low_confidence",
+        "detail": ""
+      }
+    },
+    {
+      "timestamp": "2026-06-06T14:45:19.374927+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 4
+      }
+    },
+    {
+      "timestamp": "2026-06-06T14:45:19.375506+00:00",
+      "type": "session_end",
+      "data": {}
+    }
+  ]
+}
