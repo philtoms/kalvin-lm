@@ -1,9 +1,0 @@
-{
-  "session": "s2-expansion",
-  "curriculum": "curricula/first-steps-s2.md",
-  "harness_url": "ws://localhost:8765",
-  "model_path": "data/agent.bin",
-  "run_counter": 1,
-  "created_from_branch": "main",
-  "created_from_commit": "082b2206ab58cdd395cc2935f6e39171eaefd5da"
-}

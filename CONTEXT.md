@@ -7,11 +7,8 @@ This document has two sections. **Operating Notes** contains process instruction
 ## Operating Notes
 
 - Commit all work before creating any kb tasks.
-- Never commit to git autonomously. Always ask for explicit confirmation before running any `git commit`.
-- Classification rule: work is "task work" (autonomous commit) only when the user explicitly put it through the task board. If you created the task yourself on a direct instruction, it is ad-hoc work.
-- Only create kb tasks when the user asks you to, or when work genuinely needs multi-step orchestration across sessions. Direct instructions are ad-hoc work — do not create tasks for them.
 - When creating kb tasks for large features, decompose into discrete tasks with explicit `depends` chains. Each task should cover one coherent piece of work — a single spec, a single module, a single behavioural change. Do not create monolithic tasks that span multiple specs, plans, and implementation modules.
-- Follow the three-layer documentation model strictly (docs/spec-plan-proposal.md): origin → spec → plan. No content duplication across layers.
+- Follow the docs/cascade-development.md model strictly.
 - CONTEXT.md is a glossary plus operating notes. Keep the two sections separate. Do not add implementation details, spec content, or code to either section.
 
 ---
@@ -113,7 +110,7 @@ Any agent loaded into the harness loop (Kalvin, Trainer, supervisor participant,
 
 ### Auto-Tune
 
-A tuning loop where an LLM coding agent runs repeated training sessions against the codebase, observes results, edits code, and re-runs to converge on a goal. Not a training concept — auto-tune improves the *codebase*, not Kalvin's model. An auto-tune session is a working directory (`auto-tune/<codename>/`) that holds the file-mediated communication channel between pi and the CLI supervisor, plus snapshot history of successive runs.
+A tuning loop where an LLM coding agent runs repeated training sessions against the codebase, observes results, edits code, and re-runs to converge on a goal. Not a training concept — auto-tune improves the _codebase_, not Kalvin's model. An auto-tune session is a working directory (`auto-tune/<codename>/`) that holds the file-mediated communication channel between pi and the CLI supervisor, plus snapshot history of successive runs.
 _Avoid_: tuning session (ambiguous with training session), auto-train (it's not training)
 
 ### CLI Supervisor
