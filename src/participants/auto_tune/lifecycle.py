@@ -29,6 +29,25 @@ from participants.auto_tune.session import SessionConfig
 # ---------------------------------------------------------------------------
 
 
+def _resolve_python() -> str:
+    """Resolve the Python interpreter for subprocess launches.
+
+    If the project has a ``.venv/bin/python``, use it.  This ensures the
+    harness and supervisor always run with the venv's installed packages
+    (e.g. ``openai``), even when the auto-tune CLI itself is invoked with
+    a different Python (e.g. pyenv shim).
+
+    Falls back to ``sys.executable`` when no venv is found.
+    """
+    # Walk upward from this file to find the project root (directory
+    # containing .venv/).  The layout is:
+    #   <project-root>/src/participants/auto_tune/lifecycle.py
+    venv_python = Path(__file__).resolve().parents[3] / ".venv" / "bin" / "python"
+    if venv_python.exists():
+        return str(venv_python)
+    return sys.executable
+
+
 def _read_pid(path: Path) -> int | None:
     """Read a PID file and return the integer, or ``None`` if missing."""
     if not path.exists():
@@ -153,7 +172,7 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     log_path = session_dir / "harness.log"
     log_file = open(log_path, "w", encoding="utf-8")
     proc = subprocess.Popen(
-        [sys.executable, "-m", "harness", "--config", str(harness_config_path)],
+        [_resolve_python(), "-m", "harness", "--config", str(harness_config_path)],
         stdout=subprocess.DEVNULL,
         stderr=log_file,
     )
@@ -244,7 +263,7 @@ def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     # 1. Start supervisor as background process
     proc = subprocess.Popen(
         [
-            sys.executable,
+            _resolve_python(),
             "-m",
             "participants.auto_tune.supervisor",
             "--session-dir",
