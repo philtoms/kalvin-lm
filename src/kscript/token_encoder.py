@@ -21,8 +21,10 @@ class CompiledEntry(KLine):
     - list[int]: nodes list (connotate, canonize)
     """
 
-    def __init__(self, signature: KSig, nodes: KNodes, dbg_text: str = ""):
-        super().__init__(signature=signature, nodes=nodes, dbg_text=dbg_text)
+    def __init__(self, signature: KSig, nodes: KNodes, dbg_text: str = "",
+                 sig_level: str | None = None):
+        super().__init__(signature=signature, nodes=nodes, dbg_text=dbg_text,
+                         sig_level=sig_level)
 
     @classmethod
     def encode(
@@ -42,14 +44,14 @@ class CompiledEntry(KLine):
         """
         sig_id = tokenizer.encode(sig)[0]
         if nodes is None:
-            return cls(signature=sig_id, nodes=None, dbg_text=dbg_text)
+            return cls(signature=sig_id, nodes=None, dbg_text=dbg_text, sig_level=sig_level)
         elif isinstance(nodes, str):
             if nodes.isupper() and nodes.isalpha():
                 node_id = tokenizer.encode(nodes)[0]
-                return cls(signature=sig_id, nodes=node_id, dbg_text=dbg_text)
+                return cls(signature=sig_id, nodes=node_id, dbg_text=dbg_text, sig_level=sig_level)
             else:
                 node_ids = tokenizer.encode(nodes)
-                return cls(signature=sig_id, nodes=node_ids, dbg_text=dbg_text)
+                return cls(signature=sig_id, nodes=node_ids, dbg_text=dbg_text, sig_level=sig_level)
         else:
             all_node_ids: list[int] = []
             for n in nodes:
@@ -57,7 +59,7 @@ class CompiledEntry(KLine):
                     all_node_ids.append(tokenizer.encode(n)[0])
                 else:
                     all_node_ids.extend(tokenizer.encode(n))
-            return cls(signature=sig_id, nodes=all_node_ids, dbg_text=dbg_text)
+            return cls(signature=sig_id, nodes=all_node_ids, dbg_text=dbg_text, sig_level=sig_level)
 
     def decode(self, tokenizer: ModTokenizer) -> tuple[str, str | None | list[str]]:
         """Decode token IDs back to strings."""
@@ -139,8 +141,10 @@ class TokenEncoder:
         sig_id = self._encode_node(entry.sig)
         encoded_nodes = self._encode_nodes(entry.nodes)
 
+        level = self._sig_levels.get(entry.op, "S4")
         dbg = self._format_dbg(entry.sig, entry.nodes, entry.op) if self.dev else ""
-        return CompiledEntry(signature=sig_id, nodes=encoded_nodes, dbg_text=dbg)
+        return CompiledEntry(signature=sig_id, nodes=encoded_nodes,
+                              dbg_text=dbg, sig_level=level)
 
     def _encode_sig(self, sig: str) -> int:
         """Encode a signature string to token ID."""

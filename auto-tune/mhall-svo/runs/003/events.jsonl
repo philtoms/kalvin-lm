@@ -6,4 +6,3 @@
 {"seq": 6, "type": "progress", "status": "lesson_complete", "lesson": "4", "lessons_total": 5, "lessons_completed": 4}
 {"seq": 7, "type": "progress", "status": "lesson_complete", "lesson": "5", "lessons_total": 5, "lessons_completed": 5}
 {"seq": 8, "type": "progress", "status": "complete", "lesson": null, "lessons_total": 5, "lessons_completed": 5}
-{"seq": 9, "type": "disconnected"}

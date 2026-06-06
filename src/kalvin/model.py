@@ -146,6 +146,14 @@ class _TierChain:
     def contains(self, kline: KLine) -> bool:
         return any(a.contains(kline) for a in self._adapters)
 
+    def contains_excluding_first(self, kline: KLine) -> bool:
+        """Check all tiers except the first (STM).
+
+        Used by Model.grounded() to check Frame, LTM, and Base without
+        matching transient STM entries.
+        """
+        return any(a.contains(kline) for a in self._adapters[1:])
+
     def find_first(self, sig: KSig) -> KLine | None:
         for a in self._adapters:
             result = a.find_first(sig)
@@ -274,6 +282,14 @@ class Model:
     def exists(self, kline: KLine) -> bool:
         """Check if an equal KLine exists in any tier."""
         return self._exists_any(kline)
+
+    def grounded(self, kline: KLine) -> bool:
+        """Check if an equal KLine exists in Frame, LTM, or Base (not STM).
+
+        STM is transient — entries pre-registered there haven't been
+        rationalised yet and shouldn't count as grounded knowledge.
+        """
+        return self._chain.contains_excluding_first(kline)
 
     def _exists_any(self, kline: KLine) -> bool:
         """Check STM, Frame, LTM, then Base."""

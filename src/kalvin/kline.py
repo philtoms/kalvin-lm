@@ -29,7 +29,7 @@ class KLine:
         dbg_text: optional debug label (not spec'd).
     """
 
-    __slots__ = ("signature", "nodes", "literal", "dbg_text")
+    __slots__ = ("signature", "nodes", "literal", "dbg_text", "sig_level")
 
     def __init__(
         self,
@@ -37,11 +37,13 @@ class KLine:
         nodes: KNodes | KNode | None = None,
         literal: bool = False,
         dbg_text: str = "",
+        sig_level: str | None = None,
     ):
         self.signature = signature
         self.nodes = _normalize_nodes(nodes)
         self.literal = literal
         self.dbg_text = dbg_text
+        self.sig_level = sig_level
 
     def is_literal(self) -> bool:
         """Return whether this kline is literal."""

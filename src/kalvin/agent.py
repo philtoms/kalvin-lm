@@ -290,8 +290,8 @@ class KAgent:
         if kline.signature == 0 and kline.nodes:
             kline.signature = make_signature(kline.nodes)
 
-        # Phase 2: Ground check
-        if kline.signature != 0 and self._model.exists(kline):
+        # Phase 2: Ground check (Frame/LTM/Base only — not STM)
+        if kline.signature != 0 and self._model.grounded(kline):
             self._model.add_stm(kline)
             self._publish("ground", kline, kline, D_MAX - 1)
             return True
@@ -317,6 +317,14 @@ class KAgent:
                 self._model.add_ltm(kline)
                 self._publish("frame", kline, kline, D_MAX - 1)  # S1
                 return True
+
+        # Phase 3 (continued): S1 assertion — entries compiled from countersign
+        # or undersign operators carry sig_level="S1" and represent unconditional
+        # claims. Accept them as S1 without further verification.
+        if getattr(kline, 'sig_level', None) == 'S1':
+            self._model.add_ltm(kline)
+            self._publish("frame", kline, kline, D_MAX - 1)  # S1
+            return True
 
         # Phase 3 (continued): Register in STM before ratification check.
         # This ensures that sequential countersign pairs (e.g. from M == H
