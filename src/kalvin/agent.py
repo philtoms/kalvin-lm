@@ -325,7 +325,11 @@ class KAgent:
         # the second entry's countersign check runs.
         self._model.add_stm(kline)
 
-        # Phase 3 (continued): Ratification — countersigned in the model → S1
+        # Phase 3 (continued): Ratification — countersigned in the model → S1.
+        # Only countersign (==) entries can pass this check, because only
+        # countersign produces reciprocal klines. Undersign (=) and connotate
+        # (>) compile to the same kline structure — a single node entry in
+        # opposite directions — so Kalvin treats them identically.
         if is_countersigned(self._model, kline):
             self._model.add_ltm(kline)
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
