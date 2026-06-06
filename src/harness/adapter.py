@@ -185,6 +185,12 @@ class KAgentAdapter:
             return
 
         logger.info("Submitting %d compiled entries to KAgent", len(entries))
+        # Pre-register all entries in STM so that countersign pairs
+        # (e.g. from M == H compiling to {M: H} and {H: M}) can find
+        # each other during the countersign check in rationalise().
+        if hasattr(self._kagent, 'model'):
+            for entry in entries:
+                self._kagent.model.add_stm(entry)
         for entry in entries:
             # Record sender for this entry so callbacks can be routed.
             key: EntryKey = (entry.signature, tuple(entry.nodes))

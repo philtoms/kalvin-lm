@@ -1,0 +1,9 @@
+{
+  "session": "mhall-svo",
+  "curriculum": "curricula/mhall-svo-equivalence.md",
+  "harness_url": "ws://localhost:8765",
+  "model_path": "data/agent.bin",
+  "run_counter": 0,
+  "created_from_branch": "main",
+  "created_from_commit": "53cd3df9bed378fdd328e14131f61551e10199b6"
+}

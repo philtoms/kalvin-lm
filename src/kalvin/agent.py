@@ -318,14 +318,25 @@ class KAgent:
                 self._publish("frame", kline, kline, D_MAX - 1)  # S1
                 return True
 
+        # Phase 3 (continued): Register in STM before ratification check.
+        # This ensures that sequential countersign pairs (e.g. from M == H
+        # compiling to {M: H} and {H: M}) can find each other via
+        # is_countersigned: the first entry in STM becomes visible when
+        # the second entry's countersign check runs.
+        self._model.add_stm(kline)
+
         # Phase 3 (continued): Ratification — countersigned in the model → S1
         if is_countersigned(self._model, kline):
             self._model.add_ltm(kline)
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
 
-        # Phase 4: Retrieve candidates
-        candidates = self._model.where(kline.signature)
+        # Phase 4: Retrieve candidates (exclude self to prevent trivial match)
+        candidates = [
+            kl for kl in self._model.where(kline.signature)
+            if kl is not kline
+            and (kl.signature != kline.signature or kl.nodes != kline.nodes)
+        ]
 
         if not candidates:
             # S4 — novel, no candidates
@@ -334,7 +345,6 @@ class KAgent:
             return True
 
         # Phase 5: Route each candidate — fast path on S1, submit S2/S3
-        self._model.add_stm(kline)
 
         found_s1 = False
         for candidate in candidates:
