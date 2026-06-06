@@ -1,0 +1,92 @@
+2026-06-06 17:41:38,897 [harness.server] INFO: Embedded participant 'KAgent' (4390419184) subscribed to 'trainee'
+2026-06-06 17:41:39,157 [__main__] INFO: LLM client configured (model=glm-5.1, base_url=https://api.z.ai/api/coding/paas/v4)
+2026-06-06 17:41:39,157 [harness.server] INFO: Embedded participant 'Trainer' (4498204864) subscribed to 'trainer'
+2026-06-06 17:41:39,159 [websockets.server] INFO: server listening on 127.0.0.1:8765
+2026-06-06 17:41:39,159 [websockets.server] INFO: server listening on [::1]:8765
+2026-06-06 17:41:39,159 [harness.server] INFO: WebSocket server listening on localhost:8765
+2026-06-06 17:41:39,341 [websockets.server] ERROR: opening handshake failed
+Traceback (most recent call last):
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/http11.py", line 138, in parse
+    request_line = yield from parse_line(read_line)
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/http11.py", line 320, in parse_line
+    line = yield from read_line(MAX_LINE_LENGTH)
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/streams.py", line 46, in read_line
+    raise EOFError(f"stream ends after {p} bytes, before end of line")
+EOFError: stream ends after 0 bytes, before end of line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/server.py", line 547, in parse
+    request = yield from Request.parse(
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/http11.py", line 140, in parse
+    raise EOFError("connection closed while reading HTTP request line") from exc
+EOFError: connection closed while reading HTTP request line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
+2026-06-06 17:41:39,464 [websockets.server] INFO: connection open
+2026-06-06 17:41:39,464 [harness.protocol] INFO: Client registered: supervisor
+2026-06-06 17:41:44,728 [trainer.trainer] INFO: Session started — 1 lessons, curriculum: curricula/mhall-svo-single.md
+2026-06-06 17:41:44,728 [trainer.trainer] INFO: Submitting lesson 1 (1/1)
+2026-06-06 17:41:44,729 [trainer.trainer] INFO: Compiled 18 entries for lesson 1
+2026-06-06 17:41:44,729 [harness.adapter] INFO: Submitting 18 compiled entries to KAgent
+2026-06-06 17:41:44,730 [trainer.trainer] INFO: FRAME M → 0.00
+2026-06-06 17:41:44,730 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 17:41:44,730 [trainer.trainer] INFO: FRAME H → 0.00
+2026-06-06 17:41:44,730 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 17:41:44,730 [trainer.trainer] INFO: FRAME A → 0.00
+2026-06-06 17:41:44,730 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 17:41:44,730 [trainer.trainer] INFO: FRAME L → 0.00
+2026-06-06 17:41:44,730 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 17:41:44,730 [trainer.trainer] INFO: FRAME MHALL => M H A L L → S1 (fast path) ← MHALL => M H A L L
+2026-06-06 17:41:44,730 [trainer.trainer] INFO: FRAME S → 0.00
+2026-06-06 17:41:44,730 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 17:41:44,730 [trainer.trainer] INFO: FRAME V → 0.00
+2026-06-06 17:41:44,730 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 17:41:44,730 [trainer.trainer] INFO: FRAME O → 0.00
+2026-06-06 17:41:44,730 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-06 17:41:44,731 [trainer.trainer] INFO: FRAME SVO => S V O → S1 (fast path) ← SVO => S V O
+2026-06-06 17:41:44,737 [trainer.trainer] INFO: FRAME AHLM > OSV → S1 (fast path) ← AHLM > OSV
+2026-06-06 17:41:44,737 [trainer.trainer] INFO: FRAME OSV > AHLM → S1 (fast path) ← OSV > AHLM
+2026-06-06 17:41:44,737 [trainer.trainer] INFO: FRAME M > S → S1 (fast path) ← M > S
+2026-06-06 17:41:44,737 [trainer.trainer] INFO: FRAME H > V → S1 (fast path) ← H > V
+2026-06-06 17:41:44,737 [trainer.trainer] INFO: FRAME ALL => A L L → S1 (fast path) ← ALL => A L L
+2026-06-06 17:41:44,737 [trainer.trainer] INFO: FRAME AL > O → S1 (fast path) ← AL > O
+2026-06-06 17:41:44,737 [trainer.trainer] INFO: FRAME L > M → S1 (fast path) ← MHALL => M H A L L
+2026-06-06 17:41:44,737 [trainer.trainer] INFO: GROUND L > O → S1 (fast path) ← L > O
+2026-06-06 17:41:44,737 [harness.adapter] INFO: Countersign: KLine(sig=0x2000, nodes=[], lit=False)
+2026-06-06 17:41:44,737 [harness.adapter] INFO: Countersign: KLine(sig=0x100, nodes=[], lit=False)
+2026-06-06 17:41:44,737 [harness.adapter] INFO: Countersign: KLine(sig=0x2, nodes=[], lit=False)
+2026-06-06 17:41:44,737 [harness.adapter] INFO: Countersign: KLine(sig=0x1000, nodes=[], lit=False)
+2026-06-06 17:41:44,738 [harness.adapter] INFO: Countersign: KLine(sig=0x80000, nodes=[], lit=False)
+2026-06-06 17:41:44,738 [harness.adapter] INFO: Countersign: KLine(sig=0x400000, nodes=[], lit=False)
+2026-06-06 17:41:44,738 [harness.adapter] INFO: Countersign: KLine(sig=0x8000, nodes=[], lit=False)
+2026-06-06 17:41:44,738 [trainer.trainer] INFO: FRAME A > D → 0.00 | proposal: AL => O M H A L L
+2026-06-06 17:41:44,738 [trainer.trainer] INFO: Cogitate adapter: event query=KLine(sig=0x2, nodes=[16], lit=False) (A > D), candidate=KLine(sig=0x1002, nodes=[32768], lit=False), proposal=KLine(sig=0x1002, nodes=[32768, 8192, 256, 2, 4096, 4096], lit=) (AL => O M H A L L)
+2026-06-06 17:41:44,738 [trainer.trainer] INFO: Cogitate misfit: underfit=True, overfit=True, gap=0x1002, mask=0x8000
+2026-06-06 17:41:44,738 [trainer.cogitation] INFO: Cogitator.cogitate: calling LLM with 3 messages, 1 tools
+2026-06-06 17:42:21,334 [httpx] INFO: HTTP Request: POST https://api.z.ai/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-06 17:42:21,352 [trainer.cogitation] INFO: Cogitator.cogitate: LLM response — content=None, tool_calls=['submit_scaffolding'], finish_reason='tool_calls'
+2026-06-06 17:42:21,352 [trainer.cogitation] INFO: extract_result: strategy 1 (tool call) — kscript='(Scaffold for S3 dual misfit round 1 of 3)\n(Reassert expected relationship to cl', confidence=0.70
+2026-06-06 17:42:21,353 [trainer.cogitation] INFO: Cogitator.cogitate: scaffolding compiled OK (288 chars)
+2026-06-06 17:42:21,353 [trainer.trainer] INFO: Cogitate result: scaffolding=(Scaffold for S3 dual misfit round 1 of 3)
+(Reassert expected relationship to cl, confidence=0.70, reasoning=The dual misfit has two dimensions to address: (1) Underfit gap 0x1002 — the exp
+2026-06-06 17:42:21,353 [trainer.reactor] INFO: Reactive scaffolding (round 1, confidence=0.70): (Scaffold for S3 dual misfit round 1 of 3)
+(Reassert expected relationship to close underfit gap 0x1
+2026-06-06 17:42:21,354 [trainer.reactor] INFO: submitted reactive scaffolding
+2026-06-06 17:42:21,354 [trainer.trainer] INFO: Lesson 1 complete — entries: 17/18 satisfied, 1/1 lessons done
+2026-06-06 17:42:21,354 [trainer.trainer] INFO: Curriculum complete — all lessons submitted
+2026-06-06 17:42:21,357 [harness.adapter] INFO: Submitting 14 compiled entries to KAgent
+2026-06-06 17:42:26,337 [harness.protocol] INFO: Client disconnected: supervisor
+2026-06-06 17:42:26,476 [websockets.server] INFO: server closing
+2026-06-06 17:42:26,476 [websockets.server] INFO: server closed
+2026-06-06 17:42:26,476 [harness.server] INFO: WebSocket server stopped
+2026-06-06 17:42:26,477 [harness.server] INFO: Harness server stop requested
+2026-06-06 17:42:26,477 [__main__] INFO: Trainer state persisted
