@@ -318,14 +318,6 @@ class KAgent:
                 self._publish("frame", kline, kline, D_MAX - 1)  # S1
                 return True
 
-        # Phase 3 (continued): S1 assertion — entries compiled from countersign
-        # or undersign operators carry sig_level="S1" and represent unconditional
-        # claims. Accept them as S1 without further verification.
-        if getattr(kline, 'sig_level', None) == 'S1':
-            self._model.add_ltm(kline)
-            self._publish("frame", kline, kline, D_MAX - 1)  # S1
-            return True
-
         # Phase 3 (continued): Register in STM before ratification check.
         # This ensures that sequential countersign pairs (e.g. from M == H
         # compiling to {M: H} and {H: M}) can find each other via
@@ -335,6 +327,19 @@ class KAgent:
 
         # Phase 3 (continued): Ratification — countersigned in the model → S1
         if is_countersigned(self._model, kline):
+            self._model.add_ltm(kline)
+            self._publish("frame", kline, kline, D_MAX - 1)  # S1
+            return True
+
+        # Phase 3 (continued): Undersign ratification — single-node entries
+        # where both signature and node are grounded identities. Only applies
+        # to entries compiled from S1 operators (countersign, undersign).
+        # S3 connotate entries with the same structure must go through slow path.
+        if (getattr(kline, 'sig_level', None) == 'S1'
+            and len(kline.nodes) == 1
+            and not is_literal_node(kline.nodes[0])
+            and self._model.find(kline.signature) is not None
+            and self._model.find(kline.nodes[0]) is not None):
             self._model.add_ltm(kline)
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
