@@ -1,0 +1,9 @@
+{
+  "session": "rationaliser-graph-expansion",
+  "curriculum": "curricula/mhall-svo-single.md",
+  "harness_url": "ws://localhost:8765",
+  "model_path": "data/agent.bin",
+  "run_counter": 3,
+  "created_from_branch": "auto-tune/s1-batch-dedup",
+  "created_from_commit": "31b26bda7a4d11f32e4ab0c28c000a70f51270ff"
+}

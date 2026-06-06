@@ -180,6 +180,7 @@ class Cogitator:
 
             if band == "S1":
                 self._handler.on_s1(query, candidate)
+                break  # query fully resolved — skip remaining expansions
             else:
                 # S2 or S3: propose expansions, route to handler
                 # Note: qc.candidate (not WorkItem.candidate) is the expanded
@@ -348,6 +349,21 @@ class KAgent:
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
 
+        # Phase 3b: Graph expansion for single-node entries with unknown
+        # nodes. When a connotate or undersign references a node that
+        # doesn't exist in the model, attempt to resolve it by expanding
+        # the graph from the signature's context.
+        if (len(kline.nodes) == 1
+            and not is_literal_node(kline.nodes[0])
+            and self._model.find(kline.nodes[0]) is None
+            and self._model.find(kline.signature) is not None):
+            if self._resolve_unknown_via_graph(kline.signature, kline.nodes[0]):
+                # Unknown node grounded via graph expansion.
+                # Now both sides are grounded — accept as S1.
+                self._model.add_ltm(kline)
+                self._publish("frame", kline, kline, D_MAX - 1)
+                return True
+
         # Phase 4: Retrieve candidates (exclude self to prevent trivial match)
         candidates = [
             kl for kl in self._model.where(kline.signature)
@@ -361,9 +377,15 @@ class KAgent:
             self._publish("frame", kline, kline, 0)
             return True
 
-        # Phase 5: Route each candidate — fast path on S1, submit S2/S3
+        # Phase 5: Route candidates — scan for S1 first, defer cogitation.
+        # Previous code submitted S2/S3 work items to the cogitator inline
+        # during iteration. If a later candidate matched S1 and broke the
+        # loop, the earlier work items were already queued and processed
+        # needlessly. We now collect slow candidates and only submit them
+        # if no S1 is found in the full candidate list.
 
         found_s1 = False
+        slow_candidates: list[tuple[KLine, str]] = []
         for candidate in candidates:
             level = self._route(kline, candidate)
 
@@ -374,14 +396,52 @@ class KAgent:
                 found_s1 = True
                 break
             else:
-                # S2 or S3 — submit as work item for cogitation
-                self._cogitator.submit(WorkItem(kline, candidate, level))
+                # Defer — only submit if no S1 found
+                slow_candidates.append((candidate, level))
 
         if found_s1:
             return True
 
+        # No S1 found — submit deferred slow candidates to cogitator
+        for candidate, level in slow_candidates:
+            self._cogitator.submit(WorkItem(kline, candidate, level))
+
         # All candidates routed as S2/S3
         return False
+
+    # ── Graph Expansion Resolution ───────────────────────────────────
+
+    def _resolve_unknown_via_graph(
+        self, signature: int, unknown_node: int
+    ) -> bool:
+        """Try to ground an unknown node through graph expansion.
+
+        Given a single-node entry {sig: [unknown]} where unknown is not in
+        the model, attempts to ground the unknown node by verifying that the
+        signature participates in a known structure (canonization or mapping).
+
+        Strategy:
+        1. Find klines whose nodes contain the signature — i.e., structures
+           the signature participates in.
+        2. Verify at least one such structure is grounded (S1).
+        3. If confirmed, create a frame for the unknown node, making it
+           a grounded identity in the model.
+
+        Returns True if the unknown node was grounded, False otherwise.
+        """
+        # Check if signature participates in any grounded structure
+        for containing_kline in self._model.klines():
+            if signature not in containing_kline.nodes:
+                continue
+            if is_s1(self._model, containing_kline):
+                # Signature participates in a grounded structure.
+                # Create a frame for the unknown node.
+                unknown_frame = KLine(unknown_node, [])
+                self._model.add_ltm(unknown_frame)
+                self._publish("frame", unknown_frame, unknown_frame, 0)
+                return True
+
+        return None
 
     # ── CogitationHandler protocol ────────────────────────────────────
 

@@ -150,10 +150,11 @@ See `plans/impl/structural-grounding.md` for full expansion algorithm.
 | Spec ID | Test                       | Description                                          |
 | ------- | -------------------------- | ---------------------------------------------------- |
 | AGT-18  | First candidate S1         | Returns True, promotes, no further candidates tested |
-| AGT-19  | Second candidate S1        | First routes S2, second S1, returns True             |
-| AGT-20  | All S2                     | Returns False, all submitted as WorkItems            |
-| AGT-21  | All S3                     | Returns False, all submitted as WorkItems            |
+| AGT-19  | Second candidate S1        | First routes S2, second S1; S2 deferred and discarded, zero cogitator submissions |
+| AGT-20  | All S2                     | Returns False, deferred items submitted as WorkItems  |
+| AGT-21  | All S3                     | Returns False, deferred items submitted as WorkItems  |
 | AGT-22  | S1 short-circuits expansion | model.expand never called when S1 found            |
+| AGT-38  | S2 before S1: no cogitator submit | ✅ test_s2_before_s1_no_cogitator_submit         |
 
 ### Routing (`_route`)
 
@@ -190,6 +191,7 @@ See `plans/impl/structural-grounding.md` for full expansion algorithm.
 | AGT-35  | Proposals at any significance | S2 and S3 proposals emitted as frame events |
 | AGT-36  | Boundary S1 + structural check | Promotion only on structural S1            |
 | AGT-37  | Boundary S1 + structural S1 | Promotion occurs                              |
+| AGT-39  | Cogitator break-on-S1       | ✅ test_cogitator_stops_on_s1 — on_s1 exactly once, no expansions after |
 
 ### Serialization
 
