@@ -1,10 +1,10 @@
-2026-06-06 17:12:02,005 [harness.server] INFO: Embedded participant 'KAgent' (4448484128) subscribed to 'trainee'
-2026-06-06 17:12:02,270 [__main__] INFO: LLM client configured (model=glm-5.1, base_url=https://api.z.ai/api/coding/paas/v4)
-2026-06-06 17:12:02,270 [harness.server] INFO: Embedded participant 'Trainer' (4472646256) subscribed to 'trainer'
-2026-06-06 17:12:02,272 [websockets.server] INFO: server listening on 127.0.0.1:8765
-2026-06-06 17:12:02,272 [websockets.server] INFO: server listening on [::1]:8765
-2026-06-06 17:12:02,272 [harness.server] INFO: WebSocket server listening on localhost:8765
-2026-06-06 17:12:02,459 [websockets.server] ERROR: opening handshake failed
+2026-06-06 17:13:04,893 [harness.server] INFO: Embedded participant 'KAgent' (4386143008) subscribed to 'trainee'
+2026-06-06 17:13:05,160 [__main__] INFO: LLM client configured (model=glm-5.1, base_url=https://api.z.ai/api/coding/paas/v4)
+2026-06-06 17:13:05,161 [harness.server] INFO: Embedded participant 'Trainer' (4493978176) subscribed to 'trainer'
+2026-06-06 17:13:05,162 [websockets.server] INFO: server listening on 127.0.0.1:8765
+2026-06-06 17:13:05,162 [websockets.server] INFO: server listening on [::1]:8765
+2026-06-06 17:13:05,162 [harness.server] INFO: WebSocket server listening on localhost:8765
+2026-06-06 17:13:05,350 [websockets.server] ERROR: opening handshake failed
 Traceback (most recent call last):
   File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/http11.py", line 138, in parse
     request_line = yield from parse_line(read_line)
@@ -31,69 +31,69 @@ Traceback (most recent call last):
   File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/asyncio/server.py", line 207, in handshake
     raise self.protocol.handshake_exc
 websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
-2026-06-06 17:12:02,589 [websockets.server] INFO: connection open
-2026-06-06 17:12:02,589 [harness.protocol] INFO: Client registered: supervisor
-2026-06-06 17:12:07,478 [trainer.trainer] INFO: Session started — 5 lessons, curriculum: curricula/mhall-svo-equivalence.md
-2026-06-06 17:12:07,478 [trainer.trainer] INFO: Submitting lesson 1 (1/5)
-2026-06-06 17:12:07,478 [trainer.trainer] INFO: Compiled 7 entries for lesson 1
-2026-06-06 17:12:07,478 [harness.adapter] INFO: Submitting 7 compiled entries to KAgent
-2026-06-06 17:12:07,479 [trainer.trainer] INFO: GROUND M → S1 (fast path)
-2026-06-06 17:12:07,479 [trainer.trainer] INFO: GROUND H → S1 (fast path)
-2026-06-06 17:12:07,479 [trainer.trainer] INFO: GROUND A → S1 (fast path)
-2026-06-06 17:12:07,479 [trainer.trainer] INFO: GROUND L → S1 (fast path)
-2026-06-06 17:12:07,479 [trainer.trainer] INFO: GROUND S → S1 (fast path)
-2026-06-06 17:12:07,479 [trainer.trainer] INFO: GROUND V → S1 (fast path)
-2026-06-06 17:12:07,479 [trainer.trainer] INFO: GROUND O → S1 (fast path)
-2026-06-06 17:12:07,479 [trainer.trainer] INFO: Lesson 1 complete — entries: 7/7 satisfied, 1/5 lessons done
-2026-06-06 17:12:07,479 [trainer.trainer] INFO: Submitting lesson 2 (2/5)
-2026-06-06 17:12:07,479 [trainer.trainer] INFO: Compiled 2 entries for lesson 2
-2026-06-06 17:12:07,480 [harness.adapter] INFO: Submitting 2 compiled entries to KAgent
-2026-06-06 17:12:07,480 [trainer.trainer] INFO: GROUND M > H → S1 (fast path) ← M > H
-2026-06-06 17:12:07,480 [trainer.trainer] INFO: GROUND H > M → S1 (fast path) ← H > M
-2026-06-06 17:12:07,480 [trainer.trainer] INFO: Lesson 2 complete — entries: 9/9 satisfied, 2/5 lessons done
-2026-06-06 17:12:07,480 [trainer.trainer] INFO: Submitting lesson 3 (3/5)
-2026-06-06 17:12:07,480 [trainer.trainer] INFO: Compiled 3 entries for lesson 3
-2026-06-06 17:12:07,480 [harness.adapter] INFO: Submitting 3 compiled entries to KAgent
-2026-06-06 17:12:07,480 [trainer.trainer] INFO: GROUND A → S1 (fast path)
-2026-06-06 17:12:07,480 [trainer.trainer] INFO: GROUND L → S1 (fast path)
-2026-06-06 17:12:07,480 [trainer.trainer] INFO: GROUND ALL => A L L → S1 (fast path) ← ALL => A L L
-2026-06-06 17:12:07,480 [trainer.trainer] INFO: Lesson 3 complete — entries: 10/10 satisfied, 3/5 lessons done
-2026-06-06 17:12:07,481 [trainer.trainer] INFO: Submitting lesson 4 (4/5)
-2026-06-06 17:12:07,481 [trainer.trainer] INFO: Compiled 6 entries for lesson 4
-2026-06-06 17:12:07,481 [harness.adapter] INFO: Submitting 6 compiled entries to KAgent
-2026-06-06 17:12:07,481 [trainer.trainer] INFO: GROUND S > M → S1 (fast path) ← S > M
-2026-06-06 17:12:07,481 [trainer.trainer] INFO: GROUND V > H → S1 (fast path) ← V > H
-2026-06-06 17:12:07,481 [trainer.trainer] INFO: GROUND A → S1 (fast path)
-2026-06-06 17:12:07,481 [trainer.trainer] INFO: GROUND L → S1 (fast path)
-2026-06-06 17:12:07,482 [trainer.trainer] INFO: GROUND ALL => A L L → S1 (fast path) ← ALL => A L L
-2026-06-06 17:12:07,482 [trainer.trainer] INFO: GROUND O > AL → S1 (fast path) ← O > AL
-2026-06-06 17:12:07,482 [trainer.trainer] INFO: Lesson 4 complete — entries: 13/13 satisfied, 4/5 lessons done
-2026-06-06 17:12:07,482 [trainer.trainer] INFO: Submitting lesson 5 (5/5)
-2026-06-06 17:12:07,482 [trainer.trainer] INFO: Compiled 18 entries for lesson 5
-2026-06-06 17:12:07,482 [harness.adapter] INFO: Submitting 18 compiled entries to KAgent
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND M → S1 (fast path)
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND H → S1 (fast path)
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND A → S1 (fast path)
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND L → S1 (fast path)
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND MHALL => M H A L L → S1 (fast path) ← MHALL => M H A L L
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND S → S1 (fast path)
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND V → S1 (fast path)
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND O → S1 (fast path)
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND SVO => S V O → S1 (fast path) ← SVO => S V O
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND AHLM > OSV → S1 (fast path) ← AHLM > OSV
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND OSV > AHLM → S1 (fast path) ← OSV > AHLM
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND M > S → S1 (fast path) ← M > S
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND H > V → S1 (fast path) ← H > V
-2026-06-06 17:12:07,483 [trainer.trainer] INFO: GROUND ALL => A L L → S1 (fast path) ← ALL => A L L
-2026-06-06 17:12:07,484 [trainer.trainer] INFO: GROUND AL > O → S1 (fast path) ← AL > O
-2026-06-06 17:12:07,484 [trainer.trainer] INFO: GROUND A > D → S1 (fast path) ← A > D
-2026-06-06 17:12:07,484 [trainer.trainer] INFO: GROUND L > M → S1 (fast path) ← L > M
-2026-06-06 17:12:07,484 [trainer.trainer] INFO: GROUND L > O → S1 (fast path) ← L > O
-2026-06-06 17:12:07,484 [trainer.trainer] INFO: Lesson 5 complete — entries: 23/23 satisfied, 5/5 lessons done
-2026-06-06 17:12:07,484 [trainer.trainer] INFO: Curriculum complete — all lessons submitted
-2026-06-06 17:12:49,898 [harness.protocol] INFO: Client disconnected: supervisor
-2026-06-06 17:12:50,026 [websockets.server] INFO: server closing
-2026-06-06 17:12:50,027 [websockets.server] INFO: server closed
-2026-06-06 17:12:50,027 [harness.server] INFO: WebSocket server stopped
-2026-06-06 17:12:50,027 [harness.server] INFO: Harness server stop requested
-2026-06-06 17:12:50,028 [__main__] INFO: Trainer state persisted
+2026-06-06 17:13:05,494 [websockets.server] INFO: connection open
+2026-06-06 17:13:05,495 [harness.protocol] INFO: Client registered: supervisor
+2026-06-06 17:13:10,088 [trainer.trainer] INFO: Session started — 5 lessons, curriculum: curricula/mhall-svo-equivalence.md
+2026-06-06 17:13:10,088 [trainer.trainer] INFO: Submitting lesson 1 (1/5)
+2026-06-06 17:13:10,088 [trainer.trainer] INFO: Compiled 7 entries for lesson 1
+2026-06-06 17:13:10,089 [harness.adapter] INFO: Submitting 7 compiled entries to KAgent
+2026-06-06 17:13:10,089 [trainer.trainer] INFO: GROUND M → S1 (fast path)
+2026-06-06 17:13:10,089 [trainer.trainer] INFO: GROUND H → S1 (fast path)
+2026-06-06 17:13:10,089 [trainer.trainer] INFO: GROUND A → S1 (fast path)
+2026-06-06 17:13:10,089 [trainer.trainer] INFO: GROUND L → S1 (fast path)
+2026-06-06 17:13:10,089 [trainer.trainer] INFO: GROUND S → S1 (fast path)
+2026-06-06 17:13:10,089 [trainer.trainer] INFO: GROUND V → S1 (fast path)
+2026-06-06 17:13:10,089 [trainer.trainer] INFO: GROUND O → S1 (fast path)
+2026-06-06 17:13:10,089 [trainer.trainer] INFO: Lesson 1 complete — entries: 7/7 satisfied, 1/5 lessons done
+2026-06-06 17:13:10,089 [trainer.trainer] INFO: Submitting lesson 2 (2/5)
+2026-06-06 17:13:10,090 [trainer.trainer] INFO: Compiled 2 entries for lesson 2
+2026-06-06 17:13:10,090 [harness.adapter] INFO: Submitting 2 compiled entries to KAgent
+2026-06-06 17:13:10,090 [trainer.trainer] INFO: GROUND M > H → S1 (fast path) ← M > H
+2026-06-06 17:13:10,090 [trainer.trainer] INFO: GROUND H > M → S1 (fast path) ← H > M
+2026-06-06 17:13:10,090 [trainer.trainer] INFO: Lesson 2 complete — entries: 9/9 satisfied, 2/5 lessons done
+2026-06-06 17:13:10,090 [trainer.trainer] INFO: Submitting lesson 3 (3/5)
+2026-06-06 17:13:10,090 [trainer.trainer] INFO: Compiled 3 entries for lesson 3
+2026-06-06 17:13:10,091 [harness.adapter] INFO: Submitting 3 compiled entries to KAgent
+2026-06-06 17:13:10,091 [trainer.trainer] INFO: GROUND A → S1 (fast path)
+2026-06-06 17:13:10,091 [trainer.trainer] INFO: GROUND L → S1 (fast path)
+2026-06-06 17:13:10,091 [trainer.trainer] INFO: GROUND ALL => A L L → S1 (fast path) ← ALL => A L L
+2026-06-06 17:13:10,091 [trainer.trainer] INFO: Lesson 3 complete — entries: 10/10 satisfied, 3/5 lessons done
+2026-06-06 17:13:10,091 [trainer.trainer] INFO: Submitting lesson 4 (4/5)
+2026-06-06 17:13:10,091 [trainer.trainer] INFO: Compiled 6 entries for lesson 4
+2026-06-06 17:13:10,091 [harness.adapter] INFO: Submitting 6 compiled entries to KAgent
+2026-06-06 17:13:10,092 [trainer.trainer] INFO: GROUND S > M → S1 (fast path) ← S > M
+2026-06-06 17:13:10,092 [trainer.trainer] INFO: GROUND V > H → S1 (fast path) ← V > H
+2026-06-06 17:13:10,092 [trainer.trainer] INFO: GROUND A → S1 (fast path)
+2026-06-06 17:13:10,092 [trainer.trainer] INFO: GROUND L → S1 (fast path)
+2026-06-06 17:13:10,092 [trainer.trainer] INFO: GROUND ALL => A L L → S1 (fast path) ← ALL => A L L
+2026-06-06 17:13:10,092 [trainer.trainer] INFO: GROUND O > AL → S1 (fast path) ← O > AL
+2026-06-06 17:13:10,092 [trainer.trainer] INFO: Lesson 4 complete — entries: 13/13 satisfied, 4/5 lessons done
+2026-06-06 17:13:10,092 [trainer.trainer] INFO: Submitting lesson 5 (5/5)
+2026-06-06 17:13:10,093 [trainer.trainer] INFO: Compiled 18 entries for lesson 5
+2026-06-06 17:13:10,093 [harness.adapter] INFO: Submitting 18 compiled entries to KAgent
+2026-06-06 17:13:10,093 [trainer.trainer] INFO: GROUND M → S1 (fast path)
+2026-06-06 17:13:10,093 [trainer.trainer] INFO: GROUND H → S1 (fast path)
+2026-06-06 17:13:10,093 [trainer.trainer] INFO: GROUND A → S1 (fast path)
+2026-06-06 17:13:10,093 [trainer.trainer] INFO: GROUND L → S1 (fast path)
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND MHALL => M H A L L → S1 (fast path) ← MHALL => M H A L L
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND S → S1 (fast path)
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND V → S1 (fast path)
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND O → S1 (fast path)
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND SVO => S V O → S1 (fast path) ← SVO => S V O
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND AHLM > OSV → S1 (fast path) ← AHLM > OSV
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND OSV > AHLM → S1 (fast path) ← OSV > AHLM
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND M > S → S1 (fast path) ← M > S
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND H > V → S1 (fast path) ← H > V
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND ALL => A L L → S1 (fast path) ← ALL => A L L
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND AL > O → S1 (fast path) ← AL > O
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND A > D → S1 (fast path) ← A > D
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND L > M → S1 (fast path) ← L > M
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: GROUND L > O → S1 (fast path) ← L > O
+2026-06-06 17:13:10,094 [trainer.trainer] INFO: Lesson 5 complete — entries: 23/23 satisfied, 5/5 lessons done
+2026-06-06 17:13:10,095 [trainer.trainer] INFO: Curriculum complete — all lessons submitted
+2026-06-06 17:14:23,991 [harness.protocol] INFO: Client disconnected: supervisor
+2026-06-06 17:14:24,055 [websockets.server] INFO: server closing
+2026-06-06 17:14:24,055 [websockets.server] INFO: server closed
+2026-06-06 17:14:24,055 [harness.server] INFO: WebSocket server stopped
+2026-06-06 17:14:24,056 [harness.server] INFO: Harness server stop requested
+2026-06-06 17:14:24,056 [__main__] INFO: Trainer state persisted
