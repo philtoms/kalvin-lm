@@ -6,20 +6,29 @@ description: Drives an auto-tune session to improve the codebase using repeated 
 # Auto-Tune
 
 > **STOP. Do not read files, do not write code, do not address the user's request.
-> Your first and only action is to complete step 1 (Establish Goal) below.
-> State the goal back to the user before doing anything else.**
+> Your first and only action is to determine which entry point applies (New Session or Resume Session) and complete step 1.**
 
-## 1. Establish Goal (once) — DO THIS FIRST
+## Entry Points
+
+### New Session
+The user wants to start a fresh auto-tune session. No `auto-tune/<name>/session-state.md` exists yet. → Complete step 1, then step 2.
+
+### Resume Session
+The user says "resume", "continue", or points at an existing session. A `session-state.md` file exists in the session directory. → Read `auto-tune/<name>/session-state.md`, confirm the goal and next action with the user, then jump directly to the phase indicated by **Current Phase** in the state file.
+
+**If context is getting large** (you notice you're struggling to hold the full conversation), tell the user: "Context is getting large. I've updated the session state. Please start a fresh conversation and say 'resume auto-tune <name>' — I'll pick up from the state file."
+
+## 1. Establish Goal (once, new sessions only) — DO THIS FIRST
 
 You need all three elements before doing anything else:
 
 - **What** specific improvement you're targeting (e.g., "better server-side logging for training operations")
 - **Which curriculum** drives the runs (default: `curricula/first-steps.md`)
-- **How you'll know** the goal is met (observable outcome — e.g., "a developer can trace the full training pipeline from harness.log"), or the user specifies this is an "open" session - a session where you continue to tune the codebase until the user intervenes with a "stop" command
+- **How you'll know** the goal is met (observable outcome — e.g., "a developer can trace the full training pipeline from harness.log"), or the user specifies this is an "open" session
 
-**Fast path:** If the user's prompt already contains all three elements, state them back in one sentence and proceed directly to step 2. Do not ask clarifying questions you don't need.
+**Fast path:** If the user's prompt already contains all three elements, state them back in one sentence and proceed directly to step 2.
 
-**Slow path:** If elements are missing or vague, discuss with the user until the goal is clear and specific. Vague goals like "make it better" need sharpening first.
+**Slow path:** If elements are missing or vague, discuss with the user until the goal is clear and specific.
 
 ## Rules
 
@@ -29,11 +38,12 @@ These rules apply throughout the session:
 2. **Snapshot before every code change.** You need before/after comparisons.
 3. **Commit after each meaningful change.** Don't accumulate a large diff. Reference the session name in commit messages.
 4. **Never merge into main.** All work stays on the `auto-tune/<name>` branch.
-5. **Session directory is evidence.** Don't clean it up.
+5. **Session state is sacred.** Update `session-state.md` after every observation (step 3d). This file is your lifeline for resuming after context resets.
+6. **Keep context lean.** Don't re-read old harness logs or events from previous runs. The state file has the summary. Only read the current run's artifacts.
 
 Auto-tune tunes the **codebase**, not Kalvin's model.
 
-## 2. Init Session (once)
+## 2. Init Session (once, new sessions only)
 
 Initialise the session:
 
@@ -44,12 +54,18 @@ PYTHONPATH=src .venv/bin/python -m participants.auto_tune init \
 
 This creates the session directory, config, and git branch `auto-tune/<name>`.
 
+Then create the initial `auto-tune/<name>/session-state.md` using the template from `references/session-state-format.md`. Fill in the goal, done criteria, session details. Set **Current Phase** to `running`, **Next Action** to `start run 1`.
+
 ## 3. Run Loop (repeat until goal met or stalled)
 
-Read reference files **on demand** during the loop — not upfront:
+**At the top of every loop iteration, read `auto-tune/<name>/session-state.md` to re-anchor.** This takes ~50 lines instead of the full chat history.
+
+Read reference files **on demand** — not upfront:
 
 - `references/commands.md` — command syntax when you need it
 - `references/lifecycle.md` — copy-paste lifecycle script
+- `references/session-state-format.md` — state file template (only when creating or restructuring)
+- `references/troubleshooting.md` — when something goes wrong
 - `../../specs/auto-tune.md` — full auto-tune specification
 - `../../CONTEXT.md` — domain glossary
 
@@ -64,6 +80,8 @@ PYTHONPATH=src .venv/bin/python -m participants.auto_tune start-harness --sessio
 PYTHONPATH=src .venv/bin/python -m participants.auto_tune start-supervisor --session <name>
 ```
 
+Update state: **Current Phase** → `running`.
+
 ### b. Step through events
 
 ```bash
@@ -75,26 +93,41 @@ PYTHONPATH=src .venv/bin/python -m participants.auto_tune step \
 # ... repeat until disconnected event ...
 ```
 
+**Do not hold all events in context.** As you step through events, note the key observations mentally for the next step. You do not need to remember every event — only the highlights that inform your next edit.
+
 ### c. Snapshot
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m participants.auto_tune snapshot --session <name>
 ```
 
-### d. Observe
+### d. Observe → Update State
 
-1. Read `auto-tune/<name>/harness.log` — the server-side training trace
-2. Read `auto-tune/<name>/events.jsonl` — the full event stream
-3. Compare snapshots — diff harness.log between runs to see impact of changes
+Update state: **Current Phase** → `observing`.
 
-### e. Edit or loop
+1. Read `auto-tune/<name>/harness.log` — focus on errors, warnings, and the final outcome
+2. Read `auto-tune/<name>/events.jsonl` — scan for key event types (escalation, rationalise, ratify_request)
+3. Compare snapshots if a previous run exists — diff the harness.log
+
+**Then immediately write your observations to `session-state.md`:**
+- Add a new run entry (latest run at top, full template)
+- Collapse the previous latest run to a one-liner
+- Update **Next Action**, **Current Phase**, and **Patterns & Notes**
+
+**Do this update before deciding what to do next.** The state file must always reflect reality.
+
+### e. Decide
+
+Read `session-state.md` (your fresh update) and decide:
 
 - If the goal is met → go to step 4 (Document)
-- If there are crashes → fix (see Rule 1), then go to f
-- If there's an improvement to try → snapshot, edit code, commit, then go to f
+- If there are crashes → fix (see Rule 1), update state, then go to f
+- If there's an improvement to try → snapshot, edit code, commit, update state (**Files Modified**), then go to f
 - If 3 runs pass with no meaningful improvement → surface this to the user and ask whether to continue
 
 ### f. Reset for next run
+
+Update state: **Current Phase** → `resetting`.
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m participants.auto_tune stop-supervisor --session <name>
@@ -103,8 +136,6 @@ PYTHONPATH=src .venv/bin/python -m participants.auto_tune reset --session <name>
 ```
 
 Then return to step a.
-
-For common problems, read `references/troubleshooting.md`.
 
 ## 4. Document (once, at end)
 
@@ -119,6 +150,8 @@ Every auto-tune session must produce cascade documentation:
 3. **Tests** (`tests/test_<feature>.py`) — tests covering every spec criterion. Use `caplog` for log assertions, `BusCapture` for bus message capture. Follow patterns from existing test files.
 
 4. **Commit** — commit everything on the auto-tune branch with a descriptive message. DO NOT MERGE INTO MAIN.
+
+Update state: **Current Phase** → `complete`.
 
 ### Documentation Rules
 
