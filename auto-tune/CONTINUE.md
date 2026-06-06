@@ -25,6 +25,8 @@ promoted to LTM.
 **How to invoke:**
 > /auto-tune — goal: stop the cogitator from processing entries that already resolved as S1 during the same rationalise batch. Use curricula/mhall-svo-single.md. Open session.
 
+### ✅ Resolved — merged to main
+
 ---
 
 ## CI-2: Undersign entries without prior scaffolding go through slow path unreliably
@@ -42,6 +44,16 @@ in single-lesson curriculum. The 3 unsatisfied are undersign/connotate entries.
 **Curriculum:** `curricula/mhall-svo-single.md`
 **How to invoke:**
 > /auto-tune — goal: make the rationaliser resolve undersign entries like {M: S} through graph expansion without relying on the LLM cogitator. Use curricula/mhall-svo-single.md. Open session.
+
+### ✅ Resolved — `auto-tune/rationaliser-graph-expansion` (2026-06-06)
+
+Added Phase 3b to `KAgent.rationalise()` (`src/kalvin/agent.py`): when a
+single-node entry references an unknown node, the rationaliser checks if the
+signature participates in a grounded structure (via `is_s1`). If so, the
+unknown node is grounded as a frame and the entry is accepted as S1.
+
+Result: 18/18 entries resolved via fast path with zero LLM calls.
+Branch: `auto-tune/rationaliser-graph-expansion`
 
 ---
 
@@ -62,3 +74,14 @@ because it was promoted to LTM as a side effect.
 **Curriculum:** `curricula/mhall-svo-single.md`
 **How to invoke:**
 > /auto-tune — goal: scope promote_participating to only promote klines that structurally participated in the ratification event, not all STM entries sharing a signature. Use curricula/mhall-svo-single.md. Open session.
+
+### ✅ Resolved — `auto-tune/promote-scope` (2026-06-06)
+
+Scoped `promote_participating` (`src/kalvin/expand.py`) to only promote:
+identity frames (`nodes=[]`), single-node entries (countersign/undersign),
+and canonical compositions (canonization). Cogitator expansion proposals
+(multi-node non-canonical klines) are excluded.
+
+Result: 87% reduction in promotions (13 vs baseline's 101) while maintaining
+the same 17/18 entry satisfaction rate.
+Branch: `auto-tune/promote-scope`
