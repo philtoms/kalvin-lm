@@ -1,7 +1,7 @@
 # Auto-Tune Session State
 
 ## Goal
-Investigate LLM-agent capability using the default curriculum as a basis for exploratory lessons. Understand what triggers rationalisation, escalation, and reactive scaffolding, then exercise those paths.
+Investigate LLM-agent capability using curricula as a basis for exploratory lessons. Understand what triggers rationalisation, escalation, and reactive scaffolding, then exercise those paths.
 
 ## Done Criteria
 Open session — learn and decide as we go.
@@ -16,76 +16,61 @@ Open session — learn and decide as we go.
 observing
 
 ## Next Action
-Analyze run 4 findings. The conflict-drill triggered budget exhaustion — the first escalation seen. Decide: (a) increase max_reactive_rounds and retry, (b) design curriculum to test escalation recovery, or (c) document findings and close session
+Document findings and close session. The drain fix resolved cross-lesson spillover. Remaining issue (intra-lesson reactive cascade) is a separate, deeper problem requiring model-level changes to candidate filtering.
 
 ## Run Log
 
-### Run 4 (latest) — conflict-drill
-- **Code changes:** wrote custom curriculum `curricula/conflict-drill.md`; switched config to use it
-- **Curriculum:** 4 lessons — identities A,B,C,D → A==B countersign → AB=>D C canonize → E + ACE=>B D
+### Run 5 (latest) — conflict-drill with drain fix
+- **Code changes:** implemented Cogitator.drain(), KAgent.cogitate_drain(), adapter drain handler, Trainer inter-lesson drain
 - **Observation:**
-  - **Lesson 1:** 4/4 auto-countersigned (identities)
-  - **Lesson 2:** A==B countersign → S1 fast path, 6/6 satisfied
-  - **Lesson 3:** AB=>D C compiled to 6 entries. AB=>A B canonize S1. D,C grounded S1. **AB>D C hit S3 misfit** (query sig=0x6, nodes=[D,C] vs candidate B identity sig=0x4). LLM round 1: confidence **0.65** (lowest seen!), scaffolding "(address underfitting: proposal B => A B does not cover expected relationship AB > D C)\nAB > D C\nAB". Lesson 3 complete: 7/8 satisfied.
-  - **Lesson 4:** Compiled 7 entries (E, ACE=>A C E, ACE=>B D, + identities). **Cogitator still processing lesson 3's leftover work items → AB>D C events arrive during lesson 4.** Reactive rounds escalate:
-    - Round 1 (0.75): "Scaffold missing identities... Composite identity AB"
-    - Round 2 (0.75): "bridge underfit gap... AB == A B"
-    - Round 3 (0.85): "AB == A B\nAB > D C" — best scaffolding so far
-    - Round 4 (0.75): **DUAL misfit** (underfit=True, overfit=True, gap=0x4, mask=0x2) → "AB = B A\nAB > D C"
-    - Round 5: **budget_exhaustion** → escalated. Round 6 also escalated.
-  - **Total LLM calls:** 5 (1 lesson 3 + 4 lesson 4). Total LLM latency: ~122s across 5 calls.
-  - Lesson 4 complete: 7/11 satisfied. Curriculum complete.
-  - Post-completion: multiple promote_participating calls (AB sig=0x6, ACE sig=0x2a).
-- **Verdict:** success — exercised S3, reactive scaffolding, dual misfit, budget exhaustion escalation, cross-lesson cogitation spillover. First escalation seen.
+  - **Drain working correctly:** drain called before each lesson, blocks until cogitator empty
+  - **Lesson 1:** 4/4 auto-countersigned → drain → instant
+  - **Lesson 2:** A==B S1 fast path, 6/6 → drain → instant
+  - **Lesson 3:** AB=>D C, S3 misfit → 4 reactive scaffolding rounds (LLM calls at 0.70, 0.78, 0.75, 0.82 confidence) → drain took ~80s to flush cascading cogitation → 7/8 satisfied
+  - **Lesson 4:** 11/11 satisfied! (vs 7/11 in run 4 without drain). ACE=>B D properly tested independently. 4 reactive scaffolding rounds (0.72, 0.88, 0.70, 0.75 confidence). 809 reactive rounds total (budget exhaustion after round 5, remaining 804 just escalate).
+  - Total LLM calls: 8 (4 lesson 3 + 4 lesson 4)
+- **Verdict:** drain fix successful — cross-lesson spillover eliminated, lesson 4 now properly tested
+
+### Run 4 — conflict-drill (no drain)
+- Cross-lesson spillover: lesson 3 cogitation consumed lesson 4's budget
+- Lesson 4: 7/11 (63.6%) — entries lost to spillover
+- Budget exhaustion, 5 LLM calls, ~122s total latency
 
 ### Run 3 — mhall-svo-equivalence
-- 5 lessons, all S1 fast path, 23/23 satisfied, zero S2/S3, LLM never invoked.
-- **Verdict:** graduated curriculum eliminates reactive scaffolding entirely
+- 5 lessons, all S1, 23/23, zero LLM
 
 ### Run 2 — first-steps-s2
-- 1 S3 event in lesson 5, LLM confidence 0.95, 6/7 satisfied.
-- **Verdict:** LLM exercised, valid scaffolding
+- 1 S3 event, LLM 0.95, 6/7
 
 ### Run 1 — first-steps baseline
-- Clean pass, 3 lessons, all auto-countersigned.
-- **Verdict:** baseline — too simple
+- Clean pass, all auto-countersigned
 
 ## Patterns & Notes
 
-### Key Finding: Conflict-Driven Reactive Cascade
-- **Prior countersigns create populated klines** that conflict with later canonize entries
-- Single conflict (AB=>D C with existing {A:[B]}) generated **6+ S3 candidates** in the cogitator
-- The cogitator processes candidates sequentially — each S3 expansion triggers its own reactive round
-- Result: cascading reactive rounds that exhaust the budget
+### Key Finding: Drain Fix Verified (Run 4 vs Run 5)
+- **Run 4 (no drain):** Lesson 4 = 7/11 (63.6%) — spillover from lesson 3
+- **Run 5 (with drain):** Lesson 4 = 11/11 (100%) — clean isolation
+- The drain adds negligible overhead when the cogitator is empty (<1ms)
+- When cogitator has pending work, drain blocks until complete (~80s for complex cascading)
 
-### Key Finding: Cross-Lesson Cogitation Spillover
-- The cogitator is a background thread — work items from lesson 3 arrived during lesson 4
-- The reactor processes these with lesson 4's state (entries, round counter)
-- This means lesson 4's reactive budget was consumed by lesson 3's leftover work items
-- **Lesson 4's own entries (ACE=>B D) were never independently processed** — they got lost in the spillover
+### Key Finding: Intra-Lesson Reactive Cascade
+- Even with inter-lesson drain, within a single lesson the reactive scaffolding creates cascading events
+- Each scaffolding submission adds entries to the model → more candidates → more cogitation work items → more events
+- The reactor counts every S2/S3 event as a reactive round, so the counter explodes (809 rounds)
+- Budget exhaustion fires at round 5, but events keep arriving (they're just escalated instead of scaffolded)
+- **Root cause:** the cogitator generates expansion proposals for EVERY candidate that overlaps the query signature. In a populated model, a single query can match dozens of candidates.
 
-### Key Finding: Dual Misfit (Run 4, Round 4)
-- First observed dual misfit: underfit=True AND overfit=True
-- gap=0x4 (missing bits from B's sig), mask=0x2 (excess bits from A's presence)
-- The dual misfit triggers all three expansion generators: underfit, overfit, and dual
-- LLM diagnosed it correctly: "both underfitting and overfitting"
+### Key Finding: LLM Confidence Stable
+- Run 5 LLM confidence range: 0.70–0.88 (narrower than run 4's 0.65–0.85)
+- The drain may have helped by giving a cleaner model state to the LLM
 
-### Key Finding: LLM Confidence Range
-- Run 2: 0.95 (single misfit, clean context)
-- Run 4: 0.65–0.85 (degraded by accumulated model state, repeated AB>D C failures)
-- Lower confidence correlates with accumulated failed scaffolding rounds
-
-### Key Finding: Entry Satisfaction Degrades Across Runs
-- Run 2: 6/7 (85%) — 1 entry unsatisfied
-- Run 4 lesson 3: 7/8 (87.5%) — 1 entry unsatisfied
-- Run 4 lesson 4: 7/11 (63.6%) — 4 entries unsatisfied
-- Budget exhaustion leaves entries permanently unsatisfied
-
-### Curriculum Design Spectrum
-- **S1-only:** graduated curricula (mhall-svo-equivalence) — safe, no LLM needed
-- **Mild S3:** first-steps-s2 — one conflict, one LLM call, high confidence
-- **Cascade:** conflict-drill — multiple conflicts, cascading S3, budget exhaustion
+### Curriculum Design Spectrum (Updated)
+- **S1-only:** graduated curricula — safe, no LLM
+- **Mild S3:** first-steps-s2 — one conflict, one LLM call
+- **Cascade (isolated):** conflict-drill + drain — multiple conflicts per lesson, clean inter-lesson isolation, but intra-lesson cascading remains
 
 ## Files Modified
-- `curricula/conflict-drill.md` (new)
-- `auto-tune/explore-agent-capability/config.json` (curriculum path updates)
+- `curricula/conflict-drill.md` (new, run 4)
+- `src/kalvin/agent.py` (Cogitator.drain, KAgent.cogitate_drain)
+- `src/harness/adapter.py` (drain handler)
+- `src/trainer/trainer.py` (inter-lesson drain)
