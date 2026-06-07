@@ -13,7 +13,7 @@ Open session — learn and decide as we go.
 - **Started:** 2026-06-07
 
 ## Current Phase
-observing
+complete
 
 ## Next Action
 Document findings and close session. The drain fix resolved cross-lesson spillover. Remaining issue (intra-lesson reactive cascade) is a separate, deeper problem requiring model-level changes to candidate filtering.
