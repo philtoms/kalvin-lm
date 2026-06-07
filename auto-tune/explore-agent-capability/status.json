@@ -1,0 +1,10 @@
+{
+  "pid": 82977,
+  "connected": true,
+  "last_event_seq": 6,
+  "last_command": {
+    "action": "shutdown"
+  },
+  "state": "shutting_down",
+  "started_at": "2026-06-07T07:34:51.622359"
+}
