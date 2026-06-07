@@ -1,6 +1,6 @@
 {
   "session": "explore-agent-capability",
-  "curriculum": "curricula/conflict-drill.md",
+  "curriculum": "curricula/cascade-pressure.md",
   "harness_url": "ws://localhost:8765",
   "model_path": "data/agent.bin",
   "run_counter": 6,
