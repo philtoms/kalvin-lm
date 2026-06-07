@@ -180,8 +180,14 @@ class Reactor:
 
         Increments reactive round counter. Escalates on budget exhaustion.
         Otherwise attempts cogitation for reactive scaffolding.
+        Silently drops events after budget exhaustion to prevent spinning.
         """
         self._reactive_rounds += 1
+
+        if self._reactive_rounds > self._max_reactive_rounds:
+            # Already past budget — drop silently (first over-budget event
+            # escalated; no need to re-escalate on every subsequent event).
+            return
 
         if self._reactive_rounds >= self._max_reactive_rounds:
             logger.warning(

@@ -249,6 +249,7 @@ class KAgent:
         self._tokenizer = tokenizer if tokenizer else Mod32Tokenizer()
         self._model = model if model is not None else Model()
         self._activity: Counter = Counter()
+        self._max_candidates: int = 8  # cap on slow-path candidates per entry
 
         # Adapter — receives events via on_event()
         self._adapter: KAgentAdapter = adapter
@@ -430,6 +431,17 @@ class KAgent:
             return True
 
         # No S1 found — submit deferred slow candidates to cogitator
+        # Cap candidates to prevent cascade explosion in dense models.
+        # Prioritise S2 over S3, then by node overlap count (descending).
+        if len(slow_candidates) > self._max_candidates:
+            def _candidate_priority(item: tuple[KLine, str]) -> tuple[int, int]:
+                candidate, level = item
+                level_rank = 0 if level == "S2" else 1
+                overlap = sum(1 for n in kline.nodes if n in set(candidate.nodes))
+                return (level_rank, -overlap)
+            slow_candidates.sort(key=_candidate_priority)
+            slow_candidates = slow_candidates[:self._max_candidates]
+
         for candidate, level in slow_candidates:
             self._cogitator.submit(WorkItem(kline, candidate, level))
 
