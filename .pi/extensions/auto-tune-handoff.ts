@@ -2,8 +2,13 @@
  * Auto-tune context guard
  *
  * Monitors context usage during auto-tune sessions. When context exceeds a
- * configurable ceiling, automatically spawns a fresh session with a resume
- * prompt that points the agent at session-state.md for re-anchoring.
+ * configurable ceiling, injects a steering message telling the LLM to wrap up,
+ * and shows a notification prompting the user to run /auto-tune-handoff for a
+ * fresh session.
+ *
+ * The handoff itself cannot be triggered automatically from an event handler
+ * (pi's sendUserMessage skips extension command handling), so the extension
+ * detects the condition and guides both the LLM and user to act.
  *
  * Config (in .pi/settings.json or ~/.pi/agent/settings.json):
  *   {
@@ -47,20 +52,38 @@ function loadSettings(cwd: string): AutoTuneSettings {
 }
 
 function findActiveAutoTuneSession(cwd: string): string | null {
+	// 1. Check auto-tune/ directly (main repo or inside a worktree)
 	const autoTuneDir = join(cwd, "auto-tune");
-	if (!existsSync(autoTuneDir)) return null;
-
-	try {
-		for (const entry of readdirSync(autoTuneDir, { withFileTypes: true })) {
-			if (!entry.isDirectory()) continue;
-			const stateFile = join(autoTuneDir, entry.name, "session-state.md");
-			if (existsSync(stateFile)) {
-				return entry.name;
+	if (existsSync(autoTuneDir)) {
+		try {
+			for (const entry of readdirSync(autoTuneDir, { withFileTypes: true })) {
+				if (!entry.isDirectory()) continue;
+				const stateFile = join(autoTuneDir, entry.name, "session-state.md");
+				if (existsSync(stateFile)) {
+					return entry.name;
+				}
 			}
+		} catch {
+			// permission or other fs error
 		}
-	} catch {
-		// permission or other fs error
 	}
+
+	// 2. Check worktrees: .worktrees/auto-tune/<name>/auto-tune/<name>/session-state.md
+	const worktreesDir = join(cwd, ".worktrees", "auto-tune");
+	if (existsSync(worktreesDir)) {
+		try {
+			for (const entry of readdirSync(worktreesDir, { withFileTypes: true })) {
+				if (!entry.isDirectory()) continue;
+				const stateFile = join(worktreesDir, entry.name, "auto-tune", entry.name, "session-state.md");
+				if (existsSync(stateFile)) {
+					return entry.name;
+				}
+			}
+		} catch {
+			// permission or other fs error
+		}
+	}
+
 	return null;
 }
 
@@ -92,18 +115,33 @@ export default function (pi: ExtensionAPI) {
 		triggered = false;
 	});
 
-	// Auto-detect: when context crosses the ceiling, queue the handoff command
+	// Auto-detect: when context crosses the ceiling, steer the LLM to wrap up and prompt the user
 	pi.on("turn_end", (_event, ctx) => {
-		if (triggered) return;
+		if (triggered) {
+			console.error("[auto-tune-handoff] Already triggered, skipping");
+			return;
+		}
 
 		const usage = ctx.getContextUsage();
-		if (!usage || usage.tokens === null || !usage.contextWindow) return;
+		if (!usage || usage.tokens === null || !usage.contextWindow) {
+			console.error("[auto-tune-handoff] No usage data:", JSON.stringify(usage));
+			return;
+		}
 
 		const sessionName = findActiveAutoTuneSession(ctx.cwd);
-		if (!sessionName) return;
+		if (!sessionName) {
+			console.error("[auto-tune-handoff] No active auto-tune session found in", ctx.cwd);
+			return;
+		}
 
-		const ceiling = resolveCeiling(ctx.cwd, pi.getFlag("auto-tune-ceiling") as number);
+		const flagVal = pi.getFlag("auto-tune-ceiling");
+		const ceiling = resolveCeiling(ctx.cwd, flagVal as number);
 		const percent = usage.percent ?? ((usage.tokens / usage.contextWindow) * 100);
+
+		console.error(
+			`[auto-tune-handoff] check: tokens=${usage.tokens} window=${usage.contextWindow} ` +
+			`percent=${percent.toFixed(1)}% ceiling=${(ceiling * 100).toFixed(0)}% flag=${flagVal} session=${sessionName}`,
+		);
 
 		if (percent < ceiling * 100) return;
 
@@ -111,12 +149,29 @@ export default function (pi: ExtensionAPI) {
 
 		ctx.ui.notify(
 			`Context at ${Math.round(percent)}% — ceiling ${Math.round(ceiling * 100)}%. ` +
-				`Auto-spawning fresh session for auto-tune/${sessionName}...`,
+				`Run /auto-tune-handoff to continue in a fresh session.`,
 			"warning",
 		);
 
-		// Queue the command as a follow-up so it runs after the current turn completes
-		pi.sendUserMessage("/auto-tune-handoff", { deliverAs: "followUp" });
+		// Inject a steering message so the LLM sees it before the next turn.
+		// We cannot use sendUserMessage to trigger the command — it calls prompt()
+		// with expandPromptTemplates: false which skips extension command handling.
+		// sendMessage injects a custom message that convertToLlm() converts to a
+		// user-visible message for the LLM.
+		pi.sendMessage(
+			{
+				customType: "auto-tune-handoff",
+				content:
+					`[auto-tune-handoff] Context usage has reached ${Math.round(percent)}% ` +
+					`(ceiling ${Math.round(ceiling * 100)}%). ` +
+					`You MUST stop your current work immediately. ` +
+					`Update auto-tune/${sessionName}/session-state.md with your latest observations (Current Phase, Next Action, latest run summary). ` +
+					`Then tell the user: "Context is at ${Math.round(percent)}%. Run /auto-tune-handoff to continue in a fresh session." ` +
+					`Do NOT continue the auto-tune loop.`,
+				display: true,
+			},
+			{ deliverAs: "steer" },
+		);
 	});
 
 	// The actual handoff logic — needs ExtensionCommandContext for newSession

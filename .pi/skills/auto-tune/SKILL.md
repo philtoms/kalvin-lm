@@ -16,7 +16,9 @@ The user wants to start a fresh auto-tune session. No `auto-tune/<name>/session-
 ### Resume Session
 The user says "resume", "continue", or points at an existing session. A `session-state.md` file exists in the session directory. → Read `auto-tune/<name>/session-state.md`, confirm the goal and next action with the user, then jump directly to the phase indicated by **Current Phase** in the state file.
 
-**Automatic handoff:** If the `auto-tune-handoff` extension is loaded, it monitors context usage and automatically spawns a fresh session when you cross the ceiling (default 80%). You'll see a notification and the new session will start with "Resume auto-tune <name>".
+**Resuming from the main repo:** The session lives in a git worktree at `.worktrees/auto-tune/<name>/`. You can find the session state at `.worktrees/auto-tune/<name>/auto-tune/<name>/session-state.md`. Cd into `.worktrees/auto-tune/<name>/` before continuing.
+
+**Automatic handoff:** If the `auto-tune-handoff` extension is loaded, it monitors context usage and, when you cross the ceiling (default 80%), injects a steering message telling you to stop and update session-state.md, then shows a notification prompting you to run `/auto-tune-handoff`. The command creates a fresh session that starts with "Resume auto-tune <name>".
 
 **Manual handoff:** If you notice context is getting large, update `session-state.md` and tell the user: "Context is getting large. Run `/auto-tune-handoff` or start a fresh conversation and say 'resume auto-tune <name>'."
 
@@ -39,24 +41,40 @@ These rules apply throughout the session:
 1. **Fix crashes before continuing.** If harness.log shows exceptions, tracebacks, or unexpected errors: stop, reproduce with a minimal test, fix, verify, re-run. Never work around failures.
 2. **Snapshot before every code change.** You need before/after comparisons.
 3. **Commit after each meaningful change.** Don't accumulate a large diff. Reference the session name in commit messages.
-4. **Never merge into main.** All work stays on the `auto-tune/<name>` branch.
+4. **Never merge into main.** All work stays on the `auto-tune/<name>` branch inside the worktree.
 5. **Session state is sacred.** Update `session-state.md` after every observation (step 3d). This file is your lifeline for resuming after context resets.
 6. **Keep context lean.** Don't re-read old harness logs or events from previous runs. The state file has the summary. Only read the current run's artifacts.
+7. **Work inside the worktree.** After init, all commands and file operations happen inside `.worktrees/auto-tune/<name>/`. Never modify files in the main repo.
 
 Auto-tune tunes the **codebase**, not Kalvin's model.
 
 ## 2. Init Session (once, new sessions only)
 
-Initialise the session:
+Capture the Python interpreter path from the main repo, then initialise:
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m participants.auto_tune init \
+# From the main project repo:
+AT_PYTHON="$(pwd)/.venv/bin/python"
+
+PYTHONPATH=src $AT_PYTHON -m participants.auto_tune init \
   --session <name> --curriculum <curriculum-path>
 ```
 
-This creates the session directory, config, and git branch `auto-tune/<name>`.
+This creates a git worktree at `.worktrees/auto-tune/<name>/` with branch `auto-tune/<name>`. The main repo stays on its current branch — full isolation.
 
-Then create the initial `auto-tune/<name>/session-state.md` using the template from `references/session-state-format.md`. Fill in the goal, done criteria, session details. Set **Current Phase** to `running`, **Next Action** to `start run 1`.
+After init, cd into the worktree:
+
+```bash
+cd .worktrees/auto-tune/<name>
+```
+
+All subsequent commands run from inside the worktree using `$AT_PYTHON`:
+
+```bash
+PYTHONPATH=src $AT_PYTHON -m participants.auto_tune <command> --session <name>
+```
+
+Then create the initial `auto-tune/<name>/session-state.md` using the template from `references/session-state-format.md`. Fill in the goal, done criteria, session details. Set **Current Phase** to `running`, **Next Action** to `start run 1`. Include the **Worktree** field.
 
 ## 3. Run Loop (repeat until goal met or stalled)
 
@@ -68,8 +86,8 @@ Read reference files **on demand** — not upfront:
 - `references/lifecycle.md` — copy-paste lifecycle script
 - `references/session-state-format.md` — state file template (only when creating or restructuring)
 - `references/troubleshooting.md` — when something goes wrong
-- `../../specs/auto-tune.md` — full auto-tune specification
-- `../../CONTEXT.md` — domain glossary
+- `../../specs/auto-tune.md` — full auto-tune specification (relative from worktree root)
+- `../../CONTEXT.md` — domain glossary (relative from worktree root)
 
 Do not read all reference files before starting. Read them when you need an answer.
 
@@ -78,8 +96,8 @@ Each iteration:
 ### a. Start processes
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m participants.auto_tune start-harness --session <name>
-PYTHONPATH=src .venv/bin/python -m participants.auto_tune start-supervisor --session <name>
+PYTHONPATH=src $AT_PYTHON -m participants.auto_tune start-harness --session <name>
+PYTHONPATH=src $AT_PYTHON -m participants.auto_tune start-supervisor --session <name>
 ```
 
 Update state: **Current Phase** → `running`.
@@ -87,10 +105,10 @@ Update state: **Current Phase** → `running`.
 ### b. Step through events
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m participants.auto_tune step \
+PYTHONPATH=src $AT_PYTHON -m participants.auto_tune step \
   --session <name> --command '{"action": "start"}'
 # Then continue through all events:
-PYTHONPATH=src .venv/bin/python -m participants.auto_tune step \
+PYTHONPATH=src $AT_PYTHON -m participants.auto_tune step \
   --session <name> --command '{"action": "continue"}'
 # ... repeat until disconnected event ...
 ```
@@ -100,7 +118,7 @@ PYTHONPATH=src .venv/bin/python -m participants.auto_tune step \
 ### c. Snapshot
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m participants.auto_tune snapshot --session <name>
+PYTHONPATH=src $AT_PYTHON -m participants.auto_tune snapshot --session <name>
 ```
 
 ### d. Observe → Update State
@@ -132,9 +150,9 @@ Read `session-state.md` (your fresh update) and decide:
 Update state: **Current Phase** → `resetting`.
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m participants.auto_tune stop-supervisor --session <name>
-PYTHONPATH=src .venv/bin/python -m participants.auto_tune stop-harness --session <name>
-PYTHONPATH=src .venv/bin/python -m participants.auto_tune reset --session <name>
+PYTHONPATH=src $AT_PYTHON -m participants.auto_tune stop-supervisor --session <name>
+PYTHONPATH=src $AT_PYTHON -m participants.auto_tune stop-harness --session <name>
+PYTHONPATH=src $AT_PYTHON -m participants.auto_tune reset --session <name>
 ```
 
 Then return to step a.
@@ -152,6 +170,13 @@ Every auto-tune session must produce cascade documentation:
 3. **Tests** (`tests/test_<feature>.py`) — tests covering every spec criterion. Use `caplog` for log assertions, `BusCapture` for bus message capture. Follow patterns from existing test files.
 
 4. **Commit** — commit everything on the auto-tune branch with a descriptive message. DO NOT MERGE INTO MAIN.
+
+5. **Teardown** (optional) — if the session is complete and the user doesn't want to keep the worktree:
+
+```bash
+cd <main-repo-root>
+PYTHONPATH=src .venv/bin/python -m participants.auto_tune teardown --session <name>
+```
 
 Update state: **Current Phase** → `complete`.
 

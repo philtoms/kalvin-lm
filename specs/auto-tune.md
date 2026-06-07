@@ -30,6 +30,7 @@ The system has two components:
 | run_counter | `int` | Number of snapshots taken |
 | created_from_branch | `str` | Branch that was current at `init` time |
 | created_from_commit | `str` | Commit hash at `init` time |
+| worktree_path | `str` | Absolute path to the session's git worktree |
 
 ### Event Frame (events.jsonl)
 
@@ -101,19 +102,24 @@ A single JSON object, written by pi, consumed and deleted by the supervisor.
 
 ### Directory Structure
 
+Sessions live inside a git worktree at `.worktrees/auto-tune/<session>/`. The session directory is nested within:
+
 ```
-auto-tune/
-└── <session>/
-    ├── config.json           # Session configuration
-    ├── cmd.json              # Single command (pi writes, supervisor consumes)
-    ├── status.json           # Supervisor heartbeat
-    ├── events.jsonl          # Append-only event stream
-    └── runs/
-        └── 001/
-            ├── state.json    # Curriculum tracking state snapshot
-            ├── events.jsonl  # Full event log up to snapshot
-            ├── model.bin     # Kalvin model snapshot (if exists)
-            └── meta.json     # Git metadata, timestamp
+.worktrees/auto-tune/<session>/          # Git worktree (full source checkout on auto-tune/<session> branch)
+├── src/                                  # Source code (isolated from main repo)
+├── auto-tune/
+│   └── <session>/
+│       ├── config.json           # Session configuration
+│       ├── cmd.json              # Single command (pi writes, supervisor consumes)
+│       ├── status.json           # Supervisor heartbeat
+│       ├── events.jsonl          # Append-only event stream
+│       └── runs/
+│       │   └── 001/
+│       │       ├── state.json    # Curriculum tracking state snapshot
+│       │       ├── events.jsonl  # Full event log up to snapshot
+│       │       ├── model.bin     # Kalvin model snapshot (if exists)
+│       │       └── meta.json     # Git metadata, timestamp
+└── ...                                  # Other project files
 ```
 
 ## API
@@ -122,7 +128,8 @@ auto-tune/
 
 | Command | Description |
 |---------|-------------|
-| `auto-tune init --session <name> --curriculum <path> [--host <h>] [--port <p>]` | Create session directory, config.json, git branch |
+| `auto-tune init --session <name> --curriculum <path> [--host <h>] [--port <p>]` | Create worktree, session directory, config.json, git branch |
+| `auto-tune teardown --session <name>` | Remove worktree and delete branch |
 | `auto-tune start-harness --session <name>` | Start harness server, record PID, wait for ready |
 | `auto-tune stop-harness --session <name>` | Graceful SIGTERM to harness, cleanup PID |
 | `auto-tune start-supervisor --session <name>` | Start CLI supervisor, record PID, wait for connected |
@@ -139,9 +146,9 @@ auto-tune/
 
 ### Session Initialisation
 
-1. `init` creates the session directory and all supporting files.
-2. `init` creates a git branch named `auto-tune/<session>` from the current HEAD and checks it out.
-3. `init` records the current branch name and commit hash in `config.json`.
+1. `init` creates the session directory and all supporting files inside a git worktree.
+2. `init` creates a git worktree at `.worktrees/auto-tune/<session>/` with branch `auto-tune/<session>` from the current HEAD. The main repo stays on its current branch.
+3. `init` records the current branch name, commit hash, and worktree path in `config.json`.
 4. `init` reads `harness.yaml` to derive default host/port, overridable via `--host`/`--port`.
 5. `config.json` stores the resolved `harness_url` as `ws://<host>:<port>`.
 6. `init` records the Kalvin model path (derived from harness config) in `config.json`.
@@ -204,17 +211,23 @@ auto-tune/
 
 ### Reset
 
-39. `reset` deletes the curriculum state file (e.g., `curricula/<slug>.json`).
+39. `reset` deletes the curriculum state file (e.g., `curricula/<slug>.json`), resolved from the worktree root.
 40. `reset` truncates `events.jsonl` to empty.
 41. `reset` does not modify the run counter or existing snapshots.
-42. `reset --fresh-model` also deletes the Kalvin model file.
+42. `reset --fresh-model` also deletes the Kalvin model file, resolved from the worktree root.
+
+### Teardown
+
+43. `teardown` removes the session's git worktree directory.
+44. `teardown` deletes the associated `auto-tune/<session>` branch.
+45. `teardown` must be run from the main repo (not from inside the worktree).
 
 ## Test Matrix
 
 | ID | Criterion | Origin ref |
 |----|-----------|------------|
 | AT-1 | `init` creates session directory with all supporting files | §Session Initialisation |
-| AT-2 | `init` creates and checks out `auto-tune/<session>` git branch | §Session Initialisation |
+| AT-2 | `init` creates git worktree at `.worktrees/auto-tune/<session>` with branch `auto-tune/<session>`, main repo stays unchanged | §Session Initialisation |
 | AT-3 | `init` records source branch, commit, harness URL, model path in config.json | §Session Initialisation |
 | AT-4 | `start-harness` starts harness and waits for WebSocket readiness | §Harness Lifecycle |
 | AT-5 | `stop-harness` gracefully terminates harness process | §Harness Lifecycle |

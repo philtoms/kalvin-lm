@@ -43,13 +43,14 @@ class TestBuildParser:
         "snapshot",
         "restore",
         "reset",
+        "teardown",
     ]
 
     def test_returns_argument_parser(self) -> None:
         parser = build_parser()
         assert isinstance(parser, argparse.ArgumentParser)
 
-    def test_has_all_twelve_subcommands(self) -> None:
+    def test_has_all_thirteen_subcommands(self) -> None:
         parser = build_parser()
         # Parse the help output to find subcommand names
         # Or introspect the subparsers action
@@ -62,7 +63,7 @@ class TestBuildParser:
         names = set(subparsers_action._name_parser_map.keys())
         for name in self.EXPECTED_SUBCOMMANDS:
             assert name in names, f"Missing subcommand: {name}"
-        assert len(names) == 12
+        assert len(names) == 13
 
 
 # ---------------------------------------------------------------------------

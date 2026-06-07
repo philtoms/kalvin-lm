@@ -203,6 +203,7 @@ class Trainer:
         self._pending_goals: list[str] = []
         self._conversation_history: list[str] = []
         self._polling_for_goal: bool = False
+        self._drain_pending: bool = False
 
         # Register on the bus
         bus.subscribe(self._role, self.on_message)
@@ -265,6 +266,8 @@ class Trainer:
             if not self._session_active:
                 return
             self._handle_kagent_error(msg)
+        elif action == "drained":
+            self._handle_drained(msg)
         elif action == "input":
             self._handle_input(msg)
         else:
@@ -348,6 +351,22 @@ class Trainer:
         self._state.log_event("kagent_error", {"message": str(msg.message)})
         self._reactor.record_response()
         self._check_lesson_complete()
+
+    # ── Cogitator drain ─────────────────────────────────────────────────
+
+    def _handle_drained(self, msg: Message) -> None:
+        """Handle the drained response from the KAgent adapter.
+
+        When a drain was pending, this means all cogitation work items
+        from the previous lesson have been processed. Now we can safely
+        submit the next lesson.
+        """
+        if not self._drain_pending:
+            logger.debug("Ignoring unexpected drained event")
+            return
+        self._drain_pending = False
+        logger.info("Cogitator drained — submitting next lesson")
+        self._do_submit_lesson()
 
     # ── Input handling (from Slack / supervisor) ───────────────────────────
 
@@ -592,7 +611,32 @@ class Trainer:
     # ── Curriculum-driven mode ────────────────────────────────────────
 
     def _submit_next_lesson(self) -> None:
-        """Submit the next lesson from the curriculum to the KAgent."""
+        """Submit the next lesson from the curriculum to the KAgent.
+
+        Between lessons, drains the Cogitator to ensure all work items
+        from the previous lesson have been processed. This prevents
+        cross-lesson cogitation spillover where late-arriving S2/S3
+        events from lesson N consume lesson N+1's reactive budget.
+        """
+        # Drain cogitator between lessons to prevent spillover.
+        # On the first lesson there's nothing to drain, but the no-op
+        # cost is negligible so we don't special-case it.
+        if self._drain_pending:
+            logger.debug("Drain already pending — deferring lesson submit")
+            return
+
+        self._drain_pending = True
+        self._bus.send(
+            Message(
+                role=TRAINEE_ROLE,
+                action="drain",
+                message=30.0,  # timeout in seconds
+                sender=self._role,
+            )
+        )
+
+    def _do_submit_lesson(self) -> None:
+        """Actually compile and submit the next lesson."""
         # File polling: re-read before each lesson
         self._poll_curriculum_file()
 

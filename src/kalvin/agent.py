@@ -130,6 +130,7 @@ class Cogitator:
         self._condition = threading.Condition(self._lock)
         self._backlog: list[WorkItem] = []
         self._stop = threading.Event()
+        self._processing = False
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
@@ -145,6 +146,28 @@ class Cogitator:
         with self._condition:
             self._condition.notify()
         self._thread.join(timeout=timeout)
+
+    def drain(self, timeout: float | None = None) -> bool:
+        """Wait until the backlog is empty and the current work item finishes.
+
+        Does NOT stop the thread — the Cogitator remains alive and will
+        accept new work items after draining.
+
+        Returns True if drained within *timeout*, False if timed out.
+        """
+        deadline = None
+        if timeout is not None:
+            import time as _time
+            deadline = _time.monotonic() + timeout
+
+        while True:
+            with self._condition:
+                if not self._backlog and not self._processing:
+                    return True
+                self._condition.wait(timeout=0.5)
+
+            if deadline is not None and _time.monotonic() >= deadline:
+                return False
 
     def _run(self) -> None:
         """Background thread: process work items."""
@@ -163,9 +186,13 @@ class Cogitator:
                 idle_time = 0.0
                 if self._stop.is_set() and not self._backlog:
                     return
+                self._processing = True
                 item = self._backlog.pop(0)
 
             self._run_work_item(item)
+            with self._condition:
+                self._processing = False
+                self._condition.notify_all()
 
     def _run_work_item(self, item: WorkItem) -> None:
         """Expand a work item, classifying each yield against boundaries."""
@@ -218,10 +245,12 @@ class KAgent:
         model: Model | None = None,
         *,
         adapter: KAgentAdapter,
+        max_candidates: int = 8,
     ):
         self._tokenizer = tokenizer if tokenizer else Mod32Tokenizer()
         self._model = model if model is not None else Model()
         self._activity: Counter = Counter()
+        self._max_candidates: int = max_candidates
 
         # Adapter — receives events via on_event()
         self._adapter: KAgentAdapter = adapter
@@ -403,6 +432,17 @@ class KAgent:
             return True
 
         # No S1 found — submit deferred slow candidates to cogitator
+        # Cap candidates to prevent cascade explosion in dense models.
+        # Prioritise S2 over S3, then by node overlap count (descending).
+        if len(slow_candidates) > self._max_candidates:
+            def _candidate_priority(item: tuple[KLine, str]) -> tuple[int, int]:
+                candidate, level = item
+                level_rank = 0 if level == "S2" else 1
+                overlap = sum(1 for n in kline.nodes if n in set(candidate.nodes))
+                return (level_rank, -overlap)
+            slow_candidates.sort(key=_candidate_priority)
+            slow_candidates = slow_candidates[:self._max_candidates]
+
         for candidate, level in slow_candidates:
             self._cogitator.submit(WorkItem(kline, candidate, level))
 
@@ -469,6 +509,13 @@ class KAgent:
     def cogitate_join(self, timeout: float | None = None) -> None:
         """Stop the cogitate thread and wait for it to finish."""
         self._cogitator.join(timeout)
+
+    def cogitate_drain(self, timeout: float | None = None) -> bool:
+        """Drain pending cogitation work items without stopping the thread.
+
+        Returns True if drained within *timeout*, False if timed out.
+        """
+        return self._cogitator.drain(timeout)
 
     # ── Events ────────────────────────────────────────────────────────
 

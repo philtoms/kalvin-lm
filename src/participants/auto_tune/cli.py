@@ -38,6 +38,9 @@ def _handle_init(args: argparse.Namespace) -> None:
         port=args.port,
     )
     print(f"Session '{args.session}' initialised at {sd.config_path.parent}")
+    print(f"Worktree: {sd._root}")
+    print(f"Branch: auto-tune/{args.session}")
+    print(f"cd {sd._root} for all auto-tune operations")
 
 
 def _handle_start_harness(args: argparse.Namespace) -> None:
@@ -119,6 +122,12 @@ def _handle_reset(args: argparse.Namespace) -> None:
     """Delete curriculum state, truncate events, optionally delete model."""
     sd: SessionDir = args._session_dir
     snapshots.reset(sd, fresh_model=args.fresh_model)
+
+
+def _handle_teardown(args: argparse.Namespace) -> None:
+    """Remove a session's git worktree and branch."""
+    SessionDir.teardown(args.session)
+    print(f"Session '{args.session}' torn down")
 
 
 # ---------------------------------------------------------------------------
@@ -203,6 +212,11 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Also delete the Kalvin model file")
     p_rst.set_defaults(func=_handle_reset)
 
+    # -- teardown -------------------------------------------------------------
+    p_td = sub.add_parser("teardown", help="Remove session worktree and branch")
+    p_td.add_argument("--session", required=True, help="Session codename")
+    p_td.set_defaults(func=_handle_teardown)
+
     return parser
 
 
@@ -220,8 +234,8 @@ def main(argv: Sequence[str] | None = None) -> None:
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    # Non-init commands require an existing session directory
-    if args.command != "init":
+    # Non-init/teardown commands require an existing session directory
+    if args.command not in ("init", "teardown"):
         try:
             args._session_dir = SessionDir.load(args.session)
         except FileNotFoundError:

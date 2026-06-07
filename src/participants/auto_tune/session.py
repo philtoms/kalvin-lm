@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,7 @@ class SessionConfig:
     run_counter: int = 0
     created_from_branch: str = ""
     created_from_commit: str = ""
+    worktree_path: str = ""
 
     # -- Serialisation -------------------------------------------------------
 
@@ -140,12 +142,15 @@ class SessionDir:
         root: Path = Path("."),
         base_dir: str = "auto-tune",
     ) -> SessionDir:
-        """Create a new auto-tune session.
+        """Create a new auto-tune session with a git worktree.
 
         1. Reads ``harness.yaml`` for default host/port.
-        2. Creates the session directory tree.
-        3. Writes ``config.json``.
-        4. Creates and checks out git branch ``auto-tune/<session>``.
+        2. Creates a git worktree at ``.worktrees/<base_dir>/<session>/``.
+        3. Creates the session directory tree inside the worktree.
+        4. Writes ``config.json``.
+
+        The main repo stays on its current branch.  All session
+        operations happen inside the worktree.
 
         Args:
             session: Codename for the session.
@@ -156,9 +161,9 @@ class SessionDir:
             base_dir: Prefix directory name (default ``"auto-tune"``).
 
         Returns:
-            A ``SessionDir`` bound to the new session.
+            A ``SessionDir`` bound to the new session (root = worktree).
         """
-        root = Path(root)
+        root = Path(root).resolve()
 
         # 1. Read harness.yaml for defaults
         resolved_host, resolved_port = _read_harness_defaults(root / "harness.yaml")
@@ -174,7 +179,12 @@ class SessionDir:
         created_from_commit = _git("rev-parse", "HEAD", cwd=root).strip()
         created_from_branch = _git("rev-parse", "--abbrev-ref", "HEAD", cwd=root).strip()
 
-        # 4. Build config
+        # 4. Create git worktree
+        worktree_path = root / ".worktrees" / base_dir / session
+        branch_name = f"{base_dir}/{session}"
+        _git("worktree", "add", str(worktree_path), "-b", branch_name, cwd=root)
+
+        # 5. Build config
         harness_url = f"ws://{resolved_host}:{resolved_port}"
         cfg = SessionConfig(
             session=session,
@@ -184,30 +194,27 @@ class SessionDir:
             run_counter=0,
             created_from_branch=created_from_branch,
             created_from_commit=created_from_commit,
+            worktree_path=str(worktree_path),
         )
 
-        # 5. Create directory structure
-        session_dir = root / base_dir / session
+        # 6. Create directory structure inside the worktree
+        session_dir = worktree_path / base_dir / session
         runs = session_dir / "runs"
         runs.mkdir(parents=True, exist_ok=True)
 
-        # 6. Write config.json
+        # 7. Write config.json
         config_path = session_dir / "config.json"
         config_path.write_text(
             json.dumps(cfg.to_dict(), indent=2) + "\n",
             encoding="utf-8",
         )
 
-        # 7. Create empty events.jsonl
+        # 8. Create empty events.jsonl
         events_path = session_dir / "events.jsonl"
         events_path.write_text("", encoding="utf-8")
 
-        # 8. Create and checkout git branch
-        branch_name = f"{base_dir}/{session}"
-        _git("checkout", "-b", branch_name, cwd=root)
-
         return cls(
-            root=root,
+            root=worktree_path,
             base_dir=base_dir,
             _session=session,
             _config=cfg,
@@ -225,6 +232,13 @@ class SessionDir:
     ) -> SessionDir:
         """Load an existing auto-tune session from its ``config.json``.
 
+        Resolution order:
+
+        1. ``<root>/<base_dir>/<session>/config.json`` (direct —
+           works when cwd is the worktree).
+        2. ``<root>/.worktrees/<base_dir>/<session>/<base_dir>/<session>/config.json``
+           (worktree convention — works from the main repo).
+
         Args:
             session: Codename of the session to load.
             root: Project root directory (default ``"."``).
@@ -235,16 +249,64 @@ class SessionDir:
         """
         root = Path(root)
         config_path = root / base_dir / session / "config.json"
+
+        if not config_path.exists():
+            # Try the worktree convention
+            worktree_path = root / ".worktrees" / base_dir / session
+            config_path = worktree_path / base_dir / session / "config.json"
+
         data = json.loads(config_path.read_text(encoding="utf-8"))
         cfg = SessionConfig.from_dict(data)
 
+        # Use worktree as root if configured
+        effective_root = Path(cfg.worktree_path) if cfg.worktree_path else root
+
         return cls(
-            root=root,
+            root=effective_root,
             base_dir=base_dir,
             _session=session,
             _config=cfg,
         )
 
+
+    # -- Teardown --------------------------------------------------------------
+
+    @classmethod
+    def teardown(
+        cls,
+        session: str,
+        *,
+        root: Path = Path("."),
+        base_dir: str = "auto-tune",
+    ) -> None:
+        """Remove a session's git worktree.
+
+        Removes the worktree directory and its associated branch.
+        The main repo is never modified.
+
+        Args:
+            session: Codename of the session to tear down.
+            root: Project root directory (default ``"."``).
+            base_dir: Prefix directory name (default ``"auto-tune"``).
+        """
+        root = Path(root).resolve()
+        worktree_path = root / ".worktrees" / base_dir / session
+        branch_name = f"{base_dir}/{session}"
+
+        if not worktree_path.exists():
+            print(f"No worktree found at {worktree_path}", file=sys.stderr)
+            return
+
+        # Remove the worktree (force to handle untracked files)
+        _git("worktree", "remove", str(worktree_path), "--force", cwd=root)
+
+        # Delete the branch
+        try:
+            _git("branch", "-D", branch_name, cwd=root)
+        except Exception:
+            pass  # Branch may already be gone or may be merged
+
+    # -- Helpers ---------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Helpers

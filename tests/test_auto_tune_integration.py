@@ -85,8 +85,8 @@ def _init_session(session_name: str = "test-sess", curriculum: str = "math.md") 
 
 
 def _session_dir(root: Path, session_name: str = "test-sess") -> Path:
-    """Return the session directory path."""
-    return root / "auto-tune" / session_name
+    """Return the session directory path inside the worktree."""
+    return root / ".worktrees" / "auto-tune" / session_name / "auto-tune" / session_name
 
 
 # ---------------------------------------------------------------------------
@@ -112,18 +112,40 @@ class TestAT01InitCreatesSessionDirectory:
 
 
 class TestAT02InitCreatesGitBranch:
-    """AT-2: ``init`` creates and checks out ``auto-tune/<session>`` branch."""
+    """AT-2: ``init`` creates ``auto-tune/<session>`` branch as a worktree."""
 
     def test_init_creates_git_branch(self, auto_tune_env: Path) -> None:
         _init_session()
+        # Branch should exist
         result = subprocess.run(
+            ["git", "branch", "--list", "auto-tune/test-sess"],
+            cwd=auto_tune_env,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert "auto-tune/test-sess" in result.stdout
+
+        # Main repo should stay on the original branch
+        current = subprocess.run(
             ["git", "branch", "--show-current"],
             cwd=auto_tune_env,
             capture_output=True,
             text=True,
             check=True,
         )
-        assert result.stdout.strip() == "auto-tune/test-sess"
+        assert current.stdout.strip() != "auto-tune/test-sess"
+
+        # Worktree should be on the auto-tune branch
+        worktree_path = auto_tune_env / ".worktrees" / "auto-tune" / "test-sess"
+        wt_result = subprocess.run(
+            ["git", "branch", "--show-current"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert wt_result.stdout.strip() == "auto-tune/test-sess"
 
 
 # ---------------------------------------------------------------------------
@@ -146,6 +168,8 @@ class TestAT03InitRecordsConfig:
         assert "harness_url" in config
         assert config["harness_url"] == "ws://localhost:18765"
         assert "model_path" in config
+        assert "worktree_path" in config
+        assert config["worktree_path"] != ""
 
 
 # ---------------------------------------------------------------------------
@@ -497,10 +521,11 @@ class TestAT16SnapshotCapturesState:
     def test_snapshot_captures_state(self, auto_tune_env: Path) -> None:
         _init_session()
         sd = _session_dir(auto_tune_env)
+        worktree_path = auto_tune_env / ".worktrees" / "auto-tune" / "test-sess"
 
         # The curriculum state file is derived from curriculum path:
-        # "math.md" -> "math.json" at project root
-        state_file = auto_tune_env / "math.json"
+        # "math.md" -> "math.json" at worktree root
+        state_file = worktree_path / "math.json"
         state_file.write_text('{"lessons_completed": 5}\n', encoding="utf-8")
 
         # Write some events
@@ -508,14 +533,14 @@ class TestAT16SnapshotCapturesState:
             f.write(json.dumps({"seq": 1, "type": "connected"}) + "\n")
 
         # Create model directory and file
-        model_dir = auto_tune_env / "data"
+        model_dir = worktree_path / "data"
         model_dir.mkdir(exist_ok=True)
         (model_dir / "agent.bin").write_bytes(b"\x00\x01\x02")
 
         # Commit everything so git is clean
-        subprocess.run(["git", "add", "."], cwd=auto_tune_env, capture_output=True)
+        subprocess.run(["git", "add", "."], cwd=worktree_path, capture_output=True)
         subprocess.run(
-            ["git", "commit", "-m", "add model"], cwd=auto_tune_env, capture_output=True
+            ["git", "commit", "-m", "add model"], cwd=worktree_path, capture_output=True
         )
 
         main(["snapshot", "--session", "test-sess"])
@@ -546,20 +571,21 @@ class TestAT17RestoreReinstatesState:
     def test_restore_reinstates_state(self, auto_tune_env: Path) -> None:
         _init_session()
         sd = _session_dir(auto_tune_env)
+        worktree_path = auto_tune_env / ".worktrees" / "auto-tune" / "test-sess"
 
         # The curriculum state file path is derived: "math.md" -> "math.json"
-        state_file = auto_tune_env / "math.json"
+        state_file = worktree_path / "math.json"
         state_file.write_text('{"lessons_completed": 5}\n', encoding="utf-8")
 
         # Set up model file
-        model_dir = auto_tune_env / "data"
+        model_dir = worktree_path / "data"
         model_dir.mkdir(exist_ok=True)
         (model_dir / "agent.bin").write_bytes(b"\x00\x01\x02")
 
         # Commit everything for clean snapshot
-        subprocess.run(["git", "add", "."], cwd=auto_tune_env, capture_output=True)
+        subprocess.run(["git", "add", "."], cwd=worktree_path, capture_output=True)
         subprocess.run(
-            ["git", "commit", "-m", "pre-snapshot"], cwd=auto_tune_env, capture_output=True
+            ["git", "commit", "-m", "pre-snapshot"], cwd=worktree_path, capture_output=True
         )
 
         # Take a snapshot
@@ -594,9 +620,10 @@ class TestAT18ResetDeletesState:
     def test_reset_deletes_state_and_truncates_events(self, auto_tune_env: Path) -> None:
         _init_session()
         sd = _session_dir(auto_tune_env)
+        worktree_path = auto_tune_env / ".worktrees" / "auto-tune" / "test-sess"
 
         # The curriculum state file is derived: "math.md" -> "math.json"
-        state_file = auto_tune_env / "math.json"
+        state_file = worktree_path / "math.json"
         state_file.write_text('{"lessons_completed": 3}\n', encoding="utf-8")
 
         # Write some events
@@ -626,9 +653,10 @@ class TestAT19ResetFreshModel:
     def test_reset_fresh_model_deletes_model(self, auto_tune_env: Path) -> None:
         _init_session()
         sd = _session_dir(auto_tune_env)
+        worktree_path = auto_tune_env / ".worktrees" / "auto-tune" / "test-sess"
 
         # Create model file
-        model_dir = auto_tune_env / "data"
+        model_dir = worktree_path / "data"
         model_dir.mkdir(exist_ok=True)
         model_path = model_dir / "agent.bin"
         model_path.write_bytes(b"\x00\x01\x02")

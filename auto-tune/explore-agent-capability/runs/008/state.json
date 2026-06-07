@@ -1,0 +1,713 @@
+{
+  "version": 2,
+  "position": 5,
+  "lessons": [
+    "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ",
+    "A == B\nC == D\nE == F\nG == H\nI == J",
+    "AB => C\nCD => E\nEF => G\nGH => I",
+    "ABCD => E F\nEFGH => I J\nACEGI => B D F H J",
+    "ABCDEFGHIJ => A B C D E F G H I J"
+  ],
+  "curriculum_file": "curricula/cascade-pressure.md",
+  "current_label": null,
+  "lesson_submitted": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "lesson_satisfied": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "submitted": [
+    [
+      2,
+      []
+    ],
+    [
+      2,
+      [
+        4
+      ]
+    ],
+    [
+      4,
+      []
+    ],
+    [
+      4,
+      [
+        2
+      ]
+    ],
+    [
+      6,
+      [
+        2,
+        4
+      ]
+    ],
+    [
+      6,
+      [
+        8
+      ]
+    ],
+    [
+      8,
+      []
+    ],
+    [
+      8,
+      [
+        16
+      ]
+    ],
+    [
+      16,
+      []
+    ],
+    [
+      16,
+      [
+        8
+      ]
+    ],
+    [
+      24,
+      [
+        8,
+        16
+      ]
+    ],
+    [
+      24,
+      [
+        32
+      ]
+    ],
+    [
+      30,
+      [
+        2,
+        4,
+        8,
+        16
+      ]
+    ],
+    [
+      30,
+      [
+        32,
+        64
+      ]
+    ],
+    [
+      32,
+      []
+    ],
+    [
+      32,
+      [
+        64
+      ]
+    ],
+    [
+      64,
+      []
+    ],
+    [
+      64,
+      [
+        32
+      ]
+    ],
+    [
+      96,
+      [
+        32,
+        64
+      ]
+    ],
+    [
+      96,
+      [
+        128
+      ]
+    ],
+    [
+      128,
+      []
+    ],
+    [
+      128,
+      [
+        256
+      ]
+    ],
+    [
+      256,
+      []
+    ],
+    [
+      256,
+      [
+        128
+      ]
+    ],
+    [
+      384,
+      [
+        128,
+        256
+      ]
+    ],
+    [
+      384,
+      [
+        512
+      ]
+    ],
+    [
+      480,
+      [
+        32,
+        64,
+        128,
+        256
+      ]
+    ],
+    [
+      480,
+      [
+        512,
+        1024
+      ]
+    ],
+    [
+      512,
+      []
+    ],
+    [
+      512,
+      [
+        1024
+      ]
+    ],
+    [
+      682,
+      [
+        2,
+        8,
+        32,
+        128,
+        512
+      ]
+    ],
+    [
+      682,
+      [
+        4,
+        16,
+        64,
+        256,
+        1024
+      ]
+    ],
+    [
+      1024,
+      []
+    ],
+    [
+      1024,
+      [
+        512
+      ]
+    ],
+    [
+      2046,
+      [
+        2,
+        4,
+        8,
+        16,
+        32,
+        64,
+        128,
+        256,
+        512,
+        1024
+      ]
+    ]
+  ],
+  "satisfied": [
+    [
+      2,
+      []
+    ],
+    [
+      2,
+      [
+        4
+      ]
+    ],
+    [
+      2,
+      [
+        6
+      ]
+    ],
+    [
+      2,
+      [
+        682
+      ]
+    ],
+    [
+      4,
+      []
+    ],
+    [
+      4,
+      [
+        2
+      ]
+    ],
+    [
+      4,
+      [
+        2,
+        4
+      ]
+    ],
+    [
+      4,
+      [
+        4
+      ]
+    ],
+    [
+      4,
+      [
+        30
+      ]
+    ],
+    [
+      4,
+      [
+        1300
+      ]
+    ],
+    [
+      6,
+      [
+        2
+      ]
+    ],
+    [
+      6,
+      [
+        2,
+        4
+      ]
+    ],
+    [
+      6,
+      [
+        8
+      ]
+    ],
+    [
+      8,
+      []
+    ],
+    [
+      8,
+      [
+        16
+      ]
+    ],
+    [
+      16,
+      []
+    ],
+    [
+      16,
+      [
+        8
+      ]
+    ],
+    [
+      24,
+      [
+        8,
+        16
+      ]
+    ],
+    [
+      30,
+      [
+        2,
+        4,
+        8,
+        16
+      ]
+    ],
+    [
+      30,
+      [
+        4
+      ]
+    ],
+    [
+      30,
+      [
+        32
+      ]
+    ],
+    [
+      30,
+      [
+        32,
+        64
+      ]
+    ],
+    [
+      30,
+      [
+        682
+      ]
+    ],
+    [
+      30,
+      [
+        1300
+      ]
+    ],
+    [
+      32,
+      []
+    ],
+    [
+      32,
+      [
+        30
+      ]
+    ],
+    [
+      32,
+      [
+        64
+      ]
+    ],
+    [
+      32,
+      [
+        640
+      ]
+    ],
+    [
+      64,
+      []
+    ],
+    [
+      64,
+      [
+        32
+      ]
+    ],
+    [
+      96,
+      [
+        32,
+        64
+      ]
+    ],
+    [
+      128,
+      []
+    ],
+    [
+      128,
+      [
+        256
+      ]
+    ],
+    [
+      256,
+      []
+    ],
+    [
+      256,
+      [
+        128
+      ]
+    ],
+    [
+      384,
+      [
+        128,
+        256
+      ]
+    ],
+    [
+      480,
+      [
+        32,
+        64,
+        128,
+        256
+      ]
+    ],
+    [
+      480,
+      [
+        512,
+        1024
+      ]
+    ],
+    [
+      512,
+      []
+    ],
+    [
+      512,
+      [
+        1024
+      ]
+    ],
+    [
+      640,
+      [
+        32
+      ]
+    ],
+    [
+      640,
+      [
+        128,
+        512
+      ]
+    ],
+    [
+      682,
+      [
+        2
+      ]
+    ],
+    [
+      682,
+      [
+        2,
+        8,
+        32,
+        128,
+        512
+      ]
+    ],
+    [
+      682,
+      [
+        4,
+        16,
+        64,
+        256,
+        1024
+      ]
+    ],
+    [
+      682,
+      [
+        30
+      ]
+    ],
+    [
+      682,
+      [
+        32,
+        64
+      ]
+    ],
+    [
+      1024,
+      []
+    ],
+    [
+      1024,
+      [
+        512
+      ]
+    ],
+    [
+      1300,
+      [
+        4
+      ]
+    ],
+    [
+      1300,
+      [
+        4,
+        16,
+        256,
+        1024
+      ]
+    ],
+    [
+      1300,
+      [
+        30
+      ]
+    ],
+    [
+      2046,
+      [
+        2,
+        4,
+        8,
+        16,
+        32,
+        64,
+        128,
+        256,
+        512,
+        1024
+      ]
+    ]
+  ],
+  "pending": [],
+  "event_log": [
+    {
+      "timestamp": "2026-06-07T09:01:02.681693+00:00",
+      "type": "session_start",
+      "data": {
+        "goal": null
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:01:02.683800+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 0
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:01:02.686071+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 1
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:01:19.051528+00:00",
+      "type": "reactive_scaffolding",
+      "data": {
+        "confidence": 0.75,
+        "source": "AB > C\nB => A B"
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:01:44.953022+00:00",
+      "type": "reactive_scaffolding",
+      "data": {
+        "confidence": 0.82,
+        "source": "(Countersign AB from constituents A and B to close the identity gap)\nAB == A B\n(Establish the expected relationship that was entirely missing from the proposal)\nAB > C\n(Retain the valid self-canonical assertion from the proposal)\nB => B"
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:02:16.450892+00:00",
+      "type": "reactive_scaffolding",
+      "data": {
+        "confidence": 0.85,
+        "source": "(Bridge the underfit: proposal A canonizes to A B but lacks the composed AB identity and its relationship to C)\nAB > C\nAB = A B"
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:02:35.435740+00:00",
+      "type": "reactive_scaffolding",
+      "data": {
+        "confidence": 0.75,
+        "source": "(Bridge underfit: expand A into AB and establish expected relationship)\nAB > C\nA = AB"
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:02:35.435882+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 2
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:02:35.436172+00:00",
+      "type": "escalation",
+      "data": {
+        "reason": "budget_exhaustion",
+        "detail": ""
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:03:18.653806+00:00",
+      "type": "reactive_scaffolding",
+      "data": {
+        "confidence": 0.62,
+        "source": "(bridge scaffolding for dual misfit \u2014 Event 1, significance S3)\n(preserve the expected relationship as anchor)\nABCD > E F\n(undersign the proposal identity to its essential overlap with the expectation)\nACEGI = A C E\n(canonical mapping constrained to expected targets only, reducing overfit)\nACEGI => E F\n(countersign to recover underfit bits B and D that the proposal missed)\nABCD == B D"
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:04:12.001388+00:00",
+      "type": "reactive_scaffolding",
+      "data": {
+        "confidence": 0.65,
+        "source": "ABCD > E F\nACEGI == A C E G I\nBDHJ == B D H J"
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:05:10.110993+00:00",
+      "type": "reactive_scaffolding",
+      "data": {
+        "confidence": 0.62,
+        "source": "(Reassert the expected relationship)\nABCD > E F\n(Countersign: map proposal's fragmented source back to expected source)\nACEGI == ABCD\n(Countersign: map proposal's scattered target-side extras back to expected source)\nBDHJ == ABCD\n(Countersign: map proposal's leftover expansions to expected targets)\nGI == E F"
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:05:10.111102+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 3
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:05:51.070932+00:00",
+      "type": "reactive_scaffolding",
+      "data": {
+        "confidence": 0.65,
+        "source": "(Reinforce the core expected relationship)\nABCD > E F\n(Align proposal source identity with expectation identity via countersign)\nABCD == ACEGI\n(Redirect canonization from overexpanded targets to expected scope)\nACEGI => E F\n(Capture underfit bits by undersigning expected targets into identity)\nABCD = E F"
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:05:51.071374+00:00",
+      "type": "escalation",
+      "data": {
+        "reason": "budget_exhaustion",
+        "detail": ""
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:05:51.389158+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 4
+      }
+    },
+    {
+      "timestamp": "2026-06-07T09:05:51.391370+00:00",
+      "type": "session_end",
+      "data": {}
+    }
+  ]
+}

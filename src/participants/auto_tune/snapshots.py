@@ -119,8 +119,9 @@ def snapshot(session_dir: SessionDir) -> int:
         shutil.copy2(session_dir.events_path, run_dir / "events.jsonl")
 
     # 5. Copy model file (if configured and exists)
-    if cfg.model_path is not None and Path(cfg.model_path).exists():
-        shutil.copy2(cfg.model_path, run_dir / "model.bin")
+    model_file = session_dir._root / cfg.model_path if cfg.model_path else None
+    if model_file is not None and model_file.exists():
+        shutil.copy2(model_file, run_dir / "model.bin")
 
     # 6. Write meta.json
     git = _git_info()
@@ -181,7 +182,7 @@ def restore(session_dir: SessionDir, run_number: int) -> None:
     snapshot_model = run_dir / "model.bin"
     if snapshot_model.exists():
         if cfg.model_path is not None:
-            model_path = Path(cfg.model_path)
+            model_path = session_dir._root / cfg.model_path
             model_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(snapshot_model, model_path)
 
@@ -244,9 +245,10 @@ def reset(session_dir: SessionDir, *, fresh_model: bool = False) -> None:
             referenced by ``config.model_path``.
     """
     config = session_dir.config
+    root = session_dir._root
 
     # 1. Delete curriculum state file (e.g. curricula/first-steps.md → curricula/first-steps.json)
-    curriculum_state = Path(config.curriculum).with_suffix(".json")
+    curriculum_state = root / Path(config.curriculum).with_suffix(".json")
     if curriculum_state.exists():
         curriculum_state.unlink()
 
@@ -259,30 +261,8 @@ def reset(session_dir: SessionDir, *, fresh_model: bool = False) -> None:
     if cmd_path.exists():
         cmd_path.unlink()
 
-    # 4. Ensure we're on the session's auto-tune branch
-    branch_name = f"auto-tune/{config.session}"
-    try:
-        import subprocess
-        current = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            capture_output=True, text=True, check=True,
-        ).stdout.strip()
-        if current != branch_name:
-            # Check if the branch exists
-            result = subprocess.run(
-                ["git", "rev-parse", "--verify", branch_name],
-                capture_output=True, text=True,
-            )
-            if result.returncode == 0:
-                subprocess.run(
-                    ["git", "checkout", branch_name],
-                    check=True, capture_output=True, text=True,
-                )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        pass  # Not in a git repo or git unavailable — skip silently
-
-    # 5. Optionally delete model file
+    # 4. Optionally delete model file
     if fresh_model and config.model_path:
-        model = Path(config.model_path)
+        model = root / config.model_path
         if model.exists():
             model.unlink()
