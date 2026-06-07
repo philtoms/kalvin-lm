@@ -2,7 +2,7 @@ server:
   host: localhost
   port: 8765
 trainer:
-  curriculum_file: curricula/conflict-drill.md
+  curriculum_file: curricula/cascade-pressure.md
   curricula_dir: curricula
   max_reactive_rounds: 5
 participants:

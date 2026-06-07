@@ -3,7 +3,7 @@
   "curriculum": "curricula/cascade-pressure.md",
   "harness_url": "ws://localhost:8765",
   "model_path": "data/agent.bin",
-  "run_counter": 6,
+  "run_counter": 8,
   "created_from_branch": "main",
   "created_from_commit": "7ee6f87f49b419039dd106dfb9977cd20459308b"
 }
