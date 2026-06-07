@@ -32,12 +32,12 @@ spillover of S2/S3 events.
 
 | Spec ID | Test File | Test Function |
 |---------|-----------|---------------|
-| DRN-1 | `tests/test_cogitator_drain.py` | `test_drain_before_each_lesson` |
-| DRN-2 | `tests/test_cogitator_drain.py` | `test_lesson_deferred_until_drained` |
-| DRN-3 | `tests/test_cogitator_drain.py` | `test_empty_backlog_drain_fast` |
-| DRN-4 | `tests/test_cogitator_drain.py` | `test_drain_timeout_returns_false` |
-| DRN-5 | `tests/test_cogitator_drain.py` | `test_processing_flag_guards_drain` |
-| DRN-6 | `tests/test_cogitator_drain.py` | `test_no_cross_lesson_spillover` |
+| DRN-1 | `tests/test_cogitator_drain.py` | `test_drain_before_each_lesson` | ✅ |
+| DRN-2 | `tests/test_cogitator_drain.py` | `test_lesson_deferred_until_drained` | ✅ |
+| DRN-3 | `tests/test_cogitator_drain.py` | `test_empty_backlog_drain_fast` | ✅ |
+| DRN-4 | `tests/test_cogitator_drain.py` | `test_drain_timeout_returns_false` | ✅ |
+| DRN-5 | `tests/test_cogitator_drain.py` | `test_processing_flag_guards_drain` | ✅ |
+| DRN-6 | `tests/test_cogitator_drain.py` | `test_no_cross_lesson_spillover` | ✅ |
 
 ## Evidence
 

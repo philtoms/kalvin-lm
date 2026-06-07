@@ -30,14 +30,14 @@ Auto-tune session: `auto-tune/explore-agent-capability/` (runs 6–8)
 
 | Spec ID | Test | Status |
 |---------|------|--------|
-| CC-1 | `test_rationalise_caps_candidates` | ☐ |
-| CC-2 | `test_s2_prioritised_over_s3` | ☐ |
-| CC-3 | `test_higher_overlap_prioritised` | ☐ |
+| CC-1 | `test_rationalise_caps_candidates` | ✅ |
+| CC-2 | `test_s2_prioritised_over_s3` | ✅ |
+| CC-3 | `test_higher_overlap_prioritised` | ✅ |
 | CC-4 | `test_first_budget_exhaustion_escalates` | ✅ (existing) |
-| CC-5 | `test_subsequent_events_silently_dropped` | ☐ |
+| CC-5 | `test_subsequent_events_silently_dropped` | ✅ |
 | CC-6 | `test_s1_fast_path_unaffected` | ✅ (existing) |
 | CC-7 | `test_s4_routing_unaffected` | ✅ (existing) |
-| CC-8 | `test_default_max_candidates` | ☐ |
+| CC-8 | `test_default_max_candidates` | ✅ |
 
 ## Design Decisions
 

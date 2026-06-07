@@ -40,12 +40,12 @@ waits for both the backlog to be empty AND the processing flag to be clear.
 
 | ID   | Description                                                    | Status |
 |------|----------------------------------------------------------------|--------|
-| DRN-1| Drain sent before each lesson, even when no S2/S3 expected     | ☐      |
-| DRN-2| Lesson entries not submitted until drained response received   | ☐      |
-| DRN-3| Empty-backlog drain completes in <10ms                         | ☐      |
-| DRN-4| Drain timeout returns False but does not stop the thread       | ☐      |
-| DRN-5| Processing flag correctly guards against premature drain return| ☐      |
-| DRN-6| Cross-lesson spillover eliminated: lesson N events don't affect lesson N+1 budget | ☐ |
+| DRN-1| Drain sent before each lesson, even when no S2/S3 expected     | ✅      |
+| DRN-2| Lesson entries not submitted until drained response received   | ✅      |
+| DRN-3| Empty-backlog drain completes in <10ms                         | ✅      |
+| DRN-4| Drain timeout returns False but does not stop the thread       | ✅      |
+| DRN-5| Processing flag correctly guards against premature drain return| ✅      |
+| DRN-6| Cross-lesson spillover eliminated: lesson N events don't affect lesson N+1 budget | ✅ |
 
 ## Evidence
 
