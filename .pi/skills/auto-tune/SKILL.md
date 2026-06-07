@@ -18,7 +18,7 @@ The user says "resume", "continue", or points at an existing session. A `session
 
 **Resuming from the main repo:** The session lives in a git worktree at `.worktrees/auto-tune/<name>/`. You can find the session state at `.worktrees/auto-tune/<name>/auto-tune/<name>/session-state.md`. Cd into `.worktrees/auto-tune/<name>/` before continuing.
 
-**Automatic handoff:** If the `auto-tune-handoff` extension is loaded, it monitors context usage and automatically spawns a fresh session when you cross the ceiling (default 80%). You'll see a notification and the new session will start with "Resume auto-tune <name>".
+**Automatic handoff:** If the `auto-tune-handoff` extension is loaded, it monitors context usage and, when you cross the ceiling (default 80%), injects a steering message telling you to stop and update session-state.md, then shows a notification prompting you to run `/auto-tune-handoff`. The command creates a fresh session that starts with "Resume auto-tune <name>".
 
 **Manual handoff:** If you notice context is getting large, update `session-state.md` and tell the user: "Context is getting large. Run `/auto-tune-handoff` or start a fresh conversation and say 'resume auto-tune <name>'."
 
