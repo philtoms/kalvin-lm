@@ -16,7 +16,9 @@ The user wants to start a fresh auto-tune session. No `auto-tune/<name>/session-
 ### Resume Session
 The user says "resume", "continue", or points at an existing session. A `session-state.md` file exists in the session directory. → Read `auto-tune/<name>/session-state.md`, confirm the goal and next action with the user, then jump directly to the phase indicated by **Current Phase** in the state file.
 
-**If context is getting large** (you notice you're struggling to hold the full conversation), tell the user: "Context is getting large. I've updated the session state. Please start a fresh conversation and say 'resume auto-tune <name>' — I'll pick up from the state file."
+**Automatic handoff:** If the `auto-tune-handoff` extension is loaded, it monitors context usage and automatically spawns a fresh session when you cross the ceiling (default 80%). You'll see a notification and the new session will start with "Resume auto-tune <name>".
+
+**Manual handoff:** If you notice context is getting large, update `session-state.md` and tell the user: "Context is getting large. Run `/auto-tune-handoff` or start a fresh conversation and say 'resume auto-tune <name>'."
 
 ## 1. Establish Goal (once, new sessions only) — DO THIS FIRST
 
