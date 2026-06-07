@@ -130,6 +130,7 @@ class Cogitator:
         self._condition = threading.Condition(self._lock)
         self._backlog: list[WorkItem] = []
         self._stop = threading.Event()
+        self._processing = False
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
@@ -145,6 +146,28 @@ class Cogitator:
         with self._condition:
             self._condition.notify()
         self._thread.join(timeout=timeout)
+
+    def drain(self, timeout: float | None = None) -> bool:
+        """Wait until the backlog is empty and the current work item finishes.
+
+        Does NOT stop the thread — the Cogitator remains alive and will
+        accept new work items after draining.
+
+        Returns True if drained within *timeout*, False if timed out.
+        """
+        deadline = None
+        if timeout is not None:
+            import time as _time
+            deadline = _time.monotonic() + timeout
+
+        while True:
+            with self._condition:
+                if not self._backlog and not self._processing:
+                    return True
+                self._condition.wait(timeout=0.5)
+
+            if deadline is not None and _time.monotonic() >= deadline:
+                return False
 
     def _run(self) -> None:
         """Background thread: process work items."""
@@ -163,9 +186,13 @@ class Cogitator:
                 idle_time = 0.0
                 if self._stop.is_set() and not self._backlog:
                     return
+                self._processing = True
                 item = self._backlog.pop(0)
 
             self._run_work_item(item)
+            with self._condition:
+                self._processing = False
+                self._condition.notify_all()
 
     def _run_work_item(self, item: WorkItem) -> None:
         """Expand a work item, classifying each yield against boundaries."""
@@ -469,6 +496,13 @@ class KAgent:
     def cogitate_join(self, timeout: float | None = None) -> None:
         """Stop the cogitate thread and wait for it to finish."""
         self._cogitator.join(timeout)
+
+    def cogitate_drain(self, timeout: float | None = None) -> bool:
+        """Drain pending cogitation work items without stopping the thread.
+
+        Returns True if drained within *timeout*, False if timed out.
+        """
+        return self._cogitator.drain(timeout)
 
     # ── Events ────────────────────────────────────────────────────────
 

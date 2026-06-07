@@ -133,6 +133,8 @@ class KAgentAdapter:
             self._handle_save(msg)
         elif msg.action == "load":
             self._handle_load(msg)
+        elif msg.action == "drain":
+            self._handle_drain(msg)
         else:
             logger.warning("Unknown action %r from %s", msg.action, msg.sender)
 
@@ -164,6 +166,16 @@ class KAgentAdapter:
         self._bus.send(response)
 
     # ── Internal handlers ──────────────────────────────────────────────
+
+    def drain(self, timeout: float | None = None) -> bool:
+        """Drain pending cogitation work items from the KAgent.
+
+        Returns True if drained within *timeout*, False if timed out.
+        No-op if no KAgent is bound.
+        """
+        if self._kagent is None:
+            return True
+        return self._kagent.cogitate_drain(timeout)
 
     def _handle_submit(self, msg: Message) -> None:
         """Compile KScript source and submit each entry to KAgent."""
@@ -272,3 +284,27 @@ class KAgentAdapter:
                 action="error",
                 message=f"Load failed: {exc}",
             ))
+
+    def _handle_drain(self, msg: Message) -> None:
+        """Drain pending cogitation work items.
+
+        Waits for the Cogitator to finish processing all queued work items,
+        then responds with a confirmation. This ensures that events from
+        previous lessons are fully processed before a new lesson starts.
+        """
+        timeout = msg.message if isinstance(msg.message, (int, float)) else None
+        if self._kagent is None:
+            logger.debug("Drain: no KAgent bound — responding immediately")
+        else:
+            logger.info("Draining cogitator...")
+            drained = self._kagent.cogitate_drain(timeout=timeout or 30.0)
+            if drained:
+                logger.info("Cogitator drained")
+            else:
+                logger.warning("Cogitator drain timed out")
+
+        self._bus.send(Message(
+            role=msg.sender or SUPERVISOR_ROLE,
+            action="drained",
+            message={"status": "ok"},
+        ))
