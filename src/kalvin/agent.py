@@ -245,11 +245,12 @@ class KAgent:
         model: Model | None = None,
         *,
         adapter: KAgentAdapter,
+        max_candidates: int = 8,
     ):
         self._tokenizer = tokenizer if tokenizer else Mod32Tokenizer()
         self._model = model if model is not None else Model()
         self._activity: Counter = Counter()
-        self._max_candidates: int = 8  # cap on slow-path candidates per entry
+        self._max_candidates: int = max_candidates
 
         # Adapter — receives events via on_event()
         self._adapter: KAgentAdapter = adapter

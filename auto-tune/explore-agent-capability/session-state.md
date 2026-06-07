@@ -13,14 +13,24 @@ Open session — learn and decide as we go. Success = understand the cascade dyn
 - **Started:** 2026-06-07
 
 ## Current Phase
-observing
+complete
 
 ## Next Action
-Analyze run 7 results and decide if further tuning needed. Candidate cap reduced cascade by 43x. Consider whether 8 max candidates is optimal, and whether the reactor's silent-drop after budget exhaustion is the right approach.
+Document findings: update/create cascade-control spec and plan. The candidate cap and reactor silent-drop together resolve the intra-lesson cascade problem.
 
 ## Run Log
 
-### Run 7 (latest) — cascade-pressure with candidate cap + reactor silent-drop
+### Run 8 (latest) — conflict-drill regression test (drain + cap)
+- **Code changes:** none (same as run 7)
+- **Observations:**
+  - No regression: lesson 1-3 identical to run 5
+  - Lesson 4 improved: 12/11 (vs 11/11 in run 5) — over-satisfied from productive scaffolding
+  - LLM calls reduced: 6 (vs 8 in run 5)
+  - Budget exhaustion: 1 (vs cascade in run 5)
+  - Log lines: 243 (clean and readable)
+- **Verdict:** candidate cap does not regress and actually improves the conflict-drill curriculum too
+
+### Run 7 — cascade-pressure with candidate cap + reactor silent-drop
 - **Code changes:** max_candidates=8 cap in KAgent.rationalise(), reactor silent-drops events after budget exhaustion
 - **Observations:**
   - **Massive improvement:** log lines 170K → 3.9K (43x reduction)
