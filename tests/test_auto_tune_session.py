@@ -174,19 +174,32 @@ class TestSessionDirInit:
             curriculum="curricula/topic.md",
             root=tmp_git_repo,
         )
-        session_dir = tmp_git_repo / "auto-tune" / "exp-1"
+        worktree_path = tmp_git_repo / ".worktrees" / "auto-tune" / "exp-1"
+        session_dir = worktree_path / "auto-tune" / "exp-1"
 
         assert sd.config_path.is_file(), "config.json must exist"
         assert sd.events_path.is_file(), "events.jsonl must exist"
         assert sd.runs_dir.is_dir(), "runs/ subdirectory must exist"
+        assert sd._root == worktree_path, "root should be the worktree"
 
-    def test_at2_creates_and_checks_out_branch(self, tmp_git_repo: Path) -> None:
-        """AT-2: init creates and checks out auto-tune/<session> git branch."""
+    def test_at2_creates_git_branch(self, tmp_git_repo: Path) -> None:
+        """AT-2: init creates auto-tune/<session> git branch as a worktree."""
         SessionDir.init(
             "exp-2",
             curriculum="curricula/topic.md",
             root=tmp_git_repo,
         )
+        # The branch should exist
+        branches = subprocess.run(
+            ["git", "branch", "--list", "auto-tune/exp-2"],
+            cwd=tmp_git_repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        assert "auto-tune/exp-2" in branches
+
+        # Main repo should NOT be on the auto-tune branch
         current = subprocess.run(
             ["git", "branch", "--show-current"],
             cwd=tmp_git_repo,
@@ -194,7 +207,17 @@ class TestSessionDirInit:
             text=True,
             check=True,
         ).stdout.strip()
-        assert current == "auto-tune/exp-2"
+        assert current != "auto-tune/exp-2", "main repo should stay on original branch"
+
+        # The worktree should exist and be on the auto-tune branch
+        worktree_current = subprocess.run(
+            ["git", "branch", "--show-current"],
+            cwd=tmp_git_repo / ".worktrees" / "auto-tune" / "exp-2",
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        assert worktree_current == "auto-tune/exp-2"
 
     def test_at3_config_json_contents(self, tmp_git_repo: Path) -> None:
         """AT-3: config.json has correct created_from_branch, commit, harness_url, model_path."""
@@ -245,16 +268,14 @@ class TestSessionDirInit:
             root=tmp_git_repo,
         )
 
-        # Switch back to main branch so we can load without being on the session branch
-        subprocess.run(
-            ["git", "checkout", "-"],
-            cwd=tmp_git_repo,
-            check=True,
-            capture_output=True,
-        )
-
+        # Load from main repo (via .worktrees convention)
         sd_load = SessionDir.load("exp-5", root=tmp_git_repo)
         assert sd_load.config == sd_init.config
+
+        # Load from worktree directly
+        worktree_path = tmp_git_repo / ".worktrees" / "auto-tune" / "exp-5"
+        sd_load_wt = SessionDir.load("exp-5", root=worktree_path)
+        assert sd_load_wt.config == sd_init.config
 
     def test_events_jsonl_starts_empty(self, tmp_git_repo: Path) -> None:
         """events.jsonl is created empty."""
@@ -273,15 +294,18 @@ class TestSessionDirInit:
             root=tmp_git_repo,
             base_dir="tuning",
         )
-        assert (tmp_git_repo / "tuning" / "exp-7" / "config.json").is_file()
-        current = subprocess.run(
+        worktree_path = tmp_git_repo / ".worktrees" / "tuning" / "exp-7"
+        assert (worktree_path / "tuning" / "exp-7" / "config.json").is_file()
+
+        # Worktree should be on the custom branch
+        worktree_current = subprocess.run(
             ["git", "branch", "--show-current"],
-            cwd=tmp_git_repo,
+            cwd=worktree_path,
             capture_output=True,
             text=True,
             check=True,
         ).stdout.strip()
-        assert current == "tuning/exp-7"
+        assert worktree_current == "tuning/exp-7"
 
     def test_init_reads_harness_yaml(self, tmp_git_repo: Path) -> None:
         """init reads host/port from harness.yaml when no overrides given."""
@@ -296,3 +320,36 @@ class TestSessionDirInit:
             root=tmp_git_repo,
         )
         assert sd.config.harness_url == "ws://myhost:5555"
+
+    def test_teardown_removes_worktree(self, tmp_git_repo: Path) -> None:
+        """teardown removes the worktree and branch."""
+        SessionDir.init(
+            "exp-td",
+            curriculum="curricula/topic.md",
+            root=tmp_git_repo,
+        )
+        worktree_path = tmp_git_repo / ".worktrees" / "auto-tune" / "exp-td"
+        assert worktree_path.exists()
+
+        SessionDir.teardown("exp-td", root=tmp_git_repo)
+        assert not worktree_path.exists()
+
+        # Branch should be gone
+        branches = subprocess.run(
+            ["git", "branch", "--list", "auto-tune/exp-td"],
+            cwd=tmp_git_repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        assert "auto-tune/exp-td" not in branches
+
+    def test_init_creates_worktree_path_in_config(self, tmp_git_repo: Path) -> None:
+        """config.json records the worktree path."""
+        sd = SessionDir.init(
+            "exp-wt",
+            curriculum="curricula/topic.md",
+            root=tmp_git_repo,
+        )
+        worktree_path = tmp_git_repo / ".worktrees" / "auto-tune" / "exp-wt"
+        assert sd.config.worktree_path == str(worktree_path)

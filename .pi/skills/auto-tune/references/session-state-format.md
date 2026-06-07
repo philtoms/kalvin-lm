@@ -1,6 +1,6 @@
 # Session State File Format
 
-The session state file lives at `auto-tune/<name>/session-state.md`.
+The session state file lives at `auto-tune/<name>/session-state.md` inside the worktree (i.e., `.worktrees/auto-tune/<name>/auto-tune/<name>/session-state.md` from the main repo).
 
 It is the **single source of truth** for resuming an auto-tune session. The agent reads it at the start of each loop iteration and updates it after every observation phase (step 3d).
 
@@ -19,6 +19,7 @@ It is the **single source of truth** for resuming an auto-tune session. The agen
 - **Name:** <name>
 - **Curriculum:** <curriculum-path>
 - **Branch:** auto-tune/<name>
+- **Worktree:** .worktrees/auto-tune/<name>
 - **Started:** <date>
 
 ## Current Phase
@@ -57,3 +58,4 @@ It is the **single source of truth** for resuming an auto-tune session. The agen
 3. **Next Action must be specific.** Not "continue tuning" but "start run 6, test whether increasing budget fixes the escalation at lesson 3."
 4. **Always move the latest run to the top.** The latest run gets the full template; older runs collapse to one-liners.
 5. **Patterns section accumulates insight.** This is where cross-run learning lives. Update it when you notice something.
+6. **Worktree field is for orientation.** When resuming from the main repo, the Worktree field tells you where to cd.
