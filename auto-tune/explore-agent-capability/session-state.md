@@ -16,7 +16,7 @@ Open session — learn and decide as we go. Success = understand the cascade dyn
 complete
 
 ## Next Action
-Document findings: update/create cascade-control spec and plan. The candidate cap and reactor silent-drop together resolve the intra-lesson cascade problem.
+Session complete. All findings documented. Consider merging to main.
 
 ## Run Log
 
