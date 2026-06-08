@@ -2,3 +2,5 @@
 {"seq": 2, "type": "progress", "status": "started", "lesson": "1", "lessons_total": 3, "lessons_completed": 0}
 {"seq": 3, "type": "progress", "status": "lesson_complete", "lesson": "1", "lessons_total": 3, "lessons_completed": 1}
 {"seq": 4, "type": "progress", "status": "lesson_complete", "lesson": "2", "lessons_total": 3, "lessons_completed": 2}
+{"seq": 5, "type": "progress", "status": "lesson_complete", "lesson": "3", "lessons_total": 3, "lessons_completed": 3}
+{"seq": 6, "type": "progress", "status": "complete", "lesson": null, "lessons_total": 3, "lessons_completed": 3}

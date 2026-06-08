@@ -15,61 +15,106 @@ A full training run completes with:
 
 ## Session
 - **Name:** s3-scaffolding-bypass
-- **Curriculum:** curricula/first-steps-s2.md (baseline), then custom S3 curriculum
+- **Curriculum:** curricula/s3-auto-countersign.md
 - **Branch:** auto-tune/s3-scaffolding-bypass
 - **Worktree:** .worktrees/auto-tune/s3-scaffolding-bypass
 - **Started:** 2026-06-08
 
 ## Current Phase
-editing
+observing
 
 ## Next Action
-Code changes are DONE (process_s2_s3 returns bool, trainer suppresses ratify_request). Now need to design S3 curriculum. Key challenge: figuring out which proposal klines will be generated for a given query, and including matching entries in the same lesson. Was investigating expand() proposal mechanics when context ceiling hit. Resume by:
-1. Run a test with the code changes + first-steps-s2 to verify ratify suppression works for auto-countersign cases
-2. Design a minimal S3 curriculum — read the "Curriculum Design Challenge" section below for the key insight needed
-3. Run 2 to verify zero-LLM + zero-ratify
+**Critical issue discovered: S1 classification is too loose, blocking S3 auto-countersign and undermining Kalvin's learning.**
+
+Two intertwined problems need resolving before auto-countersign can work:
+
+### Problem 1: S1 subset check is too permissive (THE CORE ISSUE)
+`_route()` (agent.py:288) classifies as S1 when `match_count == total` — i.e., all query nodes are a SUBSET of the candidate's nodes. For single-node queries (`H > A`, nodes=[A]), ANY candidate that happens to contain A will match S1. This means:
+- `H > A` (connotate, 1 node) matches `HPA => H P A` (canonize, 3 nodes) as S1
+- These are structurally unrelated — A appears in the canonize incidentally
+- Single-node entries are almost always S1 because compound entries in the model contain their node
+- Kalvin never reasons about connotates/countersigns through S2/S3 — it's told everything is already known
+
+**Possible fix:** Tighten S1 to require signature alignment, not just node subset. E.g., require candidate signature to overlap with query signature, or require matching node count (exact match, not superset). Must assess cascade effects on existing tests.
+
+### Problem 2: STM pre-registration + loose S1 creates a preemption cascade
+The harness adapter (`adapter.py:200-204`) pre-registers ALL lesson entries in STM. Combined with loose S1:
+1. Co-entries like `H > A` get S1'd by unrelated compound entries like `HPA => H P A`
+2. Auto-countersign targets are consumed as S1 before S3 fires
+3. The only curriculum that achieves zero-LLM/zero-supervisor has everything resolving as S1 — S3 is never exercised
+
+**Fix for Problem 2 is likely: tighten S1 (Problem 1).** If `H > A` no longer trivially matches `HPA => H P A`, then co-entries survive to be auto-countersign targets.
+
+### What was achieved
+- Code changes committed: `process_s2_s3` returns bool, trainer conditionally suppresses `ratify_request`
+- Curriculum `s3-auto-countersign.md` achieves zero-LLM/zero-supervisor but without exercising S3 (everything resolves as S1)
+- Deep understanding of the expansion pipeline: `expand()` → `propose_expansions()` → `_underfit_expansions` → contributor-based proposal generation
+
+### Resume plan
+1. Investigate tighter S1 classification in `_route()` — what would it look like, what breaks
+2. Run existing test suite to see cascade effects
+3. Iterate on the S1 definition until single-node entries can survive to S2/S3
+4. Re-run the auto-countersign curriculum to verify S3 fires and auto-countersign matches
+5. Verify zero-LLM/zero-supervisor with S3 actually exercised
 
 ## Run Log
 
-### Run 1 (latest) — baseline with first-steps-s2
-- **Code changes:** none (baseline)
-- **Observations:** Lesson 5 (`MH => H A`) triggers S3. Proposal is `H => H A` (sig=0x100, nodes=[256, 2]). Auto-countersign fails because no matching entry. LLM cogitation runs (3+ calls). Also confirmed that `ratify_request` is always sent regardless of auto-countersign outcome.
-- **Verdict:** baseline — no changes yet, needed to understand proposal shapes
+### Run 6 (latest) — H > A, A == A, HPA => P X
+- **Code changes:** process_s2_s3 returns bool, trainer suppresses ratify_request
+- **Observations:** `H > A` S1'd by `HPA => H P A` (subset check). First S3 proposal `A => H P A` — no match. LLM called. `A == A` co-entry would match later proposal `A => A`, but LLM already running.
+- **Verdict:** Blocked by S1 looseness
+
+### Run 5 — H > A, A => H P A, HPA => P X
+- **Observations:** `A => H P A` S1'd by `HPA => H P A`. Same root cause.
+
+### Run 4 — H > A, HPA => P X (no M==H)
+- **Observations:** `H > A` S1'd by `HPA => H P A`. First S3 proposal `A => H P A`, no match. LLM called.
+
+### Run 3 — s3-auto-countersign without M==H (2 lessons)
+- **Observations:** All S1, no S3. `H => H A` matched `HM => H A` via node subset.
+
+### Run 2 — s3-auto-countersign with M==H (3 lessons)
+- **Observations:** All S1, no S3. Same preemption.
+
+### Run 1 — baseline with first-steps-s2
+- **Observations:** Lesson 5 (`MH => H A`) triggers S3. Proposal `H => H A` (sig=0x100, nodes=[256, 2]). Auto-countersign fails (no matching entry). LLM called 3+ times.
+- **Verdict:** Baseline — no code changes, established proposal shapes
 
 ## Patterns & Notes
 
-### Code Changes Made (not yet committed)
-1. **`src/trainer/reactor.py`** — `process_s2_s3()` now returns `bool`. Returns `True` when auto-countersign succeeds, `False` when reactive handling is invoked.
-2. **`src/trainer/trainer.py`** — `_handle_rationalise()` now captures the return value from `reactor.process_s2_s3()`. Only sends `ratify_request` when auto-countersign did NOT succeed (`if not auto_matched`).
+### Code Changes Made (committed)
+1. **`src/trainer/reactor.py`** — `process_s2_s3()` returns `bool`. Returns `True` when auto-countersign succeeds.
+2. **`src/trainer/trainer.py`** — `_handle_rationalise()` only sends `ratify_request` when auto-countersign fails.
 
-### Architecture Understanding
-- **Auto-countersign:** `Reactor._auto_countersign()` compares proposal kline against `_current_entries` using `KLine.__eq__` (signature + nodes match). Only matches within the SAME lesson's compiled entries.
-- **Proposal generation:** `propose_expansions()` → `generate_expansions()` produces misfit expansions (underfit, overfit, dual). Proposals are generated from the CANDIDATE's perspective, not the query.
-- **Ratify suppression:** DONE — trainer conditionally suppresses `ratify_request` when `auto_matched=True`.
+### S1 Classification Analysis
+`_route()` uses pure node-set membership:
+```python
+match_count = sum(1 for n in query.nodes if n in candidate_nodes)
+if match_count == total: return "S1"  # ALL query nodes found in candidate
+```
 
-### Curriculum Design Challenge
-The hard part is designing a curriculum where auto-countersign always wins. Key findings:
+This is a subset check. For query with N nodes, any candidate whose node set is a superset will be S1. Single-node queries (countersigns, connotates) match almost any compound entry containing that node.
 
-1. **Proposal source:** Proposals come from `propose_expansions(model, candidate, sig)` where `candidate` is the model kline that the query matched against. The proposal tries to "fix" the candidate to match the query.
+**Why this is problematic for learning:** Kalvin is told "you already know this" (S1) for entries that are structurally unrelated to anything in its model. It never gets to reason about connotates/countersigns through the slow path (S2/S3 → cogitation → expansion).
 
-2. **Identity klines are canonical:** When the candidate is an identity (sig=X, nodes=[]), `candidate_sig == nodes_sig` (both represent X), so `propose_expansions()` returns immediately with NO proposals. The identity is "canonical" — nothing to expand.
+### Expansion Pipeline (fully traced)
+1. `_route()` classifies query vs candidate as S1/S2/S3/S4
+2. S2/S3 work items go to cogitator
+3. Cogitator calls `expand(model, query, candidate)` → yields QueryCandidate pairs at each hop depth
+4. For each yield, `propose_expansions(model, qc.candidate, significance)` generates misfit expansions
+5. `_underfit_expansions`: takes candidate's nodes + contributor's nodes. Only yields if new nodes contribute to the candidate's signature gap.
+6. Proposals from identity candidates always include the identity's own bit (due to yield condition), so they overlap with any query involving that identity.
 
-3. **S3 against identity still generates events:** Even though propose_expansions yields nothing for identity candidates, the cogitator still publishes the frame event with the query. The trainer's `_handle_rationalise` still gets called. But `event.proposal` might be `None` or the query itself — need to verify this in a run.
+### STM Pre-registration
+`harness/adapter.py:200-204` — ALL compiled entries added to STM before rationalisation:
+```python
+for entry in entries:
+    self._kagent.model.add_stm(entry)
+```
 
-4. **`MH => H A` analysis:** Compiles to 5 entries. Entry 3 (sig=0x2100, nodes=[256, 2]) triggers S3 against H identity (sig=0x100, nodes=[]). From harness log, the proposal IS generated: `H => H A` (sig=0x100, nodes=[256, 2]). But this comes from expand() finding connotation paths, not directly from propose_expansions on the identity.
-
-5. **expand() produces connotation candidates:** The expand() function doesn't just look at direct candidates — it follows connotation paths (S3 hops). This means proposals can come from candidates found via multi-hop traversal, not just direct model lookups.
-
-6. **Promotion creates new candidates:** `promote_participating` runs when S1 is found, creating new klines in the model that become candidates for subsequent entries in the same lesson. This changes the proposal landscape mid-lesson.
-
-### Strategy for Curriculum Design
-Rather than predicting exact proposals, consider:
-- **Approach A:** Include all possible proposal shapes as entries in the lesson (brute-force matching). But this may cause those entries themselves to trigger more S3 events.
-- **Approach B:** Use a curriculum where S3 triggers against identity klines only. Since identities are canonical and produce no proposals, the S3 event has no proposal to countersign. Need to verify: does auto-countersign fire when proposal=None? Does the trainer still send ratify_request?
-- **Approach C:** Use countersign entries (M == H) which create reciprocal klines. Submit a canonize that triggers S3 against the reciprocal kline (not the identity). The reciprocal kline IS a misfit (its sig != nodes_sig), so propose_expansions WILL generate proposals.
-
-**Next agent should investigate Approach B first** — it's the simplest. Check what happens when the S3 candidate is an identity (canonical, no proposals). Does the system handle this gracefully? If so, a curriculum that only triggers S3 against identities would need zero matching entries.
+Combined with loose S1, this means any co-entry whose nodes appear in another co-entry gets consumed immediately.
 
 ## Files Modified
 - `src/trainer/reactor.py` — `process_s2_s3()` returns `bool`
 - `src/trainer/trainer.py` — conditional `ratify_request` suppression
+- `curricula/s3-auto-countersign.md` — latest curriculum (not yet achieving goal)
