@@ -2,7 +2,7 @@
 """
 Expand NLP grammar dictionary coverage.
 
-Analyzes uncovered BPE tokens in a grammar dictionary and fills gaps using three
+Analyzes uncovered BPE tokens in a grammar dictionary and fills gaps using several
 mechanisms:
 
 1. **Special-token annotation**: Assigns NLP tags to whitespace, punctuation,
@@ -11,12 +11,24 @@ mechanisms:
    POS/DEP/MORPH from parent words found in the grammar dict.
 3. **Multi-source merge**: Combines grammar dicts from multiple sources (e.g.,
    different corpora) without overwriting existing entries.
+4. **BPE re-keying** (``--bpe-rekey``): When the grammar was built using a
+   different BPE tokenizer than the target one, decomposes each grammar word
+   through the current BPE tokenizer and re-keys the grammar by the new token
+   IDs. Subword tokens inherit NLP types from their parent word.
 
 Usage:
     # Expand grammar with all strategies
     python dev/nlp/expand_grammar.py \\
         --grammar data/tokenizer/simplestories-1_grammar.json \\
         --output data/tokenizer/simplestories-1_grammar.json
+
+    # Re-key grammar for a new BPE tokenizer
+    python dev/nlp/expand_grammar.py \\
+        --grammar data/tokenizer/simplestories-1_grammar.json \\
+        --tokenizer-dir data/tokenizer \\
+        --tokenizer-name tokenizer-32768 \\
+        --bpe-rekey \\
+        --output data/tokenizer/new_grammar.json
 
     # Dry run (print stats only)
     python dev/nlp/expand_grammar.py \\
@@ -409,7 +421,164 @@ def _punct_fine_tag(token_str: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Step 3: Subword token inheritance
+# Step 3: BPE decomposition and re-keying
+# ---------------------------------------------------------------------------
+
+def rekey_from_bpe(
+    grammar: dict,
+    bpe_tokenizer: Tokenizer,
+    fine_legend_reverse: dict[str, dict[str, int]],
+) -> dict:
+    """Re-key grammar entries using BPE decomposition.
+
+    The grammar dict from the NLP pipeline is keyed by the first BPE token ID
+    of each spaCy word, using the tokenizer that was active during NLP analysis.
+    When a new BPE tokenizer is trained, the vocabulary changes: token IDs are
+    reshuffled and the same text may encode to different token IDs.
+
+    This function decomposes each grammar word through the current BPE tokenizer
+    and builds a new grammar keyed by the resulting BPE token IDs. Subword tokens
+    inherit NLP types from their parent word.
+
+    Priority rules for overlapping parents (same BPE subword from different words):
+    - Existing entries are never overwritten.
+    - Among candidates, the parent with the highest ``count`` wins.
+    - Ties are broken by longest parent text (more specific word wins over shorter).
+
+    Args:
+        grammar: Grammar dict from the NLP pipeline (keys are string token IDs).
+        bpe_tokenizer: The current BPE tokenizer whose vocabulary the grammar
+            should be keyed against.
+        fine_legend_reverse: Reverse lookup from fine-type legend.
+
+    Returns:
+        New grammar dict keyed by BPE token IDs from ``bpe_tokenizer``.
+    """
+    # Phase 1: Decompose every grammar word through BPE and collect
+    # subword -> parent relationships.
+    #
+    # For each grammar entry, BPE-encode its text. This yields a list of
+    # BPE token IDs that compose the word. Each subword inherits the parent's
+    # NLP type information.
+    #
+    # subword_candidates maps: bpe_token_id -> list of (parent_count, parent_text, parent_entry)
+    subword_candidates: dict[int, list[tuple[int, str, dict]]] = {}
+
+    # Also carry forward entries where BPE encodes the text as a single token
+    # (the common case). We track these separately to avoid unnecessary work.
+    single_token_entries: dict[int, dict] = {}
+
+    decomposed_words = 0
+    single_token_words = 0
+
+    for tid_str, entry in grammar.items():
+        text = entry.get("text", "")
+        if not text:
+            continue
+
+        count = entry.get("count", 0)
+        bpe_ids = bpe_tokenizer.encode(text)
+
+        if len(bpe_ids) == 1:
+            bpe_id = bpe_ids[0]
+            if bpe_id not in single_token_entries or count > single_token_entries[bpe_id].get("count", 0):
+                single_token_entries[bpe_id] = entry
+            single_token_words += 1
+        else:
+            for bpe_id in bpe_ids:
+                if bpe_id not in subword_candidates:
+                    subword_candidates[bpe_id] = []
+                subword_candidates[bpe_id].append((count, text, entry))
+            decomposed_words += 1
+
+    # Phase 2: Build the new grammar, keyed by BPE token ID.
+    new_grammar: dict[str, dict] = {}
+
+    # Single-token entries: directly map BPE ID -> entry
+    for bpe_id, entry in single_token_entries.items():
+        text = entry.get("text", "")
+        # Verify the BPE token decodes to the entry text
+        decoded = bpe_tokenizer.decode([bpe_id])
+        if decoded == text:
+            # Direct match — reuse the entry with the new BPE token ID as key
+            new_entry = dict(entry)
+            new_entry["tokens"] = [bpe_id]
+            new_grammar[str(bpe_id)] = new_entry
+        else:
+            # The text BPE-encodes to a single token but the decoded form differs
+            # (e.g., whitespace normalisation). Treat as a subword of the parent.
+            _add_inherited_entry(new_grammar, bpe_id, decoded, entry, fine_legend_reverse)
+
+    # Subword entries: pick best parent and inherit
+    resolved = 0
+    for bpe_id, candidates in subword_candidates.items():
+        bpe_key = str(bpe_id)
+        if bpe_key in new_grammar:
+            continue  # Already covered by a single-token entry
+
+        # Sort candidates: highest count first, then longest text
+        candidates.sort(key=lambda c: (-c[0], -len(c[1])))
+        best_count, best_text, best_entry = candidates[0]
+
+        subword_text = bpe_tokenizer.decode([bpe_id])
+        _add_inherited_entry(new_grammar, bpe_id, subword_text, best_entry, fine_legend_reverse)
+        resolved += 1
+
+    print(f"  BPE re-keying: {single_token_words} single-token entries, "
+          f"{decomposed_words} decomposed into {resolved} subword entries")
+    print(f"  Total new grammar entries: {len(new_grammar)}")
+    return new_grammar
+
+
+def _add_inherited_entry(
+    grammar: dict[str, dict],
+    bpe_id: int,
+    subword_text: str,
+    parent_entry: dict,
+    fine_legend_reverse: dict[str, dict[str, int]],
+) -> None:
+    """Add an inherited grammar entry for a BPE subword token.
+
+    If the BPE ID is already in the grammar, this is a no-op (existing entries
+    are never overwritten).
+
+    Args:
+        grammar: Grammar dict to update (keys are string token IDs).
+        bpe_id: BPE token ID for the subword.
+        subword_text: Decoded text of the subword token.
+        parent_entry: Grammar entry of the parent word to inherit from.
+        fine_legend_reverse: Reverse lookup from fine-type legend.
+    """
+    bpe_key = str(bpe_id)
+    if bpe_key in grammar:
+        return  # Never overwrite existing entries
+
+    pos = parent_entry.get("pos", "")
+    pos_fine = parent_entry.get("pos_fine", "")
+    dep = parent_entry.get("dep", "")
+    morph = parent_entry.get("morph", "")
+
+    nlp_type32 = compute_nlp_type32(pos, dep, morph)
+    nlp_type48 = compute_nlp_type48(pos, dep, morph)
+    nlp_fine_type = _compute_nlp_fine_type(pos, pos_fine, dep, morph, fine_legend_reverse)
+
+    grammar[bpe_key] = {
+        "text": subword_text,
+        "pos": pos,
+        "pos_fine": pos_fine,
+        "dep": dep,
+        "morph": morph,
+        "count": 0,
+        "tokens": [bpe_id],
+        "frequency_pct": 0.0,
+        "nlp_type32": nlp_type32,
+        "nlp_type48": nlp_type48,
+        "nlp_fine_type": nlp_fine_type,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Step 3b: Legacy subword inheritance (substring-based, for non-BPE-rekey path)
 # ---------------------------------------------------------------------------
 
 def inherit_subword_types(
@@ -423,6 +592,10 @@ def inherit_subword_types(
     parent word whose ``text`` field contains the fragment as a contiguous
     substring. If multiple parents match, prefer the one with the highest
     ``count``.
+
+    This is a legacy strategy used when ``--bpe-rekey`` is not passed. It is
+    less accurate than :func:`rekey_from_bpe` because it uses substring
+    matching rather than actual BPE decomposition.
 
     Args:
         tokenizer_vocab: Full token ID -> decoded string mapping.
@@ -484,28 +657,7 @@ def inherit_subword_types(
             continue
 
         _parent_text, _parent_count, parent = parent_entry
-        pos = parent.get("pos", "")
-        pos_fine = parent.get("pos_fine", "")
-        dep = parent.get("dep", "")
-        morph = parent.get("morph", "")
-
-        nlp_type32 = compute_nlp_type32(pos, dep, morph)
-        nlp_type48 = compute_nlp_type48(pos, dep, morph)
-        nlp_fine_type = _compute_nlp_fine_type(pos, pos_fine, dep, morph, fine_legend_reverse)
-
-        grammar[str(token_id)] = {
-            "text": token_str,
-            "pos": pos,
-            "pos_fine": pos_fine,
-            "dep": dep,
-            "morph": morph,
-            "count": 0,
-            "tokens": [token_id],
-            "frequency_pct": 0.0,
-            "nlp_type32": nlp_type32,
-            "nlp_type48": nlp_type48,
-            "nlp_fine_type": nlp_fine_type,
-        }
+        _add_inherited_entry(grammar, token_id, token_str, parent, fine_legend_reverse)
         resolved += 1
 
     print(f"  Subword inheritance: resolved {resolved}, unresolved {unresolved}")
@@ -685,16 +837,18 @@ def expand_grammar(
     extra_grammars: list[Path] | None = None,
     output: Path | None = None,
     dry_run: bool = False,
+    bpe_rekey: bool = False,
 ) -> dict:
     """Run the full expansion pipeline.
 
     1. Load base grammar.
     2. Load tokenizer vocab.
     3. Merge any extra grammar files.
-    4. Apply special-token rules.
-    5. Apply subword inheritance.
-    6. Apply manual annotations for BPE artifacts.
-    7. Save or print stats.
+    4. If ``bpe_rekey``: re-key grammar using BPE decomposition (replaces steps 4-6).
+    5. Apply special-token rules.
+    6. Apply subword inheritance.
+    7. Apply manual annotations for BPE artifacts.
+    8. Save or print stats.
 
     Args:
         grammar_path: Path to base grammar JSON.
@@ -703,6 +857,8 @@ def expand_grammar(
         extra_grammars: Optional list of pre-computed grammar JSONs to merge.
         output: Path to write expanded grammar. If None, uses grammar_path.
         dry_run: If True, print stats without writing.
+        bpe_rekey: If True, re-key grammar by BPE-decomposing each word against
+            the current tokenizer, inheriting NLP types for subword tokens.
 
     Returns:
         The expanded grammar dict.
@@ -733,19 +889,31 @@ def expand_grammar(
             merge_grammars(grammar, extra)
             print(f"  After merge: {len(grammar)} entries")
 
-    # 4. Apply special-token annotation
+    # 4. Re-key grammar using BPE decomposition (if requested)
+    if bpe_rekey:
+        print("Re-keying grammar via BPE decomposition...")
+        bpe_tokenizer = Tokenizer.from_directory(str(tokenizer_dir), tokenizer_name)
+        grammar = rekey_from_bpe(grammar, bpe_tokenizer, fine_legend_reverse)
+        initial_count = len(grammar)  # Update after re-keying
+        print(f"  Grammar now has {initial_count} entries")
+
+        # After re-keying, check what's still uncovered
+        tokenizer_vocab = load_tokenizer_vocab(tokenizer_dir, tokenizer_name)
+        total_vocab = len(tokenizer_vocab)
+
+    # 5. Apply special-token annotation
     print("Applying special-token annotation...")
     grammar = annotate_special_tokens(tokenizer_vocab, grammar, fine_legend_reverse)
 
-    # 5. Apply subword inheritance
+    # 6. Apply subword inheritance (only useful without BPE re-key)
     print("Applying subword inheritance...")
     grammar = inherit_subword_types(tokenizer_vocab, grammar, fine_legend_reverse)
 
-    # 6. Apply manual annotations for BPE artifacts
+    # 7. Apply manual annotations for BPE artifacts
     print("Applying manual annotations...")
     grammar = annotate_manual_tokens(grammar, fine_legend_reverse)
 
-    # 7. Report final stats
+    # 8. Report final stats
     final_count = len(grammar)
     categories_after = categorize_uncovered(tokenizer_vocab, grammar)
     print(f"\n{'='*60}")
@@ -815,6 +983,16 @@ def main() -> None:
         action="store_true",
         help="Print before/after coverage stats without writing the output file",
     )
+    parser.add_argument(
+        "--bpe-rekey",
+        action="store_true",
+        help=(
+            "Re-key the grammar by BPE-decomposing each word against the current "
+            "tokenizer. Use when the grammar was built with a different BPE "
+            "vocabulary than the target tokenizer. Each word is split into its "
+            "BPE tokens and subwords inherit the parent word's NLP types."
+        ),
+    )
     args = parser.parse_args()
 
     expand_grammar(
@@ -824,6 +1002,7 @@ def main() -> None:
         extra_grammars=args.extra_grammar,
         output=args.output,
         dry_run=args.dry_run,
+        bpe_rekey=args.bpe_rekey,
     )
 
 

@@ -74,7 +74,7 @@ class Tokenizer(KTokenizer):
                 "rustbpe is not installed. Install with: pip install rustbpe"
             )
         self._tokenizer = _rustbpe.Tokenizer()
-        self._tokenizer.train_fromIterator(
+        self._tokenizer.train_from_iterator(
             texts_iterator,
             vocab_size=vocab_size,
             pattern=pattern,
