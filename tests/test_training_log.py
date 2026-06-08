@@ -30,7 +30,8 @@ from trainer.trainer import Trainer
 # ── Significance constants ────────────────────────────────────────────
 
 _S1_SIGNIFICANCE = D_MAX - 1  # S1 threshold
-_S2_SIGNIFICANCE = 100
+_S2_SIGNIFICANCE = ((~100) & 0xFFFF_FFFF_FFFF_FFFF)  # S2 at distance 100
+_S2_DISTANCE = 100  # raw distance for assertions
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
@@ -203,9 +204,8 @@ class TestTrainerLogging:
         event = _make_event("frame", query, proposal=proposal, significance=_S2_SIGNIFICANCE)
         trainer.on_message(Message(role=TRAINEE_ROLE, action="frame", message=event))
 
-        sig_norm = _S2_SIGNIFICANCE / D_MAX
         assert any(
-            f"{sig_norm:.2f}" in r.message
+            f"→ {_S2_DISTANCE}" in r.message
             for r in caplog.records
         )
 

@@ -215,9 +215,9 @@ class TestExpand:
     def test_expand_connotation_bridging(self):
         """Connotation bridging: indirect path through intermediate signature.
 
-        S3 connotation hops are biased by _pack(hop_count + _S3_BIAS),
-        ensuring S3 distances moderately exceed S2 distances while remaining
-        close enough for temperature to bridge the gap.
+        S3 connotation hops use linear distance S2_S3_DISTANCE + hop_count,
+        ensuring S3 distances exceed S2 distances with linear (not quadratic)
+        growth.
 
         Uses powers-of-2 nodes (4, 2, 8) so that signifies() returns False,
         ensuring the S3 connotation path is exercised (signifies short-circuits
@@ -234,17 +234,17 @@ class TestExpand:
         # signifies(4, 8) = False, signifies(2, 8) = False → S3 path exercised
         # s3_connotations[8] = 1 (from q-node 4)
         # c-node 2 resolves via s3_connotation: s3_hop = 1 + 1 = 2
-        # Connotation distance = _pack(2 + _S3_BIAS) = _pack(11) = 121
+        # Connotation distance = S2_S3_DISTANCE + s3_hop + _S3_BIAS - 1 = 100 + 2 = 102
         # Terminal distance = MAX_HOP = 100 (q-node 4 unresolved at terminal level)
 
         results = list(expand(m, q, c))
         assert len(results) == 2
 
-        # S3 connotation yield: distance = _pack(2 + _S3_BIAS)
+        # S3 connotation yield: distance = S2_S3_DISTANCE + 2 = 102
         connotation = results[0]
         assert connotation.query.signature == 2
         assert connotation.candidate.signature == 8
-        connotation_distance = _pack(2 + _S3_BIAS)
+        connotation_distance = S2_S3_DISTANCE + 2  # linear: 100 + 2 = 102
         assert connotation.significance == (~connotation_distance) & MASK64
 
         # Terminal yield: distance = 100 (MAX_HOP for unresolved q-node)
@@ -256,8 +256,8 @@ class TestExpand:
         # Terminal has higher significance than connotation (closer match)
         assert terminal.significance > connotation.significance
 
-        # Verify S3 distance exceeds S2: connotation (121) > terminal (100)
-        assert connotation_distance > 100  # S3 packed > S2 raw
+        # Verify S3 distance exceeds S2: connotation (102) > terminal (100)
+        assert connotation_distance > 100  # S3 linear > S2 raw
 
     def test_expand_signifies_cogitation(self):
         """S2 signifies loose match yields additional QueryCandidates.
@@ -535,12 +535,13 @@ class TestBoundaries:
             assert 0 <= val <= MASK64
 
     def test_s23_sits_between_max_hop_and_min_s3(self):
-        """S2|S3 boundary sits between MAX_HOP and _pack(2 + _S3_BIAS).
+        """S2|S3 boundary sits between MAX_HOP and linear S3 min distance.
 
-        S2_S3_DISTANCE (100) < _pack(2 + _S3_BIAS) (121), ensuring S2 and S3
-        significance tiers are cleanly separated.
+        S2_S3_DISTANCE (100) < S2_S3_DISTANCE + 1 (101), ensuring S2 and S3
+        significance tiers are cleanly separated with linear S3 distance.
         """
-        assert S2_S3_DISTANCE < _pack(2 + _S3_BIAS)
+        min_s3_distance = S2_S3_DISTANCE + _S3_BIAS  # 100 + 1 = 101
+        assert S2_S3_DISTANCE < min_s3_distance
 
 
 class TestClassify:

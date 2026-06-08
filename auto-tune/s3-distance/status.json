@@ -1,10 +1,10 @@
 {
-  "pid": 37604,
+  "pid": 39007,
   "connected": true,
   "last_event_seq": 4,
   "last_command": {
     "action": "continue"
   },
   "state": "waiting_for_event",
-  "started_at": "2026-06-08T09:31:40.551846"
+  "started_at": "2026-06-08T09:34:55.993622"
 }
