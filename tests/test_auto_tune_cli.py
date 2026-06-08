@@ -13,8 +13,10 @@ Covers:
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -404,10 +406,12 @@ class TestMainModule:
     """``python -m participants.auto_tune --help`` works."""
 
     def test_help_lists_all_subcommands(self) -> None:
+        env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parent.parent / "src")}
         result = subprocess.run(
             [sys.executable, "-m", "participants.auto_tune", "--help"],
             capture_output=True,
             text=True,
+            env=env,
         )
         assert result.returncode == 0
         for cmd in TestBuildParser.EXPECTED_SUBCOMMANDS:
