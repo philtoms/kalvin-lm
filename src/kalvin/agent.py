@@ -406,47 +406,25 @@ class KAgent:
             self._publish("frame", kline, kline, 0)
             return True
 
-        # Phase 5: Route candidates — scan for S1 first, defer cogitation.
-        # Previous code submitted S2/S3 work items to the cogitator inline
-        # during iteration. If a later candidate matched S1 and broke the
-        # loop, the earlier work items were already queued and processed
-        # needlessly. We now collect slow candidates and only submit them
-        # if no S1 is found in the full candidate list.
+        # Phase 5: Push all candidates to cogitator.
+        # Every candidate is submitted as a work item regardless of routing
+        # classification. This ensures all kline proposals flow through
+        # cogitation — no silent S1 short-circuit that skips reasoning.
 
-        found_s1 = False
-        slow_candidates: list[tuple[KLine, str]] = []
-        for candidate in candidates:
-            level = self._route(kline, candidate)
-
-            if level == "S1":
-                # Fast response — confirmed, done
-                promote_participating(self._model, kline, candidate)
-                self._publish("frame", kline, candidate, D_MAX - 1)
-                found_s1 = True
-                break
-            else:
-                # Defer — only submit if no S1 found
-                slow_candidates.append((candidate, level))
-
-        if found_s1:
-            return True
-
-        # No S1 found — submit deferred slow candidates to cogitator
         # Cap candidates to prevent cascade explosion in dense models.
-        # Prioritise S2 over S3, then by node overlap count (descending).
-        if len(slow_candidates) > self._max_candidates:
-            def _candidate_priority(item: tuple[KLine, str]) -> tuple[int, int]:
-                candidate, level = item
-                level_rank = 0 if level == "S2" else 1
-                overlap = sum(1 for n in kline.nodes if n in set(candidate.nodes))
-                return (level_rank, -overlap)
-            slow_candidates.sort(key=_candidate_priority)
-            slow_candidates = slow_candidates[:self._max_candidates]
+        # Prioritise by node overlap count (descending).
+        work_candidates = candidates
+        if len(work_candidates) > self._max_candidates:
+            def _candidate_priority(candidate: KLine) -> int:
+                return -sum(1 for n in kline.nodes if n in set(candidate.nodes))
+            work_candidates = sorted(candidates, key=_candidate_priority)
+            work_candidates = work_candidates[:self._max_candidates]
 
-        for candidate, level in slow_candidates:
+        for candidate in work_candidates:
+            level = self._route(kline, candidate)
             self._cogitator.submit(WorkItem(kline, candidate, level))
 
-        # All candidates routed as S2/S3
+        # All candidates submitted to cogitator
         return False
 
     # ── Graph Expansion Resolution ───────────────────────────────────
