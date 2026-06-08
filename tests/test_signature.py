@@ -1,7 +1,14 @@
 """Tests for Signature — openspec/signature.md conformance."""
 
 import pytest
-from kalvin.signature import make_signature, signifies, is_literal_node, LITERAL_MASK
+from kalvin.signature import (
+    make_signature,
+    signifies,
+    is_literal_node,
+    is_nlp_node,
+    LITERAL_MASK,
+    NLP_TYPE_MASK,
+)
 
 MASK64 = 0xFFFF_FFFF_FFFF_FFFF
 
@@ -116,3 +123,129 @@ class TestSignifies:
 
     def test_commutative(self):
         assert signifies(0b110, 0b010) == signifies(0b010, 0b110)
+
+
+# ── NLP-BPE helpers for tests ────────────────────────────────────────────
+
+
+def nlp_node(nlp_type: int, bpe_id: int) -> int:
+    """Create an NLP-BPE node: (nlp_type32 << 32) | bpe_token_id."""
+    return (nlp_type << 32) | bpe_id
+
+
+class TestIsNlpNode:
+    """is_nlp_node: non-literal nodes with non-zero high 32 bits."""
+
+    def test_nlp_bpe_node(self):
+        """NLP-BPE node with high bits set → True."""
+        node = nlp_node(0x10000, 42)
+        assert is_nlp_node(node) is True
+
+    def test_mod32_packed_node(self):
+        """Mod32 packed node (bits 1–31 only) → False."""
+        assert is_nlp_node(6) is False
+
+    def test_literal_node(self):
+        """Literal node has high bits set but is literal → False."""
+        node = (65 << 32) | 0xFFFFFFFF
+        assert is_nlp_node(node) is False
+
+    def test_zero(self):
+        """Zero has no high bits → False."""
+        assert is_nlp_node(0) is False
+
+
+class TestMakeSignatureNLP:
+    """make_signature: NLP-BPE nodes contribute only NLP type bits."""
+
+    def test_nlp_same_type_different_bpe(self):
+        """Two NLP nodes with same NLP type but different BPE IDs
+        produce identical signatures — BPE IDs are masked out."""
+        nlp_type = 0x10000
+        node_a = nlp_node(nlp_type, 42)
+        node_b = nlp_node(nlp_type, 99)
+        assert make_signature([node_a]) == make_signature([node_b])
+
+    def test_nlp_different_types_or_reduction(self):
+        """NLP nodes with different NLP types — OR-reduction of high bits."""
+        node_a = nlp_node(0x10000, 10)
+        node_b = nlp_node(0x20000, 20)
+        result = make_signature([node_a, node_b])
+        expected = (node_a & NLP_TYPE_MASK) | (node_b & NLP_TYPE_MASK)
+        assert result == expected
+
+    def test_nlp_single_node_masks_bpe_id(self):
+        """Single NLP node: signature has only the NLP type bits, not BPE ID."""
+        nlp_type = 0x10000
+        bpe_id = 42
+        node = nlp_node(nlp_type, bpe_id)
+        sig = make_signature([node])
+        # Low 32 bits of signature should be 0 (BPE ID masked out)
+        assert (sig & 0xFFFFFFFF) == 0
+        # High 32 bits should carry the NLP type
+        assert (sig >> 32) == nlp_type
+
+    def test_mixed_nlp_and_literal(self):
+        """NLP + literal nodes: bit 0 set (from literal) + NLP type bits."""
+        nlp = nlp_node(0x10000, 42)
+        literal = lit(65)
+        result = make_signature([nlp, literal])
+        expected = (nlp & NLP_TYPE_MASK) | 1
+        assert result == expected
+
+    def test_backward_compat_mod32(self):
+        """Mod32 packed nodes still produce full OR-reduction."""
+        assert make_signature([0b10, 0b100]) == 0b110
+
+    def test_mixed_nlp_and_mod32(self):
+        """NLP nodes contribute high bits, Mod32 contributes low bits."""
+        nlp = nlp_node(0x10000, 42)
+        mod32 = 0b110
+        result = make_signature([nlp, mod32])
+        expected = (nlp & NLP_TYPE_MASK) | mod32
+        assert result == expected
+
+    def test_nlp_commutative(self):
+        """NLP signature computation is order-independent."""
+        nlp_a = nlp_node(0x10000, 10)
+        nlp_b = nlp_node(0x20000, 20)
+        a = make_signature([nlp_a, nlp_b])
+        b = make_signature([nlp_b, nlp_a])
+        assert a == b
+
+    def test_nlp_identity(self):
+        """make_signature([nlp_node]) == nlp_type bits only (BPE ID excluded)."""
+        node = nlp_node(0x10000, 42)
+        assert make_signature([node]) == (node & NLP_TYPE_MASK)
+
+
+class TestSignifiesNLP:
+    """signifies works correctly with NLP-derived signatures."""
+
+    def test_nlp_same_type_signifies(self):
+        """Two signatures from NLP nodes of same type share bits → True."""
+        node_a = nlp_node(0x10000, 42)
+        node_b = nlp_node(0x10000, 99)
+        assert signifies(make_signature([node_a]), make_signature([node_b])) is True
+
+    def test_nlp_different_non_overlapping_types(self):
+        """Two NLP types with no shared bits → False."""
+        node_a = nlp_node(0x10000, 42)  # bit 16
+        node_b = nlp_node(0x20000, 99)  # bit 17
+        # OR-reduce each individually — no overlap between 0x10000 and 0x20000
+        # But these are high 32-bit values, so:
+        sig_a = make_signature([node_a])
+        sig_b = make_signature([node_b])
+        # 0x10000 << 32 vs 0x20000 << 32 — no overlap
+        assert signifies(sig_a, sig_b) is False
+
+    def test_nlp_overlapping_types(self):
+        """Two NLP nodes with overlapping type bits → True."""
+        node_a = nlp_node(0x30000, 42)  # bits 16+17
+        node_b = nlp_node(0x10000, 99)  # bit 16
+        assert signifies(make_signature([node_a]), make_signature([node_b])) is True
+
+    def test_nlp_signature_vs_zero(self):
+        """NLP-derived signature vs 0 → False."""
+        node = nlp_node(0x10000, 42)
+        assert signifies(make_signature([node]), 0) is False

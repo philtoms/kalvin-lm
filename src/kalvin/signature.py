@@ -3,8 +3,10 @@
 See specs/signature.md for the full specification.
 
 Key invariants:
-  - Non-literal nodes contribute their full value via OR.
   - Literal nodes contribute bit 0 only (literal-content flag = 1).
+  - NLP-BPE nodes contribute only their NLP type bits (high 32), masking
+    out BPE token IDs to keep signatures vocabulary-independent.
+  - Mod32 packed nodes contribute their full value via OR.
   - An all-literal kline produces signature 1.
   - An empty kline produces signature 0.
   - Any uint64 may serve as a signature; there is no is_signature test.
@@ -24,6 +26,13 @@ from typing import Sequence
 # is a literal node, regardless of which tokenizer produced it.
 LITERAL_MASK = 0xFFFF_FFFF
 
+# ── NLP type mask ─────────────────────────────────────────────────────────
+# High 32 bits — masks the NLP type portion of an NLP-BPE node.
+# NLP-BPE nodes use the layout: (nlp_type32 << 32) | bpe_token_id.
+# When computing signatures, only the NLP type bits contribute; BPE IDs
+# (low 32 bits) are excluded to keep signatures vocabulary-independent.
+NLP_TYPE_MASK = 0xFFFF_FFFF_0000_0000
+
 
 def is_literal_node(node: int) -> bool:
     """Test whether a node carries the literal mask.
@@ -39,11 +48,44 @@ def is_literal_node(node: int) -> bool:
     return (node & LITERAL_MASK) == LITERAL_MASK
 
 
+def is_nlp_node(node: int) -> bool:
+    """Test whether a node is an NLP-BPE node.
+
+    An NLP-BPE node has non-zero high 32 bits and is NOT a literal node.
+    The high 32 bits carry the NLP type encoding (POS + DEP + MORPH);
+    the low 32 bits carry the BPE token ID.
+
+    **Mod32-only assumption**: This test correctly distinguishes NLP-BPE
+    nodes from Mod32 packed nodes because Mod32 packed nodes use only
+    bits 1–31 (high 32 bits are always zero). However, Mod64 packed nodes
+    use bits 1–63 and could set bits in the high 32 range, causing a false
+    positive. This is acceptable because:
+
+    1. The current codebase uses Mod32 packed nodes exclusively at runtime.
+    2. NLP-BPE nodes will coexist with Mod32 nodes, not Mod64.
+    3. If Mod64 is ever used alongside NLP-BPE, this function will need a
+       more discriminating test — but that is a future concern outside this
+       task's scope.
+
+    **Edge case**: An NLP-BPE node with ``nlp_type32 == 0`` would have
+    zero high bits and be indistinguishable from a Mod32 packed node.
+    In practice this cannot happen — unknown BPE tokens receive at least
+    ``POS_X = 65536`` as their ``nlp_type32``, ensuring the high bits
+    are always non-zero for valid NLP nodes.
+    """
+    if is_literal_node(node):
+        return False
+    return (node >> 32) != 0
+
+
 def make_signature(nodes: Sequence[int]) -> int:
     """Produce a signature from a sequence of nodes.
 
-    Non-literal nodes contribute their full value via OR-reduction.
-    Literal nodes contribute bit 0 only (the literal-content flag).
+    Three-way branch per node:
+      - Literal nodes contribute bit 0 only (literal-content flag).
+      - NLP-BPE nodes contribute only their NLP type bits (high 32),
+        masking out BPE token IDs to keep signatures vocabulary-independent.
+      - Mod32 packed nodes contribute their full value via OR-reduction.
 
     Args:
         nodes: Sequence of uint64 node values.
@@ -54,9 +96,11 @@ def make_signature(nodes: Sequence[int]) -> int:
     sig = 0
     for node in nodes:
         if is_literal_node(node):
-            sig |= 1          # bit 0: literal-content flag
+            sig |= 1                          # bit 0: literal-content flag
+        elif is_nlp_node(node):
+            sig |= (node & NLP_TYPE_MASK)     # NLP type bits only (high 32)
         else:
-            sig |= node       # non-literal contributes full value
+            sig |= node                       # Mod32 packed: full value
     return sig
 
 

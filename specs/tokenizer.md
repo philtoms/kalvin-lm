@@ -324,26 +324,17 @@ Comparison with other tokenizers:
 ### Signature Behavior
 
 `make_signature()` for NLP nodes OR-reduces only the NLP type bits
-(high 32), excluding BPE IDs. Concretely, for each NLP node, the
-tokenizer masks the node before passing it to `make_signature`:
-
-```
-masked_node = node & 0xFFFFFFFF00000000   # zero out BPE ID
-```
-
-This means the signature captures linguistic type information without
-being influenced by specific BPE vocabulary indices.
+(high 32), excluding BPE IDs. The masking is handled internally by
+`make_signature()` — it detects NLP-BPE nodes via `is_nlp_node()` and
+applies `NLP_TYPE_MASK` (`0xFFFFFFFF00000000`) before OR-reducing.
+The tokenizer passes raw (unmasked) NLP-BPE nodes to `make_signature()`
+as it would any other node sequence.
 
 **Rationale**: BPE IDs are vocabulary-specific indices without semantic
 meaning — two synonyms have unrelated BPE IDs but may share NLP type
 bits. Only the NLP type bits carry structural/linguistic information
 relevant to similarity matching.
 
-The general `make_signature` algorithm in `specs/signature.md` is
-**unchanged** — the masking is applied by the NLP tokenizer when
-preparing nodes, before they are passed to `make_signature`. The
-signature algorithm still OR-reduces the full node value as usual; it
-sees masked nodes where the low 32 bits are already zeroed.
 
 ### Worked Examples
 
@@ -372,10 +363,14 @@ decode([563499709247665, 36169534507324260, 9007216434611153]) → "Tea brewed s
 #### Signature construction
 
 ```
-Nodes (after masking): [563499709235200, 36169534507319296, 9007216434610176]
+Nodes: [563499709247665, 36169534507324260, 9007216434611153]
 
-make_signature(masked_nodes) →
-  563499709235200 | 36169534507319296 | 9007216434610176
+make_signature(nodes) →
+  Each NLP node is masked internally by make_signature:
+    563499709247665  & 0xFFFFFFFF00000000  = 563499709235200
+    36169534507324260 & 0xFFFFFFFF00000000 = 36169534507319296
+    9007216434611153 & 0xFFFFFFFF00000000  = 9007216434610176
+  OR-reduce: 563499709235200 | 36169534507319296 | 9007216434610176
 
 Signature captures: POS_PROPN, POS_VERB, POS_ADV, DEP_SUBJ, DEP_ROOT,
 DEP_ADVMOD, MORPH_PAST, MORPH_SING — the grammatical profile of the
@@ -383,7 +378,8 @@ input, independent of which specific words were used.
 ```
 
 > **Note.** `make_signature` is defined in the @signature spec, not here.
-> This example illustrates how masked NLP nodes feed into it.
+> The NLP-aware masking (detecting NLP-BPE nodes and applying `NLP_TYPE_MASK`)
+> is built into `make_signature` itself — the tokenizer passes raw nodes.
 
 ## Mod Tokenizer
 
