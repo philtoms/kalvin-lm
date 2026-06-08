@@ -1,0 +1,161 @@
+{
+  "version": 2,
+  "position": 5,
+  "lessons": [
+    "M",
+    "H",
+    "M == H",
+    "A",
+    "MH => H A"
+  ],
+  "curriculum_file": "curricula/first-steps-s2.md",
+  "current_label": null,
+  "lesson_submitted": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "lesson_satisfied": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "submitted": [
+    [
+      2,
+      []
+    ],
+    [
+      256,
+      []
+    ],
+    [
+      256,
+      [
+        8192
+      ]
+    ],
+    [
+      8192,
+      []
+    ],
+    [
+      8192,
+      [
+        256
+      ]
+    ],
+    [
+      8448,
+      [
+        256,
+        2
+      ]
+    ],
+    [
+      8448,
+      [
+        8192,
+        256
+      ]
+    ]
+  ],
+  "satisfied": [
+    [
+      2,
+      []
+    ],
+    [
+      256,
+      []
+    ],
+    [
+      256,
+      [
+        8192
+      ]
+    ],
+    [
+      8192,
+      []
+    ],
+    [
+      8192,
+      [
+        256
+      ]
+    ],
+    [
+      8448,
+      [
+        8192,
+        256
+      ]
+    ]
+  ],
+  "pending": [],
+  "event_log": [
+    {
+      "timestamp": "2026-06-08T08:16:48.443918+00:00",
+      "type": "session_start",
+      "data": {
+        "goal": null
+      }
+    },
+    {
+      "timestamp": "2026-06-08T08:16:48.444946+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 0
+      }
+    },
+    {
+      "timestamp": "2026-06-08T08:16:48.445741+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 1
+      }
+    },
+    {
+      "timestamp": "2026-06-08T08:16:48.446600+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 2
+      }
+    },
+    {
+      "timestamp": "2026-06-08T08:16:48.447273+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 3
+      }
+    },
+    {
+      "timestamp": "2026-06-08T08:17:27.149133+00:00",
+      "type": "reactive_scaffolding",
+      "data": {
+        "confidence": 0.88,
+        "source": "(Introduce missing M identity to close underfit gap)\nM\nHM > H M"
+      }
+    },
+    {
+      "timestamp": "2026-06-08T08:17:27.149234+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 4
+      }
+    },
+    {
+      "timestamp": "2026-06-08T08:18:16.697396+00:00",
+      "type": "reactive_scaffolding",
+      "data": {
+        "confidence": 0.78,
+        "source": "(HM composite identity bridging H and M)\n(HM = H M would merge but we need HM as a distinct node)\nHM (declare composite identity missing from proposal)\nA (declare missing target node from expectation)\nH > M (preserve proposed H-M relationship)\nHM => H A (canonize mapping closing the underfit gap)"
+      }
+    }
+  ]
+}

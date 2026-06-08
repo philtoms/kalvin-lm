@@ -1645,7 +1645,8 @@ class TestEventRelay:
         capture.reset()
 
         # Patch the reactor's process_s2_s3 to isolate Trainer-level testing
-        trainer._reactor.process_s2_s3 = MagicMock()
+        # Return False so ratify_request is sent (auto-countersign failed)
+        trainer._reactor.process_s2_s3 = MagicMock(return_value=False)
 
         # Send S2/S3 frame event (low significance, non-matching signature)
         event = _make_event(

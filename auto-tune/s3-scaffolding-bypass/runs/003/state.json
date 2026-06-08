@@ -1,0 +1,151 @@
+{
+  "version": 2,
+  "position": 3,
+  "lessons": [
+    "M\nH\nA",
+    "M == H",
+    "H => H A\nMH => H A"
+  ],
+  "curriculum_file": "curricula/s3-auto-countersign.md",
+  "current_label": null,
+  "lesson_submitted": [
+    "1",
+    "2",
+    "3"
+  ],
+  "lesson_satisfied": [
+    "1",
+    "2",
+    "3"
+  ],
+  "submitted": [
+    [
+      2,
+      []
+    ],
+    [
+      256,
+      []
+    ],
+    [
+      256,
+      [
+        256,
+        2
+      ]
+    ],
+    [
+      256,
+      [
+        8192
+      ]
+    ],
+    [
+      8192,
+      []
+    ],
+    [
+      8192,
+      [
+        256
+      ]
+    ],
+    [
+      8448,
+      [
+        256,
+        2
+      ]
+    ],
+    [
+      8448,
+      [
+        8192,
+        256
+      ]
+    ]
+  ],
+  "satisfied": [
+    [
+      2,
+      []
+    ],
+    [
+      256,
+      []
+    ],
+    [
+      256,
+      [
+        256,
+        2
+      ]
+    ],
+    [
+      256,
+      [
+        8192
+      ]
+    ],
+    [
+      8192,
+      []
+    ],
+    [
+      8192,
+      [
+        256
+      ]
+    ],
+    [
+      8448,
+      [
+        256,
+        2
+      ]
+    ],
+    [
+      8448,
+      [
+        8192,
+        256
+      ]
+    ]
+  ],
+  "pending": [],
+  "event_log": [
+    {
+      "timestamp": "2026-06-08T08:20:48.645972+00:00",
+      "type": "session_start",
+      "data": {
+        "goal": null
+      }
+    },
+    {
+      "timestamp": "2026-06-08T08:20:48.647246+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 0
+      }
+    },
+    {
+      "timestamp": "2026-06-08T08:20:48.648078+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 1
+      }
+    },
+    {
+      "timestamp": "2026-06-08T08:20:48.649306+00:00",
+      "type": "lesson_complete",
+      "data": {
+        "position": 2
+      }
+    },
+    {
+      "timestamp": "2026-06-08T08:20:48.649649+00:00",
+      "type": "session_end",
+      "data": {}
+    }
+  ]
+}
