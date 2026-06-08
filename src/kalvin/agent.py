@@ -35,6 +35,7 @@ from kalvin.expand import (
 )
 from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.model import Model
 from kalvin.signature import is_literal_node, make_signature
 

@@ -5,13 +5,16 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from kalvin.agent import CogitationHandler, Cogitator, KAgent, WorkItem
 from kalvin.agent_codec import AgentCodec
 from kalvin.events import EventBus
 from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.model import Model
-from kalvin.signature import make_signature
+from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.signature import NLP_TYPE_MASK, is_nlp_node, make_signature
 
 
 class TestAgentInit:
@@ -913,3 +916,105 @@ class TestCascadeWriteMethods:
         assert len(events) == 1
         assert events[0].kind == "frame"
         assert events[0].proposal is p
+
+
+# ── NLP Tokenizer Integration Tests ──────────────────────────────────
+
+@pytest.fixture(scope="module")
+def nlp_tokenizer() -> NLPTokenizer:
+    """Load NLPTokenizer from standard file paths (once per module)."""
+    return NLPTokenizer.from_files()
+
+
+class TestAgentNLPTokenizer:
+    """KAgent constructed with NLPTokenizer — pluggable tokenizer integration.
+
+    Verifies that KAgent works correctly when callers opt in to NLP-BPE
+    tokenization. The default remains Mod32Tokenizer (tested separately).
+    """
+
+    def test_nlp_agent_rationalise_kline(self, nlp_tokenizer: NLPTokenizer) -> None:
+        """KAgent with NLPTokenizer can rationalise a kline containing NLP-BPE nodes.
+
+        Encode a known word ('Tea') via the NLP tokenizer, build a KLine
+        with the resulting nodes and their signature, and rationalise.
+        The kline should be accepted (S4 novel or S1).
+        """
+        a = KAgent(tokenizer=nlp_tokenizer, adapter=EventBus())
+        nodes = nlp_tokenizer.encode("Tea")
+        assert len(nodes) == 1, "'Tea' should produce exactly one NLP-BPE node"
+
+        sig = make_signature(nodes)
+        kline = KLine(sig, nodes, dbg_text="Tea")
+        result = a.rationalise(kline)
+        assert result is True
+
+    def test_nlp_agent_make_signature_correct(self, nlp_tokenizer: NLPTokenizer) -> None:
+        """make_signature on NLP-BPE nodes uses only NLP type bits — no BPE ID leakage.
+
+        The signature should be non-zero and contain only bits from the
+        high 32 (NLP type) portion. BPE token IDs in the low 32 bits must
+        not leak into the signature.
+        """
+        nodes = nlp_tokenizer.encode("Tea")
+        sig = make_signature(nodes)
+
+        # Signature must be non-zero (NLP-BPE nodes have non-zero high bits)
+        assert sig != 0
+
+        # Signature must only have bits in the high 32 (NLP type mask region).
+        # Each node contributes (node & NLP_TYPE_MASK), so the signature
+        # should have no bits set in the low 32.
+        low_32 = sig & 0xFFFFFFFF
+        assert low_32 == 0, (
+            f"Signature {sig:#x} has bits set in low 32 ({low_32:#x}) "
+            f"— BPE IDs leaked into signature"
+        )
+
+        # The signature should match OR of each node's high 32 bits
+        expected = 0
+        for node in nodes:
+            expected |= (node & NLP_TYPE_MASK)
+        assert sig == expected
+
+    def test_mod32_backward_compat(self) -> None:
+        """Default KAgent uses Mod32Tokenizer — existing behavior unchanged."""
+        a = KAgent(adapter=EventBus())
+        assert isinstance(a.tokenizer, Mod32Tokenizer)
+
+        # Rationalise a known all-literal kline
+        t = a.tokenizer
+        lit_nodes = t.encode("ABC")
+        k = KLine(1, lit_nodes)
+        result = a.rationalise(k)
+        assert result is True
+
+    def test_nlp_agent_serialization(self, nlp_tokenizer: NLPTokenizer) -> None:
+        """Serialization round-trips preserve NLP-BPE node values (uint64).
+
+        Create an NLP agent, rationalise a kline with NLP-BPE nodes,
+        then round-trip through to_bytes/from_bytes and to_dict/from_dict.
+        The deserialized model should have the same number of klines.
+        """
+        a = KAgent(tokenizer=nlp_tokenizer, adapter=EventBus())
+        nodes = nlp_tokenizer.encode("Tea")
+        sig = make_signature(nodes)
+        kline = KLine(sig, nodes, dbg_text="Tea")
+        a.rationalise(kline)
+
+        # Binary round-trip
+        data = a.to_bytes()
+        loaded = KAgent.from_bytes(data)
+        assert len(loaded.model) == len(a.model)
+
+        # Dict round-trip
+        d = a.to_dict()
+        loaded2 = KAgent.from_dict(d)
+        assert len(loaded2.model) == len(a.model)
+
+        # Verify the NLP-BPE node values survived serialization unchanged
+        # by checking the stored kline's nodes match the originals
+        original_kline = list(a.model.klines())[0]
+        loaded_kline = list(loaded.model.klines())[0]
+        assert loaded_kline.nodes == original_kline.nodes
+        assert loaded_kline.signature == original_kline.signature
