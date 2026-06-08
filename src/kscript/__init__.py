@@ -6,7 +6,8 @@ Provides both CLI and Python API for compiling .ks files to JSON/JSONL/binary fo
 import json
 from pathlib import Path
 
-from kalvin.mod_tokenizer import Mod32Tokenizer, ModTokenizer
+from kalvin.abstract import KTokenizer
+from kalvin.mod_tokenizer import Mod32Tokenizer
 
 from .ast import KScriptFile
 from .ast_emitter import ASTEmitter, SymbolicEntry
@@ -61,7 +62,7 @@ class KScript:
         self,
         source: str | Path,
         base: "KScript | None" = None,
-        tokenizer: ModTokenizer | None = None,
+        tokenizer: KTokenizer | None = None,
         dev: bool = False,
     ):
         """Compile KScript from string or file path.

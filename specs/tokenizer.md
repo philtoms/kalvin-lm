@@ -335,7 +335,6 @@ meaning — two synonyms have unrelated BPE IDs but may share NLP type
 bits. Only the NLP type bits carry structural/linguistic information
 relevant to similarity matching.
 
-
 ### Worked Examples
 
 #### Encoding with grammar lookup

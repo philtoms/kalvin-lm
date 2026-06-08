@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from kalvin.mod_tokenizer import ModTokenizer, Mod32Tokenizer
+from kalvin.abstract import KTokenizer
+from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.signature import make_signature, is_literal_node
 from kalvin.expand import D_MAX
 from kalvin.kline import KLine
@@ -66,7 +67,7 @@ class Decompiler:
         - S4 (no bits): unsigned 
     """
 
-    def __init__(self, tokenizer: ModTokenizer | None = None):
+    def __init__(self, tokenizer: KTokenizer | None = None):
         self.tokenizer = tokenizer if tokenizer else Mod32Tokenizer()
         self._mcs_names: dict[int, str] = {}
 

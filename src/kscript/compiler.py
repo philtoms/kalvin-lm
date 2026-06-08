@@ -19,7 +19,8 @@ from __future__ import annotations
 from typing import TypeAlias
 
 from kalvin.kline import KLine, KNodes, KSig
-from kalvin.mod_tokenizer import Mod32Tokenizer, ModTokenizer
+from kalvin.abstract import KTokenizer
+from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.expand import D_MAX
 from kalvin.signature import is_literal_node
 
@@ -58,7 +59,7 @@ class Compiler:
     symbolic entries to token IDs.
     """
 
-    def __init__(self, tokenizer: ModTokenizer | None = None, dev: bool = False):
+    def __init__(self, tokenizer: KTokenizer | None = None, dev: bool = False):
         self.entries: list[CompiledEntry] = []
         self.tokenizer = tokenizer or Mod32Tokenizer()
         self.dev = dev
@@ -73,7 +74,7 @@ class Compiler:
         return self.entries
 
 
-def compile_source(source: str, tokenizer: ModTokenizer | None = None, dev: bool = False) -> list[CompiledEntry]:
+def compile_source(source: str, tokenizer: KTokenizer | None = None, dev: bool = False) -> list[CompiledEntry]:
     """Compile KScript source string to entries."""
     from .lexer import Lexer
 

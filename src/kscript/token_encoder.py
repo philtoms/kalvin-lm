@@ -8,7 +8,8 @@ ready for the knowledge graph.
 from __future__ import annotations
 
 from kalvin.kline import KLine, KNodes, KSig
-from kalvin.mod_tokenizer import Mod32Tokenizer, ModTokenizer
+from kalvin.abstract import KTokenizer
+from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.signature import is_literal_node
 
 
@@ -31,7 +32,7 @@ class CompiledEntry(KLine):
         cls,
         sig: str,
         nodes: str | None | list[str],
-        tokenizer: ModTokenizer,
+        tokenizer: KTokenizer,
         *,
         sig_level: str = "S4",
         significance: object | None = None,
@@ -61,7 +62,7 @@ class CompiledEntry(KLine):
                     all_node_ids.extend(tokenizer.encode(n))
             return cls(signature=sig_id, nodes=all_node_ids, dbg_text=dbg_text, sig_level=sig_level)
 
-    def decode(self, tokenizer: ModTokenizer) -> tuple[str, str | None | list[str]]:
+    def decode(self, tokenizer: KTokenizer) -> tuple[str, str | None | list[str]]:
         """Decode token IDs back to strings."""
         sig = tokenizer.decode([self.signature])
 
@@ -109,7 +110,7 @@ class TokenEncoder:
         If True, include debug text in entries.
     """
 
-    def __init__(self, tokenizer: ModTokenizer | None = None, dev: bool = False):
+    def __init__(self, tokenizer: KTokenizer | None = None, dev: bool = False):
         self.tokenizer = tokenizer or Mod32Tokenizer()
         self.dev = dev
         self._sig_levels = {

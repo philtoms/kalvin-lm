@@ -4,6 +4,7 @@ Usage:
     python -m kscript script.ks              # -> script.jsonl
     python -m kscript script.ks -out out.json
     python -m kscript script.ks -out out.bin
+    python -m kscript script.ks --tokenizer nlp
     python -m kscript model.bin              # Load and display
 """
 
@@ -12,9 +13,18 @@ import json
 import sys
 from pathlib import Path
 
+from kalvin.abstract import KTokenizer
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
 from . import KScript
+
+
+def _make_tokenizer(name: str) -> KTokenizer:
+    """Instantiate tokenizer by name."""
+    if name == "nlp":
+        from kalvin.nlp_tokenizer import NLPTokenizer
+        return NLPTokenizer.from_files()
+    return Mod32Tokenizer()
 
 
 def main() -> None:
@@ -25,8 +35,8 @@ def main() -> None:
     parser.add_argument("input", help="Input file (.ks, .json, .jsonl, or .bin)")
     parser.add_argument("-out", dest="output", help="Output file path")
     parser.add_argument("-dev", action="store_true", help="Enable dev mode")
-    args = parser.parse_args()
-
+    parser.add_argument("--tokenizer", choices=["mod32", "nlp"], default="mod32",
+                        help="Tokenizer to use (default: mod32)")
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -36,8 +46,10 @@ def main() -> None:
         sys.exit(1)
 
     try:
+        tokenizer = _make_tokenizer(args.tokenizer)
+
         # Load/compile the input
-        model = KScript(input_path,dev=args.dev)
+        model = KScript(input_path, tokenizer=tokenizer, dev=args.dev)
 
         # Determine output path
         if args.output:
