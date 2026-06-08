@@ -1,10 +1,10 @@
 {
-  "pid": 19341,
+  "pid": 20300,
   "connected": true,
-  "last_event_seq": 8,
+  "last_event_seq": 4,
   "last_command": {
     "action": "continue"
   },
-  "state": "waiting_for_command",
-  "started_at": "2026-06-08T12:18:09.998799"
+  "state": "waiting_for_event",
+  "started_at": "2026-06-08T12:20:13.777918"
 }

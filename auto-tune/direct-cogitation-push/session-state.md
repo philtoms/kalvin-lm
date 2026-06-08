@@ -18,54 +18,57 @@ Replace agent routing (Phase 5 in `agent.py`) with direct push to cogitation for
 - **Started:** 2026-06-08
 
 ## Current Phase
-editing
+complete
 
 ## Next Action
-Fix lesson completion counting for the direct-cogitation-push world. Run 3 completed with zero LLM/zero supervisor but 17/18 satisfied — `L > O` is satisfied by cogitation events that arrive AFTER the lesson completion check fires (at received_count=18). The reactor's `is_lesson_complete` uses `received_count == expected_count`, but cogitation generates multiple events per entry, so the count hits 18 before all entries are satisfied. Need to change completion to be based on `len(state.satisfied) == len(state.submitted)` instead of event counting. Then re-run.
+All done criteria met. Session complete. Consider merging to main.
 
 ## Run Log
 
-### Run 3 (latest) — S1 skip + satisfaction guard, zero LLM but 17/18
+### Run 4 (latest) — satisfaction-based completion + re-fire guard
+- **Code changes:** (1) `_check_lesson_complete` uses `len(satisfied) >= len(submitted)` instead of reactor event count. (2) Guards against re-fire: skips if current lesson already in `lesson_satisfied` or no current lesson.
+- **Observations:** 18/18 satisfied, zero LLM, zero supervisor, zero escalations. Clean completion in 4 events (started → lesson_complete → complete). No "Lesson ? complete" repeats. Expansion events for L>O and L>M arrive after lesson completion but are harmlessly logged (guard blocks re-fire). 152 log lines.
+- **Verdict:** ✅ All done criteria met. Session complete.
+
+### Run 3 — S1 skip + satisfaction guard, zero LLM but 17/18
 - **Code changes:** (1) S1 work items skip expand() and call on_s1 directly in cogitator. (2) Trainer skips S2/S3 events for already-satisfied entries. (3) Candidates sorted S1-first before submission.
-- **Observations:** Zero LLM, zero supervisor, zero escalations! `L > M` got S1 via cogitation (`FRAME L > M → S1 ← MHALL => M H A L L`). But `L > O` is satisfied by cogitation events arriving AFTER lesson completion check. 17/18 satisfied. Many S3 expansion events generated but all skipped (already satisfied). The expansion events for `M > S` also fire (cross-contamination from L>M's candidates sharing nodes with M>S).
-- **Verdict:** Nearly there. Zero LLM achieved. Need to fix lesson completion to be satisfaction-based, not event-count-based.
+- **Observations:** Zero LLM, zero supervisor. 17/18 — `L > O` satisfied by cogitation events arriving AFTER event-count-based completion check.
+- **Verdict:** Led to satisfaction-based fix in run 4.
 
 ### Run 2 — direct push, LLM called
-- **Code changes:** Phase 5 submits all candidates to cogitator (no S1 short-circuit).
-- **Observations:** `L > M` went through cogitation. S3 expansion proposals triggered reactive scaffolding → LLM called. S1 candidates processed but AFTER S3 (FIFO ordering).
-- **Verdict:** Phase 5 change works. Need S1-first ordering and S1 skip in cogitator.
+- S3 expansion proposals triggered reactive scaffolding → LLM called. Needed S1-first ordering.
 
 ### Run 1 — baseline
-- **Code changes:** none
-- **Observations:** All 18/18 entries satisfied. Zero LLM, zero supervisor. Everything S1.
-- **Verdict:** Baseline.
+- All 18/18, zero LLM, everything S1. Baseline.
 
 ## Patterns & Notes
 
-### Architecture of the change (3 commits)
+### Architecture of the change (5 commits)
 1. **Phase 5 rewrite** (`src/kalvin/agent.py`): Removed S1 short-circuit. All candidates go to cogitator. Candidates sorted S1-first by routing level, then by overlap.
-2. **S1 work item fast-path** (`src/kalvin/agent.py`): `_run_work_item` skips expand() for S1 items, calls on_s1 directly. This prevents intermediate S2/S3 connotation yields from generating expansion proposals.
-3. **Satisfaction guard** (`src/trainer/trainer.py`): S2/S3 events for already-satisfied entries are skipped (no reactor/ratify). Prevents spurious LLM calls when S1 events arrive before S3 expansions.
+2. **S1 work item fast-path** (`src/kalvin/agent.py`): `_run_work_item` skips expand() for S1 items, calls on_s1 directly. Prevents intermediate S2/S3 connotation yields from generating expansion proposals.
+3. **Satisfaction guard** (`src/trainer/trainer.py`): S2/S3 events for already-satisfied entries are skipped. Prevents spurious LLM calls.
+4. **Satisfaction-based lesson completion** (`src/trainer/trainer.py`): `_check_lesson_complete` uses `len(satisfied) >= len(submitted)` instead of reactor event count. Cogitation generates multiple events per entry.
+5. **Re-fire guard** (`src/trainer/trainer.py`): Guards against repeated lesson completion when post-completion cogitation events arrive.
 
-### Remaining issue: lesson completion counting
-- Reactor counts `received_count` (every frame/ground event). Expected = number of entries (18).
-- With cogitation, each Phase-5 entry generates multiple events (initial + expansions).
-- `received_count` hits 18 before all 18 entries are satisfied.
-- `L > O` is the 18th entry — its S1 event arrives from cogitation ~5ms after the 18th received_count triggers lesson completion.
-- **Fix:** Change `_check_lesson_complete` to use `len(state.satisfied) == len(state.submitted)` instead of reactor's event count.
+### Key insight: event-counting vs satisfaction
+- With direct cogitation push, each entry generates multiple events (initial rationalise + expansion proposals)
+- Event counting (`received_count == expected_count`) fires too early — some entries haven't been satisfied yet
+- Satisfaction counting (`len(satisfied) >= len(submitted)`) waits until every entry is actually resolved
+- But satisfaction counting doesn't "reset" between events, so post-completion events still see 18>=18
+- The re-fire guard (check `lesson_satisfied` set) prevents the duplicate lesson completion
 
 ### Side effect: expansion spam
-- The S3 candidates for `L > M` and `L > O` generate many expansion proposals (AL=>O..., L=>AHLM..., etc.)
-- These are all skipped by the satisfaction guard but still logged at INFO level
-- Consider: should the cogitator skip S3 work items for queries that already have pending S1 items? Or should we cancel S3 work items when S1 is found?
+- S3 candidates for `L > M` and `L > O` generate many expansion proposals after satisfaction
+- All skipped by satisfaction guard but logged at INFO level
+- Future: consider cancelling S3 work items when S1 is found, or suppressing log noise
 
 ### Test status
-- Core tests: 123 passed, 0 new failures
-- Pre-existing failures: 32 (trainer drain flow, async tests, countersign resolution)
+- Core tests: 79 passed (test_agent.py + test_cascade_control.py)
+- Pre-existing failures: 1 (async test_auto_tune_supervisor)
 - Tests modified: `test_agent.py` (short-circuit → all-submit), `test_cascade_control.py` (priority assertions)
 
 ## Files Modified
 - `src/kalvin/agent.py` — Phase 5: direct push, S1-first sort, S1 skip in cogitator
-- `src/trainer/trainer.py` — Skip S2/S3 events for satisfied entries
+- `src/trainer/trainer.py` — Satisfaction guard, satisfaction-based completion, re-fire guard
 - `tests/test_agent.py` — Updated short-circuit and agt18 tests
 - `tests/test_cascade_control.py` — Updated priority assertions
