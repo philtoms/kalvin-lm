@@ -24,7 +24,7 @@ from harness.bus import MessageBus
 from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
-from kalvin.expand import D_MAX, S2_S3_DISTANCE
+from kalvin.expand import D_MAX, MAX_HOP, S2_S3_DISTANCE
 from kalvin.kline import KLine
 from kscript.compiler import compile_source
 from kscript.decompiler import Decompiler
@@ -292,7 +292,7 @@ class Trainer:
 
         if event.significance:
             distance = (~event.significance) & (D_MAX)
-            sig_norm = max(0.0, 1.0 - distance / S2_S3_DISTANCE)
+            sig_norm = max(0.0, 1.0 - distance / (S2_S3_DISTANCE + MAX_HOP))
         else:
             sig_norm = 0.0
 
