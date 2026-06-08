@@ -3,12 +3,21 @@
  *
  * Monitors context usage during auto-tune sessions. When context exceeds a
  * configurable ceiling, injects a steering message telling the LLM to wrap up,
- * and shows a notification prompting the user to run /auto-tune-handoff for a
- * fresh session.
+ * then automatically creates a fresh session to continue.
  *
- * The handoff itself cannot be triggered automatically from an event handler
- * (pi's sendUserMessage skips extension command handling), so the extension
- * detects the condition and guides both the LLM and user to act.
+ * Bootstrapping: the /auto-tune command caches newSession/waitForIdle from the
+ * ExtensionCommandContext on every invocation, then forwards to the skill system
+ * via pi.sendUserMessage. This gives the extension the session-control functions
+ * it needs for automatic handoff — no separate bootstrap step required.
+ *
+ * Flow:
+ *   1. User runs /auto-tune → extension caches ctx.newSession/waitForIdle,
+ *      then forwards to skill via pi.sendUserMessage
+ *   2. Skill runs normally, auto-tune loop begins
+ *   3. Context crosses ceiling → extension steers LLM to wrap up,
+ *      waits for idle, then calls cachedNewSession() automatically
+ *
+ * Manual handoff is also available via /auto-tune-handoff.
  *
  * Config (in .pi/settings.json or ~/.pi/agent/settings.json):
  *   {
@@ -20,8 +29,9 @@
  * CLI flag (overrides settings):
  *   pi --auto-tune-ceiling 0.6
  *
- * Manual trigger:
- *   /auto-tune-handoff
+ * Commands:
+ *   /auto-tune          Start/resume auto-tune (caches handoff functions)
+ *   /auto-tune-handoff  Manual handoff to fresh session
  *
  * Default ceiling is 0.8 (80% of context window).
  */
@@ -74,7 +84,9 @@ function findActiveAutoTuneSession(cwd: string): string | null {
 		try {
 			for (const entry of readdirSync(worktreesDir, { withFileTypes: true })) {
 				if (!entry.isDirectory()) continue;
-				const stateFile = join(worktreesDir, entry.name, "auto-tune", entry.name, "session-state.md");
+				const stateFile = join(
+					worktreesDir, entry.name, "auto-tune", entry.name, "session-state.md",
+				);
 				if (existsSync(stateFile)) {
 					return entry.name;
 				}
@@ -104,6 +116,22 @@ function resolveCeiling(cwd: string, flagValue: number): number {
 
 export default function (pi: ExtensionAPI) {
 	let triggered = false;
+	let autoHandoffPending = false;
+
+	// Cached command-context functions for automatic handoff.
+	// Populated by /auto-tune (on every invocation) and /auto-tune-handoff.
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let cachedNewSession: ((...args: any[]) => Promise<any>) | null = null;
+	let cachedWaitForIdle: (() => Promise<void>) | null = null;
+
+	function cacheCommandContext(
+		newSession: typeof cachedNewSession,
+		waitForIdle: typeof cachedWaitForIdle,
+	) {
+		cachedNewSession = newSession;
+		cachedWaitForIdle = waitForIdle;
+		console.error("[auto-tune-handoff] Cached newSession/waitForIdle for automatic handoff");
+	}
 
 	pi.registerFlag("auto-tune-ceiling", {
 		description: "Context ceiling (0-1) for auto-tune session handoff",
@@ -113,9 +141,11 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("session_start", () => {
 		triggered = false;
+		autoHandoffPending = false;
 	});
 
-	// Auto-detect: when context crosses the ceiling, steer the LLM to wrap up and prompt the user
+	// ── Context ceiling guard ─────────────────────────────────────────
+
 	pi.on("turn_end", (_event, ctx) => {
 		if (triggered) {
 			console.error("[auto-tune-handoff] Already triggered, skipping");
@@ -140,24 +170,17 @@ export default function (pi: ExtensionAPI) {
 
 		console.error(
 			`[auto-tune-handoff] check: tokens=${usage.tokens} window=${usage.contextWindow} ` +
-			`percent=${percent.toFixed(1)}% ceiling=${(ceiling * 100).toFixed(0)}% flag=${flagVal} session=${sessionName}`,
+			`percent=${percent.toFixed(1)}% ceiling=${(ceiling * 100).toFixed(0)}% ` +
+			`flag=${flagVal} session=${sessionName} cached=${!!cachedNewSession}`,
 		);
 
 		if (percent < ceiling * 100) return;
 
 		triggered = true;
 
-		ctx.ui.notify(
-			`Context at ${Math.round(percent)}% — ceiling ${Math.round(ceiling * 100)}%. ` +
-				`Run /auto-tune-handoff to continue in a fresh session.`,
-			"warning",
-		);
+		const statePath = `auto-tune/${sessionName}/session-state.md`;
 
-		// Inject a steering message so the LLM sees it before the next turn.
-		// We cannot use sendUserMessage to trigger the command — it calls prompt()
-		// with expandPromptTemplates: false which skips extension command handling.
-		// sendMessage injects a custom message that convertToLlm() converts to a
-		// user-visible message for the LLM.
+		// Inject a steering message so the LLM wraps up before handoff.
 		pi.sendMessage(
 			{
 				customType: "auto-tune-handoff",
@@ -165,29 +188,115 @@ export default function (pi: ExtensionAPI) {
 					`[auto-tune-handoff] Context usage has reached ${Math.round(percent)}% ` +
 					`(ceiling ${Math.round(ceiling * 100)}%). ` +
 					`You MUST stop your current work immediately. ` +
-					`Update auto-tune/${sessionName}/session-state.md with your latest observations (Current Phase, Next Action, latest run summary). ` +
-					`Then tell the user: "Context is at ${Math.round(percent)}%. Run /auto-tune-handoff to continue in a fresh session." ` +
+					`Update auto-tune/${sessionName}/session-state.md with your latest observations ` +
+					`(Current Phase, Next Action, latest run summary). ` +
+					`Then tell the user: "Context is at ${Math.round(percent)}%. ` +
+					`Auto-handoff starting in a moment — no action needed." ` +
 					`Do NOT continue the auto-tune loop.`,
 				display: true,
 			},
 			{ deliverAs: "steer" },
 		);
+
+		if (cachedNewSession && cachedWaitForIdle) {
+			// Automatic handoff — wait for agent to finish, then create fresh session.
+			autoHandoffPending = true;
+
+			ctx.ui.notify(
+				`Context at ${Math.round(percent)}% — ceiling ${Math.round(ceiling * 100)}%. ` +
+					`Auto-handoff to fresh session...`,
+				"warning",
+			);
+
+			cachedWaitForIdle()
+				.then(() => {
+					if (!autoHandoffPending || !cachedNewSession) return;
+					autoHandoffPending = false;
+
+					const currentSessionFile = ctx.sessionManager.getSessionFile();
+
+					console.error(
+						`[auto-tune-handoff] Agent idle — auto-handoff for session ${sessionName}`,
+					);
+					return cachedNewSession!({
+						parentSession: currentSessionFile ?? undefined,
+						withSession: async (replacementCtx) => {
+							await replacementCtx.sendUserMessage(
+								`Resume auto-tune ${sessionName}. ` +
+									`Your first action is to read ${statePath} to re-anchor. ` +
+									`Then continue from the Current Phase and Next Action described there.`,
+							);
+						},
+					});
+				})
+				.then((result) => {
+					if (result?.cancelled) {
+						console.error("[auto-tune-handoff] Auto-handoff cancelled");
+					}
+				})
+				.catch((err: Error) => {
+					console.error("[auto-tune-handoff] Auto-handoff failed:", err);
+					ctx.ui.notify(
+						"Auto-handoff failed. Run /auto-tune-handoff manually.",
+						"error",
+					);
+				});
+		} else {
+			// Fallback: no cached functions. Ask user to run /auto-tune-handoff.
+			ctx.ui.notify(
+				`Context at ${Math.round(percent)}% — ceiling ${Math.round(ceiling * 100)}%. ` +
+					`Run /auto-tune-handoff to continue in a fresh session.`,
+				"warning",
+			);
+		}
 	});
 
-	// The actual handoff logic — needs ExtensionCommandContext for newSession
+	// ── /auto-tune — skill entry point + context cache ────────────────
+
+	pi.registerCommand("auto-tune", {
+		description: "Start or resume an auto-tune session (caches handoff context)",
+		handler: async (args, ctx) => {
+			// Cache the command-context functions for automatic handoff.
+			// This happens on every /auto-tune invocation, not just the first.
+			cacheCommandContext(ctx.newSession.bind(ctx), ctx.waitForIdle.bind(ctx));
+
+			// Forward to pi's skill system. sendUserMessage does NOT re-trigger
+			// command handling, so the LLM receives the text and loads the skill
+			// based on its system prompt skill descriptions.
+			const prompt = args.trim()
+				? `/auto-tune ${args.trim()}`
+				: "/auto-tune";
+
+			pi.sendUserMessage(prompt);
+		},
+	});
+
+	// ── /auto-tune-handoff — manual handoff ───────────────────────────
+
 	pi.registerCommand("auto-tune-handoff", {
 		description: "Spawn a fresh session to continue auto-tune (reads session-state.md)",
 		handler: async (_args, ctx) => {
+			cacheCommandContext(ctx.newSession.bind(ctx), ctx.waitForIdle.bind(ctx));
+
+			// Cancel any pending auto-handoff (user is doing it manually)
+			autoHandoffPending = false;
+
 			const sessionName = findActiveAutoTuneSession(ctx.cwd);
 			if (!sessionName) {
-				ctx.ui.notify("No active auto-tune session found (no session-state.md)", "error");
+				ctx.ui.notify(
+					"No active auto-tune session found (no session-state.md)",
+					"error",
+				);
 				return;
 			}
 
 			const statePath = `auto-tune/${sessionName}/session-state.md`;
 			const currentSessionFile = ctx.sessionManager.getSessionFile();
 
-			ctx.ui.notify(`Handing off to fresh session for auto-tune/${sessionName}...`, "info");
+			ctx.ui.notify(
+				`Handing off to fresh session for auto-tune/${sessionName}...`,
+				"info",
+			);
 
 			const result = await ctx.newSession({
 				parentSession: currentSessionFile ?? undefined,
