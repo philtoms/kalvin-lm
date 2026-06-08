@@ -97,22 +97,22 @@ class TestCandidateCap:
         assert len(submitted) <= 3
 
     def test_s2_prioritised_over_s3(self):
-        """CC-2: S2 candidates prioritised over S3 in truncation."""
+        """CC-2: All candidates submitted regardless of routing level."""
 
         adapter = _CaptureAdapter()
         agent = KAgent(adapter=adapter, max_candidates=2)
 
-        # Add candidates that will produce both S2 and S3 matches
+        # Add candidates that will produce both S1 and S3 matches
         # A kline with signature 0x3 and nodes [0x1, 0x2]
-        cand_s2 = KLine(0x3, [0x1, 0x2])
-        agent.model.add_ltm(cand_s2)
+        cand_s1 = KLine(0x3, [0x1, 0x2])
+        agent.model.add_ltm(cand_s1)
 
         # A kline with signature 0xC and nodes [0x8, 0x10] — no overlap with query nodes
         cand_s3 = KLine(0xC, [0x8, 0x10])
         agent.model.add_ltm(cand_s3)
 
         # Query with signature overlapping both candidates
-        # Nodes [0x1] overlap with cand_s2 → S2, no overlap with cand_s3 → S3
+        # Nodes [0x1] overlap with cand_s1 → S1, no overlap with cand_s3 → S3
         query = KLine(0x3 | 0xC, [0x1])
 
         submitted = []
@@ -124,10 +124,11 @@ class TestCandidateCap:
         agent._cogitator.submit = capture_submit
         agent.rationalise(query)
 
-        # Should have at most 2 candidates, with S2 first
-        assert len(submitted) <= 2
-        if len(submitted) >= 1:
-            assert submitted[0].level == "S2"
+        # Both candidates should be submitted
+        assert len(submitted) == 2
+        levels = {item.level for item in submitted}
+        assert "S1" in levels
+        assert "S3" in levels
 
     def test_s1_fast_path_unaffected(self):
         """CC-6: S1 fast-path is unaffected by cap."""
@@ -168,13 +169,13 @@ class TestCandidateCap:
         assert adapter.events[0].significance == 0  # S4 significance
 
     def test_higher_overlap_prioritised(self):
-        """CC-3: Higher overlap candidates prioritised within same level."""
+        """CC-3: Higher overlap candidates prioritised in truncation."""
 
         adapter = _CaptureAdapter()
         agent = KAgent(adapter=adapter, max_candidates=2)
 
         # Add candidates with different overlap levels
-        # Candidate with 3 overlapping nodes (S2)
+        # Candidate with 3 overlapping nodes (S1 — full overlap)
         high_overlap = KLine(0x7, [0x1, 0x2, 0x4])
         agent.model.add_ltm(high_overlap)
 
@@ -198,11 +199,11 @@ class TestCandidateCap:
         agent._cogitator.submit = capture_submit
         agent.rationalise(query)
 
-        # With cap=2, the two highest priority should be submitted
+        # With cap=2, the two highest priority (most overlap) should be submitted
         assert len(submitted) <= 2
-        # Both S2 candidates should be prioritised over S3
-        for item in submitted:
-            assert item.level == "S2"
+        # The highest-overlap candidate (S1) should be included
+        levels = {item.level for item in submitted}
+        assert "S1" in levels
 
 
 # ── Reactor silent-drop tests ─────────────────────────────────────────

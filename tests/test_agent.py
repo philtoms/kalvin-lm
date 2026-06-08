@@ -162,32 +162,37 @@ class TestAgentRationalise:
 # ── Short-Circuit Tests ───────────────────────────────────────────────
 
 class TestShortCircuit:
-    """S1 short-circuits — no expand() called."""
+    """Phase 5 pushes ALL candidates to cogitator — no S1 short-circuit."""
 
-    def test_s1_skips_remaining_candidates(self):
-        """First candidate is S1 → no further candidates processed."""
+    def test_all_candidates_submitted_to_cogitator(self):
+        """All candidates are submitted to cogitator regardless of routing level."""
         a = KAgent(adapter=EventBus())
         # Add two candidates to the model
         c1 = KLine(5, [10, 20])       # S1 match for query
-        c2 = KLine(6, [10, 20, 30])   # Also S1 but shouldn't be reached
+        c2 = KLine(6, [10, 20, 30])   # Also S1 for query
         a.rationalise(c1)
         a.rationalise(c2)
 
-        # Query that matches c1 fully
+        # Query that would route S1 against both candidates
         q = KLine(0, [10, 20])
         q.signature = make_signature([10, 20])
 
-        # Patch expand to track calls
-        with patch(
-            'kalvin.agent.expand',
-            side_effect=AssertionError("expand should not be called for S1"),
-        ):
-            result = a.rationalise(q)
+        # Capture submitted work items
+        submitted = []
+        original_submit = a._cogitator.submit
 
-        assert result is True
+        def capture_submit(item):
+            submitted.append(item)
+            original_submit(item)
 
-    def test_s1_after_s2_still_short_circuits(self):
-        """If second candidate is S1, no expand called."""
+        a._cogitator.submit = capture_submit
+        result = a.rationalise(q)
+
+        assert result is False  # No short-circuit — all go to cogitator
+        assert len(submitted) == 2  # Both candidates submitted
+
+    def test_mixed_s1_s2_all_submitted(self):
+        """S2 and S1 candidates are all submitted — no S1 short-circuit."""
         a = KAgent(adapter=EventBus())
         # c1 will route S2, c2 will route S1
         c1 = KLine(5, [10, 30])
@@ -198,15 +203,28 @@ class TestShortCircuit:
         q = KLine(0, [10, 20])
         q.signature = make_signature([10, 20])
 
+        # Capture submitted work items
+        submitted = []
+        original_submit = a._cogitator.submit
+
+        def capture_submit(item):
+            submitted.append(item)
+            original_submit(item)
+
+        a._cogitator.submit = capture_submit
         result = a.rationalise(q)
-        assert result is True
 
-    def test_s2_before_s1_no_cogitator_submit(self):
-        """S2 candidates before S1 should NOT be submitted to cogitator.
+        assert result is False  # No short-circuit
+        assert len(submitted) == 2  # Both S2 and S1 candidates submitted
+        levels = {item.level for item in submitted}
+        assert "S2" in levels
+        assert "S1" in levels
 
-        When Phase 5 iterates candidates, S2/S3 work items are deferred.
-        If a later candidate routes as S1, the deferred items are discarded
-        instead of being submitted to the background cogitator.
+    def test_s2_candidates_submitted_to_cogitator(self):
+        """S2 candidates are submitted to cogitator alongside any S1 candidates.
+
+        Phase 5 no longer discards deferred items on S1 — all candidates
+        are submitted to the cogitator unconditionally.
         """
         a = KAgent(adapter=EventBus())
         # c1 routes S2 (partial match), c2 routes S1 (full match)
@@ -229,8 +247,8 @@ class TestShortCircuit:
         a._cogitator.submit = capture_submit
         result = a.rationalise(q)
 
-        assert result is True  # S1 found
-        assert len(submitted) == 0  # No work items submitted despite S2 candidate
+        assert result is False  # No S1 short-circuit
+        assert len(submitted) == 2  # Both S2 and S1 work items submitted
 
     def test_no_candidates_no_expand(self):
         """No candidates → S4 directly, no expand call."""
@@ -800,8 +818,8 @@ class TestCascadeWriteMethods:
         assert result is True
         mock_add_ltm.assert_any_call(k)
 
-    def test_agt18_s1_routing_promote_participating(self):
-        """AGT-18: S1 routing hit calls promote_participating()."""
+    def test_agt18_s1_routing_submits_to_cogitator(self):
+        """AGT-18: S1 routing submits work item to cogitator (no short-circuit)."""
         m = Model()
         a = KAgent(model=m, adapter=EventBus())
         # Add a candidate that will route as S1
@@ -810,10 +828,21 @@ class TestCascadeWriteMethods:
         # Query that fully matches candidate nodes
         q = KLine(0, [10, 20])
         q.signature = make_signature([10, 20])
-        with patch("kalvin.agent.promote_participating") as mock_promote:
-            result = a.rationalise(q)
-        assert result is True
-        mock_promote.assert_called_once_with(m, q, c)
+        # Capture submitted work items
+        submitted = []
+        original_submit = a._cogitator.submit
+
+        def capture_submit(item):
+            submitted.append(item)
+            original_submit(item)
+
+        a._cogitator.submit = capture_submit
+        result = a.rationalise(q)
+        assert result is False  # No short-circuit — submitted to cogitator
+        assert len(submitted) == 1
+        assert submitted[0].query is q
+        assert submitted[0].candidate is c
+        assert submitted[0].level == "S1"
 
     def test_agt22a_slow_path_query_add_stm_only(self):
         """AGT-22a: S2/S3 routed kline calls model.add_stm() only — not add_frame or add_ltm."""
