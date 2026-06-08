@@ -557,7 +557,7 @@ kscript/
 | Dependency                            | Used By                    | Required |
 | ------------------------------------- | -------------------------- | -------- |
 | `kalvin.kline.KLine`                  | `CompiledEntry` base class | Yes      |
-| `kalvin.mod_tokenizer.ModTokenizer`   | Encoding/decoding          | Yes      |
+| `kalvin.abstract.KTokenizer`          | Encoding/decoding          | Yes      |
 | `kalvin.mod_tokenizer.Mod32Tokenizer` | Default tokenizer          | Yes      |
 | `kalvin.signature.make_signature`     | Decompiler MCS detection   | Yes      |
 
@@ -565,7 +565,7 @@ kscript/
 
 ```python
 class Compiler:
-    def __init__(self, tokenizer: ModTokenizer | None = None, dev: bool = False)
+    def __init__(self, tokenizer: KTokenizer | None = None, dev: bool = False)
     def compile(self, file: KScriptFile) -> list[CompiledEntry]
 ```
 
