@@ -2,7 +2,7 @@
 
 Provides interface contracts for tokenizers.
 
-KTokenizer has two real adapters (Tokenizer, ModTokenizer) — a genuine seam.
+KTokenizer has three real adapters (Tokenizer, ModTokenizer, NLPTokenizer) — a genuine seam.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ class KTokenizer(ABC):
     Kalvin-level concern based on standardized bit patterns, not a
     tokenizer-specific one.
 
-    Two adapters: Tokenizer (BPE), ModTokenizer (modular bit-packed).
+    Three adapters: Tokenizer (BPE), ModTokenizer (modular bit-packed), NLPTokenizer (NLP-enhanced BPE).
     """
 
     @property
