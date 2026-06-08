@@ -66,7 +66,7 @@ class Compiler:
 
     def compile(self, file: KScriptFile) -> list[CompiledEntry]:
         """Compile a KScriptFile to entries."""
-        emitter = ASTEmitter(dev=self.dev)
+        emitter = ASTEmitter(dev=self.dev, skip_mcs=not self.tokenizer.supports_mcs)
         symbolic = emitter.emit(file)
 
         encoder = TokenEncoder(tokenizer=self.tokenizer, dev=self.dev)

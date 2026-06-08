@@ -7,7 +7,7 @@ from typing import Any
 
 from kalvin.abstract import KTokenizer
 from kalvin.mod_tokenizer import Mod32Tokenizer
-from kalvin.signature import make_signature, is_literal_node
+from kalvin.signature import make_signature, is_literal_node, is_nlp_node
 from kalvin.expand import D_MAX
 from kalvin.kline import KLine
 
@@ -106,7 +106,13 @@ class Decompiler:
         1. Legacy: single entry with multiple packed single-char nodes, sig == OR of nodes
         2. Per-char: consecutive entries with same sig, each having a single
            packed single-char node, where OR of all char tokens == sig
+
+        For NLP-BPE (supports_mcs=False): scans decomposition entries instead.
         """
+        if not self.tokenizer.supports_mcs:
+            self._build_nlp_decomp_names(klines)
+            return
+
         # Pattern 1: Legacy multi-node MCS entry
         for kline in klines:
             nodes = kline.as_node_list()
@@ -180,8 +186,36 @@ class Decompiler:
 
             i += 1
 
+    def _build_nlp_decomp_names(self, klines: list[KLine]) -> None:
+        """Build name mappings from NLP-BPE decomposition entries.
+
+        Per spec §5.6.1: scan for decomposition entries where signature
+        equals the first node and all nodes are NLP-BPE tokens. Batch-decode
+        all component tokens to recover the full identifier name.
+
+        Populates self._mcs_names with {first_token_id: full_name} mappings.
+        The existing _decode_sig() and _decode_node() methods will then
+        automatically use these mappings via their _mcs_names lookups.
+        """
+        for kline in klines:
+            nodes = kline.as_node_list()
+            if len(nodes) < 2:
+                continue
+            # Decomposition entry: sig == first node, all nodes are NLP-BPE
+            if kline.signature != nodes[0]:
+                continue
+            if not all(is_nlp_node(n) for n in nodes):
+                continue
+            # Batch-decode all tokens → full identifier name
+            full_name = self.tokenizer.decode(nodes)
+            if full_name and kline.signature not in self._mcs_names:
+                self._mcs_names[kline.signature] = full_name
+
     def _try_decode_packed_single_char(self, node: int) -> str | None:
         """Try to decode a node as a packed single-char token."""
+        if is_nlp_node(node):
+            return None  # NLP-BPE nodes aren't packed chars
+
         if is_literal_node(node):
             return None
 
@@ -195,6 +229,11 @@ class Decompiler:
         nodes = kline.as_node_list()
         if not nodes or len(nodes) < 2:
             return False
+
+        # NLP-BPE nodes don't form MCS entries
+        for n in nodes:
+            if is_nlp_node(n):
+                return False
 
         nodes_sig = make_signature(nodes)
         return kline.signature == nodes_sig

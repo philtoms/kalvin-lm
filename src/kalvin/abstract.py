@@ -36,6 +36,19 @@ class KTokenizer(ABC):
         """Return the tokenizer vocabulary size."""
         ...
 
+    @property
+    def supports_mcs(self) -> bool:
+        """Whether this tokenizer supports multi-character signature (MCS) expansion.
+
+        Mod tokenizers return True — uppercase identifiers are packed as bit
+        positions, so MCS expansion decomposes them into per-character entries.
+        NLP-BPE and BPE tokenizers return False — identifiers are BPE tokens,
+        not character compositions.
+
+        Default: False. Override in ModTokenizer.
+        """
+        return False
+
     @abstractmethod
     def encode(self, text: str, pad_ws: bool = False) -> list[int]:
         """Encode a string to a list of node IDs."""
