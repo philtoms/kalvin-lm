@@ -327,24 +327,31 @@ class Trainer:
             key = _entry_key(event.query)
             self._state.mark_satisfied(key)
         else:
-            # S2/S3 slow path: delegate to reactor
-            auto_matched = self._reactor.process_s2_s3(event)
-
-            # Ratify request for S2/S3 proposals (HRNS-33)
-            # Only sent when auto-countersign did NOT handle it
-            if not auto_matched:
-                self._bus.send(
-                    Message(
-                        role=SUPERVISOR_ROLE,
-                        action="ratify_request",
-                        message={
-                            "proposal": event.proposal,
-                            "query": event.query,
-                            "significance": event.significance,
-                        },
-                        sender=self._role,
-                    )
+            # S2/S3 slow path: skip if entry already satisfied
+            # (e.g. S1 cogitation event arrived before this S3 expansion)
+            key = _entry_key(event.query)
+            if self._state.is_satisfied(key):
+                logger.debug(
+                    "S2/S3 event for already-satisfied entry — skipping"
                 )
+            else:
+                auto_matched = self._reactor.process_s2_s3(event)
+
+                # Ratify request for S2/S3 proposals (HRNS-33)
+                # Only sent when auto-countersign did NOT handle it
+                if not auto_matched:
+                    self._bus.send(
+                        Message(
+                            role=SUPERVISOR_ROLE,
+                            action="ratify_request",
+                            message={
+                                "proposal": event.proposal,
+                                "query": event.query,
+                                "significance": event.significance,
+                            },
+                            sender=self._role,
+                        )
+                    )
 
         self._check_lesson_complete()
 
