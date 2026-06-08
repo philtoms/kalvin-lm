@@ -5,19 +5,27 @@
  * configurable ceiling, injects a steering message telling the LLM to wrap up,
  * then automatically creates a fresh session to continue.
  *
- * Bootstrapping: the /auto-tune command caches newSession/waitForIdle from the
- * ExtensionCommandContext on every invocation, then forwards to the skill system
- * via pi.sendUserMessage. This gives the extension the session-control functions
- * it needs for automatic handoff — no separate bootstrap step required.
- *
  * Flow:
- *   1. User runs /auto-tune → extension caches ctx.newSession/waitForIdle,
- *      then forwards to skill via pi.sendUserMessage
+ *   1. User runs /auto-tune → extension caches ctx.newSession from
+ *      ExtensionCommandContext, then forwards to the skill system
  *   2. Skill runs normally, auto-tune loop begins
- *   3. Context crosses ceiling → extension steers LLM to wrap up,
- *      waits for idle, then calls cachedNewSession() automatically
+ *   3. Context crosses ceiling → turn_end handler injects steering message,
+ *      then starts polling ctx.isIdle() via setTimeout
+ *   4. Agent finishes responding to steering message → goes idle
+ *   5. Polling detects idle → calls cached newSession() from a macrotask
+ *      (setTimeout), avoiding the deadlock that occurs when calling
+ *      session-control functions from event handlers or microtasks
  *
  * Manual handoff is also available via /auto-tune-handoff.
+ *
+ * Why setTimeout polling instead of waitForIdle()?
+ *   waitForIdle() returns activeRun.promise which resolves when the agent loop
+ *   finishes. The .then() callback runs as a microtask that can interleave with
+ *   _agentEventQueue processing. Calling newSession() from that microtask
+ *   triggers emit(session_before_switch) which deadlocks because the extension
+ *   runner's emit system is already busy. setTimeout callbacks are macrotasks
+ *   that run after all microtask/event processing completes, so the emit system
+ *   is free.
  *
  * Config (in .pi/settings.json or ~/.pi/agent/settings.json):
  *   {
@@ -30,8 +38,8 @@
  *   pi --auto-tune-ceiling 0.6
  *
  * Commands:
- *   /auto-tune          Start/resume auto-tune (caches handoff functions)
- *   /auto-tune-handoff  Manual handoff to fresh session
+ *   /auto-tune          Start/resume auto-tune (caches newSession for auto-handoff)
+ *   /auto-tune-handoff  Handoff to fresh session (manual or auto-triggered)
  *
  * Default ceiling is 0.8 (80% of context window).
  */
@@ -118,20 +126,11 @@ export default function (pi: ExtensionAPI) {
 	let triggered = false;
 	let autoHandoffPending = false;
 
-	// Cached command-context functions for automatic handoff.
-	// Populated by /auto-tune (on every invocation) and /auto-tune-handoff.
+	// Cached newSession from ExtensionCommandContext.
+	// Populated by /auto-tune on every invocation. Only newSession is cached
+	// (not waitForIdle) — idle detection uses ctx.isIdle() polling instead.
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let cachedNewSession: ((...args: any[]) => Promise<any>) | null = null;
-	let cachedWaitForIdle: (() => Promise<void>) | null = null;
-
-	function cacheCommandContext(
-		newSession: typeof cachedNewSession,
-		waitForIdle: typeof cachedWaitForIdle,
-	) {
-		cachedNewSession = newSession;
-		cachedWaitForIdle = waitForIdle;
-		console.error("[auto-tune-handoff] Cached newSession/waitForIdle for automatic handoff");
-	}
 
 	pi.registerFlag("auto-tune-ceiling", {
 		description: "Context ceiling (0-1) for auto-tune session handoff",
@@ -198,8 +197,10 @@ export default function (pi: ExtensionAPI) {
 			{ deliverAs: "steer" },
 		);
 
-		if (cachedNewSession && cachedWaitForIdle) {
-			// Automatic handoff — wait for agent to finish, then create fresh session.
+		if (cachedNewSession) {
+			// Automatic handoff — poll for idle via setTimeout, then call newSession
+			// from a macrotask to avoid the deadlock that occurs when calling
+			// session-control functions from event handlers or microtasks.
 			autoHandoffPending = true;
 
 			ctx.ui.notify(
@@ -208,41 +209,52 @@ export default function (pi: ExtensionAPI) {
 				"warning",
 			);
 
-			cachedWaitForIdle()
-				.then(() => {
-					if (!autoHandoffPending || !cachedNewSession) return;
-					autoHandoffPending = false;
+			const pollForIdleAndHandoff = () => {
+				if (!autoHandoffPending || !cachedNewSession) return;
 
-					const currentSessionFile = ctx.sessionManager.getSessionFile();
+				if (!ctx.isIdle()) {
+					setTimeout(pollForIdleAndHandoff, 200);
+					return;
+				}
 
-					console.error(
-						`[auto-tune-handoff] Agent idle — auto-handoff for session ${sessionName}`,
-					);
-					return cachedNewSession!({
-						parentSession: currentSessionFile ?? undefined,
-						withSession: async (replacementCtx) => {
-							await replacementCtx.sendUserMessage(
-								`Resume auto-tune ${sessionName}. ` +
-									`Your first action is to read ${statePath} to re-anchor. ` +
-									`Then continue from the Current Phase and Next Action described there.`,
-							);
-						},
+				// Agent is idle. Call cachedNewSession from this setTimeout macrotask.
+				autoHandoffPending = false;
+
+				const currentSessionFile = ctx.sessionManager.getSessionFile();
+
+				console.error(
+					`[auto-tune-handoff] Agent idle — auto-handoff for session ${sessionName}`,
+				);
+
+				cachedNewSession!({
+					parentSession: currentSessionFile ?? undefined,
+					withSession: async (replacementCtx: any) => {
+						await replacementCtx.sendUserMessage(
+							`Resume auto-tune ${sessionName}. ` +
+								`Your first action is to read ${statePath} to re-anchor. ` +
+								`Then continue from the Current Phase and Next Action described there.`,
+						);
+					},
+				})
+					.then((result: any) => {
+						if (result?.cancelled) {
+							console.error("[auto-tune-handoff] Auto-handoff cancelled");
+						}
+					})
+					.catch((err: Error) => {
+						console.error("[auto-tune-handoff] Auto-handoff failed:", err);
+						ctx.ui.notify(
+							"Auto-handoff failed. Run /auto-tune-handoff manually.",
+							"error",
+						);
 					});
-				})
-				.then((result) => {
-					if (result?.cancelled) {
-						console.error("[auto-tune-handoff] Auto-handoff cancelled");
-					}
-				})
-				.catch((err: Error) => {
-					console.error("[auto-tune-handoff] Auto-handoff failed:", err);
-					ctx.ui.notify(
-						"Auto-handoff failed. Run /auto-tune-handoff manually.",
-						"error",
-					);
-				});
+			};
+
+			// Start polling after a short delay to give the steering message time
+			// to be picked up by the agent loop.
+			setTimeout(pollForIdleAndHandoff, 500);
 		} else {
-			// Fallback: no cached functions. Ask user to run /auto-tune-handoff.
+			// Fallback: no cached newSession. Ask user to run the command.
 			ctx.ui.notify(
 				`Context at ${Math.round(percent)}% — ceiling ${Math.round(ceiling * 100)}%. ` +
 					`Run /auto-tune-handoff to continue in a fresh session.`,
@@ -251,14 +263,16 @@ export default function (pi: ExtensionAPI) {
 		}
 	});
 
-	// ── /auto-tune — skill entry point + context cache ────────────────
+	// ── /auto-tune — skill entry point + newSession cache ─────────────
 
 	pi.registerCommand("auto-tune", {
-		description: "Start or resume an auto-tune session (caches handoff context)",
+		description: "Start or resume an auto-tune session (caches newSession for auto-handoff)",
 		handler: async (args, ctx) => {
-			// Cache the command-context functions for automatic handoff.
-			// This happens on every /auto-tune invocation, not just the first.
-			cacheCommandContext(ctx.newSession.bind(ctx), ctx.waitForIdle.bind(ctx));
+			// Cache newSession from this command context for automatic handoff.
+			// Only newSession is cached — idle detection uses ctx.isIdle() polling
+			// via setTimeout to avoid the deadlock from calling session-control
+			// functions from event handlers or microtasks.
+			cachedNewSession = ctx.newSession.bind(ctx);
 
 			// Forward to pi's skill system. sendUserMessage does NOT re-trigger
 			// command handling, so the LLM receives the text and loads the skill
@@ -276,8 +290,6 @@ export default function (pi: ExtensionAPI) {
 	pi.registerCommand("auto-tune-handoff", {
 		description: "Spawn a fresh session to continue auto-tune (reads session-state.md)",
 		handler: async (_args, ctx) => {
-			cacheCommandContext(ctx.newSession.bind(ctx), ctx.waitForIdle.bind(ctx));
-
 			// Cancel any pending auto-handoff (user is doing it manually)
 			autoHandoffPending = false;
 
