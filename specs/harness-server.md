@@ -287,7 +287,7 @@ A client participant that renders events for the supervisor, provides structured
 | HRNS-21 | Disconnected client: messages delivered to remaining subscribers; silently dropped if no subscribers remain | — |
 | HRNS-22 | Kalvin calls adapter directly (no internal EventBus)                       | —          |
 | HRNS-23 | Single dispatch thread: all handlers execute on harness event loop         | —          |
-| HRNS-24 | Trainer counts submitted entries; knows when lesson is complete            | —          |
+| HRNS-24 | Trainer determines lesson completion by satisfaction count (len(satisfied) >= len(submitted)), not event count | —          |
 | HRNS-25 | TUI participant renders all received harness events in EventLog            | —          |
 | HRNS-25a | TUI participant sends input through shared command parser                    | —          |
 | HRNS-26 | TUI participant sends free-form human input to Trainer as `input` action   | —          |

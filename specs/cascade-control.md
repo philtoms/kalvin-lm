@@ -38,6 +38,26 @@ This limits the fan-out from O(N²) to a constant bound, regardless of model den
 
 This prevents the reactor from spinning on the event firehose while the cogitator drains.
 
+### CC-3: Satisfaction guard in Trainer
+
+When cogitation generates multiple events for a single entry (initial S1
+plus expansion proposals from S3 candidates), the Trainer checks whether
+the entry's key is already in the satisfied set before processing S2/S3
+events. Already-satisfied entries are skipped — no reactor processing,
+no ratify request, no LLM call. This prevents spurious LLM invocations
+when S1 arrives via cogitation before pending S3 expansions are processed.
+
+### CC-4: Satisfaction-based lesson completion
+
+Lesson completion uses `len(state.satisfied) >= len(state.submitted)` instead
+of reactor event counting (`received_count == expected_count`). With direct
+cogitation push, each entry generates multiple events (initial rationalise +
+expansion proposals), so event counting fires before all entries are satisfied.
+
+A re-fire guard prevents duplicate lesson completion: the check returns
+`False` if the current lesson is already in `lesson_satisfied` or if there
+is no current lesson (curriculum position past the end).
+
 ## Behavioural Rules
 
 1. The number of S2/S3 candidates submitted to the cogitator per entry must not exceed `max_candidates`.
@@ -46,6 +66,9 @@ This prevents the reactor from spinning on the event firehose while the cogitato
 4. After the first budget exhaustion escalation, the reactor must silently drop all subsequent S2/S3 events for the remainder of the lesson.
 5. The candidate cap must not prevent S1 fast-path matches (S1 candidates are processed before any truncation).
 6. The candidate cap must not affect S4 (novel) routing (no candidates for S4).
+7. S2/S3 events for already-satisfied entries must be skipped (no reactor/ratify).
+8. Lesson completion must be determined by satisfaction count (`len(satisfied) >= len(submitted)`), not event count.
+9. Lesson completion must not re-fire when post-completion cogitation events arrive.
 
 ## Test Matrix
 
@@ -59,3 +82,6 @@ This prevents the reactor from spinning on the event firehose while the cogitato
 | CC-6 | S1 fast-path is unaffected by cap | ✅ |
 | CC-7 | S4 routing is unaffected by cap | ✅ |
 | CC-8 | Default max_candidates is 8 | ✅ |
+| CC-9 | S2/S3 events for already-satisfied entries are skipped | ✅ auto-tune/direct-cogitation-push |
+| CC-10 | Lesson completion uses satisfaction count | ✅ auto-tune/direct-cogitation-push |
+| CC-11 | Lesson completion does not re-fire | ✅ auto-tune/direct-cogitation-push |

@@ -260,6 +260,18 @@ Extended with structured curriculum context fields.
 37. `lessons_completed` is the count of satisfied lesson labels.
 38. `lessons_total` is the total count of lessons in the current document.
 
+### Lesson Completion
+
+39. Lesson completion is determined by satisfaction count:
+    `len(state.satisfied) >= len(state.submitted)` and
+    `len(state.submitted) > 0`. This replaces event counting because
+    cogitation generates multiple events per entry (initial rationalise
+    + expansion proposals from S3 candidates).
+40. Lesson completion does not re-fire: the check returns early if the
+    current lesson is already in `lesson_satisfied` or if there is no
+    current lesson (curriculum position past the end). This prevents
+    duplicate completion when post-completion cogitation events arrive.
+
 ## Test Matrix
 
 | ID     | Criterion                                                                      | Origin ref                |

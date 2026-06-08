@@ -211,8 +211,8 @@ If no candidates are found, Q is novel. Call `model.add_ltm(Q)`. Emit a
 
 ### Phase 5: Route Each Candidate
 
-Add Q to STM via `model.add_stm(Q)`. Then for each candidate, perform
-routing — a fast node-membership test with no model calls:
+Add Q to STM via `model.add_stm(Q)`. Route each candidate, then submit
+**all** candidates (including S1) to the Cogitator as work items.
 
 #### Routing
 
@@ -228,23 +228,28 @@ route(Q, C):
 Routing is a pure function. It checks whether each query node value appears
 in the candidate's node sequence. No model function is called.
 
+#### Candidate Ordering
+
+Candidates are sorted before submission: **S1 candidates first**, then S2,
+then S3. Within each tier, candidates are sorted by node overlap count
+(descending). This ensures the Cogitator processes S1 work items before
+S2/S3, so S1 fast-path resolution happens as early as possible.
+
 #### Per-Candidate Action
 
 | Route | Action | Model call? |
 | ----- | ------ | ----------- |
-| S1    | `add_ltm` cascade via promote_participating, emit `"frame"` S1, return `True` | Yes (`add_ltm`) |
+| S1    | Submit `WorkItem(Q, C)` to Cogitator (S1 fast-path) | No (deferred to cogitator) |
 | S2    | Submit `WorkItem(Q, C)` to Cogitator | No |
 | S3    | Submit `WorkItem(Q, C)` to Cogitator | No |
 
-**S1 short-circuits**: candidates are iterated in order. If a candidate
-routes as S1, the loop terminates immediately. S2/S3 candidates
-encountered earlier in the iteration are **deferred** — they are only
-submitted to the Cogitator if no S1 is found across the full candidate
-list. This prevents the Cogitator from processing work items for a query
-that has already been resolved as S1.
+**All candidates are submitted** to the Cogitator. There is no S1
+short-circuit at the routing level. S1 candidates are submitted as work
+items like S2/S3, but the Cogitator processes them via a fast-path that
+skips `model.expand()` and calls `handler.on_s1()` directly (see
+§Cogitation → S1 Fast-Path).
 
-If all candidates route as S2 or S3, the deferred work items are submitted
-to the Cogitator. Return `False`.
+Return `False`.
 
 ## Work Items
 
@@ -342,22 +347,35 @@ CogitationHandler:
   on_expansion(query, proposal, significance)  — called when an expansion proposal is generated (S2/S3)
 ```
 
-### Work Item Processing
+### S1 Fast-Path in the Cogitator
 
-The Cogitator expands each WorkItem, processing all yields from
-`model.expand()`:
+When a work item is pre-routed as S1 (the candidate's routing level is
+S1), the Cogitator skips `model.expand()` entirely and calls
+`handler.on_s1(query, candidate)` directly. This avoids generating
+intermediate S2/S3 connotation yields that would produce unnecessary
+expansion proposals.
 
 ```
-run_work_item(WorkItem(query, candidate)):
+run_work_item(WorkItem(query, candidate, routing_level)):
+  if routing_level == S1:
+    handler.on_s1(query, candidate)   # Fast-path: skip expand()
+    return
   for qc in model.expand(query, candidate):
     if qc.significance >= s12:
-      handler.on_s1(query, candidate)   # S1: delegate to handler
-      break                             # query fully resolved — stop processing
+      handler.on_s1(query, candidate)
+      break
     else:
-      process(qc)                 # S2/S3: expansion check
+      process(qc)
+```
 
+### Work Item Processing
+
+For S2/S3 work items, the Cogitator expands each WorkItem, processing all
+yields from `model.expand()`:
+
+```
 process(QueryCandidate(query, candidate, significance)):
-  # S2 expansion only — ratification handled upstream in rationalise()
+  # S2 expansion only
   if candidate is canonical:
     return                        # nothing to expand
   for proposal, companions in model.generate_expansions(candidate):
@@ -499,7 +517,8 @@ how many expansion proposals are generated per work item.
 
 ### S1 Callback
 
-When the Cogitator discovers an S1 via boundary classification, it calls
+When the Cogitator discovers an S1 — either via the S1 fast-path (pre-routed)
+or via boundary classification during expand() — it calls
 `handler.on_s1(query, candidate)` on the CogitationHandler unconditionally.
 The Agent implementation checks `is_s1(model, candidate)` as a structural
 guard — if the candidate is structurally S1 (canonical or countersigned), it
@@ -561,12 +580,12 @@ the model, keeping the cogitation path simple — it consumes
 
 The previous architecture computed significance for all candidates then
 selected the best result. The current architecture routes each candidate
-independently. The first S1 terminates immediately. All S2/S3 candidates
-are submitted as individual work items.
+independently and submits all (including S1) to the Cogitator as work items.
+S1 work items are processed first via a fast-path that skips expand().
 
 **Rationale**: Best-candidate selection forced full computation before the
-agent could act. The per-candidate routing model enables short-circuit on
-S1 and parallel processing of S2/S3.
+agent could act. The per-candidate routing model with S1-first ordering
+enables immediate S1 resolution and parallel processing of S2/S3.
 
 ### 3. Cogitator Receives Pre-Routed Work Items
 
@@ -626,11 +645,11 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 
 | ID     | Criterion                                                           | Origin ref |
 | ------ | ------------------------------------------------------------------- | ---------- |
-| AGT-18 | First candidate S1: returns True, cascades to LTM, no further routing | — |
-| AGT-19 | Later candidate S1: earlier S2/S3 deferred, discarded when S1 found; no cogitator work items submitted | — |
+| AGT-18 | All candidates submitted to cogitator as work items (including S1)  | — |
+| AGT-19 | Candidates sorted S1-first, then by overlap count (descending)     | auto-tune/direct-cogitation-push |
 | AGT-20 | All S2: returns False, all submitted as WorkItems                   | — |
 | AGT-21 | All S3: returns False, all submitted as WorkItems                   | — |
-| AGT-22 | S1 short-circuits: `model.expand` never called when S1 found        | — |
+| AGT-22 | S1 fast-path in cogitator: skips expand(), calls on_s1 directly    | auto-tune/direct-cogitation-push |
 | AGT-22a | Slow path query: kline in STM only (not Frame or LTM)         | — |
 
 ### Events
@@ -659,6 +678,9 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 | AGT-37 | Boundary S1 + structural S1: LTM cascade occurs                      | — |
 | AGT-38 | S2 before S1: deferred S2 work items discarded, zero cogitator submissions | auto-tune/s1-batch-dedup |
 | AGT-39 | Cogitator break-on-S1: on_s1 called exactly once, no expansion calls after | auto-tune/s1-batch-dedup |
+| AGT-40 | S2/S3 event for already-satisfied entry is skipped (satisfaction guard) | auto-tune/direct-cogitation-push |
+| AGT-41 | Lesson completion uses satisfaction count, not event count | auto-tune/direct-cogitation-push |
+| AGT-42 | Lesson completion does not re-fire on post-completion cogitation events | auto-tune/direct-cogitation-push |
 
 ### Serialization
 

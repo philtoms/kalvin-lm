@@ -149,12 +149,15 @@ See `plans/impl/structural-grounding.md` for full expansion algorithm.
 
 | Spec ID | Test                       | Description                                          |
 | ------- | -------------------------- | ---------------------------------------------------- |
-| AGT-18  | First candidate S1         | Returns True, promotes, no further candidates tested |
-| AGT-19  | Second candidate S1        | First routes S2, second S1; S2 deferred and discarded, zero cogitator submissions |
-| AGT-20  | All S2                     | Returns False, deferred items submitted as WorkItems  |
-| AGT-21  | All S3                     | Returns False, deferred items submitted as WorkItems  |
-| AGT-22  | S1 short-circuits expansion | model.expand never called when S1 found            |
+| AGT-18  | All candidates to cogitator | All candidates (including S1) submitted as WorkItems |
+| AGT-19  | S1-first ordering          | Candidates sorted S1-first, then by overlap count    |
+| AGT-20  | All S2                     | Returns False, all submitted as WorkItems             |
+| AGT-21  | All S3                     | Returns False, all submitted as WorkItems             |
+| AGT-22  | S1 fast-path in cogitator  | Skips expand(), calls on_s1 directly                  |
 | AGT-38  | S2 before S1: no cogitator submit | ✅ test_s2_before_s1_no_cogitator_submit         |
+| AGT-40  | Satisfaction guard         | S2/S3 for satisfied entry skipped                     |
+| AGT-41  | Satisfaction-based completion | Lesson complete by satisfied count, not events     |
+| AGT-42  | No re-fire on post-completion events | Lesson complete guard                       |
 
 ### Routing (`_route`)
 
