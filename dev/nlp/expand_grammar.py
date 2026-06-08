@@ -542,6 +542,127 @@ def merge_grammars(base: dict, *others: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Step 5: Manual annotation for BPE artifacts
+# ---------------------------------------------------------------------------
+
+# Hardcoded annotations for BPE tokens that no automated strategy can resolve.
+# These are contraction stems (e.g., "didn" from "didn't"), the negation clitic
+# "'t", newline-composite punctuation (e.g., '"\n\n'), and the underscore "_".
+#
+# Contraction stems are BPE fragments that never appear as standalone words in
+# any corpus.  The newline-prefixed punctuation tokens are BPE artifacts that
+# encode formatting (e.g., closing quote + paragraph break) as single tokens.
+_MANUAL_ANNOTATIONS: list[dict] = [
+    # -- Contraction stems (auxiliary verb stems without the "'t" negation) --
+    # spaCy tags "did" (in "didn't") as AUX/VBD/aux/Tense=Past|VerbForm=Fin
+    {"id": 1840, "text": "didn",    "pos": "AUX", "pos_fine": "VBD", "dep": "aux",   "morph": "Tense=Past|VerbForm=Fin"},
+    # spaCy tags "could" (in "couldn't") as AUX/MD/aux/VerbForm=Fin
+    {"id": 2392, "text": "couldn",  "pos": "AUX", "pos_fine": "MD",  "dep": "aux",   "morph": "VerbForm=Fin"},
+    # spaCy tags "was" (in "wasn't") as AUX/VBD/aux/Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin
+    {"id": 3698, "text": "wasn",    "pos": "AUX", "pos_fine": "VBD", "dep": "aux",   "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin"},
+    # spaCy tags "does" (in "doesn't") as AUX/VBZ/aux/Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin
+    {"id": 4413, "text": "doesn",   "pos": "AUX", "pos_fine": "VBZ", "dep": "aux",   "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin"},
+    # spaCy tags "is" (in "isn't") as AUX/VBZ/aux/Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin
+    {"id": 4976, "text": "isn",     "pos": "AUX", "pos_fine": "VBZ", "dep": "aux",   "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin"},
+    # Capitalized form of "isn"
+    {"id": 5470, "text": "Isn",     "pos": "AUX", "pos_fine": "VBZ", "dep": "aux",   "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin"},
+    # spaCy tags "would" (in "wouldn't") as AUX/MD/aux/VerbForm=Fin
+    {"id": 5736, "text": "wouldn",  "pos": "AUX", "pos_fine": "MD",  "dep": "aux",   "morph": "VerbForm=Fin"},
+    # spaCy tags "had" (in "hadn't") as AUX/VBD/aux/Tense=Past|VerbForm=Fin
+    {"id": 6590, "text": "hadn",    "pos": "AUX", "pos_fine": "VBD", "dep": "aux",   "morph": "Tense=Past|VerbForm=Fin"},
+    # spaCy tags "should" (in "shouldn't") as AUX/MD/aux/VerbForm=Fin
+    {"id": 6939, "text": "shouldn", "pos": "AUX", "pos_fine": "MD",  "dep": "aux",   "morph": "Polarity=Neg"},
+    # spaCy tags "were" (in "weren't") as AUX/VBD/aux/Mood=Ind|Tense=Past|VerbForm=Fin
+    {"id": 8868, "text": "weren",   "pos": "AUX", "pos_fine": "VBD", "dep": "aux",   "morph": "Mood=Ind|Tense=Past|VerbForm=Fin"},
+    # Capitalized form of "wouldn"
+    {"id": 10919, "text": "Wouldn", "pos": "AUX", "pos_fine": "MD",  "dep": "aux",   "morph": "VerbForm=Fin"},
+    # Capitalized form of "wasn"
+    {"id": 13135, "text": "Wasn",   "pos": "AUX", "pos_fine": "VBD", "dep": "aux",   "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin"},
+    # Capitalized form of "shouldn"
+    {"id": 15827, "text": "Shouldn","pos": "AUX", "pos_fine": "MD",  "dep": "aux",   "morph": "Polarity=Neg"},
+    # Capitalized form of "hadn"
+    {"id": 16191, "text": "Hadn",   "pos": "AUX", "pos_fine": "VBD", "dep": "aux",   "morph": "Tense=Past|VerbForm=Fin"},
+    # Capitalized form of "doesn"
+    {"id": 16534, "text": "Doesn",  "pos": "AUX", "pos_fine": "VBZ", "dep": "aux",   "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin"},
+    # "cannot" — spaCy tags "can" as AUX/MD/aux/VerbForm=Fin
+    {"id": 1969, "text": "cannot",  "pos": "AUX", "pos_fine": "MD",  "dep": "aux",   "morph": "VerbForm=Fin"},
+
+    # -- Special symbols --
+    # Underscore — used as a placeholder or structural symbol
+    {"id": 95,   "text": "_",       "pos": "SYM", "pos_fine": "NFP", "dep": "",      "morph": ""},
+
+    # -- Negation clitic --
+    # "'t" — the contracted negation particle from don't, isn't, etc.
+    # spaCy tags "n't" as PART/RB/neg/Polarity=Neg
+    {"id": 832,  "text": "'t",      "pos": "PART","pos_fine": "RB",  "dep": "neg",   "morph": "Polarity=Neg"},
+
+    # -- Newline-composite punctuation (BPE formatting artifacts) --
+    # Double-quote + paragraph break
+    {"id": 1110,  "text": '"\n\n',  "pos": "PUNCT","pos_fine": "``", "dep": "punct", "morph": ""},
+    # Hyphen + paragraph break
+    {"id": 5163,  "text": "-\n\n",  "pos": "PUNCT","pos_fine": "HYPH","dep": "punct", "morph": ""},
+    # Triple-dash separator + paragraph break (section break)
+    {"id": 5190,  "text": "---\n\n","pos": "PUNCT","pos_fine": "NFP", "dep": "punct", "morph": ""},
+    # Mixed quote + paragraph break
+    {"id": 13974, "text": "'\"\n\n","pos": "PUNCT","pos_fine": "''", "dep": "punct", "morph": ""},
+    # Colon + paragraph break
+    {"id": 13986, "text": ":\n\n",  "pos": "PUNCT","pos_fine": ":",  "dep": "punct", "morph": ""},
+]
+
+
+def annotate_manual_tokens(
+    grammar: dict,
+    fine_legend_reverse: dict[str, dict[str, int]],
+) -> dict:
+    """Add hardcoded NLP annotations for BPE tokens that automated strategies miss.
+
+    Covers contraction stems (e.g., "didn", "couldn"), the negation clitic "'t",
+    newline-composite punctuation, and the underscore.  Each entry is added only
+    if the token ID is not already present in the grammar dict.
+
+    Args:
+        grammar: Existing grammar dict (keys are string token IDs).
+        fine_legend_reverse: Reverse lookup from fine-type legend.
+
+    Returns:
+        Updated grammar dict with new entries added.
+    """
+    new_entries = 0
+
+    for spec in _MANUAL_ANNOTATIONS:
+        token_id = spec["id"]
+        if str(token_id) in grammar:
+            continue
+
+        pos = spec["pos"]
+        pos_fine = spec["pos_fine"]
+        dep = spec["dep"]
+        morph = spec["morph"]
+
+        nlp_type32 = compute_nlp_type32(pos, dep, morph)
+        nlp_type48 = compute_nlp_type48(pos, dep, morph)
+        nlp_fine_type = _compute_nlp_fine_type(pos, pos_fine, dep, morph, fine_legend_reverse)
+
+        grammar[str(token_id)] = {
+            "text": spec["text"],
+            "pos": pos,
+            "pos_fine": pos_fine,
+            "dep": dep,
+            "morph": morph,
+            "count": 0,
+            "tokens": [token_id],
+            "frequency_pct": 0.0,
+            "nlp_type32": nlp_type32,
+            "nlp_type48": nlp_type48,
+            "nlp_fine_type": nlp_fine_type,
+        }
+        new_entries += 1
+
+    print(f"  Manual annotation: added {new_entries} new entries")
+    return grammar
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -572,7 +693,8 @@ def expand_grammar(
     3. Merge any extra grammar files.
     4. Apply special-token rules.
     5. Apply subword inheritance.
-    6. Save or print stats.
+    6. Apply manual annotations for BPE artifacts.
+    7. Save or print stats.
 
     Args:
         grammar_path: Path to base grammar JSON.
@@ -619,7 +741,11 @@ def expand_grammar(
     print("Applying subword inheritance...")
     grammar = inherit_subword_types(tokenizer_vocab, grammar, fine_legend_reverse)
 
-    # 6. Report final stats
+    # 6. Apply manual annotations for BPE artifacts
+    print("Applying manual annotations...")
+    grammar = annotate_manual_tokens(grammar, fine_legend_reverse)
+
+    # 7. Report final stats
     final_count = len(grammar)
     categories_after = categorize_uncovered(tokenizer_vocab, grammar)
     print(f"\n{'='*60}")

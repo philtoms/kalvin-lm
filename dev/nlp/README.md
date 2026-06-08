@@ -320,6 +320,9 @@ mechanisms:
    by finding parent words in the grammar dict and inheriting their POS/DEP/MORPH tags.
 3. **Multi-source merge** — Combines grammar dicts from multiple corpora without
    overwriting existing entries.
+4. **Manual annotation** — Hardcoded annotations for BPE artifacts (contraction stems,
+   negation clitic, newline-composite punctuation) that no automated strategy can
+   resolve. Brings coverage to 100%.
 
 ### Usage
 
@@ -378,6 +381,24 @@ frequent parent (highest `count`) is preferred. Inherited entries get `count=0` 
 **Multi-source merge** adds entries from other grammar dicts (e.g., produced by running
 `nlp_analyzer.py` on a different corpus) without overwriting existing entries. Counts
 and frequencies from merged sources are reset to zero.
+
+**Manual annotation** handles the final set of BPE tokens that no automated strategy
+can resolve. These are BPE artifacts that never appear as standalone words in any corpus:
+
+- **Contraction stems** — BPE fragments like "didn", "couldn", "shouldn" that are the
+  first part of contractions ("didn't", "couldn't", "shouldn't"). Annotated as `AUX`
+  with the appropriate fine POS tag (VBD for past-tense, MD for modals, VBZ for
+  present-tense).
+- **Negation clitic** — The `"'t"` token (from don't, isn't, etc.) annotated as
+  `PART/RB/neg` with `Polarity=Neg`.
+- **Newline-composite punctuation** — BPE tokens like `"\\n\\n"`, `"---\\n\\n"`, `":\\n\\n"`
+  that combine punctuation with paragraph breaks. Annotated as `PUNCT` with the
+  appropriate fine tag.
+- **Special symbols** — The underscore `_` and the full word `cannot`.
+
+These 23 tokens are hardcoded in `annotate_manual_tokens()` and applied as the final
+step of the expansion pipeline. This brings coverage to 100% of the 17,392-token
+BPE vocabulary.
 
 ## Performance Tips
 

@@ -148,7 +148,7 @@ class TestProperties:
 
     def test_grammar_size(self, nlp: NLPTokenizer) -> None:
         """grammar_size matches grammar dict entry count."""
-        assert nlp.grammar_size == 17384
+        assert nlp.grammar_size == 17392
 
 
 # ── Factory tests ───────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ sys.path.insert(0, str(_project_root))
 sys.path.insert(0, str(_project_root / "dev" / "nlp"))
 
 from expand_grammar import (
+    annotate_manual_tokens,
     annotate_special_tokens,
     build_fine_legend_reverse,
     categorize_uncovered,
@@ -610,3 +611,132 @@ class TestExpansionPipeline:
         grammar["0"] = {"text": "ing", "pos": "CUSTOM", "count": 0}
         grammar = inherit_subword_types(vocab, grammar, rev)
         assert grammar["0"]["pos"] == "CUSTOM"  # Not overwritten
+
+
+# ---------------------------------------------------------------------------
+# Step 5: Manual annotation tests
+# ---------------------------------------------------------------------------
+
+class TestAnnotateManualTokens:
+    """Tests for the annotate_manual_tokens function."""
+
+    def _reverse(self):
+        """Build a reverse legend with enough entries for manual annotations."""
+        # Include the real fine-type legend values needed by our annotations
+        legend = {
+            "POS_AUX": 8,
+            "POS_PART": 512,
+            "POS_PUNCT": 4096,
+            "POS_SYM": 65536,
+            "POS_FINE_VBD": 562949953421312,
+            "POS_FINE_MD": 4294967296,
+            "POS_FINE_VBZ": 9007199254740992,
+            "POS_FINE_RB": 4398046511104,
+            "POS_FINE_NFP": 8589934592,
+            "POS_FINE_HYPH": 134217728,
+            "POS_FINE_CC": 4194304,
+            "POS_FINE_IN": 268435456,
+            "POS_FINE_``": 288230376151711744,
+            "POS_FINE_''": 65536,
+            "POS_FINE_:": 2097152,
+            "POS_FINE_.": 1048576,
+            "DEP_AUX": 295147905179352825856,
+            "DEP_NEG": 38685626227668133590597632,
+            "DEP_PUNCT": 1267650600228229401496703205376,
+            "DEP_ROOT": 576460752303423488,
+            "MORPH_POLARITY_NEG": 85070591730234615865843651857942052864,
+            "MORPH_TENSE_PAST": 2787593149816327892691964784081045188247552,
+            "MORPH_TENSE_PRES": 5575186299632655785383929568162090376495104,
+            "MORPH_VERBFORM_FIN": 11150372599265311570767859136324180752990208,
+            "MORPH_MOOD_IND": 332306998946228968225951765070086144,
+            "MORPH_NUMBER_SING": 5316911983139663491615228241121378304,
+            "MORPH_PERSON_3": 42535295865117307932921825928971026432,
+        }
+        return build_fine_legend_reverse(legend)
+
+    def test_all_23_tokens_annotated(self):
+        """All 23 manually annotated tokens are added to an empty grammar."""
+        rev = self._reverse()
+        grammar = {}
+        result = annotate_manual_tokens(grammar, rev)
+        # 23 tokens total: 14 contraction stems + 1 cannot + 1 underscore +
+        # 1 negation clitic + 5 newline-composite punct + 1 negation clitic
+        assert len(result) == 23
+
+    def test_required_fields_present(self):
+        """Every manually annotated entry has all required fields."""
+        required = {"text", "pos", "pos_fine", "dep", "morph", "count", "tokens",
+                    "frequency_pct", "nlp_type32", "nlp_type48", "nlp_fine_type"}
+        rev = self._reverse()
+        grammar = {}
+        result = annotate_manual_tokens(grammar, rev)
+        for tid, entry in result.items():
+            assert required.issubset(set(entry.keys())), f"Missing fields in token {tid}: {required - set(entry.keys())}"
+
+    def test_existing_not_overwritten(self):
+        """Pre-existing grammar entries are never overwritten."""
+        rev = self._reverse()
+        # Pre-populate token 832 ("'t") with a custom entry
+        grammar = {"832": {"text": "'t", "pos": "CUSTOM", "pos_fine": "", "dep": "", "morph": "",
+                           "count": 99, "tokens": [832], "frequency_pct": 1.0}}
+        result = annotate_manual_tokens(grammar, rev)
+        assert result["832"]["pos"] == "CUSTOM"
+        assert result["832"]["count"] == 99
+
+    def test_nlp_type32_positive(self):
+        """All entries have nlp_type32 > 0."""
+        rev = self._reverse()
+        grammar = {}
+        result = annotate_manual_tokens(grammar, rev)
+        for tid, entry in result.items():
+            assert entry["nlp_type32"] > 0, f"Token {tid} ({repr(entry['text'])}) has nlp_type32={entry['nlp_type32']}"
+
+    def test_contraction_stems_are_aux(self):
+        """Contraction stems shouldn/Shouldn are AUX with Polarity=Neg."""
+        rev = self._reverse()
+        grammar = {}
+        result = annotate_manual_tokens(grammar, rev)
+        for tid in ["6939", "15827"]:
+            entry = result[tid]
+            assert entry["pos"] == "AUX", f"Token {tid}: expected AUX, got {entry['pos']}"
+            assert "Polarity=Neg" in entry["morph"], f"Token {tid}: expected Polarity=Neg in morph, got {entry['morph']}"
+
+    def test_newline_punct_tokens_are_punct(self):
+        """Newline-composite punctuation tokens have pos=PUNCT and dep=punct."""
+        rev = self._reverse()
+        grammar = {}
+        result = annotate_manual_tokens(grammar, rev)
+        punct_ids = ["1110", "5163", "5190", "13974", "13986"]
+        for tid in punct_ids:
+            entry = result[tid]
+            assert entry["pos"] == "PUNCT", f"Token {tid}: expected PUNCT, got {entry['pos']}"
+            assert entry["dep"] == "punct", f"Token {tid}: expected punct, got {entry['dep']}"
+
+    def test_negation_clitic(self):
+        """The "'t" negation clitic is PART/RB/neg/Polarity=Neg."""
+        rev = self._reverse()
+        grammar = {}
+        result = annotate_manual_tokens(grammar, rev)
+        entry = result["832"]
+        assert entry["pos"] == "PART"
+        assert entry["pos_fine"] == "RB"
+        assert entry["dep"] == "neg"
+        assert "Polarity=Neg" in entry["morph"]
+
+    def test_contraction_stems_have_correct_fine_tags(self):
+        """Past-tense stems have VBD, modal stems have MD, present-tense stems have VBZ."""
+        rev = self._reverse()
+        grammar = {}
+        result = annotate_manual_tokens(grammar, rev)
+
+        # Past-tense stems: didn, was, had -> VBD
+        for tid in ["1840", "3698", "6590", "8868", "13135", "16191"]:
+            assert result[tid]["pos_fine"] == "VBD", f"Token {tid}: expected VBD, got {result[tid]['pos_fine']}"
+
+        # Modal stems: couldn, shouldn, would -> MD
+        for tid in ["2392", "5736", "6939", "10919", "15827", "1969"]:
+            assert result[tid]["pos_fine"] == "MD", f"Token {tid}: expected MD, got {result[tid]['pos_fine']}"
+
+        # Present-tense stems: does, is -> VBZ
+        for tid in ["4413", "4976", "5470", "16534"]:
+            assert result[tid]["pos_fine"] == "VBZ", f"Token {tid}: expected VBZ, got {result[tid]['pos_fine']}"
