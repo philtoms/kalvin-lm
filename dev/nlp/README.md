@@ -396,3 +396,77 @@ and frequencies from merged sources are reset to zero.
 3. **Standard model (`en_core_web_sm`)** is CPU-optimized and already fast without GPU
 
 4. **Transformer model (`en_core_web_trf`)** benefits significantly from GPU acceleration
+
+## Corpus Runner
+
+The `run_corpus.py` script runs the NLP analysis pipeline on external HuggingFace
+datasets. It downloads texts, runs spaCy analysis, and saves all outputs (grammar,
+NER, verbs, noun chunks, fine-type legends).
+
+### Setup
+
+Install the optional corpus dependency:
+
+```bash
+uv pip install -e '.[corpus]'
+```
+
+### Usage
+
+Run on OpenWebText (10K streamed samples):
+
+```bash
+uv run python dev/nlp/run_corpus.py \
+    --dataset Skylion007/openwebtext \
+    --max-samples 10000 \
+    --stem openwebtext \
+    --output data/tokenizer \
+    --verbose
+```
+
+Run on a custom dataset:
+
+```bash
+uv run python dev/nlp/run_corpus.py \
+    --dataset wikipedia \
+    --text-field content \
+    --stem wiki \
+    --max-samples 5000
+```
+
+### CLI Options
+
+| Flag               | Description                                                           |
+| ------------------ | --------------------------------------------------------------------- |
+| `--dataset`        | HuggingFace dataset name (default: `stas/openwebtext-10k`)           |
+| `--split`          | Dataset split to use (default: `train`)                               |
+| `--text-field`     | Field name containing text (default: `text`)                          |
+| `--stem`           | Output file stem, e.g. `{stem}_grammar.json` (default: `openwebtext`) |
+| `--output`         | Output directory (default: `data/tokenizer`)                          |
+| `--model`          | spaCy model (default: `en_core_web_trf`)                              |
+| `--gpu`            | Enable GPU acceleration                                               |
+| `--batch-size`     | spaCy pipe batch size (default: `100`)                                |
+| `--max-samples`    | Limit number of text samples (for testing)                            |
+| `--verbose`        | Print progress output                                                 |
+
+### Streaming mode
+
+When `--max-samples` is set, the runner streams data from HuggingFace instead of
+downloading the full dataset. This avoids out-of-memory issues with large corpora
+like OpenWebText (8M+ documents). Datasets using legacy loading scripts are
+automatically handled via streaming fallback.
+
+### Merge workflow
+
+After generating a grammar dict from an external corpus, merge it into the base
+grammar using `expand_grammar.py`:
+
+```bash
+uv run python dev/nlp/expand_grammar.py \
+    --grammar data/tokenizer/simplestories-1_grammar.json \
+    --extra-grammar data/tokenizer/openwebtext_grammar.json \
+    --output data/tokenizer/simplestories-1_grammar.json
+```
+
+The merge adds new entries without overwriting existing ones. Counts and frequencies
+from the external corpus are reset to zero.
