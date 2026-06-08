@@ -69,24 +69,16 @@ function loadSettings(cwd: string): AutoTuneSettings {
 	return {};
 }
 
-function findActiveAutoTuneSession(cwd: string): string | null {
-	// 1. Check auto-tune/ directly (main repo or inside a worktree)
-	const autoTuneDir = join(cwd, "auto-tune");
-	if (existsSync(autoTuneDir)) {
-		try {
-			for (const entry of readdirSync(autoTuneDir, { withFileTypes: true })) {
-				if (!entry.isDirectory()) continue;
-				const stateFile = join(autoTuneDir, entry.name, "session-state.md");
-				if (existsSync(stateFile)) {
-					return entry.name;
-				}
-			}
-		} catch {
-			// permission or other fs error
-		}
-	}
+interface SessionInfo {
+	name: string;
+	/** Path to session-state.md relative to the main repo root (for resume messages). */
+	statePath: string;
+	/** Whether the session lives in a worktree. */
+	inWorktree: boolean;
+}
 
-	// 2. Check worktrees: .worktrees/auto-tune/<name>/auto-tune/<name>/session-state.md
+function findActiveAutoTuneSession(cwd: string): SessionInfo | null {
+	// 1. Check worktrees first — active sessions typically run in worktrees.
 	const worktreesDir = join(cwd, ".worktrees", "auto-tune");
 	if (existsSync(worktreesDir)) {
 		try {
@@ -96,7 +88,31 @@ function findActiveAutoTuneSession(cwd: string): string | null {
 					worktreesDir, entry.name, "auto-tune", entry.name, "session-state.md",
 				);
 				if (existsSync(stateFile)) {
-					return entry.name;
+					return {
+						name: entry.name,
+						statePath: `.worktrees/auto-tune/${entry.name}/auto-tune/${entry.name}/session-state.md`,
+						inWorktree: true,
+					};
+				}
+			}
+		} catch {
+			// permission or other fs error
+		}
+	}
+
+	// 2. Check auto-tune/ directly (main repo or inside a worktree)
+	const autoTuneDir = join(cwd, "auto-tune");
+	if (existsSync(autoTuneDir)) {
+		try {
+			for (const entry of readdirSync(autoTuneDir, { withFileTypes: true })) {
+				if (!entry.isDirectory()) continue;
+				const stateFile = join(autoTuneDir, entry.name, "session-state.md");
+				if (existsSync(stateFile)) {
+					return {
+						name: entry.name,
+						statePath: `auto-tune/${entry.name}/session-state.md`,
+						inWorktree: false,
+					};
 				}
 			}
 		} catch {
@@ -132,6 +148,12 @@ export default function (pi: ExtensionAPI) {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let cachedNewSession: ((...args: any[]) => Promise<any>) | null = null;
 
+	// Cached session info from /auto-tune invocation. Used during handoff to
+	// resume the correct session instead of guessing from the filesystem.
+	let cachedSessionName: string | null = null;
+	let cachedStatePath: string | null = null;
+	let cachedInWorktree: boolean = false;
+
 	pi.registerFlag("auto-tune-ceiling", {
 		description: "Context ceiling (0-1) for auto-tune session handoff",
 		type: "number",
@@ -157,11 +179,16 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 
-		const sessionName = findActiveAutoTuneSession(ctx.cwd);
-		if (!sessionName) {
+		// Resolve session info — use cache (set by /auto-tune) when available,
+		// otherwise discover from filesystem.
+		const session = cachedSessionName
+			? { name: cachedSessionName, statePath: cachedStatePath ?? `auto-tune/${cachedSessionName}/session-state.md`, inWorktree: cachedInWorktree }
+			: findActiveAutoTuneSession(ctx.cwd);
+		if (!session) {
 			console.error("[auto-tune-handoff] No active auto-tune session found in", ctx.cwd);
 			return;
 		}
+		const { name: sessionName } = session;
 
 		const flagVal = pi.getFlag("auto-tune-ceiling");
 		const ceiling = resolveCeiling(ctx.cwd, flagVal as number);
@@ -176,8 +203,6 @@ export default function (pi: ExtensionAPI) {
 		if (percent < ceiling * 100) return;
 
 		triggered = true;
-
-		const statePath = `auto-tune/${sessionName}/session-state.md`;
 
 		// Inject a steering message so the LLM wraps up before handoff.
 		pi.sendMessage(
@@ -229,11 +254,14 @@ export default function (pi: ExtensionAPI) {
 				cachedNewSession!({
 					parentSession: currentSessionFile ?? undefined,
 					withSession: async (replacementCtx: any) => {
-						await replacementCtx.sendUserMessage(
+						let resumeMsg =
 							`Resume auto-tune ${sessionName}. ` +
-								`Your first action is to read ${statePath} to re-anchor. ` +
-								`Then continue from the Current Phase and Next Action described there.`,
-						);
+							`Your first action is to read ${session.statePath} to re-anchor. ` +
+							`Then continue from the Current Phase and Next Action described there.`;
+						if (session.inWorktree) {
+							resumeMsg += ` First cd into .worktrees/auto-tune/${sessionName}/`;
+						}
+						await replacementCtx.sendUserMessage(resumeMsg);
 					},
 				})
 					.then((result: any) => {
@@ -274,11 +302,26 @@ export default function (pi: ExtensionAPI) {
 			// functions from event handlers or microtasks.
 			cachedNewSession = ctx.newSession.bind(ctx);
 
+			// Cache session info so handoff resumes the correct session.
+			const trimmed = args.trim();
+			if (trimmed) {
+				cachedSessionName = trimmed.split(/\s+/)[0];
+				// Resolve state path: check if this session lives in a worktree.
+				const discovered = findActiveAutoTuneSession(ctx.cwd);
+				if (discovered && discovered.name === cachedSessionName) {
+					cachedStatePath = discovered.statePath;
+					cachedInWorktree = discovered.inWorktree;
+				} else {
+					cachedStatePath = `auto-tune/${cachedSessionName}/session-state.md`;
+					cachedInWorktree = false;
+				}
+			}
+
 			// Forward to pi's skill system. sendUserMessage does NOT re-trigger
 			// command handling, so the LLM receives the text and loads the skill
 			// based on its system prompt skill descriptions.
-			const prompt = args.trim()
-				? `/auto-tune ${args.trim()}`
+			const prompt = trimmed
+				? `/auto-tune ${trimmed}`
 				: "/auto-tune";
 
 			pi.sendUserMessage(prompt);
@@ -293,16 +336,18 @@ export default function (pi: ExtensionAPI) {
 			// Cancel any pending auto-handoff (user is doing it manually)
 			autoHandoffPending = false;
 
-			const sessionName = findActiveAutoTuneSession(ctx.cwd);
-			if (!sessionName) {
+			// Resolve session info — use cache when available, otherwise discover.
+			const session = cachedSessionName
+				? { name: cachedSessionName, statePath: cachedStatePath ?? `auto-tune/${cachedSessionName}/session-state.md`, inWorktree: cachedInWorktree }
+				: findActiveAutoTuneSession(ctx.cwd);
+			if (!session) {
 				ctx.ui.notify(
 					"No active auto-tune session found (no session-state.md)",
 					"error",
 				);
 				return;
 			}
-
-			const statePath = `auto-tune/${sessionName}/session-state.md`;
+			const { name: sessionName, statePath, inWorktree } = session;
 			const currentSessionFile = ctx.sessionManager.getSessionFile();
 
 			ctx.ui.notify(
@@ -313,11 +358,14 @@ export default function (pi: ExtensionAPI) {
 			const result = await ctx.newSession({
 				parentSession: currentSessionFile ?? undefined,
 				withSession: async (replacementCtx) => {
-					await replacementCtx.sendUserMessage(
+					let resumeMsg =
 						`Resume auto-tune ${sessionName}. ` +
-							`Your first action is to read ${statePath} to re-anchor. ` +
-							`Then continue from the Current Phase and Next Action described there.`,
-					);
+						`Your first action is to read ${statePath} to re-anchor. ` +
+						`Then continue from the Current Phase and Next Action described there.`;
+					if (inWorktree) {
+						resumeMsg += ` First cd into .worktrees/auto-tune/${sessionName}/`;
+					}
+					await replacementCtx.sendUserMessage(resumeMsg);
 				},
 			});
 

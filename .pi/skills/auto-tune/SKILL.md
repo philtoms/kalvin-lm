@@ -11,9 +11,11 @@ description: Drives an auto-tune session to improve the codebase using repeated 
 ## Entry Points
 
 ### New Session
+
 The user wants to start a fresh auto-tune session. No `auto-tune/<name>/session-state.md` exists yet. → Complete step 1, then step 2.
 
 ### Resume Session
+
 The user says "resume", "continue", or points at an existing session. A `session-state.md` file exists in the session directory. → Read `auto-tune/<name>/session-state.md`, confirm the goal and next action with the user, then jump directly to the phase indicated by **Current Phase** in the state file.
 
 **Resuming from the main repo:** The session lives in a git worktree at `.worktrees/auto-tune/<name>/`. You can find the session state at `.worktrees/auto-tune/<name>/auto-tune/<name>/session-state.md`. Cd into `.worktrees/auto-tune/<name>/` before continuing.
@@ -46,7 +48,7 @@ These rules apply throughout the session:
 6. **Keep context lean.** Don't re-read old harness logs or events from previous runs. The state file has the summary. Only read the current run's artifacts.
 7. **Work inside the worktree.** After init, all commands and file operations happen inside `.worktrees/auto-tune/<name>/`. Never modify files in the main repo.
 
-Auto-tune tunes the **codebase**, not Kalvin's model.
+Auto-tune tunes the **codebase** AND the **project documentation**.
 
 ## 2. Init Session (once, new sessions only)
 
@@ -130,6 +132,7 @@ Update state: **Current Phase** → `observing`.
 3. Compare snapshots if a previous run exists — diff the harness.log
 
 **Then immediately write your observations to `session-state.md`:**
+
 - Add a new run entry (latest run at top, full template)
 - Collapse the previous latest run to a one-liner
 - Update **Next Action**, **Current Phase**, and **Patterns & Notes**
