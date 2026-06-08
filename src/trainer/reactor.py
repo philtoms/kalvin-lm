@@ -111,14 +111,20 @@ class Reactor:
 
     # ── Event processing ──────────────────────────────────────────────
 
-    def process_s2_s3(self, event: RationaliseEvent) -> None:
+    def process_s2_s3(self, event: RationaliseEvent) -> bool:
         """Handle an S2/S3 event.
 
         Tries auto-countersign first; falls through to reactive
         handling (scaffolding or escalation) on no match.
+
+        Returns ``True`` if auto-countersign succeeded (no supervisor
+        interaction needed). Returns ``False`` if reactive handling
+        was invoked (supervisor ratification may be required).
         """
-        if not self._auto_countersign(event.proposal):
-            self._handle_reactive(event)
+        if self._auto_countersign(event.proposal):
+            return True
+        self._handle_reactive(event)
+        return False
 
     def record_response(self) -> None:
         """Increment the received-event counter."""

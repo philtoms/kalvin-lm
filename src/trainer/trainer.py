@@ -328,21 +328,23 @@ class Trainer:
             self._state.mark_satisfied(key)
         else:
             # S2/S3 slow path: delegate to reactor
-            self._reactor.process_s2_s3(event)
+            auto_matched = self._reactor.process_s2_s3(event)
 
             # Ratify request for S2/S3 proposals (HRNS-33)
-            self._bus.send(
-                Message(
-                    role=SUPERVISOR_ROLE,
-                    action="ratify_request",
-                    message={
-                        "proposal": event.proposal,
-                        "query": event.query,
-                        "significance": event.significance,
-                    },
-                    sender=self._role,
+            # Only sent when auto-countersign did NOT handle it
+            if not auto_matched:
+                self._bus.send(
+                    Message(
+                        role=SUPERVISOR_ROLE,
+                        action="ratify_request",
+                        message={
+                            "proposal": event.proposal,
+                            "query": event.query,
+                            "significance": event.significance,
+                        },
+                        sender=self._role,
+                    )
                 )
-            )
 
         self._check_lesson_complete()
 
