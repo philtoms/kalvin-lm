@@ -269,3 +269,72 @@ class TestTokenEncoderNLP:
         assert sig == "A"
         # NLP tokenizer should round-trip the literal text
         assert nodes == "hello"
+
+
+# =============================================================================
+# 9. NLP token encoder integration tests (cross-module)
+# =============================================================================
+
+@_nlp_skip
+class TestTokenEncoderNLPIntegration:
+    """Cross-module integration tests for TokenEncoder with NLPTokenizer.
+
+    Verifies that symbolic entries encoded via the NLP tokenizer produce
+    actual NLP-BPE node values (high 32 bits non-zero), and that decoding
+    those entries recovers the original symbolic names.
+
+    These complement TestTokenEncoderNLP by focusing on the SymbolicEntry →
+    TokenEncoder → CompiledEntry pipeline and the node-level properties.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup(self) -> None:
+        try:
+            self._nlp_tok = NLPTokenizer.from_files()
+        except Exception:
+            pytest.skip("NLPTokenizer data files not available")
+
+    def test_symbolic_entry_produces_nlp_bpe_nodes(self) -> None:
+        """SymbolicEntry through TokenEncoder produces NLP-BPE node values."""
+        from kalvin.signature import is_nlp_node
+        from kscript.ast_emitter import SymbolicEntry
+
+        encoder = TokenEncoder(tokenizer=self._nlp_tok, dev=True)
+        entries = encoder.encode_entries([
+            SymbolicEntry("AB", ["A", "B"], "CANONIZE"),
+        ])
+
+        assert len(entries) == 1
+        entry = entries[0]
+
+        # Signature should be an NLP-BPE node
+        assert is_nlp_node(entry.signature), (
+            f"Signature {entry.signature:#x} should be NLP-BPE"
+        )
+
+        # All nodes should be NLP-BPE
+        for node in entry.nodes:
+            assert is_nlp_node(node), (
+                f"Node {node:#x} should be NLP-BPE"
+            )
+
+    def test_compiled_entry_stores_nlp_node_values(self) -> None:
+        """CompiledEntry stores exact NLP-BPE node values for sig and nodes."""
+        entry = CompiledEntry.encode("A", "B", self._nlp_tok)
+
+        # Both signature and node should have non-zero high 32 bits
+        assert (entry.signature >> 32) != 0, "Sig high 32 bits should be non-zero"
+        assert len(entry.nodes) == 1
+        assert (entry.nodes[0] >> 32) != 0, "Node high 32 bits should be non-zero"
+
+    def test_decode_reconstructs_original_text(self) -> None:
+        """decode() reconstructs original symbolic names from NLP-BPE nodes.
+
+        Single-char signatures ('A', 'B') each encode to a single NLP-BPE
+        node, which round-trips correctly through encode → decode.
+        """
+        entry = CompiledEntry.encode("A", ["B"], self._nlp_tok)
+        sig, nodes = entry.decode(self._nlp_tok)
+
+        assert sig == "A"
+        assert nodes == ["B"]

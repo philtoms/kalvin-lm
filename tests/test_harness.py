@@ -743,3 +743,97 @@ def test_multiple_proposals_displayed():
     # Proposals are different from each other
     proposal_keys = [HarnessFixture.entry_key(p) for p in recorded_proposals]
     assert len(set(proposal_keys)) == len(proposals)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NLP Tokenizer Harness Compatibility
+# ═══════════════════════════════════════════════════════════════════════
+
+try:
+    from kalvin.nlp_tokenizer import NLPTokenizer
+    _has_nlp = True
+except ImportError:
+    _has_nlp = False
+
+_nlp_skip = pytest.mark.skipif(not _has_nlp, reason="NLPTokenizer not available")
+
+
+class NLPHarnessFixture(HarnessFixture):
+    """HarnessFixture variant using NLPTokenizer instead of Mod64Tokenizer.
+
+    Overrides compile() and _decompile_entry() to use the NLP tokenizer,
+    and constructs the agent with NLPTokenizer.  All tracking, submission,
+    and response logic is inherited from the base class.
+    """
+
+    def __init__(self, nlp_tok: NLPTokenizer) -> None:
+        self._nlp_tok = nlp_tok
+        # Bypass parent __init__ — set up with NLP tokenizer
+        self._agent = KAgent(tokenizer=nlp_tok, adapter=EventBus())
+        self._submitted: set[tuple[int, tuple[int, ...]]] = set()
+        self._satisfied: set[tuple[int, tuple[int, ...]]] = set()
+        self._responses: list[dict] = []
+        self._expectations: dict[tuple[int, tuple[int, ...]], CompiledEntry] = {}
+        self._events: list[RationaliseEvent] = []
+        self._run_mode: bool = False
+        self._rationalise_count: int = 0
+        self._agent.events.subscribe(self._on_event)
+
+    def compile(self, source: str) -> list[CompiledEntry]:
+        """Compile KScript source using the NLP tokenizer."""
+        return compile_source(source, tokenizer=self._nlp_tok, dev=True)
+
+    def _decompile_entry(self, entry) -> str:
+        """Decompile an entry using the NLP tokenizer."""
+        try:
+            results = Decompiler(self._nlp_tok).decompile([entry])
+            if results:
+                return results[0].to_kscript()
+        except Exception:
+            pass
+        return ""
+
+
+@_nlp_skip
+def test_harness_nlp_tokenizer():
+    """Harness works end-to-end with NLPTokenizer.
+
+    Verifies that the full rationalisation pipeline — compile KScript,
+    submit entries, track satisfaction — works when using an NLP tokenizer
+    instead of the default Mod64.  Entries should contain NLP-BPE nodes
+    (high 32 bits non-zero) and the rationalisation results should be
+    recorded correctly.
+    """
+    nlp_tok = NLPTokenizer.from_files()
+    h = NLPHarnessFixture(nlp_tok)
+
+    # Compile and run a simple source
+    source = "A => B"
+    h.run_all(source)
+
+    entries = h.compile(source)
+
+    # Entries should have been submitted
+    assert len(h.submitted) == len(entries), (
+        f"Expected {len(entries)} submitted, got {len(h.submitted)}"
+    )
+
+    # All entries should be satisfied (fast-path for simple entries)
+    assert len(h.satisfied) >= 1, (
+        f"Expected at least 1 satisfied entry, got {len(h.satisfied)}"
+    )
+
+    # Responses should be recorded
+    assert len(h.responses) >= 1
+
+    # Verify entries contain NLP-BPE nodes
+    for entry in entries:
+        from kalvin.signature import is_nlp_node
+        assert is_nlp_node(entry.signature), (
+            f"Entry signature {entry.signature:#x} should be NLP-BPE"
+        )
+
+    # Verify responses have correct structure
+    for response in h.responses:
+        assert response["status"] in STATUS_SYMBOLS
+        assert isinstance(response["decompiled"], str)

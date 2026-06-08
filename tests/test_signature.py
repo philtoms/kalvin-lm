@@ -249,3 +249,124 @@ class TestSignifiesNLP:
         """NLP-derived signature vs 0 → False."""
         node = nlp_node(0x10000, 42)
         assert signifies(make_signature([node]), 0) is False
+
+
+# ── Backward compatibility integration tests ──────────────────────────
+
+
+class TestSignatureNLPBackwardCompat:
+    """Integration tests verifying NLP masking doesn't break Mod32 semantics.
+
+    These are cross-module regression guards: Mod32 signatures must remain
+    unchanged after the NLP-aware make_signature() was introduced.
+    NLP and Mod32 node types must coexist correctly in mixed sequences.
+
+    These tests complement the unit-level tests in TestMakeSignatureNLP
+    by using real tokenizer instances and verifying cross-module behavior.
+    """
+
+    def test_mod32_signature_unchanged(self) -> None:
+        """Mod32 packed nodes produce full-value OR-reduction — no masking.
+
+        Regression guard: make_signature() on Mod32 nodes must still
+        OR-reduce the full node value, not apply NLP masking.
+        """
+        from kalvin.mod_tokenizer import Mod32Tokenizer
+
+        tok = Mod32Tokenizer()
+        nodes = tok.encode("ABC")
+        sig = make_signature(nodes)
+
+        # Mod32 packed: single node with all bits set for A, B, C
+        # Signature must equal the full node value (no masking)
+        assert sig == nodes[0], (
+            f"Mod32 signature should be {nodes[0]}, got {sig} — "
+            f"NLP masking incorrectly applied to Mod32 nodes"
+        )
+
+    def test_nlp_signature_correct_masking(self) -> None:
+        """NLP-BPE nodes: signature has only NLP type bits, BPE IDs excluded.
+
+        Two NLP nodes for 'Tea' (nlp_type32=131200) and 'brewed'
+        (nlp_type32=8421376).  The signature should be the OR of their
+        high 32 NLP type bits only: (131200 | 8421376) << 32.
+        """
+        from kalvin.nlp_tokenizer import NLPTokenizer
+
+        nlp = NLPTokenizer.from_files()
+        tea = nlp.encode("Tea")
+        brewed = nlp.encode("brewed")
+
+        sig = make_signature(tea + brewed)
+
+        # Expected: OR of high 32 NLP type bits only
+        tea_type = tea[0] >> 32
+        brewed_type = brewed[0] >> 32
+        expected = (tea_type | brewed_type) << 32
+
+        assert sig == expected, (
+            f"Expected {expected:#x}, got {sig:#x} — "
+            f"BPE IDs should be excluded from NLP signature"
+        )
+
+        # Low 32 bits must be zero (BPE IDs masked out)
+        assert (sig & 0xFFFFFFFF) == 0, "BPE IDs leaked into signature"
+
+    def test_signifies_cross_type(self) -> None:
+        """Mod32 and NLP signatures don't falsely overlap.
+
+        Mod32 bits are in positions 1–31, NLP type bits are in
+        positions 32+.  Unless there's a coincidental bit overlap
+        (which doesn't happen with our test data), signifies()
+        should return False.
+        """
+        from kalvin.mod_tokenizer import Mod32Tokenizer
+        from kalvin.nlp_tokenizer import NLPTokenizer
+
+        mod32 = Mod32Tokenizer()
+        nlp = NLPTokenizer.from_files()
+
+        mod32_sig = make_signature(mod32.encode("ABC"))
+        nlp_sig = make_signature(nlp.encode("Tea"))
+
+        # Mod32 sig has bits only in positions 1–31
+        # NLP sig has bits only in positions 32+
+        # No overlap → signifies should be False
+        assert signifies(mod32_sig, nlp_sig) is False, (
+            f"Mod32 ({mod32_sig:#x}) and NLP ({nlp_sig:#x}) signatures "
+            f"should not overlap"
+        )
+
+    def test_mixed_mod32_nlp_signature(self) -> None:
+        """Mixed Mod32 + NLP node list: both types contribute correctly.
+
+        A node list containing both Mod32 packed nodes and NLP-BPE nodes
+        should produce a signature with Mod32 bits in the low positions
+        and NLP type bits in the high positions.
+        """
+        from kalvin.mod_tokenizer import Mod32Tokenizer
+        from kalvin.nlp_tokenizer import NLPTokenizer
+
+        mod32 = Mod32Tokenizer()
+        nlp = NLPTokenizer.from_files()
+
+        mod32_nodes = mod32.encode("A")  # Single packed node
+        nlp_nodes = nlp.encode("Tea")    # Single NLP-BPE node
+
+        mixed = mod32_nodes + nlp_nodes
+        sig = make_signature(mixed)
+
+        # Mod32 contribution: full value (low bits)
+        mod32_sig = make_signature(mod32_nodes)
+        assert sig & mod32_sig == mod32_sig, (
+            "Mod32 bits should be present in mixed signature"
+        )
+
+        # NLP contribution: type bits only (high bits)
+        nlp_sig = make_signature(nlp_nodes)
+        assert sig & nlp_sig == nlp_sig, (
+            "NLP type bits should be present in mixed signature"
+        )
+
+        # Combined: OR of both
+        assert sig == (mod32_sig | nlp_sig)
