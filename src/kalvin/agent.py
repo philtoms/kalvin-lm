@@ -411,16 +411,22 @@ class KAgent:
         # classification. This ensures all kline proposals flow through
         # cogitation — no silent S1 short-circuit that skips reasoning.
 
-        # Cap candidates to prevent cascade explosion in dense models.
-        # Prioritise by node overlap count (descending).
-        work_candidates = candidates
-        if len(work_candidates) > self._max_candidates:
-            def _candidate_priority(candidate: KLine) -> int:
-                return -sum(1 for n in kline.nodes if n in set(candidate.nodes))
-            work_candidates = sorted(candidates, key=_candidate_priority)
-            work_candidates = work_candidates[:self._max_candidates]
+        # Classify and sort candidates: S1 first (so auto-satisfy fires
+        # before S2/S3 expansion proposals trigger reactive scaffolding),
+        # then by node overlap count (descending) within each level.
+        def _route_rank(candidate: KLine) -> tuple[int, int]:
+            level = self._route(kline, candidate)
+            level_order = {"S1": 0, "S2": 1, "S3": 2, "S4": 3}.get(level, 4)
+            overlap = -sum(1 for n in kline.nodes if n in set(candidate.nodes))
+            return (level_order, overlap)
 
-        for candidate in work_candidates:
+        sorted_candidates = sorted(candidates, key=_route_rank)
+
+        # Cap to prevent cascade explosion in dense models.
+        if len(sorted_candidates) > self._max_candidates:
+            sorted_candidates = sorted_candidates[:self._max_candidates]
+
+        for candidate in sorted_candidates:
             level = self._route(kline, candidate)
             self._cogitator.submit(WorkItem(kline, candidate, level))
 
