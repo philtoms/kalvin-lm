@@ -771,10 +771,12 @@ class Trainer:
     def _check_lesson_complete(self) -> bool:
         """Return ``True`` if the current lesson is complete.
 
-        A lesson is complete when all submitted entries have received
-        responses. Delegates to ``Reactor.is_lesson_complete``.
+        A lesson is complete when every submitted entry has been marked
+        satisfied. Uses ``CurriculumState.satisfied`` vs ``submitted``
+        rather than reactor event counts, because cogitation can produce
+        multiple events per entry (initial + expansions).
         """
-        if self._reactor.is_lesson_complete:
+        if len(self._state.satisfied) >= len(self._state.submitted) and len(self._state.submitted) > 0:
             # Capture lesson label BEFORE advancing position
             current_lesson = self._state.curriculum.current_lesson()
             old_position = self._state.curriculum.position

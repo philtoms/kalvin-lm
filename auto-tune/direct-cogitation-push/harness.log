@@ -1,0 +1,158 @@
+2026-06-08 12:03:33,689 [harness.server] INFO: Embedded participant 'KAgent' (4395777376) subscribed to 'trainee'
+2026-06-08 12:03:33,939 [__main__] INFO: LLM client configured (model=glm-5.1, base_url=https://api.z.ai/api/coding/paas/v4)
+2026-06-08 12:03:33,939 [harness.server] INFO: Embedded participant 'Trainer' (4503547248) subscribed to 'trainer'
+2026-06-08 12:03:33,941 [websockets.server] INFO: server listening on [::1]:8765
+2026-06-08 12:03:33,941 [websockets.server] INFO: server listening on 127.0.0.1:8765
+2026-06-08 12:03:33,941 [harness.server] INFO: WebSocket server listening on localhost:8765
+2026-06-08 12:03:34,134 [websockets.server] ERROR: opening handshake failed
+Traceback (most recent call last):
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/http11.py", line 138, in parse
+    request_line = yield from parse_line(read_line)
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/http11.py", line 320, in parse_line
+    line = yield from read_line(MAX_LINE_LENGTH)
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/streams.py", line 46, in read_line
+    raise EOFError(f"stream ends after {p} bytes, before end of line")
+EOFError: stream ends after 0 bytes, before end of line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/server.py", line 547, in parse
+    request = yield from Request.parse(
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/http11.py", line 140, in parse
+    raise EOFError("connection closed while reading HTTP request line") from exc
+EOFError: connection closed while reading HTTP request line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/Users/phil/dev/ai/kalvin/.venv/lib/python3.10/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
+2026-06-08 12:03:34,280 [websockets.server] INFO: connection open
+2026-06-08 12:03:34,280 [harness.protocol] INFO: Client registered: supervisor
+2026-06-08 12:03:37,728 [trainer.trainer] INFO: Session started — 1 lessons, curriculum: curricula/mhall-svo-single.md
+2026-06-08 12:03:37,728 [harness.adapter] INFO: Draining cogitator...
+2026-06-08 12:03:37,728 [harness.adapter] INFO: Cogitator drained
+2026-06-08 12:03:37,728 [trainer.trainer] INFO: Cogitator drained — submitting next lesson
+2026-06-08 12:03:37,728 [trainer.trainer] INFO: Submitting lesson 1 (1/1)
+2026-06-08 12:03:37,729 [trainer.trainer] INFO: Compiled 18 entries for lesson 1
+2026-06-08 12:03:37,729 [harness.adapter] INFO: Submitting 18 compiled entries to KAgent
+2026-06-08 12:03:37,730 [trainer.trainer] INFO: FRAME M → 0
+2026-06-08 12:03:37,730 [kalvin.expand] INFO: promote_participating: query=0x1000 candidate=0x3102 promoting 11 structural + 2
+2026-06-08 12:03:37,730 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-08 12:03:37,731 [kalvin.expand] INFO: promote_participating: query=0x1000 candidate=0x3102 promoting 15 structural + 2
+2026-06-08 12:03:37,731 [trainer.trainer] INFO: FRAME H → 0
+2026-06-08 12:03:37,732 [kalvin.expand] INFO: promote_participating: query=0x1000 candidate=0x3102 promoting 14 structural + 2
+2026-06-08 12:03:37,732 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-08 12:03:37,732 [kalvin.expand] INFO: promote_participating: query=0x1000 candidate=0x3102 promoting 17 structural + 2
+2026-06-08 12:03:37,732 [trainer.trainer] INFO: FRAME A → 0
+2026-06-08 12:03:37,733 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-08 12:03:37,733 [trainer.trainer] INFO: FRAME L → 0
+2026-06-08 12:03:37,733 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-08 12:03:37,733 [trainer.trainer] INFO: FRAME MHALL => M H A L L → S1 (fast path) ← MHALL => M H A L L
+2026-06-08 12:03:37,733 [trainer.trainer] INFO: FRAME S → 0
+2026-06-08 12:03:37,733 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-08 12:03:37,733 [trainer.trainer] INFO: FRAME V → 0
+2026-06-08 12:03:37,733 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-08 12:03:37,733 [trainer.trainer] INFO: FRAME O → 0
+2026-06-08 12:03:37,733 [trainer.reactor] INFO: Auto-countersign: proposal matched expectation
+2026-06-08 12:03:37,734 [trainer.trainer] INFO: FRAME SVO => S V O → S1 (fast path) ← SVO => S V O
+2026-06-08 12:03:37,734 [trainer.trainer] INFO: FRAME AHLM > OSV → S1 (fast path) ← AHLM > OSV
+2026-06-08 12:03:37,734 [trainer.trainer] INFO: FRAME OSV > AHLM → S1 (fast path) ← OSV > AHLM
+2026-06-08 12:03:37,734 [trainer.trainer] INFO: FRAME M > S → S1 (fast path) ← M > S
+2026-06-08 12:03:37,734 [trainer.trainer] INFO: FRAME H > V → S1 (fast path) ← H > V
+2026-06-08 12:03:37,734 [trainer.trainer] INFO: FRAME ALL => A L L → S1 (fast path) ← ALL => A L L
+2026-06-08 12:03:37,734 [trainer.trainer] INFO: FRAME AL > O → S1 (fast path) ← AL > O
+2026-06-08 12:03:37,734 [trainer.trainer] INFO: FRAME A > D → S1 (fast path) ← A > D
+2026-06-08 12:03:37,734 [trainer.trainer] INFO: FRAME L > M → S1 (fast path) ← MHALL => M H A L L
+2026-06-08 12:03:37,734 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: AL => O M H A L L
+2026-06-08 12:03:37,734 [trainer.trainer] INFO: Lesson 1 complete — entries: 17/18 satisfied, 1/1 lessons done
+2026-06-08 12:03:37,734 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: AL => O A L L
+2026-06-08 12:03:37,735 [trainer.trainer] INFO: FRAME L > M → 200
+2026-06-08 12:03:37,735 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: O => O
+2026-06-08 12:03:37,735 [trainer.trainer] INFO: FRAME L > M → 200
+2026-06-08 12:03:37,735 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: O => O
+2026-06-08 12:03:37,735 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: AL => O A L L
+2026-06-08 12:03:37,735 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: O => O
+2026-06-08 12:03:37,735 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: AL => O M H A L L
+2026-06-08 12:03:37,735 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: O => O
+2026-06-08 12:03:37,735 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: AL => M H A L L
+2026-06-08 12:03:37,735 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: O => O
+2026-06-08 12:03:37,735 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: AL > M
+2026-06-08 12:03:37,735 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: O => O
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: AL > O
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: O => O
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: AL > D
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: O => O
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: AL > OSV
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: O => O
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: O => O
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: O => O
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: AL > O
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: O => O
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: ALL => A L L
+2026-06-08 12:03:37,736 [trainer.trainer] INFO: FRAME L > M → 200 | proposal: O => O
+2026-06-08 12:03:37,737 [trainer.trainer] INFO: FRAME M > S → 101 | proposal: S => S V O
+2026-06-08 12:03:37,737 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: M => S AHLM
+2026-06-08 12:03:37,737 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: M => S M H A L L
+2026-06-08 12:03:37,737 [trainer.trainer] INFO: FRAME L > M → 102
+2026-06-08 12:03:37,737 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: S => S
+2026-06-08 12:03:37,737 [trainer.trainer] INFO: FRAME L > M → 102
+2026-06-08 12:03:37,737 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: S => S
+2026-06-08 12:03:37,737 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: M => S M H A L L
+2026-06-08 12:03:37,737 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: S => S
+2026-06-08 12:03:37,737 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: M => S AHLM
+2026-06-08 12:03:37,737 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: S => S
+2026-06-08 12:03:37,737 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: M => AHLM
+2026-06-08 12:03:37,737 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: S => S
+2026-06-08 12:03:37,738 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: M => M H A L L
+2026-06-08 12:03:37,738 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: S => S
+2026-06-08 12:03:37,738 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: M > S
+2026-06-08 12:03:37,738 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: S => S
+2026-06-08 12:03:37,738 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: M > OSV
+2026-06-08 12:03:37,738 [trainer.trainer] INFO: FRAME L > M → 102 | proposal: S => S
+2026-06-08 12:03:37,738 [harness.adapter] INFO: Countersign: KLine(sig=0x2000, nodes=[], lit=False)
+2026-06-08 12:03:37,738 [trainer.trainer] INFO: FRAME L > M → S1 (fast path) ← AHLM > OSV
+2026-06-08 12:03:37,738 [trainer.trainer] INFO: FRAME L > M → 100 | proposal: L => AHLM
+2026-06-08 12:03:37,738 [trainer.trainer] INFO: FRAME L > M → 100 | proposal: L => M H A L L
+2026-06-08 12:03:37,738 [trainer.trainer] INFO: FRAME L > M → 100 | proposal: L => A L L
+2026-06-08 12:03:37,738 [trainer.trainer] INFO: FRAME L > M → 100 | proposal: L => M H A L L
+2026-06-08 12:03:37,738 [trainer.trainer] INFO: FRAME L > M → 100 | proposal: L => O M H A L L
+2026-06-08 12:03:37,739 [trainer.trainer] INFO: FRAME L > M → 100 | proposal: L => O A L L
+2026-06-08 12:03:37,739 [trainer.trainer] INFO: FRAME L > M → S1 (fast path) ← L > O
+2026-06-08 12:03:37,739 [trainer.trainer] INFO: FRAME L > O → S1 (fast path) ← AL > O
+2026-06-08 12:03:37,739 [trainer.trainer] INFO: FRAME L > O → S1 (fast path) ← L > M
+2026-06-08 12:03:37,739 [trainer.trainer] INFO: FRAME L > O → S1 (fast path) ← AHLM > OSV
+2026-06-08 12:03:37,739 [harness.adapter] INFO: Countersign: KLine(sig=0x100, nodes=[], lit=False)
+2026-06-08 12:03:37,739 [trainer.trainer] INFO: FRAME L > O → S1 (fast path) ← MHALL => M H A L L
+2026-06-08 12:03:37,739 [trainer.trainer] INFO: FRAME L > O → 100 | proposal: L => M H A L L
+2026-06-08 12:03:37,739 [trainer.trainer] INFO: FRAME L > O → 100 | proposal: L => AHLM
+2026-06-08 12:03:37,739 [trainer.trainer] INFO: FRAME L > O → 100 | proposal: L => AHLM
+2026-06-08 12:03:37,739 [trainer.trainer] INFO: FRAME L > O → 100 | proposal: L => O A L L
+2026-06-08 12:03:37,739 [trainer.trainer] INFO: FRAME L > O → 100 | proposal: L => O M H A L L
+2026-06-08 12:03:37,740 [trainer.trainer] INFO: FRAME L > O → 100 | proposal: L => M H A L L
+2026-06-08 12:03:37,740 [trainer.trainer] INFO: FRAME L > O → 100 | proposal: L => A L L
+2026-06-08 12:03:37,740 [trainer.trainer] INFO: FRAME L > O → 100 | proposal: L => A L L
+2026-06-08 12:03:37,740 [trainer.trainer] INFO: FRAME L > O → 100 | proposal: L => M H A L L
+2026-06-08 12:03:37,740 [trainer.trainer] INFO: FRAME L > O → 100 | proposal: L => O M H A L L
+2026-06-08 12:03:37,740 [trainer.trainer] INFO: FRAME L > O → 100 | proposal: L => O A L L
+2026-06-08 12:03:37,740 [harness.adapter] INFO: Countersign: KLine(sig=0x2, nodes=[], lit=False)
+2026-06-08 12:03:37,740 [harness.adapter] INFO: Countersign: KLine(sig=0x1000, nodes=[], lit=False)
+2026-06-08 12:03:37,740 [harness.adapter] INFO: Countersign: KLine(sig=0x80000, nodes=[], lit=False)
+2026-06-08 12:03:37,740 [harness.adapter] INFO: Countersign: KLine(sig=0x400000, nodes=[], lit=False)
+2026-06-08 12:03:37,740 [harness.adapter] INFO: Countersign: KLine(sig=0x8000, nodes=[], lit=False)
+2026-06-08 12:03:37,740 [harness.adapter] INFO: Draining cogitator...
+2026-06-08 12:03:37,740 [harness.adapter] INFO: Cogitator drained
+2026-06-08 12:03:37,741 [trainer.trainer] INFO: Cogitator drained — submitting next lesson
+2026-06-08 12:03:37,741 [trainer.trainer] INFO: Curriculum complete — all lessons submitted
+2026-06-08 12:05:22,803 [harness.protocol] INFO: Client disconnected: supervisor
+2026-06-08 12:05:22,923 [websockets.server] INFO: server closing
+2026-06-08 12:05:22,923 [websockets.server] INFO: server closed
+2026-06-08 12:05:22,923 [harness.server] INFO: WebSocket server stopped
+2026-06-08 12:05:22,923 [harness.server] INFO: Harness server stop requested
+2026-06-08 12:05:22,924 [__main__] INFO: Trainer state persisted
