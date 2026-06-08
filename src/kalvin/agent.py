@@ -195,8 +195,23 @@ class Cogitator:
                 self._condition.notify_all()
 
     def _run_work_item(self, item: WorkItem) -> None:
-        """Expand a work item, classifying each yield against boundaries."""
-        query, candidate, _level = item
+        """Expand a work item, classifying each yield against boundaries.
+
+        S1 work items are resolved immediately without expansion — the
+        routing classification already determined full node overlap, so
+        expansion would only generate spurious intermediate proposals
+        before the terminal S1 yield.
+        """
+        query, candidate, level = item
+
+        if level == "S1":
+            # S1: full node overlap confirmed by routing — skip expansion.
+            # expand() may yield intermediate S2/S3 connotation pairs before
+            # the terminal S1 yield, which would trigger unwanted reactive
+            # scaffolding. Resolve immediately.
+            self._handler.on_s1(query, candidate)
+            return
+
         s12, s23, s34 = boundaries()
 
         for qc in expand(self._model, query, candidate):
