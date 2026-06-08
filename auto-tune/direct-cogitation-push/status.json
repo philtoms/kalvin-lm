@@ -1,10 +1,10 @@
 {
-  "pid": 10028,
+  "pid": 19341,
   "connected": true,
-  "last_event_seq": 5,
+  "last_event_seq": 8,
   "last_command": {
-    "action": "shutdown"
+    "action": "continue"
   },
-  "state": "shutting_down",
-  "started_at": "2026-06-08T12:03:34.280611"
+  "state": "waiting_for_command",
+  "started_at": "2026-06-08T12:18:09.998799"
 }

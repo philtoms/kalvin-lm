@@ -777,13 +777,16 @@ class Trainer:
         multiple events per entry (initial + expansions).
         """
         if len(self._state.satisfied) >= len(self._state.submitted) and len(self._state.submitted) > 0:
-            # Capture lesson label BEFORE advancing position
+            # Guard: skip if lesson already completed (cogitation events
+            # arrive after lesson completion fires — don't re-fire)
             current_lesson = self._state.curriculum.current_lesson()
-            old_position = self._state.curriculum.position
-            completed_label = current_lesson.label if current_lesson else None
+            if current_lesson and self._state.is_lesson_satisfied(current_lesson.label):
+                return False
+            if not current_lesson:
+                return False
 
-            if current_lesson:
-                self._state.mark_lesson_satisfied(current_lesson.label)
+            completed_label = current_lesson.label
+            self._state.mark_lesson_satisfied(current_lesson.label)
 
             satisfied = len(self._state.satisfied)
             total_entries = len(self._state.submitted)
@@ -798,7 +801,7 @@ class Trainer:
 
             self._state.log_event(
                 "lesson_complete",
-                {"position": old_position},
+                {"position": self._state.curriculum.position},
             )
 
             self._emit_progress("lesson_complete", label_override=completed_label)
