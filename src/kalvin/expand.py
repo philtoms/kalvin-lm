@@ -16,8 +16,7 @@ The module reads from the Model (storage) but is a separate responsibility:
 Model indexes and retrieves; Expand computes how far apart two KLines are.
 
 Re-exported constants and types from the old model module:
-  D_MAX, MASK64, MAX_HOP, _S3_BIAS, _pack, QueryCandidate
-"""
+  D_MAX, MASK64, MAX_HOP, _S3_BIAS, _pack, QueryCandidate"""
 
 from __future__ import annotations
 
@@ -36,22 +35,21 @@ _log = logging.getLogger(__name__)
 # ── Distance Constants ────────────────────────────────────────────────
 
 # _S3_BIAS — S3 connotation tier bias. Connotation hop counts are biased by this
-# amount before quadratic packing, ensuring S3 packed distances exceed S2 distances
-# for the same hop count while keeping both tiers close enough for temperature bridging.
-# With _S3_BIAS=9, minimum S3 packed distance = _pack(2+9) = 121 > MAX_HOP(100).
-_S3_BIAS = 9
+# amount before linear distance addition, ensuring S3 distances always exceed
+# S2 distances. With _S3_BIAS=1, minimum S3 distance = S2_S3_DISTANCE + 1 = 101.
+_S3_BIAS = 1
 
 
 def _pack(distance: int) -> int:
-    """Non-linear distance packing via squaring.
+    """Linear distance function for S3 connotation hops.
 
-    Quadratic growth keeps small distances close for fine-grained temperature
-    discrimination, while large distances spread apart so the accumulation
-    penalty grows super-linearly.
+    Returns the distance unchanged. Retained as a named function for
+    readability in the expand() call sites. The quadratic version caused
+    significance explosion at higher hop depths (e.g. 20 hops → 841 distance).
     """
     if distance <= 0:
         return 0
-    return distance * distance
+    return distance
 
 
 # Public significance constants
@@ -61,9 +59,9 @@ MASK64 = 0xFFFF_FFFF_FFFF_FFFF  # 64-bit mask for bitwise inversion
 # MAX_HOP hyperparameter — upper bound on edge hop chain depth
 MAX_HOP = 100
 
-# S2|S3 boundary — packed distance threshold separating S2 from S3.
-# Sits between max single-node S2 distance (MAX_HOP=100) and min S3 packed
-# distance (_pack(2+_S3_BIAS)=121), ensuring clean separation.
+# S2|S3 boundary — distance threshold separating S2 from S3.
+# Sits at 100: S2 direct hops stay below this threshold, while
+# S3 connotation hops start at S2_S3_DISTANCE + 1 = 101.
 S2_S3_DISTANCE = 100
 
 
@@ -208,9 +206,10 @@ def expand(
     always the terminal QueryCandidate with the computed distance for the
     original pair.
 
-    Distance is a single integer. S3 connotation hops are biased by
-    ``_pack(hop_count + _S3_BIAS)`` to ensure S3 distances moderately
-    exceed S2 distances — close enough for temperature to bridge.
+    Distance is a single integer. S3 connotation hops use linear distance
+    ``S2_S3_DISTANCE + hop_count`` to ensure S3 distances moderately
+    exceed S2 distances — close enough for temperature to bridge,
+    without the quadratic explosion of the previous packing function.
     """
     if _visited is None:
         _visited = set()
@@ -283,7 +282,7 @@ def expand(
                     if c_kline is not None:
                         yield from expand(
                             model, q_kline, c_kline,
-                            _pack(s3_hop + _S3_BIAS),
+                            S2_S3_DISTANCE + s3_hop + _S3_BIAS - 1,
                             _visited=_visited,
                         )
                     hop_distance = 0
