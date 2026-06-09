@@ -11,6 +11,7 @@ from kalvin.mod_tokenizer import Mod32Tokenizer, Mod64Tokenizer
 from kalvin.signature import is_nlp_node
 from kscript.ast import (
     Block,
+    Comment,
     Construct,
     KScriptFile,
     Literal,
@@ -249,6 +250,87 @@ class TestParserAST:
         kfile = Parser(tokens).parse()
         assert len(kfile.scripts) == 1
         assert len(kfile.scripts[0].constructs) == 0
+
+
+# =============================================================================
+# 3b. Comment parsing tests
+# =============================================================================
+
+class TestCommentParsing:
+    """Tests for COMMENT token preservation and inline comment attachment."""
+
+    def test_standalone_comment_preserved_as_comment_node(self) -> None:
+        """Standalone comment on its own line is preserved as a Comment AST node."""
+        tokens = Lexer("(a comment)\nA => B").tokenize()
+        kfile = Parser(tokens).parse()
+        constructs = kfile.scripts[0].constructs
+        # First construct should be a Comment
+        assert isinstance(constructs[0].inner, Comment)
+        assert constructs[0].inner.text == "(a comment)"
+
+    def test_inline_comment_attached_to_primary_construct(self) -> None:
+        """Inline comment S(ubject) is attached to PrimaryConstruct.inline_comment."""
+        tokens = Lexer("S(ubject) = M").tokenize()
+        kfile = Parser(tokens).parse()
+        construct = kfile.scripts[0].constructs[0]
+        assert isinstance(construct.inner, list)
+        primary = construct.inner[0]
+        assert primary.sig.id == "S"
+        assert primary.inline_comment is not None
+        assert primary.inline_comment.text == "(ubject)"
+
+    def test_inline_comment_on_unsigned_primary(self) -> None:
+        """Inline comment on unsigned primary: S has inline_comment, B does not."""
+        tokens = Lexer("S(note) B").tokenize()
+        kfile = Parser(tokens).parse()
+        construct = kfile.scripts[0].constructs[0]
+        assert isinstance(construct.inner, list)
+        assert len(construct.inner) == 2
+        assert construct.inner[0].sig.id == "S"
+        assert construct.inner[0].inline_comment is not None
+        assert construct.inner[0].inline_comment.text == "(note)"
+        assert construct.inner[1].sig.id == "B"
+        assert construct.inner[1].inline_comment is None
+
+    def test_inline_comment_in_block(self) -> None:
+        """Inline comment inside a block construct is attached correctly."""
+        source = "MHALL == SVO =>\n  S(ubject) = M\n  V = H"
+        tokens = Lexer(source).tokenize()
+        kfile = Parser(tokens).parse()
+        top = kfile.scripts[0].constructs[0]
+        block = top.chain_right.inner
+        assert isinstance(block, Block)
+        # First construct in block: S(ubject) = M
+        s_construct = block.constructs[0]
+        assert isinstance(s_construct.inner, list)
+        s_primary = s_construct.inner[0]
+        assert s_primary.sig.id == "S"
+        assert s_primary.inline_comment is not None
+        assert s_primary.inline_comment.text == "(ubject)"
+
+    def test_comment_between_constructs(self) -> None:
+        """Standalone comment between constructs is parsed as its own construct."""
+        tokens = Lexer("A => B\n(a note)\nC => D").tokenize()
+        kfile = Parser(tokens).parse()
+        constructs = kfile.scripts[0].constructs
+        # Should have 3 constructs: A=>B, (a note), C=>D
+        assert len(constructs) == 3
+        # First: A => B
+        assert constructs[0].chain_op == TokenType.CANONIZE
+        # Second: (a note) as Comment
+        assert isinstance(constructs[1].inner, Comment)
+        assert constructs[1].inner.text == "(a note)"
+        # Third: C => D
+        assert constructs[2].chain_op == TokenType.CANONIZE
+
+    def test_construct_without_comment_unchanged(self) -> None:
+        """Backward compatibility: no Comment nodes, no inline_comment set."""
+        tokens = Lexer("A => B").tokenize()
+        kfile = Parser(tokens).parse()
+        construct = kfile.scripts[0].constructs[0]
+        assert isinstance(construct.inner, list)
+        for primary in construct.inner:
+            assert primary.inline_comment is None
 
 
 # =============================================================================
