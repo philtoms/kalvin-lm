@@ -90,6 +90,38 @@ klines.
 A node used as a kline node selects all klines whose signatures overlap
 with it (bitwise AND ≠ 0).
 
+## Node-to-Signature Conversion
+
+When a raw node value is used as a model lookup key (e.g. `model.find(node)`),
+it must first be converted to its signature-equivalent form. The model indexes
+klines by their signature, so the lookup key must be a signature.
+
+### node_to_sig
+
+```
+node_to_sig(node: uint64) → uint64
+```
+
+Convert a node value to its signature-equivalent form. Three cases:
+
+- **Literal nodes** → `1` (bit 0: literal-content flag).
+- **NLP-BPE nodes** → NLP type bits only (high 32), BPE ID masked out.
+- **Mod32 packed nodes** → full value (node == signature).
+
+This is the same three-way branch used by `make_signature`. The function
+exists because the model's lookup API (`find`, `resolve`, `where`) accepts
+uint64 values that may be raw nodes or signatures — callers must convert
+nodes before passing them as lookup keys.
+
+### BPE_TOKEN_MASK
+
+```
+BPE_TOKEN_MASK = 0xFFFFFFFF
+```
+
+Masks the low 32 bits of an NLP-BPE node (the BPE token ID). Companion to
+`NLP_TYPE_MASK` which masks the high 32 bits.
+
 ## Creation
 
 ### make_signature
@@ -106,6 +138,16 @@ Produce a signature from a sequence of nodes using a three-way branch:
   vocabulary-independent — two synonyms with unrelated BPE IDs but shared
   NLP type bits produce the same signature contribution.
 - **Mod32 packed nodes** contribute their full value via OR-reduction.
+
+```
+sig = 0
+for node in nodes:
+    sig |= node_to_sig(node)
+return sig
+```
+
+The pseudocode is expressed in terms of `node_to_sig`, which encapsulates
+the three-way branch. Equivalent expanded form:
 
 ```
 sig = 0
@@ -226,6 +268,10 @@ Properties:
 | SIG-12 | `make_signature()` with NLP-BPE nodes masks BPE IDs — same NLP type, different BPE IDs produce identical signatures | NLP |
 | SIG-13 | `make_signature()` with mixed NLP + literal: bit 0 set plus NLP type bits | NLP |
 | SIG-14 | `make_signature([0b10, 0b100]) == 0b110` (backward compat with Mod32) | NLP |
+| SIG-15 | `node_to_sig(literal) == 1` (literal → bit 0) | NLP |
+| SIG-16 | `node_to_sig(nlp_node) == nlp_node & NLP_TYPE_MASK` (NLP → high 32 only) | NLP |
+| SIG-17 | `node_to_sig(mod32_packed) == mod32_packed` (Mod32 → identity) | NLP |
+| SIG-18 | `node_to_sig` is used by `make_signature` internally (refactored) | NLP |
 
 ## What a Signature is Not
 
