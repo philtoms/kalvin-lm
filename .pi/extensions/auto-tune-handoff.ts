@@ -9,10 +9,12 @@
  *   1. User runs /auto-tune → extension caches ctx.newSession from
  *      ExtensionCommandContext, then forwards to the skill system
  *   2. Skill runs normally, auto-tune loop begins
- *   3. Context crosses ceiling → turn_end handler injects steering message,
+ *   3. turn_end handler checks cachedNewSession — if null (ordinary
+ *      session, no /auto-tune invoked), bail out immediately
+ *   4. Context crosses ceiling → turn_end handler injects steering message,
  *      then starts polling ctx.isIdle() via setTimeout
- *   4. Agent finishes responding to steering message → goes idle
- *   5. Polling detects idle → calls cached newSession() from a macrotask
+ *   5. Agent finishes responding to steering message → goes idle
+ *   6. Polling detects idle → calls cached newSession() from a macrotask
  *      (setTimeout), avoiding the deadlock that occurs when calling
  *      session-control functions from event handlers or microtasks
  *
@@ -163,6 +165,10 @@ export default function (pi: ExtensionAPI) {
 	pi.on("session_start", () => {
 		triggered = false;
 		autoHandoffPending = false;
+		cachedNewSession = null;
+		cachedSessionName = null;
+		cachedStatePath = null;
+		cachedInWorktree = false;
 	});
 
 	// ── Context ceiling guard ─────────────────────────────────────────
@@ -172,6 +178,11 @@ export default function (pi: ExtensionAPI) {
 			console.error("[auto-tune-handoff] Already triggered, skipping");
 			return;
 		}
+
+		// Only engage if /auto-tune was called in this session.
+		// Without this guard, ordinary sessions that happen to have
+		// auto-tune/ directories on disk would receive steering messages.
+		if (!cachedNewSession) return;
 
 		const usage = ctx.getContextUsage();
 		if (!usage || usage.tokens === null || !usage.contextWindow) {
