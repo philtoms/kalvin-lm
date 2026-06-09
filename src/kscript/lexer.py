@@ -179,9 +179,9 @@ class Lexer:
         while self.pos < len(self.source) and self._is_ident_char(self.source[self.pos]):
             name += self._advance()
 
-        # Check for inline comment - consume but don't attach
+        # Check for inline comment - emit as pending COMMENT token
         if self.pos < len(self.source) and self.source[self.pos] == "(":
-            self._read_comment()  # Consumes and discards
+            self.pending_tokens.append(self._read_comment())
 
         # All uppercase alpha → SIGNATURE
         if name.isupper() and name.isalpha():
