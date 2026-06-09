@@ -172,6 +172,9 @@ class Lexer:
 
         Returns SIGNATURE if all uppercase alpha.
         Raises LexerError for mixed/lowercase identifiers.
+
+        When '(' immediately follows the identifier (e.g., S(ubject)),
+        reads the comment and queues it as a pending COMMENT token.
         """
         start_line, start_col = self.line, self.column
         name = ""

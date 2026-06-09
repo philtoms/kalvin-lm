@@ -3,15 +3,18 @@
 Grammar (left recursion eliminated):
 
     script ::= construct+
-    construct ::= block | literal | primary_construct+ ( "=>" construct )?
+    construct ::= block | literal | comment | primary_construct+ ( "=>" construct )?
     block ::= <INDENT> construct+ <DEDENT>
-    primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
+    primary_construct ::= sig ( inline_comment )? ( ( "==" | ">" | "=" ) node )?
     node ::= sig | literal
     sig ::= [A-Z]+
     literal ::= ![A-Z]+
+    comment ::= "(" ... ")"
 
-NEWLINE and COMMENT tokens are treated as insignificant whitespace
-and skipped between constructs and at construct boundaries.
+NEWLINE tokens are treated as insignificant whitespace and skipped between
+constructs. COMMENT tokens are preserved as Comment AST nodes — either as
+standalone constructs or attached to PrimaryConstruct nodes via the
+inline_comment field.
 """
 
 from .ast import (
