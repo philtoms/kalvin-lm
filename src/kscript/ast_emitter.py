@@ -4,12 +4,20 @@ This module is responsible for AST traversal and determining the correct
 operator semantics for each construct. It yields symbolic tuples
 (sig_str, nodes_strs, op) that a TokenEncoder then converts to token IDs.
 
+NLP binding integration (KB-161):
+  When an NLPSymbolTable is provided, the emitter resolves single-character
+  signatures to their bound NLP words before emitting symbolic entries.
+  Bound sigs carry the NLP word (e.g. "Mary") while unbound sigs carry the
+  raw character (e.g. "Z"). Multi-character signatures (MCS) are decomposed
+  into individual characters, each resolved independently. The emitter stays
+  in the string domain — no tokenizer calls or token encoding happens here.
+
 No tokenizer dependency — pure AST logic.
 """
 
 from __future__ import annotations
 
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from .ast import (
     Block,
@@ -25,6 +33,9 @@ from .ast import (
 )
 from .token import TokenType
 
+if TYPE_CHECKING:
+    from .symbol_table import NLPSymbolTable
+
 
 class SymbolicEntry(NamedTuple):
     """A symbolic (not yet tokenized) compilation entry."""
@@ -38,12 +49,23 @@ class ASTEmitter:
 
     Each emitted entry is a (sig_str, nodes_strs, op) tuple. No token
     encoding happens here — that's TokenEncoder's job.
+
+    Args:
+        dev: Enable development/diagnostic mode.
+        skip_mcs: Skip MCS decomposition for tokenizers that don't support it.
+        symbol_table: Optional NLPSymbolTable for NLP binding resolution.
+            When provided, single-character signatures are resolved to their
+            bound NLP words (e.g. M → "Mary"). When None (default), all
+            signatures pass through as raw characters — backward compatible
+            with existing Mod32 compilation.
     """
 
-    def __init__(self, dev: bool = False, skip_mcs: bool = False):
+    def __init__(self, dev: bool = False, skip_mcs: bool = False,
+                 symbol_table: NLPSymbolTable | None = None):
         self.entries: list[SymbolicEntry] = []
         self.dev = dev
         self._skip_mcs = skip_mcs
+        self._symbol_table = symbol_table
         self._sig_levels = {
             "COUNTERSIGN": "S1",
             "CANONIZE": "S2",
@@ -54,6 +76,19 @@ class ASTEmitter:
         }
         # Symbolic dedup — on (sig_str, nodes_strs) before encoding
         self._seen: set[tuple[str, None | str | tuple[str, ...]]] = set()
+
+    def _resolve_sig_word(self, sig_char: str) -> str:
+        """Resolve a single-char signature to its NLP word, or return the char itself.
+
+        When the symbol table has a binding for *sig_char*, returns the
+        bound NLP word (e.g. "Mary" for "M").  When the table is absent
+        or the character is unbound, returns *sig_char* unchanged.
+        """
+        if self._symbol_table is not None:
+            word = self._symbol_table.resolve(sig_char)
+            if word is not None:
+                return word
+        return sig_char
 
     def emit(self, file: KScriptFile) -> list[SymbolicEntry]:
         """Walk a KScriptFile and collect symbolic entries."""
@@ -90,16 +125,21 @@ class ASTEmitter:
             self._emit_primary(pc)
 
     def _emit_mcs(self, sig: str) -> bool:
-        """Emit MCS entries for multi-character signatures."""
+        """Emit MCS entries for multi-character signatures.
+
+        Each constituent character is resolved via _resolve_sig_word before
+        emitting unsigned entries. The canonization entry keeps the original
+        composed sig string but uses resolved words for its nodes list.
+        """
         if self._skip_mcs:
             return False
 
         if len(sig) <= 1:
             return False
 
-        chars = list(sig)
-        for char in chars:
-            self._emit_entry(char, None, "UNSIGNED")
+        chars = [self._resolve_sig_word(c) for c in sig]
+        for resolved_char in chars:
+            self._emit_entry(resolved_char, None, "UNSIGNED")
         self._emit_entry(sig, chars, "CANONIZE")
         return True
 
@@ -113,22 +153,32 @@ class ASTEmitter:
 
         node = pc.node
         node_str = self._node_to_string(node)
+        # Resolve single-char node to NLP word when bound
+        node_resolved = (
+            self._resolve_sig_word(node_str)
+            if len(node_str) == 1 else node_str
+        )
+        # Resolve single-char sig for use as nodes parameter
+        sig_resolved = (
+            self._resolve_sig_word(sig)
+            if len(sig) == 1 else sig
+        )
         if node_str.isupper() and node_str.isalpha():
             self._emit_mcs(node_str)
 
         if pc.op == TokenType.COUNTERSIGN:
-            self._emit_entry(sig, node_str, "COUNTERSIGN")
+            self._emit_entry(sig, node_resolved, "COUNTERSIGN")
             if self._is_signature(node):
-                self._emit_entry(node_str, sig, "COUNTERSIGN")
+                self._emit_entry(node_str, sig_resolved, "COUNTERSIGN")
 
         elif pc.op == TokenType.UNDERSIGN:
             if sig == node_str:
                 self._emit_entry(sig, None, "IDENTITY")
             else:
-                self._emit_entry(node_str, sig, "UNDERSIGN")
+                self._emit_entry(node_str, sig_resolved, "UNDERSIGN")
 
         elif pc.op == TokenType.CONNOTATE:
-            self._emit_entry(sig, node_str, "CONNOTATE")
+            self._emit_entry(sig, node_resolved, "CONNOTATE")
 
     def _process_chain(
         self,
@@ -195,7 +245,16 @@ class ASTEmitter:
         """Emit a symbolic entry with dedup.
 
         Singleton rule: if nodes is a list with length 1, unwrap to single value.
+
+        NLP resolution: for single-character sigs, the sig field carries the
+        resolved NLP word (e.g. "Mary") when a binding exists, or the raw
+        character when unbound.  Multi-character sigs are not resolved here —
+        _emit_mcs decomposes them into individual characters first.
         """
+        # Resolve single-char sig to NLP word when bound
+        if len(sig) == 1:
+            sig = self._resolve_sig_word(sig)
+
         if isinstance(nodes, list) and len(nodes) == 1:
             nodes = nodes[0]
 
