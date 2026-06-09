@@ -15,6 +15,7 @@ from .compiler import CompiledEntry, Compiler, compile_source
 from .lexer import Lexer
 from .output import read_bin, read_json, write_bin, write_json, write_jsonl
 from .parser import Parser
+from .symbol_table import Binding, NLPSymbolTable, Scope
 from .token_encoder import TokenEncoder
 
 __all__ = [
@@ -33,6 +34,9 @@ __all__ = [
     "write_bin",
     "read_json",
     "read_bin",
+    "Binding",
+    "Scope",
+    "NLPSymbolTable",
 ]
 
 
