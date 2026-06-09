@@ -113,16 +113,22 @@ class Parser:
         self._expect(TokenType.DEDENT)
         return Construct(Block(constructs))
 
-    # primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
+    # primary_construct ::= sig ( inline_comment )? ( ( "==" | ">" | "=" ) node )?
     def _parse_primary_construct(self) -> PrimaryConstruct:
         sig = self._parse_sig()
+
+        # Check for inline comment immediately after signature
+        inline_comment = None
+        if self._check(TokenType.COMMENT):
+            tok = self._advance()
+            inline_comment = Comment(text=tok.value, line=tok.line, column=tok.column)
 
         op = self._try_inline_op()
         if op is not None:
             node = self._parse_node()
-            return PrimaryConstruct(sig, op, node)
+            return PrimaryConstruct(sig, op, node, inline_comment=inline_comment)
 
-        return PrimaryConstruct(sig)
+        return PrimaryConstruct(sig, inline_comment=inline_comment)
 
     # node ::= sig | literal
     def _parse_node(self) -> Node:
