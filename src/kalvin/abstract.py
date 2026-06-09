@@ -2,7 +2,7 @@
 
 Provides interface contracts for tokenizers.
 
-KTokenizer has two real adapters (Tokenizer, ModTokenizer) — a genuine seam.
+KTokenizer has three real adapters (Tokenizer, ModTokenizer, NLPTokenizer) — a genuine seam.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ class KTokenizer(ABC):
     Kalvin-level concern based on standardized bit patterns, not a
     tokenizer-specific one.
 
-    Two adapters: Tokenizer (BPE), ModTokenizer (modular bit-packed).
+    Three adapters: Tokenizer (BPE), ModTokenizer (modular bit-packed), NLPTokenizer (NLP-enhanced BPE).
     """
 
     @property
@@ -35,6 +35,19 @@ class KTokenizer(ABC):
     def vocab_size(self) -> int:
         """Return the tokenizer vocabulary size."""
         ...
+
+    @property
+    def supports_mcs(self) -> bool:
+        """Whether this tokenizer supports multi-character signature (MCS) expansion.
+
+        Mod tokenizers return True — uppercase identifiers are packed as bit
+        positions, so MCS expansion decomposes them into per-character entries.
+        NLP-BPE and BPE tokenizers return False — identifiers are BPE tokens,
+        not character compositions.
+
+        Default: False. Override in ModTokenizer.
+        """
+        return False
 
     @abstractmethod
     def encode(self, text: str, pad_ws: bool = False) -> list[int]:

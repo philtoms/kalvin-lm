@@ -478,9 +478,16 @@ def main() -> None:
     bpe_tokenizer = Tokenizer.from_directory(str(args.tokenizer_dir), args.tokenizer_name)
     print(f"  vocab_size={bpe_tokenizer.vocab_size}")
 
-    # Load BPE vocab
-    vocab = load_bpe_vocab(bpe_tokenizer)
-    print(f"  loaded {len(vocab)} tokens")
+    # Load BPE vocab directly from .bin file (authoritative source)
+    bin_path = args.tokenizer_dir / f"{args.tokenizer_name}.bin"
+    vocab = load_bpe_vocab_from_bin(bin_path)
+    print(f"  loaded {len(vocab)} tokens from {bin_path.name}")
+
+    # Sanity: vocab size must match tokenizer
+    assert len(vocab) == bpe_tokenizer.vocab_size, (
+        f"Vocab mismatch: .bin has {len(vocab)} tokens, "
+        f"tokenizer reports {bpe_tokenizer.vocab_size}"
+    )
 
     # Build grammar index (with BPE decomposition)
     print("Building grammar index with BPE decomposition...")

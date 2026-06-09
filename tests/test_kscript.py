@@ -8,6 +8,7 @@ import pytest
 
 from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer, Mod64Tokenizer
+from kalvin.signature import is_nlp_node
 from kscript.ast import (
     Block,
     Construct,
@@ -60,6 +61,16 @@ def entries_to_multidict(entries: list[CompiledEntry], tok=None) -> dict[str, li
 def _md(entries: list[CompiledEntry], tok=None) -> dict[str, list]:
     """Shorthand for entries_to_multidict."""
     return entries_to_multidict(entries, tok)
+
+
+# Conditional NLP tokenizer import
+try:
+    from kalvin.nlp_tokenizer import NLPTokenizer
+    _has_nlp = True
+except ImportError:
+    _has_nlp = False
+
+_nlp_skip = pytest.mark.skipif(not _has_nlp, reason="NLPTokenizer not available")
 
 
 def _has_node(md: dict[str, list], sig: str, node_value) -> bool:
@@ -714,3 +725,148 @@ class TestKScriptAPI:
             assert len(loaded.entries) == len(ks.entries)
         finally:
             path.unlink(missing_ok=True)
+
+
+# =============================================================================
+# 15. KScript pipeline with NLPTokenizer
+# =============================================================================
+
+def _get_nlp_tokenizer():
+    """Get NLPTokenizer instance, or None if unavailable."""
+    if not _has_nlp:
+        return None
+    try:
+        return NLPTokenizer.from_files()
+    except Exception:
+        return None
+
+
+def compile_nlp(source: str) -> list[CompiledEntry]:
+    """Compile with NLPTokenizer."""
+    tok = _get_nlp_tokenizer()
+    assert tok is not None, "NLPTokenizer not available"
+    return compile_source(source, tokenizer=tok, dev=True)
+
+
+@_nlp_skip
+class TestKScriptNLP:
+    """Tests exercising the full KScript pipeline with NLPTokenizer.
+
+    These verify that the widened KTokenizer type hints work end-to-end.
+    All tests skip if NLPTokenizer or its data files are unavailable.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup(self) -> None:
+        self._nlp_tok = _get_nlp_tokenizer()
+        if self._nlp_tok is None:
+            pytest.skip("NLPTokenizer data files not available")
+
+    def test_compile_simple_with_nlp(self) -> None:
+        """Compile 'A == B' with NLP tokenizer — entries should decode back."""
+        entries = compile_nlp("A == B")
+        assert len(entries) >= 2
+        # Verify all entries can be decoded without error
+        for entry in entries:
+            sig, nodes = entry.decode(self._nlp_tok)
+            assert isinstance(sig, str)
+
+    def test_compile_unsigned_with_nlp(self) -> None:
+        """Compile 'A' with NLP tokenizer — produces at least one entry."""
+        entries = compile_nlp("A")
+        assert len(entries) >= 1
+
+    def test_compile_canonize_with_nlp(self) -> None:
+        """Compile 'AB => X' with NLP tokenizer — produces entries."""
+        entries = compile_nlp("AB => X")
+        assert len(entries) >= 1
+
+    def test_decompile_nlp(self) -> None:
+        """Compile with NLP, decompile with same NLP tokenizer."""
+        entries = compile_nlp("A == B")
+        decompiled = Decompiler(self._nlp_tok).decompile(entries)
+        assert len(decompiled) >= 1
+        # Verify decompiled entries have correct sig strings
+        sigs = [e.sig for e in decompiled]
+        assert "A" in sigs
+        assert "B" in sigs
+
+    def test_kscript_api_with_nlp(self) -> None:
+        """KScript API works with NLPTokenizer."""
+        from kscript import KScript
+        ks = KScript("A = B", tokenizer=self._nlp_tok)
+        assert len(ks.entries) >= 1
+
+
+# =============================================================================
+# 16. KScript NLP integration tests (cross-module)
+# =============================================================================
+
+@_nlp_skip
+class TestKScriptNLPIntegration:
+    """Cross-module integration tests for KScript with NLP tokenizer.
+
+    Verifies that compiled entries contain actual NLP-BPE nodes (high 32
+    bits non-zero), that the decompiler can reconstruct source from them,
+    and that encode/decode round-trips preserve symbolic names.
+
+    These complement TestKScriptNLP by focusing on the node-level properties
+    of the compilation output rather than just structural correctness.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup(self) -> None:
+        self._nlp_tok = _get_nlp_tokenizer()
+        if self._nlp_tok is None:
+            pytest.skip("NLPTokenizer data files not available")
+
+    def test_compiled_entries_have_nlp_bpe_nodes(self) -> None:
+        """Compiled entry signatures are NLP-BPE nodes (high 32 bits non-zero)."""
+        entries = compile_source("A => B", tokenizer=self._nlp_tok, dev=True)
+
+        # All entries should have NLP-BPE signatures (high 32 bits set)
+        for entry in entries:
+            assert is_nlp_node(entry.signature), (
+                f"Entry signature {entry.signature:#x} should be an NLP-BPE node"
+            )
+
+            # Non-empty node entries should have NLP-BPE node values
+            for node in entry.nodes:
+                assert is_nlp_node(node), (
+                    f"Entry node {node:#x} should be an NLP-BPE node"
+                )
+
+    def test_decompiler_roundtrip_with_nlp(self) -> None:
+        """Compile → decompile → verify symbolic names recovered."""
+        entries = compile_source(
+            "A == B\nC => D", tokenizer=self._nlp_tok, dev=True
+        )
+        decompiled = Decompiler(self._nlp_tok).decompile(entries)
+
+        # All signature names should be recovered
+        sigs = {e.sig for e in decompiled}
+        assert "A" in sigs
+        assert "B" in sigs
+        assert "C" in sigs
+        assert "D" in sigs
+
+        # Verify node relationships survived
+        countersign_entry = next(e for e in decompiled if e.sig == "A")
+        assert countersign_entry.nodes == "B"
+
+        canonize_entry = next(e for e in decompiled if e.sig == "C")
+        assert canonize_entry.nodes == "D"
+
+    def test_encode_decode_preserves_symbolic_names(self) -> None:
+        """CompiledEntry.encode → decode recovers original symbolic names.
+
+        Note: NLP tokenizer BPE-encodes multi-char strings to multiple nodes,
+        but CompiledEntry.signature stores only a single int.  Single-char
+        signatures (like 'A', 'B') encode to single NLP-BPE nodes and
+        round-trip correctly.
+        """
+        entry = CompiledEntry.encode("A", ["B"], self._nlp_tok)
+        sig, nodes = entry.decode(self._nlp_tok)
+
+        assert sig == "A"
+        assert nodes == ["B"]

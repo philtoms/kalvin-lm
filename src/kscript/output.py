@@ -4,7 +4,7 @@ import json
 import struct
 from pathlib import Path
 
-from kalvin.mod_tokenizer import ModTokenizer
+from kalvin.abstract import KTokenizer
 
 from .compiler import CompiledEntry
 
@@ -13,7 +13,7 @@ from .compiler import CompiledEntry
 # Write functions
 # =============================================================================
 
-def write_json(entries: list[CompiledEntry], path: Path, tokenizer: ModTokenizer) -> None:
+def write_json(entries: list[CompiledEntry], path: Path, tokenizer: KTokenizer) -> None:
     """Write entries to JSON array file.
 
     Each entry becomes an object in a JSON array:
@@ -33,7 +33,7 @@ def write_json(entries: list[CompiledEntry], path: Path, tokenizer: ModTokenizer
         json.dump(data, f, indent=2)
 
 
-def write_jsonl(entries: list[CompiledEntry], path: Path, tokenizer: ModTokenizer) -> None:
+def write_jsonl(entries: list[CompiledEntry], path: Path, tokenizer: KTokenizer) -> None:
     """Write entries to JSONL (line-delimited JSON) file.
 
     Each entry becomes a separate line:
@@ -94,7 +94,7 @@ def write_bin(entries: list[CompiledEntry], path: Path) -> None:
 # Read functions
 # =============================================================================
 
-def read_json(path: Path, tokenizer: ModTokenizer) -> list[CompiledEntry]:
+def read_json(path: Path, tokenizer: KTokenizer) -> list[CompiledEntry]:
     """Read entries from JSON or JSONL file.
 
     Args:

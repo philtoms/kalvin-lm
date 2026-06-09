@@ -206,6 +206,14 @@ Significance inversion is performed inline in `model.py`. See @model spec
 | SIG-8   | `signifies(1, 1)`                        | `True`                  |
 | SIG-9   | `signifies(0b110, 0b10)`                 | `True`                  |
 | SIG-10  | `signifies(0b110, 0b1)`                  | `False`                 |
+| SIG-11  | `is_nlp_node(nlp_node)`                  | `True`                  |
+| SIG-12  | NLP masking: same NLP type, different BPE IDs | identical sig   |
+| SIG-13  | Mixed NLP + literal                       | bit 0 + NLP bits        |
+| SIG-14  | Mod32 backward compat                    | `0b10 | 0b100 == 0b110` |
+| SIG-15  | `node_to_sig(literal)`                    | `1`                     |
+| SIG-16  | `node_to_sig(nlp_node)`                   | high 32 only            |
+| SIG-17  | `node_to_sig(mod32_packed)`               | identity                |
+| SIG-18  | `make_signature` uses `node_to_sig`       | refactored              |
 
 ---
 

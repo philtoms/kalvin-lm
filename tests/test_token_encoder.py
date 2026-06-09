@@ -7,8 +7,18 @@ encode/decode round-trip tests ported from test_kscript.py.
 import pytest
 
 from kalvin.mod_tokenizer import Mod32Tokenizer, Mod64Tokenizer, ModTokenizer
+from kalvin.signature import is_nlp_node
 from kscript.ast_emitter import SymbolicEntry
 from kscript.token_encoder import CompiledEntry, TokenEncoder
+
+# Conditional NLP tokenizer import
+try:
+    from kalvin.nlp_tokenizer import NLPTokenizer
+    _has_nlp = True
+except ImportError:
+    _has_nlp = False
+
+_nlp_skip = pytest.mark.skipif(not _has_nlp, reason="NLPTokenizer not available")
 
 
 # ── Shared fixtures ──────────────────────────────────────────────────────────
@@ -197,5 +207,134 @@ class TestCompiledEntryDecode:
     def test_decode_with_mod32(self) -> None:
         entry = CompiledEntry.encode("A", "B", _tok32)
         sig, nodes = entry.decode(_tok32)
+        assert sig == "A"
+        assert nodes == ["B"]
+
+
+# =============================================================================
+# 8. CompiledEntry encode/decode with NLPTokenizer
+# =============================================================================
+
+@_nlp_skip
+class TestTokenEncoderNLP:
+    """Tests exercising the token encoder pipeline with NLPTokenizer.
+
+    These verify that the widened KTokenizer type hints work with an
+    actual alternative tokenizer. All tests skip if NLPTokenizer or its
+    data files are unavailable.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup(self) -> None:
+        try:
+            self._nlp_tok = NLPTokenizer.from_files()
+        except Exception:
+            pytest.skip("NLPTokenizer data files not available")
+
+    def test_encode_unsigned_with_nlp(self) -> None:
+        """Encode an unsigned entry with NLPTokenizer — sig should be an NLP-BPE node."""
+        entry = CompiledEntry.encode("MHALLO", None, self._nlp_tok)
+        # Signature token ID should be a valid NLP node (high 32 bits non-zero)
+        assert is_nlp_node(entry.signature)
+
+    def test_encode_countersign_with_nlp(self) -> None:
+        """Encode a countersign entry — both sig and node should be NLP-BPE encoded."""
+        entry = CompiledEntry.encode("A", "B", self._nlp_tok)
+        assert is_nlp_node(entry.signature)
+        # Node is a list (KLine normalization); all should be NLP-BPE nodes
+        assert isinstance(entry.nodes, list)
+        assert len(entry.nodes) == 1
+        assert is_nlp_node(entry.nodes[0])
+
+    def test_encode_literal_with_nlp(self) -> None:
+        """Encode a literal connotate — NLP tokenizer may BPE-encode 'hello'."""
+        entry = CompiledEntry.encode("A", "hello", self._nlp_tok)
+        assert is_nlp_node(entry.signature)
+        # "hello" is encoded by NLP tokenizer as BPE tokens
+        assert isinstance(entry.nodes, list)
+        assert len(entry.nodes) >= 1
+
+    def test_encode_and_decode_roundtrip_nlp(self) -> None:
+        """Encode then decode an entry — string values should be recovered."""
+        entry = CompiledEntry.encode("A", "B", self._nlp_tok)
+        sig, nodes = entry.decode(self._nlp_tok)
+        assert sig == "A"
+        # Single BPE-encoded sig node
+        assert nodes == ["B"]
+
+    def test_encode_literal_roundtrip_nlp(self) -> None:
+        """Encode/decode a literal connotate — text should round-trip."""
+        entry = CompiledEntry.encode("A", "hello", self._nlp_tok)
+        sig, nodes = entry.decode(self._nlp_tok)
+        assert sig == "A"
+        # NLP tokenizer should round-trip the literal text
+        assert nodes == "hello"
+
+
+# =============================================================================
+# 9. NLP token encoder integration tests (cross-module)
+# =============================================================================
+
+@_nlp_skip
+class TestTokenEncoderNLPIntegration:
+    """Cross-module integration tests for TokenEncoder with NLPTokenizer.
+
+    Verifies that symbolic entries encoded via the NLP tokenizer produce
+    actual NLP-BPE node values (high 32 bits non-zero), and that decoding
+    those entries recovers the original symbolic names.
+
+    These complement TestTokenEncoderNLP by focusing on the SymbolicEntry →
+    TokenEncoder → CompiledEntry pipeline and the node-level properties.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup(self) -> None:
+        try:
+            self._nlp_tok = NLPTokenizer.from_files()
+        except Exception:
+            pytest.skip("NLPTokenizer data files not available")
+
+    def test_symbolic_entry_produces_nlp_bpe_nodes(self) -> None:
+        """SymbolicEntry through TokenEncoder produces NLP-BPE node values."""
+        from kalvin.signature import is_nlp_node
+        from kscript.ast_emitter import SymbolicEntry
+
+        encoder = TokenEncoder(tokenizer=self._nlp_tok, dev=True)
+        entries = encoder.encode_entries([
+            SymbolicEntry("AB", ["A", "B"], "CANONIZE"),
+        ])
+
+        assert len(entries) == 1
+        entry = entries[0]
+
+        # Signature should be an NLP-BPE node
+        assert is_nlp_node(entry.signature), (
+            f"Signature {entry.signature:#x} should be NLP-BPE"
+        )
+
+        # All nodes should be NLP-BPE
+        for node in entry.nodes:
+            assert is_nlp_node(node), (
+                f"Node {node:#x} should be NLP-BPE"
+            )
+
+    def test_compiled_entry_stores_nlp_node_values(self) -> None:
+        """CompiledEntry stores exact NLP-BPE node values for sig and nodes."""
+        entry = CompiledEntry.encode("A", "B", self._nlp_tok)
+
+        # Both signature and node should have non-zero high 32 bits
+        assert (entry.signature >> 32) != 0, "Sig high 32 bits should be non-zero"
+        assert len(entry.nodes) == 1
+        assert (entry.nodes[0] >> 32) != 0, "Node high 32 bits should be non-zero"
+
+    def test_decode_reconstructs_original_text(self) -> None:
+        """decode() reconstructs original symbolic names from NLP-BPE nodes.
+
+        Single-char signatures ('A', 'B') each encode to a single NLP-BPE
+        node, which round-trips correctly through encode → decode.
+        """
+        entry = CompiledEntry.encode("A", ["B"], self._nlp_tok)
+        sig, nodes = entry.decode(self._nlp_tok)
+
         assert sig == "A"
         assert nodes == ["B"]

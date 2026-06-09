@@ -165,3 +165,16 @@ A single word can have multiple morphological features. Examples:
 | "eaten"   | PAST + PASS + PART             | Past passive participle          |
 | "am"      | PRES + IND + PERSON_1          | Present indicative, first person |
 | "were"    | PAST + IND + PLUR + PERSON_2/3 | Past indicative plural           |
+
+## Grammar Expansion Terminology
+
+The `expand_grammar.py` script introduces terminology for expanding grammar dict coverage:
+
+| Term                | Definition                                                                  |
+| ------------------- | --------------------------------------------------------------------------- |
+| **subword_fragment** | BPE token that is alphabetic but never appears as a standalone word in any grammar entry (e.g., "zing", "yhead") |
+| **single_letter**    | Single alphabetic character token (e.g., "B", "z")                          |
+| **rare_word**        | Alphabetic token that is a valid word but not found in the grammar dict     |
+| **special token**    | Token determinable by pattern alone: whitespace, punctuation, digits, or control characters |
+| **subword inheritance** | Resolving a subword fragment by finding a parent word in the grammar dict that contains the fragment as a substring, then inheriting the parent's POS/DEP/MORPH tags |
+| **multi-source merge** | Combining grammar dicts from multiple corpora; existing entries are never overwritten |

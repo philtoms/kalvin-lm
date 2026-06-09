@@ -8,8 +8,9 @@ ready for the knowledge graph.
 from __future__ import annotations
 
 from kalvin.kline import KLine, KNodes, KSig
-from kalvin.mod_tokenizer import Mod32Tokenizer, ModTokenizer
-from kalvin.signature import is_literal_node
+from kalvin.abstract import KTokenizer
+from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.signature import is_literal_node, is_nlp_node, LITERAL_MASK
 
 
 class CompiledEntry(KLine):
@@ -31,7 +32,7 @@ class CompiledEntry(KLine):
         cls,
         sig: str,
         nodes: str | None | list[str],
-        tokenizer: ModTokenizer,
+        tokenizer: KTokenizer,
         *,
         sig_level: str = "S4",
         significance: object | None = None,
@@ -41,27 +42,45 @@ class CompiledEntry(KLine):
 
         Signatures (uppercase strings) are packed automatically.
         Literals are encoded as literal nodes automatically.
+
+        When tokenizer.supports_mcs is False (NLP-BPE), all BPE tokens
+        from encode() are used for node positions instead of taking only
+        the first token for uppercase identifiers.
         """
         sig_id = tokenizer.encode(sig)[0]
         if nodes is None:
             return cls(signature=sig_id, nodes=None, dbg_text=dbg_text, sig_level=sig_level)
         elif isinstance(nodes, str):
-            if nodes.isupper() and nodes.isalpha():
+            if tokenizer.supports_mcs and nodes.isupper() and nodes.isalpha():
+                # Mod32 mode: packed encoding, single token expected
                 node_id = tokenizer.encode(nodes)[0]
                 return cls(signature=sig_id, nodes=node_id, dbg_text=dbg_text, sig_level=sig_level)
-            else:
+            elif nodes.isupper() and nodes.isalpha():
+                # NLP-BPE mode: use all BPE tokens
                 node_ids = tokenizer.encode(nodes)
-                return cls(signature=sig_id, nodes=node_ids, dbg_text=dbg_text, sig_level=sig_level)
+                return cls(signature=sig_id, nodes=node_ids[0] if len(node_ids) == 1 else node_ids,
+                           dbg_text=dbg_text, sig_level=sig_level)
+            else:
+                # Literal: character-level encoding (all modes)
+                node_ids = [(ord(c) << 32) | LITERAL_MASK for c in nodes]
+                return cls(signature=sig_id, nodes=node_ids[0] if len(node_ids) == 1 else node_ids,
+                           dbg_text=dbg_text, sig_level=sig_level)
         else:
             all_node_ids: list[int] = []
             for n in nodes:
                 if n.isupper() and n.isalpha():
-                    all_node_ids.append(tokenizer.encode(n)[0])
+                    if tokenizer.supports_mcs:
+                        # Mod32: single packed token
+                        all_node_ids.append(tokenizer.encode(n)[0])
+                    else:
+                        # NLP-BPE: all BPE tokens
+                        all_node_ids.extend(tokenizer.encode(n))
                 else:
-                    all_node_ids.extend(tokenizer.encode(n))
+                    # Literal: character-level encoding
+                    all_node_ids.extend((ord(c) << 32) | LITERAL_MASK for c in n)
             return cls(signature=sig_id, nodes=all_node_ids, dbg_text=dbg_text, sig_level=sig_level)
 
-    def decode(self, tokenizer: ModTokenizer) -> tuple[str, str | None | list[str]]:
+    def decode(self, tokenizer: KTokenizer) -> tuple[str, str | None | list[str]]:
         """Decode token IDs back to strings."""
         sig = tokenizer.decode([self.signature])
 
@@ -109,9 +128,10 @@ class TokenEncoder:
         If True, include debug text in entries.
     """
 
-    def __init__(self, tokenizer: ModTokenizer | None = None, dev: bool = False):
+    def __init__(self, tokenizer: KTokenizer | None = None, dev: bool = False):
         self.tokenizer = tokenizer or Mod32Tokenizer()
         self.dev = dev
+        self._decomposed_sigs: set[str] = set()
         self._sig_levels = {
             "COUNTERSIGN": "S1",
             "CANONIZE": "S2",
@@ -133,8 +153,54 @@ class TokenEncoder:
         from .ast_emitter import SymbolicEntry
         results: list[CompiledEntry] = []
         for entry in symbolic_entries:
+            # BPE decomposition for multi-token identifiers (NLP mode)
+            if not self.tokenizer.supports_mcs:
+                decomp = self._bpe_decompose(entry.sig)
+                if decomp:
+                    results.extend(decomp)
             results.append(self._encode_one(entry))
         return results
+
+    def _bpe_decompose(self, sig_str: str) -> list[CompiledEntry] | None:
+        """Emit BPE decomposition entries for multi-token identifiers.
+
+        Per spec §5.3: when an identifier BPE-encodes to multiple tokens,
+        emit unsigned entries for each component and a decomposition
+        (canonize) entry mapping the first token to all tokens.
+
+        Only active when tokenizer.supports_mcs is False (NLP-BPE mode).
+        Only applies to uppercase identifiers — literals are always
+        character-level and don't get BPE decomposition.
+        Returns None for single-token identifiers or Mod32 mode.
+        """
+        if self.tokenizer.supports_mcs:
+            return None
+        # Only decompose uppercase alpha identifiers (signatures)
+        if not sig_str.isupper() or not sig_str.isalpha():
+            return None
+        if sig_str in self._decomposed_sigs:
+            return None
+        tokens = self.tokenizer.encode(sig_str)
+        if len(tokens) <= 1:
+            return None
+
+        self._decomposed_sigs.add(sig_str)
+        entries: list[CompiledEntry] = []
+
+        # Unsigned entry for each component token
+        for tok in tokens:
+            entries.append(CompiledEntry(
+                signature=tok, nodes=None, sig_level="S4",
+                dbg_text=f"[S4] {sig_str} component" if self.dev else ""
+            ))
+
+        # Decomposition entry: {first_token: [all_tokens]} (S2)
+        entries.append(CompiledEntry(
+            signature=tokens[0], nodes=tokens, sig_level="S2",
+            dbg_text=f"[S2] {sig_str} decomposition" if self.dev else ""
+        ))
+
+        return entries
 
     def _encode_one(self, entry) -> CompiledEntry:
         """Encode a single SymbolicEntry to CompiledEntry."""
@@ -151,30 +217,57 @@ class TokenEncoder:
         return self.tokenizer.encode(sig)[0]
 
     def _encode_node(self, node: str) -> int:
-        """Encode a single node string to token ID."""
+        """Encode a single node string to token ID (always returns int).
+
+        Uppercase identifiers use tokenizer.encode()[0] (first BPE token
+        for NLP-BPE, packed value for Mod32). Non-uppercase strings use
+        literal character-level encoding (first character only).
+        """
         if node.isupper() and node.isalpha():
-            return self._encode_sig(node)
+            return self.tokenizer.encode(node)[0]
         else:
-            return self.tokenizer.encode(node[0] if len(node) > 1 else node)[0]
+            # Literal: character-level encoding of first character
+            return (ord(node[0]) << 32) | LITERAL_MASK
 
     def _encode_nodes(self, nodes: str | None | list[str]) -> None | int | list[int]:
-        """Encode nodes to token IDs."""
+        """Encode nodes to token IDs.
+
+        When tokenizer.supports_mcs is True (Mod32):
+          - Uppercase alpha → single packed int
+          - Non-uppercase → literal character nodes (via tokenizer)
+
+        When tokenizer.supports_mcs is False (NLP-BPE):
+          - Uppercase alpha → all BPE tokens from encode()
+          - Non-uppercase → literal character nodes (char-level)
+        """
         if nodes is None:
             return None
         elif isinstance(nodes, str):
             if nodes.isupper() and nodes.isalpha():
-                return self.tokenizer.encode(nodes)[0]
-            elif len(nodes) == 1:
-                return self.tokenizer.encode(nodes)[0]
+                if self.tokenizer.supports_mcs:
+                    # Mod32: packed encoding, single token
+                    return self.tokenizer.encode(nodes)[0]
+                else:
+                    # NLP-BPE: all BPE tokens
+                    encoded = self.tokenizer.encode(nodes)
+                    return encoded[0] if len(encoded) == 1 else encoded
             else:
-                return self.tokenizer.encode(nodes)
+                # Literal: character-level encoding (all modes)
+                encoded = [(ord(c) << 32) | LITERAL_MASK for c in nodes]
+                return encoded[0] if len(encoded) == 1 else encoded
         else:
             result: list[int] = []
             for n in nodes:
                 if n.isupper() and n.isalpha():
-                    result.append(self.tokenizer.encode(n)[0])
+                    if self.tokenizer.supports_mcs:
+                        # Mod32: single packed token
+                        result.append(self.tokenizer.encode(n)[0])
+                    else:
+                        # NLP-BPE: all BPE tokens
+                        result.extend(self.tokenizer.encode(n))
                 else:
-                    result.extend(self.tokenizer.encode(n))
+                    # Literal: character-level encoding
+                    result.extend((ord(c) << 32) | LITERAL_MASK for c in n)
             return result
 
     def _format_dbg(self, sig: str, nodes: str | None | list[str], op: str) -> str:

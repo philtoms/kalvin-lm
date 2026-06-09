@@ -18,10 +18,10 @@ Replace agent routing (Phase 5 in `agent.py`) with direct push to cogitation for
 - **Started:** 2026-06-08
 
 ## Current Phase
-complete
+complete — merged to main
 
 ## Next Action
-Merge branch `auto-tune/direct-cogitation-push` into main, then teardown worktree. All done criteria met and documentation updated.
+Session already merged and complete. Current work is on branch `nlp-tokeniser` doing NLP-BPE pipeline improvements (unrelated to this auto-tune session).
 
 ## Run Log
 

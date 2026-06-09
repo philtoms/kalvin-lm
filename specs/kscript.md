@@ -557,7 +557,7 @@ kscript/
 | Dependency                            | Used By                    | Required |
 | ------------------------------------- | -------------------------- | -------- |
 | `kalvin.kline.KLine`                  | `CompiledEntry` base class | Yes      |
-| `kalvin.mod_tokenizer.ModTokenizer`   | Encoding/decoding          | Yes      |
+| `kalvin.abstract.KTokenizer`          | Encoding/decoding          | Yes      |
 | `kalvin.mod_tokenizer.Mod32Tokenizer` | Default tokenizer          | Yes      |
 | `kalvin.signature.make_signature`     | Decompiler MCS detection   | Yes      |
 
@@ -565,7 +565,7 @@ kscript/
 
 ```python
 class Compiler:
-    def __init__(self, tokenizer: ModTokenizer | None = None, dev: bool = False)
+    def __init__(self, tokenizer: KTokenizer | None = None, dev: bool = False)
     def compile(self, file: KScriptFile) -> list[CompiledEntry]
 ```
 
@@ -617,6 +617,10 @@ The decompiler uses **heuristic inference** for significance levels. Without exp
 ### 11.6 Indentation is Structural
 
 Like Python, indentation defines block structure. Mixed tabs and spaces will work but are discouraged. The lexer counts each space/tab as one unit.
+
+### 11.7 NLP-BPE Encoding Mode
+
+KScript supports an alternative NLP-BPE encoding mode, fully specified in `@kscript-nlp` (`specs/kscript-nlp.md`). The lexer, parser, and AST are encoding-independent — the same `.ks` source compiles under either encoding by selecting the tokenizer at compile time. No source-level changes are required to switch modes.
 
 ---
 

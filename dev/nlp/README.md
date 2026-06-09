@@ -308,6 +308,98 @@ verbs = {data["text"]: data for data in grammar.values()
 }
 ```
 
+## Grammar Expansion
+
+The `expand_grammar.py` script expands coverage of an existing grammar dict without
+re-running the full NLP pipeline. It closes gaps in BPE token coverage using three
+mechanisms:
+
+1. **Special-token annotation** — Assigns NLP tags to whitespace, punctuation, digits,
+   and control characters using deterministic pattern rules (no spaCy needed).
+2. **Subword token inheritance** — Resolves BPE subword fragments (e.g., "ning", "ing")
+   by finding parent words in the grammar dict and inheriting their POS/DEP/MORPH tags.
+3. **Multi-source merge** — Combines grammar dicts from multiple corpora without
+   overwriting existing entries.
+4. **Manual annotation** — Hardcoded annotations for BPE artifacts (contraction stems,
+   negation clitic, newline-composite punctuation) that no automated strategy can
+   resolve. Brings coverage to 100%.
+
+### Usage
+
+Expand the default grammar dict:
+
+```bash
+uv run python dev/nlp/expand_grammar.py \
+    --grammar data/tokenizer/simplestories-1_grammar.json \
+    --output data/tokenizer/simplestories-1_grammar.json
+```
+
+Dry run (print stats without writing):
+
+```bash
+uv run python dev/nlp/expand_grammar.py \
+    --grammar data/tokenizer/simplestories-1_grammar.json \
+    --dry-run
+```
+
+Merge an additional pre-computed grammar dict:
+
+```bash
+uv run python dev/nlp/expand_grammar.py \
+    --grammar data/tokenizer/simplestories-1_grammar.json \
+    --extra-grammar data/tokenizer/openwebtext_grammar.json \
+    --output data/tokenizer/simplestories-1_grammar.json
+```
+
+### CLI Options
+
+| Flag               | Description                                                           |
+| ------------------ | --------------------------------------------------------------------- |
+| `--grammar`        | (Required) Path to base grammar JSON file                             |
+| `--tokenizer-dir`  | Directory containing tokenizer files (default: `data/tokenizer`)      |
+| `--tokenizer-name` | Tokenizer variant name (default: `tokenizer-32768`)                   |
+| `--extra-grammar`  | Pre-computed grammar JSON to merge. Can be specified multiple times   |
+| `--output`         | Path to write expanded grammar (default: same as `--grammar`)         |
+| `--dry-run`        | Print before/after stats without writing                              |
+
+### Expansion strategies
+
+**Special-token annotation** covers tokens that never appear as words in natural text:
+
+| Token type      | POS        | pos_fine | dep       |
+| --------------- | ---------- | -------- | --------- |
+| Whitespace      | `SPACE`    | `_SP`    | (empty)   |
+| Punctuation     | `PUNCT`    | varies   | `punct`   |
+| Digits          | `NUM`      | `CD`     | `nummod`  |
+| Control chars   | `X`        | (empty)  | (empty)   |
+
+**Subword inheritance** resolves BPE fragments by searching the grammar dict for parent
+words containing the fragment as a substring. When multiple parents match, the most
+frequent parent (highest `count`) is preferred. Inherited entries get `count=0` and
+`frequency_pct=0.0` since they weren't observed directly in the corpus.
+
+**Multi-source merge** adds entries from other grammar dicts (e.g., produced by running
+`nlp_analyzer.py` on a different corpus) without overwriting existing entries. Counts
+and frequencies from merged sources are reset to zero.
+
+**Manual annotation** handles the final set of BPE tokens that no automated strategy
+can resolve. These are BPE artifacts that never appear as standalone words in any corpus:
+
+- **Contraction stems** — BPE fragments like "didn", "couldn", "shouldn" that are the
+  first part of contractions ("didn't", "couldn't", "shouldn't"). Annotated as `AUX`
+  with the appropriate fine POS tag (VBD for past-tense, MD for modals, VBZ for
+  present-tense).
+- **Negation clitic** — The `"'t"` token (from don't, isn't, etc.) annotated as
+  `PART/RB/neg` with `Polarity=Neg`.
+- **Newline-composite punctuation** — BPE tokens like `"\\n\\n"`, `"---\\n\\n"`, `":\\n\\n"`
+  that combine punctuation with paragraph breaks. Annotated as `PUNCT` with the
+  appropriate fine tag.
+- **Special symbols** — The underscore `_` and the full word `cannot`.
+
+These 23 tokens are hardcoded in `annotate_manual_tokens()` and applied as the final
+step of the expansion pipeline. This brings coverage to 100% of the 17,392-token
+BPE vocabulary.
+
 ## Performance Tips
 
 1. **Use GPU with transformer model** for large datasets:
@@ -325,3 +417,77 @@ verbs = {data["text"]: data for data in grammar.values()
 3. **Standard model (`en_core_web_sm`)** is CPU-optimized and already fast without GPU
 
 4. **Transformer model (`en_core_web_trf`)** benefits significantly from GPU acceleration
+
+## Corpus Runner
+
+The `run_corpus.py` script runs the NLP analysis pipeline on external HuggingFace
+datasets. It downloads texts, runs spaCy analysis, and saves all outputs (grammar,
+NER, verbs, noun chunks, fine-type legends).
+
+### Setup
+
+Install the optional corpus dependency:
+
+```bash
+uv pip install -e '.[corpus]'
+```
+
+### Usage
+
+Run on OpenWebText (10K streamed samples):
+
+```bash
+uv run python dev/nlp/run_corpus.py \
+    --dataset Skylion007/openwebtext \
+    --max-samples 10000 \
+    --stem openwebtext \
+    --output data/tokenizer \
+    --verbose
+```
+
+Run on a custom dataset:
+
+```bash
+uv run python dev/nlp/run_corpus.py \
+    --dataset wikipedia \
+    --text-field content \
+    --stem wiki \
+    --max-samples 5000
+```
+
+### CLI Options
+
+| Flag               | Description                                                           |
+| ------------------ | --------------------------------------------------------------------- |
+| `--dataset`        | HuggingFace dataset name (default: `stas/openwebtext-10k`)           |
+| `--split`          | Dataset split to use (default: `train`)                               |
+| `--text-field`     | Field name containing text (default: `text`)                          |
+| `--stem`           | Output file stem, e.g. `{stem}_grammar.json` (default: `openwebtext`) |
+| `--output`         | Output directory (default: `data/tokenizer`)                          |
+| `--model`          | spaCy model (default: `en_core_web_trf`)                              |
+| `--gpu`            | Enable GPU acceleration                                               |
+| `--batch-size`     | spaCy pipe batch size (default: `100`)                                |
+| `--max-samples`    | Limit number of text samples (for testing)                            |
+| `--verbose`        | Print progress output                                                 |
+
+### Streaming mode
+
+When `--max-samples` is set, the runner streams data from HuggingFace instead of
+downloading the full dataset. This avoids out-of-memory issues with large corpora
+like OpenWebText (8M+ documents). Datasets using legacy loading scripts are
+automatically handled via streaming fallback.
+
+### Merge workflow
+
+After generating a grammar dict from an external corpus, merge it into the base
+grammar using `expand_grammar.py`:
+
+```bash
+uv run python dev/nlp/expand_grammar.py \
+    --grammar data/tokenizer/simplestories-1_grammar.json \
+    --extra-grammar data/tokenizer/openwebtext_grammar.json \
+    --output data/tokenizer/simplestories-1_grammar.json
+```
+
+The merge adds new entries without overwriting existing ones. Counts and frequencies
+from the external corpus are reset to zero.

@@ -11,10 +11,16 @@ literal nodes. Signatures serve two roles in the knowledge graph:
 2. **As kline node** — a node value that references or selects other klines,
    forming the edges of the knowledge graph.
 
-Signatures are produced by OR-reduction of all nodes. Non-literal nodes
-contribute their full value. Literal nodes contribute bit 0 only. Because
-non-literal nodes have bit 0 clear, the OR-reduction sets bit 0 if and only
-if literal content is present.
+Signatures are produced by OR-reduction of all nodes. The contribution of
+each node depends on its type:
+
+- **Literal nodes** contribute bit 0 only (the literal-content flag).
+- **NLP-BPE nodes** contribute only their NLP type bits (high 32 bits),
+  masking out BPE token IDs to keep signatures vocabulary-independent.
+- **Mod32 packed nodes** contribute their full value.
+
+Because non-literal nodes have bit 0 clear, the OR-reduction sets bit 0
+if and only if literal content is present.
 
 ## Dependencies
 
@@ -26,8 +32,14 @@ This spec depends on the following concepts, defined elsewhere:
   a node is a literal token. Defined in the @kline spec as a bit-layout
   test: `(node & 0xFFFFFFFF) == 0xFFFFFFFF`.
 - Signature creation uses this to determine how each node contributes:
-  non-literal nodes contribute their full value; literal nodes contribute
-  bit 0 only.
+  literal nodes contribute bit 0 only; NLP-BPE nodes contribute only their
+  NLP type bits (high 32); Mod32 packed nodes contribute their full value.
+
+### Signature (@signature spec — this document)
+
+- `is_nlp_node(node) → bool` — standalone function that determines whether
+  a node is an NLP-BPE node (non-literal with non-zero high 32 bits).
+  Defined in `signature.py` alongside `make_signature`.
 
 ### Kline (@kline spec)
 
@@ -78,6 +90,38 @@ klines.
 A node used as a kline node selects all klines whose signatures overlap
 with it (bitwise AND ≠ 0).
 
+## Node-to-Signature Conversion
+
+When a raw node value is used as a model lookup key (e.g. `model.find(node)`),
+it must first be converted to its signature-equivalent form. The model indexes
+klines by their signature, so the lookup key must be a signature.
+
+### node_to_sig
+
+```
+node_to_sig(node: uint64) → uint64
+```
+
+Convert a node value to its signature-equivalent form. Three cases:
+
+- **Literal nodes** → `1` (bit 0: literal-content flag).
+- **NLP-BPE nodes** → NLP type bits only (high 32), BPE ID masked out.
+- **Mod32 packed nodes** → full value (node == signature).
+
+This is the same three-way branch used by `make_signature`. The function
+exists because the model's lookup API (`find`, `resolve`, `where`) accepts
+uint64 values that may be raw nodes or signatures — callers must convert
+nodes before passing them as lookup keys.
+
+### BPE_TOKEN_MASK
+
+```
+BPE_TOKEN_MASK = 0xFFFFFFFF
+```
+
+Masks the low 32 bits of an NLP-BPE node (the BPE token ID). Companion to
+`NLP_TYPE_MASK` which masks the high 32 bits.
+
 ## Creation
 
 ### make_signature
@@ -86,20 +130,43 @@ with it (bitwise AND ≠ 0).
 make_signature(nodes: sequence of uint64) → uint64
 ```
 
-Produce a signature from a sequence of nodes. Non-literal nodes contribute
-their full value via OR-reduction. Literal nodes contribute bit 0 only
-(the literal-content flag), indicating that the kline contains literal
-content.
+Produce a signature from a sequence of nodes using a three-way branch:
+
+- **Literal nodes** contribute bit 0 only (the literal-content flag).
+- **NLP-BPE nodes** contribute only their NLP type bits (high 32 bits),
+  masking out BPE token IDs (low 32 bits). This keeps signatures
+  vocabulary-independent — two synonyms with unrelated BPE IDs but shared
+  NLP type bits produce the same signature contribution.
+- **Mod32 packed nodes** contribute their full value via OR-reduction.
+
+```
+sig = 0
+for node in nodes:
+    sig |= node_to_sig(node)
+return sig
+```
+
+The pseudocode is expressed in terms of `node_to_sig`, which encapsulates
+the three-way branch. Equivalent expanded form:
 
 ```
 sig = 0
 for node in nodes:
     if is_literal(node):
         sig |= 1                  # literal-content flag (bit 0)
+    elif is_nlp_node(node):
+        sig |= (node & NLP_TYPE_MASK)  # NLP type bits only (high 32)
     else:
-        sig |= node                # non-literal contributes full value
+        sig |= node                # Mod32 packed: full value
 return sig
 ```
+
+`NLP_TYPE_MASK` is `0xFFFFFFFF00000000` — it selects the high 32 bits
+(the NLP type encoding) and zeros out the low 32 bits (the BPE token ID).
+
+`is_nlp_node(node)` returns `True` when a non-literal node has non-zero
+high 32 bits. This correctly distinguishes NLP-BPE nodes from Mod32 packed
+nodes (which use only bits 1–31, leaving high 32 bits always zero).
 
 Because non-literal nodes have bit 0 clear, the OR-reduction sets bit 0
 if and only if literal content is present. The result is deterministic and
@@ -130,14 +197,16 @@ Consequences:
 | Commutative       | Node order does not affect the result                 |
 | Lossy             | Order and multiplicity of non-literal nodes are lost  |
 | Empty             | `make_signature([]) == 0`                             |
-| Identity          | `make_signature([node]) == node` for non-literal node |
+| Identity          | `make_signature([node]) == node` for Mod32 packed node |
 | Literal-include   | Literal nodes contribute bit 0 (literal-content flag) |
+| NLP-masking       | NLP-BPE nodes contribute only NLP type bits (high 32) |
 | Closure           | Bit 0 set iff literal content present                 |
 
-Note: literal nodes are lossy in a different sense than non-literal nodes.
-Non-literal nodes lose order and multiplicity. Literal nodes lose identity
-entirely — all literal nodes collectively contribute only bit 0, regardless
-of how many there are or what values they hold.
+Note: literal nodes and NLP-BPE nodes are lossy in different senses.
+Non-literal Mod32 packed nodes lose order and multiplicity. Literal nodes
+lose identity entirely — all literal nodes collectively contribute only
+bit 0. NLP-BPE nodes lose BPE identity — the BPE token ID is masked out,
+so only the NLP type bits contribute to the signature.
 
 ### Well-known Values
 
@@ -195,6 +264,14 @@ Properties:
 | SIG-8 | `signifies(1, 1) == True`                                     | — |
 | SIG-9 | `signifies(0b110, 0b10) == True` (overlapping bits)           | — |
 | SIG-10 | `signifies(0b110, 0b1) == False` (no overlapping bits)       | — |
+| SIG-11 | `is_nlp_node(nlp_node)` for NLP-BPE node (high bits set) → True | NLP |
+| SIG-12 | `make_signature()` with NLP-BPE nodes masks BPE IDs — same NLP type, different BPE IDs produce identical signatures | NLP |
+| SIG-13 | `make_signature()` with mixed NLP + literal: bit 0 set plus NLP type bits | NLP |
+| SIG-14 | `make_signature([0b10, 0b100]) == 0b110` (backward compat with Mod32) | NLP |
+| SIG-15 | `node_to_sig(literal) == 1` (literal → bit 0) | NLP |
+| SIG-16 | `node_to_sig(nlp_node) == nlp_node & NLP_TYPE_MASK` (NLP → high 32 only) | NLP |
+| SIG-17 | `node_to_sig(mod32_packed) == mod32_packed` (Mod32 → identity) | NLP |
+| SIG-18 | `node_to_sig` is used by `make_signature` internally (refactored) | NLP |
 
 ## What a Signature is Not
 

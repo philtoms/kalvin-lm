@@ -39,9 +39,10 @@ class ASTEmitter:
     encoding happens here — that's TokenEncoder's job.
     """
 
-    def __init__(self, dev: bool = False):
+    def __init__(self, dev: bool = False, skip_mcs: bool = False):
         self.entries: list[SymbolicEntry] = []
         self.dev = dev
+        self._skip_mcs = skip_mcs
         self._sig_levels = {
             "COUNTERSIGN": "S1",
             "CANONIZE": "S2",
@@ -86,6 +87,9 @@ class ASTEmitter:
 
     def _emit_mcs(self, sig: str) -> bool:
         """Emit MCS entries for multi-character signatures."""
+        if self._skip_mcs:
+            return False
+
         if len(sig) <= 1:
             return False
 

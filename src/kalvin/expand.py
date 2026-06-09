@@ -25,7 +25,7 @@ from typing import Iterator, TYPE_CHECKING
 
 from kalvin.kline import KLine
 from kalvin.misfit import classify_misfit, generate_expansions
-from kalvin.signature import make_signature, signifies, is_literal_node
+from kalvin.signature import make_signature, signifies, is_literal_node, node_to_sig
 
 if TYPE_CHECKING:
     from kalvin.model import Model
@@ -134,7 +134,11 @@ def edge_hops(model: Model, sig: int) -> Iterator[tuple[int, int]]:
 
     Follows: resolve sig → kline → make_signature(kline.nodes) → repeat.
     Stops at a dead end (unresolvable), a canonical kline, or a cycle.
+
+    The initial ``sig`` may be a raw node value; it is converted to signature
+    form via ``node_to_sig()`` before the first lookup.
     """
+    sig = node_to_sig(sig)  # Convert raw node to signature form if needed
     hop_count = 0
     visited: set[int] = set()
     while hop_count < MAX_HOP:
@@ -153,7 +157,7 @@ def edge_hops(model: Model, sig: int) -> Iterator[tuple[int, int]]:
 
 def _as_kline(model: Model, node: int) -> KLine:
     """Resolve a node value to a KLine. Raises ValueError if not resolvable."""
-    kline = model.find(node)
+    kline = model.find(node_to_sig(node))
     if kline is None:
         raise ValueError(f"Node {node:#x} does not resolve to any KLine")
     return kline
@@ -232,7 +236,7 @@ def expand(
     # Mismatched query nodes
     for n in mismatched_q:
         hop_distance = MAX_HOP
-        q_kline = model.find(n)
+        q_kline = model.find(node_to_sig(n))
         if q_kline is not None:
             for hops, match_sig in edge_hops(model, n):
                 if match_sig in mismatched_c:
@@ -243,7 +247,7 @@ def expand(
                             model, q_kline, c_kline, hops, _visited=_visited,
                         )
                     break
-                elif signifies(n, match_sig):
+                elif signifies(node_to_sig(n), match_sig):
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         sig_distance = distance + hops
@@ -258,7 +262,7 @@ def expand(
     # Mismatched candidate nodes
     for n in mismatched_c:
         hop_distance = MAX_HOP
-        q_kline = model.find(n)
+        q_kline = model.find(node_to_sig(n))
         if q_kline is not None:
             for hops, match_sig in edge_hops(model, n):
                 if match_sig in mismatched_q:
@@ -269,7 +273,7 @@ def expand(
                             model, q_kline, c_kline, hops, _visited=_visited,
                         )
                     break
-                elif signifies(n, match_sig):
+                elif signifies(node_to_sig(n), match_sig):
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         sig_distance = distance + hops
@@ -291,7 +295,7 @@ def expand(
 
     # Matched but not grounded — small S2 penalty
     for n in matched:
-        kl = model.find(n)
+        kl = model.find(node_to_sig(n))
         if kl is None or not is_s1(model, kl):
             total_distance += 1
 

@@ -389,7 +389,10 @@ Returns Klines matching a predicate, in reverse insertion order.
 
 A Kline's nodes are uint64 values. When a node value equals the signature of
 another Kline in the model, it forms an **edge** in the knowledge graph. Graph
-traversal resolves these edges.
+traversal resolves these edges. Because nodes may be NLP-BPE tokens (whose
+identity is in the high 32 bits, not the full 64-bit value), all traversal
+operations convert node values to signature form via `node_to_sig` before
+lookup.
 
 All graph traversal operations search across all tiers.
 
@@ -401,7 +404,9 @@ model.resolve(node) → Kline | none
 
 Resolves a node value to the Kline whose signature matches, if one exists.
 
-- Equivalent to `model.find(node)`.
+- Converts the node to its signature form via `node_to_sig` before lookup
+  (see @signature spec). For Mod32 packed nodes this is identity; for NLP-BPE
+  nodes the BPE token ID is masked out.
 - Returns `none` if no Kline has that signature in any tier.
 
 ### Expand
@@ -614,7 +619,8 @@ Higher significance = closer match. The ordering is strict:
 
 Distance is a single accumulated integer from graph hops. For each
 mismatched node in the query and candidate, the hop chain is traversed
-with a three-tier priority:
+with a three-tier priority. All node-to-signature conversions use
+`node_to_sig` from the @signature spec:
 
 1. **Exact match (S2 direct):** Node resolves via `_edge_hops()` to a node
    in the opposite mismatch set. Adds hop count directly.
@@ -700,7 +706,7 @@ else       → S4
 
 | ID     | Criterion                                   | Origin ref |
 | ------ | ------------------------------------------- | ---------- |
-| MOD-17 | Resolve: node resolves to KLine via find    | — |
+| MOD-17 | Resolve: node resolves to KLine via find (node converted to signature form first) | — |
 | MOD-18 | Query_expand depth 0: returns empty          | — |
 | MOD-19 | Query_expand depth 2: returns direct children | — |
 | MOD-20 | Query_expand cycle detection: no infinite loop | — |
