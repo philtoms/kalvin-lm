@@ -101,6 +101,8 @@ class Compiler:
             skip_mcs=not self.tokenizer.supports_mcs,
             symbol_table=self._symbol_table,
         )
+        if self._symbol_table is not None:
+            self._symbol_table.rewind()
         symbolic = emitter.emit(file)
 
         encoder = TokenEncoder(tokenizer=self.tokenizer, dev=self.dev)

@@ -12,6 +12,20 @@ NLP binding integration (KB-161):
   into individual characters, each resolved independently. The emitter stays
   in the string domain — no tokenizer calls or token encoding happens here.
 
+Scope-aware emission (KB-166):
+  When the symbol table is in walk mode (after rewind()), the emitter
+  navigates scopes to match the BindingResolver's scope structure:
+  - ``chain_right`` boundaries trigger ``enter_scope()``/``exit_scope()``.
+  - Upward traversal (NB-8): ``resolve()`` walks the scope parent chain,
+    finding bindings from enclosing scopes (e.g. M→"Mary" in subscript).
+  - Downward traversal (NB-9): before processing left primaries, the emitter
+    peeks at the child scope's bindings via ``peek_next_bindings()`` and
+    uses them as a fallback when the scope chain returns None.
+  - Shadowing (NB-12): inner scope bindings override outer bindings via
+    normal scope chain resolution.
+  When no symbol table is provided (Mod32 mode), all scope navigation is
+  skipped — complete backward compatibility.
+
 No tokenizer dependency — pure AST logic.
 """
 
@@ -66,6 +80,8 @@ class ASTEmitter:
         self.dev = dev
         self._skip_mcs = skip_mcs
         self._symbol_table = symbol_table
+        self._scope_depth: int = 0  # nesting depth for safety assertions
+        self._child_preview: dict[str, str] = {}  # downward traversal fallback (NB-9)
         self._sig_levels = {
             "COUNTERSIGN": "S1",
             "CANONIZE": "S2",
@@ -77,23 +93,41 @@ class ASTEmitter:
         # Symbolic dedup — on (sig_str, nodes_strs) before encoding
         self._seen: set[tuple[str, None | str | tuple[str, ...]]] = set()
 
+    def _in_walk_mode(self) -> bool:
+        """Check if the symbol table is in walk mode."""
+        return (
+            self._symbol_table is not None
+            and self._symbol_table.in_walk_mode
+        )
+
     def _resolve_sig_word(self, sig_char: str) -> str:
         """Resolve a single-char signature to its NLP word, or return the char itself.
 
         When the symbol table has a binding for *sig_char*, returns the
         bound NLP word (e.g. "Mary" for "M").  When the table is absent
         or the character is unbound, returns *sig_char* unchanged.
+
+        Downward traversal fallback (KB-166): when processing left primaries
+        before a chain_right, the emitter peeks at child scope bindings
+        via ``_child_preview``.  If the scope chain returns None but the
+        preview has a binding, the preview value is used.
         """
         if self._symbol_table is not None:
             word = self._symbol_table.resolve(sig_char)
             if word is not None:
                 return word
+            # Downward traversal fallback (NB-9)
+            if self._child_preview and sig_char in self._child_preview:
+                return self._child_preview[sig_char]
         return sig_char
 
     def emit(self, file: KScriptFile) -> list[SymbolicEntry]:
         """Walk a KScriptFile and collect symbolic entries."""
         for script in file.scripts:
             self._emit_script(script)
+        assert self._scope_depth == 0, (
+            f"Scope depth imbalance after emit: {self._scope_depth}"
+        )
         return self.entries
 
     def _emit_script(self, script: Script) -> None:
@@ -186,11 +220,18 @@ class ASTEmitter:
         chain_op: TokenType,
         right: Construct | None
     ) -> None:
+        # In walk mode, peek at child scope for downward traversal (NB-9)
+        if right is not None and self._in_walk_mode():
+            self._child_preview = self._symbol_table.peek_next_bindings()
+        else:
+            self._child_preview = {}
+
         for pc in left_primaries:
             if pc.op is not None:
                 self._emit_primary(pc)
 
         if right is None:
+            self._child_preview = {}
             return
 
         right_items = self._flatten_to_items(right)
@@ -203,7 +244,20 @@ class ASTEmitter:
             if right_items:
                 item_ids = [self._item_id(item) for item in right_items]
                 self._emit_entry(owner, item_ids, "CANONIZE")
-            self._emit_construct(right)
+
+        # Clear preview before entering child scope for real
+        self._child_preview = {}
+
+        # Enter child scope and process right-hand construct
+        if self._in_walk_mode():
+            self._symbol_table.enter_scope()
+            self._scope_depth += 1
+
+        self._emit_construct(right)
+
+        if self._in_walk_mode():
+            self._scope_depth -= 1
+            self._symbol_table.exit_scope()
 
     def _flatten_to_items(self, construct: Construct) -> list[ConstructItem]:
         if isinstance(construct.inner, Block):

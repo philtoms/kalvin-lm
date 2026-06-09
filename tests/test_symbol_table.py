@@ -342,3 +342,266 @@ class TestEdgeCases:
         scope.claim_next("A")
         assert scope.resolve("B") == "Beta"
         assert scope.resolve("A") is None  # consumed
+
+
+# =============================================================================
+# KB-166: Scope rewind
+# =============================================================================
+
+
+class TestScopeRewind:
+    """Verify _all_scopes records scopes after resolver-style push/pop walk,
+    rewind() sets cursor to 0, and resolve() uses walk cursor scope."""
+
+    def test_all_scopes_records_after_push_pop(self) -> None:
+        """After push/pop walk, _all_scopes contains all scopes ever pushed."""
+        table = NLPSymbolTable()
+        table.push_scope()  # root (index 0)
+        table.bind("M", "Mary")
+        table.push_scope()  # child (index 1)
+        table.bind("S", "Subject")
+        table.pop_scope()   # child popped from _scopes, kept in _all_scopes
+        table.pop_scope()   # root popped
+
+        assert len(table._all_scopes) == 2
+        assert table._all_scopes[0].bindings["M"][0].word == "Mary"
+        assert table._all_scopes[1].bindings["S"][0].word == "Subject"
+
+    def test_rewind_sets_cursor_to_zero(self) -> None:
+        """rewind() sets _walk_cursor to 0 (root scope)."""
+        table = NLPSymbolTable()
+        table.push_scope()
+        table.bind("M", "Mary")
+        table.push_scope()
+        table.bind("S", "Subject")
+        table.pop_scope()
+        table.pop_scope()
+
+        assert table._walk_cursor == -1  # not in walk mode
+        table.rewind()
+        assert table._walk_cursor == 0
+
+    def test_resolve_after_rewind_uses_cursor_scope(self) -> None:
+        """After rewind, resolve() uses _all_scopes[cursor] instead of current_scope()."""
+        table = NLPSymbolTable()
+        table.push_scope()  # root
+        table.bind("M", "Mary")
+        table.push_scope()  # child
+        table.bind("S", "Subject")
+        table.pop_scope()   # child popped
+        table.pop_scope()   # root popped
+
+        table.rewind()  # cursor at root (0)
+        assert table.resolve("M") == "Mary"
+        assert table.resolve("S") is None  # S is in child scope, not root
+
+    def test_rewind_empty_all_scopes_raises(self) -> None:
+        """rewind() raises when no scopes have been pushed."""
+        table = NLPSymbolTable()
+        try:
+            table.rewind()
+            assert False, "Expected AssertionError"
+        except AssertionError:
+            pass
+
+
+class TestScopeNavigation:
+    """Build a 3-level scope tree, rewind, verify enter/exit navigation."""
+
+    def test_three_level_enter_exit(self) -> None:
+        """Navigate root → child → grandchild → back using enter/exit."""
+        table = NLPSymbolTable()
+        table.push_scope()  # root (0): M→Mary
+        table.bind("M", "Mary")
+        table.push_scope()  # child (1): S→Subject
+        table.bind("S", "Subject")
+        table.push_scope()  # grandchild (2): D→Det
+        table.bind("D", "Det")
+        table.pop_scope()   # grandchild popped
+        table.pop_scope()   # child popped
+        table.pop_scope()   # root popped
+
+        table.rewind()  # cursor at root (0)
+
+        # Root level
+        assert table._walk_cursor == 0
+        assert table.resolve("M") == "Mary"
+        assert table.resolve("S") is None  # S in child, not visible at root
+
+        # Enter child
+        table.enter_scope()
+        assert table._walk_cursor == 1
+        assert table.resolve("S") == "Subject"
+        assert table.resolve("M") == "Mary"  # upward to root
+
+        # Enter grandchild
+        table.enter_scope()
+        assert table._walk_cursor == 2
+        assert table.resolve("D") == "Det"
+        assert table.resolve("S") == "Subject"  # upward to child
+        assert table.resolve("M") == "Mary"  # upward to root
+
+        # Exit grandchild → child
+        table.exit_scope()
+        assert table._walk_cursor == 1
+        assert table.resolve("S") == "Subject"
+
+        # Exit child → root
+        table.exit_scope()
+        assert table._walk_cursor == 0
+        assert table.resolve("M") == "Mary"
+        assert table.resolve("S") is None
+
+    def test_enter_scope_not_in_walk_mode_raises(self) -> None:
+        """enter_scope() raises when not in walk mode."""
+        table = NLPSymbolTable()
+        table.push_scope()
+        table.pop_scope()
+        try:
+            table.enter_scope()
+            assert False, "Expected AssertionError"
+        except AssertionError:
+            pass
+
+    def test_exit_scope_not_in_walk_mode_raises(self) -> None:
+        """exit_scope() raises when not in walk mode."""
+        table = NLPSymbolTable()
+        table.push_scope()
+        table.pop_scope()
+        try:
+            table.exit_scope()
+            assert False, "Expected AssertionError"
+        except AssertionError:
+            pass
+
+    def test_enter_scope_exceeds_list_raises(self) -> None:
+        """enter_scope() raises when cursor would exceed _all_scopes."""
+        table = NLPSymbolTable()
+        table.push_scope()  # root
+        table.pop_scope()
+        table.rewind()
+        try:
+            table.enter_scope()
+            assert False, "Expected AssertionError"
+        except AssertionError:
+            pass
+
+
+class TestScopeRewindBackwardCompat:
+    """Verify that without calling rewind(), all existing behavior is unchanged."""
+
+    def test_resolve_uses_current_scope_without_rewind(self) -> None:
+        """Without rewind(), resolve() still uses current_scope()."""
+        table = NLPSymbolTable()
+        table.push_scope()
+        table.bind("M", "Mary")
+        assert table.resolve("M") == "Mary"
+        assert table._walk_cursor == -1
+
+    def test_push_pop_work_after_rewind_not_called(self) -> None:
+        """push_scope/pop_scope work normally without rewind()."""
+        table = NLPSymbolTable()
+        table.push_scope()
+        table.bind("M", "Mary")
+        table.push_scope()
+        table.bind("S", "Subject")
+        # At inner scope, both visible
+        assert table.resolve("M") == "Mary"
+        assert table.resolve("S") == "Subject"
+        table.pop_scope()
+        # At root scope, S gone
+        assert table.resolve("M") == "Mary"
+        assert table.resolve("S") is None
+
+    def test_current_scope_unchanged_after_all_scopes_populated(self) -> None:
+        """current_scope() still returns top of _scopes stack."""
+        table = NLPSymbolTable()
+        root = table.push_scope()
+        child = table.push_scope()
+        assert table.current_scope() is child
+        table.pop_scope()
+        assert table.current_scope() is root
+
+
+class TestScopeNavigationMultipleChainRight:
+    """Build scopes from two sibling chain_right constructs; verify navigation."""
+
+    def test_sibling_scopes_navigate_correctly(self) -> None:
+        """Two sibling chain_right scopes: root → scope1a, root → scope1b.
+
+        Simulates: MHALL == SVO => ..., then O = ALL => ...
+        Scopes in _all_scopes: [root, scope_svo, scope_all]
+        """
+        table = NLPSymbolTable()
+        table.push_scope()  # root (0): M→Mary
+        table.bind("M", "Mary")
+        table.bind("H", "had")
+        # First subscript (SVO)
+        table.push_scope()  # scope_svo (1): S→Subject
+        table.bind("S", "Subject")
+        table.pop_scope()   # back to root
+        # Second subscript (ALL)
+        table.push_scope()  # scope_all (2): D→Det
+        table.bind("D", "Det")
+        table.pop_scope()   # back to root
+        table.pop_scope()   # root popped
+
+        table.rewind()  # cursor at root (0)
+
+        # Root
+        assert table.resolve("M") == "Mary"
+        assert table.resolve("S") is None
+
+        # Enter scope_svo
+        table.enter_scope()
+        assert table._walk_cursor == 1
+        assert table.resolve("S") == "Subject"
+        assert table.resolve("M") == "Mary"  # upward to root
+
+        # Exit scope_svo → root
+        table.exit_scope()
+        assert table._walk_cursor == 0
+
+        # Enter scope_all
+        table.enter_scope()
+        assert table._walk_cursor == 2
+        assert table.resolve("D") == "Det"
+        assert table.resolve("M") == "Mary"  # upward to root
+
+        # Exit scope_all → root
+        table.exit_scope()
+        assert table._walk_cursor == 0
+
+    def test_peek_next_bindings_without_advancing(self) -> None:
+        """peek_next_bindings() returns child bindings without consuming _next_enter."""
+        table = NLPSymbolTable()
+        table.push_scope()  # root (0): M→Mary
+        table.bind("M", "Mary")
+        table.push_scope()  # scope_svo (1): S→Subject, V→Verb
+        table.bind("S", "Subject")
+        table.bind("V", "Verb")
+        table.pop_scope()
+        table.pop_scope()
+
+        table.rewind()  # cursor=0, next_enter=1
+
+        # Peek at child scope bindings
+        preview = table.peek_next_bindings()
+        assert preview == {"S": "Subject", "V": "Verb", "M": "Mary"}
+
+        # _next_enter unchanged — enter_scope still works
+        assert table._next_enter == 1
+        table.enter_scope()
+        assert table._walk_cursor == 1
+        assert table.resolve("S") == "Subject"
+
+    def test_peek_next_bindings_empty_when_no_more_scopes(self) -> None:
+        """peek_next_bindings() returns empty dict when no more scopes."""
+        table = NLPSymbolTable()
+        table.push_scope()
+        table.bind("M", "Mary")
+        table.pop_scope()
+
+        table.rewind()
+        # Only root scope, no next scope
+        assert table.peek_next_bindings() == {}
