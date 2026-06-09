@@ -3,12 +3,13 @@
 Grammar (left recursion eliminated):
 
     script ::= construct+
-    construct ::= block | literal | primary_construct+ ( "=>" construct )?
+    construct ::= block | literal | comment | primary_construct+ ( "=>" construct )?
     block ::= <INDENT> construct+ <DEDENT>
     primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
     node ::= sig | literal
     sig ::= [A-Z]+
     literal ::= ![A-Z]+
+    comment ::= "(" ... ")"
 
 NEWLINE and COMMENT tokens are treated as insignificant whitespace
 and skipped between constructs and at construct boundaries.
@@ -57,11 +58,29 @@ class Literal:
     column: int
 
 
+@dataclass
+class Comment:
+    """A comment node (...).
+
+    Comments are preserved in the AST for downstream consumption by the
+    symbol table and documentation tools. The parser currently skips them,
+    but this node type exists so KB-157 can wire comment attachment.
+
+    Attributes:
+        text: The comment content including enclosing parentheses
+        line: 1-based line number
+        column: 1-based column number
+    """
+    text: str
+    line: int
+    column: int
+
+
 # Union type for all node types
 Node: TypeAlias = Signature | Literal
 
 # Union type for items extracted from constructs (blocks may mix types)
-ConstructItem: TypeAlias = "PrimaryConstruct | Literal"
+ConstructItem: TypeAlias = "PrimaryConstruct | Literal | Comment"
 
 
 # =============================================================================
@@ -80,10 +99,12 @@ class PrimaryConstruct:
         sig: The signature that owns this construct
         op: The inline operator (COUNTERSIGN, CONNOTATE, UNDERSIGN, UNSIGNED), or None
         node: The node on the right side of the operator, if any
+        inline_comment: An optional comment attached to this construct
     """
     sig: Signature
     op: TokenType | None = None
     node: Node | None = None
+    inline_comment: "Comment | None" = None
 
 
 @dataclass
@@ -113,7 +134,7 @@ class Construct:
         chain_op: The chain operator (CANONIZE), or None
         chain_right: The right-hand construct of the chain, if any
     """
-    inner: Block | Literal | list[PrimaryConstruct]
+    inner: Block | Literal | Comment | list[PrimaryConstruct]
     chain_op: TokenType | None = None
     chain_right: "Construct | None" = None
 
@@ -147,6 +168,7 @@ class KScriptFile:
 __all__ = [
     "Signature",
     "Literal",
+    "Comment",
     "Node",
     "ConstructItem",
     "PrimaryConstruct",
