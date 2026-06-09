@@ -63,13 +63,17 @@ class Parser:
         constructs = self._parse_constructs_until(TokenType.EOF)
         return Script(constructs)
 
-    # construct ::= block | literal | primary_construct+ ( "=>" construct )?
+    # construct ::= block | literal | comment | primary_construct+ ( "=>" construct )?
     def _parse_construct(self) -> Construct:
         self._skip_insignificant()
 
         # block: <INDENT> construct+ <DEDENT>
         if self._check(TokenType.INDENT):
             return self._parse_block()
+
+        # comment: standalone (...) on its own
+        if self._check(TokenType.COMMENT):
+            return self._parse_comment_construct()
 
         # literal: bare literal, no chain ops
         if self._check(TokenType.LITERAL):
@@ -94,6 +98,13 @@ class Parser:
         """Parse a literal as a bare construct (unsigned identity)."""
         literal = self._parse_literal()
         return Construct(literal)
+
+    # comment (as a bare construct — preserved in AST)
+    def _parse_comment_construct(self) -> Construct:
+        """Parse a COMMENT token as a bare construct."""
+        token = self._expect(TokenType.COMMENT)
+        comment = Comment(text=token.value, line=token.line, column=token.column)
+        return Construct(comment)
 
     # block ::= <INDENT> construct+ <DEDENT>
     def _parse_block(self) -> Construct:
