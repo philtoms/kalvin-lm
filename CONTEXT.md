@@ -235,3 +235,28 @@ A multi-character signature entry where `signature == make_signature(nodes)`. Al
 ### Structural Match
 
 Comparison of two KLines by signature and nodes: `a.signature == b.signature and a.nodes == b.nodes`. Used for proposal-expectation matching and event correlation.
+
+### NLP Binding
+
+The association of a single-character KScript signature (e.g., `M`) with an NLP word (e.g., "Mary") resolved through comment word lists in the KScript source. Three binding mechanisms: **inline** (`S(ubject)` binds S to "Subject" immediately), **upward traversal** (unbound signature looks up the AST for a bound match with the same character), **downward traversal** (unbound signature looks down the AST for a bound match). Bindings are consumed in order — once a character-position is claimed, it is unavailable for subsequent bindings of the same character.
+_Avoid_: comment mapping (too vague — the binding is a specific compiler artefact, not a general comment feature)
+
+### NLP Binding Scope
+
+The lexical scope of an NLP binding. Inline bindings shadow outer bindings within their containing subscript block. Standard lexical scoping: inner blocks inherit and can shadow, exits restore. When an inline binding like `M(od)` appears deep in a subscript, it shadows the outer `M → "Mary"` within that block only.
+
+### NLP Symbol Table
+
+The compiler-internal mapping built by the binding resolver from NLP word lists and inline comments. Maps each single-character signature to its resolved NLP word. Used by the ASTEmitter and TokenEncoder to produce NLP-enriched signatures and nodes. Signatures not present in the table fall back to Mod32 encoding.
+
+### Binding Resolver
+
+A new compilation pass between the parser and ASTEmitter that walks the AST, processes NLP word lists from comments, and builds the NLP symbol table. Only active when an NLP tokenizer is selected — Mod32 compilation skips this pass entirely.
+
+### Mod32 Fallback
+
+When a single-character signature cannot be resolved through any binding mechanism (no inline comment, no upward match, no downward match), it is encoded using standard Mod32 bit-packed encoding instead of NLP encoding. Produces mixed NLP/Mod32 klines within the same graph. Rationalisation must handle this.
+
+### NLP Word List
+
+A comment in KScript source that is interpreted as a sequence of words for NLP binding. Syntax: `(word1 word2 ...)` or `S(ubject)` (inline, one word). Inline syntax takes the first character from the SIGNATURE token and appends the comment content stripped of parens, preserving case (`S` + `ubject` → `"Subject"`). A word list claims a subsequent signature when word count equals character count — positional zip binds each character to its corresponding word.
