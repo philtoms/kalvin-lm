@@ -123,7 +123,12 @@ Comment:
 
 The parser's `_skip_insignificant` method is modified: NEWLINE tokens are still skipped, but COMMENT tokens are no longer skipped. Instead, when the parser encounters a COMMENT token in construct position, it emits a `Comment` AST node.
 
-Inline comments (those immediately following a SIGNATURE token, before any operator) are attached to the preceding signature's `PrimaryConstruct` as metadata. The lexer already separates these into two tokens (SIGNATURE then COMMENT).
+Inline comments can appear in two positions within a primary construct:
+
+1. **Sig-side**: immediately after the SIGNATURE token, before any operator. Example: `S(ubject) = M` — the comment `(ubject)` attaches to the signature side.
+2. **Node-side**: immediately after the node token (right side of operator). Example: `A = D(et)` — the comment `(et)` attaches to the node side.
+
+Sig-side comments are attached to the `PrimaryConstruct` via its `inline_comment` field. Node-side comments are attached via its `node_inline_comment` field. The lexer already produces SIGNATURE+COMMENT (or IDENT+COMMENT) token pairs for both positions; the parser handles attachment based on position.
 
 ### 5.3 No Grammar Changes
 
