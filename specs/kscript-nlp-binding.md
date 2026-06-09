@@ -300,15 +300,15 @@ A source map — a separate artefact mapping compiled entries back to KScript id
 | NB-15 | NLP-bound signature: carries NLP type bits only (BPE ID masked) — same as @kscript-nlp §5.4 | Encoding |
 | NB-16 | NLP-bound node: carries full NLP-BPE token (BPE ID retained) — same as @kscript-nlp §5.2 | Encoding |
 | NB-17 | Mixed MCS: MHALL signature has NLP bits for bound chars, Mod32 bits for unbound chars | Encoding |
-| NB-18 | Mod32 compilation unchanged: binding resolver is skipped, comments are inert, all encoding is Mod32 | Compatibility |
-| NB-19 | Same `.ks` source compiles under both Mod32 and NLP without modification | Compatibility |
+| NB-18 | Mod32 compilation unchanged: binding resolver is skipped, comments are inert, all encoding is Mod32 | Compatibility | ✅ `TestNB18Mod32Unchanged` |
+| NB-19 | Same `.ks` source compiles under both Mod32 and NLP without modification | Compatibility | ✅ `TestNB19SameSourceBothModes` |
 | NB-20 | Parser preserves comments as AST nodes: COMMENT tokens appear in construct sequence | Parser |
 | NB-21 | Inline comment attachment: `S(ubject)` produces PrimaryConstruct with attached comment metadata | Parser |
 | NB-22 | No grammar changes: parser grammar rules are identical to @kscript §3 | Parser |
 | NB-23 | Full example: the MHALL script produces correct NLP-bound entries for all 11 bindings | Integration |
 | NB-24 | Decompiler decodes NLP-BPE nodes to readable words | Decompilation |
 | NB-25 | Decompiler represents NLP-type-only signatures as type bit descriptions | Decompilation |
-| NB-26 | Significance routing is tokenizer-agnostic: same S1/S2/S3/S4 mechanism works with NLP-bound klines | Rationalisation |
+| NB-26 | Significance routing is tokenizer-agnostic: same S1/S2/S3/S4 mechanism works with NLP-bound klines | Rationalisation | ✅ `TestNB26SignificanceRouting` |
 
 ---
 

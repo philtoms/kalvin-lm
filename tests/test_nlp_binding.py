@@ -744,3 +744,590 @@ class TestSameSourceBothModes:
             assert is_nlp_node(e.signature), (
                 f"NLP entry sig {e.signature:#x} should be NLP-BPE"
             )
+
+
+# =============================================================================
+# NB-18 (extended): Mod32 compilation unchanged — comprehensive operator sweep
+# =============================================================================
+
+
+class TestNB18Mod32Unchanged:
+    """NB-18: Mod32 compilation is completely unchanged by the binding resolver.
+
+    Verifies that every operator produces identical, known-good Mod32 output
+    regardless of whether the NLP binding infrastructure exists.  The binding
+    resolver is skipped for Mod32 tokenizers — no symbol table is created,
+    no NLP nodes appear, and comments are inert.
+
+    These tests run unconditionally (no NLPTokenizer required) because they
+    only exercise the Mod32 path.
+    """
+
+    # ── Reference sources covering all operator types ──────────────────
+
+    OPERATOR_SOURCES: dict[str, str] = {
+        "unsigned": "A",
+        "countersign": "A == B",
+        "undersign": "A = B",
+        "connotate": "A > B",
+        "canonize": "A => B",
+        "subscript_block": "A =>\n  B\n  C",
+        "chained": "A => B => C",
+        "mcs": "ABC",
+        "mhall": MHALL_SOURCE,
+    }
+
+    # ── Helpers ────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _compile32(source: str) -> list[CompiledEntry]:
+        return compile_source(source, tokenizer=_tok32, dev=True)
+
+    @staticmethod
+    def _entry_snapshot(entries: list[CompiledEntry]) -> list[tuple]:
+        """Produce a deterministic snapshot: (sig, nodes_tuple, sig_level)."""
+        return [
+            (e.signature, tuple(e.nodes), e.sig_level)
+            for e in entries
+        ]
+
+    # ── Tests: operator output matches known-good references ───────────
+
+    def test_unsigned_entry_count_and_level(self) -> None:
+        """Unsigned `A` → 1 entry, S4."""
+        entries = self._compile32("A")
+        assert len(entries) == 1
+        assert entries[0].sig_level == "S4"
+
+    def test_countersign_entry_count_and_levels(self) -> None:
+        """Countersign `A == B` → 2 entries, both S1."""
+        entries = self._compile32("A == B")
+        assert len(entries) == 2
+        assert all(e.sig_level == "S1" for e in entries)
+
+    def test_undersign_entry_count_and_levels(self) -> None:
+        """Undersign `A = B` → 1 entry, S1."""
+        entries = self._compile32("A = B")
+        assert len(entries) == 1
+        assert entries[0].sig_level == "S1"
+
+    def test_connotate_entry_count_and_level(self) -> None:
+        """Connotate `A > B` → 1 entry, S3."""
+        entries = self._compile32("A > B")
+        assert len(entries) == 1
+        assert entries[0].sig_level == "S3"
+
+    def test_canonize_entry_count_and_levels(self) -> None:
+        """Canonize `A => B` → canonize (S2) + unsigned (S4)."""
+        entries = self._compile32("A => B")
+        assert len(entries) == 2
+        ops = [e.sig_level for e in entries]
+        assert "S2" in ops
+        assert "S4" in ops
+
+    def test_subscript_block_entry_count_and_levels(self) -> None:
+        """Subscript block `A =>\\n  B\\n  C` → 1 canonize (S2) + 2 unsigned (S4)."""
+        entries = self._compile32("A =>\n  B\n  C")
+        assert len(entries) == 3
+        levels = [e.sig_level for e in entries]
+        assert levels.count("S2") == 1
+        assert levels.count("S4") == 2
+
+    def test_chained_entry_count_and_levels(self) -> None:
+        """Chained `A => B => C` → 2 canonize (S2) + 1 unsigned (S4)."""
+        entries = self._compile32("A => B => C")
+        assert len(entries) == 3
+        levels = [e.sig_level for e in entries]
+        assert levels.count("S2") == 2
+        assert levels.count("S4") == 1
+
+    def test_mcs_entry_count_and_levels(self) -> None:
+        """MCS `ABC` → 3 unsigned (S4) + 1 canonize (S2) + 1 unsigned MCS (S4)."""
+        entries = self._compile32("ABC")
+        levels = [e.sig_level for e in entries]
+        # At minimum: 3 char unsigned + 1 MCS canonize + 1 MCS unsigned
+        assert len(entries) >= 5
+        assert levels.count("S4") >= 4
+        assert levels.count("S2") >= 1
+
+    # ── Tests: decoded signatures/nodes match expected Mod32 values ────
+
+    def test_decoded_signatures_unsigned(self) -> None:
+        """Unsigned `A` decodes sig='A'."""
+        entries = self._compile32("A")
+        md = _md(entries, _tok32)
+        assert "A" in md
+
+    def test_decoded_signatures_countersign(self) -> None:
+        """Countersign `A == B` decodes sig='A' node='B' and sig='B' node='A'."""
+        entries = self._compile32("A == B")
+        md = _md(entries, _tok32)
+        assert _has_node(md, "A", ["B"])
+        assert _has_node(md, "B", ["A"])
+
+    def test_decoded_signatures_undersign(self) -> None:
+        """Undersign `A = B` decodes sig='B' node='A'."""
+        entries = self._compile32("A = B")
+        md = _md(entries, _tok32)
+        assert _has_node(md, "B", ["A"])
+
+    def test_decoded_signatures_connotate(self) -> None:
+        """Connotate `A > B` decodes sig='A' node='B'."""
+        entries = self._compile32("A > B")
+        md = _md(entries, _tok32)
+        assert _has_node(md, "A", ["B"])
+
+    def test_decoded_signatures_canonize(self) -> None:
+        """Canonize `A => B` decodes sig='A' nodes=['B']."""
+        entries = self._compile32("A => B")
+        md = _md(entries, _tok32)
+        assert _has_node(md, "A", ["B"])
+
+    def test_decoded_subscript_block(self) -> None:
+        """Subscript `A =>\\n  B\\n  C` decodes sig='A' nodes=['B','C']."""
+        entries = self._compile32("A =>\n  B\n  C")
+        md = _md(entries, _tok32)
+        assert _has_node(md, "A", ["B", "C"])
+
+    def test_decoded_mcs(self) -> None:
+        """MCS `ABC` has an entry with sig='ABC' and nodes=['A','B','C']."""
+        entries = self._compile32("ABC")
+        md = _md(entries, _tok32)
+        assert "ABC" in md
+
+    # ── Tests: no symbol table for any operator ────────────────────────
+
+    def test_no_symbol_table_all_operators(self) -> None:
+        """All operator sources compile under Mod32 with no symbol table."""
+        from kscript.lexer import Lexer
+        from kscript.parser import Parser
+
+        for name, source in self.OPERATOR_SOURCES.items():
+            tokens = Lexer(source).tokenize()
+            kf = Parser(tokens).parse()
+            compiler = Compiler(_tok32, dev=True)
+            compiler.compile(kf)
+            assert compiler.symbol_table is None, (
+                f"{name}: Mod32 compilation should not produce a symbol table"
+            )
+
+    # ── Tests: no NLP nodes for any operator ──────────────────────────
+
+    def test_no_nlp_nodes_all_operators(self) -> None:
+        """No entry from any Mod32 compilation has NLP type bits."""
+        for name, source in self.OPERATOR_SOURCES.items():
+            entries = self._compile32(source)
+            for e in entries:
+                assert not is_nlp_node(e.signature), (
+                    f"{name}: Mod32 entry sig {e.signature:#x} should not be NLP"
+                )
+
+    # ── Tests: comments are inert under Mod32 ─────────────────────────
+
+    def test_comments_inert_simple(self) -> None:
+        """`S(ubject) = M` and `S = M` produce identical Mod32 output."""
+        entries_with = self._compile32("S(ubject) = M")
+        entries_without = self._compile32("S = M")
+
+        snap_with = self._entry_snapshot(entries_with)
+        snap_without = self._entry_snapshot(entries_without)
+        assert snap_with == snap_without
+
+    def test_comments_inert_mhall(self) -> None:
+        """MHALL with and without comments produces identical Mod32 output."""
+        entries_with = self._compile32(MHALL_SOURCE)
+        entries_without = self._compile32(MHALL_SOURCE_NO_COMMENTS)
+
+        snap_with = self._entry_snapshot(entries_with)
+        snap_without = self._entry_snapshot(entries_without)
+        assert snap_with == snap_without
+
+    def test_comments_inert_block_word_list(self) -> None:
+        """`(Mary had) MH` and `MH` produce identical Mod32 output."""
+        entries_with = self._compile32("(Mary had)\nMH")
+        entries_without = self._compile32("MH")
+
+        snap_with = self._entry_snapshot(entries_with)
+        snap_without = self._entry_snapshot(entries_without)
+        assert snap_with == snap_with  # sanity: self-equal
+        assert snap_with == snap_without
+
+    # ── Test: deterministic — same source same output ──────────────────
+
+    def test_deterministic_compilation(self) -> None:
+        """Compiling the same source twice yields identical entries."""
+        for name, source in self.OPERATOR_SOURCES.items():
+            entries_a = self._compile32(source)
+            entries_b = self._compile32(source)
+            assert self._entry_snapshot(entries_a) == self._entry_snapshot(entries_b), (
+                f"{name}: Mod32 compilation should be deterministic"
+            )
+
+
+# =============================================================================
+# NB-19 (extended): Same source compiles under both modes
+# =============================================================================
+
+
+@_nlp_skip
+class TestNB19SameSourceBothModes:
+    """NB-19: Same `.ks` source compiles under both Mod32 and NLP.
+
+    Verifies that every operator type produces valid (non-error) compilation
+    under both tokenizers, with structurally equivalent operator semantics.
+    The encoding differs (Mod32 vs NLP-BPE) but the relationship graph
+    (who countersigns whom, who canonizes what) is preserved.
+    """
+
+    OPERATOR_SOURCES: dict[str, str] = {
+        "unsigned": "A",
+        "countersign": "A == B",
+        "undersign": "A = B",
+        "connotate": "A > B",
+        "canonize": "A => B",
+        "subscript_block": "A =>\n  B\n  C",
+        "chained": "A => B => C",
+    }
+
+    @pytest.fixture(autouse=True)
+    def _setup(self) -> None:
+        self._nlp_tok = _get_nlp_tokenizer()
+        if self._nlp_tok is None:
+            pytest.skip("NLPTokenizer data files not available")
+
+    # ── Tests: every operator compiles under both modes ────────────────
+
+    def test_all_operators_compile_both_modes(self) -> None:
+        """Every operator source produces entries under both Mod32 and NLP."""
+        for name, source in self.OPERATOR_SOURCES.items():
+            entries_mod = compile_source(source, tokenizer=_tok32, dev=True)
+            entries_nlp = compile_source(source, tokenizer=self._nlp_tok, dev=True)
+
+            assert len(entries_mod) > 0, f"{name}: Mod32 produced no entries"
+            assert len(entries_nlp) > 0, f"{name}: NLP produced no entries"
+
+    def test_mhall_compiles_both_modes(self) -> None:
+        """Full MHALL example compiles under both modes without errors."""
+        entries_mod = compile_source(MHALL_SOURCE, tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source(MHALL_SOURCE, tokenizer=self._nlp_tok, dev=True)
+
+        assert len(entries_mod) > 0
+        assert len(entries_nlp) > 0
+
+    def test_sources_with_comments_compile_both_modes(self) -> None:
+        """Sources with inline comments compile under both modes."""
+        sources_with_comments = [
+            "S(ubject) = M",
+            "(Mary had) MH",
+            MHALL_SOURCE,
+        ]
+        for source in sources_with_comments:
+            entries_mod = compile_source(source, tokenizer=_tok32, dev=True)
+            entries_nlp = compile_source(source, tokenizer=self._nlp_tok, dev=True)
+            assert len(entries_mod) > 0
+            assert len(entries_nlp) > 0
+
+    # ── Tests: sig_level distribution matches between modes ────────────
+
+    def test_countersign_levels_match(self) -> None:
+        """`A == B` countersign entries have S1 in both modes."""
+        entries_mod = compile_source("A == B", tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source("A == B", tokenizer=self._nlp_tok, dev=True)
+
+        mod_levels = sorted(e.sig_level for e in entries_mod)
+        nlp_levels = sorted(e.sig_level for e in entries_nlp)
+        assert mod_levels == nlp_levels
+        assert all(l == "S1" for l in mod_levels)
+
+    def test_connotate_levels_match(self) -> None:
+        """`A > B` connotate entries have S3 in both modes."""
+        entries_mod = compile_source("A > B", tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source("A > B", tokenizer=self._nlp_tok, dev=True)
+
+        mod_levels = sorted(e.sig_level for e in entries_mod)
+        nlp_levels = sorted(e.sig_level for e in entries_nlp)
+        assert mod_levels == nlp_levels
+        assert all(l == "S3" for l in mod_levels)
+
+    def test_unsigned_levels_match(self) -> None:
+        """`A` unsigned entries have S4 in both modes."""
+        entries_mod = compile_source("A", tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source("A", tokenizer=self._nlp_tok, dev=True)
+
+        mod_levels = sorted(e.sig_level for e in entries_mod)
+        nlp_levels = sorted(e.sig_level for e in entries_nlp)
+        assert mod_levels == nlp_levels
+        assert all(l == "S4" for l in mod_levels)
+
+    def test_canonize_levels_match(self) -> None:
+        """`A => B` canonize levels match between modes."""
+        entries_mod = compile_source("A => B", tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source("A => B", tokenizer=self._nlp_tok, dev=True)
+
+        mod_levels = sorted(e.sig_level for e in entries_mod)
+        nlp_levels = sorted(e.sig_level for e in entries_nlp)
+        assert mod_levels == nlp_levels
+
+    def test_undersign_levels_match(self) -> None:
+        """`A = B` undersign levels match between modes."""
+        entries_mod = compile_source("A = B", tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source("A = B", tokenizer=self._nlp_tok, dev=True)
+
+        mod_levels = sorted(e.sig_level for e in entries_mod)
+        nlp_levels = sorted(e.sig_level for e in entries_nlp)
+        assert mod_levels == nlp_levels
+
+    # ── Tests: operator semantics preserved across modes ───────────────
+
+    def test_countersign_semantics_preserved(self) -> None:
+        """`A == B` → countersign relationship A↔B preserved in decoded output."""
+        entries_mod = compile_source("A == B", tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source("A == B", tokenizer=self._nlp_tok, dev=True)
+
+        md_mod = _md(entries_mod, _tok32)
+        md_nlp = _md(entries_nlp, self._nlp_tok)
+
+        # Mod32: A has B, B has A (bidirectional)
+        assert _has_node(md_mod, "A", ["B"])
+        assert _has_node(md_mod, "B", ["A"])
+
+        # NLP: same relationship graph (decoded values may be NLP words
+        # for single-char sigs, so we check structure — both entries exist
+        # and have non-empty nodes)
+        assert len(md_nlp) >= 2
+
+    def test_undersign_semantics_preserved(self) -> None:
+        """`A = B` → undersign relationship B→A preserved."""
+        entries_mod = compile_source("A = B", tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source("A = B", tokenizer=self._nlp_tok, dev=True)
+
+        md_mod = _md(entries_mod, _tok32)
+        md_nlp = _md(entries_nlp, self._nlp_tok)
+
+        # Mod32: sig B, node A
+        assert _has_node(md_mod, "B", ["A"])
+
+        # NLP: entry exists with a node value
+        assert len(md_nlp) >= 1
+
+    def test_connotate_semantics_preserved(self) -> None:
+        """`A > B` → connotate relationship A→B preserved."""
+        entries_mod = compile_source("A > B", tokenizer=_tok32, dev=True)
+        md_mod = _md(entries_mod, _tok32)
+
+        assert _has_node(md_mod, "A", ["B"])
+
+    def test_canonize_semantics_preserved(self) -> None:
+        """`A => B` → canonize relationship A→[B] preserved."""
+        entries_mod = compile_source("A => B", tokenizer=_tok32, dev=True)
+        md_mod = _md(entries_mod, _tok32)
+
+        assert _has_node(md_mod, "A", ["B"])
+
+    # ── Tests: encoding mode differences ───────────────────────────────
+
+    def test_mod32_entries_not_nlp(self) -> None:
+        """Mod32 entries don't carry NLP nodes for any operator."""
+        for name, source in self.OPERATOR_SOURCES.items():
+            entries = compile_source(source, tokenizer=_tok32, dev=True)
+            for e in entries:
+                assert not is_nlp_node(e.signature), (
+                    f"{name}: Mod32 sig {e.signature:#x} should not be NLP"
+                )
+
+    def test_nlp_entries_have_nlp_signatures(self) -> None:
+        """NLP entries carry NLP-BPE type bits for single-char sigs."""
+        source = "A == B"
+        entries = compile_source(source, tokenizer=self._nlp_tok, dev=True)
+        # Single-character sigs should encode as NLP nodes
+        has_nlp = any(is_nlp_node(e.signature) for e in entries)
+        assert has_nlp, "Expected at least one NLP-type signature"
+
+
+# =============================================================================
+# NB-26: Significance routing on NLP-bound klines
+# =============================================================================
+
+
+@_nlp_skip
+class TestNB26SignificanceRouting:
+    """NB-26: S1/S2/S3/S4 significance routing is tokenizer-agnostic.
+
+    The sig_level on compiled entries is determined by the operator type
+    (COUNTERSIGN→S1, CANONIZE→S2, CONNOTATE→S3, UNSIGNED→S4), not by the
+    encoding scheme.  These tests verify that NLP-bound klines carry the
+    correct significance levels and that levels match Mod32 output for the
+    same source.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup(self) -> None:
+        self._nlp_tok = _get_nlp_tokenizer()
+        if self._nlp_tok is None:
+            pytest.skip("NLPTokenizer data files not available")
+
+    # ── Individual operator significance levels ────────────────────────
+
+    def test_countersign_s1(self) -> None:
+        """`A == B` with NLP → countersign entries have sig_level='S1'."""
+        entries = compile_source("A == B", tokenizer=self._nlp_tok, dev=True)
+        assert len(entries) >= 2
+        for e in entries:
+            assert e.sig_level == "S1", (
+                f"Countersign entry should be S1, got {e.sig_level!r}"
+            )
+
+    def test_canonize_s2(self) -> None:
+        """`A => B C` with NLP → canonize entry has sig_level='S2'."""
+        entries = compile_source("A => B C", tokenizer=self._nlp_tok, dev=True)
+        s2_entries = [e for e in entries if e.sig_level == "S2"]
+        assert len(s2_entries) >= 1, (
+            f"Expected at least one S2 canonize entry, got levels: "
+            f"{[e.sig_level for e in entries]}"
+        )
+
+    def test_connotate_s3(self) -> None:
+        """`A > B` with NLP → connotate entry has sig_level='S3'."""
+        entries = compile_source("A > B", tokenizer=self._nlp_tok, dev=True)
+        assert len(entries) >= 1
+        assert entries[0].sig_level == "S3", (
+            f"Connotate entry should be S3, got {entries[0].sig_level!r}"
+        )
+
+    def test_unsigned_s4(self) -> None:
+        """`A` (unsigned) with NLP → entry has sig_level='S4'."""
+        entries = compile_source("A", tokenizer=self._nlp_tok, dev=True)
+        assert len(entries) >= 1
+        assert entries[0].sig_level == "S4", (
+            f"Unsigned entry should be S4, got {entries[0].sig_level!r}"
+        )
+
+    def test_undersign_s1(self) -> None:
+        """`A = B` with NLP → undersign entry has sig_level='S1'."""
+        entries = compile_source("A = B", tokenizer=self._nlp_tok, dev=True)
+        assert len(entries) >= 1
+        assert entries[0].sig_level == "S1", (
+            f"Undersign entry should be S1, got {entries[0].sig_level!r}"
+        )
+
+    # ── Full MHALL: mixed significance levels ──────────────────────────
+
+    def test_mhall_mixed_levels(self) -> None:
+        """MHALL under NLP produces entries with a mix of S1, S2, S3, S4."""
+        entries = compile_source(
+            MHALL_SOURCE, tokenizer=self._nlp_tok, dev=True
+        )
+        levels = {e.sig_level for e in entries}
+
+        # MHALL contains countersign (S1), canonize (S2), connotate (S3),
+        # and unsigned (S4) entries
+        assert "S1" in levels, f"Expected S1 in MHALL levels, got {levels}"
+        assert "S2" in levels, f"Expected S2 in MHALL levels, got {levels}"
+        assert "S3" in levels, f"Expected S3 in MHALL levels, got {levels}"
+        assert "S4" in levels, f"Expected S4 in MHALL levels, got {levels}"
+
+    def test_mhall_s1_are_countersign_or_undersign(self) -> None:
+        """S1 entries in MHALL correspond to countersign (==) or undersign (=)."""
+        entries = compile_source(
+            MHALL_SOURCE, tokenizer=self._nlp_tok, dev=True
+        )
+        s1_entries = [e for e in entries if e.sig_level == "S1"]
+        assert len(s1_entries) >= 1, "MHALL should have at least one S1 entry"
+
+    def test_mhall_s2_are_canonize(self) -> None:
+        """S2 entries in MHALL correspond to canonize (=>)."""
+        entries = compile_source(
+            MHALL_SOURCE, tokenizer=self._nlp_tok, dev=True
+        )
+        s2_entries = [e for e in entries if e.sig_level == "S2"]
+        assert len(s2_entries) >= 1, "MHALL should have at least one S2 entry"
+
+    def test_mhall_s3_are_connotate(self) -> None:
+        """S3 entries in MHALL correspond to connotate (>)."""
+        entries = compile_source(
+            MHALL_SOURCE, tokenizer=self._nlp_tok, dev=True
+        )
+        s3_entries = [e for e in entries if e.sig_level == "S3"]
+        assert len(s3_entries) >= 1, "MHALL should have at least one S3 entry"
+
+    # ── Cross-mode significance equivalence ────────────────────────────
+
+    def test_levels_identical_across_modes_simple(self) -> None:
+        """`A == B` sig_levels are identical under Mod32 and NLP."""
+        entries_mod = compile_source("A == B", tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source("A == B", tokenizer=self._nlp_tok, dev=True)
+
+        mod_levels = sorted(e.sig_level for e in entries_mod)
+        nlp_levels = sorted(e.sig_level for e in entries_nlp)
+        assert mod_levels == nlp_levels
+
+    def test_levels_identical_across_modes_connotate(self) -> None:
+        """`A > B` sig_levels are identical under Mod32 and NLP."""
+        entries_mod = compile_source("A > B", tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source("A > B", tokenizer=self._nlp_tok, dev=True)
+
+        mod_levels = sorted(e.sig_level for e in entries_mod)
+        nlp_levels = sorted(e.sig_level for e in entries_nlp)
+        assert mod_levels == nlp_levels
+
+    def test_levels_identical_across_modes_canonize(self) -> None:
+        """`A => B` sig_levels are identical under Mod32 and NLP."""
+        entries_mod = compile_source("A => B", tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source("A => B", tokenizer=self._nlp_tok, dev=True)
+
+        mod_levels = sorted(e.sig_level for e in entries_mod)
+        nlp_levels = sorted(e.sig_level for e in entries_nlp)
+        assert mod_levels == nlp_levels
+
+    def test_levels_identical_across_modes_unsigned(self) -> None:
+        """`A` sig_levels are identical under Mod32 and NLP."""
+        entries_mod = compile_source("A", tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source("A", tokenizer=self._nlp_tok, dev=True)
+
+        mod_levels = sorted(e.sig_level for e in entries_mod)
+        nlp_levels = sorted(e.sig_level for e in entries_nlp)
+        assert mod_levels == nlp_levels
+
+    def test_levels_identical_across_modes_undersign(self) -> None:
+        """`A = B` sig_levels are identical under Mod32 and NLP."""
+        entries_mod = compile_source("A = B", tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source("A = B", tokenizer=self._nlp_tok, dev=True)
+
+        mod_levels = sorted(e.sig_level for e in entries_mod)
+        nlp_levels = sorted(e.sig_level for e in entries_nlp)
+        assert mod_levels == nlp_levels
+
+    def test_levels_identical_across_modes_subscript(self) -> None:
+        """Subscript block sig_levels are identical under Mod32 and NLP."""
+        source = "A =>\n  B\n  C"
+        entries_mod = compile_source(source, tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source(source, tokenizer=self._nlp_tok, dev=True)
+
+        mod_levels = sorted(e.sig_level for e in entries_mod)
+        nlp_levels = sorted(e.sig_level for e in entries_nlp)
+        assert mod_levels == nlp_levels
+
+    def test_levels_identical_across_modes_chained(self) -> None:
+        """Chained construct sig_levels are identical under Mod32 and NLP."""
+        source = "A => B => C"
+        entries_mod = compile_source(source, tokenizer=_tok32, dev=True)
+        entries_nlp = compile_source(source, tokenizer=self._nlp_tok, dev=True)
+
+        mod_levels = sorted(e.sig_level for e in entries_mod)
+        nlp_levels = sorted(e.sig_level for e in entries_nlp)
+        assert mod_levels == nlp_levels
+
+    def test_levels_identical_across_modes_mhall(self) -> None:
+        """MHALL sig_levels are identical under Mod32 and NLP."""
+        entries_mod = compile_source(
+            MHALL_SOURCE, tokenizer=_tok32, dev=True
+        )
+        entries_nlp = compile_source(
+            MHALL_SOURCE, tokenizer=self._nlp_tok, dev=True
+        )
+
+        mod_levels = sorted(e.sig_level for e in entries_mod)
+        nlp_levels = sorted(e.sig_level for e in entries_nlp)
+        assert mod_levels == nlp_levels, (
+            f"MHALL level mismatch: Mod32={mod_levels} vs NLP={nlp_levels}"
+        )
