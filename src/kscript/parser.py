@@ -16,6 +16,7 @@ and skipped between constructs and at construct boundaries.
 
 from .ast import (
     Block,
+    Comment,
     Construct,
     ConstructItem,
     KScriptFile,
@@ -164,11 +165,8 @@ class Parser:
         return None
 
     def _skip_insignificant(self) -> None:
-        """Skip NEWLINE and COMMENT tokens."""
-        while not self._at_end() and (
-            self._peek().type == TokenType.NEWLINE
-            or self._peek().type == TokenType.COMMENT
-        ):
+        """Skip NEWLINE tokens."""
+        while not self._at_end() and self._peek().type == TokenType.NEWLINE:
             self._advance()
 
     # -- Token stream ---------------------------------------------------------
