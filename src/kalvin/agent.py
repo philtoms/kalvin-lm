@@ -37,7 +37,7 @@ from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.model import Model
-from kalvin.signature import is_literal_node, make_signature
+from kalvin.signature import is_literal_node, make_signature, node_to_sig
 
 # ── KAgentAdapter Protocol ─────────────────────────────────────────────
 
@@ -356,7 +356,7 @@ class KAgent:
         expected_sig = make_signature(kline.nodes)
         if kline.signature == expected_sig:
             all_resolved = all(
-                is_literal_node(n) or self._model.find(n) is not None
+                is_literal_node(n) or self._model.find(node_to_sig(n)) is not None
                 for n in kline.nodes
             )
             if all_resolved:
@@ -389,7 +389,7 @@ class KAgent:
             and len(kline.nodes) == 1
             and not is_literal_node(kline.nodes[0])
             and self._model.find(kline.signature) is not None
-            and self._model.find(kline.nodes[0]) is not None):
+            and self._model.find(node_to_sig(kline.nodes[0])) is not None):
             self._model.add_ltm(kline)
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
@@ -400,7 +400,7 @@ class KAgent:
         # the graph from the signature's context.
         if (len(kline.nodes) == 1
             and not is_literal_node(kline.nodes[0])
-            and self._model.find(kline.nodes[0]) is None
+            and self._model.find(node_to_sig(kline.nodes[0])) is None
             and self._model.find(kline.signature) is not None):
             if self._resolve_unknown_via_graph(kline.signature, kline.nodes[0]):
                 # Unknown node grounded via graph expansion.

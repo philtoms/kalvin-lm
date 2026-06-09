@@ -13,7 +13,7 @@ from typing import Callable, Iterator
 
 from kalvin.kline import KLine, KSig
 from kalvin.stm import STM
-from kalvin.signature import make_signature, signifies, is_literal_node
+from kalvin.signature import make_signature, signifies, is_literal_node, node_to_sig
 
 
 class KLineStore:
@@ -349,7 +349,7 @@ class Model:
 
     def resolve(self, node: int) -> KLine | None:
         """Resolve a node value to a KLine."""
-        return self.find(node)
+        return self.find(node_to_sig(node))
 
     def query_expand(self, kline: KLine, depth: int = 2) -> list[KLine]:
         """Expand graph from kline up to *depth* levels.
@@ -382,7 +382,7 @@ class Model:
             return
 
         for node in kline.nodes:
-            child = self.find(node)
+            child = self.find(node_to_sig(node))
             if child is not None:
                 results.append(child)
                 self._query_expand_inner(child, max_depth, current_depth + 1, visited, results)
@@ -398,7 +398,7 @@ class Model:
         if node in visited:
             return
         visited.add(node)
-        kline = self.find(node)
+        kline = self.find(node_to_sig(node))
         if kline is None:
             return
         for child_node in kline.nodes:

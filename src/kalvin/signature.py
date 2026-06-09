@@ -33,6 +33,35 @@ LITERAL_MASK = 0xFFFF_FFFF
 # (low 32 bits) are excluded to keep signatures vocabulary-independent.
 NLP_TYPE_MASK = 0xFFFF_FFFF_0000_0000
 
+# ── BPE token mask ────────────────────────────────────────────────────────
+# Low 32 bits — masks the BPE token ID portion of an NLP-BPE node.
+BPE_TOKEN_MASK = 0xFFFF_FFFF
+
+
+def node_to_sig(node: int) -> int:
+    """Convert a node value to its signature-equivalent form.
+
+    Used when a raw node value is used as a model lookup key (e.g.
+    ``model.find(node)``). The model indexes klines by their signature,
+    so the lookup key must be in signature form.
+
+    Three cases:
+      - Literal nodes → 1 (bit 0: literal-content flag).
+      - NLP-BPE nodes → NLP type bits only (high 32), BPE ID masked out.
+      - Mod32 packed nodes → full value (node == signature).
+
+    Args:
+        node: A uint64 node value.
+
+    Returns:
+        The signature-equivalent value for model lookup.
+    """
+    if is_literal_node(node):
+        return 1  # bit 0: literal-content flag
+    if is_nlp_node(node):
+        return node & NLP_TYPE_MASK  # NLP type bits only (high 32)
+    return node  # Mod32 packed: full value
+
 
 def is_literal_node(node: int) -> bool:
     """Test whether a node carries the literal mask.
@@ -81,11 +110,8 @@ def is_nlp_node(node: int) -> bool:
 def make_signature(nodes: Sequence[int]) -> int:
     """Produce a signature from a sequence of nodes.
 
-    Three-way branch per node:
-      - Literal nodes contribute bit 0 only (literal-content flag).
-      - NLP-BPE nodes contribute only their NLP type bits (high 32),
-        masking out BPE token IDs to keep signatures vocabulary-independent.
-      - Mod32 packed nodes contribute their full value via OR-reduction.
+    Uses ``node_to_sig()`` to extract the signature contribution of each node,
+    then OR-reduces them into a single uint64.
 
     Args:
         nodes: Sequence of uint64 node values.
@@ -95,12 +121,7 @@ def make_signature(nodes: Sequence[int]) -> int:
     """
     sig = 0
     for node in nodes:
-        if is_literal_node(node):
-            sig |= 1                          # bit 0: literal-content flag
-        elif is_nlp_node(node):
-            sig |= (node & NLP_TYPE_MASK)     # NLP type bits only (high 32)
-        else:
-            sig |= node                       # Mod32 packed: full value
+        sig |= node_to_sig(node)
     return sig
 
 
