@@ -5,12 +5,14 @@ Grammar (left recursion eliminated):
     script ::= construct+
     construct ::= block | literal | comment | primary_construct+ ( "=>" construct )?
     block ::= <INDENT> construct+ <DEDENT>
-    primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
+    primary_construct ::= sig ( inline_comment )? ( ( "==" | ">" | "=" ) node ( inline_comment )? )?
     node ::= sig | literal
     sig ::= [A-Z]+
     literal ::= ![A-Z]+
     comment ::= "(" ... ")"
 
+Inline comments can appear on either side of a primary construct:
+after the sig (left-side) or after the node (right-side).
 NEWLINE and COMMENT tokens are treated as insignificant whitespace
 and skipped between constructs and at construct boundaries.
 """
@@ -89,7 +91,7 @@ ConstructItem: TypeAlias = "PrimaryConstruct | Literal | Comment"
 
 @dataclass
 class PrimaryConstruct:
-    """primary_construct ::= sig ( ( "==" | ">" | "=" ) node )?
+    """primary_construct ::= sig ( inline_comment )? ( ( "==" | ">" | "=" ) node ( inline_comment )? )?
 
     A primary construct with optional inline operator.
 
@@ -99,12 +101,14 @@ class PrimaryConstruct:
         sig: The signature that owns this construct
         op: The inline operator (COUNTERSIGN, CONNOTATE, UNDERSIGN, UNSIGNED), or None
         node: The node on the right side of the operator, if any
-        inline_comment: An optional comment attached to this construct
+        inline_comment: An optional comment attached to the sig (left) side
+        node_inline_comment: An optional comment attached to the node (right) side
     """
     sig: Signature
     op: TokenType | None = None
     node: Node | None = None
     inline_comment: "Comment | None" = None
+    node_inline_comment: "Comment | None" = None
 
 
 @dataclass

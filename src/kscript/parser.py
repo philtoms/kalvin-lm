@@ -5,7 +5,7 @@ Grammar (left recursion eliminated):
     script ::= construct+
     construct ::= block | literal | comment | primary_construct+ ( "=>" construct )?
     block ::= <INDENT> construct+ <DEDENT>
-    primary_construct ::= sig ( inline_comment )? ( ( "==" | ">" | "=" ) node )?
+    primary_construct ::= sig ( inline_comment )? ( ( "==" | ">" | "=" ) node ( inline_comment )? )?
     node ::= sig | literal
     sig ::= [A-Z]+
     literal ::= ![A-Z]+
@@ -116,11 +116,11 @@ class Parser:
         self._expect(TokenType.DEDENT)
         return Construct(Block(constructs))
 
-    # primary_construct ::= sig ( inline_comment )? ( ( "==" | ">" | "=" ) node )?
+    # primary_construct ::= sig ( inline_comment )? ( ( "==" | ">" | "=" ) node ( inline_comment )? )?
     def _parse_primary_construct(self) -> PrimaryConstruct:
         sig = self._parse_sig()
 
-        # Check for inline comment immediately after signature
+        # Check for inline comment immediately after signature (left-side)
         inline_comment = None
         if self._check(TokenType.COMMENT):
             tok = self._advance()
@@ -129,7 +129,12 @@ class Parser:
         op = self._try_inline_op()
         if op is not None:
             node = self._parse_node()
-            return PrimaryConstruct(sig, op, node, inline_comment=inline_comment)
+            # Check for inline comment immediately after node (right-side)
+            node_inline_comment = None
+            if self._check(TokenType.COMMENT) and isinstance(node, Signature):
+                tok = self._advance()
+                node_inline_comment = Comment(text=tok.value, line=tok.line, column=tok.column)
+            return PrimaryConstruct(sig, op, node, inline_comment=inline_comment, node_inline_comment=node_inline_comment)
 
         return PrimaryConstruct(sig, inline_comment=inline_comment)
 

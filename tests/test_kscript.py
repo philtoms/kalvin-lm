@@ -332,6 +332,97 @@ class TestCommentParsing:
         for primary in construct.inner:
             assert primary.inline_comment is None
 
+    def test_inline_comment_on_node_side(self) -> None:
+        """A = D(et) → PrimaryConstruct with node_inline_comment containing (et)."""
+        tokens = Lexer("A = D(et)").tokenize()
+        kfile = Parser(tokens).parse()
+        construct = kfile.scripts[0].constructs[0]
+        assert isinstance(construct.inner, list)
+        primary = construct.inner[0]
+        assert primary.sig.id == "A"
+        assert primary.op == TokenType.UNDERSIGN
+        assert primary.node is not None
+        assert primary.node.id == "D"
+        assert primary.node_inline_comment is not None
+        assert primary.node_inline_comment.text == "(et)"
+        assert primary.inline_comment is None
+
+    def test_inline_comment_on_both_sides(self) -> None:
+        """S(ubject) = D(et) → inline_comment on sig AND node_inline_comment on node."""
+        tokens = Lexer("S(ubject) = D(et)").tokenize()
+        kfile = Parser(tokens).parse()
+        construct = kfile.scripts[0].constructs[0]
+        assert isinstance(construct.inner, list)
+        primary = construct.inner[0]
+        assert primary.sig.id == "S"
+        assert primary.inline_comment is not None
+        assert primary.inline_comment.text == "(ubject)"
+        assert primary.node is not None
+        assert primary.node.id == "D"
+        assert primary.node_inline_comment is not None
+        assert primary.node_inline_comment.text == "(et)"
+
+    def test_inline_comment_on_node_in_block(self) -> None:
+        """Full MHALL subscript example — verify D(et) and M(od) in nested block."""
+        source = """MHALL == SVO =>
+  S(ubject) = M
+  V = H
+  O = ALL =>
+    A = D(et)
+    L = M(od)
+    L > O"""
+        tokens = Lexer(source).tokenize()
+        kfile = Parser(tokens).parse()
+
+        # Navigate into nested subscript block
+        top = kfile.scripts[0].constructs[0]
+        svo_block = top.chain_right.inner
+        assert isinstance(svo_block, Block)
+
+        # SVO block has 1 construct with 3 primaries grouped together (S=M, V=H, O=ALL)
+        svo_construct = svo_block.constructs[0]
+        assert isinstance(svo_construct.inner, list)
+        # Third primary: O = ALL (index 2)
+        o_primary = svo_construct.inner[2]
+        assert o_primary.sig.id == "O"
+        assert o_primary.node.id == "ALL"
+
+        # Inner block from chain_right
+        all_block = svo_construct.chain_right.inner
+        assert isinstance(all_block, Block)
+
+        # Inner block has 1 construct with 3 primaries grouped: A=D(et), L=M(od), L>O
+        all_construct = all_block.constructs[0]
+        assert isinstance(all_construct.inner, list)
+
+        # A = D(et)
+        d_primary = all_construct.inner[0]
+        assert d_primary.sig.id == "A"
+        assert d_primary.node.id == "D"
+        assert d_primary.node_inline_comment is not None
+        assert d_primary.node_inline_comment.text == "(et)"
+
+        # L = M(od)
+        m_primary = all_construct.inner[1]
+        assert m_primary.sig.id == "L"
+        assert m_primary.node.id == "M"
+        assert m_primary.node_inline_comment is not None
+        assert m_primary.node_inline_comment.text == "(od)"
+
+    def test_no_node_inline_comment_when_no_op(self) -> None:
+        """Unsigned sig D(et) uses sig-side inline_comment, not node_inline_comment."""
+        tokens = Lexer("D(et)").tokenize()
+        kfile = Parser(tokens).parse()
+        construct = kfile.scripts[0].constructs[0]
+        assert isinstance(construct.inner, list)
+        primary = construct.inner[0]
+        assert primary.sig.id == "D"
+        assert primary.inline_comment is not None
+        assert primary.inline_comment.text == "(et)"
+        assert primary.node_inline_comment is None
+        assert primary.op is None
+        assert primary.node is None
+
 
 # =============================================================================
 # 4. Compiler basic tests

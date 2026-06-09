@@ -36,6 +36,7 @@ from .ast import (
     KScriptFile,
     Literal,
     PrimaryConstruct,
+    Signature,
 )
 from .symbol_table import NLPSymbolTable
 
@@ -128,6 +129,15 @@ class BindingResolver:
             self._try_claim_word_list(sig, table)
         # Single-char sig without inline: no action.
         # Resolution happens at encoding time via table.resolve().
+
+        # Node-side inline comment: D(et) on right side of A = D(et)
+        if pc.node_inline_comment is not None and isinstance(pc.node, Signature):
+            node_id = pc.node.id
+            word = self._extract_inline_word(node_id, pc.node_inline_comment)
+            for char in node_id:
+                table.bind(char, word)
+            # Clear any pending word list (inline binding takes precedence)
+            table.current_scope().pending_comment = None
 
     # ------------------------------------------------------------------
     # Helpers
