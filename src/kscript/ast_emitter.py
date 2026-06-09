@@ -13,6 +13,7 @@ from typing import NamedTuple
 
 from .ast import (
     Block,
+    Comment,
     Construct,
     ConstructItem,
     KScriptFile,
@@ -68,6 +69,9 @@ class ASTEmitter:
         if isinstance(construct.inner, Block):
             for c in construct.inner.constructs:
                 self._emit_construct(c)
+            return
+
+        if isinstance(construct.inner, Comment):
             return
 
         if isinstance(construct.inner, Literal):

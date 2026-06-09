@@ -4,12 +4,9 @@ Tests the pure AST logic of walking a parsed KScript AST and collecting
 SymbolicEntry tuples, without any tokenizer involvement.
 """
 
-import pytest
-
 from kscript.ast_emitter import ASTEmitter, SymbolicEntry
 from kscript.lexer import Lexer
 from kscript.parser import Parser
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -212,3 +209,33 @@ class TestASTEmitterSingletonUnwrap:
         assert len(can) == 1
         assert can[0].nodes == ["B", "C"]
         assert isinstance(can[0].nodes, list)
+
+
+# =============================================================================
+# 10. Comment constructs
+# =============================================================================
+
+
+class TestASTEmitterComment:
+    def test_standalone_comment_produces_no_entries(self) -> None:
+        """A standalone comment construct should be silently skipped."""
+        entries = emit_symbolic("(Mary had a little lamb)")
+        assert entries == []
+
+    def test_comment_mixed_with_real_constructs(self) -> None:
+        """Comments interleaved with real constructs should not produce
+        entries or crash."""
+        entries = emit_symbolic("A\n(Mary had a little lamb)\nB")
+        unsigned = find_entries(entries, "UNSIGNED")
+        assert len(unsigned) == 2
+        assert SymbolicEntry("A", None, "UNSIGNED") in unsigned
+        assert SymbolicEntry("B", None, "UNSIGNED") in unsigned
+        # No comment-derived entries
+        assert all("Mary" not in str(e) for e in entries)
+
+    def test_inline_comment_on_primary_still_works(self) -> None:
+        """Inline comments on primary constructs should not affect emission."""
+        entries = emit_symbolic("(note) A == B")
+        cs = find_entries(entries, "COUNTERSIGN")
+        assert SymbolicEntry("A", "B", "COUNTERSIGN") in cs
+        assert SymbolicEntry("B", "A", "COUNTERSIGN") in cs
