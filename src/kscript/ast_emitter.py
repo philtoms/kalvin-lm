@@ -211,6 +211,8 @@ class ASTEmitter:
             for c in construct.inner.constructs:
                 items.extend(self._flatten_to_items(c))
             return items
+        if isinstance(construct.inner, Comment):
+            return []  # Comments are handled by BindingResolver, not emitted
         if isinstance(construct.inner, Literal):
             return [construct.inner]
         return construct.inner

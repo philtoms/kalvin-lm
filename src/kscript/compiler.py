@@ -96,7 +96,11 @@ class Compiler:
         else:
             self._symbol_table = None
 
-        emitter = ASTEmitter(dev=self.dev, skip_mcs=not self.tokenizer.supports_mcs)
+        emitter = ASTEmitter(
+            dev=self.dev,
+            skip_mcs=not self.tokenizer.supports_mcs,
+            symbol_table=self._symbol_table,
+        )
         symbolic = emitter.emit(file)
 
         encoder = TokenEncoder(tokenizer=self.tokenizer, dev=self.dev)
