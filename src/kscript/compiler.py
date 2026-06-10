@@ -1,14 +1,15 @@
 """KScript compiler with construct binding semantics.
 
 This module is a thin orchestrator that wires together:
-  - BindingResolver (NLP mode only): walks AST comments → NLPSymbolTable
+  - BindingScope (NLP mode only): created with a root scope, passed to
+    ASTEmitter which populates it during the walk
   - ASTEmitter: walks AST and yields symbolic entries (sig_str, nodes_strs, op)
   - TokenEncoder: converts symbolic entries to tokenized CompiledEntry objects
 
-In Mod32/Mod64 mode (``supports_mcs is True``), the binding resolver is
-completely skipped — no imports, no symbol table construction.  In NLP mode
-(``supports_mcs is False``), the resolver runs before emission and stores
-its ``NLPSymbolTable`` on the Compiler instance for downstream consumers.
+In Mod32/Mod64 mode (``supports_mcs is True``), no BindingScope is created.
+In NLP mode (``supports_mcs is False``), a BindingScope with a root scope is
+created and passed to the ASTEmitter, which resolves single-character bindings
+inline during its single AST walk.
 
 Spec ref: @kscript-nlp-binding §1.1 (pipeline diagram), §1.2 (mode selection)
 
@@ -22,7 +23,7 @@ Op mappings (using abbreviated property chains):
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TypeAlias
 
 from kalvin.kline import KLine, KNodes, KSig
 from kalvin.abstract import KTokenizer
@@ -30,8 +31,7 @@ from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.expand import D_MAX
 from kalvin.signature import is_literal_node
 
-if TYPE_CHECKING:
-    from .symbol_table import NLPSymbolTable
+from .binding_scope import BindingScope
 
 from .ast import (
     Block,
@@ -66,43 +66,40 @@ class Compiler:
 
     Thin orchestrator: ASTEmitter walks the AST, TokenEncoder converts
     symbolic entries to token IDs.  In NLP mode (``supports_mcs is False``),
-    the BindingResolver runs first to build an NLPSymbolTable from comment
-    word lists.
+    a BindingScope is created with a root scope and passed to the ASTEmitter,
+    which resolves single-character bindings inline during its walk.
     """
 
     def __init__(self, tokenizer: KTokenizer | None = None, dev: bool = False):
         self.entries: list[CompiledEntry] = []
         self.tokenizer = tokenizer or Mod32Tokenizer()
         self.dev = dev
-        self._symbol_table: NLPSymbolTable | None = None
+        self._scope: BindingScope | None = None
 
     @property
-    def symbol_table(self) -> NLPSymbolTable | None:
-        """The NLP symbol table populated during compilation.
+    def scope(self) -> BindingScope | None:
+        """The BindingScope used during compilation.
 
-        ``None`` in Mod32/Mod64 mode; populated after ``compile()`` in NLP mode.
+        ``None`` in Mod32/Mod64 mode; populated with a root scope after
+        ``compile()`` in NLP mode.
         """
-        return self._symbol_table
+        return self._scope
 
     def compile(self, file: KScriptFile) -> list[CompiledEntry]:
         """Compile a KScriptFile to entries."""
-        # NLP mode: run binding resolver to build symbol table from comments.
-        # Mod32/Mod64 mode: skip entirely — no resolver import, no symbol table.
+        # NLP mode: create BindingScope with root scope for the emitter.
+        # Mod32/Mod64 mode: no scope needed.
         if not self.tokenizer.supports_mcs:
-            from .binding_resolver import BindingResolver
-
-            resolver = BindingResolver()
-            self._symbol_table = resolver.resolve(file)
+            self._scope = BindingScope()
+            self._scope.push_scope()  # root scope for the emitter to populate
         else:
-            self._symbol_table = None
+            self._scope = None
 
         emitter = ASTEmitter(
             dev=self.dev,
             skip_mcs=not self.tokenizer.supports_mcs,
-            symbol_table=self._symbol_table,
+            scope=self._scope,
         )
-        if self._symbol_table is not None:
-            self._symbol_table.rewind()
         symbolic = emitter.emit(file)
 
         encoder = TokenEncoder(tokenizer=self.tokenizer, dev=self.dev)
