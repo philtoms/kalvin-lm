@@ -12,7 +12,7 @@ matching with an occurrence counter for disambiguation.
 Key rules (spec @kscript-nlp-binding v2.0 §3 rules 2–3, §7.2):
 
 - First-letter matching: a word matches a character when the first letter
-  of the word equals the character (case-insensitive).
+  of the word equals the character (case-sensitive).
 - Occurrence counter: each scope maintains an independent counter per
   character.  The counter **only** increments on ambiguous matches (when
   multiple words in the same list start with the same letter).  Single
@@ -106,7 +106,7 @@ class BindingScope:
         Walks the scope stack from innermost to outermost.  For each scope,
         iterates through its word lists in reverse order (most-recent-first).
         For each word list, collects words whose first letter matches
-        ``char`` (case-insensitive).  Uses the scope's occurrence counter for
+        ``char`` (case-sensitive).  Uses the scope's occurrence counter for
         disambiguation:
 
         - **Single match** (unambiguous): returns the word at the current
@@ -149,18 +149,17 @@ class BindingScope:
             The matched word, or ``None``.
         """
         for word_list in reversed(scope.word_lists):
-            matches = [w for w in word_list if w and w[0].lower() == char.lower()]
+            matches = [w for w in word_list if w and w[0] == char]
             if not matches:
                 continue
 
-            key = char.lower()
-            counter = scope.counters.get(key, 0)
+            counter = scope.counters.get(char, 0)
             is_ambiguous = len(matches) > 1
 
             if counter < len(matches):
                 word = matches[counter]
                 if is_ambiguous:
-                    scope.counters[key] = counter + 1
+                    scope.counters[char] = counter + 1
                 return word
             # Counter exceeded available matches in this word list;
             # continue to the next (older) word list in this scope.

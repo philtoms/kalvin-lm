@@ -1,15 +1,17 @@
-"""KScript compiler with construct binding semantics.
+"""KScript compiler — single-pass orchestrator.
 
-This module is a thin orchestrator that wires together:
-  - BindingScope (NLP mode only): created with a root scope, passed to
-    ASTEmitter which populates it during the walk
-  - ASTEmitter: walks AST and yields symbolic entries (sig_str, nodes_strs, op)
-  - TokenEncoder: converts symbolic entries to tokenized CompiledEntry objects
+This module wires together three stages in a single pass:
 
-In Mod32/Mod64 mode (``supports_mcs is True``), no BindingScope is created.
-In NLP mode (``supports_mcs is False``), a BindingScope with a root scope is
-created and passed to the ASTEmitter, which resolves single-character bindings
-inline during its single AST walk.
+  1. **Parse**: Lexer + Parser produce a KScriptFile AST.
+  2. **Emit**: ASTEmitter walks the AST and yields symbolic entries
+     (sig_str, nodes_strs, op).  In NLP mode (``supports_mcs is False``),
+     a ``BindingScope`` is created inline and passed to the emitter so
+     it can resolve single-character bindings during its walk.
+  3. **Encode**: TokenEncoder converts symbolic entries to tokenized
+     CompiledEntry objects.
+
+In Mod32/Mod64 mode (``supports_mcs is True``), no BindingScope is created
+and the emitter operates in pure backward-compatible mode.
 
 Spec ref: @kscript-nlp-binding §1.1 (pipeline diagram), §1.2 (mode selection)
 
@@ -23,15 +25,11 @@ Op mappings (using abbreviated property chains):
 
 from __future__ import annotations
 
-from typing import TypeAlias
-
 from kalvin.kline import KLine, KNodes, KSig
 from kalvin.abstract import KTokenizer
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.expand import D_MAX
 from kalvin.signature import is_literal_node
-
-from .binding_scope import BindingScope
 
 from .ast import (
     Block,
@@ -44,6 +42,7 @@ from .ast import (
     Script,
     Signature,
 )
+from .binding_scope import BindingScope
 from .parser import Parser
 from .token import TokenType
 
@@ -64,41 +63,29 @@ __all__ = [
 class Compiler:
     """Compiles KScript AST to CompiledEntry list.
 
-    Thin orchestrator: ASTEmitter walks the AST, TokenEncoder converts
-    symbolic entries to token IDs.  In NLP mode (``supports_mcs is False``),
-    a BindingScope is created with a root scope and passed to the ASTEmitter,
-    which resolves single-character bindings inline during its walk.
+    Single-pass orchestrator: ASTEmitter walks the AST (with optional
+    BindingScope for NLP mode), TokenEncoder converts symbolic entries
+    to token IDs.
     """
 
     def __init__(self, tokenizer: KTokenizer | None = None, dev: bool = False):
         self.entries: list[CompiledEntry] = []
         self.tokenizer = tokenizer or Mod32Tokenizer()
         self.dev = dev
-        self._scope: BindingScope | None = None
-
-    @property
-    def scope(self) -> BindingScope | None:
-        """The BindingScope used during compilation.
-
-        ``None`` in Mod32/Mod64 mode; populated with a root scope after
-        ``compile()`` in NLP mode.
-        """
-        return self._scope
 
     def compile(self, file: KScriptFile) -> list[CompiledEntry]:
         """Compile a KScriptFile to entries."""
-        # NLP mode: create BindingScope with root scope for the emitter.
-        # Mod32/Mod64 mode: no scope needed.
+        # NLP mode: create a BindingScope with a root scope for inline
+        # resolution during emission.  Mod32/Mod64 mode: no scope needed.
+        scope = None
         if not self.tokenizer.supports_mcs:
-            self._scope = BindingScope()
-            self._scope.push_scope()  # root scope for the emitter to populate
-        else:
-            self._scope = None
+            scope = BindingScope()
+            scope.push_scope()  # Root scope (was done by BindingResolver)
 
         emitter = ASTEmitter(
             dev=self.dev,
             skip_mcs=not self.tokenizer.supports_mcs,
-            scope=self._scope,
+            scope=scope,
         )
         symbolic = emitter.emit(file)
 

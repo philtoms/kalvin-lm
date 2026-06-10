@@ -262,12 +262,12 @@ class TestEdgeCases:
         scope.add_word_list(["Mary", "had"])
         assert scope.resolve("Z") is None
 
-    def test_case_insensitive_first_letter(self) -> None:
-        """Lowercase 'm' matches 'Mary' (case-insensitive)."""
+    def test_case_sensitive_first_letter(self) -> None:
+        """Lowercase 'm' does NOT match 'Mary'."""
         scope = BindingScope()
         scope.push_scope()
         scope.add_word_list(["Mary"])
-        assert scope.resolve("m") == "Mary"
+        assert scope.resolve("m") is None
 
     def test_pop_empty_stack_raises(self) -> None:
         scope = BindingScope()
@@ -336,41 +336,3 @@ class TestEdgeCases:
         scope.push_scope()
 
         assert scope.resolve("A") == "Alpha"  # walks up 3 levels
-
-
-class TestCaseInsensitiveMatching:
-    """First-letter matching is case-insensitive."""
-
-    def test_uppercase_sig_matches_lowercase_word(self) -> None:
-        """resolve('H') matches 'had' — the core bug fix."""
-        scope = BindingScope()
-        scope.push_scope()
-        scope.add_word_list(["Mary", "had", "a", "little", "lamb"])
-        assert scope.resolve("H") == "had"
-        assert scope.resolve("M") == "Mary"
-        assert scope.resolve("A") == "a"
-        assert scope.resolve("L") == "little"
-
-    def test_uppercase_word_matches_lowercase_sig(self) -> None:
-        """resolve('m') matches 'Mary' — reverse direction."""
-        scope = BindingScope()
-        scope.push_scope()
-        scope.add_word_list(["Mary"])
-        assert scope.resolve("m") == "Mary"
-
-    def test_case_insensitive_counter_shared(self) -> None:
-        """resolve('H') and resolve('h') share the same counter slot."""
-        scope = BindingScope()
-        scope.push_scope()
-        scope.add_word_list(["hello", "happy"])
-        assert scope.resolve("H") == "hello"  # counter 0 → 1
-        assert scope.resolve("h") == "happy"  # counter 1 → 2
-        assert scope.resolve("H") is None  # counter 2, exhausted
-
-    def test_case_insensitive_ambiguous_disambiguation(self) -> None:
-        """Uppercase sig resolves through ambiguous matches with counter."""
-        scope = BindingScope()
-        scope.push_scope()
-        scope.add_word_list(["little", "lamb"])
-        assert scope.resolve("L") == "little"  # counter 0 → 1
-        assert scope.resolve("L") == "lamb"  # counter 1 → 2

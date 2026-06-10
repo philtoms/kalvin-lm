@@ -1,8 +1,18 @@
-"""Integration tests for KScript compiler NLP binding resolver.
+"""Integration tests for KScript compiler NLP binding resolution.
 
 Tests NB-18 (Mod32/Mod64 unchanged) and NB-19 (same source compiles
-under both modes).  The BindingResolver is wired conditionally into
+under both modes).  The BindingScope is wired conditionally into
 Compiler.compile() — only when tokenizer.supports_mcs is False.
+
+Inline comments (e.g. S(ubject)) are resolved by the ASTEmitter in ALL
+modes — the inline comment is an explicit binding at point of use.
+Scope-based resolution (block comments) only activates in NLP mode.
+
+Pipeline (v2.0):
+  Compiler creates BindingScope (NLP mode) → ASTEmitter resolves inline
+  → TokenEncoder encodes to CompiledEntry objects.
+
+No BindingResolver, NLPSymbolTable, or symbol_table property references.
 
 Spec ref: @kscript-nlp-binding §1.1 (pipeline), §10 (test matrix)
 """
@@ -77,43 +87,40 @@ def _get_nlp_tokenizer():
 class TestNB18Mod32Unchanged:
     """Mod32 compilation produces identical results to baseline.
 
-    The BindingResolver must not affect Mod32 (supports_mcs is True) in
-    any way — no resolver import, no symbol table, no changed output.
+    The BindingScope must not affect Mod32 (supports_mcs is True) in
+    any way — no scope creation, no changed output.  Inline comments
+    still resolve (that's ASTEmitter behavior, not scope-dependent).
     """
 
     def test_simple_countersign_mod32(self) -> None:
         """A == B under Mod32 produces identical entries."""
-        entries, compiler = _compile_with_compiler("A == B", _tok32)
+        entries, _ = _compile_with_compiler("A == B", _tok32)
         md = _entries_to_multidict(entries, _tok32)
 
         assert _has_node(md, "A", ["B"])
         assert _has_node(md, "B", ["A"])
-        assert compiler.scope is None
 
     def test_canonize_mod32(self) -> None:
         """A => B under Mod32 produces identical entries."""
-        entries, compiler = _compile_with_compiler("A => B", _tok32)
+        entries, _ = _compile_with_compiler("A => B", _tok32)
         md = _entries_to_multidict(entries, _tok32)
 
         assert _has_node(md, "A", ["B"])
-        assert compiler.scope is None
 
     def test_connotate_mod32(self) -> None:
         """A > B under Mod32 produces identical entries."""
-        entries, compiler = _compile_with_compiler("A > B", _tok32)
+        entries, _ = _compile_with_compiler("A > B", _tok32)
         md = _entries_to_multidict(entries, _tok32)
 
         assert _has_node(md, "A", ["B"])
-        assert compiler.scope is None
 
     def test_subscript_block_mod32(self) -> None:
         """Subscript block under Mod32 produces identical entries."""
         source = "A =>\n  B\n  C"
-        entries, compiler = _compile_with_compiler(source, _tok32)
+        entries, _ = _compile_with_compiler(source, _tok32)
         md = _entries_to_multidict(entries, _tok32)
 
         assert _has_node(md, "A", ["B", "C"])
-        assert compiler.scope is None
 
     def test_compile_source_mod32(self) -> None:
         """compile_source() convenience function works unchanged under Mod32."""
@@ -134,36 +141,33 @@ class TestNB18Mod64Unchanged:
 
     def test_simple_countersign_mod64(self) -> None:
         """A == B under Mod64 produces identical entries."""
-        entries, compiler = _compile_with_compiler("A == B", _tok64)
+        entries, _ = _compile_with_compiler("A == B", _tok64)
         md = _entries_to_multidict(entries, _tok64)
 
         assert _has_node(md, "A", ["B"])
         assert _has_node(md, "B", ["A"])
-        assert compiler.scope is None
 
     def test_canonize_mod64(self) -> None:
         """A => B under Mod64 produces identical entries."""
-        entries, compiler = _compile_with_compiler("A => B", _tok64)
+        entries, _ = _compile_with_compiler("A => B", _tok64)
         md = _entries_to_multidict(entries, _tok64)
 
         assert _has_node(md, "A", ["B"])
-        assert compiler.scope is None
 
     def test_mcs_expansion_mod64(self) -> None:
         """MCS expansion under Mod64 produces identical entries."""
-        entries, compiler = _compile_with_compiler("ABC", _tok64)
+        entries, _ = _compile_with_compiler("ABC", _tok64)
         md = _entries_to_multidict(entries, _tok64)
 
         assert _has_node(md, "A", "")
         assert _has_node(md, "B", "")
         assert _has_node(md, "C", "")
         assert _has_node(md, "ABC", ["A", "B", "C"])
-        assert compiler.scope is None
 
     def test_complex_nested_mod64(self) -> None:
         """Complex nested script under Mod64 produces identical entries."""
         source = "MHALL == SVO =>\n  S = M\n  V = H\n  O = ALL =>\n    A > D\n    L > M\n    L > O"
-        entries, compiler = _compile_with_compiler(source, _tok64)
+        entries, _ = _compile_with_compiler(source, _tok64)
         md = _entries_to_multidict(entries, _tok64)
 
         assert _has_node(md, "M", ["S"])
@@ -171,7 +175,6 @@ class TestNB18Mod64Unchanged:
         assert _has_node(md, "A", ["D"])
         assert _has_node(md, "L", ["M"])
         assert _has_node(md, "L", ["O"])
-        assert compiler.scope is None
 
 
 # =============================================================================
@@ -182,81 +185,95 @@ class TestNB18Mod64Unchanged:
 class TestNB19SameSourceBothModes:
     """Same KScript source compiles without errors under both Mod32 and NLP.
 
-    Uses inline comments (e.g. S(ubject)) which are preserved in the AST
-    but inert in Mod32/Mod64 mode.  In NLP mode, the BindingResolver
-    processes them into an NLPSymbolTable.
+    Inline comments (e.g. S(ubject)) are resolved by the ASTEmitter in
+    all modes — they are explicit bindings at point of use, independent
+    of the BindingScope.  Scope-based resolution (block comments) only
+    activates in NLP mode.
     """
 
     def test_simple_undersign_mod32(self) -> None:
-        """S(ubject) = M compiles under Mod32 — inline comment resolved."""
-        entries, compiler = _compile_with_compiler("S(ubject) = M", _tok32)
+        """S(ubject) = M compiles under Mod32 — inline comment resolves."""
+        entries, _ = _compile_with_compiler("S(ubject) = M", _tok32)
         md = _entries_to_multidict(entries, _tok32)
 
-        # Inline comment is resolved by ASTEmitter regardless of mode
+        # Inline comment S(ubject) resolves to "Subject" in all modes
         assert _has_node(md, "M", "Subject")
-        assert compiler.scope is None
 
     def test_simple_undersign_mod64(self) -> None:
-        """S(ubject) = M compiles under Mod64 — inline comment resolved."""
-        entries, compiler = _compile_with_compiler("S(ubject) = M", _tok64)
+        """S(ubject) = M compiles under Mod64 — inline comment resolves."""
+        entries, _ = _compile_with_compiler("S(ubject) = M", _tok64)
         md = _entries_to_multidict(entries, _tok64)
 
-        # Inline comment is resolved by ASTEmitter regardless of mode
         assert _has_node(md, "M", "Subject")
-        assert compiler.scope is None
 
     def test_inline_comments_in_block_mod32(self) -> None:
         """Inline comments in subscript block compile under Mod32."""
         source = "MHALL == SVO =>\n  S(ubject) = M\n  V(erb) = H"
-        entries, compiler = _compile_with_compiler(source, _tok32)
+        entries, _ = _compile_with_compiler(source, _tok32)
         assert len(entries) > 0
-        assert compiler.scope is None
 
     def test_inline_comments_in_block_mod64(self) -> None:
         """Inline comments in subscript block compile under Mod64."""
         source = "MHALL == SVO =>\n  S(ubject) = M\n  V(erb) = H"
-        entries, compiler = _compile_with_compiler(source, _tok64)
+        entries, _ = _compile_with_compiler(source, _tok64)
         assert len(entries) > 0
-        assert compiler.scope is None
 
-    def test_inline_comments_resolved_in_mod32(self) -> None:
-        """NB-19: Inline comments are resolved in Mod32 mode.
+    def test_inline_comments_resolve_in_mod32(self) -> None:
+        """NB-19: Inline comments resolve to full words in Mod32.
 
-        Compiling S(ubject) = M under Mod32 produces resolved word "Subject"
-        — the inline comment is processed by ASTEmitter regardless of mode.
+        S(ubject) = M resolves "Subject" as the node value, even without
+        BindingScope — inline resolution is always active.
         """
         entries_with, _ = _compile_with_compiler("S(ubject) = M", _tok32)
+        entries_without, _ = _compile_with_compiler("S = M", _tok32)
+
         md_with = _entries_to_multidict(entries_with, _tok32)
-        assert _has_node(md_with, "M", "Subject")
+        md_without = _entries_to_multidict(entries_without, _tok32)
 
-    def test_inline_comments_resolved_in_mod64(self) -> None:
-        """NB-19: Inline comments are resolved in Mod64 mode."""
+        # Inline comment produces "Subject" instead of ["S"]
+        assert _has_node(md_with, "M", "Subject")
+        assert _has_node(md_without, "M", ["S"])
+
+    def test_inline_comments_resolve_in_mod64(self) -> None:
+        """NB-19: Inline comments resolve to full words in Mod64."""
         entries_with, _ = _compile_with_compiler("S(ubject) = M", _tok64)
-        md_with = _entries_to_multidict(entries_with, _tok64)
-        assert _has_node(md_with, "M", "Subject")
+        entries_without, _ = _compile_with_compiler("S = M", _tok64)
 
-    def test_complex_inline_comments_resolved_in_mod64(self) -> None:
-        """Complex subscript with inline comments produces resolved words in Mod64."""
+        md_with = _entries_to_multidict(entries_with, _tok64)
+        md_without = _entries_to_multidict(entries_without, _tok64)
+
+        assert _has_node(md_with, "M", "Subject")
+        assert _has_node(md_without, "M", ["S"])
+
+    def test_complex_inline_comments_mod64(self) -> None:
+        """Complex subscript with inline comments resolves in Mod64."""
         source = "MHALL == SVO =>\n  S(ubject) = M\n  V(erb) = H\n  O(bject) = ALL"
         entries, _ = _compile_with_compiler(source, _tok64)
         md = _entries_to_multidict(entries, _tok64)
 
-        # Inline comments resolved to full words
+        # Inline comments resolve in all modes — check sigs that don't get
+        # Mod64-packed (single-char sigs)
         assert _has_node(md, "M", "Subject")
         assert _has_node(md, "H", "Verb")
-        # O(bject) = ALL → ALL undersign O → but ALL is multi-char...
-        # At minimum verify entries were produced
-        assert len(entries) > 0
+
+        # Verify all entries are decodable (broader correctness check)
+        for entry in entries:
+            sig, nodes = entry.decode(_tok64)
+            assert isinstance(sig, str)
 
 
 # =============================================================================
-# NLP binding scope population (conditional on NLP availability)
+# NLP mode compilation — verify bindings flow through compiled entries
 # =============================================================================
 
 
 @_nlp_skip
-class TestNLPBindingScopePopulated:
-    """Verify NLP mode creates and populates the BindingScope.
+class TestNLPBindingInCompiledEntries:
+    """Verify NLP bindings flow through to compiled entries.
+
+    Replaces the old TestNLPSymbolTablePopulated which inspected
+    compiler.symbol_table.  Now verifies bindings by inspecting decoded
+    compiled entries — sig names, node values, and NLP signature bits.
 
     These tests skip if NLPTokenizer data files are not available.
     """
@@ -267,57 +284,10 @@ class TestNLPBindingScopePopulated:
         if self._nlp_tok is None:
             pytest.skip("NLPTokenizer data files not available")
 
-    def test_nlp_mode_creates_scope(self) -> None:
-        """NLP mode: compiling a source creates a BindingScope."""
-        source = "S(ubject) = M"
-        entries, compiler = _compile_with_compiler(source, self._nlp_tok)
-
-        assert compiler.scope is not None
-        assert len(entries) >= 1
-
-    def test_nlp_mode_inline_binding_in_entries(self) -> None:
-        """NLP mode: inline comment bindings are reflected in emitted entries."""
-        source = "S(ubject) = M"
-        entries, compiler = _compile_with_compiler(source, self._nlp_tok)
-
-        assert compiler.scope is not None
-        # Verify entries were produced and are decodable
-        for entry in entries:
-            sig, nodes = entry.decode(self._nlp_tok)
-            assert isinstance(sig, str)
-
-    def test_nlp_mode_multiple_inline_bindings(self) -> None:
-        """NLP mode: multiple inline comments compile without errors."""
-        source = "S(ubject) = M\nV(erb) = H"
-        entries, compiler = _compile_with_compiler(source, self._nlp_tok)
-
-        assert compiler.scope is not None
-        assert len(entries) >= 1
-        # All entries decodable
-        for entry in entries:
-            sig, nodes = entry.decode(self._nlp_tok)
-            assert isinstance(sig, str)
-
-    def test_nlp_mode_complex_subscript_bindings(self) -> None:
-        """NLP mode: inline comments in subscript blocks compile without errors."""
-        source = "MHALL == SVO =>\n  S(ubject) = M\n  V(erb) = H"
-        entries, compiler = _compile_with_compiler(source, self._nlp_tok)
-
-        assert compiler.scope is not None
-        assert len(entries) >= 1
-
-    def test_nlp_mode_no_comments_scope_exists(self) -> None:
-        """NLP mode: source without comments still creates a BindingScope."""
-        source = "A == B"
-        entries, compiler = _compile_with_compiler(source, self._nlp_tok)
-
-        # Scope exists (created for NLP mode) even without comment bindings
-        assert compiler.scope is not None
-
     def test_nlp_mode_produces_valid_entries(self) -> None:
         """NB-19: Same source compiles under NLP mode without errors."""
         source = "A == B"
-        entries, compiler = _compile_with_compiler(source, self._nlp_tok)
+        entries, _ = _compile_with_compiler(source, self._nlp_tok)
 
         assert len(entries) >= 2
         # All entries should be decodable
@@ -328,12 +298,70 @@ class TestNLPBindingScopePopulated:
     def test_nlp_mode_inline_comment_source_compiles(self) -> None:
         """NB-19: Source with inline comments compiles under NLP without errors."""
         source = "S(ubject) = M"
-        entries, compiler = _compile_with_compiler(source, self._nlp_tok)
+        entries, _ = _compile_with_compiler(source, self._nlp_tok)
 
         assert len(entries) >= 1
         # All entries decodable
         for entry in entries:
             sig, nodes = entry.decode(self._nlp_tok)
+            assert isinstance(sig, str)
+
+    def test_nlp_mode_compiles_with_bindings(self) -> None:
+        """NLP mode: source with inline comments resolves bindings."""
+        source = "S(ubject) = M"
+        entries, _ = _compile_with_compiler(source, self._nlp_tok)
+
+        # Verify entries contain resolved words — "Subject" should appear
+        # in the decoded output
+        md = _entries_to_multidict(entries, self._nlp_tok)
+        all_sigs = list(md.keys())
+        all_nodes = []
+        for nodes_list in md.values():
+            for n in nodes_list:
+                if isinstance(n, str):
+                    all_nodes.append(n)
+                elif isinstance(n, list):
+                    all_nodes.extend(n)
+
+        # The inline comment S(ubject) should produce "Subject" somewhere
+        combined = " ".join(all_sigs + all_nodes)
+        assert "Subject" in combined or "ubject" in combined
+
+    def test_nlp_mode_no_comments_compiles(self) -> None:
+        """NLP mode: source without comments compiles cleanly."""
+        source = "A == B"
+        entries, _ = _compile_with_compiler(source, self._nlp_tok)
+
+        assert len(entries) >= 2
+        md = _entries_to_multidict(entries, self._nlp_tok)
+        assert "A" in md
+        assert "B" in md
+
+    def test_inline_binding_decoded_in_entries(self) -> None:
+        """Inline comment S(ubject) = M produces 'Subject' in decoded output."""
+        source = "S(ubject) = M"
+        entries, _ = _compile_with_compiler(source, self._nlp_tok)
+        md = _entries_to_multidict(entries, self._nlp_tok)
+
+        # "Subject" should appear in some entry's nodes
+        found = False
+        for sig, node_lists in md.items():
+            for n in node_lists:
+                if n == "Subject" or (isinstance(n, list) and "Subject" in n):
+                    found = True
+        assert found, f"Expected 'Subject' in decoded entries, got: {md}"
+
+    def test_source_without_comments_no_binding_artefacts(self) -> None:
+        """Sources without comments produce clean entries with no binding artefacts."""
+        source = "A == B"
+        entries, _ = _compile_with_compiler(source, self._nlp_tok)
+
+        # All entries should be decodable and produce standard A/B sigs
+        md = _entries_to_multidict(entries, self._nlp_tok)
+        assert "A" in md
+        assert "B" in md
+        # No surprise words from bindings
+        for sig in md:
             assert isinstance(sig, str)
 
 
