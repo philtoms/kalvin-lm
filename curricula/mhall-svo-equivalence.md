@@ -50,8 +50,8 @@ Establish the bidirectional equivalence: MHALL == SVO, with subscript scaffoldin
 ```
 (Mary Had A Little Lamb)
 MHALL == SVO =>
-   S(ubject) = M(ary)
-   V(erb) = H(ad)
+   S(ubject) = M
+   V(erb) = H
    O(bject) = A(ll) =>
      A > D(et)
      L > M(od)

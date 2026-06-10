@@ -93,6 +93,24 @@ class Scope:
             return self.parent.resolve(char)
         return None
 
+    def is_bound_to(self, char: str, word: str) -> bool:
+        """Check if char is already bound to the given word in this scope chain.
+
+        Searches this scope for the first unconsumed binding matching char
+        and compares its word. If not found, delegates to parent scope.
+
+        Returns True if the char is bound to exactly the same word.
+        Used by BindingResolver to detect redundant inline annotations
+        (e.g. M(ary) when M is already bound to "Mary" in a parent scope).
+        """
+        if char in self.bindings:
+            for binding in self.bindings[char]:
+                if not binding.consumed:
+                    return binding.word == word
+        if self.parent is not None:
+            return self.parent.is_bound_to(char, word)
+        return False
+
     def claim_next(self, char: str) -> Binding | None:
         """Claim the next unconsumed binding for char in this scope only.
 
@@ -185,6 +203,20 @@ class NLPSymbolTable:
         if self._walk_cursor >= 0:
             return self._all_scopes[self._walk_cursor].resolve(char)
         return self.current_scope().resolve(char)
+
+    def is_bound_to(self, char: str, word: str) -> bool:
+        """Check if char is already bound to the given word in the scope chain.
+
+        In walk mode (cursor ≥ 0), checks from ``_all_scopes[cursor]``.
+        Otherwise checks from ``current_scope()`` (backward compatible).
+
+        Returns True if the char is bound to exactly the same word, meaning
+        an inline annotation creating this binding would be redundant.
+        Used to avoid unnecessary shadow bindings in curriculum annotations.
+        """
+        if self._walk_cursor >= 0:
+            return self._all_scopes[self._walk_cursor].is_bound_to(char, word)
+        return self.current_scope().is_bound_to(char, word)
 
     def is_active(self) -> bool:
         """Return True if any scope in the stack has any bindings."""
