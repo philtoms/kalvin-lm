@@ -19,10 +19,10 @@ Tune NLP annotation (comment) decisions: suppress inline annotations that would 
 - **Started:** 2026-06-10
 
 ## Current Phase
-observing
+complete
 
 ## Next Action
-Update spec (NA-9) and document results
+Session complete. All changes committed on auto-tune/annotation-redundancy branch.
 
 ## Run Log
 
@@ -44,4 +44,8 @@ Update spec (NA-9) and document results
 - Also check sig-side: `S(ubject) = M(ary)` — S is bound in lesson 5 subscript scope, which is a NEW scope so may not be redundant. Need to check carefully.
 
 ## Files Modified
-(none yet)
+- `src/kscript/symbol_table.py` — added Scope.is_bound_to() and NLPSymbolTable.is_bound_to()
+- `src/kscript/binding_resolver.py` — redundancy check before inline bindings (sig-side + node-side)
+- `curricula/mhall-svo-equivalence.md` — removed redundant M(ary) and H(ad) from lesson 5
+- `specs/nlp-first-curriculum-annotations.md` — NA-3 clarification, NA-9 redundancy rule
+- `specs/kscript-nlp-binding.md` — §6.3 redundancy check step
