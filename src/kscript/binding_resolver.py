@@ -9,6 +9,12 @@ The resolver performs a single recursive AST walk with lexical scoping
 claiming, and inline-binding extraction. It stays entirely in the string
 domain — no NLP-BPE tokenisation occurs here.
 
+Redundancy detection: when an inline annotation would bind a character to
+the same word already bound in the scope chain, the binding is skipped.
+This prevents unnecessary shadow bindings (e.g. M(ary) in a subscript
+when M is already bound to "Mary" in the parent scope). Redundant
+bindings are silently ignored — they carry no new information.
+
 Algorithm overview (spec @kscript-nlp-binding §6.2–§6.4):
 
 1. Create NLPSymbolTable, push root scope, walk each script's constructs.
@@ -29,6 +35,8 @@ Spec ref: @kscript-nlp-binding §6
 
 from __future__ import annotations
 
+import logging
+
 from .ast import (
     Block,
     Comment,
@@ -39,6 +47,8 @@ from .ast import (
     Signature,
 )
 from .symbol_table import NLPSymbolTable
+
+logger = logging.getLogger(__name__)
 
 
 class BindingResolver:
@@ -114,14 +124,27 @@ class BindingResolver:
     def _resolve_primary(
         self, pc: PrimaryConstruct, table: NLPSymbolTable
     ) -> None:
-        """Process a primary construct for binding."""
+        """Process a primary construct for binding.
+
+        Inline bindings that would redundantly re-bind a character to the
+        same word already present in the scope chain are silently skipped.
+        This prevents unnecessary shadow bindings (e.g. M(ary) when M is
+        already bound to "Mary" in a parent scope).
+        """
         sig = pc.sig.id
 
         if pc.inline_comment is not None:
             # Inline binding: S(ubject) → bind S to "Subject"
             word = self._extract_inline_word(sig, pc.inline_comment)
             for char in sig:
-                table.bind(char, word)
+                if table.is_bound_to(char, word):
+                    logger.debug(
+                        "Skipping redundant inline annotation: "
+                        "%s(%s) — already bound to '%s'",
+                        char, word[1:], word,
+                    )
+                else:
+                    table.bind(char, word)
             # Clear any pending word list (inline binding takes precedence)
             table.current_scope().pending_comment = None
         elif len(sig) > 1:
@@ -135,7 +158,14 @@ class BindingResolver:
             node_id = pc.node.id
             word = self._extract_inline_word(node_id, pc.node_inline_comment)
             for char in node_id:
-                table.bind(char, word)
+                if table.is_bound_to(char, word):
+                    logger.debug(
+                        "Skipping redundant node-side annotation: "
+                        "%s(%s) — already bound to '%s'",
+                        char, word[1:], word,
+                    )
+                else:
+                    table.bind(char, word)
             # Clear any pending word list (inline binding takes precedence)
             table.current_scope().pending_comment = None
 

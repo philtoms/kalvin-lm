@@ -171,7 +171,8 @@ For `S(ubject)`, the resolver:
 2. Reads the attached COMMENT token value: `"(ubject)"`
 3. Strips parentheses: `"ubject"`
 4. Prepends the signature character: `"S" + "ubject"` → `"Subject"`
-5. Binds `"S"` → `"Subject"` in the current scope
+5. Checks redundancy via `NLPSymbolTable.is_bound_to(char, word)` — if the character is already bound to the same word in the scope chain, the binding is silently skipped (§6.5)
+6. If not redundant, binds `"S"` → `"Subject"` in the current scope
 
 Case is preserved. The resulting word is encoded as-is through the NLP tokenizer.
 

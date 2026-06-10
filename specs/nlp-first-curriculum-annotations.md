@@ -21,7 +21,9 @@ Every multi-character signature must be preceded by a block comment word list wh
 
 ### NA-3: Inline comments on right-side nodes
 
-Node-position single-character signatures in operators also receive inline comments. Example: `A > D(et)`, `L > M(od)`.
+Node-position single-character signatures in operators receive inline comments **only when the binding would introduce new information**. If the character is already bound to the same word in the scope chain, the inline annotation is redundant and must be omitted. Example: in `(Mary Had A Little Lamb)` followed by `MHALL == SVO => S(ubject) = M(ary)`, the `M(ary)` is redundant because M is already bound to "Mary" via the block comment. The correct form is `S(ubject) = M` — the node inherits M→"Mary" from the parent scope.
+
+Inline annotations on node-position signatures that **intentionally shadow** a parent binding with a different word are required. Example: `O(bject) = A(ll)` where A is bound to "a" in the parent scope but "All" in the subscript scope.
 
 ### NA-4: Semantic word choices
 
@@ -56,6 +58,10 @@ Each annotated curriculum rationalises correctly — the agent produces the expe
 ### NA-8: Existing tests pass
 
 All 21 tests in `tests/test_nlp_curriculum_compat.py` continue to pass. The annotations must not break bare-sig compatibility.
+
+### NA-9: Redundancy detection
+
+The BindingResolver detects and skips inline annotations that would redundantly re-bind a character to the same word already present in the scope chain. This is implemented via `NLPSymbolTable.is_bound_to(char, word)`. Redundant bindings are silently skipped with a debug-level log message. This applies to both sig-side and node-side inline comments.
 
 ## Out of Scope
 
