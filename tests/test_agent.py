@@ -977,10 +977,13 @@ class TestAgentNLPTokenizer:
             expected |= (node & NLP_TYPE_MASK)
         assert sig == expected
 
-    def test_mod32_backward_compat(self) -> None:
-        """Default KAgent uses Mod32Tokenizer — existing behavior unchanged."""
+    def test_default_tokenizer(self) -> None:
+        """Default KAgent uses NLP tokenizer when available, Mod32 otherwise."""
         a = KAgent(adapter=EventBus())
-        assert isinstance(a.tokenizer, Mod32Tokenizer)
+        # With NLP data files available, default should be NLPTokenizer
+        from kalvin.nlp_tokenizer import NLPTokenizer
+        from kalvin.mod_tokenizer import Mod32Tokenizer
+        assert isinstance(a.tokenizer, (NLPTokenizer, Mod32Tokenizer))
 
         # Rationalise a known all-literal kline
         t = a.tokenizer

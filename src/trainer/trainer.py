@@ -93,9 +93,11 @@ class Trainer:
         save_path: str | Path | None = None,
         curriculum_file: str | Path | None = None,
         curricula_dir: str | Path | None = None,
+        tokenizer: Any | None = None,
     ) -> None:
         self._role = role
         self._bus = bus
+        self._tokenizer = tokenizer
         self._state = CurriculumState(
             curriculum,
             save_path=save_path,
@@ -670,7 +672,7 @@ class Trainer:
             logger.debug("Lesson %s kscript: %s", current_lesson.label, lesson.strip())
 
         # Compile locally to obtain CompiledEntry objects for structural matching
-        entries = compile_source(lesson)
+        entries = compile_source(lesson, tokenizer=self._tokenizer)
         self._reactor.load_lesson(entries)
 
         logger.info(

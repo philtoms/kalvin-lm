@@ -34,10 +34,26 @@ from kalvin.expand import (
     propose_expansions,
 )
 from kalvin.kline import KLine
+from kalvin.abstract import KTokenizer
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.model import Model
 from kalvin.signature import is_literal_node, make_signature, node_to_sig
+
+
+# ── Default tokenizer factory ─────────────────────────────────────────
+
+def _default_tokenizer() -> KTokenizer:
+    """Create the default tokenizer.
+
+    Tries NLPTokenizer.from_files() first (production path).
+    Falls back to Mod32Tokenizer if NLP data files are unavailable
+    (e.g. fresh checkout, test environments without data).
+    """
+    try:
+        return NLPTokenizer.from_files()
+    except (FileNotFoundError, ImportError, Exception):
+        return Mod32Tokenizer()
 
 # ── KAgentAdapter Protocol ─────────────────────────────────────────────
 
@@ -263,7 +279,7 @@ class KAgent:
         adapter: KAgentAdapter,
         max_candidates: int = 8,
     ):
-        self._tokenizer = tokenizer if tokenizer else Mod32Tokenizer()
+        self._tokenizer = tokenizer if tokenizer else _default_tokenizer()
         self._model = model if model is not None else Model()
         self._activity: Counter = Counter()
         self._max_candidates: int = max_candidates

@@ -176,13 +176,17 @@ def main(argv: list[str] | None = None) -> None:
 
     # -- Register embedded participant factories -----------------------------
 
+    # Create shared tokenizer — NLP if available, Mod32 fallback
+    from kalvin.agent import _default_tokenizer as _make_tok
+    shared_tokenizer = _make_tok()
+
     # KAgent adapter factory (two-phase wiring to avoid circular dep)
     def kagent_factory(address: str, bus: MessageBus) -> _AlreadySubscribed:
         from harness.adapter import KAgentAdapter
         from kalvin.agent import KAgent
 
-        adapter = KAgentAdapter(bus, role=address)
-        kagent = KAgent(adapter=adapter)
+        adapter = KAgentAdapter(bus, role=address, tokenizer=shared_tokenizer)
+        kagent = KAgent(tokenizer=shared_tokenizer, adapter=adapter)
         adapter.bind(kagent)
         return _AlreadySubscribed(adapter)
 
@@ -225,6 +229,7 @@ def main(argv: list[str] | None = None) -> None:
             curriculum_file=curriculum_file or None,
             curricula_dir=curricula_dir or None,
             llm_client=llm_client,
+            tokenizer=shared_tokenizer,
         )
         trainer_holder.append(trainer)
 

@@ -30,6 +30,7 @@ from harness.message import Message
 from harness.protocols import Participant
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
+from kalvin.abstract import KTokenizer
 from kscript.compiler import compile_source
 from kscript.decompiler import Decompiler
 
@@ -72,10 +73,12 @@ class KAgentAdapter:
         bus: MessageBus,
         role: str = TRAINEE_ROLE,
         kagent: Optional[_KAgentLike] = None,
+        tokenizer: Optional[KTokenizer] = None,
     ):
         self._bus = bus
         self._role = role
         self._kagent: _KAgentLike | None = kagent
+        self._tokenizer: KTokenizer | None = tokenizer
 
         # Sender map: (entry.signature, tuple(entry.nodes)) → sender role.
         # Populated in on_message (bus thread), read in on_event (cogitator thread).
@@ -95,6 +98,11 @@ class KAgentAdapter:
     def kagent(self) -> _KAgentLike | None:
         """The KAgent instance, or ``None`` if not yet bound."""
         return self._kagent
+
+    @property
+    def tokenizer(self) -> KTokenizer | None:
+        """The tokenizer used for KScript compilation, or ``None`` if unset."""
+        return self._tokenizer
 
     # ── Late binding ───────────────────────────────────────────────────
 
@@ -184,7 +192,7 @@ class KAgentAdapter:
             return
 
         try:
-            entries = compile_source(msg.message)
+            entries = compile_source(msg.message, tokenizer=self._tokenizer)
         except Exception as exc:
             # Compilation error (LexerError, ParseError, etc.) — report back.
             logger.error("Compilation error: %s", exc)
