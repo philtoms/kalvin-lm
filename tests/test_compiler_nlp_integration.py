@@ -335,3 +335,69 @@ class TestNLPBindingScopePopulated:
         for entry in entries:
             sig, nodes = entry.decode(self._nlp_tok)
             assert isinstance(sig, str)
+
+
+# =============================================================================
+# Compiler unit tests — structural and regression guards
+# =============================================================================
+
+
+class TestCompilerStructure:
+    """Regression guards ensuring old APIs are fully removed."""
+
+    def test_no_binding_resolver_import_in_compiler(self) -> None:
+        """compiler.py must not import binding_resolver."""
+        import inspect
+        import kscript.compiler as mod
+
+        source = inspect.getsource(mod)
+        assert "binding_resolver" not in source
+
+    def test_no_nlpsymboltable_reference_in_compiler(self) -> None:
+        """compiler.py must not reference NLPSymbolTable."""
+        import inspect
+        import kscript.compiler as mod
+
+        source = inspect.getsource(mod)
+        assert "NLPSymbolTable" not in source
+
+    def test_no_symbol_table_attribute(self) -> None:
+        """Compiler instances must not have a symbol_table attribute."""
+        compiler = Compiler(_tok32)
+        assert not hasattr(compiler, "symbol_table")
+        assert not hasattr(compiler, "_symbol_table")
+
+    def test_no_rewind_in_compiler(self) -> None:
+        """compiler.py must not call rewind()."""
+        import inspect
+        import kscript.compiler as mod
+
+        source = inspect.getsource(mod)
+        assert "rewind" not in source
+
+
+class TestCompilerUnit:
+    """Unit tests for the simplified Compiler."""
+
+    def test_mod32_compile_produces_entries(self) -> None:
+        """Mod32 compile of A == B produces valid entries."""
+        entries = compile_source("A == B", tokenizer=_tok32, dev=True)
+        assert len(entries) >= 2
+        md = _entries_to_multidict(entries, _tok32)
+        assert _has_node(md, "A", ["B"])
+        assert _has_node(md, "B", ["A"])
+
+    def test_compile_source_convenience(self) -> None:
+        """compile_source() works with default tokenizer."""
+        entries = compile_source("A == B", dev=True)
+        assert len(entries) >= 2
+
+    def test_compiler_default_tokenizer(self) -> None:
+        """Compiler() with no tokenizer uses Mod32Tokenizer."""
+        compiler = Compiler()
+        assert isinstance(compiler.tokenizer, Mod32Tokenizer)
+
+    def test_compiler_custom_tokenizer(self) -> None:
+        """Compiler() with custom tokenizer stores it."""
+        compiler = Compiler(_tok64)
+        assert compiler.tokenizer is _tok64
