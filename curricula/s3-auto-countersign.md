@@ -8,21 +8,22 @@ Build a connotation graph, trigger S3, include proposal-matching co-entries.
 
 ### 1
 ```
-M
-H
-A
-P
-X
+M(ark)
+H(alo)
+A(lpha)
+P(apa)
+X(ray)
 ```
 
 ### 2
 ```
-M == H
+M(ark) == H(alo)
 ```
 
 ### 3
 ```
-H > A
-A == A
-HPA => P X
+H(alo) > A(lpha)
+A(lpha) == A(lpha)
+(Hotel Papa Alpha)
+HPA => P(apa) X(ray)
 ```

@@ -10,19 +10,19 @@ Introduce two identities, then establish a bidirectional relationship between th
 Introduce the identity M.
 
 ```
-M
+M(ark)
 ```
 
 ### 2
 Introduce the identity H.
 
 ```
-H
+H(alo)
 ```
 
 ### 3
 Establish a bidirectional relationship between M and H.
 
 ```
-M == H
+M(ark) == H(alo)
 ```
