@@ -4,34 +4,44 @@ This module is responsible for AST traversal and determining the correct
 operator semantics for each construct. It yields symbolic tuples
 (sig_str, nodes_strs, op) that a TokenEncoder then converts to token IDs.
 
-NLP binding integration (KB-161):
-  When an NLPSymbolTable is provided, the emitter resolves single-character
-  signatures to their bound NLP words before emitting symbolic entries.
-  Bound sigs carry the NLP word (e.g. "Mary") while unbound sigs carry the
-  raw character (e.g. "Z"). Multi-character signatures (MCS) are decomposed
-  into individual characters, each resolved independently. The emitter stays
-  in the string domain — no tokenizer calls or token encoding happens here.
+NLP binding integration (KB-170):
+  When a BindingScope is provided, the emitter resolves single-character
+  signatures inline during its single AST walk. Resolution order:
 
-Scope-aware emission (KB-166):
-  When the symbol table is in walk mode (after rewind()), the emitter
-  navigates scopes to match the BindingResolver's scope structure:
-  - ``chain_right`` boundaries trigger ``enter_scope()``/``exit_scope()``.
-  - Upward traversal (NB-8): ``resolve()`` walks the scope parent chain,
-    finding bindings from enclosing scopes (e.g. M→"Mary" in subscript).
-  - Downward traversal (NB-9): before processing left primaries, the emitter
-    peeks at the child scope's bindings via ``peek_next_bindings()`` and
-    uses them as a fallback when the scope chain returns None.
-  - Shadowing (NB-12): inner scope bindings override outer bindings via
-    normal scope chain resolution.
-  When no symbol table is provided (Mod32 mode), all scope navigation is
-  skipped — complete backward compatibility.
+  1. **Inline comment first**: if a PrimaryConstruct has an inline_comment
+     (sig-side) or node_inline_comment (node-side), the word is extracted
+     and bound immediately — bypassing scope.resolve() and the occurrence
+     counter entirely. E.g. S(ubject) → "Subject".
+
+  2. **Scope fallback**: if no inline comment, scope.resolve(char) walks
+     the scope stack innermost-first, using first-letter matching with an
+     occurrence counter for disambiguation.
+
+  Block comments feed the scope's word list via scope.add_word_list().
+  Chain-right (=>) boundaries trigger scope.push_scope()/pop_scope() with
+  save/restore of parent kline tracking for Rule 4 override patching.
+
+  **Rule 4 — inline override**: when an inline binding fires inside a
+  subscript, it retroactively patches the matching character in the already-
+  emitted MCS CANONIZE entry for the parent kline's nodes list.
+
+  Example: SVO => Block([S(ubject) = M])
+    Before override: CANONIZE("SVO", ["S","V","O"])
+    After override:  CANONIZE("SVO", ["Subject","V","O"])
+
+  Only the immediate parent kline is patched — no propagation beyond one
+  level (NB-12). If the inline char is not found in the parent kline, it's
+  a safe no-op (NB-33).
+
+  When scope=None (Mod32 mode), all binding logic is skipped — complete
+  backward compatibility with existing Mod32 compilation.
 
 No tokenizer dependency — pure AST logic.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple
+from typing import NamedTuple
 
 from .ast import (
     Block,
@@ -45,10 +55,8 @@ from .ast import (
     Script,
     Signature,
 )
+from .binding_scope import BindingScope
 from .token import TokenType
-
-if TYPE_CHECKING:
-    from .symbol_table import NLPSymbolTable
 
 
 class SymbolicEntry(NamedTuple):
@@ -67,21 +75,22 @@ class ASTEmitter:
     Args:
         dev: Enable development/diagnostic mode.
         skip_mcs: Skip MCS decomposition for tokenizers that don't support it.
-        symbol_table: Optional NLPSymbolTable for NLP binding resolution.
-            When provided, single-character signatures are resolved to their
-            bound NLP words (e.g. M → "Mary"). When None (default), all
-            signatures pass through as raw characters — backward compatible
-            with existing Mod32 compilation.
+        scope: Optional BindingScope for NLP binding resolution.
+            When provided, single-character signatures are resolved inline
+            via scope.resolve() (e.g. M → "Mary"). When None (default),
+            all signatures pass through as raw characters — backward
+            compatible with existing Mod32 compilation.
     """
 
     def __init__(self, dev: bool = False, skip_mcs: bool = False,
-                 symbol_table: NLPSymbolTable | None = None):
+                 scope: BindingScope | None = None):
         self.entries: list[SymbolicEntry] = []
         self.dev = dev
         self._skip_mcs = skip_mcs
-        self._symbol_table = symbol_table
-        self._scope_depth: int = 0  # nesting depth for safety assertions
-        self._child_preview: dict[str, str] = {}  # downward traversal fallback (NB-9)
+        self._scope = scope
+        # Per-call-stack tracking for Rule 4 inline override patching
+        self._parent_kline_chars: str | None = None
+        self._parent_kline_canonize_idx: int | None = None
         self._sig_levels = {
             "COUNTERSIGN": "S1",
             "CANONIZE": "S2",
@@ -93,41 +102,23 @@ class ASTEmitter:
         # Symbolic dedup — on (sig_str, nodes_strs) before encoding
         self._seen: set[tuple[str, None | str | tuple[str, ...]]] = set()
 
-    def _in_walk_mode(self) -> bool:
-        """Check if the symbol table is in walk mode."""
-        return (
-            self._symbol_table is not None
-            and self._symbol_table.in_walk_mode
-        )
+    def _resolve_char(self, char: str) -> str:
+        """Resolve a single character via the BindingScope.
 
-    def _resolve_sig_word(self, sig_char: str) -> str:
-        """Resolve a single-char signature to its NLP word, or return the char itself.
-
-        When the symbol table has a binding for *sig_char*, returns the
-        bound NLP word (e.g. "Mary" for "M").  When the table is absent
-        or the character is unbound, returns *sig_char* unchanged.
-
-        Downward traversal fallback (KB-166): when processing left primaries
-        before a chain_right, the emitter peeks at child scope bindings
-        via ``_child_preview``.  If the scope chain returns None but the
-        preview has a binding, the preview value is used.
+        When the scope has a binding for *char*, returns the resolved word
+        (e.g. "Mary" for "M").  When the scope is absent (Mod32 mode) or
+        the character is unbound, returns *char* unchanged.
         """
-        if self._symbol_table is not None:
-            word = self._symbol_table.resolve(sig_char)
+        if self._scope is not None:
+            word = self._scope.resolve(char)
             if word is not None:
                 return word
-            # Downward traversal fallback (NB-9)
-            if self._child_preview and sig_char in self._child_preview:
-                return self._child_preview[sig_char]
-        return sig_char
+        return char
 
     def emit(self, file: KScriptFile) -> list[SymbolicEntry]:
         """Walk a KScriptFile and collect symbolic entries."""
         for script in file.scripts:
             self._emit_script(script)
-        assert self._scope_depth == 0, (
-            f"Scope depth imbalance after emit: {self._scope_depth}"
-        )
         return self.entries
 
     def _emit_script(self, script: Script) -> None:
@@ -141,6 +132,11 @@ class ASTEmitter:
             return
 
         if isinstance(construct.inner, Comment):
+            # Comments feed the scope's word list via add_word_list, not emitted as entries
+            if self._scope is not None:
+                words = self._extract_words(construct.inner.text)
+                if words:
+                    self._scope.add_word_list(words)
             return
 
         if isinstance(construct.inner, Literal):
@@ -158,61 +154,62 @@ class ASTEmitter:
         for pc in primaries:
             self._emit_primary(pc)
 
-    def _emit_mcs(self, sig: str) -> bool:
+    def _emit_mcs(self, sig: str) -> int | None:
         """Emit MCS entries for multi-character signatures.
 
-        Each constituent character is resolved via _resolve_sig_word before
+        Each constituent character is resolved via _resolve_char before
         emitting unsigned entries. The canonization entry keeps the original
         composed sig string but uses resolved words for its nodes list.
+
+        Returns the index of the CANONIZE entry in self.entries, or None
+        if no MCS was emitted (single char or skip_mcs).
         """
         if self._skip_mcs:
-            return False
+            return None
 
         if len(sig) <= 1:
-            return False
+            return None
 
-        chars = [self._resolve_sig_word(c) for c in sig]
+        chars = [self._resolve_char(c) for c in sig]
         for resolved_char in chars:
             self._emit_entry(resolved_char, None, "UNSIGNED")
         self._emit_entry(sig, chars, "CANONIZE")
-        return True
+        return len(self.entries) - 1
 
     def _emit_primary(self, pc: PrimaryConstruct) -> None:
         sig = pc.sig.id
+
+        # Inline-first resolution: check sig-side inline comment
+        sig_resolved = self._resolve_inline_or_scope(sig, pc.inline_comment)
+
         self._emit_mcs(sig)
 
         if pc.op is None:
-            self._emit_entry(sig, None, "UNSIGNED")
+            self._emit_entry(sig_resolved, None, "UNSIGNED")
             return
 
         node = pc.node
         node_str = self._node_to_string(node)
-        # Resolve single-char node to NLP word when bound
-        node_resolved = (
-            self._resolve_sig_word(node_str)
-            if len(node_str) == 1 else node_str
-        )
-        # Resolve single-char sig for use as nodes parameter
-        sig_resolved = (
-            self._resolve_sig_word(sig)
-            if len(sig) == 1 else sig
+        # Resolve node via inline comment or scope
+        node_resolved = self._resolve_inline_or_scope_node(
+            node_str, pc.node_inline_comment
         )
         if node_str.isupper() and node_str.isalpha():
             self._emit_mcs(node_str)
 
         if pc.op == TokenType.COUNTERSIGN:
-            self._emit_entry(sig, node_resolved, "COUNTERSIGN")
+            self._emit_entry(sig_resolved, node_resolved, "COUNTERSIGN")
             if self._is_signature(node):
-                self._emit_entry(node_str, sig_resolved, "COUNTERSIGN")
+                self._emit_entry(node_resolved, sig_resolved, "COUNTERSIGN")
 
         elif pc.op == TokenType.UNDERSIGN:
-            if sig == node_str:
-                self._emit_entry(sig, None, "IDENTITY")
+            if sig_resolved == node_resolved:
+                self._emit_entry(sig_resolved, None, "IDENTITY")
             else:
-                self._emit_entry(node_str, sig_resolved, "UNDERSIGN")
+                self._emit_entry(node_resolved, sig_resolved, "UNDERSIGN")
 
         elif pc.op == TokenType.CONNOTATE:
-            self._emit_entry(sig, node_resolved, "CONNOTATE")
+            self._emit_entry(sig_resolved, node_resolved, "CONNOTATE")
 
     def _process_chain(
         self,
@@ -220,18 +217,11 @@ class ASTEmitter:
         chain_op: TokenType,
         right: Construct | None
     ) -> None:
-        # In walk mode, peek at child scope for downward traversal (NB-9)
-        if right is not None and self._in_walk_mode():
-            self._child_preview = self._symbol_table.peek_next_bindings()
-        else:
-            self._child_preview = {}
-
         for pc in left_primaries:
             if pc.op is not None:
                 self._emit_primary(pc)
 
         if right is None:
-            self._child_preview = {}
             return
 
         right_items = self._flatten_to_items(right)
@@ -239,25 +229,28 @@ class ASTEmitter:
         if chain_op == TokenType.CANONIZE:
             last = left_primaries[-1]
             owner = self._get_owner(last)
+            mcs_idx: int | None = None
             if last.node is None or isinstance(last.node, Signature):
-                self._emit_mcs(owner)
+                mcs_idx = self._emit_mcs(owner)
             if right_items:
                 item_ids = [self._item_id(item) for item in right_items]
                 self._emit_entry(owner, item_ids, "CANONIZE")
 
-        # Clear preview before entering child scope for real
-        self._child_preview = {}
+        # Save and set parent kline tracking for Rule 4 override
+        saved_chars = self._parent_kline_chars
+        saved_idx = self._parent_kline_canonize_idx
 
-        # Enter child scope and process right-hand construct
-        if self._in_walk_mode():
-            self._symbol_table.enter_scope()
-            self._scope_depth += 1
+        if chain_op == TokenType.CANONIZE and self._scope is not None:
+            self._parent_kline_chars = owner
+            self._parent_kline_canonize_idx = mcs_idx
+            self._scope.push_scope()
 
         self._emit_construct(right)
 
-        if self._in_walk_mode():
-            self._scope_depth -= 1
-            self._symbol_table.exit_scope()
+        if chain_op == TokenType.CANONIZE and self._scope is not None:
+            self._scope.pop_scope()
+            self._parent_kline_chars = saved_chars
+            self._parent_kline_canonize_idx = saved_idx
 
     def _flatten_to_items(self, construct: Construct) -> list[ConstructItem]:
         if isinstance(construct.inner, Block):
@@ -266,7 +259,7 @@ class ASTEmitter:
                 items.extend(self._flatten_to_items(c))
             return items
         if isinstance(construct.inner, Comment):
-            return []  # Comments are handled by BindingResolver, not emitted
+            return []  # Comments feed the scope's word list via add_word_list, not emitted
         if isinstance(construct.inner, Literal):
             return [construct.inner]
         return construct.inner
@@ -297,20 +290,120 @@ class ASTEmitter:
             return False
         return False
 
+    # ------------------------------------------------------------------
+    # Inline resolution helpers
+    # ------------------------------------------------------------------
+
+    def _resolve_inline_or_scope(self, sig: str, inline_comment: Comment | None) -> str:
+        """Resolve a sig string: inline comment first, then scope fallback.
+
+        For single-char sigs: check inline comment, then scope.resolve().
+        For multi-char sigs: return as-is (MCS decomposition handles chars).
+
+        When an inline binding fires for a single character, the method also
+        triggers Rule 4 override patching of the parent kline's MCS CANONIZE
+        entry if applicable.
+        """
+        if len(sig) == 1:
+            if inline_comment is not None:
+                word = self._extract_inline_word(sig, inline_comment)
+                self._patch_parent_canonize(sig, word)
+                return word
+            resolved = self._resolve_char(sig)
+            return resolved
+        return sig
+
+    def _resolve_inline_or_scope_node(self, node_str: str, node_inline_comment: Comment | None) -> str:
+        """Resolve a node string: inline comment first, then scope fallback.
+
+        For single-char nodes: check inline comment, then scope.resolve().
+        For multi-char nodes: return as-is (MCS decomposition handles chars).
+
+        When an inline binding fires, triggers Rule 4 override patching.
+        """
+        if len(node_str) == 1:
+            if node_inline_comment is not None:
+                word = self._extract_inline_word(node_str, node_inline_comment)
+                self._patch_parent_canonize(node_str, word)
+                return word
+            resolved = self._resolve_char(node_str)
+            return resolved
+        return node_str
+
+    def _patch_parent_canonize(self, char: str, word: str) -> None:
+        """Rule 4 — inline override: patch parent kline MCS CANONIZE entry.
+
+        When an inline binding fires for char C with resolved word W inside
+        a subscript, retroactively patch the matching character in the already-
+        emitted MCS CANONIZE entry for the parent kline.
+
+        Example:
+            Source: SVO => Block([S(ubject) = M])
+            Before: CANONIZE("SVO", ["S","V","O"]) at parent_kline_canonize_idx
+            After:  CANONIZE("SVO", ["Subject","V","O"]) — S patched at index 0
+
+        Only patches the immediate parent — no propagation beyond one level.
+        If char is not found in parent kline chars, this is a safe no-op (NB-33).
+        """
+        if self._parent_kline_chars is None or self._parent_kline_canonize_idx is None:
+            return
+        idx = self._parent_kline_chars.find(char)
+        if idx < 0:
+            return  # NB-33: safe no-op
+        entry = self.entries[self._parent_kline_canonize_idx]
+        if entry.op != "CANONIZE":
+            return
+        nodes = entry.nodes
+        if isinstance(nodes, list) and idx < len(nodes):
+            # Patch in-place via entry._replace — NamedTuple is immutable
+            new_nodes = list(nodes)
+            new_nodes[idx] = word
+            self.entries[self._parent_kline_canonize_idx] = entry._replace(nodes=new_nodes)
+        elif isinstance(nodes, str) and nodes == char:
+            # Singleton case
+            self.entries[self._parent_kline_canonize_idx] = entry._replace(nodes=word)
+
+    # ------------------------------------------------------------------
+    # Word extraction helpers
+    # ------------------------------------------------------------------
+
+    def _extract_inline_word(self, sig_char: str, comment: Comment) -> str:
+        """Extract word from an inline comment.
+
+        Strips outer parentheses from comment text and prepends sig_char.
+        E.g. "S" + "(ubject)" → "Subject", "V" + "(erb)" → "Verb".
+        Case is preserved.
+        """
+        text = comment.text
+        if text.startswith("(") and text.endswith(")"):
+            text = text[1:-1]
+        return sig_char + text
+
+    def _extract_words(self, comment_text: str) -> list[str]:
+        """Extract word list from a block comment.
+
+        Strips outer parentheses and splits on whitespace.
+        E.g. "(Mary had a little lamb)" → ["Mary", "had", "a", "little", "lamb"].
+        Returns empty list for empty comments.
+        """
+        text = comment_text.strip()
+        if text.startswith("("):
+            text = text[1:]
+        if text.endswith(")"):
+            text = text[:-1]
+        text = text.strip()
+        if not text:
+            return []
+        return text.split()
+
     def _emit_entry(self, sig: str, nodes: str | None | list[str], op: str) -> None:
         """Emit a symbolic entry with dedup.
 
         Singleton rule: if nodes is a list with length 1, unwrap to single value.
 
-        NLP resolution: for single-character sigs, the sig field carries the
-        resolved NLP word (e.g. "Mary") when a binding exists, or the raw
-        character when unbound.  Multi-character sigs are not resolved here —
-        _emit_mcs decomposes them into individual characters first.
+        All NLP resolution happens upstream in _emit_primary and _emit_mcs.
+        This method receives already-resolved sig/node strings.
         """
-        # Resolve single-char sig to NLP word when bound
-        if len(sig) == 1:
-            sig = self._resolve_sig_word(sig)
-
         if isinstance(nodes, list) and len(nodes) == 1:
             nodes = nodes[0]
 
