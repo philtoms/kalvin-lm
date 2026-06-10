@@ -19,19 +19,22 @@ Tune NLP annotation (comment) decisions: suppress inline annotations that would 
 - **Started:** 2026-06-10
 
 ## Current Phase
-editing
+observing
 
 ## Next Action
-Add is_bound_to() to NLPSymbolTable, update binding resolver, fix curriculum, run 2
+Update spec (NA-9) and document results
 
 ## Run Log
 
+### Run 2 — annotation redundancy fix ✅
+- **Code changes:** Added is_bound_to() to Scope + NLPSymbolTable; updated BindingResolver to skip redundant inline bindings; removed redundant M(ary) and H(ad) from lesson 5
+- **Observation:** All 5 lessons complete. Lesson 5 now completes cleanly with 0 escalations (was 2: low_confidence + budget_exhaustion). The massive L > M expansion noise (hundreds of proposals at sig 200) is completely eliminated. Lesson 3 has a pre-existing budget_exhaustion escalation from ALL decomposition (unrelated). All 21 curriculum compat tests pass. 8 pre-existing NLP test failures unchanged.
+- **Verdict:** improved — goal met
+
 ### Run 1 — baseline ✅ (baseline)
 - **Code changes:** baseline (no changes)
-- **Observation:** Lessons 1-4 pass clean (13/13 satisfied). Lesson 5 compiles 18 entries but L > M triggers massive expansion noise (hundreds of S3 proposals at sig 200), causing low_confidence escalation then budget_exhaustion. Reactive scaffolding generates 3 rounds of LLM calls. Eventually completes 24/24 but with heavy noise.
-- **Verdict:** baseline captured — redundant annotations in lesson 5 cause expansion noise
-
-## Run 0 (not run)
+- **Observation:** Lessons 1-4 pass clean. Lesson 5: 2 escalations (low_confidence + budget_exhaustion), massive L > M expansion noise (hundreds of proposals), 3 rounds of reactive scaffolding via LLM.
+- **Verdict:** baseline captured
 
 ## Patterns & Notes
 - Issue: `S(ubject) = M(ary)` in lesson 5 re-binds M→"Mary" when M was already bound in lesson 1
