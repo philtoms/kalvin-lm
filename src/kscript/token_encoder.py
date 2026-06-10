@@ -7,10 +7,10 @@ ready for the knowledge graph.
 
 from __future__ import annotations
 
-from kalvin.kline import KLine, KNodes, KSig
 from kalvin.abstract import KTokenizer
+from kalvin.kline import KLine, KNodes, KSig
 from kalvin.mod_tokenizer import Mod32Tokenizer
-from kalvin.signature import is_literal_node, is_nlp_node, LITERAL_MASK
+from kalvin.signature import LITERAL_MASK, is_literal_node
 
 
 class CompiledEntry(KLine):
@@ -37,7 +37,7 @@ class CompiledEntry(KLine):
         sig_level: str = "S4",
         significance: object | None = None,
         dbg_text: str = ""
-    ) -> "CompiledEntry":
+    ) -> CompiledEntry:
         """Encode string signature/nodes to token IDs.
 
         Signatures (uppercase strings) are packed automatically.
@@ -150,7 +150,6 @@ class TokenEncoder:
         Returns:
             List of CompiledEntry objects with token IDs.
         """
-        from .ast_emitter import SymbolicEntry
         results: list[CompiledEntry] = []
         for entry in symbolic_entries:
             # BPE decomposition for multi-token identifiers (NLP mode)

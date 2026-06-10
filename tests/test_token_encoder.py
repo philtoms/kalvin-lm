@@ -295,17 +295,32 @@ class TestTokenEncoderNLPIntegration:
             pytest.skip("NLPTokenizer data files not available")
 
     def test_symbolic_entry_produces_nlp_bpe_nodes(self) -> None:
-        """SymbolicEntry through TokenEncoder produces NLP-BPE node values."""
+        """SymbolicEntry through TokenEncoder produces NLP-BPE node values.
+
+        When a multi-char uppercase sig like "AB" is encoded in NLP mode,
+        _bpe_decompose emits additional entries (unsigned components + a
+        decomposition canonize entry). The original symbolic entry's CANONIZE
+        (S2) result is among the returned entries, not necessarily the only one.
+        """
         from kalvin.signature import is_nlp_node
-        from kscript.ast_emitter import SymbolicEntry
 
         encoder = TokenEncoder(tokenizer=self._nlp_tok, dev=True)
         entries = encoder.encode_entries([
             SymbolicEntry("AB", ["A", "B"], "CANONIZE"),
         ])
 
-        assert len(entries) == 1
-        entry = entries[0]
+        # BPE decomposition emits extra entries; the original symbolic entry
+        # is among them. Find it by sig_level == "S2" with non-empty nodes.
+        canonize_entries = [
+            e for e in entries
+            if e.sig_level == "S2" and e.nodes  # has actual node content
+        ]
+        assert len(canonize_entries) >= 1, (
+            f"Expected at least 1 canonize entry with nodes, got {len(canonize_entries)} "
+            f"among {len(entries)} total entries"
+        )
+
+        entry = canonize_entries[0]
 
         # Signature should be an NLP-BPE node
         assert is_nlp_node(entry.signature), (
