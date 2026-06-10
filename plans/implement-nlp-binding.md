@@ -2,7 +2,7 @@
 
 **Specs:** @kscript-nlp-binding, @kscript-nlp, @kscript, @signature  
 **Date:** 2026-06-09  
-**Status:** Planning  
+**Status:** ✅ Complete  
 **Assumes:** KScript compiler pipeline (lexer → parser → ASTEmitter → TokenEncoder), NLPTokenizer, existing NLP-BPE encoding support
 
 ---
@@ -646,12 +646,12 @@ Additional integration tests:
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 1: AST changes | ○ Not started | |
-| Task 2: Parser changes | ○ Not started | |
-| Task 3: NLPSymbolTable | ○ Not started | |
-| Task 4: BindingResolver | ○ Not started | Core algorithm |
-| Task 5: Compiler integration | ○ Not started | |
-| Task 6: ASTEmitter integration | ○ Not started | |
-| Task 7: Decompiler NLP updates | ○ Not started | |
-| Task 8: Integration tests | ○ Not started | |
-| Task 9: Compatibility tests | ○ Not started | |
+| Task 1: AST changes | ✅ Complete | KB-156 |
+| Task 2: Parser changes | ✅ Complete | KB-157 |
+| Task 3: NLPSymbolTable | ✅ Complete | KB-158 |
+| Task 4: BindingResolver | ✅ Complete | KB-159 | Core algorithm |
+| Task 5: Compiler integration | ✅ Complete | KB-160 |
+| Task 6: ASTEmitter integration | ✅ Complete | KB-161 |
+| Task 7: Decompiler NLP updates | ✅ Complete | KB-162 |
+| Task 8: Integration tests | ✅ Complete | KB-163 |
+| Task 9: Compatibility tests | ✅ Complete | KB-164 |
