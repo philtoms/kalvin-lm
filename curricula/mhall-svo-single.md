@@ -10,11 +10,12 @@ Present the full MHALL == SVO countersign with nested subscript scaffolding in a
 Submit the full MHALL == SVO countersign with subscript scaffolding.
 
 ```
+(Mary Had A Little Lamb)
 MHALL == SVO =>
-   S = M
-   V = H
-   O = ALL =>
-     A > D
-     L > M
+   S(ubject) = M(ary)
+   V(erb) = H(ad)
+   O(bject) = A(ll) =>
+     A > D(et)
+     L > M(od)
      L > O
 ```

@@ -10,28 +10,7 @@ Introduce identities, countersign, add a new identity, then submit a canonize th
 Introduce the identity M.
 
 ```
-M
-```
-
-### 2
-Introduce the identity H.
-
-```
-H
-```
-
-### 3
-Establish a bidirectional relationship between M and H.
-
-```
-M == H
-```
-
-### 4
-Introduce the identity A.
-
-```
-A
+M(ark)
 ```
 
 ### 5
@@ -39,5 +18,6 @@ Submit a canonize that creates a dual-misfit kline {MH: [H, A]}.
 This kline should route S2 against {M: [H]} because H matches but A doesn't.
 
 ```
-MH => H A
+(Mark Halo)
+MH => H A(lpha)
 ```
