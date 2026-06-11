@@ -593,7 +593,7 @@ class KAgent:
 
     @classmethod
     def load(
-        cls, path: str | Path = "data/agent.bin", format: Literal["bin", "json"] | None = None,
+        cls, path: str | Path | None = None, format: Literal["bin", "json"] | None = None,
         adapter: KAgentAdapter | None = None,
     ) -> KAgent:
         """Load from file."""

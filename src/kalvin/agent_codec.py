@@ -358,10 +358,13 @@ class AgentCodec:
     @classmethod
     def load(
         cls,
-        path: str | Path = "data/agent.bin",
+        path: str | Path | None = None,
         format: Literal["bin", "json"] | None = None,
     ) -> tuple[Model, Counter]:
         """Load from file. Returns (Model, Counter). Format auto-detected from extension."""
+        if path is None:
+            from kalvin.paths import agent_bin
+            path = agent_bin()
         path = Path(path)
         if format is None:
             format = "json" if path.suffix.lower() == ".json" else "bin"

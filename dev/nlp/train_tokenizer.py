@@ -94,8 +94,8 @@ def main():
         "vocab_size",
         type=int,
         nargs="?",
-        default=4096,
-        help="Target vocabulary size (default: 4096)",
+        default=32768,
+        help="Target vocabulary size (default: 32768)",
     )
     parser.add_argument(
         "-g","--glob-pattern",
@@ -104,8 +104,8 @@ def main():
     )
     parser.add_argument(
         "-o", "--output",
-        default="data/tokenizer",
-        help="Output directory for the trained tokenizer (default: data/tokenizer)",
+        default=None,
+        help="Output directory for the trained tokenizer (default: <data>/tokenizer)",
     )
     parser.add_argument(
         "-n", "--name",
@@ -129,11 +129,14 @@ def main():
     )
     args = parser.parse_args()
 
+    from kalvin.paths import tokenizer_dir
+    output = args.output or str(tokenizer_dir())
+
     # Determine pattern
     pattern = SPLIT_WORDS_PATTERN if args.split_words else None
 
     data_path = Path(args.path)
-    output_path = Path(args.output)
+    output_path = Path(output)
 
     if not data_path.exists():
         print(f"Error: Path not found: {data_path}")

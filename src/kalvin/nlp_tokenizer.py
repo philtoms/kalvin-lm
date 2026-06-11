@@ -137,11 +137,15 @@ class NLPTokenizer(KTokenizer):
     @classmethod
     def from_files(
         cls,
-        tokenizer_path: str = "data/tokenizer",
+        tokenizer_path: str | None = None,
         tokenizer_name: str = "tokenizer-32768",
         grammar_path: str | None = None,
     ) -> NLPTokenizer:
         """Load an NLPTokenizer from standard file paths.
+
+        When ``tokenizer_path`` is *None* (the default), it is resolved via
+        ``kalvin.paths.tokenizer_dir()`` (``KALVIN_DATA_DIR`` env var or
+        ``data/tokenizer`` relative to the project root).
 
         When ``grammar_path`` is *None* (the default), the loader first looks
         for a BPE-tagged grammar (``{tokenizer_name}_tagged_grammar.json``
@@ -159,6 +163,9 @@ class NLPTokenizer(KTokenizer):
         Returns:
             Configured NLPTokenizer instance.
         """
+        if tokenizer_path is None:
+            from kalvin.paths import tokenizer_dir
+            tokenizer_path = str(tokenizer_dir())
         bpe_tokenizer = Tokenizer.from_directory(tokenizer_path, tokenizer_name)
 
         if grammar_path is None:

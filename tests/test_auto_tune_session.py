@@ -247,7 +247,8 @@ class TestSessionDirInit:
         assert cfg.created_from_branch == original_branch
         assert cfg.created_from_commit == original_commit
         assert cfg.harness_url == "ws://localhost:8765"
-        assert cfg.model_path == "data/agent.bin"
+        from kalvin.paths import agent_bin as _agent_bin
+        assert cfg.model_path == str(_agent_bin())
 
     def test_host_port_override(self, tmp_git_repo: Path) -> None:
         """Explicit host/port overrides harness.yaml defaults."""

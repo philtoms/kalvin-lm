@@ -455,7 +455,8 @@ class TestSaveAction:
             Message(role=TRAINEE_ROLE, action="save", message=None, sender="supervisor")
         )
 
-        kagent.save.assert_called_once_with("data/agent.bin")
+        from kalvin.paths import agent_bin
+        kagent.save.assert_called_once_with(str(agent_bin()))
 
     def test_save_without_kagent(self) -> None:
         bus = MessageBus()

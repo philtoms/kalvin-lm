@@ -173,7 +173,8 @@ class SessionDir:
             resolved_port = port
 
         # 2. Derive model_path
-        model_path = "data/agent.bin"
+        from kalvin.paths import agent_bin
+        model_path = str(agent_bin())
 
         # 3. Capture git state
         created_from_commit = _git("rev-parse", "HEAD", cwd=root).strip()
@@ -213,14 +214,14 @@ class SessionDir:
         events_path = session_dir / "events.jsonl"
         events_path.write_text("", encoding="utf-8")
 
-        # 9. Symlink data/ from main repo into worktree
+        # 9. Set KALVIN_DATA_DIR for worktree subprocesses
         #    The data/ directory (tokenizer models, grammar dicts) is
-        #    gitignored and absent from worktrees.  Create a symlink so
-        #    NLPTokenizer.from_files() works without manual setup.
+        #    gitignored and absent from worktrees.  Setting KALVIN_DATA_DIR
+        #    tells paths.py to resolve data files from the main checkout
+        #    — no symlink needed (safer: can't be accidentally committed).
         main_data = root / "data"
-        worktree_data = worktree_path / "data"
-        if main_data.is_dir() and not worktree_data.exists():
-            worktree_data.symlink_to(main_data)
+        if main_data.is_dir():
+            os.environ["KALVIN_DATA_DIR"] = str(main_data)
 
         return cls(
             root=worktree_path,

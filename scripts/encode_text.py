@@ -104,11 +104,11 @@ def main():
     parser = argparse.ArgumentParser(
         description="Encode text files into Agent embeddings"
     )
-    parser.add_argument("-i", "--input_file", default="data/tokenizer/simplestories-1.json", help="Path to the text file to encode")
+    parser.add_argument("-i", "--input_file", default=None, help="Path to the text file to encode")
     parser.add_argument(
         "--agent",
-        default="data/kalvin.bin",
-        help="Path to load/save the agent (default: data/kalvin.bin)",
+        default=None,
+        help="Path to load/save the agent (default: <data>/kalvin.bin)",
     )
 
     parser.add_argument(
@@ -118,7 +118,10 @@ def main():
         help="Agent format (default: binary)",
     )
     args = parser.parse_args()
-    agent_path = args.agent
+    from kalvin.paths import data_dir
+    _data = data_dir()
+    agent_path = args.agent or str(_data / "kalvin.bin")
+    input_file = args.input_file or str(_data / "tokenizer" / "simplestories-1.json")
 
     # Load or initialize Agent
     agent_path = Path(agent_path)
@@ -130,13 +133,11 @@ def main():
         print(f"Loaded agent size: {agent_size:,} KLines")
     else:
         print("\nInitializing new agent...")
-        if not agent_path:
-            agent_path = "data/kalvin.bin"
         agent = KAgent(adapter=EventBus())
         print(f"Initial agent size: {agent.frame_size():,} KLines")
 
 
-    for text in stream_text(args.input_file):
+    for text in stream_text(input_file):
         if _interrupted:
             break
 

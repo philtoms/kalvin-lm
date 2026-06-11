@@ -92,11 +92,14 @@ class Tokenizer(KTokenizer):
         (path / f"{name}.bin").write_text(json.dumps(ranks_data))
 
     @classmethod
-    def from_directory(cls, path: str | Path = "data/tokenizer", name: str = "tokenizer-32768") -> "Tokenizer":
+    def from_directory(cls, path: str | Path | None = None, name: str = "tokenizer-32768") -> "Tokenizer":
         if _tiktoken is None:
             raise TiktokenNotInstalledError(
                 "tiktoken is not installed. Install with: pip install tiktoken"
             )
+        if path is None:
+            from kalvin.paths import tokenizer_dir
+            path = tokenizer_dir()
         path = Path(path)
         meta = json.loads((path / f"{name}.json").read_text())
         pattern = meta["pattern"]

@@ -28,6 +28,7 @@ from harness.bus import MessageBus
 from harness.constants import TRAINEE_ROLE, TRAINER_ROLE, SUPERVISOR_ROLE
 from harness.message import Message
 from harness.protocols import Participant
+from kalvin.paths import agent_bin
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kalvin.abstract import KTokenizer
@@ -240,7 +241,7 @@ class KAgentAdapter:
             logger.error("No KAgent bound; cannot save")
             return
 
-        path = msg.message or "data/agent.bin"
+        path = msg.message or str(agent_bin())
         try:
             self._kagent.save(path)
             logger.info("Kalvin model saved to %s", path)
@@ -268,7 +269,7 @@ class KAgentAdapter:
             logger.error("No KAgent bound; cannot load")
             return
 
-        path = msg.message or "data/agent.bin"
+        path = msg.message or str(agent_bin())
         try:
             from kalvin.agent_codec import AgentCodec
             model, activity = AgentCodec.load(path)
