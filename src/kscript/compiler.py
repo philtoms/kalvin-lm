@@ -29,14 +29,12 @@ from kalvin.kline import KLine, KNodes, KSig
 from kalvin.abstract import KTokenizer
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.expand import D_MAX
-from kalvin.signature import is_literal_node
 
 from .ast import (
     Block,
     Construct,
     ConstructItem,
     KScriptFile,
-    Literal,
     Node,
     PrimaryConstruct,
     Script,

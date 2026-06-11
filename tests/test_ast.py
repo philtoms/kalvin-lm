@@ -10,7 +10,6 @@ from kscript.ast import (
     Construct,
     ConstructItem,
     KScriptFile,
-    Literal,
     PrimaryConstruct,
     Script,
     Signature,
@@ -49,14 +48,10 @@ class TestCommentConstructItem:
         """ConstructItem is a type alias — verify the import resolves and
         a Comment instance is one of the types in the union."""
         c = Comment("(note)", 1, 1)
-        # Comment should be one of: PrimaryConstruct, Literal, Comment
         assert isinstance(c, Comment)
 
     def test_comment_as_block_level_item(self):
         """A Comment can serve as a block-level item alongside other types."""
-        from typing import get_args
-        # ConstructItem is a string-quoted alias, so check resolution at runtime
-        # by verifying it's importable and Comment is in the module
         assert Comment is not None
 
 
@@ -128,17 +123,11 @@ class TestBackwardCompatibility:
         assert pc.node is None
         assert pc.inline_comment is None
 
-    def test_construct_with_literal_inner(self):
-        """Existing Literal construct still works."""
-        lit = Literal("hello", 1, 1)
-        construct = Construct(lit)
-        assert isinstance(construct.inner, Literal)
-
     def test_construct_with_primary_list_inner(self):
         """Existing PrimaryConstruct list construct still works."""
         primaries = [
             PrimaryConstruct(sig=Signature("A", 1, 1)),
-            PrimaryConstruct(sig=Signature("B", 2, 1), op=TokenType.UNDERSIGN, node=Literal("x", 2, 5)),
+            PrimaryConstruct(sig=Signature("B", 2, 1), op=TokenType.UNDERSIGN, node=Signature("C", 2, 5)),
         ]
         construct = Construct(primaries)
         assert isinstance(construct.inner, list)
@@ -147,7 +136,7 @@ class TestBackwardCompatibility:
     def test_construct_with_block_inner(self):
         """Existing Block construct still works."""
         block = Block(constructs=[
-            Construct(Literal("a", 1, 1)),
+            Construct([PrimaryConstruct(sig=Signature("A", 1, 1))]),
         ])
         construct = Construct(block)
         assert isinstance(construct.inner, Block)

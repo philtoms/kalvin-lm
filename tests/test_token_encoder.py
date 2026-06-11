@@ -7,7 +7,7 @@ encode/decode round-trip tests ported from test_kscript.py.
 import pytest
 
 from kalvin.mod_tokenizer import Mod32Tokenizer, Mod64Tokenizer, ModTokenizer
-from kalvin.signature import is_nlp_node
+# Removed: is_nlp_node — use (x >> 32) != 0 instead
 from kscript.ast_emitter import SymbolicEntry
 from kscript.token_encoder import CompiledEntry, TokenEncoder
 
@@ -55,24 +55,7 @@ class TestTokenEncoderBasic:
 
 
 # =============================================================================
-# 2. TokenEncoder — literal nodes
-# =============================================================================
-
-
-class TestTokenEncoderLiteral:
-    def test_encode_literal_nodes(self) -> None:
-        encoder = TokenEncoder(tokenizer=_tok64)
-        entries = encoder.encode_entries([SymbolicEntry("A", "hello", "CONNOTATE")])
-        assert len(entries) == 1
-        e = entries[0]
-        assert e.signature == _tok64.encode("A")[0]
-        # "hello" is a literal, encoded as multiple token IDs
-        assert isinstance(e.nodes, list)
-        assert len(e.nodes) > 1
-
-
-# =============================================================================
-# 3. TokenEncoder — list nodes
+# 2. TokenEncoder — list nodes
 # =============================================================================
 
 
@@ -153,7 +136,7 @@ class TestCompiledEntryEncode:
         assert entry.nodes == []  # None normalizes to []
         sig, nodes = entry.decode(_tok64)
         assert sig == "A"
-        assert nodes == ""  # empty nodes decode to ''
+        assert nodes is None
 
     def test_encode_sig_to_sig(self) -> None:
         entry = CompiledEntry.encode("A", "B", _tok64)
@@ -184,7 +167,7 @@ class TestCompiledEntryDecode:
         entry = CompiledEntry.encode("A", None, _tok64)
         sig, nodes = entry.decode(_tok64)
         assert sig == "A"
-        assert nodes == ""
+        assert nodes is None
 
     def test_decode_sig_to_sig(self) -> None:
         entry = CompiledEntry.encode("A", "B", _tok64)
@@ -235,21 +218,21 @@ class TestTokenEncoderNLP:
         """Encode an unsigned entry with NLPTokenizer — sig should be an NLP-BPE node."""
         entry = CompiledEntry.encode("MHALLO", None, self._nlp_tok)
         # Signature token ID should be a valid NLP node (high 32 bits non-zero)
-        assert is_nlp_node(entry.signature)
+        assert (entry.signature >> 32) != 0
 
     def test_encode_countersign_with_nlp(self) -> None:
         """Encode a countersign entry — both sig and node should be NLP-BPE encoded."""
         entry = CompiledEntry.encode("A", "B", self._nlp_tok)
-        assert is_nlp_node(entry.signature)
+        assert (entry.signature >> 32) != 0
         # Node is a list (KLine normalization); all should be NLP-BPE nodes
         assert isinstance(entry.nodes, list)
         assert len(entry.nodes) == 1
-        assert is_nlp_node(entry.nodes[0])
+        assert (entry.nodes[0] >> 32) != 0
 
     def test_encode_literal_with_nlp(self) -> None:
         """Encode a literal connotate — NLP tokenizer may BPE-encode 'hello'."""
         entry = CompiledEntry.encode("A", "hello", self._nlp_tok)
-        assert is_nlp_node(entry.signature)
+        assert (entry.signature >> 32) != 0
         # "hello" is encoded by NLP tokenizer as BPE tokens
         assert isinstance(entry.nodes, list)
         assert len(entry.nodes) >= 1
@@ -302,7 +285,7 @@ class TestTokenEncoderNLPIntegration:
         decomposition canonize entry). The original symbolic entry's CANONIZE
         (S2) result is among the returned entries, not necessarily the only one.
         """
-        from kalvin.signature import is_nlp_node
+        # Removed: is_nlp_node — use (x >> 32) != 0 instead
 
         encoder = TokenEncoder(tokenizer=self._nlp_tok, dev=True)
         entries = encoder.encode_entries([
@@ -323,13 +306,13 @@ class TestTokenEncoderNLPIntegration:
         entry = canonize_entries[0]
 
         # Signature should be an NLP-BPE node
-        assert is_nlp_node(entry.signature), (
+        assert (entry.signature >> 32) != 0, (
             f"Signature {entry.signature:#x} should be NLP-BPE"
         )
 
         # All nodes should be NLP-BPE
         for node in entry.nodes:
-            assert is_nlp_node(node), (
+            assert (node >> 32) != 0, (
                 f"Node {node:#x} should be NLP-BPE"
             )
 

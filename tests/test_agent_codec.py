@@ -243,8 +243,6 @@ class TestThreeTierRoundtrip:
             for entry in d[key]:
                 assert "signature" in entry
                 assert "nodes" in entry
-                assert "literal" in entry
-                assert isinstance(entry["literal"], bool)
 
 
 # ── Backward Compatibility Tests ───────────────────────────────────────
@@ -305,53 +303,6 @@ class TestBackwardCompat:
 
 
 # ── Literal Preservation Tests ─────────────────────────────────────────
-
-class TestLiteralPreservation:
-    """Verify the literal flag survives roundtrip."""
-
-    def test_literal_preserved_binary(self):
-        """KLine with literal=True survives binary roundtrip."""
-        model = Model()
-        kl_lit = KLine(100, [200], literal=True)
-        kl_norm = KLine(200, [300], literal=False)
-        model.add_frame(kl_lit)
-        model.add_frame(kl_norm)
-        activity = Counter()
-
-        data = BinaryAdapter.encode(model, activity)
-        loaded_model, _ = BinaryAdapter.decode(data)
-
-        # Find the literal kline by signature
-        loaded_lit = loaded_model.find(100)
-        assert loaded_lit is not None
-        assert loaded_lit.literal is True
-
-        loaded_norm = loaded_model.find(200)
-        assert loaded_norm is not None
-        assert loaded_norm.literal is False
-
-    def test_literal_preserved_json(self):
-        """KLine with literal=True survives JSON roundtrip."""
-        model = Model()
-        kl_lit = KLine(100, [200], literal=True)
-        kl_norm = KLine(200, [300], literal=False)
-        model.add_frame(kl_lit)
-        model.add_frame(kl_norm)
-        activity = Counter()
-
-        d = JsonAdapter.encode(model, activity)
-        loaded_model, _ = JsonAdapter.decode(d)
-
-        loaded_lit = loaded_model.find(100)
-        assert loaded_lit is not None
-        assert loaded_lit.literal is True
-
-        loaded_norm = loaded_model.find(200)
-        assert loaded_norm is not None
-        assert loaded_norm.literal is False
-
-
-# ── Empty Tier Tests ──────────────────────────────────────────────────
 
 class TestEmptyTiers:
     """Model with only Frame entries roundtrips correctly."""

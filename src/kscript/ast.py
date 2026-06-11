@@ -3,12 +3,11 @@
 Grammar (left recursion eliminated):
 
     script ::= construct+
-    construct ::= block | literal | comment | primary_construct+ ( "=>" construct )?
+    construct ::= block | comment | primary_construct+ ( "=>" construct )?
     block ::= <INDENT> construct+ <DEDENT>
     primary_construct ::= sig ( inline_comment )? ( ( "==" | ">" | "=" ) node ( inline_comment )? )?
-    node ::= sig | literal
+    node ::= sig
     sig ::= [A-Z]+
-    literal ::= ![A-Z]+
     comment ::= "(" ... ")"
 
 Inline comments can appear on either side of a primary construct:
@@ -44,23 +43,6 @@ class Signature:
 
 
 @dataclass
-class Literal:
-    """A literal value (anything not [A-Z]+).
-
-    Literals can appear as bare constructs (unsigned identities) or as
-    node positions within primary constructs. They cannot own chain operators.
-
-    Attributes:
-        id: The literal value (e.g., "hello", "42", '"quoted"')
-        line: 1-based line number
-        column: 1-based column number
-    """
-    id: str
-    line: int
-    column: int
-
-
-@dataclass
 class Comment:
     """A comment node (...).
 
@@ -78,11 +60,11 @@ class Comment:
     column: int
 
 
-# Union type for all node types
-Node: TypeAlias = Signature | Literal
+# Union type for node types (signatures only)
+Node: TypeAlias = Signature
 
-# Union type for items extracted from constructs (blocks may mix types)
-ConstructItem: TypeAlias = "PrimaryConstruct | Literal | Comment"
+# Union type for items extracted from constructs
+ConstructItem: TypeAlias = "PrimaryConstruct | Comment"
 
 
 # =============================================================================
@@ -125,20 +107,19 @@ class Block:
 
 @dataclass
 class Construct:
-    """construct ::= block | literal | primary_construct+ ( "=>" construct )?
+    """construct ::= block | primary_construct+ ( "=>" construct )?
 
     A construct is one of:
     - Block: indented sub-constructs
-    - Literal: a bare literal (unsigned identity, no chain ops allowed)
     - PrimaryConstruct list with optional chain: signatures with inline ops
       and/or chain operator (=>)
 
     Attributes:
-        inner: Block, Literal, or list of PrimaryConstruct
+        inner: Block, Comment, or list of PrimaryConstruct
         chain_op: The chain operator (CANONIZE), or None
         chain_right: The right-hand construct of the chain, if any
     """
-    inner: Block | Literal | Comment | list[PrimaryConstruct]
+    inner: Block | Comment | list[PrimaryConstruct]
     chain_op: TokenType | None = None
     chain_right: "Construct | None" = None
 
@@ -171,7 +152,6 @@ class KScriptFile:
 
 __all__ = [
     "Signature",
-    "Literal",
     "Comment",
     "Node",
     "ConstructItem",

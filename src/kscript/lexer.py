@@ -18,12 +18,10 @@ class Lexer:
     The lexer handles:
     - Multi-character operators (==, =>) before single-char
     - Signatures [A-Z]+ with optional inline comment
-    - Literals: numbers [0-9]+ and quoted strings "..."
     - Comments (...) with nested paren handling
     - Python-style INDENT/DEDENT tokens
 
     Key insight: Only SIGNATURE tokens ([A-Z]+) can be construct owners.
-    Literals are strictly numbers or quoted strings.
     """
 
     def __init__(self, source: str):
@@ -111,14 +109,6 @@ class Lexer:
         if ch.isalpha():
             return self._read_identifier()
 
-        # Number [0-9]+ → LITERAL
-        if ch.isdigit():
-            return self._read_number()
-
-        # Quoted string "..." → LITERAL
-        if ch == '"':
-            return self._read_quoted_string()
-
         # Comment (...)
         if ch == "(":
             return self._read_comment()
@@ -200,38 +190,6 @@ class Lexer:
     def _is_ident_char(self, ch: str) -> bool:
         """Check if character is valid in an identifier (alphanumeric)."""
         return ch.isalnum()
-
-    def _read_number(self) -> Token:
-        """Read a number [0-9]+ → LITERAL."""
-        start_line, start_col = self.line, self.column
-        value = ""
-
-        while self.pos < len(self.source) and self.source[self.pos].isdigit():
-            value += self._advance()
-
-        return Token(TokenType.LITERAL, value, start_line, start_col)
-
-    def _read_quoted_string(self) -> Token:
-        """Read a quoted string "..." → LITERAL."""
-        start_line, start_col = self.line, self.column
-        value = self._advance()  # opening "
-
-        while self.pos < len(self.source):
-            ch = self.source[self.pos]
-            if ch == "\\" and self.pos + 1 < len(self.source):
-                # Escape sequence
-                value += self._advance()
-                value += self._advance()
-            elif ch == '"':
-                value += self._advance()  # closing "
-                break
-            elif ch == "\n":
-                # Unterminated string - stop at newline
-                break
-            else:
-                value += self._advance()
-
-        return Token(TokenType.LITERAL, value, start_line, start_col)
 
     def _read_comment(self) -> Token:
         """Read a comment (...) - multi-line, handles nested parens."""

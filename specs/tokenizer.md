@@ -29,8 +29,7 @@ The tokenizer does not interpret nodes beyond its own encoding.
 
 ### Signature (@signature spec)
 
-- Signature creation (`make_signature`) depends on the standalone
-  `is_literal` function to determine which nodes contribute.
+- Signature creation (`make_signature`) is a plain OR-reduce of node values.
 - The tokenizer does not create signatures itself. See the @signature spec.
 
 ## Interface
@@ -46,9 +45,7 @@ The number of distinct tokens the vocabulary defines.
 Convert a string to an ordered sequence of nodes.
 
 - Empty string → empty list.
-- All-uppercase-alpha strings → **packed** encoding (single node, bit 0 clear).
-- All other strings → **literal** encoding (one node per character, literal mask).
-- The encoding mode is determined automatically from the input content.
+- The encoding mode is determined by the tokenizer type and input content.
 - Each node carries enough information to reconstruct the original text
   via `decode`.
 
@@ -58,20 +55,6 @@ Convert a sequence of nodes back to a string.
 
 - Empty list → empty string.
 - `decode(encode(text)) == text` for any string the tokenizer can represent.
-- Auto-detects literal vs packed from the literal mask on each node.
-
-### `is_literal(node: int) → bool` *(deprecated — moved to node encoding)*
-
-> **Note:** `is_literal` is now a standalone function defined by the node
-> encoding layer, not the tokenizer. Tokenizers no longer implement this
-> method. It is documented here for historical reference only. See the
-> @kline spec for the current definition.
-
-Returns whether the node represents a literal token.
-
-- Literal tokens preserve character identity and order.
-- Non-literal (typed) tokens carry structural or type information and
-  participate in bitwise OR signature construction.
 
 ## Vocabulary
 
@@ -154,12 +137,6 @@ encode("hello world") → [15496, 995]
 The returned values are raw BPE token IDs. Type prefix combination
 happens at the agent layer.
 
-### Literal Test
-
-BPE tokens are never literal. The standalone `is_literal` function
-(defined in the @kline spec) returns `False` for all BPE nodes because
-their lower 32 bits are never all set (`0xFFFFFFFF`).
-
 ### Worked Examples
 
 #### Encoding with type prefixes
@@ -227,17 +204,6 @@ Bit layout:
 The `nlp_type32` value is a 32-bit bitmask encoding 32 linguistic
 dimensions (17 POS + 8 DEP + 7 MORPH = 32 flags), sourced from the
 32-bit NLP type legend. The BPE token ID occupies the low 32 bits.
-
-### Literal Node Semantics
-
-NLP-BPE nodes never trigger `is_literal()` because their low 32 bits
-are BPE IDs (0–17391), never `0xFFFFFFFF`. The standalone `is_literal`
-function (defined in the @kline spec) always returns `False` for NLP
-nodes.
-
-Character-level fallback for unknown or rare words still uses the
-existing `(codepoint << 32) | 0xFFFFFFFF` literal pattern defined in
-the Mod spec.
 
 ### Fallback for Unknown BPE Tokens
 
@@ -323,17 +289,10 @@ Comparison with other tokenizers:
 
 ### Signature Behavior
 
-`make_signature()` for NLP nodes OR-reduces only the NLP type bits
-(high 32), excluding BPE IDs. The masking is handled internally by
-`make_signature()` — it detects NLP-BPE nodes via `is_nlp_node()` and
-applies `NLP_TYPE_MASK` (`0xFFFFFFFF00000000`) before OR-reducing.
-The tokenizer passes raw (unmasked) NLP-BPE nodes to `make_signature()`
+`make_signature()` for NLP nodes OR-reduces the full unmasked node values.
+Both NLP type bits (high 32) and BPE token IDs (low 32) contribute to
+the signature. The tokenizer passes raw NLP-BPE nodes to `make_signature()`
 as it would any other node sequence.
-
-**Rationale**: BPE IDs are vocabulary-specific indices without semantic
-meaning — two synonyms have unrelated BPE IDs but may share NLP type
-bits. Only the NLP type bits carry structural/linguistic information
-relevant to similarity matching.
 
 ### Worked Examples
 
@@ -365,20 +324,13 @@ decode([563499709247665, 36169534507324260, 9007216434611153]) → "Tea brewed s
 Nodes: [563499709247665, 36169534507324260, 9007216434611153]
 
 make_signature(nodes) →
-  Each NLP node is masked internally by make_signature:
-    563499709247665  & 0xFFFFFFFF00000000  = 563499709235200
-    36169534507324260 & 0xFFFFFFFF00000000 = 36169534507319296
-    9007216434611153 & 0xFFFFFFFF00000000  = 9007216434610176
-  OR-reduce: 563499709235200 | 36169534507319296 | 9007216434610176
+  563499709247665 | 36169534507324260 | 9007216434611153
 
-Signature captures: POS_PROPN, POS_VERB, POS_ADV, DEP_SUBJ, DEP_ROOT,
-DEP_ADVMOD, MORPH_PAST, MORPH_SING — the grammatical profile of the
-input, independent of which specific words were used.
+Signature captures: both NLP type and BPE ID dimensions — the full
+identity of each token.
 ```
 
 > **Note.** `make_signature` is defined in the @signature spec, not here.
-> The NLP-aware masking (detecting NLP-BPE nodes and applying `NLP_TYPE_MASK`)
-> is built into `make_signature` itself — the tokenizer passes raw nodes.
 
 ## Mod Tokenizer
 
@@ -386,21 +338,24 @@ input, independent of which specific words were used.
 
 A Mod tokenizer maps characters to bit positions within a node. Strings
 are encoded as the bitwise OR of constituent character bits, producing a
-single node. Individual characters can also be encoded as literal tokens
-that preserve order and identity.
+single node.
 
-Two encoding modes produce two token categories:
+Encoding mode:
 
-| Mode    | Tokens   | Bit 0 | Order preserved | Use                   |
-| ------- | -------- | ----- | --------------- | --------------------- |
-| Packed  | Single   | 0     | No              | Signatures, AND match |
-| Literal | Per-char | 1     | Yes             | Exact text, sequence  |
+| Mode   | Tokens  | Bit 0 | Order preserved | Use                   |
+| ------ | ------- | ----- | --------------- | --------------------- |
+| Packed | Single  | 0     | No              | Signatures, AND match |
+
+The Mod tokenizer encodes all-uppercase-alpha strings as packed nodes.
+Non-uppercase-alpha strings are not supported by the Mod tokenizer — they
+should be encoded through the tokenizer path appropriate for the content
+(e.g., BPE or NLP tokenizer).
 
 ### Bit Layout
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ Bit 0       │ LITERAL flag: 0 = packed, 1 = literal              │
+│ Bit 0       │ Always 0 (packed)                                   │
 │ Bits 1–N    │ Character bits (N determined by variant)           │
 │ Bits N+1–63 │ Unused                                             │
 └──────────────────────────────────────────────────────────────────┘
@@ -431,18 +386,12 @@ bit position (wrapping).
 
 ### Encoding
 
-The encoding mode is determined automatically from the input text:
+The tokenizer encodes all-uppercase-alpha strings as packed nodes:
 
 - All-uppercase-alpha strings → **packed** (single node, bit 0 clear)
-- All other strings → **literal** (one node per character, literal mask set)
-
-No `pack` parameter is needed — the tokenizer works it out internally.
 
 ```
 encode("ABC")     → [CHAR_BIT['A'] | CHAR_BIT['B'] | CHAR_BIT['C']]   # packed
-encode("hello")   → [(104<<32)|0xFFFFFFFF, (101<<32)|0xFFFFFFFF, ...]   # literal
-encode("123")     → [(49<<32)|0xFFFFFFFF, (50<<32)|0xFFFFFFFF, ...]    # literal
-encode('"hi"')    → [(34<<32)|0xFFFFFFFF, ...]                          # literal
 ```
 
 Multi-character strings are OR-ed into a single node. Bit 0 is clear.
@@ -458,36 +407,14 @@ Applies to all-uppercase-alpha strings automatically:
 - Multiplicity is lost: `"AA"` and `"A"` produce the same node.
 - Suitable for signature construction and bitwise AND matching.
 
-#### Literal properties
-
-Applies to all non-uppercase-alpha strings automatically:
-- Order is preserved.
-- Identity is preserved (distinct characters → distinct tokens).
-- Bypasses the vocabulary: any character with a valid code point can be
-  encoded, including characters not in the vocabulary.
-- The literal mask (`0xFFFFFFFF`) occupies the lower 32 bits, keeping the
-  character code point in the upper 32 bits. This avoids collision with
-  packed nodes (which use bits 1–31 or 1–63) and with signatures (where
-  bit 0 is the literal-content flag, not a full 32-bit mask).
-
 ### Decoding
 
-Auto-detects encoding mode from the literal mask:
-
 ```
-if (node & 0xFFFFFFFF) == 0xFFFFFFFF  →  literal: chr(node >> 32)
-else                                   →  packed: find all set bits, map each to character
+find all set bits, map each to character
 ```
 
-Packed decode returns characters in bit-position order (lowest bit first),
+Decode returns characters in bit-position order (lowest bit first),
 not in the original text order.
-
-### Literal Test
-
-The standalone `is_literal` function (defined in the @kline spec) returns
-`True` for literal Mod nodes because the lower 32 bits are the literal mask
-`0xFFFFFFFF`. Packed Mod nodes have bit 0 clear, so `is_literal` returns
-`False` for them.
 
 ### Worked Examples
 
@@ -502,23 +429,11 @@ encode("AB")      → [0b10 | 0b100]          = [6]
 encode("ABC")     → [0b10 | 0b100 | 0b1000] = [14]
 ```
 
-#### Literal encoding (Mod32)
-
-```
-encode("12") → [(49 << 32) | 0xFFFFFFFF, (50 << 32) | 0xFFFFFFFF]
-               → [4294967345, 4294967346]
-
-decode([4294967345, 4294967346]) → "12"
-
-is_literal(4294967345) → True
-is_literal(2)          → False
-```
-
 #### Bitwise properties of packed nodes
 
-Packed (non-literal) nodes can be combined with bitwise OR and tested
-with bitwise AND. These properties are used by signature construction
-(@signature spec) and candidate retrieval (@model spec):
+Packed nodes can be combined with bitwise OR and tested with bitwise AND.
+These properties are used by signature construction (@signature spec) and
+candidate retrieval (@model spec):
 
 ```
 2 | 4 = 6              # 'A' | 'B' = combined
@@ -532,21 +447,12 @@ with bitwise AND. These properties are used by signature construction
 | TOK-1 | Packed encode single char: `encode("A") == [bit_A]`                          | — |
 | TOK-2 | Packed encode multi-char: `encode("AB") == [bit_A \| bit_B]`                  | — |
 | TOK-3 | Packed round-trip: `decode(encode("ABC"))` contains A, B, C (order may differ) | — |
-| TOK-4 | Literal encode: `encode("123")` produces nodes with literal mask            | — |
-| TOK-5 | Literal round-trip: `decode(encode("123")) == "123"` (order preserved)      | — |
-| TOK-6 | Auto-detection: `encode("A")` → packed; `encode("1")` → literal            | — |
 | TOK-7 | Empty string: `encode("") == []`, `decode([]) == ""`                        | — |
-| TOK-8 | `is_literal` on literal node: `is_literal((65<<32)\|0xFFFFFFFF) == True`    | — |
-| TOK-9 | `is_literal` on packed node: `is_literal(6) == False`                      | — |
-| TOK-10 | `is_literal` on zero: `is_literal(0) == False`                             | — |
 | TOK-11 | Vocab size matches number of unique characters in alphabet                  | — |
 | TOK-12 | Characters not in vocab are still encodable (assigned next bit)            | — |
 | TOK-NLP-1 | NLP encode produces correct node format: `(nlp_type32 << 32) \| bpe_token_id` for each token | NLP |
 | TOK-NLP-2 | NLP encode with unknown BPE token uses `POS_X = 65536` as `nlp_type32`    | NLP |
-| TOK-NLP-3 | NLP nodes are never literal: `is_literal((nlp_type32 << 32) \| bpe_id) == False` for any valid `bpe_id` ≤ 17391 | NLP |
 | TOK-NLP-4 | NLP round-trip: `decode(encode("Tea brewed softly")) == "Tea brewed softly"` | NLP |
-| TOK-NLP-5 | NLP signature masking: signature OR-reduces only high 32 bits (NLP type), excluding BPE IDs | NLP |
-| TOK-NLP-6 | NLP literal fallback: unknown/rare words produce `(codepoint << 32) \| 0xFFFFFFFF` literal nodes | NLP |
 | TOK-NLP-7 | Vocabulary sizes: BPE vocab = 17,392 tokens, grammar dictionary = 12,871 entries | NLP |
 | TOK-NLP-8 | Dimension count: `nlp_type32` provides 32 dimensions (17 POS + 8 DEP + 7 MORPH) | NLP |
 
@@ -555,8 +461,7 @@ with bitwise AND. These properties are used by signature construction
 The following are explicitly **out of scope** for this spec:
 
 - **Signature creation.** Signature construction (`make_signature`) is
-  defined in the @signature spec. The `is_literal` function is defined
-  in the @kline spec, not by the tokenizer.
+  defined in the @signature spec.
 - **Significance computation.** Significance is defined in the
   @significance spec. The tokenizer does not compute or store significance.
 - **Type prefix assignment (BPE).** How linguistic types are assigned to
@@ -572,10 +477,9 @@ The following are explicitly **out of scope** for this spec:
 
 ## Referenced By
 
-- **Signature** (@signature spec) — signature creation depends on the
-  standalone `is_literal` function (defined in the @kline spec).
+- **Signature** (@signature spec) — signature creation consumes nodes
+  produced by the tokenizer.
 - **Kline** (@kline spec) — klines contain nodes produced by the tokenizer.
-  Defines `is_literal` as a standalone function.
 - **Agent** (@agent spec) — uses the tokenizer to encode input, apply type
   prefixes, and construct klines.
 - **Significance** (@significance spec) — consumes nodes produced by the

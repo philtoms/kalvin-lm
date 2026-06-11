@@ -48,7 +48,7 @@ from kscript.parser import Parser
 from kscript.ast_emitter import ASTEmitter
 from kscript.token_encoder import CompiledEntry
 from kscript.decompiler import Decompiler
-from kalvin.signature import is_nlp_node
+# NLP node check replaced with inline check
 
 # Conditional NLP tokenizer import
 try:
@@ -271,7 +271,7 @@ class TestMHALLFull:
         """
         entries = compile_nlp(MHALL_SOURCE)
 
-        has_nlp_sig = any(is_nlp_node(e.signature) for e in entries)
+        has_nlp_sig = any((e.signature >> 32) != 0 for e in entries)
         assert has_nlp_sig, "Expected at least one entry with NLP signature"
 
     def test_node_side_carries_nlp_words(self) -> None:
@@ -486,7 +486,7 @@ class TestUnboundCharMixed:
         source = "(Mary Had)\nMH == X"
         entries = compile_nlp(source)
 
-        has_nlp_sig = any(is_nlp_node(e.signature) for e in entries)
+        has_nlp_sig = any((e.signature >> 32) != 0 for e in entries)
         assert has_nlp_sig, "Expected NLP signature bits in mixed MCS"
 
 
@@ -777,7 +777,7 @@ class TestMod32Compatibility:
         entries = compile_source(MHALL_SOURCE, tokenizer=_tok32, dev=True)
 
         for entry in entries:
-            assert not is_nlp_node(entry.signature), (
+            assert not (entry.signature >> 32) != 0, (
                 f"Mod32 entry sig {entry.signature:#x} should not be NLP"
             )
 
@@ -831,13 +831,13 @@ class TestSameSourceBothModes:
         """Mod32 entries don't carry NLP nodes."""
         entries_mod = compile_source("A == B", tokenizer=_tok32, dev=True)
         for e in entries_mod:
-            assert not is_nlp_node(e.signature)
+            assert not (e.signature >> 32) != 0
 
     def test_nlp_entries_are_nlp_nodes(self) -> None:
         """NLP entries carry NLP-BPE nodes."""
         entries_nlp = compile_nlp("A == B")
         for e in entries_nlp:
-            assert is_nlp_node(e.signature), (
+            assert (e.signature >> 32) != 0, (
                 f"NLP entry sig {e.signature:#x} should be NLP-BPE"
             )
 
@@ -995,7 +995,7 @@ class TestNB18Mod32Unchanged:
         for name, source in self.OPERATOR_SOURCES.items():
             entries = self._compile32(source)
             for e in entries:
-                assert not is_nlp_node(e.signature), (
+                assert not (e.signature >> 32) != 0, (
                     f"{name}: Mod32 entry sig {e.signature:#x} should not be NLP"
                 )
 
@@ -1187,7 +1187,7 @@ class TestNB19SameSourceBothModes:
         for name, source in self.OPERATOR_SOURCES.items():
             entries = compile_source(source, tokenizer=_tok32, dev=True)
             for e in entries:
-                assert not is_nlp_node(e.signature), (
+                assert not (e.signature >> 32) != 0, (
                     f"{name}: Mod32 sig {e.signature:#x} should not be NLP"
                 )
 
@@ -1195,7 +1195,7 @@ class TestNB19SameSourceBothModes:
         """NLP entries carry NLP-BPE type bits for single-char sigs."""
         source = "A == B"
         entries = compile_source(source, tokenizer=self._nlp_tok, dev=True)
-        has_nlp = any(is_nlp_node(e.signature) for e in entries)
+        has_nlp = any((e.signature >> 32) != 0 for e in entries)
         assert has_nlp, "Expected at least one NLP-type signature"
 
 

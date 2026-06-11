@@ -23,15 +23,11 @@ This spec depends on the following concepts, defined elsewhere:
 
 - A Kline is an identified, ordered sequence of zero or more nodes.
 - Nodes are opaque uint64 values.
-- Literal klines (all nodes are literal tokens) represent exact tokens;
-  non-literal klines are composed structures.
 
 ### Signature (@signature spec)
 
-- Provides `make_signature(nodes) → KSig` (OR-reduction over all nodes,
-  with bit 0 as the literal-content flag).
+- Provides `make_signature(nodes) → KSig` (plain OR-reduction of raw node values).
 - Provides bitwise AND matching for candidate retrieval.
-- Uses `is_literal` from the @kline spec internally.
 
 ### Tokenizer (@tokenizer spec)
 
@@ -106,8 +102,6 @@ Rationalise(Q):
   │    Evaluate Q's structural grounding:                     │
   │    → Unsigned (no nodes): add_ltm(Q), emit "frame" S4,   │
   │       return True.                                       │
-  │    → All-literal: add_ltm(Q), emit "frame" S1,           │
-  │       return True.                                       │
   │    → Self-grounded: add_ltm(Q), emit "frame" S1,         │
   │       return True.                                       │
   │    → Countersigned: add_ltm(Q), emit "frame" S1,         │
@@ -168,12 +162,6 @@ candidate retrieval or significance computation.
 
 **Unsigned**: If Q has zero nodes, it carries no information. Call
 `model.add_ltm(Q)`. Emit a `"frame"` event at S4. Return `True`.
-
-**Canonical — all-literal**: If every node in Q is a literal (per
-`is_literal` from the @kline spec), Q is a pure token sequence. Because
-`make_signature` contributes bit 0 for each literal node, Q's signature
-is `1` — a valid canonical signature. Call `model.add_ltm(Q)`. Emit a
-`"frame"` event at S1. Return `True`.
 
 **Canonical — self-grounded**: If `Q.signature == make_signature(Q.nodes)`
 (as defined in the @signature spec) and every node that could resolve does
@@ -630,7 +618,6 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 | ID     | Criterion                                                  | Origin ref |
 | ------ | ---------------------------------------------------------- | ---------- |
 | AGT-12 | Unsigned (no nodes): returns True, emits "frame" S4, kline in LTM | — |
-| AGT-13 | All-literal: returns True, emits "frame" S1, kline in LTM   | — |
 | AGT-14 | Self-grounded canonical: returns True when all nodes resolve, kline in LTM | — |
 | AGT-15 | Not self-grounded: falls through to Phase 4               | — |
 
@@ -709,7 +696,7 @@ Proposals can be emitted at any significance level. See §Cogitation.
 
 ### 3. Grounding Assessment Formalisation
 
-This spec defines grounding checks (self-grounded, all-literal, unsigned)
+This spec defines grounding checks (self-grounded, unsigned)
 as fast-path optimisations. An alternative design would route everything
 through routing, with the model's `is_s1` function handling these cases
 internally. `is_s1` now performs structural grounding (canonical or

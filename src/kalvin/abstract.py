@@ -22,10 +22,8 @@ __all__ = [
 class KTokenizer(ABC):
     """Abstract base class for tokenizers.
 
-    A KTokenizer converts between text and nodes. Literal testing is
-    handled by is_literal_node() in the signature module — it is a
-    Kalvin-level concern based on standardized bit patterns, not a
-    tokenizer-specific one.
+    A KTokenizer converts between text and nodes. All strings go through
+    the tokenizer — no branching between encoding paths.
 
     Three adapters: Tokenizer (BPE), ModTokenizer (modular bit-packed), NLPTokenizer (NLP-enhanced BPE).
     """

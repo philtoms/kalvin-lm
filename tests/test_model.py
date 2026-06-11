@@ -74,27 +74,6 @@ class TestAddStm:
         assert m.stm_contains(k2) is True
         assert m.stm_contains(k3) is True
 
-    def test_add_stm_literal_dedup(self):
-        """MOD-27: literal dedup guard — returns early if literal exists in any tier."""
-        m = make_model()
-        k1 = KLine(1, [42], literal=True)
-        k2 = KLine(1, [42], literal=True)
-        m.add_frame(k1)  # puts literal in Frame
-        m.add_stm(k2)    # literal dedup: already in Frame → no-op
-        # k2 should not be in STM (only k1 is there from add_frame cascade)
-        stm_list = list(m.iter_stm())
-        # The only STM entries should be k1 (from add_frame)
-        assert k1 in stm_list
-
-    def test_add_stm_non_literal_always_writes(self):
-        """Non-literal klines always written to STM."""
-        m = make_model()
-        k1 = KLine(5, [1, 2])
-        k2 = KLine(5, [1, 2])
-        m.add_stm(k1)
-        m.add_stm(k2)
-        assert m.stm_contains(k2) is True
-
     def test_add_stm_does_not_write_frame(self):
         """add_stm writes to STM only, not Frame."""
         m = make_model()
@@ -128,32 +107,6 @@ class TestAddFrame:
         assert len(m) == 1  # Frame has the kline
         assert m.stm_contains(k) is True
 
-    def test_add_frame_literal_dedup(self):
-        """MOD-28: literal dedup guard — rejects if literal exists in any tier."""
-        m = make_model()
-        k1 = KLine(1, [42], literal=True)
-        k2 = KLine(1, [42], literal=True)
-        m.add_frame(k1)
-        m.add_frame(k2)  # literal dedup → no-op
-        assert len(m) == 1  # only k1 in Frame
-
-    def test_add_frame_literal_dedup_across_tiers(self):
-        """MOD-28: literal dedup across tiers — LTM blocks Frame write."""
-        m = make_model()
-        k = KLine(1, [42], literal=True)
-        m.add_ltm(k)        # LTM + Frame + STM
-        assert m.add_frame(KLine(1, [42], literal=True)) is None  # dedup blocks
-        assert len(m) == 1  # still only the one from add_ltm
-
-    def test_add_frame_non_literal_always_writes(self):
-        """MOD-30: non-literal klines always accepted."""
-        m = make_model()
-        k1 = KLine(5, [1, 2])
-        k2 = KLine(5, [1, 2])
-        m.add_frame(k1)
-        m.add_frame(k2)  # non-literal → always accepted
-        assert len(m) == 2
-
     def test_add_frame_monotonic(self):
         """MOD-32: Frame is monotonic for non-literals."""
         m = make_model()
@@ -162,16 +115,6 @@ class TestAddFrame:
         m.add_frame(k1)
         m.add_frame(k2)
         assert len(m) == 2
-
-    def test_add_frame_literal_dedup_base(self):
-        """Literal in Base blocks add_frame."""
-        base = Model()
-        k = KLine(1, [42], literal=True)
-        base.add_frame(k)
-        m = Model(base=base)
-        m.add_frame(KLine(1, [42], literal=True))
-        # Should not have been added to Frame
-        assert len(m) == 0
 
 
 class TestAddLtm:
@@ -199,33 +142,6 @@ class TestAddLtm:
         assert m.stm_contains(k) is True
         assert m.find(5) is k
 
-    def test_add_ltm_literal_dedup(self):
-        """MOD-29: literal dedup guard — rejects if literal exists in any tier."""
-        m = make_model()
-        k1 = KLine(1, [42], literal=True)
-        k2 = KLine(1, [42], literal=True)
-        m.add_ltm(k1)
-        m.add_ltm(k2)  # literal dedup → no-op
-        # Frame should only have one entry
-        assert len(m) == 1
-
-    def test_add_ltm_literal_dedup_across_tiers(self):
-        """MOD-29: literal dedup across tiers — Frame blocks LTM write."""
-        m = make_model()
-        k = KLine(1, [42], literal=True)
-        m.add_frame(k)
-        m.add_ltm(KLine(1, [42], literal=True))  # literal dedup → no-op
-        assert len(m) == 1
-
-    def test_add_ltm_non_literal_always_writes(self):
-        """MOD-31: non-literal klines always accepted."""
-        m = make_model()
-        k1 = KLine(5, [1])
-        k2 = KLine(5, [1])
-        m.add_ltm(k1)
-        m.add_ltm(k2)  # non-literal → always accepted
-        assert len(m) == 2
-
     def test_add_ltm_frame_retains(self):
         """MOD-33: LTM is additive — Frame retains the kline."""
         m = make_model()
@@ -241,16 +157,6 @@ class TestAddLtm:
         k = KLine(5, [1])
         m.add_ltm(k)  # never added before, still works
         assert m.find(5) is k
-
-    def test_add_ltm_literal_dedup_base(self):
-        """Literal in Base blocks add_ltm."""
-        base = Model()
-        k = KLine(1, [42], literal=True)
-        base.add_frame(k)
-        m = Model(base=base)
-        m.add_ltm(KLine(1, [42], literal=True))
-        # Should not have been added
-        assert len(m) == 0
 
 
 # ── Read Operations ──────────────────────────────────────────────────
@@ -512,24 +418,6 @@ class TestModelFourTier:
         m.add_ltm(k_ltm)  # LTM
         found = m.find(5)
         assert found is k_ltm  # LTM takes priority over Base
-
-    def test_cross_tier_literal_dedup_ltm(self):
-        """Literal in LTM blocks add_frame."""
-        m = make_model()
-        k = KLine(1, [42], literal=True)
-        m.add_ltm(k)  # goes to LTM
-        m.add_frame(KLine(1, [42], literal=True))
-        assert len(m) == 1  # only the one from add_ltm
-
-    def test_cross_tier_literal_dedup_base(self):
-        """Literal in Base blocks add_frame."""
-        base = Model()
-        k = KLine(1, [42], literal=True)
-        base.add_frame(k)
-
-        m = Model(base=base)
-        m.add_frame(KLine(1, [42], literal=True))
-        assert len(m) == 0  # dedup blocked
 
     def test_find_all_merges_tiers(self):
         """find_all returns deduplicated results across all tiers."""

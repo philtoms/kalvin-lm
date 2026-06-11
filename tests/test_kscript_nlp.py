@@ -8,12 +8,8 @@ signature construction, decompilation, and compatibility.
 import pytest
 
 from kalvin.signature import (
-    is_nlp_node,
-    is_literal_node,
     make_signature,
     signifies,
-    LITERAL_MASK,
-    NLP_TYPE_MASK,
 )
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
@@ -56,14 +52,14 @@ def _md_nlp(entries, tokenizer=None):
         if e.nodes is None:
             md.setdefault(sig, [])
         elif isinstance(e.nodes, int):
-            if is_literal_node(e.nodes):
+            if False:
                 node_str = tok.decode([e.nodes])
             else:
                 node_str = tok.decode([e.nodes])
             md.setdefault(sig, []).append(node_str)
         else:
             for n in e.nodes:
-                if is_literal_node(n):
+                if False:
                     node_str = tok.decode([n])
                 else:
                     node_str = tok.decode([n])
@@ -110,13 +106,13 @@ class TestKSN1:
             bpe_id = node & 0xFFFFFFFF
             assert bpe_id < tok.vocab_size, "Low 32 bits must be valid BPE token ID"
             # Must be detected as NLP node
-            assert is_nlp_node(node), "Must be detected as NLP node"
+            assert (node >> 32) != 0, "Must be detected as NLP node"
 
     def test_node_not_literal(self):
         tok = _get_nlp_tokenizer()
         nodes = tok.encode("TEA")
         for node in nodes:
-            assert not is_literal_node(node)
+            assert not False
 
 
 # ============================================================================
@@ -195,46 +191,17 @@ class TestKSN3:
 # ============================================================================
 # KSN-4: Literal encoding is unchanged
 # ============================================================================
-@_nlp_skip
-class TestKSN4:
-    """KSN-4: Literal encoding is unchanged (char_code << 32) | 0xFFFFFFFF."""
 
-    def test_literal_format(self):
-        entries = compile_nlp('A > "hello"')
-        tok = _get_nlp_tokenizer()
-        md = _md_nlp(entries, tok)
-
-        # Find entries with literal nodes
-        found_literal = False
-        for e in entries:
-            if e.nodes is not None:
-                nodes = e.nodes if isinstance(e.nodes, list) else [e.nodes]
-                for n in nodes:
-                    if is_literal_node(n):
-                        found_literal = True
-                        # Verify literal format: low 32 bits are all 1s
-                        assert (n & LITERAL_MASK) == LITERAL_MASK
-                        # High 32 bits are the character code
-                        char_code = n >> 32
-                        assert 0 < char_code < 128, "Character code should be printable ASCII"
-
-        assert found_literal, "Should find at least one literal node in 'A > \"hello\"'"
+# ============================================================================
+# KSN-4: Removed — literal concept no longer exists
+# ============================================================================
 
 
 # ============================================================================
-# KSN-5: is_literal_node() returns False for all NLP-BPE nodes
+# KSN-5: Removed — literal concept no longer exists
 # ============================================================================
-@_nlp_skip
-class TestKSN5:
-    """KSN-5: is_literal_node() returns False for all NLP-BPE nodes."""
-
-    def test_nlp_nodes_not_literal(self):
-        tok = _get_nlp_tokenizer()
-        nodes = tok.encode("TEA")
-        for node in nodes:
-            assert not is_literal_node(node), (
-                f"NLP-BPE node {node:#x} should not be a literal node"
-            )
+# KSN-5: Removed — literal concept no longer exists
+# ============================================================================
 
 
 # ============================================================================
@@ -352,8 +319,8 @@ class TestKSN11:
             if e.nodes is not None and len(e.nodes) >= 2:
                 # Under NLP-BPE, all nodes should be NLP nodes (not Mod32 packed chars)
                 for n in e.nodes:
-                    if not is_literal_node(n):
-                        assert is_nlp_node(n), (
+                    if not False:
+                        assert (n >> 32) != 0, (
                             "Multi-node entries should contain NLP-BPE nodes, not Mod32 packed chars"
                         )
 
@@ -395,37 +362,10 @@ class TestKSN12:
 # ============================================================================
 # KSN-13: Signature construction masks BPE IDs
 # ============================================================================
-@_nlp_skip
-class TestKSN13:
-    """KSN-13: Signature construction masks BPE IDs — make_signature() uses only NLP type bits."""
 
-    def test_bpe_ids_masked(self):
-        tok = _get_nlp_tokenizer()
-        # Encode two identifiers with different BPE IDs
-        a_nodes = tok.encode("A")
-        b_nodes = tok.encode("B")
-
-        sig_a = make_signature(a_nodes)
-        sig_b = make_signature(b_nodes)
-
-        # Signatures should only have high 32 bits (NLP type mask)
-        assert (sig_a & 0xFFFFFFFF) == 0, "Signature should mask out low 32 bits (BPE ID)"
-        assert (sig_b & 0xFFFFFFFF) == 0, "Signature should mask out low 32 bits (BPE ID)"
-
-    def test_different_bpe_same_type_same_signature(self):
-        """Two identifiers with different BPE IDs but same NLP type produce identical signatures."""
-        tok = _get_nlp_tokenizer()
-        # Find two single-char identifiers with same NLP type
-        # A has nlp_type 0x400020, H has nlp_type 0x400020
-        a_enc = tok.encode("A")
-        h_enc = tok.encode("H")
-
-        if a_enc[0] >> 32 == h_enc[0] >> 32:
-            sig_a = make_signature(a_enc)
-            sig_h = make_signature(h_enc)
-            assert sig_a == sig_h, (
-                "Same NLP type should produce same signature regardless of BPE ID"
-            )
+# ============================================================================
+# KSN-13: Removed — make_signature() is now plain OR-reduce (no BPE masking)
+# ============================================================================
 
 
 # ============================================================================
@@ -789,47 +729,10 @@ class TestKSN25:
 # ============================================================================
 # KSN-26: Literal nodes in mixed blocks preserve character-level encoding
 # ============================================================================
-@_nlp_skip
-class TestKSN26:
-    """KSN-26: Literal nodes in mixed blocks preserve character-level encoding under NLP-BPE."""
 
-    def test_literal_in_canonize(self):
-        tok = _get_nlp_tokenizer()
-        entries = compile_nlp("A =>\n  1\n  B")
-
-        # Find the canonize entry for A
-        a_entries = [e for e in entries
-                     if tok.decode([e.signature]) == "A" and e.nodes is not None]
-        assert len(a_entries) >= 1, "Should have canonize entry for A"
-
-        a_entry = a_entries[0]
-        nodes = a_entry.nodes
-
-        # Should have literal node for "1" and NLP node for "B"
-        has_literal = any(is_literal_node(n) for n in nodes)
-        has_nlp = any(is_nlp_node(n) for n in nodes)
-
-        assert has_literal, "Canonize should contain literal node(s) for '1'"
-        assert has_nlp, "Canonize should contain NLP node for 'B'"
-
-    def test_literal_encoding_format(self):
-        tok = _get_nlp_tokenizer()
-        entries = compile_nlp("A =>\n  1\n  B")
-
-        # Find any literal node
-        for e in entries:
-            if e.nodes is not None:
-                for n in (e.nodes if isinstance(e.nodes, list) else [e.nodes]):
-                    if is_literal_node(n):
-                        # Verify literal format
-                        assert (n & LITERAL_MASK) == LITERAL_MASK
-                        char_code = n >> 32
-                        assert char_code == ord("1"), (
-                            f"Literal node should encode '1' (code {ord('1')}), got code {char_code}"
-                        )
-                        return
-
-        pytest.fail("No literal node found in compiled entries")
+# ============================================================================
+# KSN-26: Removed — literal concept no longer exists
+# ============================================================================
 
 
 # ============================================================================

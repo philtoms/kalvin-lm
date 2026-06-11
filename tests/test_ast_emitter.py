@@ -33,11 +33,6 @@ class TestASTEmitterUnsigned:
         assert len(entries) == 1
         assert entries[0] == SymbolicEntry("A", None, "UNSIGNED")
 
-    def test_bare_literal(self) -> None:
-        entries = emit_symbolic("1")
-        assert len(entries) == 1
-        assert entries[0] == SymbolicEntry("1", None, "UNSIGNED")
-
 
 # =============================================================================
 # 2. Countersign
@@ -88,11 +83,6 @@ class TestASTEmitterConnotate:
         assert len(con) == 1
         assert con[0] == SymbolicEntry("A", "B", "CONNOTATE")
 
-    def test_connotate_with_literal(self) -> None:
-        entries = emit_symbolic("A > 1")
-        con = find_entries(entries, "CONNOTATE")
-        assert len(con) == 1
-        assert con[0] == SymbolicEntry("A", "1", "CONNOTATE")
 
 
 # =============================================================================

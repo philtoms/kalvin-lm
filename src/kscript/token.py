@@ -15,7 +15,6 @@ class TokenType(Enum):
 
     Node types:
         SIGNATURE: [A-Z]+    (uppercase identifier - can be construct owner)
-        LITERAL:   anything else (cannot be construct owner)
 
     Structure:
         COMMENT:  (...)     (parenthesized comment)
@@ -23,8 +22,6 @@ class TokenType(Enum):
         INDENT:   -        (increased indentation)
         DEDENT:   -        (decreased indentation)
         EOF:      -        (end of file)
-
-    Key insight: Any token in node position that is NOT a SIGNATURE is a LITERAL.
     """
 
     # Construct operators
@@ -35,7 +32,6 @@ class TokenType(Enum):
 
     # Node types
     SIGNATURE = auto()     # [A-Z]+
-    LITERAL = auto()       # anything not [A-Z]+
 
     # Structure
     COMMENT = auto()       # (...)

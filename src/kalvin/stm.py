@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Iterator
 
 from kalvin.kline import KLine, KSig, KNode
-from kalvin.signature import make_signature, is_literal_node
+from kalvin.signature import make_signature
 
 
 class STM:

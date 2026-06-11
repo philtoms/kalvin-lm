@@ -8,11 +8,11 @@ Binary format v2 (byte-for-byte stable):
     uint32  magic       = 0x4B4C564E ("KLVN")
     uint32  version     = 2
     uint32  stm_count
-    per stm entry:   uint64 signature, uint32 node_count, node_count × uint64 nodes, uint8 literal
+    per stm entry:   uint64 signature, uint32 node_count, node_count × uint64 nodes
     uint32  frame_count
-    per frame entry: uint64 signature, uint32 node_count, node_count × uint64 nodes, uint8 literal
+    per frame entry: uint64 signature, uint32 node_count, node_count × uint64 nodes
     uint32  ltm_count
-    per ltm entry:   uint64 signature, uint32 node_count, node_count × uint64 nodes, uint8 literal
+    per ltm entry:   uint64 signature, uint32 node_count, node_count × uint64 nodes
     uint32  activity_count
     per activity:    uint64 key, uint32 count
 
@@ -20,9 +20,9 @@ Legacy binary (no magic prefix) is decoded as Frame-only with empty STM/LTM.
 
 JSON format:
     {
-        "stm":      [{"signature": int, "nodes": [int, ...], "literal": bool}, ...],
-        "klines":   [{"signature": int, "nodes": [int, ...], "literal": bool}, ...],
-        "ltm":      [{"signature": int, "nodes": [int, ...], "literal": bool}, ...],
+        "stm":      [{"signature": int, "nodes": [int, ...]}, ...],
+        "klines":   [{"signature": int, "nodes": [int, ...]}, ...],
+        "ltm":      [{"signature": int, "nodes": [int, ...]}, ...],
         "activity": {"str_key": int, ...}
     }
 
@@ -74,7 +74,7 @@ class BinaryAdapter:
     """Encode/decode Model + Counter to/from a stable binary format.
 
     v2 format writes magic + version + three kline sections (STM, Frame,
-    LTM) + activity.  Each kline now includes a uint8 literal flag.
+    LTM) + activity.
 
     Legacy format (no magic prefix) is decoded as Frame-only with empty
     STM and LTM.
@@ -89,7 +89,6 @@ class BinaryAdapter:
             parts.append(pack("<I", len(kl.nodes)))
             for n in kl.nodes:
                 parts.append(pack("<Q", n))
-            parts.append(pack("<B", 1 if kl.literal else 0))
 
     @staticmethod
     def encode(model: Model, activity: Counter) -> bytes:
@@ -118,7 +117,7 @@ class BinaryAdapter:
 
     @staticmethod
     def _read_kline_section(data: bytes, offset: int) -> tuple[list[KLine], int]:
-        """Read a counted kline section (with uint8 literal) from *offset*.
+        """Read a counted kline section from *offset*.
 
         Returns (klines, new_offset).
         """
@@ -134,9 +133,7 @@ class BinaryAdapter:
             for _ in range(n_count):
                 nodes.append(unpack("<Q", data[offset:offset + 8])[0])
                 offset += 8
-            literal_byte = unpack("<B", data[offset:offset + 1])[0]
-            offset += 1
-            klines.append(KLine(sig, nodes, literal=bool(literal_byte)))
+            klines.append(KLine(sig, nodes))
         return klines, offset
 
     @staticmethod
@@ -157,7 +154,7 @@ class BinaryAdapter:
             for _ in range(n_count):
                 nodes.append(unpack("<Q", data[offset:offset + 8])[0])
                 offset += 8
-            klines.append(KLine(sig, nodes))  # literal defaults to False
+            klines.append(KLine(sig, nodes))  # no literal field
         return klines, offset
 
     @staticmethod
@@ -181,8 +178,7 @@ class BinaryAdapter:
 
         Order: add_ltm → add_frame → add_stm. Since serialized tier lists
         overlap (add_ltm writes LTM + Frame + STM), we check existence
-        before add_frame/add_stm to avoid Frame duplication for non-literals.
-        Literal dedup guards handle literal dedup automatically.
+        before add_frame/add_stm to avoid Frame duplication.
         """
         model = Model()
         for kl in ltm_klines:
@@ -238,9 +234,9 @@ class JsonAdapter:
 
     Three-section format:
         {
-            "stm":     [{"signature": int, "nodes": [int, ...], "literal": bool}, ...],
-            "klines":  [{"signature": int, "nodes": [int, ...], "literal": bool}, ...],
-            "ltm":     [{"signature": int, "nodes": [int, ...], "literal": bool}, ...],
+            "stm":     [{"signature": int, "nodes": [int, ...]}, ...],
+            "klines":  [{"signature": int, "nodes": [int, ...]}, ...],
+            "ltm":     [{"signature": int, "nodes": [int, ...]}, ...],
             "activity": {"str_key": int, ...}
         }
 
@@ -251,12 +247,12 @@ class JsonAdapter:
     @staticmethod
     def _kline_to_dict(kl: KLine) -> dict:
         """Convert a KLine to a JSON-serializable dict."""
-        return {"signature": kl.signature, "nodes": list(kl.nodes), "literal": kl.literal}
+        return {"signature": kl.signature, "nodes": list(kl.nodes)}
 
     @staticmethod
     def _kline_from_dict(item: dict) -> KLine:
-        """Convert a dict back to a KLine, defaulting literal to False."""
-        return KLine(item["signature"], item["nodes"], literal=item.get("literal", False))
+        """Convert a dict back to a KLine."""
+        return KLine(item["signature"], item["nodes"])
 
     @staticmethod
     def encode(model: Model, activity: Counter) -> dict:
@@ -274,7 +270,7 @@ class JsonAdapter:
 
         Reconstruction order: add_ltm, add_frame, add_stm. Since serialized
         tier lists overlap (add_ltm writes LTM + Frame + STM), we check
-        existence before add_frame to avoid Frame duplication for non-literals.
+        existence before add_frame to avoid Frame duplication.
         Backward compatible with single-section JSON (only "klines" + "activity").
         """
         model = Model()
@@ -297,7 +293,7 @@ class JsonAdapter:
             else:
                 model.add_frame(kl)
 
-        # (c) Refresh STM entries (writes STM only; literal dedup skips those already present)
+        # (c) Refresh STM entries (writes STM only)
         stm_klines = [
             JsonAdapter._kline_from_dict(item) for item in data.get("stm", [])
         ]

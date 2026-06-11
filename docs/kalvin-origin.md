@@ -126,7 +126,7 @@ S1 is not merely high confidence. It is confirmed knowledge. The difference betw
 
 Ratification is implemented as **countersignature**: the agent rationalises the reciprocal kline, creating a mutual cross-reference that makes the proposal structurally S1. After ratification, all klines involved in the process are promoted to the frame — not just the kline being ratified, but the supporting identity and partial klines as well. This enriches the model for future rationalisation.
 
-Canonical S1 (all-literal or self-grounded klines) is self-ratifying — no countersignature needed. These promote immediately.
+Canonical S1 (self-grounded klines) is self-ratifying — no countersignature needed. These promote immediately.
 
 ---
 
@@ -315,7 +315,7 @@ The system is built from a small set of components, each with a clean responsibi
 | Component                 | Role                                                                                                     | Spec                 |
 | ------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------- |
 | **KLine**                 | The fundamental unit of knowledge — an identified, ordered sequence of nodes.                            | `specs/kline.md`     |
-| **Signature**             | OR-reduction of nodes into a single identity key with a literal-content flag.                            | `specs/signature.md` |
+| **Signature**             | OR-reduction of nodes into a single identity key.                                                       | `specs/signature.md` |
 | **Tokenizer** (Mod / BPE) | Converts text to nodes and back.                                                                         | `specs/tokenizer.md` |
 | **STM**                   | Bounded rolling window for recent KLines, indexed by signature and nodes-signature.                      | `specs/stm.md`       |
 | **Model**                 | Three-tier knowledge graph (STM → Frame → Base) with graph traversal and significance computation.       | `specs/model.md`     |

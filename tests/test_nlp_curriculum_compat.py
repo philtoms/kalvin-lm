@@ -70,7 +70,7 @@ class TestBareSingleChar:
         # Upper 32 bits should have NLP type info (not zero)
         assert (sig >> 32) != 0
         # Lower 32 bits should be the BPE token ID for 'M'
-        assert (sig & 0xFFFFFFFF) != 0xFFFFFFFF  # Not a literal node
+        assert (sig & 0xFFFFFFFF) != 0
 
     def test_consistent_encoding(self, nlp_tokenizer: NLPTokenizer) -> None:
         """Same character always produces the same node value."""
@@ -194,13 +194,12 @@ class TestCommentsOptional:
         assert len(bare) == 1
         assert len(annotated) == 1
 
-        # Bare uses NLP-BPE token
-        from kalvin.signature import is_literal_node
+        # Both signatures are NLP-BPE encoded (high bits set)
+        assert (bare[0].signature >> 32) != 0
+        assert (annotated[0].signature >> 32) != 0
 
-        assert not is_literal_node(bare[0].signature)
-
-        # Annotated resolves to literal word
-        assert is_literal_node(annotated[0].signature)
+        # Annotated resolves to the full word — signatures differ
+        assert bare[0].signature != annotated[0].signature
 
     def test_block_comment_binding(self, nlp_tokenizer: NLPTokenizer) -> None:
         """Block comment before multi-char sig enables positional binding."""
@@ -210,10 +209,10 @@ class TestCommentsOptional:
         entries = compile_source(source, tokenizer=nlp_tokenizer, dev=True)
 
         # Block comment should bind M→Mary, H→Had, A→A, L→Little, L→Lamb
-        # producing literal signature entries.  With dev=True the sig field
+        # producing NLP-encoded signature entries.  With dev=True the sig field
         # is human-readable.
         assert len(entries) > 0
-        from kalvin.signature import is_literal_node
 
         # At least the first entry should resolve via binding
-        assert is_literal_node(entries[0].signature)
+        # (signature should be an NLP-BPE token with high bits set)
+        assert (entries[0].signature >> 32) != 0

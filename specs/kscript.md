@@ -29,7 +29,6 @@ The pipeline is strictly one-directional. There is also a **decompiler** that be
 | **Signature**           | A `uint64` identity key computed via OR-reduction of nodes                       |
 | **Significance**        | A four-level classification (S1–S4) of how strongly one KLine relates to another |
 | **Signature (lexical)** | An uppercase identifier like `ABC` — becomes a packed node                       |
-| **Literal (lexical)**   | Anything not uppercase alpha — numbers, quoted strings                           |
 
 ---
 
@@ -40,7 +39,6 @@ The pipeline is strictly one-directional. There is also a **decompiler** that be
 | Token         | Pattern                    | Category                    |
 | ------------- | -------------------------- | --------------------------- |
 | `SIGNATURE`   | `[A-Z]+`                   | Node (uppercase identifier) |
-| `LITERAL`     | `[0-9]+` or `"..."`        | Node (non-uppercase)        |
 | `COUNTERSIGN` | `==`                       | Construct operator          |
 | `CANONIZE`    | `=>`                       | Chain operator              |
 | `CONNOTATE`   | `>`                        | Inline operator             |
@@ -70,13 +68,11 @@ Operators are divided into two groups by where they may appear:
 1. **Multi-character operators** (`==`, `=>`) are matched before single-character operators (`=`, `>`).
 2. **Identifiers** `[A-Z][A-Z0-9]*` are classified as:
    - `SIGNATURE` if all characters are uppercase alpha (`isupper() and isalpha()`)
-   - Non-uppercase identifiers are **not valid** as literals — use quoted strings instead
-3. **Numbers** `[0-9]+` are always `LITERAL`.
-4. **Quoted strings** `"..."` support backslash escapes and are `LITERAL`. Unterminated strings stop at newline.
-5. **Comments** `(...)` support nested parentheses and may span multiple lines.
-6. **Inline comments** after an identifier are consumed without emitting a token.
-7. **Indentation** uses Python-style INDENT/DEDENT tokens based on leading whitespace.
-8. **Unknown characters** (not matching any rule, including `<`) raise a `LexerError`.
+   - Non-uppercase identifiers are **not valid** — use quoted strings via the tokenizer instead
+3. **Comments** `(...)` support nested parentheses and may span multiple lines.
+4. **Inline comments** after an identifier are consumed without emitting a token.
+5. **Indentation** uses Python-style INDENT/DEDENT tokens based on leading whitespace.
+6. **Unknown characters** (not matching any rule, including `<`) raise a `LexerError`.
 
 ### 2.4 Indentation Rules
 
@@ -93,31 +89,26 @@ Operators are divided into two groups by where they may appear:
 
 ```
 script      ::= construct+
-construct   ::= block | literal | primary_construct+ ( chain_op construct )?
+construct   ::= block | primary_construct+ ( chain_op construct )?
 block       ::= INDENT construct+ DEDENT
 primary_construct ::= sig ( inline_op node )?
-node        ::= sig | literal
+node        ::= sig
 sig         ::= SIGNATURE
-literal     ::= LITERAL
 chain_op    ::= CANONIZE
 inline_op   ::= COUNTERSIGN | CONNOTATE | UNDERSIGN
 ```
 
 ### 3.1 Key Constraints
 
-1. **Only SIGNATUREs can own constructs.** A `LITERAL` in construct position is a bare unsigned identity — it cannot have inline operators or chain operators.
+1. **Only SIGNATUREs can own constructs.** Nodes are always signatures.
 2. **NEWLINE and COMMENT tokens are insignificant** — they are skipped between constructs.
 3. **Multiple primary_constructs at the same indentation level** form an implicit group.
-4. **Literal on the right of a chain operator** is valid: `A => 1` compiles, but `1 => A` is a parse error.
 
 ### 3.2 Parse Errors
 
-| Situation                                                           | Error                            |
-| ------------------------------------------------------------------- | -------------------------------- |
-| `LITERAL` in position requiring `SIGNATURE` (e.g., construct owner) | `ParseError`                     |
-| `1 => A` — literal owning a chain                                   | `ParseError`                     |
-| `A => 1 => B` — chaining through a literal                          | `ParseError`                     |
-| Empty source                                                        | Produces empty script (no error) |
+| Situation                                 | Error                            |
+| ----------------------------------------- | -------------------------------- |
+| Empty source                              | Produces empty script (no error) |
 
 ---
 
@@ -127,7 +118,7 @@ inline_op   ::= COUNTERSIGN | CONNOTATE | UNDERSIGN
 KScriptFile
   └── scripts: [Script]
         └── constructs: [Construct]
-              ├── inner: Block | Literal | [PrimaryConstruct]
+              ├── inner: Block | [PrimaryConstruct]
               ├── chain_op: TokenType? (chain operator)
               └── chain_right: Construct? (right side of chain)
 
@@ -137,10 +128,9 @@ Block
 PrimaryConstruct
   ├── sig: Signature (id, line, column)
   ├── op: TokenType? (inline operator)
-  └── node: Node? (Signature | Literal)
+  └── node: Signature? (always a Signature)
 
 Signature  — id: str (uppercase)
-Literal    — id: str (any value)
 ```
 
 ---
@@ -168,13 +158,6 @@ Strings are encoded to `uint64` values via a **Mod Tokenizer**:
 
 - **Signatures** (uppercase alpha): _packed_ encoding — characters are OR'd into a single `uint64` with bit 0 clear. Lossy: order and multiplicity are lost.
   - `encode("ABC") → [bit_A | bit_B | bit_C]`
-- **Literals** (everything else): _literal_ encoding — one `uint64` per character with lower 32 bits = `0xFFFFFFFF`. Preserves order and identity.
-  - `encode("hello") → [(104<<32)|0xFFFFFFFF, (101<<32)|0xFFFFFFFF, ...]`
-
-**Literal test:** `(node & 0xFFFFFFFF) == 0xFFFFFFFF`
-
-> **Note:** This is the standalone `is_literal` function defined in the
-> @kline spec. It is no longer a tokenizer method.
 
 ### 5.3 MCS (Multi-Character Signature) Expansion
 
@@ -201,11 +184,10 @@ The compiler deduplicates entries by `(signature, nodes)` pair. If the same enco
 
 ### 5.5 Construct Compilation Rules
 
-#### Unsigned (bare signature or literal)
+#### Unsigned (bare signature)
 
 ```
 A       → {A: None}        (plus MCS if multi-char)
-hello   → {hello: None}
 ```
 
 #### COUNTERSIGN (`==`)
@@ -214,7 +196,7 @@ hello   → {hello: None}
 A == B  → {A: B}, {B: A}   (bidirectional)
 ```
 
-If the node is a signature, MCS expansion is applied to it too. Reverse direction is NOT emitted for literal nodes.
+If the node is a signature, MCS expansion is applied to it too.
 
 #### UNDERSIGN (`=`)
 
@@ -258,17 +240,6 @@ A =>
 Flattens to items `[B, C = D]`. Then CANONIZE emits a single entry with all items:
 
 - `{A: [B, C]}` plus recursive compilation of C's inline op: `{D: C}`
-
-Blocks may mix literals and primary constructs:
-
-```
-A =>
-  1
-  B
-  "hello"
-```
-
-Flattens to `[Literal(1), PrimaryConstruct(B), Literal("hello")]` → single entry: `{A: [1, B, "hello"]}`
 
 ### 5.7 Significance Level Assignment
 
@@ -476,27 +447,7 @@ Compiled (in order):
 
 > **Note on deduplication:** Duplicate `{A: None}` and `{L: None}` from ALL's MCS are silently dropped by the compiler (§5.4), as they were already emitted by MHALL's MCS. The CANONIZE entries `{SVO: [S, V, O]}` and `{ALL: [A, L, L]}` are also deduplicated against the MCS canonization entries, which encode identically.
 
-### 9.4 Mixed Literal Block
-
-```
-A =>
-  1
-  B
-  "hello"
-```
-
-Compiled:
-
-```
-{A: ["1", B, "hello"]} (canonize, single entry with all items, S2)
-{1: None}              (unsigned 1, from recursive block compilation)
-{B: None}              (unsigned B, from recursive block compilation)
-{"hello": None}        (unsigned "hello", from recursive block compilation)
-```
-
-> **Note:** CANONIZE emits a single entry with all right-hand items as the node list. The subscript block is then compiled recursively; each bare item emits its own unsigned identity entry.
-
-### 9.5 Chained Constructs
+### 9.4 Chained Constructs
 
 ```
 A => B => C
@@ -512,7 +463,7 @@ Compiled:
 
 > **Note:** The right side of a chain is always compiled recursively. Bare signatures emit their unsigned identity.
 
-### 9.6 Complex Nested
+### 9.5 Complex Nested
 
 ```
 MHALL == SVO =>
@@ -591,9 +542,9 @@ class CompiledEntry(KLine):
 
 ## 11. Design Rationale & Gotchas
 
-### 11.1 Why Two Node Types?
+### 11.1 Why One Node Type?
 
-Signatures (uppercase) use **packed encoding** — multiple characters OR'd into one `uint64`. This makes them usable as **bitmask signatures** for fast overlap-based candidate retrieval. Literals preserve exact content via literal encoding.
+All nodes go through the tokenizer — there is no branching between "literal" and "packed" encoding paths. Signatures (uppercase alpha) use **packed encoding** — multiple characters OR'd into one `uint64`. This makes them usable as **bitmask signatures** for fast overlap-based candidate retrieval. Every other string passes through the tokenizer uniformly.
 
 ### 11.2 Why Singleton Unwrapping?
 
@@ -628,36 +579,31 @@ KScript supports an alternative NLP-BPE encoding mode, fully specified in `@kscr
 
 | ID    | Criterion                                                                  | Category |
 | ----- | -------------------------------------------------------------------------- | -------- |
-| KS-1  | Token classification: all 11 token types recognized                        | Lexer |
-| KS-2  | Multi-char operator priority: `==`, `=>` before `=`, `>`                    | Lexer |
+| KS-1  | Token classification: all token types recognized                           | Lexer |
+| KS-2  | Multi-char operator priority: `==`, `=>` before `=`, `>`                   | Lexer |
 | KS-3  | Comment parsing: `(...)` stripped from token stream                        | Lexer |
 | KS-4  | Indent/dedent tracking: Python-style INDENT/DEDENT tokens                  | Lexer |
 | KS-5  | Edge cases: empty input, whitespace-only, consecutive operators            | Lexer |
-| KS-6  | AST structure for chains: operator + primary sequence                       | Parser |
-| KS-7  | AST structure for blocks: block construct with subscripts                   | Parser |
-| KS-8  | AST structure for literals: number and quoted string nodes                  | Parser |
-| KS-9  | Parse errors for invalid input: missing operators, bad nesting              | Parser |
-| KS-10 | COUNTERSIGN compilation: `Q == V` → `{Q:[V]}, {V:[Q]}`                      | Compiler |
-| KS-11 | CANONIZE compilation: `Q => V` → `{Q:[V]}`                                 | Compiler |
-| KS-12 | CONNOTATE compilation: `Q > V` → `{Q:[V]}`                                 | Compiler |
-| KS-13 | UNDERSIGN compilation: `Q = V` → `{V:[Q]}`                                 | Compiler |
-| KS-14 | MCS expansion: multi-char signatures expanded to identity + composite       | Compiler |
-| KS-15 | No MCS for single-char signatures                                           | Compiler |
-| KS-16 | CANONIZE chains: per-item emission                                          | Compiler |
-| KS-17 | Subscript blocks: nested constructs                                         | Compiler |
-| KS-18 | Dedup: identity klines not duplicated                                       | Compiler |
-| KS-19 | Complex examples: `AB=>A B`, `AB==CD`, `AB>C` round-trip correctly         | Compiler |
-| KS-20 | Bare literals in block context                                              | Literals |
-| KS-21 | Mixed literal and non-literal in same block                                 | Literals |
-| KS-22 | Parse error for literal-owned constructs                                    | Literals |
-| KS-23 | Decompiler round-trip: compile → decompile → compile produces same output   | Decompiler |
-| KS-24 | MCS name recovery: both patterns                                            | Decompiler |
-| KS-25 | Level inference: heuristics for operator recovery                           | Decompiler |
-| KS-26 | Binary output round-trip: write → read produces same klines                 | Output |
-| KS-27 | JSON output round-trip: write → read produces same klines                   | Output |
-| KS-28 | JSONL output round-trip: write → read produces same klines                  | Output |
-| KS-29 | Encode/decode: sig-only, sig-to-sig, sig-to-literal, list                   | Encoder |
-| KS-30 | API: inline source compilation                                              | API |
-| KS-31 | API: output format selection                                                | API |
-| KS-32 | API: base extension (appending to existing model)                           | API |
-| KS-33 | API: file loading from `.ks` source                                         | API |
+| KS-6  | AST structure for chains: operator + primary sequence                      | Parser |
+| KS-7  | AST structure for blocks: block construct with subscripts                  | Parser |
+| KS-9  | Parse errors for invalid input: missing operators, bad nesting             | Parser |
+| KS-10 | COUNTERSIGN compilation: `Q == V` → `{Q:[V]}, {V:[Q]}`                    | Compiler |
+| KS-11 | CANONIZE compilation: `Q => V` → `{Q:[V]}`                                | Compiler |
+| KS-12 | CONNOTATE compilation: `Q > V` → `{Q:[V]}`                                | Compiler |
+| KS-13 | UNDERSIGN compilation: `Q = V` → `{V:[Q]}`                                | Compiler |
+| KS-14 | MCS expansion: multi-char signatures expanded to identity + composite      | Compiler |
+| KS-15 | No MCS for single-char signatures                                          | Compiler |
+| KS-16 | CANONIZE chains: per-item emission                                         | Compiler |
+| KS-17 | Subscript blocks: nested constructs                                        | Compiler |
+| KS-18 | Dedup: identity klines not duplicated                                      | Compiler |
+| KS-19 | Complex examples: `AB=>A B`, `AB==CD`, `AB>C` round-trip correctly        | Compiler |
+| KS-23 | Decompiler round-trip: compile → decompile → compile produces same output  | Decompiler |
+| KS-24 | MCS name recovery: both patterns                                           | Decompiler |
+| KS-25 | Level inference: heuristics for operator recovery                          | Decompiler |
+| KS-26 | Binary output round-trip: write → read produces same klines                | Output |
+| KS-27 | JSON output round-trip: write → read produces same klines                  | Output |
+| KS-28 | JSONL output round-trip: write → read produces same klines                 | Output |
+| KS-30 | API: inline source compilation                                             | API |
+| KS-31 | API: output format selection                                               | API |
+| KS-32 | API: base extension (appending to existing model)                          | API |
+| KS-33 | API: file loading from `.ks` source                                        | API |

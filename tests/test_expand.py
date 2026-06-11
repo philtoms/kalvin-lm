@@ -30,7 +30,7 @@ def make_model(stm_bound: int = 256) -> Model:
 class TestIsCanon:
     def test_canon_match(self):
         """sig == make_signature(nodes) → canonical."""
-        k = KLine(10, [10])  # make_signature([10]) = 10 (non-literal)
+        k = KLine(10, [10])  # make_signature([10]) = 10
         assert is_canon(k) is True
 
     def test_canon_mismatch(self):
@@ -407,20 +407,12 @@ class TestIsS1:
         k = KLine(5, [10])  # not canonical (make_sig([10])=10≠5)
         assert is_s1(m, k) is False
 
-    def test_all_literal_canonical(self):
-        """All-literal kline → canonical (sig=1)."""
+    def test_countersigned_skips_unresolved_nodes(self):
+        """Unresolved nodes in kline.nodes are skipped in countersigned search."""
         m = Model()
-        lit = (65 << 32) | 0xFFFF_FFFF
-        k = KLine(1, [lit])
-        assert is_s1(m, k) is True
-
-    def test_countersigned_skips_literal_nodes(self):
-        """Literal nodes in kline.nodes are skipped in countersigned search."""
-        m = Model()
-        lit = (65 << 32) | 0xFFFF_FFFF
-        a = KLine(5, [lit])  # only literal nodes
+        a = KLine(5, [99])  # node 99 not in model
         m.add_frame(a)
-        assert is_s1(m, a) is False  # not canonical, no non-literal nodes to check
+        assert is_s1(m, a) is False  # not canonical, no resolved nodes to check
 
 
 class TestIsCountersigned:

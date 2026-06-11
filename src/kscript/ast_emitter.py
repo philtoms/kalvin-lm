@@ -49,7 +49,6 @@ from .ast import (
     Construct,
     ConstructItem,
     KScriptFile,
-    Literal,
     Node,
     PrimaryConstruct,
     Script,
@@ -137,10 +136,6 @@ class ASTEmitter:
                 words = self._extract_words(construct.inner.text)
                 if words:
                     self._scope.add_word_list(words)
-            return
-
-        if isinstance(construct.inner, Literal):
-            self._emit_entry(construct.inner.id, None, "UNSIGNED")
             return
 
         primaries = construct.inner
@@ -260,15 +255,11 @@ class ASTEmitter:
             return items
         if isinstance(construct.inner, Comment):
             return []  # Comments feed the scope's word list via add_word_list, not emitted
-        if isinstance(construct.inner, Literal):
-            return [construct.inner]
         return construct.inner
 
     def _item_id(self, item: ConstructItem) -> str:
         if isinstance(item, PrimaryConstruct):
             return item.sig.id
-        elif isinstance(item, Literal):
-            return item.id
         return str(item)
 
     def _get_owner(self, pc: PrimaryConstruct) -> str:
@@ -279,16 +270,10 @@ class ASTEmitter:
     def _node_to_string(self, node: Node | None) -> str:
         if isinstance(node, Signature):
             return node.id
-        elif isinstance(node, Literal):
-            return node.id
         return str(node)
 
     def _is_signature(self, node: Node | None) -> bool:
-        if isinstance(node, Signature):
-            return True
-        if isinstance(node, Literal):
-            return False
-        return False
+        return isinstance(node, Signature)
 
     # ------------------------------------------------------------------
     # Inline resolution helpers

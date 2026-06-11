@@ -25,7 +25,7 @@ from typing import Iterator, TYPE_CHECKING
 
 from kalvin.kline import KLine
 from kalvin.misfit import classify_misfit, generate_expansions
-from kalvin.signature import make_signature, signifies, is_literal_node, node_to_sig
+from kalvin.signature import make_signature, signifies
 
 if TYPE_CHECKING:
     from kalvin.model import Model
@@ -136,9 +136,9 @@ def edge_hops(model: Model, sig: int) -> Iterator[tuple[int, int]]:
     Stops at a dead end (unresolvable), a canonical kline, or a cycle.
 
     The initial ``sig`` may be a raw node value; it is converted to signature
-    form via ``node_to_sig()`` before the first lookup.
+    form via direct node value before the first lookup.
     """
-    sig = node_to_sig(sig)  # Convert raw node to signature form if needed
+    sig = sig  # Convert raw node to signature form if needed
     hop_count = 0
     visited: set[int] = set()
     while hop_count < MAX_HOP:
@@ -157,7 +157,7 @@ def edge_hops(model: Model, sig: int) -> Iterator[tuple[int, int]]:
 
 def _as_kline(model: Model, node: int) -> KLine:
     """Resolve a node value to a KLine. Raises ValueError if not resolvable."""
-    kline = model.find(node_to_sig(node))
+    kline = model.find(node)
     if kline is None:
         raise ValueError(f"Node {node:#x} does not resolve to any KLine")
     return kline
@@ -236,7 +236,7 @@ def expand(
     # Mismatched query nodes
     for n in mismatched_q:
         hop_distance = MAX_HOP
-        q_kline = model.find(node_to_sig(n))
+        q_kline = model.find(n)
         if q_kline is not None:
             for hops, match_sig in edge_hops(model, n):
                 if match_sig in mismatched_c:
@@ -247,7 +247,7 @@ def expand(
                             model, q_kline, c_kline, hops, _visited=_visited,
                         )
                     break
-                elif signifies(node_to_sig(n), match_sig):
+                elif signifies(n, match_sig):
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         sig_distance = distance + hops
@@ -262,7 +262,7 @@ def expand(
     # Mismatched candidate nodes
     for n in mismatched_c:
         hop_distance = MAX_HOP
-        q_kline = model.find(node_to_sig(n))
+        q_kline = model.find(n)
         if q_kline is not None:
             for hops, match_sig in edge_hops(model, n):
                 if match_sig in mismatched_q:
@@ -273,7 +273,7 @@ def expand(
                             model, q_kline, c_kline, hops, _visited=_visited,
                         )
                     break
-                elif signifies(node_to_sig(n), match_sig):
+                elif signifies(n, match_sig):
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         sig_distance = distance + hops
@@ -295,7 +295,7 @@ def expand(
 
     # Matched but not grounded — small S2 penalty
     for n in matched:
-        kl = model.find(node_to_sig(n))
+        kl = model.find(n)
         if kl is None or not is_s1(model, kl):
             total_distance += 1
 
@@ -325,11 +325,9 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
     # Collect signatures of actual node values in query and candidate
     node_sigs: set[int] = set()
     for n in query.nodes:
-        if not is_literal_node(n):
-            node_sigs.add(n)
+        node_sigs.add(n)
     for n in candidate.nodes:
-        if not is_literal_node(n):
-            node_sigs.add(n)
+        node_sigs.add(n)
     node_sigs.add(query.signature)
     node_sigs.add(candidate.signature)
 
@@ -342,13 +340,11 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
         if not kl.nodes:
             # Identity frame — always promote
             to_promote.append(kl)
-        elif (isinstance(kl.nodes, int)
-              and not is_literal_node(kl.nodes)):
+        elif isinstance(kl.nodes, int):
             # Single-node entry (countersign/undersign) — promote
             to_promote.append(kl)
         elif (isinstance(kl.nodes, list)
-              and len(kl.nodes) == 1
-              and not is_literal_node(kl.nodes[0])):
+              and len(kl.nodes) == 1):
             # Single-node list entry — promote
             to_promote.append(kl)
         elif is_canon(kl):

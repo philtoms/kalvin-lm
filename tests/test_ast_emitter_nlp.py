@@ -28,7 +28,6 @@ from kscript.ast import (
     Comment,
     Construct,
     KScriptFile,
-    Literal,
     PrimaryConstruct,
     Script,
     Signature,

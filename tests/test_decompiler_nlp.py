@@ -14,8 +14,8 @@ import pytest
 from unittest.mock import MagicMock
 
 from kalvin.kline import KLine
-from kalvin.signature import is_nlp_node, is_literal_node, NLP_TYPE_MASK
-from kscript.decompiler import Decompiler, _NLP_TYPE_FLAGS
+from kscript.decompiler import Decompiler
+from kscript.nlp_types import describe_nlp_type
 
 
 # ── NLP type bit values (mirrors create_nlp_type32 from dev/nlp/nlp_analyzer.py) ──
@@ -181,12 +181,12 @@ class TestNLPSigEdgeCases:
 
         decomp = Decompiler(tokenizer=tok)
 
-        # Mod32: high 32 bits are zero, is_nlp_node returns False
+        # Mod32: high 32 bits are zero, (node >> 32) == 0 for Mod32
         sig = 0x00000000_00000005
         result = decomp._decode_sig(sig)
         assert result == "HELLO"
-        # Confirm is_nlp_node is False for this sig
-        assert not is_nlp_node(sig)
+        # High 32 bits are zero for Mod32 sig
+        assert not (sig >> 32) != 0
 
     def test_decompile_nlp_sig_in_mcs_names(self) -> None:
         """An NLP-type sig that IS in _mcs_names returns the recovered name.
@@ -202,57 +202,29 @@ class TestNLPSigEdgeCases:
         result = decomp._decode_sig(sig)
         assert result == "recovered_name"
 
-    def test_decompile_nlp_sig_literal_node(self) -> None:
-        """A literal node sig returns the decoded literal, not the type description.
-
-        is_literal_node check comes before the NLP fallback.
-        """
-        tok = MagicMock()
-        tok.supports_mcs = False
-        tok.decode = MagicMock(return_value="A")
-
-        decomp = Decompiler(tokenizer=tok)
-
-        # Literal node: lower 32 bits all set, char code in upper 32
-        sig = (0x41 << 32) | 0xFFFF_FFFF
-        result = decomp._decode_sig(sig)
-        # is_literal_node returns True, so it goes through _decode_node path
-        assert result == "A"
-
     def test_decompile_nlp_sig_zero_type_bits(self) -> None:
         """Edge case: NLP node with zero type bits returns <NLP:0>.
 
         In practice this shouldn't happen (NLP nodes always have non-zero
         high bits), but we handle it gracefully.
         """
-        tok = _mock_nlp_tokenizer()
-        decomp = Decompiler(tokenizer=tok)
-
-        # This is a synthetic case: is_nlp_node would return False for
-        # high bits == 0, so we test _describe_nlp_type directly
-        result = decomp._describe_nlp_type(0)
+        result = describe_nlp_type(0)
         assert result == "<NLP:0>"
 
     def test_describe_nlp_type_preserves_order(self) -> None:
         """Flag names appear in bit-position order regardless of OR combination."""
-        tok = _mock_nlp_tokenizer()
-        decomp = Decompiler(tokenizer=tok)
-
         # OR bits out of order — description should still be in bit order
         nlp_type = POS_VERB | POS_NOUN | POS_ADJ  # ADJ=0, NOUN=7, VERB=15
         sig = _make_nlp_sig(nlp_type)
-        result = decomp._decode_sig(sig)
+        result = describe_nlp_type(sig)
         assert result == "<ADJ|NOUN|VERB>"
 
     def test_describe_nlp_type_all_pos_flags(self) -> None:
         """All POS flags at once produce all POS names."""
-        tok = _mock_nlp_tokenizer()
-        decomp = Decompiler(tokenizer=tok)
-
         all_pos = (POS_ADJ | POS_ADP | POS_ADV | POS_AUX | POS_CCONJ |
                    POS_DET | POS_INTJ | POS_NOUN | POS_NUM | POS_PART |
                    POS_PRON | POS_PROPN | POS_PUNCT | POS_SCONJ | POS_SYM |
                    POS_VERB | POS_X)
         sig = _make_nlp_sig(all_pos)
-        result = decomp._decode_sig(sig)
+        result = describe_nlp_type(sig)
         assert result == "<ADJ|ADP|ADV|AUX|CCONJ|DET|INTJ|NOUN|NUM|PART|PRON|PROPN|PUNCT|SCONJ|SYM|VERB|X>"

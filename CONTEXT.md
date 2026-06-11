@@ -194,7 +194,7 @@ _Avoid_: session log (Frame is not a log — it's compressed context), session (
 
 ### LTM (Long-Term Memory)
 
-Persistent knowledge — klines confirmed (S1) or novel (S4) that survive across sessions. Written via `add_ltm()`, which cascades to Frame and STM. Structurally identical to Frame — the distinction is semantic, not structural. LTM is populated during rationalisation when a kline reaches S1 (ratified, canonical, countersigned, all-literal) or S4 (identity or novel). Loaded at session start from the previous session's persisted LTM. Saved at session end alongside Frame (separate sections, never merged). LTM is monotonic — klines are appended, never removed.
+Persistent knowledge — klines confirmed (S1) or novel (S4) that survive across sessions. Written via `add_ltm()`, which cascades to Frame and STM. Structurally identical to Frame — the distinction is semantic, not structural. LTM is populated during rationalisation when a kline reaches S1 (ratified, canonical, countersigned) or S4 (identity or novel). Loaded at session start from the previous session's persisted LTM. Saved at session end alongside Frame (separate sections, never merged). LTM is monotonic — klines are appended, never removed.
 _Avoid_: persistent store (too vague), knowledge base (conflicts with the informal use of "base"), LTM frame (it's not a frame — it's a distinct tier)
 
 ### Model Persistence
@@ -255,4 +255,4 @@ When a single-character signature cannot be resolved through any binding mechani
 
 ### NLP Word List
 
-A comment in KScript source that is interpreted as a sequence of words for NLP binding. Syntax: `(word1 word2 ...)` (block) or `S(ubject)` (inline, one word). Inline syntax takes the first character from the SIGNATURE token and appends the comment content stripped of parens, preserving case (`S` + `ubject` → `"Subject"`). Block word lists are matched via first-letter matching (case-insensitive): a character matches a word whose first letter equals the character, compared case-insensitively. Surplus words are inert — there is no word count constraint.
+A comment in KScript source that is interpreted as a sequence of words for NLP binding. Syntax: `(word1 word2 ...)` (block) or `S(ubject)` (inline, one word). Inline syntax takes the first character from the SIGNATURE token and appends the comment content stripped of parens, preserving case (`S` + `ubject` → `"Subject"`). Block word lists are matched via first-letter matching (case-insensitive): a character matches a word whose first letter equals the character (ignoring case). Surplus words are inert — there is no word count constraint.

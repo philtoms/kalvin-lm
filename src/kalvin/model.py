@@ -13,7 +13,7 @@ from typing import Callable, Iterator
 
 from kalvin.kline import KLine, KSig
 from kalvin.stm import STM
-from kalvin.signature import make_signature, signifies, is_literal_node, node_to_sig
+from kalvin.signature import make_signature, signifies
 
 
 class KLineStore:
@@ -203,12 +203,12 @@ class Model:
 
     Write API (cascade methods):
     - add_stm(kl) — STM only. Always refreshes FIFO position.
-    - add_frame(kl) — Frame + STM. Literal dedup guard on entry.
-    - add_ltm(kl) — LTM + Frame + STM. Literal dedup guard on entry.
+    - add_frame(kl) — Frame + STM. Unconditional write.
+    - add_ltm(kl) — LTM + Frame + STM. Unconditional write.
 
     Tier descriptions:
     - STM: bounded rolling window (default 256). Fast recency index.
-    - Frame: working context. Additive, monotonic for non-literals.
+    - Frame: working context. Additive, monotonic.
     - LTM: long-term memory. Populated via add_ltm(). Additive.
     - Base: optional long-term knowledge store (read-only, set at construction).
 
@@ -246,35 +246,24 @@ class Model:
 
     def add_stm(self, kline: KLine) -> None:
         """Write to STM only. Always refreshes FIFO (remove-if-present then add).
-
-        Literal dedup guard: returns early if literal exists in any tier.
-        Non-literal klines are always written.
         """
-        if kline.is_literal() and self._exists_any(kline):
-            return
         self._stm.add(kline)
 
     def add_frame(self, kline: KLine) -> None:
-        """Write to Frame and STM. Literal dedup guard on entry.
+        """Write to Frame and STM.
 
-        Frame and STM are both written unconditionally (after dedup check).
+        Frame and STM are both written unconditionally.
         Frame _dedup set is a membership index, not a write guard.
-        Non-literal klines are always written.
         """
-        if kline.is_literal() and self._exists_any(kline):
-            return
         self._frame.add(kline)
         self._stm.add(kline)
 
     def add_ltm(self, kline: KLine) -> None:
-        """Write to LTM, Frame, and STM. Literal dedup guard on entry.
+        """Write to LTM, Frame, and STM.
 
-        All three tiers written unconditionally (after dedup check).
+        All three tiers written unconditionally.
         LTM and Frame _dedup sets are membership indexes, not write guards.
-        Non-literal klines are always written.
         """
-        if kline.is_literal() and self._exists_any(kline):
-            return
         self._ltm.add(kline)
         self._frame.add(kline)
         self._stm.add(kline)
@@ -349,7 +338,7 @@ class Model:
 
     def resolve(self, node: int) -> KLine | None:
         """Resolve a node value to a KLine."""
-        return self.find(node_to_sig(node))
+        return self.find(node)
 
     def query_expand(self, kline: KLine, depth: int = 2) -> list[KLine]:
         """Expand graph from kline up to *depth* levels.
@@ -382,7 +371,7 @@ class Model:
             return
 
         for node in kline.nodes:
-            child = self.find(node_to_sig(node))
+            child = self.find(node)
             if child is not None:
                 results.append(child)
                 self._query_expand_inner(child, max_depth, current_depth + 1, visited, results)
@@ -398,7 +387,7 @@ class Model:
         if node in visited:
             return
         visited.add(node)
-        kline = self.find(node_to_sig(node))
+        kline = self.find(node)
         if kline is None:
             return
         for child_node in kline.nodes:
@@ -451,7 +440,7 @@ class Model:
 
     def duplicate(self) -> Model:
         """Create a duplicate of this model's frame."""
-        klines = [KLine(kl.signature, list(kl.nodes), kl.literal, kl.dbg_text)
+        klines = [KLine(kl.signature, list(kl.nodes), kl.dbg_text)
                    for kl in self._frame.all_klines()]
         m = Model()
         for kl in klines:

@@ -21,15 +21,6 @@ A Kline consists of:
 - Node order is significant. `[A, B]` and `[B, A]` are different klines.
 - `nodes` may be empty (zero nodes).
 
-### Literal
-
-- A kline is **literal** if every one of its nodes is a literal token
-  (per `is_literal`, defined below). A kline is **non-literal** otherwise.
-- Literal status is not stored — it is computed from nodes on demand.
-- An empty kline (zero nodes) is non-literal.
-- The model uses `is_literal()` to determine deduplication behaviour
-  (see @model spec).
-
 ### Signature
 
 - The signature is a 64-bit unsigned integer that identifies the kline.
@@ -79,33 +70,6 @@ len(kline.nodes) → int ≥ 0
 
 The number of nodes. Equivalent to `len(kline.nodes)`.
 
-### Is literal
-
-```
-kline.is_literal() → bool
-```
-
-Returns whether every node in this kline is a literal token.
-Equivalent to `all(is_literal(node) for node in kline.nodes)`.
-An empty kline returns `false`.
-
-### `is_literal(node: int) → bool`
-
-A standalone function that tests whether a single node is a literal token.
-This is a bit-layout test, not a tokenizer method:
-
-```
-(node & 0xFFFFFFFF) == 0xFFFFFFFF
-```
-
-The lower 32 bits being all set is the **literal mask**. This distinguishes
-literal nodes from packed nodes (bit 0 clear) and from signature values
-(bit 0 may be set but the lower 32 bits are not all 1s).
-
-This function is the single authority for the literal/non-literal distinction.
-All components that need to classify nodes use this function directly — it
-is not injected from the tokenizer.
-
 ## What a Kline is Not
 
 The following are explicitly **out of scope** for this spec:
@@ -117,14 +81,10 @@ The following are explicitly **out of scope** for this spec:
   concerns, not kline operations.
 - **Debug metadata.** Labels, source text, or other diagnostic information
   is implementation-level.
-- **Deduplication.** The computed literal property signals deduplication
-  eligibility, but the model owns deduplication logic (@model spec).
 
 ## Dependencies
 
 The kline spec is self-contained with respect to node classification.
-`is_literal(node) → bool` is defined here as a standalone bit-layout test.
-It is not imported from any other spec.
 
 ## Test Matrix
 
@@ -137,13 +97,7 @@ It is not imported from any other spec.
 | KL-5 | Inequality: different signatures → not equal                             | — |
 | KL-6 | Inequality: different node sequences → not equal                         | — |
 | KL-7 | Hash consistency: equal KLines produce equal hashes                      | — |
-| KL-8 | `is_literal()`: all nodes literal → True                                 | — |
-| KL-9 | `is_literal()`: mixed literal/non-literal nodes → False                  | — |
-| KL-10 | `is_literal()`: empty kline → False                                      | — |
 | KL-11 | `len()` returns node count                                                | — |
-| KL-12 | `is_literal(node)` standalone: literal mask `(0xFFFFFFFF)` → True         | — |
-| KL-13 | `is_literal(node)` standalone: packed node (bit 0 clear) → False         | — |
-| KL-14 | `is_literal(node)` standalone: zero → False                              | — |
 
 ## Referenced By
 

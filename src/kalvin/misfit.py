@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Iterator, TYPE_CHECKING
 
 from kalvin.kline import KLine
-from kalvin.signature import make_signature, is_literal_node, node_to_sig
+from kalvin.signature import make_signature
 
 if TYPE_CHECKING:
     from kalvin.model import Model
@@ -78,7 +78,7 @@ def _split_excess(
 ) -> tuple[list[int], list[int]]:
     """Split kline nodes into (excess_nodes, remaining) by excess mask."""
     excess_nodes = [n for n in kline.nodes
-                    if not is_literal_node(n) and (node_to_sig(n) & excess) != 0]
+                    if (n & excess) != 0]
     remaining = [n for n in kline.nodes if n not in excess_nodes]
     return excess_nodes, remaining
 

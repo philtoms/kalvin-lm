@@ -3,12 +3,11 @@
 Grammar (left recursion eliminated):
 
     script ::= construct+
-    construct ::= block | literal | comment | primary_construct+ ( "=>" construct )?
+    construct ::= block | comment | primary_construct+ ( "=>" construct )?
     block ::= <INDENT> construct+ <DEDENT>
     primary_construct ::= sig ( inline_comment )? ( ( "==" | ">" | "=" ) node ( inline_comment )? )?
-    node ::= sig | literal
+    node ::= sig
     sig ::= [A-Z]+
-    literal ::= ![A-Z]+
     comment ::= "(" ... ")"
 
 NEWLINE tokens are treated as insignificant whitespace and skipped between
@@ -21,9 +20,7 @@ from .ast import (
     Block,
     Comment,
     Construct,
-    ConstructItem,
     KScriptFile,
-    Literal,
     Node,
     PrimaryConstruct,
     Script,
@@ -66,7 +63,7 @@ class Parser:
         constructs = self._parse_constructs_until(TokenType.EOF)
         return Script(constructs)
 
-    # construct ::= block | literal | comment | primary_construct+ ( "=>" construct )?
+    # construct ::= block | comment | primary_construct+ ( "=>" construct )?
     def _parse_construct(self) -> Construct:
         self._skip_insignificant()
 
@@ -77,10 +74,6 @@ class Parser:
         # comment: standalone (...) on its own
         if self._check(TokenType.COMMENT):
             return self._parse_comment_construct()
-
-        # literal: bare literal, no chain ops
-        if self._check(TokenType.LITERAL):
-            return self._parse_literal_construct()
 
         # primary_construct+ with optional chain (one or more at current indent)
         indent = self._peek().column
@@ -95,12 +88,6 @@ class Parser:
             return Construct(primaries, chain_op, right)
 
         return Construct(primaries)
-
-    # literal (as a bare construct — no chain ops allowed)
-    def _parse_literal_construct(self) -> Construct:
-        """Parse a literal as a bare construct (unsigned identity)."""
-        literal = self._parse_literal()
-        return Construct(literal)
 
     # comment (as a bare construct — preserved in AST)
     def _parse_comment_construct(self) -> Construct:
@@ -138,23 +125,16 @@ class Parser:
 
         return PrimaryConstruct(sig, inline_comment=inline_comment)
 
-    # node ::= sig | literal
+    # node ::= sig
     def _parse_node(self) -> Node:
         if self._check(TokenType.SIGNATURE):
             return self._parse_sig()
-        if self._check(TokenType.LITERAL):
-            return self._parse_literal()
-        raise ParseError("Expected signature or literal", self._peek())
+        raise ParseError("Expected signature", self._peek())
 
     # sig ::= [A-Z]+
     def _parse_sig(self) -> Signature:
         token = self._expect(TokenType.SIGNATURE)
         return Signature(token.value, token.line, token.column)
-
-    # literal ::= ![A-Z]+
-    def _parse_literal(self) -> Literal:
-        token = self._expect(TokenType.LITERAL)
-        return Literal(token.value, token.line, token.column)
 
     # -- Helpers --------------------------------------------------------------
 

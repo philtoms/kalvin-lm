@@ -160,9 +160,9 @@ class TestNB18Mod64Unchanged:
         entries, _ = _compile_with_compiler("ABC", _tok64)
         md = _entries_to_multidict(entries, _tok64)
 
-        assert _has_node(md, "A", "")
-        assert _has_node(md, "B", "")
-        assert _has_node(md, "C", "")
+        assert _has_node(md, "A", None)
+        assert _has_node(md, "B", None)
+        assert _has_node(md, "C", None)
         assert _has_node(md, "ABC", ["A", "B", "C"])
 
     def test_complex_nested_mod64(self) -> None:

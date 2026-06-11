@@ -25,29 +25,22 @@ class KLine:
     Attributes:
         signature: uint64 identity key (produced by make_signature).
         nodes: list of uint64 node values (always a list, never None).
-        literal: whether this kline represents an exact token.
         dbg_text: optional debug label (not spec'd).
     """
 
-    __slots__ = ("signature", "nodes", "literal", "dbg_text", "sig_level")
+    __slots__ = ("signature", "nodes", "dbg_text", "sig_level")
 
     def __init__(
         self,
         signature: KSig,
         nodes: KNodes | KNode | None = None,
-        literal: bool = False,
         dbg_text: str = "",
         sig_level: str | None = None,
     ):
         self.signature = signature
         self.nodes = _normalize_nodes(nodes)
-        self.literal = literal
         self.dbg_text = dbg_text
         self.sig_level = sig_level
-
-    def is_literal(self) -> bool:
-        """Return whether this kline is literal."""
-        return self.literal
 
     # ── Backwards-compatible helpers ──────────────────────────────────
 
@@ -73,7 +66,7 @@ class KLine:
 
     def __repr__(self) -> str:
         text = f" {self.dbg_text!r}" if self.dbg_text else ""
-        return f"KLine(sig={self.signature:#x}, nodes={self.nodes!r}, lit={self.literal}{text})"
+        return f"KLine(sig={self.signature:#x}, nodes={self.nodes!r}{text})"
 
     def __len__(self) -> int:
         return len(self.nodes)

@@ -8,13 +8,12 @@ import pytest
 
 from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer, Mod64Tokenizer
-from kalvin.signature import is_nlp_node
+# Removed: is_nlp_node
 from kscript.ast import (
     Block,
     Comment,
     Construct,
     KScriptFile,
-    Literal,
     PrimaryConstruct,
     Script,
     Signature,
@@ -88,7 +87,7 @@ class TestTokenType:
         expected = [
             "COUNTERSIGN", "CANONIZE", "CONNOTATE",
             "UNDERSIGN",
-            "SIGNATURE", "LITERAL", "COMMENT",
+            "SIGNATURE", "COMMENT",
             "NEWLINE", "INDENT", "DEDENT", "EOF",
         ]
         for name in expected:
@@ -118,30 +117,20 @@ class TestLexer:
         assert len(sigs) == 1
         assert sigs[0].value == "ABC"
 
-    def test_literal_number(self) -> None:
-        tokens = Lexer("42").tokenize()
-        lits = [t for t in tokens if t.type == TokenType.LITERAL]
-        assert len(lits) == 1
-        assert lits[0].value == "42"
+    def test_literal_number_is_error(self) -> None:
+        """Numbers are no longer valid tokens."""
+        with pytest.raises(LexerError):
+            Lexer("42").tokenize()
 
-    def test_literal_string(self) -> None:
-        tokens = Lexer('"hello"').tokenize()
-        lits = [t for t in tokens if t.type == TokenType.LITERAL]
-        assert len(lits) == 1
-        assert lits[0].value == '"hello"'
+    def test_literal_string_is_error(self) -> None:
+        """Quoted strings are no longer valid tokens."""
+        with pytest.raises(LexerError):
+            Lexer('"hello"').tokenize()
 
     def test_literal_lowercase(self) -> None:
-        """Lowercase identifiers are now a lexer error.
-        Use quoted strings for non-signature text.
-        """
+        """Lowercase identifiers are a lexer error."""
         with pytest.raises(LexerError):
             Lexer("hello").tokenize()
-
-    def test_quoted_string(self) -> None:
-        tokens = Lexer('"hello world"').tokenize()
-        lits = [t for t in tokens if t.type == TokenType.LITERAL]
-        assert len(lits) == 1
-        assert lits[0].value == '"hello world"'
 
     def test_operators(self) -> None:
         tokens = Lexer("A == B").tokenize()
@@ -241,9 +230,9 @@ class TestParserAST:
         assert len(kfile.scripts[0].constructs) >= 1
 
     def test_parse_error_on_invalid(self) -> None:
-        tokens = Lexer("1 => A").tokenize()
-        with pytest.raises(ParseError):
-            Parser(tokens).parse()
+        """Numbers are no longer valid tokens — lexer error."""
+        with pytest.raises(LexerError):
+            Lexer("1 => A").tokenize()
 
     def test_empty_source_produces_empty_script(self) -> None:
         tokens = Lexer("").tokenize()
@@ -434,7 +423,7 @@ class TestCompilerBasic:
         entries = compile64("A")
         md = _md(entries)
         # Unsigned entry has empty nodes (decoded as '')
-        assert _has_node(md, "A", "")
+        assert _has_node(md, "A", None)
 
     def test_countersign(self) -> None:
         entries = compile64("A == B")
@@ -457,21 +446,6 @@ class TestCompilerBasic:
         md = _md(entries)
         assert _has_node(md, "A", ["B"])
 
-    def test_literal_node_connotate_string(self) -> None:
-        entries = compile64('A > "hello"')
-        md = _md(entries)
-        assert _has_node(md, "A", '"hello"')
-
-    def test_literal_node_connotate(self) -> None:
-        entries = compile64("A > 1")
-        md = _md(entries)
-        assert _has_node(md, "A", "1")
-
-    def test_quoted_string_literal(self) -> None:
-        entries = compile64('A => "hello"')
-        md = _md(entries)
-        assert _has_node(md, "A", '"hello"')
-
 
 # =============================================================================
 # 5. MCS expansion tests
@@ -483,13 +457,13 @@ class TestMCSExpansion:
         entries = compile64("ABC")
         md = _md(entries)
         # Component identities (empty nodes)
-        assert _has_node(md, "A", "")
-        assert _has_node(md, "B", "")
-        assert _has_node(md, "C", "")
+        assert _has_node(md, "A", None)
+        assert _has_node(md, "B", None)
+        assert _has_node(md, "C", None)
         # MCS canonization: {ABC: [A, B, C]}
         assert _has_node(md, "ABC", ["A", "B", "C"])
         # ABC unsigned
-        assert _has_node(md, "ABC", "")
+        assert _has_node(md, "ABC", None)
 
     def test_mcs_in_construct(self) -> None:
         entries = compile64("ABC => X")
@@ -576,54 +550,7 @@ class TestComplexExamples:
 
 
 # =============================================================================
-# 9. Literal edge cases
-# =============================================================================
-
-class TestLiteralEdgeCases:
-    def test_bare_literal_identity(self) -> None:
-        entries = compile64("1")
-        assert len(entries) == 1
-        sig, nodes = entries[0].decode(_tok64)
-        assert sig == "1"
-        assert nodes == ""  # empty nodes → ''
-
-    def test_bare_multiple_literals(self) -> None:
-        entries = compile64("1 2 3")
-        assert len(entries) == 3
-        sigs = [e.decode(_tok64)[0] for e in entries]
-        assert sigs == ["1", "2", "3"]
-
-    def test_canonize_single_literal(self) -> None:
-        entries = compile64("A => 1")
-        md = _md(entries)
-        assert _has_node(md, "A", "1")
-
-    def test_block_mixed_literal_and_sig(self) -> None:
-        source = "A =>\n  1\n  B"
-        entries = compile64(source)
-        md = _md(entries)
-        assert _has_node(md, "A", ["1", "B"])
-
-    def test_block_all_literals(self) -> None:
-        source = "A =>\n  1\n  2\n  3"
-        entries = compile64(source)
-        md = _md(entries)
-        # Consecutive literal tokens decode as a single concatenated string
-        assert _has_node(md, "A", "123")
-
-    def test_literal_cannot_own_chain(self) -> None:
-        with pytest.raises(ParseError):
-            tokens = Lexer("1 => A").tokenize()
-            Parser(tokens).parse()
-
-    def test_cannot_chain_through_literal(self) -> None:
-        with pytest.raises(ParseError):
-            tokens = Lexer("A => 1 => B").tokenize()
-            Parser(tokens).parse()
-
-
-# =============================================================================
-# 10. Decompiler tests
+# 9. Decompiler tests
 # =============================================================================
 
 class TestDecompiler:
@@ -663,12 +590,6 @@ class TestDecompiler:
         entry = self._find(result, "A")
         assert entry is not None
         assert entry["nodes"] == "B"
-
-    def test_decompile_literal_connotate(self) -> None:
-        result = self._roundtrip('A > "hello"')
-        entry = self._find(result, "A")
-        assert entry is not None
-        assert entry["nodes"] == '"hello"'
 
     def test_decompile_empty_input(self) -> None:
         result = Decompiler(_tok64).decompile([])
@@ -804,19 +725,13 @@ class TestCompiledEntryEncodeDecode:
         assert entry.nodes == []  # None normalizes to []
         sig, nodes = entry.decode(_tok64)
         assert sig == "A"
-        assert nodes == ""  # empty nodes decode to ''
+        assert nodes is None
 
     def test_encode_sig_to_sig(self) -> None:
         entry = CompiledEntry.encode("A", "B", _tok64)
         sig, nodes = entry.decode(_tok64)
         assert sig == "A"
         assert nodes == ["B"]  # single-node signature stored as list
-
-    def test_encode_sig_to_literal(self) -> None:
-        entry = CompiledEntry.encode("A", "hello", _tok64)
-        sig, nodes = entry.decode(_tok64)
-        assert sig == "A"
-        assert nodes == "hello"
 
     def test_encode_sig_to_list(self) -> None:
         entry = CompiledEntry.encode("AB", ["A", "B"], _tok64)
@@ -999,13 +914,13 @@ class TestKScriptNLPIntegration:
 
         # All entries should have NLP-BPE signatures (high 32 bits set)
         for entry in entries:
-            assert is_nlp_node(entry.signature), (
+            assert (entry.signature >> 32) != 0, (
                 f"Entry signature {entry.signature:#x} should be an NLP-BPE node"
             )
 
             # Non-empty node entries should have NLP-BPE node values
             for node in entry.nodes:
-                assert is_nlp_node(node), (
+                assert (node >> 32) != 0, (
                     f"Entry node {node:#x} should be an NLP-BPE node"
                 )
 

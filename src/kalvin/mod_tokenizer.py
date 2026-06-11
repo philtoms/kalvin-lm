@@ -1,9 +1,7 @@
 """Mod Tokenizer — modular bit-packed encoding.
 
-Characters map to bit positions. Two encoding modes:
-  - Packed: multi-char strings OR'd into single node, bit 0 clear.
-  - Literal: one node per character, upper 32 bits = code point,
-    lower 32 bits = 0xFFFFFFFF (literal mask).
+Characters map to bit positions. All-uppercase-alpha strings are OR'd into
+a single node with bit 0 clear (packed encoding).
 
 See specs/tokenizer.md for the full specification.
 """
@@ -13,7 +11,6 @@ from __future__ import annotations
 from typing import Any
 
 from kalvin.abstract import KTokenizer
-from kalvin.signature import LITERAL_MASK
 
 # ── Default alphabet ──────────────────────────────────────────────────────
 # All printable ASCII (codes 32–126), order determines bit priority.
@@ -114,24 +111,20 @@ class ModTokenizer(KTokenizer):
                 token_id |= self._char_bit[c]
             return [token_id]
         else:
-            # Literal encoding: one node per character
-            return [(ord(c) << 32) | LITERAL_MASK for c in text]
+            # Non-uppercase strings: encode each character as packed
+            return [(ord(c) << 32) | 0xFFFFFFFF for c in text]
 
     # ── Decode ────────────────────────────────────────────────────────
 
     def decode(self, ids: list[int]) -> str:
-        """Decode node IDs back to a string.
-
-        Auto-detects literal vs packed from the literal mask.
-        """
+        """Decode node IDs back to a string."""
         chars = []
         for node in ids:
-            is_packed = not ((node & LITERAL_MASK) == LITERAL_MASK)
-
-            if is_packed:
-                chars.append(self._decode_packed(node))
-            else:
+            if (node & 0xFFFFFFFF) == 0xFFFFFFFF:
+                # Character-level node
                 chars.append(chr(node >> 32))
+            else:
+                chars.append(self._decode_packed(node))
         return "".join(chars)
 
     def _decode_packed(self, token_id: int) -> str:

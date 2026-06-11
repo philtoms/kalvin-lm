@@ -1,23 +1,16 @@
-"""Tests for KLine — openspec/kline.md conformance."""
+"""Tests for KLine — specs/kline.md conformance."""
 
 import pytest
 from kalvin.kline import KLine
 
 
 class TestKLineConstruction:
-    """KLine construction with normalized nodes and literal flag."""
+    """KLine construction with normalized nodes."""
 
     def test_empty_kline(self):
         k = KLine(0)
         assert k.signature == 0
         assert k.nodes == []
-        assert k.literal is False
-        assert k.is_literal() is False
-
-    def test_kline_with_literal_flag(self):
-        k = KLine(1, literal=True)
-        assert k.is_literal() is True
-        assert k.literal is True
 
     def test_nodes_none_normalized(self):
         k = KLine(0, None)
@@ -45,28 +38,17 @@ class TestKLineConstruction:
         k = KLine(7, [1, 2, 4])
         assert len(k) == 3
 
-    def test_signature_with_bit0_set(self):
-        """Signatures can have bit 0 set (from literal-content flag)."""
-        k = KLine(1, [42])
-        assert k.signature == 1
-
     def test_dbg_text(self):
         k = KLine(0, [], dbg_text="hello")
         assert k.dbg_text == "hello"
 
 
 class TestKLineEquality:
-    """Equality: signature + node sequence. Literal excluded."""
+    """Equality: signature + node sequence."""
 
     def test_equal_klines(self):
         a = KLine(5, [1, 2, 3])
         b = KLine(5, [1, 2, 3])
-        assert a == b
-
-    def test_equal_different_literal(self):
-        """Literal flag does NOT participate in equality."""
-        a = KLine(5, [1, 2], literal=True)
-        b = KLine(5, [1, 2], literal=False)
         assert a == b
 
     def test_unequal_signature(self):
@@ -137,16 +119,3 @@ class TestKLineNodeAccess:
     def test_as_node_list_compat(self):
         k = KLine(5, [1, 2])
         assert k.as_node_list() == [1, 2]
-
-
-class TestKLineIsLiteral:
-    """is_literal() returns the literal flag."""
-
-    def test_literal_true(self):
-        assert KLine(1, [], literal=True).is_literal() is True
-
-    def test_literal_false(self):
-        assert KLine(1, [], literal=False).is_literal() is False
-
-    def test_literal_default(self):
-        assert KLine(1, []).is_literal() is False

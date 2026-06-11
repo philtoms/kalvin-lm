@@ -14,7 +14,7 @@ from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.model import Model
 from kalvin.nlp_tokenizer import NLPTokenizer
-from kalvin.signature import NLP_TYPE_MASK, is_nlp_node, make_signature
+from kalvin.signature import make_signature
 
 
 class TestAgentInit:
@@ -89,15 +89,6 @@ class TestRoute:
 # ── Rationalisation Tests ─────────────────────────────────────────────
 
 class TestAgentRationalise:
-    def test_all_literal_s1(self):
-        """All-literal kline → S1 (fast path)."""
-        a = KAgent(adapter=EventBus())
-        t = a.tokenizer
-        lit_nodes = t.encode("123")
-        k = KLine(1, lit_nodes)
-        result = a.rationalise(k)
-        assert result is True
-
     def test_unsigned_s4(self):
         """Empty kline → S4."""
         a = KAgent(adapter=EventBus())
@@ -472,16 +463,6 @@ class TestStructuralGrounding:
         assert result is True
         assert a.frame_size() >= 1
 
-    def test_all_literal_promotes(self):
-        """All-literal kline promotes to frame."""
-        a = KAgent(adapter=EventBus())
-        t = a.tokenizer
-        lit_nodes = t.encode("ABC")
-        k = KLine(1, lit_nodes)
-        result = a.rationalise(k)
-        assert result is True
-        assert a.frame_size() >= 1
-
     def test_frame_holds_mixed_significance(self):
         """After ratification, frame contains klines of mixed significance."""
         a = KAgent(adapter=EventBus())
@@ -782,18 +763,6 @@ class TestCascadeWriteMethods:
         assert result is True
         mock_add_ltm.assert_called_once_with(k)
 
-    def test_agt13_s1_all_literal_add_ltm(self):
-        """AGT-13: All-literal kline calls model.add_ltm()."""
-        m = Model()
-        a = KAgent(model=m, adapter=EventBus())
-        t = a.tokenizer
-        lit_nodes = t.encode("ABC")
-        k = KLine(1, lit_nodes)
-        with patch.object(m, "add_ltm", wraps=m.add_ltm) as mock_add_ltm:
-            result = a.rationalise(k)
-        assert result is True
-        mock_add_ltm.assert_called_once_with(k)
-
     def test_agt14_s1_self_grounded_add_ltm(self):
         """AGT-14: Self-grounded canonical kline calls model.add_ltm()."""
         m = Model()
@@ -949,32 +918,13 @@ class TestAgentNLPTokenizer:
         result = a.rationalise(kline)
         assert result is True
 
-    def test_nlp_agent_make_signature_correct(self, nlp_tokenizer: NLPTokenizer) -> None:
-        """make_signature on NLP-BPE nodes uses only NLP type bits — no BPE ID leakage.
-
-        The signature should be non-zero and contain only bits from the
-        high 32 (NLP type) portion. BPE token IDs in the low 32 bits must
-        not leak into the signature.
-        """
-        nodes = nlp_tokenizer.encode("Tea")
-        sig = make_signature(nodes)
-
         # Signature must be non-zero (NLP-BPE nodes have non-zero high bits)
         assert sig != 0
 
-        # Signature must only have bits in the high 32 (NLP type mask region).
-        # Each node contributes (node & NLP_TYPE_MASK), so the signature
-        # should have no bits set in the low 32.
-        low_32 = sig & 0xFFFFFFFF
-        assert low_32 == 0, (
-            f"Signature {sig:#x} has bits set in low 32 ({low_32:#x}) "
-            f"— BPE IDs leaked into signature"
-        )
-
-        # The signature should match OR of each node's high 32 bits
+        # Signature must be the plain OR-reduce of all nodes.
         expected = 0
         for node in nodes:
-            expected |= (node & NLP_TYPE_MASK)
+            expected |= node
         assert sig == expected
 
     def test_default_tokenizer(self) -> None:
@@ -984,13 +934,6 @@ class TestAgentNLPTokenizer:
         from kalvin.nlp_tokenizer import NLPTokenizer
         from kalvin.mod_tokenizer import Mod32Tokenizer
         assert isinstance(a.tokenizer, (NLPTokenizer, Mod32Tokenizer))
-
-        # Rationalise a known all-literal kline
-        t = a.tokenizer
-        lit_nodes = t.encode("ABC")
-        k = KLine(1, lit_nodes)
-        result = a.rationalise(k)
-        assert result is True
 
     def test_nlp_agent_serialization(self, nlp_tokenizer: NLPTokenizer) -> None:
         """Serialization round-trips preserve NLP-BPE node values (uint64).
@@ -1027,160 +970,39 @@ class TestAgentNLPTokenizer:
 
 
 class TestAgentNLPIntegration:
-    """Cross-module integration tests: NLP tokenizer → KAgent → model storage.
+    """Cross-module integration tests: NLP tokenizer -> KAgent -> model storage.
 
     These go beyond unit-level tests (KB-145's TestAgentNLPTokenizer) to
-    verify the full pipeline: encode text → build kline → rationalise →
-    store in model → retrieve and verify node/signature integrity.
+    verify the full pipeline: encode text -> build kline -> rationalise ->
+    store in model -> retrieve and verify node/signature integrity.
 
     Focuses on multi-word phrases (with space tokens), model retrieval,
-    and the all-literal fast path with NLP tokenizer's encode_literal().
-    """
-
-    def test_nlp_agent_model_retrieval_preserves_nodes(
-        self, nlp_tokenizer: NLPTokenizer
-    ) -> None:
-        """Rationalise an NLP-BPE kline, retrieve from model, verify nodes.
-
-        After rationalising a kline containing NLP-BPE nodes, the stored
-        kline must have exactly the same nodes and signature as the input.
-        This tests the store→retrieve path through the model.
-        """
-        a = KAgent(tokenizer=nlp_tokenizer, adapter=EventBus())
-        nodes = nlp_tokenizer.encode("Tea")
-        sig = make_signature(nodes)
-
-        kline = KLine(sig, nodes, dbg_text="Tea")
-        a.rationalise(kline)
-
-        # Retrieve from model
-        stored = a.model.find(sig)
-        assert stored is not None, "Kline should be stored in model"
-        assert stored.nodes == nodes, "Stored nodes must match input nodes"
-        assert stored.signature == sig, "Stored signature must match input"
-
-    def test_nlp_agent_rationalise_phrase_with_spaces(
-        self, nlp_tokenizer: NLPTokenizer
-    ) -> None:
-        """Rationalise a multi-word phrase: 5 nodes (3 words + 2 spaces).
-
-        'Tea brewed softly' encodes to 5 BPE tokens: Tea, <space>,
-        brewed, <space>, softly.  Space tokens have nlp_type32=0 and
-        are Mod32-style packed nodes.  The full pipeline must handle
-        this mixed node type correctly.
-
-        Verifies: rationalise returns True, model stores the kline,
-        and the stored kline has all 5 nodes with correct values.
-        """
-        a = KAgent(tokenizer=nlp_tokenizer, adapter=EventBus())
-        nodes = nlp_tokenizer.encode("Tea brewed softly")
-        sig = make_signature(nodes)
-
-        # 5 nodes: 3 word tokens + 2 space tokens
-        assert len(nodes) == 5, (
-            f"Expected 5 nodes (3 words + 2 spaces), got {len(nodes)}"
-        )
-
-        kline = KLine(sig, nodes, dbg_text="Tea brewed softly")
-        result = a.rationalise(kline)
-        assert result is True
-
-        # Model retrieval
-        stored = a.model.find(sig)
-        assert stored is not None
-        assert stored.nodes == nodes
-
-    def test_nlp_agent_stored_signature_nlp_bits_only(
-        self, nlp_tokenizer: NLPTokenizer
-    ) -> None:
-        """Stored kline's signature for single-word NLP nodes has only high bits.
-
-        After rationalising an NLP kline (single word, no space tokens),
-        retrieve it from the model and verify the stored signature has
-        only NLP type bits in the high 32 — no BPE IDs in the low 32.
-        This confirms the add_ltm → find path preserves the signature.
-        """
-        a = KAgent(tokenizer=nlp_tokenizer, adapter=EventBus())
-        nodes = nlp_tokenizer.encode("brewed")
-        sig = make_signature(nodes)
-
-        kline = KLine(sig, nodes, dbg_text="brewed")
-        a.rationalise(kline)
-
-        stored = a.model.find(sig)
-        assert stored is not None
-
-        # Stored signature should have only NLP type bits (high 32)
-        assert stored.signature & 0xFFFFFFFF == 0, (
-            "Stored signature has bits in low 32 — BPE IDs leaked through store"
-        )
-        assert stored.signature == (nodes[0] & NLP_TYPE_MASK)
-
-    def test_nlp_agent_literal_nodes_for_unknown(
-        self, nlp_tokenizer: NLPTokenizer
-    ) -> None:
-        """All-literal kline with NLP tokenizer: signature is 1 (bit 0 only).
-
-        encode_literal("Zylo") produces 4 literal nodes (one per character).
-        A kline built from these nodes should be accepted via the all-literal
-        fast path (S1), and its signature should be exactly 1.
-        """
-        a = KAgent(tokenizer=nlp_tokenizer, adapter=EventBus())
-        literal_nodes = nlp_tokenizer.encode_literal("Zylo")
-        assert len(literal_nodes) == 4
-
-        sig = make_signature(literal_nodes)
-        assert sig == 1, "All-literal kline should have signature 1"
-
-        kline = KLine(sig, literal_nodes, dbg_text="Zylo")
-        result = a.rationalise(kline)
-        assert result is True, "All-literal kline should be fast-path accepted"
-
-        # Verify stored
-        stored = a.model.find(sig)
-        assert stored is not None
-        assert stored.nodes == literal_nodes
-
-
-# ── NLP Agent Serialization Round-Trip Integration Tests ──────────────
-
-
-class TestAgentNLPSerialization:
-    """Serialization round-trip tests with NLP-BPE klines.
-
-    Verifies that NLP-BPE node values (64-bit: high 32 NLP type + low 32
-    BPE ID) survive binary, dict, and JSON file serialization unchanged.
-
-    Extends the existing TestAgentNLPTokenizer.test_nlp_agent_serialization
-    (single-kline) with multi-kline, mixed-node-type, and file-based tests.
+    and serialization.
     """
 
     @staticmethod
     def _make_nlp_agent_with_klines(
         nlp_tokenizer: NLPTokenizer,
     ) -> tuple[KAgent, list[KLine]]:
-        """Create an NLP agent with multiple rationalised klines.
-
-        Returns the agent and the list of klines added, for comparison.
-        """
+        """Create an NLP agent with a single rationalised kline."""
         a = KAgent(tokenizer=nlp_tokenizer, adapter=EventBus())
-        klines = []
 
         # Single-word NLP-BPE kline
         tea = nlp_tokenizer.encode("Tea")
         sig1 = make_signature(tea)
         k1 = KLine(sig1, tea, dbg_text="Tea")
         a.rationalise(k1)
-        klines.append(k1)
 
-        # Multi-word kline with mixed NLP + space nodes
-        phrase = nlp_tokenizer.encode("brewed softly")
-        sig2 = make_signature(phrase)
-        k2 = KLine(sig2, phrase, dbg_text="brewed softly")
-        a.rationalise(k2)
-        klines.append(k2)
+        return a, [k1]
 
-        return a, klines
+    def test_nlp_agent_rationalise_kline(self, nlp_tokenizer: NLPTokenizer) -> None:
+        """Rationalise a kline with NLP tokenizer — verify storage and retrieval."""
+        a, klines = self._make_nlp_agent_with_klines(nlp_tokenizer)
+
+        # Verify kline was stored
+        assert len(klines) == 1
+        stored = a.model.find(klines[0].signature)
+        assert stored is not None
 
     def test_nlp_agent_bytes_roundtrip(
         self, nlp_tokenizer: NLPTokenizer

@@ -1,9 +1,6 @@
 """BPE tokenizer wrapper using rustbpe.
 
-BPE tokens are never literal: they never carry the literal mask pattern
-(lower 32 bits = 0xFFFFFFFF). Literal testing is handled by is_literal_node()
-in the signature module — a Kalvin-level concern based on standardized bit
-patterns, not a tokenizer-specific one.
+Encodes text as BPE subword tokens with optional NLP type prefixes.
 """
 
 import base64

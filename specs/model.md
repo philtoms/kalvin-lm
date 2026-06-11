@@ -188,8 +188,8 @@ add_frame()  →  writes Frame  →  calls add_stm()
 add_stm()  →  writes STM only (always refreshes FIFO)
 ```
 
-All three methods return void. The only early-return guard is literal dedup
-(see Deduplication).
+All three methods return void. All writes are unconditional (no early-return
+guards).
 
 ### Add to STM
 
@@ -203,8 +203,6 @@ Writes a KLine to STM only.
   then adds it fresh.
 - If adding would exceed `stm_bound`, the oldest STM entry is evicted.
   Evicted KLines remain in Frame and deeper tiers.
-- Literal dedup: if `kline.is_literal()` and an equal kline exists in any
-  tier, returns immediately without writing.
 - Absorbs the old `refresh_stm()` method — always refreshes unconditionally.
 
 ### Add to Frame
@@ -217,10 +215,8 @@ Writes a KLine to Frame, then cascades to `add_stm()`.
 
 - Frame is monotonic — klines are appended, never removed.
 - The KLineStore membership index (`_dedup`) provides fast `contains()`
-  checks but does not gate writes for non-literals.
+  checks.
 - Cascades to `add_stm()`, which refreshes STM FIFO position.
-- Literal dedup: if `kline.is_literal()` and an equal kline exists in any
-  tier, returns immediately without writing or cascading.
 
 ### Add to LTM
 
@@ -232,10 +228,8 @@ Writes a KLine to LTM, then cascades to `add_frame()`.
 
 - LTM is monotonic — klines are appended, never removed.
 - The KLineStore membership index (`_dedup`) provides fast `contains()`
-  checks but does not gate writes for non-literals.
+  checks.
 - Cascades to `add_frame()`, which cascades to `add_stm()`.
-- Literal dedup: if `kline.is_literal()` and an equal kline exists in any
-  tier, returns immediately without writing or cascading.
 
 ### Exists
 
@@ -343,20 +337,9 @@ order (oldest first).
 
 ## Deduplication
 
-All three write methods (`add_stm`, `add_frame`, `add_ltm`) apply the same
-literal dedup guard: if `kline.is_literal()` is `true` and an equal KLine
-(same signature, same node sequence per kline equality) already exists in
-**any tier** (STM, Frame, LTM, Base), the method returns immediately
-without writing or cascading.
-
-Non-literal Klines are always accepted — composed structures are never
-deduplicated.
-
-Deduplication is cross-tier: a literal Kline that duplicates an entry in
-LTM or the base model is rejected. The check uses `_exists_any()` which
-searches all four tiers.
-
-This is the sole write guard. Frame and LTM are otherwise monotonic.
+All three write methods (`add_stm`, `add_frame`, `add_ltm`) write
+unconditionally — there is no early-return guard. Frame and LTM are
+monotonic; STM refreshes FIFO position on every write.
 
 ## Iteration
 
@@ -389,10 +372,7 @@ Returns Klines matching a predicate, in reverse insertion order.
 
 A Kline's nodes are uint64 values. When a node value equals the signature of
 another Kline in the model, it forms an **edge** in the knowledge graph. Graph
-traversal resolves these edges. Because nodes may be NLP-BPE tokens (whose
-identity is in the high 32 bits, not the full 64-bit value), all traversal
-operations convert node values to signature form via `node_to_sig` before
-lookup.
+traversal resolves these edges.
 
 All graph traversal operations search across all tiers.
 
@@ -404,9 +384,6 @@ model.resolve(node) → Kline | none
 
 Resolves a node value to the Kline whose signature matches, if one exists.
 
-- Converts the node to its signature form via `node_to_sig` before lookup
-  (see @signature spec). For Mod32 packed nodes this is identity; for NLP-BPE
-  nodes the BPE token ID is masked out.
 - Returns `none` if no Kline has that signature in any tier.
 
 ### Expand
@@ -619,8 +596,7 @@ Higher significance = closer match. The ordering is strict:
 
 Distance is a single accumulated integer from graph hops. For each
 mismatched node in the query and candidate, the hop chain is traversed
-with a three-tier priority. All node-to-signature conversions use
-`node_to_sig` from the @signature spec:
+with a three-tier priority:
 
 1. **Exact match (S2 direct):** Node resolves via `_edge_hops()` to a node
    in the opposite mismatch set. Adds hop count directly.
@@ -682,8 +658,6 @@ else       → S4
 | ID    | Criterion                                                      | Origin ref |
 | ----- | -------------------------------------------------------------- | ---------- |
 | MOD-1 | add_frame and find: add KLine via add_frame, find by signature returns it | — |
-| MOD-2 | Literal dedup: duplicate literal KLine rejected by add_frame (returns early) | — |
-| MOD-3 | Non-literal no dedup: duplicate non-literal accepted by add_frame | — |
 | MOD-4 | Exists: True after add_frame, False before                     | — |
 | MOD-5 | Find returns most recent KLine when multiple share signature   | — |
 | MOD-6 | Find_all: returns all KLines with given signature across tiers | — |
@@ -700,7 +674,6 @@ else       → S4
 | MOD-13 | Frame fallback: KLine not in STM found in Frame        | — |
 | MOD-14 | LTM fallback: KLine not in STM/Frame found in LTM      | — |
 | MOD-15 | Base fallback: KLine not in STM/Frame/LTM found in Base| — |
-| MOD-16 | Cross-tier dedup: literal KLine in LTM or Base blocks add | — |
 
 ### Graph Traversal
 
@@ -721,11 +694,6 @@ else       → S4
 | MOD-24 | add_stm: evicts oldest when bound exceeded                    | — |
 | MOD-25 | add_frame: writes Frame and cascades to add_stm               | — |
 | MOD-26 | add_ltm: writes LTM and cascades to add_frame                 | — |
-| MOD-27 | add_stm literal dedup: literal duplicate in any tier returns early | — |
-| MOD-28 | add_frame literal dedup: literal duplicate returns early, no cascade | — |
-| MOD-29 | add_ltm literal dedup: literal duplicate returns early, no cascade | — |
-| MOD-30 | add_frame: non-literal always writes Frame                    | — |
-| MOD-31 | add_ltm: non-literal always writes LTM                        | — |
 | MOD-32 | add_frame: Frame is monotonic (append-only)                   | — |
 | MOD-33 | add_ltm: LTM is monotonic (append-only)                       | — |
 

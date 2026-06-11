@@ -21,7 +21,7 @@ import json
 from pathlib import Path
 
 from kalvin.abstract import KTokenizer
-from kalvin.signature import LITERAL_MASK, is_literal_node
+from kalvin.abstract import KTokenizer
 from kalvin.tokenizer import Tokenizer
 
 
@@ -98,15 +98,13 @@ class NLPTokenizer(KTokenizer):
     # ── Decode ────────────────────────────────────────────────────────
 
     def decode(self, ids: list[int]) -> str:
-        """Decode a mix of NLP-BPE nodes and literal nodes back to text.
+        """Decode NLP-BPE nodes back to text.
 
-        Iterates over IDs, classifying each as literal or NLP-BPE.
-        Consecutive NLP-BPE nodes are batch-decoded via the BPE tokenizer.
-        Literal nodes contribute individual characters.
-        Both are interleaved in original order.
+        Iterates over IDs, extracting BPE token IDs from the low 32 bits
+        of each node.
 
         Args:
-            ids: List of node values (NLP-BPE and/or literal).
+            ids: List of node values (NLP-BPE).
 
         Returns:
             Reconstructed string.
@@ -118,12 +116,11 @@ class NLPTokenizer(KTokenizer):
         bpe_run: list[int] = []
 
         for node in ids:
-            if is_literal_node(node):
-                # Flush any pending BPE run
+            if (node & 0xFFFFFFFF) == 0xFFFFFFFF:
+                # Character-level node (legacy compatibility)
                 if bpe_run:
                     parts.append(self._bpe.decode(bpe_run))
                     bpe_run = []
-                # Extract character from literal node
                 parts.append(chr(node >> 32))
             else:
                 # NLP-BPE node: extract BPE token ID from low 32 bits
@@ -134,22 +131,6 @@ class NLPTokenizer(KTokenizer):
             parts.append(self._bpe.decode(bpe_run))
 
         return "".join(parts)
-
-    # ── Literal encoding ──────────────────────────────────────────────
-
-    def encode_literal(self, text: str) -> list[int]:
-        """Encode text as literal nodes (one per character).
-
-        Each literal node has the character code point in the upper 32 bits
-        and LITERAL_MASK (0xFFFFFFFF) in the lower 32 bits.
-
-        Args:
-            text: Input string to encode as literals.
-
-        Returns:
-            List of literal node values.
-        """
-        return [(ord(c) << 32) | LITERAL_MASK for c in text]
 
     # ── Factory ───────────────────────────────────────────────────────
 

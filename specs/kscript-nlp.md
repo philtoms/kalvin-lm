@@ -1,7 +1,7 @@
 # KScript NLP-BPE Mode Specification
 
-**Version:** 1.0  
-**Date:** 2026-06-08  
+**Version:** 1.1  
+**Date:** 2026-06-11  
 **Status:** Design
 
 ---
@@ -32,7 +32,7 @@ NLP-BPE KScript is a compile-time mode, not a source-level construct. The same `
 
 - **@kscript** — KScript language specification. NLP-BPE mode is defined as a delta against this baseline. All sections not explicitly overridden remain in force.
 - **@tokenizer** — NLP-BPE node format `(nlp_type32 << 32) | bpe_token_id`, encoding/decoding rules, grammar dictionary.
-- **@signature** — NLP-aware `make_signature()` with BPE ID masking (`NLP_TYPE_MASK`), `is_nlp_node()` detection.
+- **@signature** — Plain OR-reduce `make_signature()` with no masking. NLP-BPE nodes contribute their full value (both NLP type and BPE ID bits) to signatures.
 
 ---
 
@@ -45,10 +45,9 @@ This section documents every KScript feature that changes or breaks when identif
 | Feature | Classification | Rationale |
 | ------- | -------------- | --------- |
 | Signature encoding | **Adapted** | `encode("ABC")` produces `(nlp_type32 << 32) \| bpe_id` — a single NLP-typed token, not a bitmask of character bits. |
-| Literal encoding | **Adapted** | Literals remain `(char_code << 32) \| 0xFFFFFFFF` for character-level fallback. NLP-BPE words are never literal (BPE IDs are ≤17391). |
-| MCS expansion | **Broken** | Mod32 MCS decomposes `MHALL` into per-character entries `{M,H,A,L,L}`. NLP-BPE encodes `MHALL` as a single opaque BPE token — no character decomposition is possible. |
-| Bitwise AND matching | **Adapted** | `(sig_a & sig_b) != 0` still works but tests shared NLP type bits (POS/DEP/MORPH overlap), not shared characters. Semantically different, structurally identical. |
-| Level inference | **Adapted** | Decompiler's `(sig & node) != 0` tests NLP type overlap instead of character overlap. Still a useful heuristic but with different false-positive profile. |
+| MCS expansion | **Replaced** | Mod32 MCS decomposes `MHALL` into per-character entries. NLP-BPE uses word-level MCS instead: multi-token resolved words get S4+S2 MCS entries; single-token words get S4 identity only. See §5.3. |
+| Bitwise AND matching | **Adapted** | `(sig_a & sig_b) != 0` still works but tests shared bits across both NLP type and BPE ID dimensions. |
+| Level inference | **Adapted** | Decompiler's `(sig & node) != 0` tests full bit overlap. Still a useful heuristic but with different false-positive profile. |
 | Deduplication | **Preserved** | Dedup is on `(sig_id, nodes_tuple)` — works identically regardless of encoding. Different token IDs produce different dedup keys, which is correct. |
 | Singleton unwrapping | **Preserved** | Structural rule — no encoding dependency. |
 | Operator semantics | **Preserved** | COUNTERSIGN, CANONIZE, CONNOTATE, UNDERSIGN emit the same entry structures. Only the encoded values differ. |
@@ -70,23 +69,23 @@ This section documents every KScript feature that changes or breaks when identif
 
 **Mod32**: Multi-character signatures like `MHALL` are decomposed into per-character unsigned entries `{M: None}, {H: None}, {A: None}, {L: None}` plus a canonization `{MHALL: [M, H, A, L, L]}`. This enables name recovery in the decompiler.
 
-**NLP-BPE**: `MHALL` is a single BPE token. There is no character-level decomposition. The concept of "multi-character signature" does not apply — `MHALL` is an opaque token, not a composition of `M`, `H`, `A`, `L`, `L`.
+**NLP-BPE**: `MHALL` is a single BPE token. There is no character-level decomposition. Instead, word-level MCS provides identity and decomposition entries at the BPE subword level (see §5.3).
 
-**Impact**: This is the most significant break. MCS expansion is the primary mechanism for multi-character identity in Mod32 KScript. Under NLP-BPE, a different mechanism is needed (see §5).
+**Impact**: This is the most significant change. MCS expansion operates at the BPE subword level instead of the character level.
 
 #### 3.2.3 Bitwise AND Matching
 
 **Mod32**: `signifies(A, AB)` is `True` because `bit_A` is set in both `A` and `AB`. This tests character overlap.
 
-**NLP-BPE**: `signifies(A, AB)` depends on whether the NLP type bits of token `A` and token `AB` overlap. Two unrelated tokens with different POS tags would not match. Two nouns would match on `POS_NOUN` regardless of their BPE IDs.
+**NLP-BPE**: `signifies(A, AB)` depends on whether the full node values of token `A` and token `AB` share any bits. Since NLP-BPE nodes include both NLP type bits (high 32) and BPE ID bits (low 32), matching may occur on either dimension.
 
-**Impact**: The matching model shifts from character-based to linguistically-typed. This is a feature, not a bug — it's the whole point of NLP-BPE encoding.
+**Impact**: The matching model shifts from character-based to a combination of NLP type and BPE ID overlap. This produces a different (and for NLP use cases, richer) candidate set.
 
 #### 3.2.4 Level Inference
 
 **Mod32**: `(sig & node) != 0` distinguishes S2 (canonize) from S3 (connotate). If a canonized compound shares bits with its components, bit overlap detects the relationship.
 
-**NLP-BPE**: `(sig & node) != 0` tests NLP type overlap. A canonize like `{noun_A: [noun_B, verb_C]}` would produce overlap on `POS_NOUN` between signature and first node, correctly inferring S2. A connotate like `{noun_A: verb_C}` with no shared NLP types would correctly infer S3.
+**NLP-BPE**: `(sig & node) != 0` tests full bit overlap (both NLP type and BPE ID). A canonize like `{noun_A: [noun_B, verb_C]}` would produce overlap on shared bits between signature and first node, correctly inferring S2. A connotate like `{noun_A: verb_C}` with no shared bits would correctly infer S3.
 
 **Impact**: Level inference remains a useful heuristic but with a different error profile. Cross-type relationships (e.g., a noun canonizing verbs) may be misclassified, just as cross-character Mod32 relationships sometimes are.
 
@@ -116,21 +115,7 @@ encode("XYZZY") → [(type1 << 32) | id1, (type2 << 32) | id2]
 
 For KScript signatures, which must be a single `uint64`, the **first token** is used as the signature node. If multiple tokens are produced, a CANONIZE-like entry maps the first token to all tokens (see §5.3).
 
-### 4.3 Literal Encoding
-
-Literals (numbers, quoted strings) continue to use the standard literal encoding:
-
-```
-encode("hello") → [(104 << 32) | 0xFFFFFFFF, (101 << 32) | 0xFFFFFFFF, ...]
-```
-
-NLP-BPE does not change literal encoding. Literals remain character-level with the `0xFFFFFFFF` mask.
-
-### 4.4 NLP-BPE Nodes Are Never Literal
-
-Per @tokenizer §NLP, NLP-BPE nodes have BPE IDs (0–17391) in their low 32 bits, never `0xFFFFFFFF`. The standalone `is_literal()` test (defined in @kline) returns `False` for all NLP-BPE nodes.
-
-### 4.5 Worked Example: Encoding
+### 4.3 Worked Example: Encoding
 
 ```
 Identifier: "TEA"
@@ -144,9 +129,6 @@ Identifier: "BREW"
 BPE encode: token 4964
 Grammar lookup: nlp_type32 = 8421376 (POS_VERB | DEP_ROOT | MORPH_PAST | MORPH_SING)
 Node: (8421376 << 32) | 4964 = 36169534507324260
-
-Literal: "123"
-Node list: [(49 << 32) | 0xFFFFFFFF, (50 << 32) | 0xFFFFFFFF, (51 << 32) | 0xFFFFFFFF]
 ```
 
 ---
@@ -159,7 +141,7 @@ Node list: [(49 << 32) | 0xFFFFFFFF, (50 << 32) | 0xFFFFFFFF, (51 << 32) | 0xFFF
 
 **Decision 2: Uppercase-only identifiers unchanged.** The lexer accepts only `[A-Z]+` as SIGNATURE tokens. Under NLP-BPE, these are encoded as NLP-typed BPE tokens. Arbitrary strings (lowercase, mixed-case) are NOT valid identifiers — use quoted strings. Rationale: changing the lexer would be a language-level change, not an encoding change. NLP-BPE affects what the tokens mean, not what the source looks like.
 
-**Decision 3: No MCS expansion under NLP-BPE.** MCS expansion decomposes multi-character signatures into per-character entries. Under NLP-BPE, identifiers are opaque tokens — character decomposition is meaningless. Instead, NLP-BPE uses BPE decomposition (see §5.3).
+**Decision 3: Word-level MCS replaces character-level MCS.** MCS expansion decomposes multi-character signatures into per-character entries. Under NLP-BPE, identifiers are opaque tokens — character decomposition is meaningless. Instead, NLP-BPE uses word-level MCS: multi-token resolved words get S4+S2 MCS entries; single-token words get S4 identity only (see §5.3).
 
 **Decision 4: Operators are encoding-independent.** COUNTERSIGN, CANONIZE, CONNOTATE, UNDERSIGN produce the same entry structures regardless of encoding. The operator semantics depend on the AST structure, not the encoded values.
 
@@ -185,7 +167,7 @@ In every case, the entry structure is the same. Only the encoded values differ.
 A == B  →  {nlp_A: nlp_B}, {nlp_B: nlp_A}
 ```
 
-No change in semantics. The bidirectional pair is emitted as in Mod32. If `B` is a signature (uppercase), MCS is skipped under NLP-BPE (see §5.3).
+No change in semantics. The bidirectional pair is emitted as in Mod32. If `B` is a signature (uppercase), word-level MCS is applied instead of character-level MCS (see §5.3).
 
 #### CANONIZE (`=>`)
 
@@ -212,56 +194,54 @@ A = A  →  {nlp_A: None}     (self-identity collapsed)
 
 No change.
 
-### 5.3 MCS Semantics Under NLP-BPE
+### 5.3 Word-Level MCS
 
-**Mod32 MCS expansion does not apply under NLP-BPE.**
+Character-level MCS expansion does not apply under NLP-BPE. Mod32 MCS decomposes multi-character signatures into per-character entries because characters are individually meaningful bit positions. Under NLP-BPE, identifiers are opaque BPE tokens — character decomposition is meaningless.
 
-MCS expansion decomposes multi-character signatures into per-character identity entries plus a canonization entry mapping the compound to its components. This is meaningful because Mod32 characters are individually meaningful bit positions. Under NLP-BPE, an identifier like `MHALL` is a single opaque BPE token — `M`, `H`, `A`, `L`, `L` are not sub-tokens.
+**Replacement: Word-level MCS with lazy emission.**
 
-**Replacement: BPE Decomposition.**
+Word-level MCS operates at the BPE subword level. Resolved NLP words (identifiers that BPE-encode to one or more tokens) are handled as follows:
 
-When an identifier BPE-encodes to a single token (the common case for short uppercase words), no decomposition is needed — the identifier is one node.
-
-When an identifier BPE-encodes to **multiple subword tokens**, the first token is the signature node, and a decomposition entry maps it to all component tokens:
-
-```
-Identifier "XYZZY" BPE-encodes to [tok_x, tok_yz, tok_zy]
-
-Compiled:
-  {nlp_x: [nlp_x, nlp_yz, nlp_zy]}     (decomposition, S2)
-  {nlp_x: None}                          (unsigned identity)
-```
-
-This mirrors the MCS pattern but operates at the BPE subword level instead of the character level.
-
-**Single-token rule**: If `encode(sig)` produces exactly one NLP-BPE token, the identifier is treated like a single-character Mod32 signature — no decomposition, just an unsigned identity entry:
+**Single-token words** (the common case for short identifiers):
 
 ```
 Identifier "TEA" BPE-encodes to [tok_tea]  (single token)
 
 Compiled:
-  {nlp_tea: None}                         (unsigned identity, no decomposition)
+  {nlp_tea: None}                         (unsigned identity, S4 — no decomposition)
 ```
 
-**Multi-token rule**: If `encode(sig)` produces multiple NLP-BPE tokens, emit:
-1. One unsigned entry for each component token (if not already emitted).
-2. One decomposition entry: `{first_token: [all_tokens]}` (S2).
-3. One unsigned entry for the first token (identity).
+No decomposition entries. The single token serves as both the identity and the signature node. This parallels the single-character Mod32 rule.
+
+**Multi-token words** (identifiers that BPE-segment into multiple subword tokens):
+
+```
+Identifier "XYZZY" BPE-encodes to [tok_x, tok_yz, tok_zy]
+
+Compiled:
+  {nlp_x: None}                           (unsigned identity for first token, S4)
+  {nlp_x: [nlp_x, nlp_yz, nlp_zy]}       (decomposition, S2)
+```
+
+Multi-token resolved words produce:
+1. **S4 identity entry** for the first (signature) token.
+2. **S2 decomposition entry** mapping the first token to all component tokens.
+
+This mirrors the Mod32 MCS pattern but operates at the BPE subword level instead of the character level. No per-character unsigned entries are emitted for the sub-component tokens — only the first token's identity is recorded, plus the decomposition.
+
+**Lazy emission.** Word-level MCS entries are emitted on first reference — when a word is first compiled in any construct. A dedup set tracks which word-level MCS entries have been emitted. Subsequent references to the same word produce no additional MCS entries. This prevents duplicate identity and decomposition entries when the same identifier appears multiple times in a script.
 
 ### 5.4 Signature Construction
 
-Signature construction follows @signature. NLP-BPE nodes are detected by `is_nlp_node()` and masked with `NLP_TYPE_MASK` before OR-reduction:
+Signature construction follows @signature: a plain OR-reduce of raw unmasked node values. NLP-BPE nodes contribute their full value (both NLP type bits in the high 32 and BPE token ID in the low 32):
 
 ```
-make_signature([nlp_A, nlp_B]) →
-  (nlp_A & NLP_TYPE_MASK) | (nlp_B & NLP_TYPE_MASK)
+make_signature([nlp_A, nlp_B]) → nlp_A | nlp_B
 ```
 
-Only the high 32 bits (NLP type: POS + DEP + MORPH) contribute to the signature. BPE token IDs (low 32 bits) are excluded, making signatures vocabulary-independent.
+Both NLP type and BPE ID bits contribute to the signature. This makes signatures vocabulary-dependent — two synonyms with different BPE IDs produce different signatures.
 
-**Semantic shift**: Bitwise AND matching (`signifies(a, b)`) tests shared NLP type bits, not shared characters. Two nouns always overlap on `POS_NOUN`. Two unrelated tokens (one noun, one verb) may not overlap at all. This is the intended behavior — NLP-BPE signatures capture grammatical similarity.
-
-**Implication for `signifies()`**: The `signifies()` function is unchanged — it remains `(a & b) != 0`. The change is in what the bits mean. Candidate retrieval using `signifies()` now filters by grammatical type overlap rather than character overlap. This produces a different (and for NLP use cases, better) candidate set.
+**Implication for `signifies()`**: The `signifies()` function is unchanged — it remains `(a & b) != 0`. Candidate retrieval using `signifies()` now filters by overlap in any bit dimension (NLP type, BPE ID, or both). This produces a different (and for NLP use cases, richer) candidate set than pure NLP-type masking.
 
 ### 5.5 Lexical Structure
 
@@ -270,7 +250,6 @@ Only the high 32 bits (NLP type: POS + DEP + MORPH) contribute to the signature.
 | Token | Mod32 Meaning | NLP-BPE Meaning |
 | ----- | ------------- | ---------------- |
 | `SIGNATURE` (`[A-Z]+`) | Bit-packed character composition | NLP-typed BPE token |
-| `LITERAL` (`[0-9]+` or `"..."`) | Character-level literal nodes | Character-level literal nodes (unchanged) |
 
 Identifiers remain uppercase-only `[A-Z]+`. Arbitrary strings are not valid identifiers — they must be quoted. This is a deliberate choice: the lexer defines the language surface; the encoder defines the compiled representation.
 
@@ -287,7 +266,7 @@ Identifiers remain uppercase-only `[A-Z]+`. Arbitrary strings are not valid iden
 
 The decompiler's MCS name-building logic is replaced by a two-pass approach:
 
-- **Pass 1**: Scan for decomposition entries (entries where `signature == OR of NLP-type-masked nodes`). These provide the full token sequence for multi-token identifiers.
+- **Pass 1**: Scan for decomposition entries (entries where `signature == first_token` and nodes is a multi-element list of NLP-BPE tokens). These provide the full token sequence for multi-token identifiers.
 - **Pass 2**: For all other entries, decode the signature directly via `tokenizer.decode([sig])`.
 
 No packed single-char detection is needed. The BPE vocabulary's `decode()` handles token-to-text mapping.
@@ -298,12 +277,12 @@ Level inference uses the same bit-overlap heuristic as Mod32, but the overlap se
 
 | Condition | Mod32 Interpretation | NLP-BPE Interpretation |
 | --------- | -------------------- | ---------------------- |
-| `(sig & node) != 0` | Shared character bits → S2 (canonize) | Shared NLP type bits → S2 (canonize) |
-| `(sig & node) == 0` | No shared characters → S3 (connotate) | No shared NLP types → S3 (connotate) |
+| `(sig & node) != 0` | Shared character bits → S2 (canonize) | Shared bits (NLP type or BPE ID) → S2 (canonize) |
+| `(sig & node) == 0` | No shared characters → S3 (connotate) | No shared bits → S3 (connotate) |
 
-The heuristic remains useful. A noun canonizing other nouns overlaps on `POS_NOUN`. A noun connotating a verb has no overlap (different POS). False positives occur when unrelated tokens happen to share NLP type bits (e.g., two verbs that are otherwise unrelated).
+The heuristic remains useful. A noun canonizing other nouns overlaps on shared NLP type bits. A noun connotating a verb with no shared bits would correctly infer S3. False positives occur when unrelated tokens happen to share bits in either dimension.
 
-**S1/S3 ambiguity** remains as in Mod32: countersigned pairs with no shared NLP types are indistinguishable from connotate pairs.
+**S1/S3 ambiguity** remains as in Mod32: countersigned pairs with no shared bits are indistinguishable from connotate pairs.
 
 ---
 
@@ -318,9 +297,6 @@ Identical to @kscript §5.1. Each compiled entry is a KLine with a signature (ui
 Strings are encoded via the NLP tokenizer:
 
 - **Signatures** (uppercase alpha): NLP-BPE encoding — one or more nodes of the form `(nlp_type32 << 32) | bpe_token_id`. If a single token, used directly as the signature node. If multiple tokens, first token is the signature, and a decomposition entry is emitted (see §5.3).
-- **Literals** (everything else): Standard literal encoding — one node per character: `(char_code << 32) | 0xFFFFFFFF`.
-
-**Literal test**: `(node & 0xFFFFFFFF) == 0xFFFFFFFF` — unchanged.
 
 ### 6.3 Construct Compilation Rules
 
@@ -329,7 +305,7 @@ All rules from @kscript §5.5 apply. Operator emission is identical. Only encodi
 #### Unsigned (bare signature)
 
 ```
-A       → {nlp_A: None}     (plus BPE decomposition if multi-token)
+A       → {nlp_A: None}     (plus word-level MCS if multi-token)
 ```
 
 #### COUNTERSIGN (`==`)
@@ -338,7 +314,7 @@ A       → {nlp_A: None}     (plus BPE decomposition if multi-token)
 A == B  → {nlp_A: nlp_B}, {nlp_B: nlp_A}   (bidirectional)
 ```
 
-No BPE decomposition for the node side — only the signature side triggers decomposition.
+No BPE decomposition for the node side — only the signature side triggers word-level MCS.
 
 #### UNDERSIGN (`=`)
 
@@ -386,8 +362,8 @@ Mod32 KScript is **unchanged**. NLP-BPE KScript is a separate encoding mode sele
 | Parser | Identical | Identical |
 | AST | Identical | Identical |
 | Token encoder | Mod32Tokenizer | NLPTokenizer |
-| MCS expansion | Per-character decomposition | BPE subword decomposition |
-| Signature bits | Character positions | NLP type dimensions (POS/DEP/MORPH) |
+| MCS expansion | Per-character decomposition | Word-level BPE decomposition |
+| Signature bits | Character positions | NLP type + BPE ID (full unmasked) |
 | Decompiler name recovery | MCS packed-char detection | BPE token decoding |
 
 A `.ks` file is encoding-agnostic. The same file compiles under either mode without modification.
@@ -434,9 +410,9 @@ Compiled:
   {36169534507324260: 563499709247665}      (countersign reverse, S1)
 
 Signatures:
-  make_signature([nlp_TEA]) = 563499709235200       (high 32 only)
-  make_signature([nlp_BREW]) = 36169534507319296     (high 32 only)
-  signifies(sig_TEA, sig_BREW) → False              (no shared NLP types: PROPN ≠ VERB)
+  make_signature([nlp_TEA]) = 563499709247665       (full value, unmasked)
+  make_signature([nlp_BREW]) = 36169534507324260     (full value, unmasked)
+  signifies(sig_TEA, sig_BREW) → depends on bit overlap in full values
 ```
 
 Decompiled:
@@ -465,9 +441,8 @@ Compiled:
   {nlp_O: None}                         (unsigned O)
 
 Level inference for {nlp_SVO: [nlp_S, nlp_V, nlp_O]}:
-  nodes_sig = make_signature([nlp_S, nlp_V, nlp_O]) = OR of their NLP type bits
-  (nlp_SVO.signature & nodes_sig) != 0  → depends on shared NLP types
-  If POS_X overlap → S2 (canonize). If no overlap → S3.
+  nodes_sig = make_signature([nlp_S, nlp_V, nlp_O]) = OR of their full values
+  (nlp_SVO.signature & nodes_sig) != 0  → depends on shared bits
 ```
 
 ### 8.4 Complex Example — Parallel to @kscript §9.3
@@ -482,7 +457,7 @@ MHALL == SVO =>
     L > O
 ```
 
-**Key difference from Mod32**: No per-character MCS expansion for `MHALL`. `MHALL` is a single NLP-BPE token (or a BPE-decomposed multi-token). Under single-token BPE:
+**Key difference from Mod32**: No per-character MCS expansion for `MHALL`. `MHALL` is a single NLP-BPE token (or a word-level MCS decomposed multi-token). Under single-token BPE:
 
 ```
 Compiled:
@@ -510,31 +485,27 @@ Compiled:
 If `ALL` BPE-encodes to multiple tokens `[tok_A, tok_LL]`:
 
 ```
-Additional entries:
-  {nlp_A_tok: None}                      (unsigned for first subword of ALL)
-  {nlp_LL_tok: None}                     (unsigned for second subword of ALL)
+Additional entries (word-level MCS, lazy emission):
+  {nlp_A_tok: None}                      (unsigned identity for first token, S4)
   {nlp_A_tok: [nlp_A_tok, nlp_LL_tok]}  (decomposition, S2)
 ```
 
-### 8.5 Mixed Literal Block
+### 8.5 Canonization with Multiple Items
 
 ```
 A =>
-  1
   B
-  "hello"
+  C = D
 ```
 
 ```
 Compiled:
-  {nlp_A: [literal_1, nlp_B, literal_h, literal_e, literal_l, literal_l, literal_o]}  (canonize, S2)
-  {(49 << 32) | 0xFFFFFFFF: None}       (unsigned literal "1")
-  {nlp_B: None}                          (unsigned B)
-  {(104 << 32) | 0xFFFFFFFF: None}       (unsigned literal "h") — first char of "hello"
-  ...                                    (remaining literal chars of "hello")
+  {nlp_A: [nlp_B, nlp_C]}              (canonize, single entry with all items, S2)
+  {nlp_D: nlp_C}                       (undersign, S1 — from recursive compilation of C = D)
+  {nlp_B: None}                         (unsigned B, from recursive compilation)
+  {nlp_C: None}                         (unsigned C, from recursive compilation)
+  {nlp_D: None}                         (unsigned D, from recursive compilation)
 ```
-
-> **Note**: Literal encoding is character-level regardless of tokenizer mode. The `"hello"` literal produces five literal nodes, not one NLP-BPE token.
 
 ---
 
@@ -544,32 +515,29 @@ Compiled:
 | -- | --------- | -------- |
 | KSN-1 | NLP-BPE encode produces correct node format: `(nlp_type32 << 32) \| bpe_token_id` for each identifier | Encoding |
 | KSN-2 | Single-token identifiers produce single-node signatures with no decomposition | Encoding |
-| KSN-3 | Multi-token identifiers produce decomposition entries: `{first_token: [all_tokens]}` | Encoding |
-| KSN-4 | Literal encoding is unchanged: `(char_code << 32) \| 0xFFFFFFFF` | Encoding |
-| KSN-5 | `is_literal()` returns `False` for all NLP-BPE nodes | Encoding |
+| KSN-3 | Multi-token identifiers produce word-level MCS: S4 identity + S2 decomposition entry | Encoding |
 | KSN-6 | COUNTERSIGN under NLP-BPE: `A == B` → `{nlp_A: nlp_B}, {nlp_B: nlp_A}` | Operators |
 | KSN-7 | CANONIZE under NLP-BPE: `A => B C` → `{nlp_A: [nlp_B, nlp_C]}` | Operators |
 | KSN-8 | CONNOTATE under NLP-BPE: `A > B` → `{nlp_A: nlp_B}` | Operators |
 | KSN-9 | UNDERSIGN under NLP-BPE: `A = B` → `{nlp_B: nlp_A}` | Operators |
 | KSN-10 | Self-identity under NLP-BPE: `A = A` → `{nlp_A: None}` | Operators |
 | KSN-11 | No per-character MCS expansion for NLP-BPE identifiers | MCS |
-| KSN-12 | BPE decomposition for multi-token identifiers: unsigned components + decomposition entry + unsigned identity | MCS |
-| KSN-13 | Signature construction masks BPE IDs: `make_signature()` uses only NLP type bits for NLP-BPE nodes | Signatures |
-| KSN-14 | `signifies()` tests NLP type overlap, not character overlap | Signatures |
+| KSN-12 | Word-level MCS for multi-token identifiers: S4 identity + S2 decomposition entry | MCS |
 | KSN-15 | Deduplication works on NLP-BPE encoded values: same `(sig_id, nodes_tuple)` dedup as Mod32 | Dedup |
 | KSN-16 | Singleton unwrapping works for NLP-BPE nodes: single-element node list → single node | Structure |
 | KSN-17 | Decompiler name recovery: single-token NLP identifiers decoded via `tokenizer.decode()` | Decompilation |
 | KSN-18 | Decompiler name recovery: multi-token identifiers recovered via decomposition entries | Decompilation |
-| KSN-19 | Level inference: `(sig & node) != 0` tests NLP type overlap under NLP-BPE | Decompilation |
+| KSN-19 | Level inference: `(sig & node) != 0` tests full bit overlap under NLP-BPE | Decompilation |
 | KSN-20 | Lexer produces identical token stream for same source regardless of encoding mode | Lexer |
 | KSN-21 | Parser produces identical AST for same source regardless of encoding mode | Parser |
 | KSN-22 | AST emitter produces identical symbolic entries regardless of encoding mode | AST |
 | KSN-23 | Same `.ks` source compiles under both Mod32 and NLP-BPE without modification | Compatibility |
 | KSN-24 | Mod32 compilation is unchanged when NLP-BPE mode exists in the codebase | Compatibility |
 | KSN-25 | Complex example (§8.4) produces correct entry structure with all operators | Integration |
-| KSN-26 | Literal nodes in mixed blocks preserve character-level encoding under NLP-BPE | Literals |
 | KSN-27 | CANONIZE with subscript block flattens correctly under NLP-BPE | Structure |
 | KSN-28 | Chained constructs (`A => B => C`) work identically under NLP-BPE | Structure |
+| KSN-29 | Word-level MCS lazy emission: first reference emits MCS entries, subsequent references skip | MCS |
+| KSN-30 | `signifies()` tests bit overlap in full unmasked node values (NLP type + BPE ID) | Signatures |
 
 ---
 
@@ -599,21 +567,31 @@ Changing the lexer to accept arbitrary strings (lowercase, mixed-case) would be 
 
 If arbitrary identifiers are desired in the future, that should be a separate spec that defines new token types and lexer rules, applicable to both encoding modes.
 
-### 11.2 Why BPE Decomposition Instead of No Expansion?
+### 11.2 Why Word-Level MCS Instead of No Expansion?
 
-Without any decomposition, multi-token identifiers would lose information — the relationship between the full identifier and its BPE subword components would not be recorded in the knowledge graph. BPE decomposition is the natural analogue of MCS expansion: where MCS decomposes characters, BPE decomposition decomposes subword tokens.
+Without any decomposition, multi-token identifiers would lose information — the relationship between the full identifier and its BPE subword components would not be recorded in the knowledge graph. Word-level MCS is the natural analogue of character-level MCS: where Mod32 MCS decomposes characters, word-level MCS decomposes BPE subword tokens.
 
-For single-token identifiers (the common case), BPE decomposition produces no extra entries — the identifier is simply an unsigned identity, just like a single-character Mod32 signature.
+For single-token identifiers (the common case), word-level MCS produces no extra entries — the identifier is simply an unsigned identity, just like a single-character Mod32 signature.
 
-### 11.3 Why Bitwise AND Still Works
+Lazy emission prevents duplicate entries when the same identifier appears multiple times.
 
-The `signifies(a, b) → (a & b) != 0` function is encoding-agnostic. Under Mod32, shared bits mean shared characters. Under NLP-BPE, shared bits mean shared NLP types. The mechanism is the same; the semantics differ. This is acceptable because:
+### 11.3 Why Unmasked Signatures
 
-1. NLP-BPE is chosen specifically for grammatically-informed matching.
-2. The candidate set filtered by NLP type overlap is different from (and for NLP use cases, better than) the character-overlap filter.
+Using full unmasked node values in signatures means BPE token IDs contribute to the signature. This makes signatures vocabulary-dependent — two synonyms with different BPE IDs produce different signatures. However:
+
+1. The tokenizer's BPE vocabulary is stable within a session.
+2. `signifies()` still works for candidate retrieval — it tests overlap in all bits, including NLP type.
+3. Masking was a simplification that loses BPE identity. Full values preserve all information.
+
+### 11.4 Why Bitwise AND Still Works
+
+The `signifies(a, b) → (a & b) != 0` function is encoding-agnostic. Under Mod32, shared bits mean shared characters. Under NLP-BPE, shared bits may come from either NLP type or BPE ID overlap. The mechanism is the same; the semantics differ. This is acceptable because:
+
+1. NLP-BPE is chosen specifically for linguistically-informed matching.
+2. The candidate set filtered by bit overlap is different from (and for NLP use cases, richer than) the character-overlap filter.
 3. Significance computation downstream still handles the final relevance determination.
 
-### 11.4 Why the Decompiler Needed Changes
+### 11.5 Why the Decompiler Needed Changes
 
 Mod32 decompiler MCS name recovery relies on detecting packed single-char nodes. Under NLP-BPE:
 
@@ -623,12 +601,12 @@ Mod32 decompiler MCS name recovery relies on detecting packed single-char nodes.
 
 The replacement is simpler: NLP-BPE tokens can be decoded directly via the BPE vocabulary. No bit-level character detection needed.
 
-### 11.5 Why Level Inference Remains Heuristic
+### 11.6 Why Level Inference Remains Heuristic
 
-Under NLP-BPE, `(sig & node) != 0` tests NLP type overlap. This is a different but equally valid heuristic:
+Under NLP-BPE, `(sig & node) != 0` tests full bit overlap. This is a different but equally valid heuristic:
 
-- **True positive**: A noun canonizing other nouns overlaps on `POS_NOUN` → correctly S2.
-- **False positive**: A noun connotating a verb that happens to share a MORPH feature → incorrectly S2.
-- **True negative**: A noun connotating a verb with no shared types → correctly S3.
+- **True positive**: A noun canonizing other nouns overlaps on shared NLP type bits → correctly S2.
+- **False positive**: A noun connotating a verb that happens to share a BPE ID → incorrectly S2.
+- **True negative**: A noun connotating a verb with no shared bits → correctly S3.
 
 The false-positive rate is comparable to Mod32 (where unrelated characters sharing bit positions produce similar errors). Significance bits in the compiled entries would eliminate this heuristic, but that's a cross-cutting change outside this spec's scope.
