@@ -29,8 +29,6 @@ This spec depends on the following concepts, defined elsewhere:
 ### Signature (@signature spec)
 
 - `make_signature(nodes) → int` — OR-reduction over nodes.
-- `is_literal(node) → bool` is defined in the @kline spec (standalone
-  bit-layout test, not tokenizer-specific).
 - Used to derive the nodes signature for dual-keyed indexing.
 
 ## Definition
@@ -52,7 +50,6 @@ STM(bound=256)
 
 - `bound` — maximum number of KLines to retain. Default **256**.
 - A newly constructed STM is empty.
-- `is_literal` is imported directly from the @kline spec — no injection needed.
 
 ## Dual-Keyed Indexing
 
@@ -287,7 +284,7 @@ The following are explicitly **out of scope** for this spec:
 - **Thread safety.** Concurrent access management is an implementation
    concern.
 - **Nodes signature computation.** The STM delegates to `make_signature`
-  from the @signature spec, which uses `is_literal` from the @kline spec.
+  from the @signature spec.
 
 ## Referenced By
 

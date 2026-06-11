@@ -65,7 +65,6 @@ class TokenType(Enum):
     CONNOTATE = auto()      # >
     UNDERSIGN = auto()      # =
     SIGNATURE = auto()      # [A-Z]+
-    LITERAL = auto()        # numbers and quoted strings
     COMMENT = auto()        # (...)
     NEWLINE = auto()
     INDENT = auto()
@@ -82,7 +81,7 @@ class Token:
 
 ### Acceptance
 
-- [ ] 11 enum values defined
+- [ ] 10 enum values defined
 - [ ] `Token` is frozen (immutable, hashable)
 - [ ] All fields present: type, value, line, column
 
@@ -107,13 +106,11 @@ class Lexer:
 1. At line start: count leading spaces/tabs → emit INDENT/DEDENT (§2.4)
 2. Multi-char operators **before** single-char: `==`, `=>` before `=`, `>` (§2.3.1)
 3. Identifiers `[A-Z][A-Z0-9]*`: `SIGNATURE` if all uppercase alpha (`isupper() and isalpha()`), else **LexerError** (§2.3.2). Non-uppercase identifiers are not valid — use quoted strings instead.
-4. After an identifier, consume inline `(...)` comment without emitting (§2.3.6)
-5. Numbers `[0-9]+` → `LITERAL` (§2.3.3)
-6. Quoted strings `"..."` with backslash escapes, stop at newline if unterminated → `LITERAL` (§2.3.4)
-7. Comments `(...)` with nested parens, multi-line → `COMMENT` (§2.3.5)
-8. `<` is an unexpected character → `LexerError`
-9. Any other character → `LexerError`
-10. At EOF: close all remaining indent levels with DEDENT, emit EOF (§2.4)
+4. After an identifier, consume inline `(...)` comment without emitting (§2.3.6). Inline comments are preserved as COMMENT tokens in construct position.
+5. Comments `(...)` with nested parens, multi-line → `COMMENT` (§2.3.5)
+6. `<` is an unexpected character → `LexerError`
+7. Any other character → `LexerError`
+8. At EOF: close all remaining indent levels with DEDENT, emit EOF (§2.4)
 
 ### Indentation algorithm
 
@@ -150,9 +147,7 @@ class LexerError(Exception):
 |---|-------|---------------------------------------------------|
 | 1 | `"A"` | `[SIGNATURE, EOF]` |
 | 2 | `"ABC"` | `[SIGNATURE(value="ABC"), EOF]` |
-| 3 | `"42"` | `[LITERAL(value="42"), EOF]` |
 | 4 | `"hello"` | `[LexerError]` — lowercase identifiers not valid, use quoted `"hello"` instead |
-| 5 | `'"hello world"'` | `[LITERAL(value='"hello world"'), EOF]` |
 | 6 | `"A == B"` | `[SIGNATURE, COUNTERSIGN, SIGNATURE, EOF]` |
 | 7 | `"A => B"` | `[SIGNATURE, CANONIZE, SIGNATURE, EOF]` |
 | 8 | `"A > B"` | `[SIGNATURE, CONNOTATE, SIGNATURE, EOF]` |
@@ -164,7 +159,6 @@ class LexerError(Exception):
 | 15 | `"(outer (inner) outer)"` | Single COMMENT token with nested parens |
 | 16 | `""` | `[EOF]` only |
 | 17 | `"A = ="` | `[SIGNATURE, UNDERSIGN, UNDERSIGN, EOF]` — `=` vs `==` disambiguation |
-| 18 | `'A => "unterminated'` | LITERAL value stops at newline, no closing quote |
 
 ### Gotchas
 
@@ -191,14 +185,8 @@ class Signature:
     line: int
     column: int
 
-@dataclass
-class Literal:
-    id: str       # any value
-    line: int
-    column: int
-
-Node = Signature | Literal
-ConstructItem = PrimaryConstruct | Literal
+Node = Signature
+ConstructItem = PrimaryConstruct
 
 @dataclass
 class PrimaryConstruct:
@@ -212,7 +200,7 @@ class Block:
 
 @dataclass
 class Construct:
-    inner: Block | Literal | list[PrimaryConstruct]
+    inner: Block | list[PrimaryConstruct]
     chain_op: TokenType | None = None
     chain_right: "Construct | None" = None
 
@@ -227,8 +215,8 @@ class KScriptFile:
 
 ### Acceptance
 
-- [ ] All 8 dataclasses defined
-- [ ] Type aliases `Node` and `ConstructItem` defined
+- [ ] All 7 dataclasses defined
+- [ ] Type alias `Node` defined
 - [ ] No logic — pure data containers
 
 ---
@@ -254,12 +242,11 @@ class Parser:
 
 ```
 script      ::= construct+
-construct   ::= block | literal | primary_construct+ ( chain_op construct )?
+construct   ::= block | primary_construct+ ( chain_op construct )?
 block       ::= INDENT construct+ DEDENT
 primary_construct ::= sig ( inline_op node )?
-node        ::= sig | literal
+node        ::= sig
 sig         ::= SIGNATURE
-literal     ::= LITERAL
 chain_op    ::= CANONIZE
 inline_op   ::= COUNTERSIGN | CONNOTATE | UNDERSIGN
 ```
@@ -278,7 +265,6 @@ parse_script():
 parse_construct():
     skip_insignificant()
     if peek() == INDENT:       return parse_block()
-    if peek() == LITERAL:      return parse_literal_construct()
     # otherwise: primary_construct+
     indent = peek().column
     primaries = [parse_primary_construct()]
@@ -297,9 +283,6 @@ parse_block():
     expect(DEDENT)
     return Construct(Block(constructs))
 
-parse_literal_construct():
-    return Construct(parse_literal())
-
 parse_primary_construct():
     sig = parse_sig()
     op = try_inline_op()
@@ -317,14 +300,9 @@ parse_primary_construct():
 
 3. **Insignificant tokens.** `skip_insignificant()` consumes NEWLINE and COMMENT tokens between grammar elements. Never skip inside a primary_construct (between sig and its operator).
 
-4. **Literal constructs are bare.** A LITERAL in construct position wraps as `Construct(Literal(...))` with no chain_op. It cannot own inline or chain operators.
-
 ### Error cases (§3.2)
 
-| Input | Must raise ParseError |
-|-------|----------------------|
-| `"1 => A"` | LITERAL where SIGNATURE expected |
-| `"A => 1 => B"` | Chaining through a literal |
+Empty source produces empty script (no error).
 
 ### Test cases
 
@@ -334,7 +312,6 @@ parse_primary_construct():
 | 2 | `"A => B"` | `chain_op == CANONIZE`, `chain_right.inner` is `[PrimaryConstruct(sig="B")]` |
 | 3 | `"A =>\n  B\n  C"` | `chain_right.inner` is `Block` with ≥1 construct |
 | 4 | `"A B => CD"` | `inner` has 2 primaries |
-| 5 | `"1 => A"` | `ParseError` raised |
 | 6 | `""` | Empty constructs list, no error |
 
 ---
@@ -360,7 +337,7 @@ class CompiledEntry(KLine):
     def encode(cls, sig_str, nodes_str, tokenizer, *, sig_level="S4", significance=None, dbg_text="") -> CompiledEntry:
         """Encode string names to token IDs.
         - Uppercase alpha strings → packed (single uint64)
-        - Everything else → literal encoding (one uint64 per char, lower 32 bits = 0xFFFFFFFF)
+        - Everything else goes through the tokenizer uniformly
         """
 
     def decode(self, tokenizer) -> tuple[str, str | None | list[str]]:
@@ -369,8 +346,7 @@ class CompiledEntry(KLine):
 
 **Encoding rules (§5.2):**
 - Signature string → `tokenizer.encode(sig)[0]` → single packed uint64, bit 0 clear (all-uppercase-alpha auto-detected)
-- Literal string → `tokenizer.encode(lit)` → list of `(char_cp << 32) | 0xFFFFFFFF` (non-uppercase auto-detected)
-- **Literal test:** `(node & 0xFFFFFFFF) == 0xFFFFFFFF`
+- All other strings go through the tokenizer — no special encoding path
 - **No `pack` parameter needed** — the tokenizer determines encoding mode internally
 
 **Singleton rule (§5.1):**
@@ -383,8 +359,7 @@ class CompiledEntry(KLine):
 |---|-----|-------|-----------------|-----------------|
 | 1 | `"A"` | `None` | signature=packed_A, nodes=[] | `("A", "")` |
 | 2 | `"A"` | `"B"` | signature=packed_A, nodes=packed_B | `("A", ["B"])` |
-| 3 | `"A"` | `"hello"` | signature=packed_A, nodes=[literal_h, literal_e, ...] | `("A", "hello")` |
-| 4 | `"AB"` | `["A", "B"]` | signature=packed_AB, nodes=[packed_A, packed_B] | `("AB", ["A", "B"])` |
+| 3 | `"AB"` | `["A", "B"]` | signature=packed_AB, nodes=[packed_A, packed_B] | `("AB", ["A", "B"])` |
 
 > **Note:** Due to KLine normalization, `nodes=None` becomes `nodes=[]`. `decode()` returns `""` for empty nodes, not `None`. The decompiler handles this correctly.
 
@@ -464,9 +439,6 @@ if op == CONNOTATE:
 | 3 | `"A = B"` | `{A: B}` |
 | 4 | `"A = A"` | `{A: None}` (identity, deduped to one entry) |
 | 5 | `"A > B"` | `{A: B}` |
-| 6 | `'A = "42"'` | `{A: '"42"'}` (literal node — quoted string) |
-| 7 | `'A > "x"'` | `{A: '"x"'}` (quoted string literal) |
-| 8 | `'A => "hello"'` | `{A: '"hello"'}` |
 
 **MCS test cases:**
 
@@ -499,7 +471,6 @@ compile_construct(right)   # recursive
 **`_flatten_to_items(construct)` — block flattening (§5.6):**
 ```
 if Block: recursively flatten all child constructs
-if Literal: return [literal]
 if [PrimaryConstruct]: return the list
 ```
 
@@ -510,8 +481,7 @@ return primary.node if present, else primary.sig
 
 **`_item_id(item)`:**
 ```
-if PrimaryConstruct: return item.sig.id
-if Literal: return item.id
+return item.sig.id
 ```
 
 **Chain test cases:**
@@ -687,7 +657,6 @@ for each consecutive group of klines with same signature:
 
 **`_try_decode_packed_single_char(node)`:**
 ```
-if is_literal(node): return None
 decoded = tokenizer.decode([node])
 if decoded and len(decoded) == 1 and decoded.isupper():
     return decoded
@@ -728,15 +697,10 @@ if node list:
 
 > **Caveat:** S1 and S3 are indistinguishable by bit overlap alone. Countersign `A == B` produces `{A: B}` where A and B have zero bit overlap → inferred as S3, not S1. This is a known limitation.
 
-**`decode_nodes` — grouping consecutive literal chars:**
+**`decode_nodes` — decoding node values:**
 ```
 for each node in nodes:
-    if is_literal(node):
-        buffer literal node IDs
-    else:
-        flush literal buffer as one decoded string
-        decode packed node (use mcs_names if available)
-flush remaining literal buffer
+    decode node (use mcs_names if available)
 ```
 
 ### Test cases
@@ -747,7 +711,6 @@ flush remaining literal buffer
 | 2 | `"A = B"` | Entry with sig="A", nodes="B" |
 | 3 | `"A == B"` | Entries for A→B and B→A present |
 | 4 | `"A > B"` | Entry with sig="A", nodes="B" |
-| 5 | `'A = "hello"'` | Entry with nodes='"hello"' |
 | 6 | `""` | Empty list |
 | 7 | `"A =>\n  B\n  C"` | Entries for A, B, C present |
 | 8 | `"ABC"` | MCS name "ABC" recovered (not bit-ordered garble) |
@@ -842,18 +805,17 @@ Organize into classes matching the spec sections:
 
 ```
 TestTokenType        — §2.1 (2 tests)
-TestLexer            — §2   (14 tests)
-TestParserAST        — §3   (5 tests)
-TestCompilerBasic    — §5.5 (8 tests)
+TestLexer            — §2   (11 tests)
+TestParserAST        — §3   (4 tests)
+TestCompilerBasic    — §5.5 (5 tests)
 TestMCSExpansion     — §5.3 (4 tests)
 TestChains           — §5.5 (4 tests)
 TestNestedSubscripts — §5.6 (2 tests)
 TestComplexExamples  — §9   (3 tests)
-TestLiteralEdgeCases — §3.1 (7 tests)
-TestDecompiler       — §6   (12 tests)
+TestDecompiler       — §6   (9 tests)
 TestDecompilerMCS    — §6.1 (3 tests)
 TestOutputIO         — §7   (4 tests)
-TestCompiledEntry    — §5.2 (4 tests)
+TestCompiledEntry    — §5.2 (3 tests)
 TestKScriptAPI       — §8   (7 tests)
 ```
 
@@ -957,7 +919,7 @@ kscript/
 
 **Total files:** 9  
 **Total LOC estimate:** ~1700  
-**Total test count:** ~83
+**Total test count:** ~61
 
 ---
 
@@ -972,7 +934,6 @@ KScript depends on these from Kalvin core. They must be built first.
 | `kalvin.kline.KSig` | Type alias for uint64 signatures | `compiler.py` |
 | `kalvin.mod_tokenizer.ModTokenizer` | `encode(text)`, `decode(ids)` — mode auto-detected from content | `compiler.py`, `decompiler.py`, `output.py` |
 | `kalvin.mod_tokenizer.Mod32Tokenizer` | Default tokenizer variant (31 bit positions) | `compiler.py` |
-| `kalvin.kline.is_literal` | `is_literal(node) → bool` (standalone function) | `compiler.py`, `decompiler.py` |
-| `kalvin.signature.make_signature` | `make_signature(nodes) → uint64` | `decompiler.py` |
+| `kalvin.signature.make_signature` | `make_signature(nodes) → uint64` — OR-reduction of raw nodes | `decompiler.py` |
 
 **Not depended on:** `kalvin.significance.D_BOUNDARY`, `D_MAX` — these are not used by KScript despite being imported in some implementations.

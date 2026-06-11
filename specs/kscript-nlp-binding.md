@@ -30,7 +30,7 @@ Inline binding resolution is only active when an NLP tokenizer is selected. Mod3
 
 - **@kscript** — KScript language specification. Lexer, parser, grammar, operators, and compilation semantics are defined there.
 - **@kscript-nlp** — NLP-BPE encoding mode. Node format `(nlp_type32 << 32) | bpe_token_id`, BPE decomposition, signature masking.
-- **@signature** — `make_signature()` with `NLP_TYPE_MASK`, `is_nlp_node()`, `is_literal_node()`.
+- **@signature** — `make_signature()` (OR-reduction of raw nodes).
 
 ---
 
@@ -151,7 +151,7 @@ Comment:
     column: int
 ```
 
-`Comment` is a `ConstructItem` — it appears in the construct sequence alongside `PrimaryConstruct` and `Literal`.
+`Comment` is a `ConstructItem` — it appears in the construct sequence alongside `PrimaryConstruct`.
 
 ### 5.2 Parser Behaviour
 
@@ -279,7 +279,7 @@ A source map — a separate artefact mapping compiled entries back to KScript id
 | TokenEncoder | None — receives resolved words, encodes as usual |
 | KLine format | None — same uint64 signatures and nodes |
 | `make_signature()` | None — OR-reduction unchanged |
-| Signature construction | None — NLP_TYPE_MASK behaviour unchanged |
+| Signature construction | None — signature construction unchanged |
 | Mod32 compilation | None — BindingScope is not created, comments are inert |
 
 ### 8.2 Modified Components

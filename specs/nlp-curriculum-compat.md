@@ -24,7 +24,7 @@ Each curriculum completes with:
 
 ### SC-4: Comments are optional for abstract-letter curricula
 
-Curricula using abstract uppercase letters (A, B, C, D, M, H, S, V, O) do not require parenthetical comments. Comments are required only when semantic word resolution is desired (e.g., `M(ary)` → literal node for "Mary").
+Curricula using abstract uppercase letters (A, B, C, D, M, H, S, V, O) do not require parenthetical comments. Comments are required only when semantic word resolution is desired (e.g., `M(ary)` → NLP-bound token for "Mary").
 
 ## Test Matrix
 
