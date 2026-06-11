@@ -15,9 +15,8 @@ Covers KB-170 acceptance criteria:
   - NB-32: Forward-only word list
   - NB-33: Inline override no-match (safe no-op)
 
-Note: BindingScope uses case-sensitive first-letter matching. Word list
-words must have uppercase first letters to match uppercase KScript
-signature characters (e.g. "Had" not "had" to match "H").
+Note: BindingScope uses case-insensitive first-letter matching (word[0].lower() == char.lower()).
+Word list words match regardless of case.
 """
 
 from __future__ import annotations

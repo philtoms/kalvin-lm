@@ -5,13 +5,11 @@ Tests exercise the simplified v2.0 NLP binding pipeline end-to-end:
 
 Single-pass inline resolution using BindingScope (the former
 BindingResolver/NLPSymbolTable modules have been removed). Characters bind via first-letter
-matching (case-sensitive) from word lists, with an occurrence counter for
+matching (case-insensitive) from word lists, with an occurrence counter for
 disambiguation. Inline comments (e.g. S(ubject)) bind immediately and
 bypass the counter.
 
-NOTE: BindingScope uses case-sensitive first-letter matching. Word list
-words must have uppercase first letters to match uppercase KScript
-signature characters (e.g. 'Had' not 'had' to match 'H').
+NOTE: BindingScope uses case-insensitive first-letter matching (word[0].lower() == char.lower()). Word list words match regardless of case.
 
 Coverage maps to spec NB-* IDs:
   - NB-4  : First-letter matching from word list
@@ -115,7 +113,7 @@ def _has_node(md: dict[str, list], sig: str, node_value) -> bool:
 
 # ── Source constants ─────────────────────────────────────────────────────────
 
-# NOTE: Word list words must have uppercase first letters for case-sensitive
+# NOTE: Word list words may use any case — first-letter matching is case-insensitive.
 # first-letter matching: "Had" (not "had") to match "H", etc.
 MHALL_SOURCE = """\
 (Mary Had A Little Lamb)
@@ -147,7 +145,7 @@ class TestFirstLetterMatching:
     """NB-4: Word list binding via first-letter matching.
 
     Under v2.0, a word list is an immutable pool. Characters seek words
-    whose first letter matches the character (case-sensitive). For
+    whose first letter matches the character (case-insensitive). For
     duplicate characters, the occurrence counter tracks which word to use.
     """
 
@@ -178,6 +176,37 @@ class TestFirstLetterMatching:
 
         assert "Mary" in md, f"Expected 'Mary', got keys: {sorted(md.keys())}"
         assert "Had" in md, f"Expected 'Had', got keys: {sorted(md.keys())}"
+
+    def test_lowercase_words_match_uppercase_chars(self) -> None:
+        """Case-insensitive: (mary had a little lamb) + MHALL binds through full pipeline.
+
+        Word list words are all lowercase, signature chars are uppercase.
+        BindingScope's case-insensitive first-letter matching (w[0].lower()
+        == char.lower()) ensures m→M, h→H, a→A, l→L.
+        """
+        source = "(mary had a little lamb)\nMHALL"
+        entries = compile_nlp(source)
+        md = _md(entries, self._nlp_tok)
+
+        assert "mary" in md, f"Expected 'mary', got keys: {sorted(md.keys())}"
+        assert "had" in md, f"Expected 'had', got keys: {sorted(md.keys())}"
+        assert "a" in md, f"Expected 'a', got keys: {sorted(md.keys())}"
+        assert "little" in md, f"Expected 'little', got keys: {sorted(md.keys())}"
+        assert "lamb" in md, f"Expected 'lamb', got keys: {sorted(md.keys())}"
+
+    def test_case_insensitive_binding_symmetry(self) -> None:
+        """Case-insensitive: (MARY HAD) + mh binds lowercase chars to uppercase words.
+
+        Word list words are uppercase, signature characters are lowercase.
+        The case-insensitive matching is symmetric — M matches m just as
+        m matches M.
+        """
+        source = "(MARY HAD)\nmh == X"
+        entries = compile_nlp(source)
+        md = _md(entries, self._nlp_tok)
+
+        assert "MARY" in md, f"Expected 'MARY', got keys: {sorted(md.keys())}"
+        assert "HAD" in md, f"Expected 'HAD', got keys: {sorted(md.keys())}"
 
 
 # =============================================================================
@@ -325,7 +354,7 @@ class TestMismatchedCommentInert:
         """Original v1.0 source (one two three) AB still compiles cleanly.
 
         Under v2.0, 'o' doesn't match 'A', 't' doesn't match 'B' —
-        first-letter matching is case-sensitive, so AB is unbound.
+        first-letter matching is case-insensitive, but 'o'≠'a' and 't'≠'b', so AB remains unbound.
         """
         source = "(one two three)\nAB == CD"
         entries = compile_nlp(source)
