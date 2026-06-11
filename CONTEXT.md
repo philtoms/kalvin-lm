@@ -245,13 +245,9 @@ _Avoid_: comment mapping (too vague — the binding is a specific compiler artef
 
 The lexical scope of an NLP binding. Inline bindings shadow outer bindings within their containing subscript block. Standard lexical scoping: inner blocks inherit and can shadow, exits restore. When an inline binding like `M(od)` appears deep in a subscript, it shadows the outer `M → "Mary"` within that block only.
 
-### NLP Symbol Table
+### BindingScope
 
-The compiler-internal mapping built by the binding resolver from NLP word lists and inline comments. Maps each single-character signature to its resolved NLP word. Used by the ASTEmitter and TokenEncoder to produce NLP-enriched signatures and nodes. Signatures not present in the table fall back to Mod32 encoding.
-
-### Binding Resolver
-
-A new compilation pass between the parser and ASTEmitter that walks the AST, processes NLP word lists from comments, and builds the NLP symbol table. Only active when an NLP tokenizer is selected — Mod32 compilation skips this pass entirely.
+A lightweight scope stack for NLP binding resolution, created inline during compilation when an NLP tokenizer is selected. Replaces the former two-pass BindingResolver → NLPSymbolTable architecture with a single-pass approach: the Compiler creates a BindingScope, the ASTEmitter resolves single-character signatures against word lists from comments as it walks the AST, and the TokenEncoder encodes the results. Mod32 compilation skips BindingScope entirely.
 
 ### Mod32 Fallback
 

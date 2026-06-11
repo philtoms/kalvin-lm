@@ -1,6 +1,6 @@
 """Lightweight scope stack for NLP binding resolution.
 
-Replaces NLPSymbolTable and BindingResolver with a single data structure
+Supersedes the former NLPSymbolTable and BindingResolver with a single data structure
 that manages a stack of scopes, each containing ordered word lists.
 
 BindingScope manages a stack of scopes. Each scope holds an ordered

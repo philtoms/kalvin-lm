@@ -1,5 +1,7 @@
 # KScript NLP Binding Implementation Plan
 
+> **Superseded by BindingScope (KB-169).** The two-pass `BindingResolver → NLPSymbolTable` architecture described in this plan has been replaced by the simplified single-pass `BindingScope` module (`src/kscript/binding_scope.py`). The old modules (`binding_resolver.py`, `symbol_table.py`) and their test files were removed in KB-174. This plan is retained for historical reference only.
+
 **Specs:** @kscript-nlp-binding, @kscript-nlp, @kscript, @signature  
 **Date:** 2026-06-09  
 **Status:** ✅ Complete  

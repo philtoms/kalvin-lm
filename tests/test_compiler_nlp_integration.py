@@ -12,7 +12,8 @@ Pipeline (v2.0):
   Compiler creates BindingScope (NLP mode) → ASTEmitter resolves inline
   → TokenEncoder encodes to CompiledEntry objects.
 
-No BindingResolver, NLPSymbolTable, or symbol_table property references.
+No BindingResolver, NLPSymbolTable, or symbol_table property references
+(these legacy modules have been removed).
 
 Spec ref: @kscript-nlp-binding §1.1 (pipeline), §10 (test matrix)
 """
@@ -272,7 +273,7 @@ class TestNLPBindingInCompiledEntries:
     """Verify NLP bindings flow through to compiled entries.
 
     Replaces the old TestNLPSymbolTablePopulated which inspected
-    compiler.symbol_table.  Now verifies bindings by inspecting decoded
+    compiler.symbol_table (now removed).  Verifies bindings by inspecting decoded
     compiled entries — sig names, node values, and NLP signature bits.
 
     These tests skip if NLPTokenizer data files are not available.

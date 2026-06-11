@@ -5,7 +5,7 @@ Covers acceptance criteria:
 - NB-25: NLP signature shows type description
 
 All tests construct klines directly with known NLP type values — no
-dependency on the compiler, BindingResolver, or spaCy.
+dependency on the compiler, BindingScope, or spaCy.
 """
 
 from __future__ import annotations

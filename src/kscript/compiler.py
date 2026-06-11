@@ -80,7 +80,7 @@ class Compiler:
         scope = None
         if not self.tokenizer.supports_mcs:
             scope = BindingScope()
-            scope.push_scope()  # Root scope (was done by BindingResolver)
+            scope.push_scope()  # Root scope
 
         emitter = ASTEmitter(
             dev=self.dev,

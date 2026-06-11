@@ -3,6 +3,8 @@
 **Date:** 2026-06-09  
 **Status:** Accepted
 
+> **Updated (KB-169, KB-174):** The two-pass "binding resolver" architecture described below has been superseded by `BindingScope` (`src/kscript/binding_scope.py`), which provides a simplified single-pass scope stack for inline resolution during AST emission. The `BindingResolver` and `NLPSymbolTable` modules have been removed (KB-174). The core binding semantics — first-letter matching, lexical scoping, occurrence counters — remain unchanged.
+
 ## Context
 
 When Kalvin switches to the NLP tokenizer, compiled klines need to carry grammatically meaningful signatures (POS + DEP + MORPH) rather than character-bit signatures. Currently, `M` encoded under NLP-BPE gets the NLP type of the BPE token for the letter "M" — uninformative.

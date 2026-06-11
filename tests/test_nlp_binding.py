@@ -3,8 +3,8 @@
 Tests exercise the simplified v2.0 NLP binding pipeline end-to-end:
   Compiler creates BindingScope → ASTEmitter resolves inline → TokenEncoder encodes
 
-Single-pass inline resolution using BindingScope replaces the old
-BindingResolver → NLPSymbolTable pipeline. Characters bind via first-letter
+Single-pass inline resolution using BindingScope (the former
+BindingResolver/NLPSymbolTable modules have been removed). Characters bind via first-letter
 matching (case-sensitive) from word lists, with an occurrence counter for
 disambiguation. Inline comments (e.g. S(ubject)) bind immediately and
 bypass the counter.
