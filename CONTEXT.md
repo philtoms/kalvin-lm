@@ -238,21 +238,21 @@ Comparison of two KLines by signature and nodes: `a.signature == b.signature and
 
 ### NLP Binding
 
-The association of a single-character KScript signature (e.g., `M`) with an NLP word (e.g., "Mary") resolved through comment word lists in the KScript source. Three binding mechanisms: **inline** (`S(ubject)` binds S to "Subject" immediately), **upward traversal** (unbound signature looks up the AST for a bound match with the same character), **downward traversal** (unbound signature looks down the AST for a bound match). Bindings are consumed in order — once a character-position is claimed, it is unavailable for subsequent bindings of the same character.
+The association of a single-character KScript signature (e.g., `M`) with an NLP word (e.g., "Mary") resolved through comment word lists in the KScript source. Resolution uses **first-letter matching** (case-sensitive: `word[0] == char`) with an **occurrence counter** for disambiguation when multiple words in the same list start with the same letter. Four binding rules govern resolution: inline binding (Rule 4), word-list first-letter matching (Rule 3), scope stack walk (Rule 2), and once-bound-immutability (Rule 1). Resolution happens inline during the ASTEmitter's single walk via a BindingScope — no separate resolution pass.
 _Avoid_: comment mapping (too vague — the binding is a specific compiler artefact, not a general comment feature)
 
 ### NLP Binding Scope
 
-The lexical scope of an NLP binding. Inline bindings shadow outer bindings within their containing subscript block. Standard lexical scoping: inner blocks inherit and can shadow, exits restore. When an inline binding like `M(od)` appears deep in a subscript, it shadows the outer `M → "Mary"` within that block only.
+The lexical scope of an NLP binding, created by `chain_right` (`=>`) boundaries. Each scope holds word lists (searched most-recent-first) and per-character occurrence counters (starting at zero). Characters seek from the current (innermost) scope first, then parent scopes upward. Inline bindings shadow outer bindings within their containing subscript block. Standard lexical scoping: inner blocks inherit and can shadow, exits restore. Each new scope starts with all counters at zero.
 
 ### BindingScope
 
-A lightweight scope stack for NLP binding resolution, created inline during compilation when an NLP tokenizer is selected. Replaces the former two-pass BindingResolver → NLPSymbolTable architecture with a single-pass approach: the Compiler creates a BindingScope, the ASTEmitter resolves single-character signatures against word lists from comments as it walks the AST, and the TokenEncoder encodes the results. Mod32 compilation skips BindingScope entirely.
+A lightweight scope stack that replaces the former separate resolution pass and mapping artefact. Created by the `Compiler` as a local variable in `compile()`, passed to the `ASTEmitter` for inline resolution during its single AST walk. Provides `push_scope()`, `pop_scope()`, `add_word_list(words)`, and `resolve(char) → str | None`. Each scope holds word lists and per-character occurrence counters. The former `NLP Symbol Table` and `Binding Resolver` have been replaced by BindingScope's inline resolution.
 
 ### Mod32 Fallback
 
-When a single-character signature cannot be resolved through any binding mechanism (no inline comment, no upward match, no downward match), it is encoded using standard Mod32 bit-packed encoding instead of NLP encoding. Produces mixed NLP/Mod32 klines within the same graph. Rationalisation must handle this.
+When a single-character signature cannot be resolved through any binding mechanism (no inline comment, no matching word in any scope), it is encoded using standard Mod32 bit-packed encoding instead of NLP encoding. Produces mixed NLP/Mod32 klines within the same graph. Rationalisation must handle this.
 
 ### NLP Word List
 
-A comment in KScript source that is interpreted as a sequence of words for NLP binding. Syntax: `(word1 word2 ...)` or `S(ubject)` (inline, one word). Inline syntax takes the first character from the SIGNATURE token and appends the comment content stripped of parens, preserving case (`S` + `ubject` → `"Subject"`). A word list claims a subsequent signature when word count equals character count — positional zip binds each character to its corresponding word.
+A comment in KScript source that is interpreted as a sequence of words for NLP binding. Syntax: `(word1 word2 ...)` (block) or `S(ubject)` (inline, one word). Inline syntax takes the first character from the SIGNATURE token and appends the comment content stripped of parens, preserving case (`S` + `ubject` → `"Subject"`). Block word lists are matched via first-letter matching (case-sensitive): a character matches a word whose first letter equals the character. Surplus words are inert — there is no word count constraint.

@@ -1,7 +1,7 @@
 # ADR 0004: NLP Bindings Derived from KScript Comments
 
 **Date:** 2026-06-09  
-**Status:** Accepted
+**Status:** Superseded by BindingScope inline resolution (spec v2.0, 2026-06-10)
 
 > **Updated (KB-169, KB-174):** The two-pass "binding resolver" architecture described below has been superseded by `BindingScope` (`src/kscript/binding_scope.py`), which provides a simplified single-pass scope stack for inline resolution during AST emission. The `BindingResolver` and `NLPSymbolTable` modules have been removed (KB-174). The core binding semantics — first-letter matching, lexical scoping, occurrence counters — remain unchanged.
 
@@ -51,3 +51,15 @@ Store the identifier→NLP-word mapping directly in each compiled entry for deco
 - Mod32 compilation is completely unaffected (binding resolver is skipped).
 - Decompilation of NLP-compiled klines cannot recover original KScript identifiers from signatures alone (signatures are OR'd NLP types, losing identity). The Trainer's LLM agent and node BPE decodability provide diagnostic value instead.
 - Mixed NLP/Mod32 klines within the same graph will require rationalisation to handle.
+
+## Supersession (2026-06-10)
+
+The separate resolution pass and positional word-list matching described in this ADR have been superseded by **BindingScope inline resolution** (spec `kscript-nlp-binding` v2.0). Key changes:
+
+- The separate resolution pass has been eliminated. The ASTEmitter now resolves bindings inline during its single AST walk via a `BindingScope`.
+- Positional-zip matching (word count must equal character count) has been replaced by **first-letter matching** (case-sensitive: `word[0] == char`) with an **occurrence counter** for disambiguation.
+- Upward/downward traversal mechanisms have been replaced by a scope stack walk: characters seek from the current (innermost) scope first, then parent scopes upward.
+- The mapping artefact (symbol table) has been replaced by `BindingScope`, a lightweight scope stack with no separate artefact.
+- The inline binding mechanism is retained, enhanced with Rule 4 override patching of the parent kline's MCS CANONIZE entry.
+
+See `specs/kscript-nlp-binding.md` v2.0 for the current architecture.
