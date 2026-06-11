@@ -238,7 +238,7 @@ Comparison of two KLines by signature and nodes: `a.signature == b.signature and
 
 ### NLP Binding
 
-The association of a single-character KScript signature (e.g., `M`) with an NLP word (e.g., "Mary") resolved through comment word lists in the KScript source. Resolution uses **first-letter matching** (case-sensitive: `word[0] == char`) with an **occurrence counter** for disambiguation when multiple words in the same list start with the same letter. Four binding rules govern resolution: inline binding (Rule 4), word-list first-letter matching (Rule 3), scope stack walk (Rule 2), and once-bound-immutability (Rule 1). Resolution happens inline during the ASTEmitter's single walk via a BindingScope — no separate resolution pass.
+The association of a single-character KScript signature (e.g., `M`) with an NLP word (e.g., "Mary") resolved through comment word lists in the KScript source. Resolution uses **first-letter matching** (case-insensitive: `word[0].lower() == char.lower()`) with an **occurrence counter** for disambiguation when multiple words in the same list start with the same letter. Four binding rules govern resolution: inline binding (Rule 4), word-list first-letter matching (Rule 3), scope stack walk (Rule 2), and once-bound-immutability (Rule 1). Resolution happens inline during the ASTEmitter's single walk via a BindingScope — no separate resolution pass.
 _Avoid_: comment mapping (too vague — the binding is a specific compiler artefact, not a general comment feature)
 
 ### NLP Binding Scope
@@ -255,4 +255,4 @@ When a single-character signature cannot be resolved through any binding mechani
 
 ### NLP Word List
 
-A comment in KScript source that is interpreted as a sequence of words for NLP binding. Syntax: `(word1 word2 ...)` (block) or `S(ubject)` (inline, one word). Inline syntax takes the first character from the SIGNATURE token and appends the comment content stripped of parens, preserving case (`S` + `ubject` → `"Subject"`). Block word lists are matched via first-letter matching (case-sensitive): a character matches a word whose first letter equals the character. Surplus words are inert — there is no word count constraint.
+A comment in KScript source that is interpreted as a sequence of words for NLP binding. Syntax: `(word1 word2 ...)` (block) or `S(ubject)` (inline, one word). Inline syntax takes the first character from the SIGNATURE token and appends the comment content stripped of parens, preserving case (`S` + `ubject` → `"Subject"`). Block word lists are matched via first-letter matching (case-insensitive): a character matches a word whose first letter equals the character, compared case-insensitively. Surplus words are inert — there is no word count constraint.

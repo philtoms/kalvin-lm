@@ -50,7 +50,7 @@ A word list is a sequence of N words. Each word is a string that will be encoded
 
 ### 3.3 Word List Matching
 
-Block word lists serve characters that follow them in the AST. A character matches a word whose first letter equals the character (**case-sensitive**: `word[0] == char`). When multiple words in the same word list start with the same letter, an occurrence counter disambiguates: the first occurrence of the character resolves to the first matching word, the second occurrence resolves to the second matching word, and so on.
+Block word lists serve characters that follow them in the AST. A character matches a word whose first letter equals the character (**case-insensitive**: `word[0].lower() == char.lower()`). When multiple words in the same word list start with the same letter, an occurrence counter disambiguates: the first occurrence of the character resolves to the first matching word, the second occurrence resolves to the second matching word, and so on.
 
 Example: `(Mary Had A Little Lamb)` followed by `MHALL`:
 - `M` → "Mary" (first-letter match: `M` == `M`)
@@ -59,7 +59,7 @@ Example: `(Mary Had A Little Lamb)` followed by `MHALL`:
 - `L` → "Little" (first `L` match, counter = 0)
 - `L` → "Lamb" (second `L` match, counter increments to 1)
 
-> **Note on case-sensitivity:** Matching is case-sensitive: `word[0] == char`. A character `A` matches "Alice" but not "alpha". A character `a` matches "alpha" but not "Alice".
+> **Note on case-insensitivity:** Matching is case-insensitive: `word[0].lower() == char.lower()`. A character `a` matches both "Alice" and "alpha" by first letter, and a character `A` also matches both. The occurrence counter key is normalised to lowercase, so `resolve("A")` and `resolve("a")` share the same counter.
 
 ### 3.4 Inert Comments
 
@@ -86,7 +86,7 @@ When the emitter encounters a single-character signature, resolution proceeds in
 
 ### Rule 3 — Word List Matching (First-Letter)
 
-First-letter matching is **case-sensitive**: a word matches a character when `word[0] == char` (no case folding).
+First-letter matching is **case-insensitive**: a word matches a character when `word[0].lower() == char.lower()` (case folding applies).
 
 An occurrence counter per scope per character handles disambiguation:
 
@@ -95,7 +95,7 @@ An occurrence counter per scope per character handles disambiguation:
 - **Counter exceeds matches**: no match in this word list — continue to next (older) word list or outer scope.
 - **No matches in any scope**: character is unbound.
 
-The counter is per-scope-per-character, keyed on the raw character value. Each new scope starts at zero. The counter only increments on ambiguous matches (when multiple words in the same list start with the same letter).
+The counter is per-scope-per-character, keyed on the lowercase character value. Each new scope starts at zero. The counter only increments on ambiguous matches (when multiple words in the same list start with the same letter).
 
 ### Rule 4 — Inline Binding
 
@@ -204,13 +204,13 @@ The `BindingScope` class (`src/kscript/binding_scope.py`) provides the binding r
 | Field | Type | Description |
 |-------|------|-------------|
 | `word_lists` | `list[list[str]]` | Ordered collection of word lists in this scope. |
-| `counters` | `dict[str, int]` | Per-character occurrence counter for disambiguation. Keyed on raw character value. |
+| `counters` | `dict[str, int]` | Per-character occurrence counter for disambiguation. Keyed on lowercase character value. |
 
 **Resolution algorithm** (inside `resolve(char)`):
 
 1. Walk scope stack from innermost to outermost.
 2. For each scope, iterate word lists in reverse order (most-recent-first).
-3. For each word list, collect words whose first letter equals `char` (case-sensitive: `word[0] == char`).
+3. For each word list, collect words whose first letter equals `char` (case-insensitive: `word[0].lower() == char.lower()`).
 4. If matches found:
    - Read current counter for `char` in this scope.
    - If counter < number of matches: return the word at that index. If ambiguous (multiple matches), increment counter. If unambiguous (single match), counter unchanged.
@@ -300,7 +300,7 @@ A source map — a separate artefact mapping compiled entries back to KScript id
 | NLP mapping artefact | BindingScope — lightweight scope stack, no separate artefact |
 | Scope and Binding dataclasses | Folded into BindingScope's internal `_Scope` |
 | Binding consumption flag | Word lists are immutable; occurrence counting replaces consumption |
-| Positional word-list matching | First-letter matching with case-sensitive comparison |
+| Positional word-list matching | First-letter matching with case-insensitive comparison |
 | Word count mismatch rule | Surplus words are inert — no all-or-nothing rule |
 | Repeated walk API | Single pass eliminates need for repeated walking |
 

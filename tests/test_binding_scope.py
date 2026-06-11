@@ -262,12 +262,27 @@ class TestEdgeCases:
         scope.add_word_list(["Mary", "had"])
         assert scope.resolve("Z") is None
 
-    def test_case_sensitive_first_letter(self) -> None:
-        """Lowercase 'm' does NOT match 'Mary'."""
+    def test_case_insensitive_first_letter(self) -> None:
+        """Lowercase 'm' matches 'Mary' (case-insensitive)."""
         scope = BindingScope()
         scope.push_scope()
         scope.add_word_list(["Mary"])
-        assert scope.resolve("m") is None
+        assert scope.resolve("m") == "Mary"
+
+    def test_uppercase_char_matches_lowercase_word(self) -> None:
+        """Uppercase 'M' matches lowercase word 'mary'."""
+        scope = BindingScope()
+        scope.push_scope()
+        scope.add_word_list(["mary"])
+        assert scope.resolve("M") == "mary"
+
+    def test_shared_counter_across_case_variants(self) -> None:
+        """resolve("M") and resolve("m") share the same occurrence counter."""
+        scope = BindingScope()
+        scope.push_scope()
+        scope.add_word_list(["Mary", "Michael"])
+        assert scope.resolve("M") == "Mary"  # counter 0 → 1
+        assert scope.resolve("m") == "Michael"  # counter 1 → 2, NOT back to "Mary"
 
     def test_pop_empty_stack_raises(self) -> None:
         scope = BindingScope()

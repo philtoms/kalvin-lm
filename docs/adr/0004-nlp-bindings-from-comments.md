@@ -57,7 +57,7 @@ Store the identifier→NLP-word mapping directly in each compiled entry for deco
 The separate resolution pass and positional word-list matching described in this ADR have been superseded by **BindingScope inline resolution** (spec `kscript-nlp-binding` v2.0). Key changes:
 
 - The separate resolution pass has been eliminated. The ASTEmitter now resolves bindings inline during its single AST walk via a `BindingScope`.
-- Positional-zip matching (word count must equal character count) has been replaced by **first-letter matching** (case-sensitive: `word[0] == char`) with an **occurrence counter** for disambiguation.
+- Positional-zip matching (word count must equal character count) has been replaced by **first-letter matching** (case-insensitive: `word[0].lower() == char.lower()`) with an **occurrence counter** for disambiguation.
 - Upward/downward traversal mechanisms have been replaced by a scope stack walk: characters seek from the current (innermost) scope first, then parent scopes upward.
 - The mapping artefact (symbol table) has been replaced by `BindingScope`, a lightweight scope stack with no separate artefact.
 - The inline binding mechanism is retained, enhanced with Rule 4 override patching of the parent kline's MCS CANONIZE entry.
