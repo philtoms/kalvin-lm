@@ -345,7 +345,12 @@ class ASTEmitter:
           Bare Signature items are nodes of the parent operator, already
           collected by _collect_node_ids and processed in _process_scope
           steps 4–7 — no action needed here.
-        - Process child_block constructs.
+        - Process child_block constructs.  Bare OperatorScope nodes
+          (op=None) in a non-CANONIZE child_block are skipped — they
+          are already collected as node identifiers by _collect_node_ids
+          and used in the parent operator's emission.  Under CANONIZE,
+          bare scopes in child_block still emit their own UNSIGNED
+          entries (they are subscript items with independent identity).
         """
         is_canonize = op == "CANONIZE"
 
@@ -375,6 +380,11 @@ class ASTEmitter:
         # Process child_block constructs
         if scope.child_block is not None:
             for construct in scope.child_block.constructs:
+                if isinstance(construct, OperatorScope) and construct.op is None and not is_canonize:
+                    # Bare scope in non-CANONIZE child_block — already a node
+                    # of the parent operator (collected by _collect_node_ids).
+                    # Skip to avoid spurious UNSIGNED emission.
+                    continue
                 self._process_construct(construct)
 
         # CANONIZE scope pop

@@ -435,12 +435,9 @@ class TestKS18NonCanonizeIndent:
         assert_has_entry(entries, "D", ["A"], "COUNTERSIGN")
 
     def test_entry_count(self):
-        """Exact entry counts — includes spurious UNSIGNED from bare child_block scopes.
+        """Exact entry counts — per spec §14.10, no UNSIGNED from child_block bare scopes.
 
-        A == B\\n  C\\n  D → 8 entries (6 COUNTERSIGN + 2 UNSIGNED).
-        The 2 UNSIGNED come from bare OperatorScope nodes C and D in the
-        child_block processed via _process_scope. This is a known remaining
-        gap vs spec §14.10.
+        A == B\\n  C\\n  D → 6 entries (all COUNTERSIGN, 0 UNSIGNED).
         """
         ast = _file(
             _scope("A", TokenType.COUNTERSIGN, items=[_sig("B")], child_block=_block(
@@ -449,9 +446,35 @@ class TestKS18NonCanonizeIndent:
             ))
         )
         entries = emit(ast)
-        assert len(entries) == 8
+        assert len(entries) == 6
         assert sum(1 for e in entries if e.op == "COUNTERSIGN") == 6
-        assert sum(1 for e in entries if e.op == "UNSIGNED") == 2
+        assert sum(1 for e in entries if e.op == "UNSIGNED") == 0
+
+    def test_undersign_with_child_block(self):
+        """A = B\\n  C\\n  D — per-item UNDERSIGN extends into child block, no spurious UNSIGNED."""
+        ast = _file(
+            _scope("A", TokenType.UNDERSIGN, items=[_sig("B")], child_block=_block(
+                _bare("C"),
+                _bare("D"),
+            ))
+        )
+        entries = emit(ast)
+        assert len(entries) == 3  # B→[A] UNDERSIGN, C→[A] UNDERSIGN, D→[A] UNDERSIGN
+        assert sum(1 for e in entries if e.op == "UNDERSIGN") == 3
+        assert sum(1 for e in entries if e.op == "UNSIGNED") == 0
+
+    def test_connotate_with_child_block(self):
+        """A > B\\n  C\\n  D — per-item CONNOTATE extends into child block, no spurious UNSIGNED."""
+        ast = _file(
+            _scope("A", TokenType.CONNOTATE, items=[_sig("B")], child_block=_block(
+                _bare("C"),
+                _bare("D"),
+            ))
+        )
+        entries = emit(ast)
+        assert len(entries) == 3  # A→[B] CONNOTATE, A→[C] CONNOTATE, A→[D] CONNOTATE
+        assert sum(1 for e in entries if e.op == "CONNOTATE") == 3
+        assert sum(1 for e in entries if e.op == "UNSIGNED") == 0
 
 
 # ======================================================================
