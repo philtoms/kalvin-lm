@@ -83,6 +83,7 @@ class Lexer:
         """Get the next token, handling indentation at line start."""
         if self.at_line_start:
             self.at_line_start = False
+            start_col = self.column
             indent = self._count_indent()
 
             # Blank lines (only whitespace, no content) must not affect
@@ -95,7 +96,7 @@ class Lexer:
                 self.at_line_start = True
                 return None
 
-            return self._handle_indent(indent)
+            return self._handle_indent(indent, start_col)
 
         # Skip whitespace (not newlines)
         while self.pos < len(self.source) and self.source[self.pos] in " \t":
@@ -145,19 +146,19 @@ class Lexer:
             self._advance()
         return indent
 
-    def _handle_indent(self, indent: int) -> Token | None:
+    def _handle_indent(self, indent: int, col: int) -> Token | None:
         """Handle indentation changes, emitting INDENT/DEDENT tokens."""
         current_indent = self.indent_stack[-1]
 
         if indent > current_indent:
             self.indent_stack.append(indent)
-            return Token(TokenType.INDENT, "", self.line, self.column)
+            return Token(TokenType.INDENT, "", self.line, col)
 
         if indent < current_indent:
             while len(self.indent_stack) > 1 and self.indent_stack[-1] > indent:
                 self.indent_stack.pop()
                 self.pending_tokens.append(
-                    Token(TokenType.DEDENT, "", self.line, self.column)
+                    Token(TokenType.DEDENT, "", self.line, col)
                 )
             return self.pending_tokens.pop(0) if self.pending_tokens else None
 
