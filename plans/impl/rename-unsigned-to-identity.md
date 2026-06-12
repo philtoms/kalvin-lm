@@ -68,4 +68,4 @@ Acceptance: `grep -rn '"UNSIGNED"' scripts/` returns nothing.
 - [ ] Task 1 (ks/ source)
 - [ ] Task 2 (kalvin/ runtime)
 - [ ] Task 3 (tests)
-- [ ] Task 4 (scripts)
+- [x] Task 4 (scripts)
