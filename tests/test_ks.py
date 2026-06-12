@@ -616,7 +616,7 @@ class TestEmitterOperators:
     # -- KS-18: Non-CANONIZE with indent ---------------------------------
 
     @pytest.mark.xfail(
-        reason="KS-18: Emitter produces extra UNSIGNED entries for items. "
+        reason="KS-18: Emitter produces extra IDENTITY entries for items. "
                "Spec expects 6 COUNTERSIGN entries, code produces 9.",
         strict=True,
     )
@@ -651,17 +651,17 @@ class TestEmitterOperators:
     # -- KS-33: Self-identity --------------------------------------------
 
     def test_ks33_self_identity(self):
-        """KS-33: A = A → single {A:[]} UNSIGNED."""
+        """KS-33: A = A → single {A:[]} IDENTITY."""
         entries = compile_dev("A = A")
         assert len(entries) == 1
-        assert entries[0].op == "UNSIGNED"
+        assert entries[0].op == "IDENTITY"
         assert _sig_str(entries[0]) == "A"
         assert entries[0].nodes == []
 
     def test_ks33_self_identity_unsigned_present(self):
-        """KS-33 (relaxed): At least one A UNSIGNED with empty nodes exists."""
+        """KS-33 (relaxed): At least one A IDENTITY with empty nodes exists."""
         entries = compile_dev("A = A")
-        assert has_entry(entries, sig="A", op="UNSIGNED", nodes=[])
+        assert has_entry(entries, sig="A", op="IDENTITY", nodes=[])
 
 
 # ===================================================================
@@ -686,20 +686,20 @@ class TestEmitterMCS:
         entries = compile_dev("ABC")
         assert len(entries) == 5
 
-        assert _sig_str(entries[0]) == "A" and entries[0].op == "UNSIGNED"
-        assert _sig_str(entries[1]) == "B" and entries[1].op == "UNSIGNED"
-        assert _sig_str(entries[2]) == "C" and entries[2].op == "UNSIGNED"
+        assert _sig_str(entries[0]) == "A" and entries[0].op == "IDENTITY"
+        assert _sig_str(entries[1]) == "B" and entries[1].op == "IDENTITY"
+        assert _sig_str(entries[2]) == "C" and entries[2].op == "IDENTITY"
         assert _sig_str(entries[3]) == "ABC" and entries[3].op == "CANONIZE"
         assert _node_strs(entries[3]) == ["A", "B", "C"]
-        assert _sig_str(entries[4]) == "ABC" and entries[4].op == "UNSIGNED"
+        assert _sig_str(entries[4]) == "ABC" and entries[4].op == "IDENTITY"
 
     # -- KS-20: No MCS for single-char -----------------------------------
 
     def test_ks20_no_mcs_for_single_char(self):
-        """KS-20: A → single UNSIGNED entry, no component expansion."""
+        """KS-20: A → single IDENTITY entry, no component expansion."""
         entries = compile_dev("A")
         assert len(entries) == 1
-        assert entries[0].op == "UNSIGNED"
+        assert entries[0].op == "IDENTITY"
         assert _sig_str(entries[0]) == "A"
         assert entries[0].nodes == []
 
@@ -795,7 +795,7 @@ class TestStructure:
         assert len(canon[0].nodes) >= 1
 
     def test_ks34_nodes_always_list_unsigned(self):
-        """KS-34: UNSIGNED entry nodes is an empty list (not None)."""
+        """KS-34: IDENTITY entry nodes is an empty list (not None)."""
         entries = compile_dev("A")
         assert len(entries) == 1
         assert isinstance(entries[0].nodes, list)
@@ -834,7 +834,7 @@ class TestEncoding:
         assert entry.signature & 1 == 0, (
             f"Mod32 fallback signature {entry.signature:#x} should have bit 0 clear"
         )
-        assert entry.op == "UNSIGNED"
+        assert entry.op == "IDENTITY"
 
 
 # ===================================================================
@@ -876,7 +876,7 @@ class TestComplexExamples:
 
     @pytest.mark.xfail(
         reason="KS-35/§14.8: Emitter produces 3 entries instead of spec's 5. "
-               "Missing C and D UNSIGNED entries (scope-sig identity not "
+               "Missing C and D IDENTITY entries (scope-sig identity not "
                "emitted for operator scopes in child blocks). Spec §14.8 says 5 entries.",
         strict=True,
     )
@@ -887,32 +887,32 @@ class TestComplexExamples:
         assert len(entries) == 5
         assert has_entry(entries, sig="A", op="CANONIZE", nodes=["B", "C"])
         assert has_entry(entries, sig="D", op="UNDERSIGN", nodes=["C"])
-        assert has_entry(entries, sig="B", op="UNSIGNED", nodes=[])
-        assert has_entry(entries, sig="C", op="UNSIGNED", nodes=[])
-        assert has_entry(entries, sig="D", op="UNSIGNED", nodes=[])
+        assert has_entry(entries, sig="B", op="IDENTITY", nodes=[])
+        assert has_entry(entries, sig="C", op="IDENTITY", nodes=[])
+        assert has_entry(entries, sig="D", op="IDENTITY", nodes=[])
 
     def test_sec148_presence(self):
         """§14.8 secondary regression — key entries present (actual: 3 entries).
 
         After fixing _compile_children, bare Signature items in operator scopes
-        no longer emit spurious UNSIGNED. D UNSIGNED is also gone because D
+        no longer emit spurious IDENTITY. D IDENTITY is also gone because D
         was a bare Signature node of C = D. The spec expects 5 entries
-        (including C UNSIGNED and D UNSIGNED), but those come from a separate
+        (including C IDENTITY and D IDENTITY), but those come from a separate
         code path (child_block bare scopes) not addressed by this fix.
         """
         entries = compile_dev(_SEC148_SOURCE)
         assert len(entries) == 3
         assert has_entry(entries, sig="A", op="CANONIZE", nodes=["B", "C"])
         assert has_entry(entries, sig="D", op="UNDERSIGN", nodes=["C"])
-        assert has_entry(entries, sig="B", op="UNSIGNED", nodes=[])
+        assert has_entry(entries, sig="B", op="IDENTITY", nodes=[])
 
     # -- KS-35: §14.11 complex nested (master regression) ----------------
 
     @pytest.mark.xfail(
-        reason="KS-35: Emitter produces 33 entries (with extra UNSIGNED from "
+        reason="KS-35: Emitter produces 33 entries (with extra IDENTITY from "
                "_compile_children and duplicate L unsigned from MHALL MCS). "
                "Spec §14.11 shows 25 entries, PROMPT expects 21 after dedup. "
-               "Code deduplicates CANONIZE only, not UNSIGNED.",
+               "Code deduplicates CANONIZE only, not IDENTITY.",
         strict=True,
     )
     def test_ks35_complex_nested_strict(self):
@@ -943,7 +943,7 @@ class TestComplexExamples:
         assert len(entries) == 21
 
         # Spot-check critical entries by dbg.label
-        assert entries[0].dbg and entries[0].dbg.label == "M" and entries[0].op == "UNSIGNED"
+        assert entries[0].dbg and entries[0].dbg.label == "M" and entries[0].op == "IDENTITY"
         # MHALL CANONIZE with 5 nodes
         mhall_canon = [e for e in entries if e.dbg and e.dbg.label == "MHALL" and e.op == "CANONIZE"]
         assert len(mhall_canon) == 1
@@ -975,8 +975,8 @@ class TestComplexExamples:
 
         # MCS unsigned identities for all single-char identifiers
         for char in ["M", "H", "A", "L", "S", "V", "O"]:
-            assert has_entry(entries, sig=char, op="UNSIGNED"), (
-                f"Missing UNSIGNED entry for {char}"
+            assert has_entry(entries, sig=char, op="IDENTITY"), (
+                f"Missing IDENTITY entry for {char}"
             )
 
         # MCS CANONIZE for compound identifiers
@@ -1037,7 +1037,7 @@ class TestComplexExamples:
 
         # MCS for MHALL should resolve M→Mary, H→Had, A→"A", L→Little, L→Lamb
         # Check that "Mary" appears as a signature (from MCS resolution)
-        assert has_entry(entries, sig="Mary", op="UNSIGNED") or \
+        assert has_entry(entries, sig="Mary", op="IDENTITY") or \
                has_entry(entries, sig="Mary", op="CANONIZE"), \
                "Expected 'Mary' entries from MHALL MCS resolution"
 
@@ -1075,5 +1075,5 @@ class TestComplexExamples:
 
         # All entries should have valid op and sig_level
         for e in entries:
-            assert e.op in ("COUNTERSIGN", "CANONIZE", "CONNOTATE", "UNDERSIGN", "UNSIGNED")
+            assert e.op in ("COUNTERSIGN", "CANONIZE", "CONNOTATE", "UNDERSIGN", "IDENTITY")
             assert e.sig_level in ("S1", "S2", "S3", "S4")

@@ -83,7 +83,7 @@ class TestMod32Fallback:
 
     def test_unbound_sig_uint64(self, encoder: TokenEncoder, mod_tz: ModTokenizer) -> None:
         """Unbound char produces a proper uint64 (bit-packed)."""
-        entry = SymbolicEntry(sig="Z", nodes=[], op="UNSIGNED")
+        entry = SymbolicEntry(sig="Z", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
         assert results[0].signature == mod_tz.encode("Z")[0]
         assert results[0].signature > 0
@@ -95,7 +95,7 @@ class TestNodesAlwaysList:
     """CompiledEntry.nodes is always list[int], never None or bare int."""
 
     def test_empty_nodes(self, encoder: TokenEncoder) -> None:
-        entry = SymbolicEntry(sig="A", nodes=[], op="UNSIGNED")
+        entry = SymbolicEntry(sig="A", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
         assert len(results) == 1
         assert results[0].nodes == []
@@ -119,7 +119,7 @@ class TestNodesAlwaysList:
     def test_all_entries_have_list_nodes(self, encoder: TokenEncoder) -> None:
         """Every CompiledEntry produced must have list nodes."""
         entries = [
-            SymbolicEntry(sig="A", nodes=[], op="UNSIGNED"),
+            SymbolicEntry(sig="A", nodes=[], op="IDENTITY"),
             SymbolicEntry(sig="B", nodes=["C"], op="CONNOTATE"),
             SymbolicEntry(sig="D", nodes=["E", "F"], op="COUNTERSIGN"),
         ]
@@ -134,13 +134,13 @@ class TestSignatureEncoding:
     """Signature strings are correctly encoded to uint64."""
 
     def test_single_char_sig(self, encoder: TokenEncoder, mod_tz: ModTokenizer) -> None:
-        entry = SymbolicEntry(sig="A", nodes=[], op="UNSIGNED")
+        entry = SymbolicEntry(sig="A", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
         assert results[0].signature == mod_tz.encode("A")[0]
 
     def test_multi_char_sig_packed(self, encoder: TokenEncoder, mod_tz: ModTokenizer) -> None:
         """Multi-char identifier is packed via OR-reduction."""
-        entry = SymbolicEntry(sig="HELLO", nodes=[], op="UNSIGNED")
+        entry = SymbolicEntry(sig="HELLO", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
         expected = mod_tz.encode("HELLO")[0]
         assert results[0].signature == expected
@@ -169,10 +169,10 @@ class TestSignificanceLevels:
         ("UNDERSIGN", "S1"),
         ("CANONIZE", "S2"),
         ("CONNOTATE", "S3"),
-        ("UNSIGNED", "S4"),
+        ("IDENTITY", "S4"),
     ])
     def test_sig_level(self, encoder: TokenEncoder, op: str, expected_level: str) -> None:
-        entry = SymbolicEntry(sig="A", nodes=["B"] if op != "UNSIGNED" else [], op=op)
+        entry = SymbolicEntry(sig="A", nodes=["B"] if op != "IDENTITY" else [], op=op)
         results = encoder.encode_entries([entry])
         # Find the main entry (last one with matching op)
         main = [r for r in results if r.op == op]
@@ -186,7 +186,7 @@ class TestFullUint64:
     """Signatures are raw values from tokenizer — not masked or truncated."""
 
     def test_no_masking(self, encoder: TokenEncoder, mod_tz: ModTokenizer) -> None:
-        entry = SymbolicEntry(sig="ABC", nodes=[], op="UNSIGNED")
+        entry = SymbolicEntry(sig="ABC", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
         raw = mod_tz.encode("ABC")[0]
         assert results[0].signature == raw
@@ -197,7 +197,7 @@ class TestFullUint64:
         """For multi-token words, sig == make_signature(tokens)."""
         mock = MockMultiTokenTokenizer({"WORD": [100, 200]})
         enc = TokenEncoder(mock)
-        entry = SymbolicEntry(sig="WORD", nodes=[], op="UNSIGNED")
+        entry = SymbolicEntry(sig="WORD", nodes=[], op="IDENTITY")
         results = enc.encode_entries([entry])
         expected = make_signature([100, 200])
         # Main entry is last (after MCS expansion entries)
@@ -216,8 +216,8 @@ class TestMultiTokenMCS:
         entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTATE")
         results = enc.encode_entries([entry])
 
-        # Should have: UNSIGNED(10), UNSIGNED(20), CANONIZE(30, [10,20]), CONNOTATE(A, [30])
-        unsigned_entries = [r for r in results if r.op == "UNSIGNED"]
+        # Should have: IDENTITY(10), IDENTITY(20), CANONIZE(30, [10,20]), CONNOTATE(A, [30])
+        unsigned_entries = [r for r in results if r.op == "IDENTITY"]
         canonize_entries = [r for r in results if r.op == "CANONIZE"]
         connotate_entries = [r for r in results if r.op == "CONNOTATE"]
 
@@ -239,14 +239,14 @@ class TestMultiTokenMCS:
         """A multi-token signature triggers MCS entries."""
         mock = MockMultiTokenTokenizer({"WORD": [50, 60]})
         enc = TokenEncoder(mock)
-        entry = SymbolicEntry(sig="WORD", nodes=[], op="UNSIGNED")
+        entry = SymbolicEntry(sig="WORD", nodes=[], op="IDENTITY")
         results = enc.encode_entries([entry])
 
         packed = make_signature([50, 60])
 
-        # MCS emits: UNSIGNED(50), UNSIGNED(60), CANONIZE(packed, [50,60])
-        # Then main: UNSIGNED(packed, [])
-        mcs_unsigned = [r for r in results if r.op == "UNSIGNED" and r.signature in (50, 60)]
+        # MCS emits: IDENTITY(50), IDENTITY(60), CANONIZE(packed, [50,60])
+        # Then main: IDENTITY(packed, [])
+        mcs_unsigned = [r for r in results if r.op == "IDENTITY" and r.signature in (50, 60)]
         canonize_entries = [r for r in results if r.op == "CANONIZE"]
         main_entry = results[-1]
 
@@ -259,7 +259,7 @@ class TestMultiTokenMCS:
 
         # Main entry uses the packed signature
         assert main_entry.signature == packed
-        assert main_entry.op == "UNSIGNED"
+        assert main_entry.op == "IDENTITY"
 
     def test_mcs_entries_come_before_main(self) -> None:
         """MCS expansion entries appear before the entry that references them."""
@@ -272,7 +272,7 @@ class TestMultiTokenMCS:
         assert results[-1].op == "CONNOTATE"
         # All MCS entries come before
         for r in results[:-1]:
-            assert r.op in ("UNSIGNED", "CANONIZE")
+            assert r.op in ("IDENTITY", "CANONIZE")
 
 
 # ── Dedup multi-token MCS ────────────────────────────────────────────
@@ -289,8 +289,8 @@ class TestDedupMCS:
         ]
         results = enc.encode_entries(entries)
 
-        # Only 2 UNSIGNED entries (not 4) and 1 CANONIZE (not 2)
-        unsigned_entries = [r for r in results if r.op == "UNSIGNED"]
+        # Only 2 IDENTITY entries (not 4) and 1 CANONIZE (not 2)
+        unsigned_entries = [r for r in results if r.op == "IDENTITY"]
         canonize_entries = [r for r in results if r.op == "CANONIZE"]
         connotate_entries = [r for r in results if r.op == "CONNOTATE"]
 
@@ -320,8 +320,8 @@ class TestCompiledEntryKLine:
         assert a == b
 
     def test_inequality_sig(self) -> None:
-        a = CompiledEntry(signature=42, nodes=[10], op="UNSIGNED")
-        b = CompiledEntry(signature=99, nodes=[10], op="UNSIGNED")
+        a = CompiledEntry(signature=42, nodes=[10], op="IDENTITY")
+        b = CompiledEntry(signature=99, nodes=[10], op="IDENTITY")
         assert a != b
 
     def test_hash(self) -> None:
@@ -332,12 +332,12 @@ class TestCompiledEntryKLine:
 
     def test_nodes_normalized_none(self) -> None:
         """KLine._normalize_nodes handles None → []."""
-        entry = CompiledEntry(signature=42, nodes=None, op="UNSIGNED")
+        entry = CompiledEntry(signature=42, nodes=None, op="IDENTITY")
         assert entry.nodes == []
 
     def test_nodes_normalized_int(self) -> None:
         """KLine._normalize_nodes handles int → [int]."""
-        entry = CompiledEntry(signature=42, nodes=10, op="UNSIGNED")
+        entry = CompiledEntry(signature=42, nodes=10, op="IDENTITY")
         assert entry.nodes == [10]
 
 
@@ -348,7 +348,7 @@ class TestMultipleEntries:
 
     def test_ordering_and_completeness(self, encoder: TokenEncoder) -> None:
         entries = [
-            SymbolicEntry(sig="A", nodes=[], op="UNSIGNED"),
+            SymbolicEntry(sig="A", nodes=[], op="IDENTITY"),
             SymbolicEntry(sig="B", nodes=["C"], op="CONNOTATE"),
             SymbolicEntry(sig="D", nodes=["E", "F"], op="CANONIZE"),
         ]
@@ -357,7 +357,7 @@ class TestMultipleEntries:
         assert len(results) >= 3
         # Ops present in order
         ops = [r.op for r in results]
-        assert "UNSIGNED" in ops
+        assert "IDENTITY" in ops
         assert "CONNOTATE" in ops
         assert "CANONIZE" in ops
 

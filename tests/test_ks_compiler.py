@@ -124,7 +124,7 @@ class TestKS35ComplexNested:
         """Total entry count matches the v3 ASTEmitter output.
 
         After fix: bare Signature items in operator scopes no longer emit
-        spurious UNSIGNED entries. Was 33, now 28 (5 fewer).
+        spurious IDENTITY entries. Was 33, now 28 (5 fewer).
         """
         assert len(self.entries) == 28
 
@@ -146,10 +146,10 @@ class TestKS35ComplexNested:
 
     def test_mcs_mhall_components(self) -> None:
         """MCS for MHALL: unsigned entries for M, H, A, L components."""
-        assert _has_entry(self.entries, "UNSIGNED", "M")
-        assert _has_entry(self.entries, "UNSIGNED", "H")
-        assert _has_entry(self.entries, "UNSIGNED", "A")
-        assert _has_entry(self.entries, "UNSIGNED", "L")
+        assert _has_entry(self.entries, "IDENTITY", "M")
+        assert _has_entry(self.entries, "IDENTITY", "H")
+        assert _has_entry(self.entries, "IDENTITY", "A")
+        assert _has_entry(self.entries, "IDENTITY", "L")
 
     def test_mcs_mhall_canonize(self) -> None:
         """MCS canonization: MHALL → [M, H, A, L, L]."""
@@ -157,9 +157,9 @@ class TestKS35ComplexNested:
 
     def test_mcs_svo_components(self) -> None:
         """MCS for SVO: unsigned entries for S, V, O components."""
-        assert _has_entry(self.entries, "UNSIGNED", "S")
-        assert _has_entry(self.entries, "UNSIGNED", "V")
-        assert _has_entry(self.entries, "UNSIGNED", "O")
+        assert _has_entry(self.entries, "IDENTITY", "S")
+        assert _has_entry(self.entries, "IDENTITY", "V")
+        assert _has_entry(self.entries, "IDENTITY", "O")
 
     def test_mcs_svo_canonize(self) -> None:
         """MCS canonization: SVO → [S, V, O]."""
@@ -195,12 +195,12 @@ class TestKS35ComplexNested:
             assert isinstance(e, CompiledEntry)
 
     def test_unsigned_count(self) -> None:
-        """17 UNSIGNED entries from MCS expansion.
+        """17 IDENTITY entries from MCS expansion.
 
         After fix: bare Signature items in operator scopes no longer emit
-        spurious UNSIGNED entries. Was 22, now 17 (5 fewer).
+        spurious IDENTITY entries. Was 22, now 17 (5 fewer).
         """
-        assert _count_entries(self.entries, "UNSIGNED") == 17
+        assert _count_entries(self.entries, "IDENTITY") == 17
 
 
 # ---------------------------------------------------------------------------
@@ -248,12 +248,12 @@ class TestKS36NLPBound:
 
         # MCS for MHALL should have resolved characters
         # M → Mary, H → Had, A → "A", L → "Little", L → "Lamb"
-        assert any(op == "UNSIGNED" and sig == "Mary" for op, sig, _ in decoded), \
-            "Expected UNSIGNED Mary entry"
-        assert any(op == "UNSIGNED" and sig == "Had" for op, sig, _ in decoded), \
-            "Expected UNSIGNED Had entry"
-        assert any(op == "UNSIGNED" and sig == "A" for op, sig, _ in decoded), \
-            "Expected UNSIGNED A entry"
+        assert any(op == "IDENTITY" and sig == "Mary" for op, sig, _ in decoded), \
+            "Expected IDENTITY Mary entry"
+        assert any(op == "IDENTITY" and sig == "Had" for op, sig, _ in decoded), \
+            "Expected IDENTITY Had entry"
+        assert any(op == "IDENTITY" and sig == "A" for op, sig, _ in decoded), \
+            "Expected IDENTITY A entry"
 
     def test_inline_binding_subject(self) -> None:
         """Inline annotation S(ubject) → 'Subject'.
@@ -287,7 +287,7 @@ class TestKS36NLPBound:
         for e in entries:
             assert isinstance(e, CompiledEntry)
             assert isinstance(e.signature, int)
-            assert e.op in ("COUNTERSIGN", "CANONIZE", "CONNOTATE", "UNDERSIGN", "UNSIGNED")
+            assert e.op in ("COUNTERSIGN", "CANONIZE", "CONNOTATE", "UNDERSIGN", "IDENTITY")
 
 
 # ---------------------------------------------------------------------------
@@ -390,7 +390,7 @@ class TestKScriptAPI:
         """KScript('A') produces a single unsigned entry."""
         model = KScript("A")
         assert len(model.entries) == 1
-        assert model.entries[0].op == "UNSIGNED"
+        assert model.entries[0].op == "IDENTITY"
         assert _decode_sig(model.entries[0]) == "A"
 
     def test_complex_source(self) -> None:
@@ -436,9 +436,9 @@ class TestPipelineWiring:
         kfile = Parser(tokens).parse()
         entries = compiler.compile(kfile)
         # MCS for ABC
-        assert _has_entry(entries, "UNSIGNED", "A")
-        assert _has_entry(entries, "UNSIGNED", "B")
-        assert _has_entry(entries, "UNSIGNED", "C")
+        assert _has_entry(entries, "IDENTITY", "A")
+        assert _has_entry(entries, "IDENTITY", "B")
+        assert _has_entry(entries, "IDENTITY", "C")
         # No MCS for single-char X
         assert _has_entry(entries, "COUNTERSIGN", "ABC", "X")
         assert _has_entry(entries, "COUNTERSIGN", "X", "ABC")
