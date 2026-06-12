@@ -9,13 +9,12 @@ Pipeline (spec §1.1)::
                                                         ↓
                                               list[CompiledEntry]
 
-Key v3 design decisions (vs v2):
-  - **BindingScope always created**: No Mod32 mode switch.  A BindingScope
-    is always instantiated for every compilation.  When the tokenizer is
-    Mod32/Mod64 (supports_mcs=True), the scope simply has no word lists,
-    so resolve() always returns None and all characters pass through raw.
-  - **No skip_mcs parameter**: MCS expansion always runs in the ASTEmitter.
-    The TokenEncoder handles the actual encoding via the tokenizer.
+Design:
+  - A BindingScope is always created for every compilation. When the
+    tokenizer has no word lists, resolve() returns None and all characters
+    pass through raw.
+  - MCS expansion always runs in the ASTEmitter. The TokenEncoder handles
+    the actual encoding via the tokenizer.
 
 The ``compile_source`` convenience function creates a Lexer, Parser, and
 Compiler in sequence — the typical one-shot usage for compiling a source
@@ -74,7 +73,7 @@ class Compiler:
         Returns:
             Ordered list of CompiledEntry objects.
         """
-        # 1. Always create BindingScope — no Mod32 mode switch
+        # 1. Create BindingScope, push root scope
         scope = BindingScope()
         scope.push_scope()  # Root scope
 

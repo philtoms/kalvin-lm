@@ -1,11 +1,8 @@
 """AST node definitions for KScript v3 compiler.
 
-Key differences from old src/kscript/ast.py:
-- No chain_right field. OperatorScope replaces old Construct with chain links.
-  Scopes are identified by operator boundaries (§3).
-- Annotation replaces Comment — reflects BPE encoding purpose.
-- ScopeItem type for OperatorScope.items includes bare Signature nodes.
-- KScriptFile has no Script wrapper — single script per file.
+The AST models operator-delimited scopes (spec §3). Each OperatorScope
+holds a signature, an optional operator, items (nodes), and an optional
+indented child block. Annotations provide BPE encoding word text.
 
 Spec ref: @specs/kscript.md v3.0 §4–5
 """
@@ -34,8 +31,8 @@ class Annotation:
     """BPE annotation node — parenthesised expression providing word text for
     BPE token encoding.
 
-    Renamed from Comment in the old AST to reflect its semantic purpose.
-    The text includes enclosing parentheses.
+    Provides word text for BPE token encoding. The text includes
+    enclosing parentheses.
     """
     text: str
     line: int
@@ -46,8 +43,7 @@ class Annotation:
 class OperatorScope:
     """A scope created by an operator boundary (§3).
 
-    Replaces the old Construct with chain_right. Scopes are identified by
-    operator boundaries, not by chain links.
+    Scopes are identified by operator boundaries (spec §3).
 
     Fields:
         sig: The identifier preceding the operator (the scope's signature).
@@ -82,8 +78,8 @@ class Block:
 class KScriptFile:
     """Top-level file container.
 
-    Deviation from spec §5: no Script wrapper — KScriptFile holds constructs
-    directly since there is exactly one script per file.
+    No Script wrapper — KScriptFile holds constructs directly since
+    there is exactly one script per file.
     """
     constructs: list[ConstructItem]
 

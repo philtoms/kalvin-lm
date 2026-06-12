@@ -243,11 +243,11 @@ _Avoid_: comment mapping (too vague — the binding is a specific compiler artef
 
 ### NLP Binding Scope
 
-The lexical scope of an NLP binding, created by `chain_right` (`=>`) boundaries. Each scope holds word lists (searched most-recent-first) and per-character occurrence counters (starting at zero). Characters seek from the current (innermost) scope first, then parent scopes upward. Inline bindings shadow outer bindings within their containing subscript block. Standard lexical scoping: inner blocks inherit and can shadow, exits restore. Each new scope starts with all counters at zero.
+The lexical scope of an NLP binding, created by operator boundaries (`==`, `=`, `>`, `=>`). Each scope holds word lists (searched most-recent-first) and per-character occurrence counters (starting at zero). Characters seek from the current (innermost) scope first, then parent scopes upward. Inline bindings shadow outer bindings within their containing subscript block. Standard lexical scoping: inner blocks inherit and can shadow, exits restore. Each new scope starts with all counters at zero.
 
 ### BindingScope
 
-A lightweight scope stack that replaces the former separate resolution pass and mapping artefact. Created by the `Compiler` as a local variable in `compile()`, passed to the `ASTEmitter` for inline resolution during its single AST walk. Provides `push_scope()`, `pop_scope()`, `add_word_list(words)`, and `resolve(char) → str | None`. Each scope holds word lists and per-character occurrence counters. The former `NLP Symbol Table` and `Binding Resolver` have been replaced by BindingScope's inline resolution.
+A lightweight scope stack for inline binding resolution during the ASTEmitter's single AST walk. Created by the `Compiler` and passed to the `ASTEmitter`. Provides `push_scope()`, `pop_scope()`, `add_words(words)`, and `resolve(char) → str | None`. Each scope holds word lists and per-character occurrence counters.
 
 ### Mod32 Fallback
 
@@ -255,5 +255,5 @@ When a single-character signature cannot be resolved through any binding mechani
 
 ### BPE Annotation
 
-A parenthesised annotation in KScript source that provides word text for BPE token encoding. Syntax: `(word1 word2 ...)` (block) or `S(ubject)` (inline, one word). Inline syntax takes the first character from the SIGNATURE token and appends the annotation content stripped of parens, preserving case (`S` + `ubject` → `"Subject"`). Block annotations are matched via first-letter matching (case-insensitive): a character matches a word whose first letter equals the character (ignoring case). Surplus words are inert — there is no word count constraint. In Mod32 mode, annotations are ignored. In NLP mode, annotations drive word→BPE-token resolution via BindingScope.
-_Avoid_: comment (misleading — implies inert documentation; these are active encoding annotations), NLP word list (legacy term)
+A parenthesised annotation in KScript source that provides word text for BPE token encoding. Syntax: `(word1 word2 ...)` (block) or `S(ubject)` (inline, one word). Inline syntax takes the first character from the SIGNATURE token and appends the annotation content stripped of parens, preserving case (`S` + `ubject` → `"Subject"`). Block annotations are matched via first-letter matching (case-insensitive): a character matches a word whose first letter equals the character (ignoring case). Surplus words are inert — there is no word count constraint.
+_Avoid_: comment (misleading — implies inert documentation; these are active encoding annotations), NLP word list (legacy term), word list (too vague)

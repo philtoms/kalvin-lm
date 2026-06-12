@@ -44,7 +44,7 @@ converts SymbolicEntry tuples to encoded uint64 values.
   CANONIZE scope boundaries trigger push_scope/pop_scope on the BindingScope.
   Parent kline tracking is saved/restored for Rule B4 override patching.
 
-  When scope=None (Mod32 mode), all binding logic is skipped.
+  When scope is None, all binding logic is skipped.
 
 **Key design constraints:**
   - nodes field is ALWAYS list[str] — never None, never a bare string,
@@ -107,7 +107,7 @@ class ASTEmitter:
     Args:
         scope: Optional BindingScope for NLP binding resolution.
             When provided, single-character identifiers are resolved inline
-            via scope.resolve().  When None (Mod32 mode), all identifiers
+            via scope.resolve().  When None, all identifiers
             pass through as raw characters.
         dev: Enable development/diagnostic mode.
     """
@@ -393,7 +393,7 @@ class ASTEmitter:
         """Resolve a single character via BindingScope.
 
         Returns the resolved word if bound, otherwise the raw character.
-        When scope=None (Mod32 mode), always returns the raw character.
+        When scope is None, always returns the raw character.
         """
         if self._scope is not None:
             word = self._scope.resolve(char)

@@ -9,15 +9,13 @@
 
 ## Overview
 
-This plan rebuilds the KScript compiler from scratch against the consolidated spec (v3.0). The existing `src/kscript/` code (2385 LOC) implements an earlier architecture with several superseded assumptions: `chain_right` AST structure, monolithic `Compiler`, singleton node unwrapping, Mod32 as a standalone mode, and no scope model. The new architecture replaces these with:
+This plan builds the KScript compiler from scratch against the consolidated spec (v3.0). The implementation lives in `src/ks/` (new module folder). The existing `src/kscript/` code is not modified and will be removed once the new implementation is verified.
 
 - **Scope model** as the central organising principle (§3)
 - **Four-stage pipeline**: Lexer → Parser → ASTEmitter → TokenEncoder (§1.1)
 - **`nodes: list[uint64]`** everywhere — no None, no singleton unwrapping (§6.1)
 - **BPE annotations** replacing comments (§9)
 - **No decompiler, no file format I/O, no CLI** — compilation output is the product
-
----
 
 ## Dependency Graph
 
@@ -174,12 +172,11 @@ class Block:
 ConstructItem: TypeAlias = "Annotation | OperatorScope | Block"
 ```
 
-### Key differences from old AST
+### Key structural points
 
-- **No `chain_right`**. The `OperatorScope` replaces the old `Construct` with its `chain_right` field. Scopes are identified by operator boundaries, not by chain links.
-- **`Annotation`** replaces `Comment`.
+- **`OperatorScope`** models operator-delimited scopes. No `chain_right` field.
+- **`Annotation`** provides BPE encoding word text.
 - **`items`** list holds nodes and child constructs within the scope.
-- **`child_block`** holds indented child scope.
 
 ### Test mapping
 
@@ -762,7 +759,7 @@ kscript/
 ```
 
 **Total files:** 9  
-**Deleted from old codebase:** `decompiler.py`, `output.py`, `__main__.py`, `nlp_types.py`  
+**Deleted from old codebase:** `decompiler.py`, `output.py`, `__main__.py`, `nlp_types.py`
 **Estimated LOC:** ~1800  
 **Total test count:** ~47
 
@@ -773,9 +770,9 @@ kscript/
 | Decision | Rationale |
 |----------|-----------|
 | No decompiler, no file I/O, no CLI | Spec scope reduction. Compilation output is the product. Scripts handle format conversion. |
-| No `chain_right` | Replaced by scope model (§3). Each operator creates a scope boundary. Cleaner, simpler. |
+| No `chain_right` | Scope model (§3). Each operator creates a scope boundary. |
 | `nodes: list[uint64]` always | Eliminates None checks, singleton unwrapping, type branching. Uniform structure. |
-| BindingScope always active | No Mod32 mode switch. Mod32 is just the fallback for unbound characters. |
+| BindingScope always active | Mod32 is the fallback for unbound characters. |
 | MCS dedup on CANONIZE only | Prevents duplicate entries from MCS + subscript CANONIZE overlap. Not a general dedup mechanism. |
 | `Annotation` replaces `Comment` | Terminology reflects purpose: these are BPE encoding inputs, not inert documentation. |
 | Multi-token MCS in TokenEncoder | BPE subword decomposition is an encoding concern. The ASTEmitter works with symbolic strings. |
