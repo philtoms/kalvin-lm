@@ -16,8 +16,7 @@ from collections import Counter
 
 sys.path.insert(0, "src")
 
-from kscript.compiler import compile_source
-from kscript.decompiler import Decompiler
+from ks.compiler import compile_source
 from kalvin.agent import KAgent
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.expand import D_MAX, boundaries, classify
@@ -47,23 +46,18 @@ def significance_level(sig: int) -> str:
     return classify(sig, s12, s23, s34)
 
 
-_decompiler: Decompiler | None = None
-
-
-def kline_display(kline) -> str:
-    """Human-readable display for a KLine (decompiled or dbg_text)."""
-    global _decompiler
+def kline_display(kline, _tokenizer) -> str:
+    """Human-readable display for a KLine."""
     if kline is None:
         return "<none>"
-    try:
-        if _decompiler is None:
-            _decompiler = Decompiler(tokenizer=tokenizer)
-        entries = _decompiler.decompile([kline])
-        if entries:
-            return entries[0].to_kscript()
-    except Exception:
-        pass
-    return kline.dbg_text or f"sig={kline.signature:#x}"
+    # Try dbg_text first (dev mode entries have readable labels)
+    if kline.dbg_text:
+        nodes = kline.nodes
+        if not nodes:
+            return kline.dbg_text
+        node_strs = [_tokenizer.decode([n]) or f"#{n:#x}" for n in nodes]
+        return f"{kline.dbg_text}: {node_strs}"
+    return f"sig={kline.signature:#x}"
 
 
 # ── Main ──────────────────────────────────────────────────────────────
@@ -94,14 +88,14 @@ def main() -> None:
         counts[key] += 1
 
         if args.verbose:
-            query_str = kline_display(e.query)
-            proposal_str = kline_display(e.proposal)
+            query_str = kline_display(e.query, tokenizer)
+            proposal_str = kline_display(e.proposal, tokenizer)
             arrow = "←" if e.significance == D_MAX - 1 else "|"
             print(f"  {e.kind:6s} {query_str} → {level} {arrow} {proposal_str}")
 
         if level == "S1" and e.kind != "ground":
-            query_str = kline_display(e.query)
-            proposal_str = kline_display(e.proposal)
+            query_str = kline_display(e.query, tokenizer)
+            proposal_str = kline_display(e.proposal, tokenizer)
             s1_entries.append(f"{query_str} ← {proposal_str}")
 
     adapter.subscribe(on_event)
@@ -109,7 +103,7 @@ def main() -> None:
     # Print compiled entries
     print("Compiled entries:")
     for k in klines:
-        print(f"  {kline_display(k)}")
+        print(f"  {kline_display(k, tokenizer)}")
 
     # Rationalise
     print("\nRationalising...")
