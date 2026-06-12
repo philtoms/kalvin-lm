@@ -4,7 +4,7 @@
 
 - @specs/kscript.md §6.2 (significance level assignment), §7.1 (identity operator), §8 (MCS expansion)
 - @specs/signature.md (signature value semantics)
-- @specs/countersign-resolution.md (significance levels by operator)
+- @specs/kscript.md §7 (significance levels by operator)
 - @specs/agent.md §3 (grounding assessment)
 - @specs/stm.md (sig == 0 behaviour)
 - @specs/nlp-curriculum-compat.md (decomposition entries)

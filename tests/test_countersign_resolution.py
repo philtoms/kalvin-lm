@@ -1,4 +1,8 @@
-"""Tests for countersign resolution spec (specs/countersign-resolution.md).
+"""Tests for countersign resolution behaviour.
+
+Spec references: @specs/agent.md §Rationalisation (Phase 2–5),
+@specs/model.md (is_countersigned, grounded STM exclusion),
+@specs/kscript.md §7 (operator significance levels).
 
 Covers: pre-registration, ground-check STM exclusion, self-filter,
 sig_level propagation, undersign=connotate identity, and countersign

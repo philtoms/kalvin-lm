@@ -268,7 +268,7 @@ Each emitted entry is tagged with a significance level based on the operator tha
 | Operator | Level | Meaning |
 |----------|-------|---------|
 | COUNTERSIGN (`==`) | S1 | Mutual / bidirectional |
-| UNDERSIGN (`=`) | S1 | Unconditional |
+| UNDERSIGN (`=`) | S3 | Unidirectional reversed |
 | CANONIZE (`=>`) | S2 | Canonical |
 | CONNOTATE (`>`) | S3 | Connotative |
 | IDENTITY (bare) | S4 | Identity — bare node, no relationships |
@@ -365,7 +365,15 @@ The number of nodes in an MCS canonization entry always equals the number of cha
 
 ### 8.3 MCS Deduplication
 
-An MCS canonization entry is a CANONIZE entry mapping a compound to its components. If the compilation rules would produce another CANONIZE entry with the same signature and nodes (e.g., a CANONIZE scope that aggregates the same components), the duplicate is silently dropped. Deduplication applies only to this specific MCS-vs-CANONIZE overlap — it is not a general deduplication mechanism.
+MCS deduplication prevents duplicate entries when the same identifier appears in multiple MCS expansions. Three categories are deduplicated:
+
+**Component identity dedup.** Each constituent character of an MCS expansion produces one IDENTITY (S4) entry. If a character was already emitted by a previous MCS expansion, the duplicate is silently dropped. Intra-expansion dedup also prevents duplicate emission when the same character appears multiple times in a compound (e.g., the second L in MHALL).
+
+**Canonization dedup.** An MCS canonization entry is a CANONIZE (S2) entry mapping a compound to its components. If another CANONIZE entry with the same signature and nodes would be produced (e.g., a CANONIZE scope that aggregates the same components), the duplicate is silently dropped.
+
+**Compound-own identity dedup.** After the canonization entry, MCS emits an IDENTITY (S4) entry for the compound itself. If the compound already has such an entry from a previous MCS expansion, the duplicate is silently dropped.
+
+Deduplication applies only to MCS-produced entries — it is not a general deduplication mechanism. Operator-produced entries (COUNTERSIGN, UNDERSIGN, CONNOTATE) and non-MCS IDENTITY entries are always emitted.
 
 ---
 
@@ -719,20 +727,20 @@ Compiled:
 | 11 | MCS SVO identity | SVO | [] | IDENTITY | S4 |
 | 12 | Countersign | MHALL | [SVO] | COUNTERSIGN | S1 |
 | 13 | Countersign reverse | SVO | [MHALL] | COUNTERSIGN | S1 |
-| — | SVO canonize subscript | — | — | — | Dropped (MCS dedup: identical to entry 10) |
+| — | SVO canonize subscript | — | — | — | Dropped (canonize dedup: identical to entry 10) |
 | 14 | Undersign S | M | [S] | UNDERSIGN | S1 |
 | 15 | Undersign V | H | [V] | UNDERSIGN | S1 |
-| — | MCS ALL A | — | — | — | Dropped (MCS dedup: {A:[]} identical to entry 3) |
-| — | MCS ALL L | — | — | — | Dropped (MCS dedup: {L:[]} identical to entry 4) |
+| — | MCS ALL A | — | — | — | Dropped (identity dedup: {A:[]} identical to entry 3) |
+| — | MCS ALL L | — | — | — | Dropped (identity dedup: {L:[]} identical to entry 4) |
 | 16 | MCS ALL canonize | ALL | [A, L, L] | CANONIZE | S2 |
 | 17 | MCS ALL identity | ALL | [] | IDENTITY | S4 |
 | 18 | Undersign O | ALL | [O] | UNDERSIGN | S1 |
-| — | ALL canonize subscript | — | — | — | Dropped (MCS dedup: identical to entry 16) |
+| — | ALL canonize subscript | — | — | — | Dropped (canonize dedup: identical to entry 16) |
 | 19 | Undersign D | D | [A] | UNDERSIGN | S1 |
 | 20 | Undersign M | M | [L] | UNDERSIGN | S1 |
 | 21 | Connotate | L | [O] | CONNOTATE | S3 |
 
-> **MCS deduplication in action:** Four entries are silently dropped because their `(signature, nodes)` pairs were already emitted by MCS expansion. Only MCS canonization entries are deduplicated — other duplicate patterns are emitted as-is.
+> **MCS deduplication in action:** Four entries are silently dropped because they duplicate already-emitted MCS entries. Two identity entries (MCS ALL component A and L) are dropped because MHALL's expansion already provided them. Two canonization entries (SVO subscript and ALL subscript) are dropped because their MCS canonization counterparts already exist. Only MCS-produced entries (identity and canonization) are deduplicated — operator-produced duplicates are emitted as-is.
 
 ### 14.12 NLP-Bound Example
 
@@ -816,3 +824,8 @@ All other entries follow the same operator rules as §14.11, with resolved words
 | KS-35 | Complex nested example (§14.11) produces correct complete entry list | Integration |
 | KS-36 | NLP-bound example (§14.12) produces correct resolved entries | Integration |
 | KS-37 | Mixed NLP/Mod32 klines: bound characters encoded via NLP-BPE, unbound characters via Mod32 fallback | Integration |
+| **MCS Deduplication** | | |
+| KS-38 | Component identity dedup: overlapping MCS expansions silently drop duplicate character identities (S4) | MCS Dedup |
+| KS-39 | Intra-expansion dedup: repeated characters in one compound emit only one identity (e.g., second L in MHALL) | MCS Dedup |
+| KS-40 | Canonization dedup: CANONIZE entries with same (sig, nodes) silently dropped across MCS and subscript | MCS Dedup |
+| KS-41 | Compound-own identity dedup: second MCS expansion of same compound drops duplicate identity | MCS Dedup |
