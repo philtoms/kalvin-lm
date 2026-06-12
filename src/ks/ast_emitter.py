@@ -129,6 +129,13 @@ class ASTEmitter:
         self._parent_kline_chars: str | None = None
         self._parent_kline_canonize_idx: int | None = None
 
+        # CANONIZE subscript identity UNSIGNED context flag.
+        # Set when processing children of a CANONIZE scope that has recursive
+        # content (OperatorScope items or child_block). Propagated inward so
+        # that deeply nested identifiers also get identity UNSIGNED entries.
+        # Saved/restored alongside parent kline tracking.
+        self._in_canonize_subscript: bool = False
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -328,6 +335,21 @@ class ASTEmitter:
         self.entries.append(SymbolicEntry(sig=sig, nodes=nodes, op=op))
 
     # ------------------------------------------------------------------
+    # Identity UNSIGNED emission for CANONIZE subscript blocks
+    # ------------------------------------------------------------------
+
+    def _emit_identity_unsigned(self, sig: str) -> None:
+        """Emit identity UNSIGNED only if no UNSIGNED entry for this sig exists.
+
+        Prevents duplicate UNSIGNED when MCS expansion already provided one
+        for the same identifier (e.g., S in SVO's MCS expansion).
+        This is NOT general deduplication — it's specific to identity UNSIGNED
+        emission in CANONIZE subscript blocks.
+        """
+        if not any(e.sig == sig and e.op == "UNSIGNED" for e in self.entries):
+            self._emit_entry(sig, [], "UNSIGNED")
+
+    # ------------------------------------------------------------------
     # Scope walk and child compilation (Step 3)
     # ------------------------------------------------------------------
 
@@ -342,21 +364,47 @@ class ASTEmitter:
         - For CANONIZE scopes: push/pop BindingScope, save/restore
           parent kline tracking for Rule B4.
         - Process nested OperatorScopes and Annotations from items.
-          Bare Signature items are nodes of the parent operator, already
-          collected by _collect_node_ids and processed in _process_scope
-          steps 4–7 — no action needed here.
         - Process child_block constructs.  Bare OperatorScope nodes
           (op=None) in a non-CANONIZE child_block are skipped — they
           are already collected as node identifiers by _collect_node_ids
           and used in the parent operator's emission.  Under CANONIZE,
           bare scopes in child_block still emit their own IDENTITY
           entries (they are subscript items with independent identity).
+
+        **CANONIZE subscript identity UNSIGNED (spec §7.6, §14.8, §14.9):**
+
+        When a CANONIZE scope has recursive content (OperatorScope items
+        or child_block), it forms a "subscript block". Every identifier
+        within such a block must appear as the signature of at least one
+        emitted entry. Where no operator entry provides this, an identity
+        UNSIGNED fills the gap.
+
+        Three categories receive identity UNSIGNED via _emit_identity_unsigned:
+
+        1. Leaf Signature items — bare identifiers in items lists produce
+           no operator entry, so they get identity UNSIGNED.
+        2. UNDERSIGN OperatorScope sigs — UNDERSIGN emits entries with
+           nodes as signatures (reversed direction), so the scope's own
+           sig lacks identity and needs UNSIGNED.
+        3. (Not needed for CANONIZE/COUNTERSIGN/CONNOTATE scope sigs —
+           they already produce entries with the scope's sig as signature.
+           Not needed for bare OperatorScope nodes (op=None) — they emit
+           UNSIGNED via _process_scope step 3.)
+
+        The _in_canonize_subscript flag propagates inward through all
+        nested scopes (both CANONIZE and non-CANONIZE) so that deeply
+        nested identifiers also get identity UNSIGNED.
+
+        _emit_identity_unsigned includes a dedup check to prevent
+        duplicate UNSIGNED when MCS expansion already provided one
+        for the same identifier.
         """
         is_canonize = op == "CANONIZE"
 
-        # Save parent kline tracking
+        # Save parent kline tracking and CANONIZE subscript context
         saved_chars = self._parent_kline_chars
         saved_idx = self._parent_kline_canonize_idx
+        saved_in_canonize = self._in_canonize_subscript
 
         # Set parent kline tracking for Rule B4 (multi-char CANONIZE sigs)
         if is_canonize and mcs_idx is not None:
@@ -367,15 +415,42 @@ class ASTEmitter:
         if is_canonize and self._scope is not None:
             self._scope.push_scope()
 
+        # Set CANONIZE subscript context when this CANONIZE scope has
+        # recursive content (OperatorScope items or child_block), meaning
+        # it's a "subscript block" rather than a flat aggregation like
+        # `A => B C D`. Also propagate if already set by a parent scope.
+        if is_canonize:
+            has_recursive_content = (
+                scope.child_block is not None
+                or any(isinstance(item, OperatorScope) for item in scope.items)
+            )
+            if has_recursive_content or self._in_canonize_subscript:
+                self._in_canonize_subscript = True
+
         # Process items
         for item in scope.items:
             if isinstance(item, OperatorScope):
+                # In CANONIZE subscript blocks, UNDERSIGN scope sigs need
+                # identity UNSIGNED because UNDERSIGN emits entries with nodes
+                # as sigs (e.g., D | [C] | UNDERSIGN), not the scope's own sig.
+                # CANONIZE/COUNTERSIGN/CONNOTATE scope sigs already have identity
+                # via their operator entries.
+                if (
+                    self._in_canonize_subscript
+                    and item.op is not None
+                    and self._op_to_str(item.op) == "UNDERSIGN"
+                ):
+                    resolved = self._resolve_char(item.sig.id)
+                    self._emit_identity_unsigned(resolved)
                 self._process_scope(item)
             elif isinstance(item, Annotation):
                 self._feed_annotation(item)
-            # Note: bare Signature items are nodes of the parent operator,
-            # already collected by _collect_node_ids and processed in
-            # _process_scope steps 4–7. No action needed here.
+            # Note: bare Signature items in CANONIZE subscript blocks need
+            # identity UNSIGNED because they produce no operator entry.
+            elif isinstance(item, Signature):
+                if self._in_canonize_subscript:
+                    resolved = self._resolve_char(item.id)
+                    self._emit_identity_unsigned(resolved)
 
         # Process child_block constructs
         if scope.child_block is not None:
@@ -385,15 +460,27 @@ class ASTEmitter:
                     # of the parent operator (collected by _collect_node_ids).
                     # Skip to avoid spurious IDENTITY emission.
                     continue
+                # In CANONIZE subscript blocks, UNDERSIGN scope sigs in
+                # child_block need identity UNSIGNED. Bare scopes (op=None)
+                # already emit UNSIGNED via _process_scope step 3.
+                if (
+                    self._in_canonize_subscript
+                    and isinstance(construct, OperatorScope)
+                    and construct.op is not None
+                    and self._op_to_str(construct.op) == "UNDERSIGN"
+                ):
+                    resolved = self._resolve_char(construct.sig.id)
+                    self._emit_identity_unsigned(resolved)
                 self._process_construct(construct)
 
         # CANONIZE scope pop
         if is_canonize and self._scope is not None:
             self._scope.pop_scope()
 
-        # Restore parent kline tracking
+        # Restore parent kline tracking and CANONIZE subscript context
         self._parent_kline_chars = saved_chars
         self._parent_kline_canonize_idx = saved_idx
+        self._in_canonize_subscript = saved_in_canonize
 
     # ------------------------------------------------------------------
     # Binding integration (§10, Step 5)

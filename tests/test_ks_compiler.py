@@ -123,10 +123,11 @@ class TestKS35ComplexNested:
     def test_entry_count(self) -> None:
         """Total entry count matches the v3 ASTEmitter output.
 
-        After fix: bare Signature items in operator scopes no longer emit
-        spurious IDENTITY entries. Was 33, now 28 (5 fewer).
+        After KB-193: bare Signature items no longer emit spurious UNSIGNED.
+        After KB-199: CANONIZE subscript blocks emit identity UNSIGNED for
+        leaf Signatures and UNDERSIGN scope sigs. Was 28, now 29 (+1 D UNSIGNED).
         """
-        assert len(self.entries) == 28
+        assert len(self.entries) == 29
 
     def test_no_duplicate_canonize(self) -> None:
         """CANONIZE dedup: no two CANONIZE entries share the same (sig, nodes)."""
@@ -195,12 +196,12 @@ class TestKS35ComplexNested:
             assert isinstance(e, CompiledEntry)
 
     def test_unsigned_count(self) -> None:
-        """17 IDENTITY entries from MCS expansion.
+        """18 UNSIGNED entries from MCS expansion + identity UNSIGNED.
 
-        After fix: bare Signature items in operator scopes no longer emit
-        spurious IDENTITY entries. Was 22, now 17 (5 fewer).
+        After KB-199: adds identity UNSIGNED for D (leaf Signature in
+        CANONIZE subscript block). Was 17, now 18.
         """
-        assert _count_entries(self.entries, "IDENTITY") == 17
+        assert _count_entries(self.entries, "UNSIGNED") == 18
 
 
 # ---------------------------------------------------------------------------

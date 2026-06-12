@@ -385,6 +385,89 @@ class TestKS16IndentExtends:
 
 
 # ======================================================================
+# Test: KS-16 §14.8 CANONIZE with Subscript Block
+# ======================================================================
+
+
+class TestKS16SubscriptBlock14x8:
+    """§14.8 — A =>\\n  B\\n  C = D → 5 entries.
+
+    CANONIZE subscript blocks emit identity UNSIGNED for all identifiers
+    that don't already have an operator entry as their signature.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self) -> None:
+        self.entries = emit(_file(
+            _scope("A", TokenType.CANONIZE, items=[], child_block=_block(
+                _bare("B"),
+                _scope("C", TokenType.UNDERSIGN, items=[_sig("D")]),
+            ))
+        ))
+
+    def test_entry_count(self):
+        """Exactly 5 entries per spec §14.8."""
+        assert len(self.entries) == 5
+
+    def test_canonize_entry(self):
+        """A | [B, C] | CANONIZE — aggregated single entry."""
+        assert_has_entry(self.entries, "A", ["B", "C"], "CANONIZE")
+
+    def test_undersign_entry(self):
+        """D | [C] | UNDERSIGN — reversed direction."""
+        assert_has_entry(self.entries, "D", ["C"], "UNDERSIGN")
+
+    def test_identity_unsigned(self):
+        """B, C, D each get identity UNSIGNED entries."""
+        assert_has_entry(self.entries, "B", [], "UNSIGNED")
+        assert_has_entry(self.entries, "C", [], "UNSIGNED")
+        assert_has_entry(self.entries, "D", [], "UNSIGNED")
+
+    def test_no_duplicate_unsigned(self):
+        """Exactly 3 UNSIGNED entries total — no duplicates."""
+        assert sum(1 for e in self.entries if e.op == "UNSIGNED") == 3
+
+
+# ======================================================================
+# Test: KS-14 §14.9 Chained CANONIZE
+# ======================================================================
+
+
+class TestKS14ChainedCanonize14x9:
+    """§14.9 — A => B => C → 3 entries.
+
+    Chained CANONIZE where B is both a CANONIZE scope sig and a node.
+    B does NOT get identity UNSIGNED because CANONIZE(B, [C]) already
+    provides B as an entry signature.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self) -> None:
+        self.entries = emit(_file(
+            _scope("A", TokenType.CANONIZE, items=[
+                _scope("B", TokenType.CANONIZE, items=[_sig("C")])
+            ])
+        ))
+
+    def test_entry_count(self):
+        """Exactly 3 entries per spec §14.9."""
+        assert len(self.entries) == 3
+
+    def test_canonize_entries(self):
+        """A | [B] | CANONIZE and B | [C] | CANONIZE."""
+        assert_has_entry(self.entries, "A", ["B"], "CANONIZE")
+        assert_has_entry(self.entries, "B", ["C"], "CANONIZE")
+
+    def test_leaf_unsigned(self):
+        """C | [] | UNSIGNED — leaf Signature gets identity UNSIGNED."""
+        assert_has_entry(self.entries, "C", [], "UNSIGNED")
+
+    def test_no_identity_for_canonize_sig(self):
+        """B does NOT have UNSIGNED(B, []) — B already has CANONIZE as identity."""
+        assert_no_entry(self.entries, "B", [], "UNSIGNED")
+
+
+# ======================================================================
 # Test: KS-17 DEDENT returns to parent scope
 # ======================================================================
 

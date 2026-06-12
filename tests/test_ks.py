@@ -615,11 +615,7 @@ class TestEmitterOperators:
 
     # -- KS-18: Non-CANONIZE with indent ---------------------------------
 
-    @pytest.mark.xfail(
-        reason="KS-18: Emitter produces extra IDENTITY entries for items. "
-               "Spec expects 6 COUNTERSIGN entries, code produces 9.",
-        strict=True,
-    )
+
     def test_ks18_non_canonize_with_indent(self):
         """KS-18: A == B\\n  C\\n  D → 6 COUNTERSIGN entries (§14.10)."""
         source = "A == B\n  C\n  D"
@@ -874,12 +870,7 @@ class TestComplexExamples:
 
     # -- §14.8 secondary regression (simpler nested case) ----------------
 
-    @pytest.mark.xfail(
-        reason="KS-35/§14.8: Emitter produces 3 entries instead of spec's 5. "
-               "Missing C and D IDENTITY entries (scope-sig identity not "
-               "emitted for operator scopes in child blocks). Spec §14.8 says 5 entries.",
-        strict=True,
-    )
+
     def test_sec148_strict(self):
         """§14.8 secondary regression — strict spec count (5 entries)."""
         entries = compile_dev(_SEC148_SOURCE)
@@ -892,19 +883,19 @@ class TestComplexExamples:
         assert has_entry(entries, sig="D", op="IDENTITY", nodes=[])
 
     def test_sec148_presence(self):
-        """§14.8 secondary regression — key entries present (actual: 3 entries).
+        """§14.8 secondary regression — key entries present (5 entries).
 
-        After fixing _compile_children, bare Signature items in operator scopes
-        no longer emit spurious IDENTITY. D IDENTITY is also gone because D
-        was a bare Signature node of C = D. The spec expects 5 entries
-        (including C IDENTITY and D IDENTITY), but those come from a separate
-        code path (child_block bare scopes) not addressed by this fix.
+        After KB-199: CANONIZE subscript blocks emit identity UNSIGNED for
+        bare scopes, UNDERSIGN scope sigs, and leaf Signature items.
+        Now matches spec §14.8 exactly (5 entries).
         """
         entries = compile_dev(_SEC148_SOURCE)
-        assert len(entries) == 3
+        assert len(entries) == 5
         assert has_entry(entries, sig="A", op="CANONIZE", nodes=["B", "C"])
         assert has_entry(entries, sig="D", op="UNDERSIGN", nodes=["C"])
-        assert has_entry(entries, sig="B", op="IDENTITY", nodes=[])
+        assert has_entry(entries, sig="B", op="UNSIGNED", nodes=[])
+        assert has_entry(entries, sig="C", op="UNSIGNED", nodes=[])
+        assert has_entry(entries, sig="D", op="UNSIGNED", nodes=[])
 
     # -- KS-35: §14.11 complex nested (master regression) ----------------
 
