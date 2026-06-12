@@ -504,21 +504,10 @@ class TestBindingScope:
 # ===================================================================
 
 class TestEmitterOperators:
-    """Emitter operator tests covering KS-11–KS-18, KS-25, KS-33.
-
-    Note: Several tests are marked xfail because the current ASTEmitter
-    produces extra UNSIGNED entries for items within operator scopes via
-    _compile_children. The spec expects only operator-specific entries.
-    """
+    """Emitter operator tests covering KS-11–KS-18, KS-25, KS-33."""
 
     # -- KS-11: COUNTERSIGN per-item -------------------------------------
 
-    @pytest.mark.xfail(
-        reason="KS-11: Emitter produces extra UNSIGNED entries for items "
-               "via _compile_children. Spec expects only 4 COUNTERSIGN entries "
-               "for 'A == B C', code produces 6 (4 countersign + 2 unsigned).",
-        strict=True,
-    )
     def test_ks11_countersign_per_item(self):
         """KS-11: A == B C → {A:[B]}, {B:[A]}, {A:[C]}, {C:[A]} COUNTERSIGN."""
         entries = compile_dev("A == B C")
@@ -540,11 +529,6 @@ class TestEmitterOperators:
 
     # -- KS-12: UNDERSIGN per-item reversed -------------------------------
 
-    @pytest.mark.xfail(
-        reason="KS-12: Emitter produces extra UNSIGNED entries for items. "
-               "Spec expects 2 UNDERSIGN entries, code produces 4.",
-        strict=True,
-    )
     def test_ks12_undersign_per_item_reversed(self):
         """KS-12: A = B C → {B:[A]}, {C:[A]} UNDERSIGN."""
         entries = compile_dev("A = B C")
@@ -561,11 +545,6 @@ class TestEmitterOperators:
 
     # -- KS-13: CONNOTATE per-item ----------------------------------------
 
-    @pytest.mark.xfail(
-        reason="KS-13: Emitter produces extra UNSIGNED entries for items. "
-               "Spec expects 2 CONNOTATE entries, code produces 4.",
-        strict=True,
-    )
     def test_ks13_connotate_per_item(self):
         """KS-13: A > B C → {A:[B]}, {A:[C]} CONNOTATE."""
         entries = compile_dev("A > B C")
@@ -582,11 +561,6 @@ class TestEmitterOperators:
 
     # -- KS-14: CANONIZE aggregates ---------------------------------------
 
-    @pytest.mark.xfail(
-        reason="KS-14: Emitter produces extra UNSIGNED entries for items. "
-               "Spec expects 1 CANONIZE entry, code produces 4.",
-        strict=True,
-    )
     def test_ks14_canonize_aggregates(self):
         """KS-14: A => B C D → {A:[B,C,D]} CANONIZE."""
         entries = compile_dev("A => B C D")
@@ -602,11 +576,6 @@ class TestEmitterOperators:
 
     # -- KS-15: Operator chain -------------------------------------------
 
-    @pytest.mark.xfail(
-        reason="KS-15: Emitter produces extra UNSIGNED entries for terminal "
-               "items. Spec expects 4 entries, code produces 5.",
-        strict=True,
-    )
     def test_ks15_operator_chain(self):
         """KS-15: A == B > C = D → entries per §14.7 table."""
         entries = compile_dev("A == B > C = D")
@@ -681,12 +650,6 @@ class TestEmitterOperators:
 
     # -- KS-33: Self-identity --------------------------------------------
 
-    @pytest.mark.xfail(
-        reason="KS-33: Emitter produces 2 UNSIGNED entries for A = A instead "
-               "of 1. Self-identity (A=A) should produce a single UNSIGNED "
-               "with empty nodes.",
-        strict=True,
-    )
     def test_ks33_self_identity(self):
         """KS-33: A = A → single {A:[]} UNSIGNED."""
         entries = compile_dev("A = A")
@@ -912,9 +875,9 @@ class TestComplexExamples:
     # -- §14.8 secondary regression (simpler nested case) ----------------
 
     @pytest.mark.xfail(
-        reason="KS-35/§14.8: Emitter produces 4 entries instead of spec's 5. "
-               "Missing C UNSIGNED (scope-sig identity not emitted for "
-               "operator scopes in child blocks). Spec §14.8 says 5 entries.",
+        reason="KS-35/§14.8: Emitter produces 3 entries instead of spec's 5. "
+               "Missing C and D UNSIGNED entries (scope-sig identity not "
+               "emitted for operator scopes in child blocks). Spec §14.8 says 5 entries.",
         strict=True,
     )
     def test_sec148_strict(self):
@@ -929,13 +892,19 @@ class TestComplexExamples:
         assert has_entry(entries, sig="D", op="UNSIGNED", nodes=[])
 
     def test_sec148_presence(self):
-        """§14.8 secondary regression — key entries present (actual: 4 entries)."""
+        """§14.8 secondary regression — key entries present (actual: 3 entries).
+
+        After fixing _compile_children, bare Signature items in operator scopes
+        no longer emit spurious UNSIGNED. D UNSIGNED is also gone because D
+        was a bare Signature node of C = D. The spec expects 5 entries
+        (including C UNSIGNED and D UNSIGNED), but those come from a separate
+        code path (child_block bare scopes) not addressed by this fix.
+        """
         entries = compile_dev(_SEC148_SOURCE)
-        assert len(entries) >= 4
+        assert len(entries) == 3
         assert has_entry(entries, sig="A", op="CANONIZE", nodes=["B", "C"])
         assert has_entry(entries, sig="D", op="UNDERSIGN", nodes=["C"])
         assert has_entry(entries, sig="B", op="UNSIGNED", nodes=[])
-        assert has_entry(entries, sig="D", op="UNSIGNED", nodes=[])
 
     # -- KS-35: §14.11 complex nested (master regression) ----------------
 
@@ -999,9 +968,9 @@ class TestComplexExamples:
         assert has_entry(entries, sig="L", op="CONNOTATE")
 
     def test_ks35_complex_nested_presence(self):
-        """KS-35: §14.11 master regression — key entries present (actual: 33)."""
+        """KS-35: §14.11 master regression — key entries present (actual: 28)."""
         entries = compile_dev(_SEC1411_SOURCE)
-        # Actual count is 33; just verify all key structural entries exist
+        # Actual count is 28; just verify all key structural entries exist
         assert len(entries) > 0
 
         # MCS unsigned identities for all single-char identifiers

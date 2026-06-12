@@ -121,8 +121,12 @@ class TestKS35ComplexNested:
         self.entries = compile_source(SOURCE_14_11)
 
     def test_entry_count(self) -> None:
-        """Total entry count matches the v3 ASTEmitter output."""
-        assert len(self.entries) == 33
+        """Total entry count matches the v3 ASTEmitter output.
+
+        After fix: bare Signature items in operator scopes no longer emit
+        spurious UNSIGNED entries. Was 33, now 28 (5 fewer).
+        """
+        assert len(self.entries) == 28
 
     def test_no_duplicate_canonize(self) -> None:
         """CANONIZE dedup: no two CANONIZE entries share the same (sig, nodes)."""
@@ -191,8 +195,12 @@ class TestKS35ComplexNested:
             assert isinstance(e, CompiledEntry)
 
     def test_unsigned_count(self) -> None:
-        """22 UNSIGNED entries from MCS expansion and bare signatures."""
-        assert _count_entries(self.entries, "UNSIGNED") == 22
+        """17 UNSIGNED entries from MCS expansion.
+
+        After fix: bare Signature items in operator scopes no longer emit
+        spurious UNSIGNED entries. Was 22, now 17 (5 fewer).
+        """
+        assert _count_entries(self.entries, "UNSIGNED") == 17
 
 
 # ---------------------------------------------------------------------------

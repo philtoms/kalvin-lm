@@ -171,6 +171,23 @@ class TestKS11Countersign:
         assert_has_entry(entries, "A", ["B"], "COUNTERSIGN")
         assert_has_entry(entries, "B", ["A"], "COUNTERSIGN")
 
+    def test_entry_count(self):
+        """Exact entry counts — no spurious UNSIGNED from bare Signature nodes."""
+        # A == B C → 4 COUNTERSIGN, 0 UNSIGNED
+        entries = emit(_file(
+            _scope("A", TokenType.COUNTERSIGN, items=[_sig("B"), _sig("C")])
+        ))
+        assert len(entries) == 4
+        assert sum(1 for e in entries if e.op == "UNSIGNED") == 0
+        assert sum(1 for e in entries if e.op == "COUNTERSIGN") == 4
+
+        # A == B → 2 COUNTERSIGN, 0 UNSIGNED
+        entries = emit(_file(
+            _scope("A", TokenType.COUNTERSIGN, items=[_sig("B")])
+        ))
+        assert len(entries) == 2
+        assert sum(1 for e in entries if e.op == "UNSIGNED") == 0
+
 
 # ======================================================================
 # Test: KS-12 UNDERSIGN per-item reversed
@@ -193,6 +210,23 @@ class TestKS12Undersign:
         ))
         assert_has_entry(entries, "B", ["A"], "UNDERSIGN")
 
+    def test_entry_count(self):
+        """Exact entry counts — no spurious UNSIGNED from bare Signature nodes."""
+        # A = B C → 2 UNDERSIGN, 0 UNSIGNED
+        entries = emit(_file(
+            _scope("A", TokenType.UNDERSIGN, items=[_sig("B"), _sig("C")])
+        ))
+        assert len(entries) == 2
+        assert sum(1 for e in entries if e.op == "UNSIGNED") == 0
+        assert sum(1 for e in entries if e.op == "UNDERSIGN") == 2
+
+        # A = B → 1 UNDERSIGN, 0 UNSIGNED
+        entries = emit(_file(
+            _scope("A", TokenType.UNDERSIGN, items=[_sig("B")])
+        ))
+        assert len(entries) == 1
+        assert sum(1 for e in entries if e.op == "UNSIGNED") == 0
+
 
 # ======================================================================
 # Test: KS-13 CONNOTATE per-item
@@ -214,6 +248,23 @@ class TestKS13Connotate:
             _scope("A", TokenType.CONNOTATE, items=[_sig("B")])
         ))
         assert_has_entry(entries, "A", ["B"], "CONNOTATE")
+
+    def test_entry_count(self):
+        """Exact entry counts — no spurious UNSIGNED from bare Signature nodes."""
+        # A > B C → 2 CONNOTATE, 0 UNSIGNED
+        entries = emit(_file(
+            _scope("A", TokenType.CONNOTATE, items=[_sig("B"), _sig("C")])
+        ))
+        assert len(entries) == 2
+        assert sum(1 for e in entries if e.op == "UNSIGNED") == 0
+        assert sum(1 for e in entries if e.op == "CONNOTATE") == 2
+
+        # A > B → 1 CONNOTATE, 0 UNSIGNED
+        entries = emit(_file(
+            _scope("A", TokenType.CONNOTATE, items=[_sig("B")])
+        ))
+        assert len(entries) == 1
+        assert sum(1 for e in entries if e.op == "UNSIGNED") == 0
 
 
 # ======================================================================
@@ -239,6 +290,24 @@ class TestKS14Canonize:
         canonize = _find_entries(entries, sig="A", op="CANONIZE")
         assert len(canonize) == 1
         assert canonize[0].nodes == ["B"]  # still a list
+
+    def test_entry_count(self):
+        """Exact entry counts — CANONIZE produces exactly one entry per scope."""
+        # A => B C D → 1 CANONIZE, 0 UNSIGNED
+        entries = emit(_file(
+            _scope("A", TokenType.CANONIZE, items=[_sig("B"), _sig("C"), _sig("D")])
+        ))
+        assert len(entries) == 1
+        assert entries[0].op == "CANONIZE"
+        assert sum(1 for e in entries if e.op == "UNSIGNED") == 0
+
+        # A => B → 1 CANONIZE, 0 UNSIGNED
+        entries = emit(_file(
+            _scope("A", TokenType.CANONIZE, items=[_sig("B")])
+        ))
+        assert len(entries) == 1
+        assert entries[0].op == "CANONIZE"
+        assert sum(1 for e in entries if e.op == "UNSIGNED") == 0
 
 
 # ======================================================================
@@ -273,6 +342,23 @@ class TestKS15OperatorChain:
 
         # UNDERSIGN D ← C
         assert_has_entry(entries, "D", ["C"], "UNDERSIGN")
+
+    def test_entry_count(self):
+        """Exact entry counts — no spurious UNSIGNED from chained operator nodes."""
+        # A == B > C = D → 4 entries (2 COUNTERSIGN + 1 CONNOTATE + 1 UNDERSIGN, 0 UNSIGNED)
+        ast = _file(
+            _scope("A", TokenType.COUNTERSIGN, items=[
+                _scope("B", TokenType.CONNOTATE, items=[
+                    _scope("C", TokenType.UNDERSIGN, items=[_sig("D")])
+                ])
+            ])
+        )
+        entries = emit(ast)
+        assert len(entries) == 4
+        assert sum(1 for e in entries if e.op == "UNSIGNED") == 0
+        assert sum(1 for e in entries if e.op == "COUNTERSIGN") == 2
+        assert sum(1 for e in entries if e.op == "CONNOTATE") == 1
+        assert sum(1 for e in entries if e.op == "UNDERSIGN") == 1
 
 
 # ======================================================================
@@ -347,6 +433,25 @@ class TestKS18NonCanonizeIndent:
         # A ↔ D
         assert_has_entry(entries, "A", ["D"], "COUNTERSIGN")
         assert_has_entry(entries, "D", ["A"], "COUNTERSIGN")
+
+    def test_entry_count(self):
+        """Exact entry counts — includes spurious UNSIGNED from bare child_block scopes.
+
+        A == B\\n  C\\n  D → 8 entries (6 COUNTERSIGN + 2 UNSIGNED).
+        The 2 UNSIGNED come from bare OperatorScope nodes C and D in the
+        child_block processed via _process_scope. This is a known remaining
+        gap vs spec §14.10.
+        """
+        ast = _file(
+            _scope("A", TokenType.COUNTERSIGN, items=[_sig("B")], child_block=_block(
+                _bare("C"),
+                _bare("D"),
+            ))
+        )
+        entries = emit(ast)
+        assert len(entries) == 8
+        assert sum(1 for e in entries if e.op == "COUNTERSIGN") == 6
+        assert sum(1 for e in entries if e.op == "UNSIGNED") == 2
 
 
 # ======================================================================
@@ -552,6 +657,16 @@ class TestKS33SelfIdentity:
         assert_has_entry(entries, "A", [], "UNSIGNED")
         # Should NOT produce UNDERSIGN entry
         assert_no_entry(entries, "A", ["A"], "UNDERSIGN")
+
+    def test_entry_count(self):
+        """Exact entry count — self-identity produces exactly 1 UNSIGNED entry."""
+        # A = A → 1 entry (UNSIGNED with empty nodes)
+        entries = emit(_file(
+            _scope("A", TokenType.UNDERSIGN, items=[_sig("A")])
+        ))
+        assert len(entries) == 1
+        assert entries[0].op == "UNSIGNED"
+        assert entries[0].nodes == []
 
 
 # ======================================================================

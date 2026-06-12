@@ -341,8 +341,10 @@ class ASTEmitter:
 
         - For CANONIZE scopes: push/pop BindingScope, save/restore
           parent kline tracking for Rule B4.
-        - Process items (bare Signatures, nested OperatorScopes,
-          Annotations).
+        - Process nested OperatorScopes and Annotations from items.
+          Bare Signature items are nodes of the parent operator, already
+          collected by _collect_node_ids and processed in _process_scope
+          steps 4–7 — no action needed here.
         - Process child_block constructs.
         """
         is_canonize = op == "CANONIZE"
@@ -362,15 +364,13 @@ class ASTEmitter:
 
         # Process items
         for item in scope.items:
-            if isinstance(item, Signature):
-                # Bare identifier → emit MCS + UNSIGNED
-                self._emit_mcs(item.id)
-                resolved = self._resolve_char(item.id)
-                self._emit_entry(resolved, [], "UNSIGNED")
-            elif isinstance(item, OperatorScope):
+            if isinstance(item, OperatorScope):
                 self._process_scope(item)
             elif isinstance(item, Annotation):
                 self._feed_annotation(item)
+            # Note: bare Signature items are nodes of the parent operator,
+            # already collected by _collect_node_ids and processed in
+            # _process_scope steps 4–7. No action needed here.
 
         # Process child_block constructs
         if scope.child_block is not None:
