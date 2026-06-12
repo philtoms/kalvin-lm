@@ -256,10 +256,10 @@ Each compiled entry is a **KLine**:
 ```
 CompiledEntry:
     signature: uint64              # encoded identity key
-    nodes: uint64 | list[uint64] | None  # encoded node values
+    nodes: list[uint64]             # encoded node values (always a list, may be empty)
 ```
 
-**Singleton rule:** If `nodes` is a list with exactly one element, it is unwrapped to a single `uint64`. Empty nodes become `None`.
+**No singleton rule.** Nodes are always a list. An unsigned entry has an empty list. A single-node entry has a one-element list. A multi-node entry has multiple elements.
 
 ### 6.2 Significance Level Assignment
 
@@ -282,7 +282,7 @@ Significance bits are not encoded into the token IDs. The level is carried as me
 ### 7.1 Unsigned (bare signature)
 
 ```
-A       → {A: None}
+A       → {A: []}
 ```
 
 Plus MCS expansion if multi-character (§8).
@@ -300,7 +300,7 @@ Each node produces a bidirectional pair.
 
 ```
 A = B       → {B: A}
-A = A       → {A: None}           (self-identity, UNSIGNED)
+A = A       → {A: []}              (self-identity, UNSIGNED)
 A = B C D   → {B: A}, {C: A}, {D: A}
 ```
 
@@ -322,7 +322,7 @@ A => B          → {A: B}
 A => B C D      → {A: [B, C, D]}
 ```
 
-All items in scope form a single kline's node list. Singleton unwrapping applies.
+All items in scope form a single kline's node list.
 
 ### 7.6 Subscript Blocks
 
@@ -334,7 +334,7 @@ A =>
   C = D
 ```
 
-Items in child scope: B, C. CANONIZE aggregates → `{A: [B, C]}`. Recursive compilation of children: `{D: C}`, `{B: None}`, `{C: None}`, `{D: None}`.
+Items in child scope: B, C. CANONIZE aggregates → `{A: [B, C]}`. Recursive compilation of children: `{D: [C]}`, `{B: []}`, `{C: []}`, `{D: []}`.
 
 ---
 
@@ -346,10 +346,10 @@ When a signature has **more than one character**, the ASTEmitter automatically e
 2. **MCS canonization:** One entry mapping the compound to its resolved components.
 
 ```
-ABC  →  {A: None}, {B: None}, {C: None}, {ABC: [A, B, C]}, {ABC: None}
+ABC  →  {A: []}, {B: []}, {C: []}, {ABC: [A, B, C]}, {ABC: []}
 ```
 
-The compound's own unsigned identity (`{ABC: None}`) is emitted by the normal unsigned path.
+The compound's own unsigned identity (`{ABC: []}`) is emitted by the normal unsigned path.
 
 Single-character signatures do NOT trigger MCS expansion.
 
@@ -362,6 +362,10 @@ Each constituent character is resolved via the BindingScope before emitting. If 
 ### 8.2 Node Count Invariant
 
 The number of nodes in an MCS canonization entry always equals the number of characters in the compound identifier. Each character resolves to exactly one node, regardless of how many BPE tokens the resolved word produces at encoding time.
+
+### 8.3 MCS Deduplication
+
+An MCS canonization entry is a CANONIZE entry mapping a compound to its components. If the compilation rules would produce another CANONIZE entry with the same signature and nodes (e.g., a CANONIZE scope that aggregates the same components), the duplicate is silently dropped. Deduplication applies only to this specific MCS-vs-CANONIZE overlap — it is not a general deduplication mechanism.
 
 ---
 
@@ -377,7 +381,7 @@ A BPE annotation is a parenthesised expression in KScript source that provides w
 
 ### 9.2 When Annotations Are Used
 
-In NLP mode (NLP tokenizer selected at compile time), annotations drive word→BPE-token resolution via BindingScope. In Mod32 mode (Mod32 tokenizer selected), annotations are parsed but unused — the ASTEmitter skips binding resolution.
+Annotations drive word→BPE-token resolution via BindingScope. The BindingScope is always active during compilation.
 
 ### 9.3 Inert Annotations
 
@@ -432,7 +436,7 @@ The BindingScope is a lightweight scope stack:
 
 ### 10.4 Unbound Characters
 
-When a single-character identifier cannot be resolved through any mechanism, it remains unbound. Unbound characters are encoded using Mod32 bit-packed encoding as a fallback. This produces mixed NLP/Mod32 klines within the same graph.
+When a single-character identifier cannot be resolved through any mechanism, it remains unbound. Unbound characters are encoded using Mod32 bit-packed encoding as a fallback. This produces mixed NLP/Mod32 klines within the same knowledge graph.
 
 ---
 
@@ -440,17 +444,9 @@ When a single-character identifier cannot be resolved through any mechanism, it 
 
 ### 11.1 Encoding-Agnostic Principle
 
-The ASTEmitter produces symbolic entries (strings). The TokenEncoder converts strings to opaque `uint64` values. The encoding mode is selected at compile time by choosing the tokenizer. The same `.ks` source compiles under either encoding without modification.
+The ASTEmitter produces symbolic entries (strings). The TokenEncoder converts strings to opaque `uint64` values. The compiler treats encoded values as opaque integers — no inspection, no masking.
 
-### 11.2 Mod32 Encoding
-
-Identifiers are packed via bitwise-OR of character bit positions into a single `uint64` with bit 0 clear. Lossy: order and multiplicity are lost.
-
-```
-encode("ABC") → bit_A | bit_B | bit_C
-```
-
-### 11.3 NLP-BPE Encoding
+### 11.2 NLP-BPE Encoding
 
 Identifiers are encoded as typed BPE tokens carrying linguistic annotations (POS + DEP + MORPH):
 
@@ -458,9 +454,31 @@ Identifiers are encoded as typed BPE tokens carrying linguistic annotations (POS
 encode("HELLO") → (nlp_type32 << 32) | bpe_token_id
 ```
 
+### 11.3 Mod32 Fallback for Unbound Characters
+
+When a character cannot be resolved through any binding mechanism (§10.4), it is encoded using Mod32 bit-packed encoding: characters are packed via bitwise-OR into a single `uint64` with bit 0 clear. Lossy: order and multiplicity are lost.
+
+```
+encode_unbound("A") → bit_A
+```
+
+This produces mixed NLP/Mod32 klines within the same graph.
+
 ### 11.4 Multi-Token Words
 
-When a word BPE-encodes to multiple tokens (e.g., "Mary" → `[mar, y]`), the TokenEncoder OR-reduces the tokens into a single packed `uint64` signature. This ensures the node-count invariant (§8.2) is maintained: one character = one node, regardless of BPE token count.
+When a resolved word BPE-encodes to multiple tokens (e.g., "Mary" → `[mar, y]`), the TokenEncoder runs the full MCS process at the BPE-token level:
+
+1. **Component identities:** One unsigned entry per BPE subword token.
+2. **MCS canonization:** One CANONIZE entry mapping the packed signature to all component tokens.
+3. **Packed signature:** The OR-reduction of all component tokens becomes the single `uint64` node used in the parent kline.
+
+```
+"Mary" → tokens [mar, y]
+  emits: {mar: []}, {y: []}, {mar|y: [mar, y]}
+  parent kline uses (mar|y) as its single node
+```
+
+This is structurally identical to §8 character-level MCS, applied at the BPE subword level. The node-count invariant (§8.2) is maintained: one character = one node, regardless of BPE token count. The consumer of the knowledge graph sees one node per character; the BPE decomposition is recorded in the graph for downstream use.
 
 ### 11.5 Signature Construction
 
@@ -539,7 +557,7 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|----|-------|
-| 1 | A | None | UNSIGNED | S4 |
+| 1 | A | [] | UNSIGNED | S4 |
 
 ### 14.2 Bidirectional Link
 
@@ -551,8 +569,8 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|----|-------|
-| 1 | A | B | COUNTERSIGN | S1 |
-| 2 | B | A | COUNTERSIGN | S1 |
+| 1 | A | [B] | COUNTERSIGN | S1 |
+| 2 | B | [A] | COUNTERSIGN | S1 |
 
 ### 14.3 Undersign (Reversed)
 
@@ -564,7 +582,7 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|-------|-------|
-| 1 | B | A | UNDERSIGN | S1 |
+| 1 | B | [A] | UNDERSIGN | S1 |
 
 ### 14.4 Connotate (Forward)
 
@@ -576,7 +594,7 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|-------|-------|
-| 1 | A | B | CONNOTATE | S3 |
+| 1 | A | [B] | CONNOTATE | S3 |
 
 ### 14.5 Self-Identity
 
@@ -588,7 +606,7 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|-------|-------|
-| 1 | A | None | UNSIGNED | S4 |
+| 1 | A | [] | UNSIGNED | S4 |
 
 ### 14.6 MCS Expansion
 
@@ -600,11 +618,11 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|---------|-------|
-| 1 | A | None | UNSIGNED | S4 |
-| 2 | B | None | UNSIGNED | S4 |
-| 3 | C | None | UNSIGNED | S4 |
+| 1 | A | [] | UNSIGNED | S4 |
+| 2 | B | [] | UNSIGNED | S4 |
+| 3 | C | [] | UNSIGNED | S4 |
 | 4 | ABC | [A, B, C] | CANONIZE | S2 |
-| 5 | ABC | None | UNSIGNED | S4 |
+| 5 | ABC | [] | UNSIGNED | S4 |
 
 ### 14.7 Operator Chain
 
@@ -616,10 +634,10 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|-------------|-------|
-| 1 | A | B | COUNTERSIGN | S1 |
-| 2 | B | A | COUNTERSIGN | S1 |
-| 3 | B | C | CONNOTATE | S3 |
-| 4 | D | C | UNDERSIGN | S1 |
+| 1 | A | [B] | COUNTERSIGN | S1 |
+| 2 | B | [A] | COUNTERSIGN | S1 |
+| 3 | B | [C] | CONNOTATE | S3 |
+| 4 | D | [C] | UNDERSIGN | S1 |
 
 ### 14.8 CANONIZE with Subscript Block
 
@@ -635,9 +653,9 @@ Compiled:
 |-------|-----------|-------|---------|-------|
 | 1 | A | [B, C] | CANONIZE | S2 |
 | 2 | D | C | UNDERSIGN | S1 |
-| 3 | B | None | UNSIGNED | S4 |
-| 4 | C | None | UNSIGNED | S4 |
-| 5 | D | None | UNSIGNED | S4 |
+| 3 | B | [] | UNSIGNED | S4 |
+| 4 | C | [] | UNSIGNED | S4 |
+| 5 | D | [] | UNSIGNED | S4 |
 
 ### 14.9 Chained CANONIZE
 
@@ -649,9 +667,9 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|---------|-------|
-| 1 | A | B | CANONIZE | S2 |
-| 2 | B | C | CANONIZE | S2 |
-| 3 | C | None | UNSIGNED | S4 |
+| 1 | A | [B] | CANONIZE | S2 |
+| 2 | B | [C] | CANONIZE | S2 |
+| 3 | C | [] | UNSIGNED | S4 |
 
 ### 14.10 Non-CANONIZE with Indent
 
@@ -665,12 +683,12 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|-------------|-------|
-| 1 | A | B | COUNTERSIGN | S1 |
-| 2 | B | A | COUNTERSIGN | S1 |
-| 3 | A | C | COUNTERSIGN | S1 |
-| 4 | C | A | COUNTERSIGN | S1 |
-| 5 | A | D | COUNTERSIGN | S1 |
-| 6 | D | A | COUNTERSIGN | S1 |
+| 1 | A | [B] | COUNTERSIGN | S1 |
+| 2 | B | [A] | COUNTERSIGN | S1 |
+| 3 | A | [C] | COUNTERSIGN | S1 |
+| 4 | C | [A] | COUNTERSIGN | S1 |
+| 5 | A | [D] | COUNTERSIGN | S1 |
+| 6 | D | [A] | COUNTERSIGN | S1 |
 
 ### 14.11 Complex Nested (Full)
 
@@ -688,33 +706,33 @@ Compiled:
 
 | # | Entry | Signature | Nodes | Op | Level |
 |---|-------|-----------|-------|-------------|-------|
-| 1 | MCS M | M | None | UNSIGNED | S4 |
-| 2 | MCS H | H | None | UNSIGNED | S4 |
-| 3 | MCS A | A | None | UNSIGNED | S4 |
-| 4 | MCS L | L | None | UNSIGNED | S4 |
+| 1 | MCS M | M | [] | UNSIGNED | S4 |
+| 2 | MCS H | H | [] | UNSIGNED | S4 |
+| 3 | MCS A | A | [] | UNSIGNED | S4 |
+| 4 | MCS L | L | [] | UNSIGNED | S4 |
 | 5 | MCS MHALL canonize | MHALL | [M, H, A, L, L] | CANONIZE | S2 |
-| 6 | MCS MHALL unsigned | MHALL | None | UNSIGNED | S4 |
-| 7 | MCS S | S | None | UNSIGNED | S4 |
-| 8 | MCS V | V | None | UNSIGNED | S4 |
-| 9 | MCS O | O | None | UNSIGNED | S4 |
+| 6 | MCS MHALL unsigned | MHALL | [] | UNSIGNED | S4 |
+| 7 | MCS S | S | [] | UNSIGNED | S4 |
+| 8 | MCS V | V | [] | UNSIGNED | S4 |
+| 9 | MCS O | O | [] | UNSIGNED | S4 |
 | 10 | MCS SVO canonize | SVO | [S, V, O] | CANONIZE | S2 |
-| 11 | MCS SVO unsigned | SVO | None | UNSIGNED | S4 |
-| 12 | Countersign | MHALL | SVO | COUNTERSIGN | S1 |
-| 13 | Countersign reverse | SVO | MHALL | COUNTERSIGN | S1 |
-| 14 | SVO canonize subscript | SVO | [S, V, O] | CANONIZE | S2 |
-| 15 | Undersign S | M | S | UNDERSIGN | S1 |
-| 16 | Undersign V | H | V | UNDERSIGN | S1 |
-| 17 | MCS ALL | A | None | UNSIGNED | S4 |
-| 18 | MCS ALL | L | None | UNSIGNED | S4 |
-| 19 | MCS ALL canonize | ALL | [A, L, L] | CANONIZE | S2 |
-| 20 | MCS ALL unsigned | ALL | None | UNSIGNED | S4 |
-| 21 | Undersign O | ALL | O | UNDERSIGN | S1 |
-| 22 | ALL canonize subscript | ALL | [A, L, L] | CANONIZE | S2 |
-| 23 | Undersign D | D | A | UNDERSIGN | S1 |
-| 24 | Undersign M | M | L | UNDERSIGN | S1 |
-| 25 | Connotate | L | O | CONNOTATE | S3 |
+| 11 | MCS SVO unsigned | SVO | [] | UNSIGNED | S4 |
+| 12 | Countersign | MHALL | [SVO] | COUNTERSIGN | S1 |
+| 13 | Countersign reverse | SVO | [MHALL] | COUNTERSIGN | S1 |
+| — | SVO canonize subscript | — | — | — | Dropped (MCS dedup: identical to entry 10) |
+| 14 | Undersign S | M | [S] | UNDERSIGN | S1 |
+| 15 | Undersign V | H | [V] | UNDERSIGN | S1 |
+| — | MCS ALL A | — | — | — | Dropped (MCS dedup: {A:[]} identical to entry 3) |
+| — | MCS ALL L | — | — | — | Dropped (MCS dedup: {L:[]} identical to entry 4) |
+| 16 | MCS ALL canonize | ALL | [A, L, L] | CANONIZE | S2 |
+| 17 | MCS ALL unsigned | ALL | [] | UNSIGNED | S4 |
+| 18 | Undersign O | ALL | [O] | UNDERSIGN | S1 |
+| — | ALL canonize subscript | — | — | — | Dropped (MCS dedup: identical to entry 16) |
+| 19 | Undersign D | D | [A] | UNDERSIGN | S1 |
+| 20 | Undersign M | M | [L] | UNDERSIGN | S1 |
+| 21 | Connotate | L | [O] | CONNOTATE | S3 |
 
-> **Note on duplicate entries:** Entries 14 and 10 are structurally identical (same signature, same nodes). Entry 17 duplicates entry 3; entry 18 duplicates entry 4. Under the current implementation, duplicates are emitted as-is — the compiler does not deduplicate.
+> **MCS deduplication in action:** Four entries are silently dropped because their `(signature, nodes)` pairs were already emitted by MCS expansion. Only MCS canonization entries are deduplicated — other duplicate patterns are emitted as-is.
 
 ### 14.12 NLP-Bound Example
 
@@ -736,7 +754,7 @@ Binding resolution:
 
 MCS for MHALL (resolved):
 ```
-{Mary: None}, {Had: None}, {A: None}, {Little: None}, {Lamb: None}
+{Mary: []}, {Had: []}, {A: []}, {Little: []}, {Lamb: []}
 {MHALL: [Mary, Had, A, Little, Lamb]}
 ```
 
@@ -745,7 +763,7 @@ With Rule B4 override, the parent SVO canonize entry becomes:
 {SVO: [Subject, V, O]}    (S patched to "Subject")
 ```
 
-All other entries follow the same operator rules as §14.11, with resolved words replacing raw characters where bindings exist. Unbound characters (V, O, D) use Mod32 fallback encoding.
+All other entries follow the same operator rules as §14.11, with resolved words replacing raw characters where bindings exist. Unbound characters (V, O, D) use Mod32 fallback encoding (§11.3).
 
 ---
 
@@ -789,12 +807,12 @@ All other entries follow the same operator rules as §14.11, with resolved words
 | KS-29 | Counter reset: each new scope starts counters at zero | Binding |
 | KS-30 | Unbound characters: fallback to Mod32 encoding | Binding |
 | KS-31 | Inert annotation: no matching characters → no effect | Binding |
-| KS-32 | Mod32 mode: annotations parsed but unused, no BindingScope created | Compatibility |
+| KS-32 | Unbound characters use Mod32 fallback encoding | Encoding |
 | **Self-Identity** | | |
-| KS-33 | Self-identity: `A = A` → `{A: None}` with op=UNSIGNED | Operators |
-| **Singleton** | | |
-| KS-34 | Singleton unwrapping: `A => B` → `{A: B}` (not `{A: [B]}`) | Structure |
+| KS-33 | Self-identity: `A = A` → `{A: []}` with op=UNSIGNED | Operators |
+| **Structure** | | |
+| KS-34 | Nodes always a list: `A => B` → `{A: [B]}`, `A` → `{A: []}` | Structure |
 | **Integration** | | |
 | KS-35 | Complex nested example (§14.11) produces correct complete entry list | Integration |
 | KS-36 | NLP-bound example (§14.12) produces correct resolved entries | Integration |
-| KS-37 | Same source compiles under both Mod32 and NLP without modification | Compatibility |
+| KS-37 | Mixed NLP/Mod32 klines: bound characters encoded via NLP-BPE, unbound characters via Mod32 fallback | Integration |

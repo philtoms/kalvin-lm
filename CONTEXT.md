@@ -143,7 +143,7 @@ _Avoid_: working memory (too vague), context window (implies a passive buffer, n
 
 ### KLine
 
-A node-like structure with a **signature** (head) and **nodes** (value). The fundamental unit of Kalvin's knowledge graph. Two kinds: **identity** (no nodes) and **relationship** (one or more nodes).
+A node-like structure with a **signature** (head) and **nodes** (value). The fundamental unit of Kalvin's knowledge graph. `nodes` is always a `list[uint64]` — empty list for identity klines, one or more elements for relationship klines. Two kinds: **identity** (empty nodes) and **relationship** (one or more nodes).
 
 ### Signature
 
