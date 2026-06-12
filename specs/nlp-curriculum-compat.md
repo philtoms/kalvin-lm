@@ -12,7 +12,7 @@ Single-character signatures (e.g., `M`, `H`, `A`) encode to 64-bit NLP-BPE nodes
 
 ### SC-2: Multi-character signatures decompose correctly
 
-Multi-character signatures (e.g., `MHALL`, `SVO`, `ALL`) decompose into individual character components with unsigned entries and a canonize (S2) entry mapping the first token to all tokens.
+Multi-character signatures (e.g., `MHALL`, `SVO`, `ALL`) decompose into individual character components with identity entries and a canonize (S2) entry mapping the first token to all tokens.
 
 ### SC-3: Training runs complete cleanly
 

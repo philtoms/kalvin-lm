@@ -94,9 +94,9 @@ cases. The result is deterministic and commutative.
 
 | Value | Meaning                                              |
 | ----- | ---------------------------------------------------- |
-| 0     | No nodes at all. An unsigned kline.                   |
+| 0     | No nodes at all. An identity kline.                    |
 
-A signature of 0 means the kline has no nodes — it is **unsigned** and
+A signature of 0 means the kline has no nodes — it is an **identity** kline
 carries no structural identity. It cannot be found via bitwise AND matching
 (since `x & 0 == 0` for all x).
 
@@ -131,7 +131,7 @@ Properties:
 
 | ID    | Criterion                                                    | Origin ref |
 | ----- | ------------------------------------------------------------ | ---------- |
-| SIG-1 | `make_signature([]) == 0` (empty → unsigned)                 | — |
+| SIG-1 | `make_signature([]) == 0` (empty → identity)                  | — |
 | SIG-4 | `make_signature([x]) == x` (identity)                        | — |
 | SIG-6 | `make_signature([A, B]) == A \| B` (commutative, OR-reduce)   | — |
 | SIG-7 | `signifies(0, anything) == False` (vacuous for 0)             | — |

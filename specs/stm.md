@@ -161,7 +161,7 @@ stm.query(sig) → list[KLine]
 Returns all KLines whose signatures share at least one bit with `sig`
 (bitwise AND ≠ 0).
 
-- Returns an empty list if `sig == 0` (unsigned signatures cannot match).
+- Returns an empty list if `sig == 0` (identity signatures cannot match).
 - Results are in **reverse insertion order** (most recent first).
 - Each KLine appears at most once (deduped by identity).
 

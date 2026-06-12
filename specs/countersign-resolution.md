@@ -71,7 +71,7 @@ Significance levels by operator:
 | UNDERSIGN (`=`) | `S1` |
 | CANONIZE (`=>`) | `S2` |
 | CONNOTATE (`>`) | `S3` |
-| UNSIGNED | `S4` |
+| IDENTITY | `S4` |
 | IDENTITY | `S1` |
 
 `sig_level` is **not used by the rationaliser**. It is training-side metadata for the trainer's ratification decisions.

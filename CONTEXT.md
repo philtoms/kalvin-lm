@@ -174,7 +174,12 @@ A 64-bit inverted distance representing how well a KLine relates to the model's 
 - **S1**: Fully grounded — canonical or countersigned.
 - **S2**: Partially understood — some nodes match. Misfitting (overfit or underfit).
 - **S3**: Recognised aspects — no node match but signature matches previously worked signatures.
-- **S4**: Completely novel — no candidates found.
+- **S4**: Identity — a bare node with empty nodes. No prior knowledge, no relationships, no candidates.
+
+### Identity
+
+The operator for a bare node — a kline with empty nodes and no relationships. Identity klines resolve on the fast path (S4) because there is nothing to expand or ratify. They are written directly to LTM as novel entries. Structurally: `{sig: []}`. Every kline in the knowledge graph bottoms out at one or more identity klines — they are the atoms from which all structure is built.
+_Avoid_: unsigned (implementation term — identity is the domain concept), bare signature (describes the syntax, not the semantics)
 
 ### STM (Short-Term Memory)
 

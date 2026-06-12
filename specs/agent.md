@@ -696,7 +696,7 @@ Proposals can be emitted at any significance level. See §Cogitation.
 
 ### 3. Grounding Assessment Formalisation
 
-This spec defines grounding checks (self-grounded, unsigned)
+This spec defines grounding checks (self-grounded, identity)
 as fast-path optimisations. An alternative design would route everything
 through routing, with the model's `is_s1` function handling these cases
 internally. `is_s1` now performs structural grounding (canonical or

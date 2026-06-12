@@ -223,7 +223,7 @@ Annotation
 
 OperatorScope
   ├── sig: Signature           # the identifier preceding the operator
-  ├── op: TokenType | None     # None = bare signature (unsigned)
+  ├── op: TokenType | None     # None = bare signature (identity)
   ├── items: [ConstructItem]   # nodes and child constructs
   └── child_block: Block | None  # indented child scope
 
@@ -259,7 +259,7 @@ CompiledEntry:
     nodes: list[uint64]             # encoded node values (always a list, may be empty)
 ```
 
-**No singleton rule.** Nodes are always a list. An unsigned entry has an empty list. A single-node entry has a one-element list. A multi-node entry has multiple elements.
+**No singleton rule.** Nodes are always a list. An identity entry has an empty list. A single-node entry has a one-element list. A multi-node entry has multiple elements.
 
 ### 6.2 Significance Level Assignment
 
@@ -271,7 +271,7 @@ Each emitted entry is tagged with a significance level based on the operator tha
 | UNDERSIGN (`=`) | S1 | Unconditional |
 | CANONIZE (`=>`) | S2 | Canonical |
 | CONNOTATE (`>`) | S3 | Connotative |
-| UNSIGNED (bare) | S4 | Identity only |
+| IDENTITY (bare) | S4 | Identity — bare node, no relationships |
 
 Significance bits are not encoded into the token IDs. The level is carried as metadata on the compiled entry.
 
@@ -279,7 +279,7 @@ Significance bits are not encoded into the token IDs. The level is carried as me
 
 ## 7. Operator Compilation Rules
 
-### 7.1 Unsigned (bare signature)
+### 7.1 Identity (bare signature)
 
 ```
 A       → {A: []}
@@ -300,11 +300,11 @@ Each node produces a bidirectional pair.
 
 ```
 A = B       → {B: A}
-A = A       → {A: []}              (self-identity, UNSIGNED)
+A = A       → {A: []}              (self-identity, IDENTITY)
 A = B C D   → {B: A}, {C: A}, {D: A}
 ```
 
-Direction is reversed: the node becomes the signature, the original signature becomes the node. Self-identity collapses to unsigned.
+Direction is reversed: the node becomes the signature, the original signature becomes the node. Self-identity collapses to identity.
 
 ### 7.4 CONNOTATE (`>`) — unidirectional, per-item
 
@@ -342,14 +342,14 @@ Items in child scope: B, C. CANONIZE aggregates → `{A: [B, C]}`. Recursive com
 
 When a signature has **more than one character**, the ASTEmitter automatically emits:
 
-1. **Component identities:** One unsigned entry per constituent character (resolved via BindingScope).
+1. **Component identities:** One identity entry per constituent character (resolved via BindingScope).
 2. **MCS canonization:** One entry mapping the compound to its resolved components.
 
 ```
 ABC  →  {A: []}, {B: []}, {C: []}, {ABC: [A, B, C]}, {ABC: []}
 ```
 
-The compound's own unsigned identity (`{ABC: []}`) is emitted by the normal unsigned path.
+The compound's own identity (`{ABC: []}`) is emitted by the normal identity path.
 
 Single-character signatures do NOT trigger MCS expansion.
 
@@ -468,7 +468,7 @@ This produces mixed NLP/Mod32 klines within the same graph.
 
 When a resolved word BPE-encodes to multiple tokens (e.g., "Mary" → `[mar, y]`), the TokenEncoder runs the full MCS process at the BPE-token level:
 
-1. **Component identities:** One unsigned entry per BPE subword token.
+1. **Component identities:** One identity entry per BPE subword token.
 2. **MCS canonization:** One CANONIZE entry mapping the packed signature to all component tokens.
 3. **Packed signature:** The OR-reduction of all component tokens becomes the single `uint64` node used in the parent kline.
 
@@ -557,7 +557,7 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|----|-------|
-| 1 | A | [] | UNSIGNED | S4 |
+| 1 | A | [] | IDENTITY | S4 |
 
 ### 14.2 Bidirectional Link
 
@@ -606,7 +606,7 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|-------|-------|
-| 1 | A | [] | UNSIGNED | S4 |
+| 1 | A | [] | IDENTITY | S4 |
 
 ### 14.6 MCS Expansion
 
@@ -618,11 +618,11 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|---------|-------|
-| 1 | A | [] | UNSIGNED | S4 |
-| 2 | B | [] | UNSIGNED | S4 |
-| 3 | C | [] | UNSIGNED | S4 |
+| 1 | A | [] | IDENTITY | S4 |
+| 2 | B | [] | IDENTITY | S4 |
+| 3 | C | [] | IDENTITY | S4 |
 | 4 | ABC | [A, B, C] | CANONIZE | S2 |
-| 5 | ABC | [] | UNSIGNED | S4 |
+| 5 | ABC | [] | IDENTITY | S4 |
 
 ### 14.7 Operator Chain
 
@@ -653,9 +653,9 @@ Compiled:
 |-------|-----------|-------|---------|-------|
 | 1 | A | [B, C] | CANONIZE | S2 |
 | 2 | D | C | UNDERSIGN | S1 |
-| 3 | B | [] | UNSIGNED | S4 |
-| 4 | C | [] | UNSIGNED | S4 |
-| 5 | D | [] | UNSIGNED | S4 |
+| 3 | B | [] | IDENTITY | S4 |
+| 4 | C | [] | IDENTITY | S4 |
+| 5 | D | [] | IDENTITY | S4 |
 
 ### 14.9 Chained CANONIZE
 
@@ -669,7 +669,7 @@ Compiled:
 |-------|-----------|-------|---------|-------|
 | 1 | A | [B] | CANONIZE | S2 |
 | 2 | B | [C] | CANONIZE | S2 |
-| 3 | C | [] | UNSIGNED | S4 |
+| 3 | C | [] | IDENTITY | S4 |
 
 ### 14.10 Non-CANONIZE with Indent
 
@@ -706,17 +706,17 @@ Compiled:
 
 | # | Entry | Signature | Nodes | Op | Level |
 |---|-------|-----------|-------|-------------|-------|
-| 1 | MCS M | M | [] | UNSIGNED | S4 |
-| 2 | MCS H | H | [] | UNSIGNED | S4 |
-| 3 | MCS A | A | [] | UNSIGNED | S4 |
-| 4 | MCS L | L | [] | UNSIGNED | S4 |
+| 1 | MCS M | M | [] | IDENTITY | S4 |
+| 2 | MCS H | H | [] | IDENTITY | S4 |
+| 3 | MCS A | A | [] | IDENTITY | S4 |
+| 4 | MCS L | L | [] | IDENTITY | S4 |
 | 5 | MCS MHALL canonize | MHALL | [M, H, A, L, L] | CANONIZE | S2 |
-| 6 | MCS MHALL unsigned | MHALL | [] | UNSIGNED | S4 |
-| 7 | MCS S | S | [] | UNSIGNED | S4 |
-| 8 | MCS V | V | [] | UNSIGNED | S4 |
-| 9 | MCS O | O | [] | UNSIGNED | S4 |
+| 6 | MCS MHALL identity | MHALL | [] | IDENTITY | S4 |
+| 7 | MCS S | S | [] | IDENTITY | S4 |
+| 8 | MCS V | V | [] | IDENTITY | S4 |
+| 9 | MCS O | O | [] | IDENTITY | S4 |
 | 10 | MCS SVO canonize | SVO | [S, V, O] | CANONIZE | S2 |
-| 11 | MCS SVO unsigned | SVO | [] | UNSIGNED | S4 |
+| 11 | MCS SVO identity | SVO | [] | IDENTITY | S4 |
 | 12 | Countersign | MHALL | [SVO] | COUNTERSIGN | S1 |
 | 13 | Countersign reverse | SVO | [MHALL] | COUNTERSIGN | S1 |
 | — | SVO canonize subscript | — | — | — | Dropped (MCS dedup: identical to entry 10) |
@@ -725,7 +725,7 @@ Compiled:
 | — | MCS ALL A | — | — | — | Dropped (MCS dedup: {A:[]} identical to entry 3) |
 | — | MCS ALL L | — | — | — | Dropped (MCS dedup: {L:[]} identical to entry 4) |
 | 16 | MCS ALL canonize | ALL | [A, L, L] | CANONIZE | S2 |
-| 17 | MCS ALL unsigned | ALL | [] | UNSIGNED | S4 |
+| 17 | MCS ALL identity | ALL | [] | IDENTITY | S4 |
 | 18 | Undersign O | ALL | [O] | UNDERSIGN | S1 |
 | — | ALL canonize subscript | — | — | — | Dropped (MCS dedup: identical to entry 16) |
 | 19 | Undersign D | D | [A] | UNDERSIGN | S1 |
@@ -793,7 +793,7 @@ All other entries follow the same operator rules as §14.11, with resolved words
 | KS-17 | DEDENT returns to parent scope | Scope |
 | KS-18 | Non-CANONIZE with indent: per-item emission extends into child block | Scope |
 | **MCS** | | |
-| KS-19 | MCS expansion: multi-char identifier produces components + canonization + unsigned | MCS |
+| KS-19 | MCS expansion: multi-char identifier produces components + canonization + identity | MCS |
 | KS-20 | No MCS for single-char identifiers | MCS |
 | KS-21 | MCS on node side: `A == MHALL` triggers MCS for MHALL | MCS |
 | KS-22 | Node count invariant: MCS node count equals character count | MCS |
@@ -809,7 +809,7 @@ All other entries follow the same operator rules as §14.11, with resolved words
 | KS-31 | Inert annotation: no matching characters → no effect | Binding |
 | KS-32 | Unbound characters use Mod32 fallback encoding | Encoding |
 | **Self-Identity** | | |
-| KS-33 | Self-identity: `A = A` → `{A: []}` with op=UNSIGNED | Operators |
+| KS-33 | Self-identity: `A = A` → `{A: []}` with op=IDENTITY | Operators |
 | **Structure** | | |
 | KS-34 | Nodes always a list: `A => B` → `{A: [B]}`, `A` → `{A: []}` | Structure |
 | **Integration** | | |
