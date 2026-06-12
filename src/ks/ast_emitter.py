@@ -10,17 +10,17 @@ converts SymbolicEntry tuples to encoded uint64 values.
   node identifiers from items and child_block, and emitting operator-specific
   entries:
 
-  - UNSIGNED (op=None):   {sig: []}   — bare identity
+  - IDENTITY (op=None):   {sig: []}   — bare identity
   - COUNTERSIGN (==):     {sig: [node]}, {node: [sig]} per item  — bidirectional
   - UNDERSIGN (=):        {node: [sig]} per item  — reversed direction
   - CONNOTATE (>):        {sig: [node]} per item  — forward direction
   - CANONIZE (=>):        {sig: [all_nodes]}  — aggregated single entry
 
-  Self-identity (A = A) collapses to UNSIGNED with empty nodes (spec §7.3).
+  Self-identity (A = A) collapses to IDENTITY with empty nodes (spec §7.3).
 
 **MCS expansion (spec §8):**
   Multi-character identifiers trigger automatic emission of:
-  1. One UNSIGNED entry per resolved constituent character.
+  1. One IDENTITY entry per resolved constituent character.
   2. One CANONIZE entry mapping the compound to its resolved components.
 
   MCS applies to identifiers wherever they appear — signature side or node
@@ -49,7 +49,7 @@ converts SymbolicEntry tuples to encoded uint64 values.
 **Key design constraints:**
   - nodes field is ALWAYS list[str] — never None, never a bare string,
     never singleton-unwrapped.  Singleton unwrapping happens in TokenEncoder.
-  - No IDENTITY op — self-identity emits UNSIGNED with empty nodes.
+  - No IDENTITY op — self-identity emits IDENTITY with empty nodes.
   - No general deduplication — only CANONIZE dedup per §8.3.
 
 Spec references: §3 (Scope Model), §6 (Entry Model), §7 (Operator Rules),
@@ -82,18 +82,18 @@ class SymbolicEntry(NamedTuple):
 
     Attributes:
         sig:  The signature identifier string (possibly a resolved NLP word).
-        nodes: Always a list — empty for UNSIGNED, single-item for per-item
+        nodes: Always a list — empty for IDENTITY, single-item for per-item
                operators, multi-item for CANONIZE aggregation.  Never None,
                never a bare string, never singleton-unwrapped.
         op:   One of "COUNTERSIGN", "CANONIZE", "CONNOTATE", "UNDERSIGN",
-               "UNSIGNED".
+               "IDENTITY".
         component_labels: Resolved words per signature character (for NLP
                mode).  None when not applicable.
     """
 
     sig: str
     nodes: list[str]
-    op: str  # COUNTERSIGN | CANONIZE | CONNOTATE | UNDERSIGN | UNSIGNED
+    op: str  # COUNTERSIGN | CANONIZE | CONNOTATE | UNDERSIGN | IDENTITY
     component_labels: list[str] | None = None
 
 
@@ -163,7 +163,7 @@ class ASTEmitter:
         Algorithm:
         1. Resolve signature (inline annotation or BindingScope).
         2. Emit MCS for multi-char signature.
-        3. If bare (op=None): emit UNSIGNED and return.
+        3. If bare (op=None): emit IDENTITY and return.
         4. Collect node IDs from items and child_block.
         5. Emit MCS for multi-char node IDs.
         6. Resolve nodes.
@@ -181,8 +181,8 @@ class ASTEmitter:
         # 3. Determine op
         op = self._op_to_str(scope.op)
 
-        if op == "UNSIGNED":
-            self._emit_entry(sig_resolved, [], "UNSIGNED")
+        if op == "IDENTITY":
+            self._emit_entry(sig_resolved, [], "IDENTITY")
             return
 
         # 4. Collect node IDs
@@ -223,8 +223,8 @@ class ASTEmitter:
             # Per-item reversed
             for node in nodes:
                 if node == sig:
-                    # Self-identity → UNSIGNED with empty nodes (§7.3)
-                    self._emit_entry(sig, [], "UNSIGNED")
+                    # Self-identity → IDENTITY with empty nodes (§7.3)
+                    self._emit_entry(sig, [], "IDENTITY")
                 else:
                     self._emit_entry(node, [sig], "UNDERSIGN")
 
@@ -284,7 +284,7 @@ class ASTEmitter:
     def _emit_mcs(self, sig: str) -> int | None:
         """Emit MCS entries for a multi-character identifier.
 
-        1. One UNSIGNED entry per resolved constituent character.
+        1. One IDENTITY entry per resolved constituent character.
         2. One CANONIZE entry mapping the compound to its resolved components.
 
         Returns the index of the CANONIZE entry (for Rule B4), or None
@@ -297,7 +297,7 @@ class ASTEmitter:
 
         # Component identities
         for resolved_char in chars:
-            self._emit_entry(resolved_char, [], "UNSIGNED")
+            self._emit_entry(resolved_char, [], "IDENTITY")
 
         # MCS canonization
         key = (sig, tuple(chars))
@@ -349,7 +349,7 @@ class ASTEmitter:
           (op=None) in a non-CANONIZE child_block are skipped — they
           are already collected as node identifiers by _collect_node_ids
           and used in the parent operator's emission.  Under CANONIZE,
-          bare scopes in child_block still emit their own UNSIGNED
+          bare scopes in child_block still emit their own IDENTITY
           entries (they are subscript items with independent identity).
         """
         is_canonize = op == "CANONIZE"
@@ -383,7 +383,7 @@ class ASTEmitter:
                 if isinstance(construct, OperatorScope) and construct.op is None and not is_canonize:
                     # Bare scope in non-CANONIZE child_block — already a node
                     # of the parent operator (collected by _collect_node_ids).
-                    # Skip to avoid spurious UNSIGNED emission.
+                    # Skip to avoid spurious IDENTITY emission.
                     continue
                 self._process_construct(construct)
 
@@ -531,13 +531,13 @@ class ASTEmitter:
 
     @staticmethod
     def _op_to_str(op: TokenType | None) -> str:
-        """Convert a TokenType operator to its string name, or 'UNSIGNED'."""
+        """Convert a TokenType operator to its string name, or 'IDENTITY'."""
         if op is None:
-            return "UNSIGNED"
+            return "IDENTITY"
         _MAP = {
             TokenType.COUNTERSIGN: "COUNTERSIGN",
             TokenType.CANONIZE: "CANONIZE",
             TokenType.CONNOTATE: "CONNOTATE",
             TokenType.UNDERSIGN: "UNDERSIGN",
         }
-        return _MAP.get(op, "UNSIGNED")
+        return _MAP.get(op, "IDENTITY")

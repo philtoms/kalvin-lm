@@ -15,7 +15,7 @@ Encoding rules (spec §11):
 
 Multi-token word MCS (§11.4):
   When a word BPE-encodes to multiple tokens, the TokenEncoder:
-    1. Emits one UNSIGNED CompiledEntry per BPE subword token.
+    1. Emits one IDENTITY CompiledEntry per BPE subword token.
     2. OR-reduces all subword tokens into a single packed signature.
     3. Emits one CANONIZE entry mapping the packed sig to the subword tokens.
     4. The packed signature becomes the single node value used in the parent
@@ -23,7 +23,7 @@ Multi-token word MCS (§11.4):
 
 Significance levels:
     COUNTERSIGN → S1    UNDERSIGN → S1    CANONIZE → S2
-    CONNOTATE → S3      UNSIGNED → S4
+    CONNOTATE → S3      IDENTITY → S4
 
 Dependencies: kalvin.kline.KLine, kalvin.abstract.KTokenizer,
               kalvin.signature.make_signature, ks.ast_emitter.SymbolicEntry.
@@ -46,7 +46,7 @@ _SIG_LEVELS: dict[str, str] = {
     "UNDERSIGN": "S1",
     "CANONIZE": "S2",
     "CONNOTATE": "S3",
-    "UNSIGNED": "S4",
+    "IDENTITY": "S4",
 }
 
 
@@ -62,7 +62,7 @@ class CompiledEntry(KLine):
         sig_level: S1–S4 significance metadata.
         dbg: optional KDbg debug info.
         op: originating operator (COUNTERSIGN, CANONIZE, CONNOTATE,
-            UNDERSIGN, UNSIGNED).
+            UNDERSIGN, IDENTITY).
     """
 
     __slots__ = ("op",)
@@ -71,7 +71,7 @@ class CompiledEntry(KLine):
         self,
         signature: int,
         nodes: int | None | list[int] = None,
-        op: str = "UNSIGNED",
+        op: str = "IDENTITY",
         sig_level: str | None = None,
         dbg: KDbg | None = None,
     ) -> None:
@@ -212,7 +212,7 @@ class TokenEncoder:
         """Emit MCS entries for a multi-token encoding result.
 
         Emits:
-          1. One UNSIGNED CompiledEntry per BPE subword token.
+          1. One IDENTITY CompiledEntry per BPE subword token.
           2. One CANONIZE entry with packed signature → subword tokens.
 
         Deduplicates: if this exact token tuple has been seen before,
@@ -235,7 +235,7 @@ class TokenEncoder:
         if token_key not in self._decomposed:
             self._decomposed.add(token_key)
 
-            # One UNSIGNED per subword token
+            # One IDENTITY per subword token
             for tok in tokens:
                 tok_dbg: KDbg | None = None
                 if self._dev:
@@ -243,7 +243,7 @@ class TokenEncoder:
                 extras.append(CompiledEntry(
                     signature=tok,
                     nodes=[],
-                    op="UNSIGNED",
+                    op="IDENTITY",
                     sig_level="S4",
                     dbg=tok_dbg,
                 ))
