@@ -53,7 +53,8 @@ import pytest
 
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
-from ks import CompiledEntry, KScript, compile_source
+from ks import KScript, compile_source
+from kalvin.kline import KLine
 from ks.ast import Annotation, Block, KScriptFile, OperatorScope, Signature
 from ks.ast_emitter import SymbolicEntry
 from ks.binding_scope import BindingScope
@@ -67,12 +68,12 @@ from ks.token_encoder import TokenEncoder
 # Shared helpers
 # ---------------------------------------------------------------------------
 
-def compile_dev(source: str) -> list[CompiledEntry]:
+def compile_dev(source: str) -> list[KLine]:
     """Compile source with dev=True (populates dbg for readable assertions)."""
     return compile_source(source, dev=True)
 
 
-def compile_real(source: str, tokenizer=None) -> list[CompiledEntry]:
+def compile_real(source: str, tokenizer=None) -> list[KLine]:
     """Compile with dev=False for uint64-level assertions."""
     return compile_source(source, tokenizer=tokenizer, dev=False)
 
@@ -84,7 +85,7 @@ _TOK = Mod32Tokenizer()
 _CHAR_UINT64: dict[str, int] = {c: _TOK.encode(c)[0] for c in string.ascii_uppercase}
 
 
-def _sig_str(entry: CompiledEntry) -> str:
+def _sig_str(entry: KLine) -> str:
     """Return a human-readable signature string for an entry.
 
     Uses dbg.label when available (dev mode); otherwise decodes the uint64.
@@ -94,7 +95,7 @@ def _sig_str(entry: CompiledEntry) -> str:
     return _TOK.decode([entry.signature])
 
 
-def _node_strs(entry: CompiledEntry) -> list[str]:
+def _node_strs(entry: KLine) -> list[str]:
     """Decode an entry's uint64 node values to human-readable strings."""
     if not entry.nodes:
         return []
@@ -102,18 +103,18 @@ def _node_strs(entry: CompiledEntry) -> list[str]:
 
 
 def _find_entries(
-    entries: list[CompiledEntry],
+    entries: list[KLine],
     *,
     sig: str | None = None,
     op: str | None = None,
     nodes: list[str] | None = None,
-) -> list[CompiledEntry]:
+) -> list[KLine]:
     """Find entries matching the given criteria by decoded string values."""
     results = []
     for e in entries:
         if sig is not None and _sig_str(e) != sig:
             continue
-        if op is not None and e.op != op:
+        if op is not None and e.dbg.op != op:
             continue
         if nodes is not None and _node_strs(e) != nodes:
             continue
@@ -122,7 +123,7 @@ def _find_entries(
 
 
 def has_entry(
-    entries: list[CompiledEntry],
+    entries: list[KLine],
     *,
     sig: str,
     op: str | None = None,
@@ -513,7 +514,7 @@ class TestEmitterOperators:
         entries = compile_dev("A == B C")
         # Per spec §14.2 + per-item: 4 COUNTERSIGN entries only.
         assert len(entries) == 4
-        assert all(e.op == "COUNTERSIGN" for e in entries)
+        assert all(e.dbg.op == "COUNTERSIGN" for e in entries)
         assert has_entry(entries, sig="A", op="COUNTERSIGN", nodes=["B"])
         assert has_entry(entries, sig="B", op="COUNTERSIGN", nodes=["A"])
         assert has_entry(entries, sig="A", op="COUNTERSIGN", nodes=["C"])
@@ -533,7 +534,7 @@ class TestEmitterOperators:
         """KS-12: A = B C → {B:[A]}, {C:[A]} UNDERSIGN."""
         entries = compile_dev("A = B C")
         assert len(entries) == 2
-        assert all(e.op == "UNDERSIGN" for e in entries)
+        assert all(e.dbg.op == "UNDERSIGN" for e in entries)
         assert has_entry(entries, sig="B", op="UNDERSIGN", nodes=["A"])
         assert has_entry(entries, sig="C", op="UNDERSIGN", nodes=["A"])
 
@@ -549,7 +550,7 @@ class TestEmitterOperators:
         """KS-13: A > B C → {A:[B]}, {A:[C]} CONNOTATE."""
         entries = compile_dev("A > B C")
         assert len(entries) == 2
-        assert all(e.op == "CONNOTATE" for e in entries)
+        assert all(e.dbg.op == "CONNOTATE" for e in entries)
         assert has_entry(entries, sig="A", op="CONNOTATE", nodes=["B"])
         assert has_entry(entries, sig="A", op="CONNOTATE", nodes=["C"])
 
@@ -565,7 +566,7 @@ class TestEmitterOperators:
         """KS-14: A => B C D → {A:[B,C,D]} CANONIZE."""
         entries = compile_dev("A => B C D")
         assert len(entries) == 1
-        assert entries[0].op == "CANONIZE"
+        assert entries[0].dbg.op == "CANONIZE"
         assert _sig_str(entries[0]) == "A"
         assert _node_strs(entries[0]) == ["B", "C", "D"]
 
@@ -622,7 +623,7 @@ class TestEmitterOperators:
         entries = compile_dev(source)
         assert len(entries) == 6
         # All should be COUNTERSIGN (bidirectional pairs)
-        assert all(e.op == "COUNTERSIGN" for e in entries)
+        assert all(e.dbg.op == "COUNTERSIGN" for e in entries)
 
     def test_ks18_non_canonize_entries_present(self):
         """KS-18 (relaxed): The 6 COUNTERSIGN pairs are present."""
@@ -650,7 +651,7 @@ class TestEmitterOperators:
         """KS-33: A = A → single {A:[]} IDENTITY."""
         entries = compile_dev("A = A")
         assert len(entries) == 1
-        assert entries[0].op == "IDENTITY"
+        assert entries[0].dbg.op == "IDENTITY"
         assert _sig_str(entries[0]) == "A"
         assert entries[0].nodes == []
 
@@ -682,12 +683,12 @@ class TestEmitterMCS:
         entries = compile_dev("ABC")
         assert len(entries) == 5
 
-        assert _sig_str(entries[0]) == "A" and entries[0].op == "IDENTITY"
-        assert _sig_str(entries[1]) == "B" and entries[1].op == "IDENTITY"
-        assert _sig_str(entries[2]) == "C" and entries[2].op == "IDENTITY"
-        assert _sig_str(entries[3]) == "ABC" and entries[3].op == "CANONIZE"
+        assert _sig_str(entries[0]) == "A" and entries[0].dbg.op == "IDENTITY"
+        assert _sig_str(entries[1]) == "B" and entries[1].dbg.op == "IDENTITY"
+        assert _sig_str(entries[2]) == "C" and entries[2].dbg.op == "IDENTITY"
+        assert _sig_str(entries[3]) == "ABC" and entries[3].dbg.op == "CANONIZE"
         assert _node_strs(entries[3]) == ["A", "B", "C"]
-        assert _sig_str(entries[4]) == "ABC" and entries[4].op == "IDENTITY"
+        assert _sig_str(entries[4]) == "ABC" and entries[4].dbg.op == "IDENTITY"
 
     # -- KS-20: No MCS for single-char -----------------------------------
 
@@ -695,7 +696,7 @@ class TestEmitterMCS:
         """KS-20: A → single IDENTITY entry, no component expansion."""
         entries = compile_dev("A")
         assert len(entries) == 1
-        assert entries[0].op == "IDENTITY"
+        assert entries[0].dbg.op == "IDENTITY"
         assert _sig_str(entries[0]) == "A"
         assert entries[0].nodes == []
 
@@ -830,7 +831,7 @@ class TestEncoding:
         assert entry.signature & 1 == 0, (
             f"Mod32 fallback signature {entry.signature:#x} should have bit 0 clear"
         )
-        assert entry.op == "IDENTITY"
+        assert entry.dbg.op == "IDENTITY"
 
 
 # ===================================================================
@@ -934,14 +935,14 @@ class TestComplexExamples:
         assert len(entries) == 21
 
         # Spot-check critical entries by dbg.label
-        assert entries[0].dbg and entries[0].dbg.label == "M" and entries[0].op == "IDENTITY"
+        assert entries[0].dbg and entries[0].dbg.label == "M" and entries[0].dbg.op == "IDENTITY"
         # MHALL CANONIZE with 5 nodes
-        mhall_canon = [e for e in entries if e.dbg and e.dbg.label == "MHALL" and e.op == "CANONIZE"]
+        mhall_canon = [e for e in entries if e.dbg and e.dbg.label == "MHALL" and e.dbg.op == "CANONIZE"]
         assert len(mhall_canon) == 1
         assert len(mhall_canon[0].nodes) == 5  # M, H, A, L, L
 
         # SVO CANONIZE with 3 nodes
-        svo_canon = [e for e in entries if e.dbg and e.dbg.label == "SVO" and e.op == "CANONIZE"]
+        svo_canon = [e for e in entries if e.dbg and e.dbg.label == "SVO" and e.dbg.op == "CANONIZE"]
         assert len(svo_canon) == 1
         assert len(svo_canon[0].nodes) == 3  # S, V, O
 
@@ -1005,14 +1006,15 @@ class TestComplexExamples:
         assert has_entry(entries, sig="L", op="CONNOTATE")  # L connotate [O]
 
         # Verify significance levels
+        from kalvin.kline import _SIG_LEVELS
         cs_entries = _find_entries(entries, op="COUNTERSIGN")
-        assert all(e.sig_level == "S1" for e in cs_entries)
+        assert all(_SIG_LEVELS.get(e.dbg.op, "S4") == "S1" for e in cs_entries)
         us_entries = _find_entries(entries, op="UNDERSIGN")
-        assert all(e.sig_level == "S1" for e in us_entries)
+        assert all(_SIG_LEVELS.get(e.dbg.op, "S4") == "S3" for e in us_entries)
         canon_entries = _find_entries(entries, op="CANONIZE")
-        assert all(e.sig_level == "S2" for e in canon_entries)
+        assert all(_SIG_LEVELS.get(e.dbg.op, "S4") == "S2" for e in canon_entries)
         con_entries = _find_entries(entries, op="CONNOTATE")
-        assert all(e.sig_level == "S3" for e in con_entries)
+        assert all(_SIG_LEVELS.get(e.dbg.op, "S4") == "S3" for e in con_entries)
 
     # -- KS-36: §14.12 NLP-bound example ---------------------------------
 
@@ -1064,7 +1066,8 @@ class TestComplexExamples:
             assert isinstance(e.signature, int)
             assert e.signature > 0
 
-        # All entries should have valid op and sig_level
+        # All entries should have valid op via dbg
+        from kalvin.kline import _SIG_LEVELS
         for e in entries:
-            assert e.op in ("COUNTERSIGN", "CANONIZE", "CONNOTATE", "UNDERSIGN", "IDENTITY")
-            assert e.sig_level in ("S1", "S2", "S3", "S4")
+            assert e.dbg and e.dbg.op in ("COUNTERSIGN", "CANONIZE", "CONNOTATE", "UNDERSIGN", "IDENTITY", "UNSIGNED")
+            assert _SIG_LEVELS.get(e.dbg.op, "S4") in ("S1", "S2", "S3", "S4")

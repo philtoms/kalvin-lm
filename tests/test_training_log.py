@@ -21,7 +21,7 @@ from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX
 from kalvin.kline import KDbg, KLine
-from ks import CompiledEntry
+from ks import KLine
 from trainer.curriculum import Curriculum
 from trainer.curriculum_document import CurriculumDocument, Lesson
 from trainer.reactor import Reactor
@@ -37,8 +37,8 @@ _S2_DISTANCE = 100  # raw distance for assertions
 # ── Helpers ──────────────────────────────────────────────────────────
 
 
-def _make_entry(sig: int, nodes: list[int]) -> CompiledEntry:
-    return CompiledEntry(signature=sig, nodes=nodes, dbg=KDbg(label=f"test-{sig:#x}"))
+def _make_entry(sig: int, nodes: list[int]) -> KLine:
+    return KLine(signature=sig, nodes=nodes, dbg=KDbg(label=f"test-{sig:#x}"))
 
 
 def _make_event(

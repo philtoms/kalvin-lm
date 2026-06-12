@@ -1,4 +1,4 @@
-"""TokenEncoder — converts symbolic entries to encoded CompiledEntry objects.
+"""TokenEncoder — converts symbolic entries to encoded KLine objects.
 
 Final stage of the KScript v3 compilation pipeline.  Takes the symbolic
 (string) entries produced by ASTEmitter and encodes them into uint64 values
@@ -15,14 +15,14 @@ Encoding rules (spec §11):
 
 Multi-token word MCS (§11.4):
   When a word BPE-encodes to multiple tokens, the TokenEncoder:
-    1. Emits one IDENTITY CompiledEntry per BPE subword token.
+    1. Emits one IDENTITY KLine per BPE subword token.
     2. OR-reduces all subword tokens into a single packed signature.
     3. Emits one CANONIZE entry mapping the packed sig to the subword tokens.
     4. The packed signature becomes the single node value used in the parent
        kline — preserving the node-count invariant (one word = one node).
 
-Significance levels:
-    COUNTERSIGN → S1    UNDERSIGN → S1    CANONIZE → S2
+Significance levels (compile-time intent):
+    COUNTERSIGN → S1    UNDERSIGN → S3    CANONIZE → S2
     CONNOTATE → S3      IDENTITY → S4
 
 Dependencies: kalvin.kline.KLine, kalvin.abstract.KTokenizer,
@@ -37,63 +37,22 @@ from kalvin.signature import make_signature
 
 from .ast_emitter import SymbolicEntry
 
-__all__ = ["CompiledEntry", "TokenEncoder"]
+__all__ = ["TokenEncoder"]
 
 
-# ── Significance level mapping ────────────────────────────────────────
+# ── Significance level mapping (compile-time intent) ──────────────────
 _SIG_LEVELS: dict[str, str] = {
     "COUNTERSIGN": "S1",
-    "UNDERSIGN": "S1",
+    "UNDERSIGN": "S3",
     "CANONIZE": "S2",
     "CONNOTATE": "S3",
     "IDENTITY": "S4",
+    "UNSIGNED": "S4",
 }
 
 
-class CompiledEntry(KLine):
-    """An encoded compilation entry ready for the knowledge graph.
-
-    Extends KLine with provenance metadata (op) for tracing back to the
-    original KScript operator.
-
-    Attributes:
-        signature: uint64 identity key (full unmasked value).
-        nodes: list of uint64 node values — always a list, never None.
-        sig_level: S1–S4 significance metadata.
-        dbg: optional KDbg debug info.
-        op: originating operator (COUNTERSIGN, CANONIZE, CONNOTATE,
-            UNDERSIGN, IDENTITY).
-    """
-
-    __slots__ = ("op",)
-
-    def __init__(
-        self,
-        signature: int,
-        nodes: int | None | list[int] = None,
-        op: str = "IDENTITY",
-        sig_level: str | None = None,
-        dbg: KDbg | None = None,
-    ) -> None:
-        super().__init__(
-            signature=signature,
-            nodes=nodes,
-            dbg=dbg,
-            sig_level=sig_level,
-        )
-        self.op = op
-
-    def __repr__(self) -> str:
-        text = f" {self.dbg}" if self.dbg else ""
-        return (
-            f"CompiledEntry(sig={self.signature:#x}, "
-            f"nodes={self.nodes!r}, op={self.op!r}, "
-            f"sig_level={self.sig_level!r}{text})"
-        )
-
-
 class TokenEncoder:
-    """Converts symbolic entries into encoded CompiledEntry objects.
+    """Converts symbolic entries into encoded KLine objects.
 
     Args:
         tokenizer: A KTokenizer implementation that converts strings to
@@ -111,28 +70,28 @@ class TokenEncoder:
 
     # ── Public API ────────────────────────────────────────────────────
 
-    def encode_entries(self, symbolic: list[SymbolicEntry]) -> list[CompiledEntry]:
-        """Encode a list of symbolic entries into compiled entries.
+    def encode_entries(self, symbolic: list[SymbolicEntry]) -> list[KLine]:
+        """Encode a list of symbolic entries into compiled KLines.
 
         Args:
             symbolic: List of SymbolicEntry tuples from ASTEmitter.
 
         Returns:
-            Ordered list of CompiledEntry objects.  MCS expansion entries
+            Ordered list of KLine objects.  MCS expansion entries
             appear before the entries that reference them.
         """
         if not symbolic:
             return []
 
-        result: list[CompiledEntry] = []
+        result: list[KLine] = []
         for entry in symbolic:
             result.extend(self._encode_entries_for_entry(entry))
         return result
 
     # ── Per-entry encoding ────────────────────────────────────────────
 
-    def _encode_entries_for_entry(self, entry: SymbolicEntry) -> list[CompiledEntry]:
-        """Process one SymbolicEntry into one or more CompiledEntry objects.
+    def _encode_entries_for_entry(self, entry: SymbolicEntry) -> list[KLine]:
+        """Process one SymbolicEntry into one or more KLine objects.
 
         Steps:
           1. Encode signature → uint64 (with multi-token MCS if needed).
@@ -140,10 +99,9 @@ class TokenEncoder:
           3. Emit the main entry.
 
         Returns:
-            List of CompiledEntry (extras first, then main entry).
+            List of KLine (extras first, then main entry).
         """
-        extras: list[CompiledEntry] = []
-        sig_level = _SIG_LEVELS.get(entry.op, "S4")
+        extras: list[KLine] = []
 
         # 1. Encode signature
         sig_tokens = self._tokenizer.encode(entry.sig)
@@ -153,7 +111,7 @@ class TokenEncoder:
         else:
             # Multi-token signature → MCS + packed sig
             sig_uint64, sig_extras = self._emit_mcs_for_tokens(
-                sig_tokens, dbg_label=entry.sig,
+                sig_tokens, dbg_label=entry.sig, op="IDENTITY",
             )
             extras.extend(sig_extras)
 
@@ -164,17 +122,15 @@ class TokenEncoder:
             extras.extend(node_extras)
             node_values.append(node_val)
 
-        # 3. Build debug info
-        dbg: KDbg | None = None
+        # 3. Build debug info (op is always populated)
+        dbg = KDbg(op=entry.op)
         if self._dev:
-            dbg = self._build_dbg(sig_uint64, entry.sig)
+            dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op)
 
         # 4. Emit main entry
-        main = CompiledEntry(
+        main = KLine(
             signature=sig_uint64,
             nodes=node_values,
-            op=entry.op,
-            sig_level=sig_level,
             dbg=dbg,
         )
         extras.append(main)
@@ -182,7 +138,7 @@ class TokenEncoder:
 
     # ── Node encoding ─────────────────────────────────────────────────
 
-    def _encode_node(self, word: str) -> tuple[int, list[CompiledEntry]]:
+    def _encode_node(self, word: str) -> tuple[int, list[KLine]]:
         """Encode a single word to a uint64 node value.
 
         Args:
@@ -200,7 +156,7 @@ class TokenEncoder:
             return (tokens[0], [])
 
         # Multi-token word → MCS at BPE-token level (§11.4)
-        return self._emit_mcs_for_tokens(tokens, dbg_label=word)
+        return self._emit_mcs_for_tokens(tokens, dbg_label=word, op="IDENTITY")
 
     # ── MCS emission for multi-token results ──────────────────────────
 
@@ -208,11 +164,12 @@ class TokenEncoder:
         self,
         tokens: list[int],
         dbg_label: str = "",
-    ) -> tuple[int, list[CompiledEntry]]:
+        op: str = "IDENTITY",
+    ) -> tuple[int, list[KLine]]:
         """Emit MCS entries for a multi-token encoding result.
 
         Emits:
-          1. One IDENTITY CompiledEntry per BPE subword token.
+          1. One IDENTITY KLine per BPE subword token.
           2. One CANONIZE entry with packed signature → subword tokens.
 
         Deduplicates: if this exact token tuple has been seen before,
@@ -221,6 +178,7 @@ class TokenEncoder:
         Args:
             tokens: List of BPE token uint64 values.
             dbg_label: Debug label for dev mode.
+            op: Operator for the identity subword entries.
 
         Returns:
             (packed_signature, extra_entries).
@@ -230,7 +188,7 @@ class TokenEncoder:
         # Compute packed signature via OR-reduction
         packed = make_signature(tokens)
 
-        extras: list[CompiledEntry] = []
+        extras: list[KLine] = []
 
         if token_key not in self._decomposed:
             self._decomposed.add(token_key)
@@ -239,24 +197,24 @@ class TokenEncoder:
             for tok in tokens:
                 tok_dbg: KDbg | None = None
                 if self._dev:
-                    tok_dbg = self._build_dbg(tok, dbg_label)
-                extras.append(CompiledEntry(
+                    tok_dbg = self._build_dbg(tok, dbg_label, op="IDENTITY")
+                else:
+                    tok_dbg = KDbg(op="IDENTITY")
+                extras.append(KLine(
                     signature=tok,
                     nodes=[],
-                    op="IDENTITY",
-                    sig_level="S4",
                     dbg=tok_dbg,
                 ))
 
             # One CANONIZE: packed sig → subword tokens
             canon_dbg: KDbg | None = None
             if self._dev:
-                canon_dbg = self._build_dbg(packed, dbg_label)
-            extras.append(CompiledEntry(
+                canon_dbg = self._build_dbg(packed, dbg_label, op="CANONIZE")
+            else:
+                canon_dbg = KDbg(op="CANONIZE")
+            extras.append(KLine(
                 signature=packed,
                 nodes=list(tokens),
-                op="CANONIZE",
-                sig_level="S2",
                 dbg=canon_dbg,
             ))
 
@@ -264,7 +222,7 @@ class TokenEncoder:
 
     # ── Debug construction ──────────────────────────────────────────────
 
-    def _build_dbg(self, sig_uint64: int, label: str) -> KDbg:
+    def _build_dbg(self, sig_uint64: int, label: str, op: str = "IDENTITY") -> KDbg:
         """Build a KDbg for a compiled signature.
 
         Looks up NLP grammar info from the tokenizer's grammar dict
@@ -273,6 +231,7 @@ class TokenEncoder:
         Args:
             sig_uint64: The packed NLP-BPE signature.
             label: Origin label (the word/operator being compiled).
+            op: The originating operator.
 
         Returns:
             Populated KDbg instance.
@@ -288,6 +247,7 @@ class TokenEncoder:
             dep = grammar_entry.get("dep", "")
             morph = grammar_entry.get("morph", "")
         return KDbg(
+            op=op,
             label=label,
             decoded=decoded,
             pos=pos,

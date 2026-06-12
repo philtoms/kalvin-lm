@@ -392,12 +392,13 @@ class KAgent:
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
 
-        # Phase 3 (continued): Undersign ratification — single-node entries
-        # where both signature and node are grounded identities. Only applies
-        # to entries compiled from S1 operators (countersign, undersign).
-        # S3 connotate entries with the same structure must go through slow path.
-        if (getattr(kline, 'sig_level', None) == 'S1'
-            and len(kline.nodes) == 1
+        # Phase 3 (continued): Undersign/connotate single-node entries
+        # where both signature and node are grounded identities.
+        # No operator guard needed: countersign is handled above by
+        # is_countersigned(), and undersign/connotate produce identical
+        # kline structures (inverses of each other) — both can fast-path
+        # when both sides are grounded.
+        if (len(kline.nodes) == 1
             and self._model.find(kline.signature) is not None
             and self._model.find(kline.nodes[0]) is not None):
             self._model.add_ltm(kline)

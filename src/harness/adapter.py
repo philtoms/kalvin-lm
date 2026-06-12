@@ -32,8 +32,7 @@ from kalvin.paths import agent_bin
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kalvin.abstract import KTokenizer
-from kscript.compiler import compile_source
-from kscript.decompiler import Decompiler
+from ks.compiler import compile_source
 
 if TYPE_CHECKING:
     pass

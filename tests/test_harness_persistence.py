@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ks import CompiledEntry
+from ks import KLine
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
 # The UI module has dependencies that may not be available in the test

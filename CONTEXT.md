@@ -145,13 +145,17 @@ _Avoid_: working memory (too vague), context window (implies a passive buffer, n
 
 A node-like structure with a **signature** (head) and **nodes** (value). The fundamental unit of Kalvin's knowledge graph. `nodes` is always a `list[uint64]` — empty list for identity klines, one or more elements for relationship klines. Two kinds: **identity** (empty nodes) and **relationship** (one or more nodes).
 
+### KDbg
+
+Provenance metadata attached to a KLine via its `dbg` slot. Carries the originating **operator** (COUNTERSIGN, UNDERSIGN, CONNOTATE, CANONIZE, IDENTITY), the signature **label** (original text), the **decoded** tokenizer output, and optional NLP annotations (pos, dep, morph). Populated during compilation in dev mode. Used by the display helper to reconstruct human-readable KScript source from a KLine. Not spec'd — not part of the knowledge graph's identity or equality semantics.
+
 ### Signature
 
 The head of a KLine. A bit-packed integer representing the identity of the KLine. Constructed via `make_signature(nodes)`.
 
 ### Compiled Entry
 
-A KLine produced by the KScript compiler. Extends KLine with compilation metadata.
+A KLine produced by the KScript compiler. Carries provenance metadata in `KDbg` (operator, label, NLP annotations). Not a distinct type — the compiler produces plain KLines with populated `dbg`.
 
 ### Expectation
 
@@ -171,10 +175,18 @@ A 64-bit inverted distance representing how well a KLine relates to the model's 
 
 ### Significance Levels
 
-- **S1**: Fully grounded — canonical or countersigned.
-- **S2**: Partially understood — some nodes match. Misfitting (overfit or underfit).
-- **S3**: Recognised aspects — no node match but signature matches previously worked signatures.
-- **S4**: Identity — a bare node with empty nodes. No prior knowledge, no relationships, no candidates.
+A four-level classification of how strongly one KLine relates to another. Determined at two stages:
+
+- **Compile-time intent** (operator → level): the `op` field in `KDbg` records the originating operator, which implies an initial significance. This is the script's *declared intent*.
+- **Runtime routing** (structural match): `_route()` classifies a query-candidate pair by node membership — S1 (all match), S2 (some match), S3 (none match), S4 (empty query). This is the *actual* significance.
+
+The two can differ. A CANONIZE entry is emitted at S2 intent, but structurally its signature may perfectly fit its nodes (S1). The purpose of subscripted child klines under `=>` is to canonize from S2 to S1 through countersigning.
+
+**Operators and their compile-time intent:**
+- **S1**: COUNTERSIGN (`==`) — bidirectional, produces reciprocal pairs.
+- **S2**: CANONIZE (`=>`) — canonical aggregation. Structurally may be S1 (perfect fit: sig == nodes_sig) or S2 (misfit) at runtime.
+- **S3**: CONNOTATE (`>`) and UNDERSIGN (`=`) — inverses of each other. `A > B` compiles to `{A: B}`; `A = B` compiles to `{B: A}`.
+- **S4**: IDENTITY (bare) — no nodes, no relationships.
 
 ### Identity
 
@@ -235,7 +247,7 @@ The action of countersigning a selected proposal. Performed by the Trainer durin
 
 ### MCS Entry
 
-A multi-character signature entry where `signature == make_signature(nodes)`. Always S1 (canonical) — no misfit possible.
+A multi-character signature entry where `signature == make_signature(nodes)`. Produced by the CANONIZE operator at S2 intent, but structurally a perfect fit (S1) — no misfit possible. The subscript child klines serve to canonize the parent from S2 to S1.
 
 ### Structural Match
 

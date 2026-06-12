@@ -25,7 +25,7 @@ from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
-from kscript.token_encoder import CompiledEntry
+from kalvin.kline import KLine
 from trainer.curriculum import CurriculumState, EntryKey
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ class Action:
 
 
 def _entry_key(kline: KLine) -> EntryKey:
-    """Return a hashable identity key for a KLine / CompiledEntry."""
+    """Return a hashable identity key for a KLine."""
     return (kline.signature, tuple(kline.nodes))
 
 
@@ -95,14 +95,14 @@ class Reactor:
         self._cogitate_fn = cogitate_fn
 
         # Per-lesson state
-        self._current_entries: list[CompiledEntry] = []
+        self._current_entries: list[KLine] = []
         self._expected_count: int = 0
         self._received_count: int = 0
         self._reactive_rounds: int = 0
 
     # ── Lesson lifecycle ──────────────────────────────────────────────
 
-    def load_lesson(self, entries: list[CompiledEntry]) -> None:
+    def load_lesson(self, entries: list[KLine]) -> None:
         """Reset per-lesson state: set entries, zero counters."""
         self._current_entries = entries
         self._received_count = 0
@@ -146,7 +146,7 @@ class Reactor:
         return self._expected_count
 
     @property
-    def current_entries(self) -> list[CompiledEntry]:
+    def current_entries(self) -> list[KLine]:
         return list(self._current_entries)
 
     # ── Auto-countersign ──────────────────────────────────────────────

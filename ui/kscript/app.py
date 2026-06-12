@@ -17,11 +17,12 @@ from textual.widgets import Footer, Header, ListView
 from kalvin.agent import Agent
 from kalvin.abstract import KLine
 from kalvin.events import EventBus, RationaliseEvent
-from kscript import KScript, CompiledEntry
+from kalvin.kline import kline_display
+from kalvin.mod_tokenizer import Mod32Tokenizer
+from ks import KScript
 
 # Type alias for entry identity keys used in tracking sets
 EntryKey = tuple[int, tuple[int, ...]]
-from kscript.decompiler import Decompiler
 from ui.kscript.dialogs import LoadScriptDialog, SaveStateDialog, LoadStateDialog
 from ui.kscript.regions import EditorRegion, ResponsesRegion, ToolbarRegion
 from ui.kscript.regions.responses import ResponseItem
@@ -72,7 +73,7 @@ class KScriptApp(App):
         super().__init__()
         self._dev_mode = dev_mode
         self._agent: Optional[Agent] = None
-        self._decompiler: Decompiler = Decompiler()
+        self._display_tok = Mod32Tokenizer()
         self._execution_state: ExecutionState = ExecutionState.IDLE
         self._cancelled: bool = False
         self._last_script_dir: Path = DEFAULT_SCRIPTS_DIR
@@ -85,7 +86,7 @@ class KScriptApp(App):
         self._selected_proposal: KLine | None = None
         self._selected_entry_key: EntryKey | None = None
         # Event correlation state (KB-010)
-        self._compiled_entries: list[CompiledEntry] = []
+        self._compiled_entries: list[KLine] = []
         self._expectations: dict[EntryKey, list[KLine]] = {}
         self._fast_path_results: dict[EntryKey, bool] = {}
         # Run mode flag — distinguishes Run from Step in event callback
@@ -147,7 +148,7 @@ class KScriptApp(App):
             if is_fast_path and matched_key is not None:
                 # Fast-path auto-satisfaction (HRN-3)
                 app._satisfied.add(matched_key)
-                decompiled = app._decompile_response([proposal])
+                decompiled = app._display_response([proposal])
                 for level, source in decompiled:
                     app._add_event_response(
                         level, source, "pass", significance,
@@ -160,7 +161,7 @@ class KScriptApp(App):
                     app._expectations[matched_key] = []
                 app._expectations[matched_key].append(proposal)
 
-                decompiled = app._decompile_response([proposal])
+                decompiled = app._display_response([proposal])
                 for level, source in decompiled:
                     app._add_event_response(
                         level, source, "pending", significance,
@@ -171,7 +172,7 @@ class KScriptApp(App):
                 # Unmatched event — no compiled entry correlates (HRN-17)
                 # Display as pending for human review, execution continues
                 app.log(f"Unmatched event: kind={event.kind} sig={significance:#x}")
-                decompiled = app._decompile_response([proposal])
+                decompiled = app._display_response([proposal])
                 for level, source in decompiled:
                     app._add_event_response(
                         level, source, "pending", significance,
@@ -383,7 +384,7 @@ class KScriptApp(App):
 
     # === Script Compilation ===
 
-    def _compile_script(self) -> Optional[list[CompiledEntry]]:
+    def _compile_script(self) -> Optional[list[KLine]]:
         """Compile the current editor content to KLine entries.
 
         On success, stores the result in self._compiled_entries for event
@@ -391,7 +392,7 @@ class KScriptApp(App):
         returns None.
 
         Returns:
-            List of CompiledEntry objects, or None on error.
+            List of KLine objects, or None on error.
         """
         editor = self.query_one(EditorRegion)
         script = editor.get_script()
@@ -408,10 +409,10 @@ class KScriptApp(App):
             self._show_compilation_error(str(e))
             return None
 
-    def _entry_to_kline(self, entry: CompiledEntry) -> KLine:
-        """Convert a CompiledEntry to a KLine for Agent.
+    def _entry_to_kline(self, entry: KLine) -> KLine:
+        """Convert a compiled KLine to a KLine for Agent.
 
-        Since CompiledEntry extends KLine, this is a simple cast.
+        Since the compiler now produces KLine directly, this is identity.
 
         Args:
             entry: The compiled entry to convert.
@@ -421,19 +422,19 @@ class KScriptApp(App):
         """
         return entry
 
-    def _decompile_response(self, klines: list[KLine]) -> list[tuple[str, str]]:
-        """Decompile a list of KLines to KScript source.
+    def _display_response(self, klines: list[KLine]) -> list[tuple[str, str]]:
+        """Display a list of KLines as KScript source.
 
         Args:
             klines: List of KLines from rationalise response.
 
         Returns:
-            Decompile KScript source string.
+            List of (level, source) tuples.
         """
         if not klines:
             return []
-        entries = self._decompiler.decompile(klines)
-        return [(e.level, e.to_kscript())  for e in entries]
+        from kalvin.kline import sig_level
+        return [(sig_level(kl), kline_display(kl, self._display_tok)) for kl in klines]
 
     def _show_compilation_error(self, error_message: str) -> None:
         """Display a compilation error as a ✗ response item in the panel.
@@ -457,14 +458,14 @@ class KScriptApp(App):
     # === Tracking State Helpers (KB-008) ===
 
     @staticmethod
-    def _entry_key(entry: CompiledEntry) -> EntryKey:
+    def _entry_key(entry: KLine) -> EntryKey:
         """Return a hashable identity key for a compiled entry.
 
         The key is (signature, tuple(nodes)), suitable for set membership tests.
         """
         return (entry.signature, tuple(entry.nodes))
 
-    def _get_pending(self, entries: list[CompiledEntry]) -> list[CompiledEntry]:
+    def _get_pending(self, entries: list[KLine]) -> list[KLine]:
         """Return entries not yet in _submitted, preserving input order."""
         return [e for e in entries if self._entry_key(e) not in self._submitted]
 
@@ -488,7 +489,7 @@ class KScriptApp(App):
 
     # === Auto-Countersign (Run Mode) ===
 
-    def _auto_countersign(self, entry: CompiledEntry, proposal: KLine) -> bool:
+    def _auto_countersign(self, entry: KLine, proposal: KLine) -> bool:
         """Auto-countersign a proposal if it structurally matches the entry.
 
         Called from the event callback when a proposal arrives during Run
@@ -623,7 +624,7 @@ class KScriptApp(App):
         # Submit all pending entries via async worker
         self.run_worker(self._submit_all_pending(pending))
 
-    async def _submit_all_pending(self, entries: list[CompiledEntry]) -> None:
+    async def _submit_all_pending(self, entries: list[KLine]) -> None:
         """Submit all pending entries sequentially to the Agent.
 
         Implements HRN-5: all pending entries are submitted without pausing.
@@ -635,7 +636,7 @@ class KScriptApp(App):
         - Yield control between entries to keep UI responsive
 
         Args:
-            entries: List of pending CompiledEntry objects to submit.
+            entries: List of pending KLine objects to submit.
         """
         for entry in entries:
             if self._cancelled:
@@ -698,7 +699,7 @@ class KScriptApp(App):
         """Clear the responses list and reset all tracking state."""
         responses = self.query_one(ResponsesRegion)
         responses.clear()
-        self._decompiler.clear()
+        self._display_tok  # tokenizer is stateless, no clear needed
         self._submitted.clear()
         self._satisfied.clear()
         # Reset selection state and disable Ratify button

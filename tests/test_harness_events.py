@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch, PropertyMock
 
 from kalvin.abstract import KLine
 from kalvin.events import RationaliseEvent
-from ks import CompiledEntry
+from ks import KLine
 
 
 # ── Structural Match Tests ──────────────────────────────────────────────
@@ -81,7 +81,7 @@ def _make_app():
         # Initialize only the fields we need
         app._dev_mode = True
         app._agent = MagicMock()
-        app._decompiler = MagicMock()
+        app._display_tok = MagicMock()
         app._execution_state = None
         app._pending_entries = []
         app._current_entry_index = 0
@@ -104,9 +104,9 @@ def _make_app():
     return app, mock_responses
 
 
-def _make_entry(sig: int, nodes: list[int]) -> CompiledEntry:
-    """Create a CompiledEntry with given signature and nodes."""
-    return CompiledEntry(signature=sig, nodes=nodes)
+def _make_entry(sig: int, nodes: list[int]) -> KLine:
+    """Create a KLine with given signature and nodes."""
+    return KLine(signature=sig, nodes=nodes)
 
 
 # ── Event Correlation Tests ────────────────────────────────────────────
@@ -121,12 +121,6 @@ class TestEventCorrelation:
 
         entry = _make_entry(0x42, [1, 2, 3])
         app._compiled_entries = [entry]
-
-        # Mock decompiler to return a valid entry
-        from kscript.decompiler import DecompiledEntry
-        app._decompiler.decompile.return_value = [
-            DecompiledEntry(level="S1", sig="SIG", nodes=["A", "B"])
-        ]
 
         # Publish a ground event whose query matches the entry
         event = RationaliseEvent(
@@ -207,11 +201,6 @@ class TestFastPath:
         entry = _make_entry(0x50, [10, 20])
         app._compiled_entries = [entry]
 
-        # Mock decompiler to return a valid entry
-        from kscript.decompiler import DecompiledEntry
-        app._decompiler.decompile.return_value = [
-            DecompiledEntry(level="S1", sig="SIG", nodes=["A", "B"])
-        ]
 
         app._setup_events()
         callback = app._agent.events.subscribe.call_args[0][0]
@@ -247,11 +236,6 @@ class TestSlowPath:
         entry = _make_entry(0x60, [100, 200])
         app._compiled_entries = [entry]
 
-        # Mock decompiler to return a valid entry
-        from kscript.decompiler import DecompiledEntry
-        app._decompiler.decompile.return_value = [
-            DecompiledEntry(level="S2", sig="SIG", nodes=["A", "B"])
-        ]
 
         app._setup_events()
         callback = app._agent.events.subscribe.call_args[0][0]
@@ -281,11 +265,6 @@ class TestSlowPath:
         # No compiled entries match — simulates mismatch scenario
         app._compiled_entries = []
 
-        # Mock decompiler
-        from kscript.decompiler import DecompiledEntry
-        app._decompiler.decompile.return_value = [
-            DecompiledEntry(level="S3", sig="UNK", nodes=["X"])
-        ]
 
         app._setup_events()
         callback = app._agent.events.subscribe.call_args[0][0]
@@ -340,12 +319,6 @@ class TestMultipleProposals:
         entry = _make_entry(0x70, [1, 2])
         app._compiled_entries = [entry]
 
-        # Mock decompiler to return entries for each proposal
-        from kscript.decompiler import DecompiledEntry
-        app._decompiler.decompile.side_effect = [
-            [DecompiledEntry(level="S2", sig="A", nodes=["X"])],
-            [DecompiledEntry(level="S3", sig="A", nodes=["Y"])],
-        ]
 
         app._setup_events()
         callback = app._agent.events.subscribe.call_args[0][0]

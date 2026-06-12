@@ -11,11 +11,11 @@ significance breakdown (raw, normalised, level).
 from __future__ import annotations
 
 from kalvin.expand import D_MAX, MASK64, boundaries, classify
-from kalvin.kline import KLine
-from kscript.decompiler import Decompiler
+from kalvin.kline import KLine, kline_display
+from kalvin.mod_tokenizer import Mod32Tokenizer
 
-# Module-level decompiler instance (stateless across calls)
-_decompiler = Decompiler()
+# Module-level tokenizer for display (stateless across calls)
+_tokenizer = Mod32Tokenizer()
 
 
 # ── Public API ────────────────────────────────────────────────────────
@@ -145,7 +145,7 @@ def _build_kline_display(kline: KLine) -> dict:
 
     Returns dict with raw (signature, nodes) and decompiled source.
     """
-    source = _decompile_kline(kline)
+    source = _display_kline(kline)
     return {
         "raw": {"signature": kline.signature, "nodes": kline.nodes},
         "source": source,
@@ -164,15 +164,13 @@ def _to_kline(obj: object) -> KLine:
     raise TypeError(f"Cannot convert {type(obj).__name__} to KLine")
 
 
-def _decompile_kline(kline: KLine) -> str:
-    """Decompile a KLine to KScript source string.
+def _display_kline(kline: KLine) -> str:
+    """Display a KLine as KScript source string.
 
-    Returns "<unknown>" if decompilation yields no results.
+    Returns "<unknown>" if display fails.
     """
     try:
-        entries = _decompiler.decompile([kline])
-        if entries:
-            return entries[0].to_kscript()
+        return kline_display(kline, _tokenizer)
     except Exception:
         pass
     return "<unknown>"

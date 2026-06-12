@@ -20,7 +20,7 @@ import pytest
 
 from kalvin.abstract import KLine
 from kalvin.events import RationaliseEvent
-from ks import CompiledEntry
+from ks import KLine
 from ui.kscript.regions.toolbar import ExecutionState
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
@@ -31,9 +31,9 @@ from ui.kscript.app import KScriptApp
 # ── Helpers ───────────────────────────────────────────────────────────
 
 
-def _make_entry(signature: int, nodes: list[int]) -> CompiledEntry:
-    """Create a CompiledEntry with given signature and nodes."""
-    return CompiledEntry(signature=signature, nodes=nodes)
+def _make_entry(signature: int, nodes: list[int]) -> KLine:
+    """Create a KLine with given signature and nodes."""
+    return KLine(signature=signature, nodes=nodes)
 
 
 def _make_app() -> KScriptApp:
@@ -45,7 +45,6 @@ def _make_app() -> KScriptApp:
         app = KScriptApp.__new__(KScriptApp)
         app._dev_mode = True
         app._agent = MagicMock()
-        app._decompiler = MagicMock()
         app._execution_state = ExecutionState.IDLE
         app._pending_entries = []
         app._current_entry_index = 0
@@ -63,7 +62,7 @@ def _make_app() -> KScriptApp:
         return app
 
 
-def _entry_key(entry: CompiledEntry):
+def _entry_key(entry: KLine):
     """Shortcut for KScriptApp._entry_key."""
     return KScriptApp._entry_key(entry)
 
@@ -256,11 +255,6 @@ class TestMismatchPending:
         app._compiled_entries = [entry]
         app._run_mode_active = True
 
-        # Mock decompiler to return a valid entry
-        from kscript.decompiler import DecompiledEntry
-        app._decompiler.decompile.return_value = [
-            DecompiledEntry(level="S2", sig="SIG", nodes=["A", "B"])
-        ]
 
         # Mock query_one for ResponsesRegion
         mock_responses = MagicMock()

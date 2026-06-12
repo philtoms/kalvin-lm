@@ -21,15 +21,15 @@ Spec ref: @specs/kscript.md §13 (Public API).
 from __future__ import annotations
 
 from kalvin.abstract import KTokenizer
+from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
 from .ast_emitter import SymbolicEntry
 from .compiler import Compiler, compile_source
-from .token_encoder import CompiledEntry
 
 __all__ = [
     "KScript",
-    "CompiledEntry",
+    "KLine",
     "Compiler",
     "compile_source",
     "SymbolicEntry",
@@ -50,7 +50,7 @@ class KScript:
     Example::
 
         model = KScript("A == B")
-        print(model.entries)  # list[CompiledEntry]
+        print(model.entries)  # list[KLine]
     """
 
     def __init__(
@@ -61,11 +61,11 @@ class KScript:
     ) -> None:
         self._tokenizer: KTokenizer = tokenizer or Mod32Tokenizer()
         self._dev = dev
-        self._entries: list[CompiledEntry] = compile_source(
+        self._entries: list[KLine] = compile_source(
             source, tokenizer=self._tokenizer, dev=self._dev,
         )
 
     @property
-    def entries(self) -> list[CompiledEntry]:
+    def entries(self) -> list[KLine]:
         """Return the compiled entries."""
         return self._entries

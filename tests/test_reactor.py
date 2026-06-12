@@ -14,7 +14,7 @@ from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
-from ks import CompiledEntry
+from ks import KLine
 from trainer.curriculum import Curriculum, CurriculumState
 from trainer.reactor import Reactor
 
@@ -26,9 +26,9 @@ _S2_SIGNIFICANCE = 100
 # ── Test helpers ──────────────────────────────────────────────────────
 
 
-def _make_entry(sig: int, nodes: list[int]) -> CompiledEntry:
-    """Create a CompiledEntry with the given signature and nodes."""
-    return CompiledEntry(signature=sig, nodes=nodes, dbg=KDbg(label=f"test-{sig:#x}"))
+def _make_entry(sig: int, nodes: list[int]) -> KLine:
+    """Create a KLine with the given signature and nodes."""
+    return KLine(signature=sig, nodes=nodes, dbg=KDbg(label=f"test-{sig:#x}"))
 
 
 def _make_event(

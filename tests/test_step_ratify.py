@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 
 from kalvin.abstract import KLine
-from ks import CompiledEntry
+from ks import KLine
 from ui.kscript.regions.toolbar import ExecutionState
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
@@ -21,9 +21,9 @@ from ui.kscript.app import KScriptApp
 # ── Helpers ───────────────────────────────────────────────────────────
 
 
-def _make_entry(signature: int, nodes: list[int]) -> CompiledEntry:
-    """Create a CompiledEntry with given signature and nodes."""
-    return CompiledEntry(signature=signature, nodes=nodes)
+def _make_entry(signature: int, nodes: list[int]) -> KLine:
+    """Create a KLine with given signature and nodes."""
+    return KLine(signature=signature, nodes=nodes)
 
 
 def _make_app() -> KScriptApp:

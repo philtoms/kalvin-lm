@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ks import CompiledEntry
+from ks import KLine
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
 # The UI module has dependencies that may not be available in the test
@@ -28,9 +28,9 @@ from ui.kscript.app import KScriptApp, UI_STATE_FILE
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
-def _make_entry(signature: int, nodes: list[int]) -> CompiledEntry:
-    """Create a CompiledEntry with given signature and nodes."""
-    return CompiledEntry(signature=signature, nodes=nodes)
+def _make_entry(signature: int, nodes: list[int]) -> KLine:
+    """Create a KLine with given signature and nodes."""
+    return KLine(signature=signature, nodes=nodes)
 
 
 def _make_app() -> KScriptApp:
@@ -62,7 +62,7 @@ def _make_app() -> KScriptApp:
 # ── _entry_key tests ──────────────────────────────────────────────────
 
 class TestEntryKey:
-    """KScriptApp._entry_key: identity key for CompiledEntry."""
+    """KScriptApp._entry_key: identity key for KLine."""
 
     def test_entry_key_basic(self):
         entry = _make_entry(42, [1, 2, 3])

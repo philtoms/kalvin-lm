@@ -25,9 +25,9 @@ from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX
-from kalvin.kline import KLine
-from kscript.compiler import compile_source
-from kscript.decompiler import Decompiler
+from kalvin.kline import KLine, kline_display
+from kalvin.mod_tokenizer import Mod32Tokenizer
+from ks.compiler import compile_source
 from trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from trainer.curriculum_document import (
     CurriculumDocument,
@@ -115,10 +115,9 @@ class Trainer:
             from trainer.cogitation import Cogitator, CogitationRequest, MisfitInfo
             from kalvin.misfit import classify_misfit
             from kalvin.signature import make_signature
-            from kscript.decompiler import Decompiler
 
             _cogitator = Cogitator(client=llm_client)
-            _decompiler = Decompiler()
+            _display_tok = Mod32Tokenizer()
 
             def _cogitate_adapter(
                 event: RationaliseEvent,
@@ -134,15 +133,13 @@ class Trainer:
                 underfit_gap = target.signature & ~target_nodes_sig
                 overfit_mask = target_nodes_sig & ~target.signature
 
-                # Decompile klines to human-readable KScript for the LLM
+                # Display klines as human-readable KScript for the LLM
                 try:
-                    query_decompiled = _decompiler.decompile([event.query])
-                    query_src = query_decompiled[0].to_kscript() if query_decompiled else repr(event.query)
+                    query_src = kline_display(event.query, _display_tok)
                 except Exception:
                     query_src = repr(event.query)
                 try:
-                    proposal_decompiled = _decompiler.decompile([event.proposal]) if event.proposal else []
-                    proposal_src = proposal_decompiled[0].to_kscript() if proposal_decompiled else repr(event.proposal)
+                    proposal_src = kline_display(event.proposal, _display_tok) if event.proposal else "None"
                 except Exception:
                     proposal_src = repr(event.proposal) if event.proposal else "None"
 
@@ -282,14 +279,15 @@ class Trainer:
         event: RationaliseEvent = msg.message
         self._reactor.record_response()
 
-        # Decompile for log readability
+        # Display for log readability
+        _log_tok = Mod32Tokenizer()
         try:
-            decompiled = Decompiler().decompile([event.query, event.proposal]
-                                                 if event.proposal else [event.query])
-            query_src = decompiled[0].to_kscript() if decompiled else repr(event.query)
-            proposal_src = decompiled[1].to_kscript() if len(decompiled) > 1 else None
+            query_src = kline_display(event.query, _log_tok)
         except Exception:
             query_src = repr(event.query)
+        try:
+            proposal_src = kline_display(event.proposal, _log_tok) if event.proposal else None
+        except Exception:
             proposal_src = repr(event.proposal) if event.proposal else None
 
         if event.significance:

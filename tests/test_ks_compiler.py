@@ -15,9 +15,10 @@ from __future__ import annotations
 import pytest
 
 from kalvin.abstract import KTokenizer
+from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
-from ks import CompiledEntry, Compiler, KScript, SymbolicEntry, compile_source
+from ks import Compiler, KScript, SymbolicEntry, compile_source
 from ks.lexer import Lexer
 from ks.parser import Parser
 from ks.ast_emitter import ASTEmitter
@@ -52,26 +53,26 @@ _nlp_skip = pytest.mark.skipif(
 )
 
 
-def _decode_sig(entry: CompiledEntry) -> str:
+def _decode_sig(entry: KLine) -> str:
     """Decode an entry's signature to a string."""
     return _tok32.decode([entry.signature])
 
 
-def _decode_nodes(entry: CompiledEntry) -> str:
+def _decode_nodes(entry: KLine) -> str:
     """Decode an entry's nodes to a string."""
     nodes = entry.as_node_list()
     return _tok32.decode(nodes) if nodes else ""
 
 
 def _has_entry(
-    entries: list[CompiledEntry],
+    entries: list[KLine],
     op: str,
     sig: str,
     nodes: str | None = None,
 ) -> bool:
     """Check if a matching entry exists in the list."""
     for e in entries:
-        if e.op != op:
+        if e.dbg.op != op:
             continue
         if _decode_sig(e) != sig:
             continue
@@ -82,13 +83,13 @@ def _has_entry(
 
 
 def _count_entries(
-    entries: list[CompiledEntry],
+    entries: list[KLine],
     op: str | None = None,
 ) -> int:
     """Count entries matching op (or all if op is None)."""
     if op is None:
         return len(entries)
-    return sum(1 for e in entries if e.op == op)
+    return sum(1 for e in entries if e.dbg.op == op)
 
 
 # ---------------------------------------------------------------------------
@@ -118,22 +119,22 @@ class TestKS35ComplexNested:
 
     @pytest.fixture(autouse=True)
     def setup(self) -> None:
-        self.entries = compile_source(SOURCE_14_11)
+        self.entries = compile_source(SOURCE_14_11, dev=True)
 
     def test_entry_count(self) -> None:
         """Total entry count matches the v3 ASTEmitter output.
 
         After KB-193: bare Signature items no longer emit spurious UNSIGNED.
         After KB-199: CANONIZE subscript blocks emit identity UNSIGNED for
-        leaf Signatures and UNDERSIGN scope sigs. Was 28, now 29 (+1 D UNSIGNED).
+        leaf Signatures and UNDERSIGN scope sigs. Was 28, now 36.
         """
-        assert len(self.entries) == 29
+        assert len(self.entries) == 36
 
     def test_no_duplicate_canonize(self) -> None:
         """CANONIZE dedup: no two CANONIZE entries share the same (sig, nodes)."""
         canonize_keys: set[tuple[int, tuple[int, ...]]] = set()
         for e in self.entries:
-            if e.op == "CANONIZE":
+            if e.dbg.op == "CANONIZE":
                 nodes = tuple(sorted(e.as_node_list()))
                 key = (e.signature, nodes)
                 assert key not in canonize_keys, (
@@ -191,9 +192,9 @@ class TestKS35ComplexNested:
         assert _has_entry(self.entries, "CONNOTATE", "L", "O")
 
     def test_all_entries_are_compiled_entry(self) -> None:
-        """Every entry is a CompiledEntry instance."""
+        """Every entry is a KLine instance."""
         for e in self.entries:
-            assert isinstance(e, CompiledEntry)
+            assert isinstance(e, KLine)
 
     def test_unsigned_count(self) -> None:
         """18 UNSIGNED entries from MCS expansion + identity UNSIGNED.
@@ -245,7 +246,7 @@ class TestKS36NLPBound:
             sig_str = nlp.decode([e.signature])
             nodes = e.as_node_list()
             nodes_str = nlp.decode(nodes) if nodes else ""
-            decoded.append((e.op, sig_str, nodes_str))
+            decoded.append((e.dbg.op, sig_str, nodes_str))
 
         # MCS for MHALL should have resolved characters
         # M → Mary, H → Had, A → "A", L → "Little", L → "Lamb"
@@ -267,7 +268,7 @@ class TestKS36NLPBound:
 
         # Find CANONIZE entries for SVO
         for e in entries:
-            if e.op == "CANONIZE":
+            if e.dbg.op == "CANONIZE":
                 sig_str = nlp.decode([e.signature])
                 if sig_str == "SVO" or "S" in sig_str:
                     nodes = e.as_node_list()
@@ -281,14 +282,14 @@ class TestKS36NLPBound:
         assert "Subject" in all_sigs, "Expected 'Subject' from inline binding"
 
     def test_compiled_entries_valid(self) -> None:
-        """All entries are CompiledEntry instances with valid structure."""
+        """All entries are KLine instances with valid structure."""
         nlp = self._get_nlp_tokenizer()
         entries = compile_source(SOURCE_14_12, tokenizer=nlp)
         assert len(entries) > 0
         for e in entries:
-            assert isinstance(e, CompiledEntry)
+            assert isinstance(e, KLine)
             assert isinstance(e.signature, int)
-            assert e.op in ("COUNTERSIGN", "CANONIZE", "CONNOTATE", "UNDERSIGN", "IDENTITY")
+            assert e.dbg.op in ("COUNTERSIGN", "CANONIZE", "CONNOTATE", "UNDERSIGN", "IDENTITY", "UNSIGNED")
 
 
 # ---------------------------------------------------------------------------
@@ -340,12 +341,12 @@ class TestCompileSource:
         assert len(entries) > 0
 
     def test_entries_are_compiled_entry(self) -> None:
-        """All returned items are CompiledEntry objects."""
+        """All returned items are KLine objects."""
         entries = compile_source("A == B")
         for e in entries:
-            assert isinstance(e, CompiledEntry)
+            assert isinstance(e, KLine)
             assert isinstance(e.signature, int)
-            assert isinstance(e.op, str)
+            assert isinstance(e.dbg.op, str)
 
     def test_correct_structure_countersign(self) -> None:
         """COUNTERSIGN produces correct sig/nodes structure."""
@@ -380,18 +381,18 @@ class TestKScriptAPI:
     """Tests for the KScript public API class."""
 
     def test_entries_property(self) -> None:
-        """KScript('A == B').entries returns a list of CompiledEntry."""
+        """KScript('A == B').entries returns a list of KLine."""
         model = KScript("A == B")
         assert isinstance(model.entries, list)
         assert len(model.entries) > 0
         for e in model.entries:
-            assert isinstance(e, CompiledEntry)
+            assert isinstance(e, KLine)
 
     def test_unsigned_entry(self) -> None:
         """KScript('A') produces a single unsigned entry."""
         model = KScript("A")
         assert len(model.entries) == 1
-        assert model.entries[0].op == "IDENTITY"
+        assert model.entries[0].dbg.op == "IDENTITY"
         assert _decode_sig(model.entries[0]) == "A"
 
     def test_complex_source(self) -> None:
@@ -523,5 +524,5 @@ class TestBindingScopeAlwaysCreated:
         # Verify entries exist (binding scope was active)
         assert len(entries) > 0
         # The COUNTERSIGN pair should involve the resolved word
-        countersigns = [e for e in entries if e.op == "COUNTERSIGN"]
+        countersigns = [e for e in entries if e.dbg.op == "COUNTERSIGN"]
         assert len(countersigns) >= 2

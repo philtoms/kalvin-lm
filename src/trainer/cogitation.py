@@ -489,7 +489,7 @@ class Cogitator:
                     return result
 
             try:
-                from kscript.compiler import compile_source
+                from ks.compiler import compile_source
 
                 compile_source(result.scaffolding)
                 _log.info(

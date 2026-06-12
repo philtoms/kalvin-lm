@@ -18,9 +18,8 @@ from kalvin.expand import D_MAX
 from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod64Tokenizer
 from kalvin.signature import make_signature
-from ks import CompiledEntry, compile_source
-from kscript.decompiler import Decompiler
-from kscript.parser import ParseError
+from ks import KLine, compile_source
+from ks.parser import ParseError
 
 # ── Shared tokenizer ──────────────────────────────────────────────────
 
@@ -51,7 +50,7 @@ class HarnessFixture:
         Entry keys whose proposals matched and were countersigned.
     responses : list[dict]
         Recorded response dicts with key, status, significance, decompiled.
-    expectations : dict[tuple, CompiledEntry]
+    expectations : dict[tuple, KLine]
         Slow-path entries awaiting proposals, keyed by entry_key.
     events : list[RationaliseEvent]
         All captured rationalisation events.
@@ -62,7 +61,7 @@ class HarnessFixture:
         self._submitted: set[tuple[int, tuple[int, ...]]] = set()
         self._satisfied: set[tuple[int, tuple[int, ...]]] = set()
         self._responses: list[dict] = []
-        self._expectations: dict[tuple[int, tuple[int, ...]], CompiledEntry] = {}
+        self._expectations: dict[tuple[int, tuple[int, ...]], KLine] = {}
         self._events: list[RationaliseEvent] = []
         self._run_mode: bool = False
         self._rationalise_count: int = 0
@@ -89,7 +88,7 @@ class HarnessFixture:
         return self._responses
 
     @property
-    def expectations(self) -> dict[tuple[int, tuple[int, ...]], CompiledEntry]:
+    def expectations(self) -> dict[tuple[int, tuple[int, ...]], KLine]:
         return self._expectations
 
     @property
@@ -125,11 +124,11 @@ class HarnessFixture:
 
     # ── Compile / pending ─────────────────────────────────────────────
 
-    def compile(self, source: str) -> list[CompiledEntry]:
+    def compile(self, source: str) -> list[KLine]:
         """Compile KScript source to compiled entries."""
         return compile_source(source, tokenizer=_tok, dev=True)
 
-    def get_pending(self, entries: list[CompiledEntry]) -> list[CompiledEntry]:
+    def get_pending(self, entries: list[KLine]) -> list[KLine]:
         """Filter entries whose key is not yet in ``_submitted``."""
         return [e for e in entries if self.entry_key(e) not in self._submitted]
 
@@ -177,7 +176,7 @@ class HarnessFixture:
         for entry in pending:
             self.submit(entry)
 
-    def step_one(self, source: str) -> CompiledEntry | None:
+    def step_one(self, source: str) -> KLine | None:
         """Compile, get pending, submit first pending, return it (Step mode)."""
         self._run_mode = False
         entries = self.compile(source)
@@ -233,11 +232,10 @@ class HarnessFixture:
 
     @staticmethod
     def _decompile_entry(entry) -> str:
-        """Decompile an entry to a human-readable KScript string."""
+        """Display an entry as a human-readable KScript string."""
         try:
-            results = Decompiler(_tok).decompile([entry])
-            if results:
-                return results[0].to_kscript()
+            from kalvin.kline import kline_display
+            return kline_display(entry, _tok)
         except Exception:
             pass
         return ""
@@ -773,22 +771,21 @@ class NLPHarnessFixture(HarnessFixture):
         self._submitted: set[tuple[int, tuple[int, ...]]] = set()
         self._satisfied: set[tuple[int, tuple[int, ...]]] = set()
         self._responses: list[dict] = []
-        self._expectations: dict[tuple[int, tuple[int, ...]], CompiledEntry] = {}
+        self._expectations: dict[tuple[int, tuple[int, ...]], KLine] = {}
         self._events: list[RationaliseEvent] = []
         self._run_mode: bool = False
         self._rationalise_count: int = 0
         self._agent.events.subscribe(self._on_event)
 
-    def compile(self, source: str) -> list[CompiledEntry]:
+    def compile(self, source: str) -> list[KLine]:
         """Compile KScript source using the NLP tokenizer."""
         return compile_source(source, tokenizer=self._nlp_tok, dev=True)
 
     def _decompile_entry(self, entry) -> str:
-        """Decompile an entry using the NLP tokenizer."""
+        """Display an entry using the NLP tokenizer."""
         try:
-            results = Decompiler(self._nlp_tok).decompile([entry])
-            if results:
-                return results[0].to_kscript()
+            from kalvin.kline import kline_display
+            return kline_display(entry, self._nlp_tok)
         except Exception:
             pass
         return ""
