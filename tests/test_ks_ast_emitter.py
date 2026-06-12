@@ -417,15 +417,15 @@ class TestKS16SubscriptBlock14x8:
         """D | [C] | UNDERSIGN — reversed direction."""
         assert_has_entry(self.entries, "D", ["C"], "UNDERSIGN")
 
-    def test_identity_unsigned(self):
-        """B, C, D each get identity UNSIGNED entries."""
-        assert_has_entry(self.entries, "B", [], "UNSIGNED")
-        assert_has_entry(self.entries, "C", [], "UNSIGNED")
-        assert_has_entry(self.entries, "D", [], "UNSIGNED")
+    def test_identity_entries(self):
+        """B, C, D each get identity IDENTITY entries."""
+        assert_has_entry(self.entries, "B", [], "IDENTITY")
+        assert_has_entry(self.entries, "C", [], "IDENTITY")
+        assert_has_entry(self.entries, "D", [], "IDENTITY")
 
-    def test_no_duplicate_unsigned(self):
-        """Exactly 3 UNSIGNED entries total — no duplicates."""
-        assert sum(1 for e in self.entries if e.op == "UNSIGNED") == 3
+    def test_no_duplicate_identity(self):
+        """Exactly 3 IDENTITY entries total — no duplicates."""
+        assert sum(1 for e in self.entries if e.op == "IDENTITY") == 3
 
 
 # ======================================================================
@@ -458,13 +458,13 @@ class TestKS14ChainedCanonize14x9:
         assert_has_entry(self.entries, "A", ["B"], "CANONIZE")
         assert_has_entry(self.entries, "B", ["C"], "CANONIZE")
 
-    def test_leaf_unsigned(self):
-        """C | [] | UNSIGNED — leaf Signature gets identity UNSIGNED."""
-        assert_has_entry(self.entries, "C", [], "UNSIGNED")
+    def test_leaf_identity(self):
+        """C | [] | IDENTITY — leaf Signature gets identity IDENTITY."""
+        assert_has_entry(self.entries, "C", [], "IDENTITY")
 
     def test_no_identity_for_canonize_sig(self):
-        """B does NOT have UNSIGNED(B, []) — B already has CANONIZE as identity."""
-        assert_no_entry(self.entries, "B", [], "UNSIGNED")
+        """B does NOT have IDENTITY(B, []) — B already has CANONIZE as identity."""
+        assert_no_entry(self.entries, "B", [], "IDENTITY")
 
 
 # ======================================================================
@@ -822,14 +822,96 @@ class TestMCSDedup:
         canonize = _find_entries(entries, sig="ABC", op="CANONIZE")
         assert len(canonize) == 1  # deduped
 
-    def test_unsigned_no_dedup(self):
-        """Non-CANONIZE entries are NOT deduped."""
+    def test_identity_dedup_by_mcs(self):
+        """MCS component IDENTITY entries ARE deduped across calls."""
+        entries = emit(_file(
+            _bare("ABC"),  # emits IDENTITY A, B, C; CANONIZE ABC; IDENTITY ABC
+        ))
+        # Exactly one IDENTITY per unique char (A, B, C) plus compound ABC
+        identity_a = _find_entries(entries, sig="A", op="IDENTITY")
+        assert len(identity_a) == 1  # deduped
+
+    def test_non_mcs_identity_no_dedup(self):
+        """Non-MCS IDENTITY entries (from bare single-char scopes) are NOT deduped."""
         entries = emit(_file(
             _bare("A"),
             _bare("A"),
         ))
-        unsigned_a = _find_entries(entries, sig="A", op="IDENTITY")
-        assert len(unsigned_a) == 2  # NOT deduped
+        identity_a = _find_entries(entries, sig="A", op="IDENTITY")
+        assert len(identity_a) == 2  # NOT deduped
+
+
+# ======================================================================
+# Test: MCS component IDENTITY intra- and inter-expansion dedup
+# ======================================================================
+
+
+class TestMCSComponentDedup:
+    """MCS component IDENTITY deduplication (§8.3 extended)."""
+
+    def test_intra_expansion_dedup(self):
+        """MHALL has two L's — only one IDENTITY L is emitted."""
+        entries = emit(_file(_bare("MHALL")))
+        identity_l = _find_entries(entries, sig="L", op="IDENTITY")
+        assert len(identity_l) == 1  # not 2
+
+    def test_inter_expansion_dedup(self):
+        """Second _emit_mcs for same compound emits no component IDENTITY."""
+        emitter = ASTEmitter()
+        idx1 = emitter._emit_mcs("ABC")
+        count_after_first = len(emitter.entries)
+        idx2 = emitter._emit_mcs("ABC")
+        assert len(emitter.entries) == count_after_first  # no new entries
+        assert idx2 == idx1  # returns existing CANONIZE index
+
+    def test_cross_compound_partial_dedup(self):
+        """SVO after MHALL: S,V,O are new, M,H,A,L already emitted."""
+        emitter = ASTEmitter()
+        emitter._emit_mcs("MHALL")
+        count_after_mhall = len(emitter.entries)
+        emitter._emit_mcs("SVO")
+        new_entries = emitter.entries[count_after_mhall:]
+        # SVO should emit: IDENTITY S, V, O + CANONIZE SVO + IDENTITY SVO
+        assert len(new_entries) == 5
+        sigs = [e.sig for e in new_entries]
+        assert sigs == ["S", "V", "O", "SVO", "SVO"]
+
+
+# ======================================================================
+# Test: Compound-own IDENTITY emission
+# ======================================================================
+
+
+class TestCompoundOwnIdentity:
+    """MCS emits IDENTITY for the compound identifier itself."""
+
+    def test_compound_own_identity_emitted(self):
+        """Bare ABC produces IDENTITY ABC []."""
+        entries = emit(_file(_bare("ABC")))
+        compound_identity = _find_entries(entries, sig="ABC", op="IDENTITY")
+        assert len(compound_identity) == 1
+        assert compound_identity[0].nodes == []
+
+    def test_compound_own_identity_dedup(self):
+        """Second _emit_mcs for same compound skips compound-own IDENTITY."""
+        emitter = ASTEmitter()
+        emitter._emit_mcs("ABC")
+        count_after_first = len(emitter.entries)
+        emitter._emit_mcs("ABC")
+        assert len(emitter.entries) == count_after_first
+
+    def test_compound_own_after_canonize(self):
+        """Compound-own IDENTITY comes after CANONIZE in entry order."""
+        entries = emit(_file(_bare("ABC")))
+        canonize_idx = next(
+            i for i, e in enumerate(entries)
+            if e.sig == "ABC" and e.op == "CANONIZE"
+        )
+        identity_idx = next(
+            i for i, e in enumerate(entries)
+            if e.sig == "ABC" and e.op == "IDENTITY"
+        )
+        assert identity_idx > canonize_idx
 
 
 # ======================================================================

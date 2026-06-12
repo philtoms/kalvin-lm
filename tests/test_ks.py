@@ -886,37 +886,34 @@ class TestComplexExamples:
     def test_sec148_presence(self):
         """§14.8 secondary regression — key entries present (5 entries).
 
-        After KB-199: CANONIZE subscript blocks emit identity UNSIGNED for
+        After KB-199: CANONIZE subscript blocks emit identity for
         bare scopes, UNDERSIGN scope sigs, and leaf Signature items.
+        After KB-205: identity entries use IDENTITY op (not UNSIGNED).
         Now matches spec §14.8 exactly (5 entries).
         """
         entries = compile_dev(_SEC148_SOURCE)
         assert len(entries) == 5
         assert has_entry(entries, sig="A", op="CANONIZE", nodes=["B", "C"])
         assert has_entry(entries, sig="D", op="UNDERSIGN", nodes=["C"])
-        assert has_entry(entries, sig="B", op="UNSIGNED", nodes=[])
-        assert has_entry(entries, sig="C", op="UNSIGNED", nodes=[])
-        assert has_entry(entries, sig="D", op="UNSIGNED", nodes=[])
+        assert has_entry(entries, sig="B", op="IDENTITY", nodes=[])
+        assert has_entry(entries, sig="C", op="IDENTITY", nodes=[])
+        assert has_entry(entries, sig="D", op="IDENTITY", nodes=[])
 
     # -- KS-35: §14.11 complex nested (master regression) ----------------
 
-    @pytest.mark.xfail(
-        reason="KS-35: Emitter produces 33 entries (with extra IDENTITY from "
-               "_compile_children and duplicate L unsigned from MHALL MCS). "
-               "Spec §14.11 shows 25 entries, PROMPT expects 21 after dedup. "
-               "Code deduplicates CANONIZE only, not IDENTITY.",
-        strict=True,
-    )
     def test_ks35_complex_nested_strict(self):
         """KS-35: §14.11 master regression — strict spec count (21 entries).
 
-        Expected entries per spec §14.11 (with CANONIZE dedup):
-        1–4:   MCS M, H, A, L unsigned (S4)
+        After KB-205: MCS component IDENTITY dedup, compound-own IDENTITY
+        emission, subscript identity suppression for MCS CANONIZE scopes.
+
+        Expected entries per spec §14.11:
+        1–4:   MCS M, H, A, L identity (S4)
         5:     MHALL canonize [M, H, A, L, L] (S2)
-        6:     MHALL unsigned (S4)
-        7–9:   MCS S, V, O unsigned (S4)
+        6:     MHALL identity (S4)
+        7–9:   MCS S, V, O identity (S4)
         10:    SVO canonize [S, V, O] (S2)
-        11:    SVO unsigned (S4)
+        11:    SVO identity (S4)
         12:    MHALL countersign [SVO] (S1)
         13:    SVO countersign [MHALL] (S1)
         (SVO canonize subscript: deduped)
@@ -924,7 +921,7 @@ class TestComplexExamples:
         15:    H undersign [V] (S1)
         (MCS ALL A, L: deduped)
         16:    ALL canonize [A, L, L] (S2)
-        17:    ALL unsigned (S4)
+        17:    ALL identity (S4)
         18:    ALL undersign [O] (S1)
         (ALL canonize subscript: deduped)
         19:    D undersign [A] (S1)
@@ -960,12 +957,11 @@ class TestComplexExamples:
         assert has_entry(entries, sig="L", op="CONNOTATE")
 
     def test_ks35_complex_nested_presence(self):
-        """KS-35: §14.11 master regression — key entries present (actual: 28)."""
+        """KS-35: §14.11 master regression — key entries present (21 entries)."""
         entries = compile_dev(_SEC1411_SOURCE)
-        # Actual count is 28; just verify all key structural entries exist
-        assert len(entries) > 0
+        assert len(entries) == 21
 
-        # MCS unsigned identities for all single-char identifiers
+        # MCS identity for all single-char identifiers
         for char in ["M", "H", "A", "L", "S", "V", "O"]:
             assert has_entry(entries, sig=char, op="IDENTITY"), (
                 f"Missing IDENTITY entry for {char}"

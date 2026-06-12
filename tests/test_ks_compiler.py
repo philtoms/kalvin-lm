@@ -122,13 +122,12 @@ class TestKS35ComplexNested:
         self.entries = compile_source(SOURCE_14_11, dev=True)
 
     def test_entry_count(self) -> None:
-        """Total entry count matches the v3 ASTEmitter output.
+        """Total entry count matches spec §14.11 (21 entries).
 
-        After KB-193: bare Signature items no longer emit spurious UNSIGNED.
-        After KB-199: CANONIZE subscript blocks emit identity UNSIGNED for
-        leaf Signatures and UNDERSIGN scope sigs. Was 28, now 36.
+        After KB-205: MCS component IDENTITY dedup, compound-own IDENTITY
+        emission, and subscript identity suppression for MCS CANONIZE scopes.
         """
-        assert len(self.entries) == 36
+        assert len(self.entries) == 21
 
     def test_no_duplicate_canonize(self) -> None:
         """CANONIZE dedup: no two CANONIZE entries share the same (sig, nodes)."""
@@ -196,13 +195,14 @@ class TestKS35ComplexNested:
         for e in self.entries:
             assert isinstance(e, KLine)
 
-    def test_unsigned_count(self) -> None:
-        """18 UNSIGNED entries from MCS expansion + identity UNSIGNED.
+    def test_identity_count(self) -> None:
+        """11 IDENTITY entries from MCS expansion + compound-own identity.
 
-        After KB-199: adds identity UNSIGNED for D (leaf Signature in
-        CANONIZE subscript block). Was 17, now 18.
+        MCS components (deduped): M, H, A, L, S, V, O = 7 unique chars.
+        Compound-own: MHALL, SVO, ALL = 3 compounds.
+        Total IDENTITY: 7 + 3 = 10 (no subscript identity for MCS CANONIZE).
         """
-        assert _count_entries(self.entries, "UNSIGNED") == 18
+        assert _count_entries(self.entries, "IDENTITY") == 10
 
 
 # ---------------------------------------------------------------------------

@@ -27,9 +27,11 @@ converts SymbolicEntry tuples to encoded uint64 values.
   side, any operator.  Single-character identifiers do NOT trigger MCS.
 
 **MCS deduplication (§8.3):**
-  Only CANONIZE entries are deduplicated on (sig, nodes).  All other
-  operator entries emit freely.  This prevents duplicate MCS CANONIZE
-  entries when the same compound identifier appears in multiple contexts.
+  CANONIZE entries are deduplicated on (sig, nodes).  Component IDENTITY
+  entries are deduplicated across MCS calls via _mcs_identity_seen (a
+  character emitted once is never emitted again).  Intra-expansion dedup
+  prevents duplicate chars within a single compound (e.g., MHALL's second L).
+  Compound-own IDENTITY entries are deduplicated via _mcs_compound_seen.
 
 **NLP binding integration (spec §10):**
   When a BindingScope is provided, single-character identifiers are resolved
@@ -50,7 +52,8 @@ converts SymbolicEntry tuples to encoded uint64 values.
   - nodes field is ALWAYS list[str] — never None, never a bare string,
     never singleton-unwrapped.  Singleton unwrapping happens in TokenEncoder.
   - No IDENTITY op — self-identity emits IDENTITY with empty nodes.
-  - No general deduplication — only CANONIZE dedup per §8.3.
+  - No general deduplication beyond MCS — CANONIZE dedup per §8.3,
+    plus component IDENTITY and compound-own IDENTITY dedup.
 
 Spec references: §3 (Scope Model), §6 (Entry Model), §7 (Operator Rules),
 §8 (MCS Expansion), §10 (NLP Binding Resolution).
@@ -121,18 +124,28 @@ class ASTEmitter:
         self._scope = scope
         self._dev = dev
 
-        # MCS dedup tracking for CANONIZE entries only (§8.3).
+        # MCS dedup tracking for CANONIZE entries (§8.3).
         # Maps (sig, tuple(nodes)) → index in self.entries.
         self._mcs_canonize_seen: dict[tuple[str, tuple[str, ...]], int] = {}
+
+        # MCS component IDENTITY dedup (§8.3 extended).
+        # Tracks resolved characters already emitted as IDENTITY by MCS.
+        self._mcs_identity_seen: set[str] = set()
+
+        # MCS compound-own IDENTITY dedup.
+        # Tracks compound identifiers that already have their own IDENTITY.
+        self._mcs_compound_seen: set[str] = set()
 
         # Rule B4 parent kline tracking — saved/restored on scope entry/exit.
         self._parent_kline_chars: str | None = None
         self._parent_kline_canonize_idx: int | None = None
 
-        # CANONIZE subscript identity UNSIGNED context flag.
+        # CANONIZE subscript identity context flag.
         # Set when processing children of a CANONIZE scope that has recursive
-        # content (OperatorScope items or child_block). Propagated inward so
-        # that deeply nested identifiers also get identity UNSIGNED entries.
+        # content (OperatorScope items or child_block). Only activated when
+        # the CANONIZE scope's sig did NOT trigger MCS expansion (single-char
+        # sig). Multi-char sig CANONIZE scopes have component identities
+        # provided by MCS, so subscript identity is unnecessary.
         # Saved/restored alongside parent kline tracking.
         self._in_canonize_subscript: bool = False
 
@@ -189,7 +202,11 @@ class ASTEmitter:
         op = self._op_to_str(scope.op)
 
         if op == "IDENTITY":
-            self._emit_entry(sig_resolved, [], "IDENTITY")
+            # For multi-char sigs, _emit_mcs already emitted compound-own
+            # IDENTITY.  Skip duplicate emission.  For single-char sigs,
+            # _emit_mcs returns None (no MCS) so emit here.
+            if sig_resolved not in self._mcs_compound_seen:
+                self._emit_entry(sig_resolved, [], "IDENTITY")
             return
 
         # 4. Collect node IDs
@@ -291,8 +308,22 @@ class ASTEmitter:
     def _emit_mcs(self, sig: str) -> int | None:
         """Emit MCS entries for a multi-character identifier.
 
-        1. One IDENTITY entry per resolved constituent character.
+        1. One IDENTITY entry per resolved constituent character (deduped).
         2. One CANONIZE entry mapping the compound to its resolved components.
+        3. One IDENTITY entry for the compound identifier itself (deduped).
+
+        Component IDENTITY deduplication (§8.3 extended):
+          - Intra-expansion: duplicate chars within a compound (e.g., MHALL's
+            second L) emit only one IDENTITY L.
+          - Inter-expansion: if a char was already emitted by a previous MCS
+            call, it is silently skipped.
+
+        CANONIZE deduplication (§8.3):
+          - Same (sig, nodes) pair is silently skipped.
+
+        Compound-own IDENTITY:
+          - After CANONIZE, emit IDENTITY(sig, []) for the compound itself.
+          - Deduped: second call for the same compound skips all entries.
 
         Returns the index of the CANONIZE entry (for Rule B4), or None
         if no MCS was emitted (single-char identifier).
@@ -302,8 +333,15 @@ class ASTEmitter:
 
         chars = [self._resolve_char(c) for c in sig]
 
-        # Component identities
+        # Component identities — with intra- and inter-expansion dedup
+        seen_in_this_call: set[str] = set()
         for resolved_char in chars:
+            if resolved_char in seen_in_this_call:
+                continue  # intra-expansion dedup (e.g., second L in MHALL)
+            seen_in_this_call.add(resolved_char)
+            if resolved_char in self._mcs_identity_seen:
+                continue  # inter-expansion dedup
+            self._mcs_identity_seen.add(resolved_char)
             self._emit_entry(resolved_char, [], "IDENTITY")
 
         # MCS canonization
@@ -313,7 +351,14 @@ class ASTEmitter:
             return self._mcs_canonize_seen[key]
 
         self._emit_entry(sig, list(chars), "CANONIZE")
-        return len(self.entries) - 1
+        canonize_idx = len(self.entries) - 1
+
+        # Compound-own IDENTITY
+        if sig not in self._mcs_compound_seen:
+            self._mcs_compound_seen.add(sig)
+            self._emit_entry(sig, [], "IDENTITY")
+
+        return canonize_idx
 
     # ------------------------------------------------------------------
     # Entry emission with CANONIZE dedup (§8.3, Step 4)
@@ -324,7 +369,10 @@ class ASTEmitter:
 
         - CANONIZE entries: dedup on (sig, tuple(nodes)).  Duplicates
           are silently skipped.
-        - All other ops: always emit (no dedup).
+        - All other ops: always emit (no dedup at this level).
+
+        Note: IDENTITY dedup for MCS components is handled in _emit_mcs
+        via _mcs_identity_seen, not here.
         """
         if op == "CANONIZE":
             key = (sig, tuple(nodes))
@@ -335,19 +383,31 @@ class ASTEmitter:
         self.entries.append(SymbolicEntry(sig=sig, nodes=nodes, op=op))
 
     # ------------------------------------------------------------------
-    # Identity UNSIGNED emission for CANONIZE subscript blocks
+    # Identity emission for CANONIZE subscript blocks
     # ------------------------------------------------------------------
 
-    def _emit_identity_unsigned(self, sig: str) -> None:
-        """Emit identity UNSIGNED only if no UNSIGNED entry for this sig exists.
+    def _emit_identity_if_needed(self, sig: str) -> None:
+        """Emit identity IDENTITY only if no IDENTITY entry for this sig exists.
 
-        Prevents duplicate UNSIGNED when MCS expansion already provided one
-        for the same identifier (e.g., S in SVO's MCS expansion).
-        This is NOT general deduplication — it's specific to identity UNSIGNED
-        emission in CANONIZE subscript blocks.
+        Used in CANONIZE subscript blocks to ensure every identifier appears
+        as the signature of at least one emitted entry.
+
+        Dedup checks (in order):
+          1. _mcs_identity_seen — sig was already emitted as MCS component.
+          2. _mcs_compound_seen — sig was already emitted as compound-own.
+          3. Existing IDENTITY entries — sig already has an IDENTITY entry.
+
+        This prevents duplicate IDENTITY when MCS expansion already provided
+        one for the same identifier, or when the identifier already appears
+        as the signature of an IDENTITY entry.
         """
-        if not any(e.sig == sig and e.op == "UNSIGNED" for e in self.entries):
-            self._emit_entry(sig, [], "UNSIGNED")
+        if sig in self._mcs_identity_seen:
+            return
+        if sig in self._mcs_compound_seen:
+            return
+        if any(e.sig == sig and e.op == "IDENTITY" for e in self.entries):
+            return
+        self._emit_entry(sig, [], "IDENTITY")
 
     # ------------------------------------------------------------------
     # Scope walk and child compilation (Step 3)
@@ -371,32 +431,40 @@ class ASTEmitter:
           bare scopes in child_block still emit their own IDENTITY
           entries (they are subscript items with independent identity).
 
-        **CANONIZE subscript identity UNSIGNED (spec §7.6, §14.8, §14.9):**
+        **CANONIZE subscript identity (spec §7.6, §14.8, §14.9):**
 
         When a CANONIZE scope has recursive content (OperatorScope items
         or child_block), it forms a "subscript block". Every identifier
         within such a block must appear as the signature of at least one
         emitted entry. Where no operator entry provides this, an identity
-        UNSIGNED fills the gap.
+        IDENTITY fills the gap.
 
-        Three categories receive identity UNSIGNED via _emit_identity_unsigned:
+        Subscript identity is only activated when the CANONIZE scope's
+        sig did NOT trigger MCS expansion (mcs_idx is None). For single-
+        char sigs (e.g., `A =>`), MCS does not fire, so subscript identity
+        ensures all identifiers appear as signatures. For multi-char sigs
+        (e.g., `SVO =>`, `ALL =>`), MCS provides component identities for
+        all constituent characters, making subscript identity unnecessary
+        and preventing extra entries like IDENTITY D in §14.11.
+
+        Three categories receive identity via _emit_identity_if_needed:
 
         1. Leaf Signature items — bare identifiers in items lists produce
-           no operator entry, so they get identity UNSIGNED.
+           no operator entry, so they get identity IDENTITY.
         2. UNDERSIGN OperatorScope sigs — UNDERSIGN emits entries with
            nodes as signatures (reversed direction), so the scope's own
-           sig lacks identity and needs UNSIGNED.
+           sig lacks identity and needs IDENTITY.
         3. (Not needed for CANONIZE/COUNTERSIGN/CONNOTATE scope sigs —
            they already produce entries with the scope's sig as signature.
            Not needed for bare OperatorScope nodes (op=None) — they emit
-           UNSIGNED via _process_scope step 3.)
+           IDENTITY via _process_scope step 3.)
 
-        The _in_canonize_subscript flag propagates inward through all
-        nested scopes (both CANONIZE and non-CANONIZE) so that deeply
-        nested identifiers also get identity UNSIGNED.
+        The _in_canonize_subscript flag does NOT propagate between
+        CANONIZE scopes — each CANONIZE independently decides whether
+        to activate subscript identity based on its own MCS status.
 
-        _emit_identity_unsigned includes a dedup check to prevent
-        duplicate UNSIGNED when MCS expansion already provided one
+        _emit_identity_if_needed includes a dedup check to prevent
+        duplicate IDENTITY when MCS expansion already provided one
         for the same identifier.
         """
         is_canonize = op == "CANONIZE"
@@ -418,20 +486,25 @@ class ASTEmitter:
         # Set CANONIZE subscript context when this CANONIZE scope has
         # recursive content (OperatorScope items or child_block), meaning
         # it's a "subscript block" rather than a flat aggregation like
-        # `A => B C D`. Also propagate if already set by a parent scope.
+        # `A => B C D`.
+        # Subscript identity is only activated when this CANONIZE scope's
+        # sig did NOT trigger MCS expansion (mcs_idx is None). Multi-char
+        # sig CANONIZE scopes (e.g., SVO =>, ALL =>) have their component
+        # identities provided by MCS, so subscript identity is unnecessary
+        # and would produce extra entries (e.g., IDENTITY D in §14.11).
         if is_canonize:
             has_recursive_content = (
                 scope.child_block is not None
                 or any(isinstance(item, OperatorScope) for item in scope.items)
             )
-            if has_recursive_content or self._in_canonize_subscript:
+            if has_recursive_content and mcs_idx is None:
                 self._in_canonize_subscript = True
 
         # Process items
         for item in scope.items:
             if isinstance(item, OperatorScope):
                 # In CANONIZE subscript blocks, UNDERSIGN scope sigs need
-                # identity UNSIGNED because UNDERSIGN emits entries with nodes
+                # identity IDENTITY because UNDERSIGN emits entries with nodes
                 # as sigs (e.g., D | [C] | UNDERSIGN), not the scope's own sig.
                 # CANONIZE/COUNTERSIGN/CONNOTATE scope sigs already have identity
                 # via their operator entries.
@@ -441,16 +514,16 @@ class ASTEmitter:
                     and self._op_to_str(item.op) == "UNDERSIGN"
                 ):
                     resolved = self._resolve_char(item.sig.id)
-                    self._emit_identity_unsigned(resolved)
+                    self._emit_identity_if_needed(resolved)
                 self._process_scope(item)
             elif isinstance(item, Annotation):
                 self._feed_annotation(item)
             # Note: bare Signature items in CANONIZE subscript blocks need
-            # identity UNSIGNED because they produce no operator entry.
+            # identity IDENTITY because they produce no operator entry.
             elif isinstance(item, Signature):
                 if self._in_canonize_subscript:
                     resolved = self._resolve_char(item.id)
-                    self._emit_identity_unsigned(resolved)
+                    self._emit_identity_if_needed(resolved)
 
         # Process child_block constructs
         if scope.child_block is not None:
@@ -461,8 +534,8 @@ class ASTEmitter:
                     # Skip to avoid spurious IDENTITY emission.
                     continue
                 # In CANONIZE subscript blocks, UNDERSIGN scope sigs in
-                # child_block need identity UNSIGNED. Bare scopes (op=None)
-                # already emit UNSIGNED via _process_scope step 3.
+                # child_block need identity IDENTITY. Bare scopes (op=None)
+                # already emit IDENTITY via _process_scope step 3.
                 if (
                     self._in_canonize_subscript
                     and isinstance(construct, OperatorScope)
@@ -470,7 +543,7 @@ class ASTEmitter:
                     and self._op_to_str(construct.op) == "UNDERSIGN"
                 ):
                     resolved = self._resolve_char(construct.sig.id)
-                    self._emit_identity_unsigned(resolved)
+                    self._emit_identity_if_needed(resolved)
                 self._process_construct(construct)
 
         # CANONIZE scope pop
