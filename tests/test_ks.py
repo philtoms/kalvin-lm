@@ -300,12 +300,6 @@ class TestLexer:
         assert len(tokens) == 1
         assert tokens[0].type == TokenType.EOF
 
-    @pytest.mark.xfail(
-        reason="KS-5: Lexer treats leading whitespace as indentation, "
-               "producing INDENT+DEDENT+EOF instead of EOF only. "
-               "Minor spec deviation — functionally harmless.",
-        strict=True,
-    )
     def test_ks5_whitespace_only(self):
         """KS-5: Whitespace-only input produces only EOF (per spec)."""
         tokens = Lexer("   ").tokenize()

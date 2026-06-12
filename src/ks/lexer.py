@@ -83,6 +83,17 @@ class Lexer:
         if self.at_line_start:
             self.at_line_start = False
             indent = self._count_indent()
+
+            # Blank lines (only whitespace, no content) must not affect
+            # indent state — skip them entirely.  Spec ref: KS-5.
+            if self.pos >= len(self.source) or self.source[self.pos] == "\n":
+                if self.pos < len(self.source) and self.source[self.pos] == "\n":
+                    self.pos += 1
+                    self.line += 1
+                    self.column = 1
+                self.at_line_start = True
+                return None
+
             return self._handle_indent(indent)
 
         # Skip whitespace (not newlines)
