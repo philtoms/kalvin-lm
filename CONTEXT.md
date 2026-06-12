@@ -238,7 +238,7 @@ Comparison of two KLines by signature and nodes: `a.signature == b.signature and
 
 ### NLP Binding
 
-The association of a single-character KScript signature (e.g., `M`) with an NLP word (e.g., "Mary") resolved through comment word lists in the KScript source. Resolution uses **first-letter matching** (case-insensitive: `word[0].lower() == char.lower()`) with an **occurrence counter** for disambiguation when multiple words in the same list start with the same letter. Four binding rules govern resolution: inline binding (Rule 4), word-list first-letter matching (Rule 3), scope stack walk (Rule 2), and once-bound-immutability (Rule 1). Resolution happens inline during the ASTEmitter's single walk via a BindingScope — no separate resolution pass.
+The association of a single-character KScript signature (e.g., `M`) with an NLP word (e.g., "Mary") resolved through BPE annotations in the KScript source. Resolution uses **first-letter matching** (case-insensitive: `word[0].lower() == char.lower()`) with an **occurrence counter** for disambiguation when multiple words in the same list start with the same letter. Four binding rules govern resolution: inline binding (Rule 4), annotation first-letter matching (Rule 3), scope stack walk (Rule 2), and once-bound-immutability (Rule 1). Resolution happens inline during the ASTEmitter's single walk via a BindingScope — no separate resolution pass.
 _Avoid_: comment mapping (too vague — the binding is a specific compiler artefact, not a general comment feature)
 
 ### NLP Binding Scope
@@ -253,6 +253,7 @@ A lightweight scope stack that replaces the former separate resolution pass and 
 
 When a single-character signature cannot be resolved through any binding mechanism (no inline comment, no matching word in any scope), it is encoded using standard Mod32 bit-packed encoding instead of NLP encoding. Produces mixed NLP/Mod32 klines within the same graph. Rationalisation must handle this.
 
-### NLP Word List
+### BPE Annotation
 
-A comment in KScript source that is interpreted as a sequence of words for NLP binding. Syntax: `(word1 word2 ...)` (block) or `S(ubject)` (inline, one word). Inline syntax takes the first character from the SIGNATURE token and appends the comment content stripped of parens, preserving case (`S` + `ubject` → `"Subject"`). Block word lists are matched via first-letter matching (case-insensitive): a character matches a word whose first letter equals the character (ignoring case). Surplus words are inert — there is no word count constraint.
+A parenthesised annotation in KScript source that provides word text for BPE token encoding. Syntax: `(word1 word2 ...)` (block) or `S(ubject)` (inline, one word). Inline syntax takes the first character from the SIGNATURE token and appends the annotation content stripped of parens, preserving case (`S` + `ubject` → `"Subject"`). Block annotations are matched via first-letter matching (case-insensitive): a character matches a word whose first letter equals the character (ignoring case). Surplus words are inert — there is no word count constraint. In Mod32 mode, annotations are ignored. In NLP mode, annotations drive word→BPE-token resolution via BindingScope.
+_Avoid_: comment (misleading — implies inert documentation; these are active encoding annotations), NLP word list (legacy term)

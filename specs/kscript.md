@@ -1,34 +1,41 @@
 # KScript Language Specification
 
-**Version:** 2.0  
-**Date:** 2026-04-29  
-**Status:** Reverse-engineered from reference implementation
+**Version:** 3.0  
+**Date:** 2026-06-12  
+**Status:** Authoritative
 
 ---
 
 ## 1. Overview
 
-KScript is a domain-specific language for constructing **knowledge graphs** (ordered sequences of identified nodes called **KLines**). It compiles declarative scripts into a flat list of encoded graph entries that can be loaded into a **Kalvin Agent** for rationalisation.
+KScript is a domain-specific language for constructing **knowledge graphs** — ordered sequences of identified nodes called **KLines**. It compiles declarative scripts into a list of compiled entries that can be loaded into a Kalvin Agent for rationalisation.
 
 ### 1.1 Compilation Pipeline
 
 ```
-Source (.ks) → Lexer → Token Stream → Parser → AST → Compiler → [CompiledEntry]
-                                                                        ↓
-                                                            KLine knowledge graph entries
+Source (.ks) → Lexer → Parser → AST → ASTEmitter → TokenEncoder → [CompiledEntry]
 ```
 
-The pipeline is strictly one-directional. There is also a **decompiler** that best-effort reconstructs KScript source from compiled KLines.
+| Stage | Responsibility |
+|-------|---------------|
+| **Lexer** | Source text → token stream |
+| **Parser** | Token stream → AST (structural) |
+| **ASTEmitter** | AST → symbolic entries (strings). Resolves BPE annotations inline via BindingScope. |
+| **TokenEncoder** | Symbolic entries → encoded entries (uint64 values). Encoding-agnostic. |
+
+The pipeline is strictly one-directional. The ASTEmitter operates on symbolic strings — no encoding happens there. The TokenEncoder converts strings to opaque `uint64` values via a pluggable tokenizer.
 
 ### 1.2 Core Concepts
 
-| Concept                 | Description                                                                      |
-| ----------------------- | -------------------------------------------------------------------------------- |
-| **Node**                | An opaque `uint64` value — the universal atom                                    |
-| **KLine**               | An identified, ordered sequence of zero or more nodes: `{signature, nodes[]}`    |
-| **Signature**           | A `uint64` identity key computed via OR-reduction of nodes                       |
-| **Significance**        | A four-level classification (S1–S4) of how strongly one KLine relates to another |
-| **Signature (lexical)** | An uppercase identifier like `ABC` — becomes a packed node                       |
+| Concept | Description |
+|---------|-------------|
+| **Node** | An opaque `uint64` value — the universal atom |
+| **KLine** | An identified, ordered sequence of zero or more nodes: `{signature, nodes[]}` |
+| **Signature** | A `uint64` identity key computed via OR-reduction of node values |
+| **Significance** | A four-level classification (S1–S4) of how strongly one KLine relates to another |
+| **Identifier** | An uppercase alpha string like `ABC` — the lexical form of a signature or node |
+| **BPE Annotation** | A parenthesised annotation `(...)` providing word text for BPE token encoding |
+| **Scope** | An operator-delimited region that determines kline structure and binding resolution |
 
 ---
 
@@ -36,200 +43,290 @@ The pipeline is strictly one-directional. There is also a **decompiler** that be
 
 ### 2.1 Token Types
 
-| Token         | Pattern                    | Category                    |
-| ------------- | -------------------------- | --------------------------- |
-| `SIGNATURE`   | `[A-Z]+`                   | Node (uppercase identifier) |
-| `COUNTERSIGN` | `==`                       | Construct operator          |
-| `CANONIZE`    | `=>`                       | Chain operator              |
-| `CONNOTATE`   | `>`                        | Inline operator             |
-| `UNDERSIGN`   | `=`                        | Construct operator          |
-| `COMMENT`     | `(...)` with nested parens | Insignificant               |
-| `NEWLINE`     | `\n`                       | Insignificant               |
-| `INDENT`      | Increased indentation      | Structure                   |
-| `DEDENT`      | Decreased indentation      | Structure                   |
-| `EOF`         | End of file                | Sentinel                    |
+| Token | Pattern | Category |
+|-------|---------|----------|
+| `SIGNATURE` | `[A-Z]+` | Identifier |
+| `COUNTERSIGN` | `==` | Operator |
+| `CANONIZE` | `=>` | Operator |
+| `CONNOTATE` | `>` | Operator |
+| `UNDERSIGN` | `=` | Operator |
+| `ANNOTATION` | `(...)` with nested parens | BPE Annotation |
+| `NEWLINE` | `\n` | Insignificant |
+| `INDENT` | Increased indentation | Structural |
+| `DEDENT` | Decreased indentation | Structural |
+| `EOF` | End of file | Sentinel |
 
 ### 2.2 Operator Classification
 
-Operators are divided into two groups by where they may appear:
-
-**Inline operators** (appear within a primary construct, between sig and node):
-
-- `==` (COUNTERSIGN) — bidirectional link
-- `>` (CONNOTATE) — connotation
-- `=` (UNDERSIGN) — unconditional link
-
-**Chain operators** (appear between construct groups, introducing a right-hand side):
-
-- `=>` (CANONIZE) — canonization
+| Operator | Symbol | Behaviour |
+|----------|--------|-----------|
+| COUNTERSIGN | `==` | Bidirectional, per-item emission |
+| UNDERSIGN | `=` | Unidirectional (reversed), per-item emission |
+| CANONIZE | `=>` | Unidirectional, all items aggregated into single kline |
+| CONNOTATE | `>` | Unidirectional, per-item emission |
 
 ### 2.3 Lexing Rules
 
 1. **Multi-character operators** (`==`, `=>`) are matched before single-character operators (`=`, `>`).
-2. **Identifiers** `[A-Z][A-Z0-9]*` are classified as:
-   - `SIGNATURE` if all characters are uppercase alpha (`isupper() and isalpha()`)
-   - Non-uppercase identifiers are **not valid** — use quoted strings via the tokenizer instead
-3. **Comments** `(...)` support nested parentheses and may span multiple lines.
-4. **Inline comments** after an identifier are consumed without emitting a token.
+2. **Identifiers** `[A-Z][A-Z0-9]*` are classified as `SIGNATURE` if all characters are uppercase alpha. Non-uppercase identifiers raise a `LexerError`.
+3. **BPE Annotations** `(...)` support nested parentheses and may span multiple lines.
+4. **Inline annotations** after an identifier are preserved as `ANNOTATION` tokens attached to the preceding signature.
 5. **Indentation** uses Python-style INDENT/DEDENT tokens based on leading whitespace.
 6. **Unknown characters** (not matching any rule, including `<`) raise a `LexerError`.
 
-### 2.4 Indentation Rules
+### 2.4 Indentation
 
-- Indentation is counted as the number of leading spaces/tabs.
-- At each line start, the indent level is compared to the stack:
-  - Greater → emit `INDENT`, push new level
-  - Less → emit one or more `DEDENT` tokens, pop to matching level
-  - Equal → no structural token
-- At EOF, remaining levels are closed with `DEDENT` tokens.
+Indentation is counted as the number of leading spaces/tabs. At each line start, the indent level is compared to the stack:
+
+- Greater → emit `INDENT`, push new level
+- Less → emit one or more `DEDENT` tokens, pop to matching level
+- Equal → no structural token
+
+At EOF, remaining levels are closed with `DEDENT` tokens.
 
 ---
 
-## 3. Grammar
+## 3. Scope Model
+
+Scope is the central organising principle of KScript compilation. Scope determines both kline structure (what becomes a signature, what becomes a node) and binding resolution (how BPE annotations map characters to words).
+
+### 3.1 Scope Rules
+
+**Rule S1 — Scope is operator-delimited.** Each operator (`==`, `=`, `>`, `=>`) creates a scope boundary.
+
+**Rule S2 — Preceding identifier is the signature.** The identifier immediately preceding an operator is that scope's signature.
+
+**Rule S3 — Succeeding identifiers are nodes.** The identifiers immediately succeeding the operator are nodes in that scope. The last node becomes the signature for the next operator's scope.
+
+**Rule S4 — Indent creates child scope.** Indented lines extend the current operator's scope as a child. The signature carries forward from the parent operator.
+
+**Rule S5 — DEDENT returns to parent scope.** Indentation decreases close the child scope and resume the parent.
+
+**Rule S6 — CANONIZE aggregates.** All nodes in a `=>` scope form a single kline's node list.
+
+**Rule S7 — Other operators emit per-item.** Each node in a non-CANONIZE scope produces its own kline (with operator-specific directionality).
+
+### 3.2 Scope Examples
+
+#### Simple chain
+
+```
+A == B > C = D
+```
+
+| Scope | Operator | Signature | Nodes | Compiled |
+|-------|----------|-----------|-------|----------|
+| 1 | `==` | A | B | `{A: B}, {B: A}` |
+| 2 | `>` | B | C | `{B: C}` |
+| 3 | `=` | C | D | `{D: C}` |
+
+#### CANONIZE aggregation
+
+```
+A => B C D
+```
+
+| Scope | Operator | Signature | Nodes | Compiled |
+|-------|----------|-----------|-------|----------|
+| 1 | `=>` | A | B, C, D | `{A: [B, C, D]}` |
+
+#### Mixed operators with CANONIZE
+
+```
+A == B => C D
+```
+
+| Scope | Operator | Signature | Nodes | Compiled |
+|-------|----------|-----------|-------|----------|
+| 1 | `==` | A | B | `{A: B}, {B: A}` |
+| 2 | `=>` | B | C, D | `{B: [C, D]}` |
+
+#### CANONIZE followed by inline
+
+```
+A => B == C
+```
+
+| Scope | Operator | Signature | Nodes | Compiled |
+|-------|----------|-----------|-------|----------|
+| 1 | `=>` | A | B | `{A: B}` |
+| 2 | `==` | B | C | `{B: C}, {C: B}` |
+
+#### Indented child scope
+
+```
+A =>
+  B = C
+  D > E
+```
+
+| Scope | Operator | Signature | Nodes | Compiled |
+|-------|----------|-----------|-------|----------|
+| 1 | `=>` | A | B, D (from child scope) | `{A: [B, D]}` |
+| 1a (child) | `=` | B | C | `{C: B}` |
+| 1b (child) | `>` | D | E | `{D: E}` |
+
+Child-scope items B and D are the CANONIZE nodes for scope 1. Each child item is also compiled recursively.
+
+#### Non-CANONIZE with indent
+
+```
+A == B
+  C
+  D
+```
+
+| Scope | Operator | Signature | Nodes | Compiled |
+|-------|----------|-----------|-------|----------|
+| 1 | `==` | A | B, C, D (from child scope) | `{A: B}, {B: A}, {A: C}, {C: A}, {A: D}, {D: A}` |
+
+Indentation extends the enclosing operator's scope. The signature carries forward.
+
+---
+
+## 4. Grammar
 
 ```
 script      ::= construct+
-construct   ::= block | primary_construct+ ( chain_op construct )?
+construct   ::= block | annotation | operator_scope
 block       ::= INDENT construct+ DEDENT
-primary_construct ::= sig ( inline_op node )?
-node        ::= sig
+annotation  ::= ANNOTATION
+operator_scope ::= sig ( operator items )?
+items       ::= item*
+item        ::= sig | annotation | operator_scope
 sig         ::= SIGNATURE
-chain_op    ::= CANONIZE
-inline_op   ::= COUNTERSIGN | CONNOTATE | UNDERSIGN
+operator    ::= COUNTERSIGN | CANONIZE | CONNOTATE | UNDERSIGN
 ```
 
-### 3.1 Key Constraints
+### 4.1 Key Constraints
 
-1. **Only SIGNATUREs can own constructs.** Nodes are always signatures.
-2. **NEWLINE and COMMENT tokens are insignificant** — they are skipped between constructs.
-3. **Multiple primary_constructs at the same indentation level** form an implicit group.
-
-### 3.2 Parse Errors
-
-| Situation                                 | Error                            |
-| ----------------------------------------- | -------------------------------- |
-| Empty source                              | Produces empty script (no error) |
+1. Only SIGNATUREs can be identifiers (signatures or nodes).
+2. NEWLINE tokens are insignificant — skipped between constructs.
+3. ANNOTATION tokens are preserved as AST nodes for binding resolution.
+4. Empty source produces empty script (no error).
 
 ---
 
-## 4. AST Structure
+## 5. AST Structure
 
 ```
 KScriptFile
   └── scripts: [Script]
-        └── constructs: [Construct]
-              ├── inner: Block | [PrimaryConstruct]
-              ├── chain_op: TokenType? (chain operator)
-              └── chain_right: Construct? (right side of chain)
+        └── constructs: [ConstructItem]
+
+ConstructItem = Annotation | OperatorScope
+
+Annotation
+  ├── text: str         # raw annotation text including parentheses
+  ├── line: int
+  └── column: int
+
+OperatorScope
+  ├── sig: Signature           # the identifier preceding the operator
+  ├── op: TokenType | None     # None = bare signature (unsigned)
+  ├── items: [ConstructItem]   # nodes and child constructs
+  └── child_block: Block | None  # indented child scope
 
 Block
-  └── constructs: [Construct]
+  └── constructs: [ConstructItem]
 
-PrimaryConstruct
-  ├── sig: Signature (id, line, column)
-  ├── op: TokenType? (inline operator)
-  └── node: Signature? (always a Signature)
-
-Signature  — id: str (uppercase)
+Signature
+  ├── id: str           # uppercase
+  ├── line: int
+  └── column: int
 ```
+
+### 5.1 Inline Annotations
+
+Inline annotations appear immediately after a SIGNATURE token:
+
+- **Sig-side**: `S(ubject) = M` — annotation attached to the signature `S`
+- **Node-side**: `A = D(et)` — annotation attached to the node `D`
+
+The parser attaches inline annotations to the nearest `Signature` node.
 
 ---
 
-## 5. Compilation Semantics
+## 6. Compilation Semantics
 
-### 5.1 Entry Model
+### 6.1 Entry Model
 
 Each compiled entry is a **KLine**:
 
-```python
+```
 CompiledEntry:
-    signature: uint64    # encoded identity key
+    signature: uint64              # encoded identity key
     nodes: uint64 | list[uint64] | None  # encoded node values
-    dbg_text: str        # debug label (dev mode)
 ```
 
 **Singleton rule:** If `nodes` is a list with exactly one element, it is unwrapped to a single `uint64`. Empty nodes become `None`.
 
-> **Implementation note:** `KLine.__init__` normalizes `nodes=None` to `nodes=[]`. Code that inspects compiled entries should treat an empty node list as unsigned (equivalent to `None`). The `decode()` method returns `""` for unsigned entries due to this normalization.
+### 6.2 Significance Level Assignment
 
-### 5.2 Encoding
+Each emitted entry is tagged with a significance level based on the operator that produced it:
 
-Strings are encoded to `uint64` values via a **Mod Tokenizer**:
+| Operator | Level | Meaning |
+|----------|-------|---------|
+| COUNTERSIGN (`==`) | S1 | Mutual / bidirectional |
+| UNDERSIGN (`=`) | S1 | Unconditional |
+| CANONIZE (`=>`) | S2 | Canonical |
+| CONNOTATE (`>`) | S3 | Connotative |
+| UNSIGNED (bare) | S4 | Identity only |
 
-- **Signatures** (uppercase alpha): _packed_ encoding — characters are OR'd into a single `uint64` with bit 0 clear. Lossy: order and multiplicity are lost.
-  - `encode("ABC") → [bit_A | bit_B | bit_C]`
+Significance bits are not encoded into the token IDs. The level is carried as metadata on the compiled entry.
 
-### 5.3 MCS (Multi-Character Signature) Expansion
+---
 
-When a signature has **more than one character**, the compiler automatically emits:
+## 7. Operator Compilation Rules
 
-1. **Component identities:** One unsigned entry per character.
-   ```
-   ABC → emits: {A: None}, {B: None}, {C: None}
-   ```
-2. **MCS canonization:** One entry mapping the compound to its components.
-   ```
-   ABC → emits: {ABC: [A, B, C]}  (CANONIZE)
-   ```
-3. **Unsigned compound:** The compound itself as unsigned.
-   ```
-   ABC → emits: {ABC: None}
-   ```
-
-Single-character signatures do NOT trigger MCS expansion.
-
-### 5.4 Deduplication
-
-The compiler deduplicates entries by `(signature, nodes)` pair. If the same encoded entry would be emitted twice, the second is silently dropped.
-
-### 5.5 Construct Compilation Rules
-
-#### Unsigned (bare signature)
+### 7.1 Unsigned (bare signature)
 
 ```
-A       → {A: None}        (plus MCS if multi-char)
+A       → {A: None}
 ```
 
-#### COUNTERSIGN (`==`)
+Plus MCS expansion if multi-character (§8).
+
+### 7.2 COUNTERSIGN (`==`) — bidirectional, per-item
 
 ```
-A == B  → {A: B}, {B: A}   (bidirectional)
+A == B       → {A: B}, {B: A}
+A == B C D   → {A: B}, {B: A}, {A: C}, {C: A}, {A: D}, {D: A}
 ```
 
-If the node is a signature, MCS expansion is applied to it too.
+Each node produces a bidirectional pair.
 
-#### UNDERSIGN (`=`)
-
-```
-A = B   → {B: A}           (unidirectional, value becomes signature)
-A = A   → {A: None}        (self-identity collapsed to unsigned)
-```
-
-Self-identity (`A = A`) is emitted with the internal op name `IDENTITY` (level S1), which collapses to an unsigned entry.
-
-#### CONNOTATE (`>`)
+### 7.3 UNDERSIGN (`=`) — unidirectional reversed, per-item
 
 ```
-A > B   → {A: B}           (unidirectional)
+A = B       → {B: A}
+A = A       → {A: None}           (self-identity, UNSIGNED)
+A = B C D   → {B: A}, {C: A}, {D: A}
 ```
 
-#### CANONIZE chain (`=>`)
+Direction is reversed: the node becomes the signature, the original signature becomes the node. Self-identity collapses to unsigned.
 
-The **owner** is the last primary construct's node (if present), or its signature. A single entry is emitted with **all right-hand items** as the node list:
+### 7.4 CONNOTATE (`>`) — unidirectional, per-item
 
 ```
-A => B C       → {A: [B, C]}              (single entry, all items)
-A > X => B C   → {A: X}, {X: [B, C]}      (owner is X, the node)
-A = X => B C   → {X: A}, {X: [B, C]}      (owner is X, the node)
+A > B       → {A: B}
+A > B C D   → {A: B}, {A: C}, {A: D}
 ```
 
-Singleton unwrapping: if there is only one right-hand item, the list is unwrapped: `A => B → {A: B}`.
+Direction is forward: signature retains its role.
 
-The right-hand construct is then compiled recursively.
+### 7.5 CANONIZE (`=>`) — aggregated
 
-### 5.6 Subscript Blocks
+```
+A => B          → {A: B}
+A => B C D      → {A: [B, C, D]}
+```
 
-A subscript block (indented construct after a chain operator) is flattened to extract all items:
+All items in scope form a single kline's node list. Singleton unwrapping applies.
+
+### 7.6 Subscript Blocks
+
+A subscript block (indented constructs after any operator) is flattened to extract all items for the parent scope. Items are then compiled recursively.
 
 ```
 A =>
@@ -237,217 +334,312 @@ A =>
   C = D
 ```
 
-Flattens to items `[B, C = D]`. Then CANONIZE emits a single entry with all items:
-
-- `{A: [B, C]}` plus recursive compilation of C's inline op: `{D: C}`
-
-### 5.7 Significance Level Assignment
-
-Each emitted entry is tagged with a significance level based on the operator:
-
-| Operator           | Level | Meaning                |
-| ------------------ | ----- | ---------------------- |
-| COUNTERSIGN (`==`) | S1    | Mutual / bidirectional |
-| UNDERSIGN (`=`)    | S1    | Unconditional          |
-| CANONIZE (`=>`)    | S2    | Canonical              |
-| CONNOTATE (`>`)    | S3    | Connotative            |
-| UNSIGNED (bare)    | S4    | Identity only          |
-
-> **Note:** In the current implementation, significance bits are NOT encoded into the token IDs during compilation. The level is used only for debug text and decompiler inference. The decompiler uses heuristic bit-overlap analysis to re-infer levels from compiled data.
+Items in child scope: B, C. CANONIZE aggregates → `{A: [B, C]}`. Recursive compilation of children: `{D: C}`, `{B: None}`, `{C: None}`, `{D: None}`.
 
 ---
 
-## 6. Decompilation
+## 8. MCS (Multi-Character Signature) Expansion
 
-The decompiler converts compiled KLines back to KScript entries:
+When a signature has **more than one character**, the ASTEmitter automatically emits:
 
-### 6.1 MCS Name Recovery
+1. **Component identities:** One unsigned entry per constituent character (resolved via BindingScope).
+2. **MCS canonization:** One entry mapping the compound to its resolved components.
 
-Multi-character signatures encoded with Mod tokenizers lose character order (packed = OR of bits). The decompiler recovers names by detecting **MCS entries**:
+```
+ABC  →  {A: None}, {B: None}, {C: None}, {ABC: [A, B, C]}, {ABC: None}
+```
 
-- An MCS entry is a KLine where `signature == OR(node_values)`.
-- MCS entries provide the name: the packed token maps to the original multi-char string.
-- Two patterns are detected:
-  1. **Legacy:** Single entry with multiple packed single-char nodes
-  2. **Per-char:** Consecutive entries with same signature, each with one packed single-char node
+The compound's own unsigned identity (`{ABC: None}`) is emitted by the normal unsigned path.
 
-### 6.2 Level Inference
+Single-character signatures do NOT trigger MCS expansion.
 
-Without explicit significance bits, levels are heuristically inferred:
+MCS applies to any multi-character identifier wherever it appears — signature side or node side, any operator. There is no position-dependent rule.
 
-| Condition                                     | Level                    |
-| --------------------------------------------- | ------------------------ |
-| No nodes                                      | S4 (unsigned)            |
-| Single node with `(sig & node) != 0`          | S2 (canonize)            |
-| Single node with `(sig & node) == 0`          | S3 (connotate/undersign) |
-| Multi-node list with `(sig & nodes_sig) != 0` | S2 (canonize)            |
-| Multi-node list with `(sig & nodes_sig) == 0` | S3 (connotate)           |
-| MCS entry (sig == OR of nodes)                | S2                       |
+### 8.1 Character Resolution
 
-> **Caveat:** S1 (countersign/undersign) cannot be reliably distinguished from S3 (connotate) without explicit significance bits, since singleton unwrapping collapses the structural distinction.
+Each constituent character is resolved via the BindingScope before emitting. If the character has a binding (e.g., `M` → "Mary"), the resolved word is used instead of the raw character. If unbound, the raw character is used.
+
+### 8.2 Node Count Invariant
+
+The number of nodes in an MCS canonization entry always equals the number of characters in the compound identifier. Each character resolves to exactly one node, regardless of how many BPE tokens the resolved word produces at encoding time.
 
 ---
 
-## 7. File Formats
+## 9. BPE Annotations
 
-### 7.1 Source Files (`.ks`)
+### 9.1 Definition
 
-Plain text files containing KScript source.
+A BPE annotation is a parenthesised expression in KScript source that provides word text for BPE token encoding. Two syntactic forms:
 
-### 7.2 JSON Output (`.json`)
+**Block annotation**: `(word1 word2 ... wordN)` — a parenthesised list of whitespace-separated words. Appears as an AST node in the construct sequence.
 
-```json
-[
-  { "MHALL": "SVO" },
-  { "SVO": "MHALL" },
-  { "S": "M" },
-  { "ABC": ["A", "B", "C"] }
-]
-```
+**Inline annotation**: `S(ubject)` — a SIGNATURE token immediately followed by a parenthesised suffix. The first character comes from the SIGNATURE token, the remainder from the annotation content stripped of parentheses. Case is preserved: `S` + `ubject` → `"Subject"`.
 
-Each entry is `{"sig": nodes}` where `nodes` is `null`, a string, or a list of strings.
+### 9.2 When Annotations Are Used
 
-### 7.3 JSONL Output (`.jsonl`)
+In NLP mode (NLP tokenizer selected at compile time), annotations drive word→BPE-token resolution via BindingScope. In Mod32 mode (Mod32 tokenizer selected), annotations are parsed but unused — the ASTEmitter skips binding resolution.
 
-One JSON object per line (same format as JSON array items).
+### 9.3 Inert Annotations
 
-### 7.4 Binary Output (`.bin`)
+Annotations where no word's first letter matches any encountered character are inert — they have no effect on compilation. Surplus words are simply never matched. There is no all-or-nothing rule: an annotation can partially match, binding some characters while surplus words are ignored.
 
-**KSC1 format** (little-endian):
-
-```
-Header:
-  4 bytes: magic "KSC1"
-  4 bytes: entry count (uint32)
-
-Per entry:
-  8 bytes: signature (uint64)
-  1 byte:  node_type (0=None, 1=int, 2=list)
-  if type==1: 8 bytes (uint64 node)
-  if type==2: 4 bytes count + N * 8 bytes (uint64 each)
-```
+Orphan annotations (annotations with no following identifiers) and annotations at end of script are also inert.
 
 ---
 
-## 8. Public API
+## 10. NLP Binding Resolution
 
-### 8.1 Python API (`KScript` class)
+Binding resolution maps single-character identifiers to NLP words via BPE annotations. Resolution happens inline during the ASTEmitter's single walk via a BindingScope.
+
+### 10.1 Binding Rules
+
+Four rules govern resolution:
+
+**Rule B1 — Binding.** A binding maps a single character to a word. Once bound in a scope, it cannot be re-bound within that scope.
+
+**Rule B2 — Characters Seek Bindings.** When the emitter encounters a single-character signature, resolution proceeds in this order:
+1. Inline annotation on this position → bind immediately (Rule B4).
+2. Block annotations → search current scope most-recent-first, then parent scopes upward (Rule B3).
+
+**Rule B3 — First-Letter Matching.** Block annotations match by first letter, case-insensitive: `word[0].lower() == char.lower()`. An occurrence counter per scope per character handles disambiguation:
+- **Single match** (unambiguous): bind the word. Counter does NOT increment.
+- **Multiple matches** (ambiguous): bind the Nth word where N = current counter value, then increment counter by 1.
+- **Counter exceeds matches**: no match in this annotation — continue to next annotation or outer scope.
+- **No matches in any scope**: character is unbound.
+
+The counter is per-scope-per-character, keyed on the lowercase character value. Each new scope starts at zero.
+
+**Rule B4 — Inline Override.** An inline annotation `S(ubject)` binds immediately, bypassing the occurrence counter. Additionally, it retroactively patches the matching character in the parent scope's MCS CANONIZE entry. Only the immediate parent scope is patched — no propagation beyond one level. If the character is not found in the parent's MCS entry, the override is a safe no-op.
+
+### 10.2 Binding Scope
+
+Scopes are created by operator boundaries (§3). Each scope holds:
+- **Annotations**: ordered collection of block annotations, searched most-recent-first.
+- **Occurrence counters**: per-character disambiguation counters, starting at zero.
+
+Characters seek from the current (innermost) scope first, then parent scopes upward.
+
+### 10.3 BindingScope API
+
+The BindingScope is a lightweight scope stack:
+
+| Method | Description |
+|--------|-------------|
+| `push_scope()` | Push a new scope onto the stack |
+| `pop_scope()` | Pop the top scope |
+| `add_words(words)` | Append a word list to the current scope |
+| `resolve(char) → str \| None` | Walk the scope stack, first-letter matching, occurrence counter |
+
+### 10.4 Unbound Characters
+
+When a single-character identifier cannot be resolved through any mechanism, it remains unbound. Unbound characters are encoded using Mod32 bit-packed encoding as a fallback. This produces mixed NLP/Mod32 klines within the same graph.
+
+---
+
+## 11. Encoding
+
+### 11.1 Encoding-Agnostic Principle
+
+The ASTEmitter produces symbolic entries (strings). The TokenEncoder converts strings to opaque `uint64` values. The encoding mode is selected at compile time by choosing the tokenizer. The same `.ks` source compiles under either encoding without modification.
+
+### 11.2 Mod32 Encoding
+
+Identifiers are packed via bitwise-OR of character bit positions into a single `uint64` with bit 0 clear. Lossy: order and multiplicity are lost.
+
+```
+encode("ABC") → bit_A | bit_B | bit_C
+```
+
+### 11.3 NLP-BPE Encoding
+
+Identifiers are encoded as typed BPE tokens carrying linguistic annotations (POS + DEP + MORPH):
+
+```
+encode("HELLO") → (nlp_type32 << 32) | bpe_token_id
+```
+
+### 11.4 Multi-Token Words
+
+When a word BPE-encodes to multiple tokens (e.g., "Mary" → `[mar, y]`), the TokenEncoder OR-reduces the tokens into a single packed `uint64` signature. This ensures the node-count invariant (§8.2) is maintained: one character = one node, regardless of BPE token count.
+
+### 11.5 Signature Construction
+
+Signatures are constructed via plain OR-reduction of raw, unmasked node values:
+
+```
+make_signature([node_A, node_B]) → node_A | node_B
+```
+
+The compiler does not inspect or mask node values — they are opaque `uint64` integers.
+
+### 11.6 Design Tension: Annotations and Encoding Opacity
+
+BPE annotations are the mechanism by which the BPE token ID component of a node is determined. This creates a tension: the ASTEmitter must be aware of encoding semantics to resolve annotations, even though nodes are otherwise treated as opaque `uint64` values. The BindingScope is the single point where this leak occurs — it resolves character→word mappings that determine BPE token IDs. All other compilation stages are encoding-agnostic.
+
+---
+
+## 12. Implementation Components
+
+### 12.1 Module Structure
+
+```
+kscript/
+├── __init__.py         # KScript class (public API)
+├── token.py            # TokenType enum, Token dataclass
+├── lexer.py            # Lexer (source → tokens)
+├── ast.py              # AST node dataclasses
+├── parser.py           # Parser (tokens → AST)
+├── ast_emitter.py      # ASTEmitter (AST → symbolic entries)
+├── token_encoder.py    # TokenEncoder (symbolic → encoded entries)
+├── binding_scope.py    # BindingScope (NLP binding resolution)
+└── compiler.py         # Compiler (orchestrator)
+```
+
+### 12.2 Compiler
+
+The Compiler orchestrates the pipeline. It creates the BindingScope (NLP mode only), passes it to the ASTEmitter, and passes the symbolic output to the TokenEncoder. No encoding logic lives in the Compiler itself.
+
+### 12.3 Dependencies
+
+| Dependency | Used By |
+|------------|---------|
+| `KLine` | CompiledEntry base class |
+| `KTokenizer` | TokenEncoder encoding/decoding |
+| `make_signature()` | Signature construction |
+
+---
+
+## 13. Public API
+
+### 13.1 Python API
 
 ```python
 from kscript import KScript
 
 # Compile from source string
-model = KScript("A == B")
+entries = KScript("A == B").entries
 
-# Compile from file (.ks, .json, .jsonl, .bin)
-model = KScript("script.ks")
-
-# Extend existing model
-extended = KScript("C = D", base=model)
-
-# Output to file (format by suffix: .json, .jsonl, .bin)
-model.output("output.json")
-model.output("output.bin")
-
-# Get JSONL lines
-lines = model.to_jsonl()
-
-# Access compiled entries
-for entry in model.entries:
-    sig, nodes = entry.decode(tokenizer)
+# Compile with specific tokenizer
+entries = KScript("A == B", tokenizer=NLPTokenizer()).entries
 ```
 
-### 8.2 CLI
-
-```bash
-# Compile .ks to .jsonl (default)
-python -m kscript script.ks
-
-# Specify output format
-python -m kscript script.ks -out output.json
-python -m kscript script.ks -out output.bin
-
-# Dev mode (include debug text)
-python -m kscript script.ks -dev
-```
-
-### 8.3 Low-level Pipeline
-
-```python
-from kscript.lexer import Lexer
-from kscript.parser import Parser
-from kscript.compiler import Compiler, compile_source
-from kscript.decompiler import Decompiler
-
-# Manual pipeline
-tokens = Lexer(source).tokenize()
-kfile = Parser(tokens).parse()
-entries = Compiler(tokenizer, dev=True).compile(kfile)
-
-# Convenience function (default tokenizer is Mod32Tokenizer)
-entries = compile_source(source, dev=True)
-
-# Or specify a tokenizer explicitly
-from kalvin.mod_tokenizer import Mod64Tokenizer
-entries = compile_source(source, tokenizer=Mod64Tokenizer(), dev=True)
-
-# Decompile
-decompiled = Decompiler(tokenizer).decompile(entries)
-```
+The `entries` property returns a list of `CompiledEntry` objects.
 
 ---
 
-## 9. Complete Examples
+## 14. Worked Examples
 
-### 9.1 Minimal
+### 14.1 Minimal Unsigned
 
 ```
 A
 ```
 
-Compiled: `{A: None}` (unsigned identity)
+Compiled:
 
-### 9.2 Bidirectional Link
+| Entry | Signature | Nodes | Op | Level |
+|-------|-----------|-------|----|-------|
+| 1 | A | None | UNSIGNED | S4 |
+
+### 14.2 Bidirectional Link
 
 ```
 A == B
 ```
 
-Compiled: `{A: B}, {B: A}`
+Compiled:
 
-### 9.3 Canonization with Subscript
+| Entry | Signature | Nodes | Op | Level |
+|-------|-----------|-------|----|-------|
+| 1 | A | B | COUNTERSIGN | S1 |
+| 2 | B | A | COUNTERSIGN | S1 |
 
-```
-MHALL == SVO =>
-   S(ubject) = M
-   V(erb) = H
-   O(bject) = ALL =>
-     A = D
-     L = M
-     L > O
-```
-
-Compiled (in order):
+### 14.3 Undersign (Reversed)
 
 ```
-{MCS for MHALL}: {M: None}, {H: None}, {A: None}, {L: None}, {MHALL: [M,H,A,L,L]}, {MHALL: None}
-{MCS for SVO}: {S: None}, {V: None}, {O: None}, {SVO: [S,V,O]}, {SVO: None}
-{MHALL: SVO}           (countersign, S1)
-{SVO: MHALL}           (countersign reverse, S1)
-{SVO: [S, V, O]}       (canonize, single entry, S2 — deduplicated against MCS)
-{M: S}                 (undersign, S1)
-{H: V}                 (undersign, S1)
-{MCS for ALL}: {A: None}, {L: None}, {ALL: [A,L,L]}, {ALL: None}
-{ALL: O}               (undersign, S1)
-{ALL: [A, L, L]}       (canonize, single entry, S2 — deduplicated against MCS)
-{D: A}                 (undersign, S1)
-{M: L}                 (undersign, S1)
-{L: O}                 (connotate fwd, S3)
+A = B
 ```
 
-> **Note on deduplication:** Duplicate `{A: None}` and `{L: None}` from ALL's MCS are silently dropped by the compiler (§5.4), as they were already emitted by MHALL's MCS. The CANONIZE entries `{SVO: [S, V, O]}` and `{ALL: [A, L, L]}` are also deduplicated against the MCS canonization entries, which encode identically.
+Compiled:
 
-### 9.4 Chained Constructs
+| Entry | Signature | Nodes | Op | Level |
+|-------|-----------|-------|-------|-------|
+| 1 | B | A | UNDERSIGN | S1 |
+
+### 14.4 Connotate (Forward)
+
+```
+A > B
+```
+
+Compiled:
+
+| Entry | Signature | Nodes | Op | Level |
+|-------|-----------|-------|-------|-------|
+| 1 | A | B | CONNOTATE | S3 |
+
+### 14.5 Self-Identity
+
+```
+A = A
+```
+
+Compiled:
+
+| Entry | Signature | Nodes | Op | Level |
+|-------|-----------|-------|-------|-------|
+| 1 | A | None | UNSIGNED | S4 |
+
+### 14.6 MCS Expansion
+
+```
+ABC
+```
+
+Compiled:
+
+| Entry | Signature | Nodes | Op | Level |
+|-------|-----------|-------|---------|-------|
+| 1 | A | None | UNSIGNED | S4 |
+| 2 | B | None | UNSIGNED | S4 |
+| 3 | C | None | UNSIGNED | S4 |
+| 4 | ABC | [A, B, C] | CANONIZE | S2 |
+| 5 | ABC | None | UNSIGNED | S4 |
+
+### 14.7 Operator Chain
+
+```
+A == B > C = D
+```
+
+Compiled:
+
+| Entry | Signature | Nodes | Op | Level |
+|-------|-----------|-------|-------------|-------|
+| 1 | A | B | COUNTERSIGN | S1 |
+| 2 | B | A | COUNTERSIGN | S1 |
+| 3 | B | C | CONNOTATE | S3 |
+| 4 | D | C | UNDERSIGN | S1 |
+
+### 14.8 CANONIZE with Subscript Block
+
+```
+A =>
+  B
+  C = D
+```
+
+Compiled:
+
+| Entry | Signature | Nodes | Op | Level |
+|-------|-----------|-------|---------|-------|
+| 1 | A | [B, C] | CANONIZE | S2 |
+| 2 | D | C | UNDERSIGN | S1 |
+| 3 | B | None | UNSIGNED | S4 |
+| 4 | C | None | UNSIGNED | S4 |
+| 5 | D | None | UNSIGNED | S4 |
+
+### 14.9 Chained CANONIZE
 
 ```
 A => B => C
@@ -455,17 +647,79 @@ A => B => C
 
 Compiled:
 
-```
-{A: B}                 (canonize fwd, singleton)
-{B: C}                 (canonize fwd, singleton)
-{C: None}              (unsigned C, from recursive compilation of right side)
-```
+| Entry | Signature | Nodes | Op | Level |
+|-------|-----------|-------|---------|-------|
+| 1 | A | B | CANONIZE | S2 |
+| 2 | B | C | CANONIZE | S2 |
+| 3 | C | None | UNSIGNED | S4 |
 
-> **Note:** The right side of a chain is always compiled recursively. Bare signatures emit their unsigned identity.
-
-### 9.5 Complex Nested
+### 14.10 Non-CANONIZE with Indent
 
 ```
+A == B
+  C
+  D
+```
+
+Compiled:
+
+| Entry | Signature | Nodes | Op | Level |
+|-------|-----------|-------|-------------|-------|
+| 1 | A | B | COUNTERSIGN | S1 |
+| 2 | B | A | COUNTERSIGN | S1 |
+| 3 | A | C | COUNTERSIGN | S1 |
+| 4 | C | A | COUNTERSIGN | S1 |
+| 5 | A | D | COUNTERSIGN | S1 |
+| 6 | D | A | COUNTERSIGN | S1 |
+
+### 14.11 Complex Nested (Full)
+
+```
+MHALL == SVO =>
+  S = M
+  V = H
+  O = ALL =>
+    A = D
+    L = M
+    L > O
+```
+
+Compiled:
+
+| # | Entry | Signature | Nodes | Op | Level |
+|---|-------|-----------|-------|-------------|-------|
+| 1 | MCS M | M | None | UNSIGNED | S4 |
+| 2 | MCS H | H | None | UNSIGNED | S4 |
+| 3 | MCS A | A | None | UNSIGNED | S4 |
+| 4 | MCS L | L | None | UNSIGNED | S4 |
+| 5 | MCS MHALL canonize | MHALL | [M, H, A, L, L] | CANONIZE | S2 |
+| 6 | MCS MHALL unsigned | MHALL | None | UNSIGNED | S4 |
+| 7 | MCS S | S | None | UNSIGNED | S4 |
+| 8 | MCS V | V | None | UNSIGNED | S4 |
+| 9 | MCS O | O | None | UNSIGNED | S4 |
+| 10 | MCS SVO canonize | SVO | [S, V, O] | CANONIZE | S2 |
+| 11 | MCS SVO unsigned | SVO | None | UNSIGNED | S4 |
+| 12 | Countersign | MHALL | SVO | COUNTERSIGN | S1 |
+| 13 | Countersign reverse | SVO | MHALL | COUNTERSIGN | S1 |
+| 14 | SVO canonize subscript | SVO | [S, V, O] | CANONIZE | S2 |
+| 15 | Undersign S | M | S | UNDERSIGN | S1 |
+| 16 | Undersign V | H | V | UNDERSIGN | S1 |
+| 17 | MCS ALL | A | None | UNSIGNED | S4 |
+| 18 | MCS ALL | L | None | UNSIGNED | S4 |
+| 19 | MCS ALL canonize | ALL | [A, L, L] | CANONIZE | S2 |
+| 20 | MCS ALL unsigned | ALL | None | UNSIGNED | S4 |
+| 21 | Undersign O | ALL | O | UNDERSIGN | S1 |
+| 22 | ALL canonize subscript | ALL | [A, L, L] | CANONIZE | S2 |
+| 23 | Undersign D | D | A | UNDERSIGN | S1 |
+| 24 | Undersign M | M | L | UNDERSIGN | S1 |
+| 25 | Connotate | L | O | CONNOTATE | S3 |
+
+> **Note on duplicate entries:** Entries 14 and 10 are structurally identical (same signature, same nodes). Entry 17 duplicates entry 3; entry 18 duplicates entry 4. Under the current implementation, duplicates are emitted as-is — the compiler does not deduplicate.
+
+### 14.12 NLP-Bound Example
+
+```
+(Mary Had A Little Lamb)
 MHALL == SVO =>
   S(ubject) = M
   V = H
@@ -473,137 +727,74 @@ MHALL == SVO =>
     A = D
     L = M
     L > O
-    MOD => A B
 ```
 
-Key structures:
+Binding resolution:
+- Block annotation `(Mary Had A Little Lamb)` provides words for MHALL's characters.
+- `M` → "Mary", `H` → "Had", `A` → "A" (first-letter match), `L` → "Little" (counter 0), `L` → "Lamb" (counter 1, ambiguous).
+- `S(ubject)` → inline binding, overrides `S` → "Subject" in parent MCS.
 
-- `MHALL` countersigns `SVO` (bidirectional)
-- `S`, `V`, `O` undersign their values → `{M: S}`, `{H: V}`, `{ALL: O}`
-- `ALL` canonizes `A`, `L` (subscript items) → `{ALL: [A, L, L]}` (deduplicated against MCS)
-- `L > O` connotates
-- `MOD => A B` canonizes both items: `{MOD: [A, B]}`
+MCS for MHALL (resolved):
+```
+{Mary: None}, {Had: None}, {A: None}, {Little: None}, {Lamb: None}
+{MHALL: [Mary, Had, A, Little, Lamb]}
+```
+
+With Rule B4 override, the parent SVO canonize entry becomes:
+```
+{SVO: [Subject, V, O]}    (S patched to "Subject")
+```
+
+All other entries follow the same operator rules as §14.11, with resolved words replacing raw characters where bindings exist. Unbound characters (V, O, D) use Mod32 fallback encoding.
 
 ---
 
-## 10. Implementation Components
+## 15. Test Matrix
 
-### 10.1 Module Structure
-
-```
-kscript/
-├── __init__.py       # KScript class (public API), re-exports
-├── __main__.py       # CLI entry point
-├── token.py          # TokenType enum, Token dataclass
-├── lexer.py          # Lexer (source → tokens)
-├── ast.py            # AST node dataclasses
-├── parser.py         # Parser (tokens → AST)
-├── compiler.py       # Compiler (AST → [CompiledEntry])
-├── decompiler.py     # Decompiler ([KLine] → [DecompiledEntry])
-└── output.py         # JSON/JSONL/binary I/O
-```
-
-### 10.2 Dependencies
-
-| Dependency                            | Used By                    | Required |
-| ------------------------------------- | -------------------------- | -------- |
-| `kalvin.kline.KLine`                  | `CompiledEntry` base class | Yes      |
-| `kalvin.abstract.KTokenizer`          | Encoding/decoding          | Yes      |
-| `kalvin.mod_tokenizer.Mod32Tokenizer` | Default tokenizer          | Yes      |
-| `kalvin.signature.make_signature`     | Decompiler MCS detection   | Yes      |
-
-### 10.3 Compiler Class
-
-```python
-class Compiler:
-    def __init__(self, tokenizer: KTokenizer | None = None, dev: bool = False)
-    def compile(self, file: KScriptFile) -> list[CompiledEntry]
-```
-
-Internal state:
-
-- `self.entries` — accumulated output list
-- `self._seen` — deduplication set of `(sig_id, nodes_tuple)` pairs
-- `self._sig_levels` — mapping from operator name to significance level string
-
-### 10.4 CompiledEntry
-
-Extends `KLine` with encode/decode support:
-
-```python
-class CompiledEntry(KLine):
-    @classmethod
-    def encode(cls, sig, nodes, tokenizer, *, sig_level, significance, dbg_text) -> CompiledEntry
-
-    def decode(self, tokenizer) -> tuple[str, str | None | list[str]]
-```
-
----
-
-## 11. Design Rationale & Gotchas
-
-### 11.1 Why One Node Type?
-
-All nodes go through the tokenizer — there is no branching between "literal" and "packed" encoding paths. Signatures (uppercase alpha) use **packed encoding** — multiple characters OR'd into one `uint64`. This makes them usable as **bitmask signatures** for fast overlap-based candidate retrieval. Every other string passes through the tokenizer uniformly.
-
-### 11.2 Why Singleton Unwrapping?
-
-Single-element node lists are indistinguishable from single nodes in the KLine model. Unwrapping keeps the representation canonical and avoids ambiguity.
-
-### 11.3 Why MCS Expansion?
-
-Packed encoding loses character order. `ABC` and `CBA` may produce the same token. MCS entries store `[A, B, C]` as ordered nodes, enabling the decompiler to recover the original name.
-
-### 11.4 Deduplication is Semantic
-
-The compiler deduplicates by **encoded** `(signature, nodes)` pair, not by source text. This means `AB => A B` and the MCS expansion of `AB` may share entries.
-
-### 11.5 Decompiler is Lossy
-
-The decompiler uses **heuristic inference** for significance levels. Without explicit bits:
-
-- S1 and S3 are easily confused (both produce single nodes with zero bit overlap)
-- The best-effort reconstruction is useful for debugging but not for round-tripping
-
-### 11.6 Indentation is Structural
-
-Like Python, indentation defines block structure. Mixed tabs and spaces will work but are discouraged. The lexer counts each space/tab as one unit.
-
-### 11.7 NLP-BPE Encoding Mode
-
-KScript supports an alternative NLP-BPE encoding mode, fully specified in `@kscript-nlp` (`specs/kscript-nlp.md`). The lexer, parser, and AST are encoding-independent — the same `.ks` source compiles under either encoding by selecting the tokenizer at compile time. No source-level changes are required to switch modes.
-
----
-
-## 12. Test Matrix
-
-| ID    | Criterion                                                                  | Category |
-| ----- | -------------------------------------------------------------------------- | -------- |
-| KS-1  | Token classification: all token types recognized                           | Lexer |
-| KS-2  | Multi-char operator priority: `==`, `=>` before `=`, `>`                   | Lexer |
-| KS-3  | Comment parsing: `(...)` stripped from token stream                        | Lexer |
-| KS-4  | Indent/dedent tracking: Python-style INDENT/DEDENT tokens                  | Lexer |
-| KS-5  | Edge cases: empty input, whitespace-only, consecutive operators            | Lexer |
-| KS-6  | AST structure for chains: operator + primary sequence                      | Parser |
-| KS-7  | AST structure for blocks: block construct with subscripts                  | Parser |
-| KS-9  | Parse errors for invalid input: missing operators, bad nesting             | Parser |
-| KS-10 | COUNTERSIGN compilation: `Q == V` → `{Q:[V]}, {V:[Q]}`                    | Compiler |
-| KS-11 | CANONIZE compilation: `Q => V` → `{Q:[V]}`                                | Compiler |
-| KS-12 | CONNOTATE compilation: `Q > V` → `{Q:[V]}`                                | Compiler |
-| KS-13 | UNDERSIGN compilation: `Q = V` → `{V:[Q]}`                                | Compiler |
-| KS-14 | MCS expansion: multi-char signatures expanded to identity + composite      | Compiler |
-| KS-15 | No MCS for single-char signatures                                          | Compiler |
-| KS-16 | CANONIZE chains: per-item emission                                         | Compiler |
-| KS-17 | Subscript blocks: nested constructs                                        | Compiler |
-| KS-18 | Dedup: identity klines not duplicated                                      | Compiler |
-| KS-19 | Complex examples: `AB=>A B`, `AB==CD`, `AB>C` round-trip correctly        | Compiler |
-| KS-23 | Decompiler round-trip: compile → decompile → compile produces same output  | Decompiler |
-| KS-24 | MCS name recovery: both patterns                                           | Decompiler |
-| KS-25 | Level inference: heuristics for operator recovery                          | Decompiler |
-| KS-26 | Binary output round-trip: write → read produces same klines                | Output |
-| KS-27 | JSON output round-trip: write → read produces same klines                  | Output |
-| KS-28 | JSONL output round-trip: write → read produces same klines                 | Output |
-| KS-30 | API: inline source compilation                                             | API |
-| KS-31 | API: output format selection                                               | API |
-| KS-32 | API: base extension (appending to existing model)                          | API |
-| KS-33 | API: file loading from `.ks` source                                        | API |
+| ID | Criterion | Category |
+|----|-----------|----------|
+| **Lexer** | | |
+| KS-1 | All token types recognized: SIGNATURE, COUNTERSIGN, CANONIZE, CONNOTATE, UNDERSIGN, ANNOTATION, NEWLINE, INDENT, DEDENT, EOF | Lexer |
+| KS-2 | Multi-char operator priority: `==`, `=>` matched before `=`, `>` | Lexer |
+| KS-3 | BPE annotations: `(...)` with nested parens preserved as ANNOTATION tokens | Lexer |
+| KS-4 | Indent/dedent tracking: Python-style INDENT/DEDENT tokens | Lexer |
+| KS-5 | Edge cases: empty input, whitespace-only, unknown characters raise LexerError | Lexer |
+| **Parser** | | |
+| KS-6 | AST structure reflects scope model: OperatorScope nodes with sig, op, items, child_block | Parser |
+| KS-7 | Block parsing: INDENT/DEDENT creates Block nodes | Parser |
+| KS-8 | Annotations preserved as AST nodes (not discarded) | Parser |
+| KS-9 | Inline annotation attachment: sig-side and node-side | Parser |
+| KS-10 | Empty source produces empty script (no error) | Parser |
+| **Scope & Operators** | | |
+| KS-11 | COUNTERSIGN per-item: `A == B C` → `{A:B}, {B:A}, {A:C}, {C:A}` | Scope |
+| KS-12 | UNDERSIGN per-item reversed: `A = B C` → `{B:A}, {C:A}` | Scope |
+| KS-13 | CONNOTATE per-item: `A > B C` → `{A:B}, {A:C}` | Scope |
+| KS-14 | CANONIZE aggregates: `A => B C D` → `{A:[B,C,D]}` | Scope |
+| KS-15 | Operator chain: `A == B > C = D` → correct signatures per scope | Scope |
+| KS-16 | Indent extends scope: items in child block belong to parent operator | Scope |
+| KS-17 | DEDENT returns to parent scope | Scope |
+| KS-18 | Non-CANONIZE with indent: per-item emission extends into child block | Scope |
+| **MCS** | | |
+| KS-19 | MCS expansion: multi-char identifier produces components + canonization + unsigned | MCS |
+| KS-20 | No MCS for single-char identifiers | MCS |
+| KS-21 | MCS on node side: `A == MHALL` triggers MCS for MHALL | MCS |
+| KS-22 | Node count invariant: MCS node count equals character count | MCS |
+| **Binding** | | |
+| KS-23 | Block annotation first-letter matching: `(Mary Had A Little Lamb)` + `MHALL` | Binding |
+| KS-24 | Occurrence counter: duplicate letters resolved to different words | Binding |
+| KS-25 | Inline binding: `S(ubject)` resolves immediately, bypasses counter | Binding |
+| KS-26 | Rule B4 override: inline binding patches parent MCS CANONIZE entry | Binding |
+| KS-27 | Scope inheritance: characters seek from inner to outer scope | Binding |
+| KS-28 | Scope shadowing: inner scope binding shadows outer for same character | Binding |
+| KS-29 | Counter reset: each new scope starts counters at zero | Binding |
+| KS-30 | Unbound characters: fallback to Mod32 encoding | Binding |
+| KS-31 | Inert annotation: no matching characters → no effect | Binding |
+| KS-32 | Mod32 mode: annotations parsed but unused, no BindingScope created | Compatibility |
+| **Self-Identity** | | |
+| KS-33 | Self-identity: `A = A` → `{A: None}` with op=UNSIGNED | Operators |
+| **Singleton** | | |
+| KS-34 | Singleton unwrapping: `A => B` → `{A: B}` (not `{A: [B]}`) | Structure |
+| **Integration** | | |
+| KS-35 | Complex nested example (§14.11) produces correct complete entry list | Integration |
+| KS-36 | NLP-bound example (§14.12) produces correct resolved entries | Integration |
+| KS-37 | Same source compiles under both Mod32 and NLP without modification | Compatibility |
