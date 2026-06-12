@@ -1,48 +1,50 @@
-"""Lexer for KScript v3 — converts source text into a flat list of Token objects.
+"""KScript v3 lexer — tokenizes source code into a stream of Token objects.
 
-Handles operator precedence (multi-char before single-char), SIGNATURE
-identification, ANNOTATION tokens with nested parentheses, and Python-style
-INDENT/DEDENT tracking.
+Handles:
+  - Multi-character operators (==, =>) before single-char (=, >)
+  - Signatures [A-Z]+ with optional inline annotation
+  - Annotations (...) with nested paren handling
+  - Python-style INDENT/DEDENT tokens
+  - Unknown characters raise LexerError
 
-See specs/kscript.md §2.1–2.4.
+Key difference from v2: COMMENT tokens are now ANNOTATION tokens,
+reflecting their semantic purpose in BPE encoding.
+
+Spec ref: @specs/kscript.md §2 (Lexical Analysis)
 """
+
+from __future__ import annotations
 
 from .token import Token, TokenType
 
 
 class LexerError(Exception):
-    """Error during lexing with position tracking.
+    """Error during lexing.
 
     Attributes:
-        message: Human-readable error description
-        line: 1-based line number where the error occurred
-        column: 1-based column number where the error occurred
+        line: 1-based line number where the error occurred.
+        column: 1-based column number.
     """
 
-    def __init__(self, message: str, line: int, column: int):
+    def __init__(self, message: str, line: int, column: int) -> None:
         super().__init__(f"Line {line}, column {column}: {message}")
-        self.message = message
         self.line = line
         self.column = column
 
 
 class Lexer:
-    """Tokenizes KScript v3 source code with indentation tracking.
+    """Tokenizes KScript source code with indentation tracking.
 
-    The lexer produces a flat list of Token objects, handling:
-    - Multi-character operators (==, =>) matched before single-char (=, >)
-    - SIGNATURE tokens for [A-Z][A-Z0-9]* identifiers (digits → error)
-    - ANNOTATION tokens for parenthesised content, with nesting and multi-line
-    - Inline ANNOTATION tokens emitted after their preceding SIGNATURE
-    - Python-style INDENT/DEDENT tokens based on leading whitespace
+    The lexer produces a flat list of Token objects from a source string.
+    Only SIGNATURE tokens ([A-Z]+) can be construct owners in the grammar.
+
+    Usage::
+
+        tokens = Lexer("A == B").tokenize()
+        # [SIGNATURE("A"), COUNTERSIGN("=="), SIGNATURE("B"), EOF("")]
     """
 
-    def __init__(self, source: str):
-        """Initialize lexer with source string.
-
-        Args:
-            source: The KScript v3 source code to tokenize
-        """
+    def __init__(self, source: str) -> None:
         self.source = source
         self.pos = 0
         self.line = 1
@@ -55,25 +57,20 @@ class Lexer:
         """Tokenize the entire source and return list of tokens.
 
         Returns:
-            List of Token objects ending with an EOF token.
+            List of Token objects ending with EOF.
         """
-        # Empty or whitespace-only input produces only EOF
-        if not self.source or not self.source.strip():
-            return [Token(TokenType.EOF, "", 1, 1)]
-
         tokens: list[Token] = []
 
         while self.pos < len(self.source) or self.pending_tokens:
-            # Emit any pending tokens (INDENT/DEDENT/inline ANNOTATION)
             if self.pending_tokens:
                 tokens.append(self.pending_tokens.pop(0))
                 continue
 
             token = self._next_token()
-            if token is not None:
+            if token:
                 tokens.append(token)
 
-        # Close all remaining indent levels with DEDENT tokens
+        # Emit remaining DEDENTs at EOF
         while len(self.indent_stack) > 1:
             self.indent_stack.pop()
             tokens.append(Token(TokenType.DEDENT, "", self.line, self.column))
@@ -83,14 +80,10 @@ class Lexer:
 
     def _next_token(self) -> Token | None:
         """Get the next token, handling indentation at line start."""
-        # Handle indentation at line start
         if self.at_line_start:
             self.at_line_start = False
-            indent, saved_line, saved_col = self._count_indent()
-            indent_token = self._handle_indent(indent, saved_line, saved_col)
-            if indent_token is not None:
-                return indent_token
-            # Same indent level — fall through to process content
+            indent = self._count_indent()
+            return self._handle_indent(indent)
 
         # Skip whitespace (not newlines)
         while self.pos < len(self.source) and self.source[self.pos] in " \t":
@@ -105,7 +98,7 @@ class Lexer:
         if ch == "\n":
             return self._read_newline()
 
-        # Multi-char operators (matched before single-char)
+        # Multi-char operators (check before single-char)
         if self.pos + 1 < len(self.source):
             two_char = self.source[self.pos : self.pos + 2]
             if two_char == "==":
@@ -118,84 +111,48 @@ class Lexer:
             return self._make_token(TokenType.UNDERSIGN, "=")
         if ch == ">":
             return self._make_token(TokenType.CONNOTATE, ">")
-
-        # '<' is explicitly invalid
         if ch == "<":
-            raise LexerError(
-                f"Unexpected character: {ch!r}", self.line, self.column
-            )
+            raise LexerError(f"Unexpected character: {ch!r}", self.line, self.column)
 
-        # Identifier: must start with uppercase letter [A-Z]
-        if ch.isupper():
+        # Identifier
+        if ch.isalpha():
             return self._read_identifier()
 
-        # Lowercase letter — not a valid identifier start
-        if ch.islower():
-            raise LexerError(
-                f"Unexpected character: {ch!r}", self.line, self.column
-            )
-
-        # Standalone annotation: (...) with nested parens
+        # Annotation (...)
         if ch == "(":
             return self._read_annotation()
 
-        # Any other unknown character
-        raise LexerError(
-            f"Unexpected character: {ch!r}", self.line, self.column
-        )
+        # Unknown character
+        raise LexerError(f"Unexpected character: {ch!r}", self.line, self.column)
 
-    # ── Indentation handling ──────────────────────────────────────────
-
-    def _count_indent(self) -> tuple[int, int, int]:
-        """Count leading whitespace at line start (spaces and tabs).
-
-        Returns:
-            Tuple of (indent_count, saved_line, saved_column) where
-            saved positions are from the start of the line before advancing.
-        """
+    def _count_indent(self) -> int:
+        """Count indentation at line start (spaces and tabs)."""
         indent = 0
-        saved_line, saved_column = self.line, self.column
         while self.pos < len(self.source) and self.source[self.pos] in " \t":
             indent += 1
             self._advance()
-        return indent, saved_line, saved_column
+        return indent
 
-    def _handle_indent(
-        self, indent: int, line: int, column: int
-    ) -> Token | None:
-        """Handle indentation changes, returning INDENT/DEDENT or None."""
-        current = self.indent_stack[-1]
+    def _handle_indent(self, indent: int) -> Token | None:
+        """Handle indentation changes, emitting INDENT/DEDENT tokens."""
+        current_indent = self.indent_stack[-1]
 
-        if indent > current:
+        if indent > current_indent:
             self.indent_stack.append(indent)
-            return Token(TokenType.INDENT, "", line, column)
+            return Token(TokenType.INDENT, "", self.line, self.column)
 
-        if indent < current:
-            # Emit one or more DEDENT tokens to close levels
-            while (
-                len(self.indent_stack) > 1 and self.indent_stack[-1] > indent
-            ):
+        if indent < current_indent:
+            while len(self.indent_stack) > 1 and self.indent_stack[-1] > indent:
                 self.indent_stack.pop()
                 self.pending_tokens.append(
-                    Token(TokenType.DEDENT, "", line, column)
-                )
-            # Verify the dedent lands on a valid level
-            if self.indent_stack[-1] != indent:
-                raise LexerError(
-                    f"Inconsistent indentation: level {indent} "
-                    f"does not match any previous level",
-                    line,
-                    column,
+                    Token(TokenType.DEDENT, "", self.line, self.column)
                 )
             return self.pending_tokens.pop(0) if self.pending_tokens else None
 
-        # Same indentation — no structural token
-        return None
-
-    # ── Token readers ─────────────────────────────────────────────────
+        return None  # Same indentation — no token needed
 
     def _read_newline(self) -> Token:
-        """Read a newline token and enter line-start mode."""
+        """Read a newline token."""
         line, col = self.line, self.column
         self._advance()
         self.line += 1
@@ -204,48 +161,47 @@ class Lexer:
         return Token(TokenType.NEWLINE, "\n", line, col)
 
     def _read_identifier(self) -> Token:
-        """Read an identifier [A-Z][A-Z0-9]* and classify it.
+        """Read an identifier [a-zA-Z][a-zA-Z0-9]*.
 
-        - All uppercase alpha → SIGNATURE
-        - Contains digits → LexerError
+        Returns SIGNATURE if all uppercase alpha.
+        Raises LexerError for mixed/lowercase identifiers.
+
+        When '(' immediately follows the identifier (e.g., S(ubject)),
+        reads the annotation and queues it as a pending ANNOTATION token.
         """
         start_line, start_col = self.line, self.column
         name = ""
 
-        while (
-            self.pos < len(self.source)
-            and self.source[self.pos].isupper()
-        ):
+        while self.pos < len(self.source) and self._is_ident_char(self.source[self.pos]):
             name += self._advance()
 
-        # Check for digit continuation (allowed by pattern but invalid)
-        while (
-            self.pos < len(self.source)
-            and self.source[self.pos].isdigit()
-        ):
-            name += self._advance()
-
-        if not name.isalpha():
-            raise LexerError(
-                f"Invalid identifier '{name}': "
-                f"identifiers must be all uppercase letters (no digits)",
-                start_line,
-                start_col,
-            )
-
-        # Inline annotation: if '(' immediately follows, queue ANNOTATION
+        # Check for inline annotation — queue as pending token
         if self.pos < len(self.source) and self.source[self.pos] == "(":
             self.pending_tokens.append(self._read_annotation())
 
-        return Token(TokenType.SIGNATURE, name, start_line, start_col)
+        # All uppercase alpha → SIGNATURE
+        if name.isupper() and name.isalpha():
+            return Token(TokenType.SIGNATURE, name, start_line, start_col)
+
+        # Non-uppercase identifiers are not valid
+        raise LexerError(
+            f"Invalid identifier '{name}': identifiers must be all uppercase "
+            f"(signatures). Use a quoted string for non-signature values.",
+            start_line,
+            start_col,
+        )
+
+    def _is_ident_char(self, ch: str) -> bool:
+        """Check if character is valid in an identifier (alphanumeric)."""
+        return ch.isalnum()
 
     def _read_annotation(self) -> Token:
-        """Read an annotation (...) with nested parentheses and multi-line.
+        """Read an annotation (...) — multi-line, handles nested parens.
 
-        The value includes the outer parentheses.
+        Returns an ANNOTATION token with the full text including parens.
         """
         start_line, start_col = self.line, self.column
-        value = self._advance()  # consume opening '('
+        value = self._advance()  # opening (
         depth = 1
 
         while self.pos < len(self.source) and depth > 0:
@@ -254,26 +210,15 @@ class Lexer:
                 depth += 1
             elif ch == ")":
                 depth -= 1
-
-            if ch == "\n":
+            elif ch == "\n":
                 self._advance()
                 self.line += 1
                 self.column = 1
                 value += "\n"
                 continue
-
             value += self._advance()
 
-        if depth > 0:
-            raise LexerError(
-                "Unterminated annotation: missing closing ')'",
-                start_line,
-                start_col,
-            )
-
         return Token(TokenType.ANNOTATION, value, start_line, start_col)
-
-    # ── Helpers ────────────────────────────────────────────────────────
 
     def _make_token(self, token_type: TokenType, value: str) -> Token:
         """Create a token and advance past its value."""
@@ -283,7 +228,7 @@ class Lexer:
         return Token(token_type, value, line, col)
 
     def _advance(self) -> str:
-        """Advance position by one character and return it."""
+        """Advance position and return the character."""
         ch = self.source[self.pos]
         self.pos += 1
         self.column += 1
