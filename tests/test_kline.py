@@ -1,7 +1,7 @@
 """Tests for KLine — specs/kline.md conformance."""
 
 import pytest
-from kalvin.kline import KDbg, KLine
+from kalvin.kline import KDbg, KLine, sig_level
 
 
 class TestKLineConstruction:
@@ -119,3 +119,51 @@ class TestKLineNodeAccess:
     def test_as_node_list_compat(self):
         k = KLine(5, [1, 2])
         assert k.as_node_list() == [1, 2]
+
+
+class TestKDbgOp:
+    """KDbg.op field for operator provenance."""
+
+    def test_default_op_is_identity(self):
+        dbg = KDbg()
+        assert dbg.op == "IDENTITY"
+
+    def test_op_set_on_construction(self):
+        dbg = KDbg(op="COUNTERSIGN")
+        assert dbg.op == "COUNTERSIGN"
+
+    def test_repr_includes_op_when_not_identity(self):
+        dbg = KDbg(op="COUNTERSIGN")
+        assert "op=COUNTERSIGN" in repr(dbg)
+
+    def test_repr_omits_identity_op(self):
+        dbg = KDbg(op="IDENTITY")
+        assert "op=" not in repr(dbg)
+
+    def test_truthy_with_only_op(self):
+        dbg = KDbg(op="COUNTERSIGN")
+        assert bool(dbg) is True
+
+
+class TestSigLevelHelper:
+    """kalvin.kline.sig_level() helper function."""
+
+    def test_countersign_is_s1(self):
+        kl = KLine(0xFF, [1], dbg=KDbg(op="COUNTERSIGN"))
+        assert sig_level(kl) == "S1"
+
+    def test_undersign_is_s3(self):
+        kl = KLine(0xFF, [1], dbg=KDbg(op="UNDERSIGN"))
+        assert sig_level(kl) == "S3"
+
+    def test_connotate_is_s3(self):
+        kl = KLine(0xFF, [1], dbg=KDbg(op="CONNOTATE"))
+        assert sig_level(kl) == "S3"
+
+    def test_canonize_is_s2(self):
+        kl = KLine(0xFF, [1, 2], dbg=KDbg(op="CANONIZE"))
+        assert sig_level(kl) == "S2"
+
+    def test_identity_is_s4(self):
+        kl = KLine(0xFF, [], dbg=KDbg(op="IDENTITY"))
+        assert sig_level(kl) == "S4"

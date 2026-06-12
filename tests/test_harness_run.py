@@ -20,6 +20,7 @@ import pytest
 
 from kalvin.abstract import KLine
 from kalvin.events import RationaliseEvent
+from kalvin.mod_tokenizer import Mod32Tokenizer
 from ks import KLine
 from ui.kscript.regions.toolbar import ExecutionState
 
@@ -58,6 +59,7 @@ def _make_app() -> KScriptApp:
         app._expectations = {}
         app._fast_path_results = {}
         app._run_mode_active = False
+        app._display_tok = Mod32Tokenizer()
         app._logger = MagicMock()
         return app
 

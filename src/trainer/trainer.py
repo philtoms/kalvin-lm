@@ -669,7 +669,7 @@ class Trainer:
             )
             logger.debug("Lesson %s kscript: %s", current_lesson.label, lesson.strip())
 
-        # Compile locally to obtain CompiledEntry objects for structural matching
+        # Compile locally to obtain KLine objects for structural matching
         entries = compile_source(lesson, tokenizer=self._tokenizer)
         self._reactor.load_lesson(entries)
 
@@ -870,5 +870,5 @@ class Trainer:
 
 
 def _entry_key(kline: KLine) -> EntryKey:
-    """Return a hashable identity key for a KLine / CompiledEntry."""
+    """Return a hashable identity key for a KLine."""
     return (kline.signature, tuple(kline.nodes))

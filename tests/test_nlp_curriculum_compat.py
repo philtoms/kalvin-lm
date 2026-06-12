@@ -15,6 +15,7 @@ import pytest
 
 from ks import compile_source
 from kalvin.agent import KAgent
+from kalvin.kline import sig_level
 from kalvin.nlp_tokenizer import NLPTokenizer
 
 # ── Fixtures ──────────────────────────────────────────────────────────
@@ -97,12 +98,12 @@ class TestMultiCharDecomposition:
         # Should produce: 5 component unsigned + 1 decomposition canonize + 1 unsigned
         assert len(entries) == 7
         # First 5 are components
-        component_levels = [e.sig_level for e in entries[:5]]
+        component_levels = [sig_level(e) for e in entries[:5]]
         assert all(l == "S4" for l in component_levels)
         # 6th is decomposition (S2)
-        assert entries[5].sig_level == "S2"
+        assert sig_level(entries[5]) == "S2"
         # 7th is the MHALL unsigned (S4)
-        assert entries[6].sig_level == "S4"
+        assert sig_level(entries[6]) == "S4"
 
     def test_countersign_with_multi_char(
         self, nlp_tokenizer: NLPTokenizer
@@ -111,7 +112,7 @@ class TestMultiCharDecomposition:
             "MHALL == SVO", tokenizer=nlp_tokenizer, dev=True
         )
         # Should have countersign entries for MHALL:SVO and SVO:MHALL
-        countersigns = [e for e in entries if e.sig_level == "S1"]
+        countersigns = [e for e in entries if sig_level(e) == "S1"]
         assert len(countersigns) == 2
 
 

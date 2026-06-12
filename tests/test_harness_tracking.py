@@ -13,6 +13,8 @@ import pytest
 
 from ks import KLine
 
+from kalvin.mod_tokenizer import Mod32Tokenizer
+
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
 # The UI module has dependencies that may not be available in the test
 # environment.  Patch sys.modules before the first import of ui.kscript.app.
@@ -44,7 +46,7 @@ def _make_app() -> KScriptApp:
         # Manually set __init__ fields (skip super().__init__ entirely)
         app._dev_mode = True
         app._agent = MagicMock()
-        app._decompiler = MagicMock()
+        app._display_tok = Mod32Tokenizer()
         app._execution_state = MagicMock()
         app._execution_state.name = "IDLE"
         app._pending_entries = []

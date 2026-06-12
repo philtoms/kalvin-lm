@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch, PropertyMock
 
 from kalvin.abstract import KLine
 from kalvin.events import RationaliseEvent
+from kalvin.mod_tokenizer import Mod32Tokenizer
 from ks import KLine
 
 
@@ -81,7 +82,7 @@ def _make_app():
         # Initialize only the fields we need
         app._dev_mode = True
         app._agent = MagicMock()
-        app._display_tok = MagicMock()
+        app._display_tok = Mod32Tokenizer()
         app._execution_state = None
         app._pending_entries = []
         app._current_entry_index = 0
