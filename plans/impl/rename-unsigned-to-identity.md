@@ -66,6 +66,6 @@ Acceptance: `grep -rn '"UNSIGNED"' scripts/` returns nothing.
 - [x] Specs updated
 - [x] Plan created
 - [ ] Task 1 (ks/ source)
-- [ ] Task 2 (kalvin/ runtime)
+- [x] Task 2 (kalvin/ runtime)
 - [ ] Task 3 (tests)
 - [x] Task 4 (scripts)
