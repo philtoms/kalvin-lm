@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 
 from kalvin.abstract import KLine
-from kscript import CompiledEntry
+from ks import CompiledEntry
 from ui.kscript.regions.toolbar import ExecutionState
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────

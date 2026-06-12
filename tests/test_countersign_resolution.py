@@ -11,7 +11,7 @@ from kalvin.events import EventBus, RationaliseEvent
 from kalvin.kline import KLine
 from kalvin.model import Model
 from kalvin.signature import make_signature
-from kscript import compile_source
+from ks import compile_source
 
 
 class TestCountersignPairResolution:

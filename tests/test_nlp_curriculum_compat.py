@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from kscript import compile_source
+from ks import compile_source
 from kalvin.agent import KAgent
 from kalvin.nlp_tokenizer import NLPTokenizer
 
@@ -203,7 +203,7 @@ class TestCommentsOptional:
 
     def test_block_comment_binding(self, nlp_tokenizer: NLPTokenizer) -> None:
         """Block comment before multi-char sig enables positional binding."""
-        from kscript.compiler import compile_source
+        from ks.compiler import compile_source
 
         source = "(Mary Had A Little Lamb)\nMHALL"
         entries = compile_source(source, tokenizer=nlp_tokenizer, dev=True)

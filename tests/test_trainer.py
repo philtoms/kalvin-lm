@@ -15,7 +15,7 @@ from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
-from kscript.token_encoder import CompiledEntry
+from ks import CompiledEntry
 from trainer.cogitation import LLMResponse
 from trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from trainer.curriculum_document import CurriculumDocument, Lesson

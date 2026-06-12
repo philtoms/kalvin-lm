@@ -179,7 +179,7 @@ class TestNoCrossLessonSpillover:
         from trainer.curriculum import Curriculum
         from trainer.curriculum_document import CurriculumDocument
         from trainer.trainer import Trainer
-        from kscript.compiler import compile_source
+        from ks.compiler import compile_source
 
         # This is a high-level integration test.
         # We'll use the bus, adapter, and trainer together.

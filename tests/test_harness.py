@@ -18,7 +18,7 @@ from kalvin.expand import D_MAX
 from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod64Tokenizer
 from kalvin.signature import make_signature
-from kscript import CompiledEntry, compile_source
+from ks import CompiledEntry, compile_source
 from kscript.decompiler import Decompiler
 from kscript.parser import ParseError
 

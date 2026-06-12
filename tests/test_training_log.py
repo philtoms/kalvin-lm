@@ -21,7 +21,7 @@ from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX
 from kalvin.kline import KLine
-from kscript.token_encoder import CompiledEntry
+from ks import CompiledEntry
 from trainer.curriculum import Curriculum
 from trainer.curriculum_document import CurriculumDocument, Lesson
 from trainer.reactor import Reactor

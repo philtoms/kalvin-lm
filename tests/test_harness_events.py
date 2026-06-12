@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch, PropertyMock
 
 from kalvin.abstract import KLine
 from kalvin.events import RationaliseEvent
-from kscript import CompiledEntry
+from ks import CompiledEntry
 
 
 # ── Structural Match Tests ──────────────────────────────────────────────

@@ -20,7 +20,7 @@ import pytest
 
 from kalvin.abstract import KLine
 from kalvin.events import RationaliseEvent
-from kscript import CompiledEntry
+from ks import CompiledEntry
 from ui.kscript.regions.toolbar import ExecutionState
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
