@@ -6,6 +6,7 @@ See specs/kline.md for the full specification.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import TypeAlias
 
 # === Core Types ===
@@ -19,27 +20,67 @@ KNodes: TypeAlias = int | None | list[int]
 KSig: TypeAlias = int
 
 
+@dataclass
+class KDbg:
+    """Rich debug info for a KLine or CompiledEntry (not spec'd).
+
+    Populated in dev mode by the token encoder.  Forwarded as-is
+    by misfit expansions and model duplication.
+
+    Attributes:
+        label: Origin word or operator context.
+        decoded: Tokenizer decode of the signature (actual subword text).
+        pos: Part-of-speech tag (e.g. "PROPN", "VERB", "NOUN").
+        dep: Dependency relation (e.g. "appos", "nsubj").
+        morph: Morphological features (e.g. "Number=Sing").
+    """
+
+    label: str = ""
+    decoded: str = ""
+    pos: str = ""
+    dep: str = ""
+    morph: str = ""
+
+    def __bool__(self) -> bool:
+        """Truthy when any field is non-empty."""
+        return bool(self.label or self.decoded or self.pos or self.dep or self.morph)
+
+    def __repr__(self) -> str:
+        parts = []
+        if self.label:
+            parts.append(self.label)
+        if self.decoded and self.decoded != self.label:
+            parts.append(f"decoded={self.decoded!r}")
+        if self.pos:
+            parts.append(f"pos={self.pos}")
+        if self.dep:
+            parts.append(f"dep={self.dep}")
+        if self.morph:
+            parts.append(f"morph={self.morph}")
+        return f"KDbg({', '.join(parts)})" if parts else "KDbg()"
+
+
 class KLine:
     """An identified, ordered sequence of zero or more nodes.
 
     Attributes:
         signature: uint64 identity key (produced by make_signature).
         nodes: list of uint64 node values (always a list, never None).
-        dbg_text: optional debug label (not spec'd).
+        dbg: optional debug info (not spec'd).
     """
 
-    __slots__ = ("signature", "nodes", "dbg_text", "sig_level")
+    __slots__ = ("signature", "nodes", "dbg", "sig_level")
 
     def __init__(
         self,
         signature: KSig,
         nodes: KNodes | KNode | None = None,
-        dbg_text: str = "",
+        dbg: KDbg | None = None,
         sig_level: str | None = None,
     ):
         self.signature = signature
         self.nodes = _normalize_nodes(nodes)
-        self.dbg_text = dbg_text
+        self.dbg = dbg
         self.sig_level = sig_level
 
     # ── Backwards-compatible helpers ──────────────────────────────────
@@ -65,7 +106,7 @@ class KLine:
     # ── Repr ──────────────────────────────────────────────────────────
 
     def __repr__(self) -> str:
-        text = f" {self.dbg_text!r}" if self.dbg_text else ""
+        text = f" {self.dbg}" if self.dbg else ""
         return f"KLine(sig={self.signature:#x}, nodes={self.nodes!r}{text})"
 
     def __len__(self) -> int:

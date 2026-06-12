@@ -440,7 +440,7 @@ class Model:
 
     def duplicate(self) -> Model:
         """Create a duplicate of this model's frame."""
-        klines = [KLine(kl.signature, list(kl.nodes), kl.dbg_text)
+        klines = [KLine(kl.signature, list(kl.nodes), kl.dbg)
                    for kl in self._frame.all_klines()]
         m = Model()
         for kl in klines:

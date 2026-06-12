@@ -68,7 +68,7 @@ from ks.token_encoder import TokenEncoder
 # ---------------------------------------------------------------------------
 
 def compile_dev(source: str) -> list[CompiledEntry]:
-    """Compile source with dev=True (populates dbg_text for readable assertions)."""
+    """Compile source with dev=True (populates dbg for readable assertions)."""
     return compile_source(source, dev=True)
 
 
@@ -87,10 +87,10 @@ _CHAR_UINT64: dict[str, int] = {c: _TOK.encode(c)[0] for c in string.ascii_upper
 def _sig_str(entry: CompiledEntry) -> str:
     """Return a human-readable signature string for an entry.
 
-    Uses dbg_text when available (dev mode); otherwise decodes the uint64.
+    Uses dbg.label when available (dev mode); otherwise decodes the uint64.
     """
-    if entry.dbg_text:
-        return entry.dbg_text
+    if entry.dbg and entry.dbg.label:
+        return entry.dbg.label
     return _TOK.decode([entry.signature])
 
 
@@ -942,15 +942,15 @@ class TestComplexExamples:
         entries = compile_dev(_SEC1411_SOURCE)
         assert len(entries) == 21
 
-        # Spot-check critical entries by dbg_text
-        assert entries[0].dbg_text == "M" and entries[0].op == "UNSIGNED"
+        # Spot-check critical entries by dbg.label
+        assert entries[0].dbg and entries[0].dbg.label == "M" and entries[0].op == "UNSIGNED"
         # MHALL CANONIZE with 5 nodes
-        mhall_canon = [e for e in entries if e.dbg_text == "MHALL" and e.op == "CANONIZE"]
+        mhall_canon = [e for e in entries if e.dbg and e.dbg.label == "MHALL" and e.op == "CANONIZE"]
         assert len(mhall_canon) == 1
         assert len(mhall_canon[0].nodes) == 5  # M, H, A, L, L
 
         # SVO CANONIZE with 3 nodes
-        svo_canon = [e for e in entries if e.dbg_text == "SVO" and e.op == "CANONIZE"]
+        svo_canon = [e for e in entries if e.dbg and e.dbg.label == "SVO" and e.op == "CANONIZE"]
         assert len(svo_canon) == 1
         assert len(svo_canon[0].nodes) == 3  # S, V, O
 

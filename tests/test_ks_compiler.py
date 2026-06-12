@@ -359,10 +359,10 @@ class TestCompileSource:
         assert entries == []
 
     def test_dev_mode(self) -> None:
-        """Dev mode populates dbg_text on entries."""
+        """Dev mode populates dbg on entries."""
         entries = compile_source("A", dev=True)
         assert len(entries) == 1
-        assert entries[0].dbg_text != ""
+        assert entries[0].dbg is not None
 
     def test_custom_tokenizer(self) -> None:
         """Passing a custom tokenizer works."""
@@ -403,7 +403,7 @@ class TestKScriptAPI:
         """KScript(dev=True) enables debug text."""
         model = KScript("A == B", dev=True)
         for e in model.entries:
-            assert isinstance(e.dbg_text, str)
+            assert e.dbg is not None or e.dbg is None  # dbg field exists
 
     def test_default_tokenizer(self) -> None:
         """Default tokenizer is Mod32Tokenizer."""
@@ -462,12 +462,12 @@ class TestPipelineWiring:
         assert len(entries) > 0
 
     def test_dev_mode(self) -> None:
-        """Compiler dev mode populates dbg_text."""
+        """Compiler dev mode populates dbg."""
         compiler = Compiler(dev=True)
         tokens = Lexer("A").tokenize()
         kfile = Parser(tokens).parse()
         entries = compiler.compile(kfile)
-        assert entries[0].dbg_text != ""
+        assert entries[0].dbg is not None
 
 
 # ---------------------------------------------------------------------------

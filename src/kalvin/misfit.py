@@ -66,7 +66,7 @@ def _underfit_expansions(
     for contributor in contributors:
         expanded_nodes = list(kline.nodes) + list(contributor.nodes)
         expanded_sig = kline.signature
-        proposal = KLine(expanded_sig, expanded_nodes, kline.dbg_text)
+        proposal = KLine(expanded_sig, expanded_nodes, kline.dbg)
 
         new_nodes_sig = make_signature(expanded_nodes)
         if (new_nodes_sig & expanded_sig) != 0:
@@ -91,7 +91,7 @@ def _overfit_expansions(
 
     if not excess_nodes:
         return
-    trimmed = KLine(kline.signature, remaining, kline.dbg_text)
+    trimmed = KLine(kline.signature, remaining, kline.dbg)
 
     companion_sig = make_signature(excess_nodes)
     companion = KLine(companion_sig, excess_nodes)
@@ -109,7 +109,7 @@ def _dual_expansions(
 
     for contributor in contributors:
         replacement_nodes = remaining + list(contributor.nodes)
-        replacement = KLine(kline.signature, replacement_nodes, kline.dbg_text)
+        replacement = KLine(kline.signature, replacement_nodes, kline.dbg)
 
         companion_sig = make_signature(excess_nodes)
         companion = KLine(companion_sig, excess_nodes)

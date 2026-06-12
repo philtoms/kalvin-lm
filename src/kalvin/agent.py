@@ -33,7 +33,7 @@ from kalvin.expand import (
     promote_participating,
     propose_expansions,
 )
-from kalvin.kline import KLine
+from kalvin.kline import KDbg, KLine
 from kalvin.abstract import KTokenizer
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.nlp_tokenizer import NLPTokenizer
@@ -195,7 +195,7 @@ class Cogitator:
                     self._condition.wait(timeout=0.5)
                     idle_time += 0.5
                     if idle_time >= self._timeout:
-                        done_k = KLine(0, [], dbg_text="done")
+                        done_k = KLine(0, [], dbg=KDbg(label="done"))
                         self._adapter.on_event(
                             RationaliseEvent("done", done_k, done_k, 0)
                         )

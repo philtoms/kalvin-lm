@@ -132,6 +132,19 @@ class NLPTokenizer(KTokenizer):
 
         return "".join(parts)
 
+    # ── Grammar lookup ──────────────────────────────────────────────────
+
+    def lookup_grammar(self, bpe_id: int) -> dict | None:
+        """Look up NLP grammar info for a BPE token ID.
+
+        Args:
+            bpe_id: BPE token ID (raw, without NLP high bits).
+
+        Returns:
+            Grammar dict entry if found, else None.
+        """
+        return self._grammar.get(bpe_id)
+
     # ── Factory ───────────────────────────────────────────────────────
 
     @classmethod

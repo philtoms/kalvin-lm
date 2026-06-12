@@ -365,19 +365,19 @@ class TestMultipleEntries:
 # ── Dev mode debug text ─────────────────────────────────────────────
 
 class TestDevMode:
-    """When dev=True, dbg_text is populated."""
+    """When dev=True, dbg is populated."""
 
-    def test_dev_dbg_text(self, mod_tz: ModTokenizer) -> None:
+    def test_dev_dbg(self, mod_tz: ModTokenizer) -> None:
         enc = TokenEncoder(mod_tz, dev=True)
         entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTATE")
         results = enc.encode_entries([entry])
-        # Main entry should have dbg_text
-        assert results[0].dbg_text != ""
+        # Main entry should have dbg
+        assert results[0].dbg is not None
 
-    def test_no_dev_dbg_text(self, encoder: TokenEncoder) -> None:
+    def test_no_dev_dbg(self, encoder: TokenEncoder) -> None:
         entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTATE")
         results = encoder.encode_entries([entry])
-        assert results[0].dbg_text == ""
+        assert results[0].dbg is None
 
 
 # ── Empty symbolic list ─────────────────────────────────────────────

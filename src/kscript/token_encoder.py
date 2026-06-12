@@ -8,7 +8,7 @@ ready for the knowledge graph.
 from __future__ import annotations
 
 from kalvin.abstract import KTokenizer
-from kalvin.kline import KLine, KNodes, KSig
+from kalvin.kline import KDbg, KLine, KNodes, KSig
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
 
@@ -25,9 +25,9 @@ class CompiledEntry(KLine):
     each token ID is a separate node and decoded individually.
     """
 
-    def __init__(self, signature: KSig, nodes: KNodes, dbg_text: str = "",
+    def __init__(self, signature: KSig, nodes: KNodes, dbg: KDbg | None = None,
                  sig_level: str | None = None, _nodes_single: bool = False):
-        super().__init__(signature=signature, nodes=nodes, dbg_text=dbg_text,
+        super().__init__(signature=signature, nodes=nodes, dbg=dbg,
                          sig_level=sig_level)
         self._nodes_single = _nodes_single
 
@@ -40,7 +40,7 @@ class CompiledEntry(KLine):
         *,
         sig_level: str = "S4",
         significance: object | None = None,
-        dbg_text: str = ""
+        dbg: KDbg | None = None,
     ) -> CompiledEntry:
         """Encode string signature/nodes to token IDs.
 
@@ -53,23 +53,23 @@ class CompiledEntry(KLine):
         """
         sig_id = tokenizer.encode(sig)[0]
         if nodes is None:
-            return cls(signature=sig_id, nodes=None, dbg_text=dbg_text, sig_level=sig_level)
+            return cls(signature=sig_id, nodes=None, dbg=dbg, sig_level=sig_level)
         elif isinstance(nodes, str):
             is_sig = nodes.isupper() and nodes.isalpha()
             if tokenizer.supports_mcs and is_sig:
                 # Mod32 mode: packed encoding, single token expected
                 node_id = tokenizer.encode(nodes)[0]
-                return cls(signature=sig_id, nodes=node_id, dbg_text=dbg_text, sig_level=sig_level)
+                return cls(signature=sig_id, nodes=node_id, dbg=dbg, sig_level=sig_level)
             elif is_sig:
                 # NLP-BPE mode: use all BPE tokens
                 node_ids = tokenizer.encode(nodes)
                 return cls(signature=sig_id, nodes=node_ids[0] if len(node_ids) == 1 else node_ids,
-                           dbg_text=dbg_text, sig_level=sig_level, _nodes_single=False)
+                           dbg=dbg, sig_level=sig_level, _nodes_single=False)
             else:
                 # Non-signature string: encode via tokenizer, batch decode
                 node_ids = tokenizer.encode(nodes)
                 return cls(signature=sig_id, nodes=node_ids[0] if len(node_ids) == 1 else node_ids,
-                           dbg_text=dbg_text, sig_level=sig_level, _nodes_single=True)
+                           dbg=dbg, sig_level=sig_level, _nodes_single=True)
         else:
             all_node_ids: list[int] = []
             for n in nodes:
@@ -83,7 +83,7 @@ class CompiledEntry(KLine):
                 else:
                     # Non-signature string: encode via tokenizer
                     all_node_ids.extend(tokenizer.encode(n))
-            return cls(signature=sig_id, nodes=all_node_ids, dbg_text=dbg_text, sig_level=sig_level)
+            return cls(signature=sig_id, nodes=all_node_ids, dbg=dbg, sig_level=sig_level)
 
     def decode(self, tokenizer: KTokenizer) -> tuple[str, str | None | list[str]]:
         """Decode token IDs back to strings."""
@@ -178,15 +178,21 @@ class TokenEncoder:
 
         # Unsigned entry for each component token
         for tok in tokens:
+            tok_dbg: KDbg | None = None
+            if self.dev:
+                tok_dbg = self._build_dbg(tok, f"{sig_str} component")
             entries.append(CompiledEntry(
                 signature=tok, nodes=None, sig_level="S4",
-                dbg_text=f"[S4] {sig_str} component" if self.dev else ""
+                dbg=tok_dbg,
             ))
 
         # Decomposition entry: {first_token: [all_tokens]} (S2)
+        canon_dbg: KDbg | None = None
+        if self.dev:
+            canon_dbg = self._build_dbg(tokens[0], f"{sig_str} decomposition")
         entries.append(CompiledEntry(
             signature=tokens[0], nodes=tokens, sig_level="S2",
-            dbg_text=f"[S2] {sig_str} decomposition" if self.dev else ""
+            dbg=canon_dbg,
         ))
 
         return entries
@@ -197,9 +203,11 @@ class TokenEncoder:
         encoded_nodes, nodes_single = self._encode_nodes(entry.nodes)
 
         level = self._sig_levels.get(entry.op, "S4")
-        dbg = self._format_dbg(entry.sig, entry.nodes, entry.op) if self.dev else ""
+        dbg: KDbg | None = None
+        if self.dev:
+            dbg = self._build_dbg(sig_id, entry.sig)
         return CompiledEntry(signature=sig_id, nodes=encoded_nodes,
-                              dbg_text=dbg, sig_level=level,
+                              dbg=dbg, sig_level=level,
                               _nodes_single=nodes_single)
 
     def _encode_sig(self, sig: str) -> int:
@@ -266,12 +274,22 @@ class TokenEncoder:
                     result.extend(self.tokenizer.encode(n))
             return result, False
 
-    def _format_dbg(self, sig: str, nodes: str | None | list[str], op: str) -> str:
-        """Format debug representation with significance level."""
-        level = self._sig_levels.get(op, "S4")
-        if nodes is None:
-            return f"[{level}] {sig}: None"
-        elif isinstance(nodes, str):
-            return f"[{level}] {sig}: {nodes}"
-        else:
-            return f"[{level}] {sig}: {nodes}"
+    def _build_dbg(self, sig_uint64: int, label: str) -> KDbg:
+        """Build a KDbg for a compiled signature."""
+        decoded = self.tokenizer.decode([sig_uint64])
+        pos = ""
+        dep = ""
+        morph = ""
+        bpe_id = sig_uint64 & 0xFFFFFFFF
+        grammar_entry = self.tokenizer.lookup_grammar(bpe_id)
+        if grammar_entry:
+            pos = grammar_entry.get("pos", "")
+            dep = grammar_entry.get("dep", "")
+            morph = grammar_entry.get("morph", "")
+        return KDbg(
+            label=label,
+            decoded=decoded,
+            pos=pos,
+            dep=dep,
+            morph=morph,
+        )

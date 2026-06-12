@@ -50,13 +50,27 @@ def kline_display(kline, _tokenizer) -> str:
     """Human-readable display for a KLine."""
     if kline is None:
         return "<none>"
-    # Try dbg_text first (dev mode entries have readable labels)
-    if kline.dbg_text:
+    # Use rich dbg if available
+    if kline.dbg:
+        dbg = kline.dbg
+        label = dbg.label
+        # Show decoded text if it differs from the label
+        if dbg.decoded and dbg.decoded != label:
+            label = f"{label} [{dbg.decoded!r}]"
+        # Append NLP info
+        nlp_parts = []
+        if dbg.pos:
+            nlp_parts.append(dbg.pos)
+        if dbg.dep:
+            nlp_parts.append(dbg.dep)
+        if nlp_parts:
+            label += f" ({'/'.join(nlp_parts)})"
         nodes = kline.nodes
         if not nodes:
-            return kline.dbg_text
+            return label
         node_strs = [_tokenizer.decode([n]) or f"#{n:#x}" for n in nodes]
-        return f"{kline.dbg_text}: {node_strs}"
+        return f"{label}: {node_strs}"
+    # Fallback: raw sig
     return f"sig={kline.signature:#x}"
 
 

@@ -47,7 +47,7 @@ class Compiler:
     Args:
         tokenizer: Tokenizer for encoding strings to uint64 values.
             Defaults to Mod32Tokenizer().
-        dev: Enable development/diagnostic mode (populates dbg_text).
+        dev: Enable development/diagnostic mode (populates dbg).
     """
 
     def __init__(

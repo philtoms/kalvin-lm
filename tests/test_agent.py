@@ -10,7 +10,7 @@ import pytest
 from kalvin.agent import CogitationHandler, Cogitator, KAgent, WorkItem
 from kalvin.agent_codec import AgentCodec
 from kalvin.events import EventBus
-from kalvin.kline import KLine
+from kalvin.kline import KDbg, KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.model import Model
 from kalvin.nlp_tokenizer import NLPTokenizer
@@ -125,7 +125,7 @@ class TestAgentRationalise:
         t = a.tokenizer
         nodes = t.encode("HELLO")
         sig = make_signature(nodes)
-        kline = KLine(sig, nodes, dbg_text="HELLO")
+        kline = KLine(sig, nodes, dbg=KDbg(label="HELLO"))
         result = a.rationalise(kline)
         assert result is True
         assert a.model.find(sig) is not None
@@ -914,7 +914,7 @@ class TestAgentNLPTokenizer:
         assert len(nodes) == 1, "'Tea' should produce exactly one NLP-BPE node"
 
         sig = make_signature(nodes)
-        kline = KLine(sig, nodes, dbg_text="Tea")
+        kline = KLine(sig, nodes, dbg=KDbg(label="Tea"))
         result = a.rationalise(kline)
         assert result is True
 
@@ -945,7 +945,7 @@ class TestAgentNLPTokenizer:
         a = KAgent(tokenizer=nlp_tokenizer, adapter=EventBus())
         nodes = nlp_tokenizer.encode("Tea")
         sig = make_signature(nodes)
-        kline = KLine(sig, nodes, dbg_text="Tea")
+        kline = KLine(sig, nodes, dbg=KDbg(label="Tea"))
         a.rationalise(kline)
 
         # Binary round-trip
@@ -990,7 +990,7 @@ class TestAgentNLPIntegration:
         # Single-word NLP-BPE kline
         tea = nlp_tokenizer.encode("Tea")
         sig1 = make_signature(tea)
-        k1 = KLine(sig1, tea, dbg_text="Tea")
+        k1 = KLine(sig1, tea, dbg=KDbg(label="Tea"))
         a.rationalise(k1)
 
         return a, [k1]

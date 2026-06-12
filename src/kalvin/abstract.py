@@ -56,3 +56,11 @@ class KTokenizer(ABC):
     def decode(self, ids: list[int]) -> str:
         """Decode node IDs back to a string."""
         ...
+
+    def lookup_grammar(self, token_id: int) -> dict | None:
+        """Look up NLP grammar info for a token ID.
+
+        Returns None by default. NLPTokenizer overrides to return
+        the grammar dict entry for a BPE token ID.
+        """
+        return None

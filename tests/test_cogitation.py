@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from kalvin.events import RationaliseEvent
-from kalvin.kline import KLine
+from kalvin.kline import KDbg, KLine
 from trainer.cogitation import (
     ESCALATION_THRESHOLD,
     CogitationRequest,
@@ -24,8 +24,8 @@ from trainer.cogitation import (
 
 def _make_event(significance: int = 2) -> RationaliseEvent:
     """Create a minimal RationaliseEvent for testing."""
-    query = KLine(signature=0xAB, nodes=[0x1, 0x2], dbg_text="query")
-    proposal = KLine(signature=0xCD, nodes=[0x3], dbg_text="proposal")
+    query = KLine(signature=0xAB, nodes=[0x1, 0x2], dbg=KDbg(label="query"))
+    proposal = KLine(signature=0xCD, nodes=[0x3], dbg=KDbg(label="proposal"))
     return RationaliseEvent(
         kind="test",
         query=query,

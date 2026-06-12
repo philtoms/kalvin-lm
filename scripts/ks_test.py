@@ -72,4 +72,4 @@ from kalvin.mod_tokenizer import Mod32Tokenizer
 compiler = Compiler(Mod32Tokenizer(), dev=True)
 entries = compiler.compile(kfile)
 for e in entries:
-    print(f'{e.dbg_text}')
+    print(f'{e.dbg}')

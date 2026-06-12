@@ -1,7 +1,7 @@
 """Tests for KLine — specs/kline.md conformance."""
 
 import pytest
-from kalvin.kline import KLine
+from kalvin.kline import KDbg, KLine
 
 
 class TestKLineConstruction:
@@ -38,9 +38,9 @@ class TestKLineConstruction:
         k = KLine(7, [1, 2, 4])
         assert len(k) == 3
 
-    def test_dbg_text(self):
-        k = KLine(0, [], dbg_text="hello")
-        assert k.dbg_text == "hello"
+    def test_dbg(self):
+        k = KLine(0, [], dbg=KDbg(label="hello"))
+        assert k.dbg.label == "hello"
 
 
 class TestKLineEquality:

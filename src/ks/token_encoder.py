@@ -32,7 +32,7 @@ Dependencies: kalvin.kline.KLine, kalvin.abstract.KTokenizer,
 from __future__ import annotations
 
 from kalvin.abstract import KTokenizer
-from kalvin.kline import KLine
+from kalvin.kline import KDbg, KLine
 from kalvin.signature import make_signature
 
 from .ast_emitter import SymbolicEntry
@@ -60,7 +60,7 @@ class CompiledEntry(KLine):
         signature: uint64 identity key (full unmasked value).
         nodes: list of uint64 node values — always a list, never None.
         sig_level: S1–S4 significance metadata.
-        dbg_text: optional debug label.
+        dbg: optional KDbg debug info.
         op: originating operator (COUNTERSIGN, CANONIZE, CONNOTATE,
             UNDERSIGN, UNSIGNED).
     """
@@ -73,18 +73,18 @@ class CompiledEntry(KLine):
         nodes: int | None | list[int] = None,
         op: str = "UNSIGNED",
         sig_level: str | None = None,
-        dbg_text: str = "",
+        dbg: KDbg | None = None,
     ) -> None:
         super().__init__(
             signature=signature,
             nodes=nodes,
-            dbg_text=dbg_text,
+            dbg=dbg,
             sig_level=sig_level,
         )
         self.op = op
 
     def __repr__(self) -> str:
-        text = f" {self.dbg_text!r}" if self.dbg_text else ""
+        text = f" {self.dbg}" if self.dbg else ""
         return (
             f"CompiledEntry(sig={self.signature:#x}, "
             f"nodes={self.nodes!r}, op={self.op!r}, "
@@ -98,7 +98,7 @@ class TokenEncoder:
     Args:
         tokenizer: A KTokenizer implementation that converts strings to
             uint64 node values.
-        dev: Enable development/diagnostic mode (populates dbg_text).
+        dev: Enable development/diagnostic mode (populates dbg).
     """
 
     def __init__(self, tokenizer: KTokenizer, dev: bool = False) -> None:
@@ -144,7 +144,6 @@ class TokenEncoder:
         """
         extras: list[CompiledEntry] = []
         sig_level = _SIG_LEVELS.get(entry.op, "S4")
-        dbg = entry.sig if self._dev else ""
 
         # 1. Encode signature
         sig_tokens = self._tokenizer.encode(entry.sig)
@@ -165,13 +164,18 @@ class TokenEncoder:
             extras.extend(node_extras)
             node_values.append(node_val)
 
-        # 3. Emit main entry
+        # 3. Build debug info
+        dbg: KDbg | None = None
+        if self._dev:
+            dbg = self._build_dbg(sig_uint64, entry.sig)
+
+        # 4. Emit main entry
         main = CompiledEntry(
             signature=sig_uint64,
             nodes=node_values,
             op=entry.op,
             sig_level=sig_level,
-            dbg_text=dbg,
+            dbg=dbg,
         )
         extras.append(main)
         return extras
@@ -233,21 +237,60 @@ class TokenEncoder:
 
             # One UNSIGNED per subword token
             for tok in tokens:
+                tok_dbg: KDbg | None = None
+                if self._dev:
+                    tok_dbg = self._build_dbg(tok, dbg_label)
                 extras.append(CompiledEntry(
                     signature=tok,
                     nodes=[],
                     op="UNSIGNED",
                     sig_level="S4",
-                    dbg_text=dbg_label if self._dev else "",
+                    dbg=tok_dbg,
                 ))
 
             # One CANONIZE: packed sig → subword tokens
+            canon_dbg: KDbg | None = None
+            if self._dev:
+                canon_dbg = self._build_dbg(packed, dbg_label)
             extras.append(CompiledEntry(
                 signature=packed,
                 nodes=list(tokens),
                 op="CANONIZE",
                 sig_level="S2",
-                dbg_text=dbg_label if self._dev else "",
+                dbg=canon_dbg,
             ))
 
         return (packed, extras)
+
+    # ── Debug construction ──────────────────────────────────────────────
+
+    def _build_dbg(self, sig_uint64: int, label: str) -> KDbg:
+        """Build a KDbg for a compiled signature.
+
+        Looks up NLP grammar info from the tokenizer's grammar dict
+        and decodes the BPE token to get the actual subword text.
+
+        Args:
+            sig_uint64: The packed NLP-BPE signature.
+            label: Origin label (the word/operator being compiled).
+
+        Returns:
+            Populated KDbg instance.
+        """
+        decoded = self._tokenizer.decode([sig_uint64])
+        pos = ""
+        dep = ""
+        morph = ""
+        bpe_id = sig_uint64 & 0xFFFFFFFF
+        grammar_entry = self._tokenizer.lookup_grammar(bpe_id)
+        if grammar_entry:
+            pos = grammar_entry.get("pos", "")
+            dep = grammar_entry.get("dep", "")
+            morph = grammar_entry.get("morph", "")
+        return KDbg(
+            label=label,
+            decoded=decoded,
+            pos=pos,
+            dep=dep,
+            morph=morph,
+        )
