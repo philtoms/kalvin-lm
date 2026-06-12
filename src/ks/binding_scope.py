@@ -17,6 +17,11 @@ Resolution algorithm (§10.1 Rule B3):
 
 Rules B1 (once-bound immutability) and B4 (inline override) are
 enforced by the ASTEmitter, not by BindingScope.
+
+Counter reset on scope push: calling ``push_scope()`` clears the
+occurrence counters in all existing (parent) scopes, so that when
+resolution falls through from a child scope to a parent scope, the
+parent's counter starts fresh rather than retaining stale state.
 """
 
 from __future__ import annotations
@@ -66,8 +71,12 @@ class BindingScope:
     def push_scope(self) -> None:
         """Push a new scope onto the stack.
 
-        Each scope starts with empty word lists and counters at zero.
+        Resets occurrence counters in all parent scopes so that
+        fallthrough resolution starts fresh.  Each new scope starts
+        with empty word lists and counters at zero.
         """
+        for s in self._stack:
+            s.counters.clear()
         self._stack.append(_Scope())
 
     def pop_scope(self) -> None:

@@ -468,13 +468,6 @@ class TestBindingScope:
 
     # -- KS-29: Counter reset --------------------------------------------
 
-    @pytest.mark.xfail(
-        reason="KS-29: BindingScope counters are per-scope, not reset on "
-               "push_scope. When inner scope has no words, resolve falls "
-               "through to outer scope which retains its counter state. "
-               "Spec expects counter reset on scope push.",
-        strict=True,
-    )
     def test_ks29_counter_reset(self):
         """KS-29: Pushing a new scope resets counters for resolution."""
         scope = BindingScope()

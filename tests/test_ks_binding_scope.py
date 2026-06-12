@@ -156,12 +156,12 @@ class TestCounterReset:
         assert bs.resolve("L") == "Little"
         assert bs.resolve("L") == "Lamb"
 
-        # Push new scope — counters start fresh
+        # Push new scope — counters are reset in all parent scopes
         bs.push_scope()
         # Inner scope has no L-words, so it falls through to outer
-        # Outer scope's counter has already advanced to 2 (exceeded)
+        # Outer scope's counter was reset to 0 on push_scope
         result = bs.resolve("L")
-        assert result is None  # Outer counter exceeded
+        assert result == "Little"  # Counter reset to 0, first match again
 
     def test_new_scope_with_own_words(self):
         bs = BindingScope()

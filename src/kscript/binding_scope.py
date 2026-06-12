@@ -21,6 +21,8 @@ Key rules (spec @kscript-nlp-binding v2.0 §3 rules 2–3, §7.2):
 - Scope stack: ``resolve()`` walks innermost-first.  Each new scope starts
   with all counters at zero.  When resolution finds a match in an outer
   scope, that outer scope's counter is used (not the inner scope's).
+  Pushing a new scope resets counters in all existing (parent) scopes,
+  so that fallthrough resolution from the child starts fresh.
 
 This module is the foundation for the simplified single-pass binding
 architecture (spec v2.0 §3, §7.2).
@@ -72,9 +74,13 @@ class BindingScope:
     def push_scope(self) -> None:
         """Push a new scope onto the stack.
 
-        Each scope starts with an empty word-list collection and an
-        occurrence counter dict of ``{char: 0}``.
+        Resets occurrence counters in all parent scopes so that
+        fallthrough resolution starts fresh.  Each new scope starts
+        with an empty word-list collection and an occurrence counter
+        dict of ``{char: 0}``.
         """
+        for s in self._stack:
+            s.counters.clear()
         self._stack.append(_Scope())
 
     def pop_scope(self) -> None:

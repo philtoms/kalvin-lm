@@ -186,8 +186,8 @@ class TestNB28CounterResetsOnNewScope:
         assert scope.resolve("A") == "Antelope"  # inner counter → 2
 
         scope.pop_scope()
-        # Back to outer scope, counter still at 1
-        assert scope.resolve("A") == "Alpha"  # outer counter was 1 → 2
+        # Back to outer scope — counter was reset to 0 on push_scope
+        assert scope.resolve("A") == "Alice"  # outer counter reset to 0 → 1
 
     def test_inner_scope_counter_used_for_inner_word_lists(self) -> None:
         """Inner scope's counter at 0 when it has its own word list."""
