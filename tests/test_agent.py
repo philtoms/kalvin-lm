@@ -16,6 +16,8 @@ from kalvin.model import Model
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
 
+from tests.conftest import requires_nlp_data
+
 
 class TestAgentInit:
     def test_default_init(self):
@@ -888,13 +890,13 @@ class TestCascadeWriteMethods:
 
 
 # ── NLP Tokenizer Integration Tests ──────────────────────────────────
+#
+# Both classes below require the NLP tokenizer data assets (provided by the
+# shared `nlp_tokenizer` fixture in conftest.py) and are skipped cleanly when
+# those assets are absent on a fresh clone.
 
-@pytest.fixture(scope="module")
-def nlp_tokenizer() -> NLPTokenizer:
-    """Load NLPTokenizer from standard file paths (once per module)."""
-    return NLPTokenizer.from_files()
 
-
+@requires_nlp_data
 class TestAgentNLPTokenizer:
     """KAgent constructed with NLPTokenizer — pluggable tokenizer integration.
 
@@ -969,6 +971,7 @@ class TestAgentNLPTokenizer:
 # ── NLP Agent Cross-Module Integration Tests ──────────────────────────
 
 
+@requires_nlp_data
 class TestAgentNLPIntegration:
     """Cross-module integration tests: NLP tokenizer -> KAgent -> model storage.
 

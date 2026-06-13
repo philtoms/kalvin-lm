@@ -79,6 +79,16 @@ uv sync
 uv run pytest
 ```
 
+> **NLP tokenizer tests** require BPE + grammar data assets that live under
+> the gitignored `data/tokenizer/` directory (binary assets, not checked in).
+> These tests **gracefully skip** when the assets are absent, so a fresh clone
+> reports a clean pass with skips rather than errors. To run them, generate the
+> assets once:
+>
+> ```bash
+> bash scripts/rebuild-tokenizer-data.sh
+> ```
+
 ### KScript CLI
 
 ```bash

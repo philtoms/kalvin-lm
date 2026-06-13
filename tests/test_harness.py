@@ -750,11 +750,10 @@ def test_multiple_proposals_displayed():
 
 try:
     from kalvin.nlp_tokenizer import NLPTokenizer
-    _has_nlp = True
-except ImportError:
-    _has_nlp = False
+except ImportError:  # optional NLP backend not installed
+    NLPTokenizer = None  # type: ignore[assignment,misc]
 
-_nlp_skip = pytest.mark.skipif(not _has_nlp, reason="NLPTokenizer not available")
+from tests.conftest import requires_nlp_data
 
 
 class NLPHarnessFixture(HarnessFixture):
@@ -792,7 +791,7 @@ class NLPHarnessFixture(HarnessFixture):
         return ""
 
 
-@_nlp_skip
+@requires_nlp_data
 def test_harness_nlp_tokenizer():
     """Harness works end-to-end with NLPTokenizer.
 

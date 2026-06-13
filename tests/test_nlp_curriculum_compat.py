@@ -18,15 +18,15 @@ from kalvin.agent import KAgent
 from kalvin.kline import sig_level
 from kalvin.nlp_tokenizer import NLPTokenizer
 
+from tests.conftest import requires_nlp_data
+
+# The entire module requires the NLP tokenizer data assets; skip it cleanly
+# when those assets are absent on a fresh clone.
+pytestmark = requires_nlp_data
+
 # ── Fixtures ──────────────────────────────────────────────────────────
 
 CURRICULA_DIR = Path(__file__).resolve().parents[1] / "curricula"
-
-
-@pytest.fixture(scope="module")
-def nlp_tokenizer() -> NLPTokenizer:
-    """Load NLPTokenizer from standard data files."""
-    return NLPTokenizer.from_files()
 
 
 def _kscript_from_curriculum(path: Path) -> str:

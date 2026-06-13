@@ -31,26 +31,9 @@ from ks.binding_scope import BindingScope
 
 _tok32 = Mod32Tokenizer()
 
-# NLP tokenizer availability
-try:
-    from kalvin.nlp_tokenizer import NLPTokenizer
-    _has_nlp_import = True
-except ImportError:
-    _has_nlp_import = False
-
-# Check if NLP tokenizer data files are actually available
-_nlp_available = False
-if _has_nlp_import:
-    try:
-        NLPTokenizer.from_files()
-        _nlp_available = True
-    except (FileNotFoundError, OSError):
-        pass
-
-_nlp_skip = pytest.mark.skipif(
-    not _nlp_available,
-    reason="NLPTokenizer data files unavailable",
-)
+# NLP tokenizer data-asset gating is shared via tests/conftest.py so every
+# NLP-dependent test module skips consistently on a fresh clone.
+from tests.conftest import requires_nlp_data
 
 
 def _decode_sig(entry: KLine) -> str:
@@ -219,7 +202,7 @@ MHALL == SVO =>
     L > O"""
 
 
-@_nlp_skip
+@requires_nlp_data
 class TestKS36NLPBound:
     """KS-36 — NLP-bound example from §14.12.
 
@@ -229,6 +212,8 @@ class TestKS36NLPBound:
 
     def _get_nlp_tokenizer(self) -> NLPTokenizer:
         """Get NLPTokenizer from standard file paths."""
+        from kalvin.nlp_tokenizer import NLPTokenizer
+
         return NLPTokenizer.from_files()
 
     def test_nlp_binding_mcs_mhall(self) -> None:

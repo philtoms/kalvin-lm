@@ -10,13 +10,11 @@ import pytest
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
 
+from tests.conftest import requires_nlp_data
 
-# ── Fixtures ──────────────────────────────────────────────────────────────
-
-@pytest.fixture(scope="module")
-def nlp() -> NLPTokenizer:
-    """Load NLPTokenizer from standard file paths (once per session)."""
-    return NLPTokenizer.from_files()
+# The entire module exercises the real BPE + grammar data assets; skip it
+# cleanly when those assets are absent on a fresh clone.
+pytestmark = requires_nlp_data
 
 
 # ── Encode tests ──────────────────────────────────────────────────────────
