@@ -322,8 +322,14 @@ class TestStep:
 
         def append_later():
             time.sleep(0.2)
-            _append_event(sd, {"seq": 2, "type": "progress", "status": "started"})
-            _append_event(sd, {"seq": 3, "type": "progress", "status": "complete"})
+            # Write both events in a single append so the poll loop never
+            # observes an intermediate state with only seq 2.
+            payload = (
+                json.dumps({"seq": 2, "type": "progress", "status": "started"}) + "\n"
+                + json.dumps({"seq": 3, "type": "progress", "status": "complete"}) + "\n"
+            )
+            with sd.events_path.open("a", encoding="utf-8") as f:
+                f.write(payload)
 
         t = threading.Thread(target=append_later)
         t.start()
