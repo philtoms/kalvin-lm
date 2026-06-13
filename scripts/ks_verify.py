@@ -7,6 +7,7 @@ Encoder), and prints a structured verification of every kline grouped
 by semantic section.
 
 Usage:
+    python scripts/ks_verify.py
     python scripts/ks_verify.py path/to/script.ks
     python scripts/ks_verify.py "A == B"
     python scripts/ks_verify.py script.ks --tokenizer mod32
@@ -24,6 +25,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from ks.compiler import compile_source
 from kalvin.kline import KLine, KDbg, sig_level
 from kalvin.nlp_tokenizer import NLPTokenizer
+
+
+# Default curriculum script — Mary Had A Little Lamb (MHALL).
+# Exercises every operator: COUNTERSIGN, CANONIZE, UNDERSIGN, CONNOTATE,
+# and the corpus annotation + subscript scaffolding forms.
+DEFAULT_SOURCE = """\
+(Mary had a little lamb)
+MHALL == SVO =>
+   S(ubject) = M
+   V(erb) = H
+   O(bject) = ALL =>
+     A > D(et)
+     L > M(od)
+     L > O
+"""
 
 
 # ── Display helpers ───────────────────────────────────────────────────
@@ -303,7 +319,13 @@ def main() -> None:
     )
     parser.add_argument(
         "source",
-        help="KScript source string, or path to a .ks file",
+        nargs="?",
+        default=None,
+        help=(
+            "KScript source string, or path to a .ks file. "
+            "If omitted, defaults to the Mary Had A Little Lamb "
+            "(MHALL) reference script."
+        ),
     )
     parser.add_argument(
         "--tokenizer", "-t",
@@ -318,14 +340,15 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # Resolve source: file path or literal string
-    source_path = Path(args.source)
+    # Resolve source: default, file path, or literal string
+    source_arg = args.source if args.source is not None else DEFAULT_SOURCE
+    source_path = Path(source_arg)
     if source_path.exists() and source_path.is_file():
         source = source_path.read_text(encoding="utf-8")
         label = source_path.name
     else:
-        source = args.source
-        label = "<string>"
+        source = source_arg
+        label = "<default>" if args.source is None else "<string>"
 
     print(f"Source: {label}")
 
