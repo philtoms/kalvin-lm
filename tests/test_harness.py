@@ -607,20 +607,21 @@ def test_compilation_error_display():
 def test_progress_count_display():
     h = HarnessFixture()
 
-    # "A => B\nC => D\nE => F\nG => H" produces 8 entries
+    # "A => B" compiles to one CANONIZE entry per line (sig=left side,
+    # nodes=[right side]), so four lines produce 4 entries.
     source = "A => B\nC => D\nE => F\nG => H"
     all_entries = h.compile(source)
-    assert len(all_entries) == 8
+    assert len(all_entries) == 4
 
-    # Submit 5 of 8 entries via step_one
-    for _ in range(5):
+    # Submit 3 of 4 entries via step_one
+    for _ in range(3):
         h.step_one(source)
-    assert len(h.submitted) == 5
+    assert len(h.submitted) == 3
 
     # All submitted entries are fast-path satisfied
-    assert len(h.satisfied) == 5
+    assert len(h.satisfied) == 3
 
-    # Simulate partial satisfaction: only 2 of 5 satisfied
+    # Simulate partial satisfaction: only 2 of 3 satisfied
     satisfied_list = list(h.satisfied)[:2]
     h._satisfied = set(satisfied_list)
 
@@ -628,7 +629,7 @@ def test_progress_count_display():
     submitted_count = len(h.submitted)
     pending_count = submitted_count - satisfied_count
     progress = f"{satisfied_count}/{submitted_count} pending/{pending_count}"
-    assert progress == "2/5 pending/3"
+    assert progress == "2/3 pending/1"
 
 
 # ═══════════════════════════════════════════════════════════════════════

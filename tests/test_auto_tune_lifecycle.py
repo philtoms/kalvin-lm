@@ -11,7 +11,6 @@ import json
 import os
 import signal
 import subprocess
-import sys
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch, call
@@ -78,7 +77,7 @@ class TestStartHarness:
         mock_socket_cls.return_value.__enter__ = MagicMock(return_value=mock_sock)
         mock_socket_cls.return_value.__exit__ = MagicMock(return_value=False)
 
-        from participants.auto_tune.lifecycle import start_harness
+        from participants.auto_tune.lifecycle import start_harness, _resolve_python
 
         pid = start_harness(session_dir)
 
@@ -86,7 +85,7 @@ class TestStartHarness:
         mock_popen.assert_called_once()
         call_args = mock_popen.call_args
         assert call_args[0][0] == [
-            sys.executable, "-m", "harness", "--config", str(session_config_path),
+            _resolve_python(), "-m", "harness", "--config", str(session_config_path),
         ]
         # PID file written
         pid_path = session_dir / "harness.pid"
@@ -261,7 +260,7 @@ class TestStartSupervisor:
     ) -> None:
         mock_popen.return_value = fake_process
 
-        from participants.auto_tune.lifecycle import start_supervisor
+        from participants.auto_tune.lifecycle import start_supervisor, _resolve_python
 
         # Simulate status.json appearing with connected=true on second check
         call_count = [0]
@@ -282,7 +281,7 @@ class TestStartSupervisor:
         assert pid == 99999
         mock_popen.assert_called_once_with(
             [
-                sys.executable,
+                _resolve_python(),
                 "-m",
                 "participants.auto_tune.supervisor",
                 "--session-dir",

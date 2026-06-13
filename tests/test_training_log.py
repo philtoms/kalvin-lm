@@ -59,6 +59,19 @@ def _entry_key(kline: KLine) -> tuple[int, tuple[int, ...]]:
     return (kline.signature, tuple(kline.nodes))
 
 
+def _drain(trainer: Trainer) -> None:
+    """Simulate the cogitator drain completing.
+
+    The Trainer sends a ``drain`` message before each lesson and only
+    compiles/submits the lesson once a ``drained`` reply arrives (see
+    ``_submit_next_lesson`` / ``_handle_drained``).  In the unit tests
+    there is no real cogitator, so we inject the reply directly.
+    """
+    trainer.on_message(
+        Message(role="adapter", action="drained", message=None)
+    )
+
+
 class BusCapture:
     """Captures messages sent via bus.send()."""
 
@@ -135,6 +148,7 @@ class TestTrainerLogging:
 
         # Start session triggers lesson submission
         trainer.start_session()
+        _drain(trainer)
 
         assert any(
             "Submitting lesson 1 (1/3)" in r.message
@@ -149,6 +163,7 @@ class TestTrainerLogging:
         caplog.set_level(logging.DEBUG, logger="trainer.trainer")
 
         trainer.start_session()
+        _drain(trainer)
 
         assert any(
             r.levelno == logging.DEBUG and "kscript:" in r.message
@@ -163,6 +178,7 @@ class TestTrainerLogging:
         caplog.set_level(logging.INFO, logger="trainer.trainer")
 
         trainer.start_session()
+        _drain(trainer)
 
         assert any(
             "Compiled" in r.message and "entries for lesson" in r.message
@@ -237,10 +253,16 @@ class TestTrainerLogging:
         trainer = _make_trainer(bus, curriculum, curriculum_file="test.md")
         caplog.set_level(logging.INFO, logger="trainer.trainer")
 
-        # Directly invoke _check_lesson_complete with a completed reactor
+        # Directly invoke _check_lesson_complete with a completed reactor.
+        # The completion check compares the satisfied vs submitted sets,
+        # so seed both for the lesson entry before invoking it.
+        entry = _make_entry(256, [])
         trainer._session_active = True
-        trainer._reactor.load_lesson([_make_entry(256, [])])
+        trainer._reactor.load_lesson([entry])
         trainer._reactor.record_response()  # received = expected = 1
+        key = _entry_key(entry)
+        trainer._state.mark_submitted(key)
+        trainer._state.mark_satisfied(key)
         trainer._check_lesson_complete()
 
         assert any(
@@ -260,6 +282,9 @@ class TestTrainerLogging:
         curriculum.position = curriculum.total()
         trainer._session_active = True
         trainer._submit_next_lesson()
+        # _submit_next_lesson only sends the drain; the "Curriculum
+        # complete" log fires inside _do_submit_lesson once drained.
+        _drain(trainer)
 
         assert any(
             "Curriculum complete" in r.message

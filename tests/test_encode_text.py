@@ -11,6 +11,7 @@ import pytest
 from kalvin.agent import KAgent
 from kalvin.events import EventBus
 from kalvin.kline import KLine
+from kalvin.mod_tokenizer import Mod64Tokenizer
 from kalvin.signature import make_signature
 
 # ── Import helper ─────────────────────────────────────────────────────
@@ -106,21 +107,29 @@ class TestEncodeMultipleSentences:
     the expected count."""
 
     def test_encode_multiple_sentences(self):
-        agent = KAgent(adapter=EventBus())
+        # Use the character-level Mod64Tokenizer (the tokenizer the script was
+        # designed for; avoids the BPE data-file dependency). KAgent now
+        # defaults to the BPE NLPTokenizer.
+        agent = KAgent(adapter=EventBus(), tokenizer=Mod64Tokenizer())
         initial = agent.frame_size()
 
         text = "The cat sat. The dog ran."
         sentences = [s.strip() for s in
                      __import__("re").split(r'(?<=[.!?])\s+', text.strip())
                      if s.strip()]
+        assert len(sentences) >= 2
 
         for sentence in sentences:
             nodes = agent.tokenizer.encode(sentence)
             kline = KLine(signature=make_signature(nodes), nodes=nodes)
             agent.rationalise(kline)
 
-        # Each sentence should add at least one kline
-        assert agent.frame_size() >= initial + len(sentences)
+        # Signatures are OR-reductions of node values, so similar sentences
+        # (which share characters/tokens) overlap. rationalise() therefore
+        # adds only the first novel signature to the frame and queues the
+        # overlapping ones for cogitation — so encoding multiple sentences
+        # grows the frame by at least one entry rather than one per sentence.
+        assert agent.frame_size() > initial
 
 
 class TestAgentLoadSaveRoundtrip:

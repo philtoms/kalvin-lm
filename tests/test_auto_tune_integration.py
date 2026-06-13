@@ -89,6 +89,22 @@ def _session_dir(root: Path, session_name: str = "test-sess") -> Path:
     return root / ".worktrees" / "auto-tune" / session_name / "auto-tune" / session_name
 
 
+def _use_worktree_model_path(session_dir_path: Path) -> None:
+    """Make ``model_path`` in config.json worktree-relative.
+
+    ``init()`` stores ``model_path`` as an absolute path resolved via
+    ``paths.agent_bin()`` (pointing at the real project data dir, which is
+    gitignored and absent from session worktrees).  The integration tests
+    create the model file inside the worktree, so rewrite ``model_path`` to
+    a relative path that ``snapshot``/``reset`` resolve against the worktree
+    root (``session_dir._root / cfg.model_path``).
+    """
+    config_path = session_dir_path / "config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config["model_path"] = "data/agent.bin"
+    config_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+
+
 # ---------------------------------------------------------------------------
 # AT-1: init creates session directory with all supporting files
 # ---------------------------------------------------------------------------
@@ -521,6 +537,7 @@ class TestAT16SnapshotCapturesState:
     def test_snapshot_captures_state(self, auto_tune_env: Path) -> None:
         _init_session()
         sd = _session_dir(auto_tune_env)
+        _use_worktree_model_path(sd)
         worktree_path = auto_tune_env / ".worktrees" / "auto-tune" / "test-sess"
 
         # The curriculum state file is derived from curriculum path:
@@ -653,6 +670,7 @@ class TestAT19ResetFreshModel:
     def test_reset_fresh_model_deletes_model(self, auto_tune_env: Path) -> None:
         _init_session()
         sd = _session_dir(auto_tune_env)
+        _use_worktree_model_path(sd)
         worktree_path = auto_tune_env / ".worktrees" / "auto-tune" / "test-sess"
 
         # Create model file

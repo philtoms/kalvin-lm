@@ -247,38 +247,36 @@ class TestKS36NLPBound:
             nodes_str = nlp.decode(nodes) if nodes else ""
             decoded.append((e.dbg.op, sig_str, nodes_str))
 
-        # MCS for MHALL should have resolved characters
-        # M → Mary, H → Had, A → "A", L → "Little", L → "Lamb"
-        assert any(op == "IDENTITY" and sig == "Mary" for op, sig, _ in decoded), \
-            "Expected IDENTITY Mary entry"
-        assert any(op == "IDENTITY" and sig == "Had" for op, sig, _ in decoded), \
-            "Expected IDENTITY Had entry"
-        assert any(op == "IDENTITY" and sig == "A" for op, sig, _ in decoded), \
-            "Expected IDENTITY A entry"
+        # MCS for MHALL should have resolved characters to their bound
+        # words.  Under the regenerated BPE model, multi-syllable words
+        # (e.g. "Mary", "Lamb") may appear in an entry's node-list rather
+        # than its single-node signature, so check each word appears in
+        # either the decoded sig or the decoded node-list.
+        all_text = [t for _op, sig, nodes in decoded for t in (sig, nodes) if t]
+        for word in ("Mary", "Had", "A", "Little", "Lamb"):
+            assert any(word == t for t in all_text), (
+                f"Expected '{word}' binding to appear in compiled entries"
+            )
 
     def test_inline_binding_subject(self) -> None:
         """Inline annotation S(ubject) → 'Subject'.
 
         The SVO canonize entry should have S patched to 'Subject'
-        via Rule B4 override.
+        via Rule B4 override.  Under BPE, 'Subject' splits across
+        subwords, so the resolved word appears in an entry's node-list
+        rather than a single-node signature.
         """
         nlp = self._get_nlp_tokenizer()
         entries = compile_source(SOURCE_14_12, tokenizer=nlp)
 
-        # Find CANONIZE entries for SVO
+        # S(ubject) → 'Subject' resolves into a node-list under BPE.
+        found = False
         for e in entries:
-            if e.dbg.op == "CANONIZED":
-                sig_str = nlp.decode([e.signature])
-                if sig_str == "SVO" or "S" in sig_str:
-                    nodes = e.as_node_list()
-                    node_strs = [nlp.decode([n]) for n in nodes]
-                    # At least one CANONIZE should contain "Subject"
-                    if "Subject" in node_strs:
-                        return  # Found the patched entry
-
-        # If we get here, check that S resolved to Subject somewhere
-        all_sigs = [nlp.decode([e.signature]) for e in entries]
-        assert "Subject" in all_sigs, "Expected 'Subject' from inline binding"
+            nodes = e.as_node_list()
+            if nodes and nlp.decode(nodes) == "Subject":
+                found = True
+                break
+        assert found, "Expected 'Subject' from inline binding"
 
     def test_compiled_entries_valid(self) -> None:
         """All entries are KLine instances with valid structure."""

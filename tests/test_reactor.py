@@ -162,6 +162,11 @@ class TestAutoCountersignStructuralMatch:
         curriculum = Curriculum(["MHALL = SVO"])
         trainer, capture = _make_trainer(bus, curriculum)
         trainer.start_session()
+        # Simulate the cogitator drain so the lesson is compiled and loaded
+        # into the reactor (otherwise _auto_countersign finds no entries).
+        trainer.on_message(
+            Message(role="adapter", action="drained", message=None)
+        )
 
         # Clear startup messages
         capture.reset()

@@ -190,6 +190,22 @@ def _make_trainer_with_capture(
     return trainer, capture
 
 
+
+def _drain(trainer: Trainer) -> None:
+    """Simulate the cogitator drain completing.
+
+    The Trainer sends a ``drain`` message before each lesson and only
+    compiles/submits the lesson once a ``drained`` reply arrives (see
+    ``_submit_next_lesson`` / ``_handle_drained``).  In the unit tests
+    there is no real cogitator, so we inject the reply directly.  Call
+    this after any action that triggers ``_submit_next_lesson``
+    (``start_session``, lesson completion, ``resume``, ``restart``).
+    """
+    trainer.on_message(
+        Message(role="adapter", action="drained", message=None)
+    )
+
+
 # ── HRNS-16: One session at a time ───────────────────────────────────
 
 
@@ -247,6 +263,7 @@ class TestSessionPause:
         curriculum = Curriculum(["lesson1", "lesson2"])
         trainer, capture = _make_trainer(bus, curriculum)
         trainer.start_session()
+        _drain(trainer)
 
         # Verify first lesson submitted
         submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
@@ -280,6 +297,7 @@ class TestSessionPause:
             Message(role=TRAINER_ROLE, action="input", message="resume", sender="slack")
         )
         assert not trainer._session_paused
+        _drain(trainer)
 
         # After resume, next lesson should be submitted
         submit_resume = capture.find_all(TRAINEE_ROLE, "submit")
@@ -349,6 +367,7 @@ class TestEntryCountingLessonComplete:
         curriculum = Curriculum(["lesson1", "lesson2"])
         trainer, capture = _make_trainer(bus, curriculum)
         trainer.start_session()
+        _drain(trainer)
 
         # Clear startup messages
         capture.reset()
@@ -367,6 +386,9 @@ class TestEntryCountingLessonComplete:
 
         # After 3 events: curriculum position advances
         assert trainer.state.curriculum.position == 1
+
+        # Lesson completion triggers a drain for the next lesson — simulate it
+        _drain(trainer)
 
         # Next lesson submitted (not paused, curriculum has more lessons)
         submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
@@ -389,6 +411,7 @@ class TestCurriculumCompleteEndsSession:
         curriculum = Curriculum(["only_lesson"])
         trainer, capture = _make_trainer(bus, curriculum)
         trainer.start_session()
+        _drain(trainer)
 
         capture.reset()
 
@@ -402,6 +425,10 @@ class TestCurriculumCompleteEndsSession:
         trainer.on_message(
             Message(role=TRAINER_ROLE, action="ground", message=event)
         )
+
+        # Lesson completion drains for the next lesson — simulating it
+        # reaches the empty-curriculum path that ends the session.
+        _drain(trainer)
 
         # Curriculum complete → session ends
         assert not trainer._session_active
@@ -455,8 +482,16 @@ class TestCompilationErrorFromKalvin:
         curriculum = Curriculum(["lesson1", "lesson2"])
         trainer, capture = _make_trainer(bus, curriculum)
         trainer.start_session()
+        _drain(trainer)
 
         capture.reset()
+
+        # Under the current completion model an error response increments
+        # the reactor count but does not by itself satisfy an entry
+        # (``_check_lesson_complete`` compares satisfied vs submitted sets).
+        # Seed satisfaction so the error's completion check can progress.
+        key = _entry_key(entry)
+        trainer.state.mark_satisfied(key)
 
         # Simulate error event from KAgent
         trainer.on_message(
@@ -466,6 +501,10 @@ class TestCompilationErrorFromKalvin:
                 message="ParseError at line 1: unexpected token",
             )
         )
+
+        # The error's completion check advances the lesson; drain submits
+        # the next lesson.
+        _drain(trainer)
 
         # Error is logged
         error_events = [
@@ -495,6 +534,7 @@ class TestStopPersistsState:
         curriculum = Curriculum(["lesson1", "lesson2", "lesson3"])
         trainer, _capture = _make_trainer(bus, curriculum, save_path=save_file)
         trainer.start_session()
+        _drain(trainer)
 
         # Mark entry as submitted (done via start_session → _submit_next_lesson)
         key = _entry_key(entry)
@@ -576,6 +616,7 @@ class TestSessionStartup:
             bus, curriculum, curriculum_file=curriculum_path
         )
         trainer.start_session()
+        _drain(trainer)
 
         # Session started with document
         assert trainer._session_active
@@ -861,6 +902,7 @@ class TestPollingModeInputHandling:
                 sender="slack",
             )
         )
+        _drain(trainer)
 
         # Polling mode cleared, session started with loaded curriculum
         assert trainer._polling_for_goal is False
@@ -895,6 +937,7 @@ class TestFilePolling:
             bus, curriculum, curriculum_file=curriculum_path
         )
         trainer.start_session()
+        _drain(trainer)
 
         # Verify first submit happened
         submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
@@ -917,6 +960,7 @@ class TestFilePolling:
             bus, curriculum, curriculum_file=curriculum_path
         )
         trainer.start_session()
+        _drain(trainer)
 
         # Amend the file — append lesson 4
         doc2 = CurriculumDocument.from_file(curriculum_path)
@@ -932,6 +976,10 @@ class TestFilePolling:
         )
         trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
 
+        # The next-lesson drain triggers _do_submit_lesson, which re-reads
+        # the curriculum file (picking up the appended lesson 4).
+        _drain(trainer)
+
         # After re-read, curriculum should have 4 lessons
         assert len(trainer.state.curriculum.document.lessons) == 4
 
@@ -944,6 +992,7 @@ class TestFilePolling:
         curriculum = Curriculum(["lesson1", "lesson2"])
         trainer, capture = _make_trainer(bus, curriculum)
         trainer.start_session()
+        _drain(trainer)
         capture.reset()
 
         # The entry was submitted
@@ -987,6 +1036,7 @@ class TestProgressEvents:
         curriculum = Curriculum(["lesson1", "lesson2"])
         trainer, capture = _make_trainer(bus, curriculum)
         trainer.start_session()
+        _drain(trainer)
         capture.reset()
 
         # Complete lesson 1
@@ -1012,6 +1062,7 @@ class TestProgressEvents:
         curriculum = Curriculum(["only_lesson"])
         trainer, capture = _make_trainer(bus, curriculum)
         trainer.start_session()
+        _drain(trainer)
         capture.reset()
 
         # Complete the only lesson
@@ -1022,6 +1073,10 @@ class TestProgressEvents:
             significance=_S1_SIGNIFICANCE,
         )
         trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
+
+        # The next-lesson drain reaches the empty-curriculum path that
+        # emits the "complete" progress event.
+        _drain(trainer)
 
         progress_msgs = capture.find_all(SUPERVISOR_ROLE, "progress")
         complete_msgs = [m for m in progress_msgs if m.message["status"] == "complete"]
@@ -1121,6 +1176,7 @@ class TestGenerateAndStart:
                 sender="slack",
             )
         )
+        _drain(trainer)
 
         # Should no longer be polling — session started
         assert not trainer._polling_for_goal
@@ -2077,6 +2133,7 @@ class TestRestartSession:
         curriculum = Curriculum(["lesson1", "lesson2", "lesson3"])
         trainer, capture = _make_trainer(bus, curriculum)
         trainer.start_session()
+        _drain(trainer)
 
         # Complete lesson 1
         event = _make_event(
@@ -2098,6 +2155,7 @@ class TestRestartSession:
         trainer.on_message(
             Message(role=TRAINER_ROLE, action="input", message="restart", sender="slack")
         )
+        _drain(trainer)
 
         # Position reset to 0
         assert trainer.state.curriculum.position == 0
@@ -2166,6 +2224,7 @@ class TestRestartSession:
         curriculum = Curriculum(["lesson1", "lesson2"])
         trainer, capture = _make_trainer(bus, curriculum)
         trainer.start_session()
+        _drain(trainer)
 
         capture.reset()
 
@@ -2173,6 +2232,7 @@ class TestRestartSession:
         trainer.on_message(
             Message(role=TRAINER_ROLE, action="input", message="restart", sender="slack")
         )
+        _drain(trainer)
 
         # Reactor should have been reset and then re-loaded with lesson 1
         assert trainer._reactor._expected_count > 0  # lesson re-loaded
@@ -2192,6 +2252,7 @@ class TestRestartSession:
         curriculum = Curriculum(["lesson1", "lesson2", "lesson3"])
         trainer, capture = _make_trainer(bus, curriculum)
         trainer.start_session()
+        _drain(trainer)
 
         # Complete lesson 1 to advance position
         event = _make_event(
@@ -2215,6 +2276,7 @@ class TestRestartSession:
         trainer.on_message(
             Message(role=TRAINER_ROLE, action="input", message="restart", sender="slack")
         )
+        _drain(trainer)
 
         # Session is active and unpaused
         assert trainer._session_active is True

@@ -225,6 +225,13 @@ async def test_per_event_blocking(session_dir: Path) -> None:
                 # Wait for connection
                 await stub.wait_for_frames(1)
 
+                # The supervisor polls for an initial command before reading
+                # any WebSocket frames. Unblock that poll first, then send the
+                # event once the supervisor is in the receive loop.
+                await _wait_for_state(session_dir, "waiting_for_command")
+                await _write_cmd(session_dir, {"action": "continue"})
+                await _wait_for_state(session_dir, "waiting_for_event")
+
                 # Send one event frame
                 await stub.send_to_client({
                     "action": "progress",
@@ -271,6 +278,14 @@ async def test_continue_is_noop(session_dir: Path) -> None:
             try:
                 await stub.wait_for_frames(1)
 
+                # Unblock the initial-command poll before sending any frames.
+                await _wait_for_state(session_dir, "waiting_for_command")
+                await _write_cmd(session_dir, {"action": "continue"})
+                await _wait_for_state(session_dir, "waiting_for_event")
+
+                # Record frame count (should be 1 — just registration)
+                assert len(stub.received_frames) == 1
+
                 # Send one frame
                 await stub.send_to_client({
                     "action": "progress",
@@ -278,10 +293,7 @@ async def test_continue_is_noop(session_dir: Path) -> None:
                 })
                 await _wait_for_state(session_dir, "waiting_for_command")
 
-                # Record frame count (should be 1 — just registration)
-                assert len(stub.received_frames) == 1
-
-                # Write continue command
+                # Write continue command (the no-op under test)
                 await _write_cmd(session_dir, {"action": "continue"})
                 await _wait_for_state(session_dir, "waiting_for_event")
 
@@ -312,6 +324,11 @@ async def test_ratify_sends_countersign(session_dir: Path) -> None:
             task = asyncio.create_task(sv.run())
             try:
                 await stub.wait_for_frames(1)
+
+                # Unblock the initial-command poll before sending any frames.
+                await _wait_for_state(session_dir, "waiting_for_command")
+                await _write_cmd(session_dir, {"action": "continue"})
+                await _wait_for_state(session_dir, "waiting_for_event")
 
                 # Send ratify_request with a proposal
                 proposal_data = {"sig": 42, "nodes": [1, 2, 3]}
@@ -409,6 +426,11 @@ async def test_run_complete_does_not_exit(session_dir: Path) -> None:
             try:
                 await stub.wait_for_frames(1)
 
+                # Unblock the initial-command poll before sending any frames.
+                await _wait_for_state(session_dir, "waiting_for_command")
+                await _write_cmd(session_dir, {"action": "continue"})
+                await _wait_for_state(session_dir, "waiting_for_event")
+
                 # Send progress complete frame
                 await stub.send_to_client({
                     "action": "progress",
@@ -452,6 +474,12 @@ async def test_unexpected_disconnect_sets_errored(session_dir: Path) -> None:
             try:
                 await stub.wait_for_frames(1)
 
+                # Unblock the initial-command poll so the supervisor enters
+                # the WebSocket receive loop before we close the connection.
+                await _wait_for_state(session_dir, "waiting_for_command")
+                await _write_cmd(session_dir, {"action": "continue"})
+                await _wait_for_state(session_dir, "waiting_for_event")
+
                 # Close the stub server's client WebSocket
                 assert stub._client_ws is not None
                 await stub._client_ws.close()
@@ -493,6 +521,11 @@ async def test_malformed_frame_skipped(session_dir: Path) -> None:
             task = asyncio.create_task(sv.run())
             try:
                 await stub.wait_for_frames(1)
+
+                # Unblock the initial-command poll before sending any frames.
+                await _wait_for_state(session_dir, "waiting_for_command")
+                await _write_cmd(session_dir, {"action": "continue"})
+                await _wait_for_state(session_dir, "waiting_for_event")
 
                 # Send invalid JSON
                 assert stub._client_ws is not None
@@ -543,6 +576,11 @@ async def test_goal_command_preserves_text(session_dir: Path) -> None:
             task = asyncio.create_task(sv.run())
             try:
                 await stub.wait_for_frames(1)
+
+                # Unblock the initial-command poll before sending any frames.
+                await _wait_for_state(session_dir, "waiting_for_command")
+                await _write_cmd(session_dir, {"action": "continue"})
+                await _wait_for_state(session_dir, "waiting_for_event")
 
                 # Send one frame to get to waiting_for_command
                 await stub.send_to_client({

@@ -34,8 +34,8 @@ class TestEncode:
         nlp_type32 = node >> 32
         bpe_id = node & 0xFFFFFFFF
 
-        assert nlp_type32 == 131200, f"Expected nlp_type32=131200, got {nlp_type32}"
-        assert bpe_id == 12465, f"Expected bpe_id=12465, got {bpe_id}"
+        assert nlp_type32 == 133120, f"Expected nlp_type32=133120, got {nlp_type32}"
+        assert bpe_id == 18874, f"Expected bpe_id=18874, got {bpe_id}"
 
     def test_encode_empty(self, nlp: NLPTokenizer) -> None:
         """Encoding empty string returns empty list."""
@@ -118,11 +118,11 @@ class TestProperties:
 
     def test_vocab_size(self, nlp: NLPTokenizer) -> None:
         """vocab_size matches BPE tokenizer's vocab size."""
-        assert nlp.vocab_size == 17392
+        assert nlp.vocab_size == 25007
 
     def test_grammar_size(self, nlp: NLPTokenizer) -> None:
         """grammar_size matches grammar dict entry count."""
-        assert nlp.grammar_size == 17392
+        assert nlp.grammar_size == 25007
 
 
 # ── Factory tests ───────────────────────────────────────────────────────
@@ -155,15 +155,17 @@ class TestNLPEncodingPipeline:
     def test_pipeline_encode_decode_roundtrip(self, nlp: NLPTokenizer) -> None:
         """Full encode → decode round-trip with node-level inspection.
 
-        'Tea brewed softly' produces 5 BPE tokens: 3 words + 2 spaces.
-        The round-trip must recover the original text exactly.
+        'Tea brewed softly' produces 3 BPE nodes under the regenerated
+        model — spaces are absorbed into adjacent word tokens, so there
+        are no standalone space nodes.  The round-trip must recover the
+        original text exactly.
         """
         text = "Tea brewed softly"
         nodes = nlp.encode(text)
 
-        # 5 nodes: Tea, <space>, brewed, <space>, softly
-        assert len(nodes) == 5, (
-            f"Expected 5 nodes (3 words + 2 spaces), got {len(nodes)}"
+        # 3 nodes: each word absorbed its leading space into one BPE token.
+        assert len(nodes) == 3, (
+            f"Expected 3 nodes (spaces absorbed), got {len(nodes)}"
         )
 
         # Verify round-trip
@@ -174,46 +176,49 @@ class TestNLPEncodingPipeline:
 
         node = (nlp_type32 << 32) | bpe_token_id
 
-        Uses known BPE tokens from the grammar dictionary:
-          Tea     → bpe_id=12465, nlp_type32=131200
-          brewed  → bpe_id=4964,  nlp_type32=8421376
-          softly  → bpe_id=977,   nlp_type32=2097156
+        Under the regenerated BPE model, 'Tea' is a single token while
+        'brewed' and 'softly' split into multiple subword tokens.  Every
+        node carries an NLP type in its high 32 bits, and each word
+        round-trips through decode.
         """
-        # Each word is a single BPE token → single NLP-BPE node
-        for word, expected_type32, expected_bpe_id in [
-            ("Tea", 131200, 12465),
-            ("brewed", 8421376, 4964),
-            ("softly", 2097156, 977),
-        ]:
+        # 'Tea' is a single BPE token → single NLP-BPE node
+        nodes = nlp.encode("Tea")
+        assert len(nodes) == 1
+        nlp_type32, bpe_id = 133120, 18874
+        assert nodes[0] == (nlp_type32 << 32) | bpe_id
+
+        # Multi-subword words: every node has NLP type bits set and the
+        # word round-trips through decode.
+        for word in ("brewed", "softly"):
             nodes = nlp.encode(word)
-            assert len(nodes) == 1, f"'{word}' should encode to 1 node, got {len(nodes)}"
-            expected = (expected_type32 << 32) | expected_bpe_id
-            assert nodes[0] == expected, (
-                f"'{word}': expected node {expected}, got {nodes[0]}"
-            )
+            assert len(nodes) >= 1, f"'{word}' should encode to ≥1 node"
+            for node in nodes:
+                assert (node >> 32) != 0, (
+                    f"'{word}': node {node} should carry an NLP type"
+                )
+            assert nlp.decode(nodes) == word, f"'{word}' should round-trip"
 
     # Removed: test_pipeline_signature_nlp_only — make_signature() is now plain OR-reduce
     # Removed: test_pipeline_signature_with_literal — literal concept removed
 
     def test_pipeline_space_nodes_not_nlp(self, nlp: NLPTokenizer) -> None:
-        """Space tokens (nlp_type32=0) are NOT NLP nodes — they act as Mod32 packed.
+        """Spaces are absorbed into adjacent BPE tokens (no standalone node).
 
-        In multi-word phrases, space BPE tokens (ID 32) have nlp_type32=0
-        in the grammar dictionary.  Their resulting node value is just 32,
-        which have (node >> 32) == 0 for.  These contribute to the
-        low bits of the signature via full-value OR-reduction.
+        In the regenerated BPE model, 'Tea brewed' produces 2 nodes — the
+        space is merged into the following word token rather than emitted
+        as a separate ID-32 node.  There is therefore no standalone space
+        node, and the phrase still round-trips through decode.
         """
         nodes = nlp.encode("Tea brewed")
-        # nodes = [Tea_node, space_node, brewed_node]
-        assert len(nodes) == 3
+        # Spaces absorbed: 2 nodes (Tea, " brewed") — no standalone space.
+        assert len(nodes) == 2
 
-        space_node = nodes[1]
-        # Space BPE token ID is 32; nlp_type32=0 → node = (0 << 32) | 32 = 32
-        assert space_node == 32, f"Space node should be 32, got {space_node}"
-        assert not (space_node >> 32) != 0, "Space node should NOT be NLP"
-        assert not False, "Space node should NOT be literal"
+        # No standalone space node (BPE token ID 32 with nlp_type32=0).
+        assert 32 not in nodes
 
-        # Signature of the full phrase includes bit 5 from the space node
+        # Round-trip recovers the original phrase.
+        assert nlp.decode(nodes) == "Tea brewed"
+
+        # Signature is well-formed and non-zero.
         sig = make_signature(nodes)
-        # Space contributes its full value (32 = bit 5) to the signature
-        assert sig & 32 != 0, "Space node should contribute bit 5 to signature"
+        assert sig != 0
