@@ -65,8 +65,11 @@ class TestClientRegistration:
         recorder = _BusRecorder(bus)
         protocol, server = await _start_server(bus)
 
-        # Start bus dispatch in background.
-        bus_thread = asyncio.ensure_future(self._run_bus(bus))
+        # Start bus dispatch in a background thread.
+        import threading
+
+        bus_thread = threading.Thread(target=bus.run, daemon=True)
+        bus_thread.start()
 
         try:
             async with websockets.connect("ws://localhost:18765") as ws:
@@ -89,7 +92,7 @@ class TestClientRegistration:
 
         finally:
             bus.stop()
-            await bus_thread
+            bus_thread.join(timeout=5)
             await _stop_server(server)
 
         # The bus should have received the message with sender="trainee".
@@ -100,20 +103,6 @@ class TestClientRegistration:
         assert msg.action == "submit"
         assert msg.message == "MHALL = SVO"
         assert msg.sender == "trainee"
-
-    @staticmethod
-    async def _run_bus(bus: MessageBus) -> None:
-        """Run the bus event loop in the current asyncio task.
-
-        We run the bus in a thread since it blocks.
-        """
-        import threading
-
-        thread = threading.Thread(target=bus.run, daemon=True)
-        thread.start()
-        # Give the thread time to start processing.
-        await asyncio.sleep(0.05)
-        thread.join(timeout=5)
 
 
 class TestDisconnectSilentDrop:
