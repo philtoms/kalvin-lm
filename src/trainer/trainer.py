@@ -277,7 +277,6 @@ class Trainer:
     def _handle_kagent_event(self, msg: Message) -> None:
         """Process a KAgent ground or frame event."""
         event: RationaliseEvent = msg.message
-        self._reactor.record_response()
 
         # Display for log readability
         _log_tok = Mod32Tokenizer()
@@ -356,9 +355,19 @@ class Trainer:
         self._check_lesson_complete()
 
     def _handle_kagent_error(self, msg: Message) -> None:
-        """Log KAgent error and count toward lesson completion."""
+        """Log KAgent error and abandon the current lesson.
+
+        A KAgent error means the lesson source could not be processed at
+        all (e.g. ParseError). Mark every submitted-but-unsatisfied entry
+        as satisfied so the lesson completes and training advances to the
+        next one — errors must not stall the curriculum.
+        """
         self._state.log_event("kagent_error", {"message": str(msg.message)})
-        self._reactor.record_response()
+        # An error abandons the lesson: satisfy all pending entries so the
+        # satisfaction-vs-submitted gate in _check_lesson_complete can fire.
+        unsatisfied = self._state.submitted - self._state.satisfied
+        for key in unsatisfied:
+            self._state.mark_satisfied(key)
         self._check_lesson_complete()
 
     # ── Cogitator drain ─────────────────────────────────────────────────

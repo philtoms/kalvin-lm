@@ -470,73 +470,20 @@ class TestBudgetExhaustion:
         assert len(budget_esc) >= 1
 
 
-class TestLessonCompleteTracking:
-    """is_lesson_complete tracks received vs expected count."""
-
-    def test_complete_after_all_responses(self) -> None:
-        """After expected_count responses, is_lesson_complete is True."""
-        reactor, _ = _make_reactor()
-        entries = [_make_entry(100, [10]), _make_entry(200, [20]), _make_entry(300, [30])]
-        reactor.load_lesson(entries)
-
-        assert reactor.received_count == 0
-        assert reactor.expected_count == 3
-        assert not reactor.is_lesson_complete
-
-        reactor.record_response()
-        reactor.record_response()
-        assert not reactor.is_lesson_complete
-
-        reactor.record_response()
-        assert reactor.is_lesson_complete
-
-    def test_not_complete_with_fewer_responses(self) -> None:
-        """With fewer responses than expected, is_lesson_complete is False."""
-        reactor, _ = _make_reactor()
-        entries = [_make_entry(100, [10]), _make_entry(200, [20])]
-        reactor.load_lesson(entries)
-
-        reactor.record_response()
-        assert not reactor.is_lesson_complete
-
-
-class TestErrorRecording:
-    """record_response() increments received_count."""
-
-    def test_record_response_increments(self) -> None:
-        reactor, _ = _make_reactor()
-        entries = [_make_entry(100, [10]), _make_entry(200, [20])]
-        reactor.load_lesson(entries)
-
-        assert reactor.received_count == 0
-
-        reactor.record_response()
-        assert reactor.received_count == 1
-
-        reactor.record_response()
-        assert reactor.received_count == 2
-
-
 class TestLoadLessonResetsState:
-    """Loading a new lesson resets all per-lesson counters."""
+    """Loading a new lesson resets per-lesson state."""
 
-    def test_load_resets_counters(self) -> None:
+    def test_load_sets_entries_and_resets_rounds(self) -> None:
         reactor, _ = _make_reactor()
 
         # Load lesson A with 3 entries
         entries_a = [_make_entry(100 + i, [10 + i]) for i in range(3)]
         reactor.load_lesson(entries_a)
-        reactor.record_response()
-        reactor.record_response()
+        assert reactor.current_entries == entries_a
 
-        assert reactor.received_count == 2
-        assert reactor.expected_count == 3
-
-        # Load lesson B with 2 entries → counters reset
+        # Load lesson B with 2 entries → entries replaced
         entries_b = [_make_entry(200, [20]), _make_entry(300, [30])]
         reactor.load_lesson(entries_b)
 
-        assert reactor.received_count == 0
-        assert reactor.expected_count == 2
-        assert not reactor.is_lesson_complete
         assert reactor.current_entries == entries_b
+        assert reactor._reactive_rounds == 0

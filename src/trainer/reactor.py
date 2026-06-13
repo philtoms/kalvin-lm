@@ -5,10 +5,9 @@ auto-countersign matching, reactive scaffolding via an injected
 ``cogitate_fn``, budget tracking, and escalation to the supervisor
 when stuck.
 
-Per-lesson state (current entries, expected/received counts,
-reactive round budget) lives here rather than on the Trainer
-session driver, keeping the session lifecycle and event-reaction
-concerns cleanly separated.
+Per-lesson state (current entries, reactive round budget) lives here
+rather than on the Trainer session driver, keeping the session
+lifecycle and event-reaction concerns cleanly separated.
 
 This module is synchronous — the Reactor receives events from the
 Trainer driver (which itself runs on the bus dispatch thread).
@@ -96,17 +95,13 @@ class Reactor:
 
         # Per-lesson state
         self._current_entries: list[KLine] = []
-        self._expected_count: int = 0
-        self._received_count: int = 0
         self._reactive_rounds: int = 0
 
     # ── Lesson lifecycle ──────────────────────────────────────────────
 
     def load_lesson(self, entries: list[KLine]) -> None:
-        """Reset per-lesson state: set entries, zero counters."""
+        """Reset per-lesson state: set entries, zero reactive rounds."""
         self._current_entries = entries
-        self._received_count = 0
-        self._expected_count = len(entries)
         self._reactive_rounds = 0
 
     # ── Event processing ──────────────────────────────────────────────
@@ -126,24 +121,7 @@ class Reactor:
         self._handle_reactive(event)
         return False
 
-    def record_response(self) -> None:
-        """Increment the received-event counter."""
-        self._received_count += 1
-
-    # ── Completion tracking ───────────────────────────────────────────
-
-    @property
-    def is_lesson_complete(self) -> bool:
-        """True when received_count == expected_count and > 0."""
-        return self._received_count == self._expected_count and self._expected_count > 0
-
-    @property
-    def received_count(self) -> int:
-        return self._received_count
-
-    @property
-    def expected_count(self) -> int:
-        return self._expected_count
+    # ── Entry access ─────────────────────────────────────────────────
 
     @property
     def current_entries(self) -> list[KLine]:

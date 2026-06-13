@@ -253,13 +253,12 @@ class TestTrainerLogging:
         trainer = _make_trainer(bus, curriculum, curriculum_file="test.md")
         caplog.set_level(logging.INFO, logger="trainer.trainer")
 
-        # Directly invoke _check_lesson_complete with a completed reactor.
+        # Directly invoke _check_lesson_complete with a satisfied lesson.
         # The completion check compares the satisfied vs submitted sets,
         # so seed both for the lesson entry before invoking it.
         entry = _make_entry(256, [])
         trainer._session_active = True
         trainer._reactor.load_lesson([entry])
-        trainer._reactor.record_response()  # received = expected = 1
         key = _entry_key(entry)
         trainer._state.mark_submitted(key)
         trainer._state.mark_satisfied(key)

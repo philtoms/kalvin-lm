@@ -471,7 +471,7 @@ class TestFastPathAutoSatisfy:
 
 
 class TestCompilationErrorFromKalvin:
-    """Error event from KAgent is logged and counts toward entry counting."""
+    """A KAgent error abandons the lesson: pending entries are satisfied on error."""
 
     @patch("trainer.trainer.compile_source")
     def test_compilation_error_from_kalvin(self, mock_compile: MagicMock) -> None:
@@ -484,14 +484,12 @@ class TestCompilationErrorFromKalvin:
         trainer.start_session()
         _drain(trainer)
 
-        capture.reset()
-
-        # Under the current completion model an error response increments
-        # the reactor count but does not by itself satisfy an entry
-        # (``_check_lesson_complete`` compares satisfied vs submitted sets).
-        # Seed satisfaction so the error's completion check can progress.
+        # The single entry is submitted but not yet satisfied
         key = _entry_key(entry)
-        trainer.state.mark_satisfied(key)
+        assert trainer.state.is_submitted(key)
+        assert not trainer.state.is_satisfied(key)
+
+        capture.reset()
 
         # Simulate error event from KAgent
         trainer.on_message(
@@ -501,6 +499,9 @@ class TestCompilationErrorFromKalvin:
                 message="ParseError at line 1: unexpected token",
             )
         )
+
+        # The error handler satisfies the pending entry itself (no pre-seeding)
+        assert trainer.state.is_satisfied(key)
 
         # The error's completion check advances the lesson; drain submits
         # the next lesson.
@@ -517,6 +518,95 @@ class TestCompilationErrorFromKalvin:
         assert trainer.state.curriculum.position == 1
 
         # Next lesson submitted
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
+        assert any(m.message == "lesson2" for m in submit_msgs)
+
+    @patch("trainer.trainer.compile_source")
+    def test_error_completes_multi_entry_lesson(self, mock_compile: MagicMock) -> None:
+        """A single error satisfies all pending entries of a multi-entry lesson."""
+        entry_a = _make_entry(100, [10])
+        entry_b = _make_entry(200, [20])
+        mock_compile.return_value = [entry_a, entry_b]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+        _drain(trainer)
+
+        # Neither entry satisfied yet
+        assert not trainer.state.is_satisfied(_entry_key(entry_a))
+        assert not trainer.state.is_satisfied(_entry_key(entry_b))
+
+        capture.reset()
+
+        # A single error satisfies every pending entry and completes the lesson
+        trainer.on_message(
+            Message(
+                role=TRAINER_ROLE,
+                action="error",
+                message="ParseError at line 1: unexpected token",
+            )
+        )
+
+        # Both entries satisfied by the error in one call
+        assert trainer.state.is_satisfied(_entry_key(entry_a))
+        assert trainer.state.is_satisfied(_entry_key(entry_b))
+
+        # Lesson completed; drain submits the next lesson
+        assert trainer.state.curriculum.position == 1
+        _drain(trainer)
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
+        assert any(m.message == "lesson2" for m in submit_msgs)
+
+    @patch("trainer.trainer.compile_source")
+    def test_error_after_partial_satisfaction_completes(
+        self, mock_compile: MagicMock
+    ) -> None:
+        """A partially-satisfied lesson still completes on error.
+
+        Some entries are satisfied via S1 events first; the error then
+        satisfies the remaining pending entries and completes the lesson.
+        """
+        entry_a = _make_entry(100, [10])
+        entry_b = _make_entry(200, [20])
+        mock_compile.return_value = [entry_a, entry_b]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+        _drain(trainer)
+
+        capture.reset()
+
+        # Satisfy entry A via an S1 ground event (one entry still pending)
+        event_a = _make_event(
+            "ground",
+            query=KLine(signature=100, nodes=[10]),
+            proposal=KLine(signature=100, nodes=[10]),
+            significance=_S1_SIGNIFICANCE,
+        )
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="ground", message=event_a)
+        )
+        assert trainer.state.is_satisfied(_entry_key(entry_a))
+        assert not trainer.state.is_satisfied(_entry_key(entry_b))
+        # Lesson not complete yet (1/2 satisfied)
+        assert trainer.state.curriculum.position == 0
+
+        # Error satisfies the remaining entry and completes the lesson
+        trainer.on_message(
+            Message(
+                role=TRAINER_ROLE,
+                action="error",
+                message="ParseError at line 1: unexpected token",
+            )
+        )
+
+        assert trainer.state.is_satisfied(_entry_key(entry_b))
+        assert trainer.state.curriculum.position == 1
+        _drain(trainer)
         submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert any(m.message == "lesson2" for m in submit_msgs)
 
@@ -2235,7 +2325,7 @@ class TestRestartSession:
         _drain(trainer)
 
         # Reactor should have been reset and then re-loaded with lesson 1
-        assert trainer._reactor._expected_count > 0  # lesson re-loaded
+        assert len(trainer._reactor.current_entries) > 0  # lesson re-loaded
 
         # Session active
         assert trainer._session_active
