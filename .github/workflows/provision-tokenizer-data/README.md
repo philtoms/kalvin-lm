@@ -57,9 +57,12 @@ keeps the on-disk layout identical between a cache hit and a fresh rebuild, so
 the auto-discovery logic resolves the same way in both cases.
 
 **Cost ceiling.** GitHub Actions allows up to **10 GB of cache per repository**.
-34 MB is well within that budget and is restored in seconds on a cache hit,
-versus the 7–15 minute rebuild on a miss. Over thousands of runs the cache-first
-strategy saves hours of CI time.
+The tokenizer artifact cache (~34 MB) is well within that budget and is restored
+in seconds on a cache hit, versus the 7–15 minute rebuild on a miss. On
+cache-miss rebuilds, the separate HF Hub cache layer adds ~4.6 GB (see the "Two
+separate caches" callout), bringing the theoretical combined footprint to ~4.7 GB
+— still under the 10 GB limit. Over thousands of runs the cache-first strategy
+saves hours of CI time.
 
 ### Cost summary
 
@@ -258,3 +261,47 @@ fully offline in ~0.13 s. Because CI run history was unavailable for review
 strictly improves cache effectiveness with no downside for output format or
 correctness, and KB-216's retry-with-backoff and revision pinning are
 unchanged.
+
+### Post-switch monitoring (KB-222)
+
+KB-222 attempted to validate KB-218's non-streaming switch against real
+cache-miss CI runs. **No CI runs exist to review.** Investigation with
+authenticated `gh` access (`gh run list`, `gh api …/actions/runs`) revealed:
+
+- **0 workflow definitions** and **0 total runs** on GitHub Actions. The CI
+  workflow (`.github/workflows/ci.yml`, created in KB-214) was committed to
+  local `main` but has not been pushed to `origin/main` — local `main` is 160
+  commits ahead of the remote at the time of this review.
+- **0 cache entries** in the GitHub Actions cache API
+  (`gh api …/actions/caches`).
+
+Consequently, neither monitoring concern could be empirically assessed:
+
+| Concern | Status | Detail |
+|---------|--------|--------|
+| HTTP 429 / transient errors at Stage 1 | **Unverified** — no data | Zero cache-miss runs exist to inspect. The non-streaming mode's theoretical benefit (warm HF cache → zero network requests → no 429 exposure) remains sound but is unconfirmed empirically. KB-216's retry-with-backoff and revision pinning remain in place as cold-download resilience. |
+| Cache budget (~4.6 GB HF cache + ~34 MB tokenizer cache vs 10 GB limit) | **Unverified** — no data | No `actions/cache@v4` post-step output is available. The theoretical combined footprint (~4.7 GB) is well under the 10 GB limit. The `hub/` blob redundancy (~1.6 GB of raw parquet blobs duplicating ~3 GB of arrow files) remains a pruning lever should budget pressure materialise — see the "Conditional remediation" note below. |
+| No remediation applied | — | Step 5 remediation was not triggered: no empirical issues were found because no CI runs exist. The CI workflow (`ci.yml`) was not modified. |
+
+**Monitoring is pending CI deployment.** Once the CI workflow is pushed to
+`origin/main` and cache-miss runs accumulate, re-evaluate both concerns against
+≥5 cache-miss runs (per the KB-222 acceptance criteria). A follow-up task
+tracks this re-assessment.
+
+**Conditional remediation (for future re-evaluation).** If a future
+re-assessment finds cache budget pressure (total approaching the 10 GB limit
+or eviction warnings from `actions/cache@v4`), prune the redundant `hub/` blobs
+after the rebuild step and before the cache save:
+
+```yaml
+- name: Prune redundant HF Hub blobs
+  if: steps.cache-tokenizer.outputs.cache-hit != 'true'
+  run: rm -rf ~/.cache/huggingface/hub
+```
+
+This removes the ~1.6 GB of raw parquet blobs (duplicated by the ~3 GB arrow
+files) before the cache is saved. The arrow files alone are sufficient for
+non-streaming `load_dataset()` reuse on subsequent runs. If 429s recur on
+warm-cache rebuilds despite the non-streaming cache, investigate whether the
+`hf-hub-cache-` restore key missed due to LRU eviction, and consider adding
+`HF_TOKEN` to CI secrets for higher rate limits.
