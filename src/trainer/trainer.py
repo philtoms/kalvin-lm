@@ -874,6 +874,9 @@ class Trainer:
         Resets curriculum position, all tracking sets, and the reactor,
         then starts a fresh session with the current curriculum.
         """
+        was_active = self._session_active
+        if not was_active:
+            return
 
         # End current session (without processing queued goals)
         self._session_active = False

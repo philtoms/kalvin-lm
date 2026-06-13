@@ -2248,8 +2248,21 @@ class TestRestartSession:
             Message(role=TRAINER_ROLE, action="input", message="restart", sender="slack")
         )
 
-        # The handler should still work — it just restarts even without a session
-        assert trainer._session_active
+        # Session remains inactive — restart is a no-op when no session was active
+        assert not trainer._session_active
+
+        # No side effects: no restart event logged
+        restart_events = [e for e in trainer.state.event_log if e["type"] == "session_restart"]
+        assert len(restart_events) == 0
+
+        # No progress messages emitted
+        progress_msgs = capture.find_all(SUPERVISOR_ROLE, "progress")
+        restart_msgs = [m for m in progress_msgs if m.message["status"] == "restart"]
+        assert len(restart_msgs) == 0
+
+        # No lesson submitted
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
+        assert len(submit_msgs) == 0
 
     @patch("trainer.trainer.compile_source")
     def test_restart_resets_reactor(self, mock_compile: MagicMock) -> None:
