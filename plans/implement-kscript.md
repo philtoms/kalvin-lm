@@ -7,6 +7,26 @@
 
 ---
 
+> **Archival Note (added 2026-06-13):** This plan was written before the compiled-entry `op` field
+> terminology was updated. The code described here used token-name op strings; the current code uses
+> structural-state names. The mapping:
+>
+> - `"UNSIGNED"` → `"IDENTITY"` — the op value for bare-node identity klines was renamed (per the
+>   `plans/impl/rename-unsigned-to-identity.md` plan, completed before ADR-0006).
+> - `"COUNTERSIGN"` → `"COUNTERSIGNED"`, `"UNDERSIGN"` → `"UNDERSIGNED"`,
+>   `"CONNOTATE"` → `"CONNOTED"`, `"CANONIZE"` → `"CANONIZED"` — compiled-entry op values
+>   now use past-participle structural-state names (per ADR-0006, implemented in KB-209).
+>
+> **Old terms present in this file:** `"UNSIGNED"`, `"COUNTERSIGN"`, `"UNDERSIGN"`, `"CONNOTATE"`,
+> `"CANONIZE"` (as compiled-entry op values in pseudocode and significance-level dicts).
+>
+> Note: `TokenType` enum members (`TokenType.COUNTERSIGN`, `TokenType.UNDERSIGN`, etc.) are
+> **unchanged** — they name lexer tokens, not structural states. References to `TokenType.X` in this
+> plan are still current.
+>
+> For the authoritative current terminology, see CONTEXT.md glossary entries **Structural State**
+> and **Identity**, and `docs/adr/0006-op-is-structural-state-not-token.md`.
+
 ## Overview
 
 This plan builds the KScript compiler from scratch against the consolidated spec (v3.0). The implementation lives in `src/ks/` (new module folder). The existing `src/kscript/` code is not modified and will be removed once the new implementation is verified.

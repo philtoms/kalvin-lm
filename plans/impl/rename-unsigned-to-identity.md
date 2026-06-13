@@ -9,6 +9,22 @@
 - @specs/stm.md (sig == 0 behaviour)
 - @specs/nlp-curriculum-compat.md (decomposition entries)
 
+> **Archival Note (added 2026-06-13):** This is the plan that performed the `"UNSIGNED"` →
+> `"IDENTITY"` rename. Its use of `"UNSIGNED"` throughout is inherent and correct — the plan
+> documents a transition that is now historical. This banner records that subsequent terminology
+> evolution (ADR-0006, implemented in KB-209) has further updated the compiled-entry `op` field from
+> token-name strings to structural-state names:
+>
+> - `"UNSIGNED"` → `"IDENTITY"` — the rename this plan describes (completed before ADR-0006).
+> - `"COUNTERSIGN"` → `"COUNTERSIGNED"`, `"UNDERSIGN"` → `"UNDERSIGNED"`,
+>   `"CONNOTATE"` → `"CONNOTED"`, `"CANONIZE"` → `"CANONIZED"` — compiled-entry op values
+>   now use past-participle structural-state names (per ADR-0006, implemented in KB-209).
+>
+> **Old terms present in this file:** `"UNSIGNED"` (throughout — inherent to this rename plan).
+>
+> For the authoritative current terminology, see CONTEXT.md glossary entries **Structural State**
+> and **Identity**, and `docs/adr/0006-op-is-structural-state-not-token.md`.
+
 ## Context
 
 The operator for bare-node klines (empty nodes, no relationships) was called UNSIGNED. The domain term is IDENTITY — it's the structural endpoint where rationalisation stops. See CONTEXT.md glossary entry "Identity".

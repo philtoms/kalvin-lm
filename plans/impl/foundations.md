@@ -7,6 +7,21 @@
 
 ---
 
+> **Archival Note (added 2026-06-13):** This plan was written before the compiled-entry `op` field
+> terminology was updated. The code described here used token-name op strings; the current code uses
+> structural-state names. The mapping:
+>
+> - `"UNSIGNED"` → `"IDENTITY"` — the op value for bare-node identity klines was renamed (per the
+>   `plans/impl/rename-unsigned-to-identity.md` plan, completed before ADR-0006).
+> - `"COUNTERSIGN"` → `"COUNTERSIGNED"`, `"UNDERSIGN"` → `"UNDERSIGNED"`,
+>   `"CONNOTATE"` → `"CONNOTED"`, `"CANONIZE"` → `"CANONIZED"` — compiled-entry op values
+>   now use past-participle structural-state names (per ADR-0006, implemented in KB-209).
+>
+> **Old terms present in this file:** `UNSIGNED` (in the well-known values table).
+>
+> For the authoritative current terminology, see CONTEXT.md glossary entries **Structural State**
+> and **Identity**, and `docs/adr/0006-op-is-structural-state-not-token.md`.
+
 ## 0. Project Scaffold (Phase 0)
 
 **Estimate:** 0.5 day
