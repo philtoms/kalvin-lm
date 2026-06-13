@@ -262,7 +262,7 @@ strictly improves cache effectiveness with no downside for output format or
 correctness, and KB-216's retry-with-backoff and revision pinning are
 unchanged.
 
-### Post-switch monitoring (KB-222)
+### Post-switch monitoring (KB-222 / KB-224)
 
 KB-222 attempted to validate KB-218's non-streaming switch against real
 cache-miss CI runs. **No CI runs exist to review.** Investigation with
@@ -283,9 +283,22 @@ Consequently, neither monitoring concern could be empirically assessed:
 | Cache budget (~4.6 GB HF cache + ~34 MB tokenizer cache vs 10 GB limit) | **Unverified** — no data | No `actions/cache@v4` post-step output is available. The theoretical combined footprint (~4.7 GB) is well under the 10 GB limit. The `hub/` blob redundancy (~1.6 GB of raw parquet blobs duplicating ~3 GB of arrow files) remains a pruning lever should budget pressure materialise — see the "Conditional remediation" note below. |
 | No remediation applied | — | Step 5 remediation was not triggered: no empirical issues were found because no CI runs exist. The CI workflow (`ci.yml`) was not modified. |
 
+**Re-evaluation (KB-224).** KB-224 re-verified the same prerequisites with
+authenticated `gh` access (`gh auth status`, `gh api …/actions/workflows`,
+`gh api …/actions/runs`, `gh api …/actions/caches`). The blockage persists
+unchanged: the CI workflow is still **not deployed** — 0 workflow definitions,
+0 CI runs, 0 cache entries on GitHub Actions. Local `main` is now **163 commits
+ahead** of `origin/main` (KB-222 measured 160; commits have accumulated since).
+Because the CI workflow has never been pushed, no cache-miss run history exists
+to review — Steps 1–5 of the re-evaluation could not execute. The two
+monitoring concerns remain **Unverified — no data**, and no remediation was
+applied (`ci.yml` and `download_corpus.py` are unchanged). Follow-up task
+**KB-225** tracks pushing `local main → origin/main` and re-running the
+monitoring procedure once ≥5 cache-miss runs accumulate.
+
 **Monitoring is pending CI deployment.** Once the CI workflow is pushed to
 `origin/main` and cache-miss runs accumulate, re-evaluate both concerns against
-≥5 cache-miss runs (per the KB-222 acceptance criteria). A follow-up task
+≥5 cache-miss runs (per the KB-222 acceptance criteria). Follow-up task **KB-225**
 tracks this re-assessment.
 
 **Conditional remediation (for future re-evaluation).** If a future
