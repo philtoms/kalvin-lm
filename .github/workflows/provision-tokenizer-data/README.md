@@ -129,3 +129,99 @@ On a miss the `test` job (in `../ci.yml`):
 
 The `data/` directory remains gitignored at all times — assets are never
 committed; they are either cached or rebuilt.
+
+## Rebuild-path resilience
+
+The rebuild path depends on three external services that can fail
+transiently. KB-216 hardened each:
+
+| Dependency | Failure mode | Hardening |
+|------------|--------------|-----------|
+| HuggingFace `datasets` streaming download | Rate limits (HTTP 429), transient outages | Retry with exponential backoff (`dev/nlp/download_corpus.py`, 3 attempts), dataset revision pinned to a commit SHA, and an `actions/cache@v4` layer for `~/.cache/huggingface` |
+| spaCy model host (`en_core_web_sm` wheel) | Host outages, slow downloads | 3-attempt retry loop with linear backoff in the CI workflow |
+| CPU-bound pipeline (BPE + spaCy) | Slow-runner timeout | No change — the ~7–15 min rebuild leaves ample headroom under the 20-min `timeout-minutes` |
+
+The HuggingFace dataset is pinned to revision
+`e63b8adc3b1a1bdc7cac5b500d150b71346b0628` (the `HF_REVISION` default in
+`scripts/rebuild-tokenizer-data.sh` and `DEFAULT_REVISION` in
+`dev/nlp/download_corpus.py`). To pick up new dataset data, look up the
+current SHA and update both constants — the change to the rebuild script
+busts the CI cache automatically.
+
+## Fallback strategy
+
+If the rebuild path is persistently broken (a sustained HuggingFace outage,
+a breaking dataset schema change, or repeated CI timeouts), the assets can
+be provisioned from a pre-built release artifact instead of rebuilding
+online:
+
+1. **Build locally** on a machine with the corpus extra and spaCy:
+   ```bash
+   uv sync --extra dev --extra corpus
+   uv run python -m spacy download en_core_web_sm
+   bash scripts/rebuild-tokenizer-data.sh
+   ```
+2. **Bundle and publish** the `data/tokenizer/` directory as a GitHub
+   release artifact:
+   ```bash
+   tar czf tokenizer-data.tar.gz -C data tokenizer
+   gh release create tokenizer-data-v1 tokenizer-data.tar.gz \
+       --title "Tokenizer data v1" \
+       --notes "Pre-built data/tokenizer assets for CI provisioning."
+   ```
+3. **Consume in CI** by replacing the rebuild step with an artifact download
+   (in `.github/workflows/ci.yml`, inside the cache-miss branch):
+   ```yaml
+   - name: Download tokenizer data (fallback)
+     if: steps.cache-tokenizer.outputs.cache-hit != 'true'
+     run: |
+       gh release download tokenizer-data-v1 \
+         --pattern tokenizer-data.tar.gz
+       tar xzf tokenizer-data.tar.gz -C data
+     env:
+       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+   ```
+
+This trades a runtime rebuild for a manual publish step, but removes all
+external-service dependencies from the critical CI path. Bump the release
+tag (`tokenizer-data-v2`, …) whenever the pipeline changes.
+
+## Reducing rebuild time
+
+The `--samples` flag controls how many SimpleStories stories feed the
+pipeline. The default is `20000`; reducing it for a CI-specific rebuild
+(e.g. `--samples 5000`) shortens both the corpus download and the spaCy
+analysis stage, the two slowest steps.
+
+**Tradeoff.** A smaller corpus produces slightly different BPE merge ranks
+and a slightly different tagged grammar. This is **acceptable for CI test
+coverage** because the test suite validates encode/decode *behaviour*
+(tok_length round-trips, vocab lookups, grammar tag presence) rather than
+the *exact* vocabulary. The artefacts would differ from a full 20K-sample
+build, so a reduced-sample cache key should be distinct (bump
+`.cache-version`).
+
+Do **not** change the default `--samples 20000` — that is the production
+quality-of-output setting. CI-specific reduction is opt-in via the CLI flag
+or a dedicated workflow invocation.
+
+## Monitoring & troubleshooting
+
+When a CI run fails on the rebuild path, the failure signature identifies
+the stage:
+
+| Failure signature | Likely cause | Diagnostic steps |
+|-------------------|--------------|------------------|
+| `ConnectionError` / `HTTP 429` in the Step 1 (corpus download) log, retried 3× then failed | HuggingFace rate limit or outage | Check the [HF status page](https://status.huggingface.co). The retry-with-backoff absorbs short blips; a sustained 429 indicates the dataset revision pin or a longer backoff is needed. Unauthenticated requests are rate-limited — consider setting `HF_TOKEN` in CI secrets for higher limits. |
+| `spacy download` fails, retries 3×, then `spacy.load('en_core_web_sm')` raises `OSError: [E050]` | spaCy model host (GitHub Releases wheel) unavailable | The retry loop absorbs transient errors. If persistent, the model can be installed from the spaCy GitHub release directly, or use the release-artifact fallback above. |
+| Job killed at the 20-minute `timeout-minutes` ceiling | Slow runner + full rebuild exceeded budget | Inspect which stage was mid-flight when the job was cancelled. If the spaCy stage (Step 3) is the bottleneck, consider `--samples 5000` or bump `timeout-minutes` to `25`. |
+| Cache always misses (rebuild every run) | Cache key includes a file that changes every commit | Verify none of the hashed files (`scripts/rebuild-tokenizer-data.sh`, `dev/nlp/*.py`, `.cache-version`) are being modified unintentionally. Check `actions/cache` post-step for save errors. |
+
+**Note on streaming mode + HF Hub cache.** The corpus download uses HF
+streaming mode (`streaming=True`). The `~/.cache/huggingface` cache layer
+reuses dataset metadata and file pointers but does **not** cache the
+streamed data rows themselves. If this proves insufficient — e.g. the
+metadata re-fetch still trips rate limits — switching to non-streaming mode
+(which caches the full dataset locally) is a follow-up option (tracked
+separately; it is a behavioural change with different caching
+characteristics).

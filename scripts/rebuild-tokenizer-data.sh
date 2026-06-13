@@ -26,6 +26,10 @@ CORPUS_STEM="simplestories-1"
 TOKENIZER_NAME="tokenizer-${VOCAB_SIZE}"
 OUTPUT_DIR="data/tokenizer"
 
+# Pinned HuggingFace dataset revision for reproducible corpus downloads.
+# Commit SHA looked up from the HF Hub API (see dev/nlp/download_corpus.py).
+HF_REVISION="e63b8adc3b1a1bdc7cac5b500d150b71346b0628"
+
 # ── Args ──────────────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -34,9 +38,10 @@ while [[ $# -gt 0 ]]; do
     --spacy-model)   SPACY_MODEL="$2";  shift 2 ;;
     --output)        OUTPUT_DIR="$2";   shift 2 ;;
     --stem)          CORPUS_STEM="$2";  shift 2 ;;
+    --hf-revision)   HF_REVISION="$2";  shift 2 ;;
     -h|--help)
       echo "Usage: $0 [--samples N] [--vocab-size SIZE] [--spacy-model MODEL]"
-      echo "       [--output DIR] [--stem NAME]"
+      echo "       [--output DIR] [--stem NAME] [--hf-revision SHA]"
       exit 0 ;;
     *) echo "Unknown argument: $1" >&2; exit 1 ;;
   esac
@@ -55,25 +60,10 @@ echo ""
 echo "▶ Step 1/4: Downloading ${SAMPLES} stories from SimpleStories/SimpleStories …"
 mkdir -p "${OUTPUT_DIR}"
 
-uv run python -c "
-import json
-from datasets import load_dataset
-
-ds = load_dataset('SimpleStories/SimpleStories', split='train', streaming=True)
-stories = []
-for i, row in enumerate(ds):
-    stories.append({'summary': row['story']})
-    if (i + 1) % 5000 == 0:
-        print(f'  {i+1:,} stories downloaded …')
-    if i + 1 >= ${SAMPLES}:
-        break
-
-with open('${CORPUS_JSON}', 'w') as f:
-    json.dump(stories, f)
-
-chars = sum(len(s['summary']) for s in stories)
-print(f'  ✓ {len(stories):,} stories ({chars:,} chars) → ${CORPUS_JSON}')
-"
+uv run python -m dev.nlp.download_corpus \
+    --output "${CORPUS_JSON}" \
+    --samples "${SAMPLES}" \
+    --revision "${HF_REVISION}"
 
 # ── Step 2: Train BPE tokenizer ─────────────────────────────────────────────
 echo ""

@@ -177,7 +177,11 @@ files (`scripts/rebuild-tokenizer-data.sh`, `dev/nlp/*.py`) and a
 `data/tokenizer/.cache-version` stamp. On a cache hit the 34 MB of assets
 restore in seconds; on a miss CI runs the full rebuild (HuggingFace download →
 BPE train → spaCy analysis → vocab tagging, ~7–15 min) and caches the result.
-To force a rebuild, bump `.cache-version` (e.g. `v1` → `v2`).
+To force a rebuild, bump `.cache-version` (e.g. `v1` → `v2`). The rebuild
+path is hardened against external-service flakiness: the corpus download
+retries with exponential backoff and pins a dataset revision, the spaCy
+model download retries on transient host errors, and an HF Hub cache layer
+reduces redundant API calls.
 
 See [`.github/workflows/provision-tokenizer-data/README.md`](.github/workflows/provision-tokenizer-data/README.md)
 for the full cache-strategy rationale.
