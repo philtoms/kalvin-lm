@@ -13,6 +13,7 @@ from kalvin.agent import Cogitator, KAgent, WorkItem
 from kalvin.events import EventBus
 from kalvin.kline import KLine
 from kalvin.model import Model
+from kalvin.signature import make_signature
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -163,37 +164,82 @@ class TestProcessingFlag:
 
 class TestNoCrossLessonSpillover:
     def test_drain_between_lessons_prevents_spillover(self):
-        """DRN-6: Events from lesson N don't affect lesson N+1 budget.
+        """DRN-6: Lesson-N cogitation drains fully before lesson N+1 begins.
 
-        Simulates two "lessons" — the first triggers slow-path cogitation,
-        then a drain ensures all events are processed before the second
-        lesson starts. Verifies the second lesson starts with a clean slate.
+        Submits real S2 work items in "lesson 1", drains the cogitator, then
+        verifies the backlog is empty and the cogitator remains healthy for a
+        subsequent lesson whose signature shares zero bits with lesson 1.
         """
-        from harness.adapter import KAgentAdapter
-        from harness.bus import MessageBus
-
-        # This is a high-level integration test.
-        # We'll use the bus, adapter, and trainer together.
-        bus = MessageBus()
-
-        # Start bus in background thread
-        bus_thread = threading.Thread(target=bus.run, daemon=True)
-        bus_thread.start()
+        events: list = []
+        bus = EventBus()
+        agent = KAgent(adapter=bus)
+        bus.subscribe(lambda e: events.append(e))
 
         try:
-            # Wire adapter + agent
-            adapter = KAgentAdapter(bus, role="trainee")
-            agent = KAgent(adapter=adapter)
-            adapter.bind(agent)
+            # ── Lesson 1: add a candidate, rationalise a query that routes S2 ──
+            # Candidate signature 5 = 0b00101.
+            agent.model.add_ltm(KLine(5, [10, 30]))
 
-            # Verify via the adapter that drain completes.
-            # The key assertion: after drain, the cogitator backlog is empty.
+            # Query signature 30 = 10 | 20 = 0b11110 — shares bit 2 with the
+            # candidate, so Model.where() finds it and routing classifies S2
+            # (node 10 overlaps, node 20 doesn't).
+            q = KLine(0, [10, 20])
+            q.signature = make_signature([10, 20])
+            agent.rationalise(q)
+
+            # The S2 candidate was submitted to the cogitator (not an
+            # empty-backlog no-op like the old stub).
+            assert len(agent.cogitator._backlog) > 0
+
             result = agent.cogitate_drain(timeout=5.0)
             assert result is True
 
+            # Drain emptied the backlog and cleared the processing flag —
+            # no lesson-N work remains to spill into lesson N+1.
+            assert len(agent.cogitator._backlog) == 0
+            assert agent.cogitator._processing is False
+
+            # Real cogitation happened (events were captured), proving the
+            # drain waited for actual work to complete.
+            assert len(events) > 0
+
+            # ── Lesson 2: verify cogitator health post-drain ──
+            # Signature 64 = 0b1000000 shares zero bits with lesson-1
+            # signatures (5 | 30 = 31 = 0b11111), so it routes S4 (no
+            # candidates) — a clean frame event with no S2/S3 cogitation.
+            events.clear()
+            agent.rationalise(KLine(64, [64]))
+
+            result = agent.cogitate_drain(timeout=5.0)
+            assert result is True
+            assert len(agent.cogitator._backlog) == 0
+            assert len(events) > 0  # S4 frame event emitted
         finally:
-            bus.stop()
-            bus_thread.join(timeout=2.0)
+            agent.cogitate_join(timeout=2.0)
+
+
+# ── DRN-6 (unit): drain empties the backlog ─────────────────────────
+
+
+class TestDrainEmptiesBacklog:
+    def test_drain_empties_backlog_after_work(self):
+        """DRN-6: drain() empties the backlog after processing real work.
+
+        Isolates the core guarantee — a submitted work item is processed and
+        the backlog is empty after drain — at the Cogitator level.
+        """
+        cog = _make_cogitator()
+        try:
+            cog.submit(WorkItem(query=KLine(0x1, []), candidate=KLine(0x2, []), level="S3"))
+
+            result = cog.drain(timeout=5.0)
+            assert result is True
+            assert len(cog._backlog) == 0
+            assert cog._processing is False
+            # Drain does not stop the thread — ready for the next lesson.
+            assert cog._thread.is_alive()
+        finally:
+            cog.join(timeout=2.0)
 
 
 # ── KAgent.cogitate_drain ────────────────────────────────────────────
