@@ -15,12 +15,15 @@ def __getattr__(name: str):
     """Lazy imports matching the participants package convention."""
     if name == "SessionConfig":
         from participants.auto_tune.session import SessionConfig
+
         return SessionConfig
     if name == "SessionDir":
         from participants.auto_tune.session import SessionDir
+
         return SessionDir
     if name == "CLISupervisor":
         from participants.auto_tune.supervisor import CLISupervisor
+
         return CLISupervisor
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

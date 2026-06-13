@@ -16,13 +16,10 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from typing import Sequence
+from collections.abc import Sequence
 
-from participants.auto_tune import lifecycle
-from participants.auto_tune import orchestrate
-from participants.auto_tune import snapshots
+from participants.auto_tune import lifecycle, orchestrate, snapshots
 from participants.auto_tune.session import SessionDir
-
 
 # ---------------------------------------------------------------------------
 # Handler functions
@@ -180,7 +177,9 @@ def build_parser() -> argparse.ArgumentParser:
     # -- events --------------------------------------------------------------
     p_ev = sub.add_parser("events", help="Print events after given sequence")
     p_ev.add_argument("--session", required=True, help="Session codename")
-    p_ev.add_argument("--after", type=int, default=0, help="Return events with seq > N (default: 0)")
+    p_ev.add_argument(
+        "--after", type=int, default=0, help="Return events with seq > N (default: 0)"
+    )
     p_ev.set_defaults(func=_handle_events)
 
     # -- step ----------------------------------------------------------------
@@ -208,8 +207,12 @@ def build_parser() -> argparse.ArgumentParser:
     # -- reset ---------------------------------------------------------------
     p_rst = sub.add_parser("reset", help="Delete curriculum state, truncate events")
     p_rst.add_argument("--session", required=True, help="Session codename")
-    p_rst.add_argument("--fresh-model", action="store_true", default=False,
-                        help="Also delete the Kalvin model file")
+    p_rst.add_argument(
+        "--fresh-model",
+        action="store_true",
+        default=False,
+        help="Also delete the Kalvin model file",
+    )
     p_rst.set_defaults(func=_handle_reset)
 
     # -- teardown -------------------------------------------------------------

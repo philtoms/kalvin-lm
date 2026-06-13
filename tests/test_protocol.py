@@ -35,9 +35,7 @@ class _BusRecorder:
         self.messages.append(msg)
 
 
-async def _start_server(
-    bus: MessageBus, port: int = _TEST_PORT
-) -> tuple[WebSocketProtocol, Any]:
+async def _start_server(bus: MessageBus, port: int = _TEST_PORT) -> tuple[WebSocketProtocol, Any]:
     """Start a test WebSocket server and return (protocol, server)."""
     protocol = WebSocketProtocol(bus)
     server = await websockets.serve(
@@ -334,12 +332,14 @@ class TestMultipleClientsSameRoleFanOut:
             await asyncio.sleep(0.05)
 
             # Send a message to "supervisor" via the bus.
-            bus.send(Message(
-                role="supervisor",
-                action="progress",
-                message="50%",
-                sender="trainer",
-            ))
+            bus.send(
+                Message(
+                    role="supervisor",
+                    action="progress",
+                    message="50%",
+                    sender="trainer",
+                )
+            )
             await asyncio.sleep(0.1)
 
             # Both clients should receive the message.
@@ -386,12 +386,14 @@ class TestDisconnectOneOfTwoSameRole:
             await asyncio.sleep(0.05)
 
             # Send a message to "supervisor" via the bus.
-            bus.send(Message(
-                role="supervisor",
-                action="event",
-                message="still alive",
-                sender="trainer",
-            ))
+            bus.send(
+                Message(
+                    role="supervisor",
+                    action="event",
+                    message="still alive",
+                    sender="trainer",
+                )
+            )
             await asyncio.sleep(0.1)
 
             # ws2 should still receive.

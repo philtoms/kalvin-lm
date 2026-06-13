@@ -1,8 +1,8 @@
 """Tests for abstract.py — verify remaining ABCs are intact after KModel/KAgent deletion."""
 
 import pytest
+
 from kalvin.abstract import KTokenizer
-from kalvin.kline import KLine, KNode, KSig
 
 
 class TestExports:
@@ -10,10 +10,12 @@ class TestExports:
 
     def test_kmodel_not_in_all(self):
         from kalvin import abstract
+
         assert "KModel" not in abstract.__all__
 
     def test_ktokenizer_in_all(self):
         from kalvin import abstract
+
         assert "KTokenizer" in abstract.__all__
 
 
@@ -30,4 +32,5 @@ class TestNoKModelAttribute:
 
     def test_kmodel_not_accessible(self):
         from kalvin import abstract
+
         assert not hasattr(abstract, "KModel")

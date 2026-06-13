@@ -164,6 +164,9 @@ uv run ruff format .             # Format code
 uv run ruff check .              # Lint
 ```
 
+Both `ruff check .` and `ruff format --check .` are enforced as **hard CI
+gates** — a lint or format failure will fail the build.
+
 ### CI
 
 GitHub Actions runs the full test suite on every push and pull request

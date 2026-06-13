@@ -9,19 +9,17 @@ Spec ref: specs/training-log.md TL-1 through TL-20
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
 from harness.adapter import KAgentAdapter
 from harness.bus import MessageBus
-from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
+from harness.constants import TRAINEE_ROLE, TRAINER_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX
 from kalvin.kline import KDbg, KLine
-from ks import KLine
 from trainer.curriculum import Curriculum
 from trainer.curriculum_document import CurriculumDocument, Lesson
 from trainer.reactor import Reactor
@@ -30,7 +28,7 @@ from trainer.trainer import Trainer
 # ── Significance constants ────────────────────────────────────────────
 
 _S1_SIGNIFICANCE = D_MAX - 1  # S1 threshold
-_S2_SIGNIFICANCE = ((~100) & 0xFFFF_FFFF_FFFF_FFFF)  # S2 at distance 100
+_S2_SIGNIFICANCE = (~100) & 0xFFFF_FFFF_FFFF_FFFF  # S2 at distance 100
 _S2_DISTANCE = 100  # raw distance for assertions
 
 
@@ -67,9 +65,7 @@ def _drain(trainer: Trainer) -> None:
     ``_submit_next_lesson`` / ``_handle_drained``).  In the unit tests
     there is no real cogitator, so we inject the reply directly.
     """
-    trainer.on_message(
-        Message(role="adapter", action="drained", message=None)
-    )
+    trainer.on_message(Message(role="adapter", action="drained", message=None))
 
 
 class BusCapture:
@@ -134,7 +130,8 @@ class TestTrainerLogging:
         trainer.start_session()
 
         assert any(
-            "Session started" in r.message and "3 lessons" in r.message
+            "Session started" in r.message
+            and "3 lessons" in r.message
             and "curricula/test.md" in r.message
             for r in caplog.records
         )
@@ -150,10 +147,7 @@ class TestTrainerLogging:
         trainer.start_session()
         _drain(trainer)
 
-        assert any(
-            "Submitting lesson 1 (1/3)" in r.message
-            for r in caplog.records
-        )
+        assert any("Submitting lesson 1 (1/3)" in r.message for r in caplog.records)
 
     def test_lesson_submit_debug_kscript(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-3: Lesson submit logs KScript source at DEBUG level."""
@@ -165,10 +159,7 @@ class TestTrainerLogging:
         trainer.start_session()
         _drain(trainer)
 
-        assert any(
-            r.levelno == logging.DEBUG and "kscript:" in r.message
-            for r in caplog.records
-        )
+        assert any(r.levelno == logging.DEBUG and "kscript:" in r.message for r in caplog.records)
 
     def test_compiled_entry_count_log(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-4: Compiled entry count logged after compilation."""
@@ -181,8 +172,7 @@ class TestTrainerLogging:
         _drain(trainer)
 
         assert any(
-            "Compiled" in r.message and "entries for lesson" in r.message
-            for r in caplog.records
+            "Compiled" in r.message and "entries for lesson" in r.message for r in caplog.records
         )
 
     def test_s1_fast_path_log(self, caplog: pytest.LogCaptureFixture) -> None:
@@ -201,10 +191,7 @@ class TestTrainerLogging:
         event = _make_event("ground", query, significance=_S1_SIGNIFICANCE)
         trainer.on_message(Message(role=TRAINEE_ROLE, action="ground", message=event))
 
-        assert any(
-            "S1 (fast path)" in r.message
-            for r in caplog.records
-        )
+        assert any("S1 (fast path)" in r.message for r in caplog.records)
 
     def test_s2_significance_log(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-6: S2/S3 events log with normalised significance and proposal."""
@@ -220,10 +207,7 @@ class TestTrainerLogging:
         event = _make_event("frame", query, proposal=proposal, significance=_S2_SIGNIFICANCE)
         trainer.on_message(Message(role=TRAINEE_ROLE, action="frame", message=event))
 
-        assert any(
-            f"→ {_S2_DISTANCE}" in r.message
-            for r in caplog.records
-        )
+        assert any(f"→ {_S2_DISTANCE}" in r.message for r in caplog.records)
 
     def test_decompile_fallback_repr(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-7: Decompilation failure falls back to repr()."""
@@ -240,10 +224,7 @@ class TestTrainerLogging:
         trainer.on_message(Message(role=TRAINEE_ROLE, action="ground", message=event))
 
         # Should log without raising — the message just contains repr output
-        assert any(
-            "GROUND" in r.message or "FRAME" in r.message
-            for r in caplog.records
-        )
+        assert any("GROUND" in r.message or "FRAME" in r.message for r in caplog.records)
 
     def test_lesson_complete_log(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-8: Lesson complete logs satisfaction counts."""
@@ -264,10 +245,7 @@ class TestTrainerLogging:
         trainer._state.mark_satisfied(key)
         trainer._check_lesson_complete()
 
-        assert any(
-            "complete" in r.message and "satisfied" in r.message
-            for r in caplog.records
-        )
+        assert any("complete" in r.message and "satisfied" in r.message for r in caplog.records)
 
     def test_curriculum_complete_log(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-9: Curriculum complete logged at INFO level."""
@@ -285,10 +263,7 @@ class TestTrainerLogging:
         # complete" log fires inside _do_submit_lesson once drained.
         _drain(trainer)
 
-        assert any(
-            "Curriculum complete" in r.message
-            for r in caplog.records
-        )
+        assert any("Curriculum complete" in r.message for r in caplog.records)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -301,13 +276,17 @@ class TestReactorLogging:
 
     def _make_reactor(self, bus: MessageBus, *, max_rounds: int = 5, cogitate_fn=None) -> Reactor:
         doc = CurriculumDocument(
-            objective="test", approach="test",
+            objective="test",
+            approach="test",
             lessons=[Lesson(label="1", prose="test", kscript=["M"])],
         )
         curriculum = Curriculum(doc)
         from trainer.curriculum import CurriculumState
+
         cs = CurriculumState(curriculum)
-        return Reactor(bus, cs, role=TRAINER_ROLE, max_reactive_rounds=max_rounds, cogitate_fn=cogitate_fn)
+        return Reactor(
+            bus, cs, role=TRAINER_ROLE, max_reactive_rounds=max_rounds, cogitate_fn=cogitate_fn
+        )
 
     def test_auto_countersign_match_log(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-10: Auto-countersign match logged at INFO."""
@@ -347,10 +326,7 @@ class TestReactorLogging:
 
         # Just check the log appeared — the miss is logged before escalation
 
-        assert any(
-            r.levelno == logging.DEBUG and "no match" in r.message
-            for r in caplog.records
-        )
+        assert any(r.levelno == logging.DEBUG and "no match" in r.message for r in caplog.records)
 
     def test_reactive_scaffolding_log(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-12: Reactive scaffolding logged with round, confidence, source."""
@@ -371,8 +347,7 @@ class TestReactorLogging:
         reactor.process_s2_s3(event)
 
         assert any(
-            "Reactive scaffolding" in r.message and "0.85" in r.message
-            for r in caplog.records
+            "Reactive scaffolding" in r.message and "0.85" in r.message for r in caplog.records
         )
 
     def test_cogitation_failure_warning(self, caplog: pytest.LogCaptureFixture) -> None:
@@ -394,8 +369,7 @@ class TestReactorLogging:
         reactor.process_s2_s3(event)
 
         assert any(
-            r.levelno == logging.WARNING and "no scaffolding" in r.message
-            for r in caplog.records
+            r.levelno == logging.WARNING and "no scaffolding" in r.message for r in caplog.records
         )
 
     def test_budget_exhaustion_warning(self, caplog: pytest.LogCaptureFixture) -> None:
@@ -414,8 +388,7 @@ class TestReactorLogging:
         reactor.process_s2_s3(event)
 
         assert any(
-            r.levelno == logging.WARNING and "budget exhausted" in r.message
-            for r in caplog.records
+            r.levelno == logging.WARNING and "budget exhausted" in r.message for r in caplog.records
         )
 
     def test_escalation_error_log(self, caplog: pytest.LogCaptureFixture) -> None:
@@ -433,10 +406,7 @@ class TestReactorLogging:
         event = _make_event("frame", proposal, proposal=proposal, significance=_S2_SIGNIFICANCE)
         reactor.process_s2_s3(event)
 
-        assert any(
-            r.levelno == logging.ERROR and "Escalation" in r.message
-            for r in caplog.records
-        )
+        assert any(r.levelno == logging.ERROR and "Escalation" in r.message for r in caplog.records)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -463,14 +433,17 @@ class TestAdapterLogging:
         adapter = self._make_adapter(bus)
         caplog.set_level(logging.INFO, logger="harness.adapter")
 
-        adapter.on_message(Message(
-            role=TRAINER_ROLE, action="submit", message="M",
-            sender=TRAINER_ROLE,
-        ))
+        adapter.on_message(
+            Message(
+                role=TRAINER_ROLE,
+                action="submit",
+                message="M",
+                sender=TRAINER_ROLE,
+            )
+        )
 
         assert any(
-            "Submitting" in r.message and "compiled entries" in r.message
-            for r in caplog.records
+            "Submitting" in r.message and "compiled entries" in r.message for r in caplog.records
         )
 
     def test_compilation_error_log(self, caplog: pytest.LogCaptureFixture) -> None:
@@ -481,14 +454,17 @@ class TestAdapterLogging:
         caplog.set_level(logging.ERROR, logger="harness.adapter")
 
         # Send invalid KScript
-        adapter.on_message(Message(
-            role=TRAINER_ROLE, action="submit", message="!!!invalid!!!",
-            sender=TRAINER_ROLE,
-        ))
+        adapter.on_message(
+            Message(
+                role=TRAINER_ROLE,
+                action="submit",
+                message="!!!invalid!!!",
+                sender=TRAINER_ROLE,
+            )
+        )
 
         assert any(
-            r.levelno == logging.ERROR and "Compilation error" in r.message
-            for r in caplog.records
+            r.levelno == logging.ERROR and "Compilation error" in r.message for r in caplog.records
         )
 
     def test_countersign_log(self, caplog: pytest.LogCaptureFixture) -> None:
@@ -499,12 +475,13 @@ class TestAdapterLogging:
         caplog.set_level(logging.INFO, logger="harness.adapter")
 
         kline = KLine(signature=256, nodes=[8192])
-        adapter.on_message(Message(
-            role=TRAINER_ROLE, action="countersign", message=kline,
-            sender=TRAINER_ROLE,
-        ))
-
-        assert any(
-            "Countersign" in r.message
-            for r in caplog.records
+        adapter.on_message(
+            Message(
+                role=TRAINER_ROLE,
+                action="countersign",
+                message=kline,
+                sender=TRAINER_ROLE,
+            )
         )
+
+        assert any("Countersign" in r.message for r in caplog.records)

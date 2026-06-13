@@ -9,11 +9,11 @@ See specs/model.md for the full specification.
 
 from __future__ import annotations
 
-from typing import Callable, Iterator
+from collections.abc import Callable, Iterator
 
 from kalvin.kline import KLine, KSig
-from kalvin.stm import STM
 from kalvin.signature import make_signature, signifies
+from kalvin.stm import STM
 
 
 class KLineStore:
@@ -245,8 +245,7 @@ class Model:
     # ── Storage Operations ────────────────────────────────────────────
 
     def add_stm(self, kline: KLine) -> None:
-        """Write to STM only. Always refreshes FIFO (remove-if-present then add).
-        """
+        """Write to STM only. Always refreshes FIFO (remove-if-present then add)."""
         self._stm.add(kline)
 
     def add_frame(self, kline: KLine) -> None:
@@ -331,8 +330,6 @@ class Model:
             sig = predicate
             return [kl for kl in self.klines() if signifies(kl.signature, sig)]
         return [kl for kl in self.klines() if predicate(kl)]
-
-
 
     # ── Graph Traversal ───────────────────────────────────────────────
 
@@ -422,8 +419,6 @@ class Model:
         """Iterate all KLines currently in the STM, in insertion order."""
         return self._stm.iter_all()
 
-
-
     # ── Compatibility ─────────────────────────────────────────────────
 
     def find_kline(self, signature: KSig) -> KLine | None:
@@ -440,8 +435,7 @@ class Model:
 
     def duplicate(self) -> Model:
         """Create a duplicate of this model's frame."""
-        klines = [KLine(kl.signature, list(kl.nodes), kl.dbg)
-                   for kl in self._frame.all_klines()]
+        klines = [KLine(kl.signature, list(kl.nodes), kl.dbg) for kl in self._frame.all_klines()]
         m = Model()
         for kl in klines:
             m.add_frame(kl)

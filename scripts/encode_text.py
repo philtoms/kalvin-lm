@@ -8,14 +8,15 @@ Can optionally load and extend an existing agent.
 """
 
 import argparse
-import re
-import sys
-import signal
-from pathlib import Path
-from tqdm import tqdm
-import pyarrow.parquet as pq
-from typing import Iterator
 import json
+import re
+import signal
+import sys
+from collections.abc import Iterator
+from pathlib import Path
+
+import pyarrow.parquet as pq
+from tqdm import tqdm
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -25,10 +26,10 @@ from kalvin.events import EventBus
 from kalvin.kline import KLine
 from kalvin.signature import make_signature
 
-
 # Global state for interrupt handling
 _interrupted = False
-_signalled = False;
+_signalled = False
+
 
 def signal_handler(signum, frame):
     """Handle Ctrl+C gracefully."""
@@ -41,7 +42,8 @@ def signal_handler(signum, frame):
         _interrupted = False
         _signalled = True
         raise Exception("Already signalled - closing")
-    
+
+
 def split_into_sentences(text: str) -> list[str]:
     """Split text into sentences using simple regex-based splitting.
 
@@ -53,9 +55,10 @@ def split_into_sentences(text: str) -> list[str]:
     """
     # Split on sentence-ending punctuation followed by space or end of string
     # This is a simple approach; for production use consider nltk.sent_tokenize
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
     # Filter out empty sentences
     return [s.strip() for s in sentences if s.strip()]
+
 
 def stream_text(input_file: str):
 
@@ -83,7 +86,7 @@ def stream_text(input_file: str):
                 text = "\n".join(column)
             elif text_path.suffix == ".json":
                 print(f"Loading {file_path}")
-                with open(text_path,"r") as f:
+                with open(text_path) as f:
                     data = json.load(f)
                     if "summaries" in data:
                         data = data["summaries"]
@@ -94,16 +97,15 @@ def stream_text(input_file: str):
                 text = text_path.read_text(encoding="utf-8")
 
             yield text
-    
+
     return text_iterator()
+
 
 def main():
     # Set up signal handler for graceful interrupt
     signal.signal(signal.SIGINT, signal_handler)
 
-    parser = argparse.ArgumentParser(
-        description="Encode text files into Agent embeddings"
-    )
+    parser = argparse.ArgumentParser(description="Encode text files into Agent embeddings")
     parser.add_argument("-i", "--input_file", default=None, help="Path to the text file to encode")
     parser.add_argument(
         "--agent",
@@ -112,13 +114,15 @@ def main():
     )
 
     parser.add_argument(
-        "-f", "--format",
+        "-f",
+        "--format",
         choices=["binary", "json"],
         default="binary",
         help="Agent format (default: binary)",
     )
     args = parser.parse_args()
     from kalvin.paths import data_dir
+
     _data = data_dir()
     agent_path = args.agent or str(_data / "kalvin.bin")
     input_file = args.input_file or str(_data / "tokenizer" / "simplestories-1.json")
@@ -135,7 +139,6 @@ def main():
         print("\nInitializing new agent...")
         agent = KAgent(adapter=EventBus())
         print(f"Initial agent size: {agent.frame_size():,} KLines")
-
 
     for text in stream_text(input_file):
         if _interrupted:
@@ -163,6 +166,7 @@ def main():
     agent.save(agent_path, format=args.format)
     actual_size = Path(agent_path).stat().st_size
     print(f"Saved: {actual_size / 1024:.1f} KB ({actual_size / 1024 / 1024:.2f} MB)")
+
 
 if __name__ == "__main__":
     main()

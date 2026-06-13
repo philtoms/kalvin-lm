@@ -13,7 +13,8 @@ from trainer.curriculum_document import CurriculumDocument
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 
-SAMPLE_DOCUMENT = CurriculumDocument.from_string(textwrap.dedent("""\
+SAMPLE_DOCUMENT = CurriculumDocument.from_string(
+    textwrap.dedent("""\
     ## Objective
 
     Teach Kalvin basic structure.
@@ -55,9 +56,11 @@ SAMPLE_DOCUMENT = CurriculumDocument.from_string(textwrap.dedent("""\
     ```
     G = H
     ```
-"""))
+""")
+)
 
-MULTI_BLOCK_DOCUMENT = CurriculumDocument.from_string(textwrap.dedent("""\
+MULTI_BLOCK_DOCUMENT = CurriculumDocument.from_string(
+    textwrap.dedent("""\
     ## Objective
 
     Multi-block test.
@@ -89,7 +92,8 @@ MULTI_BLOCK_DOCUMENT = CurriculumDocument.from_string(textwrap.dedent("""\
     ```
     E = F
     ```
-"""))
+""")
+)
 
 
 # ── Curriculum unit tests ─────────────────────────────────────────────
@@ -422,7 +426,8 @@ class TestLabelPersistence:
         # Write the curriculum document to disk
         curriculum_path = tmp_path / "curricula" / "test.md"
         curriculum_path.parent.mkdir(parents=True)
-        curriculum_path.write_text(textwrap.dedent("""\
+        curriculum_path.write_text(
+            textwrap.dedent("""\
             ## Objective
 
             Teach Kalvin basic structure.
@@ -464,7 +469,8 @@ class TestLabelPersistence:
             ```
             G = H
             ```
-        """))
+        """)
+        )
 
         save_file = tmp_path / "state.json"
         data = {
@@ -545,7 +551,8 @@ class TestLabelPersistence:
         # Write curriculum to file
         curriculum_path = tmp_path / "curricula" / "test.md"
         curriculum_path.parent.mkdir(parents=True)
-        curriculum_path.write_text(textwrap.dedent("""\
+        curriculum_path.write_text(
+            textwrap.dedent("""\
             ## Objective
 
             Teach Kalvin basic structure.
@@ -579,7 +586,8 @@ class TestLabelPersistence:
             ```
             E = F
             ```
-        """))
+        """)
+        )
 
         doc = CurriculumDocument.from_file(curriculum_path)
         save_file = tmp_path / "state.json"

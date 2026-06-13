@@ -4,19 +4,13 @@ Covers HRN-7 (Step submits one and halts), HRN-8 (Ratify enabled on
 selection), and HRN-9 (Ratify calls countersign with proposal as-is).
 """
 
-import sys
-from unittest.mock import MagicMock, patch, call
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from kalvin.abstract import KLine
-from ks import KLine
-from ui.kscript.regions.toolbar import ExecutionState
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
-
 from ui.kscript.app import KScriptApp
-
+from ui.kscript.regions.toolbar import ExecutionState
 
 # ── Helpers ───────────────────────────────────────────────────────────
 

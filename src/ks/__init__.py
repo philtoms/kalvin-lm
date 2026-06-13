@@ -62,7 +62,9 @@ class KScript:
         self._tokenizer: KTokenizer = tokenizer or Mod32Tokenizer()
         self._dev = dev
         self._entries: list[KLine] = compile_source(
-            source, tokenizer=self._tokenizer, dev=self._dev,
+            source,
+            tokenizer=self._tokenizer,
+            dev=self._dev,
         )
 
     @property

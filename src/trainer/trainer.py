@@ -112,9 +112,9 @@ class Trainer:
         # Cogitator instance (not ``self``) so that cogitate_fn
         # remains a plain callable.
         if llm_client is not None and cogitate_fn is None:
-            from trainer.cogitation import Cogitator, CogitationRequest, MisfitInfo
             from kalvin.misfit import classify_misfit
             from kalvin.signature import make_signature
+            from trainer.cogitation import CogitationRequest, Cogitator, MisfitInfo
 
             _cogitator = Cogitator(client=llm_client)
             _display_tok = Mod32Tokenizer()
@@ -139,20 +139,26 @@ class Trainer:
                 except Exception:
                     query_src = repr(event.query)
                 try:
-                    proposal_src = kline_display(event.proposal, _display_tok) if event.proposal else "None"
+                    proposal_src = (
+                        kline_display(event.proposal, _display_tok) if event.proposal else "None"
+                    )
                 except Exception:
                     proposal_src = repr(event.proposal) if event.proposal else "None"
 
                 logger.info(
-                    "Cogitate adapter: event query=%r (%s), candidate=%r, "
-                    "proposal=%r (%s)",
-                    event.query, query_src, target, event.proposal, proposal_src,
+                    "Cogitate adapter: event query=%r (%s), candidate=%r, proposal=%r (%s)",
+                    event.query,
+                    query_src,
+                    target,
+                    event.proposal,
+                    proposal_src,
                 )
                 logger.info(
-                    "Cogitate misfit: underfit=%s, overfit=%s, "
-                    "gap=%#x, mask=%#x",
-                    target_underfit, target_overfit,
-                    underfit_gap, overfit_mask,
+                    "Cogitate misfit: underfit=%s, overfit=%s, gap=%#x, mask=%#x",
+                    target_underfit,
+                    target_overfit,
+                    underfit_gap,
+                    overfit_mask,
                 )
 
                 misfit_info = MisfitInfo(
@@ -175,8 +181,7 @@ class Trainer:
 
                 result = _cogitator.cogitate(request)
                 logger.info(
-                    "Cogitate result: scaffolding=%s, confidence=%.2f, "
-                    "reasoning=%s",
+                    "Cogitate result: scaffolding=%s, confidence=%.2f, reasoning=%s",
                     "None" if result.scaffolding is None else result.scaffolding[:80],
                     result.confidence,
                     result.reasoning[:80] if result.reasoning else "",
@@ -330,9 +335,7 @@ class Trainer:
             # (e.g. S1 cogitation event arrived before this S3 expansion)
             key = _entry_key(event.query)
             if self._state.is_satisfied(key):
-                logger.debug(
-                    "S2/S3 event for already-satisfied entry — skipping"
-                )
+                logger.debug("S2/S3 event for already-satisfied entry — skipping")
             else:
                 auto_matched = self._reactor.process_s2_s3(event)
 
@@ -448,10 +451,13 @@ class Trainer:
 
         if self._llm_client is None:
             logger.error("Cannot generate curriculum: no LLM client configured")
-            self._state.log_event("generation_failed", {
-                "goal": goal,
-                "error": "no LLM client configured",
-            })
+            self._state.log_event(
+                "generation_failed",
+                {
+                    "goal": goal,
+                    "error": "no LLM client configured",
+                },
+            )
             return
 
         logger.info("Generating curriculum for goal: %s", goal)
@@ -472,26 +478,35 @@ class Trainer:
             self._load_and_start(curriculum_path)
         except CurriculumGenerationError as exc:
             logger.error("Curriculum generation failed: %s", exc)
-            self._state.log_event("generation_failed", {
-                "goal": goal,
-                "error": str(exc),
-            })
+            self._state.log_event(
+                "generation_failed",
+                {
+                    "goal": goal,
+                    "error": str(exc),
+                },
+            )
             self._polling_for_goal = True
             self._emit_polling_status()
         except CurriculumParseError as exc:
             logger.error("Generated curriculum failed to parse: %s", exc)
-            self._state.log_event("generation_failed", {
-                "goal": goal,
-                "error": str(exc),
-            })
+            self._state.log_event(
+                "generation_failed",
+                {
+                    "goal": goal,
+                    "error": str(exc),
+                },
+            )
             self._polling_for_goal = True
             self._emit_polling_status()
         except Exception as exc:
             logger.error("Unexpected error during curriculum generation: %s", exc)
-            self._state.log_event("generation_failed", {
-                "goal": goal,
-                "error": str(exc),
-            })
+            self._state.log_event(
+                "generation_failed",
+                {
+                    "goal": goal,
+                    "error": str(exc),
+                },
+            )
             self._polling_for_goal = True
             self._emit_polling_status()
 
@@ -507,10 +522,13 @@ class Trainer:
             # Start session directly (curriculum is now loaded)
             self._session_active = True
             self._session_paused = False
-            self._state.log_event("session_start", {
-                "goal": None,
-                "curriculum_file": str(path),
-            })
+            self._state.log_event(
+                "session_start",
+                {
+                    "goal": None,
+                    "curriculum_file": str(path),
+                },
+            )
             self._emit_progress("started")
             self._submit_next_lesson()
 
@@ -613,9 +631,12 @@ class Trainer:
                 if new_labels != old_labels:
                     added = new_labels - old_labels
                     if added:
-                        self._state.log_event("amendment_detected", {
-                            "new_labels": sorted(added),
-                        })
+                        self._state.log_event(
+                            "amendment_detected",
+                            {
+                                "new_labels": sorted(added),
+                            },
+                        )
                         self._emit_progress("amended")
 
                 # Update curriculum, preserving position
@@ -761,9 +782,12 @@ class Trainer:
                 lesson = kwargs.get("lesson")
                 if lesson and isinstance(lesson, Lesson):
                     doc.amend(action, **kwargs)
-                    self._state.log_event("amendment_applied", {
-                        "action": action,
-                    })
+                    self._state.log_event(
+                        "amendment_applied",
+                        {
+                            "action": action,
+                        },
+                    )
                     self._emit_progress("amended")
                     # Re-read to pick up changes
                     self._poll_curriculum_file()
@@ -785,7 +809,10 @@ class Trainer:
         rather than reactor event counts, because cogitation can produce
         multiple events per entry (initial + expansions).
         """
-        if len(self._state.satisfied) >= len(self._state.submitted) and len(self._state.submitted) > 0:
+        if (
+            len(self._state.satisfied) >= len(self._state.submitted)
+            and len(self._state.submitted) > 0
+        ):
             # Guard: skip if lesson already completed (cogitation events
             # arrive after lesson completion fires — don't re-fire)
             current_lesson = self._state.curriculum.current_lesson()
@@ -847,7 +874,6 @@ class Trainer:
         Resets curriculum position, all tracking sets, and the reactor,
         then starts a fresh session with the current curriculum.
         """
-        was_active = self._session_active
 
         # End current session (without processing queued goals)
         self._session_active = False

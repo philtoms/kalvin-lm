@@ -37,17 +37,26 @@ parent scope's last node and the child scope's signature.
 
 from __future__ import annotations
 
-from ks.ast import Annotation, Block, ConstructItem, KScriptFile, OperatorScope, ScopeItem, Signature
+from ks.ast import (
+    Annotation,
+    Block,
+    ConstructItem,
+    KScriptFile,
+    OperatorScope,
+    ScopeItem,
+    Signature,
+)
 from ks.token import Token, TokenType
 
-
 # Operator token types that create scope boundaries
-_OPERATOR_TYPES: frozenset[TokenType] = frozenset({
-    TokenType.COUNTERSIGN,
-    TokenType.CANONIZE,
-    TokenType.CONNOTATE,
-    TokenType.UNDERSIGN,
-})
+_OPERATOR_TYPES: frozenset[TokenType] = frozenset(
+    {
+        TokenType.COUNTERSIGN,
+        TokenType.CANONIZE,
+        TokenType.CONNOTATE,
+        TokenType.UNDERSIGN,
+    }
+)
 
 
 class ParseError(Exception):
@@ -154,7 +163,9 @@ class Parser:
         if not self._at_end() and self._peek().type == TokenType.ANNOTATION:
             ann_tok = self._advance()
             inline_ann = Annotation(
-                text=ann_tok.value, line=ann_tok.line, column=ann_tok.column,
+                text=ann_tok.value,
+                line=ann_tok.line,
+                column=ann_tok.column,
             )
 
         # Operator (optional — bare signature if absent)
@@ -204,8 +215,7 @@ class Parser:
             tok = self._peek()
 
             # End-of-line / end-of-scope markers
-            if tok.type in (TokenType.NEWLINE, TokenType.INDENT,
-                            TokenType.DEDENT, TokenType.EOF):
+            if tok.type in (TokenType.NEWLINE, TokenType.INDENT, TokenType.DEDENT, TokenType.EOF):
                 break
 
             if tok.type == TokenType.SIGNATURE:
@@ -216,7 +226,9 @@ class Parser:
                     # Bare Signature item
                     sig_tok = self._advance()
                     sig_item = Signature(
-                        id=sig_tok.value, line=sig_tok.line, column=sig_tok.column,
+                        id=sig_tok.value,
+                        line=sig_tok.line,
+                        column=sig_tok.column,
                     )
                     items.append(sig_item)
 
@@ -251,8 +263,7 @@ class Parser:
         i = self.pos + 1  # past the SIGNATURE at self.pos
         while i < len(self.tokens) and self.tokens[i].type == TokenType.ANNOTATION:
             i += 1
-        return (i < len(self.tokens)
-                and self.tokens[i].type in _OPERATOR_TYPES)
+        return i < len(self.tokens) and self.tokens[i].type in _OPERATOR_TYPES
 
     # ------------------------------------------------------------------
     # Token-level helpers
@@ -270,13 +281,11 @@ class Parser:
 
     def _at_end(self) -> bool:
         """True if at or past the EOF token."""
-        return (self.pos >= len(self.tokens)
-                or self.tokens[self.pos].type == TokenType.EOF)
+        return self.pos >= len(self.tokens) or self.tokens[self.pos].type == TokenType.EOF
 
     def _skip_newlines(self) -> None:
         """Advance past any NEWLINE tokens."""
-        while (self.pos < len(self.tokens)
-               and self.tokens[self.pos].type == TokenType.NEWLINE):
+        while self.pos < len(self.tokens) and self.tokens[self.pos].type == TokenType.NEWLINE:
             self.pos += 1
 
     def _expect(self, token_type: TokenType) -> Token:

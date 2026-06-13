@@ -10,7 +10,6 @@ File-based tests (orchestration, snapshot, restore, reset) use real I/O.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import threading
 import time
@@ -20,8 +19,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from participants.auto_tune.cli import main
-from participants.auto_tune.session import SessionConfig
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -238,9 +235,7 @@ class TestAT06StartSupervisor:
     """AT-6: ``start-supervisor`` starts the CLI supervisor process."""
 
     @patch("participants.auto_tune.cli.lifecycle")
-    def test_start_supervisor_invoked(
-        self, mock_lifecycle: MagicMock, auto_tune_env: Path
-    ) -> None:
+    def test_start_supervisor_invoked(self, mock_lifecycle: MagicMock, auto_tune_env: Path) -> None:
         _init_session()
         main(["start-supervisor", "--session", "test-sess"])
         mock_lifecycle.start_supervisor.assert_called_once()
@@ -254,7 +249,9 @@ class TestAT06StartSupervisor:
 class TestAT07SendAndEventsRoundTrip:
     """AT-7: Supervisor writes events; CLI reads and prints them."""
 
-    def test_send_and_events_round_trip(self, auto_tune_env: Path, capsys: pytest.CaptureFixture) -> None:
+    def test_send_and_events_round_trip(
+        self, auto_tune_env: Path, capsys: pytest.CaptureFixture
+    ) -> None:
         _init_session()
         sd = _session_dir(auto_tune_env)
 
@@ -319,9 +316,7 @@ class TestAT10StopSupervisor:
     """AT-10: ``stop-supervisor`` stops the CLI supervisor process."""
 
     @patch("participants.auto_tune.cli.lifecycle")
-    def test_stop_supervisor_invoked(
-        self, mock_lifecycle: MagicMock, auto_tune_env: Path
-    ) -> None:
+    def test_stop_supervisor_invoked(self, mock_lifecycle: MagicMock, auto_tune_env: Path) -> None:
         _init_session()
         main(["stop-supervisor", "--session", "test-sess"])
         mock_lifecycle.stop_supervisor.assert_called_once()
@@ -409,9 +404,7 @@ class TestAT13EventsDisconnect:
         sd = _session_dir(auto_tune_env)
 
         # Write a status.json
-        (sd / "status.json").write_text(
-            json.dumps({"last_event_seq": 0}) + "\n", encoding="utf-8"
-        )
+        (sd / "status.json").write_text(json.dumps({"last_event_seq": 0}) + "\n", encoding="utf-8")
 
         # Write a disconnected event
         disconnected_event = {"seq": 1, "type": "disconnected"}
@@ -502,9 +495,7 @@ class TestAT15EventsAfterFilter:
         sd = _session_dir(auto_tune_env)
 
         # Write status.json
-        (sd / "status.json").write_text(
-            json.dumps({"last_event_seq": 3}) + "\n", encoding="utf-8"
-        )
+        (sd / "status.json").write_text(json.dumps({"last_event_seq": 3}) + "\n", encoding="utf-8")
 
         # Write 3 events
         events = [
@@ -556,9 +547,7 @@ class TestAT16SnapshotCapturesState:
 
         # Commit everything so git is clean
         subprocess.run(["git", "add", "."], cwd=worktree_path, capture_output=True)
-        subprocess.run(
-            ["git", "commit", "-m", "add model"], cwd=worktree_path, capture_output=True
-        )
+        subprocess.run(["git", "commit", "-m", "add model"], cwd=worktree_path, capture_output=True)
 
         main(["snapshot", "--session", "test-sess"])
 
@@ -698,9 +687,7 @@ class TestAT20LifecyclePIDManagement:
     """AT-20: Process lifecycle commands manage PIDs and enforce timeouts."""
 
     @patch("participants.auto_tune.cli.lifecycle")
-    def test_lifecycle_pid_management(
-        self, mock_lifecycle: MagicMock, auto_tune_env: Path
-    ) -> None:
+    def test_lifecycle_pid_management(self, mock_lifecycle: MagicMock, auto_tune_env: Path) -> None:
         _init_session()
 
         # Start harness
@@ -748,7 +735,7 @@ class TestCLIErrorHandling:
     def test_restore_missing_run_shows_error(self, auto_tune_env: Path) -> None:
         """Restore from non-existent run handles gracefully."""
         _init_session()
-        sd = _session_dir(auto_tune_env)
+        _session_dir(auto_tune_env)
 
         with pytest.raises(FileNotFoundError, match="Run directory not found"):
             main(["restore", "--session", "test-sess", "--run", "99"])

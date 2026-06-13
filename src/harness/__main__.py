@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 # HarnessServer._setup() also calls bus.subscribe() on the factory result.
 # Returning this wrapper avoids double-dispatch of every message.
 
+
 class _AlreadySubscribed:
     """Wrapper returned by factories for participants that self-subscribe.
 
@@ -178,6 +179,7 @@ def main(argv: list[str] | None = None) -> None:
 
     # Create shared tokenizer — NLP if available, Mod32 fallback
     from kalvin.agent import _default_tokenizer as _make_tok
+
     shared_tokenizer = _make_tok()
 
     # KAgent adapter factory (two-phase wiring to avoid circular dep)
@@ -203,7 +205,8 @@ def main(argv: list[str] | None = None) -> None:
         curriculum_file = trainer_cfg.get("curriculum_file", "")
         curricula_dir = trainer_cfg.get("curricula_dir", "curricula")
 
-        # Derive state path from curriculum file: curricula/first-steps.md → curricula/first-steps.json
+        # Derive state path from curriculum file:
+        # curricula/first-steps.md → curricula/first-steps.json
         state_path: str | None = None
         if curriculum_file:
             curriculum_path = Path(curriculum_file)
@@ -213,6 +216,7 @@ def main(argv: list[str] | None = None) -> None:
         curriculum: Curriculum
         if curriculum_file:
             from trainer.curriculum_document import CurriculumDocument
+
             doc = CurriculumDocument.from_file(curriculum_file)
             curriculum = Curriculum(doc)
         else:
@@ -235,9 +239,7 @@ def main(argv: list[str] | None = None) -> None:
 
         # Register state persistence as a shutdown callback
         if state_path:
-            shutdown_callbacks.append(
-                lambda t=trainer: _persist_trainer_state(t)
-            )
+            shutdown_callbacks.append(lambda t=trainer: _persist_trainer_state(t))
 
         return _AlreadySubscribed(trainer)
 
@@ -295,9 +297,7 @@ def _build_llm_client(trainer_cfg: dict) -> Any | None:
     try:
         from trainer.cogitation import OpenAICompatibleClient
 
-        base_url = llm_cfg.get(
-            "base_url", "https://api.z.ai/api/coding/paas/v4"
-        )
+        base_url = llm_cfg.get("base_url", "https://api.z.ai/api/coding/paas/v4")
         model = llm_cfg.get("model", "glm-5.1")
         client = OpenAICompatibleClient(
             api_key=api_key,

@@ -8,8 +8,6 @@ See specs/tokenizer.md for the full specification.
 
 from __future__ import annotations
 
-from typing import Any
-
 from kalvin.abstract import KTokenizer
 
 # ── Default alphabet ──────────────────────────────────────────────────────
@@ -22,9 +20,7 @@ _MOD_ALPHABET = (
 )
 
 
-def _build_char_bit_maps(
-    alphabet: str, modulo: int
-) -> tuple[dict[str, int], dict[int, str]]:
+def _build_char_bit_maps(alphabet: str, modulo: int) -> tuple[dict[str, int], dict[int, str]]:
     """Build character-to-bit and bit-to-character mappings.
 
     Bit 0 is not used for packed nodes (it is clear). Character bits

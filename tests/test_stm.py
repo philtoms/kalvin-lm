@@ -1,9 +1,8 @@
 """Tests for STM — bounded dual-keyed index."""
 
-import pytest
 from kalvin.kline import KLine
-from kalvin.stm import STM
 from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.stm import STM
 
 
 def make_stm(bound: int = 256) -> STM:

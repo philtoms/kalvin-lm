@@ -1,6 +1,5 @@
 """Tests for KLine — specs/kline.md conformance."""
 
-import pytest
 from kalvin.kline import KDbg, KLine, sig_level
 
 
@@ -70,7 +69,7 @@ class TestKLineEquality:
         k = KLine(5, [1])
         assert k != 42
         assert k != "string"
-        assert k != None
+        assert k is not None
 
     def test_empty_klines_equal(self):
         a = KLine(0, [])

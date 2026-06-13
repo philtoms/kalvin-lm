@@ -18,8 +18,7 @@ import yaml
 from harness.bus import MessageBus
 from harness.constants import SUPERVISOR_ROLE, TRAINER_ROLE
 from harness.message import Message
-from harness.server import ConfigError, HarnessConfig, HarnessServer, load_config
-
+from harness.server import ConfigError, HarnessServer, load_config
 
 # -- helpers ---------------------------------------------------------------
 
@@ -113,11 +112,7 @@ class TestConfigValidation:
             load_config(path)
 
     def test_participant_invalid_type(self, tmp_path: Path) -> None:
-        data = {
-            "participants": [
-                {"role": "kalvin", "type": "invalid", "class": "KAgent"}
-            ]
-        }
+        data = {"participants": [{"role": "kalvin", "type": "invalid", "class": "KAgent"}]}
         path = _write_yaml(tmp_path / "bad.yaml", data)
         with pytest.raises(ConfigError, match="invalid type 'invalid'"):
             load_config(path)
@@ -134,11 +129,7 @@ class TestConfigValidation:
             load_config(path)
 
     def test_participant_missing_class(self, tmp_path: Path) -> None:
-        data = {
-            "participants": [
-                {"role": "kalvin", "type": "embedded"}
-            ]
-        }
+        data = {"participants": [{"role": "kalvin", "type": "embedded"}]}
         path = _write_yaml(tmp_path / "bad.yaml", data)
         with pytest.raises(ConfigError, match="missing required 'class'"):
             load_config(path)
@@ -321,11 +312,7 @@ class TestWebSocketClientConnect:
 
             # Client should still be open (no error).
             # Send a ping to verify.
-            await ws.send(
-                json.dumps(
-                    {"role": "kalvin", "action": "submit", "message": "test"}
-                )
-            )
+            await ws.send(json.dumps({"role": "kalvin", "action": "submit", "message": "test"}))
             await asyncio.sleep(0.05)
 
             # Clean disconnect.

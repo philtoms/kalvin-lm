@@ -8,7 +8,6 @@ ordering, but the real guarantee is Step 3's cross-file pytest command:
 """
 
 import sys
-
 from unittest.mock import MagicMock
 
 

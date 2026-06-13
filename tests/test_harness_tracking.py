@@ -5,30 +5,25 @@ and monotonicity of _submitted.
 """
 
 import json
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
-
-from ks import KLine
-
-from kalvin.mod_tokenizer import Mod32Tokenizer
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
 # The UI module has dependencies that may not be available in the test
 # environment.  Patch sys.modules before the first import of ui.kscript.app.
-
 # Ensure kalvin.Agent is importable (kalvin.__init__ doesn't export it)
 import kalvin as _kalvin_pkg
 from kalvin.agent import KAgent as _RealAgent
+from kalvin.mod_tokenizer import Mod32Tokenizer
+from ks import KLine
+
 if not hasattr(_kalvin_pkg, "Agent"):
     _kalvin_pkg.Agent = _RealAgent
 
-from ui.kscript.app import KScriptApp, UI_STATE_FILE
-
+from ui.kscript.app import UI_STATE_FILE, KScriptApp
 
 # ── Helpers ───────────────────────────────────────────────────────────
+
 
 def _make_entry(signature: int, nodes: list[int]) -> KLine:
     """Create a KLine with given signature and nodes."""
@@ -63,6 +58,7 @@ def _make_app() -> KScriptApp:
 
 # ── _entry_key tests ──────────────────────────────────────────────────
 
+
 class TestEntryKey:
     """KScriptApp._entry_key: identity key for KLine."""
 
@@ -85,6 +81,7 @@ class TestEntryKey:
 
 
 # ── _get_pending tests ────────────────────────────────────────────────
+
 
 class TestGetPending:
     """KScriptApp._get_pending: filter entries not in _submitted."""
@@ -119,6 +116,7 @@ class TestGetPending:
 
 # ── action_clear_responses tests ──────────────────────────────────────
 
+
 class TestClearResetsTracking:
     """action_clear_responses resets _submitted and _satisfied."""
 
@@ -139,6 +137,7 @@ class TestClearResetsTracking:
 
 
 # ── save/restore roundtrip ────────────────────────────────────────────
+
 
 class TestSaveRestoreState:
     """_save_state / _restore_state roundtrip for tracking sets."""
@@ -186,6 +185,7 @@ class TestSaveRestoreState:
 
 
 # ── Monotonicity ──────────────────────────────────────────────────────
+
 
 class TestSubmittedMonotonic:
     """_submitted is monotonic — entries once submitted stay submitted."""

@@ -157,9 +157,7 @@ class Lexer:
         if indent < current_indent:
             while len(self.indent_stack) > 1 and self.indent_stack[-1] > indent:
                 self.indent_stack.pop()
-                self.pending_tokens.append(
-                    Token(TokenType.DEDENT, "", self.line, col)
-                )
+                self.pending_tokens.append(Token(TokenType.DEDENT, "", self.line, col))
             return self.pending_tokens.pop(0) if self.pending_tokens else None
 
         return None  # Same indentation — no token needed

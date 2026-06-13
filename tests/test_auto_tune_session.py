@@ -14,7 +14,6 @@ import pytest
 
 from participants.auto_tune.session import SessionConfig, SessionDir
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -106,12 +105,14 @@ class TestSessionConfig:
         assert restored == original
 
     def test_from_dict_ignores_unknown_keys(self) -> None:
-        cfg = SessionConfig.from_dict({
-            "session": "s",
-            "curriculum": "c.md",
-            "harness_url": "ws://x:1",
-            "future_field": "ignored",
-        })
+        cfg = SessionConfig.from_dict(
+            {
+                "session": "s",
+                "curriculum": "c.md",
+                "harness_url": "ws://x:1",
+                "future_field": "ignored",
+            }
+        )
         assert cfg.session == "s"
         assert not hasattr(cfg, "future_field")
 
@@ -175,7 +176,6 @@ class TestSessionDirInit:
             root=tmp_git_repo,
         )
         worktree_path = tmp_git_repo / ".worktrees" / "auto-tune" / "exp-1"
-        session_dir = worktree_path / "auto-tune" / "exp-1"
 
         assert sd.config_path.is_file(), "config.json must exist"
         assert sd.events_path.is_file(), "events.jsonl must exist"
@@ -248,6 +248,7 @@ class TestSessionDirInit:
         assert cfg.created_from_commit == original_commit
         assert cfg.harness_url == "ws://localhost:8765"
         from kalvin.paths import agent_bin as _agent_bin
+
         assert cfg.model_path == str(_agent_bin())
 
     def test_host_port_override(self, tmp_git_repo: Path) -> None:
@@ -289,7 +290,7 @@ class TestSessionDirInit:
 
     def test_init_with_custom_base_dir(self, tmp_git_repo: Path) -> None:
         """init respects custom base_dir parameter."""
-        sd = SessionDir.init(
+        SessionDir.init(
             "exp-7",
             curriculum="curricula/topic.md",
             root=tmp_git_repo,

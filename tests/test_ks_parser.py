@@ -18,10 +18,10 @@ from ks.ast import Annotation, Block, KScriptFile, OperatorScope, Signature
 from ks.parser import ParseError, Parser
 from ks.token import Token, TokenType
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def tok(type_: TokenType, value: str = "", line: int = 1, column: int = 1) -> Token:
     """Shorthand for building a single Token."""
@@ -56,6 +56,7 @@ def parse_tokens(tok_list: list[Token]) -> KScriptFile:
 # KS-10 — Empty source
 # ---------------------------------------------------------------------------
 
+
 class TestKS10EmptySource:
     """KS-10: Empty source produces empty script (no error)."""
 
@@ -66,17 +67,20 @@ class TestKS10EmptySource:
 
     def test_whitespace_only_newlines(self) -> None:
         """Only NEWLINE tokens produce empty constructs."""
-        result = parse_tokens([
-            tok(TokenType.NEWLINE, "\n", 1, 1),
-            tok(TokenType.NEWLINE, "\n", 2, 1),
-            tok(TokenType.EOF, "", 3, 1),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.NEWLINE, "\n", 1, 1),
+                tok(TokenType.NEWLINE, "\n", 2, 1),
+                tok(TokenType.EOF, "", 3, 1),
+            ]
+        )
         assert result == KScriptFile(constructs=[])
 
 
 # ---------------------------------------------------------------------------
 # KS-6 — OperatorScope structure (chained scopes)
 # ---------------------------------------------------------------------------
+
 
 class TestKS6ChainedScopes:
     """KS-6: AST structure reflects scope model with nested OperatorScope nodes."""
@@ -87,21 +91,24 @@ class TestKS6ChainedScopes:
         Structure (nested model per grammar §4 item ::= operator_scope):
             constructs[0]         → OperatorScope(sig=A, op=COUNTERSIGN)
             constructs[0].items[0] → OperatorScope(sig=B, op=CONNOTATE)
-            constructs[0].items[0].items[0] → OperatorScope(sig=C, op=UNDERSIGN, items=[Signature(D)])
+            constructs[0].items[0].items[0] →
+              OperatorScope(sig=C, op=UNDERSIGN, items=[Signature(D)])
 
         Scope rules S2/S3: B is a node in scope A and the signature of scope B.
         C is a node in scope B and the signature of scope C.  D is a node in scope C.
         """
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "A", 1, 1),
-            tok(TokenType.COUNTERSIGN, "==", 1, 3),
-            tok(TokenType.SIGNATURE, "B", 1, 6),
-            tok(TokenType.CONNOTATE, ">", 1, 8),
-            tok(TokenType.SIGNATURE, "C", 1, 10),
-            tok(TokenType.UNDERSIGN, "=", 1, 12),
-            tok(TokenType.SIGNATURE, "D", 1, 14),
-            tok(TokenType.EOF, "", 1, 15),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "A", 1, 1),
+                tok(TokenType.COUNTERSIGN, "==", 1, 3),
+                tok(TokenType.SIGNATURE, "B", 1, 6),
+                tok(TokenType.CONNOTATE, ">", 1, 8),
+                tok(TokenType.SIGNATURE, "C", 1, 10),
+                tok(TokenType.UNDERSIGN, "=", 1, 12),
+                tok(TokenType.SIGNATURE, "D", 1, 14),
+                tok(TokenType.EOF, "", 1, 15),
+            ]
+        )
 
         assert len(result.constructs) == 1
 
@@ -130,14 +137,16 @@ class TestKS6ChainedScopes:
 
     def test_signatures_carry_forward_s2_s3(self) -> None:
         """Verify scope rules S2 (preceding id = sig) and S3 (succeeding id = node)."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "X", 1, 1),
-            tok(TokenType.UNDERSIGN, "=", 1, 3),
-            tok(TokenType.SIGNATURE, "Y", 1, 5),
-            tok(TokenType.CONNOTATE, ">", 1, 7),
-            tok(TokenType.SIGNATURE, "Z", 1, 9),
-            tok(TokenType.EOF, "", 1, 10),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "X", 1, 1),
+                tok(TokenType.UNDERSIGN, "=", 1, 3),
+                tok(TokenType.SIGNATURE, "Y", 1, 5),
+                tok(TokenType.CONNOTATE, ">", 1, 7),
+                tok(TokenType.SIGNATURE, "Z", 1, 9),
+                tok(TokenType.EOF, "", 1, 10),
+            ]
+        )
 
         # S2: X precedes = → X is sig of scope 1
         scope1 = result.constructs[0]
@@ -158,22 +167,25 @@ class TestKS6ChainedScopes:
 # KS-7 — Block parsing
 # ---------------------------------------------------------------------------
 
+
 class TestKS7BlockParsing:
     """KS-7: INDENT/DEDENT creates Block nodes in child_block."""
 
     def test_canonize_with_child_block(self) -> None:
         """Parse 'A =>\\n  B\\n  C' — child_block with Block node."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "A", 1, 1),
-            tok(TokenType.CANONIZE, "=>", 1, 3),
-            tok(TokenType.NEWLINE, "\n", 1, 5),
-            tok(TokenType.INDENT, "", 2, 1),
-            tok(TokenType.SIGNATURE, "B", 2, 3),
-            tok(TokenType.NEWLINE, "\n", 2, 4),
-            tok(TokenType.SIGNATURE, "C", 3, 3),
-            tok(TokenType.DEDENT, "", 4, 1),
-            tok(TokenType.EOF, "", 4, 1),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "A", 1, 1),
+                tok(TokenType.CANONIZE, "=>", 1, 3),
+                tok(TokenType.NEWLINE, "\n", 1, 5),
+                tok(TokenType.INDENT, "", 2, 1),
+                tok(TokenType.SIGNATURE, "B", 2, 3),
+                tok(TokenType.NEWLINE, "\n", 2, 4),
+                tok(TokenType.SIGNATURE, "C", 3, 3),
+                tok(TokenType.DEDENT, "", 4, 1),
+                tok(TokenType.EOF, "", 4, 1),
+            ]
+        )
 
         assert len(result.constructs) == 1
         scope = result.constructs[0]
@@ -200,21 +212,23 @@ class TestKS7BlockParsing:
 
     def test_nested_child_blocks(self) -> None:
         """Two levels of indentation produce nested Blocks."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "A", 1, 1),
-            tok(TokenType.CANONIZE, "=>", 1, 3),
-            tok(TokenType.NEWLINE, "\n", 1, 5),
-            tok(TokenType.INDENT, "", 2, 1),
-            tok(TokenType.SIGNATURE, "B", 2, 3),
-            tok(TokenType.UNDERSIGN, "=", 2, 5),
-            tok(TokenType.SIGNATURE, "C", 2, 7),
-            tok(TokenType.NEWLINE, "\n", 2, 8),
-            tok(TokenType.INDENT, "", 3, 1),
-            tok(TokenType.SIGNATURE, "D", 3, 5),
-            tok(TokenType.DEDENT, "", 4, 1),
-            tok(TokenType.DEDENT, "", 4, 1),
-            tok(TokenType.EOF, "", 4, 1),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "A", 1, 1),
+                tok(TokenType.CANONIZE, "=>", 1, 3),
+                tok(TokenType.NEWLINE, "\n", 1, 5),
+                tok(TokenType.INDENT, "", 2, 1),
+                tok(TokenType.SIGNATURE, "B", 2, 3),
+                tok(TokenType.UNDERSIGN, "=", 2, 5),
+                tok(TokenType.SIGNATURE, "C", 2, 7),
+                tok(TokenType.NEWLINE, "\n", 2, 8),
+                tok(TokenType.INDENT, "", 3, 1),
+                tok(TokenType.SIGNATURE, "D", 3, 5),
+                tok(TokenType.DEDENT, "", 4, 1),
+                tok(TokenType.DEDENT, "", 4, 1),
+                tok(TokenType.EOF, "", 4, 1),
+            ]
+        )
 
         scope_a = result.constructs[0]
         assert scope_a.child_block is not None
@@ -235,18 +249,20 @@ class TestKS7BlockParsing:
 
     def test_items_with_child_block(self) -> None:
         """'A == B\\n  C\\n  D' — items on same line plus child block."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "A", 1, 1),
-            tok(TokenType.COUNTERSIGN, "==", 1, 3),
-            tok(TokenType.SIGNATURE, "B", 1, 6),
-            tok(TokenType.NEWLINE, "\n", 1, 7),
-            tok(TokenType.INDENT, "", 2, 1),
-            tok(TokenType.SIGNATURE, "C", 2, 3),
-            tok(TokenType.NEWLINE, "\n", 2, 4),
-            tok(TokenType.SIGNATURE, "D", 3, 3),
-            tok(TokenType.DEDENT, "", 4, 1),
-            tok(TokenType.EOF, "", 4, 1),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "A", 1, 1),
+                tok(TokenType.COUNTERSIGN, "==", 1, 3),
+                tok(TokenType.SIGNATURE, "B", 1, 6),
+                tok(TokenType.NEWLINE, "\n", 1, 7),
+                tok(TokenType.INDENT, "", 2, 1),
+                tok(TokenType.SIGNATURE, "C", 2, 3),
+                tok(TokenType.NEWLINE, "\n", 2, 4),
+                tok(TokenType.SIGNATURE, "D", 3, 3),
+                tok(TokenType.DEDENT, "", 4, 1),
+                tok(TokenType.EOF, "", 4, 1),
+            ]
+        )
 
         scope = result.constructs[0]
         assert scope.sig.id == "A"
@@ -263,19 +279,22 @@ class TestKS7BlockParsing:
 # KS-8 — Annotations preserved
 # ---------------------------------------------------------------------------
 
+
 class TestKS8AnnotationsPreserved:
     """KS-8: Annotations are preserved as AST nodes, not discarded."""
 
     def test_standalone_annotation_before_scope(self) -> None:
         """(Mary Had A Little Lamb)\\nMHALL == SVO"""
-        result = parse_tokens([
-            tok(TokenType.ANNOTATION, "(Mary Had A Little Lamb)", 1, 1),
-            tok(TokenType.NEWLINE, "\n", 1, 24),
-            tok(TokenType.SIGNATURE, "MHALL", 2, 1),
-            tok(TokenType.COUNTERSIGN, "==", 2, 7),
-            tok(TokenType.SIGNATURE, "SVO", 2, 10),
-            tok(TokenType.EOF, "", 2, 13),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.ANNOTATION, "(Mary Had A Little Lamb)", 1, 1),
+                tok(TokenType.NEWLINE, "\n", 1, 24),
+                tok(TokenType.SIGNATURE, "MHALL", 2, 1),
+                tok(TokenType.COUNTERSIGN, "==", 2, 7),
+                tok(TokenType.SIGNATURE, "SVO", 2, 10),
+                tok(TokenType.EOF, "", 2, 13),
+            ]
+        )
 
         assert len(result.constructs) == 2
 
@@ -291,17 +310,19 @@ class TestKS8AnnotationsPreserved:
 
     def test_annotation_in_child_block(self) -> None:
         """Annotation inside a Block is preserved as a construct."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "A", 1, 1),
-            tok(TokenType.CANONIZE, "=>", 1, 3),
-            tok(TokenType.NEWLINE, "\n", 1, 5),
-            tok(TokenType.INDENT, "", 2, 1),
-            tok(TokenType.ANNOTATION, "(hello)", 2, 3),
-            tok(TokenType.NEWLINE, "\n", 2, 10),
-            tok(TokenType.SIGNATURE, "B", 3, 3),
-            tok(TokenType.DEDENT, "", 4, 1),
-            tok(TokenType.EOF, "", 4, 1),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "A", 1, 1),
+                tok(TokenType.CANONIZE, "=>", 1, 3),
+                tok(TokenType.NEWLINE, "\n", 1, 5),
+                tok(TokenType.INDENT, "", 2, 1),
+                tok(TokenType.ANNOTATION, "(hello)", 2, 3),
+                tok(TokenType.NEWLINE, "\n", 2, 10),
+                tok(TokenType.SIGNATURE, "B", 3, 3),
+                tok(TokenType.DEDENT, "", 4, 1),
+                tok(TokenType.EOF, "", 4, 1),
+            ]
+        )
 
         scope = result.constructs[0]
         assert scope.child_block is not None
@@ -311,13 +332,15 @@ class TestKS8AnnotationsPreserved:
 
     def test_annotation_as_scope_item(self) -> None:
         """Annotation between items is preserved in OperatorScope.items."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "A", 1, 1),
-            tok(TokenType.UNDERSIGN, "=", 1, 3),
-            tok(TokenType.ANNOTATION, "(note)", 1, 5),
-            tok(TokenType.SIGNATURE, "B", 1, 12),
-            tok(TokenType.EOF, "", 1, 13),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "A", 1, 1),
+                tok(TokenType.UNDERSIGN, "=", 1, 3),
+                tok(TokenType.ANNOTATION, "(note)", 1, 5),
+                tok(TokenType.SIGNATURE, "B", 1, 12),
+                tok(TokenType.EOF, "", 1, 13),
+            ]
+        )
 
         scope = result.constructs[0]
         assert isinstance(scope, OperatorScope)
@@ -332,18 +355,21 @@ class TestKS8AnnotationsPreserved:
 # KS-9 — Inline annotation attachment
 # ---------------------------------------------------------------------------
 
+
 class TestKS9InlineAnnotation:
     """KS-9: Inline annotations attach to sig-side and node-side."""
 
     def test_sig_side_inline_annotation(self) -> None:
         """S(ubject) = M — ANNOTATION after SIGNATURE before operator."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "S", 1, 1),
-            tok(TokenType.ANNOTATION, "(ubject)", 1, 2),
-            tok(TokenType.UNDERSIGN, "=", 1, 11),
-            tok(TokenType.SIGNATURE, "M", 1, 13),
-            tok(TokenType.EOF, "", 1, 14),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "S", 1, 1),
+                tok(TokenType.ANNOTATION, "(ubject)", 1, 2),
+                tok(TokenType.UNDERSIGN, "=", 1, 11),
+                tok(TokenType.SIGNATURE, "M", 1, 13),
+                tok(TokenType.EOF, "", 1, 14),
+            ]
+        )
 
         scope = result.constructs[0]
         assert isinstance(scope, OperatorScope)
@@ -356,13 +382,15 @@ class TestKS9InlineAnnotation:
 
     def test_node_side_inline_annotation(self) -> None:
         """A = D(et) — ANNOTATION after SIGNATURE that is an item."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "A", 1, 1),
-            tok(TokenType.UNDERSIGN, "=", 1, 3),
-            tok(TokenType.SIGNATURE, "D", 1, 5),
-            tok(TokenType.ANNOTATION, "(et)", 1, 6),
-            tok(TokenType.EOF, "", 1, 10),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "A", 1, 1),
+                tok(TokenType.UNDERSIGN, "=", 1, 3),
+                tok(TokenType.SIGNATURE, "D", 1, 5),
+                tok(TokenType.ANNOTATION, "(et)", 1, 6),
+                tok(TokenType.EOF, "", 1, 10),
+            ]
+        )
 
         scope = result.constructs[0]
         assert isinstance(scope, OperatorScope)
@@ -374,14 +402,16 @@ class TestKS9InlineAnnotation:
 
     def test_both_inline_annotations(self) -> None:
         """S(ubject) = D(et) — both sig-side and node-side on same scope."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "S", 1, 1),
-            tok(TokenType.ANNOTATION, "(ubject)", 1, 2),
-            tok(TokenType.UNDERSIGN, "=", 1, 11),
-            tok(TokenType.SIGNATURE, "D", 1, 13),
-            tok(TokenType.ANNOTATION, "(et)", 1, 14),
-            tok(TokenType.EOF, "", 1, 18),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "S", 1, 1),
+                tok(TokenType.ANNOTATION, "(ubject)", 1, 2),
+                tok(TokenType.UNDERSIGN, "=", 1, 11),
+                tok(TokenType.SIGNATURE, "D", 1, 13),
+                tok(TokenType.ANNOTATION, "(et)", 1, 14),
+                tok(TokenType.EOF, "", 1, 18),
+            ]
+        )
 
         scope = result.constructs[0]
         assert isinstance(scope, OperatorScope)
@@ -392,11 +422,13 @@ class TestKS9InlineAnnotation:
 
     def test_sig_side_inline_on_bare_signature(self) -> None:
         """S(ubject) without operator — bare sig with inline annotation."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "S", 1, 1),
-            tok(TokenType.ANNOTATION, "(ubject)", 1, 2),
-            tok(TokenType.EOF, "", 1, 10),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "S", 1, 1),
+                tok(TokenType.ANNOTATION, "(ubject)", 1, 2),
+                tok(TokenType.EOF, "", 1, 10),
+            ]
+        )
 
         scope = result.constructs[0]
         assert isinstance(scope, OperatorScope)
@@ -411,14 +443,17 @@ class TestKS9InlineAnnotation:
 # Additional coverage
 # ---------------------------------------------------------------------------
 
+
 class TestBareSignature:
     """Single bare signature produces OperatorScope with op=None."""
 
     def test_single_bare_sig(self) -> None:
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "A", 1, 1),
-            tok(TokenType.EOF, "", 1, 2),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "A", 1, 1),
+                tok(TokenType.EOF, "", 1, 2),
+            ]
+        )
         assert len(result.constructs) == 1
         scope = result.constructs[0]
         assert isinstance(scope, OperatorScope)
@@ -433,14 +468,16 @@ class TestCanonizeWithItems:
 
     def test_canonize_multiple_items(self) -> None:
         """A => B C D — three items aggregated under CANONIZE."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "A", 1, 1),
-            tok(TokenType.CANONIZE, "=>", 1, 3),
-            tok(TokenType.SIGNATURE, "B", 1, 6),
-            tok(TokenType.SIGNATURE, "C", 1, 8),
-            tok(TokenType.SIGNATURE, "D", 1, 10),
-            tok(TokenType.EOF, "", 1, 11),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "A", 1, 1),
+                tok(TokenType.CANONIZE, "=>", 1, 3),
+                tok(TokenType.SIGNATURE, "B", 1, 6),
+                tok(TokenType.SIGNATURE, "C", 1, 8),
+                tok(TokenType.SIGNATURE, "D", 1, 10),
+                tok(TokenType.EOF, "", 1, 11),
+            ]
+        )
 
         scope = result.constructs[0]
         assert isinstance(scope, OperatorScope)
@@ -456,14 +493,16 @@ class TestOperatorWithMultipleItems:
 
     def test_undersign_multiple_items(self) -> None:
         """A = B C D — three items under UNDERSIGN."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "A", 1, 1),
-            tok(TokenType.UNDERSIGN, "=", 1, 3),
-            tok(TokenType.SIGNATURE, "B", 1, 5),
-            tok(TokenType.SIGNATURE, "C", 1, 7),
-            tok(TokenType.SIGNATURE, "D", 1, 9),
-            tok(TokenType.EOF, "", 1, 10),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "A", 1, 1),
+                tok(TokenType.UNDERSIGN, "=", 1, 3),
+                tok(TokenType.SIGNATURE, "B", 1, 5),
+                tok(TokenType.SIGNATURE, "C", 1, 7),
+                tok(TokenType.SIGNATURE, "D", 1, 9),
+                tok(TokenType.EOF, "", 1, 10),
+            ]
+        )
 
         scope = result.constructs[0]
         assert isinstance(scope, OperatorScope)
@@ -474,15 +513,17 @@ class TestOperatorWithMultipleItems:
 
     def test_mixed_chain_with_items(self) -> None:
         """A == B C > D — two items in first scope, then nested scope."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "A", 1, 1),
-            tok(TokenType.COUNTERSIGN, "==", 1, 3),
-            tok(TokenType.SIGNATURE, "B", 1, 6),
-            tok(TokenType.SIGNATURE, "C", 1, 8),
-            tok(TokenType.CONNOTATE, ">", 1, 10),
-            tok(TokenType.SIGNATURE, "D", 1, 12),
-            tok(TokenType.EOF, "", 1, 13),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "A", 1, 1),
+                tok(TokenType.COUNTERSIGN, "==", 1, 3),
+                tok(TokenType.SIGNATURE, "B", 1, 6),
+                tok(TokenType.SIGNATURE, "C", 1, 8),
+                tok(TokenType.CONNOTATE, ">", 1, 10),
+                tok(TokenType.SIGNATURE, "D", 1, 12),
+                tok(TokenType.EOF, "", 1, 13),
+            ]
+        )
 
         scope_ab = result.constructs[0]
         assert scope_ab.sig.id == "A"
@@ -502,16 +543,18 @@ class TestIndentedChildBlock:
 
     def test_canonize_with_items_and_child_block(self) -> None:
         """A => B\\n  C — B on same line, C in child block."""
-        result = parse_tokens([
-            tok(TokenType.SIGNATURE, "A", 1, 1),
-            tok(TokenType.CANONIZE, "=>", 1, 3),
-            tok(TokenType.SIGNATURE, "B", 1, 6),
-            tok(TokenType.NEWLINE, "\n", 1, 7),
-            tok(TokenType.INDENT, "", 2, 1),
-            tok(TokenType.SIGNATURE, "C", 2, 3),
-            tok(TokenType.DEDENT, "", 3, 1),
-            tok(TokenType.EOF, "", 3, 1),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.SIGNATURE, "A", 1, 1),
+                tok(TokenType.CANONIZE, "=>", 1, 3),
+                tok(TokenType.SIGNATURE, "B", 1, 6),
+                tok(TokenType.NEWLINE, "\n", 1, 7),
+                tok(TokenType.INDENT, "", 2, 1),
+                tok(TokenType.SIGNATURE, "C", 2, 3),
+                tok(TokenType.DEDENT, "", 3, 1),
+                tok(TokenType.EOF, "", 3, 1),
+            ]
+        )
 
         scope = result.constructs[0]
         assert scope.sig.id == "A"
@@ -528,20 +571,22 @@ class TestAnnotationsMixedWithOperators:
 
     def test_annotation_between_scopes(self) -> None:
         """(doc)\\nA == B\\n(note)\\nC > D"""
-        result = parse_tokens([
-            tok(TokenType.ANNOTATION, "(doc)", 1, 1),
-            tok(TokenType.NEWLINE, "\n", 1, 6),
-            tok(TokenType.SIGNATURE, "A", 2, 1),
-            tok(TokenType.COUNTERSIGN, "==", 2, 3),
-            tok(TokenType.SIGNATURE, "B", 2, 6),
-            tok(TokenType.NEWLINE, "\n", 2, 7),
-            tok(TokenType.ANNOTATION, "(note)", 3, 1),
-            tok(TokenType.NEWLINE, "\n", 3, 7),
-            tok(TokenType.SIGNATURE, "C", 4, 1),
-            tok(TokenType.CONNOTATE, ">", 4, 3),
-            tok(TokenType.SIGNATURE, "D", 4, 5),
-            tok(TokenType.EOF, "", 4, 6),
-        ])
+        result = parse_tokens(
+            [
+                tok(TokenType.ANNOTATION, "(doc)", 1, 1),
+                tok(TokenType.NEWLINE, "\n", 1, 6),
+                tok(TokenType.SIGNATURE, "A", 2, 1),
+                tok(TokenType.COUNTERSIGN, "==", 2, 3),
+                tok(TokenType.SIGNATURE, "B", 2, 6),
+                tok(TokenType.NEWLINE, "\n", 2, 7),
+                tok(TokenType.ANNOTATION, "(note)", 3, 1),
+                tok(TokenType.NEWLINE, "\n", 3, 7),
+                tok(TokenType.SIGNATURE, "C", 4, 1),
+                tok(TokenType.CONNOTATE, ">", 4, 3),
+                tok(TokenType.SIGNATURE, "D", 4, 5),
+                tok(TokenType.EOF, "", 4, 6),
+            ]
+        )
 
         assert len(result.constructs) == 4
 
@@ -568,25 +613,31 @@ class TestParseErrors:
     def test_operator_without_signature(self) -> None:
         """Operator at start of input raises ParseError."""
         with pytest.raises(ParseError, match="Unexpected token"):
-            parse_tokens([
-                tok(TokenType.COUNTERSIGN, "==", 1, 1),
-                tok(TokenType.EOF, "", 1, 3),
-            ])
+            parse_tokens(
+                [
+                    tok(TokenType.COUNTERSIGN, "==", 1, 1),
+                    tok(TokenType.EOF, "", 1, 3),
+                ]
+            )
 
     def test_double_operator(self) -> None:
         """Two operators in a row raises ParseError."""
         with pytest.raises(ParseError):
-            parse_tokens([
-                tok(TokenType.SIGNATURE, "A", 1, 1),
-                tok(TokenType.COUNTERSIGN, "==", 1, 3),
-                tok(TokenType.UNDERSIGN, "=", 1, 6),
-                tok(TokenType.EOF, "", 1, 7),
-            ])
+            parse_tokens(
+                [
+                    tok(TokenType.SIGNATURE, "A", 1, 1),
+                    tok(TokenType.COUNTERSIGN, "==", 1, 3),
+                    tok(TokenType.UNDERSIGN, "=", 1, 6),
+                    tok(TokenType.EOF, "", 1, 7),
+                ]
+            )
 
     def test_unexpected_dedent(self) -> None:
         """DEDENT without matching INDENT raises ParseError."""
         with pytest.raises(ParseError, match="Unexpected token"):
-            parse_tokens([
-                tok(TokenType.DEDENT, "", 1, 1),
-                tok(TokenType.EOF, "", 1, 1),
-            ])
+            parse_tokens(
+                [
+                    tok(TokenType.DEDENT, "", 1, 1),
+                    tok(TokenType.EOF, "", 1, 1),
+                ]
+            )

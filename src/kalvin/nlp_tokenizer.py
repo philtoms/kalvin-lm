@@ -21,9 +21,7 @@ import json
 from pathlib import Path
 
 from kalvin.abstract import KTokenizer
-from kalvin.abstract import KTokenizer
 from kalvin.tokenizer import Tokenizer
-
 
 # ── Class constant ────────────────────────────────────────────────────────
 # POS_X is the fallback NLP type for BPE tokens not found in the grammar
@@ -178,6 +176,7 @@ class NLPTokenizer(KTokenizer):
         """
         if tokenizer_path is None:
             from kalvin.paths import tokenizer_dir
+
             tokenizer_path = str(tokenizer_dir())
         bpe_tokenizer = Tokenizer.from_directory(tokenizer_path, tokenizer_name)
 

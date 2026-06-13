@@ -6,8 +6,8 @@ The tokenizer determines encoding mode internally:
   - Everything else → literal (one node per character, literal mask)
 """
 
-import pytest
 from kalvin.mod_tokenizer import Mod32Tokenizer, Mod64Tokenizer
+
 # Removed literal imports
 
 

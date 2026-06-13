@@ -75,8 +75,9 @@ class Harness:
             if self._proc.returncode == 0:
                 logger.info("child exited cleanly, harness shutting down")
                 break
-            logger.info("child crashed (code %s), restarting in %.1fs",
-                        self._proc.returncode, RESTART_DELAY)
+            logger.info(
+                "child crashed (code %s), restarting in %.1fs", self._proc.returncode, RESTART_DELAY
+            )
             time.sleep(RESTART_DELAY)
 
     # --- internals ---

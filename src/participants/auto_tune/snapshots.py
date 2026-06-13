@@ -19,7 +19,6 @@ from typing import Any
 
 from participants.auto_tune.session import SessionConfig, SessionDir
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -207,18 +206,15 @@ def _assert_no_running_processes(session_dir: SessionDir) -> None:
         # Check if the process is actually running
         try:
             import os
+
             os.kill(pid, 0)
-            raise RuntimeError(
-                f"Cannot restore: supervisor is still running (pid={pid})"
-            )
+            raise RuntimeError(f"Cannot restore: supervisor is still running (pid={pid})")
         except ProcessLookupError:
             # Process no longer exists — safe to proceed
             pass
         except PermissionError:
             # Process exists but we can't signal it — treat as running
-            raise RuntimeError(
-                f"Cannot restore: supervisor is still running (pid={pid})"
-            )
+            raise RuntimeError(f"Cannot restore: supervisor is still running (pid={pid})")
 
 
 # ---------------------------------------------------------------------------

@@ -9,13 +9,11 @@ from __future__ import annotations
 import asyncio
 import json
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 import websockets
 
 from participants.slack_agent import SlackParticipant
-
 
 # ---------------------------------------------------------------------------
 # Stub harness WebSocket server
@@ -48,9 +46,7 @@ class StubHarness:
         return f"ws://{self._host}:{port}"
 
     async def __aenter__(self) -> StubHarness:
-        self._server = await websockets.serve(
-            self._handle, self._host, self._port
-        )
+        self._server = await websockets.serve(self._handle, self._host, self._port)
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -83,9 +79,7 @@ class StubHarness:
         while len(self.received_frames) < n:
             await asyncio.sleep(0.05)
             if asyncio.get_event_loop().time() > deadline:
-                raise TimeoutError(
-                    f"Expected {n} frames, got {len(self.received_frames)}"
-                )
+                raise TimeoutError(f"Expected {n} frames, got {len(self.received_frames)}")
 
 
 # ---------------------------------------------------------------------------
@@ -143,11 +137,13 @@ async def test_slack_renders_progress():
         participant = await _make_participant(stub)
 
         # Harness sends a progress message
-        await stub.send_to_client({
-            "role": "supervisor",
-            "action": "progress",
-            "message": "Training paused",
-        })
+        await stub.send_to_client(
+            {
+                "role": "supervisor",
+                "action": "progress",
+                "message": "Training paused",
+            }
+        )
         await asyncio.sleep(0.2)
 
         participant._slack_web_client.chat_postMessage.assert_called_once_with(
@@ -163,11 +159,13 @@ async def test_slack_renders_event():
     async with StubHarness() as stub:
         participant = await _make_participant(stub)
 
-        await stub.send_to_client({
-            "role": "supervisor",
-            "action": "event",
-            "message": "S2 proposal",
-        })
+        await stub.send_to_client(
+            {
+                "role": "supervisor",
+                "action": "event",
+                "message": "S2 proposal",
+            }
+        )
         await asyncio.sleep(0.2)
 
         participant._slack_web_client.chat_postMessage.assert_called_once_with(
@@ -183,11 +181,13 @@ async def test_slack_renders_escalation():
     async with StubHarness() as stub:
         participant = await _make_participant(stub)
 
-        await stub.send_to_client({
-            "role": "supervisor",
-            "action": "escalation",
-            "message": "budget exhausted",
-        })
+        await stub.send_to_client(
+            {
+                "role": "supervisor",
+                "action": "escalation",
+                "message": "budget exhausted",
+            }
+        )
         await asyncio.sleep(0.2)
 
         participant._slack_web_client.chat_postMessage.assert_called_once_with(
@@ -204,11 +204,13 @@ async def test_slack_renders_ratify_request():
         participant = await _make_participant(stub)
 
         proposal = {"proposal": "MHALL = SVO"}
-        await stub.send_to_client({
-            "role": "supervisor",
-            "action": "ratify_request",
-            "message": proposal,
-        })
+        await stub.send_to_client(
+            {
+                "role": "supervisor",
+                "action": "ratify_request",
+                "message": proposal,
+            }
+        )
         await asyncio.sleep(0.2)
 
         # Should have posted to Slack with ratify hint
@@ -296,11 +298,13 @@ async def test_slack_ignores_unknown_action():
         participant = await _make_participant(stub)
 
         # Send a frame with an unknown action
-        await stub.send_to_client({
-            "role": "supervisor",
-            "action": "unknown",
-            "message": "something",
-        })
+        await stub.send_to_client(
+            {
+                "role": "supervisor",
+                "action": "unknown",
+                "message": "something",
+            }
+        )
         await asyncio.sleep(0.2)
 
         # No Slack API call should have been made

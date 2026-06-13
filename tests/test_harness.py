@@ -18,15 +18,16 @@ from kalvin.expand import D_MAX
 from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod64Tokenizer
 from kalvin.signature import make_signature
-from ks import KLine, compile_source
+from ks import compile_source
 from ks.parser import ParseError
+from tests.conftest import requires_nlp_data
 
 # ── Shared tokenizer ──────────────────────────────────────────────────
 
 _tok = Mod64Tokenizer()
 
 # Status symbols per spec §Response Status
-STATUS_SYMBOLS = {"pass": "\u2713", "pending": "\u25CC", "mismatch": "\u2717"}
+STATUS_SYMBOLS = {"pass": "\u2713", "pending": "\u25cc", "mismatch": "\u2717"}
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -148,21 +149,25 @@ class HarnessFixture:
             # Fast path — auto-satisfied immediately
             self._satisfied.add(key)
             sig = self._find_significance_for_key(key)
-            self._responses.append({
-                "key": key,
-                "status": "pass",
-                "significance": sig,
-                "decompiled": self._decompile_entry(entry),
-            })
+            self._responses.append(
+                {
+                    "key": key,
+                    "status": "pass",
+                    "significance": sig,
+                    "decompiled": self._decompile_entry(entry),
+                }
+            )
         else:
             # Slow path — record as expectation awaiting proposals
             self._expectations[key] = entry
-            self._responses.append({
-                "key": key,
-                "status": "pending",
-                "significance": 0,
-                "decompiled": self._decompile_entry(entry),
-            })
+            self._responses.append(
+                {
+                    "key": key,
+                    "status": "pending",
+                    "significance": 0,
+                    "decompiled": self._decompile_entry(entry),
+                }
+            )
 
         return result
 
@@ -208,13 +213,15 @@ class HarnessFixture:
                 proposal_matches = self.structural_match(event.proposal, event.query)
                 status = "pass" if (event.kind == "ground" or proposal_matches) else "pending"
 
-                self._responses.append({
-                    "key": event_key,
-                    "status": status,
-                    "significance": sig,
-                    "decompiled": self._decompile_entry(entry),
-                    "proposal": event.proposal,
-                })
+                self._responses.append(
+                    {
+                        "key": event_key,
+                        "status": status,
+                        "significance": sig,
+                        "decompiled": self._decompile_entry(entry),
+                        "proposal": event.proposal,
+                    }
+                )
 
                 # In run mode, auto-satisfy on ground or structural match
                 if self._run_mode and (event.kind == "ground" or proposal_matches):
@@ -235,6 +242,7 @@ class HarnessFixture:
         """Display an entry as a human-readable KScript string."""
         try:
             from kalvin.kline import kline_display
+
             return kline_display(entry, _tok)
         except Exception:
             pass
@@ -396,7 +404,7 @@ def test_run_auto_countersigns():
 def test_step_submits_one_halts():
     h = HarnessFixture()
     source = "A => B\nC => D\nE => F"
-    entries = h.compile(source)
+    h.compile(source)
 
     h.step_one(source)
     assert len(h.submitted) == 1
@@ -490,17 +498,12 @@ def test_event_correlation_structural():
     # Manually simulate a proposal event from the cogitator.
     # The event's query structurally matches the expectation.
     proposal = KLine(0b1100, [0b1000, 0b0100, 0b0100])
-    h.agent.events.publish(
-        RationaliseEvent("frame", query, proposal, D_MAX // 2)
-    )
+    h.agent.events.publish(RationaliseEvent("frame", query, proposal, D_MAX // 2))
 
     query_key = h.entry_key(query)
 
     # Find correlated responses (initial pending + proposal from event)
-    correlated = [
-        r for r in h.responses
-        if r["key"] == query_key and "proposal" in r
-    ]
+    correlated = [r for r in h.responses if r["key"] == query_key and "proposal" in r]
     assert len(correlated) >= 1
 
     # Events are correlated by structural match (signature + nodes),
@@ -570,9 +573,7 @@ def test_response_display_format():
         assert symbol  # non-empty
 
         # Raw significance is 0x-prefixed 16-char hex
-        raw_hex, normalised = HarnessFixture.format_significance(
-            response["significance"]
-        )
+        raw_hex, normalised = HarnessFixture.format_significance(response["significance"])
         assert raw_hex.startswith("0x")
         assert len(raw_hex) == 18  # "0x" + 16 hex digits
         assert "." in normalised  # normalised has decimal point
@@ -685,15 +686,10 @@ def test_run_mismatch_flagged_pending():
     # Simulate a proposal event where the proposal does NOT structurally
     # match the query (mismatch case).  The entry stays pending.
     mismatch_proposal = KLine(0b1111, [0b1000, 0b0111])
-    h.agent.events.publish(
-        RationaliseEvent("frame", query, mismatch_proposal, D_MAX // 4)
-    )
+    h.agent.events.publish(RationaliseEvent("frame", query, mismatch_proposal, D_MAX // 4))
 
     # The proposal doesn't match the query → status remains "pending"
-    correlated = [
-        r for r in h.responses
-        if r["key"] == query_key and "proposal" in r
-    ]
+    correlated = [r for r in h.responses if r["key"] == query_key and "proposal" in r]
     assert len(correlated) >= 1
     # All correlated responses from the mismatch event are "pending"
     assert all(r["status"] == "pending" for r in correlated)
@@ -725,15 +721,10 @@ def test_multiple_proposals_displayed():
         KLine(0b1100, [0b1000, 0b1000, 0b0100]),
     ]
     for proposal in proposals:
-        h.agent.events.publish(
-            RationaliseEvent("frame", query, proposal, D_MAX // 2)
-        )
+        h.agent.events.publish(RationaliseEvent("frame", query, proposal, D_MAX // 2))
 
     # All proposals are recorded as separate response items
-    correlated = [
-        r for r in h.responses
-        if r["key"] == query_key and "proposal" in r
-    ]
+    correlated = [r for r in h.responses if r["key"] == query_key and "proposal" in r]
     assert len(correlated) == len(proposals)
 
     # Each proposal is a distinct response
@@ -752,8 +743,6 @@ try:
     from kalvin.nlp_tokenizer import NLPTokenizer
 except ImportError:  # optional NLP backend not installed
     NLPTokenizer = None  # type: ignore[assignment,misc]
-
-from tests.conftest import requires_nlp_data
 
 
 class NLPHarnessFixture(HarnessFixture):
@@ -785,6 +774,7 @@ class NLPHarnessFixture(HarnessFixture):
         """Display an entry using the NLP tokenizer."""
         try:
             from kalvin.kline import kline_display
+
             return kline_display(entry, self._nlp_tok)
         except Exception:
             pass
@@ -816,9 +806,7 @@ def test_harness_nlp_tokenizer():
     )
 
     # All entries should be satisfied (fast-path for simple entries)
-    assert len(h.satisfied) >= 1, (
-        f"Expected at least 1 satisfied entry, got {len(h.satisfied)}"
-    )
+    assert len(h.satisfied) >= 1, f"Expected at least 1 satisfied entry, got {len(h.satisfied)}"
 
     # Responses should be recorded
     assert len(h.responses) >= 1

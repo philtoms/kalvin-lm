@@ -23,7 +23,6 @@ from participants.auto_tune.orchestrate import (
 )
 from participants.auto_tune.session import SessionDir
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -48,16 +47,12 @@ def _make_session(tmp_path, *, status: dict | None = None, events: list[dict] | 
         "created_from_branch": "main",
         "created_from_commit": "abc123",
     }
-    (session_dir / "config.json").write_text(
-        json.dumps(config, indent=2) + "\n", encoding="utf-8"
-    )
+    (session_dir / "config.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
 
     # Write events.jsonl if provided
     if events is not None:
         lines = [json.dumps(e) for e in events]
-        (session_dir / "events.jsonl").write_text(
-            "\n".join(lines) + "\n", encoding="utf-8"
-        )
+        (session_dir / "events.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     # Write status.json if provided
     if status is not None:

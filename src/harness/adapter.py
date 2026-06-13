@@ -22,16 +22,15 @@ added around sender-map access.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol
 
 from harness.bus import MessageBus
-from harness.constants import TRAINEE_ROLE, TRAINER_ROLE, SUPERVISOR_ROLE
+from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
-from harness.protocols import Participant
-from kalvin.paths import agent_bin
+from kalvin.abstract import KTokenizer
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
-from kalvin.abstract import KTokenizer
+from kalvin.paths import agent_bin
 from ks.compiler import compile_source
 
 if TYPE_CHECKING:
@@ -45,6 +44,7 @@ class _KAgentLike(Protocol):
     def countersign(self, kline: KLine) -> bool: ...
     def save(self, path, format=None) -> None: ...
     def codec(self) -> object: ...
+
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +72,8 @@ class KAgentAdapter:
         self,
         bus: MessageBus,
         role: str = TRAINEE_ROLE,
-        kagent: Optional[_KAgentLike] = None,
-        tokenizer: Optional[KTokenizer] = None,
+        kagent: _KAgentLike | None = None,
+        tokenizer: KTokenizer | None = None,
     ):
         self._bus = bus
         self._role = role
@@ -208,7 +208,7 @@ class KAgentAdapter:
         # Pre-register all entries in STM so that countersign pairs
         # (e.g. from M == H compiling to {M: H} and {H: M}) can find
         # each other during the countersign check in rationalise().
-        if hasattr(self._kagent, 'model'):
+        if hasattr(self._kagent, "model"):
             for entry in entries:
                 self._kagent.model.add_stm(entry)
         for entry in entries:
@@ -244,18 +244,22 @@ class KAgentAdapter:
         try:
             self._kagent.save(path)
             logger.info("Kalvin model saved to %s", path)
-            self._bus.send(Message(
-                role=msg.sender or SUPERVISOR_ROLE,
-                action="saved",
-                message={"path": str(path)},
-            ))
+            self._bus.send(
+                Message(
+                    role=msg.sender or SUPERVISOR_ROLE,
+                    action="saved",
+                    message={"path": str(path)},
+                )
+            )
         except Exception as exc:
             logger.error("Failed to save Kalvin model: %s", exc)
-            self._bus.send(Message(
-                role=msg.sender or SUPERVISOR_ROLE,
-                action="error",
-                message=f"Save failed: {exc}",
-            ))
+            self._bus.send(
+                Message(
+                    role=msg.sender or SUPERVISOR_ROLE,
+                    action="error",
+                    message=f"Save failed: {exc}",
+                )
+            )
 
     def _handle_load(self, msg: Message) -> None:
         """Load Kalvin's model from disk via agent_codec.
@@ -271,6 +275,7 @@ class KAgentAdapter:
         path = msg.message or str(agent_bin())
         try:
             from kalvin.agent_codec import AgentCodec
+
             model, activity = AgentCodec.load(path)
 
             # Replace the KAgent's model and activity in-place
@@ -280,18 +285,22 @@ class KAgentAdapter:
             self._kagent._cogitator._model = model
 
             logger.info("Kalvin model loaded from %s", path)
-            self._bus.send(Message(
-                role=msg.sender or SUPERVISOR_ROLE,
-                action="loaded",
-                message={"path": str(path), "frame_size": len(model)},
-            ))
+            self._bus.send(
+                Message(
+                    role=msg.sender or SUPERVISOR_ROLE,
+                    action="loaded",
+                    message={"path": str(path), "frame_size": len(model)},
+                )
+            )
         except Exception as exc:
             logger.error("Failed to load Kalvin model: %s", exc)
-            self._bus.send(Message(
-                role=msg.sender or SUPERVISOR_ROLE,
-                action="error",
-                message=f"Load failed: {exc}",
-            ))
+            self._bus.send(
+                Message(
+                    role=msg.sender or SUPERVISOR_ROLE,
+                    action="error",
+                    message=f"Load failed: {exc}",
+                )
+            )
 
     def _handle_drain(self, msg: Message) -> None:
         """Drain pending cogitation work items.
@@ -311,8 +320,10 @@ class KAgentAdapter:
             else:
                 logger.warning("Cogitator drain timed out")
 
-        self._bus.send(Message(
-            role=msg.sender or SUPERVISOR_ROLE,
-            action="drained",
-            message={"status": "ok"},
-        ))
+        self._bus.send(
+            Message(
+                role=msg.sender or SUPERVISOR_ROLE,
+                action="drained",
+                message={"status": "ok"},
+            )
+        )

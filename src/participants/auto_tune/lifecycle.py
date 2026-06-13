@@ -23,7 +23,6 @@ from pathlib import Path
 
 from participants.auto_tune.session import SessionConfig
 
-
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
@@ -94,13 +93,14 @@ def _kill_stale_process(pid_path: Path) -> None:
     except PermissionError:
         # Running but can't signal — warn and bail
         import warnings
+
         warnings.warn(
-            f"Stale process {pid} still running (no permission to kill). "
-            f"PID file: {pid_path}"
+            f"Stale process {pid} still running (no permission to kill). PID file: {pid_path}"
         )
         return
     # Stale process found — kill it
     import warnings
+
     warnings.warn(f"Killing stale process {pid} from {pid_path}")
     try:
         os.kill(pid, signal.SIGTERM)
@@ -192,9 +192,7 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
             pass
         time.sleep(0.25)
 
-    raise TimeoutError(
-        f"Harness did not become ready on port {port} within {poll_timeout}s"
-    )
+    raise TimeoutError(f"Harness did not become ready on port {port} within {poll_timeout}s")
 
 
 def stop_harness(session_dir: Path) -> None:
@@ -290,9 +288,7 @@ def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
                 pass
         time.sleep(0.25)
 
-    raise TimeoutError(
-        f"Supervisor did not connect within {poll_timeout}s"
-    )
+    raise TimeoutError(f"Supervisor did not connect within {poll_timeout}s")
 
 
 def stop_supervisor(session_dir: Path) -> None:
@@ -314,9 +310,7 @@ def stop_supervisor(session_dir: Path) -> None:
     # Write shutdown command atomically
     cmd_path = session_dir / "cmd.json"
     payload = json.dumps({"action": "shutdown"}) + "\n"
-    tmp_fd, tmp_path = tempfile.mkstemp(
-        dir=str(session_dir), prefix=".cmd-", suffix=".json"
-    )
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=str(session_dir), prefix=".cmd-", suffix=".json")
     try:
         with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
             f.write(payload)
@@ -345,9 +339,7 @@ def stop_supervisor(session_dir: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _generate_session_harness_config(
-    session_dir: Path, cfg: SessionConfig
-) -> Path:
+def _generate_session_harness_config(session_dir: Path, cfg: SessionConfig) -> Path:
     """Generate a per-session harness.yaml from the project's harness.yaml.
 
     Reads the project's ``harness.yaml`` and overrides the ``curriculum_file``

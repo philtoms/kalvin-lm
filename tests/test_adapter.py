@@ -8,22 +8,15 @@ countersign forwarding, error handling, and direct KAgent→adapter callbacks.
 from __future__ import annotations
 
 import threading
-import time
-from collections.abc import Callable
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from harness.adapter import KAgentAdapter
 from harness.bus import MessageBus
-from harness.constants import TRAINEE_ROLE, TRAINER_ROLE
+from harness.constants import TRAINEE_ROLE
 from harness.message import Message
-from harness.protocols import Participant
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kalvin.model import Model
-from kalvin.signature import make_signature
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -72,7 +65,7 @@ class TestHRNS7SubmitCompilesAndSubmits:
     def test_submit_compiles_and_submits(self) -> None:
         """Compile KScript source and call rationalise for each entry."""
         bus = MessageBus()
-        capture = BusCapture(bus)
+        BusCapture(bus)
         kagent = FakeKAgent()
         adapter = KAgentAdapter(bus, kagent=kagent)
 
@@ -86,7 +79,7 @@ class TestHRNS7SubmitCompilesAndSubmits:
     def test_submit_passes_compiled_entries(self) -> None:
         """Each call to rationalise receives a CompiledEntry (KLine subclass)."""
         bus = MessageBus()
-        capture = BusCapture(bus)
+        BusCapture(bus)
         kagent = FakeKAgent()
         adapter = KAgentAdapter(bus, kagent=kagent)
 
@@ -124,7 +117,7 @@ class TestHRNS8CompilationErrorResponse:
     def test_compilation_error_does_not_rationalise(self) -> None:
         """After a compilation error, rationalise is never called."""
         bus = MessageBus()
-        capture = BusCapture(bus)
+        BusCapture(bus)
         kagent = FakeKAgent()
         adapter = KAgentAdapter(bus, kagent=kagent)
 
@@ -389,7 +382,7 @@ class TestNoKAgentBound:
 
     def test_submit_without_kagent(self) -> None:
         bus = MessageBus()
-        capture = BusCapture(bus)
+        BusCapture(bus)
         adapter = KAgentAdapter(bus)  # No kagent
 
         # Should not raise
@@ -419,7 +412,7 @@ class TestSaveAction:
 
     def test_save_calls_kagent_save(self, tmp_path) -> None:
         bus = MessageBus()
-        capture = BusCapture(bus)
+        BusCapture(bus)
         kagent = FakeKAgent()
         adapter = KAgentAdapter(bus, kagent=kagent)
 
@@ -447,7 +440,7 @@ class TestSaveAction:
 
     def test_save_uses_default_path(self) -> None:
         bus = MessageBus()
-        capture = BusCapture(bus)
+        BusCapture(bus)
         kagent = FakeKAgent()
         adapter = KAgentAdapter(bus, kagent=kagent)
 
@@ -456,6 +449,7 @@ class TestSaveAction:
         )
 
         from kalvin.paths import agent_bin
+
         kagent.save.assert_called_once_with(str(agent_bin()))
 
     def test_save_without_kagent(self) -> None:
@@ -473,10 +467,9 @@ class TestLoadAction:
 
     def test_load_replaces_model(self, tmp_path) -> None:
         from kalvin.agent import KAgent
-        from kalvin.events import EventBus
 
         bus = MessageBus()
-        capture = BusCapture(bus)
+        BusCapture(bus)
         adapter = KAgentAdapter(bus)
         kagent = KAgent(adapter=adapter)
         adapter.bind(kagent)
@@ -534,7 +527,12 @@ class TestLoadAction:
         adapter.bind(kagent)
 
         adapter.on_message(
-            Message(role=TRAINEE_ROLE, action="load", message="/nonexistent/path/model.bin", sender="supervisor")
+            Message(
+                role=TRAINEE_ROLE,
+                action="load",
+                message="/nonexistent/path/model.bin",
+                sender="supervisor",
+            )
         )
 
         error_msgs = capture.with_action("error")

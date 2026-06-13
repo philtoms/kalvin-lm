@@ -6,18 +6,13 @@ spillover of S2/S3 events.
 
 from __future__ import annotations
 
-import time
 import threading
-from unittest.mock import MagicMock
-
-import pytest
+import time
 
 from kalvin.agent import Cogitator, KAgent, WorkItem
-from kalvin.events import EventBus, RationaliseEvent
+from kalvin.events import EventBus
 from kalvin.kline import KLine
 from kalvin.model import Model
-from kalvin.expand import D_MAX
-
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -174,12 +169,8 @@ class TestNoCrossLessonSpillover:
         then a drain ensures all events are processed before the second
         lesson starts. Verifies the second lesson starts with a clean slate.
         """
-        from harness.bus import MessageBus
         from harness.adapter import KAgentAdapter
-        from trainer.curriculum import Curriculum
-        from trainer.curriculum_document import CurriculumDocument
-        from trainer.trainer import Trainer
-        from ks.compiler import compile_source
+        from harness.bus import MessageBus
 
         # This is a high-level integration test.
         # We'll use the bus, adapter, and trainer together.
@@ -195,19 +186,8 @@ class TestNoCrossLessonSpillover:
             agent = KAgent(adapter=adapter)
             adapter.bind(agent)
 
-            # Track drained events
-            drained_events = []
-            original_on_message = adapter.on_message
-
-            # Create a simple 2-lesson curriculum
-            entries_received = {"lesson1": 0, "lesson2": 0}
-
-            # Verify drain is called between lessons by checking
-            # that the cogitator is empty when lesson 2 starts
-            drain_called = threading.Event()
-
-            # Verify via the adapter that drain completes
-            # The key assertion: after drain, the cogitator backlog is empty
+            # Verify via the adapter that drain completes.
+            # The key assertion: after drain, the cogitator backlog is empty.
             result = agent.cogitate_drain(timeout=5.0)
             assert result is True
 

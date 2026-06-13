@@ -15,7 +15,6 @@ from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
-from ks import KLine
 from trainer.cogitation import LLMResponse
 from trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from trainer.curriculum_document import CurriculumDocument, Lesson
@@ -61,7 +60,8 @@ def _entry_key(kline: KLine) -> EntryKey:
 def _write_curriculum(path: Path) -> None:
     """Write a sample curriculum to the given path."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(textwrap.dedent("""\
+    path.write_text(
+        textwrap.dedent("""\
         ## Objective
 
         Teach basic structure.
@@ -95,7 +95,8 @@ def _write_curriculum(path: Path) -> None:
         ```
         MHALL = SVO
         ```
-    """))
+    """)
+    )
 
 
 class BusCapture:
@@ -118,11 +119,7 @@ class BusCapture:
 
     def find_all(self, role: str, action: str) -> list[Message]:
         """Return all captured messages matching role and action."""
-        return [
-            m
-            for m in self.messages
-            if m.role == role and m.action == action
-        ]
+        return [m for m in self.messages if m.role == role and m.action == action]
 
     def find_one(self, role: str, action: str) -> Message | None:
         """Return the first captured message matching role and action, or None."""
@@ -190,7 +187,6 @@ def _make_trainer_with_capture(
     return trainer, capture
 
 
-
 def _drain(trainer: Trainer) -> None:
     """Simulate the cogitator drain completing.
 
@@ -201,9 +197,7 @@ def _drain(trainer: Trainer) -> None:
     this after any action that triggers ``_submit_next_lesson``
     (``start_session``, lesson completion, ``resume``, ``restart``).
     """
-    trainer.on_message(
-        Message(role="adapter", action="drained", message=None)
-    )
+    trainer.on_message(Message(role="adapter", action="drained", message=None))
 
 
 # ── HRNS-16: One session at a time ───────────────────────────────────
@@ -239,9 +233,7 @@ class TestOneSessionAtATime:
         assert trainer._session_active
 
         # Verify a log event was recorded for the queued goal
-        queued_events = [
-            e for e in trainer.state.event_log if e["type"] == "goal_queued"
-        ]
+        queued_events = [e for e in trainer.state.event_log if e["type"] == "goal_queued"]
         assert len(queued_events) == 1
         assert queued_events[0]["data"]["goal"] == "second"
 
@@ -281,9 +273,7 @@ class TestSessionPause:
         query = KLine(signature=100, nodes=[10])
         proposal = KLine(signature=100, nodes=[10])
         event = _make_event("ground", query, proposal, _S1_SIGNIFICANCE)
-        trainer.on_message(
-            Message(role=TRAINER_ROLE, action="ground", message=event)
-        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
 
         # Curriculum position should advance (lesson complete)
         assert trainer.state.curriculum.position == 1
@@ -339,9 +329,7 @@ class TestSessionStop:
         query = KLine(signature=100, nodes=[10])
         proposal = KLine(signature=100, nodes=[10])
         event = _make_event("ground", query, proposal, _S1_SIGNIFICANCE)
-        trainer.on_message(
-            Message(role=TRAINER_ROLE, action="ground", message=event)
-        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
 
         # No messages sent in response
         assert len(capture.messages) == 0
@@ -380,9 +368,7 @@ class TestEntryCountingLessonComplete:
                 proposal=KLine(signature=entry.signature, nodes=entry.nodes),
                 significance=_S1_SIGNIFICANCE,
             )
-            trainer.on_message(
-                Message(role=TRAINER_ROLE, action="ground", message=event)
-            )
+            trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
 
         # After 3 events: curriculum position advances
         assert trainer.state.curriculum.position == 1
@@ -422,9 +408,7 @@ class TestCurriculumCompleteEndsSession:
             proposal=KLine(signature=100, nodes=[10]),
             significance=_S1_SIGNIFICANCE,
         )
-        trainer.on_message(
-            Message(role=TRAINER_ROLE, action="ground", message=event)
-        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
 
         # Lesson completion drains for the next lesson — simulating it
         # reaches the empty-curriculum path that ends the session.
@@ -457,9 +441,7 @@ class TestFastPathAutoSatisfy:
             proposal=KLine(signature=42, nodes=[1, 2, 3]),
             significance=_S1_SIGNIFICANCE,
         )
-        trainer.on_message(
-            Message(role=TRAINER_ROLE, action="ground", message=event)
-        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
 
         # Entry is satisfied
         key = _entry_key(entry)
@@ -508,9 +490,7 @@ class TestCompilationErrorFromKalvin:
         _drain(trainer)
 
         # Error is logged
-        error_events = [
-            e for e in trainer.state.event_log if e["type"] == "kagent_error"
-        ]
+        error_events = [e for e in trainer.state.event_log if e["type"] == "kagent_error"]
         assert len(error_events) == 1
         assert "ParseError" in error_events[0]["data"]["message"]
 
@@ -560,9 +540,7 @@ class TestCompilationErrorFromKalvin:
         assert any(m.message == "lesson2" for m in submit_msgs)
 
     @patch("trainer.trainer.compile_source")
-    def test_error_after_partial_satisfaction_completes(
-        self, mock_compile: MagicMock
-    ) -> None:
+    def test_error_after_partial_satisfaction_completes(self, mock_compile: MagicMock) -> None:
         """A partially-satisfied lesson still completes on error.
 
         Some entries are satisfied via S1 events first; the error then
@@ -587,9 +565,7 @@ class TestCompilationErrorFromKalvin:
             proposal=KLine(signature=100, nodes=[10]),
             significance=_S1_SIGNIFICANCE,
         )
-        trainer.on_message(
-            Message(role=TRAINER_ROLE, action="ground", message=event_a)
-        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event_a))
         assert trainer.state.is_satisfied(_entry_key(entry_a))
         assert not trainer.state.is_satisfied(_entry_key(entry_b))
         # Lesson not complete yet (1/2 satisfied)
@@ -637,9 +613,7 @@ class TestStopPersistsState:
             proposal=KLine(signature=100, nodes=[10]),
             significance=_S1_SIGNIFICANCE,
         )
-        trainer.on_message(
-            Message(role=TRAINER_ROLE, action="ground", message=event)
-        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
 
         # Now at lesson 2 (position=1)
         assert trainer.state.curriculum.position == 1
@@ -702,9 +676,7 @@ class TestSessionStartup:
         bus = MessageBus()
         doc = CurriculumDocument.from_file(curriculum_path)
         curriculum = Curriculum(doc)
-        trainer, capture = _make_trainer(
-            bus, curriculum, curriculum_file=curriculum_path
-        )
+        trainer, capture = _make_trainer(bus, curriculum, curriculum_file=curriculum_path)
         trainer.start_session()
         _drain(trainer)
 
@@ -774,16 +746,12 @@ class TestSessionStartup:
         assert not trainer._session_active
 
         # A polling_for_goal event was logged
-        polling_events = [
-            e for e in trainer.state.event_log if e["type"] == "polling_for_goal"
-        ]
+        polling_events = [e for e in trainer.state.event_log if e["type"] == "polling_for_goal"]
         assert len(polling_events) >= 1
 
         # A progress message was emitted to "ui" with status "polling_for_goal"
         progress_msgs = capture.find_all(SUPERVISOR_ROLE, "progress")
-        polling_progress = [
-            m for m in progress_msgs if m.message["status"] == "polling_for_goal"
-        ]
+        polling_progress = [m for m in progress_msgs if m.message["status"] == "polling_for_goal"]
         assert len(polling_progress) >= 1
 
     def test_constructor_enters_polling_mode(self) -> None:
@@ -802,16 +770,12 @@ class TestSessionStartup:
         assert trainer._polling_for_goal is True
 
         # A polling_for_goal event was logged
-        polling_events = [
-            e for e in trainer.state.event_log if e["type"] == "polling_for_goal"
-        ]
+        polling_events = [e for e in trainer.state.event_log if e["type"] == "polling_for_goal"]
         assert len(polling_events) >= 1
 
         # A progress message to "ui" with status "polling_for_goal" was emitted
         progress_msgs = capture.find_all(SUPERVISOR_ROLE, "progress")
-        polling_progress = [
-            m for m in progress_msgs if m.message["status"] == "polling_for_goal"
-        ]
+        polling_progress = [m for m in progress_msgs if m.message["status"] == "polling_for_goal"]
         assert len(polling_progress) >= 1
 
     @patch("trainer.trainer.compile_source")
@@ -831,9 +795,7 @@ class TestSessionStartup:
         bus = MessageBus()
         doc = CurriculumDocument.from_file(curriculum_path)
         curriculum = Curriculum(doc)
-        trainer, _capture = _make_trainer(
-            bus, curriculum, curriculum_file=curriculum_path
-        )
+        trainer, _capture = _make_trainer(bus, curriculum, curriculum_file=curriculum_path)
 
         # Constructor should NOT enter polling mode
         assert trainer._polling_for_goal is False
@@ -855,9 +817,7 @@ class TestGoalResolution:
 
         bus = MessageBus()
         curriculum = Curriculum(["lesson1"])
-        trainer, _capture = _make_trainer(
-            bus, curriculum, curricula_dir="/tmp/curricula"
-        )
+        trainer, _capture = _make_trainer(bus, curriculum, curricula_dir="/tmp/curricula")
         trainer.start_session()
 
         # Polling mode not active (session is active), so "goal:" input
@@ -926,16 +886,20 @@ class TestPollingModeInputHandling:
         curriculum = Curriculum([])
 
         # Provide a mock LLM that returns the pre-written curriculum content
-        mock_llm = _MockLLMClient([
-            LLMResponse(
-                content=curriculum_path.read_text(),
-                tool_calls=None,
-                finish_reason="stop",
-            ),
-        ])
+        mock_llm = _MockLLMClient(
+            [
+                LLMResponse(
+                    content=curriculum_path.read_text(),
+                    tool_calls=None,
+                    finish_reason="stop",
+                ),
+            ]
+        )
 
         trainer, capture = _make_trainer_with_capture(
-            bus, curriculum, curricula_dir=str(tmp_path),
+            bus,
+            curriculum,
+            curricula_dir=str(tmp_path),
             llm_client=mock_llm,
         )
 
@@ -957,9 +921,7 @@ class TestPollingModeInputHandling:
         assert trainer._polling_for_goal is False
 
         # A goal_received event should have been logged
-        goal_events = [
-            e for e in trainer.state.event_log if e["type"] == "goal_received"
-        ]
+        goal_events = [e for e in trainer.state.event_log if e["type"] == "goal_received"]
         assert len(goal_events) >= 1
         assert "teach SVO patterns" in goal_events[0]["data"]["goal"]
 
@@ -975,9 +937,7 @@ class TestPollingModeInputHandling:
 
         bus = MessageBus()
         curriculum = Curriculum([])
-        trainer, capture = _make_trainer_with_capture(
-            bus, curriculum, curricula_dir=str(tmp_path)
-        )
+        trainer, capture = _make_trainer_with_capture(bus, curriculum, curricula_dir=str(tmp_path))
 
         # Confirm polling mode is active
         assert trainer._polling_for_goal is True
@@ -1023,9 +983,7 @@ class TestFilePolling:
         bus = MessageBus()
         doc = CurriculumDocument.from_file(curriculum_path)
         curriculum = Curriculum(doc)
-        trainer, capture = _make_trainer(
-            bus, curriculum, curriculum_file=curriculum_path
-        )
+        trainer, capture = _make_trainer(bus, curriculum, curriculum_file=curriculum_path)
         trainer.start_session()
         _drain(trainer)
 
@@ -1046,9 +1004,7 @@ class TestFilePolling:
         bus = MessageBus()
         doc = CurriculumDocument.from_file(curriculum_path)
         curriculum = Curriculum(doc)
-        trainer, capture = _make_trainer(
-            bus, curriculum, curriculum_file=curriculum_path
-        )
+        trainer, capture = _make_trainer(bus, curriculum, curriculum_file=curriculum_path)
         trainer.start_session()
         _drain(trainer)
 
@@ -1183,9 +1139,7 @@ class TestProgressEvents:
         bus = MessageBus()
         doc = CurriculumDocument.from_file(curriculum_path)
         curriculum = Curriculum(doc)
-        trainer, capture = _make_trainer(
-            bus, curriculum, curriculum_file=curriculum_path
-        )
+        trainer, capture = _make_trainer(bus, curriculum, curriculum_file=curriculum_path)
         trainer.start_session()
         capture.reset()
 
@@ -1233,9 +1187,7 @@ class TestGenerateAndStart:
     """KB-032: _generate_and_start creates CurriculumGenerator, calls generate, loads result."""
 
     @patch("trainer.trainer.compile_source")
-    def test_generate_and_start_success(
-        self, mock_compile: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_generate_and_start_success(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         """_generate_and_start creates generator, calls generate, starts session."""
         mock_compile.return_value = [_make_entry(100, [10])]
 
@@ -1243,9 +1195,13 @@ class TestGenerateAndStart:
         curriculum_path = tmp_path / "curricula" / "test-goal.md"
         _write_curriculum(curriculum_path)
 
-        mock_llm = _MockLLMClient([
-            LLMResponse(content=curriculum_path.read_text(), tool_calls=None, finish_reason="stop"),
-        ])
+        mock_llm = _MockLLMClient(
+            [
+                LLMResponse(
+                    content=curriculum_path.read_text(), tool_calls=None, finish_reason="stop"
+                ),
+            ]
+        )
 
         bus = MessageBus()
         curriculum = Curriculum([])
@@ -1312,9 +1268,7 @@ class TestGenerateAndStart:
         )
 
         # Patch at definition site — _generate_and_start imports from trainer.curriculum_generator
-        with patch(
-            "trainer.curriculum_generator.CurriculumGenerator"
-        ) as mock_gen:
+        with patch("trainer.curriculum_generator.CurriculumGenerator") as mock_gen:
             mock_gen.return_value.generate.return_value = curriculum_path
             trainer._generate_and_start("test goal")
 
@@ -1332,9 +1286,13 @@ class TestGenerateAndStart:
         curriculum_path = tmp_path / "curricula" / "test-goal.md"
         _write_curriculum(curriculum_path)
 
-        mock_llm = _MockLLMClient([
-            LLMResponse(content=curriculum_path.read_text(), tool_calls=None, finish_reason="stop"),
-        ])
+        mock_llm = _MockLLMClient(
+            [
+                LLMResponse(
+                    content=curriculum_path.read_text(), tool_calls=None, finish_reason="stop"
+                ),
+            ]
+        )
 
         bus = MessageBus()
         curriculum = Curriculum([])
@@ -1360,9 +1318,13 @@ class TestGenerateAndStart:
         curriculum_path = tmp_path / "curricula" / "test-goal.md"
         _write_curriculum(curriculum_path)
 
-        mock_llm = _MockLLMClient([
-            LLMResponse(content=curriculum_path.read_text(), tool_calls=None, finish_reason="stop"),
-        ])
+        mock_llm = _MockLLMClient(
+            [
+                LLMResponse(
+                    content=curriculum_path.read_text(), tool_calls=None, finish_reason="stop"
+                ),
+            ]
+        )
 
         bus = MessageBus()
         curriculum = Curriculum([])
@@ -1450,9 +1412,7 @@ class TestGenerateAndStartGuards:
             llm_client=mock_llm,
         )
 
-        with patch(
-            "trainer.curriculum_generator.CurriculumGenerator"
-        ) as mock_gen:
+        with patch("trainer.curriculum_generator.CurriculumGenerator") as mock_gen:
             mock_gen.return_value.generate.side_effect = CurriculumGenerationError(
                 "LLM returned invalid output"
             )
@@ -1468,7 +1428,8 @@ class TestGenerateAndStartGuards:
 
         # Polling status emitted to UI
         polling_msgs = [
-            m for m in capture.messages
+            m
+            for m in capture.messages
             if m.role == SUPERVISOR_ROLE
             and m.action == "progress"
             and m.message.get("status") == "polling_for_goal"
@@ -1486,16 +1447,18 @@ class TestGenerateAndStartGuards:
         curriculum_path = tmp_path / "curricula" / "test-goal.md"
         _write_curriculum(curriculum_path)
 
-        mock_llm = _MockLLMClient([
-            # First call: will be intercepted by side_effect
-            LLMResponse(content=None, tool_calls=None, finish_reason="stop"),
-            # Second call: valid response for retry
-            LLMResponse(
-                content=curriculum_path.read_text(),
-                tool_calls=None,
-                finish_reason="stop",
-            ),
-        ])
+        mock_llm = _MockLLMClient(
+            [
+                # First call: will be intercepted by side_effect
+                LLMResponse(content=None, tool_calls=None, finish_reason="stop"),
+                # Second call: valid response for retry
+                LLMResponse(
+                    content=curriculum_path.read_text(),
+                    tool_calls=None,
+                    finish_reason="stop",
+                ),
+            ]
+        )
 
         bus = MessageBus()
         curriculum = Curriculum([])
@@ -1507,9 +1470,7 @@ class TestGenerateAndStartGuards:
         )
 
         # First attempt: force generation failure
-        with patch(
-            "trainer.curriculum_generator.CurriculumGenerator"
-        ) as mock_gen:
+        with patch("trainer.curriculum_generator.CurriculumGenerator") as mock_gen:
             mock_gen.return_value.generate.side_effect = CurriculumGenerationError("fail")
             trainer._generate_and_start("failing goal")
 
@@ -1546,13 +1507,15 @@ class TestResolveGoalDispatch:
         curriculum_path = tmp_path / "curricula" / "teach-kalvin-about-svo.md"
         _write_curriculum(curriculum_path)
 
-        mock_llm = _MockLLMClient([
-            LLMResponse(
-                content=curriculum_path.read_text(),
-                tool_calls=None,
-                finish_reason="stop",
-            ),
-        ])
+        mock_llm = _MockLLMClient(
+            [
+                LLMResponse(
+                    content=curriculum_path.read_text(),
+                    tool_calls=None,
+                    finish_reason="stop",
+                ),
+            ]
+        )
 
         bus = MessageBus()
         curriculum = Curriculum([])
@@ -1588,13 +1551,15 @@ class TestResolveGoalDispatch:
         curriculum_path = tmp_path / "curricula" / "teach-kalvin-about-svo.md"
         _write_curriculum(curriculum_path)
 
-        mock_llm = _MockLLMClient([
-            LLMResponse(
-                content=curriculum_path.read_text(),
-                tool_calls=None,
-                finish_reason="stop",
-            ),
-        ])
+        mock_llm = _MockLLMClient(
+            [
+                LLMResponse(
+                    content=curriculum_path.read_text(),
+                    tool_calls=None,
+                    finish_reason="stop",
+                ),
+            ]
+        )
 
         bus = MessageBus()
         curriculum = Curriculum([])
@@ -1652,9 +1617,7 @@ class TestResolveGoalDispatch:
         assert not trainer._session_active
 
     @patch("trainer.trainer.compile_source")
-    def test_file_path_triggers_load(
-        self, mock_compile: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_file_path_triggers_load(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         """Input that is a path to an existing .md file → calls _load_and_start."""
         mock_compile.return_value = [_make_entry(100, [10])]
 
@@ -1698,13 +1661,15 @@ class TestResolveGoalDispatch:
         curriculum_path = tmp_path / "curricula" / "some-free-text.md"
         _write_curriculum(curriculum_path)
 
-        mock_llm = _MockLLMClient([
-            LLMResponse(
-                content=curriculum_path.read_text(),
-                tool_calls=None,
-                finish_reason="stop",
-            ),
-        ])
+        mock_llm = _MockLLMClient(
+            [
+                LLMResponse(
+                    content=curriculum_path.read_text(),
+                    tool_calls=None,
+                    finish_reason="stop",
+                ),
+            ]
+        )
 
         bus = MessageBus()
         curriculum = Curriculum([])
@@ -1758,9 +1723,7 @@ class TestEventRelay:
             proposal=KLine(signature=100, nodes=[10]),
             significance=_S1_SIGNIFICANCE,
         )
-        trainer.on_message(
-            Message(role=TRAINER_ROLE, action="ground", message=event)
-        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
 
         # Event relay was sent to supervisor
         relay_msgs = capture.find_all(SUPERVISOR_ROLE, "event")
@@ -1801,9 +1764,7 @@ class TestEventRelay:
             proposal=KLine(signature=999, nodes=[99]),
             significance=_S2_SIGNIFICANCE,
         )
-        trainer.on_message(
-            Message(role=TRAINER_ROLE, action="frame", message=event)
-        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="frame", message=event))
 
         # Event relay was sent to supervisor
         relay_msgs = capture.find_all(SUPERVISOR_ROLE, "event")
@@ -1836,9 +1797,7 @@ class TestEventRelay:
             proposal=KLine(signature=100, nodes=[10]),
             significance=_S1_SIGNIFICANCE,
         )
-        trainer.on_message(
-            Message(role=TRAINER_ROLE, action="ground", message=event)
-        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
 
         relay_msgs = capture.find_all(SUPERVISOR_ROLE, "event")
         assert len(relay_msgs) == 1
@@ -1852,13 +1811,11 @@ class TestEventRelay:
         assert relay_msgs[0].message.kind == "ground"
 
     @patch("trainer.trainer.compile_source")
-    def test_high_significance_frame_event_no_ratify_request(
-        self, mock_compile: MagicMock
-    ) -> None:
+    def test_high_significance_frame_event_no_ratify_request(self, mock_compile: MagicMock) -> None:
         """High-significance frame event takes S1 path: relay but no ratify."""
         from kalvin.expand import D_MAX
 
-        _S1_FRAME_THRESHOLD = D_MAX - 1
+        _s1_frame_threshold = D_MAX - 1
         entry = _make_entry(100, [10])
         mock_compile.return_value = [entry]
 
@@ -1873,11 +1830,9 @@ class TestEventRelay:
             "frame",
             query=KLine(signature=100, nodes=[10]),
             proposal=KLine(signature=100, nodes=[10]),
-            significance=_S1_FRAME_THRESHOLD,
+            significance=_s1_frame_threshold,
         )
-        trainer.on_message(
-            Message(role=TRAINER_ROLE, action="frame", message=event)
-        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="frame", message=event))
 
         # Event relay IS sent (all events are relayed regardless of S1/S2/S3)
         relay_msgs = capture.find_all(SUPERVISOR_ROLE, "event")
@@ -1896,9 +1851,7 @@ class TestTrainerProgressToAllSupervisors:
     all supervisor subscribers receive."""
 
     @patch("trainer.trainer.compile_source")
-    def test_progress_to_all_supervisor_subscribers(
-        self, mock_compile: MagicMock
-    ) -> None:
+    def test_progress_to_all_supervisor_subscribers(self, mock_compile: MagicMock) -> None:
         """Two handlers subscribed to supervisor both receive progress."""
         import threading
 
@@ -1962,9 +1915,7 @@ class TestTrainerProgressToAllSupervisors:
             bus_thread.join(timeout=2)
 
     @patch("trainer.trainer.compile_source")
-    def test_escalation_to_all_supervisor_subscribers(
-        self, mock_compile: MagicMock
-    ) -> None:
+    def test_escalation_to_all_supervisor_subscribers(self, mock_compile: MagicMock) -> None:
         """Two handlers subscribed to supervisor both receive escalation."""
         import threading
 
@@ -2017,9 +1968,7 @@ class TestTrainerProgressToAllSupervisors:
                     proposal=KLine(signature=999, nodes=[99]),
                     significance=_S2_SIGNIFICANCE,
                 )
-                trainer.on_message(
-                    Message(role=TRAINER_ROLE, action="frame", message=ev)
-                )
+                trainer.on_message(Message(role=TRAINER_ROLE, action="frame", message=ev))
 
             assert event.wait(timeout=2), "Both handlers should have received escalation"
 
@@ -2062,7 +2011,10 @@ class TestCogitatorAutoWiring:
         bus = MessageBus()
         curriculum = Curriculum([])
         trainer = Trainer(
-            bus, curriculum, llm_client=mock_llm, cogitate_fn=explicit_fn,
+            bus,
+            curriculum,
+            llm_client=mock_llm,
+            cogitate_fn=explicit_fn,
         )
 
         assert trainer._reactor._cogitate_fn is explicit_fn
@@ -2100,7 +2052,10 @@ class TestCogitatorAutoWiring:
         query = KLine(signature=0xFF, nodes=[0x10])
         proposal = KLine(signature=0x0F, nodes=[0x20])
         event = RationaliseEvent(
-            kind="frame", query=query, proposal=proposal, significance=100,
+            kind="frame",
+            query=query,
+            proposal=proposal,
+            significance=100,
         )
 
         result = trainer._reactor._cogitate_fn(event)
@@ -2142,7 +2097,10 @@ class TestCogitatorAutoWiring:
         query = KLine(signature=0xFF, nodes=[0x10])
         proposal = KLine(signature=0x0F, nodes=[0x20])
         event = RationaliseEvent(
-            kind="frame", query=query, proposal=proposal, significance=100,
+            kind="frame",
+            query=query,
+            proposal=proposal,
+            significance=100,
         )
 
         result = trainer._reactor._cogitate_fn(event)
@@ -2150,7 +2108,8 @@ class TestCogitatorAutoWiring:
 
     @patch("trainer.trainer.compile_source")
     def test_reactive_mode_uses_cogitator_end_to_end(
-        self, mock_compile: MagicMock,
+        self,
+        mock_compile: MagicMock,
     ) -> None:
         """S2/S3 event with auto-wired cogitator: scaffolding submitted, no escalation."""
         from trainer.cogitation import CogitationResult
@@ -2183,15 +2142,11 @@ class TestCogitatorAutoWiring:
         query = KLine(signature=888, nodes=[1])
         event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
 
-        trainer.on_message(
-            Message(role=TRAINER_ROLE, action="frame", message=event)
-        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="frame", message=event))
 
         # Reactive scaffolding was submitted to kalvin
         submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
-        scaffolding_msgs = [
-            m for m in submit_msgs if m.message == "0x10 -> 0x20"
-        ]
+        scaffolding_msgs = [m for m in submit_msgs if m.message == "0x10 -> 0x20"]
         assert len(scaffolding_msgs) == 1
         assert scaffolding_msgs[0].sender == "trainer"
 
@@ -2212,9 +2167,7 @@ class TestRestartSession:
     """Restart action clears state and restarts from the beginning."""
 
     @patch("trainer.trainer.compile_source")
-    def test_restart_clears_state_and_restarts(
-        self, mock_compile: MagicMock
-    ) -> None:
+    def test_restart_clears_state_and_restarts(self, mock_compile: MagicMock) -> None:
         """Restart clears tracking sets, resets position, starts fresh."""
         entry = _make_entry(100, [10])
         mock_compile.return_value = [entry]
@@ -2273,15 +2226,11 @@ class TestRestartSession:
         assert len(submit_msgs) >= 1
 
         # A session_restart event was logged
-        restart_events = [
-            e for e in trainer.state.event_log if e["type"] == "session_restart"
-        ]
+        restart_events = [e for e in trainer.state.event_log if e["type"] == "session_restart"]
         assert len(restart_events) == 1
 
     @patch("trainer.trainer.compile_source")
-    def test_restart_when_no_session_does_nothing(
-        self, mock_compile: MagicMock
-    ) -> None:
+    def test_restart_when_no_session_does_nothing(self, mock_compile: MagicMock) -> None:
         """Restart when no session is active does nothing."""
         entry = _make_entry(100, [10])
         mock_compile.return_value = [entry]
@@ -2303,9 +2252,7 @@ class TestRestartSession:
         assert trainer._session_active
 
     @patch("trainer.trainer.compile_source")
-    def test_restart_resets_reactor(
-        self, mock_compile: MagicMock
-    ) -> None:
+    def test_restart_resets_reactor(self, mock_compile: MagicMock) -> None:
         """Restart clears the reactor's per-lesson state."""
         entry = _make_entry(100, [10])
         mock_compile.return_value = [entry]
@@ -2331,9 +2278,7 @@ class TestRestartSession:
         assert trainer._session_active
 
     @patch("trainer.trainer.compile_source")
-    def test_restart_while_paused(
-        self, mock_compile: MagicMock
-    ) -> None:
+    def test_restart_while_paused(self, mock_compile: MagicMock) -> None:
         """Restart while paused unpauses, resets position, re-submits first lesson."""
         entry = _make_entry(100, [10])
         mock_compile.return_value = [entry]

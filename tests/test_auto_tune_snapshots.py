@@ -9,14 +9,13 @@ from __future__ import annotations
 import json
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 
 from participants.auto_tune.session import SessionConfig, SessionDir
 from participants.auto_tune.snapshots import restore, snapshot
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -137,9 +136,7 @@ class TestSnapshot:
         assert (session_tree.runs_dir / "002").is_dir()
 
         # Config has the latest counter
-        cfg_data = json.loads(
-            session_tree.config_path.read_text(encoding="utf-8")
-        )
+        cfg_data = json.loads(session_tree.config_path.read_text(encoding="utf-8"))
         assert cfg_data["run_counter"] == 2
 
     def test_no_state_file_graceful(self, session_tree: SessionDir, tmp_path: Path) -> None:
@@ -178,9 +175,7 @@ class TestSnapshot:
         """Events snapshot content matches the original exactly."""
         snapshot(session_tree)
         original = session_tree.events_path.read_text(encoding="utf-8")
-        copy = (session_tree.runs_dir / "001" / "events.jsonl").read_text(
-            encoding="utf-8"
-        )
+        copy = (session_tree.runs_dir / "001" / "events.jsonl").read_text(encoding="utf-8")
         assert original == copy
 
 
@@ -192,9 +187,7 @@ class TestSnapshot:
 class TestRestore:
     """AT-17: restore reinstates state and model from a named run."""
 
-    def test_restores_curriculum_state(
-        self, session_tree: SessionDir, tmp_path: Path
-    ) -> None:
+    def test_restores_curriculum_state(self, session_tree: SessionDir, tmp_path: Path) -> None:
         # Snapshot the initial state
         snapshot(session_tree)
 
@@ -209,9 +202,7 @@ class TestRestore:
         restored = json.loads(state_path.read_text(encoding="utf-8"))
         assert restored == {"lessons_completed": 3}
 
-    def test_restores_model(
-        self, session_tree: SessionDir, tmp_path: Path
-    ) -> None:
+    def test_restores_model(self, session_tree: SessionDir, tmp_path: Path) -> None:
         # Snapshot
         snapshot(session_tree)
 
@@ -227,20 +218,14 @@ class TestRestore:
         assert model_path.exists()
         assert model_path.read_bytes() == b"\x00\x01\x02MODEL"
 
-    def test_raises_file_not_found_for_missing_run(
-        self, session_tree: SessionDir
-    ) -> None:
+    def test_raises_file_not_found_for_missing_run(self, session_tree: SessionDir) -> None:
         with pytest.raises(FileNotFoundError, match="Run directory not found"):
             restore(session_tree, 999)
 
-    def test_raises_runtime_error_for_running_process(
-        self, session_tree: SessionDir
-    ) -> None:
+    def test_raises_runtime_error_for_running_process(self, session_tree: SessionDir) -> None:
         # Create status.json with the current process PID (guaranteed running)
         status = {"pid": os.getpid(), "state": "waiting_for_event"}
-        session_tree.status_path.write_text(
-            json.dumps(status) + "\n", encoding="utf-8"
-        )
+        session_tree.status_path.write_text(json.dumps(status) + "\n", encoding="utf-8")
 
         # Create a run directory so it exists
         run_dir = session_tree.runs_dir / "001"
@@ -249,16 +234,12 @@ class TestRestore:
         with pytest.raises(RuntimeError, match="supervisor is still running"):
             restore(session_tree, 1)
 
-    def test_allows_restore_when_process_dead(
-        self, session_tree: SessionDir
-    ) -> None:
+    def test_allows_restore_when_process_dead(self, session_tree: SessionDir) -> None:
         """Restore succeeds when status.json has a PID that is no longer running."""
         # Use a PID that definitely doesn't exist
         fake_pid = 99999999
         status = {"pid": fake_pid, "state": "errored"}
-        session_tree.status_path.write_text(
-            json.dumps(status) + "\n", encoding="utf-8"
-        )
+        session_tree.status_path.write_text(json.dumps(status) + "\n", encoding="utf-8")
 
         # Create a snapshot first
         snapshot(session_tree)
@@ -266,9 +247,7 @@ class TestRestore:
         # This should not raise
         restore(session_tree, 1)
 
-    def test_restore_run_without_model(
-        self, session_tree: SessionDir, tmp_path: Path
-    ) -> None:
+    def test_restore_run_without_model(self, session_tree: SessionDir, tmp_path: Path) -> None:
         """Restore gracefully skips model when run has no model.bin."""
         # Remove the model before snapshot
         (tmp_path / "data" / "agent.bin").unlink()
@@ -277,9 +256,7 @@ class TestRestore:
         # Restore should not fail
         restore(session_tree, 1)
 
-    def test_no_status_file_passes(
-        self, session_tree: SessionDir
-    ) -> None:
+    def test_no_status_file_passes(self, session_tree: SessionDir) -> None:
         """Restore succeeds when status.json doesn't exist."""
         # Ensure no status file
         assert not session_tree.status_path.exists()
@@ -291,9 +268,7 @@ class TestRestore:
         """Restore succeeds when status.json has pid=0 or pid=null."""
         for pid_val in (0, None):
             status = {"pid": pid_val, "state": "waiting_for_event"}
-            session_tree.status_path.write_text(
-                json.dumps(status) + "\n", encoding="utf-8"
-            )
+            session_tree.status_path.write_text(json.dumps(status) + "\n", encoding="utf-8")
             # Ensure run dir exists
             run_dir = session_tree.runs_dir / "001"
             if not run_dir.exists():
@@ -312,12 +287,11 @@ class TestResetCmdCleanup:
     def test_deletes_cmd_json(self, session_tree: SessionDir) -> None:
         """reset removes cmd.json if it exists."""
         # Write a stale cmd.json (e.g. from a previous stop-supervisor)
-        session_tree.cmd_path.write_text(
-            '{"action": "shutdown"}', encoding="utf-8"
-        )
+        session_tree.cmd_path.write_text('{"action": "shutdown"}', encoding="utf-8")
         assert session_tree.cmd_path.exists()
 
         from participants.auto_tune.snapshots import reset
+
         reset(session_tree)
 
         assert not session_tree.cmd_path.exists()
@@ -327,6 +301,7 @@ class TestResetCmdCleanup:
         assert not session_tree.cmd_path.exists()
 
         from participants.auto_tune.snapshots import reset
+
         reset(session_tree)  # Should not raise
 
     def test_truncates_events(self, session_tree: SessionDir) -> None:
@@ -335,6 +310,7 @@ class TestResetCmdCleanup:
         assert session_tree.events_path.read_text(encoding="utf-8") != ""
 
         from participants.auto_tune.snapshots import reset
+
         reset(session_tree)
 
         assert session_tree.events_path.read_text(encoding="utf-8") == ""

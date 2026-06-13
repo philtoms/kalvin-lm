@@ -51,22 +51,19 @@ import string
 
 import pytest
 
-from kalvin.mod_tokenizer import Mod32Tokenizer
-
-from ks import KScript, compile_source
 from kalvin.kline import KLine
-from ks.ast import Annotation, Block, KScriptFile, OperatorScope, Signature
-from ks.ast_emitter import SymbolicEntry
+from kalvin.mod_tokenizer import Mod32Tokenizer
+from ks import compile_source
+from ks.ast import Annotation, Block, KScriptFile, OperatorScope
 from ks.binding_scope import BindingScope
 from ks.lexer import Lexer, LexerError
 from ks.parser import Parser
 from ks.token import Token, TokenType
-from ks.token_encoder import TokenEncoder
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
 
 def compile_dev(source: str) -> list[KLine]:
     """Compile source with dev=True (populates dbg for readable assertions)."""
@@ -180,14 +177,23 @@ def has_entry(
 # TestTokenType — KS-1 (token types and Token dataclass)
 # ===================================================================
 
+
 class TestTokenType:
     """KS-1: All token types recognized; Token is a frozen dataclass."""
 
     def test_token_type_members(self):
         """KS-1: All 10 TokenType members exist."""
         expected = {
-            "COUNTERSIGN", "CANONIZE", "CONNOTATE", "UNDERSIGN",
-            "SIGNATURE", "ANNOTATION", "NEWLINE", "INDENT", "DEDENT", "EOF",
+            "COUNTERSIGN",
+            "CANONIZE",
+            "CONNOTATE",
+            "UNDERSIGN",
+            "SIGNATURE",
+            "ANNOTATION",
+            "NEWLINE",
+            "INDENT",
+            "DEDENT",
+            "EOF",
         }
         actual = {m.name for m in TokenType}
         assert actual == expected
@@ -216,6 +222,7 @@ class TestTokenType:
 # ===================================================================
 # TestLexer — KS-1 through KS-5
 # ===================================================================
+
 
 class TestLexer:
     """Lexer tests covering KS-1 through KS-5."""
@@ -276,12 +283,16 @@ class TestLexer:
         assert TokenType.DEDENT in types
 
         # INDENT should appear before B
-        idx_b = next(i for i, t in enumerate(tokens) if t.type == TokenType.SIGNATURE and t.value == "B")
+        idx_b = next(
+            i for i, t in enumerate(tokens) if t.type == TokenType.SIGNATURE and t.value == "B"
+        )
         idx_indent = next(i for i, t in enumerate(tokens) if t.type == TokenType.INDENT)
         assert idx_indent < idx_b
 
         # DEDENT should appear before C
-        idx_c = next(i for i, t in enumerate(tokens) if t.type == TokenType.SIGNATURE and t.value == "C")
+        idx_c = next(
+            i for i, t in enumerate(tokens) if t.type == TokenType.SIGNATURE and t.value == "C"
+        )
         idx_dedent = next(i for i, t in enumerate(tokens) if t.type == TokenType.DEDENT)
         assert idx_dedent < idx_c
 
@@ -321,6 +332,7 @@ class TestLexer:
 # ===================================================================
 # TestParserAST — KS-6 through KS-10
 # ===================================================================
+
 
 class TestParserAST:
     """Parser/AST tests covering KS-6 through KS-10."""
@@ -418,6 +430,7 @@ class TestParserAST:
 # TestBindingScope — KS-23, KS-24, KS-27 through KS-31
 # ===================================================================
 
+
 class TestBindingScope:
     """BindingScope unit tests covering KS-23, KS-24, KS-27–KS-31."""
 
@@ -503,6 +516,7 @@ class TestBindingScope:
 # ===================================================================
 # TestEmitterOperators — KS-11 through KS-18, KS-25, KS-33
 # ===================================================================
+
 
 class TestEmitterOperators:
     """Emitter operator tests covering KS-11–KS-18, KS-25, KS-33."""
@@ -616,7 +630,6 @@ class TestEmitterOperators:
 
     # -- KS-18: Non-CANONIZE with indent ---------------------------------
 
-
     def test_ks18_non_canonize_with_indent(self):
         """KS-18: A == B\\n  C\\n  D → 6 COUNTERSIGN entries (§14.10)."""
         source = "A == B\n  C\n  D"
@@ -664,6 +677,7 @@ class TestEmitterOperators:
 # ===================================================================
 # TestEmitterMCS — KS-19 through KS-22
 # ===================================================================
+
 
 class TestEmitterMCS:
     """MCS expansion tests covering KS-19 through KS-22."""
@@ -722,14 +736,14 @@ class TestEmitterMCS:
             assert len(canonize_entries) >= 1, f"No CANONIZE entry for {ident}"
             canon = canonize_entries[0]
             assert len(canon.nodes) == len(ident), (
-                f"MCS canonize for {ident}: expected {len(ident)} nodes, "
-                f"got {len(canon.nodes)}"
+                f"MCS canonize for {ident}: expected {len(ident)} nodes, got {len(canon.nodes)}"
             )
 
 
 # ===================================================================
 # TestEmitterBinding — KS-26 (Rule B4 override)
 # ===================================================================
+
 
 class TestEmitterBinding:
     """Binding integration tests covering KS-26."""
@@ -756,27 +770,16 @@ class TestEmitterBinding:
         # Find the SVO CANONIZE entry — it should have "Subject" as first node
         svo_canon = _find_entries(entries, sig="SVO", op="CANONIZED")
         assert len(svo_canon) >= 1, "Expected at least one SVO CANONIZE entry"
-        # Verify that one of the SVO CANONIZE entries has "Subject" in its nodes
-        # (Rule B4 should have patched the first component)
-        found_patched = False
-        for e in svo_canon:
-            node_texts = _node_strs(e)
-            # Check if any node decodes to contain "Subject" information
-            for n in e.nodes:
-                # In dev mode, we can check if the node value matches
-                # "Subject"'s packed encoding
-                pass
         # A simpler check: verify that "Subject" unsigned entries exist
         # (from the inline annotation's MCS expansion)
         subject_entries = _find_entries(entries, sig="Subject")
-        assert len(subject_entries) > 0, (
-            "Expected entries for 'Subject' (from inline annotation)"
-        )
+        assert len(subject_entries) > 0, "Expected entries for 'Subject' (from inline annotation)"
 
 
 # ===================================================================
 # TestStructure — KS-34 (nodes always a list)
 # ===================================================================
+
 
 class TestStructure:
     """Structural invariant tests covering KS-34."""
@@ -810,6 +813,7 @@ class TestStructure:
 # TestEncoding — KS-32 (Mod32 fallback encoding)
 # ===================================================================
 
+
 class TestEncoding:
     """Encoding tests covering KS-32."""
 
@@ -836,21 +840,9 @@ class TestEncoding:
 # TestComplexExamples — KS-35 through KS-37 + §14.8 secondary regression
 # ===================================================================
 
-_SEC1411_SOURCE = (
-    "MHALL == SVO =>\n"
-    "  S = M\n"
-    "  V = H\n"
-    "  O = ALL =>\n"
-    "    A = D\n"
-    "    L = M\n"
-    "    L > O"
-)
+_SEC1411_SOURCE = "MHALL == SVO =>\n  S = M\n  V = H\n  O = ALL =>\n    A = D\n    L = M\n    L > O"
 
-_SEC148_SOURCE = (
-    "A =>\n"
-    "  B\n"
-    "  C = D"
-)
+_SEC148_SOURCE = "A =>\n  B\n  C = D"
 
 _SEC1412_SOURCE = (
     "(Mary Had A Little Lamb)\n"
@@ -868,7 +860,6 @@ class TestComplexExamples:
     """Complex integration tests covering KS-35 through KS-37 plus §14.8."""
 
     # -- §14.8 secondary regression (simpler nested case) ----------------
-
 
     def test_sec148_strict(self):
         """§14.8 secondary regression — strict spec count (5 entries)."""
@@ -929,12 +920,16 @@ class TestComplexExamples:
         # Spot-check critical entries by dbg.label
         assert entries[0].dbg and entries[0].dbg.label == "M" and entries[0].dbg.op == "IDENTITY"
         # MHALL CANONIZE with 5 nodes
-        mhall_canon = [e for e in entries if e.dbg and e.dbg.label == "MHALL" and e.dbg.op == "CANONIZED"]
+        mhall_canon = [
+            e for e in entries if e.dbg and e.dbg.label == "MHALL" and e.dbg.op == "CANONIZED"
+        ]
         assert len(mhall_canon) == 1
         assert len(mhall_canon[0].nodes) == 5  # M, H, A, L, L
 
         # SVO CANONIZE with 3 nodes
-        svo_canon = [e for e in entries if e.dbg and e.dbg.label == "SVO" and e.dbg.op == "CANONIZED"]
+        svo_canon = [
+            e for e in entries if e.dbg and e.dbg.label == "SVO" and e.dbg.op == "CANONIZED"
+        ]
         assert len(svo_canon) == 1
         assert len(svo_canon[0].nodes) == 3  # S, V, O
 
@@ -958,9 +953,7 @@ class TestComplexExamples:
 
         # MCS identity for all single-char identifiers
         for char in ["M", "H", "A", "L", "S", "V", "O"]:
-            assert has_entry(entries, sig=char, op="IDENTITY"), (
-                f"Missing IDENTITY entry for {char}"
-            )
+            assert has_entry(entries, sig=char, op="IDENTITY"), f"Missing IDENTITY entry for {char}"
 
         # MCS CANONIZE for compound identifiers
         assert has_entry(entries, sig="MHALL", op="CANONIZED")
@@ -998,6 +991,7 @@ class TestComplexExamples:
 
         # Verify significance levels
         from kalvin.kline import _SIG_LEVELS
+
         cs_entries = _find_entries(entries, op="COUNTERSIGNED")
         assert all(_SIG_LEVELS.get(e.dbg.op, "S4") == "S1" for e in cs_entries)
         us_entries = _find_entries(entries, op="UNDERSIGNED")
@@ -1021,9 +1015,9 @@ class TestComplexExamples:
 
         # MCS for MHALL should resolve M→Mary, H→Had, A→"A", L→Little, L→Lamb
         # Check that "Mary" appears as a signature (from MCS resolution)
-        assert has_entry(entries, sig="Mary", op="IDENTITY") or \
-               has_entry(entries, sig="Mary", op="CANONIZED"), \
-               "Expected 'Mary' entries from MHALL MCS resolution"
+        assert has_entry(entries, sig="Mary", op="IDENTITY") or has_entry(
+            entries, sig="Mary", op="CANONIZED"
+        ), "Expected 'Mary' entries from MHALL MCS resolution"
 
         # "Subject" should appear from inline annotation S(ubject)
         subject_entries = _find_entries(entries, sig="Subject")
@@ -1059,6 +1053,13 @@ class TestComplexExamples:
 
         # All entries should have valid op via dbg
         from kalvin.kline import _SIG_LEVELS
+
         for e in entries:
-            assert e.dbg and e.dbg.op in ("COUNTERSIGNED", "CANONIZED", "CONNOTED", "UNDERSIGNED", "IDENTITY")
+            assert e.dbg and e.dbg.op in (
+                "COUNTERSIGNED",
+                "CANONIZED",
+                "CONNOTED",
+                "UNDERSIGNED",
+                "IDENTITY",
+            )
             assert _SIG_LEVELS.get(e.dbg.op, "S4") in ("S1", "S2", "S3", "S4")

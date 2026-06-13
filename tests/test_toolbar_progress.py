@@ -1,26 +1,24 @@
 """Tests for toolbar satisfaction progress display (KB-013)."""
 
-import sys
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
 # The UI module has dependencies that may not be available in the test
 # environment.  Patch sys.modules before the first import of ui.kscript.app.
-
 import kalvin as _kalvin_pkg
 from kalvin.agent import KAgent as _RealAgent
+
 if not hasattr(_kalvin_pkg, "Agent"):
     _kalvin_pkg.Agent = _RealAgent
 
 from textual.css.query import NoMatches
-from ui.kscript.regions.toolbar import ToolbarRegion, ExecutionState
 
+from ui.kscript.regions.toolbar import ExecutionState, ToolbarRegion
 
 # ---------------------------------------------------------------------------
 # Helper: create a bare ToolbarRegion without mounting it in a Textual app.
 # ---------------------------------------------------------------------------
+
 
 def _make_toolbar() -> ToolbarRegion:
     """Create a ToolbarRegion instance with patched DOM init for testing.

@@ -9,7 +9,8 @@ and generates expansion proposals that satisfy:
 
 from __future__ import annotations
 
-from typing import Iterator, TYPE_CHECKING
+from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 from kalvin.kline import KLine
 from kalvin.signature import make_signature
@@ -73,19 +74,14 @@ def _underfit_expansions(
             yield (proposal, [])
 
 
-def _split_excess(
-    kline: KLine, excess: int
-) -> tuple[list[int], list[int]]:
+def _split_excess(kline: KLine, excess: int) -> tuple[list[int], list[int]]:
     """Split kline nodes into (excess_nodes, remaining) by excess mask."""
-    excess_nodes = [n for n in kline.nodes
-                    if (n & excess) != 0]
+    excess_nodes = [n for n in kline.nodes if (n & excess) != 0]
     remaining = [n for n in kline.nodes if n not in excess_nodes]
     return excess_nodes, remaining
 
 
-def _overfit_expansions(
-    kline: KLine, excess: int
-) -> Iterator[tuple[KLine, list[KLine]]]:
+def _overfit_expansions(kline: KLine, excess: int) -> Iterator[tuple[KLine, list[KLine]]]:
     """Remove nodes whose bits contribute to the excess."""
     excess_nodes, remaining = _split_excess(kline, excess)
 

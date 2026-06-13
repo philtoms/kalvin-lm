@@ -1,6 +1,5 @@
 """Tests for Signature — specs/signature.md conformance."""
 
-import pytest
 from kalvin.signature import make_signature, signifies
 
 

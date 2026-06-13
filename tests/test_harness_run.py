@@ -12,22 +12,16 @@ Covers: HRN-2, HRN-3, HRN-5, HRN-6, HRN-17:
 """
 
 import asyncio
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from kalvin.abstract import KLine
 from kalvin.events import RationaliseEvent
 from kalvin.mod_tokenizer import Mod32Tokenizer
-from ks import KLine
-from ui.kscript.regions.toolbar import ExecutionState
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
-
 from ui.kscript.app import KScriptApp
-
+from ui.kscript.regions.toolbar import ExecutionState
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -102,9 +96,7 @@ class TestRunCompilesAndSubmits:
 
         # Only e2 and e3 should be rationalised (e1 filtered out)
         assert app._agent.rationalise.call_count == 2
-        rationalised_sigs = [
-            c[0][0].signature for c in app._agent.rationalise.call_args_list
-        ]
+        rationalised_sigs = [c[0][0].signature for c in app._agent.rationalise.call_args_list]
         assert 0x20 in rationalised_sigs
         assert 0x30 in rationalised_sigs
         assert 0x10 not in rationalised_sigs
@@ -135,7 +127,7 @@ class TestRunCompilesAndSubmits:
         app._submitted.add(_entry_key(e1))
 
         with patch.object(app, "_compile_script", return_value=[e1]):
-            with patch.object(app, "_set_state") as mock_set_state:
+            with patch.object(app, "_set_state"):
                 with patch.object(app, "run_worker") as mock_run_worker:
                     app.action_run_script()
 
@@ -256,7 +248,6 @@ class TestMismatchPending:
         entry = _make_entry(0x60, [100, 200])
         app._compiled_entries = [entry]
         app._run_mode_active = True
-
 
         # Mock query_one for ResponsesRegion
         mock_responses = MagicMock()

@@ -60,9 +60,7 @@ class StubHarness:
         return f"ws://{self._host}:{port}"
 
     async def __aenter__(self) -> StubHarness:
-        self._server = await websockets.serve(
-            self._handle, self._host, self._port
-        )
+        self._server = await websockets.serve(self._handle, self._host, self._port)
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -98,9 +96,7 @@ class StubHarness:
         while len(self.received_frames) < n:
             await asyncio.sleep(0.05)
             if asyncio.get_event_loop().time() > deadline:
-                raise TimeoutError(
-                    f"Expected {n} frames, got {len(self.received_frames)}"
-                )
+                raise TimeoutError(f"Expected {n} frames, got {len(self.received_frames)}")
 
 
 # ---------------------------------------------------------------------------
@@ -233,10 +229,16 @@ async def test_per_event_blocking(session_dir: Path) -> None:
                 await _wait_for_state(session_dir, "waiting_for_event")
 
                 # Send one event frame
-                await stub.send_to_client({
-                    "action": "progress",
-                    "message": {"status": "started", "lessons_total": 1, "lessons_completed": 0},
-                })
+                await stub.send_to_client(
+                    {
+                        "action": "progress",
+                        "message": {
+                            "status": "started",
+                            "lessons_total": 1,
+                            "lessons_completed": 0,
+                        },
+                    }
+                )
 
                 # Wait for waiting_for_command state
                 await _wait_for_state(session_dir, "waiting_for_command")
@@ -287,10 +289,16 @@ async def test_continue_is_noop(session_dir: Path) -> None:
                 assert len(stub.received_frames) == 1
 
                 # Send one frame
-                await stub.send_to_client({
-                    "action": "progress",
-                    "message": {"status": "started", "lessons_total": 1, "lessons_completed": 0},
-                })
+                await stub.send_to_client(
+                    {
+                        "action": "progress",
+                        "message": {
+                            "status": "started",
+                            "lessons_total": 1,
+                            "lessons_completed": 0,
+                        },
+                    }
+                )
                 await _wait_for_state(session_dir, "waiting_for_command")
 
                 # Write continue command (the no-op under test)
@@ -332,10 +340,12 @@ async def test_ratify_sends_countersign(session_dir: Path) -> None:
 
                 # Send ratify_request with a proposal
                 proposal_data = {"sig": 42, "nodes": [1, 2, 3]}
-                await stub.send_to_client({
-                    "action": "ratify_request",
-                    "message": {"proposal": proposal_data},
-                })
+                await stub.send_to_client(
+                    {
+                        "action": "ratify_request",
+                        "message": {"proposal": proposal_data},
+                    }
+                )
                 await _wait_for_state(session_dir, "waiting_for_command")
 
                 # Write ratify command
@@ -376,10 +386,16 @@ async def test_shutdown_cleans_up(session_dir: Path) -> None:
                 await stub.wait_for_frames(1)
 
                 # Send one frame to get to waiting_for_command
-                await stub.send_to_client({
-                    "action": "progress",
-                    "message": {"status": "started", "lessons_total": 1, "lessons_completed": 0},
-                })
+                await stub.send_to_client(
+                    {
+                        "action": "progress",
+                        "message": {
+                            "status": "started",
+                            "lessons_total": 1,
+                            "lessons_completed": 0,
+                        },
+                    }
+                )
                 await _wait_for_state(session_dir, "waiting_for_command")
 
                 # Write shutdown command
@@ -432,10 +448,16 @@ async def test_run_complete_does_not_exit(session_dir: Path) -> None:
                 await _wait_for_state(session_dir, "waiting_for_event")
 
                 # Send progress complete frame
-                await stub.send_to_client({
-                    "action": "progress",
-                    "message": {"status": "complete", "lessons_total": 1, "lessons_completed": 1},
-                })
+                await stub.send_to_client(
+                    {
+                        "action": "progress",
+                        "message": {
+                            "status": "complete",
+                            "lessons_total": 1,
+                            "lessons_completed": 1,
+                        },
+                    }
+                )
 
                 # Wait for run_complete state
                 await _wait_for_state(session_dir, "run_complete")
@@ -535,10 +557,16 @@ async def test_malformed_frame_skipped(session_dir: Path) -> None:
                 await asyncio.sleep(0.2)
 
                 # Send a valid frame — should be processed normally
-                await stub.send_to_client({
-                    "action": "progress",
-                    "message": {"status": "started", "lessons_total": 1, "lessons_completed": 0},
-                })
+                await stub.send_to_client(
+                    {
+                        "action": "progress",
+                        "message": {
+                            "status": "started",
+                            "lessons_total": 1,
+                            "lessons_completed": 0,
+                        },
+                    }
+                )
                 await _wait_for_state(session_dir, "waiting_for_command")
 
                 # Write continue to finish the loop
@@ -583,10 +611,16 @@ async def test_goal_command_preserves_text(session_dir: Path) -> None:
                 await _wait_for_state(session_dir, "waiting_for_event")
 
                 # Send one frame to get to waiting_for_command
-                await stub.send_to_client({
-                    "action": "progress",
-                    "message": {"status": "started", "lessons_total": 1, "lessons_completed": 0},
-                })
+                await stub.send_to_client(
+                    {
+                        "action": "progress",
+                        "message": {
+                            "status": "started",
+                            "lessons_total": 1,
+                            "lessons_completed": 0,
+                        },
+                    }
+                )
                 await _wait_for_state(session_dir, "waiting_for_command")
 
                 # Write goal command

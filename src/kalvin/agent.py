@@ -21,6 +21,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Literal, NamedTuple, Protocol, runtime_checkable
 
+from kalvin.abstract import KTokenizer
 from kalvin.agent_codec import AgentCodec
 from kalvin.events import EventBus, RationaliseEvent  # EventBus: test/dev fallback
 from kalvin.expand import (
@@ -34,14 +35,13 @@ from kalvin.expand import (
     propose_expansions,
 )
 from kalvin.kline import KDbg, KLine
-from kalvin.abstract import KTokenizer
 from kalvin.mod_tokenizer import Mod32Tokenizer
-from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.model import Model
+from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
 
-
 # ── Default tokenizer factory ─────────────────────────────────────────
+
 
 def _default_tokenizer() -> KTokenizer:
     """Create the default tokenizer.
@@ -55,7 +55,9 @@ def _default_tokenizer() -> KTokenizer:
     except (FileNotFoundError, ImportError, Exception):
         return Mod32Tokenizer()
 
+
 # ── KAgentAdapter Protocol ─────────────────────────────────────────────
+
 
 @runtime_checkable
 class KAgentAdapter(Protocol):
@@ -70,11 +72,11 @@ class KAgentAdapter(Protocol):
     in ``harness/adapter.py`` — that class satisfies this protocol implicitly.
     """
 
-    def on_event(self, event: RationaliseEvent) -> None:
-        ...
+    def on_event(self, event: RationaliseEvent) -> None: ...
 
 
 # ── Cogitation Handler Protocol ────────────────────────────────────────
+
 
 @runtime_checkable
 class CogitationHandler(Protocol):
@@ -101,14 +103,17 @@ class CogitationHandler(Protocol):
 
 # ── Work Item ─────────────────────────────────────────────────────────
 
+
 class WorkItem(NamedTuple):
     """A single query|candidate pair queued for cogitation."""
+
     query: KLine
     candidate: KLine
     level: str  # "S2" or "S3"
 
 
 # ── Cogitator ─────────────────────────────────────────────────────────
+
 
 class Cogitator:
     """Background processor for rational work items (S2/S3).
@@ -175,6 +180,7 @@ class Cogitator:
         deadline = None
         if timeout is not None:
             import time as _time
+
             deadline = _time.monotonic() + timeout
 
         while True:
@@ -196,9 +202,7 @@ class Cogitator:
                     idle_time += 0.5
                     if idle_time >= self._timeout:
                         done_k = KLine(0, [], dbg=KDbg(label="done"))
-                        self._adapter.on_event(
-                            RationaliseEvent("done", done_k, done_k, 0)
-                        )
+                        self._adapter.on_event(RationaliseEvent("done", done_k, done_k, 0))
                         idle_time = 0.0
                 idle_time = 0.0
                 if self._stop.is_set() and not self._backlog:
@@ -245,15 +249,17 @@ class Cogitator:
                 # Note: qc.candidate (not WorkItem.candidate) is the expanded
                 # candidate that may be a misfit. qc.query (not WorkItem.query)
                 # is the correct query context for connotation yields.
-                for proposal, sig in propose_expansions(
-                    self._model, qc.candidate, qc.significance
-                ):
+                for proposal, sig in propose_expansions(self._model, qc.candidate, qc.significance):
                     self._handler.on_expansion(
-                        qc.query, proposal, sig, original_candidate=qc.candidate,
+                        qc.query,
+                        proposal,
+                        sig,
+                        original_candidate=qc.candidate,
                     )
 
 
 # ── KAgent ────────────────────────────────────────────────────────────
+
 
 class KAgent:
     """Orchestrator of the rationalisation pipeline.
@@ -366,10 +372,7 @@ class KAgent:
 
         expected_sig = make_signature(kline.nodes)
         if kline.signature == expected_sig:
-            all_resolved = all(
-                self._model.find(n) is not None
-                for n in kline.nodes
-            )
+            all_resolved = all(self._model.find(n) is not None for n in kline.nodes)
             if all_resolved:
                 self._model.add_ltm(kline)
                 self._publish("frame", kline, kline, D_MAX - 1)  # S1
@@ -398,9 +401,11 @@ class KAgent:
         # is_countersigned(), and undersign/connotate produce identical
         # kline structures (inverses of each other) — both can fast-path
         # when both sides are grounded.
-        if (len(kline.nodes) == 1
+        if (
+            len(kline.nodes) == 1
             and self._model.find(kline.signature) is not None
-            and self._model.find(kline.nodes[0]) is not None):
+            and self._model.find(kline.nodes[0]) is not None
+        ):
             self._model.add_ltm(kline)
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
@@ -409,9 +414,11 @@ class KAgent:
         # nodes. When a connotate or undersign references a node that
         # doesn't exist in the model, attempt to resolve it by expanding
         # the graph from the signature's context.
-        if (len(kline.nodes) == 1
+        if (
+            len(kline.nodes) == 1
             and self._model.find(kline.nodes[0]) is None
-            and self._model.find(kline.signature) is not None):
+            and self._model.find(kline.signature) is not None
+        ):
             if self._resolve_unknown_via_graph(kline.signature, kline.nodes[0]):
                 # Unknown node grounded via graph expansion.
                 # Now both sides are grounded — accept as S1.
@@ -421,9 +428,9 @@ class KAgent:
 
         # Phase 4: Retrieve candidates (exclude self to prevent trivial match)
         candidates = [
-            kl for kl in self._model.where(kline.signature)
-            if kl is not kline
-            and (kl.signature != kline.signature or kl.nodes != kline.nodes)
+            kl
+            for kl in self._model.where(kline.signature)
+            if kl is not kline and (kl.signature != kline.signature or kl.nodes != kline.nodes)
         ]
 
         if not candidates:
@@ -450,7 +457,7 @@ class KAgent:
 
         # Cap to prevent cascade explosion in dense models.
         if len(sorted_candidates) > self._max_candidates:
-            sorted_candidates = sorted_candidates[:self._max_candidates]
+            sorted_candidates = sorted_candidates[: self._max_candidates]
 
         for candidate in sorted_candidates:
             level = self._route(kline, candidate)
@@ -461,9 +468,7 @@ class KAgent:
 
     # ── Graph Expansion Resolution ───────────────────────────────────
 
-    def _resolve_unknown_via_graph(
-        self, signature: int, unknown_node: int
-    ) -> bool:
+    def _resolve_unknown_via_graph(self, signature: int, unknown_node: int) -> bool:
         """Try to ground an unknown node through graph expansion.
 
         Given a single-node entry {sig: [unknown]} where unknown is not in
@@ -511,7 +516,10 @@ class KAgent:
         """CogitationHandler.on_expansion: write proposal to Frame, publish frame event."""
         self._model.add_frame(proposal)
         event = RationaliseEvent(
-            "frame", query, proposal, significance,
+            "frame",
+            query,
+            proposal,
+            significance,
             candidate=original_candidate,
         )
         self._adapter.on_event(event)
@@ -594,7 +602,9 @@ class KAgent:
 
     @classmethod
     def load(
-        cls, path: str | Path | None = None, format: Literal["bin", "json"] | None = None,
+        cls,
+        path: str | Path | None = None,
+        format: Literal["bin", "json"] | None = None,
         adapter: KAgentAdapter | None = None,
     ) -> KAgent:
         """Load from file."""

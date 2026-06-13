@@ -7,26 +7,25 @@ import logging
 import signal
 import sys
 from pathlib import Path
-from typing import Optional
 
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal
 from textual.css.query import NoMatches
 from textual.widgets import Footer, Header, ListView
 
-from kalvin.agent import Agent
 from kalvin.abstract import KLine
+from kalvin.agent import Agent
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.kline import kline_display
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from ks import KScript
-
-# Type alias for entry identity keys used in tracking sets
-EntryKey = tuple[int, tuple[int, ...]]
-from ui.kscript.dialogs import LoadScriptDialog, SaveStateDialog, LoadStateDialog
+from ui.kscript.dialogs import LoadScriptDialog, LoadStateDialog, SaveStateDialog
 from ui.kscript.regions import EditorRegion, ResponsesRegion, ToolbarRegion
 from ui.kscript.regions.responses import ResponseItem
 from ui.kscript.regions.toolbar import ExecutionState
+
+# Type alias for entry identity keys used in tracking sets
+EntryKey = tuple[int, tuple[int, ...]]
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +71,7 @@ class KScriptApp(App):
     def __init__(self, dev_mode: bool = True, auto_compile_interval: float = 1.0) -> None:
         super().__init__()
         self._dev_mode = dev_mode
-        self._agent: Optional[Agent] = None
+        self._agent: Agent | None = None
         self._display_tok = Mod32Tokenizer()
         self._execution_state: ExecutionState = ExecutionState.IDLE
         self._cancelled: bool = False
@@ -139,7 +138,7 @@ class KScriptApp(App):
             is_fast_path = app._structural_match(query, proposal)
 
             # Correlate event to a compiled entry (HRN-11)
-            matched_key: Optional[EntryKey] = None
+            matched_key: EntryKey | None = None
             for entry in app._compiled_entries:
                 if app._structural_match(query, entry):
                     matched_key = app._entry_key(entry)
@@ -151,8 +150,12 @@ class KScriptApp(App):
                 decompiled = app._display_response([proposal])
                 for level, source in decompiled:
                     app._add_event_response(
-                        level, source, "pass", significance,
-                        kline=proposal, entry_key=matched_key,
+                        level,
+                        source,
+                        "pass",
+                        significance,
+                        kline=proposal,
+                        entry_key=matched_key,
                     )
 
             elif matched_key is not None:
@@ -164,8 +167,12 @@ class KScriptApp(App):
                 decompiled = app._display_response([proposal])
                 for level, source in decompiled:
                     app._add_event_response(
-                        level, source, "pending", significance,
-                        kline=proposal, entry_key=matched_key,
+                        level,
+                        source,
+                        "pending",
+                        significance,
+                        kline=proposal,
+                        entry_key=matched_key,
                     )
 
             else:
@@ -175,8 +182,12 @@ class KScriptApp(App):
                 decompiled = app._display_response([proposal])
                 for level, source in decompiled:
                     app._add_event_response(
-                        level, source, "pending", significance,
-                        kline=proposal, entry_key=None,
+                        level,
+                        source,
+                        "pending",
+                        significance,
+                        kline=proposal,
+                        entry_key=None,
                     )
 
         self._agent.events.subscribe(on_event)
@@ -348,7 +359,7 @@ class KScriptApp(App):
             try:
                 self._agent = Agent.load(AGENT_STATE_FILE, adapter=EventBus())
                 self.log("Restored Agent state")
-            except Exception as e:
+            except Exception:
                 self.log("Failed to load agent state: {e}")
                 self._agent = Agent(adapter=EventBus())
         else:
@@ -384,7 +395,7 @@ class KScriptApp(App):
 
     # === Script Compilation ===
 
-    def _compile_script(self) -> Optional[list[KLine]]:
+    def _compile_script(self) -> list[KLine] | None:
         """Compile the current editor content to KLine entries.
 
         On success, stores the result in self._compiled_entries for event
@@ -434,6 +445,7 @@ class KScriptApp(App):
         if not klines:
             return []
         from kalvin.kline import sig_level
+
         return [(sig_level(kl), kline_display(kl, self._display_tok)) for kl in klines]
 
     def _show_compilation_error(self, error_message: str) -> None:
@@ -522,7 +534,7 @@ class KScriptApp(App):
             self._handle_load_script,
         )
 
-    def _handle_load_script(self, filepath: Optional[str]) -> None:
+    def _handle_load_script(self, filepath: str | None) -> None:
         """Handle result from LoadScriptDialog."""
         if not filepath:
             return
@@ -549,7 +561,7 @@ class KScriptApp(App):
             self._handle_save_state,
         )
 
-    def _handle_save_state(self, filepath: Optional[str]) -> None:
+    def _handle_save_state(self, filepath: str | None) -> None:
         """Handle result from SaveStateDialog."""
         if not filepath or not self._agent:
             return
@@ -571,7 +583,7 @@ class KScriptApp(App):
             self._handle_load_state,
         )
 
-    def _handle_load_state(self, filepath: Optional[str]) -> None:
+    def _handle_load_state(self, filepath: str | None) -> None:
         """Handle result from LoadStateDialog."""
         if not filepath:
             return
@@ -711,7 +723,9 @@ class KScriptApp(App):
 
 def main() -> None:
     """Run the KScript TUI app."""
-    parser = argparse.ArgumentParser(description="KScript TUI - Interactive development environment")
+    parser = argparse.ArgumentParser(
+        description="KScript TUI - Interactive development environment"
+    )
     parser.add_argument(
         "--dev",
         action="store_true",

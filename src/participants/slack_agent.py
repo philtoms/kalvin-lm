@@ -20,7 +20,6 @@ from typing import Any
 
 import websockets
 
-from harness.constants import TRAINEE_ROLE, TRAINER_ROLE
 from participants.commands import parse_command
 
 logger = logging.getLogger(__name__)
@@ -189,7 +188,6 @@ class SlackParticipant:
 
         try:
             from slack_sdk.socket_mode.aiohttp import SocketModeClient
-            from slack_sdk.socket_mode.response import SocketModeResponse
 
             client = SocketModeClient(
                 app_token=self._app_token,
@@ -235,10 +233,12 @@ class SlackParticipant:
         messages = command.to_messages(self._latest_ratify_request)
 
         for target_role, action, payload in messages:
-            frame = json.dumps({
-                "role": target_role,
-                "action": action,
-                "message": payload,
-            })
+            frame = json.dumps(
+                {
+                    "role": target_role,
+                    "action": action,
+                    "message": payload,
+                }
+            )
             await self._ws.send(frame)
             logger.debug("Dispatched %s → %s: %s", action, target_role, str(payload)[:100])

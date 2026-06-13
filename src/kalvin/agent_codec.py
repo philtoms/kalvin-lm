@@ -44,11 +44,11 @@ from typing import Literal
 from kalvin.kline import KLine
 from kalvin.model import Model
 
-
 # ── LTM iteration helper ─────────────────────────────────────────────
 # TODO(KB-050): Remove this helper once Model.iter_ltm() is available.
 # Uses the public API when present, otherwise falls back to the private
 # _ltm KLineStore which supports the same iteration protocol.
+
 
 def _iter_ltm(model: Model):
     """Yield LTM KLines in insertion order.
@@ -69,6 +69,7 @@ FORMAT_VERSION = 2
 
 
 # ── Binary Adapter ────────────────────────────────────────────────────
+
 
 class BinaryAdapter:
     """Encode/decode Model + Counter to/from a stable binary format.
@@ -121,17 +122,17 @@ class BinaryAdapter:
 
         Returns (klines, new_offset).
         """
-        count = unpack("<I", data[offset:offset + 4])[0]
+        count = unpack("<I", data[offset : offset + 4])[0]
         offset += 4
         klines: list[KLine] = []
         for _ in range(count):
-            sig = unpack("<Q", data[offset:offset + 8])[0]
+            sig = unpack("<Q", data[offset : offset + 8])[0]
             offset += 8
-            n_count = unpack("<I", data[offset:offset + 4])[0]
+            n_count = unpack("<I", data[offset : offset + 4])[0]
             offset += 4
             nodes: list[int] = []
             for _ in range(n_count):
-                nodes.append(unpack("<Q", data[offset:offset + 8])[0])
+                nodes.append(unpack("<Q", data[offset : offset + 8])[0])
                 offset += 8
             klines.append(KLine(sig, nodes))
         return klines, offset
@@ -142,17 +143,17 @@ class BinaryAdapter:
 
         Returns (klines, new_offset).
         """
-        count = unpack("<I", data[offset:offset + 4])[0]
+        count = unpack("<I", data[offset : offset + 4])[0]
         offset += 4
         klines: list[KLine] = []
         for _ in range(count):
-            sig = unpack("<Q", data[offset:offset + 8])[0]
+            sig = unpack("<Q", data[offset : offset + 8])[0]
             offset += 8
-            n_count = unpack("<I", data[offset:offset + 4])[0]
+            n_count = unpack("<I", data[offset : offset + 4])[0]
             offset += 4
             nodes: list[int] = []
             for _ in range(n_count):
-                nodes.append(unpack("<Q", data[offset:offset + 8])[0])
+                nodes.append(unpack("<Q", data[offset : offset + 8])[0])
                 offset += 8
             klines.append(KLine(sig, nodes))  # no literal field
         return klines, offset
@@ -160,20 +161,21 @@ class BinaryAdapter:
     @staticmethod
     def _read_activity(data: bytes, offset: int) -> tuple[Counter, int]:
         """Read activity counter from *offset*. Returns (Counter, new_offset)."""
-        count = unpack("<I", data[offset:offset + 4])[0]
+        count = unpack("<I", data[offset : offset + 4])[0]
         offset += 4
         activity: Counter = Counter()
         for _ in range(count):
-            key = unpack("<Q", data[offset:offset + 8])[0]
+            key = unpack("<Q", data[offset : offset + 8])[0]
             offset += 8
-            val = unpack("<I", data[offset:offset + 4])[0]
+            val = unpack("<I", data[offset : offset + 4])[0]
             offset += 4
             activity[key] = val
         return activity, offset
 
     @staticmethod
-    def _reconstruct_model(frame_klines: list[KLine], ltm_klines: list[KLine],
-                           stm_klines: list[KLine]) -> Model:
+    def _reconstruct_model(
+        frame_klines: list[KLine], ltm_klines: list[KLine], stm_klines: list[KLine]
+    ) -> Model:
         """Reconstruct a Model from three tiers in the correct order.
 
         Order: add_ltm → add_frame → add_stm. Since serialized tier lists
@@ -208,7 +210,7 @@ class BinaryAdapter:
         if first_uint32 == MAGIC:
             # ── v2 format ─────────────────────────────────────────────
             offset = 4
-            _version = unpack("<I", data[offset:offset + 4])[0]
+            _version = unpack("<I", data[offset : offset + 4])[0]
             offset += 4
 
             stm_klines, offset = BinaryAdapter._read_kline_section(data, offset)
@@ -228,6 +230,7 @@ class BinaryAdapter:
 
 
 # ── JSON Adapter ──────────────────────────────────────────────────────
+
 
 class JsonAdapter:
     """Encode/decode Model + Counter to/from a JSON-compatible dict.
@@ -276,16 +279,12 @@ class JsonAdapter:
         model = Model()
 
         # (a) Add LTM klines (writes LTM + Frame + STM)
-        ltm_klines = [
-            JsonAdapter._kline_from_dict(item) for item in data.get("ltm", [])
-        ]
+        ltm_klines = [JsonAdapter._kline_from_dict(item) for item in data.get("ltm", [])]
         for kl in ltm_klines:
             model.add_ltm(kl)
 
         # (b) Add Frame klines — check existence first to avoid Frame duplicates
-        frame_klines = [
-            JsonAdapter._kline_from_dict(item) for item in data.get("klines", [])
-        ]
+        frame_klines = [JsonAdapter._kline_from_dict(item) for item in data.get("klines", [])]
         for kl in frame_klines:
             if model.exists(kl):
                 # Already written by add_ltm — just refresh STM position
@@ -294,9 +293,7 @@ class JsonAdapter:
                 model.add_frame(kl)
 
         # (c) Refresh STM entries (writes STM only)
-        stm_klines = [
-            JsonAdapter._kline_from_dict(item) for item in data.get("stm", [])
-        ]
+        stm_klines = [JsonAdapter._kline_from_dict(item) for item in data.get("stm", [])]
         for kl in stm_klines:
             model.add_stm(kl)
 
@@ -308,6 +305,7 @@ class JsonAdapter:
 
 
 # ── AgentCodec ────────────────────────────────────────────────────────
+
 
 class AgentCodec:
     """Serialization codec for Agent persistence.
@@ -364,6 +362,7 @@ class AgentCodec:
         """Load from file. Returns (Model, Counter). Format auto-detected from extension."""
         if path is None:
             from kalvin.paths import agent_bin
+
             path = agent_bin()
         path = Path(path)
         if format is None:

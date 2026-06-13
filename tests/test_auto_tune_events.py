@@ -13,14 +13,15 @@ from participants.auto_tune.events import (
     enrich_event,
 )
 
-
 # ── Fixtures / helpers ────────────────────────────────────────────────
+
 
 def _make_kline(sig: int, nodes: list[int]) -> KLine:
     return KLine(signature=sig, nodes=nodes)
 
 
 # ── 1. Progress enrichment ────────────────────────────────────────────
+
 
 class TestProgressEnrichment:
     def test_basic_progress(self):
@@ -61,6 +62,7 @@ class TestProgressEnrichment:
 
 
 # ── 2 & 3. Rationalise enrichment ────────────────────────────────────
+
 
 class TestRationaliseEnrichment:
     def test_ground_high_significance(self):
@@ -129,6 +131,7 @@ class TestRationaliseEnrichment:
 
 # ── 4. Ratify request enrichment ─────────────────────────────────────
 
+
 class TestRatifyRequestEnrichment:
     def test_basic_ratify(self):
         frame = {
@@ -170,6 +173,7 @@ class TestRatifyRequestEnrichment:
 
 # ── 5. Escalation enrichment ─────────────────────────────────────────
 
+
 class TestEscalationEnrichment:
     def test_basic_escalation(self):
         frame = {
@@ -206,6 +210,7 @@ class TestEscalationEnrichment:
 
 
 # ── 6. Significance normalisation ────────────────────────────────────
+
 
 class TestSignificanceObject:
     def test_max_significance(self):
@@ -247,6 +252,7 @@ class TestSignificanceObject:
     def test_s2_less_than_s1(self):
         """S2 normalised significance must be strictly less than S1."""
         from kalvin.expand import MASK64
+
         s1_sig = D_MAX - 1  # S1 threshold, distance=1
         s2_sig = (~2) & MASK64  # S2, distance=2
         s1 = _build_significance(s1_sig)
@@ -266,6 +272,7 @@ class TestSignificanceObject:
 
 # ── 7. KLine Display Object ──────────────────────────────────────────
 
+
 class TestKLineDisplayObject:
     def test_raw_fields(self):
         kline = _make_kline(0x42, [1, 2])
@@ -283,6 +290,7 @@ class TestKLineDisplayObject:
 
 
 # ── 8. Dict-to-KLine conversion ──────────────────────────────────────
+
 
 class TestDictToKLine:
     def test_plain_dict_input(self):
@@ -319,6 +327,7 @@ class TestDictToKLine:
 
 # ── 9. Seq counter ───────────────────────────────────────────────────
 
+
 class TestSeqCounter:
     def test_seq_in_progress(self):
         frame = {
@@ -350,6 +359,7 @@ class TestSeqCounter:
 
 
 # ── Unknown action ────────────────────────────────────────────────────
+
 
 class TestUnknownAction:
     def test_unknown_action_raises(self):

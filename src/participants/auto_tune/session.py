@@ -12,12 +12,11 @@ import json
 import os
 import subprocess
 import sys
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
-
 
 # ---------------------------------------------------------------------------
 # SessionConfig
@@ -174,6 +173,7 @@ class SessionDir:
 
         # 2. Derive model_path
         from kalvin.paths import agent_bin
+
         model_path = str(agent_bin())
 
         # 3. Capture git state
@@ -278,7 +278,6 @@ class SessionDir:
             _config=cfg,
         )
 
-
     # -- Teardown --------------------------------------------------------------
 
     @classmethod
@@ -317,6 +316,7 @@ class SessionDir:
             pass  # Branch may already be gone or may be merged
 
     # -- Helpers ---------------------------------------------------------------
+
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -11,10 +11,10 @@ import pytest
 
 from ks.binding_scope import BindingScope
 
-
 # ---------------------------------------------------------------------------
 # KS-23: First-letter matching
 # ---------------------------------------------------------------------------
+
 
 class TestFirstLetterMatching:
     """KS-23: Words are matched by their first letter (case-insensitive)."""
@@ -48,6 +48,7 @@ class TestFirstLetterMatching:
 # KS-24: Occurrence counter disambiguation
 # ---------------------------------------------------------------------------
 
+
 class TestOccurrenceCounter:
     """KS-24: Ambiguous matches (multiple L-words) use occurrence counter."""
 
@@ -79,6 +80,7 @@ class TestOccurrenceCounter:
 # KS-25: Unambiguous match does NOT increment counter (inline bypass property)
 # ---------------------------------------------------------------------------
 
+
 class TestInlineBypassProperty:
     """KS-25: Unambiguous match bypasses counter — same word returned repeatedly."""
 
@@ -103,6 +105,7 @@ class TestInlineBypassProperty:
 # KS-27: Scope inheritance (inner scope falls through to outer)
 # ---------------------------------------------------------------------------
 
+
 class TestScopeInheritance:
     """KS-27: Inner scope without a binding inherits from outer scope."""
 
@@ -118,6 +121,7 @@ class TestScopeInheritance:
 # ---------------------------------------------------------------------------
 # KS-28: Scope shadowing
 # ---------------------------------------------------------------------------
+
 
 class TestScopeShadowing:
     """KS-28: Inner scope binding shadows outer scope for same character."""
@@ -144,6 +148,7 @@ class TestScopeShadowing:
 # ---------------------------------------------------------------------------
 # KS-29: Counter reset on new scope
 # ---------------------------------------------------------------------------
+
 
 class TestCounterReset:
     """KS-29: Each new scope has independent counters."""
@@ -180,6 +185,7 @@ class TestCounterReset:
 # KS-30: Unbound returns None
 # ---------------------------------------------------------------------------
 
+
 class TestUnboundReturnsNone:
     """KS-30: Resolving an unbound character returns None."""
 
@@ -202,6 +208,7 @@ class TestUnboundReturnsNone:
 # ---------------------------------------------------------------------------
 # KS-31: Inert annotation (no matching chars → no side effects)
 # ---------------------------------------------------------------------------
+
 
 class TestInertAnnotation:
     """KS-31: No matching characters causes no side effects on counters."""
@@ -231,6 +238,7 @@ class TestInertAnnotation:
 # Case-insensitive matching
 # ---------------------------------------------------------------------------
 
+
 class TestCaseInsensitive:
     """First-letter matching is case-insensitive."""
 
@@ -258,6 +266,7 @@ class TestCaseInsensitive:
 # ---------------------------------------------------------------------------
 # Counter exceeded
 # ---------------------------------------------------------------------------
+
 
 class TestCounterExceeded:
     """When counter exceeds available matches, returns None."""
@@ -312,6 +321,7 @@ class TestCounterExceeded:
 # Multiple word lists in same scope (most-recent-first)
 # ---------------------------------------------------------------------------
 
+
 class TestMultipleWordLists:
     """Multiple add_words calls in same scope: most-recent-first search."""
 
@@ -346,6 +356,7 @@ class TestMultipleWordLists:
 # Empty word list
 # ---------------------------------------------------------------------------
 
+
 class TestEmptyWordList:
     """Empty word lists are skipped during resolution."""
 
@@ -366,6 +377,7 @@ class TestEmptyWordList:
 # ---------------------------------------------------------------------------
 # Error conditions
 # ---------------------------------------------------------------------------
+
 
 class TestErrorConditions:
     """Assert errors on invalid operations."""
@@ -391,6 +403,7 @@ class TestErrorConditions:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     """Miscellaneous edge cases."""

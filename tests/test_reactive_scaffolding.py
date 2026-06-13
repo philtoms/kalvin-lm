@@ -7,7 +7,7 @@ sanitised, and submitted to Kalvin instead of discarded.
 from __future__ import annotations
 
 import logging
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from harness.bus import MessageBus
 from harness.constants import TRAINEE_ROLE
@@ -16,14 +16,12 @@ from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from trainer.cogitation import (
     _SYSTEM_PROMPT,
-    _strip_hash_comments,
-    CogitationResult,
     Cogitator,
     LLMResponse,
+    _strip_hash_comments,
 )
-from trainer.curriculum import Curriculum, CurriculumState
+from trainer.curriculum import CurriculumState
 from trainer.reactor import Reactor
-
 
 # ── RS-1: System prompt contains no hex literal syntax ───────────────
 
@@ -41,8 +39,9 @@ class TestSystemPrompt:
             lower = line.lower()
             if "0x" in line:
                 # Only allowed in a "never use" or "do not" context
-                assert "never" in lower or "not" in lower or "do not" in lower, \
+                assert "never" in lower or "not" in lower or "do not" in lower, (
                     f"Line mentions 0x without a prohibition: {line}"
+                )
         # The old claim 'Signatures and nodes are hexadecimal integers' must be gone
         assert "Signatures and nodes are hexadecimal" not in _SYSTEM_PROMPT
 
@@ -119,14 +118,16 @@ class TestCogitatorSanitisation:
         client = MagicMock()
         client.complete.return_value = LLMResponse(
             content=None,
-            tool_calls=[{
-                "function": {
-                    "name": "submit_scaffolding",
-                    "arguments": '{"kscript_source": "# comment\\nM > H", '
-                                 '"confidence": 0.8, '
-                                 '"reasoning": "test"}',
-                },
-            }],
+            tool_calls=[
+                {
+                    "function": {
+                        "name": "submit_scaffolding",
+                        "arguments": '{"kscript_source": "# comment\\nM > H", '
+                        '"confidence": 0.8, '
+                        '"reasoning": "test"}',
+                    },
+                }
+            ],
             finish_reason="tool_calls",
         )
 
@@ -167,14 +168,16 @@ class TestCogitatorSanitisation:
         client = MagicMock()
         client.complete.return_value = LLMResponse(
             content=None,
-            tool_calls=[{
-                "function": {
-                    "name": "submit_scaffolding",
-                    "arguments": '{"kscript_source": "# only comments\\n# no kscript", '
-                                 '"confidence": 0.5, '
-                                 '"reasoning": "test"}',
-                },
-            }],
+            tool_calls=[
+                {
+                    "function": {
+                        "name": "submit_scaffolding",
+                        "arguments": '{"kscript_source": "# only comments\\n# no kscript", '
+                        '"confidence": 0.5, '
+                        '"reasoning": "test"}',
+                    },
+                }
+            ],
             finish_reason="tool_calls",
         )
 
@@ -249,7 +252,9 @@ class TestReactorSubmittedLog:
             return ("M > H", 0.8)
 
         reactor = Reactor(
-            bus, state, role="trainer",
+            bus,
+            state,
+            role="trainer",
             max_reactive_rounds=5,
             cogitate_fn=cogitate_fn,
         )
@@ -265,10 +270,7 @@ class TestReactorSubmittedLog:
             reactor.process_s2_s3(event)
 
         # Check log line
-        assert any(
-            "submitted reactive scaffolding" in r.message
-            for r in caplog.records
-        )
+        assert any("submitted reactive scaffolding" in r.message for r in caplog.records)
 
         # Check bus message was sent to trainee with submit action
         submits = cap.find_all(TRAINEE_ROLE, "submit")

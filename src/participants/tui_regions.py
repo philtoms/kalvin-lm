@@ -244,6 +244,3 @@ class RatifyBar(Horizontal):
         except Exception:
             # Widget not mounted — data is still cleared
             pass
-
-
-

@@ -21,7 +21,8 @@ Re-exported constants and types from the old model module:
 from __future__ import annotations
 
 import logging
-from typing import Iterator, TYPE_CHECKING
+from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 from kalvin.kline import KLine
 from kalvin.misfit import classify_misfit, generate_expansions
@@ -53,7 +54,7 @@ def _pack(distance: int) -> int:
 
 
 # Public significance constants
-D_MAX = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance, also the significance of zero distance
+D_MAX = 0xFFFF_FFFF_FFFF_FFFF  # maximum distance, also the significance of zero distance
 MASK64 = 0xFFFF_FFFF_FFFF_FFFF  # 64-bit mask for bitwise inversion
 
 # MAX_HOP hyperparameter — upper bound on edge hop chain depth
@@ -66,6 +67,7 @@ S2_S3_DISTANCE = 100
 
 
 # ── Significance Boundaries ───────────────────────────────────────────
+
 
 def boundaries() -> tuple[int, int, int]:
     """Return the three significance boundaries (S1|S2, S2|S3, S3|S4).
@@ -101,6 +103,7 @@ class QueryCandidate:
     Replaces the NamedTuple from model.py with a class for forward
     compatibility. Still usable as a tuple: (query, candidate, significance).
     """
+
     __slots__ = ("query", "candidate", "significance")
 
     def __init__(self, query: KLine, candidate: KLine, significance: int):
@@ -111,9 +114,11 @@ class QueryCandidate:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, QueryCandidate):
             return NotImplemented
-        return (self.query is other.query
-                and self.candidate is other.candidate
-                and self.significance == other.significance)
+        return (
+            self.query is other.query
+            and self.candidate is other.candidate
+            and self.significance == other.significance
+        )
 
     def __repr__(self) -> str:
         return f"QueryCandidate(q={self.query!r}, c={self.candidate!r}, sig={self.significance:#x})"
@@ -123,6 +128,7 @@ class QueryCandidate:
 
 
 # ── Helper Functions ──────────────────────────────────────────────────
+
 
 def is_canon(kline: KLine) -> bool:
     """Test whether a kline is canonical (signature = make_signature of nodes)."""
@@ -165,6 +171,7 @@ def _as_kline(model: Model, node: int) -> KLine:
 
 # ── Structural Grounding ─────────────────────────────────────────────
 
+
 def is_s1(model: Model, kline: KLine) -> bool:
     """Determine if a kline is structurally grounded (S1).
 
@@ -194,6 +201,7 @@ def is_countersigned(model: Model, kline: KLine) -> bool:
 
 
 # ── Graph Expansion ───────────────────────────────────────────────────
+
 
 def expand(
     model: Model,
@@ -244,7 +252,11 @@ def expand(
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
-                            model, q_kline, c_kline, hops, _visited=_visited,
+                            model,
+                            q_kline,
+                            c_kline,
+                            hops,
+                            _visited=_visited,
                         )
                     break
                 elif signifies(n, match_sig):
@@ -254,8 +266,7 @@ def expand(
                         significance = (~min(sig_distance, D_MAX - 1)) & MASK64
                         yield QueryCandidate(q_kline, c_kline, significance)
                     break
-                elif (match_sig not in s3_connotations
-                    or hops < s3_connotations[match_sig]):
+                elif match_sig not in s3_connotations or hops < s3_connotations[match_sig]:
                     s3_connotations[match_sig] = hops
         total_distance += hop_distance
 
@@ -270,7 +281,11 @@ def expand(
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
-                            model, q_kline, c_kline, hops, _visited=_visited,
+                            model,
+                            q_kline,
+                            c_kline,
+                            hops,
+                            _visited=_visited,
                         )
                     break
                 elif signifies(n, match_sig):
@@ -285,7 +300,9 @@ def expand(
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
-                            model, q_kline, c_kline,
+                            model,
+                            q_kline,
+                            c_kline,
                             S2_S3_DISTANCE + s3_hop + _S3_BIAS - 1,
                             _visited=_visited,
                         )
@@ -308,6 +325,7 @@ def expand(
 
 
 # ── Promotion Helpers ─────────────────────────────────────────────────
+
 
 def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
     """Promote klines that structurally participated in a ratification event.
@@ -343,8 +361,7 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
         elif isinstance(kl.nodes, int):
             # Single-node entry (countersign/undersign) — promote
             to_promote.append(kl)
-        elif (isinstance(kl.nodes, list)
-              and len(kl.nodes) == 1):
+        elif isinstance(kl.nodes, list) and len(kl.nodes) == 1:
             # Single-node list entry — promote
             to_promote.append(kl)
         elif is_canon(kl):
@@ -352,9 +369,9 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
             to_promote.append(kl)
 
     _log.info(
-        "promote_participating: query=%#x candidate=%#x "
-        "promoting %d structural + 2",
-        query.signature, candidate.signature,
+        "promote_participating: query=%#x candidate=%#x promoting %d structural + 2",
+        query.signature,
+        candidate.signature,
         len(to_promote),
     )
 
@@ -366,6 +383,7 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
 
 
 # ── Expansion Proposal Pipeline ───────────────────────────────────────
+
 
 def propose_expansions(
     model: Model,
@@ -396,9 +414,7 @@ def propose_expansions(
     underfit_gap = candidate_sig & ~nodes_sig
     overfit_mask = nodes_sig & ~candidate_sig
 
-    for proposal, companions in generate_expansions(
-        model, candidate, underfit_gap, overfit_mask
-    ):
+    for proposal, companions in generate_expansions(model, candidate, underfit_gap, overfit_mask):
         yield (proposal, significance)
         for companion in companions:
             yield (companion, significance)

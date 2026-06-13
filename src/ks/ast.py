@@ -21,7 +21,8 @@ class Signature:
 
     Can appear as a scope's signature or as a bare node within a scope's items.
     """
-    id: str       # uppercase
+
+    id: str  # uppercase
     line: int
     column: int
 
@@ -34,6 +35,7 @@ class Annotation:
     Provides word text for BPE token encoding. The text includes
     enclosing parentheses.
     """
+
     text: str
     line: int
     column: int
@@ -60,17 +62,19 @@ class OperatorScope:
             for attaching subsequent annotations via the items list (as Annotation
             entries preceding the annotated Signature) or another mechanism.
     """
+
     sig: Signature
     op: TokenType | None = None
     items: list[ScopeItem] = field(default_factory=list)
     child_block: Block | None = None
-    inline_annotation: Annotation | None = None       # sig-side
-    node_inline_annotation: Annotation | None = None   # node-side (first node)
+    inline_annotation: Annotation | None = None  # sig-side
+    node_inline_annotation: Annotation | None = None  # node-side (first node)
 
 
 @dataclass
 class Block:
     """INDENT construct+ DEDENT — an indented block of constructs."""
+
     constructs: list[ConstructItem]
 
 
@@ -81,6 +85,7 @@ class KScriptFile:
     No Script wrapper — KScriptFile holds constructs directly since
     there is exactly one script per file.
     """
+
     constructs: list[ConstructItem]
 
 

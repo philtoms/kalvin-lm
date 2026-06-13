@@ -44,9 +44,11 @@ def __getattr__(name: str):
     """Lazy imports to avoid import errors when modules are partially built."""
     if name == "SlackParticipant":
         from participants.slack_agent import SlackParticipant
+
         return SlackParticipant
     if name in ("HarnessClient", "TUIApp"):
         from participants.tui_client import HarnessClient, TUIApp
+
         return HarnessClient if name == "HarnessClient" else TUIApp
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

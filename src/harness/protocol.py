@@ -208,9 +208,7 @@ class WebSocketProtocol:
         return json.dumps(payload)
 
     @staticmethod
-    def _parse_message_frame(
-        frame: dict[str, Any], sender: str
-    ) -> Message | None:
+    def _parse_message_frame(frame: dict[str, Any], sender: str) -> Message | None:
         """Parse a JSON frame dict into a ``Message``.  Returns *None* on
         malformed input.
         """

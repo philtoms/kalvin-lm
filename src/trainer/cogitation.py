@@ -154,7 +154,8 @@ def _classify_significance(significance: int) -> str:
     Uses the same boundary constants as the KAgent expand module
     so the LLM sees a meaningful band label instead of a raw 64-bit int.
     """
-    from kalvin.expand import boundaries, classify as _classify
+    from kalvin.expand import boundaries
+    from kalvin.expand import classify as _classify
 
     s12, s23, s34 = boundaries()
     return _classify(significance, s12, s23, s34)
@@ -176,7 +177,9 @@ def build_prompt(request: CogitationRequest) -> list[dict]:
 
         _log.debug(
             "build_prompt: event %d significance=%#x → band=%s",
-            i, event.significance, sig_level,
+            i,
+            event.significance,
+            sig_level,
         )
 
         if misfit.underfit and misfit.overfit:
@@ -196,8 +199,7 @@ def build_prompt(request: CogitationRequest) -> list[dict]:
         ]
         if misfit.underfit:
             lines.append(
-                f"Underfit gap: 0x{misfit.underfit_gap:X} "
-                "(bits in signature not covered by nodes)"
+                f"Underfit gap: 0x{misfit.underfit_gap:X} (bits in signature not covered by nodes)"
             )
         if misfit.overfit:
             lines.append(
@@ -217,15 +219,19 @@ def build_prompt(request: CogitationRequest) -> list[dict]:
             parts.append(f"Approach: {request.approach}")
         if request.lesson_prose:
             parts.append(f"Current lesson context: {request.lesson_prose}")
-        messages.append({
-            "role": "user",
-            "content": "\n".join(parts),
-        })
+        messages.append(
+            {
+                "role": "user",
+                "content": "\n".join(parts),
+            }
+        )
     elif request.curriculum_context:
-        messages.append({
-            "role": "user",
-            "content": f"Current curriculum context: {request.curriculum_context}",
-        })
+        messages.append(
+            {
+                "role": "user",
+                "content": f"Current curriculum context: {request.curriculum_context}",
+            }
+        )
 
     # Conversation history
     for turn in request.conversation_history:
@@ -233,13 +239,15 @@ def build_prompt(request: CogitationRequest) -> list[dict]:
 
     # Round budget awareness
     remaining = request.max_rounds - request.round_number
-    messages.append({
-        "role": "user",
-        "content": (
-            f"Round {request.round_number} of {request.max_rounds}. "
-            f"{remaining} rounds remaining."
-        ),
-    })
+    messages.append(
+        {
+            "role": "user",
+            "content": (
+                f"Round {request.round_number} of {request.max_rounds}. "
+                f"{remaining} rounds remaining."
+            ),
+        }
+    )
 
     return messages
 
@@ -292,7 +300,12 @@ def build_tool_definitions() -> list[dict]:
 
 # Minimal pattern to detect KScript-like lines
 _KSCRIPT_LINE_PREFIXES = (
-    "0x", "#", "-> ", "=> ", "~> ", "<- ",
+    "0x",
+    "#",
+    "-> ",
+    "=> ",
+    "~> ",
+    "<- ",
 )
 
 
@@ -311,10 +324,7 @@ def extract_result(response: LLMResponse) -> CogitationResult:
     _log.debug(
         "extract_result: content=%r, tool_calls=%s, finish_reason=%r",
         response.content[:200] if response.content else None,
-        [
-            tc.get("function", {}).get("name")
-            for tc in (response.tool_calls or [])
-        ],
+        [tc.get("function", {}).get("name") for tc in (response.tool_calls or [])],
         response.finish_reason,
     )
 
@@ -331,9 +341,9 @@ def extract_result(response: LLMResponse) -> CogitationResult:
                         args = args_raw
                 except json.JSONDecodeError as e:
                     _log.error(
-                        "extract_result: failed to parse tool call "
-                        "arguments: %s — raw: %r",
-                        e, args_raw[:200] if isinstance(args_raw, str) else args_raw,
+                        "extract_result: failed to parse tool call arguments: %s — raw: %r",
+                        e,
+                        args_raw[:200] if isinstance(args_raw, str) else args_raw,
                     )
                     return CogitationResult(
                         scaffolding=None,
@@ -343,8 +353,7 @@ def extract_result(response: LLMResponse) -> CogitationResult:
                     )
 
                 _log.info(
-                    "extract_result: strategy 1 (tool call) — "
-                    "kscript=%r, confidence=%.2f",
+                    "extract_result: strategy 1 (tool call) — kscript=%r, confidence=%.2f",
                     args.get("kscript_source", "")[:80],
                     float(args.get("confidence", 0.0)),
                 )
@@ -356,8 +365,7 @@ def extract_result(response: LLMResponse) -> CogitationResult:
                 )
 
         _log.warning(
-            "extract_result: tool_calls present but no submit_scaffolding "
-            "found — tool names: %s",
+            "extract_result: tool_calls present but no submit_scaffolding found — tool names: %s",
             [tc.get("function", {}).get("name") for tc in response.tool_calls],
         )
 
@@ -366,14 +374,12 @@ def extract_result(response: LLMResponse) -> CogitationResult:
         kscript_lines = [
             line
             for line in response.content.splitlines()
-            if line.strip()
-            and any(line.strip().startswith(p) for p in _KSCRIPT_LINE_PREFIXES)
+            if line.strip() and any(line.strip().startswith(p) for p in _KSCRIPT_LINE_PREFIXES)
         ]
         if kscript_lines:
             scaffolding = "\n".join(kscript_lines)
             _log.info(
-                "extract_result: strategy 2 (text extraction) — "
-                "%d KScript lines found",
+                "extract_result: strategy 2 (text extraction) — %d KScript lines found",
                 len(kscript_lines),
             )
             return CogitationResult(
@@ -384,8 +390,7 @@ def extract_result(response: LLMResponse) -> CogitationResult:
             )
         else:
             _log.warning(
-                "extract_result: strategy 2 failed — no KScript lines "
-                "found in %d chars of content",
+                "extract_result: strategy 2 failed — no KScript lines found in %d chars of content",
                 len(response.content),
             )
 
@@ -441,25 +446,23 @@ class Cogitator:
 
         _log.info(
             "Cogitator.cogitate: calling LLM with %d messages, %d tools",
-            len(messages), len(tools),
+            len(messages),
+            len(tools),
         )
         for i, msg in enumerate(messages):
             _log.debug(
                 "  msg[%d]: role=%s, content=%s",
-                i, msg["role"],
+                i,
+                msg["role"],
                 msg["content"][:200] if msg.get("content") else "(none)",
             )
 
         response = self._client.complete(messages, tools=tools)
 
         _log.info(
-            "Cogitator.cogitate: LLM response — content=%r, "
-            "tool_calls=%s, finish_reason=%r",
+            "Cogitator.cogitate: LLM response — content=%r, tool_calls=%s, finish_reason=%r",
             response.content[:200] if response.content else None,
-            [
-                tc.get("function", {}).get("name")
-                for tc in (response.tool_calls or [])
-            ],
+            [tc.get("function", {}).get("name") for tc in (response.tool_calls or [])],
             response.finish_reason,
         )
 
@@ -471,9 +474,9 @@ class Cogitator:
             sanitised = _strip_hash_comments(result.scaffolding)
             if sanitised != result.scaffolding:
                 _log.info(
-                    "Cogitator.cogitate: stripped # comments from scaffolding "
-                    "(%d → %d chars)",
-                    len(result.scaffolding), len(sanitised),
+                    "Cogitator.cogitate: stripped # comments from scaffolding (%d → %d chars)",
+                    len(result.scaffolding),
+                    len(sanitised),
                 )
                 result = CogitationResult(
                     scaffolding=sanitised or None,
@@ -483,8 +486,7 @@ class Cogitator:
                 )
                 if result.scaffolding is None:
                     _log.warning(
-                        "Cogitator.cogitate: scaffolding was all comments — "
-                        "nothing to compile",
+                        "Cogitator.cogitate: scaffolding was all comments — nothing to compile",
                     )
                     return result
 

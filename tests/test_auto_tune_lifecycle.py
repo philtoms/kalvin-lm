@@ -8,15 +8,13 @@ and forced shutdown).
 from __future__ import annotations
 
 import json
-import os
 import signal
 import subprocess
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -77,7 +75,7 @@ class TestStartHarness:
         mock_socket_cls.return_value.__enter__ = MagicMock(return_value=mock_sock)
         mock_socket_cls.return_value.__exit__ = MagicMock(return_value=False)
 
-        from participants.auto_tune.lifecycle import start_harness, _resolve_python
+        from participants.auto_tune.lifecycle import _resolve_python, start_harness
 
         pid = start_harness(session_dir)
 
@@ -85,7 +83,11 @@ class TestStartHarness:
         mock_popen.assert_called_once()
         call_args = mock_popen.call_args
         assert call_args[0][0] == [
-            _resolve_python(), "-m", "harness", "--config", str(session_config_path),
+            _resolve_python(),
+            "-m",
+            "harness",
+            "--config",
+            str(session_config_path),
         ]
         # PID file written
         pid_path = session_dir / "harness.pid"
@@ -260,7 +262,7 @@ class TestStartSupervisor:
     ) -> None:
         mock_popen.return_value = fake_process
 
-        from participants.auto_tune.lifecycle import start_supervisor, _resolve_python
+        from participants.auto_tune.lifecycle import _resolve_python, start_supervisor
 
         # Simulate status.json appearing with connected=true on second check
         call_count = [0]
@@ -456,9 +458,7 @@ class TestHelpers:
         assert _read_pid(pid_file) is None
 
     @patch("participants.auto_tune.lifecycle.os.kill")
-    def test_wait_for_exit_returns_true_when_process_dies(
-        self, mock_kill: MagicMock
-    ) -> None:
+    def test_wait_for_exit_returns_true_when_process_dies(self, mock_kill: MagicMock) -> None:
         from participants.auto_tune.lifecycle import _wait_for_exit
 
         # Process dies on second check
@@ -477,9 +477,7 @@ class TestHelpers:
         assert result is True
 
     @patch("participants.auto_tune.lifecycle.os.kill")
-    def test_wait_for_exit_returns_false_on_timeout(
-        self, mock_kill: MagicMock
-    ) -> None:
+    def test_wait_for_exit_returns_false_on_timeout(self, mock_kill: MagicMock) -> None:
         from participants.auto_tune.lifecycle import _wait_for_exit
 
         # Process always alive (os.kill succeeds)
@@ -578,9 +576,10 @@ class TestSessionHarnessConfig:
     """_generate_session_harness_config overrides curriculum from session config."""
 
     def test_overrides_curriculum_file(self, tmp_path: Path) -> None:
+        import yaml
+
         from participants.auto_tune.lifecycle import _generate_session_harness_config
         from participants.auto_tune.session import SessionConfig
-        import yaml
 
         # Create project harness.yaml
         project_yaml = tmp_path / "harness.yaml"
@@ -607,9 +606,10 @@ class TestSessionHarnessConfig:
         assert data["trainer"]["curriculum_file"] == "curricula/custom.md"
 
     def test_preserves_other_config(self, tmp_path: Path) -> None:
+        import yaml
+
         from participants.auto_tune.lifecycle import _generate_session_harness_config
         from participants.auto_tune.session import SessionConfig
-        import yaml
 
         project_yaml = tmp_path / "harness.yaml"
         project_yaml.write_text(
@@ -636,9 +636,10 @@ class TestSessionHarnessConfig:
         assert data["server"]["port"] == 8765
 
     def test_no_project_config_uses_minimal(self, tmp_path: Path) -> None:
+        import yaml
+
         from participants.auto_tune.lifecycle import _generate_session_harness_config
         from participants.auto_tune.session import SessionConfig
-        import yaml
 
         # No project harness.yaml
         session_dir = tmp_path / "auto-tune" / "test"
@@ -686,6 +687,7 @@ class TestStartKillsStaleProcesses:
         mock_socket_cls.return_value.__exit__ = MagicMock(return_value=False)
 
         from participants.auto_tune.lifecycle import start_harness
+
         start_harness(session_dir)
 
         mock_kill_stale.assert_called_once_with(session_dir / "harness.pid")

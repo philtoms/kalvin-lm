@@ -15,7 +15,6 @@ from ks.ast_emitter import ASTEmitter, SymbolicEntry
 from ks.binding_scope import BindingScope
 from ks.token import TokenType
 
-
 # ======================================================================
 # Helpers
 # ======================================================================
@@ -139,9 +138,7 @@ class TestKS34NodesAlwaysList:
 
     def test_all_entries_are_list(self):
         """Every entry in a non-trivial compilation has list nodes."""
-        entries = emit(_file(
-            _scope("A", TokenType.COUNTERSIGN, items=[_sig("B"), _sig("C")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.COUNTERSIGN, items=[_sig("B"), _sig("C")])))
         for e in entries:
             assert isinstance(e.nodes, list), f"Entry {e} has non-list nodes"
 
@@ -156,35 +153,27 @@ class TestKS11Countersign:
     {A:[C], COUNTERSIGNED}, {C:[A], COUNTERSIGNED}."""
 
     def test_countersign_per_item(self):
-        entries = emit(_file(
-            _scope("A", TokenType.COUNTERSIGN, items=[_sig("B"), _sig("C")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.COUNTERSIGN, items=[_sig("B"), _sig("C")])))
         assert_has_entry(entries, "A", ["B"], "COUNTERSIGNED")
         assert_has_entry(entries, "B", ["A"], "COUNTERSIGNED")
         assert_has_entry(entries, "A", ["C"], "COUNTERSIGNED")
         assert_has_entry(entries, "C", ["A"], "COUNTERSIGNED")
 
     def test_countersign_single(self):
-        entries = emit(_file(
-            _scope("A", TokenType.COUNTERSIGN, items=[_sig("B")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.COUNTERSIGN, items=[_sig("B")])))
         assert_has_entry(entries, "A", ["B"], "COUNTERSIGNED")
         assert_has_entry(entries, "B", ["A"], "COUNTERSIGNED")
 
     def test_entry_count(self):
         """Exact entry counts — no spurious IDENTITY from bare Signature nodes."""
         # A == B C → 4 COUNTERSIGN, 0 IDENTITY
-        entries = emit(_file(
-            _scope("A", TokenType.COUNTERSIGN, items=[_sig("B"), _sig("C")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.COUNTERSIGN, items=[_sig("B"), _sig("C")])))
         assert len(entries) == 4
         assert sum(1 for e in entries if e.op == "IDENTITY") == 0
         assert sum(1 for e in entries if e.op == "COUNTERSIGNED") == 4
 
         # A == B → 2 COUNTERSIGN, 0 IDENTITY
-        entries = emit(_file(
-            _scope("A", TokenType.COUNTERSIGN, items=[_sig("B")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.COUNTERSIGN, items=[_sig("B")])))
         assert len(entries) == 2
         assert sum(1 for e in entries if e.op == "IDENTITY") == 0
 
@@ -198,32 +187,24 @@ class TestKS12Undersign:
     """A = B C → {B:[A], UNDERSIGNED}, {C:[A], UNDERSIGNED}."""
 
     def test_undersign_reversed(self):
-        entries = emit(_file(
-            _scope("A", TokenType.UNDERSIGN, items=[_sig("B"), _sig("C")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.UNDERSIGN, items=[_sig("B"), _sig("C")])))
         assert_has_entry(entries, "B", ["A"], "UNDERSIGNED")
         assert_has_entry(entries, "C", ["A"], "UNDERSIGNED")
 
     def test_undersign_single(self):
-        entries = emit(_file(
-            _scope("A", TokenType.UNDERSIGN, items=[_sig("B")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.UNDERSIGN, items=[_sig("B")])))
         assert_has_entry(entries, "B", ["A"], "UNDERSIGNED")
 
     def test_entry_count(self):
         """Exact entry counts — no spurious IDENTITY from bare Signature nodes."""
         # A = B C → 2 UNDERSIGN, 0 IDENTITY
-        entries = emit(_file(
-            _scope("A", TokenType.UNDERSIGN, items=[_sig("B"), _sig("C")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.UNDERSIGN, items=[_sig("B"), _sig("C")])))
         assert len(entries) == 2
         assert sum(1 for e in entries if e.op == "IDENTITY") == 0
         assert sum(1 for e in entries if e.op == "UNDERSIGNED") == 2
 
         # A = B → 1 UNDERSIGN, 0 IDENTITY
-        entries = emit(_file(
-            _scope("A", TokenType.UNDERSIGN, items=[_sig("B")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.UNDERSIGN, items=[_sig("B")])))
         assert len(entries) == 1
         assert sum(1 for e in entries if e.op == "IDENTITY") == 0
 
@@ -237,32 +218,24 @@ class TestKS13Connotate:
     """A > B C → {A:[B], CONNOTED}, {A:[C], CONNOTED}."""
 
     def test_connotate_forward(self):
-        entries = emit(_file(
-            _scope("A", TokenType.CONNOTATE, items=[_sig("B"), _sig("C")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.CONNOTATE, items=[_sig("B"), _sig("C")])))
         assert_has_entry(entries, "A", ["B"], "CONNOTED")
         assert_has_entry(entries, "A", ["C"], "CONNOTED")
 
     def test_connotate_single(self):
-        entries = emit(_file(
-            _scope("A", TokenType.CONNOTATE, items=[_sig("B")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.CONNOTATE, items=[_sig("B")])))
         assert_has_entry(entries, "A", ["B"], "CONNOTED")
 
     def test_entry_count(self):
         """Exact entry counts — no spurious IDENTITY from bare Signature nodes."""
         # A > B C → 2 CONNOTATE, 0 IDENTITY
-        entries = emit(_file(
-            _scope("A", TokenType.CONNOTATE, items=[_sig("B"), _sig("C")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.CONNOTATE, items=[_sig("B"), _sig("C")])))
         assert len(entries) == 2
         assert sum(1 for e in entries if e.op == "IDENTITY") == 0
         assert sum(1 for e in entries if e.op == "CONNOTED") == 2
 
         # A > B → 1 CONNOTATE, 0 IDENTITY
-        entries = emit(_file(
-            _scope("A", TokenType.CONNOTATE, items=[_sig("B")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.CONNOTATE, items=[_sig("B")])))
         assert len(entries) == 1
         assert sum(1 for e in entries if e.op == "IDENTITY") == 0
 
@@ -276,17 +249,15 @@ class TestKS14Canonize:
     """A => B C D → exactly one CANONIZE entry {A:[B,C,D]}."""
 
     def test_canonize_aggregated(self):
-        entries = emit(_file(
-            _scope("A", TokenType.CANONIZE, items=[_sig("B"), _sig("C"), _sig("D")])
-        ))
+        entries = emit(
+            _file(_scope("A", TokenType.CANONIZE, items=[_sig("B"), _sig("C"), _sig("D")]))
+        )
         canonize = _find_entries(entries, sig="A", op="CANONIZED")
         assert len(canonize) == 1
         assert canonize[0].nodes == ["B", "C", "D"]
 
     def test_canonize_single_node(self):
-        entries = emit(_file(
-            _scope("A", TokenType.CANONIZE, items=[_sig("B")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.CANONIZE, items=[_sig("B")])))
         canonize = _find_entries(entries, sig="A", op="CANONIZED")
         assert len(canonize) == 1
         assert canonize[0].nodes == ["B"]  # still a list
@@ -294,17 +265,15 @@ class TestKS14Canonize:
     def test_entry_count(self):
         """Exact entry counts — CANONIZE produces exactly one entry per scope."""
         # A => B C D → 1 CANONIZE, 0 IDENTITY
-        entries = emit(_file(
-            _scope("A", TokenType.CANONIZE, items=[_sig("B"), _sig("C"), _sig("D")])
-        ))
+        entries = emit(
+            _file(_scope("A", TokenType.CANONIZE, items=[_sig("B"), _sig("C"), _sig("D")]))
+        )
         assert len(entries) == 1
         assert entries[0].op == "CANONIZED"
         assert sum(1 for e in entries if e.op == "IDENTITY") == 0
 
         # A => B → 1 CANONIZE, 0 IDENTITY
-        entries = emit(_file(
-            _scope("A", TokenType.CANONIZE, items=[_sig("B")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.CANONIZE, items=[_sig("B")])))
         assert len(entries) == 1
         assert entries[0].op == "CANONIZED"
         assert sum(1 for e in entries if e.op == "IDENTITY") == 0
@@ -320,16 +289,24 @@ class TestKS15OperatorChain:
 
     The parser produces nested OperatorScopes for chained operators.
     We construct the AST manually to match:
-      OperatorScope(A, COUNTERSIGN, [OperatorScope(B, CONNOTATE, [OperatorScope(C, UNDERSIGN, [Signature(D)])])])
+      OperatorScope(A, COUNTERSIGN, [
+        OperatorScope(B, CONNOTATE, [
+          OperatorScope(C, UNDERSIGN, [Signature(D)])])])
     """
 
     def test_operator_chain(self):
         ast = _file(
-            _scope("A", TokenType.COUNTERSIGN, items=[
-                _scope("B", TokenType.CONNOTATE, items=[
-                    _scope("C", TokenType.UNDERSIGN, items=[_sig("D")])
-                ])
-            ])
+            _scope(
+                "A",
+                TokenType.COUNTERSIGN,
+                items=[
+                    _scope(
+                        "B",
+                        TokenType.CONNOTATE,
+                        items=[_scope("C", TokenType.UNDERSIGN, items=[_sig("D")])],
+                    )
+                ],
+            )
         )
         entries = emit(ast)
 
@@ -347,11 +324,17 @@ class TestKS15OperatorChain:
         """Exact entry counts — no spurious IDENTITY from chained operator nodes."""
         # A == B > C = D → 4 entries (2 COUNTERSIGN + 1 CONNOTATE + 1 UNDERSIGN, 0 IDENTITY)
         ast = _file(
-            _scope("A", TokenType.COUNTERSIGN, items=[
-                _scope("B", TokenType.CONNOTATE, items=[
-                    _scope("C", TokenType.UNDERSIGN, items=[_sig("D")])
-                ])
-            ])
+            _scope(
+                "A",
+                TokenType.COUNTERSIGN,
+                items=[
+                    _scope(
+                        "B",
+                        TokenType.CONNOTATE,
+                        items=[_scope("C", TokenType.UNDERSIGN, items=[_sig("D")])],
+                    )
+                ],
+            )
         )
         entries = emit(ast)
         assert len(entries) == 4
@@ -373,10 +356,15 @@ class TestKS16IndentExtends:
     def test_canonize_with_child_block(self):
         """A => [B, C = D] — B and C are nodes for A's CANONIZE."""
         ast = _file(
-            _scope("A", TokenType.CANONIZE, items=[], child_block=_block(
-                _bare("B"),
-                _scope("C", TokenType.UNDERSIGN, items=[_sig("D")]),
-            ))
+            _scope(
+                "A",
+                TokenType.CANONIZE,
+                items=[],
+                child_block=_block(
+                    _bare("B"),
+                    _scope("C", TokenType.UNDERSIGN, items=[_sig("D")]),
+                ),
+            )
         )
         entries = emit(ast)
 
@@ -398,12 +386,19 @@ class TestKS16SubscriptBlock14x8:
 
     @pytest.fixture(autouse=True)
     def setup(self) -> None:
-        self.entries = emit(_file(
-            _scope("A", TokenType.CANONIZE, items=[], child_block=_block(
-                _bare("B"),
-                _scope("C", TokenType.UNDERSIGN, items=[_sig("D")]),
-            ))
-        ))
+        self.entries = emit(
+            _file(
+                _scope(
+                    "A",
+                    TokenType.CANONIZE,
+                    items=[],
+                    child_block=_block(
+                        _bare("B"),
+                        _scope("C", TokenType.UNDERSIGN, items=[_sig("D")]),
+                    ),
+                )
+            )
+        )
 
     def test_entry_count(self):
         """Exactly 5 entries per spec §14.8."""
@@ -443,11 +438,15 @@ class TestKS14ChainedCanonize14x9:
 
     @pytest.fixture(autouse=True)
     def setup(self) -> None:
-        self.entries = emit(_file(
-            _scope("A", TokenType.CANONIZE, items=[
-                _scope("B", TokenType.CANONIZE, items=[_sig("C")])
-            ])
-        ))
+        self.entries = emit(
+            _file(
+                _scope(
+                    "A",
+                    TokenType.CANONIZE,
+                    items=[_scope("B", TokenType.CANONIZE, items=[_sig("C")])],
+                )
+            )
+        )
 
     def test_entry_count(self):
         """Exactly 3 entries per spec §14.9."""
@@ -500,10 +499,15 @@ class TestKS18NonCanonizeIndent:
 
     def test_countersign_with_child_block(self):
         ast = _file(
-            _scope("A", TokenType.COUNTERSIGN, items=[_sig("B")], child_block=_block(
-                _bare("C"),
-                _bare("D"),
-            ))
+            _scope(
+                "A",
+                TokenType.COUNTERSIGN,
+                items=[_sig("B")],
+                child_block=_block(
+                    _bare("C"),
+                    _bare("D"),
+                ),
+            )
         )
         entries = emit(ast)
 
@@ -523,10 +527,15 @@ class TestKS18NonCanonizeIndent:
         A == B\\n  C\\n  D → 6 entries (all COUNTERSIGN, 0 IDENTITY).
         """
         ast = _file(
-            _scope("A", TokenType.COUNTERSIGN, items=[_sig("B")], child_block=_block(
-                _bare("C"),
-                _bare("D"),
-            ))
+            _scope(
+                "A",
+                TokenType.COUNTERSIGN,
+                items=[_sig("B")],
+                child_block=_block(
+                    _bare("C"),
+                    _bare("D"),
+                ),
+            )
         )
         entries = emit(ast)
         assert len(entries) == 6
@@ -536,10 +545,15 @@ class TestKS18NonCanonizeIndent:
     def test_undersign_with_child_block(self):
         """A = B\\n  C\\n  D — per-item UNDERSIGN extends into child block, no spurious IDENTITY."""
         ast = _file(
-            _scope("A", TokenType.UNDERSIGN, items=[_sig("B")], child_block=_block(
-                _bare("C"),
-                _bare("D"),
-            ))
+            _scope(
+                "A",
+                TokenType.UNDERSIGN,
+                items=[_sig("B")],
+                child_block=_block(
+                    _bare("C"),
+                    _bare("D"),
+                ),
+            )
         )
         entries = emit(ast)
         assert len(entries) == 3  # B→[A] UNDERSIGN, C→[A] UNDERSIGN, D→[A] UNDERSIGN
@@ -549,10 +563,15 @@ class TestKS18NonCanonizeIndent:
     def test_connotate_with_child_block(self):
         """A > B\\n  C\\n  D — per-item CONNOTATE extends into child block, no spurious IDENTITY."""
         ast = _file(
-            _scope("A", TokenType.CONNOTATE, items=[_sig("B")], child_block=_block(
-                _bare("C"),
-                _bare("D"),
-            ))
+            _scope(
+                "A",
+                TokenType.CONNOTATE,
+                items=[_sig("B")],
+                child_block=_block(
+                    _bare("C"),
+                    _bare("D"),
+                ),
+            )
         )
         entries = emit(ast)
         assert len(entries) == 3  # A→[B] CONNOTATE, A→[C] CONNOTATE, A→[D] CONNOTATE
@@ -583,16 +602,15 @@ class TestKS19MCS:
         """MCS components come before CANONIZE."""
         entries = emit(_file(_bare("ABC")))
         sigs = [e.sig for e in entries]
-        idx_A = sigs.index("A")
-        idx_B = sigs.index("B")
-        idx_C = sigs.index("C")
+        idx_a = sigs.index("A")
+        idx_b = sigs.index("B")
+        idx_c = sigs.index("C")
         idx_canonize = next(
-            i for i, e in enumerate(entries)
-            if e.sig == "ABC" and e.op == "CANONIZED"
+            i for i, e in enumerate(entries) if e.sig == "ABC" and e.op == "CANONIZED"
         )
-        assert idx_A < idx_canonize
-        assert idx_B < idx_canonize
-        assert idx_C < idx_canonize
+        assert idx_a < idx_canonize
+        assert idx_b < idx_canonize
+        assert idx_c < idx_canonize
 
 
 # ======================================================================
@@ -621,9 +639,7 @@ class TestKS21MCSNode:
     """A == MHALL → MCS expansion fires for MHALL."""
 
     def test_mcs_on_node(self):
-        entries = emit(_file(
-            _scope("A", TokenType.COUNTERSIGN, items=[_sig("MHALL")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.COUNTERSIGN, items=[_sig("MHALL")])))
         # MCS for MHALL: component IDENTITYs
         assert_has_entry(entries, "M", [], "IDENTITY")
         assert_has_entry(entries, "H", [], "IDENTITY")
@@ -682,10 +698,19 @@ class TestKS26RuleB4:
 
         # SVO => [S(ubject) = M]
         ast = _file(
-            _scope("SVO", TokenType.CANONIZE, items=[], child_block=_block(
-                _scope("S", TokenType.UNDERSIGN, items=[_sig("M")],
-                       inline_annotation=_ann("(ubject)")),
-            ))
+            _scope(
+                "SVO",
+                TokenType.CANONIZE,
+                items=[],
+                child_block=_block(
+                    _scope(
+                        "S",
+                        TokenType.UNDERSIGN,
+                        items=[_sig("M")],
+                        inline_annotation=_ann("(ubject)"),
+                    ),
+                ),
+            )
         )
         entries = emit(ast, scope=scope)
 
@@ -695,8 +720,7 @@ class TestKS26RuleB4:
         # The MCS CANONIZE entry for SVO should have Subject patched in
         mcs_canonize = [e for e in canonize if "Subject" in e.nodes]
         assert len(mcs_canonize) >= 1, (
-            f"Expected 'Subject' in SVO CANONIZE nodes. "
-            f"Got: {[e.nodes for e in canonize]}"
+            f"Expected 'Subject' in SVO CANONIZE nodes. Got: {[e.nodes for e in canonize]}"
         )
 
     def test_rule_b4_with_binding_scope(self):
@@ -714,20 +738,42 @@ class TestKS26RuleB4:
         #     L > O
         ast = _file(
             _ann("(Mary Had A Little Lamb)"),
-            _scope("MHALL", TokenType.COUNTERSIGN, items=[
-                _scope("SVO", TokenType.CANONIZE, items=[], child_block=_block(
-                    _scope("S", TokenType.UNDERSIGN, items=[_sig("M")],
-                           inline_annotation=_ann("(ubject)")),
-                    _scope("V", TokenType.UNDERSIGN, items=[_sig("H")]),
-                    _scope("O", TokenType.UNDERSIGN, items=[
-                        _scope("ALL", TokenType.CANONIZE, items=[], child_block=_block(
-                            _scope("A", TokenType.UNDERSIGN, items=[_sig("D")]),
-                            _scope("L", TokenType.UNDERSIGN, items=[_sig("M")]),
-                            _scope("L", TokenType.CONNOTATE, items=[_sig("O")]),
-                        ))
-                    ]),
-                ))
-            ]),
+            _scope(
+                "MHALL",
+                TokenType.COUNTERSIGN,
+                items=[
+                    _scope(
+                        "SVO",
+                        TokenType.CANONIZE,
+                        items=[],
+                        child_block=_block(
+                            _scope(
+                                "S",
+                                TokenType.UNDERSIGN,
+                                items=[_sig("M")],
+                                inline_annotation=_ann("(ubject)"),
+                            ),
+                            _scope("V", TokenType.UNDERSIGN, items=[_sig("H")]),
+                            _scope(
+                                "O",
+                                TokenType.UNDERSIGN,
+                                items=[
+                                    _scope(
+                                        "ALL",
+                                        TokenType.CANONIZE,
+                                        items=[],
+                                        child_block=_block(
+                                            _scope("A", TokenType.UNDERSIGN, items=[_sig("D")]),
+                                            _scope("L", TokenType.UNDERSIGN, items=[_sig("M")]),
+                                            _scope("L", TokenType.CONNOTATE, items=[_sig("O")]),
+                                        ),
+                                    )
+                                ],
+                            ),
+                        ),
+                    )
+                ],
+            ),
         )
         entries = emit(ast, scope=scope)
 
@@ -748,9 +794,7 @@ class TestKS33SelfIdentity:
     """A = A → {A:[], IDENTITY} (collapsed from UNDERSIGN)."""
 
     def test_self_identity(self):
-        entries = emit(_file(
-            _scope("A", TokenType.UNDERSIGN, items=[_sig("A")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.UNDERSIGN, items=[_sig("A")])))
         # Should produce IDENTITY with empty nodes, not UNDERSIGN
         assert_has_entry(entries, "A", [], "IDENTITY")
         # Should NOT produce UNDERSIGN entry
@@ -759,9 +803,7 @@ class TestKS33SelfIdentity:
     def test_entry_count(self):
         """Exact entry count — self-identity produces exactly 1 IDENTITY entry."""
         # A = A → 1 entry (IDENTITY with empty nodes)
-        entries = emit(_file(
-            _scope("A", TokenType.UNDERSIGN, items=[_sig("A")])
-        ))
+        entries = emit(_file(_scope("A", TokenType.UNDERSIGN, items=[_sig("A")])))
         assert len(entries) == 1
         assert entries[0].op == "IDENTITY"
         assert entries[0].nodes == []
@@ -777,10 +819,12 @@ class TestAnnotations:
 
     def test_annotation_no_entry(self):
         """Block annotations don't produce entries directly."""
-        entries = emit(_file(
-            _ann("(hello world)"),
-            _bare("A"),
-        ))
+        entries = emit(
+            _file(
+                _ann("(hello world)"),
+                _bare("A"),
+            )
+        )
         # Only IDENTITY for A — no entry for the annotation
         assert len([e for e in entries if e.op != "IDENTITY" or e.sig == "A"]) >= 1
 
@@ -788,10 +832,13 @@ class TestAnnotations:
         """Block annotation words are available for resolution."""
         scope = BindingScope()
         scope.push_scope()
-        entries = emit(_file(
-            _ann("(Mary Had A Little Lamb)"),
-            _bare("M"),
-        ), scope=scope)
+        entries = emit(
+            _file(
+                _ann("(Mary Had A Little Lamb)"),
+                _bare("M"),
+            ),
+            scope=scope,
+        )
         # M should be resolved to "Mary"
         unsigned_m = _find_entries(entries, sig="Mary", op="IDENTITY")
         assert len(unsigned_m) >= 1
@@ -807,28 +854,34 @@ class TestMCSDedup:
 
     def test_canonize_dedup(self):
         """Same CANONIZE (sig, nodes) emitted twice → only one entry."""
-        entries = emit(_file(
-            _bare("ABC"),  # emits CANONIZE ABC:[A,B,C]
-            _scope("ABC", TokenType.CANONIZE, items=[_sig("A"), _sig("B"), _sig("C")]),
-        ))
+        entries = emit(
+            _file(
+                _bare("ABC"),  # emits CANONIZE ABC:[A,B,C]
+                _scope("ABC", TokenType.CANONIZE, items=[_sig("A"), _sig("B"), _sig("C")]),
+            )
+        )
         canonize = _find_entries(entries, sig="ABC", op="CANONIZED")
         assert len(canonize) == 1  # deduped
 
     def test_identity_dedup_by_mcs(self):
         """MCS component IDENTITY entries ARE deduped across calls."""
-        entries = emit(_file(
-            _bare("ABC"),  # emits IDENTITY A, B, C; CANONIZE ABC; IDENTITY ABC
-        ))
+        entries = emit(
+            _file(
+                _bare("ABC"),  # emits IDENTITY A, B, C; CANONIZE ABC; IDENTITY ABC
+            )
+        )
         # Exactly one IDENTITY per unique char (A, B, C) plus compound ABC
         identity_a = _find_entries(entries, sig="A", op="IDENTITY")
         assert len(identity_a) == 1  # deduped
 
     def test_non_mcs_identity_no_dedup(self):
         """Non-MCS IDENTITY entries (from bare single-char scopes) are NOT deduped."""
-        entries = emit(_file(
-            _bare("A"),
-            _bare("A"),
-        ))
+        entries = emit(
+            _file(
+                _bare("A"),
+                _bare("A"),
+            )
+        )
         identity_a = _find_entries(entries, sig="A", op="IDENTITY")
         assert len(identity_a) == 2  # NOT deduped
 
@@ -887,12 +940,17 @@ class TestScopePushPop:
         # B
         ast = _file(
             _ann("(Mary Had)"),
-            _scope("A", TokenType.CANONIZE, items=[], child_block=_block(
-                _ann("(apple)"),
-                _bare("B"),
-            )),
+            _scope(
+                "A",
+                TokenType.CANONIZE,
+                items=[],
+                child_block=_block(
+                    _ann("(apple)"),
+                    _bare("B"),
+                ),
+            ),
         )
-        entries = emit(ast, scope=scope)
+        emit(ast, scope=scope)
 
         # B should NOT resolve to anything (in inner scope with "apple")
         # but might if outer scope's "Mary" matches

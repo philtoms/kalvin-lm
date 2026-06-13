@@ -97,45 +97,49 @@ def create_nlp_type32(high_bits: bool = False) -> type:
     """
     offset = 32 if high_bits else 0
 
-    return IntFlag("NLPType32", [
-        # Coarse POS tags (bits 0-16 + offset) - Universal POS Tags
-        ("POS_ADJ", 1 << (0 + offset)),      # Adjective
-        ("POS_ADP", 1 << (1 + offset)),      # Adposition
-        ("POS_ADV", 1 << (2 + offset)),      # Adverb
-        ("POS_AUX", 1 << (3 + offset)),      # Auxiliary
-        ("POS_CCONJ", 1 << (4 + offset)),    # Coordinating conjunction
-        ("POS_DET", 1 << (5 + offset)),      # Determiner
-        ("POS_INTJ", 1 << (6 + offset)),     # Interjection
-        ("POS_NOUN", 1 << (7 + offset)),     # Noun
-        ("POS_NUM", 1 << (8 + offset)),      # Numeral
-        ("POS_PART", 1 << (9 + offset)),     # Particle
-        ("POS_PRON", 1 << (10 + offset)),    # Pronoun
-        ("POS_PROPN", 1 << (11 + offset)),   # Proper noun
-        ("POS_PUNCT", 1 << (12 + offset)),   # Punctuation
-        ("POS_SCONJ", 1 << (13 + offset)),   # Subordinating conjunction
-        ("POS_SYM", 1 << (14 + offset)),     # Symbol
-        ("POS_VERB", 1 << (15 + offset)),    # Verb
-        ("POS_X", 1 << (16 + offset)),       # Other
-
-        # Simplified dependency groups (bits 17-24 + offset)
-        ("DEP_SUBJ", 1 << (17 + offset)),    # Subjects: nsubj, nsubjpass, csubj, csubjpass, agent
-        ("DEP_OBJ", 1 << (18 + offset)),     # Objects: obj, iobj, dobj
-        ("DEP_OBL", 1 << (19 + offset)),     # Oblique/adjunct: obl, iobl, nmod (non-possessive)
-        ("DEP_COMP", 1 << (20 + offset)),    # Complements: ccomp, xcomp, advcl, acl, relcl
-        ("DEP_MOD", 1 << (21 + offset)),     # Modifiers: amod, advmod, nummod, appos
-        ("DEP_FUNC", 1 << (22 + offset)),    # Function words: det, case, mark, aux, cop, expl
-        ("DEP_STRUCT", 1 << (23 + offset)),  # Structure: root, conj, cc, compound, flat, fixed, list
-        ("DEP_PUNCT", 1 << (24 + offset)),   # Punctuation/other: punct, goeswith, reparandum
-
-        # Simplified morphological features (bits 25-31 + offset)
-        ("MORPH_PLUR", 1 << (25 + offset)),      # Number=Plur
-        ("MORPH_PRES", 1 << (26 + offset)),      # Tense=Pres
-        ("MORPH_IMP", 1 << (27 + offset)),       # Mood=Imp
-        ("MORPH_PERSON_1", 1 << (28 + offset)),  # Person=1
-        ("MORPH_PERSON_2", 1 << (29 + offset)),  # Person=2
-        ("MORPH_PERSON_3", 1 << (30 + offset)),  # Person=3
-        ("MORPH_PERF", 1 << (31 + offset)),      # Aspect=Perf
-    ])
+    return IntFlag(
+        "NLPType32",
+        [
+            # Coarse POS tags (bits 0-16 + offset) - Universal POS Tags
+            ("POS_ADJ", 1 << (0 + offset)),  # Adjective
+            ("POS_ADP", 1 << (1 + offset)),  # Adposition
+            ("POS_ADV", 1 << (2 + offset)),  # Adverb
+            ("POS_AUX", 1 << (3 + offset)),  # Auxiliary
+            ("POS_CCONJ", 1 << (4 + offset)),  # Coordinating conjunction
+            ("POS_DET", 1 << (5 + offset)),  # Determiner
+            ("POS_INTJ", 1 << (6 + offset)),  # Interjection
+            ("POS_NOUN", 1 << (7 + offset)),  # Noun
+            ("POS_NUM", 1 << (8 + offset)),  # Numeral
+            ("POS_PART", 1 << (9 + offset)),  # Particle
+            ("POS_PRON", 1 << (10 + offset)),  # Pronoun
+            ("POS_PROPN", 1 << (11 + offset)),  # Proper noun
+            ("POS_PUNCT", 1 << (12 + offset)),  # Punctuation
+            ("POS_SCONJ", 1 << (13 + offset)),  # Subordinating conjunction
+            ("POS_SYM", 1 << (14 + offset)),  # Symbol
+            ("POS_VERB", 1 << (15 + offset)),  # Verb
+            ("POS_X", 1 << (16 + offset)),  # Other
+            # Simplified dependency groups (bits 17-24 + offset)
+            ("DEP_SUBJ", 1 << (17 + offset)),  # Subjects: nsubj, nsubjpass, csubj, csubjpass, agent
+            ("DEP_OBJ", 1 << (18 + offset)),  # Objects: obj, iobj, dobj
+            ("DEP_OBL", 1 << (19 + offset)),  # Oblique/adjunct: obl, iobl, nmod (non-possessive)
+            ("DEP_COMP", 1 << (20 + offset)),  # Complements: ccomp, xcomp, advcl, acl, relcl
+            ("DEP_MOD", 1 << (21 + offset)),  # Modifiers: amod, advmod, nummod, appos
+            ("DEP_FUNC", 1 << (22 + offset)),  # Function words: det, case, mark, aux, cop, expl
+            (
+                "DEP_STRUCT",
+                1 << (23 + offset),
+            ),  # Structure: root, conj, cc, compound, flat, fixed, list
+            ("DEP_PUNCT", 1 << (24 + offset)),  # Punctuation/other: punct, goeswith, reparandum
+            # Simplified morphological features (bits 25-31 + offset)
+            ("MORPH_PLUR", 1 << (25 + offset)),  # Number=Plur
+            ("MORPH_PRES", 1 << (26 + offset)),  # Tense=Pres
+            ("MORPH_IMP", 1 << (27 + offset)),  # Mood=Imp
+            ("MORPH_PERSON_1", 1 << (28 + offset)),  # Person=1
+            ("MORPH_PERSON_2", 1 << (29 + offset)),  # Person=2
+            ("MORPH_PERSON_3", 1 << (30 + offset)),  # Person=3
+            ("MORPH_PERF", 1 << (31 + offset)),  # Aspect=Perf
+        ],
+    )
 
 
 def create_nlp_type48(high_bits: bool = False) -> type:
@@ -161,61 +165,68 @@ def create_nlp_type48(high_bits: bool = False) -> type:
     """
     offset = 16 if high_bits else 0
 
-    return IntFlag("NLPType48", [
-        # Coarse POS tags (bits 0-16 + offset) - Universal POS Tags
-        ("POS_ADJ", 1 << (0 + offset)),      # Adjective
-        ("POS_ADP", 1 << (1 + offset)),      # Adposition
-        ("POS_ADV", 1 << (2 + offset)),      # Adverb
-        ("POS_AUX", 1 << (3 + offset)),      # Auxiliary
-        ("POS_CCONJ", 1 << (4 + offset)),    # Coordinating conjunction
-        ("POS_DET", 1 << (5 + offset)),      # Determiner
-        ("POS_INTJ", 1 << (6 + offset)),     # Interjection
-        ("POS_NOUN", 1 << (7 + offset)),     # Noun
-        ("POS_NUM", 1 << (8 + offset)),      # Numeral
-        ("POS_PART", 1 << (9 + offset)),     # Particle
-        ("POS_PRON", 1 << (10 + offset)),    # Pronoun
-        ("POS_PROPN", 1 << (11 + offset)),   # Proper noun
-        ("POS_PUNCT", 1 << (12 + offset)),   # Punctuation
-        ("POS_SCONJ", 1 << (13 + offset)),   # Subordinating conjunction
-        ("POS_SYM", 1 << (14 + offset)),     # Symbol
-        ("POS_VERB", 1 << (15 + offset)),    # Verb
-        ("POS_X", 1 << (16 + offset)),       # Other
-
-        # Finer dependency groups (bits 17-31 + offset)
-        ("DEP_SUBJ", 1 << (17 + offset)),    # Subjects: nsubj, nsubjpass, csubj, csubjpass, agent
-        ("DEP_OBJ", 1 << (18 + offset)),     # Objects: obj, iobj, dobj
-        ("DEP_OBL", 1 << (19 + offset)),     # Oblique: obl, obl:*
-        ("DEP_NMOD", 1 << (20 + offset)),    # Nominal modifier: nmod, nmod:*
-        ("DEP_CCOMP", 1 << (21 + offset)),   # Clausal complement: ccomp
-        ("DEP_XCOMP", 1 << (22 + offset)),   # Open clausal complement: xcomp
-        ("DEP_ADVCL", 1 << (23 + offset)),   # Adverbial clause: advcl
-        ("DEP_ACL", 1 << (24 + offset)),     # Adnominal clause: acl, acl:relcl
-        ("DEP_AMOD", 1 << (25 + offset)),    # Adjectival modifier: amod
-        ("DEP_ADVMOD", 1 << (26 + offset)),  # Adverbial modifier: advmod
-        ("DEP_NUMMOD", 1 << (27 + offset)),  # Numeral modifier: nummod, nummod:*
-        ("DEP_APPOS", 1 << (28 + offset)),   # Apposition: appos
-        ("DEP_FUNC", 1 << (29 + offset)),    # Function words: det, case, mark, aux, auxpass, cop, expl, neg
-        ("DEP_STRUCT", 1 << (30 + offset)),  # Structure: root, conj, cc, compound, flat, fixed, list, parataxis, discourse
-        ("DEP_PUNCT", 1 << (31 + offset)),   # Punctuation: punct, goeswith, reparandum, orphan
-
-        # Finer morphological features (bits 32-47 + offset)
-        ("MORPH_SING", 1 << (32 + offset)),      # Number=Sing
-        ("MORPH_PLUR", 1 << (33 + offset)),      # Number=Plur
-        ("MORPH_PAST", 1 << (34 + offset)),      # Tense=Past
-        ("MORPH_PRES", 1 << (35 + offset)),      # Tense=Pres
-        ("MORPH_FUT", 1 << (36 + offset)),       # Tense=Fut
-        ("MORPH_PASS", 1 << (37 + offset)),      # Voice=Pass
-        ("MORPH_PERSON_1", 1 << (38 + offset)),  # Person=1
-        ("MORPH_PERSON_2", 1 << (39 + offset)),  # Person=2
-        ("MORPH_PERSON_3", 1 << (40 + offset)),  # Person=3
-        ("MORPH_PERF", 1 << (41 + offset)),      # Aspect=Perf
-        ("MORPH_PROG", 1 << (42 + offset)),      # Aspect=Prog
-        ("MORPH_IND", 1 << (43 + offset)),       # Mood=Ind
-        ("MORPH_IMP", 1 << (44 + offset)),       # Mood=Imp
-        ("MORPH_INF", 1 << (45 + offset)),       # VerbForm=Inf
-        ("MORPH_PART", 1 << (46 + offset)),      # VerbForm=Part
-        ("MORPH_GER", 1 << (47 + offset)),       # VerbForm=Ger
-    ])
+    return IntFlag(
+        "NLPType48",
+        [
+            # Coarse POS tags (bits 0-16 + offset) - Universal POS Tags
+            ("POS_ADJ", 1 << (0 + offset)),  # Adjective
+            ("POS_ADP", 1 << (1 + offset)),  # Adposition
+            ("POS_ADV", 1 << (2 + offset)),  # Adverb
+            ("POS_AUX", 1 << (3 + offset)),  # Auxiliary
+            ("POS_CCONJ", 1 << (4 + offset)),  # Coordinating conjunction
+            ("POS_DET", 1 << (5 + offset)),  # Determiner
+            ("POS_INTJ", 1 << (6 + offset)),  # Interjection
+            ("POS_NOUN", 1 << (7 + offset)),  # Noun
+            ("POS_NUM", 1 << (8 + offset)),  # Numeral
+            ("POS_PART", 1 << (9 + offset)),  # Particle
+            ("POS_PRON", 1 << (10 + offset)),  # Pronoun
+            ("POS_PROPN", 1 << (11 + offset)),  # Proper noun
+            ("POS_PUNCT", 1 << (12 + offset)),  # Punctuation
+            ("POS_SCONJ", 1 << (13 + offset)),  # Subordinating conjunction
+            ("POS_SYM", 1 << (14 + offset)),  # Symbol
+            ("POS_VERB", 1 << (15 + offset)),  # Verb
+            ("POS_X", 1 << (16 + offset)),  # Other
+            # Finer dependency groups (bits 17-31 + offset)
+            ("DEP_SUBJ", 1 << (17 + offset)),  # Subjects: nsubj, nsubjpass, csubj, csubjpass, agent
+            ("DEP_OBJ", 1 << (18 + offset)),  # Objects: obj, iobj, dobj
+            ("DEP_OBL", 1 << (19 + offset)),  # Oblique: obl, obl:*
+            ("DEP_NMOD", 1 << (20 + offset)),  # Nominal modifier: nmod, nmod:*
+            ("DEP_CCOMP", 1 << (21 + offset)),  # Clausal complement: ccomp
+            ("DEP_XCOMP", 1 << (22 + offset)),  # Open clausal complement: xcomp
+            ("DEP_ADVCL", 1 << (23 + offset)),  # Adverbial clause: advcl
+            ("DEP_ACL", 1 << (24 + offset)),  # Adnominal clause: acl, acl:relcl
+            ("DEP_AMOD", 1 << (25 + offset)),  # Adjectival modifier: amod
+            ("DEP_ADVMOD", 1 << (26 + offset)),  # Adverbial modifier: advmod
+            ("DEP_NUMMOD", 1 << (27 + offset)),  # Numeral modifier: nummod, nummod:*
+            ("DEP_APPOS", 1 << (28 + offset)),  # Apposition: appos
+            (
+                "DEP_FUNC",
+                1 << (29 + offset),
+            ),  # Function words: det, case, mark, aux, auxpass, cop, expl, neg
+            (
+                "DEP_STRUCT",
+                1 << (30 + offset),
+            ),  # Structure: root, conj, cc, compound, flat, fixed, list, parataxis, discourse
+            ("DEP_PUNCT", 1 << (31 + offset)),  # Punctuation: punct, goeswith, reparandum, orphan
+            # Finer morphological features (bits 32-47 + offset)
+            ("MORPH_SING", 1 << (32 + offset)),  # Number=Sing
+            ("MORPH_PLUR", 1 << (33 + offset)),  # Number=Plur
+            ("MORPH_PAST", 1 << (34 + offset)),  # Tense=Past
+            ("MORPH_PRES", 1 << (35 + offset)),  # Tense=Pres
+            ("MORPH_FUT", 1 << (36 + offset)),  # Tense=Fut
+            ("MORPH_PASS", 1 << (37 + offset)),  # Voice=Pass
+            ("MORPH_PERSON_1", 1 << (38 + offset)),  # Person=1
+            ("MORPH_PERSON_2", 1 << (39 + offset)),  # Person=2
+            ("MORPH_PERSON_3", 1 << (40 + offset)),  # Person=3
+            ("MORPH_PERF", 1 << (41 + offset)),  # Aspect=Perf
+            ("MORPH_PROG", 1 << (42 + offset)),  # Aspect=Prog
+            ("MORPH_IND", 1 << (43 + offset)),  # Mood=Ind
+            ("MORPH_IMP", 1 << (44 + offset)),  # Mood=Imp
+            ("MORPH_INF", 1 << (45 + offset)),  # VerbForm=Inf
+            ("MORPH_PART", 1 << (46 + offset)),  # VerbForm=Part
+            ("MORPH_GER", 1 << (47 + offset)),  # VerbForm=Ger
+        ],
+    )
 
 
 def build_dep_to_coarse32(nlp_type32: type) -> dict[str, int]:
@@ -522,17 +533,26 @@ def compute_nlp_type48(pos: str, dep: str, morph: str) -> int:
 
 def get_nlp_type32_legend() -> dict[str, int]:
     """Return legend mapping flag names to bit values for NLPType32."""
-    return {name: int(getattr(NLPType32, name).value) for name in dir(NLPType32) if not name.startswith("_")}
+    return {
+        name: int(getattr(NLPType32, name).value)
+        for name in dir(NLPType32)
+        if not name.startswith("_")
+    }
 
 
 def get_nlp_type48_legend() -> dict[str, int]:
     """Return legend mapping flag names to bit values for NLPType48."""
-    return {name: int(getattr(NLPType48, name).value) for name in dir(NLPType48) if not name.startswith("_")}
+    return {
+        name: int(getattr(NLPType48, name).value)
+        for name in dir(NLPType48)
+        if not name.startswith("_")
+    }
 
 
 # ============================================================================
 # Fine-grained NLP type system (dynamic, unlimited bits)
 # ============================================================================
+
 
 @dataclass
 class NLPFineTypeRegistry:
@@ -542,6 +562,7 @@ class NLPFineTypeRegistry:
     After all texts are processed, this is used to build the NLPType IntFlag
     and assign bit patterns to each word.
     """
+
     pos: set[str] = field(default_factory=set)
     pos_fine: set[str] = field(default_factory=set)
     dep: set[str] = field(default_factory=set)
@@ -601,7 +622,7 @@ class NLPFineTypeRegistry:
         # Create IntFlag using functional API
         # IntFlag('ClassName', [('NAME1', 1), ('NAME2', 2), ...])
         flag_values = [(flag_name, 1 << i) for i, (flag_name, _) in enumerate(all_features)]
-        NLPFineType = IntFlag("NLPFineType", flag_values)
+        NLPFineType = IntFlag("NLPFineType", flag_values)  # noqa: N806  dynamically created IntFlag class
 
         # Build lookup maps and store in registry (not on the class itself)
         self._feature_map = {}  # Maps (category, value) -> flag_name
@@ -622,12 +643,12 @@ class NLPFineTypeRegistry:
 
         return NLPFineType
 
-    def get_flag_value(self, NLPType: type, category: str, value: str) -> int:
+    def get_flag_value(self, nlp_type_cls: type, category: str, value: str) -> int:
         """Get the bit value for a given category and value."""
         key = (category, value)
         if key in self._feature_map:
             flag_name = self._feature_map[key]
-            return int(getattr(NLPType, flag_name))
+            return int(getattr(nlp_type_cls, flag_name))
         return 0
 
     def total_flags(self) -> int:
@@ -685,7 +706,10 @@ def filter_empty_texts(texts: list[str], verbose: bool = False) -> list[str]:
     filtered = [t for t in texts if t and t.strip()]
     removed_count = original_count - len(filtered)
     if verbose and removed_count > 0:
-        print(f"Filtered out {removed_count:,} empty text segments ({original_count:,} -> {len(filtered):,})")
+        print(
+            f"Filtered out {removed_count:,} empty text segments "
+            f"({original_count:,} -> {len(filtered):,})"
+        )
     return filtered
 
 
@@ -725,9 +749,11 @@ def load_existing_count_dict(file_path: Path) -> dict[str, int]:
 @dataclass
 class LinguisticAnalysis:
     """Container for all linguistic analysis results."""
+
     # Named entities: entity text -> NER label
     ner: dict[str, str] = field(default_factory=dict)
-    # Combined grammatical table: word -> {pos, pos_fine, dep, morph, count, frequency_pct, nlp_type, nlp_fine_type}
+    # Combined grammatical table: word -> {pos, pos_fine, dep, morph, count,
+    # frequency_pct, nlp_type, nlp_fine_type}
     grammar: dict[int, dict] = field(default_factory=dict)
     # Noun chunks: chunk text -> count
     noun_chunks: dict[str, int] = field(default_factory=dict)
@@ -753,8 +779,7 @@ class LinguisticAnalysis:
             List of (word, count, frequency_pct) tuples sorted by count descending.
         """
         items = [
-            (word, data["count"], data["frequency_pct"])
-            for word, data in self.grammar.items()
+            (word, data["count"], data["frequency_pct"]) for word, data in self.grammar.items()
         ]
         return sorted(items, key=lambda x: -x[1])[:n]
 
@@ -789,14 +814,18 @@ class LinguisticAnalysis:
             if pos:
                 nlp_fine_type |= self.nlp_fine_registry.get_flag_value(self.NLPFineType, "pos", pos)
             if pos_fine:
-                nlp_fine_type |= self.nlp_fine_registry.get_flag_value(self.NLPFineType, "pos_fine", pos_fine)
+                nlp_fine_type |= self.nlp_fine_registry.get_flag_value(
+                    self.NLPFineType, "pos_fine", pos_fine
+                )
             if dep:
                 nlp_fine_type |= self.nlp_fine_registry.get_flag_value(self.NLPFineType, "dep", dep)
             if morph:
                 for feature in morph.split("|"):
                     feature = feature.strip()
                     if feature:
-                        nlp_fine_type |= self.nlp_fine_registry.get_flag_value(self.NLPFineType, "morph", feature)
+                        nlp_fine_type |= self.nlp_fine_registry.get_flag_value(
+                            self.NLPFineType, "morph", feature
+                        )
 
             data["nlp_fine_type"] = nlp_fine_type
 
@@ -882,10 +911,7 @@ def analyze_texts(
 
             # Register features for NLPFineType building
             analysis.nlp_fine_registry.add_token(
-                pos=token.pos_,
-                pos_fine=token.tag_,
-                dep=token.dep_,
-                morph=morph_str
+                pos=token.pos_, pos_fine=token.tag_, dep=token.dep_, morph=morph_str
             )
 
             # Add or update word in grammar dictionary (keyed by first BPE token)
@@ -986,7 +1012,9 @@ def print_summary(analysis: LinguisticAnalysis) -> None:
     print("\nAnalysis Summary:")
     print(f"  Total Words: {analysis.total_word_count:,}")
     print(f"  Named Entities (NER): {len(analysis.ner)} (+{analysis.new_ner_entries} new)")
-    print(f"  Unique Words (Grammar): {len(analysis.grammar)} (+{analysis.new_grammar_entries} new)")
+    print(
+        f"  Unique Words (Grammar): {len(analysis.grammar)} (+{analysis.new_grammar_entries} new)"
+    )
     print(f"  Noun Chunks: {len(analysis.noun_chunks)} (+{analysis.new_noun_chunk_entries} new)")
     print(f"  Verb Lemmas: {len(analysis.verbs)} (+{analysis.new_verb_entries} new)")
 
@@ -1037,50 +1065,53 @@ def main() -> None:
         description="Analyze text file with spaCy and generate linguistic dictionaries"
     )
     parser.add_argument(
-        "-i", "--input",
+        "-i",
+        "--input",
         type=Path,
         default=Path("data/tokenizer/simplestories-1.json"),
-        help="Input text or JSON file (default: %(default)s)"
+        help="Input text or JSON file (default: %(default)s)",
     )
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         type=Path,
         default=None,
-        help="Output directory for JSON files (default: same as input file)"
+        help="Output directory for JSON files (default: same as input file)",
     )
     parser.add_argument(
-        "-m", "--model",
+        "-m",
+        "--model",
         type=str,
         default="en_core_web_trf",
-        help="spaCy model to use (default: %(default)s). Use 'en_core_web_trf' for transformer model with better GPU utilization."
+        help=(
+            "spaCy model to use (default: %(default)s). "
+            "Use 'en_core_web_trf' for transformer model with better GPU utilization."
+        ),
     )
     parser.add_argument(
-        "--gpu", "-g",
+        "--gpu",
+        "-g",
         action="store_true",
-        help="Enable GPU acceleration (requires spacy[apple] for macOS or spacy[cuda11x] for NVIDIA)"
+        help=(
+            "Enable GPU acceleration (requires spacy[apple] for macOS or spacy[cuda11x] for NVIDIA)"
+        ),
     )
     parser.add_argument(
-        "-b", "--batch-size",
+        "-b",
+        "--batch-size",
         type=int,
         default=50,
-        help="Batch size for processing (default: %(default)s)"
+        help="Batch size for processing (default: %(default)s)",
     )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Print verbose output")
     parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Print verbose output"
-    )
-    parser.add_argument(
-        "-e", "--existing",
-        type=Path,
-        default=None,
-        help="Existing text or JSON file"
+        "-e", "--existing", type=Path, default=None, help="Existing text or JSON file"
     )
     parser.add_argument(
         "--high-bits",
         action="store_true",
         help="Use high bits for NLP type encodings (bits 32-63 for 32-bit, bits 16-63 for 48-bit). "
-             "Default uses low bits (bits 0-31 for 32-bit, bits 0-47 for 48-bit)."
+        "Default uses low bits (bits 0-31 for 32-bit, bits 0-47 for 48-bit).",
     )
 
     args = parser.parse_args()
@@ -1171,7 +1202,8 @@ def main() -> None:
     if args.verbose:
         print("Performing linguistic analysis...")
     analysis = analyze_texts(
-        nlp, texts,
+        nlp,
+        texts,
         batch_size=args.batch_size,
         verbose=args.verbose,
         existing_grammar=existing_grammar,

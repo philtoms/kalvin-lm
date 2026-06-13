@@ -11,7 +11,7 @@ For production wiring, use ``KAgentAdapter`` from ``harness.adapter`` instead.
 from __future__ import annotations
 
 import threading
-from typing import Callable
+from collections.abc import Callable
 
 from kalvin.kline import KLine
 

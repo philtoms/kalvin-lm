@@ -5,29 +5,24 @@ defaults, preservation of other state fields, empty sets, and multiple entries.
 """
 
 import json
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
-
-from ks import KLine
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
 # The UI module has dependencies that may not be available in the test
 # environment.  Patch sys.modules before the first import.
-
 # Ensure kalvin.Agent is importable (kalvin.__init__ doesn't export it)
 import kalvin as _kalvin_pkg
 from kalvin.agent import KAgent as _RealAgent
+
 if not hasattr(_kalvin_pkg, "Agent"):
     _kalvin_pkg.Agent = _RealAgent
 
-from ui.kscript.app import KScriptApp, UI_STATE_FILE, AGENT_STATE_FILE
+from ui.kscript.app import AGENT_STATE_FILE, UI_STATE_FILE, KScriptApp
 from ui.kscript.regions.toolbar import ExecutionState
 
-
 # ── Helpers ───────────────────────────────────────────────────────────
+
 
 def _make_app() -> KScriptApp:
     """Create a KScriptApp instance without initializing the Textual app.

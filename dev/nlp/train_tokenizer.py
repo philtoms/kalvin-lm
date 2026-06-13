@@ -15,9 +15,10 @@ Supports:
 import argparse
 import json
 import sys
-import pyarrow.parquet as pq
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
+
+import pyarrow.parquet as pq
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -28,8 +29,7 @@ from kalvin.tokenizer import Tokenizer
 # - Contractions: 's, 'd, 'm, 't, 'll, 've, 're, 'cause, 'em, etc.
 # - Punctuation: ! ? ; . , (each as separate token)
 # - Unlike GPT-2 pattern which creates tokens like " hello", this creates "hello" + " "
-SPLIT_WORDS_PATTERN = r"n't|'(?:[sdmt]|ll|ve|re|cause|em|twas|tis|neath|round|cos|cuz)|\p{L}+|\p{N}{1,3}|[!?;.,]|[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s++"
-
+SPLIT_WORDS_PATTERN = r"n't|'(?:[sdmt]|ll|ve|re|cause|em|twas|tis|neath|round|cos|cuz)|\p{L}+|\p{N}{1,3}|[!?;.,]|[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s++"  # noqa: E501  regex must stay single-line
 
 
 def parquet_texts_iterator(files: list[Path], text_column: str) -> Iterator[str]:
@@ -68,7 +68,7 @@ def json_texts_iterator(files: list[Path], text_field: str = "summary") -> Itera
             items = data
         else:
             print(f"Unsupported JSON format in {file_path}")
-            
+
         for item in items:
             if isinstance(item, dict) and text_field in item:
                 text = item[text_field]
@@ -83,9 +83,7 @@ def txt_texts_iterator(files: list[Path]):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Train a BPE tokenizer on text data"
-    )
+    parser = argparse.ArgumentParser(description="Train a BPE tokenizer on text data")
     parser.add_argument(
         "path",
         help="Path to training data (file or directory with .txt/.json/.parquet files)",
@@ -98,17 +96,20 @@ def main():
         help="Target vocabulary size (default: 32768)",
     )
     parser.add_argument(
-        "-g","--glob-pattern",
+        "-g",
+        "--glob-pattern",
         default="*.parquet",
         help="Glob pattern (default: *.parquet)",
     )
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         default=None,
         help="Output directory for the trained tokenizer (default: <data>/tokenizer)",
     )
     parser.add_argument(
-        "-n", "--name",
+        "-n",
+        "--name",
         default="tokenizer",
         help="Base name for saved files (default: tokenizer)",
     )
@@ -130,6 +131,7 @@ def main():
     args = parser.parse_args()
 
     from kalvin.paths import tokenizer_dir
+
     output = args.output or str(tokenizer_dir())
 
     # Determine pattern

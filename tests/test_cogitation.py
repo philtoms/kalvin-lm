@@ -204,11 +204,13 @@ class TestExtractResult:
                 {
                     "function": {
                         "name": "submit_scaffolding",
-                        "arguments": json.dumps({
-                            "kscript_source": "0xAB -> 0x01",
-                            "confidence": 0.85,
-                            "reasoning": "Simple countersign bridges the gap",
-                        }),
+                        "arguments": json.dumps(
+                            {
+                                "kscript_source": "0xAB -> 0x01",
+                                "confidence": 0.85,
+                                "reasoning": "Simple countersign bridges the gap",
+                            }
+                        ),
                     },
                 },
             ],
@@ -303,11 +305,13 @@ class TestExtractResult:
                 {
                     "function": {
                         "name": "submit_scaffolding",
-                        "arguments": json.dumps({
-                            "kscript_source": "0xEF -> 0x03",
-                            "confidence": 0.9,
-                            "reasoning": "From tool call",
-                        }),
+                        "arguments": json.dumps(
+                            {
+                                "kscript_source": "0xEF -> 0x03",
+                                "confidence": 0.9,
+                                "reasoning": "From tool call",
+                            }
+                        ),
                     },
                 },
             ],
@@ -347,11 +351,13 @@ def _tool_call_response(kscript: str, confidence: float, reasoning: str) -> LLMR
             {
                 "function": {
                     "name": "submit_scaffolding",
-                    "arguments": json.dumps({
-                        "kscript_source": kscript,
-                        "confidence": confidence,
-                        "reasoning": reasoning,
-                    }),
+                    "arguments": json.dumps(
+                        {
+                            "kscript_source": kscript,
+                            "confidence": confidence,
+                            "reasoning": reasoning,
+                        }
+                    ),
                 },
             },
         ],
@@ -381,9 +387,7 @@ class TestCogitator:
 
     def test_cogitate_compilation_failure(self):
         """Scaffolding that doesn't compile is set to None with 0.0 confidence."""
-        mock_client = _MockLLMClient(
-            _tool_call_response("invalid kscript !!", 0.8, "My attempt")
-        )
+        mock_client = _MockLLMClient(_tool_call_response("invalid kscript !!", 0.8, "My attempt"))
         cogitator = Cogitator(client=mock_client)
         req = _make_request()
         result = cogitator.cogitate(req)
@@ -444,9 +448,7 @@ class TestCogitator:
 
     def test_cogitate_passes_tools_to_client(self):
         """Cogitator passes tool definitions to the LLM client."""
-        mock_client = _MockLLMClient(
-            _tool_call_response("AB => CD", 0.9, "test")
-        )
+        mock_client = _MockLLMClient(_tool_call_response("AB => CD", 0.9, "test"))
         cogitator = Cogitator(client=mock_client)
         cogitator.cogitate(_make_request())
         assert mock_client.last_tools is not None
@@ -538,9 +540,7 @@ class TestHRNS14EscalationOnBudgetExhaustion:
     def test_escalation_on_low_confidence(self):
         """should_escalate returns True when LLM returns low confidence."""
         request = _make_request()
-        mock_client = _MockLLMClient(
-            _tool_call_response("AB => CD", 0.3, "Uncertain suggestion")
-        )
+        mock_client = _MockLLMClient(_tool_call_response("AB => CD", 0.3, "Uncertain suggestion"))
         cogitator = Cogitator(client=mock_client)
         result = cogitator.cogitate(request)
 
@@ -581,7 +581,8 @@ class TestStructuredContextFields:
 
         # Find context messages
         context_msgs = [
-            m for m in messages
+            m
+            for m in messages
             if "Teach SVO structure" in m.get("content", "")
             or "legacy context" in m.get("content", "")
         ]
@@ -622,7 +623,8 @@ class TestStructuredContextFields:
 
         # No context message at all
         ctx_msgs = [
-            m for m in messages
+            m
+            for m in messages
             if "curriculum context" in m.get("content", "").lower()
             or "objective:" in m.get("content", "").lower()
         ]

@@ -5,11 +5,8 @@ Uses real BPE tokenizer and grammar dictionary from data/tokenizer/.
 
 from __future__ import annotations
 
-import pytest
-
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
-
 from tests.conftest import requires_nlp_data
 
 # The entire module exercises the real BPE + grammar data assets; skip it
@@ -18,6 +15,7 @@ pytestmark = requires_nlp_data
 
 
 # ── Encode tests ──────────────────────────────────────────────────────────
+
 
 class TestEncode:
     """Tests for the encode() method."""
@@ -65,6 +63,7 @@ class TestEncode:
 
 # ── Decode / Roundtrip tests ─────────────────────────────────────────────
 
+
 class TestDecode:
     """Tests for the decode() method and round-trip behaviour."""
 
@@ -85,13 +84,13 @@ class TestDecode:
 
 # ── Unknown token fallback ───────────────────────────────────────────────
 
+
 class TestUnknownFallback:
     """Tests for unknown BPE tokens falling back to POS_X."""
 
     def test_unknown_token_fallback(self) -> None:
         """BPE tokens not in grammar dict get UNKNOWN_NLP_TYPE (65536)."""
         from kalvin.tokenizer import Tokenizer
-        from kalvin.nlp_tokenizer import load_grammar_dict
 
         # Use an empty grammar dict — all tokens should be unknown
         bpe = Tokenizer.from_directory()
@@ -109,7 +108,10 @@ class TestUnknownFallback:
 
 # ── Literal encoding tests ──────────────────────────────────────────────
 
-# Removed — encode_literal() removed with literal concept# ── Properties tests ────────────────────────────────────────────────────
+# Removed — encode_literal() removed with literal concept
+
+# ── Properties tests ────────────────────────────────────────────────────
+
 
 class TestProperties:
     """Tests for vocab_size and grammar_size properties."""
@@ -125,6 +127,7 @@ class TestProperties:
 
 # ── Factory tests ───────────────────────────────────────────────────────
 
+
 class TestFactory:
     """Tests for from_files() class method."""
 
@@ -136,6 +139,7 @@ class TestFactory:
 
 
 # ── Integration: end-to-end encode → decode → signature pipeline ──────
+
 
 class TestNLPEncodingPipeline:
     """Cross-module integration tests exercising encode → decode → signature.
@@ -162,9 +166,7 @@ class TestNLPEncodingPipeline:
         nodes = nlp.encode(text)
 
         # 3 nodes: each word absorbed its leading space into one BPE token.
-        assert len(nodes) == 3, (
-            f"Expected 3 nodes (spaces absorbed), got {len(nodes)}"
-        )
+        assert len(nodes) == 3, f"Expected 3 nodes (spaces absorbed), got {len(nodes)}"
 
         # Verify round-trip
         assert nlp.decode(nodes) == text
@@ -191,9 +193,7 @@ class TestNLPEncodingPipeline:
             nodes = nlp.encode(word)
             assert len(nodes) >= 1, f"'{word}' should encode to ≥1 node"
             for node in nodes:
-                assert (node >> 32) != 0, (
-                    f"'{word}': node {node} should carry an NLP type"
-                )
+                assert (node >> 32) != 0, f"'{word}': node {node} should carry an NLP type"
             assert nlp.decode(nodes) == word, f"'{word}' should round-trip"
 
     # Removed: test_pipeline_signature_nlp_only — make_signature() is now plain OR-reduce

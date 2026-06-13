@@ -1,16 +1,18 @@
 """Toolbar region with action buttons and status indicator."""
 
 from enum import Enum
+
 from textual.app import ComposeResult
 from textual.containers import Horizontal
+from textual.css.query import NoMatches
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Button, Static
-from textual.css.query import NoMatches
 
 
 class ExecutionState(Enum):
     """Execution state for the KScript engine."""
+
     IDLE = "IDLE"
     RUNNING = "RUNNING"
     HALTED = "HALTED"
@@ -58,34 +60,42 @@ class ToolbarRegion(Horizontal):
 
     class LoadScript(Message):
         """Request to load a .ks script file."""
+
         pass
 
     class SaveState(Message):
         """Request to save Agent state."""
+
         pass
 
     class LoadState(Message):
         """Request to load Agent state."""
+
         pass
 
     class Run(Message):
         """Request to toggle run/compile loop."""
+
         pass
 
     class Step(Message):
         """Request to step one KLine."""
+
         pass
 
     class Resume(Message):
         """Request to resume execution."""
+
         pass
 
     class Clear(Message):
         """Request to clear responses."""
+
         pass
 
     class Ratify(Message):
         """Request to ratify the selected proposal."""
+
         pass
 
     def compose(self) -> ComposeResult:
@@ -96,7 +106,9 @@ class ToolbarRegion(Horizontal):
         yield Button("Step", id="step-btn")
         yield Button("Ratify", id="ratify-btn", disabled=True)
         yield Button("Clear", id="clear-btn")
-        yield Static(self._get_status_text(), id="status-indicator", classes="status-indicator status-idle")
+        yield Static(
+            self._get_status_text(), id="status-indicator", classes="status-indicator status-idle"
+        )
 
     def _get_status_text(self) -> str:
         """Get status text based on current state and progress."""

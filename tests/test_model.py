@@ -1,10 +1,9 @@
 """Tests for Model — specs/model.md conformance."""
 
-import pytest
 from kalvin.kline import KLine
-from kalvin.model import Model, KLineStore, _TierChain, _TierAdapter
-from kalvin.stm import STM
+from kalvin.model import KLineStore, Model, _TierChain
 from kalvin.signature import make_signature
+from kalvin.stm import STM
 
 
 def make_model(stm_bound: int = 256) -> Model:
@@ -13,20 +12,22 @@ def make_model(stm_bound: int = 256) -> Model:
 
 # ── Removed Methods ──────────────────────────────────────────────────
 
+
 class TestRemovedMethods:
     """MOD-R1/R2/R3: verify old methods no longer exist on Model."""
 
     def test_add_removed(self):
-        assert not hasattr(Model, 'add')
+        assert not hasattr(Model, "add")
 
     def test_promote_removed(self):
-        assert not hasattr(Model, 'promote')
+        assert not hasattr(Model, "promote")
 
     def test_refresh_stm_removed(self):
-        assert not hasattr(Model, 'refresh_stm')
+        assert not hasattr(Model, "refresh_stm")
 
 
 # ── Cascade Write API ────────────────────────────────────────────────
+
 
 class TestAddStm:
     """Tests for add_stm() — STM-only write with always-refresh FIFO."""
@@ -138,7 +139,7 @@ class TestAddLtm:
         m = make_model()
         k = KLine(5, [1])
         m.add_ltm(k)
-        assert len(m) == 1    # Frame
+        assert len(m) == 1  # Frame
         assert m.stm_contains(k) is True
         assert m.find(5) is k
 
@@ -160,6 +161,7 @@ class TestAddLtm:
 
 
 # ── Read Operations ──────────────────────────────────────────────────
+
 
 class TestModelExists:
     def test_exists_true(self):
@@ -325,6 +327,7 @@ class TestModelThreeTier:
 
 # ── STM Interface Tests ─────────────────────────────────────────────
 
+
 class TestModelStmContains:
     def test_stm_contains_true(self):
         """stm_contains returns True for a KLine in STM."""
@@ -401,8 +404,8 @@ class TestModelFourTier:
         m = make_model()
         k_frame = KLine(5, [1])
         k_ltm = KLine(5, [2])
-        m.add_frame(k_frame)    # Frame + STM
-        m.add_ltm(k_ltm)        # LTM + Frame + STM
+        m.add_frame(k_frame)  # Frame + STM
+        m.add_ltm(k_ltm)  # LTM + Frame + STM
         found = m.find(5)
         # Both are in Frame; most recent wins (k_ltm was added later)
         assert found is k_ltm
@@ -424,8 +427,8 @@ class TestModelFourTier:
         m = make_model()
         k1 = KLine(7, [1])
         k2 = KLine(7, [2])
-        m.add_frame(k1)      # Frame
-        m.add_ltm(k2)        # LTM + Frame + STM
+        m.add_frame(k1)  # Frame
+        m.add_ltm(k2)  # LTM + Frame + STM
         results = m.find_all(7)
         assert len(results) == 2
         assert k1 in results
@@ -435,8 +438,8 @@ class TestModelFourTier:
         """klines() returns each unique kline once across tiers."""
         m = make_model()
         k = KLine(5, [1])
-        m.add_frame(k)       # STM + Frame
-        m.add_ltm(k)         # LTM (same kline, non-literal → always accepted)
+        m.add_frame(k)  # STM + Frame
+        m.add_ltm(k)  # LTM (same kline, non-literal → always accepted)
         results = m.klines()
         # Same kline object in STM, Frame, and LTM → deduplicated
         count = sum(1 for kl in results if kl.signature == 5 and kl.nodes == [1])

@@ -5,8 +5,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from kalvin.agent import CogitationHandler, Cogitator, KAgent, WorkItem
 from kalvin.agent_codec import AgentCodec
 from kalvin.events import EventBus
@@ -15,7 +13,6 @@ from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.model import Model
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
-
 from tests.conftest import requires_nlp_data
 
 
@@ -46,6 +43,7 @@ class TestAgentInit:
 
 
 # ── Routing Tests ─────────────────────────────────────────────────────
+
 
 class TestRoute:
     """KAgent._route: fast node-membership classification. No model call."""
@@ -89,6 +87,7 @@ class TestRoute:
 
 
 # ── Rationalisation Tests ─────────────────────────────────────────────
+
 
 class TestAgentRationalise:
     def test_unsigned_s4(self):
@@ -157,6 +156,7 @@ class TestAgentRationalise:
 
 # ── Short-Circuit Tests ───────────────────────────────────────────────
 
+
 class TestShortCircuit:
     """Phase 5 pushes ALL candidates to cogitator — no S1 short-circuit."""
 
@@ -164,8 +164,8 @@ class TestShortCircuit:
         """All candidates are submitted to cogitator regardless of routing level."""
         a = KAgent(adapter=EventBus())
         # Add two candidates to the model
-        c1 = KLine(5, [10, 20])       # S1 match for query
-        c2 = KLine(6, [10, 20, 30])   # Also S1 for query
+        c1 = KLine(5, [10, 20])  # S1 match for query
+        c2 = KLine(6, [10, 20, 30])  # Also S1 for query
         a.rationalise(c1)
         a.rationalise(c2)
 
@@ -224,8 +224,8 @@ class TestShortCircuit:
         """
         a = KAgent(adapter=EventBus())
         # c1 routes S2 (partial match), c2 routes S1 (full match)
-        c1 = KLine(5, [10, 30])   # S2: only node 10 in common with query
-        c2 = KLine(6, [10, 20])   # S1: both query nodes present
+        c1 = KLine(5, [10, 30])  # S2: only node 10 in common with query
+        c2 = KLine(6, [10, 20])  # S1: both query nodes present
         a.rationalise(c1)
         a.rationalise(c2)
 
@@ -253,7 +253,7 @@ class TestShortCircuit:
         q.signature = make_signature([999])
 
         with patch(
-            'kalvin.agent.expand',
+            "kalvin.agent.expand",
             side_effect=AssertionError("expand should not be called for S4"),
         ):
             result = a.rationalise(q)
@@ -262,6 +262,7 @@ class TestShortCircuit:
 
 
 # ── WorkItem Tests ────────────────────────────────────────────────────
+
 
 class TestWorkItem:
     def test_work_item_fields(self):
@@ -280,6 +281,7 @@ class TestWorkItem:
 
 
 # ── Event Tests ───────────────────────────────────────────────────────
+
 
 class TestAgentEvents:
     def test_subscribe(self):
@@ -310,6 +312,7 @@ class TestAgentEvents:
 
 
 # ── Cogitator Tests ───────────────────────────────────────────────────
+
 
 class TestCogitator:
     def test_cogitate_join(self):
@@ -352,6 +355,7 @@ class TestCogitator:
 
 
 # ── Serialization Tests ───────────────────────────────────────────────
+
 
 class TestAgentSerialization:
     def _make_agent_with_klines(self) -> KAgent:
@@ -446,6 +450,7 @@ class TestAgentSerialization:
 
 # ── Structural Grounding Tests ───────────────────────────────────────
 
+
 class TestStructuralGrounding:
     """Agent-level tests for structural grounding and promote_participating."""
 
@@ -539,6 +544,7 @@ class TestCogitatorStructuralGrounding:
 
 # ── Test Fake ─────────────────────────────────────────────────────────
 
+
 class RecordingCogitationHandler:
     """Test fake: records all cogitation callbacks for assertion."""
 
@@ -560,6 +566,7 @@ class RecordingCogitationHandler:
 
 
 # ── Protocol Conformance Tests ────────────────────────────────────────
+
 
 class TestCogitationHandlerProtocol:
     """Protocol conformance — runtime_checkable isinstance checks."""
@@ -592,6 +599,7 @@ class TestCogitationHandlerProtocol:
 
 
 # ── Fake-Handler Integration Tests ────────────────────────────────────
+
 
 class TestCogitatorWithFakeHandler:
     """Cogitator wired to RecordingCogitationHandler — proves the seam works."""
@@ -677,6 +685,7 @@ class TestCogitatorWithFakeHandler:
 
 # ── Countersign Tests ────────────────────────────────────────────────
 
+
 class TestCountersign:
     """Agent.countersign: reciprocal kline construction and rationalisation."""
 
@@ -723,7 +732,9 @@ class TestCountersign:
         assert reciprocal.signature == expected_reciprocal_sig
         assert reciprocal.nodes == expected_reciprocal_nodes
 
+
 # ── Cascade Write Method Tests ───────────────────────────────────────
+
 
 class TestCascadeWriteMethods:
     """Verify the correct model write method is called at each rationalisation phase."""
@@ -828,9 +839,11 @@ class TestCascadeWriteMethods:
         # Query with partial overlap → S2
         q = KLine(0, [10, 20])
         q.signature = make_signature([10, 20])
-        with patch.object(m, "add_stm", wraps=m.add_stm) as mock_add_stm, \
-             patch.object(m, "add_ltm", wraps=m.add_ltm) as mock_add_ltm, \
-             patch.object(m, "add_frame", wraps=m.add_frame) as mock_add_frame:
+        with (
+            patch.object(m, "add_stm", wraps=m.add_stm) as mock_add_stm,
+            patch.object(m, "add_ltm", wraps=m.add_ltm) as mock_add_ltm,
+            patch.object(m, "add_frame", wraps=m.add_frame) as mock_add_frame,
+        ):
             result = a.rationalise(q)
         assert result is False  # S2 → not significant, submitted to cogitator
         # add_stm should have been called for Phase 5
@@ -933,8 +946,9 @@ class TestAgentNLPTokenizer:
         """Default KAgent uses NLP tokenizer when available, Mod32 otherwise."""
         a = KAgent(adapter=EventBus())
         # With NLP data files available, default should be NLPTokenizer
-        from kalvin.nlp_tokenizer import NLPTokenizer
         from kalvin.mod_tokenizer import Mod32Tokenizer
+        from kalvin.nlp_tokenizer import NLPTokenizer
+
         assert isinstance(a.tokenizer, (NLPTokenizer, Mod32Tokenizer))
 
     def test_nlp_agent_serialization(self, nlp_tokenizer: NLPTokenizer) -> None:
@@ -1007,9 +1021,7 @@ class TestAgentNLPIntegration:
         stored = a.model.find(klines[0].signature)
         assert stored is not None
 
-    def test_nlp_agent_bytes_roundtrip(
-        self, nlp_tokenizer: NLPTokenizer
-    ) -> None:
+    def test_nlp_agent_bytes_roundtrip(self, nlp_tokenizer: NLPTokenizer) -> None:
         """Binary serialization preserves NLP-BPE node values (uint64).
 
         Multiple klines with NLP-BPE nodes survive to_bytes/from_bytes
@@ -1033,9 +1045,7 @@ class TestAgentNLPIntegration:
             )
             assert stored.signature == orig.signature
 
-    def test_nlp_agent_dict_roundtrip(
-        self, nlp_tokenizer: NLPTokenizer
-    ) -> None:
+    def test_nlp_agent_dict_roundtrip(self, nlp_tokenizer: NLPTokenizer) -> None:
         """Dict serialization preserves NLP-BPE node values exactly.
 
         Nodes are stored as integers in the dict and must round-trip
@@ -1054,9 +1064,7 @@ class TestAgentNLPIntegration:
             assert stored.nodes == orig.nodes
             assert stored.signature == orig.signature
 
-    def test_nlp_agent_json_file_roundtrip(
-        self, nlp_tokenizer: NLPTokenizer
-    ) -> None:
+    def test_nlp_agent_json_file_roundtrip(self, nlp_tokenizer: NLPTokenizer) -> None:
         """JSON file serialization preserves NLP-BPE node values.
 
         Write to a temp JSON file, reload, verify all node values match.

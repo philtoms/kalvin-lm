@@ -3,19 +3,14 @@
 Spec: specs/cascade-control.md
 """
 
-import pytest
-from unittest.mock import MagicMock
-
-from kalvin.agent import KAgent, WorkItem
-from kalvin.kline import KLine
-from kalvin.signature import make_signature
-from kalvin.events import RationaliseEvent
-from trainer.reactor import Reactor
-from trainer.curriculum import Curriculum, CurriculumState
 from harness.bus import MessageBus
+from harness.constants import SUPERVISOR_ROLE
 from harness.message import Message
-from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
-
+from kalvin.agent import KAgent, WorkItem
+from kalvin.events import RationaliseEvent
+from kalvin.kline import KLine
+from trainer.curriculum import Curriculum, CurriculumState
+from trainer.reactor import Reactor
 
 # ── Helpers ────────────────────────────────────────────────────────────
 
@@ -30,8 +25,10 @@ class BusCapture:
 
     def install(self) -> None:
         capture = self
+
         def capturing_send(msg: Message) -> None:
             capture.messages.append(msg)
+
         self._bus.send = capturing_send  # type: ignore[assignment]
 
     def find_all(self, role: str, action: str) -> list[Message]:
@@ -83,7 +80,6 @@ class TestCandidateCap:
 
         # Track how many work items are submitted to the cogitator
         submitted = []
-        original_submit = agent._cogitator.submit
 
         def capture_submit(item: WorkItem):
             submitted.append(item)
@@ -116,7 +112,6 @@ class TestCandidateCap:
         query = KLine(0x3 | 0xC, [0x1])
 
         submitted = []
-        original_submit = agent._cogitator.submit
 
         def capture_submit(item: WorkItem):
             submitted.append(item)
@@ -191,7 +186,6 @@ class TestCandidateCap:
         query = KLine(0x7 | 0x3 | 0x18, [0x1, 0x2, 0x4])
 
         submitted = []
-        original_submit = agent._cogitator.submit
 
         def capture_submit(item: WorkItem):
             submitted.append(item)
@@ -220,7 +214,9 @@ class TestReactorSilentDrop:
         state = CurriculumState(Curriculum(["A", "B"]))
 
         reactor = Reactor(
-            bus, state, role="trainer",
+            bus,
+            state,
+            role="trainer",
             max_reactive_rounds=3,
             cogitate_fn=lambda e: None,
         )
@@ -238,8 +234,7 @@ class TestReactorSilentDrop:
 
         # The third event should have triggered escalation
         escalation_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
-        budget_msgs = [m for m in escalation_msgs
-                       if m.message.get("reason") == "budget_exhaustion"]
+        budget_msgs = [m for m in escalation_msgs if m.message.get("reason") == "budget_exhaustion"]
         assert len(budget_msgs) >= 1
 
     def test_subsequent_events_silently_dropped(self):
@@ -257,7 +252,9 @@ class TestReactorSilentDrop:
             return None
 
         reactor = Reactor(
-            bus, state, role="trainer",
+            bus,
+            state,
+            role="trainer",
             max_reactive_rounds=3,
             cogitate_fn=counting_cogitate,
         )
@@ -278,6 +275,5 @@ class TestReactorSilentDrop:
 
         # Only one budget_exhaustion escalation (not 7)
         escalation_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
-        budget_msgs = [m for m in escalation_msgs
-                       if m.message.get("reason") == "budget_exhaustion"]
+        budget_msgs = [m for m in escalation_msgs if m.message.get("reason") == "budget_exhaustion"]
         assert len(budget_msgs) == 1

@@ -1,26 +1,25 @@
 """Tests for expand module — direct function calls, not Model forwarding."""
 
 import pytest
-from kalvin.kline import KLine
-from kalvin.model import Model
+
 from kalvin.expand import (
-    expand,
-    edge_hops,
-    is_canon,
-    is_s1,
-    is_countersigned,
-    promote_participating,
-    propose_expansions,
-    QueryCandidate,
+    _S3_BIAS,
     D_MAX,
     MASK64,
     MAX_HOP,
     S2_S3_DISTANCE,
     boundaries,
     classify,
-    _pack,
-    _S3_BIAS,
+    edge_hops,
+    expand,
+    is_canon,
+    is_countersigned,
+    is_s1,
+    promote_participating,
+    propose_expansions,
 )
+from kalvin.kline import KLine
+from kalvin.model import Model
 
 
 def make_model(stm_bound: int = 256) -> Model:
@@ -57,8 +56,8 @@ class TestEdgeHops:
         m.add_frame(KLine(30, [30]))  # canonical
         m.add_frame(KLine(20, [30]))  # non-canon: sig=20, make_sig([30])=30
         m.add_frame(KLine(10, [20]))  # non-canon: sig=10, make_sig([20])=20
-        m.add_frame(KLine(5, [10]))   # non-canon: sig=5,  make_sig([10])=10
-        assert list(edge_hops(m, 5))  == [(1, 10), (2, 20), (3, 30)]
+        m.add_frame(KLine(5, [10]))  # non-canon: sig=5,  make_sig([10])=10
+        assert list(edge_hops(m, 5)) == [(1, 10), (2, 20), (3, 30)]
         assert list(edge_hops(m, 10)) == [(1, 20), (2, 30)]
         assert list(edge_hops(m, 20)) == [(1, 30)]
         assert list(edge_hops(m, 30)) == []  # canonical
@@ -68,8 +67,8 @@ class TestEdgeHops:
         """ER-1: Countersigned pair produces bounded hops, not MAX_HOP."""
         m = make_model()
         # {A: [B]} ↔ {B: [A]} — mutual non-canonical resolution
-        m.add_frame(KLine(5, [10]))   # sig=5, make_sig([10])=10
-        m.add_frame(KLine(10, [5]))   # sig=10, make_sig([5])=5
+        m.add_frame(KLine(5, [10]))  # sig=5, make_sig([10])=10
+        m.add_frame(KLine(10, [5]))  # sig=10, make_sig([5])=5
         hops = list(edge_hops(m, 5))
         # Without cycle detection: 100 hops alternating 10,5,10,5...
         # With cycle detection: at most 2 hops before revisiting sig
@@ -126,10 +125,10 @@ class TestExpand:
         m.add_frame(KLine(30, [30]))  # canonical
         m.add_frame(KLine(20, [30]))  # non-canon
         m.add_frame(KLine(10, [20]))  # non-canon
-        m.add_frame(KLine(5, [10]))   # non-canon
+        m.add_frame(KLine(5, [10]))  # non-canon
 
-        q = KLine(100, [5, 2])    # mismatched_q: {5, 2}
-        c = KLine(200, [10, 3])   # mismatched_c: {10, 3}
+        q = KLine(100, [5, 2])  # mismatched_q: {5, 2}
+        c = KLine(200, [10, 3])  # mismatched_c: {10, 3}
         # distance=301 (1 hop + 3 × MAX_HOP)
         # Results include:
         #   - S2 exact-match chain yields (expand(20,30) → expand(10,20) → expand(5,10))
@@ -141,20 +140,19 @@ class TestExpand:
 
         # S2 signifies candidates: c-node 10 reaches sig 30 (10 & 30 ≠ 0)
         # at distance 2 in both expand(5,10) and top-level
-        signifies_results = [r for r in results[:-1]
-                            if r.significance == (~2) & MASK64]
+        signifies_results = [r for r in results[:-1] if r.significance == (~2) & MASK64]
         assert len(signifies_results) == 2
 
     def test_expand_bidirectional_hop_match(self):
         """Both query and candidate mismatched nodes reach opposing sets."""
         m = make_model()
         m.add_frame(KLine(10, [10]))  # canonical
-        m.add_frame(KLine(5, [10]))   # non-canon
+        m.add_frame(KLine(5, [10]))  # non-canon
         m.add_frame(KLine(30, [30]))  # canonical
         m.add_frame(KLine(20, [30]))  # non-canon
 
-        q = KLine(100, [5, 20])     # mismatched_q: {5, 20}
-        c = KLine(200, [10, 30])    # mismatched_c: {10, 30}
+        q = KLine(100, [5, 20])  # mismatched_q: {5, 20}
+        c = KLine(200, [10, 30])  # mismatched_c: {10, 30}
         # distance=202, 2 connotations + terminal
         results = list(expand(m, q, c))
         assert len(results) == 3
@@ -204,10 +202,10 @@ class TestExpand:
         """Verify significance ordering: closer match → higher significance."""
         m = make_model()
         m.add_frame(KLine(10, [10]))  # canonical
-        m.add_frame(KLine(5, [10]))   # non-canon
+        m.add_frame(KLine(5, [10]))  # non-canon
 
-        q = KLine(100, [5, 2])     # mismatched_q: {5, 2}
-        c = KLine(200, [10, 3])    # mismatched_c: {10, 3}
+        q = KLine(100, [5, 2])  # mismatched_q: {5, 2}
+        c = KLine(200, [10, 3])  # mismatched_c: {10, 3}
         # distance=301 (q-node 5 reaches c-node 10 at hop 1, rest MAX_HOP)
         results = list(expand(m, q, c))
         assert results[-1].significance == (~301) & MASK64
@@ -224,12 +222,12 @@ class TestExpand:
         before S3 when signatures share bits).
         """
         m = make_model()
-        m.add_frame(KLine(8, [8]))    # canonical
-        m.add_frame(KLine(4, [8]))    # non-canon: edge_hops(4) = [(1, 8)]
-        m.add_frame(KLine(2, [8]))    # non-canon: edge_hops(2) = [(1, 8)]
+        m.add_frame(KLine(8, [8]))  # canonical
+        m.add_frame(KLine(4, [8]))  # non-canon: edge_hops(4) = [(1, 8)]
+        m.add_frame(KLine(2, [8]))  # non-canon: edge_hops(2) = [(1, 8)]
 
-        q = KLine(100, [4])     # mismatched_q: {4}
-        c = KLine(200, [2])     # mismatched_c: {2}
+        q = KLine(100, [4])  # mismatched_q: {4}
+        c = KLine(200, [2])  # mismatched_c: {2}
 
         # signifies(4, 8) = False, signifies(2, 8) = False → S3 path exercised
         # s3_connotations[8] = 1 (from q-node 4)
@@ -271,10 +269,10 @@ class TestExpand:
         m.add_frame(KLine(30, [30]))  # canonical
         m.add_frame(KLine(20, [30]))  # non-canon
         m.add_frame(KLine(10, [20]))  # non-canon
-        m.add_frame(KLine(5, [10]))   # non-canon
+        m.add_frame(KLine(5, [10]))  # non-canon
 
-        q = KLine(100, [5])      # mismatched_q: {5}
-        c = KLine(200, [10])     # mismatched_c: {10}
+        q = KLine(100, [5])  # mismatched_q: {5}
+        c = KLine(200, [10])  # mismatched_c: {10}
 
         # q-node 5: edge_hops(5) = [(1,10), (2,20), (3,30)]
         #   hop 1: match_sig=10 IS in mismatched_c → exact match, expand
@@ -291,9 +289,9 @@ class TestExpand:
         results = list(expand(m, q, c))
 
         # Find the signifies candidate from c-node 10→30
-        signifies_candidates = [r for r in results
-                                if r.query.signature == 10
-                                and r.candidate.signature == 30]
+        signifies_candidates = [
+            r for r in results if r.query.signature == 10 and r.candidate.signature == 30
+        ]
         assert len(signifies_candidates) == 1
         sig_cand = signifies_candidates[0]
         assert sig_cand.significance == (~2) & MASK64
@@ -352,7 +350,7 @@ class TestExpand:
         m.add_ltm(KLine(42, []))  # identity
         # Query and candidate that trigger the mismatched-node path
         q = KLine(42 | 10, [42, 10])  # sig includes 42, nodes include 42
-        c = KLine(42 | 10, [10])      # partial overlap on 10, mismatched_c = {}
+        c = KLine(42 | 10, [10])  # partial overlap on 10, mismatched_c = {}
         m.add_ltm(c)
         # expand should complete without ValueError
         results = list(expand(m, q, c))
@@ -361,10 +359,11 @@ class TestExpand:
     def test_expand_countersign_cycle_no_crash_er7(self):
         """ER-7: S2 scenario with countersigned klines completes without exception."""
         m = make_model()
-        M = 0x2000
-        H = 0x100
-        A = 0x2
-        MH = M | H
+        # Uppercase to mirror KLine protocol signatures; noqa to avoid clash with model `m`.
+        M = 0x2000  # noqa: N806
+        H = 0x100  # noqa: N806
+        A = 0x2  # noqa: N806
+        MH = M | H  # noqa: N806
         # Identities
         m.add_ltm(KLine(M, []))
         m.add_ltm(KLine(H, []))
@@ -383,6 +382,7 @@ class TestExpand:
 
 
 # ── Structural Grounding Tests ───────────────────────────────────────
+
 
 class TestIsS1:
     def test_canonical_kline(self):
@@ -510,6 +510,7 @@ class TestPromoteParticipating:
 
 
 # ── Significance Boundary Tests ───────────────────────────────────────
+
 
 class TestBoundaries:
     """Verify boundaries() returns correct (S1|S2, S2|S3, S3|S4) thresholds."""

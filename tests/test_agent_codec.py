@@ -11,6 +11,7 @@ from kalvin.model import Model
 
 # ── Helpers ────────────────────────────────────────────────────────────
 
+
 def _make_model_with_klines() -> tuple[Model, Counter]:
     """Build a model with a few klines and a non-empty activity counter."""
     model = Model()
@@ -69,6 +70,7 @@ def _stm_signatures(model: Model) -> set[tuple[int, tuple[int, ...]]]:
 
 
 # ── Binary Roundtrip ──────────────────────────────────────────────────
+
 
 class TestAgentCodec:
     def test_binary_roundtrip(self):
@@ -177,6 +179,7 @@ class TestAgentCodec:
 
 # ── Three-Tier Roundtrip Tests ─────────────────────────────────────────
 
+
 class TestThreeTierRoundtrip:
     """Verify STM, Frame, and LTM survive roundtrip independently."""
 
@@ -247,6 +250,7 @@ class TestThreeTierRoundtrip:
 
 # ── Backward Compatibility Tests ───────────────────────────────────────
 
+
 class TestBackwardCompat:
     """Verify legacy formats decode correctly."""
 
@@ -303,6 +307,7 @@ class TestBackwardCompat:
 
 
 # ── Literal Preservation Tests ─────────────────────────────────────────
+
 
 class TestEmptyTiers:
     """Model with only Frame entries roundtrips correctly."""

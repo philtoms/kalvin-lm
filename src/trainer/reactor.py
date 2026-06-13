@@ -24,7 +24,6 @@ from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
-from kalvin.kline import KLine
 from trainer.curriculum import CurriculumState, EntryKey
 
 logger = logging.getLogger(__name__)

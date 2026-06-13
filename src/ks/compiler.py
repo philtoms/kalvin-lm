@@ -35,7 +35,6 @@ from .ast_emitter import ASTEmitter, SymbolicEntry
 from .binding_scope import BindingScope
 from .token_encoder import TokenEncoder
 
-
 __all__ = ["Compiler", "compile_source"]
 
 

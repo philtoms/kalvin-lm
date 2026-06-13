@@ -19,9 +19,12 @@ import logging
 from typing import Any
 
 import websockets
+from textual.app import App, ComposeResult
+from textual.widgets import Footer, Header, Input
 
 from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from participants.commands import parse_command
+from participants.tui_regions import EventLog, InputBar, RatifyBar
 
 logger = logging.getLogger(__name__)
 
@@ -98,9 +101,7 @@ class HarnessClient:
                 return None
             # Wait briefly for a message
             try:
-                return await asyncio.wait_for(
-                    self._receive_queue.get(), timeout=0.1
-                )
+                return await asyncio.wait_for(self._receive_queue.get(), timeout=0.1)
             except asyncio.TimeoutError:
                 return None
 
@@ -167,12 +168,6 @@ class HarnessClient:
 # ---------------------------------------------------------------------------
 # TUIApp — Textual application for the TUI harness participant
 # ---------------------------------------------------------------------------
-
-
-from textual.app import App, ComposeResult
-from textual.widgets import Footer, Header, Input
-
-from participants.tui_regions import EventLog, InputBar, RatifyBar
 
 
 class TUIApp(App):
@@ -266,9 +261,7 @@ class TUIApp(App):
         harness event frame (a JSON-serializable value, not a KLine object).
         """
         # Schedule the async send as a background task
-        asyncio.create_task(
-            self._client.send(TRAINEE_ROLE, "countersign", event.event_data)
-        )
+        asyncio.create_task(self._client.send(TRAINEE_ROLE, "countersign", event.event_data))
         # Disable ratify after sending
         ratify_bar = self.query_one(RatifyBar)
         ratify_bar.disable_ratify()

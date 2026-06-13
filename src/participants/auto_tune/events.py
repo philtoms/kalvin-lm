@@ -10,7 +10,7 @@ significance breakdown (raw, normalised, level).
 
 from __future__ import annotations
 
-from kalvin.expand import D_MAX, MASK64, boundaries, classify
+from kalvin.expand import MASK64, boundaries, classify
 from kalvin.kline import KLine, kline_display
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
@@ -19,6 +19,7 @@ _tokenizer = Mod32Tokenizer()
 
 
 # ── Public API ────────────────────────────────────────────────────────
+
 
 def enrich_event(raw_frame: dict, seq: int) -> dict:
     """Transform a raw harness WebSocket frame into an enriched auto-tune event.
@@ -49,6 +50,7 @@ def enrich_event(raw_frame: dict, seq: int) -> dict:
 
 
 # ── Action-specific enrichers ─────────────────────────────────────────
+
 
 def _enrich_progress(message: dict, seq: int) -> dict:
     """Enrich a progress frame (rule 27)."""
@@ -115,6 +117,7 @@ def _enrich_escalation(message: dict, seq: int) -> dict:
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
+
 def _build_significance(raw_sig: int) -> dict:
     """Build a Significance Object (§Significance Object).
 
@@ -126,6 +129,7 @@ def _build_significance(raw_sig: int) -> dict:
     raw/D_MAX which loses float64 precision for distances < 2^64.
     """
     from kalvin.expand import S2_S3_DISTANCE
+
     s12, s23, s34 = boundaries()
     level = classify(raw_sig, s12, s23, s34)
     if raw_sig == 0:

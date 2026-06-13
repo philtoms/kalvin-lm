@@ -12,12 +12,15 @@ from abc import ABC, abstractmethod
 from kalvin.kline import KLine, KNode, KSig
 
 __all__ = [
-    "KLine", "KNode", "KSig",
+    "KLine",
+    "KNode",
+    "KSig",
     "KTokenizer",
 ]
 
 
 # === Abstract Tokenizer ===
+
 
 class KTokenizer(ABC):
     """Abstract base class for tokenizers.
@@ -25,7 +28,8 @@ class KTokenizer(ABC):
     A KTokenizer converts between text and nodes. All strings go through
     the tokenizer — no branching between encoding paths.
 
-    Three adapters: Tokenizer (BPE), ModTokenizer (modular bit-packed), NLPTokenizer (NLP-enhanced BPE).
+    Three adapters: Tokenizer (BPE), ModTokenizer (modular bit-packed),
+    NLPTokenizer (NLP-enhanced BPE).
     """
 
     @property

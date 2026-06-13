@@ -101,14 +101,11 @@ jobs:
         run: uv run pytest
 
   # ── Lint (fast, independent of data assets) ───────────────────────────────
-  # Advisory for now: the repo carries ~370 pre-existing ruff errors and ~100
-  # format deviations (predating this workflow). continue-on-error surfaces
-  # them without making CI red; flip to a hard gate once that debt is cleared.
-  # See follow-up task to clear pre-existing lint debt.
+  # Hard gate: ruff check and ruff format --check must both pass.
+  # Pre-existing lint/format debt was cleared in KB-215.
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 

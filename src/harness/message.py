@@ -26,7 +26,4 @@ class Message:
     sender: str | None = field(default=None)
 
     def __repr__(self) -> str:
-        return (
-            f"Message(role={self.role!r}, action={self.action!r}, "
-            f"sender={self.sender!r})"
-        )
+        return f"Message(role={self.role!r}, action={self.action!r}, sender={self.sender!r})"

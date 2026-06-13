@@ -87,9 +87,13 @@ class TestGenerateLLMCall:
     """CRS-32: Generator makes one LLM call with curriculum format system prompt."""
 
     def test_generate_makes_llm_call(self, tmp_path: Path) -> None:
-        client = MockLLMClient([
-            LLMResponse(content=VALID_CURRICULUM_MARKDOWN, tool_calls=None, finish_reason="stop"),
-        ])
+        client = MockLLMClient(
+            [
+                LLMResponse(
+                    content=VALID_CURRICULUM_MARKDOWN, tool_calls=None, finish_reason="stop"
+                ),
+            ]
+        )
         gen = CurriculumGenerator(client, tmp_path / "curricula")
         gen.generate("basic patterns")
         assert client.call_count == 1
@@ -109,9 +113,13 @@ class TestGenerateParseResponse:
     """CRS-33: Generator parses LLM response via from_string and validates."""
 
     def test_generate_parses_response(self, tmp_path: Path) -> None:
-        client = MockLLMClient([
-            LLMResponse(content=VALID_CURRICULUM_MARKDOWN, tool_calls=None, finish_reason="stop"),
-        ])
+        client = MockLLMClient(
+            [
+                LLMResponse(
+                    content=VALID_CURRICULUM_MARKDOWN, tool_calls=None, finish_reason="stop"
+                ),
+            ]
+        )
         gen = CurriculumGenerator(client, tmp_path / "curricula")
         result = gen.generate("basic patterns")
         assert result.exists()
@@ -128,12 +136,16 @@ class TestGenerateRetry:
     """CRS-34: Generator retries once on parse failure with error feedback."""
 
     def test_generate_retries_on_parse_failure(self, tmp_path: Path) -> None:
-        client = MockLLMClient([
-            # First response: invalid
-            LLMResponse(content=INVALID_MARKDOWN, tool_calls=None, finish_reason="stop"),
-            # Second response: valid
-            LLMResponse(content=VALID_CURRICULUM_MARKDOWN, tool_calls=None, finish_reason="stop"),
-        ])
+        client = MockLLMClient(
+            [
+                # First response: invalid
+                LLMResponse(content=INVALID_MARKDOWN, tool_calls=None, finish_reason="stop"),
+                # Second response: valid
+                LLMResponse(
+                    content=VALID_CURRICULUM_MARKDOWN, tool_calls=None, finish_reason="stop"
+                ),
+            ]
+        )
         gen = CurriculumGenerator(client, tmp_path / "curricula")
         result = gen.generate("basic patterns")
         assert client.call_count == 2
@@ -153,12 +165,14 @@ class TestGenerateSecondFailure:
     """CRS-35: Generator raises CurriculumGenerationError on second failure."""
 
     def test_generate_raises_on_second_failure(self, tmp_path: Path) -> None:
-        client = MockLLMClient([
-            # First: invalid
-            LLMResponse(content=INVALID_MARKDOWN, tool_calls=None, finish_reason="stop"),
-            # Second: also invalid
-            LLMResponse(content=INVALID_MARKDOWN, tool_calls=None, finish_reason="stop"),
-        ])
+        client = MockLLMClient(
+            [
+                # First: invalid
+                LLMResponse(content=INVALID_MARKDOWN, tool_calls=None, finish_reason="stop"),
+                # Second: also invalid
+                LLMResponse(content=INVALID_MARKDOWN, tool_calls=None, finish_reason="stop"),
+            ]
+        )
         gen = CurriculumGenerator(client, tmp_path / "curricula")
         with pytest.raises(CurriculumGenerationError, match="failed after retry"):
             gen.generate("basic patterns")
@@ -173,9 +187,13 @@ class TestGenerateWriteFile:
 
     def test_generate_writes_to_file(self, tmp_path: Path) -> None:
         curricula_dir = tmp_path / "curricula"
-        client = MockLLMClient([
-            LLMResponse(content=VALID_CURRICULUM_MARKDOWN, tool_calls=None, finish_reason="stop"),
-        ])
+        client = MockLLMClient(
+            [
+                LLMResponse(
+                    content=VALID_CURRICULUM_MARKDOWN, tool_calls=None, finish_reason="stop"
+                ),
+            ]
+        )
         gen = CurriculumGenerator(client, curricula_dir)
         result = gen.generate("basic patterns")
         assert result.parent == curricula_dir
@@ -193,9 +211,13 @@ class TestSlugFromGoal:
     """CRS-37: Slug derived from goal (lowercase, hyphens, non-alphanumeric stripped)."""
 
     def test_generate_slug_from_goal(self, tmp_path: Path) -> None:
-        client = MockLLMClient([
-            LLMResponse(content=VALID_CURRICULUM_MARKDOWN, tool_calls=None, finish_reason="stop"),
-        ])
+        client = MockLLMClient(
+            [
+                LLMResponse(
+                    content=VALID_CURRICULUM_MARKDOWN, tool_calls=None, finish_reason="stop"
+                ),
+            ]
+        )
         gen = CurriculumGenerator(client, tmp_path / "curricula")
         result = gen.generate("Mary Had a Little Lamb!")
         assert result.name == "mary-had-a-little-lamb.md"

@@ -28,16 +28,16 @@ class TokenType(Enum):
     """
 
     # Construct operators
-    COUNTERSIGN = auto()   # ==
-    CANONIZE = auto()      # =>
-    CONNOTATE = auto()     # >
-    UNDERSIGN = auto()     # =
+    COUNTERSIGN = auto()  # ==
+    CANONIZE = auto()  # =>
+    CONNOTATE = auto()  # >
+    UNDERSIGN = auto()  # =
 
     # Node types
-    SIGNATURE = auto()     # [A-Z]+
+    SIGNATURE = auto()  # [A-Z]+
 
     # Structure
-    ANNOTATION = auto()    # (...)
+    ANNOTATION = auto()  # (...)
     NEWLINE = auto()
     INDENT = auto()
     DEDENT = auto()

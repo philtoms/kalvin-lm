@@ -15,7 +15,6 @@ from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
-from ks import KLine
 from trainer.curriculum import Curriculum, CurriculumState
 from trainer.reactor import Reactor
 
@@ -64,10 +63,7 @@ class BusCapture:
         self._bus.send = capturing_send  # type: ignore[assignment]
 
     def find_all(self, role: str, action: str) -> list[Message]:
-        return [
-            m for m in self.messages
-            if m.role == role and m.action == action
-        ]
+        return [m for m in self.messages if m.role == role and m.action == action]
 
     def reset(self) -> None:
         self.messages.clear()
@@ -185,6 +181,7 @@ class TestTrainerRatifySuppression:
         bus = MessageBus()
         curriculum = Curriculum(["lesson1", "lesson2"])
         from trainer.trainer import Trainer
+
         trainer = Trainer(bus, curriculum)
         capture = BusCapture(bus)
         capture.install()
@@ -192,9 +189,7 @@ class TestTrainerRatifySuppression:
         trainer.start_session()
         # Respond to the drain message so _do_submit_lesson fires
         # and entries are compiled + loaded into the reactor
-        trainer.on_message(
-            Message(role=TRAINEE_ROLE, action="drained", message=None)
-        )
+        trainer.on_message(Message(role=TRAINEE_ROLE, action="drained", message=None))
         capture.reset()
 
         # Send S2/S3 frame event matching the entry → auto-countersign succeeds
@@ -202,9 +197,7 @@ class TestTrainerRatifySuppression:
         query = KLine(signature=999, nodes=[1])
         event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
 
-        trainer.on_message(
-            Message(role="trainer", action="frame", message=event)
-        )
+        trainer.on_message(Message(role="trainer", action="frame", message=event))
 
         ratify_msgs = capture.find_all(SUPERVISOR_ROLE, "ratify_request")
         assert len(ratify_msgs) == 0
@@ -218,15 +211,14 @@ class TestTrainerRatifySuppression:
         bus = MessageBus()
         curriculum = Curriculum(["lesson1", "lesson2"])
         from trainer.trainer import Trainer
+
         trainer = Trainer(bus, curriculum)
         capture = BusCapture(bus)
         capture.install()
 
         trainer.start_session()
         # Respond to drain so entries are loaded into the reactor
-        trainer.on_message(
-            Message(role=TRAINEE_ROLE, action="drained", message=None)
-        )
+        trainer.on_message(Message(role=TRAINEE_ROLE, action="drained", message=None))
         capture.reset()
 
         # Send S2/S3 frame event NOT matching → auto-countersign fails
@@ -234,9 +226,7 @@ class TestTrainerRatifySuppression:
         query = KLine(signature=888, nodes=[1])
         event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
 
-        trainer.on_message(
-            Message(role="trainer", action="frame", message=event)
-        )
+        trainer.on_message(Message(role="trainer", action="frame", message=event))
 
         ratify_msgs = capture.find_all(SUPERVISOR_ROLE, "ratify_request")
         assert len(ratify_msgs) == 1
@@ -260,24 +250,21 @@ class TestEventRelayRegardless:
         bus = MessageBus()
         curriculum = Curriculum(["lesson1", "lesson2"])
         from trainer.trainer import Trainer
+
         trainer = Trainer(bus, curriculum)
         capture = BusCapture(bus)
         capture.install()
 
         trainer.start_session()
         # Respond to drain so entries are loaded into the reactor
-        trainer.on_message(
-            Message(role=TRAINEE_ROLE, action="drained", message=None)
-        )
+        trainer.on_message(Message(role=TRAINEE_ROLE, action="drained", message=None))
         capture.reset()
 
         proposal = KLine(signature=100, nodes=[10, 20])
         query = KLine(signature=999, nodes=[1])
         event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
 
-        trainer.on_message(
-            Message(role="trainer", action="frame", message=event)
-        )
+        trainer.on_message(Message(role="trainer", action="frame", message=event))
 
         relay_msgs = capture.find_all(SUPERVISOR_ROLE, "event")
         assert len(relay_msgs) == 1
@@ -292,24 +279,21 @@ class TestEventRelayRegardless:
         bus = MessageBus()
         curriculum = Curriculum(["lesson1", "lesson2"])
         from trainer.trainer import Trainer
+
         trainer = Trainer(bus, curriculum)
         capture = BusCapture(bus)
         capture.install()
 
         trainer.start_session()
         # Respond to drain so entries are loaded into the reactor
-        trainer.on_message(
-            Message(role=TRAINEE_ROLE, action="drained", message=None)
-        )
+        trainer.on_message(Message(role=TRAINEE_ROLE, action="drained", message=None))
         capture.reset()
 
         proposal = KLine(signature=999, nodes=[88])
         query = KLine(signature=888, nodes=[1])
         event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
 
-        trainer.on_message(
-            Message(role="trainer", action="frame", message=event)
-        )
+        trainer.on_message(Message(role="trainer", action="frame", message=event))
 
         relay_msgs = capture.find_all(SUPERVISOR_ROLE, "event")
         assert len(relay_msgs) == 1

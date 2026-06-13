@@ -11,14 +11,11 @@ Tests cover HRN-3, HRN-4, HRN-11, HRN-14, HRN-17, HRN-18:
 - Done event handling
 """
 
-import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 from kalvin.abstract import KLine
 from kalvin.events import RationaliseEvent
 from kalvin.mod_tokenizer import Mod32Tokenizer
-from ks import KLine
-
 
 # ── Structural Match Tests ──────────────────────────────────────────────
 
@@ -78,6 +75,7 @@ def _make_app():
     """
     with patch("ui.kscript.app.Agent"):
         from ui.kscript.app import KScriptApp
+
         app = KScriptApp.__new__(KScriptApp)
         # Initialize only the fields we need
         app._dev_mode = True
@@ -132,8 +130,11 @@ class TestEventCorrelation:
         )
 
         # Subscribe the event handler
-        callback = app._agent.events.subscribe.call_args[0][0] \
-            if app._agent.events.subscribe.called else None
+        callback = (
+            app._agent.events.subscribe.call_args[0][0]
+            if app._agent.events.subscribe.called
+            else None
+        )
 
         # Manually call _setup_events to get the callback
         app._setup_events()
@@ -202,7 +203,6 @@ class TestFastPath:
         entry = _make_entry(0x50, [10, 20])
         app._compiled_entries = [entry]
 
-
         app._setup_events()
         callback = app._agent.events.subscribe.call_args[0][0]
 
@@ -237,7 +237,6 @@ class TestSlowPath:
         entry = _make_entry(0x60, [100, 200])
         app._compiled_entries = [entry]
 
-
         app._setup_events()
         callback = app._agent.events.subscribe.call_args[0][0]
 
@@ -265,7 +264,6 @@ class TestSlowPath:
 
         # No compiled entries match — simulates mismatch scenario
         app._compiled_entries = []
-
 
         app._setup_events()
         callback = app._agent.events.subscribe.call_args[0][0]
@@ -319,7 +317,6 @@ class TestMultipleProposals:
 
         entry = _make_entry(0x70, [1, 2])
         app._compiled_entries = [entry]
-
 
         app._setup_events()
         callback = app._agent.events.subscribe.call_args[0][0]

@@ -22,10 +22,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from kalvin.kline import KLine, sig_level
 from ks.compiler import compile_source
-from kalvin.kline import KLine, KDbg, sig_level
-from kalvin.nlp_tokenizer import NLPTokenizer
-
 
 # Default curriculum script — Mary Had A Little Lamb (MHALL).
 # Exercises every operator: COUNTERSIGN, CANONIZE, UNDERSIGN, CONNOTATE,
@@ -70,18 +68,11 @@ def fmt_kline(tokenizer, kl: KLine, idx: int, width: int = 3) -> str:
 
     if kl.nodes:
         nodes = dec_nodes(tokenizer, kl)
-        return (
-            f"  [{idx:{width}d}] {level:3s} {op:12s} | "
-            f"{label} [{decoded_sig!r}] => {nodes}"
-        )
-    return (
-        f"  [{idx:{width}d}] {level:3s} {op:12s} | "
-        f"{label} [{decoded_sig!r}]"
-    )
+        return f"  [{idx:{width}d}] {level:3s} {op:12s} | {label} [{decoded_sig!r}] => {nodes}"
+    return f"  [{idx:{width}d}] {level:3s} {op:12s} | {label} [{decoded_sig!r}]"
 
 
-def print_section(title: str, tokenizer, entries: list[KLine],
-                  start: int, end: int) -> None:
+def print_section(title: str, tokenizer, entries: list[KLine], start: int, end: int) -> None:
     """Print a labelled section of klines."""
     if start >= end:
         return
@@ -97,6 +88,7 @@ def print_section(title: str, tokenizer, entries: list[KLine],
 # We detect section boundaries by tracking operator transitions and
 # label changes, then group them into named sections.
 
+
 def _detect_sections(entries: list[KLine]) -> list[tuple[str, int, int]]:
     """Detect semantic sections in a kline list.
 
@@ -110,9 +102,6 @@ def _detect_sections(entries: list[KLine]) -> list[tuple[str, int, int]]:
     # --- Phase 1: Corpus word MCS blocks ---
     # A corpus word block is: N× IDENTITY (subwords), 1× CANONIZE, 1× IDENTITY (compound)
     # We detect the boundary where the label changes.
-
-    i = 0
-    corpus_start = i
 
     # Walk until we see the first non-corpus label (not a word from annotation)
     # Corpus labels appear as the first group of entries whose labels are
@@ -180,16 +169,11 @@ def _detect_sections(entries: list[KLine]) -> list[tuple[str, int, int]]:
 
     # Collect structural groups (identifiers, label expansions) until operators
     structural_start = None
-    operator_groups: list[tuple[str, int, int]] = []
 
     while idx < len(groups):
         label, gs, ge = groups[idx]
         # Check if this group contains any operator entries
-        has_operator = any(
-            is_operator(entries[j].dbg.op)
-            for j in range(gs, ge)
-            if entries[j].dbg
-        )
+        has_operator = any(is_operator(entries[j].dbg.op) for j in range(gs, ge) if entries[j].dbg)
         if has_operator:
             break
         if structural_start is None:
@@ -198,8 +182,7 @@ def _detect_sections(entries: list[KLine]) -> list[tuple[str, int, int]]:
         idx += 1
 
     if structural_start is not None:
-        sections.append(("Structural: identifiers & labels",
-                         structural_start, structural_end))
+        sections.append(("Structural: identifiers & labels", structural_start, structural_end))
 
     # Remaining groups: split into operator sections by type
     remaining_start = sections[-1][2] if sections else 0
@@ -250,7 +233,7 @@ def print_summary(entries: list[KLine]) -> None:
     level_counts = Counter(sig_level(kl) for kl in entries)
 
     print(f"\n{'=' * 78}")
-    print(f"SUMMARY")
+    print("SUMMARY")
     print(f"{'=' * 78}")
     print(f"  Total klines: {len(entries)}")
     print()
@@ -275,9 +258,11 @@ def load_tokenizer(name: str):
     """Load a tokenizer by name."""
     if name == "nlp":
         from kalvin.nlp_tokenizer import NLPTokenizer
+
         return NLPTokenizer.from_files(), "NLP"
     elif name == "mod32":
         from kalvin.mod_tokenizer import Mod32Tokenizer
+
         return Mod32Tokenizer(), "Mod32"
     else:
         raise ValueError(f"Unknown tokenizer: {name}")
@@ -328,13 +313,15 @@ def main() -> None:
         ),
     )
     parser.add_argument(
-        "--tokenizer", "-t",
+        "--tokenizer",
+        "-t",
         choices=["nlp", "mod32", "both"],
         default="nlp",
         help="Tokenizer to use (default: nlp). 'both' runs each and compares.",
     )
     parser.add_argument(
-        "--raw", "-r",
+        "--raw",
+        "-r",
         action="store_true",
         help="Print raw sequential klines without section grouping",
     )

@@ -9,9 +9,8 @@ sig_level propagation, undersign=connotate identity, and countersign
 pair resolution.
 """
 
-import pytest
 from kalvin.agent import KAgent
-from kalvin.events import EventBus, RationaliseEvent
+from kalvin.events import EventBus
 from kalvin.kline import KLine, sig_level
 from kalvin.model import Model
 from kalvin.signature import make_signature
@@ -27,7 +26,7 @@ class TestCountersignPairResolution:
 
         # Add identities
         a.rationalise(KLine(0x2000, []))  # M
-        a.rationalise(KLine(0x100, []))   # H
+        a.rationalise(KLine(0x100, []))  # H
 
         entries = compile_source("M == H", dev=True)
         assert len(entries) == 2
@@ -38,9 +37,11 @@ class TestCountersignPairResolution:
 
         events = []
         orig = bus.on_event
+
         def cap(ev):
             events.append(ev)
             orig(ev)
+
         bus.on_event = cap
 
         for e in entries:

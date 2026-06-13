@@ -21,14 +21,11 @@ from __future__ import annotations
 import asyncio
 import json
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 import websockets
 
 from participants.tui_client import HarnessClient, TUIApp
-from participants.tui_regions import EventLog, EventItem, InputBar, RatifyBar
-
+from participants.tui_regions import EventLog, InputBar, RatifyBar
 
 # ---------------------------------------------------------------------------
 # Stub harness WebSocket server
@@ -55,9 +52,7 @@ class StubHarness:
         return f"ws://{self._host}:{port}"
 
     async def __aenter__(self) -> StubHarness:
-        self._server = await websockets.serve(
-            self._handle, self._host, self._port
-        )
+        self._server = await websockets.serve(self._handle, self._host, self._port)
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -90,9 +85,7 @@ class StubHarness:
         while len(self.received_frames) < n:
             await asyncio.sleep(0.05)
             if asyncio.get_event_loop().time() > deadline:
-                raise TimeoutError(
-                    f"Expected {n} frames, got {len(self.received_frames)}"
-                )
+                raise TimeoutError(f"Expected {n} frames, got {len(self.received_frames)}")
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -294,15 +287,17 @@ async def test_tuiapp_event_polling_populates_log():
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)
 
-        async with app.run_test() as pilot:
+        async with app.run_test():
             await stub.wait_for_frames(1)
 
             # Server sends an event
-            await stub.send_to_client({
-                "role": "supervisor",
-                "action": "event",
-                "message": {"kind": "frame", "sig": "0xABCD"},
-            })
+            await stub.send_to_client(
+                {
+                    "role": "supervisor",
+                    "action": "event",
+                    "message": {"kind": "frame", "sig": "0xABCD"},
+                }
+            )
 
             # Wait for event polling to pick it up
             await asyncio.sleep(0.5)
@@ -450,14 +445,18 @@ async def test_renders_received_events():
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)
 
-        async with app.run_test() as pilot:
+        async with app.run_test():
             await stub.wait_for_frames(1)  # registration frame
 
             # Server sends three frames of different action types
             frames = [
                 {"role": "supervisor", "action": "event", "message": {"kind": "frame"}},
                 {"role": "supervisor", "action": "notify", "message": "session started"},
-                {"role": "supervisor", "action": "proposal", "message": {"sig": 42, "nodes": [1, 2]}},
+                {
+                    "role": "supervisor",
+                    "action": "proposal",
+                    "message": {"sig": 42, "nodes": [1, 2]},
+                },
             ]
             for frame in frames:
                 await stub.send_to_client(frame)
@@ -634,16 +633,18 @@ async def test_tracks_latest_ratify_request():
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)
 
-        async with app.run_test() as pilot:
+        async with app.run_test():
             await stub.wait_for_frames(1)
 
             # Send a ratify_request frame from the server
             proposal = {"sig": 77, "nodes": [10, 20]}
-            await stub.send_to_client({
-                "role": "trainer",
-                "action": "ratify_request",
-                "message": proposal,
-            })
+            await stub.send_to_client(
+                {
+                    "role": "trainer",
+                    "action": "ratify_request",
+                    "message": proposal,
+                }
+            )
 
             # Wait for event polling to pick it up
             await asyncio.sleep(0.5)

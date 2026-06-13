@@ -13,9 +13,9 @@ the oldest entries are evicted.
 
 from __future__ import annotations
 
-from typing import Iterator
+from collections.abc import Iterator
 
-from kalvin.kline import KLine, KSig, KNode
+from kalvin.kline import KLine, KSig
 from kalvin.signature import make_signature
 
 

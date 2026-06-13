@@ -5,24 +5,26 @@ Encodes text as BPE subword tokens with optional NLP type prefixes.
 
 import base64
 import json
+from collections.abc import Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING, Any
 
 from kalvin.abstract import KTokenizer
 
 if TYPE_CHECKING:
-    import rustbpe
-    import tiktoken
+    pass
 
 _rustbpe: Any = None
 _tiktoken: Any = None
 try:
     import rustbpe as _rustbpe_module
+
     _rustbpe = _rustbpe_module
 except ImportError:
     pass
 try:
     import tiktoken as _tiktoken_module
+
     _tiktoken = _tiktoken_module
 except ImportError:
     pass
@@ -30,21 +32,25 @@ except ImportError:
 
 class TokenizerNotTrainedError(Exception):
     """Raised when encoding/decoding before training the tokenizer."""
+
     pass
 
 
 class RustbpeNotInstalledError(Exception):
     """Raised when rustbpe operations are attempted without rustbpe installed."""
+
     pass
 
 
 class TiktokenNotInstalledError(Exception):
     """Raised when loading from directory without tiktoken installed."""
+
     pass
 
 
 class PyarrowNotInstalledError(Exception):
     """Raised when training from parquet without pyarrow installed."""
+
     pass
 
 
@@ -92,13 +98,16 @@ class Tokenizer(KTokenizer):
         (path / f"{name}.bin").write_text(json.dumps(ranks_data))
 
     @classmethod
-    def from_directory(cls, path: str | Path | None = None, name: str = "tokenizer-32768") -> "Tokenizer":
+    def from_directory(
+        cls, path: str | Path | None = None, name: str = "tokenizer-32768"
+    ) -> "Tokenizer":
         if _tiktoken is None:
             raise TiktokenNotInstalledError(
                 "tiktoken is not installed. Install with: pip install tiktoken"
             )
         if path is None:
             from kalvin.paths import tokenizer_dir
+
             path = tokenizer_dir()
         path = Path(path)
         meta = json.loads((path / f"{name}.json").read_text())

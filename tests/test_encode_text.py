@@ -114,9 +114,9 @@ class TestEncodeMultipleSentences:
         initial = agent.frame_size()
 
         text = "The cat sat. The dog ran."
-        sentences = [s.strip() for s in
-                     __import__("re").split(r'(?<=[.!?])\s+', text.strip())
-                     if s.strip()]
+        sentences = [
+            s.strip() for s in __import__("re").split(r"(?<=[.!?])\s+", text.strip()) if s.strip()
+        ]
         assert len(sentences) >= 2
 
         for sentence in sentences:

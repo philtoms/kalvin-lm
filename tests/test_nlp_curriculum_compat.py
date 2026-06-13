@@ -8,16 +8,14 @@ Spec ref: specs/nlp-curriculum-compat.md
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
 
-from ks import compile_source
 from kalvin.agent import KAgent
 from kalvin.kline import sig_level
 from kalvin.nlp_tokenizer import NLPTokenizer
-
+from ks import compile_source
 from tests.conftest import requires_nlp_data
 
 # The entire module requires the NLP tokenizer data assets; skip it cleanly
@@ -79,9 +77,7 @@ class TestBareSingleChar:
         e2 = compile_source("M", tokenizer=nlp_tokenizer)
         assert e1[0].signature == e2[0].signature
 
-    def test_different_chars_different_tokens(
-        self, nlp_tokenizer: NLPTokenizer
-    ) -> None:
+    def test_different_chars_different_tokens(self, nlp_tokenizer: NLPTokenizer) -> None:
         e_m = compile_source("M", tokenizer=nlp_tokenizer)
         e_h = compile_source("H", tokenizer=nlp_tokenizer)
         assert e_m[0].signature != e_h[0].signature
@@ -105,12 +101,8 @@ class TestMultiCharDecomposition:
         assert len(s4) == 9
         assert len(s2) == 2
 
-    def test_countersign_with_multi_char(
-        self, nlp_tokenizer: NLPTokenizer
-    ) -> None:
-        entries = compile_source(
-            "MHALL == SVO", tokenizer=nlp_tokenizer, dev=True
-        )
+    def test_countersign_with_multi_char(self, nlp_tokenizer: NLPTokenizer) -> None:
+        entries = compile_source("MHALL == SVO", tokenizer=nlp_tokenizer, dev=True)
         # Should have countersign entries for MHALL:SVO and SVO:MHALL
         countersigns = [e for e in entries if sig_level(e) == "S1"]
         assert len(countersigns) == 2
@@ -134,9 +126,7 @@ class TestCurriculumCompilation:
             "s3-auto-countersign.md",
         ],
     )
-    def test_curriculum_compiles(
-        self, curriculum_file: str, nlp_tokenizer: NLPTokenizer
-    ) -> None:
+    def test_curriculum_compiles(self, curriculum_file: str, nlp_tokenizer: NLPTokenizer) -> None:
         path = CURRICULA_DIR / curriculum_file
         if not path.exists():
             pytest.skip(f"Curriculum not found: {path}")
@@ -185,9 +175,7 @@ class TestCurriculumCompilation:
 class TestCommentsOptional:
     """SC-4: Bare sigs work; comments add semantic resolution."""
 
-    def test_bare_and_annotated_both_work(
-        self, nlp_tokenizer: NLPTokenizer
-    ) -> None:
+    def test_bare_and_annotated_both_work(self, nlp_tokenizer: NLPTokenizer) -> None:
         bare = compile_source("M", tokenizer=nlp_tokenizer, dev=True)
         annotated = compile_source("M(ary)", tokenizer=nlp_tokenizer, dev=True)
 

@@ -133,10 +133,12 @@ class CurriculumGenerator:
         except CurriculumParseError as exc:
             # Retry with error feedback
             messages.append({"role": "assistant", "content": content})
-            messages.append({
-                "role": "user",
-                "content": f"The previous output was invalid: {exc}. Please try again.",
-            })
+            messages.append(
+                {
+                    "role": "user",
+                    "content": f"The previous output was invalid: {exc}. Please try again.",
+                }
+            )
             response = self._client.complete(messages)
             content = response.content or ""
             try:

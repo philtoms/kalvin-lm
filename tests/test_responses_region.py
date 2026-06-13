@@ -26,6 +26,7 @@ def responses():
 
     # Save kalvin.Agent state
     import kalvin as _kalvin_mod  # noqa: F811
+
     had_agent = hasattr(_kalvin_mod, "Agent")
     saved_agent = getattr(_kalvin_mod, "Agent", None)
 
@@ -42,7 +43,11 @@ def responses():
     _kalvin_mod.Agent = MagicMock  # type: ignore[attr-defined]
 
     # --- Import under test ---
-    from ui.kscript.regions.responses import ResponseItem, ResponsesRegion, STATUS_SYMBOLS  # noqa: E402
+    from ui.kscript.regions.responses import (  # noqa: E402
+        STATUS_SYMBOLS,
+        ResponseItem,
+        ResponsesRegion,
+    )
 
     try:
         yield SimpleNamespace(

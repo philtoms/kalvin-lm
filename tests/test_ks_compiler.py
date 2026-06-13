@@ -12,28 +12,27 @@ Covers:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
-from kalvin.abstract import KTokenizer
 from kalvin.kline import KLine
 from kalvin.mod_tokenizer import Mod32Tokenizer
-
-from ks import Compiler, KScript, SymbolicEntry, compile_source
+from ks import Compiler, KScript, compile_source
 from ks.lexer import Lexer
 from ks.parser import Parser
-from ks.ast_emitter import ASTEmitter
-from ks.binding_scope import BindingScope
 
+# NLP tokenizer data-asset gating shared via conftest for consistent skips
+from tests.conftest import requires_nlp_data
+
+if TYPE_CHECKING:
+    from kalvin.nlp_tokenizer import NLPTokenizer
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 _tok32 = Mod32Tokenizer()
-
-# NLP tokenizer data-asset gating is shared via tests/conftest.py so every
-# NLP-dependent test module skips consistently on a fresh clone.
-from tests.conftest import requires_nlp_data
 
 
 def _decode_sig(entry: KLine) -> str:
@@ -92,6 +91,7 @@ MHALL == SVO =>
 # ---------------------------------------------------------------------------
 # KS-35: Complex nested example (§14.11)
 # ---------------------------------------------------------------------------
+
 
 class TestKS35ComplexNested:
     """KS-35 — Complex nested example from §14.11.
@@ -278,6 +278,7 @@ class TestKS36NLPBound:
 # KS-37: Mixed NLP/Mod32 compatibility
 # ---------------------------------------------------------------------------
 
+
 class TestKS37MixedNLPMod32:
     """KS-37 — Same source compiles under both Mod32 and NLP without modification.
 
@@ -312,6 +313,7 @@ class TestKS37MixedNLPMod32:
 # ---------------------------------------------------------------------------
 # compile_source convenience function
 # ---------------------------------------------------------------------------
+
 
 class TestCompileSource:
     """Tests for the compile_source() convenience function."""
@@ -359,6 +361,7 @@ class TestCompileSource:
 # KScript public API
 # ---------------------------------------------------------------------------
 
+
 class TestKScriptAPI:
     """Tests for the KScript public API class."""
 
@@ -400,6 +403,7 @@ class TestKScriptAPI:
 # ---------------------------------------------------------------------------
 # Pipeline wiring
 # ---------------------------------------------------------------------------
+
 
 class TestPipelineWiring:
     """Tests that the Compiler correctly wires Lexer → Parser → Emitter → Encoder."""
@@ -458,6 +462,7 @@ class TestPipelineWiring:
 # BindingScope always created
 # ---------------------------------------------------------------------------
 
+
 class TestBindingScopeAlwaysCreated:
     """Verify that a BindingScope is always instantiated — no Mod32 mode switch."""
 
@@ -485,13 +490,10 @@ class TestBindingScopeAlwaysCreated:
         to decide whether to create a scope.
         """
         import inspect
+
         source = inspect.getsource(Compiler.compile)
-        assert "supports_mcs" not in source, (
-            "Compiler.compile should not reference supports_mcs"
-        )
-        assert "skip_mcs" not in source, (
-            "Compiler.compile should not reference skip_mcs"
-        )
+        assert "supports_mcs" not in source, "Compiler.compile should not reference supports_mcs"
+        assert "skip_mcs" not in source, "Compiler.compile should not reference skip_mcs"
 
     def test_annotation_feeds_binding_scope_in_v3(self) -> None:
         """In v3, annotations always feed the BindingScope (no mode switch).

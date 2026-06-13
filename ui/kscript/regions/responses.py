@@ -5,10 +5,11 @@ import time
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.message import Message
-from textual.widgets import Button, ListView, ListItem, Static
+from textual.widgets import Button, ListItem, ListView, Static
 
 from kalvin.abstract import KLine
 from kalvin.expand import D_MAX
+
 STATUS_SYMBOLS: dict[str, str] = {
     "pass": "✓",
     "pending": "◌",
@@ -162,10 +163,18 @@ class ResponsesRegion(Vertical):
 
     def compose(self) -> ComposeResult:
         with FilterBar():
-            yield Button("S1", id="filter-s1", classes="active" if self._filters["S1"] else "inactive")
-            yield Button("S2", id="filter-s2", classes="active" if self._filters["S2"] else "inactive")
-            yield Button("S3", id="filter-s3", classes="active" if self._filters["S3"] else "inactive")
-            yield Button("S4", id="filter-s4", classes="active" if self._filters["S4"] else "inactive")
+            yield Button(
+                "S1", id="filter-s1", classes="active" if self._filters["S1"] else "inactive"
+            )
+            yield Button(
+                "S2", id="filter-s2", classes="active" if self._filters["S2"] else "inactive"
+            )
+            yield Button(
+                "S3", id="filter-s3", classes="active" if self._filters["S3"] else "inactive"
+            )
+            yield Button(
+                "S4", id="filter-s4", classes="active" if self._filters["S4"] else "inactive"
+            )
         yield ListView(id="responses-list")
 
     def _is_filter_active(self, level: str) -> bool:
@@ -186,7 +195,7 @@ class ResponsesRegion(Vertical):
                 if dc_time < self._double_click_threshold:
                     # Double-click: solo this level (ON), all others OFF
                     for lvl in self._filters:
-                        self._filters[lvl] = (lvl == level)
+                        self._filters[lvl] = lvl == level
                     # Update all button classes
                     for btn in self.query(Button):
                         btn_id = btn.id or ""
@@ -198,7 +207,6 @@ class ResponsesRegion(Vertical):
                     event.button.set_class(True, "active")
                     event.button.set_class(False, "inactive")
                 else:
-
                     # Single click: toggle this level
                     new_state = not self._filters[level]
                     self._filters[level] = new_state
@@ -244,8 +252,12 @@ class ResponsesRegion(Vertical):
 
         list_view = self.query_one("#responses-list", ListView)
         item = ResponseItem(
-            level, decompiled_source, status=status, significance=significance,
-            kline=kline, entry_key=entry_key,
+            level,
+            decompiled_source,
+            status=status,
+            significance=significance,
+            kline=kline,
+            entry_key=entry_key,
         )
 
         # Set visibility based on current filter state
@@ -266,8 +278,10 @@ class ResponsesRegion(Vertical):
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         """Handle selection of a response item."""
         if event.list_view.id == "responses-list" and isinstance(event.item, ResponseItem):
-            self.post_message(self.ResponseClicked(
-                event.item.decompiled_source,
-                kline=event.item.kline,
-                entry_key=event.item.entry_key,
-            ))
+            self.post_message(
+                self.ResponseClicked(
+                    event.item.decompiled_source,
+                    kline=event.item.kline,
+                    entry_key=event.item.entry_key,
+                )
+            )

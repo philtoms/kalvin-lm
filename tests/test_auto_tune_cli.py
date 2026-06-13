@@ -23,7 +23,6 @@ import pytest
 
 from participants.auto_tune.cli import build_parser, main
 
-
 # ---------------------------------------------------------------------------
 # build_parser structure
 # ---------------------------------------------------------------------------
@@ -87,10 +86,19 @@ class TestInitParsing:
 
     def test_all_args(self) -> None:
         parser = build_parser()
-        args = parser.parse_args([
-            "init", "--session", "s1", "--curriculum", "c.md",
-            "--host", "0.0.0.0", "--port", "9999",
-        ])
+        args = parser.parse_args(
+            [
+                "init",
+                "--session",
+                "s1",
+                "--curriculum",
+                "c.md",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "9999",
+            ]
+        )
         assert args.host == "0.0.0.0"
         assert args.port == 9999
 
@@ -121,10 +129,19 @@ class TestInitHandler:
         mock_session_dir.init.return_value = mock_instance
 
         parser = build_parser()
-        args = parser.parse_args([
-            "init", "--session", "s1", "--curriculum", "c.md",
-            "--host", "myhost", "--port", "4321",
-        ])
+        args = parser.parse_args(
+            [
+                "init",
+                "--session",
+                "s1",
+                "--curriculum",
+                "c.md",
+                "--host",
+                "myhost",
+                "--port",
+                "4321",
+            ]
+        )
         args.func(args)
 
         mock_session_dir.init.assert_called_once_with(
@@ -161,11 +178,17 @@ class TestInitHandler:
 class TestNonInitParsing:
     """Each non-init subcommand parses --session and any extra arguments."""
 
-    @pytest.mark.parametrize("cmd", [
-        "start-harness", "stop-harness",
-        "start-supervisor", "stop-supervisor",
-        "status", "snapshot",
-    ])
+    @pytest.mark.parametrize(
+        "cmd",
+        [
+            "start-harness",
+            "stop-harness",
+            "start-supervisor",
+            "stop-supervisor",
+            "status",
+            "snapshot",
+        ],
+    )
     def test_session_only_commands(self, cmd: str) -> None:
         parser = build_parser()
         args = parser.parse_args([cmd, "--session", "s1"])
@@ -246,7 +269,9 @@ class TestHandlerDelegation:
 
     @patch("participants.auto_tune.cli.lifecycle")
     @patch("participants.auto_tune.cli.SessionDir")
-    def test_start_supervisor_delegates(self, mock_sd: MagicMock, mock_lifecycle: MagicMock) -> None:
+    def test_start_supervisor_delegates(
+        self, mock_sd: MagicMock, mock_lifecycle: MagicMock
+    ) -> None:
         mock_instance = MagicMock()
         mock_instance.config_path.parent = "/auto-tune/s1"
         mock_sd.load.return_value = mock_instance

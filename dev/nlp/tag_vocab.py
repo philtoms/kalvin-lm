@@ -51,7 +51,6 @@ if str(Path(__file__).resolve().parent) not in sys.path:
 
 from kalvin.tokenizer import Tokenizer
 
-
 # ── Constants ─────────────────────────────────────────────────────────────
 
 # POS_X fallback for unknown tokens (bit 16 set).
@@ -59,6 +58,7 @@ UNKNOWN_NLP_TYPE = 65536
 
 
 # ── Vocab loading ─────────────────────────────────────────────────────────
+
 
 def load_bpe_vocab(tokenizer: Tokenizer) -> dict[int, str]:
     """Load the BPE vocabulary from a trained tokenizer.
@@ -107,6 +107,7 @@ def load_bpe_vocab_from_bin(bin_path: Path) -> dict[int, str]:
 
 
 # ── Grammar index ─────────────────────────────────────────────────────────
+
 
 class GrammarIndex:
     """Pre-processed grammar dict for fast matching.
@@ -184,6 +185,7 @@ class GrammarIndex:
 
 # ── Special-token classification ───────────────────────────────────────────
 
+
 def classify_special(token_str: str) -> dict | None:
     """Classify a token as special (whitespace, punct, digit, control).
 
@@ -231,6 +233,7 @@ def _punct_fine_tag(token_str: str) -> str:
 
 # ── NLP type computation ──────────────────────────────────────────────────
 
+
 def compute_nlp_type32(pos: str, dep: str, morph: str) -> int:
     """Compute 32-bit NLP type from POS/DEP/MORPH flags.
 
@@ -242,27 +245,52 @@ def compute_nlp_type32(pos: str, dep: str, morph: str) -> int:
     result = 0
 
     # POS bits (0-16)
-    POS_MAP = {
-        "ADJ": 1, "ADP": 2, "ADV": 4, "AUX": 8, "CCONJ": 16, "DET": 32,
-        "INTJ": 64, "NOUN": 128, "NUM": 256, "PART": 512, "PRON": 1024,
-        "PROPN": 2048, "PUNCT": 4096, "SCONJ": 8192, "SYM": 16384,
-        "VERB": 32768, "X": 65536, "SPACE": 131072,
+    pos_map = {
+        "ADJ": 1,
+        "ADP": 2,
+        "ADV": 4,
+        "AUX": 8,
+        "CCONJ": 16,
+        "DET": 32,
+        "INTJ": 64,
+        "NOUN": 128,
+        "NUM": 256,
+        "PART": 512,
+        "PRON": 1024,
+        "PROPN": 2048,
+        "PUNCT": 4096,
+        "SCONJ": 8192,
+        "SYM": 16384,
+        "VERB": 32768,
+        "X": 65536,
+        "SPACE": 131072,
     }
-    result |= POS_MAP.get(pos, 65536)  # Default to X
+    result |= pos_map.get(pos, 65536)  # Default to X
 
     # DEP bits (17-24)
-    DEP_MAP = {
-        "nsubj": 1 << 17, "nsubjpass": 1 << 17, "csubj": 1 << 17,
-        "obj": 1 << 18, "iobj": 1 << 18, "dobj": 1 << 18,
+    dep_map = {
+        "nsubj": 1 << 17,
+        "nsubjpass": 1 << 17,
+        "csubj": 1 << 17,
+        "obj": 1 << 18,
+        "iobj": 1 << 18,
+        "dobj": 1 << 18,
         "root": 1 << 19,
-        "amod": 1 << 20, "advmod": 1 << 20,
-        "det": 1 << 21, "case": 1 << 21, "mark": 1 << 21,
-        "aux": 1 << 22, "auxpass": 1 << 22, "cop": 1 << 22,
-        "compound": 1 << 23, "flat": 1 << 23,
-        "punct": 1 << 24, "neg": 1 << 24,
+        "amod": 1 << 20,
+        "advmod": 1 << 20,
+        "det": 1 << 21,
+        "case": 1 << 21,
+        "mark": 1 << 21,
+        "aux": 1 << 22,
+        "auxpass": 1 << 22,
+        "cop": 1 << 22,
+        "compound": 1 << 23,
+        "flat": 1 << 23,
+        "punct": 1 << 24,
+        "neg": 1 << 24,
     }
-    if dep in DEP_MAP:
-        result |= DEP_MAP[dep]
+    if dep in dep_map:
+        result |= dep_map[dep]
 
     # MORPH bits (25-31)
     if "Number=Sing" in morph:
@@ -284,6 +312,7 @@ def compute_nlp_type32(pos: str, dep: str, morph: str) -> int:
 
 
 # ── Tagging engine ─────────────────────────────────────────────────────────
+
 
 def tag_vocab(
     vocab: dict[int, str],
@@ -323,8 +352,8 @@ def tag_vocab(
         tagged[str(token_id)] = entry
 
     total = len(vocab)
-    print(f"\nTagging Results")
-    print(f"{'='*50}")
+    print("\nTagging Results")
+    print(f"{'=' * 50}")
     print(f"Total vocab tokens:     {total:>8,}")
     print(f"  Exact match:          {stats['exact']:>8,}")
     print(f"  BPE decomposition:    {stats['bpe_parent']:>8,}")
@@ -333,7 +362,7 @@ def tag_vocab(
     print(f"  Unknown (POS_X):      {stats['unknown']:>8,}")
     coverage = (total - stats["unknown"]) / total * 100 if total else 0
     print(f"  Coverage:             {coverage:>7.1f}%")
-    print(f"{'='*50}\n")
+    print(f"{'=' * 50}\n")
 
     return tagged
 
@@ -433,6 +462,7 @@ def _make_entry(token_id: int, token_str: str, parent: dict) -> dict:
 
 # ── CLI ────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Tag a BPE vocabulary with NLP types from a grammar dictionary",
@@ -459,7 +489,9 @@ def main() -> None:
         "--output",
         type=Path,
         default=None,
-        help="Path to write the tagged grammar JSON (default: same as --grammar with _tagged suffix)",
+        help=(
+            "Path to write the tagged grammar JSON (default: same as --grammar with _tagged suffix)"
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -492,8 +524,10 @@ def main() -> None:
     # Build grammar index (with BPE decomposition)
     print("Building grammar index with BPE decomposition...")
     grammar_index = GrammarIndex(grammar, bpe_tokenizer)
-    print(f"  {len(grammar_index.by_text)} unique texts, "
-          f"{len(grammar_index.bpe_parents)} BPE subword mappings")
+    print(
+        f"  {len(grammar_index.by_text)} unique texts, "
+        f"{len(grammar_index.bpe_parents)} BPE subword mappings"
+    )
 
     # Tag every vocab token
     print("Tagging vocab tokens...")

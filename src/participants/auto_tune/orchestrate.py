@@ -17,7 +17,6 @@ from pathlib import Path
 
 from participants.auto_tune.session import SessionDir
 
-
 # ---------------------------------------------------------------------------
 # send_command
 # ---------------------------------------------------------------------------

@@ -247,9 +247,7 @@ class CurriculumDocument:
                 return
         raise ValueError(f"Label {label!r} not found")
 
-    def _check_no_duplicate_label(
-        self, label: str, *, exclude: str | None = None
-    ) -> None:
+    def _check_no_duplicate_label(self, label: str, *, exclude: str | None = None) -> None:
         """Raise ``ValueError`` if *label* already exists (excluding *exclude*)."""
         for existing in self._lessons:
             if existing.label == label and existing.label != exclude:

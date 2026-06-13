@@ -9,15 +9,14 @@ from __future__ import annotations
 import pytest
 
 from kalvin.abstract import KTokenizer
-from kalvin.kline import KDbg, KLine
+from kalvin.kline import KLine
 from kalvin.mod_tokenizer import ModTokenizer
 from kalvin.signature import make_signature
-
 from ks.ast_emitter import SymbolicEntry
 from ks.token_encoder import TokenEncoder
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def mod_tz() -> ModTokenizer:
@@ -38,6 +37,7 @@ def dev_encoder(mod_tz: ModTokenizer) -> TokenEncoder:
 
 
 # ── Mock multi-token tokenizer ───────────────────────────────────────
+
 
 class MockMultiTokenTokenizer(KTokenizer):
     """Mock tokenizer that returns multiple tokens for certain words.
@@ -69,6 +69,7 @@ class MockMultiTokenTokenizer(KTokenizer):
 
 # ── KS-32: Mod32 fallback for unbound characters ─────────────────────
 
+
 class TestMod32Fallback:
     """Unbound characters produce valid encoded entries via Mod32."""
 
@@ -90,6 +91,7 @@ class TestMod32Fallback:
 
 
 # ── KS-34: nodes always list ─────────────────────────────────────────
+
 
 class TestNodesAlwaysList:
     """KLine.nodes is always list[int], never None or bare int."""
@@ -130,6 +132,7 @@ class TestNodesAlwaysList:
 
 # ── Signature encoding ───────────────────────────────────────────────
 
+
 class TestSignatureEncoding:
     """Signature strings are correctly encoded to uint64."""
 
@@ -148,6 +151,7 @@ class TestSignatureEncoding:
 
 # ── Node encoding ────────────────────────────────────────────────────
 
+
 class TestNodeEncoding:
     """Node strings are correctly encoded to uint64."""
 
@@ -161,18 +165,23 @@ class TestNodeEncoding:
 
 # ── Significance levels (compile-time intent via dbg.op) ──────────────
 
+
 class TestSignificanceLevels:
     """Each op maps to the correct significance level in dbg.op."""
 
-    @pytest.mark.parametrize("op,expected_level", [
-        ("COUNTERSIGNED", "S1"),
-        ("UNDERSIGNED", "S3"),
-        ("CANONIZED", "S2"),
-        ("CONNOTED", "S3"),
-        ("IDENTITY", "S4"),
-    ])
+    @pytest.mark.parametrize(
+        "op,expected_level",
+        [
+            ("COUNTERSIGNED", "S1"),
+            ("UNDERSIGNED", "S3"),
+            ("CANONIZED", "S2"),
+            ("CONNOTED", "S3"),
+            ("IDENTITY", "S4"),
+        ],
+    )
     def test_sig_level(self, dev_encoder: TokenEncoder, op: str, expected_level: str) -> None:
         from kalvin.kline import _SIG_LEVELS
+
         entry = SymbolicEntry(sig="A", nodes=["B"] if op != "IDENTITY" else [], op=op)
         results = dev_encoder.encode_entries([entry])
         # Find the main entry (last one with matching op)
@@ -182,6 +191,7 @@ class TestSignificanceLevels:
 
 
 # ── Signature is full uint64 (no masking) ────────────────────────────
+
 
 class TestFullUint64:
     """Signatures are raw values from tokenizer — not masked or truncated."""
@@ -206,6 +216,7 @@ class TestFullUint64:
 
 
 # ── Multi-token word MCS (§11.4) ─────────────────────────────────────
+
 
 class TestMultiTokenMCS:
     """Multi-token BPE words produce unsigned per token + CANONIZE packed."""
@@ -247,7 +258,9 @@ class TestMultiTokenMCS:
 
         # MCS emits: IDENTITY(50), IDENTITY(60), CANONIZE(packed, [50,60])
         # Then main: IDENTITY(packed, [])
-        mcs_unsigned = [r for r in results if r.dbg and r.dbg.op == "IDENTITY" and r.signature in (50, 60)]
+        mcs_unsigned = [
+            r for r in results if r.dbg and r.dbg.op == "IDENTITY" and r.signature in (50, 60)
+        ]
         canonize_entries = [r for r in results if r.dbg and r.dbg.op == "CANONIZED"]
         main_entry = results[-1]
 
@@ -278,6 +291,7 @@ class TestMultiTokenMCS:
 
 # ── Dedup multi-token MCS ────────────────────────────────────────────
 
+
 class TestDedupMCS:
     """Same multi-token word encoded twice should not duplicate MCS entries."""
 
@@ -306,6 +320,7 @@ class TestDedupMCS:
 
 
 # ── KLine identity ──────────────────────────────────────────────────
+
 
 class TestKLineIdentity:
     """Compiled KLines behave correctly as KLines."""
@@ -344,6 +359,7 @@ class TestKLineIdentity:
 
 # ── Multiple entries ─────────────────────────────────────────────────
 
+
 class TestMultipleEntries:
     """encode_entries with multiple SymbolicEntry objects."""
 
@@ -364,6 +380,7 @@ class TestMultipleEntries:
 
 
 # ── Dev mode debug text ─────────────────────────────────────────────
+
 
 class TestDevMode:
     """When dev=True, dbg is populated."""
@@ -386,6 +403,7 @@ class TestDevMode:
 
 
 # ── Empty symbolic list ─────────────────────────────────────────────
+
 
 class TestEmptyInput:
     """encode_entries([]) returns []."""

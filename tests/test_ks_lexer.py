@@ -60,15 +60,21 @@ class TestAllTokenTypes:
             "DEDENT",
             "EOF",
         }
-        assert expected.issubset(type_names), (
-            f"Missing types: {expected - type_names}"
-        )
+        assert expected.issubset(type_names), f"Missing types: {expected - type_names}"
 
     def test_all_types_in_correct_order(self):
         source = "A == B => C > D = E"
         types = _types(source)
         assert types == [
-            SG, CS, SG, CZ, SG, CT, SG, US, SG,
+            SG,
+            CS,
+            SG,
+            CZ,
+            SG,
+            CT,
+            SG,
+            US,
+            SG,
         ]
 
 
@@ -175,7 +181,19 @@ class TestIndentDedent:
         source = "A\n  B\n    C\n  D\nE"
         types = _types(source)
         assert types == [
-            SG, NL, IN, SG, NL, IN, SG, NL, DD, SG, NL, DD, SG,
+            SG,
+            NL,
+            IN,
+            SG,
+            NL,
+            IN,
+            SG,
+            NL,
+            DD,
+            SG,
+            NL,
+            DD,
+            SG,
         ]
 
     def test_multiple_dedent_levels(self):
@@ -183,7 +201,17 @@ class TestIndentDedent:
         source = "A\n  B\n    C\nD"
         types = _types(source)
         assert types == [
-            SG, NL, IN, SG, NL, IN, SG, NL, DD, DD, SG,
+            SG,
+            NL,
+            IN,
+            SG,
+            NL,
+            IN,
+            SG,
+            NL,
+            DD,
+            DD,
+            SG,
         ]
 
     def test_same_level_continuation(self):
@@ -398,8 +426,21 @@ class TestComplexScenarios:
         types = _types(source)
         # A NL IN B NL IN C NL IN D NL DD DD DD E
         assert types == [
-            SG, NL, IN, SG, NL, IN, SG, NL, IN, SG,
-            NL, DD, DD, DD, SG,
+            SG,
+            NL,
+            IN,
+            SG,
+            NL,
+            IN,
+            SG,
+            NL,
+            IN,
+            SG,
+            NL,
+            DD,
+            DD,
+            DD,
+            SG,
         ]
 
     def test_inline_annotation_in_indented_block(self):

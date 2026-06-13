@@ -6,7 +6,7 @@ See specs/kline.md for the full specification.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TypeAlias
 
 # === Core Types ===
@@ -46,7 +46,14 @@ class KDbg:
 
     def __bool__(self) -> bool:
         """Truthy when any field is non-empty."""
-        return bool(self.op != "IDENTITY" or self.label or self.decoded or self.pos or self.dep or self.morph)
+        return bool(
+            self.op != "IDENTITY"
+            or self.label
+            or self.decoded
+            or self.pos
+            or self.dep
+            or self.morph
+        )
 
     def __repr__(self) -> str:
         parts = []
@@ -205,6 +212,7 @@ def _infer_level(kline: KLine) -> str:
     if not nodes:
         return "S4"
     from kalvin.signature import make_signature
+
     nodes_sig = make_signature(nodes)
     if kline.signature == nodes_sig:
         return "S2"  # perfect fit → canonize
@@ -220,11 +228,11 @@ def _infer_op_symbol(kline: KLine) -> str:
     if not kline.nodes:
         return None
     from kalvin.signature import make_signature
+
     nodes_sig = make_signature(kline.nodes)
     if kline.signature == nodes_sig:
         return "=>"  # perfect fit → canonize
     return ">"  # default: connotate
-
 
 
 def _normalize_nodes(nodes: KNodes | KNode | None) -> list[KNode]:

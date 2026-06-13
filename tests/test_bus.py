@@ -18,6 +18,7 @@ from harness.message import Message
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _wait_for(event: threading.Event, timeout: float = 2.0) -> None:
     """Block until *event* is set, failing the test on timeout."""
     assert event.wait(timeout), "Timed out waiting for event"
@@ -26,6 +27,7 @@ def _wait_for(event: threading.Event, timeout: float = 2.0) -> None:
 # ---------------------------------------------------------------------------
 # HRNS-1: Message bus routes by role to correct subscriber
 # ---------------------------------------------------------------------------
+
 
 class TestRouteByRole:
     """HRNS-1: route messages to the handler subscribed for the role."""
@@ -67,6 +69,7 @@ class TestRouteByRole:
 # HRNS-2: Thread-safe send from another thread
 # ---------------------------------------------------------------------------
 
+
 class TestThreadsafeSend:
     """HRNS-2: message sent from a different thread arrives correctly."""
 
@@ -100,6 +103,7 @@ class TestThreadsafeSend:
 # ---------------------------------------------------------------------------
 # HRNS-3: Unknown role produces error response to sender
 # ---------------------------------------------------------------------------
+
 
 class TestUnknownRoleError:
     """HRNS-3: unknown role sends error back to sender."""
@@ -137,6 +141,7 @@ class TestUnknownRoleError:
 # ---------------------------------------------------------------------------
 # HRNS-11: Wildcard diagnostic listener receives all messages
 # ---------------------------------------------------------------------------
+
 
 class TestWildcardDiagnosticListener:
     """HRNS-11: wildcard subscribers receive every dispatched message."""
@@ -215,6 +220,7 @@ class TestWildcardDiagnosticListener:
 # HRNS-23: Single dispatch thread
 # ---------------------------------------------------------------------------
 
+
 class TestSingleDispatchThread:
     """HRNS-23: all handlers execute on the same event-loop thread."""
 
@@ -252,6 +258,7 @@ class TestSingleDispatchThread:
 # Additional: Message dataclass properties
 # ---------------------------------------------------------------------------
 
+
 class TestMessageDataclass:
     """Message immutability and repr."""
 
@@ -282,6 +289,7 @@ class TestMessageDataclass:
 # Additional: Graceful shutdown
 # ---------------------------------------------------------------------------
 
+
 class TestGracefulShutdown:
     """stop() causes run() to return."""
 
@@ -299,6 +307,7 @@ class TestGracefulShutdown:
 # ---------------------------------------------------------------------------
 # Additional: Multiple handlers per role
 # ---------------------------------------------------------------------------
+
 
 class TestMultipleHandlers:
     """Multiple handlers registered for the same role all receive messages."""

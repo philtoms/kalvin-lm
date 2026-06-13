@@ -110,7 +110,9 @@ class TokenEncoder:
         else:
             # Multi-token signature → MCS + packed sig
             sig_uint64, sig_extras = self._emit_mcs_for_tokens(
-                sig_tokens, dbg_label=entry.sig, op="IDENTITY",
+                sig_tokens,
+                dbg_label=entry.sig,
+                op="IDENTITY",
             )
             extras.extend(sig_extras)
 
@@ -199,11 +201,13 @@ class TokenEncoder:
                     tok_dbg = self._build_dbg(tok, dbg_label, op="IDENTITY")
                 else:
                     tok_dbg = KDbg(op="IDENTITY")
-                extras.append(KLine(
-                    signature=tok,
-                    nodes=[],
-                    dbg=tok_dbg,
-                ))
+                extras.append(
+                    KLine(
+                        signature=tok,
+                        nodes=[],
+                        dbg=tok_dbg,
+                    )
+                )
 
             # One CANONIZE: packed sig → subword tokens
             canon_dbg: KDbg | None = None
@@ -211,11 +215,13 @@ class TokenEncoder:
                 canon_dbg = self._build_dbg(packed, dbg_label, op="CANONIZED")
             else:
                 canon_dbg = KDbg(op="CANONIZED")
-            extras.append(KLine(
-                signature=packed,
-                nodes=list(tokens),
-                dbg=canon_dbg,
-            ))
+            extras.append(
+                KLine(
+                    signature=packed,
+                    nodes=list(tokens),
+                    dbg=canon_dbg,
+                )
+            )
 
         return (packed, extras)
 

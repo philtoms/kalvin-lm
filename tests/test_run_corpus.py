@@ -4,19 +4,20 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 # Ensure imports work
 _project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_project_root))
 sys.path.insert(0, str(_project_root / "dev" / "nlp"))
 
-from run_corpus import build_parser, load_dataset_texts
-
+from run_corpus import (  # noqa: E402  dev/nlp added to sys.path above
+    build_parser,
+    load_dataset_texts,
+)
 
 # ---------------------------------------------------------------------------
 # CLI argument parser tests
 # ---------------------------------------------------------------------------
+
 
 class TestBuildParser:
     """Tests for the CLI argument parser."""
@@ -125,6 +126,7 @@ class TestBuildParser:
 # ---------------------------------------------------------------------------
 # load_dataset_texts tests
 # ---------------------------------------------------------------------------
+
 
 class TestLoadDatasetTexts:
     """Tests for the load_dataset_texts function."""

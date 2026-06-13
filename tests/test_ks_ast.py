@@ -11,8 +11,6 @@ Covers:
 
 from __future__ import annotations
 
-import pytest
-
 from ks.ast import (
     Annotation,
     Block,
@@ -24,10 +22,10 @@ from ks.ast import (
 )
 from ks.token import TokenType
 
-
 # ---------------------------------------------------------------------------
 # KS-6 — Scope model structure
 # ---------------------------------------------------------------------------
+
 
 class TestScopeModelStructure:
     """KS-6: AST structure reflects scope model with OperatorScope nodes."""
@@ -91,6 +89,7 @@ class TestScopeModelStructure:
 # KS-8 — Annotations preserved as AST nodes
 # ---------------------------------------------------------------------------
 
+
 class TestAnnotationsPreserved:
     """KS-8: Annotations are preserved as AST nodes, not discarded."""
 
@@ -128,6 +127,7 @@ class TestAnnotationsPreserved:
 # ---------------------------------------------------------------------------
 # KS-9 — Inline annotation attachment
 # ---------------------------------------------------------------------------
+
 
 class TestInlineAnnotation:
     """KS-9: Inline annotations attach to sig-side and node-side."""
@@ -178,6 +178,7 @@ class TestInlineAnnotation:
 # Dataclass defaults
 # ---------------------------------------------------------------------------
 
+
 class TestDefaults:
     """OperatorScope default field values."""
 
@@ -204,6 +205,7 @@ class TestDefaults:
 # ---------------------------------------------------------------------------
 # ScopeItem composition
 # ---------------------------------------------------------------------------
+
 
 class TestScopeItemComposition:
     """ScopeItem = Signature | Annotation | OperatorScope."""
@@ -244,6 +246,7 @@ class TestScopeItemComposition:
 # ConstructItem composition
 # ---------------------------------------------------------------------------
 
+
 class TestConstructItemComposition:
     """ConstructItem = Annotation | OperatorScope | Block."""
 
@@ -281,6 +284,7 @@ class TestConstructItemComposition:
 # KScriptFile integration
 # ---------------------------------------------------------------------------
 
+
 class TestKScriptFile:
     """Top-level file container."""
 
@@ -289,17 +293,21 @@ class TestKScriptFile:
         assert kf.constructs == []
 
     def test_file_with_constructs(self) -> None:
-        kf = KScriptFile(constructs=[
-            Annotation("(doc)", 1, 1),
-            OperatorScope(sig=Signature("A", 2, 1), op=TokenType.UNDERSIGN),
-        ])
+        kf = KScriptFile(
+            constructs=[
+                Annotation("(doc)", 1, 1),
+                OperatorScope(sig=Signature("A", 2, 1), op=TokenType.UNDERSIGN),
+            ]
+        )
         assert len(kf.constructs) == 2
 
     def test_block_with_child_scopes(self) -> None:
         """Block can contain OperatorScopes with nested child_blocks."""
-        inner = Block(constructs=[
-            OperatorScope(sig=Signature("X", 3, 5)),
-        ])
+        inner = Block(
+            constructs=[
+                OperatorScope(sig=Signature("X", 3, 5)),
+            ]
+        )
         scope = OperatorScope(
             sig=Signature("A", 1, 1),
             op=TokenType.UNDERSIGN,

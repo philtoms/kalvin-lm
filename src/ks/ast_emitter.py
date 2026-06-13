@@ -68,16 +68,15 @@ from .ast import (
     ConstructItem,
     KScriptFile,
     OperatorScope,
-    ScopeItem,
     Signature,
 )
 from .binding_scope import BindingScope
 from .token import TokenType
 
-
 # ---------------------------------------------------------------------------
 # SymbolicEntry — the output unit of the ASTEmitter
 # ---------------------------------------------------------------------------
+
 
 class SymbolicEntry(NamedTuple):
     """A symbolic (not yet tokenized) compilation entry.
@@ -102,6 +101,7 @@ class SymbolicEntry(NamedTuple):
 # ---------------------------------------------------------------------------
 # ASTEmitter
 # ---------------------------------------------------------------------------
+
 
 class ASTEmitter:
     """Walks a KScript v3 scope-model AST and emits SymbolicEntry tuples.
@@ -187,7 +187,8 @@ class ASTEmitter:
         """
         # 1. Resolve signature
         sig_resolved = self._resolve_inline_or_scope(
-            scope.sig.id, scope.inline_annotation,
+            scope.sig.id,
+            scope.inline_annotation,
         )
 
         # 2. MCS for signature
@@ -486,9 +487,8 @@ class ASTEmitter:
         # identities provided by MCS, so subscript identity is unnecessary
         # and would produce extra entries (e.g., IDENTITY D in §14.11).
         if is_canonize:
-            has_recursive_content = (
-                scope.child_block is not None
-                or any(isinstance(item, OperatorScope) for item in scope.items)
+            has_recursive_content = scope.child_block is not None or any(
+                isinstance(item, OperatorScope) for item in scope.items
             )
             if has_recursive_content and mcs_idx is None:
                 self._in_canonize_subscript = True
@@ -521,7 +521,11 @@ class ASTEmitter:
         # Process child_block constructs
         if scope.child_block is not None:
             for construct in scope.child_block.constructs:
-                if isinstance(construct, OperatorScope) and construct.op is None and not is_canonize:
+                if (
+                    isinstance(construct, OperatorScope)
+                    and construct.op is None
+                    and not is_canonize
+                ):
                     # Bare scope in non-CANONIZE child_block — already a node
                     # of the parent operator (collected by _collect_node_ids).
                     # Skip to avoid spurious IDENTITY emission.
@@ -687,10 +691,10 @@ class ASTEmitter:
         """Convert a TokenType operator to its string name, or 'IDENTITY'."""
         if op is None:
             return "IDENTITY"
-        _MAP = {
+        _map = {
             TokenType.COUNTERSIGN: "COUNTERSIGNED",
             TokenType.CANONIZE: "CANONIZED",
             TokenType.CONNOTATE: "CONNOTED",
             TokenType.UNDERSIGN: "UNDERSIGNED",
         }
-        return _MAP.get(op, "IDENTITY")
+        return _map.get(op, "IDENTITY")

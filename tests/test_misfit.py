@@ -1,9 +1,8 @@
 """Tests for misfit module — direct function calls, not Model forwarding."""
 
-import pytest
 from kalvin.kline import KLine
-from kalvin.model import Model
 from kalvin.misfit import classify_misfit, generate_expansions
+from kalvin.model import Model
 
 
 def make_model(stm_bound: int = 256) -> Model:

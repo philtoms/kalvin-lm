@@ -67,8 +67,7 @@ class Curriculum:
     def _make_synthetic_document(self, lessons: list[str]) -> CurriculumDocument:
         """Create a synthetic CurriculumDocument from a flat lessons list."""
         lesson_objects = [
-            Lesson(label=str(i + 1), prose="", kscript=[src])
-            for i, src in enumerate(lessons)
+            Lesson(label=str(i + 1), prose="", kscript=[src]) for i, src in enumerate(lessons)
         ]
         return CurriculumDocument(
             objective="(auto-generated)",
@@ -367,8 +366,7 @@ class CurriculumState:
                     return Curriculum(doc, position=position)
                 except (CurriculumParseError, OSError) as exc:
                     logger.warning(
-                        "Failed to load curriculum from %s, falling back to "
-                        "flat list: %s",
+                        "Failed to load curriculum from %s, falling back to flat list: %s",
                         curriculum_file,
                         exc,
                     )

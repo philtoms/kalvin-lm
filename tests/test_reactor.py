@@ -14,7 +14,6 @@ from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
-from ks import KLine
 from trainer.curriculum import Curriculum, CurriculumState
 from trainer.reactor import Reactor
 
@@ -65,11 +64,7 @@ class BusCapture:
 
     def find_all(self, role: str, action: str) -> list[Message]:
         """Return all captured messages matching role and action."""
-        return [
-            m
-            for m in self.messages
-            if m.role == role and m.action == action
-        ]
+        return [m for m in self.messages if m.role == role and m.action == action]
 
     def find_one(self, role: str, action: str) -> Message | None:
         """Return the first captured message matching role and action, or None."""
@@ -164,9 +159,7 @@ class TestAutoCountersignStructuralMatch:
         trainer.start_session()
         # Simulate the cogitator drain so the lesson is compiled and loaded
         # into the reactor (otherwise _auto_countersign finds no entries).
-        trainer.on_message(
-            Message(role="adapter", action="drained", message=None)
-        )
+        trainer.on_message(Message(role="adapter", action="drained", message=None))
 
         # Clear startup messages
         capture.reset()
@@ -176,9 +169,7 @@ class TestAutoCountersignStructuralMatch:
         query = KLine(signature=999, nodes=[1])
         event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
 
-        trainer.on_message(
-            Message(role="trainer", action="frame", message=event)
-        )
+        trainer.on_message(Message(role="trainer", action="frame", message=event))
 
         # Verify countersign was sent to kalvin
         cs_msgs = capture.find_all(TRAINEE_ROLE, "countersign")
@@ -213,9 +204,7 @@ class TestReactiveModeOnS2S3:
         query = KLine(signature=888, nodes=[1])
         event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
 
-        trainer.on_message(
-            Message(role="trainer", action="frame", message=event)
-        )
+        trainer.on_message(Message(role="trainer", action="frame", message=event))
 
         # Verify NO countersign was sent
         cs_msgs = capture.find_all(TRAINEE_ROLE, "countersign")
@@ -235,17 +224,12 @@ class TestEscalationOnBudgetExhaustion:
     def test_escalation_on_budget_exhaustion(self, mock_compile: MagicMock) -> None:
         # Use max_reactive_rounds=3 and a lesson with 3 entries
         # so reactive_rounds can reach 3 within a single lesson
-        entries = [
-            _make_entry(100 + i, [10 + i])
-            for i in range(3)
-        ]
+        entries = [_make_entry(100 + i, [10 + i]) for i in range(3)]
         mock_compile.return_value = entries
 
         bus = MessageBus()
         curriculum = Curriculum(["lesson1"])
-        trainer, capture = _make_trainer(
-            bus, curriculum, max_reactive_rounds=3
-        )
+        trainer, capture = _make_trainer(bus, curriculum, max_reactive_rounds=3)
         trainer.start_session()
         capture.reset()
 
@@ -254,15 +238,11 @@ class TestEscalationOnBudgetExhaustion:
             proposal = KLine(signature=900 + i, nodes=[99 + i])
             query = KLine(signature=800 + i, nodes=[i])
             event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
-            trainer.on_message(
-                Message(role="trainer", action="frame", message=event)
-            )
+            trainer.on_message(Message(role="trainer", action="frame", message=event))
 
         # Verify budget_exhaustion escalation
         notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
-        budget_esc = [
-            m for m in notify_msgs if m.message["reason"] == "budget_exhaustion"
-        ]
+        budget_esc = [m for m in notify_msgs if m.message["reason"] == "budget_exhaustion"]
         assert len(budget_esc) >= 1
 
 
@@ -275,15 +255,11 @@ class TestCogitateFnInjection:
         mock_compile.return_value = [entry]
 
         # Mock cogitate function that returns scaffolding
-        mock_cogitate = MagicMock(
-            return_value=("S = X / V = Y", 0.85)
-        )
+        mock_cogitate = MagicMock(return_value=("S = X / V = Y", 0.85))
 
         bus = MessageBus()
         curriculum = Curriculum(["lesson1", "lesson2"])
-        trainer, capture = _make_trainer(
-            bus, curriculum, cogitate_fn=mock_cogitate
-        )
+        trainer, capture = _make_trainer(bus, curriculum, cogitate_fn=mock_cogitate)
         trainer.start_session()
         capture.reset()
 
@@ -292,9 +268,7 @@ class TestCogitateFnInjection:
         query = KLine(signature=888, nodes=[1])
         event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
 
-        trainer.on_message(
-            Message(role="trainer", action="frame", message=event)
-        )
+        trainer.on_message(Message(role="trainer", action="frame", message=event))
 
         # Cogitate was called
         mock_cogitate.assert_called_once_with(event)
@@ -308,7 +282,8 @@ class TestCogitateFnInjection:
         # No escalation (low_confidence) should have occurred
         notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
         escalation_msgs = [
-            m for m in notify_msgs
+            m
+            for m in notify_msgs
             if m.message.get("reason") in ("low_confidence", "budget_exhaustion")
         ]
         assert len(escalation_msgs) == 0
@@ -464,9 +439,7 @@ class TestBudgetExhaustion:
 
         # Verify budget_exhaustion escalation
         notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
-        budget_esc = [
-            m for m in notify_msgs if m.message["reason"] == "budget_exhaustion"
-        ]
+        budget_esc = [m for m in notify_msgs if m.message["reason"] == "budget_exhaustion"]
         assert len(budget_esc) >= 1
 
 

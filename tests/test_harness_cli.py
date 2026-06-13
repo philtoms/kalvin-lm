@@ -302,7 +302,9 @@ class TestMessageRoutesBetweenParticipants:
         try:
             # Send from trainer → trainee
             bus.send(
-                Message(role=TRAINEE_ROLE, action="submit", message="MHALL = SVO", sender=TRAINER_ROLE)
+                Message(
+                    role=TRAINEE_ROLE, action="submit", message="MHALL = SVO", sender=TRAINER_ROLE
+                )
             )
             assert event_a.wait(timeout=2), "handler_a should have received the message"
             assert len(received_a) == 1
@@ -418,12 +420,16 @@ class TestFullLifecycleBusOnly:
         try:
             # Simulate trainer sending to trainee
             bus.send(
-                Message(role=TRAINEE_ROLE, action="submit", message="MHALL = SVO", sender=TRAINER_ROLE)
+                Message(
+                    role=TRAINEE_ROLE, action="submit", message="MHALL = SVO", sender=TRAINER_ROLE
+                )
             )
 
             # Simulate trainee responding to trainer
             bus.send(
-                Message(role=TRAINER_ROLE, action="ground", message="event_data", sender=TRAINEE_ROLE)
+                Message(
+                    role=TRAINER_ROLE, action="ground", message="event_data", sender=TRAINEE_ROLE
+                )
             )
 
             # Wait for dispatch via threading.Event
@@ -515,11 +521,13 @@ class TestFullLifecycleWithWebSocketClient:
 
                 # Send a message from supervisor to mock
                 await ws.send(
-                    json.dumps({
-                        "role": "mock",
-                        "action": "test",
-                        "message": "hello from supervisor",
-                    })
+                    json.dumps(
+                        {
+                            "role": "mock",
+                            "action": "test",
+                            "message": "hello from supervisor",
+                        }
+                    )
                 )
 
                 # Poll for the message to arrive.  The path is:

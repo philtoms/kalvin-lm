@@ -33,12 +33,10 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import spacy
-
 from nlp_analyzer import (
     analyze_texts,
     download_spacy_model,
     filter_empty_texts,
-    init_nlp_types,
     print_summary,
     save_analysis,
     setup_gpu,
@@ -98,9 +96,7 @@ def load_dataset_texts(
         if "Dataset scripts are no longer supported" in str(exc):
             if verbose:
                 print("  Dataset uses legacy script — switching to streaming mode")
-            ds = load_dataset(
-                dataset_name, split=split, streaming=True, trust_remote_code=True
-            )
+            ds = load_dataset(dataset_name, split=split, streaming=True, trust_remote_code=True)
             streaming = True
         else:
             raise
@@ -137,9 +133,7 @@ def load_dataset_texts(
 
 def build_parser() -> argparse.ArgumentParser:
     """Build the CLI argument parser."""
-    parser = argparse.ArgumentParser(
-        description="Run NLP analysis on a HuggingFace dataset corpus"
-    )
+    parser = argparse.ArgumentParser(description="Run NLP analysis on a HuggingFace dataset corpus")
 
     parser.add_argument(
         "--dataset",

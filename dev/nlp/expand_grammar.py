@@ -57,12 +57,13 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from nlp_analyzer import compute_nlp_type32, compute_nlp_type48
-from kalvin.tokenizer import Tokenizer
 
+from kalvin.tokenizer import Tokenizer
 
 # ---------------------------------------------------------------------------
 # Token vocab loading
 # ---------------------------------------------------------------------------
+
 
 def load_tokenizer_vocab(tokenizer_dir: Path, tokenizer_name: str) -> dict[int, str]:
     """Load the full tokenizer vocabulary: token_id -> decoded string.
@@ -105,6 +106,7 @@ def load_tokenizer_vocab_from_bin(bin_path: Path) -> dict[int, str]:
 # ---------------------------------------------------------------------------
 # Step 1: Categorize uncovered tokens
 # ---------------------------------------------------------------------------
+
 
 def categorize_uncovered(
     tokenizer_vocab: dict[int, str],
@@ -187,22 +189,23 @@ def print_category_summary(
     uncovered = sum(len(v) for v in categories.values())
     pct = (covered_count / total_vocab * 100) if total_vocab else 0
 
-    print(f"\n{'='*60}")
-    print(f"Grammar Coverage Report")
-    print(f"{'='*60}")
+    print(f"\n{'=' * 60}")
+    print("Grammar Coverage Report")
+    print(f"{'=' * 60}")
     print(f"Total vocab tokens:     {total_vocab:>8,}")
     print(f"Covered tokens:         {covered_count:>8,}  ({pct:.1f}%)")
-    print(f"Uncovered tokens:       {uncovered:>8,}  ({100-pct:.1f}%)")
-    print(f"{'-'*60}")
-    print(f"Uncovered by category:")
+    print(f"Uncovered tokens:       {uncovered:>8,}  ({100 - pct:.1f}%)")
+    print(f"{'-' * 60}")
+    print("Uncovered by category:")
     for cat, ids in categories.items():
         print(f"  {cat:<22s} {len(ids):>6,}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
 
 # ---------------------------------------------------------------------------
 # Step 2: Special-token annotation rules
 # ---------------------------------------------------------------------------
+
 
 def _compute_nlp_fine_type(
     pos: str,
@@ -266,19 +269,19 @@ def build_fine_legend_reverse(fine_legend: dict[str, int]) -> dict[str, dict[str
     for flag_name, bit_value in fine_legend.items():
         if flag_name.startswith("POS_FINE_"):
             # pos_fine category: POS_FINE_NN -> "NN"
-            value = flag_name[len("POS_FINE_"):]
+            value = flag_name[len("POS_FINE_") :]
             reverse["pos_fine"][value] = bit_value
         elif flag_name.startswith("POS_"):
             # pos category: POS_NOUN -> "NOUN"
-            value = flag_name[len("POS_"):]
+            value = flag_name[len("POS_") :]
             reverse["pos"][value] = bit_value
         elif flag_name.startswith("DEP_"):
             # dep category: DEP_ROOT -> "root" (stored lowercase in grammar)
-            value = flag_name[len("DEP_"):].lower()
+            value = flag_name[len("DEP_") :].lower()
             reverse["dep"][value] = bit_value
         elif flag_name.startswith("MORPH_"):
             # morph category: MORPH_NUMBER_SING -> "Number=Sing"
-            raw = flag_name[len("MORPH_"):]
+            raw = flag_name[len("MORPH_") :]
             if "_" in raw:
                 parts = raw.split("_", 1)
                 value = parts[0].capitalize() + "=" + parts[1].capitalize()
@@ -424,6 +427,7 @@ def _punct_fine_tag(token_str: str) -> str:
 # Step 3: BPE decomposition and re-keying
 # ---------------------------------------------------------------------------
 
+
 def rekey_from_bpe(
     grammar: dict,
     bpe_tokenizer: Tokenizer,
@@ -481,7 +485,9 @@ def rekey_from_bpe(
 
         if len(bpe_ids) == 1:
             bpe_id = bpe_ids[0]
-            if bpe_id not in single_token_entries or count > single_token_entries[bpe_id].get("count", 0):
+            if bpe_id not in single_token_entries or count > single_token_entries[bpe_id].get(
+                "count", 0
+            ):
                 single_token_entries[bpe_id] = entry
             single_token_words += 1
         else:
@@ -524,8 +530,10 @@ def rekey_from_bpe(
         _add_inherited_entry(new_grammar, bpe_id, subword_text, best_entry, fine_legend_reverse)
         resolved += 1
 
-    print(f"  BPE re-keying: {single_token_words} single-token entries, "
-          f"{decomposed_words} decomposed into {resolved} subword entries")
+    print(
+        f"  BPE re-keying: {single_token_words} single-token entries, "
+        f"{decomposed_words} decomposed into {resolved} subword entries"
+    )
     print(f"  Total new grammar entries: {len(new_grammar)}")
     return new_grammar
 
@@ -580,6 +588,7 @@ def _add_inherited_entry(
 # ---------------------------------------------------------------------------
 # Step 3b: Legacy subword inheritance (substring-based, for non-BPE-rekey path)
 # ---------------------------------------------------------------------------
+
 
 def inherit_subword_types(
     tokenizer_vocab: dict[int, str],
@@ -668,6 +677,7 @@ def inherit_subword_types(
 # Step 4: Multi-source merge pipeline
 # ---------------------------------------------------------------------------
 
+
 def merge_grammars(base: dict, *others: dict) -> dict:
     """Merge grammar dicts from different sources.
 
@@ -707,58 +717,177 @@ def merge_grammars(base: dict, *others: dict) -> dict:
 _MANUAL_ANNOTATIONS: list[dict] = [
     # -- Contraction stems (auxiliary verb stems without the "'t" negation) --
     # spaCy tags "did" (in "didn't") as AUX/VBD/aux/Tense=Past|VerbForm=Fin
-    {"id": 1840, "text": "didn",    "pos": "AUX", "pos_fine": "VBD", "dep": "aux",   "morph": "Tense=Past|VerbForm=Fin"},
+    {
+        "id": 1840,
+        "text": "didn",
+        "pos": "AUX",
+        "pos_fine": "VBD",
+        "dep": "aux",
+        "morph": "Tense=Past|VerbForm=Fin",
+    },
     # spaCy tags "could" (in "couldn't") as AUX/MD/aux/VerbForm=Fin
-    {"id": 2392, "text": "couldn",  "pos": "AUX", "pos_fine": "MD",  "dep": "aux",   "morph": "VerbForm=Fin"},
-    # spaCy tags "was" (in "wasn't") as AUX/VBD/aux/Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin
-    {"id": 3698, "text": "wasn",    "pos": "AUX", "pos_fine": "VBD", "dep": "aux",   "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin"},
-    # spaCy tags "does" (in "doesn't") as AUX/VBZ/aux/Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin
-    {"id": 4413, "text": "doesn",   "pos": "AUX", "pos_fine": "VBZ", "dep": "aux",   "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin"},
-    # spaCy tags "is" (in "isn't") as AUX/VBZ/aux/Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin
-    {"id": 4976, "text": "isn",     "pos": "AUX", "pos_fine": "VBZ", "dep": "aux",   "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin"},
+    {
+        "id": 2392,
+        "text": "couldn",
+        "pos": "AUX",
+        "pos_fine": "MD",
+        "dep": "aux",
+        "morph": "VerbForm=Fin",
+    },
+    # spaCy tags "was" (in "wasn't") as AUX/VBD/aux/
+    # Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin
+    {
+        "id": 3698,
+        "text": "wasn",
+        "pos": "AUX",
+        "pos_fine": "VBD",
+        "dep": "aux",
+        "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin",
+    },
+    # spaCy tags "does" (in "doesn't") as AUX/VBZ/aux/
+    # Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin
+    {
+        "id": 4413,
+        "text": "doesn",
+        "pos": "AUX",
+        "pos_fine": "VBZ",
+        "dep": "aux",
+        "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin",
+    },
+    # spaCy tags "is" (in "isn't") as AUX/VBZ/aux/
+    # Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin
+    {
+        "id": 4976,
+        "text": "isn",
+        "pos": "AUX",
+        "pos_fine": "VBZ",
+        "dep": "aux",
+        "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin",
+    },
     # Capitalized form of "isn"
-    {"id": 5470, "text": "Isn",     "pos": "AUX", "pos_fine": "VBZ", "dep": "aux",   "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin"},
+    {
+        "id": 5470,
+        "text": "Isn",
+        "pos": "AUX",
+        "pos_fine": "VBZ",
+        "dep": "aux",
+        "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin",
+    },
     # spaCy tags "would" (in "wouldn't") as AUX/MD/aux/VerbForm=Fin
-    {"id": 5736, "text": "wouldn",  "pos": "AUX", "pos_fine": "MD",  "dep": "aux",   "morph": "VerbForm=Fin"},
+    {
+        "id": 5736,
+        "text": "wouldn",
+        "pos": "AUX",
+        "pos_fine": "MD",
+        "dep": "aux",
+        "morph": "VerbForm=Fin",
+    },
     # spaCy tags "had" (in "hadn't") as AUX/VBD/aux/Tense=Past|VerbForm=Fin
-    {"id": 6590, "text": "hadn",    "pos": "AUX", "pos_fine": "VBD", "dep": "aux",   "morph": "Tense=Past|VerbForm=Fin"},
+    {
+        "id": 6590,
+        "text": "hadn",
+        "pos": "AUX",
+        "pos_fine": "VBD",
+        "dep": "aux",
+        "morph": "Tense=Past|VerbForm=Fin",
+    },
     # spaCy tags "should" (in "shouldn't") as AUX/MD/aux/VerbForm=Fin
-    {"id": 6939, "text": "shouldn", "pos": "AUX", "pos_fine": "MD",  "dep": "aux",   "morph": "Polarity=Neg"},
+    {
+        "id": 6939,
+        "text": "shouldn",
+        "pos": "AUX",
+        "pos_fine": "MD",
+        "dep": "aux",
+        "morph": "Polarity=Neg",
+    },
     # spaCy tags "were" (in "weren't") as AUX/VBD/aux/Mood=Ind|Tense=Past|VerbForm=Fin
-    {"id": 8868, "text": "weren",   "pos": "AUX", "pos_fine": "VBD", "dep": "aux",   "morph": "Mood=Ind|Tense=Past|VerbForm=Fin"},
+    {
+        "id": 8868,
+        "text": "weren",
+        "pos": "AUX",
+        "pos_fine": "VBD",
+        "dep": "aux",
+        "morph": "Mood=Ind|Tense=Past|VerbForm=Fin",
+    },
     # Capitalized form of "wouldn"
-    {"id": 10919, "text": "Wouldn", "pos": "AUX", "pos_fine": "MD",  "dep": "aux",   "morph": "VerbForm=Fin"},
+    {
+        "id": 10919,
+        "text": "Wouldn",
+        "pos": "AUX",
+        "pos_fine": "MD",
+        "dep": "aux",
+        "morph": "VerbForm=Fin",
+    },
     # Capitalized form of "wasn"
-    {"id": 13135, "text": "Wasn",   "pos": "AUX", "pos_fine": "VBD", "dep": "aux",   "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin"},
+    {
+        "id": 13135,
+        "text": "Wasn",
+        "pos": "AUX",
+        "pos_fine": "VBD",
+        "dep": "aux",
+        "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin",
+    },
     # Capitalized form of "shouldn"
-    {"id": 15827, "text": "Shouldn","pos": "AUX", "pos_fine": "MD",  "dep": "aux",   "morph": "Polarity=Neg"},
+    {
+        "id": 15827,
+        "text": "Shouldn",
+        "pos": "AUX",
+        "pos_fine": "MD",
+        "dep": "aux",
+        "morph": "Polarity=Neg",
+    },
     # Capitalized form of "hadn"
-    {"id": 16191, "text": "Hadn",   "pos": "AUX", "pos_fine": "VBD", "dep": "aux",   "morph": "Tense=Past|VerbForm=Fin"},
+    {
+        "id": 16191,
+        "text": "Hadn",
+        "pos": "AUX",
+        "pos_fine": "VBD",
+        "dep": "aux",
+        "morph": "Tense=Past|VerbForm=Fin",
+    },
     # Capitalized form of "doesn"
-    {"id": 16534, "text": "Doesn",  "pos": "AUX", "pos_fine": "VBZ", "dep": "aux",   "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin"},
+    {
+        "id": 16534,
+        "text": "Doesn",
+        "pos": "AUX",
+        "pos_fine": "VBZ",
+        "dep": "aux",
+        "morph": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin",
+    },
     # "cannot" — spaCy tags "can" as AUX/MD/aux/VerbForm=Fin
-    {"id": 1969, "text": "cannot",  "pos": "AUX", "pos_fine": "MD",  "dep": "aux",   "morph": "VerbForm=Fin"},
-
+    {
+        "id": 1969,
+        "text": "cannot",
+        "pos": "AUX",
+        "pos_fine": "MD",
+        "dep": "aux",
+        "morph": "VerbForm=Fin",
+    },
     # -- Special symbols --
     # Underscore — used as a placeholder or structural symbol
-    {"id": 95,   "text": "_",       "pos": "SYM", "pos_fine": "NFP", "dep": "",      "morph": ""},
-
+    {"id": 95, "text": "_", "pos": "SYM", "pos_fine": "NFP", "dep": "", "morph": ""},
     # -- Negation clitic --
     # "'t" — the contracted negation particle from don't, isn't, etc.
     # spaCy tags "n't" as PART/RB/neg/Polarity=Neg
-    {"id": 832,  "text": "'t",      "pos": "PART","pos_fine": "RB",  "dep": "neg",   "morph": "Polarity=Neg"},
-
+    {
+        "id": 832,
+        "text": "'t",
+        "pos": "PART",
+        "pos_fine": "RB",
+        "dep": "neg",
+        "morph": "Polarity=Neg",
+    },
     # -- Newline-composite punctuation (BPE formatting artifacts) --
     # Double-quote + paragraph break
-    {"id": 1110,  "text": '"\n\n',  "pos": "PUNCT","pos_fine": "``", "dep": "punct", "morph": ""},
+    {"id": 1110, "text": '"\n\n', "pos": "PUNCT", "pos_fine": "``", "dep": "punct", "morph": ""},
     # Hyphen + paragraph break
-    {"id": 5163,  "text": "-\n\n",  "pos": "PUNCT","pos_fine": "HYPH","dep": "punct", "morph": ""},
+    {"id": 5163, "text": "-\n\n", "pos": "PUNCT", "pos_fine": "HYPH", "dep": "punct", "morph": ""},
     # Triple-dash separator + paragraph break (section break)
-    {"id": 5190,  "text": "---\n\n","pos": "PUNCT","pos_fine": "NFP", "dep": "punct", "morph": ""},
+    {"id": 5190, "text": "---\n\n", "pos": "PUNCT", "pos_fine": "NFP", "dep": "punct", "morph": ""},
     # Mixed quote + paragraph break
-    {"id": 13974, "text": "'\"\n\n","pos": "PUNCT","pos_fine": "''", "dep": "punct", "morph": ""},
+    {"id": 13974, "text": "'\"\n\n", "pos": "PUNCT", "pos_fine": "''", "dep": "punct", "morph": ""},
     # Colon + paragraph break
-    {"id": 13986, "text": ":\n\n",  "pos": "PUNCT","pos_fine": ":",  "dep": "punct", "morph": ""},
+    {"id": 13986, "text": ":\n\n", "pos": "PUNCT", "pos_fine": ":", "dep": "punct", "morph": ""},
 ]
 
 
@@ -818,12 +947,15 @@ def annotate_manual_tokens(
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def load_fine_legend(grammar_path: Path) -> dict:
     """Load the fine-type legend that accompanies a grammar dict.
 
     Looks for ``{stem}_nlp_fine_types.json`` in the same directory.
     """
-    stem = grammar_path.stem.rsplit("_", 1)[0]  # e.g., "simplestories-1_grammar" -> "simplestories-1"
+    stem = grammar_path.stem.rsplit("_", 1)[
+        0
+    ]  # e.g., "simplestories-1_grammar" -> "simplestories-1"
     fine_path = grammar_path.parent / f"{stem}_nlp_fine_types.json"
     if fine_path.exists():
         return json.loads(fine_path.read_text())
@@ -916,20 +1048,23 @@ def expand_grammar(
     # 8. Report final stats
     final_count = len(grammar)
     categories_after = categorize_uncovered(tokenizer_vocab, grammar)
-    print(f"\n{'='*60}")
-    print(f"Expansion Results")
-    print(f"{'='*60}")
-    print(f"Initial coverage: {initial_count}/{total_vocab} ({initial_count/total_vocab*100:.1f}%)")
-    print(f"Final coverage:   {final_count}/{total_vocab} ({final_count/total_vocab*100:.1f}%)")
+    print(f"\n{'=' * 60}")
+    print("Expansion Results")
+    print(f"{'=' * 60}")
+    print(
+        f"Initial coverage: {initial_count}/{total_vocab} "
+        f"({initial_count / total_vocab * 100:.1f}%)"
+    )
+    print(f"Final coverage:   {final_count}/{total_vocab} ({final_count / total_vocab * 100:.1f}%)")
     print(f"New entries:      {final_count - initial_count}")
     remaining = sum(len(v) for v in categories_after.values())
     print(f"Still uncovered:  {remaining}")
     if remaining > 0:
-        print(f"\nRemaining uncovered by category:")
+        print("\nRemaining uncovered by category:")
         for cat, ids in categories_after.items():
             if ids:
                 print(f"  {cat:<22s} {len(ids):>6,}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     if dry_run:
         print("Dry run -- not writing output file.")
@@ -944,9 +1079,7 @@ def expand_grammar(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Expand NLP grammar dictionary coverage"
-    )
+    parser = argparse.ArgumentParser(description="Expand NLP grammar dictionary coverage")
     parser.add_argument(
         "--grammar",
         type=Path,

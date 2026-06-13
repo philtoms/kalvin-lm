@@ -16,11 +16,11 @@ from collections import Counter
 
 sys.path.insert(0, "src")
 
-from ks.compiler import compile_source
 from kalvin.agent import KAgent
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.expand import D_MAX, boundaries, classify
 from kalvin.nlp_tokenizer import NLPTokenizer
+from ks.compiler import compile_source
 
 SOURCE = """
 (Mary had a little lamb)
@@ -137,7 +137,7 @@ def main() -> None:
         for entry in s1_entries:
             print(f"  {entry}")
 
-    print(f"\nDone.")
+    print("\nDone.")
 
 
 if __name__ == "__main__":

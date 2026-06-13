@@ -40,9 +40,7 @@ class TestBuildLLMClient:
                 model="test-model",
             )
 
-    def test_client_uses_config_model_and_base_url(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_client_uses_config_model_and_base_url(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Returned client uses config's model and base_url."""
         monkeypatch.setenv("KALVIN_LLM_API_KEY", "test-key-123")
 
@@ -51,9 +49,11 @@ class TestBuildLLMClient:
         with patch(
             "trainer.cogitation.OpenAICompatibleClient", return_value=mock_client
         ) as mock_cls:
-            result = _build_llm_client({
-                "llm": {"model": "custom-model", "base_url": "https://custom.api/v1"},
-            })
+            result = _build_llm_client(
+                {
+                    "llm": {"model": "custom-model", "base_url": "https://custom.api/v1"},
+                }
+            )
             assert result is mock_client
             mock_cls.assert_called_once_with(
                 api_key="test-key-123",
@@ -61,9 +61,7 @@ class TestBuildLLMClient:
                 model="custom-model",
             )
 
-    def test_client_uses_defaults_without_llm_config(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_client_uses_defaults_without_llm_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """With no llm config section, uses default model and base_url."""
         monkeypatch.setenv("KALVIN_LLM_API_KEY", "test-key-123")
 
@@ -90,9 +88,7 @@ class TestBuildLLMClient:
             result = _build_llm_client({"llm": {"model": "test"}})
             assert result is None
 
-    def test_empty_llm_config_uses_defaults(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_empty_llm_config_uses_defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """_build_llm_client({}) with KALVIN_LLM_API_KEY set uses all defaults."""
         monkeypatch.setenv("KALVIN_LLM_API_KEY", "test-key-123")
 
@@ -114,9 +110,7 @@ class TestBuildLLMClient:
 class TestTrainerFactoryLLMWiring:
     """KB-032: trainer_factory calls _build_llm_client and passes to Trainer."""
 
-    def test_trainer_llm_client_not_none_with_key(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_trainer_llm_client_not_none_with_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """When KALVIN_LLM_API_KEY is set, trainer receives a non-None llm_client."""
         monkeypatch.setenv("KALVIN_LLM_API_KEY", "test-key-123")
 
@@ -138,9 +132,7 @@ class TestTrainerFactoryLLMWiring:
         )
         assert trainer._llm_client is not None
 
-    def test_trainer_llm_client_none_without_key(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_trainer_llm_client_none_without_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """When KALVIN_LLM_API_KEY is unset, _build_llm_client returns None."""
         monkeypatch.delenv("KALVIN_LLM_API_KEY", raising=False)
 
@@ -179,9 +171,7 @@ class TestTrainerFactoryLLMWiring:
         mock_client = MagicMock()
         mock_client._model = "test-model"
 
-        with patch(
-            "trainer.cogitation.OpenAICompatibleClient", return_value=mock_client
-        ):
+        with patch("trainer.cogitation.OpenAICompatibleClient", return_value=mock_client):
             llm_client = _build_llm_client({"llm": {"model": "test-model"}})
             assert llm_client is mock_client
 
@@ -246,8 +236,8 @@ class TestAlreadySubscribedWrapper:
 
     def test_kagent_adapter_constructed_with_role_keyword(self) -> None:
         """KAgentAdapter(bus, role='trainee') works — KB-126 contract."""
-        from harness.bus import MessageBus
         from harness.adapter import KAgentAdapter
+        from harness.bus import MessageBus
 
         bus = MessageBus()
         adapter = KAgentAdapter(bus, role="trainee")

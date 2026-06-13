@@ -101,7 +101,7 @@ class TestFromFile:
         path = tmp_path / "test.md"
         path.write_text(VALID_CURRICULUM)
         doc = CurriculumDocument.from_file(path)
-        assert doc.objective == "Teach Kalvin the SVO structure of \"Mary had a little lamb\"."
+        assert doc.objective == 'Teach Kalvin the SVO structure of "Mary had a little lamb".'
         assert doc.approach == "Introduce components one at a time: subject, verb, object."
         assert len(doc.lessons) == 4
         assert doc.source_path == path
@@ -115,7 +115,7 @@ class TestFromString:
 
     def test_from_string_parses_valid_document(self) -> None:
         doc = CurriculumDocument.from_string(VALID_CURRICULUM)
-        assert doc.objective == "Teach Kalvin the SVO structure of \"Mary had a little lamb\"."
+        assert doc.objective == 'Teach Kalvin the SVO structure of "Mary had a little lamb".'
         assert doc.source_path is None
 
     def test_from_string_two_lessons(self) -> None:

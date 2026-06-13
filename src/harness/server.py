@@ -90,9 +90,7 @@ def _validate_config(data: Any, path: Path) -> HarnessConfig:
 
         role = entry.get("role")
         if not role or not isinstance(role, str):
-            raise ConfigError(
-                f"{path}: participants[{idx}] missing required 'role'"
-            )
+            raise ConfigError(f"{path}: participants[{idx}] missing required 'role'")
 
         ptype = entry.get("type")
         if ptype not in ("embedded", "client"):
@@ -103,20 +101,14 @@ def _validate_config(data: Any, path: Path) -> HarnessConfig:
 
         if ptype == "embedded":
             if role in seen_embedded_roles:
-                raise ConfigError(
-                    f"{path}: duplicate role '{role}' for embedded participants"
-                )
+                raise ConfigError(f"{path}: duplicate role '{role}' for embedded participants")
             seen_embedded_roles.add(role)
 
         class_name = entry.get("class")
         if not class_name or not isinstance(class_name, str):
-            raise ConfigError(
-                f"{path}: participants[{idx}] missing required 'class'"
-            )
+            raise ConfigError(f"{path}: participants[{idx}] missing required 'class'")
 
-        entries.append(
-            ParticipantConfig(role=role, type=ptype, class_name=class_name)
-        )
+        entries.append(ParticipantConfig(role=role, type=ptype, class_name=class_name))
 
     return HarnessConfig(participants=entries)
 
@@ -164,9 +156,7 @@ class HarnessServer:
 
     # -- participant registry ------------------------------------------------
 
-    def register_participant_class(
-        self, name: str, factory: ParticipantFactory
-    ) -> None:
+    def register_participant_class(self, name: str, factory: ParticipantFactory) -> None:
         """Register *factory* as the constructor for participant class *name*.
 
         The factory is called as ``factory(role, bus)`` and must return an
@@ -238,9 +228,7 @@ class HarnessServer:
         SIGTERM) or ``stop()`` is called.
         """
         # Start bus in a background thread.
-        self._bus_thread = threading.Thread(
-            target=self._bus.run, name="harness-bus", daemon=True
-        )
+        self._bus_thread = threading.Thread(target=self._bus.run, name="harness-bus", daemon=True)
         self._bus_thread.start()
 
         # Run async WS server on the current thread.

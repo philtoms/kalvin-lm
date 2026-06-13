@@ -1,7 +1,6 @@
 """File dialogs for the KScript TUI application."""
 
 from pathlib import Path
-from typing import Optional
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal
@@ -17,7 +16,10 @@ class FileDialog(ModalScreen):
         align: center middle;
     }
 
-    FileDialog > Container, LoadScriptDialog > Container, SaveStateDialog > Container, LoadStateDialog > Container {
+    FileDialog > Container,
+    LoadScriptDialog > Container,
+    SaveStateDialog > Container,
+    LoadStateDialog > Container {
         width: 70;
         height: 28;
         border: thick $primary;
@@ -25,29 +27,44 @@ class FileDialog(ModalScreen):
         padding: 1;
     }
 
-    FileDialog .dialog-title, LoadScriptDialog .dialog-title, SaveStateDialog .dialog-title, LoadStateDialog .dialog-title {
+    FileDialog .dialog-title,
+    LoadScriptDialog .dialog-title,
+    SaveStateDialog .dialog-title,
+    LoadStateDialog .dialog-title {
         text-align: center;
         text-style: bold;
         margin-bottom: 1;
     }
 
-    FileDialog .mount-points, LoadScriptDialog .mount-points, SaveStateDialog .mount-points, LoadStateDialog .mount-points {
+    FileDialog .mount-points,
+    LoadScriptDialog .mount-points,
+    SaveStateDialog .mount-points,
+    LoadStateDialog .mount-points {
         height: auto;
         margin-bottom: 1;
     }
 
-    FileDialog DirectoryTree, LoadScriptDialog DirectoryTree, SaveStateDialog DirectoryTree, LoadStateDialog DirectoryTree {
+    FileDialog DirectoryTree,
+    LoadScriptDialog DirectoryTree,
+    SaveStateDialog DirectoryTree,
+    LoadStateDialog DirectoryTree {
         height: 1fr;
         border: solid $panel;
         margin-bottom: 1;
     }
 
-    FileDialog .dialog-buttons, LoadScriptDialog .dialog-buttons, SaveStateDialog .dialog-buttons, LoadStateDialog .dialog-buttons {
+    FileDialog .dialog-buttons,
+    LoadScriptDialog .dialog-buttons,
+    SaveStateDialog .dialog-buttons,
+    LoadStateDialog .dialog-buttons {
         align: center middle;
         height: 3;
     }
 
-    FileDialog #current-path, LoadScriptDialog #current-path, SaveStateDialog #current-path, LoadStateDialog #current-path {
+    FileDialog #current-path,
+    LoadScriptDialog #current-path,
+    SaveStateDialog #current-path,
+    LoadStateDialog #current-path {
         height: 3;
         margin-bottom: 1;
         border: solid $panel;
@@ -77,15 +94,15 @@ class FileDialog(ModalScreen):
         self,
         title: str = "Select File",
         initial_path: str = "/",
-        file_type: Optional[str] = None,
+        file_type: str | None = None,
     ) -> None:
         super().__init__()
         self.title_text = title
         self.initial_path = initial_path
         self.file_type = file_type
-        self._selected_path: Optional[Path] = None
+        self._selected_path: Path | None = None
         self._current_dir = initial_path
-        self._target_file: Optional[Path] = None
+        self._target_file: Path | None = None
 
     def _compose_header(self) -> ComposeResult:
         """Compose the common header elements."""
@@ -225,7 +242,11 @@ class SaveStateDialog(FileDialog):
         with Container():
             yield from self._compose_header()
             with Horizontal(classes="filename-row"):
-                yield Input(placeholder="filename (.bin or .json)", id="filename-input", classes="filename-input")
+                yield Input(
+                    placeholder="filename (.bin or .json)",
+                    id="filename-input",
+                    classes="filename-input",
+                )
             yield from self._compose_tree()
             yield from self._compose_footer("Save")
 
