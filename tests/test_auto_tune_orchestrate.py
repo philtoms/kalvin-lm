@@ -320,8 +320,10 @@ class TestStep:
             # Write both events in a single append so the poll loop never
             # observes an intermediate state with only seq 2.
             payload = (
-                json.dumps({"seq": 2, "type": "progress", "status": "started"}) + "\n"
-                + json.dumps({"seq": 3, "type": "progress", "status": "complete"}) + "\n"
+                json.dumps({"seq": 2, "type": "progress", "status": "started"})
+                + "\n"
+                + json.dumps({"seq": 3, "type": "progress", "status": "complete"})
+                + "\n"
             )
             with sd.events_path.open("a", encoding="utf-8") as f:
                 f.write(payload)
