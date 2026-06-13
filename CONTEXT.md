@@ -141,21 +141,29 @@ _Avoid_: encoding (that's the tokenizer's job), projection (implies a mathematic
 The STM in its role as Kalvin's active dimensional space. The manifold is not the STM's implementation (a bounded rolling window) but its function: the set of kline structures that define what Kalvin can currently perceive and reason about. When a new kline arrives, Kalvin compresses it into the shape established by the current manifold contents — not into fixed bit positions. The manifold is task-dependent: different STM contents produce a different dimensional space and therefore different compression. Cogitation refreshes the STM precisely because actively-used structures must remain in the manifold.
 _Avoid_: working memory (too vague), context window (implies a passive buffer, not an active projection surface)
 
+### Token ID
+
+A value produced by the tokenizer.
+
+### Node
+
+A value occupying a slot in a kline's nodes list. May be a single Token ID or the OR-reduction of two or more token IDs.
+
 ### KLine
 
-A node-like structure with a **signature** (head) and **nodes** (value). The fundamental unit of Kalvin's knowledge graph. `nodes` is always a `list[uint64]` — empty list for identity klines, one or more elements for relationship klines. Two kinds: **identity** (empty nodes) and **relationship** (one or more nodes).
+A KLine is the fundamental unit of the knowledge graph: a **signature** (head position) and a **nodes** list (zero or more **Nodes**). `nodes` is always a `list[uint64]` — empty for an identity kline, one or more for a relationship kline. Two kinds: **identity** (signature is a single Token ID, empty nodes list — see Identity) and **relationship** (one or more nodes).
 
 ### KDbg
 
-Provenance metadata attached to a KLine via its `dbg` slot. Carries the originating **operator** (COUNTERSIGN, UNDERSIGN, CONNOTATE, CANONIZE, IDENTITY), the signature **label** (original text), the **decoded** tokenizer output, and optional NLP annotations (pos, dep, morph). Populated during compilation in dev mode. Used by the display helper to reconstruct human-readable KScript source from a KLine. Not spec'd — not part of the knowledge graph's identity or equality semantics.
+Provenance metadata attached to a KLine via its `dbg` slot. Carries the entry's **structural state** (COUNTERSIGNED, UNDERSIGNED, CONNOTED, CANONIZED, IDENTITY), the signature **label** (original text), the **decoded** tokenizer output, and optional NLP annotations (pos, dep, morph). Populated during compilation in dev mode. Used by the display helper to reconstruct human-readable KScript source from a KLine. Not spec'd — not part of the knowledge graph's identity or equality semantics.
 
 ### Signature
 
-The head of a KLine. A bit-packed integer representing the identity of the KLine. Constructed via `make_signature(nodes)`.
+The value occupying a kline's head position. The same kind of value as a Node — a single Token ID (for an identity) or `make_signature(nodes)`, the OR-reduction of its nodes (for a relationship kline).
 
 ### Compiled Entry
 
-A KLine produced by the KScript compiler. Carries provenance metadata in `KDbg` (operator, label, NLP annotations). Not a distinct type — the compiler produces plain KLines with populated `dbg`.
+A KLine produced by the KScript compiler. Carries provenance metadata in `KDbg` (structural state, label, NLP annotations). Not a distinct type — the compiler produces plain KLines with populated `dbg`.
 
 ### Expectation
 
@@ -167,7 +175,9 @@ A KLine emitted by the Agent (via event) as a candidate response during rational
 
 ### Countersign
 
-The reciprocal kline of a proposal. For `{Q: [V]}`, the countersignature is `{V: [Q]}`. Countersigning ratifies a proposal, promoting it toward S1.
+**Countersign** (noun): The reciprocal kline of a proposal. For `{Q: [V]}`, the reciprocal is `{V: [Q]}`. Both halves are COUNTERSIGNED (the structural state produced by `==`).
+**Countersign** (verb): To emit or accept the reciprocal, ratifying a proposal toward S1.
+_Avoid_: countersignature (the head of any kline — reciprocal or not — is its Signature)
 
 ### Significance
 
@@ -177,21 +187,34 @@ A 64-bit inverted distance representing how well a KLine relates to the model's 
 
 A four-level classification of how strongly one KLine relates to another. Determined at two stages:
 
-- **Compile-time intent** (operator → level): the `op` field in `KDbg` records the originating operator, which implies an initial significance. This is the script's *declared intent*.
+- **Compile-time intent** (structural state → level): the `op` field in `KDbg` records the entry's structural state, which implies an initial significance. This is the script's *declared intent*.
 - **Runtime routing** (structural match): `_route()` classifies a query-candidate pair by node membership — S1 (all match), S2 (some match), S3 (none match), S4 (empty query). This is the *actual* significance.
 
-The two can differ. A CANONIZE entry is emitted at S2 intent, but structurally its signature may perfectly fit its nodes (S1). The purpose of subscripted child klines under `=>` is to canonize from S2 to S1 through countersigning.
+The two can differ. A CANONIZED entry is emitted at S2 intent, but structurally its signature may perfectly fit its nodes (S1). The purpose of subscripted child klines under `=>` is to canonize from S2 to S1 through countersigning.
 
-**Operators and their compile-time intent:**
-- **S1**: COUNTERSIGN (`==`) — bidirectional, produces reciprocal pairs.
-- **S2**: CANONIZE (`=>`) — canonical aggregation. Structurally may be S1 (perfect fit: sig == nodes_sig) or S2 (misfit) at runtime.
-- **S3**: CONNOTATE (`>`) and UNDERSIGN (`=`) — inverses of each other. `A > B` compiles to `{A: B}`; `A = B` compiles to `{B: A}`.
-- **S4**: IDENTITY (bare) — no nodes, no relationships.
+**Structural states and their declared significance:**
+- **COUNTERSIGNED** → S1
+- **CANONIZED** → S2
+- **CONNOTED**, **UNDERSIGNED** → S3
+- **IDENTITY** → S4
+
+### Structural State
+
+The structural relationship between a kline's signature and its nodes — the compile-time classification recorded in a compiled entry's `op` field. A closed set of five states, each produced by compiling a written relational token (`==`, `=`, `>`, `=>`) or, for identity, by the absence of one:
+
+- **COUNTERSIGNED** — bidirectional: emits a reciprocal pair `{A: [B]}`, `{B: [A]}`; both klines are countersigned.
+- **CANONIZED** — aggregated: `{A: [B, C, D]}` — the signature canonically aggregates its nodes.
+- **CONNOTED** — forward: `{A: [B]}` — A connotes B.
+- **UNDERSIGNED** — reversed: `{B: [A]}` — B is undersigned by A.
+- **IDENTITY** — `{A: []}` — see Identity.
+
+States describe structure, not operation: no actor operates on a kline. The written token merely declares the relationship; the state names the resulting structure. The four token-produced states take past-participle forms (something countersigned/undersigned/connoted/canonized the kline); IDENTITY lacks the suffix because no token acts on it. Self-identity (`A = A`) compiles to an IDENTITY kline — the result is identity structure regardless of the written token.
+_Avoid_: operator (implies an action — these are states); COUNTERSIGN / UNDERSIGN / CONNOTATE / CANONIZE as state names (those are the written-token names; the four token-produced states take the past-participle forms)
 
 ### Identity
 
-The operator for a bare node — a kline with empty nodes and no relationships. Identity klines resolve on the fast path (S4) because there is nothing to expand or ratify. They are written directly to LTM as novel entries. Structurally: `{sig: []}`. Every kline in the knowledge graph bottoms out at one or more identity klines — they are the atoms from which all structure is built.
-_Avoid_: unsigned (implementation term — identity is the domain concept), bare signature (describes the syntax, not the semantics)
+A kline whose signature is a single **Token ID** and whose nodes list is empty. Every kline bottoms out at one or more identities. Structurally: `{token_id: []}`. Only a single Token ID can occupy the signature of an identity; a signature that is the OR-reduction of two or more token IDs cannot form one. Identity is a kline structure: a bare signature in source (a single character not followed by a relational token) is merely the scripted form that produces one.
+_Avoid_: unsigned (implementation term), bare signature (describes the syntax, not the structure)
 
 ### STM (Short-Term Memory)
 
@@ -247,7 +270,7 @@ The action of countersigning a selected proposal. Performed by the Trainer durin
 
 ### MCS Entry
 
-A multi-character signature entry where `signature == make_signature(nodes)`. Produced by the CANONIZE operator at S2 intent, but structurally a perfect fit (S1) — no misfit possible. The subscript child klines serve to canonize the parent from S2 to S1.
+A kline whose signature is the OR-reduction of two or more nodes (from a multi-character identifier in source), where `signature == make_signature(nodes)`. Produced as a CANONIZED kline at S2 intent, but structurally a perfect fit (S1) — no misfit possible. The subscript child klines serve to canonize the parent from S2 to S1.
 
 ### Structural Match
 
@@ -260,7 +283,7 @@ _Avoid_: comment mapping (too vague — the binding is a specific compiler artef
 
 ### NLP Binding Scope
 
-The lexical scope of an NLP binding, created by operator boundaries (`==`, `=`, `>`, `=>`). Each scope holds word lists (searched most-recent-first) and per-character occurrence counters (starting at zero). Characters seek from the current (innermost) scope first, then parent scopes upward. Inline bindings shadow outer bindings within their containing subscript block. Standard lexical scoping: inner blocks inherit and can shadow, exits restore. Each new scope starts with all counters at zero.
+The lexical scope of an NLP binding, created by relational-token boundaries (`==`, `=`, `>`, `=>`). Each scope holds word lists (searched most-recent-first) and per-character occurrence counters (starting at zero). Characters seek from the current (innermost) scope first, then parent scopes upward. Inline bindings shadow outer bindings within their containing subscript block. Standard lexical scoping: inner blocks inherit and can shadow, exits restore. Each new scope starts with all counters at zero.
 
 ### BindingScope
 
@@ -272,5 +295,5 @@ When a single-character signature cannot be resolved through any binding mechani
 
 ### BPE Annotation
 
-A parenthesised annotation in KScript source that provides word text for BPE token encoding. Syntax: `(word1 word2 ...)` (block) or `S(ubject)` (inline, one word). Inline syntax takes the first character from the SIGNATURE token and appends the annotation content stripped of parens, preserving case (`S` + `ubject` → `"Subject"`). Block annotations are matched via first-letter matching (case-insensitive): a character matches a word whose first letter equals the character (ignoring case). Surplus words are inert — there is no word count constraint.
+A parenthesised annotation in KScript source that provides word text for BPE token encoding. Syntax: `(word1 word2 ...)` (block) or `S(ubject)` (inline, one word). Inline syntax takes the first character from the SIGNATURE identifier and appends the annotation content stripped of parens, preserving case (`S` + `ubject` → `"Subject"`). Block annotations are matched via first-letter matching (case-insensitive): a character matches a word whose first letter equals the character (ignoring case). Surplus words are inert — there is no word count constraint.
 _Avoid_: comment (misleading — implies inert documentation; these are active encoding annotations), NLP word list (legacy term), word list (too vague)
