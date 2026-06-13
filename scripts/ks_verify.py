@@ -158,7 +158,7 @@ def _detect_sections(entries: list[KLine]) -> list[tuple[str, int, int]]:
         return True
 
     def is_operator(op: str) -> bool:
-        return op in ("COUNTERSIGN", "UNDERSIGN", "CONNOTATE")
+        return op in ("COUNTERSIGNED", "UNDERSIGNED", "CONNOTED")
 
     # Build sections from groups
     idx = 0
@@ -211,27 +211,27 @@ def _detect_sections(entries: list[KLine]) -> list[tuple[str, int, int]]:
         kl = entries[j]
         op = kl.dbg.op if kl.dbg else "IDENTITY"
 
-        if op == "COUNTERSIGN":
+        if op == "COUNTERSIGNED":
             cs_start = j
-            while j < len(entries) and entries[j].dbg and entries[j].dbg.op == "COUNTERSIGN":
+            while j < len(entries) and entries[j].dbg and entries[j].dbg.op == "COUNTERSIGNED":
                 j += 1
-            sections.append(("COUNTERSIGN", cs_start, j))
-        elif op == "UNDERSIGN":
+            sections.append(("COUNTERSIGNED", cs_start, j))
+        elif op == "UNDERSIGNED":
             us_start = j
-            while j < len(entries) and entries[j].dbg and entries[j].dbg.op == "UNDERSIGN":
+            while j < len(entries) and entries[j].dbg and entries[j].dbg.op == "UNDERSIGNED":
                 j += 1
-            sections.append(("UNDERSIGN", us_start, j))
-        elif op == "CONNOTATE":
+            sections.append(("UNDERSIGNED", us_start, j))
+        elif op == "CONNOTED":
             co_start = j
-            while j < len(entries) and entries[j].dbg and entries[j].dbg.op == "CONNOTATE":
+            while j < len(entries) and entries[j].dbg and entries[j].dbg.op == "CONNOTED":
                 j += 1
-            sections.append(("CONNOTATE", co_start, j))
+            sections.append(("CONNOTED", co_start, j))
         else:
             # Structural or identity — batch until next operator
             st_start = j
             while j < len(entries):
                 e_op = entries[j].dbg.op if entries[j].dbg else "IDENTITY"
-                if e_op in ("COUNTERSIGN", "UNDERSIGN", "CONNOTATE"):
+                if e_op in ("COUNTERSIGNED", "UNDERSIGNED", "CONNOTED"):
                     break
                 j += 1
             sections.append(("Identifiers & labels", st_start, j))

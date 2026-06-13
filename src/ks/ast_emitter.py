@@ -11,10 +11,10 @@ converts SymbolicEntry tuples to encoded uint64 values.
   entries:
 
   - IDENTITY (op=None):   {sig: []}   — bare identity
-  - COUNTERSIGN (==):     {sig: [node]}, {node: [sig]} per item  — bidirectional
-  - UNDERSIGN (=):        {node: [sig]} per item  — reversed direction
-  - CONNOTATE (>):        {sig: [node]} per item  — forward direction
-  - CANONIZE (=>):        {sig: [all_nodes]}  — aggregated single entry
+  - COUNTERSIGNED (==):   {sig: [node]}, {node: [sig]} per item  — bidirectional
+  - UNDERSIGNED (=):      {node: [sig]} per item  — reversed direction
+  - CONNOTED (>):         {sig: [node]} per item  — forward direction
+  - CANONIZED (=>):       {sig: [all_nodes]}  — aggregated single entry
 
   Self-identity (A = A) collapses to IDENTITY with empty nodes (spec §7.3).
 
@@ -87,7 +87,7 @@ class SymbolicEntry(NamedTuple):
         nodes: Always a list — empty for IDENTITY, single-item for per-item
                operators, multi-item for CANONIZE aggregation.  Never None,
                never a bare string, never singleton-unwrapped.
-        op:   One of "COUNTERSIGN", "CANONIZE", "CONNOTATE", "UNDERSIGN",
+        op:   One of "COUNTERSIGNED", "CANONIZED", "CONNOTED", "UNDERSIGNED",
                "IDENTITY".
         component_labels: Resolved words per signature character (for NLP
                mode).  None when not applicable.
@@ -95,7 +95,7 @@ class SymbolicEntry(NamedTuple):
 
     sig: str
     nodes: list[str]
-    op: str  # COUNTERSIGN | CANONIZE | CONNOTATE | UNDERSIGN | IDENTITY
+    op: str  # COUNTERSIGNED | CANONIZED | CONNOTED | UNDERSIGNED | IDENTITY
     component_labels: list[str] | None = None
 
 
@@ -233,29 +233,29 @@ class ASTEmitter:
         op: str,
     ) -> None:
         """Emit operator-specific entries based on the operator type."""
-        if op == "COUNTERSIGN":
+        if op == "COUNTERSIGNED":
             # Per-item bidirectional
             for node in nodes:
-                self._emit_entry(sig, [node], "COUNTERSIGN")
-                self._emit_entry(node, [sig], "COUNTERSIGN")
+                self._emit_entry(sig, [node], "COUNTERSIGNED")
+                self._emit_entry(node, [sig], "COUNTERSIGNED")
 
-        elif op == "UNDERSIGN":
+        elif op == "UNDERSIGNED":
             # Per-item reversed
             for node in nodes:
                 if node == sig:
                     # Self-identity → IDENTITY with empty nodes (§7.3)
                     self._emit_entry(sig, [], "IDENTITY")
                 else:
-                    self._emit_entry(node, [sig], "UNDERSIGN")
+                    self._emit_entry(node, [sig], "UNDERSIGNED")
 
-        elif op == "CONNOTATE":
+        elif op == "CONNOTED":
             # Per-item forward
             for node in nodes:
-                self._emit_entry(sig, [node], "CONNOTATE")
+                self._emit_entry(sig, [node], "CONNOTED")
 
-        elif op == "CANONIZE":
+        elif op == "CANONIZED":
             # Aggregated single entry
-            self._emit_entry(sig, list(nodes), "CANONIZE")
+            self._emit_entry(sig, list(nodes), "CANONIZED")
 
     # ------------------------------------------------------------------
     # Node collection (Step 2)
@@ -345,7 +345,7 @@ class ASTEmitter:
             # Already emitted — return existing index for Rule B4
             return self._mcs_canonize_seen[key]
 
-        self._emit_entry(sig, list(chars), "CANONIZE")
+        self._emit_entry(sig, list(chars), "CANONIZED")
         canonize_idx = len(self.entries) - 1
 
         return canonize_idx
@@ -364,7 +364,7 @@ class ASTEmitter:
         Note: IDENTITY dedup for MCS components is handled in _emit_mcs
         via _mcs_identity_seen, not here.
         """
-        if op == "CANONIZE":
+        if op == "CANONIZED":
             key = (sig, tuple(nodes))
             if key in self._mcs_canonize_seen:
                 return  # dedup — silently skip
@@ -396,8 +396,8 @@ class ASTEmitter:
         """
         if sig in self._mcs_identity_seen:
             return
-        if any(e.sig == sig and e.op == "CANONIZE" for e in self.entries):
-            return  # compound already introduced by its CANONIZE entry
+        if any(e.sig == sig and e.op == "CANONIZED" for e in self.entries):
+            return  # compound already introduced by its CANONIZED entry
         if any(e.sig == sig and e.op == "IDENTITY" for e in self.entries):
             return
         self._emit_entry(sig, [], "IDENTITY")
@@ -460,7 +460,7 @@ class ASTEmitter:
         duplicate IDENTITY when MCS expansion already provided one
         for the same identifier.
         """
-        is_canonize = op == "CANONIZE"
+        is_canonize = op == "CANONIZED"
 
         # Save parent kline tracking and CANONIZE subscript context
         saved_chars = self._parent_kline_chars
@@ -504,7 +504,7 @@ class ASTEmitter:
                 if (
                     self._in_canonize_subscript
                     and item.op is not None
-                    and self._op_to_str(item.op) == "UNDERSIGN"
+                    and self._op_to_str(item.op) == "UNDERSIGNED"
                 ):
                     resolved = self._resolve_char(item.sig.id)
                     self._emit_identity_if_needed(resolved)
@@ -533,7 +533,7 @@ class ASTEmitter:
                     self._in_canonize_subscript
                     and isinstance(construct, OperatorScope)
                     and construct.op is not None
-                    and self._op_to_str(construct.op) == "UNDERSIGN"
+                    and self._op_to_str(construct.op) == "UNDERSIGNED"
                 ):
                     resolved = self._resolve_char(construct.sig.id)
                     self._emit_identity_if_needed(resolved)
@@ -669,7 +669,7 @@ class ASTEmitter:
         if idx < 0:
             return  # safe no-op — char not in parent kline
         entry = self.entries[self._parent_kline_canonize_idx]
-        if entry.op != "CANONIZE":
+        if entry.op != "CANONIZED":
             return
         if isinstance(entry.nodes, list) and idx < len(entry.nodes):
             new_nodes = list(entry.nodes)
@@ -688,9 +688,9 @@ class ASTEmitter:
         if op is None:
             return "IDENTITY"
         _MAP = {
-            TokenType.COUNTERSIGN: "COUNTERSIGN",
-            TokenType.CANONIZE: "CANONIZE",
-            TokenType.CONNOTATE: "CONNOTATE",
-            TokenType.UNDERSIGN: "UNDERSIGN",
+            TokenType.COUNTERSIGN: "COUNTERSIGNED",
+            TokenType.CANONIZE: "CANONIZED",
+            TokenType.CONNOTATE: "CONNOTED",
+            TokenType.UNDERSIGN: "UNDERSIGNED",
         }
         return _MAP.get(op, "IDENTITY")

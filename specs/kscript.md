@@ -263,14 +263,14 @@ CompiledEntry:
 
 ### 6.2 Significance Level Assignment
 
-Each emitted entry is tagged with a significance level based on the operator that produced it:
+Each emitted entry is tagged with a significance level based on its structural state (the resulting signature↔nodes relationship, recorded in the `op` field):
 
-| Operator | Level | Meaning |
+| State | Level | Meaning |
 |----------|-------|---------|
-| COUNTERSIGN (`==`) | S1 | Mutual / bidirectional |
-| UNDERSIGN (`=`) | S3 | Unidirectional reversed |
-| CANONIZE (`=>`) | S2 | Canonical |
-| CONNOTATE (`>`) | S3 | Connotative |
+| COUNTERSIGNED (`==`) | S1 | Mutual / bidirectional |
+| UNDERSIGNED (`=`) | S3 | Unidirectional reversed |
+| CANONIZED (`=>`) | S2 | Canonical |
+| CONNOTED (`>`) | S3 | Connotative |
 | IDENTITY (bare) | S4 | Identity — bare node, no relationships |
 
 Significance bits are not encoded into the token IDs. The level is carried as metadata on the compiled entry.
@@ -575,8 +575,8 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|----|-------|
-| 1 | A | [B] | COUNTERSIGN | S1 |
-| 2 | B | [A] | COUNTERSIGN | S1 |
+| 1 | A | [B] | COUNTERSIGNED | S1 |
+| 2 | B | [A] | COUNTERSIGNED | S1 |
 
 ### 14.3 Undersign (Reversed)
 
@@ -588,7 +588,7 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|-------|-------|
-| 1 | B | [A] | UNDERSIGN | S3 |
+| 1 | B | [A] | UNDERSIGNED | S3 |
 
 ### 14.4 Connotate (Forward)
 
@@ -600,7 +600,7 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|-------|-------|
-| 1 | A | [B] | CONNOTATE | S3 |
+| 1 | A | [B] | CONNOTED | S3 |
 
 ### 14.5 Self-Identity
 
@@ -627,7 +627,7 @@ Compiled:
 | 1 | A | [] | IDENTITY | S4 |
 | 2 | B | [] | IDENTITY | S4 |
 | 3 | C | [] | IDENTITY | S4 |
-| 4 | ABC | [A, B, C] | CANONIZE | S2 |
+| 4 | ABC | [A, B, C] | CANONIZED | S2 |
 
 ### 14.7 Operator Chain
 
@@ -639,10 +639,10 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|-------------|-------|
-| 1 | A | [B] | COUNTERSIGN | S1 |
-| 2 | B | [A] | COUNTERSIGN | S1 |
-| 3 | B | [C] | CONNOTATE | S3 |
-| 4 | D | [C] | UNDERSIGN | S3 |
+| 1 | A | [B] | COUNTERSIGNED | S1 |
+| 2 | B | [A] | COUNTERSIGNED | S1 |
+| 3 | B | [C] | CONNOTED | S3 |
+| 4 | D | [C] | UNDERSIGNED | S3 |
 
 ### 14.8 CANONIZE with Subscript Block
 
@@ -656,8 +656,8 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|---------|-------|
-| 1 | A | [B, C] | CANONIZE | S2 |
-| 2 | D | C | UNDERSIGN | S3 |
+| 1 | A | [B, C] | CANONIZED | S2 |
+| 2 | D | C | UNDERSIGNED | S3 |
 | 3 | B | [] | IDENTITY | S4 |
 | 4 | C | [] | IDENTITY | S4 |
 | 5 | D | [] | IDENTITY | S4 |
@@ -672,8 +672,8 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|---------|-------|
-| 1 | A | [B] | CANONIZE | S2 |
-| 2 | B | [C] | CANONIZE | S2 |
+| 1 | A | [B] | CANONIZED | S2 |
+| 2 | B | [C] | CANONIZED | S2 |
 | 3 | C | [] | IDENTITY | S4 |
 
 ### 14.10 Non-CANONIZE with Indent
@@ -688,12 +688,12 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|-------------|-------|
-| 1 | A | [B] | COUNTERSIGN | S1 |
-| 2 | B | [A] | COUNTERSIGN | S1 |
-| 3 | A | [C] | COUNTERSIGN | S1 |
-| 4 | C | [A] | COUNTERSIGN | S1 |
-| 5 | A | [D] | COUNTERSIGN | S1 |
-| 6 | D | [A] | COUNTERSIGN | S1 |
+| 1 | A | [B] | COUNTERSIGNED | S1 |
+| 2 | B | [A] | COUNTERSIGNED | S1 |
+| 3 | A | [C] | COUNTERSIGNED | S1 |
+| 4 | C | [A] | COUNTERSIGNED | S1 |
+| 5 | A | [D] | COUNTERSIGNED | S1 |
+| 6 | D | [A] | COUNTERSIGNED | S1 |
 
 ### 14.11 Complex Nested (Full)
 
@@ -715,24 +715,24 @@ Compiled:
 | 2 | MCS H | H | [] | IDENTITY | S4 |
 | 3 | MCS A | A | [] | IDENTITY | S4 |
 | 4 | MCS L | L | [] | IDENTITY | S4 |
-| 5 | MCS MHALL canonize | MHALL | [M, H, A, L, L] | CANONIZE | S2 |
+| 5 | MCS MHALL canonize | MHALL | [M, H, A, L, L] | CANONIZED | S2 |
 | 6 | MCS S | S | [] | IDENTITY | S4 |
 | 7 | MCS V | V | [] | IDENTITY | S4 |
 | 8 | MCS O | O | [] | IDENTITY | S4 |
-| 9 | MCS SVO canonize | SVO | [S, V, O] | CANONIZE | S2 |
-| 10 | Countersign | MHALL | [SVO] | COUNTERSIGN | S1 |
-| 11 | Countersign reverse | SVO | [MHALL] | COUNTERSIGN | S1 |
+| 9 | MCS SVO canonize | SVO | [S, V, O] | CANONIZED | S2 |
+| 10 | Countersign | MHALL | [SVO] | COUNTERSIGNED | S1 |
+| 11 | Countersign reverse | SVO | [MHALL] | COUNTERSIGNED | S1 |
 | — | SVO canonize subscript | — | — | — | Dropped (canonize dedup: identical to entry 9) |
-| 12 | Undersign S | M | [S] | UNDERSIGN | S3 |
-| 13 | Undersign V | H | [V] | UNDERSIGN | S3 |
+| 12 | Undersign S | M | [S] | UNDERSIGNED | S3 |
+| 13 | Undersign V | H | [V] | UNDERSIGNED | S3 |
 | — | MCS ALL A | — | — | — | Dropped (identity dedup: {A:[]} identical to entry 3) |
 | — | MCS ALL L | — | — | — | Dropped (identity dedup: {L:[]} identical to entry 4) |
-| 14 | MCS ALL canonize | ALL | [A, L, L] | CANONIZE | S2 |
-| 15 | Undersign O | ALL | [O] | UNDERSIGN | S3 |
+| 14 | MCS ALL canonize | ALL | [A, L, L] | CANONIZED | S2 |
+| 15 | Undersign O | ALL | [O] | UNDERSIGNED | S3 |
 | — | ALL canonize subscript | — | — | — | Dropped (canonize dedup: identical to entry 14) |
-| 16 | Undersign D | D | [A] | UNDERSIGN | S3 |
-| 17 | Undersign M | M | [L] | UNDERSIGN | S3 |
-| 18 | Connotate | L | [O] | CONNOTATE | S3 |
+| 16 | Undersign D | D | [A] | UNDERSIGNED | S3 |
+| 17 | Undersign M | M | [L] | UNDERSIGNED | S3 |
+| 18 | Connotate | L | [O] | CONNOTED | S3 |
 
 > **MCS deduplication in action:** Four entries are silently dropped because they duplicate already-emitted MCS entries. Two component identity entries (MCS ALL component A and L) are dropped because MHALL's expansion already provided them. Two canonization entries (SVO subscript and ALL subscript) are dropped because their MCS canonization counterparts already exist. Compound identifiers receive no IDENTITY of their own (an identity requires a single-token signature), so there is nothing to drop for those. Only MCS-produced entries (component identity and canonization) are deduplicated — operator-produced duplicates are emitted as-is.
 

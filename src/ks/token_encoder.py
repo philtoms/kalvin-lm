@@ -22,8 +22,8 @@ Multi-token word MCS (§11.4):
        kline — preserving the node-count invariant (one word = one node).
 
 Significance levels (compile-time intent):
-    COUNTERSIGN → S1    UNDERSIGN → S3    CANONIZE → S2
-    CONNOTATE → S3      IDENTITY → S4
+    COUNTERSIGNED → S1    UNDERSIGNED → S3    CANONIZED → S2
+    CONNOTED → S3      IDENTITY → S4
 
 Dependencies: kalvin.kline.KLine, kalvin.abstract.KTokenizer,
               kalvin.signature.make_signature, ks.ast_emitter.SymbolicEntry.
@@ -42,12 +42,11 @@ __all__ = ["TokenEncoder"]
 
 # ── Significance level mapping (compile-time intent) ──────────────────
 _SIG_LEVELS: dict[str, str] = {
-    "COUNTERSIGN": "S1",
-    "UNDERSIGN": "S3",
-    "CANONIZE": "S2",
-    "CONNOTATE": "S3",
+    "COUNTERSIGNED": "S1",
+    "UNDERSIGNED": "S3",
+    "CANONIZED": "S2",
+    "CONNOTED": "S3",
     "IDENTITY": "S4",
-    "UNSIGNED": "S4",
 }
 
 
@@ -209,9 +208,9 @@ class TokenEncoder:
             # One CANONIZE: packed sig → subword tokens
             canon_dbg: KDbg | None = None
             if self._dev:
-                canon_dbg = self._build_dbg(packed, dbg_label, op="CANONIZE")
+                canon_dbg = self._build_dbg(packed, dbg_label, op="CANONIZED")
             else:
-                canon_dbg = KDbg(op="CANONIZE")
+                canon_dbg = KDbg(op="CANONIZED")
             extras.append(KLine(
                 signature=packed,
                 nodes=list(tokens),

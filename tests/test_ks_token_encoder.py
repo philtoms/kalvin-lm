@@ -73,7 +73,7 @@ class TestMod32Fallback:
     """Unbound characters produce valid encoded entries via Mod32."""
 
     def test_unbound_chars_encode(self, encoder: TokenEncoder, mod_tz: ModTokenizer) -> None:
-        entry = SymbolicEntry(sig="A", nodes=["B", "C"], op="COUNTERSIGN")
+        entry = SymbolicEntry(sig="A", nodes=["B", "C"], op="COUNTERSIGNED")
         results = encoder.encode_entries([entry])
         assert len(results) == 1
         compiled = results[0]
@@ -102,7 +102,7 @@ class TestNodesAlwaysList:
         assert isinstance(results[0].nodes, list)
 
     def test_single_node_is_list(self, encoder: TokenEncoder) -> None:
-        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTATE")
+        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTED")
         results = encoder.encode_entries([entry])
         assert len(results) == 1
         assert isinstance(results[0].nodes, list)
@@ -110,7 +110,7 @@ class TestNodesAlwaysList:
         assert not isinstance(results[0].nodes, int)
 
     def test_multiple_nodes(self, encoder: TokenEncoder) -> None:
-        entry = SymbolicEntry(sig="A", nodes=["B", "C", "D"], op="CANONIZE")
+        entry = SymbolicEntry(sig="A", nodes=["B", "C", "D"], op="CANONIZED")
         results = encoder.encode_entries([entry])
         assert len(results) == 1
         assert isinstance(results[0].nodes, list)
@@ -120,8 +120,8 @@ class TestNodesAlwaysList:
         """Every KLine produced must have list nodes."""
         entries = [
             SymbolicEntry(sig="A", nodes=[], op="IDENTITY"),
-            SymbolicEntry(sig="B", nodes=["C"], op="CONNOTATE"),
-            SymbolicEntry(sig="D", nodes=["E", "F"], op="COUNTERSIGN"),
+            SymbolicEntry(sig="B", nodes=["C"], op="CONNOTED"),
+            SymbolicEntry(sig="D", nodes=["E", "F"], op="COUNTERSIGNED"),
         ]
         results = encoder.encode_entries(entries)
         for r in results:
@@ -152,7 +152,7 @@ class TestNodeEncoding:
     """Node strings are correctly encoded to uint64."""
 
     def test_node_values(self, encoder: TokenEncoder, mod_tz: ModTokenizer) -> None:
-        entry = SymbolicEntry(sig="A", nodes=["B", "C"], op="CONNOTATE")
+        entry = SymbolicEntry(sig="A", nodes=["B", "C"], op="CONNOTED")
         results = encoder.encode_entries([entry])
         compiled = results[0]
         assert compiled.nodes[0] == mod_tz.encode("B")[0]
@@ -165,10 +165,10 @@ class TestSignificanceLevels:
     """Each op maps to the correct significance level in dbg.op."""
 
     @pytest.mark.parametrize("op,expected_level", [
-        ("COUNTERSIGN", "S1"),
-        ("UNDERSIGN", "S3"),
-        ("CANONIZE", "S2"),
-        ("CONNOTATE", "S3"),
+        ("COUNTERSIGNED", "S1"),
+        ("UNDERSIGNED", "S3"),
+        ("CANONIZED", "S2"),
+        ("CONNOTED", "S3"),
         ("IDENTITY", "S4"),
     ])
     def test_sig_level(self, dev_encoder: TokenEncoder, op: str, expected_level: str) -> None:
@@ -214,13 +214,13 @@ class TestMultiTokenMCS:
         """A multi-token node triggers unsigned + CANONIZE entries."""
         mock = MockMultiTokenTokenizer({"Mary": [10, 20]})
         enc = TokenEncoder(mock, dev=True)
-        entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTATE")
+        entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTED")
         results = enc.encode_entries([entry])
 
         # Should have: IDENTITY(10), IDENTITY(20), CANONIZE(30, [10,20]), CONNOTATE(A, [30])
         unsigned_entries = [r for r in results if r.dbg and r.dbg.op == "IDENTITY" and not r.nodes]
-        canonize_entries = [r for r in results if r.dbg and r.dbg.op == "CANONIZE"]
-        connotate_entries = [r for r in results if r.dbg and r.dbg.op == "CONNOTATE"]
+        canonize_entries = [r for r in results if r.dbg and r.dbg.op == "CANONIZED"]
+        connotate_entries = [r for r in results if r.dbg and r.dbg.op == "CONNOTED"]
 
         assert len(unsigned_entries) == 2
         assert unsigned_entries[0].signature == 10
@@ -248,7 +248,7 @@ class TestMultiTokenMCS:
         # MCS emits: IDENTITY(50), IDENTITY(60), CANONIZE(packed, [50,60])
         # Then main: IDENTITY(packed, [])
         mcs_unsigned = [r for r in results if r.dbg and r.dbg.op == "IDENTITY" and r.signature in (50, 60)]
-        canonize_entries = [r for r in results if r.dbg and r.dbg.op == "CANONIZE"]
+        canonize_entries = [r for r in results if r.dbg and r.dbg.op == "CANONIZED"]
         main_entry = results[-1]
 
         assert len(mcs_unsigned) == 2
@@ -266,14 +266,14 @@ class TestMultiTokenMCS:
         """MCS expansion entries appear before the entry that references them."""
         mock = MockMultiTokenTokenizer({"Mary": [10, 20]})
         enc = TokenEncoder(mock, dev=True)
-        entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTATE")
+        entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTED")
         results = enc.encode_entries([entry])
 
         # Main entry is last
-        assert results[-1].dbg.op == "CONNOTATE"
+        assert results[-1].dbg.op == "CONNOTED"
         # All MCS entries come before
         for r in results[:-1]:
-            assert r.dbg.op in ("IDENTITY", "CANONIZE")
+            assert r.dbg.op in ("IDENTITY", "CANONIZED")
 
 
 # ── Dedup multi-token MCS ────────────────────────────────────────────
@@ -285,15 +285,15 @@ class TestDedupMCS:
         mock = MockMultiTokenTokenizer({"Mary": [10, 20]})
         enc = TokenEncoder(mock, dev=True)
         entries = [
-            SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTATE"),
-            SymbolicEntry(sig="B", nodes=["Mary"], op="CONNOTATE"),
+            SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTED"),
+            SymbolicEntry(sig="B", nodes=["Mary"], op="CONNOTED"),
         ]
         results = enc.encode_entries(entries)
 
         # Only 2 IDENTITY entries (not 4) and 1 CANONIZE (not 2)
         unsigned_entries = [r for r in results if r.dbg and r.dbg.op == "IDENTITY" and not r.nodes]
-        canonize_entries = [r for r in results if r.dbg and r.dbg.op == "CANONIZE"]
-        connotate_entries = [r for r in results if r.dbg and r.dbg.op == "CONNOTATE"]
+        canonize_entries = [r for r in results if r.dbg and r.dbg.op == "CANONIZED"]
+        connotate_entries = [r for r in results if r.dbg and r.dbg.op == "CONNOTED"]
 
         assert len(unsigned_entries) == 2  # deduped from potential 4
         assert len(canonize_entries) == 1  # deduped from potential 2
@@ -311,7 +311,7 @@ class TestKLineIdentity:
     """Compiled KLines behave correctly as KLines."""
 
     def test_isinstance_kline(self, encoder: TokenEncoder) -> None:
-        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTATE")
+        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTED")
         results = encoder.encode_entries([entry])
         assert isinstance(results[0], KLine)
 
@@ -350,8 +350,8 @@ class TestMultipleEntries:
     def test_ordering_and_completeness(self, dev_encoder: TokenEncoder) -> None:
         entries = [
             SymbolicEntry(sig="A", nodes=[], op="IDENTITY"),
-            SymbolicEntry(sig="B", nodes=["C"], op="CONNOTATE"),
-            SymbolicEntry(sig="D", nodes=["E", "F"], op="CANONIZE"),
+            SymbolicEntry(sig="B", nodes=["C"], op="CONNOTED"),
+            SymbolicEntry(sig="D", nodes=["E", "F"], op="CANONIZED"),
         ]
         results = dev_encoder.encode_entries(entries)
         # At least one per input entry
@@ -359,8 +359,8 @@ class TestMultipleEntries:
         # Ops present in order
         ops = [r.dbg.op for r in results]
         assert "IDENTITY" in ops
-        assert "CONNOTATE" in ops
-        assert "CANONIZE" in ops
+        assert "CONNOTED" in ops
+        assert "CANONIZED" in ops
 
 
 # ── Dev mode debug text ─────────────────────────────────────────────
@@ -370,14 +370,14 @@ class TestDevMode:
 
     def test_dev_dbg(self, mod_tz: ModTokenizer) -> None:
         enc = TokenEncoder(mod_tz, dev=True)
-        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTATE")
+        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTED")
         results = enc.encode_entries([entry])
         # Main entry should have dbg
         assert results[0].dbg is not None
-        assert results[0].dbg.op == "CONNOTATE"
+        assert results[0].dbg.op == "CONNOTED"
 
     def test_no_dev_dbg(self, encoder: TokenEncoder) -> None:
-        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTATE")
+        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTED")
         results = encoder.encode_entries([entry])
         # In non-dev mode, only MCS subword entries get a minimal dbg
         # Main entries may or may not have dbg depending on encoder

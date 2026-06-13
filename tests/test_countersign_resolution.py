@@ -139,7 +139,7 @@ class TestUndersignIsConnotateReversed:
         assert len(undersign) == 1
         e = undersign[0]
         # Undersign maps to S3 (not S1) in _SIG_LEVELS
-        assert e.dbg.op == "UNDERSIGN"
+        assert e.dbg.op == "UNDERSIGNED"
         assert sig_level(e) == "S3"
 
         # Pre-register

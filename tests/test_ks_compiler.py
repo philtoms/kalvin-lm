@@ -133,7 +133,7 @@ class TestKS35ComplexNested:
         """CANONIZE dedup: no two CANONIZE entries share the same (sig, nodes)."""
         canonize_keys: set[tuple[int, tuple[int, ...]]] = set()
         for e in self.entries:
-            if e.dbg.op == "CANONIZE":
+            if e.dbg.op == "CANONIZED":
                 nodes = tuple(sorted(e.as_node_list()))
                 key = (e.signature, nodes)
                 assert key not in canonize_keys, (
@@ -143,7 +143,7 @@ class TestKS35ComplexNested:
 
     def test_canonize_count(self) -> None:
         """Three unique CANONIZE entries: MHALL, SVO, ALL."""
-        assert _count_entries(self.entries, "CANONIZE") == 3
+        assert _count_entries(self.entries, "CANONIZED") == 3
 
     def test_mcs_mhall_components(self) -> None:
         """MCS for MHALL: unsigned entries for M, H, A, L components."""
@@ -154,7 +154,7 @@ class TestKS35ComplexNested:
 
     def test_mcs_mhall_canonize(self) -> None:
         """MCS canonization: MHALL → [M, H, A, L, L]."""
-        assert _has_entry(self.entries, "CANONIZE", "AHLM", "MHALL")
+        assert _has_entry(self.entries, "CANONIZED", "AHLM", "MHALL")
 
     def test_mcs_svo_components(self) -> None:
         """MCS for SVO: unsigned entries for S, V, O components."""
@@ -164,31 +164,31 @@ class TestKS35ComplexNested:
 
     def test_mcs_svo_canonize(self) -> None:
         """MCS canonization: SVO → [S, V, O]."""
-        assert _has_entry(self.entries, "CANONIZE", "OSV", "SVO")
+        assert _has_entry(self.entries, "CANONIZED", "OSV", "SVO")
 
     def test_countersign_pair(self) -> None:
         """Countersign: MHALL → SVO and SVO → MHALL."""
-        assert _has_entry(self.entries, "COUNTERSIGN", "AHLM", "OSV")
-        assert _has_entry(self.entries, "COUNTERSIGN", "OSV", "AHLM")
+        assert _has_entry(self.entries, "COUNTERSIGNED", "AHLM", "OSV")
+        assert _has_entry(self.entries, "COUNTERSIGNED", "OSV", "AHLM")
 
     def test_undersign_pairs(self) -> None:
         """Undersign entries: M→S, H→V (reversed direction)."""
-        assert _has_entry(self.entries, "UNDERSIGN", "M", "S")
-        assert _has_entry(self.entries, "UNDERSIGN", "H", "V")
+        assert _has_entry(self.entries, "UNDERSIGNED", "M", "S")
+        assert _has_entry(self.entries, "UNDERSIGNED", "H", "V")
 
     def test_mcs_all(self) -> None:
         """MCS for ALL: canonize entry and undersign O→ALL."""
-        assert _has_entry(self.entries, "CANONIZE", "AL", "ALL")
-        assert _has_entry(self.entries, "UNDERSIGN", "AL", "O")
+        assert _has_entry(self.entries, "CANONIZED", "AL", "ALL")
+        assert _has_entry(self.entries, "UNDERSIGNED", "AL", "O")
 
     def test_leaf_undersign(self) -> None:
         """Leaf undersign: D→A, M→L."""
-        assert _has_entry(self.entries, "UNDERSIGN", "D", "A")
-        assert _has_entry(self.entries, "UNDERSIGN", "M", "L")
+        assert _has_entry(self.entries, "UNDERSIGNED", "D", "A")
+        assert _has_entry(self.entries, "UNDERSIGNED", "M", "L")
 
     def test_connotate(self) -> None:
         """Connotate: L → O."""
-        assert _has_entry(self.entries, "CONNOTATE", "L", "O")
+        assert _has_entry(self.entries, "CONNOTED", "L", "O")
 
     def test_all_entries_are_compiled_entry(self) -> None:
         """Every entry is a KLine instance."""
@@ -267,7 +267,7 @@ class TestKS36NLPBound:
 
         # Find CANONIZE entries for SVO
         for e in entries:
-            if e.dbg.op == "CANONIZE":
+            if e.dbg.op == "CANONIZED":
                 sig_str = nlp.decode([e.signature])
                 if sig_str == "SVO" or "S" in sig_str:
                     nodes = e.as_node_list()
@@ -288,7 +288,7 @@ class TestKS36NLPBound:
         for e in entries:
             assert isinstance(e, KLine)
             assert isinstance(e.signature, int)
-            assert e.dbg.op in ("COUNTERSIGN", "CANONIZE", "CONNOTATE", "UNDERSIGN", "IDENTITY", "UNSIGNED")
+            assert e.dbg.op in ("COUNTERSIGNED", "CANONIZED", "CONNOTED", "UNDERSIGNED", "IDENTITY")
 
 
 # ---------------------------------------------------------------------------
@@ -322,8 +322,8 @@ class TestKS37MixedNLPMod32:
         assert len(entries) > 0
         # In Mod32 mode, the annotation doesn't affect encoding
         # All characters pass through raw
-        assert _has_entry(entries, "COUNTERSIGN", "A", "B")
-        assert _has_entry(entries, "COUNTERSIGN", "B", "A")
+        assert _has_entry(entries, "COUNTERSIGNED", "A", "B")
+        assert _has_entry(entries, "COUNTERSIGNED", "B", "A")
 
 
 # ---------------------------------------------------------------------------
@@ -351,8 +351,8 @@ class TestCompileSource:
         """COUNTERSIGN produces correct sig/nodes structure."""
         entries = compile_source("A == B")
         # Should have COUNTERSIGN A→B and B→A
-        assert _has_entry(entries, "COUNTERSIGN", "A", "B")
-        assert _has_entry(entries, "COUNTERSIGN", "B", "A")
+        assert _has_entry(entries, "COUNTERSIGNED", "A", "B")
+        assert _has_entry(entries, "COUNTERSIGNED", "B", "A")
 
     def test_empty_source(self) -> None:
         """Empty source produces empty entries."""
@@ -398,7 +398,7 @@ class TestKScriptAPI:
         """KScript handles complex nested source."""
         model = KScript(SOURCE_14_11)
         assert len(model.entries) > 10
-        assert _has_entry(model.entries, "COUNTERSIGN", "AHLM", "OSV")
+        assert _has_entry(model.entries, "COUNTERSIGNED", "AHLM", "OSV")
 
     def test_dev_mode(self) -> None:
         """KScript(dev=True) enables debug text."""
@@ -428,7 +428,7 @@ class TestPipelineWiring:
         kfile = Parser(tokens).parse()
         entries = compiler.compile(kfile)
         assert len(entries) > 0
-        assert _has_entry(entries, "COUNTERSIGN", "A", "B")
+        assert _has_entry(entries, "COUNTERSIGNED", "A", "B")
 
     def test_end_to_end_mcs(self) -> None:
         """Multi-character identifier triggers MCS expansion."""
@@ -441,8 +441,8 @@ class TestPipelineWiring:
         assert _has_entry(entries, "IDENTITY", "B")
         assert _has_entry(entries, "IDENTITY", "C")
         # No MCS for single-char X
-        assert _has_entry(entries, "COUNTERSIGN", "ABC", "X")
-        assert _has_entry(entries, "COUNTERSIGN", "X", "ABC")
+        assert _has_entry(entries, "COUNTERSIGNED", "ABC", "X")
+        assert _has_entry(entries, "COUNTERSIGNED", "X", "ABC")
 
     def test_end_to_end_canonize(self) -> None:
         """CANONIZE operator with subscript block."""
@@ -451,7 +451,7 @@ class TestPipelineWiring:
         tokens = Lexer(source).tokenize()
         kfile = Parser(tokens).parse()
         entries = compiler.compile(kfile)
-        assert _has_entry(entries, "CANONIZE", "A", "BC")
+        assert _has_entry(entries, "CANONIZED", "A", "BC")
 
     def test_compiler_with_custom_tokenizer(self) -> None:
         """Compiler accepts custom tokenizer."""
@@ -523,5 +523,5 @@ class TestBindingScopeAlwaysCreated:
         # Verify entries exist (binding scope was active)
         assert len(entries) > 0
         # The COUNTERSIGN pair should involve the resolved word
-        countersigns = [e for e in entries if e.dbg.op == "COUNTERSIGN"]
+        countersigns = [e for e in entries if e.dbg.op == "COUNTERSIGNED"]
         assert len(countersigns) >= 2

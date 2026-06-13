@@ -28,8 +28,8 @@ class KDbg:
     by misfit expansions and model duplication.
 
     Attributes:
-        op: Originating operator (COUNTERSIGN, UNDERSIGN, CONNOTATE,
-            CANONIZE, IDENTITY).
+        op: Structural state (COUNTERSIGNED, UNDERSIGNED, CONNOTED,
+            CANONIZED, IDENTITY).
         label: Origin word or operator context.
         decoded: Tokenizer decode of the signature (actual subword text).
         pos: Part-of-speech tag (e.g. "PROPN", "VERB", "NOUN").
@@ -123,20 +123,19 @@ KGraph: TypeAlias = "object"  # Iterator[KLine] — for compat
 # ── Display helper ─────────────────────────────────────────────────────
 
 _OP_SYMBOLS = {
-    "COUNTERSIGN": "==",
-    "UNDERSIGN": "=",
-    "CONNOTATE": ">",
-    "CANONIZE": "=>",
+    "COUNTERSIGNED": "==",
+    "UNDERSIGNED": "=",
+    "CONNOTED": ">",
+    "CANONIZED": "=>",
     "IDENTITY": None,
 }
 
 _SIG_LEVELS = {
-    "COUNTERSIGN": "S1",
-    "UNDERSIGN": "S3",
-    "CANONIZE": "S2",
-    "CONNOTATE": "S3",
+    "COUNTERSIGNED": "S1",
+    "UNDERSIGNED": "S3",
+    "CANONIZED": "S2",
+    "CONNOTED": "S3",
     "IDENTITY": "S4",
-    "UNSIGNED": "S4",
 }
 
 
