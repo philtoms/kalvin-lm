@@ -590,7 +590,7 @@ Compiled:
 
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|-------|-------|
-| 1 | B | [A] | UNDERSIGN | S1 |
+| 1 | B | [A] | UNDERSIGN | S3 |
 
 ### 14.4 Connotate (Forward)
 
@@ -645,7 +645,7 @@ Compiled:
 | 1 | A | [B] | COUNTERSIGN | S1 |
 | 2 | B | [A] | COUNTERSIGN | S1 |
 | 3 | B | [C] | CONNOTATE | S3 |
-| 4 | D | [C] | UNDERSIGN | S1 |
+| 4 | D | [C] | UNDERSIGN | S3 |
 
 ### 14.8 CANONIZE with Subscript Block
 
@@ -660,7 +660,7 @@ Compiled:
 | Entry | Signature | Nodes | Op | Level |
 |-------|-----------|-------|---------|-------|
 | 1 | A | [B, C] | CANONIZE | S2 |
-| 2 | D | C | UNDERSIGN | S1 |
+| 2 | D | C | UNDERSIGN | S3 |
 | 3 | B | [] | IDENTITY | S4 |
 | 4 | C | [] | IDENTITY | S4 |
 | 5 | D | [] | IDENTITY | S4 |
@@ -728,16 +728,16 @@ Compiled:
 | 12 | Countersign | MHALL | [SVO] | COUNTERSIGN | S1 |
 | 13 | Countersign reverse | SVO | [MHALL] | COUNTERSIGN | S1 |
 | — | SVO canonize subscript | — | — | — | Dropped (canonize dedup: identical to entry 10) |
-| 14 | Undersign S | M | [S] | UNDERSIGN | S1 |
-| 15 | Undersign V | H | [V] | UNDERSIGN | S1 |
+| 14 | Undersign S | M | [S] | UNDERSIGN | S3 |
+| 15 | Undersign V | H | [V] | UNDERSIGN | S3 |
 | — | MCS ALL A | — | — | — | Dropped (identity dedup: {A:[]} identical to entry 3) |
 | — | MCS ALL L | — | — | — | Dropped (identity dedup: {L:[]} identical to entry 4) |
 | 16 | MCS ALL canonize | ALL | [A, L, L] | CANONIZE | S2 |
 | 17 | MCS ALL identity | ALL | [] | IDENTITY | S4 |
-| 18 | Undersign O | ALL | [O] | UNDERSIGN | S1 |
+| 18 | Undersign O | ALL | [O] | UNDERSIGN | S3 |
 | — | ALL canonize subscript | — | — | — | Dropped (canonize dedup: identical to entry 16) |
-| 19 | Undersign D | D | [A] | UNDERSIGN | S1 |
-| 20 | Undersign M | M | [L] | UNDERSIGN | S1 |
+| 19 | Undersign D | D | [A] | UNDERSIGN | S3 |
+| 20 | Undersign M | M | [L] | UNDERSIGN | S3 |
 | 21 | Connotate | L | [O] | CONNOTATE | S3 |
 
 > **MCS deduplication in action:** Four entries are silently dropped because they duplicate already-emitted MCS entries. Two identity entries (MCS ALL component A and L) are dropped because MHALL's expansion already provided them. Two canonization entries (SVO subscript and ALL subscript) are dropped because their MCS canonization counterparts already exist. Only MCS-produced entries (identity and canonization) are deduplicated — operator-produced duplicates are emitted as-is.
