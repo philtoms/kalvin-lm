@@ -163,3 +163,21 @@ uv run pytest                    # Run tests
 uv run ruff format .             # Format code
 uv run ruff check .              # Lint
 ```
+
+### CI
+
+GitHub Actions runs the full test suite on every push and pull request
+(`.github/workflows/ci.yml`). NLP-tokenizer tests are gated behind a
+`requires_nlp_data` marker so they skip cleanly on a fresh clone; CI
+provisions the `data/tokenizer/` assets so those tests **run instead of
+skip**, giving full NLP coverage.
+
+The assets are restored from a cache keyed on the rebuild pipeline's source
+files (`scripts/rebuild-tokenizer-data.sh`, `dev/nlp/*.py`) and a
+`data/tokenizer/.cache-version` stamp. On a cache hit the 34 MB of assets
+restore in seconds; on a miss CI runs the full rebuild (HuggingFace download →
+BPE train → spaCy analysis → vocab tagging, ~7–15 min) and caches the result.
+To force a rebuild, bump `.cache-version` (e.g. `v1` → `v2`).
+
+See [`.github/workflows/provision-tokenizer-data/README.md`](.github/workflows/provision-tokenizer-data/README.md)
+for the full cache-strategy rationale.

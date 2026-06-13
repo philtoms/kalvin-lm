@@ -1,0 +1,101 @@
+# GitHub Actions CI for kalvin.
+#
+# Provisions the data/tokenizer/ assets (cache-first, rebuild-on-miss) so the
+# full NLP-tokenizer test suite runs with zero skips. See the companion doc:
+#   provision-tokenizer-data/README.md
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded in-flight runs on the same ref to save CI minutes when
+# commits land in quick succession.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Full test suite ──────────────────────────────────────────────────────
+  # With data/tokenizer/ present, the 46 requires_nlp_data-gated tests run
+  # instead of skipping (see tests/conftest.py). The assets come from cache
+  # when the rebuild pipeline is unchanged, or from a full rebuild on miss.
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20 # catch hung rebuilds early (spaCy stage is CPU/network-heavy)
+    env:
+      # Resolve data assets to <checkout>/data — explicit beats relying on the
+      # default relative-path resolution, and matches where the rebuild script
+      # and the cache both place the files.
+      KALVIN_DATA_DIR: ${{ github.workspace }}/data
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        # Installs uv and Python; enable-cache speeds up repeated dependency
+        # installs and the spaCy model wheel download on cache-miss rebuilds.
+        uses: astral-sh/setup-uv@v8
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install dev dependencies
+        run: uv sync --extra dev
+
+      # ── Restore tokenizer data (cache-first) ─────────────────────────────
+      # Key on every source file that influences the build output. A change to
+      # any pipeline script (or bumping .cache-version) invalidates the cache,
+      # triggering a rebuild that then writes a fresh entry under the new key.
+      - name: Restore tokenizer data
+        id: cache-tokenizer
+        uses: actions/cache@v4
+        with:
+          path: data/tokenizer
+          key: tokenizer-data-${{ hashFiles('scripts/rebuild-tokenizer-data.sh', 'dev/nlp/train_tokenizer.py', 'dev/nlp/nlp_analyzer.py', 'dev/nlp/tag_vocab.py', 'data/tokenizer/.cache-version') }}
+
+      # ── Rebuild on cache miss ────────────────────────────────────────────
+      # Only reached when the cache key changed or no entry exists yet.
+      # Install BOTH extras: --extra corpus alone resolves to main+corpus and
+      # drops pytest/ruff (dev lives under [project.optional-dependencies], not
+      # a dependency-group).
+      - name: Rebuild tokenizer data (cache miss)
+        if: steps.cache-tokenizer.outputs.cache-hit != 'true'
+        run: |
+          uv sync --extra dev --extra corpus
+          # uv-managed venvs ship without pip; spaCy's `download` invokes
+          # `python -m pip`, so make pip available in the project venv first.
+          uv pip install pip
+          uv run python -m spacy download en_core_web_sm
+          bash scripts/rebuild-tokenizer-data.sh
+
+      - name: Run tests
+        run: uv run pytest
+
+  # ── Lint (fast, independent of data assets) ───────────────────────────────
+  # Advisory for now: the repo carries ~370 pre-existing ruff errors and ~100
+  # format deviations (predating this workflow). continue-on-error surfaces
+  # them without making CI red; flip to a hard gate once that debt is cleared.
+  # See follow-up task to clear pre-existing lint debt.
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          python-version: "3.12"
+
+      - name: Install dev dependencies
+        run: uv sync --extra dev
+
+      - name: Ruff check
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
