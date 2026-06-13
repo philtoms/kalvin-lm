@@ -122,12 +122,12 @@ class TestKS35ComplexNested:
         self.entries = compile_source(SOURCE_14_11, dev=True)
 
     def test_entry_count(self) -> None:
-        """Total entry count matches spec §14.11 (21 entries).
+        """Total entry count matches spec §14.11 (18 entries).
 
-        After KB-205: MCS component IDENTITY dedup, compound-own IDENTITY
-        emission, and subscript identity suppression for MCS CANONIZE scopes.
+        After KB-205 + KB-207: MCS component IDENTITY dedup, no compound-own
+        identity, and subscript identity suppression for MCS CANONIZE scopes.
         """
-        assert len(self.entries) == 21
+        assert len(self.entries) == 18
 
     def test_no_duplicate_canonize(self) -> None:
         """CANONIZE dedup: no two CANONIZE entries share the same (sig, nodes)."""
@@ -196,13 +196,12 @@ class TestKS35ComplexNested:
             assert isinstance(e, KLine)
 
     def test_identity_count(self) -> None:
-        """11 IDENTITY entries from MCS expansion + compound-own identity.
+        """7 IDENTITY entries from MCS component identities.
 
         MCS components (deduped): M, H, A, L, S, V, O = 7 unique chars.
-        Compound-own: MHALL, SVO, ALL = 3 compounds.
-        Total IDENTITY: 7 + 3 = 10 (no subscript identity for MCS CANONIZE).
+        Total IDENTITY: 7 (no compound-own identity).
         """
-        assert _count_entries(self.entries, "IDENTITY") == 10
+        assert _count_entries(self.entries, "IDENTITY") == 7
 
 
 # ---------------------------------------------------------------------------

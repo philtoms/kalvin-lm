@@ -566,7 +566,7 @@ class TestKS18NonCanonizeIndent:
 
 
 class TestKS19MCS:
-    """ABC → IDENTITY entries for A, B, C; CANONIZE {ABC:[A,B,C]}; IDENTITY {ABC:[]}."""
+    """ABC → IDENTITY entries for A, B, C; CANONIZE {ABC:[A,B,C]}."""
 
     def test_mcs_expansion(self):
         entries = emit(_file(_bare("ABC")))
@@ -579,11 +579,8 @@ class TestKS19MCS:
         # MCS CANONIZE
         assert_has_entry(entries, "ABC", ["A", "B", "C"], "CANONIZE")
 
-        # Compound's own IDENTITY
-        assert_has_entry(entries, "ABC", [], "IDENTITY")
-
     def test_mcs_entry_order(self):
-        """MCS components come before CANONIZE, compound IDENTITY comes last."""
+        """MCS components come before CANONIZE."""
         entries = emit(_file(_bare("ABC")))
         sigs = [e.sig for e in entries]
         idx_A = sigs.index("A")
@@ -593,14 +590,9 @@ class TestKS19MCS:
             i for i, e in enumerate(entries)
             if e.sig == "ABC" and e.op == "CANONIZE"
         )
-        idx_unsigned = next(
-            i for i, e in enumerate(entries)
-            if e.sig == "ABC" and e.op == "IDENTITY"
-        )
         assert idx_A < idx_canonize
         assert idx_B < idx_canonize
         assert idx_C < idx_canonize
-        assert idx_canonize < idx_unsigned
 
 
 # ======================================================================
@@ -871,47 +863,10 @@ class TestMCSComponentDedup:
         count_after_mhall = len(emitter.entries)
         emitter._emit_mcs("SVO")
         new_entries = emitter.entries[count_after_mhall:]
-        # SVO should emit: IDENTITY S, V, O + CANONIZE SVO + IDENTITY SVO
-        assert len(new_entries) == 5
+        # SVO emits: IDENTITY S, V, O + CANONIZE SVO (no compound-own identity)
+        assert len(new_entries) == 4
         sigs = [e.sig for e in new_entries]
-        assert sigs == ["S", "V", "O", "SVO", "SVO"]
-
-
-# ======================================================================
-# Test: Compound-own IDENTITY emission
-# ======================================================================
-
-
-class TestCompoundOwnIdentity:
-    """MCS emits IDENTITY for the compound identifier itself."""
-
-    def test_compound_own_identity_emitted(self):
-        """Bare ABC produces IDENTITY ABC []."""
-        entries = emit(_file(_bare("ABC")))
-        compound_identity = _find_entries(entries, sig="ABC", op="IDENTITY")
-        assert len(compound_identity) == 1
-        assert compound_identity[0].nodes == []
-
-    def test_compound_own_identity_dedup(self):
-        """Second _emit_mcs for same compound skips compound-own IDENTITY."""
-        emitter = ASTEmitter()
-        emitter._emit_mcs("ABC")
-        count_after_first = len(emitter.entries)
-        emitter._emit_mcs("ABC")
-        assert len(emitter.entries) == count_after_first
-
-    def test_compound_own_after_canonize(self):
-        """Compound-own IDENTITY comes after CANONIZE in entry order."""
-        entries = emit(_file(_bare("ABC")))
-        canonize_idx = next(
-            i for i, e in enumerate(entries)
-            if e.sig == "ABC" and e.op == "CANONIZE"
-        )
-        identity_idx = next(
-            i for i, e in enumerate(entries)
-            if e.sig == "ABC" and e.op == "IDENTITY"
-        )
-        assert identity_idx > canonize_idx
+        assert sigs == ["S", "V", "O", "SVO"]
 
 
 # ======================================================================

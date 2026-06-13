@@ -31,7 +31,6 @@ converts SymbolicEntry tuples to encoded uint64 values.
   entries are deduplicated across MCS calls via _mcs_identity_seen (a
   character emitted once is never emitted again).  Intra-expansion dedup
   prevents duplicate chars within a single compound (e.g., MHALL's second L).
-  Compound-own IDENTITY entries are deduplicated via _mcs_compound_seen.
 
 **NLP binding integration (spec §10):**
   When a BindingScope is provided, single-character identifiers are resolved
@@ -53,7 +52,7 @@ converts SymbolicEntry tuples to encoded uint64 values.
     never singleton-unwrapped.  Singleton unwrapping happens in TokenEncoder.
   - No IDENTITY op — self-identity emits IDENTITY with empty nodes.
   - No general deduplication beyond MCS — CANONIZE dedup per §8.3,
-    plus component IDENTITY and compound-own IDENTITY dedup.
+    plus component IDENTITY dedup.
 
 Spec references: §3 (Scope Model), §6 (Entry Model), §7 (Operator Rules),
 §8 (MCS Expansion), §10 (NLP Binding Resolution).
@@ -132,10 +131,6 @@ class ASTEmitter:
         # Tracks resolved characters already emitted as IDENTITY by MCS.
         self._mcs_identity_seen: set[str] = set()
 
-        # MCS compound-own IDENTITY dedup.
-        # Tracks compound identifiers that already have their own IDENTITY.
-        self._mcs_compound_seen: set[str] = set()
-
         # Rule B4 parent kline tracking — saved/restored on scope entry/exit.
         self._parent_kline_chars: str | None = None
         self._parent_kline_canonize_idx: int | None = None
@@ -202,10 +197,11 @@ class ASTEmitter:
         op = self._op_to_str(scope.op)
 
         if op == "IDENTITY":
-            # For multi-char sigs, _emit_mcs already emitted compound-own
-            # IDENTITY.  Skip duplicate emission.  For single-char sigs,
-            # _emit_mcs returns None (no MCS) so emit here.
-            if sig_resolved not in self._mcs_compound_seen:
+            # For multi-char sigs, _emit_mcs already emitted a CANONIZE
+            # entry (mcs_idx is not None), introducing the compound.  Skip
+            # IDENTITY — a compound cannot form one (spec §8).  For single-
+            # char sigs, _emit_mcs returns None (no MCS) so emit IDENTITY here.
+            if mcs_idx is None:
                 self._emit_entry(sig_resolved, [], "IDENTITY")
             return
 
@@ -310,7 +306,6 @@ class ASTEmitter:
 
         1. One IDENTITY entry per resolved constituent character (deduped).
         2. One CANONIZE entry mapping the compound to its resolved components.
-        3. One IDENTITY entry for the compound identifier itself (deduped).
 
         Component IDENTITY deduplication (§8.3 extended):
           - Intra-expansion: duplicate chars within a compound (e.g., MHALL's
@@ -321,9 +316,9 @@ class ASTEmitter:
         CANONIZE deduplication (§8.3):
           - Same (sig, nodes) pair is silently skipped.
 
-        Compound-own IDENTITY:
-          - After CANONIZE, emit IDENTITY(sig, []) for the compound itself.
-          - Deduped: second call for the same compound skips all entries.
+        No IDENTITY entry is emitted for the compound itself.  A compound
+        signature is the OR-reduction of multiple token IDs and cannot form
+        an identity (spec §8; CONTEXT.md "Identity" glossary).
 
         Returns the index of the CANONIZE entry (for Rule B4), or None
         if no MCS was emitted (single-char identifier).
@@ -352,11 +347,6 @@ class ASTEmitter:
 
         self._emit_entry(sig, list(chars), "CANONIZE")
         canonize_idx = len(self.entries) - 1
-
-        # Compound-own IDENTITY
-        if sig not in self._mcs_compound_seen:
-            self._mcs_compound_seen.add(sig)
-            self._emit_entry(sig, [], "IDENTITY")
 
         return canonize_idx
 
@@ -394,17 +384,20 @@ class ASTEmitter:
 
         Dedup checks (in order):
           1. _mcs_identity_seen — sig was already emitted as MCS component.
-          2. _mcs_compound_seen — sig was already emitted as compound-own.
+          2. Existing CANONIZE entry — sig is a compound already introduced
+             by its CANONIZE entry from MCS.
           3. Existing IDENTITY entries — sig already has an IDENTITY entry.
 
         This prevents duplicate IDENTITY when MCS expansion already provided
         one for the same identifier, or when the identifier already appears
-        as the signature of an IDENTITY entry.
+        as the signature of an IDENTITY entry.  The CANONIZE check blocks
+        compounds (which cannot form an identity) without affecting single-char
+        sigs that have only UNDERSIGN entries (e.g., D in §14.8).
         """
         if sig in self._mcs_identity_seen:
             return
-        if sig in self._mcs_compound_seen:
-            return
+        if any(e.sig == sig and e.op == "CANONIZE" for e in self.entries):
+            return  # compound already introduced by its CANONIZE entry
         if any(e.sig == sig and e.op == "IDENTITY" for e in self.entries):
             return
         self._emit_entry(sig, [], "IDENTITY")

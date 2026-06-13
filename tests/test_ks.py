@@ -671,24 +671,22 @@ class TestEmitterMCS:
     # -- KS-19: MCS expansion --------------------------------------------
 
     def test_ks19_mcs_expansion(self):
-        """KS-19: ABC → 5 entries matching §14.6.
+        """KS-19: ABC → 4 entries matching §14.6.
 
         Expected:
           1. A unsigned (S4)
           2. B unsigned (S4)
           3. C unsigned (S4)
           4. ABC canonize [A, B, C] (S2)
-          5. ABC unsigned (S4)
         """
         entries = compile_dev("ABC")
-        assert len(entries) == 5
+        assert len(entries) == 4
 
         assert _sig_str(entries[0]) == "A" and entries[0].dbg.op == "IDENTITY"
         assert _sig_str(entries[1]) == "B" and entries[1].dbg.op == "IDENTITY"
         assert _sig_str(entries[2]) == "C" and entries[2].dbg.op == "IDENTITY"
         assert _sig_str(entries[3]) == "ABC" and entries[3].dbg.op == "CANONIZE"
         assert _node_strs(entries[3]) == ["A", "B", "C"]
-        assert _sig_str(entries[4]) == "ABC" and entries[4].dbg.op == "IDENTITY"
 
     # -- KS-20: No MCS for single-char -----------------------------------
 
@@ -902,34 +900,31 @@ class TestComplexExamples:
     # -- KS-35: §14.11 complex nested (master regression) ----------------
 
     def test_ks35_complex_nested_strict(self):
-        """KS-35: §14.11 master regression — strict spec count (21 entries).
+        """KS-35: §14.11 master regression — strict spec count (18 entries).
 
-        After KB-205: MCS component IDENTITY dedup, compound-own IDENTITY
-        emission, subscript identity suppression for MCS CANONIZE scopes.
+        After KB-205 + KB-207: MCS component IDENTITY dedup, no compound-own
+        identity, subscript identity suppression for MCS CANONIZE scopes.
 
         Expected entries per spec §14.11:
         1–4:   MCS M, H, A, L identity (S4)
         5:     MHALL canonize [M, H, A, L, L] (S2)
-        6:     MHALL identity (S4)
-        7–9:   MCS S, V, O identity (S4)
-        10:    SVO canonize [S, V, O] (S2)
-        11:    SVO identity (S4)
-        12:    MHALL countersign [SVO] (S1)
-        13:    SVO countersign [MHALL] (S1)
+        6–8:   MCS S, V, O identity (S4)
+        9:     SVO canonize [S, V, O] (S2)
+        10:    MHALL countersign [SVO] (S1)
+        11:    SVO countersign [MHALL] (S1)
         (SVO canonize subscript: deduped)
-        14:    M undersign [S] (S3)
-        15:    H undersign [V] (S3)
+        12:    M undersign [S] (S3)
+        13:    H undersign [V] (S3)
         (MCS ALL A, L: deduped)
-        16:    ALL canonize [A, L, L] (S2)
-        17:    ALL identity (S4)
-        18:    ALL undersign [O] (S3)
+        14:    ALL canonize [A, L, L] (S2)
+        15:    ALL undersign [O] (S3)
         (ALL canonize subscript: deduped)
-        19:    D undersign [A] (S3)
-        20:    M undersign [L] (S3)
-        21:    L connotate [O] (S3)
+        16:    D undersign [A] (S3)
+        17:    M undersign [L] (S3)
+        18:    L connotate [O] (S3)
         """
         entries = compile_dev(_SEC1411_SOURCE)
-        assert len(entries) == 21
+        assert len(entries) == 18
 
         # Spot-check critical entries by dbg.label
         assert entries[0].dbg and entries[0].dbg.label == "M" and entries[0].dbg.op == "IDENTITY"
@@ -957,9 +952,9 @@ class TestComplexExamples:
         assert has_entry(entries, sig="L", op="CONNOTATE")
 
     def test_ks35_complex_nested_presence(self):
-        """KS-35: §14.11 master regression — key entries present (21 entries)."""
+        """KS-35: §14.11 master regression — key entries present (18 entries)."""
         entries = compile_dev(_SEC1411_SOURCE)
-        assert len(entries) == 21
+        assert len(entries) == 18
 
         # MCS identity for all single-char identifiers
         for char in ["M", "H", "A", "L", "S", "V", "O"]:
