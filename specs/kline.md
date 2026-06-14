@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Kline is the fundamental unit of the knowledge graph. It is an identified,
+A Kline is the fundamental unit of Kalvin's memory. It is an identified,
 ordered sequence of zero or more nodes.
 
 ## Definition

@@ -371,7 +371,7 @@ Returns Klines matching a predicate, in reverse insertion order.
 ## Graph Traversal
 
 A Kline's nodes are uint64 values. When a node value equals the signature of
-another Kline in the model, it forms an **edge** in the knowledge graph. Graph
+another Kline in the model, it forms an **edge** in the model. Graph
 traversal resolves these edges.
 
 All graph traversal operations search across all tiers.

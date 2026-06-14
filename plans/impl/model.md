@@ -1,4 +1,4 @@
-# Sub-Plan: Model — Four-Tier Knowledge Graph + Distance Algorithm
+# Sub-Plan: Model — Four-Tier Memory + Distance Algorithm
 
 **Parent:** [`plans/implement-kalvin.md`](../implement-kalvin.md)
 **Phase:** 5

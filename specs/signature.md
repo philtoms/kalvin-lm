@@ -4,12 +4,12 @@
 
 A signature is a 64-bit unsigned integer produced by `make_signature`. It is
 a plain OR-reduction of raw unmasked node values — no branching, no masking,
-no special cases. Signatures serve two roles in the knowledge graph:
+no special cases. Signatures serve two roles in the model:
 
 1. **As kline head** — the `signature` field of a kline identifies it and
    enables lookup.
 2. **As kline node** — a node value that references or selects other klines,
-   forming the edges of the knowledge graph.
+   forming the edges of the model.
 
 Every node contributes its full value to the OR-reduction regardless of type.
 
@@ -39,7 +39,7 @@ may serve as a signature.
 
 ### Roles
 
-A signature serves two distinct roles in the knowledge graph:
+A signature serves two distinct roles in the model:
 
 **1. Kline Head (Identity)**
 
@@ -51,7 +51,7 @@ not inherently unique).
 **2. Kline Node (Selection)**
 
 When a signature appears as a node in another kline's node sequence, it
-forms an **edge** in the knowledge graph. If a node value equals the
+forms an **edge** in the model. If a node value equals the
 signature of another kline, the model can resolve the node to that kline.
 This enables compositional hierarchies: a kline's nodes reference other
 klines.

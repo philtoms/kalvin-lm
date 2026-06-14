@@ -5,7 +5,7 @@
 The Agent is the orchestrator of the Kalvin rationalisation pipeline. It
 receives input, encodes it into Klines, retrieves candidates from the Model,
 routes each query-candidate pair, and integrates results back into the
-knowledge graph.
+model.
 
 The Agent's principal function is **rationalisation**: determining how a new
 Kline relates to existing knowledge and deciding what action to take. The
@@ -62,7 +62,7 @@ An Agent consists of:
 | Component | Type      | Description                            |
 | --------- | --------- | -------------------------------------- |
 | tokenizer | Tokenizer | Encodes text ↔ nodes.                  |
-| model     | Model     | Layered knowledge graph (STM → Frame → |
+| model     | Model     | Layered memory (STM → Frame → |
 |           |           | LTM → Base). Agent sees a single API. |
 | cogitator | Cogitator | Background processor for S2/S3 work    |
 |           |           | items.                                 |
@@ -77,7 +77,7 @@ Agent(
 ```
 
 - `tokenizer` — a Tokenizer instance. Defaults to Mod32.
-- `model` — a Model instance serving as the base knowledge graph. Defaults
+- `model` — a Model instance serving as the base memory. Defaults
   to an empty Model.
 
 A newly constructed Agent contains zero Klines in its model. The Cogitator
@@ -85,8 +85,8 @@ is created internally and starts its background thread immediately.
 
 ## Rationalisation
 
-Rationalisation is the process of integrating a Kline into the knowledge
-graph. It proceeds in phases with a fast/slow split:
+Rationalisation is the process of integrating a Kline into the
+model. It proceeds in phases with a fast/slow split:
 
 ```
 Rationalise(Q):

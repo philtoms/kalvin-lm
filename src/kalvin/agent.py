@@ -270,7 +270,7 @@ class KAgent:
         Tokenizer instance. Defaults to Mod32Tokenizer.
         Used for encoding text to nodes.
     model:
-        Model instance serving as base knowledge graph. Defaults to empty Model.
+        Model instance serving as base memory. Defaults to empty Model.
     adapter:
         Adapter for receiving events. Must implement ``on_event(event)``.
         Required — pass an ``EventBus`` for test/dev use, or a
@@ -347,7 +347,7 @@ class KAgent:
     # ── Rationalisation ───────────────────────────────────────────────
 
     def rationalise(self, kline: KLine) -> bool:
-        """Rationalise a KLine into the knowledge graph.
+        """Rationalise a KLine into the model.
 
         Fast path: routing (no model calls). S1/S4 resolve instantly.
         Slow path: S2/S3 queued as individual work items for cogitation.

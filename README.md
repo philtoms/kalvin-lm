@@ -42,7 +42,7 @@ No participant knows it's in a training loop. Each simply receives and responds.
 
 ## KScript — The Language of Teaching
 
-KScript is a DSL for constructing knowledge graphs. It compiles declarative scripts into klines that Kalvin rationalises.
+KScript is a DSL for writing structured klines. It compiles declarative scripts into klines that Kalvin rationalises.
 
 ```kscript
 (Mary had a little lamb)
@@ -121,7 +121,7 @@ src/
 │   ├── signature.py      #   Signature computation
 │   ├── tokenizer.py      #   Tokenizer interface
 │   ├── mod_tokenizer.py  #   Mod32/Mod64 tokenizers
-│   ├── model.py          #   3-tier knowledge graph (STM → Frame → Base)
+│   ├── model.py          #   4-tier memory (STM → Frame → LTM → Base)
 │   ├── agent.py          #   KAgent — rationalisation pipeline + Cogitator
 │   ├── events.py         #   Event definitions
 │   └── ...

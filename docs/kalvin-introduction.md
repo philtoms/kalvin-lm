@@ -6,7 +6,7 @@ This document introduces Kalvin. It describes what Kalvin is designed to do, wha
 
 ## The First Thing to Notice
 
-Kalvin produces two things at once: a response, and a measurement of how well that response is grounded in what Kalvin already knows. This measurement is called **significance**. It is not a quality score applied after the fact. It is a direct consequence of the rationalisation process — the structural fact of how the new kline fits into the knowledge graph, expressed as a number.
+Kalvin produces two things at once: a response, and a measurement of how well that response is grounded in what Kalvin already knows. This measurement is called **significance**. It is not a quality score applied after the fact. It is a direct consequence of the rationalisation process — the structural fact of how the new kline fits into the model, expressed as a number.
 
 This two-layered output is the first thing to notice because everything else follows from it. Without significance, the other agent in the dialog receives a response but has no basis for deciding what to do with it. Should it ratify? Scaffold? Correct? Submit new information? These decisions require knowing where Kalvin's understanding is strong and where it breaks down — and that is precisely what significance provides. It makes every response actionable. It tells the other agent exactly what to do next.
 
@@ -27,7 +27,7 @@ Significance is not an add-on to Kalvin's rationality. It is Kalvin's rationalit
 Understanding, for Kalvin, is the capacity to produce significant responses. Shape plays an essential role — it determines how close new information is to what Kalvin already knows and identifies which parts are not yet understood — but shape alone is not understanding. Understanding emerges from the interplay of structural fit, learned preferences, and the degree of fit made visible to other agents so they can act on it. These three things:
 
 1. **Shape** — the structural fit of a new kline against existing knowledge.
-2. **Preferences** — which paths through the graph to favour when multiple candidates exist.
+2. **Preferences** — which paths through the model to favour when multiple candidates exist.
 3. **Significance** — the degree of fit made visible to other agents, enabling them to decide what to do next.
 
 Shape is what Kalvin measures. Preferences shape the measurement. Significance makes the measurement useful. Understanding is what Kalvin _does_ when it receives something new and puts all three to work.
@@ -38,7 +38,7 @@ Shape is what Kalvin measures. Preferences shape the measurement. Significance m
 
 Significance falls on a spectrum, bounded by two conclusions: "I know" (S1) and "I don't understand this at all" (S4). The spectrum exists to help Kalvin reach conclusions. But most of Kalvin's rationalising life is spent between those endpoints, at S2 and S3, where understanding is partial and ongoing.
 
-S2 and S3 are not failed S1s. They are active states of reasoning. During these states, Kalvin continues to think — retracing paths through its knowledge graph, discovering connections that were not apparent before, generating proposals, applying its learned preferences. The cogitator runs on a background thread, working through the backlog of partially understood klines. When the dialog pauses, Kalvin studies. It revisits its partial knowledge, strengthens what it can, prepares for the next exchange.
+S2 and S3 are not failed S1s. They are active states of reasoning. During these states, Kalvin continues to think — retracing paths through its model, discovering connections that were not apparent before, generating proposals, applying its learned preferences. The cogitator runs on a background thread, working through the backlog of partially understood klines. When the dialog pauses, Kalvin studies. It revisits its partial knowledge, strengthens what it can, prepares for the next exchange.
 
 This is where understanding becomes a temporal concern. S2 and S3 take time. Kalvin is not expected to return immediately. It is expected to think, and to be given the time to do so. This is not a philosophical position. It is a functional requirement.
 
@@ -66,25 +66,25 @@ This matters because it locates the agency correctly. When Kalvin attaches signi
 
 ## Preferences Are Not Parameters — They Are Knowledge
 
-What Kalvin considers optimal is not fixed. Currently, temporal recency is the only preference wired up: Kalvin prefers more recent knowledge over older knowledge. Two identical klines arriving at different times can produce different rationalisations, not because the graph changed, but because the preference shifted the selection.
+What Kalvin considers optimal is not fixed. Currently, temporal recency is the only preference wired up: Kalvin prefers more recent knowledge over older knowledge. Two identical klines arriving at different times can produce different rationalisations, not because the model changed, but because the preference shifted the selection.
 
 But the architecture allows for more flexible preference mechanisms, and here is where the design becomes recursive: these preference mechanisms are themselves klines. They are recognised as knowledge with high internal significance and are subject to standard rationalisation — they can be taught, scaffolded, and ratified like any other knowledge.
 
-This means what Kalvin considers optimal is itself something Kalvin can be taught. There is no fixed utility function. The agent doesn't just teach Kalvin what to know — it teaches Kalvin how to evaluate. New preferences are bootstrapped through KScript, primed by the trainer into the knowledge graph, and from there they participate in rationalisation like any other high-significance kline. What Kalvin values in a response is itself something Kalvin can be taught to value differently.
+This means what Kalvin considers optimal is itself something Kalvin can be taught. There is no fixed utility function. The agent doesn't just teach Kalvin what to know — it teaches Kalvin how to evaluate. New preferences are bootstrapped through KScript, primed by the trainer into the model, and from there they participate in rationalisation like any other high-significance kline. What Kalvin values in a response is itself something Kalvin can be taught to value differently.
 
 ---
 
 ## Knowledge Is Monotonic
 
-Kalvin's knowledge graph only grows. Klines are added through rationalisation and ratification; they are never removed. This monotonic property has consequences that are worth tracing.
+Kalvin's memory only grows. Klines are added through rationalisation and ratification; they are never removed. This monotonic property has consequences that are worth tracing.
 
-Kalvin's rationality is internally consistent. If the knowledge graph contains a ratified misconception, Kalvin will produce highly significant responses that are structurally sound but semantically false by human lights. This is not a flaw. It is the natural consequence of a system whose responsibility is the reliability of its self-assessment, not the semantic correctness of its contents. Correctness belongs to the training agent.
+Kalvin's rationality is internally consistent. If Kalvin's memory contains a ratified misconception, Kalvin will produce highly significant responses that are structurally sound but semantically false by human lights. This is not a flaw. It is the natural consequence of a system whose responsibility is the reliability of its self-assessment, not the semantic correctness of its contents. Correctness belongs to the training agent.
 
-Correction happens through the introduction of more significant information — not by retracting what came before. New information doesn't override old information; it outcompetes it. If Kalvin has a ratified misconception at S1 and new conflicting information arrives, the new information is rationalised, attains its own significance, and — if more significant — becomes the preferred path during rationalisation. The misconception is still there in the graph, structurally intact, but it is no longer the optimal response. Nothing was deleted. The graph grew, and the balance of significance shifted.
+Correction happens through the introduction of more significant information — not by retracting what came before. New information doesn't override old information; it outcompetes it. If Kalvin has a ratified misconception at S1 and new conflicting information arrives, the new information is rationalised, attains its own significance, and — if more significant — becomes the preferred path during rationalisation. The misconception is still there in the model, structurally intact, but it is no longer the optimal response. Nothing was deleted. The model grew, and the balance of significance shifted.
 
-Monotonicity is also what makes scaffolding irreversible. Each scaffold adds structure to the graph. Even if a particular training goal is abandoned, the scaffolding erected along the way remains, enriching the model for future rationalisation. Every round of training leaves the graph larger than it found it.
+Monotonicity is also what makes scaffolding irreversible. Each scaffold adds structure to the model. Even if a particular training goal is abandoned, the scaffolding erected along the way remains, enriching it for future rationalisation. Every round of training leaves the model larger than it found it.
 
-And because correction uses the same mechanism as learning — rationalisation of new information — Kalvin can self-correct when new, possibly conflicting, information arrives, without any external intervention. The best time to correct Kalvin is during training. But the capacity for self-correction is always present, and it is a direct consequence of monotonic growth: the graph can always accept another kline, and that kline can always be more significant than what came before.
+And because correction uses the same mechanism as learning — rationalisation of new information — Kalvin can self-correct when new, possibly conflicting, information arrives, without any external intervention. The best time to correct Kalvin is during training. But the capacity for self-correction is always present, and it is a direct consequence of monotonic growth: the model can always accept another kline, and that kline can always be more significant than what came before.
 
 ---
 
@@ -110,8 +110,8 @@ Each agent's understanding is shaped by the other's capacity to understand. One 
 
 Kalvin's design makes several choices that are worth stating plainly:
 
-- **Preferences are learned, not given.** They are part of the knowledge graph — subject to ratification, scaffoldable, revisable.
-- **Information is structurally accumulated, not statistically weighted.** The knowledge graph grows through the addition of ratified klines. It does not converge through parameter adjustment.
+- **Preferences are learned, not given.** They are part of the model — subject to ratification, scaffoldable, revisable.
+- **Information is structurally accumulated, not statistically weighted.** The model grows through the addition of ratified klines. It does not converge through parameter adjustment.
 - **Actions include meta-actions.** Producing a significance level is itself the agentic act. It is not a side channel or a quality metric — it is the communication.
 - **Optimality is actionable, not accurate.** The optimal action is the most significant response Kalvin can produce, even if that response is "I don't understand this at all." An S4 response is optimally useful — it tells the other agent exactly where understanding breaks down.
 - **Rationality is second-order.** A rational agent doesn't just produce rational outputs — it rationalises its own rational outputs. The ability to assess and communicate the grounds for one's own understanding is not an add-on to rationality; it is constitutive of it.

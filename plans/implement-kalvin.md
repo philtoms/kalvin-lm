@@ -74,7 +74,7 @@ Phase 1: Kline                  - fundamental data unit
 Phase 2: Signature              - OR-reduction identity computation
 Phase 3: Tokenizer (Mod + BPE)  - text ↔ node conversion
 Phase 4: STM                    - bounded dual-keyed index (@stm spec)
-Phase 5: Model                  - three-tier knowledge graph
+Phase 5: Model                  - three-tier memory
 Phase 6: Significance Constants - D_MAX, MASK64 (in model.py)
 Phase 7: Events                 - pub/sub for rationalisation
 Phase 8: Agent                  - fast/slow split + Cogitator + WorkItem

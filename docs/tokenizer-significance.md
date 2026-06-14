@@ -37,7 +37,7 @@ This is a deliberately coarse encoding:
 - **Order is lost.** Packed encoding is commutative OR — `"AB"` and `"BA"` produce the same node.
 - **Multiplicity is lost.** `"AA"` and `"A"` produce the same node.
 
-The vocabulary is tiny (at most 95 printable ASCII characters, fewer usable bits), but that is precisely the point. The Mod tokenizer is not trying to compress information — it is assigning orthogonal bit dimensions to a small, observable character set so that the resulting knowledge graph can be inspected, reasoned about, and even hand-crafted.
+The vocabulary is tiny (at most 95 printable ASCII characters, fewer usable bits), but that is precisely the point. The Mod tokenizer is not trying to compress information — it is assigning orthogonal bit dimensions to a small, observable character set so that the resulting model can be inspected, reasoned about, and even hand-crafted.
 
 ### Fine Dimensionality: BPE Tokenizer
 
@@ -84,7 +84,7 @@ The BPE tokenizer does not use literal encoding — its tokens never carry the l
 
 ## The Mod(N)Tokenizer and KScript
 
-The Mod tokenizer is designed to work directly with **KScript** — Kalvin's domain-specific language for constructing knowledge graphs. Its purpose is **research**: to provide compact, observable, accessible graphs that can be reasoned with and even hand-crafted during Kalvin development.
+The Mod tokenizer is designed to work directly with **KScript** — Kalvin's domain-specific language for writing structured klines. Its purpose is **research**: to provide compact, observable, accessible models that can be reasoned with and even hand-crafted during Kalvin development.
 
 Consider **MHALL**, a common entry point for rationalisation. It consists of just 4 tokens — `M`, `H`, `A`, `L`, `L` — which pack into a single signature:
 
@@ -116,7 +116,7 @@ The literal test is not a tokenizer-vendored function. Kalvin handles it directl
 
 | Property | Mod(N)Tokenizer | BPE Tokenizer |
 |----------|-----------------|---------------|
-| Purpose | Research, KScript, hand-crafting | Production, large-scale graphs |
+| Purpose | Research, KScript, hand-crafting | Production, large-scale models |
 | Vocabulary | Fixed ASCII character set | Trained from corpus (thousands) |
 | Dimensionality | Coarse: 1 bit per character | Fine: linguistic categories per token |
 | Literal support | Yes (escape mechanism) | No (always non-literal) |

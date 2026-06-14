@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-KScript is a domain-specific language for constructing **knowledge graphs** — ordered sequences of identified nodes called **KLines**. It compiles declarative scripts into a list of compiled entries that can be loaded into a Kalvin Agent for rationalisation.
+KScript is a domain-specific language for constructing **klines** — ordered sequences of identified nodes (each called a **KLine**). It compiles declarative scripts into a list of compiled entries that can be loaded into a Kalvin Agent for rationalisation.
 
 ### 1.1 Compilation Pipeline
 
@@ -444,7 +444,7 @@ The BindingScope is a lightweight scope stack:
 
 ### 10.4 Unbound Characters
 
-When a single-character identifier cannot be resolved through any mechanism, it remains unbound. Unbound characters are encoded using Mod32 bit-packed encoding as a fallback. This produces mixed NLP/Mod32 klines within the same knowledge graph.
+When a single-character identifier cannot be resolved through any mechanism, it remains unbound. Unbound characters are encoded using Mod32 bit-packed encoding as a fallback. This produces mixed NLP/Mod32 klines within the same model.
 
 ---
 
@@ -470,7 +470,7 @@ When a character cannot be resolved through any binding mechanism (§10.4), it i
 encode_unbound("A") → bit_A
 ```
 
-This produces mixed NLP/Mod32 klines within the same graph.
+This produces mixed NLP/Mod32 klines within the same model.
 
 ### 11.4 Multi-Token Words
 
@@ -486,7 +486,7 @@ When a resolved word BPE-encodes to multiple tokens (e.g., "Mary" → `[mar, y]`
   parent kline uses (mar|y) as its single node
 ```
 
-This is structurally identical to §8 character-level MCS, applied at the BPE subword level. The node-count invariant (§8.2) is maintained: one character = one node, regardless of BPE token count. The consumer of the knowledge graph sees one node per character; the BPE decomposition is recorded in the graph for downstream use.
+This is structurally identical to §8 character-level MCS, applied at the BPE subword level. The node-count invariant (§8.2) is maintained: one character = one node, regardless of BPE token count. The consumer of the model sees one node per character; the BPE decomposition is recorded in the model for downstream use.
 
 §11.4 applies only to resolved words, not to compound identifiers (§8): a compound's decomposition is its CANONIZED entry, so re-encoding its literal string is prohibited. A packed signature — whether a §11.4 multi-token word's OR-reduction or a §11.5 compound — is the OR-reduction of multiple token IDs and cannot head an IDENTITY kline (CONTEXT.md "Identity"); the decomposition above (component identities + canonize) is a multi-token word's sole representation, and no standalone IDENTITY kline is emitted at the packed signature.
 

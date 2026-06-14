@@ -170,7 +170,7 @@ Scaffold klines go through the same rationalisation pipeline as any other kline.
 Query → rationalise → S3 → scaffold → rationalise → S2 → scaffold → rationalise → S1
 ```
 
-The system learns structure by structure. Each round adds a piece of understanding. Over successive rounds, the original query's significance ascends — not because standards were relaxed, but because the knowledge graph genuinely grew to support it.
+The system learns structure by structure. Each round adds a piece of understanding. Over successive rounds, the original query's significance ascends — not because standards were relaxed, but because the model genuinely grew to support it.
 
 ### Convergence
 
@@ -229,13 +229,13 @@ This is not accidental behaviour. KScript's `=>` operator deliberately creates S
 
 ### Growth
 
-This is how Kalvin grows: not by adjusting weights or minimising error, but by building a knowledge graph one kline at a time. Each exchange adds structure. Each pause strengthens it. Over time, the graph becomes rich enough that new klines fit into familiar shapes, and Kalvin's responses carry the confidence of a system that has seen enough of the world to understand what it is being shown.
+This is how Kalvin grows: not by adjusting weights or minimising error, but by building its memory one kline at a time. Each exchange adds structure. Each pause strengthens it. Over time, the model becomes rich enough that new klines fit into familiar shapes, and Kalvin's responses carry the confidence of a system that has seen enough of the world to understand what it is being shown.
 
 ---
 
 ## Curriculum
 
-A curriculum is the agent's plan for building a knowledge graph. It determines what to submit, when to prime vs. query, what expectations to hold, and how to respond to proposals. Kalvin has no concept of a curriculum — it exists entirely outside the agent.
+A curriculum is the agent's plan for building Kalvin's memory. It determines what to submit, when to prime vs. query, what expectations to hold, and how to respond to proposals. Kalvin has no concept of a curriculum — it exists entirely outside the agent.
 
 A curriculum can range from fully reactive to fully scripted:
 
@@ -318,8 +318,8 @@ The system is built from a small set of components, each with a clean responsibi
 | **Signature**             | OR-reduction of nodes into a single identity key.                                                       | `specs/signature.md` |
 | **Tokenizer** (Mod / BPE) | Converts text to nodes and back.                                                                         | `specs/tokenizer.md` |
 | **STM**                   | Bounded rolling window for recent KLines, indexed by signature and nodes-signature.                      | `specs/stm.md`       |
-| **Model**                 | Three-tier knowledge graph (STM → Frame → Base) with graph traversal and significance computation.       | `specs/model.md`     |
+| **Model**                 | Three-tier memory (STM → Frame → Base) with graph traversal and significance computation.       | `specs/model.md`     |
 | **Agent**                 | Orchestrates the rationalisation pipeline — receives KLines, evaluates significance, integrates results. | `specs/agent.md`     |
 | **Cogitator**             | Background processor for ambiguous (S2/S3) results, including S2 expansion.                              | `specs/agent.md`     |
-| **KScript**               | Domain-specific language for declaratively constructing knowledge graphs.                                | `specs/kscript.md`   |
+| **KScript**               | Domain-specific language for declaratively writing structured klines.                                | `specs/kscript.md`   |
 | **Events**                | Pub/sub mechanism allowing observers to react to rationalisation outcomes.                               | `specs/agent.md`     |

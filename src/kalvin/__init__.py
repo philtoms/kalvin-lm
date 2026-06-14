@@ -1,4 +1,4 @@
-"""Kalvin - Knowledge graph with tokenization support."""
+"""Kalvin - A learning system that stores and retrieves memory as klines."""
 
 __version__ = "0.1.0"
 

@@ -85,7 +85,7 @@ A value produced by the tokenizer.
 A value occupying a slot in a kline's nodes list. May be a single Token ID or the OR-reduction of two or more token IDs.
 
 **KLine**:
-The fundamental unit of the knowledge graph: a **signature** (head position) and a **nodes** list (zero or more **Nodes**). Two kinds: **identity** (signature is a single Token ID, empty nodes list — see Identity) and **relationship** (one or more nodes).
+The fundamental unit of Kalvin's memory: a **signature** (head position) and a **nodes** list (zero or more **Nodes**). Two kinds: **identity** (signature is a single Token ID, empty nodes list — see Identity) and **relationship** (one or more nodes).
 
 **Signature**:
 The value occupying a kline's head position. The same kind of value as a Node — a single Token ID (for an identity) or the OR-reduction of its nodes (for a relationship kline).

@@ -155,7 +155,7 @@ at U+10FFFF (21 bits). Upper 32 bits provide ample room.
 2. JSON serialization (`Agent.to_dict` / `from_dict`).
 3. File save/load with auto-format detection.
 4. Remove any unused dependencies.
-5. Integration test: full pipeline from text input to persisted knowledge graph.
+5. Integration test: full pipeline from text input to persisted model.
 
 ---
 

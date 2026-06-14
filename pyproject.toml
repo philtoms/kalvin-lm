@@ -1,7 +1,7 @@
 [project]
 name = "kalvin"
 version = "0.1.0"
-description = "Knowledge graph with tokenization support"
+description = "A learning system that stores and retrieves memory as structured klines"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 dependencies = [
