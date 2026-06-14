@@ -474,20 +474,36 @@ def _collect_node_ids(self, items, child_block) -> list[str]:
 
 ### 6D: MCS expansion (1h)
 
-**Spec ref:** §8
+**Spec ref:** §8 (incl. §8.3 canonical resolution)
 
 ```python
 def _emit_mcs(self, sig: str) -> int | None:
-    """Emit MCS entries for multi-character identifiers."""
+    """Emit MCS entries for a multi-character identifier (§8).
+
+    Canonical resolution (§8.3): the component list is computed once,
+    on first expansion, and cached in ``_resolution_cache``. Subsequent
+    calls for the same sig reuse the cached list (a copy) so the
+    BindingScope occurrence counter is never re-advanced for that
+    identifier — the same sig resolves identically whether it appears
+    as a node or as a signature.
+    """
     if len(sig) <= 1:
         return None
 
-    chars = [self._resolve_char(c) for c in sig]
+    # Canonical resolution: resolve once, reuse thereafter.
+    if sig in self._resolution_cache:
+        chars = list(self._resolution_cache[sig])
+    else:
+        chars = [self._resolve_char(c) for c in sig]
+        self._resolution_cache[sig] = list(chars)
+
     for resolved_char in chars:
-        self._emit_entry(resolved_char, [], "UNSIGNED")
-    self._emit_entry(sig, chars, "CANONIZE")
+        self._emit_entry(resolved_char, [], "UNSIGNED")   # deduped via _mcs_identity_seen
+    self._emit_entry(sig, chars, "CANONIZE")              # deduped via _mcs_canonize_seen
     return len(self.entries) - 1  # index of CANONIZE entry for Rule B4
 ```
+
+Initialize ``self._resolution_cache: dict[str, list[str]] = {}`` in the constructor. The cache is what realizes both §8.3 canonical resolution and (because a CANONIZE scope whose subscript children spell its own sig reuses the cached components) the single-expansion invariant for a node-that-is-a-nested-scope.
 
 **MCS deduplication (§8.3):**
 
@@ -578,6 +594,17 @@ class TokenEncoder:
 - **Node strings** → each encoded via tokenizer → `list[uint64]`. Always a list.
 - **Empty nodes** → `[]`. Never None.
 - **Multi-token words** (§11.4): When a resolved word BPE-encodes to multiple tokens, run full MCS at the BPE-token level: emit unsigned entries per token, CANONIZE mapping packed signature → tokens, return packed signature as the single node.
+
+**Canonical encoding (§11.4/§11.5).** A compound identifier (§8 multi-char sig) is BPE-encoded via its resolved components, never by re-encoding its literal string. Maintain ``_compound_sigs: dict[str, int]``:
+- On a CANONIZED definition (the compound's defining entry): compute ``sig = make_signature(node_values)`` and register ``entry.sig → sig``. The ASTEmitter guarantees definition-before-reference ordering.
+- On any entry whose signature or node string is a known compound: reuse the registered uint64 instead of ``encode(literal_string)``.
+
+This yields three coupled rules, all consequences of "a compound has one identity, computed once":
+1. Compound exemption: a compound sig is never passed through §11.4 (``encode("MHALL")`` → literal letters is meaningless); its components are the resolved node values.
+2. Packed-sig IDENTITY suppression: when ``op == IDENTITY`` and the signature is packed (multi-token §11.4 word or compound), do not emit a main IDENTITY kline — the decomposition above is the sole representation, and a packed value cannot head an identity (CONTEXT.md "Identity").
+3. ``_build_dbg`` must not ``decode()`` a packed signature: it is opaque per §11.6 (decode may crash or return an unrelated word). Track ``sig_is_packed`` alongside the signature and skip decode/grammar-lookup when set; decode defensively (try/except) for the single-token path.
+
+Operator entries (COUNTERSIGNED/UNDERSIGNED/CONNOTED) with a compound signature are legitimate references and are emitted normally; for them ``signature != OR(nodes)`` by design (the signature is a registry lookup, not a reduction of that entry's own nodes).
 
 ### Multi-token word handling
 
@@ -760,6 +787,11 @@ def has_entry(md, sig, nodes):
 | KS-35 | Integration | §14.11 complex nested |
 | KS-36 | Integration | §14.12 NLP-bound |
 | KS-37 | Integration | Mixed NLP/Mod32 |
+| KS-38 | MCS Dedup | Component identity dedup |
+| KS-39 | MCS Dedup | Intra-expansion dedup |
+| KS-40 | MCS Dedup | Canonization dedup |
+| KS-41 | MCS | Canonical resolution (§8.3) — same identifier resolves identically wherever it appears |
+| KS-42 | Encoding | Canonical encoding (§11.4/§11.5) — one CANONIZED per compound; single-token identity sigs |
 
 ---
 

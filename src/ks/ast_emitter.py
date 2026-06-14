@@ -131,6 +131,12 @@ class ASTEmitter:
         # Tracks resolved characters already emitted as IDENTITY by MCS.
         self._mcs_identity_seen: set[str] = set()
 
+        # Canonical resolution cache (§8.3): an identifier's resolved
+        # component list is computed on first expansion and reused by every
+        # subsequent reference, so the BindingScope occurrence counter never
+        # re-advances for the same identifier.
+        self._resolution_cache: dict[str, list[str]] = {}
+
         # Rule B4 parent kline tracking — saved/restored on scope entry/exit.
         self._parent_kline_chars: str | None = None
         self._parent_kline_canonize_idx: int | None = None
@@ -214,8 +220,15 @@ class ASTEmitter:
             if len(nid) > 1:
                 self._emit_mcs(nid)
 
-        # 6. Resolve nodes
-        resolved_nodes = self._resolve_nodes(node_ids, scope)
+        # 6. Resolve nodes. A CANONIZE scope whose sig was MCS-expanded
+        #    aggregates the SAME identifier's components — reuse the cached
+        #    resolution (§8.3) so the operator entry matches the MCS canonize
+        #    entry and dedups correctly, rather than re-resolving against an
+        #    advanced/exhausted occurrence counter.
+        if op == "CANONIZED" and scope.sig.id in self._resolution_cache:
+            resolved_nodes = list(self._resolution_cache[scope.sig.id])
+        else:
+            resolved_nodes = self._resolve_nodes(node_ids, scope)
 
         # 7. Emit operator entries
         self._emit_operator_entries(sig_resolved, resolved_nodes, op)
@@ -327,7 +340,14 @@ class ASTEmitter:
         if len(sig) <= 1:
             return None
 
-        chars = [self._resolve_char(c) for c in sig]
+        # Canonical resolution (§8.3): resolve once on first expansion,
+        # reuse the cached list thereafter so the same identifier resolves
+        # identically whether it appears as a node or as a signature.
+        if sig in self._resolution_cache:
+            chars = list(self._resolution_cache[sig])
+        else:
+            chars = [self._resolve_char(c) for c in sig]
+            self._resolution_cache[sig] = list(chars)
 
         # Component identities — with intra- and inter-expansion dedup
         seen_in_this_call: set[str] = set()

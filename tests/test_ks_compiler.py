@@ -222,22 +222,23 @@ class TestKS36NLPBound:
         M → Mary, H → Had, A → "A", L → "Little", L → "Lamb".
         """
         nlp = self._get_nlp_tokenizer()
-        entries = compile_source(SOURCE_14_12, tokenizer=nlp)
+        # dev=True so dbg.label carries the resolved symbolic signature
+        # string. A packed signature is opaque per §11.6 and cannot be
+        # decoded as a single BPE token, so the label is the reliable text.
+        entries = compile_source(SOURCE_14_12, tokenizer=nlp, dev=True)
 
-        # Build decoded map using NLP tokenizer
-        decoded = []
+        all_text: list[str] = []
         for e in entries:
-            sig_str = nlp.decode([e.signature])
-            nodes = e.as_node_list()
-            nodes_str = nlp.decode(nodes) if nodes else ""
-            decoded.append((e.dbg.op, sig_str, nodes_str))
+            if e.dbg.label:
+                all_text.append(e.dbg.label)
+            for node_val in e.as_node_list():
+                try:
+                    decoded = nlp.decode([node_val])
+                    if decoded:
+                        all_text.append(decoded)
+                except Exception:
+                    pass  # packed node — opaque
 
-        # MCS for MHALL should have resolved characters to their bound
-        # words.  Under the regenerated BPE model, multi-syllable words
-        # (e.g. "Mary", "Lamb") may appear in an entry's node-list rather
-        # than its single-node signature, so check each word appears in
-        # either the decoded sig or the decoded node-list.
-        all_text = [t for _op, sig, nodes in decoded for t in (sig, nodes) if t]
         for word in ("Mary", "Had", "A", "Little", "Lamb"):
             assert any(word == t for t in all_text), (
                 f"Expected '{word}' binding to appear in compiled entries"
@@ -272,6 +273,61 @@ class TestKS36NLPBound:
             assert isinstance(e, KLine)
             assert isinstance(e.signature, int)
             assert e.dbg.op in ("COUNTERSIGNED", "CANONIZED", "CONNOTED", "UNDERSIGNED", "IDENTITY")
+
+
+# ---------------------------------------------------------------------------
+# KS-41/42: Canonical resolution + encoding (§8.3, §11.4/§11.5)
+# ---------------------------------------------------------------------------
+
+
+@requires_nlp_data
+class TestCanonicalEncoding:
+    """KS-41 (canonical resolution) + KS-42 (canonical encoding).
+
+    Asserted at the KLine level (post-TokenEncoder) on the §14.12
+    NLP-bound example. These are the regression net for the duplicate-
+    CANONIZE and phantom-IDENTITY bugs: an identifier has one identity,
+    computed once and reused.
+    """
+
+    def _entries(self, tokenizer):
+        return compile_source(SOURCE_14_12, tokenizer=tokenizer, dev=True)
+
+    def test_one_canonized_per_compound(self, nlp_tokenizer):
+        """KS-42: exactly one CANONIZED kline per compound identifier."""
+        entries = self._entries(nlp_tokenizer)
+        from collections import Counter
+        counts = Counter(e.dbg.label for e in entries if e.dbg.op == "CANONIZED")
+        for compound in ("MHALL", "SVO", "ALL"):
+            assert counts.get(compound, 0) == 1, (
+                f"{compound}: expected 1 CANONIZED, got {counts.get(compound, 0)}"
+            )
+
+    def test_no_packed_identity(self, nlp_tokenizer):
+        """KS-42: no IDENTITY kline carries a packed (compound) signature."""
+        entries = self._entries(nlp_tokenizer)
+        packed_sigs = {e.signature for e in entries if e.dbg.op == "CANONIZED"}
+        bad = [e for e in entries if e.dbg.op == "IDENTITY" and e.signature in packed_sigs]
+        assert bad == [], f"IDENTITY klines with packed sigs: {bad}"
+
+    def test_compound_resolution_consistent(self, nlp_tokenizer):
+        """KS-41: a compound resolves identically wherever it appears.
+
+        The CANONIZED definition's nodes are the canonical resolution;
+        no other kline should carry a CANONIZED entry for the same
+        compound with different (decoded) nodes.
+        """
+        entries = self._entries(nlp_tokenizer)
+        seen = {}
+        for e in entries:
+            if e.dbg.op != "CANONIZED":
+                continue
+            nodes = tuple(sorted(e.as_node_list()))
+            prev = seen.get(e.dbg.label)
+            assert prev is None or prev == nodes, (
+                f"{e.dbg.label}: divergent CANONIZED nodes {prev} vs {nodes}"
+            )
+            seen[e.dbg.label] = nodes
 
 
 # ---------------------------------------------------------------------------

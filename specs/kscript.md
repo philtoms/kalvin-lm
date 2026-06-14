@@ -373,6 +373,8 @@ A compound identifier does not receive its own IDENTITY entry. An identity requi
 
 Deduplication applies only to MCS-produced entries — it is not a general deduplication mechanism. Operator-produced entries (COUNTERSIGN, UNDERSIGN, CONNOTATE) and non-MCS IDENTITY entries are always emitted.
 
+**Canonical resolution.** An identifier's MCS component list is computed once, on first expansion, and reused by every subsequent reference (node-side or signature-side, any operator). The occurrence counter (§10.1) disambiguates characters within a single expansion (e.g. the two L's in `MHALL`); it does not advance between expansions of the same identifier.
+
 ---
 
 ## 9. BPE Annotations
@@ -486,6 +488,8 @@ When a resolved word BPE-encodes to multiple tokens (e.g., "Mary" → `[mar, y]`
 
 This is structurally identical to §8 character-level MCS, applied at the BPE subword level. The node-count invariant (§8.2) is maintained: one character = one node, regardless of BPE token count. The consumer of the knowledge graph sees one node per character; the BPE decomposition is recorded in the graph for downstream use.
 
+§11.4 applies only to resolved words, not to compound identifiers (§8): a compound's decomposition is its CANONIZED entry, so re-encoding its literal string is prohibited. A packed signature — whether a §11.4 multi-token word's OR-reduction or a §11.5 compound — is the OR-reduction of multiple token IDs and cannot head an IDENTITY kline (CONTEXT.md "Identity"); the decomposition above (component identities + canonize) is a multi-token word's sole representation, and no standalone IDENTITY kline is emitted at the packed signature.
+
 ### 11.5 Signature Construction
 
 Signatures are constructed via plain OR-reduction of raw, unmasked node values:
@@ -495,6 +499,8 @@ make_signature([node_A, node_B]) → node_A | node_B
 ```
 
 The compiler does not inspect or mask node values — they are opaque `uint64` integers.
+
+**Canonical encoding.** A compound identifier's signature is computed once — at its CANONIZED definition, as OR of its resolved component node values — and reused by every referencing entry (as signature or node), so all klines referring to the same compound share one uint64. (Operator entries where the compound is the signature but the node is a different identifier — e.g. `COUNTERSIGNED MHALL [SVO]` — have `signature ≠ OR(nodes)` by design: the signature is a registry lookup, not a reduction of that entry's own nodes.)
 
 ### 11.6 Design Tension: Annotations and Encoding Opacity
 
@@ -765,7 +771,31 @@ With Rule B4 override, the parent SVO canonize entry becomes:
 {SVO: [Subject, V, O]}    (S patched to "Subject")
 ```
 
-All other entries follow the same operator rules as §14.11, with resolved words replacing raw characters where bindings exist. Unbound characters (V, O, D) use Mod32 fallback encoding (§11.3).
+Compiled (resolved-word level; mirrors §14.11's structure). MHALL has five distinct resolved components — no intra-expansion dedup — so this table has 19 entries versus §14.11's 18:
+
+| # | Signature | Nodes | Op | Level |
+|---|-----------|-------|-------------|-------|
+| 1 | Mary | [] | IDENTITY | S4 |
+| 2 | Had | [] | IDENTITY | S4 |
+| 3 | A | [] | IDENTITY | S4 |
+| 4 | Little | [] | IDENTITY | S4 |
+| 5 | Lamb | [] | IDENTITY | S4 |
+| 6 | MHALL | [Mary, Had, A, Little, Lamb] | CANONIZED | S2 |
+| 7 | S | [] | IDENTITY | S4 |
+| 8 | V | [] | IDENTITY | S4 |
+| 9 | O | [] | IDENTITY | S4 |
+| 10 | SVO | [Subject, V, O] | CANONIZED | S2 |
+| 11 | MHALL | [SVO] | COUNTERSIGNED | S1 |
+| 12 | SVO | [MHALL] | COUNTERSIGNED | S1 |
+| 13 | Mary | [Subject] | UNDERSIGNED | S3 |
+| 14 | Had | [V] | UNDERSIGNED | S3 |
+| 15 | ALL | [A, Little, Lamb] | CANONIZED | S2 |
+| 16 | ALL | [O] | UNDERSIGNED | S3 |
+| 17 | D | [A] | UNDERSIGNED | S3 |
+| 18 | Mary | [Little] | UNDERSIGNED | S3 |
+| 19 | Lamb | [O] | CONNOTED | S3 |
+
+SVO and ALL subscript canonizations are dropped by §8.3 dedup; MCS ALL component identities (A, Little, Lamb) are dropped by identity dedup. `V`, `O`, `D` are unbound → Mod32 fallback (§11.3). Unbound characters (V, O, D) use Mod32 fallback encoding (§11.3).
 
 ---
 
@@ -822,3 +852,5 @@ All other entries follow the same operator rules as §14.11, with resolved words
 | KS-38 | Component identity dedup: overlapping MCS expansions silently drop duplicate character identities (S4) | MCS Dedup |
 | KS-39 | Intra-expansion dedup: repeated characters in one compound emit only one identity (e.g., second L in MHALL) | MCS Dedup |
 | KS-40 | Canonization dedup: CANONIZE entries with same (sig, nodes) silently dropped across MCS and subscript | MCS Dedup |
+| KS-41 | Canonical resolution (§8.3): an identifier's MCS components are identical wherever it appears (node-side and signature-side), even under an ambiguous occurrence counter | MCS |
+| KS-42 | Canonical encoding (§11.4/§11.5): exactly one CANONIZED kline per compound identifier; identity klines carry single-token signatures only (CONTEXT.md "Identity") | Encoding |

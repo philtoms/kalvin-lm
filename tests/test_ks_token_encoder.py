@@ -248,7 +248,10 @@ class TestMultiTokenMCS:
         assert connotate_entries[0].nodes == [packed]
 
     def test_multi_token_sig_emits_mcs(self) -> None:
-        """A multi-token signature triggers MCS entries."""
+        """A multi-token signature heading an IDENTITY entry is represented
+        solely by its §11.4 decomposition — no standalone packed-sig
+        IDENTITY (CONTEXT.md "Identity").
+        """
         mock = MockMultiTokenTokenizer({"WORD": [50, 60]})
         enc = TokenEncoder(mock, dev=True)
         entry = SymbolicEntry(sig="WORD", nodes=[], op="IDENTITY")
@@ -256,24 +259,21 @@ class TestMultiTokenMCS:
 
         packed = make_signature([50, 60])
 
-        # MCS emits: IDENTITY(50), IDENTITY(60), CANONIZE(packed, [50,60])
-        # Then main: IDENTITY(packed, [])
+        # §11.4 MCS: IDENTITY(50), IDENTITY(60), CANONIZE(packed, [50,60])
         mcs_unsigned = [
             r for r in results if r.dbg and r.dbg.op == "IDENTITY" and r.signature in (50, 60)
         ]
         canonize_entries = [r for r in results if r.dbg and r.dbg.op == "CANONIZED"]
-        main_entry = results[-1]
-
         assert len(mcs_unsigned) == 2
-        assert mcs_unsigned[0].signature == 50
-        assert mcs_unsigned[1].signature == 60
-
         assert len(canonize_entries) == 1
         assert canonize_entries[0].signature == packed
+        assert canonize_entries[0].nodes == [50, 60]
 
-        # Main entry uses the packed signature
-        assert main_entry.signature == packed
-        assert main_entry.dbg.op == "IDENTITY"
+        # No standalone IDENTITY at the packed signature.
+        assert not [
+            r for r in results if r.dbg and r.dbg.op == "IDENTITY" and r.signature == packed
+        ]
+        assert len(results) == 3
 
     def test_mcs_entries_come_before_main(self) -> None:
         """MCS expansion entries appear before the entry that references them."""

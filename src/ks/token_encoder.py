@@ -1,25 +1,20 @@
 """TokenEncoder — converts symbolic entries to encoded KLine objects.
 
-Final stage of the KScript v3 compilation pipeline.  Takes the symbolic
-(string) entries produced by ASTEmitter and encodes them into uint64 values
-via a pluggable tokenizer.
+Final stage of the KScript v3 compilation pipeline. Takes the symbolic
+(string) entries produced by ASTEmitter and encodes them into uint64
+values via a pluggable tokenizer.
 
 Encoding rules (spec §11):
-  - **Signature** → tokenizer.encode(sig) → uint64.  Multi-token results
-    are OR-reduced via make_signature() into a single packed uint64.
-  - **Nodes** → each encoded individually via _encode_node().  Multi-token
-    words trigger full MCS at the BPE-token level (§11.4).
-  - **Mod32 fallback** (§11.3): unbound characters are naturally handled by
-    the tokenizer — no special code needed in the encoder.
-  - **Signatures** are full unmasked uint64 — no masking or truncation.
-
-Multi-token word MCS (§11.4):
-  When a word BPE-encodes to multiple tokens, the TokenEncoder:
-    1. Emits one IDENTITY KLine per BPE subword token.
-    2. OR-reduces all subword tokens into a single packed signature.
-    3. Emits one CANONIZE entry mapping the packed sig to the subword tokens.
-    4. The packed signature becomes the single node value used in the parent
-       kline — preserving the node-count invariant (one word = one node).
+  - Signature → tokenizer.encode(sig) → uint64 (multi-token results are
+    OR-reduced via make_signature()).
+  - Nodes → each encoded individually via _encode_node(); multi-token
+    words trigger §11.4 BPE-level MCS.
+  - Canonical encoding (§11.4/§11.5): a compound identifier's signature
+    is computed once at its CANONIZED definition (OR of its resolved
+    component node values) and reused by every reference via the
+    ``_compound_sigs`` registry; compounds are exempt from §11.4; a
+    packed signature never heads an IDENTITY kline (CONTEXT.md
+    "Identity"). Packed signatures are opaque per §11.6.
 
 Significance levels (compile-time intent):
     COUNTERSIGNED → S1    UNDERSIGNED → S3    CANONIZED → S2
@@ -66,6 +61,12 @@ class TokenEncoder:
         # MCS emissions.  Key is tuple of BPE tokens (same word always
         # produces the same BPE tokens).
         self._decomposed: set[tuple[int, ...]] = set()
+        # Canonical encoding registry (§11.5): a compound identifier's
+        # signature uint64, computed once at its CANONIZED definition as
+        # OR of its resolved component node values, then reused by every
+        # referencing entry. The ASTEmitter emits definitions before
+        # references, so this is populated on demand.
+        self._compound_sigs: dict[str, int] = {}
 
     # ── Public API ────────────────────────────────────────────────────
 
@@ -102,33 +103,59 @@ class TokenEncoder:
         """
         extras: list[KLine] = []
 
-        # 1. Encode signature
-        sig_tokens = self._tokenizer.encode(entry.sig)
-        sig_uint64: int
-        if len(sig_tokens) == 1:
-            sig_uint64 = sig_tokens[0]
-        else:
-            # Multi-token signature → MCS + packed sig
-            sig_uint64, sig_extras = self._emit_mcs_for_tokens(
-                sig_tokens,
-                dbg_label=entry.sig,
-                op="IDENTITY",
-            )
-            extras.extend(sig_extras)
+        is_compound_def = entry.op == "CANONIZED" and len(entry.sig) > 1
+        is_compound_ref = entry.sig in self._compound_sigs
+        sig_is_packed = False
 
-        # 2. Encode nodes
+        # 1. Encode signature (compound defs defer to step 3; refs reuse
+        #    the registry; others use §11.4 MCS for multi-token sigs).
+        if is_compound_ref:
+            sig_uint64 = self._compound_sigs[entry.sig]
+            sig_is_packed = True
+        elif is_compound_def:
+            sig_uint64 = 0  # computed in step 3, after nodes are encoded
+        else:
+            sig_tokens = self._tokenizer.encode(entry.sig)
+            if len(sig_tokens) == 1:
+                sig_uint64 = sig_tokens[0]
+            else:
+                sig_uint64, sig_extras = self._emit_mcs_for_tokens(
+                    sig_tokens,
+                    dbg_label=entry.sig,
+                    op="IDENTITY",
+                )
+                extras.extend(sig_extras)
+                sig_is_packed = True
+
+        # 2. Encode nodes (compound nodes reuse the registry value).
         node_values: list[int] = []
         for node_str in entry.nodes or []:
-            node_val, node_extras = self._encode_node(node_str)
-            extras.extend(node_extras)
-            node_values.append(node_val)
+            if node_str in self._compound_sigs:
+                node_values.append(self._compound_sigs[node_str])
+            else:
+                node_val, node_extras = self._encode_node(node_str)
+                extras.extend(node_extras)
+                node_values.append(node_val)
 
-        # 3. Build debug info (op is always populated)
+        # 3. Compound definition: sig = OR of resolved component node values
+        #    (§11.5). Register it for reuse by references.
+        if is_compound_def:
+            sig_uint64 = make_signature(node_values)
+            self._compound_sigs[entry.sig] = sig_uint64
+            sig_is_packed = True
+
+        # 4. Debug info.
         dbg = KDbg(op=entry.op)
         if self._dev:
-            dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op)
+            dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op, packed=sig_is_packed)
 
-        # 4. Emit main entry
+        # 5. A packed signature cannot head an IDENTITY kline (CONTEXT.md
+        #    "Identity"); the §11.4/§8 decomposition above is the sole
+        #    representation. Operator entries with a packed sig are
+        #    legitimate references and are emitted normally.
+        if entry.op == "IDENTITY" and sig_is_packed:
+            return extras
+
         main = KLine(
             signature=sig_uint64,
             nodes=node_values,
@@ -209,10 +236,13 @@ class TokenEncoder:
                     )
                 )
 
-            # One CANONIZE: packed sig → subword tokens
+            # One CANONIZE: packed sig → subword tokens. Packed values are
+            # opaque per §11.6 — _build_dbg skips decode for them.
             canon_dbg: KDbg | None = None
             if self._dev:
-                canon_dbg = self._build_dbg(packed, dbg_label, op="CANONIZED")
+                canon_dbg = self._build_dbg(
+                    packed, dbg_label, op="CANONIZED", packed=True
+                )
             else:
                 canon_dbg = KDbg(op="CANONIZED")
             extras.append(
@@ -227,35 +257,34 @@ class TokenEncoder:
 
     # ── Debug construction ──────────────────────────────────────────────
 
-    def _build_dbg(self, sig_uint64: int, label: str, op: str = "IDENTITY") -> KDbg:
+    def _build_dbg(
+        self,
+        sig_uint64: int,
+        label: str,
+        op: str = "IDENTITY",
+        *,
+        packed: bool = False,
+    ) -> KDbg:
         """Build a KDbg for a compiled signature.
 
-        Looks up NLP grammar info from the tokenizer's grammar dict
-        and decodes the BPE token to get the actual subword text.
-
-        Args:
-            sig_uint64: The packed NLP-BPE signature.
-            label: Origin label (the word/operator being compiled).
-            op: The originating operator.
-
-        Returns:
-            Populated KDbg instance.
+        A packed signature (§11.4 multi-token word or §11.5 compound) is
+        opaque per §11.6: its low-32 bits are a bitwise OR of several
+        bpe_ids, so decode/grammar-lookup are meaningless (decode may
+        crash or return an unrelated word). ``label`` carries the
+        human-readable name instead. Single tokens are decoded and
+        grammar-looked-up (decode is defensive — ``decoded`` is purely
+        diagnostic and must not crash compilation).
         """
-        decoded = self._tokenizer.decode([sig_uint64])
-        pos = ""
-        dep = ""
-        morph = ""
-        bpe_id = sig_uint64 & 0xFFFFFFFF
-        grammar_entry = self._tokenizer.lookup_grammar(bpe_id)
+        if packed:
+            return KDbg(op=op, label=label)
+        try:
+            decoded = self._tokenizer.decode([sig_uint64])
+        except Exception:
+            decoded = ""
+        pos = dep = morph = ""
+        grammar_entry = self._tokenizer.lookup_grammar(sig_uint64 & 0xFFFFFFFF)
         if grammar_entry:
             pos = grammar_entry.get("pos", "")
             dep = grammar_entry.get("dep", "")
             morph = grammar_entry.get("morph", "")
-        return KDbg(
-            op=op,
-            label=label,
-            decoded=decoded,
-            pos=pos,
-            dep=dep,
-            morph=morph,
-        )
+        return KDbg(op=op, label=label, decoded=decoded, pos=pos, dep=dep, morph=morph)

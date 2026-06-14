@@ -91,15 +91,15 @@ class TestMultiCharDecomposition:
 
     def test_mhall_decomposition(self, nlp_tokenizer: NLPTokenizer) -> None:
         entries = compile_source("MHALL", tokenizer=nlp_tokenizer, dev=True)
-        # Under the regenerated BPE model, MHALL decomposes into its
-        # character-component unsigneds (S4) plus decomposition entries (S2).
-        assert len(entries) == 11
-
-        # Component unsigneds are S4; decompositions are S2.
+        # §8 MCS: four distinct component identities (M, H, A, L — second L
+        # intra-expansion deduped) + one CANONIZED. Compounds are exempt
+        # from §11.4 (canonical encoding), so the literal string is not
+        # BPE-re-decomposed.
+        assert len(entries) == 5
         s4 = [e for e in entries if sig_level(e) == "S4"]
         s2 = [e for e in entries if sig_level(e) == "S2"]
-        assert len(s4) == 9
-        assert len(s2) == 2
+        assert len(s4) == 4
+        assert len(s2) == 1
 
     def test_countersign_with_multi_char(self, nlp_tokenizer: NLPTokenizer) -> None:
         entries = compile_source("MHALL == SVO", tokenizer=nlp_tokenizer, dev=True)
@@ -181,8 +181,10 @@ class TestCommentsOptional:
 
         # Both produce entries
         assert len(bare) == 1
-        # "ary" BPE-tokenizes into multiple subwords → additional entries
-        assert len(annotated) == 4
+        # M(ary) → "Mary" → [M, ary]: two component identities + one
+        # canonize. The packed-sig IDENTITY is suppressed (CONTEXT.md
+        # "Identity"), so 3 klines total.
+        assert len(annotated) == 3
 
         # Both signatures are NLP-BPE encoded (high bits set)
         assert (bare[0].signature >> 32) != 0
