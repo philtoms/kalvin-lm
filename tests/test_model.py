@@ -1,5 +1,7 @@
 """Tests for Model — specs/model.md conformance."""
 
+import pytest
+
 from kalvin.kline import KLine
 from kalvin.model import KLineStore, Model, _TierChain
 from kalvin.signature import make_signature
@@ -281,27 +283,6 @@ class TestModelGraphTraversal:
         k = KLine(5, [10])
         m.add_frame(k)
         assert m.query_expand(k, depth=1) == []
-
-    def test_descendants(self):
-        m = make_model()
-        root = KLine(5, [10, 20])
-        child = KLine(10, [30])
-        m.add_frame(root)
-        m.add_frame(child)
-        desc = m.descendants(5)
-        assert 10 in desc
-        assert 20 in desc
-        assert 30 in desc
-
-    def test_cycle_detection(self):
-        m = make_model()
-        a = KLine(1, [2])
-        b = KLine(2, [1])
-        m.add_frame(a)
-        m.add_frame(b)
-        desc = m.descendants(1)
-        assert 1 in desc
-        assert 2 in desc
 
 
 class TestModelThreeTier:
@@ -734,3 +715,80 @@ class TestTierChainFindByNodesFirst:
         chain = _TierChain([store])
         nodes_sig = make_signature([99])
         assert chain.find_by_nodes_first(nodes_sig) is None
+
+
+# ── Unpack (MOD-60..66) ───────────────────────────────────────────────
+
+
+class TestUnpack:
+    """MOD-60..66: model.unpack flattens a kline to identity signatures."""
+
+    def test_mod60_identity(self):
+        # MOD-60: identity (empty nodes) → [signature]
+        m = make_model()
+        ident = KLine(0x100, [])
+        assert m.unpack(ident) == [0x100]
+
+    def test_mod61_canon_ordered_children(self):
+        # MOD-61: canon → ordered identity child sequence
+        m = make_model()
+        m.add_frame(KLine(0x10, []))
+        m.add_frame(KLine(0x20, []))
+        canon = KLine(0x30, [0x10, 0x20])  # 0x30 == 0x10 | 0x20
+        m.add_frame(canon)
+        assert m.unpack(canon) == [0x10, 0x20]
+
+    def test_mod62_nested_canon(self):
+        # MOD-62: canon-of-canons → flattened, order preserved
+        m = make_model()
+        m.add_frame(KLine(0x10, []))
+        m.add_frame(KLine(0x20, []))
+        m.add_frame(KLine(0x40, []))
+        m.add_frame(KLine(0x30, [0x10, 0x20]))  # inner canon
+        outer = KLine(0x70, [0x30, 0x40])       # 0x70 == 0x30 | 0x40
+        m.add_frame(outer)
+        assert m.unpack(outer) == [0x10, 0x20, 0x40]
+
+    def test_mod63_connoted_raises(self):
+        # MOD-63: non-decomposable input (connoted) → ValueError
+        m = make_model()
+        connoted = KLine(0x100, [0x10])  # signature != make_signature(nodes)
+        with pytest.raises(ValueError):
+            m.unpack(connoted)
+
+    def test_mod64_unresolvable_child_raises(self):
+        # MOD-64: canon whose child node has no identity/canon → ValueError
+        m = make_model()
+        canon = KLine(0x30, [0x10, 0x20])  # valid canon
+        m.add_frame(canon)
+        # no identity or canon kline exists for 0x10 / 0x20
+        with pytest.raises(ValueError):
+            m.unpack(canon)
+
+    def test_mod65_identity_preferred_over_canon(self):
+        # MOD-65: node heads both an identity and a canon → identity wins
+        m = make_model()
+        m.add_frame(KLine(0x10, []))
+        m.add_frame(KLine(0x20, []))
+        m.add_frame(KLine(0x40, []))
+        m.add_frame(KLine(0x30, []))             # identity for 0x30
+        m.add_frame(KLine(0x30, [0x10, 0x20]))   # canon for 0x30 (added later)
+        parent = KLine(0x70, [0x30, 0x40])       # references 0x30
+        m.add_frame(parent)
+        # resolves 0x30 → identity (not canon) → [0x30]; not [0x10, 0x20]
+        assert m.unpack(parent) == [0x30, 0x40]
+
+    def test_mod66_canon_recency_most_recent(self):
+        # MOD-66: two canons share a signature → most-recently-added wins
+        m = make_model()
+        m.add_frame(KLine(0x10, []))
+        m.add_frame(KLine(0x20, []))
+        m.add_frame(KLine(0x40, []))
+        old = KLine(0x30, [0x10, 0x20])        # older canon for 0x30
+        new = KLine(0x30, [0x10, 0x20, 0x10])  # newer canon for 0x30
+        m.add_frame(old)
+        m.add_frame(new)
+        parent = KLine(0x70, [0x30, 0x40])     # references 0x30
+        m.add_frame(parent)
+        # resolves 0x30 → newer canon → [0x10, 0x20, 0x10]
+        assert m.unpack(parent) == [0x10, 0x20, 0x10, 0x40]

@@ -16,7 +16,7 @@ The module reads from the Model (storage) but is a separate responsibility:
 Model indexes and retrieves; Expand computes how far apart two KLines are.
 
 Re-exported constants and types from the old model module:
-  D_MAX, MASK64, MAX_HOP, _S3_BIAS, _pack, QueryCandidate"""
+  D_MAX, MASK64, MAX_HOP, _S3_BIAS, QueryCandidate"""
 
 from __future__ import annotations
 
@@ -39,18 +39,6 @@ _log = logging.getLogger(__name__)
 # amount before linear distance addition, ensuring S3 distances always exceed
 # S2 distances. With _S3_BIAS=1, minimum S3 distance = S2_S3_DISTANCE + 1 = 101.
 _S3_BIAS = 1
-
-
-def _pack(distance: int) -> int:
-    """Linear distance function for S3 connotation hops.
-
-    Returns the distance unchanged. Retained as a named function for
-    readability in the expand() call sites. The quadratic version caused
-    significance explosion at higher hop depths (e.g. 20 hops → 841 distance).
-    """
-    if distance <= 0:
-        return 0
-    return distance
 
 
 # Public significance constants

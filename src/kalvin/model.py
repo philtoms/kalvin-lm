@@ -373,23 +373,61 @@ class Model:
                 results.append(child)
                 self._query_expand_inner(child, max_depth, current_depth + 1, visited, results)
 
-    def descendants(self, node: int) -> set[int]:
-        """Recursively collect all descendant node values."""
-        visited: set[int] = set()
-        result: set[int] = set()
-        self._descendants_inner(node, visited, result)
-        return result
+    def unpack(self, kline: KLine) -> list[int]:
+        """Flatten a kline's signature decomposition to identity signatures.
 
-    def _descendants_inner(self, node: int, visited: set[int], result: set[int]) -> None:
-        if node in visited:
-            return
-        visited.add(node)
-        kline = self.find(node)
-        if kline is None:
-            return
-        for child_node in kline.nodes:
-            result.add(child_node)
-            self._descendants_inner(child_node, visited, result)
+        Walks the kline's node tree, returning an ordered list of the
+        single-token identity signatures it decomposes into. See
+        @specs/model.md §Graph Traversal › Unpack.
+
+        - Identity (empty nodes) → [signature]. Base case.
+        - Canon (signature == make_signature(nodes)) → concatenation of
+          unpack(child) per node, in node order.
+        - Any other input (connoted, undersigned, misfit) → ValueError.
+        - Child resolution: identity preferred over canon; within a kind,
+          most recently added wins (Recency Precedence).
+        - Raises ValueError if a child node resolves to no identity or canon.
+        - No cycle detection; a cyclic graph recurses without bound.
+        """
+        if not kline.nodes:
+            return [kline.signature]
+        if kline.signature != make_signature(kline.nodes):
+            raise ValueError(
+                f"unpack: input kline {kline.signature:#x} is not decomposable "
+                f"(not identity, not canon)"
+            )
+        out: list[int] = []
+        for node in kline.nodes:
+            child = self._resolve_for_unpack(node)
+            out.extend(self.unpack(child))
+        return out
+
+    def _resolve_for_unpack(self, node: int) -> KLine:
+        """Resolve a node value to its identity or canon kline.
+
+        Identity is preferred over canon; within a kind the most recently
+        added kline wins (Recency Precedence). klines() yields
+        most-recent-first across all tiers. Raises ValueError if the node
+        resolves to neither.
+        """
+        identity: KLine | None = None
+        canon: KLine | None = None
+        for kl in self.klines():
+            if kl.signature != node:
+                continue
+            if not kl.nodes:
+                if identity is None:
+                    identity = kl
+            elif kl.signature == make_signature(kl.nodes):
+                if canon is None:
+                    canon = kl
+        if identity is not None:
+            return identity
+        if canon is not None:
+            return canon
+        raise ValueError(
+            f"unpack: node {node:#x} resolves to no identity or canon kline"
+        )
 
     def query(self, signature: KSig, depth: int = 1) -> list[KLine]:
         """Find all KLines with signature, then expand each."""
@@ -440,10 +478,6 @@ class Model:
         for kl in klines:
             m.add_frame(kl)
         return m
-
-    def get_all_descendants(self, node: int, visited: set[int] | None = None) -> set[int]:
-        """Backwards-compat alias for descendants()."""
-        return self.descendants(node)
 
     @property
     def klines_prop(self) -> list[KLine]:

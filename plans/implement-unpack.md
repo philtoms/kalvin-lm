@@ -112,7 +112,7 @@ test. Separate session.
 ## Status
 
 - [x] Spec (`specs/model.md` §Unpack, MOD-60..66, MOD-R4)
-- [ ] Plan (this document)
-- [ ] Task 1: `Model.unpack`
-- [ ] Task 2: dead-code removal
-- [ ] Task 3: tests
+- [x] Plan (this document)
+- [x] Task 1: `Model.unpack`
+- [x] Task 2: dead-code removal
+- [x] Task 3: tests
