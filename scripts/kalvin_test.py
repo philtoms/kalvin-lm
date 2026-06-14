@@ -46,16 +46,57 @@ def significance_level(sig: int) -> str:
     return classify(sig, s12, s23, s34)
 
 
-def kline_display(kline, _tokenizer) -> str:
-    """Human-readable display for a KLine."""
+def _decode_value(value: int, model, tokenizer) -> str:
+    """Decode a single signature/node value to text via the graph.
+
+    Tries each kline headed by *value* (most-recent-first) and unpacks the
+    first that decomposes to identity tokens. This skips semantic-
+    relationship klines (connoted/undersigned) that share a signature with
+    a canonize, landing on the structural decomposition. Falls back to a
+    direct decode for single tokens, then to a hex label — never raises.
+    """
+    if model is not None:
+        for kl in model.klines():
+            if kl.signature != value:
+                continue
+            try:
+                text = tokenizer.decode(model.unpack(kl))
+                if text:
+                    return text
+            except ValueError:
+                continue
+    try:
+        text = tokenizer.decode([value])
+        if text:
+            return text
+    except Exception:
+        pass
+    return f"#{value:#x}"
+
+
+def kline_display(kline, tokenizer, model=None) -> str:
+    """Human-readable display for a KLine.
+
+    When *model* is supplied, signature and node values are decoded by
+    flattening each through model.unpack (correct for packed/multi-token
+    values). Otherwise the dbg label and a direct per-node decode are
+    used (lossy for packed values, but the best available before the
+    graph is populated).
+    """
     if kline is None:
         return "<none>"
     # Use rich dbg if available
     if kline.dbg:
         dbg = kline.dbg
         label = dbg.label
-        # Show decoded text if it differs from the label
-        if dbg.decoded and dbg.decoded != label:
+        # When a model is available, prefer a graph-based decode of the
+        # signature over the compile-time dbg.decoded (which is left
+        # blank for packed signatures).
+        if model is not None:
+            decoded = _decode_value(kline.signature, model, tokenizer)
+            if decoded:
+                label = f"{label} [{decoded!r}]" if decoded != label else decoded
+        elif dbg.decoded and dbg.decoded != label:
             label = f"{label} [{dbg.decoded!r}]"
         # Append NLP info
         nlp_parts = []
@@ -68,7 +109,7 @@ def kline_display(kline, _tokenizer) -> str:
         nodes = kline.nodes
         if not nodes:
             return label
-        node_strs = [_tokenizer.decode([n]) or f"#{n:#x}" for n in nodes]
+        node_strs = [_decode_value(n, model, tokenizer) or f"#{n:#x}" for n in nodes]
         return f"{label}: {node_strs}"
     # Fallback: raw sig
     return f"sig={kline.signature:#x}"
@@ -102,22 +143,31 @@ def main() -> None:
         counts[key] += 1
 
         if args.verbose:
-            query_str = kline_display(e.query, tokenizer)
-            proposal_str = kline_display(e.proposal, tokenizer)
+            query_str = kline_display(e.query, tokenizer, agent.model)
+            proposal_str = kline_display(e.proposal, tokenizer, agent.model)
             arrow = "←" if e.significance == D_MAX - 1 else "|"
             print(f"  {e.kind:6s} {query_str} → {level} {arrow} {proposal_str}")
 
         if level == "S1" and e.kind != "ground":
-            query_str = kline_display(e.query, tokenizer)
-            proposal_str = kline_display(e.proposal, tokenizer)
+            query_str = kline_display(e.query, tokenizer, agent.model)
+            proposal_str = kline_display(e.proposal, tokenizer, agent.model)
             s1_entries.append(f"{query_str} ← {proposal_str}")
 
     adapter.subscribe(on_event)
 
+    # Build a display model from the compiled klines so that packed
+    # signatures can be unpacked to their identity tokens for display
+    # (the agent model is still empty at this point).
+    from kalvin.model import Model
+
+    display_model = Model()
+    for k in klines:
+        display_model.add_frame(k)
+
     # Print compiled entries
     print("Compiled entries:")
     for k in klines:
-        print(f"  {kline_display(k, tokenizer)}")
+        print(f"  {kline_display(k, tokenizer, display_model)}")
 
     # Rationalise
     print("\nRationalising...")
