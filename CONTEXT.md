@@ -131,6 +131,10 @@ _Avoid_: session log (Frame is not a log), session
 Persistent knowledge that survives across sessions — klines confirmed (S1) or novel (S4). Structurally identical to Frame; the distinction is semantic. Monotonic; loaded at session start, saved at session end.
 _Avoid_: persistent store (too vague), knowledge base, LTM frame
 
+**Recency Precedence**:
+When two or more klines share a signature, the most recently added one wins. Rationalisation preference defaults to this rule.
+_Avoid_: recency (too vague), temporal preference (conflates the rule with its use as a default)
+
 **Fast Path**:
 Rationalisation that resolves immediately (S1 ground, S4 identity, S1 canonical, S1 countersigned). The Trainer auto-satisfies these.
 

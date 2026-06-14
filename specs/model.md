@@ -405,19 +405,27 @@ Kline, then recursing into children up to `depth` levels.
 - **Missing nodes**: a node that does not resolve to any Kline is skipped.
 - **Order**: children are yielded in node order, depth-first.
 
-### Descendants
+### Unpack
 
 ```
-model.descendants(node) → set of uint64
+model.unpack(kline) → sequence of uint64
 ```
 
-Recursively collects all descendant node values starting from the Kline
-identified by `node`.
+Flattens a kline's signature decomposition into an ordered sequence of
+identity signatures (single-token values, @CONTEXT.md §Identity).
 
-- Resolves `node` to a Kline, then traverses all children recursively.
-- Returns a **set** of uint64 node values (no duplicates, no order).
-- **Cycle detection**: a node visited is not re-traversed.
-- Returns an empty set if `node` does not resolve.
+- **Identity** (empty nodes) → `[signature]`. Base case.
+- **Canon** (`signature == make_signature(nodes)`, @signature spec) → the
+  concatenation, in node order, of `unpack(child)` for each child kline
+  resolved from the node value.
+- Any other input (not identity, not canon) → raises.
+- **Child resolution** uses kind precedence: among all klines sharing the
+  node value as signature, an identity is preferred over a canon. Within a
+  kind, the most recently added kline wins (@CONTEXT.md §Recency
+  Precedence). If no identity or canon kline exists for the value → raises.
+- Node order is significant (@kline spec): the output sequence preserves
+  the node order of every traversed kline.
+- No cycle detection. A cyclic graph recurses without bound.
 
 ### Query
 
@@ -683,8 +691,14 @@ else       → S4
 | MOD-18 | Query_expand depth 0: returns empty          | — |
 | MOD-19 | Query_expand depth 2: returns direct children | — |
 | MOD-20 | Query_expand cycle detection: no infinite loop | — |
-| MOD-21 | Descendants: recursive node collection       | — |
 | MOD-22 | Query: find + expand combined                | — |
+| MOD-60 | Unpack identity: `unpack({S: []})` → `[S]`                        | — |
+| MOD-61 | Unpack canon: ordered identity child sequence                     | — |
+| MOD-62 | Unpack nested canon: recursively flattened, order preserved       | — |
+| MOD-63 | Unpack non-decomposable input (e.g. connoted) → raises            | — |
+| MOD-64 | Unpack unresolvable child node → raises                           | — |
+| MOD-65 | Unpack child resolution: identity preferred over canon            | — |
+| MOD-66 | Unpack within-kind ambiguity: most-recently-added wins            | — |
 
 ### Write Cascade
 
@@ -704,6 +718,7 @@ else       → S4
 | MOD-R1 | `model.add()` removed — replaced by cascade API   |
 | MOD-R2 | `model.promote()` removed — replaced by `add_ltm()` |
 | MOD-R3 | `model.refresh_stm()` removed — absorbed by `add_stm()` |
+| MOD-R4 | `model.descendants()` / `model.get_all_descendants()` removed — unused |
 
 ### Significance API
 
