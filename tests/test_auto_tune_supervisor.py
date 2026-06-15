@@ -642,3 +642,94 @@ async def test_goal_command_preserves_text(session_dir: Path) -> None:
                     await task
                 except (asyncio.CancelledError, websockets.ConnectionClosed):
                     pass
+
+
+# ---------------------------------------------------------------------------
+# Additional: scaffold command dispatches submit
+# ---------------------------------------------------------------------------
+
+
+async def test_scaffold_command_dispatches_submit(session_dir: Path) -> None:
+    """scaffold command dispatches a {trainee, submit, <kscript>} bus frame.
+
+    Mirrors test_goal_command_preserves_text: the supervisor reconstructs
+    ``scaffold:<text>`` (colon, no space) before passing it through
+    parse_command, which yields a ScaffoldCommand whose to_messages emits
+    a single (trainee, submit, text) tuple.
+    """
+    async with StubHarness() as stub:
+        config = {"session": "test", "harness_url": stub.url}
+        (session_dir / "config.json").write_text(json.dumps(config), encoding="utf-8")
+        (session_dir / "events.jsonl").write_text("", encoding="utf-8")
+
+        with patch(_ENRICH_PATCH, side_effect=_mock_enrich_event):
+            sv = CLISupervisor(str(session_dir))
+            task = asyncio.create_task(sv.run())
+            try:
+                await stub.wait_for_frames(1)
+
+                # Unblock the initial-command poll before sending any frames.
+                await _wait_for_state(session_dir, "waiting_for_command")
+                await _write_cmd(session_dir, {"action": "continue"})
+                await _wait_for_state(session_dir, "waiting_for_event")
+
+                # Send one frame to get to waiting_for_command
+                await stub.send_to_client(
+                    {
+                        "action": "progress",
+                        "message": {
+                            "status": "started",
+                            "lessons_total": 1,
+                            "lessons_completed": 0,
+                        },
+                    }
+                )
+                await _wait_for_state(session_dir, "waiting_for_command")
+
+                # Write scaffold command (single-line KScript)
+                await _write_cmd(session_dir, {"action": "scaffold", "text": "MHALL = SVO"})
+                await _wait_for_state(session_dir, "waiting_for_event")
+
+                # Wait for the frame at stub (registration + scaffold)
+                await stub.wait_for_frames(2, timeout=3.0)
+
+                msg = stub.received_frames[1]
+                assert msg["role"] == "trainee"
+                assert msg["action"] == "submit"
+                assert msg["message"] == "MHALL = SVO"
+
+                # --- multi-line KScript variant ---
+                # Send another frame to reach waiting_for_command again.
+                await stub.send_to_client(
+                    {
+                        "action": "progress",
+                        "message": {
+                            "status": "started",
+                            "lessons_total": 1,
+                            "lessons_completed": 0,
+                        },
+                    }
+                )
+                await _wait_for_state(session_dir, "waiting_for_command")
+
+                # Write scaffold command (multi-line KScript)
+                await _write_cmd(
+                    session_dir,
+                    {"action": "scaffold", "text": "MHALL = SVO\nSVO = agent"},
+                )
+                await _wait_for_state(session_dir, "waiting_for_event")
+
+                # Wait for the third frame
+                await stub.wait_for_frames(3, timeout=3.0)
+
+                msg2 = stub.received_frames[2]
+                assert msg2["role"] == "trainee"
+                assert msg2["action"] == "submit"
+                # Newlines preserved through dispatch
+                assert msg2["message"] == "MHALL = SVO\nSVO = agent"
+            finally:
+                task.cancel()
+                try:
+                    await task
+                except (asyncio.CancelledError, websockets.ConnectionClosed):
+                    pass

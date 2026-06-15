@@ -245,6 +245,14 @@ class CLISupervisor:
                 await self._send_frame(role, act, message)
             return False
 
+        if action == "scaffold":
+            text = cmd.get("text", "")
+            input_text = f"scaffold:{text}"
+            command = parse_command(input_text)
+            for role, act, message in command.to_messages(self._latest_ratify_proposal):
+                await self._send_frame(role, act, message)
+            return False
+
         if action == "guidance":
             text = cmd.get("text", "")
             command = parse_command(text)
