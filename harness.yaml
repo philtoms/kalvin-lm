@@ -17,6 +17,7 @@ trainer:
   # llm:                         # Uncomment to override defaults
   #   base_url: "https://open.bigmodel.cn/api/paas/v4"
   #   model: "glm-5.1"
+  #   enabled: true              # auto-tune overrides this to false per session
   # API key is read from KALVIN_LLM_API_KEY env var — never put it here
 
 participants:
