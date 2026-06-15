@@ -80,6 +80,7 @@ def _make_reactor(
     *,
     max_reactive_rounds: int = 5,
     cogitate_fn=None,
+    delegate_reactive: bool = False,
 ) -> tuple[Reactor, BusCapture]:
     """Create a Reactor with a fresh bus and curriculum state."""
     bus = MessageBus()
@@ -93,6 +94,7 @@ def _make_reactor(
         role="trainer",
         max_reactive_rounds=max_reactive_rounds,
         cogitate_fn=cogitate_fn,
+        delegate_reactive=delegate_reactive,
     )
     return reactor, capture
 
@@ -460,3 +462,89 @@ class TestLoadLessonResetsState:
 
         assert reactor.current_entries == entries_b
         assert reactor._reactive_rounds == 0
+
+
+class TestDelegatedMode:
+    """RD-4/RD-5/RD-6: Reactor delegated mode defers to the supervisor.
+
+    When ``delegate_reactive=True`` the auto-countersign fast path is
+    unaffected, but any non-matching proposal produces zero side effects
+    (no cogitate, no submit, no escalation, no round increment).
+    """
+
+    def test_auto_countersign_still_runs(self) -> None:
+        """RD-4: a structurally matching proposal still auto-countersigns."""
+        reactor, capture = _make_reactor(delegate_reactive=True)
+        entry = _make_entry(100, [10, 20])
+        reactor.load_lesson([entry])
+
+        proposal = KLine(signature=100, nodes=[10, 20])
+        query = KLine(signature=999, nodes=[1])
+        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
+
+        result = reactor.process_s2_s3(event)
+
+        assert result is True
+
+        # Countersign sent to trainee
+        cs_msgs = capture.find_all(TRAINEE_ROLE, "countersign")
+        assert len(cs_msgs) == 1
+        assert cs_msgs[0].message == proposal
+
+        # Entry marked satisfied
+        from trainer.reactor import _entry_key
+
+        key = _entry_key(entry)
+        assert reactor._state.is_satisfied(key)
+
+        # No supervisor notifications
+        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
+        assert len(notify_msgs) == 0
+
+    def test_no_cogitate_no_submit_no_escalate(self) -> None:
+        """RD-5: a non-matching proposal produces no side effects."""
+        mock_cogitate = MagicMock(return_value=("S = X", 0.9))
+        reactor, capture = _make_reactor(delegate_reactive=True, cogitate_fn=mock_cogitate)
+        entry = _make_entry(100, [10])
+        reactor.load_lesson([entry])
+
+        proposal = KLine(signature=999, nodes=[88])  # no match
+        query = KLine(signature=888, nodes=[1])
+        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
+
+        result = reactor.process_s2_s3(event)
+
+        assert result is False
+
+        # cogitate_fn never invoked
+        mock_cogitate.assert_not_called()
+
+        # No scaffolding submitted to trainee
+        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
+        assert len(submit_msgs) == 0
+
+        # No supervisor notifications
+        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
+        assert len(notify_msgs) == 0
+
+    def test_no_round_increment_no_budget_escalation(self) -> None:
+        """RD-6: the reactive-round budget is never consulted in delegated mode."""
+        entries = [_make_entry(100 + i, [10 + i]) for i in range(5)]
+        reactor, capture = _make_reactor(delegate_reactive=True, max_reactive_rounds=2)
+        reactor.load_lesson(entries)
+
+        # Send more than max_reactive_rounds non-matching events
+        for i in range(4):
+            proposal = KLine(signature=900 + i, nodes=[99 + i])
+            query = KLine(signature=800 + i, nodes=[i])
+            event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
+            reactor.process_s2_s3(event)
+
+        # Reactive round counter never incremented
+        assert reactor._reactive_rounds == 0
+
+        # No budget_exhaustion escalation (nor any notify)
+        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
+        assert len(notify_msgs) == 0
+        budget_esc = [m for m in notify_msgs if m.message.get("reason") == "budget_exhaustion"]
+        assert len(budget_esc) == 0

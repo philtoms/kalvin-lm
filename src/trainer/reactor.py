@@ -75,6 +75,16 @@ class Reactor:
         ``(RationaliseEvent) -> tuple[str, float] | None``.
         Returns ``(kscript_source, confidence)`` or ``None`` if no
         scaffolding can be generated.
+    delegate_reactive:
+        When ``True``, the Reactor enters **delegated mode**: it still
+        auto-countersigns structurally matching proposals, but any S2/S3
+        proposal that does not auto-countersign produces zero side effects
+        — no reactive round increment, no cogitation, no scaffolding
+        submission, and no escalation — and ``process_s2_s3`` returns
+        ``False`` immediately so the Trainer can defer the decision to the
+        supervisor. Distinct from ``cogitate_fn is None`` (which still
+        escalates ``low_confidence``); default ``False`` preserves today's
+        behaviour.
     """
 
     def __init__(
@@ -85,12 +95,14 @@ class Reactor:
         role: str = "trainer",
         max_reactive_rounds: int = 5,
         cogitate_fn: Callable[[RationaliseEvent], tuple[str, float] | None] | None = None,
+        delegate_reactive: bool = False,
     ) -> None:
         self._bus = bus
         self._state = state
         self._role = role
         self._max_reactive_rounds = max_reactive_rounds
         self._cogitate_fn = cogitate_fn
+        self._delegate_reactive = delegate_reactive
 
         # Per-lesson state
         self._current_entries: list[KLine] = []
@@ -111,12 +123,20 @@ class Reactor:
         Tries auto-countersign first; falls through to reactive
         handling (scaffolding or escalation) on no match.
 
+        In delegated mode (``delegate_reactive=True``) a proposal that
+        does not auto-countersign returns ``False`` immediately with no
+        side effects — no reactive round, no cogitation, no escalation —
+        so the Trainer can surface the decision to the supervisor.
+
         Returns ``True`` if auto-countersign succeeded (no supervisor
         interaction needed). Returns ``False`` if reactive handling
-        was invoked (supervisor ratification may be required).
+        was invoked (supervisor ratification may be required) or if
+        delegated mode deferred the decision.
         """
         if self._auto_countersign(event.proposal):
             return True
+        if self._delegate_reactive:
+            return False  # defer to supervisor; no round/cogitate/escalate side effects
         self._handle_reactive(event)
         return False
 
