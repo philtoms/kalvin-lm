@@ -4,7 +4,9 @@ Maps supervisor free-text input to structured commands, which are then dispatche
 as bus messages. Used by both TUI and Slack participants to interpret user
 input uniformly.
 
-Spec ref: specs/harness-server.md §Shared Command Protocol (HRNS-32)
+Spec ref: specs/harness-server.md §Shared Command Protocol (HRNS-32).
+The ``scaffold`` command (reactive scaffolding) is defined in
+specs/reactive-delegation.md §Scaffold Command.
 """
 
 from __future__ import annotations
@@ -141,6 +143,24 @@ class GuidanceCommand(Command):
         return [(TRAINER_ROLE, "input", self.original_text)]
 
 
+@dataclass
+class ScaffoldCommand(Command):
+    """Submit reactive scaffolding (KScript) to Kalvin.
+
+    The supervisor-side equivalent of the Cogitator's reactive scaffolding
+    output. Reuses the existing ``trainee`` ``submit`` bus action, so the
+    KScript is compiled by Kalvin's adapter exactly like any lesson
+    submission; compilation failures surface as ``error`` events.
+
+    Spec ref: specs/reactive-delegation.md §Scaffold Command
+    """
+
+    text: str
+
+    def to_messages(self, latest_proposal: Any) -> list[tuple[str, str, Any]]:
+        return [(TRAINEE_ROLE, "submit", self.text)]
+
+
 def parse_command(text: str) -> Command:
     """Parse free-text input into a structured Command.
 
@@ -154,6 +174,7 @@ def parse_command(text: str) -> Command:
         - "load" or "load:<path>" (case-insensitive) → LoadCommand
         - starts with "goal:" or "goal " (case-insensitive) → GoalCommand
         - equals "ratify" (case-insensitive, stripped) → RatifyCommand
+        - starts with "scaffold:" or "scaffold " (case-insensitive) → ScaffoldCommand
         - looks like a file path → FileGoalCommand
         - everything else → GuidanceCommand
 
@@ -196,6 +217,14 @@ def parse_command(text: str) -> Command:
     # Ratify keyword
     if lower == "ratify":
         return RatifyCommand(original_text=original)
+
+    # Scaffold prefix (KScript source). Placed before the file-path heuristic so
+    # that multi-line KScript (which may contain "/" and ".") is not
+    # misclassified as a file path.
+    if lower.startswith("scaffold:") or lower.startswith("scaffold "):
+        # Extract the KScript source after "scaffold:" or "scaffold "
+        scaffold_text = stripped[9:].strip()
+        return ScaffoldCommand(original_text=original, text=scaffold_text)
 
     # File path heuristic
     if _looks_like_file_path(stripped):

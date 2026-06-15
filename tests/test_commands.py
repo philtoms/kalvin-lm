@@ -17,6 +17,7 @@ from participants.commands import (
     RestartCommand,
     ResumeCommand,
     SaveCommand,
+    ScaffoldCommand,
     StartCommand,
     StopCommand,
     parse_command,
@@ -158,6 +159,65 @@ class TestFileGoalCommand:
     def test_parse_path_with_separator_and_extension(self):
         cmd = parse_command("lessons/svo.txt")
         assert isinstance(cmd, FileGoalCommand)
+
+
+# ---------------------------------------------------------------------------
+# Scaffold command (reactive scaffolding — RD-9/10/11)
+# ---------------------------------------------------------------------------
+
+
+class TestScaffoldCommand:
+    """ScaffoldCommand submits reactive scaffolding (KScript) to Kalvin.
+
+    RD-11 note: the compile-error round-trip (invalid KScript → ``error``
+    event) is exercised by Kalvin's adapter tests (HRNS-8); here we assert
+    only that ``to_messages`` produces the ``{trainee, submit}`` tuple that
+    the adapter consumes.
+    """
+
+    def test_parse_with_colon(self):
+        # RD-9
+        cmd = parse_command("scaffold:MHALL = SVO")
+        assert isinstance(cmd, ScaffoldCommand)
+        assert cmd.text == "MHALL = SVO"
+        assert cmd.original_text == "scaffold:MHALL = SVO"
+
+    def test_parse_with_space(self):
+        # RD-9 (space variant)
+        cmd = parse_command("scaffold MHALL = SVO")
+        assert isinstance(cmd, ScaffoldCommand)
+        assert cmd.text == "MHALL = SVO"
+
+    def test_parse_case_insensitive(self):
+        # RD-9 (case insensitivity)
+        cmd = parse_command("SCAFFOLD:MHALL = SVO")
+        assert isinstance(cmd, ScaffoldCommand)
+        assert cmd.text == "MHALL = SVO"
+
+    def test_parse_multiline(self):
+        # RD-9 (multi-line): the full multi-line source is preserved and is
+        # not misclassified as a FileGoalCommand.
+        cmd = parse_command("scaffold:\nMHALL = SVO\nSVO = agent")
+        assert isinstance(cmd, ScaffoldCommand)
+        assert cmd.text == "MHALL = SVO\nSVO = agent"
+
+    def test_to_messages_routes_to_trainee_submit(self):
+        # RD-10: reuses the existing trainee submit bus action.
+        cmd = ScaffoldCommand(original_text="scaffold:MHALL = SVO", text="MHALL = SVO")
+        msgs = cmd.to_messages(None)
+        assert msgs == [(TRAINEE_ROLE, "submit", "MHALL = SVO")]
+
+    def test_original_text_preserved(self):
+        cmd = parse_command("scaffold:MHALL = SVO")
+        assert cmd.original_text == "scaffold:MHALL = SVO"
+
+    def test_multiline_with_path_chars_not_file_goal(self):
+        # Placement guard: a multi-line scaffold source that contains "/" and
+        # "." must NOT fall through to the FileGoalCommand heuristic — the
+        # scaffold rule runs before it.
+        cmd = parse_command("scaffold:\nagents/v1.core = noop\nsee ./note.md")
+        assert isinstance(cmd, ScaffoldCommand)
+        assert not isinstance(cmd, FileGoalCommand)
 
 
 # ---------------------------------------------------------------------------
