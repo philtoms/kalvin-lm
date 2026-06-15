@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from harness.__main__ import _build_llm_client  # noqa: E402
+from harness.__main__ import _build_llm_client, _resolve_llm_wiring  # noqa: E402
 
 # ── TestBuildLLMClient ────────────────────────────────────────────────
 
@@ -102,6 +102,26 @@ class TestBuildLLMClient:
             call_kwargs = mock_cls.call_args[1]
             assert call_kwargs["model"] == "glm-5.1"
             assert call_kwargs["base_url"] == "https://api.z.ai/api/coding/paas/v4"
+
+    def test_llm_enabled_defaults_to_true(self) -> None:
+        """RD-1: trainer.llm.enabled defaults to True; unset config behaves as today."""
+        sentinel = MagicMock()
+        with patch("harness.__main__._build_llm_client", return_value=sentinel) as mock_build:
+            # No llm section at all
+            _, delegate_reactive = _resolve_llm_wiring({})
+            assert delegate_reactive is False
+            # llm section present but no enabled key
+            _, delegate_reactive = _resolve_llm_wiring({"llm": {}})
+            assert delegate_reactive is False
+            # The default path builds the client (proving today's behaviour)
+            assert mock_build.call_count == 2
+
+    def test_llm_enabled_explicitly_true(self) -> None:
+        """RD-1: enabled explicitly True → delegate_reactive False, client built."""
+        with patch("harness.__main__._build_llm_client", return_value="CLIENT") as mock_build:
+            _, delegate_reactive = _resolve_llm_wiring({"llm": {"enabled": True}})
+            assert delegate_reactive is False
+            mock_build.assert_called_once_with({"llm": {"enabled": True}})
 
 
 # ── TestTrainerFactoryLLMWiring ───────────────────────────────────────
@@ -205,6 +225,34 @@ class TestTrainerFactoryLLMWiring:
             llm_client=mock_llm,
         )
         assert trainer._reactor._cogitate_fn is not None
+
+    def test_flag_true_with_key_builds_client(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """RD-2: enabled True + API key set → client built, delegate_reactive False."""
+        monkeypatch.setenv("KALVIN_LLM_API_KEY", "test-key-123")
+        sentinel = MagicMock()
+        with patch("harness.__main__._build_llm_client", return_value=sentinel) as mock_build:
+            llm_client, delegate_reactive = _resolve_llm_wiring({"llm": {"enabled": True}})
+            assert llm_client is sentinel
+            assert delegate_reactive is False
+            mock_build.assert_called_once()
+
+    def test_flag_false_skips_build_even_with_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """RD-3: enabled False → _build_llm_client never called even with API key set."""
+        monkeypatch.setenv("KALVIN_LLM_API_KEY", "test-key-123")
+        with patch("harness.__main__._build_llm_client") as mock_build:
+            llm_client, delegate_reactive = _resolve_llm_wiring({"llm": {"enabled": False}})
+            assert mock_build.call_count == 0
+            assert llm_client is None
+            assert delegate_reactive is True
+
+    def test_flag_false_no_llm_section(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """RD-3 robustness: enabled False without API key still skips the build."""
+        monkeypatch.delenv("KALVIN_LLM_API_KEY", raising=False)
+        with patch("harness.__main__._build_llm_client") as mock_build:
+            llm_client, delegate_reactive = _resolve_llm_wiring({"llm": {"enabled": False}})
+            assert mock_build.call_count == 0
+            assert llm_client is None
+            assert delegate_reactive is True
 
 
 # ── TestAlreadySubscribedWrapper ──────────────────────────────────────
