@@ -24,7 +24,7 @@ from harness.bus import MessageBus
 from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
-from kalvin.expand import D_MAX
+from kalvin.expand import D_MAX, normalise_significance
 from kalvin.kline import KLine, kline_display
 from kalvin.mod_tokenizer import Mod32Tokenizer
 from ks.compiler import compile_source
@@ -296,9 +296,10 @@ class Trainer:
 
         if event.significance:
             distance = (~event.significance) & D_MAX
-            sig_norm = distance
+            sig_norm = normalise_significance(event.significance)
         else:
-            sig_norm = 0
+            distance = 0
+            sig_norm = 0.0
 
         if self._is_s1(event):
             logger.info(
@@ -309,10 +310,11 @@ class Trainer:
             )
         else:
             logger.info(
-                "%s %s → %d%s",
+                "%s %s → %.2f (d=%d)%s",
                 event.kind.upper(),
                 query_src,
                 sig_norm,
+                distance,
                 f" | proposal: {proposal_src}" if proposal_src else "",
             )
 

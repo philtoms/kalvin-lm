@@ -228,11 +228,12 @@ class TestSignificanceObject:
         assert sig["level"] == "S3"
 
     def test_midrange_normalisation(self):
-        # raw = D_MAX // 2 has distance = D_MAX // 2, which is far beyond
-        # S2_S3_DISTANCE. Normalisation clamps to 0.0 for S3.
+        # raw = D_MAX // 2 has distance = D_MAX // 2, which is deep S3.
+        # Band-anchored normalization (ADR-0007) is asymptotic: deep S3 is
+        # a small but non-zero value in (0.0, 0.50), never clamped to 0.
         raw = D_MAX // 2
         sig = _build_significance(raw)
-        assert sig["normalised"] == 0.0  # S3 → clamped to 0
+        assert 0.0 < sig["normalised"] < 0.50  # S3 → asymptotic, non-zero
 
     def test_level_classification_matches_classify(self):
         s12, s23, s34 = boundaries()
@@ -242,12 +243,12 @@ class TestSignificanceObject:
         assert sig["level"] == expected_level
 
     def test_s23_boundary(self):
-        """At the S2|S3 boundary, level should be S2, normalised should be 0.0."""
+        """At the S2|S3 boundary, level should be S2, normalised should be 0.50."""
         _, s23, _ = boundaries()
         sig = _build_significance(s23)
         assert sig["level"] == "S2"
-        # s23 = ~S2_S3_DISTANCE, so distance = S2_S3_DISTANCE → normalised = 0.0
-        assert sig["normalised"] == pytest.approx(0.0, abs=1e-6)
+        # s23 = ~S2_S3_DISTANCE, so distance = S2_S3_DISTANCE (100) → S2 floor → 0.50
+        assert sig["normalised"] == pytest.approx(0.50, abs=1e-6)
 
     def test_s2_less_than_s1(self):
         """S2 normalised significance must be strictly less than S1."""
@@ -263,11 +264,11 @@ class TestSignificanceObject:
         assert s2["normalised"] < 1.0
 
     def test_s1_range_near_one(self):
-        """S1 events normalise close to 1.0."""
+        """S1 events normalise to exactly 1.0 (band-anchored: S1 is constant 1.0)."""
         sig = _build_significance(D_MAX)  # distance=0
         assert sig["normalised"] == 1.0
         sig = _build_significance(D_MAX - 1)  # distance=1
-        assert sig["normalised"] == pytest.approx(0.99, rel=1e-6)
+        assert sig["normalised"] == 1.0
 
 
 # ── 7. KLine Display Object ──────────────────────────────────────────

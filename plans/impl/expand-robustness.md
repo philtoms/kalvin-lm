@@ -137,13 +137,13 @@ module for the shared `normalise_significance` helper.
 
 | Spec ID | Test File | Test Function | Status |
 |---------|-----------|---------------|--------|
-| SN-1 | `tests/test_normalise_significance.py` | `test_strict_band_ordering_s1_gt_s2_gt_s3_gt_s4` | ⏳ |
-| SN-2 | `tests/test_normalise_significance.py` | `test_s1_normalises_to_one` | ⏳ |
-| SN-3 | `tests/test_normalise_significance.py` | `test_s2_range_and_monotonic` | ⏳ |
-| SN-4 | `tests/test_normalise_significance.py` | `test_s3_asymptotic_never_zero` | ⏳ |
-| SN-5 | `tests/test_normalise_significance.py` | `test_raw_zero_to_zero` | ⏳ |
-| SN-6 | `tests/test_normalise_significance.py` | `test_s3_injective_no_collapse` | ⏳ |
-| SN-7 | `tests/test_normalise_significance.py` | `test_global_monotonic` | ⏳ |
+| SN-1 | `tests/test_normalise_significance.py` | `test_strict_band_ordering_s1_gt_s2_gt_s3_gt_s4` | ✅ |
+| SN-2 | `tests/test_normalise_significance.py` | `test_s1_normalises_to_one` | ✅ |
+| SN-3 | `tests/test_normalise_significance.py` | `test_s2_range_and_monotonic` | ✅ |
+| SN-4 | `tests/test_normalise_significance.py` | `test_s3_asymptotic_never_zero` | ✅ |
+| SN-5 | `tests/test_normalise_significance.py` | `test_raw_zero_to_zero` | ✅ |
+| SN-6 | `tests/test_normalise_significance.py` | `test_s3_injective_no_collapse` | ✅ |
+| SN-7 | `tests/test_normalise_significance.py` | `test_global_monotonic` | ✅ |
 
 ---
 

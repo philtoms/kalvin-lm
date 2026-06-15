@@ -16,7 +16,11 @@ The module reads from the Model (storage) but is a separate responsibility:
 Model indexes and retrieves; Expand computes how far apart two KLines are.
 
 Re-exported constants and types from the old model module:
-  D_MAX, MASK64, MAX_HOP, _S3_BIAS, QueryCandidate"""
+  D_MAX, MASK64, MAX_HOP, _S3_BIAS, QueryCandidate
+
+Band-anchored normalization (defined here, not re-exported):
+  normalise_significance, S2_TOP, S2_FLOOR, S3_K
+"""
 
 from __future__ import annotations
 
@@ -53,6 +57,13 @@ MAX_HOP = 100
 # S3 connotation hops start at S2_S3_DISTANCE + 1 = 101.
 S2_S3_DISTANCE = 100
 
+# Band-anchored normalization constants (ADR-0007). Each significance band
+# owns a fixed sub-range of [0.0, 1.0]; S3 is asymptotic so its unbounded
+# distance range maps injectively into an open interval without clamping.
+S2_TOP = 0.99  # normalised value of the closest S2 (distance 2)
+S2_FLOOR = 0.50  # normalised value at the S2|S3 boundary (distance 100); S3 asymptote
+S3_K = 50  # S3 decay rate (single tunable; smaller compresses deep S3 faster)
+
 
 # ── Significance Boundaries ───────────────────────────────────────────
 
@@ -83,6 +94,31 @@ def classify(sig: int, s12: int, s23: int, s34: int) -> str:
         return "S3"
     else:
         return "S4"
+
+
+def normalise_significance(raw_sig: int) -> float:
+    """Normalise a raw significance value to a band-anchored float in [0.0, 1.0].
+
+    The single source of truth for significance normalization (ADR-0007).
+    Each band owns a fixed sub-range so S1/S2/S3/S4 are always ordered and
+    visible; S3 uses an asymptotic curve so its unbounded distance range
+    maps injectively into an open interval without ever being clamped.
+
+    - S1 (distance <= 1)  -> 1.0
+    - S2 (2..100)         -> linear in [0.50, 0.99]
+    - S3 (>100)           -> asymptotic 0.50 * S3_K / (S3_K + (distance-100)),
+                             never 0.0
+    - raw 0 (S4)          -> 0.0
+    """
+    if raw_sig == 0:
+        return 0.0
+    distance = (~raw_sig) & MASK64
+    if distance <= 1:
+        return 1.0
+    if distance <= S2_S3_DISTANCE:
+        return S2_FLOOR + (S2_TOP - S2_FLOOR) * (S2_S3_DISTANCE - distance) / (S2_S3_DISTANCE - 2)
+    delta = distance - S2_S3_DISTANCE
+    return S2_FLOOR * S3_K / (S3_K + delta)
 
 
 class QueryCandidate:

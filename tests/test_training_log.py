@@ -207,7 +207,9 @@ class TestTrainerLogging:
         event = _make_event("frame", query, proposal=proposal, significance=_S2_SIGNIFICANCE)
         trainer.on_message(Message(role=TRAINEE_ROLE, action="frame", message=event))
 
-        assert any(f"→ {_S2_DISTANCE}" in r.message for r in caplog.records)
+        assert any(
+            "→ 0.50" in r.message and f"(d={_S2_DISTANCE})" in r.message for r in caplog.records
+        )
 
     def test_decompile_fallback_repr(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-7: Decompilation failure falls back to repr()."""

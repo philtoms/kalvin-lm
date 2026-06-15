@@ -10,7 +10,7 @@ significance breakdown (raw, normalised, level).
 
 from __future__ import annotations
 
-from kalvin.expand import MASK64, boundaries, classify
+from kalvin.expand import boundaries, classify, normalise_significance
 from kalvin.kline import KLine, kline_display
 from kalvin.mod_tokenizer import Mod32Tokenizer
 
@@ -123,20 +123,14 @@ def _build_significance(raw_sig: int) -> dict:
 
     Returns dict with raw, normalised, and level fields.
 
-    Normalisation uses the inverted distance (distance = ~raw) against
-    S2_S3_DISTANCE so that S1 → [0.99, 1.0], S2 → [0.0, 0.98],
-    S3/S4 → 0.0. This ensures S2 < S1 in the normalised value, unlike
-    raw/D_MAX which loses float64 precision for distances < 2^64.
+    Normalisation is band-anchored (ADR-0007) via the shared
+    ``normalise_significance`` helper: S1 → 1.0; S2 → linear in
+    [0.50, 0.99]; S3 → asymptotic in (0.0, 0.50), never clamped;
+    S4 → 0.0. The helper is the single source of truth.
     """
-    from kalvin.expand import S2_S3_DISTANCE
-
     s12, s23, s34 = boundaries()
     level = classify(raw_sig, s12, s23, s34)
-    if raw_sig == 0:
-        normalised = 0.0
-    else:
-        distance = (~raw_sig) & MASK64
-        normalised = max(0.0, 1.0 - distance / S2_S3_DISTANCE)
+    normalised = normalise_significance(raw_sig)
     return {
         "raw": raw_sig,
         "normalised": normalised,
