@@ -140,9 +140,9 @@ An embedded participant that drives the training loop. See `@specs/trainer.md` (
 Key behaviours:
 
 - **Curriculum-driven mode**: submits the next lesson from the curriculum to Kalvin.
-- **Reactive mode**: cogitates (via LLM agent) on S2/S3 events and generates reactive scaffolding.
+- **Reactive mode**: cogitates (via LLM agent) on S2/S3 events and generates reactive scaffolding. Gated by `trainer.llm.enabled` (default `true`); when `false`, reactive decisions are delegated to the supervisor instead. See `@specs/reactive-delegation.md`.
 - **Ratification**: auto-countersigns proposals that structurally match expectations.
-- **Escalation**: sends messages to role `supervisor` when stuck (budget exhaustion or low LLM agent confidence). All supervisor participants receive escalation notifications.
+- **Escalation**: sends messages to role `supervisor` when stuck (budget exhaustion or low LLM agent confidence). All supervisor participants receive escalation notifications. Suppressed in delegated mode (`@specs/reactive-delegation.md`).
 - **Event relay**: relays Kalvin ground/frame/error events to role `supervisor` so supervisors observe the full training session. Ground events forwarded as `event` action. Frame events (S2/S3 proposals) forwarded as both `event` and `ratify_request` (carrying the proposal for ratification).
 - **Ratify request**: when a frame event carries a ratifiable proposal, sends a `ratify_request` action to role `supervisor` with the proposal payload.
 - **Session management**: one training session at a time. Supports pause and stop via human input.
@@ -170,6 +170,7 @@ Both TUI and Slack participants use a shared command parser (`src/participants/c
 | `resume` | `ResumeCommand` | `{role: "trainer", action: "input", message: "resume"}` |
 | `goal: <text>` | `GoalCommand` | `{role: "trainer", action: "input", message: "goal: <text>"}` |
 | `ratify` | `RatifyCommand` | `{role: "trainee", action: "countersign", message: <latest proposal>}` |
+| `scaffold:<kscript>` | `ScaffoldCommand` | `{role: "trainee", action: "submit", message: <kscript>}` (delegated reactive decision — see `@specs/reactive-delegation.md`) |
 | `<file path>` | `FileGoalCommand` | `{role: "trainer", action: "input", message: "<path>"}` |
 | `<anything else>` | `GuidanceCommand` | `{role: "trainer", action: "input", message: "<text>"}` |
 
@@ -182,7 +183,7 @@ The `ratify` command uses the latest pending proposal tracked by the participant
 | `progress` | `{status, lesson_label, lessons_total, lessons_completed}` | Session lifecycle events |
 | `event` | `RationaliseEvent` (ground/frame/error) | Kalvin event relay from Trainer |
 | `escalation` | `{reason, detail, lesson_position}` | Trainer stuck, needs help |
-| `ratify_request` | `{proposal, query, significance}` | Proposal ready for ratification |
+| `ratify_request` | `{proposal, query, significance}` (optionally enriched with `misfit`, `curriculum_context` in delegated mode) | Proposal ready for ratification / reactive decision (`@specs/reactive-delegation.md`) |
 
 **Messages sent by all supervisor participants:**
 

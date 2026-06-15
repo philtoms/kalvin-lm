@@ -42,7 +42,7 @@ Each line is a JSON object with a monotonic `seq` counter.
 | `disconnected` | `seq` | Supervisor disconnected (planned or error) |
 | `progress` | `seq`, `status`, `lesson`, `lessons_total`, `lessons_completed` | Training progress: `started`, `lesson_complete`, `complete`, `amended`, `polling_for_goal`, `ready` |
 | `rationalise` | `seq`, `kind`, `significance`, `query`, `proposal` | Kalvin rationalisation event (`ground` or `frame`), with decompiled source and significance breakdown |
-| `ratify_request` | `seq`, `query`, `proposal`, `significance` | S2/S3 proposal requiring ratification decision |
+| `ratify_request` | `seq`, `query`, `proposal`, `significance`, (`misfit`, `curriculum_context`) | S2/S3 proposal requiring ratification decision. When reactive delegation is active (`@specs/reactive-delegation.md`), enriched with the misfit diagnosis and curriculum context so the supervisor can write reactive scaffolding. |
 | `escalation` | `seq`, `reason`, `detail`, `lesson_position` | Trainer cannot make progress (`budget_exhaustion` or `low_confidence`) |
 
 ### Significance Object
@@ -76,6 +76,7 @@ A single JSON object, written by pi, consumed and deleted by the supervisor.
 | `load` | `action` | Load Kalvin model |
 | `goal` | `action`, `text` | Set training goal |
 | `guidance` | `action`, `text` | Freeform guidance for the trainer |
+| `scaffold` | `action`, `text` | Submit reactive scaffolding KScript to Kalvin (delegated reactive decision — `@specs/reactive-delegation.md`) |
 | `continue` | `action` | No-op: acknowledge event, wait for next |
 | `shutdown` | `action` | Graceful supervisor shutdown |
 
@@ -156,6 +157,7 @@ Sessions live inside a git worktree at `.worktrees/auto-tune/<session>/`. The se
 ### Harness Lifecycle
 
 7. `start-harness` starts `python -m harness --config harness.yaml` as a background process.
+7a. `start-harness` generates a per-session `harness.yaml` that sets `trainer.llm.enabled: false`, placing the session in delegated mode so pi acts as the reactive decision-maker (`@specs/reactive-delegation.md`).
 8. `start-harness` records the PID in the session directory.
 9. `start-harness` polls the WebSocket port until it accepts connections, then returns.
 10. `stop-harness` sends SIGTERM to the harness PID, waits for exit (SIGKILL on 5s timeout).
