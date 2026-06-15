@@ -240,9 +240,7 @@ class TokenEncoder:
             # opaque per §11.6 — _build_dbg skips decode for them.
             canon_dbg: KDbg | None = None
             if self._dev:
-                canon_dbg = self._build_dbg(
-                    packed, dbg_label, op="CANONIZED", packed=True
-                )
+                canon_dbg = self._build_dbg(packed, dbg_label, op="CANONIZED", packed=True)
             else:
                 canon_dbg = KDbg(op="CANONIZED")
             extras.append(

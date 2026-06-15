@@ -745,7 +745,7 @@ class TestUnpack:
         m.add_frame(KLine(0x20, []))
         m.add_frame(KLine(0x40, []))
         m.add_frame(KLine(0x30, [0x10, 0x20]))  # inner canon
-        outer = KLine(0x70, [0x30, 0x40])       # 0x70 == 0x30 | 0x40
+        outer = KLine(0x70, [0x30, 0x40])  # 0x70 == 0x30 | 0x40
         m.add_frame(outer)
         assert m.unpack(outer) == [0x10, 0x20, 0x40]
 
@@ -771,9 +771,9 @@ class TestUnpack:
         m.add_frame(KLine(0x10, []))
         m.add_frame(KLine(0x20, []))
         m.add_frame(KLine(0x40, []))
-        m.add_frame(KLine(0x30, []))             # identity for 0x30
-        m.add_frame(KLine(0x30, [0x10, 0x20]))   # canon for 0x30 (added later)
-        parent = KLine(0x70, [0x30, 0x40])       # references 0x30
+        m.add_frame(KLine(0x30, []))  # identity for 0x30
+        m.add_frame(KLine(0x30, [0x10, 0x20]))  # canon for 0x30 (added later)
+        parent = KLine(0x70, [0x30, 0x40])  # references 0x30
         m.add_frame(parent)
         # resolves 0x30 → identity (not canon) → [0x30]; not [0x10, 0x20]
         assert m.unpack(parent) == [0x30, 0x40]
@@ -784,11 +784,11 @@ class TestUnpack:
         m.add_frame(KLine(0x10, []))
         m.add_frame(KLine(0x20, []))
         m.add_frame(KLine(0x40, []))
-        old = KLine(0x30, [0x10, 0x20])        # older canon for 0x30
+        old = KLine(0x30, [0x10, 0x20])  # older canon for 0x30
         new = KLine(0x30, [0x10, 0x20, 0x10])  # newer canon for 0x30
         m.add_frame(old)
         m.add_frame(new)
-        parent = KLine(0x70, [0x30, 0x40])     # references 0x30
+        parent = KLine(0x70, [0x30, 0x40])  # references 0x30
         m.add_frame(parent)
         # resolves 0x30 → newer canon → [0x10, 0x20, 0x10]
         assert m.unpack(parent) == [0x10, 0x20, 0x10, 0x40]

@@ -425,9 +425,7 @@ class Model:
             return identity
         if canon is not None:
             return canon
-        raise ValueError(
-            f"unpack: node {node:#x} resolves to no identity or canon kline"
-        )
+        raise ValueError(f"unpack: node {node:#x} resolves to no identity or canon kline")
 
     def query(self, signature: KSig, depth: int = 1) -> list[KLine]:
         """Find all KLines with signature, then expand each."""

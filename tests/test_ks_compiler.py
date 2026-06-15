@@ -297,6 +297,7 @@ class TestCanonicalEncoding:
         """KS-42: exactly one CANONIZED kline per compound identifier."""
         entries = self._entries(nlp_tokenizer)
         from collections import Counter
+
         counts = Counter(e.dbg.label for e in entries if e.dbg.op == "CANONIZED")
         for compound in ("MHALL", "SVO", "ALL"):
             assert counts.get(compound, 0) == 1, (
