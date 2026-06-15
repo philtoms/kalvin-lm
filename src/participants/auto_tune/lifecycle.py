@@ -366,6 +366,13 @@ def _generate_session_harness_config(session_dir: Path, cfg: SessionConfig) -> P
         data["trainer"] = {}
     data["trainer"]["curriculum_file"] = cfg.curriculum
 
+    # Force delegated reactive mode: pi (the CLI supervisor) is the sole
+    # reactive decision-maker, not the Cogitator LLM agent.
+    # setdefault preserves any existing llm.base_url / llm.model overrides.
+    # Spec ref: specs/reactive-delegation.md RD-12, specs/auto-tune.md rule 7a.
+    llm = data["trainer"].setdefault("llm", {})
+    llm["enabled"] = False
+
     # Write per-session config
     config_path.write_text(
         yaml.dump(data, default_flow_style=False, sort_keys=False),

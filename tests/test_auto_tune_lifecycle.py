@@ -634,6 +634,83 @@ class TestSessionHarnessConfig:
         assert data["trainer"]["curriculum_file"] == "curricula/new.md"
         assert data["trainer"]["max_reactive_rounds"] == 5
         assert data["server"]["port"] == 8765
+        # RD-12: enabled forced false even when not present in project config
+        assert data["trainer"]["llm"]["enabled"] is False
+
+    def test_sets_llm_enabled_false(self, tmp_path: Path) -> None:
+        """RD-12: generated config forces trainer.llm.enabled=false.
+
+        When the project harness.yaml has no ``trainer.llm`` section, the
+        per-session config must still add it with ``enabled: false``.
+        """
+        import yaml
+
+        from participants.auto_tune.lifecycle import _generate_session_harness_config
+        from participants.auto_tune.session import SessionConfig
+
+        project_yaml = tmp_path / "harness.yaml"
+        project_yaml.write_text(
+            "server:\n  host: localhost\n  port: 8765\n"
+            "trainer:\n  curriculum_file: curricula/first-steps.md\n",
+            encoding="utf-8",
+        )
+
+        session_dir = tmp_path / "auto-tune" / "test"
+        session_dir.mkdir(parents=True)
+        (session_dir / "runs").mkdir()
+
+        cfg = SessionConfig(
+            session="test",
+            curriculum="curricula/custom.md",
+            harness_url="ws://localhost:8765",
+        )
+
+        result = _generate_session_harness_config(session_dir, cfg)
+
+        data = yaml.safe_load(result.read_text(encoding="utf-8"))
+        assert data["trainer"]["llm"]["enabled"] is False
+        # curriculum_file still overridden from the session config
+        assert data["trainer"]["curriculum_file"] == "curricula/custom.md"
+
+    def test_preserves_llm_overrides(self, tmp_path: Path) -> None:
+        """RD-12: existing llm.base_url / llm.model overrides are preserved.
+
+        The merge must set ``enabled: false`` without clobbering sibling
+        ``llm.*`` keys already present in the project config.
+        """
+        import yaml
+
+        from participants.auto_tune.lifecycle import _generate_session_harness_config
+        from participants.auto_tune.session import SessionConfig
+
+        project_yaml = tmp_path / "harness.yaml"
+        project_yaml.write_text(
+            "server:\n  host: localhost\n  port: 8765\n"
+            "trainer:\n  curriculum_file: curricula/old.md\n"
+            "  llm:\n"
+            "    base_url: https://open.bigmodel.cn/api/paas/v4\n"
+            "    model: glm-5.1\n",
+            encoding="utf-8",
+        )
+
+        session_dir = tmp_path / "auto-tune" / "test"
+        session_dir.mkdir(parents=True)
+        (session_dir / "runs").mkdir()
+
+        cfg = SessionConfig(
+            session="test",
+            curriculum="curricula/new.md",
+            harness_url="ws://localhost:8765",
+        )
+
+        result = _generate_session_harness_config(session_dir, cfg)
+
+        data = yaml.safe_load(result.read_text(encoding="utf-8"))
+        # enabled forced false
+        assert data["trainer"]["llm"]["enabled"] is False
+        # existing overrides preserved (not clobbered)
+        assert data["trainer"]["llm"]["base_url"] == "https://open.bigmodel.cn/api/paas/v4"
+        assert data["trainer"]["llm"]["model"] == "glm-5.1"
 
     def test_no_project_config_uses_minimal(self, tmp_path: Path) -> None:
         import yaml
@@ -656,6 +733,8 @@ class TestSessionHarnessConfig:
 
         data = yaml.safe_load(result.read_text(encoding="utf-8"))
         assert data["trainer"]["curriculum_file"] == "curricula/custom.md"
+        # RD-12: enabled forced false even with no project config
+        assert data["trainer"]["llm"]["enabled"] is False
 
 
 # ---------------------------------------------------------------------------
