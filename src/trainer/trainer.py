@@ -26,7 +26,9 @@ from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX, normalise_significance
 from kalvin.kline import KLine, kline_display
+from kalvin.misfit import classify_misfit
 from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.signature import make_signature
 from ks.compiler import compile_source
 from trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from trainer.curriculum_document import (
@@ -64,14 +66,29 @@ class Trainer:
         but ``cogitate_fn`` is not, a :class:`~trainer.cogitation.Cogitator`
         is automatically constructed and its ``cogitate()`` method is
         adapted into the ``cogitate_fn`` callable the
-        :class:`~trainer.reactor.Reactor` expects.
+        :class:`~trainer.reactor.Reactor` expects. This auto-wiring is
+        skipped when ``delegate_reactive`` is ``True``.
     llm_client:
         Optional LLM client for curriculum generation and reactive
         scaffolding. Must satisfy the :class:`~trainer.cogitation.LLMClient`
         protocol. When provided without an explicit ``cogitate_fn``,
         a :class:`~trainer.cogitation.Cogitator` is auto-wired for
-        reactive scaffolding on S2/S3 events. Also enables goal-based
-        curriculum generation via the CurriculumGenerator.
+        reactive scaffolding on S2/S3 events (unless ``delegate_reactive``
+        is ``True``). Also enables goal-based curriculum generation via
+        the CurriculumGenerator.
+    delegate_reactive:
+        When ``True``, the Trainer enters **delegated mode**: the Cogitator
+        is never auto-wired (``cogitate_fn`` stays ``None`` regardless of
+        ``llm_client``) and the Reactor defers every reactive decision to
+        the supervisor. For S2/S3 proposals that do not auto-countersign,
+        the emitted ``ratify_request`` is enriched with ``misfit`` and
+        ``curriculum_context`` so a supervisor participant can make the
+        decision. When ``False`` (the default), today's behaviour is
+        unchanged: the Cogitator is auto-wired when an ``llm_client`` is
+        available, and the ``ratify_request`` payload carries only
+        ``{proposal, query, significance}``. This parameter is the inverse
+        of the ``trainer.llm.enabled`` config flag
+        (``delegate_reactive = not llm_enabled``).
     save_path:
         Optional file path for curriculum state persistence.
     curriculum_file:
@@ -90,6 +107,7 @@ class Trainer:
         max_reactive_rounds: int = 5,
         cogitate_fn: Callable[[RationaliseEvent], tuple[str, float] | None] | None = None,
         llm_client: Any | None = None,
+        delegate_reactive: bool = False,
         save_path: str | Path | None = None,
         curriculum_file: str | Path | None = None,
         curricula_dir: str | Path | None = None,
@@ -104,6 +122,7 @@ class Trainer:
             curriculum_file=str(curriculum_file) if curriculum_file else None,
         )
         self._llm_client = llm_client
+        self._delegate_reactive = delegate_reactive
         self._curriculum_file = Path(curriculum_file) if curriculum_file else None
         self._curricula_dir = Path(curricula_dir) if curricula_dir else None
 
@@ -111,9 +130,14 @@ class Trainer:
         # explicit cogitate_fn.  The adapter closes over a local
         # Cogitator instance (not ``self``) so that cogitate_fn
         # remains a plain callable.
-        if llm_client is not None and cogitate_fn is None:
-            from kalvin.misfit import classify_misfit
-            from kalvin.signature import make_signature
+        #
+        # In delegated mode (``delegate_reactive=True``) the Cogitator
+        # is never auto-wired — the Reactor must not cogitate, so
+        # ``cogitate_fn`` stays ``None`` regardless of ``llm_client``.
+        # This complements the Reactor's delegated-mode short-circuit
+        # (KB-233): even if ``_handle_reactive`` were reached, a
+        # ``None`` cogitate_fn means ``_cogitate`` returns ``None``.
+        if llm_client is not None and cogitate_fn is None and not delegate_reactive:
             from trainer.cogitation import CogitationRequest, Cogitator, MisfitInfo
 
             _cogitator = Cogitator(client=llm_client)
@@ -127,11 +151,7 @@ class Trainer:
                 # event.candidate carries the original misfit candidate
                 # for S2/S3 expansion events; fall back to event.proposal
                 # for legacy events without the candidate field.
-                target = event.candidate if event.candidate is not None else event.proposal
-                target_underfit, target_overfit = classify_misfit(target)
-                target_nodes_sig = make_signature(target.nodes)
-                underfit_gap = target.signature & ~target_nodes_sig
-                overfit_mask = target_nodes_sig & ~target.signature
+                misfit = self._compute_misfit(event)
 
                 # Display klines as human-readable KScript for the LLM
                 try:
@@ -149,23 +169,23 @@ class Trainer:
                     "Cogitate adapter: event query=%r (%s), candidate=%r, proposal=%r (%s)",
                     event.query,
                     query_src,
-                    target,
+                    event.candidate,
                     event.proposal,
                     proposal_src,
                 )
                 logger.info(
                     "Cogitate misfit: underfit=%s, overfit=%s, gap=%#x, mask=%#x",
-                    target_underfit,
-                    target_overfit,
-                    underfit_gap,
-                    overfit_mask,
+                    misfit["underfit"],
+                    misfit["overfit"],
+                    misfit["underfit_gap"],
+                    misfit["overfit_mask"],
                 )
 
                 misfit_info = MisfitInfo(
-                    underfit=target_underfit,
-                    overfit=target_overfit,
-                    underfit_gap=underfit_gap,
-                    overfit_mask=overfit_mask,
+                    underfit=misfit["underfit"],
+                    overfit=misfit["overfit"],
+                    underfit_gap=misfit["underfit_gap"],
+                    overfit_mask=misfit["overfit_mask"],
                     expectation_summary=query_src,
                     proposal_summary=proposal_src,
                 )
@@ -199,6 +219,7 @@ class Trainer:
             role=role,
             max_reactive_rounds=max_reactive_rounds,
             cogitate_fn=cogitate_fn,
+            delegate_reactive=delegate_reactive,
         )
 
         # Session model fields
@@ -247,6 +268,60 @@ class Trainer:
         if event.kind == "frame" and event.significance >= _S1_FRAME_THRESHOLD:
             return True
         return False
+
+    # ── Misfit diagnosis ──────────────────────────────────────────────
+
+    def _compute_misfit(self, event: RationaliseEvent) -> dict:
+        """Compute the misfit diagnosis for an S2/S3 event.
+
+        Operates on the ORIGINAL candidate kline (the one with the
+        gap/excess), not the expansion proposal. ``event.candidate``
+        carries the original misfit candidate for S2/S3 expansion events;
+        falls back to ``event.proposal`` for legacy events without the
+        candidate field.
+
+        Returns a dict matching the spec's Decision Request ``misfit``
+        field: ``{underfit, overfit, underfit_gap, overfit_mask}``.
+        ``underfit``/``overfit`` are ``bool``; the gap/mask are the
+        bit differences between the kline signature and its nodes.
+        """
+        target = event.candidate if event.candidate is not None else event.proposal
+        target_underfit, target_overfit = classify_misfit(target)
+        target_nodes_sig = make_signature(target.nodes)
+        underfit_gap = target.signature & ~target_nodes_sig
+        overfit_mask = target_nodes_sig & ~target.signature
+        return {
+            "underfit": target_underfit,
+            "overfit": target_overfit,
+            "underfit_gap": underfit_gap,
+            "overfit_mask": overfit_mask,
+        }
+
+    def _compute_curriculum_context(self) -> dict | str:
+        """Derive the curriculum context for a delegated decision request.
+
+        Returns a structured dict ``{objective, approach, lesson_prose}``
+        mirroring the fields :class:`~trainer.cogitation.CogitationRequest`
+        carries.  Falls back to a legacy empty string ``""`` when no
+        document is available or all three fields are empty.
+
+        In practice ``Curriculum`` always wraps a ``CurriculumDocument``
+        (even a synthetic one with ``"(auto-generated)"`` objective), so
+        the dict form is the norm.
+        """
+        document = self._state.curriculum.document
+        objective = document.objective
+        approach = document.approach
+        current_lesson = self._state.curriculum.current_lesson()
+        lesson_prose = current_lesson.prose if current_lesson is not None else ""
+
+        if not (objective or approach or lesson_prose):
+            return ""
+        return {
+            "objective": objective,
+            "approach": approach,
+            "lesson_prose": lesson_prose,
+        }
 
     # ── Message handler ───────────────────────────────────────────────
 
@@ -342,17 +417,43 @@ class Trainer:
                 auto_matched = self._reactor.process_s2_s3(event)
 
                 # Ratify request for S2/S3 proposals (HRNS-33)
-                # Only sent when auto-countersign did NOT handle it
+                # Only sent when auto-countersign did NOT handle it.
+                #
+                # In delegated mode (RD-7) the payload is enriched with
+                # the misfit diagnosis and curriculum context the
+                # supervisor needs to make the reactive decision.  When
+                # ``delegate_reactive`` is False the payload stays exactly
+                # as today (RD-8): ``{proposal, query, significance}``.
+                # A context-gathering failure must never prevent the
+                # request itself from being sent.
                 if not auto_matched:
+                    payload: dict = {
+                        "proposal": event.proposal,
+                        "query": event.query,
+                        "significance": event.significance,
+                    }
+
+                    if self._delegate_reactive:
+                        try:
+                            payload["misfit"] = self._compute_misfit(event)
+                        except Exception:
+                            logger.warning(
+                                "Failed to compute misfit for ratify_request",
+                                exc_info=True,
+                            )
+                        try:
+                            payload["curriculum_context"] = self._compute_curriculum_context()
+                        except Exception:
+                            logger.warning(
+                                "Failed to derive curriculum context for ratify_request",
+                                exc_info=True,
+                            )
+
                     self._bus.send(
                         Message(
                             role=SUPERVISOR_ROLE,
                             action="ratify_request",
-                            message={
-                                "proposal": event.proposal,
-                                "query": event.query,
-                                "significance": event.significance,
-                            },
+                            message=payload,
                             sender=self._role,
                         )
                     )

@@ -139,6 +139,7 @@ def _make_trainer(
     curriculum_file: str | Path | None = None,
     curricula_dir: str | Path | None = None,
     llm_client=None,
+    delegate_reactive: bool = False,
 ) -> tuple[Trainer, BusCapture]:
     """Create a Trainer with BusCapture installed.
 
@@ -153,6 +154,7 @@ def _make_trainer(
         curriculum_file=curriculum_file,
         curricula_dir=curricula_dir,
         llm_client=llm_client,
+        delegate_reactive=delegate_reactive,
     )
     capture = BusCapture(bus)
     capture.install()
@@ -167,6 +169,7 @@ def _make_trainer_with_capture(
     curriculum_file: str | Path | None = None,
     curricula_dir: str | Path | None = None,
     llm_client=None,
+    delegate_reactive: bool = False,
 ) -> tuple[Trainer, BusCapture]:
     """Create a Trainer with BusCapture installed BEFORE construction.
 
@@ -183,6 +186,7 @@ def _make_trainer_with_capture(
         curriculum_file=curriculum_file,
         curricula_dir=curricula_dir,
         llm_client=llm_client,
+        delegate_reactive=delegate_reactive,
     )
     return trainer, capture
 
@@ -2158,6 +2162,252 @@ class TestCogitatorAutoWiring:
             if m.message.get("reason") in ("low_confidence", "budget_exhaustion")
         ]
         assert len(escalation_msgs) == 0
+
+
+# ── KB-234: Misfit diagnosis helper ──────────────────────────────────
+
+
+class TestComputeMisfit:
+    """KB-234: Trainer._compute_misfit maps a KLine to the misfit dict."""
+
+    def test_underfit_only(self) -> None:
+        """Signature promises more than nodes deliver → underfit, no overfit."""
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, _capture = _make_trainer(bus, curriculum)
+
+        # signature 0xFF, nodes [0x01, 0x02] → nodes_sig=0x03
+        # gap = 0xFF & ~0x03 = 0xFC, mask = 0x03 & ~0xFF = 0
+        target = KLine(signature=0xFF, nodes=[0x01, 0x02])
+        event = _make_event("frame", query=target, proposal=target, significance=100)
+        result = trainer._compute_misfit(event)
+
+        assert result == {
+            "underfit": True,
+            "overfit": False,
+            "underfit_gap": 0xFC,
+            "overfit_mask": 0x00,
+        }
+
+    def test_overfit_only(self) -> None:
+        """Nodes carry more than signature captures → overfit, no underfit."""
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, _capture = _make_trainer(bus, curriculum)
+
+        # signature 0x01, nodes [0x01, 0x08] → nodes_sig=0x09
+        # gap = 0x01 & ~0x09 = 0, mask = 0x09 & ~0x01 = 0x08
+        target = KLine(signature=0x01, nodes=[0x01, 0x08])
+        event = _make_event("frame", query=target, proposal=target, significance=100)
+        result = trainer._compute_misfit(event)
+
+        assert result == {
+            "underfit": False,
+            "overfit": True,
+            "underfit_gap": 0x00,
+            "overfit_mask": 0x08,
+        }
+
+    def test_dual_misfit(self) -> None:
+        """Both underfit and overfit present simultaneously."""
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, _capture = _make_trainer(bus, curriculum)
+
+        # signature 0x0F, nodes [0x10] → nodes_sig=0x10
+        # gap = 0x0F & ~0x10 = 0x0F, mask = 0x10 & ~0x0F = 0x10
+        target = KLine(signature=0x0F, nodes=[0x10])
+        event = _make_event("frame", query=target, proposal=target, significance=100)
+        result = trainer._compute_misfit(event)
+
+        assert result == {
+            "underfit": True,
+            "overfit": True,
+            "underfit_gap": 0x0F,
+            "overfit_mask": 0x10,
+        }
+
+    def test_no_misfit(self) -> None:
+        """Signature and nodes agree → neither underfit nor overfit."""
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, _capture = _make_trainer(bus, curriculum)
+
+        # signature == nodes_sig → both gaps zero
+        target = KLine(signature=0x03, nodes=[0x01, 0x02])
+        event = _make_event("frame", query=target, proposal=target, significance=100)
+        result = trainer._compute_misfit(event)
+
+        assert result == {
+            "underfit": False,
+            "overfit": False,
+            "underfit_gap": 0x00,
+            "overfit_mask": 0x00,
+        }
+
+    def test_uses_candidate_when_present(self) -> None:
+        """When event.candidate is set, misfit is computed on candidate, not proposal."""
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer, _capture = _make_trainer(bus, curriculum)
+
+        candidate = KLine(signature=0xFF, nodes=[0x01])  # underfit
+        proposal = KLine(signature=0x03, nodes=[0x01, 0x02])  # no misfit
+        event = RationaliseEvent(
+            kind="frame",
+            query=proposal,
+            proposal=proposal,
+            significance=100,
+            candidate=candidate,
+        )
+        result = trainer._compute_misfit(event)
+
+        # Misfit computed on candidate (0xFF vs [0x01] → underfit), not proposal
+        assert result["underfit"] is True
+        assert result["underfit_gap"] == 0xFE
+
+
+# ── KB-234: Delegated reactive decisions ─────────────────────────────
+
+
+class TestDelegatedReactiveDecisions:
+    """KB-234: Trainer enriches ratify_request in delegated mode (RD-7, RD-8)."""
+
+    @patch("trainer.trainer.compile_source")
+    def test_enriched_ratify_request(self, mock_compile: MagicMock, tmp_path: Path) -> None:
+        """RD-7: delegate_reactive=True emits an enriched ratify_request.
+
+        The payload carries the existing ``proposal``/``query``/``significance``
+        PLUS ``misfit`` and ``curriculum_context`` derived from a
+        CurriculumDocument-backed curriculum.
+        """
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        curriculum_path = tmp_path / "test.md"
+        _write_curriculum(curriculum_path)
+        doc = CurriculumDocument.from_file(curriculum_path)
+
+        bus = MessageBus()
+        curriculum = Curriculum(doc)
+        trainer, capture = _make_trainer(
+            bus, curriculum, delegate_reactive=True, curriculum_file=curriculum_path
+        )
+        trainer.start_session()
+        capture.reset()
+
+        # Isolate Trainer-level testing — reactor returns False (no auto-match)
+        trainer._reactor.process_s2_s3 = MagicMock(return_value=False)
+
+        # Non-auto-matching S2/S3 frame event with a known misfit proposal
+        proposal = KLine(signature=0xFF, nodes=[0x01, 0x02])  # underfit
+        query = KLine(signature=999, nodes=[99])
+        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
+        trainer.on_message(Message(role=TRAINER_ROLE, action="frame", message=event))
+
+        ratify_msgs = capture.find_all(SUPERVISOR_ROLE, "ratify_request")
+        assert len(ratify_msgs) == 1
+        payload = ratify_msgs[0].message
+
+        # Existing keys
+        assert payload["proposal"] is event.proposal
+        assert payload["query"] is event.query
+        assert payload["significance"] == event.significance
+
+        # Enrichment: misfit matches _compute_misfit output
+        assert "misfit" in payload
+        expected_misfit = trainer._compute_misfit(event)
+        assert payload["misfit"] == expected_misfit
+        assert set(payload["misfit"]) == {
+            "underfit",
+            "overfit",
+            "underfit_gap",
+            "overfit_mask",
+        }
+
+        # Enrichment: curriculum_context derived from the loaded document
+        assert "curriculum_context" in payload
+        ctx = payload["curriculum_context"]
+        assert ctx == {
+            "objective": "Teach basic structure.",
+            "approach": "Step by step.",
+            "lesson_prose": "First lesson.",
+        }
+
+    @patch("trainer.trainer.compile_source")
+    def test_no_client_unchanged(self, mock_compile: MagicMock) -> None:
+        """RD-8: delegate_reactive=False + llm_client=None → unchanged no-client path.
+
+        The real Reactor runs (no patch). A non-matching S2/S3 escalates
+        ``low_confidence`` as today, and the ratify_request payload has no
+        enrichment keys.
+        """
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2"])
+        trainer, capture = _make_trainer(bus, curriculum, delegate_reactive=False)
+        trainer.start_session()
+        capture.reset()
+
+        # Non-auto-matching S2/S3 frame event — let the real Reactor run
+        proposal = KLine(signature=999, nodes=[88])
+        query = KLine(signature=888, nodes=[1])
+        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
+        trainer.on_message(Message(role=TRAINER_ROLE, action="frame", message=event))
+
+        # low_confidence escalation emitted (no cogitate_fn available)
+        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
+        low_conf = [
+            m for m in notify_msgs if m.message.get("reason") == "low_confidence"
+        ]
+        assert len(low_conf) == 1
+
+        # ratify_request sent without enrichment keys
+        ratify_msgs = capture.find_all(SUPERVISOR_ROLE, "ratify_request")
+        assert len(ratify_msgs) == 1
+        payload = ratify_msgs[0].message
+        assert "misfit" not in payload
+        assert "curriculum_context" not in payload
+
+    def test_delegated_skips_cogitate_wiring(self) -> None:
+        """RD-3 cross-check: delegate_reactive=True skips Cogitator wiring.
+
+        Even when an llm_client is provided, the auto-wiring block is
+        bypassed so ``_cogitate_fn`` stays ``None``.
+        """
+        mock_llm = MagicMock()
+        bus = MessageBus()
+        curriculum = Curriculum([])
+        trainer = Trainer(bus, curriculum, llm_client=mock_llm, delegate_reactive=True)
+
+        assert trainer._reactor._cogitate_fn is None
+
+    @patch("trainer.trainer.compile_source")
+    def test_non_delegated_payload_unchanged(self, mock_compile: MagicMock) -> None:
+        """delegate_reactive=False: ratify_request payload is exactly the base keys.
+
+        No ``misfit`` or ``curriculum_context`` keys are added when delegation
+        is off, preserving the contract for existing supervisors.
+        """
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2"])
+        trainer, capture = _make_trainer(bus, curriculum, delegate_reactive=False)
+        trainer.start_session()
+        capture.reset()
+
+        trainer._reactor.process_s2_s3 = MagicMock(return_value=False)
+
+        proposal = KLine(signature=999, nodes=[88])
+        query = KLine(signature=888, nodes=[1])
+        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
+        trainer.on_message(Message(role=TRAINER_ROLE, action="frame", message=event))
+
+        ratify_msgs = capture.find_all(SUPERVISOR_ROLE, "ratify_request")
+        assert len(ratify_msgs) == 1
+        payload = ratify_msgs[0].message
+        assert set(payload) == {"proposal", "query", "significance"}
 
 
 # ── Restart action ───────────────────────────────────────────────────
