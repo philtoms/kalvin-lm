@@ -59,10 +59,9 @@ connotation results and a terminal packed distance. Replaces the previous
 
 - **MAX_HOP** — upper bound on edge hop chain depth (default 100). Also the
   penalty for unresolvable mismatched nodes.
-- **\_S3_BIAS** — tier bias for S3 connotation hops (default 9). Connotation
-  hop counts are biased by this amount before quadratic packing.
-- **\_pack(distance)** — quadratic packing function: `d²`. Compresses small
-  distances together and spreads large distances apart.
+- **\_S3_BIAS** — tier bias for S3 connotation hops (default 1). Connotation
+  distance is `S2_S3_DISTANCE + hops + _S3_BIAS - 1`; the bias seats the
+  minimum S3 distance one above the S2|S3 boundary.
 
 ### Definitions
 
@@ -224,16 +223,20 @@ mismatched candidate node, it **yields an S2 connotation**: a recursive
 relationship between sub-graphs.
 
 When connotation bridging succeeds, `expand()` **yields an S3 connotation**:
-a recursive call with `_pack(round_trip_hops + _S3_BIAS)`. This captures
-indirect, associative connections with quadratic packing.
+a recursive call with linear distance
+`S2_S3_DISTANCE + round_trip_hops + _S3_BIAS - 1` (`_S3_BIAS = 1`). This
+captures indirect, associative connections; distance grows linearly with hop
+count (the previous quadratic `_pack(d) = d²` was removed by the
+`s3-distance` auto-tune).
 
 Each connotation is a `QueryCandidate` processed identically by the
 Cogitator — countersignature is checked for every yielded item.
 
 ### Properties
 
-1. **Single distance** — accumulated integer. S3 connotation hops biased
-   by `_pack(hops + _S3_BIAS)`. Callers receive significance, not distance.
+1. **Single distance** — accumulated integer. S3 connotation hops use
+   linear distance `S2_S3_DISTANCE + hops`. Callers receive significance,
+   not distance.
 2. **Significance is inverted distance** — the model inverts distance
    to produce significance: `(~distance) & MASK64`.
 3. **Level is preserved but distance is topology-driven** — mismatched hop
@@ -242,12 +245,12 @@ Cogitator — countersignature is checked for every yielded item.
    reaches a signature with bitwise overlap, a `QueryCandidate` is yielded
    for cogitation and the hop chain stops. The `s3_connotations` dict is
    not populated for that hop.
-5. **Connotation is always S3** — indirect bridging always uses packed distance.
+5. **Connotation is always S3** — indirect bridging always uses linear distance.
 6. **Ungrounded penalty is always +1** — matched but ungrounded nodes add 1.
 7. **Bidirectional** — mismatched nodes from both query and candidate
    contribute.
-8. **Quadratic packing** — `_pack(d) = d²` ensures small distances stay
-   close and large distances spread apart.
+8. **Linear S3 distance** — `S2_S3_DISTANCE + hops + _S3_BIAS - 1`
+   (`_S3_BIAS = 1`); small and large distances stay proportionally close.
 
 ### `is_countersigned(a, b) → bool`
 

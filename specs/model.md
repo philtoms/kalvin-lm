@@ -497,8 +497,8 @@ computed significance.
   recursion via a visited set of `(query.signature, candidate.signature)`
   pairs.
 - **Significance** — the model computes significance internally by
-  packing S2 and S3 distance components into a single uint64, then
-  inverting: `(~packed) & MASK64`. Higher significance means closer match.
+  accumulating a single linear distance, then inverting:
+  `(~distance) & MASK64`. Higher significance means closer match.
 
 #### Hyperparameters
 
@@ -511,16 +511,17 @@ computed significance.
 
 `expand()` must satisfy these properties:
 
-1. **Single distance** — accumulated integer. S3 connotation hops biased
-   by `_pack(hop_count + _S3_BIAS)`. Callers receive significance.
+1. **Single distance** — accumulated integer. S3 connotation hops use
+   linear distance `S2_S3_DISTANCE + hop_count`. Callers receive significance.
 2. **Significance is inverted distance** — `(~distance) & MASK64`.
 3. **Distance is topology-driven** — hop distances from graph topology.
 4. **S2 signifies short-circuits before S3** — overlap match yields QC and
    stops chain; `s3_connotations` not populated.
-5. **Connotation is always S3** — indirect bridging always uses packed distance.
+5. **Connotation is always S3** — indirect bridging always uses linear distance.
 6. **Ungrounded penalty is always +1** — matched but ungrounded nodes.
 7. **Bidirectional** — both query and candidate mismatched nodes contribute.
-8. **Quadratic packing** — `_pack(d) = d²`.
+8. **Linear S3 distance** — `S2_S3_DISTANCE + hop_count + _S3_BIAS - 1`;
+   `_S3_BIAS = 1`. No quadratic packing.
 9. **Recursive expansion** — connotations yielded as `QueryCandidate`.
 10. **Cycle detection** — visited signature pairs prevent infinite recursion.
 
@@ -534,7 +535,7 @@ The implementation algorithm and pseudocode are in
 | Mismatched, chain reaches opposing mismatch set at hop N      | +N to total_distance   | Accumulated directly  |
 | Mismatched, chain reaches signature with bitwise overlap      | yields QC, +MAX_HOP   | S2 signifies candidate |
 | Mismatched, chain never reaches opposing mismatch set         | +MAX_HOP              | Accumulated directly  |
-| Mismatched candidate, chain bridges via connotation           | round-trip, hop = 0   | S3 packed (always)    |
+| Mismatched candidate, chain bridges via connotation           | `S2_S3_DISTANCE + hops` | S3 linear (always)    |
 | Matched + structurally grounded (is_s1)                       | 0                     | Neutral               |
 | Matched + ungrounded                                          | +1                    | Accumulated directly  |
 
@@ -612,21 +613,23 @@ with a three-tier priority:
    with the node value. Yields a `QueryCandidate`. Node still contributes
    `MAX_HOP` to terminal distance. Short-circuits before S3 connotation.
 3. **Connotation resolution (S3):** Node resolves to a signature found in
-   `s3_connotations`. Hop count packed via `_pack(hop_count + _S3_BIAS)`.
+   `s3_connotations`. Linear distance `S2_S3_DISTANCE + hop_count`.
 4. **Unresolved:** Adds `MAX_HOP` (default 100).
 
 Matched-but-ungrounded nodes add 1 each.
 
-### S3 Bias and Packing
+### S3 Bias and Linear Distance
 
 ```
-_S3_BIAS = 9
-_pack(distance) = distance²
+_S3_BIAS = 1
+S3 connotation distance = S2_S3_DISTANCE + round_trip_hops + _S3_BIAS - 1
 ```
 
-The bias ensures S3 distances moderately exceed S2 distances while
-remaining in the same order of magnitude. Quadratic packing compresses
-small distances together and spreads large distances apart.
+The bias ensures the minimum S3 distance (one connotation hop) is
+`S2_S3_DISTANCE + 1 = 101`, just above the S2|S3 boundary, so S3 distances
+always exceed S2 distances while remaining in the same order of magnitude.
+Distance grows **linearly** with hop count (settled by the `s3-distance`
+auto-tune; the previous quadratic `_pack(d) = d²` was removed).
 
 ### Boundaries
 

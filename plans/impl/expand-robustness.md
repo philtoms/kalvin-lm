@@ -60,14 +60,11 @@ signatures) with `model.find(match_sig)` + None guard at three call sites:
 
 Unresolvable match signatures are silently skipped.
 
-### Task 4: Significance normalization (SN-1 through SN-6)
+### Task 4: Significance normalization (SN-1 through SN-6) — SUPERSEDED
 
-**Files:**
-- `src/participants/auto_tune/events.py` — `_build_significance()`
-- `src/trainer/trainer.py` — log normalization
-
-Changed formula from `raw / D_MAX` to `max(0.0, 1.0 - distance / S2_S3_DISTANCE)`
-where `distance = (~raw) & MASK64`. Both sites use identical formula.
+> **Superseded by [ADR-0007](../../docs/adr/0007-band-anchored-significance-normalization.md)**
+> and Task 6 below. The original `max(0.0, 1.0 - distance / S2_S3_DISTANCE)`
+> formula collapsed every S3 value to `0.0`. See DD-1 supersession note.
 
 ### Task 5: Auto-tune git sandbox fix
 
@@ -75,6 +72,31 @@ where `distance = (~raw) & MASK64`. Both sites use identical formula.
 
 Added `GIT_CONFIG_NOSYSTEM=1` and removed `HOME` from environment to allow
 git operations in sandboxed environments where `.gitconfig` is inaccessible.
+
+### Task 6: Band-anchored normalization (ADR-0007)
+
+**Spec:** `@significance-normalization` (rewritten). **ADR:** `0007`.
+
+Replaces the DD-1 formula (clamped S3 to `0.0`) with band-anchored
+normalization so S3 regains full granularity.
+
+- **`src/kalvin/expand.py`** — add `normalise_significance(raw_sig) -> float`,
+  the single source of truth, implementing the band-anchored formula
+  (S1=1.0; S2 linear in `[0.50, 0.99]`; S3 asymptotic
+  `0.50 · S3_K / (S3_K + (distance - 100))`; S4=0.0). Add the constants
+  `S2_TOP`, `S2_FLOOR`, `S3_K`. Re-export `normalise_significance`.
+- **`src/participants/auto_tune/events.py`** — `_build_significance()` calls
+  `normalise_significance(raw_sig)` for the `normalised` field (replaces the
+  inline `max(0.0, 1.0 - distance / S2_S3_DISTANCE)`).
+- **`src/trainer/trainer.py`** — `sig_norm` via `normalise_significance`; log
+  line additionally shows raw distance, e.g. `→ 0.17 (d=200)` (keeps the
+  debug readability the `s3-distance` session introduced).
+- **`tests/test_normalise_significance.py`** (new) — the SN-1..SN-7 matrix for
+  the shared helper (see Test Mapping below).
+- **`tests/test_auto_tune_events.py`** — update the existing SN assertions to
+  the band-anchored ranges (S2 ∈ [0.50, 0.99]; S3 ∈ (0.0, 0.50), non-zero).
+
+Distance semantics, `classify()`, and routing are **unchanged**.
 
 ---
 
@@ -94,6 +116,10 @@ git operations in sandboxed environments where `.gitconfig` is inaccessible.
 
 ### Significance Normalization (SN-*)
 
+> Rows below cover the **DD-1 / Task 4** formula (superseded). The
+> **band-anchored** formula (Task 6, ADR-0007) reuses the same test IDs with
+> revised criteria — see the Task 6 test-mapping table.
+
 | Spec ID | Test File | Test Function | Status |
 |---------|-----------|---------------|--------|
 | SN-1 | `tests/test_auto_tune_events.py` | `TestSignificanceObject::test_s2_less_than_s1` | ✅ |
@@ -103,15 +129,36 @@ git operations in sandboxed environments where `.gitconfig` is inaccessible.
 | SN-5 | `tests/test_auto_tune_events.py` | `TestSignificanceObject::test_zero_significance` | ✅ |
 | SN-6 | `tests/test_auto_tune_events.py` | `TestSignificanceObject::test_midrange_normalisation` | ✅ |
 
+### Band-Anchored Normalization (Task 6, ADR-0007)
+
+Revised criteria for the rewritten `@significance-normalization` spec. These
+supersede the SN-* criteria above; test functions move to a dedicated test
+module for the shared `normalise_significance` helper.
+
+| Spec ID | Test File | Test Function | Status |
+|---------|-----------|---------------|--------|
+| SN-1 | `tests/test_normalise_significance.py` | `test_strict_band_ordering_s1_gt_s2_gt_s3_gt_s4` | ⏳ |
+| SN-2 | `tests/test_normalise_significance.py` | `test_s1_normalises_to_one` | ⏳ |
+| SN-3 | `tests/test_normalise_significance.py` | `test_s2_range_and_monotonic` | ⏳ |
+| SN-4 | `tests/test_normalise_significance.py` | `test_s3_asymptotic_never_zero` | ⏳ |
+| SN-5 | `tests/test_normalise_significance.py` | `test_raw_zero_to_zero` | ⏳ |
+| SN-6 | `tests/test_normalise_significance.py` | `test_s3_injective_no_collapse` | ⏳ |
+| SN-7 | `tests/test_normalise_significance.py` | `test_global_monotonic` | ⏳ |
+
 ---
 
 ## 4. Design Decisions
 
-### DD-1: Normalize against S2_S3_DISTANCE, not D_MAX
+### DD-1: Normalize against S2_S3_DISTANCE, not D_MAX — SUPERSEDED
 
-D_MAX = 2⁶⁴ exceeds float64 mantissa (53 bits). Distances 0–100 are lost when
-divided by D_MAX. S2_S3_DISTANCE (100) is the natural scale for the S2 band,
-giving meaningful granularity: S1 ≥ 0.99, S2 = 0.98→0.00, S3 = 0.00.
+> **Superseded by [ADR-0007 — Band-anchored significance normalization](../../docs/adr/0007-band-anchored-significance-normalization.md).**
+>
+> DD-1 allocated the entire `[0.0, 1.0]` range to S1+S2 and clamped every S3
+> value to `0.0`. Empirical auto-tune data shows S3 dominates rationals
+> (~75%) and spans a 5× distance range (101→519) — all of that ordering was
+> erased. ADR-0007 replaces the formula with band-anchored normalization:
+> each band owns a fixed sub-range and S3 is asymptotic in `(0.0, 0.50)`, so
+> every distinct S3 distance yields a distinct normalized value. See Task 6.
 
 ### DD-2: model.find + None guard instead of _as_kline
 
