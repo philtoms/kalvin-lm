@@ -83,11 +83,11 @@ class TestBareSingleChar:
         assert e_m[0].signature != e_h[0].signature
 
 
-# ── SC-2: Multi-character signature decomposition ────────────────────
+# ── SC-2: Multi-token signature decomposition ────────────────────
 
 
 class TestMultiCharDecomposition:
-    """SC-2: Multi-char sigs decompose correctly with NLP tokenizer."""
+    """SC-2: Multi-token sigs decompose correctly with NLP tokenizer."""
 
     def test_mhall_decomposition(self, nlp_tokenizer: NLPTokenizer) -> None:
         entries = compile_source("MHALL", tokenizer=nlp_tokenizer, dev=True)
@@ -194,7 +194,7 @@ class TestCommentsOptional:
         assert len(annotated) > len(bare)
 
     def test_block_comment_binding(self, nlp_tokenizer: NLPTokenizer) -> None:
-        """Block comment before multi-char sig enables positional binding."""
+        """Block comment before multi-token sig enables positional binding."""
         from ks.compiler import compile_source
 
         source = "(Mary Had A Little Lamb)\nMHALL"
