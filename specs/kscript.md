@@ -1,7 +1,7 @@
 # KScript Language Specification
 
 **Version:** 3.0  
-**Date:** 2026-06-12  
+**Date:** 2026-06-16  
 **Status:** Authoritative
 
 ---
@@ -355,7 +355,7 @@ MTS applies to any multi-character identifier wherever it appears — signature 
 
 ### 8.1 Character Resolution
 
-Each constituent character is resolved via the BindingScope before emitting. If the character has a binding (e.g., `M` → "Mary"), the resolved word is used instead of the raw character. If unbound, the raw character is used.
+Each constituent character is resolved via the BindingScope before emitting. If the character has a binding (e.g., `M` → "Mary"), the resolved word is used instead of the raw character. If the character has no binding, the raw character is used.
 
 ### 8.2 Node Count Invariant
 
@@ -417,7 +417,7 @@ Four rules govern resolution:
 - **Single match** (unambiguous): bind the word. Counter does NOT increment.
 - **Multiple matches** (ambiguous): bind the Nth word where N = current counter value, then increment counter by 1.
 - **Counter exceeds matches**: no match in this annotation — continue to next annotation or outer scope.
-- **No matches in any scope**: character is unbound.
+- **No matches in any scope**: the character is not resolved (no binding); it is encoded as its own raw BPE token (see §10).
 
 The counter is per-scope-per-character, keyed on the lowercase character value. Each new scope starts at zero.
 
@@ -442,9 +442,7 @@ The BindingScope is a lightweight scope stack:
 | `add_words(words)` | Append a word list to the current scope |
 | `resolve(char) → str \| None` | Walk the scope stack, first-letter matching, occurrence counter |
 
-### 10.4 Unbound Characters
-
-When a single-character identifier cannot be resolved through any mechanism, it remains unbound. Unbound characters are encoded using Mod32 bit-packed encoding as a fallback. This produces mixed NLP/Mod32 klines within the same model.
+**Resolution failure.** When `BindingScope.resolve(char)` returns `None`, the identifier is encoded as its own raw BPE token — the same encoding path as any resolved identifier, minus the word binding. There is no named resolution-outcome state and no fallback encoding scheme.
 
 ---
 
@@ -462,17 +460,7 @@ Identifiers are encoded as typed BPE tokens carrying linguistic annotations (POS
 encode("HELLO") → (nlp_type32 << 32) | bpe_token_id
 ```
 
-### 11.3 Mod32 Fallback for Unbound Characters
-
-When a character cannot be resolved through any binding mechanism (§10.4), it is encoded using Mod32 bit-packed encoding: characters are packed via bitwise-OR into a single `uint64` with bit 0 clear. Lossy: order and multiplicity are lost.
-
-```
-encode_unbound("A") → bit_A
-```
-
-This produces mixed NLP/Mod32 klines within the same model.
-
-### 11.4 Multi-Token Words
+### 11.3 Multi-Token Words
 
 When a resolved word BPE-encodes to multiple tokens (e.g., "Mary" → `[mar, y]`), the TokenEncoder runs the full MTS process at the BPE-token level:
 
@@ -488,9 +476,9 @@ When a resolved word BPE-encodes to multiple tokens (e.g., "Mary" → `[mar, y]`
 
 This is structurally identical to §8 character-level MTS, applied at the BPE subword level. The node-count invariant (§8.2) is maintained: one character = one node, regardless of BPE token count. The consumer of the model sees one node per character; the BPE decomposition is recorded in the model for downstream use.
 
-§11.4 applies only to resolved words, not to compound identifiers (§8): a compound's decomposition is its CANONIZED entry, so re-encoding its literal string is prohibited. A packed signature — whether a §11.4 multi-token word's OR-reduction or a §11.5 compound — is the OR-reduction of multiple token IDs and cannot head an IDENTITY kline (CONTEXT.md "Identity"); the decomposition above (component identities + canonize) is a multi-token word's sole representation, and no standalone IDENTITY kline is emitted at the packed signature.
+§11.3 applies only to resolved words, not to compound identifiers (§8): a compound's decomposition is its CANONIZED entry, so re-encoding its literal string is prohibited. A packed signature — whether a §11.3 multi-token word's OR-reduction or a §11.4 compound — is the OR-reduction of multiple token IDs and cannot head an IDENTITY kline (CONTEXT.md "Identity"); the decomposition above (component identities + canonize) is a multi-token word's sole representation, and no standalone IDENTITY kline is emitted at the packed signature.
 
-### 11.5 Signature Construction
+### 11.4 Signature Construction
 
 Signatures are constructed via plain OR-reduction of raw, unmasked node values:
 
@@ -502,7 +490,7 @@ The compiler does not inspect or mask node values — they are opaque `uint64` i
 
 **Canonical encoding.** A compound identifier's signature is computed once — at its CANONIZED definition, as OR of its resolved component node values — and reused by every referencing entry (as signature or node), so all klines referring to the same compound share one uint64. (Operator entries where the compound is the signature but the node is a different identifier — e.g. `COUNTERSIGNED MHALL [SVO]` — have `signature ≠ OR(nodes)` by design: the signature is a registry lookup, not a reduction of that entry's own nodes.)
 
-### 11.6 Design Tension: Annotations and Encoding Opacity
+### 11.5 Design Tension: Annotations and Encoding Opacity
 
 BPE annotations are the mechanism by which the BPE token ID component of a node is determined. This creates a tension: the ASTEmitter must be aware of encoding semantics to resolve annotations, even though nodes are otherwise treated as opaque `uint64` values. The BindingScope is the single point where this leak occurs — it resolves character→word mappings that determine BPE token IDs. All other compilation stages are encoding-agnostic.
 
@@ -795,7 +783,7 @@ Compiled (resolved-word level; mirrors §14.11's structure). MHALL has five dist
 | 18 | Mary | [Little] | UNDERSIGNED | S3 |
 | 19 | Lamb | [O] | CONNOTED | S3 |
 
-SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL component identities (A, Little, Lamb) are dropped by identity dedup. `V`, `O`, `D` are unbound → Mod32 fallback (§11.3). Unbound characters (V, O, D) use Mod32 fallback encoding (§11.3).
+SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL component identities (A, Little, Lamb) are dropped by identity dedup. `V`, `O`, `D` have no word binding and encode to their own raw NLP-BPE nodes (§10 resolution-failure clause) — the same encoding path as any resolved character, minus the word.
 
 ---
 
@@ -837,9 +825,9 @@ SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL componen
 | KS-27 | Scope inheritance: characters seek from inner to outer scope | Binding |
 | KS-28 | Scope shadowing: inner scope binding shadows outer for same character | Binding |
 | KS-29 | Counter reset: each new scope starts counters at zero | Binding |
-| KS-30 | Unbound characters: fallback to Mod32 encoding | Binding |
+| KS-30 | Unresolved identifier (BindingScope returns None) is encoded as its own raw BPE token — no special fallback state | Binding |
 | KS-31 | Inert annotation: no matching characters → no effect | Binding |
-| KS-32 | Unbound characters use Mod32 fallback encoding | Encoding |
+| KS-32 | An unresolved single character (e.g. `Z`) encodes to a single NLP-BPE uint64 node — the same encoding path as any resolved character | Encoding |
 | **Self-Identity** | | |
 | KS-33 | Self-identity: `A = A` → `{A: []}` with op=IDENTITY | Operators |
 | **Structure** | | |
@@ -847,10 +835,10 @@ SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL componen
 | **Integration** | | |
 | KS-35 | Complex nested example (§14.11) produces correct complete entry list | Integration |
 | KS-36 | NLP-bound example (§14.12) produces correct resolved entries | Integration |
-| KS-37 | Mixed NLP/Mod32 klines: bound characters encoded via NLP-BPE, unbound characters via Mod32 fallback | Integration |
+| KS-37 | Uniform-NLP integration: all characters (bound and unresolved) produce valid NLP-BPE nodes | Integration |
 | **MTS Deduplication** | | |
 | KS-38 | Component identity dedup: overlapping MTS expansions silently drop duplicate character identities (S4) | MTS Dedup |
 | KS-39 | Intra-expansion dedup: repeated characters in one compound emit only one identity (e.g., second L in MHALL) | MTS Dedup |
 | KS-40 | Canonization dedup: CANONIZE entries with same (sig, nodes) silently dropped across MTS and subscript | MTS Dedup |
 | KS-41 | Canonical resolution (§8.3): an identifier's MTS components are identical wherever it appears (node-side and signature-side), even under an ambiguous occurrence counter | MTS |
-| KS-42 | Canonical encoding (§11.4/§11.5): exactly one CANONIZED kline per compound identifier; identity klines carry single-token signatures only (CONTEXT.md "Identity") | Encoding |
+| KS-42 | Canonical encoding (§11.3/§11.4): exactly one CANONIZED kline per compound identifier; identity klines carry single-token signatures only (CONTEXT.md "Identity") | Encoding |
