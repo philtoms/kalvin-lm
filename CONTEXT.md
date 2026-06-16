@@ -144,7 +144,7 @@ Rationalisation that requires cogitation (S2/S3). The Trainer tracks these as pe
 **Ratify**:
 The action of countersigning a selected proposal. Performed by the Trainer during curriculum execution.
 
-**MCS Entry**:
+**MTS Entry**:
 A kline whose signature is the OR-reduction of two or more nodes — produced as CANONIZED (S2 intent) but structurally a perfect fit (S1); the subscript child klines canonize it to S1.
 
 **NLP Binding**:
