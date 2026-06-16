@@ -35,7 +35,6 @@ from kalvin.expand import (
     propose_expansions,
 )
 from kalvin.kline import KDbg, KLine
-from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.model import Model
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
@@ -44,16 +43,15 @@ from kalvin.signature import make_signature
 
 
 def _default_tokenizer() -> KTokenizer:
-    """Create the default tokenizer.
+    """Create the default NLP tokenizer.
 
-    Tries NLPTokenizer.from_files() first (production path).
-    Falls back to Mod32Tokenizer if NLP data files are unavailable
-    (e.g. fresh checkout, test environments without data).
+    NLP is the sole tokenizer; there is no Mod32 fallback.
+    (Error-handling refinement is KB-278.)
     """
     try:
         return NLPTokenizer.from_files()
     except (FileNotFoundError, ImportError, Exception):
-        return Mod32Tokenizer()
+        raise
 
 
 # ── KAgentAdapter Protocol ─────────────────────────────────────────────
@@ -267,7 +265,7 @@ class KAgent:
     Parameters
     ----------
     tokenizer:
-        Tokenizer instance. Defaults to Mod32Tokenizer.
+        Tokenizer instance. Defaults to an NLPTokenizer (NLP is the sole tokenizer).
         Used for encoding text to nodes.
     model:
         Model instance serving as base memory. Defaults to empty Model.

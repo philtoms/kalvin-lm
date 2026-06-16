@@ -54,8 +54,6 @@ select = ["E", "F", "I", "N", "W", "UP"]
 "dev/nlp/*.py" = ["E402"]
 # standalone dev/test scripts with sys.path bootstrap before imports
 "scripts/*.py" = ["E402"]
-# CHAR_BIT/BIT_CHAR are public-API @property methods accessed by callers
-"src/kalvin/mod_tokenizer.py" = ["N802"]
 # ui entry point bootstraps sys.path before importing the app module
 "ui/kscript/__main__.py" = ["E402"]
 

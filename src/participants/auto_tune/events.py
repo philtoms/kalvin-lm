@@ -10,12 +10,17 @@ significance breakdown (raw, normalised, level).
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from kalvin.expand import boundaries, classify, normalise_significance
 from kalvin.kline import KLine, kline_display
-from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 
-# Module-level tokenizer for display (stateless across calls)
-_tokenizer = Mod32Tokenizer()
+
+@lru_cache(maxsize=1)
+def _display_tokenizer() -> NLPTokenizer:
+    """Lazily-built NLP tokenizer for kline display (cached; NLP data required)."""
+    return NLPTokenizer.from_files()
 
 
 # ── Public API ────────────────────────────────────────────────────────
@@ -168,7 +173,7 @@ def _display_kline(kline: KLine) -> str:
     Returns "<unknown>" if display fails.
     """
     try:
-        return kline_display(kline, _tokenizer)
+        return kline_display(kline, _display_tokenizer())
     except Exception:
         pass
     return "<unknown>"

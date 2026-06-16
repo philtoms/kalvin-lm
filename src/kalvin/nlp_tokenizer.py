@@ -98,8 +98,10 @@ class NLPTokenizer(KTokenizer):
     def decode(self, ids: list[int]) -> str:
         """Decode NLP-BPE nodes back to text.
 
-        Iterates over IDs, extracting BPE token IDs from the low 32 bits
-        of each node.
+        Pure BPE: extracts the BPE token id from the low 32 bits of every
+        node and decodes via the wrapped ``Tokenizer``.  There is no
+        character-level decode path — legacy literal nodes are abandoned
+        (Q2-A).
 
         Args:
             ids: List of node values (NLP-BPE).
@@ -114,17 +116,10 @@ class NLPTokenizer(KTokenizer):
         bpe_run: list[int] = []
 
         for node in ids:
-            if (node & 0xFFFFFFFF) == 0xFFFFFFFF:
-                # Character-level node (legacy compatibility)
-                if bpe_run:
-                    parts.append(self._bpe.decode(bpe_run))
-                    bpe_run = []
-                parts.append(chr(node >> 32))
-            else:
-                # NLP-BPE node: extract BPE token ID from low 32 bits
-                bpe_run.append(node & 0xFFFFFFFF)
+            # NLP-BPE node: extract BPE token ID from low 32 bits
+            bpe_run.append(node & 0xFFFFFFFF)
 
-        # Flush final BPE run
+        # Flush BPE run
         if bpe_run:
             parts.append(self._bpe.decode(bpe_run))
 

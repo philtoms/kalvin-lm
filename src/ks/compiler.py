@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from kalvin.abstract import KTokenizer
 from kalvin.kline import KLine
-from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 
 from .ast import KScriptFile
 from .ast_emitter import ASTEmitter, SymbolicEntry
@@ -46,7 +46,7 @@ class Compiler:
 
     Args:
         tokenizer: Tokenizer for encoding strings to uint64 values.
-            Defaults to Mod32Tokenizer().
+            Defaults to NLPTokenizer.from_files() (NLP data is mandatory).
         dev: Enable development/diagnostic mode (populates dbg).
     """
 
@@ -55,7 +55,7 @@ class Compiler:
         tokenizer: KTokenizer | None = None,
         dev: bool = False,
     ) -> None:
-        self.tokenizer: KTokenizer = tokenizer or Mod32Tokenizer()
+        self.tokenizer: KTokenizer = tokenizer or NLPTokenizer.from_files()
         self.dev = dev
         self.entries: list[KLine] = []
 
@@ -99,7 +99,7 @@ def compile_source(
 
     Args:
         source: KScript source code string.
-        tokenizer: Tokenizer for encoding (default: Mod32Tokenizer).
+        tokenizer: Tokenizer for encoding (default: NLPTokenizer).
         dev: Enable development/diagnostic mode.
 
     Returns:

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from kalvin.abstract import KTokenizer
 from kalvin.kline import KLine
-from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 
 from .ast_emitter import SymbolicEntry
 from .compiler import Compiler, compile_source
@@ -44,7 +44,7 @@ class KScript:
 
     Args:
         source: KScript source code string.
-        tokenizer: Tokenizer for encoding (default: Mod32Tokenizer).
+        tokenizer: Tokenizer for encoding (default: NLPTokenizer; NLP data is mandatory).
         dev: Enable development/diagnostic mode.
 
     Example::
@@ -59,7 +59,7 @@ class KScript:
         tokenizer: KTokenizer | None = None,
         dev: bool = False,
     ) -> None:
-        self._tokenizer: KTokenizer = tokenizer or Mod32Tokenizer()
+        self._tokenizer: KTokenizer = tokenizer or NLPTokenizer.from_files()
         self._dev = dev
         self._entries: list[KLine] = compile_source(
             source,

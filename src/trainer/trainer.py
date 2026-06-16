@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +28,7 @@ from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX, normalise_significance
 from kalvin.kline import KLine, kline_display
 from kalvin.misfit import classify_misfit
-from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
 from ks.compiler import compile_source
 from trainer.curriculum import Curriculum, CurriculumState, EntryKey
@@ -43,6 +44,12 @@ logger = logging.getLogger(__name__)
 # S1 significance boundary for frame events. A frame event with
 # significance at or above this threshold is considered S1 (fast path).
 _S1_FRAME_THRESHOLD = D_MAX - 1
+
+
+@lru_cache(maxsize=1)
+def _display_tokenizer() -> NLPTokenizer:
+    """Lazily-built NLP tokenizer for kline display (cached; NLP data required)."""
+    return NLPTokenizer.from_files()
 
 
 class Trainer:
@@ -141,7 +148,7 @@ class Trainer:
             from trainer.cogitation import CogitationRequest, Cogitator, MisfitInfo
 
             _cogitator = Cogitator(client=llm_client)
-            _display_tok = Mod32Tokenizer()
+            _display_tok = _display_tokenizer()
 
             def _cogitate_adapter(
                 event: RationaliseEvent,
@@ -359,7 +366,7 @@ class Trainer:
         event: RationaliseEvent = msg.message
 
         # Display for log readability
-        _log_tok = Mod32Tokenizer()
+        _log_tok = _display_tokenizer()
         try:
             query_src = kline_display(event.query, _log_tok)
         except Exception:
