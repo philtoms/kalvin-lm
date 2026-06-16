@@ -10,9 +10,9 @@ All existing curricula compile and train correctly with the NLPTokenizer without
 
 Single-character signatures (e.g., `M`, `H`, `A`) encode to 64-bit NLP-BPE nodes where the upper 32 bits carry NLP type information and the lower 32 bits carry the BPE token ID. The same character always produces the same node value.
 
-### SC-2: Multi-character signatures decompose correctly
+### SC-2: Multi-token signatures decompose correctly
 
-Multi-character signatures (e.g., `MHALL`, `SVO`, `ALL`) decompose into individual character components with identity entries and a canonize (S2) entry mapping the first token to all tokens.
+Multi-token signatures (e.g., `MHALL`, `SVO`, `ALL`) decompose into individual token components with identity entries and a canonize (S2) entry mapping the first token to all tokens.
 
 ### SC-3: Training runs complete cleanly
 

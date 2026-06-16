@@ -2,7 +2,7 @@
 
 ## Summary
 
-All curriculum files use NLP-annotated signatures: every single-character signature has an inline parenthetical comment, and every multi-character signature has a block comment word list preceding it. This makes curricula self-documenting and ensures NLPTokenizer produces semantically rich graph nodes rather than abstract-letter fallbacks.
+All curriculum files use NLP-annotated signatures: every single-character signature has an inline parenthetical comment, and every multi-token signature has a block comment word list preceding it. This makes curricula self-documenting and ensures NLPTokenizer produces semantically rich graph nodes rather than abstract-letter fallbacks.
 
 ## Dependencies
 
@@ -15,9 +15,9 @@ All curriculum files use NLP-annotated signatures: every single-character signat
 
 Every single-character signature in a KScript code block must carry an inline parenthetical comment: `M(ark)`, `H(alo)`, `S(ubject)`, etc. The comment text, combined with the signature character, forms the full NLP word.
 
-### NA-2: Block comments on multi-character signatures
+### NA-2: Block comments on multi-token signatures
 
-Every multi-character signature must be preceded by a block comment word list where the word count matches the character count. Example: `(Mary Had A Little Lamb)` before `MHALL`.
+Every multi-token signature must be preceded by a block comment word list where the word count matches the character count. Example: `(Mary Had A Little Lamb)` before `MHALL`.
 
 ### NA-3: Inline comments on right-side nodes
 
@@ -67,4 +67,3 @@ The BindingResolver detects and skips inline annotations that would redundantly 
 
 - Standalone KScript files (`data/example.ks`, `data/scripts/mw.ks`, `data/chats/example.ks`) — already annotated.
 - Changes to the KScript compiler, binding resolver, or NLPTokenizer — no code changes required.
-- Mod32 compilation — annotations are inert in Mod32 mode.

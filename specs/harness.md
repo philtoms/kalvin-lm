@@ -71,7 +71,7 @@ Generates the reciprocal kline and rationalises it through the Agent.
 1. Both Run and Step recompile the editor content before submitting.
 2. Only entries not in the Submitted set are submitted.
 3. Submitted set is monotonic — entries are never re-submitted.
-4. Identity entries (`{X: None}`) and MCS entries (canonical) are auto-satisfied via the fast path.
+4. Identity entries (`{X: None}`) and MTS entries (canonical) are auto-satisfied via the fast path.
 
 ### Run Mode
 
