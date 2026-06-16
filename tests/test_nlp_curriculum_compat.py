@@ -86,7 +86,7 @@ class TestBareSingleChar:
 # ── SC-2: Multi-token signature decomposition ────────────────────
 
 
-class TestMultiCharDecomposition:
+class TestMultiTokenDecomposition:
     """SC-2: Multi-token sigs decompose correctly with NLP tokenizer."""
 
     def test_mhall_decomposition(self, nlp_tokenizer: NLPTokenizer) -> None:
@@ -101,7 +101,7 @@ class TestMultiCharDecomposition:
         assert len(s4) == 4
         assert len(s2) == 1
 
-    def test_countersign_with_multi_char(self, nlp_tokenizer: NLPTokenizer) -> None:
+    def test_countersign_with_multi_token(self, nlp_tokenizer: NLPTokenizer) -> None:
         entries = compile_source("MHALL == SVO", tokenizer=nlp_tokenizer, dev=True)
         # Should have countersign entries for MHALL:SVO and SVO:MHALL
         countersigns = [e for e in entries if sig_level(e) == "S1"]
