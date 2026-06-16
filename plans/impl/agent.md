@@ -134,7 +134,6 @@ See `plans/impl/structural-grounding.md` for full expansion algorithm.
 | Spec ID | Test                    | Description                         |
 | ------- | ----------------------- | ----------------------------------- |
 | AGT-12  | Unsigned (no nodes)     | Returns True, emits "frame" S4      |
-| AGT-13  | All-literal             | Returns True, emits "frame" S1      |
 | AGT-14  | Self-grounded canonical | Returns True when all nodes resolve |
 | AGT-15  | Not self-grounded       | Falls through to Phase 4            |
 

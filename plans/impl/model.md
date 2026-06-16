@@ -259,8 +259,6 @@ def is_countersigned(self, a: KLine, b: KLine) -> bool:
     return (b.signature in a.nodes) and (a.signature in b.nodes)
 ```
 
-Structural test only. Literal nodes cannot match a signature.
-
 ---
 
 ## 3. Test Mapping
@@ -270,8 +268,6 @@ Structural test only. Literal nodes cannot match a signature.
 | Spec ID | Test                      | Description                      |
 | ------- | ------------------------- | -------------------------------- |
 | MOD-1   | add_frame and find         | Add KLine via add_frame, find returns it |
-| MOD-2   | Literal dedup             | Duplicate literal rejected by add_frame |
-| MOD-3   | Non-literal no dedup      | Duplicate non-literal accepted |
 | MOD-4   | Exists                    | True after add_frame, False before |
 | MOD-5   | Find returns most recent  | Multiple KLines same sig         |
 | MOD-6   | Find_all                  | Returns all KLines with sig      |
@@ -288,7 +284,6 @@ Structural test only. Literal nodes cannot match a signature.
 | MOD-13  | Frame fallback   | KLine not in STM found in Frame              |
 | MOD-14  | LTM fallback     | KLine not in STM/Frame found in LTM          |
 | MOD-15  | Base fallback    | KLine not in STM/Frame/LTM found in Base     |
-| MOD-16  | Cross-tier dedup | Literal KLine in LTM or Base blocks add      |
 
 ### Graph Traversal
 
@@ -309,11 +304,6 @@ Structural test only. Literal nodes cannot match a signature.
 | MOD-24  | add_stm evict       | Oldest evicted when bound exceeded                  |
 | MOD-25  | add_frame cascade   | Writes Frame and cascades to add_stm                |
 | MOD-26  | add_ltm cascade     | Writes LTM and cascades to add_frame                |
-| MOD-27  | add_stm dedup       | Literal duplicate in any tier returns early          |
-| MOD-28  | add_frame dedup     | Literal duplicate returns early, no cascade         |
-| MOD-29  | add_ltm dedup       | Literal duplicate returns early, no cascade         |
-| MOD-30  | add_frame non-lit   | Non-literal always writes Frame                     |
-| MOD-31  | add_ltm non-lit     | Non-literal always writes LTM                       |
 | MOD-32  | add_frame monotonic | Frame is append-only                                |
 | MOD-33  | add_ltm monotonic   | LTM is append-only                                  |
 
