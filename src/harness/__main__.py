@@ -147,7 +147,7 @@ def main(argv: list[str] | None = None) -> None:
 
     # -- Register embedded participant factories -----------------------------
 
-    # Create shared tokenizer — NLP if available, Mod32 fallback
+    # Create shared NLP tokenizer (mandatory — no fallback; raises on data-less machines)
     from kalvin.agent import _default_tokenizer as _make_tok
 
     shared_tokenizer = _make_tok()

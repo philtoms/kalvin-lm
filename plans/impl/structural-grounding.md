@@ -15,7 +15,7 @@ boundary check. Under the training model, this is wrong: **S1 is determined
 by structure, not by boundary classification.** A kline is grounded (S1) if
 its signature fully describes its nodes or it is countersigned.
 
-See `docs/kalvin-origin.md` §Ratification and §Study for the conceptual basis.
+See `docs/kalvin-vision.md` §Ratification and §Study for the conceptual basis.
 See **@model spec** §Significance Semantics and **@agent spec** §Cogitation
 for the current specification.
 

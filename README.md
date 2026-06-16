@@ -149,8 +149,7 @@ src/
 | Document                                                     | Purpose                                            |
 | ------------------------------------------------------------ | -------------------------------------------------- |
 | [`CONTEXT.md`](CONTEXT.md)                                   | Domain glossary — precise definitions of all terms |
-| [`docs/kalvin-introduction.md`](docs/kalvin-introduction.md) | What Kalvin is and why it works this way           |
-| [`docs/kalvin-origin.md`](docs/kalvin-origin.md)             | Conceptual model and philosophy                    |
+| [`docs/kalvin-vision.md`](docs/kalvin-vision.md)             | Vision, conceptual model, and philosophy           |
 | [`docs/roadmap.md`](docs/roadmap.md)                         | Build phases, dependency graph, current status     |
 | [`docs/adr/`](docs/adr/)                                     | Architectural decision records                     |
 | [`specs/`](specs/)                                           | Testable behavioural contracts                     |

@@ -38,20 +38,27 @@ from kalvin.kline import KDbg, KLine
 from kalvin.model import Model
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
+from kalvin.tokenizer import TiktokenNotInstalledError
 
 # ── Default tokenizer factory ─────────────────────────────────────────
 
 
 def _default_tokenizer() -> KTokenizer:
-    """Create the default NLP tokenizer.
+    """Create the default NLP tokenizer (the sole production tokenizer).
 
-    NLP is the sole tokenizer; there is no Mod32 fallback.
-    (Error-handling refinement is KB-278.)
+    NLP is mandatory — there is no fallback.  If the NLP data files are
+    missing, the BPE backend (tiktoken/rustbpe) cannot be loaded, or the
+    data files are unreadable, this raises :class:`RuntimeError`
+    instructing the user to regenerate the data via
+    ``scripts/rebuild-tokenizer-data.sh``.
     """
     try:
         return NLPTokenizer.from_files()
-    except (FileNotFoundError, ImportError, Exception):
-        raise
+    except (FileNotFoundError, ImportError, OSError, TiktokenNotInstalledError) as exc:
+        raise RuntimeError(
+            "NLP tokenizer data is required but unavailable. "
+            "Run `bash scripts/rebuild-tokenizer-data.sh` to generate data/tokenizer/."
+        ) from exc
 
 
 # ── KAgentAdapter Protocol ─────────────────────────────────────────────

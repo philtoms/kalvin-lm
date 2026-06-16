@@ -387,8 +387,8 @@ study — the Cogitator works through partial understanding and emits
 proposals for the agent to ratify.
 
 The conceptual description of S2 expansion (misfit types, templates,
-sequencers, guarantees) is defined in the [origin document]
-(`docs/kalvin-origin.md`, Study → S2 Expansion). This section specifies
+sequencers, guarantees) is defined in the [vision document]
+(`docs/kalvin-vision.md`, Study → S2 Expansion). This section specifies
 the implementation detail.
 
 #### Misfit Classification

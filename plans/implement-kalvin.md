@@ -30,8 +30,8 @@ the overview, build order, and cross-cutting concerns.
 
 ## 0. System Architecture
 
-See `docs/kalvin-origin.md` for the authoritative description of what Kalvin is
-and how it works. Component specs in `specs/` define the behavioral contracts.
+See `docs/kalvin-vision.md` for the vision and conceptual model of what Kalvin
+is. Component specs in `specs/` define the behavioral contracts.
 
 ---
 

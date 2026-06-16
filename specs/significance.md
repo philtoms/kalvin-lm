@@ -10,7 +10,7 @@
 
 | Topic | Location |
 |-------|----------|
-| Conceptual description (four levels, meaning) | `docs/kalvin-origin.md` §Significance |
+| Conceptual description (four levels, meaning) | `docs/kalvin-vision.md` §Significance |
 | Constants, inversion, boundaries, distance rules | `specs/model.md` §Significance Semantics |
 | Routing (node-membership → S1/S2/S3/S4) | `specs/agent.md` §Rationalisation — Phase 5 |
 | Boundary classification, cogitation processing | `specs/agent.md` §Cogitation |
