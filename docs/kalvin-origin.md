@@ -20,7 +20,7 @@ Kalvin's world is built entirely from these two kinds of structures. It has no a
 
 ## KScript
 
-KScript is a small DSL for compiling scripted kline constructions into training data for a Kalvin system. It targets the Mod32Tokenizer, which supports a limited vocabulary of single-character tokens. The language provides only a small set of operators that describe kline topological structure — it cannot express semantic relationships. This is by design: scripts, constrained by vocabulary and topology alike, keep Kalvin's training focused on recognising and understanding kline relationships.
+KScript is a small DSL for compiling scripted kline constructions into training data for a Kalvin system. It targets the NLP tokenizer, Kalvin's BPE-based encoder for turning text into nodes. The language provides only a small set of operators that describe kline topological structure — it cannot express semantic relationships. This is by design: scripts, constrained by vocabulary and topology alike, keep Kalvin's training focused on recognising and understanding kline relationships.
 
 KScript provides four ways to build kline relationships. For brevity, identity klines are omitted from the table below:
 
@@ -316,7 +316,7 @@ The system is built from a small set of components, each with a clean responsibi
 | ------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------- |
 | **KLine**                 | The fundamental unit of knowledge — an identified, ordered sequence of nodes.                            | `specs/kline.md`     |
 | **Signature**             | OR-reduction of nodes into a single identity key.                                                       | `specs/signature.md` |
-| **Tokenizer** (Mod / BPE) | Converts text to nodes and back.                                                                         | `specs/tokenizer.md` |
+| **Tokenizer** (NLP / BPE) | Converts text to nodes and back.                                                                         | `specs/tokenizer.md` |
 | **STM**                   | Bounded rolling window for recent KLines, indexed by signature and nodes-signature.                      | `specs/stm.md`       |
 | **Model**                 | Three-tier memory (STM → Frame → Base) with graph traversal and significance computation.       | `specs/model.md`     |
 | **Agent**                 | Orchestrates the rationalisation pipeline — receives KLines, evaluates significance, integrates results. | `specs/agent.md`     |
