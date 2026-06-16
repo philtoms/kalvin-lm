@@ -56,7 +56,7 @@ and how it works. Component specs in `specs/` define the behavioral contracts.
 │  Computes significance internally via expand()                    │
 ├──────────┬──────────┬──────────────┬──────────────────────────────┤
 │ Kline    │ Signature│   Tokenizer  │   Events                     │
-│          │          │  (Mod / BPE) │   (EventBus)                 │
+│          │          │    (NLP)     │   (EventBus)                 │
 ├──────────┴──────────┴──────────────┴──────────────────────────────┤
 │  Significance constants (D_MAX, MASK64) - in model.py           │
 ├──────────────────────────────────────────────────────────────────┤
@@ -72,7 +72,7 @@ Components must be built and tested from the leaves up:
 Phase 0: Project scaffold       - directories, dependencies, test runner
 Phase 1: Kline                  - fundamental data unit
 Phase 2: Signature              - OR-reduction identity computation
-Phase 3: Tokenizer (Mod + BPE)  - text ↔ node conversion
+Phase 3: Tokenizer (NLP)      - text ↔ node conversion
 Phase 4: STM                    - bounded dual-keyed index (@stm spec)
 Phase 5: Model                  - three-tier memory
 Phase 6: Significance Constants - D_MAX, MASK64 (in model.py)
@@ -95,7 +95,6 @@ kalvin/
 │   │   ├── kline.py             # KLine data structure
 │   │   ├── signature.py         # make_signature, signifies
 │   │   ├── tokenizer.py         # BPE tokenizer
-│   │   ├── mod_tokenizer.py     # Mod tokenizer (Mod32, Mod64)
 │   │   ├── stm.py               # Short-Term Memory
 │   │   ├── model.py             # Three-tier Model (includes D_MAX, MASK64)
 │   │   ├── significance.py      # (removed - constants in model.py)
@@ -146,38 +145,16 @@ its dependencies are satisfied.
 
 ---
 
-## 3. `is_literal` — Standalone Function
+## 3. Node Encoding & Signatures
 
-`is_literal(node)` is a standalone function defined by the node encoding
-layer (bit layout). It is **not** a tokenizer method. All components import
-it directly:
-
-```python
-def is_literal(node: int) -> bool:
-    return (node & 0xFFFF_FFFF) == 0xFFFF_FFFF
-```
-
-This eliminates the need for `is_literal_fn` injection:
-
-```
-# Before (injection pattern):
-Kline.is_literal(is_literal_fn)     # Passed at call time
-make_signature(nodes, is_literal_fn) # Passed at call time
-Model(is_literal_fn=fn)              # Stored at construction
-STM(is_literal_fn=fn)                # Stored at construction
-Agent(tokenizer=tok)                 # Uses tok.is_literal
-
-# After (direct import):
-from kalvin.kline import is_literal  # or wherever defined
-Kline.is_literal()                   # Uses is_literal internally
-make_signature(nodes)                # Uses is_literal internally
-Model()                              # No injection needed
-STM()                                # No injection needed
-Agent(tokenizer=tok)                 # No is_literal concern
-```
-
-The Agent is still the composition root for the tokenizer, but `is_literal`
-no longer flows through it to downstream components.
+Every node is a `uint64`. Signatures are plain bitwise OR-reductions of node
+values via `make_signature` (see **@signature spec**) — there is **no**
+literal mechanism, no literal predicate, and no bit-0 literal-content flag.
+NLP nodes (`(nlp_type32 << 32) | bpe_token_id`) participate in signature
+construction directly, with no masking or special-casing. The Agent remains
+the composition root for the tokenizer; nothing literal-related flows to
+downstream components. (The literal-predicate / literal-mask design was never
+implemented and is out of scope.)
 
 ---
 
@@ -185,12 +162,10 @@ no longer flows through it to downstream components.
 
 ```python
 # Bit layout
-LITERAL_MASK = 0xFFFF_FFFF           # Lower 32 bits all set
 MASK64 = 0xFFFF_FFFF_FFFF_FFFF       # Full 64-bit mask
 
 # Well-known signatures
 UNSIGNED = 0                         # No nodes
-LITERAL_ONLY = 1                     # All-literal content
 
 # Significance
 _S3_BIAS = 1                         # Tier bias for S3 connotation hops (linear)
@@ -203,10 +178,6 @@ S4_VALUE = 0x0000_0000_0000_0000     # Minimum significance
 STM_BOUND_DEFAULT = 256              # STM capacity
 MAX_HOP = 100                        # S2 edge hop chain depth / unresolvable penalty
 COGITATE_TIMEOUT = 2.0               # Seconds before "done" event
-
-# Tokenizer
-MOD32_BITS = 31                      # Character bit positions
-MOD64_BITS = 63
 ```
 
 ---
@@ -216,12 +187,10 @@ MOD64_BITS = 63
 | Risk                                                    | Severity | Mitigation                                                                             |
 | ------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
 | Model significance API semantics may need iteration     | High     | S2 distance uses per-node hop-distance algorithm; evolve based on real data            |
-| All-literal signature collision (sig=1 for all)         | Medium   | Fast-path in Assess phase; accept degenerate indexing                                  |
 | Candidate retrieval O(N) scan too slow for large models | Medium   | Profile first; add inverted bit index if needed                                        |
 | Cogitation thread safety bugs                           | Medium   | Thorough concurrent testing; keep thread logic simple                                  |
 | Cogitator MVP too simple (no graph expansion)           | Medium   | Now uses model.expand() for connotation discovery; see specs   |
-| Literal mask accidental collision                       | Low      | Only `0xFFFFFFFF` lower 32 bits triggers; verified for all node types                  |
-| BPE tokenizer optional deps fragile                     | Low      | Make BPE entirely optional; core system works with Mod only                            |
+| BPE tokenizer optional deps fragile                     | Low      | The NLP tokenizer is the production default; `rustbpe`/`tiktoken` remain optional subword dependencies |
 
 ---
 
@@ -232,7 +201,7 @@ MOD64_BITS = 63
 | 0     | Scaffold     | `pyproject.toml`, dirs             | 0.5d       | -          | foundations | ✅ |
 | 1     | KLine        | `kline.py`                         | 0.5d       | -          | foundations | ✅ |
 | 2     | Signature    | `signature.py`                     | 0.5d       | -          | foundations | ✅ |
-| 3     | Tokenizer    | `mod_tokenizer.py`, `tokenizer.py` | 1.5d       | -          | foundations | ✅ |
+| 3     | Tokenizer    | `tokenizer.py`, `nlp_tokenizer.py` | 1.5d       | -          | foundations | ✅ |
 | 4     | STM          | `stm.py`                           | 1d         | 1, 2, 3    | foundations | ✅ |
 | 5     | Model        | `model.py`                         | 2-3d       | 1, 2, 4    | model | ✅ |
 | 6     | Constants    | `model.py` (D_MAX, MASK64)          | 0.5d       | —          | model | ✅ |
@@ -248,8 +217,7 @@ MOD64_BITS = 63
 
 ## 7. Questions for Clarification
 
-1. **BPE tokenizer priority:** Is BPE support needed for MVP, or can we ship with Mod tokenizer only?
-   - _Recommendation:_ Mod only for MVP. BPE is a separate concern.
+1. **BPE tokenizer priority:** _Resolved._ The NLP tokenizer is the production tokenizer; BPE is its subword base (`rustbpe`/`tiktoken` remain optional subword dependencies).
 
 2. **Persistence format:** Is JSON sufficient, or is binary serialization required from day one?
    - _Recommendation:_ JSON for development; binary for production.
@@ -263,7 +231,7 @@ MOD64_BITS = 63
    - _Recommendation:_ Optional implementation-level field. Not part of equality/hash.
 
 6. **`abstract.py`:** Formal ABC classes or duck-typed protocols?
-   - _Recommendation:_ `ABC` for Tokenizer (multiple implementations). Duck typing for Model/Agent.
+   - _Recommendation:_ `ABC` for Tokenizer (NLP tokenizer + BPE subword base). Duck typing for Model/Agent.
 
 7. **Cogitator evolution:** Should future iterations add pass tracking or significance-based re-routing?
    - _Recommendation:_ Incremental evolution. Cogitation now expands via `model.expand()` yielding connotations. Next: top-k/top-p selection of connotation results.

@@ -3,7 +3,7 @@
 **Spec:** @specs/kscript.md v3.0  
 **Date:** 2026-06-12  
 **Status:** Plan  
-**Assumes:** Kalvin core (`kalvin.kline.KLine`, `kalvin.mod_tokenizer`, `kalvin.signature.make_signature`, `kalvin.nlp_tokenizer.NLPTokenizer`)
+**Assumes:** Kalvin core (`kalvin.kline.KLine`, `kalvin.signature.make_signature`, `kalvin.nlp_tokenizer.NLPTokenizer`)
 
 ---
 
@@ -337,7 +337,7 @@ resolve(char):
                 if len(matches) > 1: counter += 1  # ambiguous: increment
                 scope.counters[char.lower()] = counter
                 return word
-    return None  # unbound
+    return None  # not resolved
 ```
 
 ### Binding rules (§10.1)
@@ -345,7 +345,7 @@ resolve(char):
 - **B1**: Once bound in a scope, cannot be re-bound within that scope.
 - **B2**: Characters seek bindings: inline first, then scope stack.
 - **B3**: First-letter matching, case-insensitive, occurrence counter for duplicates.
-- **B4**: Inline override — patches parent scope's MCS CANONIZE entry.
+- **B4**: Inline override — patches parent scope's MTS CANONIZE entry.
 
 Note: B1 and B4 enforcement happens in the ASTEmitter, not in BindingScope. The scope provides resolution only.
 
@@ -359,7 +359,7 @@ Note: B1 and B4 enforcement happens in the ASTEmitter, not in BindingScope. The 
 | KS-27 | Scope inheritance: inner to outer |
 | KS-28 | Scope shadowing: inner shadows outer |
 | KS-29 | Counter reset: each new scope starts at zero |
-| KS-30 | Unbound character returns None |
+| KS-30 | Unresolved identifier returns None |
 | KS-31 | Inert annotation: no matching characters |
 
 ---
@@ -370,7 +370,7 @@ Note: B1 and B4 enforcement happens in the ASTEmitter, not in BindingScope. The 
 **Spec ref:** §3, §6–8, §10  
 **Time:** 4h
 
-This is the largest task. Build in layers: unsigned → inline ops → multi-item ops → MCS → binding → scope.
+This is the largest task. Build in layers: unsigned → inline ops → multi-item ops → MTS → binding → scope.
 
 ### Interface
 
@@ -401,7 +401,7 @@ _sig_levels = {
 `_emit_entry(sig, nodes, op)`:
 - `nodes` is always a `list[str]`. Empty list for unsigned.
 - No singleton unwrapping.
-- No dedup (MCS dedup is separate, see 6D).
+- No dedup (MTS dedup is separate, see 6D).
 
 ### 6B: Scope walk and unsigned/inline operators (1h)
 
@@ -411,7 +411,7 @@ Walk the AST, processing OperatorScope nodes:
 def _process_scope(self, scope: OperatorScope) -> None:
     sig = scope.sig.id
     resolved_sig = self._resolve_inline_or_scope(sig, scope.inline_annotation)
-    self._emit_mcs(resolved_sig)
+    self._emit_mts(resolved_sig)
 
     if scope.op is None:
         self._emit_entry(resolved_sig, [], "UNSIGNED")
@@ -472,13 +472,13 @@ def _collect_node_ids(self, items, child_block) -> list[str]:
     return ids
 ```
 
-### 6D: MCS expansion (1h)
+### 6D: MTS expansion (1h)
 
 **Spec ref:** §8 (incl. §8.3 canonical resolution)
 
 ```python
-def _emit_mcs(self, sig: str) -> int | None:
-    """Emit MCS entries for a multi-character identifier (§8).
+def _emit_mts(self, sig: str) -> int | None:
+    """Emit MTS entries for a multi-character identifier (§8).
 
     Canonical resolution (§8.3): the component list is computed once,
     on first expansion, and cached in ``_resolution_cache``. Subsequent
@@ -498,24 +498,24 @@ def _emit_mcs(self, sig: str) -> int | None:
         self._resolution_cache[sig] = list(chars)
 
     for resolved_char in chars:
-        self._emit_entry(resolved_char, [], "UNSIGNED")   # deduped via _mcs_identity_seen
-    self._emit_entry(sig, chars, "CANONIZE")              # deduped via _mcs_canonize_seen
+        self._emit_entry(resolved_char, [], "UNSIGNED")   # deduped via _mts_identity_seen
+    self._emit_entry(sig, chars, "CANONIZE")              # deduped via _mts_canonize_seen
     return len(self.entries) - 1  # index of CANONIZE entry for Rule B4
 ```
 
 Initialize ``self._resolution_cache: dict[str, list[str]] = {}`` in the constructor. The cache is what realizes both §8.3 canonical resolution and (because a CANONIZE scope whose subscript children spell its own sig reuses the cached components) the single-expansion invariant for a node-that-is-a-nested-scope.
 
-**MCS deduplication (§8.3):**
+**MTS deduplication (§8.3):**
 
-Track emitted `(sig, tuple(nodes))` pairs for CANONIZE entries only. If a subsequent CANONIZE entry would produce the same pair, skip it. This prevents duplicate MCS canonization from subscript blocks.
+Track emitted `(sig, tuple(nodes))` pairs for CANONIZE entries only. If a subsequent CANONIZE entry would produce the same pair, skip it. This prevents duplicate MTS canonization from subscript blocks.
 
 ```python
 def _emit_entry(self, sig, nodes, op):
     key = (sig, tuple(nodes))
     if op == "CANONIZE":
-        if key in self._mcs_canonize_seen:
+        if key in self._mts_canonize_seen:
             return
-        self._mcs_canonize_seen.add(key)
+        self._mts_canonize_seen.add(key)
     # emit...
 ```
 
@@ -523,7 +523,7 @@ def _emit_entry(self, sig, nodes, op):
 
 **Spec ref:** §10
 
-Character resolution for MCS and signature encoding:
+Character resolution for MTS and signature encoding:
 
 ```python
 def _resolve_char(self, char: str) -> str:
@@ -534,7 +534,7 @@ def _resolve_char(self, char: str) -> str:
     return char
 ```
 
-Rule B4 override: when inline annotation fires inside a subscript, patch the parent's MCS CANONIZE entry:
+Rule B4 override: when inline annotation fires inside a subscript, patch the parent's MTS CANONIZE entry:
 
 ```python
 def _apply_inline_override(self, char: str, word: str, parent_canonize_idx: int | None):
@@ -559,11 +559,11 @@ def _apply_inline_override(self, char: str, word: str, parent_canonize_idx: int 
 | KS-16 | Indent extends scope: child block items belong to parent operator |
 | KS-17 | DEDENT returns to parent scope |
 | KS-18 | Non-CANONIZE with indent: per-item extends into child block |
-| KS-19 | MCS expansion: multi-char produces components + canonization + unsigned |
-| KS-20 | No MCS for single-char identifiers |
-| KS-21 | MCS on node side: `A == MHALL` triggers MCS for MHALL |
-| KS-22 | Node count invariant: MCS node count equals character count |
-| KS-26 | Rule B4 override: inline patches parent MCS CANONIZE |
+| KS-19 | MTS expansion: multi-char produces components + canonization + unsigned |
+| KS-20 | No MTS for single-char identifiers |
+| KS-21 | MTS on node side: `A == MHALL` triggers MTS for MHALL |
+| KS-22 | Node count invariant: MTS node count equals character count |
+| KS-26 | Rule B4 override: inline patches parent MTS CANONIZE |
 | KS-33 | Self-identity: `A = A` → `{A:[]}` with op=UNSIGNED |
 | KS-34 | Nodes always a list: `A => B` → `{A:[B]}`, `A` → `{A:[]}` |
 
@@ -593,16 +593,16 @@ class TokenEncoder:
 - **Signature string** → `tokenizer.encode(sig)` → single `uint64` (or packed from multi-token).
 - **Node strings** → each encoded via tokenizer → `list[uint64]`. Always a list.
 - **Empty nodes** → `[]`. Never None.
-- **Multi-token words** (§11.4): When a resolved word BPE-encodes to multiple tokens, run full MCS at the BPE-token level: emit unsigned entries per token, CANONIZE mapping packed signature → tokens, return packed signature as the single node.
+- **Multi-token words** (§11.3): When a resolved word BPE-encodes to multiple tokens, run full MTS at the BPE-token level: emit unsigned entries per token, CANONIZE mapping packed signature → tokens, return packed signature as the single node.
 
-**Canonical encoding (§11.4/§11.5).** A compound identifier (§8 multi-char sig) is BPE-encoded via its resolved components, never by re-encoding its literal string. Maintain ``_compound_sigs: dict[str, int]``:
+**Canonical encoding (§11.3/§11.4).** A compound identifier (§8 multi-char sig) is BPE-encoded via its resolved components, never by re-encoding its literal string. Maintain ``_compound_sigs: dict[str, int]``:
 - On a CANONIZED definition (the compound's defining entry): compute ``sig = make_signature(node_values)`` and register ``entry.sig → sig``. The ASTEmitter guarantees definition-before-reference ordering.
 - On any entry whose signature or node string is a known compound: reuse the registered uint64 instead of ``encode(literal_string)``.
 
 This yields three coupled rules, all consequences of "a compound has one identity, computed once":
-1. Compound exemption: a compound sig is never passed through §11.4 (``encode("MHALL")`` → literal letters is meaningless); its components are the resolved node values.
-2. Packed-sig IDENTITY suppression: when ``op == IDENTITY`` and the signature is packed (multi-token §11.4 word or compound), do not emit a main IDENTITY kline — the decomposition above is the sole representation, and a packed value cannot head an identity (CONTEXT.md "Identity").
-3. ``_build_dbg`` must not ``decode()`` a packed signature: it is opaque per §11.6 (decode may crash or return an unrelated word). Track ``sig_is_packed`` alongside the signature and skip decode/grammar-lookup when set; decode defensively (try/except) for the single-token path.
+1. Compound exemption: a compound sig is never passed through §11.3 (``encode("MHALL")`` → literal letters is meaningless); its components are the resolved node values.
+2. Packed-sig IDENTITY suppression: when ``op == IDENTITY`` and the signature is packed (multi-token §11.3 word or compound), do not emit a main IDENTITY kline — the decomposition above is the sole representation, and a packed value cannot head an identity (CONTEXT.md "Identity").
+3. ``_build_dbg`` must not ``decode()`` a packed signature: it is opaque per §11.5 (decode may crash or return an unrelated word). Track ``sig_is_packed`` alongside the signature and skip decode/grammar-lookup when set; decode defensively (try/except) for the single-token path.
 
 Operator entries (COUNTERSIGNED/UNDERSIGNED/CONNOTED) with a compound signature are legitimate references and are emitted normally; for them ``signature != OR(nodes)`` by design (the signature is a registry lookup, not a reduction of that entry's own nodes).
 
@@ -610,11 +610,11 @@ Operator entries (COUNTERSIGNED/UNDERSIGNED/CONNOTED) with a compound signature 
 
 ```python
 def _encode_node(self, word: str) -> tuple[int, list[SymbolicEntry]]:
-    """Encode a word to a single uint64 node, emitting MCS entries for multi-token words."""
+    """Encode a word to a single uint64 node, emitting MTS entries for multi-token words."""
     tokens = self.tokenizer.encode(word)
     if len(tokens) == 1:
         return tokens[0], []
-    # Multi-token: run MCS at BPE subword level
+    # Multi-token: run MTS at BPE subword level
     extras = []
     for tok in tokens:
         extras.append(SymbolicEntry(tok, [], "UNSIGNED"))
@@ -625,15 +625,10 @@ def _encode_node(self, word: str) -> tuple[int, list[SymbolicEntry]]:
     return packed, extras
 ```
 
-### Mod32 fallback (§11.3)
-
-When a character is unbound (raw character string, not a word), encode via Mod32 bit-packed encoding. The tokenizer's `encode()` handles this based on input — single uppercase characters are Mod32-packed.
-
 ### Test mapping
 
 | Spec ID | Test |
 |---------|------|
-| KS-32 | Unbound characters use Mod32 fallback encoding |
 | KS-34 | Nodes always a list (enforced by CompiledEntry type) |
 
 ---
@@ -688,7 +683,7 @@ class KScript:
 |---------|------|
 | KS-35 | Complex nested example (spec §14.11) produces correct complete entry list |
 | KS-36 | NLP-bound example (spec §14.12) produces correct resolved entries |
-| KS-37 | Mixed NLP/Mod32 klines: bound NLP, unbound Mod32 |
+| KS-37 | Uniform-NLP: all characters (bound and unresolved) produce valid NLP-BPE nodes |
 
 ---
 
@@ -710,7 +705,7 @@ TestEmitterUndersign       — §7.3 (2 tests)
 TestEmitterConnotate       — §7.4 (1 test)
 TestEmitterCanonize        — §7.5 (2 tests)
 TestEmitterScopeChains     — §3.2 (4 tests)
-TestEmitterMCS             — §8   (4 tests)
+TestEmitterMTS             — §8   (4 tests)
 TestEmitterBinding         — §10  (4 tests)
 TestComplexExamples        — §14  (5 tests)
 ```
@@ -721,7 +716,7 @@ Write a single test that compiles the §14.11 source and asserts every entry aga
 
 ### NLP-bound example validation (§14.12)
 
-Compile the §14.12 source with NLPTokenizer and verify binding resolution, MCS with resolved words, and Rule B4 override.
+Compile the §14.12 source with NLPTokenizer and verify binding resolution, MTS with resolved words, and Rule B4 override.
 
 ### Test helpers
 
@@ -768,10 +763,10 @@ def has_entry(md, sig, nodes):
 | KS-16 | Scope | Indent extends scope |
 | KS-17 | Scope | DEDENT returns to parent |
 | KS-18 | Scope | Non-CANONIZE with indent |
-| KS-19 | MCS | Multi-char expansion |
-| KS-20 | MCS | No single-char expansion |
-| KS-21 | MCS | MCS on node side |
-| KS-22 | MCS | Node count invariant |
+| KS-19 | MTS | Multi-char expansion |
+| KS-20 | MTS | No single-char expansion |
+| KS-21 | MTS | MTS on node side |
+| KS-22 | MTS | Node count invariant |
 | KS-23 | Binding | Block first-letter matching |
 | KS-24 | Binding | Occurrence counter |
 | KS-25 | Binding | Inline binding |
@@ -779,19 +774,19 @@ def has_entry(md, sig, nodes):
 | KS-27 | Binding | Scope inheritance |
 | KS-28 | Binding | Scope shadowing |
 | KS-29 | Binding | Counter reset |
-| KS-30 | Binding | Unbound characters |
+| KS-30 | Binding | Unresolved identifier returns None |
 | KS-31 | Binding | Inert annotation |
-| KS-32 | Encoding | Mod32 fallback |
+| KS-32 | Encoding | Unresolved char encodes to its own raw NLP-BPE node |
 | KS-33 | Operators | Self-identity |
 | KS-34 | Structure | Nodes always a list |
 | KS-35 | Integration | §14.11 complex nested |
 | KS-36 | Integration | §14.12 NLP-bound |
-| KS-37 | Integration | Mixed NLP/Mod32 |
-| KS-38 | MCS Dedup | Component identity dedup |
-| KS-39 | MCS Dedup | Intra-expansion dedup |
-| KS-40 | MCS Dedup | Canonization dedup |
-| KS-41 | MCS | Canonical resolution (§8.3) — same identifier resolves identically wherever it appears |
-| KS-42 | Encoding | Canonical encoding (§11.4/§11.5) — one CANONIZED per compound; single-token identity sigs |
+| KS-37 | Integration | Uniform-NLP: all characters produce valid NLP-BPE nodes |
+| KS-38 | MTS Dedup | Component identity dedup |
+| KS-39 | MTS Dedup | Intra-expansion dedup |
+| KS-40 | MTS Dedup | Canonization dedup |
+| KS-41 | MTS | Canonical resolution (§8.3) — same identifier resolves identically wherever it appears |
+| KS-42 | Encoding | Canonical encoding (§11.3/§11.4) — one CANONIZED per compound; single-token identity sigs |
 
 ---
 
@@ -824,7 +819,7 @@ kscript/
 | No decompiler, no file I/O, no CLI | Spec scope reduction. Compilation output is the product. Scripts handle format conversion. |
 | No `chain_right` | Scope model (§3). Each operator creates a scope boundary. |
 | `nodes: list[uint64]` always | Eliminates None checks, singleton unwrapping, type branching. Uniform structure. |
-| BindingScope always active | Mod32 is the fallback for unbound characters. |
-| MCS dedup on CANONIZE only | Prevents duplicate entries from MCS + subscript CANONIZE overlap. Not a general dedup mechanism. |
+| BindingScope always active | Unresolved identifiers encode as their own raw NLP-BPE nodes (see @kscript spec §10). |
+| MTS dedup on CANONIZE only | Prevents duplicate entries from MTS + subscript CANONIZE overlap. Not a general dedup mechanism. |
 | `Annotation` replaces `Comment` | Terminology reflects purpose: these are BPE encoding inputs, not inert documentation. |
-| Multi-token MCS in TokenEncoder | BPE subword decomposition is an encoding concern. The ASTEmitter works with symbolic strings. |
+| Multi-token MTS in TokenEncoder | BPE subword decomposition is an encoding concern. The ASTEmitter works with symbolic strings. |

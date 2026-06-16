@@ -59,12 +59,6 @@ single most important design decision. Every component depends on it.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ PACKED NODE (Mod tokenizer)                                      │
-│ ┌────┬──────────────────────────────────────────────────────┐    │
-│ │  0 │ bits 1–N: character bits (N=31 for Mod32, 63 Mod64) │    │
-│ └────┴──────────────────────────────────────────────────────┘    │
-│ bit 0 = 0                                                        │
-│                                                                   │
 │ BPE NODE (with type prefix)                                       │
 │ ┌─────────────────────┬──────────────────────────────────────┐   │
 │ │ type prefix bits     │ vocabulary index (lower bits)        │   │
@@ -97,12 +91,11 @@ is_signature(x)  = NO TEST — any uint64 can be a signature
 ### 1.4 Why This Layout Works
 
 All nodes go through the tokenizer — there is no branching between encoding
-paths. Two node types exist:
+paths. Nodes are **NLP-BPE nodes**:
 
-- **Packed nodes:** uppercase alpha characters OR'd into a single `uint64` with bit 0 clear. Lossy: order and multiplicity are lost. Used as bitmask signatures for fast overlap-based candidate retrieval.
 - **NLP-BPE nodes:** `(nlp_type32 << 32) | bpe_token_id` — grammatically rich tokens carrying POS/DEP/MORPH type bits and BPE vocabulary indices.
 
-Both types contribute their full value to signature OR-reduction without masking or branching.
+Both single-token and multi-token (MTS-packed-signature) words contribute their full value to signature OR-reduction without masking or branching.
 
 ---
 
@@ -190,27 +183,25 @@ Significance inversion is performed inline in `model.py`. See @model spec
 | SIG-7   | `signifies(0, anything)`                 | `False`                 |
 | SIG-9   | `signifies(0b110, 0b10)`                 | `True`                  |
 | SIG-10  | `signifies(0b110, 0b1)`                  | `False`                 |
-| SIG-14  | Mod32 backward compat                    | `0b10 | 0b100 == 0b110` |
+| SIG-14  | OR-reduction of two node values         | `0b10 | 0b100 == 0b110` |
 
 ---
 
 ## 4. Tokenizer (Phase 3)
 
-**Files:** `src/kalvin/mod_tokenizer.py`, `src/kalvin/tokenizer.py`, `tests/test_tokenizer.py`
+**Files:** `src/kalvin/tokenizer.py`, `src/kalvin/nlp_tokenizer.py`, `tests/test_tokenizer.py`
 **Depends on:** Abstract interface (can be inline or in `abstract.py`)
 **Estimate:** 1.5 days
 
 ### Spec Reference
 
-See **@tokenizer spec** for full definition (interface, Mod/BPE variants, encoding modes).
-Test matrix: TOK-1 through TOK-12.
+See **@tokenizer spec** for full definition (interface, NLP/BPE encoding).
+Test matrix: TOK-7 + TOK-NLP-* (see @tokenizer spec).
 
 **Key rules (from spec):**
 
-- Packed encoding: all-uppercase-alpha → single node, bit 0 clear, OR-reduced.
 - All other strings go through the tokenizer uniformly — no special encoding path.
 - No `pack` parameter — mode auto-detected from input content.
-- Variants: Mod32 (31 bits, default), Mod64 (63 bits).
 
 ### BPE Tokenizer
 
@@ -220,14 +211,9 @@ See @tokenizer spec §BPE Tokenizer.
 
 ### Test Cases
 
-| Spec ID | Test                      | Description                                                  |
-| ------- | ------------------------- | ------------------------------------------------------------ |
-| TOK-1   | Packed encode single char | `encode("A") == [bit_A]`                                     |
-| TOK-2   | Packed encode multi-char  | `encode("AB") == [bit_A \| bit_B]`                           |
-| TOK-3   | Packed round-trip         | `decode(encode("ABC"))` contains A, B, C (order may differ)  |
-| TOK-7   | Empty string              | `encode("") == []`, `decode([]) == ""`                       |
-| TOK-11  | Vocab size                | Matches number of unique characters in alphabet              |
-| TOK-12  | Characters not in vocab   | Still encodable (assigned next bit)                          |
+| Spec ID | Test         | Description                                                  |
+| ------- | ------------ | ------------------------------------------------------------ |
+| TOK-7   | Empty string | `encode("") == []`, `decode([]) == ""`                       |
 
 ---
 

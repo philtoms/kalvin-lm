@@ -22,46 +22,16 @@ correctness concern. Ship first, optimize later.
 `bit_position → set[signature]`. `candidates_for(sig)` would union the sets
 for all set bits in `sig`.
 
-### 1.2 All-Literal Signature Collision
+### 1.2 Default Encode Mode
 
-All all-literal KLines produce `make_signature = 1`. This means:
+**Decision:** `tokenizer.encode(text)` NLP-tokenizes all input uniformly —
+there is no packed/literal mode and no `pack` parameter.
 
-- Two different all-literal KLines have the same signature.
-- They are distinguishable only by their node sequences.
-- The model's signature index will have many KLines under key `1`.
+**Rationale:** All text goes through the NLP tokenizer (BPE subword base) on
+a single encoding path; there is nothing to branch on, so a mode parameter
+is unnecessary. This simplifies all callers.
 
-**Decision:** Accept this. All-literal KLines are fast-tracked in Phase 3
-(Assess) and never reach candidate retrieval. If they do reach retrieval
-during cogitation, routing will count zero matches (literal nodes won't
-exist in non-literal candidates' node sequences) and route to S3.
-
-### 1.3 Default Encode Mode
-
-**Decision:** `tokenizer.encode(text)` determines encoding mode automatically
-from the content — no `pack` parameter needed.
-
-- All-uppercase-alpha strings → packed (single node, bit 0 clear)
-- Everything else → literal (one node per character, literal mask set)
-
-**Rationale:** KScript literals are now strictly numbers or quoted strings.
-Since the tokenizer can unambiguously determine the encoding mode from the
-input content, the `pack` parameter is unnecessary. This simplifies all
-callers.
-
-### 1.4 STM Nodes-Signature Indexing for All-Literal KLines
-
-All all-literal KLines produce `nodes_sig = 1`. STM's `find_by_nodes(1)`
-returns the most recently added. See **@stm spec** for full indexing semantics.
-
-**Decision:** Accept this degenerate case. It's correct behavior — same as
-multiple KLines sharing any signature.
-
-### 1.5 32-Bit Code Point Limit
-
-Literal encoding: `(codepoint << 32) | 0xFFFFFFFF`. Unicode code points max
-at U+10FFFF (21 bits). Upper 32 bits provide ample room.
-
-### 1.6 Persistence Format
+### 1.3 Persistence Format
 
 **Decision:** Support both JSON and binary serialization.
 
@@ -81,7 +51,7 @@ at U+10FFFF (21 bits). Upper 32 bits provide ample room.
 - `uint32` kline count
 - Per kline: `uint64` signature, `uint32` node count, `uint64` × N nodes
 
-### 1.7 Project Dependencies
+### 1.4 Project Dependencies
 
 **Core (required):**
 
@@ -118,7 +88,7 @@ at U+10FFFF (21 bits). Upper 32 bits provide ample room.
 ### Phase 3: Tokenizer → **foundations.md §4**
 
 **Estimate:** 1.5 days
-**Deliverables:** `src/kalvin/mod_tokenizer.py`, `src/kalvin/tokenizer.py`, `tests/test_tokenizer.py`
+**Deliverables:** `src/kalvin/tokenizer.py`, `src/kalvin/nlp_tokenizer.py`, `tests/test_tokenizer.py`
 
 ### Phase 4: STM → **foundations.md §5**, **specs/stm.md**
 
@@ -185,4 +155,4 @@ Each phase is complete when:
 1. **Implementation** matches the spec in the relevant sub-plan.
 2. **All test cases** from the sub-plan pass.
 3. **No regressions** — previously passing tests still pass.
-4. **No external dependencies** beyond what's specified in §1.7.
+4. **No external dependencies** beyond what's specified in §1.4.
