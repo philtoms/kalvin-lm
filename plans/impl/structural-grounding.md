@@ -4,11 +4,6 @@
 **Challenges:** 6 (Structural Grounding) + 6b (Extended Cogitation)
 **Estimate:** 4–7 days
 
-> **Note (2026-06-02):** The model spec test matrix was renumbered to accommodate
-> the selective-write cascade API (MOD-23 through MOD-33 now cover the write
-> cascade, MOD-34+ cover significance/structural grounding). Test matrix IDs in
-> this plan reference the old numbering. When implementing, remap to the current
-> spec IDs in `specs/model.md`.
 **Depends on:** Current system (Phases 0–8 complete, 329 tests passing)
 
 ---
@@ -112,11 +107,9 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
     # Collect all signatures from the participating pair
     node_sigs = set()
     for n in query.nodes:
-        if not is_literal_node(n):
-            node_sigs.add(n)
+        node_sigs.add(n)
     for n in candidate.nodes:
-        if not is_literal_node(n):
-            node_sigs.add(n)
+        node_sigs.add(n)
     node_sigs.add(query.signature)
     node_sigs.add(candidate.signature)
 
@@ -209,14 +202,13 @@ The candidate is a model kline (from `model.where()`), so
 
 | Spec ID | Test                                      | Description                                           |
 | ------- | ----------------------------------------- | ----------------------------------------------------- |
-| MOD-26  | `is_s1` canonical                | KLine with `sig == make_signature(nodes)` → True      |
-| MOD-27  | `is_s1` countersigned            | Two klines with mutual node references → True         |
-| MOD-28  | `is_s1` neither                  | KLine that is not canonical or countersigned → False  |
-| MOD-26  | `is_s1` all-literal              | All-literal kline → True (canonical, sig=1)           |
-| MOD-40  | `promote_participating` basic             | Query + candidate promoted                            |
-| MOD-41  | `promote_participating` with S4 identity  | S4 identity klines in STM also promoted               |
-| MOD-42  | `promote_participating` with S2/S3        | Partial klines in STM promoted                        |
-| MOD-43  | `promote_participating` no double-promote | Already-promoted klines not re-promoted               |
+| MOD-34  | `is_s1` canonical                | KLine with `sig == make_signature(nodes)` → True      |
+| MOD-35  | `is_s1` countersigned            | Two klines with mutual node references → True         |
+| MOD-36  | `is_s1` neither                  | KLine that is not canonical or countersigned → False  |
+| MOD-48  | `promote_participating` basic             | Query + candidate promoted                            |
+| MOD-49  | `promote_participating` with S4 identity  | S4 identity klines in STM also promoted               |
+| MOD-50  | `promote_participating` with S2/S3        | Partial klines in STM promoted                        |
+| MOD-51  | `promote_participating` no double-promote | Already-promoted klines not re-promoted               |
 | —       | Frame holds S4–S1                         | After ratification, frame contains mixed significance |
 | AGT-29  | Cogitator countersignature promotes all   | Countersignature discovery promotes participating     |
 | AGT-36  | Boundary S1 + structural check            | Boundary S1 on non-structural kline → no promotion    |
@@ -313,7 +305,7 @@ def _overfit_expansions(
     """Remove nodes whose bits contribute to the excess."""
     # Find nodes contributing to excess
     excess_nodes = [n for n in kline.nodes
-                     if not is_literal_node(n) and (n & excess) != 0]
+                     if (n & excess) != 0]
 
     if not excess_nodes:
         return
@@ -334,7 +326,7 @@ def _dual_expansions(
 ) -> Iterator[tuple[KLine, list[KLine]]]:
     """Atomic replacement: swap excess nodes for gap-filling nodes."""
     excess_nodes = [n for n in kline.nodes
-                     if not is_literal_node(n) and (n & excess) != 0]
+                     if (n & excess) != 0]
     remaining = [n for n in kline.nodes if n not in excess_nodes]
 
     # Find contributors to fill the gap
@@ -402,14 +394,14 @@ moved upstream to rationalise):
 
 | Spec ID | Test                                 | Description                           |
 | ------- | ------------------------------------ | ------------------------------------- |
-| MOD-44  | `classify_misfit` canonical          | `S == N` → (False, False)             |
-| MOD-45  | `classify_misfit` underfit           | `S & ~N != 0` → (True, False)         |
-| MOD-46  | `classify_misfit` overfit            | `N & ~S != 0` → (False, True)         |
-| MOD-47  | `classify_misfit` dual               | Both conditions → (True, True)        |
-| MOD-48  | `generate_expansions` underfit       | Returns proposal with added nodes     |
-| MOD-49  | `generate_expansions` overfit        | Returns trimmed + companion           |
-| MOD-50  | `generate_expansions` dual           | Returns replacement + companion       |
-| MOD-51  | `generate_expansions` no gap         | No expansion proposals emitted        |
+| MOD-52  | `classify_misfit` canonical          | `S == N` → (False, False)             |
+| MOD-53  | `classify_misfit` underfit           | `S & ~N != 0` → (True, False)         |
+| MOD-54  | `classify_misfit` overfit            | `N & ~S != 0` → (False, True)         |
+| MOD-55  | `classify_misfit` dual               | Both conditions → (True, True)        |
+| MOD-56  | `generate_expansions` underfit       | Returns proposal with added nodes     |
+| MOD-57  | `generate_expansions` overfit        | Returns trimmed + companion           |
+| MOD-58  | `generate_expansions` dual           | Returns replacement + companion       |
+| MOD-59  | `generate_expansions` no gap         | No expansion proposals emitted        |
 | AGT-34  | Cogitator expansion proposal         | frame event emitted for expansion     |
 | AGT-34  | Cogitator expansion companion        | frame event emitted for companion     |
 | AGT-34  | Cogitator no expansion for canonical | Canonical kline → no expansion        |
