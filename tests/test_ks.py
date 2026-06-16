@@ -34,7 +34,7 @@ This module covers all 37 spec test IDs (KS-1 through KS-37):
     KS-27  — Scope inheritance                               TestBindingScope
     KS-28  — Scope shadowing                                 TestBindingScope
     KS-29  — Counter reset                                   TestBindingScope
-    KS-30  — Unbound character (binding resolution)          TestBindingScope
+    KS-30  — Unresolved identifier (no fallback state)     TestBindingScope
     KS-31  — Inert annotation                                TestBindingScope
     KS-32  — Unresolved char NLP-BPE encoding                TestEncoding
     KS-33  — Self-identity                                   TestEmitterOperators
@@ -173,7 +173,7 @@ def has_entry(
 # KS-27 : test_ks27_scope_inheritance
 # KS-28 : test_ks28_scope_shadowing
 # KS-29 : test_ks29_counter_reset
-# KS-30 : test_ks30_unbound_character
+# KS-30 : test_ks30_unresolved_identifier
 # KS-31 : test_ks31_inert_annotation
 # KS-32 : test_ks32_unresolved_char_nlp_encoding
 # KS-33 : test_ks33_self_identity
@@ -504,10 +504,16 @@ class TestBindingScope:
         # → "Little" again (not "Lamb")
         assert scope.resolve("L") == "Little"
 
-    # -- KS-30: Unbound character ----------------------------------------
+    # -- KS-30: Unresolved identifier (no fallback state) -------------
 
-    def test_ks30_unbound_character(self):
-        """KS-30: resolve('Z') with no matching words → None."""
+    def test_ks30_unresolved_identifier(self):
+        """KS-30: An unresolved identifier (BindingScope.resolve returns None)
+        is encoded as its own raw BPE token — no special fallback state.
+
+        At the BindingScope level, resolve('Z') with no matching words
+        returns None. The encoding behavior (single NLP-BPE node, same
+        path as any resolved character) is covered by KS-32.
+        """
         scope = BindingScope()
         scope.push_scope()
         scope.add_words(["Alpha", "Beta"])
