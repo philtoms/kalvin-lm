@@ -17,6 +17,9 @@ KSCRIPT = ROOT / "plans" / "implement-kscript.md"
 FOUNDATIONS = ROOT / "plans" / "impl" / "foundations.md"
 BUILD = ROOT / "plans" / "impl" / "build-phases.md"
 ALL = [KALVIN, KSCRIPT, FOUNDATIONS, BUILD]
+# Not in ALL: this plan contains intentional historical "UNSIGNED" references
+# that would false-positive the BANNED_SUBSTR / bare-Mod sweeps.
+RENAME_UNSIGNED = ROOT / "plans" / "impl" / "rename-unsigned-to-identity.md"
 
 # Tokens that must never reappear in the edited plans. 'Mod32'/'Mod64' are
 # case-sensitive substrings; the bare 'Mod' word is checked separately.
@@ -107,3 +110,11 @@ def test_kalvin_plan_is_literal_section_gone():
     assert "## 3. `is_literal`" not in text
     # the constants block no longer defines the literal mask
     assert "LITERAL_MASK = 0xFFFF_FFFF" not in text
+
+
+def test_rename_unsigned_plan_mcs_renamed_to_mts():
+    """KB-288: rename-unsigned-to-identity.md must use MTS (not MCS)."""
+    text = RENAME_UNSIGNED.read_text()
+    assert "MCS" not in text, "residual 'MCS' in rename-unsigned-to-identity.md"
+    assert "MTS expansion" in text, "§8 cross-ref should read 'MTS expansion'"
+    assert "MTS emission" in text, "token_encoder.py bullet should read 'MTS emission'"

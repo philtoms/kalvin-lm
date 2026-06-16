@@ -2,7 +2,7 @@
 
 ## Spec References
 
-- @specs/kscript.md §6.2 (significance level assignment), §7.1 (identity operator), §8 (MCS expansion)
+- @specs/kscript.md §6.2 (significance level assignment), §7.1 (identity operator), §8 (MTS expansion)
 - @specs/signature.md (signature value semantics)
 - @specs/kscript.md §7 (significance levels by operator)
 - @specs/agent.md §3 (grounding assessment)
@@ -37,7 +37,7 @@ The operator for bare-node klines (empty nodes, no relationships) was called UNS
 
 Replace every `"UNSIGNED"` string literal with `"IDENTITY"`:
 - `ast_emitter.py`: `_op_to_str()` default return, `_emit_entry()` calls, docstrings, comments
-- `token_encoder.py`: `_SIG_LEVELS` dict key, `CompiledEntry` default `op`, MCS emission `op=`, docstrings
+- `token_encoder.py`: `_SIG_LEVELS` dict key, `CompiledEntry` default `op`, MTS emission `op=`, docstrings
 
 Acceptance: `grep -rn '"UNSIGNED"' src/ks/` returns nothing.
 
