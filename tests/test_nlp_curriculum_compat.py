@@ -93,7 +93,7 @@ class TestMultiTokenDecomposition:
         entries = compile_source("MHALL", tokenizer=nlp_tokenizer, dev=True)
         # §8 MTS: four distinct component identities (M, H, A, L — second L
         # intra-expansion deduped) + one CANONIZED. Compounds are exempt
-        # from §11.4 (canonical encoding), so the literal string is not
+        # from §11.3 (canonical encoding), so the literal string is not
         # BPE-re-decomposed.
         assert len(entries) == 5
         s4 = [e for e in entries if sig_level(e) == "S4"]
