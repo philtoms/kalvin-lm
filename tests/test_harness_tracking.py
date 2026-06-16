@@ -14,13 +14,18 @@ from unittest.mock import MagicMock, patch
 # Ensure kalvin.Agent is importable (kalvin.__init__ doesn't export it)
 import kalvin as _kalvin_pkg
 from kalvin.agent import KAgent as _RealAgent
-from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from ks import KLine
+from tests.conftest import requires_nlp_data
 
 if not hasattr(_kalvin_pkg, "Agent"):
     _kalvin_pkg.Agent = _RealAgent
 
 from ui.kscript.app import UI_STATE_FILE, KScriptApp
+
+# The harness display tokenizer is NLPTokenizer; skip cleanly when the NLP
+# data assets are absent on a fresh clone.
+pytestmark = requires_nlp_data
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -41,7 +46,7 @@ def _make_app() -> KScriptApp:
         # Manually set __init__ fields (skip super().__init__ entirely)
         app._dev_mode = True
         app._agent = MagicMock()
-        app._display_tok = Mod32Tokenizer()
+        app._display_tok = NLPTokenizer.from_files()
         app._execution_state = MagicMock()
         app._execution_state.name = "IDLE"
         app._pending_entries = []

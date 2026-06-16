@@ -31,8 +31,8 @@ class TestMakeSignature:
         """BPE-style tokens: full OR."""
         assert make_signature([42, 100]) == 42 | 100
 
-    def test_backward_compat_mod32(self):
-        """Mod32 packed nodes still produce full OR-reduction."""
+    def test_or_reduction_of_packed_nodes(self):
+        """OR-reduction of two packed node values produces their union (SIG-14)."""
         assert make_signature([0b10, 0b100]) == 0b110
 
 

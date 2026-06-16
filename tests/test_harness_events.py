@@ -15,7 +15,12 @@ from unittest.mock import MagicMock, patch
 
 from kalvin.abstract import KLine
 from kalvin.events import RationaliseEvent
-from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
+from tests.conftest import requires_nlp_data
+
+# The harness display tokenizer is NLPTokenizer; skip cleanly when the NLP
+# data assets are absent on a fresh clone.
+pytestmark = requires_nlp_data
 
 # ── Structural Match Tests ──────────────────────────────────────────────
 
@@ -80,7 +85,7 @@ def _make_app():
         # Initialize only the fields we need
         app._dev_mode = True
         app._agent = MagicMock()
-        app._display_tok = Mod32Tokenizer()
+        app._display_tok = NLPTokenizer.from_files()
         app._execution_state = None
         app._pending_entries = []
         app._current_entry_index = 0

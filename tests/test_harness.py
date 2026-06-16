@@ -16,15 +16,29 @@ from kalvin.agent import KAgent
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.expand import D_MAX
 from kalvin.kline import KLine
-from kalvin.mod_tokenizer import Mod64Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
 from ks import compile_source
 from ks.parser import ParseError
 from tests.conftest import requires_nlp_data
 
+# The whole module constructs KAgents (default NLP tokenizer); skip cleanly
+# when the NLP data assets are absent on a fresh clone.
+pytestmark = requires_nlp_data
+
 # ── Shared tokenizer ──────────────────────────────────────────────────
 
-_tok = Mod64Tokenizer()
+# Lazy module-level NLP tokenizer (safe at import time; ``pytestmark`` gates
+# execution so this is only ever instantiated on a data-present machine).
+_tok_instance: NLPTokenizer | None = None
+
+
+def _tok() -> NLPTokenizer:
+    """Return the shared NLP tokenizer, constructing it on first use."""
+    global _tok_instance
+    if _tok_instance is None:
+        _tok_instance = NLPTokenizer.from_files()
+    return _tok_instance
 
 # Status symbols per spec §Response Status
 STATUS_SYMBOLS = {"pass": "\u2713", "pending": "\u25cc", "mismatch": "\u2717"}
@@ -58,7 +72,7 @@ class HarnessFixture:
     """
 
     def __init__(self) -> None:
-        self._agent = KAgent(tokenizer=_tok, adapter=EventBus())
+        self._agent = KAgent(tokenizer=_tok(), adapter=EventBus())
         self._submitted: set[tuple[int, tuple[int, ...]]] = set()
         self._satisfied: set[tuple[int, tuple[int, ...]]] = set()
         self._responses: list[dict] = []
@@ -127,7 +141,7 @@ class HarnessFixture:
 
     def compile(self, source: str) -> list[KLine]:
         """Compile KScript source to compiled entries."""
-        return compile_source(source, tokenizer=_tok, dev=True)
+        return compile_source(source, tokenizer=_tok(), dev=True)
 
     def get_pending(self, entries: list[KLine]) -> list[KLine]:
         """Filter entries whose key is not yet in ``_submitted``."""
@@ -243,7 +257,7 @@ class HarnessFixture:
         try:
             from kalvin.kline import kline_display
 
-            return kline_display(entry, _tok)
+            return kline_display(entry, _tok())
         except Exception:
             pass
         return ""
@@ -594,7 +608,7 @@ def test_compilation_error_display():
     response item.  Here we verify the error capture path.
     """
     with pytest.raises((ParseError, Exception)) as exc_info:
-        compile_source("=> => =>", tokenizer=_tok, dev=True)
+        compile_source("=> => =>", tokenizer=_tok(), dev=True)
 
     # Error message is available for display
     assert str(exc_info.value)
@@ -619,11 +633,11 @@ def test_progress_count_display():
         h.step_one(source)
     assert len(h.submitted) == 3
 
-    # All submitted entries are fast-path satisfied
-    assert len(h.satisfied) == 3
-
-    # Simulate partial satisfaction: only 2 of 3 satisfied
-    satisfied_list = list(h.satisfied)[:2]
+    # HRN-15 tests the progress *count display*, not the satisfaction routing.
+    # Which entries fast-path satisfy depends on the tokenizer's node bit
+    # overlap (NLP-BPE nodes of the same POS share type bits), so we set the
+    # satisfied set directly to a known partial state (2 of 3).
+    satisfied_list = list(h.submitted)[:2]
     h._satisfied = set(satisfied_list)
 
     satisfied_count = len(h.satisfied)
@@ -723,16 +737,20 @@ def test_multiple_proposals_displayed():
     for proposal in proposals:
         h.agent.events.publish(RationaliseEvent("frame", query, proposal, D_MAX // 2))
 
-    # All proposals are recorded as separate response items
-    correlated = [r for r in h.responses if r["key"] == query_key and "proposal" in r]
-    assert len(correlated) == len(proposals)
-
-    # Each proposal is a distinct response
-    recorded_proposals = [r["proposal"] for r in correlated]
-    assert len(recorded_proposals) == len(proposals)
-    # Proposals are different from each other
-    proposal_keys = [HarnessFixture.entry_key(p) for p in recorded_proposals]
-    assert len(set(proposal_keys)) == len(proposals)
+    # All explicitly-published proposals are recorded as separate response
+    # items.  (The async cogitator may also emit proposals for the same
+    # expectation, so we verify our proposals are a subset of the recorded
+    # set rather than asserting an exact total count.)
+    recorded_proposals = [
+        r["proposal"] for r in h.responses if r["key"] == query_key and "proposal" in r
+    ]
+    recorded_keys = {HarnessFixture.entry_key(p) for p in recorded_proposals}
+    expected_keys = {HarnessFixture.entry_key(p) for p in proposals}
+    assert expected_keys.issubset(recorded_keys), (
+        f"Missing proposals: {expected_keys - recorded_keys}"
+    )
+    # The published proposals are distinct from each other
+    assert len(expected_keys) == len(proposals)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -746,11 +764,11 @@ except ImportError:  # optional NLP backend not installed
 
 
 class NLPHarnessFixture(HarnessFixture):
-    """HarnessFixture variant using NLPTokenizer instead of Mod64Tokenizer.
+    """HarnessFixture variant driven by an explicit NLPTokenizer instance.
 
-    Overrides compile() and _decompile_entry() to use the NLP tokenizer,
-    and constructs the agent with NLPTokenizer.  All tracking, submission,
-    and response logic is inherited from the base class.
+    Overrides compile() and _decompile_entry() to use the supplied NLP
+    tokenizer, and constructs the agent with NLPTokenizer.  All tracking,
+    submission, and response logic is inherited from the base class.
     """
 
     def __init__(self, nlp_tok: NLPTokenizer) -> None:
@@ -786,10 +804,9 @@ def test_harness_nlp_tokenizer():
     """Harness works end-to-end with NLPTokenizer.
 
     Verifies that the full rationalisation pipeline — compile KScript,
-    submit entries, track satisfaction — works when using an NLP tokenizer
-    instead of the default Mod64.  Entries should contain NLP-BPE nodes
-    (high 32 bits non-zero) and the rationalisation results should be
-    recorded correctly.
+    submit entries, track satisfaction — works when using an NLP tokenizer.
+    Entries should contain NLP-BPE nodes (high 32 bits non-zero) and the
+    rationalisation results should be recorded correctly.
     """
     nlp_tok = NLPTokenizer.from_files()
     h = NLPHarnessFixture(nlp_tok)

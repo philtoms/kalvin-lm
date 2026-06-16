@@ -17,11 +17,16 @@ from unittest.mock import MagicMock, patch
 
 from kalvin.abstract import KLine
 from kalvin.events import RationaliseEvent
-from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
+from tests.conftest import requires_nlp_data
 
 # ── Bootstrap: make ui.kscript.app importable ────────────────────────
 from ui.kscript.app import KScriptApp
 from ui.kscript.regions.toolbar import ExecutionState
+
+# The harness display tokenizer is NLPTokenizer; skip cleanly when the NLP
+# data assets are absent on a fresh clone.
+pytestmark = requires_nlp_data
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -53,7 +58,7 @@ def _make_app() -> KScriptApp:
         app._expectations = {}
         app._fast_path_results = {}
         app._run_mode_active = False
-        app._display_tok = Mod32Tokenizer()
+        app._display_tok = NLPTokenizer.from_files()
         app._logger = MagicMock()
         return app
 

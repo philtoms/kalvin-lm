@@ -36,29 +36,33 @@ This module covers all 37 spec test IDs (KS-1 through KS-37):
     KS-29  — Counter reset                                   TestBindingScope
     KS-30  — Unbound character (binding resolution)          TestBindingScope
     KS-31  — Inert annotation                                TestBindingScope
-    KS-32  — Mod32 fallback encoding                         TestEncoding
+    KS-32  — Unresolved char NLP-BPE encoding                TestEncoding
     KS-33  — Self-identity                                   TestEmitterOperators
     KS-34  — Nodes always a list                             TestStructure
     KS-35  — §14.11 complex nested (master regression)       TestComplexExamples
     KS-36  — §14.12 NLP-bound example                        TestComplexExamples
-    KS-37  — Mixed NLP/Mod32                                 TestComplexExamples
+    KS-37  — Uniform-NLP integration                         TestComplexExamples
 """
 
 from __future__ import annotations
 
 import dataclasses
-import string
 
 import pytest
 
 from kalvin.kline import KLine
-from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from ks import compile_source
 from ks.ast import Annotation, Block, KScriptFile, OperatorScope
 from ks.binding_scope import BindingScope
 from ks.lexer import Lexer, LexerError
 from ks.parser import Parser
 from ks.token import Token, TokenType
+from tests.conftest import requires_nlp_data
+
+# The entire module compiles real KScript sources which now default to the
+# NLP tokenizer; skip cleanly when the NLP data assets are absent.
+pytestmark = requires_nlp_data
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -75,11 +79,17 @@ def compile_real(source: str, tokenizer=None) -> list[KLine]:
     return compile_source(source, tokenizer=tokenizer, dev=False)
 
 
-# Singleton tokenizer shared across tests (Mod32Tokenizer is stateless).
-_TOK = Mod32Tokenizer()
+# Lazy module-level NLP tokenizer (safe at import time; ``pytestmark`` gates
+# execution so this is only ever instantiated on a data-present machine).
+_TOK_INSTANCE: NLPTokenizer | None = None
 
-# Pre-computed char → uint64 mapping for assertion helpers.
-_CHAR_UINT64: dict[str, int] = {c: _TOK.encode(c)[0] for c in string.ascii_uppercase}
+
+def _tok() -> NLPTokenizer:
+    """Return the shared NLP tokenizer, constructing it on first use."""
+    global _TOK_INSTANCE
+    if _TOK_INSTANCE is None:
+        _TOK_INSTANCE = NLPTokenizer.from_files()
+    return _TOK_INSTANCE
 
 
 def _sig_str(entry: KLine) -> str:
@@ -89,14 +99,14 @@ def _sig_str(entry: KLine) -> str:
     """
     if entry.dbg and entry.dbg.label:
         return entry.dbg.label
-    return _TOK.decode([entry.signature])
+    return _tok().decode([entry.signature])
 
 
 def _node_strs(entry: KLine) -> list[str]:
     """Decode an entry's uint64 node values to human-readable strings."""
     if not entry.nodes:
         return []
-    return [_TOK.decode([n]) for n in entry.nodes]
+    return [_tok().decode([n]) for n in entry.nodes]
 
 
 def _find_entries(
@@ -165,12 +175,12 @@ def has_entry(
 # KS-29 : test_ks29_counter_reset
 # KS-30 : test_ks30_unbound_character
 # KS-31 : test_ks31_inert_annotation
-# KS-32 : test_ks32_mod32_fallback_encoding
+# KS-32 : test_ks32_unresolved_char_nlp_encoding
 # KS-33 : test_ks33_self_identity
 # KS-34 : test_ks34_nodes_always_list_canonize, test_ks34_nodes_always_list_unsigned
 # KS-35 : test_ks35_complex_nested_master_regression
 # KS-36 : test_ks36_nlp_bound_example
-# KS-37 : test_ks37_mixed_nlp_mod32
+# KS-37 : test_ks37_uniform_nlp
 
 
 # ===================================================================
@@ -810,29 +820,30 @@ class TestStructure:
 
 
 # ===================================================================
-# TestEncoding — KS-32 (Mod32 fallback encoding)
+# TestEncoding — KS-32 (Unresolved char NLP-BPE encoding)
 # ===================================================================
 
 
 class TestEncoding:
     """Encoding tests covering KS-32."""
 
-    def test_ks32_mod32_fallback_encoding(self):
-        """KS-32: Unbound character produces Mod32-encoded uint64 signature.
+    def test_ks32_unresolved_char_nlp_encoding(self):
+        """KS-32: An unresolved single character (e.g. 'Z') encodes to a single NLP-BPE node.
 
-        An unbound character like 'Z' (no BindingScope words matching)
-        should encode to a Mod32 uint64 with bit 0 clear (per §11.3).
-        This tests the TokenEncoder layer with dev=False.
+        Under NLP-only tokenization there is no character-bit fallback.  An
+        unresolved character is encoded as its own raw BPE token, producing a
+        valid NLP-BPE node (high 32 bits = nlp_type32, low 32 bits = BPE id).
         """
-        entries = compile_real("Z")
+        entries = compile_dev("Z")
         assert len(entries) >= 1
         entry = entries[0]
-        # Mod32 encoding: Z maps to bit 26 = 2^26 = 67108864
-        assert entry.signature == 67108864
-        # Bit 0 should be clear (single-char Mod32 encoding)
-        assert entry.signature & 1 == 0, (
-            f"Mod32 fallback signature {entry.signature:#x} should have bit 0 clear"
-        )
+        nlp_type32 = entry.signature >> 32
+        bpe_id = entry.signature & 0xFFFFFFFF
+        # NLP-BPE node: high 32 bits carry NLP type flags; low 32 bits carry BPE id
+        assert nlp_type32 > 0, f"Expected NLP type bits in high word, got {nlp_type32}"
+        assert bpe_id > 0, f"Expected a valid BPE token id, got {bpe_id}"
+        # Must NOT be the legacy character-bit-packed value (single-bit encoding)
+        assert entry.signature != 67108864, "Signature should not be a legacy bit value"
         assert entry.dbg.op == "IDENTITY"
 
 
@@ -1032,26 +1043,28 @@ class TestComplexExamples:
         assert has_entry(entries, sig="MHALL", op="COUNTERSIGNED")
         assert has_entry(entries, sig="SVO", op="COUNTERSIGNED")
 
-    # -- KS-37: Mixed NLP/Mod32 ------------------------------------------
+    # -- KS-37: Uniform-NLP integration ---------------------------------
 
-    def test_ks37_mixed_nlp_mod32(self):
-        """KS-37: Source compiles under Mod32 tokenizer (default, no NLPTokenizer).
+    def test_ks37_uniform_nlp(self):
+        """KS-37: §14.12 example compiles under the NLP tokenizer (uniform NLP).
 
-        Verifies that bound and unbound characters produce valid entries
-        under the default Mod32 tokenizer. Full NLP/Mod32 mixed mode
-        requires NLPTokenizer which may not be available.
+        Every character — both NLP-bound (resolved via word lists) and
+        unresolved — produces a valid NLP-BPE node.  There is no
+        character-bit fallback; the whole pipeline is NLP-only.
         """
-        # The default Mod32 tokenizer handles everything; BindingScope
-        # resolves characters when annotations provide word lists.
         entries = compile_dev(_SEC1412_SOURCE)
         assert len(entries) > 0
 
-        # All entries should have valid uint64 signatures
+        # Every entry carries a valid NLP-BPE signature: high 32 bits hold
+        # the NLP type flags, low 32 bits hold the BPE token id.
         for e in entries:
             assert isinstance(e.signature, int)
             assert e.signature > 0
+            assert (e.signature >> 32) > 0, (
+                f"Entry {e.dbg.label!r} signature {e.signature:#x} has no NLP type bits"
+            )
 
-        # All entries should have valid op via dbg
+        # All entries should have a valid op via dbg
         from kalvin.kline import _SIG_LEVELS
 
         for e in entries:

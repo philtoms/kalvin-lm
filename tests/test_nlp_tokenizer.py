@@ -51,14 +51,13 @@ class TestEncode:
         space_node = nodes_pad[-1]
         assert (space_node & 0xFFFFFFFF) == 32
 
-    def test_nodes_not_literal(self, nlp: NLPTokenizer) -> None:
-        """NLP-BPE nodes are not detected as literal nodes."""
+    def test_nodes_are_bpe_not_literal(self, nlp: NLPTokenizer) -> None:
+        """NLP-BPE nodes carry real BPE token ids (< vocab_size) in the low 32 bits."""
         nodes = nlp.encode("Tea")
         for node in nodes:
-            assert not False, (
-                f"Node {node} should not be a literal node — "
-                f"BPE IDs are < vocab_size, never 0xFFFFFFFF"
-            )
+            bpe_id = node & 0xFFFFFFFF
+            assert bpe_id < nlp.vocab_size, f"BPE id {bpe_id} >= vocab_size {nlp.vocab_size}"
+            assert bpe_id != 0xFFFFFFFF, "Node should not be a literal sentinel"
 
 
 # ── Decode / Roundtrip tests ─────────────────────────────────────────────
@@ -146,12 +145,11 @@ class TestNLPEncodingPipeline:
 
     These verify the NLP tokenizer produces correct NLP-BPE node values,
     that round-trip through encode/decode preserves text, and that
-    make_signature correctly handles NLP-BPE nodes vs. space tokens
-    vs. literal nodes.
+    make_signature correctly handles NLP-BPE nodes and space tokens.
 
     Key insight: multi-word phrases produce space BPE tokens (ID 32) with
-    nlp_type32=0, making them Mod32-style packed nodes rather than NLP-BPE
-    nodes.  Single words are pure NLP-BPE nodes.
+    nlp_type32=0, making them low-32-bit-only packed nodes rather than
+    NLP-BPE nodes.  Single words are pure NLP-BPE nodes.
     """
 
     def test_pipeline_encode_decode_roundtrip(self, nlp: NLPTokenizer) -> None:

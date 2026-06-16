@@ -9,11 +9,14 @@ from kalvin.agent import CogitationHandler, Cogitator, KAgent, WorkItem
 from kalvin.agent_codec import AgentCodec
 from kalvin.events import EventBus
 from kalvin.kline import KDbg, KLine
-from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.model import Model
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
 from tests.conftest import requires_nlp_data
+
+# KAgent construction defaults to the NLP tokenizer; skip cleanly when the NLP
+# data assets are absent on a fresh clone.
+pytestmark = requires_nlp_data
 
 
 class TestAgentInit:
@@ -23,12 +26,12 @@ class TestAgentInit:
         assert a.tokenizer is not None
 
     def test_custom_tokenizer(self):
-        t = Mod32Tokenizer()
+        t = NLPTokenizer.from_files()
         a = KAgent(tokenizer=t, adapter=EventBus())
         assert a.tokenizer is t
 
     def test_custom_model(self):
-        t = Mod32Tokenizer()
+        t = NLPTokenizer.from_files()
         m = Model()
         a = KAgent(tokenizer=t, model=m, adapter=EventBus())
         assert a.model is m
@@ -914,7 +917,7 @@ class TestAgentNLPTokenizer:
     """KAgent constructed with NLPTokenizer — pluggable tokenizer integration.
 
     Verifies that KAgent works correctly when callers opt in to NLP-BPE
-    tokenization. The default remains Mod32Tokenizer (tested separately).
+    tokenization. The default is NLPTokenizer.
     """
 
     def test_nlp_agent_rationalise_kline(self, nlp_tokenizer: NLPTokenizer) -> None:
@@ -942,14 +945,10 @@ class TestAgentNLPTokenizer:
             expected |= node
         assert sig == expected
 
-    def test_default_tokenizer(self) -> None:
-        """Default KAgent uses NLP tokenizer when available, Mod32 otherwise."""
+    def test_default_tokenizer_is_nlp(self) -> None:
+        """Default KAgent uses NLPTokenizer as the sole default (raises if data unavailable)."""
         a = KAgent(adapter=EventBus())
-        # With NLP data files available, default should be NLPTokenizer
-        from kalvin.mod_tokenizer import Mod32Tokenizer
-        from kalvin.nlp_tokenizer import NLPTokenizer
-
-        assert isinstance(a.tokenizer, (NLPTokenizer, Mod32Tokenizer))
+        assert isinstance(a.tokenizer, NLPTokenizer)
 
     def test_nlp_agent_serialization(self, nlp_tokenizer: NLPTokenizer) -> None:
         """Serialization round-trips preserve NLP-BPE node values (uint64).

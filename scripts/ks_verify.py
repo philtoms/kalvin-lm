@@ -10,9 +10,7 @@ Usage:
     python scripts/ks_verify.py
     python scripts/ks_verify.py path/to/script.ks
     python scripts/ks_verify.py "A == B"
-    python scripts/ks_verify.py script.ks --tokenizer mod32
     python scripts/ks_verify.py script.ks --tokenizer nlp
-    python scripts/ks_verify.py script.ks --tokenizer both
     python scripts/ks_verify.py script.ks --raw
 """
 
@@ -255,15 +253,14 @@ def print_summary(entries: list[KLine]) -> None:
 
 
 def load_tokenizer(name: str):
-    """Load a tokenizer by name."""
+    """Load a tokenizer by name.
+
+    NLP is the sole production tokenizer; ``name`` must be ``"nlp"``.
+    """
     if name == "nlp":
         from kalvin.nlp_tokenizer import NLPTokenizer
 
         return NLPTokenizer.from_files(), "NLP"
-    elif name == "mod32":
-        from kalvin.mod_tokenizer import Mod32Tokenizer
-
-        return Mod32Tokenizer(), "Mod32"
     else:
         raise ValueError(f"Unknown tokenizer: {name}")
 
@@ -315,9 +312,9 @@ def main() -> None:
     parser.add_argument(
         "--tokenizer",
         "-t",
-        choices=["nlp", "mod32", "both"],
+        choices=["nlp"],
         default="nlp",
-        help="Tokenizer to use (default: nlp). 'both' runs each and compares.",
+        help="Tokenizer to use (default: nlp — the sole production tokenizer).",
     )
     parser.add_argument(
         "--raw",
@@ -339,11 +336,7 @@ def main() -> None:
 
     print(f"Source: {label}")
 
-    if args.tokenizer == "both":
-        run(source, "nlp", raw=args.raw)
-        run(source, "mod32", raw=args.raw)
-    else:
-        run(source, args.tokenizer, raw=args.raw)
+    run(source, args.tokenizer, raw=args.raw)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 """Tests for ks.token_encoder — TokenEncoder.
 
-Uses ModTokenizer for most tests (no external files required).
-A mock multi-token tokenizer is used for BPE multi-token MTS tests.
+Uses NLPTokenizer (loaded from the real BPE + grammar data assets) for most
+tests.  A mock multi-token tokenizer is used for BPE multi-token MTS tests.
 """
 
 from __future__ import annotations
@@ -10,30 +10,35 @@ import pytest
 
 from kalvin.abstract import KTokenizer
 from kalvin.kline import KLine
-from kalvin.mod_tokenizer import ModTokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
 from ks.ast_emitter import SymbolicEntry
 from ks.token_encoder import TokenEncoder
+from tests.conftest import requires_nlp_data
+
+# Every test encodes through a real tokenizer; skip cleanly when the NLP data
+# assets are absent on a fresh clone.
+pytestmark = requires_nlp_data
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 
 
 @pytest.fixture
-def mod_tz() -> ModTokenizer:
-    """A standard ModTokenizer."""
-    return ModTokenizer()
+def nlp_tz() -> NLPTokenizer:
+    """A standard NLPTokenizer loaded from the data files."""
+    return NLPTokenizer.from_files()
 
 
 @pytest.fixture
-def encoder(mod_tz: ModTokenizer) -> TokenEncoder:
-    """A TokenEncoder backed by ModTokenizer."""
-    return TokenEncoder(mod_tz)
+def encoder(nlp_tz: NLPTokenizer) -> TokenEncoder:
+    """A TokenEncoder backed by NLPTokenizer."""
+    return TokenEncoder(nlp_tz)
 
 
 @pytest.fixture
-def dev_encoder(mod_tz: ModTokenizer) -> TokenEncoder:
+def dev_encoder(nlp_tz: NLPTokenizer) -> TokenEncoder:
     """A TokenEncoder in dev mode."""
-    return TokenEncoder(mod_tz, dev=True)
+    return TokenEncoder(nlp_tz, dev=True)
 
 
 # ── Mock multi-token tokenizer ───────────────────────────────────────
@@ -42,13 +47,12 @@ def dev_encoder(mod_tz: ModTokenizer) -> TokenEncoder:
 class MockMultiTokenTokenizer(KTokenizer):
     """Mock tokenizer that returns multiple tokens for certain words.
 
-    Used to test multi-token BPE MTS (§11.4) without requiring
-    real BPE files.
+    Used to test multi-token BPE MTS (§11.4) without depending on the exact
+    BPE tokenisation of any particular word.
     """
 
     def __init__(self, multi_map: dict[str, list[int]] | None = None):
         self._multi_map = multi_map or {}
-        self._fallback = ModTokenizer()
 
     @property
     def vocab_size(self) -> int:
@@ -57,37 +61,41 @@ class MockMultiTokenTokenizer(KTokenizer):
     def encode(self, text: str, pad_ws: bool = False) -> list[int]:
         if text in self._multi_map:
             return self._multi_map[text]
-        return self._fallback.encode(text, pad_ws)
+        # Fallback: one NLP-BPE-shaped node per character (high 32 bits carry a
+        # type so the value looks like a real node, but is fully deterministic).
+        return [(ord(c) << 32) | ord(c) for c in text]
 
     def decode(self, ids: list[int]) -> str:
         # Reverse lookup for mock tokens
         for text, tokens in self._multi_map.items():
             if ids == tokens:
                 return text
-        return self._fallback.decode(ids)
+        return "".join(chr(i & 0xFFFFFFFF) for i in ids)
 
 
-# ── KS-32: Mod32 fallback for unbound characters ─────────────────────
+# ── KS-32: unresolved characters encode as NLP-BPE nodes ──────────────
 
 
-class TestMod32Fallback:
-    """Unbound characters produce valid encoded entries via Mod32."""
+class TestUnresolvedCharEncoding:
+    """Unresolved characters encode as their own raw NLP-BPE nodes."""
 
-    def test_unbound_chars_encode(self, encoder: TokenEncoder, mod_tz: ModTokenizer) -> None:
+    def test_unresolved_chars_encode(self, encoder: TokenEncoder, nlp_tz: NLPTokenizer) -> None:
         entry = SymbolicEntry(sig="A", nodes=["B", "C"], op="COUNTERSIGNED")
         results = encoder.encode_entries([entry])
         assert len(results) == 1
         compiled = results[0]
-        assert compiled.signature == mod_tz.encode("A")[0]
-        assert compiled.nodes[0] == mod_tz.encode("B")[0]
-        assert compiled.nodes[1] == mod_tz.encode("C")[0]
+        assert compiled.signature == nlp_tz.encode("A")[0]
+        assert compiled.nodes[0] == nlp_tz.encode("B")[0]
+        assert compiled.nodes[1] == nlp_tz.encode("C")[0]
 
-    def test_unbound_sig_uint64(self, encoder: TokenEncoder, mod_tz: ModTokenizer) -> None:
-        """Unbound char produces a proper uint64 (bit-packed)."""
+    def test_unresolved_sig_is_nlp_node(self, encoder: TokenEncoder, nlp_tz: NLPTokenizer) -> None:
+        """An unresolved char produces a valid NLP-BPE node (not a legacy bit value)."""
         entry = SymbolicEntry(sig="Z", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
-        assert results[0].signature == mod_tz.encode("Z")[0]
-        assert results[0].signature > 0
+        sig = results[0].signature
+        assert sig == nlp_tz.encode("Z")[0]
+        assert (sig >> 32) > 0  # NLP type bits present
+        assert sig != 67108864  # not the legacy character-bit-packed value
 
 
 # ── KS-34: nodes always list ─────────────────────────────────────────
@@ -136,17 +144,22 @@ class TestNodesAlwaysList:
 class TestSignatureEncoding:
     """Signature strings are correctly encoded to uint64."""
 
-    def test_single_char_sig(self, encoder: TokenEncoder, mod_tz: ModTokenizer) -> None:
+    def test_single_char_sig(self, encoder: TokenEncoder, nlp_tz: NLPTokenizer) -> None:
         entry = SymbolicEntry(sig="A", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
-        assert results[0].signature == mod_tz.encode("A")[0]
+        assert results[0].signature == nlp_tz.encode("A")[0]
 
-    def test_multi_char_sig_packed(self, encoder: TokenEncoder, mod_tz: ModTokenizer) -> None:
-        """Multi-char identifier is packed via OR-reduction."""
+    def test_multi_char_sig_packed(self, encoder: TokenEncoder, nlp_tz: NLPTokenizer) -> None:
+        """Multi-token identifier is packed via OR-reduction (make_signature).
+
+        A multi-token signature heading an IDENTITY entry is decomposed into
+        per-token IDENTITY entries plus a packed CANONIZE entry (the last
+        result); its signature is make_signature(tokens).
+        """
         entry = SymbolicEntry(sig="HELLO", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
-        expected = mod_tz.encode("HELLO")[0]
-        assert results[0].signature == expected
+        expected = make_signature(nlp_tz.encode("HELLO"))
+        assert results[-1].signature == expected
 
 
 # ── Node encoding ────────────────────────────────────────────────────
@@ -155,12 +168,12 @@ class TestSignatureEncoding:
 class TestNodeEncoding:
     """Node strings are correctly encoded to uint64."""
 
-    def test_node_values(self, encoder: TokenEncoder, mod_tz: ModTokenizer) -> None:
+    def test_node_values(self, encoder: TokenEncoder, nlp_tz: NLPTokenizer) -> None:
         entry = SymbolicEntry(sig="A", nodes=["B", "C"], op="CONNOTED")
         results = encoder.encode_entries([entry])
         compiled = results[0]
-        assert compiled.nodes[0] == mod_tz.encode("B")[0]
-        assert compiled.nodes[1] == mod_tz.encode("C")[0]
+        assert compiled.nodes[0] == nlp_tz.encode("B")[0]
+        assert compiled.nodes[1] == nlp_tz.encode("C")[0]
 
 
 # ── Significance levels (compile-time intent via dbg.op) ──────────────
@@ -196,15 +209,16 @@ class TestSignificanceLevels:
 class TestFullUint64:
     """Signatures are raw values from tokenizer — not masked or truncated."""
 
-    def test_no_masking(self, encoder: TokenEncoder, mod_tz: ModTokenizer) -> None:
+    def test_no_masking(self, encoder: TokenEncoder, nlp_tz: NLPTokenizer) -> None:
         entry = SymbolicEntry(sig="ABC", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
-        raw = mod_tz.encode("ABC")[0]
-        assert results[0].signature == raw
+        raw = make_signature(nlp_tz.encode("ABC"))
+        # The packed CANONIZE entry (last) carries the unmasked OR-reduction.
+        assert results[-1].signature == raw
         # Ensure the value is unmasked — it should have multiple bits set
-        assert results[0].signature == raw
+        assert results[-1].signature == raw
 
-    def test_signature_matches_make_signature(self, mod_tz: ModTokenizer) -> None:
+    def test_signature_matches_make_signature(self) -> None:
         """For multi-token words, sig == make_signature(tokens)."""
         mock = MockMultiTokenTokenizer({"WORD": [100, 200]})
         enc = TokenEncoder(mock)
@@ -385,8 +399,8 @@ class TestMultipleEntries:
 class TestDevMode:
     """When dev=True, dbg is populated."""
 
-    def test_dev_dbg(self, mod_tz: ModTokenizer) -> None:
-        enc = TokenEncoder(mod_tz, dev=True)
+    def test_dev_dbg(self, nlp_tz: NLPTokenizer) -> None:
+        enc = TokenEncoder(nlp_tz, dev=True)
         entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTED")
         results = enc.encode_entries([entry])
         # Main entry should have dbg

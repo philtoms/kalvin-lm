@@ -1,7 +1,6 @@
 """Tests for STM — bounded dual-keyed index."""
 
 from kalvin.kline import KLine
-from kalvin.mod_tokenizer import Mod32Tokenizer
 from kalvin.stm import STM
 
 
@@ -68,11 +67,11 @@ class TestSTMBound:
 
 class TestSTMDualKey:
     def test_indexed_by_signature_and_nodes_sig(self):
-        t = Mod32Tokenizer()
         stm = STM(bound=256)
-        # Create kline where sig != nodes_sig
-        packed_a = t.encode("A")[0]  # e.g., 2
-        packed_b = t.encode("B")[0]  # e.g., 4
+        # Create kline where sig != nodes_sig; node values are OR-reducible
+        # literals (no tokenizer needed for this STM dual-key test).
+        packed_a = 0b010
+        packed_b = 0b100
         k = KLine(signature=100, nodes=[packed_a, packed_b])
         stm.add(k)
         # Should be found by signature

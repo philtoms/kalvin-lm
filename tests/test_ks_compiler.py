@@ -3,21 +3,18 @@
 Covers:
   KS-35 — Complex nested example (§14.11) with complete entry validation
   KS-36 — NLP-bound example (§14.12) with binding resolution
-  KS-37 — Mixed NLP/Mod32 compilation (same source, different tokenizers)
   compile_source — Convenience function
   KScript API — Public class
   Pipeline wiring — End-to-end pipeline
-  BindingScope always created — No Mod32 mode switch
+  BindingScope always created — no tokenizer mode switch
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pytest
 
 from kalvin.kline import KLine
-from kalvin.mod_tokenizer import Mod32Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from ks import Compiler, KScript, compile_source
 from ks.lexer import Lexer
 from ks.parser import Parser
@@ -25,25 +22,59 @@ from ks.parser import Parser
 # NLP tokenizer data-asset gating shared via conftest for consistent skips
 from tests.conftest import requires_nlp_data
 
-if TYPE_CHECKING:
-    from kalvin.nlp_tokenizer import NLPTokenizer
+# The whole module compiles real KScript sources (default NLP tokenizer);
+# skip cleanly when the NLP data assets are absent.
+pytestmark = requires_nlp_data
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-_tok32 = Mod32Tokenizer()
+# Lazy module-level NLP tokenizer (safe at import time; ``pytestmark`` gates
+# execution so this is only ever instantiated on a data-present machine).
+_tok32_instance: NLPTokenizer | None = None
+
+
+def _tok32() -> NLPTokenizer:
+    """Return the shared NLP tokenizer, constructing it on first use."""
+    global _tok32_instance
+    if _tok32_instance is None:
+        _tok32_instance = NLPTokenizer.from_files()
+    return _tok32_instance
 
 
 def _decode_sig(entry: KLine) -> str:
-    """Decode an entry's signature to a string."""
-    return _tok32.decode([entry.signature])
+    """Decode an entry's signature to its conceptual identity string.
+
+    Prefers ``dbg.label`` (the source identifier, e.g. ``"MHALL"``) when
+    available (dev mode); otherwise falls back to a raw BPE decode of the
+    uint64 signature.
+    """
+    if entry.dbg and entry.dbg.label:
+        return entry.dbg.label
+    return _tok32().decode([entry.signature])
 
 
-def _decode_nodes(entry: KLine) -> str:
-    """Decode an entry's nodes to a string."""
+def _decode_nodes(
+    entry: KLine,
+    sig_to_label: dict[int, str] | None = None,
+) -> str:
+    """Decode an entry's node values to a concatenated identity string.
+
+    Compound-identifier node values are recovered via the ``sig_to_label``
+    map (signature → conceptual identity) built from the surrounding entries;
+    single-character tokens fall back to a raw BPE decode.
+    """
     nodes = entry.as_node_list()
-    return _tok32.decode(nodes) if nodes else ""
+    if not nodes:
+        return ""
+    parts: list[str] = []
+    for n in nodes:
+        if sig_to_label and n in sig_to_label:
+            parts.append(sig_to_label[n])
+        else:
+            parts.append(_tok32().decode([n]))
+    return "".join(parts)
 
 
 def _has_entry(
@@ -53,12 +84,13 @@ def _has_entry(
     nodes: str | None = None,
 ) -> bool:
     """Check if a matching entry exists in the list."""
+    sig_to_label = {e.signature: e.dbg.label for e in entries if e.dbg and e.dbg.label}
     for e in entries:
-        if e.dbg.op != op:
+        if not e.dbg or e.dbg.op != op:
             continue
         if _decode_sig(e) != sig:
             continue
-        if nodes is not None and _decode_nodes(e) != nodes:
+        if nodes is not None and _decode_nodes(e, sig_to_label) != nodes:
             continue
         return True
     return False
@@ -96,7 +128,7 @@ MHALL == SVO =>
 class TestKS35ComplexNested:
     """KS-35 — Complex nested example from §14.11.
 
-    Compiles the full MHALL == SVO => ... source with Mod32Tokenizer
+    Compiles the full MHALL == SVO => ... source with the NLP tokenizer
     and validates the complete entry list.
     """
 
@@ -137,7 +169,7 @@ class TestKS35ComplexNested:
 
     def test_mts_mhall_canonize(self) -> None:
         """MTS canonization: MHALL → [M, H, A, L, L]."""
-        assert _has_entry(self.entries, "CANONIZED", "AHLM", "MHALL")
+        assert _has_entry(self.entries, "CANONIZED", "MHALL", "MHALL")
 
     def test_mts_svo_components(self) -> None:
         """MTS for SVO: unsigned entries for S, V, O components."""
@@ -147,12 +179,12 @@ class TestKS35ComplexNested:
 
     def test_mts_svo_canonize(self) -> None:
         """MTS canonization: SVO → [S, V, O]."""
-        assert _has_entry(self.entries, "CANONIZED", "OSV", "SVO")
+        assert _has_entry(self.entries, "CANONIZED", "SVO", "SVO")
 
     def test_countersign_pair(self) -> None:
         """Countersign: MHALL → SVO and SVO → MHALL."""
-        assert _has_entry(self.entries, "COUNTERSIGNED", "AHLM", "OSV")
-        assert _has_entry(self.entries, "COUNTERSIGNED", "OSV", "AHLM")
+        assert _has_entry(self.entries, "COUNTERSIGNED", "MHALL", "SVO")
+        assert _has_entry(self.entries, "COUNTERSIGNED", "SVO", "MHALL")
 
     def test_undersign_pairs(self) -> None:
         """Undersign entries: M→S, H→V (reversed direction)."""
@@ -161,8 +193,8 @@ class TestKS35ComplexNested:
 
     def test_mts_all(self) -> None:
         """MTS for ALL: canonize entry and undersign O→ALL."""
-        assert _has_entry(self.entries, "CANONIZED", "AL", "ALL")
-        assert _has_entry(self.entries, "UNDERSIGNED", "AL", "O")
+        assert _has_entry(self.entries, "CANONIZED", "ALL", "ALL")
+        assert _has_entry(self.entries, "UNDERSIGNED", "ALL", "O")
 
     def test_leaf_undersign(self) -> None:
         """Leaf undersign: D→A, M→L."""
@@ -332,42 +364,6 @@ class TestCanonicalEncoding:
 
 
 # ---------------------------------------------------------------------------
-# KS-37: Mixed NLP/Mod32 compatibility
-# ---------------------------------------------------------------------------
-
-
-class TestKS37MixedNLPMod32:
-    """KS-37 — Same source compiles under both Mod32 and NLP without modification.
-
-    The compiler always creates a BindingScope (no mode switch).
-    With Mod32, the scope has no word lists, so all characters pass through raw.
-    """
-
-    def test_mod32_compiles_same_source(self) -> None:
-        """Mod32 tokenizer compiles the NLP source without errors."""
-        entries = compile_source(SOURCE_14_12, tokenizer=_tok32)
-        assert len(entries) > 0
-
-    def test_mod32_all_entries_unsigned_single_char(self) -> None:
-        """In Mod32 mode, all signatures are single-token packed bit positions."""
-        entries = compile_source("A == B", tokenizer=_tok32)
-        for e in entries:
-            # Mod32 produces single-token signatures (packed bits)
-            assert isinstance(e.signature, int)
-            assert e.signature > 0
-
-    def test_annotation_parsed_in_mod32(self) -> None:
-        """Annotations are parsed but unused in Mod32 mode."""
-        source = "(Mary Had A Little Lamb)\nA == B"
-        entries = compile_source(source, tokenizer=_tok32)
-        assert len(entries) > 0
-        # In Mod32 mode, the annotation doesn't affect encoding
-        # All characters pass through raw
-        assert _has_entry(entries, "COUNTERSIGNED", "A", "B")
-        assert _has_entry(entries, "COUNTERSIGNED", "B", "A")
-
-
-# ---------------------------------------------------------------------------
 # compile_source convenience function
 # ---------------------------------------------------------------------------
 
@@ -409,7 +405,7 @@ class TestCompileSource:
 
     def test_custom_tokenizer(self) -> None:
         """Passing a custom tokenizer works."""
-        tok = Mod32Tokenizer()
+        tok = NLPTokenizer.from_files()
         entries = compile_source("A == B", tokenizer=tok)
         assert len(entries) > 0
 
@@ -439,9 +435,9 @@ class TestKScriptAPI:
 
     def test_complex_source(self) -> None:
         """KScript handles complex nested source."""
-        model = KScript(SOURCE_14_11)
+        model = KScript(SOURCE_14_11, dev=True)
         assert len(model.entries) > 10
-        assert _has_entry(model.entries, "COUNTERSIGNED", "AHLM", "OSV")
+        assert _has_entry(model.entries, "COUNTERSIGNED", "MHALL", "SVO")
 
     def test_dev_mode(self) -> None:
         """KScript(dev=True) enables debug text."""
@@ -449,12 +445,13 @@ class TestKScriptAPI:
         for e in model.entries:
             assert e.dbg is not None or e.dbg is None  # dbg field exists
 
-    def test_default_tokenizer(self) -> None:
-        """Default tokenizer is Mod32Tokenizer."""
+    def test_default_tokenizer_is_nlp(self) -> None:
+        """Default tokenizer is NLPTokenizer (NLP is the sole tokenizer)."""
         model = KScript("A")
-        # The entry's signature should be a Mod32 packed bit
+        assert isinstance(model._tokenizer, NLPTokenizer)
+        # The entry's signature should decode back to "A" via the NLP tokenizer
         sig = model.entries[0].signature
-        assert _tok32.decode([sig]) == "A"
+        assert _tok32().decode([sig]) == "A"
 
 
 # ---------------------------------------------------------------------------
@@ -466,7 +463,7 @@ class TestPipelineWiring:
     """Tests that the Compiler correctly wires Lexer → Parser → Emitter → Encoder."""
 
     def test_end_to_end_simple(self) -> None:
-        """Simple source compiles end-to-end with default Mod32Tokenizer."""
+        """Simple source compiles end-to-end with the default NLP tokenizer."""
         compiler = Compiler()
         tokens = Lexer("A == B").tokenize()
         kfile = Parser(tokens).parse()
@@ -476,7 +473,7 @@ class TestPipelineWiring:
 
     def test_end_to_end_mts(self) -> None:
         """Multi-character identifier triggers MTS expansion."""
-        compiler = Compiler()
+        compiler = Compiler(dev=True)
         tokens = Lexer("ABC == X").tokenize()
         kfile = Parser(tokens).parse()
         entries = compiler.compile(kfile)
@@ -499,7 +496,7 @@ class TestPipelineWiring:
 
     def test_compiler_with_custom_tokenizer(self) -> None:
         """Compiler accepts custom tokenizer."""
-        tok = Mod32Tokenizer()
+        tok = NLPTokenizer.from_files()
         compiler = Compiler(tokenizer=tok)
         tokens = Lexer("A = B").tokenize()
         kfile = Parser(tokens).parse()
@@ -521,33 +518,31 @@ class TestPipelineWiring:
 
 
 class TestBindingScopeAlwaysCreated:
-    """Verify that a BindingScope is always instantiated — no Mod32 mode switch."""
+    """Verify that a BindingScope is always instantiated — no tokenizer mode switch."""
 
-    def test_binding_scope_created_for_mod32(self) -> None:
-        """Even with Mod32 tokenizer, Compiler creates a BindingScope internally."""
-        # We verify this indirectly: the compiler produces the same
-        # output whether or not a binding scope exists, because Mod32
-        # characters have no word lists and resolve() returns None.
-        # The key invariant: no conditional mode switch.
+    def test_binding_scope_always_created(self) -> None:
+        """Compiler always creates a BindingScope internally (no tokenizer guard)."""
+        # The compiler unconditionally creates a BindingScope regardless of the
+        # tokenizer. We verify this indirectly: compiling produces entries with
+        # correct operator structure.
         compiler = Compiler()
         tokens = Lexer("A == B").tokenize()
         kfile = Parser(tokens).parse()
         entries = compiler.compile(kfile)
 
-        # If BindingScope were NOT created, the ASTEmitter would
-        # operate differently. But since it IS always created,
-        # the output is correct.
         assert len(entries) > 0
 
     def test_no_mode_switch_in_compiler(self) -> None:
         """Compiler.compile() always creates BindingScope unconditionally.
 
-        This is a structural test — we verify that the compiler
-        doesn't check supports_mts or any tokenizer property
-        to decide whether to create a scope.
+        The deleted ``supports_mts`` property is gone; the compiler must not
+        reference any tokenizer property to decide whether to create a scope.
         """
         import inspect
 
+        from kalvin.abstract import KTokenizer
+
+        assert not hasattr(KTokenizer, "supports_mts"), "supports_mts should be deleted"
         source = inspect.getsource(Compiler.compile)
         assert "supports_mts" not in source, "Compiler.compile should not reference supports_mts"
         assert "skip_mts" not in source, "Compiler.compile should not reference skip_mts"
@@ -555,8 +550,8 @@ class TestBindingScopeAlwaysCreated:
     def test_annotation_feeds_binding_scope_in_v3(self) -> None:
         """In v3, annotations always feed the BindingScope (no mode switch).
 
-        This means annotations affect character resolution even with Mod32.
-        The word 'annotation' in the annotation resolves A to 'annotation'
+        This means annotations affect character resolution. The word
+        'annotation' in the annotation resolves A to 'annotation'
         (first-letter match). This is correct v3 behavior.
         """
         source = "(annotation)\nA == B"
