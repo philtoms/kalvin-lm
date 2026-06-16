@@ -405,9 +405,9 @@ moved upstream to rationalise):
 | AGT-34  | Cogitator expansion proposal         | frame event emitted for expansion     |
 | AGT-34  | Cogitator expansion companion        | frame event emitted for companion     |
 | AGT-34  | Cogitator no expansion for canonical | Canonical kline → no expansion        |
-| KS-10   | KScript S2 template                  | `AB => A` produces underfitting kline |
-| KS-10   | KScript sequencer                    | `A => A B` produces overfitting kline |
-| KS-10   | KScript dual misfit                  | `WDMH => MHALL` produces dual misfit  |
+| KS-14   | KScript S2 template                  | `AB => A` produces underfitting kline |
+| KS-14   | KScript sequencer                    | `A => A B` produces overfitting kline |
+| KS-14   | KScript dual misfit                  | `WDMH => MHALL` produces dual misfit  |
 | —       | Existing tests unchanged             | All 329 tests + Phase A tests pass    |
 
 ---

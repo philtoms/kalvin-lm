@@ -40,6 +40,11 @@ ALIGNED_MOD_IDS = [
     "MOD-56", "MOD-57", "MOD-58", "MOD-59",  # generate_expansions
 ]
 
+# KB-294: KS-10 ("Empty source") is unrelated to the CANONIZE/S2-expansion
+# tests in §2.5. The correct authoritative ID is KS-14 (CANONIZE aggregates).
+STALE_KS_IDS = ["KS-10"]
+ALIGNED_KS_IDS = ["KS-14"]
+
 
 def _has_id(text: str, identifier: str) -> bool:
     """True if identifier appears as a standalone token (word boundaries),
@@ -74,6 +79,22 @@ def test_aligned_mod_ids_present():
     text = PLAN.read_text()
     for mid in ALIGNED_MOD_IDS:
         assert _has_id(text, mid), f"aligned ID '{mid}' missing from structural-grounding.md"
+
+
+def test_no_stale_ks10_references():
+    """KB-294: KS-10 ('Empty source') is a stale reference — the §2.5
+    KScript rows use CANONIZE (KS-14), not the empty-source parser test."""
+    text = PLAN.read_text()
+    for ks in STALE_KS_IDS:
+        assert not _has_id(text, ks), f"residual stale ID '{ks}' in structural-grounding.md"
+
+
+def test_aligned_ks14_present():
+    """KB-294: KS-14 (CANONIZE aggregates) is the authoritative kscript
+    spec ID for the CANONIZE-based S2-expansion tests in §2.5."""
+    text = PLAN.read_text()
+    for ks in ALIGNED_KS_IDS:
+        assert _has_id(text, ks), f"aligned KS ID '{ks}' missing from structural-grounding.md"
 
 
 def test_surviving_agt_ids_present():
