@@ -15,6 +15,7 @@ from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
+from tests.conftest import requires_nlp_data
 from trainer.curriculum import Curriculum, CurriculumState
 from trainer.reactor import Reactor
 
@@ -169,6 +170,7 @@ class TestHandleReactiveNotCalledOnAutoCountersign:
 # ── SAC-4 & SAC-5: Trainer-level ratify_request conditional ──────────
 
 
+@requires_nlp_data
 class TestTrainerRatifySuppression:
     """SAC-4, SAC-5: Trainer suppresses ratify_request on auto-countersign."""
 
@@ -238,6 +240,7 @@ class TestTrainerRatifySuppression:
 # ── SAC-6: Event relay regardless of auto-countersign ─────────────────
 
 
+@requires_nlp_data
 class TestEventRelayRegardless:
     """SAC-6: Event relay sent to supervisor regardless of auto-countersign."""
 

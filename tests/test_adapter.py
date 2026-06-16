@@ -17,6 +17,7 @@ from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kalvin.model import Model
+from tests.conftest import requires_nlp_data
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -62,6 +63,7 @@ class BusCapture:
 class TestHRNS7SubmitCompilesAndSubmits:
     """HRNS-7: KAgent adapter compiles KScript and submits entries one at a time."""
 
+    @requires_nlp_data
     def test_submit_compiles_and_submits(self) -> None:
         """Compile KScript source and call rationalise for each entry."""
         bus = MessageBus()
@@ -131,6 +133,7 @@ class TestHRNS8CompilationErrorResponse:
 # ── HRNS-9: Sender map response routing ──────────────────────────────
 
 
+@requires_nlp_data
 class TestHRNS9SenderMapResponseRouting:
     """HRNS-9: KAgent adapter maintains sender map; responses routed to sender."""
 
@@ -242,6 +245,7 @@ class TestHRNS10CountersignAction:
 # ── HRNS-22: KAgent calls adapter directly ───────────────────────────────
 
 
+@requires_nlp_data
 class TestHRNS22KAgentCallsAdapterDirectly:
     """HRNS-22: KAgent calls adapter directly (no internal EventBus)."""
 
@@ -465,6 +469,7 @@ class TestSaveAction:
 class TestLoadAction:
     """Load action replaces Kalvin's model via agent_codec."""
 
+    @requires_nlp_data
     def test_load_replaces_model(self, tmp_path) -> None:
         from kalvin.agent import KAgent
 
@@ -495,6 +500,7 @@ class TestLoadAction:
         # Model should be restored
         assert len(kagent._model) > 0
 
+    @requires_nlp_data
     def test_load_sends_confirmation(self, tmp_path) -> None:
         from kalvin.agent import KAgent
 
@@ -517,6 +523,7 @@ class TestLoadAction:
         assert loaded_msgs[0].message["path"] == str(save_path)
         assert "frame_size" in loaded_msgs[0].message
 
+    @requires_nlp_data
     def test_load_sends_error_on_bad_path(self) -> None:
         from kalvin.agent import KAgent
 

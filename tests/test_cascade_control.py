@@ -9,6 +9,7 @@ from harness.message import Message
 from kalvin.agent import KAgent, WorkItem
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
+from tests.conftest import requires_nlp_data
 from trainer.curriculum import Curriculum, CurriculumState
 from trainer.reactor import Reactor
 
@@ -53,6 +54,7 @@ def _make_kline(sig: int, nodes: list[int]) -> KLine:
 # ── Candidate cap tests ───────────────────────────────────────────────
 
 
+@requires_nlp_data
 class TestCandidateCap:
     """CC-1 through CC-3, CC-6 through CC-8."""
 

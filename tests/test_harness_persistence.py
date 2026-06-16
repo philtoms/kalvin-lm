@@ -18,6 +18,7 @@ from kalvin.agent import KAgent as _RealAgent
 if not hasattr(_kalvin_pkg, "Agent"):
     _kalvin_pkg.Agent = _RealAgent
 
+from tests.conftest import requires_nlp_data
 from ui.kscript.app import AGENT_STATE_FILE, UI_STATE_FILE, KScriptApp
 from ui.kscript.regions.toolbar import ExecutionState
 
@@ -94,6 +95,7 @@ class TestSaveStateIncludesSubmittedAndSatisfied:
             _cleanup_state_files()
 
 
+@requires_nlp_data
 class TestRestoreStateReconstructsSubmittedAndSatisfied:
     """_restore_state must reconstruct both tracking sets from JSON."""
 
@@ -123,6 +125,7 @@ class TestRestoreStateReconstructsSubmittedAndSatisfied:
             _cleanup_state_files()
 
 
+@requires_nlp_data
 class TestSaveRestoreRoundtrip:
     """Full serialise → deserialise cycle preserves both sets exactly."""
 
@@ -155,6 +158,7 @@ class TestSaveRestoreRoundtrip:
             _cleanup_state_files()
 
 
+@requires_nlp_data
 class TestRestoreMissingKeysLeavesEmptySets:
     """Old state files without tracking keys should leave sets at default empty."""
 
@@ -182,6 +186,7 @@ class TestRestoreMissingKeysLeavesEmptySets:
             _cleanup_state_files()
 
 
+@requires_nlp_data
 class TestRestorePreservesOtherState:
     """Restoring tracking sets must not break other persisted fields."""
 
@@ -238,6 +243,7 @@ class TestEmptySetsSerialiseToEmptyArrays:
             _cleanup_state_files()
 
 
+@requires_nlp_data
 class TestMultipleEntriesRoundtrip:
     """3+ entries per set with varying signatures and nodes survive roundtrip."""
 

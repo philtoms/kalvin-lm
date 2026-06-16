@@ -14,6 +14,7 @@ from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
+from tests.conftest import requires_nlp_data
 from trainer.curriculum import Curriculum, CurriculumState
 from trainer.reactor import Reactor
 
@@ -147,6 +148,7 @@ def _make_trainer(
     return trainer, capture
 
 
+@requires_nlp_data
 class TestAutoCountersignStructuralMatch:
     """HRNS-12: Trainer auto-countersigns structurally matching proposals."""
 
@@ -185,6 +187,7 @@ class TestAutoCountersignStructuralMatch:
         assert trainer.state.is_satisfied(key)
 
 
+@requires_nlp_data
 class TestReactiveModeOnS2S3:
     """HRNS-13: Trainer enters reactive mode on S2/S3 events."""
 
@@ -219,6 +222,7 @@ class TestReactiveModeOnS2S3:
         assert escalation["reason"] == "low_confidence"
 
 
+@requires_nlp_data
 class TestEscalationOnBudgetExhaustion:
     """HRNS-14: Trainer escalates to Slack on budget exhaustion."""
 
@@ -248,6 +252,7 @@ class TestEscalationOnBudgetExhaustion:
         assert len(budget_esc) >= 1
 
 
+@requires_nlp_data
 class TestCogitateFnInjection:
     """Provide a cogitate_fn that returns scaffolding — reactive mode uses it."""
 

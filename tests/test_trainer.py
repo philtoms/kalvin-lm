@@ -15,6 +15,7 @@ from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
+from tests.conftest import requires_nlp_data
 from trainer.cogitation import LLMResponse
 from trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from trainer.curriculum_document import CurriculumDocument, Lesson
@@ -248,6 +249,7 @@ class TestOneSessionAtATime:
 # ── HRNS-19: Session pause ───────────────────────────────────────────
 
 
+@requires_nlp_data
 class TestSessionPause:
     """HRNS-19: Session pause stops submitting but stays active."""
 
@@ -342,6 +344,7 @@ class TestSessionStop:
 # ── HRNS-24: Entry counting / lesson complete ─────────────────────────
 
 
+@requires_nlp_data
 class TestEntryCountingLessonComplete:
     """HRNS-24: Trainer counts submitted entries; knows when lesson is complete."""
 
@@ -389,6 +392,7 @@ class TestEntryCountingLessonComplete:
 # ── Additional tests ─────────────────────────────────────────────────
 
 
+@requires_nlp_data
 class TestCurriculumCompleteEndsSession:
     """Advance through all lessons — session ends when curriculum is complete."""
 
@@ -423,6 +427,7 @@ class TestCurriculumCompleteEndsSession:
         assert trainer.state.curriculum.is_complete()
 
 
+@requires_nlp_data
 class TestFastPathAutoSatisfy:
     """S1 event auto-satisfies entry without countersign."""
 
@@ -544,6 +549,7 @@ class TestCompilationErrorFromKalvin:
         assert any(m.message == "lesson2" for m in submit_msgs)
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_error_after_partial_satisfaction_completes(self, mock_compile: MagicMock) -> None:
         """A partially-satisfied lesson still completes on error.
 
@@ -591,6 +597,7 @@ class TestCompilationErrorFromKalvin:
         assert any(m.message == "lesson2" for m in submit_msgs)
 
 
+@requires_nlp_data
 class TestStopPersistsState:
     """Submit some entries, stop, reload state from disk, verify position and sets match."""
 
@@ -870,6 +877,7 @@ class TestPollingModeInputHandling:
     """Polling-mode input handling: goal text and file path resolution."""
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_polling_mode_resolves_goal_input(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
@@ -996,6 +1004,7 @@ class TestFilePolling:
         assert len(submit_msgs) >= 1
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_new_lessons_submitted_after_reread(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
@@ -1078,6 +1087,7 @@ class TestProgressEvents:
         assert started.message["lessons_completed"] == 0
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_progress_event_lesson_complete(self, mock_compile: MagicMock) -> None:
         """CRS-47: Progress event emitted on lesson complete."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -1104,6 +1114,7 @@ class TestProgressEvents:
         assert complete_msgs[0].message["lessons_completed"] == 1
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_progress_event_curriculum_complete(self, mock_compile: MagicMock) -> None:
         """CRS-48: Progress event emitted on curriculum complete."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -1187,6 +1198,7 @@ class _MockLLMClient:
 # ── KB-032: _generate_and_start success path ─────────────────────────
 
 
+@requires_nlp_data
 class TestGenerateAndStart:
     """KB-032: _generate_and_start creates CurriculumGenerator, calls generate, loads result."""
 
@@ -1352,6 +1364,7 @@ class TestGenerateAndStart:
 class TestGenerateAndStartGuards:
     """KB-032: Guard checks in _generate_and_start."""
 
+    @requires_nlp_data
     def test_no_curricula_dir_returns_early(self) -> None:
         """When _curricula_dir is None, method returns with logger.error only."""
         bus = MessageBus()
@@ -1399,6 +1412,7 @@ class TestGenerateAndStartGuards:
         assert "no LLM client configured" in failed_events[0]["data"]["error"]
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_generation_error_re_enters_polling(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
@@ -1441,6 +1455,7 @@ class TestGenerateAndStartGuards:
         assert len(polling_msgs) >= 1
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_after_generation_failure_accepts_new_goal(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
@@ -1500,6 +1515,7 @@ class TestGenerateAndStartGuards:
 # ── KB-032: _resolve_goal dispatching ─────────────────────────────────
 
 
+@requires_nlp_data
 class TestResolveGoalDispatch:
     """KB-032: _resolve_goal dispatches to _generate_and_start or _load_and_start."""
 
@@ -1705,6 +1721,7 @@ class TestResolveGoalDispatch:
 # ── HRNS-33: Event relay and ratify request ──────────────────────────
 
 
+@requires_nlp_data
 class TestEventRelay:
     """HRNS-33: Trainer relays events to supervisor, sends ratify_request for S2/S3."""
 
@@ -1919,6 +1936,7 @@ class TestTrainerProgressToAllSupervisors:
             bus_thread.join(timeout=2)
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_escalation_to_all_supervisor_subscribers(self, mock_compile: MagicMock) -> None:
         """Two handlers subscribed to supervisor both receive escalation."""
         import threading
@@ -1998,6 +2016,7 @@ class TestTrainerProgressToAllSupervisors:
 class TestCogitatorAutoWiring:
     """KB-125: Trainer auto-wires Cogitator when llm_client is provided."""
 
+    @requires_nlp_data
     def test_auto_wires_cogitator_when_llm_client_provided(self) -> None:
         """When llm_client is provided without cogitate_fn, reactor gets wired."""
         mock_llm = MagicMock()
@@ -2031,6 +2050,7 @@ class TestCogitatorAutoWiring:
 
         assert trainer._reactor._cogitate_fn is None
 
+    @requires_nlp_data
     def test_cogitate_adapter_calls_cogitator(self) -> None:
         """Auto-wired adapter builds CogitationRequest and returns the right tuple."""
         from trainer.cogitation import CogitationRequest, CogitationResult
@@ -2079,6 +2099,7 @@ class TestCogitatorAutoWiring:
         # Result is the right tuple
         assert result == ("0x10 -> 0x20", 0.85)
 
+    @requires_nlp_data
     def test_cogitate_adapter_returns_none_on_no_scaffolding(self) -> None:
         """Auto-wired adapter returns None when Cogitator produces no scaffolding."""
         from trainer.cogitation import CogitationResult
@@ -2111,6 +2132,7 @@ class TestCogitatorAutoWiring:
         assert result is None
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_reactive_mode_uses_cogitator_end_to_end(
         self,
         mock_compile: MagicMock,
@@ -2274,6 +2296,7 @@ class TestDelegatedReactiveDecisions:
     """KB-234: Trainer enriches ratify_request in delegated mode (RD-7, RD-8)."""
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_enriched_ratify_request(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         """RD-7: delegate_reactive=True emits an enriched ratify_request.
 
@@ -2334,6 +2357,7 @@ class TestDelegatedReactiveDecisions:
         }
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_no_client_unchanged(self, mock_compile: MagicMock) -> None:
         """RD-8: delegate_reactive=False + llm_client=None → unchanged no-client path.
 
@@ -2383,6 +2407,7 @@ class TestDelegatedReactiveDecisions:
         assert trainer._reactor._cogitate_fn is None
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_non_delegated_payload_unchanged(self, mock_compile: MagicMock) -> None:
         """delegate_reactive=False: ratify_request payload is exactly the base keys.
 
@@ -2417,6 +2442,7 @@ class TestRestartSession:
     """Restart action clears state and restarts from the beginning."""
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_restart_clears_state_and_restarts(self, mock_compile: MagicMock) -> None:
         """Restart clears tracking sets, resets position, starts fresh."""
         entry = _make_entry(100, [10])
@@ -2541,6 +2567,7 @@ class TestRestartSession:
         assert trainer._session_active
 
     @patch("trainer.trainer.compile_source")
+    @requires_nlp_data
     def test_restart_while_paused(self, mock_compile: MagicMock) -> None:
         """Restart while paused unpauses, resets position, re-submits first lesson."""
         entry = _make_entry(100, [10])

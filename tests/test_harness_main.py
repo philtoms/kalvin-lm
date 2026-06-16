@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from harness.__main__ import _build_llm_client, _resolve_llm_wiring  # noqa: E402
+from tests.conftest import requires_nlp_data
 
 # ── TestBuildLLMClient ────────────────────────────────────────────────
 
@@ -130,6 +131,7 @@ class TestBuildLLMClient:
 class TestTrainerFactoryLLMWiring:
     """KB-032: trainer_factory calls _build_llm_client and passes to Trainer."""
 
+    @requires_nlp_data
     def test_trainer_llm_client_not_none_with_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """When KALVIN_LLM_API_KEY is set, trainer receives a non-None llm_client."""
         monkeypatch.setenv("KALVIN_LLM_API_KEY", "test-key-123")
@@ -178,6 +180,7 @@ class TestTrainerFactoryLLMWiring:
         # Trainer still works — just no generation capability
         assert not trainer._session_active
 
+    @requires_nlp_data
     def test_build_llm_client_and_trainer_integration(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -207,6 +210,7 @@ class TestTrainerFactoryLLMWiring:
             )
             assert trainer._llm_client is mock_client
 
+    @requires_nlp_data
     def test_trainer_auto_wires_cogitate_fn_with_llm_client(self) -> None:
         """KB-125: When llm_client is passed without cogitate_fn, reactor's cogitate_fn is wired."""
         from harness.bus import MessageBus

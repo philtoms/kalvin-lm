@@ -14,6 +14,7 @@ from kalvin.events import EventBus
 from kalvin.kline import KLine
 from kalvin.model import Model
 from kalvin.signature import make_signature
+from tests.conftest import requires_nlp_data
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -162,6 +163,7 @@ class TestProcessingFlag:
 # ── DRN-6: No cross-lesson spillover ────────────────────────────────
 
 
+@requires_nlp_data
 class TestNoCrossLessonSpillover:
     def test_drain_between_lessons_prevents_spillover(self):
         """DRN-6: Lesson-N cogitation drains fully before lesson N+1 begins.
@@ -245,6 +247,7 @@ class TestDrainEmptiesBacklog:
 # ── KAgent.cogitate_drain ────────────────────────────────────────────
 
 
+@requires_nlp_data
 class TestKAgentDrain:
     def test_cogitate_drain_on_fresh_agent(self):
         """cogitate_drain returns True on fresh agent (no work items)."""

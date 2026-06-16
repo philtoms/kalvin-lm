@@ -14,6 +14,7 @@ from harness.constants import TRAINEE_ROLE
 from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
+from tests.conftest import requires_nlp_data
 from trainer.cogitation import (
     _SYSTEM_PROMPT,
     Cogitator,
@@ -113,6 +114,7 @@ class TestStripHashComments:
 class TestCogitatorSanitisation:
     """Validate that Cogitator strips # comments before compilation."""
 
+    @requires_nlp_data
     def test_cogitator_strips_and_logs(self, caplog):
         """RS-8: Cogitator logs when # comments are stripped."""
         client = MagicMock()

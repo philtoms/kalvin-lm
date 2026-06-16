@@ -20,6 +20,7 @@ from harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX
 from kalvin.kline import KDbg, KLine
+from tests.conftest import requires_nlp_data
 from trainer.curriculum import Curriculum
 from trainer.curriculum_document import CurriculumDocument, Lesson
 from trainer.reactor import Reactor
@@ -136,6 +137,7 @@ class TestTrainerLogging:
             for r in caplog.records
         )
 
+    @requires_nlp_data
     def test_lesson_submit_log(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-2: Lesson submit logs label and progress."""
         bus = MessageBus()
@@ -149,6 +151,7 @@ class TestTrainerLogging:
 
         assert any("Submitting lesson 1 (1/3)" in r.message for r in caplog.records)
 
+    @requires_nlp_data
     def test_lesson_submit_debug_kscript(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-3: Lesson submit logs KScript source at DEBUG level."""
         bus = MessageBus()
@@ -161,6 +164,7 @@ class TestTrainerLogging:
 
         assert any(r.levelno == logging.DEBUG and "kscript:" in r.message for r in caplog.records)
 
+    @requires_nlp_data
     def test_compiled_entry_count_log(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-4: Compiled entry count logged after compilation."""
         bus = MessageBus()
@@ -175,6 +179,7 @@ class TestTrainerLogging:
             "Compiled" in r.message and "entries for lesson" in r.message for r in caplog.records
         )
 
+    @requires_nlp_data
     def test_s1_fast_path_log(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-5: S1 events log with decompiled query and 'fast path'."""
         bus = MessageBus()
@@ -193,6 +198,7 @@ class TestTrainerLogging:
 
         assert any("S1 (fast path)" in r.message for r in caplog.records)
 
+    @requires_nlp_data
     def test_s2_significance_log(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-6: S2/S3 events log with normalised significance and proposal."""
         bus = MessageBus()
@@ -211,6 +217,7 @@ class TestTrainerLogging:
             "→ 0.50" in r.message and f"(d={_S2_DISTANCE})" in r.message for r in caplog.records
         )
 
+    @requires_nlp_data
     def test_decompile_fallback_repr(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-7: Decompilation failure falls back to repr()."""
         bus = MessageBus()
@@ -428,6 +435,7 @@ class TestAdapterLogging:
         adapter.bind(fake)
         return adapter
 
+    @requires_nlp_data
     def test_entry_submit_count_log(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-16: Entry submission logged with count at INFO."""
         bus = MessageBus()
