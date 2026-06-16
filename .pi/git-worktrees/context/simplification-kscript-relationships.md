@@ -50,7 +50,7 @@ Actually, re-reading the user's instruction: "Updates to this origin document sh
 6. `plans/implement-kscript.md` — Remove BWD from tasks and test cases
 7. `.claude/CLAUDE.md` — Update operator table
 8. `docs/learning-and-training.md` — Update any BWD references (check if any)
-9. `docs/tokenizer-significance.md` — Check for BWD references (probably none)
+9. `docs/tokenizer-significance.md` — Check for BWD references (probably none). *(Resolution: no BWD changes were needed. This file was subsequently deleted by KB-275 — Mod/tokenizer cleanup, unrelated to BWD.)*
 
 ## Implementation Notes
 
