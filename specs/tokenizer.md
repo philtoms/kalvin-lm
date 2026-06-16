@@ -5,19 +5,43 @@
 The tokenizer converts between text and nodes. It is the sole authority
 for how text becomes nodes.
 
-Three tokenizer types are defined, all conforming to the same interface:
+The system ships a single production tokenizer, **NLP**, built on a **BPE**
+subword base:
 
 - **BPE** — byte-pair encoding. Vocabulary learned from a training corpus.
   Tokens are sequential vocabulary indices, combined with type prefixes to
-  form typed nodes.
-- **NLP** — hybrid BPE + NLP type encoding. BPE subword tokens are combined
-  with NLP type information (POS + DEP + MORPH) in a single 64-bit node.
-  The tokenizer owns the grammar dictionary that maps BPE tokens to NLP types.
-- **Mod** — modular bit-packed encoding. Vocabulary is a fixed character set.
-  Tokens are bit positions with bitwise OR/AND semantics.
+  form typed nodes. BPE is the subword foundation that NLP extends.
+- **NLP** — hybrid BPE + NLP type encoding (the production default). BPE
+  subword tokens are combined with NLP type information (POS + DEP + MORPH)
+  in a single 64-bit node. The tokenizer owns the grammar dictionary that
+  maps BPE tokens to NLP types.
 
-All types ultimately produce the same kind of output: typed nodes
-suitable for signature construction (defined in the @signature spec).
+Both produce the same kind of output: typed nodes suitable for signature
+construction (defined in the @signature spec).
+
+### Significance and Tokenizers
+
+A tokenizer does **not** encode knowledge; it encodes **dimensionality**.
+Every node is a `uint64`, and the system operates on the bit pattern of a
+node — not on any meaning assigned to those bits.
+
+- **Signatures** are built from nodes by bitwise OR via `make_signature`
+  (defined in the @signature spec); candidate retrieval uses bitwise AND
+  (defined in the @signature / @model specs). No masking or special-casing
+  is applied — every node contributes its full value.
+- **Significance** is computed at the bit level and is **tokenizer-agnostic**.
+  Routing and distance operate on node membership and bit overlap, not on
+  what the bits mean (see the @significance / @model specs).
+
+The NLP node format conforms to this algebra directly:
+
+```
+node = (nlp_type32 << 32) | bpe_token_id
+```
+
+The high 32 bits carry NLP type dimensions (POS + DEP + MORPH); the low 32
+bits carry the BPE token ID. Both halves participate in the same bitwise
+OR/AND algebra as any other node.
 
 ## Dependencies
 
@@ -60,14 +84,13 @@ Convert a sequence of nodes back to a string.
 
 A vocabulary is the ordered set of symbols the tokenizer can encode.
 
-All three tokenizer types provide a default vocabulary. The default may be
+Both tokenizer types provide a default vocabulary. The default may be
 overridden at initialisation.
 
 | Type | Default                                               |
 | ---- | ----------------------------------------------------- |
 | BPE  | 4096 entries (learned from corpus)                    |
 | NLP  | 17,392 BPE entries + 12,871 grammar dictionary entries |
-| Mod  | 95 printable ASCII characters (codes 32–126), ordered |
 
 ## BPE Tokenizer
 
@@ -171,7 +194,7 @@ with POS_DET and POS_NOUN | DEP_OBJ type information.
 
 An NLP tokenizer is a hybrid that combines BPE subword encoding with NLP
 type information (POS + DEP + MORPH) in a single 64-bit node. Every word
-becomes one or more NLP-BPE tokens. There is no packed mode (unlike Mod).
+becomes one or more NLP-BPE tokens.
 
 If a word BPE-encodes into multiple subword tokens (e.g. "unhappiness" →
 `[un, ##happiness]`), each subword token gets its own grammar lookup.
@@ -279,11 +302,10 @@ The `nlp_type32` encoding provides **32 dimensions**:
 - 8 DEP groups (bits 17–24)
 - 7 MORPH features (bits 25–31)
 
-Comparison with other tokenizers:
+Comparison with the design target:
 
 | Tokenizer | Dimensions | Notes |
 | --------- | ---------- | ----- |
-| Mod32     | 31         | Bits 1–31 |
 | NLP       | 32         | 17 POS + 8 DEP + 7 MORPH |
 | Target    | ~35        | From CONTEXT.md |
 
@@ -332,124 +354,11 @@ identity of each token.
 
 > **Note.** `make_signature` is defined in the @signature spec, not here.
 
-## Mod Tokenizer
-
-### Overview
-
-A Mod tokenizer maps characters to bit positions within a node. Strings
-are encoded as the bitwise OR of constituent character bits, producing a
-single node.
-
-Encoding mode:
-
-| Mode   | Tokens  | Bit 0 | Order preserved | Use                   |
-| ------ | ------- | ----- | --------------- | --------------------- |
-| Packed | Single  | 0     | No              | Signatures, AND match |
-
-The Mod tokenizer encodes all-uppercase-alpha strings as packed nodes.
-Non-uppercase-alpha strings are not supported by the Mod tokenizer — they
-should be encoded through the tokenizer path appropriate for the content
-(e.g., BPE or NLP tokenizer).
-
-### Bit Layout
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ Bit 0       │ Always 0 (packed)                                   │
-│ Bits 1–N    │ Character bits (N determined by variant)           │
-│ Bits N+1–63 │ Unused                                             │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-### Variants
-
-| Variant | Character bits | Bit range | Fits uint64 |
-| ------- | -------------- | --------- | ----------- |
-| Mod32   | 31             | Bits 1–31 | Yes         |
-| Mod64   | 63             | Bits 1–63 | Yes         |
-
-### Vocabulary
-
-The vocabulary is an ordered string of characters. Each character maps to
-a single bit position (bit 1, bit 2, …, bit N). When the character count
-exceeds N, positions wrap.
-
-Default vocabulary:
-
-```
-ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \"',.;:!?/\n\t%{}[]()<>#$@£^&*+-_=
-```
-
-All printable ASCII characters (codes 32–126) must be mappable.
-Characters not in the explicit vocabulary are assigned the next available
-bit position (wrapping).
-
-### Encoding
-
-The tokenizer encodes all-uppercase-alpha strings as packed nodes:
-
-- All-uppercase-alpha strings → **packed** (single node, bit 0 clear)
-
-```
-encode("ABC")     → [CHAR_BIT['A'] | CHAR_BIT['B'] | CHAR_BIT['C']]   # packed
-```
-
-Multi-character strings are OR-ed into a single node. Bit 0 is clear.
-
-```
-encode("ABC") → [CHAR_BIT['A'] | CHAR_BIT['B'] | CHAR_BIT['C']]
-```
-
-#### Packed properties
-
-Applies to all-uppercase-alpha strings automatically:
-- Order is lost: `"AB"` and `"BA"` produce the same node.
-- Multiplicity is lost: `"AA"` and `"A"` produce the same node.
-- Suitable for signature construction and bitwise AND matching.
-
-### Decoding
-
-```
-find all set bits, map each to character
-```
-
-Decode returns characters in bit-position order (lowest bit first),
-not in the original text order.
-
-### Worked Examples
-
-#### Packed encoding (Mod32)
-
-```
-Vocabulary: "ABC" → bit 1, bit 2, bit 3
-
-encode("A")       → [0b10]                  = [2]
-encode("B")       → [0b100]                 = [4]
-encode("AB")      → [0b10 | 0b100]          = [6]
-encode("ABC")     → [0b10 | 0b100 | 0b1000] = [14]
-```
-
-#### Bitwise properties of packed nodes
-
-Packed nodes can be combined with bitwise OR and tested with bitwise AND.
-These properties are used by signature construction (@signature spec) and
-candidate retrieval (@model spec):
-
-```
-2 | 4 = 6              # 'A' | 'B' = combined
-(6 & 2) != 0 → True   # combined contains 'A'
-```
-
 ## Test Matrix
 
 | ID    | Criterion                                                                  | Origin ref |
 | ----- | -------------------------------------------------------------------------- | ---------- |
-| TOK-1 | Packed encode single char: `encode("A") == [bit_A]`                          | — |
-| TOK-2 | Packed encode multi-char: `encode("AB") == [bit_A \| bit_B]`                  | — |
-| TOK-3 | Packed round-trip: `decode(encode("ABC"))` contains A, B, C (order may differ) | — |
 | TOK-7 | Empty string: `encode("") == []`, `decode([]) == ""`                        | — |
-| TOK-11 | Vocab size matches number of unique characters in alphabet                  | — |
-| TOK-12 | Characters not in vocab are still encodable (assigned next bit)            | — |
 | TOK-NLP-1 | NLP encode produces correct node format: `(nlp_type32 << 32) \| bpe_token_id` for each token | NLP |
 | TOK-NLP-2 | NLP encode with unknown BPE token uses `POS_X = 65536` as `nlp_type32`    | NLP |
 | TOK-NLP-4 | NLP round-trip: `decode(encode("Tea brewed softly")) == "Tea brewed softly"` | NLP |
