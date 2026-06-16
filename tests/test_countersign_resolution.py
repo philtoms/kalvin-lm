@@ -15,6 +15,12 @@ from kalvin.kline import KLine, sig_level
 from kalvin.model import Model
 from kalvin.signature import make_signature
 from ks import compile_source
+from tests.conftest import requires_nlp_data
+
+# Every test in this module drives ``compile_source`` (which builds an
+# ``NLPTokenizer.from_files()`` internally) or a ``KAgent`` (whose default
+# tokenizer is NLP).  Gate the whole module so data-less clones skip cleanly.
+pytestmark = requires_nlp_data
 
 
 class TestCountersignPairResolution:
@@ -24,9 +30,10 @@ class TestCountersignPairResolution:
         bus = EventBus()
         a = KAgent(adapter=bus)
 
-        # Add identities
-        a.rationalise(KLine(0x2000, []))  # M
-        a.rationalise(KLine(0x100, []))  # H
+        # Add identities (derived from compile_source so signatures match the
+        # NLP encoding used by the countersign compilation below)
+        a.rationalise(compile_source("M", dev=True)[0])  # M (NLP-consistent identity)
+        a.rationalise(compile_source("H", dev=True)[0])  # H (NLP-consistent identity)
 
         entries = compile_source("M == H", dev=True)
         assert len(entries) == 2
@@ -129,9 +136,10 @@ class TestUndersignIsConnotateReversed:
         bus = EventBus()
         a = KAgent(adapter=bus)
 
-        # Add identities
-        a.rationalise(KLine(0x2000, []))  # M
-        a.rationalise(KLine(0x80000, []))  # S
+        # Add identities (derived from compile_source so signatures match the
+        # NLP encoding used by the undersign compilation below)
+        a.rationalise(compile_source("M", dev=True)[0])  # M (NLP-consistent identity)
+        a.rationalise(compile_source("S", dev=True)[0])  # S (NLP-consistent identity)
 
         # Compile undersign: S = M -> {M: S}
         entries = compile_source("S = M", dev=True)
@@ -147,9 +155,8 @@ class TestUndersignIsConnotateReversed:
         a.model.add_stm(e)
 
         result = a.rationalise(e)
-        # With S3 routing, the undersign entry resolves through the
-        # slow path but may still succeed (True) depending on candidate
-        # matching — it no longer shortcuts via S1 fast path
+        # With both M and S grounded identities, the undersign entry {M: [S]}
+        # resolves via the grounded-identity fast path (S1 -> True).
         assert result is True
 
     def test_connotate_goes_through_slow_path(self):
@@ -157,8 +164,9 @@ class TestUndersignIsConnotateReversed:
         bus = EventBus()
         a = KAgent(adapter=bus)
 
-        # Add identity A only (D is unknown)
-        a.rationalise(KLine(0x2, []))  # A
+        # Add identity A only (D is unknown).  Derived from compile_source so
+        # its signature matches the NLP encoding used by the connotate below.
+        a.rationalise(compile_source("A", dev=True)[0])  # A (NLP-consistent identity)
 
         entries = compile_source("A > D", dev=True)
         connotate = [e for e in entries if e.nodes]
