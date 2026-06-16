@@ -27,8 +27,12 @@ This spec depends on the following concepts, defined elsewhere:
 ### Tokenizer (@tokenizer spec)
 
 - `is_nlp_node(node) → bool` — determines whether a node is an NLP-BPE
-  node (non-zero high 32 bits). Available for compiler/decompiler diagnostic
-  text rendering. Not used by `make_signature`.
+  node (non-zero high 32 bits), distinguishing tokenizer-produced nodes
+  from non-tokenized uint64 values (e.g. node value 0 for identity klines,
+  or signatures used as graph-edge references). Available for
+  compiler/decompiler text rendering — deciding which nodes can be
+  BPE-decoded versus treated as opaque references. Not used by
+  `make_signature`.
 
 ## Definition
 
@@ -137,7 +141,7 @@ Properties:
 | SIG-7 | `signifies(0, anything) == False` (vacuous for 0)             | — |
 | SIG-9 | `signifies(0b110, 0b10) == True` (overlapping bits)           | — |
 | SIG-10 | `signifies(0b110, 0b1) == False` (no overlapping bits)       | — |
-| SIG-14 | `make_signature([0b10, 0b100]) == 0b110` (OR-reduction of two packed node values) | NLP |
+| SIG-14 | `make_signature([0b10, 0b100]) == 0b110` (OR-reduction of two distinct node values) | NLP |
 
 ## What a Signature is Not
 
