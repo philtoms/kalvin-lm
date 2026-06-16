@@ -137,7 +137,7 @@ Properties:
 | SIG-7 | `signifies(0, anything) == False` (vacuous for 0)             | — |
 | SIG-9 | `signifies(0b110, 0b10) == True` (overlapping bits)           | — |
 | SIG-10 | `signifies(0b110, 0b1) == False` (no overlapping bits)       | — |
-| SIG-14 | `make_signature([0b10, 0b100]) == 0b110` (backward compat with Mod32) | NLP |
+| SIG-14 | `make_signature([0b10, 0b100]) == 0b110` (OR-reduction of two packed node values) | NLP |
 
 ## What a Signature is Not
 

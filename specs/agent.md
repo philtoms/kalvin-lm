@@ -71,12 +71,12 @@ An Agent consists of:
 
 ```
 Agent(
-    tokenizer  = None,   # defaults to Mod32
+    tokenizer  = None,   # defaults to NLPTokenizer; NLP data is mandatory
     model      = None,   # defaults to empty Model
 )
 ```
 
-- `tokenizer` — a Tokenizer instance. Defaults to Mod32.
+- `tokenizer` — a Tokenizer instance. Defaults to an `NLPTokenizer` (NLP data is mandatory; construction raises if unavailable).
 - `model` — a Model instance serving as the base memory. Defaults
   to an empty Model.
 
