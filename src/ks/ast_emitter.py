@@ -18,17 +18,17 @@ converts SymbolicEntry tuples to encoded uint64 values.
 
   Self-identity (A = A) collapses to IDENTITY with empty nodes (spec §7.3).
 
-**MCS expansion (spec §8):**
+**MTS expansion (spec §8):**
   Multi-character identifiers trigger automatic emission of:
   1. One IDENTITY entry per resolved constituent character.
   2. One CANONIZE entry mapping the compound to its resolved components.
 
-  MCS applies to identifiers wherever they appear — signature side or node
-  side, any operator.  Single-character identifiers do NOT trigger MCS.
+  MTS applies to identifiers wherever they appear — signature side or node
+  side, any operator.  Single-character identifiers do NOT trigger MTS.
 
-**MCS deduplication (§8.3):**
+**MTS deduplication (§8.3):**
   CANONIZE entries are deduplicated on (sig, nodes).  Component IDENTITY
-  entries are deduplicated across MCS calls via _mcs_identity_seen (a
+  entries are deduplicated across MTS calls via _mts_identity_seen (a
   character emitted once is never emitted again).  Intra-expansion dedup
   prevents duplicate chars within a single compound (e.g., MHALL's second L).
 
@@ -38,7 +38,7 @@ converts SymbolicEntry tuples to encoded uint64 values.
 
   1. Inline annotation first (Rule B4): S(ubject) → "Subject", immediate
      binding that bypasses the occurrence counter and retroactively patches
-     the parent scope's MCS CANONIZE entry.
+     the parent scope's MTS CANONIZE entry.
   2. BindingScope fallback (Rule B3): scope.resolve(char) walks the scope
      stack innermost-first with first-letter matching and occurrence counter.
 
@@ -51,11 +51,11 @@ converts SymbolicEntry tuples to encoded uint64 values.
   - nodes field is ALWAYS list[str] — never None, never a bare string,
     never singleton-unwrapped.  Singleton unwrapping happens in TokenEncoder.
   - No IDENTITY op — self-identity emits IDENTITY with empty nodes.
-  - No general deduplication beyond MCS — CANONIZE dedup per §8.3,
+  - No general deduplication beyond MTS — CANONIZE dedup per §8.3,
     plus component IDENTITY dedup.
 
 Spec references: §3 (Scope Model), §6 (Entry Model), §7 (Operator Rules),
-§8 (MCS Expansion), §10 (NLP Binding Resolution).
+§8 (MTS Expansion), §10 (NLP Binding Resolution).
 """
 
 from __future__ import annotations
@@ -123,13 +123,13 @@ class ASTEmitter:
         self._scope = scope
         self._dev = dev
 
-        # MCS dedup tracking for CANONIZE entries (§8.3).
+        # MTS dedup tracking for CANONIZE entries (§8.3).
         # Maps (sig, tuple(nodes)) → index in self.entries.
-        self._mcs_canonize_seen: dict[tuple[str, tuple[str, ...]], int] = {}
+        self._mts_canonize_seen: dict[tuple[str, tuple[str, ...]], int] = {}
 
-        # MCS component IDENTITY dedup (§8.3 extended).
-        # Tracks resolved characters already emitted as IDENTITY by MCS.
-        self._mcs_identity_seen: set[str] = set()
+        # MTS component IDENTITY dedup (§8.3 extended).
+        # Tracks resolved characters already emitted as IDENTITY by MTS.
+        self._mts_identity_seen: set[str] = set()
 
         # Canonical resolution cache (§8.3): an identifier's resolved
         # component list is computed on first expansion and reused by every
@@ -144,9 +144,9 @@ class ASTEmitter:
         # CANONIZE subscript identity context flag.
         # Set when processing children of a CANONIZE scope that has recursive
         # content (OperatorScope items or child_block). Only activated when
-        # the CANONIZE scope's sig did NOT trigger MCS expansion (single-char
+        # the CANONIZE scope's sig did NOT trigger MTS expansion (single-char
         # sig). Multi-char sig CANONIZE scopes have component identities
-        # provided by MCS, so subscript identity is unnecessary.
+        # provided by MTS, so subscript identity is unnecessary.
         # Saved/restored alongside parent kline tracking.
         self._in_canonize_subscript: bool = False
 
@@ -183,10 +183,10 @@ class ASTEmitter:
 
         Algorithm:
         1. Resolve signature (inline annotation or BindingScope).
-        2. Emit MCS for multi-char signature.
+        2. Emit MTS for multi-char signature.
         3. If bare (op=None): emit IDENTITY and return.
         4. Collect node IDs from items and child_block.
-        5. Emit MCS for multi-char node IDs.
+        5. Emit MTS for multi-char node IDs.
         6. Resolve nodes.
         7. Emit operator-specific entries.
         8. Compile children (recursive).
@@ -197,32 +197,32 @@ class ASTEmitter:
             scope.inline_annotation,
         )
 
-        # 2. MCS for signature
-        mcs_idx = self._emit_mcs(scope.sig.id)
+        # 2. MTS for signature
+        mts_idx = self._emit_mts(scope.sig.id)
 
         # 3. Determine op
         op = self._op_to_str(scope.op)
 
         if op == "IDENTITY":
-            # For multi-char sigs, _emit_mcs already emitted a CANONIZE
-            # entry (mcs_idx is not None), introducing the compound.  Skip
+            # For multi-char sigs, _emit_mts already emitted a CANONIZE
+            # entry (mts_idx is not None), introducing the compound.  Skip
             # IDENTITY — a compound cannot form one (spec §8).  For single-
-            # char sigs, _emit_mcs returns None (no MCS) so emit IDENTITY here.
-            if mcs_idx is None:
+            # char sigs, _emit_mts returns None (no MTS) so emit IDENTITY here.
+            if mts_idx is None:
                 self._emit_entry(sig_resolved, [], "IDENTITY")
             return
 
         # 4. Collect node IDs
         node_ids = self._collect_node_ids(scope)
 
-        # 5. MCS for multi-char nodes
+        # 5. MTS for multi-char nodes
         for nid in node_ids:
             if len(nid) > 1:
-                self._emit_mcs(nid)
+                self._emit_mts(nid)
 
-        # 6. Resolve nodes. A CANONIZE scope whose sig was MCS-expanded
+        # 6. Resolve nodes. A CANONIZE scope whose sig was MTS-expanded
         #    aggregates the SAME identifier's components — reuse the cached
-        #    resolution (§8.3) so the operator entry matches the MCS canonize
+        #    resolution (§8.3) so the operator entry matches the MTS canonize
         #    entry and dedups correctly, rather than re-resolving against an
         #    advanced/exhausted occurrence counter.
         if op == "CANONIZED" and scope.sig.id in self._resolution_cache:
@@ -234,7 +234,7 @@ class ASTEmitter:
         self._emit_operator_entries(sig_resolved, resolved_nodes, op)
 
         # 8. Compile children
-        self._compile_children(scope, op, mcs_idx)
+        self._compile_children(scope, op, mts_idx)
 
     # ------------------------------------------------------------------
     # Operator emission (Step 2)
@@ -312,11 +312,11 @@ class ASTEmitter:
         # Annotation → skip
 
     # ------------------------------------------------------------------
-    # MCS expansion (§8)
+    # MTS expansion (§8)
     # ------------------------------------------------------------------
 
-    def _emit_mcs(self, sig: str) -> int | None:
-        """Emit MCS entries for a multi-character identifier.
+    def _emit_mts(self, sig: str) -> int | None:
+        """Emit MTS entries for a multi-character identifier.
 
         1. One IDENTITY entry per resolved constituent character (deduped).
         2. One CANONIZE entry mapping the compound to its resolved components.
@@ -324,7 +324,7 @@ class ASTEmitter:
         Component IDENTITY deduplication (§8.3 extended):
           - Intra-expansion: duplicate chars within a compound (e.g., MHALL's
             second L) emit only one IDENTITY L.
-          - Inter-expansion: if a char was already emitted by a previous MCS
+          - Inter-expansion: if a char was already emitted by a previous MTS
             call, it is silently skipped.
 
         CANONIZE deduplication (§8.3):
@@ -335,7 +335,7 @@ class ASTEmitter:
         an identity (spec §8; CONTEXT.md "Identity" glossary).
 
         Returns the index of the CANONIZE entry (for Rule B4), or None
-        if no MCS was emitted (single-char identifier).
+        if no MTS was emitted (single-char identifier).
         """
         if len(sig) <= 1:
             return None
@@ -355,16 +355,16 @@ class ASTEmitter:
             if resolved_char in seen_in_this_call:
                 continue  # intra-expansion dedup (e.g., second L in MHALL)
             seen_in_this_call.add(resolved_char)
-            if resolved_char in self._mcs_identity_seen:
+            if resolved_char in self._mts_identity_seen:
                 continue  # inter-expansion dedup
-            self._mcs_identity_seen.add(resolved_char)
+            self._mts_identity_seen.add(resolved_char)
             self._emit_entry(resolved_char, [], "IDENTITY")
 
-        # MCS canonization
+        # MTS canonization
         key = (sig, tuple(chars))
-        if key in self._mcs_canonize_seen:
+        if key in self._mts_canonize_seen:
             # Already emitted — return existing index for Rule B4
-            return self._mcs_canonize_seen[key]
+            return self._mts_canonize_seen[key]
 
         self._emit_entry(sig, list(chars), "CANONIZED")
         canonize_idx = len(self.entries) - 1
@@ -382,14 +382,14 @@ class ASTEmitter:
           are silently skipped.
         - All other ops: always emit (no dedup at this level).
 
-        Note: IDENTITY dedup for MCS components is handled in _emit_mcs
-        via _mcs_identity_seen, not here.
+        Note: IDENTITY dedup for MTS components is handled in _emit_mts
+        via _mts_identity_seen, not here.
         """
         if op == "CANONIZED":
             key = (sig, tuple(nodes))
-            if key in self._mcs_canonize_seen:
+            if key in self._mts_canonize_seen:
                 return  # dedup — silently skip
-            self._mcs_canonize_seen[key] = len(self.entries)
+            self._mts_canonize_seen[key] = len(self.entries)
 
         self.entries.append(SymbolicEntry(sig=sig, nodes=nodes, op=op))
 
@@ -404,18 +404,18 @@ class ASTEmitter:
         as the signature of at least one emitted entry.
 
         Dedup checks (in order):
-          1. _mcs_identity_seen — sig was already emitted as MCS component.
+          1. _mts_identity_seen — sig was already emitted as MTS component.
           2. Existing CANONIZE entry — sig is a compound already introduced
-             by its CANONIZE entry from MCS.
+             by its CANONIZE entry from MTS.
           3. Existing IDENTITY entries — sig already has an IDENTITY entry.
 
-        This prevents duplicate IDENTITY when MCS expansion already provided
+        This prevents duplicate IDENTITY when MTS expansion already provided
         one for the same identifier, or when the identifier already appears
         as the signature of an IDENTITY entry.  The CANONIZE check blocks
         compounds (which cannot form an identity) without affecting single-char
         sigs that have only UNDERSIGN entries (e.g., D in §14.8).
         """
-        if sig in self._mcs_identity_seen:
+        if sig in self._mts_identity_seen:
             return
         if any(e.sig == sig and e.op == "CANONIZED" for e in self.entries):
             return  # compound already introduced by its CANONIZED entry
@@ -431,7 +431,7 @@ class ASTEmitter:
         self,
         scope: OperatorScope,
         op: str,
-        mcs_idx: int | None,
+        mts_idx: int | None,
     ) -> None:
         """After emitting operator entries, recursively process children.
 
@@ -454,10 +454,10 @@ class ASTEmitter:
         IDENTITY fills the gap.
 
         Subscript identity is only activated when the CANONIZE scope's
-        sig did NOT trigger MCS expansion (mcs_idx is None). For single-
-        char sigs (e.g., `A =>`), MCS does not fire, so subscript identity
+        sig did NOT trigger MTS expansion (mts_idx is None). For single-
+        char sigs (e.g., `A =>`), MTS does not fire, so subscript identity
         ensures all identifiers appear as signatures. For multi-char sigs
-        (e.g., `SVO =>`, `ALL =>`), MCS provides component identities for
+        (e.g., `SVO =>`, `ALL =>`), MTS provides component identities for
         all constituent characters, making subscript identity unnecessary
         and preventing extra entries like IDENTITY D in §14.11.
 
@@ -475,10 +475,10 @@ class ASTEmitter:
 
         The _in_canonize_subscript flag does NOT propagate between
         CANONIZE scopes — each CANONIZE independently decides whether
-        to activate subscript identity based on its own MCS status.
+        to activate subscript identity based on its own MTS status.
 
         _emit_identity_if_needed includes a dedup check to prevent
-        duplicate IDENTITY when MCS expansion already provided one
+        duplicate IDENTITY when MTS expansion already provided one
         for the same identifier.
         """
         is_canonize = op == "CANONIZED"
@@ -489,9 +489,9 @@ class ASTEmitter:
         saved_in_canonize = self._in_canonize_subscript
 
         # Set parent kline tracking for Rule B4 (multi-char CANONIZE sigs)
-        if is_canonize and mcs_idx is not None:
+        if is_canonize and mts_idx is not None:
             self._parent_kline_chars = scope.sig.id
-            self._parent_kline_canonize_idx = mcs_idx
+            self._parent_kline_canonize_idx = mts_idx
 
         # CANONIZE scope push
         if is_canonize and self._scope is not None:
@@ -502,15 +502,15 @@ class ASTEmitter:
         # it's a "subscript block" rather than a flat aggregation like
         # `A => B C D`.
         # Subscript identity is only activated when this CANONIZE scope's
-        # sig did NOT trigger MCS expansion (mcs_idx is None). Multi-char
+        # sig did NOT trigger MTS expansion (mts_idx is None). Multi-char
         # sig CANONIZE scopes (e.g., SVO =>, ALL =>) have their component
-        # identities provided by MCS, so subscript identity is unnecessary
+        # identities provided by MTS, so subscript identity is unnecessary
         # and would produce extra entries (e.g., IDENTITY D in §14.11).
         if is_canonize:
             has_recursive_content = scope.child_block is not None or any(
                 isinstance(item, OperatorScope) for item in scope.items
             )
-            if has_recursive_content and mcs_idx is None:
+            if has_recursive_content and mts_idx is None:
                 self._in_canonize_subscript = True
 
         # Process items
@@ -598,7 +598,7 @@ class ASTEmitter:
         - If inline annotation present: extract word, trigger Rule B4
           override patching, return the word.
         - If single-char sig with no inline: resolve via BindingScope.
-        - If multi-char sig: return as-is (MCS handles individual chars).
+        - If multi-char sig: return as-is (MTS handles individual chars).
         """
         if inline_annotation is not None:
             word = self._extract_inline_word(sig, inline_annotation)
@@ -606,7 +606,7 @@ class ASTEmitter:
             return word
         if len(sig) == 1:
             return self._resolve_char(sig)
-        return sig  # multi-char: MCS decomposition handles individual chars
+        return sig  # multi-char: MTS decomposition handles individual chars
 
     def _resolve_nodes(
         self,
@@ -673,11 +673,11 @@ class ASTEmitter:
     # ------------------------------------------------------------------
 
     def _patch_parent_canonize(self, char: str, word: str) -> None:
-        """Rule B4 — inline override: patch parent MCS CANONIZE entry.
+        """Rule B4 — inline override: patch parent MTS CANONIZE entry.
 
         When an inline binding fires for char C with resolved word W inside
         a subscript, retroactively patch the matching character in the already-
-        emitted MCS CANONIZE entry for the parent kline.
+        emitted MTS CANONIZE entry for the parent kline.
 
         Example:
             Source: SVO => Block([S(ubject) = M])

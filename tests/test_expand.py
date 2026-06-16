@@ -371,7 +371,7 @@ class TestExpand:
         # Countersign pair
         m.add_ltm(KLine(M, [H]))
         m.add_ltm(KLine(H, [M]))
-        # MCS canonical
+        # MTS canonical
         m.add_ltm(KLine(MH, [M, H]))
         # The S2 query
         query = KLine(MH, [H, A])

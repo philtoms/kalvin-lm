@@ -8,7 +8,7 @@ Encoding rules (spec §11):
   - Signature → tokenizer.encode(sig) → uint64 (multi-token results are
     OR-reduced via make_signature()).
   - Nodes → each encoded individually via _encode_node(); multi-token
-    words trigger §11.4 BPE-level MCS.
+    words trigger §11.4 BPE-level MTS.
   - Canonical encoding (§11.4/§11.5): a compound identifier's signature
     is computed once at its CANONIZED definition (OR of its resolved
     component node values) and reused by every reference via the
@@ -58,7 +58,7 @@ class TokenEncoder:
         self._tokenizer = tokenizer
         self._dev = dev
         # Track already-decomposed multi-token words to avoid duplicate
-        # MCS emissions.  Key is tuple of BPE tokens (same word always
+        # MTS emissions.  Key is tuple of BPE tokens (same word always
         # produces the same BPE tokens).
         self._decomposed: set[tuple[int, ...]] = set()
         # Canonical encoding registry (§11.5): a compound identifier's
@@ -77,7 +77,7 @@ class TokenEncoder:
             symbolic: List of SymbolicEntry tuples from ASTEmitter.
 
         Returns:
-            Ordered list of KLine objects.  MCS expansion entries
+            Ordered list of KLine objects.  MTS expansion entries
             appear before the entries that reference them.
         """
         if not symbolic:
@@ -94,8 +94,8 @@ class TokenEncoder:
         """Process one SymbolicEntry into one or more KLine objects.
 
         Steps:
-          1. Encode signature → uint64 (with multi-token MCS if needed).
-          2. Encode each node → uint64 (with multi-token MCS if needed).
+          1. Encode signature → uint64 (with multi-token MTS if needed).
+          2. Encode each node → uint64 (with multi-token MTS if needed).
           3. Emit the main entry.
 
         Returns:
@@ -108,7 +108,7 @@ class TokenEncoder:
         sig_is_packed = False
 
         # 1. Encode signature (compound defs defer to step 3; refs reuse
-        #    the registry; others use §11.4 MCS for multi-token sigs).
+        #    the registry; others use §11.4 MTS for multi-token sigs).
         if is_compound_ref:
             sig_uint64 = self._compound_sigs[entry.sig]
             sig_is_packed = True
@@ -119,7 +119,7 @@ class TokenEncoder:
             if len(sig_tokens) == 1:
                 sig_uint64 = sig_tokens[0]
             else:
-                sig_uint64, sig_extras = self._emit_mcs_for_tokens(
+                sig_uint64, sig_extras = self._emit_mts_for_tokens(
                     sig_tokens,
                     dbg_label=entry.sig,
                     op="IDENTITY",
@@ -174,27 +174,27 @@ class TokenEncoder:
 
         Returns:
             (node_value, extra_entries) — node_value is the uint64 to use
-            in the parent kline.  extra_entries are MCS expansion entries
+            in the parent kline.  extra_entries are MTS expansion entries
             that must appear before the entry that uses this node.
         """
         tokens = self._tokenizer.encode(word)
 
         if len(tokens) == 1:
-            # Single token — no MCS needed
+            # Single token — no MTS needed
             return (tokens[0], [])
 
-        # Multi-token word → MCS at BPE-token level (§11.4)
-        return self._emit_mcs_for_tokens(tokens, dbg_label=word, op="IDENTITY")
+        # Multi-token word → MTS at BPE-token level (§11.4)
+        return self._emit_mts_for_tokens(tokens, dbg_label=word, op="IDENTITY")
 
-    # ── MCS emission for multi-token results ──────────────────────────
+    # ── MTS emission for multi-token results ──────────────────────────
 
-    def _emit_mcs_for_tokens(
+    def _emit_mts_for_tokens(
         self,
         tokens: list[int],
         dbg_label: str = "",
         op: str = "IDENTITY",
     ) -> tuple[int, list[KLine]]:
-        """Emit MCS entries for a multi-token encoding result.
+        """Emit MTS entries for a multi-token encoding result.
 
         Emits:
           1. One IDENTITY KLine per BPE subword token.

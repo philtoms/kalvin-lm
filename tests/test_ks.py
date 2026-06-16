@@ -23,10 +23,10 @@ This module covers all 37 spec test IDs (KS-1 through KS-37):
     KS-16  — Indent extends scope                            TestEmitterOperators
     KS-17  — DEDENT returns to parent                        TestEmitterOperators
     KS-18  — Non-CANONIZE with indent                        TestEmitterOperators
-    KS-19  — MCS expansion                                   TestEmitterMCS
-    KS-20  — No MCS for single-char                          TestEmitterMCS
-    KS-21  — MCS on node side                                TestEmitterMCS
-    KS-22  — Node count invariant                            TestEmitterMCS
+    KS-19  — MTS expansion                                   TestEmitterMTS
+    KS-20  — No MTS for single-char                          TestEmitterMTS
+    KS-21  — MTS on node side                                TestEmitterMTS
+    KS-22  — Node count invariant                            TestEmitterMTS
     KS-23  — First-letter matching                           TestBindingScope
     KS-24  — Occurrence counter                              TestBindingScope
     KS-25  — Inline binding bypass                           TestEmitterOperators
@@ -152,9 +152,9 @@ def has_entry(
 # KS-16 : test_ks16_indent_extends_scope
 # KS-17 : test_ks17_dedent_returns_to_parent
 # KS-18 : test_ks18_non_canonize_with_indent
-# KS-19 : test_ks19_mcs_expansion
-# KS-20 : test_ks20_no_mcs_for_single_char
-# KS-21 : test_ks21_mcs_on_node_side
+# KS-19 : test_ks19_mts_expansion
+# KS-20 : test_ks20_no_mts_for_single_char
+# KS-21 : test_ks21_mts_on_node_side
 # KS-22 : test_ks22_node_count_invariant
 # KS-23 : test_ks23_first_letter_matching
 # KS-24 : test_ks24_occurrence_counter
@@ -675,16 +675,16 @@ class TestEmitterOperators:
 
 
 # ===================================================================
-# TestEmitterMCS — KS-19 through KS-22
+# TestEmitterMTS — KS-19 through KS-22
 # ===================================================================
 
 
-class TestEmitterMCS:
-    """MCS expansion tests covering KS-19 through KS-22."""
+class TestEmitterMTS:
+    """MTS expansion tests covering KS-19 through KS-22."""
 
-    # -- KS-19: MCS expansion --------------------------------------------
+    # -- KS-19: MTS expansion --------------------------------------------
 
-    def test_ks19_mcs_expansion(self):
+    def test_ks19_mts_expansion(self):
         """KS-19: ABC → 4 entries matching §14.6.
 
         Expected:
@@ -702,9 +702,9 @@ class TestEmitterMCS:
         assert _sig_str(entries[3]) == "ABC" and entries[3].dbg.op == "CANONIZED"
         assert _node_strs(entries[3]) == ["A", "B", "C"]
 
-    # -- KS-20: No MCS for single-char -----------------------------------
+    # -- KS-20: No MTS for single-char -----------------------------------
 
-    def test_ks20_no_mcs_for_single_char(self):
+    def test_ks20_no_mts_for_single_char(self):
         """KS-20: A → single IDENTITY entry, no component expansion."""
         entries = compile_dev("A")
         assert len(entries) == 1
@@ -712,12 +712,12 @@ class TestEmitterMCS:
         assert _sig_str(entries[0]) == "A"
         assert entries[0].nodes == []
 
-    # -- KS-21: MCS on node side -----------------------------------------
+    # -- KS-21: MTS on node side -----------------------------------------
 
-    def test_ks21_mcs_on_node_side(self):
-        """KS-21: A == MHALL triggers MCS expansion for MHALL on the node side."""
+    def test_ks21_mts_on_node_side(self):
+        """KS-21: A == MHALL triggers MTS expansion for MHALL on the node side."""
         entries = compile_dev("A == MHALL")
-        # MCS for MHALL: component unsigned entries + CANONIZE entry
+        # MTS for MHALL: component unsigned entries + CANONIZE entry
         assert has_entry(entries, sig="MHALL", op="CANONIZED")
         # Countersign pairs: A ↔ MHALL (node is the packed uint64 for MHALL,
         # which decodes to sorted chars, so we check by sig and op only)
@@ -729,14 +729,14 @@ class TestEmitterMCS:
     # -- KS-22: Node count invariant --------------------------------------
 
     def test_ks22_node_count_invariant(self):
-        """KS-22: MCS canonization entry has N nodes for an N-char identifier."""
+        """KS-22: MTS canonization entry has N nodes for an N-char identifier."""
         for ident in ["AB", "ABC", "ABCD", "MHALL"]:
             entries = compile_dev(ident)
             canonize_entries = _find_entries(entries, sig=ident, op="CANONIZED")
             assert len(canonize_entries) >= 1, f"No CANONIZE entry for {ident}"
             canon = canonize_entries[0]
             assert len(canon.nodes) == len(ident), (
-                f"MCS canonize for {ident}: expected {len(ident)} nodes, got {len(canon.nodes)}"
+                f"MTS canonize for {ident}: expected {len(ident)} nodes, got {len(canon.nodes)}"
             )
 
 
@@ -751,7 +751,7 @@ class TestEmitterBinding:
     # -- KS-26: Rule B4 override -----------------------------------------
 
     def test_ks26_rule_b4_override(self):
-        """KS-26: Inline annotation patches parent MCS CANONIZE entry.
+        """KS-26: Inline annotation patches parent MTS CANONIZE entry.
 
         In the §14.12 source, S(ubject) inside a subscript block patches
         the parent SVO CANONIZE entry: S → 'Subject'.
@@ -771,7 +771,7 @@ class TestEmitterBinding:
         svo_canon = _find_entries(entries, sig="SVO", op="CANONIZED")
         assert len(svo_canon) >= 1, "Expected at least one SVO CANONIZE entry"
         # A simpler check: verify that "Subject" unsigned entries exist
-        # (from the inline annotation's MCS expansion)
+        # (from the inline annotation's MTS expansion)
         subject_entries = _find_entries(entries, sig="Subject")
         assert len(subject_entries) > 0, "Expected entries for 'Subject' (from inline annotation)"
 
@@ -893,20 +893,20 @@ class TestComplexExamples:
     def test_ks35_complex_nested_strict(self):
         """KS-35: §14.11 master regression — strict spec count (18 entries).
 
-        After KB-205 + KB-207: MCS component IDENTITY dedup, no compound-own
-        identity, subscript identity suppression for MCS CANONIZE scopes.
+        After KB-205 + KB-207: MTS component IDENTITY dedup, no compound-own
+        identity, subscript identity suppression for MTS CANONIZE scopes.
 
         Expected entries per spec §14.11:
-        1–4:   MCS M, H, A, L identity (S4)
+        1–4:   MTS M, H, A, L identity (S4)
         5:     MHALL canonize [M, H, A, L, L] (S2)
-        6–8:   MCS S, V, O identity (S4)
+        6–8:   MTS S, V, O identity (S4)
         9:     SVO canonize [S, V, O] (S2)
         10:    MHALL countersign [SVO] (S1)
         11:    SVO countersign [MHALL] (S1)
         (SVO canonize subscript: deduped)
         12:    M undersign [S] (S3)
         13:    H undersign [V] (S3)
-        (MCS ALL A, L: deduped)
+        (MTS ALL A, L: deduped)
         14:    ALL canonize [A, L, L] (S2)
         15:    ALL undersign [O] (S3)
         (ALL canonize subscript: deduped)
@@ -951,11 +951,11 @@ class TestComplexExamples:
         entries = compile_dev(_SEC1411_SOURCE)
         assert len(entries) == 18
 
-        # MCS identity for all single-char identifiers
+        # MTS identity for all single-char identifiers
         for char in ["M", "H", "A", "L", "S", "V", "O"]:
             assert has_entry(entries, sig=char, op="IDENTITY"), f"Missing IDENTITY entry for {char}"
 
-        # MCS CANONIZE for compound identifiers
+        # MTS CANONIZE for compound identifiers
         assert has_entry(entries, sig="MHALL", op="CANONIZED")
         assert has_entry(entries, sig="SVO", op="CANONIZED")
         assert has_entry(entries, sig="ALL", op="CANONIZED")
@@ -1013,11 +1013,11 @@ class TestComplexExamples:
         entries = compile_dev(_SEC1412_SOURCE)
         assert len(entries) > 0
 
-        # MCS for MHALL should resolve M→Mary, H→Had, A→"A", L→Little, L→Lamb
-        # Check that "Mary" appears as a signature (from MCS resolution)
+        # MTS for MHALL should resolve M→Mary, H→Had, A→"A", L→Little, L→Lamb
+        # Check that "Mary" appears as a signature (from MTS resolution)
         assert has_entry(entries, sig="Mary", op="IDENTITY") or has_entry(
             entries, sig="Mary", op="CANONIZED"
-        ), "Expected 'Mary' entries from MHALL MCS resolution"
+        ), "Expected 'Mary' entries from MHALL MTS resolution"
 
         # "Subject" should appear from inline annotation S(ubject)
         subject_entries = _find_entries(entries, sig="Subject")

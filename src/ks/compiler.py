@@ -13,7 +13,7 @@ Design:
   - A BindingScope is always created for every compilation. When the
     tokenizer has no word lists, resolve() returns None and all characters
     pass through raw.
-  - MCS expansion always runs in the ASTEmitter. The TokenEncoder handles
+  - MTS expansion always runs in the ASTEmitter. The TokenEncoder handles
     the actual encoding via the tokenizer.
 
 The ``compile_source`` convenience function creates a Lexer, Parser, and

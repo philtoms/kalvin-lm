@@ -1,7 +1,7 @@
 """Tests for ks.token_encoder — TokenEncoder.
 
 Uses ModTokenizer for most tests (no external files required).
-A mock multi-token tokenizer is used for BPE multi-token MCS tests.
+A mock multi-token tokenizer is used for BPE multi-token MTS tests.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ def dev_encoder(mod_tz: ModTokenizer) -> TokenEncoder:
 class MockMultiTokenTokenizer(KTokenizer):
     """Mock tokenizer that returns multiple tokens for certain words.
 
-    Used to test multi-token BPE MCS (§11.4) without requiring
+    Used to test multi-token BPE MTS (§11.4) without requiring
     real BPE files.
     """
 
@@ -211,17 +211,17 @@ class TestFullUint64:
         entry = SymbolicEntry(sig="WORD", nodes=[], op="IDENTITY")
         results = enc.encode_entries([entry])
         expected = make_signature([100, 200])
-        # Main entry is last (after MCS expansion entries)
+        # Main entry is last (after MTS expansion entries)
         assert results[-1].signature == expected
 
 
-# ── Multi-token word MCS (§11.4) ─────────────────────────────────────
+# ── Multi-token word MTS (§11.4) ─────────────────────────────────────
 
 
-class TestMultiTokenMCS:
+class TestMultiTokenMTS:
     """Multi-token BPE words produce unsigned per token + CANONIZE packed."""
 
-    def test_multi_token_node_emits_mcs(self) -> None:
+    def test_multi_token_node_emits_mts(self) -> None:
         """A multi-token node triggers unsigned + CANONIZE entries."""
         mock = MockMultiTokenTokenizer({"Mary": [10, 20]})
         enc = TokenEncoder(mock, dev=True)
@@ -247,7 +247,7 @@ class TestMultiTokenMCS:
         assert len(connotate_entries) == 1
         assert connotate_entries[0].nodes == [packed]
 
-    def test_multi_token_sig_emits_mcs(self) -> None:
+    def test_multi_token_sig_emits_mts(self) -> None:
         """A multi-token signature heading an IDENTITY entry is represented
         solely by its §11.4 decomposition — no standalone packed-sig
         IDENTITY (CONTEXT.md "Identity").
@@ -259,12 +259,12 @@ class TestMultiTokenMCS:
 
         packed = make_signature([50, 60])
 
-        # §11.4 MCS: IDENTITY(50), IDENTITY(60), CANONIZE(packed, [50,60])
-        mcs_unsigned = [
+        # §11.4 MTS: IDENTITY(50), IDENTITY(60), CANONIZE(packed, [50,60])
+        mts_unsigned = [
             r for r in results if r.dbg and r.dbg.op == "IDENTITY" and r.signature in (50, 60)
         ]
         canonize_entries = [r for r in results if r.dbg and r.dbg.op == "CANONIZED"]
-        assert len(mcs_unsigned) == 2
+        assert len(mts_unsigned) == 2
         assert len(canonize_entries) == 1
         assert canonize_entries[0].signature == packed
         assert canonize_entries[0].nodes == [50, 60]
@@ -275,8 +275,8 @@ class TestMultiTokenMCS:
         ]
         assert len(results) == 3
 
-    def test_mcs_entries_come_before_main(self) -> None:
-        """MCS expansion entries appear before the entry that references them."""
+    def test_mts_entries_come_before_main(self) -> None:
+        """MTS expansion entries appear before the entry that references them."""
         mock = MockMultiTokenTokenizer({"Mary": [10, 20]})
         enc = TokenEncoder(mock, dev=True)
         entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTED")
@@ -284,16 +284,16 @@ class TestMultiTokenMCS:
 
         # Main entry is last
         assert results[-1].dbg.op == "CONNOTED"
-        # All MCS entries come before
+        # All MTS entries come before
         for r in results[:-1]:
             assert r.dbg.op in ("IDENTITY", "CANONIZED")
 
 
-# ── Dedup multi-token MCS ────────────────────────────────────────────
+# ── Dedup multi-token MTS ────────────────────────────────────────────
 
 
-class TestDedupMCS:
-    """Same multi-token word encoded twice should not duplicate MCS entries."""
+class TestDedupMTS:
+    """Same multi-token word encoded twice should not duplicate MTS entries."""
 
     def test_dedup_same_word_twice(self) -> None:
         mock = MockMultiTokenTokenizer({"Mary": [10, 20]})
@@ -396,7 +396,7 @@ class TestDevMode:
     def test_no_dev_dbg(self, encoder: TokenEncoder) -> None:
         entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTED")
         results = encoder.encode_entries([entry])
-        # In non-dev mode, only MCS subword entries get a minimal dbg
+        # In non-dev mode, only MTS subword entries get a minimal dbg
         # Main entries may or may not have dbg depending on encoder
         # The key invariant: the KLine is valid
         assert isinstance(results[0], KLine)

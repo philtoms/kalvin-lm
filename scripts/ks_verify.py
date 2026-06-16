@@ -99,7 +99,7 @@ def _detect_sections(entries: list[KLine]) -> list[tuple[str, int, int]]:
 
     sections: list[tuple[str, int, int]] = []
 
-    # --- Phase 1: Corpus word MCS blocks ---
+    # --- Phase 1: Corpus word MTS blocks ---
     # A corpus word block is: N× IDENTITY (subwords), 1× CANONIZE, 1× IDENTITY (compound)
     # We detect the boundary where the label changes.
 

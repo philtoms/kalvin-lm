@@ -39,11 +39,11 @@ class KTokenizer(ABC):
         ...
 
     @property
-    def supports_mcs(self) -> bool:
-        """Whether this tokenizer supports multi-character signature (MCS) expansion.
+    def supports_mts(self) -> bool:
+        """Whether this tokenizer supports multi-token signature (MTS) expansion.
 
         Mod tokenizers return True — uppercase identifiers are packed as bit
-        positions, so MCS expansion decomposes them into per-character entries.
+        positions, so MTS expansion decomposes them into per-character entries.
         NLP-BPE and BPE tokenizers return False — identifiers are BPE tokens,
         not character compositions.
 

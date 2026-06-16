@@ -580,14 +580,14 @@ class TestKS18NonCanonizeIndent:
 
 
 # ======================================================================
-# Test: KS-19 MCS expansion
+# Test: KS-19 MTS expansion
 # ======================================================================
 
 
-class TestKS19MCS:
+class TestKS19MTS:
     """ABC → IDENTITY entries for A, B, C; CANONIZE {ABC:[A,B,C]}."""
 
-    def test_mcs_expansion(self):
+    def test_mts_expansion(self):
         entries = emit(_file(_bare("ABC")))
 
         # Component IDENTITYs
@@ -595,11 +595,11 @@ class TestKS19MCS:
         assert_has_entry(entries, "B", [], "IDENTITY")
         assert_has_entry(entries, "C", [], "IDENTITY")
 
-        # MCS CANONIZE
+        # MTS CANONIZE
         assert_has_entry(entries, "ABC", ["A", "B", "C"], "CANONIZED")
 
-    def test_mcs_entry_order(self):
-        """MCS components come before CANONIZE."""
+    def test_mts_entry_order(self):
+        """MTS components come before CANONIZE."""
         entries = emit(_file(_bare("ABC")))
         sigs = [e.sig for e in entries]
         idx_a = sigs.index("A")
@@ -614,14 +614,14 @@ class TestKS19MCS:
 
 
 # ======================================================================
-# Test: KS-20 No MCS for single-char
+# Test: KS-20 No MTS for single-char
 # ======================================================================
 
 
-class TestKS20NoMCS:
+class TestKS20NoMTS:
     """A → no CANONIZE entries, only IDENTITY {A:[]}."""
 
-    def test_no_mcs_single_char(self):
+    def test_no_mts_single_char(self):
         entries = emit(_file(_bare("A")))
         canonize = _find_entries(entries, op="CANONIZED")
         assert len(canonize) == 0
@@ -631,21 +631,21 @@ class TestKS20NoMCS:
 
 
 # ======================================================================
-# Test: KS-21 MCS on node side
+# Test: KS-21 MTS on node side
 # ======================================================================
 
 
-class TestKS21MCSNode:
-    """A == MHALL → MCS expansion fires for MHALL."""
+class TestKS21MTSNode:
+    """A == MHALL → MTS expansion fires for MHALL."""
 
-    def test_mcs_on_node(self):
+    def test_mts_on_node(self):
         entries = emit(_file(_scope("A", TokenType.COUNTERSIGN, items=[_sig("MHALL")])))
-        # MCS for MHALL: component IDENTITYs
+        # MTS for MHALL: component IDENTITYs
         assert_has_entry(entries, "M", [], "IDENTITY")
         assert_has_entry(entries, "H", [], "IDENTITY")
         assert_has_entry(entries, "A", [], "IDENTITY")
         assert_has_entry(entries, "L", [], "IDENTITY")
-        # MCS CANONIZE
+        # MTS CANONIZE
         assert_has_entry(entries, "MHALL", ["M", "H", "A", "L", "L"], "CANONIZED")
 
         # COUNTERSIGN
@@ -659,7 +659,7 @@ class TestKS21MCSNode:
 
 
 class TestKS22NodeCount:
-    """MCS CANONIZE node count equals character count of compound identifier."""
+    """MTS CANONIZE node count equals character count of compound identifier."""
 
     def test_node_count_abc(self):
         entries = emit(_file(_bare("ABC")))
@@ -687,7 +687,7 @@ class TestKS22NodeCount:
 
 
 class TestKS26RuleB4:
-    """Inline annotation patches parent MCS CANONIZE entry.
+    """Inline annotation patches parent MTS CANONIZE entry.
 
     SVO => S(ubject) = M → SVO CANONIZE entry has "Subject" replacing "S".
     """
@@ -717,9 +717,9 @@ class TestKS26RuleB4:
         # SVO's CANONIZE entry should have "Subject" replacing "S"
         canonize = _find_entries(entries, sig="SVO", op="CANONIZED")
         assert len(canonize) >= 1
-        # The MCS CANONIZE entry for SVO should have Subject patched in
-        mcs_canonize = [e for e in canonize if "Subject" in e.nodes]
-        assert len(mcs_canonize) >= 1, (
+        # The MTS CANONIZE entry for SVO should have Subject patched in
+        mts_canonize = [e for e in canonize if "Subject" in e.nodes]
+        assert len(mts_canonize) >= 1, (
             f"Expected 'Subject' in SVO CANONIZE nodes. Got: {[e.nodes for e in canonize]}"
         )
 
@@ -845,11 +845,11 @@ class TestAnnotations:
 
 
 # ======================================================================
-# Test: MCS Deduplication
+# Test: MTS Deduplication
 # ======================================================================
 
 
-class TestMCSDedup:
+class TestMTSDedup:
     """CANONIZE dedup — only CANONIZE entries are deduped."""
 
     def test_canonize_dedup(self):
@@ -863,8 +863,8 @@ class TestMCSDedup:
         canonize = _find_entries(entries, sig="ABC", op="CANONIZED")
         assert len(canonize) == 1  # deduped
 
-    def test_identity_dedup_by_mcs(self):
-        """MCS component IDENTITY entries ARE deduped across calls."""
+    def test_identity_dedup_by_mts(self):
+        """MTS component IDENTITY entries ARE deduped across calls."""
         entries = emit(
             _file(
                 _bare("ABC"),  # emits IDENTITY A, B, C; CANONIZE ABC; IDENTITY ABC
@@ -874,8 +874,8 @@ class TestMCSDedup:
         identity_a = _find_entries(entries, sig="A", op="IDENTITY")
         assert len(identity_a) == 1  # deduped
 
-    def test_non_mcs_identity_no_dedup(self):
-        """Non-MCS IDENTITY entries (from bare single-char scopes) are NOT deduped."""
+    def test_non_mts_identity_no_dedup(self):
+        """Non-MTS IDENTITY entries (from bare single-char scopes) are NOT deduped."""
         entries = emit(
             _file(
                 _bare("A"),
@@ -887,12 +887,12 @@ class TestMCSDedup:
 
 
 # ======================================================================
-# Test: MCS component IDENTITY intra- and inter-expansion dedup
+# Test: MTS component IDENTITY intra- and inter-expansion dedup
 # ======================================================================
 
 
-class TestMCSComponentDedup:
-    """MCS component IDENTITY deduplication (§8.3 extended)."""
+class TestMTSComponentDedup:
+    """MTS component IDENTITY deduplication (§8.3 extended)."""
 
     def test_intra_expansion_dedup(self):
         """MHALL has two L's — only one IDENTITY L is emitted."""
@@ -901,20 +901,20 @@ class TestMCSComponentDedup:
         assert len(identity_l) == 1  # not 2
 
     def test_inter_expansion_dedup(self):
-        """Second _emit_mcs for same compound emits no component IDENTITY."""
+        """Second _emit_mts for same compound emits no component IDENTITY."""
         emitter = ASTEmitter()
-        idx1 = emitter._emit_mcs("ABC")
+        idx1 = emitter._emit_mts("ABC")
         count_after_first = len(emitter.entries)
-        idx2 = emitter._emit_mcs("ABC")
+        idx2 = emitter._emit_mts("ABC")
         assert len(emitter.entries) == count_after_first  # no new entries
         assert idx2 == idx1  # returns existing CANONIZE index
 
     def test_cross_compound_partial_dedup(self):
         """SVO after MHALL: S,V,O are new, M,H,A,L already emitted."""
         emitter = ASTEmitter()
-        emitter._emit_mcs("MHALL")
+        emitter._emit_mts("MHALL")
         count_after_mhall = len(emitter.entries)
-        emitter._emit_mcs("SVO")
+        emitter._emit_mts("SVO")
         new_entries = emitter.entries[count_after_mhall:]
         # SVO emits: IDENTITY S, V, O + CANONIZE SVO (no compound-own identity)
         assert len(new_entries) == 4

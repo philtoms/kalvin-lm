@@ -107,8 +107,8 @@ class TestKS35ComplexNested:
     def test_entry_count(self) -> None:
         """Total entry count matches spec §14.11 (18 entries).
 
-        After KB-205 + KB-207: MCS component IDENTITY dedup, no compound-own
-        identity, and subscript identity suppression for MCS CANONIZE scopes.
+        After KB-205 + KB-207: MTS component IDENTITY dedup, no compound-own
+        identity, and subscript identity suppression for MTS CANONIZE scopes.
         """
         assert len(self.entries) == 18
 
@@ -128,25 +128,25 @@ class TestKS35ComplexNested:
         """Three unique CANONIZE entries: MHALL, SVO, ALL."""
         assert _count_entries(self.entries, "CANONIZED") == 3
 
-    def test_mcs_mhall_components(self) -> None:
-        """MCS for MHALL: unsigned entries for M, H, A, L components."""
+    def test_mts_mhall_components(self) -> None:
+        """MTS for MHALL: unsigned entries for M, H, A, L components."""
         assert _has_entry(self.entries, "IDENTITY", "M")
         assert _has_entry(self.entries, "IDENTITY", "H")
         assert _has_entry(self.entries, "IDENTITY", "A")
         assert _has_entry(self.entries, "IDENTITY", "L")
 
-    def test_mcs_mhall_canonize(self) -> None:
-        """MCS canonization: MHALL → [M, H, A, L, L]."""
+    def test_mts_mhall_canonize(self) -> None:
+        """MTS canonization: MHALL → [M, H, A, L, L]."""
         assert _has_entry(self.entries, "CANONIZED", "AHLM", "MHALL")
 
-    def test_mcs_svo_components(self) -> None:
-        """MCS for SVO: unsigned entries for S, V, O components."""
+    def test_mts_svo_components(self) -> None:
+        """MTS for SVO: unsigned entries for S, V, O components."""
         assert _has_entry(self.entries, "IDENTITY", "S")
         assert _has_entry(self.entries, "IDENTITY", "V")
         assert _has_entry(self.entries, "IDENTITY", "O")
 
-    def test_mcs_svo_canonize(self) -> None:
-        """MCS canonization: SVO → [S, V, O]."""
+    def test_mts_svo_canonize(self) -> None:
+        """MTS canonization: SVO → [S, V, O]."""
         assert _has_entry(self.entries, "CANONIZED", "OSV", "SVO")
 
     def test_countersign_pair(self) -> None:
@@ -159,8 +159,8 @@ class TestKS35ComplexNested:
         assert _has_entry(self.entries, "UNDERSIGNED", "M", "S")
         assert _has_entry(self.entries, "UNDERSIGNED", "H", "V")
 
-    def test_mcs_all(self) -> None:
-        """MCS for ALL: canonize entry and undersign O→ALL."""
+    def test_mts_all(self) -> None:
+        """MTS for ALL: canonize entry and undersign O→ALL."""
         assert _has_entry(self.entries, "CANONIZED", "AL", "ALL")
         assert _has_entry(self.entries, "UNDERSIGNED", "AL", "O")
 
@@ -179,9 +179,9 @@ class TestKS35ComplexNested:
             assert isinstance(e, KLine)
 
     def test_identity_count(self) -> None:
-        """7 IDENTITY entries from MCS component identities.
+        """7 IDENTITY entries from MTS component identities.
 
-        MCS components (deduped): M, H, A, L, S, V, O = 7 unique chars.
+        MTS components (deduped): M, H, A, L, S, V, O = 7 unique chars.
         Total IDENTITY: 7 (no compound-own identity).
         """
         assert _count_entries(self.entries, "IDENTITY") == 7
@@ -216,8 +216,8 @@ class TestKS36NLPBound:
 
         return NLPTokenizer.from_files()
 
-    def test_nlp_binding_mcs_mhall(self) -> None:
-        """MCS for MHALL resolves characters to NLP words.
+    def test_nlp_binding_mts_mhall(self) -> None:
+        """MTS for MHALL resolves characters to NLP words.
 
         M → Mary, H → Had, A → "A", L → "Little", L → "Lamb".
         """
@@ -474,17 +474,17 @@ class TestPipelineWiring:
         assert len(entries) > 0
         assert _has_entry(entries, "COUNTERSIGNED", "A", "B")
 
-    def test_end_to_end_mcs(self) -> None:
-        """Multi-character identifier triggers MCS expansion."""
+    def test_end_to_end_mts(self) -> None:
+        """Multi-character identifier triggers MTS expansion."""
         compiler = Compiler()
         tokens = Lexer("ABC == X").tokenize()
         kfile = Parser(tokens).parse()
         entries = compiler.compile(kfile)
-        # MCS for ABC
+        # MTS for ABC
         assert _has_entry(entries, "IDENTITY", "A")
         assert _has_entry(entries, "IDENTITY", "B")
         assert _has_entry(entries, "IDENTITY", "C")
-        # No MCS for single-char X
+        # No MTS for single-char X
         assert _has_entry(entries, "COUNTERSIGNED", "ABC", "X")
         assert _has_entry(entries, "COUNTERSIGNED", "X", "ABC")
 
@@ -543,14 +543,14 @@ class TestBindingScopeAlwaysCreated:
         """Compiler.compile() always creates BindingScope unconditionally.
 
         This is a structural test — we verify that the compiler
-        doesn't check supports_mcs or any tokenizer property
+        doesn't check supports_mts or any tokenizer property
         to decide whether to create a scope.
         """
         import inspect
 
         source = inspect.getsource(Compiler.compile)
-        assert "supports_mcs" not in source, "Compiler.compile should not reference supports_mcs"
-        assert "skip_mcs" not in source, "Compiler.compile should not reference skip_mcs"
+        assert "supports_mts" not in source, "Compiler.compile should not reference supports_mts"
+        assert "skip_mts" not in source, "Compiler.compile should not reference skip_mts"
 
     def test_annotation_feeds_binding_scope_in_v3(self) -> None:
         """In v3, annotations always feed the BindingScope (no mode switch).

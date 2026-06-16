@@ -58,8 +58,8 @@ class ModTokenizer(KTokenizer):
         self._char_bit, self._bit_char = _build_char_bit_maps(self._alphabet, modulo)
 
     @property
-    def supports_mcs(self) -> bool:
-        """Mod tokenizers support MCS expansion (bit-packed character decomposition)."""
+    def supports_mts(self) -> bool:
+        """Mod tokenizers support MTS expansion (bit-packed character decomposition)."""
         return True
 
     @property

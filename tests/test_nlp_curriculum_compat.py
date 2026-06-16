@@ -91,7 +91,7 @@ class TestMultiCharDecomposition:
 
     def test_mhall_decomposition(self, nlp_tokenizer: NLPTokenizer) -> None:
         entries = compile_source("MHALL", tokenizer=nlp_tokenizer, dev=True)
-        # §8 MCS: four distinct component identities (M, H, A, L — second L
+        # §8 MTS: four distinct component identities (M, H, A, L — second L
         # intra-expansion deduped) + one CANONIZED. Compounds are exempt
         # from §11.4 (canonical encoding), so the literal string is not
         # BPE-re-decomposed.
