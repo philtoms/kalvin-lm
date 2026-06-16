@@ -74,5 +74,7 @@ pytest-of-*
 *.local
 .tmp.*
 .worktrees
+# Agent worktree tooling (session logs, planning scratch, registry) — ephemeral like .kb/ and .worktrees/
+.pi/git-worktrees/
 trainer_state.json
 curricula/*.json
