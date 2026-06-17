@@ -162,11 +162,11 @@ Then return to step a.
 
 ## 4. Document (once, at end)
 
-Every auto-tune session must produce cascade documentation:
+Every auto-tune session must consolidate existing documentation:
 
-1. **Spec** (`specs/<feature>.md`) — behavioural rules, test matrix, definitions derived from what you observed. Reference the auto-tune session directory as evidence.
+1. **Spec** (`specs/<existing>.md`) — behavioural rules, test matrix, definitions derived from what you observed. Reference the auto-tune session directory as evidence.
 
-2. **Plan** (`plans/impl/<feature>.md`) — implementation tasks, test mapping, design decisions. Include:
+2. **Plan** (`plans/impl/<existing>.md`) — implementation tasks, test mapping, design decisions. Include:
    - A link to the auto-tune session directory as evidence
    - Test mapping with status (✅ for passing tests, ☐ for not yet written)
 

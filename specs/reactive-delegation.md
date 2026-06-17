@@ -34,6 +34,21 @@ The Reactor's behaviour when `trainer.llm.enabled` is `false`. In delegated mode
 
 Delegated mode has no automatic budget escalation. The supervisor is the sole decision-maker; progress is bounded only by the supervisor's responses.
 
+### Reactive-Round Budget (Default Mode)
+
+When `trainer.llm.enabled` is `true` (the default), the Reactor tracks a
+reactive-round counter per lesson with a budget of `max_reactive_rounds`
+(default 5). Each S2/S3 proposal that reaches the Reactor increments the
+counter:
+
+- The first event to reach the budget escalates `budget_exhaustion` to the
+  supervisor (one escalation per lesson).
+- Every subsequent event while the counter is past the budget is **silently
+  dropped** — no escalation, no logging, no bus messages. This prevents the
+  Reactor from spinning on the event stream while the cogitator drains.
+
+The counter resets at the start of each lesson.
+
 ### Decision Request
 
 An enriched `ratify_request` carrying the context the supervisor needs to make the reactive decision — the same context the Cogitator's prompt consumes. The enrichment is added when the flag is `off`; it is optional and ignored by supervisor participants that do not use it.
@@ -75,6 +90,12 @@ The `submit` action is interpreted by Kalvin's adapter exactly as for any lesson
 7. In delegated mode, the reactive-round budget is not consulted and budget-exhaustion escalation never fires. The supervisor is the sole decision-maker.
 8. The Trainer emits a decision request (enriched `ratify_request`) for every S2/S3 proposal that does not auto-countersign when the flag is `off`, carrying the misfit diagnosis and curriculum context.
 
+### Default-Mode Budget
+
+14. The first S2/S3 event to reach `max_reactive_rounds` (default 5) in a lesson escalates `budget_exhaustion` to the supervisor.
+15. Every subsequent S2/S3 event while past the budget is silently dropped (no escalation, no logging, no bus message).
+16. The reactive-round counter resets at the start of each lesson.
+
 ### Supervisor Answers
 
 9. On a decision request the supervisor answers with one of: `ratify` (accept the proposal), `scaffold` (write reactive scaffolding), or `continue` (skip and proceed).
@@ -98,6 +119,8 @@ The `submit` action is interpreted by Kalvin's adapter exactly as for any lesson
 | RD-6 | Flag `false`: the reactive-round counter is not incremented and budget-exhaustion escalation never fires | §Delegated Mode |
 | RD-7 | Flag `false`: every non-matching S2/S3 emits a decision request carrying `misfit` and `curriculum_context` | §Delegated Mode |
 | RD-8 | Flag `true` + no API key: existing no-client behaviour unchanged (escalates `low_confidence`) | §Flag |
+| RD-8a | Default mode: first event reaching `max_reactive_rounds` escalates `budget_exhaustion` | §Reactive-Round Budget (Default Mode) |
+| RD-8b | Default mode: events past the budget are silently dropped (no escalation/log/bus message) | §Reactive-Round Budget (Default Mode) |
 | RD-9 | `scaffold:<kscript>` parses to a command that sends `{trainee, submit, <kscript>}` | §Scaffold Command |
 | RD-10 | `scaffold` command compiles and submits via Kalvin's adapter like any `submit` | §Supervisor Answers |
 | RD-11 | A `scaffold` with invalid KScript yields an `error` event back to the supervisor | §Supervisor Answers |

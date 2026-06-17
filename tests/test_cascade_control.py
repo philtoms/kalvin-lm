@@ -1,6 +1,6 @@
 """Tests for cascade control — candidate cap and reactor silent-drop.
 
-Spec: specs/cascade-control.md
+Spec: specs/agent.md §Candidate Cap; specs/reactive-delegation.md §Reactive-Round Budget (Default Mode).
 """
 
 from training.harness.bus import MessageBus

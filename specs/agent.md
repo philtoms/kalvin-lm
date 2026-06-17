@@ -71,14 +71,17 @@ An Agent consists of:
 
 ```
 Agent(
-    tokenizer  = None,   # defaults to NLPTokenizer; NLP data is mandatory
-    model      = None,   # defaults to empty Model
+    tokenizer      = None,   # defaults to NLPTokenizer; NLP data is mandatory
+    model          = None,   # defaults to empty Model
+    max_candidates = 8,      # cap on S2/S3 candidates submitted per entry
 )
 ```
 
 - `tokenizer` — a Tokenizer instance. Defaults to an `NLPTokenizer` (NLP data is mandatory; construction raises if unavailable).
 - `model` — a Model instance serving as the base memory. Defaults
   to an empty Model.
+- `max_candidates` — maximum number of S2/S3 candidates submitted to
+  the Cogitator per entry (see §Candidate Cap).
 
 A newly constructed Agent contains zero Klines in its model. The Cogitator
 is created internally and starts its background thread immediately.
@@ -114,6 +117,9 @@ Rationalise(Q):
   ├───────────────────────────────────────────────────────────┤
   │ 5. ROUTE EACH CANDIDATE                                   │
   │    add_stm(Q)                                              │
+  │    Sort candidates: S1, then S2, then S3; within each    │
+  │    tier by node overlap (descending). Truncate S2/S3     │
+  │    candidates to max_candidates.                          │
   │    For each candidate Cᵢ:                                │
   │      level = route(Q, Cᵢ)   ← node membership, no model │
   │      S1 → add_ltm cascade, emit "frame", return True     │
@@ -223,6 +229,20 @@ then S3. Within each tier, candidates are sorted by node overlap count
 (descending). This ensures the Cogitator processes S1 work items before
 S2/S3, so S1 fast-path resolution happens as early as possible.
 
+#### Candidate Cap
+
+After sorting, the S2/S3 portion of the candidate list is truncated to
+`max_candidates` (default 8). Only the top-K candidates are submitted to
+the Cogitator. This bounds the per-entry fan-out regardless of model
+density.
+
+The cap does **not** affect:
+- S1 fast-path matches — S1 candidates are processed before any
+  truncation, and the first S1 candidate resolves the entry and returns
+  `True` immediately.
+- S4 (novel) routing — an S4 entry has no candidates, so the cap is
+  irrelevant.
+
 #### Per-Candidate Action
 
 | Route | Action | Model call? |
@@ -231,11 +251,10 @@ S2/S3, so S1 fast-path resolution happens as early as possible.
 | S2    | Submit `WorkItem(Q, C)` to Cogitator | No |
 | S3    | Submit `WorkItem(Q, C)` to Cogitator | No |
 
-**All candidates are submitted** to the Cogitator. There is no S1
-short-circuit at the routing level. S1 candidates are submitted as work
-items like S2/S3, but the Cogitator processes them via a fast-path that
-skips `model.expand()` and calls `handler.on_s1()` directly (see
-§Cogitation → S1 Fast-Path).
+There is no S1 short-circuit at the routing level. S1 candidates are
+submitted as work items like S2/S3, but the Cogitator processes them via a
+fast-path that skips `model.expand()` and calls `handler.on_s1()` directly
+(see §Cogitation → S1 Fast-Path).
 
 Return `False`.
 
@@ -305,8 +324,10 @@ Classification is a cascade: `sig ≥ S1|S2 → S1`, `sig ≥ S2|S3 → S2`,
 
 #### All Yields Processed
 
-The Cogitator processes all connotations yielded by `expand()`. There is no
-truncation or early stopping — every discovered relationship is evaluated.
+The Cogitator processes all connotations yielded by `expand()` for each
+submitted WorkItem. There is no truncation or early stopping within a
+single WorkItem — every discovered relationship is evaluated. (Candidate
+fan-out is bounded upstream by the §Candidate Cap.)
 
 ### Cogitator
 
@@ -634,6 +655,11 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 | ------ | ------------------------------------------------------------------- | ---------- |
 | AGT-18 | All candidates submitted to cogitator as work items (including S1)  | — |
 | AGT-19 | Candidates sorted S1-first, then by overlap count (descending)     | auto-tune/direct-cogitation-push |
+| AGT-19a | S2/S3 candidates truncated to `max_candidates` (default 8) after sort | — |
+| AGT-19b | Within the cap, S2 candidates prioritised over S3 candidates       | — |
+| AGT-19c | Within the same level, higher node-overlap candidates prioritised  | — |
+| AGT-19d | S1 fast-path resolution unaffected by the cap                      | — |
+| AGT-19e | S4 (novel) routing unaffected by the cap                           | — |
 | AGT-20 | All S2: returns False, all submitted as WorkItems                   | — |
 | AGT-21 | All S3: returns False, all submitted as WorkItems                   | — |
 | AGT-22 | S1 fast-path in cogitator: skips expand(), calls on_s1 directly    | auto-tune/direct-cogitation-push |
