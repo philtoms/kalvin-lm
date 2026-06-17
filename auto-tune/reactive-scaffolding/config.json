@@ -1,9 +1,0 @@
-{
-  "session": "reactive-scaffolding",
-  "curriculum": "curricula/first-steps-s2.md",
-  "harness_url": "ws://localhost:8765",
-  "model_path": "data/agent.bin",
-  "run_counter": 3,
-  "created_from_branch": "main",
-  "created_from_commit": "61f03932083a1deace2ebfc641120e8f9af9df24"
-}

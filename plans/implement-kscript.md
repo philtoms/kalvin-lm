@@ -29,7 +29,7 @@
 
 ## Overview
 
-This plan builds the KScript compiler from scratch against the consolidated spec (v3.0). The implementation lives in `src/ks/` (new module folder). The existing `src/kscript/` code is not modified and will be removed once the new implementation is verified.
+This plan builds the KScript compiler from scratch against the consolidated spec (v3.0). The implementation lives in `src/ks/`.
 
 - **Scope model** as the central organising principle (§3)
 - **Four-stage pipeline**: Lexer → Parser → ASTEmitter → TokenEncoder (§1.1)
@@ -78,7 +78,7 @@ Tasks 5 and 6 are independent of each other once Task 4 is done.
 
 ## Task 1: Token Types
 
-**File:** `kscript/token.py`  
+**File:** `ks/token.py`  
 **Spec ref:** §2.1  
 **Time:** 30 min
 
@@ -110,15 +110,15 @@ class Token:
 
 ### Test mapping
 
-| Spec ID | Test |
-|---------|------|
-| KS-1 | All 10 token types defined, Token is frozen |
+| Spec ID | Test                                        |
+| ------- | ------------------------------------------- |
+| KS-1    | All 10 token types defined, Token is frozen |
 
 ---
 
 ## Task 2: Lexer
 
-**File:** `kscript/lexer.py`  
+**File:** `ks/lexer.py`  
 **Spec ref:** §2.1–2.4  
 **Time:** 2h
 
@@ -143,19 +143,19 @@ class Lexer:
 
 ### Test mapping
 
-| Spec ID | Test |
-|---------|------|
-| KS-1 | All token types recognized |
-| KS-2 | `==`, `=>` matched before `=`, `>`: `A == B` produces SIGNATURE, COUNTERSIGN, SIGNATURE |
-| KS-3 | `(...)` with nested parens preserved as ANNOTATION |
-| KS-4 | Python-style INDENT/DEDENT tokens |
-| KS-5 | Empty input → [EOF]; unknown char → LexerError |
+| Spec ID | Test                                                                                    |
+| ------- | --------------------------------------------------------------------------------------- |
+| KS-1    | All token types recognized                                                              |
+| KS-2    | `==`, `=>` matched before `=`, `>`: `A == B` produces SIGNATURE, COUNTERSIGN, SIGNATURE |
+| KS-3    | `(...)` with nested parens preserved as ANNOTATION                                      |
+| KS-4    | Python-style INDENT/DEDENT tokens                                                       |
+| KS-5    | Empty input → [EOF]; unknown char → LexerError                                          |
 
 ---
 
 ## Task 3: AST Nodes
 
-**File:** `kscript/ast.py`  
+**File:** `ks/ast.py`  
 **Spec ref:** §4–5  
 **Time:** 30 min
 
@@ -200,17 +200,17 @@ ConstructItem: TypeAlias = "Annotation | OperatorScope | Block"
 
 ### Test mapping
 
-| Spec ID | Test |
-|---------|------|
-| KS-6 | AST structure reflects scope model: OperatorScope nodes with sig, op, items, child_block |
-| KS-8 | Annotations preserved as AST Annotation nodes |
-| KS-9 | Inline annotation attachment: sig-side and node-side |
+| Spec ID | Test                                                                                     |
+| ------- | ---------------------------------------------------------------------------------------- |
+| KS-6    | AST structure reflects scope model: OperatorScope nodes with sig, op, items, child_block |
+| KS-8    | Annotations preserved as AST Annotation nodes                                            |
+| KS-9    | Inline annotation attachment: sig-side and node-side                                     |
 
 ---
 
 ## Task 4: Parser
 
-**File:** `kscript/parser.py`  
+**File:** `ks/parser.py`  
 **Spec ref:** §3–4  
 **Time:** 2h
 
@@ -239,6 +239,7 @@ operator    ::= COUNTERSIGN | CANONIZE | CONNOTATE | UNDERSIGN
 ### Scope model in the parser (§3)
 
 The parser enforces:
+
 - **S2**: The identifier immediately preceding an operator is the scope's signature.
 - **S3**: Identifiers succeeding the operator are items (nodes) in that scope.
 - **S4**: INDENT creates child scope items appended to the current scope.
@@ -288,19 +289,19 @@ parse_items():
 
 ### Test mapping
 
-| Spec ID | Test |
-|---------|------|
-| KS-6 | `A == B > C = D` produces chained OperatorScope nodes |
-| KS-7 | INDENT/DEDENT creates Block nodes |
-| KS-8 | ANNOTATION tokens preserved in AST |
-| KS-9 | `S(ubject) = M` has inline_annotation on sig |
-| KS-10 | Empty source → empty script |
+| Spec ID | Test                                                  |
+| ------- | ----------------------------------------------------- |
+| KS-6    | `A == B > C = D` produces chained OperatorScope nodes |
+| KS-7    | INDENT/DEDENT creates Block nodes                     |
+| KS-8    | ANNOTATION tokens preserved in AST                    |
+| KS-9    | `S(ubject) = M` has inline_annotation on sig          |
+| KS-10   | Empty source → empty script                           |
 
 ---
 
 ## Task 5: BindingScope
 
-**File:** `kscript/binding_scope.py`  
+**File:** `ks/binding_scope.py`  
 **Spec ref:** §10  
 **Time:** 1.5h
 
@@ -351,22 +352,22 @@ Note: B1 and B4 enforcement happens in the ASTEmitter, not in BindingScope. The 
 
 ### Test mapping
 
-| Spec ID | Test |
-|---------|------|
-| KS-23 | Block annotation first-letter matching with `(Mary Had A Little Lamb)` |
-| KS-24 | Occurrence counter: duplicate L resolves to different words |
-| KS-25 | Inline binding bypasses counter |
-| KS-27 | Scope inheritance: inner to outer |
-| KS-28 | Scope shadowing: inner shadows outer |
-| KS-29 | Counter reset: each new scope starts at zero |
-| KS-30 | Unresolved identifier returns None |
-| KS-31 | Inert annotation: no matching characters |
+| Spec ID | Test                                                                   |
+| ------- | ---------------------------------------------------------------------- |
+| KS-23   | Block annotation first-letter matching with `(Mary Had A Little Lamb)` |
+| KS-24   | Occurrence counter: duplicate L resolves to different words            |
+| KS-25   | Inline binding bypasses counter                                        |
+| KS-27   | Scope inheritance: inner to outer                                      |
+| KS-28   | Scope shadowing: inner shadows outer                                   |
+| KS-29   | Counter reset: each new scope starts at zero                           |
+| KS-30   | Unresolved identifier returns None                                     |
+| KS-31   | Inert annotation: no matching characters                               |
 
 ---
 
 ## Task 6: ASTEmitter
 
-**File:** `kscript/ast_emitter.py`  
+**File:** `ks/ast_emitter.py`  
 **Spec ref:** §3, §6–8, §10  
 **Time:** 4h
 
@@ -399,6 +400,7 @@ _sig_levels = {
 ```
 
 `_emit_entry(sig, nodes, op)`:
+
 - `nodes` is always a `list[str]`. Empty list for unsigned.
 - No singleton unwrapping.
 - No dedup (MTS dedup is separate, see 6D).
@@ -503,7 +505,7 @@ def _emit_mts(self, sig: str) -> int | None:
     return len(self.entries) - 1  # index of CANONIZE entry for Rule B4
 ```
 
-Initialize ``self._resolution_cache: dict[str, list[str]] = {}`` in the constructor. The cache is what realizes both §8.3 canonical resolution and (because a CANONIZE scope whose subscript children spell its own sig reuses the cached components) the single-expansion invariant for a node-that-is-a-nested-scope.
+Initialize `self._resolution_cache: dict[str, list[str]] = {}` in the constructor. The cache is what realizes both §8.3 canonical resolution and (because a CANONIZE scope whose subscript children spell its own sig reuses the cached components) the single-expansion invariant for a node-that-is-a-nested-scope.
 
 **MTS deduplication (§8.3):**
 
@@ -549,29 +551,29 @@ def _apply_inline_override(self, char: str, word: str, parent_canonize_idx: int 
 
 ### Test mapping
 
-| Spec ID | Test |
-|---------|------|
-| KS-11 | COUNTERSIGN per-item: `A == B C` → `{A:[B]}, {B:[A]}, {A:[C]}, {C:[A]}` |
-| KS-12 | UNDERSIGN per-item reversed: `A = B C` → `{B:[A]}, {C:[A]}` |
-| KS-13 | CONNOTATE per-item: `A > B C` → `{A:[B]}, {A:[C]}` |
-| KS-14 | CANONIZE aggregates: `A => B C D` → `{A:[B,C,D]}` |
-| KS-15 | Operator chain: `A == B > C = D` → correct signatures per scope |
-| KS-16 | Indent extends scope: child block items belong to parent operator |
-| KS-17 | DEDENT returns to parent scope |
-| KS-18 | Non-CANONIZE with indent: per-item extends into child block |
-| KS-19 | MTS expansion: multi-char produces components + canonization + unsigned |
-| KS-20 | No MTS for single-char identifiers |
-| KS-21 | MTS on node side: `A == MHALL` triggers MTS for MHALL |
-| KS-22 | Node count invariant: MTS node count equals character count |
-| KS-26 | Rule B4 override: inline patches parent MTS CANONIZE |
-| KS-33 | Self-identity: `A = A` → `{A:[]}` with op=UNSIGNED |
-| KS-34 | Nodes always a list: `A => B` → `{A:[B]}`, `A` → `{A:[]}` |
+| Spec ID | Test                                                                    |
+| ------- | ----------------------------------------------------------------------- |
+| KS-11   | COUNTERSIGN per-item: `A == B C` → `{A:[B]}, {B:[A]}, {A:[C]}, {C:[A]}` |
+| KS-12   | UNDERSIGN per-item reversed: `A = B C` → `{B:[A]}, {C:[A]}`             |
+| KS-13   | CONNOTATE per-item: `A > B C` → `{A:[B]}, {A:[C]}`                      |
+| KS-14   | CANONIZE aggregates: `A => B C D` → `{A:[B,C,D]}`                       |
+| KS-15   | Operator chain: `A == B > C = D` → correct signatures per scope         |
+| KS-16   | Indent extends scope: child block items belong to parent operator       |
+| KS-17   | DEDENT returns to parent scope                                          |
+| KS-18   | Non-CANONIZE with indent: per-item extends into child block             |
+| KS-19   | MTS expansion: multi-char produces components + canonization + unsigned |
+| KS-20   | No MTS for single-char identifiers                                      |
+| KS-21   | MTS on node side: `A == MHALL` triggers MTS for MHALL                   |
+| KS-22   | Node count invariant: MTS node count equals character count             |
+| KS-26   | Rule B4 override: inline patches parent MTS CANONIZE                    |
+| KS-33   | Self-identity: `A = A` → `{A:[]}` with op=UNSIGNED                      |
+| KS-34   | Nodes always a list: `A => B` → `{A:[B]}`, `A` → `{A:[]}`               |
 
 ---
 
 ## Task 7: TokenEncoder
 
-**File:** `kscript/token_encoder.py`  
+**File:** `ks/token_encoder.py`  
 **Spec ref:** §11  
 **Time:** 2h
 
@@ -595,16 +597,18 @@ class TokenEncoder:
 - **Empty nodes** → `[]`. Never None.
 - **Multi-token words** (§11.3): When a resolved word BPE-encodes to multiple tokens, run full MTS at the BPE-token level: emit unsigned entries per token, CANONIZE mapping packed signature → tokens, return packed signature as the single node.
 
-**Canonical encoding (§11.3/§11.4).** A compound identifier (§8 multi-char sig) is BPE-encoded via its resolved components, never by re-encoding its literal string. Maintain ``_compound_sigs: dict[str, int]``:
-- On a CANONIZED definition (the compound's defining entry): compute ``sig = make_signature(node_values)`` and register ``entry.sig → sig``. The ASTEmitter guarantees definition-before-reference ordering.
-- On any entry whose signature or node string is a known compound: reuse the registered uint64 instead of ``encode(literal_string)``.
+**Canonical encoding (§11.3/§11.4).** A compound identifier (§8 multi-char sig) is BPE-encoded via its resolved components, never by re-encoding its literal string. Maintain `_compound_sigs: dict[str, int]`:
+
+- On a CANONIZED definition (the compound's defining entry): compute `sig = make_signature(node_values)` and register `entry.sig → sig`. The ASTEmitter guarantees definition-before-reference ordering.
+- On any entry whose signature or node string is a known compound: reuse the registered uint64 instead of `encode(literal_string)`.
 
 This yields three coupled rules, all consequences of "a compound has one identity, computed once":
-1. Compound exemption: a compound sig is never passed through §11.3 (``encode("MHALL")`` → literal letters is meaningless); its components are the resolved node values.
-2. Packed-sig IDENTITY suppression: when ``op == IDENTITY`` and the signature is packed (multi-token §11.3 word or compound), do not emit a main IDENTITY kline — the decomposition above is the sole representation, and a packed value cannot head an identity (CONTEXT.md "Identity").
-3. ``_build_dbg`` must not ``decode()`` a packed signature: it is opaque per §11.5 (decode may crash or return an unrelated word). Track ``sig_is_packed`` alongside the signature and skip decode/grammar-lookup when set; decode defensively (try/except) for the single-token path.
 
-Operator entries (COUNTERSIGNED/UNDERSIGNED/CONNOTED) with a compound signature are legitimate references and are emitted normally; for them ``signature != OR(nodes)`` by design (the signature is a registry lookup, not a reduction of that entry's own nodes).
+1. Compound exemption: a compound sig is never passed through §11.3 (`encode("MHALL")` → literal letters is meaningless); its components are the resolved node values.
+2. Packed-sig IDENTITY suppression: when `op == IDENTITY` and the signature is packed (multi-token §11.3 word or compound), do not emit a main IDENTITY kline — the decomposition above is the sole representation, and a packed value cannot head an identity (CONTEXT.md "Identity").
+3. `_build_dbg` must not `decode()` a packed signature: it is opaque per §11.5 (decode may crash or return an unrelated word). Track `sig_is_packed` alongside the signature and skip decode/grammar-lookup when set; decode defensively (try/except) for the single-token path.
+
+Operator entries (COUNTERSIGNED/UNDERSIGNED/CONNOTED) with a compound signature are legitimate references and are emitted normally; for them `signature != OR(nodes)` by design (the signature is a registry lookup, not a reduction of that entry's own nodes).
 
 ### Multi-token word handling
 
@@ -627,15 +631,15 @@ def _encode_node(self, word: str) -> tuple[int, list[SymbolicEntry]]:
 
 ### Test mapping
 
-| Spec ID | Test |
-|---------|------|
-| KS-34 | Nodes always a list (enforced by CompiledEntry type) |
+| Spec ID | Test                                                 |
+| ------- | ---------------------------------------------------- |
+| KS-34   | Nodes always a list (enforced by CompiledEntry type) |
 
 ---
 
 ## Task 8: Compiler (Orchestrator)
 
-**File:** `kscript/compiler.py`, `kscript/__init__.py`  
+**File:** `ks/compiler.py`, `ks/__init__.py`  
 **Spec ref:** §1.1, §12  
 **Time:** 1h
 
@@ -672,18 +676,18 @@ The Compiler creates the BindingScope and passes it to the ASTEmitter. It then p
 ```python
 class KScript:
     def __init__(self, source: str, tokenizer=None, dev=False): ...
-    
+
     @property
     def entries(self) -> list[CompiledEntry]: ...
 ```
 
 ### Test mapping
 
-| Spec ID | Test |
-|---------|------|
-| KS-35 | Complex nested example (spec §14.11) produces correct complete entry list |
-| KS-36 | NLP-bound example (spec §14.12) produces correct resolved entries |
-| KS-37 | Uniform-NLP: all characters (bound and unresolved) produce valid NLP-BPE nodes |
+| Spec ID | Test                                                                           |
+| ------- | ------------------------------------------------------------------------------ |
+| KS-35   | Complex nested example (spec §14.11) produces correct complete entry list      |
+| KS-36   | NLP-bound example (spec §14.12) produces correct resolved entries              |
+| KS-37   | Uniform-NLP: all characters (bound and unresolved) produce valid NLP-BPE nodes |
 
 ---
 
@@ -743,57 +747,57 @@ def has_entry(md, sig, nodes):
 
 ### Test mapping (complete)
 
-| Spec ID | Category | Test |
-|---------|----------|------|
-| KS-1 | Lexer | All token types defined |
-| KS-2 | Lexer | Multi-char operator priority |
-| KS-3 | Lexer | BPE annotation parsing |
-| KS-4 | Lexer | INDENT/DEDENT tracking |
-| KS-5 | Lexer | Edge cases and errors |
-| KS-6 | Parser | Scope model AST structure |
-| KS-7 | Parser | Block parsing |
-| KS-8 | Parser | Annotations preserved |
-| KS-9 | Parser | Inline annotation attachment |
-| KS-10 | Parser | Empty source |
-| KS-11 | Scope | COUNTERSIGN per-item |
-| KS-12 | Scope | UNDERSIGN per-item reversed |
-| KS-13 | Scope | CONNOTATE per-item |
-| KS-14 | Scope | CANONIZE aggregates |
-| KS-15 | Scope | Operator chain |
-| KS-16 | Scope | Indent extends scope |
-| KS-17 | Scope | DEDENT returns to parent |
-| KS-18 | Scope | Non-CANONIZE with indent |
-| KS-19 | MTS | Multi-char expansion |
-| KS-20 | MTS | No single-char expansion |
-| KS-21 | MTS | MTS on node side |
-| KS-22 | MTS | Node count invariant |
-| KS-23 | Binding | Block first-letter matching |
-| KS-24 | Binding | Occurrence counter |
-| KS-25 | Binding | Inline binding |
-| KS-26 | Binding | Rule B4 override |
-| KS-27 | Binding | Scope inheritance |
-| KS-28 | Binding | Scope shadowing |
-| KS-29 | Binding | Counter reset |
-| KS-30 | Binding | Unresolved identifier returns None |
-| KS-31 | Binding | Inert annotation |
-| KS-32 | Encoding | Unresolved char encodes to its own raw NLP-BPE node |
-| KS-33 | Operators | Self-identity |
-| KS-34 | Structure | Nodes always a list |
-| KS-35 | Integration | §14.11 complex nested |
-| KS-36 | Integration | §14.12 NLP-bound |
-| KS-37 | Integration | Uniform-NLP: all characters produce valid NLP-BPE nodes |
-| KS-38 | MTS Dedup | Component identity dedup |
-| KS-39 | MTS Dedup | Intra-expansion dedup |
-| KS-40 | MTS Dedup | Canonization dedup |
-| KS-41 | MTS | Canonical resolution (§8.3) — same identifier resolves identically wherever it appears |
-| KS-42 | Encoding | Canonical encoding (§11.3/§11.4) — one CANONIZED per compound; single-token identity sigs |
+| Spec ID | Category    | Test                                                                                      |
+| ------- | ----------- | ----------------------------------------------------------------------------------------- |
+| KS-1    | Lexer       | All token types defined                                                                   |
+| KS-2    | Lexer       | Multi-char operator priority                                                              |
+| KS-3    | Lexer       | BPE annotation parsing                                                                    |
+| KS-4    | Lexer       | INDENT/DEDENT tracking                                                                    |
+| KS-5    | Lexer       | Edge cases and errors                                                                     |
+| KS-6    | Parser      | Scope model AST structure                                                                 |
+| KS-7    | Parser      | Block parsing                                                                             |
+| KS-8    | Parser      | Annotations preserved                                                                     |
+| KS-9    | Parser      | Inline annotation attachment                                                              |
+| KS-10   | Parser      | Empty source                                                                              |
+| KS-11   | Scope       | COUNTERSIGN per-item                                                                      |
+| KS-12   | Scope       | UNDERSIGN per-item reversed                                                               |
+| KS-13   | Scope       | CONNOTATE per-item                                                                        |
+| KS-14   | Scope       | CANONIZE aggregates                                                                       |
+| KS-15   | Scope       | Operator chain                                                                            |
+| KS-16   | Scope       | Indent extends scope                                                                      |
+| KS-17   | Scope       | DEDENT returns to parent                                                                  |
+| KS-18   | Scope       | Non-CANONIZE with indent                                                                  |
+| KS-19   | MTS         | Multi-char expansion                                                                      |
+| KS-20   | MTS         | No single-char expansion                                                                  |
+| KS-21   | MTS         | MTS on node side                                                                          |
+| KS-22   | MTS         | Node count invariant                                                                      |
+| KS-23   | Binding     | Block first-letter matching                                                               |
+| KS-24   | Binding     | Occurrence counter                                                                        |
+| KS-25   | Binding     | Inline binding                                                                            |
+| KS-26   | Binding     | Rule B4 override                                                                          |
+| KS-27   | Binding     | Scope inheritance                                                                         |
+| KS-28   | Binding     | Scope shadowing                                                                           |
+| KS-29   | Binding     | Counter reset                                                                             |
+| KS-30   | Binding     | Unresolved identifier returns None                                                        |
+| KS-31   | Binding     | Inert annotation                                                                          |
+| KS-32   | Encoding    | Unresolved char encodes to its own raw NLP-BPE node                                       |
+| KS-33   | Operators   | Self-identity                                                                             |
+| KS-34   | Structure   | Nodes always a list                                                                       |
+| KS-35   | Integration | §14.11 complex nested                                                                     |
+| KS-36   | Integration | §14.12 NLP-bound                                                                          |
+| KS-37   | Integration | Uniform-NLP: all characters produce valid NLP-BPE nodes                                   |
+| KS-38   | MTS Dedup   | Component identity dedup                                                                  |
+| KS-39   | MTS Dedup   | Intra-expansion dedup                                                                     |
+| KS-40   | MTS Dedup   | Canonization dedup                                                                        |
+| KS-41   | MTS         | Canonical resolution (§8.3) — same identifier resolves identically wherever it appears    |
+| KS-42   | Encoding    | Canonical encoding (§11.3/§11.4) — one CANONIZED per compound; single-token identity sigs |
 
 ---
 
 ## Module Structure (final)
 
 ```
-kscript/
+ks/
 ├── __init__.py         # KScript class, re-exports
 ├── token.py            # TokenType enum, Token dataclass
 ├── lexer.py            # Lexer
@@ -814,12 +818,12 @@ kscript/
 
 ## Design Decisions
 
-| Decision | Rationale |
-|----------|-----------|
-| No decompiler, no file I/O, no CLI | Spec scope reduction. Compilation output is the product. Scripts handle format conversion. |
-| No `chain_right` | Scope model (§3). Each operator creates a scope boundary. |
-| `nodes: list[uint64]` always | Eliminates None checks, singleton unwrapping, type branching. Uniform structure. |
-| BindingScope always active | Unresolved identifiers encode as their own raw NLP-BPE nodes (see @kscript spec §10). |
-| MTS dedup on CANONIZE only | Prevents duplicate entries from MTS + subscript CANONIZE overlap. Not a general dedup mechanism. |
-| `Annotation` replaces `Comment` | Terminology reflects purpose: these are BPE encoding inputs, not inert documentation. |
-| Multi-token MTS in TokenEncoder | BPE subword decomposition is an encoding concern. The ASTEmitter works with symbolic strings. |
+| Decision                           | Rationale                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------ |
+| No decompiler, no file I/O, no CLI | Spec scope reduction. Compilation output is the product. Scripts handle format conversion.       |
+| No `chain_right`                   | Scope model (§3). Each operator creates a scope boundary.                                        |
+| `nodes: list[uint64]` always       | Eliminates None checks, singleton unwrapping, type branching. Uniform structure.                 |
+| BindingScope always active         | Unresolved identifiers encode as their own raw NLP-BPE nodes (see @kscript spec §10).            |
+| MTS dedup on CANONIZE only         | Prevents duplicate entries from MTS + subscript CANONIZE overlap. Not a general dedup mechanism. |
+| `Annotation` replaces `Comment`    | Terminology reflects purpose: these are BPE encoding inputs, not inert documentation.            |
+| Multi-token MTS in TokenEncoder    | BPE subword decomposition is an encoding concern. The ASTEmitter works with symbolic strings.    |

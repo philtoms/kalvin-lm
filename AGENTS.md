@@ -7,9 +7,8 @@
 
 ## Task Board
 
-- Only create kb tasks when the user asks you to, or when work genuinely needs multi-step orchestration across sessions.
-- Do not use the task board as a logging or tracking tool for work you are already doing.
+- Only create kb tasks when the user asks you to.
 
 ## Development
 
-- Follow the cascade development model closely (docs/cascade-development.md): origin → spec → plan → triage. No content duplication across layers.
+- Follow the cascade development model closely (docs/cascade-development.md): vision → spec → plan → triage. No content duplication across layers.

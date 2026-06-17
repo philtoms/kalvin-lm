@@ -16,26 +16,26 @@ KScript is a domain-specific language for constructing **klines** — ordered se
 Source (.ks) → Lexer → Parser → AST → ASTEmitter → TokenEncoder → [CompiledEntry]
 ```
 
-| Stage | Responsibility |
-|-------|---------------|
-| **Lexer** | Source text → token stream |
-| **Parser** | Token stream → AST (structural) |
-| **ASTEmitter** | AST → symbolic entries (strings). Resolves BPE annotations inline via BindingScope. |
-| **TokenEncoder** | Symbolic entries → encoded entries (uint64 values). Encoding-agnostic. |
+| Stage            | Responsibility                                                                      |
+| ---------------- | ----------------------------------------------------------------------------------- |
+| **Lexer**        | Source text → token stream                                                          |
+| **Parser**       | Token stream → AST (structural)                                                     |
+| **ASTEmitter**   | AST → symbolic entries (strings). Resolves BPE annotations inline via BindingScope. |
+| **TokenEncoder** | Symbolic entries → encoded entries (uint64 values). Encoding-agnostic.              |
 
 The pipeline is strictly one-directional. The ASTEmitter operates on symbolic strings — no encoding happens there. The TokenEncoder converts strings to opaque `uint64` values via a pluggable tokenizer.
 
 ### 1.2 Core Concepts
 
-| Concept | Description |
-|---------|-------------|
-| **Node** | An opaque `uint64` value — the universal atom |
-| **KLine** | An identified, ordered sequence of zero or more nodes: `{signature, nodes[]}` |
-| **Signature** | A `uint64` identity key computed via OR-reduction of node values |
-| **Significance** | A four-level classification (S1–S4) of how strongly one KLine relates to another |
-| **Identifier** | An uppercase alpha string like `ABC` — the lexical form of a signature or node |
-| **BPE Annotation** | A parenthesised annotation `(...)` providing word text for BPE token encoding |
-| **Scope** | An operator-delimited region that determines kline structure and binding resolution |
+| Concept            | Description                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| **Node**           | An opaque `uint64` value — the universal atom                                       |
+| **KLine**          | An identified, ordered sequence of zero or more nodes: `{signature, nodes[]}`       |
+| **Signature**      | A `uint64` identity key computed via OR-reduction of node values                    |
+| **Significance**   | A four-level classification (S1–S4) of how strongly one KLine relates to another    |
+| **Identifier**     | An uppercase alpha string like `ABC` — the lexical form of a signature or node      |
+| **BPE Annotation** | A parenthesised annotation `(...)` providing word text for BPE token encoding       |
+| **Scope**          | An operator-delimited region that determines kline structure and binding resolution |
 
 ---
 
@@ -43,27 +43,27 @@ The pipeline is strictly one-directional. The ASTEmitter operates on symbolic st
 
 ### 2.1 Token Types
 
-| Token | Pattern | Category |
-|-------|---------|----------|
-| `SIGNATURE` | `[A-Z]+` | Identifier |
-| `COUNTERSIGN` | `==` | Operator |
-| `CANONIZE` | `=>` | Operator |
-| `CONNOTATE` | `>` | Operator |
-| `UNDERSIGN` | `=` | Operator |
-| `ANNOTATION` | `(...)` with nested parens | BPE Annotation |
-| `NEWLINE` | `\n` | Insignificant |
-| `INDENT` | Increased indentation | Structural |
-| `DEDENT` | Decreased indentation | Structural |
-| `EOF` | End of file | Sentinel |
+| Token         | Pattern                    | Category       |
+| ------------- | -------------------------- | -------------- |
+| `SIGNATURE`   | `[A-Z]+`                   | Identifier     |
+| `COUNTERSIGN` | `==`                       | Operator       |
+| `CANONIZE`    | `=>`                       | Operator       |
+| `CONNOTATE`   | `>`                        | Operator       |
+| `UNDERSIGN`   | `=`                        | Operator       |
+| `ANNOTATION`  | `(...)` with nested parens | BPE Annotation |
+| `NEWLINE`     | `\n`                       | Insignificant  |
+| `INDENT`      | Increased indentation      | Structural     |
+| `DEDENT`      | Decreased indentation      | Structural     |
+| `EOF`         | End of file                | Sentinel       |
 
 ### 2.2 Operator Classification
 
-| Operator | Symbol | Behaviour |
-|----------|--------|-----------|
-| COUNTERSIGN | `==` | Bidirectional, per-item emission |
-| UNDERSIGN | `=` | Unidirectional (reversed), per-item emission |
-| CANONIZE | `=>` | Unidirectional, all items aggregated into single kline |
-| CONNOTATE | `>` | Unidirectional, per-item emission |
+| Operator    | Symbol | Behaviour                                              |
+| ----------- | ------ | ------------------------------------------------------ |
+| COUNTERSIGN | `==`   | Bidirectional, per-item emission                       |
+| UNDERSIGN   | `=`    | Unidirectional (reversed), per-item emission           |
+| CANONIZE    | `=>`   | Unidirectional, all items aggregated into single kline |
+| CONNOTATE   | `>`    | Unidirectional, per-item emission                      |
 
 ### 2.3 Lexing Rules
 
@@ -114,11 +114,11 @@ Scope is the central organising principle of KScript compilation. Scope determin
 A == B > C = D
 ```
 
-| Scope | Operator | Signature | Nodes | Compiled |
-|-------|----------|-----------|-------|----------|
-| 1 | `==` | A | B | `{A: B}, {B: A}` |
-| 2 | `>` | B | C | `{B: C}` |
-| 3 | `=` | C | D | `{D: C}` |
+| Scope | Operator | Signature | Nodes | Compiled         |
+| ----- | -------- | --------- | ----- | ---------------- |
+| 1     | `==`     | A         | B     | `{A: B}, {B: A}` |
+| 2     | `>`      | B         | C     | `{B: C}`         |
+| 3     | `=`      | C         | D     | `{D: C}`         |
 
 #### CANONIZE aggregation
 
@@ -126,9 +126,9 @@ A == B > C = D
 A => B C D
 ```
 
-| Scope | Operator | Signature | Nodes | Compiled |
-|-------|----------|-----------|-------|----------|
-| 1 | `=>` | A | B, C, D | `{A: [B, C, D]}` |
+| Scope | Operator | Signature | Nodes   | Compiled         |
+| ----- | -------- | --------- | ------- | ---------------- |
+| 1     | `=>`     | A         | B, C, D | `{A: [B, C, D]}` |
 
 #### Mixed operators with CANONIZE
 
@@ -136,10 +136,10 @@ A => B C D
 A == B => C D
 ```
 
-| Scope | Operator | Signature | Nodes | Compiled |
-|-------|----------|-----------|-------|----------|
-| 1 | `==` | A | B | `{A: B}, {B: A}` |
-| 2 | `=>` | B | C, D | `{B: [C, D]}` |
+| Scope | Operator | Signature | Nodes | Compiled         |
+| ----- | -------- | --------- | ----- | ---------------- |
+| 1     | `==`     | A         | B     | `{A: B}, {B: A}` |
+| 2     | `=>`     | B         | C, D  | `{B: [C, D]}`    |
 
 #### CANONIZE followed by inline
 
@@ -147,10 +147,10 @@ A == B => C D
 A => B == C
 ```
 
-| Scope | Operator | Signature | Nodes | Compiled |
-|-------|----------|-----------|-------|----------|
-| 1 | `=>` | A | B | `{A: B}` |
-| 2 | `==` | B | C | `{B: C}, {C: B}` |
+| Scope | Operator | Signature | Nodes | Compiled         |
+| ----- | -------- | --------- | ----- | ---------------- |
+| 1     | `=>`     | A         | B     | `{A: B}`         |
+| 2     | `==`     | B         | C     | `{B: C}, {C: B}` |
 
 #### Indented child scope
 
@@ -160,11 +160,11 @@ A =>
   D > E
 ```
 
-| Scope | Operator | Signature | Nodes | Compiled |
-|-------|----------|-----------|-------|----------|
-| 1 | `=>` | A | B, D (from child scope) | `{A: [B, D]}` |
-| 1a (child) | `=` | B | C | `{C: B}` |
-| 1b (child) | `>` | D | E | `{D: E}` |
+| Scope      | Operator | Signature | Nodes                   | Compiled      |
+| ---------- | -------- | --------- | ----------------------- | ------------- |
+| 1          | `=>`     | A         | B, D (from child scope) | `{A: [B, D]}` |
+| 1a (child) | `=`      | B         | C                       | `{C: B}`      |
+| 1b (child) | `>`      | D         | E                       | `{D: E}`      |
 
 Child-scope items B and D are the CANONIZE nodes for scope 1. Each child item is also compiled recursively.
 
@@ -176,9 +176,9 @@ A == B
   D
 ```
 
-| Scope | Operator | Signature | Nodes | Compiled |
-|-------|----------|-----------|-------|----------|
-| 1 | `==` | A | B, C, D (from child scope) | `{A: B}, {B: A}, {A: C}, {C: A}, {A: D}, {D: A}` |
+| Scope | Operator | Signature | Nodes                      | Compiled                                         |
+| ----- | -------- | --------- | -------------------------- | ------------------------------------------------ |
+| 1     | `==`     | A         | B, C, D (from child scope) | `{A: B}, {B: A}, {A: C}, {C: A}, {A: D}, {D: A}` |
 
 Indentation extends the enclosing operator's scope. The signature carries forward.
 
@@ -251,12 +251,13 @@ The parser attaches inline annotations to the nearest `Signature` node.
 
 ### 6.1 Entry Model
 
-Each compiled entry is a **KLine**:
+Each compiled entry is a **KLine** (the same `KLine` type used throughout Kalvin; there is no separate `CompiledEntry` subclass):
 
 ```
-CompiledEntry:
+KLine:
     signature: uint64              # encoded identity key
     nodes: list[uint64]             # encoded node values (always a list, may be empty)
+    dbg: KDbg                       # op (structural state) + diagnostic fields
 ```
 
 **No singleton rule.** Nodes are always a list. An identity entry has an empty list. A single-node entry has a one-element list. A multi-node entry has multiple elements.
@@ -265,13 +266,13 @@ CompiledEntry:
 
 Each emitted entry is tagged with a significance level based on its structural state (the resulting signature↔nodes relationship, recorded in the `op` field):
 
-| State | Level | Meaning |
-|----------|-------|---------|
-| COUNTERSIGNED (`==`) | S1 | Mutual / bidirectional |
-| UNDERSIGNED (`=`) | S3 | Unidirectional reversed |
-| CANONIZED (`=>`) | S2 | Canonical |
-| CONNOTED (`>`) | S3 | Connotative |
-| IDENTITY (bare) | S4 | Identity — bare node, no relationships |
+| State                | Level | Meaning                                |
+| -------------------- | ----- | -------------------------------------- |
+| COUNTERSIGNED (`==`) | S1    | Mutual / bidirectional                 |
+| UNDERSIGNED (`=`)    | S3    | Unidirectional reversed                |
+| CANONIZED (`=>`)     | S2    | Canonical                              |
+| CONNOTED (`>`)       | S3    | Connotative                            |
+| IDENTITY (bare)      | S4    | Identity — bare node, no relationships |
 
 Significance bits are not encoded into the token IDs. The level is carried as metadata on the compiled entry.
 
@@ -326,7 +327,7 @@ All items in scope form a single kline's node list.
 
 ### 7.6 Subscript Blocks
 
-A subscript block (indented constructs after any operator) is flattened to extract all items for the parent scope. Items are then compiled recursively.
+A subscript block (indented constructs after an operator) is flattened to extract all items for the parent scope. Items are then compiled recursively.
 
 ```
 A =>
@@ -335,6 +336,17 @@ A =>
 ```
 
 Items in child scope: B, C. CANONIZE aggregates → `{A: [B, C]}`. Recursive compilation of children: `{D: [C]}`, `{B: []}`, `{C: []}`, `{D: []}`.
+
+**Subscript identity rule.** In a CANONIZE subscript block, every identifier that appears in the block must be the signature of at least one emitted entry. Some identifiers never produce such an entry on their own:
+
+- A **leaf Signature item** (a bare node like `B` above) emits no operator entry, so it has no entry whose signature is `B`.
+- An **UNDERSIGN scope sig** (`C = D` produces `{D: [C]}` — the scope's own sig `C` is never a signature).
+
+For these, an IDENTITY entry `{sig: []}` is emitted to fill the gap. Identity emission is deduplicated: if the identifier already has an IDENTITY entry, or was already introduced as an MTS component, or is a compound already introduced by its CANONIZE entry, no new IDENTITY is emitted.
+
+**MTS-expanded sig suppression.** This identity filling applies only when the CANONIZE scope's sig did **not** trigger MTS — i.e. it is a single-character sig. A multi-character CANONIZE sig already receives component identities from its own MTS expansion (§8), so subscript identity would only produce spurious duplicates and is suppressed. (This is why §14.11 emits no identity for `ALL`'s subscript children `A`, `L` — they were already introduced by `MHALL`'s MTS expansion.)
+
+The identity-filling flag does not propagate between CANONIZE scopes; only the immediate CANONIZE subscript block is affected. Non-CANONIZE operators with indented child blocks do **not** trigger identity filling — their child items are already collected as the parent operator's nodes (§3, §14.10).
 
 ---
 
@@ -410,22 +422,25 @@ Four rules govern resolution:
 **Rule B1 — Binding.** A binding maps a single character to a word. Once bound in a scope, it cannot be re-bound within that scope.
 
 **Rule B2 — Characters Seek Bindings.** When the emitter encounters a single-character signature, resolution proceeds in this order:
+
 1. Inline annotation on this position → bind immediately (Rule B4).
 2. Block annotations → search current scope most-recent-first, then parent scopes upward (Rule B3).
 
 **Rule B3 — First-Letter Matching.** Block annotations match by first letter, case-insensitive: `word[0].lower() == char.lower()`. An occurrence counter per scope per character handles disambiguation:
+
 - **Single match** (unambiguous): bind the word. Counter does NOT increment.
 - **Multiple matches** (ambiguous): bind the Nth word where N = current counter value, then increment counter by 1.
 - **Counter exceeds matches**: no match in this annotation — continue to next annotation or outer scope.
-- **No matches in any scope**: the character is not resolved (no binding); it is encoded as its own raw BPE token (see §10).
+- **No matches in any scope**: the character is not resolved (no binding); it is encoded as its own raw BPE token (§11.2).
 
-The counter is per-scope-per-character, keyed on the lowercase character value. Each new scope starts at zero.
+The counter is per-scope-per-character, keyed on the lowercase character value. Each new scope starts at zero. **Pushing a new scope clears the occurrence counters in all existing (parent) scopes**, so when resolution falls through from a child scope to a parent, the parent's counter restarts fresh rather than retaining stale state from before the child was entered.
 
 **Rule B4 — Inline Override.** An inline annotation `S(ubject)` binds immediately, bypassing the occurrence counter. Additionally, it retroactively patches the matching character in the parent scope's MTS CANONIZE entry. Only the immediate parent scope is patched — no propagation beyond one level. If the character is not found in the parent's MTS entry, the override is a safe no-op.
 
 ### 10.2 Binding Scope
 
 Scopes are created by operator boundaries (§3). Each scope holds:
+
 - **Annotations**: ordered collection of block annotations, searched most-recent-first.
 - **Occurrence counters**: per-character disambiguation counters, starting at zero.
 
@@ -435,11 +450,11 @@ Characters seek from the current (innermost) scope first, then parent scopes upw
 
 The BindingScope is a lightweight scope stack:
 
-| Method | Description |
-|--------|-------------|
-| `push_scope()` | Push a new scope onto the stack |
-| `pop_scope()` | Pop the top scope |
-| `add_words(words)` | Append a word list to the current scope |
+| Method                        | Description                                                     |
+| ----------------------------- | --------------------------------------------------------------- |
+| `push_scope()`                | Push a new scope onto the stack                                 |
+| `pop_scope()`                 | Pop the top scope                                               |
+| `add_words(words)`            | Append a word list to the current scope                         |
 | `resolve(char) → str \| None` | Walk the scope stack, first-letter matching, occurrence counter |
 
 **Resolution failure.** When `BindingScope.resolve(char)` returns `None`, the identifier is encoded as its own raw BPE token — the same encoding path as any resolved identifier, minus the word binding. There is no named resolution-outcome state and no fallback encoding scheme.
@@ -501,29 +516,26 @@ BPE annotations are the mechanism by which the BPE token ID component of a node 
 ### 12.1 Module Structure
 
 ```
-kscript/
+ks/
 ├── __init__.py         # KScript class (public API)
-├── token.py            # TokenType enum, Token dataclass
-├── lexer.py            # Lexer (source → tokens)
-├── ast.py              # AST node dataclasses
-├── parser.py           # Parser (tokens → AST)
-├── ast_emitter.py      # ASTEmitter (AST → symbolic entries)
-├── token_encoder.py    # TokenEncoder (symbolic → encoded entries)
-├── binding_scope.py    # BindingScope (NLP binding resolution)
-└── compiler.py         # Compiler (orchestrator)
+└── ...                 # (token.py, lexer.py, ast.py, parser.py,
+                        #  ast_emitter.py, token_encoder.py,
+                        #  binding_scope.py, compiler.py)
 ```
+
+> **Note:** The module package is `ks` (imported as `from ks import KScript`). The package lives under `src/ks/`.
 
 ### 12.2 Compiler
 
-The Compiler orchestrates the pipeline. It creates the BindingScope (NLP mode only), passes it to the ASTEmitter, and passes the symbolic output to the TokenEncoder. No encoding logic lives in the Compiler itself.
+The Compiler orchestrates the pipeline. It always creates a BindingScope and pushes a root scope, passes it to the ASTEmitter, and passes the symbolic output to the TokenEncoder. There is no "NLP mode" switch — NLP data is mandatory and the BindingScope is always active (§10). No encoding logic lives in the Compiler itself.
 
 ### 12.3 Dependencies
 
-| Dependency | Used By |
-|------------|---------|
-| `KLine` | CompiledEntry base class |
-| `KTokenizer` | TokenEncoder encoding/decoding |
-| `make_signature()` | Signature construction |
+| Dependency         | Used By                                                    |
+| ------------------ | ---------------------------------------------------------- |
+| `KLine`            | Compiled entry type (no separate `CompiledEntry` subclass) |
+| `KTokenizer`       | TokenEncoder encoding/decoding                             |
+| `make_signature()` | Signature construction                                     |
 
 ---
 
@@ -532,16 +544,16 @@ The Compiler orchestrates the pipeline. It creates the BindingScope (NLP mode on
 ### 13.1 Python API
 
 ```python
-from kscript import KScript
+from ks import KScript
 
 # Compile from source string
 entries = KScript("A == B").entries
 
-# Compile with specific tokenizer
-entries = KScript("A == B", tokenizer=NLPTokenizer()).entries
+# Compile with a specific tokenizer
+entries = KScript("A == B", tokenizer=NLPTokenizer.from_files()).entries
 ```
 
-The `entries` property returns a list of `CompiledEntry` objects.
+The `entries` property returns a list of `KLine` objects. The tokenizer defaults to `NLPTokenizer.from_files()` — NLP data is mandatory, so a tokenizer is always in effect.
 
 ---
 
@@ -555,9 +567,9 @@ A
 
 Compiled:
 
-| Entry | Signature | Nodes | Op | Level |
-|-------|-----------|-------|----|-------|
-| 1 | A | [] | IDENTITY | S4 |
+| Entry | Signature | Nodes | Op       | Level |
+| ----- | --------- | ----- | -------- | ----- |
+| 1     | A         | []    | IDENTITY | S4    |
 
 ### 14.2 Bidirectional Link
 
@@ -567,10 +579,10 @@ A == B
 
 Compiled:
 
-| Entry | Signature | Nodes | Op | Level |
-|-------|-----------|-------|----|-------|
-| 1 | A | [B] | COUNTERSIGNED | S1 |
-| 2 | B | [A] | COUNTERSIGNED | S1 |
+| Entry | Signature | Nodes | Op            | Level |
+| ----- | --------- | ----- | ------------- | ----- |
+| 1     | A         | [B]   | COUNTERSIGNED | S1    |
+| 2     | B         | [A]   | COUNTERSIGNED | S1    |
 
 ### 14.3 Undersign (Reversed)
 
@@ -580,9 +592,9 @@ A = B
 
 Compiled:
 
-| Entry | Signature | Nodes | Op | Level |
-|-------|-----------|-------|-------|-------|
-| 1 | B | [A] | UNDERSIGNED | S3 |
+| Entry | Signature | Nodes | Op          | Level |
+| ----- | --------- | ----- | ----------- | ----- |
+| 1     | B         | [A]   | UNDERSIGNED | S3    |
 
 ### 14.4 Connotate (Forward)
 
@@ -592,9 +604,9 @@ A > B
 
 Compiled:
 
-| Entry | Signature | Nodes | Op | Level |
-|-------|-----------|-------|-------|-------|
-| 1 | A | [B] | CONNOTED | S3 |
+| Entry | Signature | Nodes | Op       | Level |
+| ----- | --------- | ----- | -------- | ----- |
+| 1     | A         | [B]   | CONNOTED | S3    |
 
 ### 14.5 Self-Identity
 
@@ -604,9 +616,9 @@ A = A
 
 Compiled:
 
-| Entry | Signature | Nodes | Op | Level |
-|-------|-----------|-------|-------|-------|
-| 1 | A | [] | IDENTITY | S4 |
+| Entry | Signature | Nodes | Op       | Level |
+| ----- | --------- | ----- | -------- | ----- |
+| 1     | A         | []    | IDENTITY | S4    |
 
 ### 14.6 MTS Expansion
 
@@ -616,12 +628,12 @@ ABC
 
 Compiled:
 
-| Entry | Signature | Nodes | Op | Level |
-|-------|-----------|-------|---------|-------|
-| 1 | A | [] | IDENTITY | S4 |
-| 2 | B | [] | IDENTITY | S4 |
-| 3 | C | [] | IDENTITY | S4 |
-| 4 | ABC | [A, B, C] | CANONIZED | S2 |
+| Entry | Signature | Nodes     | Op        | Level |
+| ----- | --------- | --------- | --------- | ----- |
+| 1     | A         | []        | IDENTITY  | S4    |
+| 2     | B         | []        | IDENTITY  | S4    |
+| 3     | C         | []        | IDENTITY  | S4    |
+| 4     | ABC       | [A, B, C] | CANONIZED | S2    |
 
 ### 14.7 Operator Chain
 
@@ -631,12 +643,12 @@ A == B > C = D
 
 Compiled:
 
-| Entry | Signature | Nodes | Op | Level |
-|-------|-----------|-------|-------------|-------|
-| 1 | A | [B] | COUNTERSIGNED | S1 |
-| 2 | B | [A] | COUNTERSIGNED | S1 |
-| 3 | B | [C] | CONNOTED | S3 |
-| 4 | D | [C] | UNDERSIGNED | S3 |
+| Entry | Signature | Nodes | Op            | Level |
+| ----- | --------- | ----- | ------------- | ----- |
+| 1     | A         | [B]   | COUNTERSIGNED | S1    |
+| 2     | B         | [A]   | COUNTERSIGNED | S1    |
+| 3     | B         | [C]   | CONNOTED      | S3    |
+| 4     | D         | [C]   | UNDERSIGNED   | S3    |
 
 ### 14.8 CANONIZE with Subscript Block
 
@@ -648,13 +660,13 @@ A =>
 
 Compiled:
 
-| Entry | Signature | Nodes | Op | Level |
-|-------|-----------|-------|---------|-------|
-| 1 | A | [B, C] | CANONIZED | S2 |
-| 2 | D | C | UNDERSIGNED | S3 |
-| 3 | B | [] | IDENTITY | S4 |
-| 4 | C | [] | IDENTITY | S4 |
-| 5 | D | [] | IDENTITY | S4 |
+| Entry | Signature | Nodes  | Op          | Level |
+| ----- | --------- | ------ | ----------- | ----- |
+| 1     | A         | [B, C] | CANONIZED   | S2    |
+| 2     | D         | [C]    | UNDERSIGNED | S3    |
+| 3     | B         | []     | IDENTITY    | S4    |
+| 4     | C         | []     | IDENTITY    | S4    |
+| 5     | D         | []     | IDENTITY    | S4    |
 
 ### 14.9 Chained CANONIZE
 
@@ -664,11 +676,11 @@ A => B => C
 
 Compiled:
 
-| Entry | Signature | Nodes | Op | Level |
-|-------|-----------|-------|---------|-------|
-| 1 | A | [B] | CANONIZED | S2 |
-| 2 | B | [C] | CANONIZED | S2 |
-| 3 | C | [] | IDENTITY | S4 |
+| Entry | Signature | Nodes | Op        | Level |
+| ----- | --------- | ----- | --------- | ----- |
+| 1     | A         | [B]   | CANONIZED | S2    |
+| 2     | B         | [C]   | CANONIZED | S2    |
+| 3     | C         | []    | IDENTITY  | S4    |
 
 ### 14.10 Non-CANONIZE with Indent
 
@@ -680,14 +692,14 @@ A == B
 
 Compiled:
 
-| Entry | Signature | Nodes | Op | Level |
-|-------|-----------|-------|-------------|-------|
-| 1 | A | [B] | COUNTERSIGNED | S1 |
-| 2 | B | [A] | COUNTERSIGNED | S1 |
-| 3 | A | [C] | COUNTERSIGNED | S1 |
-| 4 | C | [A] | COUNTERSIGNED | S1 |
-| 5 | A | [D] | COUNTERSIGNED | S1 |
-| 6 | D | [A] | COUNTERSIGNED | S1 |
+| Entry | Signature | Nodes | Op            | Level |
+| ----- | --------- | ----- | ------------- | ----- |
+| 1     | A         | [B]   | COUNTERSIGNED | S1    |
+| 2     | B         | [A]   | COUNTERSIGNED | S1    |
+| 3     | A         | [C]   | COUNTERSIGNED | S1    |
+| 4     | C         | [A]   | COUNTERSIGNED | S1    |
+| 5     | A         | [D]   | COUNTERSIGNED | S1    |
+| 6     | D         | [A]   | COUNTERSIGNED | S1    |
 
 ### 14.11 Complex Nested (Full)
 
@@ -703,30 +715,30 @@ MHALL == SVO =>
 
 Compiled:
 
-| # | Entry | Signature | Nodes | Op | Level |
-|---|-------|-----------|-------|-------------|-------|
-| 1 | MTS M | M | [] | IDENTITY | S4 |
-| 2 | MTS H | H | [] | IDENTITY | S4 |
-| 3 | MTS A | A | [] | IDENTITY | S4 |
-| 4 | MTS L | L | [] | IDENTITY | S4 |
-| 5 | MTS MHALL canonize | MHALL | [M, H, A, L, L] | CANONIZED | S2 |
-| 6 | MTS S | S | [] | IDENTITY | S4 |
-| 7 | MTS V | V | [] | IDENTITY | S4 |
-| 8 | MTS O | O | [] | IDENTITY | S4 |
-| 9 | MTS SVO canonize | SVO | [S, V, O] | CANONIZED | S2 |
-| 10 | Countersign | MHALL | [SVO] | COUNTERSIGNED | S1 |
-| 11 | Countersign reverse | SVO | [MHALL] | COUNTERSIGNED | S1 |
-| — | SVO canonize subscript | — | — | — | Dropped (canonize dedup: identical to entry 9) |
-| 12 | Undersign S | M | [S] | UNDERSIGNED | S3 |
-| 13 | Undersign V | H | [V] | UNDERSIGNED | S3 |
-| — | MTS ALL A | — | — | — | Dropped (identity dedup: {A:[]} identical to entry 3) |
-| — | MTS ALL L | — | — | — | Dropped (identity dedup: {L:[]} identical to entry 4) |
-| 14 | MTS ALL canonize | ALL | [A, L, L] | CANONIZED | S2 |
-| 15 | Undersign O | ALL | [O] | UNDERSIGNED | S3 |
-| — | ALL canonize subscript | — | — | — | Dropped (canonize dedup: identical to entry 14) |
-| 16 | Undersign D | D | [A] | UNDERSIGNED | S3 |
-| 17 | Undersign M | M | [L] | UNDERSIGNED | S3 |
-| 18 | Connotate | L | [O] | CONNOTED | S3 |
+| #   | Entry                  | Signature | Nodes           | Op            | Level                                                 |
+| --- | ---------------------- | --------- | --------------- | ------------- | ----------------------------------------------------- |
+| 1   | MTS M                  | M         | []              | IDENTITY      | S4                                                    |
+| 2   | MTS H                  | H         | []              | IDENTITY      | S4                                                    |
+| 3   | MTS A                  | A         | []              | IDENTITY      | S4                                                    |
+| 4   | MTS L                  | L         | []              | IDENTITY      | S4                                                    |
+| 5   | MTS MHALL canonize     | MHALL     | [M, H, A, L, L] | CANONIZED     | S2                                                    |
+| 6   | MTS S                  | S         | []              | IDENTITY      | S4                                                    |
+| 7   | MTS V                  | V         | []              | IDENTITY      | S4                                                    |
+| 8   | MTS O                  | O         | []              | IDENTITY      | S4                                                    |
+| 9   | MTS SVO canonize       | SVO       | [S, V, O]       | CANONIZED     | S2                                                    |
+| 10  | Countersign            | MHALL     | [SVO]           | COUNTERSIGNED | S1                                                    |
+| 11  | Countersign reverse    | SVO       | [MHALL]         | COUNTERSIGNED | S1                                                    |
+| —   | SVO canonize subscript | —         | —               | —             | Dropped (canonize dedup: identical to entry 9)        |
+| 12  | Undersign S            | M         | [S]             | UNDERSIGNED   | S3                                                    |
+| 13  | Undersign V            | H         | [V]             | UNDERSIGNED   | S3                                                    |
+| —   | MTS ALL A              | —         | —               | —             | Dropped (identity dedup: {A:[]} identical to entry 3) |
+| —   | MTS ALL L              | —         | —               | —             | Dropped (identity dedup: {L:[]} identical to entry 4) |
+| 14  | MTS ALL canonize       | ALL       | [A, L, L]       | CANONIZED     | S2                                                    |
+| 15  | Undersign O            | ALL       | [O]             | UNDERSIGNED   | S3                                                    |
+| —   | ALL canonize subscript | —         | —               | —             | Dropped (canonize dedup: identical to entry 14)       |
+| 16  | Undersign D            | D         | [A]             | UNDERSIGNED   | S3                                                    |
+| 17  | Undersign M            | M         | [L]             | UNDERSIGNED   | S3                                                    |
+| 18  | Connotate              | L         | [O]             | CONNOTED      | S3                                                    |
 
 > **MTS deduplication in action:** Four entries are silently dropped because they duplicate already-emitted MTS entries. Two component identity entries (MTS ALL component A and L) are dropped because MHALL's expansion already provided them. Two canonization entries (SVO subscript and ALL subscript) are dropped because their MTS canonization counterparts already exist. Compound identifiers receive no IDENTITY of their own (an identity requires a single-token signature), so there is nothing to drop for those. Only MTS-produced entries (component identity and canonization) are deduplicated — operator-produced duplicates are emitted as-is.
 
@@ -744,44 +756,47 @@ MHALL == SVO =>
 ```
 
 Binding resolution:
+
 - Block annotation `(Mary Had A Little Lamb)` provides words for MHALL's characters.
 - `M` → "Mary", `H` → "Had", `A` → "A" (first-letter match), `L` → "Little" (counter 0), `L` → "Lamb" (counter 1, ambiguous).
 - `S(ubject)` → inline binding, overrides `S` → "Subject" in parent MTS.
 
 MTS for MHALL (resolved):
+
 ```
 {Mary: []}, {Had: []}, {A: []}, {Little: []}, {Lamb: []}
 {MHALL: [Mary, Had, A, Little, Lamb]}
 ```
 
 With Rule B4 override, the parent SVO canonize entry becomes:
+
 ```
 {SVO: [Subject, V, O]}    (S patched to "Subject")
 ```
 
 Compiled (resolved-word level; mirrors §14.11's structure). MHALL has five distinct resolved components — no intra-expansion dedup — so this table has 19 entries versus §14.11's 18:
 
-| # | Signature | Nodes | Op | Level |
-|---|-----------|-------|-------------|-------|
-| 1 | Mary | [] | IDENTITY | S4 |
-| 2 | Had | [] | IDENTITY | S4 |
-| 3 | A | [] | IDENTITY | S4 |
-| 4 | Little | [] | IDENTITY | S4 |
-| 5 | Lamb | [] | IDENTITY | S4 |
-| 6 | MHALL | [Mary, Had, A, Little, Lamb] | CANONIZED | S2 |
-| 7 | S | [] | IDENTITY | S4 |
-| 8 | V | [] | IDENTITY | S4 |
-| 9 | O | [] | IDENTITY | S4 |
-| 10 | SVO | [Subject, V, O] | CANONIZED | S2 |
-| 11 | MHALL | [SVO] | COUNTERSIGNED | S1 |
-| 12 | SVO | [MHALL] | COUNTERSIGNED | S1 |
-| 13 | Mary | [Subject] | UNDERSIGNED | S3 |
-| 14 | Had | [V] | UNDERSIGNED | S3 |
-| 15 | ALL | [A, Little, Lamb] | CANONIZED | S2 |
-| 16 | ALL | [O] | UNDERSIGNED | S3 |
-| 17 | D | [A] | UNDERSIGNED | S3 |
-| 18 | Mary | [Little] | UNDERSIGNED | S3 |
-| 19 | Lamb | [O] | CONNOTED | S3 |
+| #   | Signature | Nodes                        | Op            | Level |
+| --- | --------- | ---------------------------- | ------------- | ----- |
+| 1   | Mary      | []                           | IDENTITY      | S4    |
+| 2   | Had       | []                           | IDENTITY      | S4    |
+| 3   | A         | []                           | IDENTITY      | S4    |
+| 4   | Little    | []                           | IDENTITY      | S4    |
+| 5   | Lamb      | []                           | IDENTITY      | S4    |
+| 6   | MHALL     | [Mary, Had, A, Little, Lamb] | CANONIZED     | S2    |
+| 7   | S         | []                           | IDENTITY      | S4    |
+| 8   | V         | []                           | IDENTITY      | S4    |
+| 9   | O         | []                           | IDENTITY      | S4    |
+| 10  | SVO       | [Subject, V, O]              | CANONIZED     | S2    |
+| 11  | MHALL     | [SVO]                        | COUNTERSIGNED | S1    |
+| 12  | SVO       | [MHALL]                      | COUNTERSIGNED | S1    |
+| 13  | Mary      | [Subject]                    | UNDERSIGNED   | S3    |
+| 14  | Had       | [V]                          | UNDERSIGNED   | S3    |
+| 15  | ALL       | [A, Little, Lamb]            | CANONIZED     | S2    |
+| 16  | ALL       | [O]                          | UNDERSIGNED   | S3    |
+| 17  | D         | [A]                          | UNDERSIGNED   | S3    |
+| 18  | Mary      | [Little]                     | UNDERSIGNED   | S3    |
+| 19  | Lamb      | [O]                          | CONNOTED      | S3    |
 
 SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL component identities (A, Little, Lamb) are dropped by identity dedup. `V`, `O`, `D` have no word binding and encode to their own raw NLP-BPE nodes (§10 resolution-failure clause) — the same encoding path as any resolved character, minus the word.
 
@@ -789,56 +804,56 @@ SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL componen
 
 ## 15. Test Matrix
 
-| ID | Criterion | Category |
-|----|-----------|----------|
-| **Lexer** | | |
-| KS-1 | All token types recognized: SIGNATURE, COUNTERSIGN, CANONIZE, CONNOTATE, UNDERSIGN, ANNOTATION, NEWLINE, INDENT, DEDENT, EOF | Lexer |
-| KS-2 | Multi-char operator priority: `==`, `=>` matched before `=`, `>` | Lexer |
-| KS-3 | BPE annotations: `(...)` with nested parens preserved as ANNOTATION tokens | Lexer |
-| KS-4 | Indent/dedent tracking: Python-style INDENT/DEDENT tokens | Lexer |
-| KS-5 | Edge cases: empty input, whitespace-only, unknown characters raise LexerError | Lexer |
-| **Parser** | | |
-| KS-6 | AST structure reflects scope model: OperatorScope nodes with sig, op, items, child_block | Parser |
-| KS-7 | Block parsing: INDENT/DEDENT creates Block nodes | Parser |
-| KS-8 | Annotations preserved as AST nodes (not discarded) | Parser |
-| KS-9 | Inline annotation attachment: sig-side and node-side | Parser |
-| KS-10 | Empty source produces empty script (no error) | Parser |
-| **Scope & Operators** | | |
-| KS-11 | COUNTERSIGN per-item: `A == B C` → `{A:B}, {B:A}, {A:C}, {C:A}` | Scope |
-| KS-12 | UNDERSIGN per-item reversed: `A = B C` → `{B:A}, {C:A}` | Scope |
-| KS-13 | CONNOTATE per-item: `A > B C` → `{A:B}, {A:C}` | Scope |
-| KS-14 | CANONIZE aggregates: `A => B C D` → `{A:[B,C,D]}` | Scope |
-| KS-15 | Operator chain: `A == B > C = D` → correct signatures per scope | Scope |
-| KS-16 | Indent extends scope: items in child block belong to parent operator | Scope |
-| KS-17 | DEDENT returns to parent scope | Scope |
-| KS-18 | Non-CANONIZE with indent: per-item emission extends into child block | Scope |
-| **MTS** | | |
-| KS-19 | MTS expansion: multi-char identifier produces component identities + canonization | MTS |
-| KS-20 | No MTS for single-char identifiers | MTS |
-| KS-21 | MTS on node side: `A == MHALL` triggers MTS for MHALL | MTS |
-| KS-22 | Node count invariant: MTS node count equals character count | MTS |
-| **Binding** | | |
-| KS-23 | Block annotation first-letter matching: `(Mary Had A Little Lamb)` + `MHALL` | Binding |
-| KS-24 | Occurrence counter: duplicate letters resolved to different words | Binding |
-| KS-25 | Inline binding: `S(ubject)` resolves immediately, bypasses counter | Binding |
-| KS-26 | Rule B4 override: inline binding patches parent MTS CANONIZE entry | Binding |
-| KS-27 | Scope inheritance: characters seek from inner to outer scope | Binding |
-| KS-28 | Scope shadowing: inner scope binding shadows outer for same character | Binding |
-| KS-29 | Counter reset: each new scope starts counters at zero | Binding |
-| KS-30 | Unresolved identifier (BindingScope returns None) is encoded as its own raw BPE token — no special fallback state | Binding |
-| KS-31 | Inert annotation: no matching characters → no effect | Binding |
-| KS-32 | An unresolved single character (e.g. `Z`) encodes to a single NLP-BPE uint64 node — the same encoding path as any resolved character | Encoding |
-| **Self-Identity** | | |
-| KS-33 | Self-identity: `A = A` → `{A: []}` with op=IDENTITY | Operators |
-| **Structure** | | |
-| KS-34 | Nodes always a list: `A => B` → `{A: [B]}`, `A` → `{A: []}` | Structure |
-| **Integration** | | |
-| KS-35 | Complex nested example (§14.11) produces correct complete entry list | Integration |
-| KS-36 | NLP-bound example (§14.12) produces correct resolved entries | Integration |
-| KS-37 | Uniform-NLP integration: all characters (bound and unresolved) produce valid NLP-BPE nodes | Integration |
-| **MTS Deduplication** | | |
-| KS-38 | Component identity dedup: overlapping MTS expansions silently drop duplicate character identities (S4) | MTS Dedup |
-| KS-39 | Intra-expansion dedup: repeated characters in one compound emit only one identity (e.g., second L in MHALL) | MTS Dedup |
-| KS-40 | Canonization dedup: CANONIZE entries with same (sig, nodes) silently dropped across MTS and subscript | MTS Dedup |
-| KS-41 | Canonical resolution (§8.3): an identifier's MTS components are identical wherever it appears (node-side and signature-side), even under an ambiguous occurrence counter | MTS |
-| KS-42 | Canonical encoding (§11.3/§11.4): exactly one CANONIZED kline per compound identifier; identity klines carry single-token signatures only (CONTEXT.md "Identity") | Encoding |
+| ID                    | Criterion                                                                                                                                                                | Category    |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| **Lexer**             |                                                                                                                                                                          |             |
+| KS-1                  | All token types recognized: SIGNATURE, COUNTERSIGN, CANONIZE, CONNOTATE, UNDERSIGN, ANNOTATION, NEWLINE, INDENT, DEDENT, EOF                                             | Lexer       |
+| KS-2                  | Multi-char operator priority: `==`, `=>` matched before `=`, `>`                                                                                                         | Lexer       |
+| KS-3                  | BPE annotations: `(...)` with nested parens preserved as ANNOTATION tokens                                                                                               | Lexer       |
+| KS-4                  | Indent/dedent tracking: Python-style INDENT/DEDENT tokens                                                                                                                | Lexer       |
+| KS-5                  | Edge cases: empty input, whitespace-only, unknown characters raise LexerError                                                                                            | Lexer       |
+| **Parser**            |                                                                                                                                                                          |             |
+| KS-6                  | AST structure reflects scope model: OperatorScope nodes with sig, op, items, child_block                                                                                 | Parser      |
+| KS-7                  | Block parsing: INDENT/DEDENT creates Block nodes                                                                                                                         | Parser      |
+| KS-8                  | Annotations preserved as AST nodes (not discarded)                                                                                                                       | Parser      |
+| KS-9                  | Inline annotation attachment: sig-side and node-side                                                                                                                     | Parser      |
+| KS-10                 | Empty source produces empty script (no error)                                                                                                                            | Parser      |
+| **Scope & Operators** |                                                                                                                                                                          |             |
+| KS-11                 | COUNTERSIGN per-item: `A == B C` → `{A:B}, {B:A}, {A:C}, {C:A}`                                                                                                          | Scope       |
+| KS-12                 | UNDERSIGN per-item reversed: `A = B C` → `{B:A}, {C:A}`                                                                                                                  | Scope       |
+| KS-13                 | CONNOTATE per-item: `A > B C` → `{A:B}, {A:C}`                                                                                                                           | Scope       |
+| KS-14                 | CANONIZE aggregates: `A => B C D` → `{A:[B,C,D]}`                                                                                                                        | Scope       |
+| KS-15                 | Operator chain: `A == B > C = D` → correct signatures per scope                                                                                                          | Scope       |
+| KS-16                 | Indent extends scope: items in child block belong to parent operator                                                                                                     | Scope       |
+| KS-17                 | DEDENT returns to parent scope                                                                                                                                           | Scope       |
+| KS-18                 | Non-CANONIZE with indent: per-item emission extends into child block                                                                                                     | Scope       |
+| **MTS**               |                                                                                                                                                                          |             |
+| KS-19                 | MTS expansion: multi-char identifier produces component identities + canonization                                                                                        | MTS         |
+| KS-20                 | No MTS for single-char identifiers                                                                                                                                       | MTS         |
+| KS-21                 | MTS on node side: `A == MHALL` triggers MTS for MHALL                                                                                                                    | MTS         |
+| KS-22                 | Node count invariant: MTS node count equals character count                                                                                                              | MTS         |
+| **Binding**           |                                                                                                                                                                          |             |
+| KS-23                 | Block annotation first-letter matching: `(Mary Had A Little Lamb)` + `MHALL`                                                                                             | Binding     |
+| KS-24                 | Occurrence counter: duplicate letters resolved to different words                                                                                                        | Binding     |
+| KS-25                 | Inline binding: `S(ubject)` resolves immediately, bypasses counter                                                                                                       | Binding     |
+| KS-26                 | Rule B4 override: inline binding patches parent MTS CANONIZE entry                                                                                                       | Binding     |
+| KS-27                 | Scope inheritance: characters seek from inner to outer scope                                                                                                             | Binding     |
+| KS-28                 | Scope shadowing: inner scope binding shadows outer for same character                                                                                                    | Binding     |
+| KS-29                 | Counter reset: each new scope starts counters at zero                                                                                                                    | Binding     |
+| KS-30                 | Unresolved identifier (BindingScope returns None) is encoded as its own raw BPE token — no special fallback state                                                        | Binding     |
+| KS-31                 | Inert annotation: no matching characters → no effect                                                                                                                     | Binding     |
+| KS-32                 | An unresolved single character (e.g. `Z`) encodes to a single NLP-BPE uint64 node — the same encoding path as any resolved character                                     | Encoding    |
+| **Self-Identity**     |                                                                                                                                                                          |             |
+| KS-33                 | Self-identity: `A = A` → `{A: []}` with op=IDENTITY                                                                                                                      | Operators   |
+| **Structure**         |                                                                                                                                                                          |             |
+| KS-34                 | Nodes always a list: `A => B` → `{A: [B]}`, `A` → `{A: []}`                                                                                                              | Structure   |
+| **Integration**       |                                                                                                                                                                          |             |
+| KS-35                 | Complex nested example (§14.11) produces correct complete entry list                                                                                                     | Integration |
+| KS-36                 | NLP-bound example (§14.12) produces correct resolved entries                                                                                                             | Integration |
+| KS-37                 | Uniform-NLP integration: all characters (bound and unresolved) produce valid NLP-BPE nodes                                                                               | Integration |
+| **MTS Deduplication** |                                                                                                                                                                          |             |
+| KS-38                 | Component identity dedup: overlapping MTS expansions silently drop duplicate character identities (S4)                                                                   | MTS Dedup   |
+| KS-39                 | Intra-expansion dedup: repeated characters in one compound emit only one identity (e.g., second L in MHALL)                                                              | MTS Dedup   |
+| KS-40                 | Canonization dedup: CANONIZE entries with same (sig, nodes) silently dropped across MTS and subscript                                                                    | MTS Dedup   |
+| KS-41                 | Canonical resolution (§8.3): an identifier's MTS components are identical wherever it appears (node-side and signature-side), even under an ambiguous occurrence counter | MTS         |
+| KS-42                 | Canonical encoding (§11.3/§11.4): exactly one CANONIZED kline per compound identifier; identity klines carry single-token signatures only (CONTEXT.md "Identity")        | Encoding    |

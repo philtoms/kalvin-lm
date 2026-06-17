@@ -1,4 +1,0 @@
-{"seq": 1, "type": "connected"}
-{"seq": 2, "type": "progress", "status": "started", "lesson": "1", "lessons_total": 4, "lessons_completed": 0}
-{"seq": 3, "type": "progress", "status": "lesson_complete", "lesson": "1", "lessons_total": 4, "lessons_completed": 1}
-{"seq": 4, "type": "disconnected"}

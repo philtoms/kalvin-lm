@@ -12,8 +12,7 @@ Usage::
         print(entry)
 
 The v3 API is intentionally minimal: no file I/O, no ``base`` parameter,
-no ``output()`` method, no ``to_jsonl()``.  Those features belong to the
-v2 API in ``src/kscript/`` and are explicitly out of scope for v3.
+no ``output()`` method, no ``to_jsonl()``.
 
 Spec ref: @specs/kscript.md §13 (Public API).
 """

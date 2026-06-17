@@ -8,13 +8,13 @@ Encoding rules (spec §11):
   - Signature → tokenizer.encode(sig) → uint64 (multi-token results are
     OR-reduced via make_signature()).
   - Nodes → each encoded individually via _encode_node(); multi-token
-    words trigger §11.4 BPE-level MTS.
+    words trigger §11.3 BPE-level MTS.
   - Canonical encoding (§11.4/§11.5): a compound identifier's signature
     is computed once at its CANONIZED definition (OR of its resolved
     component node values) and reused by every reference via the
-    ``_compound_sigs`` registry; compounds are exempt from §11.4; a
+    ``_compound_sigs`` registry; compounds are exempt from §11.3; a
     packed signature never heads an IDENTITY kline (CONTEXT.md
-    "Identity"). Packed signatures are opaque per §11.6.
+    "Identity"). Packed signatures are opaque per §11.5.
 
 Significance levels (compile-time intent):
     COUNTERSIGNED → S1    UNDERSIGNED → S3    CANONIZED → S2
@@ -61,7 +61,7 @@ class TokenEncoder:
         # MTS emissions.  Key is tuple of BPE tokens (same word always
         # produces the same BPE tokens).
         self._decomposed: set[tuple[int, ...]] = set()
-        # Canonical encoding registry (§11.5): a compound identifier's
+        # Canonical encoding registry (§11.4): a compound identifier's
         # signature uint64, computed once at its CANONIZED definition as
         # OR of its resolved component node values, then reused by every
         # referencing entry. The ASTEmitter emits definitions before
@@ -107,8 +107,8 @@ class TokenEncoder:
         is_compound_ref = entry.sig in self._compound_sigs
         sig_is_packed = False
 
-        # Signature: compound refs reuse the registry; compound defs defer
-        # to step 3 below; others use §11.4 MTS for multi-token sigs.
+        # Compound refs reuse the registry; compound defs defer
+        # to step 3 below; others use §11.3 MTS for multi-token sigs.
         if is_compound_ref:
             sig_uint64 = self._compound_sigs[entry.sig]
             sig_is_packed = True
@@ -138,7 +138,7 @@ class TokenEncoder:
                 node_values.append(node_val)
 
         # 3. Compound definition: sig = OR of resolved component node
-        #    values (§11.5); register for reuse by references.
+        #    values (§11.4); register for reuse by references.
         if is_compound_def:
             sig_uint64 = make_signature(node_values)
             self._compound_sigs[entry.sig] = sig_uint64
@@ -150,7 +150,7 @@ class TokenEncoder:
             dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op, packed=sig_is_packed)
 
         # 5. A packed signature cannot head an IDENTITY kline (CONTEXT.md
-        #    "Identity"); the §11.4/§8 decomposition above is the sole
+        #    "Identity"); the §11.3/§8 decomposition above is the sole
         #    representation. Operator entries with a packed sig are
         #    legitimate references and are emitted normally.
         if entry.op == "IDENTITY" and sig_is_packed:
@@ -182,7 +182,7 @@ class TokenEncoder:
         if len(tokens) == 1:
             return (tokens[0], [])
 
-        # Multi-token word → MTS at BPE-token level (§11.4)
+        # Multi-token word → MTS at BPE-token level (§11.3)
         return self._emit_mts_for_tokens(tokens, dbg_label=word, op="IDENTITY")
 
     # MTS emission for multi-token results
@@ -233,7 +233,7 @@ class TokenEncoder:
                 )
 
             # CANONIZE: packed sig → subword tokens. Packed values are
-            # opaque per §11.6 — _build_dbg skips decode for them.
+            # opaque per §11.5 — _build_dbg skips decode for them.
             canon_dbg: KDbg | None = None
             if self._dev:
                 canon_dbg = self._build_dbg(packed, dbg_label, op="CANONIZED", packed=True)
@@ -261,8 +261,8 @@ class TokenEncoder:
     ) -> KDbg:
         """Build a KDbg for a compiled signature.
 
-        A packed signature (§11.4 multi-token word or §11.5 compound) is
-        opaque per §11.6: its low-32 bits are a bitwise OR of several
+        A packed signature (§11.3 multi-token word or §11.4 compound) is
+        opaque per §11.5: its low-32 bits are a bitwise OR of several
         bpe_ids, so decode/grammar-lookup are meaningless (decode may
         crash or return an unrelated word). ``label`` carries the
         human-readable name instead. Single tokens are decoded and
