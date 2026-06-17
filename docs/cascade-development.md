@@ -1,6 +1,6 @@
 # Cascade Development Model
 
-**Purpose:** Agent instructions for producing specs, plans, and implementation tasks using the cascade development model.
+**Purpose:** Agent instructions for maintaining specs, plans, and implementation tasks using the cascade development model.
 
 ---
 
@@ -23,7 +23,7 @@ Every fact lives in exactly one layer. Other layers **reference** it — never p
 | System purpose, philosophy | Data structure definitions, invariants | Algorithm pseudocode, implementation strategy |
 | Conceptual model           | API contracts, pre/postconditions      | File structure, code locations                |
 | Teaching model             | Behavioural rules                      | Build order, phases, estimates                |
-|                            | Acceptance criteria (test matrix)      | Test mapping (spec ID → test function)        |
+|                            | Acceptance criteria (test matrix)      | Test mapping (spec ID)                        |
 |                            | Cross-component dependencies           | Design decisions and rationale                |
 |                            | Explicit scope boundaries              | Status tracking                               |
 
@@ -43,7 +43,7 @@ Every fact lives in exactly one layer. Other layers **reference** it — never p
 
 ### Step 1 — Spec
 
-Create or update specs in `specs/`:
+Update or create specs in `specs/`:
 
 - **Overview** — 1–2 sentences, no philosophy.
 - **Dependencies** — cross-references to other specs.
@@ -57,11 +57,11 @@ Verify: every behavioural rule has at least one test matrix entry.
 
 ### Step 2 — Plan
 
-Create or update plans in `plans/`:
+Update or create plans in `plans/`:
 
 - **Spec References** — links only.
 - **Implementation Tasks** — per component: spec ref, test mapping, pseudocode.
-- **Test Mapping Table** — spec ID → test file → test function → status.
+- **Test Mapping Table** — spec ID → test file → status.
 - **Design Decisions** — resolved questions with rationale.
 - **Status** — progress, blockers.
 
@@ -71,6 +71,6 @@ Verify: every spec reference resolves, every mapped spec ID exists, no spec cont
 
 Verify the full traceability chain:
 
-- vision section → spec criterion → plan task → test function.
+- vision section → spec criterion → plan task.
 - No content duplicated across layers.
 - No broken references.

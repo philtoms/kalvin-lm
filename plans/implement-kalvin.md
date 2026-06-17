@@ -128,7 +128,8 @@ its dependencies are satisfied.
 > **STM spec:** The full STM specification is in `specs/stm.md`. The
 > foundations plan provides the implementation skeleton and test cases.
 > | [`plans/impl/model.md`](impl/model.md) | Model + distance algorithm | 5 | Foundations |
-> | [`plans/impl/agent.md`](impl/agent.md) | Significance constants, Events, Agent, Cogitator | 6-8 | Foundations, Model |
+> | [`plans/impl/agent.md`](impl/agent.md) | Significance constants, Events, Agent | 6-8 | Foundations, Model |
+| [`plans/impl/cogitator.md`](impl/cogitator.md) | Cogitator, CogitationHandler, WorkItem (slow-path dispatcher) | 8 | Model, Agent |
 > | [`plans/impl/structural-grounding.md`](impl/structural-grounding.md) | Structural grounding + extended cogitation | A, A+ | Model, Agent |
 > | [`plans/impl/build-phases.md`](impl/build-phases.md) | Resolved design decisions, phased build, test cases | 0-9 | All (execution plan) |
 > | [`plans/nlp-pipeline.md`](nlp-pipeline.md) | NLP-BPE data preparation + node_to_sig integration | NLP | Foundations, Model, Agent |
@@ -206,7 +207,7 @@ COGITATE_TIMEOUT = 2.0               # Seconds before "done" event
 | 5     | Model             | `model.py`                         | 2-3d       | 1, 2, 4    | model                | ✅     |
 | 6     | Constants         | `model.py` (D_MAX, MASK64)         | 0.5d       | —          | model                | ✅     |
 | 7     | Events            | `events.py`                        | 0.5d       | 1          | agent                | ✅     |
-| 8     | Agent             | `agent.py` (routing + Cogitator)   | 2d         | 1-7        | agent                | ✅     |
+| 8     | Agent             | `agent.py` (routing), `cogitator.py` (slow path) | 2d | 1-7 | agent, cogitator | ✅ |
 | 9     | Persistence       | `agent.py` (extend)                | 1d         | 8          | agent                | ✅     |
 | —     | KScript           | `kscript/`                         | 5d         | 1-3        | kscript              | ✅     |
 | A     | Struct. Grounding | `model.py`, `agent.py`             | 1-2d       | 1-8        | structural-grounding | ✅     |

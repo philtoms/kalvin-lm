@@ -5,8 +5,9 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from kalvin.agent import CogitationHandler, Cogitator, KAgent, WorkItem
+from kalvin.agent import KAgent
 from kalvin.agent_codec import AgentCodec
+from kalvin.cogitator import CogitationHandler, Cogitator, WorkItem
 from kalvin.events import EventBus
 from kalvin.kline import KDbg, KLine
 from kalvin.model import Model
@@ -256,7 +257,7 @@ class TestShortCircuit:
         q.signature = make_signature([999])
 
         with patch(
-            "kalvin.agent.expand",
+            "kalvin.cogitator.expand",
             side_effect=AssertionError("expand should not be called for S4"),
         ):
             result = a.rationalise(q)

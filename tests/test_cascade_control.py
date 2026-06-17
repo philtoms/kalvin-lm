@@ -3,13 +3,14 @@
 Spec: specs/agent.md §Candidate Cap; specs/reactive-delegation.md §Reactive-Round Budget (Default Mode).
 """
 
-from training.harness.bus import MessageBus
-from training.harness.constants import SUPERVISOR_ROLE
-from training.harness.message import Message
-from kalvin.agent import KAgent, WorkItem
+from kalvin.agent import KAgent
+from kalvin.cogitator import WorkItem
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from tests.conftest import requires_nlp_data
+from training.harness.bus import MessageBus
+from training.harness.constants import SUPERVISOR_ROLE
+from training.harness.message import Message
 from training.trainer.curriculum import Curriculum, CurriculumState
 from training.trainer.reactor import Reactor
 

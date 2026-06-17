@@ -10,8 +10,11 @@
 ## 1. Spec References
 
 See **@agent spec** for full definition (rationalisation pipeline, routing,
-cogitation, events, work items).
-Test matrix: AGT-1 through AGT-40.
+events).
+See **@cogitator spec** for the slow path (Cogitator, CogitationHandler,
+WorkItem, S2 expansion) and `plans/impl/cogitator.md` for its implementation.
+Agent test matrix: AGT-1 through AGT-28 plus Serialization.
+Cogitation test matrix (AGT-29..AGT-42) is in @cogitator spec.
 
 See **@model spec** §Significance Semantics for constants and distance rules.
 
@@ -37,7 +40,8 @@ WorkItem(query=KLine, candidate=KLine)
 ```
 
 **Cogitator:** background daemon thread, processes work items via `model.expand()`,
-emits `done` event after idle timeout.
+emits `done` event after idle timeout. Defined in @cogitator spec; implemented
+in `src/kalvin/cogitator.py` (see `plans/impl/cogitator.md`).
 
 ### Significance Constants (Phase 6)
 
@@ -69,7 +73,7 @@ Test matrix: AGT-23 through AGT-27.
 ## 3. Agent + Cogitator Implementation (Phase 8)
 
 **Files:** `src/kalvin/agent.py`, `tests/test_agent.py`
-**Depends on:** Everything
+**Depends on:** Everything (Cogitator via @cogitator spec)
 **Estimate:** 2 days
 
 See **@agent spec** for full definition (rationalisation pipeline phases,
@@ -100,15 +104,16 @@ See **@agent spec** §Rationalisation for the 6-phase pipeline with fast/slow sp
 
 ### WorkItem
 
-See **@agent spec** §Work Items. Named tuple: `(query: KLine, candidate: KLine)`.
+See **@cogitator spec** §Work Items. Defined in `src/kalvin/cogitator.py`.
 
 ### Cogitator Implementation
 
-See **@agent spec** §Cogitation for processing semantics.
+See **@cogitator spec** §Processing and `plans/impl/cogitator.md`.
+`src/kalvin/agent.py` imports `Cogitator`/`CogitationHandler`/`WorkItem`
+from `src/kalvin/cogitator.py` and wires itself as the handler.
 
-**Key implementation detail:** `_process` handles S2 expansion only.
-Ratification handled upstream in `rationalise()`.
-See `plans/impl/structural-grounding.md` for full expansion algorithm.
+**Key implementation detail:** expansion logic lives in `src/kalvin/expand.py`.
+See `plans/impl/structural-grounding.md` for the full expansion algorithm.
 
 ---
 
@@ -182,18 +187,8 @@ See `plans/impl/structural-grounding.md` for full expansion algorithm.
 
 ### Cogitation
 
-| Spec ID | Test                        | Description                                    |
-| ------- | --------------------------- | ---------------------------------------------- |
-| AGT-29  | Countersignature discovery  | S2 → S1 via countersignature in cogitation      |
-| AGT-30  | Join                        | Thread stops cleanly                           |
-| AGT-31  | S2 submits work item        | WorkItem queued with correct fields            |
-| AGT-32  | All yields processed        | Every QC from expand() is evaluated            |
-| AGT-33  | S1 detection                | High-significance QC triggers on_s1 callback   |
-| AGT-34  | S2/S3 expansion             | Non-canonical QC triggers expansion proposals  |
-| AGT-35  | Proposals at any significance | S2 and S3 proposals emitted as frame events |
-| AGT-36  | Boundary S1 + structural check | Promotion only on structural S1            |
-| AGT-37  | Boundary S1 + structural S1 | Promotion occurs                              |
-| AGT-39  | Cogitator break-on-S1       | ✅ test_cogitator_stops_on_s1 — on_s1 exactly once, no expansions after |
+Relocated to **@cogitator spec** (IDs AGT-29..AGT-42, stable).
+See `plans/impl/cogitator.md` §Test Mapping for test functions.
 
 ### Serialization
 

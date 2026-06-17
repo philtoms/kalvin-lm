@@ -9,7 +9,8 @@ from __future__ import annotations
 import threading
 import time
 
-from kalvin.agent import Cogitator, KAgent, WorkItem
+from kalvin.agent import KAgent
+from kalvin.cogitator import Cogitator, WorkItem
 from kalvin.events import EventBus
 from kalvin.kline import KLine
 from kalvin.model import Model
