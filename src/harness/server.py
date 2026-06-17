@@ -25,10 +25,7 @@ from harness.protocol import WebSocketProtocol
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # Configuration
-# ---------------------------------------------------------------------------
-
 
 @dataclass(frozen=True)
 class ParticipantConfig:
@@ -117,18 +114,13 @@ class ConfigError(Exception):
     """Raised when the harness configuration is invalid."""
 
 
-# ---------------------------------------------------------------------------
 # Participant registry
-# ---------------------------------------------------------------------------
 
 # Type for factory callables: (role, bus) -> participant with .on_message(msg)
 ParticipantFactory = Callable[[str, MessageBus], Any]
 
 
-# ---------------------------------------------------------------------------
 # Harness server
-# ---------------------------------------------------------------------------
-
 
 class HarnessServer:
     """The multi-agent harness runtime.
@@ -227,11 +219,9 @@ class HarnessServer:
         server on the current thread.  Blocks until interrupted (SIGINT /
         SIGTERM) or ``stop()`` is called.
         """
-        # Start bus in a background thread.
         self._bus_thread = threading.Thread(target=self._bus.run, name="harness-bus", daemon=True)
         self._bus_thread.start()
 
-        # Run async WS server on the current thread.
         asyncio.run(self._run_async(host, port))
 
     async def _run_async(self, host: str, port: int) -> None:
@@ -247,11 +237,11 @@ class HarnessServer:
         loop.add_signal_handler(signal.SIGTERM, _signal_handler)
         loop.add_signal_handler(signal.SIGINT, _signal_handler)
 
-        # Also support programmatic stop via threading.Event.
+        # Also support programmatic stop via a threading.Event.
         while not stop_event.is_set():
             if self._stop_event.is_set():
                 break
-            # Poll every 200ms so we can check the threading event.
+            # Poll so we can check the threading event.
             try:
                 await asyncio.wait_for(stop_event.wait(), timeout=0.2)
             except (TimeoutError, asyncio.TimeoutError):

@@ -26,12 +26,10 @@ from harness.server import HarnessServer
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Thin wrapper to prevent double-subscription
-# ---------------------------------------------------------------------------
-# Both KAgentAdapter and Trainer call bus.subscribe() in their constructors.
-# HarnessServer._setup() also calls bus.subscribe() on the factory result.
-# Returning this wrapper avoids double-dispatch of every message.
+# Thin wrapper to prevent double-subscription: both KAgentAdapter and
+# Trainer call bus.subscribe() in their constructors, and
+# HarnessServer._setup() also subscribes the factory result — this
+# wrapper's on_message is a no-op to avoid double-dispatch.
 
 
 class _AlreadySubscribed:
@@ -55,13 +53,7 @@ class _AlreadySubscribed:
         return self._participant
 
     def on_message(self, msg: Any) -> None:
-        """No-op — the real participant is already subscribed."""
         pass
-
-
-# ---------------------------------------------------------------------------
-# Argument parsing
-# ---------------------------------------------------------------------------
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -88,11 +80,6 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# ---------------------------------------------------------------------------
-# Extra config sections (not parsed by load_config)
-# ---------------------------------------------------------------------------
-
-
 def _load_extras(path: str | Path) -> dict:
     """Load the full YAML config and return non-participants sections.
 
@@ -112,11 +99,6 @@ def _load_extras(path: str | Path) -> dict:
     return data
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
-
 def main(argv: list[str] | None = None) -> None:
     """CLI entry point: load config, wire participants, run harness."""
     logging.basicConfig(
@@ -130,30 +112,24 @@ def main(argv: list[str] | None = None) -> None:
     config_path = args.config
     extras = _load_extras(config_path)
 
-    # Extract server settings (CLI args override config file)
     server_cfg = extras.get("server", {})
     host = args.host or server_cfg.get("host", "localhost")
     port = args.port or server_cfg.get("port", 8765)
 
-    # Extract trainer settings
     trainer_cfg = extras.get("trainer", {})
 
-    # -- Create bus and server -----------------------------------------------
     bus = MessageBus()
     server = HarnessServer(config_path, bus)
 
-    # -- Shutdown callback list (decoupled) ----------------------------------
     shutdown_callbacks: list = []
 
-    # -- Register embedded participant factories -----------------------------
-
-    # Create shared NLP tokenizer (mandatory — no fallback; raises on data-less machines)
+    # Mandatory NLP tokenizer (no fallback; raises on data-less machines).
     from kalvin.agent import _default_tokenizer as _make_tok
 
     shared_tokenizer = _make_tok()
 
-    # KAgent adapter factory (two-phase wiring to avoid circular dep)
     def kagent_factory(address: str, bus: MessageBus) -> _AlreadySubscribed:
+        # Two-phase wiring to avoid the circular dep.
         from harness.adapter import KAgentAdapter
         from kalvin.agent import KAgent
 
@@ -164,8 +140,6 @@ def main(argv: list[str] | None = None) -> None:
 
     server.register_participant_class("KAgent", kagent_factory)
 
-    # Trainer factory
-    # Capture trainer reference for state persistence on shutdown
     trainer_holder: list = []
 
     def trainer_factory(address: str, bus: MessageBus) -> _AlreadySubscribed:
@@ -175,14 +149,11 @@ def main(argv: list[str] | None = None) -> None:
         curriculum_file = trainer_cfg.get("curriculum_file", "")
         curricula_dir = trainer_cfg.get("curricula_dir", "curricula")
 
-        # Derive state path from curriculum file:
         # curricula/first-steps.md → curricula/first-steps.json
         state_path: str | None = None
         if curriculum_file:
-            curriculum_path = Path(curriculum_file)
-            state_path = str(curriculum_path.with_suffix(".json"))
+            state_path = str(Path(curriculum_file).with_suffix(".json"))
 
-        # Load curriculum from file if specified
         curriculum: Curriculum
         if curriculum_file:
             from trainer.curriculum_document import CurriculumDocument
@@ -190,10 +161,9 @@ def main(argv: list[str] | None = None) -> None:
             doc = CurriculumDocument.from_file(curriculum_file)
             curriculum = Curriculum(doc)
         else:
-            curriculum = Curriculum(lessons=[])  # Empty default; loaded via session startup
+            curriculum = Curriculum(lessons=[])
 
-        # Resolve LLM client and delegation mode from trainer config.
-        # When trainer.llm.enabled is False, the Cogitator is not wired and
+        # When trainer.llm.enabled is False the Cogitator is not wired and
         # reactive decisions are delegated to the supervisor (spec RD-3).
         llm_client, delegate_reactive = _resolve_llm_wiring(trainer_cfg)
 
@@ -210,7 +180,6 @@ def main(argv: list[str] | None = None) -> None:
         )
         trainer_holder.append(trainer)
 
-        # Register state persistence as a shutdown callback
         if state_path:
             shutdown_callbacks.append(lambda t=trainer: _persist_trainer_state(t))
 
@@ -218,11 +187,9 @@ def main(argv: list[str] | None = None) -> None:
 
     server.register_participant_class("Trainer", trainer_factory)
 
-    # -- Register bus.stop() and server.stop() as shutdown callbacks --------
     shutdown_callbacks.append(bus.stop)
     shutdown_callbacks.append(server.stop)
 
-    # -- Run -----------------------------------------------------------------
     try:
         server.run_sync(host=host, port=port)
     except KeyboardInterrupt:

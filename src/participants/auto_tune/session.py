@@ -18,10 +18,7 @@ from typing import Any
 
 import yaml
 
-# ---------------------------------------------------------------------------
 # SessionConfig
-# ---------------------------------------------------------------------------
-
 
 @dataclass
 class SessionConfig:
@@ -57,10 +54,7 @@ class SessionConfig:
         return cls(**filtered)
 
 
-# ---------------------------------------------------------------------------
 # SessionDir
-# ---------------------------------------------------------------------------
-
 
 class SessionDir:
     """Manages the directory layout and git branch for an auto-tune session.
@@ -164,28 +158,23 @@ class SessionDir:
         """
         root = Path(root).resolve()
 
-        # 1. Read harness.yaml for defaults
         resolved_host, resolved_port = _read_harness_defaults(root / "harness.yaml")
         if host is not None:
             resolved_host = host
         if port is not None:
             resolved_port = port
 
-        # 2. Derive model_path
         from kalvin.paths import agent_bin
 
         model_path = str(agent_bin())
 
-        # 3. Capture git state
         created_from_commit = _git("rev-parse", "HEAD", cwd=root).strip()
         created_from_branch = _git("rev-parse", "--abbrev-ref", "HEAD", cwd=root).strip()
 
-        # 4. Create git worktree
         worktree_path = root / ".worktrees" / base_dir / session
         branch_name = f"{base_dir}/{session}"
         _git("worktree", "add", str(worktree_path), "-b", branch_name, cwd=root)
 
-        # 5. Build config
         harness_url = f"ws://{resolved_host}:{resolved_port}"
         cfg = SessionConfig(
             session=session,
@@ -198,27 +187,19 @@ class SessionDir:
             worktree_path=str(worktree_path),
         )
 
-        # 6. Create directory structure inside the worktree
         session_dir = worktree_path / base_dir / session
-        runs = session_dir / "runs"
-        runs.mkdir(parents=True, exist_ok=True)
+        (session_dir / "runs").mkdir(parents=True, exist_ok=True)
 
-        # 7. Write config.json
-        config_path = session_dir / "config.json"
-        config_path.write_text(
+        (session_dir / "config.json").write_text(
             json.dumps(cfg.to_dict(), indent=2) + "\n",
             encoding="utf-8",
         )
+        (session_dir / "events.jsonl").write_text("", encoding="utf-8")
 
-        # 8. Create empty events.jsonl
-        events_path = session_dir / "events.jsonl"
-        events_path.write_text("", encoding="utf-8")
-
-        # 9. Set KALVIN_DATA_DIR for worktree subprocesses
-        #    The data/ directory (tokenizer models, grammar dicts) is
-        #    gitignored and absent from worktrees.  Setting KALVIN_DATA_DIR
-        #    tells paths.py to resolve data files from the main checkout
-        #    — no symlink needed (safer: can't be accidentally committed).
+        # Point worktree subprocesses at the main checkout's data/ dir:
+        # it's gitignored and absent from worktrees, so KALVIN_DATA_DIR tells
+        # paths.py where to find tokenizer models / grammar dicts — safer
+        # than a symlink (can't be accidentally committed).
         main_data = root / "data"
         if main_data.is_dir():
             os.environ["KALVIN_DATA_DIR"] = str(main_data)
@@ -261,14 +242,13 @@ class SessionDir:
         config_path = root / base_dir / session / "config.json"
 
         if not config_path.exists():
-            # Try the worktree convention
+            # Fall back to the worktree convention
             worktree_path = root / ".worktrees" / base_dir / session
             config_path = worktree_path / base_dir / session / "config.json"
 
         data = json.loads(config_path.read_text(encoding="utf-8"))
         cfg = SessionConfig.from_dict(data)
 
-        # Use worktree as root if configured
         effective_root = Path(cfg.worktree_path) if cfg.worktree_path else root
 
         return cls(
@@ -306,22 +286,17 @@ class SessionDir:
             print(f"No worktree found at {worktree_path}", file=sys.stderr)
             return
 
-        # Remove the worktree (force to handle untracked files)
         _git("worktree", "remove", str(worktree_path), "--force", cwd=root)
 
-        # Delete the branch
         try:
             _git("branch", "-D", branch_name, cwd=root)
         except Exception:
-            pass  # Branch may already be gone or may be merged
+            pass  # branch may already be gone or merged
 
     # -- Helpers ---------------------------------------------------------------
 
 
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
-
 
 def _read_harness_defaults(config_path: Path) -> tuple[str, int]:
     """Read host and port defaults from a harness YAML config.

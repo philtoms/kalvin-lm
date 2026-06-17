@@ -227,22 +227,20 @@ class Model:
         self._base = base
         self._stm = STM(bound=stm_bound)
 
-        # Frame storage — delegated to KLineStore
         self._frame: KLineStore = KLineStore()
 
-        # LTM (Long-Term Memory) storage — populated from a previous session's model
+        # Populated from a previous session's model.
         self._ltm: KLineStore = KLineStore()
         if ltm is not None:
             for kl in ltm.klines():
                 self._ltm.add(kl)
 
-        # Tier chain — unified cross-tier search
         tiers = [self._stm, self._frame, self._ltm]
         if base is not None:
             tiers.append(base)
         self._chain = _TierChain(tiers)
 
-    # ── Storage Operations ────────────────────────────────────────────
+    # Storage Operations
 
     def add_stm(self, kline: KLine) -> None:
         """Write to STM only. Always refreshes FIFO (remove-if-present then add)."""
@@ -298,7 +296,7 @@ class Model:
         """Find the most recently added KLine whose nodes signature matches."""
         return self._chain.find_by_nodes_first(nodes_signature)
 
-    # ── Count ─────────────────────────────────────────────────────────
+    # Count
 
     def __len__(self) -> int:
         """Number of KLines in the Frame (excluding STM, LTM, and Base)."""
@@ -310,7 +308,7 @@ class Model:
     def __getitem__(self, signature: KSig) -> KLine | None:
         return self.find(signature)
 
-    # ── Iteration ─────────────────────────────────────────────────────
+    # Iteration
 
     def klines(self) -> list[KLine]:
         """All KLines in reverse insertion order, deduplicated across tiers.
@@ -331,7 +329,7 @@ class Model:
             return [kl for kl in self.klines() if signifies(kl.signature, sig)]
         return [kl for kl in self.klines() if predicate(kl)]
 
-    # ── Graph Traversal ───────────────────────────────────────────────
+    # Graph Traversal
 
     def resolve(self, node: int) -> KLine | None:
         """Resolve a node value to a KLine."""
@@ -435,13 +433,13 @@ class Model:
             results.extend(self.query_expand(kl, depth))
         return results
 
-    # ── Properties ────────────────────────────────────────────────────
+    # Properties
 
     @property
     def base(self) -> Model | None:
         return self._base
 
-    # ── STM Interface ─────────────────────────────────────────────────
+    # STM Interface
 
     def stm_contains(self, kline: KLine) -> bool:
         """Check if an equal KLine is in the STM (first tier only).
@@ -455,7 +453,7 @@ class Model:
         """Iterate all KLines currently in the STM, in insertion order."""
         return self._stm.iter_all()
 
-    # ── Compatibility ─────────────────────────────────────────────────
+    # Compatibility
 
     def find_kline(self, signature: KSig) -> KLine | None:
         """Alias for find() — backwards compat."""

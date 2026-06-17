@@ -44,7 +44,7 @@ from typing import Literal
 from kalvin.kline import KLine
 from kalvin.model import Model
 
-# ── LTM iteration helper ─────────────────────────────────────────────
+# LTM iteration helper
 # TODO(KB-050): Remove this helper once Model.iter_ltm() is available.
 # Uses the public API when present, otherwise falls back to the private
 # _ltm KLineStore which supports the same iteration protocol.
@@ -62,13 +62,13 @@ def _iter_ltm(model: Model):
     return iter(model._ltm)
 
 
-# ── Binary constants ──────────────────────────────────────────────────
+# Binary constants
 
 MAGIC = 0x4B4C564E  # "KLVN"
 FORMAT_VERSION = 2
 
 
-# ── Binary Adapter ────────────────────────────────────────────────────
+# Binary Adapter
 
 
 class BinaryAdapter:
@@ -106,7 +106,6 @@ class BinaryAdapter:
         BinaryAdapter._encode_kline_section(frame_klines, parts)
         BinaryAdapter._encode_kline_section(ltm_klines, parts)
 
-        # Activity
         parts.append(pack("<I", len(activity)))
         for key, count in activity.items():
             parts.append(pack("<Q", key))
@@ -114,7 +113,7 @@ class BinaryAdapter:
 
         return b"".join(parts)
 
-    # ── decode helpers ────────────────────────────────────────────────
+    # decode helpers
 
     @staticmethod
     def _read_kline_section(data: bytes, offset: int) -> tuple[list[KLine], int]:
@@ -208,7 +207,7 @@ class BinaryAdapter:
         first_uint32 = unpack("<I", data[0:4])[0]
 
         if first_uint32 == MAGIC:
-            # ── v2 format ─────────────────────────────────────────────
+            # v2 format
             offset = 4
             _version = unpack("<I", data[offset : offset + 4])[0]
             offset += 4
@@ -221,7 +220,7 @@ class BinaryAdapter:
             model = BinaryAdapter._reconstruct_model(frame_klines, ltm_klines, stm_klines)
             return model, activity
 
-        # ── Legacy format (no magic) ──────────────────────────────────
+        # Legacy format (no magic)
         frame_klines, offset = BinaryAdapter._read_kline_section_legacy(data, 0)
         activity, offset = BinaryAdapter._read_activity(data, offset)
 
@@ -229,7 +228,7 @@ class BinaryAdapter:
         return model, activity
 
 
-# ── JSON Adapter ──────────────────────────────────────────────────────
+# JSON Adapter
 
 
 class JsonAdapter:
@@ -304,7 +303,7 @@ class JsonAdapter:
         return model, activity
 
 
-# ── AgentCodec ────────────────────────────────────────────────────────
+# AgentCodec
 
 
 class AgentCodec:

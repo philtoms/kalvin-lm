@@ -73,15 +73,12 @@ class Compiler:
         Returns:
             Ordered list of KLine objects with populated dbg.
         """
-        # 1. Create BindingScope, push root scope
         scope = BindingScope()
-        scope.push_scope()  # Root scope
+        scope.push_scope()  # root scope
 
-        # 2. Emit symbolic entries
         emitter = ASTEmitter(scope=scope, dev=self.dev)
         symbolic: list[SymbolicEntry] = emitter.emit(file)
 
-        # 3. Encode to token IDs
         encoder = TokenEncoder(tokenizer=self.tokenizer, dev=self.dev)
         self.entries = encoder.encode_entries(symbolic)
         return self.entries

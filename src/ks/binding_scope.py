@@ -146,14 +146,11 @@ class BindingScope:
 
             counter = scope.counters.get(key, 0)
             if counter >= len(matches):
-                # Counter exceeded — skip to next word list
                 continue
 
             word = matches[counter]
             if len(matches) > 1:
-                # Ambiguous: increment counter for next resolution
                 scope.counters[key] = counter + 1
-            # Unambiguous: counter stays the same
             return word
 
         return None

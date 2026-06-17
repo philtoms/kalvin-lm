@@ -29,7 +29,7 @@ from trainer.curriculum import CurriculumState, EntryKey
 logger = logging.getLogger(__name__)
 
 
-# ── Action dataclass ─────────────────────────────────────────────────
+# Action dataclass
 
 
 @dataclass(frozen=True)
@@ -46,7 +46,7 @@ class Action:
     confidence: float | None = None  # only for "submit" actions from scaffolding
 
 
-# ── Module-level helpers ─────────────────────────────────────────────
+# Module-level helpers
 
 
 def _entry_key(kline: KLine) -> EntryKey:
@@ -54,7 +54,7 @@ def _entry_key(kline: KLine) -> EntryKey:
     return (kline.signature, tuple(kline.nodes))
 
 
-# ── Reactor class ────────────────────────────────────────────────────
+# Reactor class
 
 
 class Reactor:
@@ -104,18 +104,17 @@ class Reactor:
         self._cogitate_fn = cogitate_fn
         self._delegate_reactive = delegate_reactive
 
-        # Per-lesson state
         self._current_entries: list[KLine] = []
         self._reactive_rounds: int = 0
 
-    # ── Lesson lifecycle ──────────────────────────────────────────────
+    # Lesson lifecycle
 
     def load_lesson(self, entries: list[KLine]) -> None:
         """Reset per-lesson state: set entries, zero reactive rounds."""
         self._current_entries = entries
         self._reactive_rounds = 0
 
-    # ── Event processing ──────────────────────────────────────────────
+    # Event processing
 
     def process_s2_s3(self, event: RationaliseEvent) -> bool:
         """Handle an S2/S3 event.
@@ -140,13 +139,13 @@ class Reactor:
         self._handle_reactive(event)
         return False
 
-    # ── Entry access ─────────────────────────────────────────────────
+    # Entry access
 
     @property
     def current_entries(self) -> list[KLine]:
         return list(self._current_entries)
 
-    # ── Auto-countersign ──────────────────────────────────────────────
+    # Auto-countersign
 
     def _auto_countersign(self, proposal: KLine) -> bool:
         """Check structural match and auto-countersign if found.
@@ -176,7 +175,7 @@ class Reactor:
         logger.debug("Auto-countersign: no match for proposal")
         return False
 
-    # ── Reactive mode ─────────────────────────────────────────────────
+    # Reactive mode
 
     def _handle_reactive(self, event: RationaliseEvent) -> None:
         """Reactive mode on S2/S3 proposals.
@@ -213,7 +212,6 @@ class Reactor:
                 "reactive_scaffolding",
                 {"confidence": confidence, "source": kscript_source},
             )
-            # Submit reactive scaffolding to KAgent
             self._bus.send(
                 Message(
                     role=TRAINEE_ROLE,
@@ -237,7 +235,7 @@ class Reactor:
             return self._cogitate_fn(event)
         return None
 
-    # ── Escalation ────────────────────────────────────────────────────
+    # Escalation
 
     def _escalate(self, reason: str, detail: str = "") -> None:
         """Escalate to supervisor subscribers via notify message."""

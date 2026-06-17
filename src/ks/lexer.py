@@ -98,7 +98,6 @@ class Lexer:
 
             return self._handle_indent(indent, start_col)
 
-        # Skip whitespace (not newlines)
         while self.pos < len(self.source) and self.source[self.pos] in " \t":
             self._advance()
 
@@ -107,11 +106,10 @@ class Lexer:
 
         ch = self.source[self.pos]
 
-        # Newline
         if ch == "\n":
             return self._read_newline()
 
-        # Multi-char operators (check before single-char)
+        # Multi-char operators must be checked before single-char.
         if self.pos + 1 < len(self.source):
             two_char = self.source[self.pos : self.pos + 2]
             if two_char == "==":
@@ -119,7 +117,6 @@ class Lexer:
             if two_char == "=>":
                 return self._make_token(TokenType.CANONIZE, "=>")
 
-        # Single-char operators
         if ch == "=":
             return self._make_token(TokenType.UNDERSIGN, "=")
         if ch == ">":
@@ -127,15 +124,12 @@ class Lexer:
         if ch == "<":
             raise LexerError(f"Unexpected character: {ch!r}", self.line, self.column)
 
-        # Identifier
         if ch.isalpha():
             return self._read_identifier()
 
-        # Annotation (...)
         if ch == "(":
             return self._read_annotation()
 
-        # Unknown character
         raise LexerError(f"Unexpected character: {ch!r}", self.line, self.column)
 
     def _count_indent(self) -> int:
@@ -160,7 +154,7 @@ class Lexer:
                 self.pending_tokens.append(Token(TokenType.DEDENT, "", self.line, col))
             return self.pending_tokens.pop(0) if self.pending_tokens else None
 
-        return None  # Same indentation — no token needed
+        return None  # same indentation — no token needed
 
     def _read_newline(self) -> Token:
         """Read a newline token."""
@@ -186,15 +180,13 @@ class Lexer:
         while self.pos < len(self.source) and self._is_ident_char(self.source[self.pos]):
             name += self._advance()
 
-        # Check for inline annotation — queue as pending token
+        # Queue an inline annotation (e.g. S(ubject)) as a pending token.
         if self.pos < len(self.source) and self.source[self.pos] == "(":
             self.pending_tokens.append(self._read_annotation())
 
-        # All uppercase alpha → SIGNATURE
         if name.isupper() and name.isalpha():
             return Token(TokenType.SIGNATURE, name, start_line, start_col)
 
-        # Non-uppercase identifiers are not valid
         raise LexerError(
             f"Invalid identifier '{name}': identifiers must be all uppercase "
             f"(signatures). Use a quoted string for non-signature values.",

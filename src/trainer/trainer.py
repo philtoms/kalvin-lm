@@ -133,17 +133,10 @@ class Trainer:
         self._curriculum_file = Path(curriculum_file) if curriculum_file else None
         self._curricula_dir = Path(curricula_dir) if curricula_dir else None
 
-        # Auto-wire Cogitator when llm_client is provided without an
-        # explicit cogitate_fn.  The adapter closes over a local
-        # Cogitator instance (not ``self``) so that cogitate_fn
-        # remains a plain callable.
-        #
-        # In delegated mode (``delegate_reactive=True``) the Cogitator
-        # is never auto-wired — the Reactor must not cogitate, so
-        # ``cogitate_fn`` stays ``None`` regardless of ``llm_client``.
-        # This complements the Reactor's delegated-mode short-circuit
-        # (KB-233): even if ``_handle_reactive`` were reached, a
-        # ``None`` cogitate_fn means ``_cogitate`` returns ``None``.
+        # Auto-wire Cogitator when llm_client is provided without an explicit
+        # cogitate_fn. The adapter closes over a local Cogitator (not self)
+        # so cogitate_fn stays a plain callable. In delegated mode the
+        # Cogitator is never wired — the Reactor must not cogitate.
         if llm_client is not None and cogitate_fn is None and not delegate_reactive:
             from trainer.cogitation import CogitationRequest, Cogitator, MisfitInfo
 
@@ -153,11 +146,6 @@ class Trainer:
             def _cogitate_adapter(
                 event: RationaliseEvent,
             ) -> tuple[str, float] | None:
-                # Compute misfit diagnosis on the ORIGINAL candidate
-                # (the one with the gap/excess), not the expansion proposal.
-                # event.candidate carries the original misfit candidate
-                # for S2/S3 expansion events; fall back to event.proposal
-                # for legacy events without the candidate field.
                 misfit = self._compute_misfit(event)
 
                 # Display klines as human-readable KScript for the LLM
@@ -219,7 +207,6 @@ class Trainer:
 
             cogitate_fn = _cogitate_adapter
 
-        # Reactor handles S2/S3 event processing
         self._reactor = Reactor(
             bus,
             self._state,
@@ -229,7 +216,6 @@ class Trainer:
             delegate_reactive=delegate_reactive,
         )
 
-        # Session model fields
         self._session_active: bool = False
         self._session_paused: bool = False
         self._pending_goals: list[str] = []
@@ -237,19 +223,18 @@ class Trainer:
         self._polling_for_goal: bool = False
         self._drain_pending: bool = False
 
-        # Register on the bus
         bus.subscribe(self._role, self.on_message)
 
         if self._curriculum_file is not None and self._state.curriculum.total() > 0:
-            # Curriculum loaded but not started — tell the UI we're ready
+            # Curriculum loaded but not started
             self._emit_progress("ready")
         elif self._curriculum_file is None and self._state.curriculum.total() == 0:
-            # No curriculum at all — enter goal-polling mode
+            # No curriculum — enter goal-polling mode
             self._polling_for_goal = True
             self._state.log_event("polling_for_goal", {})
             self._emit_progress("polling_for_goal")
 
-    # ── Participant protocol ──────────────────────────────────────────
+    # Participant protocol
 
     @property
     def role(self) -> str:
@@ -261,7 +246,7 @@ class Trainer:
         """The curriculum state (for test inspection)."""
         return self._state
 
-    # ── Event classification ──────────────────────────────────────────
+    # Event classification
 
     @staticmethod
     def _is_s1(event: RationaliseEvent) -> bool:
@@ -276,7 +261,7 @@ class Trainer:
             return True
         return False
 
-    # ── Misfit diagnosis ──────────────────────────────────────────────
+    # Misfit diagnosis
 
     def _compute_misfit(self, event: RationaliseEvent) -> dict:
         """Compute the misfit diagnosis for an S2/S3 event.
@@ -307,14 +292,9 @@ class Trainer:
     def _compute_curriculum_context(self) -> dict | str:
         """Derive the curriculum context for a delegated decision request.
 
-        Returns a structured dict ``{objective, approach, lesson_prose}``
-        mirroring the fields :class:`~trainer.cogitation.CogitationRequest`
-        carries.  Falls back to a legacy empty string ``""`` when no
-        document is available or all three fields are empty.
-
-        In practice ``Curriculum`` always wraps a ``CurriculumDocument``
-        (even a synthetic one with ``"(auto-generated)"`` objective), so
-        the dict form is the norm.
+        Returns ``{objective, approach, lesson_prose}`` mirroring
+        :class:`~trainer.cogitation.CogitationRequest`, or a legacy empty
+        string when no document is available or all three fields are empty.
         """
         document = self._state.curriculum.document
         objective = document.objective
@@ -330,19 +310,16 @@ class Trainer:
             "lesson_prose": lesson_prose,
         }
 
-    # ── Message handler ───────────────────────────────────────────────
+    # Message handler
 
     def on_message(self, msg: Message) -> None:
         """Route incoming messages by action.
 
-        Note: We route by ``msg.action`` rather than ``msg.sender`` because
-        the KAgentAdapter constructs forwarded event messages without setting
-        ``sender`` (it defaults to ``None``). Using action as the discriminator
-        is robust regardless of sender field population.
+        Routed by ``msg.action`` (not ``sender``) because the KAgentAdapter
+        forwards event messages without setting ``sender``.
         """
         action = msg.action
 
-        # KAgent events (ground/frame) and errors — routed by action
         if action in ("ground", "frame"):
             if not self._session_active:
                 logger.debug("Ignoring %s event — no active session", action)
@@ -359,13 +336,12 @@ class Trainer:
         else:
             logger.warning("Unknown action %r from %s", action, msg.sender)
 
-    # ── KAgent event handling ─────────────────────────────────────────
+    # KAgent event handling
 
     def _handle_kagent_event(self, msg: Message) -> None:
         """Process a KAgent ground or frame event."""
         event: RationaliseEvent = msg.message
 
-        # Display for log readability
         _log_tok = _display_tokenizer()
         try:
             query_src = kline_display(event.query, _log_tok)
@@ -415,24 +391,20 @@ class Trainer:
             key = _entry_key(event.query)
             self._state.mark_satisfied(key)
         else:
-            # S2/S3 slow path: skip if entry already satisfied
-            # (e.g. S1 cogitation event arrived before this S3 expansion)
+            # S2/S3 slow path: skip if already satisfied (e.g. an S1
+            # cogitation event arrived before this S3 expansion)
             key = _entry_key(event.query)
             if self._state.is_satisfied(key):
                 logger.debug("S2/S3 event for already-satisfied entry — skipping")
             else:
                 auto_matched = self._reactor.process_s2_s3(event)
 
-                # Ratify request for S2/S3 proposals (HRNS-33)
-                # Only sent when auto-countersign did NOT handle it.
-                #
-                # In delegated mode (RD-7) the payload is enriched with
-                # the misfit diagnosis and curriculum context the
-                # supervisor needs to make the reactive decision.  When
-                # ``delegate_reactive`` is False the payload stays exactly
-                # as today (RD-8): ``{proposal, query, significance}``.
-                # A context-gathering failure must never prevent the
-                # request itself from being sent.
+                # S2/S3 ratify request (HRNS-33), sent only when
+                # auto-countersign did not handle it. In delegated mode
+                # (RD-7) the payload is enriched with misfit and
+                # curriculum context; otherwise it stays as today (RD-8):
+                # ``{proposal, query, significance}``. A context-gathering
+                # failure must never block the request itself.
                 if not auto_matched:
                     payload: dict = {
                         "proposal": event.proposal,
@@ -470,28 +442,23 @@ class Trainer:
     def _handle_kagent_error(self, msg: Message) -> None:
         """Log KAgent error and abandon the current lesson.
 
-        A KAgent error means the lesson source could not be processed at
-        all (e.g. ParseError). Mark every submitted-but-unsatisfied entry
-        as satisfied so the lesson completes and training advances to the
-        next one — errors must not stall the curriculum.
+        An error means the lesson source could not be processed (e.g.
+        ParseError). Mark every submitted-but-unsatisfied entry as
+        satisfied so the lesson completes — errors must not stall the
+        curriculum.
         """
         self._state.log_event("kagent_error", {"message": str(msg.message)})
-        # An error abandons the lesson: satisfy all pending entries so the
-        # satisfaction-vs-submitted gate in _check_lesson_complete can fire.
+        # Satisfy all pending entries so _check_lesson_complete can fire.
         unsatisfied = self._state.submitted - self._state.satisfied
         for key in unsatisfied:
             self._state.mark_satisfied(key)
         self._check_lesson_complete()
 
-    # ── Cogitator drain ─────────────────────────────────────────────────
+    # Cogitator drain
 
     def _handle_drained(self, msg: Message) -> None:
-        """Handle the drained response from the KAgent adapter.
-
-        When a drain was pending, this means all cogitation work items
-        from the previous lesson have been processed. Now we can safely
-        submit the next lesson.
-        """
+        """Handle the drained response: all previous-lesson cogitation work
+        is done, so submit the next lesson."""
         if not self._drain_pending:
             logger.debug("Ignoring unexpected drained event")
             return
@@ -499,7 +466,7 @@ class Trainer:
         logger.info("Cogitator drained — submitting next lesson")
         self._do_submit_lesson()
 
-    # ── Input handling (from Slack / supervisor) ───────────────────────────
+    # Input handling (from Slack / supervisor)
 
     def _handle_input(self, msg: Message) -> None:
         """Process supervisor input from the TUI or Slack."""
@@ -534,23 +501,21 @@ class Trainer:
             # Guidance text for reactive mode context
             self._conversation_history.append(text)
 
-    # ── Goal resolution ───────────────────────────────────────────────
+    # Goal resolution
 
     def _resolve_goal(self, text: str) -> None:
         """Resolve a goal text to a curriculum and start session."""
         self._polling_for_goal = False
 
         if text.startswith("goal:"):
-            # Generate curriculum via LLM
             goal = text[5:].strip()
             self._generate_and_start(goal)
         else:
-            # Try as file path
             path = Path(text)
             if path.exists() and path.suffix == ".md":
                 self._load_and_start(path)
             else:
-                # Treat as goal: prefix for generation
+                # Otherwise treat as a goal for generation
                 self._generate_and_start(text)
 
     def _generate_and_start(self, goal: str) -> None:
@@ -629,7 +594,6 @@ class Trainer:
             self._curriculum_file = path
             self._state.curriculum_file = str(path)
 
-            # Start session directly (curriculum is now loaded)
             self._session_active = True
             self._session_paused = False
             self._state.log_event(
@@ -642,7 +606,6 @@ class Trainer:
             self._emit_progress("started")
             self._submit_next_lesson()
 
-            # Persist state with the curriculum file path
             try:
                 self._state.save()
             except ValueError:
@@ -651,7 +614,7 @@ class Trainer:
             logger.error("Failed to load curriculum from %s: %s", path, exc)
             self._state.log_event("curriculum_load_error", {"path": str(path), "error": str(exc)})
 
-    # ── Session lifecycle ─────────────────────────────────────────────
+    # Session lifecycle
 
     def start_session(self, goal: str | None = None) -> None:
         """Begin a new training session.
@@ -670,9 +633,9 @@ class Trainer:
                 self._state.log_event("goal_queued", {"goal": goal})
             return
 
-        # Session startup resolution
+        # Startup resolution: curriculum_file → load; else saved state →
+        # resume; else poll for goal.
         if self._curriculum_file and self._curriculum_file.exists():
-            # Path 1: curriculum_file provided
             try:
                 doc = CurriculumDocument.from_file(self._curriculum_file)
                 self._state.curriculum = Curriculum(doc)
@@ -680,7 +643,6 @@ class Trainer:
                 logger.error("Failed to load curriculum from %s", self._curriculum_file)
                 return
         elif self._state.curriculum_file:
-            # Path 2: saved state has curriculum_file
             saved_path = Path(self._state.curriculum_file)
             if saved_path.exists():
                 try:
@@ -690,7 +652,6 @@ class Trainer:
                 except CurriculumParseError:
                     logger.error("Failed to resume from %s", saved_path)
         elif not self._state.curriculum.lessons:
-            # Path 3: no curriculum resolved — poll for goal instead
             self._session_active = False
             self._polling_for_goal = True
             logger.info("No curriculum resolved — polling for goal")
@@ -698,9 +659,7 @@ class Trainer:
             self._emit_polling_status()
             return
 
-        # Path 3: no curriculum file and no saved state → poll for goal.
-        # After path resolution, if the curriculum is still empty,
-        # enter polling mode instead of starting a session.
+        # If still empty after resolution, poll for goal instead.
         if self._state.curriculum.total() == 0:
             self._polling_for_goal = True
             self._state.log_event("polling_for_goal", {})
@@ -722,7 +681,7 @@ class Trainer:
         self._emit_progress("started")
         self._submit_next_lesson()
 
-    # ── File polling ──────────────────────────────────────────────────
+    # File polling
 
     def _poll_curriculum_file(self) -> None:
         """Re-read the curriculum file from disk before each lesson.
@@ -734,7 +693,6 @@ class Trainer:
                 doc = CurriculumDocument.from_file(self._curriculum_file)
                 new_curriculum = Curriculum(doc)
 
-                # Check for new lessons
                 old_labels = set(self._state.curriculum.document.all_labels())
                 new_labels = set(new_curriculum.document.all_labels())
 
@@ -749,7 +707,6 @@ class Trainer:
                         )
                         self._emit_progress("amended")
 
-                # Update curriculum, preserving position
                 pos = self._state.curriculum.position
                 new_curriculum.position = pos
                 self._state.curriculum = new_curriculum
@@ -757,19 +714,14 @@ class Trainer:
             except CurriculumParseError as exc:
                 logger.warning("Failed to re-read curriculum file: %s", exc)
 
-    # ── Curriculum-driven mode ────────────────────────────────────────
+    # Curriculum-driven mode
 
     def _submit_next_lesson(self) -> None:
-        """Submit the next lesson from the curriculum to the KAgent.
+        """Submit the next lesson from the curriculum.
 
-        Between lessons, drains the Cogitator to ensure all work items
-        from the previous lesson have been processed. This prevents
-        cross-lesson cogitation spillover where late-arriving S2/S3
-        events from lesson N consume lesson N+1's reactive budget.
+        Drains the Cogitator between lessons so late-arriving S2/S3 events
+        from lesson N can't consume lesson N+1's reactive budget.
         """
-        # Drain cogitator between lessons to prevent spillover.
-        # On the first lesson there's nothing to drain, but the no-op
-        # cost is negligible so we don't special-case it.
         if self._drain_pending:
             logger.debug("Drain already pending — deferring lesson submit")
             return
@@ -786,18 +738,15 @@ class Trainer:
 
     def _do_submit_lesson(self) -> None:
         """Actually compile and submit the next lesson."""
-        # File polling: re-read before each lesson
         self._poll_curriculum_file()
 
         lesson = self._state.curriculum.current()
         if lesson is None:
-            # Curriculum complete — end session
             logger.info("Curriculum complete — all lessons submitted")
             self._emit_progress("complete")
             self._end_session()
             return
 
-        # Track lesson label
         current_lesson = self._state.curriculum.current_lesson()
         if current_lesson:
             self._state.mark_lesson_submitted(current_lesson.label)
@@ -809,7 +758,6 @@ class Trainer:
             )
             logger.debug("Lesson %s kscript: %s", current_lesson.label, lesson.strip())
 
-        # Compile locally to obtain KLine objects for structural matching
         entries = compile_source(lesson, tokenizer=self._tokenizer)
         self._reactor.load_lesson(entries)
 
@@ -819,12 +767,11 @@ class Trainer:
             current_lesson.label if current_lesson else "?",
         )
 
-        # Mark each entry as submitted
         for entry in entries:
             key = _entry_key(entry)
             self._state.mark_submitted(key)
 
-        # Send raw KScript source — the adapter compiles independently
+        # Adapter compiles the source independently.
         self._bus.send(
             Message(
                 role=TRAINEE_ROLE,
@@ -834,7 +781,7 @@ class Trainer:
             )
         )
 
-    # ── Progress events ───────────────────────────────────────────────
+    # Progress events
 
     def _emit_progress(self, status: str, *, label_override: str | None = None) -> None:
         """Emit a progress event to the UI participant."""
@@ -861,10 +808,7 @@ class Trainer:
         )
 
     def _emit_polling_status(self) -> None:
-        """Emit a polling status event to the UI participant.
-
-        Signals that the Trainer is waiting for a goal input.
-        """
+        """Signal to the UI that the Trainer is waiting for a goal input."""
         self._bus.send(
             Message(
                 role=SUPERVISOR_ROLE,
@@ -879,7 +823,7 @@ class Trainer:
             )
         )
 
-    # ── Amendment ─────────────────────────────────────────────────────
+    # Amendment
 
     def request_amendment(self, action: str, **kwargs: object) -> None:
         """Request an amendment to the running curriculum.
@@ -899,9 +843,7 @@ class Trainer:
                         },
                     )
                     self._emit_progress("amended")
-                    # Re-read to pick up changes
                     self._poll_curriculum_file()
-                    # Restart from first unsatisfied lesson
                     if not self._session_paused and self._session_active:
                         self._submit_next_lesson()
             except (CurriculumParseError, ValueError) as exc:
@@ -909,22 +851,19 @@ class Trainer:
         else:
             logger.warning("Cannot amend: no curriculum file")
 
-    # ── Lesson completion ─────────────────────────────────────────────
+    # Lesson completion
 
     def _check_lesson_complete(self) -> bool:
-        """Return ``True`` if the current lesson is complete.
-
-        A lesson is complete when every submitted entry has been marked
-        satisfied. Uses ``CurriculumState.satisfied`` vs ``submitted``
-        rather than reactor event counts, because cogitation can produce
-        multiple events per entry (initial + expansions).
-        """
+        """Return ``True`` if the current lesson is complete (every submitted
+        entry satisfied). Uses ``satisfied`` vs ``submitted`` rather than
+        reactor event counts, since cogitation can yield multiple events per
+        entry."""
         if (
             len(self._state.satisfied) >= len(self._state.submitted)
             and len(self._state.submitted) > 0
         ):
-            # Guard: skip if lesson already completed (cogitation events
-            # arrive after lesson completion fires — don't re-fire)
+            # Don't re-fire if already complete (late cogitation events
+            # arrive after completion).
             current_lesson = self._state.curriculum.current_lesson()
             if current_lesson and self._state.is_lesson_satisfied(current_lesson.label):
                 return False
@@ -957,7 +896,7 @@ class Trainer:
             return True
         return False
 
-    # ── Session end ───────────────────────────────────────────────────
+    # Session end
 
     def _end_session(self) -> None:
         """End the current session, persist state, process queued goals."""
@@ -966,33 +905,24 @@ class Trainer:
         self._polling_for_goal = False
         self._state.log_event("session_end", {})
 
-        # Persist state
         try:
             self._state.save()
         except ValueError:
-            # No save path configured — skip persistence silently
             logger.debug("No save path configured — skipping state persistence")
 
-        # Process queued goals
         if self._pending_goals:
             next_goal = self._pending_goals.pop(0)
             self.start_session(goal=next_goal)
 
     def _restart_session(self) -> None:
-        """Clear training state and restart the session from the beginning.
-
-        Resets curriculum position, all tracking sets, and the reactor,
-        then starts a fresh session with the current curriculum.
-        """
+        """Clear training state and restart from the first lesson."""
         was_active = self._session_active
         if not was_active:
             return
 
-        # End current session (without processing queued goals)
         self._session_active = False
         self._session_paused = False
 
-        # Reset curriculum position and tracking sets
         self._state.curriculum.position = 0
         self._state.submitted.clear()
         self._state.satisfied.clear()
@@ -1000,13 +930,11 @@ class Trainer:
         self._state.lesson_submitted.clear()
         self._state.lesson_satisfied.clear()
 
-        # Reset reactor
         self._reactor.load_lesson([])
 
         self._state.log_event("session_restart", {})
         self._emit_progress("restart")
 
-        # Start fresh session
         self._session_active = True
         self._session_paused = False
         self._state.log_event("session_start", {"goal": None})
@@ -1014,7 +942,7 @@ class Trainer:
         self._submit_next_lesson()
 
 
-# ── Module-level helpers ──────────────────────────────────────────────
+# Module-level helpers
 
 
 def _entry_key(kline: KLine) -> EntryKey:

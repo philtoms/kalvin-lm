@@ -74,16 +74,13 @@ class SlackParticipant:
         """Connect to the harness, register as ``"supervisor"``, and start loops."""
         self._ws = await websockets.connect(self._harness_url)
 
-        # Send registration frame
         await self._ws.send(json.dumps({"register": "supervisor"}))
         logger.info("SlackParticipant registered for role 'supervisor'")
 
         self._running = True
 
-        # Start receive loop
         self._receive_task = asyncio.create_task(self._receive_loop())
 
-        # Start Slack event listener (Socket Mode)
         self._slack_task = asyncio.create_task(self._start_slack_listener())
 
     async def stop(self) -> None:
@@ -196,7 +193,7 @@ class SlackParticipant:
 
             @client.event  # type: ignore[misc]
             async def handle_message(event: dict[str, Any]) -> None:
-                # Only handle messages from supervisors (skip bot messages)
+                # Skip non-messages and bot messages.
                 if event.get("type") != "message":
                     return
                 if event.get("subtype") is not None:
@@ -212,7 +209,6 @@ class SlackParticipant:
 
             await client.connect()  # type: ignore[union-attr]
 
-            # Keep running until cancelled
             while self._running:
                 await asyncio.sleep(1)
 

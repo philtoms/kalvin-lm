@@ -20,13 +20,13 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from kalvin.events import RationaliseEvent
 
-# ── Module constants ──────────────────────────────────────────────────
+# Module constants
 
 ESCALATION_THRESHOLD: float = 0.5
 """Confidence below this value triggers escalation to the supervisor."""
 
 
-# ── Data types ────────────────────────────────────────────────────────
+# Data types
 
 
 @dataclass(frozen=True)
@@ -95,7 +95,7 @@ class CogitationResult:
     raw_response: str | None
 
 
-# ── LLM client interface ─────────────────────────────────────────────
+# LLM client interface
 
 
 @dataclass(frozen=True)
@@ -121,7 +121,7 @@ class LLMClient(Protocol):
     ) -> LLMResponse: ...
 
 
-# ── Prompt construction ──────────────────────────────────────────────
+# Prompt construction
 
 
 _SYSTEM_PROMPT = """\
@@ -252,7 +252,7 @@ def build_prompt(request: CogitationRequest) -> list[dict]:
     return messages
 
 
-# ── Tool definitions ─────────────────────────────────────────────────
+# Tool definitions
 
 
 def build_tool_definitions() -> list[dict]:
@@ -296,9 +296,8 @@ def build_tool_definitions() -> list[dict]:
     ]
 
 
-# ── Result extraction ────────────────────────────────────────────────
+# Result extraction
 
-# Minimal pattern to detect KScript-like lines
 _KSCRIPT_LINE_PREFIXES = (
     "0x",
     "#",
@@ -328,7 +327,7 @@ def extract_result(response: LLMResponse) -> CogitationResult:
         response.finish_reason,
     )
 
-    # Strategy 1: structured tool call
+    # 1. Structured tool call
     if response.tool_calls:
         for tc in response.tool_calls:
             fn = tc.get("function", {})
@@ -369,7 +368,7 @@ def extract_result(response: LLMResponse) -> CogitationResult:
             [tc.get("function", {}).get("name") for tc in response.tool_calls],
         )
 
-    # Strategy 2: plain text — try to extract KScript
+    # 2. Plain text — try to extract KScript
     if response.content:
         kscript_lines = [
             line
@@ -394,7 +393,7 @@ def extract_result(response: LLMResponse) -> CogitationResult:
                 len(response.content),
             )
 
-    # Strategy 3: nothing usable
+    # 3. Nothing usable
     _log.warning("extract_result: strategy 3 — no usable content in LLM response")
     return CogitationResult(
         scaffolding=None,
@@ -404,7 +403,7 @@ def extract_result(response: LLMResponse) -> CogitationResult:
     )
 
 
-# ── Cogitator class ──────────────────────────────────────────────────
+# Cogitator class
 
 
 def _strip_hash_comments(source: str) -> str:
@@ -468,9 +467,7 @@ class Cogitator:
 
         result = extract_result(response)
 
-        # Validate scaffolding compiles
         if result.scaffolding is not None:
-            # Strip # comments that LLMs may produce despite the prompt
             sanitised = _strip_hash_comments(result.scaffolding)
             if sanitised != result.scaffolding:
                 _log.info(
@@ -518,7 +515,7 @@ class Cogitator:
         return result.confidence < ESCALATION_THRESHOLD or result.scaffolding is None
 
 
-# ── Concrete LLM client ──────────────────────────────────────────────
+# Concrete LLM client
 
 
 class OpenAICompatibleClient:
@@ -564,7 +561,6 @@ class OpenAICompatibleClient:
         choice = response.choices[0]
         message = choice.message
 
-        # Extract tool calls if present
         tool_calls = None
         if message.tool_calls:
             tool_calls = [

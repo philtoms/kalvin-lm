@@ -84,9 +84,7 @@ class Parser:
         self.tokens = tokens
         self.pos: int = 0
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
     def parse(self) -> KScriptFile:
         """Parse the token stream and return a KScriptFile.
@@ -99,9 +97,7 @@ class Parser:
         constructs = self._parse_constructs_until(TokenType.EOF)
         return KScriptFile(constructs=constructs)
 
-    # ------------------------------------------------------------------
     # Construct-level parsing
-    # ------------------------------------------------------------------
 
     def _parse_constructs_until(self, *stop: TokenType) -> list[ConstructItem]:
         """Parse zero or more constructs until a stop token is seen."""
@@ -128,9 +124,7 @@ class Parser:
             tok,
         )
 
-    # ------------------------------------------------------------------
     # Block  (INDENT construct+ DEDENT)
-    # ------------------------------------------------------------------
 
     def _parse_block(self) -> Block:
         """Parse INDENT construct+ DEDENT → Block."""
@@ -140,18 +134,14 @@ class Parser:
         self._expect(TokenType.DEDENT)
         return Block(constructs=constructs)
 
-    # ------------------------------------------------------------------
     # Annotation
-    # ------------------------------------------------------------------
 
     def _parse_annotation(self) -> Annotation:
         """Consume an ANNOTATION token and return an Annotation node."""
         tok = self._advance()
         return Annotation(text=tok.value, line=tok.line, column=tok.column)
 
-    # ------------------------------------------------------------------
     # OperatorScope  (sig (operator items)?)
-    # ------------------------------------------------------------------
 
     def _parse_operator_scope(self) -> OperatorScope:
         """Parse an operator scope: SIGNATURE [inline_ann] [operator items] [child_block]."""
@@ -195,9 +185,7 @@ class Parser:
             node_inline_annotation=node_inline,
         )
 
-    # ------------------------------------------------------------------
     # Items  (same-line nodes within an operator scope)
-    # ------------------------------------------------------------------
 
     def _parse_items(self) -> tuple[list[ScopeItem], Annotation | None]:
         """Collect items on the same line as the operator.
@@ -265,9 +253,7 @@ class Parser:
             i += 1
         return i < len(self.tokens) and self.tokens[i].type in _OPERATOR_TYPES
 
-    # ------------------------------------------------------------------
     # Token-level helpers
-    # ------------------------------------------------------------------
 
     def _peek(self) -> Token:
         """Return the current token without advancing."""

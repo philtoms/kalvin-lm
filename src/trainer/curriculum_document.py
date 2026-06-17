@@ -12,14 +12,14 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-# ── Label validation ──────────────────────────────────────────────────
+# Label validation
 
 _LABEL_RE = re.compile(r"^\d+[a-z]?$")
 """Valid lesson label: one or more digits optionally followed by a single
 lowercase letter (e.g. ``"1"``, ``"2a"``, ``"12"``)."""
 
 
-# ── Data types ────────────────────────────────────────────────────────
+# Data types
 
 
 @dataclass(frozen=True)
@@ -68,7 +68,7 @@ class CurriculumDocument:
         self._lessons = list(lessons)
         self._source_path = Path(source_path) if source_path else None
 
-    # ── Properties ────────────────────────────────────────────────────
+    # Properties
 
     @property
     def objective(self) -> str:
@@ -90,7 +90,7 @@ class CurriculumDocument:
         """File path the document was loaded from."""
         return self._source_path
 
-    # ── Lookup ────────────────────────────────────────────────────────
+    # Lookup
 
     def find_lesson(self, label: str) -> Lesson | None:
         """Find a lesson by label. Returns ``None`` if not found."""
@@ -103,7 +103,7 @@ class CurriculumDocument:
         """Return all lesson labels in document order."""
         return [lesson.label for lesson in self._lessons]
 
-    # ── Parsing ───────────────────────────────────────────────────────
+    # Parsing
 
     @classmethod
     def from_file(cls, path: str | Path) -> CurriculumDocument:
@@ -165,7 +165,6 @@ class CurriculumDocument:
         if not lessons:
             raise CurriculumParseError("At least one lesson is required")
 
-        # Check for duplicate labels
         labels = [lesson.label for lesson in lessons]
         seen: set[str] = set()
         for label in labels:
@@ -179,7 +178,7 @@ class CurriculumDocument:
             lessons=lessons,
         )
 
-    # ── Amendment ─────────────────────────────────────────────────────
+    # Amendment
 
     def amend(self, action: str, **kwargs: object) -> None:
         """Mutate the document and write back to the source file.
@@ -238,7 +237,6 @@ class CurriculumDocument:
     def _amend_modify(self, label: str, lesson: Lesson) -> None:
         """Replace the lesson at *label* with *lesson*."""
         if lesson.label != label:
-            # New label must not collide with any other existing label
             self._check_no_duplicate_label(lesson.label, exclude=label)
 
         for i, existing in enumerate(self._lessons):
@@ -287,7 +285,7 @@ class CurriculumDocument:
         return "\n".join(parts)
 
 
-# ── Parsing helpers ───────────────────────────────────────────────────
+# Parsing helpers
 
 
 def _split_sections(text: str) -> dict[str, str]:
@@ -301,16 +299,13 @@ def _split_sections(text: str) -> dict[str, str]:
 
     for line in text.splitlines():
         if line.startswith("## ") and not line.startswith("### "):
-            # Save previous section
             if current_name is not None:
                 sections[current_name] = "\n".join(current_lines)
-            # Start new section
             current_name = line[3:].strip().lower()
             current_lines = []
         else:
             current_lines.append(line)
 
-    # Save last section
     if current_name is not None:
         sections[current_name] = "\n".join(current_lines)
 
@@ -329,20 +324,16 @@ def _parse_lessons(text: str) -> list[Lesson]:
 
     for line in text.splitlines():
         if line.startswith("### "):
-            # Save previous lesson
             if current_label is not None:
                 lessons.append(_build_lesson(current_label, current_lines))
-            # Start new lesson
             current_label = line[4:].strip()
             current_lines = []
         else:
             current_lines.append(line)
 
-    # Save last lesson
     if current_label is not None:
         lessons.append(_build_lesson(current_label, current_lines))
 
-    # Validate label formats
     for lesson in lessons:
         if not _LABEL_RE.match(lesson.label):
             raise CurriculumParseError(
@@ -360,7 +351,6 @@ def _build_lesson(label: str, lines: list[str]) -> Lesson:
     """
     body = "\n".join(lines)
 
-    # Extract code blocks
     kscript_entries: list[str] = []
     prose_parts: list[str] = []
     in_code = False

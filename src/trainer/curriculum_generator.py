@@ -17,7 +17,7 @@ from trainer.curriculum_document import (
     CurriculumParseError,
 )
 
-# ── System prompt ─────────────────────────────────────────────────────
+# System prompt
 
 _SYSTEM_PROMPT = """\
 You are a curriculum designer for the Kalvin training system. Generate a \
@@ -72,14 +72,14 @@ MHALL = SVO =>
 ```
 """
 
-# ── Exception ─────────────────────────────────────────────────────────
+# Exception
 
 
 class CurriculumGenerationError(Exception):
     """Raised when curriculum generation fails after retry."""
 
 
-# ── Slug generation ──────────────────────────────────────────────────
+# Slug generation
 
 
 def _slug_from_goal(goal: str) -> str:
@@ -92,7 +92,7 @@ def _slug_from_goal(goal: str) -> str:
     return slug[:60]
 
 
-# ── Generator ─────────────────────────────────────────────────────────
+# Generator
 
 
 class CurriculumGenerator:
@@ -124,14 +124,12 @@ class CurriculumGenerator:
             {"role": "user", "content": f"Generate a curriculum for: {goal}"},
         ]
 
-        # First attempt
         response = self._client.complete(messages)
         content = response.content or ""
 
         try:
             doc = CurriculumDocument.from_string(content)
         except CurriculumParseError as exc:
-            # Retry with error feedback
             messages.append({"role": "assistant", "content": content})
             messages.append(
                 {
@@ -148,19 +146,17 @@ class CurriculumGenerator:
                     f"Curriculum generation failed after retry: {exc2}"
                 ) from exc2
 
-        # Write to file
         slug = _slug_from_goal(goal)
         self._curricula_dir.mkdir(parents=True, exist_ok=True)
         file_path = self._curricula_dir / f"{slug}.md"
 
-        # Serialize from parsed document (preserves structure)
         markdown = _serialize_document(doc)
         file_path.write_text(markdown, encoding="utf-8")
 
         return file_path
 
 
-# ── Serialization ────────────────────────────────────────────────────
+# Serialization
 
 
 def _serialize_document(doc: CurriculumDocument) -> str:

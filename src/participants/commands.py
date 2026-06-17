@@ -210,7 +210,6 @@ def parse_command(text: str) -> Command:
 
     # Goal prefix
     if lower.startswith("goal:") or lower.startswith("goal "):
-        # Extract the goal text after "goal:" or "goal "
         goal_text = stripped[5:].strip()
         return GoalCommand(original_text=original, text=goal_text)
 
@@ -222,7 +221,6 @@ def parse_command(text: str) -> Command:
     # that multi-line KScript (which may contain "/" and ".") is not
     # misclassified as a file path.
     if lower.startswith("scaffold:") or lower.startswith("scaffold "):
-        # Extract the KScript source after "scaffold:" or "scaffold "
         scaffold_text = stripped[9:].strip()
         return ScaffoldCommand(original_text=original, text=scaffold_text)
 

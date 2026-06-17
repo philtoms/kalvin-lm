@@ -64,13 +64,11 @@ class HarnessClient:
         """Open WebSocket, send registration frame, start read/write loops."""
         self._ws = await websockets.connect(self._url)
 
-        # Send registration frame
         await self._ws.send(json.dumps({"register": self._role}))
         logger.info("HarnessClient registered as %r", self._role)
 
         self._connected = True
 
-        # Start background tasks
         self._read_task = asyncio.create_task(self._read_loop())
         self._write_task = asyncio.create_task(self._write_loop())
 
@@ -99,7 +97,6 @@ class HarnessClient:
         except asyncio.QueueEmpty:
             if not self._connected:
                 return None
-            # Wait briefly for a message
             try:
                 return await asyncio.wait_for(self._receive_queue.get(), timeout=0.1)
             except asyncio.TimeoutError:
@@ -165,10 +162,7 @@ class HarnessClient:
             self._connected = False
 
 
-# ---------------------------------------------------------------------------
 # TUIApp — Textual application for the TUI harness participant
-# ---------------------------------------------------------------------------
-
 
 class TUIApp(App):
     """Textual TUI for the harness participant.
@@ -245,7 +239,6 @@ class TUIApp(App):
                     event_log.add_event(frame)
                     action = frame.get("action")
                     if action == "ratify_request":
-                        # Track latest ratify request for ratify command
                         self._latest_ratify_request = frame.get("message")
                         ratify_bar.enable_ratify(frame["message"])
                 else:

@@ -29,12 +29,8 @@ class Signature:
 
 @dataclass
 class Annotation:
-    """BPE annotation node — parenthesised expression providing word text for
-    BPE token encoding.
-
-    Provides word text for BPE token encoding. The text includes
-    enclosing parentheses.
-    """
+    """BPE annotation node — parenthesised expression whose text (including the
+    enclosing parens) provides word text for BPE token encoding."""
 
     text: str
     line: int

@@ -60,7 +60,6 @@ class Curriculum:
             self._document: CurriculumDocument = lessons_or_document
             self.position: int = position
         else:
-            # Legacy: create a synthetic document
             self._document = self._make_synthetic_document(lessons_or_document)
             self.position = position
 
@@ -179,11 +178,10 @@ class CurriculumState:
         self._save_path: Path | None = Path(save_path) if save_path else None
         self._curriculum_file: str | None = curriculum_file
 
-        # Label-based tracking
         self.lesson_submitted: set[str] = set()
         self.lesson_satisfied: set[str] = set()
 
-    # ── Label-based tracking ──────────────────────────────────────────
+    # Label-based tracking
 
     @property
     def current_label(self) -> str | None:
@@ -232,10 +230,9 @@ class CurriculumState:
             if lesson.label not in self.lesson_satisfied:
                 self.curriculum.position = i
                 return
-        # All satisfied — set position to end
         self.curriculum.position = len(self.curriculum.document.lessons)
 
-    # ── Set operations (EntryKey-level) ───────────────────────────────
+    # Set operations (EntryKey-level)
 
     def mark_submitted(self, key: EntryKey) -> None:
         """Add *key* to the submitted set, removing it from pending if present."""
@@ -254,7 +251,7 @@ class CurriculumState:
         """Return ``True`` if *key* is in the satisfied set."""
         return key in self.satisfied
 
-    # ── Event log ─────────────────────────────────────────────────────
+    # Event log
 
     def log_event(self, event_type: str, data: dict) -> None:
         """Append an event to the append-only event log with an ISO timestamp.
@@ -268,7 +265,7 @@ class CurriculumState:
         }
         self.event_log.append(entry)
 
-    # ── Session reset ─────────────────────────────────────────────────
+    # Session reset
 
     def reset_session(self) -> None:
         """Clear submitted/satisfied/pending sets but preserve curriculum
@@ -280,7 +277,7 @@ class CurriculumState:
         self.lesson_submitted.clear()
         self.lesson_satisfied.clear()
 
-    # ── Persistence ───────────────────────────────────────────────────
+    # Persistence
 
     def save(self, path: str | Path | None = None) -> None:
         """Serialize state to a JSON file.
@@ -331,7 +328,6 @@ class CurriculumState:
         position = raw["position"]
         curriculum_file = raw.get("curriculum_file")
 
-        # Try to load from the original curriculum file
         curriculum = cls._load_curriculum(lessons_list, position, curriculum_file)
 
         state = cls(curriculum, save_path=target, curriculum_file=curriculum_file)
@@ -340,7 +336,6 @@ class CurriculumState:
         state.pending = _deserialize_set(raw.get("pending", []))
         state.event_log = raw.get("event_log", [])
 
-        # Load label-based tracking fields
         state.lesson_submitted = set(raw.get("lesson_submitted", []))
         state.lesson_satisfied = set(raw.get("lesson_satisfied", []))
 
@@ -373,7 +368,7 @@ class CurriculumState:
         return Curriculum(lessons_list, position=position)
 
 
-# ── Serialization helpers ─────────────────────────────────────────────
+# Serialization helpers
 
 
 def _serialize_set(s: set[EntryKey]) -> list[list]:

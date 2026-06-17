@@ -36,7 +36,7 @@ class STM:
         self._dedup: set[tuple[KSig, tuple[int, ...]]] = set()
         self._bound = bound
 
-    # ── Core API ────────────────────────────────────────────────────────
+    # Core API
 
     def add(self, kline: KLine) -> None:
         """Add a KLine to the STM.
@@ -144,7 +144,7 @@ class STM:
     def __repr__(self) -> str:
         return f"STM(klines={len(self._order)}, bound={self._bound})"
 
-    # ── Internals ───────────────────────────────────────────────────────
+    # Internals
 
     def _evict_oldest(self) -> None:
         """Evict the oldest KLine from the STM."""

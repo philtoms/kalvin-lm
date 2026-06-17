@@ -35,7 +35,7 @@ from .ast_emitter import SymbolicEntry
 __all__ = ["TokenEncoder"]
 
 
-# ── Significance level mapping (compile-time intent) ──────────────────
+# Significance level mapping (compile-time intent)
 _SIG_LEVELS: dict[str, str] = {
     "COUNTERSIGNED": "S1",
     "UNDERSIGNED": "S3",
@@ -68,7 +68,7 @@ class TokenEncoder:
         # references, so this is populated on demand.
         self._compound_sigs: dict[str, int] = {}
 
-    # ── Public API ────────────────────────────────────────────────────
+    # Public API
 
     def encode_entries(self, symbolic: list[SymbolicEntry]) -> list[KLine]:
         """Encode a list of symbolic entries into compiled KLines.
@@ -88,7 +88,7 @@ class TokenEncoder:
             result.extend(self._encode_entries_for_entry(entry))
         return result
 
-    # ── Per-entry encoding ────────────────────────────────────────────
+    # Per-entry encoding
 
     def _encode_entries_for_entry(self, entry: SymbolicEntry) -> list[KLine]:
         """Process one SymbolicEntry into one or more KLine objects.
@@ -107,13 +107,13 @@ class TokenEncoder:
         is_compound_ref = entry.sig in self._compound_sigs
         sig_is_packed = False
 
-        # 1. Encode signature (compound defs defer to step 3; refs reuse
-        #    the registry; others use §11.4 MTS for multi-token sigs).
+        # Signature: compound refs reuse the registry; compound defs defer
+        # to step 3 below; others use §11.4 MTS for multi-token sigs.
         if is_compound_ref:
             sig_uint64 = self._compound_sigs[entry.sig]
             sig_is_packed = True
         elif is_compound_def:
-            sig_uint64 = 0  # computed in step 3, after nodes are encoded
+            sig_uint64 = 0  # computed after nodes are encoded
         else:
             sig_tokens = self._tokenizer.encode(entry.sig)
             if len(sig_tokens) == 1:
@@ -137,8 +137,8 @@ class TokenEncoder:
                 extras.extend(node_extras)
                 node_values.append(node_val)
 
-        # 3. Compound definition: sig = OR of resolved component node values
-        #    (§11.5). Register it for reuse by references.
+        # 3. Compound definition: sig = OR of resolved component node
+        #    values (§11.5); register for reuse by references.
         if is_compound_def:
             sig_uint64 = make_signature(node_values)
             self._compound_sigs[entry.sig] = sig_uint64
@@ -164,7 +164,7 @@ class TokenEncoder:
         extras.append(main)
         return extras
 
-    # ── Node encoding ─────────────────────────────────────────────────
+    # Node encoding
 
     def _encode_node(self, word: str) -> tuple[int, list[KLine]]:
         """Encode a single word to a uint64 node value.
@@ -180,13 +180,12 @@ class TokenEncoder:
         tokens = self._tokenizer.encode(word)
 
         if len(tokens) == 1:
-            # Single token — no MTS needed
             return (tokens[0], [])
 
         # Multi-token word → MTS at BPE-token level (§11.4)
         return self._emit_mts_for_tokens(tokens, dbg_label=word, op="IDENTITY")
 
-    # ── MTS emission for multi-token results ──────────────────────────
+    # MTS emission for multi-token results
 
     def _emit_mts_for_tokens(
         self,
@@ -212,8 +211,6 @@ class TokenEncoder:
             (packed_signature, extra_entries).
         """
         token_key = tuple(tokens)
-
-        # Compute packed signature via OR-reduction
         packed = make_signature(tokens)
 
         extras: list[KLine] = []
@@ -221,7 +218,6 @@ class TokenEncoder:
         if token_key not in self._decomposed:
             self._decomposed.add(token_key)
 
-            # One IDENTITY per subword token
             for tok in tokens:
                 tok_dbg: KDbg | None = None
                 if self._dev:
@@ -236,7 +232,7 @@ class TokenEncoder:
                     )
                 )
 
-            # One CANONIZE: packed sig → subword tokens. Packed values are
+            # CANONIZE: packed sig → subword tokens. Packed values are
             # opaque per §11.6 — _build_dbg skips decode for them.
             canon_dbg: KDbg | None = None
             if self._dev:
@@ -253,7 +249,7 @@ class TokenEncoder:
 
         return (packed, extras)
 
-    # ── Debug construction ──────────────────────────────────────────────
+    # Debug construction
 
     def _build_dbg(
         self,

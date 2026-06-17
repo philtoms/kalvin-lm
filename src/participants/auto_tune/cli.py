@@ -21,10 +21,6 @@ from collections.abc import Sequence
 from participants.auto_tune import lifecycle, orchestrate, snapshots
 from participants.auto_tune.session import SessionDir
 
-# ---------------------------------------------------------------------------
-# Handler functions
-# ---------------------------------------------------------------------------
-
 
 def _handle_init(args: argparse.Namespace) -> None:
     """Create a new auto-tune session via :meth:`SessionDir.init`."""
@@ -127,10 +123,7 @@ def _handle_teardown(args: argparse.Namespace) -> None:
     print(f"Session '{args.session}' torn down")
 
 
-# ---------------------------------------------------------------------------
 # Argument parser
-# ---------------------------------------------------------------------------
-
 
 def build_parser() -> argparse.ArgumentParser:
     """Build and return the top-level argument parser with 12 subcommands."""
@@ -223,10 +216,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# ---------------------------------------------------------------------------
 # Main
-# ---------------------------------------------------------------------------
-
 
 def main(argv: Sequence[str] | None = None) -> None:
     """Parse args, validate session, and dispatch to handler."""
@@ -237,7 +227,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    # Non-init/teardown commands require an existing session directory
+    # All commands except init/teardown need an existing session directory.
     if args.command not in ("init", "teardown"):
         try:
             args._session_dir = SessionDir.load(args.session)

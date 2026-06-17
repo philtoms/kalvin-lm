@@ -73,27 +73,21 @@ class MessageBus:
 
     def _dispatch(self, msg: Message) -> None:
         """Dispatch *msg* to role-specific and wildcard handlers."""
-        # Collect wildcard handlers first (always invoked).
         with self._lock:
             wildcards = list(self._wildcards)
             handlers = list(self._handlers.get(msg.role, []))
 
-        # Deliver to role-specific handlers.
         for handler in handlers:
             handler(msg)
 
-        # Deliver to wildcard (diagnostic) handlers.
         for handler in wildcards:
             handler(msg)
 
-        # If no role-specific handler was found and the message has a
-        # sender, send an error back to the sender.
+        # Unrouted messages with a sender get an error reply.
         if not handlers and msg.sender is not None:
             error_msg = Message(
                 role=msg.sender,
                 action="error",
                 message=f"unknown role: {msg.role}",
             )
-            # Re-enqueue the error so it goes through the normal dispatch
-            # path on the same event-loop thread.
             self._queue.put(error_msg)

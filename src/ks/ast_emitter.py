@@ -73,10 +73,6 @@ from .ast import (
 from .binding_scope import BindingScope
 from .token import TokenType
 
-# ---------------------------------------------------------------------------
-# SymbolicEntry — the output unit of the ASTEmitter
-# ---------------------------------------------------------------------------
-
 
 class SymbolicEntry(NamedTuple):
     """A symbolic (not yet tokenized) compilation entry.
@@ -96,11 +92,6 @@ class SymbolicEntry(NamedTuple):
     nodes: list[str]
     op: str  # COUNTERSIGNED | CANONIZED | CONNOTED | UNDERSIGNED | IDENTITY
     component_labels: list[str] | None = None
-
-
-# ---------------------------------------------------------------------------
-# ASTEmitter
-# ---------------------------------------------------------------------------
 
 
 class ASTEmitter:
@@ -123,36 +114,23 @@ class ASTEmitter:
         self._scope = scope
         self._dev = dev
 
-        # MTS dedup tracking for CANONIZE entries (§8.3).
-        # Maps (sig, tuple(nodes)) → index in self.entries.
+        # MTS dedup tracking (§8.3).
         self._mts_canonize_seen: dict[tuple[str, tuple[str, ...]], int] = {}
-
-        # MTS component IDENTITY dedup (§8.3 extended).
-        # Tracks resolved characters already emitted as IDENTITY by MTS.
         self._mts_identity_seen: set[str] = set()
-
-        # Canonical resolution cache (§8.3): an identifier's resolved
-        # component list is computed on first expansion and reused by every
-        # subsequent reference, so the BindingScope occurrence counter never
-        # re-advances for the same identifier.
+        # Cached resolved components per identifier (§8.3) so the
+        # BindingScope occurrence counter never re-advances for one.
         self._resolution_cache: dict[str, list[str]] = {}
 
-        # Rule B4 parent kline tracking — saved/restored on scope entry/exit.
+        # Rule B4 parent kline tracking (saved/restored on scope entry/exit).
         self._parent_kline_chars: str | None = None
         self._parent_kline_canonize_idx: int | None = None
 
-        # CANONIZE subscript identity context flag.
-        # Set when processing children of a CANONIZE scope that has recursive
-        # content (OperatorScope items or child_block). Only activated when
-        # the CANONIZE scope's sig did NOT trigger MTS expansion (single-char
-        # sig). Multi-char sig CANONIZE scopes have component identities
-        # provided by MTS, so subscript identity is unnecessary.
-        # Saved/restored alongside parent kline tracking.
+        # Set inside a single-char CANONIZE scope with recursive content
+        # (subscript block); multi-char CANONIZE sigs get component identities
+        # from MTS, so subscript identity is unnecessary.
         self._in_canonize_subscript: bool = False
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
     def emit(self, file: KScriptFile) -> list[SymbolicEntry]:
         """Walk a KScriptFile AST and return the list of SymbolicEntry tuples."""
@@ -160,9 +138,7 @@ class ASTEmitter:
             self._process_construct(construct)
         return self.entries
 
-    # ------------------------------------------------------------------
     # Construct dispatch
-    # ------------------------------------------------------------------
 
     def _process_construct(self, construct: ConstructItem) -> None:
         """Dispatch a top-level construct to the appropriate handler."""
@@ -174,71 +150,43 @@ class ASTEmitter:
             for c in construct.constructs:
                 self._process_construct(c)
 
-    # ------------------------------------------------------------------
     # Core scope processing (Steps 2–3)
-    # ------------------------------------------------------------------
 
     def _process_scope(self, scope: OperatorScope) -> None:
-        """Process a single OperatorScope node.
-
-        Algorithm:
-        1. Resolve signature (inline annotation or BindingScope).
-        2. Emit MTS for multi-char signature.
-        3. If bare (op=None): emit IDENTITY and return.
-        4. Collect node IDs from items and child_block.
-        5. Emit MTS for multi-char node IDs.
-        6. Resolve nodes.
-        7. Emit operator-specific entries.
-        8. Compile children (recursive).
-        """
-        # 1. Resolve signature
+        """Process a single OperatorScope: resolve sig, emit MTS, emit
+        operator entries, then recurse into children."""
         sig_resolved = self._resolve_inline_or_scope(
             scope.sig.id,
             scope.inline_annotation,
         )
-
-        # 2. MTS for signature
         mts_idx = self._emit_mts(scope.sig.id)
-
-        # 3. Determine op
         op = self._op_to_str(scope.op)
 
         if op == "IDENTITY":
-            # For multi-char sigs, _emit_mts already emitted a CANONIZE
-            # entry (mts_idx is not None), introducing the compound.  Skip
-            # IDENTITY — a compound cannot form one (spec §8).  For single-
-            # char sigs, _emit_mts returns None (no MTS) so emit IDENTITY here.
+            # For multi-char sigs _emit_mts already introduced the compound
+            # via CANONIZE (mts_idx is not None) — a compound can't form an
+            # identity (§8). Single-char sigs get a bare IDENTITY here.
             if mts_idx is None:
                 self._emit_entry(sig_resolved, [], "IDENTITY")
             return
 
-        # 4. Collect node IDs
         node_ids = self._collect_node_ids(scope)
-
-        # 5. MTS for multi-char nodes
         for nid in node_ids:
             if len(nid) > 1:
                 self._emit_mts(nid)
 
-        # 6. Resolve nodes. A CANONIZE scope whose sig was MTS-expanded
-        #    aggregates the SAME identifier's components — reuse the cached
-        #    resolution (§8.3) so the operator entry matches the MTS canonize
-        #    entry and dedups correctly, rather than re-resolving against an
-        #    advanced/exhausted occurrence counter.
+        # A CANONIZE scope whose sig was MTS-expanded aggregates the SAME
+        # identifier's components — reuse the cached resolution (§8.3) so the
+        # operator entry matches and dedups against the MTS canonize entry.
         if op == "CANONIZED" and scope.sig.id in self._resolution_cache:
             resolved_nodes = list(self._resolution_cache[scope.sig.id])
         else:
             resolved_nodes = self._resolve_nodes(node_ids, scope)
 
-        # 7. Emit operator entries
         self._emit_operator_entries(sig_resolved, resolved_nodes, op)
-
-        # 8. Compile children
         self._compile_children(scope, op, mts_idx)
 
-    # ------------------------------------------------------------------
     # Operator emission (Step 2)
-    # ------------------------------------------------------------------
 
     def _emit_operator_entries(
         self,
@@ -248,13 +196,11 @@ class ASTEmitter:
     ) -> None:
         """Emit operator-specific entries based on the operator type."""
         if op == "COUNTERSIGNED":
-            # Per-item bidirectional
             for node in nodes:
                 self._emit_entry(sig, [node], "COUNTERSIGNED")
                 self._emit_entry(node, [sig], "COUNTERSIGNED")
 
         elif op == "UNDERSIGNED":
-            # Per-item reversed
             for node in nodes:
                 if node == sig:
                     # Self-identity → IDENTITY with empty nodes (§7.3)
@@ -263,17 +209,13 @@ class ASTEmitter:
                     self._emit_entry(node, [sig], "UNDERSIGNED")
 
         elif op == "CONNOTED":
-            # Per-item forward
             for node in nodes:
                 self._emit_entry(sig, [node], "CONNOTED")
 
         elif op == "CANONIZED":
-            # Aggregated single entry
             self._emit_entry(sig, list(nodes), "CANONIZED")
 
-    # ------------------------------------------------------------------
     # Node collection (Step 2)
-    # ------------------------------------------------------------------
 
     def _collect_node_ids(self, scope: OperatorScope) -> list[str]:
         """Walk items and child_block to collect node identifier strings.
@@ -290,7 +232,7 @@ class ASTEmitter:
                 node_ids.append(item.id)
             elif isinstance(item, OperatorScope):
                 node_ids.append(item.sig.id)
-            # Annotation → skip (not a node)
+        # Annotation items are skipped (not nodes).
 
         if scope.child_block is not None:
             for construct in scope.child_block.constructs:
@@ -309,11 +251,8 @@ class ASTEmitter:
         elif isinstance(construct, Block):
             for c in construct.constructs:
                 self._collect_block_node_ids(c, node_ids)
-        # Annotation → skip
 
-    # ------------------------------------------------------------------
     # MTS expansion (§8)
-    # ------------------------------------------------------------------
 
     def _emit_mts(self, sig: str) -> int | None:
         """Emit MTS entries for a multi-character identifier.
@@ -340,16 +279,14 @@ class ASTEmitter:
         if len(sig) <= 1:
             return None
 
-        # Canonical resolution (§8.3): resolve once on first expansion,
-        # reuse the cached list thereafter so the same identifier resolves
-        # identically whether it appears as a node or as a signature.
+        # Resolve once on first expansion (§8.3); reuse the cached list so
+        # the identifier resolves identically as node or signature.
         if sig in self._resolution_cache:
             chars = list(self._resolution_cache[sig])
         else:
             chars = [self._resolve_char(c) for c in sig]
             self._resolution_cache[sig] = list(chars)
 
-        # Component identities — with intra- and inter-expansion dedup
         seen_in_this_call: set[str] = set()
         for resolved_char in chars:
             if resolved_char in seen_in_this_call:
@@ -360,20 +297,14 @@ class ASTEmitter:
             self._mts_identity_seen.add(resolved_char)
             self._emit_entry(resolved_char, [], "IDENTITY")
 
-        # MTS canonization
         key = (sig, tuple(chars))
         if key in self._mts_canonize_seen:
-            # Already emitted — return existing index for Rule B4
-            return self._mts_canonize_seen[key]
+            return self._mts_canonize_seen[key]  # already emitted
 
         self._emit_entry(sig, list(chars), "CANONIZED")
-        canonize_idx = len(self.entries) - 1
+        return len(self.entries) - 1
 
-        return canonize_idx
-
-    # ------------------------------------------------------------------
     # Entry emission with CANONIZE dedup (§8.3, Step 4)
-    # ------------------------------------------------------------------
 
     def _emit_entry(self, sig: str, nodes: list[str], op: str) -> None:
         """Emit a SymbolicEntry with CANONIZE deduplication.
@@ -388,14 +319,12 @@ class ASTEmitter:
         if op == "CANONIZED":
             key = (sig, tuple(nodes))
             if key in self._mts_canonize_seen:
-                return  # dedup — silently skip
+                return
             self._mts_canonize_seen[key] = len(self.entries)
 
         self.entries.append(SymbolicEntry(sig=sig, nodes=nodes, op=op))
 
-    # ------------------------------------------------------------------
     # Identity emission for CANONIZE subscript blocks
-    # ------------------------------------------------------------------
 
     def _emit_identity_if_needed(self, sig: str) -> None:
         """Emit identity IDENTITY only if no IDENTITY entry for this sig exists.
@@ -418,14 +347,12 @@ class ASTEmitter:
         if sig in self._mts_identity_seen:
             return
         if any(e.sig == sig and e.op == "CANONIZED" for e in self.entries):
-            return  # compound already introduced by its CANONIZED entry
+            return  # compound already introduced by its CANONIZE entry
         if any(e.sig == sig and e.op == "IDENTITY" for e in self.entries):
             return
         self._emit_entry(sig, [], "IDENTITY")
 
-    # ------------------------------------------------------------------
     # Scope walk and child compilation (Step 3)
-    # ------------------------------------------------------------------
 
     def _compile_children(
         self,
@@ -435,77 +362,43 @@ class ASTEmitter:
     ) -> None:
         """After emitting operator entries, recursively process children.
 
-        - For CANONIZE scopes: push/pop BindingScope, save/restore
-          parent kline tracking for Rule B4.
-        - Process nested OperatorScopes and Annotations from items.
-        - Process child_block constructs.  Bare OperatorScope nodes
-          (op=None) in a non-CANONIZE child_block are skipped — they
-          are already collected as node identifiers by _collect_node_ids
-          and used in the parent operator's emission.  Under CANONIZE,
-          bare scopes in child_block still emit their own IDENTITY
-          entries (they are subscript items with independent identity).
+        CANONIZE scopes push/pop the BindingScope and save/restore parent
+        kline tracking (Rule B4). Bare OperatorScope nodes (op=None) in a
+        non-CANONIZE child_block are skipped — already collected as node
+        identifiers by _collect_node_ids; under CANONIZE they still emit
+        their own IDENTITY (independent subscript identity).
 
-        **CANONIZE subscript identity (spec §7.6, §14.8, §14.9):**
+        **CANONIZE subscript identity (§7.6, §14.8, §14.9):**
 
-        When a CANONIZE scope has recursive content (OperatorScope items
-        or child_block), it forms a "subscript block". Every identifier
-        within such a block must appear as the signature of at least one
-        emitted entry. Where no operator entry provides this, an identity
-        IDENTITY fills the gap.
+        A CANONIZE scope with recursive content forms a "subscript block"
+        where every identifier must appear as the signature of at least
+        one emitted entry; identity IDENTITY fills any gap. Activated only
+        when the CANONIZE sig did NOT trigger MTS (mts_idx is None) —
+        multi-char sigs get component identities from MTS, so subscript
+        identity would produce spurious entries (e.g. IDENTITY D in §14.11).
 
-        Subscript identity is only activated when the CANONIZE scope's
-        sig did NOT trigger MTS expansion (mts_idx is None). For single-
-        char sigs (e.g., `A =>`), MTS does not fire, so subscript identity
-        ensures all identifiers appear as signatures. For multi-char sigs
-        (e.g., `SVO =>`, `ALL =>`), MTS provides component identities for
-        all constituent characters, making subscript identity unnecessary
-        and preventing extra entries like IDENTITY D in §14.11.
-
-        Three categories receive identity via _emit_identity_if_needed:
-
-        1. Leaf Signature items — bare identifiers in items lists produce
-           no operator entry, so they get identity IDENTITY.
-        2. UNDERSIGN OperatorScope sigs — UNDERSIGN emits entries with
-           nodes as signatures (reversed direction), so the scope's own
-           sig lacks identity and needs IDENTITY.
-        3. (Not needed for CANONIZE/COUNTERSIGN/CONNOTATE scope sigs —
-           they already produce entries with the scope's sig as signature.
-           Not needed for bare OperatorScope nodes (op=None) — they emit
-           IDENTITY via _process_scope step 3.)
-
-        The _in_canonize_subscript flag does NOT propagate between
-        CANONIZE scopes — each CANONIZE independently decides whether
-        to activate subscript identity based on its own MTS status.
-
-        _emit_identity_if_needed includes a dedup check to prevent
-        duplicate IDENTITY when MTS expansion already provided one
-        for the same identifier.
+        _emit_identity_if_needed is applied to leaf Signature items (no
+        operator entry) and to UNDERSIGN scope sigs (their entries use nodes
+        as sigs, so the scope's own sig lacks identity). Not needed for
+        CANONIZE/COUNTERSIGN/CONNOTATE scope sigs (already produce entries
+        with the scope's sig) nor bare op=None scopes (emit IDENTITY in
+        _process_scope). The flag does not propagate between CANONIZE scopes.
         """
         is_canonize = op == "CANONIZED"
 
-        # Save parent kline tracking and CANONIZE subscript context
         saved_chars = self._parent_kline_chars
         saved_idx = self._parent_kline_canonize_idx
         saved_in_canonize = self._in_canonize_subscript
 
-        # Set parent kline tracking for Rule B4 (multi-char CANONIZE sigs)
         if is_canonize and mts_idx is not None:
             self._parent_kline_chars = scope.sig.id
             self._parent_kline_canonize_idx = mts_idx
 
-        # CANONIZE scope push
         if is_canonize and self._scope is not None:
             self._scope.push_scope()
 
-        # Set CANONIZE subscript context when this CANONIZE scope has
-        # recursive content (OperatorScope items or child_block), meaning
-        # it's a "subscript block" rather than a flat aggregation like
-        # `A => B C D`.
-        # Subscript identity is only activated when this CANONIZE scope's
-        # sig did NOT trigger MTS expansion (mts_idx is None). Multi-char
-        # sig CANONIZE scopes (e.g., SVO =>, ALL =>) have their component
-        # identities provided by MTS, so subscript identity is unnecessary
-        # and would produce extra entries (e.g., IDENTITY D in §14.11).
+        # Activate subscript identity for a single-char CANONIZE sig
+        # (mts_idx is None) with recursive content.
         if is_canonize:
             has_recursive_content = scope.child_block is not None or any(
                 isinstance(item, OperatorScope) for item in scope.items
@@ -513,14 +406,10 @@ class ASTEmitter:
             if has_recursive_content and mts_idx is None:
                 self._in_canonize_subscript = True
 
-        # Process items
         for item in scope.items:
             if isinstance(item, OperatorScope):
-                # In CANONIZE subscript blocks, UNDERSIGN scope sigs need
-                # identity IDENTITY because UNDERSIGN emits entries with nodes
-                # as sigs (e.g., D | [C] | UNDERSIGN), not the scope's own sig.
-                # CANONIZE/COUNTERSIGN/CONNOTATE scope sigs already have identity
-                # via their operator entries.
+                # UNDERSIGN scope sigs in subscript blocks need identity
+                # (their entries use nodes as sigs, not the scope's own sig).
                 if (
                     self._in_canonize_subscript
                     and item.op is not None
@@ -531,14 +420,13 @@ class ASTEmitter:
                 self._process_scope(item)
             elif isinstance(item, Annotation):
                 self._feed_annotation(item)
-            # Note: bare Signature items in CANONIZE subscript blocks need
-            # identity IDENTITY because they produce no operator entry.
+            # Bare Signature items in subscript blocks need identity
+            # (they produce no operator entry).
             elif isinstance(item, Signature):
                 if self._in_canonize_subscript:
                     resolved = self._resolve_char(item.id)
                     self._emit_identity_if_needed(resolved)
 
-        # Process child_block constructs
         if scope.child_block is not None:
             for construct in scope.child_block.constructs:
                 if (
@@ -546,13 +434,13 @@ class ASTEmitter:
                     and construct.op is None
                     and not is_canonize
                 ):
-                    # Bare scope in non-CANONIZE child_block — already a node
-                    # of the parent operator (collected by _collect_node_ids).
-                    # Skip to avoid spurious IDENTITY emission.
+                    # Bare node in non-CANONIZE child_block — already
+                    # collected by _collect_node_ids; skip to avoid a
+                    # spurious IDENTITY.
                     continue
-                # In CANONIZE subscript blocks, UNDERSIGN scope sigs in
-                # child_block need identity IDENTITY. Bare scopes (op=None)
-                # already emit IDENTITY via _process_scope step 3.
+                # UNDERSIGN scope sigs in subscript child_blocks need
+                # identity; bare scopes (op=None) emit IDENTITY in
+                # _process_scope.
                 if (
                     self._in_canonize_subscript
                     and isinstance(construct, OperatorScope)
@@ -563,18 +451,14 @@ class ASTEmitter:
                     self._emit_identity_if_needed(resolved)
                 self._process_construct(construct)
 
-        # CANONIZE scope pop
         if is_canonize and self._scope is not None:
             self._scope.pop_scope()
 
-        # Restore parent kline tracking and CANONIZE subscript context
         self._parent_kline_chars = saved_chars
         self._parent_kline_canonize_idx = saved_idx
         self._in_canonize_subscript = saved_in_canonize
 
-    # ------------------------------------------------------------------
     # Binding integration (§10, Step 5)
-    # ------------------------------------------------------------------
 
     def _resolve_char(self, char: str) -> str:
         """Resolve a single character via BindingScope.
@@ -606,7 +490,7 @@ class ASTEmitter:
             return word
         if len(sig) == 1:
             return self._resolve_char(sig)
-        return sig  # multi-char: MTS decomposition handles individual chars
+        return sig
 
     def _resolve_nodes(
         self,
@@ -629,15 +513,13 @@ class ASTEmitter:
                 resolved.append(self._resolve_char(nid))
         return resolved
 
-    # ------------------------------------------------------------------
     # Word extraction helpers
-    # ------------------------------------------------------------------
 
     def _extract_inline_word(self, sig_char: str, annotation: Annotation) -> str:
         """Extract word from an inline annotation.
 
-        Strips outer parentheses and prepends sig_char.
-        E.g. "S" + "(ubject)" → "Subject".  Case preserved.
+        Strips outer parentheses and prepends sig_char, preserving case.
+        E.g. "S" + "(ubject)" → "Subject".
         """
         text = annotation.text
         if text.startswith("(") and text.endswith(")"):
@@ -647,9 +529,8 @@ class ASTEmitter:
     def _extract_words(self, text: str) -> list[str]:
         """Extract word list from a block annotation.
 
-        Strips outer parentheses and splits on whitespace.
-        E.g. "(Mary had a little lamb)" → ["Mary", "had", "a", "little", "lamb"].
-        Returns empty list for empty text.
+        Strips outer parentheses and splits on whitespace; empty for empty
+        text. E.g. "(Mary had a little lamb)" → ["Mary","had","a","little","lamb"].
         """
         t = text.strip()
         if t.startswith("("):
@@ -668,9 +549,7 @@ class ASTEmitter:
             if words:
                 self._scope.add_words(words)
 
-    # ------------------------------------------------------------------
     # Rule B4 override patching
-    # ------------------------------------------------------------------
 
     def _patch_parent_canonize(self, char: str, word: str) -> None:
         """Rule B4 — inline override: patch parent MTS CANONIZE entry.
@@ -691,7 +570,7 @@ class ASTEmitter:
             return
         idx = self._parent_kline_chars.find(char)
         if idx < 0:
-            return  # safe no-op — char not in parent kline
+            return  # no-op — char not in parent kline
         entry = self.entries[self._parent_kline_canonize_idx]
         if entry.op != "CANONIZED":
             return
@@ -702,9 +581,7 @@ class ASTEmitter:
                 nodes=new_nodes,
             )
 
-    # ------------------------------------------------------------------
     # Helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _op_to_str(op: TokenType | None) -> str:

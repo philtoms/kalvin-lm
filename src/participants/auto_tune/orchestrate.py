@@ -17,10 +17,7 @@ from pathlib import Path
 
 from participants.auto_tune.session import SessionDir
 
-# ---------------------------------------------------------------------------
 # send_command
-# ---------------------------------------------------------------------------
-
 
 def send_command(session_dir: SessionDir, command_json: dict) -> None:
     """Write a command to the session's ``cmd.json`` file.
@@ -37,10 +34,7 @@ def send_command(session_dir: SessionDir, command_json: dict) -> None:
     )
 
 
-# ---------------------------------------------------------------------------
 # read_events
-# ---------------------------------------------------------------------------
-
 
 def read_events(session_dir: SessionDir, after_seq: int = -1) -> list[dict]:
     """Read events from the session's ``events.jsonl``, filtered by seq.
@@ -77,10 +71,7 @@ def read_events(session_dir: SessionDir, after_seq: int = -1) -> list[dict]:
     return results
 
 
-# ---------------------------------------------------------------------------
 # read_status
-# ---------------------------------------------------------------------------
-
 
 def read_status(session_dir: SessionDir) -> dict:
     """Read and parse the session's ``status.json``.
@@ -98,9 +89,7 @@ def read_status(session_dir: SessionDir) -> dict:
     return json.loads(status_path.read_text(encoding="utf-8"))
 
 
-# ---------------------------------------------------------------------------
 # step
-# ---------------------------------------------------------------------------
 
 _POLL_INTERVAL = 0.1  # seconds between polls
 
@@ -129,14 +118,12 @@ def step(
         FileNotFoundError: If ``status.json`` does not exist on first read.
         TimeoutError: If no new event appears within *timeout* seconds.
     """
-    # 1. Write the command
     send_command(session_dir, command_json)
 
-    # 2. Read baseline from status.json (raises FileNotFoundError if missing)
+    # Raises FileNotFoundError if status.json is missing.
     status = read_status(session_dir)
     last_event_seq: int = status.get("last_event_seq", -1)
 
-    # 3. Poll events.jsonl until new events appear
     deadline = time.monotonic() + timeout
     while True:
         new_events = read_events(session_dir, after_seq=last_event_seq)

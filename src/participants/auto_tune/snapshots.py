@@ -19,10 +19,7 @@ from typing import Any
 
 from participants.auto_tune.session import SessionConfig, SessionDir
 
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
-
 
 def _derive_state_path(curriculum: str, root: Path) -> Path:
     """Derive the curriculum state file path from the curriculum markdown path.
@@ -75,10 +72,7 @@ def _git_info() -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
 # snapshot
-# ---------------------------------------------------------------------------
-
 
 def snapshot(session_dir: SessionDir) -> int:
     """Capture a snapshot of the current auto-tune session state.
@@ -93,7 +87,6 @@ def snapshot(session_dir: SessionDir) -> int:
     Returns:
         The new run number (int).
     """
-    # 1. Load config, increment run counter, persist
     config_data = json.loads(session_dir.config_path.read_text(encoding="utf-8"))
     cfg = SessionConfig.from_dict(config_data)
     cfg.run_counter += 1
@@ -104,25 +97,20 @@ def snapshot(session_dir: SessionDir) -> int:
         encoding="utf-8",
     )
 
-    # 2. Create run directory
     run_dir = session_dir.runs_dir / f"{run_number:03d}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    # 3. Copy curriculum state file (if it exists)
     state_path = _derive_state_path(cfg.curriculum, session_dir._root)
     if state_path.exists():
         shutil.copy2(state_path, run_dir / "state.json")
 
-    # 4. Copy events.jsonl
     if session_dir.events_path.exists():
         shutil.copy2(session_dir.events_path, run_dir / "events.jsonl")
 
-    # 5. Copy model file (if configured and exists)
     model_file = session_dir._root / cfg.model_path if cfg.model_path else None
     if model_file is not None and model_file.exists():
         shutil.copy2(model_file, run_dir / "model.bin")
 
-    # 6. Write meta.json
     git = _git_info()
     meta: dict[str, Any] = {
         "run": run_number,
@@ -139,10 +127,7 @@ def snapshot(session_dir: SessionDir) -> int:
     return run_number
 
 
-# ---------------------------------------------------------------------------
 # restore
-# ---------------------------------------------------------------------------
-
 
 def restore(session_dir: SessionDir, run_number: int) -> None:
     """Restore session state from a previously captured snapshot.
@@ -158,26 +143,21 @@ def restore(session_dir: SessionDir, run_number: int) -> None:
         session_dir: Bound :class:`SessionDir` for the session.
         run_number: The run number to restore from.
     """
-    # 1. Derive run directory and verify it exists
     run_dir = session_dir.runs_dir / f"{run_number:03d}"
     if not run_dir.exists():
         raise FileNotFoundError(f"Run directory not found: {run_dir}")
 
-    # 2. Guard: verify no harness or supervisor is still running
     _assert_no_running_processes(session_dir)
 
-    # 3. Load config to derive paths
     config_data = json.loads(session_dir.config_path.read_text(encoding="utf-8"))
     cfg = SessionConfig.from_dict(config_data)
 
-    # 4. Restore curriculum state file
     snapshot_state = run_dir / "state.json"
     if snapshot_state.exists():
         state_path = _derive_state_path(cfg.curriculum, session_dir._root)
         state_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(snapshot_state, state_path)
 
-    # 5. Restore model file
     snapshot_model = run_dir / "model.bin"
     if snapshot_model.exists():
         if cfg.model_path is not None:
@@ -203,24 +183,18 @@ def _assert_no_running_processes(session_dir: SessionDir) -> None:
 
     pid = status.get("pid")
     if pid and pid != 0:
-        # Check if the process is actually running
-        try:
-            import os
+        import os
 
+        try:
             os.kill(pid, 0)
             raise RuntimeError(f"Cannot restore: supervisor is still running (pid={pid})")
         except ProcessLookupError:
-            # Process no longer exists — safe to proceed
-            pass
+            pass  # process gone — safe to proceed
         except PermissionError:
-            # Process exists but we can't signal it — treat as running
             raise RuntimeError(f"Cannot restore: supervisor is still running (pid={pid})")
 
 
-# ---------------------------------------------------------------------------
 # reset
-# ---------------------------------------------------------------------------
-
 
 def reset(session_dir: SessionDir, *, fresh_model: bool = False) -> None:
     """Clear auto-tune session state without destroying run history.
@@ -243,21 +217,17 @@ def reset(session_dir: SessionDir, *, fresh_model: bool = False) -> None:
     config = session_dir.config
     root = session_dir._root
 
-    # 1. Delete curriculum state file (e.g. curricula/first-steps.md → curricula/first-steps.json)
     curriculum_state = root / Path(config.curriculum).with_suffix(".json")
     if curriculum_state.exists():
         curriculum_state.unlink()
 
-    # 2. Truncate events.jsonl
-    events_path = session_dir.events_path
-    events_path.write_text("", encoding="utf-8")
+    session_dir.events_path.write_text("", encoding="utf-8")
 
-    # 3. Delete stale cmd.json (prevents immediate shutdown on next supervisor start)
+    # Delete stale cmd.json to avoid an immediate shutdown on next start.
     cmd_path = session_dir.cmd_path
     if cmd_path.exists():
         cmd_path.unlink()
 
-    # 4. Optionally delete model file
     if fresh_model and config.model_path:
         model = root / config.model_path
         if model.exists():

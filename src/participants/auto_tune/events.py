@@ -23,7 +23,7 @@ def _display_tokenizer() -> NLPTokenizer:
     return NLPTokenizer.from_files()
 
 
-# ── Public API ────────────────────────────────────────────────────────
+# Public API
 
 
 def enrich_event(raw_frame: dict, seq: int) -> dict:
@@ -54,7 +54,7 @@ def enrich_event(raw_frame: dict, seq: int) -> dict:
         raise ValueError(f"Unknown action: {action!r}")
 
 
-# ── Action-specific enrichers ─────────────────────────────────────────
+# Action-specific enrichers
 
 
 def _enrich_progress(message: dict, seq: int) -> dict:
@@ -71,14 +71,12 @@ def _enrich_progress(message: dict, seq: int) -> dict:
 
 def _enrich_rationalise(message: object, seq: int) -> dict:
     """Enrich a rationalise event frame (rules 23–26)."""
-    # message may be a RationaliseEvent instance or a dict after serialization
     if isinstance(message, dict):
         kind = message["kind"]
         query = _to_kline(message["query"])
         proposal = _to_kline(message["proposal"])
         significance = message["significance"]
     else:
-        # RationaliseEvent object
         kind = message.kind
         query = _to_kline(message.query)
         proposal = _to_kline(message.proposal)
@@ -120,7 +118,7 @@ def _enrich_escalation(message: dict, seq: int) -> dict:
     }
 
 
-# ── Helpers ───────────────────────────────────────────────────────────
+# Helpers
 
 
 def _build_significance(raw_sig: int) -> dict:

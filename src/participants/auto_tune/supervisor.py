@@ -87,11 +87,10 @@ class CLISupervisor:
         await self.connect()
 
         try:
-            # After connected event, poll for initial command before
-            # waiting for harness events. This lets pi send "start"
-            # before any events arrive. Without this poll, the supervisor
-            # deadlocks: it blocks on ws.recv() but the harness won't
-            # send any frames until it receives a command.
+            # Poll for an initial command before waiting for harness events,
+            # so pi can send "start" before any arrive. Without this the
+            # supervisor deadlocks: it blocks on ws.recv() but the harness
+            # won't send frames until it gets a command.
             self._write_status(state="waiting_for_command")
             cmd = await self._poll_command()
             if cmd is None:
@@ -102,48 +101,39 @@ class CLISupervisor:
             self._write_status(state="waiting_for_event")
 
             while self._connected:
-                # 1. Receive one WebSocket frame
                 try:
                     raw = await self._ws.recv()
                 except websockets.ConnectionClosed:
                     await self._handle_disconnect()
                     return
 
-                # 2. Parse frame (skip malformed)
                 try:
                     frame = json.loads(raw)
                 except (json.JSONDecodeError, TypeError):
                     logger.warning("Malformed frame from harness: %s", raw[:200])
                     continue
 
-                # 3. Enrich the event
                 self._seq += 1
                 event = enrich_event(frame, self._seq)
 
-                # 4. Buffer ratify_request proposals
                 if event.get("type") == "ratify_request":
                     self._latest_ratify_proposal = event.get("proposal")
 
-                # 5. Append to events.jsonl
                 self._append_event(event)
 
-                # 6. Determine state and poll for command
                 if event.get("type") == "progress" and event.get("status") == "complete":
                     self._write_status(state="run_complete")
                 else:
                     self._write_status(state="waiting_for_command")
 
-                # 7. Block until command appears
                 cmd = await self._poll_command()
                 if cmd is None:
                     return
 
-                # 8. Process command
                 should_exit = await self._process_command(cmd)
                 if should_exit:
                     return
 
-                # 9. Return to waiting for next event
                 self._write_status(state="waiting_for_event")
         finally:
             self._connected = False

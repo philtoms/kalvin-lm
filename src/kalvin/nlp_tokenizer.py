@@ -23,7 +23,7 @@ from pathlib import Path
 from kalvin.abstract import KTokenizer
 from kalvin.tokenizer import Tokenizer
 
-# ── Class constant ────────────────────────────────────────────────────────
+# Class constant
 # POS_X is the fallback NLP type for BPE tokens not found in the grammar
 # dictionary. Value 65536 = 0x10000 = bit 16 set (POS_X flag).
 UNKNOWN_NLP_TYPE = 65536
@@ -67,7 +67,7 @@ class NLPTokenizer(KTokenizer):
         """Return the number of entries in the grammar dictionary."""
         return len(self._grammar)
 
-    # ── Encode ────────────────────────────────────────────────────────
+    # Encode
 
     def encode(self, text: str, pad_ws: bool = False) -> list[int]:
         """Encode text to a list of NLP-BPE nodes.
@@ -93,7 +93,7 @@ class NLPTokenizer(KTokenizer):
             nodes.append(node)
         return nodes
 
-    # ── Decode ────────────────────────────────────────────────────────
+    # Decode
 
     def decode(self, ids: list[int]) -> str:
         """Decode NLP-BPE nodes back to text.
@@ -116,16 +116,14 @@ class NLPTokenizer(KTokenizer):
         bpe_run: list[int] = []
 
         for node in ids:
-            # NLP-BPE node: extract BPE token ID from low 32 bits
             bpe_run.append(node & 0xFFFFFFFF)
 
-        # Flush BPE run
         if bpe_run:
             parts.append(self._bpe.decode(bpe_run))
 
         return "".join(parts)
 
-    # ── Grammar lookup ──────────────────────────────────────────────────
+    # Grammar lookup
 
     def lookup_grammar(self, bpe_id: int) -> dict | None:
         """Look up NLP grammar info for a BPE token ID.
@@ -138,7 +136,7 @@ class NLPTokenizer(KTokenizer):
         """
         return self._grammar.get(bpe_id)
 
-    # ── Factory ───────────────────────────────────────────────────────
+    # Factory
 
     @classmethod
     def from_files(
@@ -176,13 +174,10 @@ class NLPTokenizer(KTokenizer):
         bpe_tokenizer = Tokenizer.from_directory(tokenizer_path, tokenizer_name)
 
         if grammar_path is None:
-            # Prefer the BPE-tagged grammar (full vocab coverage)
             tagged = Path(tokenizer_path) / f"{tokenizer_name}_tagged_grammar.json"
             grammar_path = str(tagged) if tagged.exists() else None
 
-            # Fallback: look for a grammar named after the training corpus
             if grammar_path is None:
-                # Find any *_grammar.json in the tokenizer directory
                 candidates = sorted(Path(tokenizer_path).glob("*_grammar.json"))
                 if candidates:
                     grammar_path = str(candidates[0])

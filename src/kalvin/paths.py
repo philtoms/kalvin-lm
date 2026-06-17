@@ -27,7 +27,7 @@ def data_dir() -> Path:
     return _PROJECT_ROOT / "data"
 
 
-# ── Convenience constants ─────────────────────────────────────────────────
+# Convenience constants
 
 TOKENIZER_DIR: str = "tokenizer"
 AGENT_BIN: str = "agent.bin"

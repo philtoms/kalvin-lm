@@ -93,13 +93,13 @@ class KLine:
         self.nodes = _normalize_nodes(nodes)
         self.dbg = dbg
 
-    # ── Backwards-compatible helpers ──────────────────────────────────
+    # Backwards-compatible helpers
 
     def as_node_list(self) -> list[KNode]:
         """Get nodes as a list. Always returns self.nodes (already a list)."""
         return self.nodes
 
-    # ── Equality, hashing ─────────────────────────────────────────────
+    # Equality, hashing
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, KLine):
@@ -113,7 +113,7 @@ class KLine:
     def __hash__(self) -> int:
         return hash((self.signature, tuple(self.nodes)))
 
-    # ── Repr ──────────────────────────────────────────────────────────
+    # Repr
 
     def __repr__(self) -> str:
         text = f" {self.dbg}" if self.dbg else ""
@@ -127,7 +127,7 @@ class KLine:
 KGraph: TypeAlias = "object"  # Iterator[KLine] — for compat
 
 
-# ── Display helper ─────────────────────────────────────────────────────
+# Display helper
 
 _OP_SYMBOLS = {
     "COUNTERSIGNED": "==",

@@ -80,14 +80,13 @@ class KAgentAdapter:
         self._kagent: _KAgentLike | None = kagent
         self._tokenizer: KTokenizer | None = tokenizer
 
-        # Sender map: (entry.signature, tuple(entry.nodes)) → sender role.
-        # Populated in on_message (bus thread), read in on_event (cogitator thread).
+        # Sender map: (signature, frozen_nodes) → sender role. Written in
+        # on_message (bus thread), read in on_event (cogitator thread).
         self._sender_map: dict[EntryKey, str] = {}
 
-        # Subscribe to the bus at construction time.
         bus.subscribe(self._role, self.on_message)
 
-    # ── Properties ─────────────────────────────────────────────────────
+    # Properties
 
     @property
     def role(self) -> str:
@@ -104,7 +103,7 @@ class KAgentAdapter:
         """The tokenizer used for KScript compilation, or ``None`` if unset."""
         return self._tokenizer
 
-    # ── Late binding ───────────────────────────────────────────────────
+    # Late binding
 
     def bind(self, kagent: _KAgentLike) -> None:
         """Bind a KAgent instance after construction.
@@ -114,7 +113,7 @@ class KAgentAdapter:
         """
         self._kagent = kagent
 
-    # ── Participant protocol ───────────────────────────────────────────
+    # Participant protocol
 
     def on_message(self, msg: Message) -> None:
         """Handle an incoming bus message sent to this adapter's role.
@@ -146,7 +145,7 @@ class KAgentAdapter:
         else:
             logger.warning("Unknown action %r from %s", msg.action, msg.sender)
 
-    # ── Adapter callback (KAgent → adapter) ────────────────────────────
+    # Adapter callback (KAgent → adapter)
 
     def on_event(self, event: RationaliseEvent) -> None:
         """Receive a rationalisation event from the KAgent.
@@ -173,7 +172,7 @@ class KAgentAdapter:
         )
         self._bus.send(response)
 
-    # ── Internal handlers ──────────────────────────────────────────────
+    # Internal handlers
 
     def drain(self, timeout: float | None = None) -> bool:
         """Drain pending cogitation work items from the KAgent.
@@ -205,20 +204,16 @@ class KAgentAdapter:
             return
 
         logger.info("Submitting %d compiled entries to KAgent", len(entries))
-        # Pre-register all entries in STM so that countersign pairs
-        # (e.g. from M == H compiling to {M: H} and {H: M}) can find
-        # each other during the countersign check in rationalise().
+        # Pre-register all entries in STM so countersign pairs (e.g. from
+        # `M == H` compiling to {M: H} and {H: M}) can find each other
+        # during rationalise().
         if hasattr(self._kagent, "model"):
             for entry in entries:
                 self._kagent.model.add_stm(entry)
         for entry in entries:
-            # Record sender for this entry so callbacks can be routed.
             key: EntryKey = (entry.signature, tuple(entry.nodes))
-            sender = msg.sender or ""
-            self._sender_map[key] = sender
-            # Fire-and-forget: rationalise returns bool but we don't check.
-            # Events come back via on_event callback.
-            self._kagent.rationalise(entry)
+            self._sender_map[key] = msg.sender or ""
+            self._kagent.rationalise(entry)  # fire-and-forget; events come via on_event
 
     def _handle_countersign(self, msg: Message) -> None:
         """Forward a countersign request to the KAgent."""
@@ -278,11 +273,9 @@ class KAgentAdapter:
 
             model, activity = AgentCodec.load(path)
 
-            # Replace the KAgent's model and activity in-place
             self._kagent._model = model
             self._kagent._activity = activity
-            # Rebind the cogitator's model reference
-            self._kagent._cogitator._model = model
+            self._kagent._cogitator._model = model  # rebind cogitator's model ref
 
             logger.info("Kalvin model loaded from %s", path)
             self._bus.send(

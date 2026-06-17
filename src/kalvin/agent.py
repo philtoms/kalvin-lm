@@ -40,7 +40,7 @@ from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
 from kalvin.tokenizer import TiktokenNotInstalledError
 
-# ── Default tokenizer factory ─────────────────────────────────────────
+# Default tokenizer factory
 
 
 def _default_tokenizer() -> KTokenizer:
@@ -61,7 +61,7 @@ def _default_tokenizer() -> KTokenizer:
         ) from exc
 
 
-# ── KAgentAdapter Protocol ─────────────────────────────────────────────
+# KAgentAdapter Protocol
 
 
 @runtime_checkable
@@ -80,7 +80,7 @@ class KAgentAdapter(Protocol):
     def on_event(self, event: RationaliseEvent) -> None: ...
 
 
-# ── Cogitation Handler Protocol ────────────────────────────────────────
+# Cogitation Handler Protocol
 
 
 @runtime_checkable
@@ -106,7 +106,7 @@ class CogitationHandler(Protocol):
         ...
 
 
-# ── Work Item ─────────────────────────────────────────────────────────
+# Work Item
 
 
 class WorkItem(NamedTuple):
@@ -117,7 +117,7 @@ class WorkItem(NamedTuple):
     level: str  # "S2" or "S3"
 
 
-# ── Cogitator ─────────────────────────────────────────────────────────
+# Cogitator
 
 
 class Cogitator:
@@ -231,10 +231,9 @@ class Cogitator:
         query, candidate, level = item
 
         if level == "S1":
-            # S1: full node overlap confirmed by routing — skip expansion.
-            # expand() may yield intermediate S2/S3 connotation pairs before
-            # the terminal S1 yield, which would trigger unwanted reactive
-            # scaffolding. Resolve immediately.
+            # Skip expansion: routing already confirmed full node overlap,
+            # and expand() may yield spurious intermediate S2/S3 pairs
+            # before the terminal S1 yield.
             self._handler.on_s1(query, candidate)
             return
 
@@ -244,16 +243,14 @@ class Cogitator:
             band = classify(qc.significance, s12, s23, s34)
 
             if band == "S4":
-                continue  # demote: below S3|S4 boundary
+                continue
 
             if band == "S1":
                 self._handler.on_s1(query, candidate)
-                break  # query fully resolved — skip remaining expansions
+                break
             else:
-                # S2 or S3: propose expansions, route to handler
-                # Note: qc.candidate (not WorkItem.candidate) is the expanded
-                # candidate that may be a misfit. qc.query (not WorkItem.query)
-                # is the correct query context for connotation yields.
+                # qc.candidate is the expanded (possibly misfit) candidate;
+                # qc.query is the correct query context for connotation yields.
                 for proposal, sig in propose_expansions(self._model, qc.candidate, qc.significance):
                     self._handler.on_expansion(
                         qc.query,
@@ -263,7 +260,7 @@ class Cogitator:
                     )
 
 
-# ── KAgent ────────────────────────────────────────────────────────────
+# KAgent
 
 
 class KAgent:
@@ -295,10 +292,8 @@ class KAgent:
         self._activity: Counter = Counter()
         self._max_candidates: int = max_candidates
 
-        # Adapter — receives events via on_event()
         self._adapter: KAgentAdapter = adapter
 
-        # Cogitator — KAgent is the CogitationHandler
         self._cogitator = Cogitator(
             model=self._model,
             adapter=self._adapter,
@@ -306,7 +301,7 @@ class KAgent:
             timeout=2.0,
         )
 
-    # ── Properties ────────────────────────────────────────────────────
+    # Properties
 
     @property
     def model(self) -> Model:
@@ -325,7 +320,7 @@ class KAgent:
     def cogitator(self) -> Cogitator:
         return self._cogitator
 
-    # ── Routing ───────────────────────────────────────────────────────
+    # Routing
 
     @staticmethod
     def _route(query: KLine, candidate: KLine) -> str:
@@ -349,7 +344,7 @@ class KAgent:
         else:
             return "S3"
 
-    # ── Rationalisation ───────────────────────────────────────────────
+    # Rationalisation
 
     def rationalise(self, kline: KLine) -> bool:
         """Rationalise a KLine into the model.
@@ -359,17 +354,16 @@ class KAgent:
 
         Returns True if significant (S1, S4), False if rational (S2, S3).
         """
-        # Phase 1: Prepare
+        # Prepare
         if kline.signature == 0 and kline.nodes:
             kline.signature = make_signature(kline.nodes)
 
-        # Phase 2: Ground check (Frame/LTM/Base only — not STM)
+        # Ground check (Frame/LTM/Base only — not STM)
         if kline.signature != 0 and self._model.grounded(kline):
             self._model.add_stm(kline)
             self._publish("ground", kline, kline, D_MAX - 1)
             return True
 
-        # Phase 3: Assess
         if not kline.nodes:
             self._model.add_ltm(kline)
             self._publish("frame", kline, kline, 0)  # S4
@@ -383,29 +377,22 @@ class KAgent:
                 self._publish("frame", kline, kline, D_MAX - 1)  # S1
                 return True
 
-        # Phase 3 (continued): Register in STM before ratification check.
-        # This ensures that sequential countersign pairs (e.g. from M == H
-        # compiling to {M: H} and {H: M}) can find each other via
-        # is_countersigned: the first entry in STM becomes visible when
-        # the second entry's countersign check runs.
+        # Register in STM before the ratification check so sequential
+        # countersign pairs (e.g. from `M == H` compiling to {M: H} and
+        # {H: M}) can find each other via is_countersigned.
         self._model.add_stm(kline)
 
-        # Phase 3 (continued): Ratification — countersigned in the model → S1.
-        # Only countersign (==) entries can pass this check, because only
-        # countersign produces reciprocal klines. Undersign (=) and connotate
-        # (>) compile to the same kline structure — a single node entry in
-        # opposite directions — so Kalvin treats them identically.
+        # Ratification — countersigned in the model → S1. Only countersign
+        # produces reciprocal klines; undersign/connotate share a structure
+        # (a single node entry in opposite directions) and are handled below.
         if is_countersigned(self._model, kline):
             self._model.add_ltm(kline)
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
 
-        # Phase 3 (continued): Undersign/connotate single-node entries
-        # where both signature and node are grounded identities.
-        # No operator guard needed: countersign is handled above by
-        # is_countersigned(), and undersign/connotate produce identical
-        # kline structures (inverses of each other) — both can fast-path
-        # when both sides are grounded.
+        # Undersign/connotate single-node entries where both sides are
+        # grounded identities (no operator guard: countersign is handled
+        # above; undersign/connotate are inverses that fast-path together).
         if (
             len(kline.nodes) == 1
             and self._model.find(kline.signature) is not None
@@ -415,23 +402,19 @@ class KAgent:
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
 
-        # Phase 3b: Graph expansion for single-node entries with unknown
-        # nodes. When a connotate or undersign references a node that
-        # doesn't exist in the model, attempt to resolve it by expanding
-        # the graph from the signature's context.
+        # Graph expansion for single-node entries with unknown nodes:
+        # attempt to ground the unknown node from the signature's context.
         if (
             len(kline.nodes) == 1
             and self._model.find(kline.nodes[0]) is None
             and self._model.find(kline.signature) is not None
         ):
             if self._resolve_unknown_via_graph(kline.signature, kline.nodes[0]):
-                # Unknown node grounded via graph expansion.
-                # Now both sides are grounded — accept as S1.
                 self._model.add_ltm(kline)
                 self._publish("frame", kline, kline, D_MAX - 1)
                 return True
 
-        # Phase 4: Retrieve candidates (exclude self to prevent trivial match)
+        # Retrieve candidates (exclude self to prevent trivial match)
         candidates = [
             kl
             for kl in self._model.where(kline.signature)
@@ -439,19 +422,14 @@ class KAgent:
         ]
 
         if not candidates:
-            # S4 — novel, no candidates
             self._model.add_ltm(kline)
-            self._publish("frame", kline, kline, 0)
+            self._publish("frame", kline, kline, 0)  # S4 — novel
             return True
 
-        # Phase 5: Push all candidates to cogitator.
-        # Every candidate is submitted as a work item regardless of routing
-        # classification. This ensures all kline proposals flow through
-        # cogitation — no silent S1 short-circuit that skips reasoning.
-
-        # Classify and sort candidates: S1 first (so auto-satisfy fires
-        # before S2/S3 expansion proposals trigger reactive scaffolding),
-        # then by node overlap count (descending) within each level.
+        # Submit every candidate to cogitation (no silent S1 short-circuit
+        # that would skip reasoning). Sort S1 first so auto-satisfy fires
+        # before S2/S3 expansion proposals trigger reactive scaffolding,
+        # then by node overlap descending within each level.
         def _route_rank(candidate: KLine) -> tuple[int, int]:
             level = self._route(kline, candidate)
             level_order = {"S1": 0, "S2": 1, "S3": 2, "S4": 3}.get(level, 4)
@@ -460,7 +438,6 @@ class KAgent:
 
         sorted_candidates = sorted(candidates, key=_route_rank)
 
-        # Cap to prevent cascade explosion in dense models.
         if len(sorted_candidates) > self._max_candidates:
             sorted_candidates = sorted_candidates[: self._max_candidates]
 
@@ -468,10 +445,9 @@ class KAgent:
             level = self._route(kline, candidate)
             self._cogitator.submit(WorkItem(kline, candidate, level))
 
-        # All candidates submitted to cogitator
         return False
 
-    # ── Graph Expansion Resolution ───────────────────────────────────
+    # Graph Expansion Resolution
 
     def _resolve_unknown_via_graph(self, signature: int, unknown_node: int) -> bool:
         """Try to ground an unknown node through graph expansion.
@@ -503,7 +479,7 @@ class KAgent:
 
         return None
 
-    # ── CogitationHandler protocol ────────────────────────────────────
+    # CogitationHandler protocol
 
     def on_s1(self, query: KLine, candidate: KLine) -> None:
         """CogitationHandler.on_s1: structural check, promote, publish frame event."""
@@ -540,69 +516,52 @@ class KAgent:
         """
         return self._cogitator.drain(timeout)
 
-    # ── Events ────────────────────────────────────────────────────────
+    # Events
 
     def _publish(self, kind: str, query: KLine, proposal: KLine, significance: int) -> None:
         """Publish a rationalisation event via the adapter."""
         self._adapter.on_event(RationaliseEvent(kind, query, proposal, significance))
 
     def countersign(self, kline: KLine) -> bool:
-        """Generate the reciprocal kline and rationalise it.
+        """Generate the reciprocal kline ({Q:[V]} → {V:[Q]}) and rationalise it.
 
-        For {Q: [V]}, the reciprocal is {V: [Q]}.
-
-        Precondition: kline.nodes is not empty.
-        Postcondition: A reciprocal kline is rationalised. Returns the result.
-
-        Args:
-            kline: The kline to countersign.
-
-        Returns:
-            Result of rationalise(reciprocal).
+        Requires non-empty nodes; returns the result of ``rationalise``.
         """
         reciprocal_sig = make_signature(kline.nodes)
         reciprocal = KLine(reciprocal_sig, [kline.signature])
         return self.rationalise(reciprocal)
 
-    # ── Frame info ────────────────────────────────────────────────────
+    # Frame info
 
     def frame_size(self) -> int:
         return len(self._model)
 
-    # ── Codec ──────────────────────────────────────────────────────────
-
     def codec(self) -> AgentCodec:
-        """Return an AgentCodec for this agent's model and activity."""
         return AgentCodec(self._model, self._activity)
 
-    # ── Serialization (delegates to AgentCodec) ───────────────────────
+    # Serialization — all delegate to AgentCodec.
 
     def to_bytes(self) -> bytes:
-        """Serialize to binary."""
         return self.codec().to_bytes()
 
     @classmethod
     def from_bytes(cls, data: bytes, adapter: KAgentAdapter | None = None) -> KAgent:
-        """Deserialize from binary."""
         model, activity = AgentCodec.from_bytes(data)
         agent = cls(model=model, adapter=adapter or EventBus())
         agent._activity = activity
         return agent
 
     def to_dict(self) -> dict:
-        """Serialize to dict."""
         return self.codec().to_dict()
 
     @classmethod
     def from_dict(cls, data: dict, adapter: KAgentAdapter | None = None) -> KAgent:
-        """Deserialize from dict."""
         model, activity = AgentCodec.from_dict(data)
         agent = cls(model=model, adapter=adapter or EventBus())
         agent._activity = activity
         return agent
 
     def save(self, path: str | Path, format: Literal["bin", "json"] | None = None) -> None:
-        """Persist to file."""
         self.codec().save(path, format)
 
     @classmethod
@@ -612,7 +571,6 @@ class KAgent:
         format: Literal["bin", "json"] | None = None,
         adapter: KAgentAdapter | None = None,
     ) -> KAgent:
-        """Load from file."""
         model, activity = AgentCodec.load(path, format)
         agent = cls(model=model, adapter=adapter or EventBus())
         agent._activity = activity
