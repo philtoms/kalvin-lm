@@ -30,7 +30,6 @@ def _make_app() -> KScriptApp:
         app = KScriptApp.__new__(KScriptApp)
         app._dev_mode = True
         app._agent = MagicMock()
-        app._decompiler = MagicMock()
         app._execution_state = ExecutionState.IDLE
         app._cancelled = False
         app._last_script_dir = None

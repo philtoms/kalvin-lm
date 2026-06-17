@@ -35,7 +35,6 @@ def _make_app() -> KScriptApp:
         app = KScriptApp.__new__(KScriptApp)
         app._dev_mode = True
         app._agent = MagicMock()
-        app._decompiler = MagicMock()
         app._execution_state = ExecutionState.IDLE
         app._pending_entries = []
         app._current_entry_index = 0
