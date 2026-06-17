@@ -423,9 +423,14 @@ identity signatures (single-token values, @CONTEXT.md §Identity).
   node value as signature, an identity is preferred over a canon. Within a
   kind, the most recently added kline wins (@CONTEXT.md §Recency
   Precedence). If no identity or canon kline exists for the value → raises.
+- **Self-reference guard**: when the resolved child is a canon whose sole
+  node is its own signature (`{node: [node]}`), the node is structurally
+  identity — a value that decomposes into itself carries no further
+  decomposition. The node is emitted directly without recursing, so such a
+  self-referential canon cannot recurse without bound. Any other child (an
+  identity kline, or a canon with different nodes) is unpacked normally.
 - Node order is significant (@kline spec): the output sequence preserves
   the node order of every traversed kline.
-- No cycle detection. A cyclic graph recurses without bound.
 
 ### Query
 
@@ -702,6 +707,8 @@ else       → S4
 | MOD-64 | Unpack unresolvable child node → raises                           | — |
 | MOD-65 | Unpack child resolution: identity preferred over canon            | — |
 | MOD-66 | Unpack within-kind ambiguity: most-recently-added wins            | — |
+| MOD-67 | Unpack self-referential canon `{S: [S]}` → `[S]` (no recursion)    | — |
+| MOD-67b | Unpack canon sharing node value but different nodes still recurses | — |
 
 ### Write Cascade
 

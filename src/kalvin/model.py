@@ -385,7 +385,6 @@ class Model:
         - Child resolution: identity preferred over canon; within a kind,
           most recently added wins (Recency Precedence).
         - Raises ValueError if a child node resolves to no identity or canon.
-        - No cycle detection; a cyclic graph recurses without bound.
         """
         if not kline.nodes:
             return [kline.signature]
@@ -397,7 +396,12 @@ class Model:
         out: list[int] = []
         for node in kline.nodes:
             child = self._resolve_for_unpack(node)
-            out.extend(self.unpack(child))
+            # Self-reference guard: a canon whose sole node is its own
+            # signature ({node: [node]}) is structurally identity.
+            if child.signature == node and child.nodes == [node]:
+                out.append(node)
+            else:
+                out.extend(self.unpack(child))
         return out
 
     def _resolve_for_unpack(self, node: int) -> KLine:

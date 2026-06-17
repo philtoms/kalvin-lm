@@ -155,9 +155,10 @@ class TestUndersignIsConnotateReversed:
         a.model.add_stm(e)
 
         result = a.rationalise(e)
-        # With both M and S grounded identities, the undersign entry {M: [S]}
-        # resolves via the grounded-identity fast path (S1 -> True).
-        assert result is True
+        # Undersign gets no special fast path: {M: [S]} is routed against
+        # the {M: []} identity (match_count 0) -> S3, so it goes through the
+        # slow path and rationalise returns False (CR-7).
+        assert result is False
 
     def test_connotate_goes_through_slow_path(self):
         """Connotate {A: D} should go through candidate retrieval -> slow path."""

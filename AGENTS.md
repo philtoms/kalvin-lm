@@ -2,8 +2,7 @@
 
 ## Git
 
-- **Task work (kb tasks):** commit autonomously. No confirmation needed.
-- **Ad-hoc work:** ask for explicit confirmation before running any `git commit`.
+- Ask for explicit confirmation before running any `git commit`.
 
 ## Task Board
 
@@ -11,4 +10,4 @@
 
 ## Development
 
-- Follow the cascade development model closely (docs/cascade-development.md): vision → spec → plan → triage. No content duplication across layers.
+- Follow the cascade development model closely (docs/cascade-development.md): vision → spec → plan. No content duplication across layers.

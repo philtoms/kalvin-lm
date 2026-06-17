@@ -12,13 +12,9 @@ docs/kalvin-vision.md    ←  WHY — purpose, philosophy, conceptual model
 specs/                   ←  WHAT — testable behavioural contracts
         ↓
 plans/                   ←  HOW — implementation strategy, phasing, test mapping
-        ↓
-.kb/tasks                ←  INSTRUCT - task creation for kb triage
 ```
 
 Every fact lives in exactly one layer. Other layers **reference** it — never paraphrase, duplicate, or restate.
-
-> Note: `kalvin-introduction.md` was merged into `kalvin-vision.md` per ADR-0009.
 
 ### Content ownership
 
@@ -78,20 +74,3 @@ Verify the full traceability chain:
 - vision section → spec criterion → plan task → test function.
 - No content duplicated across layers.
 - No broken references.
-
-### Step 4 — Commit
-
-Stage and commit all grilling documentation updates (specs, plans, vision changes). **Ask the user for explicit confirmation before committing.**
-
-### Step 5 — Create Implementation Tasks
-
-For each implementation task in the plan, create a kb task:
-
-```
-kb_task_create({
-  description: "<task summary — what to implement, spec refs, acceptance criteria>",
-  depends: ["<IDs of prerequisite tasks>"]
-})
-```
-
-Each description must include: what needs to be implemented, spec reference links, and acceptance criteria (test matrix IDs).

@@ -792,3 +792,37 @@ class TestUnpack:
         m.add_frame(parent)
         # resolves 0x30 → newer canon → [0x10, 0x20, 0x10]
         assert m.unpack(parent) == [0x10, 0x20, 0x10, 0x40]
+
+    def test_mod67_self_referential_canon_is_identity(self):
+        # MOD-67: a canon whose sole node is its own signature
+        # ({node: [node]}) is structurally identity — emit the node directly
+        # instead of recursing without bound. Covers both the direct case and
+        # a parent referencing the self-referential canon.
+        m = make_model()
+        # Direct case: unpack the self-referential canon itself.
+        self_ref = KLine(0x100, [0x100])  # make_signature([0x100]) == 0x100
+        m.add_frame(self_ref)
+        assert m.unpack(self_ref) == [0x100]
+
+        # Nested case: a parent's node resolves to a self-referential canon.
+        m2 = make_model()
+        m2.add_frame(KLine(0x200, []))  # identity sibling
+        m2.add_frame(KLine(0x100, [0x100]))  # self-referential canon for 0x100
+        parent = KLine(0x300, [0x100, 0x200])  # 0x300 == 0x100 | 0x200
+        m2.add_frame(parent)
+        # 0x100 resolves to the self-ref canon → emitted as 0x100 (no recursion)
+        assert m2.unpack(parent) == [0x100, 0x200]
+
+    def test_mod67b_canon_with_sig_equal_node_still_recurses(self):
+        # MOD-67b: a canon that merely shares the parent's node value but has
+        # *different* nodes is a real decomposition — it must still recurse.
+        # (Guards against an over-broad self-reference check.)
+        m = make_model()
+        m.add_frame(KLine(0x10, []))
+        m.add_frame(KLine(0x20, []))
+        m.add_frame(KLine(0x40, []))
+        inner = KLine(0x30, [0x10, 0x20])  # 0x30 == 0x10 | 0x20; sig != [0x30]
+        m.add_frame(inner)
+        outer = KLine(0x70, [0x30, 0x40])  # node 0x30 resolves to inner canon
+        m.add_frame(outer)
+        assert m.unpack(outer) == [0x10, 0x20, 0x40]

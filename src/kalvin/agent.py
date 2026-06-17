@@ -390,30 +390,6 @@ class KAgent:
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
 
-        # Undersign/connotate single-node entries where both sides are
-        # grounded identities (no operator guard: countersign is handled
-        # above; undersign/connotate are inverses that fast-path together).
-        if (
-            len(kline.nodes) == 1
-            and self._model.find(kline.signature) is not None
-            and self._model.find(kline.nodes[0]) is not None
-        ):
-            self._model.add_ltm(kline)
-            self._publish("frame", kline, kline, D_MAX - 1)  # S1
-            return True
-
-        # Graph expansion for single-node entries with unknown nodes:
-        # attempt to ground the unknown node from the signature's context.
-        if (
-            len(kline.nodes) == 1
-            and self._model.find(kline.nodes[0]) is None
-            and self._model.find(kline.signature) is not None
-        ):
-            if self._resolve_unknown_via_graph(kline.signature, kline.nodes[0]):
-                self._model.add_ltm(kline)
-                self._publish("frame", kline, kline, D_MAX - 1)
-                return True
-
         # Retrieve candidates (exclude self to prevent trivial match)
         candidates = [
             kl
@@ -448,36 +424,6 @@ class KAgent:
         return False
 
     # Graph Expansion Resolution
-
-    def _resolve_unknown_via_graph(self, signature: int, unknown_node: int) -> bool:
-        """Try to ground an unknown node through graph expansion.
-
-        Given a single-node entry {sig: [unknown]} where unknown is not in
-        the model, attempts to ground the unknown node by verifying that the
-        signature participates in a known structure (canonization or mapping).
-
-        Strategy:
-        1. Find klines whose nodes contain the signature — i.e., structures
-           the signature participates in.
-        2. Verify at least one such structure is grounded (S1).
-        3. If confirmed, create a frame for the unknown node, making it
-           a grounded identity in the model.
-
-        Returns True if the unknown node was grounded, False otherwise.
-        """
-        # Check if signature participates in any grounded structure
-        for containing_kline in self._model.klines():
-            if signature not in containing_kline.nodes:
-                continue
-            if is_s1(self._model, containing_kline):
-                # Signature participates in a grounded structure.
-                # Create a frame for the unknown node.
-                unknown_frame = KLine(unknown_node, [])
-                self._model.add_ltm(unknown_frame)
-                self._publish("frame", unknown_frame, unknown_frame, 0)
-                return True
-
-        return None
 
     # CogitationHandler protocol
 
