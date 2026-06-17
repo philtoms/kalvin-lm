@@ -132,19 +132,19 @@ src/
 │   ├── binding_scope.py  #   NLP binding resolution
 │   ├── token_encoder.py  #   TokenEncoder (symbolic → encoded KLines)
 │   └── compiler.py       #   Compiler (orchestrator; source → KLines)
-│   # Note: no decompiler — compilation output is the product (see specs/kscript.md)
-├── harness/              # Multi-agent harness server
-│   ├── server.py         #   Harness server + config loading
-│   ├── bus.py            #   Addressed message bus
-│   ├── adapter.py        #   KAgent ↔ bus adapter
-│   └── protocol.py       #   WebSocket wire protocol
-├── trainer/              # Trainer participant
-│   ├── trainer.py        #   Curriculum execution + reactive mode
-│   ├── curriculum.py     #   Curriculum state + persistence
-│   └── cogitation.py     #   LLM agent integration
-└── participants/         # Client participants
-    ├── slack_agent.py    #   Slack ↔ harness
-    └── tui_client.py     #   TUI ↔ harness
+└── training/             # Multi-agent training runtime
+    ├── harness/         #   Harness server
+    │   ├── server.py    #     Harness server + config loading
+    │   ├── bus.py       #     Addressed message bus
+    │   ├── adapter.py   #     KAgent ↔ bus adapter
+    │   └── protocol.py  #     WebSocket wire protocol
+    ├── trainer/         #   Trainer participant
+    │   ├── trainer.py       #   Curriculum execution + reactive mode
+    │   ├── curriculum.py    #   Curriculum state + persistence
+    │   └── cogitation.py    #   LLM agent integration
+    └── participants/    #   Client participants
+        ├── slack_agent.py   #   Slack ↔ harness
+        └── tui_client.py    #   TUI ↔ harness
 ```
 
 ## Documentation

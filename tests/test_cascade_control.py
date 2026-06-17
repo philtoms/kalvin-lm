@@ -3,15 +3,15 @@
 Spec: specs/cascade-control.md
 """
 
-from harness.bus import MessageBus
-from harness.constants import SUPERVISOR_ROLE
-from harness.message import Message
+from training.harness.bus import MessageBus
+from training.harness.constants import SUPERVISOR_ROLE
+from training.harness.message import Message
 from kalvin.agent import KAgent, WorkItem
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from tests.conftest import requires_nlp_data
-from trainer.curriculum import Curriculum, CurriculumState
-from trainer.reactor import Reactor
+from training.trainer.curriculum import Curriculum, CurriculumState
+from training.trainer.reactor import Reactor
 
 # ── Helpers ────────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-"""Tests for the auto-tune CLI (``python -m participants.auto_tune``).
+"""Tests for the auto-tune CLI (``python -m training.participants.auto_tune``).
 
 Covers:
 - build_parser() returns ArgumentParser with all 12 subcommands
@@ -21,7 +21,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from participants.auto_tune.cli import build_parser, main
+from training.participants.auto_tune.cli import build_parser, main
 
 # ---------------------------------------------------------------------------
 # build_parser structure
@@ -121,7 +121,7 @@ class TestInitParsing:
 class TestInitHandler:
     """init handler delegates to SessionDir.init."""
 
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_calls_init_with_correct_args(self, mock_session_dir: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_instance.config_path = MagicMock()
@@ -151,7 +151,7 @@ class TestInitHandler:
             port=4321,
         )
 
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_calls_init_with_defaults(self, mock_session_dir: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_instance.config_path = MagicMock()
@@ -243,8 +243,8 @@ class TestNonInitParsing:
 class TestHandlerDelegation:
     """All non-init handlers delegate to the correct handler module."""
 
-    @patch("participants.auto_tune.cli.lifecycle")
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.lifecycle")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_start_harness_delegates(self, mock_sd: MagicMock, mock_lifecycle: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_instance.config_path.parent = "/auto-tune/s1"
@@ -255,8 +255,8 @@ class TestHandlerDelegation:
         args.func(args)
         mock_lifecycle.start_harness.assert_called_once_with("/auto-tune/s1")
 
-    @patch("participants.auto_tune.cli.lifecycle")
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.lifecycle")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_stop_harness_delegates(self, mock_sd: MagicMock, mock_lifecycle: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_instance.config_path.parent = "/auto-tune/s1"
@@ -267,8 +267,8 @@ class TestHandlerDelegation:
         args.func(args)
         mock_lifecycle.stop_harness.assert_called_once_with("/auto-tune/s1")
 
-    @patch("participants.auto_tune.cli.lifecycle")
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.lifecycle")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_start_supervisor_delegates(
         self, mock_sd: MagicMock, mock_lifecycle: MagicMock
     ) -> None:
@@ -281,8 +281,8 @@ class TestHandlerDelegation:
         args.func(args)
         mock_lifecycle.start_supervisor.assert_called_once_with("/auto-tune/s1")
 
-    @patch("participants.auto_tune.cli.lifecycle")
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.lifecycle")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_stop_supervisor_delegates(self, mock_sd: MagicMock, mock_lifecycle: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_instance.config_path.parent = "/auto-tune/s1"
@@ -293,8 +293,8 @@ class TestHandlerDelegation:
         args.func(args)
         mock_lifecycle.stop_supervisor.assert_called_once_with("/auto-tune/s1")
 
-    @patch("participants.auto_tune.cli.orchestrate")
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.orchestrate")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_send_delegates(self, mock_sd: MagicMock, mock_orch: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_sd.load.return_value = mock_instance
@@ -304,8 +304,8 @@ class TestHandlerDelegation:
         args.func(args)
         mock_orch.send_command.assert_called_once_with(mock_instance, {"action": "start"})
 
-    @patch("participants.auto_tune.cli.orchestrate")
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.orchestrate")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_events_delegates(self, mock_sd: MagicMock, mock_orch: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_sd.load.return_value = mock_instance
@@ -316,8 +316,8 @@ class TestHandlerDelegation:
         args.func(args)
         mock_orch.read_events.assert_called_once_with(mock_instance, 0)
 
-    @patch("participants.auto_tune.cli.orchestrate")
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.orchestrate")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_step_delegates(self, mock_sd: MagicMock, mock_orch: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_sd.load.return_value = mock_instance
@@ -328,8 +328,8 @@ class TestHandlerDelegation:
         args.func(args)
         mock_orch.step.assert_called_once_with(mock_instance, {"action": "continue"})
 
-    @patch("participants.auto_tune.cli.orchestrate")
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.orchestrate")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_status_delegates(self, mock_sd: MagicMock, mock_orch: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_sd.load.return_value = mock_instance
@@ -340,8 +340,8 @@ class TestHandlerDelegation:
         args.func(args)
         mock_orch.read_status.assert_called_once_with(mock_instance)
 
-    @patch("participants.auto_tune.cli.snapshots")
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.snapshots")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_snapshot_delegates(self, mock_sd: MagicMock, mock_snap: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_sd.load.return_value = mock_instance
@@ -351,8 +351,8 @@ class TestHandlerDelegation:
         args.func(args)
         mock_snap.snapshot.assert_called_once_with(mock_instance)
 
-    @patch("participants.auto_tune.cli.snapshots")
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.snapshots")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_restore_delegates(self, mock_sd: MagicMock, mock_snap: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_sd.load.return_value = mock_instance
@@ -362,8 +362,8 @@ class TestHandlerDelegation:
         args.func(args)
         mock_snap.restore.assert_called_once_with(mock_instance, 3)
 
-    @patch("participants.auto_tune.cli.snapshots")
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.snapshots")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_reset_delegates(self, mock_sd: MagicMock, mock_snap: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_sd.load.return_value = mock_instance
@@ -373,8 +373,8 @@ class TestHandlerDelegation:
         args.func(args)
         mock_snap.reset.assert_called_once_with(mock_instance, fresh_model=False)
 
-    @patch("participants.auto_tune.cli.snapshots")
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.snapshots")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_reset_fresh_model_delegates(self, mock_sd: MagicMock, mock_snap: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_sd.load.return_value = mock_instance
@@ -398,14 +398,14 @@ class TestMain:
             main([])
         assert exc_info.value.code == 1
 
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_non_init_missing_session_exits(self, mock_sd: MagicMock) -> None:
         mock_sd.load.side_effect = FileNotFoundError("nope")
         with pytest.raises(SystemExit) as exc_info:
             main(["status", "--session", "nonexistent"])
         assert exc_info.value.code == 1
 
-    @patch("participants.auto_tune.cli.SessionDir")
+    @patch("training.participants.auto_tune.cli.SessionDir")
     def test_init_calls_session_dir_init(self, mock_sd: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_instance.config_path = MagicMock()
@@ -428,12 +428,12 @@ class TestMain:
 
 
 class TestMainModule:
-    """``python -m participants.auto_tune --help`` works."""
+    """``python -m training.participants.auto_tune --help`` works."""
 
     def test_help_lists_all_subcommands(self) -> None:
         env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parent.parent / "src")}
         result = subprocess.run(
-            [sys.executable, "-m", "participants.auto_tune", "--help"],
+            [sys.executable, "-m", "training.participants.auto_tune", "--help"],
             capture_output=True,
             text=True,
             env=env,

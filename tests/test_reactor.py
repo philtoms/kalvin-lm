@@ -9,14 +9,14 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from harness.bus import MessageBus
-from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
-from harness.message import Message
+from training.harness.bus import MessageBus
+from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
+from training.harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
 from tests.conftest import requires_nlp_data
-from trainer.curriculum import Curriculum, CurriculumState
-from trainer.reactor import Reactor
+from training.trainer.curriculum import Curriculum, CurriculumState
+from training.trainer.reactor import Reactor
 
 # ── Significance constants ────────────────────────────────────────────
 
@@ -131,7 +131,7 @@ def _make_trainer(
     llm_client=None,
 ):
     """Create a Trainer with BusCapture for integration tests."""
-    from trainer.trainer import Trainer
+    from training.trainer.trainer import Trainer
 
     trainer = Trainer(
         bus,
@@ -152,7 +152,7 @@ def _make_trainer(
 class TestAutoCountersignStructuralMatch:
     """HRNS-12: Trainer auto-countersigns structurally matching proposals."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_auto_countersign_structural_match(self, mock_compile: MagicMock) -> None:
         bus = MessageBus()
         entry = _make_entry(100, [10, 20])
@@ -191,7 +191,7 @@ class TestAutoCountersignStructuralMatch:
 class TestReactiveModeOnS2S3:
     """HRNS-13: Trainer enters reactive mode on S2/S3 events."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_reactive_mode_on_s2_s3(self, mock_compile: MagicMock) -> None:
         bus = MessageBus()
         entry = _make_entry(100, [10, 20])
@@ -226,7 +226,7 @@ class TestReactiveModeOnS2S3:
 class TestEscalationOnBudgetExhaustion:
     """HRNS-14: Trainer escalates to Slack on budget exhaustion."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_escalation_on_budget_exhaustion(self, mock_compile: MagicMock) -> None:
         # Use max_reactive_rounds=3 and a lesson with 3 entries
         # so reactive_rounds can reach 3 within a single lesson
@@ -256,7 +256,7 @@ class TestEscalationOnBudgetExhaustion:
 class TestCogitateFnInjection:
     """Provide a cogitate_fn that returns scaffolding — reactive mode uses it."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_cogitate_fn_injection(self, mock_compile: MagicMock) -> None:
         entry = _make_entry(100, [10])
         mock_compile.return_value = [entry]
@@ -321,7 +321,7 @@ class TestAutoCountersign:
         assert cs_msgs[0].message == proposal
 
         # Entry marked satisfied
-        from trainer.reactor import _entry_key
+        from training.trainer.reactor import _entry_key
 
         key = _entry_key(entry)
         assert reactor._state.is_satisfied(key)
@@ -497,7 +497,7 @@ class TestDelegatedMode:
         assert cs_msgs[0].message == proposal
 
         # Entry marked satisfied
-        from trainer.reactor import _entry_key
+        from training.trainer.reactor import _entry_key
 
         key = _entry_key(entry)
         assert reactor._state.is_satisfied(key)

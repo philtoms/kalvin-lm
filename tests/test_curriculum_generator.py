@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from trainer.cogitation import LLMResponse
-from trainer.curriculum_document import CurriculumDocument
-from trainer.curriculum_generator import (
+from training.trainer.cogitation import LLMResponse
+from training.trainer.curriculum_document import CurriculumDocument
+from training.trainer.curriculum_generator import (
     CurriculumGenerationError,
     CurriculumGenerator,
     _slug_from_goal,

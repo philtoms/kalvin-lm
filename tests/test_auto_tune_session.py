@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from participants.auto_tune.session import SessionConfig, SessionDir
+from training.participants.auto_tune.session import SessionConfig, SessionDir
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -311,7 +311,7 @@ class TestSessionDirInit:
 
     def test_init_reads_harness_yaml(self, tmp_git_repo: Path) -> None:
         """init reads host/port from harness.yaml when no overrides given."""
-        harness_yaml = tmp_git_repo / "harness.yaml"
+        harness_yaml = tmp_git_repo / "training.harness.yaml"
         harness_yaml.write_text(
             "server:\n  host: 'myhost'\n  port: 5555\n",
             encoding="utf-8",

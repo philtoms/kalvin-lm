@@ -6,8 +6,8 @@ and edge cases for parse_command and to_messages.
 
 from __future__ import annotations
 
-from harness.constants import TRAINEE_ROLE, TRAINER_ROLE
-from participants.commands import (
+from training.harness.constants import TRAINEE_ROLE, TRAINER_ROLE
+from training.participants.commands import (
     FileGoalCommand,
     GoalCommand,
     GuidanceCommand,

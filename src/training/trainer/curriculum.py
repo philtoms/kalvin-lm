@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypeAlias
 
-from trainer.curriculum_document import (
+from training.trainer.curriculum_document import (
     CurriculumDocument,
     CurriculumParseError,
     Lesson,

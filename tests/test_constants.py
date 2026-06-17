@@ -1,6 +1,6 @@
 """Tests for harness role constants."""
 
-from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
+from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
 
 
 def test_role_values():
@@ -24,9 +24,9 @@ def test_constants_are_distinct():
 
 def test_re_exported_from_package():
     """Constants are importable directly from the harness package."""
-    from harness import SUPERVISOR_ROLE as PKG_SUPERVISOR
-    from harness import TRAINEE_ROLE as PKG_TRAINEE
-    from harness import TRAINER_ROLE as PKG_TRAINER
+    from training.harness import SUPERVISOR_ROLE as PKG_SUPERVISOR
+    from training.harness import TRAINEE_ROLE as PKG_TRAINEE
+    from training.harness import TRAINER_ROLE as PKG_TRAINER
 
     assert PKG_TRAINEE == TRAINEE_ROLE
     assert PKG_TRAINER == TRAINER_ROLE

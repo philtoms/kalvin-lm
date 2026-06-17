@@ -24,9 +24,9 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Protocol
 
-from harness.bus import MessageBus
-from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
-from harness.message import Message
+from training.harness.bus import MessageBus
+from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
+from training.harness.message import Message
 from kalvin.abstract import KTokenizer
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine

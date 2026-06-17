@@ -15,8 +15,8 @@ from typing import Any
 import websockets
 from websockets.asyncio.server import ServerConnection
 
-from harness.bus import MessageBus
-from harness.message import Message
+from training.harness.bus import MessageBus
+from training.harness.message import Message
 
 logger = logging.getLogger(__name__)
 

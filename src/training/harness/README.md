@@ -5,7 +5,7 @@ The harness is the persistent server that hosts Kalvin's multi-agent training sy
 All participants are **equal peers**: each has a unique role, sends messages through the bus, and receives messages addressed to its role. No participant knows it's in a training loop — the dialogue between them _is_ the training.
 
 ```
-Harness Server (python -m harness)
+Harness Server (python -m training.harness)
   │
   ├── MessageBus (thread-safe role-based router, runs on its own thread)
   │
@@ -56,7 +56,7 @@ export SLACK_BOT_TOKEN=xoxb-...        # only if using Slack participant
 export SLACK_APP_TOKEN=xapp-...        # only if using Slack participant
 
 # 4. Run the harness
-uv run python -m harness --config harness.yaml
+uv run python -m training.harness --config harness.yaml
 ```
 
 The harness starts, loads the embedded Kalvin and Trainer, and listens for WebSocket connections from the Slack and TUI clients.
@@ -359,14 +359,14 @@ These can also be passed as constructor arguments to `SlackParticipant` instead 
 ### Basic
 
 ```bash
-uv run python -m harness --config harness.yaml
+uv run python -m training.harness --config harness.yaml
 ```
 
 ### Override Host / Port
 
 ```bash
 # CLI flags override the config file's server.host and server.port
-uv run python -m harness --config harness.yaml --host 0.0.0.0 --port 9000
+uv run python -m training.harness --config harness.yaml --host 0.0.0.0 --port 9000
 ```
 
 ### All CLI Flags
@@ -491,7 +491,7 @@ Bridges Slack and the harness:
 **Running the Slack participant:**
 
 ```python
-from participants import SlackParticipant
+from training.participants import SlackParticipant
 
 agent = SlackParticipant(
     harness_url="ws://localhost:8765",
@@ -511,13 +511,13 @@ A Textual TUI that displays Kalvin's events and provides ratification (countersi
 **Running the TUI participant:**
 
 ```bash
-uv run python -m participants.tui_client
+uv run python -m training.participants.tui_client
 ```
 
 Or programmatically:
 
 ```python
-from participants import TUIApp
+from training.participants import TUIApp
 
 app = TUIApp(harness_url="ws://localhost:8765")
 app.run()

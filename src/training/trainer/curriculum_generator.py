@@ -11,8 +11,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from trainer.cogitation import LLMClient
-from trainer.curriculum_document import (
+from training.trainer.cogitation import LLMClient
+from training.trainer.curriculum_document import (
     CurriculumDocument,
     CurriculumParseError,
 )

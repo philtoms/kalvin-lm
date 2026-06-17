@@ -7,8 +7,8 @@ appropriate handler module.
 
 Usage::
 
-    python -m participants.auto_tune init --session exp-1 --curriculum curricula/topic.md
-    python -m participants.auto_tune status --session exp-1
+    python -m training.participants.auto_tune init --session exp-1 --curriculum curricula/topic.md
+    python -m training.participants.auto_tune status --session exp-1
 """
 
 from __future__ import annotations
@@ -18,8 +18,8 @@ import json
 import sys
 from collections.abc import Sequence
 
-from participants.auto_tune import lifecycle, orchestrate, snapshots
-from participants.auto_tune.session import SessionDir
+from training.participants.auto_tune import lifecycle, orchestrate, snapshots
+from training.participants.auto_tune.session import SessionDir
 
 
 def _handle_init(args: argparse.Namespace) -> None:

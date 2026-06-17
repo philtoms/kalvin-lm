@@ -24,8 +24,8 @@ from typing import Any
 
 import websockets
 
-from participants.tui_client import HarnessClient, TUIApp
-from participants.tui_regions import EventLog, InputBar, RatifyBar
+from training.participants.tui_client import HarnessClient, TUIApp
+from training.participants.tui_regions import EventLog, InputBar, RatifyBar
 
 # ---------------------------------------------------------------------------
 # Stub harness WebSocket server

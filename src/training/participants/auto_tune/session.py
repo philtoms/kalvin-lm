@@ -158,7 +158,7 @@ class SessionDir:
         """
         root = Path(root).resolve()
 
-        resolved_host, resolved_port = _read_harness_defaults(root / "harness.yaml")
+        resolved_host, resolved_port = _read_harness_defaults(root / "training.harness.yaml")
         if host is not None:
             resolved_host = host
         if port is not None:
@@ -302,7 +302,7 @@ def _read_harness_defaults(config_path: Path) -> tuple[str, int]:
     """Read host and port defaults from a harness YAML config.
 
     Falls back to ``"localhost"`` / ``8765`` when the file is missing or
-    the keys are absent — matching ``src/harness/__main__.py`` behaviour.
+    the keys are absent — matching ``src/training/harness/__main__.py`` behaviour.
     """
     if not config_path.exists():
         return "localhost", 8765

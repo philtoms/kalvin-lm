@@ -12,7 +12,7 @@
 
 ## Implementation Tasks
 
-### Task 1: CurriculumDocument Parser (`src/trainer/curriculum_document.py`)
+### Task 1: CurriculumDocument Parser (`src/training/trainer/curriculum_document.py`)
 
 - **Spec ref:** @specs/curriculum §CurriculumDocument, CRS-1..CRS-23
 - **Test mapping:** CRS-1..CRS-23
@@ -35,7 +35,7 @@
     - After mutation: validate, serialize to markdown, write to `source_path`
   - Serialization: reconstruct markdown from sections and lessons
 
-### Task 2: Curriculum/CurriculumState Refactor (`src/trainer/curriculum.py`)
+### Task 2: Curriculum/CurriculumState Refactor (`src/training/trainer/curriculum.py`)
 
 - **Spec ref:** @specs/curriculum §CurriculumState, CRS-24..CRS-31
 - **Test mapping:** CRS-24..CRS-31
@@ -53,7 +53,7 @@
   - `load()`: detect format — if `curriculum_file` key present, use new format; otherwise use legacy (create synthetic document from `lessons` list + `position`)
   - Retain all existing `EntryKey`-based sets unchanged
 
-### Task 3: CurriculumGenerator (`src/trainer/curriculum_generator.py`)
+### Task 3: CurriculumGenerator (`src/training/trainer/curriculum_generator.py`)
 
 - **Spec ref:** @specs/curriculum §CurriculumGeneration, CRS-32..CRS-37
 - **Test mapping:** CRS-32..CRS-37
@@ -73,7 +73,7 @@
     9. Return the path
   - `curricula_dir` created with `mkdir(parents=True, exist_ok=True)` on write
 
-### Task 4: Trainer Updates (`src/trainer/trainer.py`)
+### Task 4: Trainer Updates (`src/training/trainer/trainer.py`)
 
 - **Spec ref:** @specs/curriculum §Session Startup, §File Polling, §Amendment Flow, §Progress Events, CRS-38..CRS-49
 - **Test mapping:** CRS-38..CRS-49
@@ -100,7 +100,7 @@
     3. Called from: `start_session`, `_check_lesson_complete`, `_end_session`, amendment handler
   - Cogitation context: build from `document.objective`, `document.approach`, current `lesson.prose`
 
-### Task 5: Cogitation Context Update (`src/trainer/cogitation.py`)
+### Task 5: Cogitation Context Update (`src/training/trainer/cogitation.py`)
 
 - **Spec ref:** @specs/curriculum §CogitationRequest, CRS-50..CRS-52
 - **Test mapping:** CRS-50..CRS-52
@@ -111,7 +111,7 @@
     1. If `objective` or `approach` or `lesson_prose` is non-empty: build context from them
     2. Otherwise fall back to `curriculum_context` for backward compat
 
-### Task 6: Harness Wiring (`src/harness/__main__.py`)
+### Task 6: Harness Wiring (`src/training/harness/__main__.py`)
 
 - **Spec ref:** @specs/curriculum §Session Startup, CRS-38
 - **Test mapping:** CRS-38

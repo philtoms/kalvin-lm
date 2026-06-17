@@ -2,7 +2,7 @@
 
 import pytest
 
-from harness.message import Message
+from training.harness.message import Message
 
 
 def test_message_role_field():

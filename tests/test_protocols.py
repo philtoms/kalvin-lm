@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from harness.protocols import Participant
+from training.harness.protocols import Participant
 
 
 class _ValidParticipant:

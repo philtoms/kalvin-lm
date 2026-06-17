@@ -10,14 +10,14 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from harness.bus import MessageBus
-from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
-from harness.message import Message
+from training.harness.bus import MessageBus
+from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
+from training.harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
 from tests.conftest import requires_nlp_data
-from trainer.curriculum import Curriculum, CurriculumState
-from trainer.reactor import Reactor
+from training.trainer.curriculum import Curriculum, CurriculumState
+from training.trainer.reactor import Reactor
 
 # ── Significance constants ────────────────────────────────────────────
 
@@ -174,7 +174,7 @@ class TestHandleReactiveNotCalledOnAutoCountersign:
 class TestTrainerRatifySuppression:
     """SAC-4, SAC-5: Trainer suppresses ratify_request on auto-countersign."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_ratify_suppressed_on_auto_countersign(self, mock_compile: MagicMock) -> None:
         """SAC-4: No ratify_request when auto-countersign matches."""
         entry = _make_entry(100, [10, 20])
@@ -182,7 +182,7 @@ class TestTrainerRatifySuppression:
 
         bus = MessageBus()
         curriculum = Curriculum(["lesson1", "lesson2"])
-        from trainer.trainer import Trainer
+        from training.trainer.trainer import Trainer
 
         trainer = Trainer(bus, curriculum)
         capture = BusCapture(bus)
@@ -204,7 +204,7 @@ class TestTrainerRatifySuppression:
         ratify_msgs = capture.find_all(SUPERVISOR_ROLE, "ratify_request")
         assert len(ratify_msgs) == 0
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_ratify_sent_when_auto_countersign_fails(self, mock_compile: MagicMock) -> None:
         """SAC-5: ratify_request sent when auto-countersign does NOT match."""
         entry = _make_entry(100, [10, 20])
@@ -212,7 +212,7 @@ class TestTrainerRatifySuppression:
 
         bus = MessageBus()
         curriculum = Curriculum(["lesson1", "lesson2"])
-        from trainer.trainer import Trainer
+        from training.trainer.trainer import Trainer
 
         trainer = Trainer(bus, curriculum)
         capture = BusCapture(bus)
@@ -244,7 +244,7 @@ class TestTrainerRatifySuppression:
 class TestEventRelayRegardless:
     """SAC-6: Event relay sent to supervisor regardless of auto-countersign."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_relay_on_auto_countersign(self, mock_compile: MagicMock) -> None:
         """Event relay sent even when auto-countersign succeeds."""
         entry = _make_entry(100, [10, 20])
@@ -252,7 +252,7 @@ class TestEventRelayRegardless:
 
         bus = MessageBus()
         curriculum = Curriculum(["lesson1", "lesson2"])
-        from trainer.trainer import Trainer
+        from training.trainer.trainer import Trainer
 
         trainer = Trainer(bus, curriculum)
         capture = BusCapture(bus)
@@ -273,7 +273,7 @@ class TestEventRelayRegardless:
         assert len(relay_msgs) == 1
         assert relay_msgs[0].message is event
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_relay_on_no_auto_countersign(self, mock_compile: MagicMock) -> None:
         """Event relay sent even when auto-countersign fails."""
         entry = _make_entry(100, [10, 20])
@@ -281,7 +281,7 @@ class TestEventRelayRegardless:
 
         bus = MessageBus()
         curriculum = Curriculum(["lesson1", "lesson2"])
-        from trainer.trainer import Trainer
+        from training.trainer.trainer import Trainer
 
         trainer = Trainer(bus, curriculum)
         capture = BusCapture(bus)

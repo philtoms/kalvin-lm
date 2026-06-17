@@ -21,7 +21,7 @@ Running
     Set environment variables ``SLACK_BOT_TOKEN`` and ``SLACK_APP_TOKEN``,
     then connect to the harness::
 
-        from participants import SlackParticipant
+        from training.participants import SlackParticipant
 
         agent = SlackParticipant(
             harness_url="ws://localhost:8765",
@@ -33,7 +33,7 @@ Running
 
     Launch the Textual TUI app::
 
-        from participants import TUIApp
+        from training.participants import TUIApp
 
         app = TUIApp(harness_url="ws://localhost:8765")
         app.run()
@@ -43,11 +43,11 @@ Running
 def __getattr__(name: str):
     """Lazy imports to avoid import errors when modules are partially built."""
     if name == "SlackParticipant":
-        from participants.slack_agent import SlackParticipant
+        from training.participants.slack_agent import SlackParticipant
 
         return SlackParticipant
     if name in ("HarnessClient", "TUIApp"):
-        from participants.tui_client import HarnessClient, TUIApp
+        from training.participants.tui_client import HarnessClient, TUIApp
 
         return HarnessClient if name == "HarnessClient" else TUIApp
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

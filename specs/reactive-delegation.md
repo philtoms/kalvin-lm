@@ -54,7 +54,7 @@ A supervisor command that submits reactive scaffolding to Kalvin — the supervi
 
 | Layer | Form | Bus message |
 |-------|------|-------------|
-| Shared command parser (`src/participants/commands.py`) | free-text `scaffold:<kscript source>` | `{role: "trainee", action: "submit", message: <kscript>}` |
+| Shared command parser (`src/training/participants/commands.py`) | free-text `scaffold:<kscript source>` | `{role: "trainee", action: "submit", message: <kscript>}` |
 | Auto-tune `cmd.json` | `{"action": "scaffold", "text": <kscript>}` | supervisor dispatches via the shared command parser → same bus message |
 
 The `submit` action is interpreted by Kalvin's adapter exactly as for any lesson submission: the KScript is compiled and each entry rationalised. Compilation failures come back to the supervisor as `error` events (`@specs/harness-server.md` §Compilation Errors), so the supervisor receives feedback on invalid scaffolding without a separate validation path.

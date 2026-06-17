@@ -34,7 +34,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T1: Message — rename `address` to `role`
 
 - **Spec ref:** @specs/harness-server.md §Message
-- **Files:** `src/harness/message.py`
+- **Files:** `src/training/harness/message.py`
 - **Details:**
   - Rename field `address` → `role` on the `Message` dataclass
   - Update `__repr__` to show `role` instead of `address`
@@ -44,7 +44,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T1a: Introduce role constants
 
 - **Spec ref:** @specs/harness-server.md §Supervisor Participant, §Harness Configuration
-- **Files:** `src/harness/constants.py` (new)
+- **Files:** `src/training/harness/constants.py` (new)
 - **Details:**
   - Define role constants as single source of truth:
     - `TRAINEE_ROLE = "trainee"`
@@ -56,7 +56,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T2: MessageBus — rename `address` to `role`
 
 - **Spec ref:** @specs/harness-server.md §Message Bus — HRNS-1, HRNS-2, HRNS-3, HRNS-11, HRNS-23, HRNS-29
-- **Files:** `src/harness/bus.py`
+- **Files:** `src/training/harness/bus.py`
 - **Details:**
   - Rename parameter `address` → `role` in `subscribe()`
   - Update all internal references (`_handlers`, dispatch logic)
@@ -68,7 +68,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T3: Participant protocol — rename `address` to `role`
 
 - **Spec ref:** @specs/harness-server.md §Participant Protocol
-- **Files:** `src/harness/protocols.py`
+- **Files:** `src/training/harness/protocols.py`
 - **Details:**
   - Rename `address: str` → `role: str` on the `Participant` protocol
   - Update docstring
@@ -77,7 +77,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T4: WebSocketProtocol — multi-client per role
 
 - **Spec ref:** @specs/harness-server.md §WebSocket Wire Protocol — HRNS-4, HRNS-6, HRNS-21, HRNS-30
-- **Files:** `src/harness/protocol.py`
+- **Files:** `src/training/harness/protocol.py`
 - **Details:**
   - Change `self._connections: dict[str, ClientConnection]` → `dict[str, list[ClientConnection]]`
   - Change `self._reverse: dict[int, str]` stays the same (ws id → role)
@@ -93,7 +93,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T5: Harness Server — config uses `role`, allows duplicates
 
 - **Spec ref:** @specs/harness-server.md §Harness Configuration
-- **Files:** `src/harness/server.py`
+- **Files:** `src/training/harness/server.py`
 - **Details:**
   - `ParticipantConfig`: rename `address` → `role`
   - `_validate_config`: allow duplicate roles (remove `seen_addresses` uniqueness check). Validate that duplicate roles only occur for `type: client` participants (embedded participants should have unique roles).
@@ -104,7 +104,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T6: KAgent Adapter — rename `address` to `role`, default `"trainee"`
 
 - **Spec ref:** @specs/harness-server.md §Kalvin Adapter — HRNS-7, HRNS-8, HRNS-9, HRNS-10
-- **Files:** `src/harness/adapter.py`
+- **Files:** `src/training/harness/adapter.py`
 - **Details:**
   - Rename constructor parameter `address` → `role`, default `"trainee"` (was `"kalvin"`)
   - Rename `self._address` → `self._role`
@@ -117,7 +117,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T7: Trainer — rename `address` to `role`, target `supervisor` role
 
 - **Spec ref:** @specs/harness-server.md §Trainer Participant — HRNS-14, HRNS-31, HRNS-33
-- **Files:** `src/trainer/trainer.py`
+- **Files:** `src/training/trainer/trainer.py`
 - **Details:**
   - Rename constructor parameter `address` → `role`, default `"trainer"`
   - Rename `self._address` → `self._role`
@@ -133,7 +133,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T8: Reactor — rename `address` to `role`, escalation to `supervisor`
 
 - **Spec ref:** @specs/harness-server.md §Trainer Participant — HRNS-14
-- **Files:** `src/trainer/reactor.py`
+- **Files:** `src/training/trainer/reactor.py`
 - **Details:**
   - Rename constructor parameter `address` → `role`, default `"trainer"`
   - Rename `self._address` → `self._role`
@@ -145,7 +145,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T9: TUI Client — rename `address` to `role`, register as `supervisor`
 
 - **Spec ref:** @specs/harness-server.md §TUI Participant — HRNS-25, HRNS-25a, HRNS-26, HRNS-27, HRNS-28
-- **Files:** `src/participants/tui_client.py`
+- **Files:** `src/training/participants/tui_client.py`
 - **Details:**
   - `HarnessClient`: rename `address` parameter → `role`, default `SUPERVISOR_ROLE`
   - Update registration frame: `{"register": self._role}`
@@ -160,7 +160,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T10: Slack Agent — register as `supervisor`, rename `address` to `role`
 
 - **Spec ref:** @specs/harness-server.md §Slack Participant — HRNS-17, HRNS-18, HRNS-31, HRNS-34
-- **Files:** `src/participants/slack_agent.py`
+- **Files:** `src/training/participants/slack_agent.py`
 - **Details:**
   - Registration: change `{"register": "slack"}` → `{"register": "supervisor"}`
   - `_send_to_trainer`: frame uses `"role": "trainer"` instead of `"address": "trainer"`
@@ -185,7 +185,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T12: CLI entry point — rename `address` to `role`
 
 - **Spec ref:** @specs/harness-server.md §Harness Configuration
-- **Files:** `src/harness/__main__.py`
+- **Files:** `src/training/harness/__main__.py`
 - **Details:**
   - `_AlreadySubscribed`: rename `address` property → `role`
   - Factories: rename parameter `address` → `role`, pass to constructors
@@ -213,7 +213,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T14: Shared command parser
 
 - **Spec ref:** @specs/harness-server.md §Shared Command Protocol — HRNS-32
-- **Files:** `src/participants/commands.py` (new), `tests/test_commands.py` (new)
+- **Files:** `src/training/participants/commands.py` (new), `tests/test_commands.py` (new)
 - **Details:**
   - Define command dataclasses: `StartCommand`, `StopCommand`, `PauseCommand`, `ResumeCommand`, `GoalCommand`, `RatifyCommand`, `FileGoalCommand`, `GuidanceCommand`
   - `parse_command(text: str) -> Command` — maps free-text to command
@@ -288,11 +288,11 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 
 7. **Sender is the sender's role** — when Trainer sends to trainee, `sender="trainer"`. Trainee responds to role `"trainer"`. This works because each embedded participant has a unique role. For client participants, the sender is the role they registered for (e.g. `"supervisor"`).
 
-8. **Shared command parser lives in `src/participants/`** — it's a participant-level concern, not a harness concern. Both TUI and Slack import and use it. The Trainer does not need to know about it — commands are still delivered as `input` actions on the `trainer` role, except `ratify` which goes directly to `trainee`.
+8. **Shared command parser lives in `src/training/participants/`** — it's a participant-level concern, not a harness concern. Both TUI and Slack import and use it. The Trainer does not need to know about it — commands are still delivered as `input` actions on the `trainer` role, except `ratify` which goes directly to `trainee`.
 
 9. **Event relay is Trainer's responsibility** — the Trainer already receives all Kalvin events. Rather than making Kalvin aware of supervisors, the Trainer relays events to the `supervisor` role. This maintains Kalvin's ignorance of the training loop.
 
-10. **Role constants in `src/harness/constants.py`** — single source of truth for role strings. All modules reference constants instead of string literals.
+10. **Role constants in `src/training/harness/constants.py`** — single source of truth for role strings. All modules reference constants instead of string literals.
 
 ## Build Order
 

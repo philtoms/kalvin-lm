@@ -9,20 +9,20 @@ from __future__ import annotations
 import logging
 from unittest.mock import MagicMock
 
-from harness.bus import MessageBus
-from harness.constants import TRAINEE_ROLE
-from harness.message import Message
+from training.harness.bus import MessageBus
+from training.harness.constants import TRAINEE_ROLE
+from training.harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from tests.conftest import requires_nlp_data
-from trainer.cogitation import (
+from training.trainer.cogitation import (
     _SYSTEM_PROMPT,
     Cogitator,
     LLMResponse,
     _strip_hash_comments,
 )
-from trainer.curriculum import CurriculumState
-from trainer.reactor import Reactor
+from training.trainer.curriculum import CurriculumState
+from training.trainer.reactor import Reactor
 
 # ── RS-1: System prompt contains no hex literal syntax ───────────────
 
@@ -134,7 +134,7 @@ class TestCogitatorSanitisation:
         )
 
         cogitator = Cogitator(client=client)
-        from trainer.cogitation import CogitationRequest, MisfitInfo
+        from training.trainer.cogitation import CogitationRequest, MisfitInfo
 
         event = RationaliseEvent(
             kind="frame",
@@ -159,7 +159,7 @@ class TestCogitatorSanitisation:
             max_rounds=3,
         )
 
-        with caplog.at_level(logging.INFO, logger="trainer.cogitation"):
+        with caplog.at_level(logging.INFO, logger="training.trainer.cogitation"):
             result = cogitator.cogitate(request)
 
         assert result.scaffolding == "M > H"
@@ -184,7 +184,7 @@ class TestCogitatorSanitisation:
         )
 
         cogitator = Cogitator(client=client)
-        from trainer.cogitation import CogitationRequest, MisfitInfo
+        from training.trainer.cogitation import CogitationRequest, MisfitInfo
 
         event = RationaliseEvent(
             kind="frame",
@@ -268,7 +268,7 @@ class TestReactorSubmittedLog:
             significance=100,
         )
 
-        with caplog.at_level(logging.INFO, logger="trainer.reactor"):
+        with caplog.at_level(logging.INFO, logger="training.trainer.reactor"):
             reactor.process_s2_s3(event)
 
         # Check log line

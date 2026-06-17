@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from harness.__main__ import _build_llm_client, _resolve_llm_wiring  # noqa: E402
+from training.harness.__main__ import _build_llm_client, _resolve_llm_wiring  # noqa: E402
 from tests.conftest import requires_nlp_data
 
 # ── TestBuildLLMClient ────────────────────────────────────────────────
@@ -31,7 +31,7 @@ class TestBuildLLMClient:
 
         mock_client = MagicMock()
         with patch(
-            "trainer.cogitation.OpenAICompatibleClient", return_value=mock_client
+            "training.trainer.cogitation.OpenAICompatibleClient", return_value=mock_client
         ) as mock_cls:
             result = _build_llm_client({"llm": {"model": "test-model"}})
             assert result is mock_client
@@ -48,7 +48,7 @@ class TestBuildLLMClient:
         mock_client = MagicMock()
         mock_client._model = "custom-model"
         with patch(
-            "trainer.cogitation.OpenAICompatibleClient", return_value=mock_client
+            "training.trainer.cogitation.OpenAICompatibleClient", return_value=mock_client
         ) as mock_cls:
             result = _build_llm_client(
                 {
@@ -68,7 +68,7 @@ class TestBuildLLMClient:
 
         mock_client = MagicMock()
         with patch(
-            "trainer.cogitation.OpenAICompatibleClient", return_value=mock_client
+            "training.trainer.cogitation.OpenAICompatibleClient", return_value=mock_client
         ) as mock_cls:
             result = _build_llm_client({})
             assert result is mock_client
@@ -83,7 +83,7 @@ class TestBuildLLMClient:
         monkeypatch.setenv("KALVIN_LLM_API_KEY", "test-key-123")
 
         with patch(
-            "trainer.cogitation.OpenAICompatibleClient",
+            "training.trainer.cogitation.OpenAICompatibleClient",
             side_effect=ImportError("no openai"),
         ):
             result = _build_llm_client({"llm": {"model": "test"}})
@@ -95,7 +95,7 @@ class TestBuildLLMClient:
 
         mock_client = MagicMock()
         with patch(
-            "trainer.cogitation.OpenAICompatibleClient", return_value=mock_client
+            "training.trainer.cogitation.OpenAICompatibleClient", return_value=mock_client
         ) as mock_cls:
             result = _build_llm_client({})
             assert result is mock_client
@@ -107,7 +107,7 @@ class TestBuildLLMClient:
     def test_llm_enabled_defaults_to_true(self) -> None:
         """RD-1: trainer.llm.enabled defaults to True; unset config behaves as today."""
         sentinel = MagicMock()
-        with patch("harness.__main__._build_llm_client", return_value=sentinel) as mock_build:
+        with patch("training.harness.__main__._build_llm_client", return_value=sentinel) as mock_build:
             # No llm section at all
             _, delegate_reactive = _resolve_llm_wiring({})
             assert delegate_reactive is False
@@ -119,7 +119,7 @@ class TestBuildLLMClient:
 
     def test_llm_enabled_explicitly_true(self) -> None:
         """RD-1: enabled explicitly True → delegate_reactive False, client built."""
-        with patch("harness.__main__._build_llm_client", return_value="CLIENT") as mock_build:
+        with patch("training.harness.__main__._build_llm_client", return_value="CLIENT") as mock_build:
             _, delegate_reactive = _resolve_llm_wiring({"llm": {"enabled": True}})
             assert delegate_reactive is False
             mock_build.assert_called_once_with({"llm": {"enabled": True}})
@@ -136,10 +136,10 @@ class TestTrainerFactoryLLMWiring:
         """When KALVIN_LLM_API_KEY is set, trainer receives a non-None llm_client."""
         monkeypatch.setenv("KALVIN_LLM_API_KEY", "test-key-123")
 
-        from harness.bus import MessageBus
-        from trainer.cogitation import LLMClient
-        from trainer.curriculum import Curriculum
-        from trainer.trainer import Trainer
+        from training.harness.bus import MessageBus
+        from training.trainer.cogitation import LLMClient
+        from training.trainer.curriculum import Curriculum
+        from training.trainer.trainer import Trainer
 
         mock_llm = MagicMock(spec=LLMClient)
         bus = MessageBus()
@@ -158,9 +158,9 @@ class TestTrainerFactoryLLMWiring:
         """When KALVIN_LLM_API_KEY is unset, _build_llm_client returns None."""
         monkeypatch.delenv("KALVIN_LLM_API_KEY", raising=False)
 
-        from harness.bus import MessageBus
-        from trainer.curriculum import Curriculum
-        from trainer.trainer import Trainer
+        from training.harness.bus import MessageBus
+        from training.trainer.curriculum import Curriculum
+        from training.trainer.trainer import Trainer
 
         llm_client = _build_llm_client({"llm": {"model": "test-model"}})
         assert llm_client is None
@@ -187,14 +187,14 @@ class TestTrainerFactoryLLMWiring:
         """_build_llm_client output can be passed directly to Trainer."""
         monkeypatch.setenv("KALVIN_LLM_API_KEY", "test-key-123")
 
-        from harness.bus import MessageBus
-        from trainer.curriculum import Curriculum
-        from trainer.trainer import Trainer
+        from training.harness.bus import MessageBus
+        from training.trainer.curriculum import Curriculum
+        from training.trainer.trainer import Trainer
 
         mock_client = MagicMock()
         mock_client._model = "test-model"
 
-        with patch("trainer.cogitation.OpenAICompatibleClient", return_value=mock_client):
+        with patch("training.trainer.cogitation.OpenAICompatibleClient", return_value=mock_client):
             llm_client = _build_llm_client({"llm": {"model": "test-model"}})
             assert llm_client is mock_client
 
@@ -213,10 +213,10 @@ class TestTrainerFactoryLLMWiring:
     @requires_nlp_data
     def test_trainer_auto_wires_cogitate_fn_with_llm_client(self) -> None:
         """KB-125: When llm_client is passed without cogitate_fn, reactor's cogitate_fn is wired."""
-        from harness.bus import MessageBus
-        from trainer.cogitation import LLMClient
-        from trainer.curriculum import Curriculum
-        from trainer.trainer import Trainer
+        from training.harness.bus import MessageBus
+        from training.trainer.cogitation import LLMClient
+        from training.trainer.curriculum import Curriculum
+        from training.trainer.trainer import Trainer
 
         mock_llm = MagicMock(spec=LLMClient)
         bus = MessageBus()
@@ -234,7 +234,7 @@ class TestTrainerFactoryLLMWiring:
         """RD-2: enabled True + API key set → client built, delegate_reactive False."""
         monkeypatch.setenv("KALVIN_LLM_API_KEY", "test-key-123")
         sentinel = MagicMock()
-        with patch("harness.__main__._build_llm_client", return_value=sentinel) as mock_build:
+        with patch("training.harness.__main__._build_llm_client", return_value=sentinel) as mock_build:
             llm_client, delegate_reactive = _resolve_llm_wiring({"llm": {"enabled": True}})
             assert llm_client is sentinel
             assert delegate_reactive is False
@@ -243,7 +243,7 @@ class TestTrainerFactoryLLMWiring:
     def test_flag_false_skips_build_even_with_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """RD-3: enabled False → _build_llm_client never called even with API key set."""
         monkeypatch.setenv("KALVIN_LLM_API_KEY", "test-key-123")
-        with patch("harness.__main__._build_llm_client") as mock_build:
+        with patch("training.harness.__main__._build_llm_client") as mock_build:
             llm_client, delegate_reactive = _resolve_llm_wiring({"llm": {"enabled": False}})
             assert mock_build.call_count == 0
             assert llm_client is None
@@ -252,7 +252,7 @@ class TestTrainerFactoryLLMWiring:
     def test_flag_false_no_llm_section(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """RD-3 robustness: enabled False without API key still skips the build."""
         monkeypatch.delenv("KALVIN_LLM_API_KEY", raising=False)
-        with patch("harness.__main__._build_llm_client") as mock_build:
+        with patch("training.harness.__main__._build_llm_client") as mock_build:
             llm_client, delegate_reactive = _resolve_llm_wiring({"llm": {"enabled": False}})
             assert mock_build.call_count == 0
             assert llm_client is None
@@ -267,7 +267,7 @@ class TestAlreadySubscribedWrapper:
 
     def test_role_property_returns_participant_role(self) -> None:
         """_AlreadySubscribed.role delegates to the wrapped participant's .role."""
-        from harness.__main__ import _AlreadySubscribed
+        from training.harness.__main__ import _AlreadySubscribed
 
         mock_participant = MagicMock()
         mock_participant.role = "trainer"
@@ -277,9 +277,9 @@ class TestAlreadySubscribedWrapper:
 
     def test_trainer_constructed_with_role_keyword(self) -> None:
         """Trainer(bus, curriculum, role='trainer') works — KB-126 contract."""
-        from harness.bus import MessageBus
-        from trainer.curriculum import Curriculum
-        from trainer.trainer import Trainer
+        from training.harness.bus import MessageBus
+        from training.trainer.curriculum import Curriculum
+        from training.trainer.trainer import Trainer
 
         bus = MessageBus()
         curriculum = Curriculum([])
@@ -288,8 +288,8 @@ class TestAlreadySubscribedWrapper:
 
     def test_kagent_adapter_constructed_with_role_keyword(self) -> None:
         """KAgentAdapter(bus, role='trainee') works — KB-126 contract."""
-        from harness.adapter import KAgentAdapter
-        from harness.bus import MessageBus
+        from training.harness.adapter import KAgentAdapter
+        from training.harness.bus import MessageBus
 
         bus = MessageBus()
         adapter = KAgentAdapter(bus, role="trainee")
@@ -304,9 +304,9 @@ class TestStatePathDerivation:
 
     def test_state_path_derived_from_curriculum_file(self, tmp_path: Path) -> None:
         """When curriculum_file is set, save_path follows <curriculum>.json convention."""
-        from harness.bus import MessageBus
-        from trainer.curriculum import Curriculum
-        from trainer.trainer import Trainer
+        from training.harness.bus import MessageBus
+        from training.trainer.curriculum import Curriculum
+        from training.trainer.trainer import Trainer
 
         # Simulate the derivation done in __main__.py trainer_factory
         curriculum_file = str(tmp_path / "curricula" / "first-steps.md")
@@ -333,9 +333,9 @@ class TestStatePathDerivation:
 
     def test_no_state_file_when_curriculum_file_empty(self) -> None:
         """When curriculum_file is empty, save_path is None and save raises ValueError."""
-        from harness.bus import MessageBus
-        from trainer.curriculum import Curriculum
-        from trainer.trainer import Trainer
+        from training.harness.bus import MessageBus
+        from training.trainer.curriculum import Curriculum
+        from training.trainer.trainer import Trainer
 
         bus = MessageBus()
         curriculum = Curriculum([])

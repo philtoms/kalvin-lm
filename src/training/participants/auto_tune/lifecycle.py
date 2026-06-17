@@ -21,7 +21,7 @@ import time
 import urllib.parse
 from pathlib import Path
 
-from participants.auto_tune.session import SessionConfig
+from training.participants.auto_tune.session import SessionConfig
 
 # Private helpers
 
@@ -37,7 +37,7 @@ def _resolve_python() -> str:
     Falls back to ``sys.executable`` when no venv is found.
     """
     # Walk upward to the project root (this file lives at
-    # <project-root>/src/participants/auto_tune/lifecycle.py).
+    # <project-root>/src/training/participants/auto_tune/lifecycle.py).
     venv_python = Path(__file__).resolve().parents[3] / ".venv" / "bin" / "python"
     if venv_python.exists():
         return str(venv_python)
@@ -125,7 +125,7 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     """Start the harness server as a background process.
 
     Kills any stale harness, loads the session config, generates a
-    per-session harness.yaml, launches ``python -m harness``, and polls
+    per-session harness.yaml, launches ``python -m training.harness``, and polls
     the WebSocket port until it accepts connections.
 
     Args:
@@ -139,7 +139,7 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
         TimeoutError: If the harness doesn't accept connections within
             *poll_timeout* seconds.
     """
-    pid_path = session_dir / "harness.pid"
+    pid_path = session_dir / "training.harness.pid"
     _kill_stale_process(pid_path)
 
     config_path = session_dir / "config.json"
@@ -153,7 +153,7 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
 
     harness_config_path = _generate_session_harness_config(session_dir, cfg)
 
-    log_path = session_dir / "harness.log"
+    log_path = session_dir / "training.harness.log"
     log_file = open(log_path, "w", encoding="utf-8")
     proc = subprocess.Popen(
         [_resolve_python(), "-m", "harness", "--config", str(harness_config_path)],
@@ -180,7 +180,7 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
 def stop_harness(session_dir: Path) -> None:
     """Stop the harness server: SIGTERM, wait up to 5s, SIGKILL if needed,
     then delete the PID file."""
-    pid_path = session_dir / "harness.pid"
+    pid_path = session_dir / "training.harness.pid"
     pid = _read_pid(pid_path)
     if pid is None:
         return  # Nothing to stop
@@ -206,7 +206,7 @@ def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     """Start the CLI supervisor as a background process.
 
     Kills any stale supervisor, launches
-    ``python -m participants.auto_tune.supervisor``, and polls
+    ``python -m training.participants.auto_tune.supervisor``, and polls
     ``status.json`` until ``connected`` is ``true``.
 
     Args:
@@ -227,7 +227,7 @@ def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
         [
             _resolve_python(),
             "-m",
-            "participants.auto_tune.supervisor",
+            "training.participants.auto_tune.supervisor",
             "--session-dir",
             str(session_dir),
         ],
@@ -300,8 +300,8 @@ def _generate_session_harness_config(session_dir: Path, cfg: SessionConfig) -> P
     """
     import yaml
 
-    project_config = session_dir.parent.parent / "harness.yaml"
-    config_path = session_dir / "harness.yaml"
+    project_config = session_dir.parent.parent / "training.harness.yaml"
+    config_path = session_dir / "training.harness.yaml"
 
     # Read project harness.yaml if it exists, otherwise use minimal defaults
     if project_config.exists():

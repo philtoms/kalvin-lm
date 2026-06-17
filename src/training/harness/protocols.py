@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from harness.message import Message
+from training.harness.message import Message
 
 
 @runtime_checkable

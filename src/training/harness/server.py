@@ -19,8 +19,8 @@ from typing import Any
 
 import websockets
 
-from harness.bus import MessageBus
-from harness.protocol import WebSocketProtocol
+from training.harness.bus import MessageBus
+from training.harness.protocol import WebSocketProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +131,7 @@ class HarnessServer:
 
     Usage::
 
-        server = HarnessServer("harness.yaml", bus)
+        server = HarnessServer("training.harness.yaml", bus)
         server.register_participant_class("KAgent", kagent_factory)
         server.run_sync(host="localhost", port=8765)
     """

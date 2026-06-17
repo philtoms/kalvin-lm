@@ -13,18 +13,18 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from harness.adapter import KAgentAdapter
-from harness.bus import MessageBus
-from harness.constants import TRAINEE_ROLE, TRAINER_ROLE
-from harness.message import Message
+from training.harness.adapter import KAgentAdapter
+from training.harness.bus import MessageBus
+from training.harness.constants import TRAINEE_ROLE, TRAINER_ROLE
+from training.harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX
 from kalvin.kline import KDbg, KLine
 from tests.conftest import requires_nlp_data
-from trainer.curriculum import Curriculum
-from trainer.curriculum_document import CurriculumDocument, Lesson
-from trainer.reactor import Reactor
-from trainer.trainer import Trainer
+from training.trainer.curriculum import Curriculum
+from training.trainer.curriculum_document import CurriculumDocument, Lesson
+from training.trainer.reactor import Reactor
+from training.trainer.trainer import Trainer
 
 # ── Significance constants ────────────────────────────────────────────
 
@@ -126,7 +126,7 @@ class TestTrainerLogging:
         bus = MessageBus()
         curriculum = _simple_curriculum()
         trainer = _make_trainer(bus, curriculum, curriculum_file="curricula/test.md")
-        caplog.set_level(logging.INFO, logger="trainer.trainer")
+        caplog.set_level(logging.INFO, logger="training.trainer.trainer")
 
         trainer.start_session()
 
@@ -143,7 +143,7 @@ class TestTrainerLogging:
         bus = MessageBus()
         curriculum = _simple_curriculum()
         trainer = _make_trainer(bus, curriculum, curriculum_file="test.md")
-        caplog.set_level(logging.INFO, logger="trainer.trainer")
+        caplog.set_level(logging.INFO, logger="training.trainer.trainer")
 
         # Start session triggers lesson submission
         trainer.start_session()
@@ -157,7 +157,7 @@ class TestTrainerLogging:
         bus = MessageBus()
         curriculum = _simple_curriculum()
         trainer = _make_trainer(bus, curriculum, curriculum_file="test.md")
-        caplog.set_level(logging.DEBUG, logger="trainer.trainer")
+        caplog.set_level(logging.DEBUG, logger="training.trainer.trainer")
 
         trainer.start_session()
         _drain(trainer)
@@ -170,7 +170,7 @@ class TestTrainerLogging:
         bus = MessageBus()
         curriculum = _simple_curriculum()
         trainer = _make_trainer(bus, curriculum, curriculum_file="test.md")
-        caplog.set_level(logging.INFO, logger="trainer.trainer")
+        caplog.set_level(logging.INFO, logger="training.trainer.trainer")
 
         trainer.start_session()
         _drain(trainer)
@@ -186,7 +186,7 @@ class TestTrainerLogging:
         _cap = BusCapture(bus)
         curriculum = _simple_curriculum()
         trainer = _make_trainer(bus, curriculum, curriculum_file="test.md")
-        caplog.set_level(logging.INFO, logger="trainer.trainer")
+        caplog.set_level(logging.INFO, logger="training.trainer.trainer")
 
         # Activate session so events are processed
         trainer._session_active = True
@@ -206,7 +206,7 @@ class TestTrainerLogging:
         curriculum = _simple_curriculum()
         trainer = _make_trainer(bus, curriculum, curriculum_file="test.md")
         trainer._session_active = True
-        caplog.set_level(logging.INFO, logger="trainer.trainer")
+        caplog.set_level(logging.INFO, logger="training.trainer.trainer")
 
         query = KLine(signature=256, nodes=[8192])
         proposal = KLine(signature=256, nodes=[4096])
@@ -225,7 +225,7 @@ class TestTrainerLogging:
         curriculum = _simple_curriculum()
         trainer = _make_trainer(bus, curriculum, curriculum_file="test.md")
         trainer._session_active = True
-        caplog.set_level(logging.INFO, logger="trainer.trainer")
+        caplog.set_level(logging.INFO, logger="training.trainer.trainer")
 
         # Use a KLine that may not decompile cleanly but will still log
         query = KLine(signature=999999, nodes=[888888])
@@ -241,7 +241,7 @@ class TestTrainerLogging:
         _cap = BusCapture(bus)
         curriculum = _simple_curriculum()
         trainer = _make_trainer(bus, curriculum, curriculum_file="test.md")
-        caplog.set_level(logging.INFO, logger="trainer.trainer")
+        caplog.set_level(logging.INFO, logger="training.trainer.trainer")
 
         # Directly invoke _check_lesson_complete with a satisfied lesson.
         # The completion check compares the satisfied vs submitted sets,
@@ -262,7 +262,7 @@ class TestTrainerLogging:
         _cap = BusCapture(bus)
         curriculum = _simple_curriculum()
         trainer = _make_trainer(bus, curriculum, curriculum_file="test.md")
-        caplog.set_level(logging.INFO, logger="trainer.trainer")
+        caplog.set_level(logging.INFO, logger="training.trainer.trainer")
 
         # Move curriculum position past all lessons
         curriculum.position = curriculum.total()
@@ -290,7 +290,7 @@ class TestReactorLogging:
             lessons=[Lesson(label="1", prose="test", kscript=["M"])],
         )
         curriculum = Curriculum(doc)
-        from trainer.curriculum import CurriculumState
+        from training.trainer.curriculum import CurriculumState
 
         cs = CurriculumState(curriculum)
         return Reactor(
@@ -302,7 +302,7 @@ class TestReactorLogging:
         bus = MessageBus()
         _cap = BusCapture(bus)
         reactor = self._make_reactor(bus, cogitate_fn=None)
-        caplog.set_level(logging.INFO, logger="trainer.reactor")
+        caplog.set_level(logging.INFO, logger="training.trainer.reactor")
 
         entry = _make_entry(256, [])
         reactor.load_lesson([entry])
@@ -321,7 +321,7 @@ class TestReactorLogging:
         bus = MessageBus()
         _cap = BusCapture(bus)
         reactor = self._make_reactor(bus)
-        caplog.set_level(logging.DEBUG, logger="trainer.reactor")
+        caplog.set_level(logging.DEBUG, logger="training.trainer.reactor")
 
         entry = _make_entry(256, [])
         reactor.load_lesson([entry])
@@ -346,7 +346,7 @@ class TestReactorLogging:
             return ("M = H", 0.85)
 
         reactor = self._make_reactor(bus, cogitate_fn=mock_cogitate)
-        caplog.set_level(logging.INFO, logger="trainer.reactor")
+        caplog.set_level(logging.INFO, logger="training.trainer.reactor")
 
         entry = _make_entry(256, [])
         reactor.load_lesson([entry])
@@ -368,7 +368,7 @@ class TestReactorLogging:
             return None
 
         reactor = self._make_reactor(bus, cogitate_fn=mock_cogitate)
-        caplog.set_level(logging.WARNING, logger="trainer.reactor")
+        caplog.set_level(logging.WARNING, logger="training.trainer.reactor")
 
         entry = _make_entry(256, [])
         reactor.load_lesson([entry])
@@ -387,7 +387,7 @@ class TestReactorLogging:
         _cap = BusCapture(bus)
 
         reactor = self._make_reactor(bus, max_rounds=1)
-        caplog.set_level(logging.WARNING, logger="trainer.reactor")
+        caplog.set_level(logging.WARNING, logger="training.trainer.reactor")
 
         entry = _make_entry(256, [])
         reactor.load_lesson([entry])
@@ -406,7 +406,7 @@ class TestReactorLogging:
         _cap = BusCapture(bus)
 
         reactor = self._make_reactor(bus, max_rounds=1)
-        caplog.set_level(logging.ERROR, logger="trainer.reactor")
+        caplog.set_level(logging.ERROR, logger="training.trainer.reactor")
 
         entry = _make_entry(256, [])
         reactor.load_lesson([entry])
@@ -441,7 +441,7 @@ class TestAdapterLogging:
         bus = MessageBus()
         _cap = BusCapture(bus)
         adapter = self._make_adapter(bus)
-        caplog.set_level(logging.INFO, logger="harness.adapter")
+        caplog.set_level(logging.INFO, logger="training.harness.adapter")
 
         adapter.on_message(
             Message(
@@ -461,7 +461,7 @@ class TestAdapterLogging:
         bus = MessageBus()
         _cap = BusCapture(bus)
         adapter = self._make_adapter(bus)
-        caplog.set_level(logging.ERROR, logger="harness.adapter")
+        caplog.set_level(logging.ERROR, logger="training.harness.adapter")
 
         # Send invalid KScript
         adapter.on_message(
@@ -482,7 +482,7 @@ class TestAdapterLogging:
         bus = MessageBus()
         _cap = BusCapture(bus)
         adapter = self._make_adapter(bus)
-        caplog.set_level(logging.INFO, logger="harness.adapter")
+        caplog.set_level(logging.INFO, logger="training.harness.adapter")
 
         kline = KLine(signature=256, nodes=[8192])
         adapter.on_message(

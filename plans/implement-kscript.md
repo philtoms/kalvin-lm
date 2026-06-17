@@ -35,7 +35,6 @@ This plan builds the KScript compiler from scratch against the consolidated spec
 - **Four-stage pipeline**: Lexer → Parser → ASTEmitter → TokenEncoder (§1.1)
 - **`nodes: list[uint64]`** everywhere — no None, no singleton unwrapping (§6.1)
 - **BPE annotations** replacing comments (§9)
-- **No decompiler, no file format I/O, no CLI** — compilation output is the product
 
 ## Dependency Graph
 
@@ -810,7 +809,6 @@ ks/
 ```
 
 **Total files:** 9  
-**Deleted from old codebase:** `decompiler.py`, `output.py`, `__main__.py`, `nlp_types.py`
 **Estimated LOC:** ~1800  
 **Total test count:** ~47
 

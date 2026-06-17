@@ -13,9 +13,9 @@ import pytest
 import websockets
 import websockets.asyncio.client
 
-from harness.bus import MessageBus
-from harness.message import Message
-from harness.protocol import WebSocketProtocol
+from training.harness.bus import MessageBus
+from training.harness.message import Message
+from training.harness.protocol import WebSocketProtocol
 
 # -- helpers ---------------------------------------------------------------
 

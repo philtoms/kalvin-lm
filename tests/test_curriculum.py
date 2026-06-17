@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from trainer.curriculum import Curriculum, CurriculumState, EntryKey
-from trainer.curriculum_document import CurriculumDocument
+from training.trainer.curriculum import Curriculum, CurriculumState, EntryKey
+from training.trainer.curriculum_document import CurriculumDocument
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 

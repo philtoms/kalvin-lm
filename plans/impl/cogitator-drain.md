@@ -24,9 +24,9 @@ spillover of S2/S3 events.
 |------|-------------|-------|
 | T1 | Add `drain()` method to Cogitator with `_processing` flag | `src/kalvin/agent.py` |
 | T2 | Expose `cogitate_drain()` on KAgent | `src/kalvin/agent.py` |
-| T3 | Add `_handle_drain()` to KAgentAdapter with bus response | `src/harness/adapter.py` |
-| T4 | Add `_drain_pending` state and `_handle_drained()` to Trainer | `src/trainer/trainer.py` |
-| T5 | Refactor `_submit_next_lesson` to drain-first, defer to `_do_submit_lesson` | `src/trainer/trainer.py` |
+| T3 | Add `_handle_drain()` to KAgentAdapter with bus response | `src/training/harness/adapter.py` |
+| T4 | Add `_drain_pending` state and `_handle_drained()` to Trainer | `src/training/trainer/trainer.py` |
+| T5 | Refactor `_submit_next_lesson` to drain-first, defer to `_do_submit_lesson` | `src/training/trainer/trainer.py` |
 
 ## Test Mapping
 

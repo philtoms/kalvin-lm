@@ -15,10 +15,10 @@ from typing import Any
 import pytest
 import yaml
 
-from harness.bus import MessageBus
-from harness.constants import SUPERVISOR_ROLE, TRAINER_ROLE
-from harness.message import Message
-from harness.server import ConfigError, HarnessServer, load_config
+from training.harness.bus import MessageBus
+from training.harness.constants import SUPERVISOR_ROLE, TRAINER_ROLE
+from training.harness.message import Message
+from training.harness.server import ConfigError, HarnessServer, load_config
 
 # -- helpers ---------------------------------------------------------------
 
@@ -78,8 +78,8 @@ class TestLoadConfigYamlAndJson:
 
     def test_load_config_yaml_and_json(self, tmp_path: Path) -> None:
         data = _sample_config()
-        yaml_path = _write_yaml(tmp_path / "harness.yaml", data)
-        json_path = _write_json(tmp_path / "harness.json", data)
+        yaml_path = _write_yaml(tmp_path / "training.harness.yaml", data)
+        json_path = _write_json(tmp_path / "training.harness.json", data)
 
         yaml_config = load_config(yaml_path)
         json_config = load_config(json_path)
@@ -182,7 +182,7 @@ class TestLoadEmbeddedParticipants:
                 },
             ]
         }
-        path = _write_yaml(tmp_path / "harness.yaml", config_data)
+        path = _write_yaml(tmp_path / "training.harness.yaml", config_data)
 
         bus = MessageBus()
         server = HarnessServer(path, bus)
@@ -236,7 +236,7 @@ class TestParticipantRegistry:
                 },
             ]
         }
-        path = _write_yaml(tmp_path / "harness.yaml", config_data)
+        path = _write_yaml(tmp_path / "training.harness.yaml", config_data)
 
         bus = MessageBus()
         server = HarnessServer(path, bus)
@@ -269,7 +269,7 @@ class TestUnregisteredEmbeddedClass:
                 },
             ]
         }
-        path = _write_yaml(tmp_path / "harness.yaml", config_data)
+        path = _write_yaml(tmp_path / "training.harness.yaml", config_data)
 
         bus = MessageBus()
         server = HarnessServer(path, bus)
@@ -297,7 +297,7 @@ class TestWebSocketClientConnect:
                 },
             ]
         }
-        path = _write_yaml(tmp_path / "harness.yaml", config_data)
+        path = _write_yaml(tmp_path / "training.harness.yaml", config_data)
 
         bus = MessageBus()
         server = HarnessServer(path, bus)

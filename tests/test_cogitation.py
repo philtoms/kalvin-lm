@@ -7,7 +7,7 @@ import json
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
 from tests.conftest import requires_nlp_data
-from trainer.cogitation import (
+from training.trainer.cogitation import (
     ESCALATION_THRESHOLD,
     CogitationRequest,
     CogitationResult,

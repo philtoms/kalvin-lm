@@ -29,10 +29,10 @@ from unittest.mock import patch
 import pytest
 import websockets
 
-from participants.auto_tune.supervisor import CLISupervisor
+from training.participants.auto_tune.supervisor import CLISupervisor
 
 # Short alias to avoid E501 on repeated patch() calls
-_ENRICH_PATCH = "participants.auto_tune.supervisor.enrich_event"
+_ENRICH_PATCH = "training.participants.auto_tune.supervisor.enrich_event"
 
 
 # ---------------------------------------------------------------------------

@@ -12,7 +12,7 @@
 
 ## Implementation Tasks
 
-### Task 1: Flag wiring in the harness entry point (`src/harness/__main__.py`)
+### Task 1: Flag wiring in the harness entry point (`src/training/harness/__main__.py`)
 
 - **Spec ref:** @specs/reactive-delegation §Flag (RD-1, RD-2, RD-3)
 - **Test mapping:** `tests/test_harness_main.py` → `TestBuildLLMClient`, `TestTrainerFactoryLLMWiring`
@@ -27,7 +27,7 @@
     Trainer(..., llm_client=llm_client, delegate_reactive=not llm_enabled)
     ```
 
-### Task 2: Reactor delegated mode (`src/trainer/reactor.py`)
+### Task 2: Reactor delegated mode (`src/training/trainer/reactor.py`)
 
 - **Spec ref:** @specs/reactive-delegation §Delegated Mode (RD-4, RD-5, RD-6)
 - **Test mapping:** `tests/test_reactor.py` → new `TestDelegatedMode`
@@ -46,7 +46,7 @@
         return False
     ```
 
-### Task 3: Trainer delegates + emits enriched decision request (`src/trainer/trainer.py`)
+### Task 3: Trainer delegates + emits enriched decision request (`src/training/trainer/trainer.py`)
 
 - **Spec ref:** @specs/reactive-delegation §Delegated Mode (RD-7), §Flag (RD-8)
 - **Test mapping:** `tests/test_trainer.py` → new `TestDelegatedReactiveDecisions`
@@ -58,7 +58,7 @@
     - `curriculum_context`: derive `{objective, approach, lesson_prose}` from the current lesson if available, else a legacy string. (Mirror what `CogitationRequest` would carry.)
   - RD-8 (no-client path unchanged when flag on): ensure `delegate_reactive=False` + `llm_client=None` still wires the `None` cogitate_fn and escalates `low_confidence` as today — i.e. only `delegate_reactive=True` suppresses escalation.
 
-### Task 4: Scaffold command (`src/participants/commands.py`)
+### Task 4: Scaffold command (`src/training/participants/commands.py`)
 
 - **Spec ref:** @specs/reactive-delegation §Scaffold Command (RD-9, RD-10, RD-11)
 - **Test mapping:** `tests/test_commands.py` → new `TestScaffoldCommand`
@@ -67,14 +67,14 @@
   - In `parse_command`: recognise `scaffold:` / `scaffold ` prefix (case-insensitive); text after the prefix is the KScript source (may be multi-line). Place the rule before the file-path heuristic so multi-line KScript is not misclassified.
   - RD-10/RD-11: the produced `submit` is handled by Kalvin's adapter exactly as any lesson submit (HRNS-7); compile failures return as `error` events (HRNS-8) — no new validation path. Assert the bus message in `to_messages`; the compile-error round-trip is already covered by existing adapter tests.
 
-### Task 5: CLI supervisor scaffold dispatch (`src/participants/auto_tune/supervisor.py`)
+### Task 5: CLI supervisor scaffold dispatch (`src/training/participants/auto_tune/supervisor.py`)
 
 - **Spec ref:** @specs/reactive-delegation §Auto-Tune Integration (RD-13)
 - **Test mapping:** `tests/test_auto_tune_supervisor.py` (extend command-dispatch tests)
 - **Details:**
   - In `_process_command`, handle `action == "scaffold"`: reconstruct `f"scaffold:{cmd['text']}"` and pass through `parse_command`, mirroring the existing `goal` action handler. Dispatch the resulting messages.
 
-### Task 6: Auto-tune sets the flag off (`src/participants/auto_tune/lifecycle.py`)
+### Task 6: Auto-tune sets the flag off (`src/training/participants/auto_tune/lifecycle.py`)
 
 - **Spec ref:** @specs/reactive-delegation §Auto-Tune Integration (RD-12), @specs/auto-tune rule 7a
 - **Test mapping:** `tests/test_auto_tune_lifecycle.py` → `TestSessionHarnessConfig`

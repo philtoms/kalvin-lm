@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from participants.auto_tune.cli import main
+from training.participants.auto_tune.cli import main
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -62,7 +62,7 @@ def auto_tune_env(tmp_path: Path, monkeypatch):
     )
 
     # Create minimal harness.yaml with non-default port
-    (repo / "harness.yaml").write_text(
+    (repo / "training.harness.yaml").write_text(
         "server:\n  host: localhost\n  port: 18765\n",
         encoding="utf-8",
     )
@@ -193,7 +193,7 @@ class TestAT03InitRecordsConfig:
 class TestAT04StartHarness:
     """AT-4: ``start-harness`` starts harness and waits for readiness."""
 
-    @patch("participants.auto_tune.cli.lifecycle")
+    @patch("training.participants.auto_tune.cli.lifecycle")
     def test_start_harness_starts_and_waits(
         self, mock_lifecycle: MagicMock, auto_tune_env: Path
     ) -> None:
@@ -214,7 +214,7 @@ class TestAT04StartHarness:
 class TestAT05StopHarness:
     """AT-5: ``stop-harness`` gracefully terminates harness process."""
 
-    @patch("participants.auto_tune.cli.lifecycle")
+    @patch("training.participants.auto_tune.cli.lifecycle")
     def test_stop_harness_graceful_shutdown(
         self, mock_lifecycle: MagicMock, auto_tune_env: Path
     ) -> None:
@@ -234,7 +234,7 @@ class TestAT05StopHarness:
 class TestAT06StartSupervisor:
     """AT-6: ``start-supervisor`` starts the CLI supervisor process."""
 
-    @patch("participants.auto_tune.cli.lifecycle")
+    @patch("training.participants.auto_tune.cli.lifecycle")
     def test_start_supervisor_invoked(self, mock_lifecycle: MagicMock, auto_tune_env: Path) -> None:
         _init_session()
         main(["start-supervisor", "--session", "test-sess"])
@@ -315,7 +315,7 @@ class TestAT09RatifyViaSend:
 class TestAT10StopSupervisor:
     """AT-10: ``stop-supervisor`` stops the CLI supervisor process."""
 
-    @patch("participants.auto_tune.cli.lifecycle")
+    @patch("training.participants.auto_tune.cli.lifecycle")
     def test_stop_supervisor_invoked(self, mock_lifecycle: MagicMock, auto_tune_env: Path) -> None:
         _init_session()
         main(["stop-supervisor", "--session", "test-sess"])
@@ -686,7 +686,7 @@ class TestAT19ResetFreshModel:
 class TestAT20LifecyclePIDManagement:
     """AT-20: Process lifecycle commands manage PIDs and enforce timeouts."""
 
-    @patch("participants.auto_tune.cli.lifecycle")
+    @patch("training.participants.auto_tune.cli.lifecycle")
     def test_lifecycle_pid_management(self, mock_lifecycle: MagicMock, auto_tune_env: Path) -> None:
         _init_session()
 

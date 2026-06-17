@@ -20,10 +20,10 @@ import pytest
 import websockets
 import yaml
 
-from harness.bus import MessageBus
-from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
-from harness.message import Message
-from harness.server import HarnessServer, load_config
+from training.harness.bus import MessageBus
+from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
+from training.harness.message import Message
+from training.harness.server import HarnessServer, load_config
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -114,7 +114,7 @@ def sample_config(tmp_path: Path) -> Path:
             {"role": TRAINER_ROLE, "type": "embedded", "class": "Trainer"},
         ],
     }
-    path = tmp_path / "harness.yaml"
+    path = tmp_path / "training.harness.yaml"
     path.write_text(yaml.dump(config), encoding="utf-8")
     return path
 
@@ -146,8 +146,8 @@ class TestLoadConfigFromSampleYaml:
     """HRNS-5: Harness loads embedded participants from config file on startup."""
 
     def test_load_config_from_sample_yaml(self) -> None:
-        """Call ``load_config("harness.yaml")`` and assert all four participants."""
-        config = load_config("harness.yaml")
+        """Call ``load_config("training.harness.yaml")`` and assert all four participants."""
+        config = load_config("training.harness.yaml")
         assert len(config.participants) == 4
 
         by_role: dict[str, list] = {}
@@ -175,15 +175,15 @@ class TestCLIArgparseDefaults:
 
     def test_default_config_path(self) -> None:
         """Default config path resolves to ``harness.yaml``."""
-        from harness.__main__ import _build_parser
+        from training.harness.__main__ import _build_parser
 
         parser = _build_parser()
         args = parser.parse_args([])
-        assert args.config == "harness.yaml"
+        assert args.config == "training.harness.yaml"
 
     def test_default_host_and_port(self) -> None:
         """Default host and port are None (filled from config or hardcoded)."""
-        from harness.__main__ import _build_parser
+        from training.harness.__main__ import _build_parser
 
         parser = _build_parser()
         args = parser.parse_args([])
@@ -192,7 +192,7 @@ class TestCLIArgparseDefaults:
 
     def test_override_config(self) -> None:
         """CLI ``--config`` override is parsed correctly."""
-        from harness.__main__ import _build_parser
+        from training.harness.__main__ import _build_parser
 
         parser = _build_parser()
         args = parser.parse_args(["--config", "custom.yaml"])
@@ -200,7 +200,7 @@ class TestCLIArgparseDefaults:
 
     def test_override_host_and_port(self) -> None:
         """CLI ``--host`` and ``--port`` overrides are parsed correctly."""
-        from harness.__main__ import _build_parser
+        from training.harness.__main__ import _build_parser
 
         parser = _build_parser()
         args = parser.parse_args(["--host", "0.0.0.0", "--port", "9000"])

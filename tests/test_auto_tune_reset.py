@@ -7,8 +7,8 @@ Test IDs: AT-18, AT-19
 import json
 from pathlib import Path
 
-from participants.auto_tune.session import SessionConfig, SessionDir
-from participants.auto_tune.snapshots import reset
+from training.participants.auto_tune.session import SessionConfig, SessionDir
+from training.participants.auto_tune.snapshots import reset
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -1,6 +1,6 @@
 """Trainer package — embedded harness participant that drives the training loop."""
 
-from trainer.cogitation import (
+from training.trainer.cogitation import (
     ESCALATION_THRESHOLD,
     CogitationRequest,
     CogitationResult,
@@ -8,18 +8,18 @@ from trainer.cogitation import (
     ConversationTurn,
     MisfitInfo,
 )
-from trainer.curriculum import Curriculum, CurriculumState, EntryKey
-from trainer.curriculum_document import (
+from training.trainer.curriculum import Curriculum, CurriculumState, EntryKey
+from training.trainer.curriculum_document import (
     CurriculumDocument,
     CurriculumParseError,
     Lesson,
 )
-from trainer.curriculum_generator import (
+from training.trainer.curriculum_generator import (
     CurriculumGenerationError,
     CurriculumGenerator,
 )
-from trainer.reactor import Action, Reactor
-from trainer.trainer import Trainer
+from training.trainer.reactor import Action, Reactor
+from training.trainer.trainer import Trainer
 
 __all__ = [
     "Action",

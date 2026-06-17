@@ -21,9 +21,9 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from harness.bus import MessageBus
-from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
-from harness.message import Message
+from training.harness.bus import MessageBus
+from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
+from training.harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX, normalise_significance
 from kalvin.kline import KLine, kline_display
@@ -31,13 +31,13 @@ from kalvin.misfit import classify_misfit
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
 from ks.compiler import compile_source
-from trainer.curriculum import Curriculum, CurriculumState, EntryKey
-from trainer.curriculum_document import (
+from training.trainer.curriculum import Curriculum, CurriculumState, EntryKey
+from training.trainer.curriculum_document import (
     CurriculumDocument,
     CurriculumParseError,
     Lesson,
 )
-from trainer.reactor import Reactor
+from training.trainer.reactor import Reactor
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ class Trainer:
         # so cogitate_fn stays a plain callable. In delegated mode the
         # Cogitator is never wired — the Reactor must not cogitate.
         if llm_client is not None and cogitate_fn is None and not delegate_reactive:
-            from trainer.cogitation import CogitationRequest, Cogitator, MisfitInfo
+            from training.trainer.cogitation import CogitationRequest, Cogitator, MisfitInfo
 
             _cogitator = Cogitator(client=llm_client)
             _display_tok = _display_tokenizer()
@@ -539,7 +539,7 @@ class Trainer:
         self._state.log_event("goal_received", {"goal": goal})
 
         try:
-            from trainer.curriculum_generator import (
+            from training.trainer.curriculum_generator import (
                 CurriculumGenerationError,
                 CurriculumGenerator,
             )

@@ -2,8 +2,8 @@
 
 Usage::
 
-    python -m harness --config harness.yaml
-    python -m harness --host 0.0.0.0 --port 9000
+    python -m training.harness --config harness.yaml
+    python -m training.harness --host 0.0.0.0 --port 9000
 
 Loads a YAML configuration file, instantiates embedded participants
 (KAgent adapter, Trainer), starts the WebSocket server for client
@@ -20,8 +20,8 @@ from typing import Any
 
 import yaml
 
-from harness.bus import MessageBus
-from harness.server import HarnessServer
+from training.harness.bus import MessageBus
+from training.harness.server import HarnessServer
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--config",
-        default="harness.yaml",
+        default="training.harness.yaml",
         help="Path to YAML/JSON config file (default: harness.yaml)",
     )
     parser.add_argument(
@@ -130,7 +130,7 @@ def main(argv: list[str] | None = None) -> None:
 
     def kagent_factory(address: str, bus: MessageBus) -> _AlreadySubscribed:
         # Two-phase wiring to avoid the circular dep.
-        from harness.adapter import KAgentAdapter
+        from training.harness.adapter import KAgentAdapter
         from kalvin.agent import KAgent
 
         adapter = KAgentAdapter(bus, role=address, tokenizer=shared_tokenizer)
@@ -143,8 +143,8 @@ def main(argv: list[str] | None = None) -> None:
     trainer_holder: list = []
 
     def trainer_factory(address: str, bus: MessageBus) -> _AlreadySubscribed:
-        from trainer.curriculum import Curriculum
-        from trainer.trainer import Trainer
+        from training.trainer.curriculum import Curriculum
+        from training.trainer.trainer import Trainer
 
         curriculum_file = trainer_cfg.get("curriculum_file", "")
         curricula_dir = trainer_cfg.get("curricula_dir", "curricula")
@@ -156,7 +156,7 @@ def main(argv: list[str] | None = None) -> None:
 
         curriculum: Curriculum
         if curriculum_file:
-            from trainer.curriculum_document import CurriculumDocument
+            from training.trainer.curriculum_document import CurriculumDocument
 
             doc = CurriculumDocument.from_file(curriculum_file)
             curriculum = Curriculum(doc)
@@ -235,7 +235,7 @@ def _build_llm_client(trainer_cfg: dict) -> Any | None:
     llm_cfg = trainer_cfg.get("llm") or {}
 
     try:
-        from trainer.cogitation import OpenAICompatibleClient
+        from training.trainer.cogitation import OpenAICompatibleClient
 
         base_url = llm_cfg.get("base_url", "https://api.z.ai/api/coding/paas/v4")
         model = llm_cfg.get("model", "glm-5.1")

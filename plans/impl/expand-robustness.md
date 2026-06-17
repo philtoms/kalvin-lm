@@ -68,7 +68,7 @@ Unresolvable match signatures are silently skipped.
 
 ### Task 5: Auto-tune git sandbox fix
 
-**File:** `src/participants/auto_tune/session.py` — `_git()`
+**File:** `src/training/participants/auto_tune/session.py` — `_git()`
 
 Added `GIT_CONFIG_NOSYSTEM=1` and removed `HOME` from environment to allow
 git operations in sandboxed environments where `.gitconfig` is inaccessible.
@@ -85,10 +85,10 @@ normalization so S3 regains full granularity.
   (S1=1.0; S2 linear in `[0.50, 0.99]`; S3 asymptotic
   `0.50 · S3_K / (S3_K + (distance - 100))`; S4=0.0). Add the constants
   `S2_TOP`, `S2_FLOOR`, `S3_K`. Re-export `normalise_significance`.
-- **`src/participants/auto_tune/events.py`** — `_build_significance()` calls
+- **`src/training/participants/auto_tune/events.py`** — `_build_significance()` calls
   `normalise_significance(raw_sig)` for the `normalised` field (replaces the
   inline `max(0.0, 1.0 - distance / S2_S3_DISTANCE)`).
-- **`src/trainer/trainer.py`** — `sig_norm` via `normalise_significance`; log
+- **`src/training/trainer/trainer.py`** — `sig_norm` via `normalise_significance`; log
   line additionally shows raw distance, e.g. `→ 0.17 (d=200)` (keeps the
   debug readability the `s3-distance` session introduced).
 - **`tests/test_normalise_significance.py`** (new) — the SN-1..SN-7 matrix for

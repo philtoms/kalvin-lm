@@ -6,7 +6,7 @@ import pytest
 
 from kalvin.expand import D_MAX, boundaries, classify
 from kalvin.kline import KLine
-from participants.auto_tune.events import (
+from training.participants.auto_tune.events import (
     _build_kline_display,
     _build_significance,
     _to_kline,

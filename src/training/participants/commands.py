@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
-from harness.constants import TRAINEE_ROLE, TRAINER_ROLE
+from training.harness.constants import TRAINEE_ROLE, TRAINER_ROLE
 
 
 @dataclass

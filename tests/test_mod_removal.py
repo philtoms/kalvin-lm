@@ -78,8 +78,8 @@ def test_migrated_imports_smoke():
     """All migrated importers import cleanly and KScript compiles."""
     from kalvin.agent import KAgent  # noqa: F401
     from ks import KScript
-    from participants.auto_tune.events import enrich_event  # noqa: F401
-    from trainer.trainer import Trainer  # noqa: F401
+    from training.participants.auto_tune.events import enrich_event  # noqa: F401
+    from training.trainer.trainer import Trainer  # noqa: F401
 
     KScript("A == B")  # compiles with the default NLPTokenizer
 

@@ -54,9 +54,9 @@ def fake_process() -> MagicMock:
 class TestStartHarness:
     """AT-4: start-harness starts harness and waits for WebSocket readiness."""
 
-    @patch("participants.auto_tune.lifecycle._generate_session_harness_config")
-    @patch("participants.auto_tune.lifecycle.socket.socket")
-    @patch("participants.auto_tune.lifecycle.subprocess.Popen")
+    @patch("training.participants.auto_tune.lifecycle._generate_session_harness_config")
+    @patch("training.participants.auto_tune.lifecycle.socket.socket")
+    @patch("training.participants.auto_tune.lifecycle.subprocess.Popen")
     def test_starts_harness_and_returns_pid(
         self,
         mock_popen: MagicMock,
@@ -66,7 +66,7 @@ class TestStartHarness:
         fake_process: MagicMock,
     ) -> None:
         mock_popen.return_value = fake_process
-        session_config_path = session_dir / "harness.yaml"
+        session_config_path = session_dir / "training.harness.yaml"
         mock_gen_config.return_value = session_config_path
 
         # Socket connect_ex returns 0 (success) immediately
@@ -75,7 +75,7 @@ class TestStartHarness:
         mock_socket_cls.return_value.__enter__ = MagicMock(return_value=mock_sock)
         mock_socket_cls.return_value.__exit__ = MagicMock(return_value=False)
 
-        from participants.auto_tune.lifecycle import _resolve_python, start_harness
+        from training.participants.auto_tune.lifecycle import _resolve_python, start_harness
 
         pid = start_harness(session_dir)
 
@@ -90,13 +90,13 @@ class TestStartHarness:
             str(session_config_path),
         ]
         # PID file written
-        pid_path = session_dir / "harness.pid"
+        pid_path = session_dir / "training.harness.pid"
         assert pid_path.exists()
         assert int(pid_path.read_text()) == 99999
 
-    @patch("participants.auto_tune.lifecycle.time.sleep")
-    @patch("participants.auto_tune.lifecycle.socket.socket")
-    @patch("participants.auto_tune.lifecycle.subprocess.Popen")
+    @patch("training.participants.auto_tune.lifecycle.time.sleep")
+    @patch("training.participants.auto_tune.lifecycle.socket.socket")
+    @patch("training.participants.auto_tune.lifecycle.subprocess.Popen")
     def test_timeout_when_port_never_ready(
         self,
         mock_popen: MagicMock,
@@ -113,13 +113,13 @@ class TestStartHarness:
         mock_socket_cls.return_value.__enter__ = MagicMock(return_value=mock_sock)
         mock_socket_cls.return_value.__exit__ = MagicMock(return_value=False)
 
-        from participants.auto_tune.lifecycle import start_harness
+        from training.participants.auto_tune.lifecycle import start_harness
 
         with pytest.raises(TimeoutError, match="did not become ready"):
             start_harness(session_dir, poll_timeout=0.5)
 
-    @patch("participants.auto_tune.lifecycle.socket.socket")
-    @patch("participants.auto_tune.lifecycle.subprocess.Popen")
+    @patch("training.participants.auto_tune.lifecycle.socket.socket")
+    @patch("training.participants.auto_tune.lifecycle.subprocess.Popen")
     def test_reads_config_and_extracts_port(
         self,
         mock_popen: MagicMock,
@@ -139,7 +139,7 @@ class TestStartHarness:
         mock_socket_cls.return_value.__enter__ = MagicMock(return_value=mock_sock)
         mock_socket_cls.return_value.__exit__ = MagicMock(return_value=False)
 
-        from participants.auto_tune.lifecycle import start_harness
+        from training.participants.auto_tune.lifecycle import start_harness
 
         start_harness(session_dir)
 
@@ -155,18 +155,18 @@ class TestStartHarness:
 class TestStopHarness:
     """AT-5: stop-harness gracefully terminates harness process."""
 
-    @patch("participants.auto_tune.lifecycle._wait_for_exit", return_value=True)
-    @patch("participants.auto_tune.lifecycle.os.kill")
+    @patch("training.participants.auto_tune.lifecycle._wait_for_exit", return_value=True)
+    @patch("training.participants.auto_tune.lifecycle.os.kill")
     def test_sends_sigterm_and_waits(
         self,
         mock_kill: MagicMock,
         mock_wait: MagicMock,
         session_dir: Path,
     ) -> None:
-        pid_path = session_dir / "harness.pid"
+        pid_path = session_dir / "training.harness.pid"
         pid_path.write_text("12345", encoding="utf-8")
 
-        from participants.auto_tune.lifecycle import stop_harness
+        from training.participants.auto_tune.lifecycle import stop_harness
 
         stop_harness(session_dir)
 
@@ -174,18 +174,18 @@ class TestStopHarness:
         mock_wait.assert_called_once_with(12345, timeout=5.0)
         assert not pid_path.exists()
 
-    @patch("participants.auto_tune.lifecycle._wait_for_exit", return_value=False)
-    @patch("participants.auto_tune.lifecycle.os.kill")
+    @patch("training.participants.auto_tune.lifecycle._wait_for_exit", return_value=False)
+    @patch("training.participants.auto_tune.lifecycle.os.kill")
     def test_sigkill_escalation(
         self,
         mock_kill: MagicMock,
         mock_wait: MagicMock,
         session_dir: Path,
     ) -> None:
-        pid_path = session_dir / "harness.pid"
+        pid_path = session_dir / "training.harness.pid"
         pid_path.write_text("12345", encoding="utf-8")
 
-        from participants.auto_tune.lifecycle import stop_harness
+        from training.participants.auto_tune.lifecycle import stop_harness
 
         stop_harness(session_dir)
 
@@ -196,32 +196,32 @@ class TestStopHarness:
         assert not pid_path.exists()
 
     def test_missing_pid_file(self, session_dir: Path) -> None:
-        from participants.auto_tune.lifecycle import stop_harness
+        from training.participants.auto_tune.lifecycle import stop_harness
 
         # Should return without error
         stop_harness(session_dir)
 
-    @patch("participants.auto_tune.lifecycle.os.kill")
+    @patch("training.participants.auto_tune.lifecycle.os.kill")
     def test_already_dead_process(
         self,
         mock_kill: MagicMock,
         session_dir: Path,
     ) -> None:
-        pid_path = session_dir / "harness.pid"
+        pid_path = session_dir / "training.harness.pid"
         pid_path.write_text("12345", encoding="utf-8")
 
         # SIGTERM raises ProcessLookupError — process already dead
         mock_kill.side_effect = ProcessLookupError("No such process")
 
-        from participants.auto_tune.lifecycle import stop_harness
+        from training.participants.auto_tune.lifecycle import stop_harness
 
         stop_harness(session_dir)
 
         # PID file should still be cleaned up
         assert not pid_path.exists()
 
-    @patch("participants.auto_tune.lifecycle._wait_for_exit", return_value=True)
-    @patch("participants.auto_tune.lifecycle.os.kill")
+    @patch("training.participants.auto_tune.lifecycle._wait_for_exit", return_value=True)
+    @patch("training.participants.auto_tune.lifecycle.os.kill")
     def test_sigkill_ignores_process_lookup_error(
         self,
         mock_kill: MagicMock,
@@ -229,13 +229,13 @@ class TestStopHarness:
         session_dir: Path,
     ) -> None:
         """Process dies between SIGTERM and SIGKILL escalation."""
-        pid_path = session_dir / "harness.pid"
+        pid_path = session_dir / "training.harness.pid"
         pid_path.write_text("12345", encoding="utf-8")
 
         # SIGTERM succeeds, but SIGKILL raises ProcessLookupError
         mock_kill.side_effect = [None, ProcessLookupError("No such process")]
 
-        from participants.auto_tune.lifecycle import stop_harness
+        from training.participants.auto_tune.lifecycle import stop_harness
 
         stop_harness(session_dir)
 
@@ -251,8 +251,8 @@ class TestStopHarness:
 class TestStartSupervisor:
     """AT-20: Process lifecycle commands manage PIDs and enforce timeouts."""
 
-    @patch("participants.auto_tune.lifecycle.time.sleep")
-    @patch("participants.auto_tune.lifecycle.subprocess.Popen")
+    @patch("training.participants.auto_tune.lifecycle.time.sleep")
+    @patch("training.participants.auto_tune.lifecycle.subprocess.Popen")
     def test_starts_supervisor_and_waits_for_connected(
         self,
         mock_popen: MagicMock,
@@ -262,7 +262,7 @@ class TestStartSupervisor:
     ) -> None:
         mock_popen.return_value = fake_process
 
-        from participants.auto_tune.lifecycle import _resolve_python, start_supervisor
+        from training.participants.auto_tune.lifecycle import _resolve_python, start_supervisor
 
         # Simulate status.json appearing with connected=true on second check
         call_count = [0]
@@ -285,7 +285,7 @@ class TestStartSupervisor:
             [
                 _resolve_python(),
                 "-m",
-                "participants.auto_tune.supervisor",
+                "training.participants.auto_tune.supervisor",
                 "--session-dir",
                 str(session_dir),
             ],
@@ -297,8 +297,8 @@ class TestStartSupervisor:
         assert pid_path.exists()
         assert int(pid_path.read_text()) == 99999
 
-    @patch("participants.auto_tune.lifecycle.time.sleep")
-    @patch("participants.auto_tune.lifecycle.subprocess.Popen")
+    @patch("training.participants.auto_tune.lifecycle.time.sleep")
+    @patch("training.participants.auto_tune.lifecycle.subprocess.Popen")
     def test_timeout_when_status_never_connected(
         self,
         mock_popen: MagicMock,
@@ -308,13 +308,13 @@ class TestStartSupervisor:
     ) -> None:
         mock_popen.return_value = fake_process
 
-        from participants.auto_tune.lifecycle import start_supervisor
+        from training.participants.auto_tune.lifecycle import start_supervisor
 
         with pytest.raises(TimeoutError, match="did not connect"):
             start_supervisor(session_dir, poll_timeout=0.5)
 
-    @patch("participants.auto_tune.lifecycle.time.sleep")
-    @patch("participants.auto_tune.lifecycle.subprocess.Popen")
+    @patch("training.participants.auto_tune.lifecycle.time.sleep")
+    @patch("training.participants.auto_tune.lifecycle.subprocess.Popen")
     def test_ignores_partial_status(
         self,
         mock_popen: MagicMock,
@@ -325,7 +325,7 @@ class TestStartSupervisor:
         """status.json exists but connected=false until it becomes true."""
         mock_popen.return_value = fake_process
 
-        from participants.auto_tune.lifecycle import start_supervisor
+        from training.participants.auto_tune.lifecycle import start_supervisor
 
         call_count = [0]
 
@@ -357,8 +357,8 @@ class TestStartSupervisor:
 class TestStopSupervisor:
     """AT-20: Process lifecycle commands manage PIDs and enforce timeouts."""
 
-    @patch("participants.auto_tune.lifecycle._wait_for_exit", return_value=True)
-    @patch("participants.auto_tune.lifecycle.os.kill")
+    @patch("training.participants.auto_tune.lifecycle._wait_for_exit", return_value=True)
+    @patch("training.participants.auto_tune.lifecycle.os.kill")
     def test_writes_shutdown_command_and_cleans_up(
         self,
         mock_kill: MagicMock,
@@ -368,7 +368,7 @@ class TestStopSupervisor:
         pid_path = session_dir / "supervisor.pid"
         pid_path.write_text("54321", encoding="utf-8")
 
-        from participants.auto_tune.lifecycle import stop_supervisor
+        from training.participants.auto_tune.lifecycle import stop_supervisor
 
         stop_supervisor(session_dir)
 
@@ -384,8 +384,8 @@ class TestStopSupervisor:
         # Should NOT send SIGKILL (graceful exit worked)
         mock_kill.assert_not_called()
 
-    @patch("participants.auto_tune.lifecycle._wait_for_exit", return_value=False)
-    @patch("participants.auto_tune.lifecycle.os.kill")
+    @patch("training.participants.auto_tune.lifecycle._wait_for_exit", return_value=False)
+    @patch("training.participants.auto_tune.lifecycle.os.kill")
     def test_sigkill_escalation(
         self,
         mock_kill: MagicMock,
@@ -395,7 +395,7 @@ class TestStopSupervisor:
         pid_path = session_dir / "supervisor.pid"
         pid_path.write_text("54321", encoding="utf-8")
 
-        from participants.auto_tune.lifecycle import stop_supervisor
+        from training.participants.auto_tune.lifecycle import stop_supervisor
 
         stop_supervisor(session_dir)
 
@@ -403,8 +403,8 @@ class TestStopSupervisor:
         mock_kill.assert_called_once_with(54321, signal.SIGKILL)
         assert not pid_path.exists()
 
-    @patch("participants.auto_tune.lifecycle._wait_for_exit", return_value=False)
-    @patch("participants.auto_tune.lifecycle.os.kill")
+    @patch("training.participants.auto_tune.lifecycle._wait_for_exit", return_value=False)
+    @patch("training.participants.auto_tune.lifecycle.os.kill")
     def test_sigkill_ignores_process_lookup_error(
         self,
         mock_kill: MagicMock,
@@ -416,7 +416,7 @@ class TestStopSupervisor:
 
         mock_kill.side_effect = ProcessLookupError("No such process")
 
-        from participants.auto_tune.lifecycle import stop_supervisor
+        from training.participants.auto_tune.lifecycle import stop_supervisor
 
         stop_supervisor(session_dir)
 
@@ -424,7 +424,7 @@ class TestStopSupervisor:
         assert not pid_path.exists()
 
     def test_missing_pid_file(self, session_dir: Path) -> None:
-        from participants.auto_tune.lifecycle import stop_supervisor
+        from training.participants.auto_tune.lifecycle import stop_supervisor
 
         # Should return without error
         stop_supervisor(session_dir)
@@ -439,27 +439,27 @@ class TestHelpers:
     """Tests for private helper functions."""
 
     def test_read_pid_returns_integer(self, tmp_path: Path) -> None:
-        from participants.auto_tune.lifecycle import _read_pid
+        from training.participants.auto_tune.lifecycle import _read_pid
 
         pid_file = tmp_path / "test.pid"
         pid_file.write_text("12345", encoding="utf-8")
         assert _read_pid(pid_file) == 12345
 
     def test_read_pid_returns_none_for_missing_file(self, tmp_path: Path) -> None:
-        from participants.auto_tune.lifecycle import _read_pid
+        from training.participants.auto_tune.lifecycle import _read_pid
 
         assert _read_pid(tmp_path / "nonexistent.pid") is None
 
     def test_read_pid_returns_none_for_invalid_content(self, tmp_path: Path) -> None:
-        from participants.auto_tune.lifecycle import _read_pid
+        from training.participants.auto_tune.lifecycle import _read_pid
 
         pid_file = tmp_path / "bad.pid"
         pid_file.write_text("not-a-number", encoding="utf-8")
         assert _read_pid(pid_file) is None
 
-    @patch("participants.auto_tune.lifecycle.os.kill")
+    @patch("training.participants.auto_tune.lifecycle.os.kill")
     def test_wait_for_exit_returns_true_when_process_dies(self, mock_kill: MagicMock) -> None:
-        from participants.auto_tune.lifecycle import _wait_for_exit
+        from training.participants.auto_tune.lifecycle import _wait_for_exit
 
         # Process dies on second check
         call_count = [0]
@@ -471,14 +471,14 @@ class TestHelpers:
 
         mock_kill.side_effect = side_effect
 
-        with patch("participants.auto_tune.lifecycle.time.sleep"):
+        with patch("training.participants.auto_tune.lifecycle.time.sleep"):
             result = _wait_for_exit(12345, timeout=1.0)
 
         assert result is True
 
-    @patch("participants.auto_tune.lifecycle.os.kill")
+    @patch("training.participants.auto_tune.lifecycle.os.kill")
     def test_wait_for_exit_returns_false_on_timeout(self, mock_kill: MagicMock) -> None:
-        from participants.auto_tune.lifecycle import _wait_for_exit
+        from training.participants.auto_tune.lifecycle import _wait_for_exit
 
         # Process always alive (os.kill succeeds)
         mock_kill.return_value = None
@@ -494,8 +494,8 @@ class TestHelpers:
             return original_monotonic() + 100  # Far past deadline
 
         with (
-            patch("participants.auto_tune.lifecycle.time.monotonic", side_effect=fake_monotonic),
-            patch("participants.auto_tune.lifecycle.time.sleep"),
+            patch("training.participants.auto_tune.lifecycle.time.monotonic", side_effect=fake_monotonic),
+            patch("training.participants.auto_tune.lifecycle.time.sleep"),
         ):
             result = _wait_for_exit(12345, timeout=5.0)
 
@@ -511,14 +511,14 @@ class TestKillStaleProcess:
     """_kill_stale_process detects and kills stale processes from PID files."""
 
     def test_no_pid_file_is_noop(self, tmp_path: Path) -> None:
-        from participants.auto_tune.lifecycle import _kill_stale_process
+        from training.participants.auto_tune.lifecycle import _kill_stale_process
 
         pid_path = tmp_path / "nonexistent.pid"
         _kill_stale_process(pid_path)  # Should not raise
 
     def test_dead_process_cleans_up_pid(self, tmp_path: Path) -> None:
         """PID file with a dead process is deleted."""
-        from participants.auto_tune.lifecycle import _kill_stale_process
+        from training.participants.auto_tune.lifecycle import _kill_stale_process
 
         pid_path = tmp_path / "test.pid"
         pid_path.write_text("99999999", encoding="utf-8")  # Non-existent PID
@@ -527,13 +527,13 @@ class TestKillStaleProcess:
 
         assert not pid_path.exists()
 
-    @patch("participants.auto_tune.lifecycle._wait_for_exit", return_value=True)
-    @patch("participants.auto_tune.lifecycle.os.kill")
+    @patch("training.participants.auto_tune.lifecycle._wait_for_exit", return_value=True)
+    @patch("training.participants.auto_tune.lifecycle.os.kill")
     def test_live_process_killed(
         self, mock_kill: MagicMock, mock_wait: MagicMock, tmp_path: Path
     ) -> None:
         """Stale running process is sent SIGTERM."""
-        from participants.auto_tune.lifecycle import _kill_stale_process
+        from training.participants.auto_tune.lifecycle import _kill_stale_process
 
         pid_path = tmp_path / "test.pid"
         pid_path.write_text("12345", encoding="utf-8")
@@ -546,13 +546,13 @@ class TestKillStaleProcess:
         mock_kill.assert_any_call(12345, signal.SIGTERM)
         assert not pid_path.exists()
 
-    @patch("participants.auto_tune.lifecycle._wait_for_exit", return_value=False)
-    @patch("participants.auto_tune.lifecycle.os.kill")
+    @patch("training.participants.auto_tune.lifecycle._wait_for_exit", return_value=False)
+    @patch("training.participants.auto_tune.lifecycle.os.kill")
     def test_live_process_sigkill_escalation(
         self, mock_kill: MagicMock, mock_wait: MagicMock, tmp_path: Path
     ) -> None:
         """Stale process that won't die gets SIGKILL."""
-        from participants.auto_tune.lifecycle import _kill_stale_process
+        from training.participants.auto_tune.lifecycle import _kill_stale_process
 
         pid_path = tmp_path / "test.pid"
         pid_path.write_text("12345", encoding="utf-8")
@@ -578,11 +578,11 @@ class TestSessionHarnessConfig:
     def test_overrides_curriculum_file(self, tmp_path: Path) -> None:
         import yaml
 
-        from participants.auto_tune.lifecycle import _generate_session_harness_config
-        from participants.auto_tune.session import SessionConfig
+        from training.participants.auto_tune.lifecycle import _generate_session_harness_config
+        from training.participants.auto_tune.session import SessionConfig
 
         # Create project harness.yaml
-        project_yaml = tmp_path / "harness.yaml"
+        project_yaml = tmp_path / "training.harness.yaml"
         project_yaml.write_text(
             "server:\n  host: localhost\n  port: 8765\n"
             "trainer:\n  curriculum_file: curricula/first-steps.md\n",
@@ -601,17 +601,17 @@ class TestSessionHarnessConfig:
 
         result = _generate_session_harness_config(session_dir, cfg)
 
-        assert result == session_dir / "harness.yaml"
+        assert result == session_dir / "training.harness.yaml"
         data = yaml.safe_load(result.read_text(encoding="utf-8"))
         assert data["trainer"]["curriculum_file"] == "curricula/custom.md"
 
     def test_preserves_other_config(self, tmp_path: Path) -> None:
         import yaml
 
-        from participants.auto_tune.lifecycle import _generate_session_harness_config
-        from participants.auto_tune.session import SessionConfig
+        from training.participants.auto_tune.lifecycle import _generate_session_harness_config
+        from training.participants.auto_tune.session import SessionConfig
 
-        project_yaml = tmp_path / "harness.yaml"
+        project_yaml = tmp_path / "training.harness.yaml"
         project_yaml.write_text(
             "server:\n  host: localhost\n  port: 8765\n"
             "trainer:\n  curriculum_file: curricula/old.md\n  max_reactive_rounds: 5\n",
@@ -645,10 +645,10 @@ class TestSessionHarnessConfig:
         """
         import yaml
 
-        from participants.auto_tune.lifecycle import _generate_session_harness_config
-        from participants.auto_tune.session import SessionConfig
+        from training.participants.auto_tune.lifecycle import _generate_session_harness_config
+        from training.participants.auto_tune.session import SessionConfig
 
-        project_yaml = tmp_path / "harness.yaml"
+        project_yaml = tmp_path / "training.harness.yaml"
         project_yaml.write_text(
             "server:\n  host: localhost\n  port: 8765\n"
             "trainer:\n  curriculum_file: curricula/first-steps.md\n",
@@ -680,10 +680,10 @@ class TestSessionHarnessConfig:
         """
         import yaml
 
-        from participants.auto_tune.lifecycle import _generate_session_harness_config
-        from participants.auto_tune.session import SessionConfig
+        from training.participants.auto_tune.lifecycle import _generate_session_harness_config
+        from training.participants.auto_tune.session import SessionConfig
 
-        project_yaml = tmp_path / "harness.yaml"
+        project_yaml = tmp_path / "training.harness.yaml"
         project_yaml.write_text(
             "server:\n  host: localhost\n  port: 8765\n"
             "trainer:\n  curriculum_file: curricula/old.md\n"
@@ -715,8 +715,8 @@ class TestSessionHarnessConfig:
     def test_no_project_config_uses_minimal(self, tmp_path: Path) -> None:
         import yaml
 
-        from participants.auto_tune.lifecycle import _generate_session_harness_config
-        from participants.auto_tune.session import SessionConfig
+        from training.participants.auto_tune.lifecycle import _generate_session_harness_config
+        from training.participants.auto_tune.session import SessionConfig
 
         # No project harness.yaml
         session_dir = tmp_path / "auto-tune" / "test"
@@ -745,10 +745,10 @@ class TestSessionHarnessConfig:
 class TestStartKillsStaleProcesses:
     """start_harness and start_supervisor kill stale processes before starting."""
 
-    @patch("participants.auto_tune.lifecycle._generate_session_harness_config")
-    @patch("participants.auto_tune.lifecycle._kill_stale_process")
-    @patch("participants.auto_tune.lifecycle.socket.socket")
-    @patch("participants.auto_tune.lifecycle.subprocess.Popen")
+    @patch("training.participants.auto_tune.lifecycle._generate_session_harness_config")
+    @patch("training.participants.auto_tune.lifecycle._kill_stale_process")
+    @patch("training.participants.auto_tune.lifecycle.socket.socket")
+    @patch("training.participants.auto_tune.lifecycle.subprocess.Popen")
     def test_start_harness_kills_stale(
         self,
         mock_popen: MagicMock,
@@ -759,21 +759,21 @@ class TestStartKillsStaleProcesses:
         fake_process: MagicMock,
     ) -> None:
         mock_popen.return_value = fake_process
-        mock_gen_config.return_value = session_dir / "harness.yaml"
+        mock_gen_config.return_value = session_dir / "training.harness.yaml"
         mock_sock = MagicMock()
         mock_sock.connect_ex.return_value = 0
         mock_socket_cls.return_value.__enter__ = MagicMock(return_value=mock_sock)
         mock_socket_cls.return_value.__exit__ = MagicMock(return_value=False)
 
-        from participants.auto_tune.lifecycle import start_harness
+        from training.participants.auto_tune.lifecycle import start_harness
 
         start_harness(session_dir)
 
-        mock_kill_stale.assert_called_once_with(session_dir / "harness.pid")
+        mock_kill_stale.assert_called_once_with(session_dir / "training.harness.pid")
 
-    @patch("participants.auto_tune.lifecycle._kill_stale_process")
-    @patch("participants.auto_tune.lifecycle.time.sleep")
-    @patch("participants.auto_tune.lifecycle.subprocess.Popen")
+    @patch("training.participants.auto_tune.lifecycle._kill_stale_process")
+    @patch("training.participants.auto_tune.lifecycle.time.sleep")
+    @patch("training.participants.auto_tune.lifecycle.subprocess.Popen")
     def test_start_supervisor_kills_stale(
         self,
         mock_popen: MagicMock,
@@ -784,7 +784,7 @@ class TestStartKillsStaleProcesses:
     ) -> None:
         mock_popen.return_value = fake_process
 
-        from participants.auto_tune.lifecycle import start_supervisor
+        from training.participants.auto_tune.lifecycle import start_supervisor
 
         call_count = [0]
 

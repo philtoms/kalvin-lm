@@ -15,13 +15,13 @@ import time
 
 import pytest
 
-from participants.auto_tune.orchestrate import (
+from training.participants.auto_tune.orchestrate import (
     read_events,
     read_status,
     send_command,
     step,
 )
-from participants.auto_tune.session import SessionDir
+from training.participants.auto_tune.session import SessionDir
 
 # ---------------------------------------------------------------------------
 # Helpers

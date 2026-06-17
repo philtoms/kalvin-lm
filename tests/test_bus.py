@@ -11,8 +11,8 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from harness.bus import MessageBus
-from harness.message import Message
+from training.harness.bus import MessageBus
+from training.harness.message import Message
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -17,14 +17,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from participants.auto_tune.session import SessionConfig, SessionDir
+from training.participants.auto_tune.session import SessionConfig, SessionDir
 
 # Helpers
 
 def _derive_state_path(curriculum: str, root: Path) -> Path:
     """Derive the curriculum state file path from the curriculum markdown path.
 
-    Mirrors the logic in ``src/harness/__main__.py`` lines 202–206:
+    Mirrors the logic in ``src/training/harness/__main__.py`` lines 202–206:
     ``curricula/first-steps.md`` → ``curricula/first-steps.json``.
 
     The path is resolved against *root* (the project root directory).

@@ -23,8 +23,8 @@ from typing import Any
 
 import websockets
 
-from participants.auto_tune.events import enrich_event
-from participants.commands import parse_command
+from training.participants.auto_tune.events import enrich_event
+from training.participants.commands import parse_command
 
 logger = logging.getLogger(__name__)
 

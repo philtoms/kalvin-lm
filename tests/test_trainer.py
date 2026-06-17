@@ -10,17 +10,17 @@ import textwrap
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from harness.bus import MessageBus
-from harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
-from harness.message import Message
+from training.harness.bus import MessageBus
+from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
+from training.harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
 from tests.conftest import requires_nlp_data
-from trainer.cogitation import LLMResponse
-from trainer.curriculum import Curriculum, CurriculumState, EntryKey
-from trainer.curriculum_document import CurriculumDocument, Lesson
-from trainer.curriculum_generator import CurriculumGenerationError
-from trainer.trainer import Trainer
+from training.trainer.cogitation import LLMResponse
+from training.trainer.curriculum import Curriculum, CurriculumState, EntryKey
+from training.trainer.curriculum_document import CurriculumDocument, Lesson
+from training.trainer.curriculum_generator import CurriculumGenerationError
+from training.trainer.trainer import Trainer
 
 # ── Significance constants for test events ────────────────────────────
 
@@ -211,7 +211,7 @@ def _drain(trainer: Trainer) -> None:
 class TestOneSessionAtATime:
     """HRNS-16: Trainer accepts one session at a time; queues additional goals."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_one_session_at_a_time(self, mock_compile: MagicMock) -> None:
         mock_compile.return_value = [_make_entry(100, [10])]
 
@@ -253,7 +253,7 @@ class TestOneSessionAtATime:
 class TestSessionPause:
     """HRNS-19: Session pause stops submitting but stays active."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_session_pause(self, mock_compile: MagicMock) -> None:
         mock_compile.return_value = [_make_entry(100, [10])]
 
@@ -306,7 +306,7 @@ class TestSessionPause:
 class TestSessionStop:
     """HRNS-20: Session stop ends session, persists state, goes dormant."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_session_stop(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         mock_compile.return_value = [_make_entry(100, [10])]
 
@@ -348,7 +348,7 @@ class TestSessionStop:
 class TestEntryCountingLessonComplete:
     """HRNS-24: Trainer counts submitted entries; knows when lesson is complete."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_entry_counting_lesson_complete(self, mock_compile: MagicMock) -> None:
         # Lesson compiles to 3 entries
         entries = [
@@ -396,7 +396,7 @@ class TestEntryCountingLessonComplete:
 class TestCurriculumCompleteEndsSession:
     """Advance through all lessons — session ends when curriculum is complete."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_curriculum_complete_ends_session(self, mock_compile: MagicMock) -> None:
         entry = _make_entry(100, [10])
         mock_compile.return_value = [entry]
@@ -431,7 +431,7 @@ class TestCurriculumCompleteEndsSession:
 class TestFastPathAutoSatisfy:
     """S1 event auto-satisfies entry without countersign."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_fast_path_auto_satisfy(self, mock_compile: MagicMock) -> None:
         entry = _make_entry(42, [1, 2, 3])
         mock_compile.return_value = [entry]
@@ -464,7 +464,7 @@ class TestFastPathAutoSatisfy:
 class TestCompilationErrorFromKalvin:
     """A KAgent error abandons the lesson: pending entries are satisfied on error."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_compilation_error_from_kalvin(self, mock_compile: MagicMock) -> None:
         entry = _make_entry(100, [10])
         mock_compile.return_value = [entry]
@@ -510,7 +510,7 @@ class TestCompilationErrorFromKalvin:
         submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert any(m.message == "lesson2" for m in submit_msgs)
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_error_completes_multi_entry_lesson(self, mock_compile: MagicMock) -> None:
         """A single error satisfies all pending entries of a multi-entry lesson."""
         entry_a = _make_entry(100, [10])
@@ -548,7 +548,7 @@ class TestCompilationErrorFromKalvin:
         submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert any(m.message == "lesson2" for m in submit_msgs)
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_error_after_partial_satisfaction_completes(self, mock_compile: MagicMock) -> None:
         """A partially-satisfied lesson still completes on error.
@@ -601,7 +601,7 @@ class TestCompilationErrorFromKalvin:
 class TestStopPersistsState:
     """Submit some entries, stop, reload state from disk, verify position and sets match."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_stop_persists_state(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         entry = _make_entry(100, [10])
         mock_compile.return_value = [entry]
@@ -648,7 +648,7 @@ class TestStopPersistsState:
 class TestGuidanceTextAppended:
     """Free-text input from Slack is appended to conversation history."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_guidance_text(self, mock_compile: MagicMock) -> None:
         mock_compile.return_value = [_make_entry(100, [10])]
 
@@ -676,7 +676,7 @@ class TestGuidanceTextAppended:
 class TestSessionStartup:
     """CRS-38..CRS-42: Session startup resolution."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_session_startup_from_file_param(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         """CRS-38: Session startup loads curriculum from runtime parameter."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -698,7 +698,7 @@ class TestSessionStartup:
         submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert len(submit_msgs) >= 1
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_session_startup_from_saved_state(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
@@ -733,7 +733,7 @@ class TestSessionStartup:
         assert trainer._session_active
         assert trainer.state.curriculum.document.lessons[0].label == "1"
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_session_startup_polls_for_goal(self, mock_compile: MagicMock) -> None:
         """CRS-40: Session startup polls for goal when no param and no saved state.
 
@@ -789,7 +789,7 @@ class TestSessionStartup:
         polling_progress = [m for m in progress_msgs if m.message["status"] == "polling_for_goal"]
         assert len(polling_progress) >= 1
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_no_polling_when_curriculum_file_exists(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
@@ -821,7 +821,7 @@ class TestSessionStartup:
 class TestGoalResolution:
     """CRS-41..CRS-42: Goal resolution."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_goal_prefix_triggers_generation(self, mock_compile: MagicMock) -> None:
         """CRS-41: Goal starting with 'goal:' triggers generation."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -839,7 +839,7 @@ class TestGoalResolution:
         # Goal is queued since session is active
         assert "teach SVO" in trainer._pending_goals
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_goal_file_path_triggers_load(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         """CRS-42: Goal that is a file path triggers direct loading."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -876,7 +876,7 @@ class TestGoalResolution:
 class TestPollingModeInputHandling:
     """Polling-mode input handling: goal text and file path resolution."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_polling_mode_resolves_goal_input(
         self, mock_compile: MagicMock, tmp_path: Path
@@ -937,7 +937,7 @@ class TestPollingModeInputHandling:
         assert len(goal_events) >= 1
         assert "teach SVO patterns" in goal_events[0]["data"]["goal"]
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_polling_mode_resolves_file_path_input(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
@@ -982,7 +982,7 @@ class TestPollingModeInputHandling:
 class TestFilePolling:
     """CRS-43..CRS-45: File polling and monotonic submitted set."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_trainer_rereads_file_before_lesson(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
@@ -1003,7 +1003,7 @@ class TestFilePolling:
         submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert len(submit_msgs) >= 1
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_new_lessons_submitted_after_reread(
         self, mock_compile: MagicMock, tmp_path: Path
@@ -1042,7 +1042,7 @@ class TestFilePolling:
         # After re-read, curriculum should have 4 lessons
         assert len(trainer.state.curriculum.document.lessons) == 4
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_monotonic_set_prevents_duplicates(self, mock_compile: MagicMock) -> None:
         """CRS-45: Monotonic submitted set prevents duplicate kline submissions."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -1069,7 +1069,7 @@ class TestFilePolling:
 class TestProgressEvents:
     """CRS-46..CRS-49: Progress events."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_progress_event_session_start(self, mock_compile: MagicMock) -> None:
         """CRS-46: Progress event emitted on session start."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -1086,7 +1086,7 @@ class TestProgressEvents:
         assert started.message["lessons_total"] == 1
         assert started.message["lessons_completed"] == 0
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_progress_event_lesson_complete(self, mock_compile: MagicMock) -> None:
         """CRS-47: Progress event emitted on lesson complete."""
@@ -1113,7 +1113,7 @@ class TestProgressEvents:
         assert len(complete_msgs) >= 1
         assert complete_msgs[0].message["lessons_completed"] == 1
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_progress_event_curriculum_complete(self, mock_compile: MagicMock) -> None:
         """CRS-48: Progress event emitted on curriculum complete."""
@@ -1143,7 +1143,7 @@ class TestProgressEvents:
         complete_msgs = [m for m in progress_msgs if m.message["status"] == "complete"]
         assert len(complete_msgs) >= 1
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_progress_event_amendment(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         """CRS-49: Progress event emitted on amendment applied."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -1202,7 +1202,7 @@ class _MockLLMClient:
 class TestGenerateAndStart:
     """KB-032: _generate_and_start creates CurriculumGenerator, calls generate, loads result."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_generate_and_start_success(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         """_generate_and_start creates generator, calls generate, starts session."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -1259,7 +1259,7 @@ class TestGenerateAndStart:
         submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert len(submit_msgs) >= 1
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_generate_and_start_uses_llm_client_and_curricula_dir(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
@@ -1284,7 +1284,7 @@ class TestGenerateAndStart:
         )
 
         # Patch at definition site — _generate_and_start imports from trainer.curriculum_generator
-        with patch("trainer.curriculum_generator.CurriculumGenerator") as mock_gen:
+        with patch("training.trainer.curriculum_generator.CurriculumGenerator") as mock_gen:
             mock_gen.return_value.generate.return_value = curriculum_path
             trainer._generate_and_start("test goal")
 
@@ -1292,7 +1292,7 @@ class TestGenerateAndStart:
             mock_gen.assert_called_once_with(mock_llm, curricula_dir)
             mock_gen.return_value.generate.assert_called_once_with("test goal")
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_generate_and_start_loads_generated_curriculum(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
@@ -1324,7 +1324,7 @@ class TestGenerateAndStart:
         assert trainer._session_active
         assert trainer.state.curriculum.document.lessons[0].label == "1"
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_generate_and_start_emits_progress(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
@@ -1389,7 +1389,7 @@ class TestGenerateAndStartGuards:
         goal_events = [e for e in trainer.state.event_log if e["type"] == "goal_received"]
         assert len(goal_events) == 0
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_no_llm_client_returns_early(self, mock_compile: MagicMock) -> None:
         """When _llm_client is None, method returns with error event."""
         bus = MessageBus()
@@ -1411,7 +1411,7 @@ class TestGenerateAndStartGuards:
         assert len(failed_events) == 1
         assert "no LLM client configured" in failed_events[0]["data"]["error"]
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_generation_error_re_enters_polling(
         self, mock_compile: MagicMock, tmp_path: Path
@@ -1430,7 +1430,7 @@ class TestGenerateAndStartGuards:
             llm_client=mock_llm,
         )
 
-        with patch("trainer.curriculum_generator.CurriculumGenerator") as mock_gen:
+        with patch("training.trainer.curriculum_generator.CurriculumGenerator") as mock_gen:
             mock_gen.return_value.generate.side_effect = CurriculumGenerationError(
                 "LLM returned invalid output"
             )
@@ -1454,7 +1454,7 @@ class TestGenerateAndStartGuards:
         ]
         assert len(polling_msgs) >= 1
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_after_generation_failure_accepts_new_goal(
         self, mock_compile: MagicMock, tmp_path: Path
@@ -1489,7 +1489,7 @@ class TestGenerateAndStartGuards:
         )
 
         # First attempt: force generation failure
-        with patch("trainer.curriculum_generator.CurriculumGenerator") as mock_gen:
+        with patch("training.trainer.curriculum_generator.CurriculumGenerator") as mock_gen:
             mock_gen.return_value.generate.side_effect = CurriculumGenerationError("fail")
             trainer._generate_and_start("failing goal")
 
@@ -1519,7 +1519,7 @@ class TestGenerateAndStartGuards:
 class TestResolveGoalDispatch:
     """KB-032: _resolve_goal dispatches to _generate_and_start or _load_and_start."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_goal_prefix_with_space(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         """Input 'goal: teach Kalvin about SVO' while polling → calls _generate_and_start."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -1563,7 +1563,7 @@ class TestResolveGoalDispatch:
         assert len(goal_events) == 1
         assert goal_events[0]["data"]["goal"] == "teach Kalvin about SVO"
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_goal_prefix_no_space(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         """Input 'goal:teach Kalvin' (no space after colon) calls _generate_and_start."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -1607,7 +1607,7 @@ class TestResolveGoalDispatch:
         assert len(goal_events) == 1
         assert goal_events[0]["data"]["goal"] == "teach Kalvin about SVO"
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_goal_prefix_whitespace_only(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         """Input 'goal: ' (whitespace only after strip) → no crash, generation fails gracefully."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -1636,7 +1636,7 @@ class TestResolveGoalDispatch:
         assert trainer._polling_for_goal  # re-entered polling after failure
         assert not trainer._session_active
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_file_path_triggers_load(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         """Input that is a path to an existing .md file → calls _load_and_start."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -1671,7 +1671,7 @@ class TestResolveGoalDispatch:
         goal_events = [e for e in trainer.state.event_log if e["type"] == "goal_received"]
         assert len(goal_events) == 0
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_non_goal_non_file_triggers_generate(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
@@ -1725,7 +1725,7 @@ class TestResolveGoalDispatch:
 class TestEventRelay:
     """HRNS-33: Trainer relays events to supervisor, sends ratify_request for S2/S3."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_relay_ground_event_to_supervisor(self, mock_compile: MagicMock) -> None:
         """S1 ground event: event relay sent to supervisor, no ratify_request."""
         entry = _make_entry(100, [10])
@@ -1755,8 +1755,8 @@ class TestEventRelay:
         ratify_msgs = capture.find_all(SUPERVISOR_ROLE, "ratify_request")
         assert len(ratify_msgs) == 0
 
-    @patch("trainer.trainer.process_s2_s3", create=True)
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.process_s2_s3", create=True)
+    @patch("training.trainer.trainer.compile_source")
     def test_relay_frame_event_with_ratify_request(
         self, mock_compile: MagicMock, mock_process: MagicMock
     ) -> None:
@@ -1800,7 +1800,7 @@ class TestEventRelay:
         assert payload["query"] is event.query
         assert payload["significance"] == event.significance
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_s1_event_relay_payload_and_sender(self, mock_compile: MagicMock) -> None:
         """S1 event relay includes correct sender and RationaliseEvent payload."""
         entry = _make_entry(100, [10])
@@ -1831,7 +1831,7 @@ class TestEventRelay:
         assert relay_msgs[0].message is event
         assert relay_msgs[0].message.kind == "ground"
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_high_significance_frame_event_no_ratify_request(self, mock_compile: MagicMock) -> None:
         """High-significance frame event takes S1 path: relay but no ratify."""
         from kalvin.expand import D_MAX
@@ -1871,7 +1871,7 @@ class TestTrainerProgressToAllSupervisors:
     """HRNS-31: Trainer sends progress and escalation to role `supervisor`;
     all supervisor subscribers receive."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_progress_to_all_supervisor_subscribers(self, mock_compile: MagicMock) -> None:
         """Two handlers subscribed to supervisor both receive progress."""
         import threading
@@ -1935,7 +1935,7 @@ class TestTrainerProgressToAllSupervisors:
             bus.stop()
             bus_thread.join(timeout=2)
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_escalation_to_all_supervisor_subscribers(self, mock_compile: MagicMock) -> None:
         """Two handlers subscribed to supervisor both receive escalation."""
@@ -2053,7 +2053,7 @@ class TestCogitatorAutoWiring:
     @requires_nlp_data
     def test_cogitate_adapter_calls_cogitator(self) -> None:
         """Auto-wired adapter builds CogitationRequest and returns the right tuple."""
-        from trainer.cogitation import CogitationRequest, CogitationResult
+        from training.trainer.cogitation import CogitationRequest, CogitationResult
 
         mock_result = CogitationResult(
             scaffolding="0x10 -> 0x20",
@@ -2065,7 +2065,7 @@ class TestCogitatorAutoWiring:
         mock_cogitator = MagicMock()
         mock_cogitator.cogitate.return_value = mock_result
 
-        with patch("trainer.cogitation.Cogitator", return_value=mock_cogitator):
+        with patch("training.trainer.cogitation.Cogitator", return_value=mock_cogitator):
             bus = MessageBus()
             curriculum = Curriculum([])
             trainer = Trainer(bus, curriculum, llm_client=MagicMock())
@@ -2102,7 +2102,7 @@ class TestCogitatorAutoWiring:
     @requires_nlp_data
     def test_cogitate_adapter_returns_none_on_no_scaffolding(self) -> None:
         """Auto-wired adapter returns None when Cogitator produces no scaffolding."""
-        from trainer.cogitation import CogitationResult
+        from training.trainer.cogitation import CogitationResult
 
         mock_result = CogitationResult(
             scaffolding=None,
@@ -2114,7 +2114,7 @@ class TestCogitatorAutoWiring:
         mock_cogitator = MagicMock()
         mock_cogitator.cogitate.return_value = mock_result
 
-        with patch("trainer.cogitation.Cogitator", return_value=mock_cogitator):
+        with patch("training.trainer.cogitation.Cogitator", return_value=mock_cogitator):
             bus = MessageBus()
             curriculum = Curriculum([])
             trainer = Trainer(bus, curriculum, llm_client=MagicMock())
@@ -2131,14 +2131,14 @@ class TestCogitatorAutoWiring:
         result = trainer._reactor._cogitate_fn(event)
         assert result is None
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_reactive_mode_uses_cogitator_end_to_end(
         self,
         mock_compile: MagicMock,
     ) -> None:
         """S2/S3 event with auto-wired cogitator: scaffolding submitted, no escalation."""
-        from trainer.cogitation import CogitationResult
+        from training.trainer.cogitation import CogitationResult
 
         entry = _make_entry(100, [10])
         mock_compile.return_value = [entry]
@@ -2153,7 +2153,7 @@ class TestCogitatorAutoWiring:
         mock_cogitator = MagicMock()
         mock_cogitator.cogitate.return_value = mock_result
 
-        with patch("trainer.cogitation.Cogitator", return_value=mock_cogitator):
+        with patch("training.trainer.cogitation.Cogitator", return_value=mock_cogitator):
             bus = MessageBus()
             curriculum = Curriculum(["lesson1", "lesson2"])
             trainer = Trainer(bus, curriculum, llm_client=MagicMock())
@@ -2295,7 +2295,7 @@ class TestComputeMisfit:
 class TestDelegatedReactiveDecisions:
     """KB-234: Trainer enriches ratify_request in delegated mode (RD-7, RD-8)."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_enriched_ratify_request(self, mock_compile: MagicMock, tmp_path: Path) -> None:
         """RD-7: delegate_reactive=True emits an enriched ratify_request.
@@ -2356,7 +2356,7 @@ class TestDelegatedReactiveDecisions:
             "lesson_prose": "First lesson.",
         }
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_no_client_unchanged(self, mock_compile: MagicMock) -> None:
         """RD-8: delegate_reactive=False + llm_client=None → unchanged no-client path.
@@ -2406,7 +2406,7 @@ class TestDelegatedReactiveDecisions:
 
         assert trainer._reactor._cogitate_fn is None
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_non_delegated_payload_unchanged(self, mock_compile: MagicMock) -> None:
         """delegate_reactive=False: ratify_request payload is exactly the base keys.
@@ -2441,7 +2441,7 @@ class TestDelegatedReactiveDecisions:
 class TestRestartSession:
     """Restart action clears state and restarts from the beginning."""
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_restart_clears_state_and_restarts(self, mock_compile: MagicMock) -> None:
         """Restart clears tracking sets, resets position, starts fresh."""
@@ -2505,7 +2505,7 @@ class TestRestartSession:
         restart_events = [e for e in trainer.state.event_log if e["type"] == "session_restart"]
         assert len(restart_events) == 1
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_restart_when_no_session_does_nothing(self, mock_compile: MagicMock) -> None:
         """Restart when no session is active does nothing."""
         entry = _make_entry(100, [10])
@@ -2540,7 +2540,7 @@ class TestRestartSession:
         submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
         assert len(submit_msgs) == 0
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     def test_restart_resets_reactor(self, mock_compile: MagicMock) -> None:
         """Restart clears the reactor's per-lesson state."""
         entry = _make_entry(100, [10])
@@ -2566,7 +2566,7 @@ class TestRestartSession:
         # Session active
         assert trainer._session_active
 
-    @patch("trainer.trainer.compile_source")
+    @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data
     def test_restart_while_paused(self, mock_compile: MagicMock) -> None:
         """Restart while paused unpauses, resets position, re-submits first lesson."""

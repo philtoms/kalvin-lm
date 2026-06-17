@@ -6,7 +6,7 @@ import queue
 import threading
 from collections.abc import Callable
 
-from harness.message import Message
+from training.harness.message import Message
 
 # Sentinel value to signal the event loop to stop.
 _STOP_SENTINEL: Message | None = None

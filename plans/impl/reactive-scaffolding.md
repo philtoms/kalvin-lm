@@ -6,19 +6,19 @@ Auto-tune session: `auto-tune/reactive-scaffolding/` (3 runs, runs/001 through r
 
 ## Changes Made
 
-### 1. `src/trainer/cogitation.py` — System prompt and sanitisation
+### 1. `src/training/trainer/cogitation.py` — System prompt and sanitisation
 
 - Rewrote `_SYSTEM_PROMPT` to document correct KScript syntax (uppercase names, valid operators only, parenthesised comments)
 - Added `_strip_hash_comments()` function for defensive comment removal
 - Modified `Cogitator.cogitate()` to strip `#` comments before compilation and handle all-comment scaffolding
 
-### 2. `src/trainer/trainer.py` — Decompilation in cogitate adapter
+### 2. `src/training/trainer/trainer.py` — Decompilation in cogitate adapter
 
 - Added `Decompiler` import and instance in `_cogitate_adapter`
 - Decompile `event.query` and `event.proposal` to KScript before passing to `MisfitInfo`
 - Log decompiled source alongside raw hex repr
 
-### 3. `src/trainer/reactor.py` — Observable log line
+### 3. `src/training/trainer/reactor.py` — Observable log line
 
 - Added `logger.info("submitted reactive scaffolding")` after reactive scaffolding bus send
 

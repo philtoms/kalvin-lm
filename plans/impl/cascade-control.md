@@ -19,7 +19,7 @@ Auto-tune session: `auto-tune/explore-agent-capability/` (runs 6–8)
 
 ### 2. Reactor._handle_reactive() — silent drop
 
-**File:** `src/trainer/reactor.py`
+**File:** `src/training/trainer/reactor.py`
 
 - Change budget exhaustion check from `>=` to two-stage:
   - `> max_reactive_rounds`: silent drop (return immediately)

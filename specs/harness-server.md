@@ -158,7 +158,7 @@ An ideal training session sees the supervisor in a mostly monitoring role, inter
 
 ### Shared Command Protocol
 
-Both TUI and Slack participants use a shared command parser (`src/participants/commands.py`) to interpret human input. The parser maps free-text to structured commands, which are then dispatched as bus messages.
+Both TUI and Slack participants use a shared command parser (`src/training/participants/commands.py`) to interpret human input. The parser maps free-text to structured commands, which are then dispatched as bus messages.
 
 **Parsed commands:**
 

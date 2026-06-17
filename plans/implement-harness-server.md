@@ -26,7 +26,7 @@
   - Update all imports across `src/` and `tests/`
   - `CogitationHandler` protocol stays — the adapter implements it
 
-### Task 2: Message Bus (`src/harness/bus.py`)
+### Task 2: Message Bus (`src/training/harness/bus.py`)
 
 - **Spec ref:** @specs/harness-server §Message Bus — HRNS-1, HRNS-2, HRNS-3, HRNS-11, HRNS-23
 - **Test mapping:** HRNS-1, HRNS-2, HRNS-3, HRNS-11, HRNS-23
@@ -38,7 +38,7 @@
   - `run()` — event loop: dequeue, dispatch to handler(s) for address
   - Unknown address → send error back to sender (requires sender context on Message)
 
-### Task 3: Message dataclass (`src/harness/message.py`)
+### Task 3: Message dataclass (`src/training/harness/message.py`)
 
 - **Spec ref:** @specs/harness-server §Message
 - **Details:**
@@ -46,7 +46,7 @@
   - `sender` is set by the bus on inbound messages (derived from registration)
   - Immutable dataclass
 
-### Task 4: KAgent Adapter (`src/harness/adapter.py`)
+### Task 4: KAgent Adapter (`src/training/harness/adapter.py`)
 
 - **Spec ref:** @specs/harness-server §KAgent Adapter — HRNS-7, HRNS-8, HRNS-9, HRNS-10, HRNS-22
 - **Test mapping:** HRNS-7, HRNS-8, HRNS-9, HRNS-10, HRNS-22
@@ -62,7 +62,7 @@
   - Compilation errors: send error message back to sender
   - KAgent calls `adapter.on_event()` directly — no internal EventBus
 
-### Task 5: Harness Server (`src/harness/server.py`)
+### Task 5: Harness Server (`src/training/harness/server.py`)
 
 - **Spec ref:** @specs/harness-server §Harness Configuration, §Participant Lifecycle — HRNS-5, HRNS-6
 - **Test mapping:** HRNS-5, HRNS-6
@@ -73,7 +73,7 @@
   - Start bus event loop on main thread
   - Graceful shutdown: persist Trainer state, disconnect clients
 
-### Task 6: WebSocket Protocol (`src/harness/protocol.py`)
+### Task 6: WebSocket Protocol (`src/training/harness/protocol.py`)
 
 - **Spec ref:** @specs/harness-server §WebSocket Wire Protocol — HRNS-4, HRNS-6, HRNS-21
 - **Test mapping:** HRNS-4, HRNS-6, HRNS-21
@@ -85,7 +85,7 @@
   - Disconnect: mark address as disconnected; silently drop messages until reconnect
   - JSON frame format: `{"address": "...", "action": "...", "message": ...}`
 
-### Task 7: Trainer — Curriculum Execution (`src/trainer/trainer.py`)
+### Task 7: Trainer — Curriculum Execution (`src/training/trainer/trainer.py`)
 
 - **Spec ref:** @specs/harness-server §Trainer Participant — HRNS-12, HRNS-13, HRNS-15, HRNS-16, HRNS-19, HRNS-20, HRNS-24
 - **Test mapping:** HRNS-12, HRNS-13, HRNS-15, HRNS-16, HRNS-19, HRNS-20, HRNS-24
@@ -108,7 +108,7 @@
   - Ratification: auto-countersign on structural match, send `{address: kalvin, action: countersign, message: <kline>}`
   - Entry counting: tracks how many entries submitted per lesson, counts events until all received
 
-### Task 8: Trainer — Curriculum State (`src/trainer/curriculum.py`)
+### Task 8: Trainer — Curriculum State (`src/training/trainer/curriculum.py`)
 
 - **Spec ref:** @specs/harness-server §Trainer Participant — HRNS-15, HRNS-16
 - **Test mapping:** HRNS-15, HRNS-16
@@ -118,7 +118,7 @@
   - `save(path)` / `load(path)`: JSON persistence for restart recovery
   - Session management: one active session, queue for pending goals
 
-### Task 9: Trainer — LLM agent Integration (`src/trainer/cogitation.py`)
+### Task 9: Trainer — LLM agent Integration (`src/training/trainer/cogitation.py`)
 
 - **Spec ref:** @specs/harness-server §Trainer Participant — HRNS-13, HRNS-14
 - **Test mapping:** HRNS-13, HRNS-14
@@ -133,7 +133,7 @@
   - Returns confidence level alongside scaffolding
   - Low confidence → trigger escalation
 
-### Task 10: Slack Participant (`src/participants/slack_agent.py`)
+### Task 10: Slack Participant (`src/training/participants/slack_agent.py`)
 
 - **Spec ref:** @specs/harness-server §Slack Participant — HRNS-17, HRNS-18
 - **Test mapping:** HRNS-17, HRNS-18
@@ -144,7 +144,7 @@
   - Slack webhook/event listener: forward human input as `{address: trainer, action: input, message: <text>}`
   - Dedicated training channel; no addressing syntax
 
-### Task 11: TUI Participant (`src/participants/tui_client.py`, `src/participants/tui_regions.py`)
+### Task 11: TUI Participant (`src/training/participants/tui_client.py`, `src/training/participants/tui_regions.py`)
 
 - **Spec ref:** @specs/harness-server §TUI Participant — HRNS-25, HRNS-26, HRNS-27, HRNS-28
 - **Test mapping:** HRNS-25, HRNS-26, HRNS-27, HRNS-28
@@ -157,11 +157,11 @@
   - Keyboard shortcuts: `ctrl+q` quit, `ctrl+r` ratify, `ctrl+s` send input
   - Parity with Slack participant: human input routes to Trainer as `input` action
 
-### Task 12: Harness Configuration and Entry Point (`src/harness/__main__.py`)
+### Task 12: Harness Configuration and Entry Point (`src/training/harness/__main__.py`)
 
 - **Spec ref:** @specs/harness-server §Harness Configuration
 - **Details:**
-  - CLI entry point: `python -m harness --config harness.yaml`
+  - CLI entry point: `python -m training.harness --config harness.yaml`
   - Load config, instantiate server, start
   - Signal handling: SIGTERM → persist Trainer state, graceful shutdown
 

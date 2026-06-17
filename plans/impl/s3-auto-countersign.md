@@ -6,7 +6,7 @@ Auto-tune session: `auto-tune/s3-scaffolding-bypass/` (runs 1–6)
 
 ## Changes Made
 
-### 1. `src/trainer/reactor.py` — `process_s2_s3` returns `bool`
+### 1. `src/training/trainer/reactor.py` — `process_s2_s3` returns `bool`
 
 - Return type changed from `None` to `bool`
 - Returns `True` immediately when `_auto_countersign` succeeds
@@ -20,7 +20,7 @@ def process_s2_s3(self, event: RationaliseEvent) -> bool:
     return False
 ```
 
-### 2. `src/trainer/trainer.py` — conditional `ratify_request` suppression
+### 2. `src/training/trainer/trainer.py` — conditional `ratify_request` suppression
 
 - Captures `bool` return from `process_s2_s3` as `auto_matched`
 - `ratify_request` only sent when `auto_matched` is `False`

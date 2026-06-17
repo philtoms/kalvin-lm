@@ -14,8 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from participants.auto_tune.session import SessionConfig, SessionDir
-from participants.auto_tune.snapshots import restore, snapshot
+from training.participants.auto_tune.session import SessionConfig, SessionDir
+from training.participants.auto_tune.snapshots import restore, snapshot
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -290,7 +290,7 @@ class TestResetCmdCleanup:
         session_tree.cmd_path.write_text('{"action": "shutdown"}', encoding="utf-8")
         assert session_tree.cmd_path.exists()
 
-        from participants.auto_tune.snapshots import reset
+        from training.participants.auto_tune.snapshots import reset
 
         reset(session_tree)
 
@@ -300,7 +300,7 @@ class TestResetCmdCleanup:
         """reset succeeds when cmd.json does not exist."""
         assert not session_tree.cmd_path.exists()
 
-        from participants.auto_tune.snapshots import reset
+        from training.participants.auto_tune.snapshots import reset
 
         reset(session_tree)  # Should not raise
 
@@ -309,7 +309,7 @@ class TestResetCmdCleanup:
         # Verify events has content
         assert session_tree.events_path.read_text(encoding="utf-8") != ""
 
-        from participants.auto_tune.snapshots import reset
+        from training.participants.auto_tune.snapshots import reset
 
         reset(session_tree)
 
