@@ -74,44 +74,58 @@ def _decode_value(value: int, model, tokenizer) -> str:
     return f"#{value:#x}"
 
 
+def _nlp_suffix(dbg) -> str:
+    """Build the POS/dep suffix from a dbg record, if any."""
+    if dbg is None:
+        return ""
+    nlp_parts = []
+    if dbg.pos:
+        nlp_parts.append(dbg.pos)
+    if dbg.dep:
+        nlp_parts.append(dbg.dep)
+    return f" ({'/'.join(nlp_parts)})" if nlp_parts else ""
+
+
 def kline_display(kline, tokenizer, model=None) -> str:
     """Human-readable display for a KLine.
 
     When *model* is supplied, signature and node values are decoded by
     flattening each through model.unpack (correct for packed/multi-token
-    values). Otherwise the dbg label and a direct per-node decode are
+    values); the dbg record, if present, contributes only NLP metadata.
+    Otherwise (no model) the dbg label and a direct per-node decode are
     used (lossy for packed values, but the best available before the
-    graph is populated).
+    graph is populated). Falls back to a raw signature if neither is
+    available.
     """
     if kline is None:
         return "<none>"
-    # Use rich dbg if available
-    if kline.dbg:
-        dbg = kline.dbg
-        label = dbg.label
-        # When a model is available, prefer a graph-based decode of the
-        # signature over the compile-time dbg.decoded (which is left
-        # blank for packed signatures).
-        if model is not None:
-            decoded = _decode_value(kline.signature, model, tokenizer)
-            if decoded:
-                label = f"{label} [{decoded!r}]" if decoded != label else decoded
-        elif dbg.decoded and dbg.decoded != label:
-            label = f"{label} [{dbg.decoded!r}]"
-        # Append NLP info
-        nlp_parts = []
-        if dbg.pos:
-            nlp_parts.append(dbg.pos)
-        if dbg.dep:
-            nlp_parts.append(dbg.dep)
-        if nlp_parts:
-            label += f" ({'/'.join(nlp_parts)})"
+
+    dbg = getattr(kline, "dbg", None)
+
+    # Primary path: graph-based decode.
+    if model is not None:
+        decoded = _decode_value(kline.signature, model, tokenizer)
+        label = decoded or (dbg.label if dbg else f"#{kline.signature:#x}")
+        label += _nlp_suffix(dbg)
         nodes = kline.nodes
         if not nodes:
             return label
         node_strs = [_decode_value(n, model, tokenizer) or f"#{n:#x}" for n in nodes]
         return f"{label}: {node_strs}"
-    # Fallback: raw sig
+
+    # Fallback path: compile-time dbg (lossy for packed values).
+    if dbg:
+        label = dbg.label
+        if dbg.decoded and dbg.decoded != label:
+            label = f"{label} [{dbg.decoded!r}]"
+        label += _nlp_suffix(dbg)
+        nodes = kline.nodes
+        if not nodes:
+            return label
+        node_strs = [_decode_value(n, None, tokenizer) or f"#{n:#x}" for n in nodes]
+        return f"{label}: {node_strs}"
+
+    # Last resort: raw signature.
     return f"sig={kline.signature:#x}"
 
 
