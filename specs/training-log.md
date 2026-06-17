@@ -8,7 +8,7 @@ The training log provides a structured, human-readable server-side trace of trai
 
 - `specs/harness-server.md` — Trainer, Reactor, KAgentAdapter, harness server
 - `specs/agent.md` — rationalise events, significance levels
-- `specs/kscript.md` — decompiler for KLine → source
+- `specs/kline.md` — `kline_display` for KLine → source rendering
 
 ## Definition
 
@@ -36,7 +36,7 @@ The training log provides a structured, human-readable server-side trace of trai
 
 ### Log Format
 
-All log messages follow the Python logging standard format configured in `src/harness/__main__.py`:
+All log messages follow the Python logging standard format configured in `src/training/harness/__main__.py`:
 
 ```
 <timestamp> [<logger_name>] <LEVEL>: <message>
@@ -58,7 +58,7 @@ S2/S3 slow-path events:
 
 Where:
 - `KIND` is `GROUND` or `FRAME` (uppercased)
-- `decompiled_query` and `decompiled_proposal` are produced by `kscript.decompiler.Decompiler`
+- `decompiled_query` and `decompiled_proposal` are produced by `kalvin.kline.kline_display`
 - `normalised_significance` is `significance / D_MAX`, formatted to 2 decimal places
 
 ### Lesson Submit Log Format

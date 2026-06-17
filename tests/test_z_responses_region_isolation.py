@@ -24,27 +24,6 @@ def test_kscript_stub_removed_after_responses_region_tests():
         assert not isinstance(getattr(kscript_mod, "KScript", None), MagicMock), (
             "kscript.KScript is still a MagicMock — fixture teardown did not clean up"
         )
-        assert not isinstance(getattr(kscript_mod, "CompiledEntry", None), MagicMock), (
-            "kscript.CompiledEntry is still a MagicMock — fixture teardown did not clean up"
-        )
-
-
-def test_kscript_decompiler_stub_removed():
-    """kscript.decompiler should not be a MagicMock after teardown."""
-    mod = sys.modules.get("kscript.decompiler")
-    if mod is not None:
-        assert not isinstance(mod, MagicMock), (
-            "kscript.decompiler is still a MagicMock — fixture teardown did not clean up"
-        )
-
-
-def test_kscript_compiler_stub_removed():
-    """kscript.compiler should not be a MagicMock after teardown."""
-    mod = sys.modules.get("kscript.compiler")
-    if mod is not None:
-        assert not isinstance(mod, MagicMock), (
-            "kscript.compiler is still a MagicMock — fixture teardown did not clean up"
-        )
 
 
 def test_ui_kscript_dialogs_stub_removed():

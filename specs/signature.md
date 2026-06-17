@@ -30,7 +30,7 @@ This spec depends on the following concepts, defined elsewhere:
   node (non-zero high 32 bits), distinguishing tokenizer-produced nodes
   from non-tokenized uint64 values (e.g. node value 0 for identity klines,
   or signatures used as graph-edge references). Available for
-  compiler/decompiler text rendering — deciding which nodes can be
+  compiler/kline_display text rendering — deciding which nodes can be
   BPE-decoded versus treated as opaque references. Not used by
   `make_signature`.
 

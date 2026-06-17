@@ -2,7 +2,6 @@
 
 import inspect
 import sys
-import types
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -10,8 +9,11 @@ import pytest
 
 from kalvin.expand import D_MAX
 
-# Keys that the fixture will stub in sys.modules
-_STUB_KEYS = ("kscript", "kscript.decompiler", "kscript.compiler", "ui.kscript.dialogs")
+# Keys that the fixture will stub in sys.modules.
+# Note: the historical kscript / kscript.decompiler / kscript.compiler stubs
+# were removed when the old kscript package was superseded by ks/ (which has
+# no decompiler). responses.py and its siblings do not import kscript at all.
+_STUB_KEYS = ("ui.kscript.dialogs",)
 
 
 @pytest.fixture(scope="module")
@@ -31,12 +33,6 @@ def responses():
     saved_agent = getattr(_kalvin_mod, "Agent", None)
 
     # --- Install stubs ---
-    _kscript_mod = types.ModuleType("kscript")
-    _kscript_mod.KScript = MagicMock()  # type: ignore[attr-defined]
-    _kscript_mod.CompiledEntry = MagicMock()  # type: ignore[attr-defined]
-    sys.modules["kscript"] = _kscript_mod
-    sys.modules["kscript.decompiler"] = MagicMock()
-    sys.modules["kscript.compiler"] = MagicMock()
     sys.modules["ui.kscript.dialogs"] = MagicMock()
 
     # Stub kalvin.Agent

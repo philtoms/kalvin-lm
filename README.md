@@ -109,7 +109,7 @@ uv run python -m ui.kscript
 ### Harness Server (multi-agent)
 
 ```bash
-uv run python -m harness --config harness.yaml
+uv run python -m training.harness --config harness.yaml
 ```
 
 ## Project Structure
@@ -125,11 +125,14 @@ src/
 │   ├── agent.py          #   KAgent — rationalisation pipeline + Cogitator
 │   ├── events.py         #   Event definitions
 │   └── ...
-├── kscript/              # KScript DSL
+├── ks/                  # KScript DSL (v3)
 │   ├── lexer.py          #   Lexer (source → tokens)
 │   ├── parser.py         #   Parser (tokens → AST)
-│   ├── compiler.py       #   Compiler (AST → compiled entries)
-│   └── decompiler.py     #   Decompiler (entries → KScript)
+│   ├── ast_emitter.py    #   ASTEmitter (AST → symbolic entries)
+│   ├── binding_scope.py  #   NLP binding resolution
+│   ├── token_encoder.py  #   TokenEncoder (symbolic → encoded KLines)
+│   └── compiler.py       #   Compiler (orchestrator; source → KLines)
+│   # Note: no decompiler — compilation output is the product (see specs/kscript.md)
 ├── harness/              # Multi-agent harness server
 │   ├── server.py         #   Harness server + config loading
 │   ├── bus.py            #   Addressed message bus
