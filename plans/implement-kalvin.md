@@ -121,17 +121,17 @@ Each sub-plan is self-contained: spec, algorithm, implementation skeleton,
 and test cases. An agent can pick up any sub-plan and implement it given
 its dependencies are satisfied.
 
-| Sub-plan | Scope | Source Phases | Depends On |
-|----------|-------|---------------|------------|
-| [`plans/impl/foundations.md`](impl/foundations.md) | Bit layout, KLine, Signature, Tokenizer, STM | 0-4 | Nothing |
+| Sub-plan                                           | Scope                                        | Source Phases | Depends On |
+| -------------------------------------------------- | -------------------------------------------- | ------------- | ---------- |
+| [`plans/impl/foundations.md`](impl/foundations.md) | Bit layout, KLine, Signature, Tokenizer, STM | 0-4           | Nothing    |
 
 > **STM spec:** The full STM specification is in `specs/stm.md`. The
 > foundations plan provides the implementation skeleton and test cases.
-| [`plans/impl/model.md`](impl/model.md) | Model + distance algorithm | 5 | Foundations |
-| [`plans/impl/agent.md`](impl/agent.md) | Significance constants, Events, Agent, Cogitator | 6-8 | Foundations, Model |
-| [`plans/impl/structural-grounding.md`](impl/structural-grounding.md) | Structural grounding + extended cogitation | A, A+ | Model, Agent |
-| [`plans/impl/build-phases.md`](impl/build-phases.md) | Resolved design decisions, phased build, test cases | 0-9 | All (execution plan) |
-| [`plans/nlp-pipeline.md`](nlp-pipeline.md) | NLP-BPE data preparation + node_to_sig integration | NLP | Foundations, Model, Agent |
+> | [`plans/impl/model.md`](impl/model.md) | Model + distance algorithm | 5 | Foundations |
+> | [`plans/impl/agent.md`](impl/agent.md) | Significance constants, Events, Agent, Cogitator | 6-8 | Foundations, Model |
+> | [`plans/impl/structural-grounding.md`](impl/structural-grounding.md) | Structural grounding + extended cogitation | A, A+ | Model, Agent |
+> | [`plans/impl/build-phases.md`](impl/build-phases.md) | Resolved design decisions, phased build, test cases | 0-9 | All (execution plan) |
+> | [`plans/nlp-pipeline.md`](nlp-pipeline.md) | NLP-BPE data preparation + node_to_sig integration | NLP | Foundations, Model, Agent |
 
 ### How to Use This Plan
 
@@ -184,34 +184,34 @@ COGITATE_TIMEOUT = 2.0               # Seconds before "done" event
 
 ## 5. Risk Assessment
 
-| Risk                                                    | Severity | Mitigation                                                                             |
-| ------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
-| Model significance API semantics may need iteration     | High     | S2 distance uses per-node hop-distance algorithm; evolve based on real data            |
-| Candidate retrieval O(N) scan too slow for large models | Medium   | Profile first; add inverted bit index if needed                                        |
-| Cogitation thread safety bugs                           | Medium   | Thorough concurrent testing; keep thread logic simple                                  |
-| Cogitator MVP too simple (no graph expansion)           | Medium   | Now uses model.expand() for connotation discovery; see specs   |
+| Risk                                                    | Severity | Mitigation                                                                                             |
+| ------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------ |
+| Model significance API semantics may need iteration     | High     | S2 distance uses per-node hop-distance algorithm; evolve based on real data                            |
+| Candidate retrieval O(N) scan too slow for large models | Medium   | Profile first; add inverted bit index if needed                                                        |
+| Cogitation thread safety bugs                           | Medium   | Thorough concurrent testing; keep thread logic simple                                                  |
+| Cogitator MVP too simple (no graph expansion)           | Medium   | Now uses model.expand() for connotation discovery; see specs                                           |
 | BPE tokenizer optional deps fragile                     | Low      | The NLP tokenizer is the production default; `rustbpe`/`tiktoken` remain optional subword dependencies |
 
 ---
 
 ## 6. Summary of What Gets Built When
 
-| Phase | Component    | Files                              | Est.       | Depends On | Sub-plan | Status |
-| ----- | ------------ | ---------------------------------- | ---------- | ---------- | -------- | ------ |
-| 0     | Scaffold     | `pyproject.toml`, dirs             | 0.5d       | -          | foundations | ✅ |
-| 1     | KLine        | `kline.py`                         | 0.5d       | -          | foundations | ✅ |
-| 2     | Signature    | `signature.py`                     | 0.5d       | -          | foundations | ✅ |
-| 3     | Tokenizer    | `tokenizer.py`, `nlp_tokenizer.py` | 1.5d       | -          | foundations | ✅ |
-| 4     | STM          | `stm.py`                           | 1d         | 1, 2, 3    | foundations | ✅ |
-| 5     | Model        | `model.py`                         | 2-3d       | 1, 2, 4    | model | ✅ |
-| 6     | Constants    | `model.py` (D_MAX, MASK64)          | 0.5d       | —          | model | ✅ |
-| 7     | Events       | `events.py`                        | 0.5d       | 1          | agent | ✅ |
-| 8     | Agent        | `agent.py` (routing + Cogitator)   | 2d         | 1-7        | agent | ✅ |
-| 9     | Persistence  | `agent.py` (extend)                | 1d         | 8          | agent | ✅ |
-| —     | KScript      | `kscript/`                         | 5d         | 1-3        | kscript | ✅ |
-| A     | Struct. Grounding | `model.py`, `agent.py`        | 1-2d       | 1-8        | structural-grounding | ✅ |
-| A+    | Ext. Cogitation    | `model.py`, `agent.py`        | 3-5d       | A          | structural-grounding | ✅ |
-|       | **Total**    |                                    | **22-27d** |            |          |
+| Phase | Component         | Files                              | Est.       | Depends On | Sub-plan             | Status |
+| ----- | ----------------- | ---------------------------------- | ---------- | ---------- | -------------------- | ------ |
+| 0     | Scaffold          | `pyproject.toml`, dirs             | 0.5d       | -          | foundations          | ✅     |
+| 1     | KLine             | `kline.py`                         | 0.5d       | -          | foundations          | ✅     |
+| 2     | Signature         | `signature.py`                     | 0.5d       | -          | foundations          | ✅     |
+| 3     | Tokenizer         | `tokenizer.py`, `nlp_tokenizer.py` | 1.5d       | -          | foundations          | ✅     |
+| 4     | STM               | `stm.py`                           | 1d         | 1, 2, 3    | foundations          | ✅     |
+| 5     | Model             | `model.py`                         | 2-3d       | 1, 2, 4    | model                | ✅     |
+| 6     | Constants         | `model.py` (D_MAX, MASK64)         | 0.5d       | —          | model                | ✅     |
+| 7     | Events            | `events.py`                        | 0.5d       | 1          | agent                | ✅     |
+| 8     | Agent             | `agent.py` (routing + Cogitator)   | 2d         | 1-7        | agent                | ✅     |
+| 9     | Persistence       | `agent.py` (extend)                | 1d         | 8          | agent                | ✅     |
+| —     | KScript           | `kscript/`                         | 5d         | 1-3        | kscript              | ✅     |
+| A     | Struct. Grounding | `model.py`, `agent.py`             | 1-2d       | 1-8        | structural-grounding | ✅     |
+| A+    | Ext. Cogitation   | `model.py`, `agent.py`             | 3-5d       | A          | structural-grounding | ✅     |
+|       | **Total**         |                                    | **22-27d** |            |                      |
 
 ---
 

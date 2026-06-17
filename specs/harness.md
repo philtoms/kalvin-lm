@@ -18,7 +18,7 @@ The test harness is a repurposed KScript TUI that acts as a training loop superv
 The harness maintains three monotonic sets, reset only by the Clear action:
 
 | Set | Contents | Growth rule |
-|-----|----------|-------------|
+| ------ | --------------------------------------------------------------------------------------------------------------- | --------------------------- |
 | **Submitted** | Entries that have been fed to `agent.rationalise()` | Append-only |
 | **Satisfied** | Entries whose proposals matched expectations and were countersigned | Append-only |
 | **Pending** | `compiled − submitted` — entries not yet sent to the Agent | Grows on recompile, shrinks on submission |
@@ -37,7 +37,7 @@ Structural match: `proposal.signature == expectation.signature AND proposal.node
 Every response is displayed with two values:
 
 | Format | Description | Range |
-|--------|-------------|-------|
+| ------ | --------------------------------------------------------------------------------------------------------------- | --------------------------- |
 | **Raw** | Hex representation of the 64-bit significance integer | `0x0000…FFFF` |
 | **Normalised** | `significance / D_MAX` | `0.0` (S4) to `1.0` (S1) |
 
@@ -46,7 +46,7 @@ Every response is displayed with two values:
 Each response item carries one of three statuses:
 
 | Status | Meaning | Symbol |
-|--------|---------|--------|
+| ------ | --------------------------------------------------------------------------------------------------------------- | --------------------------- |
 | **Pass** | Proposal matched expectation, countersigned | ✓ |
 | **Pending** | Slow-path entry awaiting match or ratification | ◌ |
 | **Mismatch** | Proposal received but does not match expectation | ✗ |
@@ -103,26 +103,26 @@ Generates the reciprocal kline and rationalises it through the Agent.
 
 ## Test Matrix
 
-| ID | Criterion | Origin ref |
-|----|-----------|------------|
-| HRN-1 | Recompile produces fresh compiled entries; only new entries are submitted | Origin §The Loop |
-| HRN-2 | Submitted set is monotonic; Clear is the only reset | Origin §The Loop |
-| HRN-3 | Fast-path entries (rationalise returns True) are auto-satisfied | Origin §The Loop |
-| HRN-4 | Slow-path match requires structural equality of signature and nodes | Origin §The Loop |
-| HRN-5 | Run mode submits all pending entries without pausing | Origin §The Loop |
-| HRN-6 | Run mode auto-countersigns matching proposals | Origin §Ratification |
-| HRN-7 | Step mode submits one entry and halts | Origin §The Loop |
-| HRN-8 | Ratify button enabled only when a response item is selected | Origin §Ratification |
-| HRN-9 | Ratify calls agent.countersign(proposal) with the proposal as-is | Origin §Ratification |
-| HRN-10 | Clear resets Submitted, Satisfied, Pending sets and responses panel | — |
-| HRN-11 | Events correlated to entries by structural match | Origin §The Loop §Event Correlation |
-| HRN-12 | Tracking state persisted through hot-reload cycles | — |
-| HRN-13 | Each response shows status symbol, decompiled source, raw significance (hex), normalised significance (0.0–1.0) | Origin §Significance |
-| HRN-14 | Compilation errors displayed as ✗ response items in the responses panel | — |
-| HRN-15 | Progress count displayed in toolbar alongside execution state | — |
-| HRN-16 | agent.countersign generates reciprocal kline and rationalises it | Origin §Ratification |
-| HRN-17 | Mismatches in Run mode flagged as pending; execution continues | Origin §The Loop |
-| HRN-18 | Multiple proposals for one expectation are all displayed; first match accepted in Run, user chooses in Step | Origin §Proposals |
+| ID     | Criterion                                                                                                       | Spec ref                    |
+| ------ | --------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| HRN-1  | Recompile produces fresh compiled entries; only new entries are submitted                                       | @harness §Entry Submission  |
+| HRN-2  | Submitted set is monotonic; Clear is the only reset                                                             | @harness §Entry Submission  |
+| HRN-3  | Fast-path entries (rationalise returns True) are auto-satisfied                                                 | @harness §Satisfaction      |
+| HRN-4  | Slow-path match requires structural equality of signature and nodes                                             | @harness §Satisfaction      |
+| HRN-5  | Run mode submits all pending entries without pausing                                                            | @harness §Run Mode          |
+| HRN-6  | Run mode auto-countersigns matching proposals                                                                   | @vision §Ratification       |
+| HRN-7  | Step mode submits one entry and halts                                                                           | @harness §Step Mode         |
+| HRN-8  | Ratify button enabled only when a response item is selected                                                     | @vision §Ratification       |
+| HRN-9  | Ratify calls agent.countersign(proposal) with the proposal as-is                                                | @vision §Ratification       |
+| HRN-10 | Clear resets Submitted, Satisfied, Pending sets and responses panel                                             | —                           |
+| HRN-11 | Events correlated to entries by structural match                                                                | @harness §Event Correlation |
+| HRN-12 | Tracking state persisted through hot-reload cycles                                                              | —                           |
+| HRN-13 | Each response shows status symbol, decompiled source, raw significance (hex), normalised significance (0.0–1.0) | @vision §Significance       |
+| HRN-14 | Compilation errors displayed as ✗ response items in the responses panel                                         | —                           |
+| HRN-15 | Progress count displayed in toolbar alongside execution state                                                   | —                           |
+| HRN-16 | agent.countersign generates reciprocal kline and rationalises it                                                | @vision §Ratification       |
+| HRN-17 | Mismatches in Run mode flagged as pending; execution continues                                                  | @harness §Run Mode          |
+| HRN-18 | Multiple proposals for one expectation are all displayed; first match accepted in Run, user chooses in Step     | @harness §Run Mode          |
 
 ## Out of Scope
 

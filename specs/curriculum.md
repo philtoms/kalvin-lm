@@ -35,7 +35,7 @@ This spec depends on the following concepts, defined elsewhere:
 A parsed markdown curriculum with three required sections and ordered lessons.
 
 | Field     | Type            | Description                                       |
-| --------- | --------------- | ------------------------------------------------- |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | objective | `str`           | Content of the `## Objective` section.            |
 | approach  | `str`           | Content of the `## Approach` section.             |
 | lessons   | `list[Lesson]`  | Ordered lessons parsed from `## Lessons` section.  |
@@ -46,7 +46,7 @@ A parsed markdown curriculum with three required sections and ordered lessons.
 A single lesson within a curriculum, bounded by an `### <label>` heading.
 
 | Field   | Type           | Description                                            |
-| ------- | -------------- | ------------------------------------------------------ |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | label   | `str`          | Stable label from the heading (e.g. `"1"`, `"2a"`).     |
 | prose   | `str`          | Non-code-block text — human-readable context.           |
 | kscript | `list[str]`    | Contents of fenced code blocks (KScript source lines).  |
@@ -56,7 +56,7 @@ A single lesson within a curriculum, bounded by an `### <label>` heading.
 Per-session tracking state extended with label-based lesson tracking.
 
 | Field          | Type                    | Description                                          |
-| -------------- | ----------------------- | ---------------------------------------------------- |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | curriculum     | `Curriculum`            | The curriculum being tracked.                        |
 | current_label  | `str \| None`           | Label of the next unsatisfied lesson.                |
 | lesson_submitted | `set[str]`            | Labels of lessons whose entries have been submitted.  |
@@ -71,7 +71,7 @@ retained for per-entry tracking within a lesson.
 LLM-based generator that produces a curriculum from a goal string.
 
 | Field         | Type        | Description                                  |
-| ------------- | ----------- | -------------------------------------------- |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | client        | `LLMClient` | LLM client for chat completions.             |
 | curricula_dir | `Path`      | Directory to write generated curriculum files. |
 
@@ -80,7 +80,7 @@ LLM-based generator that produces a curriculum from a goal string.
 Extended with structured curriculum context fields.
 
 | Field              | Type                      | Description                                  |
-| ------------------ | ------------------------- | -------------------------------------------- |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | objective          | `str`                     | Curriculum objective section content.        |
 | approach           | `str`                     | Curriculum approach section content.         |
 | lesson_prose       | `str`                     | Current lesson's prose text.                 |
@@ -91,7 +91,7 @@ Extended with structured curriculum context fields.
 ### CurriculumDocument
 
 | Operation                                      | Description                                               |
-| ---------------------------------------------- | --------------------------------------------------------- |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | `CurriculumDocument.from_file(path) → CurriculumDocument` | Parse and validate a markdown file.          |
 | `CurriculumDocument.from_string(text) → CurriculumDocument` | Parse and validate from string.            |
 | `document.objective → str`                     | Objective section content.                                |
@@ -104,7 +104,7 @@ Extended with structured curriculum context fields.
 ### Lesson
 
 | Operation                  | Description                                        |
-| -------------------------- | -------------------------------------------------- |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | `lesson.label → str`       | Stable label string.                               |
 | `lesson.prose → str`       | Non-code-block text.                               |
 | `lesson.kscript → list[str]` | KScript source strings from code blocks.         |
@@ -112,7 +112,7 @@ Extended with structured curriculum context fields.
 ### CurriculumState (label-based operations)
 
 | Operation                                       | Description                                         |
-| ----------------------------------------------- | --------------------------------------------------- |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | `state.current_label → str \| None`             | Next unsatisfied lesson label.                      |
 | `state.mark_lesson_submitted(label) → None`     | Mark a lesson's entries as submitted.               |
 | `state.mark_lesson_satisfied(label) → None`     | Mark a lesson's entries as satisfied.               |
@@ -122,13 +122,13 @@ Extended with structured curriculum context fields.
 ### CurriculumGenerator
 
 | Operation                              | Description                                        |
-| -------------------------------------- | -------------------------------------------------- |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | `generator.generate(goal) → Path`     | Generate curriculum from goal, write to file, return path. |
 
 ### Session Startup Resolution
 
 | Step | Condition                                       | Action                                     |
-| ---- | ----------------------------------------------- | ------------------------------------------ |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | 1    | `curriculum_file` parameter provided            | Load file, create Curriculum, start.       |
 | 2    | No param, saved state has `curriculum_file`     | Resume from persisted path.                |
 | 3    | No param, no saved state                        | Poll for goal via bus input.               |
@@ -136,14 +136,14 @@ Extended with structured curriculum context fields.
 ### Goal Resolution
 
 | Input Format         | Action                                           |
-| -------------------- | ------------------------------------------------ |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | Text starting with `goal:` | Extract goal text, generate curriculum via LLM, write to `curricula/`. |
 | File path (existing file)  | Load curriculum directly from file.              |
 
 ### Progress Events
 
 | Event                | Message Shape                                                              |
-| -------------------- | -------------------------------------------------------------------------- |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | Session start        | `{address: "ui", action: "progress", message: {lesson_label, lessons_total, lessons_completed, status: "started"}}` |
 | Lesson complete      | `{address: "ui", action: "progress", message: {lesson_label, lessons_total, lessons_completed, status: "lesson_complete"}}` |
 | Curriculum complete  | `{address: "ui", action: "progress", message: {lesson_label: null, lessons_total, lessons_completed, status: "complete"}}` |
@@ -152,7 +152,7 @@ Extended with structured curriculum context fields.
 ### Amendment Actions
 
 | Action   | Parameters                        | Description                                    |
-| -------- | --------------------------------- | ---------------------------------------------- |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | `insert` | `after_label`, `lesson`           | Insert a new lesson after the specified label. |
 | `append` | `lesson`                          | Append a new lesson at the end.                |
 | `modify` | `label`, `lesson`                 | Replace the lesson at the given label.         |
@@ -274,60 +274,60 @@ Extended with structured curriculum context fields.
 
 ## Test Matrix
 
-| ID     | Criterion                                                                      | Origin ref                |
-| ------ | ------------------------------------------------------------------------------ | ------------------------- |
-| CRS-1  | `from_file` parses a valid curriculum file with all three sections              | Origin §Curriculum        |
-| CRS-2  | `from_string` parses a valid curriculum from a string                           | Origin §Curriculum        |
-| CRS-3  | Parsing rejects a document missing `## Objective`                               | Origin §Curriculum        |
-| CRS-4  | Parsing rejects a document missing `## Approach`                                | Origin §Curriculum        |
-| CRS-5  | Parsing rejects a document missing `## Lessons`                                 | Origin §Curriculum        |
-| CRS-6  | Parsing rejects a document with no lessons                                      | Origin §Curriculum        |
-| CRS-7  | Parsing rejects a document with duplicate lesson labels                         | Origin §Curriculum        |
-| CRS-8  | Parsing rejects a lesson label that does not match the convention               | Origin §Curriculum        |
-| CRS-9  | `document.objective` returns the Objective section content                      | Origin §Curriculum        |
-| CRS-10 | `document.approach` returns the Approach section content                        | Origin §Curriculum        |
-| CRS-11 | `document.lessons` returns ordered Lesson objects                               | Origin §Curriculum        |
-| CRS-12 | `Lesson.label` returns the stable heading label                                 | Origin §Curriculum        |
-| CRS-13 | `Lesson.prose` returns non-code-block text                                      | Origin §Curriculum        |
-| CRS-14 | `Lesson.kscript` returns contents of fenced code blocks                         | Origin §Curriculum        |
-| CRS-15 | `find_lesson(label)` returns the matching Lesson or None                        | Origin §Curriculum        |
-| CRS-16 | `all_labels()` returns labels in document order                                 | Origin §Curriculum        |
-| CRS-17 | `amend("insert", ...)` inserts a lesson after the specified label               | Origin §Curriculum Amendment |
-| CRS-18 | `amend("append", ...)` appends a lesson at the end                              | Origin §Curriculum Amendment |
-| CRS-19 | `amend("modify", ...)` replaces the lesson at the given label                   | Origin §Curriculum Amendment |
-| CRS-20 | Amendment raises ValueError for nonexistent target label                        | Origin §Curriculum Amendment |
-| CRS-21 | Amendment raises ValueError for duplicate label                                 | Origin §Curriculum Amendment |
-| CRS-22 | Amendment raises ValueError when source_path is None                            | Origin §Curriculum Amendment |
-| CRS-23 | Amendment writes updated markdown to the source file                            | Origin §Curriculum Amendment |
-| CRS-24 | `current_label` returns first unsatisfied label in document order               | Origin §Curriculum        |
-| CRS-25 | `mark_lesson_submitted` adds label to submitted set                             | Origin §Curriculum        |
-| CRS-26 | `mark_lesson_satisfied` adds label to satisfied set and advances current_label  | Origin §Curriculum        |
-| CRS-27 | `is_lesson_submitted` and `is_lesson_satisfied` check label membership          | Origin §Curriculum        |
-| CRS-28 | Label-based tracking coexists with entry-level EntryKey tracking                | Origin §Curriculum        |
-| CRS-29 | `save()` includes curriculum_file, labels, and label-based state in JSON        | Origin §Curriculum        |
-| CRS-30 | `load()` reconstructs state from new format JSON                                | Origin §Curriculum        |
-| CRS-31 | `load()` handles legacy format (flat lessons + position) with backward compat   | Origin §Curriculum        |
-| CRS-32 | Generator makes one LLM call with curriculum format system prompt               | Origin §Curriculum Generation |
-| CRS-33 | Generator parses LLM response via `from_string` and validates                   | Origin §Curriculum Generation |
-| CRS-34 | Generator retries once on parse failure with error feedback                     | Origin §Curriculum Generation |
-| CRS-35 | Generator raises `CurriculumGenerationError` on second failure                  | Origin §Curriculum Generation |
-| CRS-36 | Generator writes validated markdown to `curricula/<slug>.md`                    | Origin §Curricula Directory |
-| CRS-37 | Generator derives slug from goal (lowercase, hyphens, non-alphanumeric stripped)| Origin §Curricula Directory |
-| CRS-38 | Session startup loads curriculum from runtime parameter                         | Origin §Session Startup   |
-| CRS-39 | Session startup resumes from saved state with curriculum_file                   | Origin §Session Startup   |
-| CRS-40 | Session startup polls for goal when no param and no saved state                 | Origin §Session Startup   |
-| CRS-41 | Goal starting with `goal:` triggers curriculum generation                       | Origin §Goal              |
-| CRS-42 | Goal that is a file path triggers direct loading                                | Origin §Goal              |
-| CRS-43 | Trainer re-reads curriculum file before each lesson submission                  | Origin §Curriculum Amendment |
-| CRS-44 | New lessons after current label are submitted after re-read                      | Origin §Amendment-Triggered Restart |
-| CRS-45 | Monotonic submitted set prevents duplicate kline submissions on replay           | Origin §Amendment-Triggered Restart |
-| CRS-46 | Progress event emitted on session start                                         | Origin §Curriculum        |
-| CRS-47 | Progress event emitted on lesson complete                                       | Origin §Curriculum        |
-| CRS-48 | Progress event emitted on curriculum complete                                   | Origin §Curriculum        |
-| CRS-49 | Progress event emitted on amendment applied                                     | Origin §Curriculum Amendment |
-| CRS-50 | `CogitationRequest` accepts objective, approach, and lesson_prose fields        | Origin §Cogitation Context |
-| CRS-51 | `build_prompt()` prefers objective + approach + lesson_prose over curriculum_context | Origin §Cogitation Context |
-| CRS-52 | `build_prompt()` falls back to curriculum_context when new fields are empty      | Origin §Cogitation Context |
+| ID     | Criterion                                                                            | Spec ref                                    |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
+| CRS-1  | `from_file` parses a valid curriculum file with all three sections                   | @curriculum §CurriculumDocument Parsing     |
+| CRS-2  | `from_string` parses a valid curriculum from a string                                | @curriculum §CurriculumDocument Parsing     |
+| CRS-3  | Parsing rejects a document missing `## Objective`                                    | @curriculum §CurriculumDocument Parsing     |
+| CRS-4  | Parsing rejects a document missing `## Approach`                                     | @curriculum §CurriculumDocument Parsing     |
+| CRS-5  | Parsing rejects a document missing `## Lessons`                                      | @curriculum §CurriculumDocument Parsing     |
+| CRS-6  | Parsing rejects a document with no lessons                                           | @curriculum §CurriculumDocument Parsing     |
+| CRS-7  | Parsing rejects a document with duplicate lesson labels                              | @curriculum §CurriculumDocument Parsing     |
+| CRS-8  | Parsing rejects a lesson label that does not match the convention                    | @curriculum §CurriculumDocument Parsing     |
+| CRS-9  | `document.objective` returns the Objective section content                           | @curriculum §CurriculumDocument             |
+| CRS-10 | `document.approach` returns the Approach section content                             | @curriculum §CurriculumDocument             |
+| CRS-11 | `document.lessons` returns ordered Lesson objects                                    | @curriculum §CurriculumDocument             |
+| CRS-12 | `Lesson.label` returns the stable heading label                                      | @curriculum §Lesson                         |
+| CRS-13 | `Lesson.prose` returns non-code-block text                                           | @curriculum §Lesson                         |
+| CRS-14 | `Lesson.kscript` returns contents of fenced code blocks                              | @curriculum §Lesson                         |
+| CRS-15 | `find_lesson(label)` returns the matching Lesson or None                             | @curriculum §CurriculumDocument             |
+| CRS-16 | `all_labels()` returns labels in document order                                      | @curriculum §CurriculumDocument             |
+| CRS-17 | `amend("insert", ...)` inserts a lesson after the specified label                    | @curriculum §CurriculumDocument Amendment   |
+| CRS-18 | `amend("append", ...)` appends a lesson at the end                                   | @curriculum §CurriculumDocument Amendment   |
+| CRS-19 | `amend("modify", ...)` replaces the lesson at the given label                        | @curriculum §CurriculumDocument Amendment   |
+| CRS-20 | Amendment raises ValueError for nonexistent target label                             | @curriculum §CurriculumDocument Amendment   |
+| CRS-21 | Amendment raises ValueError for duplicate label                                      | @curriculum §CurriculumDocument Amendment   |
+| CRS-22 | Amendment raises ValueError when source_path is None                                 | @curriculum §CurriculumDocument Amendment   |
+| CRS-23 | Amendment writes updated markdown to the source file                                 | @curriculum §CurriculumDocument Amendment   |
+| CRS-24 | `current_label` returns first unsatisfied label in document order                    | @curriculum §CurriculumState Label Tracking |
+| CRS-25 | `mark_lesson_submitted` adds label to submitted set                                  | @curriculum §CurriculumState Label Tracking |
+| CRS-26 | `mark_lesson_satisfied` adds label to satisfied set and advances current_label       | @curriculum §CurriculumState Label Tracking |
+| CRS-27 | `is_lesson_submitted` and `is_lesson_satisfied` check label membership               | @curriculum §CurriculumState Label Tracking |
+| CRS-28 | Label-based tracking coexists with entry-level EntryKey tracking                     | @curriculum §CurriculumState Label Tracking |
+| CRS-29 | `save()` includes curriculum_file, labels, and label-based state in JSON             | @curriculum §CurriculumState Persistence    |
+| CRS-30 | `load()` reconstructs state from new format JSON                                     | @curriculum §CurriculumState Persistence    |
+| CRS-31 | `load()` handles legacy format (flat lessons + position) with backward compat        | @curriculum §CurriculumState Persistence    |
+| CRS-32 | Generator makes one LLM call with curriculum format system prompt                    | @curriculum §Curriculum Generation          |
+| CRS-33 | Generator parses LLM response via `from_string` and validates                        | @curriculum §Curriculum Generation          |
+| CRS-34 | Generator retries once on parse failure with error feedback                          | @curriculum §Curriculum Generation          |
+| CRS-35 | Generator raises `CurriculumGenerationError` on second failure                       | @curriculum §Curriculum Generation          |
+| CRS-36 | Generator writes validated markdown to `curricula/<slug>.md`                         | @curriculum §Curriculum Generation          |
+| CRS-37 | Generator derives slug from goal (lowercase, hyphens, non-alphanumeric stripped)     | @curriculum §Curriculum Generation          |
+| CRS-38 | Session startup loads curriculum from runtime parameter                              | @curriculum §Session Startup                |
+| CRS-39 | Session startup resumes from saved state with curriculum_file                        | @curriculum §Session Startup                |
+| CRS-40 | Session startup polls for goal when no param and no saved state                      | @curriculum §Session Startup                |
+| CRS-41 | Goal starting with `goal:` triggers curriculum generation                            | @curriculum §Goal Resolution                |
+| CRS-42 | Goal that is a file path triggers direct loading                                     | @curriculum §Goal Resolution                |
+| CRS-43 | Trainer re-reads curriculum file before each lesson submission                       | @curriculum §File Polling                   |
+| CRS-44 | New lessons after current label are submitted after re-read                          | @curriculum §File Polling                   |
+| CRS-45 | Monotonic submitted set prevents duplicate kline submissions on replay               | @curriculum §File Polling                   |
+| CRS-46 | Progress event emitted on session start                                              | @curriculum §Progress Events                |
+| CRS-47 | Progress event emitted on lesson complete                                            | @curriculum §Progress Events                |
+| CRS-48 | Progress event emitted on curriculum complete                                        | @curriculum §Progress Events                |
+| CRS-49 | Progress event emitted on amendment applied                                          | @curriculum §Progress Events                |
+| CRS-50 | `CogitationRequest` accepts objective, approach, and lesson_prose fields             | @curriculum §CogitationRequest              |
+| CRS-51 | `build_prompt()` prefers objective + approach + lesson_prose over curriculum_context | @curriculum §CogitationRequest              |
+| CRS-52 | `build_prompt()` falls back to curriculum_context when new fields are empty          | @curriculum §CogitationRequest              |
 
 ## Out of Scope
 

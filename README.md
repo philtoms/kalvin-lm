@@ -146,14 +146,14 @@ src/
 
 ## Documentation
 
-| Document                                                     | Purpose                                            |
-| ------------------------------------------------------------ | -------------------------------------------------- |
-| [`CONTEXT.md`](CONTEXT.md)                                   | Domain glossary — precise definitions of all terms |
-| [`docs/kalvin-vision.md`](docs/kalvin-vision.md)             | Vision, conceptual model, and philosophy           |
-| [`docs/roadmap.md`](docs/roadmap.md)                         | Build phases, dependency graph, current status     |
-| [`docs/adr/`](docs/adr/)                                     | Architectural decision records                     |
-| [`specs/`](specs/)                                           | Testable behavioural contracts                     |
-| [`plans/`](plans/)                                           | Implementation strategy and test mapping           |
+| Document                                         | Purpose                                            |
+| ------------------------------------------------ | -------------------------------------------------- |
+| [`CONTEXT.md`](CONTEXT.md)                       | Domain glossary — precise definitions of all terms |
+| [`docs/kalvin-vision.md`](docs/kalvin-vision.md) | Vision, conceptual model, and philosophy           |
+| [`docs/roadmap.md`](docs/roadmap.md)             | Build phases, dependency graph, current status     |
+| [`docs/adr/`](docs/adr/)                         | Architectural decision records                     |
+| [`specs/`](specs/)                               | Testable behavioural contracts                     |
+| [`plans/`](plans/)                               | Implementation strategy and test mapping           |
 
 ## Development
 

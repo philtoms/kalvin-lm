@@ -725,10 +725,10 @@ else       → S4
 
 ### Significance API
 
-| ID     | Criterion                                                              | Origin ref |
+| ID     | Criterion                                                              | Vision ref |
 | ------ | ---------------------------------------------------------------------- | ---------- |
-| MOD-34 | `is_s1` canonical: `make_signature(nodes) == signature` → True          | Origin §Significance |
-| MOD-35 | `is_s1` countersigned: mutual cross-reference → True                   | Origin §Significance |
+| MOD-34 | `is_s1` canonical: `make_signature(nodes) == signature` → True          | @vision §Significance |
+| MOD-35 | `is_s1` countersigned: mutual cross-reference → True                   | @vision §Significance |
 | MOD-36 | `is_s1` neither: non-canonical, non-countersigned → False              | — |
 | MOD-37 | `expand` all-match ungrounded: significance reflects ungrounded count   | — |
 | MOD-38 | `expand` all-mismatched unresolvable: low significance                  | — |

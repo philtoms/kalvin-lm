@@ -18,6 +18,8 @@ plans/                   ←  HOW — implementation strategy, phasing, test map
 
 Every fact lives in exactly one layer. Other layers **reference** it — never paraphrase, duplicate, or restate.
 
+> Note: `kalvin-introduction.md` was merged into `kalvin-vision.md` per ADR-0009.
+
 ### Content ownership
 
 | Vision only                | Spec only                              | Plan only                                     |
