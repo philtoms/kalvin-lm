@@ -252,7 +252,7 @@ class TestSessionDirInit:
         assert cfg.model_path == str(_agent_bin())
 
     def test_host_port_override(self, tmp_git_repo: Path) -> None:
-        """Explicit host/port overrides harness.yaml defaults."""
+        """Explicit host/port overrides training.harness.yaml defaults."""
         sd = SessionDir.init(
             "exp-4",
             curriculum="curricula/topic.md",
@@ -355,6 +355,27 @@ class TestSessionDirInit:
         )
         worktree_path = tmp_git_repo / ".worktrees" / "auto-tune" / "exp-wt"
         assert sd.config.worktree_path == str(worktree_path)
+
+    def test_host_port_override_docstring_uses_canonical_filename(self) -> None:
+        """test_host_port_override's docstring names ``training.harness.yaml``.
+
+        KB-311 renamed the on-disk harness config from ``harness.yaml`` to
+        ``training.harness.yaml``. This pins the ``test_host_port_override``
+        docstring to the canonical name so the test's own documentation cannot
+        silently drift back to the bare literal (the same class of stale
+        docstring KB-313 guarded for ``SessionDir.init``).
+        """
+        doc = TestSessionDirInit.test_host_port_override.__doc__
+        assert doc is not None, "test_host_port_override must have a docstring"
+
+        # Positive: canonical filename is referenced.
+        assert "training.harness.yaml" in (doc or "")
+
+        # Negative — phrase-scoped, NOT the bare ``harness.yaml``: the canonical
+        # literal ``training.harness.yaml`` contains ``harness.yaml`` as a
+        # substring, so only the full "overrides harness.yaml defaults" phrase
+        # reliably distinguishes stale wording from canonical.
+        assert "overrides harness.yaml defaults" not in (doc or "")
 
 
 # ---------------------------------------------------------------------------
