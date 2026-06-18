@@ -24,6 +24,12 @@ Auto-tune session `penalty-sweep`, curriculum `curricula/first-steps-s2.md`, bra
 
 ### 1. Training runs — the parameter is NOT exercised by this curriculum
 
+> **Training-level re-run (KB-332):** the parameter is now exercised. Against the fixed
+> curriculum, the 5/10/20 sweep produces **distinct significance distributions per value**
+> (S2 normalised 0.95/0.90/0.80; distances 10/20/40). See `auto-tune/penalty-sweep-v2/findings.md`.
+> The "parameter unexercised" conclusion below is superseded at the training level; this v1 §1
+> stands as the historical record of the blocked original sweep.
+
 All three training runs (values 10, 5, 20) are **byte-identical**:
 
 | value | lessons | escalations | outcome | significance of submitted entries |
