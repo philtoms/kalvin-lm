@@ -172,19 +172,12 @@ class Cogitator:
     def _run_work_item(self, item: WorkItem) -> None:
         """Expand a work item, classifying each yield against boundaries.
 
-        S1 work items are resolved immediately without expansion — the
-        routing classification already determined full node overlap, so
-        expansion would only generate spurious intermediate proposals
-        before the terminal S1 yield.
+        Work items arrive routed as S2 or S3 only (see KAgent._route). The
+        pair is expanded and each yield classified; a terminal S1 (distance
+        1) discovered during expansion is a genuine structural exact match
+        and triggers ``on_s1``.
         """
         query, candidate, level = item
-
-        if level == "S1":
-            # Skip expansion: routing already confirmed full node overlap,
-            # and expand() may yield spurious intermediate S2/S3 pairs
-            # before the terminal S1 yield.
-            self._handler.on_s1(query, candidate)
-            return
 
         s12, s23, s34 = boundaries()
 

@@ -96,22 +96,24 @@ class TestCandidateCap:
         assert len(submitted) <= 3
 
     def test_s2_prioritised_over_s3(self):
-        """CC-2: All candidates submitted regardless of routing level."""
+        """CC-2: S2 (overlap) candidates prioritised over S3 (no overlap)."""
 
         adapter = _CaptureAdapter()
         agent = KAgent(adapter=adapter, max_candidates=2)
 
-        # Add candidates that will produce both S1 and S3 matches
+        # Add candidates that will produce both S2 and S3 matches.
+        # Under the S2/S3-only routing model, overlap (full or partial)
+        # routes S2; no overlap routes S3.
         # A kline with signature 0x3 and nodes [0x1, 0x2]
-        cand_s1 = KLine(0x3, [0x1, 0x2])
-        agent.model.add_to_ltm(cand_s1)
+        cand_s2 = KLine(0x3, [0x1, 0x2])
+        agent.model.add_to_ltm(cand_s2)
 
         # A kline with signature 0xC and nodes [0x8, 0x10] — no overlap with query nodes
         cand_s3 = KLine(0xC, [0x8, 0x10])
         agent.model.add_to_ltm(cand_s3)
 
         # Query with signature overlapping both candidates
-        # Nodes [0x1] overlap with cand_s1 → S1, no overlap with cand_s3 → S3
+        # Nodes [0x1] overlap with cand_s2 → S2, no overlap with cand_s3 → S3
         query = KLine(0x3 | 0xC, [0x1])
 
         submitted = []
@@ -125,8 +127,9 @@ class TestCandidateCap:
         # Both candidates should be submitted
         assert len(submitted) == 2
         levels = {item.level for item in submitted}
-        assert "S1" in levels
+        assert "S2" in levels
         assert "S3" in levels
+        assert "S1" not in levels
 
     def test_s1_fast_path_unaffected(self):
         """CC-6: S1 fast-path is unaffected by cap."""
@@ -172,12 +175,14 @@ class TestCandidateCap:
         adapter = _CaptureAdapter()
         agent = KAgent(adapter=adapter, max_candidates=2)
 
-        # Add candidates with different overlap levels
-        # Candidate with 3 overlapping nodes (S1 — full overlap)
+        # Add candidates with different overlap levels.
+        # All overlap candidates route S2 under the S2/S3-only routing model;
+        # priority among them is by node-overlap count.
+        # Candidate with 3 overlapping nodes (full overlap)
         high_overlap = KLine(0x7, [0x1, 0x2, 0x4])
         agent.model.add_to_ltm(high_overlap)
 
-        # Candidate with 1 overlapping node (S2)
+        # Candidate with 1 overlapping node (partial overlap)
         low_overlap = KLine(0x3, [0x1])
         agent.model.add_to_ltm(low_overlap)
 
@@ -198,9 +203,12 @@ class TestCandidateCap:
 
         # With cap=2, the two highest priority (most overlap) should be submitted
         assert len(submitted) <= 2
-        # The highest-overlap candidate (S1) should be included
+        # The highest-overlap candidate should be included
+        candidate_sigs = {item.candidate.signature for item in submitted}
+        assert high_overlap.signature in candidate_sigs
+        # All submitted overlap candidates route S2 (no S1 routing)
         levels = {item.level for item in submitted}
-        assert "S1" in levels
+        assert "S1" not in levels
 
 
 # ── Reactor silent-drop tests ─────────────────────────────────────────

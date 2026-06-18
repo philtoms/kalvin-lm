@@ -50,12 +50,18 @@ class TestAgentInit:
 
 
 class TestRoute:
-    """KAgent._route: fast node-membership classification. No model call."""
+    """KAgent._route: fast node-membership classification. No model call.
 
-    def test_all_nodes_match_s1(self):
+    Routes cogitated candidates between S2 and S3 only. S1 (full overlap)
+    is a structural property established by expand()/is_s1(), not by
+    routing; S4 (empty query) never reaches routing because identity
+    klines are resolved on the fast path.
+    """
+
+    def test_all_nodes_match_s2(self):
         q = KLine(5, [10, 20])
         c = KLine(99, [10, 20, 30])
-        assert KAgent._route(q, c) == "S1"
+        assert KAgent._route(q, c) == "S2"
 
     def test_some_nodes_match_s2(self):
         q = KLine(5, [10, 20, 99])
@@ -67,27 +73,27 @@ class TestRoute:
         c = KLine(100, [3, 4])
         assert KAgent._route(q, c) == "S3"
 
-    def test_single_node_match_s1(self):
+    def test_single_node_match_s2(self):
         q = KLine(5, [10])
         c = KLine(99, [10, 20])
-        assert KAgent._route(q, c) == "S1"
+        assert KAgent._route(q, c) == "S2"
 
-    def test_empty_query_s4(self):
+    def test_empty_query_s3(self):
         q = KLine(0, [])
         c = KLine(10, [1])
-        assert KAgent._route(q, c) == "S4"
+        assert KAgent._route(q, c) == "S3"
 
     def test_routing_independent_of_signature(self):
         """Routing only cares about candidate's node sequence."""
         q = KLine(5, [42])
         c = KLine(999, [42, 100])
-        assert KAgent._route(q, c) == "S1"
+        assert KAgent._route(q, c) == "S2"
 
     def test_duplicate_nodes_in_query(self):
         """Duplicate query nodes are counted per-occurrence for membership."""
         q = KLine(5, [10, 10])
         c = KLine(99, [10, 20])
-        assert KAgent._route(q, c) == "S1"
+        assert KAgent._route(q, c) == "S2"
 
 
 # ── Rationalisation Tests ─────────────────────────────────────────────
@@ -162,18 +168,18 @@ class TestAgentRationalise:
 
 
 class TestShortCircuit:
-    """Phase 5 pushes ALL candidates to cogitator — no S1 short-circuit."""
+    """All candidates are pushed to the cogitator; routing is S2/S3 only."""
 
     def test_all_candidates_submitted_to_cogitator(self):
         """All candidates are submitted to cogitator regardless of routing level."""
         a = KAgent(adapter=EventBus())
         # Add two candidates to the model
-        c1 = KLine(5, [10, 20])  # S1 match for query
-        c2 = KLine(6, [10, 20, 30])  # Also S1 for query
+        c1 = KLine(5, [10, 20])  # full overlap with query
+        c2 = KLine(6, [10, 20, 30])  # also full overlap with query
         a.rationalise(c1)
         a.rationalise(c2)
 
-        # Query that would route S1 against both candidates
+        # Query overlaps both candidates (routes S2 under the S2/S3-only model)
         q = KLine(0, [10, 20])
         q.signature = make_signature([10, 20])
 
@@ -191,10 +197,10 @@ class TestShortCircuit:
         assert result is False  # No short-circuit — all go to cogitator
         assert len(submitted) == 2  # Both candidates submitted
 
-    def test_mixed_s1_s2_all_submitted(self):
-        """S2 and S1 candidates are all submitted — no S1 short-circuit."""
+    def test_mixed_overlap_all_submitted(self):
+        """Candidates with full and partial overlap are all submitted as S2."""
         a = KAgent(adapter=EventBus())
-        # c1 will route S2, c2 will route S1
+        # c1 partial overlap, c2 full overlap — both route S2 now
         c1 = KLine(5, [10, 30])
         c2 = KLine(6, [10, 20])
         a.rationalise(c1)
@@ -215,21 +221,16 @@ class TestShortCircuit:
         result = a.rationalise(q)
 
         assert result is False  # No short-circuit
-        assert len(submitted) == 2  # Both S2 and S1 candidates submitted
+        assert len(submitted) == 2  # Both candidates submitted
         levels = {item.level for item in submitted}
-        assert "S2" in levels
-        assert "S1" in levels
+        assert levels == {"S2"}  # Overlap candidates route S2 only
 
-    def test_s2_candidates_submitted_to_cogitator(self):
-        """S2 candidates are submitted to cogitator alongside any S1 candidates.
-
-        Phase 5 no longer discards deferred items on S1 — all candidates
-        are submitted to the cogitator unconditionally.
-        """
+    def test_s2_and_s3_candidates_submitted_to_cogitator(self):
+        """S2 (overlap) and S3 (no overlap) candidates are both submitted."""
         a = KAgent(adapter=EventBus())
-        # c1 routes S2 (partial match), c2 routes S1 (full match)
-        c1 = KLine(5, [10, 30])  # S2: only node 10 in common with query
-        c2 = KLine(6, [10, 20])  # S1: both query nodes present
+        # c1 routes S2 (partial match), c2 routes S3 (no match)
+        c1 = KLine(5, [10, 30])  # S2: node 10 in common with query
+        c2 = KLine(6, [40, 50])  # S3: no node in common with query
         a.rationalise(c1)
         a.rationalise(c2)
 
@@ -247,8 +248,10 @@ class TestShortCircuit:
         a._cogitator.submit = capture_submit
         result = a.rationalise(q)
 
-        assert result is False  # No S1 short-circuit
-        assert len(submitted) == 2  # Both S2 and S1 work items submitted
+        assert result is False
+        assert len(submitted) == 2  # Both S2 and S3 work items submitted
+        levels = {item.level for item in submitted}
+        assert levels == {"S2", "S3"}
 
     def test_no_candidates_no_expand(self):
         """No candidates → S4 directly, no expand call."""
@@ -807,11 +810,11 @@ class TestCascadeWriteMethods:
         assert result is True
         mock_add_to_ltm.assert_any_call(k)
 
-    def test_agt18_s1_routing_submits_to_cogitator(self):
-        """AGT-18: S1 routing submits work item to cogitator (no short-circuit)."""
+    def test_agt18_overlap_routing_submits_to_cogitator(self):
+        """AGT-18: overlap routing submits work item to cogitator (no short-circuit)."""
         m = Model()
         a = KAgent(model=m, adapter=EventBus())
-        # Add a candidate that will route as S1
+        # Add a candidate that overlaps the query (routes S2)
         c = KLine(5, [10, 20])
         a.rationalise(c)
         # Query that fully matches candidate nodes
@@ -831,7 +834,7 @@ class TestCascadeWriteMethods:
         assert len(submitted) == 1
         assert submitted[0].query is q
         assert submitted[0].candidate is c
-        assert submitted[0].level == "S1"
+        assert submitted[0].level == "S2"
 
     def test_agt22a_slow_path_query_add_to_stm_only(self):
         """AGT-22a: S2/S3 routed kline calls model.add_to_stm() only — not add_to_frame or add_to_ltm."""

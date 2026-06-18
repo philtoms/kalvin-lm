@@ -135,6 +135,13 @@ def kline_display(kline, tokenizer, model=None) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Kalvin agent smoke test")
     parser.add_argument("--verbose", "-v", action="store_true", help="Show every event")
+    parser.add_argument(
+        "--timeout",
+        "-t",
+        type=float,
+        default=5.0,
+        help="Seconds to wait for the 'done' event before giving up (default: 5).",
+    )
     args = parser.parse_args()
 
     tokenizer = NLPTokenizer.from_files()
@@ -169,26 +176,31 @@ def main() -> None:
 
     adapter.subscribe(on_event)
 
-    # Build a display model from the compiled klines so that packed
-    # signatures can be unpacked to their identity tokens for display
-    # (the agent model is still empty at this point).
-    from kalvin.model import Model
+    if args.verbose:
+        # Build a display model from the compiled klines so that packed
+        # signatures can be unpacked to their identity tokens for display
+        # (the agent model is still empty at this point).
+        from kalvin.model import Model
 
-    display_model = Model()
-    for k in klines:
-        display_model.add_to_frame(k)
+        display_model = Model()
+        for k in klines:
+            display_model.add_to_frame(k)
 
-    # Print compiled entries
-    print("Compiled entries:")
-    for k in klines:
-        print(f"  {kline_display(k, tokenizer, display_model)}")
+        # Print compiled entries
+        print("Compiled entries:")
+        for k in klines:
+            print(f"  {kline_display(k, tokenizer, display_model)}")
 
     # Rationalise
     print("\nRationalising...")
     for k in klines:
         agent.rationalise(k)
 
-    done_event.wait()
+    if not done_event.wait(timeout=args.timeout):
+        print(
+            f"\nWARNING: no 'done' event after {args.timeout:.1f}s — "
+            "continuing anyway."
+        )
     agent.cogitate_join()
 
     # Print summary

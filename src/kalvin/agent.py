@@ -157,23 +157,23 @@ class KAgent:
     def _route(query: KLine, candidate: KLine) -> str:
         """Fast classification — node-membership test only. No model call.
 
-        Returns "S1", "S2", "S3", or "S4" (for empty query).
+        Routes cogitated candidates between S2 and S3 only:
+          - S2: at least one query node is a candidate node (partial or
+            full overlap).
+          - S3: no node overlap.
+
+        S1 (full overlap) is intentionally NOT routed here — true S1 is a
+        structural property established by ``expand()`` / ``is_s1()``, not
+        by node membership. S4 (empty query) never reaches routing because
+        identity klines are resolved on the fast path in ``rationalise``
+        before any candidate is submitted to the cogitator.
         """
-        nodes = query.nodes
-        total = len(nodes)
-
-        if total == 0:
-            return "S4"
-
         candidate_nodes = set(candidate.nodes)
-        match_count = sum(1 for n in nodes if n in candidate_nodes)
+        match_count = sum(1 for n in query.nodes if n in candidate_nodes)
 
-        if match_count == total:
-            return "S1"
-        elif match_count > 0:
+        if match_count > 0:
             return "S2"
-        else:
-            return "S3"
+        return "S3"
 
     # Rationalisation
 
@@ -202,7 +202,10 @@ class KAgent:
 
         expected_sig = make_signature(kline.nodes)
         if kline.signature == expected_sig:
-            all_resolved = all(self._model.find(n) is not None for n in kline.nodes)
+            all_resolved = all(
+                (node_kl := self._model.find(n)) is not None and self._model.grounded(node_kl)
+                for n in kline.nodes
+            )
             if all_resolved:
                 self._model.add_to_ltm(kline)
                 self._publish("frame", kline, kline, D_MAX - 1)  # S1
@@ -233,13 +236,12 @@ class KAgent:
             self._publish("frame", kline, kline, 0)  # S4 — novel
             return True
 
-        # Submit every candidate to cogitation (no silent S1 short-circuit
-        # that would skip reasoning). Sort S1 first so auto-satisfy fires
-        # before S2/S3 expansion proposals trigger reactive scaffolding,
+        # Submit every candidate to cogitation. Sort S2 (partial overlap)
+        # before S3 (no overlap) so closer candidates are expanded first,
         # then by node overlap descending within each level.
         def _route_rank(candidate: KLine) -> tuple[int, int]:
             level = self._route(kline, candidate)
-            level_order = {"S1": 0, "S2": 1, "S3": 2, "S4": 3}.get(level, 4)
+            level_order = {"S2": 0, "S3": 1}.get(level, 2)
             overlap = -sum(1 for n in kline.nodes if n in set(candidate.nodes))
             return (level_order, overlap)
 

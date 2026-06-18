@@ -70,12 +70,12 @@ processing:
 WorkItem:
   query:      KLine
   candidate:  KLine
-  level:      str   # routing level: "S1", "S2", or "S3"
+  level:      str   # routing level: "S2" or "S3"
 ```
 
-The agent submits one WorkItem per routed candidate (including S1). The
-Cogitator expands each non-S1 WorkItem into a sequence of QueryCandidates
-via `model.expand()`.
+The agent submits one WorkItem per routed candidate (S2 or S3). The
+Cogitator expands each WorkItem into a sequence of QueryCandidates via
+`model.expand()`.
 
 ## Query Candidates
 
@@ -141,31 +141,39 @@ CogitationHandler:
   on_expansion(query, proposal, significance)  — called when an expansion proposal is generated (S2/S3)
 ```
 
-### S1 Fast-Path
+### Work Item Levels
 
-When a work item is pre-routed as S1 (the candidate's routing level is
-S1), the Cogitator skips `model.expand()` entirely and calls
-`handler.on_s1(query, candidate)` directly. This avoids generating
-intermediate S2/S3 connotation yields that would produce unnecessary
-expansion proposals.
-
-```
-run_work_item(WorkItem(query, candidate, routing_level)):
-  if routing_level == S1:
-    handler.on_s1(query, candidate)   # Fast-path: skip expand()
-    return
-  for qc in model.expand(query, candidate):
-    if qc.significance >= s12:
-      handler.on_s1(query, candidate)
-      break
-    else:
-      process(qc)
-```
+Work items arrive routed as **S2** or **S3** only (see @agent spec,
+§Routing). Routing does not produce S1 or S4: full node overlap is a
+necessary but insufficient condition for S1 (true S1 is structural —
+canonical composition or countersignature, established by `expand()` /
+`is_s1()`), and identity klines are resolved on the agent's fast path
+before any candidate is submitted.
 
 ### Work Item Processing
 
-For S2/S3 work items, the Cogitator expands each WorkItem, processing all
-yields from `model.expand()`:
+For every work item, the Cogitator expands the pair and classifies each
+yield against the significance boundaries:
+
+```
+run_work_item(WorkItem(query, candidate, routing_level)):
+  for qc in model.expand(query, candidate):
+    if qc.significance >= s12:        # S1 — genuine exact match
+      handler.on_s1(query, candidate)
+      break
+    elif qc.significance >= s34:      # S2 or S3
+      process(qc)
+    # S4 yields are skipped
+```
+
+An S1 (distance 1) discovered during expansion is a genuine structural
+exact match and triggers `handler.on_s1()`, terminating the loop for that
+pair. There is no routing-level S1 short-circuit.
+
+### Work Item Processing
+
+The Cogitator expands each WorkItem, processing all yields from
+`model.expand()`:
 
 ```
 process(QueryCandidate(query, candidate, significance)):
@@ -323,12 +331,12 @@ proposals are generated per work item.
 
 ## S1 Callback
 
-When the Cogitator discovers an S1 — either via the S1 fast-path (pre-routed)
-or via boundary classification during expand() — it calls
-`handler.on_s1(query, candidate)` on the CogitationHandler unconditionally.
-The Agent implementation checks `is_s1(model, candidate)` as a structural
-guard — if the candidate is structurally S1 (canonical or countersigned), it
-calls `promote_participating(model, query, candidate)` to cascade all
+When the Cogitator discovers an S1 — via boundary classification during
+expand() (a terminal distance-1 yield) — it calls
+`handler.on_s1(query, candidate)` on the CogitationHandler. The Agent
+implementation checks `is_s1(model, candidate)` as a structural guard — if
+the candidate is structurally S1 (canonical or countersigned), it calls
+`promote_participating(model, query, candidate)` to cascade all
 participating STM klines to LTM via `add_to_ltm`. A frame event is always
 published (unconditional) with significance `D_MAX - 1`. The `_run_work_item`
 S1 branch delegates entirely to `on_s1`, keeping the dispatcher thin.

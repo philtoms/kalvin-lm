@@ -206,28 +206,38 @@ If no candidates are found, Q is novel. Call `model.add_to_ltm(Q)`. Emit a
 ### Phase 5: Route Each Candidate
 
 Add Q to STM via `model.add_to_stm(Q)`. Route each candidate, then submit
-**all** candidates (including S1) to the Cogitator as work items.
+**all** candidates to the Cogitator as work items.
 
 #### Routing
 
 ```
 route(Q, C):
-  if Q has no nodes:   return "S4"
   match_count = number of Q.nodes that exist in C.nodes
-  if match_count == len(Q.nodes):  return "S1"
-  if match_count > 0:              return "S2"
-  else:                            return "S3"
+  if match_count > 0:  return "S2"
+  else:                return "S3"
 ```
 
-Routing is a pure function. It checks whether each query node value appears
+Routing is a pure function. It checks whether any query node value appears
 in the candidate's node sequence. No model function is called.
+
+Routing distinguishes only **S2** (at least one overlapping node) from
+**S3** (no overlapping node). It does **not** route S1 or S4:
+
+- **S1 is not a routing outcome.** Full node overlap is a necessary but
+  insufficient condition for S1; true S1 is a structural property
+  established by `expand()` / `is_s1()` (canonical composition or
+  countersignature), not by node membership. Routing a pair as "S1" purely
+  on overlap would publish S1 significance for pairs that are not
+  structurally grounded.
+- **S4 is not a routing outcome.** Identity klines (empty nodes) are
+  resolved on the fast path in `rationalise` before any candidate is
+  submitted to the Cogitator, so an empty query never reaches routing.
 
 #### Candidate Ordering
 
-Candidates are sorted before submission: **S1 candidates first**, then S2,
-then S3. Within each tier, candidates are sorted by node overlap count
-(descending). This ensures the Cogitator processes S1 work items before
-S2/S3, so S1 fast-path resolution happens as early as possible.
+Candidates are sorted before submission: **S2 candidates first**, then S3.
+Within each tier, candidates are sorted by node overlap count (descending),
+so the closest matches are expanded first.
 
 #### Candidate Cap
 
@@ -237,9 +247,9 @@ the Cogitator. This bounds the per-entry fan-out regardless of model
 density.
 
 The cap does **not** affect:
-- S1 fast-path matches — S1 candidates are processed before any
-  truncation, and the first S1 candidate resolves the entry and returns
-  `True` immediately.
+- Structural S1 resolution on the fast path — klines that are canonical
+  with all nodes grounded, or countersigned, are resolved in `rationalise`
+  before any candidate is submitted.
 - S4 (novel) routing — an S4 entry has no candidates, so the cap is
   irrelevant.
 
@@ -247,26 +257,25 @@ The cap does **not** affect:
 
 | Route | Action | Model call? |
 | ----- | ------ | ----------- |
-| S1    | Submit `WorkItem(Q, C)` to Cogitator (S1 fast-path) | No (deferred to cogitator) |
 | S2    | Submit `WorkItem(Q, C)` to Cogitator | No |
 | S3    | Submit `WorkItem(Q, C)` to Cogitator | No |
 
-There is no S1 short-circuit at the routing level. S1 candidates are
-submitted as work items like S2/S3, but the Cogitator processes them via a
-fast-path that skips `model.expand()` and calls `handler.on_s1()` directly
-(see §Cogitation → S1 Fast-Path).
+All candidates are submitted as work items for expansion. The Cogitator
+classifies each expansion yield against the significance boundaries; a
+yield that computes to S1 (distance 1) is a genuine structural exact match
+and triggers `handler.on_s1()` (see §Cogitation).
 
 Return `False`.
 
 ## Cogitation
 
-The slow path — background processing of pre-routed work items, S1
-fast-path, S2 expansion, significance-boundary classification, and the
+The slow path — background processing of pre-routed work items, S2/S3
+expansion, significance-boundary classification, and the
 Cogitator/CogitationHandler/WorkItem/QueryCandidate contracts — is defined
 in the **@cogitator spec**. This spec owns only the agent's role in the
-seam: it submits one `WorkItem` per routed candidate (including S1) during
-Phase 5, and it is the primary `CogitationHandler` implementation
-(`on_s1`, `on_expansion`).
+seam: it submits one `WorkItem` per routed candidate during Phase 5, and
+it is the primary `CogitationHandler` implementation (`on_s1`,
+`on_expansion`).
 
 ## Events
 
@@ -311,8 +320,8 @@ the model, keeping the cogitation path simple — it consumes
 
 The previous architecture computed significance for all candidates then
 selected the best result. The current architecture routes each candidate
-independently and submits all (including S1) to the Cogitator as work items.
-S1 work items are processed first via a fast-path that skips expand().
+independently (S2/S3) and submits all to the Cogitator as work items for
+expansion; an S1 discovered during expansion terminates the pair.
 
 **Rationale**: Best-candidate selection forced full computation before the
 agent could act. The per-candidate routing model with S1-first ordering
@@ -365,16 +374,16 @@ enables immediate S1 resolution and parallel processing of S2/S3.
 
 | ID     | Criterion                                                           | Origin ref |
 | ------ | ------------------------------------------------------------------- | ---------- |
-| AGT-18 | All candidates submitted to cogitator as work items (including S1)  | — |
-| AGT-19 | Candidates sorted S1-first, then by overlap count (descending)     | — |
+| AGT-18 | All candidates submitted to cogitator as work items            | — |
+| AGT-19 | Candidates sorted S2-first, then by overlap count (descending)   | — |
 | AGT-19a | S2/S3 candidates truncated to `max_candidates` (default 8) after sort | — |
 | AGT-19b | Within the cap, S2 candidates prioritised over S3 candidates       | — |
 | AGT-19c | Within the same level, higher node-overlap candidates prioritised  | — |
-| AGT-19d | S1 fast-path resolution unaffected by the cap                      | — |
+| AGT-19d | Structural S1 resolution on the fast path unaffected by the cap   | — |
 | AGT-19e | S4 (novel) routing unaffected by the cap                           | — |
 | AGT-20 | All S2: returns False, all submitted as WorkItems                   | — |
 | AGT-21 | All S3: returns False, all submitted as WorkItems                   | — |
-| AGT-22 | S1 fast-path in cogitator: skips expand(), calls on_s1 directly    | — |
+| AGT-22 | S1 discovered during expansion: `on_s1` called, expansion breaks    | — |
 | AGT-22a | Slow path query: kline in STM only (not Frame or LTM)         | — |
 
 ### Events
