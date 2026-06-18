@@ -161,7 +161,7 @@
 
 - **Spec ref:** @specs/harness-server §Harness Configuration
 - **Details:**
-  - CLI entry point: `python -m training.harness --config harness.yaml`
+  - CLI entry point: `python -m training.harness --config training.harness.yaml`
   - Load config, instantiate server, start
   - Signal handling: SIGTERM → persist Trainer state, graceful shutdown
 

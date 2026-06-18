@@ -104,7 +104,7 @@ The `submit` action is interpreted by Kalvin's adapter exactly as for any lesson
 
 ### Auto-Tune Integration
 
-12. Auto-tune writes `trainer.llm.enabled: false` into the per-session `harness.yaml` it generates, so an auto-tune session always runs in delegated mode with pi as the reactive decision-maker.
+12. Auto-tune writes `trainer.llm.enabled: false` into the per-session `training.harness.yaml` it generates, so an auto-tune session always runs in delegated mode with pi as the reactive decision-maker.
 13. Auto-tune's `cmd.json` accepts the `scaffold` action; the CLI supervisor dispatches it through the shared command parser.
 
 ## Test Matrix
@@ -124,7 +124,7 @@ The `submit` action is interpreted by Kalvin's adapter exactly as for any lesson
 | RD-9 | `scaffold:<kscript>` parses to a command that sends `{trainee, submit, <kscript>}` | §Scaffold Command |
 | RD-10 | `scaffold` command compiles and submits via Kalvin's adapter like any `submit` | §Supervisor Answers |
 | RD-11 | A `scaffold` with invalid KScript yields an `error` event back to the supervisor | §Supervisor Answers |
-| RD-12 | Auto-tune per-session `harness.yaml` sets `trainer.llm.enabled: false` | §Auto-Tune Integration |
+| RD-12 | Auto-tune per-session `training.harness.yaml` sets `trainer.llm.enabled: false` | §Auto-Tune Integration |
 | RD-13 | Auto-tune `cmd.json` accepts `{"action": "scaffold", "text": <kscript>}` and dispatches via the shared parser | §Auto-Tune Integration |
 
 ## Out of Scope
