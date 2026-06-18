@@ -1,5 +1,6 @@
-"""Tests for Cogitator inter-lesson drain — spec specs/cogitator-drain.md.
+"""Tests for Cogitator inter-lesson drain.
 
+Spec: specs/cogitator.md §Lifecycle › Inter-Lesson Drain (AGT-43..AGT-48).
 Validates that the cogitator drain mechanism prevents cross-lesson
 spillover of S2/S3 events.
 """
@@ -42,12 +43,12 @@ def _make_cogitator(model=None, adapter=None, handler=None):
     return Cogitator(model, adapter, handler)
 
 
-# ── DRN-3: Empty-backlog drain completes fast ────────────────────────
+# ── AGT-45: Empty-backlog drain completes fast ────────────────────────
 
 
 class TestDrainEmptyBacklog:
     def test_empty_backlog_drain_returns_true(self):
-        """DRN-3: drain() on empty backlog returns True immediately."""
+        """AGT-45: drain() on empty backlog returns True immediately."""
         cog = _make_cogitator()
         try:
             start = time.monotonic()
@@ -59,7 +60,7 @@ class TestDrainEmptyBacklog:
             cog.join(timeout=2.0)
 
     def test_empty_backlog_drain_under_10ms(self):
-        """DRN-3: Empty-backlog drain completes in <10ms."""
+        """AGT-45: Empty-backlog drain completes in <10ms."""
         cog = _make_cogitator()
         try:
             start = time.monotonic()
@@ -70,12 +71,12 @@ class TestDrainEmptyBacklog:
             cog.join(timeout=2.0)
 
 
-# ── DRN-4: Drain timeout ────────────────────────────────────────────
+# ── AGT-46: Drain timeout ────────────────────────────────────────────
 
 
 class TestDrainTimeout:
     def test_drain_timeout_returns_false(self):
-        """DRN-4: drain() returns False on timeout when work item is slow."""
+        """AGT-46: drain() returns False on timeout when work item is slow."""
         model = Model()
         adapter = EventBus()
         handler = _StubHandler()
@@ -108,7 +109,7 @@ class TestDrainTimeout:
             cog.join(timeout=2.0)
 
     def test_drain_timeout_does_not_stop_thread(self):
-        """DRN-4: timed-out drain does not stop the cogitator thread."""
+        """AGT-46: timed-out drain does not stop the cogitator thread."""
         cog = _make_cogitator()
         try:
             cog.drain(timeout=0.1)
@@ -118,12 +119,12 @@ class TestDrainTimeout:
             cog.join(timeout=2.0)
 
 
-# ── DRN-5: Processing flag ──────────────────────────────────────────
+# ── AGT-47: Processing flag ──────────────────────────────────────────
 
 
 class TestProcessingFlag:
     def test_processing_flag_guards_drain(self):
-        """DRN-5: drain() waits for processing flag to clear."""
+        """AGT-47: drain() waits for processing flag to clear."""
         model = Model()
         adapter = EventBus()
         handler = _StubHandler()
@@ -153,7 +154,7 @@ class TestProcessingFlag:
             cog.join(timeout=2.0)
 
     def test_processing_flag_not_set_when_idle(self):
-        """DRN-5: _processing is False when cogitator is idle."""
+        """AGT-47: _processing is False when cogitator is idle."""
         cog = _make_cogitator()
         try:
             assert cog._processing is False
@@ -161,13 +162,13 @@ class TestProcessingFlag:
             cog.join(timeout=2.0)
 
 
-# ── DRN-6: No cross-lesson spillover ────────────────────────────────
+# ── AGT-48: No cross-lesson spillover ────────────────────────────────
 
 
 @requires_nlp_data
 class TestNoCrossLessonSpillover:
     def test_drain_between_lessons_prevents_spillover(self):
-        """DRN-6: Lesson-N cogitation drains fully before lesson N+1 begins.
+        """AGT-48: Lesson-N cogitation drains fully before lesson N+1 begins.
 
         Submits real S2 work items in "lesson 1", drains the cogitator, then
         verifies the backlog is empty and the cogitator remains healthy for a
@@ -221,12 +222,12 @@ class TestNoCrossLessonSpillover:
             agent.cogitate_join(timeout=2.0)
 
 
-# ── DRN-6 (unit): drain empties the backlog ─────────────────────────
+# ── AGT-48 (unit): drain empties the backlog ─────────────────────────
 
 
 class TestDrainEmptiesBacklog:
     def test_drain_empties_backlog_after_work(self):
-        """DRN-6: drain() empties the backlog after processing real work.
+        """AGT-48: drain() empties the backlog after processing real work.
 
         Isolates the core guarantee — a submitted work item is processed and
         the backlog is empty after drain — at the Cogitator level.

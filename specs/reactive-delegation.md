@@ -9,7 +9,7 @@ When the flag is on (default), behaviour is unchanged: the Cogitator cogitates, 
 ## Dependencies
 
 - `@specs/harness-server.md` — Trainer participant, reactive mode, shared command protocol, supervisor message tables
-- `@specs/reactive-scaffolding.md` — Cogitator sanitisation and submission pipeline
+- `@specs/cogitator.md` §Reactive Scaffolding Submission — Cogitator sanitisation and submission pipeline
 - `@specs/auto-tune.md` — CLI supervisor event/command frames, per-session harness config generation
 
 ## Definitions
@@ -133,4 +133,4 @@ The `submit` action is interpreted by Kalvin's adapter exactly as for any lesson
 - A new bus action — `scaffold` reuses the existing `trainee` `submit` action.
 - A new event type — delegation enriches the existing `ratify_request`; no parallel event stream.
 - Automatic timeout/budget escalation in delegated mode — the supervisor is the sole decision-maker.
-- Changes to Kalvin, the Cogitator prompt, or the reactive-scaffolding sanitisation pipeline (`@specs/reactive-scaffolding.md`).
+- Changes to Kalvin, the Cogitator prompt, or the reactive-scaffolding sanitisation pipeline (`@specs/cogitator.md` §Reactive Scaffolding Submission).

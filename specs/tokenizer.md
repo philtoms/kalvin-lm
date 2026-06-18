@@ -316,6 +316,25 @@ Both NLP type bits (high 32) and BPE token IDs (low 32) contribute to
 the signature. The tokenizer passes raw NLP-BPE nodes to `make_signature()`
 as it would any other node sequence.
 
+### Curriculum Compatibility (Bare Signatures)
+
+All existing curricula compile and train correctly under the NLPTokenizer
+without modification. A "bare" signature carries no parenthetical
+annotation.
+
+- A bare single-character signature (e.g. `M`, `H`, `A`) encodes to a
+  single 64-bit NLP-BPE node whose upper 32 bits carry NLP type information
+  and lower 32 bits carry the BPE token ID. The same character always
+  produces the same node value.
+- A bare multi-token signature (e.g. `MHALL`, `SVO`) decomposes into
+  individual identity entries plus a canonize (S2) entry mapping the first
+  token to all tokens.
+- The NLP binding resolver operates correctly with an empty symbol table —
+  bare signatures compile and produce valid graph nodes.
+- Comments are optional for curricula using abstract uppercase letters
+  (A–Z). Comments are required only when semantic word resolution is
+  desired (e.g. `M(ary)` → the NLP-bound token for "Mary").
+
 ### Worked Examples
 
 #### Encoding with grammar lookup
@@ -364,6 +383,10 @@ identity of each token.
 | TOK-NLP-4 | NLP round-trip: `decode(encode("Tea brewed softly")) == "Tea brewed softly"` | NLP |
 | TOK-NLP-7 | Vocabulary sizes: BPE vocab = 17,392 tokens, grammar dictionary = 12,871 entries | NLP |
 | TOK-NLP-8 | Dimension count: `nlp_type32` provides 32 dimensions (17 POS + 8 DEP + 7 MORPH) | NLP |
+| TOK-NLP-9 | Bare single-character signatures (e.g. `M`, `H`, `A`) produce consistent NLP-BPE nodes; the same character always yields the same node value | NLP |
+| TOK-NLP-10 | Bare multi-token signatures (e.g. `MHALL`, `SVO`) decompose into individual identity entries plus a canonize (S2) entry mapping the first token to all tokens | NLP |
+| TOK-NLP-11 | The NLP binding resolver operates correctly with an empty symbol table (bare sigs compile without annotation) | NLP |
+| TOK-NLP-12 | Curricula using abstract uppercase letters (A–Z) require no parenthetical comments; comments are required only when semantic word resolution is desired | NLP |
 
 ## What a Tokenizer is Not
 

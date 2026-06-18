@@ -3,7 +3,7 @@
 Verifies that all curricula compile and rationalize correctly with
 the NLPTokenizer without requiring parenthetical comment annotations.
 
-Spec ref: specs/nlp-curriculum-compat.md
+Spec ref: specs/tokenizer.md §NLP Tokenizer › Curriculum Compatibility (TOK-NLP-9..12)
 """
 
 from __future__ import annotations
@@ -56,11 +56,11 @@ class _CountingAdapter:
             self.ground += 1
 
 
-# ── SC-1: Bare single-char signatures ────────────────────────────────
+# ── TOK-NLP-9: Bare single-char signatures ────────────────────────────────
 
 
 class TestBareSingleChar:
-    """SC-1: Bare single-char sigs produce consistent NLP-BPE tokens."""
+    """TOK-NLP-9: Bare single-char sigs produce consistent NLP-BPE tokens."""
 
     def test_m_compiles_to_nlp_bpe(self, nlp_tokenizer: NLPTokenizer) -> None:
         entries = compile_source("M", tokenizer=nlp_tokenizer, dev=True)
@@ -83,11 +83,11 @@ class TestBareSingleChar:
         assert e_m[0].signature != e_h[0].signature
 
 
-# ── SC-2: Multi-token signature decomposition ────────────────────
+# ── TOK-NLP-10: Multi-token signature decomposition ────────────────────
 
 
 class TestMultiTokenDecomposition:
-    """SC-2: Multi-token sigs decompose correctly with NLP tokenizer."""
+    """TOK-NLP-10: Multi-token sigs decompose correctly with NLP tokenizer."""
 
     def test_mhall_decomposition(self, nlp_tokenizer: NLPTokenizer) -> None:
         entries = compile_source("MHALL", tokenizer=nlp_tokenizer, dev=True)
@@ -108,11 +108,11 @@ class TestMultiTokenDecomposition:
         assert len(countersigns) == 2
 
 
-# ── SC-3: Curriculum compilation ─────────────────────────────────────
+# ── TOK-NLP-11: Curriculum compilation ─────────────────────────────────────
 
 
 class TestCurriculumCompilation:
-    """SC-3: All curricula compile and rationalize correctly."""
+    """TOK-NLP-11: All curricula compile and rationalize correctly."""
 
     @pytest.mark.parametrize(
         "curriculum_file",
@@ -169,11 +169,11 @@ class TestCurriculumCompilation:
         assert adapter.frame + adapter.ground > 0
 
 
-# ── SC-4: Comments are optional ──────────────────────────────────────
+# ── TOK-NLP-12: Comments are optional ──────────────────────────────────────
 
 
 class TestCommentsOptional:
-    """SC-4: Bare sigs work; comments add semantic resolution."""
+    """TOK-NLP-12: Bare sigs work; comments add semantic resolution."""
 
     def test_bare_and_annotated_both_work(self, nlp_tokenizer: NLPTokenizer) -> None:
         bare = compile_source("M", tokenizer=nlp_tokenizer, dev=True)

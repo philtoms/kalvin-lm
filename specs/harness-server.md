@@ -141,10 +141,32 @@ Key behaviours:
 
 - **Curriculum-driven mode**: submits the next lesson from the curriculum to Kalvin.
 - **Reactive mode**: cogitates (via LLM agent) on S2/S3 events and generates reactive scaffolding. Gated by `trainer.llm.enabled` (default `true`); when `false`, reactive decisions are delegated to the supervisor instead. See `@specs/reactive-delegation.md`.
-- **Ratification**: auto-countersigns proposals that structurally match expectations.
+- **Ratification**: auto-countersigns proposals that structurally match expectations. When auto-countersign succeeds, the proposal is already ratified and no `ratify_request` is sent to the supervisor.
 - **Escalation**: sends messages to role `supervisor` when stuck (budget exhaustion or low LLM agent confidence). All supervisor participants receive escalation notifications. Suppressed in delegated mode (`@specs/reactive-delegation.md`).
 - **Event relay**: relays Kalvin ground/frame/error events to role `supervisor` so supervisors observe the full training session. Ground events forwarded as `event` action. Frame events (S2/S3 proposals) forwarded as both `event` and `ratify_request` (carrying the proposal for ratification).
-- **Ratify request**: when a frame event carries a ratifiable proposal, sends a `ratify_request` action to role `supervisor` with the proposal payload.
+- **Ratify request**: when a frame event carries a ratifiable proposal **and auto-countersign did not succeed**, sends a `ratify_request` action to role `supervisor` with the proposal payload. When auto-countersign succeeds the request is suppressed (the proposal needs no supervisor ratification); event relay to the supervisor continues regardless.
+
+### S2/S3 Auto-Countersign Suppression
+
+The reactor's `process_s2_s3()` returns a `bool`: `True` when
+auto-countersign succeeded, `False` when reactive handling was invoked
+(scaffolding or escalation). It checks auto-countersign first; on success
+it returns `True` immediately without invoking reactive handling. The
+Trainer captures this return and only sends `ratify_request` when
+auto-countersign did **not** succeed. Event relay to the supervisor is
+unconditional — the supervisor observes every event even when no
+ratification is needed.
+
+- **SAC-1.** `Reactor.process_s2_s3()` MUST return `True` when
+  auto-countersign succeeds and `False` when reactive handling is invoked.
+- **SAC-2.** When auto-countersign succeeds, reactive handling MUST NOT be
+  invoked.
+- **SAC-3.** The Trainer MUST NOT send `ratify_request` for S2/S3 events
+  where auto-countersign succeeded.
+- **SAC-4.** The Trainer MUST still send `ratify_request` for S2/S3 events
+  where auto-countersign failed.
+- **SAC-5.** Event relay to the supervisor MUST continue regardless of
+  auto-countersign outcome.
 - **Session management**: one training session at a time. Supports pause and stop via human input.
 - **State persistence**: curriculum position and event log persisted for restart recovery.
 
@@ -300,6 +322,12 @@ A client participant that renders events for the supervisor, provides structured
 | HRNS-32 | Shared command parser maps free-text to structured commands                  | —          |
 | HRNS-33 | Trainer relays Kalvin ground/frame/error events to role `supervisor`         | —          |
 | HRNS-34 | Slack participant sends `countersign` via `ratify` command                   | —          |
+| HRNS-35 | `process_s2_s3` returns `True` when auto-countersign succeeds (SAC-1)        | —          |
+| HRNS-36 | `process_s2_s3` returns `False` when auto-countersign fails (SAC-1)          | —          |
+| HRNS-37 | Reactive handling not called when auto-countersign succeeds (SAC-2)          | —          |
+| HRNS-38 | `ratify_request` suppressed when auto-countersign succeeds (SAC-3)           | —          |
+| HRNS-39 | `ratify_request` sent when auto-countersign fails (SAC-4)                    | —          |
+| HRNS-40 | Event relay sent regardless of auto-countersign outcome (SAC-5)             | —          |
 
 ## Out of Scope
 

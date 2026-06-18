@@ -1,7 +1,9 @@
-"""Tests for reactive scaffolding submission — spec criteria RS-1 through RS-14.
+"""Tests for reactive scaffolding submission.
 
-Validates the fixes that ensure LLM-generated scaffolding is compiled,
-sanitised, and submitted to Kalvin instead of discarded.
+Spec criteria live in the cogitator spec §Reactive Scaffolding Submission
+(test matrix AGT-49 through AGT-57). Validates the fixes that ensure
+LLM-generated scaffolding is compiled, sanitised, and submitted to Kalvin
+instead of discarded.
 """
 
 from __future__ import annotations
@@ -24,14 +26,14 @@ from training.trainer.cogitation import (
 from training.trainer.curriculum import CurriculumState
 from training.trainer.reactor import Reactor
 
-# ── RS-1: System prompt contains no hex literal syntax ───────────────
+# ── AGT-49: System prompt contains no hex literal syntax ────────────
 
 
 class TestSystemPrompt:
     """Validate the corrected system prompt."""
 
     def test_system_prompt_no_hex(self):
-        """RS-1: Prompt must not instruct LLM to use hex literals."""
+        """AGT-49: Prompt must not instruct LLM to use hex literals."""
         # The prompt should not tell the LLM to USE hex — it may
         # mention hex in a "never use" warning, which is correct.
         lines = _SYSTEM_PROMPT.split("\n")
@@ -47,7 +49,7 @@ class TestSystemPrompt:
         assert "Signatures and nodes are hexadecimal" not in _SYSTEM_PROMPT
 
     def test_system_prompt_no_invalid_operators(self):
-        """RS-2: Prompt must not list ~>, <-, -> as valid operators."""
+        """AGT-50: Prompt must not list ~>, <-, -> as valid operators."""
         # The prompt should warn AGAINST these, not endorse them
         # Check the syntax overview section doesn't list them as valid
         lines = _SYSTEM_PROMPT.split("\n")
@@ -71,26 +73,26 @@ class TestSystemPrompt:
         assert "=>" in _SYSTEM_PROMPT  # canonize
 
 
-# ── RS-3, RS-4, RS-5: Hash comment stripping ─────────────────────────
+# ── AGT-51, AGT-52: Hash comment stripping ─────────────────────────
 
 
 class TestStripHashComments:
     """Validate _strip_hash_comments utility."""
 
     def test_strips_hash_comments(self):
-        """RS-3: Lines starting with # are removed."""
+        """AGT-51: Lines starting with # are removed."""
         source = "# This is a comment\nM > H\n# Another comment\nH => M"
         result = _strip_hash_comments(source)
         assert result == "M > H\nH => M"
 
     def test_all_comments_returns_empty(self):
-        """RS-4: All-comment input returns empty string."""
+        """AGT-52: All-comment input returns empty string."""
         source = "# comment 1\n# comment 2\n# comment 3"
         result = _strip_hash_comments(source)
         assert result == ""
 
     def test_preserves_kscript(self):
-        """RS-5: Valid KScript lines are preserved unchanged."""
+        """AGT-51: Valid KScript lines are preserved unchanged."""
         source = "M > H\nMH => H A\nH == M"
         result = _strip_hash_comments(source)
         assert result == source
@@ -108,7 +110,7 @@ class TestStripHashComments:
         assert "M" in result
 
 
-# ── RS-8, RS-9: Cogitator sanitisation ───────────────────────────────
+# ── AGT-51, AGT-53: Cogitator sanitisation ──────────────────────────
 
 
 class TestCogitatorSanitisation:
@@ -116,7 +118,7 @@ class TestCogitatorSanitisation:
 
     @requires_nlp_data
     def test_cogitator_strips_and_logs(self, caplog):
-        """RS-8: Cogitator logs when # comments are stripped."""
+        """AGT-51: Cogitator logs when # comments are stripped."""
         client = MagicMock()
         client.complete.return_value = LLMResponse(
             content=None,
@@ -166,7 +168,7 @@ class TestCogitatorSanitisation:
         assert any("stripped # comments" in r.message for r in caplog.records)
 
     def test_cogitator_all_comments_returns_none(self):
-        """RS-9: Cogitator returns None when scaffolding is all comments."""
+        """AGT-53: Cogitator returns None when scaffolding is all comments."""
         client = MagicMock()
         client.complete.return_value = LLMResponse(
             content=None,
@@ -213,7 +215,7 @@ class TestCogitatorSanitisation:
         assert result.scaffolding is None
 
 
-# ── RS-10: Reactor log line ──────────────────────────────────────────
+# ── AGT-57: Reactor log line ────────────────────────────────────────
 
 
 class _BusCapture:
@@ -237,7 +239,7 @@ class _BusCapture:
 
 
 class TestReactorSubmittedLog:
-    """RS-10: Reactor logs 'submitted reactive scaffolding'."""
+    """AGT-57: Reactor logs 'submitted reactive scaffolding'."""
 
     def test_reactor_submitted_log_line(self, caplog):
         """Reactor logs confirmation after sending reactive scaffolding."""

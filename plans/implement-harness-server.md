@@ -197,6 +197,12 @@
 | HRNS-26 | tests/test_tui_client.py  | test_sends_freeform_input_to_trainer   | ✅     |
 | HRNS-27 | tests/test_tui_client.py  | test_sends_countersign_on_ratify       | ✅     |
 | HRNS-28 | tests/test_tui_client.py  | test_input_bar_clears_after_send       | ✅     |
+| HRNS-35 | tests/test_s3_auto_countersign.py | `test_returns_true_on_auto_countersign` | ✅ |
+| HRNS-36 | tests/test_s3_auto_countersign.py | `test_returns_false_on_no_match`        | ✅ |
+| HRNS-37 | tests/test_s3_auto_countersign.py | `test_no_escalation_on_auto_countersign`| ✅ |
+| HRNS-38 | tests/test_s3_auto_countersign.py | `test_ratify_suppressed_on_auto_countersign` | ✅ |
+| HRNS-39 | tests/test_s3_auto_countersign.py | `test_ratify_sent_when_auto_countersign_fails`| ✅ |
+| HRNS-40 | tests/test_s3_auto_countersign.py | `test_relay_on_auto_countersign` + `test_relay_on_no_auto_countersign` | ✅ |
 
 ## Design Decisions
 
@@ -219,6 +225,14 @@
 9. **LLM agent details deferred** — the Trainer's cogitation module defines the interface (prompt → scaffolding + confidence) but the prompt engineering and tool calling specifics will be designed in a separate grill session.
 
 10. **One session at a time** — prevents interleaving confusion for the KAgent and simplifies the Trainer's counting mechanism.
+
+11. **`process_s2_s3` returns `bool`, guard in Trainer.** The reactor only
+    needs to communicate two states — auto-countersign succeeded or not —
+    so a `bool` is the simplest type. The decision to suppress
+    `ratify_request` belongs to the Trainer (the component that sends the
+    message); the reactor reports what happened and the Trainer decides
+    what to do about it. Event relay stays unconditional to preserve
+    observability.
 
 ## Build Order
 

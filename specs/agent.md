@@ -366,7 +366,7 @@ enables immediate S1 resolution and parallel processing of S2/S3.
 | ID     | Criterion                                                           | Origin ref |
 | ------ | ------------------------------------------------------------------- | ---------- |
 | AGT-18 | All candidates submitted to cogitator as work items (including S1)  | — |
-| AGT-19 | Candidates sorted S1-first, then by overlap count (descending)     | auto-tune/direct-cogitation-push |
+| AGT-19 | Candidates sorted S1-first, then by overlap count (descending)     | — |
 | AGT-19a | S2/S3 candidates truncated to `max_candidates` (default 8) after sort | — |
 | AGT-19b | Within the cap, S2 candidates prioritised over S3 candidates       | — |
 | AGT-19c | Within the same level, higher node-overlap candidates prioritised  | — |
@@ -374,7 +374,7 @@ enables immediate S1 resolution and parallel processing of S2/S3.
 | AGT-19e | S4 (novel) routing unaffected by the cap                           | — |
 | AGT-20 | All S2: returns False, all submitted as WorkItems                   | — |
 | AGT-21 | All S3: returns False, all submitted as WorkItems                   | — |
-| AGT-22 | S1 fast-path in cogitator: skips expand(), calls on_s1 directly    | auto-tune/direct-cogitation-push |
+| AGT-22 | S1 fast-path in cogitator: skips expand(), calls on_s1 directly    | — |
 | AGT-22a | Slow path query: kline in STM only (not Frame or LTM)         | — |
 
 ### Events

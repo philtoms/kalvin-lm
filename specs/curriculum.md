@@ -272,6 +272,39 @@ Extended with structured curriculum context fields.
     current lesson (curriculum position past the end). This prevents
     duplicate completion when post-completion cogitation events arrive.
 
+### Curriculum Annotation Conventions
+
+Curriculum KScript signatures carry NLP annotations so the NLPTokenizer
+produces semantically rich graph nodes rather than abstract-letter
+fallbacks. The annotation *mechanics* (block/inline forms, binding
+resolution, claiming rules) are defined in the @kscript spec (§9 BPE
+Annotations, §10 NLP Binding Resolution); this section fixes the
+*conventions* every curriculum follows.
+
+41. Every single-character signature in a KScript code block MUST carry an
+    inline parenthetical comment (`M(ark)`, `H(alo)`, `S(ubject)`). The
+    comment text combined with the signature character forms the full NLP
+    word.
+42. Every multi-token signature MUST be preceded by a block-comment word
+    list whose word count matches the character count (e.g.
+    `(Mary Had A Little Lamb)` before `MHALL`).
+43. Node-position single-character signatures receive an inline comment
+    ONLY when the binding would introduce new information. If the character
+    is already bound to the same word in the scope chain, the inline
+    annotation is redundant and MUST be omitted — the node inherits the
+    binding from the parent scope. Inline annotations that intentionally
+    shadow a parent binding with a different word are required.
+44. Word choices SHOULD be semantically meaningful (proper nouns, common
+    nouns, or NATO phonetic alphabet) so NLP-BPE tokens carry grammatically
+    useful type bits.
+45. NLP annotations appear ONLY inside fenced KScript code blocks. The
+    curriculum prose (objective, approach, lesson descriptions) is not
+    annotated.
+46. The BindingResolver detects and skips inline annotations that would
+    redundantly re-bind a character to the same word already present in the
+    scope chain (via `NLPSymbolTable.is_bound_to(char, word)`). Redundant
+    bindings are silently skipped with a debug-level log message.
+
 ## Test Matrix
 
 | ID     | Criterion                                                                            | Spec ref                                    |
@@ -328,6 +361,12 @@ Extended with structured curriculum context fields.
 | CRS-50 | `CogitationRequest` accepts objective, approach, and lesson_prose fields             | @curriculum §CogitationRequest              |
 | CRS-51 | `build_prompt()` prefers objective + approach + lesson_prose over curriculum_context | @curriculum §CogitationRequest              |
 | CRS-52 | `build_prompt()` falls back to curriculum_context when new fields are empty          | @curriculum §CogitationRequest              |
+| CRS-53 | Every single-character sig in a code block has an inline parenthetical comment        | @curriculum §Curriculum Annotation Conventions |
+| CRS-54 | Every multi-token sig is preceded by a block word list whose count matches            | @curriculum §Curriculum Annotation Conventions |
+| CRS-55 | Redundant node-position inline annotations are omitted (parent-scope binding inherited) | @curriculum §Curriculum Annotation Conventions |
+| CRS-56 | Intentional shadowing node-position inline annotations are required                   | @curriculum §Curriculum Annotation Conventions |
+| CRS-57 | Annotations appear only inside fenced KScript code blocks, never in prose             | @curriculum §Curriculum Annotation Conventions |
+| CRS-58 | BindingResolver silently skips redundant re-binds (is_bound_to) with a debug log      | @curriculum §Curriculum Annotation Conventions |
 
 ## Out of Scope
 

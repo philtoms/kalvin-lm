@@ -8,7 +8,7 @@
 - `@specs/reactive-delegation.md` — RD-1 through RD-13 (owns this feature)
 - `@specs/harness-server.md` — Trainer participant, shared command protocol, supervisor message tables (table-row additions only)
 - `@specs/auto-tune.md` — CLI supervisor event/command frames, per-session harness config (rule 7a, table-row additions)
-- `@specs/reactive-scaffolding.md` — Cogitator sanitisation pipeline (unchanged)
+- `@specs/cogitator.md` §Reactive Scaffolding Submission — Cogitator sanitisation pipeline (unchanged)
 
 ## Implementation Tasks
 

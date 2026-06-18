@@ -183,6 +183,23 @@
 | CRS-50 | test_cogitation.py | test_cogitation_request_new_fields | ✅ |
 | CRS-51 | test_cogitation.py | test_build_prompt_prefers_new_fields | ✅ |
 | CRS-52 | test_cogitation.py | test_build_prompt_falls_back_to_context | ✅ |
+| CRS-53–58 | test_nlp_curriculum_compat.py | `TestCurriculumCompilation` (annotated curricula compile + rationalise; bare-sig compat preserved) | ✅ |
+
+### Task 8: Curriculum Annotation Conventions (`curricula/*.md`)
+
+Annotate all curriculum files so NLPTokenizer produces semantically rich
+nodes. Per-curriculum changes live in the curriculum source files; no code
+changes are required (the KScript compiler, binding resolver, and NLPTokenizer
+already implement the mechanics, @kscript spec §9–10).
+
+| Curriculum | Word theme |
+| ---------- | ---------- |
+| `first-steps.md`, `first-steps-s2.md` | identity names (Mark, Halo, Alpha) |
+| `mhall-svo-single.md`, `mhall-svo-equivalence.md` | MHALL nursery rhyme + grammatical roles |
+| `cascade-pressure.md`, `conflict-drill.md` | NATO phonetic alphabet |
+| `s3-auto-countersign.md` | mixed (NATO + identity) |
+
+Standalone KScript files under `data/` are already annotated.
 
 ## Design Decisions
 
@@ -218,6 +235,23 @@ Collisions are acceptable because overwriting is intentional in this workflow.
 
 ### DD-5: File polling vs file watching
 
+**Decision:** Poll the curriculum file (re-read before each lesson
+submission) rather than install a filesystem watcher.
+**Rationale:** Polling is portable, needs no extra dependencies, and the
+re-read cadence (once per lesson) is infrequent. Watchers add platform
+fragility for no real latency gain at this loop speed.
+
+### DD-6: Curriculum annotation word themes
+
+Each curriculum uses a single word theme — identity names, MHALL nursery
+rhyme, or NATO phonetic — rather than mixed themes, so curricula stay
+self-documenting. NATO phonetic (Alpha, Beta, Charlie…) is used for
+abstract-letter curricula because the words are semantically meaningful
+nouns that produce clean NLP type bits and `A` is always `Alpha` (standard,
+unambiguous). Block comments are placed only on the first appearance of a
+multi-character sig in a code block; subsequent uses inherit the binding
+via upward scope traversal.
+
 **Decision:** Re-read file before each lesson submission (poll), not file system watches.
 **Rationale:** Simpler, no platform dependencies, sufficient for the expected
 amendment frequency (human or LLM-driven, not high-throughput).
@@ -249,3 +283,4 @@ after the parser is done. Harness wiring is last.
 | 5    | ✅ done  | Cogitation context             |
 | 6    | ✅ done  | Harness wiring                 |
 | 7    | ✅ done  | Config                         |
+| 8    | ✅ done  | Curriculum annotation conventions |
