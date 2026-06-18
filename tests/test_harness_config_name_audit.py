@@ -146,9 +146,11 @@ def test_no_stale_bare_harness_yaml_in_audit_scope() -> None:
 
     The guard passes once Steps 2-3 have swapped every stale literal to the
     canonical ``training.harness.yaml`` (and reworded the single historical
-    reference at ``test_harness_cli.py``). The ``TestSessionDirInitDocstring``
-    class in ``test_auto_tune_session.py`` is an intentional, exempted
-    rename-regression test (see module docstring).
+    reference at ``test_harness_cli.py``). Two kinds of deliberate
+    rename-regression guard are intentionally exempted (see module docstring):
+    the ``TestSessionDirInitDocstring`` class (KB-313) and the
+    ``test_*_docstring_uses_canonical_filename`` method drift-guards
+    (KB-317/KB-325), both in ``test_auto_tune_session.py``.
     """
     offenders: list[str] = []
     for rel in _SCOPE_FILES:
@@ -229,5 +231,62 @@ def test_canonical_training_harness_yaml_never_flagged() -> None:
     lines = [
         'x = root / "training.harness.yaml"',
         "        # training.harness.yaml is canonical",
+    ]
+    assert _scan_lines(lines) == []
+
+
+def test_exempt_method_closes_at_next_top_level_class() -> None:
+    """Exempt method region also closes at the next top-level ``class``/``def``.
+
+    After a ``test_*_docstring_uses_canonical_filename`` method, a top-level
+    ``class Other:`` (indent 0) must NOT stay masked: a bare ``harness.yaml``
+    in its body is still flagged. The ``_TOP_LEVEL_DEF`` boundary closes the
+    method exemption (as well as the class exemption).
+    """
+    lines = [
+        "class TestSessionDirInit:",
+        "    def test_host_port_override_docstring_uses_canonical_filename(self) -> None:",
+        '        assert "overrides harness.yaml defaults" not in (doc or "")',
+        "",
+        "class Other:",
+        "    # legacy harness.yaml comment",
+        "    pass",
+    ]
+    result = _scan_lines(lines)
+    assert len(result) == 1
+    lineno, line = result[0]
+    assert lineno == 6
+    assert "harness.yaml" in line
+
+
+def test_module_level_bare_harness_yaml_is_flagged() -> None:
+    """A bare ``harness.yaml`` at module top level is flagged.
+
+    Confirms the baseline ``_STALE_HARNESS_YAML`` detection is unchanged
+    outside any exemption block: a module-level literal (no enclosing class or
+    method) is still caught.
+    """
+    lines = [
+        "# legacy reference to harness.yaml here",
+        "x = 1",
+    ]
+    result = _scan_lines(lines)
+    assert len(result) == 1
+    lineno, line = result[0]
+    assert lineno == 1
+    assert "harness.yaml" in line
+
+
+def test_full_harness_fixture_never_flagged() -> None:
+    """The ``full_harness.yaml`` test fixture is never flagged.
+
+    ``_STALE_HARNESS_YAML`` carries a ``full_`` negative lookbehind so the
+    distinct ``full_harness.yaml`` fixture (not the renamed config) is not
+    mistaken for the obsolete bare name. This pins that lookbehind alongside
+    the ``training.`` lookbehind covered above.
+    """
+    lines = [
+        'fixture = root / "full_harness.yaml"',
+        "        # full_harness.yaml fixture",
     ]
     assert _scan_lines(lines) == []
