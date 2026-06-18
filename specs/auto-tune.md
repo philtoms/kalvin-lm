@@ -32,7 +32,7 @@ The system has two components:
 | created_from_commit | `str`         | Commit hash at `init` time                       |
 | worktree_path       | `str`         | Absolute path to the session's git worktree      |
 
-### Event Frame (events.jsonl)
+### Event Frame
 
 Each line is a JSON object with a monotonic `seq` counter.
 
@@ -60,7 +60,7 @@ Each line is a JSON object with a monotonic `seq` counter.
 | raw    | `{signature: int, nodes: list[int]}` | Raw KLine data            |
 | source | `str`                                | Decompiled KScript source |
 
-### Command Frame (cmd.json)
+### Command Frame
 
 A single JSON object, written by pi, consumed and deleted by the supervisor.
 
@@ -80,7 +80,7 @@ A single JSON object, written by pi, consumed and deleted by the supervisor.
 | `continue` | `action`         | No-op: acknowledge event, wait for next                                                                       |
 | `shutdown` | `action`         | Graceful supervisor shutdown                                                                                  |
 
-### Status Object (status.json)
+### Status Object
 
 | Field          | Type             | Description                                                                                          |
 | -------------- | ---------------- | ---------------------------------------------------------------------------------------------------- |
@@ -91,7 +91,7 @@ A single JSON object, written by pi, consumed and deleted by the supervisor.
 | state          | `str`            | `connecting`, `waiting_for_event`, `waiting_for_command`, `run_complete`, `shutting_down`, `errored` |
 | started_at     | `str`            | ISO timestamp                                                                                        |
 
-### Snapshot Metadata (runs/\<n\>/meta.json)
+### Snapshot Metadata
 
 | Field      | Type   | Description                                  |
 | ---------- | ------ | -------------------------------------------- |
@@ -101,27 +101,9 @@ A single JSON object, written by pi, consumed and deleted by the supervisor.
 | git_branch | `str`  | Branch at snapshot time                      |
 | git_dirty  | `bool` | Whether working tree had uncommitted changes |
 
-### Directory Structure
+### Session Layout
 
-Sessions live inside a git worktree at `.worktrees/auto-tune/<session>/`. The session directory is nested within:
-
-```
-.worktrees/auto-tune/<session>/          # Git worktree (full source checkout on auto-tune/<session> branch)
-├── src/                                  # Source code (isolated from main repo)
-├── auto-tune/
-│   └── <session>/
-│       ├── config.json           # Session configuration
-│       ├── cmd.json              # Single command (pi writes, supervisor consumes)
-│       ├── status.json           # Supervisor heartbeat
-│       ├── events.jsonl          # Append-only event stream
-│       └── runs/
-│       │   └── 001/
-│       │       ├── state.json    # Curriculum tracking state snapshot
-│       │       ├── events.jsonl  # Full event log up to snapshot
-│       │       ├── model.bin     # Kalvin model snapshot (if exists)
-│       │       └── meta.json     # Git metadata, timestamp
-└── ...                                  # Other project files
-```
+Session artefacts are persisted to files inside the session's git worktree. The concrete directory layout and the concept→file mapping (which concept names which real file) are documented in `@plans/impl/auto-tune-session-layout.md` — file structure and code locations are Plan-owned per Structural Rule #5.
 
 ## API
 
@@ -129,17 +111,17 @@ Sessions live inside a git worktree at `.worktrees/auto-tune/<session>/`. The se
 
 | Command                                                                         | Description                                                            |
 | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `auto-tune init --session <name> --curriculum <path> [--host <h>] [--port <p>]` | Create worktree, session directory, config.json, git branch            |
+| `auto-tune init --session <name> --curriculum <path> [--host <h>] [--port <p>]` | Create worktree, session directory, session configuration, git branch  |
 | `auto-tune teardown --session <name>`                                           | Remove worktree and delete branch                                      |
 | `auto-tune start-harness --session <name>`                                      | Start harness server, record PID, wait for ready                       |
 | `auto-tune stop-harness --session <name>`                                       | Graceful SIGTERM to harness, cleanup PID                               |
 | `auto-tune start-supervisor --session <name>`                                   | Start CLI supervisor, record PID, wait for connected                   |
 | `auto-tune stop-supervisor --session <name>`                                    | Send shutdown command, wait for exit (SIGKILL on timeout)              |
-| `auto-tune send --session <name> --command <json>`                              | Write command to cmd.json, return immediately                          |
-| `auto-tune events --session <name> [--after <seq>]`                             | Print events.jsonl lines after given sequence number (default: all)    |
+| `auto-tune send --session <name> --command <json>`                              | Write the command to the command file, return immediately              |
+| `auto-tune events --session <name> [--after <seq>]`                             | Print event-stream records after the given sequence (default: all)     |
 | `auto-tune step --session <name> --command <json>`                              | Write command, block until next event appears, print it                |
-| `auto-tune status --session <name>`                                             | Print status.json                                                      |
-| `auto-tune snapshot --session <name>`                                           | Capture state, events, model, git metadata to runs/\<n\>/              |
+| `auto-tune status --session <name>`                                             | Print the status object                                                |
+| `auto-tune snapshot --session <name>`                                           | Capture state, events, model, git metadata to the run directory        |
 | `auto-tune restore --session <name> --run <n>`                                  | Restore curriculum state and model from run snapshot                   |
 | `auto-tune reset --session <name> [--fresh-model]`                              | Delete curriculum state file, truncate events, optionally delete model |
 
@@ -149,10 +131,10 @@ Sessions live inside a git worktree at `.worktrees/auto-tune/<session>/`. The se
 
 1. `init` creates the session directory and all supporting files inside a git worktree.
 2. `init` creates a git worktree at `.worktrees/auto-tune/<session>/` with branch `auto-tune/<session>` from the current HEAD. The main repo stays on its current branch.
-3. `init` records the current branch name, commit hash, and worktree path in `config.json`.
+3. `init` records the current branch name, commit hash, and worktree path in the session configuration.
 4. `init` reads the project harness config to derive default host/port, overridable via `--host`/`--port`.
-5. `config.json` stores the resolved `harness_url` as `ws://<host>:<port>`.
-6. `init` records the Kalvin model path (derived from harness config) in `config.json`.
+5. The session configuration stores the resolved `harness_url` as `ws://<host>:<port>`.
+6. `init` records the Kalvin model path (derived from harness config) in the session configuration.
 
 ### Harness Lifecycle
 
@@ -166,13 +148,13 @@ Sessions live inside a git worktree at `.worktrees/auto-tune/<session>/`. The se
 
 11. `start-supervisor` starts the CLI supervisor as a background process.
 12. The supervisor connects to the harness WebSocket, sends registration frame `{"register": "supervisor"}`.
-13. On successful connection, writes `{"seq": 1, "type": "connected"}` to `events.jsonl` and sets `status.json` state to `waiting_for_event`.
-14. `start-supervisor` polls `status.json` until `connected` is `true`, then returns.
-15. `stop-supervisor` writes `{"action": "shutdown"}` to `cmd.json`, waits for process exit (SIGKILL on 5s timeout).
+13. On successful connection, writes `{"seq": 1, "type": "connected"}` to the event stream and sets the status object's state to `waiting_for_event`.
+14. `start-supervisor` polls the status object until `connected` is `true`, then returns.
+15. `stop-supervisor` writes `{"action": "shutdown"}` to the command file, waits for process exit (SIGKILL on 5s timeout).
 
 ### Per-Event Blocking Model
 
-16. The supervisor's main loop: receive one WebSocket message → write event to `events.jsonl` → update `status.json` state to `waiting_for_command` → poll `cmd.json` until a command appears → consume and delete `cmd.json` → process command → return to waiting for next WebSocket message.
+16. The supervisor's main loop: receive one WebSocket message → write event to the event stream → update the status object's state to `waiting_for_command` → poll the command file until a command appears → consume and delete it → process command → return to waiting for next WebSocket message.
 17. The supervisor buffers the latest `ratify_request` proposal for use when `ratify` command arrives.
 18. On `continue` command, the supervisor sends nothing to the harness and returns to waiting for the next event.
 19. On `shutdown` command, the supervisor writes `{"type": "disconnected"}` event, disconnects WebSocket, and exits.
@@ -185,7 +167,7 @@ Sessions live inside a git worktree at `.worktrees/auto-tune/<session>/`. The se
 
 ### Event Enrichment
 
-23. Raw `RationaliseEvent` payloads are enriched with decompiled source before writing to `events.jsonl`.
+23. Raw `RationaliseEvent` payloads are enriched with decompiled source before writing to the event stream.
 24. KLine objects are converted to the KLine Display Object format: `{raw: {signature, nodes}, source: <decompiled>}`.
 25. Significance values are converted to the Significance Object format: `{raw, normalised, level}`.
 26. The significance level (`S1`–`S4`) is derived from the raw significance and `D_MAX` using existing classification logic.
@@ -193,7 +175,7 @@ Sessions live inside a git worktree at `.worktrees/auto-tune/<session>/`. The se
 
 ### Run Completion
 
-28. When the supervisor receives a progress event with `status: "complete"`, it writes the event and sets `status.json` state to `run_complete`.
+28. When the supervisor receives a progress event with `status: "complete"`, it writes the event and sets the status object's state to `run_complete`.
 29. The supervisor does not exit on run completion — it remains connected, waiting for pi to send `restart`, `shutdown`, or another command.
 
 ### Error Handling
@@ -203,18 +185,18 @@ Sessions live inside a git worktree at `.worktrees/auto-tune/<session>/`. The se
 
 ### Snapshot and Restore
 
-32. `snapshot` increments the run counter in `config.json` and creates `runs/<n>/`.
-33. `snapshot` copies the curriculum state file to `runs/<n>/state.json`.
-34. `snapshot` copies `events.jsonl` to `runs/<n>/events.jsonl`.
-35. `snapshot` copies the Kalvin model file (if it exists) to `runs/<n>/model.bin`.
-36. `snapshot` writes `runs/<n>/meta.json` with current git HEAD, branch, dirty status, and timestamp.
+32. `snapshot` increments the run counter in the session configuration and creates the run directory.
+33. `snapshot` copies the curriculum state file to the run's state snapshot.
+34. `snapshot` copies the event stream to the run's event log.
+35. `snapshot` copies the Kalvin model file (if it exists) to the run's model snapshot.
+36. `snapshot` writes the run's metadata with current git HEAD, branch, dirty status, and timestamp.
 37. `restore` copies state and model files from the specified run back to their working locations.
 38. `restore` requires the harness and supervisor to be stopped.
 
 ### Reset
 
-39. `reset` deletes the curriculum state file (e.g., `curricula/<slug>.json`), resolved from the worktree root.
-40. `reset` truncates `events.jsonl` to empty.
+39. `reset` deletes the curriculum state file, resolved from the worktree root.
+40. `reset` truncates the event stream to empty.
 41. `reset` does not modify the run counter or existing snapshots.
 42. `reset --fresh-model` also deletes the Kalvin model file, resolved from the worktree root.
 
@@ -230,7 +212,7 @@ Sessions live inside a git worktree at `.worktrees/auto-tune/<session>/`. The se
 | ----- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
 | AT-1  | `init` creates session directory with all supporting files                                                                   | §Session Initialisation |
 | AT-2  | `init` creates git worktree at `.worktrees/auto-tune/<session>` with branch `auto-tune/<session>`, main repo stays unchanged | §Session Initialisation |
-| AT-3  | `init` records source branch, commit, harness URL, model path in config.json                                                 | §Session Initialisation |
+| AT-3  | `init` records source branch, commit, harness URL, model path in the session configuration                                   | §Session Initialisation |
 | AT-4  | `start-harness` starts harness and waits for WebSocket readiness                                                             | §Harness Lifecycle      |
 | AT-5  | `stop-harness` gracefully terminates harness process                                                                         | §Harness Lifecycle      |
 | AT-6  | Supervisor connects, registers as supervisor role, writes connected event                                                    | §Supervisor Lifecycle   |

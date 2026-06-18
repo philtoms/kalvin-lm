@@ -33,6 +33,22 @@ names the project config must use ``training.harness.yaml``. The bare
 ``plans/impl/reactive-delegation.md`` and ``plans/role-based-routing.md`` were
 swept to the canonical name (KB-316) and are now pinned here.
 
+KB-331 extended the same Structural Rule #5 principle to the auto-tune session
+data-format filenames. ``docs/cascade-development.md`` now carries a "Rule #5 —
+what counts as a file name" clarification with a uniform (context-free) ruling:
+every enumerated data-format filename and path template is purged from ``specs/``
+and referenced by concept instead, with the concept→file mapping documented once
+in the plan layer (``plans/impl/auto-tune-session-layout.md``). The new specs
+guard ``test_specs_reference_data_files_by_concept_not_filename`` scans
+``specs/*.md`` for the purged set — the data filenames (``config.json``,
+``cmd.json``, ``status.json``, ``events.jsonl``, ``meta.json``, ``state.json``,
+``model.bin``) and the path templates (``runs/<n>``, ``curricula/<slug>``, bare
+``curricula/``). It enforces only the KB-331 auto-tune session set, not a
+universal filename ban: other filename classes (e.g. external data-asset
+filenames in ``specs/tokenizer.md``, or source-code locations) are separate
+concerns tracked elsewhere. Plans legitimately hold these tokens (file structure
+is Plan-owned), so they are out of scope for this specs guard.
+
 Run: uv run pytest tests/test_config_name_consistency.py -v
 """
 
@@ -56,6 +72,17 @@ _BARE_HARNESS_YAML = re.compile(r"(?<!training\.)harness\.yaml")
 # any filename" (``docs/cascade-development.md`` Structural Rule #5), so specs
 # must carry no ``harness.yaml`` literal at all.
 _HARNESS_YAML = re.compile(r"harness\.yaml")
+
+# The auto-tune session data-format filenames + path templates purged from
+# specs/ by KB-331 (see docs/cascade-development.md "Rule #5 — what counts as a
+# file name"). Uniform/context-free: every token here is banned from specs/
+# outright (no context filter needed, which is why a flat _offenders() scan
+# suffices). ``<``, ``>``, and ``/`` are literal in the pattern. NB this is the
+# enumerated KB-331 auto-tune session set, not a universal filename detector.
+_DATA_FILE_TOKENS = re.compile(
+    r"config\.json|cmd\.json|status\.json|events\.jsonl|meta\.json|"
+    r"state\.json|model\.bin|runs/<n>|curricula/<slug>|curricula/"
+)
 
 
 def _offenders(path: Path, pattern: re.Pattern[str] = _BARE_HARNESS_YAML) -> list[str]:
@@ -92,6 +119,34 @@ def test_specs_reference_harness_config_by_concept_not_filename() -> None:
         "'harness.yaml' literal found in specs/ (specs must reference the harness "
         "config by concept, not filename -- see docs/cascade-development.md "
         "Structural Rule #5):\n" + "\n".join(offenders)
+    )
+
+
+def test_specs_reference_data_files_by_concept_not_filename() -> None:
+    """Every ``specs/*.md`` must reference auto-tune session data files by concept.
+
+    KB-331 extended Structural Rule #5 ("No file names in specs. Code locations
+    belong in plans only.") to the auto-tune session data-format filenames. Per
+    the "Rule #5 — what counts as a file name" clarification in
+    ``docs/cascade-development.md``, the WHAT layer describes each persisted
+    artefact by concept (e.g. "the session configuration", "the event stream",
+    "the run directory"); the concrete names and the on-disk layout live in the
+    plan layer (``plans/impl/auto-tune-session-layout.md`` holds the
+    concept→file mapping). This test rejects any of the purged data-format
+    filenames or path templates in ``specs/``.
+
+    Scope: this enforces only the KB-331 auto-tune session set, not every
+    filename class — external data-asset filenames (e.g. in
+    ``specs/tokenizer.md``) and source-code locations are separate concerns.
+    """
+    offenders: list[str] = []
+    for spec in sorted(REPO_ROOT.glob("specs/*.md")):
+        offenders.extend(_offenders(spec, _DATA_FILE_TOKENS))
+    assert not offenders, (
+        "purged data-format filename/path template found in specs/ (specs must "
+        "reference session data files by concept, not filename -- see "
+        "docs/cascade-development.md 'Rule #5 -- what counts as a file name' "
+        "and plans/impl/auto-tune-session-layout.md):\n" + "\n".join(offenders)
     )
 
 

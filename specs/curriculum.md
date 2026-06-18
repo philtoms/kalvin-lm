@@ -137,7 +137,7 @@ Extended with structured curriculum context fields.
 
 | Input Format         | Action                                           |
 | ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
-| Text starting with `goal:` | Extract goal text, generate curriculum via LLM, write to `curricula/`. |
+| Text starting with `goal:` | Extract goal text, generate curriculum via LLM, write to the curricula directory. |
 | File path (existing file)  | Load curriculum directly from file.              |
 
 ### Progress Events
@@ -219,9 +219,9 @@ Extended with structured curriculum context fields.
     If parsing fails, a single retry is attempted with the error message
     included in the prompt.
 23. If the second attempt fails, `CurriculumGenerationError` is raised.
-24. The validated curriculum is written to `<curricula_dir>/<slug>.md`,
-    where the slug is derived from the goal (lowercase, hyphens, non-
-    alphanumeric characters stripped, truncated to 60 characters).
+24. The validated curriculum is written as markdown into the generator's
+    `curricula_dir`, named by a slug derived from the goal (lowercase, hyphens,
+    non-alphanumeric characters stripped, truncated to 60 characters).
 25. `generate()` returns the `Path` of the written file.
 
 ### Session Startup
@@ -356,7 +356,7 @@ Annotations, §10 NLP Binding Resolution); this section fixes the
 | CRS-33 | Generator parses LLM response via `from_string` and validates                        | @curriculum §Curriculum Generation          |
 | CRS-34 | Generator retries once on parse failure with error feedback                          | @curriculum §Curriculum Generation          |
 | CRS-35 | Generator raises `CurriculumGenerationError` on second failure                       | @curriculum §Curriculum Generation          |
-| CRS-36 | Generator writes validated markdown to `curricula/<slug>.md`                         | @curriculum §Curriculum Generation          |
+| CRS-36 | Generator writes validated markdown to the curriculum file                            | @curriculum §Curriculum Generation          |
 | CRS-37 | Generator derives slug from goal (lowercase, hyphens, non-alphanumeric stripped)     | @curriculum §Curriculum Generation          |
 | CRS-38 | Session startup loads curriculum from runtime parameter                              | @curriculum §Session Startup                |
 | CRS-39 | Session startup resumes from saved state with curriculum_file                        | @curriculum §Session Startup                |
