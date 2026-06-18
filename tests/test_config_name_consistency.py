@@ -11,10 +11,14 @@ to ``specs/`` or to that plan's CLI usage command. The detection pattern matches
 a *bare* ``harness.yaml`` (the obsolete name) but NOT the canonical
 ``training.harness.yaml``.
 
-Note: this guard is intentionally scoped to the layers KB-314 touched. Other
-``plans/*.md`` files retain historical ``harness.yaml`` references (headings,
-code locations, task trees, implementation instructions) that are out of scope;
-those are tracked as follow-up work, not asserted here.
+Note: KB-314 originally scoped this guard to ``specs/*.md`` and the single
+``implement-harness-server.md`` usage command. KB-321 extended it to the whole
+HOW layer: ``test_all_plans_use_canonical_config_filename`` now scans every
+``plans/**/*.md`` recursively (including ``plans/impl/``), so any plan that
+names the project config must use ``training.harness.yaml``. The bare
+``harness.yaml`` literals that previously lived in ``plans/impl/curriculum.md``,
+``plans/impl/reactive-delegation.md`` and ``plans/role-based-routing.md`` were
+swept to the canonical name (KB-316) and are now pinned here.
 
 Run: uv run pytest tests/test_config_name_consistency.py -v
 """
@@ -63,4 +67,23 @@ def test_harness_server_plan_usage_command_uses_canonical_name() -> None:
     assert not offenders, (
         "stale bare 'harness.yaml' found in plans/implement-harness-server.md "
         "(must be 'training.harness.yaml'):\n" + "\n".join(offenders)
+    )
+
+
+def test_all_plans_use_canonical_config_filename() -> None:
+    """Every ``plans/**/*.md`` (recursive) must use the canonical name.
+
+    KB-321 extended this guard from the single ``implement-harness-server.md``
+    usage command to the entire HOW layer. Any plan — including future additions
+    under ``plans/impl/`` — that names the project config must use
+    ``training.harness.yaml``, never the pre-rename bare ``harness.yaml``. The
+    recursive ``plans/**/*.md`` glob is intentional so new plan files are covered
+    automatically without having to extend a file list.
+    """
+    offenders: list[str] = []
+    for plan in sorted(REPO_ROOT.glob("plans/**/*.md")):
+        offenders.extend(_offenders(plan))
+    assert not offenders, (
+        "stale bare 'harness.yaml' found in plans/ (must be 'training.harness.yaml'):\n"
+        + "\n".join(offenders)
     )
