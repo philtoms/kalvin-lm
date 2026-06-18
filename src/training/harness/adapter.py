@@ -52,6 +52,32 @@ logger = logging.getLogger(__name__)
 EntryKey = tuple[int, tuple[int, ...]]
 
 
+def _materialise_kline(obj: object) -> KLine:
+    """Materialise an inbound countersign payload to a :class:`KLine`.
+
+    This is the inbound mirror of ``_domain_json_default``
+    (``training.harness.protocol``): a countersign frame that traversed the
+    WebSocket arrives as a plain ``dict`` — the canonical KLine wire shape
+    ``{"signature": int, "nodes": list[int]}`` produced by the harness's
+    outbound encoder. ``KAgent.countersign`` reads ``.nodes`` and
+    ``.signature``, so the payload must be reified to a real ``KLine`` at
+    this wire boundary (the action-aware inbound boundary).
+
+    A ``KLine`` already passed in is returned unchanged, preserving the
+    auto-countersign *direct-bus* path (``Reactor._auto_countersign`` sends
+    live ``KLine`` objects on the bus without a WebSocket round-trip).
+
+    Any other type raises ``TypeError`` so malformed payloads fail loudly
+    rather than being coerced into something meaningless — mirroring
+    ``_domain_json_default``'s philosophy.
+    """
+    if isinstance(obj, KLine):
+        return obj
+    if isinstance(obj, dict):
+        return KLine(signature=obj["signature"], nodes=obj["nodes"])
+    raise TypeError(f"countersign payload must be a KLine or wire dict, got {type(obj).__name__}")
+
+
 class KAgentAdapter:
     """Thin integration layer between KAgent and the role-based message bus.
 
@@ -125,8 +151,10 @@ class KAgentAdapter:
             entry in the sender map, and call ``kagent.rationalise(entry)``
             for each compiled entry.
         countersign:
-            Call ``kagent.countersign(kline)`` with the KLine in
-            ``msg.message``.
+            Call ``kagent.countersign(kline)``. The KLine in ``msg.message``
+            may arrive as a wire dict over the WebSocket; it is materialised
+            to a real ``KLine`` at this inbound boundary (see
+            :func:`_materialise_kline`).
         save:
             Persist Kalvin's model to disk via agent_codec.
         load:
@@ -216,12 +244,22 @@ class KAgentAdapter:
             self._kagent.rationalise(entry)  # fire-and-forget; events come via on_event
 
     def _handle_countersign(self, msg: Message) -> None:
-        """Forward a countersign request to the KAgent."""
+        """Forward a countersign request to the KAgent.
+
+        The payload in ``msg.message`` may be a live :class:`KLine` (the
+        auto-countersign *direct-bus* path, where ``Reactor._auto_countersign``
+        posts real ``KLine`` objects on the bus) or a canonical wire dict
+        ``{"signature", "nodes"}`` — the inbound shape produced by the
+        harness's outbound encoder once a frame traverses the WebSocket. It is
+        materialised to a real ``KLine`` via :func:`_materialise_kline` before
+        being handed to :meth:`KAgent.countersign`, which reads ``.nodes`` and
+        ``.signature``.
+        """
         if self._kagent is None:
             logger.error("No KAgent bound; cannot countersign")
             return
 
-        kline = msg.message
+        kline = _materialise_kline(msg.message)
         logger.info("Countersign: %s", kline)
         self._kagent.countersign(kline)
 

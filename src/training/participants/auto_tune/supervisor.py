@@ -117,7 +117,16 @@ class CLISupervisor:
                 event = enrich_event(frame, self._seq)
 
                 if event.get("type") == "ratify_request":
-                    self._latest_ratify_proposal = event.get("proposal")
+                    # Buffer the canonical KLine wire dict ({"signature",
+                    # "nodes"}) straight from the inbound frame, not the
+                    # enriched display object produced by ``enrich_event``
+                    # (which wraps the proposal as {"raw": {...}, "source": ...}).
+                    # The emitted countersign frame must carry the wire
+                    # contract's KLine shape (see ``_domain_json_default`` /
+                    # ``events._build_kline_display``); the raw frame's
+                    # proposal is exactly that shape, since the harness
+                    # encoded the KLine outbound before it reached us.
+                    self._latest_ratify_proposal = frame.get("message", {}).get("proposal")
 
                 self._append_event(event)
 

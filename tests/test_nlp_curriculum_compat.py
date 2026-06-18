@@ -409,6 +409,135 @@ class TestFirstStepsS2Routing:
             "(proving the auto-countersign backstop did not swallow it)"
         )
 
+    def test_ratify_request_round_trip_completes(self, nlp_tokenizer: NLPTokenizer) -> None:
+        """Full-stack regression (KB-337): a supervisor countersign round-trips.
+
+        Closes the KB-320 gap: ``test_emits_ratify_request_full_stack`` only
+        asserts the ``ratify_request`` *fires*. This test continues past it —
+        it extracts the buffered proposal, converts it to its wire-dict form
+        ``{"signature", "nodes"}`` (faithfully simulating the WebSocket JSON
+        round-trip — a real supervisor re-emits the canonical shape, not a
+        live KLine), and sends the resulting ``countersign`` onto the bus.
+
+        Before KB-337 the wire dict reached ``KAgent.countersign`` and raised
+        ``AttributeError: 'dict' object has no attribute 'nodes'`` on the bus
+        dispatch thread, killing the run. After the fix the adapter
+        materialises the dict to a KLine (Step 1) and the reciprocal kline is
+        rationalised.
+        """
+        from collections import deque
+
+        from kalvin.signature import make_signature
+        from training.harness.adapter import KAgentAdapter
+        from training.harness.bus import MessageBus
+        from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
+        from training.harness.message import Message
+        from training.trainer.curriculum import Curriculum
+        from training.trainer.curriculum_document import CurriculumDocument
+        from training.trainer.trainer import Trainer
+
+        class _StepBus(MessageBus):
+            """FIFO bus: send() enqueues; pump() dispatches one message on the
+            caller's thread (no bus.run() thread, no recursive dispatch)."""
+
+            def __init__(self) -> None:
+                super().__init__()
+                self._q: deque = deque()
+
+            def send(self, msg: object) -> None:  # type: ignore[override]
+                self._q.append(msg)
+
+            def pump(self) -> bool:
+                if not self._q:
+                    return False
+                self._dispatch(self._q.popleft())
+                return True
+
+        path = CURRICULA_DIR / "first-steps-s2.md"
+        bus = _StepBus()
+        captured: list = []
+        bus.subscribe("*", lambda m: captured.append(m))
+        bus.subscribe(SUPERVISOR_ROLE, lambda m: None)  # sink supervisor relays
+
+        adapter = KAgentAdapter(bus, tokenizer=nlp_tokenizer)
+        agent = KAgent(tokenizer=nlp_tokenizer, adapter=adapter)
+        adapter.bind(agent)
+
+        doc = CurriculumDocument.from_file(path)
+        trainer = Trainer(bus, Curriculum(doc), curriculum_file=path)
+        trainer.start_session()
+
+        try:
+            # Drive the FIFO queue until a ratify_request fires (the dual-misfit
+            # that escapes the auto-countersign backstop), draining the
+            # Cogitator between pumps so async S2/S3 events are enqueued.
+            ratify = None
+            for _ in range(4000):
+                agent.cogitate_drain(2.0)
+                if not bus.pump():
+                    break
+                ratify_msgs = [m for m in captured if m.action == "ratify_request"]
+                if ratify_msgs:
+                    ratify = ratify_msgs[0]
+                    agent.cogitate_drain(2.0)
+                    for _ in range(50):
+                        if not bus.pump():
+                            break
+                    break
+            assert ratify is not None, (
+                "expected a ratify_request for the lesson-5 dual misfit "
+                "(precondition for the countersign round-trip)"
+            )
+
+            # The on-bus ratify_request carries a LIVE KLine proposal (no
+            # WebSocket round-trip yet). Convert it to the canonical wire dict
+            # a real supervisor re-emits — do NOT pass the live object, or the
+            # dict crash is not reproduced.
+            proposal = ratify.message["proposal"]
+            proposal_wire = {
+                "signature": proposal.signature,
+                "nodes": list(proposal.nodes),
+            }
+            # The reciprocal kline countersign will create + rationalise:
+            # {make_signature(proposal.nodes): [proposal.signature]}.
+            reciprocal_sig = make_signature(list(proposal.nodes))
+
+            # Supervisor answers the ratify_request with a countersign carrying
+            # the wire-dict proposal. Before KB-337 this raised AttributeError
+            # inside _handle_countersign on the bus dispatch thread.
+            raised: BaseException | None = None
+            bus.send(
+                Message(
+                    role=TRAINEE_ROLE,
+                    action="countersign",
+                    message=proposal_wire,
+                    sender="supervisor",
+                )
+            )
+
+            # Pump the countersign and any resulting cogitation events, draining
+            # the Cogitator between pumps. Bounded so the test cannot hang.
+            for _ in range(4000):
+                agent.cogitate_drain(2.0)
+                try:
+                    if not bus.pump():
+                        break
+                except BaseException as exc:  # noqa: BLE001 — surface the crash
+                    raised = exc
+                    break
+
+            assert raised is None, (
+                f"countersign round-trip raised {type(raised).__name__}: {raised}"
+            )
+            # The reciprocal kline was rationalised — rationalise always stages
+            # the kline in the model (at minimum STM), so it is now findable.
+            assert agent.model.find(reciprocal_sig) is not None, (
+                "expected the countersign reciprocal kline to be rationalised "
+                "(present in the model) after the wire-dict countersign"
+            )
+        finally:
+            agent.cogitate_join(2.0)
+
 
 # ── KB-333: curriculum lesson-count + structure snapshot guard ──────────
 

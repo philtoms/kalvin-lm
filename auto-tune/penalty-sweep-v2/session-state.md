@@ -86,6 +86,14 @@ significance observable is unaffected; only the (optional) drive-to-completion p
 blocked. The "run outcome" observable is therefore `stalled (lesson 5, no-supervisor stall,
 per KB-320)` for all three runs — a consistent, comparable terminal state.
 
+> **Status (KB-337, now fixed):** KB-337 landed the fix — the adapter materialises the
+> inbound `{"signature","nodes"}` wire dict to a `KLine`
+> (`adapter._materialise_kline`, the inbound mirror of KB-319's outbound
+> `_domain_json_default`), and the CLISupervisor now buffers/re-emits the canonical KLine
+> wire shape. A future sweep can use the `ratify` policy (drive-to-completion) without
+> stalling. (Note: the TUI/Slack supervisor participants have a parallel shape bug — they
+> re-emit the whole `ratify_request` message, not the proposal — tracked as a follow-up.)
+
 ## Decision Rule
 Pick the value that best satisfies (a) a visible, non-trivial S2 band (S2 events present,
 distinct from S3, S3 not erased), (b) the curriculum's S2 routing fires (KB-320's

@@ -338,8 +338,9 @@ async def test_ratify_sends_countersign(session_dir: Path) -> None:
                 await _write_cmd(session_dir, {"action": "continue"})
                 await _wait_for_state(session_dir, "waiting_for_event")
 
-                # Send ratify_request with a proposal
-                proposal_data = {"sig": 42, "nodes": [1, 2, 3]}
+                # Send ratify_request with a canonical KLine wire-dict proposal
+                # (the shape the harness encodes outbound via _domain_json_default).
+                proposal_data = {"signature": 42, "nodes": [1, 2, 3]}
                 await stub.send_to_client(
                     {
                         "action": "ratify_request",
@@ -358,6 +359,8 @@ async def test_ratify_sends_countersign(session_dir: Path) -> None:
                 msg = stub.received_frames[1]
                 assert msg["role"] == "trainee"
                 assert msg["action"] == "countersign"
+                # The supervisor re-emits the raw KLine wire dict (not the
+                # enriched display object) as the countersign payload.
                 assert msg["message"] == proposal_data
             finally:
                 task.cancel()

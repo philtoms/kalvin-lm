@@ -241,6 +241,34 @@ class TestHRNS10CountersignAction:
 
         kagent.rationalise.assert_not_called()
 
+    def test_countersign_materialises_wire_dict(self) -> None:
+        """A wire-dict payload is materialised to a KLine before countersign.
+
+        Regression guard for KB-337: a countersign frame that traversed the
+        WebSocket arrives as a plain dict (the canonical KLine wire shape
+        produced by the harness's outbound encoder). Without materialisation
+        ``KAgent.countersign`` does ``make_signature(kline.nodes)`` and raises
+        ``AttributeError: 'dict' object has no attribute 'nodes'``, killing the
+        bus-dispatch thread and stalling the training run.
+        """
+        bus = MessageBus()
+        kagent = FakeKAgent()
+        adapter = KAgentAdapter(bus, kagent=kagent)
+
+        wire = {"signature": 0xABCD, "nodes": [0x1234, 0x5678]}
+        adapter.on_message(
+            Message(
+                role=TRAINEE_ROLE,
+                action="countersign",
+                message=wire,
+                sender="supervisor",
+            )
+        )
+
+        # Compared via KLine.__eq__ (signature + nodes).
+        kagent.countersign.assert_called_once_with(KLine(0xABCD, [0x1234, 0x5678]))
+        # No AttributeError raised — the crash is gone.
+
 
 # ── HRNS-22: KAgent calls adapter directly ───────────────────────────────
 
