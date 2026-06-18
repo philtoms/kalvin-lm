@@ -1,8 +1,16 @@
 ## Objective
-Push S2/S3 reactive scaffolding to its limits by creating conflicting prior knowledge then submitting canonize entries that create multiple simultaneous misfits against established klines.
+Push S2/S3 reactive scaffolding to its limits by creating conflicting prior knowledge then submitting connoted misfits whose nodes have zero overlap with any established kline.
 
 ## Approach
-Introduce identities, establish bidirectional countersigns that create populated klines, then submit compound canonizes whose nodes have zero overlap with any existing candidate — triggering S3 routing and multiple expansion proposals.
+Introduce identities, establish bidirectional countersigns that create populated klines, then submit compound connoted misfits whose nodes are disjoint from every existing candidate — triggering S3 routing and expansion proposals.
+
+The misfit lessons use the `>` CONNOTED operator (not `=>` CANONIZED): a CANONIZED
+compound definition sets its signature to `make_signature(nodes)` by construction
+(@kscript §11.4), so such a kline is canonical, never a misfit, and resolves S1 via
+the self-grounded short-circuit (@agent AGT-14) before any candidate is retrieved
+(rule 47, @curriculum). Under the settled compiler contracts a genuine misfit kline
+is always single-node, so a multi-node intent is expressed as several single-node
+misfits — one per node.
 
 ## Lessons
 
@@ -24,18 +32,23 @@ A(lpha) == B(eta)
 ```
 
 ### 3
-Submit a compound canonize that creates misfits against the established A-B relationship. The entry {AB: [D, C]} has nodes [D, C] that have zero overlap with any candidate's nodes (A's identity, B's identity, {A: [B]}, {B: [A]}, {AB: []}, {AB: [A, B]}).
+Submit connoted misfits against the established A-B relationship. The compound
+`AB` (Alpha|Beta) signifies the `{A: [B]}` / `{B: [A]}` countersigns, but each
+misfit's single node (Delta, then Charlie) is disjoint from those countersign
+klines — zero node overlap, so each routes S3 and produces expansion proposals.
 
 ```
-(Alpha Beta)
-AB => D(elta) C(harlie)
+(Alpha Beta Charlie Delta)
+AB > D C
 ```
 
 ### 4
-Introduce identity E and submit another compound canonize creating cross-group misfits. ACE has bits for A, C, E. Its nodes [B, D] overlap with neither the A-B countersign klines nor the AB canonize klines.
+Introduce identity E and submit cross-group connoted misfits. The compound `ACE`
+(Alpha|Charlie|Echo) has bits for A, C and E. Its single nodes (Beta, then Delta)
+overlap with neither the A-B countersign klines nor any established kline.
 
 ```
 E(cho)
-(Alpha Charlie Echo)
-ACE => B(eta) D(elta)
+(Alpha Charlie Echo Beta Delta)
+ACE > B D
 ```

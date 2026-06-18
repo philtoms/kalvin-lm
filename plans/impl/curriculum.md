@@ -268,6 +268,26 @@ countersign) and `{MH:[Alpha]}` (dual, escapes the auto-countersign backstop
 and requests ratification). See @curriculum §Curriculum Annotation Conventions
 rule 47.
 
+### DD-6 note: `cascade-pressure.md` + `conflict-drill.md` misfit operators (KB-334)
+
+The misfit lessons in `cascade-pressure.md` (L3/L4/L5) and `conflict-drill.md`
+(L3/L4) use the `>` CONNOTED operator, not `=>` CANONIZED — the same rule-47
+convention as `first-steps-s2.md` lesson 5. KB-334 audited all six other
+curricula for the canonical-implies-not-a-misfit gap KB-320 found: these five
+lessons previously used `=>` whose compound RHS is discarded (the §11.4 MTS
+compound-sig resolution override) and whose kline is canonical by construction,
+so they resolved S1 via AGT-14 and never reached candidate retrieval. The fix
+rewrites each to `>` CONNOTED + block word lists; because a genuine misfit is
+always single-node under the settled compiler contracts, multi-node `=>` intents
+decompose into single-node misfits (e.g. `ABCD > E F` → `{ABCD:[Echo]}` +
+`{ABCD:[Foxtrot]}`). `cascade-pressure.md` L5 (`ABCDEFGHIJ > A C E G`) uses four
+nodes rather than ten: the "maximum candidate overlap" comes from the ten-atom
+signature signifying every established kline, not the node count, and a full
+ten-node decomposition would generate a pathological number of expansion events.
+`s3-auto-countersign.md`, `mhall-svo-single.md`, `mhall-svo-equivalence.md`, and
+`first-steps.md` were audited clean (rule-47-compliant or no S2/S3 intent). See
+@curriculum rule 47 and `KB-334-notes.md`.
+
 ## Build Order
 
 ```

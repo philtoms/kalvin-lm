@@ -235,21 +235,22 @@ class _RoutingAdapter:
         self.events.append(event)
 
 
-def _replay_first_steps_s2(path: Path, tok: NLPTokenizer) -> tuple[_RoutingAdapter, list[list]]:
-    """Replay ``first-steps-s2.md`` per-lesson through a fresh KAgent.
+def _replay_curriculum(path: Path, tok: NLPTokenizer) -> tuple[_RoutingAdapter, list[list]]:
+    """Replay any curriculum per-lesson through a single persistent ``KAgent``.
 
-    Mirrors ``KAgentAdapter._handle_submit``: for each lesson, compile its
+    Generalises the KB-320 ``first-steps-s2`` replay to an arbitrary curriculum
+    path. Mirrors ``KAgentAdapter._handle_submit``: for each lesson, compile its
     joined KScript, pre-register every compiled entry in STM, then rationalise
-    each entry against a single persistent agent. The Cogitator is drained
-    after every lesson (and once more at the end) so background S2/S3 expansion
-    events are collected before the caller reads them.
+    each entry against one persistent agent (so earlier lessons' countersigns
+    are available as candidates for later lessons' misfits). The Cogitator is
+    drained after every lesson (and once more at the end) so background S2/S3
+    expansion events are collected before the caller reads them.
 
     Returns the recording adapter and the per-lesson compiled-entry lists.
     """
     from training.trainer.curriculum_document import CurriculumDocument
 
     doc = CurriculumDocument.from_file(path)
-    assert doc.all_labels() == ["1", "2", "3", "4", "5"], doc.all_labels()
 
     adapter = _RoutingAdapter()
     agent = KAgent(tokenizer=tok, adapter=adapter)
@@ -289,7 +290,7 @@ class TestFirstStepsS2Routing:
         from kalvin.expand import D_MAX
 
         path = CURRICULA_DIR / "first-steps-s2.md"
-        adapter, lesson_entries = _replay_first_steps_s2(path, nlp_tokenizer)
+        adapter, lesson_entries = _replay_curriculum(path, nlp_tokenizer)
 
         # Lesson 5 is the dual-misfit lesson. Its misfit klines are the
         # non-canonical (sig != make_signature(nodes)) entries with nodes.
@@ -729,4 +730,65 @@ class TestCurriculumLessonCountGuard:
         assert bad_struct != _EXPECTED_STRUCTURE["mhall-svo-single.md"], (
             "the normalised-structure guard must flag the KB-333 in-lesson "
             "truncation (O=ALL -> O=A)"
+        )
+
+
+# ── KB-334: parametrised misfit-routing guard across audited curricula ────
+
+#: Curricula whose prose INTENDS S2/S3 misfit routing (the audited set). Each
+#: must emit at least one candidate-bearing ``0 < significance < D_MAX`` event
+#: when replayed through ``KAgent`` — the rule-47 enforcement (@curriculum rule
+#: 47): a misfit-intending lesson must NOT express its misfit with the ``=>``
+#: CANONIZED operator (canonical by construction → AGT-14 S1 short-circuit →
+#: never reaches candidate retrieval). ``first-steps-s2.md`` is the KB-320
+#: known-good reference. ``cascade-pressure.md`` and ``conflict-drill.md`` were
+#: fixed by KB-334 (``=>`` → ``>`` CONNOTED). ``mhall-svo-*`` were already
+#: correct (their leaf misfits use ``>``). Excluded: ``first-steps.md`` (no
+#: S2/S3 intent — covered by the compile smoke) and ``s3-auto-countersign.md``
+#: (its design is auto-countersign: the ``H > A`` misfit resolves to a
+#: structural S1 by intent, so no mid-band event fires by design — covered by
+#: ``tests/test_s3_auto_countersign.py``).
+_S2_S3_CURRICULA = [
+    "first-steps-s2.md",
+    "mhall-svo-single.md",
+    "mhall-svo-equivalence.md",
+    "cascade-pressure.md",
+    "conflict-drill.md",
+]
+
+
+class TestCurriculumMisfitRouting:
+    """KB-334: every S2/S3-intending curriculum reaches the S2/S3 band.
+
+    Generalises the KB-320 ``TestFirstStepsS2Routing`` mid-band assertion across
+    the audited set of curricula whose prose intends misfit routing. This guards
+    against the canonical-implies-not-a-misfit gap (rule 47): if a misfit lesson
+    regresses to the ``=>`` CANONIZED operator, the compiled kline is canonical
+    by construction and resolves S1 via the AGT-14 self-grounded short-circuit
+    before any candidate is retrieved — emitting only S1/S4 events, never a
+    candidate-bearing ``0 < significance < D_MAX`` expansion.
+    """
+
+    @pytest.mark.parametrize("curriculum_file", _S2_S3_CURRICULA)
+    def test_curriculum_reaches_s2_s3_band(
+        self, curriculum_file: str, nlp_tokenizer: NLPTokenizer
+    ) -> None:
+        """At least one candidate-bearing mid-band (S2/S3) event fires for a
+        curriculum whose prose intends misfit routing."""
+        from kalvin.expand import D_MAX
+
+        path = CURRICULA_DIR / curriculum_file
+        adapter, _lesson_entries = _replay_curriculum(path, nlp_tokenizer)
+
+        expansions = [
+            ev
+            for ev in adapter.events
+            if ev.kind == "frame" and ev.candidate is not None and 0 < ev.significance < D_MAX
+        ]
+        assert expansions, (
+            f"expected at least one S2/S3 expansion event (candidate-bearing, "
+            f"0 < significance < D_MAX) for {curriculum_file}; the curriculum is "
+            f"not reaching the S2 band — a misfit lesson may be using the `=>` "
+            f"CANONIZED operator (rule 47). "
+            f"events={_event_summary(adapter.events)}"
         )
