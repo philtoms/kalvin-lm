@@ -10,6 +10,7 @@ Usage:
 """
 
 import argparse
+import signal
 import sys
 import threading
 from collections import Counter
@@ -33,7 +34,11 @@ MHALL == SVO =>
      L > O
 """
 
-# ── Helpers ───────────────────────────────────────────────────────────
+class DeadlineExceededError(Exception):
+    """Raised when a wall-clock --deadline elapses mid-run."""
+
+
+# ── Helpers ──────────────────────────────────────────────────────────
 
 
 def significance_level(sig: int) -> str:
@@ -142,6 +147,18 @@ def main() -> None:
         default=5.0,
         help="Seconds to wait for the 'done' event before giving up (default: 5).",
     )
+    parser.add_argument(
+        "--deadline",
+        type=float,
+        default=0.0,
+        help=(
+            "Wall-clock limit in seconds for the WHOLE run. If the"
+            " rationalise/cogitate phase exceeds it, the script prints the"
+            " partial S1 count gathered so far and exits 124 (timeout)."
+            " Default 0 = disabled. Use this to bound runs against the"
+            " unfixed Model/STM race, which can livelock this script."
+        ),
+    )
     args = parser.parse_args()
 
     tokenizer = NLPTokenizer.from_files()
@@ -193,15 +210,43 @@ def main() -> None:
 
     # Rationalise
     print("\nRationalising...")
-    for k in klines:
-        agent.rationalise(k)
 
-    if not done_event.wait(timeout=args.timeout):
+    # Install a wall-clock deadline so an unfixed Model/STM race cannot
+    # livelock this script forever. SIGALRM only works on the main thread,
+    # which is exactly where this runs.
+    prev_handler = None
+    if args.deadline > 0:
+        def _alarm_handler(signum, frame):
+            raise DeadlineExceededError()
+
+        prev_handler = signal.signal(signal.SIGALRM, _alarm_handler)
+        signal.alarm(int(round(args.deadline)))
+
+    deadline_hit = False
+    try:
+        for k in klines:
+            agent.rationalise(k)
+
+        if not done_event.wait(timeout=args.timeout):
+            print(
+                f"\nWARNING: no 'done' event after {args.timeout:.1f}s — "
+                "continuing anyway."
+            )
+        agent.cogitate_join()
+    except DeadlineExceededError:
+        deadline_hit = True
+    finally:
+        if args.deadline > 0:
+            signal.alarm(0)  # cancel any pending alarm
+            if prev_handler is not None:
+                signal.signal(signal.SIGALRM, prev_handler)
+
+    if deadline_hit:
         print(
-            f"\nWARNING: no 'done' event after {args.timeout:.1f}s — "
-            "continuing anyway."
+            f"\nDEADLINE_EXCEEDED: --deadline {args.deadline:.1f}s elapsed "
+            "mid-run (likely the unfixed Model/STM race livelocking the "
+            "rationalise/cogitate phase). Reporting partial counts."
         )
-    agent.cogitate_join()
 
     # Print summary
     print(f"\nEvent summary ({sum(counts.values())} total):")
@@ -214,6 +259,10 @@ def main() -> None:
             print(f"  {entry}")
 
     print("\nDone.")
+    if deadline_hit:
+        # 124 is the conventional exit code for a timed-out command
+        # (matches GNU `timeout`), so callers/gates can detect it.
+        sys.exit(124)
 
 
 if __name__ == "__main__":
