@@ -197,6 +197,23 @@ class TestCLIArgparseDefaults:
         args = parser.parse_args([])
         assert args.config == "training.harness.yaml"
 
+    def test_config_help_text_matches_default(self) -> None:
+        """The ``--config`` help string must name the actual default file.
+
+        Regression guard: the displayed ``--help`` text previously diverged
+        from the ``default=`` value (stale pre-rename ``harness.yaml``).
+        """
+        from training.harness.__main__ import _build_parser
+
+        parser = _build_parser()
+        config_action = next(
+            action
+            for action in parser._actions
+            if "--config" in action.option_strings
+        )
+        assert config_action.default == "training.harness.yaml"
+        assert "training.harness.yaml" in (config_action.help or "")
+
     def test_default_host_and_port(self) -> None:
         """Default host and port are None (filled from config or hardcoded)."""
         from training.harness.__main__ import _build_parser

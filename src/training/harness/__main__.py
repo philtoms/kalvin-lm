@@ -2,7 +2,7 @@
 
 Usage::
 
-    python -m training.harness --config harness.yaml
+    python -m training.harness --config training.harness.yaml
     python -m training.harness --host 0.0.0.0 --port 9000
 
 Loads a YAML configuration file, instantiates embedded participants
@@ -64,7 +64,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--config",
         default="training.harness.yaml",
-        help="Path to YAML/JSON config file (default: harness.yaml)",
+        help="Path to YAML/JSON config file (default: training.harness.yaml)",
     )
     parser.add_argument(
         "--host",
