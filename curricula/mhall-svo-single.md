@@ -14,7 +14,7 @@ Submit the full MHALL == SVO countersign with subscript scaffolding.
 MHALL == SVO =>
    S(ubject) = M(ary)
    V(erb) = H(ad)
-   O(bject) = A(ll) =>
+   O(bject) = ALL =>
      A > D(et)
      L > M(od)
      L > O

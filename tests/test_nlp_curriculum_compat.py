@@ -8,6 +8,9 @@ Spec ref: specs/tokenizer.md §NLP Tokenizer › Curriculum Compatibility (TOK-N
 
 from __future__ import annotations
 
+import difflib
+import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -403,4 +406,327 @@ class TestFirstStepsS2Routing:
         assert ratify, (
             "expected at least one ratify_request for the lesson-5 dual misfit "
             "(proving the auto-countersign backstop did not swallow it)"
+        )
+
+
+# ── KB-333: curriculum lesson-count + structure snapshot guard ──────────
+
+#: All seven curriculum files this guard watches.
+ALL_CURRICULUM_FILES = [
+    "first-steps.md",
+    "first-steps-s2.md",
+    "mhall-svo-single.md",
+    "mhall-svo-equivalence.md",
+    "cascade-pressure.md",
+    "conflict-drill.md",
+    "s3-auto-countersign.md",
+]
+
+# Remove any parenthetical (...) group. Real curriculum annotations are
+# mixed-case inline forms (M(ary), H(ad), L(ittle), D(et)) and block word
+# lists ((Mary Had A Little Lamb), (A L L), (Alpha Beta)), so any-paren
+# stripping is the robust normalisation. Stripping is what makes the snapshot
+# stable across cosmetic annotation-word edits (M(ary) and M(ark) both reduce
+# to M) while remaining sensitive to actual sig/node/structure drift.
+_ANNOTATION = re.compile(r"\([^)]*\)")
+
+
+def _lesson_count(path: Path) -> int:
+    """Number of ``### <n>`` lesson headers in a curriculum markdown file.
+
+    Counts ``^### `` lines directly from the raw text (no fenced-block
+    extraction, since ``### `` headers live outside code fences in these
+    files). Unambiguous: no ``### `` line appears inside any code fence.
+    """
+    return sum(
+        1 for line in path.read_text(encoding="utf-8").splitlines() if line.startswith("### ")
+    )
+
+
+def _normalize_structure(text: str) -> list[str]:
+    """Structural skeleton of curriculum markdown: ``### N`` headers plus the
+    annotation-stripped lines of every fenced code block, in document order.
+
+    Prose lines are dropped (annotations only ever appear inside fences per
+    rule 45, so prose carries nothing the guard should pin). Blanked lines
+    (e.g. a block word-list like ``(Mary Had A Little Lamb)`` that becomes
+    empty after stripping) are removed. The result is a faithful, stable
+    representation of the curriculum's kscript content and lesson roster.
+    """
+    out: list[str] = []
+    in_block = False
+    for line in text.splitlines():
+        if line.startswith("### "):
+            out.append(line.rstrip())
+        elif line.strip() == "```":
+            in_block = not in_block
+        elif in_block:
+            stripped = _ANNOTATION.sub("", line).rstrip()
+            if stripped.strip():
+                out.append(stripped)
+    return out
+
+
+def _normalized_structure(path: Path) -> list[str]:
+    return _normalize_structure(path.read_text(encoding="utf-8"))
+
+
+def _git_blob(rev: str, path: str) -> str | None:
+    """Read ``git show <rev>:<path>`` or return ``None`` if unavailable.
+
+    Returns ``None`` (rather than raising) when the revision is absent from a
+    shallow/archive checkout, so the historical sanity checks can skip cleanly.
+    """
+    try:
+        res = subprocess.run(
+            ["git", "show", f"{rev}:{path}"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    return res.stdout
+
+
+# Audited baselines (KB-333). ``_EXPECTED_LESSON_COUNTS`` are the ``### ``
+# header counts; ``_EXPECTED_STRUCTURE`` is the post-audit, post-restore
+# (KB-320 for first-steps-s2.md, KB-333 for mhall-svo-single.md) structural
+# skeleton with annotations stripped. These snapshots MUST be updated whenever
+# a lesson is deliberately added/removed or a kline's sig/nodes/structure is
+# intentionally changed -- the guard then forces awareness instead of letting
+# an edit pass silently delete or truncate curriculum content (the a1c40f1
+# accident this guard was written to prevent).
+_EXPECTED_LESSON_COUNTS: dict[str, int] = {
+    "first-steps.md": 3,
+    "first-steps-s2.md": 5,
+    "mhall-svo-single.md": 1,
+    "mhall-svo-equivalence.md": 5,
+    "cascade-pressure.md": 5,
+    "conflict-drill.md": 4,
+    "s3-auto-countersign.md": 3,
+}
+
+_EXPECTED_STRUCTURE: dict[str, list[str]] = {
+    "first-steps.md": [
+        "### 1",
+        "M",
+        "### 2",
+        "H",
+        "### 3",
+        "M == H",
+    ],
+    "first-steps-s2.md": [
+        "### 1",
+        "M",
+        "### 2",
+        "H",
+        "### 3",
+        "M == H",
+        "### 4",
+        "A",
+        "### 5",
+        "MH > H A",
+    ],
+    "mhall-svo-single.md": [
+        "### 1",
+        "MHALL == SVO =>",
+        "   S = M",
+        "   V = H",
+        "   O = ALL =>",
+        "     A > D",
+        "     L > M",
+        "     L > O",
+    ],
+    "mhall-svo-equivalence.md": [
+        "### 1",
+        "M",
+        "H",
+        "A",
+        "L",
+        "L",
+        "S",
+        "V",
+        "O",
+        "### 2",
+        "M == H",
+        "### 3",
+        "ALL => A L L",
+        "### 4",
+        "M = S",
+        "H = V",
+        "ALL = O",
+        "### 5",
+        "MHALL == SVO =>",
+        "   S = M",
+        "   V = H",
+        "   O = ALL =>",
+        "     A > D",
+        "     L > M",
+        "     L > O",
+    ],
+    "cascade-pressure.md": [
+        "### 1",
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "### 2",
+        "A == B",
+        "C == D",
+        "E == F",
+        "G == H",
+        "I == J",
+        "### 3",
+        "AB => C",
+        "CD => E",
+        "EF => G",
+        "GH => I",
+        "### 4",
+        "ABCD => E F",
+        "EFGH => I J",
+        "ACEGI => B D F H J",
+        "### 5",
+        "ABCDEFGHIJ => A B C D E F G H I J",
+    ],
+    "conflict-drill.md": [
+        "### 1",
+        "A",
+        "B",
+        "C",
+        "D",
+        "### 2",
+        "A == B",
+        "### 3",
+        "AB => D C",
+        "### 4",
+        "E",
+        "ACE => B D",
+    ],
+    "s3-auto-countersign.md": [
+        "### 1",
+        "M",
+        "H",
+        "A",
+        "P",
+        "X",
+        "### 2",
+        "M == H",
+        "### 3",
+        "H > A",
+        "A == A",
+        "HPA => P X",
+    ],
+}
+
+
+class TestCurriculumLessonCountGuard:
+    """KB-333: durable snapshot guard over all 7 curriculum files.
+
+    Two complementary assertions, each parametrised over every curriculum file:
+
+    1. **Lesson count** (``test_lesson_count_matches_baseline``): the ``### <n>``
+       header count must equal its audited baseline. Catches a whole-lesson
+       add/drop -- the KB-320 class, where commit a1c40f1 collapsed
+       first-steps-s2.md from 5 lessons to 2.
+    2. **Normalised structure** (``test_normalized_structure_unchanged``): the
+       annotation-stripped structural skeleton (headers + fenced-block klines)
+       must equal its audited baseline. Catches an *in-lesson* kline truncation
+       -- the KB-333 class, where a1c40f1 truncated mhall-svo-single.md's
+       compound object node ``O = ALL`` down to ``O = A(ll)`` while the ``### 1``
+       header (and thus the count) survived. Lesson count alone is blind to
+       this; the structure snapshot is the only signal that catches it.
+
+    Note on placement: this class lives in the NLP-gated module (per KB-333's
+    spec) and so is skipped wherever NLPTokenizer data is absent -- the guard
+    therefore runs in CI (which has the data). The assertions themselves are
+    pure markdown inspection and need no tokenizer.
+    """
+
+    @pytest.mark.parametrize("curriculum_file", ALL_CURRICULUM_FILES)
+    def test_lesson_count_matches_baseline(self, curriculum_file: str) -> None:
+        path = CURRICULA_DIR / curriculum_file
+        if not path.exists():
+            pytest.skip(f"Curriculum not found: {path}")
+        actual = _lesson_count(path)
+        expected = _EXPECTED_LESSON_COUNTS[curriculum_file]
+        assert actual == expected, (
+            f"{curriculum_file}: lesson count drifted from {expected} to {actual}. "
+            "If a lesson was deliberately added/removed, update "
+            "_EXPECTED_LESSON_COUNTS (and _EXPECTED_STRUCTURE)."
+        )
+
+    @pytest.mark.parametrize("curriculum_file", ALL_CURRICULUM_FILES)
+    def test_normalized_structure_unchanged(self, curriculum_file: str) -> None:
+        path = CURRICULA_DIR / curriculum_file
+        if not path.exists():
+            pytest.skip(f"Curriculum not found: {path}")
+        actual = _normalized_structure(path)
+        expected = _EXPECTED_STRUCTURE[curriculum_file]
+        if actual != expected:
+            diff = "\n".join(
+                difflib.unified_diff(
+                    expected,
+                    actual,
+                    fromfile=f"expected ({curriculum_file})",
+                    tofile=f"actual ({curriculum_file})",
+                    lineterm="",
+                )
+            )
+            pytest.fail(
+                f"{curriculum_file}: normalised kscript structure drifted.\n{diff}\n\n"
+                "If a kline/sig/node/lesson was deliberately changed, update "
+                "_EXPECTED_STRUCTURE (and _EXPECTED_LESSON_COUNTS). Otherwise this "
+                "flags a non-additive edit like the a1c40f1 truncation (KB-333)."
+            )
+
+    def test_guard_would_have_detected_kb320_truncation(self) -> None:
+        """Sanity: the guard catches the KB-320 accident (commit a1c40f1
+        collapsed first-steps-s2.md from 5 lessons to 2).
+
+        The known-bad a1c40f1 blob has 2 headers (vs the baseline 5) and a
+        different structure, so both guard assertions would fail on it.
+        """
+        bad = _git_blob("a1c40f1", "curricula/first-steps-s2.md")
+        if bad is None:
+            pytest.skip("commit a1c40f1 not available in this checkout")
+        bad_count = sum(1 for line in bad.splitlines() if line.startswith("### "))
+        assert bad_count == 2, (
+            f"expected the known-bad a1c40f1 first-steps-s2.md blob to have 2 "
+            f"headers (the KB-320 accident); got {bad_count}"
+        )
+        assert _EXPECTED_LESSON_COUNTS["first-steps-s2.md"] == 5
+        assert _normalize_structure(bad) != _EXPECTED_STRUCTURE["first-steps-s2.md"]
+
+    def test_guard_would_have_detected_kb333_in_lesson_truncation(self) -> None:
+        """Sanity: the *structure* guard catches the KB-333 in-lesson
+        truncation that the *count* guard misses.
+
+        Commit a1c40f1 truncated mhall-svo-single.md's compound object node
+        ``O = ALL`` down to ``O = A(ll)`` while the ``### 1`` header (and so
+        the lesson count) stayed at 1. The count guard is therefore blind to
+        this class; the normalised-structure snapshot is what flags it.
+        """
+        bad = _git_blob("a1c40f1", "curricula/mhall-svo-single.md")
+        if bad is None:
+            pytest.skip("commit a1c40f1 not available in this checkout")
+        # The count was unchanged by this truncation -- proving count alone is blind.
+        bad_count = sum(1 for line in bad.splitlines() if line.startswith("### "))
+        assert bad_count == 1, (
+            f"expected the a1c40f1 mhall-svo-single.md blob to still have 1 "
+            f"lesson (the truncation was in-lesson); got {bad_count}"
+        )
+        bad_struct = _normalize_structure(bad)
+        assert "   O = A =>" in bad_struct, (
+            f"expected the a1c40f1 blob to carry the truncated `O = A` line; got {bad_struct}"
+        )
+        assert bad_struct != _EXPECTED_STRUCTURE["mhall-svo-single.md"], (
+            "the normalised-structure guard must flag the KB-333 in-lesson "
+            "truncation (O=ALL -> O=A)"
         )

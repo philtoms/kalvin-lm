@@ -287,7 +287,14 @@ Annotations, §10 NLP Binding Resolution); this section fixes the
     word.
 42. Every multi-token signature MUST be preceded by a block-comment word
     list whose word count matches the character count (e.g.
-    `(Mary Had A Little Lamb)` before `MHALL`).
+    `(Mary Had A Little Lamb)` before `MHALL`). An inline annotation (rule 41)
+    MUST NOT be applied to a multi-token (compound) signature: it attaches only
+    to the first character and silently truncates the compound (e.g. writing
+    `O = A(ll)` for the compound node `O = ALL` drops the trailing `L L`).
+    A compound referenced in a node position is written bare and inherits its
+    binding from the scope where it was defined. (This hazard, introduced by
+    commit a1c40f1 in `mhall-svo-single.md` and `mhall-svo-equivalence.md`, was
+    audited and fixed by KB-333 / KB-172.)
 43. Node-position single-character signatures receive an inline comment
     ONLY when the binding would introduce new information. If the character
     is already bound to the same word in the scope chain, the inline
