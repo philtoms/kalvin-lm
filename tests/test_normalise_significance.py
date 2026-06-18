@@ -1,7 +1,6 @@
 """SN-1..SN-7 test matrix for the band-anchored ``normalise_significance`` helper.
 
 Spec: ``specs/significance-normalization.md`` (behavioural rules SN-1..SN-7).
-ADR:  ``docs/adr/0007-band-anchored-significance-normalization.md``.
 
 Each test maps to exactly one behavioural rule. Raw significance values are
 built from a distance via ``raw = (~distance) & MASK64`` (significance is an

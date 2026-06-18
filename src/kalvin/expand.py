@@ -54,7 +54,7 @@ MAX_HOP = 100
 # hops start at S2_S3_DISTANCE + 1 = 101.
 S2_S3_DISTANCE = 100
 
-# Band-anchored normalization constants (ADR-0007). Each band owns a fixed
+# Band-anchored normalization constants. Each band owns a fixed
 # sub-range of [0.0, 1.0]; S3 is asymptotic, mapping its unbounded distance
 # range injectively into an open interval without clamping.
 S2_TOP = 0.99  # closest S2 (distance 2)
@@ -96,7 +96,7 @@ def classify(sig: int, s12: int, s23: int, s34: int) -> str:
 def normalise_significance(raw_sig: int) -> float:
     """Normalise a raw significance value to a band-anchored float in [0.0, 1.0].
 
-    The single source of truth for significance normalization (ADR-0007).
+    The single source of truth for significance normalization.
     Each band owns a fixed sub-range so S1/S2/S3/S4 are always ordered and
     visible; S3 uses an asymptotic curve so its unbounded distance range
     maps injectively into an open interval without ever being clamped.

@@ -10,9 +10,6 @@ maps to a non-empty, ordered interval without ever being clamped. The raw
 significance value and the band classification are unchanged by normalization;
 normalization is a display/analysis projection of raw significance.
 
-> **Decision record:** `docs/adr/0007-band-anchored-significance-normalization.md`
-> (supersedes DD-1). Rationale and empirical evidence live there.
-
 ## Dependencies
 
 ### Expand (@model spec — §Significance Semantics)

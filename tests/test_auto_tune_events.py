@@ -229,7 +229,7 @@ class TestSignificanceObject:
 
     def test_midrange_normalisation(self):
         # raw = D_MAX // 2 has distance = D_MAX // 2, which is deep S3.
-        # Band-anchored normalization (ADR-0007) is asymptotic: deep S3 is
+        # Band-anchored normalization is asymptotic: deep S3 is
         # a small but non-zero value in (0.0, 0.50), never clamped to 0.
         raw = D_MAX // 2
         sig = _build_significance(raw)

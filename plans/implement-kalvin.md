@@ -8,25 +8,8 @@ the overview, build order, and cross-cutting concerns.
 (e.g., KL-1, MOD-5) rather than duplicating spec content.
 
 **Date:** 2026-04-29
-**Updated:** 2026-05-15 - spec/plan separation (see `docs/spec-plan-proposal.md`)
 
 ---
-
-> **Archival Note (added 2026-06-13):** This plan was written before the compiled-entry `op` field
-> terminology was updated. The code described here used token-name op strings; the current code uses
-> structural-state names. The mapping:
->
-> - `"UNSIGNED"` → `"IDENTITY"` — the op value for bare-node identity klines was renamed (per the
->   `plans/impl/rename-unsigned-to-identity.md` plan, completed before ADR-0006).
-> - `"COUNTERSIGN"` → `"COUNTERSIGNED"`, `"UNDERSIGN"` → `"UNDERSIGNED"`,
->   `"CONNOTATE"` → `"CONNOTED"`, `"CANONIZE"` → `"CANONIZED"` — compiled-entry op values
->   now use past-participle structural-state names (per ADR-0006, implemented in KB-209).
->
-> **Old terms present in this file:** `UNSIGNED` (as the op value name in the well-known values
-> summary).
->
-> For the authoritative current terminology, see CONTEXT.md glossary entries **Structural State**
-> and **Identity**, and `docs/adr/0006-op-is-structural-state-not-token.md`.
 
 ## 0. System Architecture
 
@@ -129,7 +112,7 @@ its dependencies are satisfied.
 > foundations plan provides the implementation skeleton and test cases.
 > | [`plans/impl/model.md`](impl/model.md) | Model + distance algorithm | 5 | Foundations |
 > | [`plans/impl/agent.md`](impl/agent.md) | Significance constants, Events, Agent | 6-8 | Foundations, Model |
-| [`plans/impl/cogitator.md`](impl/cogitator.md) | Cogitator, CogitationHandler, WorkItem (slow-path dispatcher) | 8 | Model, Agent |
+> | [`plans/impl/cogitator.md`](impl/cogitator.md) | Cogitator, CogitationHandler, WorkItem (slow-path dispatcher) | 8 | Model, Agent |
 > | [`plans/impl/structural-grounding.md`](impl/structural-grounding.md) | Structural grounding + extended cogitation | A, A+ | Model, Agent |
 > | [`plans/impl/build-phases.md`](impl/build-phases.md) | Resolved design decisions, phased build, test cases | 0-9 | All (execution plan) |
 > | [`plans/nlp-pipeline.md`](nlp-pipeline.md) | NLP-BPE data preparation + node_to_sig integration | NLP | Foundations, Model, Agent |
@@ -166,7 +149,7 @@ implemented and is out of scope.)
 MASK64 = 0xFFFF_FFFF_FFFF_FFFF       # Full 64-bit mask
 
 # Well-known signatures
-UNSIGNED = 0                         # No nodes
+IDENTITY = 0                      # No nodes
 
 # Significance
 _S3_BIAS = 1                         # Tier bias for S3 connotation hops (linear)
@@ -197,22 +180,22 @@ COGITATE_TIMEOUT = 2.0               # Seconds before "done" event
 
 ## 6. Summary of What Gets Built When
 
-| Phase | Component         | Files                              | Est.       | Depends On | Sub-plan             | Status |
-| ----- | ----------------- | ---------------------------------- | ---------- | ---------- | -------------------- | ------ |
-| 0     | Scaffold          | `pyproject.toml`, dirs             | 0.5d       | -          | foundations          | ✅     |
-| 1     | KLine             | `kline.py`                         | 0.5d       | -          | foundations          | ✅     |
-| 2     | Signature         | `signature.py`                     | 0.5d       | -          | foundations          | ✅     |
-| 3     | Tokenizer         | `tokenizer.py`, `nlp_tokenizer.py` | 1.5d       | -          | foundations          | ✅     |
-| 4     | STM               | `stm.py`                           | 1d         | 1, 2, 3    | foundations          | ✅     |
-| 5     | Model             | `model.py`                         | 2-3d       | 1, 2, 4    | model                | ✅     |
-| 6     | Constants         | `model.py` (D_MAX, MASK64)         | 0.5d       | —          | model                | ✅     |
-| 7     | Events            | `events.py`                        | 0.5d       | 1          | agent                | ✅     |
-| 8     | Agent             | `agent.py` (routing), `cogitator.py` (slow path) | 2d | 1-7 | agent, cogitator | ✅ |
-| 9     | Persistence       | `agent.py` (extend)                | 1d         | 8          | agent                | ✅     |
-| —     | KScript           | `kscript/`                         | 5d         | 1-3        | kscript              | ✅     |
-| A     | Struct. Grounding | `model.py`, `agent.py`             | 1-2d       | 1-8        | structural-grounding | ✅     |
-| A+    | Ext. Cogitation   | `model.py`, `agent.py`             | 3-5d       | A          | structural-grounding | ✅     |
-|       | **Total**         |                                    | **22-27d** |            |                      |
+| Phase | Component         | Files                                            | Est.       | Depends On | Sub-plan             | Status |
+| ----- | ----------------- | ------------------------------------------------ | ---------- | ---------- | -------------------- | ------ |
+| 0     | Scaffold          | `pyproject.toml`, dirs                           | 0.5d       | -          | foundations          | ✅     |
+| 1     | KLine             | `kline.py`                                       | 0.5d       | -          | foundations          | ✅     |
+| 2     | Signature         | `signature.py`                                   | 0.5d       | -          | foundations          | ✅     |
+| 3     | Tokenizer         | `tokenizer.py`, `nlp_tokenizer.py`               | 1.5d       | -          | foundations          | ✅     |
+| 4     | STM               | `stm.py`                                         | 1d         | 1, 2, 3    | foundations          | ✅     |
+| 5     | Model             | `model.py`                                       | 2-3d       | 1, 2, 4    | model                | ✅     |
+| 6     | Constants         | `model.py` (D_MAX, MASK64)                       | 0.5d       | —          | model                | ✅     |
+| 7     | Events            | `events.py`                                      | 0.5d       | 1          | agent                | ✅     |
+| 8     | Agent             | `agent.py` (routing), `cogitator.py` (slow path) | 2d         | 1-7        | agent, cogitator     | ✅     |
+| 9     | Persistence       | `agent.py` (extend)                              | 1d         | 8          | agent                | ✅     |
+| —     | KScript           | `kscript/`                                       | 5d         | 1-3        | kscript              | ✅     |
+| A     | Struct. Grounding | `model.py`, `agent.py`                           | 1-2d       | 1-8        | structural-grounding | ✅     |
+| A+    | Ext. Cogitation   | `model.py`, `agent.py`                           | 3-5d       | A          | structural-grounding | ✅     |
+|       | **Total**         |                                                  | **22-27d** |            |                      |
 
 ---
 

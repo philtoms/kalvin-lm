@@ -7,21 +7,6 @@
 
 ---
 
-> **Archival Note (added 2026-06-13):** This plan was written before the compiled-entry `op` field
-> terminology was updated. The code described here used token-name op strings; the current code uses
-> structural-state names. The mapping:
->
-> - `"UNSIGNED"` → `"IDENTITY"` — the op value for bare-node identity klines was renamed (per the
->   `plans/impl/rename-unsigned-to-identity.md` plan, completed before ADR-0006).
-> - `"COUNTERSIGN"` → `"COUNTERSIGNED"`, `"UNDERSIGN"` → `"UNDERSIGNED"`,
->   `"CONNOTATE"` → `"CONNOTED"`, `"CANONIZE"` → `"CANONIZED"` — compiled-entry op values
->   now use past-participle structural-state names (per ADR-0006, implemented in KB-209).
->
-> **Old terms present in this file:** `UNSIGNED` (in the well-known values table).
->
-> For the authoritative current terminology, see CONTEXT.md glossary entries **Structural State**
-> and **Identity**, and `docs/adr/0006-op-is-structural-state-not-token.md`.
-
 ## 0. Project Scaffold (Phase 0)
 
 **Estimate:** 0.5 day
@@ -83,7 +68,7 @@ is_signature(x)  = NO TEST — any uint64 can be a signature
 
 | Value                   | Name                 | Meaning                                                  |
 | ----------------------- | -------------------- | -------------------------------------------------------- |
-| `0`                     | `UNSIGNED`           | No nodes. Empty kline. Cannot be found via AND matching. |
+| `0`                     | `IDENTITY`           | No nodes. Empty kline. Cannot be found via AND matching. |
 | 9                       | `_S3_BIAS`           | Tier bias for S3 connotation hops (now linear; `_S3_BIAS = 1`).    |
 | `0xFFFF_FFFF_FFFF_FFFF` | `D_MAX` / `S1_VALUE` | Maximum distance / maximum significance.                 |
 | `0x0000_0000_0000_0000` | `S4_VALUE`           | Zero significance / maximum distance.                    |

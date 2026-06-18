@@ -126,7 +126,7 @@ def _build_significance(raw_sig: int) -> dict:
 
     Returns dict with raw, normalised, and level fields.
 
-    Normalisation is band-anchored (ADR-0007) via the shared
+    Normalisation is band-anchored via the shared
     ``normalise_significance`` helper: S1 → 1.0; S2 → linear in
     [0.50, 0.99]; S3 → asymptotic in (0.0, 0.50), never clamped;
     S4 → 0.0. The helper is the single source of truth.
