@@ -258,7 +258,9 @@ removed nodes as independent `frame` events.
 | Dual misfit    | The replacement kline **and** the companion kline from removed nodes |
 
 Each proposal is an independent `frame` event. The agent ratifies (or
-rejects) each one individually.
+rejects) each one individually. An identity proposal or companion (empty
+nodes or self-referential `{S: [S]}`) is not emitted (see Universal
+Constraint below).
 
 ### Universal Constraint
 
@@ -266,6 +268,16 @@ Every signature generated during expansion must already exist in the model.
 This guarantees no invention, no data loss, and ratifiability. When the
 constraint cannot be satisfied, no proposal is emitted — the agent infers
 scaffolding is needed from the absence of a `frame` event.
+
+A second constraint governs proposal *shape*: **an expansion proposal must
+not be identity**. Identity (@CONTEXT.md §Identity) is either empty nodes
+`{S: []}` or self-referential `{S: [S]}`, and carries no decomposition
+information — so it is never a valid *expansion* proposal. A single removed
+node `n` would form the companion `{n: [n]}` (identity), which is dropped
+rather than emitted; likewise any proposal that reduces to identity is
+dropped. (Note: `{S: [S]}` *is* a legitimate kline state — it is identity —
+but it is not something the expander should produce, since the expander's
+purpose is to decompose.)
 
 All expansion proposals require agent ratification via countersignature.
 

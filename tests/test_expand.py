@@ -28,13 +28,19 @@ def make_model(stm_bound: int = 256) -> Model:
 
 class TestIsCanon:
     def test_canon_match(self):
-        """sig == make_signature(nodes) → canonical."""
-        k = KLine(10, [10])  # make_signature([10]) = 10
+        """sig == make_signature(nodes), non-self-referential → canonical."""
+        # sig = 0b110 = OR(0b100, 0b010); neither node equals the signature.
+        k = KLine(0b110, [0b100, 0b010])
         assert is_canon(k) is True
 
     def test_canon_mismatch(self):
         """sig != make_signature(nodes) → non-canonical."""
         k = KLine(5, [10])  # make_signature([10]) = 10 ≠ 5
+        assert is_canon(k) is False
+
+    def test_self_referential_is_not_canon(self):
+        """{S: [S]} is identity, not canon — overrules canon classification."""
+        k = KLine(10, [10])  # make_signature([10]) = 10, but self-referential
         assert is_canon(k) is False
 
 
@@ -47,20 +53,29 @@ class TestEdgeHops:
     def test_edge_hops_canonical(self):
         """Node that resolves to canonical → empty generator."""
         m = make_model()
-        m.add_frame(KLine(10, [10]))  # canonical
+        # Genuine canon: sig 0b110 = OR(0b100, 0b010).
+        m.add_frame(KLine(0b110, [0b100, 0b010]))
+        assert list(edge_hops(m, 0b110)) == []
+
+    def test_edge_hops_identity(self):
+        """Node that resolves to identity (incl. self-referential) → empty."""
+        m = make_model()
+        m.add_frame(KLine(10, []))  # empty-nodes identity
         assert list(edge_hops(m, 10)) == []
+        m.add_frame(KLine(30, [30]))  # self-referential identity
+        assert list(edge_hops(m, 30)) == []
 
     def test_edge_hops_chain(self):
-        """Non-canonical chain: 5→(1,10)→(2,20)→(3,30) where 30 is canonical."""
+        """Non-canonical chain terminates at a genuine canon."""
         m = make_model()
-        m.add_frame(KLine(30, [30]))  # canonical
-        m.add_frame(KLine(20, [30]))  # non-canon: sig=20, make_sig([30])=30
+        m.add_frame(KLine(0b110, [0b100, 0b010]))  # canonical terminator
+        m.add_frame(KLine(20, [0b110]))  # non-canon: sig=20, make_sig=[0b110]=0b110
         m.add_frame(KLine(10, [20]))  # non-canon: sig=10, make_sig([20])=20
         m.add_frame(KLine(5, [10]))  # non-canon: sig=5,  make_sig([10])=10
-        assert list(edge_hops(m, 5)) == [(1, 10), (2, 20), (3, 30)]
-        assert list(edge_hops(m, 10)) == [(1, 20), (2, 30)]
-        assert list(edge_hops(m, 20)) == [(1, 30)]
-        assert list(edge_hops(m, 30)) == []  # canonical
+        assert list(edge_hops(m, 5)) == [(1, 10), (2, 20), (3, 0b110)]
+        assert list(edge_hops(m, 10)) == [(1, 20), (2, 0b110)]
+        assert list(edge_hops(m, 20)) == [(1, 0b110)]
+        assert list(edge_hops(m, 0b110)) == []  # canonical
         assert list(edge_hops(m, 99)) == []  # unresolvable
 
     def test_edge_hops_cycle_detection_er1(self):
@@ -111,9 +126,10 @@ class TestExpand:
     def test_expand_with_grounding(self):
         """Matched node that resolves to structural S1 → no ungrounded penalty."""
         m = make_model()
-        m.add_frame(KLine(10, [10]))  # canonical kline, node 10 is structural S1
-        q = KLine(5, [10, 2])
-        c = KLine(6, [10, 3])
+        # Genuine canon (S1): sig 0b110 = OR(0b100, 0b010).
+        m.add_frame(KLine(0b110, [0b100, 0b010]))
+        q = KLine(5, [0b110, 2])
+        c = KLine(6, [0b110, 3])
         # distance=200 (2 × MAX_HOP, grounded match)
         expected_distance = 200
         results = list(expand(m, q, c))
@@ -122,23 +138,19 @@ class TestExpand:
     def test_expand_hop_reaches_opposing_mismatch(self):
         """Mismatched node whose chain reaches the opposing mismatch set."""
         m = make_model()
-        m.add_frame(KLine(30, [30]))  # canonical
-        m.add_frame(KLine(20, [30]))  # non-canon
+        m.add_frame(KLine(0b110, [0b100, 0b010]))  # genuine canon — chain terminator
+        m.add_frame(KLine(20, [0b110]))  # non-canon
         m.add_frame(KLine(10, [20]))  # non-canon
         m.add_frame(KLine(5, [10]))  # non-canon
 
         q = KLine(100, [5, 2])  # mismatched_q: {5, 2}
         c = KLine(200, [10, 3])  # mismatched_c: {10, 3}
         # distance=301 (1 hop + 3 × MAX_HOP)
-        # Results include:
-        #   - S2 exact-match chain yields (expand(20,30) → expand(10,20) → expand(5,10))
-        #   - S2 signifies yields from c-nodes: 10→30 in expand(5,10) and top level
-        #   - Terminal with significance (~301) & MASK64
         results = list(expand(m, q, c))
         assert len(results) == 6
         assert results[-1].significance == (~301) & MASK64
 
-        # S2 signifies candidates: c-node 10 reaches sig 30 (10 & 30 ≠ 0)
+        # S2 signifies candidates: c-node 10 reaches sig 0b110 (10 & 0b110 ≠ 0)
         # at distance 2 in both expand(5,10) and top-level
         signifies_results = [r for r in results[:-1] if r.significance == (~2) & MASK64]
         assert len(signifies_results) == 2
@@ -146,9 +158,9 @@ class TestExpand:
     def test_expand_bidirectional_hop_match(self):
         """Both query and candidate mismatched nodes reach opposing sets."""
         m = make_model()
-        m.add_frame(KLine(10, [10]))  # canonical
+        m.add_frame(KLine(10, [10]))  # identity
         m.add_frame(KLine(5, [10]))  # non-canon
-        m.add_frame(KLine(30, [30]))  # canonical
+        m.add_frame(KLine(30, [30]))  # identity
         m.add_frame(KLine(20, [30]))  # non-canon
 
         q = KLine(100, [5, 20])  # mismatched_q: {5, 20}
@@ -159,12 +171,12 @@ class TestExpand:
         assert results[-1].significance == (~202) & MASK64
 
     def test_expand_all_matched_grounded(self):
-        """All nodes match and all resolve → no ungrounded penalty → max significance."""
+        """All nodes match and all resolve to S1 → no penalty → max significance."""
         m = make_model()
-        m.add_frame(KLine(10, [10]))  # canonical, node 10 resolves
-        m.add_frame(KLine(20, [20]))  # canonical, node 20 resolves
-        q = KLine(5, [10, 20])
-        c = KLine(6, [10, 20])
+        m.add_frame(KLine(0b110, [0b100, 0b010]))  # genuine canon, node 0b110 is S1
+        m.add_frame(KLine(0b1100, [0b1000, 0b0100]))  # genuine canon, node 0b1100 is S1
+        q = KLine(5, [0b110, 0b1100])
+        c = KLine(6, [0b110, 0b1100])
         # distance=0 → significance=D_MAX (all bits set)
         results = list(expand(m, q, c))
         assert results[-1].significance == D_MAX
@@ -201,7 +213,7 @@ class TestExpand:
     def test_expand_significance_ordering(self):
         """Verify significance ordering: closer match → higher significance."""
         m = make_model()
-        m.add_frame(KLine(10, [10]))  # canonical
+        m.add_frame(KLine(10, [10]))  # identity — chain terminator
         m.add_frame(KLine(5, [10]))  # non-canon
 
         q = KLine(100, [5, 2])  # mismatched_q: {5, 2}
@@ -222,7 +234,7 @@ class TestExpand:
         before S3 when signatures share bits).
         """
         m = make_model()
-        m.add_frame(KLine(8, [8]))  # canonical
+        m.add_frame(KLine(8, [8]))  # identity (self-referential) — dead end
         m.add_frame(KLine(4, [8]))  # non-canon: edge_hops(4) = [(1, 8)]
         m.add_frame(KLine(2, [8]))  # non-canon: edge_hops(2) = [(1, 8)]
 
@@ -232,17 +244,19 @@ class TestExpand:
         # signifies(4, 8) = False, signifies(2, 8) = False → S3 path exercised
         # s3_connotations[8] = 1 (from q-node 4)
         # c-node 2 resolves via s3_connotation: s3_hop = 1 + 1 = 2
-        # Connotation distance = S2_S3_DISTANCE + s3_hop + _S3_BIAS - 1 = 100 + 2 = 102
+        # Connotation linear distance = S2_S3_DISTANCE + 2 = 102. The recursive
+        # expand({2:[8]}, {8:[8]}) has a matched node 8 that is identity (not
+        # S1), adding +1 ungrounded penalty → 103.
         # Terminal distance = MAX_HOP = 100 (q-node 4 unresolved at terminal level)
 
         results = list(expand(m, q, c))
         assert len(results) == 2
 
-        # S3 connotation yield: distance = S2_S3_DISTANCE + 2 = 102
+        # S3 connotation yield: distance = 103 (102 linear + 1 ungrounded)
         connotation = results[0]
         assert connotation.query.signature == 2
         assert connotation.candidate.signature == 8
-        connotation_distance = S2_S3_DISTANCE + 2  # linear: 100 + 2 = 102
+        connotation_distance = S2_S3_DISTANCE + 2 + 1  # 102 linear + 1 ungrounded
         assert connotation.significance == (~connotation_distance) & MASK64
 
         # Terminal yield: distance = 100 (MAX_HOP for unresolved q-node)
@@ -266,7 +280,7 @@ class TestExpand:
         terminal distance (signifies doesn't resolve the mismatch).
         """
         m = make_model()
-        m.add_frame(KLine(30, [30]))  # canonical
+        m.add_frame(KLine(30, [30]))  # identity — chain terminator
         m.add_frame(KLine(20, [30]))  # non-canon
         m.add_frame(KLine(10, [20]))  # non-canon
         m.add_frame(KLine(5, [10]))  # non-canon
@@ -386,10 +400,17 @@ class TestExpand:
 
 class TestIsS1:
     def test_canonical_kline(self):
-        """KLine with sig == make_signature(nodes) → S1."""
+        """Genuine canon (sig == make_signature(nodes), non-self-referential) → S1."""
         m = Model()
-        k = KLine(10, [10])  # make_signature([10]) = 10
+        # sig 0b110 = OR(0b100, 0b010); a genuine canon.
+        k = KLine(0b110, [0b100, 0b010])
         assert is_s1(m, k) is True
+
+    def test_self_referential_is_not_s1(self):
+        """{S: [S]} is identity, not canon → not S1 by canon."""
+        m = Model()
+        k = KLine(10, [10])
+        assert is_s1(m, k) is False
 
     def test_countersigned_in_model(self):
         """Two klines with mutual node references → S1."""
@@ -584,22 +605,33 @@ class TestProposeExpansions:
     """Verify propose_expansions() yields (KLine, int) tuples for misfits."""
 
     def test_canonical_yields_nothing(self):
-        """Canonical candidate (sig == make_signature(nodes)) → no proposals."""
+        """Genuine canon (non-self-referential) → no proposals."""
         m = Model()
-        k = KLine(10, [10])  # canonical: make_signature([10]) = 10
+        # sig 0b110 = OR(0b100, 0b010); a genuine canon.
+        k = KLine(0b110, [0b100, 0b010])
         result = list(propose_expansions(m, k, 42))
         assert result == []
+
+    def test_identity_yields_nothing(self):
+        """Identity (empty or self-referential) → no proposals.
+
+        An expansion proposal must carry decomposition information; identity
+        klines do not.
+        """
+        m = Model()
+        assert list(propose_expansions(m, KLine(10, []), 42)) == []
+        assert list(propose_expansions(m, KLine(10, [10]), 42)) == []
 
     def test_underfit_yields_proposals(self):
         """Underfit candidate (sig promises more than nodes deliver) → proposals.
 
-        KLine(sig=0b110, nodes=[0b100]) has gap 0b010. With contributor
-        KLine(sig=0b010, nodes=[0b010]) in the model, propose_expansions
-        yields proposal klines with the passed significance.
+        KLine(sig=0b110, nodes=[0b100]) has gap 0b010. With a genuine canon
+        contributor headed by 0b010 in the model, propose_expansions yields
+        proposal klines with the passed significance.
         """
         m = Model()
-        # Contributor for the underfit gap 0b010
-        contributor = KLine(0b010, [0b010])
+        # Genuine canon contributor whose signature overlaps the gap 0b010.
+        contributor = KLine(0b110, [0b100, 0b010])
         m.add_frame(contributor)
         m.add_ltm(contributor)
 
@@ -614,26 +646,29 @@ class TestProposeExpansions:
             assert sig == significance
 
     def test_overfit_yields_trimmed_and_companion(self):
-        """Overfit candidate (nodes carry more than sig) → trimmed + companion.
+        """Overfit candidate → trimmed proposal; identity companion is dropped.
 
-        KLine(sig=0b100, nodes=[0b110]) has excess 0b010. Propose_expansions
-        yields trimmed kline and companion from removed nodes.
+        KLine(sig=0b110, nodes=[0b100, 0b010, 0b001]) has excess 0b001.
+        Trimming yields the genuine canon `{0b110: [0b100, 0b010]}`, which is
+        emitted. The companion from the single excess node would be
+        `{0b001: [0b001]}` — identity — and is dropped.
         """
         m = Model()
-        # Overfit: sig=0b100 but nodes=[0b110] carry extra 0b010
-        candidate = KLine(0b100, [0b110])
+        candidate = KLine(0b110, [0b100, 0b010, 0b001])
         significance = 0xBEEF
 
         results = list(propose_expansions(m, candidate, significance))
-        assert len(results) >= 2  # trimmed proposal + companion
-        for proposal, sig in results:
-            assert isinstance(proposal, KLine)
-            assert sig == significance
+        assert len(results) == 1
+        proposal, sig = results[0]
+        assert proposal.signature == 0b110
+        assert proposal.nodes == [0b100, 0b010]
+        assert sig == significance
 
     def test_yields_are_kline_int_tuples(self):
         """Every yield is a (KLine, int) tuple."""
         m = Model()
-        contributor = KLine(0b010, [0b010])
+        # Genuine canon contributor whose signature overlaps the gap.
+        contributor = KLine(0b011, [0b001, 0b010])
         m.add_frame(contributor)
         candidate = KLine(0b110, [0b100])
 
@@ -642,3 +677,22 @@ class TestProposeExpansions:
             assert len(item) == 2
             assert isinstance(item[0], KLine)
             assert isinstance(item[1], int)
+
+    def test_no_self_referential_proposals(self):
+        """Self-referential proposals (`{S: [S]}`) are never yielded.
+
+        Regression: a single excess node produced a companion `{n: [n]}`
+        and a self-contributor produced a proposal whose nodes included its
+        own signature. `{S: [S]}` is identity (not a valid decomposition),
+        so it is never emitted as an expansion proposal; under Recency
+        Precedence such klines would otherwise displace genuine canons and
+        collapse `Model.unpack()` to identity.
+        """
+        m = Model()
+        # Genuine canon contributor headed by 0b100 (overlaps the candidate sig).
+        m.add_frame(KLine(0b110, [0b100, 0b010]))
+        # Overfit candidate whose single excess node (0b010) would yield a
+        # self-loop companion {0b010: [0b010]}.
+        candidate = KLine(0b100, [0b110])
+        for proposal, _ in propose_expansions(m, candidate, 0):
+            assert proposal.signature not in proposal.nodes

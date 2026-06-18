@@ -28,7 +28,7 @@ import logging
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
-from kalvin.kline import KLine
+from kalvin.kline import KLine, is_canon, is_identity
 from kalvin.misfit import classify_misfit, generate_expansions
 from kalvin.signature import make_signature, signifies
 
@@ -151,16 +151,16 @@ class QueryCandidate:
 # Helper Functions
 
 
-def is_canon(kline: KLine) -> bool:
-    """Test whether a kline is canonical (signature = make_signature of nodes)."""
-    return kline.signature == make_signature(kline.nodes)
+# ``is_canon`` and ``is_identity`` are defined in :mod:`kalvin.kline` (they
+# are structural properties of a KLine). Re-exported here for backward
+# compatibility; new code should import from ``kalvin.kline``.
 
 
 def edge_hops(model: Model, sig: int) -> Iterator[tuple[int, int]]:
     """Yield (hop_count, next_sig) for each non-canonical resolution step.
 
     Follows: resolve sig → kline → make_signature(kline.nodes) → repeat.
-    Stops at a dead end, a canonical kline, or a cycle.
+    Stops at a dead end, an identity kline, a canonical kline, or a cycle.
     """
     hop_count = 0
     visited: set[int] = set()
@@ -169,12 +169,12 @@ def edge_hops(model: Model, sig: int) -> Iterator[tuple[int, int]]:
             break  # cycle detected
         visited.add(sig)
         kline = model.find(sig)
-        if kline is None or is_canon(kline):
+        if kline is None or is_identity(kline) or is_canon(kline):
             break
         hop_count += 1
         sig = make_signature(kline.nodes)
         if sig == 0:
-            break  # identity kline — nowhere to go
+            break  # empty nodes — nowhere to go
         yield hop_count, sig
 
 
@@ -209,7 +209,13 @@ def is_countersigned(model: Model, kline: KLine) -> bool:
 
     Query = {Q: [A, B]}
     Countersigner = {AB: [Q]}
+
+    A self-referential kline ``{S: [S]}`` is excluded: its nodes_signature
+    is ``S`` and it is itself a one-node kline whose node is ``S``, so it
+    would otherwise count as its own countersigner.
     """
+    if is_identity(kline):
+        return False
     nodes_signature = make_signature(kline.nodes)
     for countersigner in model.find_all(nodes_signature):
         if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
@@ -407,22 +413,30 @@ def propose_expansions(
     The caller is responsible for pairing proposals with the correct query kline
     for handler dispatch — for connotation yields from ``expand()``, this is
     ``qc.query``, not the original WorkItem's query.
-    """
-    candidate_sig = candidate.signature
-    nodes_sig = make_signature(candidate.nodes)
 
-    if candidate_sig == nodes_sig:
-        return  # canonical
+    Expansion proposals must carry decomposition information, so identity
+    klines (empty nodes or self-referential ``{S: [S]}``) are never emitted
+    — neither as the proposal nor as a companion. A single removed node
+    produces the companion ``{n: [n]}``, which is identity and is dropped.
+    """
+    if is_identity(candidate) or is_canon(candidate):
+        return  # identity or canonical — nothing to expand
 
     underfit, overfit = classify_misfit(candidate)
 
     if not underfit and not overfit:
         return
 
+    candidate_sig = candidate.signature
+    nodes_sig = make_signature(candidate.nodes)
     underfit_gap = candidate_sig & ~nodes_sig
     overfit_mask = nodes_sig & ~candidate_sig
 
     for proposal, companions in generate_expansions(model, candidate, underfit_gap, overfit_mask):
+        if is_identity(proposal):
+            continue
         yield (proposal, significance)
         for companion in companions:
+            if is_identity(companion):
+                continue
             yield (companion, significance)

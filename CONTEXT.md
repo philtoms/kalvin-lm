@@ -110,13 +110,13 @@ The structural relationship between a kline's signature and its nodes, implied b
 - **CANONIZED** — aggregated: `{A: [B, C, D]}`.
 - **CONNOTED** — forward: `{A: [B]}`.
 - **UNDERSIGNED** — reversed: `{B: [A]}`.
-- **IDENTITY** — `{A: []}` — see Identity.
+- **IDENTITY** — `{A: []}` or `{A: [A]}` (self-referential) — see Identity.
 
 States describe structure, not operation: no actor operates on a kline; the written token merely declares the relationship, and the state names the resulting structure.
 _Avoid_: operator (implies an action); COUNTERSIGN / UNDERSIGN / CONNOTATE / CANONIZE as state names (those are the written-token names)
 
 **Identity**:
-A kline whose signature is a single **Token ID** and whose nodes list is empty. Every kline bottoms out at one or more identities; a signature that is the OR-reduction of two or more token IDs cannot form one.
+A kline that carries no decomposition — either of two forms: empty nodes (`{S: []}`) or self-referential (`{S: [S]}`, whose sole node is its own signature). The self-referential form is identity *by definition*: a value that decomposes into itself carries no further information, and this overrules any CANON classification. Every kline bottoms out at one or more identities.
 _Avoid_: unsigned (implementation term), bare signature (describes the syntax, not the structure)
 
 **STM (Short-Term Memory)**:

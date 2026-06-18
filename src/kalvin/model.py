@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 
-from kalvin.kline import KLine, KSig
+from kalvin.kline import KLine, KSig, is_canon, is_identity
 from kalvin.signature import make_signature, signifies
 from kalvin.stm import STM
 
@@ -378,17 +378,19 @@ class Model:
         single-token identity signatures it decomposes into. See
         @specs/model.md §Graph Traversal › Unpack.
 
-        - Identity (empty nodes) → [signature]. Base case.
-        - Canon (signature == make_signature(nodes)) → concatenation of
-          unpack(child) per node, in node order.
+        - Identity (``is_identity`` — empty nodes OR self-referential
+          ``{S: [S]}``) → [signature]. Base case.
+        - Canon (``is_canon`` — non-empty, non-self-referential, signature ==
+          make_signature(nodes)) → concatenation of unpack(child) per node,
+          in node order.
         - Any other input (connoted, undersigned, misfit) → ValueError.
         - Child resolution: identity preferred over canon; within a kind,
           most recently added wins (Recency Precedence).
         - Raises ValueError if a child node resolves to no identity or canon.
         """
-        if not kline.nodes:
+        if is_identity(kline):
             return [kline.signature]
-        if kline.signature != make_signature(kline.nodes):
+        if not is_canon(kline):
             raise ValueError(
                 f"unpack: input kline {kline.signature:#x} is not decomposable "
                 f"(not identity, not canon)"
@@ -396,37 +398,47 @@ class Model:
         out: list[int] = []
         for node in kline.nodes:
             child = self._resolve_for_unpack(node)
-            # Self-reference guard: a canon whose sole node is its own
-            # signature ({node: [node]}) is structurally identity.
-            if child.signature == node and child.nodes == [node]:
-                out.append(node)
-            else:
-                out.extend(self.unpack(child))
+            out.extend(self.unpack(child))
         return out
 
     def _resolve_for_unpack(self, node: int) -> KLine:
         """Resolve a node value to its identity or canon kline.
 
-        Identity is preferred over canon; within a kind the most recently
-        added kline wins (Recency Precedence). klines() yields
-        most-recent-first across all tiers. Raises ValueError if the node
-        resolves to neither.
+        Precedence (highest first):
+          1. empty-nodes identity,
+          2. genuine canon,
+          3. self-referential identity ``{S: [S]}``.
+
+        The self-referential form is identity by :func:`is_identity`, but it
+        carries no decomposition, so it loses to a genuine canon for the same
+        signature — otherwise it would displace the canon and collapse
+        ``unpack()`` to identity (the degenerate-canons bug). Within each kind
+        the most recently added kline wins (Recency Precedence); ``klines()``
+        yields most-recent-first. Raises ValueError if the node resolves to
+        none of the three.
         """
-        identity: KLine | None = None
+        empty_identity: KLine | None = None
         canon: KLine | None = None
+        self_identity: KLine | None = None
         for kl in self.klines():
             if kl.signature != node:
                 continue
             if not kl.nodes:
-                if identity is None:
-                    identity = kl
-            elif kl.signature == make_signature(kl.nodes):
+                if empty_identity is None:
+                    empty_identity = kl
+            elif is_canon(kl):
                 if canon is None:
                     canon = kl
-        if identity is not None:
-            return identity
+            elif is_identity(kl):
+                # Self-referential {S: [S]} — identity, but lowest precedence.
+                if self_identity is None:
+                    self_identity = kl
+        if empty_identity is not None:
+            return empty_identity
         if canon is not None:
             return canon
+        if self_identity is not None:
+            return self_identity
         raise ValueError(f"unpack: node {node:#x} resolves to no identity or canon kline")
 
     def query(self, signature: KSig, depth: int = 1) -> list[KLine]:

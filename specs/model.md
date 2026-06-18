@@ -412,23 +412,22 @@ model.unpack(kline) → sequence of uint64
 ```
 
 Flattens a kline's signature decomposition into an ordered sequence of
-identity signatures (single-token values, @CONTEXT.md §Identity).
+identity signatures (@CONTEXT.md §Identity).
 
-- **Identity** (empty nodes) → `[signature]`. Base case.
-- **Canon** (`signature == make_signature(nodes)`, @signature spec) → the
+- **Identity** (`is_identity` — empty nodes OR self-referential `{S: [S]}`)
+  → `[signature]`. Base case.
+- **Canon** (`is_canon` — non-empty, non-self-referential, and
+  `signature == make_signature(nodes)`, @signature spec) → the
   concatenation, in node order, of `unpack(child)` for each child kline
   resolved from the node value.
-- Any other input (not identity, not canon) → raises.
-- **Child resolution** uses kind precedence: among all klines sharing the
-  node value as signature, an identity is preferred over a canon. Within a
-  kind, the most recently added kline wins (@CONTEXT.md §Recency
-  Precedence). If no identity or canon kline exists for the value → raises.
-- **Self-reference guard**: when the resolved child is a canon whose sole
-  node is its own signature (`{node: [node]}`), the node is structurally
-  identity — a value that decomposes into itself carries no further
-  decomposition. The node is emitted directly without recursing, so such a
-  self-referential canon cannot recurse without bound. Any other child (an
-  identity kline, or a canon with different nodes) is unpacked normally.
+- Any other input (connoted, undersigned, misfit) → raises.
+- **Child resolution** uses three-tier precedence (highest first):
+  1. empty-nodes identity, 2. genuine canon, 3. self-referential identity.
+  The self-referential form is identity but carries no decomposition, so it
+  loses to a genuine canon for the same signature — otherwise it would
+  displace the canon and collapse the result to identity. Within a kind, the
+  most recently added kline wins (@CONTEXT.md §Recency Precedence). If no
+  resolvable kline exists for the value → raises.
 - Node order is significant (@kline spec): the output sequence preserves
   the node order of every traversed kline.
 
@@ -474,9 +473,11 @@ Determines whether a kline is structurally grounded (S1).
 
 - `kline` — a KLine to test.
 - A kline is S1 if:
-  1. Its signature fully describes its nodes (canonical):
-     `make_signature(kline.nodes) == kline.signature`, OR
+  1. It is canonical (`is_canon` — non-empty, non-self-referential, and
+     `make_signature(kline.nodes) == kline.signature`), OR
   2. It is countersigned by another kline in the model.
+- A self-referential kline `{S: [S]}` is identity, not canon, and is not
+  counted as its own countersigner, so it is not S1 by structure.
 - This is a stateful test: adding or removing klines changes the result.
 - S1 represents a **structurally grounded kline** — one whose signature
   and nodes are fully accounted for by the model's structure.
@@ -555,6 +556,9 @@ Returns whether a kline is **countersigned** by any kline in the model.
 - `kline` — a KLine.
 - Returns `true` if the model contains a kline whose signature equals
   `make_signature(kline.nodes)` and whose sole node equals `kline.signature`.
+- A self-referential kline `{S: [S]}` is excluded: its nodes_signature is
+  `S` and it is itself a one-node kline whose node is `S`, so it would
+  otherwise count as its own countersigner.
 - This is a structural test — it checks whether another kline vouches for
   the given kline by having the kline's nodes_signature as its identity and
   the kline's signature as its only node.
@@ -705,9 +709,9 @@ else       → S4
 | MOD-62 | Unpack nested canon: recursively flattened, order preserved       | — |
 | MOD-63 | Unpack non-decomposable input (e.g. connoted) → raises            | — |
 | MOD-64 | Unpack unresolvable child node → raises                           | — |
-| MOD-65 | Unpack child resolution: identity preferred over canon            | — |
+| MOD-65 | Unpack child resolution: empty-identity > canon > self-referential identity | — |
 | MOD-66 | Unpack within-kind ambiguity: most-recently-added wins            | — |
-| MOD-67 | Unpack self-referential canon `{S: [S]}` → `[S]` (no recursion)    | — |
+| MOD-67 | Unpack self-referential `{S: [S]}` is identity → `[S]` (no recursion); loses to a genuine canon for the same signature | — |
 | MOD-67b | Unpack canon sharing node value but different nodes still recurses | — |
 
 ### Write Cascade
@@ -734,7 +738,7 @@ else       → S4
 
 | ID     | Criterion                                                              | Vision ref |
 | ------ | ---------------------------------------------------------------------- | ---------- |
-| MOD-34 | `is_s1` canonical: `make_signature(nodes) == signature` → True          | @vision §Significance |
+| MOD-34 | `is_s1` canonical: genuine canon (`is_canon`) → True             | @vision §Significance |
 | MOD-35 | `is_s1` countersigned: mutual cross-reference → True                   | @vision §Significance |
 | MOD-36 | `is_s1` neither: non-canonical, non-countersigned → False              | — |
 | MOD-37 | `expand` all-match ungrounded: significance reflects ungrounded count   | — |
@@ -765,6 +769,7 @@ else       → S4
 | MOD-57 | `generate_expansions` overfit: returns trimmed + companion                 | — |
 | MOD-58 | `generate_expansions` dual: returns replacement + companion                | — |
 | MOD-59 | `generate_expansions` no gap: no expansion proposals emitted               | — |
+| MOD-59b | `generate_expansions` never yields an identity proposal (`{S: []}` or `{S: [S]}`) — identity carries no decomposition; see @cogitator spec §Universal Constraint | — |
 
 ## What a Model is Not
 

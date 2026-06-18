@@ -866,8 +866,8 @@ class TestCascadeWriteMethods:
         adapter = EventBus()
         adapter.subscribe(lambda e: events.append(e))
         a = KAgent(model=m, adapter=adapter)
-        # Build a structurally S1 (canonical) candidate
-        candidate = KLine(10, [10])  # canonical → is_s1 returns True
+        # Build a structurally S1 (genuine canon) candidate.
+        candidate = KLine(0b110, [0b100, 0b010])  # canon → is_s1 returns True
         query = KLine(5, [1, 2])
         m.add_stm(query)
         with patch("kalvin.agent.promote_participating") as mock_promote:

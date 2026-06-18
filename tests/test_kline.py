@@ -1,6 +1,6 @@
 """Tests for KLine — specs/kline.md conformance."""
 
-from kalvin.kline import KDbg, KLine, sig_level
+from kalvin.kline import KDbg, KLine, is_canon, is_identity, sig_level
 
 
 class TestKLineConstruction:
@@ -166,3 +166,29 @@ class TestSigLevelHelper:
     def test_identity_is_s4(self):
         kl = KLine(0xFF, [], dbg=KDbg(op="IDENTITY"))
         assert sig_level(kl) == "S4"
+
+
+class TestStructuralPredicates:
+    """is_identity / is_canon — specs/kline.md §Structural Predicates."""
+
+    def test_kl20_is_identity_empty(self):
+        assert is_identity(KLine(0xFF, [])) is True
+
+    def test_kl21_is_identity_self_referential(self):
+        assert is_identity(KLine(0xFF, [0xFF])) is True
+
+    def test_kl22_is_identity_single_different_node(self):
+        assert is_identity(KLine(0xFF, [0x01])) is False
+
+    def test_kl23_is_canon_genuine(self):
+        # sig 0b110 = OR(0b100, 0b010); neither node is the signature.
+        assert is_canon(KLine(0b110, [0b100, 0b010])) is True
+
+    def test_kl24_is_canon_self_referential_is_not_canon(self):
+        assert is_canon(KLine(0xFF, [0xFF])) is False
+
+    def test_kl25_is_canon_empty_is_not_canon(self):
+        assert is_canon(KLine(0xFF, [])) is False
+
+    def test_is_canon_mismatched_sig(self):
+        assert is_canon(KLine(0b100, [0b110])) is False

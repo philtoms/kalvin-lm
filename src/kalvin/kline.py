@@ -127,6 +127,52 @@ class KLine:
 KGraph: TypeAlias = "object"  # Iterator[KLine] — for compat
 
 
+# === Structural predicates ===
+#
+# Identity and canon are structural properties of a KLine (they depend only
+# on its signature and nodes, not on model state). Defined here so every
+# module agrees on what counts as identity vs canon. See @kline spec and
+# @cogitator spec §Universal Constraint.
+
+
+def is_identity(kline: KLine) -> bool:
+    """Test whether a kline is an identity.
+
+    A kline is identity when it carries no decomposition — either form:
+      - empty nodes: ``{S: []}``, or
+      - self-referential: ``{S: [S]}`` — its own signature is its sole node.
+
+    The self-referential form is identity *by definition*: a value that
+    decomposes into itself carries no further information. This overrules any
+    canon classification (see :func:`is_canon`).
+    """
+    if not kline.nodes:
+        return True
+    return kline.nodes == [kline.signature]
+
+
+def is_canon(kline: KLine) -> bool:
+    """Test whether a kline is canonical.
+
+    A kline is canonical when it is neither identity nor self-referential AND
+    its signature is the OR-reduction of its nodes
+    (``signature == make_signature(nodes)``).
+
+    ``{S: [S]}`` is NOT canonical — it is identity (see :func:`is_identity`).
+    Allowing it as a canon would let it displace the genuine canon for the
+    same signature under Recency Precedence, collapsing ``unpack()`` to
+    identity. No relational token (``==``, ``=``, ``>``, ``=>``) produces a
+    self-referential kline.
+    """
+    if not kline.nodes:
+        return False  # identity
+    if kline.signature in kline.nodes:
+        return False  # self-referential — identity, not canon
+    from kalvin.signature import make_signature
+
+    return kline.signature == make_signature(kline.nodes)
+
+
 # Display helper
 
 _OP_SYMBOLS = {

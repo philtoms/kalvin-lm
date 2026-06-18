@@ -70,6 +70,30 @@ len(kline.nodes) → int ≥ 0
 
 The number of nodes. Equivalent to `len(kline.nodes)`.
 
+## Structural Predicates
+
+A kline's structural kind is determined by its signature and nodes alone
+(no model state). Two predicates capture the kinds relevant to rationalisation:
+
+- **`is_identity(kline)`** — `True` for the empty form `{S: []}` and the
+  self-referential form `{S: [S]}` (sole node equals signature). Both carry
+  no decomposition. The self-referential form is identity *by definition*
+  and overrules any canon classification (see @CONTEXT.md §Identity).
+- **`is_canon(kline)`** — `True` when the kline is neither identity nor
+  self-referential AND `signature == make_signature(nodes)`.
+
+These live with the KLine because they are structural properties; the model
+and significance modules consume them.
+
+| ID    | Criterion                                                                  |
+| ----- | -------------------------------------------------------------------------- |
+| KL-20 | `is_identity({S: []})` → True                                              |
+| KL-21 | `is_identity({S: [S]})` → True (self-referential)                          |
+| KL-22 | `is_identity({S: [A]})` (A ≠ S) → False                                    |
+| KL-23 | `is_canon({S: [A, B]})` where `S == A\|B` and `S` not in nodes → True       |
+| KL-24 | `is_canon({S: [S]})` → False (self-referential is identity, not canon)     |
+| KL-25 | `is_canon({S: []})` → False (identity)                                     |
+
 ## What a Kline is Not
 
 The following are explicitly **out of scope** for this spec:
