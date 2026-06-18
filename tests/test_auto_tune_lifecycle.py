@@ -85,7 +85,7 @@ class TestStartHarness:
         assert call_args[0][0] == [
             _resolve_python(),
             "-m",
-            "harness",
+            "training.harness",
             "--config",
             str(session_config_path),
         ]
@@ -93,6 +93,48 @@ class TestStartHarness:
         pid_path = session_dir / "training.harness.pid"
         assert pid_path.exists()
         assert int(pid_path.read_text()) == 99999
+
+    @patch("training.participants.auto_tune.lifecycle._generate_session_harness_config")
+    @patch("training.participants.auto_tune.lifecycle.socket.socket")
+    @patch("training.participants.auto_tune.lifecycle.subprocess.Popen")
+    def test_uses_fully_qualified_training_harness_module(
+        self,
+        mock_popen: MagicMock,
+        mock_socket_cls: MagicMock,
+        mock_gen_config: MagicMock,
+        session_dir: Path,
+        fake_process: MagicMock,
+    ) -> None:
+        # Regression (KB-318): the bare `-m harness` subprocess path was broken
+        # by the a8c6737 move of the harness package under src/training/. It
+        # silently passed CI because the old test pinned the buggy value. The
+        # importable module is now ``training.harness``, so the argument
+        # immediately following ``-m`` MUST be exactly that — not the bare
+        # ``harness``, which raises ModuleNotFoundError and causes start_harness
+        # to hit its poll timeout.
+        import importlib
+
+        mock_popen.return_value = fake_process
+        mock_gen_config.return_value = session_dir / "training.harness.yaml"
+
+        mock_sock = MagicMock()
+        mock_sock.connect_ex.return_value = 0
+        mock_socket_cls.return_value.__enter__ = MagicMock(return_value=mock_sock)
+        mock_socket_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+        from training.participants.auto_tune.lifecycle import start_harness
+
+        start_harness(session_dir)
+
+        mock_popen.assert_called_once()
+        popen_args = mock_popen.call_args[0][0]
+        module = popen_args[popen_args.index("-m") + 1]
+
+        assert module == "training.harness"
+        # Prove the module actually resolves at runtime — guards against a typo
+        # (e.g. "training.harnesss") that would pass a plain == check but still
+        # fail when the subprocess runs.
+        importlib.import_module(module)
 
     @patch("training.participants.auto_tune.lifecycle.time.sleep")
     @patch("training.participants.auto_tune.lifecycle.socket.socket")

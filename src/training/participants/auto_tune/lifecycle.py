@@ -156,7 +156,7 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     log_path = session_dir / "training.harness.log"
     log_file = open(log_path, "w", encoding="utf-8")
     proc = subprocess.Popen(
-        [_resolve_python(), "-m", "harness", "--config", str(harness_config_path)],
+        [_resolve_python(), "-m", "training.harness", "--config", str(harness_config_path)],
         stdout=subprocess.DEVNULL,
         stderr=log_file,
     )
