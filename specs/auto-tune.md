@@ -150,14 +150,14 @@ Sessions live inside a git worktree at `.worktrees/auto-tune/<session>/`. The se
 1. `init` creates the session directory and all supporting files inside a git worktree.
 2. `init` creates a git worktree at `.worktrees/auto-tune/<session>/` with branch `auto-tune/<session>` from the current HEAD. The main repo stays on its current branch.
 3. `init` records the current branch name, commit hash, and worktree path in `config.json`.
-4. `init` reads `training.harness.yaml` to derive default host/port, overridable via `--host`/`--port`.
+4. `init` reads the project harness config to derive default host/port, overridable via `--host`/`--port`.
 5. `config.json` stores the resolved `harness_url` as `ws://<host>:<port>`.
 6. `init` records the Kalvin model path (derived from harness config) in `config.json`.
 
 ### Harness Lifecycle
 
-7. `start-harness` starts `python -m training.harness --config training.harness.yaml` as a background process.
-   7a. `start-harness` generates a per-session `training.harness.yaml` that sets `trainer.llm.enabled: false`, placing the session in delegated mode so pi acts as the reactive decision-maker (`@specs/reactive-delegation.md`).
+7. `start-harness` starts the harness server as a background process, configured from the per-session harness config.
+   7a. `start-harness` generates that per-session harness config (from the project harness config) setting `trainer.llm.enabled: false`, placing the session in delegated mode so pi acts as the reactive decision-maker (`@specs/reactive-delegation.md`).
 8. `start-harness` records the PID in the session directory.
 9. `start-harness` polls the WebSocket port until it accepts connections, then returns.
 10. `stop-harness` sends SIGTERM to the harness PID, waits for exit (SIGKILL on 5s timeout).

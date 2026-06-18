@@ -141,6 +141,6 @@ When running under auto-tune, the harness server's stderr is redirected to `<ses
 
 - Structured JSON logging — plain text is sufficient for developer tracing
 - Log rotation or size management
-- Configurable log levels via training.harness.yaml
+- Configurable log levels via the harness config
 - Logging from the supervisor, TUI, or Slack participant
 - Session end log event (future work — the session end path has no INFO log yet)
