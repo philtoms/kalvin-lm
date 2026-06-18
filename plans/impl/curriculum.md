@@ -256,6 +256,18 @@ via upward scope traversal.
 **Rationale:** Simpler, no platform dependencies, sufficient for the expected
 amendment frequency (human or LLM-driven, not high-throughput).
 
+### DD-6 note: `first-steps-s2.md` lesson-5 misfit operator
+
+`first-steps-s2.md` lesson 5 (the S2-routing lesson) uses the `>` CONNOTED
+operator, not `=>` CANONIZED: a CANONIZED compound kline is canonical by
+construction (@kscript §11.4) and resolves S1 via AGT-14 before candidate
+retrieval, so it can never be the S2 misfit the lesson intends. With
+`(Mark Halo Alpha)\nMH > H A`, CONNOTED yields two misfit klines
+`{MH:[Halo]}` (underfit, routes S2 against the lesson-3 `{Mark:[Halo]}`
+countersign) and `{MH:[Alpha]}` (dual, escapes the auto-countersign backstop
+and requests ratification). See @curriculum §Curriculum Annotation Conventions
+rule 47.
+
 ## Build Order
 
 ```
