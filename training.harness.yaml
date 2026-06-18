@@ -1,5 +1,5 @@
 # Harness configuration — all four participants
-# Usage: python -m training.harness --config harness.yaml
+# Usage: python -m training.harness --config training.harness.yaml
 
 server:
   host: "localhost"

@@ -56,7 +56,7 @@ export SLACK_BOT_TOKEN=xoxb-...        # only if using Slack participant
 export SLACK_APP_TOKEN=xapp-...        # only if using Slack participant
 
 # 4. Run the harness
-uv run python -m training.harness --config harness.yaml
+uv run python -m training.harness --config training.harness.yaml
 ```
 
 The harness starts, loads the embedded Kalvin and Trainer, and listens for WebSocket connections from the Slack and TUI clients.
@@ -254,9 +254,9 @@ submitted set is monotonic, replay is safe and efficient.
 
 ## Configuration
 
-The harness reads a YAML (or JSON) configuration file. The default path is `harness.yaml` in the project root.
+The harness reads a YAML (or JSON) configuration file. The default path is `training.harness.yaml` in the project root.
 
-### Full Example (`harness.yaml`)
+### Full Example (`training.harness.yaml`)
 
 ```yaml
 # Server settings (overridable via CLI flags)
@@ -359,14 +359,14 @@ These can also be passed as constructor arguments to `SlackParticipant` instead 
 ### Basic
 
 ```bash
-uv run python -m training.harness --config harness.yaml
+uv run python -m training.harness --config training.harness.yaml
 ```
 
 ### Override Host / Port
 
 ```bash
 # CLI flags override the config file's server.host and server.port
-uv run python -m training.harness --config harness.yaml --host 0.0.0.0 --port 9000
+uv run python -m training.harness --config training.harness.yaml --host 0.0.0.0 --port 9000
 ```
 
 ### All CLI Flags
@@ -378,14 +378,14 @@ Multi-agent harness runtime
 
 options:
   -h, --help       show this help message and exit
-  --config CONFIG  Path to YAML/JSON config file (default: harness.yaml)
+  --config CONFIG  Path to YAML/JSON config file (default: training.harness.yaml)
   --host HOST      Override WebSocket server host
   --port PORT      Override WebSocket server port
 ```
 
 ### What Happens at Startup
 
-1. **Config loaded** — `harness.yaml` is read and validated.
+1. **Config loaded** — `training.harness.yaml` is read and validated.
 2. **Bus created** — A `MessageBus` is instantiated.
 3. **Embedded participants wired** — Kalvin and Trainer factories are called:
    - `KAgentAdapter` subscribes to role `"trainee"` on the bus.
@@ -653,7 +653,7 @@ To add a new embedded participant that runs in-process:
    server.register_participant_class("MyParticipant", my_factory)
    ```
 
-3. **Add to `harness.yaml`**:
+3. **Add to `training.harness.yaml`**:
 
    ```yaml
    participants:

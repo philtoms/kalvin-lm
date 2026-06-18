@@ -109,7 +109,7 @@ uv run python -m ui.kscript
 ### Harness Server (multi-agent)
 
 ```bash
-uv run python -m training.harness --config harness.yaml
+uv run python -m training.harness --config training.harness.yaml
 ```
 
 ## Project Structure

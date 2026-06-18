@@ -125,7 +125,7 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     """Start the harness server as a background process.
 
     Kills any stale harness, loads the session config, generates a
-    per-session harness.yaml, launches ``python -m training.harness``, and polls
+    per-session ``training.harness.yaml``, launches ``python -m training.harness``, and polls
     the WebSocket port until it accepts connections.
 
     Args:
@@ -290,11 +290,11 @@ def stop_supervisor(session_dir: Path) -> None:
 # Session harness config generation
 
 def _generate_session_harness_config(session_dir: Path, cfg: SessionConfig) -> Path:
-    """Generate a per-session harness.yaml from the project's harness.yaml.
+    """Generate a per-session ``training.harness.yaml`` from the project's config.
 
-    Reads the project's ``harness.yaml`` and overrides the ``curriculum_file``
+    Reads the project's ``training.harness.yaml`` and overrides the ``curriculum_file``
     with the session's configured curriculum.  Writes the result to
-    ``<session_dir>/harness.yaml`` so the harness loads the correct curriculum.
+    ``<session_dir>/training.harness.yaml`` so the harness loads the correct curriculum.
 
     Returns the path to the generated config.
     """
@@ -303,7 +303,7 @@ def _generate_session_harness_config(session_dir: Path, cfg: SessionConfig) -> P
     project_config = session_dir.parent.parent / "training.harness.yaml"
     config_path = session_dir / "training.harness.yaml"
 
-    # Read project harness.yaml if it exists, otherwise use minimal defaults
+    # Read project training.harness.yaml if it exists, otherwise use minimal defaults
     if project_config.exists():
         data = yaml.safe_load(project_config.read_text(encoding="utf-8"))
         if not isinstance(data, dict):

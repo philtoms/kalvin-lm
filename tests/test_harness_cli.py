@@ -29,6 +29,12 @@ from training.harness.server import HarnessServer, load_config
 # Helpers
 # ---------------------------------------------------------------------------
 
+# Repository root (one level up from ``tests/``) and the canonical project
+# config. Resolved from this test file's location so the smoke test passes
+# regardless of the working directory pytest is invoked from.
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_PROJECT_CONFIG = REPO_ROOT / "training.harness.yaml"
+
 
 def _make_self_subscribing_factory(
     target_role: str,
@@ -146,8 +152,18 @@ class TestLoadConfigFromSampleYaml:
     """HRNS-5: Harness loads embedded participants from config file on startup."""
 
     def test_load_config_from_sample_yaml(self) -> None:
-        """Call ``load_config("training.harness.yaml")`` and assert all four participants."""
-        config = load_config("training.harness.yaml")
+        """Load the canonical project config (``training.harness.yaml``) and assert all four participants.
+
+        The config path is resolved from this test file's location so the test
+        passes regardless of the working directory pytest is invoked from.
+        """
+        # Guard explicitly so a future rename fails with a clear message rather
+        # than a bare FileNotFoundError from load_config().
+        assert _PROJECT_CONFIG.exists(), (
+            f"canonical project config not found at {_PROJECT_CONFIG}; "
+            "has it been renamed?"
+        )
+        config = load_config(_PROJECT_CONFIG)
         assert len(config.participants) == 4
 
         by_role: dict[str, list] = {}
