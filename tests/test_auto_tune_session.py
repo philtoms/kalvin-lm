@@ -309,7 +309,7 @@ class TestSessionDirInit:
         ).stdout.strip()
         assert worktree_current == "tuning/exp-7"
 
-    def test_init_reads_harness_yaml(self, tmp_git_repo: Path) -> None:
+    def test_init_reads_training_harness_yaml(self, tmp_git_repo: Path) -> None:
         """init reads host/port from training.harness.yaml when no overrides given."""
         harness_yaml = tmp_git_repo / "training.harness.yaml"
         harness_yaml.write_text(
@@ -322,6 +322,32 @@ class TestSessionDirInit:
             root=tmp_git_repo,
         )
         assert sd.config.harness_url == "ws://myhost:5555"
+
+    def test_init_reads_training_harness_yaml_docstring_uses_canonical_filename(self) -> None:
+        """test_init_reads_training_harness_yaml's docstring names ``training.harness.yaml``.
+
+        KB-311 renamed the on-disk harness config from ``harness.yaml`` to
+        ``training.harness.yaml``. KB-325 renamed this test method to match
+        that canonical name (its body and docstring were already canonical;
+        only the method name was stale). This pins the renamed method's
+        docstring to the canonical name so the test's own documentation cannot
+        silently drift back to the bare literal (the same class of stale
+        docstring KB-313 guarded for ``SessionDir.init`` and KB-317 guarded
+        for ``test_host_port_override``).
+        """
+        doc = TestSessionDirInit.test_init_reads_training_harness_yaml.__doc__
+        assert doc is not None, "test_init_reads_training_harness_yaml must have a docstring"
+
+        # Positive: canonical filename is referenced.
+        assert "training.harness.yaml" in (doc or "")
+
+        # Negative — phrase-scoped, NOT the bare ``harness.yaml``: the canonical
+        # literal ``training.harness.yaml`` contains ``harness.yaml`` as a
+        # substring, so only the full "from harness.yaml" phrase reliably
+        # distinguishes stale wording from canonical (the canonical docstring
+        # reads "from training.harness.yaml", where ``from `` is immediately
+        # followed by ``training.``).
+        assert "from harness.yaml" not in (doc or "")
 
     def test_teardown_removes_worktree(self, tmp_git_repo: Path) -> None:
         """teardown removes the worktree and branch."""
