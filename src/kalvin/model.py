@@ -202,14 +202,14 @@ class Model:
     """Four-tier Model: STM → Frame → LTM → Base.
 
     Write API (cascade methods):
-    - add_stm(kl) — STM only. Always refreshes FIFO position.
-    - add_frame(kl) — Frame + STM. Unconditional write.
-    - add_ltm(kl) — LTM + Frame + STM. Unconditional write.
+    - add_to_stm(kl) — STM only. Always refreshes FIFO position.
+    - add_to_frame(kl) — Frame + STM. Unconditional write.
+    - add_to_ltm(kl) — LTM + Frame + STM. Unconditional write.
 
     Tier descriptions:
     - STM: bounded rolling window (default 256). Fast recency index.
     - Frame: working context. Additive, monotonic.
-    - LTM: long-term memory. Populated via add_ltm(). Additive.
+    - LTM: long-term memory. Populated via add_to_ltm(). Additive.
     - Base: optional long-term knowledge store (read-only, set at construction).
 
     Read API (unchanged):
@@ -242,11 +242,11 @@ class Model:
 
     # Storage Operations
 
-    def add_stm(self, kline: KLine) -> None:
+    def add_to_stm(self, kline: KLine) -> None:
         """Write to STM only. Always refreshes FIFO (remove-if-present then add)."""
         self._stm.add(kline)
 
-    def add_frame(self, kline: KLine) -> None:
+    def add_to_frame(self, kline: KLine) -> None:
         """Write to Frame and STM.
 
         Frame and STM are both written unconditionally.
@@ -255,7 +255,7 @@ class Model:
         self._frame.add(kline)
         self._stm.add(kline)
 
-    def add_ltm(self, kline: KLine) -> None:
+    def add_to_ltm(self, kline: KLine) -> None:
         """Write to LTM, Frame, and STM.
 
         All three tiers written unconditionally.
@@ -488,7 +488,7 @@ class Model:
         klines = [KLine(kl.signature, list(kl.nodes), kl.dbg) for kl in self._frame.all_klines()]
         m = Model()
         for kl in klines:
-            m.add_frame(kl)
+            m.add_to_frame(kl)
         return m
 
     @property

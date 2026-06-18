@@ -18,9 +18,9 @@ See **@stm spec** for STM definition.
 ### Key API (from spec)
 
 ```python
-model.add_stm(kline) → None       # STM only (always refreshes FIFO)
-model.add_frame(kline) → None     # Frame + cascades to add_stm()
-model.add_ltm(kline) → None       # LTM + cascades to add_frame()
+model.add_to_stm(kline) → None       # STM only (always refreshes FIFO)
+model.add_to_frame(kline) → None     # Frame + cascades to add_to_stm()
+model.add_to_ltm(kline) → None       # LTM + cascades to add_to_frame()
 model.exists(kline) → bool       # Check across all tiers
 model.find(signature) → KLine|None
 model.find_all(signature) → list[KLine]
@@ -267,8 +267,8 @@ def is_countersigned(self, a: KLine, b: KLine) -> bool:
 
 | Spec ID | Test                      | Description                      |
 | ------- | ------------------------- | -------------------------------- |
-| MOD-1   | add_frame and find         | Add KLine via add_frame, find returns it |
-| MOD-4   | Exists                    | True after add_frame, False before |
+| MOD-1   | add_to_frame and find         | Add KLine via add_to_frame, find returns it |
+| MOD-4   | Exists                    | True after add_to_frame, False before |
 | MOD-5   | Find returns most recent  | Multiple KLines same sig         |
 | MOD-6   | Find_all                  | Returns all KLines with sig      |
 | MOD-7   | Find_by_nodes             | Returns by nodes signature       |
@@ -300,12 +300,12 @@ def is_countersigned(self, a: KLine, b: KLine) -> bool:
 
 | Spec ID | Test                | Description                                         |
 | ------- | ------------------- | --------------------------------------------------- |
-| MOD-23  | add_stm refresh     | Removes-if-present then adds, refreshing FIFO       |
-| MOD-24  | add_stm evict       | Oldest evicted when bound exceeded                  |
-| MOD-25  | add_frame cascade   | Writes Frame and cascades to add_stm                |
-| MOD-26  | add_ltm cascade     | Writes LTM and cascades to add_frame                |
-| MOD-32  | add_frame monotonic | Frame is append-only                                |
-| MOD-33  | add_ltm monotonic   | LTM is append-only                                  |
+| MOD-23  | add_to_stm refresh     | Removes-if-present then adds, refreshing FIFO       |
+| MOD-24  | add_to_stm evict       | Oldest evicted when bound exceeded                  |
+| MOD-25  | add_to_frame cascade   | Writes Frame and cascades to add_to_stm                |
+| MOD-26  | add_to_ltm cascade     | Writes LTM and cascades to add_to_frame                |
+| MOD-32  | add_to_frame monotonic | Frame is append-only                                |
+| MOD-33  | add_to_ltm monotonic   | LTM is append-only                                  |
 
 ### Significance API
 

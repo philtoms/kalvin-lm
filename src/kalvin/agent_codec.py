@@ -177,21 +177,21 @@ class BinaryAdapter:
     ) -> Model:
         """Reconstruct a Model from three tiers in the correct order.
 
-        Order: add_ltm → add_frame → add_stm. Since serialized tier lists
-        overlap (add_ltm writes LTM + Frame + STM), we check existence
-        before add_frame/add_stm to avoid Frame duplication.
+        Order: add_to_ltm → add_to_frame → add_to_stm. Since serialized tier lists
+        overlap (add_to_ltm writes LTM + Frame + STM), we check existence
+        before add_to_frame/add_to_stm to avoid Frame duplication.
         """
         model = Model()
         for kl in ltm_klines:
-            model.add_ltm(kl)
+            model.add_to_ltm(kl)
         for kl in frame_klines:
             if model.exists(kl):
-                # Already written by add_ltm — just refresh STM position
-                model.add_stm(kl)
+                # Already written by add_to_ltm — just refresh STM position
+                model.add_to_stm(kl)
             else:
-                model.add_frame(kl)
+                model.add_to_frame(kl)
         for kl in stm_klines:
-            model.add_stm(kl)
+            model.add_to_stm(kl)
         return model
 
     @staticmethod
@@ -270,9 +270,9 @@ class JsonAdapter:
     def decode(data: dict) -> tuple[Model, Counter]:
         """Deserialize a dict into (Model, Counter).
 
-        Reconstruction order: add_ltm, add_frame, add_stm. Since serialized
-        tier lists overlap (add_ltm writes LTM + Frame + STM), we check
-        existence before add_frame to avoid Frame duplication.
+        Reconstruction order: add_to_ltm, add_to_frame, add_to_stm. Since serialized
+        tier lists overlap (add_to_ltm writes LTM + Frame + STM), we check
+        existence before add_to_frame to avoid Frame duplication.
         Backward compatible with single-section JSON (only "klines" + "activity").
         """
         model = Model()
@@ -280,21 +280,21 @@ class JsonAdapter:
         # (a) Add LTM klines (writes LTM + Frame + STM)
         ltm_klines = [JsonAdapter._kline_from_dict(item) for item in data.get("ltm", [])]
         for kl in ltm_klines:
-            model.add_ltm(kl)
+            model.add_to_ltm(kl)
 
         # (b) Add Frame klines — check existence first to avoid Frame duplicates
         frame_klines = [JsonAdapter._kline_from_dict(item) for item in data.get("klines", [])]
         for kl in frame_klines:
             if model.exists(kl):
-                # Already written by add_ltm — just refresh STM position
-                model.add_stm(kl)
+                # Already written by add_to_ltm — just refresh STM position
+                model.add_to_stm(kl)
             else:
-                model.add_frame(kl)
+                model.add_to_frame(kl)
 
         # (c) Refresh STM entries (writes STM only)
         stm_klines = [JsonAdapter._kline_from_dict(item) for item in data.get("stm", [])]
         for kl in stm_klines:
-            model.add_stm(kl)
+            model.add_to_stm(kl)
 
         activity: Counter = Counter()
         if "activity" in data:

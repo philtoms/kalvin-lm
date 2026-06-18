@@ -613,7 +613,7 @@ class TestCogitatorWithFakeHandler:
         m = Model()
         # Build model with a canonical kline so expand yields a high-significance result
         c = KLine(10, [10])  # canonical: sig == make_signature(nodes)
-        m.add_ltm(c)
+        m.add_to_ltm(c)
 
         recorder = RecordingCogitationHandler()
         event_bus = EventBus()
@@ -622,7 +622,7 @@ class TestCogitatorWithFakeHandler:
         # Query fully matches candidate → S1 after expand
         q = KLine(0, [10])
         q.signature = make_signature([10])
-        m.add_frame(q)
+        m.add_to_frame(q)
 
         cogitator.submit(WorkItem(q, c, "S2"))
         cogitator.join(timeout=2.0)
@@ -636,12 +636,12 @@ class TestCogitatorWithFakeHandler:
         m = Model()
         # Build model with canonical klines that resolve nodes
         k1 = KLine(0b100, [0b100])  # canonical
-        m.add_ltm(k1)
+        m.add_to_ltm(k1)
         k2 = KLine(0b010, [0b010])  # canonical — resolves as a contributor
-        m.add_ltm(k2)
+        m.add_to_ltm(k2)
         # A misfit kline — underfitting: sig=0b110 but nodes only give 0b100
         k3 = KLine(0b110, [0b100])
-        m.add_ltm(k3)
+        m.add_to_ltm(k3)
 
         recorder = RecordingCogitationHandler()
         event_bus = EventBus()
@@ -651,7 +651,7 @@ class TestCogitatorWithFakeHandler:
         # and k3 is misfit so propose_expansions triggers generate_expansions.
         q = KLine(0, [0b010])
         q.signature = make_signature([0b010])
-        m.add_frame(q)
+        m.add_to_frame(q)
 
         cogitator.submit(WorkItem(q, k3, "S3"))
         cogitator.join(timeout=2.0)
@@ -668,7 +668,7 @@ class TestCogitatorWithFakeHandler:
         m = Model()
         # Canonical kline that resolves via expand
         c = KLine(10, [10])
-        m.add_ltm(c)
+        m.add_to_ltm(c)
 
         recorder = RecordingCogitationHandler()
         event_bus = EventBus()
@@ -676,7 +676,7 @@ class TestCogitatorWithFakeHandler:
 
         q = KLine(0, [10])
         q.signature = make_signature([10])
-        m.add_frame(q)
+        m.add_to_frame(q)
 
         cogitator.submit(WorkItem(q, c, "S2"))
         cogitator.join(timeout=2.0)
@@ -743,18 +743,18 @@ class TestCountersign:
 class TestCascadeWriteMethods:
     """Verify the correct model write method is called at each rationalisation phase."""
 
-    def test_agt9_first_rationalise_add_ltm(self):
-        """AGT-9: First rationalise of a new kline calls model.add_ltm()."""
+    def test_agt9_first_rationalise_add_to_ltm(self):
+        """AGT-9: First rationalise of a new kline calls model.add_to_ltm()."""
         m = Model()
         a = KAgent(model=m, adapter=EventBus())
         k = KLine(5, [1, 2])
-        with patch.object(m, "add_ltm", wraps=m.add_ltm) as mock_add_ltm:
+        with patch.object(m, "add_to_ltm", wraps=m.add_to_ltm) as mock_add_to_ltm:
             result = a.rationalise(k)
         assert result is True
-        mock_add_ltm.assert_called_once_with(k)
+        mock_add_to_ltm.assert_called_once_with(k)
 
-    def test_agt10_duplicate_ground_add_stm(self):
-        """AGT-10: Second rationalise of same kline calls model.add_stm() and emits ground."""
+    def test_agt10_duplicate_ground_add_to_stm(self):
+        """AGT-10: Second rationalise of same kline calls model.add_to_stm() and emits ground."""
         m = Model()
         events = []
         adapter = EventBus()
@@ -764,48 +764,48 @@ class TestCascadeWriteMethods:
         a.rationalise(k)  # first time
         # Second rationalise — should hit ground check
         dup = KLine(5, [1, 2])
-        with patch.object(m, "add_stm", wraps=m.add_stm) as mock_add_stm:
+        with patch.object(m, "add_to_stm", wraps=m.add_to_stm) as mock_add_to_stm:
             result = a.rationalise(dup)
         assert result is True
-        mock_add_stm.assert_called_once_with(dup)
+        mock_add_to_stm.assert_called_once_with(dup)
         assert any(e.kind == "ground" for e in events)
 
-    def test_agt12_s4_unsigned_add_ltm(self):
-        """AGT-12: Empty kline calls model.add_ltm()."""
+    def test_agt12_s4_unsigned_add_to_ltm(self):
+        """AGT-12: Empty kline calls model.add_to_ltm()."""
         m = Model()
         a = KAgent(model=m, adapter=EventBus())
         k = KLine(0, [])
-        with patch.object(m, "add_ltm", wraps=m.add_ltm) as mock_add_ltm:
+        with patch.object(m, "add_to_ltm", wraps=m.add_to_ltm) as mock_add_to_ltm:
             result = a.rationalise(k)
         assert result is True
-        mock_add_ltm.assert_called_once_with(k)
+        mock_add_to_ltm.assert_called_once_with(k)
 
-    def test_agt14_s1_self_grounded_add_ltm(self):
-        """AGT-14: Self-grounded canonical kline calls model.add_ltm()."""
+    def test_agt14_s1_self_grounded_add_to_ltm(self):
+        """AGT-14: Self-grounded canonical kline calls model.add_to_ltm()."""
         m = Model()
         # Add resolved nodes so the query's non-literal nodes resolve
-        m.add_ltm(KLine(10, [10]))  # canonical
-        m.add_ltm(KLine(20, [20]))  # canonical
+        m.add_to_ltm(KLine(10, [10]))  # canonical
+        m.add_to_ltm(KLine(20, [20]))  # canonical
         a = KAgent(model=m, adapter=EventBus())
         # Query that is canonical and all non-literal nodes resolve
         # make_signature([10, 20]) = 10 | 20 = 30
         k = KLine(30, [10, 20])
-        with patch.object(m, "add_ltm", wraps=m.add_ltm) as mock_add_ltm:
+        with patch.object(m, "add_to_ltm", wraps=m.add_to_ltm) as mock_add_to_ltm:
             result = a.rationalise(k)
         assert result is True
-        mock_add_ltm.assert_any_call(k)
+        mock_add_to_ltm.assert_any_call(k)
 
-    def test_agt16_novel_s4_add_ltm(self):
-        """AGT-16: No candidates found calls model.add_ltm()."""
+    def test_agt16_novel_s4_add_to_ltm(self):
+        """AGT-16: No candidates found calls model.add_to_ltm()."""
         m = Model()
         a = KAgent(model=m, adapter=EventBus())
         # A unique signature that won't match anything in the model
         k = KLine(0xFF00, [0xFF00])
         k.signature = make_signature([0xFF00])
-        with patch.object(m, "add_ltm", wraps=m.add_ltm) as mock_add_ltm:
+        with patch.object(m, "add_to_ltm", wraps=m.add_to_ltm) as mock_add_to_ltm:
             result = a.rationalise(k)
         assert result is True
-        mock_add_ltm.assert_any_call(k)
+        mock_add_to_ltm.assert_any_call(k)
 
     def test_agt18_s1_routing_submits_to_cogitator(self):
         """AGT-18: S1 routing submits work item to cogitator (no short-circuit)."""
@@ -833,8 +833,8 @@ class TestCascadeWriteMethods:
         assert submitted[0].candidate is c
         assert submitted[0].level == "S1"
 
-    def test_agt22a_slow_path_query_add_stm_only(self):
-        """AGT-22a: S2/S3 routed kline calls model.add_stm() only — not add_frame or add_ltm."""
+    def test_agt22a_slow_path_query_add_to_stm_only(self):
+        """AGT-22a: S2/S3 routed kline calls model.add_to_stm() only — not add_to_frame or add_to_ltm."""
         m = Model()
         a = KAgent(model=m, adapter=EventBus())
         # Add a candidate that will route as S2 (partial overlap)
@@ -844,20 +844,20 @@ class TestCascadeWriteMethods:
         q = KLine(0, [10, 20])
         q.signature = make_signature([10, 20])
         with (
-            patch.object(m, "add_stm", wraps=m.add_stm) as mock_add_stm,
-            patch.object(m, "add_ltm", wraps=m.add_ltm) as mock_add_ltm,
-            patch.object(m, "add_frame", wraps=m.add_frame) as mock_add_frame,
+            patch.object(m, "add_to_stm", wraps=m.add_to_stm) as mock_add_to_stm,
+            patch.object(m, "add_to_ltm", wraps=m.add_to_ltm) as mock_add_to_ltm,
+            patch.object(m, "add_to_frame", wraps=m.add_to_frame) as mock_add_to_frame,
         ):
             result = a.rationalise(q)
         assert result is False  # S2 → not significant, submitted to cogitator
-        # add_stm should have been called for Phase 5
-        mock_add_stm.assert_called()
-        # add_ltm should NOT have been called for the query (it's slow path)
-        # Note: add_ltm may have been called for the candidate earlier, but not for q
-        for call in mock_add_ltm.call_args_list:
-            assert call[0][0] is not q, "add_ltm should not be called for slow-path query"
-        for call in mock_add_frame.call_args_list:
-            assert call[0][0] is not q, "add_frame should not be called for slow-path query"
+        # add_to_stm should have been called for Phase 5
+        mock_add_to_stm.assert_called()
+        # add_to_ltm should NOT have been called for the query (it's slow path)
+        # Note: add_to_ltm may have been called for the candidate earlier, but not for q
+        for call in mock_add_to_ltm.call_args_list:
+            assert call[0][0] is not q, "add_to_ltm should not be called for slow-path query"
+        for call in mock_add_to_frame.call_args_list:
+            assert call[0][0] is not q, "add_to_frame should not be called for slow-path query"
 
     def test_agt29_cogitation_s1_promote_participating(self):
         """AGT-29: on_s1 with structural S1 calls promote and publishes frame."""
@@ -869,7 +869,7 @@ class TestCascadeWriteMethods:
         # Build a structurally S1 (genuine canon) candidate.
         candidate = KLine(0b110, [0b100, 0b010])  # canon → is_s1 returns True
         query = KLine(5, [1, 2])
-        m.add_stm(query)
+        m.add_to_stm(query)
         with patch("kalvin.agent.promote_participating") as mock_promote:
             a.on_s1(query, candidate)
         mock_promote.assert_called_once_with(m, query, candidate)
@@ -888,8 +888,8 @@ class TestCascadeWriteMethods:
         mock_promote.assert_not_called()
         # Frame event still published (unconditional)
 
-    def test_agt34_expansion_add_frame(self):
-        """AGT-34: on_expansion calls model.add_frame(proposal) before publishing."""
+    def test_agt34_expansion_add_to_frame(self):
+        """AGT-34: on_expansion calls model.add_to_frame(proposal) before publishing."""
         m = Model()
         events = []
         adapter = EventBus()
@@ -897,9 +897,9 @@ class TestCascadeWriteMethods:
         a = KAgent(model=m, adapter=adapter)
         q = KLine(5, [1, 2])
         p = KLine(10, [3, 4])
-        with patch.object(m, "add_frame", wraps=m.add_frame) as mock_add_frame:
+        with patch.object(m, "add_to_frame", wraps=m.add_to_frame) as mock_add_to_frame:
             a.on_expansion(q, p, 42)
-        mock_add_frame.assert_called_once_with(p)
+        mock_add_to_frame.assert_called_once_with(p)
         # Frame event published
         assert len(events) == 1
         assert events[0].kind == "frame"

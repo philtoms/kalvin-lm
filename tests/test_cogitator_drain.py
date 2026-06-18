@@ -181,7 +181,7 @@ class TestNoCrossLessonSpillover:
         try:
             # ── Lesson 1: add a candidate, rationalise a query that routes S2 ──
             # Candidate signature 5 = 0b00101.
-            agent.model.add_ltm(KLine(5, [10, 30]))
+            agent.model.add_to_ltm(KLine(5, [10, 30]))
 
             # Query signature 30 = 10 | 20 = 0b11110 — shares bit 2 with the
             # candidate, so Model.where() finds it and routing classifies S2

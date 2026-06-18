@@ -191,12 +191,12 @@ class KAgent:
 
         # Ground check (Frame/LTM/Base only — not STM)
         if kline.signature != 0 and self._model.grounded(kline):
-            self._model.add_stm(kline)
+            self._model.add_to_stm(kline)
             self._publish("ground", kline, kline, D_MAX - 1)
             return True
 
         if not kline.nodes:
-            self._model.add_ltm(kline)
+            self._model.add_to_ltm(kline)
             self._publish("frame", kline, kline, 0)  # S4
             return True
 
@@ -204,20 +204,20 @@ class KAgent:
         if kline.signature == expected_sig:
             all_resolved = all(self._model.find(n) is not None for n in kline.nodes)
             if all_resolved:
-                self._model.add_ltm(kline)
+                self._model.add_to_ltm(kline)
                 self._publish("frame", kline, kline, D_MAX - 1)  # S1
                 return True
 
         # Register in STM before the ratification check so sequential
         # countersign pairs (e.g. from `M == H` compiling to {M: H} and
         # {H: M}) can find each other via is_countersigned.
-        self._model.add_stm(kline)
+        self._model.add_to_stm(kline)
 
         # Ratification — countersigned in the model → S1. Only countersign
         # produces reciprocal klines; undersign/connotate share a structure
         # (a single node entry in opposite directions) and are handled below.
         if is_countersigned(self._model, kline):
-            self._model.add_ltm(kline)
+            self._model.add_to_ltm(kline)
             self._publish("frame", kline, kline, D_MAX - 1)  # S1
             return True
 
@@ -229,7 +229,7 @@ class KAgent:
         ]
 
         if not candidates:
-            self._model.add_ltm(kline)
+            self._model.add_to_ltm(kline)
             self._publish("frame", kline, kline, 0)  # S4 — novel
             return True
 
@@ -272,7 +272,7 @@ class KAgent:
         original_candidate: KLine | None = None,
     ) -> None:
         """CogitationHandler.on_expansion: write proposal to Frame, publish frame event."""
-        self._model.add_frame(proposal)
+        self._model.add_to_frame(proposal)
         event = RationaliseEvent(
             "frame",
             query,

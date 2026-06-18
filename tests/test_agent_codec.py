@@ -15,9 +15,9 @@ from kalvin.model import Model
 def _make_model_with_klines() -> tuple[Model, Counter]:
     """Build a model with a few klines and a non-empty activity counter."""
     model = Model()
-    model.add_ltm(KLine(5, [1, 2]))
-    model.add_ltm(KLine(10, [3, 4]))
-    model.add_ltm(KLine(0, []))
+    model.add_to_ltm(KLine(5, [1, 2]))
+    model.add_to_ltm(KLine(10, [3, 4]))
+    model.add_to_ltm(KLine(0, []))
     activity = Counter({5: 3, 10: 1})
     return model, activity
 
@@ -26,27 +26,27 @@ def _make_model_with_all_tiers() -> tuple[Model, Counter]:
     """Build a model with distinct entries in STM, Frame, and LTM.
 
     Strategy:
-      1. add_ltm for entries that should be in LTM + Frame + STM.
-      2. add_frame for entries that should be in Frame + STM only.
+      1. add_to_ltm for entries that should be in LTM + Frame + STM.
+      2. add_to_frame for entries that should be in Frame + STM only.
     """
     model = Model()
 
-    # Step 1: add_ltm — writes LTM + Frame + STM
+    # Step 1: add_to_ltm — writes LTM + Frame + STM
     kl_a = KLine(5, [1, 2])
-    model.add_ltm(kl_a)
+    model.add_to_ltm(kl_a)
 
-    # Step 2: add_frame — writes Frame + STM (not LTM)
+    # Step 2: add_to_frame — writes Frame + STM (not LTM)
     kl_b = KLine(10, [3, 4])
     kl_c = KLine(15, [5, 6])
     kl_d = KLine(20, [7, 8])
-    model.add_frame(kl_b)
-    model.add_frame(kl_c)
-    model.add_frame(kl_d)
+    model.add_to_frame(kl_b)
+    model.add_to_frame(kl_c)
+    model.add_to_frame(kl_d)
 
     # Now:
     #   STM = [kl_a, kl_b, kl_c, kl_d] (all four)
     #   Frame = [kl_a, kl_b, kl_c, kl_d] (all four)
-    #   LTM = [kl_a] (only add_ltm one)
+    #   LTM = [kl_a] (only add_to_ltm one)
 
     activity = Counter({5: 2, 15: 1})
     return model, activity
@@ -313,13 +313,13 @@ class TestEmptyTiers:
     """Model with only Frame entries roundtrips correctly."""
 
     def test_empty_stm_ltm(self):
-        """Model with only Frame entries (no add_ltm) roundtrips."""
+        """Model with only Frame entries (no add_to_ltm) roundtrips."""
         model = Model()
-        model.add_frame(KLine(5, [1, 2]))
-        model.add_frame(KLine(10, [3, 4]))
+        model.add_to_frame(KLine(5, [1, 2]))
+        model.add_to_frame(KLine(10, [3, 4]))
         activity = Counter({5: 1})
 
-        # STM has klines (from add_frame), Frame has klines, LTM is empty
+        # STM has klines (from add_to_frame), Frame has klines, LTM is empty
         orig_frame = {(kl.signature, tuple(kl.nodes)) for kl in model}
 
         data = BinaryAdapter.encode(model, activity)

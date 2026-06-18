@@ -40,7 +40,7 @@ class TestCountersignPairResolution:
 
         # Pre-register (simulates adapter behaviour)
         for e in entries:
-            a.model.add_stm(e)
+            a.model.add_to_stm(e)
 
         events = []
         orig = bus.on_event
@@ -68,20 +68,20 @@ class TestGroundCheckExcludesSTM:
     def test_grounded_returns_false_for_stm_only(self):
         m = Model()
         kl = KLine(0xFF, [1, 2])
-        m.add_stm(kl)
+        m.add_to_stm(kl)
         assert m.exists(kl) is True
         assert m.grounded(kl) is False
 
     def test_grounded_returns_true_for_frame_entry(self):
         m = Model()
         kl = KLine(0xFF, [1, 2])
-        m.add_frame(kl)
+        m.add_to_frame(kl)
         assert m.grounded(kl) is True
 
     def test_grounded_returns_true_for_ltm_entry(self):
         m = Model()
         kl = KLine(0xFF, [1, 2])
-        m.add_ltm(kl)
+        m.add_to_ltm(kl)
         assert m.grounded(kl) is True
 
 
@@ -152,7 +152,7 @@ class TestUndersignIsConnotateReversed:
         assert sig_level(e) == "S3"
 
         # Pre-register
-        a.model.add_stm(e)
+        a.model.add_to_stm(e)
 
         result = a.rationalise(e)
         # Undersign gets no special fast path: {M: [S]} is routed against
@@ -175,7 +175,7 @@ class TestUndersignIsConnotateReversed:
         e = connotate[0]
         assert sig_level(e) == "S3"
 
-        a.model.add_stm(e)
+        a.model.add_to_stm(e)
         result = a.rationalise(e)
         # No candidates for A signature, so it should be novel (S4 -> True)
         # OR if candidates exist, S3 -> False (slow path)

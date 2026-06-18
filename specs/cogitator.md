@@ -30,7 +30,7 @@ This spec depends on the following concepts, defined elsewhere:
 
 - Provides `expand(Q, C)` generator yielding `QueryCandidate`s
   (query, candidate, significance).
-- Provides `add_frame` / `add_ltm` for tiered writes of proposals and
+- Provides `add_to_frame` / `add_to_ltm` for tiered writes of proposals and
   companions.
 - Provides `generate_expansions(candidate)` for S2 expansion proposals and
   companion klines.
@@ -173,10 +173,10 @@ process(QueryCandidate(query, candidate, significance)):
   if candidate is canonical:
     return                        # nothing to expand
   for proposal, companions in model.generate_expansions(candidate):
-    model.add_frame(proposal)      # write proposal to Frame + STM
+    model.add_to_frame(proposal)      # write proposal to Frame + STM
     emit frame event for proposal
     for companion in companions:
-      model.add_frame(companion)   # write companion to Frame + STM
+      model.add_to_frame(companion)   # write companion to Frame + STM
       emit frame event for companion
 ```
 
@@ -301,9 +301,9 @@ S2 expansion requires structural grounding for two reasons:
 
 1. **Promotion after ratification** — when the agent countersigns an
    expansion proposal, all participating klines must be cascaded to LTM
-   via `add_ltm` (not just the ratified kline), including the added/removed node
+   via `add_to_ltm` (not just the ratified kline), including the added/removed node
    groups and any S4 identity klines involved. `promote_participating` calls
-   `add_ltm` in a loop for each participating kline.
+   `add_to_ltm` in a loop for each participating kline.
 
 2. **Frame richness** — the expansion search requires a model populated
    with the signatures it needs to find. Structural grounding ensures that
@@ -312,7 +312,7 @@ S2 expansion requires structural grounding for two reasons:
 
 The `promote_participating` function should be reviewed and made fit for
 purpose — ensuring all participating klines are cascaded to LTM via
-`add_ltm` calls.
+`add_to_ltm` calls.
 
 ### Exploration Depth
 
@@ -329,7 +329,7 @@ or via boundary classification during expand() — it calls
 The Agent implementation checks `is_s1(model, candidate)` as a structural
 guard — if the candidate is structurally S1 (canonical or countersigned), it
 calls `promote_participating(model, query, candidate)` to cascade all
-participating STM klines to LTM via `add_ltm`. A frame event is always
+participating STM klines to LTM via `add_to_ltm`. A frame event is always
 published (unconditional) with significance `D_MAX - 1`. The `_run_work_item`
 S1 branch delegates entirely to `on_s1`, keeping the dispatcher thin.
 
@@ -375,7 +375,7 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 | AGT-33 | S1 detection: high-significance QC triggers handler.on_s1          | — |
 | AGT-34 | S2/S3 expansion: non-canonical QC triggers expansion proposals, proposals written to Frame | — |
 | AGT-35 | Proposals at any significance: S2 and S3 proposals emitted as frame events | — |
-| AGT-36 | Boundary S1 + structural check: participating klines cascaded to LTM via add_ltm | — |
+| AGT-36 | Boundary S1 + structural check: participating klines cascaded to LTM via add_to_ltm | — |
 | AGT-37 | Boundary S1 + structural S1: LTM cascade occurs                      | — |
 | AGT-38 | S2 before S1: deferred S2 work items discarded, zero cogitator submissions | auto-tune/s1-batch-dedup |
 | AGT-39 | Cogitator break-on-S1: on_s1 called exactly once, no expansion calls after | auto-tune/s1-batch-dedup |

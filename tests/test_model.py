@@ -32,133 +32,133 @@ class TestRemovedMethods:
 
 
 class TestAddStm:
-    """Tests for add_stm() — STM-only write with always-refresh FIFO."""
+    """Tests for add_to_stm() — STM-only write with always-refresh FIFO."""
 
-    def test_add_stm_and_find(self):
-        """MOD-23: add_stm writes to STM, discoverable via find."""
+    def test_add_to_stm_and_find(self):
+        """MOD-23: add_to_stm writes to STM, discoverable via find."""
         m = make_model()
         k = KLine(5, [1, 2])
-        m.add_stm(k)
+        m.add_to_stm(k)
         assert m.find(5) is k
 
-    def test_add_stm_returns_none(self):
-        """add_stm is void (returns None)."""
+    def test_add_to_stm_returns_none(self):
+        """add_to_stm is void (returns None)."""
         m = make_model()
-        result = m.add_stm(KLine(5, [1]))
+        result = m.add_to_stm(KLine(5, [1]))
         assert result is None
 
-    def test_add_stm_always_refreshes_fifo(self):
-        """MOD-24: add_stm always refreshes FIFO position (remove-if-present then add)."""
+    def test_add_to_stm_always_refreshes_fifo(self):
+        """MOD-24: add_to_stm always refreshes FIFO position (remove-if-present then add)."""
         m = make_model(stm_bound=3)
         k1 = KLine(1, [1])
         k2 = KLine(2, [2])
         k3 = KLine(3, [3])
-        m.add_stm(k1)
-        m.add_stm(k2)
-        m.add_stm(k3)
+        m.add_to_stm(k1)
+        m.add_to_stm(k2)
+        m.add_to_stm(k3)
         # Refresh k1 — moves it to most-recent position
-        m.add_stm(k1)
+        m.add_to_stm(k1)
         k4 = KLine(4, [4])
-        m.add_stm(k4)  # should evict k2 (oldest after refresh)
+        m.add_to_stm(k4)  # should evict k2 (oldest after refresh)
         assert m.stm_contains(k1) is True
         assert m.stm_contains(k2) is False
         assert m.stm_contains(k4) is True
 
-    def test_add_stm_eviction(self):
+    def test_add_to_stm_eviction(self):
         """MOD-27: STM evicts oldest when bound exceeded."""
         m = make_model(stm_bound=2)
         k1 = KLine(1, [1])
         k2 = KLine(2, [2])
         k3 = KLine(3, [3])
-        m.add_stm(k1)
-        m.add_stm(k2)
-        m.add_stm(k3)
+        m.add_to_stm(k1)
+        m.add_to_stm(k2)
+        m.add_to_stm(k3)
         assert m.stm_contains(k1) is False  # evicted
         assert m.stm_contains(k2) is True
         assert m.stm_contains(k3) is True
 
-    def test_add_stm_does_not_write_frame(self):
-        """add_stm writes to STM only, not Frame."""
+    def test_add_to_stm_does_not_write_frame(self):
+        """add_to_stm writes to STM only, not Frame."""
         m = make_model()
         k = KLine(5, [1])
-        m.add_stm(k)
+        m.add_to_stm(k)
         assert len(m) == 0  # Frame is empty
         assert m.stm_contains(k) is True
 
 
 class TestAddFrame:
-    """Tests for add_frame() — writes Frame + STM with literal dedup."""
+    """Tests for add_to_frame() — writes Frame + STM with literal dedup."""
 
-    def test_add_frame_and_find(self):
-        """MOD-25: add_frame writes to Frame, discoverable via find."""
+    def test_add_to_frame_and_find(self):
+        """MOD-25: add_to_frame writes to Frame, discoverable via find."""
         m = make_model()
         k = KLine(5, [1, 2])
-        m.add_frame(k)
+        m.add_to_frame(k)
         assert m.find(5) is k
 
-    def test_add_frame_returns_none(self):
-        """add_frame is void (returns None)."""
+    def test_add_to_frame_returns_none(self):
+        """add_to_frame is void (returns None)."""
         m = make_model()
-        result = m.add_frame(KLine(5, [1]))
+        result = m.add_to_frame(KLine(5, [1]))
         assert result is None
 
-    def test_add_frame_writes_frame_and_stm(self):
-        """MOD-25: add_frame writes to both Frame and STM."""
+    def test_add_to_frame_writes_frame_and_stm(self):
+        """MOD-25: add_to_frame writes to both Frame and STM."""
         m = make_model()
         k = KLine(5, [1])
-        m.add_frame(k)
+        m.add_to_frame(k)
         assert len(m) == 1  # Frame has the kline
         assert m.stm_contains(k) is True
 
-    def test_add_frame_monotonic(self):
+    def test_add_to_frame_monotonic(self):
         """MOD-32: Frame is monotonic for non-literals."""
         m = make_model()
         k1 = KLine(5, [1])
         k2 = KLine(5, [2])
-        m.add_frame(k1)
-        m.add_frame(k2)
+        m.add_to_frame(k1)
+        m.add_to_frame(k2)
         assert len(m) == 2
 
 
 class TestAddLtm:
-    """Tests for add_ltm() — writes LTM + Frame + STM with literal dedup."""
+    """Tests for add_to_ltm() — writes LTM + Frame + STM with literal dedup."""
 
-    def test_add_ltm_and_find(self):
-        """MOD-26: add_ltm writes to LTM, discoverable via find."""
+    def test_add_to_ltm_and_find(self):
+        """MOD-26: add_to_ltm writes to LTM, discoverable via find."""
         m = make_model()
         k = KLine(5, [1])
-        m.add_ltm(k)
+        m.add_to_ltm(k)
         assert m.find(5) is k
 
-    def test_add_ltm_returns_none(self):
-        """add_ltm is void (returns None)."""
+    def test_add_to_ltm_returns_none(self):
+        """add_to_ltm is void (returns None)."""
         m = make_model()
-        result = m.add_ltm(KLine(5, [1]))
+        result = m.add_to_ltm(KLine(5, [1]))
         assert result is None
 
-    def test_add_ltm_writes_all_three_tiers(self):
-        """MOD-26: add_ltm writes to LTM, Frame, and STM."""
+    def test_add_to_ltm_writes_all_three_tiers(self):
+        """MOD-26: add_to_ltm writes to LTM, Frame, and STM."""
         m = make_model()
         k = KLine(5, [1])
-        m.add_ltm(k)
+        m.add_to_ltm(k)
         assert len(m) == 1  # Frame
         assert m.stm_contains(k) is True
         assert m.find(5) is k
 
-    def test_add_ltm_frame_retains(self):
+    def test_add_to_ltm_frame_retains(self):
         """MOD-33: LTM is additive — Frame retains the kline."""
         m = make_model()
         k = KLine(5, [1])
-        m.add_ltm(k)
+        m.add_to_ltm(k)
         assert len(m) == 1  # Frame has the kline
         # KLine is in Frame (iterable)
         assert any(kl.signature == 5 for kl in m)
 
-    def test_add_ltm_no_precondition(self):
-        """add_ltm has no precondition — any kline may be added."""
+    def test_add_to_ltm_no_precondition(self):
+        """add_to_ltm has no precondition — any kline may be added."""
         m = make_model()
         k = KLine(5, [1])
-        m.add_ltm(k)  # never added before, still works
+        m.add_to_ltm(k)  # never added before, still works
         assert m.find(5) is k
 
 
@@ -169,7 +169,7 @@ class TestModelExists:
     def test_exists_true(self):
         m = make_model()
         k = KLine(5, [1, 2])
-        m.add_frame(k)
+        m.add_to_frame(k)
         assert m.exists(k) is True
 
     def test_exists_false(self):
@@ -178,7 +178,7 @@ class TestModelExists:
 
     def test_exists_different_nodes(self):
         m = make_model()
-        m.add_frame(KLine(5, [1, 2]))
+        m.add_to_frame(KLine(5, [1, 2]))
         assert m.exists(KLine(5, [1, 3])) is False
 
 
@@ -186,7 +186,7 @@ class TestModelFind:
     def test_find_by_signature(self):
         m = make_model()
         k = KLine(7, [1, 2, 4])
-        m.add_frame(k)
+        m.add_to_frame(k)
         assert m.find(7) is k
 
     def test_find_none(self):
@@ -197,8 +197,8 @@ class TestModelFind:
         m = make_model()
         k1 = KLine(7, [1])
         k2 = KLine(7, [2])
-        m.add_frame(k1)
-        m.add_frame(k2)
+        m.add_to_frame(k1)
+        m.add_to_frame(k2)
         found = m.find(7)
         assert found is k2  # Most recently added
 
@@ -208,8 +208,8 @@ class TestModelFindAll:
         m = make_model()
         k1 = KLine(7, [1])
         k2 = KLine(7, [2])
-        m.add_frame(k1)
-        m.add_frame(k2)
+        m.add_to_frame(k1)
+        m.add_to_frame(k2)
         results = m.find_all(7)
         assert len(results) == 2
 
@@ -224,26 +224,26 @@ class TestModelLen:
         assert len(m) == 0
 
     def test_len_counts_frame_only(self):
-        """add_frame() writes to both STM and Frame. len counts Frame entries."""
+        """add_to_frame() writes to both STM and Frame. len counts Frame entries."""
         m = make_model()
-        m.add_frame(KLine(5, [1]))
-        assert len(m) == 1  # add_frame writes to Frame
+        m.add_to_frame(KLine(5, [1]))
+        assert len(m) == 1  # add_to_frame writes to Frame
 
-    def test_len_after_add_ltm(self):
-        """add_ltm writes to LTM + Frame + STM. len only counts Frame."""
+    def test_len_after_add_to_ltm(self):
+        """add_to_ltm writes to LTM + Frame + STM. len only counts Frame."""
         m = make_model()
         k = KLine(5, [1])
-        m.add_ltm(k)
+        m.add_to_ltm(k)
         assert len(m) == 1  # Frame has the kline
 
     def test_len_excludes_ltm(self):
         """LTM entries don't add to len (Frame count)."""
         m = make_model()
-        m.add_frame(KLine(5, [1]))
-        m.add_frame(KLine(6, [2]))
+        m.add_to_frame(KLine(5, [1]))
+        m.add_to_frame(KLine(6, [2]))
         assert len(m) == 2
-        m.add_ltm(KLine(5, [1]))
-        m.add_ltm(KLine(6, [2]))
+        m.add_to_ltm(KLine(5, [1]))
+        m.add_to_ltm(KLine(6, [2]))
         assert len(m) == 4  # non-literal: always accepted, Frame gets both
 
 
@@ -252,8 +252,8 @@ class TestModelWhere:
         m = make_model()
         k1 = KLine(0b110, [0b10, 0b100])
         k2 = KLine(0b001, [0b001])
-        m.add_frame(k1)
-        m.add_frame(k2)
+        m.add_to_frame(k1)
+        m.add_to_frame(k2)
         results = m.where(0b010)
         assert k1 in results
         assert k2 not in results
@@ -263,7 +263,7 @@ class TestModelGraphTraversal:
     def test_resolve(self):
         m = make_model()
         k = KLine(5, [10, 20])
-        m.add_frame(k)
+        m.add_to_frame(k)
         assert m.resolve(5) is k
 
     def test_query_expand(self):
@@ -271,9 +271,9 @@ class TestModelGraphTraversal:
         parent = KLine(5, [10, 20])
         child1 = KLine(10, [30])
         child2 = KLine(20, [])
-        m.add_frame(parent)
-        m.add_frame(child1)
-        m.add_frame(child2)
+        m.add_to_frame(parent)
+        m.add_to_frame(child1)
+        m.add_to_frame(child2)
         expanded = m.query_expand(parent, depth=2)
         assert child1 in expanded
         assert child2 in expanded
@@ -281,7 +281,7 @@ class TestModelGraphTraversal:
     def test_query_expand_depth_1_returns_empty(self):
         m = make_model()
         k = KLine(5, [10])
-        m.add_frame(k)
+        m.add_to_frame(k)
         assert m.query_expand(k, depth=1) == []
 
 
@@ -290,17 +290,17 @@ class TestModelThreeTier:
         """Four-tier: base klines discoverable through all tiers."""
         base = make_model()
         k = KLine(5, [1])
-        base.add_frame(k)
+        base.add_to_frame(k)
 
         frame = Model(base=base)
         assert frame.find(5) is k
 
-    def test_add_frame_goes_to_stm_and_frame(self):
-        """add_frame() writes to both STM and Frame."""
+    def test_add_to_frame_goes_to_stm_and_frame(self):
+        """add_to_frame() writes to both STM and Frame."""
         base = make_model()
         session = Model(base=base)
         k = KLine(5, [1])
-        session.add_frame(k)
+        session.add_to_frame(k)
         assert len(base) == 0
         assert len(session) == 1  # Frame has the kline
         assert session.find(5) is k  # discoverable via STM (priority) or Frame
@@ -314,7 +314,7 @@ class TestModelStmContains:
         """stm_contains returns True for a KLine in STM."""
         m = make_model()
         k = KLine(5, [1, 2])
-        m.add_frame(k)
+        m.add_to_frame(k)
         assert m.stm_contains(k) is True
 
     def test_stm_contains_false(self):
@@ -328,9 +328,9 @@ class TestModelStmContains:
         k0 = KLine(0, [0])
         k1 = KLine(1, [1])
         k2 = KLine(2, [2])
-        m.add_frame(k0)
-        m.add_frame(k1)
-        m.add_frame(k2)
+        m.add_to_frame(k0)
+        m.add_to_frame(k1)
+        m.add_to_frame(k2)
         # k0 evicted (bound=2, 3 added)
         assert m.stm_contains(k0) is False
         assert m.stm_contains(k1) is True
@@ -348,8 +348,8 @@ class TestModelIterStm:
         m = make_model()
         k1 = KLine(5, [1])
         k2 = KLine(6, [2])
-        m.add_frame(k1)
-        m.add_frame(k2)
+        m.add_to_frame(k1)
+        m.add_to_frame(k2)
         result = list(m.iter_stm())
         assert k1 in result
         assert k2 in result
@@ -360,9 +360,9 @@ class TestModelIterStm:
         k1 = KLine(1, [1])
         k2 = KLine(2, [2])
         k3 = KLine(3, [3])
-        m.add_frame(k1)
-        m.add_frame(k2)
-        m.add_frame(k3)
+        m.add_to_frame(k1)
+        m.add_to_frame(k2)
+        m.add_to_frame(k3)
         assert list(m.iter_stm()) == [k1, k2, k3]
 
 
@@ -374,8 +374,8 @@ class TestModelFourTier:
         m = make_model()
         k1 = KLine(5, [1])
         k2 = KLine(5, [2])
-        m.add_frame(k1)  # goes to STM + Frame
-        m.add_frame(k2)  # goes to STM + Frame, k1 evicted from STM but still in Frame
+        m.add_to_frame(k1)  # goes to STM + Frame
+        m.add_to_frame(k2)  # goes to STM + Frame, k1 evicted from STM but still in Frame
         # k2 is most recent in STM
         found = m.find(5)
         assert found is k2
@@ -385,8 +385,8 @@ class TestModelFourTier:
         m = make_model()
         k_frame = KLine(5, [1])
         k_ltm = KLine(5, [2])
-        m.add_frame(k_frame)  # Frame + STM
-        m.add_ltm(k_ltm)  # LTM + Frame + STM
+        m.add_to_frame(k_frame)  # Frame + STM
+        m.add_to_ltm(k_ltm)  # LTM + Frame + STM
         found = m.find(5)
         # Both are in Frame; most recent wins (k_ltm was added later)
         assert found is k_ltm
@@ -395,11 +395,11 @@ class TestModelFourTier:
         """Same sig kline in LTM and Base → find() returns LTM version."""
         base = Model()
         k_base = KLine(5, [1])
-        base.add_frame(k_base)
+        base.add_to_frame(k_base)
 
         m = Model(base=base)
         k_ltm = KLine(5, [2])
-        m.add_ltm(k_ltm)  # LTM
+        m.add_to_ltm(k_ltm)  # LTM
         found = m.find(5)
         assert found is k_ltm  # LTM takes priority over Base
 
@@ -408,8 +408,8 @@ class TestModelFourTier:
         m = make_model()
         k1 = KLine(7, [1])
         k2 = KLine(7, [2])
-        m.add_frame(k1)  # Frame
-        m.add_ltm(k2)  # LTM + Frame + STM
+        m.add_to_frame(k1)  # Frame
+        m.add_to_ltm(k2)  # LTM + Frame + STM
         results = m.find_all(7)
         assert len(results) == 2
         assert k1 in results
@@ -419,8 +419,8 @@ class TestModelFourTier:
         """klines() returns each unique kline once across tiers."""
         m = make_model()
         k = KLine(5, [1])
-        m.add_frame(k)  # STM + Frame
-        m.add_ltm(k)  # LTM (same kline, non-literal → always accepted)
+        m.add_to_frame(k)  # STM + Frame
+        m.add_to_ltm(k)  # LTM (same kline, non-literal → always accepted)
         results = m.klines()
         # Same kline object in STM, Frame, and LTM → deduplicated
         count = sum(1 for kl in results if kl.signature == 5 and kl.nodes == [1])
@@ -431,8 +431,8 @@ class TestModelFourTier:
         prev_session = Model()
         k1 = KLine(5, [1])
         k2 = KLine(6, [2])
-        prev_session.add_frame(k1)
-        prev_session.add_frame(k2)
+        prev_session.add_to_frame(k1)
+        prev_session.add_to_frame(k2)
 
         m = Model(ltm=prev_session)
         # LTM should have the klines from prev_session
@@ -545,7 +545,7 @@ class TestTierChainContains:
         """Chain with a Model tier uses Model.exists() for contains."""
         base = Model()
         k = KLine(5, [1])
-        base.add_frame(k)
+        base.add_to_frame(k)
         chain = _TierChain([base])
         assert chain.contains(k) is True
 
@@ -662,8 +662,8 @@ class TestTierChainAllKlines:
         base = Model()
         k1 = KLine(1, [1])
         k2 = KLine(2, [2])
-        base.add_frame(k1)
-        base.add_frame(k2)
+        base.add_to_frame(k1)
+        base.add_to_frame(k2)
         chain = _TierChain([base])
         results = chain.all_klines()
         assert len(results) == 2
@@ -732,21 +732,21 @@ class TestUnpack:
     def test_mod61_canon_ordered_children(self):
         # MOD-61: canon → ordered identity child sequence
         m = make_model()
-        m.add_frame(KLine(0x10, []))
-        m.add_frame(KLine(0x20, []))
+        m.add_to_frame(KLine(0x10, []))
+        m.add_to_frame(KLine(0x20, []))
         canon = KLine(0x30, [0x10, 0x20])  # 0x30 == 0x10 | 0x20
-        m.add_frame(canon)
+        m.add_to_frame(canon)
         assert m.unpack(canon) == [0x10, 0x20]
 
     def test_mod62_nested_canon(self):
         # MOD-62: canon-of-canons → flattened, order preserved
         m = make_model()
-        m.add_frame(KLine(0x10, []))
-        m.add_frame(KLine(0x20, []))
-        m.add_frame(KLine(0x40, []))
-        m.add_frame(KLine(0x30, [0x10, 0x20]))  # inner canon
+        m.add_to_frame(KLine(0x10, []))
+        m.add_to_frame(KLine(0x20, []))
+        m.add_to_frame(KLine(0x40, []))
+        m.add_to_frame(KLine(0x30, [0x10, 0x20]))  # inner canon
         outer = KLine(0x70, [0x30, 0x40])  # 0x70 == 0x30 | 0x40
-        m.add_frame(outer)
+        m.add_to_frame(outer)
         assert m.unpack(outer) == [0x10, 0x20, 0x40]
 
     def test_mod63_connoted_raises(self):
@@ -760,7 +760,7 @@ class TestUnpack:
         # MOD-64: canon whose child node has no identity/canon → ValueError
         m = make_model()
         canon = KLine(0x30, [0x10, 0x20])  # valid canon
-        m.add_frame(canon)
+        m.add_to_frame(canon)
         # no identity or canon kline exists for 0x10 / 0x20
         with pytest.raises(ValueError):
             m.unpack(canon)
@@ -768,28 +768,28 @@ class TestUnpack:
     def test_mod65_identity_preferred_over_canon(self):
         # MOD-65: node heads both an identity and a canon → identity wins
         m = make_model()
-        m.add_frame(KLine(0x10, []))
-        m.add_frame(KLine(0x20, []))
-        m.add_frame(KLine(0x40, []))
-        m.add_frame(KLine(0x30, []))  # identity for 0x30
-        m.add_frame(KLine(0x30, [0x10, 0x20]))  # canon for 0x30 (added later)
+        m.add_to_frame(KLine(0x10, []))
+        m.add_to_frame(KLine(0x20, []))
+        m.add_to_frame(KLine(0x40, []))
+        m.add_to_frame(KLine(0x30, []))  # identity for 0x30
+        m.add_to_frame(KLine(0x30, [0x10, 0x20]))  # canon for 0x30 (added later)
         parent = KLine(0x70, [0x30, 0x40])  # references 0x30
-        m.add_frame(parent)
+        m.add_to_frame(parent)
         # resolves 0x30 → identity (not canon) → [0x30]; not [0x10, 0x20]
         assert m.unpack(parent) == [0x30, 0x40]
 
     def test_mod66_canon_recency_most_recent(self):
         # MOD-66: two canons share a signature → most-recently-added wins
         m = make_model()
-        m.add_frame(KLine(0x10, []))
-        m.add_frame(KLine(0x20, []))
-        m.add_frame(KLine(0x40, []))
+        m.add_to_frame(KLine(0x10, []))
+        m.add_to_frame(KLine(0x20, []))
+        m.add_to_frame(KLine(0x40, []))
         old = KLine(0x30, [0x10, 0x20])  # older canon for 0x30
         new = KLine(0x30, [0x10, 0x20, 0x10])  # newer canon for 0x30
-        m.add_frame(old)
-        m.add_frame(new)
+        m.add_to_frame(old)
+        m.add_to_frame(new)
         parent = KLine(0x70, [0x30, 0x40])  # references 0x30
-        m.add_frame(parent)
+        m.add_to_frame(parent)
         # resolves 0x30 → newer canon → [0x10, 0x20, 0x10]
         assert m.unpack(parent) == [0x10, 0x20, 0x10, 0x40]
 
@@ -801,15 +801,15 @@ class TestUnpack:
         m = make_model()
         # Direct case: unpack the self-referential canon itself.
         self_ref = KLine(0x100, [0x100])  # make_signature([0x100]) == 0x100
-        m.add_frame(self_ref)
+        m.add_to_frame(self_ref)
         assert m.unpack(self_ref) == [0x100]
 
         # Nested case: a parent's node resolves to a self-referential canon.
         m2 = make_model()
-        m2.add_frame(KLine(0x200, []))  # identity sibling
-        m2.add_frame(KLine(0x100, [0x100]))  # self-referential canon for 0x100
+        m2.add_to_frame(KLine(0x200, []))  # identity sibling
+        m2.add_to_frame(KLine(0x100, [0x100]))  # self-referential canon for 0x100
         parent = KLine(0x300, [0x100, 0x200])  # 0x300 == 0x100 | 0x200
-        m2.add_frame(parent)
+        m2.add_to_frame(parent)
         # 0x100 resolves to the self-ref canon → emitted as 0x100 (no recursion)
         assert m2.unpack(parent) == [0x100, 0x200]
 
@@ -818,11 +818,11 @@ class TestUnpack:
         # *different* nodes is a real decomposition — it must still recurse.
         # (Guards against an over-broad self-reference check.)
         m = make_model()
-        m.add_frame(KLine(0x10, []))
-        m.add_frame(KLine(0x20, []))
-        m.add_frame(KLine(0x40, []))
+        m.add_to_frame(KLine(0x10, []))
+        m.add_to_frame(KLine(0x20, []))
+        m.add_to_frame(KLine(0x40, []))
         inner = KLine(0x30, [0x10, 0x20])  # 0x30 == 0x10 | 0x20; sig != [0x30]
-        m.add_frame(inner)
+        m.add_to_frame(inner)
         outer = KLine(0x70, [0x30, 0x40])  # node 0x30 resolves to inner canon
-        m.add_frame(outer)
+        m.add_to_frame(outer)
         assert m.unpack(outer) == [0x10, 0x20, 0x40]

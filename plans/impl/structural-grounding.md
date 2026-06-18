@@ -99,10 +99,10 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
 
     After countersignature is detected between query and candidate,
     cascade both plus any STM klines whose signatures appear in the
-    union of their nodes to LTM via add_ltm(). This enriches LTM with
+    union of their nodes to LTM via add_to_ltm(). This enriches LTM with
     S4 identity klines and S2/S3 partial klines involved in the ratification.
 
-    Returns void — add_ltm() cascades through Frame to STM.
+    Returns void — add_to_ltm() cascades through Frame to STM.
     """
     # Collect all signatures from the participating pair
     node_sigs = set()
@@ -123,7 +123,7 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
     to_promote.extend([query, candidate])
 
     for kl in to_promote:
-        model.add_ltm(kl)
+        model.add_to_ltm(kl)
 ```
 
 **Location:** `src/kalvin/expand.py`

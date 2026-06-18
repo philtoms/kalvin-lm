@@ -14,8 +14,8 @@ STM → Frame → LTM → Base
 ```
 
 Callers see a single unified Model API with three write methods forming a
-cascade: `add_stm()` writes to STM only; `add_frame()` writes to Frame and
-cascades to STM; `add_ltm()` writes to LTM and cascades through Frame to
+cascade: `add_to_stm()` writes to STM only; `add_to_frame()` writes to Frame and
+cascades to STM; `add_to_ltm()` writes to LTM and cascades through Frame to
 STM. The caller selects the appropriate entry point based on the
 significance outcome of rationalisation. Base is read-only, established
 at construction. Lookups merge across all tiers transparently.
@@ -38,13 +38,13 @@ This spec depends on the following concepts, defined elsewhere:
 ### Frame (@CONTEXT.md §Frame)
 
 - Frame is compressed working context — only recognised klines reach the Frame.
-- Written via `add_frame()`, which cascades to STM.
+- Written via `add_to_frame()`, which cascades to STM.
 - Monotonic — klines are appended, never removed.
 
 ### LTM (@CONTEXT.md §LTM)
 
 - LTM (Long-Term Memory) holds ratified (S1) and novel (S4) klines.
-- Written via `add_ltm()`, which cascades through Frame to STM.
+- Written via `add_to_ltm()`, which cascades through Frame to STM.
 - Structurally identical to Frame — the distinction is semantic.
 - Persisted across sessions, loaded at session start. Monotonic.
 
@@ -56,7 +56,7 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Agent (@agent spec)
 
-- The agent calls model write operations (`add_stm`, `add_frame`, `add_ltm`)
+- The agent calls model write operations (`add_to_stm`, `add_to_frame`, `add_to_ltm`)
   and read operations (`find`, `exists`, `query`, etc.).
 - The agent selects the appropriate write method based on the significance
   outcome of rationalisation.
@@ -77,7 +77,7 @@ A Model consists of:
 
 ### Tier Summary
 
-| Tier  | Purpose               | Bounded | Lifetime       | add_stm | add_frame | add_ltm |
+| Tier  | Purpose               | Bounded | Lifetime       | add_to_stm | add_to_frame | add_to_ltm |
 | ----- | --------------------- | ------- | -------------- | ------- | --------- | ------- |
 | STM   | Event register        | Yes     | Rolling window | Yes     | Yes       | Yes     |
 | Frame | Compressed context    | No      | Per-session    | No      | Yes       | Yes     |
@@ -94,12 +94,12 @@ See the **@stm spec** for the full definition. Summary:
   deeper tiers.
 - Enables **transitive grounding** — finding KLines that share node structure
   even when their signatures differ.
-- `add_stm()` always refreshes FIFO position (removes-if-present then adds).
-- STM is populated via the write cascade: `add_ltm()` → Frame → `add_frame()` → STM → `add_stm()`.
+- `add_to_stm()` always refreshes FIFO position (removes-if-present then adds).
+- STM is populated via the write cascade: `add_to_ltm()` → Frame → `add_to_frame()` → STM → `add_to_stm()`.
 
 ### Frame
 
-The frame is populated by `add_frame()` and as a cascade from `add_ltm()`.
+The frame is populated by `add_to_frame()` and as a cascade from `add_to_ltm()`.
 Not all klines reach the Frame — only those from significant outcomes
 (expanded proposals, ratified klines, novel klines). The incoming query
 kline on the slow path goes to STM only. The frame has no fixed bound — it
@@ -111,13 +111,13 @@ KLines in Frame take precedence over the same kline in LTM or Base.
 ### LTM (Long-Term Memory)
 
 LTM holds ratified (S1) and novel (S4) klines. Structurally identical to
-Frame — the distinction is semantic. Populated by `add_ltm()`, which
+Frame — the distinction is semantic. Populated by `add_to_ltm()`, which
 cascades through Frame to STM. LTM is monotonic.
 
 - LTM is loaded at session start from the previous session's persisted state.
 - LTM is persisted at session end alongside Frame (separate sections, never merged).
 - Lookups that miss in Frame fall through to LTM.
-- `add_ltm()` cascades: writes LTM, then Frame, then STM. All three tiers
+- `add_to_ltm()` cascades: writes LTM, then Frame, then STM. All three tiers
   receive the kline.
 
 ### Base Model
@@ -183,9 +183,9 @@ priority, then Frame, then LTM, then Base).
 The model provides three write methods forming a cascade:
 
 ```
-add_ltm()  →  writes LTM  →  calls add_frame()
-add_frame()  →  writes Frame  →  calls add_stm()
-add_stm()  →  writes STM only (always refreshes FIFO)
+add_to_ltm()  →  writes LTM  →  calls add_to_frame()
+add_to_frame()  →  writes Frame  →  calls add_to_stm()
+add_to_stm()  →  writes STM only (always refreshes FIFO)
 ```
 
 All three methods return void. All writes are unconditional (no early-return
@@ -194,7 +194,7 @@ guards).
 ### Add to STM
 
 ```
-model.add_stm(kline) → None
+model.add_to_stm(kline) → None
 ```
 
 Writes a KLine to STM only.
@@ -208,28 +208,28 @@ Writes a KLine to STM only.
 ### Add to Frame
 
 ```
-model.add_frame(kline) → None
+model.add_to_frame(kline) → None
 ```
 
-Writes a KLine to Frame, then cascades to `add_stm()`.
+Writes a KLine to Frame, then cascades to `add_to_stm()`.
 
 - Frame is monotonic — klines are appended, never removed.
 - The KLineStore membership index (`_dedup`) provides fast `contains()`
   checks.
-- Cascades to `add_stm()`, which refreshes STM FIFO position.
+- Cascades to `add_to_stm()`, which refreshes STM FIFO position.
 
 ### Add to LTM
 
 ```
-model.add_ltm(kline) → None
+model.add_to_ltm(kline) → None
 ```
 
-Writes a KLine to LTM, then cascades to `add_frame()`.
+Writes a KLine to LTM, then cascades to `add_to_frame()`.
 
 - LTM is monotonic — klines are appended, never removed.
 - The KLineStore membership index (`_dedup`) provides fast `contains()`
   checks.
-- Cascades to `add_frame()`, which cascades to `add_stm()`.
+- Cascades to `add_to_frame()`, which cascades to `add_to_stm()`.
 
 ### Exists
 
@@ -332,12 +332,12 @@ order (oldest first).
 
 - Returns a fresh iterator on each call.
 - Does not copy — callers see live insertion-order traversal.
-- External code that needs to iterate STM entries (e.g., for `add_ltm()`
+- External code that needs to iterate STM entries (e.g., for `add_to_ltm()`
   cascades) must use this method.
 
 ## Deduplication
 
-All three write methods (`add_stm`, `add_frame`, `add_ltm`) write
+All three write methods (`add_to_stm`, `add_to_frame`, `add_to_ltm`) write
 unconditionally — there is no early-return guard. Frame and LTM are
 monotonic; STM refreshes FIFO position on every write.
 
@@ -577,7 +577,7 @@ countersigned kline.
 STM eviction is defined in the **@stm spec**. Summary of Model-level
 consequences:
 
-STM eviction removes the oldest Kline from the STM when `add_stm()`
+STM eviction removes the oldest Kline from the STM when `add_to_stm()`
 would cause the STM to exceed its bound.
 
 - Eviction removes from the STM index only.
@@ -677,8 +677,8 @@ else       → S4
 
 | ID    | Criterion                                                      | Origin ref |
 | ----- | -------------------------------------------------------------- | ---------- |
-| MOD-1 | add_frame and find: add KLine via add_frame, find by signature returns it | — |
-| MOD-4 | Exists: True after add_frame, False before                     | — |
+| MOD-1 | add_to_frame and find: add KLine via add_to_frame, find by signature returns it | — |
+| MOD-4 | Exists: True after add_to_frame, False before                     | — |
 | MOD-5 | Find returns most recent KLine when multiple share signature   | — |
 | MOD-6 | Find_all: returns all KLines with given signature across tiers | — |
 | MOD-7 | Find_by_nodes: returns KLine by nodes signature                | — |
@@ -718,20 +718,20 @@ else       → S4
 
 | ID     | Criterion                                                    | Origin ref |
 | ------ | ------------------------------------------------------------ | ---------- |
-| MOD-23 | add_stm: always refreshes FIFO (removes-if-present then adds) | — |
-| MOD-24 | add_stm: evicts oldest when bound exceeded                    | — |
-| MOD-25 | add_frame: writes Frame and cascades to add_stm               | — |
-| MOD-26 | add_ltm: writes LTM and cascades to add_frame                 | — |
-| MOD-32 | add_frame: Frame is monotonic (append-only)                   | — |
-| MOD-33 | add_ltm: LTM is monotonic (append-only)                       | — |
+| MOD-23 | add_to_stm: always refreshes FIFO (removes-if-present then adds) | — |
+| MOD-24 | add_to_stm: evicts oldest when bound exceeded                    | — |
+| MOD-25 | add_to_frame: writes Frame and cascades to add_to_stm               | — |
+| MOD-26 | add_to_ltm: writes LTM and cascades to add_to_frame                 | — |
+| MOD-32 | add_to_frame: Frame is monotonic (append-only)                   | — |
+| MOD-33 | add_to_ltm: LTM is monotonic (append-only)                       | — |
 
 ### Removed Methods
 
 | ID     | Note                                              |
 | ------ | -------------------------------------------------- |
 | MOD-R1 | `model.add()` removed — replaced by cascade API   |
-| MOD-R2 | `model.promote()` removed — replaced by `add_ltm()` |
-| MOD-R3 | `model.refresh_stm()` removed — absorbed by `add_stm()` |
+| MOD-R2 | `model.promote()` removed — replaced by `add_to_ltm()` |
+| MOD-R3 | `model.refresh_stm()` removed — absorbed by `add_to_stm()` |
 | MOD-R4 | `model.descendants()` / `model.get_all_descendants()` removed — unused |
 
 ### Significance API

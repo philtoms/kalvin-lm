@@ -40,7 +40,7 @@ This spec depends on the following concepts, defined elsewhere:
 - Stores, indexes, and retrieves Klines.
 - Provides candidate retrieval via `find`, `find_all`, `query`, `where`.
 - Provides `find_by_nodes` for transitive grounding via nodes signature.
-- Provides `add_stm`, `add_frame`, `add_ltm` for tiered writes based on
+- Provides `add_to_stm`, `add_to_frame`, `add_to_ltm` for tiered writes based on
   significance outcome (STM only, STM+Frame, or STM+Frame+LTM).
 - Provides `expand(Q, C)` generator for graph expansion yielding
   connotations and terminal significance.
@@ -99,30 +99,30 @@ Rationalise(Q):
   ├───────────────────────────────────────────────────────────┤
   │ 2. GROUND CHECK                                          │
   │    Does Q already exist in the model?                     │
-  │    → Yes: add_stm(Q), emit "ground" event, return True.  │
+  │    → Yes: add_to_stm(Q), emit "ground" event, return True.  │
   ├───────────────────────────────────────────────────────────┤
   │ 3. ASSESS                                                │
   │    Evaluate Q's structural grounding:                     │
-  │    → Unsigned (no nodes): add_ltm(Q), emit "frame" S4,   │
+  │    → Unsigned (no nodes): add_to_ltm(Q), emit "frame" S4,   │
   │       return True.                                       │
-  │    → Self-grounded: add_ltm(Q), emit "frame" S1,         │
+  │    → Self-grounded: add_to_ltm(Q), emit "frame" S1,         │
   │       return True.                                       │
-  │    → Countersigned: add_ltm(Q), emit "frame" S1,         │
+  │    → Countersigned: add_to_ltm(Q), emit "frame" S1,         │
   │       return True.                                       │
   ├───────────────────────────────────────────────────────────┤
   │ 4. RETRIEVE CANDIDATES                                    │
   │    candidates = model.where(Q.signature)                  │
-  │    → No candidates: add_ltm(Q), emit "frame" S4,         │
+  │    → No candidates: add_to_ltm(Q), emit "frame" S4,         │
   │       return True.                                       │
   ├───────────────────────────────────────────────────────────┤
   │ 5. ROUTE EACH CANDIDATE                                   │
-  │    add_stm(Q)                                              │
+  │    add_to_stm(Q)                                              │
   │    Sort candidates: S1, then S2, then S3; within each    │
   │    tier by node overlap (descending). Truncate S2/S3     │
   │    candidates to max_candidates.                          │
   │    For each candidate Cᵢ:                                │
   │      level = route(Q, Cᵢ)   ← node membership, no model │
-  │      S1 → add_ltm cascade, emit "frame", return True     │
+  │      S1 → add_to_ltm cascade, emit "frame", return True     │
   │      S2 → submit WorkItem(Q, Cᵢ) to cogitator            │
   │      S3 → submit WorkItem(Q, Cᵢ) to cogitator            │
   │    return False                                           │
@@ -154,7 +154,7 @@ is defined in the @kline spec (same signature, same node sequence).
 
 If grounded:
 
-- Call `model.add_stm(Q)` to register the event in STM.
+- Call `model.add_to_stm(Q)` to register the event in STM.
 - Emit a `"ground"` event.
 - Return `True` (significant).
 - No further processing.
@@ -167,13 +167,13 @@ Structural assessment determines whether Q can be fast-tracked without
 candidate retrieval or significance computation.
 
 **Unsigned**: If Q has zero nodes, it carries no information. Call
-`model.add_ltm(Q)`. Emit a `"frame"` event at S4. Return `True`.
+`model.add_to_ltm(Q)`. Emit a `"frame"` event at S4. Return `True`.
 
 **Canonical — self-grounded**: If `Q.signature == make_signature(Q.nodes)`
 (as defined in the @signature spec) and every node that could resolve does
 resolve in the model (exists as a Kline signature), Q is fully grounded.
 The signature faithfully represents the nodes — nothing is missing and
-nothing is extraneous. Call `model.add_ltm(Q)`. Emit a `"frame"` event at
+nothing is extraneous. Call `model.add_to_ltm(Q)`. Emit a `"frame"` event at
 S1. Return `True`.
 
 **Countersigned — ratified**: If the model contains a kline whose signature
@@ -181,7 +181,7 @@ equals `make_signature(Q.nodes)` and whose sole node equals `Q.signature`,
 then Q is countersigned — another kline vouches for it structurally. This is
 the **ratification** check. It runs in the fast lane before candidates are
 retrieved, because countersignature is a structural property of Q and the
-model, not dependent on any particular candidate. Call `model.add_ltm(Q)`.
+model, not dependent on any particular candidate. Call `model.add_to_ltm(Q)`.
 Emit a `"frame"` event at S1. Return `True`.
 
 If none of the above, proceed to candidate retrieval.
@@ -200,12 +200,12 @@ candidate. This is a necessary (but not sufficient) condition for
 significance — bitwise AND matching pre-filters the model before the more
 expensive routing runs.
 
-If no candidates are found, Q is novel. Call `model.add_ltm(Q)`. Emit a
+If no candidates are found, Q is novel. Call `model.add_to_ltm(Q)`. Emit a
 `"frame"` S4 event, and return `True`.
 
 ### Phase 5: Route Each Candidate
 
-Add Q to STM via `model.add_stm(Q)`. Route each candidate, then submit
+Add Q to STM via `model.add_to_stm(Q)`. Route each candidate, then submit
 **all** candidates (including S1) to the Cogitator as work items.
 
 #### Routing
@@ -342,7 +342,7 @@ enables immediate S1 resolution and parallel processing of S2/S3.
 
 | ID     | Criterion                                               | Origin ref |
 | ------ | ------------------------------------------------------- | ---------- |
-| AGT-9  | First rationalise: returns True, kline in model via add_ltm   | — |
+| AGT-9  | First rationalise: returns True, kline in model via add_to_ltm   | — |
 | AGT-10 | Duplicate rationalise: returns True, emits "ground" event, STM refreshed | — |
 | AGT-11 | Different sig same nodes: not a ground (different KLine) | — |
 

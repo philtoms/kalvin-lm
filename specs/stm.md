@@ -7,12 +7,12 @@ the first tier in the Model's four-tier memory architecture (STM → Frame → L
 
 The STM is not a standalone knowledge store — it is an index that the Model
 manages internally. KLines added to the STM are managed by the Model's
-write cascade: `add_stm()` writes to STM only, `add_frame()` cascades to
-STM, `add_ltm()` cascades through Frame to STM. Eviction from the STM
+write cascade: `add_to_stm()` writes to STM only, `add_to_frame()` cascades to
+STM, `add_to_ltm()` cascades through Frame to STM. Eviction from the STM
 removes only the index entry, not the underlying KLine (which remains in
 Frame and deeper tiers).
 
-`add_stm()` always refreshes FIFO position: it removes the kline from STM
+`add_to_stm()` always refreshes FIFO position: it removes the kline from STM
 if present, then adds it fresh. This absorbs the old `refresh_stm()`
 behavior — there is no separate refresh method.
 

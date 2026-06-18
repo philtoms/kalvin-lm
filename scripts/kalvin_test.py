@@ -176,7 +176,7 @@ def main() -> None:
 
     display_model = Model()
     for k in klines:
-        display_model.add_frame(k)
+        display_model.add_to_frame(k)
 
     # Print compiled entries
     print("Compiled entries:")

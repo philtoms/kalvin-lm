@@ -393,7 +393,7 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
     to_promote.extend([query, candidate])
 
     for kl in to_promote:
-        model.add_ltm(kl)
+        model.add_to_ltm(kl)
 
 
 # Expansion Proposal Pipeline

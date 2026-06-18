@@ -74,7 +74,7 @@ class TestCandidateCap:
         for i in range(10):
             sig = 1 << i
             kline = KLine(sig, [])
-            agent.model.add_ltm(kline)
+            agent.model.add_to_ltm(kline)
 
         # Create a query with signature overlapping all identities
         # This should generate many candidates
@@ -104,11 +104,11 @@ class TestCandidateCap:
         # Add candidates that will produce both S1 and S3 matches
         # A kline with signature 0x3 and nodes [0x1, 0x2]
         cand_s1 = KLine(0x3, [0x1, 0x2])
-        agent.model.add_ltm(cand_s1)
+        agent.model.add_to_ltm(cand_s1)
 
         # A kline with signature 0xC and nodes [0x8, 0x10] — no overlap with query nodes
         cand_s3 = KLine(0xC, [0x8, 0x10])
-        agent.model.add_ltm(cand_s3)
+        agent.model.add_to_ltm(cand_s3)
 
         # Query with signature overlapping both candidates
         # Nodes [0x1] overlap with cand_s1 → S1, no overlap with cand_s3 → S3
@@ -137,9 +137,9 @@ class TestCandidateCap:
         a = KLine(0x1, [])
         b = KLine(0x2, [])
         ab = KLine(0x3, [0x1, 0x2])
-        agent.model.add_ltm(a)
-        agent.model.add_ltm(b)
-        agent.model.add_ltm(ab)
+        agent.model.add_to_ltm(a)
+        agent.model.add_to_ltm(b)
+        agent.model.add_to_ltm(ab)
 
         # Query that matches the countersign → S1 fast path
         query = KLine(0x3, [0x1, 0x2])
@@ -175,15 +175,15 @@ class TestCandidateCap:
         # Add candidates with different overlap levels
         # Candidate with 3 overlapping nodes (S1 — full overlap)
         high_overlap = KLine(0x7, [0x1, 0x2, 0x4])
-        agent.model.add_ltm(high_overlap)
+        agent.model.add_to_ltm(high_overlap)
 
         # Candidate with 1 overlapping node (S2)
         low_overlap = KLine(0x3, [0x1])
-        agent.model.add_ltm(low_overlap)
+        agent.model.add_to_ltm(low_overlap)
 
         # Candidate with no overlapping nodes (S3)
         no_overlap = KLine(0x18, [0x8, 0x10])
-        agent.model.add_ltm(no_overlap)
+        agent.model.add_to_ltm(no_overlap)
 
         # Query with nodes that overlap differently with each candidate
         query = KLine(0x7 | 0x3 | 0x18, [0x1, 0x2, 0x4])

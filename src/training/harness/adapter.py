@@ -209,7 +209,7 @@ class KAgentAdapter:
         # during rationalise().
         if hasattr(self._kagent, "model"):
             for entry in entries:
-                self._kagent.model.add_stm(entry)
+                self._kagent.model.add_to_stm(entry)
         for entry in entries:
             key: EntryKey = (entry.signature, tuple(entry.nodes))
             self._sender_map[key] = msg.sender or ""
