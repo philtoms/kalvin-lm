@@ -55,6 +55,21 @@ MAX_HOP = 100
 # well below S2_S3_DISTANCE so a handful of unresolved nodes spread across S2
 # before spilling into S3. Distinct from MAX_HOP, which bounds edge_hops()
 # chain traversal.
+#
+# KB-310 investigated splitting the S2 "signifies" loose case into its own
+# lighter SIGNIFIES_PENALTY and decided to KEEP the two cases identical:
+# (1) the terminal distance measures the original query|candidate mismatch,
+# and a signifies match — a bit-overlapping signature reached via the node's
+# chain but NOT in the opposing mismatch set — does not resolve that mismatch,
+# so the node is equally a gap whether or not it has a bit-overlapping
+# neighbour; (2) that discovery is already captured, at hop granularity, by the
+# QueryCandidate the signifies branch yields for cogitation, so a second
+# coarser reward in the terminal distance would measure the wrong thing; and
+# (3) `signifies` is a broad bitwise-OR-overlap test that fires on ~any node
+# whose chain reaches a non-trivial OR-reduced signature, so systematically
+# lightening its penalty would inflate terminal significance for near-spurious
+# overlaps and mis-route signifies-heavy pairs as closer to S1 than their actual
+# node-mismatch warrants. Do not re-split without revisiting this rationale.
 UNRESOLVED_PENALTY = 10
 
 # S2|S3 boundary — S2 direct hops stay below this threshold; S3 connotation
