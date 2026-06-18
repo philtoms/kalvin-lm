@@ -355,3 +355,33 @@ class TestSessionDirInit:
         )
         worktree_path = tmp_git_repo / ".worktrees" / "auto-tune" / "exp-wt"
         assert sd.config.worktree_path == str(worktree_path)
+
+
+# ---------------------------------------------------------------------------
+# SessionDir — init docstring (KB-313 regression)
+# ---------------------------------------------------------------------------
+
+
+class TestSessionDirInitDocstring:
+    """Regression: the ``init`` docstring must name the canonical harness file.
+
+    KB-311 renamed the on-disk harness config from ``harness.yaml`` to
+    ``training.harness.yaml``. The ``init`` body reads
+    ``root / "training.harness.yaml"``; this pins the docstring to that
+    canonical name so the documentation and the code cannot silently drift
+    apart again.
+    """
+
+    def test_init_docstring_names_canonical_harness_file(self) -> None:
+        """init's docstring references ``training.harness.yaml``, not ``harness.yaml``."""
+        doc = SessionDir.init.__doc__
+        assert doc is not None, "SessionDir.init must have a docstring"
+
+        # Positive: canonical filename is referenced.
+        assert "Reads ``training.harness.yaml``" in doc
+
+        # Negative — phrase-scoped, NOT the bare ``harness.yaml``: the canonical
+        # literal ``training.harness.yaml`` contains ``harness.yaml`` as a
+        # substring, so only the full "Reads ``harness.yaml``" phrase reliably
+        # distinguishes stale wording from canonical.
+        assert "Reads ``harness.yaml``" not in doc

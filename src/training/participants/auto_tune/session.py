@@ -137,7 +137,7 @@ class SessionDir:
     ) -> SessionDir:
         """Create a new auto-tune session with a git worktree.
 
-        1. Reads ``harness.yaml`` for default host/port.
+        1. Reads ``training.harness.yaml`` for default host/port.
         2. Creates a git worktree at ``.worktrees/<base_dir>/<session>/``.
         3. Creates the session directory tree inside the worktree.
         4. Writes ``config.json``.
