@@ -13,9 +13,12 @@ import pytest
 import websockets
 import websockets.asyncio.client
 
+from kalvin.events import RationaliseEvent
+from kalvin.kline import KLine
 from training.harness.bus import MessageBus
 from training.harness.message import Message
 from training.harness.protocol import WebSocketProtocol
+from training.participants.auto_tune.events import enrich_event
 
 # -- helpers ---------------------------------------------------------------
 
@@ -395,3 +398,185 @@ class TestDisconnectOneOfTwoSameRole:
             bus.stop()
             bus_thread.join(timeout=5)
             await _stop_server(server)
+
+
+class TestDomainObjectPayloadSerialisation:
+    """KB-319: bus Messages carrying domain objects (``KLine``,
+    ``RationaliseEvent``) must reach a connected WebSocket client.
+
+    Regression for the silent drop at the wire boundary: before the fix,
+    ``WebSocketProtocol._serialise_message`` called ``json.dumps(payload)``
+    with no domain-object encoder, so ``action="event"`` (carrying a
+    ``RationaliseEvent``) and ``action="ratify_request"`` (carrying a dict of
+    ``KLine``\\s) raised ``TypeError``, which ``_ClientParticipant.on_message``
+    swallowed as a "client gone" DEBUG log. Only plain-dict actions
+    (``progress``, ``notify``) serialised — matching the observed symptom
+    where ``events.jsonl`` only ever recorded ``connected``/``progress``.
+    """
+
+    @pytest.mark.asyncio
+    async def test_event_with_rationalise_event_reaches_client(self) -> None:
+        import threading
+
+        bus = MessageBus()
+        protocol, server = await _start_server(bus, port=18773)
+
+        bus_thread = threading.Thread(target=bus.run, daemon=True)
+        bus_thread.start()
+
+        try:
+            ws = await websockets.connect("ws://localhost:18773")
+            await ws.send(json.dumps({"register": "supervisor"}))
+            await asyncio.sleep(0.05)
+
+            # Relay a ground/frame event exactly as the Trainer does
+            # (HRNS-33): message is the RationaliseEvent object itself.
+            bus.send(
+                Message(
+                    role="supervisor",
+                    action="event",
+                    message=RationaliseEvent(
+                        kind="frame",
+                        query=KLine(0xAA, [0xAA]),
+                        proposal=KLine(0xBB, [0xBB, 0xCC]),
+                        significance=99,
+                    ),
+                    sender="trainer",
+                )
+            )
+            await asyncio.sleep(0.1)
+
+            # Frame must reach the client (times out before the fix).
+            raw = await asyncio.wait_for(ws.recv(), timeout=2.0)
+            frame = json.loads(raw)
+
+            assert frame["role"] == "supervisor"
+            assert frame["action"] == "event"
+            message = frame["message"]
+            assert message["kind"] == "frame"
+            assert message["significance"] == 99
+            assert message["query"] == {"signature": 0xAA, "nodes": [0xAA]}
+            assert message["proposal"] == {"signature": 0xBB, "nodes": [0xBB, 0xCC]}
+
+            await ws.close()
+        finally:
+            bus.stop()
+            bus_thread.join(timeout=5)
+            await _stop_server(server)
+
+    @pytest.mark.asyncio
+    async def test_ratify_request_with_kline_payload_reaches_client(self) -> None:
+        import threading
+
+        bus = MessageBus()
+        protocol, server = await _start_server(bus, port=18774)
+
+        bus_thread = threading.Thread(target=bus.run, daemon=True)
+        bus_thread.start()
+
+        try:
+            ws = await websockets.connect("ws://localhost:18774")
+            await ws.send(json.dumps({"register": "supervisor"}))
+            await asyncio.sleep(0.05)
+
+            # Relay an S2/S3 ratify request exactly as the Trainer does
+            # (HRNS-33): message is a dict whose query/proposal are KLines.
+            bus.send(
+                Message(
+                    role="supervisor",
+                    action="ratify_request",
+                    message={
+                        "proposal": KLine(0xBB, [0xBB]),
+                        "query": KLine(0xAA, [0xAA]),
+                        "significance": 99,
+                    },
+                    sender="trainer",
+                )
+            )
+            await asyncio.sleep(0.1)
+
+            # Frame must reach the client (times out before the fix).
+            raw = await asyncio.wait_for(ws.recv(), timeout=2.0)
+            frame = json.loads(raw)
+
+            assert frame["role"] == "supervisor"
+            assert frame["action"] == "ratify_request"
+            assert frame["message"] == {
+                "proposal": {"signature": 0xBB, "nodes": [0xBB]},
+                "query": {"signature": 0xAA, "nodes": [0xAA]},
+                "significance": 99,
+            }
+
+            await ws.close()
+        finally:
+            bus.stop()
+            bus_thread.join(timeout=5)
+            await _stop_server(server)
+
+
+class TestWireFrameRoundTrip:
+    """KB-319: wire frames produced by ``_serialise_message``'s domain-object
+    encoder must be accepted by ``enrich_event`` and yield the documented
+    enriched events.
+
+    This is a pure unit round-trip (no bus / WebSocket / threading): it nails
+    down that the encoder's *output shape* and ``enrich_event``'s *input shape*
+    agree, so the auto-tune observable model is restored end-to-end. It
+    complements ``TestDomainObjectPayloadSerialisation`` (which proves
+    *delivery* through the live bus + WebSocket) by proving *shape agreement*.
+    """
+
+    def test_event_frame_enriches_to_rationalise(self) -> None:
+        # Build the exact Message the Trainer relays, serialise it at the wire
+        # boundary, parse the JSON back, and enrich it — the supervisor's path.
+        msg = Message(
+            role="supervisor",
+            action="event",
+            message=RationaliseEvent(
+                kind="frame",
+                query=KLine(0xAA, [0xAA]),
+                proposal=KLine(0xBB, [0xBB, 0xCC]),
+                significance=99,
+            ),
+            sender="trainer",
+        )
+        frame = json.loads(WebSocketProtocol._serialise_message(msg))
+
+        event = enrich_event(frame, seq=5)
+
+        assert event["type"] == "rationalise"
+        assert event["seq"] == 5
+        assert event["kind"] == "frame"
+        # Significance 99 (well below D_MAX) classifies as S3.
+        assert event["significance"]["raw"] == 99
+        assert event["significance"]["level"] == "S3"
+        assert "normalised" in event["significance"]
+        # KLines round-trip to their KLine Display Object raw shape.
+        assert event["query"]["raw"] == {"signature": 0xAA, "nodes": [0xAA]}
+        assert event["proposal"]["raw"] == {"signature": 0xBB, "nodes": [0xBB, 0xCC]}
+        assert isinstance(event["query"]["source"], str)
+        assert isinstance(event["proposal"]["source"], str)
+
+    def test_ratify_request_frame_enriches_to_ratify_request(self) -> None:
+        msg = Message(
+            role="supervisor",
+            action="ratify_request",
+            message={
+                "proposal": KLine(0xBB, [0xBB]),
+                "query": KLine(0xAA, [0xAA]),
+                "significance": 99,
+            },
+            sender="trainer",
+        )
+        frame = json.loads(WebSocketProtocol._serialise_message(msg))
+
+        event = enrich_event(frame, seq=7)
+
+        assert event["type"] == "ratify_request"
+        assert event["seq"] == 7
+        assert event["significance"]["raw"] == 99
+        assert event["significance"]["level"] == "S3"
+        assert event["query"]["raw"] == {"signature": 0xAA, "nodes": [0xAA]}
+        assert event["proposal"]["raw"] == {"signature": 0xBB, "nodes": [0xBB]}
+        assert isinstance(event["query"]["source"], str)
+        assert isinstance(event["proposal"]["source"], str)

@@ -15,10 +15,44 @@ from typing import Any
 import websockets
 from websockets.asyncio.server import ServerConnection
 
+from kalvin.events import RationaliseEvent
+from kalvin.kline import KLine
 from training.harness.bus import MessageBus
 from training.harness.message import Message
 
 logger = logging.getLogger(__name__)
+
+
+def _domain_json_default(obj: Any) -> Any:
+    """JSON ``default`` hook encoding harness domain objects to wire dicts.
+
+    Called by ``json.dumps`` (via ``WebSocketProtocol._serialise_message``) for
+    objects it cannot natively serialise. Produces exactly the dict shapes that
+    ``enrich_event`` (the auto-tune supervisor) consumes, so a bus ``Message``
+    carrying a domain object becomes a valid WebSocket JSON frame at the wire
+    boundary. See specs/auto-tune.md §Event Frame and §KLine Display Object.
+
+    - ``KLine`` → ``{"signature": int, "nodes": list[int]}``
+    - ``RationaliseEvent`` → ``{"kind", "query", "proposal", "significance"}``.
+      The nested ``KLine``\\s are encoded recursively by ``json.dumps``.
+      ``candidate`` is intentionally omitted: ``enrich_event`` does not read it
+      and the spec's ``rationalise`` frame lists only kind/significance/query/
+      proposal.
+
+    Any other non-serialisable type raises ``TypeError`` (json's default
+    behaviour) so future unknown payloads fail loudly rather than being coerced
+    into something meaningless.
+    """
+    if isinstance(obj, KLine):
+        return {"signature": obj.signature, "nodes": list(obj.nodes)}
+    if isinstance(obj, RationaliseEvent):
+        return {
+            "kind": obj.kind,
+            "query": obj.query,
+            "proposal": obj.proposal,
+            "significance": obj.significance,
+        }
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
 @dataclass
@@ -52,6 +86,18 @@ class _ClientParticipant:
         """
         try:
             self._protocol._send_to_client_sync(self.role, msg)
+        except (TypeError, ValueError) as exc:
+            # Serialisation failure — a real bug, not a disconnect. Log at
+            # WARNING so silent drops of domain-object payloads (KB-319) are
+            # visible rather than mislabelled as "client gone". Drop behaviour
+            # is unchanged: no exception escapes on_message, the bus stays
+            # stable (HRNS-21).
+            logger.warning(
+                "Serialisation failed for %s action=%r: %s",
+                self.role,
+                msg.action,
+                exc,
+            )
         except Exception:
             # Silent drop — client may have disconnected between check and send.
             logger.debug("Silent drop for %s: client gone", self.role)
@@ -69,9 +115,17 @@ class WebSocketProtocol:
     registered role as the implicit ``sender``.  Outbound messages
     addressed to a client are serialised and sent over the WebSocket.
 
+    Outbound ``Message`` payloads may carry harness domain objects — ``KLine``
+    and ``RationaliseEvent`` — which ``_serialise_message`` encodes to their
+    wire dicts via a ``json.dumps(default=...)`` hook (``_domain_json_default``),
+    so ``action="event"``/``"ratify_request"`` frames reach every client
+    participant. Wire shapes match specs/auto-tune.md §Event Frame and
+    §KLine Display Object.
+
     Disconnect semantics (HRNS-21): the bus subscription is *not* removed on
     disconnect.  Messages to a disconnected client are silently dropped until
-    the client reconnects with the same role.
+    the client reconnects with the same role.  (Serialisation failures are a
+    distinct, louder case — logged at WARNING, never re-raised.)
     """
 
     def __init__(self, bus: MessageBus) -> None:
@@ -197,7 +251,13 @@ class WebSocketProtocol:
 
     @staticmethod
     def _serialise_message(msg: Message) -> str:
-        """Serialise a ``Message`` to a JSON frame."""
+        """Serialise a ``Message`` to a JSON frame.
+
+        Domain objects carried in the payload (``KLine``, ``RationaliseEvent``)
+        are encoded to their wire dicts via the ``default=`` hook
+        (see ``_domain_json_default``). This is the single outbound
+        serialisation site for domain payloads.
+        """
         payload: dict[str, Any] = {
             "role": msg.role,
             "action": msg.action,
@@ -205,7 +265,7 @@ class WebSocketProtocol:
         }
         if msg.sender is not None:
             payload["sender"] = msg.sender
-        return json.dumps(payload)
+        return json.dumps(payload, default=_domain_json_default)
 
     @staticmethod
     def _parse_message_frame(frame: dict[str, Any], sender: str) -> Message | None:
