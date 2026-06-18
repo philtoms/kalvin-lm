@@ -75,14 +75,24 @@ connotation results and a terminal packed distance. Replaces the previous
 ```python
 def _edge_hops(self, sig: int) -> Iterator[tuple[int, int]]:
     hop_count = 0
+    visited: set[int] = set()
     while hop_count < MAX_HOP:
+        if sig in visited:
+            break  # cycle detected (ER-1)
+        visited.add(sig)
         kline = self.find(sig)
-        if kline is None or self._is_canon(kline):
-            break
+        if kline is None or is_identity(kline) or is_canon(kline):
+            break  # dead end / identity kline (ER-2) / canonical (ER-3)
         hop_count += 1
         sig = make_signature(kline.nodes)
+        if sig == 0:
+            break  # empty nodes — nowhere to go (ER-2)
         yield hop_count, sig
 ```
+
+Termination conditions (ER-1…ER-5, defined in the @model spec
+§edge_hops Termination): cycle, identity kline, canonical kline, dead
+end, and the MAX_HOP bound.
 
 ### Algorithm
 
@@ -183,7 +193,7 @@ def expand(self, query, candidate, distance=0, _visited=None):
 | Mismatched, chain reaches signature with bitwise overlap | yields QC, +MAX_HOP  | S2 signifies candidate |
 | Mismatched, chain never reaches opposing mismatch set    | +MAX_HOP             | Accumulated directly   |
 | Mismatched candidate, chain bridges via connotation      | round-trip, hop = 0  | S3 packed (always)     |
-| Matched + grounded (is_s1)                                | 0                     | Neutral               |
+| Matched + grounded (is_s1)                               | 0                    | Neutral                |
 | Matched + ungrounded                                     | +1                   | Accumulated directly   |
 
 ### Connotation Bridging
@@ -226,8 +236,7 @@ When connotation bridging succeeds, `expand()` **yields an S3 connotation**:
 a recursive call with linear distance
 `S2_S3_DISTANCE + round_trip_hops + _S3_BIAS - 1` (`_S3_BIAS = 1`). This
 captures indirect, associative connections; distance grows linearly with hop
-count (the previous quadratic `_pack(d) = d²` was removed by the
-`s3-distance` auto-tune).
+count.
 
 Each connotation is a `QueryCandidate` processed identically by the
 Cogitator — countersignature is checked for every yielded item.
@@ -265,25 +274,25 @@ def is_countersigned(self, a: KLine, b: KLine) -> bool:
 
 ### Storage
 
-| Spec ID | Test                      | Description                      |
-| ------- | ------------------------- | -------------------------------- |
-| MOD-1   | add_to_frame and find         | Add KLine via add_to_frame, find returns it |
-| MOD-4   | Exists                    | True after add_to_frame, False before |
-| MOD-5   | Find returns most recent  | Multiple KLines same sig         |
-| MOD-6   | Find_all                  | Returns all KLines with sig      |
-| MOD-7   | Find_by_nodes             | Returns by nodes signature       |
-| MOD-8   | Remove                    | Removes most recent with sig     |
-| MOD-9   | Remove never touches base | Verify base unchanged            |
-| MOD-10  | Len                       | Frame count only                 |
+| Spec ID | Test                      | Description                                 |
+| ------- | ------------------------- | ------------------------------------------- |
+| MOD-1   | add_to_frame and find     | Add KLine via add_to_frame, find returns it |
+| MOD-4   | Exists                    | True after add_to_frame, False before       |
+| MOD-5   | Find returns most recent  | Multiple KLines same sig                    |
+| MOD-6   | Find_all                  | Returns all KLines with sig                 |
+| MOD-7   | Find_by_nodes             | Returns by nodes signature                  |
+| MOD-8   | Remove                    | Removes most recent with sig                |
+| MOD-9   | Remove never touches base | Verify base unchanged                       |
+| MOD-10  | Len                       | Frame count only                            |
 
 ### Four-Tier Lookup
 
-| Spec ID | Test             | Description                                  |
-| ------- | ---------------- | -------------------------------------------- |
-| MOD-12  | STM priority     | KLine in STM found before Frame              |
-| MOD-13  | Frame fallback   | KLine not in STM found in Frame              |
-| MOD-14  | LTM fallback     | KLine not in STM/Frame found in LTM          |
-| MOD-15  | Base fallback    | KLine not in STM/Frame/LTM found in Base     |
+| Spec ID | Test           | Description                              |
+| ------- | -------------- | ---------------------------------------- |
+| MOD-12  | STM priority   | KLine in STM found before Frame          |
+| MOD-13  | Frame fallback | KLine not in STM found in Frame          |
+| MOD-14  | LTM fallback   | KLine not in STM/Frame found in LTM      |
+| MOD-15  | Base fallback  | KLine not in STM/Frame/LTM found in Base |
 
 ### Graph Traversal
 
@@ -298,22 +307,22 @@ def is_countersigned(self, a: KLine, b: KLine) -> bool:
 
 ### Write Cascade
 
-| Spec ID | Test                | Description                                         |
-| ------- | ------------------- | --------------------------------------------------- |
-| MOD-23  | add_to_stm refresh     | Removes-if-present then adds, refreshing FIFO       |
-| MOD-24  | add_to_stm evict       | Oldest evicted when bound exceeded                  |
-| MOD-25  | add_to_frame cascade   | Writes Frame and cascades to add_to_stm                |
-| MOD-26  | add_to_ltm cascade     | Writes LTM and cascades to add_to_frame                |
-| MOD-32  | add_to_frame monotonic | Frame is append-only                                |
-| MOD-33  | add_to_ltm monotonic   | LTM is append-only                                  |
+| Spec ID | Test                   | Description                                   |
+| ------- | ---------------------- | --------------------------------------------- |
+| MOD-23  | add_to_stm refresh     | Removes-if-present then adds, refreshing FIFO |
+| MOD-24  | add_to_stm evict       | Oldest evicted when bound exceeded            |
+| MOD-25  | add_to_frame cascade   | Writes Frame and cascades to add_to_stm       |
+| MOD-26  | add_to_ltm cascade     | Writes LTM and cascades to add_to_frame       |
+| MOD-32  | add_to_frame monotonic | Frame is append-only                          |
+| MOD-33  | add_to_ltm monotonic   | LTM is append-only                            |
 
 ### Significance API
 
 | Spec ID | Test                      | Description                                                |
 | ------- | ------------------------- | ---------------------------------------------------------- |
-| MOD-34  | is_s1 canonical            | `make_signature(nodes) == signature` → True                |
-| MOD-35  | is_s1 countersigned        | Mutual cross-reference detected → True                     |
-| MOD-36  | is_s1 neither              | Non-canonical, non-countersigned → False                   |
+| MOD-34  | is_s1 canonical           | `make_signature(nodes) == signature` → True                |
+| MOD-35  | is_s1 countersigned       | Mutual cross-reference detected → True                     |
+| MOD-36  | is_s1 neither             | Non-canonical, non-countersigned → False                   |
 | MOD-37  | expand self no model      | All match, ungrounded → significance reflects N ungrounded |
 | MOD-38  | expand no resolution      | All mismatched unresolvable → low significance             |
 | MOD-39  | expand grounding          | Matched node that resolves → higher significance           |
@@ -328,3 +337,28 @@ def is_countersigned(self, a: KLine, b: KLine) -> bool:
 | MOD-48  | expand bidirectional      | Both sides yield connotations + terminal                   |
 | MOD-49  | is_countersigned          | Mutual reference detected                                  |
 | MOD-50  | Not countersigned         | One-way reference → False                                  |
+
+### Expand & edge_hops Robustness
+
+See `@model spec` §edge_hops Termination and §Expand Behavioral Contract
+(properties 10–11).
+
+`expand()` resolves every `match_sig` yielded by `edge_hops` via
+`model.find()` + None guard rather than asserting existence, at all three
+expansion call sites (mismatched query→candidate, mismatched
+candidate→query, and S3 connotation bridging). Unresolvable match
+signatures are silently skipped — they are normal graph topology, not
+errors.
+
+| Spec ID | Test file              | Test function                                                    |
+| ------- | ---------------------- | ---------------------------------------------------------------- |
+| ER-1    | `tests/test_expand.py` | `TestEdgeHops::test_edge_hops_cycle_detection_er1`               |
+| ER-2    | `tests/test_expand.py` | `TestEdgeHops::test_edge_hops_identity_kline_er2`                |
+| ER-6    | `tests/test_expand.py` | `TestExpand::test_expand_no_crash_on_unresolvable_match_sig_er6` |
+| ER-7    | `tests/test_expand.py` | `TestExpand::test_expand_countersign_cycle_no_crash_er7`         |
+
+Design decisions: cycle detection lives in `edge_hops` (per-chain
+visited set of signatures) rather than in `expand` (whose `_visited`
+tracks `(query.sig, candidate.sig)` pairs) because these are different
+cycles — `edge_hops` follows resolution chains; `expand` tracks
+query-candidate pairs.

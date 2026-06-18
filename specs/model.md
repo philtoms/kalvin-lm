@@ -67,22 +67,22 @@ This spec depends on the following concepts, defined elsewhere:
 
 A Model consists of:
 
-| Component | Type                   | Description                                  |
-| --------- | ---------------------- | -------------------------------------------- |
-| stm       | STM                    | Short-term memory. Bounded, recent.          |
-| frame     | Frame                  | Working context. Populated by `add()`.       |
-| ltm       | LTM                    | Long-term memory. Populated by `promote()`.  |
-| base      | Model \| none          | Optional read-only knowledge store.           |
-| index     | signature → [Kline, …] | Unified index across all tiers.              |
+| Component | Type                   | Description                                 |
+| --------- | ---------------------- | ------------------------------------------- |
+| stm       | STM                    | Short-term memory. Bounded, recent.         |
+| frame     | Frame                  | Working context. Populated by `add()`.      |
+| ltm       | LTM                    | Long-term memory. Populated by `promote()`. |
+| base      | Model \| none          | Optional read-only knowledge store.         |
+| index     | signature → [Kline, …] | Unified index across all tiers.             |
 
 ### Tier Summary
 
-| Tier  | Purpose               | Bounded | Lifetime       | add_to_stm | add_to_frame | add_to_ltm |
-| ----- | --------------------- | ------- | -------------- | ------- | --------- | ------- |
-| STM   | Event register        | Yes     | Rolling window | Yes     | Yes       | Yes     |
-| Frame | Compressed context    | No      | Per-session    | No      | Yes       | Yes     |
-| LTM   | Persistent knowledge  | No      | Cross-session  | No      | No        | Yes     |
-| Base  | Long-term knowledge   | No      | Persistent     | No      | No        | No      |
+| Tier  | Purpose              | Bounded | Lifetime       | add_to_stm | add_to_frame | add_to_ltm |
+| ----- | -------------------- | ------- | -------------- | ---------- | ------------ | ---------- |
+| STM   | Event register       | Yes     | Rolling window | Yes        | Yes          | Yes        |
+| Frame | Compressed context   | No      | Per-session    | No         | Yes          | Yes        |
+| LTM   | Persistent knowledge | No      | Cross-session  | No         | No           | Yes        |
+| Base  | Long-term knowledge  | No      | Persistent     | No         | No           | No         |
 
 ### STM (Short-Term Memory)
 
@@ -130,7 +130,7 @@ A model may optionally reference a **base model**.
   established at model instantiation and remains read-only for the
   session's lifetime.
 
-### Cross-Tier Search (_TierChain)
+### Cross-Tier Search (\_TierChain)
 
 Cross-tier lookups across STM, Frame, LTM, and Base are centralised in
 the private `_TierChain` and `_TierAdapter` classes (internal to
@@ -386,7 +386,7 @@ Resolves a node value to the Kline whose signature matches, if one exists.
 
 - Returns `none` if no Kline has that signature in any tier.
 
-### Expand
+### Query Expand
 
 ```
 model.query_expand(kline, depth=2) → sequence of Kline
@@ -423,11 +423,11 @@ identity signatures (@CONTEXT.md §Identity).
 - Any other input (connoted, undersigned, misfit) → raises.
 - **Child resolution** uses three-tier precedence (highest first):
   1. empty-nodes identity, 2. genuine canon, 3. self-referential identity.
-  The self-referential form is identity but carries no decomposition, so it
-  loses to a genuine canon for the same signature — otherwise it would
-  displace the canon and collapse the result to identity. Within a kind, the
-  most recently added kline wins (@CONTEXT.md §Recency Precedence). If no
-  resolvable kline exists for the value → raises.
+     The self-referential form is identity but carries no decomposition, so it
+     loses to a genuine canon for the same signature — otherwise it would
+     displace the canon and collapse the result to identity. Within a kind, the
+     most recently added kline wins (@CONTEXT.md §Recency Precedence). If no
+     resolvable kline exists for the value → raises.
 - Node order is significant (@kline spec): the output sequence preserves
   the node order of every traversed kline.
 
@@ -530,20 +530,24 @@ computed significance.
    `_S3_BIAS = 1`. No quadratic packing.
 9. **Recursive expansion** — connotations yielded as `QueryCandidate`.
 10. **Cycle detection** — visited signature pairs prevent infinite recursion.
+11. **Null-safe resolution** — a `match_sig` yielded by `edge_hops` is
+    resolved via `model.find()` rather than asserted to exist. If resolution
+    returns None the recursive branch is silently skipped (no exception).
+    Unresolvable match signatures are normal graph topology, not errors.
 
 The implementation algorithm and pseudocode are in
 `plans/impl/model.md` §2.
 
 #### Per-node contributions
 
-| Node state                                                    | Contribution          | Target component  |
-| ------------------------------------------------------------- | --------------------- | ----------------- |
-| Mismatched, chain reaches opposing mismatch set at hop N      | +N to total_distance   | Accumulated directly  |
-| Mismatched, chain reaches signature with bitwise overlap      | yields QC, +MAX_HOP   | S2 signifies candidate |
-| Mismatched, chain never reaches opposing mismatch set         | +MAX_HOP              | Accumulated directly  |
-| Mismatched candidate, chain bridges via connotation           | `S2_S3_DISTANCE + hops` | S3 linear (always)    |
-| Matched + structurally grounded (is_s1)                       | 0                     | Neutral               |
-| Matched + ungrounded                                          | +1                    | Accumulated directly  |
+| Node state                                               | Contribution            | Target component       |
+| -------------------------------------------------------- | ----------------------- | ---------------------- |
+| Mismatched, chain reaches opposing mismatch set at hop N | +N to total_distance    | Accumulated directly   |
+| Mismatched, chain reaches signature with bitwise overlap | yields QC, +MAX_HOP     | S2 signifies candidate |
+| Mismatched, chain never reaches opposing mismatch set    | +MAX_HOP                | Accumulated directly   |
+| Mismatched candidate, chain bridges via connotation      | `S2_S3_DISTANCE + hops` | S3 linear (always)     |
+| Matched + structurally grounded (is_s1)                  | 0                       | Neutral                |
+| Matched + ungrounded                                     | +1                      | Accumulated directly   |
 
 ### Is Countersigned
 
@@ -627,6 +631,26 @@ with a three-tier priority:
 
 Matched-but-ungrounded nodes add 1 each.
 
+### edge_hops Termination
+
+`edge_hops(model, sig)` yields `(hop_count, next_sig)` for each
+non-canonical resolution step in the chain
+`sig → kline → make_signature(kline.nodes) → ...`. It must terminate on
+four conditions without raising:
+
+1. **Cycle** — if the chain revisits a signature already seen in the
+   current traversal, it breaks immediately without yielding the cycle.
+   Prevents countersigned pairs (e.g. `{M: [H]} ↔ {H: [M]}`) oscillating
+   for all MAX_HOP iterations.
+2. **Identity kline** — if `make_signature(kline.nodes) == 0` (identity
+   kline with empty nodes), it breaks without yielding. There is no
+   signature to follow from `nodes = []`.
+3. **Canonical kline** — if the kline is canonical
+   (`sig == make_signature(nodes)`), it breaks.
+4. **Dead end** — if `model.find(sig)` returns None, it breaks.
+
+The total number of yields never exceeds MAX_HOP.
+
 ### S3 Bias and Linear Distance
 
 ```
@@ -644,11 +668,11 @@ auto-tune; the previous quadratic `_pack(d) = d²` was removed).
 
 Three fixed boundaries classify yielded significance values:
 
-| Boundary | Position                | Meaning                           |
-| -------- | ----------------------- | --------------------------------- |
-| S1\|S2   | `D_MAX - 1`             | Only exact S1 qualifies as S1     |
-| S2\|S3   | `~_S2_S3_DISTANCE`      | Packed distance threshold (100)   |
-| S3\|S4   | `0`                     | Only zero-significance is S4      |
+| Boundary | Position           | Meaning                         |
+| -------- | ------------------ | ------------------------------- |
+| S1\|S2   | `D_MAX - 1`        | Only exact S1 qualifies as S1   |
+| S2\|S3   | `~_S2_S3_DISTANCE` | Packed distance threshold (100) |
+| S3\|S4   | `0`                | Only zero-significance is S4    |
 
 Classification cascade:
 
@@ -675,101 +699,110 @@ else       → S4
 
 ### Storage
 
-| ID    | Criterion                                                      | Origin ref |
-| ----- | -------------------------------------------------------------- | ---------- |
-| MOD-1 | add_to_frame and find: add KLine via add_to_frame, find by signature returns it | — |
-| MOD-4 | Exists: True after add_to_frame, False before                     | — |
-| MOD-5 | Find returns most recent KLine when multiple share signature   | — |
-| MOD-6 | Find_all: returns all KLines with given signature across tiers | — |
-| MOD-7 | Find_by_nodes: returns KLine by nodes signature                | — |
-| MOD-8 | Remove: removes most recent KLine with given signature         | — |
-| MOD-9 | Remove never touches base model                                | — |
-| MOD-10 | Len returns frame count only (excludes STM and base)          | — |
+| ID     | Criterion                                                                       | Origin ref |
+| ------ | ------------------------------------------------------------------------------- | ---------- |
+| MOD-1  | add_to_frame and find: add KLine via add_to_frame, find by signature returns it | —          |
+| MOD-4  | Exists: True after add_to_frame, False before                                   | —          |
+| MOD-5  | Find returns most recent KLine when multiple share signature                    | —          |
+| MOD-6  | Find_all: returns all KLines with given signature across tiers                  | —          |
+| MOD-7  | Find_by_nodes: returns KLine by nodes signature                                 | —          |
+| MOD-8  | Remove: removes most recent KLine with given signature                          | —          |
+| MOD-9  | Remove never touches base model                                                 | —          |
+| MOD-10 | Len returns frame count only (excludes STM and base)                            | —          |
 
 ### Four-Tier Lookup
 
-| ID     | Criterion                                           | Origin ref |
-| ------ | --------------------------------------------------- | ---------- |
-| MOD-12 | STM priority: KLine in STM found before Frame          | — |
-| MOD-13 | Frame fallback: KLine not in STM found in Frame        | — |
-| MOD-14 | LTM fallback: KLine not in STM/Frame found in LTM      | — |
-| MOD-15 | Base fallback: KLine not in STM/Frame/LTM found in Base| — |
+| ID     | Criterion                                               | Origin ref |
+| ------ | ------------------------------------------------------- | ---------- |
+| MOD-12 | STM priority: KLine in STM found before Frame           | —          |
+| MOD-13 | Frame fallback: KLine not in STM found in Frame         | —          |
+| MOD-14 | LTM fallback: KLine not in STM/Frame found in LTM       | —          |
+| MOD-15 | Base fallback: KLine not in STM/Frame/LTM found in Base | —          |
 
 ### Graph Traversal
 
-| ID     | Criterion                                   | Origin ref |
-| ------ | ------------------------------------------- | ---------- |
-| MOD-17 | Resolve: node resolves to KLine via find (node converted to signature form first) | — |
-| MOD-18 | Query_expand depth 0: returns empty          | — |
-| MOD-19 | Query_expand depth 2: returns direct children | — |
-| MOD-20 | Query_expand cycle detection: no infinite loop | — |
-| MOD-22 | Query: find + expand combined                | — |
-| MOD-60 | Unpack identity: `unpack({S: []})` → `[S]`                        | — |
-| MOD-61 | Unpack canon: ordered identity child sequence                     | — |
-| MOD-62 | Unpack nested canon: recursively flattened, order preserved       | — |
-| MOD-63 | Unpack non-decomposable input (e.g. connoted) → raises            | — |
-| MOD-64 | Unpack unresolvable child node → raises                           | — |
-| MOD-65 | Unpack child resolution: empty-identity > canon > self-referential identity | — |
-| MOD-66 | Unpack within-kind ambiguity: most-recently-added wins            | — |
-| MOD-67 | Unpack self-referential `{S: [S]}` is identity → `[S]` (no recursion); loses to a genuine canon for the same signature | — |
-| MOD-67b | Unpack canon sharing node value but different nodes still recurses | — |
+| ID      | Criterion                                                                                                              | Origin ref |
+| ------- | ---------------------------------------------------------------------------------------------------------------------- | ---------- |
+| MOD-17  | Resolve: node resolves to KLine via find (node converted to signature form first)                                      | —          |
+| MOD-18  | Query_expand depth 0: returns empty                                                                                    | —          |
+| MOD-19  | Query_expand depth 2: returns direct children                                                                          | —          |
+| MOD-20  | Query_expand cycle detection: no infinite loop                                                                         | —          |
+| MOD-22  | Query: find + expand combined                                                                                          | —          |
+| MOD-60  | Unpack identity: `unpack({S: []})` → `[S]`                                                                             | —          |
+| MOD-61  | Unpack canon: ordered identity child sequence                                                                          | —          |
+| MOD-62  | Unpack nested canon: recursively flattened, order preserved                                                            | —          |
+| MOD-63  | Unpack non-decomposable input (e.g. connoted) → raises                                                                 | —          |
+| MOD-64  | Unpack unresolvable child node → raises                                                                                | —          |
+| MOD-65  | Unpack child resolution: empty-identity > canon > self-referential identity                                            | —          |
+| MOD-66  | Unpack within-kind ambiguity: most-recently-added wins                                                                 | —          |
+| MOD-67  | Unpack self-referential `{S: [S]}` is identity → `[S]` (no recursion); loses to a genuine canon for the same signature | —          |
+| MOD-67b | Unpack canon sharing node value but different nodes still recurses                                                     | —          |
 
 ### Write Cascade
 
-| ID     | Criterion                                                    | Origin ref |
-| ------ | ------------------------------------------------------------ | ---------- |
-| MOD-23 | add_to_stm: always refreshes FIFO (removes-if-present then adds) | — |
-| MOD-24 | add_to_stm: evicts oldest when bound exceeded                    | — |
-| MOD-25 | add_to_frame: writes Frame and cascades to add_to_stm               | — |
-| MOD-26 | add_to_ltm: writes LTM and cascades to add_to_frame                 | — |
-| MOD-32 | add_to_frame: Frame is monotonic (append-only)                   | — |
-| MOD-33 | add_to_ltm: LTM is monotonic (append-only)                       | — |
+| ID     | Criterion                                                        | Origin ref |
+| ------ | ---------------------------------------------------------------- | ---------- |
+| MOD-23 | add_to_stm: always refreshes FIFO (removes-if-present then adds) | —          |
+| MOD-24 | add_to_stm: evicts oldest when bound exceeded                    | —          |
+| MOD-25 | add_to_frame: writes Frame and cascades to add_to_stm            | —          |
+| MOD-26 | add_to_ltm: writes LTM and cascades to add_to_frame              | —          |
+| MOD-32 | add_to_frame: Frame is monotonic (append-only)                   | —          |
+| MOD-33 | add_to_ltm: LTM is monotonic (append-only)                       | —          |
 
 ### Removed Methods
 
-| ID     | Note                                              |
-| ------ | -------------------------------------------------- |
-| MOD-R1 | `model.add()` removed — replaced by cascade API   |
-| MOD-R2 | `model.promote()` removed — replaced by `add_to_ltm()` |
-| MOD-R3 | `model.refresh_stm()` removed — absorbed by `add_to_stm()` |
+| ID     | Note                                                                   |
+| ------ | ---------------------------------------------------------------------- |
+| MOD-R1 | `model.add()` removed — replaced by cascade API                        |
+| MOD-R2 | `model.promote()` removed — replaced by `add_to_ltm()`                 |
+| MOD-R3 | `model.refresh_stm()` removed — absorbed by `add_to_stm()`             |
 | MOD-R4 | `model.descendants()` / `model.get_all_descendants()` removed — unused |
 
 ### Significance API
 
-| ID     | Criterion                                                              | Vision ref |
-| ------ | ---------------------------------------------------------------------- | ---------- |
-| MOD-34 | `is_s1` canonical: genuine canon (`is_canon`) → True             | @vision §Significance |
-| MOD-35 | `is_s1` countersigned: mutual cross-reference → True                   | @vision §Significance |
-| MOD-36 | `is_s1` neither: non-canonical, non-countersigned → False              | — |
-| MOD-37 | `expand` all-match ungrounded: significance reflects ungrounded count   | — |
-| MOD-38 | `expand` all-mismatched unresolvable: low significance                  | — |
-| MOD-39 | `expand` with edge hops: connotation yields + terminal                  | — |
-| MOD-40 | `expand` S2 signifies: loose match yields QC, terminal still MAX_HOP    | — |
-| MOD-41 | `expand` S2 before S3: signifies short-circuits connotation recording   | — |
-| MOD-42 | `expand` S3 route: S3 bias ensures S3 distances exceed S2              | — |
-| MOD-43 | `expand` connotation: indirect path → S3 connotation yield + terminal   | — |
-| MOD-44 | `expand` significance always in valid uint64 range `[1, D_MAX]`        | — |
-| MOD-45 | `expand` bidirectional: both sides contribute connotations + terminal   | — |
-| MOD-46 | `is_countersigned`: mutual node reference detected                      | — |
-| MOD-47 | Not countersigned: one-way reference → False                            | — |
+| ID     | Criterion                                                             | Vision ref            |
+| ------ | --------------------------------------------------------------------- | --------------------- |
+| MOD-34 | `is_s1` canonical: genuine canon (`is_canon`) → True                  | @vision §Significance |
+| MOD-35 | `is_s1` countersigned: mutual cross-reference → True                  | @vision §Significance |
+| MOD-36 | `is_s1` neither: non-canonical, non-countersigned → False             | —                     |
+| MOD-37 | `expand` all-match ungrounded: significance reflects ungrounded count | —                     |
+| MOD-38 | `expand` all-mismatched unresolvable: low significance                | —                     |
+| MOD-39 | `expand` with edge hops: connotation yields + terminal                | —                     |
+| MOD-40 | `expand` S2 signifies: loose match yields QC, terminal still MAX_HOP  | —                     |
+| MOD-41 | `expand` S2 before S3: signifies short-circuits connotation recording | —                     |
+| MOD-42 | `expand` S3 route: S3 bias ensures S3 distances exceed S2             | —                     |
+| MOD-43 | `expand` connotation: indirect path → S3 connotation yield + terminal | —                     |
+| MOD-44 | `expand` significance always in valid uint64 range `[1, D_MAX]`       | —                     |
+| MOD-45 | `expand` bidirectional: both sides contribute connotations + terminal | —                     |
+| MOD-46 | `is_countersigned`: mutual node reference detected                    | —                     |
+| MOD-47 | Not countersigned: one-way reference → False                          | —                     |
+
+### Expand & edge_hops Robustness
+
+| ID   | Criterion                                                                  | Origin ref |
+| ---- | -------------------------------------------------------------------------- | ---------- |
+| ER-1 | Countersigned pair (M↔H) yields at most 2 hops, not MAX_HOP (cycle breaks) | —          |
+| ER-2 | Identity kline `{A: []}` yields zero hops                                  | —          |
+| ER-6 | `expand()` does not crash when a `match_sig` is unresolvable               | —          |
+| ER-7 | S2 expansion scenario over countersign cycles completes without exception  | —          |
 
 ### Structural Grounding
 
-| ID     | Criterion                                                                | Origin ref |
-| ------ | ------------------------------------------------------------------------ | ---------- |
-| MOD-48 | `promote_participating`: query + candidate promoted after ratification    | — |
-| MOD-49 | `promote_participating`: S4 identity klines in STM also promoted          | — |
-| MOD-50 | `promote_participating`: S2/S3 partial klines in STM promoted             | — |
-| MOD-51 | `promote_participating`: already-promoted klines not re-promoted           | — |
-| MOD-52 | `classify_misfit` canonical: `S == N` → (False, False)                    | — |
-| MOD-53 | `classify_misfit` underfit: `S & ~N != 0` → (True, False)                 | — |
-| MOD-54 | `classify_misfit` overfit: `N & ~S != 0` → (False, True)                  | — |
-| MOD-55 | `classify_misfit` dual: both conditions → (True, True)                     | — |
-| MOD-56 | `generate_expansions` underfit: returns proposal with added nodes          | — |
-| MOD-57 | `generate_expansions` overfit: returns trimmed + companion                 | — |
-| MOD-58 | `generate_expansions` dual: returns replacement + companion                | — |
-| MOD-59 | `generate_expansions` no gap: no expansion proposals emitted               | — |
-| MOD-59b | `generate_expansions` never yields an identity proposal (`{S: []}` or `{S: [S]}`) — identity carries no decomposition; see @cogitator spec §Universal Constraint | — |
+| ID      | Criterion                                                                                                                                                        | Origin ref |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| MOD-48  | `promote_participating`: query + candidate promoted after ratification                                                                                           | —          |
+| MOD-49  | `promote_participating`: S4 identity klines in STM also promoted                                                                                                 | —          |
+| MOD-50  | `promote_participating`: S2/S3 partial klines in STM promoted                                                                                                    | —          |
+| MOD-51  | `promote_participating`: already-promoted klines not re-promoted                                                                                                 | —          |
+| MOD-52  | `classify_misfit` canonical: `S == N` → (False, False)                                                                                                           | —          |
+| MOD-53  | `classify_misfit` underfit: `S & ~N != 0` → (True, False)                                                                                                        | —          |
+| MOD-54  | `classify_misfit` overfit: `N & ~S != 0` → (False, True)                                                                                                         | —          |
+| MOD-55  | `classify_misfit` dual: both conditions → (True, True)                                                                                                           | —          |
+| MOD-56  | `generate_expansions` underfit: returns proposal with added nodes                                                                                                | —          |
+| MOD-57  | `generate_expansions` overfit: returns trimmed + companion                                                                                                       | —          |
+| MOD-58  | `generate_expansions` dual: returns replacement + companion                                                                                                      | —          |
+| MOD-59  | `generate_expansions` no gap: no expansion proposals emitted                                                                                                     | —          |
+| MOD-59b | `generate_expansions` never yields an identity proposal (`{S: []}` or `{S: [S]}`) — identity carries no decomposition; see @cogitator spec §Universal Constraint | —          |
 
 ## What a Model is Not
 
