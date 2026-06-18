@@ -18,8 +18,8 @@ Model indexes and retrieves; Expand computes how far apart two KLines are.
 Re-exported constants and types from the old model module:
   D_MAX, MASK64, MAX_HOP, _S3_BIAS, QueryCandidate
 
-Band-anchored normalization (defined here, not re-exported):
-  normalise_significance, S2_TOP, S2_FLOOR, S3_K
+Band-anchored normalization + per-node penalty (defined here, not re-exported):
+  normalise_significance, S2_TOP, S2_FLOOR, S3_K, UNRESOLVED_PENALTY
 """
 
 from __future__ import annotations
@@ -49,6 +49,13 @@ MASK64 = 0xFFFF_FFFF_FFFF_FFFF  # 64-bit mask for bitwise inversion
 
 # Upper bound on edge hop chain depth
 MAX_HOP = 100
+
+# Per-node distance penalty for a mismatched node that does not resolve to an
+# exact opposing match (fully-unresolved OR S2 "signifies" loose case). Kept
+# well below S2_S3_DISTANCE so a handful of unresolved nodes spread across S2
+# before spilling into S3. Distinct from MAX_HOP, which bounds edge_hops()
+# chain traversal.
+UNRESOLVED_PENALTY = 10
 
 # S2|S3 boundary — S2 direct hops stay below this threshold; S3 connotation
 # hops start at S2_S3_DISTANCE + 1 = 101.
@@ -245,6 +252,14 @@ def expand(
     ``S2_S3_DISTANCE + hop_count`` to ensure S3 distances moderately
     exceed S2 distances — close enough for temperature to bridge,
     without the quadratic explosion of the previous packing function.
+
+    A mismatched node that does not resolve to an exact opposing match —
+    either fully-unresolved or the S2 "signifies" loose case — contributes
+    ``UNRESOLVED_PENALTY`` (not ``MAX_HOP``) to the terminal distance. This is
+    kept well below ``S2_S3_DISTANCE`` so a handful of unresolved nodes
+    distribute across S2 before spilling into S3. ``MAX_HOP`` bounds only the
+    ``edge_hops()`` chain-traversal depth; the S3 connotation distance
+    (``S2_S3_DISTANCE + ...``) is unchanged.
     """
     if _visited is None:
         _visited = set()
@@ -265,7 +280,7 @@ def expand(
     total_distance = 0
 
     for n in mismatched_q:
-        hop_distance = MAX_HOP
+        hop_distance = UNRESOLVED_PENALTY
         q_kline = model.find(n)
         if q_kline is not None:
             for hops, match_sig in edge_hops(model, n):
@@ -293,7 +308,7 @@ def expand(
         total_distance += hop_distance
 
     for n in mismatched_c:
-        hop_distance = MAX_HOP
+        hop_distance = UNRESOLVED_PENALTY
         q_kline = model.find(n)
         if q_kline is not None:
             for hops, match_sig in edge_hops(model, n):

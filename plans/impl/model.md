@@ -57,8 +57,12 @@ connotation results and a terminal packed distance. Replaces the previous
 
 ### Hyperparameters
 
-- **MAX_HOP** — upper bound on edge hop chain depth (default 100). Also the
-  penalty for unresolvable mismatched nodes.
+- **MAX_HOP** — upper bound on edge hop chain depth (default 100).
+- **UNRESOLVED_PENALTY** — per-node distance penalty for a mismatched node
+  that does not resolve to an exact opposing match (default 10). Kept well
+  below `S2_S3_DISTANCE` so a handful of unresolved nodes spread across S2
+  before spilling into S3; distinct from `MAX_HOP`, which bounds
+  `edge_hops()` chain traversal.
 - **\_S3_BIAS** — tier bias for S3 connotation hops (default 1). Connotation
   distance is `S2_S3_DISTANCE + hops + _S3_BIAS - 1`; the bias seats the
   minimum S3 distance one above the S2|S3 boundary.
@@ -119,7 +123,7 @@ def expand(self, query, candidate, distance=0, _visited=None):
     #   - Signifies match → yield S2 cogitation candidate (loose)
     #   - No match → record in s3_connotations for bridging
     for n in mismatched_q:
-        hop_distance = MAX_HOP
+        hop_distance = UNRESOLVED_PENALTY
         for hops, match_sig in self._edge_hops(n):
             if match_sig in mismatched_c:
                 hop_distance = hops
@@ -145,7 +149,7 @@ def expand(self, query, candidate, distance=0, _visited=None):
     #   - Signifies match → yield S2 cogitation candidate (loose)
     #   - Connotation bridge → yield S3 connotation
     for n in mismatched_c:
-        hop_distance = MAX_HOP
+        hop_distance = UNRESOLVED_PENALTY
         for hops, match_sig in self._edge_hops(n):
             if match_sig in mismatched_q:
                 hop_distance = hops
@@ -187,14 +191,14 @@ def expand(self, query, candidate, distance=0, _visited=None):
 
 ### Per-Node Contributions
 
-| Node state                                               | Contribution         | Target component       |
-| -------------------------------------------------------- | -------------------- | ---------------------- |
-| Mismatched, chain reaches opposing mismatch set at hop N | +N to total_distance | Accumulated directly   |
-| Mismatched, chain reaches signature with bitwise overlap | yields QC, +MAX_HOP  | S2 signifies candidate |
-| Mismatched, chain never reaches opposing mismatch set    | +MAX_HOP             | Accumulated directly   |
-| Mismatched candidate, chain bridges via connotation      | round-trip, hop = 0  | S3 packed (always)     |
-| Matched + grounded (is_s1)                               | 0                    | Neutral                |
-| Matched + ungrounded                                     | +1                   | Accumulated directly   |
+| Node state                                               | Contribution                 | Target component       |
+| -------------------------------------------------------- | ---------------------------- | ---------------------- |
+| Mismatched, chain reaches opposing mismatch set at hop N | +N to total_distance         | Accumulated directly   |
+| Mismatched, chain reaches signature with bitwise overlap | yields QC, +UNRESOLVED_PENALTY | S2 signifies candidate |
+| Mismatched, chain never reaches opposing mismatch set    | +UNRESOLVED_PENALTY          | Accumulated directly   |
+| Mismatched candidate, chain bridges via connotation      | round-trip, hop = 0          | S3 packed (always)     |
+| Matched + grounded (is_s1)                               | 0                            | Neutral                |
+| Matched + ungrounded                                     | +1                           | Accumulated directly   |
 
 ### Connotation Bridging
 
@@ -220,7 +224,7 @@ This captures a looser structural relationship than exact matching: the
 signatures are not identical, but they overlap in at least one bit,
 suggesting potential significance. The candidate is yielded for cogitation
 without further recursive expansion. The mismatched node still contributes
-`MAX_HOP` to the terminal distance — signifies does not resolve the mismatch.
+`UNRESOLVED_PENALTY` to the terminal distance — signifies does not resolve the mismatch.
 
 Signifies short-circuits before S3 connotation recording, preventing the
 same hop from being recorded as both an S2 and an S3 path.
@@ -327,7 +331,7 @@ def is_countersigned(self, a: KLine, b: KLine) -> bool:
 | MOD-38  | expand no resolution      | All mismatched unresolvable → low significance             |
 | MOD-39  | expand grounding          | Matched node that resolves → higher significance           |
 | MOD-40  | expand edge hops          | Mismatched with chain → connotation yields + terminal      |
-| MOD-41  | expand S2 signifies       | Signifies loose match yields QC, terminal still MAX_HOP    |
+| MOD-41  | expand S2 signifies       | Signifies loose match yields QC, terminal still UNRESOLVED_PENALTY |
 | MOD-42  | expand S2 before S3       | Signifies short-circuits, s3_connotations not populated    |
 | MOD-43  | expand range              | Valid significance uint64                                  |
 | MOD-44  | expand clamped            | Significance in [1, D_MAX]                                 |
