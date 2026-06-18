@@ -48,14 +48,14 @@ def generate_expansions(
     - No invention: every signature used exists in the model
     - No orphan nodes: removed nodes form a companion kline
     """
-    if underfit_gap:
-        yield from _underfit_expansions(model, kline, underfit_gap)
-
-    if overfit_mask:
-        yield from _overfit_expansions(kline, overfit_mask)
-
     if underfit_gap and overfit_mask:
         yield from _dual_expansions(model, kline, underfit_gap, overfit_mask)
+    else:
+        if underfit_gap:
+            yield from _underfit_expansions(model, kline, underfit_gap)
+
+        if overfit_mask:
+            yield from _overfit_expansions(kline, overfit_mask)
 
 
 def _underfit_expansions(

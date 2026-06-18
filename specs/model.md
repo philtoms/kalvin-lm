@@ -800,7 +800,7 @@ else       → S4
 | MOD-55  | `classify_misfit` dual: both conditions → (True, True)                                                                                                           | —          |
 | MOD-56  | `generate_expansions` underfit: returns proposal with added nodes                                                                                                | —          |
 | MOD-57  | `generate_expansions` overfit: returns trimmed + companion                                                                                                       | —          |
-| MOD-58  | `generate_expansions` dual: returns replacement + companion                                                                                                      | —          |
+| MOD-58  | `generate_expansions` dual: returns replacement + companion (one atomic swap per gap-filling contributor; the dual path is exclusive — it does not also emit the underfit-only or overfit-only proposals) | —          |
 | MOD-59  | `generate_expansions` no gap: no expansion proposals emitted                                                                                                     | —          |
 | MOD-59b | `generate_expansions` never yields an identity proposal (`{S: []}` or `{S: [S]}`) — identity carries no decomposition; see @cogitator spec §Universal Constraint | —          |
 

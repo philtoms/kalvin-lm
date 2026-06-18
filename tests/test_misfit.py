@@ -83,7 +83,11 @@ class TestGenerateExpansions:
         assert companions[0].nodes == [0b110]  # removed node forms companion
 
     def test_dual_expansion_atomic_replace(self):
-        """Dual expansion yields replacement + companion."""
+        """Dual misfit yields ONLY atomic replacements (excess swapped for gap-filler).
+
+        The new logic performs an atomic swap per gap-filling contributor and
+        does NOT also emit separate underfit-only or overfit-only proposals.
+        """
         m = self._make_model_with_klines()
         # sig=0b101, nodes=[0b110] → nodes_sig=0b110
         # gap = 0b101 & ~0b110 = 0b001
@@ -92,14 +96,36 @@ class TestGenerateExpansions:
         underfit_gap = 0b001
         overfit_mask = 0b010
         results = list(generate_expansions(m, k, underfit_gap, overfit_mask))
-        # Should produce underfit, overfit, and dual expansions
-        assert len(results) >= 2
-        # Find the dual expansion (has companions from excess removal AND added nodes from gap fill)
-        dual_results = [r for r in results if len(r[1]) > 0]
-        assert len(dual_results) >= 1
-        # At least one dual result should have contributor nodes added
-        has_replacement = any(0b010 in r[0].nodes or 0b001 in r[0].nodes for r in dual_results)
-        assert has_replacement
+
+        # Exactly one gap-filling contributor (the 0b001 kline) → one atomic swap.
+        assert len(results) == 1
+        proposal, companions = results[0]
+
+        # Proposal keeps the original signature and contains the gap-filler node.
+        assert proposal.signature == 0b101
+        assert 0b001 in proposal.nodes
+        # The excess node was removed (swapped out), not retained.
+        assert 0b110 not in proposal.nodes
+
+        # Every dual proposal carries exactly one companion built from the
+        # removed excess nodes — there are no companion-free underfit-only
+        # proposals in the dual path.
+        assert all(len(comps) == 1 for _, comps in results)
+        assert companions[0].nodes == [0b110]
+        assert companions[0].signature == 0b110  # make_signature([0b110])
+
+    def test_dual_expansion_one_swap_per_contributor(self):
+        """Dual path yields one atomic swap per gap-filling contributor."""
+        m = self._make_model_with_klines()
+        # sig=0b111, nodes=[0b110] → nodes_sig=0b110
+        # gap = 0b111 & ~0b110 = 0b001  → only the 0b001 kline contributes
+        k = KLine(0b111, [0b110])
+        results = list(generate_expansions(m, k, underfit_gap=0b001, overfit_mask=0b010))
+        assert len(results) == 1
+        proposal, companions = results[0]
+        assert 0b001 in proposal.nodes
+        assert 0b110 not in proposal.nodes
+        assert companions[0].nodes == [0b110]
 
     def test_no_gap_no_expansion(self):
         """No gap and no excess → no expansion proposals."""
