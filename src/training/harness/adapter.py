@@ -24,14 +24,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Protocol
 
-from training.harness.bus import MessageBus
-from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
-from training.harness.message import Message
 from kalvin.abstract import KTokenizer
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kalvin.paths import agent_bin
 from ks.compiler import compile_source
+from training.harness.bus import MessageBus
+from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
+from training.harness.message import Message
 
 if TYPE_CHECKING:
     pass

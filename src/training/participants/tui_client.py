@@ -164,6 +164,7 @@ class HarnessClient:
 
 # TUIApp — Textual application for the TUI harness participant
 
+
 class TUIApp(App):
     """Textual TUI for the harness participant.
 

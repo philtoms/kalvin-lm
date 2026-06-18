@@ -20,6 +20,7 @@ import yaml
 
 # SessionConfig
 
+
 @dataclass
 class SessionConfig:
     """Serialisable configuration for an auto-tune session.
@@ -55,6 +56,7 @@ class SessionConfig:
 
 
 # SessionDir
+
 
 class SessionDir:
     """Manages the directory layout and git branch for an auto-tune session.
@@ -297,6 +299,7 @@ class SessionDir:
 
 
 # Helpers
+
 
 def _read_harness_defaults(config_path: Path) -> tuple[str, int]:
     """Read host and port defaults from a harness YAML config.

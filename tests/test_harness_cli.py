@@ -152,7 +152,8 @@ class TestLoadConfigFromSampleYaml:
     """HRNS-5: Harness loads embedded participants from config file on startup."""
 
     def test_load_config_from_sample_yaml(self) -> None:
-        """Load the canonical project config (``training.harness.yaml``) and assert all four participants.
+        """Load the canonical project config (``training.harness.yaml``) and
+        assert all four participants.
 
         The config path is resolved from this test file's location so the test
         passes regardless of the working directory pytest is invoked from.
@@ -160,8 +161,7 @@ class TestLoadConfigFromSampleYaml:
         # Guard explicitly so a future rename fails with a clear message rather
         # than a bare FileNotFoundError from load_config().
         assert _PROJECT_CONFIG.exists(), (
-            f"canonical project config not found at {_PROJECT_CONFIG}; "
-            "has it been renamed?"
+            f"canonical project config not found at {_PROJECT_CONFIG}; has it been renamed?"
         )
         config = load_config(_PROJECT_CONFIG)
         assert len(config.participants) == 4
@@ -207,9 +207,7 @@ class TestCLIArgparseDefaults:
 
         parser = _build_parser()
         config_action = next(
-            action
-            for action in parser._actions
-            if "--config" in action.option_strings
+            action for action in parser._actions if "--config" in action.option_strings
         )
         assert config_action.default == "training.harness.yaml"
         assert "training.harness.yaml" in (config_action.help or "")

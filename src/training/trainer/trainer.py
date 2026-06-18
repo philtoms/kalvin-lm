@@ -21,9 +21,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from training.harness.bus import MessageBus
-from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
-from training.harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX, normalise_significance
 from kalvin.kline import KLine, kline_display
@@ -31,6 +28,9 @@ from kalvin.misfit import classify_misfit
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
 from ks.compiler import compile_source
+from training.harness.bus import MessageBus
+from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
+from training.harness.message import Message
 from training.trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from training.trainer.curriculum_document import (
     CurriculumDocument,

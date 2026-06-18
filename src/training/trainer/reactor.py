@@ -19,11 +19,11 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from kalvin.events import RationaliseEvent
+from kalvin.kline import KLine
 from training.harness.bus import MessageBus
 from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from training.harness.message import Message
-from kalvin.events import RationaliseEvent
-from kalvin.kline import KLine
 from training.trainer.curriculum import CurriculumState, EntryKey
 
 logger = logging.getLogger(__name__)

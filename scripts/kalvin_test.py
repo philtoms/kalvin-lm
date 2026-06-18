@@ -34,6 +34,7 @@ MHALL == SVO =>
      L > O
 """
 
+
 class DeadlineExceededError(Exception):
     """Raised when a wall-clock --deadline elapses mid-run."""
 
@@ -216,6 +217,7 @@ def main() -> None:
     # which is exactly where this runs.
     prev_handler = None
     if args.deadline > 0:
+
         def _alarm_handler(signum, frame):
             raise DeadlineExceededError()
 
@@ -228,10 +230,7 @@ def main() -> None:
             agent.rationalise(k)
 
         if not done_event.wait(timeout=args.timeout):
-            print(
-                f"\nWARNING: no 'done' event after {args.timeout:.1f}s — "
-                "continuing anyway."
-            )
+            print(f"\nWARNING: no 'done' event after {args.timeout:.1f}s — continuing anyway.")
         agent.cogitate_join()
     except DeadlineExceededError:
         deadline_hit = True

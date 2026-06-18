@@ -21,6 +21,7 @@ from training.participants.auto_tune.session import SessionConfig, SessionDir
 
 # Helpers
 
+
 def _derive_state_path(curriculum: str, root: Path) -> Path:
     """Derive the curriculum state file path from the curriculum markdown path.
 
@@ -73,6 +74,7 @@ def _git_info() -> dict[str, Any]:
 
 
 # snapshot
+
 
 def snapshot(session_dir: SessionDir) -> int:
     """Capture a snapshot of the current auto-tune session state.
@@ -128,6 +130,7 @@ def snapshot(session_dir: SessionDir) -> int:
 
 
 # restore
+
 
 def restore(session_dir: SessionDir, run_number: int) -> None:
     """Restore session state from a previously captured snapshot.
@@ -195,6 +198,7 @@ def _assert_no_running_processes(session_dir: SessionDir) -> None:
 
 
 # reset
+
 
 def reset(session_dir: SessionDir, *, fresh_model: bool = False) -> None:
     """Clear auto-tune session state without destroying run history.

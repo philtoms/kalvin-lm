@@ -58,9 +58,7 @@ _BARE_HARNESS_YAML = re.compile(r"(?<!training\.)harness\.yaml")
 _HARNESS_YAML = re.compile(r"harness\.yaml")
 
 
-def _offenders(
-    path: Path, pattern: re.Pattern[str] = _BARE_HARNESS_YAML
-) -> list[str]:
+def _offenders(path: Path, pattern: re.Pattern[str] = _BARE_HARNESS_YAML) -> list[str]:
     """Return ``["file:lineno:line", ...]`` for each *pattern* match in *path*.
 
     Defaults to the bare-only ``_BARE_HARNESS_YAML`` pattern so the plan guards

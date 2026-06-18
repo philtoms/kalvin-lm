@@ -837,7 +837,10 @@ class TestCascadeWriteMethods:
         assert submitted[0].level == "S2"
 
     def test_agt22a_slow_path_query_add_to_stm_only(self):
-        """AGT-22a: S2/S3 routed kline calls model.add_to_stm() only — not add_to_frame or add_to_ltm."""
+        """AGT-22a: S2/S3 routed kline calls model.add_to_stm() only.
+
+        Not add_to_frame or add_to_ltm.
+        """
         m = Model()
         a = KAgent(model=m, adapter=EventBus())
         # Add a candidate that will route as S2 (partial overlap)

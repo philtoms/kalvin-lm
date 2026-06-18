@@ -11,12 +11,12 @@ from __future__ import annotations
 import logging
 from unittest.mock import MagicMock
 
-from training.harness.bus import MessageBus
-from training.harness.constants import TRAINEE_ROLE
-from training.harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from tests.conftest import requires_nlp_data
+from training.harness.bus import MessageBus
+from training.harness.constants import TRAINEE_ROLE
+from training.harness.message import Message
 from training.trainer.cogitation import (
     _SYSTEM_PROMPT,
     Cogitator,

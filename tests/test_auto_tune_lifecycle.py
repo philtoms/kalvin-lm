@@ -536,7 +536,10 @@ class TestHelpers:
             return original_monotonic() + 100  # Far past deadline
 
         with (
-            patch("training.participants.auto_tune.lifecycle.time.monotonic", side_effect=fake_monotonic),
+            patch(
+                "training.participants.auto_tune.lifecycle.time.monotonic",
+                side_effect=fake_monotonic,
+            ),
             patch("training.participants.auto_tune.lifecycle.time.sleep"),
         ):
             result = _wait_for_exit(12345, timeout=5.0)

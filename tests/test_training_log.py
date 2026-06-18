@@ -13,14 +13,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from training.harness.adapter import KAgentAdapter
-from training.harness.bus import MessageBus
-from training.harness.constants import TRAINEE_ROLE, TRAINER_ROLE
-from training.harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX
 from kalvin.kline import KDbg, KLine
 from tests.conftest import requires_nlp_data
+from training.harness.adapter import KAgentAdapter
+from training.harness.bus import MessageBus
+from training.harness.constants import TRAINEE_ROLE, TRAINER_ROLE
+from training.harness.message import Message
 from training.trainer.curriculum import Curriculum
 from training.trainer.curriculum_document import CurriculumDocument, Lesson
 from training.trainer.reactor import Reactor

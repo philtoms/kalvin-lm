@@ -10,8 +10,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from training.harness.__main__ import _build_llm_client, _resolve_llm_wiring  # noqa: E402
 from tests.conftest import requires_nlp_data
+from training.harness.__main__ import _build_llm_client, _resolve_llm_wiring  # noqa: E402
 
 # ── TestBuildLLMClient ────────────────────────────────────────────────
 
@@ -107,7 +107,9 @@ class TestBuildLLMClient:
     def test_llm_enabled_defaults_to_true(self) -> None:
         """RD-1: trainer.llm.enabled defaults to True; unset config behaves as today."""
         sentinel = MagicMock()
-        with patch("training.harness.__main__._build_llm_client", return_value=sentinel) as mock_build:
+        with patch(
+            "training.harness.__main__._build_llm_client", return_value=sentinel
+        ) as mock_build:
             # No llm section at all
             _, delegate_reactive = _resolve_llm_wiring({})
             assert delegate_reactive is False
@@ -119,7 +121,9 @@ class TestBuildLLMClient:
 
     def test_llm_enabled_explicitly_true(self) -> None:
         """RD-1: enabled explicitly True → delegate_reactive False, client built."""
-        with patch("training.harness.__main__._build_llm_client", return_value="CLIENT") as mock_build:
+        with patch(
+            "training.harness.__main__._build_llm_client", return_value="CLIENT"
+        ) as mock_build:
             _, delegate_reactive = _resolve_llm_wiring({"llm": {"enabled": True}})
             assert delegate_reactive is False
             mock_build.assert_called_once_with({"llm": {"enabled": True}})
@@ -234,7 +238,9 @@ class TestTrainerFactoryLLMWiring:
         """RD-2: enabled True + API key set → client built, delegate_reactive False."""
         monkeypatch.setenv("KALVIN_LLM_API_KEY", "test-key-123")
         sentinel = MagicMock()
-        with patch("training.harness.__main__._build_llm_client", return_value=sentinel) as mock_build:
+        with patch(
+            "training.harness.__main__._build_llm_client", return_value=sentinel
+        ) as mock_build:
             llm_client, delegate_reactive = _resolve_llm_wiring({"llm": {"enabled": True}})
             assert llm_client is sentinel
             assert delegate_reactive is False

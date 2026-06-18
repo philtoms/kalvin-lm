@@ -19,6 +19,7 @@ from training.participants.auto_tune.session import SessionDir
 
 # send_command
 
+
 def send_command(session_dir: SessionDir, command_json: dict) -> None:
     """Write a command to the session's ``cmd.json`` file.
 
@@ -35,6 +36,7 @@ def send_command(session_dir: SessionDir, command_json: dict) -> None:
 
 
 # read_events
+
 
 def read_events(session_dir: SessionDir, after_seq: int = -1) -> list[dict]:
     """Read events from the session's ``events.jsonl``, filtered by seq.
@@ -72,6 +74,7 @@ def read_events(session_dir: SessionDir, after_seq: int = -1) -> list[dict]:
 
 
 # read_status
+
 
 def read_status(session_dir: SessionDir) -> dict:
     """Read and parse the session's ``status.json``.

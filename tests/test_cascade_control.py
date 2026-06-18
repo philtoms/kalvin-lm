@@ -1,6 +1,7 @@
 """Tests for cascade control — candidate cap and reactor silent-drop.
 
-Spec: specs/agent.md §Candidate Cap; specs/reactive-delegation.md §Reactive-Round Budget (Default Mode).
+Spec: specs/agent.md §Candidate Cap;
+specs/reactive-delegation.md §Reactive-Round Budget (Default Mode).
 """
 
 from kalvin.agent import KAgent

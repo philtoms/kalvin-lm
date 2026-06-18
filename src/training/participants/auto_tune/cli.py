@@ -125,6 +125,7 @@ def _handle_teardown(args: argparse.Namespace) -> None:
 
 # Argument parser
 
+
 def build_parser() -> argparse.ArgumentParser:
     """Build and return the top-level argument parser with 12 subcommands."""
     parser = argparse.ArgumentParser(
@@ -217,6 +218,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 # Main
+
 
 def main(argv: Sequence[str] | None = None) -> None:
     """Parse args, validate session, and dispatch to handler."""

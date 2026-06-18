@@ -130,8 +130,8 @@ def main(argv: list[str] | None = None) -> None:
 
     def kagent_factory(address: str, bus: MessageBus) -> _AlreadySubscribed:
         # Two-phase wiring to avoid the circular dep.
-        from training.harness.adapter import KAgentAdapter
         from kalvin.agent import KAgent
+        from training.harness.adapter import KAgentAdapter
 
         adapter = KAgentAdapter(bus, role=address, tokenizer=shared_tokenizer)
         kagent = KAgent(tokenizer=shared_tokenizer, adapter=adapter)

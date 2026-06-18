@@ -48,7 +48,4 @@ def test_no_tracked_files_under_git_worktrees() -> None:
         check=True,
     )
     tracked = [line for line in result.stdout.splitlines() if line.strip()]
-    assert not tracked, (
-        f"expected no tracked files under {GIT_WORKTREES_DIR}, but found: "
-        f"{tracked}"
-    )
+    assert not tracked, f"expected no tracked files under {GIT_WORKTREES_DIR}, but found: {tracked}"

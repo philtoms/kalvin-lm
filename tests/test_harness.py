@@ -40,6 +40,7 @@ def _tok() -> NLPTokenizer:
         _tok_instance = NLPTokenizer.from_files()
     return _tok_instance
 
+
 # Status symbols per spec §Response Status
 STATUS_SYMBOLS = {"pass": "\u2713", "pending": "\u25cc", "mismatch": "\u2717"}
 

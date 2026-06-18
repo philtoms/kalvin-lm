@@ -10,12 +10,12 @@ import textwrap
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from training.harness.bus import MessageBus
-from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
-from training.harness.message import Message
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
 from tests.conftest import requires_nlp_data
+from training.harness.bus import MessageBus
+from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
+from training.harness.message import Message
 from training.trainer.cogitation import LLMResponse
 from training.trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from training.trainer.curriculum_document import CurriculumDocument, Lesson
@@ -2381,9 +2381,7 @@ class TestDelegatedReactiveDecisions:
 
         # low_confidence escalation emitted (no cogitate_fn available)
         notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
-        low_conf = [
-            m for m in notify_msgs if m.message.get("reason") == "low_confidence"
-        ]
+        low_conf = [m for m in notify_msgs if m.message.get("reason") == "low_confidence"]
         assert len(low_conf) == 1
 
         # ratify_request sent without enrichment keys

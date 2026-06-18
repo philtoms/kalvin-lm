@@ -121,6 +121,7 @@ def _delete_pid_file(path: Path) -> None:
 
 # Harness lifecycle
 
+
 def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     """Start the harness server as a background process.
 
@@ -201,6 +202,7 @@ def stop_harness(session_dir: Path) -> None:
 
 
 # Supervisor lifecycle
+
 
 def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     """Start the CLI supervisor as a background process.
@@ -288,6 +290,7 @@ def stop_supervisor(session_dir: Path) -> None:
 
 
 # Session harness config generation
+
 
 def _generate_session_harness_config(session_dir: Path, cfg: SessionConfig) -> Path:
     """Generate a per-session ``training.harness.yaml`` from the project's config.

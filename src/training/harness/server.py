@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 
+
 @dataclass(frozen=True)
 class ParticipantConfig:
     """A single participant entry from the harness config file."""
@@ -121,6 +122,7 @@ ParticipantFactory = Callable[[str, MessageBus], Any]
 
 
 # Harness server
+
 
 class HarnessServer:
     """The multi-agent harness runtime.

@@ -17,6 +17,7 @@ keeps a visible, non-trivial S2 band distinct from S3.
 
 Run: PYTHONPATH=src python auto-tune/penalty-sweep/probe_significance.py
 """
+
 from __future__ import annotations
 
 import kalvin.expand as ex
