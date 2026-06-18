@@ -311,6 +311,36 @@ def expand(
                             _visited=_visited,
                         )
                     break
+                # S2 "signifies" cogitation YIELD. When a mismatched node's
+                # edge_hops chain reaches a signature sharing >=1 bit with the
+                # node (but not an exact opposing match), the pair yields a
+                # QueryCandidate for S2 cogitation and short-circuits the chain
+                # (no S3 connotation is recorded). The node still pays
+                # UNRESOLVED_PENALTY to the terminal distance either way (KB-310).
+                #
+                # KB-315 investigated whether `signifies` is too broad a *yield*
+                # discriminator and decided to KEEP the bare test. Measured on
+                # REAL training data (the 7 curricula/*.md compiled via the
+                # production NLP tokenizer; ~980 mismatched nodes whose chains
+                # reached a signature): the fire rate is ~96% (near-vacuous, as
+                # KB-310's random probe hinted) BUT 0% of fires are single-bit
+                # ("weight-1") overlaps — minimum overlap weight is 2, mean ~7.
+                # The overlaps are multi-bit NLP-type (POS+DEP+MORPH high-bit)
+                # overlaps, i.e. genuine same-grammatical-class "half-formed
+                # connections", not accidental single bits. (Robust to a second,
+                # deterministic tokenizer: 98% fire rate, 0% weight-1.) So the
+                # empirical motivation (KB-310's weight-1 concern) does not hold
+                # on real data: the only weight threshold preserving the
+                # canonical test topologies (which are weight-2: 10&30, 20&28,
+                # 12&28) is >=2, which gives 0% discrimination; a ratio
+                # threshold would rest on an arbitrary constant with no natural
+                # cliff in the real-data ratio distribution. The broad-but-
+                # meaningful yield is already filtered downstream by
+                # UNRESOLVED_PENALTY + classify() + Cogitator routing. The
+                # identical branch below (mismatched_c loop) is governed by the
+                # same decision. signifies() itself and model.where() are
+                # unchanged (plans/impl/cascade-control.md DD-1). Do not
+                # re-tighten without revisiting this real-data rationale.
                 elif signifies(n, match_sig):
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
@@ -339,6 +369,8 @@ def expand(
                             _visited=_visited,
                         )
                     break
+                # S2 signifies cogitation YIELD — same KEEP decision as the
+                # mismatched_q branch above (KB-315 real-data rationale).
                 elif signifies(n, match_sig):
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
