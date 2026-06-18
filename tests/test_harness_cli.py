@@ -190,7 +190,7 @@ class TestCLIArgparseDefaults:
     """Verify CLI argument parsing defaults."""
 
     def test_default_config_path(self) -> None:
-        """Default config path resolves to ``harness.yaml``."""
+        """Default config path resolves to ``training.harness.yaml``."""
         from training.harness.__main__ import _build_parser
 
         parser = _build_parser()
@@ -201,7 +201,7 @@ class TestCLIArgparseDefaults:
         """The ``--config`` help string must name the actual default file.
 
         Regression guard: the displayed ``--help`` text previously diverged
-        from the ``default=`` value (stale pre-rename ``harness.yaml``).
+        from the ``default=`` value (it displayed the pre-rename default name).
         """
         from training.harness.__main__ import _build_parser
 

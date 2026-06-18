@@ -581,7 +581,7 @@ class TestSessionHarnessConfig:
         from training.participants.auto_tune.lifecycle import _generate_session_harness_config
         from training.participants.auto_tune.session import SessionConfig
 
-        # Create project harness.yaml
+        # Create project training.harness.yaml
         project_yaml = tmp_path / "training.harness.yaml"
         project_yaml.write_text(
             "server:\n  host: localhost\n  port: 8765\n"
@@ -640,7 +640,7 @@ class TestSessionHarnessConfig:
     def test_sets_llm_enabled_false(self, tmp_path: Path) -> None:
         """RD-12: generated config forces trainer.llm.enabled=false.
 
-        When the project harness.yaml has no ``trainer.llm`` section, the
+        When the project training.harness.yaml has no ``trainer.llm`` section, the
         per-session config must still add it with ``enabled: false``.
         """
         import yaml
@@ -718,7 +718,7 @@ class TestSessionHarnessConfig:
         from training.participants.auto_tune.lifecycle import _generate_session_harness_config
         from training.participants.auto_tune.session import SessionConfig
 
-        # No project harness.yaml
+        # No project training.harness.yaml
         session_dir = tmp_path / "auto-tune" / "test"
         session_dir.mkdir(parents=True)
         (session_dir / "runs").mkdir()

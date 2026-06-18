@@ -27,10 +27,10 @@ from training.participants.auto_tune.cli import main
 
 @pytest.fixture()
 def auto_tune_env(tmp_path: Path, monkeypatch):
-    """Create a temp directory with git repo and harness.yaml for CLI tests.
+    """Create a temp directory with git repo and training.harness.yaml for CLI tests.
 
     1. Creates a temp directory and initialises a git repo
-    2. Creates a minimal harness.yaml
+    2. Creates a minimal training.harness.yaml
     3. Changes cwd to the temp directory for the test duration
     4. Returns the temp path for assertions
     """
@@ -61,7 +61,7 @@ def auto_tune_env(tmp_path: Path, monkeypatch):
         capture_output=True,
     )
 
-    # Create minimal harness.yaml with non-default port
+    # Create minimal training.harness.yaml with non-default port
     (repo / "training.harness.yaml").write_text(
         "server:\n  host: localhost\n  port: 18765\n",
         encoding="utf-8",

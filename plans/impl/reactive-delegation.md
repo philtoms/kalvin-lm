@@ -79,7 +79,7 @@
 - **Spec ref:** @specs/reactive-delegation §Auto-Tune Integration (RD-12), @specs/auto-tune rule 7a
 - **Test mapping:** `tests/test_auto_tune_lifecycle.py` → `TestSessionHarnessConfig`
 - **Details:**
-  - In `_generate_session_harness_config`: after loading the project `harness.yaml` into `data`, set `data.setdefault("trainer", {})["llm"] = {"enabled": False}` (merge without clobbering existing `llm.base_url`/`model` overrides).
+  - In `_generate_session_harness_config`: after loading the project `training.harness.yaml` into `data`, set `data.setdefault("trainer", {})["llm"] = {"enabled": False}` (merge without clobbering existing `llm.base_url`/`model` overrides).
   - Pseudocode:
     ```
     trainer = data.setdefault("trainer", {})
@@ -87,11 +87,11 @@
     llm["enabled"] = False
     ```
 
-### Task 7: Document the flag in project config (`harness.yaml`)
+### Task 7: Document the flag in project config (`training.harness.yaml`)
 
 - **Spec ref:** @specs/reactive-delegation §Flag
 - **Details:**
-  - Add a commented `enabled: true` line under `trainer.llm` in `harness.yaml` noting that auto-tune overrides it to `false` per session.
+  - Add a commented `enabled: true` line under `trainer.llm` in `training.harness.yaml` noting that auto-tune overrides it to `false` per session.
 
 ## Test Mapping
 
@@ -123,7 +123,7 @@
 
 5. **No automatic budget/timeout in delegated mode.** The supervisor (pi) is the sole decision-maker. A hang guard is unnecessary for auto-tune, where pi is always attentive; pi abandons a decision by sending `continue`.
 
-6. **Auto-tune owns the flag flip, not the user.** `_generate_session_harness_config` always writes `trainer.llm.enabled: false`, so an auto-tune session is always delegated. The project `harness.yaml` default stays `true` so normal (human-supervised) sessions are unaffected.
+6. **Auto-tune owns the flag flip, not the user.** `_generate_session_harness_config` always writes `trainer.llm.enabled: false`, so an auto-tune session is always delegated. The project `training.harness.yaml` default stays `true` so normal (human-supervised) sessions are unaffected.
 
 ## Status
 

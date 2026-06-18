@@ -172,10 +172,10 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
   - Render all supervisor actions: progress, event, escalation, ratify_request
 - **Test mapping:** HRNS-17, HRNS-18, HRNS-34 → `tests/test_slack_agent.py`
 
-### Task T11: Harness config (`harness.yaml`)
+### Task T11: Harness config (`training.harness.yaml`)
 
 - **Spec ref:** @specs/harness-server.md §Harness Configuration
-- **Files:** `harness.yaml`
+- **Files:** `training.harness.yaml`
 - **Details:**
   - Rename `address` → `role` on all participant entries
   - Change Kalvin entry from `role: kalvin` to `role: trainee`
@@ -320,7 +320,7 @@ T1: Message (rename field)
         │
         └── T12: CLI entry point
               │
-              └── T11: harness.yaml
+              └── T11: training.harness.yaml
 
 T14: Shared command parser (parallel with T4–T12)
 T13: Update all tests (interleaved with each task)

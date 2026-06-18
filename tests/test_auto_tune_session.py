@@ -310,7 +310,7 @@ class TestSessionDirInit:
         assert worktree_current == "tuning/exp-7"
 
     def test_init_reads_harness_yaml(self, tmp_git_repo: Path) -> None:
-        """init reads host/port from harness.yaml when no overrides given."""
+        """init reads host/port from training.harness.yaml when no overrides given."""
         harness_yaml = tmp_git_repo / "training.harness.yaml"
         harness_yaml.write_text(
             "server:\n  host: 'myhost'\n  port: 5555\n",

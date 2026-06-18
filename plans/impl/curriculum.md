@@ -120,7 +120,7 @@
   - Pass both to `Trainer` constructor as keyword arguments
   - Create `curricula/` directory if `curricula_dir` is specified and doesn't exist
 
-### Task 7: Harness Config (`harness.yaml`)
+### Task 7: Harness Config (`training.harness.yaml`)
 
 - **Spec ref:** @specs/curriculum §Curricula Directory
 - **Details:**
