@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 # S1 significance boundary for frame events. A frame event with
 # significance at or above this threshold is considered S1 (fast path).
-_S1_FRAME_THRESHOLD = D_MAX - 1
+_S1_FRAME_THRESHOLD = D_MAX
 
 
 @lru_cache(maxsize=1)

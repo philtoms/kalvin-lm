@@ -28,7 +28,7 @@ from training.trainer.trainer import Trainer
 
 # ── Significance constants ────────────────────────────────────────────
 
-_S1_SIGNIFICANCE = D_MAX - 1  # S1 threshold
+_S1_SIGNIFICANCE = D_MAX  # S1 threshold (distance 0)
 _S2_SIGNIFICANCE = (~100) & 0xFFFF_FFFF_FFFF_FFFF  # S2 at distance 100
 _S2_DISTANCE = 100  # raw distance for assertions
 

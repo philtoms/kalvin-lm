@@ -24,8 +24,8 @@ from training.trainer.trainer import Trainer
 
 # ── Significance constants for test events ────────────────────────────
 
-# S1 threshold: D_MAX - 1 = 0xFFFF_FFFF_FFFF_FFFE
-_S1_SIGNIFICANCE = 0xFFFF_FFFF_FFFF_FFFE
+# S1 threshold: D_MAX (distance 0) = 0xFFFF_FFFF_FFFF_FFFF
+_S1_SIGNIFICANCE = 0xFFFF_FFFF_FFFF_FFFF
 # S2/S3: any low significance value
 _S2_SIGNIFICANCE = 100
 
@@ -1836,7 +1836,7 @@ class TestEventRelay:
         """High-significance frame event takes S1 path: relay but no ratify."""
         from kalvin.expand import D_MAX
 
-        _s1_frame_threshold = D_MAX - 1
+        _s1_frame_threshold = D_MAX
         entry = _make_entry(100, [10])
         mock_compile.return_value = [entry]
 

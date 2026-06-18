@@ -537,9 +537,9 @@ class TestBoundaries:
     """Verify boundaries() returns correct (S1|S2, S2|S3, S3|S4) thresholds."""
 
     def test_boundaries_values(self):
-        """Boundaries are D_MAX-1, ~S2_S3_DISTANCE masked, and 0."""
+        """Boundaries are D_MAX, ~S2_S3_DISTANCE masked, and 0."""
         s12, s23, s34 = boundaries()
-        assert s12 == D_MAX - 1
+        assert s12 == D_MAX
         assert s23 == (~S2_S3_DISTANCE) & MASK64
         assert s34 == 0
 
@@ -571,13 +571,14 @@ class TestClassify:
         assert classify(D_MAX, s12, s23, s34) == "S1"
 
     def test_classify_at_s12_exact(self, bounds):
-        """sig = D_MAX - 1 → S1 (exact S1|S2 boundary)."""
+        """sig = D_MAX - 1 (distance 1) → S2 (top of S2, not S1)."""
         s12, s23, s34 = bounds
-        assert classify(D_MAX - 1, s12, s23, s34) == "S1"
+        assert classify(D_MAX - 1, s12, s23, s34) == "S2"
 
     def test_classify_just_below_s12(self, bounds):
-        """sig = D_MAX - 2 → S2 (just below S1|S2 boundary)."""
+        """sig = D_MAX - 1 and D_MAX - 2 → S2 (top of S2 and just below S1|S2)."""
         s12, s23, s34 = bounds
+        assert classify(D_MAX - 1, s12, s23, s34) == "S2"
         assert classify(D_MAX - 2, s12, s23, s34) == "S2"
 
     def test_classify_at_s23_boundary(self, bounds):

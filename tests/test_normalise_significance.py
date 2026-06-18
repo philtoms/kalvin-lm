@@ -37,19 +37,25 @@ def test_strict_band_ordering_s1_gt_s2_gt_s3_gt_s4():
 
 
 def test_s1_normalises_to_one():
-    """SN-2: S1 raw values (distance 0 and 1) normalise to exactly 1.0."""
+    """SN-2: S1 raw values (distance 0 only) normalise to exactly 1.0."""
     assert normalise_significance(_raw_from_distance(0)) == 1.0
-    assert normalise_significance(_raw_from_distance(1)) == 1.0
-    # Also confirm D_MAX (distance 0) and D_MAX-1 (distance 1) spellings.
+    # D_MAX (distance 0) is the S1 spelling.
     assert normalise_significance(D_MAX) == 1.0
-    assert normalise_significance(D_MAX - 1) == 1.0
+    # Distance 1 (D_MAX - 1) is now the top of S2, not S1: it normalises
+    # below 1.0 (≈ 0.9950).
+    assert normalise_significance(D_MAX - 1) < 1.0
 
 
 # ── SN-3: S2 range and monotonicity ───────────────────────────────────
 
 
 def test_s2_range_and_monotonic():
-    """SN-3: S2 norm ∈ [0.50, 0.99]; smaller distance → strictly higher norm."""
+    """SN-3: S2 norm ∈ [0.50, 0.99] for distances 2-100; smaller distance → higher.
+
+    Distance 1 is the new top of S2 (≈ 0.9950), above the distance-2 anchor
+    of 0.99, so it is asserted separately rather than included in the
+    [0.50, 0.99] range above the named anchor.
+    """
     distances = [2, 10, 50, 99, 100]
     norms = [normalise_significance(_raw_from_distance(d)) for d in distances]
 
@@ -64,6 +70,10 @@ def test_s2_range_and_monotonic():
     # Named anchor points are exact.
     assert normalise_significance(_raw_from_distance(2)) == 0.99
     assert normalise_significance(_raw_from_distance(100)) == 0.50
+
+    # Distance 1 is the new top of S2: ≈ 0.9950, above the 0.99 anchor.
+    assert normalise_significance(_raw_from_distance(1)) == pytest.approx(0.995, abs=1e-4)
+    assert 0.99 < normalise_significance(_raw_from_distance(1)) < 1.0
 
 
 # ── SN-4: S3 is asymptotic, not clamped ───────────────────────────────

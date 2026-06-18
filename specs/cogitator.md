@@ -114,7 +114,7 @@ D_MAX ── S1|S2 ──────── S2|S3 ──────────
 
 | Boundary | Position                    | Meaning                        |
 | -------- | --------------------------- | ------------------------------ |
-| S1\|S2   | `D_MAX - 1`                 | Only exact S1 qualifies as S1  |
+| S1\|S2   | `D_MAX`                     | Only exact S1 (distance 0) qualifies as S1 |
 | S2\|S3   | `~_S2_S3_DISTANCE`          | Packed distance threshold (100)  |
 | S3\|S4   | `0`                          | Only zero-significance is S4   |
 
@@ -166,9 +166,10 @@ run_work_item(WorkItem(query, candidate, routing_level)):
     # S4 yields are skipped
 ```
 
-An S1 (distance 1) discovered during expansion is a genuine structural
-exact match and triggers `handler.on_s1()`, terminating the loop for that
-pair. There is no routing-level S1 short-circuit.
+An S1 (distance 0, significance `D_MAX`) discovered during expansion is a
+genuine structural exact match and triggers `handler.on_s1()`, terminating
+the loop for that pair. Distance 1 is the top of S2, not S1, and is not
+classified as S1 by `classify()`. There is no routing-level S1 short-circuit.
 
 ### Work Item Processing
 
@@ -332,13 +333,13 @@ proposals are generated per work item.
 ## S1 Callback
 
 When the Cogitator discovers an S1 — via boundary classification during
-expand() (a terminal distance-1 yield) — it calls
+expand() (a terminal distance-0 yield) — it calls
 `handler.on_s1(query, candidate)` on the CogitationHandler. The Agent
 implementation checks `is_s1(model, candidate)` as a structural guard — if
 the candidate is structurally S1 (canonical or countersigned), it calls
 `promote_participating(model, query, candidate)` to cascade all
 participating STM klines to LTM via `add_to_ltm`. A frame event is always
-published (unconditional) with significance `D_MAX - 1`. The `_run_work_item`
+published (unconditional) with significance `D_MAX`. The `_run_work_item`
 S1 branch delegates entirely to `on_s1`, keeping the dispatcher thin.
 
 ## Lifecycle

@@ -15,7 +15,7 @@ normalization is a display/analysis projection of raw significance.
 ### Expand (@model spec — §Significance Semantics)
 
 - Significance is `(~distance) & MASK64` — an inverted distance.
-- S1|S2 boundary: distance ≤ 1.
+- S1|S2 boundary: distance = 0.
 - S2|S3 boundary: distance = `S2_S3_DISTANCE` (= 100).
 - S3|S4 boundary: raw significance = 0 (distance = `D_MAX`).
 
@@ -35,7 +35,7 @@ is implemented once and shared by all consumers (see §Consumers).
 normalise(raw_sig):
     if raw_sig == 0:                  return 0.0          # S4
     distance = (~raw_sig) & MASK64
-    if distance <= 1:                 return 1.0          # S1
+    if distance == 0:                return 1.0          # S1 (distance 1 now falls into S2)
     if distance <= S2_S3_DISTANCE:                          # S2 (linear)
         return S2_FLOOR + (S2_TOP - S2_FLOOR)
                    * (S2_S3_DISTANCE - distance) / (S2_S3_DISTANCE - 2)
@@ -49,7 +49,7 @@ normalise(raw_sig):
 | Constant | Value | Meaning |
 |----------|-------|---------|
 | `S2_S3_DISTANCE` | 100 | S2|S3 distance boundary (from @model spec) |
-| `S2_TOP` | 0.99 | normalised value of the closest S2 (distance 2) |
+| `S2_TOP` | 0.99 | normalised anchor at distance 2 (the closest S2 is now distance 1, ≈ 0.9950) |
 | `S2_FLOOR` | 0.50 | normalised value at the S2|S3 boundary (distance 100); also the S3 asymptote |
 | `S3_K` | 50 | S3 decay rate (single tunable; smaller compresses deep S3 faster) |
 
@@ -57,8 +57,8 @@ normalise(raw_sig):
 
 | Band | Distance range | Normalized range | Curve |
 |------|----------------|------------------|-------|
-| S1 | 0–1 | `1.0` (exact) | constant |
-| S2 | 2–100 | `[0.50, 0.99]` | linear (closer → higher) |
+| S1 | 0 | `1.0` (exact) | constant |
+| S2 | 1–100 | `[0.50, ≈0.9950]` | linear (closer → higher; `0.99` is the distance-2 anchor, distance 1 ≈ 0.9950) |
 | S3 | 101 → `D_MAX-1` | `(0.0, 0.50)` | asymptotic, strictly decreasing, never 0 |
 | S4 | `D_MAX` (raw 0) | `0.0` | constant |
 
@@ -78,11 +78,12 @@ normalise(raw_sig):
 **SN-1: Strict band ordering.** For any two raw values in different bands, the
 higher band normalizes strictly higher: S1 > S2 > S3 > S4.
 
-**SN-2: S1 normalizes exactly to 1.0.** Any S1 raw value (distance 0 or 1)
+**SN-2: S1 normalizes exactly to 1.0.** Any S1 raw value (distance 0 only)
 normalizes to exactly `1.0`.
 
 **SN-3: S2 range and monotonicity.** Every S2 raw value normalizes into
-`[0.50, 0.99]`, and smaller S2 distance yields a strictly higher normalized
+`[0.50, ≈0.9950]` (the closest S2 is distance 1, ≈ 0.9950; distance 2 is the
+`0.99` anchor), and smaller S2 distance yields a strictly higher normalized
 value.
 
 **SN-4: S3 is asymptotic, not clamped.** Every S3 raw value normalizes into
@@ -127,8 +128,8 @@ The shared implementation lives in the significance module
 | ID | Criterion | Category |
 |----|-----------|----------|
 | SN-1 | S1 norm > S2 norm > S3 norm > S4 norm (cross-band ordering) | ordering |
-| SN-2 | S1 norm == 1.0 (distance 0 and 1) | S1 |
-| SN-3 | S2 norm ∈ [0.50, 0.99]; smaller distance → higher | S2 range + monotonic |
+| SN-2 | S1 norm == 1.0 (distance 0 only) | S1 |
+| SN-3 | S2 norm ∈ [0.50, ≈0.9950] (closest S2 is distance 1); smaller distance → higher | S2 range + monotonic |
 | SN-4 | S3 norm ∈ (0.0, 0.50); never 0.0; strictly decreasing | S3 asymptotic |
 | SN-5 | raw 0 → 0.0 | zero |
 | SN-6 | distinct S3 distances → distinct normalized values (no collapse) | S3 granularity |

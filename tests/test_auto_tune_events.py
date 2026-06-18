@@ -254,7 +254,7 @@ class TestSignificanceObject:
         """S2 normalised significance must be strictly less than S1."""
         from kalvin.expand import MASK64
 
-        s1_sig = D_MAX - 1  # S1 threshold, distance=1
+        s1_sig = D_MAX  # S1, distance=0
         s2_sig = (~2) & MASK64  # S2, distance=2
         s1 = _build_significance(s1_sig)
         s2 = _build_significance(s2_sig)
@@ -264,11 +264,14 @@ class TestSignificanceObject:
         assert s2["normalised"] < 1.0
 
     def test_s1_range_near_one(self):
-        """S1 events normalise to exactly 1.0 (band-anchored: S1 is constant 1.0)."""
+        """S1 (distance 0) normalises to exactly 1.0; distance 1 is now the top of S2."""
         sig = _build_significance(D_MAX)  # distance=0
         assert sig["normalised"] == 1.0
+        assert sig["level"] == "S1"
+        # Distance 1 (D_MAX - 1) is the top of S2 (≈ 0.9950), no longer S1.
         sig = _build_significance(D_MAX - 1)  # distance=1
-        assert sig["normalised"] == 1.0
+        assert sig["normalised"] == pytest.approx(0.995, abs=1e-4)
+        assert sig["level"] == "S2"
 
 
 # ── 7. KLine Display Object ──────────────────────────────────────────

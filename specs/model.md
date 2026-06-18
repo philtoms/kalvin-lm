@@ -670,7 +670,7 @@ Three fixed boundaries classify yielded significance values:
 
 | Boundary | Position           | Meaning                         |
 | -------- | ------------------ | ------------------------------- |
-| S1\|S2   | `D_MAX - 1`        | Only exact S1 qualifies as S1   |
+| S1\|S2   | `D_MAX`            | Only exact S1 (distance 0) qualifies as S1 |
 | S2\|S3   | `~_S2_S3_DISTANCE` | Packed distance threshold (100) |
 | S3\|S4   | `0`                | Only zero-significance is S4    |
 

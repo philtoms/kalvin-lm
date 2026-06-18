@@ -262,8 +262,9 @@ The cap does **not** affect:
 
 All candidates are submitted as work items for expansion. The Cogitator
 classifies each expansion yield against the significance boundaries; a
-yield that computes to S1 (distance 1) is a genuine structural exact match
-and triggers `handler.on_s1()` (see §Cogitation).
+yield that computes to S1 (distance 0, significance `D_MAX`) is a genuine
+structural exact match and triggers `handler.on_s1()` (see §Cogitation).
+Distance 1 is the top of S2, not S1.
 
 Return `False`.
 

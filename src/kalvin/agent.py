@@ -192,7 +192,7 @@ class KAgent:
         # Ground check (Frame/LTM/Base only — not STM)
         if kline.signature != 0 and self._model.grounded(kline):
             self._model.add_to_stm(kline)
-            self._publish("ground", kline, kline, D_MAX - 1)
+            self._publish("ground", kline, kline, D_MAX)
             return True
 
         if not kline.nodes:
@@ -208,7 +208,7 @@ class KAgent:
             )
             if all_resolved:
                 self._model.add_to_ltm(kline)
-                self._publish("frame", kline, kline, D_MAX - 1)  # S1
+                self._publish("frame", kline, kline, D_MAX)  # S1
                 return True
 
         # Register in STM before the ratification check so sequential
@@ -221,7 +221,7 @@ class KAgent:
         # (a single node entry in opposite directions) and are handled below.
         if is_countersigned(self._model, kline):
             self._model.add_to_ltm(kline)
-            self._publish("frame", kline, kline, D_MAX - 1)  # S1
+            self._publish("frame", kline, kline, D_MAX)  # S1
             return True
 
         # Retrieve candidates (exclude self to prevent trivial match)
@@ -264,7 +264,7 @@ class KAgent:
         """CogitationHandler.on_s1: structural check, promote, publish frame event."""
         if is_s1(self._model, candidate):
             promote_participating(self._model, query, candidate)
-        self._publish("frame", query, candidate, D_MAX - 1)
+        self._publish("frame", query, candidate, D_MAX)
 
     def on_expansion(
         self,

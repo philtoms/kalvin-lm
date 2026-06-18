@@ -43,7 +43,7 @@ class DeadlineExceededError(Exception):
 
 def significance_level(sig: int) -> str:
     """Classify a raw significance value into S1–S4."""
-    if sig == D_MAX - 1:
+    if sig == D_MAX:
         return "S1"
     if sig == 0:
         return "S4"
@@ -183,7 +183,7 @@ def main() -> None:
         if args.verbose:
             query_str = kline_display(e.query, tokenizer, agent.model)
             proposal_str = kline_display(e.proposal, tokenizer, agent.model)
-            arrow = "←" if e.significance == D_MAX - 1 else "|"
+            arrow = "←" if e.significance == D_MAX else "|"
             print(f"  {e.kind:6s} {query_str} → {level} {arrow} {proposal_str}")
 
         if level == "S1" and e.kind != "ground":
