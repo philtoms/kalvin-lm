@@ -1,0 +1,29 @@
+S2_S3_DISTANCE = 100  (S2 band = distance 1..100)
+
+SCENARIO A — symmetric disjoint pairs (distance = 2*n*v):
+value | S2-fit n | first S3 n | bands (n=1..10)
+----------------------------------------------------------------------
+    5 |       10 |       None | S2 S2 S2 S2 S2 S2 S2 S2 S2 S2
+    8 |        6 |          7 | S2 S2 S2 S2 S2 S2 S3 S3 S3 S3
+   10 |        5 |          6 | S2 S2 S2 S2 S2 S3 S3 S3 S3 S3
+   12 |        4 |          5 | S2 S2 S2 S2 S3 S3 S3 S3 S3 S3
+   15 |        3 |          4 | S2 S2 S2 S3 S3 S3 S3 S3 S3 S3
+   20 |        2 |          3 | S2 S2 S3 S3 S3 S3 S3 S3 S3 S3
+
+SCENARIO B — dual-misfit analog (distance = k*v, single-sided):
+value | S2-fit k | first S3 k | bands (k=1..10)
+----------------------------------------------------------------------
+    5 |       10 |       None | S2 S2 S2 S2 S2 S2 S2 S2 S2 S2
+    8 |       10 |       None | S2 S2 S2 S2 S2 S2 S2 S2 S2 S2
+   10 |        9 |         10 | S2 S2 S2 S2 S2 S2 S2 S2 S2 S3
+   12 |        8 |          9 | S2 S2 S2 S2 S2 S2 S2 S2 S3 S3
+   15 |        6 |          7 | S2 S2 S2 S2 S2 S2 S3 S3 S3 S3
+   20 |        4 |          5 | S2 S2 S2 S2 S3 S3 S3 S3 S3 S3
+
+Analytic S2 capacity (unresolved pairs before S3 spill):
+  v= 5: symmetric-pair S2 capacity = 10; single-sided = 20
+  v= 8: symmetric-pair S2 capacity = 6; single-sided = 12
+  v=10: symmetric-pair S2 capacity = 5; single-sided = 10
+  v=12: symmetric-pair S2 capacity = 4; single-sided = 8
+  v=15: symmetric-pair S2 capacity = 3; single-sided = 6
+  v=20: symmetric-pair S2 capacity = 2; single-sided = 5
