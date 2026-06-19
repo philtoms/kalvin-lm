@@ -10,9 +10,24 @@ def make_model(stm_bound: int = 256) -> Model:
 
 
 class TestClassifyMisfit:
-    def test_canonical(self):
-        """S == N → (False, False)."""
+    def test_identity_self_referential(self):
+        """Identity kline {S: [S]} → (False, False).
+
+        make_signature([S]) == S, so both S & ~S (underfit) and S & ~S
+        (overfit) are zero. classify_misfit does not distinguish identity
+        from canon — see is_identity (KL-21) / is_canon (KL-24).
+        """
         k = KLine(10, [10])  # make_sig([10]) = 10
+        assert classify_misfit(k) == (False, False)
+
+    def test_canonical(self):
+        """Genuine canon {S: [A, B]} with S == A|B → (False, False).
+
+        nodes_sig = make_signature([A, B]) == S, so neither S & ~nodes_sig
+        (underfit) nor nodes_sig & ~S (overfit) is non-zero. See is_canon
+        (KL-23).
+        """
+        k = KLine(0b110, [0b100, 0b010])  # make_sig([0b100, 0b010]) = 0b110
         assert classify_misfit(k) == (False, False)
 
     def test_underfitting(self):
