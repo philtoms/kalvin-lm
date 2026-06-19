@@ -1,5 +1,10 @@
 # KB-332 Findings — `UNRESOLVED_PENALTY` Training-Level Sweep v2 (Auto-Tune Session `penalty-sweep-v2`)
 
+> **Denser-curriculum re-run (KB-341):** the penalty observable is corroborated
+> against `cascade-pressure`'s ~113k-event L3–L5 band (5 distinct within-band
+> positions per value vs the single position here); `UNRESOLVED_PENALTY = 10`
+> confirmed. See `auto-tune/penalty-sweep-cascade/findings.md`.
+
 **Date:** 2026-06-18 · **Session branch:** `auto-tune/penalty-sweep-v2` · **Task branch:** `kb/kb-332`
 **Recommendation: CONFIRM `UNRESOLVED_PENALTY = 10`** — KB-309's probe-level confirmation is now
 **corroborated at the training level** (this task's primary deliverable).
