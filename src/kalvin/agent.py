@@ -116,12 +116,10 @@ class KAgent:
         model: Model | None = None,
         *,
         adapter: KAgentAdapter,
-        max_candidates: int = 8,
     ):
         self._tokenizer = tokenizer if tokenizer else _default_tokenizer()
         self._model = model if model is not None else Model()
         self._activity: Counter = Counter()
-        self._max_candidates: int = max_candidates
 
         self._adapter: KAgentAdapter = adapter
 
@@ -236,21 +234,15 @@ class KAgent:
             self._publish("frame", kline, kline, 0)  # S4 — novel
             return True
 
-        # Submit every candidate to cogitation. Sort S2 (partial overlap)
-        # before S3 (no overlap) so closer candidates are expanded first,
-        # then by node overlap descending within each level.
-        def _route_rank(candidate: KLine) -> tuple[int, int]:
-            level = self._route(kline, candidate)
-            level_order = {"S2": 0, "S3": 1}.get(level, 2)
-            overlap = -sum(1 for n in kline.nodes if n in set(candidate.nodes))
-            return (level_order, overlap)
+        # DEVELOPMENT-ONLY — candidate fan-out cap.
+        # rationalise→expand is exponential by design; the internal logic
+        # that bounds expansion is still being refined. 
+        # Remove it entirely once expansion is bounded internally.
+        _DEV_MAX_CANDIDATES = 8
+        if len(candidates) > _DEV_MAX_CANDIDATES:
+            candidates = candidates[:_DEV_MAX_CANDIDATES]
 
-        sorted_candidates = sorted(candidates, key=_route_rank)
-
-        if len(sorted_candidates) > self._max_candidates:
-            sorted_candidates = sorted_candidates[: self._max_candidates]
-
-        for candidate in sorted_candidates:
+        for candidate in candidates:
             level = self._route(kline, candidate)
             self._cogitator.submit(WorkItem(kline, candidate, level))
 

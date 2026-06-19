@@ -54,7 +54,7 @@ class OperatorScope:
             Singular — one annotation per signature position.
         node_inline_annotation: Annotation attached to the first node-side
             Signature, e.g. A = D(et). Singular — for multi-node scopes with
-            multiple inline-annotated nodes, the parser (KB-187) is responsible
+            multiple inline-annotated nodes, the parser is responsible
             for attaching subsequent annotations via the items list (as Annotation
             entries preceding the annotated Signature) or another mechanism.
     """

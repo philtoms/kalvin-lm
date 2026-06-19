@@ -78,13 +78,13 @@ class KScriptApp(App):
         self._last_script_dir: Path = DEFAULT_SCRIPTS_DIR
         self._last_state_dir: Path = Path("data")
         self._auto_compile_interval: float = auto_compile_interval
-        # Tracking state for test harness (KB-008)
+        # Tracking state for test harness
         self._submitted: set[EntryKey] = set()
         self._satisfied: set[EntryKey] = set()
-        # Selection tracking for ratification (KB-012)
+        # Selection tracking for ratification
         self._selected_proposal: KLine | None = None
         self._selected_entry_key: EntryKey | None = None
-        # Event correlation state (KB-010)
+        # Event correlation state
         self._compiled_entries: list[KLine] = []
         self._expectations: dict[EntryKey, list[KLine]] = {}
         self._fast_path_results: dict[EntryKey, bool] = {}
@@ -467,7 +467,7 @@ class KScriptApp(App):
             entry_key=None,
         )
 
-    # === Tracking State Helpers (KB-008) ===
+    # === Tracking State Helpers ===
 
     @staticmethod
     def _entry_key(entry: KLine) -> EntryKey:
@@ -481,7 +481,7 @@ class KScriptApp(App):
         """Return entries not yet in _submitted, preserving input order."""
         return [e for e in entries if self._entry_key(e) not in self._submitted]
 
-    # === Structural Match Helper (KB-010) ===
+    # === Structural Match Helper ===
 
     @staticmethod
     def _structural_match(a: KLine, b: KLine) -> bool:

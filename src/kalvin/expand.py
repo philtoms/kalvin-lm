@@ -56,20 +56,6 @@ MAX_HOP = 100
 # before spilling into S3. Distinct from MAX_HOP, which bounds edge_hops()
 # chain traversal.
 #
-# KB-310 investigated splitting the S2 "signifies" loose case into its own
-# lighter SIGNIFIES_PENALTY and decided to KEEP the two cases identical:
-# (1) the terminal distance measures the original query|candidate mismatch,
-# and a signifies match — a bit-overlapping signature reached via the node's
-# chain but NOT in the opposing mismatch set — does not resolve that mismatch,
-# so the node is equally a gap whether or not it has a bit-overlapping
-# neighbour; (2) that discovery is already captured, at hop granularity, by the
-# QueryCandidate the signifies branch yields for cogitation, so a second
-# coarser reward in the terminal distance would measure the wrong thing; and
-# (3) `signifies` is a broad bitwise-OR-overlap test that fires on ~any node
-# whose chain reaches a non-trivial OR-reduced signature, so systematically
-# lightening its penalty would inflate terminal significance for near-spurious
-# overlaps and mis-route signifies-heavy pairs as closer to S1 than their actual
-# node-mismatch warrants. Do not re-split without revisiting this rationale.
 UNRESOLVED_PENALTY = 10
 
 # S2|S3 boundary — S2 direct hops stay below this threshold; S3 connotation
@@ -311,36 +297,6 @@ def expand(
                             _visited=_visited,
                         )
                     break
-                # S2 "signifies" cogitation YIELD. When a mismatched node's
-                # edge_hops chain reaches a signature sharing >=1 bit with the
-                # node (but not an exact opposing match), the pair yields a
-                # QueryCandidate for S2 cogitation and short-circuits the chain
-                # (no S3 connotation is recorded). The node still pays
-                # UNRESOLVED_PENALTY to the terminal distance either way (KB-310).
-                #
-                # KB-315 investigated whether `signifies` is too broad a *yield*
-                # discriminator and decided to KEEP the bare test. Measured on
-                # REAL training data (the 7 curricula/*.md compiled via the
-                # production NLP tokenizer; ~980 mismatched nodes whose chains
-                # reached a signature): the fire rate is ~96% (near-vacuous, as
-                # KB-310's random probe hinted) BUT 0% of fires are single-bit
-                # ("weight-1") overlaps — minimum overlap weight is 2, mean ~7.
-                # The overlaps are multi-bit NLP-type (POS+DEP+MORPH high-bit)
-                # overlaps, i.e. genuine same-grammatical-class "half-formed
-                # connections", not accidental single bits. (Robust to a second,
-                # deterministic tokenizer: 98% fire rate, 0% weight-1.) So the
-                # empirical motivation (KB-310's weight-1 concern) does not hold
-                # on real data: the only weight threshold preserving the
-                # canonical test topologies (which are weight-2: 10&30, 20&28,
-                # 12&28) is >=2, which gives 0% discrimination; a ratio
-                # threshold would rest on an arbitrary constant with no natural
-                # cliff in the real-data ratio distribution. The broad-but-
-                # meaningful yield is already filtered downstream by
-                # UNRESOLVED_PENALTY + classify() + Cogitator routing. The
-                # identical branch below (mismatched_c loop) is governed by the
-                # same decision. signifies() itself and model.where() are
-                # unchanged (plans/impl/cascade-control.md DD-1). Do not
-                # re-tighten without revisiting this real-data rationale.
                 elif signifies(n, match_sig):
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
@@ -369,8 +325,6 @@ def expand(
                             _visited=_visited,
                         )
                     break
-                # S2 signifies cogitation YIELD — same KEEP decision as the
-                # mismatched_q branch above (KB-315 real-data rationale).
                 elif signifies(n, match_sig):
                     c_kline = model.find(match_sig)
                     if c_kline is not None:

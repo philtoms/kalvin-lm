@@ -202,9 +202,9 @@ The candidate is a model kline (from `model.where()`), so
 
 | Spec ID | Test                                      | Description                                           |
 | ------- | ----------------------------------------- | ----------------------------------------------------- |
-| MOD-34  | `is_s1` canonical                | KLine with `sig == make_signature(nodes)` → True      |
-| MOD-35  | `is_s1` countersigned            | Two klines with mutual node references → True         |
-| MOD-36  | `is_s1` neither                  | KLine that is not canonical or countersigned → False  |
+| MOD-34  | `is_s1` canonical                         | KLine with `sig == make_signature(nodes)` → True      |
+| MOD-35  | `is_s1` countersigned                     | Two klines with mutual node references → True         |
+| MOD-36  | `is_s1` neither                           | KLine that is not canonical or countersigned → False  |
 | MOD-48  | `promote_participating` basic             | Query + candidate promoted                            |
 | MOD-49  | `promote_participating` with S4 identity  | S4 identity klines in STM also promoted               |
 | MOD-50  | `promote_participating` with S2/S3        | Partial klines in STM promoted                        |
@@ -283,8 +283,8 @@ def generate_expansions(
 def _underfit_expansions(
     self, kline: KLine, gap: int
 ) -> Iterator[tuple[KLine, list[KLine]]]:
-    """Add nodes whose signatures contribute to the gap."""
-    # Find klines in the model whose signatures contribute to the gap
+    """Add nodes whose signatures overlap and thus reduce the gap."""
+    # Find klines in the model whose signatures overlap and thus reduce the gap
     contributors = self.where(lambda k: (k.signature & gap) != 0)
 
     for contributor in contributors:
@@ -441,15 +441,15 @@ Phase A+: Extended Cogitation
 
 ## 4. Files Modified
 
-| File                  | Change                                                                                                                                                                           |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File                  | Change                                                                                                                                                                                       |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/kalvin/model.py` | Add `is_s1` (structural grounding), `promote_participating`, `is_countersigned`, `classify_misfit`, `generate_expansions`, `_underfit_expansions`, `_overfit_expansions`, `_dual_expansions` |
-| `src/kalvin/agent.py` | Modify `_publish`, `rationalise()` Phase 3 (add ratification) and Phase 5, `Cogitator._process` (S2 expansion only), `Cogitator._run_work_item`                                  |
-| `tests/test_model.py` | Add tests for new model methods                                                                                                                                                  |
-| `tests/test_agent.py` | Add tests for structural grounding in cogitation                                                                                                                                 |
-| `specs/agent.md`      | Update §Cogitation with S2 expansion phase                                                                                                                                       |
-| `specs/model.md`      | Add misfit classification and expansion API                                                                                                                                      |
-| `docs/roadmap.md`     | Update status of Challenges 1 and 2 |
+| `src/kalvin/agent.py` | Modify `_publish`, `rationalise()` Phase 3 (add ratification) and Phase 5, `Cogitator._process` (S2 expansion only), `Cogitator._run_work_item`                                              |
+| `tests/test_model.py` | Add tests for new model methods                                                                                                                                                              |
+| `tests/test_agent.py` | Add tests for structural grounding in cogitation                                                                                                                                             |
+| `specs/agent.md`      | Update §Cogitation with S2 expansion phase                                                                                                                                                   |
+| `specs/model.md`      | Add misfit classification and expansion API                                                                                                                                                  |
+| `docs/roadmap.md`     | Update status of Challenges 1 and 2                                                                                                                                                          |
 
 ---
 

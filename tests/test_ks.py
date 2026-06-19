@@ -892,9 +892,9 @@ class TestComplexExamples:
     def test_sec148_presence(self):
         """§14.8 secondary regression — key entries present (5 entries).
 
-        After KB-199: CANONIZE subscript blocks emit identity for
+        CANONIZE subscript blocks emit identity for
         bare scopes, UNDERSIGN scope sigs, and leaf Signature items.
-        After KB-205: identity entries use IDENTITY op.
+        identity entries use IDENTITY op.
         Now matches spec §14.8 exactly (5 entries).
         """
         entries = compile_dev(_SEC148_SOURCE)
@@ -910,7 +910,7 @@ class TestComplexExamples:
     def test_ks35_complex_nested_strict(self):
         """KS-35: §14.11 master regression — strict spec count (18 entries).
 
-        After KB-205 + KB-207: MTS component IDENTITY dedup, no compound-own
+        MTS component IDENTITY dedup, no compound-own
         identity, subscript identity suppression for MTS CANONIZE scopes.
 
         Expected entries per spec §14.11:

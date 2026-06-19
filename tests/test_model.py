@@ -828,7 +828,7 @@ class TestUnpack:
         assert m.unpack(outer) == [0x10, 0x20, 0x40]
 
 
-# ── Thread-safety: iterator snapshot semantics (KB-305) ─────────────
+# ── Thread-safety: iterator snapshot semantics ─────────────
 #
 # Iterators must materialise a snapshot under the lock so a caller iterating
 # after the lock is released sees a consistent point-in-time view. An iterator
@@ -838,7 +838,7 @@ class TestUnpack:
 
 
 class TestKLineStoreSnapshotSemantics:
-    """KLineStore iterators snapshot state at acquisition time (KB-305)."""
+    """KLineStore iterators snapshot state at acquisition time."""
 
     def test_iter_snapshots_before_mutation(self):
         store = KLineStore()
@@ -864,7 +864,7 @@ class TestKLineStoreSnapshotSemantics:
 
 
 class TestModelSnapshotSemantics:
-    """Model iterators snapshot state at acquisition time (KB-305)."""
+    """Model iterators snapshot state at acquisition time."""
 
     def test_model_iter_snapshots_frame_before_mutation(self):
         m = make_model()

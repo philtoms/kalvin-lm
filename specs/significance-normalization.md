@@ -18,7 +18,7 @@ normalization is a display/analysis projection of raw significance.
 - S1|S2 boundary: distance = 0.
 - S2|S3 boundary: distance = `S2_S3_DISTANCE` (= 100).
 - S3|S4 boundary: raw significance = 0 (distance = `D_MAX`).
-- The per-node unresolved penalty (`UNRESOLVED_PENALTY`, KB-307) is decoupled
+- The per-node unresolved penalty (`UNRESOLVED_PENALTY`) is decoupled
   from `S2_S3_DISTANCE`; it affects how many unresolved nodes a pair can absorb
   before crossing into S3, but it does **not** alter any band boundary.
 
@@ -49,32 +49,32 @@ normalise(raw_sig):
 
 ### Constants
 
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `S2_S3_DISTANCE` | 100 | S2|S3 distance boundary (from @model spec) |
-| `S2_TOP` | 0.99 | normalised anchor at distance 2 (the closest S2 is now distance 1, ≈ 0.9950) |
-| `S2_FLOOR` | 0.50 | normalised value at the S2|S3 boundary (distance 100); also the S3 asymptote |
-| `S3_K` | 50 | S3 decay rate (single tunable; smaller compresses deep S3 faster) |
+| Constant         | Value | Meaning                                                                      |
+| ---------------- | ----- | ---------------------------------------------------------------------------- | ------------------------------------------------- |
+| `S2_S3_DISTANCE` | 100   | S2                                                                           | S3 distance boundary (from @model spec)           |
+| `S2_TOP`         | 0.99  | normalised anchor at distance 2 (the closest S2 is now distance 1, ≈ 0.9950) |
+| `S2_FLOOR`       | 0.50  | normalised value at the S2                                                   | S3 boundary (distance 100); also the S3 asymptote |
+| `S3_K`           | 50    | S3 decay rate (single tunable; smaller compresses deep S3 faster)            |
 
 ### Normalized Value Ranges
 
-| Band | Distance range | Normalized range | Curve |
-|------|----------------|------------------|-------|
-| S1 | 0 | `1.0` (exact) | constant |
-| S2 | 1–100 | `[0.50, ≈0.9950]` | linear (closer → higher; `0.99` is the distance-2 anchor, distance 1 ≈ 0.9950) |
-| S3 | 101 → `D_MAX-1` | `(0.0, 0.50)` | asymptotic, strictly decreasing, never 0 |
-| S4 | `D_MAX` (raw 0) | `0.0` | constant |
+| Band | Distance range  | Normalized range  | Curve                                                                          |
+| ---- | --------------- | ----------------- | ------------------------------------------------------------------------------ |
+| S1   | 0               | `1.0` (exact)     | constant                                                                       |
+| S2   | 1–100           | `[0.50, ≈0.9950]` | linear (closer → higher; `0.99` is the distance-2 anchor, distance 1 ≈ 0.9950) |
+| S3   | 101 → `D_MAX-1` | `(0.0, 0.50)`     | asymptotic, strictly decreasing, never 0                                       |
+| S4   | `D_MAX` (raw 0) | `0.0`             | constant                                                                       |
 
 ### Worked S3 values (S3_K = 50)
 
-| distance | normalized |
-|----------|------------|
-| 101 | 0.490 |
-| 151 | 0.248 |
-| 200 | 0.167 |
-| 301 | 0.100 |
-| 519 | 0.053 |
-| → ∞ | → 0.0 (never reached) |
+| distance | normalized            |
+| -------- | --------------------- |
+| 101      | 0.490                 |
+| 151      | 0.248                 |
+| 200      | 0.167                 |
+| 301      | 0.100                 |
+| 519      | 0.053                 |
+| → ∞      | → 0.0 (never reached) |
 
 ## Behavioural Rules
 
@@ -128,12 +128,12 @@ The shared implementation lives in the significance module
 
 ## Test Matrix
 
-| ID | Criterion | Category |
-|----|-----------|----------|
-| SN-1 | S1 norm > S2 norm > S3 norm > S4 norm (cross-band ordering) | ordering |
-| SN-2 | S1 norm == 1.0 (distance 0 only) | S1 |
+| ID   | Criterion                                                                       | Category             |
+| ---- | ------------------------------------------------------------------------------- | -------------------- |
+| SN-1 | S1 norm > S2 norm > S3 norm > S4 norm (cross-band ordering)                     | ordering             |
+| SN-2 | S1 norm == 1.0 (distance 0 only)                                                | S1                   |
 | SN-3 | S2 norm ∈ [0.50, ≈0.9950] (closest S2 is distance 1); smaller distance → higher | S2 range + monotonic |
-| SN-4 | S3 norm ∈ (0.0, 0.50); never 0.0; strictly decreasing | S3 asymptotic |
-| SN-5 | raw 0 → 0.0 | zero |
-| SN-6 | distinct S3 distances → distinct normalized values (no collapse) | S3 granularity |
-| SN-7 | global monotonic (higher raw → higher-or-equal norm) | monotonic |
+| SN-4 | S3 norm ∈ (0.0, 0.50); never 0.0; strictly decreasing                           | S3 asymptotic        |
+| SN-5 | raw 0 → 0.0                                                                     | zero                 |
+| SN-6 | distinct S3 distances → distinct normalized values (no collapse)                | S3 granularity       |
+| SN-7 | global monotonic (higher raw → higher-or-equal norm)                            | monotonic            |

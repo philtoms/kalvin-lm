@@ -61,7 +61,7 @@ def generate_expansions(
 def _underfit_expansions(
     model: Model, kline: KLine, gap: int
 ) -> Iterator[tuple[KLine, list[KLine]]]:
-    """Add nodes whose signatures contribute to the gap."""
+    """Add nodes whose signatures overlap and thus reduce the gap."""
     contributors = model.where(lambda k: (k.signature & gap) != 0)
 
     for contributor in contributors:

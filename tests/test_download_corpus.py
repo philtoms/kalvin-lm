@@ -94,8 +94,7 @@ def test_revision_passed_to_load_dataset(tmp_path):
 def test_streaming_is_false(tmp_path):
     """``load_dataset`` is called with ``streaming=False``.
 
-    This documents the intentional KB-218 switch from streaming to non-streaming
-    mode so the full dataset is cached locally as arrow files (zero network on
+    non-streaming mode so the full dataset is cached locally as arrow files (zero network on
     a warm cache, no HTTP 429 rate-limit exposure).
     """
     output = tmp_path / "corpus.json"

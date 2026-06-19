@@ -1195,12 +1195,12 @@ class _MockLLMClient:
         return LLMResponse(content=None, tool_calls=None, finish_reason="stop")
 
 
-# ── KB-032: _generate_and_start success path ─────────────────────────
+# ── _generate_and_start success path ─────────────────────────
 
 
 @requires_nlp_data
 class TestGenerateAndStart:
-    """KB-032: _generate_and_start creates CurriculumGenerator, calls generate, loads result."""
+    """_generate_and_start creates CurriculumGenerator, calls generate, loads result."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_generate_and_start_success(self, mock_compile: MagicMock, tmp_path: Path) -> None:
@@ -1358,11 +1358,13 @@ class TestGenerateAndStart:
         assert any(m.message["status"] == "started" for m in progress_msgs)
 
 
-# ── KB-032: _generate_and_start error and guard paths ────────────────
+# ── 
+#_generate_and_start error and guard paths ────────────────
 
 
 class TestGenerateAndStartGuards:
-    """KB-032: Guard checks in _generate_and_start."""
+    """
+Guard checks in _generate_and_start."""
 
     @requires_nlp_data
     def test_no_curricula_dir_returns_early(self) -> None:
@@ -1512,12 +1514,14 @@ class TestGenerateAndStartGuards:
         assert trainer._session_active
 
 
-# ── KB-032: _resolve_goal dispatching ─────────────────────────────────
+# ── 
+#_resolve_goal dispatching ─────────────────────────────────
 
 
 @requires_nlp_data
 class TestResolveGoalDispatch:
-    """KB-032: _resolve_goal dispatches to _generate_and_start or _load_and_start."""
+    """
+_resolve_goal dispatches to _generate_and_start or _load_and_start."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_goal_prefix_with_space(self, mock_compile: MagicMock, tmp_path: Path) -> None:
@@ -2010,11 +2014,11 @@ class TestTrainerProgressToAllSupervisors:
             bus_thread.join(timeout=2)
 
 
-# ── KB-125: Cogitator auto-wiring ────────────────────────────────────
+# ── Cogitator auto-wiring ────────────────────────────────────
 
 
 class TestCogitatorAutoWiring:
-    """KB-125: Trainer auto-wires Cogitator when llm_client is provided."""
+    """Trainer auto-wires Cogitator when llm_client is provided."""
 
     @requires_nlp_data
     def test_auto_wires_cogitator_when_llm_client_provided(self) -> None:
@@ -2186,11 +2190,11 @@ class TestCogitatorAutoWiring:
         assert len(escalation_msgs) == 0
 
 
-# ── KB-234: Misfit diagnosis helper ──────────────────────────────────
+# ── Misfit diagnosis helper ──────────────────────────────────
 
 
 class TestComputeMisfit:
-    """KB-234: Trainer._compute_misfit maps a KLine to the misfit dict."""
+    """Trainer._compute_misfit maps a KLine to the misfit dict."""
 
     def test_underfit_only(self) -> None:
         """Signature promises more than nodes deliver → underfit, no overfit."""
@@ -2289,11 +2293,11 @@ class TestComputeMisfit:
         assert result["underfit_gap"] == 0xFE
 
 
-# ── KB-234: Delegated reactive decisions ─────────────────────────────
+# ── Delegated reactive decisions ─────────────────────────────
 
 
 class TestDelegatedReactiveDecisions:
-    """KB-234: Trainer enriches ratify_request in delegated mode (RD-7, RD-8)."""
+    """Trainer enriches ratify_request in delegated mode (RD-7, RD-8)."""
 
     @patch("training.trainer.trainer.compile_source")
     @requires_nlp_data

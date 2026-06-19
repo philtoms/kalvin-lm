@@ -139,7 +139,7 @@ class TestKS35ComplexNested:
     def test_entry_count(self) -> None:
         """Total entry count matches spec §14.11 (18 entries).
 
-        After KB-205 + KB-207: MTS component IDENTITY dedup, no compound-own
+        MTS component IDENTITY dedup, no compound-own
         identity, and subscript identity suppression for MTS CANONIZE scopes.
         """
         assert len(self.entries) == 18

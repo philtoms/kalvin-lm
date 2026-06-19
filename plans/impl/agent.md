@@ -154,7 +154,6 @@ See `plans/impl/structural-grounding.md` for the full expansion algorithm.
 | Spec ID | Test                       | Description                                          |
 | ------- | -------------------------- | ---------------------------------------------------- |
 | AGT-18  | All candidates to cogitator | All candidates (including S1) submitted as WorkItems |
-| AGT-19  | S1-first ordering          | Candidates sorted S1-first, then by overlap count    |
 | AGT-20  | All S2                     | Returns False, all submitted as WorkItems             |
 | AGT-21  | All S3                     | Returns False, all submitted as WorkItems             |
 | AGT-22  | S1 fast-path in cogitator  | Skips expand(), calls on_s1 directly                  |

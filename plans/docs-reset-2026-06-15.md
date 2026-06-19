@@ -18,11 +18,10 @@ via git.
 
 ## Safety constraints (hard)
 
-1. **Do not delete an active plan.** A plan is *spent* only if ALL of: the code
+1. **Do not delete an active plan.** A plan is _spent_ only if ALL of: the code
    it describes exists and matches, its tests are green, AND no open kb task
-   depends on it. Live work at time of writing: **KB-243**, **KB-245**. Before
-   deleting any plan, confirm the in-progress/todo kb columns are empty for the
-   area it covers.
+   depends on it. Before deleting any plan, confirm the in-progress/todo kb
+   columns are empty for the area it covers.
 2. **Migrate before delete.** An artifact is deleted only after its surviving
    conclusion has landed in its proper layer (code, spec, or a kept plan).
 3. **Archive guarantee.** The tagged commit must physically contain every
@@ -89,17 +88,17 @@ rows and `[removed]` markers; encode a load-bearing absence as a positive rule.
 **Rule applied:** an ADR is temporary scaffolding. Once its decision is absorbed
 into code/spec/plan, the file is deleted; git is the archive.
 
-| ADR | Status | Action |
-|-----|--------|--------|
-| 0001 addressed message bus | Accepted | Verify conclusion is in `specs/` (message bus contract). If yes → delete. |
-| 0002 four-tier memory | (decision) | Verify write-API table is in `specs/model.md`. If yes → delete. |
-| 0003 file-mediated auto-tune protocol | Accepted | Verify in `specs/auto-tune.md`. If yes → delete. |
-| 0004 nlp bindings from comments | **Superseded** (spec v2.0) | Conclusion already absorbed → delete. |
-| 0005 undersign is S3 | **Superseded by 0006** | Redundant → delete. |
-| 0006 op is structural state | Accepted, supersedes 0005 | Verify glossary (Structural State, Identity) + specs carry it. If yes → delete. |
-| 0007 band-anchored significance | Accepted, supersedes DD-1 | Verify in `specs/significance-normalization.md`. If yes → delete. |
-| 0008 node taxonomy bound/unbound | Accepted | Verify in `specs/kline.md`, `signature.md`, `tokenizer.md` + glossary. If yes → delete. |
-| 0009 vision document merge | Accepted | Conclusion = the clean `docs/kalvin-vision.md`, which already exists. → delete. |
+| ADR                                   | Status                     | Action                                                                                  |
+| ------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------- |
+| 0001 addressed message bus            | Accepted                   | Verify conclusion is in `specs/` (message bus contract). If yes → delete.               |
+| 0002 four-tier memory                 | (decision)                 | Verify write-API table is in `specs/model.md`. If yes → delete.                         |
+| 0003 file-mediated auto-tune protocol | Accepted                   | Verify in `specs/auto-tune.md`. If yes → delete.                                        |
+| 0004 nlp bindings from comments       | **Superseded** (spec v2.0) | Conclusion already absorbed → delete.                                                   |
+| 0005 undersign is S3                  | **Superseded by 0006**     | Redundant → delete.                                                                     |
+| 0006 op is structural state           | Accepted, supersedes 0005  | Verify glossary (Structural State, Identity) + specs carry it. If yes → delete.         |
+| 0007 band-anchored significance       | Accepted, supersedes DD-1  | Verify in `specs/significance-normalization.md`. If yes → delete.                       |
+| 0008 node taxonomy bound/unbound      | Accepted                   | Verify in `specs/kline.md`, `signature.md`, `tokenizer.md` + glossary. If yes → delete. |
+| 0009 vision document merge            | Accepted                   | Conclusion = the clean `docs/kalvin-vision.md`, which already exists. → delete.         |
 
 **Migration step per ADR:** confirm the conclusion is materially present in the
 named spec/code/glossary. Only when present does the ADR get a delete + an
@@ -145,7 +144,7 @@ remaining work + unresolved design decisions.
 ### Safety re-check before any plan deletion
 
 Re-read the kb in-progress and todo columns. Anything referencing the plan's
-area blocks its deletion. KB-243 / KB-245 are live at time of writing.
+area blocks its deletion.
 
 ---
 

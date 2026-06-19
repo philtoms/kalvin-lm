@@ -1,4 +1,4 @@
-"""Tests for KScript v3 AST node definitions (KB-186).
+"""Tests for KScript v3 AST node definitions.
 
 Covers:
   KS-6  — Scope model structure (OperatorScope with sig, op, items, child_block)

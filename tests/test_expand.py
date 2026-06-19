@@ -606,9 +606,9 @@ class TestClassify:
 
 
 class TestS2Gradient:
-    """Regression guard for the S2/S3 gradient collapse (KB-307).
+    """Regression guard for the S2/S3 gradient collapse.
 
-    Before KB-307, MAX_HOP doubled as the per-node penalty, so any non-S1
+    Previously, MAX_HOP doubled as the per-node penalty, so any non-S1
     candidate with even one unresolved mismatched node landed at distance
     >= 2 * MAX_HOP (>= S2_S3_DISTANCE) and collapsed to S3; the S2 body
     (distance 1..100) was nearly invisible. Decoupling the per-node penalty

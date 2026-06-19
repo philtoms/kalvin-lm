@@ -474,7 +474,7 @@ reads the model from `on_event` on the calling thread).
   safe and this sidesteps lock-ordering discipline.
 - **Publish outside the lock.** `KAgent._publish` (which synchronously
   dispatches subscriber callbacks via `adapter.on_event`) is invoked only
-  *after* a Model method has acquired-and-released its own lock. Subscribers
+  _after_ a Model method has acquired-and-released its own lock. Subscribers
   therefore run **outside** the Model lock and may re-enter the model (on the
   main thread during `rationalise`, on the Cogitator thread during
   `on_s1`/`on_expansion`) without deadlock.
@@ -482,14 +482,13 @@ reads the model from `on_event` on the calling thread).
 > **What this does and does not guarantee.** The locks guarantee that every
 > individual model operation is atomic and that concurrent readers observe
 > consistent snapshots (no stale reads, no `RuntimeError` from concurrent
-> list mutation). They do **not** guarantee that the rationalisation *event
-> count* is identical regardless of how subscribers inspect events: the
+> list mutation). They do **not** guarantee that the rationalisation _event
+> count_ is identical regardless of how subscribers inspect events: the
 > background Cogitator processes S2/S3 work items asynchronously relative to
 > the main-thread `rationalise` loop, and `expand()`'s node-resolution result
 > depends on the model state at the moment each work item is processed, so any
 > subscriber work (even a bare `time.sleep`) can perturb the interleaving and
-> change the count. Count-determinism is owned by the Cogitator/agent layer
-> (see KB-347), not by Model locking.
+> change the count. Count-determinism is owned by the Cogitator/agent layer.
 
 ## Model API (Significance)
 
@@ -585,14 +584,14 @@ The implementation algorithm and pseudocode are in
 
 #### Per-node contributions
 
-| Node state                                               | Contribution                  | Target component       |
-| -------------------------------------------------------- | ----------------------------- | ---------------------- |
-| Mismatched, chain reaches opposing mismatch set at hop N | +N to total_distance          | Accumulated directly   |
+| Node state                                               | Contribution                   | Target component       |
+| -------------------------------------------------------- | ------------------------------ | ---------------------- |
+| Mismatched, chain reaches opposing mismatch set at hop N | +N to total_distance           | Accumulated directly   |
 | Mismatched, chain reaches signature with bitwise overlap | yields QC, +UNRESOLVED_PENALTY | S2 signifies candidate |
-| Mismatched, chain never reaches opposing mismatch set    | +UNRESOLVED_PENALTY           | Accumulated directly   |
-| Mismatched candidate, chain bridges via connotation      | `S2_S3_DISTANCE + hops`       | S3 linear (always)     |
-| Matched + structurally grounded (is_s1)                  | 0                             | Neutral                |
-| Matched + ungrounded                                     | +1                            | Accumulated directly   |
+| Mismatched, chain never reaches opposing mismatch set    | +UNRESOLVED_PENALTY            | Accumulated directly   |
+| Mismatched candidate, chain bridges via connotation      | `S2_S3_DISTANCE + hops`        | S3 linear (always)     |
+| Matched + structurally grounded (is_s1)                  | 0                              | Neutral                |
+| Matched + ungrounded                                     | +1                             | Accumulated directly   |
 
 ### Is Countersigned
 
@@ -716,11 +715,11 @@ auto-tune; the previous quadratic `_pack(d) = d²` was removed).
 
 Three fixed boundaries classify yielded significance values:
 
-| Boundary | Position           | Meaning                         |
-| -------- | ------------------ | ------------------------------- |
+| Boundary | Position           | Meaning                                    |
+| -------- | ------------------ | ------------------------------------------ |
 | S1\|S2   | `D_MAX`            | Only exact S1 (distance 0) qualifies as S1 |
-| S2\|S3   | `~_S2_S3_DISTANCE` | Packed distance threshold (100) |
-| S3\|S4   | `0`                | Only zero-significance is S4    |
+| S2\|S3   | `~_S2_S3_DISTANCE` | Packed distance threshold (100)            |
+| S3\|S4   | `0`                | Only zero-significance is S4               |
 
 Classification cascade:
 
@@ -808,22 +807,22 @@ else       → S4
 
 ### Significance API
 
-| ID     | Criterion                                                             | Vision ref            |
-| ------ | --------------------------------------------------------------------- | --------------------- |
-| MOD-34 | `is_s1` canonical: genuine canon (`is_canon`) → True                  | @vision §Significance |
-| MOD-35 | `is_s1` countersigned: mutual cross-reference → True                  | @vision §Significance |
-| MOD-36 | `is_s1` neither: non-canonical, non-countersigned → False             | —                     |
-| MOD-37 | `expand` all-match ungrounded: significance reflects ungrounded count | —                     |
-| MOD-38 | `expand` all-mismatched unresolvable: low significance                | —                     |
-| MOD-39 | `expand` with edge hops: connotation yields + terminal                | —                     |
+| ID     | Criterion                                                                       | Vision ref            |
+| ------ | ------------------------------------------------------------------------------- | --------------------- |
+| MOD-34 | `is_s1` canonical: genuine canon (`is_canon`) → True                            | @vision §Significance |
+| MOD-35 | `is_s1` countersigned: mutual cross-reference → True                            | @vision §Significance |
+| MOD-36 | `is_s1` neither: non-canonical, non-countersigned → False                       | —                     |
+| MOD-37 | `expand` all-match ungrounded: significance reflects ungrounded count           | —                     |
+| MOD-38 | `expand` all-mismatched unresolvable: low significance                          | —                     |
+| MOD-39 | `expand` with edge hops: connotation yields + terminal                          | —                     |
 | MOD-40 | `expand` S2 signifies: loose match yields QC, terminal still UNRESOLVED_PENALTY | —                     |
-| MOD-41 | `expand` S2 before S3: signifies short-circuits connotation recording | —                     |
-| MOD-42 | `expand` S3 route: S3 bias ensures S3 distances exceed S2             | —                     |
-| MOD-43 | `expand` connotation: indirect path → S3 connotation yield + terminal | —                     |
-| MOD-44 | `expand` significance always in valid uint64 range `[1, D_MAX]`       | —                     |
-| MOD-45 | `expand` bidirectional: both sides contribute connotations + terminal | —                     |
-| MOD-46 | `is_countersigned`: mutual node reference detected                    | —                     |
-| MOD-47 | Not countersigned: one-way reference → False                          | —                     |
+| MOD-41 | `expand` S2 before S3: signifies short-circuits connotation recording           | —                     |
+| MOD-42 | `expand` S3 route: S3 bias ensures S3 distances exceed S2                       | —                     |
+| MOD-43 | `expand` connotation: indirect path → S3 connotation yield + terminal           | —                     |
+| MOD-44 | `expand` significance always in valid uint64 range `[1, D_MAX]`                 | —                     |
+| MOD-45 | `expand` bidirectional: both sides contribute connotations + terminal           | —                     |
+| MOD-46 | `is_countersigned`: mutual node reference detected                              | —                     |
+| MOD-47 | Not countersigned: one-way reference → False                                    | —                     |
 
 ### Expand & edge_hops Robustness
 
@@ -836,21 +835,21 @@ else       → S4
 
 ### Structural Grounding
 
-| ID      | Criterion                                                                                                                                                        | Origin ref |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| MOD-48  | `promote_participating`: query + candidate promoted after ratification                                                                                           | —          |
-| MOD-49  | `promote_participating`: S4 identity klines in STM also promoted                                                                                                 | —          |
-| MOD-50  | `promote_participating`: S2/S3 partial klines in STM promoted                                                                                                    | —          |
-| MOD-51  | `promote_participating`: already-promoted klines not re-promoted                                                                                                 | —          |
-| MOD-52  | `classify_misfit` canonical: `S == N` → (False, False)                                                                                                           | —          |
-| MOD-53  | `classify_misfit` underfit: `S & ~N != 0` → (True, False)                                                                                                        | —          |
-| MOD-54  | `classify_misfit` overfit: `N & ~S != 0` → (False, True)                                                                                                         | —          |
-| MOD-55  | `classify_misfit` dual: both conditions → (True, True)                                                                                                           | —          |
-| MOD-56  | `generate_expansions` underfit: returns proposal with added nodes                                                                                                | —          |
-| MOD-57  | `generate_expansions` overfit: returns trimmed + companion                                                                                                       | —          |
+| ID      | Criterion                                                                                                                                                                                                 | Origin ref |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| MOD-48  | `promote_participating`: query + candidate promoted after ratification                                                                                                                                    | —          |
+| MOD-49  | `promote_participating`: S4 identity klines in STM also promoted                                                                                                                                          | —          |
+| MOD-50  | `promote_participating`: S2/S3 partial klines in STM promoted                                                                                                                                             | —          |
+| MOD-51  | `promote_participating`: already-promoted klines not re-promoted                                                                                                                                          | —          |
+| MOD-52  | `classify_misfit` canonical: `S == N` → (False, False)                                                                                                                                                    | —          |
+| MOD-53  | `classify_misfit` underfit: `S & ~N != 0` → (True, False)                                                                                                                                                 | —          |
+| MOD-54  | `classify_misfit` overfit: `N & ~S != 0` → (False, True)                                                                                                                                                  | —          |
+| MOD-55  | `classify_misfit` dual: both conditions → (True, True)                                                                                                                                                    | —          |
+| MOD-56  | `generate_expansions` underfit: returns proposal with added nodes                                                                                                                                         | —          |
+| MOD-57  | `generate_expansions` overfit: returns trimmed + companion                                                                                                                                                | —          |
 | MOD-58  | `generate_expansions` dual: returns replacement + companion (one atomic swap per gap-filling contributor; the dual path is exclusive — it does not also emit the underfit-only or overfit-only proposals) | —          |
-| MOD-59  | `generate_expansions` no gap: no expansion proposals emitted                                                                                                     | —          |
-| MOD-59b | `generate_expansions` never yields an identity proposal (`{S: []}` or `{S: [S]}`) — identity carries no decomposition; see @cogitator spec §Universal Constraint | —          |
+| MOD-59  | `generate_expansions` no gap: no expansion proposals emitted                                                                                                                                              | —          |
+| MOD-59b | `generate_expansions` never yields an identity proposal (`{S: []}` or `{S: [S]}`) — identity carries no decomposition; see @cogitator spec §Universal Constraint                                          | —          |
 
 ## What a Model is Not
 
@@ -868,9 +867,9 @@ The following are explicitly **out of scope** for this spec:
   that all three mutable tiers (STM, Frame, LTM) are persisted.
 - **Debug metadata.** Labels, source text, timestamps, or other diagnostic
   data attached to entries.
-- **Thread management.** The choice of synchronisation *mechanism*
+- **Thread management.** The choice of synchronisation _mechanism_
   (re-entrant locks, snapshot iterators) is an implementation concern; the
-  *contract* (atomicity, snapshot semantics, lock ordering) is specified in
+  _contract_ (atomicity, snapshot semantics, lock ordering) is specified in
   §Thread Safety.
 
 ## Referenced By

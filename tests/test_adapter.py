@@ -244,7 +244,7 @@ class TestHRNS10CountersignAction:
     def test_countersign_materialises_wire_dict(self) -> None:
         """A wire-dict payload is materialised to a KLine before countersign.
 
-        Regression guard for KB-337: a countersign frame that traversed the
+        Regression guard: a countersign frame that traversed the
         WebSocket arrives as a plain dict (the canonical KLine wire shape
         produced by the harness's outbound encoder). Without materialisation
         ``KAgent.countersign`` does ``make_signature(kline.nodes)`` and raises

@@ -1,4 +1,4 @@
-"""Code-layer regression guard for KB-293: MCS -> MTS rename in src/.
+"""Code-layer regression guard: MCS -> MTS rename in src/.
 
 Locks in the terminological rename so production source and tests cannot
 silently regress to the obsolete 'MCS' (Multi-Character Signature) term.
@@ -56,11 +56,9 @@ class TestNoMcsInSource:
         _assert_no_mcs(ROOT / "scripts" / "ks_verify.py")
 
     def test_abstract_no_mcs(self):
-        # Conditional: KB-277 may have deleted supports_mts; only check if present.
         _assert_no_mcs(ROOT / "src" / "kalvin" / "abstract.py")
 
     def test_mod_tokenizer_no_mcs(self):
-        # Conditional: KB-277 may have deleted this file; only check if present.
         _assert_no_mcs(ROOT / "src" / "kalvin" / "mod_tokenizer.py")
 
 
@@ -94,8 +92,6 @@ class TestMtsIdentifiersPresent:
         assert not hasattr(TokenEncoder, "_emit_mcs_for_tokens")
 
     def test_supports_mts_property(self):
-        # Conditional: KB-277 may have removed supports_mts. If the property
-        # still exists, it must be the renamed form.
         from kalvin.abstract import KTokenizer
 
         if hasattr(KTokenizer, "supports_mts"):

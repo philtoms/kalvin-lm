@@ -1,4 +1,4 @@
-"""Tests for the no-fallback behaviour of ``_default_tokenizer()`` (KB-278).
+"""Tests for the no-fallback behaviour of ``_default_tokenizer()``.
 
 NLP is the sole production tokenizer.  When ``NLPTokenizer.from_files()``
 fails — because the data directory is absent, the BPE backend

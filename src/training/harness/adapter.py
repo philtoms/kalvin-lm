@@ -15,11 +15,11 @@ Thread model
 ``KAgent._publish`` → ``adapter.on_event``.
 
 Model access: :class:`~kalvin.model.Model` and :class:`~kalvin.stm.STM` are
-internally guarded by re-entrant locks (KB-305), so any model read performed
+internally guarded by re-entrant locks, so any model read performed
 here in ``on_event`` — or by any other subscriber — observes a consistent,
 atomic snapshot and needs no adapter-level locking. (The rationalisation
-*event count* still depends on the async Cogitator's processing timing — see
-KB-347 — but every individual model operation is atomic and deadlock-free.)
+*event count* still depends on the async Cogitator's processing timing but 
+every individual model operation is atomic and deadlock-free.)
 
 Sender map: the sender map (a plain dict) is written on the bus thread and read
 on the Cogitator thread.  Under CPython's GIL, individual dict reads/writes are

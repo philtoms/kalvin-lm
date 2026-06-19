@@ -401,7 +401,7 @@ class TestDisconnectOneOfTwoSameRole:
 
 
 class TestDomainObjectPayloadSerialisation:
-    """KB-319: bus Messages carrying domain objects (``KLine``,
+    """bus Messages carrying domain objects (``KLine``,
     ``RationaliseEvent``) must reach a connected WebSocket client.
 
     Regression for the silent drop at the wire boundary: before the fix,
@@ -515,7 +515,7 @@ class TestDomainObjectPayloadSerialisation:
 
 
 class TestWireFrameRoundTrip:
-    """KB-319: wire frames produced by ``_serialise_message``'s domain-object
+    """wire frames produced by ``_serialise_message``'s domain-object
     encoder must be accepted by ``enrich_event`` and yield the documented
     enriched events.
 

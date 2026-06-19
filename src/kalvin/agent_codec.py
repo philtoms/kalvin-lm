@@ -45,7 +45,7 @@ from kalvin.kline import KLine
 from kalvin.model import Model
 
 # LTM iteration helper
-# TODO(KB-050): Remove this helper once Model.iter_ltm() is available.
+# TODO: Remove this helper once Model.iter_ltm() is available.
 # Uses the public API when present, otherwise falls back to the private
 # _ltm KLineStore which supports the same iteration protocol.
 
@@ -53,7 +53,7 @@ from kalvin.model import Model
 def _iter_ltm(model: Model):
     """Yield LTM KLines in insertion order.
 
-    Prefers the public ``model.iter_ltm()`` accessor (delivered by KB-050).
+    Prefers the public ``model.iter_ltm()`` accessor.
     Falls back to iterating ``model._ltm`` directly when the accessor
     is not yet available.
     """

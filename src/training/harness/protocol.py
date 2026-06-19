@@ -88,7 +88,7 @@ class _ClientParticipant:
             self._protocol._send_to_client_sync(self.role, msg)
         except (TypeError, ValueError) as exc:
             # Serialisation failure — a real bug, not a disconnect. Log at
-            # WARNING so silent drops of domain-object payloads (KB-319) are
+            # WARNING so silent drops of domain-object payloads are
             # visible rather than mislabelled as "client gone". Drop behaviour
             # is unchanged: no exception escapes on_message, the bus stays
             # stable (HRNS-21).

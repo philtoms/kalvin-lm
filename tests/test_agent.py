@@ -467,7 +467,7 @@ class TestStructuralGrounding:
 
         Despite the name, KLine(10, [10]) is identity (not canonical) since
         commit 040bc0c and is promoted via the identity/S4 fast path. The test
-        name is retained for compatibility. (KB-340)
+        name is retained for compatibility.
         """
         a = KAgent(adapter=EventBus())
         k = KLine(10, [10])  # identity (self-referential: {S:[S]}), NOT canon since 040bc0c
@@ -548,7 +548,7 @@ class TestCogitatorStructuralGrounding:
         """Kline with no misfit produces no expansion proposals.
 
         Note: KLine(10, [10]) is identity ({S:[S]}), not canonical, since
-        commit 040bc0c — the test name is retained for compatibility. (KB-340)
+        commit 040bc0c — the test name is retained for compatibility.
         """
         from kalvin.misfit import classify_misfit
 
@@ -899,7 +899,7 @@ class TestAgentNLPTokenizer:
 class TestAgentNLPIntegration:
     """Cross-module integration tests: NLP tokenizer -> KAgent -> model storage.
 
-    These go beyond unit-level tests (KB-145's TestAgentNLPTokenizer) to
+    These go beyond unit-level tests to
     verify the full pipeline: encode text -> build kline -> rationalise ->
     store in model -> retrieve and verify node/signature integrity.
 

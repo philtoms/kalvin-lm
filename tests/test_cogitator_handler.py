@@ -4,44 +4,6 @@ These tests exercise the ``Cogitator`` → ``CogitationHandler`` dispatch seam
 (``on_s1`` / ``on_expansion``) using a recording fake handler wired to a bare
 ``Model()`` + ``Cogitator()``.  They do **not** instantiate ``KAgent`` and
 therefore require **no NLP tokenizer data** — they run in standard CI.
-
-Extraction rationale (KB-340)
------------------------------
-This module was extracted from ``tests/test_agent.py``.  That module carries a
-module-level ``pytestmark = requires_nlp_data`` (because most of its classes
-construct ``KAgent``, which defaults to ``NLPTokenizer`` and needs the ~35 MB
-data assets).  That module-level skip **masked** two deterministic failures in
-``TestCogitatorWithFakeHandler`` — ``test_fake_handler_receives_s1`` and
-``test_cogitator_stops_on_s1`` — which only surfaced when the tokenizer data was
-present (e.g. during KB-332, whose experiment worktree had the data symlinked).
-
-Root cause
-~~~~~~~~~~
-The original task description hypothesised "behavioural coupling between the NLP
-tokenizer load path and the expand/cogitate S1 path."  This is **wrong** and was
-disproven empirically: ``expand()`` produces the identical ``S2`` result for the
-failing topology both with ``NLPTokenizer.from_files()`` loaded and without.
-
-The real cause: ``KLine(sig, [sig])`` is **identity, not canonical**.  Commit
-``040bc0c`` ("fix(kline): make {S:[S]} identity, not canon") changed
-``is_canon()`` to explicitly exclude self-referential klines
-(``kline.py``: ``if kline.signature in kline.nodes: return False``).  The failing
-tests were written under the *old* semantics where ``KLine(10, [10])`` was
-canonical.  Under the current semantics ``is_canon(KLine(10, [10]))`` is
-``False`` and ``is_identity(...)`` is ``True``; in ``expand()``'s matched-node
-loop the single matched node (10) resolves to an identity kline for which
-``is_s1()`` (``is_canon`` OR ``is_countersigned``) returns ``False`` →
-``total_distance += 1`` → terminal significance below the ``D_MAX`` S1 threshold
-→ classified **S2** → ``on_s1`` is never called.
-
-Fix
-~~~
-The trivial topology that yields S1 from ``expand()`` is **two empty-node
-identity klines** with the same signature: no matched nodes, no mismatched nodes
-→ ``total_distance = 0`` → significance ``D_MAX`` → classified S1.  A single-bit
-signature cannot decompose into canonical sub-nodes without self-reference, so
-``KLine(10, [])`` (empty nodes) is the correct construction.  No production
-source is changed — the bug was in the test topology.
 """
 
 from kalvin.cogitator import Cogitator, WorkItem
@@ -84,7 +46,7 @@ class TestCogitatorWithFakeHandler:
         total_distance=0 from expand() → significance D_MAX → classified S1.
         (Previously used KLine(10, [10]) which is identity, not canonical, since
         commit 040bc0c — expand penalised the self-referential matched node and
-        yielded S2, so on_s1 was never called. See KB-340.)
+        yielded S2, so on_s1 was never called.)
         """
         m = Model()
         # Identity kline (empty nodes) — expand yields S1 (total_distance=0,
@@ -144,7 +106,7 @@ class TestCogitatorWithFakeHandler:
         for that work item.
 
         Uses the same empty-node identity topology as
-        test_fake_handler_receives_s1 (see KB-340 for the root cause).
+        test_fake_handler_receives_s1.
         """
         m = Model()
         # Identity kline (empty nodes) — expand yields S1 (total_distance=0).

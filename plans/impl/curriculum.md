@@ -23,7 +23,7 @@
   - `from_string(text)`: parse from string, set `source_path = None`
   - Parser splits on `## ` headings to find Objective, Approach, Lessons sections
   - Under Lessons section, split on `### <label>` to create Lesson objects
-  - Within each lesson's body, extract fenced code blocks (```...```) as kscript entries
+  - Within each lesson's body, extract fenced code blocks (`...`) as kscript entries
   - Remaining text (stripped of code blocks) is prose
   - Validation function checks: required sections present, at least one lesson, no duplicate labels, label format `\d+[a-z]?`
   - `find_lesson(label)` → linear scan of lessons list
@@ -129,61 +129,61 @@
 
 ## Test Mapping
 
-| Spec ID | Test file | Test function | Status |
-|---------|-----------|---------------|--------|
-| CRS-1 | test_curriculum_document.py | test_from_file_parses_valid_document | ✅ |
-| CRS-2 | test_curriculum_document.py | test_from_string_parses_valid_document | ✅ |
-| CRS-3 | test_curriculum_document.py | test_rejects_missing_objective | ✅ |
-| CRS-4 | test_curriculum_document.py | test_rejects_missing_approach | ✅ |
-| CRS-5 | test_curriculum_document.py | test_rejects_missing_lessons_section | ✅ |
-| CRS-6 | test_curriculum_document.py | test_rejects_no_lessons | ✅ |
-| CRS-7 | test_curriculum_document.py | test_rejects_duplicate_labels | ✅ |
-| CRS-8 | test_curriculum_document.py | test_rejects_invalid_label_format | ✅ |
-| CRS-9 | test_curriculum_document.py | test_objective_property | ✅ |
-| CRS-10 | test_curriculum_document.py | test_approach_property | ✅ |
-| CRS-11 | test_curriculum_document.py | test_lessons_ordered | ✅ |
-| CRS-12 | test_curriculum_document.py | test_lesson_label | ✅ |
-| CRS-13 | test_curriculum_document.py | test_lesson_prose | ✅ |
-| CRS-14 | test_curriculum_document.py | test_lesson_kscript | ✅ |
-| CRS-15 | test_curriculum_document.py | test_find_lesson | ✅ |
-| CRS-16 | test_curriculum_document.py | test_all_labels | ✅ |
-| CRS-17 | test_curriculum_document.py | test_amend_insert | ✅ |
-| CRS-18 | test_curriculum_document.py | test_amend_append | ✅ |
-| CRS-19 | test_curriculum_document.py | test_amend_modify | ✅ |
-| CRS-20 | test_curriculum_document.py | test_amend_raises_for_missing_target | ✅ |
-| CRS-21 | test_curriculum_document.py | test_amend_raises_for_duplicate_label | ✅ |
-| CRS-22 | test_curriculum_document.py | test_amend_raises_when_no_source_path | ✅ |
-| CRS-23 | test_curriculum_document.py | test_amend_writes_to_file | ✅ |
-| CRS-24 | test_curriculum.py | test_current_label_first_unsatisfied | ✅ |
-| CRS-25 | test_curriculum.py | test_mark_lesson_submitted | ✅ |
-| CRS-26 | test_curriculum.py | test_mark_lesson_satisfied_advances | ✅ |
-| CRS-27 | test_curriculum.py | test_is_lesson_submitted_and_satisfied | ✅ |
-| CRS-28 | test_curriculum.py | test_label_and_entry_tracking_coexist | ✅ |
-| CRS-29 | test_curriculum.py | test_save_includes_label_state | ✅ |
-| CRS-30 | test_curriculum.py | test_load_new_format_with_file | ✅ |
-| CRS-31 | test_curriculum.py | test_load_legacy_format | ✅ |
-| CRS-32 | test_curriculum_generator.py | test_generate_makes_llm_call | ✅ |
-| CRS-33 | test_curriculum_generator.py | test_generate_parses_response | ✅ |
-| CRS-34 | test_curriculum_generator.py | test_generate_retries_on_parse_failure | ✅ |
-| CRS-35 | test_curriculum_generator.py | test_generate_raises_on_second_failure | ✅ |
-| CRS-36 | test_curriculum_generator.py | test_generate_writes_to_file | ✅ |
-| CRS-37 | test_curriculum_generator.py | test_generate_slug_from_goal | ✅ |
-| CRS-38 | test_trainer.py | test_session_startup_from_file_param | ✅ |
-| CRS-39 | test_trainer.py | test_session_startup_from_saved_state | ✅ |
-| CRS-40 | test_trainer.py | test_session_startup_polls_for_goal | ✅ |
-| CRS-41 | test_trainer.py | test_goal_prefix_triggers_generation | ✅ |
-| CRS-42 | test_trainer.py | test_goal_file_path_triggers_load | ✅ |
-| CRS-43 | test_trainer.py | test_trainer_rereads_file_before_lesson | ✅ |
-| CRS-44 | test_trainer.py | test_new_lessons_submitted_after_reread | ✅ |
-| CRS-45 | test_trainer.py | test_monotonic_set_prevents_duplicates | ✅ |
-| CRS-46 | test_trainer.py | test_progress_event_session_start | ✅ |
-| CRS-47 | test_trainer.py | test_progress_event_lesson_complete | ✅ |
-| CRS-48 | test_trainer.py | test_progress_event_curriculum_complete | ✅ |
-| CRS-49 | test_trainer.py | test_progress_event_amendment | ✅ |
-| CRS-50 | test_cogitation.py | test_cogitation_request_new_fields | ✅ |
-| CRS-51 | test_cogitation.py | test_build_prompt_prefers_new_fields | ✅ |
-| CRS-52 | test_cogitation.py | test_build_prompt_falls_back_to_context | ✅ |
-| CRS-53–58 | test_nlp_curriculum_compat.py | `TestCurriculumCompilation` (annotated curricula compile + rationalise; bare-sig compat preserved) | ✅ |
+| Spec ID   | Test file                     | Test function                                                                                      | Status |
+| --------- | ----------------------------- | -------------------------------------------------------------------------------------------------- | ------ |
+| CRS-1     | test_curriculum_document.py   | test_from_file_parses_valid_document                                                               | ✅     |
+| CRS-2     | test_curriculum_document.py   | test_from_string_parses_valid_document                                                             | ✅     |
+| CRS-3     | test_curriculum_document.py   | test_rejects_missing_objective                                                                     | ✅     |
+| CRS-4     | test_curriculum_document.py   | test_rejects_missing_approach                                                                      | ✅     |
+| CRS-5     | test_curriculum_document.py   | test_rejects_missing_lessons_section                                                               | ✅     |
+| CRS-6     | test_curriculum_document.py   | test_rejects_no_lessons                                                                            | ✅     |
+| CRS-7     | test_curriculum_document.py   | test_rejects_duplicate_labels                                                                      | ✅     |
+| CRS-8     | test_curriculum_document.py   | test_rejects_invalid_label_format                                                                  | ✅     |
+| CRS-9     | test_curriculum_document.py   | test_objective_property                                                                            | ✅     |
+| CRS-10    | test_curriculum_document.py   | test_approach_property                                                                             | ✅     |
+| CRS-11    | test_curriculum_document.py   | test_lessons_ordered                                                                               | ✅     |
+| CRS-12    | test_curriculum_document.py   | test_lesson_label                                                                                  | ✅     |
+| CRS-13    | test_curriculum_document.py   | test_lesson_prose                                                                                  | ✅     |
+| CRS-14    | test_curriculum_document.py   | test_lesson_kscript                                                                                | ✅     |
+| CRS-15    | test_curriculum_document.py   | test_find_lesson                                                                                   | ✅     |
+| CRS-16    | test_curriculum_document.py   | test_all_labels                                                                                    | ✅     |
+| CRS-17    | test_curriculum_document.py   | test_amend_insert                                                                                  | ✅     |
+| CRS-18    | test_curriculum_document.py   | test_amend_append                                                                                  | ✅     |
+| CRS-19    | test_curriculum_document.py   | test_amend_modify                                                                                  | ✅     |
+| CRS-20    | test_curriculum_document.py   | test_amend_raises_for_missing_target                                                               | ✅     |
+| CRS-21    | test_curriculum_document.py   | test_amend_raises_for_duplicate_label                                                              | ✅     |
+| CRS-22    | test_curriculum_document.py   | test_amend_raises_when_no_source_path                                                              | ✅     |
+| CRS-23    | test_curriculum_document.py   | test_amend_writes_to_file                                                                          | ✅     |
+| CRS-24    | test_curriculum.py            | test_current_label_first_unsatisfied                                                               | ✅     |
+| CRS-25    | test_curriculum.py            | test_mark_lesson_submitted                                                                         | ✅     |
+| CRS-26    | test_curriculum.py            | test_mark_lesson_satisfied_advances                                                                | ✅     |
+| CRS-27    | test_curriculum.py            | test_is_lesson_submitted_and_satisfied                                                             | ✅     |
+| CRS-28    | test_curriculum.py            | test_label_and_entry_tracking_coexist                                                              | ✅     |
+| CRS-29    | test_curriculum.py            | test_save_includes_label_state                                                                     | ✅     |
+| CRS-30    | test_curriculum.py            | test_load_new_format_with_file                                                                     | ✅     |
+| CRS-31    | test_curriculum.py            | test_load_legacy_format                                                                            | ✅     |
+| CRS-32    | test_curriculum_generator.py  | test_generate_makes_llm_call                                                                       | ✅     |
+| CRS-33    | test_curriculum_generator.py  | test_generate_parses_response                                                                      | ✅     |
+| CRS-34    | test_curriculum_generator.py  | test_generate_retries_on_parse_failure                                                             | ✅     |
+| CRS-35    | test_curriculum_generator.py  | test_generate_raises_on_second_failure                                                             | ✅     |
+| CRS-36    | test_curriculum_generator.py  | test_generate_writes_to_file                                                                       | ✅     |
+| CRS-37    | test_curriculum_generator.py  | test_generate_slug_from_goal                                                                       | ✅     |
+| CRS-38    | test_trainer.py               | test_session_startup_from_file_param                                                               | ✅     |
+| CRS-39    | test_trainer.py               | test_session_startup_from_saved_state                                                              | ✅     |
+| CRS-40    | test_trainer.py               | test_session_startup_polls_for_goal                                                                | ✅     |
+| CRS-41    | test_trainer.py               | test_goal_prefix_triggers_generation                                                               | ✅     |
+| CRS-42    | test_trainer.py               | test_goal_file_path_triggers_load                                                                  | ✅     |
+| CRS-43    | test_trainer.py               | test_trainer_rereads_file_before_lesson                                                            | ✅     |
+| CRS-44    | test_trainer.py               | test_new_lessons_submitted_after_reread                                                            | ✅     |
+| CRS-45    | test_trainer.py               | test_monotonic_set_prevents_duplicates                                                             | ✅     |
+| CRS-46    | test_trainer.py               | test_progress_event_session_start                                                                  | ✅     |
+| CRS-47    | test_trainer.py               | test_progress_event_lesson_complete                                                                | ✅     |
+| CRS-48    | test_trainer.py               | test_progress_event_curriculum_complete                                                            | ✅     |
+| CRS-49    | test_trainer.py               | test_progress_event_amendment                                                                      | ✅     |
+| CRS-50    | test_cogitation.py            | test_cogitation_request_new_fields                                                                 | ✅     |
+| CRS-51    | test_cogitation.py            | test_build_prompt_prefers_new_fields                                                               | ✅     |
+| CRS-52    | test_cogitation.py            | test_build_prompt_falls_back_to_context                                                            | ✅     |
+| CRS-53–58 | test_nlp_curriculum_compat.py | `TestCurriculumCompilation` (annotated curricula compile + rationalise; bare-sig compat preserved) | ✅     |
 
 ### Task 8: Curriculum Annotation Conventions (`curricula/*.md`)
 
@@ -192,12 +192,12 @@ nodes. Per-curriculum changes live in the curriculum source files; no code
 changes are required (the KScript compiler, binding resolver, and NLPTokenizer
 already implement the mechanics, @kscript spec §9–10).
 
-| Curriculum | Word theme |
-| ---------- | ---------- |
-| `first-steps.md`, `first-steps-s2.md` | identity names (Mark, Halo, Alpha) |
+| Curriculum                                        | Word theme                              |
+| ------------------------------------------------- | --------------------------------------- |
+| `first-steps.md`, `first-steps-s2.md`             | identity names (Mark, Halo, Alpha)      |
 | `mhall-svo-single.md`, `mhall-svo-equivalence.md` | MHALL nursery rhyme + grammatical roles |
-| `cascade-pressure.md`, `conflict-drill.md` | NATO phonetic alphabet |
-| `s3-auto-countersign.md` | mixed (NATO + identity) |
+| `cascade-pressure.md`, `conflict-drill.md`        | NATO phonetic alphabet                  |
+| `s3-auto-countersign.md`                          | mixed (NATO + identity)                 |
 
 Standalone KScript files under `data/` are already annotated.
 
@@ -268,15 +268,11 @@ countersign) and `{MH:[Alpha]}` (dual, escapes the auto-countersign backstop
 and requests ratification). See @curriculum §Curriculum Annotation Conventions
 rule 47.
 
-### DD-6 note: `cascade-pressure.md` + `conflict-drill.md` misfit operators (KB-334)
+### DD-6 note: `cascade-pressure.md` + `conflict-drill.md` misfit operators
 
 The misfit lessons in `cascade-pressure.md` (L3/L4/L5) and `conflict-drill.md`
 (L3/L4) use the `>` CONNOTED operator, not `=>` CANONIZED — the same rule-47
-convention as `first-steps-s2.md` lesson 5. KB-334 audited all six other
-curricula for the canonical-implies-not-a-misfit gap KB-320 found: these five
-lessons previously used `=>` whose compound RHS is discarded (the §11.4 MTS
-compound-sig resolution override) and whose kline is canonical by construction,
-so they resolved S1 via AGT-14 and never reached candidate retrieval. The fix
+convention as `first-steps-s2.md` lesson 5. The fix
 rewrites each to `>` CONNOTED + block word lists; because a genuine misfit is
 always single-node under the settled compiler contracts, multi-node `=>` intents
 decompose into single-node misfits (e.g. `ABCD > E F` → `{ABCD:[Echo]}` +
@@ -285,8 +281,7 @@ nodes rather than ten: the "maximum candidate overlap" comes from the ten-atom
 signature signifying every established kline, not the node count, and a full
 ten-node decomposition would generate a pathological number of expansion events.
 `s3-auto-countersign.md`, `mhall-svo-single.md`, `mhall-svo-equivalence.md`, and
-`first-steps.md` were audited clean (rule-47-compliant or no S2/S3 intent). See
-@curriculum rule 47 and `KB-334-notes.md`.
+`first-steps.md` were audited clean (rule-47-compliant or no S2/S3 intent).
 
 ## Build Order
 
@@ -306,13 +301,13 @@ after the parser is done. Harness wiring is last.
 
 ## Status
 
-| Task | Status   | Notes                          |
-| ---- | -------- | ------------------------------ |
-| 1    | ✅ done  | Parser                         |
-| 2    | ✅ done  | State refactor                 |
-| 3    | ✅ done  | Generator                      |
-| 4    | ✅ done  | Trainer updates                |
-| 5    | ✅ done  | Cogitation context             |
-| 6    | ✅ done  | Harness wiring                 |
-| 7    | ✅ done  | Config                         |
-| 8    | ✅ done  | Curriculum annotation conventions |
+| Task | Status  | Notes                             |
+| ---- | ------- | --------------------------------- |
+| 1    | ✅ done | Parser                            |
+| 2    | ✅ done | State refactor                    |
+| 3    | ✅ done | Generator                         |
+| 4    | ✅ done | Trainer updates                   |
+| 5    | ✅ done | Cogitation context                |
+| 6    | ✅ done | Harness wiring                    |
+| 7    | ✅ done | Config                            |
+| 8    | ✅ done | Curriculum annotation conventions |

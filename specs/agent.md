@@ -73,15 +73,12 @@ An Agent consists of:
 Agent(
     tokenizer      = None,   # defaults to NLPTokenizer; NLP data is mandatory
     model          = None,   # defaults to empty Model
-    max_candidates = 8,      # cap on S2/S3 candidates submitted per entry
 )
 ```
 
 - `tokenizer` — a Tokenizer instance. Defaults to an `NLPTokenizer` (NLP data is mandatory; construction raises if unavailable).
 - `model` — a Model instance serving as the base memory. Defaults
   to an empty Model.
-- `max_candidates` — maximum number of S2/S3 candidates submitted to
-  the Cogitator per entry (see §Candidate Cap).
 
 A newly constructed Agent contains zero Klines in its model. The Cogitator
 is created internally and starts its background thread immediately.
@@ -117,9 +114,6 @@ Rationalise(Q):
   ├───────────────────────────────────────────────────────────┤
   │ 5. ROUTE EACH CANDIDATE                                   │
   │    add_to_stm(Q)                                              │
-  │    Sort candidates: S1, then S2, then S3; within each    │
-  │    tier by node overlap (descending). Truncate S2/S3     │
-  │    candidates to max_candidates.                          │
   │    For each candidate Cᵢ:                                │
   │      level = route(Q, Cᵢ)   ← node membership, no model │
   │      S1 → add_to_ltm cascade, emit "frame", return True     │
@@ -232,26 +226,6 @@ Routing distinguishes only **S2** (at least one overlapping node) from
 - **S4 is not a routing outcome.** Identity klines (empty nodes) are
   resolved on the fast path in `rationalise` before any candidate is
   submitted to the Cogitator, so an empty query never reaches routing.
-
-#### Candidate Ordering
-
-Candidates are sorted before submission: **S2 candidates first**, then S3.
-Within each tier, candidates are sorted by node overlap count (descending),
-so the closest matches are expanded first.
-
-#### Candidate Cap
-
-After sorting, the S2/S3 portion of the candidate list is truncated to
-`max_candidates` (default 8). Only the top-K candidates are submitted to
-the Cogitator. This bounds the per-entry fan-out regardless of model
-density.
-
-The cap does **not** affect:
-- Structural S1 resolution on the fast path — klines that are canonical
-  with all nodes grounded, or countersigned, are resolved in `rationalise`
-  before any candidate is submitted.
-- S4 (novel) routing — an S4 entry has no candidates, so the cap is
-  irrelevant.
 
 #### Per-Candidate Action
 
@@ -376,12 +350,6 @@ enables immediate S1 resolution and parallel processing of S2/S3.
 | ID     | Criterion                                                           | Origin ref |
 | ------ | ------------------------------------------------------------------- | ---------- |
 | AGT-18 | All candidates submitted to cogitator as work items            | — |
-| AGT-19 | Candidates sorted S2-first, then by overlap count (descending)   | — |
-| AGT-19a | S2/S3 candidates truncated to `max_candidates` (default 8) after sort | — |
-| AGT-19b | Within the cap, S2 candidates prioritised over S3 candidates       | — |
-| AGT-19c | Within the same level, higher node-overlap candidates prioritised  | — |
-| AGT-19d | Structural S1 resolution on the fast path unaffected by the cap   | — |
-| AGT-19e | S4 (novel) routing unaffected by the cap                           | — |
 | AGT-20 | All S2: returns False, all submitted as WorkItems                   | — |
 | AGT-21 | All S3: returns False, all submitted as WorkItems                   | — |
 | AGT-22 | S1 discovered during expansion: `on_s1` called, expansion breaks    | — |

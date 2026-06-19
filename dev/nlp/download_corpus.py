@@ -15,7 +15,7 @@ adds two resilience features over the previous inline ``python -c`` snippet:
   locally as arrow files under ``~/.cache/huggingface/datasets``, so a rebuild
   with a warm HuggingFace Hub cache loads the corpus from disk with zero
   network requests (no HTTP 429 rate-limit exposure). Streaming mode caches
-  only metadata and re-fetches every row on each run. See KB-218.
+  only metadata and re-fetches every row on each run.
 
 The output format is unchanged: a JSON file containing a list of
 ``{"summary": story_text}`` dicts, truncated to ``--samples`` rows.

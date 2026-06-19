@@ -127,7 +127,7 @@ class TestSTMIterAll:
 
 # ── Thread-safety: iterator snapshot semantics ──────────────────────
 #
-# KB-305: iterator-returning methods must materialise a snapshot under the
+# iterator-returning methods must materialise a snapshot under the
 # lock so that a caller iterating *after* the lock is released still sees a
 # consistent point-in-time view (no live-list mutation mid-iteration). These
 # tests assert that an iterator obtained before a mutation does not observe
@@ -135,7 +135,7 @@ class TestSTMIterAll:
 
 
 class TestSTMSnapshotSemantics:
-    """Iterators snapshot state at acquisition time (KB-305)."""
+    """Iterators snapshot state at acquisition time."""
 
     def test_iter_all_snapshots_before_mutation(self):
         stm = make_stm()

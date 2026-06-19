@@ -1,4 +1,4 @@
-"""Tests for KScript v3 parser (KB-187).
+"""Tests for KScript v3 parser.
 
 Covers:
   KS-6  — OperatorScope nodes with sig, op, items (nested scope model)

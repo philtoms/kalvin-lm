@@ -167,42 +167,42 @@
 
 ## Test Mapping
 
-| Spec ID | Test file                 | Test function                          | Status |
-| ------- | ------------------------- | -------------------------------------- | ------ |
-| HRNS-1  | tests/test_bus.py         | test_route_by_address                  | ⬜     |
-| HRNS-2  | tests/test_bus.py         | test_threadsafe_send                   | ⬜     |
-| HRNS-3  | tests/test_bus.py         | test_unknown_address_error             | ⬜     |
-| HRNS-4  | tests/test_protocol.py    | test_client_registration               | ⬜     |
-| HRNS-5  | tests/test_server.py      | test_load_embedded_participants        | ⬜     |
-| HRNS-6  | tests/test_server.py      | test_websocket_client_connect          | ⬜     |
-| HRNS-7  | tests/test_adapter.py     | test_submit_compiles_and_submits       | ⬜     |
-| HRNS-8  | tests/test_adapter.py     | test_compilation_error_response        | ⬜     |
-| HRNS-9  | tests/test_adapter.py     | test_sender_map_response_addressing    | ⬜     |
-| HRNS-10 | tests/test_adapter.py     | test_countersign_action                | ⬜     |
-| HRNS-11 | tests/test_bus.py         | test_wildcard_diagnostic_listener      | ⬜     |
-| HRNS-12 | tests/test_trainer.py     | test_auto_countersign_structural_match | ⬜     |
-| HRNS-13 | tests/test_trainer.py     | test_reactive_mode_on_s2_s3            | ⬜     |
-| HRNS-14 | tests/test_trainer.py     | test_escalation_on_budget_exhaustion   | ⬜     |
-| HRNS-15 | tests/test_curriculum.py  | test_state_persistence_across_restart  | ⬜     |
-| HRNS-16 | tests/test_trainer.py     | test_one_session_at_a_time             | ⬜     |
-| HRNS-17 | tests/test_slack_agent.py | test_slack_forwards_human_input        | ✅     |
-| HRNS-18 | tests/test_slack_agent.py | test_slack_renders_notify              | ✅     |
-| HRNS-19 | tests/test_trainer.py     | test_session_pause                     | ⬜     |
-| HRNS-20 | tests/test_trainer.py     | test_session_stop                      | ⬜     |
-| HRNS-21 | tests/test_protocol.py    | test_disconnect_silent_drop            | ⬜     |
-| HRNS-22 | tests/test_adapter.py     | test_kagent_calls_adapter_directly     | ⬜     |
-| HRNS-23 | tests/test_bus.py         | test_single_dispatch_thread            | ⬜     |
-| HRNS-24 | tests/test_trainer.py     | test_entry_counting_lesson_complete    | ⬜     |
-| HRNS-25 | tests/test_tui_client.py  | test_renders_received_events           | ✅     |
-| HRNS-26 | tests/test_tui_client.py  | test_sends_freeform_input_to_trainer   | ✅     |
-| HRNS-27 | tests/test_tui_client.py  | test_sends_countersign_on_ratify       | ✅     |
-| HRNS-28 | tests/test_tui_client.py  | test_input_bar_clears_after_send       | ✅     |
-| HRNS-35 | tests/test_s3_auto_countersign.py | `test_returns_true_on_auto_countersign` | ✅ |
-| HRNS-36 | tests/test_s3_auto_countersign.py | `test_returns_false_on_no_match`        | ✅ |
-| HRNS-37 | tests/test_s3_auto_countersign.py | `test_no_escalation_on_auto_countersign`| ✅ |
-| HRNS-38 | tests/test_s3_auto_countersign.py | `test_ratify_suppressed_on_auto_countersign` | ✅ |
-| HRNS-39 | tests/test_s3_auto_countersign.py | `test_ratify_sent_when_auto_countersign_fails`| ✅ |
-| HRNS-40 | tests/test_s3_auto_countersign.py | `test_relay_on_auto_countersign` + `test_relay_on_no_auto_countersign` | ✅ |
+| Spec ID | Test file                         | Test function                                                          | Status |
+| ------- | --------------------------------- | ---------------------------------------------------------------------- | ------ |
+| HRNS-1  | tests/test_bus.py                 | test_route_by_address                                                  | ⬜     |
+| HRNS-2  | tests/test_bus.py                 | test_threadsafe_send                                                   | ⬜     |
+| HRNS-3  | tests/test_bus.py                 | test_unknown_address_error                                             | ⬜     |
+| HRNS-4  | tests/test_protocol.py            | test_client_registration                                               | ⬜     |
+| HRNS-5  | tests/test_server.py              | test_load_embedded_participants                                        | ⬜     |
+| HRNS-6  | tests/test_server.py              | test_websocket_client_connect                                          | ⬜     |
+| HRNS-7  | tests/test_adapter.py             | test_submit_compiles_and_submits                                       | ⬜     |
+| HRNS-8  | tests/test_adapter.py             | test_compilation_error_response                                        | ⬜     |
+| HRNS-9  | tests/test_adapter.py             | test_sender_map_response_addressing                                    | ⬜     |
+| HRNS-10 | tests/test_adapter.py             | test_countersign_action                                                | ⬜     |
+| HRNS-11 | tests/test_bus.py                 | test_wildcard_diagnostic_listener                                      | ⬜     |
+| HRNS-12 | tests/test_trainer.py             | test_auto_countersign_structural_match                                 | ⬜     |
+| HRNS-13 | tests/test_trainer.py             | test_reactive_mode_on_s2_s3                                            | ⬜     |
+| HRNS-14 | tests/test_trainer.py             | test_escalation_on_budget_exhaustion                                   | ⬜     |
+| HRNS-15 | tests/test_curriculum.py          | test_state_persistence_across_restart                                  | ⬜     |
+| HRNS-16 | tests/test_trainer.py             | test_one_session_at_a_time                                             | ⬜     |
+| HRNS-17 | tests/test_slack_agent.py         | test_slack_forwards_human_input                                        | ✅     |
+| HRNS-18 | tests/test_slack_agent.py         | test_slack_renders_notify                                              | ✅     |
+| HRNS-19 | tests/test_trainer.py             | test_session_pause                                                     | ⬜     |
+| HRNS-20 | tests/test_trainer.py             | test_session_stop                                                      | ⬜     |
+| HRNS-21 | tests/test_protocol.py            | test_disconnect_silent_drop                                            | ⬜     |
+| HRNS-22 | tests/test_adapter.py             | test_kagent_calls_adapter_directly                                     | ⬜     |
+| HRNS-23 | tests/test_bus.py                 | test_single_dispatch_thread                                            | ⬜     |
+| HRNS-24 | tests/test_trainer.py             | test_entry_counting_lesson_complete                                    | ⬜     |
+| HRNS-25 | tests/test_tui_client.py          | test_renders_received_events                                           | ✅     |
+| HRNS-26 | tests/test_tui_client.py          | test_sends_freeform_input_to_trainer                                   | ✅     |
+| HRNS-27 | tests/test_tui_client.py          | test_sends_countersign_on_ratify                                       | ✅     |
+| HRNS-28 | tests/test_tui_client.py          | test_input_bar_clears_after_send                                       | ✅     |
+| HRNS-35 | tests/test_s3_auto_countersign.py | `test_returns_true_on_auto_countersign`                                | ✅     |
+| HRNS-36 | tests/test_s3_auto_countersign.py | `test_returns_false_on_no_match`                                       | ✅     |
+| HRNS-37 | tests/test_s3_auto_countersign.py | `test_no_escalation_on_auto_countersign`                               | ✅     |
+| HRNS-38 | tests/test_s3_auto_countersign.py | `test_ratify_suppressed_on_auto_countersign`                           | ✅     |
+| HRNS-39 | tests/test_s3_auto_countersign.py | `test_ratify_sent_when_auto_countersign_fails`                         | ✅     |
+| HRNS-40 | tests/test_s3_auto_countersign.py | `test_relay_on_auto_countersign` + `test_relay_on_no_auto_countersign` | ✅     |
 
 ## Design Decisions
 
@@ -279,4 +279,4 @@ Task 1: KAgent rename + EventBus removal
 
 ## Status
 
-**Complete.** All 12 tasks implemented. CLI entry point delivered in KB-025.
+**Complete.** All 12 tasks implemented.

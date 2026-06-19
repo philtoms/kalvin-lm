@@ -396,39 +396,6 @@ class Model:
         with self._lock:
             if isinstance(predicate, int):
                 sig = predicate
-                # KB-324: the bare `signifies` test (>=1 shared bit) is DELIBERATELY
-                # retained here as the int-overload candidate-retrieval discriminator.
-                # Decision: KEEP (no overlap-threshold conjunct). Reconsiders DD-1 in
-                # plans/impl/cascade-control.md ("localised cap in rationalise() rather
-                # than a smarter where()"). Real-data investigation (7 curricula/*.md
-                # compiled via the production NLP tokenizer; each model kline's signature
-                # used as a real rationalise query, mirroring agent.py:230) found:
-                #   * Candidate-yield breadth ~99% of the model per query (where() is
-                #     near-vacuous as a *retrieval* discriminator) — BUT the
-                #     max_candidates=8 cap+sort in agent.py is binding ~93% of the time
-                #     and already absorbs that breadth (where() over <=46 klines is
-                #     microseconds; no performance problem to solve).
-                #   * Weight-1 (single shared bit) share among matches = ~7.6% — nonzero,
-                #     unlike KB-315's 0% inside expand()'s node-vs-signature loops,
-                #     because here BOTH query and candidate are multi-token OR-signatures.
-                #   * A weight-threshold refinement has MATERIAL downstream blast: K>=2
-                #     changes the rationalise WorkItem SET in ~41% of queries (K>=4 ~76%),
-                #     exactly DD-1's "affects every lookup" concern. 99.6% of dropped
-                #     candidates are S3 connotation-tail (no node overlap); 0.4% are
-                #     genuine S2 node-sharing candidates (false negatives). S2/S3 routing
-                #     of survivors is unchanged (0%) — _route is node-membership based.
-                #   * No weight threshold both discriminates AND preserves the canonical
-                #     test (K=1 -> 0% reduction; K>=2 breaks test_where_signature_overlap's
-                #     weight-1 topology). Ratio thresholds pass the test but blast even
-                #     harder (R>=0.25 -> 85% changed-set, R>=0.5 -> 98%).
-                # KEEP: breadth is real but the cap+sort is the established, local,
-                # easy-to-reason-about discriminator (DD-1); a where()-level refinement
-                # would re-rank the S3 tail by a conflated signature-overlap heuristic
-                # with no proven cogitation benefit, break the canonical test, and create
-                # an asymmetry vs misfit.py's Callable-overload retrieval (semantically
-                # identical `signifies` test, unchanged here). NOTE: corpus is small
-                # (KB-323's larger-corpus re-confirmation is pending); revisit only if
-                # KB-323 shows the downstream WorkItem-delta would turn favourable.
                 return [kl for kl in self.klines() if signifies(kl.signature, sig)]
             return [kl for kl in self.klines() if predicate(kl)]
 

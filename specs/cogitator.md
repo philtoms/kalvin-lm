@@ -24,7 +24,6 @@ This spec depends on the following concepts, defined elsewhere:
 - Submits pre-routed `WorkItem`s to the Cogitator during Phase 5 of
   rationalisation. The agent is the primary `CogitationHandler`
   implementation.
-- Owns the candidate cap and S1-first ordering applied before submission.
 
 ### Model (@model spec)
 
@@ -52,14 +51,14 @@ This spec depends on the following concepts, defined elsewhere:
 
 A Cogitator consists of:
 
-| Component  | Type               | Description                                        |
-| ---------- | ------------------ | -------------------------------------------------- |
-| model      | Model              | For `expand()`, expansions, tiered writes.         |
-| adapter    | KAgentAdapter      | Receives `RationaliseEvent`s (`on_event`).         |
-| handler    | CogitationHandler  | Receives S1 results and expansion proposals.       |
-| timeout    | float              | Idle seconds before emitting `"done"` (default 2.0). |
-| backlog    | queue of WorkItem  | Pending work items.                                |
-| thread     | background daemon  | Pulls and processes work items.                    |
+| Component | Type              | Description                                          |
+| --------- | ----------------- | ---------------------------------------------------- |
+| model     | Model             | For `expand()`, expansions, tiered writes.           |
+| adapter   | KAgentAdapter     | Receives `RationaliseEvent`s (`on_event`).           |
+| handler   | CogitationHandler | Receives S1 results and expansion proposals.         |
+| timeout   | float             | Idle seconds before emitting `"done"` (default 2.0). |
+| backlog   | queue of WorkItem | Pending work items.                                  |
+| thread    | background daemon | Pulls and processes work items.                      |
 
 ## Work Items
 
@@ -112,11 +111,11 @@ Three boundaries classify yielded significance values:
 D_MAX ── S1|S2 ──────── S2|S3 ──────────── S3|S4 ── 0
 ```
 
-| Boundary | Position                    | Meaning                        |
-| -------- | --------------------------- | ------------------------------ |
-| S1\|S2   | `D_MAX`                     | Only exact S1 (distance 0) qualifies as S1 |
-| S2\|S3   | `~_S2_S3_DISTANCE`          | Packed distance threshold (100)  |
-| S3\|S4   | `0`                          | Only zero-significance is S4   |
+| Boundary | Position           | Meaning                                    |
+| -------- | ------------------ | ------------------------------------------ |
+| S1\|S2   | `D_MAX`            | Only exact S1 (distance 0) qualifies as S1 |
+| S2\|S3   | `~_S2_S3_DISTANCE` | Packed distance threshold (100)            |
+| S3\|S4   | `0`                | Only zero-significance is S4               |
 
 Classification is a cascade: `sig ≥ S1|S2 → S1`, `sig ≥ S2|S3 → S2`,
 `sig ≥ S3|S4 → S3`, else S4. Raw significance values are never mutated.
@@ -125,9 +124,7 @@ Classification is a cascade: `sig ≥ S1|S2 → S1`, `sig ≥ S2|S3 → S2`,
 
 The Cogitator processes all connotations yielded by `expand()` for each
 submitted WorkItem. There is no truncation or early stopping within a
-single WorkItem — every discovered relationship is evaluated. (Candidate
-fan-out is bounded upstream by the agent's candidate cap — @agent spec
-§Candidate Cap.)
+single WorkItem — every discovered relationship is evaluated.
 
 ## CogitationHandler
 
@@ -211,12 +208,12 @@ the implementation detail.
 Given a candidate kline with signature `S` and nodes signature
 `N = make_signature(nodes)`:
 
-| Condition       | Classification | Meaning                                         |
-| --------------- | -------------- | ----------------------------------------------- |
-| `S == N`        | Canonical (S1) | No expansion needed                             |
-| `S & ~N != 0`   | Underfitting   | Signature promises bits the nodes don't deliver |
-| `N & ~S != 0`   | Overfitting    | Nodes carry bits the signature doesn't capture  |
-| Both            | Dual misfit    | Both conditions hold simultaneously             |
+| Condition     | Classification | Meaning                                         |
+| ------------- | -------------- | ----------------------------------------------- |
+| `S == N`      | Canonical (S1) | No expansion needed                             |
+| `S & ~N != 0` | Underfitting   | Signature promises bits the nodes don't deliver |
+| `N & ~S != 0` | Overfitting    | Nodes carry bits the signature doesn't capture  |
+| Both          | Dual misfit    | Both conditions hold simultaneously             |
 
 The **underfit gap** is `S & ~N`. The **overfit excess** is `N & ~S`.
 A kline may be both underfitting and overfitting at the same time.
@@ -224,7 +221,7 @@ A kline may be both underfitting and overfitting at the same time.
 ### Underfit Expansion — Add Nodes
 
 Compute `gap = S & ~N`. Search the model for klines whose signatures
-contribute to the gap. Construct the expanded kline:
+overlap and thus reduce the gap. Construct the expanded kline:
 
 ```
 {S: [original_nodes + addition_nodes]}
@@ -260,10 +257,10 @@ removed nodes as independent `frame` events.
 
 ### Proposals Emitted per Expansion Type
 
-| Expansion type | Proposals emitted                                                |
-| -------------- | ---------------------------------------------------------------- |
-| Added nodes    | The expanded kline                                               |
-| Removed nodes  | The trimmed kline **and** the companion kline from removed nodes |
+| Expansion type | Proposals emitted                                                    |
+| -------------- | -------------------------------------------------------------------- |
+| Added nodes    | The expanded kline                                                   |
+| Removed nodes  | The trimmed kline **and** the companion kline from removed nodes     |
 | Dual misfit    | The replacement kline **and** the companion kline from removed nodes |
 
 Each proposal is an independent `frame` event. The agent ratifies (or
@@ -278,13 +275,13 @@ This guarantees no invention, no data loss, and ratifiability. When the
 constraint cannot be satisfied, no proposal is emitted — the agent infers
 scaffolding is needed from the absence of a `frame` event.
 
-A second constraint governs proposal *shape*: **an expansion proposal must
+A second constraint governs proposal _shape_: **an expansion proposal must
 not be identity**. Identity (@CONTEXT.md §Identity) is either empty nodes
 `{S: []}` or self-referential `{S: [S]}`, and carries no decomposition
-information — so it is never a valid *expansion* proposal. A single removed
+information — so it is never a valid _expansion_ proposal. A single removed
 node `n` would form the companion `{n: [n]}` (identity), which is dropped
 rather than emitted; likewise any proposal that reduces to identity is
-dropped. (Note: `{S: [S]}` *is* a legitimate kline state — it is identity —
+dropped. (Note: `{S: [S]}` _is_ a legitimate kline state — it is identity —
 but it is not something the expander should produce, since the expander's
 purpose is to decompose.)
 
@@ -449,37 +446,37 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 > spec IDs are never renumbered). They keep their original `AGT-` prefix
 > for traceability to existing tests.
 
-| ID     | Criterion                                                           | Origin ref |
-| ------ | ------------------------------------------------------------------- | ---------- |
-| AGT-29 | Countersignature discovery: S2 → S1 via countersignature in cogitation, klines cascaded to LTM | — |
-| AGT-30 | Cogitator join: thread stops cleanly                                | — |
-| AGT-31 | S2 submits work item: WorkItem queued with correct fields           | — |
-| AGT-32 | All yields processed: every QC from `expand()` evaluated            | — |
-| AGT-33 | S1 detection: high-significance QC triggers handler.on_s1          | — |
-| AGT-34 | S2/S3 expansion: non-canonical QC triggers expansion proposals, proposals written to Frame | — |
-| AGT-35 | Proposals at any significance: S2 and S3 proposals emitted as frame events | — |
-| AGT-36 | Boundary S1 + structural check: participating klines cascaded to LTM via add_to_ltm | — |
-| AGT-37 | Boundary S1 + structural S1: LTM cascade occurs                      | — |
-| AGT-38 | S2 before S1: deferred S2 work items discarded, zero cogitator submissions | — |
-| AGT-39 | Cogitator break-on-S1: on_s1 called exactly once, no expansion calls after | — |
-| AGT-40 | S2/S3 event for already-satisfied entry is skipped (satisfaction guard) | — |
-| AGT-41 | Lesson completion uses satisfaction count, not event count | — |
-| AGT-42 | Lesson completion does not re-fire on post-completion cogitation events | — |
-| AGT-43 | Drain sent before each lesson, even when no S2/S3 expected (DRN-1)              | — |
-| AGT-44 | Lesson entries not submitted until `drained` response received (DRN-2)         | — |
-| AGT-45 | Empty-backlog drain completes in <10ms (DRN-3)                                  | — |
-| AGT-46 | Drain timeout returns False but does not stop the thread (DRN-4)               | — |
-| AGT-47 | Processing flag guards against premature drain return (DRN-5)                  | — |
-| AGT-48 | Cross-lesson spillover eliminated: lesson N events don't affect lesson N+1 budget | — |
-| AGT-49 | System prompt contains no hex literal syntax (RS-1)                            | — |
-| AGT-50 | System prompt contains no invalid operators `~>`, `<-`, `->` (RS-1)            | — |
-| AGT-51 | `_strip_hash_comments` removes `#` lines, keeps valid KScript (RS-3)           | — |
-| AGT-52 | `_strip_hash_comments` returns empty for all-comment input (RS-3)              | — |
-| AGT-53 | Cogitator returns None when scaffolding is all comments (RS-3)                  | — |
-| AGT-54 | Cogitate adapter decompiles query kline to KScript (RS-2)                      | — |
-| AGT-55 | Cogitate adapter decompiles proposal kline to KScript (RS-2)                   | — |
-| AGT-56 | Cogitate adapter falls back to repr on decompilation failure (RS-2)            | — |
-| AGT-57 | Reactor logs "submitted reactive scaffolding" after bus send (RS-4)            | — |
+| ID     | Criterion                                                                                      | Origin ref |
+| ------ | ---------------------------------------------------------------------------------------------- | ---------- |
+| AGT-29 | Countersignature discovery: S2 → S1 via countersignature in cogitation, klines cascaded to LTM | —          |
+| AGT-30 | Cogitator join: thread stops cleanly                                                           | —          |
+| AGT-31 | S2 submits work item: WorkItem queued with correct fields                                      | —          |
+| AGT-32 | All yields processed: every QC from `expand()` evaluated                                       | —          |
+| AGT-33 | S1 detection: high-significance QC triggers handler.on_s1                                      | —          |
+| AGT-34 | S2/S3 expansion: non-canonical QC triggers expansion proposals, proposals written to Frame     | —          |
+| AGT-35 | Proposals at any significance: S2 and S3 proposals emitted as frame events                     | —          |
+| AGT-36 | Boundary S1 + structural check: participating klines cascaded to LTM via add_to_ltm            | —          |
+| AGT-37 | Boundary S1 + structural S1: LTM cascade occurs                                                | —          |
+| AGT-38 | S2 before S1: deferred S2 work items discarded, zero cogitator submissions                     | —          |
+| AGT-39 | Cogitator break-on-S1: on_s1 called exactly once, no expansion calls after                     | —          |
+| AGT-40 | S2/S3 event for already-satisfied entry is skipped (satisfaction guard)                        | —          |
+| AGT-41 | Lesson completion uses satisfaction count, not event count                                     | —          |
+| AGT-42 | Lesson completion does not re-fire on post-completion cogitation events                        | —          |
+| AGT-43 | Drain sent before each lesson, even when no S2/S3 expected (DRN-1)                             | —          |
+| AGT-44 | Lesson entries not submitted until `drained` response received (DRN-2)                         | —          |
+| AGT-45 | Empty-backlog drain completes in <10ms (DRN-3)                                                 | —          |
+| AGT-46 | Drain timeout returns False but does not stop the thread (DRN-4)                               | —          |
+| AGT-47 | Processing flag guards against premature drain return (DRN-5)                                  | —          |
+| AGT-48 | Cross-lesson spillover eliminated: lesson N events don't affect lesson N+1 budget              | —          |
+| AGT-49 | System prompt contains no hex literal syntax (RS-1)                                            | —          |
+| AGT-50 | System prompt contains no invalid operators `~>`, `<-`, `->` (RS-1)                            | —          |
+| AGT-51 | `_strip_hash_comments` removes `#` lines, keeps valid KScript (RS-3)                           | —          |
+| AGT-52 | `_strip_hash_comments` returns empty for all-comment input (RS-3)                              | —          |
+| AGT-53 | Cogitator returns None when scaffolding is all comments (RS-3)                                 | —          |
+| AGT-54 | Cogitate adapter decompiles query kline to KScript (RS-2)                                      | —          |
+| AGT-55 | Cogitate adapter decompiles proposal kline to KScript (RS-2)                                   | —          |
+| AGT-56 | Cogitate adapter falls back to repr on decompilation failure (RS-2)                            | —          |
+| AGT-57 | Reactor logs "submitted reactive scaffolding" after bus send (RS-4)                            | —          |
 
 ## Out of Scope
 
@@ -492,7 +489,7 @@ The following are explicitly **out of scope** for this spec:
 - **Persistence format, tokenisation, model internals.**
 - **The Trainer's LLM cogitator's reactive-scaffolding pipeline**
   (sanitisation, decompilation, submission logging) lives in this spec's
-  §Reactive Scaffolding Submission. The reactive-decision *delegation*
+  §Reactive Scaffolding Submission. The reactive-decision _delegation_
   (whether the Cogitator or the supervisor makes the decision) is a
   distinct component (@reactive-delegation spec).
 

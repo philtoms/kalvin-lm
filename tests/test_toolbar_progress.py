@@ -1,4 +1,4 @@
-"""Tests for toolbar satisfaction progress display (KB-013)."""
+"""Tests for toolbar satisfaction progress display."""
 
 from unittest.mock import MagicMock, patch
 
@@ -136,7 +136,7 @@ class TestUpdateToolbarProgress:
 
     @patch("ui.kscript.app.KScriptApp.__init__", return_value=None)
     def test_update_toolbar_progress_with_no_kb008(self, mock_init):
-        """_update_toolbar_progress works even without _submitted/_satisfied (KB-008 not landed)."""
+        """_update_toolbar_progress works even without _submitted/_satisfied."""
         from ui.kscript.app import KScriptApp
 
         app = KScriptApp.__new__(KScriptApp)
