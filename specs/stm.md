@@ -134,7 +134,8 @@ stm.iter_all() → Iterator[KLine]
 Returns an iterator over all KLines in insertion order.
 
 - Returns a fresh iterator on each call.
-- Does not copy — callers see live insertion-order traversal.
+- Returns an iterator over a **snapshot** taken under the STM's lock (see
+  §Thread Safety); it is safe to exhaust after the lock is released.
 
 ### Find by Signature
 
@@ -241,6 +242,26 @@ front of the queue.
 - The `_dedup` set is maintained in sync with `_order`: eviction and
   removal both discard the corresponding dedup entry.
 
+## Thread Safety
+
+The STM is safe for concurrent reads and writes from multiple threads.
+
+- **Atomicity.** The STM holds a single `threading.RLock` (`_lock`, declared
+  in `__slots__`) guarding every public mutating and read method, so each call
+  is individually atomic. Re-entry is required because `add` → `remove` and
+  the `find_*` methods → `get` call back into guarded methods.
+- **Snapshot iterators.** `iter_all`, `__iter__`, and `__reversed__`
+  materialise a snapshot list **under the lock** and return an iterator over
+  that snapshot, so a caller may iterate after the lock is released and still
+  observe a consistent point-in-time view. No method `yield`s while holding
+  the lock.
+- **Composition with the Model.** A `Model` always acquires its own lock
+  *before* touching the STM (Model → STM). The STM never calls back into a
+  Model, so the ordering is acyclic and deadlock-free, and the two locks
+  compose cleanly via same-thread RLock re-entry.
+
+See the @model spec §Thread Safety for the composed Model/STM contract.
+
 ## Properties
 
 1. **Bounded** — `len(stm) <= bound` is always true after any operation.
@@ -281,8 +302,9 @@ The following are explicitly **out of scope** for this spec:
    computed by the Model and Agent.
 - **Cross-tier consistency.** The Model owns the STM/Frame/Base
   relationship. The STM does not know about other tiers.
-- **Thread safety.** Concurrent access management is an implementation
-   concern.
+- **Thread safety.** The synchronisation *mechanism* is an implementation
+   concern; the *contract* (atomicity, snapshot iterators, lock ordering) is
+   specified in §Thread Safety.
 - **Nodes signature computation.** The STM delegates to `make_signature`
   from the @signature spec.
 

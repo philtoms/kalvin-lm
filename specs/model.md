@@ -331,7 +331,8 @@ Returns an iterator over all KLines currently in the STM, in insertion
 order (oldest first).
 
 - Returns a fresh iterator on each call.
-- Does not copy — callers see live insertion-order traversal.
+- Returns an iterator over a **snapshot** taken under the Model's lock (see
+  §Thread Safety); it is safe to exhaust after the lock is released.
 - External code that needs to iterate STM entries (e.g., for `add_to_ltm()`
   cascades) must use this method.
 
@@ -444,6 +445,51 @@ match to `depth`.
 - Then expands each match using the same semantics as `expand`.
 - Yields results in reverse insertion order for matches, depth-first for
   expansions.
+
+## Thread Safety
+
+The Model is safe for concurrent reads and writes from multiple threads
+(e.g. the background Cogitator daemon mutating the model while a subscriber
+reads the model from `on_event` on the calling thread).
+
+- **Atomicity.** `Model`, `KLineStore` (Frame/LTM), and the `STM` each hold
+  their own `threading.RLock`. Every public mutating and read method acquires
+  its lock for the whole operation, so each call is individually atomic. A
+  re-entrant lock is required because public methods call other public methods
+  on the same object (`unpack` → `_resolve_for_unpack` → `klines` → tier
+  chain; `STM.add` → `remove`); a plain `Lock` would self-deadlock on re-entry.
+- **Snapshot iterators.** Methods that return iterators (`__iter__`,
+  `iter_stm`) materialise a snapshot list **under the lock** and return an
+  iterator over that snapshot, so a caller may iterate after the lock is
+  released and still observe a consistent point-in-time view. No method
+  `yield`s while holding a lock. (`klines()`, `where()`, and `find_all()`
+  already return fully-materialised lists, so they are likewise atomic.)
+- **Lock ordering.** Strictly **Model → inner tier** (STM / KLineStore / base
+  `Model`). The Model always acquires its own lock first, then the inner
+  tier's. Inner tiers never call back into a Model, so the ordering is acyclic
+  and deadlock-free. Cogitator/agent code therefore needs no locking of its
+  own.
+- **Base tier.** The optional Base `Model` is read-only after construction, so
+  the parent does **not** acquire the Base's lock on reads — unlocked reads are
+  safe and this sidesteps lock-ordering discipline.
+- **Publish outside the lock.** `KAgent._publish` (which synchronously
+  dispatches subscriber callbacks via `adapter.on_event`) is invoked only
+  *after* a Model method has acquired-and-released its own lock. Subscribers
+  therefore run **outside** the Model lock and may re-enter the model (on the
+  main thread during `rationalise`, on the Cogitator thread during
+  `on_s1`/`on_expansion`) without deadlock.
+
+> **What this does and does not guarantee.** The locks guarantee that every
+> individual model operation is atomic and that concurrent readers observe
+> consistent snapshots (no stale reads, no `RuntimeError` from concurrent
+> list mutation). They do **not** guarantee that the rationalisation *event
+> count* is identical regardless of how subscribers inspect events: the
+> background Cogitator processes S2/S3 work items asynchronously relative to
+> the main-thread `rationalise` loop, and `expand()`'s node-resolution result
+> depends on the model state at the moment each work item is processed, so any
+> subscriber work (even a bare `time.sleep`) can perturb the interleaving and
+> change the count. Count-determinism is owned by the Cogitator/agent layer
+> (see KB-347), not by Model locking.
 
 ## Model API (Significance)
 
@@ -822,8 +868,10 @@ The following are explicitly **out of scope** for this spec:
   that all three mutable tiers (STM, Frame, LTM) are persisted.
 - **Debug metadata.** Labels, source text, timestamps, or other diagnostic
   data attached to entries.
-- **Thread management.** How concurrent access to tiers is managed is an
-  implementation concern.
+- **Thread management.** The choice of synchronisation *mechanism*
+  (re-entrant locks, snapshot iterators) is an implementation concern; the
+  *contract* (atomicity, snapshot semantics, lock ordering) is specified in
+  §Thread Safety.
 
 ## Referenced By
 

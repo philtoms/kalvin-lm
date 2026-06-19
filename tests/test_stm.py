@@ -123,3 +123,51 @@ class TestSTMIterAll:
     def test_iter_all_empty(self):
         stm = make_stm()
         assert list(stm.iter_all()) == []
+
+
+# ── Thread-safety: iterator snapshot semantics ──────────────────────
+#
+# KB-305: iterator-returning methods must materialise a snapshot under the
+# lock so that a caller iterating *after* the lock is released still sees a
+# consistent point-in-time view (no live-list mutation mid-iteration). These
+# tests assert that an iterator obtained before a mutation does not observe
+# the mutation, while a fresh iterator does.
+
+
+class TestSTMSnapshotSemantics:
+    """Iterators snapshot state at acquisition time (KB-305)."""
+
+    def test_iter_all_snapshots_before_mutation(self):
+        stm = make_stm()
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        stm.add(k1)
+        it = stm.iter_all()  # snapshot taken now
+        stm.add(k2)  # mutate after the snapshot
+        # Old iterator must not see the post-snapshot entry.
+        assert list(it) == [k1]
+        # A fresh iterator does see it.
+        assert list(stm.iter_all()) == [k1, k2]
+
+    def test_dunder_iter_snapshots_before_mutation(self):
+        stm = make_stm()
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        stm.add(k1)
+        it = iter(stm)
+        stm.add(k2)
+        assert list(it) == [k1]
+        assert list(iter(stm)) == [k1, k2]
+
+    def test_dunder_reversed_snapshots_before_mutation(self):
+        stm = make_stm()
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        stm.add(k1)
+        stm.add(k2)
+        rit = reversed(stm)  # snapshot is [k2, k1]
+        k3 = KLine(3, [3])
+        stm.add(k3)
+        assert list(rit) == [k2, k1]
+        assert list(reversed(stm)) == [k3, k2, k1]
+

@@ -355,7 +355,9 @@ The Cogitator can only be stopped explicitly via `join(timeout)`.
 ### Inter-Lesson Drain
 
 The Cogitator is a background thread that processes S2/S3 work items
-asynchronously. When a lesson triggers slow-path cogitation, work items may
+asynchronously (it relies on the Model's internal thread safety — see the
+@model spec §Thread Safety — so concurrent model access needs no locking at
+this layer). When a lesson triggers slow-path cogitation, work items may
 still be processing when the next lesson begins. These late-arriving events
 would be processed with the new lesson's reactor state, consuming its
 reactive budget and corrupting entry satisfaction tracking. The drain

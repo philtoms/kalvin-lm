@@ -5,10 +5,35 @@ graph traversal. Significance computation and misfit classification
 live in expand.py and misfit.py respectively.
 
 See specs/model.md for the full specification.
+
+Thread safety
+-------------
+Concurrent access (e.g. the background Cogitator thread mutating the model
+while a subscriber reading the model from ``on_event`` runs on the same
+thread) is made safe by encapsulating all locking inside the data structures:
+
+- ``Model``, ``KLineStore`` and :class:`~kalvin.stm.STM` each hold their own
+  :class:`threading.RLock`. Every public mutator/reader takes its lock for the
+  whole operation, making each call individually atomic. Re-entrant locks are
+  required because public methods call other public methods on the same object
+  (e.g. ``Model.unpack`` → ``_resolve_for_unpack`` → ``klines`` → tier chain;
+  ``STM.add`` → ``remove``); a plain ``Lock`` would deadlock on re-entry.
+- Iterator-returning methods (``Model.__iter__``, ``Model.iter_stm``,
+  ``KLineStore.__iter__``/``__reversed__``) snapshot the backing list **under
+  the lock** and return an iterator over the snapshot, so callers that iterate
+  after the lock is released still observe a consistent point-in-time view.
+- Lock ordering is strictly **Model → inner tier** (STM / KLineStore / a base
+  ``Model``). ``Model`` always acquires its own lock first, then — via the tier
+  chain/adapters or directly from ``add_to_*`` — the inner tier's lock. Inner
+  tiers never call back into a ``Model``, so the ordering is acyclic and
+  deadlock-free. Cogitator/agent code therefore needs no locking of its own.
+
+See specs/model.md §Thread Safety for the full contract.
 """
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Callable, Iterator
 
 from kalvin.kline import KLine, KSig, is_canon, is_identity
@@ -22,65 +47,84 @@ class KLineStore:
     Maintains an indexed list with dedup set — supports O(1) membership
     checks and efficient lookup by signature while preserving insertion
     order for iteration.
+
+    Thread safety: all public methods are guarded by ``self._lock`` (an
+    :class:`threading.RLock`). Iterator-returning methods (``__iter__``,
+    ``__reversed__``) materialise a snapshot under the lock and return an
+    iterator over that snapshot, so a caller iterating after the lock is
+    released observes a consistent point-in-time view. A ``Model`` always
+    acquires its own lock before this store's lock (Model → KLineStore).
     """
 
     def __init__(self) -> None:
         self._list: list[KLine | None] = []
         self._by_sig: dict[KSig, list[int]] = {}
         self._dedup: set[tuple[KSig, tuple[int, ...]]] = set()
+        self._lock = threading.RLock()
 
     def add(self, kline: KLine) -> None:
         """Append a KLine to the store, indexing by signature and dedup key."""
-        idx = len(self._list)
-        self._list.append(kline)
-        if kline.signature not in self._by_sig:
-            self._by_sig[kline.signature] = []
-        self._by_sig[kline.signature].append(idx)
-        self._dedup.add((kline.signature, tuple(kline.nodes)))
+        with self._lock:
+            idx = len(self._list)
+            self._list.append(kline)
+            if kline.signature not in self._by_sig:
+                self._by_sig[kline.signature] = []
+            self._by_sig[kline.signature].append(idx)
+            self._dedup.add((kline.signature, tuple(kline.nodes)))
 
     def contains(self, kline: KLine) -> bool:
         """Check if a KLine with matching signature and nodes exists."""
-        return (kline.signature, tuple(kline.nodes)) in self._dedup
+        with self._lock:
+            return (kline.signature, tuple(kline.nodes)) in self._dedup
 
     def find(self, signature: KSig) -> KLine | None:
         """Find the most recently added KLine by signature."""
-        indices = self._by_sig.get(signature)
-        if indices:
-            for idx in reversed(indices):
-                kl = self._list[idx]
-                if kl is not None:
-                    return kl
-        return None
+        with self._lock:
+            indices = self._by_sig.get(signature)
+            if indices:
+                for idx in reversed(indices):
+                    kl = self._list[idx]
+                    if kl is not None:
+                        return kl
+            return None
 
     def find_all(self, signature: KSig) -> list[KLine]:
         """Return all KLines with the given signature in insertion order."""
-        indices = self._by_sig.get(signature, [])
-        results: list[KLine] = []
-        for idx in indices:
-            kl = self._list[idx]
-            if kl is not None:
-                results.append(kl)
-        return results
+        with self._lock:
+            indices = self._by_sig.get(signature, [])
+            results: list[KLine] = []
+            for idx in indices:
+                kl = self._list[idx]
+                if kl is not None:
+                    results.append(kl)
+            return results
 
     def __len__(self) -> int:
         """Count non-None entries."""
-        return sum(1 for kl in self._list if kl is not None)
+        with self._lock:
+            return sum(1 for kl in self._list if kl is not None)
 
     def __iter__(self):
-        """Yield non-None entries in insertion order."""
-        for kl in self._list:
-            if kl is not None:
-                yield kl
+        """Yield non-None entries in insertion order.
+
+        Returns an iterator over a snapshot taken under the lock, so it is
+        safe to iterate after the lock is released.
+        """
+        with self._lock:
+            return iter([kl for kl in self._list if kl is not None])
 
     def __reversed__(self):
-        """Yield non-None entries in reverse insertion order."""
-        for kl in reversed(self._list):
-            if kl is not None:
-                yield kl
+        """Yield non-None entries in reverse insertion order.
+
+        Returns an iterator over a snapshot taken under the lock.
+        """
+        with self._lock:
+            return iter([kl for kl in reversed(self._list) if kl is not None])
 
     def all_klines(self) -> list[KLine]:
         """Return list of all non-None entries in insertion order."""
-        return [kl for kl in self._list if kl is not None]
+        with self._lock:
+            return [kl for kl in self._list if kl is not None]
 
 
 class _TierAdapter:
@@ -221,9 +265,20 @@ class Model:
 
     Frame and LTM storage are backed by ``KLineStore`` — a reusable indexed list
     with dedup set.
+
+    Thread safety: see module docstring. All public methods are guarded by
+    ``self._lock`` (an :class:`threading.RLock`); iterator-returning methods
+    materialise a snapshot under the lock. Lock ordering is strictly
+    Model → inner tier (STM / KLineStore / base Model).
     """
 
     def __init__(self, base: Model | None = None, ltm: Model | None = None, stm_bound: int = 256):
+        # The lock must exist before any guarded public method can run. It is
+        # established first, ahead of building the tiers. (Construction itself
+        # is single-threaded — the object is not published until __init__
+        # returns — so the direct internal writes below need no synchronisation
+        # against other threads.)
+        self._lock = threading.RLock()
         self._base = base
         self._stm = STM(bound=stm_bound)
 
@@ -244,7 +299,8 @@ class Model:
 
     def add_to_stm(self, kline: KLine) -> None:
         """Write to STM only. Always refreshes FIFO (remove-if-present then add)."""
-        self._stm.add(kline)
+        with self._lock:
+            self._stm.add(kline)
 
     def add_to_frame(self, kline: KLine) -> None:
         """Write to Frame and STM.
@@ -252,8 +308,9 @@ class Model:
         Frame and STM are both written unconditionally.
         Frame _dedup set is a membership index, not a write guard.
         """
-        self._frame.add(kline)
-        self._stm.add(kline)
+        with self._lock:
+            self._frame.add(kline)
+            self._stm.add(kline)
 
     def add_to_ltm(self, kline: KLine) -> None:
         """Write to LTM, Frame, and STM.
@@ -261,13 +318,15 @@ class Model:
         All three tiers written unconditionally.
         LTM and Frame _dedup sets are membership indexes, not write guards.
         """
-        self._ltm.add(kline)
-        self._frame.add(kline)
-        self._stm.add(kline)
+        with self._lock:
+            self._ltm.add(kline)
+            self._frame.add(kline)
+            self._stm.add(kline)
 
     def exists(self, kline: KLine) -> bool:
         """Check if an equal KLine exists in any tier."""
-        return self._exists_any(kline)
+        with self._lock:
+            return self._exists_any(kline)
 
     def grounded(self, kline: KLine) -> bool:
         """Check if an equal KLine exists in Frame, LTM, or Base (not STM).
@@ -275,10 +334,11 @@ class Model:
         STM is transient — entries pre-registered there haven't been
         rationalised yet and shouldn't count as grounded knowledge.
         """
-        return self._chain.contains_excluding_first(kline)
+        with self._lock:
+            return self._chain.contains_excluding_first(kline)
 
     def _exists_any(self, kline: KLine) -> bool:
-        """Check STM, Frame, LTM, then Base."""
+        """Check STM, Frame, LTM, then Base. Runs under the caller's lock."""
         return self._chain.contains(kline)
 
     def find(self, signature: KSig) -> KLine | None:
@@ -286,27 +346,35 @@ class Model:
 
         Searches STM, then Frame, then LTM, then Base.
         """
-        return self._chain.find_first(signature)
+        with self._lock:
+            return self._chain.find_first(signature)
 
     def find_all(self, signature: KSig) -> list[KLine]:
         """Return all KLines with the given signature across all tiers."""
-        return self._chain.find_all(signature)
+        with self._lock:
+            return self._chain.find_all(signature)
 
     def find_by_nodes(self, nodes_signature: KSig) -> KLine | None:
         """Find the most recently added KLine whose nodes signature matches."""
-        return self._chain.find_by_nodes_first(nodes_signature)
+        with self._lock:
+            return self._chain.find_by_nodes_first(nodes_signature)
 
     # Count
 
     def __len__(self) -> int:
         """Number of KLines in the Frame (excluding STM, LTM, and Base)."""
-        return len(self._frame)
+        with self._lock:
+            return len(self._frame)
 
     def __iter__(self) -> Iterator[KLine]:
-        return iter(self._frame)
+        # Snapshot the frame under the lock; the returned iterator is over a
+        # private copy, so it is safe to exhaust after the lock is released.
+        with self._lock:
+            return iter(self._frame.all_klines())
 
     def __getitem__(self, signature: KSig) -> KLine | None:
-        return self.find(signature)
+        with self._lock:
+            return self.find(signature)
 
     # Iteration
 
@@ -316,7 +384,8 @@ class Model:
         STM entries first (most recent), then Frame entries not in STM,
         then LTM entries not in Frame, then Base entries not in LTM.
         """
-        return self._chain.all_klines()
+        with self._lock:
+            return self._chain.all_klines()
 
     def where(self, predicate: Callable[[KLine], bool] | KSig) -> list[KLine]:
         """Return KLines matching a predicate or signature overlap.
@@ -324,49 +393,51 @@ class Model:
         If predicate is an int, it's treated as a signature for AND matching:
             where(sig) returns klines where kline.signature & sig != 0.
         """
-        if isinstance(predicate, int):
-            sig = predicate
-            # KB-324: the bare `signifies` test (>=1 shared bit) is DELIBERATELY
-            # retained here as the int-overload candidate-retrieval discriminator.
-            # Decision: KEEP (no overlap-threshold conjunct). Reconsiders DD-1 in
-            # plans/impl/cascade-control.md ("localised cap in rationalise() rather
-            # than a smarter where()"). Real-data investigation (7 curricula/*.md
-            # compiled via the production NLP tokenizer; each model kline's signature
-            # used as a real rationalise query, mirroring agent.py:230) found:
-            #   * Candidate-yield breadth ~99% of the model per query (where() is
-            #     near-vacuous as a *retrieval* discriminator) — BUT the
-            #     max_candidates=8 cap+sort in agent.py is binding ~93% of the time
-            #     and already absorbs that breadth (where() over <=46 klines is
-            #     microseconds; no performance problem to solve).
-            #   * Weight-1 (single shared bit) share among matches = ~7.6% — nonzero,
-            #     unlike KB-315's 0% inside expand()'s node-vs-signature loops,
-            #     because here BOTH query and candidate are multi-token OR-signatures.
-            #   * A weight-threshold refinement has MATERIAL downstream blast: K>=2
-            #     changes the rationalise WorkItem SET in ~41% of queries (K>=4 ~76%),
-            #     exactly DD-1's "affects every lookup" concern. 99.6% of dropped
-            #     candidates are S3 connotation-tail (no node overlap); 0.4% are
-            #     genuine S2 node-sharing candidates (false negatives). S2/S3 routing
-            #     of survivors is unchanged (0%) — _route is node-membership based.
-            #   * No weight threshold both discriminates AND preserves the canonical
-            #     test (K=1 -> 0% reduction; K>=2 breaks test_where_signature_overlap's
-            #     weight-1 topology). Ratio thresholds pass the test but blast even
-            #     harder (R>=0.25 -> 85% changed-set, R>=0.5 -> 98%).
-            # KEEP: breadth is real but the cap+sort is the established, local,
-            # easy-to-reason-about discriminator (DD-1); a where()-level refinement
-            # would re-rank the S3 tail by a conflated signature-overlap heuristic
-            # with no proven cogitation benefit, break the canonical test, and create
-            # an asymmetry vs misfit.py's Callable-overload retrieval (semantically
-            # identical `signifies` test, unchanged here). NOTE: corpus is small
-            # (KB-323's larger-corpus re-confirmation is pending); revisit only if
-            # KB-323 shows the downstream WorkItem-delta would turn favourable.
-            return [kl for kl in self.klines() if signifies(kl.signature, sig)]
-        return [kl for kl in self.klines() if predicate(kl)]
+        with self._lock:
+            if isinstance(predicate, int):
+                sig = predicate
+                # KB-324: the bare `signifies` test (>=1 shared bit) is DELIBERATELY
+                # retained here as the int-overload candidate-retrieval discriminator.
+                # Decision: KEEP (no overlap-threshold conjunct). Reconsiders DD-1 in
+                # plans/impl/cascade-control.md ("localised cap in rationalise() rather
+                # than a smarter where()"). Real-data investigation (7 curricula/*.md
+                # compiled via the production NLP tokenizer; each model kline's signature
+                # used as a real rationalise query, mirroring agent.py:230) found:
+                #   * Candidate-yield breadth ~99% of the model per query (where() is
+                #     near-vacuous as a *retrieval* discriminator) — BUT the
+                #     max_candidates=8 cap+sort in agent.py is binding ~93% of the time
+                #     and already absorbs that breadth (where() over <=46 klines is
+                #     microseconds; no performance problem to solve).
+                #   * Weight-1 (single shared bit) share among matches = ~7.6% — nonzero,
+                #     unlike KB-315's 0% inside expand()'s node-vs-signature loops,
+                #     because here BOTH query and candidate are multi-token OR-signatures.
+                #   * A weight-threshold refinement has MATERIAL downstream blast: K>=2
+                #     changes the rationalise WorkItem SET in ~41% of queries (K>=4 ~76%),
+                #     exactly DD-1's "affects every lookup" concern. 99.6% of dropped
+                #     candidates are S3 connotation-tail (no node overlap); 0.4% are
+                #     genuine S2 node-sharing candidates (false negatives). S2/S3 routing
+                #     of survivors is unchanged (0%) — _route is node-membership based.
+                #   * No weight threshold both discriminates AND preserves the canonical
+                #     test (K=1 -> 0% reduction; K>=2 breaks test_where_signature_overlap's
+                #     weight-1 topology). Ratio thresholds pass the test but blast even
+                #     harder (R>=0.25 -> 85% changed-set, R>=0.5 -> 98%).
+                # KEEP: breadth is real but the cap+sort is the established, local,
+                # easy-to-reason-about discriminator (DD-1); a where()-level refinement
+                # would re-rank the S3 tail by a conflated signature-overlap heuristic
+                # with no proven cogitation benefit, break the canonical test, and create
+                # an asymmetry vs misfit.py's Callable-overload retrieval (semantically
+                # identical `signifies` test, unchanged here). NOTE: corpus is small
+                # (KB-323's larger-corpus re-confirmation is pending); revisit only if
+                # KB-323 shows the downstream WorkItem-delta would turn favourable.
+                return [kl for kl in self.klines() if signifies(kl.signature, sig)]
+            return [kl for kl in self.klines() if predicate(kl)]
 
     # Graph Traversal
 
     def resolve(self, node: int) -> KLine | None:
         """Resolve a node value to a KLine."""
-        return self.find(node)
+        with self._lock:
+            return self.find(node)
 
     def query_expand(self, kline: KLine, depth: int = 2) -> list[KLine]:
         """Expand graph from kline up to *depth* levels.
@@ -376,12 +447,13 @@ class Model:
         depth=2 → direct children
         depth=N → children up to N-1 levels deep.
         """
-        if depth <= 1:
-            return []
-        visited: set[int] = set()
-        results: list[KLine] = []
-        self._query_expand_inner(kline, depth, 1, visited, results)
-        return results
+        with self._lock:
+            if depth <= 1:
+                return []
+            visited: set[int] = set()
+            results: list[KLine] = []
+            self._query_expand_inner(kline, depth, 1, visited, results)
+            return results
 
     def _query_expand_inner(
         self,
@@ -391,6 +463,7 @@ class Model:
         visited: set[int],
         results: list[KLine],
     ) -> None:
+        """Runs under the caller's lock; calls guarded self.find (RLock re-entry)."""
         if id(kline) in visited:
             return
         visited.add(id(kline))
@@ -421,21 +494,22 @@ class Model:
           most recently added wins (Recency Precedence).
         - Raises ValueError if a child node resolves to no identity or canon.
         """
-        if is_identity(kline):
-            return [kline.signature]
-        if not is_canon(kline):
-            raise ValueError(
-                f"unpack: input kline {kline.signature:#x} is not decomposable "
-                f"(not identity, not canon)"
-            )
-        out: list[int] = []
-        for node in kline.nodes:
-            child = self._resolve_for_unpack(node)
-            out.extend(self.unpack(child))
-        return out
+        with self._lock:
+            if is_identity(kline):
+                return [kline.signature]
+            if not is_canon(kline):
+                raise ValueError(
+                    f"unpack: input kline {kline.signature:#x} is not decomposable "
+                    f"(not identity, not canon)"
+                )
+            out: list[int] = []
+            for node in kline.nodes:
+                child = self._resolve_for_unpack(node)
+                out.extend(self.unpack(child))
+            return out
 
     def _resolve_for_unpack(self, node: int) -> KLine:
-        """Resolve a node value to its identity or canon kline.
+        """Resolve a node value to its identity or canon kline. Runs under caller's lock.
 
         Precedence (highest first):
           1. empty-nodes identity,
@@ -476,11 +550,12 @@ class Model:
 
     def query(self, signature: KSig, depth: int = 1) -> list[KLine]:
         """Find all KLines with signature, then expand each."""
-        matches = self.find_all(signature)
-        results: list[KLine] = list(matches)
-        for kl in matches:
-            results.extend(self.query_expand(kl, depth))
-        return results
+        with self._lock:
+            matches = self.find_all(signature)
+            results: list[KLine] = list(matches)
+            for kl in matches:
+                results.extend(self.query_expand(kl, depth))
+            return results
 
     # Properties
 
@@ -496,29 +571,40 @@ class Model:
         Unlike ``exists()``, this only checks the STM tier — not the frame
         or base.
         """
-        return self._stm.contains(kline)
+        with self._lock:
+            return self._stm.contains(kline)
 
     def iter_stm(self) -> Iterator[KLine]:
-        """Iterate all KLines currently in the STM, in insertion order."""
-        return self._stm.iter_all()
+        """Iterate all KLines currently in the STM, in insertion order.
+
+        Returns an iterator over an STM snapshot taken under this Model's
+        lock, so it is safe to iterate after the lock is released.
+        """
+        with self._lock:
+            return self._stm.iter_all()
 
     # Compatibility
 
     def find_kline(self, signature: KSig) -> KLine | None:
         """Alias for find() — backwards compat."""
-        return self.find(signature)
+        with self._lock:
+            return self.find(signature)
 
     def find_signed_klines(self, signature: KSig) -> list[KLine]:
         """Alias for find_all() — backwards compat."""
-        return self.find_all(signature)
+        with self._lock:
+            return self.find_all(signature)
 
     def query_graph(self, query: KSig, depth: int = 1):
         """Alias for query() returning list — backwards compat."""
-        return self.query(query, depth)
+        with self._lock:
+            return self.query(query, depth)
 
     def duplicate(self) -> Model:
         """Create a duplicate of this model's frame."""
-        klines = [KLine(kl.signature, list(kl.nodes), kl.dbg) for kl in self._frame.all_klines()]
+        with self._lock:
+            frame = self._frame.all_klines()
+            klines = [KLine(kl.signature, list(kl.nodes), kl.dbg) for kl in frame]
         m = Model()
         for kl in klines:
             m.add_to_frame(kl)
@@ -527,18 +613,21 @@ class Model:
     @property
     def klines_prop(self) -> list[KLine]:
         """Backwards compat: return frame klines."""
-        return self._frame.all_klines()
+        with self._lock:
+            return self._frame.all_klines()
 
     def as_kline_list(self, limit: int = 0):
         """Backwards compat: iterate KLines."""
-        items = self._frame.all_klines()
+        with self._lock:
+            items = self._frame.all_klines()
         if limit > 0:
             items = items[:limit]
         return reversed(items)
 
     def upgrade(self, kline: KLine, significance: KSig) -> None:
         """Upgrade significance — backwards compat."""
-        kline.signature |= significance
+        with self._lock:
+            kline.signature |= significance
 
     @property
     def kline(self) -> _KLineAccessor:

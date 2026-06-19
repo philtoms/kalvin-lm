@@ -826,3 +826,62 @@ class TestUnpack:
         outer = KLine(0x70, [0x30, 0x40])  # node 0x30 resolves to inner canon
         m.add_to_frame(outer)
         assert m.unpack(outer) == [0x10, 0x20, 0x40]
+
+
+# ── Thread-safety: iterator snapshot semantics (KB-305) ─────────────
+#
+# Iterators must materialise a snapshot under the lock so a caller iterating
+# after the lock is released sees a consistent point-in-time view. An iterator
+# obtained before a mutation must NOT observe the mutation; a fresh iterator
+# must. Model has no ``__reversed__`` — cover ``Model.__iter__`` (snapshots the
+# Frame) and ``Model.iter_stm`` (delegates to ``STM.iter_all``).
+
+
+class TestKLineStoreSnapshotSemantics:
+    """KLineStore iterators snapshot state at acquisition time (KB-305)."""
+
+    def test_iter_snapshots_before_mutation(self):
+        store = KLineStore()
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        store.add(k1)
+        it = iter(store)
+        store.add(k2)
+        assert list(it) == [k1]
+        assert list(iter(store)) == [k1, k2]
+
+    def test_reversed_snapshots_before_mutation(self):
+        store = KLineStore()
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        store.add(k1)
+        store.add(k2)
+        rit = reversed(store)  # snapshot is [k2, k1]
+        k3 = KLine(3, [3])
+        store.add(k3)
+        assert list(rit) == [k2, k1]
+        assert list(reversed(store)) == [k3, k2, k1]
+
+
+class TestModelSnapshotSemantics:
+    """Model iterators snapshot state at acquisition time (KB-305)."""
+
+    def test_model_iter_snapshots_frame_before_mutation(self):
+        m = make_model()
+        k1 = KLine(5, [1])
+        k2 = KLine(6, [2])
+        m.add_to_frame(k1)
+        it = iter(m)  # snapshots the Frame
+        m.add_to_frame(k2)
+        assert list(it) == [k1]
+        assert list(iter(m)) == [k1, k2]
+
+    def test_iter_stm_snapshots_before_mutation(self):
+        m = make_model()
+        k1 = KLine(1, [1])
+        k2 = KLine(2, [2])
+        m.add_to_stm(k1)
+        it = m.iter_stm()  # delegates to STM.iter_all snapshot
+        m.add_to_stm(k2)
+        assert list(it) == [k1]
+        assert list(m.iter_stm()) == [k1, k2]
