@@ -794,23 +794,23 @@ class TestUnpack:
         assert m.unpack(parent) == [0x10, 0x20, 0x10, 0x40]
 
     def test_mod67_self_referential_canon_is_identity(self):
-        # MOD-67: a canon whose sole node is its own signature
+        # MOD-67: a self-referential kline whose sole node is its own signature
         # ({node: [node]}) is structurally identity — emit the node directly
         # instead of recursing without bound. Covers both the direct case and
-        # a parent referencing the self-referential canon.
+        # a parent referencing the self-referential identity kline.
         m = make_model()
-        # Direct case: unpack the self-referential canon itself.
+        # Direct case: unpack the self-referential identity kline itself.
         self_ref = KLine(0x100, [0x100])  # make_signature([0x100]) == 0x100
         m.add_to_frame(self_ref)
         assert m.unpack(self_ref) == [0x100]
 
-        # Nested case: a parent's node resolves to a self-referential canon.
+        # Nested case: a parent's node resolves to the self-referential identity kline.
         m2 = make_model()
         m2.add_to_frame(KLine(0x200, []))  # identity sibling
-        m2.add_to_frame(KLine(0x100, [0x100]))  # self-referential canon for 0x100
+        m2.add_to_frame(KLine(0x100, [0x100]))  # self-referential identity for 0x100
         parent = KLine(0x300, [0x100, 0x200])  # 0x300 == 0x100 | 0x200
         m2.add_to_frame(parent)
-        # 0x100 resolves to the self-ref canon → emitted as 0x100 (no recursion)
+        # 0x100 resolves to the self-ref identity kline → emitted as 0x100 (no recursion)
         assert m2.unpack(parent) == [0x100, 0x200]
 
     def test_mod67b_canon_with_sig_equal_node_still_recurses(self):
