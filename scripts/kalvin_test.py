@@ -151,12 +151,12 @@ def main() -> None:
     parser.add_argument(
         "--deadline",
         type=float,
-        default=0.0,
+        default=10.0,
         help=(
             "Wall-clock limit in seconds for the WHOLE run. If the"
             " rationalise/cogitate phase exceeds it, the script prints the"
             " partial S1 count gathered so far and exits 124 (timeout)."
-            " Default 0 = disabled. Use this to bound runs against the"
+            " 0 = disabled. Use this to bound runs against the"
             " unfixed Model/STM race, which can livelock this script."
         ),
     )
@@ -170,7 +170,12 @@ def main() -> None:
 
     done_event = threading.Event()
     counts: Counter = Counter()
-    s1_entries: list[str] = []
+    entries: dict[str,list[str]] = {
+        "S1":[],
+        "S2":[],
+        "S3":[],
+        "S4":[],
+    }
 
     def on_event(e: RationaliseEvent) -> None:
         if e.kind == "done":
@@ -178,8 +183,7 @@ def main() -> None:
             return
 
         level = significance_level(e.significance)
-        key = f"{e.kind}:{level}"
-        counts[key] += 1
+        counts[level] += 1
 
         if args.verbose:
             query_str = kline_display(e.query, tokenizer, agent.model)
@@ -187,10 +191,10 @@ def main() -> None:
             arrow = "←" if e.significance == D_MAX else "|"
             print(f"  {e.kind:6s} {query_str} → {level} {arrow} {proposal_str}")
 
-        if level == "S1" and e.kind != "ground":
-            query_str = kline_display(e.query, tokenizer, agent.model)
-            proposal_str = kline_display(e.proposal, tokenizer, agent.model)
-            s1_entries.append(f"{query_str} ← {proposal_str}")
+        # if e.kind != "ground":
+        query_str = kline_display(e.query, tokenizer, agent.model)
+        proposal_str = kline_display(e.proposal, tokenizer, agent.model)
+        entries[level].append(f"{query_str} ← {proposal_str}")
 
     adapter.subscribe(on_event)
 
@@ -230,7 +234,7 @@ def main() -> None:
             agent.rationalise(k)
 
         if not done_event.wait(timeout=args.timeout):
-            print(f"\nWARNING: no 'done' event after {args.timeout:.1f}s — continuing anyway.")
+            print(f"\nWARNING: no 'done' event after {args.timeout:.1f}s.")
         agent.cogitate_join()
     except DeadlineExceededError:
         deadline_hit = True
@@ -252,10 +256,11 @@ def main() -> None:
     for key in sorted(counts):
         print(f"  {key:12s} {counts[key]:>4d}")
 
-    if s1_entries:
-        print(f"\nS1 frames ({len(s1_entries)}):")
-        for entry in s1_entries:
-            print(f"  {entry}")
+    for level in ["S1", "S2", "S3","S4"]:
+        if entries[level]:
+            print(f"\n{level} frames ({len(entries[level])}):")
+            for entry in entries[level][:30]:
+                print(f"  {entry}")
 
     print("\nDone.")
     if deadline_hit:
