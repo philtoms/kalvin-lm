@@ -14,6 +14,7 @@ from kalvin.model import Model
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
 from tests.conftest import requires_nlp_data
+from tests.test_cogitator_handler import RecordingCogitationHandler
 
 # KAgent construction defaults to the NLP tokenizer; skip cleanly when the NLP
 # data assets are absent on a fresh clone.
@@ -462,9 +463,14 @@ class TestStructuralGrounding:
     """Agent-level tests for structural grounding and promote_participating."""
 
     def test_s1_fast_path_promotes(self):
-        """S1 in Phase 3 fast path (canonical) promotes to frame."""
+        """Phase 3 fast path promotes identity kline ({S:[S]}) to frame.
+
+        Despite the name, KLine(10, [10]) is identity (not canonical) since
+        commit 040bc0c and is promoted via the identity/S4 fast path. The test
+        name is retained for compatibility. (KB-340)
+        """
         a = KAgent(adapter=EventBus())
-        k = KLine(10, [10])  # canonical
+        k = KLine(10, [10])  # identity (self-referential: {S:[S]}), NOT canon since 040bc0c
         result = a.rationalise(k)
         assert result is True
         assert a.frame_size() >= 1
@@ -481,7 +487,7 @@ class TestStructuralGrounding:
         """After ratification, frame contains klines of mixed significance."""
         a = KAgent(adapter=EventBus())
         # Build a model with countersigned klines
-        a.rationalise(KLine(10, [10]))  # canonical → frame
+        a.rationalise(KLine(10, [10]))  # identity → frame
         a.rationalise(KLine(5, [10, 20]))  # may be S4 or route to candidate
         assert a.frame_size() >= 1
 
@@ -504,7 +510,7 @@ class TestCogitatorStructuralGrounding:
     def test_boundary_s1_structural_promotes(self):
         """Boundary S1 on structurally S1 kline → promotion."""
         a = KAgent(adapter=EventBus())
-        # Build model with canonical kline
+        # Build model with an identity kline ({S:[S]})
         c = KLine(10, [10])
         a.rationalise(c)
         # Query that fully matches
@@ -517,7 +523,7 @@ class TestCogitatorStructuralGrounding:
         """Countersignature discovery promotes all participating klines."""
         a = KAgent(adapter=EventBus())
         # Build countersigned pair
-        a.rationalise(KLine(10, [10]))  # canonical
+        a.rationalise(KLine(10, [10]))  # identity (self-referential since 040bc0c)
         a.rationalise(KLine(5, [10, 20]))  # contains 10
         a.rationalise(KLine(20, [5, 30]))  # contains 5
         # At least one kline should be in the frame
@@ -530,8 +536,8 @@ class TestCogitatorStructuralGrounding:
         a.events.subscribe(lambda e: events.append(e))
 
         # Build model with misfit-eligible klines
-        a.rationalise(KLine(0b100, [0b100]))  # canonical
-        a.rationalise(KLine(0b010, [0b010]))  # canonical
+        a.rationalise(KLine(0b100, [0b100]))  # identity (self-referential since 040bc0c)
+        a.rationalise(KLine(0b010, [0b010]))  # identity (self-referential since 040bc0c)
         # A misfit kline
         a.rationalise(KLine(0b110, [0b100]))  # underfitting: sig promises more
 
@@ -539,37 +545,20 @@ class TestCogitatorStructuralGrounding:
         assert len(events) >= 1
 
     def test_no_expansion_for_canonical(self):
-        """Canonical klines produce no expansion proposals."""
+        """Kline with no misfit produces no expansion proposals.
+
+        Note: KLine(10, [10]) is identity ({S:[S]}), not canonical, since
+        commit 040bc0c — the test name is retained for compatibility. (KB-340)
+        """
         from kalvin.misfit import classify_misfit
 
-        k = KLine(10, [10])  # canonical
+        k = KLine(10, [10])  # identity (self-referential since 040bc0c)
         nodes_sig = make_signature(k.nodes)
-        assert k.signature == nodes_sig  # canonical
+        # sig == OR(nodes) is necessary but NOT sufficient for canon — the kline
+        # is identity (self-referential), so is_canon() returns False since 040bc0c.
+        assert k.signature == nodes_sig
         underfit, overfit = classify_misfit(k)
         assert not underfit and not overfit
-
-
-# ── Test Fake ─────────────────────────────────────────────────────────
-
-
-class RecordingCogitationHandler:
-    """Test fake: records all cogitation callbacks for assertion."""
-
-    def __init__(self):
-        self.s1_calls: list[tuple[KLine, KLine]] = []
-        self.expansion_calls: list[tuple[KLine, KLine, int]] = []
-
-    def on_s1(self, query: KLine, candidate: KLine) -> None:
-        self.s1_calls.append((query, candidate))
-
-    def on_expansion(
-        self,
-        query: KLine,
-        proposal: KLine,
-        significance: int,
-        original_candidate: KLine | None = None,
-    ) -> None:
-        self.expansion_calls.append((query, proposal, significance))
 
 
 # ── Protocol Conformance Tests ────────────────────────────────────────
@@ -603,91 +592,6 @@ class TestCogitationHandlerProtocol:
         p = KLine(10, [3, 4])
         handler.on_expansion(q, p, 42)
         assert handler.expansion_calls == [(q, p, 42)]
-
-
-# ── Fake-Handler Integration Tests ────────────────────────────────────
-
-
-class TestCogitatorWithFakeHandler:
-    """Cogitator wired to RecordingCogitationHandler — proves the seam works."""
-
-    def test_fake_handler_receives_s1(self):
-        """Cogitator calls handler.on_s1 when expand yields an S1-classified result."""
-        m = Model()
-        # Build model with a canonical kline so expand yields a high-significance result
-        c = KLine(10, [10])  # canonical: sig == make_signature(nodes)
-        m.add_to_ltm(c)
-
-        recorder = RecordingCogitationHandler()
-        event_bus = EventBus()
-        cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder)
-
-        # Query fully matches candidate → S1 after expand
-        q = KLine(0, [10])
-        q.signature = make_signature([10])
-        m.add_to_frame(q)
-
-        cogitator.submit(WorkItem(q, c, "S2"))
-        cogitator.join(timeout=2.0)
-
-        assert len(recorder.s1_calls) >= 1
-        assert recorder.s1_calls[0][0] is q
-        assert recorder.s1_calls[0][1] is c
-
-    def test_fake_handler_receives_expansion(self):
-        """Cogitator calls handler.on_expansion when a misfit kline expands."""
-        m = Model()
-        # Build model with canonical klines that resolve nodes
-        k1 = KLine(0b100, [0b100])  # canonical
-        m.add_to_ltm(k1)
-        k2 = KLine(0b010, [0b010])  # canonical — resolves as a contributor
-        m.add_to_ltm(k2)
-        # A misfit kline — underfitting: sig=0b110 but nodes only give 0b100
-        k3 = KLine(0b110, [0b100])
-        m.add_to_ltm(k3)
-
-        recorder = RecordingCogitationHandler()
-        event_bus = EventBus()
-        cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder)
-
-        # Query with no overlapping nodes to k3 → S3 after expand,
-        # and k3 is misfit so propose_expansions triggers generate_expansions.
-        q = KLine(0, [0b010])
-        q.signature = make_signature([0b010])
-        m.add_to_frame(q)
-
-        cogitator.submit(WorkItem(q, k3, "S3"))
-        cogitator.join(timeout=2.0)
-
-        assert len(recorder.expansion_calls) >= 1
-
-    def test_cogitator_stops_on_s1(self):
-        """Cogitator._run_work_item breaks after finding S1 — no more handler calls.
-
-        Once S1 is discovered during expansion, the work item should stop
-        processing. No further on_s1 or on_expansion calls should happen
-        for that work item.
-        """
-        m = Model()
-        # Canonical kline that resolves via expand
-        c = KLine(10, [10])
-        m.add_to_ltm(c)
-
-        recorder = RecordingCogitationHandler()
-        event_bus = EventBus()
-        cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder)
-
-        q = KLine(0, [10])
-        q.signature = make_signature([10])
-        m.add_to_frame(q)
-
-        cogitator.submit(WorkItem(q, c, "S2"))
-        cogitator.join(timeout=2.0)
-
-        # S1 should be called exactly once (not multiple times)
-        assert len(recorder.s1_calls) == 1
-        # No expansion proposals should be generated after S1
-        assert len(recorder.expansion_calls) == 0
 
 
 # ── Countersign Tests ────────────────────────────────────────────────
@@ -787,8 +691,8 @@ class TestCascadeWriteMethods:
         """AGT-14: Self-grounded canonical kline calls model.add_to_ltm()."""
         m = Model()
         # Add resolved nodes so the query's non-literal nodes resolve
-        m.add_to_ltm(KLine(10, [10]))  # canonical
-        m.add_to_ltm(KLine(20, [20]))  # canonical
+        m.add_to_ltm(KLine(10, [10]))  # identity (self-referential since 040bc0c)
+        m.add_to_ltm(KLine(20, [20]))  # identity (self-referential since 040bc0c)
         a = KAgent(model=m, adapter=EventBus())
         # Query that is canonical and all non-literal nodes resolve
         # make_signature([10, 20]) = 10 | 20 = 30
