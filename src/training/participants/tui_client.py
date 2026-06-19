@@ -200,7 +200,7 @@ class TUIApp(App):
         self._role = role
         self._client = HarnessClient(harness_url, role)
         self._poll_task: asyncio.Task[None] | None = None
-        self._latest_ratify_request: Any = None
+        self._latest_ratify_proposal: Any = None
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -228,7 +228,12 @@ class TUIApp(App):
     async def _poll_harness_events(self) -> None:
         """Background task: poll ``client.receive()`` and push to EventLog.
 
-        Tracks the latest ratify_request message payload for the ratify command.
+        Tracks the latest ratify_request **proposal** — the canonical KLine
+        wire dict (``{"signature", "nodes"}``) extracted from the inbound
+        ``ratify_request`` message — for the ratify command. Only the proposal
+        is buffered (not the full ``{proposal, query, significance}``
+        envelope) so the emitted ``countersign`` frame carries the wire
+        contract's KLine shape (see ``specs/harness-server.md``).
         """
         event_log = self.query_one(EventLog)
         ratify_bar = self.query_one(RatifyBar)
@@ -240,8 +245,17 @@ class TUIApp(App):
                     event_log.add_event(frame)
                     action = frame.get("action")
                     if action == "ratify_request":
-                        self._latest_ratify_request = frame.get("message")
-                        ratify_bar.enable_ratify(frame["message"])
+                        # Buffer the canonical KLine wire dict
+                        # ({"signature", "nodes"}) straight from the inbound
+                        # frame's proposal, not the whole {proposal, query,
+                        # significance} envelope. The emitted countersign
+                        # frame must carry the wire contract's KLine shape
+                        # (harness-server.md); both the InputBar "ratify" path
+                        # and the RatifyBar button path (via enable_ratify)
+                        # use this value, so they stay in sync.
+                        proposal = frame.get("message", {}).get("proposal")
+                        self._latest_ratify_proposal = proposal
+                        ratify_bar.enable_ratify(proposal)
                 else:
                     await asyncio.sleep(0.05)
         except asyncio.CancelledError:
@@ -276,7 +290,7 @@ class TUIApp(App):
         by InputBar automatically after submission (HRNS-28).
         """
         command = parse_command(event.text)
-        for role, action, message in command.to_messages(self._latest_ratify_request):
+        for role, action, message in command.to_messages(self._latest_ratify_proposal):
             asyncio.create_task(self._client.send(role, action, message))
 
     def action_send_input(self) -> None:

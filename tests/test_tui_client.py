@@ -519,8 +519,8 @@ async def test_sends_countersign_on_ratify():
         async with app.run_test() as pilot:
             await stub.wait_for_frames(1)  # registration frame
 
-            # Enable ratify with event data
-            event_data = {"sig": 99, "nodes": [5, 10]}
+            # Enable ratify with event data (canonical KLine wire dict)
+            event_data = {"signature": 99, "nodes": [5, 10]}
             ratify_bar = app.query_one(RatifyBar)
             ratify_bar.enable_ratify(event_data)
 
@@ -533,7 +533,7 @@ async def test_sends_countersign_on_ratify():
             msg = stub.received_frames[1]
             assert msg["role"] == "trainee"
             assert msg["action"] == "countersign"
-            assert msg["message"] == {"sig": 99, "nodes": [5, 10]}
+            assert msg["message"] == {"signature": 99, "nodes": [5, 10]}
 
 
 async def test_input_bar_clears_after_send():
@@ -598,8 +598,9 @@ async def test_input_uses_command_parser_start():
 async def test_input_uses_command_parser_ratify():
     """HRNS-25a: typing "ratify" in InputBar sends countersign to trainee.
 
-    Requires a pending _latest_ratify_request on the TUIApp. The RatifyCommand
-    from the shared parser routes to trainee with action "countersign".
+    Requires a pending _latest_ratify_proposal (canonical KLine wire dict) on
+    the TUIApp. The RatifyCommand from the shared parser routes to trainee
+    with action "countersign".
     """
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)
@@ -607,9 +608,9 @@ async def test_input_uses_command_parser_ratify():
         async with app.run_test() as pilot:
             await stub.wait_for_frames(1)
 
-            # Set up a pending ratify request
-            proposal = {"sig": 42, "nodes": [1, 2, 3]}
-            app._latest_ratify_request = proposal
+            # Set up a pending ratify proposal (canonical KLine wire dict)
+            proposal = {"signature": 42, "nodes": [1, 2, 3]}
+            app._latest_ratify_proposal = proposal
             ratify_bar = app.query_one(RatifyBar)
             ratify_bar.enable_ratify(proposal)
 
@@ -625,33 +626,96 @@ async def test_input_uses_command_parser_ratify():
             msg = stub.received_frames[1]
             assert msg["role"] == "trainee"
             assert msg["action"] == "countersign"
-            assert msg["message"] == {"sig": 42, "nodes": [1, 2, 3]}
+            assert msg["message"] == {"signature": 42, "nodes": [1, 2, 3]}
 
 
-async def test_tracks_latest_ratify_request():
-    """Receiving a ratify_request frame sets _latest_ratify_request and enables RatifyBar."""
+async def test_tracks_latest_ratify_proposal():
+    """Receiving a ratify_request frame buffers only the KLine proposal wire dict.
+
+    The harness sends a ratify_request with the full
+    ``{proposal, query, significance}`` envelope. The participant must buffer
+    just the canonical proposal (``{"signature", "nodes"}``) and enable the
+    RatifyBar with that same proposal wire dict.
+    """
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)
 
         async with app.run_test():
             await stub.wait_for_frames(1)
 
-            # Send a ratify_request frame from the server
-            proposal = {"sig": 77, "nodes": [10, 20]}
+            # Send a properly shaped ratify_request frame (full envelope)
+            proposal = {"signature": 77, "nodes": [10, 20]}
             await stub.send_to_client(
                 {
                     "role": "trainer",
                     "action": "ratify_request",
-                    "message": proposal,
+                    "message": {
+                        "proposal": proposal,
+                        "query": "is this consistent?",
+                        "significance": "high",
+                    },
                 }
             )
 
             # Wait for event polling to pick it up
             await asyncio.sleep(0.5)
 
-            # Verify _latest_ratify_request is tracked
-            assert app._latest_ratify_request == proposal
+            # Verify only the KLine proposal wire dict is tracked — NOT the
+            # whole {proposal, query, significance} envelope
+            assert app._latest_ratify_proposal == proposal
 
-            # Verify RatifyBar is enabled with the proposal
+            # Verify RatifyBar is enabled with the proposal wire dict
             ratify_bar = app.query_one(RatifyBar)
             assert ratify_bar._selected_event_data == proposal
+
+
+async def test_ratify_request_to_countersign_wire_shape():
+    """Full round-trip regression: ratify_request → "ratify" → countersign wire dict.
+
+    The critical guard for the buffering fix: a properly shaped
+    ``ratify_request`` (full ``{proposal, query, significance}`` envelope)
+    followed by typing ``"ratify"`` in the InputBar must produce a
+    ``countersign`` frame whose message is the raw KLine wire dict — NOT the
+    ``{proposal, query, significance}`` envelope. Matches the wire contract
+    in ``specs/harness-server.md`` (countersign carries a KLine proposal).
+    """
+    async with StubHarness() as stub:
+        app = TUIApp(harness_url=stub.url)
+
+        async with app.run_test() as pilot:
+            await stub.wait_for_frames(1)  # registration frame
+
+            # Harness sends a properly shaped ratify_request (full envelope)
+            proposal = {"signature": 0xABCD, "nodes": [0x1234]}
+            await stub.send_to_client(
+                {
+                    "role": "supervisor",
+                    "action": "ratify_request",
+                    "message": {
+                        "proposal": proposal,
+                        "query": "consistent?",
+                        "significance": "high",
+                    },
+                }
+            )
+
+            # Wait for event polling to buffer the proposal
+            await asyncio.sleep(0.5)
+
+            # Type "ratify" in the InputBar and submit
+            input_field = app.query_one("#input-bar-field")
+            input_field.focus()
+            input_field.value = "ratify"
+            await pilot.press("enter")
+            await asyncio.sleep(0.2)
+
+            await stub.wait_for_frames(2, timeout=3.0)
+
+            # The countersign frame must carry the raw KLine wire dict, not
+            # the {proposal, query, significance} envelope.
+            msg = stub.received_frames[1]
+            assert msg == {
+                "role": "trainee",
+                "action": "countersign",
+                "message": proposal,
+            }

@@ -199,29 +199,45 @@ async def test_slack_renders_escalation():
 
 
 async def test_slack_renders_ratify_request():
-    """HRNS-18: SlackParticipant renders ``ratify_request`` with hint and stores proposal."""
+    """HRNS-18: SlackParticipant renders ``ratify_request`` with hint and stores proposal.
+
+    The harness sends a full ``{proposal, query, significance}`` envelope.
+    Slack rendering must still receive the **full** message (proving the
+    whole envelope is rendered), while only the canonical KLine proposal
+    wire dict is buffered for the ratify command.
+    """
     async with StubHarness() as stub:
         participant = await _make_participant(stub)
 
-        proposal = {"proposal": "MHALL = SVO"}
+        proposal = {"signature": 42, "nodes": [1, 2]}
+        message = {
+            "proposal": proposal,
+            "query": "is this consistent?",
+            "significance": "high",
+        }
         await stub.send_to_client(
             {
                 "role": "supervisor",
                 "action": "ratify_request",
-                "message": proposal,
+                "message": message,
             }
         )
         await asyncio.sleep(0.2)
 
-        # Should have posted to Slack with ratify hint
+        # Should have posted to Slack with ratify hint, rendering the FULL
+        # message envelope (not just the proposal).
         participant._slack_web_client.chat_postMessage.assert_called_once()
         call_args = participant._slack_web_client.chat_postMessage.call_args
         assert call_args.kwargs["channel"] == "C123"
-        assert "MHALL = SVO" in call_args.kwargs["text"]
+        # Full-envelope keys appear in the rendered text, proving the whole
+        # ratify_request message (not just the proposal) was rendered.
+        assert "signature" in call_args.kwargs["text"]
+        assert "query" in call_args.kwargs["text"]
+        assert "significance" in call_args.kwargs["text"]
         assert "ratify" in call_args.kwargs["text"]
 
-        # Should have stored the latest ratify request
-        assert participant._latest_ratify_request == proposal
+        # Should have buffered only the KLine proposal wire dict
+        assert participant._latest_ratify_proposal == proposal
 
         await participant.stop()
 
@@ -250,19 +266,66 @@ async def test_slack_forwards_human_input():
 
 
 async def test_slack_ratify_command_sends_countersign():
-    """HRNS-34: ``ratify`` command sends ``countersign`` to trainee role."""
+    """HRNS-34: ``ratify`` command sends ``countersign`` to trainee role.
+
+    The buffered ``_latest_ratify_proposal`` (canonical KLine wire dict) is
+    emitted verbatim as the countersign message.
+    """
     async with StubHarness() as stub:
         participant = await _make_participant(stub)
 
-        # Set a pending ratify request
-        proposal = {"proposal": "SVO → VCS"}
-        participant._latest_ratify_request = proposal
+        # Set a pending ratify proposal (canonical KLine wire dict)
+        proposal = {"signature": 42, "nodes": [1, 2, 3]}
+        participant._latest_ratify_proposal = proposal
 
         # Dispatch ratify command
         await participant._dispatch_command("ratify")
         await stub.wait_for_frames(2)
 
-        # Second frame should be countersign to trainee
+        # Second frame should be countersign to trainee carrying the wire dict
+        msg_frame = stub.received_frames[1]
+        assert msg_frame == {
+            "role": "trainee",
+            "action": "countersign",
+            "message": proposal,
+        }
+
+        await participant.stop()
+
+
+async def test_slack_ratify_request_to_countersign_wire_shape():
+    """Full round-trip regression: ratify_request → "ratify" → countersign wire dict.
+
+    The critical guard for the buffering fix: a properly shaped
+    ``ratify_request`` (full ``{proposal, query, significance}`` envelope)
+    followed by a ``"ratify"`` dispatch must produce a ``countersign`` frame
+    whose message is the raw KLine wire dict — NOT the
+    ``{proposal, query, significance}`` envelope. Matches the wire contract
+    in ``specs/harness-server.md`` (countersign carries a KLine proposal).
+    """
+    async with StubHarness() as stub:
+        participant = await _make_participant(stub)
+
+        proposal = {"signature": 0xBEEF, "nodes": [7]}
+        await stub.send_to_client(
+            {
+                "role": "supervisor",
+                "action": "ratify_request",
+                "message": {
+                    "proposal": proposal,
+                    "query": "consistent?",
+                    "significance": "high",
+                },
+            }
+        )
+        await asyncio.sleep(0.2)
+
+        # Dispatch the ratify command via the Slack command path
+        await participant._dispatch_command("ratify")
+        await stub.wait_for_frames(2)
+
+        # The countersign frame must carry the raw KLine wire dict, not the
+        # {proposal, query, significance} envelope.
         msg_frame = stub.received_frames[1]
         assert msg_frame == {
             "role": "trainee",
@@ -279,7 +342,7 @@ async def test_slack_ratify_without_request_sends_nothing():
         participant = await _make_participant(stub)
 
         # No ratify request pending (default None)
-        assert participant._latest_ratify_request is None
+        assert participant._latest_ratify_proposal is None
 
         # Dispatch ratify command — should produce no messages
         await participant._dispatch_command("ratify")

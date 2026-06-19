@@ -63,7 +63,7 @@ class SlackParticipant:
         self._receive_task: asyncio.Task[None] | None = None
         self._slack_task: asyncio.Task[None] | None = None
         self._running = False
-        self._latest_ratify_request: Any = None
+        self._latest_ratify_proposal: Any = None
 
         # Lazy imports — only needed when actually talking to Slack.
         self._slack_web_client: Any = None
@@ -124,9 +124,18 @@ class SlackParticipant:
                 message = frame.get("message")
 
                 if action in ("progress", "event", "escalation", "ratify_request"):
+                    # _render_to_slack still receives the FULL message dict
+                    # (for Slack rendering) — only the proposal extracted for
+                    # the ratify command is buffered. The countersign frame
+                    # must carry the canonical KLine wire dict
+                    # ({"signature", "nodes"}), not the whole
+                    # {proposal, query, significance} envelope
+                    # (see specs/harness-server.md).
                     await self._render_to_slack(message, action)
                     if action == "ratify_request":
-                        self._latest_ratify_request = message
+                        self._latest_ratify_proposal = (
+                            message.get("proposal") if isinstance(message, dict) else None
+                        )
                 else:
                     logger.debug("Ignoring action %r from harness", action)
 
@@ -226,7 +235,7 @@ class SlackParticipant:
             return
 
         command = parse_command(text)
-        messages = command.to_messages(self._latest_ratify_request)
+        messages = command.to_messages(self._latest_ratify_proposal)
 
         for target_role, action, payload in messages:
             frame = json.dumps(
