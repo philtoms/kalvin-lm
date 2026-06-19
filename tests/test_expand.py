@@ -323,7 +323,7 @@ class TestExpand:
         signature, preventing S3 connotation bridging for the same hop.
         """
         m = make_model()
-        m.add_to_frame(KLine(0b11100, [0b11100]))  # canonical (28)
+        m.add_to_frame(KLine(0b11100, [0b11100]))  # identity (self-referential) (28)
         m.add_to_frame(KLine(0b10100, [0b11100]))  # non-canon: sig=20, make_sig=28
         m.add_to_frame(KLine(0b01100, [0b11100]))  # non-canon: sig=12, make_sig=28
 

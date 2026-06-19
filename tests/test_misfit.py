@@ -43,9 +43,9 @@ class TestClassifyMisfit:
 class TestGenerateExpansions:
     def _make_model_with_klines(self) -> Model:
         m = Model()
-        # Canonical klines that can serve as contributors
-        m.add_to_frame(KLine(0b010, [0b010]))  # canonical
-        m.add_to_frame(KLine(0b001, [0b001]))  # canonical
+        # Identity (self-referential) klines that serve as contributors by signature
+        m.add_to_frame(KLine(0b010, [0b010]))  # identity (self-referential: {S:[S]})
+        m.add_to_frame(KLine(0b001, [0b001]))  # identity (self-referential: {S:[S]})
         return m
 
     def test_underfit_expansion_adds_nodes(self):
@@ -130,6 +130,6 @@ class TestGenerateExpansions:
     def test_no_gap_no_expansion(self):
         """No gap and no excess → no expansion proposals."""
         m = Model()
-        k = KLine(10, [10])  # canonical
+        k = KLine(10, [10])  # identity (self-referential: {S:[S]})
         results = list(generate_expansions(m, k, 0, 0))
         assert len(results) == 0
