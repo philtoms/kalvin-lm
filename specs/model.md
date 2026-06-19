@@ -584,14 +584,14 @@ The implementation algorithm and pseudocode are in
 
 #### Per-node contributions
 
-| Node state                                               | Contribution                   | Target component       |
-| -------------------------------------------------------- | ------------------------------ | ---------------------- |
-| Mismatched, chain reaches opposing mismatch set at hop N | +N to total_distance           | Accumulated directly   |
-| Mismatched, chain reaches signature with bitwise overlap | yields QC, +UNRESOLVED_PENALTY | S2 signifies candidate |
-| Mismatched, chain never reaches opposing mismatch set    | +UNRESOLVED_PENALTY            | Accumulated directly   |
-| Mismatched candidate, chain bridges via connotation      | `S2_S3_DISTANCE + hops`        | S3 linear (always)     |
-| Matched + structurally grounded (is_s1)                  | 0                              | Neutral                |
-| Matched + ungrounded                                     | +1                             | Accumulated directly   |
+| Node state                                               | Contribution            | Target component       |
+| -------------------------------------------------------- | ----------------------- | ---------------------- |
+| Mismatched, chain reaches opposing mismatch set at hop N | +N to total_distance    | Accumulated directly   |
+| Mismatched, chain reaches signature with bitwise overlap | yields QC, +MAX_HOP     | S2 signifies candidate |
+| Mismatched, chain never reaches opposing mismatch set    | +MAX_HOP                | Accumulated directly   |
+| Mismatched candidate, chain bridges via connotation      | `S2_S3_DISTANCE + hops` | S3 linear (always)     |
+| Matched + structurally grounded (is_s1)                  | 0                       | Neutral                |
+| Matched + ungrounded                                     | +1                      | Accumulated directly   |
 
 ### Is Countersigned
 
@@ -642,11 +642,8 @@ defines the semantics of the significance computation.
 ### Constants
 
 ```python
-D_MAX             = 0xFFFF_FFFF_FFFF_FFFF  # maximum distance and maximum significance
-MASK64            = 0xFFFF_FFFF_FFFF_FFFF  # 64-bit mask for bitwise inversion
-UNRESOLVED_PENALTY = 10                    # per-node distance penalty for a mismatched node
-                                          # that does not resolve to an exact opposing match;
-                                          # distinct from MAX_HOP (edge_hops() chain bound)
+D_MAX  = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance and maximum significance
+MASK64 = 0xFFFF_FFFF_FFFF_FFFF   # 64-bit mask for bitwise inversion
 ```
 
 ### Significance Inversion
@@ -671,10 +668,10 @@ with a three-tier priority:
    in the opposite mismatch set. Adds hop count directly.
 2. **Signifies match (S2 loose):** Node resolves to a signature sharing bits
    with the node value. Yields a `QueryCandidate`. Node still contributes
-   `UNRESOLVED_PENALTY` to terminal distance. Short-circuits before S3 connotation.
+   `MAX_HOP` to terminal distance. Short-circuits before S3 connotation.
 3. **Connotation resolution (S3):** Node resolves to a signature found in
    `s3_connotations`. Linear distance `S2_S3_DISTANCE + hop_count`.
-4. **Unresolved:** Adds `UNRESOLVED_PENALTY`.
+4. **Unresolved:** Adds `MAX_HOP` (default 100).
 
 Matched-but-ungrounded nodes add 1 each.
 
@@ -815,7 +812,7 @@ else       → S4
 | MOD-37 | `expand` all-match ungrounded: significance reflects ungrounded count           | —                     |
 | MOD-38 | `expand` all-mismatched unresolvable: low significance                          | —                     |
 | MOD-39 | `expand` with edge hops: connotation yields + terminal                          | —                     |
-| MOD-40 | `expand` S2 signifies: loose match yields QC, terminal still UNRESOLVED_PENALTY | —                     |
+| MOD-40 | `expand` S2 signifies: loose match yields QC, terminal still MAX_HOP  | —                     |
 | MOD-41 | `expand` S2 before S3: signifies short-circuits connotation recording           | —                     |
 | MOD-42 | `expand` S3 route: S3 bias ensures S3 distances exceed S2                       | —                     |
 | MOD-43 | `expand` connotation: indirect path → S3 connotation yield + terminal           | —                     |

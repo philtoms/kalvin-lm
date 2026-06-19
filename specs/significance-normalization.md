@@ -18,9 +18,6 @@ normalization is a display/analysis projection of raw significance.
 - S1|S2 boundary: distance = 0.
 - S2|S3 boundary: distance = `S2_S3_DISTANCE` (= 100).
 - S3|S4 boundary: raw significance = 0 (distance = `D_MAX`).
-- The per-node unresolved penalty (`UNRESOLVED_PENALTY`) is decoupled
-  from `S2_S3_DISTANCE`; it affects how many unresolved nodes a pair can absorb
-  before crossing into S3, but it does **not** alter any band boundary.
 
 ### Agent (@agent spec)
 

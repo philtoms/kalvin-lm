@@ -6,8 +6,8 @@ from kalvin.expand import (
     _S3_BIAS,
     D_MAX,
     MASK64,
+    MAX_HOP,
     S2_S3_DISTANCE,
-    UNRESOLVED_PENALTY,
     boundaries,
     classify,
     edge_hops,
@@ -15,7 +15,6 @@ from kalvin.expand import (
     is_canon,
     is_countersigned,
     is_s1,
-    normalise_significance,
     promote_participating,
     propose_expansions,
 )
@@ -114,13 +113,13 @@ class TestExpand:
         assert results[-1].significance == (~3) & MASK64
 
     def test_expand_no_resolution(self):
-        """Mismatched nodes with no model entries → UNRESOLVED_PENALTY each."""
+        """Mismatched nodes with no model entries → MAX_HOP each."""
         m = make_model()
         q = KLine(5, [1, 2, 3])
         c = KLine(6, [1, 4, 5])
         # matched: {1}, mismatched_q: {2,3}, mismatched_c: {4,5}
-        # No chains → all UNRESOLVED_PENALTY, ungrounded matched +1 → distance=41
-        expected_distance = 4 * UNRESOLVED_PENALTY + 1
+        # No chains → all MAX_HOP, ungrounded matched +1 → distance=401
+        expected_distance = 401
         results = list(expand(m, q, c))
         assert results[-1].significance == (~expected_distance) & MASK64
 
@@ -131,8 +130,8 @@ class TestExpand:
         m.add_to_frame(KLine(0b110, [0b100, 0b010]))
         q = KLine(5, [0b110, 2])
         c = KLine(6, [0b110, 3])
-        # distance = 2 * UNRESOLVED_PENALTY (grounded match, 2 unresolved nodes)
-        expected_distance = 2 * UNRESOLVED_PENALTY
+        # distance = 2 * MAX_HOP (grounded match, 2 unresolved nodes)
+        expected_distance = 200
         results = list(expand(m, q, c))
         assert results[-1].significance == (~expected_distance) & MASK64
 
@@ -146,10 +145,10 @@ class TestExpand:
 
         q = KLine(100, [5, 2])  # mismatched_q: {5, 2}
         c = KLine(200, [10, 3])  # mismatched_c: {10, 3}
-        # distance = 1 (exact hop) + 3 * UNRESOLVED_PENALTY (2 unresolved + 1 signifies)
+        # distance=301 (1 hop + 3 × MAX_HOP)
         results = list(expand(m, q, c))
         assert len(results) == 6
-        assert results[-1].significance == (~(1 + 3 * UNRESOLVED_PENALTY)) & MASK64
+        assert results[-1].significance == (~301) & MASK64
 
         # S2 signifies candidates: c-node 10 reaches sig 0b110 (10 & 0b110 ≠ 0)
         # at distance 2 in both expand(5,10) and top-level
@@ -166,11 +165,10 @@ class TestExpand:
 
         q = KLine(100, [5, 20])  # mismatched_q: {5, 20}
         c = KLine(200, [10, 30])  # mismatched_c: {10, 30}
-        # distance = 2 (two exact hops) + 2 * UNRESOLVED_PENALTY (2 unresolved);
-        # 2 connotations + terminal
+        # distance=202, 2 connotations + terminal
         results = list(expand(m, q, c))
         assert len(results) == 3
-        assert results[-1].significance == (~(2 + 2 * UNRESOLVED_PENALTY)) & MASK64
+        assert results[-1].significance == (~202) & MASK64
 
     def test_expand_all_matched_grounded(self):
         """All nodes match and all resolve to S1 → no penalty → max significance."""
@@ -220,10 +218,9 @@ class TestExpand:
 
         q = KLine(100, [5, 2])  # mismatched_q: {5, 2}
         c = KLine(200, [10, 3])  # mismatched_c: {10, 3}
-        # distance = 1 + 3 * UNRESOLVED_PENALTY (q-node 5 reaches c-node 10 at
-        # hop 1, the rest are UNRESOLVED_PENALTY)
+        # distance=301 (q-node 5 reaches c-node 10 at hop 1, rest MAX_HOP)
         results = list(expand(m, q, c))
-        assert results[-1].significance == (~(1 + 3 * UNRESOLVED_PENALTY)) & MASK64
+        assert results[-1].significance == (~301) & MASK64
 
     def test_expand_connotation_bridging(self):
         """Connotation bridging: indirect path through intermediate signature.
@@ -250,7 +247,7 @@ class TestExpand:
         # Connotation linear distance = S2_S3_DISTANCE + 2 = 102. The recursive
         # expand({2:[8]}, {8:[8]}) has a matched node 8 that is identity (not
         # S1), adding +1 ungrounded penalty → 103.
-        # Terminal distance = UNRESOLVED_PENALTY (q-node 4 unresolved at terminal level)
+        # Terminal distance = MAX_HOP = 100 (q-node 4 unresolved at terminal level)
 
         results = list(expand(m, q, c))
         assert len(results) == 2
@@ -262,25 +259,25 @@ class TestExpand:
         connotation_distance = S2_S3_DISTANCE + 2 + 1  # 102 linear + 1 ungrounded
         assert connotation.significance == (~connotation_distance) & MASK64
 
-        # Terminal yield: distance = UNRESOLVED_PENALTY (unresolved q-node 4)
+        # Terminal yield: distance = 100 (MAX_HOP for unresolved q-node)
         terminal = results[1]
         assert terminal.query is q
         assert terminal.candidate is c
-        assert terminal.significance == (~UNRESOLVED_PENALTY) & MASK64
+        assert terminal.significance == (~100) & MASK64
 
         # Terminal has higher significance than connotation (closer match)
         assert terminal.significance > connotation.significance
 
-        # Verify S3 distance exceeds S2: connotation (103) > terminal (UNRESOLVED_PENALTY)
-        assert connotation_distance > UNRESOLVED_PENALTY  # S3 linear > S2 raw
+        # Verify S3 distance exceeds S2: connotation (102) > terminal (100)
+        assert connotation_distance > 100  # S3 linear > S2 raw
 
     def test_expand_signifies_cogitation(self):
         """S2 signifies loose match yields additional QueryCandidates.
 
         When a mismatched node's edge hop reaches a signature that shares bits
         (signifies) but isn't an exact match, a QueryCandidate is yielded for
-        cogitation. The mismatched node still contributes UNRESOLVED_PENALTY to
-        the terminal distance (signifies doesn't resolve the mismatch).
+        cogitation. The mismatched node still contributes MAX_HOP to the
+        terminal distance (signifies doesn't resolve the mismatch).
         """
         m = make_model()
         m.add_to_frame(KLine(30, [30]))  # identity — chain terminator
@@ -299,9 +296,9 @@ class TestExpand:
         #   hop 1: match_sig=20 not in mismatched_q, signifies(10,20)=False
         #   hop 2: match_sig=30 not in mismatched_q, signifies(10,30)=True
         #   → yields QueryCandidate(find(10), find(30), (~2) & MASK64)
-        #   hop_distance stays UNRESOLVED_PENALTY
+        #   hop_distance stays MAX_HOP
         #
-        # Terminal: distance = 1 (exact match hop) + UNRESOLVED_PENALTY (c-node)
+        # Terminal: distance = 1 (exact match hop) + MAX_HOP (c-node unresolved)
 
         results = list(expand(m, q, c))
 
@@ -313,8 +310,8 @@ class TestExpand:
         sig_cand = signifies_candidates[0]
         assert sig_cand.significance == (~2) & MASK64
 
-        # Terminal: c-node 10 contributes UNRESOLVED_PENALTY (signifies doesn't resolve)
-        assert results[-1].significance == (~(1 + UNRESOLVED_PENALTY)) & MASK64
+        # Terminal: c-node 10 contributes MAX_HOP (signifies doesn't resolve)
+        assert results[-1].significance == (~101) & MASK64
 
     def test_expand_signifies_before_s3(self):
         """Signifies (S2) takes precedence over s3_connotations (S3).
@@ -347,8 +344,8 @@ class TestExpand:
         assert results[1].candidate.signature == 0b11100
         assert results[1].significance == (~1) & MASK64
 
-        # Terminal: both mismatched nodes unresolved (2 × UNRESOLVED_PENALTY)
-        assert results[-1].significance == (~(2 * UNRESOLVED_PENALTY)) & MASK64
+        # Terminal: both mismatched nodes unresolved (2 × MAX_HOP)
+        assert results[-1].significance == (~(2 * MAX_HOP)) & MASK64
 
     def test_expand_significance_in_range(self):
         """Significance is always in valid uint64 range."""
@@ -552,7 +549,7 @@ class TestBoundaries:
             assert 0 <= val <= MASK64
 
     def test_s23_sits_between_max_hop_and_min_s3(self):
-        """S2|S3 boundary (S2_S3_DISTANCE) sits below the linear S3 min distance.
+        """S2|S3 boundary sits between MAX_HOP and linear S3 min distance.
 
         S2_S3_DISTANCE (100) < S2_S3_DISTANCE + 1 (101), ensuring S2 and S3
         significance tiers are cleanly separated with linear S3 distance.
@@ -603,73 +600,6 @@ class TestClassify:
         """
         s12, s23, s34 = bounds
         assert classify(0, s12, s23, s34) == "S3"
-
-
-class TestS2Gradient:
-    """Regression guard for the S2/S3 gradient collapse.
-
-    Previously, MAX_HOP doubled as the per-node penalty, so any non-S1
-    candidate with even one unresolved mismatched node landed at distance
-    >= 2 * MAX_HOP (>= S2_S3_DISTANCE) and collapsed to S3; the S2 body
-    (distance 1..100) was nearly invisible. Decoupling the per-node penalty
-    into UNRESOLVED_PENALTY (<< S2_S3_DISTANCE) reopens the gradient: a
-    handful of unresolved nodes spread across S2 before spilling into S3.
-
-    These tests fail against the pre-fix MAX_HOP-as-penalty binary.
-    """
-
-    def test_unresolved_nodes_spread_across_s2_then_spill_to_s3(self):
-        """Symmetric disjoint pairs: increasing S2 distances, then S3.
-
-        With an empty model every mismatched node is fully unresolved, so a
-        symmetric disjoint pair of n nodes each side accrues
-        2 * n * UNRESOLVED_PENALTY at the terminal. Small n stays in S2;
-        larger n crosses into S3, proving the S2|S3 boundary still exists.
-        """
-        m = Model()  # empty: no chains resolve -> all mismatched nodes unresolved
-        s12, s23, s34 = boundaries()
-
-        distances: list[int] = []
-        bands: list[str] = []
-        for n in range(1, 8):
-            q = KLine(1, list(range(1, n + 1)))
-            c = KLine(2, list(range(1000, 1000 + n)))
-            terminal = list(expand(m, q, c))[-1]
-            dist = (~terminal.significance) & MASK64
-            distances.append(dist)
-            bands.append(classify(terminal.significance, s12, s23, s34))
-
-        # Expected exact terminal distances: 2 * n * UNRESOLVED_PENALTY.
-        for n, dist in enumerate(distances, start=1):
-            assert dist == 2 * n * UNRESOLVED_PENALTY
-
-        # Distances are strictly increasing (a real gradient, not a collapse).
-        assert distances == sorted(distances)
-        assert len(set(distances)) == len(distances)
-
-        # Small counts land in S2 (distance <= S2_S3_DISTANCE); here n=1..5
-        # -> 20, 40, 60, 80, 100. Each yields a distinct normalised value.
-        s2 = [(d, b) for d, b in zip(distances, bands) if b == "S2"]
-        assert len(s2) >= 1
-        assert all(d <= S2_S3_DISTANCE for d, _ in s2)
-        s2_norms = {normalise_significance((~d) & MASK64) for d, _ in s2}
-        assert len(s2_norms) == len(s2)
-
-        # At least one larger count crosses into S3 -> the boundary still
-        # exists and the gradient is bounded, not unbounded.
-        assert "S3" in bands
-
-    def test_penalty_is_well_below_boundary(self):
-        """UNRESOLVED_PENALTY < S2_S3_DISTANCE is what reopens the gradient.
-
-        A per-node penalty equal to S2_S3_DISTANCE (the pre-fix MAX_HOP) would
-        force every non-zero unresolved count into S3 immediately: even one
-        symmetric unresolved pair reaches 2 * S2_S3_DISTANCE, already past the
-        S2|S3 boundary. This asserts the decoupling invariant the regression
-        relies on.
-        """
-        assert UNRESOLVED_PENALTY < S2_S3_DISTANCE
-        assert 2 * S2_S3_DISTANCE > S2_S3_DISTANCE
 
 
 class TestProposeExpansions:

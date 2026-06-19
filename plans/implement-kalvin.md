@@ -160,10 +160,8 @@ S4_VALUE = 0x0000_0000_0000_0000     # Minimum significance
 
 # Model
 STM_BOUND_DEFAULT = 256              # STM capacity
-MAX_HOP = 100                        # S2 edge hop chain depth (edge_hops() traversal bound)
-UNRESOLVED_PENALTY = 10              # Per-node penalty for a non-resolving mismatched node;
-                                     # distinct from MAX_HOP; kept below S2_S3_DISTANCE so
-                                     # unresolved nodes spread across S2 before spilling to S3
+MAX_HOP = 100                        # S2 edge hop chain depth (edge_hops() traversal bound);
+                                     # also the per-node penalty for a non-resolving mismatched node
 COGITATE_TIMEOUT = 2.0               # Seconds before "done" event
 ```
 
