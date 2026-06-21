@@ -176,7 +176,7 @@ def main():
 
     # Test encoding/decoding
     test_text = "Hello, world!"
-    encoded = tokenizer.encode(test_text)
+    encoded = tokenizer.encode_bpe(test_text)
     decoded = tokenizer.decode(encoded)
     print(f"\nTest: '{test_text}' -> {encoded} -> '{decoded}'")
 

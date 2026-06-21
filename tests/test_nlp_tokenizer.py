@@ -5,13 +5,34 @@ Uses real BPE tokenizer and grammar dictionary from data/tokenizer/.
 
 from __future__ import annotations
 
+import pytest
+
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
-from tests.conftest import requires_nlp_data
+from tests.conftest import requires_tokenizer_data
 
 # The entire module exercises the real BPE + grammar data assets; skip it
 # cleanly when those assets are absent on a fresh clone.
-pytestmark = requires_nlp_data
+pytestmark = requires_tokenizer_data
+
+
+# ── Module-local NLP fixtures ────────────────────────────────────────────
+#
+# These return the NLP specialisation (NLPTokenizer). The shared conftest
+# fixture provides the production base Tokenizer; this module is the one
+# place that specifically exercises the NLP interpretation.
+
+
+@pytest.fixture(scope="module")
+def nlp_tokenizer() -> NLPTokenizer:
+    """Load an :class:`NLPTokenizer` from the standard data files."""
+    return NLPTokenizer.from_files()
+
+
+@pytest.fixture(scope="module")
+def nlp(nlp_tokenizer: NLPTokenizer) -> NLPTokenizer:
+    """Short alias for :func:`nlp_tokenizer`."""
+    return nlp_tokenizer
 
 
 # ── Encode tests ──────────────────────────────────────────────────────────
@@ -91,9 +112,9 @@ class TestUnknownFallback:
         """BPE tokens not in grammar dict get UNKNOWN_NLP_TYPE (65536)."""
         from kalvin.tokenizer import Tokenizer
 
-        # Use an empty grammar dict — all tokens should be unknown
-        bpe = Tokenizer.from_directory()
-        nlp = NLPTokenizer(bpe, {})
+        # Use an empty type dictionary — all tokens should be unknown.
+        bpe = Tokenizer.from_directory()._bpe
+        nlp = NLPTokenizer(bpe=bpe, types={})
 
         nodes = nlp.encode("Tea")
         assert len(nodes) >= 1

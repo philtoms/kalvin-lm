@@ -915,7 +915,7 @@ def analyze_texts(
             )
 
             # Add or update word in grammar dictionary (keyed by first BPE token)
-            bpe_tokens = tokenizer.encode(token.text)
+            bpe_tokens = tokenizer.encode_bpe(token.text)
             bpe_key = bpe_tokens[0]
             if bpe_key not in analysis.grammar:
                 analysis.grammar[bpe_key] = {

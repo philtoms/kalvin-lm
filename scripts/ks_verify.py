@@ -258,9 +258,9 @@ def load_tokenizer(name: str):
     NLP is the sole production tokenizer; ``name`` must be ``"nlp"``.
     """
     if name == "nlp":
-        from kalvin.nlp_tokenizer import NLPTokenizer
+        from kalvin.tokenizer import Tokenizer
 
-        return NLPTokenizer.from_files(), "NLP"
+        return Tokenizer.from_files(), "kalvin"
     else:
         raise ValueError(f"Unknown tokenizer: {name}")
 

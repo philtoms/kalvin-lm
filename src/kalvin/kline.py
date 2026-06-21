@@ -32,17 +32,15 @@ class KDbg:
             CANONIZED, IDENTITY).
         label: Origin word or operator context.
         decoded: Tokenizer decode of the signature (actual subword text).
-        pos: Part-of-speech tag (e.g. "PROPN", "VERB", "NOUN").
-        dep: Dependency relation (e.g. "appos", "nsubj").
-        morph: Morphological features (e.g. "Number=Sing").
+        type_info: Short debug summary of the node's type-dictionary entry
+            (e.g. NLP POS/DEP/MORPH labels when the dictionary was generated
+            by NLP tooling). Opaque to kalvin.
     """
 
     op: str = "IDENTITY"
     label: str = ""
     decoded: str = ""
-    pos: str = ""
-    dep: str = ""
-    morph: str = ""
+    type_info: str = ""
 
     def __bool__(self) -> bool:
         """Truthy when any field is non-empty."""
@@ -50,9 +48,7 @@ class KDbg:
             self.op != "IDENTITY"
             or self.label
             or self.decoded
-            or self.pos
-            or self.dep
-            or self.morph
+            or self.type_info
         )
 
     def __repr__(self) -> str:
@@ -63,12 +59,8 @@ class KDbg:
             parts.append(self.label)
         if self.decoded and self.decoded != self.label:
             parts.append(f"decoded={self.decoded!r}")
-        if self.pos:
-            parts.append(f"pos={self.pos}")
-        if self.dep:
-            parts.append(f"dep={self.dep}")
-        if self.morph:
-            parts.append(f"morph={self.morph}")
+        if self.type_info:
+            parts.append(f"type_info={self.type_info!r}")
         return f"KDbg({', '.join(parts)})" if parts else "KDbg()"
 
 

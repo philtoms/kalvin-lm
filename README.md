@@ -79,7 +79,7 @@ uv sync
 uv run pytest
 ```
 
-> **NLP tokenizer tests** require BPE + grammar data assets that live under
+> **Tokenizer tests** require BPE + grammar data assets that live under
 > the gitignored `data/tokenizer/` directory (binary assets, not checked in).
 > These tests **gracefully skip** when the assets are absent, so a fresh clone
 > reports a clean pass with skips rather than errors. To run them, generate the
@@ -172,10 +172,10 @@ gates** — a lint or format failure will fail the build.
 ### CI
 
 GitHub Actions runs the full test suite on every push and pull request
-(`.github/workflows/ci.yml`). NLP-tokenizer tests are gated behind a
-`requires_nlp_data` marker so they skip cleanly on a fresh clone; CI
+(`.github/workflows/ci.yml`). Tokenizer tests are gated behind a
+`requires_tokenizer_data` marker so they skip cleanly on a fresh clone; CI
 provisions the `data/tokenizer/` assets so those tests **run instead of
-skip**, giving full NLP coverage.
+skip**, giving full coverage.
 
 The assets are restored from a cache keyed on the rebuild pipeline's source
 files (`scripts/rebuild-tokenizer-data.sh`, `dev/nlp/*.py`) and a

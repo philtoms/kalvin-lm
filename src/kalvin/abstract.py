@@ -2,7 +2,8 @@
 
 Provides interface contracts for tokenizers.
 
-KTokenizer has two real adapters (Tokenizer, NLPTokenizer) — a genuine seam.
+KTokenizer has one production adapter (Tokenizer); subclasses may
+specialise the type-word interpretation.
 """
 
 from __future__ import annotations
@@ -28,8 +29,10 @@ class KTokenizer(ABC):
     A KTokenizer converts between text and nodes. All strings go through
     the tokenizer — no branching between encoding paths.
 
-    Two adapters: Tokenizer (BPE) is the subword base; NLPTokenizer is the
-    production tokenizer built on it (NLP type bits packed over a BPE token id).
+    The production adapter is :class:`kalvin.tokenizer.Tokenizer`, which
+    packs a type word into the upper 32 bits of each node and a BPE token
+    ID into the lower 32. Subclasses may specialise the type word's
+    interpretation.
     """
 
     @property
@@ -48,10 +51,18 @@ class KTokenizer(ABC):
         """Decode node IDs back to a string."""
         ...
 
-    def lookup_grammar(self, token_id: int) -> dict | None:
-        """Look up NLP grammar info for a token ID.
+    def lookup_type(self, token_id: int) -> int | None:
+        """Return the type word for a BPE token ID, or None if absent.
 
-        Returns None by default. NLPTokenizer overrides to return
-        the grammar dict entry for a BPE token ID.
+        The type word occupies the upper 32 bits of a node. Its meaning is
+        opaque to kalvin (see the NLP specialisation for one interpretation).
+        """
+        return None
+
+    def lookup_type_entry(self, token_id: int) -> dict | None:
+        """Return the raw type-dictionary entry for a BPE token ID, or None.
+
+        The entry carries at least a ``type_word`` key; any further keys are
+        opaque metadata supplied by whatever generated the dictionary.
         """
         return None

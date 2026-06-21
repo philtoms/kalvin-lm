@@ -481,7 +481,7 @@ def rekey_from_bpe(
             continue
 
         count = entry.get("count", 0)
-        bpe_ids = bpe_tokenizer.encode(text)
+        bpe_ids = bpe_tokenizer.encode_bpe(text)
 
         if len(bpe_ids) == 1:
             bpe_id = bpe_ids[0]

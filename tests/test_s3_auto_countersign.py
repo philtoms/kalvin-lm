@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
-from tests.conftest import requires_nlp_data
+from tests.conftest import requires_tokenizer_data
 from training.harness.bus import MessageBus
 from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from training.harness.message import Message
@@ -170,7 +170,7 @@ class TestHandleReactiveNotCalledOnAutoCountersign:
 # ── HRNS-38 & HRNS-39: Trainer-level ratify_request conditional ──────────
 
 
-@requires_nlp_data
+@requires_tokenizer_data
 class TestTrainerRatifySuppression:
     """HRNS-38, HRNS-39: Trainer suppresses ratify_request on auto-countersign."""
 
@@ -240,7 +240,7 @@ class TestTrainerRatifySuppression:
 # ── HRNS-40: Event relay regardless of auto-countersign ─────────────────
 
 
-@requires_nlp_data
+@requires_tokenizer_data
 class TestEventRelayRegardless:
     """HRNS-40: Event relay sent to supervisor regardless of auto-countersign."""
 

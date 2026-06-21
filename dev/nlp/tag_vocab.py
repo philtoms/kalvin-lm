@@ -17,7 +17,8 @@ The matching algorithm works **from vocab to grammar**:
 4. **Special-token rules**: Deterministic annotation for whitespace, punctuation,
    digits, and control characters.
 5. **Unknown fallback**: Tokens that match none of the above get ``POS_X``
-   (nlp_type32 = 65536).
+   (nlp_type32 = 65536, written as the generic ``type_word`` key so the
+   kalvin base tokenizer can read the output without any NLP coupling).
 
 Usage:
     # Tag a trained tokenizer's vocab
@@ -73,7 +74,7 @@ def load_bpe_vocab(tokenizer: Tokenizer) -> dict[int, str]:
         Dict mapping token ID (rank) to decoded string.
     """
     # Access the underlying rustbpe tokenizer
-    inner = tokenizer._tokenizer
+    inner = tokenizer._bpe
     if hasattr(inner, "get_mergeable_ranks"):
         ranks = inner.get_mergeable_ranks()
         vocab = {}
@@ -150,7 +151,7 @@ class GrammarIndex:
             if not text.strip():
                 continue
             try:
-                bpe_ids = bpe_tokenizer.encode(text)
+                bpe_ids = bpe_tokenizer.encode_bpe(text)
             except Exception:
                 continue
             if len(bpe_ids) <= 1:
@@ -427,7 +428,7 @@ def _resolve_token(
             "count": 0,
             "tokens": [token_id],
             "frequency_pct": 0.0,
-            "nlp_type32": compute_nlp_type32(pos, dep, morph),
+            "type_word": compute_nlp_type32(pos, dep, morph),
         }
 
     # 5. Unknown fallback — POS_X
@@ -441,7 +442,7 @@ def _resolve_token(
         "count": 0,
         "tokens": [token_id],
         "frequency_pct": 0.0,
-        "nlp_type32": UNKNOWN_NLP_TYPE,
+        "type_word": UNKNOWN_NLP_TYPE,
     }
 
 
@@ -456,7 +457,7 @@ def _make_entry(token_id: int, token_str: str, parent: dict) -> dict:
         "count": 0,
         "tokens": [token_id],
         "frequency_pct": 0.0,
-        "nlp_type32": parent.get("nlp_type32", UNKNOWN_NLP_TYPE),
+        "type_word": parent.get("nlp_type32", UNKNOWN_NLP_TYPE),
     }
 
 

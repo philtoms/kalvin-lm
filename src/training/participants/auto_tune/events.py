@@ -14,13 +14,13 @@ from functools import lru_cache
 
 from kalvin.expand import boundaries, classify, normalise_significance
 from kalvin.kline import KLine, kline_display
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.tokenizer import Tokenizer
 
 
 @lru_cache(maxsize=1)
-def _display_tokenizer() -> NLPTokenizer:
-    """Lazily-built NLP tokenizer for kline display (cached; NLP data required)."""
-    return NLPTokenizer.from_files()
+def _display_tokenizer() -> Tokenizer:
+    """Lazily-built kalvin tokenizer for kline display (cached; data required)."""
+    return Tokenizer.from_files()
 
 
 # Public API

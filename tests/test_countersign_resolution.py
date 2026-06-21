@@ -15,11 +15,11 @@ from kalvin.kline import KLine, sig_level
 from kalvin.model import Model
 from kalvin.signature import make_signature
 from ks import compile_source
-from tests.conftest import requires_nlp_data
+from tests.conftest import requires_tokenizer_data
 
 
 def T(bits: int) -> int:
-    """Place NLP-type bits in the upper 32 bits of a uint64.
+    """Place type-word bits in the upper 32 bits of a uint64.
 
     signifies() (used by model.where for candidate retrieval) masks off the
     lower (BPE) 32 bits, so node/signature values that must overlap for
@@ -27,10 +27,10 @@ def T(bits: int) -> int:
     """
     return bits << 32
 
-# Every test in this module drives ``compile_source`` (which builds an
-# ``NLPTokenizer.from_files()`` internally) or a ``KAgent`` (whose default
-# tokenizer is NLP).  Gate the whole module so data-less clones skip cleanly.
-pytestmark = requires_nlp_data
+# Every test in this module drives ``compile_source`` (which builds a
+# ``Tokenizer.from_files()`` internally) or a ``KAgent`` (whose default
+# tokenizer is the kalvin Tokenizer).  Gate the whole module so data-less clones skip cleanly.
+pytestmark = requires_tokenizer_data
 
 
 class TestCountersignPairResolution:
@@ -41,9 +41,9 @@ class TestCountersignPairResolution:
         a = KAgent(adapter=bus)
 
         # Add identities (derived from compile_source so signatures match the
-        # NLP encoding used by the countersign compilation below)
-        a.rationalise(compile_source("M", dev=True)[0])  # M (NLP-consistent identity)
-        a.rationalise(compile_source("H", dev=True)[0])  # H (NLP-consistent identity)
+        # tokenizer encoding used by the countersign compilation below)
+        a.rationalise(compile_source("M", dev=True)[0])  # M (tokenizer-consistent identity)
+        a.rationalise(compile_source("H", dev=True)[0])  # H (tokenizer-consistent identity)
 
         entries = compile_source("M == H", dev=True)
         assert len(entries) == 2
@@ -147,9 +147,9 @@ class TestUndersignIsConnotateReversed:
         a = KAgent(adapter=bus)
 
         # Add identities (derived from compile_source so signatures match the
-        # NLP encoding used by the undersign compilation below)
-        a.rationalise(compile_source("M", dev=True)[0])  # M (NLP-consistent identity)
-        a.rationalise(compile_source("S", dev=True)[0])  # S (NLP-consistent identity)
+        # tokenizer encoding used by the undersign compilation below)
+        a.rationalise(compile_source("M", dev=True)[0])  # M (tokenizer-consistent identity)
+        a.rationalise(compile_source("S", dev=True)[0])  # S (tokenizer-consistent identity)
 
         # Compile undersign: S = M -> {M: S}
         entries = compile_source("S = M", dev=True)
@@ -176,8 +176,8 @@ class TestUndersignIsConnotateReversed:
         a = KAgent(adapter=bus)
 
         # Add identity A only (D is unknown).  Derived from compile_source so
-        # its signature matches the NLP encoding used by the connotate below.
-        a.rationalise(compile_source("A", dev=True)[0])  # A (NLP-consistent identity)
+        # its signature matches the tokenizer encoding used by the connotate below.)
+        a.rationalise(compile_source("A", dev=True)[0])  # A (tokenizer-consistent identity)
 
         entries = compile_source("A > D", dev=True)
         connotate = [e for e in entries if e.nodes]

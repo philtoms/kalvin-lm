@@ -6,7 +6,7 @@ import json
 
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
-from tests.conftest import requires_nlp_data
+from tests.conftest import requires_tokenizer_data
 from training.trainer.cogitation import (
     ESCALATION_THRESHOLD,
     CogitationRequest,
@@ -369,7 +369,7 @@ def _tool_call_response(kscript: str, confidence: float, reasoning: str) -> LLMR
 class TestCogitator:
     """Tests for the Cogitator class."""
 
-    @requires_nlp_data
+    @requires_tokenizer_data
     def test_cogitate_returns_scaffolding(self):
         """Cogitator returns valid scaffolding from a tool call response."""
         mock_client = _MockLLMClient(
@@ -468,7 +468,7 @@ class TestHRNS13ReactiveModeOnS2S3:
     KScript scaffolding with confidence > 0.
     """
 
-    @requires_nlp_data
+    @requires_tokenizer_data
     def test_reactive_mode_on_s2_s3(self):
         """End-to-end reactive mode: S2/S3 events → scaffolding generation."""
         s2_event = _make_event(significance=2)

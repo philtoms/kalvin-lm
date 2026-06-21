@@ -17,7 +17,7 @@ from kalvin.abstract import KLine
 from kalvin.agent import Agent
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.kline import kline_display
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.tokenizer import Tokenizer
 from ks import KScript
 from ui.kscript.dialogs import LoadScriptDialog, LoadStateDialog, SaveStateDialog
 from ui.kscript.regions import EditorRegion, ResponsesRegion, ToolbarRegion
@@ -72,7 +72,7 @@ class KScriptApp(App):
         super().__init__()
         self._dev_mode = dev_mode
         self._agent: Agent | None = None
-        self._display_tok = NLPTokenizer.from_files()
+        self._display_tok = Tokenizer.from_files()
         self._execution_state: ExecutionState = ExecutionState.IDLE
         self._cancelled: bool = False
         self._last_script_dir: Path = DEFAULT_SCRIPTS_DIR

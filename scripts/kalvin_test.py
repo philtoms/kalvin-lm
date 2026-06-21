@@ -20,7 +20,7 @@ sys.path.insert(0, "src")
 from kalvin.agent import KAgent
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.expand import D_MAX, boundaries, classify
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.tokenizer import Tokenizer
 from ks.compiler import compile_source
 
 SOURCE = """
@@ -80,16 +80,11 @@ def _decode_value(value: int, model, tokenizer) -> str:
     return f"#{value:#x}"
 
 
-def _nlp_suffix(dbg) -> str:
-    """Build the POS/dep suffix from a dbg record, if any."""
+def _type_suffix(dbg) -> str:
+    """Build the type-info suffix from a dbg record, if any."""
     if dbg is None:
         return ""
-    nlp_parts = []
-    if dbg.pos:
-        nlp_parts.append(dbg.pos)
-    if dbg.dep:
-        nlp_parts.append(dbg.dep)
-    return f" ({'/'.join(nlp_parts)})" if nlp_parts else ""
+    return f" ({dbg.type_info})" if dbg.type_info else ""
 
 
 def kline_display(kline, tokenizer, model=None) -> str:
@@ -112,7 +107,7 @@ def kline_display(kline, tokenizer, model=None) -> str:
     if model is not None:
         decoded = _decode_value(kline.signature, model, tokenizer)
         label = decoded or (dbg.label if dbg else f"#{kline.signature:#x}")
-        label += _nlp_suffix(dbg)
+        label += _type_suffix(dbg)
         nodes = kline.nodes
         if not nodes:
             return label
@@ -124,7 +119,7 @@ def kline_display(kline, tokenizer, model=None) -> str:
         label = dbg.label
         if dbg.decoded and dbg.decoded != label:
             label = f"{label} [{dbg.decoded!r}]"
-        label += _nlp_suffix(dbg)
+        label += _type_suffix(dbg)
         nodes = kline.nodes
         if not nodes:
             return label
@@ -162,7 +157,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    tokenizer = NLPTokenizer.from_files()
+    tokenizer = Tokenizer.from_files()
     klines = compile_source(SOURCE, tokenizer, dev=True)
 
     adapter = EventBus()

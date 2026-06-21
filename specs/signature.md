@@ -26,18 +26,14 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Tokenizer (@tokenizer spec)
 
-- `is_nlp_node(node) → bool` — determines whether a node is an NLP-BPE
-  node (non-zero high 32 bits), distinguishing tokenizer-produced nodes
-  from non-tokenized uint64 values (e.g. node value 0 for identity klines,
-  or signatures used as graph-edge references). Available for
-  compiler/kline_display text rendering — deciding which nodes can be
-  BPE-decoded versus treated as opaque references. Not used by
-  `make_signature`.
-- **NLP-BPE node layout** — nodes are packed as
-  `(nlp_type32 << 32) | bpe_token_id`: the upper 32 bits carry NLP type
-  (POS + DEP + MORPH) and the lower 32 carry the BPE token id. `signifies`
-  masks off the lower (BPE) 32 bits and compares only the upper (type)
-  half (see §Bitwise AND Matching).
+- **Typed-node layout** — nodes are packed as
+  `(type_word << 32) | bpe_token_id`: the upper 32 bits carry the type
+  word and the lower 32 carry the BPE token id. `signifies`
+  masks off the lower (BPE) 32 bits and compares only the upper (type-word)
+  half (see §Bitwise AND Matching). A node with non-zero upper 32 bits is a
+  tokenizer-produced (typed) node; a node whose set bits fall entirely in
+  the lower 32 is opaque to type matching. There is no `is_typed_node`
+  predicate used by `make_signature`.
 
 ## Definition
 
@@ -66,7 +62,7 @@ This enables compositional hierarchies: a kline's nodes reference other
 klines.
 
 A node used as a kline node selects all klines whose signatures overlap
-with it in the upper (NLP-type) 32 bits (see §Bitwise AND Matching).
+with it in the upper (type-word) 32 bits (see §Bitwise AND Matching).
 
 ## Creation
 
@@ -112,14 +108,13 @@ carries no structural identity. It cannot be found via bitwise AND matching
 ## Bitwise AND Matching
 
 Signatures support bitwise AND matching as a fast, approximate similarity
-test over **NLP-type bits only**. The NLP-BPE node layout (see @tokenizer
-spec) packs NLP type information (POS + DEP + MORPH) into the upper 32
-bits and the BPE token ID into the lower 32 bits. `signifies` masks off
-the lower (BPE) 32 bits so two klines are compared by NLP-type overlap,
-not by token-ID collision:
+test over **type-word bits only**. The typed-node layout (see @tokenizer
+spec) packs the type word into the upper 32 bits and the BPE token ID into
+the lower 32 bits. `signifies` masks off the lower (BPE) 32 bits so two
+klines are compared by type-word overlap, not by token-ID collision:
 
 ```
-TYPE_MASK = 0xFFFF_FFFF_0000_0000  # upper 32 bits = NLP type
+TYPE_MASK = 0xFFFF_FFFF_0000_0000  # upper 32 bits = type word
 signifies(a, b) → (a & b & TYPE_MASK) != 0
 ```
 
@@ -142,7 +137,7 @@ Properties:
   irrelevant (no shared type bits).
 - **Vacuous for 0** — a signature of 0 never signifies anything.
 - **Type-only** — values whose set bits fall entirely in the lower 32
-  (e.g. a raw BPE token id with no NLP type) never signify anything,
+  (e.g. a raw BPE token id with no type word) never signify anything,
   because their upper 32 bits are zero.
 
 Masking applies only to `signifies`. `make_signature` still OR-reduces the
@@ -159,13 +154,13 @@ lower (BPE) bits remain available for decoding and exact-match resolution.
 | SIG-7 | `signifies(0, anything) == False` (vacuous for 0)             | — |
 | SIG-9 | `signifies(T(0b110), T(0b010)) == True` (overlapping type bits) | — |
 | SIG-10 | `signifies(T(0b100), T(0b010)) == False` (no overlapping type bits) | — |
-| SIG-14 | `make_signature([0b10, 0b100]) == 0b110` (OR-reduction of two distinct node values) | NLP |
+| SIG-14 | `make_signature([0b10, 0b100]) == 0b110` (OR-reduction of two distinct node values) | — |
 | SIG-15 | `signifies(0b110, 0b010) == False` (lower/BPE bits masked off) | — |
 | SIG-16 | `signifies(T(0b110) \| 1, T(0b010) \| 2) == True` (type overlap beats differing BPE ids) | — |
 
-`T(x)` denotes NLP-type bits `x` packed into the upper 32 (`x << 32`),
+`T(x)` denotes type-word bits `x` packed into the upper 32 (`x << 32`),
 with the lower 32 (BPE token id) zero. See the @tokenizer spec for the
-full NLP-BPE node layout.
+full typed-node layout.
 
 ## What a Signature is Not
 

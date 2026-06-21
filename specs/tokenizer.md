@@ -5,19 +5,26 @@
 The tokenizer converts between text and nodes. It is the sole authority
 for how text becomes nodes.
 
-The system ships a single production tokenizer, **NLP**, built on a **BPE**
-subword base:
+Kalvin ships a single production tokenizer. It is built on a **BPE**
+subword base and combines each BPE token with a **type word** to form a
+64-bit typed node:
 
 - **BPE** — byte-pair encoding. Vocabulary learned from a training corpus.
-  Tokens are sequential vocabulary indices, combined with type prefixes to
-  form typed nodes. BPE is the subword foundation that NLP extends.
-- **NLP** — hybrid BPE + NLP type encoding (the production default). BPE
-  subword tokens are combined with NLP type information (POS + DEP + MORPH)
-  in a single 64-bit node. The tokenizer owns the grammar dictionary that
-  maps BPE tokens to NLP types.
+  Tokens are sequential vocabulary indices.
+- **Type word** — a 32-bit bit pattern packed into the upper half of each
+  node. Kalvin treats the type word as **opaque**: it participates in
+  signature construction and matching but kalvin does not interpret what
+  the bits mean. The meaning of the type word is a deployment concern; see
+  the @nlp_tokenizer spec for the NLP interpretation used by the shipped
+  data.
 
-Both produce the same kind of output: typed nodes suitable for signature
-construction (defined in the @signature spec).
+```
+node = (type_word << 32) | bpe_token_id
+```
+
+The high 32 bits carry the type word; the low 32 bits carry the BPE token
+ID. Both halves participate in the same bitwise OR/AND algebra as any
+other node.
 
 ### Significance and Tokenizers
 
@@ -33,15 +40,7 @@ node — not on any meaning assigned to those bits.
   Routing and distance operate on node membership and bit overlap, not on
   what the bits mean (see the @significance / @model specs).
 
-The NLP node format conforms to this algebra directly:
-
-```
-node = (nlp_type32 << 32) | bpe_token_id
-```
-
-The high 32 bits carry NLP type dimensions (POS + DEP + MORPH); the low 32
-bits carry the BPE token ID. Both halves participate in the same bitwise
-OR/AND algebra as any other node.
+The typed-node format conforms to this algebra directly.
 
 ## Dependencies
 
@@ -58,55 +57,63 @@ The tokenizer does not interpret nodes beyond its own encoding.
 
 ## Interface
 
-All tokenizer types implement:
+The tokenizer implements:
 
 ### `vocab_size → int ≥ 0`
 
-The number of distinct tokens the vocabulary defines.
+The number of distinct tokens the BPE vocabulary defines.
 
-### `encode(text: str) → list[node]`
+### `encode(text: str, pad_ws: bool = False) → list[node]`
 
-Convert a string to an ordered sequence of nodes.
+Convert a string to an ordered sequence of typed nodes.
 
 - Empty string → empty list.
-- The encoding mode is determined by the tokenizer type and input content.
+- Each BPE token is combined with its type word:
+  `(type_word << 32) | bpe_token_id`.
+- Tokens absent from the type dictionary receive the fallback type word
+  (`UNKNOWN_TYPE`).
 - Each node carries enough information to reconstruct the original text
   via `decode`.
+
+### `encode_bpe(text: str, pad_ws: bool = False) → list[int]`
+
+Low-level accessor: encode text to raw BPE token IDs (no type word).
+Used by training/tagging tooling that operates on the BPE vocabulary
+directly.
 
 ### `decode(nodes: list[node]) → str`
 
 Convert a sequence of nodes back to a string.
 
 - Empty list → empty string.
+- The BPE token ID is taken from the low 32 bits of each node, so raw
+  BPE IDs (which fit in 32 bits) decode unchanged.
 - `decode(encode(text)) == text` for any string the tokenizer can represent.
 
-## Vocabulary
+## Type Dictionary
 
-A vocabulary is the ordered set of symbols the tokenizer can encode.
+The tokenizer owns a **type dictionary** mapping BPE token IDs to their
+type word. Entries are loaded from a tagged-grammar file
+(`{tokenizer_name}_tagged_grammar.json`) in which every BPE token —
+including sub-words — carries a `type_word` field. Other fields in an
+entry are opaque metadata, preserved unchanged (the shipped dictionary
+carries NLP labels; see the @nlp_tokenizer spec).
 
-Both tokenizer types provide a default vocabulary. The default may be
-overridden at initialisation.
+BPE tokens without a dictionary entry fall back to `UNKNOWN_TYPE` (the
+empty type word, `0`). A deployment may reinterpret this via a subclass
+(the NLP specialisation uses `POS_X`).
 
-| Type | Default                                               |
-| ---- | ----------------------------------------------------- |
-| BPE  | 4096 entries (learned from corpus)                    |
-| NLP  | 17,392 BPE entries + 12,871 grammar dictionary entries |
+### Lookup
 
-## BPE Tokenizer
+- `lookup_type(token_id) → int | None` — the type word for a BPE token ID.
+- `lookup_type_entry(token_id) → dict | None` — the raw dictionary entry.
 
-### Overview
-
-A BPE tokenizer learns subword token vocabulary from a training corpus.
-Tokens are sequential integer IDs assigned during training.
-
-BPE is suitable for general-purpose text encoding where subword
-segmentation and large vocabularies are needed.
+## BPE Engine
 
 ### Vocabulary
 
 - Learned from a text corpus via training.
-- Default target size: 4096.
-- Configurable at training time.
+- Default target size: 32,768 (actual trained vocab may be smaller).
 
 ### Training
 
@@ -118,7 +125,8 @@ tokenizer.train(texts: Iterator[str], vocab_size: int, pattern: str | None) → 
 - `vocab_size` — target vocabulary size (minimum 256).
 - `pattern` — optional regex pattern for pre-tokenization.
 
-Training is required before `encode`/`decode` can be used.
+Training is required before `encode`/`decode` can be used. Training loads
+the BPE engine only; the type dictionary is loaded separately.
 
 ### Persistence
 
@@ -127,266 +135,74 @@ tokenizer.save_to_directory(path, name) → void
 tokenizer.from_directory(path, name) → Tokenizer
 ```
 
-Save and load trained tokenizer state. Format is implementation-defined.
+`from_directory` loads the BPE engine only (no type dictionary); `encode`
+on the result produces nodes with the fallback type word for every token.
+Use `from_files` to load both the engine and a type dictionary.
 
-### Type Prefixes
-
-BPE token IDs are sequential integers without inherent type information.
-To produce typed nodes suitable for signature construction, each BPE token
-is combined with a **type prefix** — a bit pattern encoding linguistic
-properties (part-of-speech, dependency, morphology, etc.).
-
-Type prefixes are external to the tokenizer. They are provided by the
-agent layer via a dictionary lookup at encode time:
+### Production Factory
 
 ```
-for token in bpe_tokens:
-    type_prefix = dictionary.lookup(token)   # linguistic type bits
-    node = type_prefix | token               # typed node
+tokenizer.from_files(tokenizer_path, tokenizer_name) → Tokenizer
 ```
 
-Unrecognised tokens receive a default type prefix (e.g. `POS_X`).
-Whitespace tokens may pass through as-is (no type prefix).
+Loads the BPE engine and type dictionary from standard paths. When
+`tokenizer_path` is omitted it is resolved via
+`kalvin.paths.tokenizer_dir()`.
 
 ### Encoding
 
-BPE segments text into subword units, each mapped to a vocabulary index:
+BPE segments text into subword units, each mapped to a vocabulary index.
+Each BPE token ID is then combined with its type word from the type
+dictionary:
 
 ```
-encode("hello") → [15496]
-encode("hello world") → [15496, 995]
+encode("hello") → [(type_word("hello") << 32) | 15496]
 ```
-
-The returned values are raw BPE token IDs. Type prefix combination
-happens at the agent layer.
-
-### Worked Examples
-
-#### Encoding with type prefixes
-
-```
-BPE encode("the air") → [257, 500]
-
-Agent applies type prefixes from dictionary:
-  257 "the" → POS_DET | 257 = 4194337
-  500 "air" → POS_NOUN | DEP_OBJ | 500 = 262788
-
-Typed nodes: [4194337, 262788]
-```
-
-#### Signature construction
-
-```
-nodes = [4194337, 262788]
-
-make_signature(nodes) → 4194337 | 262788 = 4456397
-
-Signature captures: token IDs 257 and 500 are present,
-with POS_DET and POS_NOUN | DEP_OBJ type information.
-```
-
-> **Note.** `make_signature` is defined in the @signature spec, not here.
-> This example illustrates how typed BPE nodes feed into it.
-
-## NLP Tokenizer
-
-### Overview
-
-An NLP tokenizer is a hybrid that combines BPE subword encoding with NLP
-type information (POS + DEP + MORPH) in a single 64-bit node. Every word
-becomes one or more NLP-BPE tokens.
-
-If a word BPE-encodes into multiple subword tokens (e.g. "unhappiness" →
-`[un, ##happiness]`), each subword token gets its own grammar lookup.
-Subwords without dictionary entries fall back to `POS_X`.
-
-NLP is suitable for text encoding where linguistic type information must
-be embedded directly in each node, enabling signature-based similarity
-matching that reflects grammatical structure.
-
-### Node Format
-
-Each NLP-BPE node is a 64-bit unsigned integer:
-
-```
-node = (nlp_type32 << 32) | bpe_token_id
-```
-
-Bit layout:
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ High 32 bits (32–63) │ nlp_type32 — NLP type encoding            │
-│                      │   Bits 0–16:  17 POS tags                  │
-│                      │   Bits 17–24: 8 DEP groups                 │
-│                      │   Bits 25–31: 7 MORPH features             │
-│ Low 32 bits (0–31)  │ BPE token ID (0–17391)                     │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-The `nlp_type32` value is a 32-bit bitmask encoding 32 linguistic
-dimensions (17 POS + 8 DEP + 7 MORPH = 32 flags), sourced from the
-32-bit NLP type legend. The BPE token ID occupies the low 32 bits.
-
-### Fallback for Unknown BPE Tokens
-
-BPE tokens without a grammar dictionary entry receive `POS_X = 65536
-= 1 << 16` as their `nlp_type32`. This ensures unknown words still have
-a valid NLP type, preserving the node format invariant.
-
-### Vocabulary
-
-- **BPE vocabulary**: 17,392 tokens (from `tokenizer-32768.json`, where
-  32,768 was the training target; actual trained vocab is 17,392).
-- **Grammar dictionary**: 12,871 BPE→NLP entries mapping BPE token IDs
-  to `nlp_type32` values (from `simplestories-1_grammar.json`).
-
-Source files:
-
-| File | Purpose |
-| ---- | ------- |
-| `data/tokenizer/tokenizer-32768.json` | BPE vocabulary |
-| `data/tokenizer/simplestories-1_grammar.json` | Grammar dictionary (BPE→NLP) |
-| `data/tokenizer/simplestories-1_nlp_type32.json` | 32-bit NLP type legend |
-
-### Encoding
-
-The encode process:
-
-1. **BPE-encode** the text into subword token IDs.
-2. **Grammar lookup** — for each token ID, look up the `nlp_type32` in
-   the grammar dictionary. Tokens without entries default to `POS_X`.
-3. **Construct nodes** — assemble each node as
-   `(nlp_type32 << 32) | bpe_token_id`.
 
 #### Worked Example
 
 ```
-encode("Tea brewed softly")
+BPE encode("the air") → [257, 500]
 
-Step 1 — BPE encode:
-  "Tea"     → token 12465
-  "brewed"  → token 4964
-  "softly"  → token 977
+Type dictionary lookup:
+  257 "the" → type_word = T_the
+  500 "air" → type_word = T_air
 
-Step 2 — Grammar lookup (nlp_type32 from dictionary):
-  12465 "Tea"     → nlp_type32 = 131200
-  4964  "brewed"  → nlp_type32 = 8421376
-  977   "softly"  → nlp_type32 = 2097156
-
-Step 3 — Node construction:
-  "Tea"     → (131200  << 32) | 12465 = 563499709247665
-  "brewed"  → (8421376 << 32) | 4964  = 36169534507324260
-  "softly"  → (2097156 << 32) | 977   = 9007216434611153
-
-Result: [563499709247665, 36169534507324260, 9007216434611153]
-```
-
-### Decoding
-
-Extract the BPE token ID from the low 32 bits and decode via the BPE
-vocabulary:
-
-```
-bpe_token_id = node & 0xFFFFFFFF
-text = bpe_vocab.decode(bpe_token_id)
-```
-
-NLP type bits (high 32) are not needed for text reconstruction.
-
-### Dimension Count
-
-The `nlp_type32` encoding provides **32 dimensions**:
-
-- 17 POS tags (bits 0–16)
-- 8 DEP groups (bits 17–24)
-- 7 MORPH features (bits 25–31)
-
-Comparison with the design target:
-
-| Tokenizer | Dimensions | Notes |
-| --------- | ---------- | ----- |
-| NLP       | 32         | 17 POS + 8 DEP + 7 MORPH |
-| Target    | ~35        | From CONTEXT.md |
-
-### Signature Behavior
-
-`make_signature()` for NLP nodes OR-reduces the full unmasked node values.
-Both NLP type bits (high 32) and BPE token IDs (low 32) contribute to
-the signature. The tokenizer passes raw NLP-BPE nodes to `make_signature()`
-as it would any other node sequence.
-
-### Curriculum Compatibility (Bare Signatures)
-
-All existing curricula compile and train correctly under the NLPTokenizer
-without modification. A "bare" signature carries no parenthetical
-annotation.
-
-- A bare single-character signature (e.g. `M`, `H`, `A`) encodes to a
-  single 64-bit NLP-BPE node whose upper 32 bits carry NLP type information
-  and lower 32 bits carry the BPE token ID. The same character always
-  produces the same node value.
-- A bare multi-token signature (e.g. `MHALL`, `SVO`) decomposes into
-  individual identity entries plus a canonize (S2) entry mapping the first
-  token to all tokens.
-- The NLP binding resolver operates correctly with an empty symbol table —
-  bare signatures compile and produce valid graph nodes.
-- Comments are optional for curricula using abstract uppercase letters
-  (A–Z). Comments are required only when semantic word resolution is
-  desired (e.g. `M(ary)` → the NLP-bound token for "Mary").
-
-### Worked Examples
-
-#### Encoding with grammar lookup
-
-```
-NLP encode("Tea brewed softly")
-
-BPE: [12465, 4964, 977]
-
-Grammar dictionary lookups:
-  12465 → nlp_type32 = 131200   (POS_PROPN | DEP_SUBJ | MORPH_SING)
-  4964  → nlp_type32 = 8421376  (POS_VERB  | DEP_ROOT | MORPH_PAST | MORPH_SING)
-  977   → nlp_type32 = 2097156  (POS_ADV   | DEP_ADVMOD)
-
-Nodes: [563499709247665, 36169534507324260, 9007216434611153]
-```
-
-#### Round-trip
-
-```
-encode("Tea brewed softly") → [563499709247665, 36169534507324260, 9007216434611153]
-decode([563499709247665, 36169534507324260, 9007216434611153]) → "Tea brewed softly"
+Typed nodes: [(T_the << 32) | 257, (T_air << 32) | 500]
 ```
 
 #### Signature construction
 
 ```
-Nodes: [563499709247665, 36169534507324260, 9007216434611153]
+nodes = [(T_the << 32) | 257, (T_air << 32) | 500]
 
-make_signature(nodes) →
-  563499709247665 | 36169534507324260 | 9007216434611153
-
-Signature captures: both NLP type and BPE ID dimensions — the full
-identity of each token.
+make_signature(nodes) → nodes[0] | nodes[1]
 ```
 
+The signature captures both the type words and the BPE token IDs.
+
 > **Note.** `make_signature` is defined in the @signature spec, not here.
+
+## Signature Behavior
+
+`make_signature()` OR-reduces the full unmasked node values. Both the
+type word (high 32) and the BPE token ID (low 32) contribute to the
+signature. The tokenizer passes raw typed nodes to `make_signature()` as
+it would any other node sequence.
 
 ## Test Matrix
 
 | ID    | Criterion                                                                  | Origin ref |
 | ----- | -------------------------------------------------------------------------- | ---------- |
 | TOK-7 | Empty string: `encode("") == []`, `decode([]) == ""`                        | — |
-| TOK-NLP-1 | NLP encode produces correct node format: `(nlp_type32 << 32) \| bpe_token_id` for each token | NLP |
-| TOK-NLP-2 | NLP encode with unknown BPE token uses `POS_X = 65536` as `nlp_type32`    | NLP |
-| TOK-NLP-4 | NLP round-trip: `decode(encode("Tea brewed softly")) == "Tea brewed softly"` | NLP |
-| TOK-NLP-7 | Vocabulary sizes: BPE vocab = 17,392 tokens, grammar dictionary = 12,871 entries | NLP |
-| TOK-NLP-8 | Dimension count: `nlp_type32` provides 32 dimensions (17 POS + 8 DEP + 7 MORPH) | NLP |
-| TOK-NLP-9 | Bare single-character signatures (e.g. `M`, `H`, `A`) produce consistent NLP-BPE nodes; the same character always yields the same node value | NLP |
-| TOK-NLP-10 | Bare multi-token signatures (e.g. `MHALL`, `SVO`) decompose into individual identity entries plus a canonize (S2) entry mapping the first token to all tokens | NLP |
-| TOK-NLP-11 | The NLP binding resolver operates correctly with an empty symbol table (bare sigs compile without annotation) | NLP |
-| TOK-NLP-12 | Curricula using abstract uppercase letters (A–Z) require no parenthetical comments; comments are required only when semantic word resolution is desired | NLP |
+| TOK-8 | Typed-node format: every node is `(type_word << 32) \| bpe_token_id`        | — |
+| TOK-9 | Round-trip: `decode(encode(text)) == text` for representable text           | — |
+| TOK-10 | Type dictionary: `lookup_type(id)` returns the entry's `type_word`         | — |
+| TOK-11 | Unknown-token fallback: tokens absent from the dictionary get `UNKNOWN_TYPE` | — |
+| TOK-12 | `from_files()` loads the BPE engine and type dictionary                    | — |
+
+NLP-specific criteria (NLP type-word interpretation, dimension count,
+curriculum compatibility) live in the @nlp_tokenizer spec.
 
 ## What a Tokenizer is Not
 
@@ -396,12 +212,9 @@ The following are explicitly **out of scope** for this spec:
   defined in the @signature spec.
 - **Significance computation.** Significance is defined in the
   @significance spec. The tokenizer does not compute or store significance.
-- **Type prefix assignment (BPE).** How linguistic types are assigned to
-  BPE tokens is an agent concern. The BPE tokenizer provides raw token IDs.
-  **Note:** For the NLP tokenizer, grammar lookups are intrinsic — the
-  tokenizer owns the dictionary. This distinction is by design: BPE type
-  prefixes are external (agent layer), while NLP grammar lookups are
-  internal (tokenizer layer).
+- **Interpretation of the type word.** What the type-word bits mean is a
+  deployment concern. The NLP interpretation is specified in the
+  @nlp_tokenizer spec; the base tokenizer treats the type word as opaque.
 - **Model operations.** Storing, retrieving, and querying klines are model
   concerns.
 - **Training data format.** How training data is sourced and preprocessed
@@ -412,7 +225,9 @@ The following are explicitly **out of scope** for this spec:
 - **Signature** (@signature spec) — signature creation consumes nodes
   produced by the tokenizer.
 - **Kline** (@kline spec) — klines contain nodes produced by the tokenizer.
-- **Agent** (@agent spec) — uses the tokenizer to encode input, apply type
-  prefixes, and construct klines.
+- **Agent** (@agent spec) — uses the tokenizer to encode input and
+  construct klines.
 - **Significance** (@significance spec) — consumes nodes produced by the
   tokenizer (nodes are opaque to significance).
+- **NLP Tokenizer** (@nlp_tokenizer spec) — the NLP interpretation of the
+  type word used by the shipped data.

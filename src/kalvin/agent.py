@@ -36,9 +36,8 @@ from kalvin.expand import (
 )
 from kalvin.kline import KLine
 from kalvin.model import Model
-from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
-from kalvin.tokenizer import TiktokenNotInstalledError
+from kalvin.tokenizer import TiktokenNotInstalledError, Tokenizer
 
 __all__ = [
     # Re-exported from kalvin.cogitator for backward compatibility;
@@ -55,19 +54,19 @@ __all__ = [
 
 
 def _default_tokenizer() -> KTokenizer:
-    """Create the default NLP tokenizer (the sole production tokenizer).
+    """Create the default kalvin tokenizer (the sole production tokenizer).
 
-    NLP is mandatory — there is no fallback.  If the NLP data files are
-    missing, the BPE backend (tiktoken/rustbpe) cannot be loaded, or the
-    data files are unreadable, this raises :class:`RuntimeError`
+    The kalvin tokenizer is mandatory — there is no fallback.  If the data
+    files are missing, the BPE backend (tiktoken/rustbpe) cannot be loaded,
+    or the data files are unreadable, this raises :class:`RuntimeError`
     instructing the user to regenerate the data via
     ``scripts/rebuild-tokenizer-data.sh``.
     """
     try:
-        return NLPTokenizer.from_files()
+        return Tokenizer.from_files()
     except (FileNotFoundError, ImportError, OSError, TiktokenNotInstalledError) as exc:
         raise RuntimeError(
-            "NLP tokenizer data is required but unavailable. "
+            "Tokenizer data is required but unavailable. "
             "Run `bash scripts/rebuild-tokenizer-data.sh` to generate data/tokenizer/."
         ) from exc
 
@@ -100,8 +99,8 @@ class KAgent:
     Parameters
     ----------
     tokenizer:
-        Tokenizer instance. Defaults to an NLPTokenizer (NLP is the sole tokenizer).
-        Used for encoding text to nodes.
+        Tokenizer instance. Defaults to the kalvin Tokenizer (the sole
+        production tokenizer). Used for encoding text to nodes.
     model:
         Model instance serving as base memory. Defaults to empty Model.
     adapter:

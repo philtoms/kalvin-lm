@@ -263,11 +263,12 @@ class TokenEncoder:
 
         A packed signature (§11.3 multi-token word or §11.4 compound) is
         opaque per §11.5: its low-32 bits are a bitwise OR of several
-        bpe_ids, so decode/grammar-lookup are meaningless (decode may
+        bpe_ids, so decode/type-lookup are meaningless (decode may
         crash or return an unrelated word). ``label`` carries the
-        human-readable name instead. Single tokens are decoded and
-        grammar-looked-up (decode is defensive — ``decoded`` is purely
-        diagnostic and must not crash compilation).
+        human-readable name instead. Single tokens are decoded and their
+        type-dictionary entry summarised into ``type_info`` (decode is
+        defensive — ``decoded`` is purely diagnostic and must not crash
+        compilation).
         """
         if packed:
             return KDbg(op=op, label=label)
@@ -275,10 +276,15 @@ class TokenEncoder:
             decoded = self._tokenizer.decode([sig_uint64])
         except Exception:
             decoded = ""
-        pos = dep = morph = ""
-        grammar_entry = self._tokenizer.lookup_grammar(sig_uint64 & 0xFFFFFFFF)
-        if grammar_entry:
-            pos = grammar_entry.get("pos", "")
-            dep = grammar_entry.get("dep", "")
-            morph = grammar_entry.get("morph", "")
-        return KDbg(op=op, label=label, decoded=decoded, pos=pos, dep=dep, morph=morph)
+        type_info = ""
+        entry = self._tokenizer.lookup_type_entry(sig_uint64 & 0xFFFFFFFF)
+        if entry:
+            # Summarise the entry's non-text string fields generically so
+            # core code stays agnostic to whatever generated the dictionary.
+            labels = [
+                str(v)
+                for k, v in entry.items()
+                if k != "text" and isinstance(v, str) and v
+            ]
+            type_info = " ".join(labels)
+        return KDbg(op=op, label=label, decoded=decoded, type_info=type_info)

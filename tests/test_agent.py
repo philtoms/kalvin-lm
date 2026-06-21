@@ -11,18 +11,18 @@ from kalvin.cogitator import CogitationHandler, Cogitator, WorkItem
 from kalvin.events import EventBus
 from kalvin.kline import KDbg, KLine
 from kalvin.model import Model
-from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
-from tests.conftest import requires_nlp_data
+from kalvin.tokenizer import Tokenizer
+from tests.conftest import requires_tokenizer_data
 from tests.test_cogitator_handler import RecordingCogitationHandler
 
-# KAgent construction defaults to the NLP tokenizer; skip cleanly when the NLP
-# data assets are absent on a fresh clone.
-pytestmark = requires_nlp_data
+# KAgent construction defaults to the kalvin tokenizer; skip cleanly when
+# the data assets are absent on a fresh clone.
+pytestmark = requires_tokenizer_data
 
 
 def T(bits: int) -> int:
-    """Place NLP-type bits in the upper 32 bits of a uint64.
+    """Place type-word bits in the upper 32 bits of a uint64.
 
     signifies() (used by model.where for candidate retrieval) masks off the
     lower (BPE) 32 bits, so node/signature values that must overlap for
@@ -38,12 +38,12 @@ class TestAgentInit:
         assert a.tokenizer is not None
 
     def test_custom_tokenizer(self):
-        t = NLPTokenizer.from_files()
+        t = Tokenizer.from_files()
         a = KAgent(tokenizer=t, adapter=EventBus())
         assert a.tokenizer is t
 
     def test_custom_model(self):
-        t = NLPTokenizer.from_files()
+        t = Tokenizer.from_files()
         m = Model()
         a = KAgent(tokenizer=t, model=m, adapter=EventBus())
         assert a.model is m
@@ -826,38 +826,38 @@ class TestCascadeWriteMethods:
         assert events[0].proposal is p
 
 
-# ── NLP Tokenizer Integration Tests ──────────────────────────────────
+# ── Tokenizer Integration Tests ───────────────────────────────────
 #
-# Both classes below require the NLP tokenizer data assets (provided by the
-# shared `nlp_tokenizer` fixture in conftest.py) and are skipped cleanly when
+# Both classes below require the tokenizer data assets (provided by the
+# shared `tokenizer` fixture in conftest.py) and are skipped cleanly when
 # those assets are absent on a fresh clone.
 
 
-@requires_nlp_data
-class TestAgentNLPTokenizer:
-    """KAgent constructed with NLPTokenizer — pluggable tokenizer integration.
+@requires_tokenizer_data
+class TestAgentTokenizer:
+    """KAgent constructed with a tokenizer — pluggable tokenizer integration.
 
-    Verifies that KAgent works correctly when callers opt in to NLP-BPE
-    tokenization. The default is NLPTokenizer.
+    Verifies that KAgent works correctly when callers pass a tokenizer
+    explicitly. The default is the kalvin Tokenizer.
     """
 
-    def test_nlp_agent_rationalise_kline(self, nlp_tokenizer: NLPTokenizer) -> None:
-        """KAgent with NLPTokenizer can rationalise a kline containing NLP-BPE nodes.
+    def test_agent_rationalise_kline(self, tokenizer: Tokenizer) -> None:
+        """KAgent with a tokenizer can rationalise a kline containing typed nodes.
 
-        Encode a known word ('Tea') via the NLP tokenizer, build a KLine
+        Encode a known word ('Tea') via the tokenizer, build a KLine
         with the resulting nodes and their signature, and rationalise.
         The kline should be accepted (S4 novel or S1).
         """
-        a = KAgent(tokenizer=nlp_tokenizer, adapter=EventBus())
-        nodes = nlp_tokenizer.encode("Tea")
-        assert len(nodes) == 1, "'Tea' should produce exactly one NLP-BPE node"
+        a = KAgent(tokenizer=tokenizer, adapter=EventBus())
+        nodes = tokenizer.encode("Tea")
+        assert len(nodes) == 1, "'Tea' should produce exactly one typed node"
 
         sig = make_signature(nodes)
         kline = KLine(sig, nodes, dbg=KDbg(label="Tea"))
         result = a.rationalise(kline)
         assert result is True
 
-        # Signature must be non-zero (NLP-BPE nodes have non-zero high bits)
+        # Signature must be non-zero (typed nodes have non-zero high bits)
         assert sig != 0
 
         # Signature must be the plain OR-reduce of all nodes.
@@ -866,20 +866,20 @@ class TestAgentNLPTokenizer:
             expected |= node
         assert sig == expected
 
-    def test_default_tokenizer_is_nlp(self) -> None:
-        """Default KAgent uses NLPTokenizer as the sole default (raises if data unavailable)."""
+    def test_default_tokenizer_is_base(self) -> None:
+        """Default KAgent uses Tokenizer as the sole default (raises if data unavailable)."""
         a = KAgent(adapter=EventBus())
-        assert isinstance(a.tokenizer, NLPTokenizer)
+        assert isinstance(a.tokenizer, Tokenizer)
 
-    def test_nlp_agent_serialization(self, nlp_tokenizer: NLPTokenizer) -> None:
-        """Serialization round-trips preserve NLP-BPE node values (uint64).
+    def test_agent_serialization(self, tokenizer: Tokenizer) -> None:
+        """Serialization round-trips preserve typed node values (uint64).
 
-        Create an NLP agent, rationalise a kline with NLP-BPE nodes,
+        Create an agent, rationalise a kline with typed nodes,
         then round-trip through to_bytes/from_bytes and to_dict/from_dict.
         The deserialized model should have the same number of klines.
         """
-        a = KAgent(tokenizer=nlp_tokenizer, adapter=EventBus())
-        nodes = nlp_tokenizer.encode("Tea")
+        a = KAgent(tokenizer=tokenizer, adapter=EventBus())
+        nodes = tokenizer.encode("Tea")
         sig = make_signature(nodes)
         kline = KLine(sig, nodes, dbg=KDbg(label="Tea"))
         a.rationalise(kline)
@@ -894,7 +894,7 @@ class TestAgentNLPTokenizer:
         loaded2 = KAgent.from_dict(d)
         assert len(loaded2.model) == len(a.model)
 
-        # Verify the NLP-BPE node values survived serialization unchanged
+        # Verify the typed node values survived serialization unchanged
         # by checking the stored kline's nodes match the originals
         original_kline = list(a.model.klines())[0]
         loaded_kline = list(loaded.model.klines())[0]
@@ -902,12 +902,12 @@ class TestAgentNLPTokenizer:
         assert loaded_kline.signature == original_kline.signature
 
 
-# ── NLP Agent Cross-Module Integration Tests ──────────────────────────
+# ── Agent + Tokenizer Cross-Module Integration Tests ──────────────────
 
 
-@requires_nlp_data
-class TestAgentNLPIntegration:
-    """Cross-module integration tests: NLP tokenizer -> KAgent -> model storage.
+@requires_tokenizer_data
+class TestAgentTokenizerIntegration:
+    """Cross-module integration tests: tokenizer -> KAgent -> model storage.
 
     These go beyond unit-level tests to
     verify the full pipeline: encode text -> build kline -> rationalise ->
@@ -918,36 +918,36 @@ class TestAgentNLPIntegration:
     """
 
     @staticmethod
-    def _make_nlp_agent_with_klines(
-        nlp_tokenizer: NLPTokenizer,
+    def _make_agent_with_klines(
+        tokenizer: Tokenizer,
     ) -> tuple[KAgent, list[KLine]]:
-        """Create an NLP agent with a single rationalised kline."""
-        a = KAgent(tokenizer=nlp_tokenizer, adapter=EventBus())
+        """Create an agent with a single rationalised kline."""
+        a = KAgent(tokenizer=tokenizer, adapter=EventBus())
 
-        # Single-word NLP-BPE kline
-        tea = nlp_tokenizer.encode("Tea")
+        # Single-word typed kline
+        tea = tokenizer.encode("Tea")
         sig1 = make_signature(tea)
         k1 = KLine(sig1, tea, dbg=KDbg(label="Tea"))
         a.rationalise(k1)
 
         return a, [k1]
 
-    def test_nlp_agent_rationalise_kline(self, nlp_tokenizer: NLPTokenizer) -> None:
-        """Rationalise a kline with NLP tokenizer — verify storage and retrieval."""
-        a, klines = self._make_nlp_agent_with_klines(nlp_tokenizer)
+    def test_agent_rationalise_kline(self, tokenizer: Tokenizer) -> None:
+        """Rationalise a kline with the tokenizer — verify storage and retrieval."""
+        a, klines = self._make_agent_with_klines(tokenizer)
 
         # Verify kline was stored
         assert len(klines) == 1
         stored = a.model.find(klines[0].signature)
         assert stored is not None
 
-    def test_nlp_agent_bytes_roundtrip(self, nlp_tokenizer: NLPTokenizer) -> None:
-        """Binary serialization preserves NLP-BPE node values (uint64).
+    def test_agent_bytes_roundtrip(self, tokenizer: Tokenizer) -> None:
+        """Binary serialization preserves typed node values (uint64).
 
-        Multiple klines with NLP-BPE nodes survive to_bytes/from_bytes
+        Multiple klines with typed nodes survive to_bytes/from_bytes
         with exact node value preservation.
         """
-        a, original_klines = self._make_nlp_agent_with_klines(nlp_tokenizer)
+        a, original_klines = self._make_agent_with_klines(tokenizer)
 
         data = a.to_bytes()
         loaded = KAgent.from_bytes(data)
@@ -965,13 +965,13 @@ class TestAgentNLPIntegration:
             )
             assert stored.signature == orig.signature
 
-    def test_nlp_agent_dict_roundtrip(self, nlp_tokenizer: NLPTokenizer) -> None:
-        """Dict serialization preserves NLP-BPE node values exactly.
+    def test_agent_dict_roundtrip(self, tokenizer: Tokenizer) -> None:
+        """Dict serialization preserves typed node values exactly.
 
         Nodes are stored as integers in the dict and must round-trip
         without precision loss.
         """
-        a, original_klines = self._make_nlp_agent_with_klines(nlp_tokenizer)
+        a, original_klines = self._make_agent_with_klines(tokenizer)
 
         d = a.to_dict()
         loaded = KAgent.from_dict(d)
@@ -984,12 +984,12 @@ class TestAgentNLPIntegration:
             assert stored.nodes == orig.nodes
             assert stored.signature == orig.signature
 
-    def test_nlp_agent_json_file_roundtrip(self, nlp_tokenizer: NLPTokenizer) -> None:
-        """JSON file serialization preserves NLP-BPE node values.
+    def test_agent_json_file_roundtrip(self, tokenizer: Tokenizer) -> None:
+        """JSON file serialization preserves typed node values.
 
         Write to a temp JSON file, reload, verify all node values match.
         """
-        a, original_klines = self._make_nlp_agent_with_klines(nlp_tokenizer)
+        a, original_klines = self._make_agent_with_klines(tokenizer)
 
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
             path = Path(f.name)

@@ -467,12 +467,12 @@ The BindingScope is a lightweight scope stack:
 
 The ASTEmitter produces symbolic entries (strings). The TokenEncoder converts strings to opaque `uint64` values. The compiler treats encoded values as opaque integers — no inspection, no masking.
 
-### 11.2 NLP-BPE Encoding
+### 11.2 Typed-Node Encoding
 
-Identifiers are encoded as typed BPE tokens carrying linguistic annotations (POS + DEP + MORPH):
+Identifiers are encoded as typed BPE tokens carrying a type word in the upper 32 bits (its meaning — e.g. POS + DEP + MORPH — is a deployment concern; see the @nlp_tokenizer spec):
 
 ```
-encode("HELLO") → (nlp_type32 << 32) | bpe_token_id
+encode("HELLO") → (type_word << 32) | bpe_token_id
 ```
 
 ### 11.3 Multi-Token Words
@@ -527,7 +527,7 @@ ks/
 
 ### 12.2 Compiler
 
-The Compiler orchestrates the pipeline. It always creates a BindingScope and pushes a root scope, passes it to the ASTEmitter, and passes the symbolic output to the TokenEncoder. There is no "NLP mode" switch — NLP data is mandatory and the BindingScope is always active (§10). No encoding logic lives in the Compiler itself.
+The Compiler orchestrates the pipeline. It always creates a BindingScope and pushes a root scope, passes it to the ASTEmitter, and passes the symbolic output to the TokenEncoder. There is no tokenizer "mode" switch — tokenizer data is mandatory and the BindingScope is always active (§10). No encoding logic lives in the Compiler itself.
 
 ### 12.3 Dependencies
 
@@ -550,10 +550,10 @@ from ks import KScript
 entries = KScript("A == B").entries
 
 # Compile with a specific tokenizer
-entries = KScript("A == B", tokenizer=NLPTokenizer.from_files()).entries
+entries = KScript("A == B", tokenizer=Tokenizer.from_files()).entries
 ```
 
-The `entries` property returns a list of `KLine` objects. The tokenizer defaults to `NLPTokenizer.from_files()` — NLP data is mandatory, so a tokenizer is always in effect.
+The `entries` property returns a list of `KLine` objects. The tokenizer defaults to `Tokenizer.from_files()` — tokenizer data is mandatory, so a tokenizer is always in effect.
 
 ---
 
@@ -798,7 +798,7 @@ Compiled (resolved-word level; mirrors §14.11's structure). MHALL has five dist
 | 18  | Mary      | [Little]                     | UNDERSIGNED   | S3    |
 | 19  | Lamb      | [O]                          | CONNOTED      | S3    |
 
-SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL component identities (A, Little, Lamb) are dropped by identity dedup. `V`, `O`, `D` have no word binding and encode to their own raw NLP-BPE nodes (§10 resolution-failure clause) — the same encoding path as any resolved character, minus the word.
+SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL component identities (A, Little, Lamb) are dropped by identity dedup. `V`, `O`, `D` have no word binding and encode to their own raw typed nodes (§10 resolution-failure clause) — the same encoding path as any resolved character, minus the word.
 
 ---
 
@@ -842,7 +842,7 @@ SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL componen
 | KS-29                 | Counter reset: each new scope starts counters at zero                                                                                                                    | Binding     |
 | KS-30                 | Unresolved identifier (BindingScope returns None) is encoded as its own raw BPE token — no special fallback state                                                        | Binding     |
 | KS-31                 | Inert annotation: no matching characters → no effect                                                                                                                     | Binding     |
-| KS-32                 | An unresolved single character (e.g. `Z`) encodes to a single NLP-BPE uint64 node — the same encoding path as any resolved character                                     | Encoding    |
+| KS-32                 | An unresolved single character (e.g. `Z`) encodes to a single typed uint64 node — the same encoding path as any resolved character                                     | Encoding    |
 | **Self-Identity**     |                                                                                                                                                                          |             |
 | KS-33                 | Self-identity: `A = A` → `{A: []}` with op=IDENTITY                                                                                                                      | Operators   |
 | **Structure**         |                                                                                                                                                                          |             |
@@ -850,7 +850,7 @@ SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL componen
 | **Integration**       |                                                                                                                                                                          |             |
 | KS-35                 | Complex nested example (§14.11) produces correct complete entry list                                                                                                     | Integration |
 | KS-36                 | NLP-bound example (§14.12) produces correct resolved entries                                                                                                             | Integration |
-| KS-37                 | Uniform-NLP integration: all characters (bound and unresolved) produce valid NLP-BPE nodes                                                                               | Integration |
+| KS-37                 | Uniform-tokenizer integration: all characters (bound and unresolved) produce valid typed nodes                                                                            | Integration |
 | **MTS Deduplication** |                                                                                                                                                                          |             |
 | KS-38                 | Component identity dedup: overlapping MTS expansions silently drop duplicate character identities (S4)                                                                   | MTS Dedup   |
 | KS-39                 | Intra-expansion dedup: repeated characters in one compound emit only one identity (e.g., second L in MHALL)                                                              | MTS Dedup   |

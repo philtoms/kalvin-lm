@@ -274,7 +274,7 @@ Extended with structured curriculum context fields.
 
 ### Curriculum Annotation Conventions
 
-Curriculum KScript signatures carry NLP annotations so the NLPTokenizer
+Curriculum KScript signatures carry NLP annotations so the tokenizer
 produces semantically rich graph nodes rather than abstract-letter
 fallbacks. The annotation _mechanics_ (block/inline forms, binding
 resolution, claiming rules) are defined in the @kscript spec (§9 BPE
@@ -300,7 +300,7 @@ _conventions_ every curriculum follows.
     binding from the parent scope. Inline annotations that intentionally
     shadow a parent binding with a different word are required.
 44. Word choices SHOULD be semantically meaningful (proper nouns, common
-    nouns, or NATO phonetic alphabet) so NLP-BPE tokens carry grammatically
+    nouns, or NATO phonetic alphabet) so typed tokens carry grammatically
     useful type bits.
 45. NLP annotations appear ONLY inside fenced KScript code blocks. The
     curriculum prose (objective, approach, lesson descriptions) is not

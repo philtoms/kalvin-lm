@@ -14,32 +14,32 @@ from __future__ import annotations
 import pytest
 
 from kalvin.kline import KLine
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.tokenizer import Tokenizer
 from ks import Compiler, KScript, compile_source
 from ks.lexer import Lexer
 from ks.parser import Parser
 
-# NLP tokenizer data-asset gating shared via conftest for consistent skips
-from tests.conftest import requires_nlp_data
+# Tokenizer data-asset gating shared via conftest for consistent skips
+from tests.conftest import requires_tokenizer_data
 
-# The whole module compiles real KScript sources (default NLP tokenizer);
-# skip cleanly when the NLP data assets are absent.
-pytestmark = requires_nlp_data
+# The whole module compiles real KScript sources (default kalvin tokenizer);
+# skip cleanly when the tokenizer data assets are absent.
+pytestmark = requires_tokenizer_data
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-# Lazy module-level NLP tokenizer (safe at import time; ``pytestmark`` gates
+# Lazy module-level tokenizer (safe at import time; ``pytestmark`` gates
 # execution so this is only ever instantiated on a data-present machine).
-_tok32_instance: NLPTokenizer | None = None
+_tok32_instance: Tokenizer | None = None
 
 
-def _tok32() -> NLPTokenizer:
-    """Return the shared NLP tokenizer, constructing it on first use."""
+def _tok32() -> Tokenizer:
+    """Return the shared tokenizer, constructing it on first use."""
     global _tok32_instance
     if _tok32_instance is None:
-        _tok32_instance = NLPTokenizer.from_files()
+        _tok32_instance = Tokenizer.from_files()
     return _tok32_instance
 
 
@@ -128,7 +128,7 @@ MHALL == SVO =>
 class TestKS35ComplexNested:
     """KS-35 — Complex nested example from §14.11.
 
-    Compiles the full MHALL == SVO => ... source with the NLP tokenizer
+    Compiles the full MHALL == SVO => ... source with the tokenizer
     and validates the complete entry list.
     """
 
@@ -234,30 +234,30 @@ MHALL == SVO =>
     L > O"""
 
 
-@requires_nlp_data
+@requires_tokenizer_data
 class TestKS36NLPBound:
     """KS-36 — NLP-bound example from §14.12.
 
     Tests that block annotation provides word bindings and inline
-    annotations resolve correctly.  Requires NLPTokenizer data files.
+    annotations resolve correctly.  Requires Tokenizer data files.
     """
 
-    def _get_nlp_tokenizer(self) -> NLPTokenizer:
-        """Get NLPTokenizer from standard file paths."""
-        from kalvin.nlp_tokenizer import NLPTokenizer
+    def _get_tokenizer(self) -> Tokenizer:
+        """Get Tokenizer from standard file paths."""
+        from kalvin.tokenizer import Tokenizer
 
-        return NLPTokenizer.from_files()
+        return Tokenizer.from_files()
 
     def test_nlp_binding_mts_mhall(self) -> None:
         """MTS for MHALL resolves characters to NLP words.
 
         M → Mary, H → Had, A → "A", L → "Little", L → "Lamb".
         """
-        nlp = self._get_nlp_tokenizer()
+        tok = self._get_tokenizer()
         # dev=True so dbg.label carries the resolved symbolic signature
         # string. A packed signature is opaque per §11.6 and cannot be
         # decoded as a single BPE token, so the label is the reliable text.
-        entries = compile_source(SOURCE_14_12, tokenizer=nlp, dev=True)
+        entries = compile_source(SOURCE_14_12, tokenizer=tok, dev=True)
 
         all_text: list[str] = []
         for e in entries:
@@ -265,7 +265,7 @@ class TestKS36NLPBound:
                 all_text.append(e.dbg.label)
             for node_val in e.as_node_list():
                 try:
-                    decoded = nlp.decode([node_val])
+                    decoded = tok.decode([node_val])
                     if decoded:
                         all_text.append(decoded)
                 except Exception:
@@ -284,22 +284,22 @@ class TestKS36NLPBound:
         subwords, so the resolved word appears in an entry's node-list
         rather than a single-node signature.
         """
-        nlp = self._get_nlp_tokenizer()
-        entries = compile_source(SOURCE_14_12, tokenizer=nlp)
+        tok = self._get_tokenizer()
+        entries = compile_source(SOURCE_14_12, tokenizer=tok)
 
         # S(ubject) → 'Subject' resolves into a node-list under BPE.
         found = False
         for e in entries:
             nodes = e.as_node_list()
-            if nodes and nlp.decode(nodes) == "Subject":
+            if nodes and tok.decode(nodes) == "Subject":
                 found = True
                 break
         assert found, "Expected 'Subject' from inline binding"
 
     def test_compiled_entries_valid(self) -> None:
         """All entries are KLine instances with valid structure."""
-        nlp = self._get_nlp_tokenizer()
-        entries = compile_source(SOURCE_14_12, tokenizer=nlp)
+        tok = self._get_tokenizer()
+        entries = compile_source(SOURCE_14_12, tokenizer=tok)
         assert len(entries) > 0
         for e in entries:
             assert isinstance(e, KLine)
@@ -312,7 +312,7 @@ class TestKS36NLPBound:
 # ---------------------------------------------------------------------------
 
 
-@requires_nlp_data
+@requires_tokenizer_data
 class TestCanonicalEncoding:
     """KS-41 (canonical resolution) + KS-42 (canonical encoding).
 
@@ -325,9 +325,9 @@ class TestCanonicalEncoding:
     def _entries(self, tokenizer):
         return compile_source(SOURCE_14_12, tokenizer=tokenizer, dev=True)
 
-    def test_one_canonized_per_compound(self, nlp_tokenizer):
+    def test_one_canonized_per_compound(self, tokenizer):
         """KS-42: exactly one CANONIZED kline per compound identifier."""
-        entries = self._entries(nlp_tokenizer)
+        entries = self._entries(tokenizer)
         from collections import Counter
 
         counts = Counter(e.dbg.label for e in entries if e.dbg.op == "CANONIZED")
@@ -336,21 +336,21 @@ class TestCanonicalEncoding:
                 f"{compound}: expected 1 CANONIZED, got {counts.get(compound, 0)}"
             )
 
-    def test_no_packed_identity(self, nlp_tokenizer):
+    def test_no_packed_identity(self, tokenizer):
         """KS-42: no IDENTITY kline carries a packed (compound) signature."""
-        entries = self._entries(nlp_tokenizer)
+        entries = self._entries(tokenizer)
         packed_sigs = {e.signature for e in entries if e.dbg.op == "CANONIZED"}
         bad = [e for e in entries if e.dbg.op == "IDENTITY" and e.signature in packed_sigs]
         assert bad == [], f"IDENTITY klines with packed sigs: {bad}"
 
-    def test_compound_resolution_consistent(self, nlp_tokenizer):
+    def test_compound_resolution_consistent(self, tokenizer):
         """KS-41: a compound resolves identically wherever it appears.
 
         The CANONIZED definition's nodes are the canonical resolution;
         no other kline should carry a CANONIZED entry for the same
         compound with different (decoded) nodes.
         """
-        entries = self._entries(nlp_tokenizer)
+        entries = self._entries(tokenizer)
         seen = {}
         for e in entries:
             if e.dbg.op != "CANONIZED":
@@ -405,7 +405,7 @@ class TestCompileSource:
 
     def test_custom_tokenizer(self) -> None:
         """Passing a custom tokenizer works."""
-        tok = NLPTokenizer.from_files()
+        tok = Tokenizer.from_files()
         entries = compile_source("A == B", tokenizer=tok)
         assert len(entries) > 0
 
@@ -445,11 +445,11 @@ class TestKScriptAPI:
         for e in model.entries:
             assert e.dbg is not None or e.dbg is None  # dbg field exists
 
-    def test_default_tokenizer_is_nlp(self) -> None:
-        """Default tokenizer is NLPTokenizer (NLP is the sole tokenizer)."""
+    def test_default_tokenizer_is_base(self) -> None:
+        """Default tokenizer is the kalvin Tokenizer."""
         model = KScript("A")
-        assert isinstance(model._tokenizer, NLPTokenizer)
-        # The entry's signature should decode back to "A" via the NLP tokenizer
+        assert isinstance(model._tokenizer, Tokenizer)
+        # The entry's signature should decode back to "A" via the tokenizer
         sig = model.entries[0].signature
         assert _tok32().decode([sig]) == "A"
 
@@ -463,7 +463,7 @@ class TestPipelineWiring:
     """Tests that the Compiler correctly wires Lexer → Parser → Emitter → Encoder."""
 
     def test_end_to_end_simple(self) -> None:
-        """Simple source compiles end-to-end with the default NLP tokenizer."""
+        """Simple source compiles end-to-end with the default tokenizer."""
         compiler = Compiler()
         tokens = Lexer("A == B").tokenize()
         kfile = Parser(tokens).parse()
@@ -496,7 +496,7 @@ class TestPipelineWiring:
 
     def test_compiler_with_custom_tokenizer(self) -> None:
         """Compiler accepts custom tokenizer."""
-        tok = NLPTokenizer.from_files()
+        tok = Tokenizer.from_files()
         compiler = Compiler(tokenizer=tok)
         tokens = Lexer("A = B").tokenize()
         kfile = Parser(tokens).parse()

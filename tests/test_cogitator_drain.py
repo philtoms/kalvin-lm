@@ -16,7 +16,7 @@ from kalvin.events import EventBus
 from kalvin.kline import KLine
 from kalvin.model import Model
 from kalvin.signature import make_signature
-from tests.conftest import requires_nlp_data
+from tests.conftest import requires_tokenizer_data
 
 
 def T(bits: int) -> int:
@@ -175,7 +175,7 @@ class TestProcessingFlag:
 # ── AGT-48: No cross-lesson spillover ────────────────────────────────
 
 
-@requires_nlp_data
+@requires_tokenizer_data
 class TestNoCrossLessonSpillover:
     def test_drain_between_lessons_prevents_spillover(self):
         """AGT-48: Lesson-N cogitation drains fully before lesson N+1 begins.
@@ -259,7 +259,7 @@ class TestDrainEmptiesBacklog:
 # ── KAgent.cogitate_drain ────────────────────────────────────────────
 
 
-@requires_nlp_data
+@requires_tokenizer_data
 class TestKAgentDrain:
     def test_cogitate_drain_on_fresh_agent(self):
         """cogitate_drain returns True on fresh agent (no work items)."""

@@ -1,14 +1,14 @@
 """Tests for the no-fallback behaviour of ``_default_tokenizer()``.
 
-NLP is the sole production tokenizer.  When ``NLPTokenizer.from_files()``
-fails — because the data directory is absent, the BPE backend
-(``tiktoken``/``rustbpe``) is missing, or a data file is unreadable — the
-factory must raise a descriptive :class:`RuntimeError` naming
-``scripts/rebuild-tokenizer-data.sh``, chaining the original cause.
+The kalvin tokenizer is the sole production tokenizer.  When
+``Tokenizer.from_files()`` fails — because the data directory is absent, the
+BPE backend (``tiktoken``/``rustbpe``) is missing, or a data file is
+unreadable — the factory must raise a descriptive :class:`RuntimeError`
+naming ``scripts/rebuild-tokenizer-data.sh``, chaining the original cause.
 
 These tests simulate every failure mode with ``unittest.mock.patch`` so they
-run regardless of whether the NLP data assets are present on the host.  The
-single positive-path test is gated by :data:`requires_nlp_data`.
+run regardless of whether the tokenizer data assets are present on the host.
+The single positive-path test is gated by :data:`requires_tokenizer_data`.
 """
 
 from __future__ import annotations
@@ -18,11 +18,10 @@ from unittest.mock import patch
 import pytest
 
 from kalvin.agent import _default_tokenizer
-from kalvin.nlp_tokenizer import NLPTokenizer
-from kalvin.tokenizer import TiktokenNotInstalledError
-from tests.conftest import requires_nlp_data
+from kalvin.tokenizer import TiktokenNotInstalledError, Tokenizer
+from tests.conftest import requires_tokenizer_data
 
-_TARGET = "kalvin.agent.NLPTokenizer.from_files"
+_TARGET = "kalvin.agent.Tokenizer.from_files"
 
 
 def test_raises_runtime_error_on_file_not_found():
@@ -83,8 +82,8 @@ def test_does_not_swallow_unexpected_error():
             _default_tokenizer()
 
 
-@requires_nlp_data
-def test_returns_nlp_when_available():
-    """When the data is present, the factory returns an NLPTokenizer."""
+@requires_tokenizer_data
+def test_returns_tokenizer_when_available():
+    """When the data is present, the factory returns a Tokenizer."""
     tok = _default_tokenizer()
-    assert isinstance(tok, NLPTokenizer)
+    assert isinstance(tok, Tokenizer)

@@ -11,13 +11,13 @@ import pytest
 from kalvin.agent import KAgent
 from kalvin.events import EventBus
 from kalvin.kline import KLine
-from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signature import make_signature
-from tests.conftest import requires_nlp_data
+from kalvin.tokenizer import Tokenizer
+from tests.conftest import requires_tokenizer_data
 
-# Encoding through KAgent uses the NLP tokenizer; skip cleanly when the NLP
+# Encoding through KAgent uses the kalvin tokenizer; skip cleanly when the
 # data assets are absent on a fresh clone.
-pytestmark = requires_nlp_data
+pytestmark = requires_tokenizer_data
 
 # ── Import helper ─────────────────────────────────────────────────────
 # The script lives in scripts/ which is not a package.  We import it
@@ -112,8 +112,8 @@ class TestEncodeMultipleSentences:
     the expected count."""
 
     def test_encode_multiple_sentences(self):
-        # Use the NLPTokenizer (the sole production tokenizer).
-        agent = KAgent(adapter=EventBus(), tokenizer=NLPTokenizer.from_files())
+        # Use the kalvin Tokenizer (the sole production tokenizer).
+        agent = KAgent(adapter=EventBus(), tokenizer=Tokenizer.from_files())
         initial = agent.frame_size()
 
         text = "The cat sat. The dog ran."

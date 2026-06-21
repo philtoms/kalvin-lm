@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
-from tests.conftest import requires_nlp_data
+from tests.conftest import requires_tokenizer_data
 from training.harness.bus import MessageBus
 from training.harness.constants import TRAINEE_ROLE
 from training.harness.message import Message
@@ -116,7 +116,7 @@ class TestStripHashComments:
 class TestCogitatorSanitisation:
     """Validate that Cogitator strips # comments before compilation."""
 
-    @requires_nlp_data
+    @requires_tokenizer_data
     def test_cogitator_strips_and_logs(self, caplog):
         """AGT-51: Cogitator logs when # comments are stripped."""
         client = MagicMock()

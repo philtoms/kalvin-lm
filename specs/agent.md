@@ -71,12 +71,12 @@ An Agent consists of:
 
 ```
 Agent(
-    tokenizer      = None,   # defaults to NLPTokenizer; NLP data is mandatory
+    tokenizer      = None,   # defaults to the kalvin Tokenizer; data is mandatory
     model          = None,   # defaults to empty Model
 )
 ```
 
-- `tokenizer` — a Tokenizer instance. Defaults to an `NLPTokenizer` (NLP data is mandatory; construction raises if unavailable).
+- `tokenizer` — a Tokenizer instance. Defaults to the kalvin `Tokenizer` (data is mandatory; construction raises if unavailable).
 - `model` — a Model instance serving as the base memory. Defaults
   to an empty Model.
 
