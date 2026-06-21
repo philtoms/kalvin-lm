@@ -17,6 +17,16 @@ from kalvin.signature import make_signature
 from ks import compile_source
 from tests.conftest import requires_nlp_data
 
+
+def T(bits: int) -> int:
+    """Place NLP-type bits in the upper 32 bits of a uint64.
+
+    signifies() (used by model.where for candidate retrieval) masks off the
+    lower (BPE) 32 bits, so node/signature values that must overlap for
+    candidate matching are shifted up here.
+    """
+    return bits << 32
+
 # Every test in this module drives ``compile_source`` (which builds an
 # ``NLPTokenizer.from_files()`` internally) or a ``KAgent`` (whose default
 # tokenizer is NLP).  Gate the whole module so data-less clones skip cleanly.
@@ -93,12 +103,12 @@ class TestSelfFilterInCandidates:
         a = KAgent(adapter=bus)
 
         # Add a candidate that partially overlaps with query signature
-        candidate = KLine(5, [10, 30])
+        candidate = KLine(T(5), [T(10), T(30)])
         a.rationalise(candidate)
 
         # Query overlaps on [10] but not [20] -> should be S2, not S1
-        q = KLine(0, [10, 20])
-        q.signature = make_signature([10, 20])
+        q = KLine(0, [T(10), T(20)])
+        q.signature = make_signature([T(10), T(20)])
         result = a.rationalise(q)
         # S2 should return False (slow path) even though q is in STM
         assert result is False

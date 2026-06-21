@@ -18,6 +18,16 @@ from kalvin.model import Model
 from kalvin.signature import make_signature
 from tests.conftest import requires_nlp_data
 
+
+def T(bits: int) -> int:
+    """Place NLP-type bits in the upper 32 bits of a uint64.
+
+    signifies() (used by model.where for candidate retrieval) masks off the
+    lower (BPE) 32 bits, so node/signature values that must overlap for
+    candidate matching are shifted up here.
+    """
+    return bits << 32
+
 # ── Helpers ──────────────────────────────────────────────────────────
 
 
@@ -182,13 +192,13 @@ class TestNoCrossLessonSpillover:
         try:
             # ── Lesson 1: add a candidate, rationalise a query that routes S2 ──
             # Candidate signature 5 = 0b00101.
-            agent.model.add_to_ltm(KLine(5, [10, 30]))
+            agent.model.add_to_ltm(KLine(T(5), [T(10), T(30)]))
 
             # Query signature 30 = 10 | 20 = 0b11110 — shares bit 2 with the
             # candidate, so Model.where() finds it and routing classifies S2
             # (node 10 overlaps, node 20 doesn't).
-            q = KLine(0, [10, 20])
-            q.signature = make_signature([10, 20])
+            q = KLine(0, [T(10), T(20)])
+            q.signature = make_signature([T(10), T(20)])
             agent.rationalise(q)
 
             # The S2 candidate was submitted to the cogitator (not an
@@ -208,11 +218,11 @@ class TestNoCrossLessonSpillover:
             assert len(events) > 0
 
             # ── Lesson 2: verify cogitator health post-drain ──
-            # Signature 64 = 0b1000000 shares zero bits with lesson-1
+            # Signature 64 = 0b1000000 shares zero type bits with lesson-1
             # signatures (5 | 30 = 31 = 0b11111), so it routes S4 (no
             # candidates) — a clean frame event with no S2/S3 cogitation.
             events.clear()
-            agent.rationalise(KLine(64, [64]))
+            agent.rationalise(KLine(T(64), [T(64)]))
 
             result = agent.cogitate_drain(timeout=5.0)
             assert result is True

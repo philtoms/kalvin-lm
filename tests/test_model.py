@@ -250,11 +250,12 @@ class TestModelLen:
 class TestModelWhere:
     def test_where_signature_overlap(self):
         m = make_model()
-        k1 = KLine(0b110, [0b10, 0b100])
-        k2 = KLine(0b001, [0b001])
+        # Type bits live in the upper 32 (signifies masks off the BPE half).
+        k1 = KLine(0b110 << 32, [0b10 << 32, 0b100 << 32])
+        k2 = KLine(0b001 << 32, [0b001 << 32])
         m.add_to_frame(k1)
         m.add_to_frame(k2)
-        results = m.where(0b010)
+        results = m.where(0b010 << 32)
         assert k1 in results
         assert k2 not in results
 

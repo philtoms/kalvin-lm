@@ -50,8 +50,8 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Significance (@significance spec)
 
-- Significance calls the Model's `expand` API, which yields `QueryCandidate`
-  results with pre-computed significance values.
+- Significance calls the `expand` function (defined in `kalvin.expand`), which
+  yields `QueryCandidate` results with pre-computed significance values.
 - Significance does not manage model state.
 
 ### Agent (@agent spec)
@@ -243,6 +243,21 @@ Returns whether an equal Kline is already stored in any tier.
   (kline equality, @kline spec).
 - Searches STM, then Frame, then LTM, then Base.
 
+### Grounded
+
+```
+model.grounded(kline) → bool
+```
+
+Returns whether an equal Kline exists in Frame, LTM, or Base — **excluding
+STM**.
+
+- STM is transient: entries pre-registered there haven't been rationalised
+  yet and don't count as grounded knowledge.
+- Uses the same equality semantics as `exists()`: same signature and node
+  sequence.
+- Searches Frame, then LTM, then Base.
+
 ### Find
 
 ```
@@ -280,19 +295,6 @@ Returns all Klines with the given signature across all tiers.
 
 - Returns Klines in insertion order (oldest first).
 - STM results, Frame results, LTM results, and Base results are merged.
-
-### Remove
-
-```
-model.remove(signature) → bool
-```
-
-Removes the most recently added Kline with the given signature.
-
-- Returns `true` if a Kline was removed.
-- Returns `false` if no Kline with that signature exists.
-- Removal applies to the tier where the most recently added Kline resides.
-- Removal never affects the base model.
 
 ### Count
 
@@ -490,11 +492,12 @@ reads the model from `on_event` on the calling thread).
 > subscriber work (even a bare `time.sleep`) can perturb the interleaving and
 > change the count. Count-determinism is owned by the Cogitator/agent layer.
 
-## Model API (Significance)
+## Significance Functions
 
-The following functions are consumed by the significance pipeline
-(@significance spec) and by cogitation (@agent spec). Their semantics are
-defined here.
+The following functions live in `kalvin.expand` — they are **not** `Model`
+methods and take the model as their first argument. They are consumed by
+the significance pipeline (@significance spec) and by cogitation
+(@agent spec). Their semantics are defined here.
 
 ### QueryCandidate
 
@@ -503,7 +506,7 @@ QueryCandidate(query: Kline, candidate: Kline, significance: int)
 ```
 
 A named tuple representing a single query-candidate-significance result.
-Yielded by `model.expand()` for both intermediate connotations and the
+Yielded by `expand()` for both intermediate connotations and the
 terminal significance. The model computes significance internally as
 `(~packed_distance) & MASK64`, where `packed_distance` encodes S2 and S3
 components. Callers never see raw distance.
@@ -511,7 +514,7 @@ components. Callers never see raw distance.
 ### Is S1
 
 ```
-model.is_s1(kline) → bool
+is_s1(model, kline) → bool
 ```
 
 Determines whether a kline is structurally grounded (S1).
@@ -530,7 +533,7 @@ Determines whether a kline is structurally grounded (S1).
 ### Expand (Significance)
 
 ```
-model.expand(query, candidate, distance=0) → Iterator[QueryCandidate]
+expand(model, query, candidate, distance=0) → Iterator[QueryCandidate]
 ```
 
 A generator that expands a query-candidate pair, yielding `QueryCandidate`
@@ -596,7 +599,7 @@ The implementation algorithm and pseudocode are in
 ### Is Countersigned
 
 ```
-model.is_countersigned(kline) → bool
+is_countersigned(model, kline) → bool
 ```
 
 Returns whether a kline is **countersigned** by any kline in the model.
@@ -750,8 +753,6 @@ else       → S4
 | MOD-5  | Find returns most recent KLine when multiple share signature                    | —          |
 | MOD-6  | Find_all: returns all KLines with given signature across tiers                  | —          |
 | MOD-7  | Find_by_nodes: returns KLine by nodes signature                                 | —          |
-| MOD-8  | Remove: removes most recent KLine with given signature                          | —          |
-| MOD-9  | Remove never touches base model                                                 | —          |
 | MOD-10 | Len returns frame count only (excludes STM and base)                            | —          |
 
 ### Four-Tier Lookup
@@ -801,6 +802,7 @@ else       → S4
 | MOD-R2 | `model.promote()` removed — replaced by `add_to_ltm()`                 |
 | MOD-R3 | `model.refresh_stm()` removed — absorbed by `add_to_stm()`             |
 | MOD-R4 | `model.descendants()` / `model.get_all_descendants()` removed — unused |
+| MOD-R5 | `model.remove(signature)` removed — Model no longer exposes deletion   |
 
 ### Significance API
 

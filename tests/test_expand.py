@@ -26,6 +26,15 @@ def make_model(stm_bound: int = 256) -> Model:
     return Model(stm_bound=stm_bound)
 
 
+def T(bits: int) -> int:
+    """Place NLP-type bits in the upper 32 bits of a uint64.
+
+    signifies() masks off the lower (BPE) 32 bits, so node/signature values
+    that must participate in significance matching are shifted up here.
+    """
+    return bits << 32
+
+
 class TestIsCanon:
     def test_canon_match(self):
         """sig == make_signature(nodes), non-self-referential → canonical."""
@@ -138,13 +147,13 @@ class TestExpand:
     def test_expand_hop_reaches_opposing_mismatch(self):
         """Mismatched node whose chain reaches the opposing mismatch set."""
         m = make_model()
-        m.add_to_frame(KLine(0b110, [0b100, 0b010]))  # genuine canon — chain terminator
-        m.add_to_frame(KLine(20, [0b110]))  # non-canon
-        m.add_to_frame(KLine(10, [20]))  # non-canon
-        m.add_to_frame(KLine(5, [10]))  # non-canon
+        m.add_to_frame(KLine(T(0b110), [T(0b100), T(0b010)]))  # genuine canon — chain terminator
+        m.add_to_frame(KLine(T(20), [T(0b110)]))  # non-canon
+        m.add_to_frame(KLine(T(10), [T(20)]))  # non-canon
+        m.add_to_frame(KLine(T(5), [T(10)]))  # non-canon
 
-        q = KLine(100, [5, 2])  # mismatched_q: {5, 2}
-        c = KLine(200, [10, 3])  # mismatched_c: {10, 3}
+        q = KLine(100, [T(5), T(2)])  # mismatched_q: {5, 2}
+        c = KLine(200, [T(10), T(3)])  # mismatched_c: {10, 3}
         # distance=301 (1 hop + 3 × MAX_HOP)
         results = list(expand(m, q, c))
         assert len(results) == 6
@@ -280,13 +289,13 @@ class TestExpand:
         terminal distance (signifies doesn't resolve the mismatch).
         """
         m = make_model()
-        m.add_to_frame(KLine(30, [30]))  # identity — chain terminator
-        m.add_to_frame(KLine(20, [30]))  # non-canon
-        m.add_to_frame(KLine(10, [20]))  # non-canon
-        m.add_to_frame(KLine(5, [10]))  # non-canon
+        m.add_to_frame(KLine(T(30), [T(30)]))  # identity — chain terminator
+        m.add_to_frame(KLine(T(20), [T(30)]))  # non-canon
+        m.add_to_frame(KLine(T(10), [T(20)]))  # non-canon
+        m.add_to_frame(KLine(T(5), [T(10)]))  # non-canon
 
-        q = KLine(100, [5])  # mismatched_q: {5}
-        c = KLine(200, [10])  # mismatched_c: {10}
+        q = KLine(100, [T(5)])  # mismatched_q: {5}
+        c = KLine(200, [T(10)])  # mismatched_c: {10}
 
         # q-node 5: edge_hops(5) = [(1,10), (2,20), (3,30)]
         #   hop 1: match_sig=10 IS in mismatched_c → exact match, expand
@@ -304,7 +313,7 @@ class TestExpand:
 
         # Find the signifies candidate from c-node 10→30
         signifies_candidates = [
-            r for r in results if r.query.signature == 10 and r.candidate.signature == 30
+            r for r in results if r.query.signature == T(10) and r.candidate.signature == T(30)
         ]
         assert len(signifies_candidates) == 1
         sig_cand = signifies_candidates[0]
@@ -320,12 +329,12 @@ class TestExpand:
         signature, preventing S3 connotation bridging for the same hop.
         """
         m = make_model()
-        m.add_to_frame(KLine(0b11100, [0b11100]))  # identity (self-referential) (28)
-        m.add_to_frame(KLine(0b10100, [0b11100]))  # non-canon: sig=20, make_sig=28
-        m.add_to_frame(KLine(0b01100, [0b11100]))  # non-canon: sig=12, make_sig=28
+        m.add_to_frame(KLine(T(0b11100), [T(0b11100)]))  # identity (self-referential) (28)
+        m.add_to_frame(KLine(T(0b10100), [T(0b11100)]))  # non-canon: sig=20, make_sig=28
+        m.add_to_frame(KLine(T(0b01100), [T(0b11100)]))  # non-canon: sig=12, make_sig=28
 
-        q = KLine(100, [0b10100])  # mismatched_q: {20}
-        c = KLine(200, [0b01100])  # mismatched_c: {12}
+        q = KLine(100, [T(0b10100)])  # mismatched_q: {20}
+        c = KLine(200, [T(0b01100)])  # mismatched_c: {12}
 
         # q-node 20: edge_hops(20) = [(1, 28)]
         #   28 not in mismatched_c, signifies(20, 28) = True (20 & 28 = 20)
@@ -339,9 +348,9 @@ class TestExpand:
         assert len(results) == 3  # 2 signifies + terminal
 
         # Both signifies candidates reach sig 28 at distance 1
-        assert results[0].candidate.signature == 0b11100
+        assert results[0].candidate.signature == T(0b11100)
         assert results[0].significance == (~1) & MASK64
-        assert results[1].candidate.signature == 0b11100
+        assert results[1].candidate.signature == T(0b11100)
         assert results[1].significance == (~1) & MASK64
 
         # Terminal: both mismatched nodes unresolved (2 × MAX_HOP)

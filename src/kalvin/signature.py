@@ -13,6 +13,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+# NLP-BPE nodes pack NLP type info (POS + DEP + MORPH) into the upper 32
+# bits and the BPE token ID into the lower 32 bits. signifies() compares
+# only the upper (type) half — the BPE component is masked off so that two
+# klines signify each other based on NLP type overlap, not token identity.
+_TYPE_MASK = 0xFFFF_FFFF_0000_0000
+
 
 def make_signature(nodes: Sequence[int]) -> int:
     """Produce a signature from a sequence of nodes.
@@ -33,10 +39,12 @@ def make_signature(nodes: Sequence[int]) -> int:
 
 
 def signifies(a: int, b: int) -> bool:
-    """Test whether two signatures overlap (bitwise AND ≠ 0).
+    """Test whether two signatures overlap in their NLP-type bits.
 
-    This is the basis for candidate retrieval in the rationalisation
-    pipeline: two signatures that share at least one set bit are
-    considered potentially significant.
+    The lower 32 bits (BPE token IDs) are masked off so that only the
+    upper 32 bits (POS + DEP + MORPH) participate. This is the basis for
+    candidate retrieval in the rationalisation pipeline: two signatures
+    that share at least one set type bit are considered potentially
+    significant.
     """
-    return (a & b) != 0
+    return (a & b & _TYPE_MASK) != 0

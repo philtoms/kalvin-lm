@@ -3,6 +3,17 @@
 from kalvin.signature import make_signature, signifies
 
 
+def T(bits: int) -> int:
+    """Place NLP-type bits in the upper 32 bits of a uint64.
+
+    NLP-BPE nodes pack type info (POS + DEP + MORPH) into the upper 32
+    bits and the BPE token ID into the lower 32. signifies() compares
+    only the upper (type) half, so test values that must participate in
+    significance matching are shifted up with this helper.
+    """
+    return bits << 32
+
+
 class TestMakeSignature:
     """make_signature: plain OR-reduction of raw node values."""
 
@@ -37,21 +48,33 @@ class TestMakeSignature:
 
 
 class TestSignifies:
-    """signifies(a, b) → (a & b) != 0."""
+    """signifies(a, b) → overlap in the upper (NLP-type) 32 bits only."""
 
-    def test_overlapping_bits(self):
-        assert signifies(0b110, 0b010) is True
+    def test_overlapping_type_bits(self):
+        assert signifies(T(0b110), T(0b010)) is True
 
-    def test_non_overlapping_bits(self):
-        assert signifies(0b100, 0b010) is False
+    def test_non_overlapping_type_bits(self):
+        assert signifies(T(0b100), T(0b010)) is False
 
     def test_self(self):
-        assert signifies(0b110, 0b110) is True
+        assert signifies(T(0b110), T(0b110)) is True
 
     def test_zero_signifies_nothing(self):
         assert signifies(0, 0) is False
-        assert signifies(0, 42) is False
-        assert signifies(42, 0) is False
+        assert signifies(0, T(42)) is False
+        assert signifies(T(42), 0) is False
 
     def test_commutative(self):
-        assert signifies(0b110, 0b010) == signifies(0b010, 0b110)
+        assert signifies(T(0b110), T(0b010)) == signifies(T(0b010), T(0b110))
+
+    def test_bpe_component_masked_off(self):
+        """Overlap confined to the lower (BPE) 32 bits does not signify."""
+        # Same BPE token ID, no type bits → not significant.
+        assert signifies(0b110, 0b010) is False
+        assert signifies(0b110, 0b110) is False
+
+    def test_type_overlap_beats_bpe_difference(self):
+        """Different BPE IDs but shared type bits still signify."""
+        a = T(0b110) | 0b0001  # type 0b110, BPE id 1
+        b = T(0b010) | 0b0010  # type 0b010, BPE id 2
+        assert signifies(a, b) is True
