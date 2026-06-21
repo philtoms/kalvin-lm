@@ -838,15 +838,15 @@ class TestEncoding:
 
         Under the kalvin tokenizer there is no character-bit fallback.  An
         unresolved character is encoded as its own raw BPE token, producing a
-        valid typed node (high 32 bits = type word, low 32 bits = BPE id).
+        valid typed node (high 32 bits = sig word, low 32 bits = BPE id).
         """
         entries = compile_dev("Z")
         assert len(entries) >= 1
         entry = entries[0]
-        type_word = entry.signature >> 32
+        sig_word = entry.signature >> 32
         bpe_id = entry.signature & 0xFFFFFFFF
-        # Typed node: high 32 bits carry the type word; low 32 bits carry BPE id
-        assert type_word > 0, f"Expected type-word bits in high word, got {type_word}"
+        # Typed node: high 32 bits carry the sig word; low 32 bits carry BPE id
+        assert sig_word > 0, f"Expected sig-word bits in high word, got {sig_word}"
         assert bpe_id > 0, f"Expected a valid BPE token id, got {bpe_id}"
         # Must NOT be the legacy character-bit-packed value (single-bit encoding)
         assert entry.signature != 67108864, "Signature should not be a legacy bit value"
@@ -1062,12 +1062,12 @@ class TestComplexExamples:
         assert len(entries) > 0
 
         # Every entry carries a valid typed signature: high 32 bits hold
-        # the type word, low 32 bits hold the BPE token id.
+        # the sig word, low 32 bits hold the BPE token id.
         for e in entries:
             assert isinstance(e.signature, int)
             assert e.signature > 0
             assert (e.signature >> 32) > 0, (
-                f"Entry {e.dbg.label!r} signature {e.signature:#x} has no type-word bits"
+                f"Entry {e.dbg.label!r} signature {e.signature:#x} has no sig-word bits"
             )
 
         # All entries should have a valid op via dbg

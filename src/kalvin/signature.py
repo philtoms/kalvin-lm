@@ -13,11 +13,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-# Kalvin nodes pack a type word into the upper 32 bits and a BPE token ID
+# Kalvin nodes pack a sig word into the upper 32 bits and a BPE token ID
 # into the lower 32 bits. signifies() compares only the upper (type) half —
 # the BPE component is masked off so that two klines signify each other
-# based on type-word overlap, not token identity. Kalvin does not interpret
-# the type word; see the NLP specialisation for one meaning of these bits.
+# based on sig-word overlap, not token identity. Kalvin does not interpret
+# the sig word; see the NLP specialisation for one meaning of these bits.
 _TYPE_MASK = 0xFFFF_FFFF_0000_0000
 
 
@@ -40,10 +40,10 @@ def make_signature(nodes: Sequence[int]) -> int:
 
 
 def signifies(a: int, b: int) -> bool:
-    """Test whether two signatures overlap in their type-word bits.
+    """Test whether two signatures overlap in their sig-word bits.
 
     The lower 32 bits (BPE token IDs) are masked off so that only the
-    upper 32 bits (the type word) participate. This is the basis for
+    upper 32 bits (the sig word) participate. This is the basis for
     candidate retrieval in the rationalisation pipeline: two signatures
     that share at least one set type bit are considered potentially
     significant.

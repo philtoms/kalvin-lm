@@ -3,7 +3,7 @@
 Provides interface contracts for tokenizers.
 
 KTokenizer has one production adapter (Tokenizer); subclasses may
-specialise the type-word interpretation.
+specialise the sig-word interpretation.
 """
 
 from __future__ import annotations
@@ -30,8 +30,8 @@ class KTokenizer(ABC):
     the tokenizer — no branching between encoding paths.
 
     The production adapter is :class:`kalvin.tokenizer.Tokenizer`, which
-    packs a type word into the upper 32 bits of each node and a BPE token
-    ID into the lower 32. Subclasses may specialise the type word's
+    packs a sig word into the upper 32 bits of each node and a BPE token
+    ID into the lower 32. Subclasses may specialise the sig word's
     interpretation.
     """
 
@@ -52,9 +52,9 @@ class KTokenizer(ABC):
         ...
 
     def lookup_type(self, token_id: int) -> int | None:
-        """Return the type word for a BPE token ID, or None if absent.
+        """Return the sig word for a BPE token ID, or None if absent.
 
-        The type word occupies the upper 32 bits of a node. Its meaning is
+        The sig word occupies the upper 32 bits of a node. Its meaning is
         opaque to kalvin (see the NLP specialisation for one interpretation).
         """
         return None
@@ -62,7 +62,7 @@ class KTokenizer(ABC):
     def lookup_type_entry(self, token_id: int) -> dict | None:
         """Return the raw type-dictionary entry for a BPE token ID, or None.
 
-        The entry carries at least a ``type_word`` key; any further keys are
+        The entry carries at least a ``sig_word`` key; any further keys are
         opaque metadata supplied by whatever generated the dictionary.
         """
         return None

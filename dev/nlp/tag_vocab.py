@@ -17,7 +17,7 @@ The matching algorithm works **from vocab to grammar**:
 4. **Special-token rules**: Deterministic annotation for whitespace, punctuation,
    digits, and control characters.
 5. **Unknown fallback**: Tokens that match none of the above get ``POS_X``
-   (nlp_type32 = 65536, written as the generic ``type_word`` key so the
+   (nlp_type32 = 65536, written as the generic ``sig_word`` key so the
    kalvin base tokenizer can read the output without any NLP coupling).
 
 Usage:
@@ -428,7 +428,7 @@ def _resolve_token(
             "count": 0,
             "tokens": [token_id],
             "frequency_pct": 0.0,
-            "type_word": compute_nlp_type32(pos, dep, morph),
+            "sig_word": compute_nlp_type32(pos, dep, morph),
         }
 
     # 5. Unknown fallback — POS_X
@@ -442,7 +442,7 @@ def _resolve_token(
         "count": 0,
         "tokens": [token_id],
         "frequency_pct": 0.0,
-        "type_word": UNKNOWN_NLP_TYPE,
+        "sig_word": UNKNOWN_NLP_TYPE,
     }
 
 
@@ -457,7 +457,7 @@ def _make_entry(token_id: int, token_str: str, parent: dict) -> dict:
         "count": 0,
         "tokens": [token_id],
         "frequency_pct": 0.0,
-        "type_word": parent.get("nlp_type32", UNKNOWN_NLP_TYPE),
+        "sig_word": parent.get("nlp_type32", UNKNOWN_NLP_TYPE),
     }
 
 

@@ -27,9 +27,9 @@ This spec depends on the following concepts, defined elsewhere:
 ### Tokenizer (@tokenizer spec)
 
 - **Typed-node layout** — nodes are packed as
-  `(type_word << 32) | bpe_token_id`: the upper 32 bits carry the type
+  `(sig_word << 32) | bpe_token_id`: the upper 32 bits carry the type
   word and the lower 32 carry the BPE token id. `signifies`
-  masks off the lower (BPE) 32 bits and compares only the upper (type-word)
+  masks off the lower (BPE) 32 bits and compares only the upper (sig-word)
   half (see §Bitwise AND Matching). A node with non-zero upper 32 bits is a
   tokenizer-produced (typed) node; a node whose set bits fall entirely in
   the lower 32 is opaque to type matching. There is no `is_typed_node`
@@ -62,7 +62,7 @@ This enables compositional hierarchies: a kline's nodes reference other
 klines.
 
 A node used as a kline node selects all klines whose signatures overlap
-with it in the upper (type-word) 32 bits (see §Bitwise AND Matching).
+with it in the upper (sig-word) 32 bits (see §Bitwise AND Matching).
 
 ## Creation
 
@@ -108,13 +108,13 @@ carries no structural identity. It cannot be found via bitwise AND matching
 ## Bitwise AND Matching
 
 Signatures support bitwise AND matching as a fast, approximate similarity
-test over **type-word bits only**. The typed-node layout (see @tokenizer
-spec) packs the type word into the upper 32 bits and the BPE token ID into
+test over **sig-word bits only**. The typed-node layout (see @tokenizer
+spec) packs the sig word into the upper 32 bits and the BPE token ID into
 the lower 32 bits. `signifies` masks off the lower (BPE) 32 bits so two
-klines are compared by type-word overlap, not by token-ID collision:
+klines are compared by sig-word overlap, not by token-ID collision:
 
 ```
-TYPE_MASK = 0xFFFF_FFFF_0000_0000  # upper 32 bits = type word
+TYPE_MASK = 0xFFFF_FFFF_0000_0000  # upper 32 bits = sig word
 signifies(a, b) → (a & b & TYPE_MASK) != 0
 ```
 
@@ -137,7 +137,7 @@ Properties:
   irrelevant (no shared type bits).
 - **Vacuous for 0** — a signature of 0 never signifies anything.
 - **Type-only** — values whose set bits fall entirely in the lower 32
-  (e.g. a raw BPE token id with no type word) never signify anything,
+  (e.g. a raw BPE token id with no sig word) never signify anything,
   because their upper 32 bits are zero.
 
 Masking applies only to `signifies`. `make_signature` still OR-reduces the
@@ -158,7 +158,7 @@ lower (BPE) bits remain available for decoding and exact-match resolution.
 | SIG-15 | `signifies(0b110, 0b010) == False` (lower/BPE bits masked off) | — |
 | SIG-16 | `signifies(T(0b110) \| 1, T(0b010) \| 2) == True` (type overlap beats differing BPE ids) | — |
 
-`T(x)` denotes type-word bits `x` packed into the upper 32 (`x << 32`),
+`T(x)` denotes sig-word bits `x` packed into the upper 32 (`x << 32`),
 with the lower 32 (BPE token id) zero. See the @tokenizer spec for the
 full typed-node layout.
 

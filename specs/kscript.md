@@ -469,10 +469,10 @@ The ASTEmitter produces symbolic entries (strings). The TokenEncoder converts st
 
 ### 11.2 Typed-Node Encoding
 
-Identifiers are encoded as typed BPE tokens carrying a type word in the upper 32 bits (its meaning — e.g. POS + DEP + MORPH — is a deployment concern; see the @nlp_tokenizer spec):
+Identifiers are encoded as typed BPE tokens carrying a sig word in the upper 32 bits (its meaning — e.g. POS + DEP + MORPH — is a deployment concern; see the @nlp_tokenizer spec):
 
 ```
-encode("HELLO") → (type_word << 32) | bpe_token_id
+encode("HELLO") → (sig_word << 32) | bpe_token_id
 ```
 
 ### 11.3 Multi-Token Words

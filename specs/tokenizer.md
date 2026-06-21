@@ -6,23 +6,23 @@ The tokenizer converts between text and nodes. It is the sole authority
 for how text becomes nodes.
 
 Kalvin ships a single production tokenizer. It is built on a **BPE**
-subword base and combines each BPE token with a **type word** to form a
+subword base and combines each BPE token with a **sig word** to form a
 64-bit typed node:
 
 - **BPE** — byte-pair encoding. Vocabulary learned from a training corpus.
   Tokens are sequential vocabulary indices.
-- **Type word** — a 32-bit bit pattern packed into the upper half of each
-  node. Kalvin treats the type word as **opaque**: it participates in
+- **Sig word** — a 32-bit bit pattern packed into the upper half of each
+  node. Kalvin treats the sig word as **opaque**: it participates in
   signature construction and matching but kalvin does not interpret what
-  the bits mean. The meaning of the type word is a deployment concern; see
+  the bits mean. The meaning of the sig word is a deployment concern; see
   the @nlp_tokenizer spec for the NLP interpretation used by the shipped
   data.
 
 ```
-node = (type_word << 32) | bpe_token_id
+node = (sig_word << 32) | bpe_token_id
 ```
 
-The high 32 bits carry the type word; the low 32 bits carry the BPE token
+The high 32 bits carry the sig word; the low 32 bits carry the BPE token
 ID. Both halves participate in the same bitwise OR/AND algebra as any
 other node.
 
@@ -68,16 +68,16 @@ The number of distinct tokens the BPE vocabulary defines.
 Convert a string to an ordered sequence of typed nodes.
 
 - Empty string → empty list.
-- Each BPE token is combined with its type word:
-  `(type_word << 32) | bpe_token_id`.
-- Tokens absent from the type dictionary receive the fallback type word
+- Each BPE token is combined with its sig word:
+  `(sig_word << 32) | bpe_token_id`.
+- Tokens absent from the type dictionary receive the fallback sig word
   (`UNKNOWN_TYPE`).
 - Each node carries enough information to reconstruct the original text
   via `decode`.
 
 ### `encode_bpe(text: str, pad_ws: bool = False) → list[int]`
 
-Low-level accessor: encode text to raw BPE token IDs (no type word).
+Low-level accessor: encode text to raw BPE token IDs (no sig word).
 Used by training/tagging tooling that operates on the BPE vocabulary
 directly.
 
@@ -93,19 +93,19 @@ Convert a sequence of nodes back to a string.
 ## Type Dictionary
 
 The tokenizer owns a **type dictionary** mapping BPE token IDs to their
-type word. Entries are loaded from a tagged-grammar file
+sig word. Entries are loaded from a tagged-grammar file
 (`{tokenizer_name}_tagged_grammar.json`) in which every BPE token —
-including sub-words — carries a `type_word` field. Other fields in an
+including sub-words — carries a `sig_word` field. Other fields in an
 entry are opaque metadata, preserved unchanged (the shipped dictionary
 carries NLP labels; see the @nlp_tokenizer spec).
 
 BPE tokens without a dictionary entry fall back to `UNKNOWN_TYPE` (the
-empty type word, `0`). A deployment may reinterpret this via a subclass
+empty sig word, `0`). A deployment may reinterpret this via a subclass
 (the NLP specialisation uses `POS_X`).
 
 ### Lookup
 
-- `lookup_type(token_id) → int | None` — the type word for a BPE token ID.
+- `lookup_type(token_id) → int | None` — the sig word for a BPE token ID.
 - `lookup_type_entry(token_id) → dict | None` — the raw dictionary entry.
 
 ## BPE Engine
@@ -136,7 +136,7 @@ tokenizer.from_directory(path, name) → Tokenizer
 ```
 
 `from_directory` loads the BPE engine only (no type dictionary); `encode`
-on the result produces nodes with the fallback type word for every token.
+on the result produces nodes with the fallback sig word for every token.
 The base tokenizer accepts a type dictionary as a constructor argument
 but does not source one from disk — loading a tagged grammar is a
 deployment concern handled by a subclass (see @nlp_tokenizer for the
@@ -146,11 +146,11 @@ engine).
 ### Encoding
 
 BPE segments text into subword units, each mapped to a vocabulary index.
-Each BPE token ID is then combined with its type word from the type
+Each BPE token ID is then combined with its sig word from the type
 dictionary:
 
 ```
-encode("hello") → [(type_word("hello") << 32) | 15496]
+encode("hello") → [(sig_word("hello") << 32) | 15496]
 ```
 
 #### Worked Example
@@ -159,8 +159,8 @@ encode("hello") → [(type_word("hello") << 32) | 15496]
 BPE encode("the air") → [257, 500]
 
 Type dictionary lookup:
-  257 "the" → type_word = T_the
-  500 "air" → type_word = T_air
+  257 "the" → sig_word = T_the
+  500 "air" → sig_word = T_air
 
 Typed nodes: [(T_the << 32) | 257, (T_air << 32) | 500]
 ```
@@ -173,14 +173,14 @@ nodes = [(T_the << 32) | 257, (T_air << 32) | 500]
 make_signature(nodes) → nodes[0] | nodes[1]
 ```
 
-The signature captures both the type words and the BPE token IDs.
+The signature captures both the sig words and the BPE token IDs.
 
 > **Note.** `make_signature` is defined in the @signature spec, not here.
 
 ## Signature Behavior
 
 `make_signature()` OR-reduces the full unmasked node values. Both the
-type word (high 32) and the BPE token ID (low 32) contribute to the
+sig word (high 32) and the BPE token ID (low 32) contribute to the
 signature. The tokenizer passes raw typed nodes to `make_signature()` as
 it would any other node sequence.
 
@@ -189,13 +189,13 @@ it would any other node sequence.
 | ID    | Criterion                                                                  | Origin ref |
 | ----- | -------------------------------------------------------------------------- | ---------- |
 | TOK-7 | Empty string: `encode("") == []`, `decode([]) == ""`                        | — |
-| TOK-8 | Typed-node format: every node is `(type_word << 32) \| bpe_token_id`        | — |
+| TOK-8 | Typed-node format: every node is `(sig_word << 32) \| bpe_token_id`        | — |
 | TOK-9 | Round-trip: `decode(encode(text)) == text` for representable text           | — |
-| TOK-10 | Type dictionary: `lookup_type(id)` returns the entry's `type_word`         | — |
+| TOK-10 | Type dictionary: `lookup_type(id)` returns the entry's `sig_word`         | — |
 | TOK-11 | Unknown-token fallback: tokens absent from the dictionary get `UNKNOWN_TYPE` | — |
 | TOK-12 | `from_directory()` loads the BPE engine only (no type dictionary)        | — |
 
-NLP-specific criteria (NLP type-word interpretation, dimension count,
+NLP-specific criteria (NLP sig-word interpretation, dimension count,
 curriculum compatibility) live in the @nlp_tokenizer spec.
 
 ## What a Tokenizer is Not
@@ -206,9 +206,9 @@ The following are explicitly **out of scope** for this spec:
   defined in the @signature spec.
 - **Significance computation.** Significance is defined in the
   @significance spec. The tokenizer does not compute or store significance.
-- **Interpretation of the type word.** What the type-word bits mean is a
+- **Interpretation of the sig word.** What the sig-word bits mean is a
   deployment concern. The NLP interpretation is specified in the
-  @nlp_tokenizer spec; the base tokenizer treats the type word as opaque.
+  @nlp_tokenizer spec; the base tokenizer treats the sig word as opaque.
 - **Model operations.** Storing, retrieving, and querying klines are model
   concerns.
 - **Training data format.** How training data is sourced and preprocessed
@@ -224,4 +224,4 @@ The following are explicitly **out of scope** for this spec:
 - **Significance** (@significance spec) — consumes nodes produced by the
   tokenizer (nodes are opaque to significance).
 - **NLP Tokenizer** (@nlp_tokenizer spec) — the NLP interpretation of the
-  type word used by the shipped data.
+  sig word used by the shipped data.

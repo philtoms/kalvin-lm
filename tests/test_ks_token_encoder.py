@@ -94,7 +94,7 @@ class TestUnresolvedCharEncoding:
         results = encoder.encode_entries([entry])
         sig = results[0].signature
         assert sig == tz.encode("Z")[0]
-        assert (sig >> 32) > 0  # type-word bits present
+        assert (sig >> 32) > 0  # sig-word bits present
         assert sig != 67108864  # not the legacy character-bit-packed value
 
 
