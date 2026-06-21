@@ -26,7 +26,7 @@ from kalvin.expand import D_MAX, normalise_significance
 from kalvin.kline import KLine, kline_display
 from kalvin.misfit import classify_misfit
 from kalvin.signature import make_signature
-from kalvin.tokenizer import Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from ks.compiler import compile_source
 from training.harness.bus import MessageBus
 from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
@@ -47,9 +47,9 @@ _S1_FRAME_THRESHOLD = D_MAX
 
 
 @lru_cache(maxsize=1)
-def _display_tokenizer() -> Tokenizer:
+def _display_tokenizer() -> NLPTokenizer:
     """Lazily-built kalvin tokenizer for kline display (cached; data required)."""
-    return Tokenizer.from_files()
+    return NLPTokenizer()
 
 
 class Trainer:

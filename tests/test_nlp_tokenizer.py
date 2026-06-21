@@ -19,14 +19,14 @@ pytestmark = requires_tokenizer_data
 # ── Module-local NLP fixtures ────────────────────────────────────────────
 #
 # These return the NLP specialisation (NLPTokenizer). The shared conftest
-# fixture provides the production base Tokenizer; this module is the one
-# place that specifically exercises the NLP interpretation.
+# fixture also returns the production NLPTokenizer; this module is the one
+# place that specifically exercises the NLP interpretation and assertions.
 
 
 @pytest.fixture(scope="module")
 def nlp_tokenizer() -> NLPTokenizer:
     """Load an :class:`NLPTokenizer` from the standard data files."""
-    return NLPTokenizer.from_files()
+    return NLPTokenizer()
 
 
 @pytest.fixture(scope="module")
@@ -110,11 +110,10 @@ class TestUnknownFallback:
 
     def test_unknown_token_fallback(self) -> None:
         """BPE tokens not in grammar dict get UNKNOWN_NLP_TYPE (65536)."""
-        from kalvin.tokenizer import Tokenizer
 
         # Use an empty type dictionary — all tokens should be unknown.
-        bpe = Tokenizer.from_directory()._bpe
-        nlp = NLPTokenizer(bpe=bpe, types={})
+        nlp = NLPTokenizer()
+        nlp._types = {}  # empty the type dict — all tokens unknown
 
         nodes = nlp.encode("Tea")
         assert len(nodes) >= 1
@@ -149,13 +148,13 @@ class TestProperties:
 
 
 class TestFactory:
-    """Tests for from_files() class method."""
+    """Tests for the constructor."""
 
-    def test_from_files_default_args(self) -> None:
-        """from_files() with no args loads a working tokenizer."""
-        nlp = NLPTokenizer.from_files()
+    def test_constructor_default_args(self) -> None:
+        """NLPTokenizer() with no args loads a working tokenizer."""
+        nlp = NLPTokenizer()
         nodes = nlp.encode("Tea")
-        assert len(nodes) >= 1, "from_files() should produce a working tokenizer"
+        assert len(nodes) >= 1, "NLPTokenizer() should produce a working tokenizer"
 
 
 # ── Integration: end-to-end encode → decode → signature pipeline ──────

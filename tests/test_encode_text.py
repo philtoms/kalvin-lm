@@ -12,7 +12,7 @@ from kalvin.agent import KAgent
 from kalvin.events import EventBus
 from kalvin.kline import KLine
 from kalvin.signature import make_signature
-from kalvin.tokenizer import Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from tests.conftest import requires_tokenizer_data
 
 # Encoding through KAgent uses the kalvin tokenizer; skip cleanly when the
@@ -112,8 +112,8 @@ class TestEncodeMultipleSentences:
     the expected count."""
 
     def test_encode_multiple_sentences(self):
-        # Use the kalvin Tokenizer (the sole production tokenizer).
-        agent = KAgent(adapter=EventBus(), tokenizer=Tokenizer.from_files())
+        # Use the kalvin NLPTokenizer (the sole production tokenizer).
+        agent = KAgent(adapter=EventBus(), tokenizer=NLPTokenizer())
         initial = agent.frame_size()
 
         text = "The cat sat. The dog ran."

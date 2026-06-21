@@ -37,7 +37,8 @@ from kalvin.expand import (
 from kalvin.kline import KLine
 from kalvin.model import Model
 from kalvin.signature import make_signature
-from kalvin.tokenizer import TiktokenNotInstalledError, Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.tokenizer import TiktokenNotInstalledError
 
 __all__ = [
     # Re-exported from kalvin.cogitator for backward compatibility;
@@ -63,7 +64,7 @@ def _default_tokenizer() -> KTokenizer:
     ``scripts/rebuild-tokenizer-data.sh``.
     """
     try:
-        return Tokenizer.from_files()
+        return NLPTokenizer()
     except (FileNotFoundError, ImportError, OSError, TiktokenNotInstalledError) as exc:
         raise RuntimeError(
             "Tokenizer data is required but unavailable. "
@@ -99,7 +100,7 @@ class KAgent:
     Parameters
     ----------
     tokenizer:
-        Tokenizer instance. Defaults to the kalvin Tokenizer (the sole
+        Tokenizer instance. Defaults to the kalvin NLPTokenizer (the sole
         production tokenizer). Used for encoding text to nodes.
     model:
         Model instance serving as base memory. Defaults to empty Model.

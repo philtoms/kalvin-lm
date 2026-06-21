@@ -10,7 +10,7 @@ Usage:
     python scripts/ks_verify.py
     python scripts/ks_verify.py path/to/script.ks
     python scripts/ks_verify.py "A == B"
-    python scripts/ks_verify.py script.ks --tokenizer nlp
+    python scripts/ks_verify.py script.ks --tokenizer kalvin
     python scripts/ks_verify.py script.ks --raw
 """
 
@@ -106,7 +106,7 @@ def _detect_sections(entries: list[KLine]) -> list[tuple[str, int, int]]:
     # words from the opening annotation. They end when we encounter a label
     # that is a multi-char identifier NOT from the annotation.
     # Heuristic: corpus entries are IDENTITY+CANONIZE blocks where each
-    # CANONIZE's nodes are all single-char or NLP subwords.
+    # CANONIZE's nodes are all single-char or resolved-word subwords.
 
     # Find where corpus ends: first entry whose label differs from previous
     # AND is an identifier (uppercase letters, no lowercase word pattern).
@@ -255,12 +255,13 @@ def print_summary(entries: list[KLine]) -> None:
 def load_tokenizer(name: str):
     """Load a tokenizer by name.
 
-    NLP is the sole production tokenizer; ``name`` must be ``"nlp"``.
+    The kalvin tokenizer is the sole production tokenizer; ``name`` must
+    be ``"kalvin"``.
     """
-    if name == "nlp":
-        from kalvin.tokenizer import Tokenizer
+    if name == "kalvin":
+        from kalvin.nlp_tokenizer import NLPTokenizer
 
-        return Tokenizer.from_files(), "kalvin"
+        return NLPTokenizer(), "kalvin"
     else:
         raise ValueError(f"Unknown tokenizer: {name}")
 
@@ -312,9 +313,9 @@ def main() -> None:
     parser.add_argument(
         "--tokenizer",
         "-t",
-        choices=["nlp"],
-        default="nlp",
-        help="Tokenizer to use (default: nlp — the sole production tokenizer).",
+        choices=["kalvin"],
+        default="kalvin",
+        help="Tokenizer to use (default: kalvin — the sole production tokenizer).",
     )
     parser.add_argument(
         "--raw",

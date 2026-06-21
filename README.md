@@ -129,7 +129,7 @@ src/
 │   ├── lexer.py          #   Lexer (source → tokens)
 │   ├── parser.py         #   Parser (tokens → AST)
 │   ├── ast_emitter.py    #   ASTEmitter (AST → symbolic entries)
-│   ├── binding_scope.py  #   NLP binding resolution
+│   ├── binding_scope.py  #   word binding resolution
 │   ├── token_encoder.py  #   TokenEncoder (symbolic → encoded KLines)
 │   └── compiler.py       #   Compiler (orchestrator; source → KLines)
 └── training/             # Multi-agent training runtime

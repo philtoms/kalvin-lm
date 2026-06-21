@@ -1,7 +1,7 @@
 """Tests for the no-fallback behaviour of ``_default_tokenizer()``.
 
 The kalvin tokenizer is the sole production tokenizer.  When
-``Tokenizer.from_files()`` fails — because the data directory is absent, the
+``NLPTokenizer()`` fails — because the data directory is absent, the
 BPE backend (``tiktoken``/``rustbpe``) is missing, or a data file is
 unreadable — the factory must raise a descriptive :class:`RuntimeError`
 naming ``scripts/rebuild-tokenizer-data.sh``, chaining the original cause.
@@ -21,7 +21,7 @@ from kalvin.agent import _default_tokenizer
 from kalvin.tokenizer import TiktokenNotInstalledError, Tokenizer
 from tests.conftest import requires_tokenizer_data
 
-_TARGET = "kalvin.agent.Tokenizer.from_files"
+_TARGET = "kalvin.agent.NLPTokenizer"
 
 
 def test_raises_runtime_error_on_file_not_found():
@@ -43,7 +43,9 @@ def test_raises_runtime_error_on_missing_backend():
 
     ``tiktoken`` import failures are swallowed at module load in
     ``kalvin.tokenizer`` and re-raised as the custom
-    :class:`TiktokenNotInstalledError` inside ``Tokenizer.from_directory()``.
+    :class:`TiktokenNotInstalledError` inside the BPE-engine loader
+    (``Tokenizer._load_bpe_engine``, invoked by the ``NLPTokenizer``
+    constructor).
     This is a plain ``Exception`` subclass (not ``ImportError``/``OSError``),
     so it must be listed explicitly in the ``except`` tuple.
     """

@@ -3,7 +3,7 @@
 These tests exercise the ``Cogitator`` → ``CogitationHandler`` dispatch seam
 (``on_s1`` / ``on_expansion``) using a recording fake handler wired to a bare
 ``Model()`` + ``Cogitator()``.  They do **not** instantiate ``KAgent`` and
-therefore require **no NLP tokenizer data** — they run in standard CI.
+therefore require **no tokenizer data** — they run in standard CI.
 """
 
 from kalvin.cogitator import Cogitator, WorkItem

@@ -51,7 +51,7 @@ import dataclasses
 import pytest
 
 from kalvin.kline import KLine
-from kalvin.tokenizer import Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from ks import compile_source
 from ks.ast import Annotation, Block, KScriptFile, OperatorScope
 from ks.binding_scope import BindingScope
@@ -81,14 +81,14 @@ def compile_real(source: str, tokenizer=None) -> list[KLine]:
 
 # Lazy module-level tokenizer (safe at import time; ``pytestmark`` gates
 # execution so this is only ever instantiated on a data-present machine).
-_TOK_INSTANCE: Tokenizer | None = None
+_TOK_INSTANCE: NLPTokenizer | None = None
 
 
-def _tok() -> Tokenizer:
+def _tok() -> NLPTokenizer:
     """Return the shared tokenizer, constructing it on first use."""
     global _TOK_INSTANCE
     if _TOK_INSTANCE is None:
-        _TOK_INSTANCE = Tokenizer.from_files()
+        _TOK_INSTANCE = NLPTokenizer()
     return _TOK_INSTANCE
 
 

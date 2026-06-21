@@ -1,10 +1,10 @@
-"""Tests for BindingScope — NLP binding resolution scope stack.
+"""Tests for BindingScope — word binding resolution scope stack.
 
 Covers acceptance criteria KS-23 through KS-31 plus edge cases:
 case-insensitive matching, counter exceeded, multiple word lists,
 empty word lists, and error conditions.
 
-Spec reference: §10 (NLP Binding Resolution), §10.1 (Rules B1–B4), §10.3 (BindingScope API).
+Spec reference: §10 (Word Binding Resolution), §10.1 (Rules B1–B4), §10.3 (BindingScope API).
 """
 
 import pytest

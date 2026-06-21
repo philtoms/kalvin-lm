@@ -2,7 +2,7 @@
 
 Covers:
   KS-35 — Complex nested example (§14.11) with complete entry validation
-  KS-36 — NLP-bound example (§14.12) with binding resolution
+  KS-36 — Word-bound example (§14.12) with binding resolution
   compile_source — Convenience function
   KScript API — Public class
   Pipeline wiring — End-to-end pipeline
@@ -14,7 +14,7 @@ from __future__ import annotations
 import pytest
 
 from kalvin.kline import KLine
-from kalvin.tokenizer import Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from ks import Compiler, KScript, compile_source
 from ks.lexer import Lexer
 from ks.parser import Parser
@@ -32,14 +32,14 @@ pytestmark = requires_tokenizer_data
 
 # Lazy module-level tokenizer (safe at import time; ``pytestmark`` gates
 # execution so this is only ever instantiated on a data-present machine).
-_tok32_instance: Tokenizer | None = None
+_tok32_instance: NLPTokenizer | None = None
 
 
-def _tok32() -> Tokenizer:
+def _tok32() -> NLPTokenizer:
     """Return the shared tokenizer, constructing it on first use."""
     global _tok32_instance
     if _tok32_instance is None:
-        _tok32_instance = Tokenizer.from_files()
+        _tok32_instance = NLPTokenizer()
     return _tok32_instance
 
 
@@ -220,7 +220,7 @@ class TestKS35ComplexNested:
 
 
 # ---------------------------------------------------------------------------
-# KS-36: NLP-bound example (§14.12)
+# KS-36: Word-bound example (§14.12)
 # ---------------------------------------------------------------------------
 
 SOURCE_14_12 = """\
@@ -235,21 +235,21 @@ MHALL == SVO =>
 
 
 @requires_tokenizer_data
-class TestKS36NLPBound:
-    """KS-36 — NLP-bound example from §14.12.
+class TestKS36WordBound:
+    """KS-36 — Word-bound example from §14.12.
 
     Tests that block annotation provides word bindings and inline
     annotations resolve correctly.  Requires Tokenizer data files.
     """
 
-    def _get_tokenizer(self) -> Tokenizer:
-        """Get Tokenizer from standard file paths."""
-        from kalvin.tokenizer import Tokenizer
+    def _get_tokenizer(self) -> NLPTokenizer:
+        """Get NLPTokenizer from standard file paths."""
+        from kalvin.nlp_tokenizer import NLPTokenizer
 
-        return Tokenizer.from_files()
+        return NLPTokenizer()
 
-    def test_nlp_binding_mts_mhall(self) -> None:
-        """MTS for MHALL resolves characters to NLP words.
+    def test_word_binding_mts_mhall(self) -> None:
+        """MTS for MHALL resolves characters to words.
 
         M → Mary, H → Had, A → "A", L → "Little", L → "Lamb".
         """
@@ -317,7 +317,7 @@ class TestCanonicalEncoding:
     """KS-41 (canonical resolution) + KS-42 (canonical encoding).
 
     Asserted at the KLine level (post-TokenEncoder) on the §14.12
-    NLP-bound example. These are the regression net for the duplicate-
+    Word-bound example. These are the regression net for the duplicate-
     CANONIZE and phantom-IDENTITY bugs: an identifier has one identity,
     computed once and reused.
     """
@@ -405,7 +405,7 @@ class TestCompileSource:
 
     def test_custom_tokenizer(self) -> None:
         """Passing a custom tokenizer works."""
-        tok = Tokenizer.from_files()
+        tok = NLPTokenizer()
         entries = compile_source("A == B", tokenizer=tok)
         assert len(entries) > 0
 
@@ -445,10 +445,10 @@ class TestKScriptAPI:
         for e in model.entries:
             assert e.dbg is not None or e.dbg is None  # dbg field exists
 
-    def test_default_tokenizer_is_base(self) -> None:
-        """Default tokenizer is the kalvin Tokenizer."""
+    def test_default_tokenizer_is_nlp(self) -> None:
+        """Default tokenizer is the kalvin NLPTokenizer."""
         model = KScript("A")
-        assert isinstance(model._tokenizer, Tokenizer)
+        assert isinstance(model._tokenizer, NLPTokenizer)
         # The entry's signature should decode back to "A" via the tokenizer
         sig = model.entries[0].signature
         assert _tok32().decode([sig]) == "A"
@@ -496,7 +496,7 @@ class TestPipelineWiring:
 
     def test_compiler_with_custom_tokenizer(self) -> None:
         """Compiler accepts custom tokenizer."""
-        tok = Tokenizer.from_files()
+        tok = NLPTokenizer()
         compiler = Compiler(tokenizer=tok)
         tokens = Lexer("A = B").tokenize()
         kfile = Parser(tokens).parse()

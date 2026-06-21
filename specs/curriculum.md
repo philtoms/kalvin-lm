@@ -274,16 +274,16 @@ Extended with structured curriculum context fields.
 
 ### Curriculum Annotation Conventions
 
-Curriculum KScript signatures carry NLP annotations so the tokenizer
+Curriculum KScript signatures carry word annotations so the tokenizer
 produces semantically rich graph nodes rather than abstract-letter
 fallbacks. The annotation _mechanics_ (block/inline forms, binding
 resolution, claiming rules) are defined in the @kscript spec (§9 BPE
-Annotations, §10 NLP Binding Resolution); this section fixes the
+Annotations, §10 Word Binding Resolution); this section fixes the
 _conventions_ every curriculum follows.
 
 41. Every single-character signature in a KScript code block MUST carry an
     inline parenthetical comment (`M(ark)`, `H(alo)`, `S(ubject)`). The
-    comment text combined with the signature character forms the full NLP
+    comment text combined with the signature character forms the full
     word.
 42. Every multi-token signature MUST be preceded by a block-comment word
     list whose word count matches the character count (e.g.
@@ -302,12 +302,12 @@ _conventions_ every curriculum follows.
 44. Word choices SHOULD be semantically meaningful (proper nouns, common
     nouns, or NATO phonetic alphabet) so typed tokens carry grammatically
     useful type bits.
-45. NLP annotations appear ONLY inside fenced KScript code blocks. The
+45. Word annotations appear ONLY inside fenced KScript code blocks. The
     curriculum prose (objective, approach, lesson descriptions) is not
     annotated.
 46. The BindingResolver detects and skips inline annotations that would
     redundantly re-bind a character to the same word already present in the
-    scope chain (via `NLPSymbolTable.is_bound_to(char, word)`). Redundant
+    scope chain (via the binding scope). Redundant
     bindings are silently skipped with a debug-level log message.
 47. A lesson that intends a kline to reach the S2/S3 expansion band (a
     _misfit_ — its signature does not match its nodes; see @kalvin-vision §S2

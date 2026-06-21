@@ -123,7 +123,7 @@ def main(argv: list[str] | None = None) -> None:
 
     shutdown_callbacks: list = []
 
-    # Mandatory NLP tokenizer (no fallback; raises on data-less machines).
+    # Mandatory tokenizer (no fallback; raises on data-less machines).
     from kalvin.agent import _default_tokenizer as _make_tok
 
     shared_tokenizer = _make_tok()

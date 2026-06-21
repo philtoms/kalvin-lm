@@ -20,7 +20,7 @@ from tests.conftest import requires_tokenizer_data
 
 
 def T(bits: int) -> int:
-    """Place NLP-type bits in the upper 32 bits of a uint64.
+    """Place type-word bits in the upper 32 bits of a uint64.
 
     signifies() (used by model.where for candidate retrieval) masks off the
     lower (BPE) 32 bits, so node/signature values that must overlap for

@@ -1,7 +1,7 @@
-"""Lightweight scope stack for NLP binding resolution.
+"""Lightweight scope stack for word binding resolution.
 
 Implements the BindingScope data structure described in spec §10
-(NLP Binding Resolution), specifically §10.1 Rule B3 (First-Letter
+(Word Binding Resolution), specifically §10.1 Rule B3 (First-Letter
 Matching) and §10.3 (BindingScope API).
 
 Resolution algorithm (§10.1 Rule B3):
@@ -44,7 +44,7 @@ class _Scope:
 
 
 class BindingScope:
-    """Lightweight scope stack for NLP binding resolution.
+    """Lightweight scope stack for word binding resolution.
 
     Manages a stack of scopes, each containing ordered word lists.
     Resolution walks the stack innermost-first, searching word lists

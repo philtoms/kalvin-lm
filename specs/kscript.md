@@ -411,9 +411,9 @@ Orphan annotations (annotations with no following identifiers) and annotations a
 
 ---
 
-## 10. NLP Binding Resolution
+## 10. Word Binding Resolution
 
-Binding resolution maps single-character identifiers to NLP words via BPE annotations. Resolution happens inline during the ASTEmitter's single walk via a BindingScope.
+Binding resolution maps single-character identifiers to words via BPE annotations. Resolution happens inline during the ASTEmitter's single walk via a BindingScope.
 
 ### 10.1 Binding Rules
 
@@ -742,7 +742,7 @@ Compiled:
 
 > **MTS deduplication in action:** Four entries are silently dropped because they duplicate already-emitted MTS entries. Two component identity entries (MTS ALL component A and L) are dropped because MHALL's expansion already provided them. Two canonization entries (SVO subscript and ALL subscript) are dropped because their MTS canonization counterparts already exist. Compound identifiers receive no IDENTITY of their own (an identity requires a single-token signature), so there is nothing to drop for those. Only MTS-produced entries (component identity and canonization) are deduplicated — operator-produced duplicates are emitted as-is.
 
-### 14.12 NLP-Bound Example
+### 14.12 Word-Bound Example
 
 ```
 (Mary Had A Little Lamb)
@@ -849,7 +849,7 @@ SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL componen
 | KS-34                 | Nodes always a list: `A => B` → `{A: [B]}`, `A` → `{A: []}`                                                                                                              | Structure   |
 | **Integration**       |                                                                                                                                                                          |             |
 | KS-35                 | Complex nested example (§14.11) produces correct complete entry list                                                                                                     | Integration |
-| KS-36                 | NLP-bound example (§14.12) produces correct resolved entries                                                                                                             | Integration |
+| KS-36                 | Word-bound example (§14.12) produces correct resolved entries                                                                                                            | Integration |
 | KS-37                 | Uniform-tokenizer integration: all characters (bound and unresolved) produce valid typed nodes                                                                            | Integration |
 | **MTS Deduplication** |                                                                                                                                                                          |             |
 | KS-38                 | Component identity dedup: overlapping MTS expansions silently drop duplicate character identities (S4)                                                                   | MTS Dedup   |

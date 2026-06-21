@@ -147,6 +147,6 @@ The action of countersigning a selected proposal. Performed by the Trainer durin
 **MTS Entry**:
 A kline whose signature is the OR-reduction of two or more nodes — produced as CANONIZED (S2 intent) but structurally a perfect fit (S1); the subscript child klines canonize it to S1.
 
-**NLP Binding**:
-The association of a single-character KScript signature with an NLP word, resolved through BPE annotations in the source. Bindings are scoped by relational-token boundaries; a character resolves to the most recent matching word in its scope.
+**Word Binding**:
+The association of a single-character KScript signature with a word, resolved through BPE annotations in the source. Bindings are scoped by relational-token boundaries; a character resolves to the most recent matching word in its scope.
 _Avoid_: comment mapping (the binding is a specific compiler artefact, not a general comment feature)

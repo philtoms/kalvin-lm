@@ -1,6 +1,6 @@
 """Tests for ks.token_encoder — TokenEncoder.
 
-Uses Tokenizer (loaded from the real BPE + grammar data assets) for most
+Uses NLPTokenizer (loaded from the real BPE + grammar data assets) for most
 tests.  A mock multi-token tokenizer is used for BPE multi-token MTS tests.
 """
 
@@ -11,7 +11,7 @@ import pytest
 from kalvin.abstract import KTokenizer
 from kalvin.kline import KLine
 from kalvin.signature import make_signature
-from kalvin.tokenizer import Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from ks.ast_emitter import SymbolicEntry
 from ks.token_encoder import TokenEncoder
 from tests.conftest import requires_tokenizer_data
@@ -24,19 +24,19 @@ pytestmark = requires_tokenizer_data
 
 
 @pytest.fixture
-def tz() -> Tokenizer:
-    """A standard Tokenizer loaded from the data files."""
-    return Tokenizer.from_files()
+def tz() -> NLPTokenizer:
+    """A standard NLPTokenizer loaded from the data files."""
+    return NLPTokenizer()
 
 
 @pytest.fixture
-def encoder(tz: Tokenizer) -> TokenEncoder:
-    """A TokenEncoder backed by Tokenizer."""
+def encoder(tz: NLPTokenizer) -> TokenEncoder:
+    """A TokenEncoder backed by NLPTokenizer."""
     return TokenEncoder(tz)
 
 
 @pytest.fixture
-def dev_encoder(tz: Tokenizer) -> TokenEncoder:
+def dev_encoder(tz: NLPTokenizer) -> TokenEncoder:
     """A TokenEncoder in dev mode."""
     return TokenEncoder(tz, dev=True)
 
@@ -79,7 +79,7 @@ class MockMultiTokenTokenizer(KTokenizer):
 class TestUnresolvedCharEncoding:
     """Unresolved characters encode as their own raw typed nodes."""
 
-    def test_unresolved_chars_encode(self, encoder: TokenEncoder, tz: Tokenizer) -> None:
+    def test_unresolved_chars_encode(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
         entry = SymbolicEntry(sig="A", nodes=["B", "C"], op="COUNTERSIGNED")
         results = encoder.encode_entries([entry])
         assert len(results) == 1
@@ -88,7 +88,7 @@ class TestUnresolvedCharEncoding:
         assert compiled.nodes[0] == tz.encode("B")[0]
         assert compiled.nodes[1] == tz.encode("C")[0]
 
-    def test_unresolved_sig_is_typed_node(self, encoder: TokenEncoder, tz: Tokenizer) -> None:
+    def test_unresolved_sig_is_typed_node(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
         """An unresolved char produces a valid typed node (not a legacy bit value)."""
         entry = SymbolicEntry(sig="Z", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
@@ -144,12 +144,12 @@ class TestNodesAlwaysList:
 class TestSignatureEncoding:
     """Signature strings are correctly encoded to uint64."""
 
-    def test_single_char_sig(self, encoder: TokenEncoder, tz: Tokenizer) -> None:
+    def test_single_char_sig(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
         entry = SymbolicEntry(sig="A", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
         assert results[0].signature == tz.encode("A")[0]
 
-    def test_multi_char_sig_packed(self, encoder: TokenEncoder, tz: Tokenizer) -> None:
+    def test_multi_char_sig_packed(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
         """Multi-token identifier is packed via OR-reduction (make_signature).
 
         A multi-token signature heading an IDENTITY entry is decomposed into
@@ -168,7 +168,7 @@ class TestSignatureEncoding:
 class TestNodeEncoding:
     """Node strings are correctly encoded to uint64."""
 
-    def test_node_values(self, encoder: TokenEncoder, tz: Tokenizer) -> None:
+    def test_node_values(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
         entry = SymbolicEntry(sig="A", nodes=["B", "C"], op="CONNOTED")
         results = encoder.encode_entries([entry])
         compiled = results[0]
@@ -209,7 +209,7 @@ class TestSignificanceLevels:
 class TestFullUint64:
     """Signatures are raw values from tokenizer — not masked or truncated."""
 
-    def test_no_masking(self, encoder: TokenEncoder, tz: Tokenizer) -> None:
+    def test_no_masking(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
         entry = SymbolicEntry(sig="ABC", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
         raw = make_signature(tz.encode("ABC"))
@@ -399,7 +399,7 @@ class TestMultipleEntries:
 class TestDevMode:
     """When dev=True, dbg is populated."""
 
-    def test_dev_dbg(self, tz: Tokenizer) -> None:
+    def test_dev_dbg(self, tz: NLPTokenizer) -> None:
         enc = TokenEncoder(tz, dev=True)
         entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTED")
         results = enc.encode_entries([entry])

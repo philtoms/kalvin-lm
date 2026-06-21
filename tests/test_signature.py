@@ -4,11 +4,11 @@ from kalvin.signature import make_signature, signifies
 
 
 def T(bits: int) -> int:
-    """Place NLP-type bits in the upper 32 bits of a uint64.
+    """Place type-word bits in the upper 32 bits of a uint64.
 
-    NLP-BPE nodes pack type info (POS + DEP + MORPH) into the upper 32
+    Typed nodes pack the type word into the upper 32
     bits and the BPE token ID into the lower 32. signifies() compares
-    only the upper (type) half, so test values that must participate in
+    only the upper (type-word) half, so test values that must participate in
     significance matching are shifted up with this helper.
     """
     return bits << 32
@@ -48,7 +48,7 @@ class TestMakeSignature:
 
 
 class TestSignifies:
-    """signifies(a, b) → overlap in the upper (NLP-type) 32 bits only."""
+    """signifies(a, b) → overlap in the upper (type-word) 32 bits only."""
 
     def test_overlapping_type_bits(self):
         assert signifies(T(0b110), T(0b010)) is True

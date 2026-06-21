@@ -27,7 +27,7 @@ def make_model(stm_bound: int = 256) -> Model:
 
 
 def T(bits: int) -> int:
-    """Place NLP-type bits in the upper 32 bits of a uint64.
+    """Place type-word bits in the upper 32 bits of a uint64.
 
     signifies() masks off the lower (BPE) 32 bits, so node/signature values
     that must participate in significance matching are shifted up here.

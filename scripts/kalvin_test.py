@@ -20,7 +20,7 @@ sys.path.insert(0, "src")
 from kalvin.agent import KAgent
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.expand import D_MAX, boundaries, classify
-from kalvin.tokenizer import Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from ks.compiler import compile_source
 
 SOURCE = """
@@ -92,7 +92,7 @@ def kline_display(kline, tokenizer, model=None) -> str:
 
     When *model* is supplied, signature and node values are decoded by
     flattening each through model.unpack (correct for packed/multi-token
-    values); the dbg record, if present, contributes only NLP metadata.
+    values); the dbg record, if present, contributes only type metadata.
     Otherwise (no model) the dbg label and a direct per-node decode are
     used (lossy for packed values, but the best available before the
     graph is populated). Falls back to a raw signature if neither is
@@ -157,7 +157,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    tokenizer = Tokenizer.from_files()
+    tokenizer = NLPTokenizer()
     klines = compile_source(SOURCE, tokenizer, dev=True)
 
     adapter = EventBus()

@@ -32,7 +32,7 @@ converts SymbolicEntry tuples to encoded uint64 values.
   character emitted once is never emitted again).  Intra-expansion dedup
   prevents duplicate chars within a single compound (e.g., MHALL's second L).
 
-**NLP binding integration (spec §10):**
+**Word binding integration (spec §10):**
   When a BindingScope is provided, single-character identifiers are resolved
   inline during the AST walk:
 
@@ -55,7 +55,7 @@ converts SymbolicEntry tuples to encoded uint64 values.
     plus component IDENTITY dedup.
 
 Spec references: §3 (Scope Model), §6 (Entry Model), §7 (Operator Rules),
-§8 (MTS Expansion), §10 (NLP Binding Resolution).
+§8 (MTS Expansion), §10 (Word Binding Resolution).
 """
 
 from __future__ import annotations
@@ -78,13 +78,13 @@ class SymbolicEntry(NamedTuple):
     """A symbolic (not yet tokenized) compilation entry.
 
     Attributes:
-        sig:  The signature identifier string (possibly a resolved NLP word).
+        sig:  The signature identifier string (possibly a resolved word).
         nodes: Always a list — empty for IDENTITY, single-item for per-item
                operators, multi-item for CANONIZE aggregation.  Never None,
                never a bare string, never singleton-unwrapped.
         op:   One of "COUNTERSIGNED", "CANONIZED", "CONNOTED", "UNDERSIGNED",
                "IDENTITY".
-        component_labels: Resolved words per signature character (for NLP
+        component_labels: Resolved words per signature character (for word
                mode).  None when not applicable.
     """
 
@@ -98,7 +98,7 @@ class ASTEmitter:
     """Walks a KScript v3 scope-model AST and emits SymbolicEntry tuples.
 
     Args:
-        scope: Optional BindingScope for NLP binding resolution.
+        scope: Optional BindingScope for word binding resolution.
             When provided, single-character identifiers are resolved inline
             via scope.resolve().  When None, all identifiers
             pass through as raw characters.

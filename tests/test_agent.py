@@ -12,7 +12,7 @@ from kalvin.events import EventBus
 from kalvin.kline import KDbg, KLine
 from kalvin.model import Model
 from kalvin.signature import make_signature
-from kalvin.tokenizer import Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 from tests.conftest import requires_tokenizer_data
 from tests.test_cogitator_handler import RecordingCogitationHandler
 
@@ -38,12 +38,12 @@ class TestAgentInit:
         assert a.tokenizer is not None
 
     def test_custom_tokenizer(self):
-        t = Tokenizer.from_files()
+        t = NLPTokenizer()
         a = KAgent(tokenizer=t, adapter=EventBus())
         assert a.tokenizer is t
 
     def test_custom_model(self):
-        t = Tokenizer.from_files()
+        t = NLPTokenizer()
         m = Model()
         a = KAgent(tokenizer=t, model=m, adapter=EventBus())
         assert a.model is m
@@ -826,7 +826,7 @@ class TestCascadeWriteMethods:
         assert events[0].proposal is p
 
 
-# ── Tokenizer Integration Tests ───────────────────────────────────
+# ── NLPTokenizer Integration Tests ───────────────────────────────────
 #
 # Both classes below require the tokenizer data assets (provided by the
 # shared `tokenizer` fixture in conftest.py) and are skipped cleanly when
@@ -838,10 +838,10 @@ class TestAgentTokenizer:
     """KAgent constructed with a tokenizer — pluggable tokenizer integration.
 
     Verifies that KAgent works correctly when callers pass a tokenizer
-    explicitly. The default is the kalvin Tokenizer.
+    explicitly. The default is the kalvin NLPTokenizer.
     """
 
-    def test_agent_rationalise_kline(self, tokenizer: Tokenizer) -> None:
+    def test_agent_rationalise_kline(self, tokenizer: NLPTokenizer) -> None:
         """KAgent with a tokenizer can rationalise a kline containing typed nodes.
 
         Encode a known word ('Tea') via the tokenizer, build a KLine
@@ -867,11 +867,11 @@ class TestAgentTokenizer:
         assert sig == expected
 
     def test_default_tokenizer_is_base(self) -> None:
-        """Default KAgent uses Tokenizer as the sole default (raises if data unavailable)."""
+        """Default KAgent uses NLPTokenizer as the sole default (raises if data unavailable)."""
         a = KAgent(adapter=EventBus())
-        assert isinstance(a.tokenizer, Tokenizer)
+        assert isinstance(a.tokenizer, NLPTokenizer)
 
-    def test_agent_serialization(self, tokenizer: Tokenizer) -> None:
+    def test_agent_serialization(self, tokenizer: NLPTokenizer) -> None:
         """Serialization round-trips preserve typed node values (uint64).
 
         Create an agent, rationalise a kline with typed nodes,
@@ -902,7 +902,7 @@ class TestAgentTokenizer:
         assert loaded_kline.signature == original_kline.signature
 
 
-# ── Agent + Tokenizer Cross-Module Integration Tests ──────────────────
+# ── Agent + NLPTokenizer Cross-Module Integration Tests ──────────────────
 
 
 @requires_tokenizer_data
@@ -919,7 +919,7 @@ class TestAgentTokenizerIntegration:
 
     @staticmethod
     def _make_agent_with_klines(
-        tokenizer: Tokenizer,
+        tokenizer: NLPTokenizer,
     ) -> tuple[KAgent, list[KLine]]:
         """Create an agent with a single rationalised kline."""
         a = KAgent(tokenizer=tokenizer, adapter=EventBus())
@@ -932,7 +932,7 @@ class TestAgentTokenizerIntegration:
 
         return a, [k1]
 
-    def test_agent_rationalise_kline(self, tokenizer: Tokenizer) -> None:
+    def test_agent_rationalise_kline(self, tokenizer: NLPTokenizer) -> None:
         """Rationalise a kline with the tokenizer — verify storage and retrieval."""
         a, klines = self._make_agent_with_klines(tokenizer)
 
@@ -941,7 +941,7 @@ class TestAgentTokenizerIntegration:
         stored = a.model.find(klines[0].signature)
         assert stored is not None
 
-    def test_agent_bytes_roundtrip(self, tokenizer: Tokenizer) -> None:
+    def test_agent_bytes_roundtrip(self, tokenizer: NLPTokenizer) -> None:
         """Binary serialization preserves typed node values (uint64).
 
         Multiple klines with typed nodes survive to_bytes/from_bytes
@@ -965,7 +965,7 @@ class TestAgentTokenizerIntegration:
             )
             assert stored.signature == orig.signature
 
-    def test_agent_dict_roundtrip(self, tokenizer: Tokenizer) -> None:
+    def test_agent_dict_roundtrip(self, tokenizer: NLPTokenizer) -> None:
         """Dict serialization preserves typed node values exactly.
 
         Nodes are stored as integers in the dict and must round-trip
@@ -984,7 +984,7 @@ class TestAgentTokenizerIntegration:
             assert stored.nodes == orig.nodes
             assert stored.signature == orig.signature
 
-    def test_agent_json_file_roundtrip(self, tokenizer: Tokenizer) -> None:
+    def test_agent_json_file_roundtrip(self, tokenizer: NLPTokenizer) -> None:
         """JSON file serialization preserves typed node values.
 
         Write to a temp JSON file, reload, verify all node values match.

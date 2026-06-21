@@ -153,8 +153,10 @@ class Tokenizer(KTokenizer):
         """Load the BPE engine only (no type dictionary).
 
         Returns a tokenizer whose ``encode`` produces typed nodes with the
-        fallback type word for every token. Use ``from_files`` to also load
-        a type dictionary, or ``encode_bpe`` for raw BPE IDs.
+        fallback type word for every token. Loading a type dictionary (the
+        tagged grammar) is a deployment concern handled by a subclass such
+        as :class:`kalvin.nlp_tokenizer.NLPTokenizer`; use ``encode_bpe``
+        for raw BPE IDs.
         """
         return cls(bpe=cls._load_bpe_engine(path, name))
 
@@ -185,50 +187,6 @@ class Tokenizer(KTokenizer):
             mergeable_ranks=mergeable_ranks,
             special_tokens={},
         )
-
-    @classmethod
-    def _load_type_dictionary(
-        cls,
-        path: str | Path,
-        name: str,
-    ) -> dict[int, dict]:
-        """Load the type dictionary (tagged grammar) for ``name``.
-
-        Each entry maps a BPE token ID to a dict carrying at least a
-        ``type_word`` key. Other keys are preserved unchanged and treated
-        as opaque metadata.
-        """
-        path = Path(path)
-        tagged = path / f"{name}_tagged_grammar.json"
-        if not tagged.exists():
-            raise FileNotFoundError(
-                f"No type dictionary found at {tagged}. "
-                "Run `bash scripts/rebuild-tokenizer-data.sh` to generate it."
-            )
-        data = json.loads(tagged.read_text())
-        return {int(k): v for k, v in data.items()}
-
-    # ── production factory ───────────────────────────────────────────────
-
-    @classmethod
-    def from_files(
-        cls,
-        tokenizer_path: str | Path | None = None,
-        tokenizer_name: str = "tokenizer-32768",
-    ) -> Tokenizer:
-        """Load the BPE engine and type dictionary from standard paths.
-
-        When ``tokenizer_path`` is *None* (the default), it is resolved via
-        ``kalvin.paths.tokenizer_dir()`` (``KALVIN_DATA_DIR`` env var or
-        ``data/tokenizer`` relative to the project root).
-        """
-        if tokenizer_path is None:
-            from kalvin.paths import tokenizer_dir
-
-            tokenizer_path = tokenizer_dir()
-        bpe = cls._load_bpe_engine(tokenizer_path, tokenizer_name)
-        types = cls._load_type_dictionary(tokenizer_path, tokenizer_name)
-        return cls(bpe=bpe, types=types)
 
     # ── properties ───────────────────────────────────────────────────────
 

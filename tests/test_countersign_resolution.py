@@ -28,7 +28,7 @@ def T(bits: int) -> int:
     return bits << 32
 
 # Every test in this module drives ``compile_source`` (which builds a
-# ``Tokenizer.from_files()`` internally) or a ``KAgent`` (whose default
+# ``NLPTokenizer()`` internally) or a ``KAgent`` (whose default
 # tokenizer is the kalvin Tokenizer).  Gate the whole module so data-less clones skip cleanly.
 pytestmark = requires_tokenizer_data
 
