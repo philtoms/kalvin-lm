@@ -137,17 +137,11 @@ tokenizer.from_directory(path, name) → Tokenizer
 
 `from_directory` loads the BPE engine only (no type dictionary); `encode`
 on the result produces nodes with the fallback type word for every token.
-Use `from_files` to load both the engine and a type dictionary.
-
-### Production Factory
-
-```
-tokenizer.from_files(tokenizer_path, tokenizer_name) → Tokenizer
-```
-
-Loads the BPE engine and type dictionary from standard paths. When
-`tokenizer_path` is omitted it is resolved via
-`kalvin.paths.tokenizer_dir()`.
+The base tokenizer accepts a type dictionary as a constructor argument
+but does not source one from disk — loading a tagged grammar is a
+deployment concern handled by a subclass (see @nlp_tokenizer for the
+production factory that loads the NLP-tagged grammar alongside the BPE
+engine).
 
 ### Encoding
 
@@ -199,7 +193,7 @@ it would any other node sequence.
 | TOK-9 | Round-trip: `decode(encode(text)) == text` for representable text           | — |
 | TOK-10 | Type dictionary: `lookup_type(id)` returns the entry's `type_word`         | — |
 | TOK-11 | Unknown-token fallback: tokens absent from the dictionary get `UNKNOWN_TYPE` | — |
-| TOK-12 | `from_files()` loads the BPE engine and type dictionary                    | — |
+| TOK-12 | `from_directory()` loads the BPE engine only (no type dictionary)        | — |
 
 NLP-specific criteria (NLP type-word interpretation, dimension count,
 curriculum compatibility) live in the @nlp_tokenizer spec.

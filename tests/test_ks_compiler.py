@@ -445,7 +445,7 @@ class TestKScriptAPI:
         for e in model.entries:
             assert e.dbg is not None or e.dbg is None  # dbg field exists
 
-    def test_default_tokenizer_is_nlp(self) -> None:
+    def test_default_tokenizer_is_nlp_specialization(self) -> None:
         """Default tokenizer is the kalvin NLPTokenizer."""
         model = KScript("A")
         assert isinstance(model._tokenizer, NLPTokenizer)

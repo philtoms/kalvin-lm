@@ -15,7 +15,11 @@ fixes the meaning of the type word and the NLP-specific fallback and
 vocabulary.
 
 The NLP specialisation is implemented by `kalvin.nlp_tokenizer.NLPTokenizer`,
-a subclass of `kalvin.tokenizer.Tokenizer` whose only differences are:
+a subclass of `kalvin.tokenizer.Tokenizer`. It is the **production
+tokenizer**: its constructor loads the BPE engine and the NLP-tagged type
+dictionary from disk (the base tokenizer loads the BPE engine only and
+does not source a type dictionary — see @tokenizer). Its further
+differences from the base are:
 
 - The fallback type word is `POS_X` (`UNKNOWN_NLP_TYPE = 65536`) instead of
   the base `UNKNOWN_TYPE` (`0`), so untyped tokens still carry a valid NLP
@@ -81,6 +85,21 @@ every BPE token — including sub-words — with NLP type information from
 the grammar dictionary and writes the result under the generic
 `type_word` key so the base tokenizer can read it without any NLP
 coupling.
+
+## Construction
+
+```
+NLPTokenizer(tokenizer_path=None, tokenizer_name="tokenizer-32768") → NLPTokenizer
+```
+
+Constructing `NLPTokenizer()` loads the BPE engine (via the base
+`from_directory` machinery) and the NLP type dictionary
+(`{tokenizer_name}_tagged_grammar.json`) from `tokenizer_path`. When
+`tokenizer_path` is omitted it is resolved via `kalvin.paths.tokenizer_dir()`.
+
+This is the production factory. Sourcing the NLP-tagged grammar from disk
+is an NLP concern, so it lives in the specialisation rather than the base
+tokenizer (see @tokenizer, Persistence).
 
 ## Encoding
 
@@ -166,6 +185,7 @@ parenthetical annotation.
 | TOK-NLP-10 | Bare multi-token signatures (e.g. `MHALL`, `SVO`) decompose into individual identity entries plus a canonize (S2) entry mapping the first token to all tokens | NLP |
 | TOK-NLP-11 | The binding resolver operates correctly with an empty symbol table (bare sigs compile without annotation) | NLP |
 | TOK-NLP-12 | Curricula using abstract uppercase letters (A–Z) require no parenthetical comments; comments are required only when semantic word resolution is desired | NLP |
+| TOK-NLP-13 | `NLPTokenizer()` loads the BPE engine and NLP type dictionary from standard paths | NLP |
 
 ## Referenced By
 

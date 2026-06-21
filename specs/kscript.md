@@ -550,10 +550,10 @@ from ks import KScript
 entries = KScript("A == B").entries
 
 # Compile with a specific tokenizer
-entries = KScript("A == B", tokenizer=Tokenizer.from_files()).entries
+entries = KScript("A == B", tokenizer=NLPTokenizer()).entries
 ```
 
-The `entries` property returns a list of `KLine` objects. The tokenizer defaults to `Tokenizer.from_files()` — tokenizer data is mandatory, so a tokenizer is always in effect.
+The `entries` property returns a list of `KLine` objects. The tokenizer defaults to the production NLP tokenizer (`NLPTokenizer()`) — tokenizer data is mandatory, so a tokenizer is always in effect.
 
 ---
 

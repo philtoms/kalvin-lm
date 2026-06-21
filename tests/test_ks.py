@@ -40,7 +40,7 @@ This module covers all 37 spec test IDs (KS-1 through KS-37):
     KS-33  — Self-identity                                   TestEmitterOperators
     KS-34  — Nodes always a list                             TestStructure
     KS-35  — §14.11 complex nested (master regression)       TestComplexExamples
-    KS-36  — §14.12 NLP-bound example                        TestComplexExamples
+    KS-36  — §14.12 Word-bound example                        TestComplexExamples
     KS-37  — Uniform tokenizer integration                   TestComplexExamples
 """
 
@@ -179,7 +179,7 @@ def has_entry(
 # KS-33 : test_ks33_self_identity
 # KS-34 : test_ks34_nodes_always_list_canonize, test_ks34_nodes_always_list_unsigned
 # KS-35 : test_ks35_complex_nested_master_regression
-# KS-36 : test_ks36_nlp_bound_example
+# KS-36 : test_ks36_word_bound_example
 # KS-37 : test_ks37_uniform_tokenizer
 
 
@@ -1018,10 +1018,10 @@ class TestComplexExamples:
         con_entries = _find_entries(entries, op="CONNOTED")
         assert all(_SIG_LEVELS.get(e.dbg.op, "S4") == "S3" for e in con_entries)
 
-    # -- KS-36: §14.12 NLP-bound example ---------------------------------
+    # -- KS-36: §14.12 Word-bound example ---------------------------------
 
-    def test_ks36_nlp_bound_example(self):
-        """KS-36: §14.12 NLP-bound example — key resolved entries present.
+    def test_ks36_word_bound_example(self):
+        """KS-36: §14.12 Word-bound example — key resolved entries present.
 
         The block annotation (Mary Had A Little Lamb) provides words for
         MHALL's character resolution. Inline annotation S(ubject) triggers
@@ -1054,7 +1054,7 @@ class TestComplexExamples:
     def test_ks37_uniform_tokenizer(self):
         """KS-37: §14.12 example compiles under the kalvin tokenizer (uniform typing).
 
-        Every character — both NLP-bound (resolved via word lists) and
+        Every character — both word-bound (resolved via word lists) and
         unresolved — produces a valid typed node.  There is no
         character-bit fallback; the whole pipeline goes through the tokenizer.
         """
