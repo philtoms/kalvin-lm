@@ -64,9 +64,14 @@ requires_tokenizer_data = pytest.mark.skipif(
 # the data assets are absent.
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def tokenizer():
-    """Load the production :class:`kalvin.nlp_tokenizer.NLPTokenizer` from data files."""
+    """Load the production :class:`kalvin.nlp_tokenizer.NLPTokenizer` from data files.
+
+    Session-scoped: the tokenizer is immutable/read-only in tests (no test
+    mutates the instance), so a single shared instance is constructed once
+    for the whole run instead of once per test module.
+    """
     from kalvin.nlp_tokenizer import NLPTokenizer
 
     return NLPTokenizer()

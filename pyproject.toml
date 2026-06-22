@@ -23,6 +23,7 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.5.0",
     "ruff>=0.2.0",
     "mypy>=1.8.0",
     "ipython>=8.0.0",
@@ -68,3 +69,11 @@ pythonpath = ["src"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 norecursedirs = ["_archive"]
+# Run the suite in parallel across CPU cores with ``--dist=loadscope``
+# (groups tests by module/class).  ``loadscope`` lets large files such as
+# tests/test_agent.py split by class for load balancing while keeping each
+# class on one worker.  Cross-file fixed-port binds are safe because every
+# network port in the suite is unique per test.  Opt out of parallelism with
+# ``pytest -n 0`` (e.g. for the tests/test_z_responses_region_isolation.py
+# serial ordering check).
+addopts = ["-n", "auto", "--dist=loadscope"]

@@ -5,6 +5,12 @@ This file must be collected AFTER test_responses_region.py for the test to
 be meaningful.  The name starts with ``test_z_`` to encourage alphabetical
 ordering, but the real guarantee is Step 3's cross-file pytest command:
     python -m pytest tests/test_responses_region.py tests/test_responses_region_isolation.py -x
+
+Under the default parallel run (``-n auto``) this regression is coverage-
+only: the assertions use ``if mod is not None`` guards, so they cannot fail
+when the pair lands on a different xdist worker (where the stubs were never
+installed).  Run the serial command above (or ``pytest -n 0``) to exercise
+the leak-detection authoritatively.
 """
 
 import sys
