@@ -26,8 +26,12 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Signature (@signature spec)
 
-- Provides `make_signature(nodes) → KSig` (plain OR-reduction of raw node values).
-- Provides bitwise AND matching for candidate retrieval.
+- A signature is the uint64 value occupying a kline's head position.
+
+### Signifier (@signifier spec)
+
+- Provides `make_signature(nodes) → KSig` — produces a kline's signature from its nodes.
+- Provides `signifies(a, b)` — the candidate-retrieval pre-filter.
 
 ### Tokenizer (@tokenizer spec)
 
@@ -138,7 +142,7 @@ Rationalise(Q):
 Ensure the Kline has a signature. If `Q.signature == 0`, compute it:
 
 ```
-Q.signature = make_signature(Q.nodes)   # @signature spec
+Q.signature = make_signature(Q.nodes)   # @signifier spec
 ```
 
 ### Phase 2: Ground Check
@@ -164,7 +168,7 @@ candidate retrieval or significance computation.
 `model.add_to_ltm(Q)`. Emit a `"frame"` event at S4. Return `True`.
 
 **Canonical — self-grounded**: If `Q.signature == make_signature(Q.nodes)`
-(as defined in the @signature spec) and every node that could resolve does
+(as defined in the @signifier spec) and every node that could resolve does
 resolve in the model (exists as a Kline signature), Q is fully grounded.
 The signature faithfully represents the nodes — nothing is missing and
 nothing is extraneous. Call `model.add_to_ltm(Q)`. Emit a `"frame"` event at

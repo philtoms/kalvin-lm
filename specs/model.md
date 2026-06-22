@@ -278,9 +278,8 @@ model.find_by_nodes(nodes_signature) → Kline | none
 
 Returns the most recently added Kline whose nodes signature matches.
 
-- The nodes signature is the OR-reduction of all nodes in a Kline's node
-  sequence, equivalent to `make_signature(kline.nodes)` as defined in the
-  @signature spec.
+- The nodes signature is `make_signature(kline.nodes)` as defined in the
+  @signifier spec.
 - Searches STM first (primary index for nodes signatures), then Frame,
   then LTM, then Base.
 - Returns `none` if no Kline with that nodes signature exists.
@@ -420,7 +419,7 @@ identity signatures (@CONTEXT.md §Identity).
 - **Identity** (`is_identity` — empty nodes OR self-referential `{S: [S]}`)
   → `[signature]`. Base case.
 - **Canon** (`is_canon` — non-empty, non-self-referential, and
-  `signature == make_signature(nodes)`, @signature spec) → the
+  `signature == make_signature(nodes)`, @signifier spec) → the
   concatenation, in node order, of `unpack(child)` for each child kline
   resolved from the node value.
 - Any other input (connoted, undersigned, misfit) → raises.
@@ -860,7 +859,7 @@ The following are explicitly **out of scope** for this spec:
   responsibility (@agent spec).
 - **Tokenisation.** Producing nodes from input is defined in the
   @tokenizer spec. Producing signatures from nodes is defined in the
-  @signature spec.
+  @signifier spec.
 - **Persistence format.** The format of the serialised file (sections,
   encoding, versioning) is an implementation-level concern. The spec defines
   that all three mutable tiers (STM, Frame, LTM) are persisted.

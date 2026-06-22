@@ -28,7 +28,11 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Signature (@signature spec)
 
-- `make_signature(nodes) → int` — OR-reduction over nodes.
+- A signature is the uint64 head value of a kline.
+
+### Signifier (@signifier spec)
+
+- `make_signature(nodes) → int` — produces a nodes signature for indexing.
 - Used to derive the nodes signature for dual-keyed indexing.
 
 ## Definition
@@ -306,7 +310,7 @@ The following are explicitly **out of scope** for this spec:
    concern; the *contract* (atomicity, snapshot iterators, lock ordering) is
    specified in §Thread Safety.
 - **Nodes signature computation.** The STM delegates to `make_signature`
-  from the @signature spec.
+  from the @signifier spec.
 
 ## Referenced By
 

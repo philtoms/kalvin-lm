@@ -39,6 +39,10 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Signature (@signature spec)
 
+- A signature is the uint64 head value of a kline.
+
+### Signifier (@signifier spec)
+
 - Provides `make_signature(nodes)` used during S2 misfit classification
   (canonical check, underfit gap, overfit excess).
 

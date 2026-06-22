@@ -24,8 +24,9 @@ A Kline consists of:
 ### Signature
 
 - The signature is a 64-bit unsigned integer that identifies the kline.
-- Signatures are uint64 values produced by `make_signature`. See the
-  @signature spec for the full definition, including creation and properties.
+- Signatures are uint64 values occupying the kline's head position. See
+  the @signature spec for the concept; creation and matching are defined in
+  the @signifier spec.
 - It is assigned at construction time.
 - Signatures are not inherently unique. Duplication handling is a model
   responsibility.

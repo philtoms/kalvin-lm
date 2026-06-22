@@ -31,7 +31,7 @@ The pipeline is strictly one-directional. The ASTEmitter operates on symbolic st
 | ------------------ | ----------------------------------------------------------------------------------- |
 | **Node**           | An opaque `uint64` value — the universal atom                                       |
 | **KLine**          | An identified, ordered sequence of zero or more nodes: `{signature, nodes[]}`       |
-| **Signature**      | A `uint64` identity key computed via OR-reduction of node values                    |
+| **Signature**      | A `uint64` identity key (constructed from node values via the @signifier)           |
 | **Significance**   | A four-level classification (S1–S4) of how strongly one KLine relates to another    |
 | **Identifier**     | An uppercase alpha string like `ABC` — the lexical form of a signature or node      |
 | **BPE Annotation** | A parenthesised annotation `(...)` providing word text for BPE token encoding       |
@@ -381,7 +381,7 @@ MTS deduplication prevents duplicate entries when the same identifier appears in
 
 **Canonization dedup.** An MTS canonization entry is a CANONIZE (S2) entry mapping a compound to its components. If another CANONIZE entry with the same signature and nodes would be produced (e.g., a CANONIZE scope that aggregates the same components), the duplicate is silently dropped.
 
-A compound identifier does not receive its own IDENTITY entry. An identity requires a single-token signature; a compound is the OR-reduction of multiple token IDs and cannot form one (CONTEXT.md "Identity" glossary).
+A compound identifier does not receive its own IDENTITY entry. An identity requires a single-token signature; a compound's signature is built from multiple token IDs (@signifier) and cannot form one (CONTEXT.md "Identity" glossary).
 
 Deduplication applies only to MTS-produced entries — it is not a general deduplication mechanism. Operator-produced entries (COUNTERSIGN, UNDERSIGN, CONNOTATE) and non-MTS IDENTITY entries are always emitted.
 
@@ -481,7 +481,7 @@ When a resolved word BPE-encodes to multiple tokens (e.g., "Mary" → `[mar, y]`
 
 1. **Component identities:** One identity entry per BPE subword token.
 2. **MTS canonization:** One CANONIZE entry mapping the packed signature to all component tokens.
-3. **Packed signature:** The OR-reduction of all component tokens becomes the single `uint64` node used in the parent kline.
+3. **Packed signature:** The signature of all component tokens becomes the single `uint64` node used in the parent kline.
 
 ```
 "Mary" → tokens [mar, y]
@@ -491,19 +491,15 @@ When a resolved word BPE-encodes to multiple tokens (e.g., "Mary" → `[mar, y]`
 
 This is structurally identical to §8 character-level MTS, applied at the BPE subword level. The node-count invariant (§8.2) is maintained: one character = one node, regardless of BPE token count. The consumer of the model sees one node per character; the BPE decomposition is recorded in the model for downstream use.
 
-§11.3 applies only to resolved words, not to compound identifiers (§8): a compound's decomposition is its CANONIZED entry, so re-encoding its literal string is prohibited. A packed signature — whether a §11.3 multi-token word's OR-reduction or a §11.4 compound — is the OR-reduction of multiple token IDs and cannot head an IDENTITY kline (CONTEXT.md "Identity"); the decomposition above (component identities + canonize) is a multi-token word's sole representation, and no standalone IDENTITY kline is emitted at the packed signature.
+§11.3 applies only to resolved words, not to compound identifiers (§8): a compound's decomposition is its CANONIZED entry, so re-encoding its literal string is prohibited. A packed signature — whether a §11.3 multi-token word's packed signature or a §11.4 compound — is the signature of multiple token IDs (@signifier) and cannot head an IDENTITY kline (CONTEXT.md "Identity"); the decomposition above (component identities + canonize) is a multi-token word's sole representation, and no standalone IDENTITY kline is emitted at the packed signature.
 
 ### 11.4 Signature Construction
 
-Signatures are constructed via plain OR-reduction of raw, unmasked node values:
-
-```
-make_signature([node_A, node_B]) → node_A | node_B
-```
+Signatures are constructed from node values via the Signifier (@signifier).
 
 The compiler does not inspect or mask node values — they are opaque `uint64` integers.
 
-**Canonical encoding.** A compound identifier's signature is computed once — at its CANONIZED definition, as OR of its resolved component node values — and reused by every referencing entry (as signature or node), so all klines referring to the same compound share one uint64. (Operator entries where the compound is the signature but the node is a different identifier — e.g. `COUNTERSIGNED MHALL [SVO]` — have `signature ≠ OR(nodes)` by design: the signature is a registry lookup, not a reduction of that entry's own nodes.)
+**Canonical encoding.** A compound identifier's signature is computed once — at its CANONIZED definition, via `make_signature` over its resolved component node values (@signifier) — and reused by every referencing entry (as signature or node), so all klines referring to the same compound share one uint64. (Operator entries where the compound is the signature but the node is a different identifier — e.g. `COUNTERSIGNED MHALL [SVO]` — have `signature ≠ make_signature(nodes)` by design: the signature is a registry lookup, not a reduction of that entry's own nodes.)
 
 ### 11.5 Design Tension: Annotations and Encoding Opacity
 

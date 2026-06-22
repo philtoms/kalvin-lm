@@ -9,7 +9,8 @@ The test harness is a repurposed KScript TUI that acts as a training loop superv
 - `specs/agent.md` — rationalise API, event bus, significance levels
 - `specs/kscript.md` — KScript compilation (source → KLines)
 - `specs/kline.md` — KLine structure, equality
-- `specs/signature.md` — make_signature
+- `specs/signature.md` — the signature value concept
+- `specs/signifier.md` — make_signature, signifies (signature algebra)
 
 ## Definitions
 

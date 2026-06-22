@@ -9,10 +9,15 @@ Under the NLP interpretation — the one used by the data shipped with
 kalvin — the sig word is an **NLP type encoding** derived from
 part-of-speech, dependency, and morphological analysis.
 
-Everything operational (encoding, decoding, signature construction) is
-defined by the @tokenizer spec and inherited unchanged. This spec only
-fixes the meaning of the sig word and the NLP-specific fallback and
-vocabulary.
+Everything operational (encoding, decoding) is defined by the @tokenizer
+spec and inherited unchanged. This spec only fixes the meaning of the sig
+word and the NLP-specific fallback and vocabulary.
+
+The signature algebra over these nodes — reduction (`make_signature`) and
+overlap matching (`signifies`) — is owned by the @signifier spec. The NLP
+deployment bundles this tokenizer with `NLPSignifier`, the production
+concrete Signifier, as two sibling NLP specialisations: the tokenizer fixes
+the sig-word *values*, the signifier owns the *bit algebra* over them.
 
 The NLP specialisation is implemented by `kalvin.nlp_tokenizer.NLPTokenizer`,
 a subclass of `kalvin.tokenizer.Tokenizer`. It is the **production
@@ -191,4 +196,7 @@ parenthetical annotation.
 
 - **Tokenizer** (@tokenizer spec) — defines the base typed-node format and
   interface that the NLP specialisation inherits.
-- **Signature** (@signature spec) — consumes typed nodes unchanged.
+- **Signifier** (@signifier spec) — owns the signature algebra; the NLP
+  deployment pairs this tokenizer with `NLPSignifier`.
+- **Signature** (@signature spec) — the signature value concept, consumed
+  unchanged.

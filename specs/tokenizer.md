@@ -23,8 +23,8 @@ node = (sig_word << 32) | bpe_token_id
 ```
 
 The high 32 bits carry the sig word; the low 32 bits carry the BPE token
-ID. Both halves participate in the same bitwise OR/AND algebra as any
-other node.
+ID. Both halves participate in the signature algebra defined in the
+@signifier spec, like any other node.
 
 ### Significance and Tokenizers
 
@@ -32,10 +32,9 @@ A tokenizer does **not** encode knowledge; it encodes **dimensionality**.
 Every node is a `uint64`, and the system operates on the bit pattern of a
 node — not on any meaning assigned to those bits.
 
-- **Signatures** are built from nodes by bitwise OR via `make_signature`
-  (defined in the @signature spec); candidate retrieval uses bitwise AND
-  (defined in the @signature / @model specs). No masking or special-casing
-  is applied — every node contributes its full value.
+- **Signatures** are built from nodes and compared for candidate retrieval
+  via the operations defined in the @signifier spec (the signature
+  bit-algebra). The tokenizer does not define these operations.
 - **Significance** is computed at the bit level and is **tokenizer-agnostic**.
   Routing and distance operate on node membership and bit overlap, not on
   what the bits mean (see the @significance / @model specs).
@@ -52,8 +51,16 @@ The tokenizer does not interpret nodes beyond its own encoding.
 
 ### Signature (@signature spec)
 
-- Signature creation (`make_signature`) is a plain OR-reduce of node values.
-- The tokenizer does not create signatures itself. See the @signature spec.
+- A signature is the uint64 value occupying a kline's head position.
+
+### Signifier (@signifier spec)
+
+- Signature creation (`make_signature`) and overlap matching (`signifies`)
+  are defined in the @signifier spec. The Signifier consumes the nodes the
+  Tokenizer produces; the tokenizer does not create signatures itself. (The
+  NLP pair additionally share a node-packing agreement — see @signifier
+  §NLPSignifier — but that is a property of the NLP bundle, not the
+  interface.)
 
 ## Interface
 
@@ -167,22 +174,12 @@ Typed nodes: [(T_the << 32) | 257, (T_air << 32) | 500]
 
 #### Signature construction
 
-```
-nodes = [(T_the << 32) | 257, (T_air << 32) | 500]
-
-make_signature(nodes) → nodes[0] | nodes[1]
-```
-
-The signature captures both the sig words and the BPE token IDs.
-
-> **Note.** `make_signature` is defined in the @signature spec, not here.
+The signature is `make_signature(nodes)`; see the @signifier spec.
 
 ## Signature Behavior
 
-`make_signature()` OR-reduces the full unmasked node values. Both the
-sig word (high 32) and the BPE token ID (low 32) contribute to the
-signature. The tokenizer passes raw typed nodes to `make_signature()` as
-it would any other node sequence.
+The tokenizer passes raw typed nodes to `make_signature()` as it would any
+other node sequence; the reduction itself is defined in the @signifier spec.
 
 ## Test Matrix
 
@@ -203,7 +200,7 @@ curriculum compatibility) live in the @nlp_tokenizer spec.
 The following are explicitly **out of scope** for this spec:
 
 - **Signature creation.** Signature construction (`make_signature`) is
-  defined in the @signature spec.
+  defined in the @signifier spec.
 - **Significance computation.** Significance is defined in the
   @significance spec. The tokenizer does not compute or store significance.
 - **Interpretation of the sig word.** What the sig-word bits mean is a
