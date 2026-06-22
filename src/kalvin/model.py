@@ -598,11 +598,6 @@ class Model:
             items = items[:limit]
         return reversed(items)
 
-    def upgrade(self, kline: KLine, significance: KSig) -> None:
-        """Upgrade significance — backwards compat."""
-        with self._lock:
-            kline.signature |= significance
-
     @property
     def kline(self) -> _KLineAccessor:
         return _KLineAccessor(self)

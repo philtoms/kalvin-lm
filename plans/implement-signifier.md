@@ -229,9 +229,6 @@ separate follow-up:
 3. **Tokenizer node-unpack leak** (`token_encoder.py:280`, `& 0xFFFFFFFF`):
    the compiler reaches into the node layout. Remedy: a Tokenizer accessor for
    "unpack a node." Flagged Tokenizer cleanup, parallel to this effort.
-4. **Dead code** (`model.py:597` `upgrade()`): `kline.signature |=
-   significance` mixes the signature and significance value spaces; zero
-   callers. Delete in any convenient pass.
 
 ## Status
 
