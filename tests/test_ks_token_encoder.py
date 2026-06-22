@@ -10,7 +10,9 @@ import pytest
 
 from kalvin.abstract import KTokenizer
 from kalvin.kline import KLine
-from kalvin.signature import make_signature
+from kalvin.signifier import NLPSignifier
+
+signifier = NLPSignifier()
 from kalvin.nlp_tokenizer import NLPTokenizer
 from ks.ast_emitter import SymbolicEntry
 from ks.token_encoder import TokenEncoder
@@ -154,11 +156,11 @@ class TestSignatureEncoding:
 
         A multi-token signature heading an IDENTITY entry is decomposed into
         per-token IDENTITY entries plus a packed CANONIZE entry (the last
-        result); its signature is make_signature(tokens).
+        result); its signature is signifier.make_signature(tokens) — i.e. OR of the tokens.
         """
         entry = SymbolicEntry(sig="HELLO", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
-        expected = make_signature(tz.encode("HELLO"))
+        expected = signifier.make_signature(tz.encode("HELLO"))
         assert results[-1].signature == expected
 
 
@@ -212,19 +214,19 @@ class TestFullUint64:
     def test_no_masking(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
         entry = SymbolicEntry(sig="ABC", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
-        raw = make_signature(tz.encode("ABC"))
+        raw = signifier.make_signature(tz.encode("ABC"))
         # The packed CANONIZE entry (last) carries the unmasked OR-reduction.
         assert results[-1].signature == raw
         # Ensure the value is unmasked — it should have multiple bits set
         assert results[-1].signature == raw
 
     def test_signature_matches_make_signature(self) -> None:
-        """For multi-token words, sig == make_signature(tokens)."""
+        """For multi-token words, sig == signifier.make_signature(tokens)."""
         mock = MockMultiTokenTokenizer({"WORD": [100, 200]})
         enc = TokenEncoder(mock)
         entry = SymbolicEntry(sig="WORD", nodes=[], op="IDENTITY")
         results = enc.encode_entries([entry])
-        expected = make_signature([100, 200])
+        expected = signifier.make_signature([100, 200])
         # Main entry is last (after MTS expansion entries)
         assert results[-1].signature == expected
 
@@ -254,7 +256,7 @@ class TestMultiTokenMTS:
         assert unsigned_entries[1].nodes == []
 
         assert len(canonize_entries) == 1
-        packed = make_signature([10, 20])
+        packed = signifier.make_signature([10, 20])
         assert canonize_entries[0].signature == packed
         assert canonize_entries[0].nodes == [10, 20]
 
@@ -271,7 +273,7 @@ class TestMultiTokenMTS:
         entry = SymbolicEntry(sig="WORD", nodes=[], op="IDENTITY")
         results = enc.encode_entries([entry])
 
-        packed = make_signature([50, 60])
+        packed = signifier.make_signature([50, 60])
 
         # §11.4 MTS: IDENTITY(50), IDENTITY(60), CANONIZE(packed, [50,60])
         mts_unsigned = [
@@ -328,7 +330,7 @@ class TestDedupMTS:
         assert len(connotate_entries) == 2  # both main entries
 
         # Both main entries use the same packed node value
-        packed = make_signature([10, 20])
+        packed = signifier.make_signature([10, 20])
         assert connotate_entries[0].nodes == [packed]
         assert connotate_entries[1].nodes == [packed]
 

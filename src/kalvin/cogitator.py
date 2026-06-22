@@ -28,6 +28,9 @@ from kalvin.kline import KDbg, KLine
 from kalvin.model import Model
 
 if TYPE_CHECKING:
+    from kalvin.abstract import KSignifier
+
+if TYPE_CHECKING:
     from kalvin.agent import KAgentAdapter
 
 
@@ -97,11 +100,13 @@ class Cogitator:
         model: Model,
         adapter: KAgentAdapter,
         handler: CogitationHandler,
+        signifier: KSignifier,
         timeout: float = 2.0,
     ):
         self._model = model
         self._adapter = adapter
         self._handler = handler
+        self._signifier = signifier
         self._timeout = timeout
 
         self._lock = threading.Lock()
@@ -181,7 +186,7 @@ class Cogitator:
 
         s12, s23, s34 = boundaries()
 
-        for qc in expand(self._model, query, candidate):
+        for qc in expand(self._model, query, candidate, self._signifier):
             band = classify(qc.significance, s12, s23, s34)
 
             if band == "S4":
@@ -193,7 +198,7 @@ class Cogitator:
             else:
                 # qc.candidate is the expanded (possibly misfit) candidate;
                 # qc.query is the correct query context for connotation yields.
-                for proposal, sig in propose_expansions(self._model, qc.candidate, qc.significance):
+                for proposal, sig in propose_expansions(self._model, qc.candidate, qc.significance, self._signifier):
                     self._handler.on_expansion(
                         qc.query,
                         proposal,

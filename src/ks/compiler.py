@@ -26,9 +26,10 @@ Spec ref: @specs/kscript.md §1.1 (pipeline), §12.2 (compiler orchestrator),
 
 from __future__ import annotations
 
-from kalvin.abstract import KTokenizer
+from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.kline import KLine
 from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.signifier import NLPSignifier
 
 from .ast import KScriptFile
 from .ast_emitter import ASTEmitter, SymbolicEntry
@@ -53,9 +54,11 @@ class Compiler:
     def __init__(
         self,
         tokenizer: KTokenizer | None = None,
+        signifier: KSignifier | None = None,
         dev: bool = False,
     ) -> None:
         self.tokenizer: KTokenizer = tokenizer or NLPTokenizer()
+        self._signifier: KSignifier = signifier or NLPSignifier()
         self.dev = dev
         self.entries: list[KLine] = []
 
@@ -79,7 +82,7 @@ class Compiler:
         emitter = ASTEmitter(scope=scope, dev=self.dev)
         symbolic: list[SymbolicEntry] = emitter.emit(file)
 
-        encoder = TokenEncoder(tokenizer=self.tokenizer, dev=self.dev)
+        encoder = TokenEncoder(tokenizer=self.tokenizer, signifier=self._signifier, dev=self.dev)
         self.entries = encoder.encode_entries(symbolic)
         return self.entries
 
@@ -87,6 +90,7 @@ class Compiler:
 def compile_source(
     source: str,
     tokenizer: KTokenizer | None = None,
+    signifier: KSignifier | None = None,
     dev: bool = False,
 ) -> list[KLine]:
     """Compile a KScript source string into encoded entries.
@@ -108,4 +112,4 @@ def compile_source(
 
     tokens = Lexer(source).tokenize()
     kfile = Parser(tokens).parse()
-    return Compiler(tokenizer, dev=dev).compile(kfile)
+    return Compiler(tokenizer, signifier=signifier, dev=dev).compile(kfile)

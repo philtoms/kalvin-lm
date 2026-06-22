@@ -19,9 +19,10 @@ Spec ref: @specs/kscript.md §13 (Public API).
 
 from __future__ import annotations
 
-from kalvin.abstract import KTokenizer
+from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.kline import KLine
 from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.signifier import NLPSignifier
 
 from .ast_emitter import SymbolicEntry
 from .compiler import Compiler, compile_source
@@ -56,13 +57,16 @@ class KScript:
         self,
         source: str,
         tokenizer: KTokenizer | None = None,
+        signifier: KSignifier | None = None,
         dev: bool = False,
     ) -> None:
         self._tokenizer: KTokenizer = tokenizer or NLPTokenizer()
+        self._signifier: KSignifier = signifier or NLPSignifier()
         self._dev = dev
         self._entries: list[KLine] = compile_source(
             source,
             tokenizer=self._tokenizer,
+            signifier=self._signifier,
             dev=self._dev,
         )
 

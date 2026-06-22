@@ -32,7 +32,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Protocol
 
-from kalvin.abstract import KTokenizer
+from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kalvin.paths import agent_bin
@@ -108,11 +108,13 @@ class KAgentAdapter:
         role: str = TRAINEE_ROLE,
         kagent: _KAgentLike | None = None,
         tokenizer: KTokenizer | None = None,
+        signifier: KSignifier | None = None,
     ):
         self._bus = bus
         self._role = role
         self._kagent: _KAgentLike | None = kagent
         self._tokenizer: KTokenizer | None = tokenizer
+        self._signifier: KSignifier | None = signifier
 
         # Sender map: (signature, frozen_nodes) → sender role. Written in
         # on_message (bus thread), read in on_event (cogitator thread).
@@ -227,7 +229,7 @@ class KAgentAdapter:
             return
 
         try:
-            entries = compile_source(msg.message, tokenizer=self._tokenizer)
+            entries = compile_source(msg.message, tokenizer=self._tokenizer, signifier=self._signifier)
         except Exception as exc:
             # Compilation error (LexerError, ParseError, etc.) — report back.
             logger.error("Compilation error: %s", exc)

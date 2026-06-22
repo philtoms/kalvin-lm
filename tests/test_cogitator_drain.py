@@ -15,7 +15,9 @@ from kalvin.cogitator import Cogitator, WorkItem
 from kalvin.events import EventBus
 from kalvin.kline import KLine
 from kalvin.model import Model
-from kalvin.signature import make_signature
+from kalvin.signifier import NLPSignifier
+
+signifier = NLPSignifier()
 from tests.conftest import requires_tokenizer_data
 
 
@@ -50,7 +52,7 @@ def _make_cogitator(model=None, adapter=None, handler=None):
     model = model or Model()
     adapter = adapter or EventBus()
     handler = handler or _StubHandler()
-    return Cogitator(model, adapter, handler)
+    return Cogitator(model, adapter, handler, signifier)
 
 
 # ── AGT-45: Empty-backlog drain completes fast ────────────────────────
@@ -100,7 +102,7 @@ class TestDrainTimeout:
 
         Cogitator._run_work_item = slow_run
         try:
-            cog = Cogitator(model, adapter, handler)
+            cog = Cogitator(model, adapter, handler, signifier)
             # Submit a work item
             item = WorkItem(
                 query=KLine(0x1, []),
@@ -148,7 +150,7 @@ class TestProcessingFlag:
 
         Cogitator._run_work_item = blocking_run
         try:
-            cog = Cogitator(model, adapter, handler)
+            cog = Cogitator(model, adapter, handler, signifier)
             item = WorkItem(
                 query=KLine(0x1, []),
                 candidate=KLine(0x2, []),
@@ -198,7 +200,7 @@ class TestNoCrossLessonSpillover:
             # candidate, so Model.where() finds it and routing classifies S2
             # (node 10 overlaps, node 20 doesn't).
             q = KLine(0, [T(10), T(20)])
-            q.signature = make_signature([T(10), T(20)])
+            q.signature = signifier.make_signature([T(10), T(20)])
             agent.rationalise(q)
 
             # The S2 candidate was submitted to the cogitator (not an

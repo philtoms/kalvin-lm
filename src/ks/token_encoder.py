@@ -21,14 +21,14 @@ Significance levels (compile-time intent):
     CONNOTED → S3      IDENTITY → S4
 
 Dependencies: kalvin.kline.KLine, kalvin.abstract.KTokenizer,
-              kalvin.signature.make_signature, ks.ast_emitter.SymbolicEntry.
+              kalvin.signifier.NLPSignifier, ks.ast_emitter.SymbolicEntry.
 """
 
 from __future__ import annotations
 
-from kalvin.abstract import KTokenizer
+from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.kline import KDbg, KLine
-from kalvin.signature import make_signature
+from kalvin.signifier import NLPSignifier
 
 from .ast_emitter import SymbolicEntry
 
@@ -54,8 +54,9 @@ class TokenEncoder:
         dev: Enable development/diagnostic mode (populates dbg).
     """
 
-    def __init__(self, tokenizer: KTokenizer, dev: bool = False) -> None:
+    def __init__(self, tokenizer: KTokenizer, *, signifier: KSignifier | None = None, dev: bool = False) -> None:
         self._tokenizer = tokenizer
+        self._signifier = signifier or NLPSignifier()
         self._dev = dev
         # Track already-decomposed multi-token words to avoid duplicate
         # MTS emissions.  Key is tuple of BPE tokens (same word always
@@ -140,7 +141,7 @@ class TokenEncoder:
         # 3. Compound definition: sig = OR of resolved component node
         #    values (§11.4); register for reuse by references.
         if is_compound_def:
-            sig_uint64 = make_signature(node_values)
+            sig_uint64 = self._signifier.make_signature(node_values)
             self._compound_sigs[entry.sig] = sig_uint64
             sig_is_packed = True
 
@@ -211,7 +212,7 @@ class TokenEncoder:
             (packed_signature, extra_entries).
         """
         token_key = tuple(tokens)
-        packed = make_signature(tokens)
+        packed = self._signifier.make_signature(tokens)
 
         extras: list[KLine] = []
 

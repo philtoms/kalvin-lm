@@ -8,7 +8,9 @@ from __future__ import annotations
 import pytest
 
 from kalvin.nlp_tokenizer import NLPTokenizer
-from kalvin.signature import make_signature
+from kalvin.signifier import NLPSignifier
+
+signifier = NLPSignifier()
 from tests.conftest import requires_tokenizer_data
 
 # The entire module exercises the real BPE + grammar data assets; skip it
@@ -236,5 +238,5 @@ class TestNLPEncodingPipeline:
         assert nlp.decode(nodes) == "Tea brewed"
 
         # Signature is well-formed and non-zero.
-        sig = make_signature(nodes)
+        sig = signifier.make_signature(nodes)
         assert sig != 0

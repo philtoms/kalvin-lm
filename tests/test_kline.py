@@ -1,6 +1,9 @@
 """Tests for KLine — specs/kline.md conformance."""
 
 from kalvin.kline import KDbg, KLine, is_canon, is_identity, sig_level
+from kalvin.signifier import NLPSignifier
+
+signifier = NLPSignifier()
 
 
 class TestKLineConstruction:
@@ -149,23 +152,23 @@ class TestSigLevelHelper:
 
     def test_countersign_is_s1(self):
         kl = KLine(0xFF, [1], dbg=KDbg(op="COUNTERSIGNED"))
-        assert sig_level(kl) == "S1"
+        assert sig_level(kl, signifier) == "S1"
 
     def test_undersign_is_s3(self):
         kl = KLine(0xFF, [1], dbg=KDbg(op="UNDERSIGNED"))
-        assert sig_level(kl) == "S3"
+        assert sig_level(kl, signifier) == "S3"
 
     def test_connotate_is_s3(self):
         kl = KLine(0xFF, [1], dbg=KDbg(op="CONNOTED"))
-        assert sig_level(kl) == "S3"
+        assert sig_level(kl, signifier) == "S3"
 
     def test_canonize_is_s2(self):
         kl = KLine(0xFF, [1, 2], dbg=KDbg(op="CANONIZED"))
-        assert sig_level(kl) == "S2"
+        assert sig_level(kl, signifier) == "S2"
 
     def test_identity_is_s4(self):
         kl = KLine(0xFF, [], dbg=KDbg(op="IDENTITY"))
-        assert sig_level(kl) == "S4"
+        assert sig_level(kl, signifier) == "S4"
 
 
 class TestStructuralPredicates:
@@ -182,13 +185,13 @@ class TestStructuralPredicates:
 
     def test_kl23_is_canon_genuine(self):
         # sig 0b110 = OR(0b100, 0b010); neither node is the signature.
-        assert is_canon(KLine(0b110, [0b100, 0b010])) is True
+        assert is_canon(KLine(0b110, [0b100, 0b010]), signifier) is True
 
     def test_kl24_is_canon_self_referential_is_not_canon(self):
-        assert is_canon(KLine(0xFF, [0xFF])) is False
+        assert is_canon(KLine(0xFF, [0xFF]), signifier) is False
 
     def test_kl25_is_canon_empty_is_not_canon(self):
-        assert is_canon(KLine(0xFF, [])) is False
+        assert is_canon(KLine(0xFF, []), signifier) is False
 
     def test_is_canon_mismatched_sig(self):
-        assert is_canon(KLine(0b100, [0b110])) is False
+        assert is_canon(KLine(0b100, [0b110]), signifier) is False

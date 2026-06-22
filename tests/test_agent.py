@@ -11,7 +11,9 @@ from kalvin.cogitator import CogitationHandler, Cogitator, WorkItem
 from kalvin.events import EventBus
 from kalvin.kline import KDbg, KLine
 from kalvin.model import Model
-from kalvin.signature import make_signature
+from kalvin.signifier import NLPSignifier
+
+signifier = NLPSignifier()
 from kalvin.nlp_tokenizer import NLPTokenizer
 from tests.conftest import requires_tokenizer_data
 from tests.test_cogitator_handler import RecordingCogitationHandler
@@ -146,7 +148,7 @@ class TestAgentRationalise:
         a = KAgent(adapter=EventBus())
         t = a.tokenizer
         nodes = t.encode("HELLO")
-        sig = make_signature(nodes)
+        sig = signifier.make_signature(nodes)
         kline = KLine(sig, nodes, dbg=KDbg(label="HELLO"))
         result = a.rationalise(kline)
         assert result is True
@@ -160,7 +162,7 @@ class TestAgentRationalise:
         a.rationalise(candidate)
         # Query overlaps on [10] but not [20] → S2
         q = KLine(0, [T(10), T(20)])
-        q.signature = make_signature([T(10), T(20)])
+        q.signature = signifier.make_signature([T(10), T(20)])
         result = a.rationalise(q)
         assert result is False
 
@@ -170,7 +172,7 @@ class TestAgentRationalise:
         candidate = KLine(T(5), [T(100), T(200)])
         a.rationalise(candidate)
         q = KLine(0, [T(1), T(2)])
-        q.signature = make_signature([T(1), T(2)])
+        q.signature = signifier.make_signature([T(1), T(2)])
         result = a.rationalise(q)
         assert result is False
 
@@ -192,7 +194,7 @@ class TestShortCircuit:
 
         # Query overlaps both candidates (routes S2 under the S2/S3-only model)
         q = KLine(0, [T(10), T(20)])
-        q.signature = make_signature([T(10), T(20)])
+        q.signature = signifier.make_signature([T(10), T(20)])
 
         # Capture submitted work items
         submitted = []
@@ -218,7 +220,7 @@ class TestShortCircuit:
         a.rationalise(c2)
 
         q = KLine(0, [T(10), T(20)])
-        q.signature = make_signature([T(10), T(20)])
+        q.signature = signifier.make_signature([T(10), T(20)])
 
         # Capture submitted work items
         submitted = []
@@ -246,7 +248,7 @@ class TestShortCircuit:
         a.rationalise(c2)
 
         q = KLine(0, [T(10), T(20)])
-        q.signature = make_signature([T(10), T(20)])
+        q.signature = signifier.make_signature([T(10), T(20)])
 
         # Capture submitted work items
         submitted = []
@@ -268,7 +270,7 @@ class TestShortCircuit:
         """No candidates → S4 directly, no expand call."""
         a = KAgent(adapter=EventBus())
         q = KLine(0, [999])
-        q.signature = make_signature([999])
+        q.signature = signifier.make_signature([999])
 
         with patch(
             "kalvin.cogitator.expand",
@@ -352,7 +354,7 @@ class TestCogitator:
         a.rationalise(candidate)
 
         q = KLine(0, [T(10), T(20)])
-        q.signature = make_signature([T(10), T(20)])
+        q.signature = signifier.make_signature([T(10), T(20)])
 
         # Capture submitted work items
         submitted = []
@@ -525,7 +527,7 @@ class TestCogitatorStructuralGrounding:
         a.rationalise(c)
         # Query that fully matches
         q = KLine(0, [10])
-        q.signature = make_signature([10])
+        q.signature = signifier.make_signature([10])
         result = a.rationalise(q)
         assert result is True
 
@@ -563,11 +565,11 @@ class TestCogitatorStructuralGrounding:
         from kalvin.misfit import classify_misfit
 
         k = KLine(10, [10])  # identity (self-referential since 040bc0c)
-        nodes_sig = make_signature(k.nodes)
+        nodes_sig = signifier.make_signature(k.nodes)
         # sig == OR(nodes) is necessary but NOT sufficient for canon — the kline
         # is identity (self-referential), so is_canon() returns False since 040bc0c.
         assert k.signature == nodes_sig
-        underfit, overfit = classify_misfit(k)
+        underfit, overfit = classify_misfit(k, signifier)
         assert not underfit and not overfit
 
 
@@ -617,15 +619,15 @@ class TestCountersign:
         kline = KLine(0xFF, [10, 20])
         result = a.countersign(kline)
         assert isinstance(result, bool)
-        # The reciprocal KLine(make_signature([10,20]), [0xFF]) should be
+        # The reciprocal KLine(signifier.make_signature([10,20]), [0xFF]) should be
         # rationalised as a novel kline → True (S4)
         assert result is True
 
     def test_countersign_reciprocal_construction(self):
-        """Reciprocal kline is built as KLine(make_signature(kline.nodes), [kline.signature])."""
+        """Reciprocal kline is built as KLine(signifier.make_signature(kline.nodes), [kline.signature])."""
         a = KAgent(adapter=EventBus())
         kline = KLine(0xAB, [10, 20, 30])
-        expected_reciprocal_sig = make_signature([10, 20, 30])
+        expected_reciprocal_sig = signifier.make_signature([10, 20, 30])
         expected_reciprocal_nodes = [0xAB]
 
         with patch.object(KAgent, "rationalise", return_value=True) as mock_rationalise:
@@ -641,7 +643,7 @@ class TestCountersign:
         """Empty nodes → reciprocal_sig=0, reciprocal_nodes=[kline.signature]."""
         a = KAgent(adapter=EventBus())
         kline = KLine(0xCD, [])
-        expected_reciprocal_sig = 0  # make_signature([]) == 0
+        expected_reciprocal_sig = 0  # signifier.make_signature([]) == 0
         expected_reciprocal_nodes = [0xCD]
 
         with patch.object(KAgent, "rationalise", return_value=True) as mock_rationalise:
@@ -705,7 +707,7 @@ class TestCascadeWriteMethods:
         m.add_to_ltm(KLine(20, [20]))  # identity (self-referential since 040bc0c)
         a = KAgent(model=m, adapter=EventBus())
         # Query that is canonical and all non-literal nodes resolve
-        # make_signature([10, 20]) = 10 | 20 = 30
+        # signifier.make_signature([10, 20]) = 10 | 20 = 30
         k = KLine(30, [10, 20])
         with patch.object(m, "add_to_ltm", wraps=m.add_to_ltm) as mock_add_to_ltm:
             result = a.rationalise(k)
@@ -718,7 +720,7 @@ class TestCascadeWriteMethods:
         a = KAgent(model=m, adapter=EventBus())
         # A unique signature that won't match anything in the model
         k = KLine(0xFF00, [0xFF00])
-        k.signature = make_signature([0xFF00])
+        k.signature = signifier.make_signature([0xFF00])
         with patch.object(m, "add_to_ltm", wraps=m.add_to_ltm) as mock_add_to_ltm:
             result = a.rationalise(k)
         assert result is True
@@ -733,7 +735,7 @@ class TestCascadeWriteMethods:
         a.rationalise(c)
         # Query that fully matches candidate nodes
         q = KLine(0, [T(10), T(20)])
-        q.signature = make_signature([T(10), T(20)])
+        q.signature = signifier.make_signature([T(10), T(20)])
         # Capture submitted work items
         submitted = []
         original_submit = a._cogitator.submit
@@ -762,7 +764,7 @@ class TestCascadeWriteMethods:
         a.rationalise(c)
         # Query with partial overlap → S2
         q = KLine(0, [T(10), T(20)])
-        q.signature = make_signature([T(10), T(20)])
+        q.signature = signifier.make_signature([T(10), T(20)])
         with (
             patch.object(m, "add_to_stm", wraps=m.add_to_stm) as mock_add_to_stm,
             patch.object(m, "add_to_ltm", wraps=m.add_to_ltm) as mock_add_to_ltm,
@@ -852,7 +854,7 @@ class TestAgentTokenizer:
         nodes = tokenizer.encode("Tea")
         assert len(nodes) == 1, "'Tea' should produce exactly one typed node"
 
-        sig = make_signature(nodes)
+        sig = signifier.make_signature(nodes)
         kline = KLine(sig, nodes, dbg=KDbg(label="Tea"))
         result = a.rationalise(kline)
         assert result is True
@@ -880,7 +882,7 @@ class TestAgentTokenizer:
         """
         a = KAgent(tokenizer=tokenizer, adapter=EventBus())
         nodes = tokenizer.encode("Tea")
-        sig = make_signature(nodes)
+        sig = signifier.make_signature(nodes)
         kline = KLine(sig, nodes, dbg=KDbg(label="Tea"))
         a.rationalise(kline)
 
@@ -926,7 +928,7 @@ class TestAgentTokenizerIntegration:
 
         # Single-word typed kline
         tea = tokenizer.encode("Tea")
-        sig1 = make_signature(tea)
+        sig1 = signifier.make_signature(tea)
         k1 = KLine(sig1, tea, dbg=KDbg(label="Tea"))
         a.rationalise(k1)
 

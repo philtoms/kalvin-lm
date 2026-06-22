@@ -35,10 +35,14 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable, Iterator
+from typing import TYPE_CHECKING
 
 from kalvin.kline import KLine, KSig, is_canon, is_identity
-from kalvin.signature import make_signature, signifies
+from kalvin.signifier import NLPSignifier
 from kalvin.stm import STM
+
+if TYPE_CHECKING:
+    from kalvin.abstract import KSignifier
 
 
 class KLineStore:
@@ -130,10 +134,11 @@ class KLineStore:
 class _TierAdapter:
     """Uniform read interface over STM, KLineStore, or Model tiers."""
 
-    __slots__ = ("_tier", "_kind")
+    __slots__ = ("_tier", "_kind", "_signifier")
 
-    def __init__(self, tier):
+    def __init__(self, tier, signifier: KSignifier):
         self._tier = tier
+        self._signifier = signifier
         if isinstance(tier, STM):
             self._kind = "stm"
         elif isinstance(tier, KLineStore):
@@ -174,7 +179,7 @@ class _TierAdapter:
             return self._tier.find_by_nodes(nodes_sig)
         # KLineStore: scan via __reversed__
         for kl in reversed(self._tier):
-            if make_signature(kl.nodes) == nodes_sig:
+            if self._signifier.make_signature(kl.nodes) == nodes_sig:
                 return kl
         return None
 
@@ -182,10 +187,11 @@ class _TierAdapter:
 class _TierChain:
     """Ordered chain of tier adapters providing unified cross-tier search."""
 
-    __slots__ = ("_adapters",)
+    __slots__ = ("_adapters", "_signifier")
 
-    def __init__(self, tiers: list):
-        self._adapters = [_TierAdapter(t) for t in tiers]
+    def __init__(self, tiers: list, signifier: KSignifier):
+        self._signifier = signifier
+        self._adapters = [_TierAdapter(t, signifier) for t in tiers]
 
     def contains(self, kline: KLine) -> bool:
         return any(a.contains(kline) for a in self._adapters)
@@ -272,15 +278,16 @@ class Model:
     Model → inner tier (STM / KLineStore / base Model).
     """
 
-    def __init__(self, base: Model | None = None, ltm: Model | None = None, stm_bound: int = 256):
+    def __init__(self, base: Model | None = None, ltm: Model | None = None, stm_bound: int = 256, signifier: KSignifier | None = None):
         # The lock must exist before any guarded public method can run. It is
         # established first, ahead of building the tiers. (Construction itself
         # is single-threaded — the object is not published until __init__
         # returns — so the direct internal writes below need no synchronisation
         # against other threads.)
         self._lock = threading.RLock()
+        self._signifier = signifier or NLPSignifier()
         self._base = base
-        self._stm = STM(bound=stm_bound)
+        self._stm = STM(bound=stm_bound, signifier=self._signifier)
 
         self._frame: KLineStore = KLineStore()
 
@@ -293,7 +300,7 @@ class Model:
         tiers = [self._stm, self._frame, self._ltm]
         if base is not None:
             tiers.append(base)
-        self._chain = _TierChain(tiers)
+        self._chain = _TierChain(tiers, self._signifier)
 
     # Storage Operations
 
@@ -396,7 +403,7 @@ class Model:
         with self._lock:
             if isinstance(predicate, int):
                 sig = predicate
-                return [kl for kl in self.klines() if signifies(kl.signature, sig)]
+                return [kl for kl in self.klines() if self._signifier.signifies(kl.signature, sig)]
             return [kl for kl in self.klines() if predicate(kl)]
 
     # Graph Traversal
@@ -464,7 +471,7 @@ class Model:
         with self._lock:
             if is_identity(kline):
                 return [kline.signature]
-            if not is_canon(kline):
+            if not is_canon(kline, self._signifier):
                 raise ValueError(
                     f"unpack: input kline {kline.signature:#x} is not decomposable "
                     f"(not identity, not canon)"
@@ -500,7 +507,7 @@ class Model:
             if not kl.nodes:
                 if empty_identity is None:
                     empty_identity = kl
-            elif is_canon(kl):
+            elif is_canon(kl, self._signifier):
                 if canon is None:
                     canon = kl
             elif is_identity(kl):

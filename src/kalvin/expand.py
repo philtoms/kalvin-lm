@@ -30,9 +30,9 @@ from typing import TYPE_CHECKING
 
 from kalvin.kline import KLine, is_canon, is_identity
 from kalvin.misfit import classify_misfit, generate_expansions
-from kalvin.signature import make_signature, signifies
 
 if TYPE_CHECKING:
+    from kalvin.abstract import KSignifier
     from kalvin.model import Model
 
 _log = logging.getLogger(__name__)
@@ -158,10 +158,10 @@ class QueryCandidate:
 # compatibility; new code should import from ``kalvin.kline``.
 
 
-def edge_hops(model: Model, sig: int) -> Iterator[tuple[int, int]]:
+def edge_hops(model: Model, sig: int, signifier: KSignifier) -> Iterator[tuple[int, int]]:
     """Yield (hop_count, next_sig) for each non-canonical resolution step.
 
-    Follows: resolve sig → kline → make_signature(kline.nodes) → repeat.
+    Follows: resolve sig → kline → signifier.make_signature(kline.nodes) → repeat.
     Stops at a dead end, an identity kline, a canonical kline, or a cycle.
     """
     hop_count = 0
@@ -171,10 +171,10 @@ def edge_hops(model: Model, sig: int) -> Iterator[tuple[int, int]]:
             break  # cycle detected
         visited.add(sig)
         kline = model.find(sig)
-        if kline is None or is_identity(kline) or is_canon(kline):
+        if kline is None or is_identity(kline) or is_canon(kline, signifier):
             break
         hop_count += 1
-        sig = make_signature(kline.nodes)
+        sig = signifier.make_signature(kline.nodes)
         if sig == 0:
             break  # empty nodes — nowhere to go
         yield hop_count, sig
@@ -191,19 +191,19 @@ def _as_kline(model: Model, node: int) -> KLine:
 # Structural Grounding
 
 
-def is_s1(model: Model, kline: KLine) -> bool:
+def is_s1(model: Model, kline: KLine, signifier: KSignifier) -> bool:
     """Determine if a kline is structurally grounded (S1).
 
     A kline is S1 if:
     1. Its signature fully describes its nodes (canonical), OR
     2. It is countersigned by another kline in the model.
     """
-    if is_canon(kline):
+    if is_canon(kline, signifier):
         return True
-    return is_countersigned(model, kline)
+    return is_countersigned(model, kline, signifier)
 
 
-def is_countersigned(model: Model, kline: KLine) -> bool:
+def is_countersigned(model: Model, kline: KLine, signifier: KSignifier) -> bool:
     """Check if kline is countersigned by any kline in the model.
 
     A kline is countersigned if its nodes_signature exists as a
@@ -218,7 +218,7 @@ def is_countersigned(model: Model, kline: KLine) -> bool:
     """
     if is_identity(kline):
         return False
-    nodes_signature = make_signature(kline.nodes)
+    nodes_signature = signifier.make_signature(kline.nodes)
     for countersigner in model.find_all(nodes_signature):
         if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
             return True
@@ -232,6 +232,7 @@ def expand(
     model: Model,
     query: KLine,
     candidate: KLine,
+    signifier: KSignifier,
     distance: int = 0,
     *,
     _visited: set[tuple[int, int]] | None = None,
@@ -270,7 +271,7 @@ def expand(
         hop_distance = MAX_HOP
         q_kline = model.find(n)
         if q_kline is not None:
-            for hops, match_sig in edge_hops(model, n):
+            for hops, match_sig in edge_hops(model, n, signifier):
                 if match_sig in mismatched_c:
                     hop_distance = hops
                     c_kline = model.find(match_sig)
@@ -279,11 +280,12 @@ def expand(
                             model,
                             q_kline,
                             c_kline,
+                            signifier,
                             hops,
                             _visited=_visited,
                         )
                     break
-                elif signifies(n, match_sig):
+                elif signifier.signifies(n, match_sig):
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         sig_distance = distance + hops
@@ -298,7 +300,7 @@ def expand(
         hop_distance = MAX_HOP
         q_kline = model.find(n)
         if q_kline is not None:
-            for hops, match_sig in edge_hops(model, n):
+            for hops, match_sig in edge_hops(model, n, signifier):
                 if match_sig in mismatched_q:
                     hop_distance = hops
                     c_kline = model.find(match_sig)
@@ -307,11 +309,12 @@ def expand(
                             model,
                             q_kline,
                             c_kline,
+                            signifier,
                             hops,
                             _visited=_visited,
                         )
                     break
-                elif signifies(n, match_sig):
+                elif signifier.signifies(n, match_sig):
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         sig_distance = distance + hops
@@ -326,6 +329,7 @@ def expand(
                             model,
                             q_kline,
                             c_kline,
+                            signifier,
                             S2_S3_DISTANCE + s3_hop + _S3_BIAS - 1,
                             _visited=_visited,
                         )
@@ -336,7 +340,7 @@ def expand(
     # Matched but ungrounded nodes incur a small S2 penalty.
     for n in matched:
         kl = model.find(n)
-        if kl is None or not is_s1(model, kl):
+        if kl is None or not is_s1(model, kl, signifier):
             total_distance += 1
 
     total_distance += distance
@@ -348,7 +352,7 @@ def expand(
 # Promotion Helpers
 
 
-def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
+def promote_participating(model: Model, query: KLine, candidate: KLine, signifier: KSignifier) -> None:
     """Promote klines that structurally participated in a ratification event.
 
     After S1 ratification between query and candidate, promote:
@@ -382,7 +386,7 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
             to_promote.append(kl)
         elif isinstance(kl.nodes, list) and len(kl.nodes) == 1:
             to_promote.append(kl)
-        elif is_canon(kl):
+        elif is_canon(kl, signifier):
             to_promote.append(kl)
 
     _log.info(
@@ -405,6 +409,7 @@ def propose_expansions(
     model: Model,
     candidate: KLine,
     significance: int,
+    signifier: KSignifier,
 ) -> Iterator[tuple[KLine, int]]:
     """Generate expansion proposals for a misfit candidate.
 
@@ -421,20 +426,20 @@ def propose_expansions(
     — neither as the proposal nor as a companion. A single removed node
     produces the companion ``{n: [n]}``, which is identity and is dropped.
     """
-    if is_identity(candidate) or is_canon(candidate):
+    if is_identity(candidate) or is_canon(candidate, signifier):
         return  # identity or canonical — nothing to expand
 
-    underfit, overfit = classify_misfit(candidate)
+    underfit, overfit = classify_misfit(candidate, signifier)
 
     if not underfit and not overfit:
         return
 
     candidate_sig = candidate.signature
-    nodes_sig = make_signature(candidate.nodes)
+    nodes_sig = signifier.make_signature(candidate.nodes)
     underfit_gap = candidate_sig & ~nodes_sig
     overfit_mask = nodes_sig & ~candidate_sig
 
-    for proposal, companions in generate_expansions(model, candidate, underfit_gap, overfit_mask):
+    for proposal, companions in generate_expansions(model, candidate, underfit_gap, overfit_mask, signifier):
         if is_identity(proposal):
             continue
         yield (proposal, significance)

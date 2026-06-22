@@ -3,6 +3,9 @@
 from kalvin.kline import KLine
 from kalvin.misfit import classify_misfit, generate_expansions
 from kalvin.model import Model
+from kalvin.signifier import NLPSignifier
+
+signifier = NLPSignifier()
 
 
 def make_model(stm_bound: int = 256) -> Model:
@@ -18,7 +21,7 @@ class TestClassifyMisfit:
         from canon — see is_identity (KL-21) / is_canon (KL-24).
         """
         k = KLine(10, [10])  # make_sig([10]) = 10
-        assert classify_misfit(k) == (False, False)
+        assert classify_misfit(k, signifier) == (False, False)
 
     def test_canonical(self):
         """Genuine canon {S: [A, B]} with S == A|B → (False, False).
@@ -28,7 +31,7 @@ class TestClassifyMisfit:
         (KL-23).
         """
         k = KLine(0b110, [0b100, 0b010])  # make_sig([0b100, 0b010]) = 0b110
-        assert classify_misfit(k) == (False, False)
+        assert classify_misfit(k, signifier) == (False, False)
 
     def test_underfitting(self):
         """S & ~N != 0 → (True, False)."""
@@ -36,7 +39,7 @@ class TestClassifyMisfit:
         # underfit: 0b110 & ~0b100 = 0b110 & 0x..011 = 0b010 ≠ 0
         # overfit: 0b100 & ~0b110 = 0b100 & 0x..001 = 0 → False
         k = KLine(0b110, [0b100])
-        assert classify_misfit(k) == (True, False)
+        assert classify_misfit(k, signifier) == (True, False)
 
     def test_overfitting(self):
         """N & ~S != 0 → (False, True)."""
@@ -44,7 +47,7 @@ class TestClassifyMisfit:
         # underfit: 0b100 & ~0b110 = 0 → False
         # overfit: 0b110 & ~0b100 = 0b010 ≠ 0 → True
         k = KLine(0b100, [0b110])
-        assert classify_misfit(k) == (False, True)
+        assert classify_misfit(k, signifier) == (False, True)
 
     def test_dual_misfit(self):
         """Both conditions → (True, True)."""
@@ -52,7 +55,7 @@ class TestClassifyMisfit:
         # underfit: 0b101 & ~0b110 = 0b101 & 0x..001 = 0b001 ≠ 0 → True
         # overfit: 0b110 & ~0b101 = 0b110 & 0x..010 = 0b010 ≠ 0 → True
         k = KLine(0b101, [0b110])
-        assert classify_misfit(k) == (True, True)
+        assert classify_misfit(k, signifier) == (True, True)
 
 
 class TestGenerateExpansions:
@@ -72,7 +75,7 @@ class TestGenerateExpansions:
         k = KLine(0b110, [0b100])
         underfit_gap = 0b010
         overfit_mask = 0
-        results = list(generate_expansions(m, k, underfit_gap, overfit_mask))
+        results = list(generate_expansions(m, k, underfit_gap, overfit_mask, signifier))
         assert len(results) >= 1
         proposal, companions = results[0]
         assert proposal.signature == 0b110  # signature stays the same
@@ -89,7 +92,7 @@ class TestGenerateExpansions:
         k = KLine(0b100, [0b110])
         underfit_gap = 0
         overfit_mask = 0b010
-        results = list(generate_expansions(m, k, underfit_gap, overfit_mask))
+        results = list(generate_expansions(m, k, underfit_gap, overfit_mask, signifier))
         assert len(results) == 1
         proposal, companions = results[0]
         assert proposal.signature == 0b100
@@ -110,7 +113,7 @@ class TestGenerateExpansions:
         k = KLine(0b101, [0b110])
         underfit_gap = 0b001
         overfit_mask = 0b010
-        results = list(generate_expansions(m, k, underfit_gap, overfit_mask))
+        results = list(generate_expansions(m, k, underfit_gap, overfit_mask, signifier))
 
         # Exactly one gap-filling contributor (the 0b001 kline) → one atomic swap.
         assert len(results) == 1
@@ -135,7 +138,7 @@ class TestGenerateExpansions:
         # sig=0b111, nodes=[0b110] → nodes_sig=0b110
         # gap = 0b111 & ~0b110 = 0b001  → only the 0b001 kline contributes
         k = KLine(0b111, [0b110])
-        results = list(generate_expansions(m, k, underfit_gap=0b001, overfit_mask=0b010))
+        results = list(generate_expansions(m, k, underfit_gap=0b001, overfit_mask=0b010, signifier=signifier))
         assert len(results) == 1
         proposal, companions = results[0]
         assert 0b001 in proposal.nodes
@@ -146,5 +149,5 @@ class TestGenerateExpansions:
         """No gap and no excess → no expansion proposals."""
         m = Model()
         k = KLine(10, [10])  # identity (self-referential: {S:[S]})
-        results = list(generate_expansions(m, k, 0, 0))
+        results = list(generate_expansions(m, k, 0, 0, signifier))
         assert len(results) == 0

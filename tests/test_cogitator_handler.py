@@ -10,7 +10,9 @@ from kalvin.cogitator import Cogitator, WorkItem
 from kalvin.events import EventBus
 from kalvin.kline import KLine
 from kalvin.model import Model
-from kalvin.signature import make_signature
+from kalvin.signifier import NLPSignifier
+
+signifier = NLPSignifier()
 
 
 class RecordingCogitationHandler:
@@ -57,7 +59,7 @@ class TestCogitatorWithFakeHandler:
 
         recorder = RecordingCogitationHandler()
         event_bus = EventBus()
-        cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder)
+        cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder, signifier=signifier)
 
         # Identity query with the same signature — matches c trivially (no nodes
         # to resolve), so m.add_to_frame(q) is unnecessary.
@@ -85,12 +87,12 @@ class TestCogitatorWithFakeHandler:
 
         recorder = RecordingCogitationHandler()
         event_bus = EventBus()
-        cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder)
+        cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder, signifier=signifier)
 
         # Query with no overlapping nodes to k3 → S3 after expand,
         # and k3 is misfit so propose_expansions triggers generate_expansions.
         q = KLine(0, [0b010])
-        q.signature = make_signature([0b010])
+        q.signature = signifier.make_signature([0b010])
         m.add_to_frame(q)
 
         cogitator.submit(WorkItem(q, k3, "S3"))
@@ -115,7 +117,7 @@ class TestCogitatorWithFakeHandler:
 
         recorder = RecordingCogitationHandler()
         event_bus = EventBus()
-        cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder)
+        cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder, signifier=signifier)
 
         q = KLine(0, [])  # identity: empty nodes
         q.signature = 10

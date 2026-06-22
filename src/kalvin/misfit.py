@@ -13,20 +13,20 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from kalvin.kline import KLine
-from kalvin.signature import make_signature
 
 if TYPE_CHECKING:
+    from kalvin.abstract import KSignifier
     from kalvin.model import Model
 
 
-def classify_misfit(kline: KLine) -> tuple[bool, bool]:
+def classify_misfit(kline: KLine, signifier: KSignifier) -> tuple[bool, bool]:
     """Classify a kline's misfit type.
 
     Returns (underfitting, overfitting):
     - underfitting: True if S & ~N != 0 (signature promises more than nodes deliver)
     - overfitting: True if N & ~S != 0 (nodes carry more than signature captures)
     """
-    nodes_sig = make_signature(kline.nodes)
+    nodes_sig = signifier.make_signature(kline.nodes)
     underfit = (kline.signature & ~nodes_sig) != 0
     overfit = (nodes_sig & ~kline.signature) != 0
     return underfit, overfit
@@ -37,6 +37,7 @@ def generate_expansions(
     kline: KLine,
     underfit_gap: int,
     overfit_mask: int,
+    signifier: KSignifier,
 ) -> Iterator[tuple[KLine, list[KLine]]]:
     """Generate expansion proposals for a misfit kline.
 
@@ -49,17 +50,17 @@ def generate_expansions(
     - No orphan nodes: removed nodes form a companion kline
     """
     if underfit_gap and overfit_mask:
-        yield from _dual_expansions(model, kline, underfit_gap, overfit_mask)
+        yield from _dual_expansions(model, kline, underfit_gap, overfit_mask, signifier)
     else:
         if underfit_gap:
-            yield from _underfit_expansions(model, kline, underfit_gap)
+            yield from _underfit_expansions(model, kline, underfit_gap, signifier)
 
         if overfit_mask:
-            yield from _overfit_expansions(kline, overfit_mask)
+            yield from _overfit_expansions(kline, overfit_mask, signifier)
 
 
 def _underfit_expansions(
-    model: Model, kline: KLine, gap: int
+    model: Model, kline: KLine, gap: int, signifier: KSignifier
 ) -> Iterator[tuple[KLine, list[KLine]]]:
     """Add nodes whose signatures overlap and thus reduce the gap."""
     contributors = model.where(lambda k: (k.signature & gap) != 0)
@@ -69,7 +70,7 @@ def _underfit_expansions(
         expanded_sig = kline.signature
         proposal = KLine(expanded_sig, expanded_nodes, kline.dbg)
 
-        new_nodes_sig = make_signature(expanded_nodes)
+        new_nodes_sig = signifier.make_signature(expanded_nodes)
         if (new_nodes_sig & expanded_sig) != 0:
             yield (proposal, [])
 
@@ -81,7 +82,7 @@ def _split_excess(kline: KLine, excess: int) -> tuple[list[int], list[int]]:
     return excess_nodes, remaining
 
 
-def _overfit_expansions(kline: KLine, excess: int) -> Iterator[tuple[KLine, list[KLine]]]:
+def _overfit_expansions(kline: KLine, excess: int, signifier: KSignifier) -> Iterator[tuple[KLine, list[KLine]]]:
     """Remove nodes whose bits contribute to the excess."""
     excess_nodes, remaining = _split_excess(kline, excess)
 
@@ -89,14 +90,14 @@ def _overfit_expansions(kline: KLine, excess: int) -> Iterator[tuple[KLine, list
         return
     trimmed = KLine(kline.signature, remaining, kline.dbg)
 
-    companion_sig = make_signature(excess_nodes)
+    companion_sig = signifier.make_signature(excess_nodes)
     companion = KLine(companion_sig, excess_nodes)
 
     yield (trimmed, [companion])
 
 
 def _dual_expansions(
-    model: Model, kline: KLine, gap: int, excess: int
+    model: Model, kline: KLine, gap: int, excess: int, signifier: KSignifier
 ) -> Iterator[tuple[KLine, list[KLine]]]:
     """Atomic replacement: swap excess nodes for gap-filling nodes."""
     excess_nodes, remaining = _split_excess(kline, excess)
@@ -107,7 +108,7 @@ def _dual_expansions(
         replacement_nodes = remaining + list(contributor.nodes)
         replacement = KLine(kline.signature, replacement_nodes, kline.dbg)
 
-        companion_sig = make_signature(excess_nodes)
+        companion_sig = signifier.make_signature(excess_nodes)
         companion = KLine(companion_sig, excess_nodes)
 
         yield (replacement, [companion])

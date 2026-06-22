@@ -25,8 +25,8 @@ from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX, normalise_significance
 from kalvin.kline import KLine, kline_display
 from kalvin.misfit import classify_misfit
-from kalvin.signature import make_signature
 from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
 from training.harness.bus import MessageBus
 from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
@@ -50,6 +50,12 @@ _S1_FRAME_THRESHOLD = D_MAX
 def _display_tokenizer() -> NLPTokenizer:
     """Lazily-built kalvin tokenizer for kline display (cached; data required)."""
     return NLPTokenizer()
+
+
+@lru_cache(maxsize=1)
+def _display_signifier() -> NLPSignifier:
+    """Lazily-built kalvin signifier for kline display (cached)."""
+    return NLPSignifier()
 
 
 class Trainer:
@@ -119,10 +125,12 @@ class Trainer:
         curriculum_file: str | Path | None = None,
         curricula_dir: str | Path | None = None,
         tokenizer: Any | None = None,
+        signifier: Any | None = None,
     ) -> None:
         self._role = role
         self._bus = bus
         self._tokenizer = tokenizer
+        self._signifier = signifier or NLPSignifier()
         self._state = CurriculumState(
             curriculum,
             save_path=save_path,
@@ -142,6 +150,7 @@ class Trainer:
 
             _cogitator = Cogitator(client=llm_client)
             _display_tok = _display_tokenizer()
+            _display_sig = _display_signifier()
 
             def _cogitate_adapter(
                 event: RationaliseEvent,
@@ -150,12 +159,12 @@ class Trainer:
 
                 # Display klines as human-readable KScript for the LLM
                 try:
-                    query_src = kline_display(event.query, _display_tok)
+                    query_src = kline_display(event.query, _display_tok, _display_sig)
                 except Exception:
                     query_src = repr(event.query)
                 try:
                     proposal_src = (
-                        kline_display(event.proposal, _display_tok) if event.proposal else "None"
+                        kline_display(event.proposal, _display_tok, _display_sig) if event.proposal else "None"
                     )
                 except Exception:
                     proposal_src = repr(event.proposal) if event.proposal else "None"
@@ -278,8 +287,8 @@ class Trainer:
         bit differences between the kline signature and its nodes.
         """
         target = event.candidate if event.candidate is not None else event.proposal
-        target_underfit, target_overfit = classify_misfit(target)
-        target_nodes_sig = make_signature(target.nodes)
+        target_underfit, target_overfit = classify_misfit(target, self._signifier)
+        target_nodes_sig = self._signifier.make_signature(target.nodes)
         underfit_gap = target.signature & ~target_nodes_sig
         overfit_mask = target_nodes_sig & ~target.signature
         return {
@@ -343,12 +352,13 @@ class Trainer:
         event: RationaliseEvent = msg.message
 
         _log_tok = _display_tokenizer()
+        _log_sig = _display_signifier()
         try:
-            query_src = kline_display(event.query, _log_tok)
+            query_src = kline_display(event.query, _log_tok, _log_sig)
         except Exception:
             query_src = repr(event.query)
         try:
-            proposal_src = kline_display(event.proposal, _log_tok) if event.proposal else None
+            proposal_src = kline_display(event.proposal, _log_tok, _log_sig) if event.proposal else None
         except Exception:
             proposal_src = repr(event.proposal) if event.proposal else None
 
@@ -758,7 +768,7 @@ class Trainer:
             )
             logger.debug("Lesson %s kscript: %s", current_lesson.label, lesson.strip())
 
-        entries = compile_source(lesson, tokenizer=self._tokenizer)
+        entries = compile_source(lesson, tokenizer=self._tokenizer, signifier=self._signifier)
         self._reactor.load_lesson(entries)
 
         logger.info(
