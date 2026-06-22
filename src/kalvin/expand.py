@@ -175,8 +175,6 @@ def edge_hops(model: Model, sig: int, signifier: KSignifier) -> Iterator[tuple[i
             break
         hop_count += 1
         sig = signifier.make_signature(kline.nodes)
-        if sig == 0:
-            break  # empty nodes — nowhere to go
         yield hop_count, sig
 
 

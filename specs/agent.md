@@ -139,11 +139,10 @@ Rationalise(Q):
 
 ### Phase 1: Prepare
 
-Ensure the Kline has a signature. If `Q.signature == 0`, compute it:
-
-```
-Q.signature = make_signature(Q.nodes)   # @signifier spec
-```
+The kline must arrive with its signature already set (callers compute it
+via `make_signature` before rationalising — see @kline spec). Rationalise
+asserts this at entry; an unset signature is a caller bug and crashes
+loudly. There is no derivation step and no special signature value.
 
 ### Phase 2: Ground Check
 

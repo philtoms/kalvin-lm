@@ -122,8 +122,6 @@ class STM:
     def query(self, sig: KSig) -> list[KLine]:
         """Return all KLines whose signatures overlap *sig* (AND ≠ 0)."""
         with self._lock:
-            if sig == 0:
-                return []
             seen: set[int] = set()
             results: list[KLine] = []
             n = len(self._order)

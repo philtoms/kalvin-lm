@@ -170,10 +170,6 @@ since its internals contain no bitwise operations to begin with.)
 > remain opacity violations until remediated. They are listed so the opacity
 > claim is stated honestly against the current codebase:
 >
-> - **Signature-zero sentinel** — `agent.py`, `expand.py`, `stm.py` test
->   `signature == 0` to mean "empty/unset," hardcoding NLPSignifier's
->   empty-set value. A Signifier whose empty-set signature is not `0` would
->   break these. Should use a structural/unset mechanism instead.
 > - **Bare-bitwise overlap/gap** — STM candidate query (bare `&`, should use
 >   a Tokenizer bottom-word method; distinct concern, see @tokenizer);
 >   misfit classification and expansion (bare `&` / `& ~`, should use
@@ -182,8 +178,10 @@ since its internals contain no bitwise operations to begin with.)
 >   display helper (bare `&`, should use `signifies`).
 >
 > None of these consume new interface methods: their correct form uses the
-> existing `signifies` (or, for STM, a future Tokenizer method), and the
-> zero-sentinel is removed rather than routed through the Signifier.
+> existing `signifies` (or, for STM, a future Tokenizer method).
+>
+> *(The signature-zero sentinel that previously appeared here has been
+> removed — see specs/agent.md §Phase 1: Prepare.)*
 
 ## Test Matrix
 

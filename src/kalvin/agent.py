@@ -198,12 +198,16 @@ class KAgent:
 
         Returns True if significant (S1, S4), False if rational (S2, S3).
         """
-        # Prepare
-        if kline.signature == 0 and kline.nodes:
-            kline.signature = self._signifier.make_signature(kline.nodes)
+        # Prepare — callers must provide a set signature (see @specs/agent.md
+        # §Phase 1). This is a presence check, not a value-test: 0 is an
+        # ordinary signature value (the empty node set's signature).
+        assert kline.signature is not None, (
+            "KLine.signature must be set before rationalise; callers compute "
+            "it via signifier.make_signature(nodes)."
+        )
 
         # Ground check (Frame/LTM/Base only — not STM)
-        if kline.signature != 0 and self._model.grounded(kline):
+        if self._model.grounded(kline):
             self._model.add_to_stm(kline)
             self._publish("ground", kline, kline, D_MAX)
             return True
