@@ -43,8 +43,9 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Signifier (@signifier spec)
 
-- Provides `make_signature(nodes)` used during S2 misfit classification
-  (canonical check, underfit gap, overfit excess).
+- Provides `make_signature(nodes)`, `signifies`, `residual`, and
+  `classify_misfit(signature, nodes)` used during S2 misfit classification
+  and expansion.
 
 ### Kline (@kline spec)
 
@@ -209,35 +210,41 @@ the implementation detail.
 
 ### Misfit Classification
 
-Given a candidate kline with signature `S` and nodes signature
-`N = make_signature(nodes)`:
+Given a candidate kline, the Signifier classifies whether its signature
+faithfully covers its nodes (`@signifier §classify_misfit`, returning
+`(underfit, overfit)`):
 
-| Condition     | Classification | Meaning                                         |
-| ------------- | -------------- | ----------------------------------------------- |
-| `S == N`      | Canonical (S1) | No expansion needed                             |
-| `S & ~N != 0` | Underfitting   | Signature promises bits the nodes don't deliver |
-| `N & ~S != 0` | Overfitting    | Nodes carry bits the signature doesn't capture  |
-| Both          | Dual misfit    | Both conditions hold simultaneously             |
+| Condition      | Classification | Meaning                                         |
+| -------------- | -------------- | ----------------------------------------------- |
+| neither         | Canonical (S1) | No expansion needed                             |
+| underfit only   | Underfitting   | Signature promises bits the nodes don't deliver |
+| overfit only    | Overfitting    | Nodes carry bits the signature doesn't capture  |
+| Both            | Dual misfit    | Both conditions hold simultaneously             |
 
-The **underfit gap** is `S & ~N`. The **overfit excess** is `N & ~S`.
-A kline may be both underfitting and overfitting at the same time.
+A kline may be both underfitting and overfitting at the same time. The
+residual values behind the booleans (the underfit gap and overfit excess)
+are Signifier internals (see @signifier `residual`); the cogitator consumes
+the booleans and the residual values via the Signifier, never inspecting
+bit patterns directly.
 
 ### Underfit Expansion — Add Nodes
 
-Compute `gap = S & ~N`. Search the model for klines whose signatures
-overlap and thus reduce the gap. Construct the expanded kline:
+Obtain the underfit residual from the Signifier. Search the model for klines
+whose signatures overlap the residual (`@signifier §signifies`) and thus
+reduce the gap. Construct the expanded kline:
 
 ```
 {S: [original_nodes + addition_nodes]}
 ```
 
-Verify the expanded kline moves toward canonical: `make_signature(expanded_nodes)`
-is closer to `S`. The proposed expanded kline is emitted as a `frame` event.
+Verify the expanded kline moves toward canonical via the Signifier. The
+proposed expanded kline is emitted as a `frame` event.
 
 ### Overfit Expansion — Remove Nodes
 
-Identify nodes whose bits contribute to `N & ~S`. Remove those nodes from
-the candidate. Construct the trimmed kline:
+Identify nodes contributing to the overfit residual (tested via `@signifier
+§signifies`). Remove those nodes from the candidate. Construct the trimmed
+kline:
 
 ```
 {S: [remaining_nodes]}

@@ -93,3 +93,25 @@ class KSignifier(ABC):
         determination.
         """
         ...
+
+    @abstractmethod
+    def residual(self, a: int, b: int) -> int:
+        """Return the residual of signature *a* over signature *b*.
+
+        A derived value representing what *a* carries that *b* does not. Used
+        to compute coverage between a kline's signature and its nodes'
+        signature. The result's representation is opaque to Kalvin; it is
+        passed back to the Signifier (see :meth:`classify_misfit`) and never
+        inspected directly.
+        """
+        ...
+
+    @abstractmethod
+    def classify_misfit(self, signature: int, nodes: Sequence[int]) -> tuple[bool, bool]:
+        """Classify whether a signature faithfully covers its node set.
+
+        Returns ``(underfit, overfit)``: whether the signature over-claims its
+        nodes or the nodes over-deliver. Encapsulates the residual computation
+        and its emptiness test; callers receive booleans.
+        """
+        ...

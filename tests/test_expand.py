@@ -619,9 +619,9 @@ class TestProposeExpansions:
 
     def test_canonical_yields_nothing(self):
         """Genuine canon (non-self-referential) → no proposals."""
-        m = Model()
-        # sig 0b110 = OR(0b100, 0b010); a genuine canon.
-        k = KLine(0b110, [0b100, 0b010])
+        m = Model(signifier=signifier)
+        # sig T(0b110) = OR(T(0b100), T(0b010)); a genuine canon.
+        k = KLine(T(0b110), [T(0b100), T(0b010)])
         result = list(propose_expansions(m, k, 42, signifier))
         assert result == []
 
@@ -631,25 +631,25 @@ class TestProposeExpansions:
         An expansion proposal must carry decomposition information; identity
         klines do not.
         """
-        m = Model()
+        m = Model(signifier=signifier)
         assert list(propose_expansions(m, KLine(10, []), 42, signifier)) == []
         assert list(propose_expansions(m, KLine(10, [10]), 42, signifier)) == []
 
     def test_underfit_yields_proposals(self):
         """Underfit candidate (sig promises more than nodes deliver) → proposals.
 
-        KLine(sig=0b110, nodes=[0b100]) has gap 0b010. With a genuine canon
-        contributor headed by 0b010 in the model, propose_expansions yields
-        proposal klines with the passed significance.
+        KLine(sig=T(0b110), nodes=[T(0b100)]) has gap T(0b010). With a genuine
+        canon contributor headed by T(0b010) in the model, propose_expansions
+        yields proposal klines with the passed significance.
         """
-        m = Model()
-        # Genuine canon contributor whose signature overlaps the gap 0b010.
-        contributor = KLine(0b110, [0b100, 0b010])
+        m = Model(signifier=signifier)
+        # Genuine canon contributor whose signature overlaps the gap T(0b010).
+        contributor = KLine(T(0b110), [T(0b100), T(0b010)])
         m.add_to_frame(contributor)
         m.add_to_ltm(contributor)
 
-        # Underfit kline: sig=0b110 promises bits that nodes=[0b100] don't deliver
-        candidate = KLine(0b110, [0b100])
+        # Underfit kline: sig=T(0b110) promises bits nodes=[T(0b100)] don't deliver
+        candidate = KLine(T(0b110), [T(0b100)])
         significance = 0xDEAD
 
         results = list(propose_expansions(m, candidate, significance, signifier))
@@ -661,29 +661,30 @@ class TestProposeExpansions:
     def test_overfit_yields_trimmed_and_companion(self):
         """Overfit candidate → trimmed proposal; identity companion is dropped.
 
-        KLine(sig=0b110, nodes=[0b100, 0b010, 0b001]) has excess 0b001.
-        Trimming yields the genuine canon `{0b110: [0b100, 0b010]}`, which is
-        emitted. The companion from the single excess node would be
-        `{0b001: [0b001]}` — identity — and is dropped.
+        KLine(sig=T(0b110), nodes=[T(0b100), T(0b010), T(0b001)]) has excess
+        T(0b001). Trimming yields the genuine canon
+        `{T(0b110): [T(0b100), T(0b010)]}`, which is emitted. The companion
+        from the single excess node would be `{T(0b001): [T(0b001)]}` —
+        identity — and is dropped.
         """
-        m = Model()
-        candidate = KLine(0b110, [0b100, 0b010, 0b001])
+        m = Model(signifier=signifier)
+        candidate = KLine(T(0b110), [T(0b100), T(0b010), T(0b001)])
         significance = 0xBEEF
 
         results = list(propose_expansions(m, candidate, significance, signifier))
         assert len(results) == 1
         proposal, sig = results[0]
-        assert proposal.signature == 0b110
-        assert proposal.nodes == [0b100, 0b010]
+        assert proposal.signature == T(0b110)
+        assert proposal.nodes == [T(0b100), T(0b010)]
         assert sig == significance
 
     def test_yields_are_kline_int_tuples(self):
         """Every yield is a (KLine, int) tuple."""
-        m = Model()
+        m = Model(signifier=signifier)
         # Genuine canon contributor whose signature overlaps the gap.
-        contributor = KLine(0b011, [0b001, 0b010])
+        contributor = KLine(T(0b011), [T(0b001), T(0b010)])
         m.add_to_frame(contributor)
-        candidate = KLine(0b110, [0b100])
+        candidate = KLine(T(0b110), [T(0b100)])
 
         for item in propose_expansions(m, candidate, 42, signifier):
             assert isinstance(item, tuple)
@@ -701,11 +702,11 @@ class TestProposeExpansions:
         Precedence such klines would otherwise displace genuine canons and
         collapse `Model.unpack()` to identity.
         """
-        m = Model()
-        # Genuine canon contributor headed by 0b100 (overlaps the candidate sig).
-        m.add_to_frame(KLine(0b110, [0b100, 0b010]))
-        # Overfit candidate whose single excess node (0b010) would yield a
-        # self-loop companion {0b010: [0b010]}.
-        candidate = KLine(0b100, [0b110])
+        m = Model(signifier=signifier)
+        # Genuine canon contributor headed by T(0b100) (overlaps the candidate sig).
+        m.add_to_frame(KLine(T(0b110), [T(0b100), T(0b010)]))
+        # Overfit candidate whose single excess node (T(0b010)) would yield a
+        # self-loop companion {T(0b010): [T(0b010)]}.
+        candidate = KLine(T(0b100), [T(0b110)])
         for proposal, _ in propose_expansions(m, candidate, 0, signifier):
             assert proposal.signature not in proposal.nodes

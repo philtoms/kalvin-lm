@@ -227,13 +227,11 @@ separate follow-up:
    - `trainer.py:283-284` gap (`signature & ~nodes_sig`);
    - `kline.py:258,260` `_infer_level` bare `&`.
 
-> **Resolved (no longer deferred):** the *Tokenizer node-unpack leak* —
-> the compiler reaching into the node layout with `& 0xFFFFFFFF` — is now
-> fixed by the NLP tokenizer extraction (see
-> plans/implement-nlp-tokenizer-extraction.md): the compiler calls
-> `NLPTokenizer.lookup_type_entry_for_node(node)`, and the unpacking lives
-> inside NLPTokenizer. The bare-bitwise overlap/gap class above remains
-> open.
+> **Resolved (no longer deferred):** the *bare-bitwise overlap/gap class*
+> above is now fixed by plans/implement-bare-bitwise-cleanup.md: the gap
+> operation moved onto `KSignifier` as `residual` / `classify_misfit`, and
+> the overlap sites route through `signifies`. The *Tokenizer node-unpack
+> leak* noted below was fixed earlier by the NLP tokenizer extraction.
 
 ## Status
 

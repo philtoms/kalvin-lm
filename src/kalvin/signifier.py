@@ -18,6 +18,10 @@ between the NLP Tokenizer and the NLP Signifier (see specs/signifier.md
   values.
 - :meth:`signifies` — masked overlap: AND the two values restricted to the
   upper 32 bits (the NLP type word); non-zero means overlap.
+- :meth:`residual` — masked set-difference: the type-word bits of *a* not
+  in *b*.
+- :meth:`classify_misfit` — masked residual classification of whether a
+  signature faithfully covers its nodes.
 
 The lower 32 bits (BPE token IDs) are masked off in :meth:`signifies` so two
 values are compared by NLP type-word overlap, not by token-ID collision.
@@ -47,6 +51,9 @@ class NLPSignifier(KSignifier):
 
     - :meth:`make_signature` OR-reduces the full 64-bit node values.
     - :meth:`signifies` is ``(a & b & _TYPE_MASK) != 0``.
+    - :meth:`residual` is ``(a & ~b) & _TYPE_MASK``.
+    - :meth:`classify_misfit` uses :meth:`residual` on both directions and
+      tests each for non-zero.
     """
 
     def make_signature(self, nodes: Sequence[int]) -> int:
@@ -68,3 +75,26 @@ class NLPSignifier(KSignifier):
         (the NLP type word) participate.
         """
         return (a & b & _TYPE_MASK) != 0
+
+    def residual(self, a: int, b: int) -> int:
+        """Return the masked type-word bits of *a* not in *b*.
+
+        ``(a & ~b) & _TYPE_MASK`` — consistent with :meth:`signifies`,
+        BPE-token-id residuals are excluded so the residual captures
+        type-dimension claims, not token-id differences.
+        """
+        return (a & ~b) & _TYPE_MASK
+
+    def classify_misfit(self, signature: int, nodes: Sequence[int]) -> tuple[bool, bool]:
+        """Classify whether a signature faithfully covers its nodes.
+
+        Returns ``(underfit, overfit)``:
+        - underfit — the signature claims more than its nodes deliver
+          (``residual(signature, nodes_sig) != 0``).
+        - overfit — the nodes carry more than the signature captures
+          (``residual(nodes_sig, signature) != 0``).
+        """
+        nodes_sig = self.make_signature(nodes)
+        underfit = self.residual(signature, nodes_sig) != 0
+        overfit = self.residual(nodes_sig, signature) != 0
+        return underfit, overfit

@@ -397,8 +397,9 @@ class Model:
     def where(self, predicate: Callable[[KLine], bool] | KSig) -> list[KLine]:
         """Return KLines matching a predicate or signature overlap.
 
-        If predicate is an int, it's treated as a signature for AND matching:
-            where(sig) returns klines where kline.signature & sig != 0.
+        If predicate is an int, it's treated as a signature for overlap
+        matching via the Signifier (`signifies`):
+            where(sig) returns klines that signify *sig*.
         """
         with self._lock:
             if isinstance(predicate, int):

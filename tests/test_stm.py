@@ -4,6 +4,11 @@ from kalvin.kline import KLine
 from kalvin.stm import STM
 
 
+def T(bits: int) -> int:
+    """Place type-word bits in the upper 32 bits of a uint64 (NLP layout)."""
+    return bits << 32
+
+
 def make_stm(bound: int = 256) -> STM:
     return STM(bound=bound)
 
@@ -84,17 +89,19 @@ class TestSTMDualKey:
 class TestSTMQuery:
     def test_query_overlap(self):
         stm = make_stm()
-        k1 = KLine(0b110, [0b10, 0b100])
-        k2 = KLine(0b001, [0b001])
+        k1 = KLine(T(0b110), [T(0b10), T(0b100)])
+        k2 = KLine(T(0b001), [T(0b001)])
         stm.add(k1)
         stm.add(k2)
-        results = stm.query(0b010)
+        # query T(0b010): overlaps k1's type word (shares bit 0b010), not k2's
+        results = stm.query(T(0b010))
         assert k1 in results
         assert k2 not in results
 
     def test_query_zero(self):
         stm = make_stm()
         stm.add(KLine(5, [1]))
+        # An empty type-word signature (0) signifies nothing (vacuous for 0).
         assert stm.query(0) == []
 
 

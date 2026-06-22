@@ -22,6 +22,12 @@ from training.trainer.curriculum_document import CurriculumDocument, Lesson
 from training.trainer.curriculum_generator import CurriculumGenerationError
 from training.trainer.trainer import Trainer
 
+
+def T(bits: int) -> int:
+    """Place type-word bits in the upper 32 bits of a uint64 (NLP layout)."""
+    return bits << 32
+
+
 # ── Significance constants for test events ────────────────────────────
 
 # S1 threshold: D_MAX (distance 0) = 0xFFFF_FFFF_FFFF_FFFF
@@ -2194,7 +2200,11 @@ class TestCogitatorAutoWiring:
 
 
 class TestComputeMisfit:
-    """Trainer._compute_misfit maps a KLine to the misfit dict."""
+    """Trainer._compute_misfit maps a KLine to the misfit dict.
+
+    Misfit classification operates on the type word (upper 32 bits); test
+    values use ``T(bits) = bits << 32`` so the type word is populated.
+    """
 
     def test_underfit_only(self) -> None:
         """Signature promises more than nodes deliver → underfit, no overfit."""
@@ -2202,16 +2212,16 @@ class TestComputeMisfit:
         curriculum = Curriculum([])
         trainer, _capture = _make_trainer(bus, curriculum)
 
-        # signature 0xFF, nodes [0x01, 0x02] → nodes_sig=0x03
-        # gap = 0xFF & ~0x03 = 0xFC, mask = 0x03 & ~0xFF = 0
-        target = KLine(signature=0xFF, nodes=[0x01, 0x02])
+        # type word 0xFF, nodes [T(0x01), T(0x02)] → nodes_sig type word 0x03
+        # gap = residual(T(0xFF), T(0x03)) = T(0xFC)
+        target = KLine(signature=T(0xFF), nodes=[T(0x01), T(0x02)])
         event = _make_event("frame", query=target, proposal=target, significance=100)
         result = trainer._compute_misfit(event)
 
         assert result == {
             "underfit": True,
             "overfit": False,
-            "underfit_gap": 0xFC,
+            "underfit_gap": T(0xFC),
             "overfit_mask": 0x00,
         }
 
@@ -2221,9 +2231,9 @@ class TestComputeMisfit:
         curriculum = Curriculum([])
         trainer, _capture = _make_trainer(bus, curriculum)
 
-        # signature 0x01, nodes [0x01, 0x08] → nodes_sig=0x09
-        # gap = 0x01 & ~0x09 = 0, mask = 0x09 & ~0x01 = 0x08
-        target = KLine(signature=0x01, nodes=[0x01, 0x08])
+        # type word 0x01, nodes [T(0x01), T(0x08)] → nodes_sig type word 0x09
+        # gap = residual(T(0x01), T(0x09)) = 0, mask = residual(T(0x09), T(0x01)) = T(0x08)
+        target = KLine(signature=T(0x01), nodes=[T(0x01), T(0x08)])
         event = _make_event("frame", query=target, proposal=target, significance=100)
         result = trainer._compute_misfit(event)
 
@@ -2231,7 +2241,7 @@ class TestComputeMisfit:
             "underfit": False,
             "overfit": True,
             "underfit_gap": 0x00,
-            "overfit_mask": 0x08,
+            "overfit_mask": T(0x08),
         }
 
     def test_dual_misfit(self) -> None:
@@ -2240,17 +2250,17 @@ class TestComputeMisfit:
         curriculum = Curriculum([])
         trainer, _capture = _make_trainer(bus, curriculum)
 
-        # signature 0x0F, nodes [0x10] → nodes_sig=0x10
-        # gap = 0x0F & ~0x10 = 0x0F, mask = 0x10 & ~0x0F = 0x10
-        target = KLine(signature=0x0F, nodes=[0x10])
+        # type word 0x0F, nodes [T(0x10)] → nodes_sig type word 0x10
+        # gap = residual(T(0x0F), T(0x10)) = T(0x0F), mask = residual(T(0x10), T(0x0F)) = T(0x10)
+        target = KLine(signature=T(0x0F), nodes=[T(0x10)])
         event = _make_event("frame", query=target, proposal=target, significance=100)
         result = trainer._compute_misfit(event)
 
         assert result == {
             "underfit": True,
             "overfit": True,
-            "underfit_gap": 0x0F,
-            "overfit_mask": 0x10,
+            "underfit_gap": T(0x0F),
+            "overfit_mask": T(0x10),
         }
 
     def test_no_misfit(self) -> None:
@@ -2259,8 +2269,8 @@ class TestComputeMisfit:
         curriculum = Curriculum([])
         trainer, _capture = _make_trainer(bus, curriculum)
 
-        # signature == nodes_sig → both gaps zero
-        target = KLine(signature=0x03, nodes=[0x01, 0x02])
+        # type word 0x03 == nodes_sig type word → both residuals zero
+        target = KLine(signature=T(0x03), nodes=[T(0x01), T(0x02)])
         event = _make_event("frame", query=target, proposal=target, significance=100)
         result = trainer._compute_misfit(event)
 
@@ -2277,8 +2287,8 @@ class TestComputeMisfit:
         curriculum = Curriculum([])
         trainer, _capture = _make_trainer(bus, curriculum)
 
-        candidate = KLine(signature=0xFF, nodes=[0x01])  # underfit
-        proposal = KLine(signature=0x03, nodes=[0x01, 0x02])  # no misfit
+        candidate = KLine(signature=T(0xFF), nodes=[T(0x01)])  # underfit
+        proposal = KLine(signature=T(0x03), nodes=[T(0x01), T(0x02)])  # no misfit
         event = RationaliseEvent(
             kind="frame",
             query=proposal,
@@ -2288,9 +2298,10 @@ class TestComputeMisfit:
         )
         result = trainer._compute_misfit(event)
 
-        # Misfit computed on candidate (0xFF vs [0x01] → underfit), not proposal
+        # Misfit computed on candidate (T(0xFF) vs [T(0x01)] → underfit), not proposal
         assert result["underfit"] is True
-        assert result["underfit_gap"] == 0xFE
+        assert result["underfit_gap"] == T(0xFE)
+
 
 
 # ── Delegated reactive decisions ─────────────────────────────

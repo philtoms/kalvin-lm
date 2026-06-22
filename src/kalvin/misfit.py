@@ -19,19 +19,6 @@ if TYPE_CHECKING:
     from kalvin.model import Model
 
 
-def classify_misfit(kline: KLine, signifier: KSignifier) -> tuple[bool, bool]:
-    """Classify a kline's misfit type.
-
-    Returns (underfitting, overfitting):
-    - underfitting: True if S & ~N != 0 (signature promises more than nodes deliver)
-    - overfitting: True if N & ~S != 0 (nodes carry more than signature captures)
-    """
-    nodes_sig = signifier.make_signature(kline.nodes)
-    underfit = (kline.signature & ~nodes_sig) != 0
-    overfit = (nodes_sig & ~kline.signature) != 0
-    return underfit, overfit
-
-
 def generate_expansions(
     model: Model,
     kline: KLine,
@@ -63,7 +50,7 @@ def _underfit_expansions(
     model: Model, kline: KLine, gap: int, signifier: KSignifier
 ) -> Iterator[tuple[KLine, list[KLine]]]:
     """Add nodes whose signatures overlap and thus reduce the gap."""
-    contributors = model.where(lambda k: (k.signature & gap) != 0)
+    contributors = model.where(lambda k: signifier.signifies(k.signature, gap))
 
     for contributor in contributors:
         expanded_nodes = list(kline.nodes) + list(contributor.nodes)
@@ -71,20 +58,20 @@ def _underfit_expansions(
         proposal = KLine(expanded_sig, expanded_nodes, kline.dbg)
 
         new_nodes_sig = signifier.make_signature(expanded_nodes)
-        if (new_nodes_sig & expanded_sig) != 0:
+        if signifier.signifies(new_nodes_sig, expanded_sig):
             yield (proposal, [])
 
 
-def _split_excess(kline: KLine, excess: int) -> tuple[list[int], list[int]]:
-    """Split kline nodes into (excess_nodes, remaining) by excess mask."""
-    excess_nodes = [n for n in kline.nodes if (n & excess) != 0]
+def _split_excess(kline: KLine, excess: int, signifier: KSignifier) -> tuple[list[int], list[int]]:
+    """Split kline nodes into (excess_nodes, remaining) by excess residual."""
+    excess_nodes = [n for n in kline.nodes if signifier.signifies(n, excess)]
     remaining = [n for n in kline.nodes if n not in excess_nodes]
     return excess_nodes, remaining
 
 
 def _overfit_expansions(kline: KLine, excess: int, signifier: KSignifier) -> Iterator[tuple[KLine, list[KLine]]]:
     """Remove nodes whose bits contribute to the excess."""
-    excess_nodes, remaining = _split_excess(kline, excess)
+    excess_nodes, remaining = _split_excess(kline, excess, signifier)
 
     if not excess_nodes:
         return
@@ -100,9 +87,9 @@ def _dual_expansions(
     model: Model, kline: KLine, gap: int, excess: int, signifier: KSignifier
 ) -> Iterator[tuple[KLine, list[KLine]]]:
     """Atomic replacement: swap excess nodes for gap-filling nodes."""
-    excess_nodes, remaining = _split_excess(kline, excess)
+    excess_nodes, remaining = _split_excess(kline, excess, signifier)
 
-    contributors = model.where(lambda k: (k.signature & gap) != 0)
+    contributors = model.where(lambda k: signifier.signifies(k.signature, gap))
 
     for contributor in contributors:
         replacement_nodes = remaining + list(contributor.nodes)

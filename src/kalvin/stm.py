@@ -128,7 +128,7 @@ class STM:
             for i in range(n - 1, -1, -1):
                 kline = self._order[i]
                 kid = id(kline)
-                if kid not in seen and (kline.signature & sig) != 0:
+                if kid not in seen and self._signifier.signifies(kline.signature, sig):
                     seen.add(kid)
                     results.append(kline)
             return results

@@ -255,10 +255,8 @@ def _infer_level(kline: KLine, signifier: KSignifier) -> str:
     if kline.signature == nodes_sig:
         return "S2"  # perfect fit → canonize
     if len(nodes) == 1:
-        combined = kline.signature & nodes[0]
-        return "S2" if combined != 0 else "S3"
-    combined = kline.signature & nodes_sig
-    return "S2" if combined != 0 else "S3"
+        return "S2" if signifier.signifies(kline.signature, nodes[0]) else "S3"
+    return "S2" if signifier.signifies(kline.signature, nodes_sig) else "S3"
 
 
 def _infer_op_symbol(kline: KLine, signifier: KSignifier) -> str:

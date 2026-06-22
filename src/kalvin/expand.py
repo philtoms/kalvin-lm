@@ -29,7 +29,7 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from kalvin.kline import KLine, is_canon, is_identity
-from kalvin.misfit import classify_misfit, generate_expansions
+from kalvin.misfit import generate_expansions
 
 if TYPE_CHECKING:
     from kalvin.abstract import KSignifier
@@ -427,15 +427,15 @@ def propose_expansions(
     if is_identity(candidate) or is_canon(candidate, signifier):
         return  # identity or canonical — nothing to expand
 
-    underfit, overfit = classify_misfit(candidate, signifier)
+    underfit, overfit = signifier.classify_misfit(candidate.signature, candidate.nodes)
 
     if not underfit and not overfit:
         return
 
     candidate_sig = candidate.signature
     nodes_sig = signifier.make_signature(candidate.nodes)
-    underfit_gap = candidate_sig & ~nodes_sig
-    overfit_mask = nodes_sig & ~candidate_sig
+    underfit_gap = signifier.residual(candidate_sig, nodes_sig)
+    overfit_mask = signifier.residual(nodes_sig, candidate_sig)
 
     for proposal, companions in generate_expansions(model, candidate, underfit_gap, overfit_mask, signifier):
         if is_identity(proposal):

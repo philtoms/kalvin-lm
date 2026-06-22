@@ -562,14 +562,12 @@ class TestCogitatorStructuralGrounding:
         Note: KLine(10, [10]) is identity ({S:[S]}), not canonical, since
         commit 040bc0c — the test name is retained for compatibility.
         """
-        from kalvin.misfit import classify_misfit
-
         k = KLine(10, [10])  # identity (self-referential since 040bc0c)
         nodes_sig = signifier.make_signature(k.nodes)
         # sig == OR(nodes) is necessary but NOT sufficient for canon — the kline
         # is identity (self-referential), so is_canon() returns False since 040bc0c.
         assert k.signature == nodes_sig
-        underfit, overfit = classify_misfit(k, signifier)
+        underfit, overfit = signifier.classify_misfit(k.signature, k.nodes)
         assert not underfit and not overfit
 
 
