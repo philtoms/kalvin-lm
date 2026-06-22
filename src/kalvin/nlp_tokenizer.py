@@ -1,46 +1,39 @@
-"""NLP tokenizer — the NLP interpretation of the kalvin sig word.
+"""NLP tokenizer — the kalvin production tokenizer.
 
-The kalvin tokenizer (see kalvin.tokenizer) produces 64-bit typed nodes
-``(sig_word << 32) | bpe_token_id`` and treats the sig word as opaque.
-This module is the **NLP interpretation** of that word: it documents and
-specialises the sig word as an NLP type encoding, so that kalvin's
-generic machinery can be deployed with NLP-derived type information.
-
-NLP sig-word layout (``nlp_type32``, 32 bits)::
-
-    Bits 0–16:  17 coarse part-of-speech tags (POS)
-    Bits 17–24: 8 simplified dependency groups (DEP)
-    Bits 25–31: 7 simplified morphological features (MORPH)
-
-So a node produced under the NLP interpretation is::
+This is the **sole concrete ``KTokenizer``** (see :mod:`kalvin.abstract`).
+It combines a BPE subword base (the :class:`kalvin.tokenizer.Tokenizer`
+engine wrapper) with an **NLP type word** to form 64-bit typed nodes::
 
     node = (nlp_type32 << 32) | bpe_token_id
+
+- ``nlp_type32`` (upper 32 bits) — a 32-bit NLP type bitmask (POS / DEP /
+  MORPH). This is the NLP layout; kalvin operates on the bit pattern, not
+  its meaning.
+- ``bpe_token_id`` (lower 32 bits) — the BPE subword vocabulary index.
+
+Everything the ``KTokenizer`` interface does not specify — node packing,
+the type dictionary, ``encode``/``decode``, and the BPE-engine foundation
+— **lives here**. The base ``Tokenizer`` is a BPE-engine wrapper and is
+not itself a ``KTokenizer``.
 
 BPE tokens without a type-dictionary entry fall back to ``POS_X``
 (``UNKNOWN_NLP_TYPE = 65536 = 1 << 16``), the NLP "unknown" POS flag.
 
-Everything operational (encoding, decoding, signature construction) is
-inherited unchanged from the base :class:`kalvin.tokenizer.Tokenizer`.
-This subclass additionally owns loading the external NLP resources — the
-BPE engine and the tagged-grammar type dictionary — from disk: a bare
-``NLPTokenizer()`` reads them from the standard data paths. The base
-tokenizer stores and uses the type dictionary but does not know how to
-source it from disk; sourcing the NLP-tagged grammar is an NLP concern
-lived here. The subclass also fixes the fallback sig word (POS_X) and
-exposes NLP-named accessors over the type dictionary.
+See specs/nlp_tokenizer.md for the full specification.
 """
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
+from kalvin.abstract import KTokenizer
 from kalvin.tokenizer import Tokenizer
 
-# POS_X is the NLP fallback sig word for BPE tokens missing from the type
-# dictionary. Value 65536 = 0x10000 = bit 16 set (the POS_X flag). This
-# overrides the base tokenizer's generic UNKNOWN_TYPE (0) so that, under the
-# NLP interpretation, untyped tokens still carry a valid NLP POS flag.
+# POS_X is the NLP fallback type word for BPE tokens missing from the type
+# dictionary. Value 65536 = 0x10000 = bit 16 set (the POS_X flag), so
+# untyped tokens still carry a valid NLP POS flag.
 UNKNOWN_NLP_TYPE = 65536
 
 
@@ -48,9 +41,9 @@ def load_grammar_dict(path: str | Path) -> dict[int, dict]:
     """Load an NLP grammar dictionary from JSON.
 
     Reads entries keyed by BPE token ID (string keys converted to int).
-    Each entry's ``nlp_type32`` field (the NLP sig word produced by
+    Each entry's ``nlp_type32`` field (the NLP type word produced by
     ``dev/nlp`` tooling) is normalised onto the generic ``sig_word`` key
-    so the entry can feed the base tokenizer's encoder. Other NLP fields
+    so the entry can feed the encoder. Other NLP fields
     (``pos``, ``pos_fine``, ``dep``, ``morph``, …) are preserved unchanged.
 
     Args:
@@ -76,25 +69,18 @@ def load_grammar_dict(path: str | Path) -> dict[int, dict]:
     return normalized
 
 
-class NLPTokenizer(Tokenizer):
-    """Tokenizer specialised for the NLP sig-word interpretation.
+class NLPTokenizer(Tokenizer, KTokenizer):
+    """The production kalvin tokenizer: the sole concrete ``KTokenizer``.
 
-    Operationally identical to :class:`kalvin.tokenizer.Tokenizer` (the
-    NLP sig word is just the kalvin sig word under the NLP meaning).
-    The differences are:
+    Builds on the :class:`kalvin.tokenizer.Tokenizer` BPE-engine wrapper,
+    adding node packing, the NLP type dictionary, and the
+    ``KTokenizer`` interface (``encode`` / ``decode`` / ``vocab_size``).
 
-    - The constructor loads the external NLP resources (BPE engine +
-      tagged-grammar type dictionary) from disk; a bare ``NLPTokenizer()``
-      reads them from the standard data paths. The base tokenizer accepts a
-      pre-built type dictionary but does not source one from disk.
-    - The fallback sig word is ``POS_X`` (``UNKNOWN_NLP_TYPE = 65536``)
-      instead of the base ``UNKNOWN_TYPE`` (0), so untyped BPE tokens still
-      carry a valid NLP POS flag.
-    - NLP-named accessors (``grammar_size``, ``lookup_grammar``) are
-      provided over the type dictionary.
+    The fallback type word is ``POS_X`` (``UNKNOWN_NLP_TYPE = 65536``), so
+    untyped BPE tokens still carry a valid NLP POS flag.
     """
 
-    #: NLP fallback sig word: POS_X (bit 16).
+    #: NLP fallback type word: POS_X (bit 16).
     UNKNOWN_TYPE: int = UNKNOWN_NLP_TYPE
 
     def __init__(
@@ -121,8 +107,10 @@ class NLPTokenizer(Tokenizer):
 
             tokenizer_path = tokenizer_dir()
         bpe = Tokenizer._load_bpe_engine(tokenizer_path, tokenizer_name)
-        types = NLPTokenizer._load_type_dictionary(tokenizer_path, tokenizer_name)
-        super().__init__(bpe=bpe, types=types)
+        super().__init__(bpe=bpe)
+        self._types: dict[int, dict] = NLPTokenizer._load_type_dictionary(
+            tokenizer_path, tokenizer_name
+        )
 
     @classmethod
     def _load_type_dictionary(
@@ -160,10 +148,77 @@ class NLPTokenizer(Tokenizer):
             types[int(k)] = entry
         return types
 
+    # ── properties ───────────────────────────────────────────────────────
+
+    @property
+    def type_size(self) -> int:
+        """Number of entries in the type dictionary."""
+        return len(self._types)
+
     @property
     def grammar_size(self) -> int:
         """Number of entries in the NLP grammar (= type dictionary)."""
         return self.type_size
+
+    # ── KTokenizer interface: encode / decode (node packing) ─────────────
+
+    def encode(self, text: str, pad_ws: bool = False) -> list[int]:
+        """Encode text to a list of typed nodes.
+
+        Each BPE token ID is combined with its NLP type word:
+        ``(nlp_type32 << 32) | bpe_token_id``. Tokens absent from the type
+        dictionary receive ``UNKNOWN_TYPE`` (POS_X).
+        """
+        self._check_available()
+        bpe_ids = self.encode_bpe(text, pad_ws)
+        nodes: list[int] = []
+        for bpe_id in bpe_ids:
+            entry = self._types.get(bpe_id)
+            sig_word = entry["sig_word"] if entry else self.UNKNOWN_TYPE
+            nodes.append((sig_word << 32) | bpe_id)
+        return nodes
+
+    def decode(self, ids: list[int]) -> str:
+        """Decode typed nodes (or raw BPE IDs) back to text.
+
+        The BPE token ID is taken from the low 32 bits of each value, so
+        raw BPE IDs (which already fit in 32 bits) decode unchanged.
+        """
+        self._check_available()
+        if not ids:
+            return ""
+        bpe_ids = [node & 0xFFFFFFFF for node in ids]
+        return self.decode_bpe(bpe_ids)
+
+    def batch_encode(self, texts: list[str]) -> list[list[int]]:
+        """Batch encode to typed nodes."""
+        self._check_available()
+        return [self.encode(t) for t in texts]
+
+    # ── type dictionary lookup ───────────────────────────────────────────
+
+    def lookup_type(self, token_id: int) -> int | None:
+        """Return the type word for a BPE token ID, or None if absent."""
+        entry = self._types.get(token_id)
+        return entry["sig_word"] if entry else None
+
+    def lookup_type_entry(self, token_id: int) -> dict | None:
+        """Return the raw type-dictionary entry for a BPE token ID.
+
+        The entry is returned as-is; its keys beyond ``sig_word`` are
+        opaque metadata (the NLP labels when the dictionary was generated
+        by NLP tooling).
+        """
+        return self._types.get(token_id)
+
+    def lookup_type_entry_for_node(self, node: int) -> dict | None:
+        """Return the type-dictionary entry for a typed node.
+
+        Unpacks the node's BPE token ID (low 32 bits) internally and
+        delegates to :meth:`lookup_type_entry`. The node layout is owned by
+        this tokenizer; callers pass a node, not a pre-unpacked BPE id.
+        """
+        return self.lookup_type_entry(node & 0xFFFFFFFF)
 
     def lookup_grammar(self, bpe_id: int) -> dict | None:
         """Look up the NLP grammar entry for a BPE token ID.

@@ -1,26 +1,21 @@
-"""Kalvin tokenizer — BPE tokens enriched with a sig word.
+"""BPE engine wrapper — the foundation of the kalvin production tokenizer.
 
-The kalvin tokenizer is the sole authority for how text becomes nodes.
-It wraps a BPE subword engine and a type dictionary, producing 64-bit
-typed nodes::
+This module wraps a BPE subword engine and exposes raw BPE↔text operations.
+It is **not** a `KTokenizer` (see :mod:`kalvin.abstract`): a BPE engine
+produces raw vocabulary indices, not nodes. The production `KTokenizer` is
+:class:`kalvin.nlp_tokenizer.NLPTokenizer`, which builds on this wrapper
+and adds the node packing, type dictionary, and ``encode``/``decode``
+(see the @nlp_tokenizer spec).
 
-    node = (sig_word << 32) | bpe_token_id
+Engine surface:
 
-- ``sig_word`` (upper 32 bits) — a significant bit pattern. Kalvin
-  treats this word as opaque: it participates in signature construction
-  and matching (see the @signature spec) but kalvin does not interpret
-  what the bits mean. The meaning of the sig word is a deployment
-  concern; see the @nlp_tokenizer spec for the NLP interpretation.
-- ``bpe_token_id`` (lower 32 bits) — the BPE subword vocabulary index.
+- ``train`` / ``save_to_directory`` / ``_load_bpe_engine`` — vocabulary
+  training and persistence (setup-time).
+- ``encode_bpe`` / ``decode_bpe`` — raw text ↔ BPE token IDs.
+- ``vocab_size`` — the BPE vocabulary size.
 
-The tokenizer owns the type dictionary mapping BPE token IDs to their
-sig word. BPE tokens without an entry fall back to ``UNKNOWN_TYPE``.
-
-BPE training and persistence (``train``, ``save_to_directory``,
-``from_directory``) are setup-time operations and work without a type
-dictionary; ``encode``/``decode`` are the production operations.
-
-See specs/tokenizer.md for the full specification.
+See specs/tokenizer.md (§BPE Engine) and specs/nlp_tokenizer.md
+(§BPE Engine Foundation) for the full specification.
 """
 
 from __future__ import annotations
@@ -30,8 +25,6 @@ import json
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
-
-from kalvin.abstract import KTokenizer
 
 # Optional BPE backends. rustbpe trains; tiktoken runs inference.
 _rustbpe: Any = None
@@ -63,7 +56,7 @@ class RustbpeNotInstalledError(Exception):
 
 
 class TiktokenNotInstalledError(Exception):
-    """Raised when loading from directory without tiktoken installed."""
+    """Raised when loading the engine without tiktoken installed."""
 
     pass
 
@@ -74,41 +67,25 @@ class PyarrowNotInstalledError(Exception):
     pass
 
 
-# The fallback sig word for BPE tokens missing from the type dictionary.
-# Kalvin assigns no significance to untyped tokens, so the fallback is the
-# empty sig word (0). A deployment may reinterpret this via a subclass
-# (see kalvin.nlp_tokenizer for the NLP POS_X fallback).
-UNKNOWN_TYPE = 0
+class Tokenizer:
+    """BPE-engine wrapper: raw text ↔ BPE token IDs.
 
-
-class Tokenizer(KTokenizer):
-    """Kalvin production tokenizer: BPE subwords combined with a sig word.
-
-    Produces 64-bit typed nodes ``(sig_word << 32) | bpe_token_id`` from a
-    BPE engine and a type dictionary. The sig word is treated as opaque —
-    kalvin operates on its bit pattern, not its meaning.
+    Not a ``KTokenizer``. The production ``KTokenizer``
+    (:class:`kalvin.nlp_tokenizer.NLPTokenizer`) builds on this wrapper,
+    adding node packing and the type dictionary.
     """
 
-    #: Fallback sig word for BPE tokens absent from the type dictionary.
-    #: Subclasses may override (e.g. NLP uses POS_X = 65536).
-    UNKNOWN_TYPE: int = UNKNOWN_TYPE
-
-    def __init__(
-        self,
-        bpe: Any = None,
-        types: dict[int, dict] | None = None,
-    ):
+    def __init__(self, bpe: Any = None) -> None:
         # ``_bpe`` is the BPE engine: a rustbpe.Tokenizer (training) or a
         # tiktoken.Encoding (inference). Tooling may access it directly.
         self._bpe = bpe
-        self._types: dict[int, dict] = types or {}
 
     # ── availability ─────────────────────────────────────────────────────
 
     def _check_available(self) -> None:
         if self._bpe is None:
             raise TokenizerNotTrainedError(
-                "Tokenizer BPE engine not loaded. Call train() or from_directory() first."
+                "BPE engine not loaded. Call train() or load an engine first."
             )
 
     # ── training / persistence (BPE engine) ──────────────────────────────
@@ -143,22 +120,6 @@ class Tokenizer(KTokenizer):
 
         ranks_data = [{"b64": base64.b64encode(b).decode("ascii"), "rank": r} for b, r in ranks]
         (path / f"{name}.bin").write_text(json.dumps(ranks_data))
-
-    @classmethod
-    def from_directory(
-        cls,
-        path: str | Path | None = None,
-        name: str = "tokenizer-32768",
-    ) -> Tokenizer:
-        """Load the BPE engine only (no type dictionary).
-
-        Returns a tokenizer whose ``encode`` produces typed nodes with the
-        fallback sig word for every token. Loading a type dictionary (the
-        tagged grammar) is a deployment concern handled by a subclass such
-        as :class:`kalvin.nlp_tokenizer.NLPTokenizer`; use ``encode_bpe``
-        for raw BPE IDs.
-        """
-        return cls(bpe=cls._load_bpe_engine(path, name))
 
     @classmethod
     def _load_bpe_engine(
@@ -197,71 +158,26 @@ class Tokenizer(KTokenizer):
             return self._bpe.vocab_size
         return self._bpe.n_vocab
 
-    @property
-    def type_size(self) -> int:
-        """Number of entries in the type dictionary."""
-        return len(self._types)
-
-    # ── encoding (production: typed nodes) ───────────────────────────────
-
-    def encode(self, text: str, pad_ws: bool = False) -> list[int]:
-        """Encode text to a list of typed nodes.
-
-        Each BPE token ID is combined with its sig word:
-        ``(sig_word << 32) | bpe_token_id``. Tokens absent from the type
-        dictionary receive ``UNKNOWN_TYPE``.
-        """
-        self._check_available()
-        bpe_ids = self.encode_bpe(text, pad_ws)
-        nodes: list[int] = []
-        for bpe_id in bpe_ids:
-            entry = self._types.get(bpe_id)
-            sig_word = entry["sig_word"] if entry else self.UNKNOWN_TYPE
-            nodes.append((sig_word << 32) | bpe_id)
-        return nodes
+    # ── raw BPE ↔ text ───────────────────────────────────────────────────
 
     def encode_bpe(self, text: str, pad_ws: bool = False) -> list[int]:
-        """Encode text to raw BPE token IDs (no sig word).
+        """Encode text to raw BPE token IDs (no node packing).
 
-        Low-level accessor for tooling that operates on the BPE vocabulary
-        directly (training, tagging, decomposition).
+        Engine-level accessor. The production tokenizer's ``encode`` builds
+        on this (see :class:`kalvin.nlp_tokenizer.NLPTokenizer`).
         """
         self._check_available()
         if pad_ws:
             text = text.strip() + " "
         return self._bpe.encode(text)
 
-    def batch_encode(self, texts: list[str]) -> list[list[int]]:
-        """Batch encode to typed nodes."""
-        self._check_available()
-        return [self.encode(t) for t in texts]
+    def decode_bpe(self, bpe_ids: list[int]) -> str:
+        """Decode raw BPE token IDs back to text.
 
-    # ── decoding ─────────────────────────────────────────────────────────
-
-    def decode(self, ids: list[int]) -> str:
-        """Decode typed nodes (or raw BPE IDs) back to text.
-
-        The BPE token ID is taken from the low 32 bits of each value, so
-        raw BPE IDs (which already fit in 32 bits) decode unchanged.
+        Engine-level accessor, symmetric to :meth:`encode_bpe`. The
+        production tokenizer's ``decode`` unpacks nodes then delegates here.
         """
         self._check_available()
-        if not ids:
+        if not bpe_ids:
             return ""
-        bpe_ids = [node & 0xFFFFFFFF for node in ids]
         return self._bpe.decode(bpe_ids)
-
-    # ── type dictionary lookup ───────────────────────────────────────────
-
-    def lookup_type(self, token_id: int) -> int | None:
-        """Return the sig word for a BPE token ID, or None if absent."""
-        entry = self._types.get(token_id)
-        return entry["sig_word"] if entry else None
-
-    def lookup_type_entry(self, token_id: int) -> dict | None:
-        """Return the raw type-dictionary entry for a BPE token ID.
-
-        The entry is returned as-is; its keys beyond ``sig_word`` are
-        opaque metadata (e.g. NLP labels when the dictionary was generated
-        by NLP tooling).
-        """
-        return self._types.get(token_id)

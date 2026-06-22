@@ -278,7 +278,11 @@ class TokenEncoder:
         except Exception:
             decoded = ""
         type_info = ""
-        entry = self._tokenizer.lookup_type_entry(sig_uint64 & 0xFFFFFFFF)
+        # type-info is an NLP-specific debug affordance: only type-aware
+        # tokenizers expose a node-taking entry lookup. The KTokenizer
+        # interface does not, so the path is gated rather than assumed.
+        lookup = getattr(self._tokenizer, "lookup_type_entry_for_node", None)
+        entry = lookup(sig_uint64) if lookup is not None else None
         if entry:
             # Summarise the entry's non-text string fields generically so
             # core code stays agnostic to whatever generated the dictionary.

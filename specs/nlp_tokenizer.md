@@ -2,39 +2,33 @@
 
 ## Overview
 
-This spec defines the **NLP interpretation** of the kalvin sig word. The
-base tokenizer (see the @tokenizer spec) produces 64-bit typed nodes
-`(sig_word << 32) | bpe_token_id` and treats the sig word as opaque.
-Under the NLP interpretation — the one used by the data shipped with
-kalvin — the sig word is an **NLP type encoding** derived from
-part-of-speech, dependency, and morphological analysis.
+This spec defines the **NLP production tokenizer** — the sole concrete
+`KTokenizer` (see @tokenizer) used by the shipped data. It combines a
+**BPE** subword base with an **NLP type word** to form 64-bit typed nodes:
 
-Everything operational (encoding, decoding) is defined by the @tokenizer
-spec and inherited unchanged. This spec only fixes the meaning of the sig
-word and the NLP-specific fallback and vocabulary.
+```
+node = (nlp_type32 << 32) | bpe_token_id
+```
+
+The NLP type word is a 32-bit bitmask encoding 32 linguistic dimensions
+(POS / DEP / MORPH); the BPE token ID is the lower 32 bits.
+
+Everything the interface does not specify — the node layout, the type
+dictionary, encoding, decoding, and the BPE-engine foundation — **lives
+here**. The base `KTokenizer` interface (see @tokenizer) is layout- and
+type-agnostic; a base `Tokenizer` class wraps the BPE engine and is not
+itself a `KTokenizer`. This specialisation is the production tokenizer.
 
 The signature algebra over these nodes — reduction (`make_signature`) and
 overlap matching (`signifies`) — is owned by the @signifier spec. The NLP
 deployment bundles this tokenizer with `NLPSignifier`, the production
-concrete Signifier, as two sibling NLP specialisations: the tokenizer fixes
-the sig-word *values*, the signifier owns the *bit algebra* over them.
-
-The NLP specialisation is implemented by `kalvin.nlp_tokenizer.NLPTokenizer`,
-a subclass of `kalvin.tokenizer.Tokenizer`. It is the **production
-tokenizer**: its constructor loads the BPE engine and the NLP-tagged type
-dictionary from disk (the base tokenizer loads the BPE engine only and
-does not source a type dictionary — see @tokenizer). Its further
-differences from the base are:
-
-- The fallback sig word is `POS_X` (`UNKNOWN_NLP_TYPE = 65536`) instead of
-  the base `UNKNOWN_TYPE` (`0`), so untyped tokens still carry a valid NLP
-  POS flag.
-- NLP-named accessors (`grammar_size`, `lookup_grammar`) are provided over
-  the type dictionary.
+concrete Signifier, as two sibling NLP specialisations: the tokenizer
+fixes the type-word *values*, the signifier owns the *bit algebra* over
+them.
 
 ## NLP Sig-Word Layout
 
-Each NLP sig word (`nlp_type32`) is a 32-bit bitmask encoding 32
+Each NLP type word (`nlp_type32`) is a 32-bit bitmask encoding 32
 linguistic dimensions:
 
 ```
@@ -48,21 +42,92 @@ linguistic dimensions:
 17 POS + 8 DEP + 7 MORPH = 32 flags, sourced from the 32-bit NLP type
 legend (`data/tokenizer/simplestories-1_nlp_type32.json`).
 
-So a node under the NLP interpretation is:
-
-```
-node = (nlp_type32 << 32) | bpe_token_id
-```
-
-Both halves participate in the same bitwise OR/AND algebra as any other
-node (see the @tokenizer / @signature specs). Kalvin's machinery never
-inspects the NLP meaning of these bits — it operates on the bit pattern.
-
 ### Fallback for Unknown BPE Tokens
 
 BPE tokens without a type-dictionary entry receive `POS_X = 65536
 = 1 << 16` as their `nlp_type32`. This ensures unknown words still have a
 valid NLP type, preserving the node-format invariant.
+
+## Dependencies
+
+### Tokenizer (@tokenizer spec)
+
+- The `KTokenizer` interface (`encode`, `decode`, `vocab_size`) — this
+  specialisation is its sole concrete implementation.
+- The base `Tokenizer` BPE-engine wrapper — the foundation this
+  specialisation builds on (see §BPE Engine Foundation below).
+
+### Signifier (@signifier spec)
+
+- The NLP deployment pairs this tokenizer with `NLPSignifier`. The two
+  share the node-packing agreement (type word in the upper 32 bits); this
+  is a property of the NLP bundle, not of either interface.
+
+## Interface
+
+This specialisation implements the `KTokenizer` interface (role: text↔nodes,
+see @tokenizer) and additionally owns the node layout, the type
+dictionary, and the BPE-engine foundation.
+
+### `encode(text: str, pad_ws: bool = False) → list[node]`
+
+Convert a string to typed nodes:
+
+1. **BPE-encode** the text into subword token IDs.
+2. **Type lookup** — for each token ID, look up the `nlp_type32` in the
+   type dictionary. Tokens without entries default to `POS_X`.
+3. **Construct nodes** — assemble each node as
+   `(nlp_type32 << 32) | bpe_token_id`.
+
+If a word BPE-encodes into multiple subword tokens (e.g. "unhappiness" →
+`[un, ##happiness]`), each subword token gets its own type lookup.
+Subwords without dictionary entries fall back to `POS_X`.
+
+```
+encode("the air")
+  BPE → [257, 500]
+  257 "the" → nlp_type32 = T_the
+  500 "air" → nlp_type32 = T_air
+  → [(T_the << 32) | 257, (T_air << 32) | 500]
+```
+
+### `decode(nodes: list[node]) → str`
+
+Convert typed nodes back to text. The BPE token ID is taken from the low
+32 bits of each node; the type bits (high 32) are not needed for
+reconstruction. `decode(encode(text)) == text`.
+
+### `vocab_size → int ≥ 0`
+
+The size of the BPE vocabulary.
+
+## Type Dictionary
+
+The tokenizer owns a **type dictionary** mapping BPE token IDs to their
+NLP `nlp_type32` (under the generic `sig_word` key), plus rich NLP labels
+(`pos`, `pos_fine`, `dep`, `morph`) carried as opaque metadata. Entries
+are loaded from a tagged-grammar file
+(`{tokenizer_name}_tagged_grammar.json`) generated by `dev/nlp/tag_vocab.py`,
+which tags every BPE token — including sub-words — and writes the result
+under the `sig_word` key.
+
+### Lookup
+
+- `lookup_type(token_id) → int | None` — the `nlp_type32` for a BPE token ID.
+- `lookup_type_entry(token_id) → dict | None` — the raw dictionary entry.
+
+These operate on **BPE token IDs**, not on nodes. Callers holding a node
+must unpack it themselves or use a node-taking accessor; the high-32/low-32
+layout is owned by this tokenizer and not assumed by Kalvin core.
+
+## BPE Engine Foundation
+
+The NLP tokenizer is built on the base `Tokenizer` BPE-engine wrapper
+(see @tokenizer §BPE Engine). It inherits the engine-management surface
+(`train`, `save_to_directory`, `load_from_directory`, `encode_bpe`, raw
+BPE↔text operations) unchanged. The engine produces raw vocabulary
+indices; this specialisation adds the type lookup and node packing to turn
+them into nodes.
 
 ## Vocabulary
 
@@ -72,8 +137,7 @@ NLP type dictionary have the same size:
 - **BPE vocabulary**: 25,007 tokens (from `tokenizer-32768`, trained toward
   a 32,768 target).
 - **NLP type dictionary**: 25,007 entries mapping BPE token IDs to
-  `sig_word` (the NLP `nlp_type32`), with rich NLP labels
-  (`pos`, `pos_fine`, `dep`, `morph`) carried as opaque metadata.
+  `sig_word` (the NLP `nlp_type32`), with rich NLP labels.
 
 Source files:
 
@@ -85,12 +149,6 @@ Source files:
 | `data/tokenizer/simplestories-1_grammar.json` | NLP grammar (input to tagging; uses `nlp_type32`) |
 | `data/tokenizer/simplestories-1_nlp_type32.json` | 32-bit NLP type legend |
 
-The type dictionary is generated by `dev/nlp/tag_vocab.py`, which tags
-every BPE token — including sub-words — with NLP type information from
-the grammar dictionary and writes the result under the generic
-`sig_word` key so the base tokenizer can read it without any NLP
-coupling.
-
 ## Construction
 
 ```
@@ -98,52 +156,13 @@ NLPTokenizer(tokenizer_path=None, tokenizer_name="tokenizer-32768") → NLPToken
 ```
 
 Constructing `NLPTokenizer()` loads the BPE engine (via the base
-`from_directory` machinery) and the NLP type dictionary
+`Tokenizer` engine machinery) and the NLP type dictionary
 (`{tokenizer_name}_tagged_grammar.json`) from `tokenizer_path`. When
 `tokenizer_path` is omitted it is resolved via `kalvin.paths.tokenizer_dir()`.
 
-This is the production factory. Sourcing the NLP-tagged grammar from disk
-is an NLP concern, so it lives in the specialisation rather than the base
-tokenizer (see @tokenizer, Persistence).
-
-## Encoding
-
-The encode process (defined by the @tokenizer spec):
-
-1. **BPE-encode** the text into subword token IDs.
-2. **Type lookup** — for each token ID, look up the `sig_word` in the
-   type dictionary. Tokens without entries default to `POS_X`.
-3. **Construct nodes** — assemble each node as
-   `(sig_word << 32) | bpe_token_id`.
-
-If a word BPE-encodes into multiple subword tokens (e.g. "unhappiness" →
-`[un, ##happiness]`), each subword token gets its own type lookup.
-Subwords without dictionary entries fall back to `POS_X`.
-
-### Worked Example
-
-```
-encode("Tea brewed softly")
-
-Step 1 — BPE encode:
-  "Tea"     → token 18874
-  "brewed"  → token ...
-  "softly"  → token ...
-
-Step 2 — Type lookup (sig_word = nlp_type32 from dictionary):
-  18874 "Tea"     → sig_word = 133200   (POS_PROPN | DEP_SUBJ | MORPH_SING)
-  ...
-
-Step 3 — Node construction:
-  "Tea" → (133200 << 32) | 18874
-  ...
-```
-
-### Decoding
-
-Defined by the @tokenizer spec: extract the BPE token ID from the low 32
-bits and decode via the BPE vocabulary. The NLP type bits (high 32) are
-not needed for text reconstruction.
+This is the production factory: the sole concrete `KTokenizer`. Loading
+the NLP-tagged grammar from disk is an NLP concern, so it lives in this
+specialisation rather than the base engine wrapper.
 
 ## Dimension Count
 
@@ -165,7 +184,7 @@ specialisation without modification. A "bare" signature carries no
 parenthetical annotation.
 
 - A bare single-character signature (e.g. `M`, `H`, `A`) encodes to a
-  single 64-bit typed node whose upper 32 bits carry the sig word and
+  single 64-bit typed node whose upper 32 bits carry the type word and
   lower 32 bits carry the BPE token ID. The same character always
   produces the same node value.
 - A bare multi-token signature (e.g. `MHALL`, `SVO`) decomposes into
@@ -182,7 +201,11 @@ parenthetical annotation.
 | ID    | Criterion                                                                  | Origin ref |
 | ----- | -------------------------------------------------------------------------- | ---------- |
 | TOK-NLP-1 | NLP encode produces the typed-node format `(nlp_type32 << 32) \| bpe_token_id` for each token | NLP |
+| TOK-8 | Typed-node format: every node is `(nlp_type32 << 32) \| bpe_token_id` (production layout) | @tokenizer |
 | TOK-NLP-2 | NLP encode with unknown BPE token uses `POS_X = 65536` as the sig word   | NLP |
+| TOK-10 | Type dictionary: `lookup_type(id)` returns the entry's `nlp_type32` | @tokenizer |
+| TOK-11 | Unknown-token fallback: tokens absent from the dictionary get `POS_X` | @tokenizer |
+| TOK-12 | The base `Tokenizer` is a BPE-engine wrapper, not a `KTokenizer` (only `NLPTokenizer` is a concrete `KTokenizer`) | @tokenizer |
 | TOK-NLP-4 | NLP round-trip: `decode(encode("Tea brewed softly")) == "Tea brewed softly"` | NLP |
 | TOK-NLP-7 | Vocabulary sizes: BPE vocab = 25,007 tokens, type dictionary = 25,007 entries | NLP |
 | TOK-NLP-8 | Dimension count: `nlp_type32` provides 32 dimensions (17 POS + 8 DEP + 7 MORPH) | NLP |
@@ -191,11 +214,12 @@ parenthetical annotation.
 | TOK-NLP-11 | The binding resolver operates correctly with an empty symbol table (bare sigs compile without annotation) | NLP |
 | TOK-NLP-12 | Curricula using abstract uppercase letters (A–Z) require no parenthetical comments; comments are required only when semantic word resolution is desired | NLP |
 | TOK-NLP-13 | `NLPTokenizer()` loads the BPE engine and NLP type dictionary from standard paths | NLP |
+| TOK-NLP-14 | `NLPTokenizer` is the sole concrete `KTokenizer`; the base `Tokenizer` is a BPE-engine wrapper, not a `KTokenizer` | NLP |
 
 ## Referenced By
 
-- **Tokenizer** (@tokenizer spec) — defines the base typed-node format and
-  interface that the NLP specialisation inherits.
+- **Tokenizer** (@tokenizer spec) — defines the layout-agnostic
+  `KTokenizer` interface that this specialisation implements.
 - **Signifier** (@signifier spec) — owns the signature algebra; the NLP
   deployment pairs this tokenizer with `NLPSignifier`.
 - **Signature** (@signature spec) — the signature value concept, consumed

@@ -5,41 +5,37 @@
 The tokenizer converts between text and nodes. It is the sole authority
 for how text becomes nodes.
 
-Kalvin ships a single production tokenizer. It is built on a **BPE**
-subword base and combines each BPE token with a **sig word** to form a
-64-bit typed node:
+The tokenizer *interface* (`KTokenizer`) is layout-agnostic: it converts
+text to an ordered sequence of uint64 nodes and back. It does not specify
+how nodes are packed, nor anything about type words. Bit-packing, type
+dictionaries, and node layouts are concrete-tokenizer concerns — see the
+@nlp_tokenizer spec for the production tokenizer, which packs a type word
+into the upper 32 bits of each node and a BPE token ID into the lower 32.
 
-- **BPE** — byte-pair encoding. Vocabulary learned from a training corpus.
-  Tokens are sequential vocabulary indices.
-- **Sig word** — a 32-bit bit pattern packed into the upper half of each
-  node. Kalvin treats the sig word as **opaque**: it participates in
-  signature construction and matching but kalvin does not interpret what
-  the bits mean. The meaning of the sig word is a deployment concern; see
-  the @nlp_tokenizer spec for the NLP interpretation used by the shipped
-  data.
+Kalvin ships a single production tokenizer (`NLPTokenizer`), built on a
+**BPE** subword base. A BPE subword vocabulary is a sequence of vocabulary
+indices learned from a training corpus.
 
 ```
-node = (sig_word << 32) | bpe_token_id
+node = (type_word << 32) | bpe_token_id      # the NLP production layout
 ```
 
-The high 32 bits carry the sig word; the low 32 bits carry the BPE token
-ID. Both halves participate in the signature algebra defined in the
-@signifier spec, like any other node.
+The high 32 bits carry the type word; the low 32 bits carry the BPE token
+ID. This layout is **a property of the NLP production tokenizer**,
+documented here for context and defined authoritatively in @nlp_tokenizer.
 
 ### Significance and Tokenizers
 
 A tokenizer does **not** encode knowledge; it encodes **dimensionality**.
-Every node is a `uint64`, and the system operates on the bit pattern of a
-node — not on any meaning assigned to those bits.
+Every node is a `uint64`, and the system operates on the node's value —
+not on any meaning assigned to its bits.
 
 - **Signatures** are built from nodes and compared for candidate retrieval
-  via the operations defined in the @signifier spec (the signature
-  bit-algebra). The tokenizer does not define these operations.
-- **Significance** is computed at the bit level and is **tokenizer-agnostic**.
-  Routing and distance operate on node membership and bit overlap, not on
-  what the bits mean (see the @significance / @model specs).
-
-The typed-node format conforms to this algebra directly.
+  via the operations defined in the @signifier spec. The tokenizer does
+  not define these operations.
+- **Significance** is **tokenizer-agnostic**. Routing and distance operate
+  on node membership and bit overlap, not on what the bits mean (see the
+  @significance / @model specs).
 
 ## Dependencies
 
@@ -57,65 +53,40 @@ The tokenizer does not interpret nodes beyond its own encoding.
 
 - Signature creation (`make_signature`) and overlap matching (`signifies`)
   are defined in the @signifier spec. The Signifier consumes the nodes the
-  Tokenizer produces; the tokenizer does not create signatures itself. (The
-  NLP pair additionally share a node-packing agreement — see @signifier
-  §NLPSignifier — but that is a property of the NLP bundle, not the
-  interface.)
+  Tokenizer produces; the tokenizer does not create signatures itself.
 
-## Interface
+## Interface (`KTokenizer`)
 
-The tokenizer implements:
+The interface specifies role only — text↔nodes. It does not specify a
+node layout, a type-word concept, or any bit packing; those are
+concrete-tokenizer concerns (see @nlp_tokenizer).
 
 ### `vocab_size → int ≥ 0`
 
-The number of distinct tokens the BPE vocabulary defines.
+The size of the tokenizer's vocabulary.
 
 ### `encode(text: str, pad_ws: bool = False) → list[node]`
 
-Convert a string to an ordered sequence of typed nodes.
+Convert a string to an ordered sequence of nodes.
 
 - Empty string → empty list.
-- Each BPE token is combined with its sig word:
-  `(sig_word << 32) | bpe_token_id`.
-- Tokens absent from the type dictionary receive the fallback sig word
-  (`UNKNOWN_TYPE`).
 - Each node carries enough information to reconstruct the original text
   via `decode`.
-
-### `encode_bpe(text: str, pad_ws: bool = False) → list[int]`
-
-Low-level accessor: encode text to raw BPE token IDs (no sig word).
-Used by training/tagging tooling that operates on the BPE vocabulary
-directly.
 
 ### `decode(nodes: list[node]) → str`
 
 Convert a sequence of nodes back to a string.
 
 - Empty list → empty string.
-- The BPE token ID is taken from the low 32 bits of each node, so raw
-  BPE IDs (which fit in 32 bits) decode unchanged.
 - `decode(encode(text)) == text` for any string the tokenizer can represent.
 
-## Type Dictionary
+## BPE Engine (foundation of the production tokenizer)
 
-The tokenizer owns a **type dictionary** mapping BPE token IDs to their
-sig word. Entries are loaded from a tagged-grammar file
-(`{tokenizer_name}_tagged_grammar.json`) in which every BPE token —
-including sub-words — carries a `sig_word` field. Other fields in an
-entry are opaque metadata, preserved unchanged (the shipped dictionary
-carries NLP labels; see the @nlp_tokenizer spec).
-
-BPE tokens without a dictionary entry fall back to `UNKNOWN_TYPE` (the
-empty sig word, `0`). A deployment may reinterpret this via a subclass
-(the NLP specialisation uses `POS_X`).
-
-### Lookup
-
-- `lookup_type(token_id) → int | None` — the sig word for a BPE token ID.
-- `lookup_type_entry(token_id) → dict | None` — the raw dictionary entry.
-
-## BPE Engine
+The production tokenizer is built on a BPE subword vocabulary. The BPE
+engine is the *foundation* of the NLP production tokenizer (see
+@nlp_tokenizer): it manages the subword vocabulary and exposes raw
+BPE↔text operations. It is not a `KTokenizer` on its own — a BPE engine
+produces raw vocabulary indices, not nodes.
 
 ### Vocabulary
 
@@ -125,87 +96,55 @@ empty sig word, `0`). A deployment may reinterpret this via a subclass
 ### Training
 
 ```
-tokenizer.train(texts: Iterator[str], vocab_size: int, pattern: str | None) → void
+engine.train(texts: Iterator[str], vocab_size: int, pattern: str | None) → void
 ```
 
 - `texts` — iterator over training strings.
 - `vocab_size` — target vocabulary size (minimum 256).
 - `pattern` — optional regex pattern for pre-tokenization.
 
-Training is required before `encode`/`decode` can be used. Training loads
-the BPE engine only; the type dictionary is loaded separately.
+Training loads the BPE engine only; the type dictionary (if any) is a
+concrete-tokenizer concern loaded separately (see @nlp_tokenizer).
 
 ### Persistence
 
 ```
-tokenizer.save_to_directory(path, name) → void
-tokenizer.from_directory(path, name) → Tokenizer
+engine.save_to_directory(path, name) → void
+engine.load_from_directory(path, name) → engine
 ```
 
-`from_directory` loads the BPE engine only (no type dictionary); `encode`
-on the result produces nodes with the fallback sig word for every token.
-The base tokenizer accepts a type dictionary as a constructor argument
-but does not source one from disk — loading a tagged grammar is a
-deployment concern handled by a subclass (see @nlp_tokenizer for the
-production factory that loads the NLP-tagged grammar alongside the BPE
-engine).
-
-### Encoding
-
-BPE segments text into subword units, each mapped to a vocabulary index.
-Each BPE token ID is then combined with its sig word from the type
-dictionary:
-
-```
-encode("hello") → [(sig_word("hello") << 32) | 15496]
-```
-
-#### Worked Example
-
-```
-BPE encode("the air") → [257, 500]
-
-Type dictionary lookup:
-  257 "the" → sig_word = T_the
-  500 "air" → sig_word = T_air
-
-Typed nodes: [(T_the << 32) | 257, (T_air << 32) | 500]
-```
-
-#### Signature construction
-
-The signature is `make_signature(nodes)`; see the @signifier spec.
+These manage the BPE vocabulary only. Building a `KTokenizer` from them is
+a concrete-tokenizer concern (see @nlp_tokenizer, Construction).
 
 ## Signature Behavior
 
-The tokenizer passes raw typed nodes to `make_signature()` as it would any
-other node sequence; the reduction itself is defined in the @signifier spec.
+A concrete tokenizer passes its nodes to `make_signature()` as it would
+any other node sequence; the reduction is defined in the @signifier spec.
 
 ## Test Matrix
+
+The interface has no layout-specific criteria — its contract is role only.
+Layout and type criteria live in @nlp_tokenizer.
 
 | ID    | Criterion                                                                  | Origin ref |
 | ----- | -------------------------------------------------------------------------- | ---------- |
 | TOK-7 | Empty string: `encode("") == []`, `decode([]) == ""`                        | — |
-| TOK-8 | Typed-node format: every node is `(sig_word << 32) \| bpe_token_id`        | — |
 | TOK-9 | Round-trip: `decode(encode(text)) == text` for representable text           | — |
-| TOK-10 | Type dictionary: `lookup_type(id)` returns the entry's `sig_word`         | — |
-| TOK-11 | Unknown-token fallback: tokens absent from the dictionary get `UNKNOWN_TYPE` | — |
-| TOK-12 | `from_directory()` loads the BPE engine only (no type dictionary)        | — |
-
-NLP-specific criteria (NLP sig-word interpretation, dimension count,
-curriculum compatibility) live in the @nlp_tokenizer spec.
 
 ## What a Tokenizer is Not
 
 The following are explicitly **out of scope** for this spec:
 
+- **Node layout / packing.** How a concrete tokenizer packs text
+  information into a 64-bit node (type words, BPE ids, masks) is a
+  concrete-tokenizer concern. The production layout is defined in
+  @nlp_tokenizer.
+- **Type dictionaries.** Type words, type lookup, and unknown-token
+  fallback are concrete-tokenizer concerns (see @nlp_tokenizer).
 - **Signature creation.** Signature construction (`make_signature`) is
   defined in the @signifier spec.
 - **Significance computation.** Significance is defined in the
   @significance spec. The tokenizer does not compute or store significance.
-- **Interpretation of the sig word.** What the sig-word bits mean is a
-  deployment concern. The NLP interpretation is specified in the
-  @nlp_tokenizer spec; the base tokenizer treats the sig word as opaque.
 - **Model operations.** Storing, retrieving, and querying klines are model
   concerns.
 - **Training data format.** How training data is sourced and preprocessed
@@ -220,5 +159,5 @@ The following are explicitly **out of scope** for this spec:
   construct klines.
 - **Significance** (@significance spec) — consumes nodes produced by the
   tokenizer (nodes are opaque to significance).
-- **NLP Tokenizer** (@nlp_tokenizer spec) — the NLP interpretation of the
-  sig word used by the shipped data.
+- **NLP Tokenizer** (@nlp_tokenizer spec) — the production tokenizer;
+  owns the node layout, type dictionary, and the BPE-engine foundation.

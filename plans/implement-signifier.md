@@ -226,9 +226,14 @@ separate follow-up:
    - `expand.py:434-435` gap (`signature & ~nodes_sig`);
    - `trainer.py:283-284` gap (`signature & ~nodes_sig`);
    - `kline.py:258,260` `_infer_level` bare `&`.
-3. **Tokenizer node-unpack leak** (`token_encoder.py:280`, `& 0xFFFFFFFF`):
-   the compiler reaches into the node layout. Remedy: a Tokenizer accessor for
-   "unpack a node." Flagged Tokenizer cleanup, parallel to this effort.
+
+> **Resolved (no longer deferred):** the *Tokenizer node-unpack leak* —
+> the compiler reaching into the node layout with `& 0xFFFFFFFF` — is now
+> fixed by the NLP tokenizer extraction (see
+> plans/implement-nlp-tokenizer-extraction.md): the compiler calls
+> `NLPTokenizer.lookup_type_entry_for_node(node)`, and the unpacking lives
+> inside NLPTokenizer. The bare-bitwise overlap/gap class above remains
+> open.
 
 ## Status
 

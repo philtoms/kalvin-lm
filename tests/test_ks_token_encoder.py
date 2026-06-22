@@ -74,6 +74,10 @@ class MockMultiTokenTokenizer(KTokenizer):
                 return text
         return "".join(chr(i & 0xFFFFFFFF) for i in ids)
 
+    def lookup_type_entry_for_node(self, node: int) -> dict | None:
+        # Mock is type-unaware; the encoder's debug type-info path gets None.
+        return None
+
 
 # ── KS-32: unresolved characters encode as typed nodes ──────────────
 
