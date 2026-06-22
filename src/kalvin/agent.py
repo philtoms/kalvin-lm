@@ -20,7 +20,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Literal, Protocol, runtime_checkable
 
-from kalvin.abstract import KTokenizer
+from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.agent_codec import AgentCodec
 from kalvin.cogitator import (
     CogitationHandler,
@@ -36,7 +36,7 @@ from kalvin.expand import (
 )
 from kalvin.kline import KLine
 from kalvin.model import Model
-from kalvin.signature import make_signature
+from kalvin.signifier import NLPSignifier
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.tokenizer import TiktokenNotInstalledError
 
@@ -70,6 +70,14 @@ def _default_tokenizer() -> KTokenizer:
             "Tokenizer data is required but unavailable. "
             "Run `bash scripts/rebuild-tokenizer-data.sh` to generate data/tokenizer/."
         ) from exc
+
+
+# Default signifier factory
+
+
+def _default_signifier() -> KSignifier:
+    """Create the default kalvin signifier (the sole production signifier)."""
+    return NLPSignifier()
 
 
 # KAgentAdapter Protocol
@@ -114,11 +122,13 @@ class KAgent:
         self,
         tokenizer: Any = None,
         model: Model | None = None,
+        signifier: KSignifier | None = None,
         *,
         adapter: KAgentAdapter,
     ):
         self._tokenizer = tokenizer if tokenizer else _default_tokenizer()
-        self._model = model if model is not None else Model()
+        self._signifier = signifier if signifier is not None else _default_signifier()
+        self._model = model if model is not None else Model(signifier=self._signifier)
         self._activity: Counter = Counter()
 
         self._adapter: KAgentAdapter = adapter
@@ -127,6 +137,7 @@ class KAgent:
             model=self._model,
             adapter=self._adapter,
             handler=self,
+            signifier=self._signifier,
             timeout=2.0,
         )
 
@@ -139,6 +150,10 @@ class KAgent:
     @property
     def tokenizer(self):
         return self._tokenizer
+
+    @property
+    def signifier(self) -> KSignifier:
+        return self._signifier
 
     @property
     def events(self) -> KAgentAdapter:
@@ -185,7 +200,7 @@ class KAgent:
         """
         # Prepare
         if kline.signature == 0 and kline.nodes:
-            kline.signature = make_signature(kline.nodes)
+            kline.signature = self._signifier.make_signature(kline.nodes)
 
         # Ground check (Frame/LTM/Base only — not STM)
         if kline.signature != 0 and self._model.grounded(kline):
@@ -198,7 +213,7 @@ class KAgent:
             self._publish("frame", kline, kline, 0)  # S4
             return True
 
-        expected_sig = make_signature(kline.nodes)
+        expected_sig = self._signifier.make_signature(kline.nodes)
         if kline.signature == expected_sig:
             all_resolved = all(
                 (node_kl := self._model.find(n)) is not None and self._model.grounded(node_kl)
@@ -217,7 +232,7 @@ class KAgent:
         # Ratification — countersigned in the model → S1. Only countersign
         # produces reciprocal klines; undersign/connotate share a structure
         # (a single node entry in opposite directions) and are handled below.
-        if is_countersigned(self._model, kline):
+        if is_countersigned(self._model, kline, self._signifier):
             self._model.add_to_ltm(kline)
             self._publish("frame", kline, kline, D_MAX)  # S1
             return True
@@ -254,8 +269,8 @@ class KAgent:
 
     def on_s1(self, query: KLine, candidate: KLine) -> None:
         """CogitationHandler.on_s1: structural check, promote, publish frame event."""
-        if is_s1(self._model, candidate):
-            promote_participating(self._model, query, candidate)
+        if is_s1(self._model, candidate, self._signifier):
+            promote_participating(self._model, query, candidate, self._signifier)
         self._publish("frame", query, candidate, D_MAX)
 
     def on_expansion(
@@ -298,7 +313,7 @@ class KAgent:
 
         Requires non-empty nodes; returns the result of ``rationalise``.
         """
-        reciprocal_sig = make_signature(kline.nodes)
+        reciprocal_sig = self._signifier.make_signature(kline.nodes)
         reciprocal = KLine(reciprocal_sig, [kline.signature])
         return self.rationalise(reciprocal)
 

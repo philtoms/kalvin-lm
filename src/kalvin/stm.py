@@ -32,9 +32,13 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 from kalvin.kline import KLine, KSig
-from kalvin.signature import make_signature
+from kalvin.signifier import NLPSignifier
+
+if TYPE_CHECKING:
+    from kalvin.abstract import KSignifier
 
 
 class STM:
@@ -44,20 +48,23 @@ class STM:
     ----------
     bound:
         Maximum number of KLines to retain. Default 256.
+    signifier:
+        KSignifier for computing nodes signatures. Defaults to NLPSignifier().
 
     Thread safety: see module docstring. All public methods are guarded by
     ``self._lock`` (an :class:`threading.RLock`); iterator-returning methods
     materialise a snapshot under the lock.
     """
 
-    __slots__ = ("_store", "_order", "_dedup", "_bound", "_lock")
+    __slots__ = ("_store", "_order", "_dedup", "_bound", "_lock", "_signifier")
 
-    def __init__(self, bound: int = 256):
+    def __init__(self, bound: int = 256, signifier: KSignifier | None = None):
         self._store: dict[KSig, list[KLine]] = {}
         self._order: list[KLine] = []
         self._dedup: set[tuple[KSig, tuple[int, ...]]] = set()
         self._bound = bound
         self._lock = threading.RLock()
+        self._signifier = signifier or NLPSignifier()
 
     # Core API
 
@@ -83,7 +90,7 @@ class STM:
             while len(self._order) >= self._bound:
                 self._evict_oldest()
 
-            nodes_sig = make_signature(kline.nodes) if kline.nodes else 0
+            nodes_sig = self._signifier.make_signature(kline.nodes) if kline.nodes else 0
             sig = kline.signature or nodes_sig
 
             self._order.append(kline)
@@ -132,7 +139,7 @@ class STM:
         """Remove a KLine from all index entries."""
         with self._lock:
             sig = kline.signature
-            nodes_sig = make_signature(kline.nodes) if kline.nodes else 0
+            nodes_sig = self._signifier.make_signature(kline.nodes) if kline.nodes else 0
             self._remove_from(sig, kline)
             if nodes_sig and nodes_sig != sig:
                 self._remove_from(nodes_sig, kline)
@@ -198,7 +205,7 @@ class STM:
             return
         oldest = self._order.pop(0)
         sig = oldest.signature
-        nodes_sig = make_signature(oldest.nodes) if oldest.nodes else 0
+        nodes_sig = self._signifier.make_signature(oldest.nodes) if oldest.nodes else 0
         self._remove_from(sig, oldest)
         if nodes_sig and nodes_sig != sig:
             self._remove_from(nodes_sig, oldest)

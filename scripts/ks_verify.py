@@ -21,7 +21,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from kalvin.kline import KLine, sig_level
+from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
+
+_signifier = NLPSignifier()
 
 # Default curriculum script — Mary Had A Little Lamb (MHALL).
 # Exercises every operator: COUNTERSIGN, CANONIZE, UNDERSIGN, CONNOTATE,
@@ -59,7 +62,7 @@ def dec_nodes(tokenizer, kl: KLine) -> list[str]:
 
 def fmt_kline(tokenizer, kl: KLine, idx: int, width: int = 3) -> str:
     """Format a single kline as a one-line verification row."""
-    level = sig_level(kl)
+    level = sig_level(kl, _signifier)
     op = kl.dbg.op
     label = kl.dbg.label
     decoded_sig = dec(tokenizer, kl.signature)
@@ -228,7 +231,7 @@ def print_summary(entries: list[KLine]) -> None:
     from collections import Counter
 
     op_counts = Counter(kl.dbg.op for kl in entries if kl.dbg)
-    level_counts = Counter(sig_level(kl) for kl in entries)
+    level_counts = Counter(sig_level(kl, _signifier) for kl in entries)
 
     print(f"\n{'=' * 78}")
     print("SUMMARY")

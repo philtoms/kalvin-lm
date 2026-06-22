@@ -15,12 +15,19 @@ from functools import lru_cache
 from kalvin.expand import boundaries, classify, normalise_significance
 from kalvin.kline import KLine, kline_display
 from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.signifier import NLPSignifier
 
 
 @lru_cache(maxsize=1)
 def _display_tokenizer() -> NLPTokenizer:
     """Lazily-built kalvin tokenizer for kline display (cached; data required)."""
     return NLPTokenizer()
+
+
+@lru_cache(maxsize=1)
+def _display_signifier() -> NLPSignifier:
+    """Lazily-built kalvin signifier for kline display (cached)."""
+    return NLPSignifier()
 
 
 # Public API
@@ -171,7 +178,7 @@ def _display_kline(kline: KLine) -> str:
     Returns "<unknown>" if display fails.
     """
     try:
-        return kline_display(kline, _display_tokenizer())
+        return kline_display(kline, _display_tokenizer(), _display_signifier())
     except Exception:
         pass
     return "<unknown>"

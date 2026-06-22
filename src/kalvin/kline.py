@@ -7,7 +7,10 @@ See specs/kline.md for the full specification.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
+
+if TYPE_CHECKING:
+    from kalvin.abstract import KSignifier
 
 # === Core Types ===
 
@@ -143,12 +146,12 @@ def is_identity(kline: KLine) -> bool:
     return kline.nodes == [kline.signature]
 
 
-def is_canon(kline: KLine) -> bool:
+def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is canonical.
 
     A kline is canonical when it is neither identity nor self-referential AND
-    its signature is the OR-reduction of its nodes
-    (``signature == make_signature(nodes)``).
+    its signature is the reduction of its nodes
+    (``signature == signifier.make_signature(nodes)``).
 
     ``{S: [S]}`` is NOT canonical — it is identity (see :func:`is_identity`).
     Allowing it as a canon would let it displace the genuine canon for the
@@ -160,9 +163,7 @@ def is_canon(kline: KLine) -> bool:
         return False  # identity
     if kline.signature in kline.nodes:
         return False  # self-referential — identity, not canon
-    from kalvin.signature import make_signature
-
-    return kline.signature == make_signature(kline.nodes)
+    return kline.signature == signifier.make_signature(kline.nodes)
 
 
 # Display helper
@@ -184,17 +185,17 @@ _SIG_LEVELS = {
 }
 
 
-def sig_level(kline: KLine) -> str:
+def sig_level(kline: KLine, signifier: KSignifier) -> str:
     """Return significance level (S1–S4) for a KLine.
 
     Uses dbg.op when available, infers from structure otherwise.
     """
     if kline.dbg and kline.dbg.op:
         return _SIG_LEVELS.get(kline.dbg.op, "S4")
-    return _infer_level(kline)
+    return _infer_level(kline, signifier)
 
 
-def kline_display(kline: KLine, tokenizer: object) -> str:
+def kline_display(kline: KLine, tokenizer: object, signifier: KSignifier) -> str:
     """Format a KLine as human-readable KScript source.
 
     Uses dbg provenance when available (label, op). Falls back to
@@ -203,6 +204,7 @@ def kline_display(kline: KLine, tokenizer: object) -> str:
     Args:
         kline: The KLine to display.
         tokenizer: A KTokenizer for decoding uint64 values to strings.
+        signifier: A KSignifier for inferring structure when dbg is absent.
 
     Returns:
         KScript-like source string (e.g. "M == H", "ABC => A B C").
@@ -221,7 +223,7 @@ def kline_display(kline: KLine, tokenizer: object) -> str:
     if kline.dbg and kline.dbg.op:
         op_sym = _OP_SYMBOLS.get(kline.dbg.op, ">")
     else:
-        op_sym = _infer_op_symbol(kline)
+        op_sym = _infer_op_symbol(kline, signifier)
 
     # Resolve node names
     node_names = []
@@ -244,14 +246,12 @@ def _decode_token(tokenizer: object, token: int) -> str:
     return f"<{token:#x}>"
 
 
-def _infer_level(kline: KLine) -> str:
+def _infer_level(kline: KLine, signifier: KSignifier) -> str:
     """Infer significance level from KLine structure."""
     nodes = kline.nodes
     if not nodes:
         return "S4"
-    from kalvin.signature import make_signature
-
-    nodes_sig = make_signature(nodes)
+    nodes_sig = signifier.make_signature(nodes)
     if kline.signature == nodes_sig:
         return "S2"  # perfect fit → canonize
     if len(nodes) == 1:
@@ -261,13 +261,11 @@ def _infer_level(kline: KLine) -> str:
     return "S2" if combined != 0 else "S3"
 
 
-def _infer_op_symbol(kline: KLine) -> str:
+def _infer_op_symbol(kline: KLine, signifier: KSignifier) -> str:
     """Infer operator symbol from KLine structure."""
     if not kline.nodes:
         return None
-    from kalvin.signature import make_signature
-
-    nodes_sig = make_signature(kline.nodes)
+    nodes_sig = signifier.make_signature(kline.nodes)
     if kline.signature == nodes_sig:
         return "=>"  # perfect fit → canonize
     return ">"  # default: connotate

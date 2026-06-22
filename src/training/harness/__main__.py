@@ -128,13 +128,17 @@ def main(argv: list[str] | None = None) -> None:
 
     shared_tokenizer = _make_tok()
 
+    from kalvin.signifier import NLPSignifier
+
+    shared_signifier = NLPSignifier()
+
     def kagent_factory(address: str, bus: MessageBus) -> _AlreadySubscribed:
         # Two-phase wiring to avoid the circular dep.
         from kalvin.agent import KAgent
         from training.harness.adapter import KAgentAdapter
 
-        adapter = KAgentAdapter(bus, role=address, tokenizer=shared_tokenizer)
-        kagent = KAgent(tokenizer=shared_tokenizer, adapter=adapter)
+        adapter = KAgentAdapter(bus, role=address, tokenizer=shared_tokenizer, signifier=shared_signifier)
+        kagent = KAgent(tokenizer=shared_tokenizer, signifier=shared_signifier, adapter=adapter)
         adapter.bind(kagent)
         return _AlreadySubscribed(adapter)
 
@@ -177,6 +181,7 @@ def main(argv: list[str] | None = None) -> None:
             llm_client=llm_client,
             delegate_reactive=delegate_reactive,
             tokenizer=shared_tokenizer,
+            signifier=shared_signifier,
         )
         trainer_holder.append(trainer)
 

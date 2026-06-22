@@ -4,7 +4,9 @@ import pytest
 
 from kalvin.kline import KLine
 from kalvin.model import KLineStore, Model, _TierChain
-from kalvin.signature import make_signature
+from kalvin.signifier import NLPSignifier
+
+signifier = NLPSignifier()
 from kalvin.stm import STM
 
 
@@ -526,12 +528,12 @@ class TestTierChainContains:
         store = KLineStore()
         k = KLine(0xA0, [1, 2])
         store.add(k)
-        chain = _TierChain([store])
+        chain = _TierChain([store], signifier)
         assert chain.contains(k) is True
 
     def test_kline_store_only_not_found(self):
         store = KLineStore()
-        chain = _TierChain([store])
+        chain = _TierChain([store], signifier)
         assert chain.contains(KLine(0xA0, [1])) is False
 
     def test_mixed_stm_and_store_found_in_second(self):
@@ -539,7 +541,7 @@ class TestTierChainContains:
         store = KLineStore()
         k = KLine(0xA0, [1, 2])
         store.add(k)
-        chain = _TierChain([stm, store])
+        chain = _TierChain([stm, store], signifier)
         assert chain.contains(k) is True
 
     def test_model_base_uses_exists(self):
@@ -547,7 +549,7 @@ class TestTierChainContains:
         base = Model()
         k = KLine(5, [1])
         base.add_to_frame(k)
-        chain = _TierChain([base])
+        chain = _TierChain([base], signifier)
         assert chain.contains(k) is True
 
 
@@ -560,7 +562,7 @@ class TestTierChainFindFirst:
         k2 = KLine(0xB0, [2])
         store.add(k1)
         store.add(k2)
-        chain = _TierChain([store])
+        chain = _TierChain([store], signifier)
         assert chain.find_first(0xB0) is k2
 
     def test_single_stm_returns_most_recent(self):
@@ -569,7 +571,7 @@ class TestTierChainFindFirst:
         k2 = KLine(0xB0, [2])
         stm.add(k1)
         stm.add(k2)
-        chain = _TierChain([stm])
+        chain = _TierChain([stm], signifier)
         assert chain.find_first(0xB0) is k2
 
     def test_mixed_chain_first_tier_wins(self):
@@ -579,12 +581,12 @@ class TestTierChainFindFirst:
         k_store = KLine(0xB0, [2])
         stm.add(k_stm)
         store.add(k_store)
-        chain = _TierChain([stm, store])
+        chain = _TierChain([stm, store], signifier)
         assert chain.find_first(0xB0) is k_stm
 
     def test_no_match_returns_none(self):
         store = KLineStore()
-        chain = _TierChain([store])
+        chain = _TierChain([store], signifier)
         assert chain.find_first(0xDEAD) is None
 
 
@@ -598,7 +600,7 @@ class TestTierChainFindAll:
         k = KLine(0xC0, [1])
         store1.add(k)
         store2.add(k)
-        chain = _TierChain([store1, store2])
+        chain = _TierChain([store1, store2], signifier)
         results = chain.find_all(0xC0)
         assert len(results) == 1
         assert results[0] is k
@@ -609,13 +611,13 @@ class TestTierChainFindAll:
         k2 = KLine(0xC0, [2])
         store.add(k1)
         store.add(k2)
-        chain = _TierChain([store])
+        chain = _TierChain([store], signifier)
         results = chain.find_all(0xC0)
         assert len(results) == 2
 
     def test_empty_when_no_matches(self):
         store = KLineStore()
-        chain = _TierChain([store])
+        chain = _TierChain([store], signifier)
         assert chain.find_all(0xDEAD) == []
 
 
@@ -630,7 +632,7 @@ class TestTierChainAllKlines:
         k_store = KLine(2, [2])
         stm.add(k_stm)
         store.add(k_store)
-        chain = _TierChain([stm, store])
+        chain = _TierChain([stm, store], signifier)
         results = chain.all_klines()
         assert results[0] is k_stm
         assert results[1] is k_store
@@ -642,7 +644,7 @@ class TestTierChainAllKlines:
         k2 = KLine(2, [2])
         store1.add(k1)
         store2.add(k2)
-        chain = _TierChain([store1, store2])
+        chain = _TierChain([store1, store2], signifier)
         results = chain.all_klines()
         assert results[0] is k1
         assert results[1] is k2
@@ -653,7 +655,7 @@ class TestTierChainAllKlines:
         k = KLine(1, [1])
         store1.add(k)
         store2.add(k)
-        chain = _TierChain([store1, store2])
+        chain = _TierChain([store1, store2], signifier)
         results = chain.all_klines()
         assert len(results) == 1
         assert results[0] is k
@@ -665,12 +667,12 @@ class TestTierChainAllKlines:
         k2 = KLine(2, [2])
         base.add_to_frame(k1)
         base.add_to_frame(k2)
-        chain = _TierChain([base])
+        chain = _TierChain([base], signifier)
         results = chain.all_klines()
         assert len(results) == 2
 
     def test_empty_chain_returns_empty(self):
-        chain = _TierChain([])
+        chain = _TierChain([], signifier)
         assert chain.all_klines() == []
 
 
@@ -683,8 +685,8 @@ class TestTierChainFindByNodesFirst:
         k2 = KLine(0x20, [1, 2])
         stm.add(k1)
         stm.add(k2)
-        chain = _TierChain([stm])
-        nodes_sig = make_signature([1, 2])
+        chain = _TierChain([stm], signifier)
+        nodes_sig = signifier.make_signature([1, 2])
         result = chain.find_by_nodes_first(nodes_sig)
         assert result is k2
 
@@ -694,8 +696,8 @@ class TestTierChainFindByNodesFirst:
         k2 = KLine(0x20, [3, 4])
         store.add(k1)
         store.add(k2)
-        chain = _TierChain([store])
-        nodes_sig = make_signature([3, 4])
+        chain = _TierChain([store], signifier)
+        nodes_sig = signifier.make_signature([3, 4])
         result = chain.find_by_nodes_first(nodes_sig)
         assert result is k2
 
@@ -706,15 +708,15 @@ class TestTierChainFindByNodesFirst:
         k_store = KLine(0x20, [5, 6])
         stm.add(k_stm)
         store.add(k_store)
-        chain = _TierChain([stm, store])
-        nodes_sig = make_signature([5, 6])
+        chain = _TierChain([stm, store], signifier)
+        nodes_sig = signifier.make_signature([5, 6])
         result = chain.find_by_nodes_first(nodes_sig)
         assert result is k_stm
 
     def test_no_match_returns_none(self):
         store = KLineStore()
-        chain = _TierChain([store])
-        nodes_sig = make_signature([99])
+        chain = _TierChain([store], signifier)
+        nodes_sig = signifier.make_signature([99])
         assert chain.find_by_nodes_first(nodes_sig) is None
 
 
@@ -753,7 +755,7 @@ class TestUnpack:
     def test_mod63_connoted_raises(self):
         # MOD-63: non-decomposable input (connoted) → ValueError
         m = make_model()
-        connoted = KLine(0x100, [0x10])  # signature != make_signature(nodes)
+        connoted = KLine(0x100, [0x10])  # signature != signifier.make_signature(nodes)
         with pytest.raises(ValueError):
             m.unpack(connoted)
 
@@ -801,7 +803,7 @@ class TestUnpack:
         # a parent referencing the self-referential identity kline.
         m = make_model()
         # Direct case: unpack the self-referential identity kline itself.
-        self_ref = KLine(0x100, [0x100])  # make_signature([0x100]) == 0x100
+        self_ref = KLine(0x100, [0x100])  # signifier.make_signature([0x100]) == 0x100
         m.add_to_frame(self_ref)
         assert m.unpack(self_ref) == [0x100]
 

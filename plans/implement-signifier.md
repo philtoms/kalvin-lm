@@ -238,10 +238,10 @@ separate follow-up:
 - [x] Spec (`specs/signifier.md` new; `specs/signature.md` trimmed; cross-refs
       in tokenizer/nlp_tokenizer/model/agent/kline/stm/cogitator/kscript/harness)
 - [x] Plan (this document)
-- [ ] Task 1: `KSignifier` ABC
-- [ ] Task 2: `NLPSignifier`
-- [ ] Task 3: delete `signature.py`
-- [ ] Task 4: injection chain
-- [ ] Task 5: migrate call sites
-- [ ] Task 6: `is_canon` + helpers
-- [ ] Task 7: tests
+- [x] Task 1: `KSignifier` ABC
+- [x] Task 2: `NLPSignifier`
+- [x] Task 3: delete `signature.py`
+- [x] Task 4: injection chain
+- [x] Task 5: migrate call sites
+- [x] Task 6: `is_canon` + helpers
+- [x] Task 7: tests

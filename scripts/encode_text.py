@@ -24,7 +24,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from kalvin.agent import KAgent
 from kalvin.events import EventBus
 from kalvin.kline import KLine
-from kalvin.signature import make_signature
 
 # Global state for interrupt handling
 _interrupted = False
@@ -152,7 +151,7 @@ def main():
             if _interrupted:
                 break
             nodes = agent.tokenizer.encode(sentence)
-            kline = KLine(signature=make_signature(nodes), nodes=nodes)
+            kline = KLine(signature=agent.signifier.make_signature(nodes), nodes=nodes)
             agent.rationalise(kline)
 
     # Report agent size

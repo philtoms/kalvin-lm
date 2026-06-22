@@ -13,7 +13,9 @@ from kalvin.agent import KAgent
 from kalvin.events import EventBus
 from kalvin.kline import KLine, sig_level
 from kalvin.model import Model
-from kalvin.signature import make_signature
+from kalvin.signifier import NLPSignifier
+
+signifier = NLPSignifier()
 from ks import compile_source
 from tests.conftest import requires_tokenizer_data
 
@@ -108,7 +110,7 @@ class TestSelfFilterInCandidates:
 
         # Query overlaps on [10] but not [20] -> should be S2, not S1
         q = KLine(0, [T(10), T(20)])
-        q.signature = make_signature([T(10), T(20)])
+        q.signature = signifier.make_signature([T(10), T(20)])
         result = a.rationalise(q)
         # S2 should return False (slow path) even though q is in STM
         assert result is False
@@ -120,22 +122,22 @@ class TestSigLevelPropagation:
     def test_sig_level_set_on_compiled_entry(self):
         entries = compile_source("M == H", dev=True)
         for e in entries:
-            assert sig_level(e) == "S1"
+            assert sig_level(e, signifier) == "S1"
 
         entries = compile_source("M > H", dev=True)
         for e in entries:
             if e.nodes:  # skip unsigned identities
-                assert sig_level(e) == "S3"
+                assert sig_level(e, signifier) == "S3"
 
         entries = compile_source("M => H", dev=True)
         for e in entries:
             if e.nodes and not isinstance(e.nodes, list):
-                assert sig_level(e) == "S2"
+                assert sig_level(e, signifier) == "S2"
 
     def test_sig_level_none_by_default(self):
         kl = KLine(0xFF, [1])
         # sig_level() always returns a string via _infer_level() or _SIG_LEVELS
-        assert isinstance(sig_level(kl), str)
+        assert isinstance(sig_level(kl, signifier), str)
 
 
 class TestUndersignIsConnotateReversed:
@@ -159,7 +161,7 @@ class TestUndersignIsConnotateReversed:
         e = undersign[0]
         # Undersign maps to S3 (not S1) in _SIG_LEVELS
         assert e.dbg.op == "UNDERSIGNED"
-        assert sig_level(e) == "S3"
+        assert sig_level(e, signifier) == "S3"
 
         # Pre-register
         a.model.add_to_stm(e)
@@ -183,7 +185,7 @@ class TestUndersignIsConnotateReversed:
         connotate = [e for e in entries if e.nodes]
         assert len(connotate) == 1
         e = connotate[0]
-        assert sig_level(e) == "S3"
+        assert sig_level(e, signifier) == "S3"
 
         a.model.add_to_stm(e)
         result = a.rationalise(e)
