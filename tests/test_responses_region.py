@@ -9,10 +9,8 @@ import pytest
 
 from kalvin.expand import D_MAX
 
-# Keys that the fixture will stub in sys.modules.
-# Note: the historical kscript / kscript.decompiler / kscript.compiler stubs
-# were removed when the old kscript package was superseded by ks/ (which has
-# no decompiler). responses.py and its siblings do not import kscript at all.
+# sys.modules keys the fixture stubs. responses.py imports only
+# ui.kscript.dialogs.
 _STUB_KEYS = ("ui.kscript.dialogs",)
 
 
@@ -179,6 +177,5 @@ class TestAddResponseSignature:
         param_names = list(sig.parameters.keys())
         assert "status" in param_names
         assert "significance" in param_names
-        # New params should have defaults for backward compatibility
         assert sig.parameters["status"].default == "pending"
         assert sig.parameters["significance"].default == 0

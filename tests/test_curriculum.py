@@ -543,7 +543,6 @@ class TestLabelPersistence:
         assert state.submitted == {(100, (1, 2))}
         assert state.satisfied == {(100, (1, 2))}
         assert state.pending == {(300, (4, 5, 6))}
-        # No curriculum_file in legacy format
         assert state.curriculum_file is None
 
     def test_round_trip_with_document_file(self, tmp_path: Path) -> None:
@@ -619,7 +618,7 @@ class TestLabelPersistence:
         assert loaded.current_label == "2"
 
 
-# ── HRNS-15: State persistence across restart (legacy) ───────────────
+# ── HRNS-15: State persistence across restart ──────────────────────
 
 
 class TestStatePersistenceAcrossRestart:

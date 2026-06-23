@@ -41,8 +41,8 @@ from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.tokenizer import TiktokenNotInstalledError
 
 __all__ = [
-    # Re-exported from kalvin.cogitator for backward compatibility;
-    # the canonical import location is kalvin.cogitator.
+    # CogitationHandler, Cogitator, WorkItem are re-exported from
+    # kalvin.cogitator (their canonical import location).
     "CogitationHandler",
     "Cogitator",
     "WorkItem",

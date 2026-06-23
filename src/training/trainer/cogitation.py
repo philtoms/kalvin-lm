@@ -209,7 +209,7 @@ def build_prompt(request: CogitationRequest) -> list[dict]:
 
         messages.append({"role": "user", "content": "\n".join(lines)})
 
-    # Curriculum context — prefer structured fields, fall back to legacy
+    # Curriculum context — prefer structured fields, else the flat context string
     has_structured = bool(request.objective or request.approach or request.lesson_prose)
     if has_structured:
         parts: list[str] = []

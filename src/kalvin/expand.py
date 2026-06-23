@@ -15,10 +15,10 @@ pipeline:
 The module reads from the Model (storage) but is a separate responsibility:
 Model indexes and retrieves; Expand computes how far apart two KLines are.
 
-Re-exported constants and types from the old model module:
+Module-level constants and types:
   D_MAX, MASK64, MAX_HOP, _S3_BIAS, QueryCandidate
 
-Band-anchored normalization (defined here, not re-exported):
+Band-anchored normalization:
   normalise_significance, S2_TOP, S2_FLOOR, S3_K
 """
 
@@ -151,11 +151,6 @@ class QueryCandidate:
 
 
 # Helper Functions
-
-
-# ``is_canon`` and ``is_identity`` are defined in :mod:`kalvin.kline` (they
-# are structural properties of a KLine). Re-exported here for backward
-# compatibility; new code should import from ``kalvin.kline``.
 
 
 def edge_hops(model: Model, sig: int, signifier: KSignifier) -> Iterator[tuple[int, int]]:

@@ -56,16 +56,7 @@ def load_grammar_dict(path: str | Path) -> dict[int, dict]:
     data = json.loads(path.read_text())
     normalized: dict[int, dict] = {}
     for k, entry in data.items():
-        entry = dict(entry)
-        # Read ``sig_word`` directly, or normalise from the legacy
-        # ``type_word`` / ``nlp_type32`` keys so existing data files keep
-        # loading after the rename.
-        if "sig_word" not in entry:
-            if "type_word" in entry:
-                entry["sig_word"] = entry["type_word"]
-            elif "nlp_type32" in entry:
-                entry["sig_word"] = entry["nlp_type32"]
-        normalized[int(k)] = entry
+        normalized[int(k)] = dict(entry)
     return normalized
 
 
@@ -136,16 +127,7 @@ class NLPTokenizer(Tokenizer, KTokenizer):
         data = json.loads(tagged.read_text())
         types: dict[int, dict] = {}
         for k, entry in data.items():
-            entry = dict(entry)
-            # Normalise legacy ``type_word`` / ``nlp_type32`` keys onto
-            # ``sig_word`` so data files written before the rename keep
-            # loading. New data is written with ``sig_word`` directly.
-            if "sig_word" not in entry:
-                if "type_word" in entry:
-                    entry["sig_word"] = entry["type_word"]
-                elif "nlp_type32" in entry:
-                    entry["sig_word"] = entry["nlp_type32"]
-            types[int(k)] = entry
+            types[int(k)] = dict(entry)
         return types
 
     # ── properties ───────────────────────────────────────────────────────

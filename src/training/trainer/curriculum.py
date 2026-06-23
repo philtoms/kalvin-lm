@@ -4,12 +4,10 @@ Provides the ordered lesson list (Curriculum) and per-session tracking
 state (CurriculumState) including submitted/satisfied/pending sets and
 JSON persistence for restart recovery.
 
-Supports two modes:
-- **Document-based** (new): ``Curriculum`` wraps a ``CurriculumDocument``
-  with label-based lesson tracking.
-- **Legacy** (backward compat): ``Curriculum`` wraps a flat ``list[str]``
-  with positional tracking. A synthetic ``CurriculumDocument`` is created
-  automatically.
+Supports two input forms:
+- A :class:`CurriculumDocument` (label-based lesson tracking).
+- A flat ``list[str]`` of KScript sources (positional tracking; wrapped
+  in a synthetic :class:`CurriculumDocument`).
 """
 
 from __future__ import annotations
@@ -36,9 +34,8 @@ EntryKey: TypeAlias = tuple[int, tuple[int, ...]]
 class Curriculum:
     """Ordered lesson container with position tracking.
 
-    Accepts either a :class:`CurriculumDocument` (document-based mode)
-    or a flat ``list[str]`` of KScript sources (legacy mode, which
-    creates a synthetic document).
+    Accepts either a :class:`CurriculumDocument` or a flat ``list[str]``
+    of KScript sources (wrapped in a synthetic document).
 
     Parameters
     ----------

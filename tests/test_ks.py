@@ -500,7 +500,7 @@ class TestBindingScope:
         assert scope.resolve("L") == "Little"  # counter 0 in scope 1
 
         scope.push_scope()  # scope 2 (empty) — should reset counters
-        # Spec expects: resolve falls through to scope 1 but with reset counter
+        # Resolve falls through to scope 1 with a reset counter
         # → "Little" again (not "Lamb")
         assert scope.resolve("L") == "Little"
 
@@ -542,7 +542,6 @@ class TestEmitterOperators:
     def test_ks11_countersign_per_item(self):
         """KS-11: A == B C → {A:[B]}, {B:[A]}, {A:[C]}, {C:[A]} COUNTERSIGN."""
         entries = compile_dev("A == B C")
-        # Per spec §14.2 + per-item: 4 COUNTERSIGN entries only.
         assert len(entries) == 4
         assert all(e.dbg.op == "COUNTERSIGNED" for e in entries)
         assert has_entry(entries, sig="A", op="COUNTERSIGNED", nodes=["B"])
@@ -881,7 +880,6 @@ class TestComplexExamples:
     def test_sec148_strict(self):
         """§14.8 secondary regression — strict spec count (5 entries)."""
         entries = compile_dev(_SEC148_SOURCE)
-        # Spec §14.8: 5 entries
         assert len(entries) == 5
         assert has_entry(entries, sig="A", op="CANONIZED", nodes=["B", "C"])
         assert has_entry(entries, sig="D", op="UNDERSIGNED", nodes=["C"])

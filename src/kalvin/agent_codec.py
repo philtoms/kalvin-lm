@@ -44,10 +44,7 @@ from typing import Literal
 from kalvin.kline import KLine
 from kalvin.model import Model
 
-# LTM iteration helper
-# TODO: Remove this helper once Model.iter_ltm() is available.
-# Uses the public API when present, otherwise falls back to the private
-# _ltm KLineStore which supports the same iteration protocol.
+# TODO: remove once Model.iter_ltm() is available.
 
 
 def _iter_ltm(model: Model):

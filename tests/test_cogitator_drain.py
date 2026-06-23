@@ -204,7 +204,7 @@ class TestNoCrossLessonSpillover:
             agent.rationalise(q)
 
             # The S2 candidate was submitted to the cogitator (not an
-            # empty-backlog no-op like the old stub).
+            # empty-backlog no-op).
             assert len(agent.cogitator._backlog) > 0
 
             result = agent.cogitate_drain(timeout=5.0)

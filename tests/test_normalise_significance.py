@@ -71,7 +71,7 @@ def test_s2_range_and_monotonic():
     assert normalise_significance(_raw_from_distance(2)) == 0.99
     assert normalise_significance(_raw_from_distance(100)) == 0.50
 
-    # Distance 1 is the new top of S2: ≈ 0.9950, above the 0.99 anchor.
+    # Distance 1 is the top of S2: ≈ 0.9950, above the 0.99 anchor.
     assert normalise_significance(_raw_from_distance(1)) == pytest.approx(0.995, abs=1e-4)
     assert 0.99 < normalise_significance(_raw_from_distance(1)) < 1.0
 

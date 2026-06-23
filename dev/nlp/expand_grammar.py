@@ -586,7 +586,7 @@ def _add_inherited_entry(
 
 
 # ---------------------------------------------------------------------------
-# Step 3b: Legacy subword inheritance (substring-based, for non-BPE-rekey path)
+# Step 3b: Subword inheritance (substring-based, used without --bpe-rekey)
 # ---------------------------------------------------------------------------
 
 
@@ -602,7 +602,7 @@ def inherit_subword_types(
     substring. If multiple parents match, prefer the one with the highest
     ``count``.
 
-    This is a legacy strategy used when ``--bpe-rekey`` is not passed. It is
+    This is the strategy used when ``--bpe-rekey`` is not passed. It is
     less accurate than :func:`rekey_from_bpe` because it uses substring
     matching rather than actual BPE decomposition.
 
