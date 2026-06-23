@@ -23,6 +23,7 @@ import spacy
 from tqdm import tqdm
 
 from kalvin.tokenizer import Tokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
 
 # spaCy model versions for auto-download
 SPACY_MODEL_VERSIONS = {
@@ -554,70 +555,215 @@ def get_nlp_type48_legend() -> dict[str, int]:
 # ============================================================================
 
 
+# Fixed canonical family order for NLPFineType round-robin bit assignment.
+#
+# Two ordering schemes are supported by build_nlp_fine_type_class (see its
+# docstring for the full rationale and a worked example):
+#
+#   "canonical"      — families emit in this fixed order: POS, POS_FINE, DEP, MORPH.
+#   "count-weighted" — families emit in order of total per-family occurrence
+#                      count descending (canonical order as tiebreak).
+#
+# Within a family, types are always ranked by occurrence count descending
+# (most frequent first), so a frequent type always gets a lower bit than a
+# rarer type within its family. Round-robin then interleaves the families.
+# Intent: frequent types are less informative and occupy low bits; rare types
+# carry more information and occupy high bits, so keeping an entry's most-
+# significant type (a downstream reduction) retains the most informative feature.
+_FINE_FAMILY_CANONICAL: tuple[str, ...] = ("pos", "pos_fine", "dep", "morph")
+
+
 @dataclass
 class NLPFineTypeRegistry:
     """
     Registry for collecting unique NLP feature values during processing.
 
-    After all texts are processed, this is used to build the NLPType IntFlag
-    and assign bit patterns to each word.
+    Tracks per-type occurrence counts (keyed by ``(category, value)``) so that
+    ``build_nlp_fine_type_class`` can assign bit positions by frequency.
+    Counts are seeded from an existing grammar dictionary (via
+    ``seed_from_grammar``) and accumulated live by ``add_token``.
     """
 
     pos: set[str] = field(default_factory=set)
     pos_fine: set[str] = field(default_factory=set)
     dep: set[str] = field(default_factory=set)
     morph: set[str] = field(default_factory=set)  # Individual morph features like "Number=Sing"
-    # Lookup maps (populated after build_nlp_type_class is called)
+    # Per-type occurrence counts, keyed by (category, value). Seed via
+    # seed_from_grammar; accumulate via add_token.
+    _counts: dict[tuple[str, str], int] = field(default_factory=dict)
+    # Lookup maps (populated after build_nlp_fine_type_class is called)
     _feature_map: dict = field(default_factory=dict)  # Maps (category, value) -> flag_name
     _name_map: dict = field(default_factory=dict)  # Maps flag_name -> (category, value)
 
+    # ── counting ───────────────────────────────────────────────────────
+
+    def _add_count(self, key: tuple[str, str], n: int) -> None:
+        """Add *n* to the occurrence count for a (category, value) key."""
+        self._counts[key] = self._counts.get(key, 0) + n
+
     def add_token(self, pos: str, pos_fine: str, dep: str, morph: str) -> None:
-        """Add token features to the registry."""
+        """Register one token's features and increment their occurrence counts.
+
+        Called once per corpus token; each present feature counts +1.
+        """
         if pos:
             self.pos.add(pos)
+            self._add_count(("pos", pos), 1)
         if pos_fine:
             self.pos_fine.add(pos_fine)
+            self._add_count(("pos_fine", pos_fine), 1)
         if dep:
             self.dep.add(dep)
+            self._add_count(("dep", dep), 1)
         # Parse morph features (e.g., "Number=Sing|Tense=Past" -> ["Number=Sing", "Tense=Past"])
         if morph:
             for feature in morph.split("|"):
                 if feature.strip():
                     self.morph.add(feature.strip())
+                    self._add_count(("morph", feature.strip()), 1)
 
-    def build_nlp_fine_type_class(self) -> type:
+    def seed_from_grammar(self, grammar: dict[int, dict]) -> None:
+        """Seed per-type counts from an existing grammar dictionary.
+
+        Each entry contributes its ``count`` to every NLP type it carries
+        (pos, pos_fine, dep, and each morph feature), so a type's total count
+        reflects the full corpus history rather than just the current run.
+        Live counts from subsequent ``add_token`` calls add on top of the seed.
         """
-        Dynamically build an IntFlag class with all discovered NLP features.
+        for data in grammar.values():
+            c = data.get("count", 0)
+            if not c:
+                continue
+            pos = data.get("pos", "")
+            pos_fine = data.get("pos_fine", "")
+            dep = data.get("dep", "")
+            morph = data.get("morph", "")
+            if pos:
+                self.pos.add(pos)
+                self._add_count(("pos", pos), c)
+            if pos_fine:
+                self.pos_fine.add(pos_fine)
+                self._add_count(("pos_fine", pos_fine), c)
+            if dep:
+                self.dep.add(dep)
+                self._add_count(("dep", dep), c)
+            if morph:
+                for feature in morph.split("|"):
+                    feature = feature.strip()
+                    if feature:
+                        self.morph.add(feature)
+                        self._add_count(("morph", feature), c)
+
+    # ── ordering ───────────────────────────────────────────────────────
+
+    @staticmethod
+    def _flag_name(category: str, value: str) -> str:
+        """Map a (category, value) pair to its IntFlag member name."""
+        if category == "pos":
+            return f"POS_{value}"
+        if category == "pos_fine":
+            return f"POS_FINE_{value}"
+        if category == "dep":
+            return f"DEP_{value.upper()}"
+        # morph: "Number=Sing" -> "MORPH_NUMBER_SING"
+        if "=" in value:
+            key, v = value.split("=", 1)
+            return f"MORPH_{key.upper()}_{v.upper()}"
+        return f"MORPH_{value.upper()}"
+
+    def _ordered_families(self, scheme: str) -> list[str]:
+        """Return the family emission order for the given scheme.
+
+        "canonical"      — fixed order POS, POS_FINE, DEP, MORPH.
+        "count-weighted" — families sorted by total per-family occurrence
+                           count descending, canonical order as a stable
+                           tiebreak.
+        """
+        if scheme == "count-weighted":
+            totals = {
+                f: sum(self._counts.get((f, v), 0) for v in getattr(self, f))
+                for f in _FINE_FAMILY_CANONICAL
+            }
+            return sorted(
+                _FINE_FAMILY_CANONICAL,
+                key=lambda f: (-totals[f], _FINE_FAMILY_CANONICAL.index(f)),
+            )
+        return list(_FINE_FAMILY_CANONICAL)
+
+    def build_nlp_fine_type_class(self, order: str = "canonical") -> type:
+        """Dynamically build the NLPFineType IntFlag, ranked by frequency.
+
+        Bit assignment policy: **frequent types get low bits, rare types get
+        high bits**, so a type's bit height reflects how informative it is
+        (infrequent ⇒ informative ⇒ high bit). This serves a downstream
+        reduction that keeps an entry's most-significant type.
+
+        Two family-emission schemes are supported (switchable via *order* and
+        the ``--fine-order`` CLI flag):
+
+        **"canonical" (default)** — families emit in the fixed order
+        ``POS, POS_FINE, DEP, MORPH``. Stable across corpus regenerations; bit
+        positions never reflow when counts shift. Trade-off: a genuinely
+        dominant type in a later family (e.g. ``MORPH Sing``) can occupy a
+        higher bit than its global count warrants.
+
+        **"count-weighted"** — families emit in order of total per-family
+        occurrence count, descending. The low-bit gradient always tracks
+        observed corpus frequency. Trade-off: family order reflows when counts
+        shift across corpus regenerations.
+
+        Within a family, types are always ranked by occurrence count
+        descending, with an alphabetical tiebreak. The families are then
+        **round-robin interleaved**: bit 1 = each family's most frequent type
+        (in family order), bit N+1 = each family's second-most frequent, and
+        so on. Family distinction is preserved — a type never outranks a
+        same-family rarer type, but may sit above or below a different-family
+        type purely due to interleave position.
+
+        Worked example (round-robin, canonical family order)::
+
+            POS:      NOUN(500) VERB(300) SCONJ(50)
+            POS_FINE: NN(480)   VB(290)
+            DEP:      root(400) nsubj(200) advmod(80)
+            MORPH:    Sing(600) Plur(150)
+
+            bit 1 (val 1)    = NOUN     bit 6 (val 32)   = VB
+            bit 2 (val 2)    = NN       bit 7 (val 64)   = nsubj
+            bit 3 (val 4)    = root     bit 8 (val 128)  = Plur
+            bit 4 (val 8)    = Sing     bit 9 (val 256)  = SCONJ
+            bit 5 (val 16)   = VERB     bit 10(val 512)  = advmod
+
+        Note ``Sing(600)`` is the single most frequent type yet lands at bit 4
+        behind ``NOUN/NN/root`` purely because MORPH emits last — the
+        canonical-order cost. Under ``count-weighted`` the larger family emits
+        first, so ``Sing`` would rise.
+
+        Args:
+            order: "canonical" (default) or "count-weighted".
 
         Returns:
             A dynamically created IntFlag class with flags for each feature.
         """
-        # Collect all features with their prefix
-        all_features: list[tuple[str, str]] = []  # (flag_name, display_name)
+        families = self._ordered_families(order)
 
-        # Add POS tags
-        for val in sorted(self.pos):
-            flag_name = f"POS_{val}"
-            all_features.append((flag_name, val))
+        # Per family: rank by count descending, alphabetical tiebreak.
+        ranked: dict[str, list[str]] = {}
+        for f in families:
+            vals = list(getattr(self, f))
+            vals.sort(key=lambda v: (-self._counts.get((f, v), 0), v))
+            ranked[f] = vals
 
-        # Add fine POS tags
-        for val in sorted(self.pos_fine):
-            flag_name = f"POS_FINE_{val}"
-            all_features.append((flag_name, val))
+        # Round-robin interleave across families.
+        ordered: list[tuple[str, str]] = []  # (category, value)
+        max_len = max((len(ranked[f]) for f in families), default=0)
+        for i in range(max_len):
+            for f in families:
+                if i < len(ranked[f]):
+                    ordered.append((f, ranked[f][i]))
 
-        # Add dependency labels
-        for val in sorted(self.dep):
-            flag_name = f"DEP_{val.upper()}"
-            all_features.append((flag_name, val))
-
-        # Add morph features (convert "Number=Sing" to "MORPH_NUMBER_SING")
-        for val in sorted(self.morph):
-            if "=" in val:
-                key, value = val.split("=", 1)
-                flag_name = f"MORPH_{key.upper()}_{value.upper()}"
-            else:
-                flag_name = f"MORPH_{val.upper()}"
-            all_features.append((flag_name, val))
+        all_features: list[tuple[str, str]] = [  # (flag_name, display_name)
+            (self._flag_name(cat, val), val) for cat, val in ordered
+        ]
 
         # Create IntFlag using functional API
         # IntFlag('ClassName', [('NAME1', 1), ('NAME2', 2), ...])
@@ -763,6 +909,9 @@ class LinguisticAnalysis:
     total_word_count: int = 0
     # Registry for fine-grained NLP feature types (collected during processing)
     nlp_fine_registry: NLPFineTypeRegistry = field(default_factory=NLPFineTypeRegistry)
+    # NLPFineType bit-ordering scheme: "canonical" (default) or "count-weighted".
+    # See NLPFineTypeRegistry.build_nlp_fine_type_class for the rationale.
+    fine_order: str = "canonical"
     # The dynamically built NLPFineType class (set after processing)
     NLPFineType: type | None = None
     # Stats for tracking new entries
@@ -794,7 +943,7 @@ class LinguisticAnalysis:
         Must be called after all texts have been processed.
         """
         # Build the fine-grained IntFlag class from collected features
-        self.NLPFineType = self.nlp_fine_registry.build_nlp_fine_type_class()
+        self.NLPFineType = self.nlp_fine_registry.build_nlp_fine_type_class(order=self.fine_order)
 
         # Assign nlp_type32, nlp_type48, and nlp_fine_type to each word in grammar
         for word, data in self.grammar.items():
@@ -868,19 +1017,27 @@ def analyze_texts(
     existing_ner: dict[str, str] | None = None,
     existing_verbs: dict[str, int] | None = None,
     existing_noun_chunks: dict[str, int] | None = None,
+    fine_order: str = "canonical",
 ) -> LinguisticAnalysis:
     """
     Perform comprehensive linguistic analysis on texts using spaCy.
 
     Extracts NER, POS tags, noun chunks, verb lemmas, dependency labels, and morphology.
     Can extend existing dictionaries with new entries.
+
+    Args:
+        fine_order: NLPFineType bit-ordering scheme — "canonical" (default) or
+            "count-weighted". See NLPFineTypeRegistry.build_nlp_fine_type_class.
     """
-    analysis = LinguisticAnalysis()
-    tokenizer = Tokenizer.from_directory(path="data/tokenizer")
+    analysis = LinguisticAnalysis(fine_order=fine_order)
+    tokenizer = NLPTokenizer()
 
     # Initialize with existing dictionaries if provided
     if existing_grammar:
         analysis.grammar = existing_grammar.copy()
+        # Seed per-type occurrence counts from prior runs so bit assignment
+        # by frequency reflects the full corpus, not just the current batch.
+        analysis.nlp_fine_registry.seed_from_grammar(existing_grammar)
     if existing_ner:
         analysis.ner = existing_ner.copy()
     if existing_verbs:
@@ -1082,7 +1239,8 @@ def main() -> None:
         "-m",
         "--model",
         type=str,
-        default="en_core_web_trf",
+        default="en_core_web_sm",
+        # default="en_core_web_trf",
         help=(
             "spaCy model to use (default: %(default)s). "
             "Use 'en_core_web_trf' for transformer model with better GPU utilization."
@@ -1112,6 +1270,19 @@ def main() -> None:
         action="store_true",
         help="Use high bits for NLP type encodings (bits 32-63 for 32-bit, bits 16-63 for 48-bit). "
         "Default uses low bits (bits 0-31 for 32-bit, bits 0-47 for 48-bit).",
+    )
+    parser.add_argument(
+        "--fine-order",
+        choices=["canonical", "count-weighted"],
+        default="canonical",
+        help=(
+            "NLPFineType bit-ordering scheme (default: %(default)s). "
+            "'canonical' emits families in fixed order POS, POS_FINE, DEP, MORPH "
+            "(stable across re-runs); 'count-weighted' emits families by total "
+            "per-family count descending (tracks corpus frequency). Within a "
+            "family, types are always ranked by count descending (frequent -> "
+            "low bit, rare -> high bit) and round-robin interleaved."
+        ),
     )
 
     args = parser.parse_args()
@@ -1210,6 +1381,7 @@ def main() -> None:
         existing_ner=existing_ner,
         existing_verbs=existing_verbs,
         existing_noun_chunks=existing_noun_chunks,
+        fine_order=args.fine_order,
     )
 
     # Save results

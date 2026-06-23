@@ -193,6 +193,19 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print progress output",
     )
+    parser.add_argument(
+        "--fine-order",
+        choices=["canonical", "count-weighted"],
+        default="canonical",
+        help=(
+            "NLPFineType bit-ordering scheme (default: %(default)s). "
+            "'canonical' emits families in fixed order POS, POS_FINE, DEP, MORPH "
+            "(stable across re-runs); 'count-weighted' emits families by total "
+            "per-family count descending (tracks corpus frequency). Within a "
+            "family, types are always ranked by count descending (frequent -> "
+            "low bit, rare -> high bit) and round-robin interleaved."
+        ),
+    )
 
     return parser
 
@@ -244,6 +257,7 @@ def main() -> None:
         texts=texts,
         batch_size=args.batch_size,
         verbose=args.verbose,
+        fine_order=args.fine_order,
     )
 
     # Save results
