@@ -115,7 +115,7 @@ the NLP interpretation (see @nlp_tokenizer spec), each node packs an NLP type
 word in its upper 32 bits and a BPE token ID in its lower 32:
 
 ```
-node = (nlp_type32 << 32) | bpe_token_id      # nlp_type32 = POS|DEP|MORPH bits
+node = (sig_word << 32) | bpe_token_id      # sig_word = single type bit
 TYPE_MASK = 0xFFFF_FFFF_0000_0000             # isolate the upper 32 bits
 ```
 
@@ -123,14 +123,14 @@ TYPE_MASK = 0xFFFF_FFFF_0000_0000             # isolate the upper 32 bits
 
 NLPSignifier understands the NLP Tokenizer's node packing (it masks the upper
 32 bits). This is the permitted coupling between the two NLP siblings: both
-agree on the `nlp_type32` arrangement. It is a property of the NLP bundle,
+agree on the `sig_word` arrangement. It is a property of the NLP bundle,
 not of the interface — a different Signifier need not understand any packing.
 
 ### `make_signature` — bitwise OR-reduce
 
 OR-reduces the full 64-bit node values (`sig |= node` over the entire word).
 Every node contributes its full value; the resulting signature accumulates
-the `nlp_type32` words of all nodes.
+the `sig_word` words of all nodes.
 
 ### `signifies` — masked type-word overlap
 
@@ -141,10 +141,10 @@ AND:
 signifies(a, b) → (a & b & TYPE_MASK) != 0
 ```
 
-Under the NLP interpretation this tests whether two values share at least one
-**linguistic type dimension** — a POS, DEP, or MORPH bit (see @nlp_tokenizer
-for the bit layout). The BPE token IDs (lower 32) are deliberately excluded,
-so two values are compared by type overlap, not by token-ID collision.
+Under the NLP interpretation this tests whether two values share a type bit
+(see @nlp_tokenizer for how `sig_word` bits are assigned). The BPE token IDs
+(lower 32) are deliberately excluded, so two values are compared by type
+overlap, not by token-ID collision.
 
 ### `residual` — masked type-word residual
 

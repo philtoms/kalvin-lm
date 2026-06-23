@@ -16,9 +16,19 @@ The matching algorithm works **from vocab to grammar**:
    word whose text contains the token as a substring (highest-count parent).
 4. **Special-token rules**: Deterministic annotation for whitespace, punctuation,
    digits, and control characters.
-5. **Unknown fallback**: Tokens that match none of the above get ``POS_X``
-   (nlp_type32 = 65536, written as the generic ``sig_word`` key so the
-   kalvin base tokenizer can read the output without any NLP coupling).
+5. **Unknown fallback**: Tokens that match none of the above get the
+   lowest-selection-probability bit derived from the fine-type legend (the
+   residue of the most frequent type), written as the generic ``sig_word``
+   key so the kalvin base tokenizer can read the output without any NLP
+   coupling.
+
+**sig_word derivation**: each entry's ``sig_word`` is a single 32-bit value
+with exactly one bit set. It is derived from a fine-type legend
+(``*_nlp_fine_types.json``, passed via ``--fine-types``): the entry's
+pos/pos_fine/dep/morph fields are matched against four family maps, and the
+rarest matched type (largest nlp_fine_type value) wins. Its position is folded
+into 32 bits via ``1 << (position % 32)``. This produces a far sparser type
+word than the legacy OR-all ``nlp_type32``, tightening ``signifies`` overlap.
 
 Usage:
     # Tag a trained tokenizer's vocab
@@ -41,6 +51,7 @@ import base64
 import json
 import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 # Ensure project root is on sys.path for imports
@@ -50,12 +61,12 @@ if str(_project_root) not in sys.path:
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.tokenizer import Tokenizer
 
-# ── Constants ─────────────────────────────────────────────────────────────
-
-# POS_X fallback for unknown tokens (bit 16 set).
-UNKNOWN_NLP_TYPE = 65536
+# The unknown-token fallback bit is no longer a hardcoded constant; it is
+# derived from the fine-type legend in FineTypeMaps.fallback_bit (the residue
+# of the lowest-value, most-frequent type). See build_fine_type_maps.
 
 
 # ── Vocab loading ─────────────────────────────────────────────────────────
@@ -232,84 +243,155 @@ def _punct_fine_tag(token_str: str) -> str:
     return "."
 
 
-# ── NLP type computation ──────────────────────────────────────────────────
+# ── Fine-type sig_word computation ─────────────────────────────────────────
+#
+# Each output ``sig_word`` is a single 32-bit value with exactly one bit set,
+# derived from a fine-type legend (``*_nlp_fine_types.json`` from
+# nlp_analyzer.py). The legend maps each NLP type (POS / POS_FINE / DEP /
+# MORPH) to an integer ``1 << position``, where ``position`` is its rank in
+# the round-robin frequency ordering (frequent type -> low position -> low
+# value; rare type -> high position -> high value).
+#
+# Derivation (see ``compute_sig_word``):
+#   1. Match the entry's pos, pos_fine, dep, and each morph feature against
+#      four family maps. A field contributes a candidate only when its key
+#      exists in the map.
+#   2. Select the candidate with the largest nlp_fine_type value — the
+#      rarest matched type (most informative).
+#   3. Emit ``1 << ((winner.bit_length()-1) % 32)``.
+#
+# The ``% 32`` folds the unbounded round-robin positions (149 types) into the
+# 32-bit sig_word width. Within-token selection is unambiguous (one winner);
+# the fold causes between-token collisions (unrelated types share a bit),
+# which is the intended cost of 32-bit compression.
 
 
-def compute_nlp_type32(pos: str, dep: str, morph: str) -> int:
-    """Compute 32-bit NLP type from POS/DEP/MORPH flags.
+def _morph_flag_name(feature: str) -> str:
+    """Forward-transform a morph feature to its legend flag name.
 
-    Bit layout:
-        Bits 0-16:  Coarse POS (17 universal tags)
-        Bits 17-24: Simplified dependency groups (8 groups)
-        Bits 25-31: Simplified morph features (7 features)
+    Mirrors ``NLPFineTypeRegistry._flag_name`` in nlp_analyzer.py so a feature
+    like "Number=Sing" maps to the exact legend key "MORPH_NUMBER_SING". The
+    legend key is not reversed back to a feature string because camelCase keys
+    (e.g. ``VerbForm`` -> ``VERBFORM``) are lossy to reverse; lookup always
+    forward-transforms.
     """
-    result = 0
+    if "=" in feature:
+        key, value = feature.split("=", 1)
+        return f"MORPH_{key.upper()}_{value.upper()}"
+    return f"MORPH_{feature.upper()}"
 
-    # POS bits (0-16)
-    pos_map = {
-        "ADJ": 1,
-        "ADP": 2,
-        "ADV": 4,
-        "AUX": 8,
-        "CCONJ": 16,
-        "DET": 32,
-        "INTJ": 64,
-        "NOUN": 128,
-        "NUM": 256,
-        "PART": 512,
-        "PRON": 1024,
-        "PROPN": 2048,
-        "PUNCT": 4096,
-        "SCONJ": 8192,
-        "SYM": 16384,
-        "VERB": 32768,
-        "X": 65536,
-        "SPACE": 131072,
-    }
-    result |= pos_map.get(pos, 65536)  # Default to X
 
-    # DEP bits (17-24)
-    dep_map = {
-        "nsubj": 1 << 17,
-        "nsubjpass": 1 << 17,
-        "csubj": 1 << 17,
-        "obj": 1 << 18,
-        "iobj": 1 << 18,
-        "dobj": 1 << 18,
-        "root": 1 << 19,
-        "amod": 1 << 20,
-        "advmod": 1 << 20,
-        "det": 1 << 21,
-        "case": 1 << 21,
-        "mark": 1 << 21,
-        "aux": 1 << 22,
-        "auxpass": 1 << 22,
-        "cop": 1 << 22,
-        "compound": 1 << 23,
-        "flat": 1 << 23,
-        "punct": 1 << 24,
-        "neg": 1 << 24,
-    }
-    if dep in dep_map:
-        result |= dep_map[dep]
+@dataclass
+class FineTypeMaps:
+    """Four family maps for deriving a single-bit 32-bit ``sig_word``.
 
-    # MORPH bits (25-31)
-    if "Number=Sing" in morph:
-        result |= 1 << 25
-    if "Number=Plur" in morph:
-        result |= 1 << 26
-    if "Tense=Past" in morph:
-        result |= 1 << 27
-    if "Tense=Pres" in morph:
-        result |= 1 << 28
-    if "VerbForm=Inf" in morph:
-        result |= 1 << 29
-    if "VerbForm=Part" in morph:
-        result |= 1 << 30
-    if "Polarity=Neg" in morph:
-        result |= 1 << 31
+    Built from a fine-type legend by ``build_fine_type_maps``. Each family map
+    keys a raw grammar field value to its nlp_fine_type integer.
 
-    return result
+    Attributes:
+        pos: ``{POS_TAG: value}`` keyed by uppercase POS (e.g. "DET").
+        pos_fine: ``{POS_FINE_TAG: value}`` keyed verbatim (e.g. "DT", ".").
+        dep: ``{dep_label: value}`` keyed lowercase (e.g. "det").
+        morph: ``{flag_name: value}`` keyed by legend flag name
+            (e.g. "MORPH_NUMBER_SING"); lookup forward-transforms each feature.
+        fallback_bit: single-bit value used when no family matches — the
+            residue of the lowest-value (most frequent) type in the legend.
+        by_value: reverse map ``{nlp_fine_type_value: flag_name}`` for naming
+            the winning type. Legend values are distinct powers of two, so
+            this is injective.
+    """
+
+    pos: dict[str, int]
+    pos_fine: dict[str, int]
+    dep: dict[str, int]
+    morph: dict[str, int]
+    fallback_bit: int
+    by_value: dict[int, str]
+
+
+def build_fine_type_maps(legend: dict[str, int]) -> FineTypeMaps:
+    """Build the four family maps from a fine-type legend.
+
+    Args:
+        legend: ``{flag_name: nlp_fine_type_value}`` from
+            ``*_nlp_fine_types.json``.
+
+    Returns:
+        A populated ``FineTypeMaps``. ``fallback_bit`` is the residue bit of
+        the legend's lowest-value type (lowest selection probability).
+    """
+    pos: dict[str, int] = {}
+    pos_fine: dict[str, int] = {}
+    dep: dict[str, int] = {}
+    morph: dict[str, int] = {}
+    for flag_name, value in legend.items():
+        if flag_name.startswith("POS_FINE_"):
+            pos_fine[flag_name[len("POS_FINE_") :]] = value
+        elif flag_name.startswith("POS_"):
+            pos[flag_name[len("POS_") :]] = value
+        elif flag_name.startswith("DEP_"):
+            # Grammar dep fields are lowercase ("det"); legend is uppercase.
+            dep[flag_name[len("DEP_") :].lower()] = value
+        elif flag_name.startswith("MORPH_"):
+            morph[flag_name] = value
+
+    if legend:
+        min_value = min(legend.values())
+        fallback_bit = 1 << ((min_value.bit_length() - 1) % 32)
+    else:
+        fallback_bit = 1  # degenerate: empty legend -> bit 0
+    # Reverse map value -> flag_name. Legend values are distinct powers of
+    # two, so this is injective and unambiguously names a winner.
+    by_value = {v: k for k, v in legend.items()}
+    return FineTypeMaps(pos, pos_fine, dep, morph, fallback_bit, by_value)
+
+
+def compute_sig_word(entry: dict, maps: FineTypeMaps) -> tuple[int, str]:
+    """Derive a single-bit 32-bit ``sig_word`` and its type name from an entry.
+
+    Matches the entry's ``pos``, ``pos_fine``, ``dep``, and each ``morph``
+    feature against ``maps`` and emits ``1 << ((max.bit_length()-1) % 32)``
+    where ``max`` is the largest nlp_fine_type value among all matches (the
+    rarest matched type). If nothing matches, the bit is ``maps.fallback_bit``
+    and the name is ``""`` (no type was selected).
+
+    Args:
+        entry: Grammar entry with optional ``pos``, ``pos_fine``, ``dep``,
+            ``morph`` fields. Absent or empty fields contribute no candidate.
+        maps: The four family maps built from the fine-type legend.
+
+    Returns:
+        ``(sig_word, sig_type)`` — a 32-bit integer with exactly one bit set,
+        and the winning type's legend flag name (e.g. ``"POS_FINE_NNP"``), or
+        ``""`` when the fallback bit was used.
+    """
+    candidates: list[int] = []
+
+    pos = entry.get("pos", "")
+    if pos and pos in maps.pos:
+        candidates.append(maps.pos[pos])
+
+    pos_fine = entry.get("pos_fine", "")
+    if pos_fine and pos_fine in maps.pos_fine:
+        candidates.append(maps.pos_fine[pos_fine])
+
+    dep = entry.get("dep", "")
+    if dep and dep.lower() in maps.dep:
+        candidates.append(maps.dep[dep.lower()])
+
+    morph = entry.get("morph", "")
+    if morph:
+        for feature in morph.split("|"):
+            feature = feature.strip()
+            if feature:
+                flag = _morph_flag_name(feature)
+                if flag in maps.morph:
+                    candidates.append(maps.morph[flag])
+
+    if not candidates:
+        return maps.fallback_bit, ""
+    winner = max(candidates)
+    return 1 << ((winner.bit_length() - 1) % 32), maps.by_value[winner]
 
 
 # ── Tagging engine ─────────────────────────────────────────────────────────
@@ -318,6 +400,7 @@ def compute_nlp_type32(pos: str, dep: str, morph: str) -> int:
 def tag_vocab(
     vocab: dict[int, str],
     grammar_index: GrammarIndex,
+    maps: FineTypeMaps,
 ) -> dict[str, dict]:
     """Tag every BPE token with NLP type information.
 
@@ -328,11 +411,16 @@ def tag_vocab(
     2. BPE decomposition parent (if ``GrammarIndex`` was built with a tokenizer).
     3. Substring match against grammar texts.
     4. Special-token classification (whitespace, punct, digit, control).
-    5. POS_X fallback for unresolvable tokens.
+    5. Fallback bit for unresolvable tokens.
+
+    Each resolved entry's ``sig_word`` is a single bit derived via
+    ``compute_sig_word`` from the fine-type legend: the rarest matched NLP
+    type, folded into 32 bits.
 
     Args:
         vocab: Dict mapping BPE token ID to decoded string.
         grammar_index: Pre-built ``GrammarIndex`` for fast matching.
+        maps: Fine-type family maps for ``sig_word`` derivation.
 
     Returns:
         New grammar dict keyed by string BPE token IDs, with full NLP annotations.
@@ -349,7 +437,7 @@ def tag_vocab(
     }
 
     for token_id, token_str in vocab.items():
-        entry = _resolve_token(token_id, token_str, grammar_index, stats)
+        entry = _resolve_token(token_id, token_str, grammar_index, maps, stats)
         tagged[str(token_id)] = entry
 
     total = len(vocab)
@@ -380,6 +468,7 @@ def _resolve_token(
     token_id: int,
     token_str: str,
     grammar_index: GrammarIndex,
+    maps: FineTypeMaps,
     stats: dict[str, int],
 ) -> dict:
     """Resolve a single vocab token to a grammar entry."""
@@ -387,20 +476,20 @@ def _resolve_token(
     parent = grammar_index.find_exact(token_str)
     if parent is not None:
         stats["exact"] += 1
-        return _make_entry(token_id, token_str, parent)
+        return _make_entry(token_id, token_str, parent, maps)
 
     # 1b. Exact match with leading space stripped (BPE tokens like " the")
     if _is_space_prefixed_alpha(token_str):
         parent = grammar_index.find_exact(token_str.lstrip())
         if parent is not None:
             stats["exact"] += 1
-            return _make_entry(token_id, token_str, parent)
+            return _make_entry(token_id, token_str, parent, maps)
 
     # 2. BPE decomposition parent
     parent = grammar_index.find_bpe_parent(token_id)
     if parent is not None:
         stats["bpe_parent"] += 1
-        return _make_entry(token_id, token_str, parent)
+        return _make_entry(token_id, token_str, parent, maps)
 
     # 3. Substring match (alphabetic or space-prefixed alphabetic)
     if token_str.isalpha() or _is_space_prefixed_alpha(token_str):
@@ -409,12 +498,15 @@ def _resolve_token(
         parent = grammar_index.find_substring(match_text)
         if parent is not None:
             stats["substring"] += 1
-            return _make_entry(token_id, token_str, parent)
+            return _make_entry(token_id, token_str, parent, maps)
 
-    # 4. Special-token rules
+    # 4. Special-token rules — sig_word derived via the fine-type maps;
+    #    values absent from the legend (e.g. POS_SPACE) simply match nothing
+    #    and fall through to the fallback bit inside compute_sig_word.
     special = classify_special(token_str)
     if special is not None:
         stats["special"] += 1
+        sig_word, sig_type = compute_sig_word(special, maps)
         pos = special["pos"]
         pos_fine = special["pos_fine"]
         dep = special["dep"]
@@ -428,10 +520,12 @@ def _resolve_token(
             "count": 0,
             "tokens": [token_id],
             "frequency_pct": 0.0,
-            "sig_word": compute_nlp_type32(pos, dep, morph),
+            "sig_word": sig_word,
+            "sig_type": sig_type,
         }
 
-    # 5. Unknown fallback — POS_X
+    # 5. Unknown fallback — no NLP information; use the lowest-selection-
+    #    probability bit. ``pos`` is recorded as "X" for traceability only.
     stats["unknown"] += 1
     return {
         "text": token_str,
@@ -442,12 +536,19 @@ def _resolve_token(
         "count": 0,
         "tokens": [token_id],
         "frequency_pct": 0.0,
-        "sig_word": UNKNOWN_NLP_TYPE,
+        "sig_word": maps.fallback_bit,
+        "sig_type": "",
     }
 
 
-def _make_entry(token_id: int, token_str: str, parent: dict) -> dict:
-    """Create a grammar entry inheriting from a parent word."""
+def _make_entry(token_id: int, token_str: str, parent: dict, maps: FineTypeMaps) -> dict:
+    """Create a grammar entry inheriting from a parent word.
+
+    ``sig_word`` is derived from the parent's NLP fields via the fine-type
+    maps (a single bit — the rarest matched type), not copied from the
+    parent's multi-bit ``nlp_type32``. ``sig_type`` names the winning type.
+    """
+    sig_word, sig_type = compute_sig_word(parent, maps)
     return {
         "text": token_str,
         "pos": parent.get("pos", "X"),
@@ -457,7 +558,8 @@ def _make_entry(token_id: int, token_str: str, parent: dict) -> dict:
         "count": 0,
         "tokens": [token_id],
         "frequency_pct": 0.0,
-        "sig_word": parent.get("nlp_type32", UNKNOWN_NLP_TYPE),
+        "sig_word": sig_word,
+        "sig_type": sig_type,
     }
 
 
@@ -471,7 +573,7 @@ def main() -> None:
     parser.add_argument(
         "--grammar",
         type=Path,
-        required=True,
+        default="data/tokenizer/simplestories-1_grammar.json",
         help="Path to the NLP grammar dictionary JSON (from nlp_analyzer.py)",
     )
     parser.add_argument(
@@ -499,6 +601,17 @@ def main() -> None:
         action="store_true",
         help="Print stats without writing the output file",
     )
+    parser.add_argument(
+        "--fine-types",
+        type=Path,
+        default=None,
+        help=(
+            "Path to the fine-type legend JSON (from nlp_analyzer.py's "
+            "*_nlp_fine_types.json). Each sig_word is derived as a single "
+            "bit: the rarest matched NLP type, folded into 32 bits. Default: "
+            "inferred from --grammar ({stem}_nlp_fine_types.json in the same dir)."
+        ),
+    )
     args = parser.parse_args()
 
     # Load grammar
@@ -506,9 +619,27 @@ def main() -> None:
     grammar = json.loads(args.grammar.read_text())
     print(f"  {len(grammar)} grammar entries")
 
+    # Load fine-type legend (default: alongside the grammar)
+    fine_types_path = args.fine_types
+    if fine_types_path is None:
+        base = args.grammar.stem.removesuffix("_grammar")
+        fine_types_path = args.grammar.parent / f"{base}_nlp_fine_types.json"
+    if not fine_types_path.exists():
+        raise SystemExit(f"Fine-type legend not found: {fine_types_path}")
+    print(f"Loading fine-type legend: {fine_types_path}")
+    fine_legend = json.loads(fine_types_path.read_text())
+    maps = build_fine_type_maps(fine_legend)
+    print(
+        f"  {len(fine_legend)} fine types; "
+        f"fallback bit = {maps.fallback_bit:#x}"
+    )
+
     # Load BPE tokenizer (for BPE decomposition of grammar words)
     print(f"Loading tokenizer: {args.tokenizer_dir}/{args.tokenizer_name}")
-    bpe_tokenizer = Tokenizer.from_directory(str(args.tokenizer_dir), args.tokenizer_name)
+    bpe_tokenizer = NLPTokenizer(
+        tokenizer_path=args.tokenizer_dir,
+        tokenizer_name=args.tokenizer_name,
+    )
     print(f"  vocab_size={bpe_tokenizer.vocab_size}")
 
     # Load BPE vocab directly from .bin file (authoritative source)
@@ -532,7 +663,7 @@ def main() -> None:
 
     # Tag every vocab token
     print("Tagging vocab tokens...")
-    tagged = tag_vocab(vocab, grammar_index)
+    tagged = tag_vocab(vocab, grammar_index, maps)
 
     # Write output
     if args.dry_run:
