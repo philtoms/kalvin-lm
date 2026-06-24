@@ -7,6 +7,7 @@ The Harness Server is a multi-agent runtime that loads participants, routes mess
 ## Dependencies
 
 - `specs/agent.md` — Kalvin rationalisation API, events, Cogitator
+- `specs/kvalue.md` — KValue (KLine + significance): the exchange unit for the trainer's submissions, countersigns, and RationaliseEvent payloads.
 - `specs/kscript.md` — compilation pipeline (KScript source → CompiledEntry)
 - `specs/harness.md` — tracking state, satisfaction, ratification (absorbed into Trainer)
 
@@ -106,7 +107,7 @@ Kalvin's interface to the harness bus. A thin layer that:
 1. Receives harness messages sent to role `trainee`.
 2. Interprets the `action`:
    - `submit` — compile KScript source via the KScript pipeline, submit each compiled entry to `kagent.rationalise()` one at a time.
-   - `countersign` — call `kagent.countersign(kline)` with the provided kline.
+   - `countersign` — materialise the bus payload to a KValue and call `kagent.countersign(kvalue)`. The payload may arrive as a live KValue, a wire dict, or a legacy KLine (wrapped at S1); see @kvalue spec §KP-2.
 3. Receives Kalvin's callbacks directly (no internal EventBus) and wraps them into harness messages dispatched to the original sender's role.
 4. Maintains a sender map: when entries arrive from role X, the adapter records X as the sender. Kalvin's callbacks are sent to role X.
 
@@ -212,7 +213,7 @@ The `ratify` command uses the latest pending proposal tracked by the participant
 | Bus action | Target role | Payload | Purpose |
 |------------|------------|---------|--------|
 | `input` | `trainer` | free-text | Session control, goals, guidance |
-| `countersign` | `trainee` | KLine proposal | Ratification |
+| `countersign` | `trainee` | KValue proposal | Ratification |
 
 ### Slack Participant
 
