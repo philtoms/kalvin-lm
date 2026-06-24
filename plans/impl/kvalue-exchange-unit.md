@@ -321,7 +321,21 @@ consumed** — that is the deferred intentional behaviour.
 
 - **Spec:** complete (`specs/kvalue.md` new; `kline.md`, `model.md`, `agent.md` edited; `CONTEXT.md` glossary updated).
 - **Plan:** this document.
-- **Implementation:** not started.
+- **Implementation:** in progress across KB-351..KB-361 (exchange unit: Tasks
+  A–H). The KValue type, compiler, agent, event refactor (D5), and harness
+  adapter boundary (Task F) landed in KB-353/KB-354/KB-355.
+  **KB-361** landed **Task G** — the trainer/reactor/cogitation consumer
+  refactor (every `event.significance` read moved to
+  `event.proposal.significance` per the §6 Consumer Map; `_compute_misfit`
+  operates on `event.proposal.kline`; `candidate` references removed) — *plus*
+  the protocol wire-encoding layer (`protocol.py::_domain_json_default` encodes
+  `KValue` → the KLine objective shape and sources event significance from
+  `proposal.significance`) and the reactor auto-countersign fix (parameter
+  typed `KValue`; structural comparison via `proposal.kline`). This restores
+  the training loop end-to-end after the KValue exchange-unit landings.
+  Remaining: `tests/test_countersign_resolution.py:74` (one mechanical
+  `ev.significance` → `ev.proposal.significance` consumer read, tracked as
+  KB-363; outside this task's scope).
 - **Deferred (explicitly out of scope):** consumption of an inbound KValue's
   declared significance by rationalisation (the intentional combination rule).
   The plumbing guarantees the value is present and addressable; a future grill
