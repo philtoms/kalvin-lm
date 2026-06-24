@@ -16,7 +16,7 @@ from kalvin.signifier import NLPSignifier
 signifier = NLPSignifier()
 
 
-def T(bits: int) -> int:
+def t(bits: int) -> int:
     """Place type-word bits in the upper 32 bits of a uint64 (NLP layout)."""
     return bits << 32
 
@@ -84,12 +84,12 @@ class TestCogitatorWithFakeHandler:
         """Cogitator calls handler.on_expansion when a misfit kline expands."""
         m = Model(signifier=signifier)
         # Build model with identity klines that resolve nodes
-        k1 = KLine(T(0b100), [T(0b100)])  # identity (self-referential since 040bc0c)
+        k1 = KLine(t(0b100), [t(0b100)])  # identity (self-referential since 040bc0c)
         m.add_to_ltm(k1)
-        k2 = KLine(T(0b010), [T(0b010)])  # identity — resolves as a contributor
+        k2 = KLine(t(0b010), [t(0b010)])  # identity — resolves as a contributor
         m.add_to_ltm(k2)
-        # A misfit kline — underfitting: sig=T(0b110) but nodes only give T(0b100)
-        k3 = KLine(T(0b110), [T(0b100)])
+        # A misfit kline — underfitting: sig=t(0b110) but nodes only give t(0b100)
+        k3 = KLine(t(0b110), [t(0b100)])
         m.add_to_ltm(k3)
 
         recorder = RecordingCogitationHandler()
@@ -99,8 +99,8 @@ class TestCogitatorWithFakeHandler:
         # Query with no overlapping type-word bits to k3 → S3 after expand,
         # and k3 is misfit so propose_expansions triggers generate_expansions.
         # q's type word (0b001) shares no bits with k3's (0b110).
-        q = KLine(0, [T(0b001)])
-        q.signature = signifier.make_signature([T(0b001)])
+        q = KLine(0, [t(0b001)])
+        q.signature = signifier.make_signature([t(0b001)])
         m.add_to_frame(q)
 
         cogitator.submit(WorkItem(KValue(q, 0x5678), k3, "S3"))

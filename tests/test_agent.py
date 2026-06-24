@@ -27,7 +27,7 @@ signifier = NLPSignifier()
 pytestmark = requires_tokenizer_data
 
 
-def T(bits: int) -> int:
+def t(bits: int) -> int:
     """Place sig-word bits in the upper 32 bits of a uint64.
 
     signifies() (used by model.where for candidate retrieval) masks off the
@@ -162,21 +162,21 @@ class TestAgentRationalise:
         """Kline that routes S2 against all candidates → returns False."""
         a = KAgent(adapter=EventBus())
         # Add a candidate that partially overlaps
-        candidate = KLine(T(5), [T(10), T(30)])
+        candidate = KLine(t(5), [t(10), t(30)])
         a.rationalise(KValue(candidate, SIG_S4))
         # Query overlaps on [10] but not [20] → S2
-        q = KLine(0, [T(10), T(20)])
-        q.signature = signifier.make_signature([T(10), T(20)])
+        q = KLine(0, [t(10), t(20)])
+        q.signature = signifier.make_signature([t(10), t(20)])
         result = a.rationalise(KValue(q, SIG_S4))
         assert result is False
 
     def test_s3_kline_returns_false(self):
         """Kline that routes S3 against all candidates → returns False."""
         a = KAgent(adapter=EventBus())
-        candidate = KLine(T(5), [T(100), T(200)])
+        candidate = KLine(t(5), [t(100), t(200)])
         a.rationalise(KValue(candidate, SIG_S4))
-        q = KLine(0, [T(1), T(2)])
-        q.signature = signifier.make_signature([T(1), T(2)])
+        q = KLine(0, [t(1), t(2)])
+        q.signature = signifier.make_signature([t(1), t(2)])
         result = a.rationalise(KValue(q, SIG_S4))
         assert result is False
 
@@ -191,14 +191,14 @@ class TestShortCircuit:
         """All candidates are submitted to cogitator regardless of routing level."""
         a = KAgent(adapter=EventBus())
         # Add two candidates to the model
-        c1 = KLine(T(5), [T(10), T(20)])  # full overlap with query
-        c2 = KLine(T(6), [T(10), T(20), T(30)])  # also full overlap with query
+        c1 = KLine(t(5), [t(10), t(20)])  # full overlap with query
+        c2 = KLine(t(6), [t(10), t(20), t(30)])  # also full overlap with query
         a.rationalise(KValue(c1, SIG_S4))
         a.rationalise(KValue(c2, SIG_S4))
 
         # Query overlaps both candidates (routes S2 under the S2/S3-only model)
-        q = KLine(0, [T(10), T(20)])
-        q.signature = signifier.make_signature([T(10), T(20)])
+        q = KLine(0, [t(10), t(20)])
+        q.signature = signifier.make_signature([t(10), t(20)])
 
         # Capture submitted work items
         submitted = []
@@ -218,13 +218,13 @@ class TestShortCircuit:
         """Candidates with full and partial overlap are all submitted as S2."""
         a = KAgent(adapter=EventBus())
         # c1 partial overlap, c2 full overlap — both route S2 now
-        c1 = KLine(T(5), [T(10), T(30)])
-        c2 = KLine(T(6), [T(10), T(20)])
+        c1 = KLine(t(5), [t(10), t(30)])
+        c2 = KLine(t(6), [t(10), t(20)])
         a.rationalise(KValue(c1, SIG_S4))
         a.rationalise(KValue(c2, SIG_S4))
 
-        q = KLine(0, [T(10), T(20)])
-        q.signature = signifier.make_signature([T(10), T(20)])
+        q = KLine(0, [t(10), t(20)])
+        q.signature = signifier.make_signature([t(10), t(20)])
 
         # Capture submitted work items
         submitted = []
@@ -246,13 +246,13 @@ class TestShortCircuit:
         """S2 (overlap) and S3 (no overlap) candidates are both submitted."""
         a = KAgent(adapter=EventBus())
         # c1 routes S2 (partial match), c2 routes S3 (no match)
-        c1 = KLine(T(5), [T(10), T(30)])  # S2: node 10 in common with query
-        c2 = KLine(T(6), [T(40), T(50)])  # S3: no node in common with query
+        c1 = KLine(t(5), [t(10), t(30)])  # S2: node 10 in common with query
+        c2 = KLine(t(6), [t(40), t(50)])  # S3: no node in common with query
         a.rationalise(KValue(c1, SIG_S4))
         a.rationalise(KValue(c2, SIG_S4))
 
-        q = KLine(0, [T(10), T(20)])
-        q.signature = signifier.make_signature([T(10), T(20)])
+        q = KLine(0, [t(10), t(20)])
+        q.signature = signifier.make_signature([t(10), t(20)])
 
         # Capture submitted work items
         submitted = []
@@ -356,11 +356,11 @@ class TestCogitator:
     def test_s2_submits_work_item(self):
         """S2 kline submits a work item to the cogitator."""
         a = KAgent(adapter=EventBus())
-        candidate = KLine(T(5), [T(10), T(30)])
+        candidate = KLine(t(5), [t(10), t(30)])
         a.rationalise(KValue(candidate, SIG_S4))
 
-        q = KLine(0, [T(10), T(20)])
-        q.signature = signifier.make_signature([T(10), T(20)])
+        q = KLine(0, [t(10), t(20)])
+        q.signature = signifier.make_signature([t(10), t(20)])
 
         # Capture submitted work items
         submitted = []
@@ -744,11 +744,11 @@ class TestCascadeWriteMethods:
         m = Model()
         a = KAgent(model=m, adapter=EventBus())
         # Add a candidate that overlaps the query (routes S2)
-        c = KLine(T(5), [T(10), T(20)])
+        c = KLine(t(5), [t(10), t(20)])
         a.rationalise(KValue(c, SIG_S4))
         # Query that fully matches candidate nodes
-        q = KLine(0, [T(10), T(20)])
-        q.signature = signifier.make_signature([T(10), T(20)])
+        q = KLine(0, [t(10), t(20)])
+        q.signature = signifier.make_signature([t(10), t(20)])
         # Capture submitted work items
         submitted = []
         original_submit = a._cogitator.submit
@@ -774,11 +774,11 @@ class TestCascadeWriteMethods:
         m = Model()
         a = KAgent(model=m, adapter=EventBus())
         # Add a candidate that will route as S2 (partial overlap)
-        c = KLine(T(5), [T(10), T(30)])
+        c = KLine(t(5), [t(10), t(30)])
         a.rationalise(KValue(c, SIG_S4))
         # Query with partial overlap → S2
-        q = KLine(0, [T(10), T(20)])
-        q.signature = signifier.make_signature([T(10), T(20)])
+        q = KLine(0, [t(10), t(20)])
+        q.signature = signifier.make_signature([t(10), t(20)])
         with (
             patch.object(m, "add_to_stm", wraps=m.add_to_stm) as mock_add_to_stm,
             patch.object(m, "add_to_ltm", wraps=m.add_to_ltm) as mock_add_to_ltm,
@@ -1071,14 +1071,14 @@ class TestKValueExchangeCriteria:
         from kalvin.expand import boundaries, classify, expand, propose_expansions
 
         m = Model(signifier=signifier)
-        k1 = KLine(T(0b100), [T(0b100)])  # identity
+        k1 = KLine(t(0b100), [t(0b100)])  # identity
         m.add_to_ltm(k1)
-        k2 = KLine(T(0b010), [T(0b010)])  # identity
+        k2 = KLine(t(0b010), [t(0b010)])  # identity
         m.add_to_ltm(k2)
-        k3 = KLine(T(0b110), [T(0b100)])  # misfit (underfitting)
+        k3 = KLine(t(0b110), [t(0b100)])  # misfit (underfitting)
         m.add_to_ltm(k3)
-        q = KLine(0, [T(0b001)])
-        q.signature = signifier.make_signature([T(0b001)])
+        q = KLine(0, [t(0b001)])
+        q.signature = signifier.make_signature([t(0b001)])
         m.add_to_frame(q)
         q_value = KValue(q, SIG_S4)
 

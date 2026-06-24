@@ -35,7 +35,7 @@ def make_model(stm_bound: int = 256) -> Model:
     return Model(stm_bound=stm_bound)
 
 
-def T(bits: int) -> int:
+def t(bits: int) -> int:
     """Place sig-word bits in the upper 32 bits of a uint64.
 
     signifies() masks off the lower (BPE) 32 bits, so node/signature values
@@ -215,13 +215,13 @@ class TestExpand:
     def test_expand_hop_reaches_opposing_mismatch(self):
         """Mismatched node whose chain reaches the opposing mismatch set."""
         m = make_model()
-        m.add_to_frame(KLine(T(0b110), [T(0b100), T(0b010)]))  # genuine canon — chain terminator
-        m.add_to_frame(KLine(T(20), [T(0b110)]))  # non-canon
-        m.add_to_frame(KLine(T(10), [T(20)]))  # non-canon
-        m.add_to_frame(KLine(T(5), [T(10)]))  # non-canon
+        m.add_to_frame(KLine(t(0b110), [t(0b100), t(0b010)]))  # genuine canon — chain terminator
+        m.add_to_frame(KLine(t(20), [t(0b110)]))  # non-canon
+        m.add_to_frame(KLine(t(10), [t(20)]))  # non-canon
+        m.add_to_frame(KLine(t(5), [t(10)]))  # non-canon
 
-        q = KLine(100, [T(5), T(2)])  # mismatched_q: {5, 2}
-        c = KLine(200, [T(10), T(3)])  # mismatched_c: {10, 3}
+        q = KLine(100, [t(5), t(2)])  # mismatched_q: {5, 2}
+        c = KLine(200, [t(10), t(3)])  # mismatched_c: {10, 3}
         # distance=301 (1 hop + 3 × MAX_HOP)
         results = list(expand(m, q, c, signifier))
         assert len(results) == 6
@@ -357,13 +357,13 @@ class TestExpand:
         terminal distance (signifies doesn't resolve the mismatch).
         """
         m = make_model()
-        m.add_to_frame(KLine(T(30), [T(30)]))  # identity — chain terminator
-        m.add_to_frame(KLine(T(20), [T(30)]))  # non-canon
-        m.add_to_frame(KLine(T(10), [T(20)]))  # non-canon
-        m.add_to_frame(KLine(T(5), [T(10)]))  # non-canon
+        m.add_to_frame(KLine(t(30), [t(30)]))  # identity — chain terminator
+        m.add_to_frame(KLine(t(20), [t(30)]))  # non-canon
+        m.add_to_frame(KLine(t(10), [t(20)]))  # non-canon
+        m.add_to_frame(KLine(t(5), [t(10)]))  # non-canon
 
-        q = KLine(100, [T(5)])  # mismatched_q: {5}
-        c = KLine(200, [T(10)])  # mismatched_c: {10}
+        q = KLine(100, [t(5)])  # mismatched_q: {5}
+        c = KLine(200, [t(10)])  # mismatched_c: {10}
 
         # q-node 5: edge_hops(5, signifier) = [(1,10), (2,20), (3,30)]
         #   hop 1: match_sig=10 IS in mismatched_c → exact match, expand
@@ -381,7 +381,7 @@ class TestExpand:
 
         # Find the signifies candidate from c-node 10→30
         signifies_candidates = [
-            r for r in results if r.query.signature == T(10) and r.candidate.signature == T(30)
+            r for r in results if r.query.signature == t(10) and r.candidate.signature == t(30)
         ]
         assert len(signifies_candidates) == 1
         sig_cand = signifies_candidates[0]
@@ -397,12 +397,12 @@ class TestExpand:
         signature, preventing S3 connotation bridging for the same hop.
         """
         m = make_model()
-        m.add_to_frame(KLine(T(0b11100), [T(0b11100)]))  # identity (self-referential) (28)
-        m.add_to_frame(KLine(T(0b10100), [T(0b11100)]))  # non-canon: sig=20, make_sig=28
-        m.add_to_frame(KLine(T(0b01100), [T(0b11100)]))  # non-canon: sig=12, make_sig=28
+        m.add_to_frame(KLine(t(0b11100), [t(0b11100)]))  # identity (self-referential) (28)
+        m.add_to_frame(KLine(t(0b10100), [t(0b11100)]))  # non-canon: sig=20, make_sig=28
+        m.add_to_frame(KLine(t(0b01100), [t(0b11100)]))  # non-canon: sig=12, make_sig=28
 
-        q = KLine(100, [T(0b10100)])  # mismatched_q: {20}
-        c = KLine(200, [T(0b01100)])  # mismatched_c: {12}
+        q = KLine(100, [t(0b10100)])  # mismatched_q: {20}
+        c = KLine(200, [t(0b01100)])  # mismatched_c: {12}
 
         # q-node 20: edge_hops(20, signifier) = [(1, 28)]
         #   28 not in mismatched_c, signifies(20, 28) = True (20 & 28 = 20)
@@ -416,9 +416,9 @@ class TestExpand:
         assert len(results) == 3  # 2 signifies + terminal
 
         # Both signifies candidates reach sig 28 at distance 1
-        assert results[0].candidate.signature == T(0b11100)
+        assert results[0].candidate.signature == t(0b11100)
         assert results[0].significance == (~1) & MASK64
-        assert results[1].candidate.signature == T(0b11100)
+        assert results[1].candidate.signature == t(0b11100)
         assert results[1].significance == (~1) & MASK64
 
         # Terminal: both mismatched nodes unresolved (2 × MAX_HOP)
@@ -770,8 +770,8 @@ class TestProposeExpansions:
     def test_canonical_yields_nothing(self):
         """Genuine canon (non-self-referential) → no proposals."""
         m = Model(signifier=signifier)
-        # sig T(0b110) = OR(T(0b100), T(0b010)); a genuine canon.
-        k = KLine(T(0b110), [T(0b100), T(0b010)])
+        # sig t(0b110) = OR(t(0b100), t(0b010)); a genuine canon.
+        k = KLine(t(0b110), [t(0b100), t(0b010)])
         result = list(propose_expansions(m, k, 42, signifier))
         assert result == []
 
@@ -788,18 +788,18 @@ class TestProposeExpansions:
     def test_underfit_yields_proposals(self):
         """Underfit candidate (sig promises more than nodes deliver) → proposals.
 
-        KLine(sig=T(0b110), nodes=[T(0b100)]) has gap T(0b010). With a genuine
-        canon contributor headed by T(0b010) in the model, propose_expansions
+        KLine(sig=t(0b110), nodes=[t(0b100)]) has gap t(0b010). With a genuine
+        canon contributor headed by t(0b010) in the model, propose_expansions
         yields proposal klines with the passed significance.
         """
         m = Model(signifier=signifier)
-        # Genuine canon contributor whose signature overlaps the gap T(0b010).
-        contributor = KLine(T(0b110), [T(0b100), T(0b010)])
+        # Genuine canon contributor whose signature overlaps the gap t(0b010).
+        contributor = KLine(t(0b110), [t(0b100), t(0b010)])
         m.add_to_frame(contributor)
         m.add_to_ltm(contributor)
 
-        # Underfit kline: sig=T(0b110) promises bits nodes=[T(0b100)] don't deliver
-        candidate = KLine(T(0b110), [T(0b100)])
+        # Underfit kline: sig=t(0b110) promises bits nodes=[t(0b100)] don't deliver
+        candidate = KLine(t(0b110), [t(0b100)])
         significance = 0xDEAD
 
         results = list(propose_expansions(m, candidate, significance, signifier))
@@ -811,30 +811,30 @@ class TestProposeExpansions:
     def test_overfit_yields_trimmed_and_companion(self):
         """Overfit candidate → trimmed proposal; identity companion is dropped.
 
-        KLine(sig=T(0b110), nodes=[T(0b100), T(0b010), T(0b001)]) has excess
-        T(0b001). Trimming yields the genuine canon
-        `{T(0b110): [T(0b100), T(0b010)]}`, which is emitted. The companion
-        from the single excess node would be `{T(0b001): [T(0b001)]}` —
+        KLine(sig=t(0b110), nodes=[t(0b100), t(0b010), t(0b001)]) has excess
+        t(0b001). Trimming yields the genuine canon
+        `{t(0b110): [t(0b100), t(0b010)]}`, which is emitted. The companion
+        from the single excess node would be `{t(0b001): [t(0b001)]}` —
         identity — and is dropped.
         """
         m = Model(signifier=signifier)
-        candidate = KLine(T(0b110), [T(0b100), T(0b010), T(0b001)])
+        candidate = KLine(t(0b110), [t(0b100), t(0b010), t(0b001)])
         significance = 0xBEEF
 
         results = list(propose_expansions(m, candidate, significance, signifier))
         assert len(results) == 1
         proposal, sig = results[0]
-        assert proposal.signature == T(0b110)
-        assert proposal.nodes == [T(0b100), T(0b010)]
+        assert proposal.signature == t(0b110)
+        assert proposal.nodes == [t(0b100), t(0b010)]
         assert sig == significance
 
     def test_yields_are_kline_int_tuples(self):
         """Every yield is a (KLine, int) tuple."""
         m = Model(signifier=signifier)
         # Genuine canon contributor whose signature overlaps the gap.
-        contributor = KLine(T(0b011), [T(0b001), T(0b010)])
+        contributor = KLine(t(0b011), [t(0b001), t(0b010)])
         m.add_to_frame(contributor)
-        candidate = KLine(T(0b110), [T(0b100)])
+        candidate = KLine(t(0b110), [t(0b100)])
 
         for item in propose_expansions(m, candidate, 42, signifier):
             assert isinstance(item, tuple)
@@ -853,10 +853,10 @@ class TestProposeExpansions:
         collapse `Model.unpack()` to identity.
         """
         m = Model(signifier=signifier)
-        # Genuine canon contributor headed by T(0b100) (overlaps the candidate sig).
-        m.add_to_frame(KLine(T(0b110), [T(0b100), T(0b010)]))
-        # Overfit candidate whose single excess node (T(0b010)) would yield a
-        # self-loop companion {T(0b010): [T(0b010)]}.
-        candidate = KLine(T(0b100), [T(0b110)])
+        # Genuine canon contributor headed by t(0b100) (overlaps the candidate sig).
+        m.add_to_frame(KLine(t(0b110), [t(0b100), t(0b010)]))
+        # Overfit candidate whose single excess node (t(0b010)) would yield a
+        # self-loop companion {t(0b010): [t(0b010)]}.
+        candidate = KLine(t(0b100), [t(0b110)])
         for proposal, _ in propose_expansions(m, candidate, 0, signifier):
             assert proposal.signature not in proposal.nodes

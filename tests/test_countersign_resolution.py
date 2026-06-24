@@ -22,7 +22,7 @@ from tests.conftest import requires_tokenizer_data
 signifier = NLPSignifier()
 
 
-def T(bits: int) -> int:
+def t(bits: int) -> int:
     """Place sig-word bits in the upper 32 bits of a uint64.
 
     signifies() (used by model.where for candidate retrieval) masks off the
@@ -109,12 +109,12 @@ class TestSelfFilterInCandidates:
         a = KAgent(adapter=bus)
 
         # Add a candidate that partially overlaps with query signature
-        candidate = KLine(T(5), [T(10), T(30)])
+        candidate = KLine(t(5), [t(10), t(30)])
         a.rationalise(KValue(candidate, SIG_S4))
 
         # Query overlaps on [10] but not [20] -> should be S2, not S1
-        q = KLine(0, [T(10), T(20)])
-        q.signature = signifier.make_signature([T(10), T(20)])
+        q = KLine(0, [t(10), t(20)])
+        q.signature = signifier.make_signature([t(10), t(20)])
         result = a.rationalise(KValue(q, SIG_S4))
         # S2 should return False (slow path) even though q is in STM
         assert result is False

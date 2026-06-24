@@ -22,7 +22,7 @@ from tests.conftest import requires_tokenizer_data
 signifier = NLPSignifier()
 
 
-def T(bits: int) -> int:
+def t(bits: int) -> int:
     """Place sig-word bits in the upper 32 bits of a uint64.
 
     signifies() (used by model.where for candidate retrieval) masks off the
@@ -195,13 +195,13 @@ class TestNoCrossLessonSpillover:
         try:
             # ── Lesson 1: add a candidate, rationalise a query that routes S2 ──
             # Candidate signature 5 = 0b00101.
-            agent.model.add_to_ltm(KLine(T(5), [T(10), T(30)]))
+            agent.model.add_to_ltm(KLine(t(5), [t(10), t(30)]))
 
             # Query signature 30 = 10 | 20 = 0b11110 — shares bit 2 with the
             # candidate, so Model.where() finds it and routing classifies S2
             # (node 10 overlaps, node 20 doesn't).
-            q = KLine(0, [T(10), T(20)])
-            q.signature = signifier.make_signature([T(10), T(20)])
+            q = KLine(0, [t(10), t(20)])
+            q.signature = signifier.make_signature([t(10), t(20)])
             agent.rationalise(KValue(q, 0))
 
             # The S2 candidate was submitted to the cogitator (not an
@@ -225,7 +225,7 @@ class TestNoCrossLessonSpillover:
             # signatures (5 | 30 = 31 = 0b11111), so it routes S4 (no
             # candidates) — a clean frame event with no S2/S3 cogitation.
             events.clear()
-            agent.rationalise(KValue(KLine(T(64), [T(64)]), 0))
+            agent.rationalise(KValue(KLine(t(64), [t(64)]), 0))
 
             result = agent.cogitate_drain(timeout=5.0)
             assert result is True
