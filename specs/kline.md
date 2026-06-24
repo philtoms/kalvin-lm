@@ -99,9 +99,10 @@ and significance modules consume them.
 
 The following are explicitly **out of scope** for this spec:
 
-- **Significance.** Significance is a computed metric defined in the
-  significance spec. A Kline does not carry significance, compute it,
-  or encode it in its signature.
+- **Significance.** Significance is an assessment carried on a KValue, the
+  unit of exchange (@kvalue spec). A Kline (the objective structure stored in
+  memory) does not carry significance, compute it, or encode it in its
+  signature. Significance is re-derived from structure on retrieval.
 - **Bitwise matching.** AND/OR operations on signatures are model-level
   concerns, not kline operations.
 - **Debug metadata.** Labels, source text, or other diagnostic information

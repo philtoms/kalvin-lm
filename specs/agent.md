@@ -137,6 +137,17 @@ Rationalise(Q):
   └───────────────────────────────────────────────────────────────┘
 ```
 
+`Q` is a **KValue** (@kvalue spec). The pipeline operates on `Q`'s KLine
+(the objective structure): the model stores KLines, candidates are KLines,
+and routing tests node membership on the KLine. `Q.significance` — the
+sender's declared assessment — is carried through as input. How rationalisation
+*consumes* a declared significance is **out of scope** for this spec and is
+deferred (see @kvalue spec §What a KValue is Not); this spec guarantees only
+that it is present and addressable on the inbound KValue.
+
+Rationalisation is the process of integrating a Kline into the
+model. It proceeds in phases with a fast/slow split:
+
 ### Phase 1: Prepare
 
 The kline must arrive with its signature already set (callers compute it
@@ -271,11 +282,20 @@ The Agent publishes events during rationalisation for observers to consume.
 
 ```
 RationaliseEvent:
-  kind:          str       # "ground", "frame", "done"
-  query:         Kline     # The Kline being rationalised
-  proposal:      Kline     # The matching or resulting Kline
-  significance:  int       # Significance value
+  kind:     str       # "ground", "frame", "done"
+  query:    KValue    # the inbound KValue (the sender's declared assessment)
+  proposal: KValue    # Kalvin's assessment of it
 ```
+
+`query` and `proposal` are **KValues** (@kvalue spec), each carrying its own
+significance. There is no top-level significance field: `query.significance`
+is the sender's declared assessment and `proposal.significance` is Kalvin's
+assessment. Consumers that previously read the event significance read
+`event.proposal.significance` (Kalvin's assessment) or
+`event.query.significance` (the sender's declared assessment).
+
+On the fast path, `query` and `proposal` wrap the same immutable KLine
+(`query.kline is proposal.kline`), differing only in significance.
 
 Subscribers receive events synchronously in publication order.
 

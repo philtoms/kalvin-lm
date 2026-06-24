@@ -7,7 +7,7 @@ This document has two sections. **Operating Notes** contains process instruction
 ## Operating Notes
 
 - Commit all work before creating any kb tasks.
-- When creating kb tasks for large features, decompose into discrete tasks with explicit `depends` chains. Each task should cover one coherent piece of work — a single spec, a single module, a single behavioural change. Do not create monolithic tasks that span multiple specs, plans, and implementation modules.
+- When creating kb tasks for large features, decompose into discrete code tasks with explicit `depends` chains. Each task should cover one coherent piece of work — a single module or a single behavioural change. Do not create monolithic tasks that span multiple modules. Cascade work (specs, plans, vision) follows the `docs/cascade-development.md` flow, not kb.
 - Follow the docs/cascade-development.md model strictly.
 - CONTEXT.md is a glossary plus operating notes. Keep the two sections separate. Do not add implementation details, spec content, or code to either section.
 - **Lesson Labelling Convention.** Lessons are identified by stable labels derived from their headings. Whole-number labels (1, 2, 3) indicate distinct conceptual steps. Sub-labels (2a, 2b) indicate lessons semantically related to their parent — refinements, bridges, or remediations of that concept. If a new lesson is logically subsequent but not semantically related, the document is renumbered instead. The curriculum must always read as a logical and temporal narrative for humans.
@@ -82,10 +82,11 @@ _Avoid_: tuning session (ambiguous with training session), auto-train (it's not 
 A value produced by the tokenizer.
 
 **Node**:
-A value occupying a slot in a kline's nodes list. May be a single Token ID or the OR-reduction of two or more token IDs.
+A token value occupying a slot in a kline's nodes list. May be a single Token ID or the OR-reduction of two or more token IDs.
 
 **KLine**:
-The fundamental unit of Kalvin's memory: a **signature** (head position) and a **nodes** list (zero or more **Nodes**). Two kinds: **identity** (signature is a single Token ID, empty nodes list — see Identity) and **relationship** (one or more nodes).
+The fundamental unit of Kalvin's memory: a **signature** and a **nodes** list. Two structural kinds: **identity** (signature is a single Token ID, empty nodes list — see Identity) and **relationship** (one or more nodes). Objective structure only — see **KValue** for the subjective+objective exchange unit.
+_Avoid_: kvalue (a KValue pairs a KLine with significance; a KLine is objective-only)
 
 **Signature**:
 The value occupying a kline's head position. The same kind of value as a Node — a single Token ID (for an identity) or the OR-reduction of its nodes (for a relationship kline).
@@ -101,7 +102,12 @@ The reciprocal kline of a proposal. For `{Q: [V]}`, the reciprocal is `{V: [Q]}`
 _Avoid_: countersignature (the head of any kline — reciprocal or not — is its Signature)
 
 **Significance**:
-A measure of how well a KLine relates to the model's current knowledge — a 64-bit inverted distance, higher meaning greater understanding. Classified into four levels mapping to structural states: S1 / COUNTERSIGNED (fully grounded), S2 / CANONIZED, S3 / CONNOTED or UNDERSIGNED, S4 / IDENTITY (completely novel).
+A participant's subjective assessment of how well a KLine relates to what that participant already knows — classified into four levels: S1 (fully grounded), S2, S3, S4 (completely novel). Every participant assesses independently. Kalvin realises its own assessment by _computing_ it from structure (a 64-bit inverted distance whose bands map onto the structural states); that structural mapping is Kalvin's method, not a definition of the levels. See **Structural State** for the objective structural facts the bands map onto.
+_Avoid_: confidence, score, weight
+
+**KValue**:
+The unit of exchange between participants — a **KLine** (objective structure) paired with a **significance** (the sender's assessment of it). In flight a KValue carries both; in memory only the KLine is stored, and significance is re-derived on retrieval.
+_Avoid_: KLine-with-significance, annotated kline, assessed kline (all describe the wrapping, not the unit)
 
 **Structural State**:
 The structural relationship between a kline's signature and its nodes, implied by the written relational token that produces the kline. A closed set of five states, each produced by compiling a written relational token (`==`, `=`, `>`, `=>`) or, for identity, by the absence of one:
@@ -116,7 +122,7 @@ States describe structure, not operation: no actor operates on a kline; the writ
 _Avoid_: operator (implies an action); COUNTERSIGN / UNDERSIGN / CONNOTATE / CANONIZE as state names (those are the written-token names)
 
 **Identity**:
-A kline that carries no decomposition — either of two forms: empty nodes (`{S: []}`) or self-referential (`{S: [S]}`, whose sole node is its own signature). The self-referential form is identity *by definition*: a value that decomposes into itself carries no further information, and this overrules any CANON classification. Every kline bottoms out at one or more identities.
+A kline that carries no decomposition — either of two forms: empty nodes (`{S: []}`) or self-referential (`{S: [S]}`, whose sole node is its own signature). The self-referential form is identity _by definition_: a value that decomposes into itself carries no further information, and this overrules any CANON classification. Every kline bottoms out at one or more identities.
 _Avoid_: unsigned (implementation term), bare signature (describes the syntax, not the structure)
 
 **STM (Short-Term Memory)**:

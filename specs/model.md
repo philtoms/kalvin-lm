@@ -648,6 +648,25 @@ D_MAX  = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance and maximum significance
 MASK64 = 0xFFFF_FFFF_FFFF_FFFF   # 64-bit mask for bitwise inversion
 ```
 
+### Band-representative Values
+
+Four fixed significance values — one per band — used by producers that
+assert a band rather than compute a distance (the compiler, the countersign
+reciprocal). Each is the maximal significance of its band:
+
+| Band | Value         | Definition                       |
+| ---- | ------------- | -------------------------------- |
+| S1   | `D_MAX`       | distance 0 (= the S1\|S2 boundary) |
+| S2   | `D_MAX - 1`   | distance 1                        |
+| S3   | `D_MAX - 101` | distance 101 (first S3 distance)  |
+| S4   | `0`           | the S4 sentinel                   |
+
+These are distinct from the boundaries (which classify a *computed* value);
+they are the canonical integers a producer stamps when asserting a band. They
+are consumed by the @kvalue spec as the significance carried on an exchanged
+KValue. Computed values (from `expand()`) may be any value within a band, not
+only the representative.
+
 ### Significance Inversion
 
 ```
