@@ -10,11 +10,15 @@ from __future__ import annotations
 import threading
 from unittest.mock import MagicMock
 
+import pytest
+
 from kalvin.events import RationaliseEvent
+from kalvin.expand import SIG_S1
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 from kalvin.model import Model
 from tests.conftest import requires_tokenizer_data
-from training.harness.adapter import KAgentAdapter
+from training.harness.adapter import KAgentAdapter, _materialise_kvalue
 from training.harness.bus import MessageBus
 from training.harness.constants import TRAINEE_ROLE
 from training.harness.message import Message
@@ -57,6 +61,57 @@ class BusCapture:
         return [m for m in self.messages if m.action == action]
 
 
+# ── _materialise_kvalue unit tests ────────────────────────────────────────
+
+
+class TestMaterialiseKValue:
+    """``_materialise_kvalue`` accepts a live KValue, a wire dict, and a
+    legacy KLine (wrapped at SIG_S1); raises TypeError otherwise.
+
+    These exercise the materialisation boundary directly and require no
+    tokenizer data, so they run on a fresh clone.
+    """
+
+    def test_live_kvalue_passthrough(self) -> None:
+        """A live KValue is returned unchanged (in-process auto-countersign)."""
+        kv = KValue(KLine(0xABCD, [0x1234]), SIG_S1)
+        result = _materialise_kvalue(kv)
+        assert result is kv
+
+    def test_wire_dict_construction(self) -> None:
+        """A wire dict {signature, nodes, significance} builds a KValue."""
+        sig = 0xCAFEBABE
+        wire = {"signature": 0xABCD, "nodes": [0x1234, 0x5678], "significance": sig}
+        result = _materialise_kvalue(wire)
+        assert isinstance(result, KValue)
+        assert result.kline == KLine(0xABCD, [0x1234, 0x5678])
+        assert result.significance == sig
+
+    def test_wire_dict_missing_significance_raises(self) -> None:
+        """A wire dict without 'significance' raises TypeError (fail-loud).
+
+        This is the legacy two-key wire shape ``{signature, nodes}`` — now
+        malformed because significance rides on the KValue (KE-3).
+        """
+        wire = {"signature": 0xABCD, "nodes": [0x1234]}
+        with pytest.raises(TypeError):
+            _materialise_kvalue(wire)
+
+    def test_legacy_kline_wrapped_at_s1(self) -> None:
+        """A legacy bare KLine is wrapped at SIG_S1 (KP-2: countersign is S1)."""
+        kline = KLine(0xABCD, [0x1234])
+        result = _materialise_kvalue(kline)
+        assert isinstance(result, KValue)
+        assert result.kline is kline
+        assert result.significance == SIG_S1
+
+    def test_malformed_input_raises_typeerror(self) -> None:
+        """Any other type raises TypeError (fail-loud)."""
+        for bad in (42, "not a kvalue", None, [1, 2, 3]):
+            with pytest.raises(TypeError):
+                _materialise_kvalue(bad)
+
+
 # ── HRNS-7: Submit compiles and submits ──────────────────────────────────
 
 
@@ -78,8 +133,9 @@ class TestHRNS7SubmitCompilesAndSubmits:
         # compile_source("MHALL = SVO") produces multiple entries
         assert kagent.rationalise.call_count > 0, "rationalise should be called at least once"
 
+    @requires_tokenizer_data
     def test_submit_passes_compiled_entries(self) -> None:
-        """Each call to rationalise receives a CompiledEntry (KLine subclass)."""
+        """Each call to rationalise receives a KValue (compile_source returns KValues)."""
         bus = MessageBus()
         BusCapture(bus)
         kagent = FakeKAgent()
@@ -91,7 +147,46 @@ class TestHRNS7SubmitCompilesAndSubmits:
 
         for call in kagent.rationalise.call_args_list:
             entry = call[0][0]
-            assert isinstance(entry, KLine), f"Expected KLine, got {type(entry)}"
+            assert isinstance(entry, KValue), f"Expected KValue, got {type(entry)}"
+
+    def test_submit_passes_kvalue_to_rationalise(self, monkeypatch) -> None:
+        """rationalise receives a KValue; sender-map key uses entry.kline.
+
+        compile_source is patched so this runs without tokenizer data.
+        Verifies the bus-side KValue boundary: submit consumes list[KValue]
+        and forwards the KValue (not the bare KLine) to rationalise.
+        """
+        import training.harness.adapter as adapter_mod
+
+        kline_a = KLine(0xAA, [0x11])
+        kline_b = KLine(0xBB, [0x22])
+        fake_entries = [KValue(kline_a, SIG_S1), KValue(kline_b, SIG_S1)]
+        monkeypatch.setattr(adapter_mod, "compile_source", lambda *a, **k: fake_entries)
+
+        bus = MessageBus()
+        BusCapture(bus)
+        kagent = FakeKAgent()
+        adapter = KAgentAdapter(bus, kagent=kagent)
+
+        adapter.on_message(
+            Message(
+                role=TRAINEE_ROLE,
+                action="submit",
+                message="irrelevant; patched",
+                sender="trainer",
+            )
+        )
+
+        assert kagent.rationalise.call_count == 2
+        for call in kagent.rationalise.call_args_list:
+            value = call[0][0]
+            assert isinstance(value, KValue), f"Expected KValue, got {type(value)}"
+
+        # Sender-map key built from entry.kline (signature, frozen nodes).
+        key_a = (kline_a.signature, tuple(kline_a.nodes))
+        key_b = (kline_b.signature, tuple(kline_b.nodes))
+        assert adapter._sender_map[key_a] == "trainer"
+        assert adapter._sender_map[key_b] == "trainer"
 
 
 # ── HRNS-8: Compilation error response ──────────────────────────────────
@@ -153,8 +248,8 @@ class TestHRNS9SenderMapResponseRouting:
         assert kagent.rationalise.call_count > 0
         first_entry = kagent.rationalise.call_args_list[0][0][0]
 
-        # Simulate KAgent callback for this entry
-        event = RationaliseEvent("frame", first_entry, first_entry, 0)
+        # Simulate KAgent callback for this entry (query/proposal are KValues).
+        event = RationaliseEvent("frame", first_entry, first_entry)
         adapter.on_event(event)
 
         # Response should be routed to "trainer"
@@ -174,7 +269,7 @@ class TestHRNS9SenderMapResponseRouting:
         )
 
         first_entry = kagent.rationalise.call_args_list[0][0][0]
-        key = (first_entry.signature, tuple(first_entry.nodes))
+        key = (first_entry.kline.signature, tuple(first_entry.kline.nodes))
         assert adapter._sender_map[key] == "trainer"
 
     def test_different_senders_tracked_separately(self) -> None:
@@ -197,10 +292,10 @@ class TestHRNS9SenderMapResponseRouting:
         )
         entry_x = kagent.rationalise.call_args_list[0][0][0]
 
-        # Callback for entry_a → trainer
-        adapter.on_event(RationaliseEvent("frame", entry_a, entry_a, 0))
+        # Callback for entry_a → trainer (query/proposal are KValues)
+        adapter.on_event(RationaliseEvent("frame", entry_a, entry_a))
         # Callback for entry_x → ui
-        adapter.on_event(RationaliseEvent("frame", entry_x, entry_x, 0))
+        adapter.on_event(RationaliseEvent("frame", entry_x, entry_x))
 
         trainer_msgs = capture.for_role("trainer")
         ui_msgs = capture.for_role("ui")
@@ -215,8 +310,30 @@ class TestHRNS9SenderMapResponseRouting:
 class TestHRNS10CountersignAction:
     """HRNS-10: KAgent adapter handles countersign action."""
 
+    def test_countersign_live_kvalue(self) -> None:
+        """A live KValue payload is passed through unchanged to countersign.
+
+        This is the in-process auto-countersign path (the reactor posts the
+        proposal KValue directly on the bus). The KValue must arrive at
+        ``countersign`` as the same object — no wrapping or reconstruction.
+        """
+        bus = MessageBus()
+        kagent = FakeKAgent()
+        adapter = KAgentAdapter(bus, kagent=kagent)
+
+        kv = KValue(KLine(0xABCD, [0x1234]), SIG_S1)
+        adapter.on_message(
+            Message(role=TRAINEE_ROLE, action="countersign", message=kv, sender="trainer")
+        )
+
+        kagent.countersign.assert_called_once_with(kv)
+
     def test_countersign_action(self) -> None:
-        """Countersign message triggers kagent.countersign with the kline."""
+        """Countersign message triggers kagent.countersign with the payload.
+
+        A legacy bare KLine is wrapped at SIG_S1 (KP-2: countersign is an S1
+        ratification) before being handed to ``countersign`` as a KValue.
+        """
         bus = MessageBus()
         kagent = FakeKAgent()
         adapter = KAgentAdapter(bus, kagent=kagent)
@@ -226,7 +343,11 @@ class TestHRNS10CountersignAction:
             Message(role=TRAINEE_ROLE, action="countersign", message=kline, sender="trainer")
         )
 
-        kagent.countersign.assert_called_once_with(kline)
+        kagent.countersign.assert_called_once()
+        call_arg = kagent.countersign.call_args[0][0]
+        assert isinstance(call_arg, KValue), f"Expected KValue, got {type(call_arg)}"
+        assert call_arg.kline == kline
+        assert call_arg.significance == SIG_S1
 
     def test_countersign_does_not_rationalise(self) -> None:
         """Countersign action does not call rationalise."""
@@ -242,20 +363,21 @@ class TestHRNS10CountersignAction:
         kagent.rationalise.assert_not_called()
 
     def test_countersign_materialises_wire_dict(self) -> None:
-        """A wire-dict payload is materialised to a KLine before countersign.
+        """A wire-dict payload is materialised to a KValue before countersign.
 
-        Regression guard: a countersign frame that traversed the
-        WebSocket arrives as a plain dict (the canonical KLine wire shape
-        produced by the harness's outbound encoder). Without materialisation
-        ``KAgent.countersign`` does ``make_signature(kline.nodes)`` and raises
-        ``AttributeError: 'dict' object has no attribute 'nodes'``, killing the
-        bus-dispatch thread and stalling the training run.
+        Regression guard: a countersign frame that traversed the WebSocket
+        arrives as a plain dict (the canonical KValue wire shape produced by
+        the harness's outbound encoder). Without materialisation
+        ``KAgent.countersign`` would touch ``.kline`` on a ``dict`` and raise
+        ``AttributeError``, killing the bus-dispatch thread and stalling the
+        training run.
         """
         bus = MessageBus()
         kagent = FakeKAgent()
         adapter = KAgentAdapter(bus, kagent=kagent)
 
-        wire = {"signature": 0xABCD, "nodes": [0x1234, 0x5678]}
+        sig = 0xCAFEBABE
+        wire = {"signature": 0xABCD, "nodes": [0x1234, 0x5678], "significance": sig}
         adapter.on_message(
             Message(
                 role=TRAINEE_ROLE,
@@ -265,8 +387,12 @@ class TestHRNS10CountersignAction:
             )
         )
 
+        kagent.countersign.assert_called_once()
+        call_arg = kagent.countersign.call_args[0][0]
+        assert isinstance(call_arg, KValue)
         # Compared via KLine.__eq__ (signature + nodes).
-        kagent.countersign.assert_called_once_with(KLine(0xABCD, [0x1234, 0x5678]))
+        assert call_arg.kline == KLine(0xABCD, [0x1234, 0x5678])
+        assert call_arg.significance == sig
         # No AttributeError raised — the crash is gone.
 
 
@@ -383,7 +509,8 @@ class TestOrphanEvent:
 
         # Simulate a callback with no matching sender
         orphan_kline = KLine(0xDEAD, [0xBEEF])
-        event = RationaliseEvent("done", orphan_kline, orphan_kline, 0)
+        orphan_value = KValue(orphan_kline, SIG_S1)
+        event = RationaliseEvent("done", orphan_value, orphan_value)
         adapter.on_event(event)
 
         # No message should be sent to the bus
@@ -507,8 +634,10 @@ class TestLoadAction:
         kagent = KAgent(adapter=adapter)
         adapter.bind(kagent)
 
-        # Teach the agent something so the model is non-empty
-        kagent.rationalise(KLine(0xFF, []))
+        # Teach the agent something so the model is non-empty.
+        # rationalise takes a KValue (KB-354); an empty-nodes KLine is an
+        # identity/S4 entry — wrap it at SIG_S1.
+        kagent.rationalise(KValue(KLine(0xFF, []), SIG_S1))
         old_model = kagent._model
         assert len(old_model) > 0
 

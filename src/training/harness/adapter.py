@@ -8,6 +8,32 @@ The adapter implements the :class:`Participant` protocol (to receive bus
 messages) and provides ``on_event()`` so KAgent can call it directly as
 its adapter callback (replacing the internal EventBus).
 
+KValue exchange
+---------------
+The bus exchanges **KValues** — a KLine paired with a sender's significance
+assessment (@kvalue spec §Definition) — not bare KLines:
+
+- ``submit`` compiles KScript source via :func:`compile_source` (which now
+  returns ``list[KValue]``) and forwards each KValue to
+  :meth:`KAgent.rationalise`. The Model API stays KLine-based (plan D2):
+  STM pre-registration and the sender-map key read ``entry.kline``.
+- ``countersign`` materialises the inbound bus payload to a :class:`KValue`
+  (see :func:`_materialise_kvalue`) and forwards it to
+  :meth:`KAgent.countersign`.
+- ``on_event`` reads the sender-map key off ``event.query.kline``. The
+  event's ``query``/``proposal`` are KValues that carry their own
+  significance (@kvalue spec KE-3); there is no top-level significance field.
+
+Countersign bus payload contract (shared with the Reactor, KB-356)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The ``countersign`` action's payload may arrive in three forms (see
+:func:`_materialise_kvalue`): a live :class:`KValue` (the in-process
+auto-countersign path), a wire dict ``{signature, nodes, significance}``,
+or a legacy bare :class:`KLine` (wrapped at :data:`SIG_S1`, per KP-2:
+countersign is an S1 ratification). Significance rides on the KValue;
+recovering a significance lost at a future remote (WebSocket) boundary is
+explicitly **out of scope** (@kvalue spec §What a KValue is Not).
+
 Thread model
 ------------
 ``on_message`` executes on the bus dispatch thread.
@@ -18,7 +44,7 @@ Model access: :class:`~kalvin.model.Model` and :class:`~kalvin.stm.STM` are
 internally guarded by re-entrant locks, so any model read performed
 here in ``on_event`` — or by any other subscriber — observes a consistent,
 atomic snapshot and needs no adapter-level locking. (The rationalisation
-*event count* still depends on the async Cogitator's processing timing but 
+*event count* still depends on the async Cogitator's processing timing but
 every individual model operation is atomic and deadlock-free.)
 
 Sender map: the sender map (a plain dict) is written on the bus thread and read
@@ -34,7 +60,9 @@ from typing import TYPE_CHECKING, Protocol
 
 from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.events import RationaliseEvent
+from kalvin.expand import SIG_S1
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 from kalvin.paths import agent_bin
 from ks.compiler import compile_source
 from training.harness.bus import MessageBus
@@ -48,8 +76,8 @@ if TYPE_CHECKING:
 # Protocol for the kagent parameter — avoids importing KAgent (circular dep)
 # while giving mypy the methods we actually call.
 class _KAgentLike(Protocol):
-    def rationalise(self, kline: KLine) -> bool: ...
-    def countersign(self, kline: KLine) -> bool: ...
+    def rationalise(self, value: KValue) -> bool: ...
+    def countersign(self, value: KValue) -> bool: ...
     def save(self, path, format=None) -> None: ...
     def codec(self) -> object: ...
 
@@ -60,30 +88,52 @@ logger = logging.getLogger(__name__)
 EntryKey = tuple[int, tuple[int, ...]]
 
 
-def _materialise_kline(obj: object) -> KLine:
-    """Materialise an inbound countersign payload to a :class:`KLine`.
+def _materialise_kvalue(obj: object) -> KValue:
+    """Materialise an inbound countersign payload to a :class:`KValue`.
 
-    This is the inbound mirror of ``_domain_json_default``
-    (``training.harness.protocol``): a countersign frame that traversed the
-    WebSocket arrives as a plain ``dict`` — the canonical KLine wire shape
-    ``{"signature": int, "nodes": list[int]}`` produced by the harness's
-    outbound encoder. ``KAgent.countersign`` reads ``.nodes`` and
-    ``.signature``, so the payload must be reified to a real ``KLine`` at
-    this wire boundary (the action-aware inbound boundary).
+    This is the inbound mirror of the harness's outbound encoder: a
+    countersign frame that traversed the WebSocket arrives as a plain
+    ``dict`` — the canonical KValue wire shape
+    ``{"signature": int, "nodes": list[int], "significance": int}``.
 
-    A ``KLine`` already passed in is returned unchanged, preserving the
-    auto-countersign *direct-bus* path (``Reactor._auto_countersign`` sends
-    live ``KLine`` objects on the bus without a WebSocket round-trip).
+    Three input forms are accepted (see the §Countersign Bus Payload Contract
+    in the module docstring):
+
+    - **Live :class:`KValue`** — returned unchanged. This is the in-process
+      production path: the reactor's auto-countersign posts the proposal
+      KValue directly on the bus with no WebSocket round-trip.
+    - **Wire dict** ``{"signature", "nodes", "significance"}`` — built into
+      ``KValue(KLine(obj["signature"], obj["nodes"]), obj["significance"])``.
+      A dict missing ``significance`` raises ``TypeError`` — fail-loud,
+      mirroring the existing philosophy.
+    - **Legacy :class:`KLine`** — wrapped at :data:`SIG_S1`
+      (``KValue(kline, SIG_S1)``). Per @kvalue spec KP-2 the act of
+      countersigning is an S1 ratification. Preserves backwards compatibility
+      with any caller still sending a bare KLine.
 
     Any other type raises ``TypeError`` so malformed payloads fail loudly
-    rather than being coerced into something meaningless — mirroring
-    ``_domain_json_default``'s philosophy.
+    rather than being coerced into something meaningless.
+
+    .. note::
+       A future *remote* supervisor that loses significance at the WebSocket
+       boundary is explicitly **out of scope** — no significance recovery is
+       attempted here. Significance rides on the KValue (@kvalue spec KE-3);
+       today every participant that exchanges KValues is embedded in-process.
     """
-    if isinstance(obj, KLine):
+    if isinstance(obj, KValue):
         return obj
+    if isinstance(obj, KLine):
+        return KValue(obj, SIG_S1)
     if isinstance(obj, dict):
-        return KLine(signature=obj["signature"], nodes=obj["nodes"])
-    raise TypeError(f"countersign payload must be a KLine or wire dict, got {type(obj).__name__}")
+        if "significance" not in obj:
+            raise TypeError(
+                "countersign wire dict missing required 'significance' key; "
+                f"got keys {sorted(obj.keys())!r}"
+            )
+        return KValue(KLine(obj["signature"], obj["nodes"]), obj["significance"])
+    raise TypeError(
+        f"countersign payload must be a KValue, KLine, or wire dict, got {type(obj).__name__}"
+    )
 
 
 class KAgentAdapter:
@@ -161,10 +211,10 @@ class KAgentAdapter:
             entry in the sender map, and call ``kagent.rationalise(entry)``
             for each compiled entry.
         countersign:
-            Call ``kagent.countersign(kline)``. The KLine in ``msg.message``
-            may arrive as a wire dict over the WebSocket; it is materialised
-            to a real ``KLine`` at this inbound boundary (see
-            :func:`_materialise_kline`).
+            Call ``kagent.countersign(kvalue)``. The payload in ``msg.message``
+            is materialised to a :class:`KValue` at this inbound boundary
+            (see :func:`_materialise_kvalue`) — it may arrive as a live
+            KValue, a wire dict, or a legacy bare KLine.
         save:
             Persist Kalvin's model to disk via agent_codec.
         load:
@@ -193,10 +243,15 @@ class KAgentAdapter:
         routed to the original sender (looked up in the sender map) and
         sent via the bus.
 
+        The event's ``query`` is a :class:`KValue` (KB-354); the sender-map
+        key is read off ``event.query.kline``. There is no top-level
+        ``significance`` field on the event (@kvalue spec KE-3) —
+        significance rides on the KValue.
+
         Orphan events (no sender in the map, e.g. "done" idle events from
         the Cogitator) are silently dropped.
         """
-        key: EntryKey = (event.query.signature, tuple(event.query.nodes))
+        key: EntryKey = (event.query.kline.signature, tuple(event.query.kline.nodes))
         sender = self._sender_map.get(key)
 
         if sender is None:
@@ -229,7 +284,9 @@ class KAgentAdapter:
             return
 
         try:
-            entries = compile_source(msg.message, tokenizer=self._tokenizer, signifier=self._signifier)
+            entries = compile_source(
+                msg.message, tokenizer=self._tokenizer, signifier=self._signifier
+            )
         except Exception as exc:
             # Compilation error (LexerError, ParseError, etc.) — report back.
             logger.error("Compilation error: %s", exc)
@@ -244,35 +301,35 @@ class KAgentAdapter:
         logger.info("Submitting %d compiled entries to KAgent", len(entries))
         # Pre-register all entries in STM so countersign pairs (e.g. from
         # `M == H` compiling to {M: H} and {H: M}) can find each other
-        # during rationalise().
+        # during rationalise(). The Model API stays KLine-based (D2): pass
+        # ``entry.kline`` at the boundary, never the KValue.
         if hasattr(self._kagent, "model"):
             for entry in entries:
                 self._kagent.model.add_to_stm(entry.kline)
         for entry in entries:
             key: EntryKey = (entry.kline.signature, tuple(entry.kline.nodes))
             self._sender_map[key] = msg.sender or ""
-            # rationalise still takes a KLine until KB-354; unwrap at the boundary.
-            self._kagent.rationalise(entry.kline)  # fire-and-forget; events come via on_event
+            # rationalise takes a KValue (KB-354); the agent reads value.kline.
+            self._kagent.rationalise(entry)  # fire-and-forget; events come via on_event
 
     def _handle_countersign(self, msg: Message) -> None:
         """Forward a countersign request to the KAgent.
 
-        The payload in ``msg.message`` may be a live :class:`KLine` (the
-        auto-countersign *direct-bus* path, where ``Reactor._auto_countersign``
-        posts real ``KLine`` objects on the bus) or a canonical wire dict
-        ``{"signature", "nodes"}`` — the inbound shape produced by the
-        harness's outbound encoder once a frame traverses the WebSocket. It is
-        materialised to a real ``KLine`` via :func:`_materialise_kline` before
-        being handed to :meth:`KAgent.countersign`, which reads ``.nodes`` and
-        ``.signature``.
+        The payload in ``msg.message`` is materialised to a :class:`KValue`
+        via :func:`_materialise_kvalue` and handed to
+        :meth:`KAgent.countersign`, which consumes a KValue. Three payload
+        forms are accepted (see :func:`_materialise_kvalue`): a live
+        :class:`KValue` (the in-process auto-countersign path), a canonical
+        wire dict ``{"signature", "nodes", "significance"}``, or a legacy
+        bare :class:`KLine` (wrapped at :data:`SIG_S1`).
         """
         if self._kagent is None:
             logger.error("No KAgent bound; cannot countersign")
             return
 
-        kline = _materialise_kline(msg.message)
-        logger.info("Countersign: %s", kline)
-        self._kagent.countersign(kline)
+        kvalue = _materialise_kvalue(msg.message)
+        logger.info("Countersign: %s", kvalue)
+        self._kagent.countersign(kvalue)
 
     def _handle_save(self, msg: Message) -> None:
         """Persist Kalvin's model to disk via agent_codec.
