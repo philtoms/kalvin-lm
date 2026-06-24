@@ -16,7 +16,7 @@ Encoding rules (spec §11):
     packed signature never heads an IDENTITY kline (CONTEXT.md
     "Identity"). Packed signatures are opaque per §11.5.
 
-Significance levels (compile-time intent):
+Significance levels (compile-time intent) — see kalvin.expand.band_significance:
     COUNTERSIGNED → S1    UNDERSIGNED → S3    CANONIZED → S2
     CONNOTED → S3      IDENTITY → S4
 
@@ -33,16 +33,6 @@ from kalvin.signifier import NLPSignifier
 from .ast_emitter import SymbolicEntry
 
 __all__ = ["TokenEncoder"]
-
-
-# Significance level mapping (compile-time intent)
-_SIG_LEVELS: dict[str, str] = {
-    "COUNTERSIGNED": "S1",
-    "UNDERSIGNED": "S3",
-    "CANONIZED": "S2",
-    "CONNOTED": "S3",
-    "IDENTITY": "S4",
-}
 
 
 class TokenEncoder:

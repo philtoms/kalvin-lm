@@ -8,8 +8,14 @@ from kalvin.expand import (
     MASK64,
     MAX_HOP,
     S2_S3_DISTANCE,
+    SIG_S1,
+    SIG_S2,
+    SIG_S3,
+    SIG_S4,
+    band_significance,
     boundaries,
     classify,
+    derive_significance,
     edge_hops,
     expand,
     is_canon,
@@ -36,6 +42,65 @@ def T(bits: int) -> int:
     that must participate in significance matching are shifted up here.
     """
     return bits << 32
+
+
+class TestBandRepresentativeConstants:
+    """Verify the four band-representative constants match @model spec."""
+
+    def test_constants_are_spec_values(self):
+        """SIG_S1..SIG_S4 are D_MAX, D_MAX-1, D_MAX-101, 0 (@model spec)."""
+        assert SIG_S1 == D_MAX
+        assert SIG_S2 == D_MAX - 1
+        assert SIG_S3 == D_MAX - 101
+        assert SIG_S4 == 0
+
+    def test_constants_are_inverted_distances(self):
+        """Each representative equals (~distance) & MASK64 for its distance.
+
+        Confirms significance inversion (@model spec §Significance Inversion):
+        distance 0 → SIG_S1, distance 1 → SIG_S2, distance 101 → SIG_S3.
+        """
+        assert (~0) & MASK64 == SIG_S1
+        assert (~1) & MASK64 == SIG_S2
+        assert (~101) & MASK64 == SIG_S3
+
+    def test_strict_ordering(self):
+        """Unsigned ordering holds: SIG_S1 > SIG_S2 > SIG_S3 > SIG_S4."""
+        assert SIG_S1 > SIG_S2 > SIG_S3 > SIG_S4
+
+    def test_all_valid_uint64(self):
+        """All band-representative values are non-negative uint64."""
+        for val in (SIG_S1, SIG_S2, SIG_S3, SIG_S4):
+            assert 0 <= val <= MASK64
+
+
+class TestBandSignificance:
+    """Verify band_significance() maps structural states to band constants (KP-1)."""
+
+    def test_countersigned_is_s1(self):
+        """COUNTERSIGNED → SIG_S1."""
+        assert band_significance("COUNTERSIGNED") == SIG_S1
+
+    def test_canonized_is_s2(self):
+        """CANONIZED → SIG_S2."""
+        assert band_significance("CANONIZED") == SIG_S2
+
+    def test_connoted_is_s3(self):
+        """CONNOTED → SIG_S3."""
+        assert band_significance("CONNOTED") == SIG_S3
+
+    def test_undersigned_is_s3(self):
+        """UNDERSIGNED → SIG_S3 (same band as CONNOTED)."""
+        assert band_significance("UNDERSIGNED") == SIG_S3
+
+    def test_identity_is_s4(self):
+        """IDENTITY → SIG_S4."""
+        assert band_significance("IDENTITY") == SIG_S4
+
+    def test_unknown_op_defaults_to_s4(self):
+        """Unknown op → SIG_S4 (the safe floor)."""
+        assert band_significance("NOPE") == SIG_S4
+        assert band_significance("") == SIG_S4
 
 
 class TestIsCanon:
@@ -489,6 +554,91 @@ class TestIsCountersigned:
         m.add_to_frame(query)
         m.add_to_frame(countersigner)
         assert is_countersigned(m, query, signifier) is False
+
+
+class TestDeriveSignificance:
+    """Re-derivation cascade — KV-8 through KV-12 (@kvalue spec §Retrieval)."""
+
+    def test_kv8_identity_empty_nodes(self):
+        """KV-8: empty-nodes identity → SIG_S4."""
+        kl = KLine(42, [])
+        assert derive_significance(kl, make_model(), signifier) == SIG_S4
+
+    def test_kv8_identity_self_referential(self):
+        """KV-8: self-referential {S: [S]} → SIG_S4; overrules canon check."""
+        kl = KLine(42, [42])
+        # is_identity is checked first, so this resolves to S4 even though it
+        # is not canonical. make_signature([42]) == 42 == sig, but the
+        # self-referential form is identity, not canon.
+        assert derive_significance(kl, make_model(), signifier) == SIG_S4
+
+    def test_kv9_canonical_is_s2(self):
+        """KV-9: genuine canon without a reciprocal → SIG_S2.
+
+        This test PROVES is_countersigned (not is_s1) drives the S1 branch:
+        is_s1 = is_canon OR is_countersigned would catch this canonical kline
+        and wrongly return SIG_S1.
+        """
+        m = make_model()
+        # sig 0b110 == make_signature([0b100, 0b010]); non-self-referential → canon.
+        kl = KLine(0b110, [0b100, 0b010])
+        assert derive_significance(kl, m, signifier) == SIG_S2
+
+    def test_kv10_countersigned_is_s1(self):
+        """KV-10: kline whose reciprocal countersigner is present → SIG_S1."""
+        m = make_model()
+        query = KLine(5, [10, 20])  # sig=5, make_sig([10,20])=30 ≠ 5 → not canon
+        # make_sig([10, 20]) = 30 (OR-reduction); one node = query.signature = 5.
+        countersigner = KLine(30, [5])
+        m.add_to_frame(query)
+        m.add_to_frame(countersigner)
+        assert derive_significance(query, m, signifier) == SIG_S1
+
+    def test_kv10_model_state_dependence(self):
+        """KV-10: the SAME kline is S1 with the reciprocal, S3 without it.
+
+        Significance is re-made, not recorded: removing the reciprocal
+        countersigner from the model downgrades the re-derived significance.
+        """
+        query = KLine(5, [10, 20])
+        countersigner = KLine(30, [5])
+        m = make_model()
+        m.add_to_frame(query)
+        m.add_to_frame(countersigner)
+        assert derive_significance(query, m, signifier) == SIG_S1
+        # Fresh empty model — no reciprocal present.
+        assert derive_significance(query, make_model(), signifier) == SIG_S3
+
+    def test_kv11_connoted_is_s3(self):
+        """KV-11: not identity, not canon, not countersigned → SIG_S3."""
+        # sig=5, make_sig([10])=10 ≠ 5 → not canon; no reciprocal → not countersigned.
+        kl = KLine(5, [10])
+        assert derive_significance(kl, make_model(), signifier) == SIG_S3
+
+    @pytest.mark.parametrize(
+        ("kline", "reciprocals"),
+        [
+            (KLine(42, []), []),  # identity → S4
+            (KLine(0b110, [0b100, 0b010]), []),  # canon → S2
+            (KLine(5, [10, 20]), [KLine(30, [5])]),  # countersigned → S1
+            (KLine(5, [10]), []),  # connoted → S3
+        ],
+    )
+    def test_kv12_never_unset(self, kline, reciprocals):
+        """KV-12: every structural category resolves to a member of the band set."""
+        m = make_model()
+        m.add_to_frame(kline)
+        for r in reciprocals:
+            m.add_to_frame(r)
+        result = derive_significance(kline, m, signifier)
+        bands = {SIG_S1, SIG_S2, SIG_S3, SIG_S4}
+        assert result in bands
+        assert 0 <= result <= MASK64  # non-negative uint64
+
+    def test_kv12_band_ordering_is_arithmetic(self):
+        """KV-12: the four bands are arithmetically ordered S1 > S2 > S3 > S4."""
+        # Unsigned comparison is the basis for significance ranking.
+        assert SIG_S1 > SIG_S2 > SIG_S3 > SIG_S4
 
 
 class TestPromoteParticipating:

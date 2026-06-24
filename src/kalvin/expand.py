@@ -10,16 +10,23 @@ pipeline:
      significance values to S1/S2/S3/S4 bands.
   3. **Expansion proposals** — propose_expansions() classifies misfits and
      generates (proposal, significance) tuples for the caller to dispatch.
-  4. **Structural grounding** — is_s1(), is_countersigned() verify S1 status.
+  4. **Structural grounding** — is_s1(), is_countersigned() verify S1 status;
+     derive_significance() re-derives a stored KLine's band from its current
+     structural relationship to the model.
 
 The module reads from the Model (storage) but is a separate responsibility:
 Model indexes and retrieves; Expand computes how far apart two KLines are.
 
 Module-level constants and types:
-  D_MAX, MASK64, MAX_HOP, _S3_BIAS, QueryCandidate
+  D_MAX, MASK64, MAX_HOP, _S3_BIAS, QueryCandidate,
+  SIG_S1, SIG_S2, SIG_S3, SIG_S4 (band-representative significance)
 
 Band-anchored normalization:
   normalise_significance, S2_TOP, S2_FLOOR, S3_K
+
+Producer significance:
+  band_significance — op → band-representative integer (KP-1)
+  derive_significance — re-derive a stored KLine's significance (KV-8..KV-12)
 """
 
 from __future__ import annotations
@@ -55,6 +62,40 @@ MAX_HOP = 100
 # S2|S3 boundary — S2 direct hops stay below this threshold; S3 connotation
 # hops start at S2_S3_DISTANCE + 1 = 101.
 S2_S3_DISTANCE = 100
+
+# Band-representative significance values — the maximal significance of each
+# band. Producers assert a band by stamping its representative; computed
+# values from expand() may be any value within a band, not only the
+# representative. Single source of truth per @model spec §Band-representative
+# Values.
+SIG_S1 = D_MAX  # distance 0   (= the S1|S2 boundary)
+SIG_S2 = D_MAX - 1  # distance 1
+SIG_S3 = D_MAX - 101  # distance 101  (first S3 distance: S2_S3_DISTANCE + _S3_BIAS)
+SIG_S4 = 0  # the S4 sentinel
+
+# Compile-time structural state (@CONTEXT.md §Structural State) → band-
+# representative significance. Producers that assert a band rather than compute
+# a distance (the compiler, per @kvalue spec KP-1) look up here. CONNOTED and
+# UNDERSIGNED both map to SIG_S3; unknown ops default to SIG_S4.
+_OP_TO_SIG: dict[str, int] = {
+    "COUNTERSIGNED": SIG_S1,
+    "CANONIZED": SIG_S2,
+    "CONNOTED": SIG_S3,
+    "UNDERSIGNED": SIG_S3,
+    "IDENTITY": SIG_S4,
+}
+
+
+def band_significance(op: str) -> int:
+    """Compile-time structural state → band-representative significance.
+
+    Maps the closed set of structural states (@CONTEXT.md §Structural State)
+    to the maximal significance of each band. Used by producers that assert a
+    band rather than compute a distance (the compiler, per @kvalue spec KP-1).
+    Unknown ops default to ``SIG_S4``.
+    """
+    return _OP_TO_SIG.get(op, SIG_S4)
+
 
 # Band-anchored normalization constants. Each band owns a fixed
 # sub-range of [0.0, 1.0]; S3 is asymptotic, mapping its unbounded distance
@@ -216,6 +257,41 @@ def is_countersigned(model: Model, kline: KLine, signifier: KSignifier) -> bool:
         if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
             return True
     return False
+
+
+def derive_significance(kline: KLine, model: Model, signifier: KSignifier) -> int:
+    """Re-derive a stored KLine's significance from its current structural
+    relationship to the model (@kvalue spec §Retrieval; criteria KV-8..KV-12).
+
+    Significance is re-made, not recorded: countersigned detection depends on
+    model state (the reciprocal must be present), so a retrieved kline's
+    significance reflects the model *as it currently is*.
+
+    Cascade order (the first match wins):
+
+      1. is_identity(kline)            → SIG_S4   (KV-8)
+      2. is_countersigned(model, ...)  → SIG_S1   (KV-10 — model-state-dependent upgrade)
+      3. is_canon(kline, signifier)    → SIG_S2   (KV-9 — structural, never changes)
+      4. otherwise                     → SIG_S3   (KV-11 — CONNOTED / UNDERSIGNED)
+
+    Only countersigned status (which is model-dependent) can upgrade a kline
+    from S2 to S1. Canonical status is structural and invariant, so a canonical
+    kline is always S2 unless its reciprocal countersigner is present in the
+    model. Every KLine resolves to exactly one band — there is no unset value
+    (KV-12).
+
+    Note: the S1 branch uses ``is_countersigned`` rather than ``is_s1``.
+    ``is_s1`` is ``is_canon OR is_countersigned``; placing it before the
+    ``is_canon`` check would swallow every canonical kline into S1 and render
+    the ``is_canon → SIG_S2`` branch unreachable.
+    """
+    if is_identity(kline):
+        return SIG_S4
+    if is_countersigned(model, kline, signifier):
+        return SIG_S1
+    if is_canon(kline, signifier):
+        return SIG_S2
+    return SIG_S3
 
 
 # Graph Expansion
