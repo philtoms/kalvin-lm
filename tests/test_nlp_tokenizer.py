@@ -9,9 +9,9 @@ import pytest
 
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
+from tests.conftest import requires_tokenizer_data
 
 signifier = NLPSignifier()
-from tests.conftest import requires_tokenizer_data
 
 # The entire module exercises the real BPE + grammar data assets; skip it
 # cleanly when those assets are absent on a fresh clone.
