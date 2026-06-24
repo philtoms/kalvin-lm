@@ -28,7 +28,9 @@ This spec depends on the following concepts, defined elsewhere:
 - Owns the significance constants `D_MAX` and `MASK64`, the inversion rule,
   the boundaries, and the **band-representative values** this spec consumes.
 - Provides the structural predicates (`is_identity`, `is_canon`,
-  `is_countersigned`, `is_s1`) used to re-derive significance on retrieval.
+  `is_countersigned`) used to re-derive significance on retrieval. The model
+  also exposes `is_s1` — `is_canon OR is_countersigned` — but the retrieval
+  cascade does not invoke it directly (see §Retrieval).
 
 ### Structural State (@CONTEXT.md §Structural State)
 
@@ -139,12 +141,12 @@ Materialising a KValue from a stored KLine re-derives its significance from
 the KLine's current structural relationship to the model. Re-derivation is a
 cascade over the structural predicates (@model spec):
 
-| Structural test (in order)                   | significance |
-| -------------------------------------------- | ------------ |
-| `is_identity(kline)`                         | S4           |
-| `is_s1(kline)` — canonical or countersigned  | S1           |
-| `is_canon(kline)`                            | S2           |
-| otherwise (CONNOTED / UNDERSIGNED)           | S3           |
+| Structural test (in order)                                          | significance |
+| ------------------------------------------------------------------- | ------------ |
+| `is_identity(kline)`                                                | S4           |
+| `is_countersigned(kline, model)` — reciprocal countersigner present | S1           |
+| `is_canon(kline)`                                                   | S2           |
+| otherwise (CONNOTED / UNDERSIGNED)                                  | S3           |
 
 The integer for each band is the band-representative value owned by @model
 spec §Significance Semantics › Band-representative Values.
