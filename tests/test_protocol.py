@@ -15,6 +15,7 @@ import websockets.asyncio.client
 
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 from training.harness.bus import MessageBus
 from training.harness.message import Message
 from training.harness.protocol import WebSocketProtocol
@@ -437,9 +438,8 @@ class TestDomainObjectPayloadSerialisation:
                     action="event",
                     message=RationaliseEvent(
                         kind="frame",
-                        query=KLine(0xAA, [0xAA]),
-                        proposal=KLine(0xBB, [0xBB, 0xCC]),
-                        significance=99,
+                        query=KValue(KLine(0xAA, [0xAA]), significance=0),
+                        proposal=KValue(KLine(0xBB, [0xBB, 0xCC]), significance=99),
                     ),
                     sender="trainer",
                 )
@@ -534,9 +534,8 @@ class TestWireFrameRoundTrip:
             action="event",
             message=RationaliseEvent(
                 kind="frame",
-                query=KLine(0xAA, [0xAA]),
-                proposal=KLine(0xBB, [0xBB, 0xCC]),
-                significance=99,
+                query=KValue(KLine(0xAA, [0xAA]), significance=0),
+                proposal=KValue(KLine(0xBB, [0xBB, 0xCC]), significance=99),
             ),
             sender="trainer",
         )

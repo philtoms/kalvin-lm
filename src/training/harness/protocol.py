@@ -34,10 +34,16 @@ def _domain_json_default(obj: Any) -> Any:
 
     - ``KLine`` → ``{"signature": int, "nodes": list[int]}``
     - ``RationaliseEvent`` → ``{"kind", "query", "proposal", "significance"}``.
-      The nested ``KLine``\\s are encoded recursively by ``json.dumps``.
-      ``candidate`` is intentionally omitted: ``enrich_event`` does not read it
-      and the spec's ``rationalise`` frame lists only kind/significance/query/
-      proposal.
+      Post-KB-354 ``query``/``proposal`` are ``KValue`` objects (a KLine paired
+      with a sender's significance). This hook extracts each ``KValue``\\ 's
+      ``.kline`` — encoded recursively by the ``KLine`` branch above — and
+      surfaces ``proposal.significance`` (Kalvin's assessment of the proposal)
+      as the top-level wire ``significance``. The wire output shape is unchanged
+      from the pre-KB-354 serialiser: ``query``/``proposal`` are plain KLine
+      dicts ``{signature, nodes}`` with ``significance`` at the top level. The
+      query KValue's own significance is the sender's declared assessment and is
+      intentionally not surfaced (the wire frame carries a single, shared
+      significance from the proposal).
 
     Any other non-serialisable type raises ``TypeError`` (json's default
     behaviour) so future unknown payloads fail loudly rather than being coerced
@@ -48,9 +54,9 @@ def _domain_json_default(obj: Any) -> Any:
     if isinstance(obj, RationaliseEvent):
         return {
             "kind": obj.kind,
-            "query": obj.query,
-            "proposal": obj.proposal,
-            "significance": obj.significance,
+            "query": obj.query.kline,
+            "proposal": obj.proposal.kline,
+            "significance": obj.proposal.significance,
         }
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
