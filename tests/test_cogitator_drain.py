@@ -17,9 +17,9 @@ from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
+from tests.conftest import requires_tokenizer_data
 
 signifier = NLPSignifier()
-from tests.conftest import requires_tokenizer_data
 
 
 def T(bits: int) -> int:

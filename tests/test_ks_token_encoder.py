@@ -11,13 +11,13 @@ import pytest
 from kalvin.abstract import KTokenizer
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
-from kalvin.signifier import NLPSignifier
-
-signifier = NLPSignifier()
 from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.signifier import NLPSignifier
 from ks.ast_emitter import SymbolicEntry
 from ks.token_encoder import TokenEncoder
 from tests.conftest import requires_tokenizer_data
+
+signifier = NLPSignifier()
 
 # Every test encodes through a real tokenizer; skip cleanly when the tokenizer data
 # assets are absent on a fresh clone.

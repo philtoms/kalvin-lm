@@ -5,9 +5,9 @@ import pytest
 from kalvin.kline import KLine
 from kalvin.model import KLineStore, Model, _TierChain
 from kalvin.signifier import NLPSignifier
+from kalvin.stm import STM
 
 signifier = NLPSignifier()
-from kalvin.stm import STM
 
 
 def make_model(stm_bound: int = 256) -> Model:

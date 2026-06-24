@@ -15,12 +15,12 @@ from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
 from kalvin.model import Model
-from kalvin.signifier import NLPSignifier
-
-signifier = NLPSignifier()
 from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.signifier import NLPSignifier
 from tests.conftest import requires_tokenizer_data
 from tests.test_cogitator_handler import RecordingCogitationHandler
+
+signifier = NLPSignifier()
 
 # KAgent construction defaults to the kalvin tokenizer; skip cleanly when
 # the data assets are absent on a fresh clone.

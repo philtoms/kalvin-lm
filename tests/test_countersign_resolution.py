@@ -16,10 +16,10 @@ from kalvin.kline import KLine, sig_level
 from kalvin.kvalue import KValue
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
-
-signifier = NLPSignifier()
 from ks import compile_source
 from tests.conftest import requires_tokenizer_data
+
+signifier = NLPSignifier()
 
 
 def T(bits: int) -> int:
