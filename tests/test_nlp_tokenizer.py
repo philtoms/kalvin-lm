@@ -49,11 +49,12 @@ class TestEncode:
         assert len(nodes) == 1
         node = nodes[0]
 
-        # High 32 bits = nlp_type32 for "Tea" from grammar dict
-        nlp_type32 = node >> 32
+        # High 32 bits = sig_word for "Tea": a single-bit type selector,
+        # 1 << 25 = 33554432 (POS_FINE_NNP, the rarest matched fine type).
+        sig_word = node >> 32
         bpe_id = node & 0xFFFFFFFF
 
-        assert nlp_type32 == 133120, f"Expected nlp_type32=133120, got {nlp_type32}"
+        assert sig_word == 33554432, f"Expected sig_word=33554432, got {sig_word}"
         assert bpe_id == 18874, f"Expected bpe_id=18874, got {bpe_id}"
 
     def test_encode_empty(self, nlp: NLPTokenizer) -> None:
@@ -194,18 +195,20 @@ class TestNLPEncodingPipeline:
     def test_pipeline_node_format(self, nlp: NLPTokenizer) -> None:
         """Individual word encodings match the expected NLP-BPE node format.
 
-        node = (nlp_type32 << 32) | bpe_token_id
+        node = (sig_word << 32) | bpe_token_id
 
         Under the regenerated BPE model, 'Tea' is a single token while
         'brewed' and 'softly' split into multiple subword tokens.  Every
         node carries an NLP type in its high 32 bits, and each word
         round-trips through decode.
         """
-        # 'Tea' is a single BPE token → single NLP-BPE node
+        # 'Tea' is a single BPE token → single NLP-BPE node.
+        # sig_word = 33554432 = 1 << 25 (POS_FINE_NNP, the rarest matched
+        # fine type for "Tea"); bpe_id 18874 from the BPE vocab.
         nodes = nlp.encode("Tea")
         assert len(nodes) == 1
-        nlp_type32, bpe_id = 133120, 18874
-        assert nodes[0] == (nlp_type32 << 32) | bpe_id
+        sig_word, bpe_id = 33554432, 18874
+        assert nodes[0] == (sig_word << 32) | bpe_id
 
         # Multi-subword words: every node has NLP type bits set and the
         # word round-trips through decode.
