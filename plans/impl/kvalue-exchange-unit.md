@@ -78,10 +78,10 @@ production field.
 ### D4 — Re-derivation function lives in `kalvin/expand.py`
 
 `derive_significance(kline, model, signifier) -> int` implements the
-re-derivation cascade (identity→S4, is_s1→S1, is_canon→S2, else→S3) per @kvalue
+re-derivation cascade (identity→S4, is_countersigned→S1, is_canon→S2, else→S3) per @kvalue
 spec §Retrieval. It belongs with the significance semantics and band constants
 (already owned by `expand.py`), and reuses the existing structural predicates
-(`is_identity`, `is_canon` from `kline.py`; `is_s1`/`is_countersigned` from
+(`is_identity`, `is_canon` from `kline.py`; `is_countersigned` from
 `expand.py`). Used whenever a stored KLine is materialised as a KValue without a
 producer-supplied significance.
 
@@ -152,7 +152,7 @@ def derive_significance(kline, model, signifier) -> int:
     relationship to the model (KV-1 cascade)."""
 ```
 
-- `derive_significance` cascade order: `is_identity`→S4; `is_s1`→S1; `is_canon`→S2; else→S3.
+- `derive_significance` cascade order: `is_identity`→S4; `is_countersigned`→S1; `is_canon`→S2; else→S3.
   Never returns an unset value (KV-12).
 - Note: `token_encoder.py` already has a `_SIG_LEVELS` op→"S1" string map; this
   task replaces/promotes it to the integer map above (single source of truth).
