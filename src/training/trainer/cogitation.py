@@ -173,12 +173,12 @@ def build_prompt(request: CogitationRequest) -> list[dict]:
 
     # Event context — one block per event/misfit pair
     for i, (event, misfit) in enumerate(zip(request.events, request.misfits)):
-        sig_level = _classify_significance(event.significance)
+        sig_level = _classify_significance(event.proposal.significance)
 
         _log.debug(
             "build_prompt: event %d significance=%#x → band=%s",
             i,
-            event.significance,
+            event.proposal.significance,
             sig_level,
         )
 

@@ -23,7 +23,7 @@ from typing import Any
 
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX, normalise_significance
-from kalvin.kline import KLine, kline_display
+from kalvin.kline import kline_display
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
@@ -159,21 +159,18 @@ class Trainer:
 
                 # Display klines as human-readable KScript for the LLM
                 try:
-                    query_src = kline_display(event.query, _display_tok, _display_sig)
+                    query_src = kline_display(event.query.kline, _display_tok, _display_sig)
                 except Exception:
                     query_src = repr(event.query)
                 try:
-                    proposal_src = (
-                        kline_display(event.proposal, _display_tok, _display_sig) if event.proposal else "None"
-                    )
+                    proposal_src = kline_display(event.proposal.kline, _display_tok, _display_sig)
                 except Exception:
-                    proposal_src = repr(event.proposal) if event.proposal else "None"
+                    proposal_src = repr(event.proposal)
 
                 logger.info(
-                    "Cogitate adapter: event query=%r (%s), candidate=%r, proposal=%r (%s)",
+                    "Cogitate adapter: event query=%r (%s), proposal=%r (%s)",
                     event.query,
                     query_src,
-                    event.candidate,
                     event.proposal,
                     proposal_src,
                 )
@@ -266,7 +263,7 @@ class Trainer:
         """
         if event.kind == "ground":
             return True
-        if event.kind == "frame" and event.significance >= _S1_FRAME_THRESHOLD:
+        if event.kind == "frame" and event.proposal.significance >= _S1_FRAME_THRESHOLD:
             return True
         return False
 
@@ -275,19 +272,19 @@ class Trainer:
     def _compute_misfit(self, event: RationaliseEvent) -> dict:
         """Compute the misfit diagnosis for an S2/S3 event.
 
-        Operates on the ORIGINAL candidate kline (the one with the
-        gap/excess), not the expansion proposal. ``event.candidate``
-        carries the original misfit candidate for S2/S3 expansion events;
-        falls back to ``event.proposal`` for legacy events without the
-        candidate field.
+        Operates on the proposal kline (``event.proposal.kline``). The
+        ``candidate`` field is gone (KB-354 D5), so misfit is always computed
+        on the proposal — the objective structure Kalvin is assessing.
 
         Returns a dict matching the spec's Decision Request ``misfit``
         field: ``{underfit, overfit, underfit_gap, overfit_mask}``.
         ``underfit``/``overfit`` are ``bool``; the gap/mask are the
         bit differences between the kline signature and its nodes.
         """
-        target = event.candidate if event.candidate is not None else event.proposal
-        target_underfit, target_overfit = self._signifier.classify_misfit(target.signature, target.nodes)
+        target = event.proposal.kline
+        target_underfit, target_overfit = self._signifier.classify_misfit(
+            target.signature, target.nodes
+        )
         target_nodes_sig = self._signifier.make_signature(target.nodes)
         underfit_gap = self._signifier.residual(target.signature, target_nodes_sig)
         overfit_mask = self._signifier.residual(target_nodes_sig, target.signature)
@@ -354,36 +351,36 @@ class Trainer:
         _log_tok = _display_tokenizer()
         _log_sig = _display_signifier()
         try:
-            query_src = kline_display(event.query, _log_tok, _log_sig)
+            query_src = kline_display(event.query.kline, _log_tok, _log_sig)
         except Exception:
             query_src = repr(event.query)
         try:
-            proposal_src = kline_display(event.proposal, _log_tok, _log_sig) if event.proposal else None
+            proposal_src = kline_display(event.proposal.kline, _log_tok, _log_sig)
         except Exception:
-            proposal_src = repr(event.proposal) if event.proposal else None
+            proposal_src = repr(event.proposal)
 
-        if event.significance:
-            distance = (~event.significance) & D_MAX
-            sig_norm = normalise_significance(event.significance)
+        if event.proposal.significance:
+            distance = (~event.proposal.significance) & D_MAX
+            sig_norm = normalise_significance(event.proposal.significance)
         else:
             distance = 0
             sig_norm = 0.0
 
         if self._is_s1(event):
             logger.info(
-                "%s %s → S1 (fast path)%s",
+                "%s %s → S1 (fast path) ← %s",
                 event.kind.upper(),
                 query_src,
-                f" ← {proposal_src}" if proposal_src else "",
+                proposal_src,
             )
         else:
             logger.info(
-                "%s %s → %.2f (d=%d)%s",
+                "%s %s → %.2f (d=%d) | proposal: %s",
                 event.kind.upper(),
                 query_src,
                 sig_norm,
                 distance,
-                f" | proposal: {proposal_src}" if proposal_src else "",
+                proposal_src,
             )
 
         # Relay event to supervisor (HRNS-33)
@@ -419,7 +416,7 @@ class Trainer:
                     payload: dict = {
                         "proposal": event.proposal,
                         "query": event.query,
-                        "significance": event.significance,
+                        "significance": event.proposal.significance,
                     }
 
                     if self._delegate_reactive:
@@ -955,8 +952,6 @@ class Trainer:
 # Module-level helpers
 
 
-def _entry_key(obj: KLine | KValue) -> EntryKey:
-    """Return a hashable identity key for a KLine (or a KValue's kline)."""
-    if isinstance(obj, KValue):
-        obj = obj.kline
-    return (obj.signature, tuple(obj.nodes))
+def _entry_key(value: KValue) -> EntryKey:
+    """Return a hashable identity key for a KValue (from its kline)."""
+    return (value.kline.signature, tuple(value.kline.nodes))

@@ -5,6 +5,7 @@ Spec: specs/reactive-delegation.md §Reactive-Round Budget (Default Mode).
 
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 from training.harness.bus import MessageBus
 from training.harness.constants import SUPERVISOR_ROLE
 from training.harness.message import Message
@@ -60,9 +61,8 @@ class TestReactorSilentDrop:
         for i in range(3):
             event = RationaliseEvent(
                 "frame",
-                KLine(1, [2]),
-                KLine(3, [4]),
-                100,
+                KValue(KLine(1, [2]), 100),
+                KValue(KLine(3, [4]), 100),
             )
             reactor.process_s2_s3(event)
 
@@ -98,9 +98,8 @@ class TestReactorSilentDrop:
         for i in range(10):
             event = RationaliseEvent(
                 "frame",
-                KLine(1, [2]),
-                KLine(3, [4]),
-                100,
+                KValue(KLine(1, [2]), 100),
+                KValue(KLine(3, [4]), 100),
             )
             reactor.process_s2_s3(event)
 

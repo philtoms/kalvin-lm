@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
+from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
 from training.harness.bus import MessageBus
 from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
@@ -26,23 +27,31 @@ _S2_SIGNIFICANCE = 100
 # ── Test helpers ──────────────────────────────────────────────────────
 
 
-def _make_entry(sig: int, nodes: list[int]) -> KLine:
-    """Create a KLine with the given signature and nodes."""
-    return KLine(signature=sig, nodes=nodes, dbg=KDbg(label=f"test-{sig:#x}"))
+def _make_entry(sig: int, nodes: list[int]) -> KValue:
+    """Create a KValue entry (a compiled expectation) for a lesson."""
+    return KValue(
+        KLine(signature=sig, nodes=nodes, dbg=KDbg(label=f"test-{sig:#x}")),
+        _S2_SIGNIFICANCE,
+    )
 
 
 def _make_event(
     kind: str,
     query: KLine,
     proposal: KLine,
-    significance: int,
+    significance: int = _S2_SIGNIFICANCE,
 ) -> RationaliseEvent:
-    """Create a RationaliseEvent."""
+    """Create a RationaliseEvent with KValue query/proposal (KB-354 shape).
+
+    Both query and proposal are wrapped in KValues carrying ``significance``
+    (Kalvin's assessment for the proposal voice). For the two-voice KV-15
+    case — where query and proposal carry *different* significances —
+    construct the KValues directly.
+    """
     return RationaliseEvent(
         kind=kind,
-        query=query,
-        proposal=proposal,
-        significance=significance,
+        query=KValue(query, significance),
+        proposal=KValue(proposal, significance),
     )
 
 
@@ -111,9 +120,9 @@ def _make_reactor(
 # but target reactive paths specifically.
 
 
-def _entry_key(kline: KLine):
-    """Create an EntryKey from a KLine."""
-    return (kline.signature, tuple(kline.nodes))
+def _entry_key(value: KValue):
+    """Create an EntryKey from a KValue (via its kline)."""
+    return (value.kline.signature, tuple(value.kline.nodes))
 
 
 _S1_SIGNIFICANCE = 0xFFFF_FFFF_FFFF_FFFE
@@ -179,8 +188,8 @@ class TestAutoCountersignStructuralMatch:
         cs_msgs = capture.find_all(TRAINEE_ROLE, "countersign")
         assert len(cs_msgs) == 1
         assert cs_msgs[0].sender == "trainer"
-        # The countersign message contains the proposal KLine
-        assert cs_msgs[0].message == proposal
+        # The countersign message carries the proposal KValue
+        assert cs_msgs[0].message == event.proposal
 
         # Verify entry is marked satisfied
         key = _entry_key(entry)
@@ -318,7 +327,7 @@ class TestAutoCountersign:
         cs_msgs = capture.find_all(TRAINEE_ROLE, "countersign")
         assert len(cs_msgs) == 1
         assert cs_msgs[0].sender == "trainer"
-        assert cs_msgs[0].message == proposal
+        assert cs_msgs[0].message == event.proposal
 
         # Entry marked satisfied
         from training.trainer.reactor import _entry_key
@@ -340,6 +349,33 @@ class TestAutoCountersign:
 
         notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
         assert len(notify_msgs) == 0
+
+    def test_structural_match_ignores_significance(self) -> None:
+        """KV-2: a proposal matches an entry with the same kline regardless of significance.
+
+        The entry is loaded at ``_S2_SIGNIFICANCE``; the proposal wraps the
+        same kline at ``SIG_S1`` (a different assessment). KValue structural
+        equality ignores significance, so the match succeeds and the proposal
+        KValue is posted on the countersign bus.
+        """
+        from kalvin.expand import SIG_S1
+
+        reactor, capture = _make_reactor()
+        entry = _make_entry(100, [10, 20])  # KValue at _S2_SIGNIFICANCE
+        reactor.load_lesson([entry])
+
+        # Same kline as the entry, but a different significance (SIG_S1).
+        proposal = KValue(KLine(signature=100, nodes=[10, 20]), SIG_S1)
+        query = KValue(KLine(signature=999, nodes=[1]), _S2_SIGNIFICANCE)
+        event = RationaliseEvent("frame", query, proposal)
+
+        result = reactor.process_s2_s3(event)
+        assert result is True
+
+        cs_msgs = capture.find_all(TRAINEE_ROLE, "countersign")
+        assert len(cs_msgs) == 1
+        # The proposal KValue (with its own significance) is carried on the bus.
+        assert cs_msgs[0].message == proposal
 
 
 class TestAutoCountersignNoMatch:
@@ -494,7 +530,7 @@ class TestDelegatedMode:
         # Countersign sent to trainee
         cs_msgs = capture.find_all(TRAINEE_ROLE, "countersign")
         assert len(cs_msgs) == 1
-        assert cs_msgs[0].message == proposal
+        assert cs_msgs[0].message == event.proposal
 
         # Entry marked satisfied
         from training.trainer.reactor import _entry_key

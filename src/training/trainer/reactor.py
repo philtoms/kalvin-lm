@@ -9,6 +9,11 @@ Per-lesson state (current entries, reactive round budget) lives here
 rather than on the Trainer session driver, keeping the session
 lifecycle and event-reaction concerns cleanly separated.
 
+Loaded lesson entries and proposal events are KValues (@kvalue spec
+§Exchange): the reactor matches structurally (kline-only equality,
+ignoring significance — KV-2) and posts the proposal KValue on the
+countersign bus.
+
 This module is synchronous — the Reactor receives events from the
 Trainer driver (which itself runs on the bus dispatch thread).
 """
@@ -20,7 +25,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from kalvin.events import RationaliseEvent
-from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from training.harness.bus import MessageBus
 from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
@@ -43,18 +47,16 @@ class Action:
     """
 
     kind: str  # "countersign", "submit", "escalate"
-    payload: object  # KLine, kscript source, or escalation reason string
+    payload: object  # KValue, KLine, kscript source, or escalation reason string
     confidence: float | None = None  # only for "submit" actions from scaffolding
 
 
 # Module-level helpers
 
 
-def _entry_key(obj: KLine | KValue) -> EntryKey:
-    """Return a hashable identity key for a KLine (or a KValue's kline)."""
-    if isinstance(obj, KValue):
-        obj = obj.kline
-    return (obj.signature, tuple(obj.nodes))
+def _entry_key(value: KValue) -> EntryKey:
+    """Return a hashable identity key for a KValue (from its kline)."""
+    return (value.kline.signature, tuple(value.kline.nodes))
 
 
 # Reactor class
@@ -107,13 +109,13 @@ class Reactor:
         self._cogitate_fn = cogitate_fn
         self._delegate_reactive = delegate_reactive
 
-        self._current_entries: list[KLine | KValue] = []
+        self._current_entries: list[KValue] = []
         self._reactive_rounds: int = 0
 
     # Lesson lifecycle
 
-    def load_lesson(self, entries: list[KLine | KValue]) -> None:
-        """Reset per-lesson state: set entries, zero reactive rounds."""
+    def load_lesson(self, entries: list[KValue]) -> None:
+        """Reset per-lesson state: set entries (KValues), zero reactive rounds."""
         self._current_entries = entries
         self._reactive_rounds = 0
 
@@ -145,22 +147,23 @@ class Reactor:
     # Entry access
 
     @property
-    def current_entries(self) -> list[KLine | KValue]:
+    def current_entries(self) -> list[KValue]:
         return list(self._current_entries)
 
     # Auto-countersign
 
-    def _auto_countersign(self, proposal: KLine) -> bool:
+    def _auto_countersign(self, proposal: KValue) -> bool:
         """Check structural match and auto-countersign if found.
 
-        Uses ``KLine.__eq__`` (signature + nodes) for structural matching.
+        Matches the proposal KValue against a loaded expectation using KValue
+        structural equality (kline-only, ignoring significance — KV-2). The
+        countersign bus message carries the proposal KValue itself (the agreed
+        payload contract with the adapter, KB-355).
+
         Returns ``True`` if a match was found and countersigned.
         """
         for entry in self._current_entries:
-            # Entries may be bare KLines (mocked tests) or KValues (real
-            # compilation); unwrap to the kline for structural comparison.
-            kline = entry.kline if isinstance(entry, KValue) else entry
-            if kline == proposal:
+            if entry == proposal:
                 key = _entry_key(entry)
                 # Guard against duplicate countersigns on already-satisfied entries
                 if self._state.is_satisfied(key):

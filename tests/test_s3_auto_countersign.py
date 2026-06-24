@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
+from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
 from training.harness.bus import MessageBus
 from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
@@ -27,23 +28,25 @@ _S2_SIGNIFICANCE = 100
 # ── Helpers ───────────────────────────────────────────────────────────
 
 
-def _make_entry(sig: int, nodes: list[int]) -> KLine:
-    """Create a KLine with the given signature and nodes."""
-    return KLine(signature=sig, nodes=nodes, dbg=KDbg(label=f"test-{sig:#x}"))
+def _make_entry(sig: int, nodes: list[int]) -> KValue:
+    """Create a KValue entry (a compiled expectation) for a lesson."""
+    return KValue(
+        KLine(signature=sig, nodes=nodes, dbg=KDbg(label=f"test-{sig:#x}")),
+        _S2_SIGNIFICANCE,
+    )
 
 
 def _make_event(
     kind: str,
     query: KLine,
     proposal: KLine,
-    significance: int,
+    significance: int = _S2_SIGNIFICANCE,
 ) -> RationaliseEvent:
-    """Create a RationaliseEvent."""
+    """Create a RationaliseEvent with KValue query/proposal (KB-354 shape)."""
     return RationaliseEvent(
         kind=kind,
-        query=query,
-        proposal=proposal,
-        significance=significance,
+        query=KValue(query, significance),
+        proposal=KValue(proposal, significance),
     )
 
 
@@ -72,7 +75,7 @@ class BusCapture:
 
 def _make_reactor(
     *,
-    entries: list[KLine] | None = None,
+    entries: list[KValue] | None = None,
     max_reactive_rounds: int = 5,
 ) -> tuple[Reactor, BusCapture]:
     """Create a Reactor with BusCapture installed."""
@@ -123,7 +126,7 @@ class TestProcessS2S3ReturnTrue:
 
         cs_msgs = capture.find_all(TRAINEE_ROLE, "countersign")
         assert len(cs_msgs) == 1
-        assert cs_msgs[0].message == proposal
+        assert cs_msgs[0].message == event.proposal
 
 
 # ── HRNS-36: process_s2_s3 returns False on no match ───────────────────

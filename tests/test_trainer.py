@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
+from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
 from training.harness.bus import MessageBus
 from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
@@ -39,29 +40,37 @@ _S2_SIGNIFICANCE = 100
 # ── Test helpers ──────────────────────────────────────────────────────
 
 
-def _make_entry(sig: int, nodes: list[int]) -> KLine:
-    """Create a KLine with the given signature and nodes."""
-    return KLine(signature=sig, nodes=nodes, dbg=KDbg(label=f"test-{sig:#x}"))
+def _make_entry(sig: int, nodes: list[int]) -> KValue:
+    """Create a KValue entry (a compiled expectation) for a lesson."""
+    return KValue(
+        KLine(signature=sig, nodes=nodes, dbg=KDbg(label=f"test-{sig:#x}")),
+        _S2_SIGNIFICANCE,
+    )
 
 
 def _make_event(
     kind: str,
     query: KLine,
     proposal: KLine,
-    significance: int,
+    significance: int = _S2_SIGNIFICANCE,
 ) -> RationaliseEvent:
-    """Create a RationaliseEvent."""
+    """Create a RationaliseEvent with KValue query/proposal (KB-354 shape).
+
+    Both query and proposal are wrapped in KValues carrying ``significance``
+    (Kalvin's assessment for the proposal voice). For the two-voice KV-15
+    case — where query and proposal carry *different* significances —
+    construct the KValues directly.
+    """
     return RationaliseEvent(
         kind=kind,
-        query=query,
-        proposal=proposal,
-        significance=significance,
+        query=KValue(query, significance),
+        proposal=KValue(proposal, significance),
     )
 
 
-def _entry_key(kline: KLine) -> EntryKey:
-    """Create an EntryKey from a KLine."""
-    return (kline.signature, tuple(kline.nodes))
+def _entry_key(value: KValue) -> EntryKey:
+    """Create an EntryKey from a KValue (via its kline)."""
+    return (value.kline.signature, tuple(value.kline.nodes))
 
 
 def _write_curriculum(path: Path) -> None:
@@ -377,8 +386,8 @@ class TestEntryCountingLessonComplete:
         for entry in entries:
             event = _make_event(
                 "ground",
-                query=KLine(signature=entry.signature, nodes=entry.nodes),
-                proposal=KLine(signature=entry.signature, nodes=entry.nodes),
+                query=KLine(signature=entry.kline.signature, nodes=entry.kline.nodes),
+                proposal=KLine(signature=entry.kline.signature, nodes=entry.kline.nodes),
                 significance=_S1_SIGNIFICANCE,
             )
             trainer.on_message(Message(role=TRAINER_ROLE, action="ground", message=event))
@@ -1808,7 +1817,7 @@ class TestEventRelay:
         payload = ratify_msgs[0].message
         assert payload["proposal"] is event.proposal
         assert payload["query"] is event.query
-        assert payload["significance"] == event.significance
+        assert payload["significance"] == event.proposal.significance
 
     @patch("training.trainer.trainer.compile_source")
     def test_s1_event_relay_payload_and_sender(self, mock_compile: MagicMock) -> None:
@@ -2085,12 +2094,7 @@ class TestCogitatorAutoWiring:
         # Call the adapter
         query = KLine(signature=0xFF, nodes=[0x10])
         proposal = KLine(signature=0x0F, nodes=[0x20])
-        event = RationaliseEvent(
-            kind="frame",
-            query=query,
-            proposal=proposal,
-            significance=100,
-        )
+        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
 
         result = trainer._reactor._cogitate_fn(event)
 
@@ -2131,12 +2135,7 @@ class TestCogitatorAutoWiring:
 
         query = KLine(signature=0xFF, nodes=[0x10])
         proposal = KLine(signature=0x0F, nodes=[0x20])
-        event = RationaliseEvent(
-            kind="frame",
-            query=query,
-            proposal=proposal,
-            significance=100,
-        )
+        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
 
         result = trainer._reactor._cogitate_fn(event)
         assert result is None
@@ -2281,27 +2280,79 @@ class TestComputeMisfit:
             "overfit_mask": 0x00,
         }
 
-    def test_uses_candidate_when_present(self) -> None:
-        """When event.candidate is set, misfit is computed on candidate, not proposal."""
+    def test_misfit_uses_proposal_kline(self) -> None:
+        """Misfit is always computed on event.proposal.kline (candidate is gone, KE-4).
+
+        ``event.candidate`` was removed in KB-354 (D5); ``_compute_misfit``
+        now operates solely on the proposal kline. Give the query and proposal
+        DIFFERENT klines and confirm the misfit follows the proposal, not the
+        query.
+        """
         bus = MessageBus()
         curriculum = Curriculum([])
         trainer, _capture = _make_trainer(bus, curriculum)
 
-        candidate = KLine(signature=T(0xFF), nodes=[T(0x01)])  # underfit
-        proposal = KLine(signature=T(0x03), nodes=[T(0x01), T(0x02)])  # no misfit
-        event = RationaliseEvent(
-            kind="frame",
-            query=proposal,
-            proposal=proposal,
-            significance=100,
-            candidate=candidate,
-        )
+        query = KLine(signature=T(0x03), nodes=[T(0x01), T(0x02)])  # no misfit
+        proposal = KLine(signature=T(0xFF), nodes=[T(0x01)])  # underfit
+        event = _make_event("frame", query=query, proposal=proposal, significance=100)
         result = trainer._compute_misfit(event)
 
-        # Misfit computed on candidate (T(0xFF) vs [T(0x01)] → underfit), not proposal
+        # Misfit follows the proposal (underfit), NOT the query (no misfit)
         assert result["underfit"] is True
         assert result["underfit_gap"] == T(0xFE)
 
+
+# ── KV-15: consumers read Kalvin's assessment (proposal.significance) ──
+
+
+class TestKV15ConsumesProposalSignificance:
+    """KV-15: trainer consumers read ``event.proposal.significance`` (Kalvin's
+    assessment), never ``event.query.significance`` (the sender's declared).
+
+    These tests deliberately give the query and proposal KValues DIFFERENT
+    significances over the same kline, then assert the consumer follows the
+    proposal voice. They exercise ``Trainer._is_s1`` (a static method) so they
+    need no tokenizer data.
+    """
+
+    def test_is_s1_uses_proposal_not_query(self) -> None:
+        """``_is_s1`` classifies on the proposal's significance, never the query's.
+
+        - query declares S1 but Kalvin's proposal is S2 (low) → NOT S1
+        - query declares S2 (low) but Kalvin's proposal is S1 → S1
+        """
+        from kalvin.expand import SIG_S1
+
+        kline = KLine(signature=0xAB, nodes=[0x1, 0x2], dbg=KDbg(label="kv15"))
+
+        # Sender declares S1, Kalvin assesses low (S2/S3) → not S1 (proposal governs)
+        low_proposal = RationaliseEvent(
+            "frame",
+            KValue(kline, SIG_S1),  # query: sender declares S1
+            KValue(kline, _S2_SIGNIFICANCE),  # proposal: Kalvin assesses low
+        )
+        assert Trainer._is_s1(low_proposal) is False
+
+        # Sender declares low, Kalvin assesses S1 → S1 (proposal governs)
+        s1_proposal = RationaliseEvent(
+            "frame",
+            KValue(kline, _S2_SIGNIFICANCE),  # query: sender declares low
+            KValue(kline, SIG_S1),  # proposal: Kalvin assesses S1
+        )
+        assert Trainer._is_s1(s1_proposal) is True
+
+    def test_is_s1_ignores_query_significance_when_proposal_low(self) -> None:
+        """A maximal query significance does not flip S1 when the proposal is low."""
+        from kalvin.expand import D_MAX
+
+        kline = KLine(signature=0xAB, nodes=[0x1], dbg=KDbg(label="kv15-b"))
+        # query at D_MAX (sender's max), proposal at 0 → not S1
+        event = RationaliseEvent(
+            "frame",
+            KValue(kline, D_MAX),
+            KValue(kline, 0),
+        )
+        assert Trainer._is_s1(event) is False
 
 
 # ── Delegated reactive decisions ─────────────────────────────
@@ -2349,7 +2400,7 @@ class TestDelegatedReactiveDecisions:
         # Existing keys
         assert payload["proposal"] is event.proposal
         assert payload["query"] is event.query
-        assert payload["significance"] == event.significance
+        assert payload["significance"] == event.proposal.significance
 
         # Enrichment: misfit matches _compute_misfit output
         assert "misfit" in payload

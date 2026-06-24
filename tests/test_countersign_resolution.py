@@ -11,7 +11,9 @@ pair resolution.
 
 from kalvin.agent import KAgent
 from kalvin.events import EventBus
+from kalvin.expand import SIG_S4
 from kalvin.kline import KLine, sig_level
+from kalvin.kvalue import KValue
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
 
@@ -44,8 +46,8 @@ class TestCountersignPairResolution:
 
         # Add identities (derived from compile_source so signatures match the
         # tokenizer encoding used by the countersign compilation below)
-        a.rationalise(compile_source("M", dev=True)[0].kline)  # M (tokenizer-consistent identity)
-        a.rationalise(compile_source("H", dev=True)[0].kline)  # H (tokenizer-consistent identity)
+        a.rationalise(compile_source("M", dev=True)[0])  # M (tokenizer-consistent identity)
+        a.rationalise(compile_source("H", dev=True)[0])  # H (tokenizer-consistent identity)
 
         entries = compile_source("M == H", dev=True)
         assert len(entries) == 2
@@ -64,14 +66,14 @@ class TestCountersignPairResolution:
         bus.on_event = cap
 
         for e in entries:
-            result = a.rationalise(e.kline)
+            result = a.rationalise(e)
             assert result is True
 
         # Both should produce frame events with S1 significance
         frame_events = [e for e in events if e.kind == "frame"]
         assert len(frame_events) == 2
         for ev in frame_events:
-            assert ev.significance > 0  # S1 range
+            assert ev.proposal.significance > 0  # S1 range
 
 
 class TestGroundCheckExcludesSTM:
@@ -106,12 +108,12 @@ class TestSelfFilterInCandidates:
 
         # Add a candidate that partially overlaps with query signature
         candidate = KLine(T(5), [T(10), T(30)])
-        a.rationalise(candidate)
+        a.rationalise(KValue(candidate, SIG_S4))
 
         # Query overlaps on [10] but not [20] -> should be S2, not S1
         q = KLine(0, [T(10), T(20)])
         q.signature = signifier.make_signature([T(10), T(20)])
-        result = a.rationalise(q)
+        result = a.rationalise(KValue(q, SIG_S4))
         # S2 should return False (slow path) even though q is in STM
         assert result is False
 
@@ -150,8 +152,8 @@ class TestUndersignIsConnotateReversed:
 
         # Add identities (derived from compile_source so signatures match the
         # tokenizer encoding used by the undersign compilation below)
-        a.rationalise(compile_source("M", dev=True)[0].kline)  # M (tokenizer-consistent identity)
-        a.rationalise(compile_source("S", dev=True)[0].kline)  # S (tokenizer-consistent identity)
+        a.rationalise(compile_source("M", dev=True)[0])  # M (tokenizer-consistent identity)
+        a.rationalise(compile_source("S", dev=True)[0])  # S (tokenizer-consistent identity)
 
         # Compile undersign: S = M -> {M: S}
         entries = compile_source("S = M", dev=True)
@@ -166,7 +168,7 @@ class TestUndersignIsConnotateReversed:
         # Pre-register
         a.model.add_to_stm(e.kline)
 
-        result = a.rationalise(e.kline)
+        result = a.rationalise(e)
         # Undersign gets no special fast path: {M: [S]} is routed against
         # the {M: []} identity (match_count 0) -> S3, so it goes through the
         # slow path and rationalise returns False (CR-7).
@@ -179,7 +181,7 @@ class TestUndersignIsConnotateReversed:
 
         # Add identity A only (D is unknown).  Derived from compile_source so
         # its signature matches the tokenizer encoding used by the connotate below.)
-        a.rationalise(compile_source("A", dev=True)[0].kline)  # A (tokenizer-consistent identity)
+        a.rationalise(compile_source("A", dev=True)[0])  # A (tokenizer-consistent identity)
 
         entries = compile_source("A > D", dev=True)
         connotate = [e for e in entries if e.kline.nodes]
@@ -188,7 +190,7 @@ class TestUndersignIsConnotateReversed:
         assert sig_level(e.kline, signifier) == "S3"
 
         a.model.add_to_stm(e.kline)
-        result = a.rationalise(e.kline)
+        result = a.rationalise(e)
         # No candidates for A signature, so it should be novel (S4 -> True)
         # OR if candidates exist, S3 -> False (slow path)
         # Since only {A: None} exists, where(A) returns it

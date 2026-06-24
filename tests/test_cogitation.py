@@ -6,6 +6,7 @@ import json
 
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
+from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
 from training.trainer.cogitation import (
     ESCALATION_THRESHOLD,
@@ -24,14 +25,17 @@ from training.trainer.cogitation import (
 
 
 def _make_event(significance: int = 2) -> RationaliseEvent:
-    """Create a minimal RationaliseEvent for testing."""
+    """Create a minimal RationaliseEvent with KValue query/proposal (KB-354).
+
+    Both query and proposal are wrapped in KValues carrying ``significance``
+    (the proposal voice feeds ``build_prompt``'s band classification).
+    """
     query = KLine(signature=0xAB, nodes=[0x1, 0x2], dbg=KDbg(label="query"))
     proposal = KLine(signature=0xCD, nodes=[0x3], dbg=KDbg(label="proposal"))
     return RationaliseEvent(
         kind="test",
-        query=query,
-        proposal=proposal,
-        significance=significance,
+        query=KValue(query, significance),
+        proposal=KValue(proposal, significance),
     )
 
 

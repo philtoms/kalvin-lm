@@ -13,6 +13,7 @@ from unittest.mock import MagicMock
 
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
 from training.harness.bus import MessageBus
 from training.harness.constants import TRAINEE_ROLE
@@ -140,9 +141,8 @@ class TestCogitatorSanitisation:
 
         event = RationaliseEvent(
             kind="frame",
-            query=KLine(signature=0x1, nodes=[]),
-            proposal=KLine(signature=0x2, nodes=[]),
-            significance=100,
+            query=KValue(KLine(signature=0x1, nodes=[]), 100),
+            proposal=KValue(KLine(signature=0x2, nodes=[]), 100),
         )
         misfit = MisfitInfo(
             underfit=True,
@@ -190,9 +190,8 @@ class TestCogitatorSanitisation:
 
         event = RationaliseEvent(
             kind="frame",
-            query=KLine(signature=0x1, nodes=[]),
-            proposal=KLine(signature=0x2, nodes=[]),
-            significance=100,
+            query=KValue(KLine(signature=0x1, nodes=[]), 100),
+            proposal=KValue(KLine(signature=0x2, nodes=[]), 100),
         )
         misfit = MisfitInfo(
             underfit=True,
@@ -265,9 +264,8 @@ class TestReactorSubmittedLog:
 
         event = RationaliseEvent(
             kind="frame",
-            query=KLine(signature=0x1, nodes=[]),
-            proposal=KLine(signature=0x2, nodes=[]),
-            significance=100,
+            query=KValue(KLine(signature=0x1, nodes=[]), 100),
+            proposal=KValue(KLine(signature=0x2, nodes=[]), 100),
         )
 
         with caplog.at_level(logging.INFO, logger="training.trainer.reactor"):
