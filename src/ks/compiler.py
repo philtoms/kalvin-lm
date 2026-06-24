@@ -7,7 +7,7 @@ Pipeline (spec §1.1)::
 
     Source → Lexer → Parser → ASTEmitter (+ BindingScope) → TokenEncoder
                                                         ↓
-                                                  list[KLine]
+                                                  list[KValue]
 
 Design:
   - A BindingScope is always created for every compilation. When the
@@ -27,7 +27,7 @@ Spec ref: @specs/kscript.md §1.1 (pipeline), §12.2 (compiler orchestrator),
 from __future__ import annotations
 
 from kalvin.abstract import KSignifier, KTokenizer
-from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
 
@@ -40,7 +40,7 @@ __all__ = ["Compiler", "compile_source"]
 
 
 class Compiler:
-    """Compiles a KScriptFile AST into a list of KLine objects.
+    """Compiles a KScriptFile AST into a list of KValue objects.
 
     Pure orchestrator — wires together BindingScope, ASTEmitter, and
     TokenEncoder.  No encoding logic lives here.
@@ -60,21 +60,22 @@ class Compiler:
         self.tokenizer: KTokenizer = tokenizer or NLPTokenizer()
         self._signifier: KSignifier = signifier or NLPSignifier()
         self.dev = dev
-        self.entries: list[KLine] = []
+        self.entries: list[KValue] = []
 
-    def compile(self, file: KScriptFile) -> list[KLine]:
+    def compile(self, file: KScriptFile) -> list[KValue]:
         """Compile a KScriptFile AST into encoded entries.
 
         Pipeline:
           1. Create BindingScope, push root scope (always, no mode switch).
           2. Create ASTEmitter with scope, emit symbolic entries.
-          3. Create TokenEncoder, encode symbolic entries to KLine objects.
+          3. Create TokenEncoder, encode symbolic entries to KValue objects.
 
         Args:
             file: Parsed KScriptFile AST.
 
         Returns:
-            Ordered list of KLine objects with populated dbg.
+            Ordered list of KValue objects (each wrapping a KLine with
+            populated dbg and a band-representative significance).
         """
         scope = BindingScope()
         scope.push_scope()  # root scope
@@ -92,7 +93,7 @@ def compile_source(
     tokenizer: KTokenizer | None = None,
     signifier: KSignifier | None = None,
     dev: bool = False,
-) -> list[KLine]:
+) -> list[KValue]:
     """Compile a KScript source string into encoded entries.
 
     Convenience function that creates Lexer, Parser, and Compiler
@@ -105,7 +106,8 @@ def compile_source(
         dev: Enable development/diagnostic mode.
 
     Returns:
-        Ordered list of KLine objects with populated dbg.
+        Ordered list of KValue objects (each wrapping a KLine with
+        populated dbg and a band-representative significance).
     """
     from .lexer import Lexer
     from .parser import Parser

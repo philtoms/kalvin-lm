@@ -24,6 +24,7 @@ from typing import Any
 from kalvin.events import RationaliseEvent
 from kalvin.expand import D_MAX, normalise_significance
 from kalvin.kline import KLine, kline_display
+from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
@@ -954,6 +955,8 @@ class Trainer:
 # Module-level helpers
 
 
-def _entry_key(kline: KLine) -> EntryKey:
-    """Return a hashable identity key for a KLine."""
-    return (kline.signature, tuple(kline.nodes))
+def _entry_key(obj: KLine | KValue) -> EntryKey:
+    """Return a hashable identity key for a KLine (or a KValue's kline)."""
+    if isinstance(obj, KValue):
+        obj = obj.kline
+    return (obj.signature, tuple(obj.nodes))

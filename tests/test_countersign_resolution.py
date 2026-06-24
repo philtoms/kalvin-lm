@@ -44,15 +44,15 @@ class TestCountersignPairResolution:
 
         # Add identities (derived from compile_source so signatures match the
         # tokenizer encoding used by the countersign compilation below)
-        a.rationalise(compile_source("M", dev=True)[0])  # M (tokenizer-consistent identity)
-        a.rationalise(compile_source("H", dev=True)[0])  # H (tokenizer-consistent identity)
+        a.rationalise(compile_source("M", dev=True)[0].kline)  # M (tokenizer-consistent identity)
+        a.rationalise(compile_source("H", dev=True)[0].kline)  # H (tokenizer-consistent identity)
 
         entries = compile_source("M == H", dev=True)
         assert len(entries) == 2
 
         # Pre-register (simulates adapter behaviour)
         for e in entries:
-            a.model.add_to_stm(e)
+            a.model.add_to_stm(e.kline)
 
         events = []
         orig = bus.on_event
@@ -64,7 +64,7 @@ class TestCountersignPairResolution:
         bus.on_event = cap
 
         for e in entries:
-            result = a.rationalise(e)
+            result = a.rationalise(e.kline)
             assert result is True
 
         # Both should produce frame events with S1 significance
@@ -122,17 +122,17 @@ class TestSigLevelPropagation:
     def test_sig_level_set_on_compiled_entry(self):
         entries = compile_source("M == H", dev=True)
         for e in entries:
-            assert sig_level(e, signifier) == "S1"
+            assert sig_level(e.kline, signifier) == "S1"
 
         entries = compile_source("M > H", dev=True)
         for e in entries:
-            if e.nodes:  # skip unsigned identities
-                assert sig_level(e, signifier) == "S3"
+            if e.kline.nodes:  # skip unsigned identities
+                assert sig_level(e.kline, signifier) == "S3"
 
         entries = compile_source("M => H", dev=True)
         for e in entries:
-            if e.nodes and not isinstance(e.nodes, list):
-                assert sig_level(e, signifier) == "S2"
+            if e.kline.nodes and not isinstance(e.kline.nodes, list):
+                assert sig_level(e.kline, signifier) == "S2"
 
     def test_sig_level_none_by_default(self):
         kl = KLine(0xFF, [1])
@@ -150,23 +150,23 @@ class TestUndersignIsConnotateReversed:
 
         # Add identities (derived from compile_source so signatures match the
         # tokenizer encoding used by the undersign compilation below)
-        a.rationalise(compile_source("M", dev=True)[0])  # M (tokenizer-consistent identity)
-        a.rationalise(compile_source("S", dev=True)[0])  # S (tokenizer-consistent identity)
+        a.rationalise(compile_source("M", dev=True)[0].kline)  # M (tokenizer-consistent identity)
+        a.rationalise(compile_source("S", dev=True)[0].kline)  # S (tokenizer-consistent identity)
 
         # Compile undersign: S = M -> {M: S}
         entries = compile_source("S = M", dev=True)
         # Filter to just the undersign entry (not the unsigned identity)
-        undersign = [e for e in entries if e.nodes]
+        undersign = [e for e in entries if e.kline.nodes]
         assert len(undersign) == 1
         e = undersign[0]
         # Undersign maps to S3 (not S1) in _SIG_LEVELS
-        assert e.dbg.op == "UNDERSIGNED"
-        assert sig_level(e, signifier) == "S3"
+        assert e.kline.dbg.op == "UNDERSIGNED"
+        assert sig_level(e.kline, signifier) == "S3"
 
         # Pre-register
-        a.model.add_to_stm(e)
+        a.model.add_to_stm(e.kline)
 
-        result = a.rationalise(e)
+        result = a.rationalise(e.kline)
         # Undersign gets no special fast path: {M: [S]} is routed against
         # the {M: []} identity (match_count 0) -> S3, so it goes through the
         # slow path and rationalise returns False (CR-7).
@@ -179,16 +179,16 @@ class TestUndersignIsConnotateReversed:
 
         # Add identity A only (D is unknown).  Derived from compile_source so
         # its signature matches the tokenizer encoding used by the connotate below.)
-        a.rationalise(compile_source("A", dev=True)[0])  # A (tokenizer-consistent identity)
+        a.rationalise(compile_source("A", dev=True)[0].kline)  # A (tokenizer-consistent identity)
 
         entries = compile_source("A > D", dev=True)
-        connotate = [e for e in entries if e.nodes]
+        connotate = [e for e in entries if e.kline.nodes]
         assert len(connotate) == 1
         e = connotate[0]
-        assert sig_level(e, signifier) == "S3"
+        assert sig_level(e.kline, signifier) == "S3"
 
-        a.model.add_to_stm(e)
-        result = a.rationalise(e)
+        a.model.add_to_stm(e.kline)
+        result = a.rationalise(e.kline)
         # No candidates for A signature, so it should be novel (S4 -> True)
         # OR if candidates exist, S3 -> False (slow path)
         # Since only {A: None} exists, where(A) returns it

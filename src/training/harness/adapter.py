@@ -247,11 +247,12 @@ class KAgentAdapter:
         # during rationalise().
         if hasattr(self._kagent, "model"):
             for entry in entries:
-                self._kagent.model.add_to_stm(entry)
+                self._kagent.model.add_to_stm(entry.kline)
         for entry in entries:
-            key: EntryKey = (entry.signature, tuple(entry.nodes))
+            key: EntryKey = (entry.kline.signature, tuple(entry.kline.nodes))
             self._sender_map[key] = msg.sender or ""
-            self._kagent.rationalise(entry)  # fire-and-forget; events come via on_event
+            # rationalise still takes a KLine until KB-354; unwrap at the boundary.
+            self._kagent.rationalise(entry.kline)  # fire-and-forget; events come via on_event
 
     def _handle_countersign(self, msg: Message) -> None:
         """Forward a countersign request to the KAgent.

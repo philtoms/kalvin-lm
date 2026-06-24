@@ -21,6 +21,7 @@ from dataclasses import dataclass
 
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 from training.harness.bus import MessageBus
 from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from training.harness.message import Message
@@ -49,9 +50,11 @@ class Action:
 # Module-level helpers
 
 
-def _entry_key(kline: KLine) -> EntryKey:
-    """Return a hashable identity key for a KLine."""
-    return (kline.signature, tuple(kline.nodes))
+def _entry_key(obj: KLine | KValue) -> EntryKey:
+    """Return a hashable identity key for a KLine (or a KValue's kline)."""
+    if isinstance(obj, KValue):
+        obj = obj.kline
+    return (obj.signature, tuple(obj.nodes))
 
 
 # Reactor class
@@ -104,12 +107,12 @@ class Reactor:
         self._cogitate_fn = cogitate_fn
         self._delegate_reactive = delegate_reactive
 
-        self._current_entries: list[KLine] = []
+        self._current_entries: list[KLine | KValue] = []
         self._reactive_rounds: int = 0
 
     # Lesson lifecycle
 
-    def load_lesson(self, entries: list[KLine]) -> None:
+    def load_lesson(self, entries: list[KLine | KValue]) -> None:
         """Reset per-lesson state: set entries, zero reactive rounds."""
         self._current_entries = entries
         self._reactive_rounds = 0
@@ -142,7 +145,7 @@ class Reactor:
     # Entry access
 
     @property
-    def current_entries(self) -> list[KLine]:
+    def current_entries(self) -> list[KLine | KValue]:
         return list(self._current_entries)
 
     # Auto-countersign
@@ -154,7 +157,10 @@ class Reactor:
         Returns ``True`` if a match was found and countersigned.
         """
         for entry in self._current_entries:
-            if entry == proposal:
+            # Entries may be bare KLines (mocked tests) or KValues (real
+            # compilation); unwrap to the kline for structural comparison.
+            kline = entry.kline if isinstance(entry, KValue) else entry
+            if kline == proposal:
                 key = _entry_key(entry)
                 # Guard against duplicate countersigns on already-satisfied entries
                 if self._state.is_satisfied(key):

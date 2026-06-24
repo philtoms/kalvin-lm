@@ -1,8 +1,9 @@
-"""TokenEncoder — converts symbolic entries to encoded KLine objects.
+"""TokenEncoder — converts symbolic entries into KValue objects.
 
 Final stage of the KScript v3 compilation pipeline. Takes the symbolic
 (string) entries produced by ASTEmitter and encodes them into uint64
-values via a pluggable tokenizer.
+values via a pluggable tokenizer, wrapping each KLine in a KValue whose
+significance is derived from the production op (KP-1, D3).
 
 Encoding rules (spec §11):
   - Signature → tokenizer.encode(sig) → uint64 (multi-token results are
@@ -16,18 +17,23 @@ Encoding rules (spec §11):
     packed signature never heads an IDENTITY kline (CONTEXT.md
     "Identity"). Packed signatures are opaque per §11.5.
 
-Significance levels (compile-time intent) — see kalvin.expand.band_significance:
+Significance levels (compile-time intent) — each emitted KValue carries
+kalvin.expand.band_significance(op), computed from the production op at
+encode time (never from dbg):
     COUNTERSIGNED → S1    UNDERSIGNED → S3    CANONIZED → S2
     CONNOTED → S3      IDENTITY → S4
 
-Dependencies: kalvin.kline.KLine, kalvin.abstract.KTokenizer,
+Dependencies: kalvin.kline.KLine, kalvin.kvalue.KValue,
+              kalvin.expand.band_significance, kalvin.abstract.KTokenizer,
               kalvin.signifier.NLPSignifier, ks.ast_emitter.SymbolicEntry.
 """
 
 from __future__ import annotations
 
 from kalvin.abstract import KSignifier, KTokenizer
+from kalvin.expand import band_significance
 from kalvin.kline import KDbg, KLine
+from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 
 from .ast_emitter import SymbolicEntry
@@ -44,7 +50,13 @@ class TokenEncoder:
         dev: Enable development/diagnostic mode (populates dbg).
     """
 
-    def __init__(self, tokenizer: KTokenizer, *, signifier: KSignifier | None = None, dev: bool = False) -> None:
+    def __init__(
+        self,
+        tokenizer: KTokenizer,
+        *,
+        signifier: KSignifier | None = None,
+        dev: bool = False,
+    ) -> None:
         self._tokenizer = tokenizer
         self._signifier = signifier or NLPSignifier()
         self._dev = dev
@@ -61,38 +73,40 @@ class TokenEncoder:
 
     # Public API
 
-    def encode_entries(self, symbolic: list[SymbolicEntry]) -> list[KLine]:
-        """Encode a list of symbolic entries into compiled KLines.
+    def encode_entries(self, symbolic: list[SymbolicEntry]) -> list[KValue]:
+        """Encode a list of symbolic entries into compiled KValues.
 
         Args:
             symbolic: List of SymbolicEntry tuples from ASTEmitter.
 
         Returns:
-            Ordered list of KLine objects.  MTS expansion entries
-            appear before the entries that reference them.
+            Ordered list of KValue objects (each wrapping a KLine).
+            MTS expansion entries appear before the entries that reference
+            them.  Every KValue carries a band-representative significance
+            derived from the production ``op`` (KP-1).
         """
         if not symbolic:
             return []
 
-        result: list[KLine] = []
+        result: list[KValue] = []
         for entry in symbolic:
             result.extend(self._encode_entries_for_entry(entry))
         return result
 
     # Per-entry encoding
 
-    def _encode_entries_for_entry(self, entry: SymbolicEntry) -> list[KLine]:
-        """Process one SymbolicEntry into one or more KLine objects.
+    def _encode_entries_for_entry(self, entry: SymbolicEntry) -> list[KValue]:
+        """Process one SymbolicEntry into one or more KValue objects.
 
         Steps:
           1. Encode signature → uint64 (with multi-token MTS if needed).
           2. Encode each node → uint64 (with multi-token MTS if needed).
-          3. Emit the main entry.
+          3. Emit the main entry wrapped as a KValue.
 
         Returns:
-            List of KLine (extras first, then main entry).
+            List of KValue (extras first, then main entry).
         """
-        extras: list[KLine] = []
+        extras: list[KValue] = []
 
         is_compound_def = entry.op == "CANONIZED" and len(entry.sig) > 1
         is_compound_ref = entry.sig in self._compound_sigs
@@ -152,12 +166,15 @@ class TokenEncoder:
             nodes=node_values,
             dbg=dbg,
         )
-        extras.append(main)
+        # Wrap the main entry as a KValue. Significance comes from the
+        # production op (entry.op — the SymbolicEntry field), NEVER read
+        # back from main.dbg.op (D3: dbg is unspec'd dev-only provenance).
+        extras.append(KValue(main, band_significance(entry.op)))
         return extras
 
     # Node encoding
 
-    def _encode_node(self, word: str) -> tuple[int, list[KLine]]:
+    def _encode_node(self, word: str) -> tuple[int, list[KValue]]:
         """Encode a single word to a uint64 node value.
 
         Args:
@@ -165,8 +182,9 @@ class TokenEncoder:
 
         Returns:
             (node_value, extra_entries) — node_value is the uint64 to use
-            in the parent kline.  extra_entries are MTS expansion entries
-            that must appear before the entry that uses this node.
+            in the parent kline.  extra_entries are KValue-wrapped MTS
+            expansion entries that must appear before the entry that uses
+            this node.
         """
         tokens = self._tokenizer.encode(word)
 
@@ -183,15 +201,19 @@ class TokenEncoder:
         tokens: list[int],
         dbg_label: str = "",
         op: str = "IDENTITY",
-    ) -> tuple[int, list[KLine]]:
+    ) -> tuple[int, list[KValue]]:
         """Emit MTS entries for a multi-token encoding result.
 
         Emits:
-          1. One IDENTITY KLine per BPE subword token.
-          2. One CANONIZE entry with packed signature → subword tokens.
+          1. One IDENTITY KValue per BPE subword token.
+          2. One CANONIZE KValue with packed signature → subword tokens.
 
         Deduplicates: if this exact token tuple has been seen before,
         no entries are emitted (but the packed signature is still returned).
+
+        Each emitted KValue carries the band-representative significance for
+        its production op (subword IDENTITY entries use ``op`` — always
+        "IDENTITY" at call sites; the CANONIZE entry uses "CANONIZED").
 
         Args:
             tokens: List of BPE token uint64 values.
@@ -204,7 +226,7 @@ class TokenEncoder:
         token_key = tuple(tokens)
         packed = self._signifier.make_signature(tokens)
 
-        extras: list[KLine] = []
+        extras: list[KValue] = []
 
         if token_key not in self._decomposed:
             self._decomposed.add(token_key)
@@ -216,10 +238,13 @@ class TokenEncoder:
                 else:
                     tok_dbg = KDbg(op="IDENTITY")
                 extras.append(
-                    KLine(
-                        signature=tok,
-                        nodes=[],
-                        dbg=tok_dbg,
+                    KValue(
+                        KLine(
+                            signature=tok,
+                            nodes=[],
+                            dbg=tok_dbg,
+                        ),
+                        band_significance(op),
                     )
                 )
 
@@ -231,10 +256,13 @@ class TokenEncoder:
             else:
                 canon_dbg = KDbg(op="CANONIZED")
             extras.append(
-                KLine(
-                    signature=packed,
-                    nodes=list(tokens),
-                    dbg=canon_dbg,
+                KValue(
+                    KLine(
+                        signature=packed,
+                        nodes=list(tokens),
+                        dbg=canon_dbg,
+                    ),
+                    band_significance("CANONIZED"),
                 )
             )
 

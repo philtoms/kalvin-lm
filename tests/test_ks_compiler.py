@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import pytest
 
+from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from ks import Compiler, KScript, compile_source
 from ks.lexer import Lexer
@@ -43,20 +45,20 @@ def _tok32() -> NLPTokenizer:
     return _tok32_instance
 
 
-def _decode_sig(entry: KLine) -> str:
+def _decode_sig(entry: KValue) -> str:
     """Decode an entry's signature to its conceptual identity string.
 
     Prefers ``dbg.label`` (the source identifier, e.g. ``"MHALL"``) when
     available (dev mode); otherwise falls back to a raw BPE decode of the
     uint64 signature.
     """
-    if entry.dbg and entry.dbg.label:
-        return entry.dbg.label
-    return _tok32().decode([entry.signature])
+    if entry.kline.dbg and entry.kline.dbg.label:
+        return entry.kline.dbg.label
+    return _tok32().decode([entry.kline.signature])
 
 
 def _decode_nodes(
-    entry: KLine,
+    entry: KValue,
     sig_to_label: dict[int, str] | None = None,
 ) -> str:
     """Decode an entry's node values to a concatenated identity string.
@@ -65,7 +67,7 @@ def _decode_nodes(
     map (signature → conceptual identity) built from the surrounding entries;
     single-character tokens fall back to a raw BPE decode.
     """
-    nodes = entry.as_node_list()
+    nodes = entry.kline.as_node_list()
     if not nodes:
         return ""
     parts: list[str] = []
@@ -78,15 +80,19 @@ def _decode_nodes(
 
 
 def _has_entry(
-    entries: list[KLine],
+    entries: list[KValue],
     op: str,
     sig: str,
     nodes: str | None = None,
 ) -> bool:
     """Check if a matching entry exists in the list."""
-    sig_to_label = {e.signature: e.dbg.label for e in entries if e.dbg and e.dbg.label}
+    sig_to_label = {
+        e.kline.signature: e.kline.dbg.label
+        for e in entries
+        if e.kline.dbg and e.kline.dbg.label
+    }
     for e in entries:
-        if not e.dbg or e.dbg.op != op:
+        if not e.kline.dbg or e.kline.dbg.op != op:
             continue
         if _decode_sig(e) != sig:
             continue
@@ -97,13 +103,13 @@ def _has_entry(
 
 
 def _count_entries(
-    entries: list[KLine],
+    entries: list[KValue],
     op: str | None = None,
 ) -> int:
     """Count entries matching op (or all if op is None)."""
     if op is None:
         return len(entries)
-    return sum(1 for e in entries if e.dbg.op == op)
+    return sum(1 for e in entries if e.kline.dbg.op == op)
 
 
 # ---------------------------------------------------------------------------
@@ -148,11 +154,11 @@ class TestKS35ComplexNested:
         """CANONIZE dedup: no two CANONIZE entries share the same (sig, nodes)."""
         canonize_keys: set[tuple[int, tuple[int, ...]]] = set()
         for e in self.entries:
-            if e.dbg.op == "CANONIZED":
-                nodes = tuple(sorted(e.as_node_list()))
-                key = (e.signature, nodes)
+            if e.kline.dbg.op == "CANONIZED":
+                nodes = tuple(sorted(e.kline.as_node_list()))
+                key = (e.kline.signature, nodes)
                 assert key not in canonize_keys, (
-                    f"Duplicate CANONIZE: sig=0x{e.signature:x}, nodes={nodes}"
+                    f"Duplicate CANONIZE: sig=0x{e.kline.signature:x}, nodes={nodes}"
                 )
                 canonize_keys.add(key)
 
@@ -206,9 +212,9 @@ class TestKS35ComplexNested:
         assert _has_entry(self.entries, "CONNOTED", "L", "O")
 
     def test_all_entries_are_compiled_entry(self) -> None:
-        """Every entry is a KLine instance."""
+        """Every entry is a KValue instance."""
         for e in self.entries:
-            assert isinstance(e, KLine)
+            assert isinstance(e, KValue)
 
     def test_identity_count(self) -> None:
         """7 IDENTITY entries from MTS component identities.
@@ -261,9 +267,9 @@ class TestKS36WordBound:
 
         all_text: list[str] = []
         for e in entries:
-            if e.dbg.label:
-                all_text.append(e.dbg.label)
-            for node_val in e.as_node_list():
+            if e.kline.dbg.label:
+                all_text.append(e.kline.dbg.label)
+            for node_val in e.kline.as_node_list():
                 try:
                     decoded = tok.decode([node_val])
                     if decoded:
@@ -290,21 +296,24 @@ class TestKS36WordBound:
         # S(ubject) → 'Subject' resolves into a node-list under BPE.
         found = False
         for e in entries:
-            nodes = e.as_node_list()
+            nodes = e.kline.as_node_list()
             if nodes and tok.decode(nodes) == "Subject":
                 found = True
                 break
         assert found, "Expected 'Subject' from inline binding"
 
     def test_compiled_entries_valid(self) -> None:
-        """All entries are KLine instances with valid structure."""
+        """All entries are KValue instances with valid structure."""
         tok = self._get_tokenizer()
         entries = compile_source(SOURCE_14_12, tokenizer=tok)
         assert len(entries) > 0
         for e in entries:
-            assert isinstance(e, KLine)
-            assert isinstance(e.signature, int)
-            assert e.dbg.op in ("COUNTERSIGNED", "CANONIZED", "CONNOTED", "UNDERSIGNED", "IDENTITY")
+            assert isinstance(e, KValue)
+            assert isinstance(e.kline, KLine)
+            assert isinstance(e.kline.signature, int)
+            assert e.kline.dbg.op in (
+                "COUNTERSIGNED", "CANONIZED", "CONNOTED", "UNDERSIGNED", "IDENTITY"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -330,7 +339,7 @@ class TestCanonicalEncoding:
         entries = self._entries(tokenizer)
         from collections import Counter
 
-        counts = Counter(e.dbg.label for e in entries if e.dbg.op == "CANONIZED")
+        counts = Counter(e.kline.dbg.label for e in entries if e.kline.dbg.op == "CANONIZED")
         for compound in ("MHALL", "SVO", "ALL"):
             assert counts.get(compound, 0) == 1, (
                 f"{compound}: expected 1 CANONIZED, got {counts.get(compound, 0)}"
@@ -339,8 +348,11 @@ class TestCanonicalEncoding:
     def test_no_packed_identity(self, tokenizer):
         """KS-42: no IDENTITY kline carries a packed (compound) signature."""
         entries = self._entries(tokenizer)
-        packed_sigs = {e.signature for e in entries if e.dbg.op == "CANONIZED"}
-        bad = [e for e in entries if e.dbg.op == "IDENTITY" and e.signature in packed_sigs]
+        packed_sigs = {e.kline.signature for e in entries if e.kline.dbg.op == "CANONIZED"}
+        bad = [
+            e for e in entries
+            if e.kline.dbg.op == "IDENTITY" and e.kline.signature in packed_sigs
+        ]
         assert bad == [], f"IDENTITY klines with packed sigs: {bad}"
 
     def test_compound_resolution_consistent(self, tokenizer):
@@ -353,14 +365,14 @@ class TestCanonicalEncoding:
         entries = self._entries(tokenizer)
         seen = {}
         for e in entries:
-            if e.dbg.op != "CANONIZED":
+            if e.kline.dbg.op != "CANONIZED":
                 continue
-            nodes = tuple(sorted(e.as_node_list()))
-            prev = seen.get(e.dbg.label)
+            nodes = tuple(sorted(e.kline.as_node_list()))
+            prev = seen.get(e.kline.dbg.label)
             assert prev is None or prev == nodes, (
-                f"{e.dbg.label}: divergent CANONIZED nodes {prev} vs {nodes}"
+                f"{e.kline.dbg.label}: divergent CANONIZED nodes {prev} vs {nodes}"
             )
-            seen[e.dbg.label] = nodes
+            seen[e.kline.dbg.label] = nodes
 
 
 # ---------------------------------------------------------------------------
@@ -378,12 +390,12 @@ class TestCompileSource:
         assert len(entries) > 0
 
     def test_entries_are_compiled_entry(self) -> None:
-        """All returned items are KLine objects."""
+        """All returned items are KValue objects."""
         entries = compile_source("A == B")
         for e in entries:
-            assert isinstance(e, KLine)
-            assert isinstance(e.signature, int)
-            assert isinstance(e.dbg.op, str)
+            assert isinstance(e, KValue)
+            assert isinstance(e.kline.signature, int)
+            assert isinstance(e.kline.dbg.op, str)
 
     def test_correct_structure_countersign(self) -> None:
         """COUNTERSIGN produces correct sig/nodes structure."""
@@ -401,7 +413,7 @@ class TestCompileSource:
         """Dev mode populates dbg on entries."""
         entries = compile_source("A", dev=True)
         assert len(entries) == 1
-        assert entries[0].dbg is not None
+        assert entries[0].kline.dbg is not None
 
     def test_custom_tokenizer(self) -> None:
         """Passing a custom tokenizer works."""
@@ -419,18 +431,18 @@ class TestKScriptAPI:
     """Tests for the KScript public API class."""
 
     def test_entries_property(self) -> None:
-        """KScript('A == B').entries returns a list of KLine."""
+        """KScript('A == B').entries returns a list of KValue."""
         model = KScript("A == B")
         assert isinstance(model.entries, list)
         assert len(model.entries) > 0
         for e in model.entries:
-            assert isinstance(e, KLine)
+            assert isinstance(e, KValue)
 
     def test_unsigned_entry(self) -> None:
         """KScript('A') produces a single unsigned entry."""
         model = KScript("A")
         assert len(model.entries) == 1
-        assert model.entries[0].dbg.op == "IDENTITY"
+        assert model.entries[0].kline.dbg.op == "IDENTITY"
         assert _decode_sig(model.entries[0]) == "A"
 
     def test_complex_source(self) -> None:
@@ -443,14 +455,14 @@ class TestKScriptAPI:
         """KScript(dev=True) enables debug text."""
         model = KScript("A == B", dev=True)
         for e in model.entries:
-            assert e.dbg is not None or e.dbg is None  # dbg field exists
+            assert e.kline.dbg is not None or e.kline.dbg is None  # dbg field exists
 
     def test_default_tokenizer_is_nlp_specialization(self) -> None:
         """Default tokenizer is the kalvin NLPTokenizer."""
         model = KScript("A")
         assert isinstance(model._tokenizer, NLPTokenizer)
         # The entry's signature should decode back to "A" via the tokenizer
-        sig = model.entries[0].signature
+        sig = model.entries[0].kline.signature
         assert _tok32().decode([sig]) == "A"
 
 
@@ -509,7 +521,7 @@ class TestPipelineWiring:
         tokens = Lexer("A").tokenize()
         kfile = Parser(tokens).parse()
         entries = compiler.compile(kfile)
-        assert entries[0].dbg is not None
+        assert entries[0].kline.dbg is not None
 
 
 # ---------------------------------------------------------------------------
@@ -560,5 +572,116 @@ class TestBindingScopeAlwaysCreated:
         # Verify entries exist (binding scope was active)
         assert len(entries) > 0
         # The COUNTERSIGN pair should involve the resolved word
-        countersigns = [e for e in entries if e.dbg.op == "COUNTERSIGNED"]
+        countersigns = [e for e in entries if e.kline.dbg.op == "COUNTERSIGNED"]
         assert len(countersigns) >= 2
+
+
+# ---------------------------------------------------------------------------
+# KV-4: Compiler attaches band-representative significance (KP-1)
+# ---------------------------------------------------------------------------
+
+
+class TestKV4CompilerSignificance:
+    """KV-4 — Compiler attaches band-representative significance.
+
+    S1 for == (COUNTERSIGNED), S2 for => (CANONIZED),
+    S3 for = (UNDERSIGNED) and > (CONNOTED), S4 for identity (IDENTITY).
+
+    The significance is stamped on the KValue at construction from the
+    production op (KP-1, D3), never derived from dbg.
+    """
+
+    # -- S1: COUNTERSIGNED (==) -------------------------------------------
+
+    def test_countersign_is_s1(self) -> None:
+        """`A == B` (single-char, no MTS) → two COUNTERSIGNED entries, both S1.
+
+        Single-char identifiers produce no MTS, so the only entries are the
+        bidirectional countersign pair (A→B and B→A).
+        """
+        entries = compile_source("A == B", dev=True)
+        assert len(entries) == 2
+        for kv in entries:
+            assert kv.significance == SIG_S1
+            assert kv.kline.dbg.op == "COUNTERSIGNED"
+
+    # -- S2: CANONIZED (=>) ----------------------------------------------
+
+    def test_canonized_is_s2(self) -> None:
+        """`A => B C` (inline, single-char, no MTS) → one CANONIZED entry, S2.
+
+        Inline items (no child block) produce exactly one aggregated CANONIZE
+        entry with no subscript-identity extras.
+        """
+        entries = compile_source("A => B C", dev=True)
+        assert len(entries) == 1
+        assert entries[0].significance == SIG_S2
+        assert entries[0].kline.dbg.op == "CANONIZED"
+
+    # -- S3: UNDERSIGNED (=) and CONNOTED (>) -----------------------------
+
+    def test_undersigned_is_s3(self) -> None:
+        """`A = B` (inline) → one UNDERSIGNED entry, S3."""
+        entries = compile_source("A = B", dev=True)
+        undersigned = [kv for kv in entries if kv.kline.dbg.op == "UNDERSIGNED"]
+        assert len(undersigned) == 1
+        assert undersigned[0].significance == SIG_S3
+
+    def test_connoted_is_s3(self) -> None:
+        """`A > B` (inline) → one CONNOTED entry, S3."""
+        entries = compile_source("A > B", dev=True)
+        connoted = [kv for kv in entries if kv.kline.dbg.op == "CONNOTED"]
+        assert len(connoted) == 1
+        assert connoted[0].significance == SIG_S3
+
+    # -- S4: IDENTITY -----------------------------------------------------
+
+    def test_identity_is_s4(self) -> None:
+        """`A` → one IDENTITY KValue, S4 (0)."""
+        entries = compile_source("A", dev=True)
+        assert len(entries) == 1
+        assert entries[0].significance == SIG_S4
+        assert entries[0].kline.dbg.op == "IDENTITY"
+
+    # -- MTS op threading -------------------------------------------------
+
+    def test_mts_entries_get_correct_significance(self) -> None:
+        """`ABC == X` (multi-char triggers MTS) threads the op correctly.
+
+        IDENTITY entries (MTS subwords) get SIG_S4, CANONIZED entries (the
+        ABC aggregate) get SIG_S2, and COUNTERSIGNED entries (ABC↔X) get
+        SIG_S1. This verifies the production op is threaded through MTS
+        expansion, not lost when wrapping KLines as KValues.
+        """
+        entries = compile_source("ABC == X", dev=True)
+
+        identities = [kv for kv in entries if kv.kline.dbg.op == "IDENTITY"]
+        canonized = [kv for kv in entries if kv.kline.dbg.op == "CANONIZED"]
+        countersigned = [kv for kv in entries if kv.kline.dbg.op == "COUNTERSIGNED"]
+
+        # Guard against vacuous pass: at least one entry of each op exists.
+        assert len(identities) >= 1, "Expected MTS subword IDENTITY entries"
+        assert len(canonized) >= 1, "Expected an ABC CANONIZED entry"
+        assert len(countersigned) >= 1, "Expected ABC↔X COUNTERSIGNED entries"
+
+        assert all(kv.significance == SIG_S4 for kv in identities)
+        assert all(kv.significance == SIG_S2 for kv in canonized)
+        assert all(kv.significance == SIG_S1 for kv in countersigned)
+
+    # -- D3 guard: significance is correct in non-dev mode ----------------
+
+    def test_significance_not_from_dbg(self) -> None:
+        """Significance is correct with dev=False (D3 behavioural guard).
+
+        In non-dev mode ``dbg`` is minimal (``KDbg(op=...)`` only). This test
+        confirms significance is still correct without rich dbg — a
+        behavioural regression guard for non-dev compilation. Note: because
+        ``dbg.op`` is always set to the production op, this cannot by itself
+        *prove* significance came from ``entry.op`` rather than ``dbg.op``
+        (the true D3 guarantee is structural: the encoder reads ``entry.op``
+        directly, verified by code review).
+        """
+        entries = compile_source("A == B", dev=False)
+        countersigned = [kv for kv in entries if kv.kline.dbg.op == "COUNTERSIGNED"]
+        assert len(countersigned) >= 1
+        assert all(kv.significance == SIG_S1 for kv in countersigned)

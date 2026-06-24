@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
 
@@ -30,6 +31,7 @@ from .compiler import Compiler, compile_source
 __all__ = [
     "KScript",
     "KLine",
+    "KValue",
     "Compiler",
     "compile_source",
     "SymbolicEntry",
@@ -50,7 +52,7 @@ class KScript:
     Example::
 
         model = KScript("A == B")
-        print(model.entries)  # list[KLine]
+        print(model.entries)  # list[KValue]
     """
 
     def __init__(
@@ -63,7 +65,7 @@ class KScript:
         self._tokenizer: KTokenizer = tokenizer or NLPTokenizer()
         self._signifier: KSignifier = signifier or NLPSignifier()
         self._dev = dev
-        self._entries: list[KLine] = compile_source(
+        self._entries: list[KValue] = compile_source(
             source,
             tokenizer=self._tokenizer,
             signifier=self._signifier,
@@ -71,6 +73,6 @@ class KScript:
         )
 
     @property
-    def entries(self) -> list[KLine]:
+    def entries(self) -> list[KValue]:
         """Return the compiled entries."""
         return self._entries
