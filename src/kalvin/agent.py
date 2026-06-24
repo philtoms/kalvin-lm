@@ -29,12 +29,14 @@ from kalvin.cogitator import (
 )
 from kalvin.events import EventBus, RationaliseEvent  # EventBus: test/dev fallback
 from kalvin.expand import (
-    D_MAX,
+    SIG_S1,
+    SIG_S4,
     is_countersigned,
     is_s1,
     promote_participating,
 )
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
 from kalvin.nlp_tokenizer import NLPTokenizer
@@ -190,14 +192,21 @@ class KAgent:
 
     # Rationalisation
 
-    def rationalise(self, kline: KLine) -> bool:
-        """Rationalise a KLine into the model.
+    def rationalise(self, value: KValue) -> bool:
+        """Rationalise a KValue into the model.
+
+        Operates on ``value.kline`` (the objective structure) for every model
+        call and routing decision — the Model API stays KLine-based (plan D2).
+        ``value.significance`` (the sender's declared assessment) is carried
+        through as the query voice on published events but is **not consumed**
+        for behaviour (deferred — see @agent spec §Rationalisation).
 
         Fast path: routing (no model calls). S1/S4 resolve instantly.
         Slow path: S2/S3 queued as individual work items for cogitation.
 
         Returns True if significant (S1, S4), False if rational (S2, S3).
         """
+        kline = value.kline
         # Prepare — callers must provide a set signature (see @specs/agent.md
         # §Phase 1). This is a presence check, not a value-test: 0 is an
         # ordinary signature value (the empty node set's signature).
@@ -209,12 +218,12 @@ class KAgent:
         # Ground check (Frame/LTM/Base only — not STM)
         if self._model.grounded(kline):
             self._model.add_to_stm(kline)
-            self._publish("ground", kline, kline, D_MAX)
+            self._publish("ground", value, KValue(kline, SIG_S1))
             return True
 
         if not kline.nodes:
             self._model.add_to_ltm(kline)
-            self._publish("frame", kline, kline, 0)  # S4
+            self._publish("frame", value, KValue(kline, SIG_S4))  # S4
             return True
 
         expected_sig = self._signifier.make_signature(kline.nodes)
@@ -225,7 +234,7 @@ class KAgent:
             )
             if all_resolved:
                 self._model.add_to_ltm(kline)
-                self._publish("frame", kline, kline, D_MAX)  # S1
+                self._publish("frame", value, KValue(kline, SIG_S1))  # S1
                 return True
 
         # Register in STM before the ratification check so sequential
@@ -238,7 +247,7 @@ class KAgent:
         # (a single node entry in opposite directions) and are handled below.
         if is_countersigned(self._model, kline, self._signifier):
             self._model.add_to_ltm(kline)
-            self._publish("frame", kline, kline, D_MAX)  # S1
+            self._publish("frame", value, KValue(kline, SIG_S1))  # S1
             return True
 
         # Retrieve candidates (exclude self to prevent trivial match)
@@ -250,7 +259,7 @@ class KAgent:
 
         if not candidates:
             self._model.add_to_ltm(kline)
-            self._publish("frame", kline, kline, 0)  # S4 — novel
+            self._publish("frame", value, KValue(kline, SIG_S4))  # S4 — novel
             return True
 
         # DEVELOPMENT-ONLY — candidate fan-out cap.
@@ -263,7 +272,9 @@ class KAgent:
 
         for candidate in candidates:
             level = self._route(kline, candidate)
-            self._cogitator.submit(WorkItem(kline, candidate, level))
+            # The query KValue flows into the cogitator so the declared
+            # significance rides the slow path's published events (KE-2).
+            self._cogitator.submit(WorkItem(value, candidate, level))
 
         return False
 
@@ -271,29 +282,38 @@ class KAgent:
 
     # CogitationHandler protocol
 
-    def on_s1(self, query: KLine, candidate: KLine) -> None:
-        """CogitationHandler.on_s1: structural check, promote, publish frame event."""
+    def on_s1(self, query_value: KValue, candidate: KLine) -> None:
+        """CogitationHandler.on_s1: structural check, promote, publish frame event.
+
+        ``query_value`` is the original inbound KValue (KE-2); its kline is the
+        query voice for promotion. The candidate kline becomes the proposal,
+        wrapped at ``SIG_S1`` (S1 ratification).
+        """
+        query = query_value.kline
         if is_s1(self._model, candidate, self._signifier):
             promote_participating(self._model, query, candidate, self._signifier)
-        self._publish("frame", query, candidate, D_MAX)
+        self._publish("frame", query_value, KValue(candidate, SIG_S1))
 
     def on_expansion(
         self,
-        query: KLine,
+        query_value: KValue,
         proposal: KLine,
         significance: int,
         original_candidate: KLine | None = None,
     ) -> None:
-        """CogitationHandler.on_expansion: write proposal to Frame, publish frame event."""
+        """CogitationHandler.on_expansion: write proposal to Frame, publish frame event.
+
+        The proposal kline carries the ``expand()``-computed significance (KP-3),
+        not a band-representative value. ``query_value`` is the original inbound
+        KValue (KE-2).
+
+        ``original_candidate`` is retained on the signature for the cogitator's
+        dispatch but is no longer carried onto the event (the ``candidate``
+        field is gone). It is intentionally unused here.
+        """
+        del original_candidate  # retained for dispatch compatibility; not on the event
         self._model.add_to_frame(proposal)
-        event = RationaliseEvent(
-            "frame",
-            query,
-            proposal,
-            significance,
-            candidate=original_candidate,
-        )
-        self._adapter.on_event(event)
+        self._publish("frame", query_value, KValue(proposal, significance))
 
     def cogitate_join(self, timeout: float | None = None) -> None:
         """Stop the cogitate thread and wait for it to finish."""
@@ -308,18 +328,27 @@ class KAgent:
 
     # Events
 
-    def _publish(self, kind: str, query: KLine, proposal: KLine, significance: int) -> None:
-        """Publish a rationalisation event via the adapter."""
-        self._adapter.on_event(RationaliseEvent(kind, query, proposal, significance))
+    def _publish(self, kind: str, query_value: KValue, proposal_value: KValue) -> None:
+        """Publish a rationalisation event via the adapter.
 
-    def countersign(self, kline: KLine) -> bool:
+        ``query_value`` is the inbound KValue (the sender's declared
+        assessment); ``proposal_value`` is Kalvin's assessment of it. On the
+        fast path both wrap the same immutable KLine (KE-1).
+        """
+        self._adapter.on_event(RationaliseEvent(kind, query_value, proposal_value))
+
+    def countersign(self, value: KValue) -> bool:
         """Generate the reciprocal kline ({Q:[V]} → {V:[Q]}) and rationalise it.
 
-        Requires non-empty nodes; returns the result of ``rationalise``.
+        The reciprocal kline is wrapped in a KValue at ``SIG_S1`` — the act of
+        countersigning is an S1 ratification (KP-2). Requires non-empty nodes;
+        returns the result of ``rationalise``.
         """
+        kline = value.kline
         reciprocal_sig = self._signifier.make_signature(kline.nodes)
         reciprocal = KLine(reciprocal_sig, [kline.signature])
-        return self.rationalise(reciprocal)
+        reciprocal_value = KValue(reciprocal, SIG_S1)
+        return self.rationalise(reciprocal_value)
 
     # Frame info
 

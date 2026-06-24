@@ -23,8 +23,9 @@ import time as _time
 from typing import TYPE_CHECKING, NamedTuple, Protocol, runtime_checkable
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import boundaries, classify, expand, propose_expansions
+from kalvin.expand import SIG_S4, boundaries, classify, expand, propose_expansions
 from kalvin.kline import KDbg, KLine
+from kalvin.kvalue import KValue
 from kalvin.model import Model
 
 if TYPE_CHECKING:
@@ -45,18 +46,26 @@ class CogitationHandler(Protocol):
     results during background graph expansion.
     """
 
-    def on_s1(self, query: KLine, candidate: KLine) -> None:
-        """Called when cogitation discovers an S1 (exact) result."""
+    def on_s1(self, query: KValue, candidate: KLine) -> None:
+        """Called when cogitation discovers an S1 (exact) result.
+
+        ``query`` is the original inbound KValue (KE-2); ``candidate`` is the
+        KLine (from the model) that reached S1.
+        """
         ...
 
     def on_expansion(
         self,
-        query: KLine,
+        query: KValue,
         proposal: KLine,
         significance: int,
         original_candidate: KLine | None = None,
     ) -> None:
-        """Called when an expansion proposal is generated (S2/S3)."""
+        """Called when an expansion proposal is generated (S2/S3).
+
+        ``query`` is the original inbound KValue; ``proposal`` is the
+        expansion-proposal KLine carrying the ``expand()``-computed significance.
+        """
         ...
 
 
@@ -64,9 +73,14 @@ class CogitationHandler(Protocol):
 
 
 class WorkItem(NamedTuple):
-    """A single query|candidate pair queued for cogitation."""
+    """A single query|candidate pair queued for cogitation.
 
-    query: KLine
+    ``query`` is a KValue (carries the declared significance into the slow
+    path, KE-2); ``candidate`` is the KLine from the model; ``level`` is the
+    routing classification ("S2" or "S3").
+    """
+
+    query: KValue
     candidate: KLine
     level: str  # "S2" or "S3"
 
@@ -161,7 +175,8 @@ class Cogitator:
                     idle_time += 0.5
                     if idle_time >= self._timeout:
                         done_k = KLine(0, [], dbg=KDbg(label="done"))
-                        self._adapter.on_event(RationaliseEvent("done", done_k, done_k, 0))
+                        done_value = KValue(done_k, SIG_S4)
+                        self._adapter.on_event(RationaliseEvent("done", done_value, done_value))
                         idle_time = 0.0
                 idle_time = 0.0
                 if self._stop.is_set() and not self._backlog:
@@ -181,26 +196,33 @@ class Cogitator:
         pair is expanded and each yield classified; a terminal S1 (distance
         1) discovered during expansion is a genuine structural exact match
         and triggers ``on_s1``.
+
+        ``item.query`` is a KValue (the original inbound, KE-2); the model API
+        (``expand``) stays KLine-based, so ``query_kline`` is extracted here.
         """
-        query, candidate, level = item
+        query_value, candidate, level = item
+        query_kline = query_value.kline
 
         s12, s23, s34 = boundaries()
 
-        for qc in expand(self._model, query, candidate, self._signifier):
+        for qc in expand(self._model, query_kline, candidate, self._signifier):
             band = classify(qc.significance, s12, s23, s34)
 
             if band == "S4":
                 continue
 
             if band == "S1":
-                self._handler.on_s1(query, candidate)
+                self._handler.on_s1(query_value, candidate)
                 break
             else:
-                # qc.candidate is the expanded (possibly misfit) candidate;
-                # qc.query is the correct query context for connotation yields.
-                for proposal, sig in propose_expansions(self._model, qc.candidate, qc.significance, self._signifier):
+                # qc.candidate is the expanded (possibly misfit) candidate.
+                # The query voice on the published event is the WorkItem's
+                # original inbound KValue (KE-2).
+                for proposal, sig in propose_expansions(
+                    self._model, qc.candidate, qc.significance, self._signifier
+                ):
                     self._handler.on_expansion(
-                        qc.query,
+                        query_value,
                         proposal,
                         sig,
                         original_candidate=qc.candidate,

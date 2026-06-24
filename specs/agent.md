@@ -384,7 +384,7 @@ enables immediate S1 resolution and parallel processing of S2/S3.
 | ------ | ------------------------------------------ | ---------- |
 | AGT-23 | Subscribe and publish: callback receives event | — |
 | AGT-24 | Multiple subscribers: all receive event    | — |
-| AGT-25 | Event fields correct: kind, query, proposal, significance | — |
+| AGT-25 | Event fields correct: kind, query, proposal (KValues carrying significance) | — |
 | AGT-26 | Thread safety: publish from another thread | — |
 | AGT-27 | Empty bus: no crash on publish with no subscribers | — |
 | AGT-28 | Event delivery: all events received in order | — |

@@ -13,33 +13,34 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable
 
-from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 
 
 class RationaliseEvent:
-    """Event emitted during rationalisation processing."""
+    """Event emitted during rationalisation processing.
 
-    __slots__ = ("kind", "query", "proposal", "significance", "candidate")
+    Carries KValues, not bare KLines, and exposes no top-level significance
+    field (@kvalue spec §Exchange, KE-3). ``query`` is the inbound KValue
+    (the sender's declared assessment); ``proposal`` is Kalvin's assessment
+    of the same (or an expansion-proposal) KLine. Each KValue supplies its
+    own significance.
+    """
+
+    __slots__ = ("kind", "query", "proposal")
 
     def __init__(
         self,
         kind: str,
-        query: KLine,
-        proposal: KLine,
-        significance: int,
-        candidate: KLine | None = None,
+        query: KValue,
+        proposal: KValue,
     ):
         self.kind = kind
         self.query = query
         self.proposal = proposal
-        self.significance = significance
-        # Original candidate kline for expansion events.
-        # For expansion proposals (S2/S3), this is the misfit candidate
-        # that triggered the expansion. None for fast-path events (S1/S4).
-        self.candidate = candidate
 
     def __repr__(self) -> str:
-        return f"RationaliseEvent({self.kind!r}, sig={self.significance:#x})"
+        # Report Kalvin's assessment (the proposal's significance).
+        return f"RationaliseEvent({self.kind!r}, sig={self.proposal.significance:#x})"
 
 
 class EventBus:

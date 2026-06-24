@@ -4,20 +4,26 @@ import threading
 
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 
 
 class TestRationaliseEvent:
     def test_attributes(self) -> None:
         k1 = KLine(5, [1, 2])
         k2 = KLine(10, [3])
-        e = RationaliseEvent("frame", k1, k2, 42)
+        q = KValue(k1, 0x10)
+        p = KValue(k2, 42)
+        e = RationaliseEvent("frame", q, p)
         assert e.kind == "frame"
-        assert e.query is k1
-        assert e.proposal is k2
-        assert e.significance == 42
+        assert e.query is q
+        assert e.proposal is p
+        # Significance lives on the KValues, not the event (KE-3).
+        assert e.proposal.significance == 42
+        assert e.query.significance == 0x10
 
     def test_repr(self) -> None:
-        e = RationaliseEvent("ground", KLine(0, []), KLine(0, []), 0xFF)
+        # __repr__ reports Kalvin's assessment via proposal.significance.
+        e = RationaliseEvent("ground", KValue(KLine(0, []), 0), KValue(KLine(0, []), 0xFF))
         r = repr(e)
         assert "ground" in r
         assert "0xff" in r
@@ -30,7 +36,8 @@ class TestEventBus:
         bus.subscribe(lambda e: received.append(e))
 
         k = KLine(0, [])
-        event = RationaliseEvent("frame", k, k, 0)
+        kv = KValue(k, 0)
+        event = RationaliseEvent("frame", kv, kv)
         bus.publish(event)
 
         assert len(received) == 1
@@ -43,7 +50,8 @@ class TestEventBus:
         bus.subscribe(lambda e: b.append(e))
 
         k = KLine(0, [])
-        event = RationaliseEvent("frame", k, k, 0)
+        kv = KValue(k, 0)
+        event = RationaliseEvent("frame", kv, kv)
         bus.publish(event)
 
         assert len(a) == 1
@@ -52,7 +60,8 @@ class TestEventBus:
     def test_no_subscribers(self) -> None:
         bus = EventBus()
         k = KLine(0, [])
-        event = RationaliseEvent("frame", k, k, 0)
+        kv = KValue(k, 0)
+        event = RationaliseEvent("frame", kv, kv)
         # Should not raise
         bus.publish(event)
 
@@ -65,7 +74,8 @@ class TestEventBus:
         results = []
         for i in range(10):
             k = KLine(i, [])
-            results.append(RationaliseEvent("frame", k, k, i))
+            kv = KValue(k, i)
+            results.append(RationaliseEvent("frame", kv, kv))
 
         threads = [threading.Thread(target=bus.publish, args=(e,)) for e in results]
         for t in threads:

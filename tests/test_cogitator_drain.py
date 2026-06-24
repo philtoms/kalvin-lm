@@ -14,6 +14,7 @@ from kalvin.agent import KAgent
 from kalvin.cogitator import Cogitator, WorkItem
 from kalvin.events import EventBus
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
 
@@ -40,10 +41,10 @@ class _StubHandler:
         self.s1_calls = []
         self.expansion_calls = []
 
-    def on_s1(self, query, candidate):
+    def on_s1(self, query: KValue, candidate):
         self.s1_calls.append((query, candidate))
 
-    def on_expansion(self, query, proposal, significance, original_candidate=None):
+    def on_expansion(self, query: KValue, proposal, significance, original_candidate=None):
         self.expansion_calls.append((query, proposal, significance))
 
 
@@ -105,7 +106,7 @@ class TestDrainTimeout:
             cog = Cogitator(model, adapter, handler, signifier)
             # Submit a work item
             item = WorkItem(
-                query=KLine(0x1, []),
+                query=KValue(KLine(0x1, []), 0),
                 candidate=KLine(0x2, []),
                 level="S3",
             )
@@ -152,7 +153,7 @@ class TestProcessingFlag:
         try:
             cog = Cogitator(model, adapter, handler, signifier)
             item = WorkItem(
-                query=KLine(0x1, []),
+                query=KValue(KLine(0x1, []), 0),
                 candidate=KLine(0x2, []),
                 level="S3",
             )
@@ -201,7 +202,7 @@ class TestNoCrossLessonSpillover:
             # (node 10 overlaps, node 20 doesn't).
             q = KLine(0, [T(10), T(20)])
             q.signature = signifier.make_signature([T(10), T(20)])
-            agent.rationalise(q)
+            agent.rationalise(KValue(q, 0))
 
             # The S2 candidate was submitted to the cogitator (not an
             # empty-backlog no-op).
@@ -224,7 +225,7 @@ class TestNoCrossLessonSpillover:
             # signatures (5 | 30 = 31 = 0b11111), so it routes S4 (no
             # candidates) — a clean frame event with no S2/S3 cogitation.
             events.clear()
-            agent.rationalise(KLine(T(64), [T(64)]))
+            agent.rationalise(KValue(KLine(T(64), [T(64)]), 0))
 
             result = agent.cogitate_drain(timeout=5.0)
             assert result is True
@@ -246,7 +247,9 @@ class TestDrainEmptiesBacklog:
         """
         cog = _make_cogitator()
         try:
-            cog.submit(WorkItem(query=KLine(0x1, []), candidate=KLine(0x2, []), level="S3"))
+            cog.submit(
+                WorkItem(query=KValue(KLine(0x1, []), 0), candidate=KLine(0x2, []), level="S3")
+            )
 
             result = cog.drain(timeout=5.0)
             assert result is True
@@ -279,11 +282,11 @@ class TestKAgentDrain:
         agent = KAgent(adapter=bus)
 
         # Add identities
-        agent.rationalise(KLine(0x2, []))  # A
-        agent.rationalise(KLine(0x4, []))  # B
+        agent.rationalise(KValue(KLine(0x2, []), 0))  # A
+        agent.rationalise(KValue(KLine(0x4, []), 0))  # B
 
         # Submit an entry that may trigger cogitation
-        agent.rationalise(KLine(0x6, [0x2, 0x4]))  # AB -> A, B
+        agent.rationalise(KValue(KLine(0x6, [0x2, 0x4]), 0))  # AB -> A, B
 
         try:
             result = agent.cogitate_drain(timeout=5.0)

@@ -9,6 +9,7 @@ therefore require **no tokenizer data** — they run in standard CI.
 from kalvin.cogitator import Cogitator, WorkItem
 from kalvin.events import EventBus
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
 
@@ -24,15 +25,15 @@ class RecordingCogitationHandler:
     """Test fake: records all cogitation callbacks for assertion."""
 
     def __init__(self):
-        self.s1_calls: list[tuple[KLine, KLine]] = []
-        self.expansion_calls: list[tuple[KLine, KLine, int]] = []
+        self.s1_calls: list[tuple[KValue, KLine]] = []
+        self.expansion_calls: list[tuple[KValue, KLine, int]] = []
 
-    def on_s1(self, query: KLine, candidate: KLine) -> None:
+    def on_s1(self, query: KValue, candidate: KLine) -> None:
         self.s1_calls.append((query, candidate))
 
     def on_expansion(
         self,
-        query: KLine,
+        query: KValue,
         proposal: KLine,
         significance: int,
         original_candidate: KLine | None = None,
@@ -70,12 +71,13 @@ class TestCogitatorWithFakeHandler:
         # to resolve), so m.add_to_frame(q) is unnecessary.
         q = KLine(0, [])  # identity: empty nodes
         q.signature = 10
+        q_value = KValue(q, 0x1234)  # declared significance rides the slow path
 
-        cogitator.submit(WorkItem(q, c, "S2"))
+        cogitator.submit(WorkItem(q_value, c, "S2"))
         cogitator.join(timeout=2.0)
 
         assert len(recorder.s1_calls) >= 1
-        assert recorder.s1_calls[0][0] is q
+        assert recorder.s1_calls[0][0] is q_value
         assert recorder.s1_calls[0][1] is c
 
     def test_fake_handler_receives_expansion(self):
@@ -101,7 +103,7 @@ class TestCogitatorWithFakeHandler:
         q.signature = signifier.make_signature([T(0b001)])
         m.add_to_frame(q)
 
-        cogitator.submit(WorkItem(q, k3, "S3"))
+        cogitator.submit(WorkItem(KValue(q, 0x5678), k3, "S3"))
         cogitator.join(timeout=2.0)
 
         assert len(recorder.expansion_calls) >= 1
@@ -128,7 +130,7 @@ class TestCogitatorWithFakeHandler:
         q = KLine(0, [])  # identity: empty nodes
         q.signature = 10
 
-        cogitator.submit(WorkItem(q, c, "S2"))
+        cogitator.submit(WorkItem(KValue(q, 0x9ABC), c, "S2"))
         cogitator.join(timeout=2.0)
 
         # S1 should be called exactly once (not multiple times)
