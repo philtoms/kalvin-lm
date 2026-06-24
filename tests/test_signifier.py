@@ -133,10 +133,10 @@ class TestAbstractConformance:
         assert isinstance(signifier, KSignifier)
 
     def test_abc_is_abstract(self):
-        from kalvin.abstract import KSignifier
-
         # KSignifier cannot be instantiated directly.
         import pytest
+
+        from kalvin.abstract import KSignifier
 
         with pytest.raises(TypeError):
             KSignifier()
