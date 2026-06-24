@@ -339,3 +339,73 @@ class TestEmptyTiers:
         assert loaded_frame2 == orig_frame
         assert loaded_activity2 == activity
         assert list(loaded_model2._ltm) == []
+
+
+# ── KV-7: Objective-Only Storage ──────────────────────────────────────
+
+
+class TestObjectiveOnlyStorage:
+    """KV-7 — codec persists ``{signature, nodes}`` only; significance never serialised.
+
+    Storage is objective-only (@specs/kvalue.md §Storage): the codec writes and
+    reads ``{signature, nodes}`` and reconstructs bare ``KLine`` objects.
+    Significance is a KValue concept — it lives on KValue and is re-derived on
+    retrieval — so it must never leak onto a stored or reconstructed KLine.
+    These tests lock the boundary so the upcoming KValue introduction
+    (KB-351+) cannot accidentally persist significance. They run green today,
+    proving the storage surface is already clean.
+    """
+
+    def test_kline_to_dict_has_no_significance(self):
+        """_kline_to_dict emits a dict whose key set is exactly {signature, nodes}."""
+        d = JsonAdapter._kline_to_dict(KLine(42, [1, 2, 3]))
+        assert set(d.keys()) == {"signature", "nodes"}
+        assert "significance" not in d
+
+    def test_json_encoded_model_entries_have_no_significance(self):
+        """Every stm/klines/ltm entry serialises to exactly {signature, nodes}."""
+        model, activity = _make_model_with_all_tiers()
+        d = JsonAdapter.encode(model, activity)
+
+        for tier in ("stm", "klines", "ltm"):
+            assert d[tier], f"expected non-empty {tier} tier"
+            for entry in d[tier]:
+                assert set(entry.keys()) == {"signature", "nodes"}
+                assert "significance" not in entry
+
+    def test_roundtripped_kline_has_no_significance_attribute(self):
+        """Binary and JSON round-trips reconstruct KLines with no significance."""
+        model, activity = _make_model_with_all_tiers()
+
+        def _all_klines(m: Model) -> list[KLine]:
+            out = list(m.iter_stm())
+            out.extend(m)
+            out.extend(m._ltm)
+            return out
+
+        # Binary round-trip
+        bin_model, _bin_activity = BinaryAdapter.decode(BinaryAdapter.encode(model, activity))
+        for kl in _all_klines(bin_model):
+            assert not hasattr(kl, "significance")
+
+        # JSON round-trip
+        json_model, _json_activity = JsonAdapter.decode(JsonAdapter.encode(model, activity))
+        for kl in _all_klines(json_model):
+            assert not hasattr(kl, "significance")
+
+    def test_extra_dict_key_is_ignored_on_reconstruction(self):
+        """A stray 'significance' key in the dict never attaches to the KLine.
+
+        Defensive guard: even if significance ever appeared in serialised data
+        (an accidental leak), it would not attach to the reconstructed KLine.
+        """
+        kl = JsonAdapter._kline_from_dict(
+            {"signature": 99, "nodes": [1, 2], "significance": 42}
+        )
+        assert kl.signature == 99
+        assert kl.nodes == [1, 2]
+        assert not hasattr(kl, "significance")
+
+    def test_kline_slots_exclude_significance(self):
+        """KLine carries no significance attribute in its slots."""
+        assert "significance" not in KLine.__slots__
