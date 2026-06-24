@@ -14,8 +14,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import D_MAX
+from kalvin.expand import D_MAX, SIG_S1
 from kalvin.kline import KDbg, KLine
+from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
 from training.harness.adapter import KAgentAdapter
 from training.harness.bus import MessageBus
@@ -36,8 +37,11 @@ _S2_DISTANCE = 100  # raw distance for assertions
 # ── Helpers ──────────────────────────────────────────────────────────
 
 
-def _make_entry(sig: int, nodes: list[int]) -> KLine:
-    return KLine(signature=sig, nodes=nodes, dbg=KDbg(label=f"test-{sig:#x}"))
+def _make_entry(sig: int, nodes: list[int]) -> KValue:
+    return KValue(
+        KLine(signature=sig, nodes=nodes, dbg=KDbg(label=f"test-{sig:#x}")),
+        SIG_S1,
+    )
 
 
 def _make_event(
@@ -46,16 +50,16 @@ def _make_event(
     proposal: KLine | None = None,
     significance: int = 0,
 ) -> RationaliseEvent:
+    proposal_kline = proposal if proposal is not None else query
     return RationaliseEvent(
         kind=kind,
-        query=query,
-        proposal=proposal,
-        significance=significance,
+        query=KValue(query, significance),
+        proposal=KValue(proposal_kline, significance),
     )
 
 
-def _entry_key(kline: KLine) -> tuple[int, tuple[int, ...]]:
-    return (kline.signature, tuple(kline.nodes))
+def _entry_key(value: KValue) -> tuple[int, tuple[int, ...]]:
+    return (value.kline.signature, tuple(value.kline.nodes))
 
 
 def _drain(trainer: Trainer) -> None:
