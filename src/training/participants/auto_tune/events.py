@@ -77,17 +77,25 @@ def _enrich_progress(message: dict, seq: int) -> dict:
 
 
 def _enrich_rationalise(message: object, seq: int) -> dict:
-    """Enrich a rationalise event frame (rules 23–26)."""
+    """Enrich a rationalise event frame (rules 23–26).
+
+    Significance is sourced from the proposal KValue — ``proposal["significance"]``
+    on the wire-dict path, ``message.proposal.significance`` on the live-object
+    path — i.e. Kalvin's assessment of the proposal (@kvalue spec §KE-4). There
+    is no top-level significance field on the event (§KE-3); ``query``/``proposal``
+    arrive as KValue wire dicts (handled transparently by ``_to_kline``, which
+    ignores the extra ``significance`` key).
+    """
     if isinstance(message, dict):
         kind = message["kind"]
         query = _to_kline(message["query"])
         proposal = _to_kline(message["proposal"])
-        significance = message["significance"]
+        significance = message["proposal"]["significance"]
     else:
         kind = message.kind
-        query = _to_kline(message.query)
-        proposal = _to_kline(message.proposal)
-        significance = message.significance
+        query = _to_kline(message.query.kline)
+        proposal = _to_kline(message.proposal.kline)
+        significance = message.proposal.significance
 
     return {
         "seq": seq,

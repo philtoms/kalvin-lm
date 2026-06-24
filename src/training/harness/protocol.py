@@ -17,6 +17,7 @@ from websockets.asyncio.server import ServerConnection
 
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 from training.harness.bus import MessageBus
 from training.harness.message import Message
 
@@ -32,31 +33,35 @@ def _domain_json_default(obj: Any) -> Any:
     carrying a domain object becomes a valid WebSocket JSON frame at the wire
     boundary. See specs/auto-tune.md §Event Frame and §KLine Display Object.
 
-    - ``KLine`` → ``{"signature": int, "nodes": list[int]}``
-    - ``RationaliseEvent`` → ``{"kind", "query", "proposal", "significance"}``.
-      Post-KB-354 ``query``/``proposal`` are ``KValue`` objects (a KLine paired
-      with a sender's significance). This hook extracts each ``KValue``\\ 's
-      ``.kline`` — encoded recursively by the ``KLine`` branch above — and
-      surfaces ``proposal.significance`` (Kalvin's assessment of the proposal)
-      as the top-level wire ``significance``. The wire output shape is unchanged
-      from the pre-KB-354 serialiser: ``query``/``proposal`` are plain KLine
-      dicts ``{signature, nodes}`` with ``significance`` at the top level. The
-      query KValue's own significance is the sender's declared assessment and is
-      intentionally not surfaced (the wire frame carries a single, shared
-      significance from the proposal).
+    - ``KValue`` → ``{"signature": int, "nodes": list[int], "significance": int}``.
+      The canonical KValue wire shape, matching the adapter's inbound
+      ``_materialise_kvalue`` wire-dict input exactly (KB-355). Significance
+      rides on the KValue (@kvalue spec §Definition).
+    - ``KLine`` → ``{"signature": int, "nodes": list[int]}``.
+    - ``RationaliseEvent`` → ``{"kind", "query": <KValue wire>, "proposal":
+      <KValue wire>}``. Post-KB-354 ``query``/``proposal`` are ``KValue``
+      objects, encoded recursively by the ``KValue`` branch above. There is no
+      top-level ``significance`` key (@kvalue spec KE-3): significance rides on
+      each KValue. The consumer (the enrich path) reads
+      ``proposal["significance"]`` per the §6 Consumer Map (KE-4).
 
     Any other non-serialisable type raises ``TypeError`` (json's default
     behaviour) so future unknown payloads fail loudly rather than being coerced
     into something meaningless.
     """
+    if isinstance(obj, KValue):
+        return {
+            "signature": obj.kline.signature,
+            "nodes": list(obj.kline.nodes),
+            "significance": obj.significance,
+        }
     if isinstance(obj, KLine):
         return {"signature": obj.signature, "nodes": list(obj.nodes)}
     if isinstance(obj, RationaliseEvent):
         return {
             "kind": obj.kind,
-            "query": obj.query.kline,
-            "proposal": obj.proposal.kline,
-            "significance": obj.proposal.significance,
+            "query": obj.query,
+            "proposal": obj.proposal,
         }
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
@@ -121,12 +126,16 @@ class WebSocketProtocol:
     registered role as the implicit ``sender``.  Outbound messages
     addressed to a client are serialised and sent over the WebSocket.
 
-    Outbound ``Message`` payloads may carry harness domain objects — ``KLine``
-    and ``RationaliseEvent`` — which ``_serialise_message`` encodes to their
-    wire dicts via a ``json.dumps(default=...)`` hook (``_domain_json_default``),
-    so ``action="event"``/``"ratify_request"`` frames reach every client
-    participant. Wire shapes match specs/auto-tune.md §Event Frame and
-    §KLine Display Object.
+    Outbound ``Message`` payloads may carry harness domain objects — ``KLine``,
+    ``KValue`` and ``RationaliseEvent`` — which ``_serialise_message`` encodes
+    to their wire dicts via a ``json.dumps(default=...)`` hook
+    (``_domain_json_default``), so ``action="event"``/``"ratify_request"``
+    frames reach every client participant. KValues serialise as the
+    canonical wire dict ``{"signature", "nodes", "significance"}`` (matching
+    the adapter's inbound ``_materialise_kvalue`` input); ``RationaliseEvent``
+    emits ``query``/``proposal`` as KValue wire dicts with no top-level
+    significance (@kvalue spec KE-3). Wire shapes match specs/auto-tune.md
+    §Event Frame and §KLine Display Object.
 
     Disconnect semantics (HRNS-21): the bus subscription is *not* removed on
     disconnect.  Messages to a disconnected client are silently dropped until

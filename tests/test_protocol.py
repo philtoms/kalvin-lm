@@ -454,9 +454,13 @@ class TestDomainObjectPayloadSerialisation:
             assert frame["action"] == "event"
             message = frame["message"]
             assert message["kind"] == "frame"
-            assert message["significance"] == 99
-            assert message["query"] == {"signature": 0xAA, "nodes": [0xAA]}
-            assert message["proposal"] == {"signature": 0xBB, "nodes": [0xBB, 0xCC]}
+            assert "significance" not in message  # no top-level significance (KE-3)
+            assert message["query"] == {"signature": 0xAA, "nodes": [0xAA], "significance": 0}
+            assert message["proposal"] == {
+                "signature": 0xBB,
+                "nodes": [0xBB, 0xCC],
+                "significance": 99,
+            }
 
             await ws.close()
         finally:
@@ -480,14 +484,17 @@ class TestDomainObjectPayloadSerialisation:
             await asyncio.sleep(0.05)
 
             # Relay an S2/S3 ratify request exactly as the Trainer does
-            # (HRNS-33): message is a dict whose query/proposal are KLines.
+            # (HRNS-33): message is a dict whose query/proposal are KValues
+            # (the trainer wraps event.query/event.proposal). The payload
+            # retains its top-level "significance" key (a trainer-constructed
+            # dict, not a RationaliseEvent).
             bus.send(
                 Message(
                     role="supervisor",
                     action="ratify_request",
                     message={
-                        "proposal": KLine(0xBB, [0xBB]),
-                        "query": KLine(0xAA, [0xAA]),
+                        "proposal": KValue(KLine(0xBB, [0xBB]), significance=99),
+                        "query": KValue(KLine(0xAA, [0xAA]), significance=0),
                         "significance": 99,
                     },
                     sender="trainer",
@@ -502,8 +509,8 @@ class TestDomainObjectPayloadSerialisation:
             assert frame["role"] == "supervisor"
             assert frame["action"] == "ratify_request"
             assert frame["message"] == {
-                "proposal": {"signature": 0xBB, "nodes": [0xBB]},
-                "query": {"signature": 0xAA, "nodes": [0xAA]},
+                "proposal": {"signature": 0xBB, "nodes": [0xBB], "significance": 99},
+                "query": {"signature": 0xAA, "nodes": [0xAA], "significance": 0},
                 "significance": 99,
             }
 
@@ -561,8 +568,8 @@ class TestWireFrameRoundTrip:
             role="supervisor",
             action="ratify_request",
             message={
-                "proposal": KLine(0xBB, [0xBB]),
-                "query": KLine(0xAA, [0xAA]),
+                "proposal": KValue(KLine(0xBB, [0xBB]), significance=99),
+                "query": KValue(KLine(0xAA, [0xAA]), significance=0),
                 "significance": 99,
             },
             sender="trainer",
