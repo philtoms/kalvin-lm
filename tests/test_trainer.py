@@ -1373,7 +1373,7 @@ class TestGenerateAndStart:
         assert any(m.message["status"] == "started" for m in progress_msgs)
 
 
-# ── 
+# ──
 #_generate_and_start error and guard paths ────────────────
 
 
@@ -1529,7 +1529,7 @@ Guard checks in _generate_and_start."""
         assert trainer._session_active
 
 
-# ── 
+# ──
 #_resolve_goal dispatching ─────────────────────────────────
 
 

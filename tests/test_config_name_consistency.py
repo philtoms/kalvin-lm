@@ -17,7 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _BARE_HARNESS_YAML = re.compile(r"(?<!training\.)harness\.yaml")
 
 # Matches ANY ``harness.yaml`` occurrence, including the canonical
-# ``training.harness.yaml``. 
+# ``training.harness.yaml``.
 # (``docs/cascade-development.md`` Structural Rule #5), so specs
 # must carry no ``harness.yaml`` literal at all.
 _HARNESS_YAML = re.compile(r"harness\.yaml")
@@ -25,7 +25,7 @@ _HARNESS_YAML = re.compile(r"harness\.yaml")
 # (see docs/cascade-development.md "Rule #5 — what counts as a
 # file name"). Uniform/context-free: every token here is banned from specs/
 # outright (no context filter needed, which is why a flat _offenders() scan
-# suffices). ``<``, ``>``, and ``/`` are literal in the pattern. 
+# suffices). ``<``, ``>``, and ``/`` are literal in the pattern.
 _DATA_FILE_TOKENS = re.compile(
     r"config\.json|cmd\.json|status\.json|events\.jsonl|meta\.json|"
     r"state\.json|model\.bin|runs/<n>|curricula/<slug>|curricula/"
