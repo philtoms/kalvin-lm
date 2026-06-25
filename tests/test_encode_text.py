@@ -10,7 +10,7 @@ import pytest
 
 from kalvin.agent import KAgent
 from kalvin.events import EventBus
-from kalvin.expand import SIG_S4
+from kalvin.expand import derive_significance
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
@@ -18,6 +18,14 @@ from kalvin.signifier import NLPSignifier
 from tests.conftest import requires_tokenizer_data
 
 signifier = NLPSignifier()
+
+
+def _kv(kline, model):
+    """Wrap a hand-built kline in a KValue declaring its structurally-correct
+    band via derive_significance (kvalue spec KP-1). Replaces the prior SIG_S4
+    placeholder used where significance was ignored (before the comparison gate).
+    Canonical klines declare S2; empty/identity klines declare S4."""
+    return KValue(kline, derive_significance(kline, model, signifier))
 
 # Encoding through KAgent uses the kalvin tokenizer; skip cleanly when the
 # data assets are absent on a fresh clone.
@@ -58,7 +66,7 @@ class TestEncodeSentenceRationalises:
         sentence = "Hello world"
         nodes = agent.tokenizer.encode(sentence)
         kline = KLine(signature=signifier.make_signature(nodes), nodes=nodes)
-        agent.rationalise(KValue(kline, SIG_S4))
+        agent.rationalise(_kv(kline, agent.model))
 
         assert agent.frame_size() > initial
 
@@ -75,7 +83,7 @@ class TestEncodeEmptyString:
         assert nodes == []
 
         kline = KLine(signature=signifier.make_signature(nodes), nodes=nodes)
-        result = agent.rationalise(KValue(kline, SIG_S4))
+        result = agent.rationalise(_kv(kline, agent.model))
 
         # Empty kline → S4 (frame event), size grows by 1
         assert agent.frame_size() == initial + 1
@@ -129,7 +137,7 @@ class TestEncodeMultipleSentences:
         for sentence in sentences:
             nodes = agent.tokenizer.encode(sentence)
             kline = KLine(signature=signifier.make_signature(nodes), nodes=nodes)
-            agent.rationalise(KValue(kline, SIG_S4))
+            agent.rationalise(_kv(kline, agent.model))
 
         # Signatures are OR-reductions of node values, so similar sentences
         # (which share characters/tokens) overlap. rationalise() therefore
@@ -149,7 +157,7 @@ class TestAgentLoadSaveRoundtrip:
         # Encode a sentence
         nodes = agent.tokenizer.encode("Test sentence for roundtrip")
         kline = KLine(signature=signifier.make_signature(nodes), nodes=nodes)
-        agent.rationalise(KValue(kline, SIG_S4))
+        agent.rationalise(_kv(kline, agent.model))
 
         size_before = agent.frame_size()
         assert size_before > 0
@@ -168,7 +176,7 @@ class TestAgentLoadSaveRoundtrip:
         # Encode a sentence
         nodes = agent.tokenizer.encode("JSON roundtrip test")
         kline = KLine(signature=signifier.make_signature(nodes), nodes=nodes)
-        agent.rationalise(KValue(kline, SIG_S4))
+        agent.rationalise(_kv(kline, agent.model))
 
         size_before = agent.frame_size()
 
@@ -182,7 +190,7 @@ class TestAgentLoadSaveRoundtrip:
 
         nodes = agent.tokenizer.encode("File roundtrip test")
         kline = KLine(signature=signifier.make_signature(nodes), nodes=nodes)
-        agent.rationalise(KValue(kline, SIG_S4))
+        agent.rationalise(_kv(kline, agent.model))
 
         size_before = agent.frame_size()
 

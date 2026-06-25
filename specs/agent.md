@@ -97,6 +97,10 @@ Rationalise(Q):
   ┌─── FAST PATH ────────────────────────────────────────────┐
   │ 1. PREPARE                                               │
   │    Assign signature if missing.                           │
+  │ 1b. SIGNIFICANCE COMPARISON                              │
+  │    derived = derive_significance(Q.kline)                │
+  │    if declared == SIG_S4 and derived != SIG_S4: drop     │
+  │      (return True, no STM write, no event)               │
   ├───────────────────────────────────────────────────────────┤
   │ 2. GROUND CHECK                                          │
   │    Does Q already exist in the model?                     │
@@ -140,10 +144,10 @@ Rationalise(Q):
 `Q` is a **KValue** (@kvalue spec). The pipeline operates on `Q`'s KLine
 (the objective structure): the model stores KLines, candidates are KLines,
 and routing tests node membership on the KLine. `Q.significance` — the
-sender's declared assessment — is carried through as input. How rationalisation
-*consumes* a declared significance is **out of scope** for this spec and is
-deferred (see @kvalue spec §What a KValue is Not); this spec guarantees only
-that it is present and addressable on the inbound KValue.
+sender's declared assessment — is the counterpart to Kalvin's own assessment
+in a two-way significance dialog. Rationalisation consumes it in the
+Phase 1b significance-comparison gate (below); see also @kvalue spec
+§What a KValue is Not, which owns only the exchange-unit invariant.
 
 Rationalisation is the process of integrating a Kline into the
 model. It proceeds in phases with a fast/slow split:
@@ -154,6 +158,53 @@ The kline must arrive with its signature already set (callers compute it
 via `make_signature` before rationalising — see @kline spec). Rationalise
 asserts this at entry; an unset signature is a caller bug and crashes
 loudly. There is no derivation step and no special signature value.
+
+### Phase 1b: Significance Comparison
+
+Kalvin compares its own **derived** significance to the sender's **declared**
+significance and decides whether to honour a disagreement.
+
+```
+derived  = derive_significance(Q.kline, model, signifier)
+declared = Q.significance
+if declared == SIG_S4 and derived != SIG_S4:
+    return True            # drop — no STM write, no event
+```
+
+**Why before the ground check:** a recurring proposal is already in Frame
+(written by `on_expansion`), and `model.grounded()` excludes only STM, so a
+post-ground gate would be inert against its one real target.
+
+**S4 is a sentinel, not a band from `classify()`.** `classify()` collapses
+the S3|S4 boundary — `SIG_S4` (`0`) classifies as S3, since `0 >= s34(0)` —
+so the band function can never return S4. S4 is detected by value
+(`== SIG_S4`), matching how `normalise_significance` special-cases `raw_sig
+== 0`. The comparison is therefore value-based, not band-based.
+
+Three outcomes:
+
+| Condition | MVP action |
+| --------- | ---------- |
+| `derived == SIG_S4` and `declared == SIG_S4` (agree) | process normally — Kalvin agrees. Identity klines the compiler marks IDENTITY→S4 agree here and are never dropped. |
+| `declared == SIG_S4` and `derived != SIG_S4` (S4 disagreement) | **drop** — return `True`, no STM write, no event. This is the MVP's honoured disagreement. |
+| `declared != SIG_S4` (any S1/S2/S3 disagreement, or agreement) | process normally — the MVP ignores non-S4 disagreements. |
+
+**Drop semantics.** Dropping is *not* an eviction: the proposal is left
+wherever it sits in memory (typically Frame). "Drop" means rationalise does
+not re-process or re-cogitate it — it returns `True` with no STM write and no
+published event. This is the smallest piece of two-way significance
+consumption: Kalvin gauging the sender's confidence and choosing (MVP-only)
+to honour an S4 disagreement by discarding. Consuming S1/S2/S3 disagreements
+is deferred.
+
+**How a declared-S4 disagreement arises.** `derive_significance` yields
+`SIG_S4` only for identity klines (`is_identity`), and the compiler's
+IDENTITY→S4 mapping always agrees with that — so a declared S4 over an
+identity kline never reaches the drop branch. The drop branch is live only
+against a **sender-constructed KValue** carrying `SIG_S4` over a
+non-identity kline: the sender re-submits a proposal at declared S4 to
+signal "this proposal doesn't work." The trainer produces such a KValue on
+**second-sighting recurrence** (see @harness-server spec §Trainer).
 
 ### Phase 2: Ground Check
 
@@ -344,6 +395,15 @@ enables immediate S1 resolution and parallel processing of S2/S3.
 | ------ | ----------------------------------------------------------- | ---------- |
 | AGT-7  | Signature assigned: KLine with sig=0 gets `make_signature(nodes)` | — |
 | AGT-8  | Signature preserved: existing non-zero sig unchanged        | — |
+
+### Rationalisation — Phase 1b: Significance Comparison
+
+| ID      | Criterion                                                                 | Origin ref |
+| ------- | ------------------------------------------------------------------------- | ---------- |
+| AGT-7a  | declared == SIG_S4 and derived == SIG_S4 (identity declared S4) → process normally (agree) | §Phase 1b |
+| AGT-7b  | declared == SIG_S4 and derived != SIG_S4 → return True, no STM write, no event (drop) | §Phase 1b |
+| AGT-7c  | declared in {S1,S2,S3} (any non-S4 disagreement or agreement) → process normally (MVP ignores) | §Phase 1b |
+| AGT-7d  | Drop leaves memory untouched (no eviction): proposal not added to STM/Frame/LTM | §Phase 1b |
 
 ### Rationalisation — Phase 2: Ground Check
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from kalvin.events import RationaliseEvent
+from kalvin.expand import SIG_S4
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
@@ -484,6 +485,136 @@ class TestBudgetExhaustion:
         notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
         budget_esc = [m for m in notify_msgs if m.message["reason"] == "budget_exhaustion"]
         assert len(budget_esc) >= 1
+
+
+# ── Recurrence → declared-S4 drop signal ──────────────────────────────────
+
+
+class TestRecurrenceDeclaresS4:
+    """Intra-expectation fan-out: the same proposal reappears across two
+    events against one expectation. First sighting scaffolds; second sighting
+    re-submits the proposal at a declared S4 so Kalvin's rationalise drops it.
+    Recurrence counts toward the reactive budget so the escalation net survives.
+    """
+
+    def test_first_sighting_scaffolds_not_drops(self) -> None:
+        """First sighting of a non-matching proposal goes to reactive
+        handling — no rationalise/drop message is sent, the proposal is
+        recorded in the seen-set."""
+        reactor, capture = _make_reactor(cogitate_fn=lambda e: ("A = B", 0.9))
+        reactor.load_lesson([_make_entry(100, [10, 20])])
+
+        proposal = KLine(signature=900, nodes=[99])
+        query = KLine(signature=800, nodes=[1])
+        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
+
+        result = reactor.process_s2_s3(event)
+
+        assert result is False  # reactive path invoked (not handled)
+        # Scaffolding submitted, not a rationalise drop signal.
+        assert capture.find_all(TRAINEE_ROLE, "rationalise") == []
+        assert len(capture.find_all(TRAINEE_ROLE, "submit")) == 1
+        # Proposal recorded for recurrence detection.
+        from training.trainer.reactor import _entry_key
+
+        assert _entry_key(event.proposal) in reactor._seen_proposals
+
+    def test_second_sighting_sends_declared_s4(self) -> None:
+        """Second sighting of the same proposal kline re-submits it at declared
+        S4 and returns True (handled, no supervisor)."""
+        reactor, capture = _make_reactor(cogitate_fn=lambda e: ("A = B", 0.9))
+        reactor.load_lesson([_make_entry(100, [10, 20])])
+
+        proposal = KLine(signature=900, nodes=[99])
+        query = KLine(signature=800, nodes=[1])
+        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
+
+        # First sighting
+        reactor.process_s2_s3(event)
+        capture.reset()
+
+        # Second sighting — same proposal kline
+        result = reactor.process_s2_s3(event)
+
+        assert result is True  # recurrence handled; no supervisor needed
+        rmsgs = capture.find_all(TRAINEE_ROLE, "rationalise")
+        assert len(rmsgs) == 1
+        sent: KValue = rmsgs[0].message
+        assert sent.kline == event.proposal.kline
+        assert sent.significance == SIG_S4
+
+    def test_second_sighting_counts_toward_budget(self) -> None:
+        """Recurrence increments the reactive round (not just scaffolding)."""
+        reactor, capture = _make_reactor(max_reactive_rounds=5, cogitate_fn=lambda e: None)
+        reactor.load_lesson([_make_entry(100, [10, 20])])
+
+        proposal = KLine(signature=900, nodes=[99])
+        query = KLine(signature=800, nodes=[1])
+        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
+
+        reactor.process_s2_s3(event)  # first sighting → reactive (round 1)
+        assert reactor._reactive_rounds == 1
+        reactor.process_s2_s3(event)  # second sighting → recurrence (round 2)
+        assert reactor._reactive_rounds == 2
+
+    def test_pure_recurrence_at_cliff_escalates(self) -> None:
+        """A lesson whose proposals all recur still escalates budget_exhaustion
+        — the escalation safety net is preserved for pure-recurrence stalls."""
+        reactor, capture = _make_reactor(max_reactive_rounds=2, cogitate_fn=lambda e: None)
+        reactor.load_lesson([_make_entry(100, [10, 20])])
+
+        proposal = KLine(signature=900, nodes=[99])
+        query = KLine(signature=800, nodes=[1])
+        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
+
+        reactor.process_s2_s3(event)   # 1st sighting → reactive, round 1
+        reactor.process_s2_s3(event)   # 2nd sighting → recurrence, round 2 (cliff)
+        reactor.process_s2_s3(event)   # 3rd sighting → recurrence, round 3 (over)
+
+        budget_esc = [
+            m
+            for m in capture.find_all(SUPERVISOR_ROLE, "notify")
+            if m.message["reason"] == "budget_exhaustion"
+        ]
+        assert len(budget_esc) >= 1
+
+    def test_refined_proposal_is_not_recurrence(self) -> None:
+        """A structurally-different proposal is genuinely new — it gets its
+        own first-sighting treatment, not a recurrence drop."""
+        reactor, capture = _make_reactor(cogitate_fn=lambda e: ("A = B", 0.9))
+        reactor.load_lesson([_make_entry(100, [10, 20])])
+
+        p1 = KLine(signature=900, nodes=[99])
+        p2 = KLine(signature=901, nodes=[98])  # different kline
+        q = KLine(signature=800, nodes=[1])
+
+        reactor.process_s2_s3(_make_event("frame", q, p1, _S2_SIGNIFICANCE))
+        capture.reset()
+        result = reactor.process_s2_s3(_make_event("frame", q, p2, _S2_SIGNIFICANCE))
+
+        # p2 is a distinct first sighting → reactive path, not a drop.
+        assert result is False
+        assert capture.find_all(TRAINEE_ROLE, "rationalise") == []
+
+    def test_load_lesson_clears_seen_proposals(self) -> None:
+        """load_lesson resets the seen-set: a proposal that recurred in lesson 1
+        gets a fresh first sighting in lesson 2."""
+        reactor, capture = _make_reactor(cogitate_fn=lambda e: ("A = B", 0.9))
+        reactor.load_lesson([_make_entry(100, [10, 20])])
+
+        proposal = KLine(signature=900, nodes=[99])
+        query = KLine(signature=800, nodes=[1])
+        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
+        reactor.process_s2_s3(event)  # record in lesson 1's seen-set
+
+        reactor.load_lesson([_make_entry(200, [20, 30])])  # new lesson
+        assert reactor._seen_proposals == set()
+
+        capture.reset()
+        # Same proposal in lesson 2 → first sighting, not recurrence.
+        result = reactor.process_s2_s3(event)
+        assert result is False
+        assert capture.find_all(TRAINEE_ROLE, "rationalise") == []
 
 
 class TestLoadLessonResetsState:

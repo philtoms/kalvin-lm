@@ -13,6 +13,7 @@ import time
 from kalvin.agent import KAgent
 from kalvin.cogitator import Cogitator, WorkItem
 from kalvin.events import EventBus
+from kalvin.expand import derive_significance
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.model import Model
@@ -20,6 +21,14 @@ from kalvin.signifier import NLPSignifier
 from tests.conftest import requires_tokenizer_data
 
 signifier = NLPSignifier()
+
+
+def _kv(kline, model):
+    """Wrap a hand-built kline in a KValue declaring its structurally-correct
+    band via derive_significance (kvalue spec KP-1). Replaces the prior literal
+    ``0`` (SIG_S4) placeholder used on non-identity klines where significance
+    was ignored (before the comparison gate). Identity klines still declare S4."""
+    return KValue(kline, derive_significance(kline, model, signifier))
 
 
 def t(bits: int) -> int:
@@ -202,7 +211,7 @@ class TestNoCrossLessonSpillover:
             # (node 10 overlaps, node 20 doesn't).
             q = KLine(0, [t(10), t(20)])
             q.signature = signifier.make_signature([t(10), t(20)])
-            agent.rationalise(KValue(q, 0))
+            agent.rationalise(_kv(q, agent.model))
 
             # The S2 candidate was submitted to the cogitator (not an
             # empty-backlog no-op).
@@ -286,7 +295,7 @@ class TestKAgentDrain:
         agent.rationalise(KValue(KLine(0x4, []), 0))  # B
 
         # Submit an entry that may trigger cogitation
-        agent.rationalise(KValue(KLine(0x6, [0x2, 0x4]), 0))  # AB -> A, B
+        agent.rationalise(_kv(KLine(0x6, [0x2, 0x4]), agent.model))  # AB -> A, B
 
         try:
             result = agent.cogitate_drain(timeout=5.0)

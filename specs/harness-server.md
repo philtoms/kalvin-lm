@@ -108,6 +108,7 @@ Kalvin's interface to the harness bus. A thin layer that:
 2. Interprets the `action`:
    - `submit` — compile KScript source via the KScript pipeline, submit each compiled entry to `kagent.rationalise()` one at a time.
    - `countersign` — materialise the bus payload to a KValue and call `kagent.countersign(kvalue)`. The payload may arrive as a live KValue, a wire dict, or a legacy KLine (wrapped at S1); see @kvalue spec §KP-2.
+   - `rationalise` — materialise the bus payload to a KValue and call `kagent.rationalise(kvalue)` directly. Unlike `submit` (which re-derives significance from structure) and `countersign` (which builds the reciprocal at S1), this delivers the KValue as-is: the significance on the KValue is the sender's declared assessment, carried straight into the Phase 1b significance-comparison gate (@agent spec §Rationalisation). Same three payload forms as `countersign`.
 3. Receives Kalvin's callbacks directly (no internal EventBus) and wraps them into harness messages dispatched to the original sender's role.
 4. Maintains a sender map: when entries arrive from role X, the adapter records X as the sender. Kalvin's callbacks are sent to role X.
 
@@ -146,26 +147,41 @@ Key behaviours:
 - **Escalation**: sends messages to role `supervisor` when stuck (budget exhaustion or low LLM agent confidence). All supervisor participants receive escalation notifications. Suppressed in delegated mode (`@specs/reactive-delegation.md`).
 - **Event relay**: relays Kalvin ground/frame/error events to role `supervisor` so supervisors observe the full training session. Ground events forwarded as `event` action. Frame events (S2/S3 proposals) forwarded as both `event` and `ratify_request` (carrying the proposal for ratification).
 - **Ratify request**: when a frame event carries a ratifiable proposal **and auto-countersign did not succeed**, sends a `ratify_request` action to role `supervisor` with the proposal payload. When auto-countersign succeeds the request is suppressed (the proposal needs no supervisor ratification); event relay to the supervisor continues regardless.
+- **Recurring-proposal drop**: when the same proposal kline reaches the reactor twice in one lesson (intra-expectation candidate fan-out — one expectation against two candidates yielding the same reshaped proposal), the second sighting re-submits the proposal to Kalvin as a `rationalise` action carrying a declared `SIG_S4`. Kalvin's Phase 1b gate then drops it instead of re-cogitating it. The reactor records each first-sighting proposal in a per-lesson seen-set (cleared on `load_lesson`); a structurally-different proposal is not recurrence and gets a fresh first-sighting. Recurrence counts toward the reactive budget so the escalation safety net survives a pure-recurrence stall.
 
 ### S2/S3 Auto-Countersign Suppression
 
 The reactor's `process_s2_s3()` returns a `bool`: `True` when
-auto-countersign succeeded, `False` when reactive handling was invoked
-(scaffolding or escalation). It checks auto-countersign first; on success
-it returns `True` immediately without invoking reactive handling. The
-Trainer captures this return and only sends `ratify_request` when
-auto-countersign did **not** succeed. Event relay to the supervisor is
+auto-countersign succeeded **or** a recurring proposal was dropped, `False`
+when reactive handling was invoked (scaffolding or escalation). It checks
+auto-countersign first; on success it returns `True` immediately without
+invoking reactive handling. On a non-match it next checks recurrence: a
+second sighting of the same proposal this lesson re-submits it as a
+`rationalise` action at declared `SIG_S4` and returns `True` (no supervisor
+needed). Otherwise the Trainer captures the return and only sends
+`ratify_request` when auto-countersign did **not** succeed **and** the
+proposal was not a recurrence. Event relay to the supervisor is
 unconditional — the supervisor observes every event even when no
 ratification is needed.
 
 - **SAC-1.** `Reactor.process_s2_s3()` MUST return `True` when
-  auto-countersign succeeds and `False` when reactive handling is invoked.
+  auto-countersign succeeds or a recurring proposal is dropped, and `False`
+  when reactive handling is invoked.
 - **SAC-2.** When auto-countersign succeeds, reactive handling MUST NOT be
   invoked.
+- **SAC-2a.** On a second sighting of the same proposal kline within a
+  lesson, the reactor MUST re-submit it as a `rationalise` action carrying
+  declared `SIG_S4` and MUST NOT invoke scaffolding; the recurrence MUST
+  count toward the reactive budget.
+- **SAC-2b.** `load_lesson` MUST clear the per-lesson seen-set so a
+  proposal that recurred in one lesson gets a fresh first sighting in the
+  next.
 - **SAC-3.** The Trainer MUST NOT send `ratify_request` for S2/S3 events
-  where auto-countersign succeeded.
+  where auto-countersign succeeded or the proposal was dropped as
+  recurrence.
 - **SAC-4.** The Trainer MUST still send `ratify_request` for S2/S3 events
-  where auto-countersign failed.
+  where auto-countersign failed **and** the proposal was a first sighting
+  (not recurrence).
 - **SAC-5.** Event relay to the supervisor MUST continue regardless of
   auto-countersign outcome.
 - **Session management**: one training session at a time. Supports pause and stop via human input.
@@ -327,8 +343,17 @@ A client participant that renders events for the supervisor, provides structured
 | HRNS-36 | `process_s2_s3` returns `False` when auto-countersign fails (SAC-1)          | —          |
 | HRNS-37 | Reactive handling not called when auto-countersign succeeds (SAC-2)          | —          |
 | HRNS-38 | `ratify_request` suppressed when auto-countersign succeeds (SAC-3)           | —          |
-| HRNS-39 | `ratify_request` sent when auto-countersign fails (SAC-4)                    | —          |
+| HRNS-39 | `ratify_request` sent when auto-countersign fails AND proposal is a first sighting (SAC-4) | —          |
 | HRNS-40 | Event relay sent regardless of auto-countersign outcome (SAC-5)             | —          |
+| HRNS-41 | Kalvin's adapter handles `rationalise` action (live KValue + wire dict)      | §Kalvin Adapter |
+| HRNS-42 | `rationalise` wire dict missing `significance` raises TypeError             | §Kalvin Adapter |
+| HRNS-43 | `rationalise` does not call `countersign`/`submit`                           | §Kalvin Adapter |
+| HRNS-44 | Second-sighting recurrence sends `rationalise` at declared SIG_S4 (SAC-2a)  | §Trainer |
+| HRNS-45 | Recurrence does not invoke scaffolding (SAC-2a)                              | §Trainer |
+| HRNS-46 | Recurrence counts toward the reactive budget (SAC-2a)                        | §Trainer |
+| HRNS-47 | Structurally-different proposal is not recurrence (fresh first sighting)     | §Trainer |
+| HRNS-48 | `load_lesson` clears the per-lesson seen-set (SAC-2b)                        | §Trainer |
+| HRNS-49 | Pure-recurrence at budget cliff still escalates budget_exhaustion            | §Trainer |
 
 ## Out of Scope
 

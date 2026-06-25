@@ -211,12 +211,12 @@ to what it is deciding.
 
 The following are explicitly **out of scope** for this spec:
 
-- **Consumption of an inbound KValue's significance by rationalisation.** The
-  plumbing carries a sender's declared assessment into rationalisation as
-  input. What rationalisation *does* with it — the per-participant combination
-  of a declared and a computed significance — is a downstream behaviour and is
-  **not specified here**. This spec guarantees the value is present and
-  addressable; it makes no claim about how Kalvin uses it.
+- **Consumption of an inbound KValue's significance.** Rationalisation
+  *does* consume the sender's declared significance — see @agent spec
+  §Rationalisation (the significance-comparison gate). This spec owns only the
+  exchange unit: it guarantees the declared significance is present and
+  addressable on the inbound KValue; the consumption contract (how Kalvin
+  combines a declared and a computed significance) is out of scope here.
 - **KLine internals.** The KLine (signature, nodes, structural predicates,
   equality) is defined by the @kline spec. A KValue references a KLine; it
   does not redefine it.

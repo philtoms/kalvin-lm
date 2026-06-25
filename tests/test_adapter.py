@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S1
+from kalvin.expand import SIG_S1, SIG_S4
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.model import Model
@@ -394,6 +394,110 @@ class TestHRNS10CountersignAction:
         assert call_arg.kline == KLine(0xABCD, [0x1234, 0x5678])
         assert call_arg.significance == sig
         # No AttributeError raised — the crash is gone.
+
+
+# ── Rationalise action (two-way significance dialog) ───────────────────────
+
+
+class TestRationaliseAction:
+    """The ``rationalise`` action delivers a participant-constructed KValue
+    straight to ``kagent.rationalise`` — the path a participant uses to hand
+    Kalvin a KValue with its own declared significance (the MVP uses it for a
+    declared-S4 drop signal). Mirrors HRNS-10's countersign shape but routes
+    to ``rationalise`` instead of ``countersign``.
+    """
+
+    def test_rationalise_live_kvalue(self) -> None:
+        """A live KValue payload is passed through unchanged to rationalise.
+
+        The KValue's significance is the sender's declared assessment and must
+        arrive intact — unlike ``countersign`` (which forces SIG_S1) and
+        ``submit`` (which re-derives significance from structure), this action
+        preserves the sender's declared value.
+        """
+        bus = MessageBus()
+        kagent = FakeKAgent()
+        adapter = KAgentAdapter(bus, kagent=kagent)
+
+        kv = KValue(KLine(0xABCD, [0x1234]), SIG_S4)
+        adapter.on_message(
+            Message(role=TRAINEE_ROLE, action="rationalise", message=kv, sender="trainer")
+        )
+
+        kagent.rationalise.assert_called_once_with(kv)
+        kagent.countersign.assert_not_called()
+
+    def test_rationalise_materialises_wire_dict(self) -> None:
+        """A wire-dict payload is materialised to a KValue before rationalise.
+
+        A declared-S4 drop signal may arrive from a remote participant as a
+        plain dict (the canonical KValue wire shape). Materialisation must
+        preserve the declared significance.
+        """
+        bus = MessageBus()
+        kagent = FakeKAgent()
+        adapter = KAgentAdapter(bus, kagent=kagent)
+
+        wire = {"signature": 0xABCD, "nodes": [0x1234, 0x5678], "significance": SIG_S4}
+        adapter.on_message(
+            Message(
+                role=TRAINEE_ROLE,
+                action="rationalise",
+                message=wire,
+                sender="trainer",
+            )
+        )
+
+        kagent.rationalise.assert_called_once()
+        call_arg = kagent.rationalise.call_args[0][0]
+        assert isinstance(call_arg, KValue)
+        assert call_arg.kline == KLine(0xABCD, [0x1234, 0x5678])
+        assert call_arg.significance == SIG_S4
+
+    def test_rationalise_wire_dict_missing_significance_raises(self) -> None:
+        """A wire dict missing ``significance`` fails loud (fail-loud contract).
+
+        Reuses ``_materialise_kvalue``: a declared significance is mandatory,
+        so a malformed payload cannot silently become an S0/S4 drop.
+        """
+        bus = MessageBus()
+        kagent = FakeKAgent()
+        adapter = KAgentAdapter(bus, kagent=kagent)
+
+        wire = {"signature": 0xABCD, "nodes": [0x1234]}
+        with pytest.raises(TypeError):
+            adapter.on_message(
+                Message(
+                    role=TRAINEE_ROLE,
+                    action="rationalise",
+                    message=wire,
+                    sender="trainer",
+                )
+            )
+
+    def test_rationalise_does_not_countersign(self) -> None:
+        """Rationalise action does not call countersign."""
+        bus = MessageBus()
+        kagent = FakeKAgent()
+        adapter = KAgentAdapter(bus, kagent=kagent)
+
+        kv = KValue(KLine(0xABCD, [0x1234]), SIG_S4)
+        adapter.on_message(
+            Message(role=TRAINEE_ROLE, action="rationalise", message=kv, sender="trainer")
+        )
+
+        kagent.countersign.assert_not_called()
+
+    def test_rationalise_no_kagent_is_safe(self) -> None:
+        """No bound KAgent → logs and returns, no crash."""
+        bus = MessageBus()
+        adapter = KAgentAdapter(bus, kagent=None)
+
+        kv = KValue(KLine(0xABCD, [0x1234]), SIG_S4)
+        # Must not raise.
+        adapter.on_message(
+            Message(role=TRAINEE_ROLE, action="rationalise", message=kv, sender="trainer")
+        )
 
 
 # ── HRNS-22: KAgent calls adapter directly ───────────────────────────────

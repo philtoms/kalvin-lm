@@ -31,6 +31,7 @@ from kalvin.events import EventBus, RationaliseEvent  # EventBus: test/dev fallb
 from kalvin.expand import (
     SIG_S1,
     SIG_S4,
+    derive_significance,
     is_countersigned,
     is_s1,
     promote_participating,
@@ -197,9 +198,12 @@ class KAgent:
 
         Operates on ``value.kline`` (the objective structure) for every model
         call and routing decision — the Model API stays KLine-based (plan D2).
-        ``value.significance`` (the sender's declared assessment) is carried
-        through as the query voice on published events but is **not consumed**
-        for behaviour (deferred — see @agent spec §Rationalisation).
+        ``value.significance`` (the sender's declared assessment) is the
+        counterpart to Kalvin's own assessment in a two-way significance
+        dialog. It is consumed by the significance-comparison gate below
+        (MVP: an S4 disagreement drops the query); see @agent spec
+        §Rationalisation. The query voice on published events also carries
+        it (KE-2).
 
         Fast path: routing (no model calls). S1/S4 resolve instantly.
         Slow path: S2/S3 queued as individual work items for cogitation.
@@ -214,6 +218,23 @@ class KAgent:
             "KLine.signature must be set before rationalise; callers compute "
             "it via signifier.make_signature(nodes)."
         )
+
+        # Significance-comparison gate — Kalvin compares its own derived
+        # significance to the sender's declared significance. MVP: when the
+        # sender declares S4 and Kalvin derives otherwise, Kalvin drops the
+        # query (returns True, no STM write, no event). This sits before the
+        # ground check because a recurring proposal is already in Frame, so a
+        # post-ground gate would be inert against its target. See @agent spec
+        # §Rationalisation.
+        #
+        # S4 is the sentinel SIG_S4 (= 0), detected by value: classify()
+        # collapses the S3|S4 boundary (0 classifies as S3), so the band
+        # function cannot be used to detect S4. derive_significance yields
+        # SIG_S4 only for identity klines, so an identity kline declared S4
+        # agrees here and is never dropped.
+        derived_sig = derive_significance(kline, self._model, self._signifier)
+        if value.significance == SIG_S4 and derived_sig != SIG_S4:
+            return True  # drop — sender declares S4; Kalvin derives otherwise
 
         # Ground check (Frame/LTM/Base only — not STM)
         if self._model.grounded(kline):

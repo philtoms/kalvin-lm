@@ -19,7 +19,9 @@ sys.path.insert(0, "src")
 
 from kalvin.agent import KAgent
 from kalvin.events import EventBus, RationaliseEvent
-from kalvin.expand import D_MAX, boundaries, classify
+from kalvin.expand import D_MAX, SIG_S4, boundaries, classify
+from kalvin.kline import is_identity
+from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from ks.compiler import compile_source
 
@@ -87,8 +89,13 @@ def _type_suffix(dbg) -> str:
     return f" ({dbg.type_info})" if dbg.type_info else ""
 
 
-def kline_display(kline, tokenizer, model=None) -> str:
-    """Human-readable display for a KLine.
+def kvalue_display(kvalue, tokenizer, model=None) -> str:
+    """Human-readable display for a KValue, prefixed with its significance band.
+
+    The KValue's significance is converted to an ``S1``–``S4`` label and
+    prefixed (e.g. ``[S2] Mary: ['M', 'ary']``), so each displayed kline
+    carries its own assessment — the two-voice view (query = sender's
+    declared significance, proposal = Kalvin's) is visible at a glance.
 
     When *model* is supplied, signature and node values are decoded by
     flattening each through model.unpack (correct for packed/multi-token
@@ -98,11 +105,14 @@ def kline_display(kline, tokenizer, model=None) -> str:
     graph is populated). Falls back to a raw signature if neither is
     available.
     """
-    if kline is None:
+    if kvalue is None:
         return "<none>"
 
+    level = significance_level(kvalue.significance)
+    kline = kvalue.kline
     dbg = getattr(kline, "dbg", None)
 
+    body: str
     # Primary path: graph-based decode.
     if model is not None:
         decoded = _decode_value(kline.signature, model, tokenizer)
@@ -110,24 +120,27 @@ def kline_display(kline, tokenizer, model=None) -> str:
         label += _type_suffix(dbg)
         nodes = kline.nodes
         if not nodes:
-            return label
-        node_strs = [_decode_value(n, model, tokenizer) or f"#{n:#x}" for n in nodes]
-        return f"{label}: {node_strs}"
-
+            body = label
+        else:
+            node_strs = [_decode_value(n, model, tokenizer) or f"#{n:#x}" for n in nodes]
+            body = f"{label}: {node_strs}"
     # Fallback path: compile-time dbg (lossy for packed values).
-    if dbg:
+    elif dbg:
         label = dbg.label
         if dbg.decoded and dbg.decoded != label:
             label = f"{label} [{dbg.decoded!r}]"
         label += _type_suffix(dbg)
         nodes = kline.nodes
         if not nodes:
-            return label
-        node_strs = [_decode_value(n, None, tokenizer) or f"#{n:#x}" for n in nodes]
-        return f"{label}: {node_strs}"
-
+            body = label
+        else:
+            node_strs = [_decode_value(n, None, tokenizer) or f"#{n:#x}" for n in nodes]
+            body = f"{label}: {node_strs}"
     # Last resort: raw signature.
-    return f"sig={kline.signature:#x}"
+    else:
+        body = f"sig={kline.signature:#x}"
+
+    return f"[{level}] {body}"
 
 
 # ── Main ──────────────────────────────────────────────────────────────
@@ -158,7 +171,7 @@ def main() -> None:
     args = parser.parse_args()
 
     tokenizer = NLPTokenizer()
-    klines = compile_source(SOURCE, tokenizer, dev=True)
+    kvalues = compile_source(SOURCE, tokenizer, dev=True)
 
     adapter = EventBus()
     agent = KAgent(tokenizer=tokenizer, adapter=adapter)
@@ -177,18 +190,23 @@ def main() -> None:
             done_event.set()
             return
 
-        level = significance_level(e.significance)
+        # Events carry two KValues (KE-3): query (sender's declared
+        # assessment) and proposal (Kalvin's assessment). Significance lives
+        # on the KValue, not the event.
+        level = significance_level(e.proposal.significance)
         counts[level] += 1
 
         if args.verbose:
-            query_str = kline_display(e.query, tokenizer, agent.model)
-            proposal_str = kline_display(e.proposal, tokenizer, agent.model)
-            arrow = "←" if e.significance == D_MAX else "|"
-            print(f"  {e.kind:6s} {query_str} → {level} {arrow} {proposal_str}")
+            query_str = kvalue_display(e.query, tokenizer, agent.model)
+            proposal_str = kvalue_display(e.proposal, tokenizer, agent.model)
+            # The arrow marks S1 ratification (←) vs not (|); each side's
+            # significance band is already shown by its [Sx] prefix.
+            arrow = "←" if e.proposal.significance == D_MAX else "|"
+            print(f"  {e.kind:6s} {query_str} {arrow} {proposal_str}")
 
         # if e.kind != "ground":
-        query_str = kline_display(e.query, tokenizer, agent.model)
-        proposal_str = kline_display(e.proposal, tokenizer, agent.model)
+        query_str = kvalue_display(e.query, tokenizer, agent.model)
+        proposal_str = kvalue_display(e.proposal, tokenizer, agent.model)
         entries[level].append(f"{query_str} ← {proposal_str}")
 
     adapter.subscribe(on_event)
@@ -200,13 +218,13 @@ def main() -> None:
         from kalvin.model import Model
 
         display_model = Model()
-        for k in klines:
-            display_model.add_to_frame(k)
+        for k in kvalues:
+            display_model.add_to_frame(k.kline)
 
-        # Print compiled entries
+        # Print compiled entries (each compiled entry is a KValue — KP-1).
         print("Compiled entries:")
-        for k in klines:
-            print(f"  {kline_display(k, tokenizer, display_model)}")
+        for k in kvalues:
+            print(f"  {kvalue_display(k, tokenizer, display_model)}")
 
     # Rationalise
     print("\nRationalising...")
@@ -225,7 +243,7 @@ def main() -> None:
 
     deadline_hit = False
     try:
-        for k in klines:
+        for k in kvalues:
             agent.rationalise(k)
 
         if not done_event.wait(timeout=args.timeout):
@@ -245,6 +263,34 @@ def main() -> None:
             "mid-run (likely the unfixed Model/STM race livelocking the "
             "rationalise/cogitate phase). Reporting partial counts."
         )
+
+    # S4-drop demonstration — the Phase 1b significance-comparison gate.
+    # Re-submit the curriculum's relationship klines at a declared S4. Each
+    # derives S1/S2/S3 (never S4 — only identities derive S4), so the gate
+    # drops it: rationalise returns True with NO event and NO model write,
+    # before the ground check even runs. This is Kalvin honouring the
+    # sender's declared S4 assessment (the two-way significance dialog).
+    if not deadline_hit:
+        print("\nS4-drop check (re-submit relationship klines at declared S4)...")
+        relationships = [
+            e for e in kvalues if e.kline.nodes and not is_identity(e.kline)
+        ]
+        drops = 0
+        checked = min(len(relationships), 8)
+        for kv in relationships:
+            events_before = sum(counts.values())
+            result = agent.rationalise(KValue(kv.kline, SIG_S4))
+            events_after = sum(counts.values())
+            dropped = result is True and events_after == events_before
+            if dropped:
+                drops += 1
+            # if args.verbose:
+            tag = "drop" if dropped else "process"
+            print(
+                f"  {tag:7s} {kvalue_display(kv, tokenizer, agent.model)} "
+                "(declared S4)"
+            )
+        print(f"  {drops} declared-S4 queries dropped (no event emitted).")
 
     # Print summary
     print(f"\nEvent summary ({sum(counts.values())} total):")

@@ -11,7 +11,7 @@ pair resolution.
 
 from kalvin.agent import KAgent
 from kalvin.events import EventBus
-from kalvin.expand import SIG_S4
+from kalvin.expand import derive_significance
 from kalvin.kline import KLine, sig_level
 from kalvin.kvalue import KValue
 from kalvin.model import Model
@@ -31,6 +31,14 @@ def t(bits: int) -> int:
     """
     return bits << 32
 
+
+def _kv(kline, model):
+    """Wrap a hand-built kline in a KValue declaring its structurally-correct
+    band via derive_significance (kvalue spec KP-1). Replaces the prior SIG_S4
+    placeholder used where significance was ignored (before the comparison gate)."""
+    return KValue(kline, derive_significance(kline, model, signifier))
+
+
 # Every test in this module drives ``compile_source`` (which builds a
 # ``NLPTokenizer()`` internally) or a ``KAgent`` (whose default
 # tokenizer is the kalvin Tokenizer).  Gate the whole module so data-less clones skip cleanly.
@@ -47,9 +55,9 @@ class TestCountersignPairResolution:
         # Add identities (derived from compile_source so signatures match the
         # tokenizer encoding used by the countersign compilation below)
         # M (tokenizer-consistent identity)
-        a.rationalise(KValue(compile_source("M", dev=True)[0].kline, SIG_S4))
+        a.rationalise(compile_source("M", dev=True)[0])
         # H (tokenizer-consistent identity)
-        a.rationalise(KValue(compile_source("H", dev=True)[0].kline, SIG_S4))
+        a.rationalise(compile_source("H", dev=True)[0])
 
         entries = compile_source("M == H", dev=True)
         assert len(entries) == 2
@@ -68,7 +76,7 @@ class TestCountersignPairResolution:
         bus.on_event = cap
 
         for e in entries:
-            result = a.rationalise(KValue(e.kline, SIG_S4))
+            result = a.rationalise(e)
             assert result is True
 
         # Both should produce frame events with S1 significance
@@ -110,12 +118,12 @@ class TestSelfFilterInCandidates:
 
         # Add a candidate that partially overlaps with query signature
         candidate = KLine(t(5), [t(10), t(30)])
-        a.rationalise(KValue(candidate, SIG_S4))
+        a.rationalise(_kv(candidate, a.model))
 
         # Query overlaps on [10] but not [20] -> should be S2, not S1
         q = KLine(0, [t(10), t(20)])
         q.signature = signifier.make_signature([t(10), t(20)])
-        result = a.rationalise(KValue(q, SIG_S4))
+        result = a.rationalise(_kv(q, a.model))
         # S2 should return False (slow path) even though q is in STM
         assert result is False
 
@@ -155,9 +163,9 @@ class TestUndersignIsConnotateReversed:
         # Add identities (derived from compile_source so signatures match the
         # tokenizer encoding used by the undersign compilation below)
         # M (tokenizer-consistent identity)
-        a.rationalise(KValue(compile_source("M", dev=True)[0].kline, SIG_S4))
+        a.rationalise(compile_source("M", dev=True)[0])
         # S (tokenizer-consistent identity)
-        a.rationalise(KValue(compile_source("S", dev=True)[0].kline, SIG_S4))
+        a.rationalise(compile_source("S", dev=True)[0])
 
         # Compile undersign: S = M -> {M: S}
         entries = compile_source("S = M", dev=True)
@@ -172,7 +180,7 @@ class TestUndersignIsConnotateReversed:
         # Pre-register
         a.model.add_to_stm(e.kline)
 
-        result = a.rationalise(KValue(e.kline, SIG_S4))
+        result = a.rationalise(e)
         # Undersign gets no special fast path: {M: [S]} is routed against
         # the {M: []} identity (match_count 0) -> S3, so it goes through the
         # slow path and rationalise returns False (CR-7).
@@ -186,7 +194,7 @@ class TestUndersignIsConnotateReversed:
         # Add identity A only (D is unknown).  Derived from compile_source so
         # its signature matches the tokenizer encoding used by the connotate below.)
         # A (tokenizer-consistent identity)
-        a.rationalise(KValue(compile_source("A", dev=True)[0].kline, SIG_S4))
+        a.rationalise(compile_source("A", dev=True)[0])
 
         entries = compile_source("A > D", dev=True)
         connotate = [e for e in entries if e.kline.nodes]
@@ -195,7 +203,7 @@ class TestUndersignIsConnotateReversed:
         assert sig_level(e.kline, signifier) == "S3"
 
         a.model.add_to_stm(e.kline)
-        result = a.rationalise(KValue(e.kline, SIG_S4))
+        result = a.rationalise(e)
         # No candidates for A signature, so it should be novel (S4 -> True)
         # OR if candidates exist, S3 -> False (slow path)
         # Since only {A: None} exists, where(A) returns it

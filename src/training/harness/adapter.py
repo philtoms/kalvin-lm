@@ -215,6 +215,12 @@ class KAgentAdapter:
             is materialised to a :class:`KValue` at this inbound boundary
             (see :func:`_materialise_kvalue`) — it may arrive as a live
             KValue, a wire dict, or a legacy bare KLine.
+        rationalise:
+            Call ``kagent.rationalise(kvalue)``. The payload is materialised
+            to a :class:`KValue` and delivered straight to rationalisation —
+            no recompile, no reciprocal, no forced significance. This is the
+            path a participant uses to hand Kalvin a KValue with its own
+            declared significance (the two-way significance dialog).
         save:
             Persist Kalvin's model to disk via agent_codec.
         load:
@@ -224,6 +230,8 @@ class KAgentAdapter:
             self._handle_submit(msg)
         elif msg.action == "countersign":
             self._handle_countersign(msg)
+        elif msg.action == "rationalise":
+            self._handle_rationalise(msg)
         elif msg.action == "save":
             self._handle_save(msg)
         elif msg.action == "load":
@@ -330,6 +338,31 @@ class KAgentAdapter:
         kvalue = _materialise_kvalue(msg.message)
         logger.info("Countersign: %s", kvalue)
         self._kagent.countersign(kvalue)
+
+    def _handle_rationalise(self, msg: Message) -> None:
+        """Deliver a participant-constructed KValue straight to rationalisation.
+
+        The payload in ``msg.message`` is materialised to a :class:`KValue`
+        via :func:`_materialise_kvalue` and handed to
+        :meth:`KAgent.rationalise`. Unlike ``submit`` (which recompiles
+        KScript source, re-deriving significance from structure) and
+        ``countersign`` (which builds the reciprocal kline at SIG_S1), this
+        action delivers the KValue as-is — the significance on the KValue is
+        the sender's declared assessment, carried straight into the
+        significance-comparison gate (@agent spec §Rationalisation).
+
+        Three payload forms are accepted, same as ``countersign`` (see
+        :func:`_materialise_kvalue`): a live :class:`KValue`, a wire dict
+        ``{"signature", "nodes", "significance"}``, or a legacy bare
+        :class:`KLine` (wrapped at SIG_S1).
+        """
+        if self._kagent is None:
+            logger.error("No KAgent bound; cannot rationalise")
+            return
+
+        kvalue = _materialise_kvalue(msg.message)
+        logger.info("Rationalise (direct): %s", kvalue)
+        self._kagent.rationalise(kvalue)  # fire-and-forget; events via on_event
 
     def _handle_save(self, msg: Message) -> None:
         """Persist Kalvin's model to disk via agent_codec.
