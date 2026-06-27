@@ -44,6 +44,34 @@ def _resolve_python() -> str:
     return sys.executable
 
 
+def _subprocess_env(session_dir: Path) -> dict[str, str]:
+    """Build the env for harness/supervisor subprocesses.
+
+    When the session lives inside a git worktree (``<main-repo>/.worktrees/...``),
+    the worktree's checkout has no ``data/`` — gitignored build artifacts
+    (tokenizer BPE engine, model binary, grammar tables) are not part of the
+    tree.  ``kalvin.paths`` documents ``KALVIN_DATA_DIR`` as the worktree
+    escape hatch: point it at the main checkout's ``data/`` so the harness can
+    load the tokenizer instead of crashing with ``FileNotFoundError`` on
+    ``data/tokenizer/tokenizer-32768.json``.
+
+    A caller-supplied ``KALVIN_DATA_DIR`` always wins (no override).
+    """
+    env = os.environ.copy()
+    if "KALVIN_DATA_DIR" not in env:
+        parts = session_dir.resolve().parts
+        try:
+            idx = parts.index(".worktrees")
+        except ValueError:
+            idx = None
+        if idx is not None and idx > 0:
+            main_repo = Path(*parts[:idx])
+            main_data = main_repo / "data"
+            if main_data.is_dir():
+                env["KALVIN_DATA_DIR"] = str(main_data)
+    return env
+
+
 def _read_pid(path: Path) -> int | None:
     """Read a PID file and return the integer, or ``None`` if missing."""
     if not path.exists():
@@ -160,6 +188,7 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
         [_resolve_python(), "-m", "training.harness", "--config", str(harness_config_path)],
         stdout=subprocess.DEVNULL,
         stderr=log_file,
+        env=_subprocess_env(session_dir),
     )
 
     pid_path.write_text(str(proc.pid), encoding="utf-8")
@@ -235,6 +264,7 @@ def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
         ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        env=_subprocess_env(session_dir),
     )
 
     pid_path = session_dir / "supervisor.pid"
