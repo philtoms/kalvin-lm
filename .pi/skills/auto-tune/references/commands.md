@@ -3,7 +3,7 @@
 All commands require `PYTHONPATH=src` and are invoked as:
 
 ```bash
-PYTHONPATH=src $AT_PYTHON -m participants.auto_tune <command> --session <name> [options]
+PYTHONPATH=src $AT_PYTHON -m training.participants.auto_tune <command> --session <name> [options]
 ```
 
 Where `$AT_PYTHON` is the absolute path to the main repo's `.venv/bin/python`, captured before entering the worktree:
@@ -20,21 +20,21 @@ AT_PYTHON="$(pwd)/.venv/bin/python"
 
 ## CLI Commands
 
-| Command                                                               | Purpose                                                              |
-| --------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Command                                                               | Purpose                                                                        |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | `init --session <name> --curriculum <path> [--host <h>] [--port <p>]` | Create worktree, session directory, config.json, git branch `auto-tune/<name>` |
-| `teardown --session <name>`                                           | Remove worktree and delete branch (run from main repo)              |
-| `start-harness --session <name>`                                      | Start harness server (background), wait for ready                    |
-| `stop-harness --session <name>`                                       | Graceful shutdown (SIGTERM → SIGKILL on timeout)                     |
-| `start-supervisor --session <name>`                                   | Start CLI supervisor (background), wait for connected                |
-| `stop-supervisor --session <name>`                                    | Send shutdown command, wait for exit                                 |
-| `send --session <name> --command '<json>'`                            | Write command, return immediately                                    |
-| `events --session <name> [--after <seq>]`                             | Print events after given sequence number                             |
-| `step --session <name> --command '<json>'`                            | Write command, block until next event, print it                      |
-| `status --session <name>`                                             | Print status.json                                                    |
-| `snapshot --session <name>`                                           | Capture state, events, model, git metadata to `runs/<n>/`            |
-| `restore --session <name> --run <n>`                                  | Restore state and model from a snapshot                              |
-| `reset --session <name> [--fresh-model]`                              | Delete curriculum state, truncate events, optionally delete model    |
+| `teardown --session <name>`                                           | Remove worktree and delete branch (run from main repo)                         |
+| `start-harness --session <name>`                                      | Start harness server (background), wait for ready                              |
+| `stop-harness --session <name>`                                       | Graceful shutdown (SIGTERM → SIGKILL on timeout)                               |
+| `start-supervisor --session <name>`                                   | Start CLI supervisor (background), wait for connected                          |
+| `stop-supervisor --session <name>`                                    | Send shutdown command, wait for exit                                           |
+| `send --session <name> --command '<json>'`                            | Write command, return immediately                                              |
+| `events --session <name> [--after <seq>]`                             | Print events after given sequence number                                       |
+| `step --session <name> --command '<json>'`                            | Write command, block until next event, print it                                |
+| `status --session <name>`                                             | Print status.json                                                              |
+| `snapshot --session <name>`                                           | Capture state, events, model, git metadata to `runs/<n>/`                      |
+| `restore --session <name> --run <n>`                                  | Restore state and model from a snapshot                                        |
+| `reset --session <name> [--fresh-model]`                              | Delete curriculum state, truncate events, optionally delete model              |
 
 ## Supervisor Commands (sent via `step` or `send`)
 

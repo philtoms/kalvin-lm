@@ -24,6 +24,39 @@ The user says "resume", "continue", or points at an existing session. A `session
 
 **Manual handoff:** If you notice context is getting large, update `session-state.md` and tell the user: "Context is getting large. Run `/auto-tune-handoff` or start a fresh conversation and say 'resume auto-tune <name>'."
 
+## Pi-in-the-Loop Model
+
+Auto-tune has two supervisor models. Both fill the same `supervisor` role on
+the harness bus and produce identical logs; they differ only in **who
+reasons**.
+
+- **Human-in-the-loop** (Slack / TUI participant): a human is the supervisor.
+  Their reasoning happens in their head or Slack and is **never in the logs** —
+  the logs capture protocol only (events in, commands out).
+- **Pi-in-the-loop** (auto-tune, this skill): **you (pi) are the supervisor
+  participant** — the agent-in-the-loop. The CLI Supervisor process is merely a
+  protocol relay (WebSocket ↔ file: `events.jsonl` out, `cmd.json` in); it does
+  not think. You drive it by writing commands via `step`/`send`.
+
+**Your reasoning will never be in the logs — by design, exactly as a human
+supervisor's reasoning never is.** The record of your supervisor reasoning
+lives in the **pi session window**, which is your native surface the way a
+human's head/Slack is theirs. The session window is the _only_ place evidence
+that "pi is performing supervisor mode" can exist.
+
+**Consequence for the run loop:** supervisor-decision events (`ratify_request`,
+`escalation`, and any event that needs a non-`continue` answer) **must be
+handled turn-by-turn, with your reasoning shown in the session window before
+each command is emitted.** One decision event = one turn of reasoning = one
+emitted command. Routine observation events (`rationalise`, `progress`,
+`ground`) can be driven efficiently — you observe them but do not act.
+
+**Never respond to a decision event with a hardcoded or looped command.**
+Driving a `ratify_request` with a scripted `ratify` abdicates the supervisor
+role just as surely as a human pressing a button without reading the prompt.
+When `commands.jsonl` shows a run of identical decisions with no reasoning
+between them in the window, that is a process failure, not a result.
+
 ## 1. Establish Goal (once, new sessions only) — DO THIS FIRST
 
 You need all three elements before doing anything else:
@@ -45,7 +78,7 @@ These rules apply throughout the session:
 3. **Commit after each meaningful change.** Don't accumulate a large diff. Reference the session name in commit messages.
 4. **Never merge into main.** All work stays on the `auto-tune/<name>` branch inside the worktree.
 5. **Session state is sacred.** Update `session-state.md` after every observation (step 3d). This file is your lifeline for resuming after context resets.
-6. **Keep context lean.** Don't re-read old harness logs or events from previous runs. The state file has the summary. Only read the current run's artifacts.
+6. **Keep context lean.** Don't re-read old harness logs or events from previous runs. The state file has the summary. Only read the current run's artifacts. (This concerns _historical_ runs — it does **not** excuse skipping per-event reasoning on decision events; see §Pi-in-the-Loop Model.)
 7. **Work inside the worktree.** After init, all commands and file operations happen inside `.worktrees/auto-tune/<name>/`. Never modify files in the main repo.
 
 Auto-tune tunes the **codebase** AND the **project documentation**.
@@ -58,7 +91,7 @@ Capture the Python interpreter path from the main repo, then initialise:
 # From the main project repo:
 AT_PYTHON="$(pwd)/.venv/bin/python"
 
-PYTHONPATH=src $AT_PYTHON -m participants.auto_tune init \
+PYTHONPATH=src $AT_PYTHON -m training.participants.auto_tune init \
   --session <name> --curriculum <curriculum-path>
 ```
 
@@ -73,7 +106,7 @@ cd .worktrees/auto-tune/<name>
 All subsequent commands run from inside the worktree using `$AT_PYTHON`:
 
 ```bash
-PYTHONPATH=src $AT_PYTHON -m participants.auto_tune <command> --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.participants.auto_tune <command> --session <name>
 ```
 
 Then create the initial `auto-tune/<name>/session-state.md` using the template from `references/session-state-format.md`. Fill in the goal, done criteria, session details. Set **Current Phase** to `running`, **Next Action** to `start run 1`. Include the **Worktree** field.
@@ -98,29 +131,47 @@ Each iteration:
 ### a. Start processes
 
 ```bash
-PYTHONPATH=src $AT_PYTHON -m participants.auto_tune start-harness --session <name>
-PYTHONPATH=src $AT_PYTHON -m participants.auto_tune start-supervisor --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.participants.auto_tune start-harness --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.participants.auto_tune start-supervisor --session <name>
 ```
 
 Update state: **Current Phase** → `running`.
 
 ### b. Step through events
 
+There are two classes of event, handled differently (see **§Pi-in-the-Loop
+Model**):
+
+**Routine observation events** — `rationalise`, `progress`, `ground`,
+`connected`, `disconnected`: the supervisor role observes but does not act.
+Drive these with `continue`. You may batch them in a loop and do **not** need to
+hold each in context — note only the highlights that inform your next edit.
+
 ```bash
-PYTHONPATH=src $AT_PYTHON -m participants.auto_tune step \
+PYTHONPATH=src $AT_PYTHON -m training.participants.auto_tune step \
   --session <name> --command '{"action": "start"}'
-# Then continue through all events:
-PYTHONPATH=src $AT_PYTHON -m participants.auto_tune step \
+# Loop continue until a supervisor-decision event or run completion:
+PYTHONPATH=src $AT_PYTHON -m training.participants.auto_tune step \
   --session <name> --command '{"action": "continue"}'
-# ... repeat until disconnected event ...
 ```
 
-**Do not hold all events in context.** As you step through events, note the key observations mentally for the next step. You do not need to remember every event — only the highlights that inform your next edit.
+**Supervisor-decision events** — `ratify_request`, `escalation`, or any event
+requiring `ratify` / `scaffold` / `goal` / any non-`continue` answer: **stop
+the loop.** This is you acting as supervisor. In the session window: read the
+event (for `ratify_request`, use its `misfit` + `curriculum_context`
+enrichment), state which command is correct and **why**, then emit exactly one
+command. Repeat, turn by turn, per decision event.
+
+Your decisions are audited to `auto-tune/<name>/commands.jsonl` (one line per
+command, with the event seq it answers). That file is the **protocol record**;
+the **session window** is the **reasoning record**. Both belong together — a
+command in the audit with no matching reasoning in the window is a process
+failure.
 
 ### c. Snapshot
 
 ```bash
-PYTHONPATH=src $AT_PYTHON -m participants.auto_tune snapshot --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.participants.auto_tune snapshot --session <name>
 ```
 
 ### d. Observe → Update State
@@ -153,9 +204,9 @@ Read `session-state.md` (your fresh update) and decide:
 Update state: **Current Phase** → `resetting`.
 
 ```bash
-PYTHONPATH=src $AT_PYTHON -m participants.auto_tune stop-supervisor --session <name>
-PYTHONPATH=src $AT_PYTHON -m participants.auto_tune stop-harness --session <name>
-PYTHONPATH=src $AT_PYTHON -m participants.auto_tune reset --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.participants.auto_tune stop-supervisor --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.participants.auto_tune stop-harness --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.participants.auto_tune reset --session <name>
 ```
 
 Then return to step a.
@@ -178,7 +229,7 @@ Every auto-tune session must consolidate existing documentation:
 
 ```bash
 cd <main-repo-root>
-PYTHONPATH=src .venv/bin/python -m participants.auto_tune teardown --session <name>
+PYTHONPATH=src .venv/bin/python -m training.participants.auto_tune teardown --session <name>
 ```
 
 Update state: **Current Phase** → `complete`.
