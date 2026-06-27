@@ -399,9 +399,18 @@ class Trainer:
             self._state.mark_satisfied(key)
         else:
             # S2/S3 slow path: skip if already satisfied (e.g. an S1
-            # cogitation event arrived before this S3 expansion)
+            # cogitation event arrived before this S3 expansion).
+            #
+            # The skip is scoped to NON-delegated mode only. In delegated
+            # mode the Reactor's _auto_countersign already short-circuits
+            # satisfied matches (it returns True with no ratify_request),
+            # so applying this skip here would also suppress *genuinely
+            # non-matching* proposals whose query entry happens to be
+            # satisfied — hiding decisions RD-7 requires the supervisor to
+            # see. Letting them flow to the Reactor is both safe and
+            # correct: matches are absorbed, non-matches surface.
             key = _entry_key(event.query)
-            if self._state.is_satisfied(key):
+            if self._state.is_satisfied(key) and not self._delegate_reactive:
                 logger.debug("S2/S3 event for already-satisfied entry — skipping")
             else:
                 auto_matched = self._reactor.process_s2_s3(event)
