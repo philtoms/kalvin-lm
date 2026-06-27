@@ -108,18 +108,30 @@ def _enrich_rationalise(message: object, seq: int) -> dict:
 
 
 def _enrich_ratify_request(message: dict, seq: int) -> dict:
-    """Enrich a ratify request frame (rules 23–26)."""
+    """Enrich a ratify request frame (rules 23–26).
+
+    In delegated mode the Trainer enriches the payload with ``misfit`` and
+    ``curriculum_context`` (RD-7); those keys are optional and absent in
+    default mode (RD-8). Pass them through verbatim when present so the
+    supervisor — and the ``commands.jsonl`` audit — can see the diagnosis
+    and pedagogical context the reactive decision needs.
+    """
     query = _to_kline(message["query"])
     proposal = _to_kline(message["proposal"])
     significance = message["significance"]
 
-    return {
+    event = {
         "seq": seq,
         "type": "ratify_request",
         "query": _build_kline_display(query),
         "proposal": _build_kline_display(proposal),
         "significance": _build_significance(significance),
     }
+    if "misfit" in message:
+        event["misfit"] = message["misfit"]
+    if "curriculum_context" in message:
+        event["curriculum_context"] = message["curriculum_context"]
+    return event
 
 
 def _enrich_escalation(message: dict, seq: int) -> dict:

@@ -161,6 +161,28 @@ class Reactor:
         # survives a pure-recurrence stall.
         key = _entry_key(event.proposal)
         if key in self._seen_proposals:
+            if self._delegate_reactive:
+                # Delegated mode: the supervisor already saw this proposal
+                # on its first sighting (which returned False → a
+                # ratify_request). A recurrence is Kalvin re-emitting the
+                # same kline; dedup by dropping it at a declared S4 WITHOUT
+                # touching the reactive-round budget. RD-6 forbids
+                # budget_exhaustion escalation in delegated mode — the
+                # supervisor is the sole decision-maker, so a recurrence
+                # must neither re-surface nor escalate. The supervisor's
+                # decision on the first sighting stands.
+                self._bus.send(
+                    Message(
+                        role=TRAINEE_ROLE,
+                        action="rationalise",
+                        message=KValue(event.proposal.kline, SIG_S4),
+                        sender=self._role,
+                    )
+                )
+                logger.info(
+                    "Recurring proposal re-submitted at declared S4 (delegated dedup)"
+                )
+                return True
             self._reactive_rounds += 1
             if self._check_budget():
                 # At or over the cliff — escalation already sent by
