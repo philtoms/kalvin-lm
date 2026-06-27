@@ -16,6 +16,7 @@ thread via ``on_message()``.
 from __future__ import annotations
 
 import logging
+from collections import deque
 from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
@@ -29,7 +30,7 @@ from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
 from training.harness.bus import MessageBus
-from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
+from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
 from training.harness.message import Message
 from training.trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from training.trainer.curriculum_document import (
@@ -229,6 +230,17 @@ class Trainer:
         self._polling_for_goal: bool = False
         self._drain_pending: bool = False
 
+        # Delegated-decision gate (RD-7/9). When a ratify_request is emitted
+        # in delegated mode, the Trainer holds subsequent KAgent events until
+        # the supervisor replies (``supervisor_decision`` action). This makes
+        # the supervisor the gating decision-maker: the lesson cannot advance
+        # (``_check_lesson_complete`` / next-lesson submit are among the held
+        # events) until the pending decision is resolved. Each replayed event
+        # may raise a new decision, yielding a multi-turn loop. The bus itself
+        # never blocks (the handler returns immediately, stashing the event).
+        self._pending_decision: RationaliseEvent | None = None
+        self._held_messages: deque[Message] = deque()
+
         bus.subscribe(self._role, self.on_message)
 
         if self._curriculum_file is not None and self._state.curriculum.total() > 0:
@@ -325,6 +337,26 @@ class Trainer:
         forwards event messages without setting ``sender``.
         """
         action = msg.action
+
+        # Delegated-decision gate: the supervisor's answer to a pending
+        # ratify_request. Resolves the decision and replays held events.
+        if action == "supervisor_decision":
+            self._handle_supervisor_decision(msg)
+            return
+
+        # While a delegated decision is pending, hold KAgent events (and the
+        # drained/lesson-advance they trigger) until the supervisor replies.
+        # This is what makes the supervisor gating: the run cannot advance
+        # past the pending proposal. ``supervisor_decision`` above bypasses
+        # the hold so the reply is always processed immediately.
+        if self._pending_decision is not None and action in (
+            "ground",
+            "frame",
+            "error",
+            "drained",
+        ):
+            self._held_messages.append(msg)
+            return
 
         if action in ("ground", "frame"):
             if not self._session_active:
@@ -453,6 +485,14 @@ class Trainer:
                         )
                     )
 
+                    # Delegated-decision gate: hold subsequent events until
+                    # the supervisor resolves this decision. Makes the
+                    # supervisor gating (RD-9: "progress is bounded only by
+                    # the supervisor's responses"). The bus never blocks —
+                    # on_message stashes later events into _held_messages.
+                    if self._delegate_reactive:
+                        self._pending_decision = event
+
         self._check_lesson_complete()
 
     def _handle_kagent_error(self, msg: Message) -> None:
@@ -481,6 +521,66 @@ class Trainer:
         self._drain_pending = False
         logger.info("Cogitator drained — submitting next lesson")
         self._do_submit_lesson()
+
+    def _handle_supervisor_decision(self, msg: Message) -> None:
+        """Resolve a pending delegated decision and replay held events.
+
+        The supervisor (CLI) routes ratify/scaffold/continue to the trainer
+        as a ``supervisor_decision`` message when a ratify_request is
+        pending. This is the gating point (RD-9: "progress is bounded only
+        by the supervisor's responses"): the decision is applied and the
+        held event stream resumes. Replaying a held event may raise a new
+        ratify_request, which re-arms the gate (remaining events stay held)
+        — yielding the multi-turn delegated loop. The bus never blocks.
+        """
+        if self._pending_decision is None:
+            logger.debug("supervisor_decision with no pending decision — ignoring")
+            return
+
+        payload = msg.message if isinstance(msg.message, dict) else {}
+        decision = payload.get("decision")
+        pending = self._pending_decision
+        # Clear before applying/replaying so replayed events flow normally
+        # (and so a decision with no held events cleanly returns to ready).
+        self._pending_decision = None
+
+        if decision == "ratify":
+            # Accept the pending proposal: countersign via KAgent (KP-2, S1).
+            self._bus.send(
+                Message(
+                    role=TRAINEE_ROLE,
+                    action="countersign",
+                    message=pending.proposal,
+                    sender=self._role,
+                )
+            )
+            logger.info("Delegated decision: ratified proposal %s", pending.proposal)
+        elif decision == "scaffold":
+            text = payload.get("text", "")
+            if text:
+                self._bus.send(
+                    Message(
+                        role=TRAINEE_ROLE,
+                        action="submit",
+                        message=text,
+                        sender=self._role,
+                    )
+                )
+                logger.info("Delegated decision: scaffolded %d chars of KScript", len(text))
+            else:
+                logger.warning("Delegated scaffold decision with empty text — skipping")
+        elif decision == "continue":
+            logger.info("Delegated decision: skipped proposal %s", pending.proposal)
+        else:
+            logger.warning("Unknown delegated decision %r — treating as skip", decision)
+
+        # Replay held events until the gate re-arms (a new ratify_request
+        # sets _pending_decision) or the hold drains. Each replayed event
+        # dispatches through on_message, which stashes again if a new
+        # decision is now pending.
+        while self._held_messages and self._pending_decision is None:
+            held = self._held_messages.popleft()
+            self.on_message(held)
 
     # Input handling (from Slack / supervisor)
 

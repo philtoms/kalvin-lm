@@ -25,6 +25,7 @@ import websockets
 
 from training.participants.auto_tune.events import enrich_event
 from training.participants.commands import parse_command
+from training.harness.constants import TRAINER_ROLE
 
 logger = logging.getLogger(__name__)
 
@@ -225,15 +226,15 @@ class CLISupervisor:
             return True
 
         if action == "continue":
+            if self._latest_ratify_proposal is not None:
+                await self._route_delegated_decision("continue")
             return False
 
         if action == "ratify":
             if self._latest_ratify_proposal is None:
                 logger.warning("ratify command with no pending proposal")
                 return False
-            command = parse_command("ratify")
-            for role, act, message in command.to_messages(self._latest_ratify_proposal):
-                await self._send_frame(role, act, message)
+            await self._route_delegated_decision("ratify")
             return False
 
         if action == "goal":
@@ -246,10 +247,14 @@ class CLISupervisor:
 
         if action == "scaffold":
             text = cmd.get("text", "")
-            input_text = f"scaffold:{text}"
-            command = parse_command(input_text)
-            for role, act, message in command.to_messages(self._latest_ratify_proposal):
-                await self._send_frame(role, act, message)
+            if self._latest_ratify_proposal is not None:
+                await self._route_delegated_decision("scaffold", text)
+            else:
+                # Non-gated scaffold (no pending decision): submit to trainee
+                # directly, preserving the existing behaviour.
+                command = parse_command(f"scaffold:{text}")
+                for role, act, message in command.to_messages(self._latest_ratify_proposal):
+                    await self._send_frame(role, act, message)
             return False
 
         if action == "guidance":
@@ -264,6 +269,23 @@ class CLISupervisor:
         for role, act, message in command.to_messages(self._latest_ratify_proposal):
             await self._send_frame(role, act, message)
         return False
+
+    async def _route_delegated_decision(self, decision: str, text: str = "") -> None:
+        """Route a supervisor decision to the Trainer for a pending ratify_request.
+
+        In delegated mode the Trainer gates the run on each ratify_request
+        and holds further events until it receives this decision
+        (``supervisor_decision`` action). The Trainer applies the
+        countersign/submit itself, so we address the TRAINER role (not the
+        trainee) and clear the pending proposal afterward. Spec ref:
+        specs/reactive-delegation.md §Supervisor Answers (RD-9/10/11).
+        """
+        proposal = self._latest_ratify_proposal
+        payload: dict[str, Any] = {"decision": decision, "proposal": proposal}
+        if text:
+            payload["text"] = text
+        await self._send_frame(TRAINER_ROLE, "supervisor_decision", payload)
+        self._latest_ratify_proposal = None
 
     async def _send_frame(self, role: str, action: str, message: Any) -> None:
         """Send a single JSON frame via the WebSocket."""
