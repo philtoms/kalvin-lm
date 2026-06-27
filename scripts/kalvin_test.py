@@ -61,7 +61,7 @@ def _decode_value(value: int, model, tokenizer) -> str:
     first that decomposes to identity tokens. This skips semantic-
     relationship klines (connoted/undersigned) that share a signature with
     a canonize, landing on the structural decomposition. Falls back to a
-    direct decode for single tokens, then to a hex label — never raises.
+    hex label — never raises.
     """
     if model is not None:
         for kl in model.klines():
@@ -73,12 +73,7 @@ def _decode_value(value: int, model, tokenizer) -> str:
                     return text
             except ValueError:
                 continue
-    try:
-        text = tokenizer.decode([value])
-        if text:
-            return text
-    except Exception:
-        pass
+
     return f"#{value:#x}"
 
 
@@ -243,6 +238,7 @@ def main() -> None:
 
     deadline_hit = False
     try:
+        # agent.rationalise(kvalues[0])
         for k in kvalues:
             agent.rationalise(k)
 
@@ -263,34 +259,6 @@ def main() -> None:
             "mid-run (likely the unfixed Model/STM race livelocking the "
             "rationalise/cogitate phase). Reporting partial counts."
         )
-
-    # S4-drop demonstration — the Phase 1b significance-comparison gate.
-    # Re-submit the curriculum's relationship klines at a declared S4. Each
-    # derives S1/S2/S3 (never S4 — only identities derive S4), so the gate
-    # drops it: rationalise returns True with NO event and NO model write,
-    # before the ground check even runs. This is Kalvin honouring the
-    # sender's declared S4 assessment (the two-way significance dialog).
-    if not deadline_hit:
-        print("\nS4-drop check (re-submit relationship klines at declared S4)...")
-        relationships = [
-            e for e in kvalues if e.kline.nodes and not is_identity(e.kline)
-        ]
-        drops = 0
-        checked = min(len(relationships), 8)
-        for kv in relationships:
-            events_before = sum(counts.values())
-            result = agent.rationalise(KValue(kv.kline, SIG_S4))
-            events_after = sum(counts.values())
-            dropped = result is True and events_after == events_before
-            if dropped:
-                drops += 1
-            # if args.verbose:
-            tag = "drop" if dropped else "process"
-            print(
-                f"  {tag:7s} {kvalue_display(kv, tokenizer, agent.model)} "
-                "(declared S4)"
-            )
-        print(f"  {drops} declared-S4 queries dropped (no event emitted).")
 
     # Print summary
     print(f"\nEvent summary ({sum(counts.values())} total):")

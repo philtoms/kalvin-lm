@@ -237,5 +237,4 @@ Session artefacts are persisted to files inside the session's git worktree. The 
 - Auto-tune running multiple sessions concurrently
 - Automatic code editing by the auto-tune tool itself — pi edits code, auto-tune just runs training
 - Performance benchmarking or timing comparisons between runs
-- Curriculum generation during auto-tune — use a pre-existing curriculum
 - Integration with CI/CD pipelines
