@@ -1,6 +1,6 @@
 # Reactive Decision Delegation — Implementation Plan
 
-**Status:** not started
+**Status:** implemented (RD-1–13 in prior work; RD-7a/7b/14–17 + KALVIN_DATA_DIR + Decision Gate landed in the `meta-supervisor-s2` auto-tune session — see Auto-Tune Evidence below)
 **Spec refs:** `specs/reactive-delegation.md`
 
 ## Spec References
@@ -93,6 +93,36 @@
 - **Details:**
   - Add a commented `enabled: true` line under `trainer.llm` in `training.harness.yaml` noting that auto-tune overrides it to `false` per session.
 
+### Task 8: Scope the `is_satisfied(query)` skip to non-delegated mode (`src/training/trainer/trainer.py`)
+
+- **Spec ref:** @specs/reactive-delegation §Delegated Mode (RD-7a) — landed
+- **Test mapping:** `tests/test_trainer.py` → `TestDelegatedReactiveDecisions.test_post_satisfaction_fanout_still_surfaces`
+- **Details:** the S2/S3 handler skipped any event whose query entry was already satisfied. In delegated mode this suppressed genuinely non-matching fan-out proposals whose query happened to be satisfied — hiding decisions RD-7 requires the supervisor to see. Scope the skip to `not delegate_reactive`: in delegated mode let every S2/S3 reach the Reactor (matches are absorbed by `_auto_countersign`; non-matches surface).
+
+### Task 9: Delegated-mode recurrence dedup (`src/training/trainer/reactor.py`)
+
+- **Spec ref:** @specs/reactive-delegation §Delegated Mode (RD-6) — landed
+- **Test mapping:** `tests/test_reactor.py` → `TestDelegatedMode.test_recurrence_does_not_escalate`
+- **Details:** the recurrence branch of `process_s2_s3` incremented `_reactive_rounds` and called `_check_budget()` (escalates `budget_exhaustion`) before the `delegate_reactive` check, so delegated mode escalated — violating RD-6. Add a delegated-mode early return in the recurrence branch: re-submit the recurring proposal at a declared `SIG_S4` (drop signal) WITHOUT touching the budget. Non-delegated behaviour unchanged.
+
+### Task 10: Enrichment passthrough in supervisor event layer (`src/training/participants/auto_tune/events.py`)
+
+- **Spec ref:** @specs/reactive-delegation §Delegated Mode (RD-7, RD-7b) — landed
+- **Test mapping:** `tests/test_auto_tune_events.py` → `test_ratify_request_carries_misfit_and_curriculum_context`
+- **Details:** `_enrich_ratify_request` built a fixed-schema `{seq,type,query,proposal,significance}` and dropped the `misfit`/`curriculum_context` the Trainer sends in delegated mode. Pass them through verbatim when present (optional; absent in default mode per RD-8).
+
+### Task 11: Decision Gate — hold/replay on the sync bus (`src/training/trainer/trainer.py`, `src/training/participants/auto_tune/supervisor.py`)
+
+- **Spec ref:** @specs/reactive-delegation §Decision Gate (RD-14, RD-15, RD-16, RD-17) — landed
+- **Test mapping:** `tests/test_trainer.py` → `TestDelegatedDecisionGate` (hold + replay + re-arm); `tests/test_auto_tune_supervisor.py` → routing of `ratify`/`scaffold`/`continue` to `trainer` as `supervisor_decision`
+- **Details:** see Design Decisions 7–9. Trainer adds `_pending_decision` + `_held_messages`; on emitting a delegated `ratify_request` it sets the pending marker and `on_message` stashes subsequent KAgent events (ground/frame/error/drained) — the bus never blocks. A new `supervisor_decision` action applies the decision (ratify→countersign trainee; scaffold→submit trainee; continue→skip), clears pending, and replays held events through `on_message`; a replayed event raising a new `ratify_request` re-arms the gate (multi-turn loop). The CLI supervisor routes `ratify`/`scaffold`/`continue` to the `trainer` role as `supervisor_decision` when a proposal is pending.
+
+### Task 12: `KALVIN_DATA_DIR` for worktree subprocesses (`src/training/participants/auto_tune/lifecycle.py`)
+
+- **Spec ref:** @specs/reactive-delegation §Auto-Tune Integration (RD-14 last bullet — note: this RD-14 is the spec's "Auto-Tune Integration" rule, distinct from the Test-Matrix RD-14)
+- **Test mapping:** `tests/test_auto_tune_lifecycle.py` → `TestSubprocessEnv.test_worktree_sets_kalvin_data_dir`
+- **Details:** the lifecycle launched harness/supervisor subprocesses without `KALVIN_DATA_DIR`, so `kalvin.paths` resolved `data/` to the worktree's incomplete (gitignored) checkout and the harness crashed (`FileNotFoundError: data/tokenizer/tokenizer-32768.json`). Add `_subprocess_env(session_dir)`: when the session lives under `<main-repo>/.worktrees/...`, set `KALVIN_DATA_DIR` to the main checkout's `data/` (the escape hatch `paths.py` documents). Caller-supplied value wins.
+
 ## Test Mapping
 
 | Spec ID | Test file | Test function / class | Status |
@@ -110,6 +140,12 @@
 | RD-11 | `tests/test_commands.py` | `TestScaffoldCommand` (note: compile-error round-trip covered by adapter HRNS-8 tests) | ☐ |
 | RD-12 | `tests/test_auto_tune_lifecycle.py` | `TestSessionHarnessConfig.test_sets_llm_enabled_false` | ☐ |
 | RD-13 | `tests/test_auto_tune_supervisor.py` | scaffold action dispatch test | ☐ |
+| RD-7a | `tests/test_trainer.py` | `TestDelegatedReactiveDecisions.test_post_satisfaction_fanout_still_surfaces` | ☐ |
+| RD-7b | `tests/test_auto_tune_events.py` | `test_ratify_request_carries_misfit_and_curriculum_context` | ☐ |
+| RD-14 | `tests/test_trainer.py` | `TestDelegatedDecisionGate.test_holds_and_does_not_block_bus` | ☐ |
+| RD-15 | `tests/test_trainer.py` | `TestDelegatedDecisionGate.test_replay_rearms_gate` | ☐ |
+| RD-16 | `tests/test_trainer.py` | `TestDelegatedDecisionGate.test_decision_actions_emit_correct_bus_messages` | ☐ |
+| RD-17 | `tests/test_auto_tune_supervisor.py` | routing-of-supervisor_decision test | ☐ |
 
 ## Design Decisions
 
@@ -125,7 +161,17 @@
 
 6. **Auto-tune owns the flag flip, not the user.** `_generate_session_harness_config` always writes `trainer.llm.enabled: false`, so an auto-tune session is always delegated. The project `training.harness.yaml` default stays `true` so normal (human-supervised) sessions are unaffected.
 
+7. **The delegated decision is gating, not advisory (Task 11).** RD-9's "progress is bounded only by the supervisor's responses" is a runtime guarantee. The original implementation emitted `ratify_request` and continued, so the curriculum completed during the KAgent event burst before a human-speed supervisor reply arrived — only ever one (degenerate) decision per run, after which the supervisor connection died. The Trainer now holds KAgent events while a decision is pending and replays them on reply, making the supervisor the true gate. This also resolved the connection-robustness symptom: the supervisor stays relevant through completion and no longer disconnects prematurely.
+
+8. **Hold/replay, never block — the bus is single-threaded.** `MessageBus.run()` dequeues and dispatches one message at a time on a dedicated thread; a blocking handler would deadlock (the supervisor's reply enqueues behind the stuck dispatch). So the gate is non-blocking: `on_message` stashes held events into `_held_messages` and returns immediately, and `_handle_supervisor_decision` replays them by re-entering `on_message`. A naive `threading.Event().wait()` would have been a regression — the explicit hold/replay queue is what keeps the harness event loop live.
+
+9. **The CLI supervisor addresses the TRAINER role for gated decisions, not the trainee.** In default mode `ratify` sends `{trainee, countersign, proposal}` directly (the human/Slack/TUI flow, unchanged). In delegated mode the Trainer must apply the countersign itself after replaying held events, so the CLI routes `{trainer, supervisor_decision, {decision, proposal, text?}}`. Reusing the trainee-countersign path would double-countersign (once by the supervisor's command, once by the Trainer's replay) and would not release the held stream. The shared `commands.py` parser is untouched; only the CLI supervisor's routing forks on "is a proposal pending."
+
+## Auto-Tune Evidence
+
+The Decision Gate (Task 11), the RD-6 recurrence-dedup fix (Task 9), the RD-7 enrichment-passthrough fix (Task 10), and the `is_satisfied` scoping (Task 8) were implemented and verified in the **`meta-supervisor-s2`** auto-tune session against `curricula/first-steps-s2.md`. Run 4 of that session demonstrated a **15-turn gated supervisor loop** (14 ratify + 1 continue), zero budget escalation across the whole loop (RD-6 held), every `ratify_request` carrying `misfit` + `curriculum_context` (RD-7 held), and a stable supervisor connection through curriculum completion. Session directory: `auto-tune/meta-supervisor-s2/` (snapshots `runs/001`–`runs/007`). The `KALVIN_DATA_DIR` fix (Task 12) unblocked the very first run.
+
 ## Status
 
-- Specs written: `specs/reactive-delegation.md`; table-row additions to `specs/harness-server.md` and `specs/auto-tune.md` (rule 7a).
-- Implementation: not started.
+- Specs written: `specs/reactive-delegation.md` (RD-1–17); table-row additions to `specs/harness-server.md` and `specs/auto-tune.md` (rule 7a).
+- Implementation: RD-1–13 landed in prior work. Tasks 8–12 (RD-7a/7b/14–17, the Decision Gate, and the `KALVIN_DATA_DIR` fix) landed in the `meta-supervisor-s2` auto-tune session and verified by runs 1–4. Tests in the Test Mapping table above are ☐ (not yet written) — they are the contract for locking these behaviours in; the auto-tune session provided the runtime evidence but not the regression tests.

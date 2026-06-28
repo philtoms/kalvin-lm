@@ -102,10 +102,27 @@ The `submit` action is interpreted by Kalvin's adapter exactly as for any lesson
 10. The `scaffold` command submits KScript to Kalvin via the `trainee` `submit` action, identical to a lesson submission. The Trainer does not interpret or re-route scaffolded source.
 11. A `scaffold` whose KScript fails to compile is reported back to the supervisor as an `error` event; the supervisor may retry with corrected source.
 
+### Decision Gate (Delegated Mode)
+
+The supervisor is the **gating** decision-maker in delegated mode — "progress is bounded only by the supervisor's responses" is a runtime guarantee, not an aspiration. When the Trainer emits a `ratify_request` it sets a pending-decision marker and **holds** subsequent KAgent events (`ground`/`frame`/`error`/`drained`) in an internal queue until the supervisor replies. The bus never blocks: the Trainer's message handler stashes held events and returns immediately, so the harness event loop (a single-threaded dispatch) cannot deadlock.
+
+The supervisor's answer arrives as a `supervisor_decision` message addressed to the `trainer` role, carrying `{decision, proposal, text?}`:
+
+| decision | Trainer action | Bus effect |
+|----------|----------------|-----------|
+| `ratify` | countersign the pending proposal | `{trainee, countersign, proposal}` → S1 ratification (KP-2) |
+| `scaffold` | submit the carried KScript | `{trainee, submit, text}` |
+| `continue` | skip the pending proposal | none |
+
+On receipt the Trainer applies the decision, clears the pending marker, and **replays** the held events through its normal handler. A replayed event that raises a new `ratify_request` re-arms the gate (remaining events stay held), yielding the multi-turn delegated loop: one decision = one held-stream segment, repeated until the hold drains and the curriculum can advance. This is why a delegated run yields multiple sequential `ratify_request`s for a single lesson rather than fanning them out as a burst the supervisor cannot keep up with.
+
+The CLI supervisor routes `ratify`/`scaffold`/`continue` to the `trainer` role as `supervisor_decision` when a proposal is pending (the Trainer applies the countersign itself, avoiding double-routing via the trainee). The shared `commands.py` parser is unchanged, so the Slack/TUI human flow keeps its direct trainee-countersign path for non-gated (default-mode) use. A `continue` with no pending proposal is a no-op acknowledge, as before.
+
 ### Auto-Tune Integration
 
 12. Auto-tune writes `trainer.llm.enabled: false` into the per-session harness config it generates, so an auto-tune session always runs in delegated mode with pi as the reactive decision-maker.
-13. Auto-tune's command file accepts the `scaffold` action; the CLI supervisor dispatches it through the shared command parser.
+13. Auto-tune's command file accepts the `scaffold` action; the CLI supervisor dispatches it through the shared command parser. The `ratify`/`scaffold`/`continue` actions are routed to the `trainer` role as `supervisor_decision` when a proposal is pending (§Decision Gate).
+14. Auto-tune launches the harness and supervisor subprocesses with `KALVIN_DATA_DIR` pointing at the main checkout's `data/` when the session lives in a git worktree (`<main-repo>/.worktrees/...`), since the worktree's `data/` (tokenizer BPE engine, model binary) is gitignored build artifacts. `kalvin.paths` documents this env var as the worktree escape hatch.
 
 ## Test Matrix
 
@@ -118,6 +135,8 @@ The `submit` action is interpreted by Kalvin's adapter exactly as for any lesson
 | RD-5 | Flag `false`: a non-matching S2/S3 proposal produces no cogitation, no scaffolding submission, no escalation | §Delegated Mode |
 | RD-6 | Flag `false`: the reactive-round counter is not incremented and budget-exhaustion escalation never fires | §Delegated Mode |
 | RD-7 | Flag `false`: every non-matching S2/S3 emits a decision request carrying `misfit` and `curriculum_context` | §Delegated Mode |
+| RD-7a | Flag `false`: a decision request whose query entry is already satisfied still reaches the supervisor (the Trainer's `is_satisfied(query)` skip is scoped to non-delegated mode) | §Delegated Mode |
+| RD-7b | The `misfit` and `curriculum_context` fields survive supervisor-side event enrichment (written to `events.jsonl` verbatim when present) | §Delegated Mode |
 | RD-8 | Flag `true` + no API key: existing no-client behaviour unchanged (escalates `low_confidence`) | §Flag |
 | RD-8a | Default mode: first event reaching `max_reactive_rounds` escalates `budget_exhaustion` | §Reactive-Round Budget (Default Mode) |
 | RD-8b | Default mode: events past the budget are silently dropped (no escalation/log/bus message) | §Reactive-Round Budget (Default Mode) |
@@ -126,11 +145,17 @@ The `submit` action is interpreted by Kalvin's adapter exactly as for any lesson
 | RD-11 | A `scaffold` with invalid KScript yields an `error` event back to the supervisor | §Supervisor Answers |
 | RD-12 | Auto-tune's per-session harness config sets `trainer.llm.enabled: false` | §Auto-Tune Integration |
 | RD-13 | Auto-tune's command file accepts `{"action": "scaffold", "text": <kscript>}` and dispatches via the shared parser | §Auto-Tune Integration |
+| RD-14 | Delegated mode: while a `ratify_request` is pending, the Trainer holds KAgent events and the bus does not block; a `supervisor_decision` reply resolves it and replays held events | §Decision Gate |
+| RD-15 | A replayed held event that raises a new `ratify_request` re-arms the gate, yielding a multi-turn delegated loop | §Decision Gate |
+| RD-16 | `supervisor_decision` `{ratify}` emits `{trainee, countersign, proposal}`; `{scaffold}` emits `{trainee, submit, text}`; `{continue}` is a skip | §Decision Gate |
+| RD-17 | The CLI supervisor routes `ratify`/`scaffold`/`continue` to the `trainer` role as `supervisor_decision` when a proposal is pending | §Auto-Tune Integration |
 
 ## Out of Scope
 
 - Goal-based curriculum generation — unaffected by this flag; out of scope for auto-tune (`@specs/auto-tune.md` §Out of Scope).
-- A new bus action — `scaffold` reuses the existing `trainee` `submit` action.
+- A new bus action for scaffolding — `scaffold` reuses the existing `trainee` `submit` action.
 - A new event type — delegation enriches the existing `ratify_request`; no parallel event stream.
 - Automatic timeout/budget escalation in delegated mode — the supervisor is the sole decision-maker.
 - Changes to Kalvin, the Cogitator prompt, or the reactive-scaffolding sanitisation pipeline (`@specs/cogitator.md` §Reactive Scaffolding Submission).
+- A decision gate for default (non-delegated) mode — the Cogitator's reactive round is the default-mode equivalent; only delegated mode uses the explicit hold/replay gate.
+- Reduction of the multi-turn decision count (e.g. auto-satisfying a query's remaining proposals after one ratification) — a future tuning lever, not part of the delegation contract.
