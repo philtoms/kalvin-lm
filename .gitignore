@@ -76,5 +76,7 @@ pytest-of-*
 .worktrees
 # Agent worktree tooling (session logs, planning scratch, registry) — ephemeral like .kb/ and .worktrees/
 .pi/git-worktrees/
+# Auto-tune session artefacts (events, snapshots, run logs) — ephemeral, per-session
+auto-tune/
 trainer_state.json
 curricula/*.json
