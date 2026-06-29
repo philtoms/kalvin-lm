@@ -92,6 +92,10 @@ class SymbolicEntry(NamedTuple):
     nodes: list[str]
     op: str  # COUNTERSIGNED | CANONIZED | CONNOTED | UNDERSIGNED | IDENTITY
     component_labels: list[str] | None = None
+    is_mts: bool = False  # True for §8 MTS-produced entries (component
+                          # identity + MTS canonization). The TokenEncoder
+                          # combines this with its own §11.3 BPE-MTS tag to
+                          # push every MTS kline after compiled source.
 
 
 class ASTEmitter:
@@ -295,23 +299,29 @@ class ASTEmitter:
             if resolved_char in self._mts_identity_seen:
                 continue  # inter-expansion dedup
             self._mts_identity_seen.add(resolved_char)
-            self._emit_entry(resolved_char, [], "IDENTITY")
+            self._emit_entry(resolved_char, [], "IDENTITY", is_mts=True)
 
         key = (sig, tuple(chars))
         if key in self._mts_canonize_seen:
             return self._mts_canonize_seen[key]  # already emitted
 
-        self._emit_entry(sig, list(chars), "CANONIZED")
+        self._emit_entry(sig, list(chars), "CANONIZED", is_mts=True)
         return len(self.entries) - 1
 
     # Entry emission with CANONIZE dedup (§8.3, Step 4)
 
-    def _emit_entry(self, sig: str, nodes: list[str], op: str) -> None:
+    def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False) -> None:
         """Emit a SymbolicEntry with CANONIZE deduplication.
 
         - CANONIZE entries: dedup on (sig, tuple(nodes)).  Duplicates
           are silently skipped.
         - All other ops: always emit (no dedup at this level).
+
+        ``is_mts`` marks entries produced by §8 MTS expansion (component
+        identity + MTS canonization) so the TokenEncoder can push them
+        after compiled source in the final output.  Operator-produced
+        entries, subscript identities, and single-char CANONIZE scopes
+        carry the default (source).
 
         Note: IDENTITY dedup for MTS components is handled in _emit_mts
         via _mts_identity_seen, not here.
@@ -322,7 +332,7 @@ class ASTEmitter:
                 return
             self._mts_canonize_seen[key] = len(self.entries)
 
-        self.entries.append(SymbolicEntry(sig=sig, nodes=nodes, op=op))
+        self.entries.append(SymbolicEntry(sig=sig, nodes=nodes, op=op, is_mts=is_mts))
 
     # Identity emission for CANONIZE subscript blocks
 

@@ -26,6 +26,10 @@ encode time (never from dbg):
 Dependencies: kalvin.kline.KLine, kalvin.kvalue.KValue,
               kalvin.expand.band_significance, kalvin.abstract.KTokenizer,
               kalvin.signifier.NLPSignifier, ks.ast_emitter.SymbolicEntry.
+
+Output ordering: compiled source (operator + identity klines from the
+script) precedes every MTS kline (§8 character-level components/canoniza-
+tions and §11.3 BPE-subword decompositions). See ``encode_entries``.
 """
 
 from __future__ import annotations
@@ -81,22 +85,39 @@ class TokenEncoder:
 
         Returns:
             Ordered list of KValue objects (each wrapping a KLine).
-            MTS expansion entries appear before the entries that reference
-            them.  Every KValue carries a band-representative significance
-            derived from the production ``op`` (KP-1).
+            **Compiled source precedes any MTS entries:** operator and
+            identity klines that come from the script appear first, followed
+            by every MTS expansion kline (§8 character-level components and
+            canonizations, plus §11.3 BPE-subword decompositions).
+
+            Encoding still runs in def-before-ref order internally (so a
+            compound's canonical signature is registered before any
+            reference is encoded); the source-before-MTS ordering is a
+            stable partition applied to the finished output, preserving
+            relative order within each group.  Every KValue carries a
+            band-representative significance derived from the production
+            ``op`` (KP-1).
         """
         if not symbolic:
             return []
 
-        result: list[KValue] = []
+        # Encode in emission order (def-before-ref), tagging each output
+        # KValue as MTS (auxiliary decomposition) or source.
+        tagged: list[tuple[KValue, bool]] = []
         for entry in symbolic:
-            result.extend(self._encode_entries_for_entry(entry))
-        return result
+            for kv, bpe_mts in self._encode_entries_for_entry(entry):
+                tagged.append((kv, entry.is_mts or bpe_mts))
+
+        # Output ordering: compiled source precedes any MTS entries.
+        # Stable partition preserves relative order within each group.
+        source = [kv for kv, is_mts in tagged if not is_mts]
+        mts = [kv for kv, is_mts in tagged if is_mts]
+        return source + mts
 
     # Per-entry encoding
 
-    def _encode_entries_for_entry(self, entry: SymbolicEntry) -> list[KValue]:
-        """Process one SymbolicEntry into one or more KValue objects.
+    def _encode_entries_for_entry(self, entry: SymbolicEntry) -> list[tuple[KValue, bool]]:
+        """Process one SymbolicEntry into one or more (KValue, is_bpe_mts) pairs.
 
         Steps:
           1. Encode signature → uint64 (with multi-token MTS if needed).
@@ -104,9 +125,13 @@ class TokenEncoder:
           3. Emit the main entry wrapped as a KValue.
 
         Returns:
-            List of KValue (extras first, then main entry).
+            List of (KValue, is_bpe_mts).  ``is_bpe_mts`` marks KValues that
+            are §11.3 BPE-subword MTS extras; the main entry is tagged
+            ``False``.  The entry-level §8 MTS flag (``entry.is_mts``) is
+            combined with this in :meth:`encode_entries` so the final output
+            can push every MTS kline after compiled source.
         """
-        extras: list[KValue] = []
+        extras: list[tuple[KValue, bool]] = []
 
         is_compound_def = entry.op == "CANONIZED" and len(entry.sig) > 1
         is_compound_ref = entry.sig in self._compound_sigs
@@ -129,7 +154,7 @@ class TokenEncoder:
                     dbg_label=entry.sig,
                     op="IDENTITY",
                 )
-                extras.extend(sig_extras)
+                extras.extend((kv, True) for kv in sig_extras)
                 sig_is_packed = True
 
         # 2. Encode nodes (compound nodes reuse the registry value).
@@ -139,7 +164,7 @@ class TokenEncoder:
                 node_values.append(self._compound_sigs[node_str])
             else:
                 node_val, node_extras = self._encode_node(node_str)
-                extras.extend(node_extras)
+                extras.extend((kv, True) for kv in node_extras)
                 node_values.append(node_val)
 
         # 3. Compound definition: sig = OR of resolved component node
@@ -169,7 +194,7 @@ class TokenEncoder:
         # Wrap the main entry as a KValue. Significance comes from the
         # production op (entry.op — the SymbolicEntry field), NEVER read
         # back from main.dbg.op (D3: dbg is unspec'd dev-only provenance).
-        extras.append(KValue(main, band_significance(entry.op)))
+        extras.append((KValue(main, band_significance(entry.op)), False))
         return extras
 
     # Node encoding

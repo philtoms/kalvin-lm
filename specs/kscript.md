@@ -505,6 +505,12 @@ The compiler does not inspect or mask node values — they are opaque `uint64` i
 
 BPE annotations are the mechanism by which the BPE token ID component of a node is determined. This creates a tension: the ASTEmitter must be aware of encoding semantics to resolve annotations, even though nodes are otherwise treated as opaque `uint64` values. The BindingScope is the single point where this leak occurs — it resolves character→word mappings that determine BPE token IDs. All other compilation stages are encoding-agnostic.
 
+### 11.6 Output Ordering
+
+The compiled entry list emits **compiled source before any MTS entries.** Compiled source is the set of klines the script directly writes: operator-produced klines (COUNTERSIGNED, UNDERSIGNED, CONNOTED), single-character CANONIZE aggregates (§7.5), and subscript identities (§7.6). MTS entries — both §8 character-level expansions and §11.3 BPE-subword decompositions — follow.
+
+The partition is **stable**: relative order is preserved within each group. Encoding still runs in definition-before-reference order internally (a compound's canonical signature is registered before any reference is encoded); source-before-MTS is a stable re-partition of the finished output, not a change to per-entry encoding or deduplication. When a script emits only MTS (e.g. a bare compound `ABC`, §14.6) or only source (e.g. `A == B`, §14.2), the ordering is a no-op.
+
 ---
 
 ## 12. Implementation Components
@@ -549,7 +555,7 @@ entries = KScript("A == B").entries
 entries = KScript("A == B", tokenizer=NLPTokenizer()).entries
 ```
 
-The `entries` property returns a list of `KLine` objects. The tokenizer defaults to the production NLP tokenizer (`NLPTokenizer()`) — tokenizer data is mandatory, so a tokenizer is always in effect.
+The `entries` property returns a list of `KLine` objects, ordered compiled-source-first (§11.6). The tokenizer defaults to the production NLP tokenizer (`NLPTokenizer()`) — tokenizer data is mandatory, so a tokenizer is always in effect.
 
 ---
 
@@ -709,32 +715,32 @@ MHALL == SVO =>
     L > O
 ```
 
-Compiled:
+Compiled (source-first — §11.6):
 
 | #   | Entry                  | Signature | Nodes           | Op            | Level                                                 |
 | --- | ---------------------- | --------- | --------------- | ------------- | ----------------------------------------------------- |
-| 1   | MTS M                  | M         | []              | IDENTITY      | S4                                                    |
-| 2   | MTS H                  | H         | []              | IDENTITY      | S4                                                    |
-| 3   | MTS A                  | A         | []              | IDENTITY      | S4                                                    |
-| 4   | MTS L                  | L         | []              | IDENTITY      | S4                                                    |
-| 5   | MTS MHALL canonize     | MHALL     | [M, H, A, L, L] | CANONIZED     | S2                                                    |
-| 6   | MTS S                  | S         | []              | IDENTITY      | S4                                                    |
-| 7   | MTS V                  | V         | []              | IDENTITY      | S4                                                    |
-| 8   | MTS O                  | O         | []              | IDENTITY      | S4                                                    |
-| 9   | MTS SVO canonize       | SVO       | [S, V, O]       | CANONIZED     | S2                                                    |
-| 10  | Countersign            | MHALL     | [SVO]           | COUNTERSIGNED | S1                                                    |
-| 11  | Countersign reverse    | SVO       | [MHALL]         | COUNTERSIGNED | S1                                                    |
-| —   | SVO canonize subscript | —         | —               | —             | Dropped (canonize dedup: identical to entry 9)        |
-| 12  | Undersign S            | M         | [S]             | UNDERSIGNED   | S3                                                    |
-| 13  | Undersign V            | H         | [V]             | UNDERSIGNED   | S3                                                    |
-| —   | MTS ALL A              | —         | —               | —             | Dropped (identity dedup: {A:[]} identical to entry 3) |
-| —   | MTS ALL L              | —         | —               | —             | Dropped (identity dedup: {L:[]} identical to entry 4) |
-| 14  | MTS ALL canonize       | ALL       | [A, L, L]       | CANONIZED     | S2                                                    |
-| 15  | Undersign O            | ALL       | [O]             | UNDERSIGNED   | S3                                                    |
-| —   | ALL canonize subscript | —         | —               | —             | Dropped (canonize dedup: identical to entry 14)       |
-| 16  | Undersign D            | D         | [A]             | UNDERSIGNED   | S3                                                    |
-| 17  | Undersign M            | M         | [L]             | UNDERSIGNED   | S3                                                    |
-| 18  | Connotate              | L         | [O]             | CONNOTED      | S3                                                    |
+| 1   | Countersign            | MHALL     | [SVO]           | COUNTERSIGNED | S1                                                    |
+| 2   | Countersign reverse    | SVO       | [MHALL]         | COUNTERSIGNED | S1                                                    |
+| 3   | Undersign S            | M         | [S]             | UNDERSIGNED   | S3                                                    |
+| 4   | Undersign V            | H         | [V]             | UNDERSIGNED   | S3                                                    |
+| 5   | Undersign O            | ALL       | [O]             | UNDERSIGNED   | S3                                                    |
+| 6   | Undersign D            | D         | [A]             | UNDERSIGNED   | S3                                                    |
+| 7   | Undersign M            | M         | [L]             | UNDERSIGNED   | S3                                                    |
+| 8   | Connotate              | L         | [O]             | CONNOTED      | S3                                                    |
+| 9   | MTS M                  | M         | []              | IDENTITY      | S4                                                    |
+| 10  | MTS H                  | H         | []              | IDENTITY      | S4                                                    |
+| 11  | MTS A                  | A         | []              | IDENTITY      | S4                                                    |
+| 12  | MTS L                  | L         | []              | IDENTITY      | S4                                                    |
+| 13  | MTS MHALL canonize     | MHALL     | [M, H, A, L, L] | CANONIZED     | S2                                                    |
+| 14  | MTS S                  | S         | []              | IDENTITY      | S4                                                    |
+| 15  | MTS V                  | V         | []              | IDENTITY      | S4                                                    |
+| 16  | MTS O                  | O         | []              | IDENTITY      | S4                                                    |
+| 17  | MTS SVO canonize       | SVO       | [S, V, O]       | CANONIZED     | S2                                                    |
+| —   | SVO canonize subscript | —         | —               | —             | Dropped (canonize dedup: identical to entry 17)       |
+| —   | MTS ALL A              | —         | —               | —             | Dropped (identity dedup: {A:[]} identical to entry 11) |
+| —   | MTS ALL L              | —         | —               | —             | Dropped (identity dedup: {L:[]} identical to entry 12) |
+| 18  | MTS ALL canonize       | ALL       | [A, L, L]       | CANONIZED     | S2                                                    |
+| —   | ALL canonize subscript | —         | —               | —             | Dropped (canonize dedup: identical to entry 18)       |
 
 > **MTS deduplication in action:** Four entries are silently dropped because they duplicate already-emitted MTS entries. Two component identity entries (MTS ALL component A and L) are dropped because MHALL's expansion already provided them. Two canonization entries (SVO subscript and ALL subscript) are dropped because their MTS canonization counterparts already exist. Compound identifiers receive no IDENTITY of their own (an identity requires a single-token signature), so there is nothing to drop for those. Only MTS-produced entries (component identity and canonization) are deduplicated — operator-produced duplicates are emitted as-is.
 
@@ -770,29 +776,29 @@ With Rule B4 override, the parent SVO canonize entry becomes:
 {SVO: [Subject, V, O]}    (S patched to "Subject")
 ```
 
-Compiled (resolved-word level; mirrors §14.11's structure). MHALL has five distinct resolved components — no intra-expansion dedup — so this table has 19 entries versus §14.11's 18:
+Compiled (resolved-word level; source-first — §11.6). MHALL has five distinct resolved components — no intra-expansion dedup — so this table has 19 entries versus §14.11's 18:
 
 | #   | Signature | Nodes                        | Op            | Level |
 | --- | --------- | ---------------------------- | ------------- | ----- |
-| 1   | Mary      | []                           | IDENTITY      | S4    |
-| 2   | Had       | []                           | IDENTITY      | S4    |
-| 3   | A         | []                           | IDENTITY      | S4    |
-| 4   | Little    | []                           | IDENTITY      | S4    |
-| 5   | Lamb      | []                           | IDENTITY      | S4    |
-| 6   | MHALL     | [Mary, Had, A, Little, Lamb] | CANONIZED     | S2    |
-| 7   | S         | []                           | IDENTITY      | S4    |
-| 8   | V         | []                           | IDENTITY      | S4    |
-| 9   | O         | []                           | IDENTITY      | S4    |
-| 10  | SVO       | [Subject, V, O]              | CANONIZED     | S2    |
-| 11  | MHALL     | [SVO]                        | COUNTERSIGNED | S1    |
-| 12  | SVO       | [MHALL]                      | COUNTERSIGNED | S1    |
-| 13  | Mary      | [Subject]                    | UNDERSIGNED   | S3    |
-| 14  | Had       | [V]                          | UNDERSIGNED   | S3    |
-| 15  | ALL       | [A, Little, Lamb]            | CANONIZED     | S2    |
-| 16  | ALL       | [O]                          | UNDERSIGNED   | S3    |
-| 17  | D         | [A]                          | UNDERSIGNED   | S3    |
-| 18  | Mary      | [Little]                     | UNDERSIGNED   | S3    |
-| 19  | Lamb      | [O]                          | CONNOTED      | S3    |
+| 1   | MHALL     | [SVO]                        | COUNTERSIGNED | S1    |
+| 2   | SVO       | [MHALL]                      | COUNTERSIGNED | S1    |
+| 3   | Mary      | [Subject]                    | UNDERSIGNED   | S3    |
+| 4   | Had       | [V]                          | UNDERSIGNED   | S3    |
+| 5   | ALL       | [O]                          | UNDERSIGNED   | S3    |
+| 6   | D         | [A]                          | UNDERSIGNED   | S3    |
+| 7   | Mary      | [Little]                     | UNDERSIGNED   | S3    |
+| 8   | Lamb      | [O]                          | CONNOTED      | S3    |
+| 9   | Mary      | []                           | IDENTITY      | S4    |
+| 10  | Had       | []                           | IDENTITY      | S4    |
+| 11  | A         | []                           | IDENTITY      | S4    |
+| 12  | Little    | []                           | IDENTITY      | S4    |
+| 13  | Lamb      | []                           | IDENTITY      | S4    |
+| 14  | MHALL     | [Mary, Had, A, Little, Lamb] | CANONIZED     | S2    |
+| 15  | S         | []                           | IDENTITY      | S4    |
+| 16  | V         | []                           | IDENTITY      | S4    |
+| 17  | O         | []                           | IDENTITY      | S4    |
+| 18  | SVO       | [Subject, V, O]              | CANONIZED     | S2    |
+| 19  | ALL       | [A, Little, Lamb]            | CANONIZED     | S2    |
 
 SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL component identities (A, Little, Lamb) are dropped by identity dedup. `V`, `O`, `D` have no word binding and encode to their own raw typed nodes (§10 resolution-failure clause) — the same encoding path as any resolved character, minus the word.
 
@@ -853,3 +859,5 @@ SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL componen
 | KS-40                 | Canonization dedup: CANONIZE entries with same (sig, nodes) silently dropped across MTS and subscript                                                                    | MTS Dedup   |
 | KS-41                 | Canonical resolution (§8.3): an identifier's MTS components are identical wherever it appears (node-side and signature-side), even under an ambiguous occurrence counter | MTS         |
 | KS-42                 | Canonical encoding (§11.3/§11.4): exactly one CANONIZED kline per compound identifier; identity klines carry single-token signatures only (CONTEXT.md "Identity")        | Encoding    |
+| **Output Ordering**   |                                                                                                                                                                          |             |
+| KS-43                 | Output ordering (§11.6): compiled source (operators, subscript identities, single-char CANONIZE) precedes all MTS entries (§8 character-level, §11.3 BPE-subword); partition is stable | Output      |

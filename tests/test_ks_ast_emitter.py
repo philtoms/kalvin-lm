@@ -612,6 +612,53 @@ class TestKS19MTS:
         assert idx_b < idx_canonize
         assert idx_c < idx_canonize
 
+    def test_mts_entries_tagged_is_mts(self):
+        """§8 MTS-produced entries carry is_mts=True; source entries do not.
+
+        Only the component IDENTITY entries and the MTS CANONIZE entry
+        produced by ``_emit_mts`` are tagged. Operator-produced entries
+        (COUNTERSIGN/UNDERSIGN/CONNOTED), subscript identities, and
+        single-char CANONIZE scopes stay source (is_mts=False) so the
+        TokenEncoder can push them ahead of MTS in the final output.
+        """
+        # `ABC == MHALL`: ABC + MHALL each MTS-expand; countersign is source.
+        entries = emit(_file(_scope(
+            "ABC", TokenType.COUNTERSIGN, items=[_sig("MHALL")]
+        )))
+        tagged = [e for e in entries if e.is_mts]
+        source = [e for e in entries if not e.is_mts]
+
+        # Component identities + both canonizations are MTS.
+        for mts_entry in (
+            ("A", [], "IDENTITY"),
+            ("B", [], "IDENTITY"),
+            ("C", [], "IDENTITY"),
+            ("ABC", ["A", "B", "C"], "CANONIZED"),
+            ("M", [], "IDENTITY"),
+            ("H", [], "IDENTITY"),
+            ("A", [], "IDENTITY"),
+            ("L", [], "IDENTITY"),
+            ("MHALL", ["M", "H", "A", "L", "L"], "CANONIZED"),
+        ):
+            assert any(
+                (e.sig, e.nodes, e.op) == mts_entry and e.is_mts for e in entries
+            ), f"Expected MTS-tagged {mts_entry}"
+
+        # The countersign pair is source (not MTS).
+        assert any(
+            (e.sig, e.nodes, e.op) == ("ABC", ["MHALL"], "COUNTERSIGNED")
+            and not e.is_mts for e in entries
+        )
+        assert any(
+            (e.sig, e.nodes, e.op) == ("MHALL", ["ABC"], "COUNTERSIGNED")
+            and not e.is_mts for e in entries
+        )
+
+        # No tagged entry is an operator entry.
+        assert all(
+            e.op in ("IDENTITY", "CANONIZED") for e in tagged
+        ), f"Operator entry wrongly tagged MTS: {source}"
+
 
 # ======================================================================
 # Test: KS-20 No MTS for single-char

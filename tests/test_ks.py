@@ -909,35 +909,39 @@ class TestComplexExamples:
     def test_ks35_complex_nested_strict(self):
         """KS-35: §14.11 master regression — strict spec count (18 entries).
 
-        MTS component IDENTITY dedup, no compound-own
-        identity, subscript identity suppression for MTS CANONIZE scopes.
+        Output ordering is source-first: compiled source klines precede
+        every MTS expansion kline. MTS component IDENTITY dedup, no
+        compound-own identity, subscript identity suppression for MTS
+        CANONIZE scopes.
 
-        Expected entries per spec §14.11:
-        1–4:   MTS M, H, A, L identity (S4)
-        5:     MHALL canonize [M, H, A, L, L] (S2)
-        6–8:   MTS S, V, O identity (S4)
-        9:     SVO canonize [S, V, O] (S2)
-        10:    MHALL countersign [SVO] (S1)
-        11:    SVO countersign [MHALL] (S1)
+        Source entries (S1/S3, in emission order):
+        1:     MHALL countersign [SVO] (S1)
+        2:     SVO countersign [MHALL] (S1)
+        3:     M undersign [S] (S3)
+        4:     H undersign [V] (S3)
+        5:     ALL undersign [O] (S3)
+        6:     D undersign [A] (S3)
+        7:     M undersign [L] (S3)
+        8:     L connotate [O] (S3)
+        MTS entries (S2/S4, after all source):
+        9–12:  MTS M, H, A, L identity (S4)
+        13:    MHALL canonize [M, H, A, L, L] (S2)
+        14–16: MTS S, V, O identity (S4)
+        17:    SVO canonize [S, V, O] (S2)
         (SVO canonize subscript: deduped)
-        12:    M undersign [S] (S3)
-        13:    H undersign [V] (S3)
         (MTS ALL A, L: deduped)
-        14:    ALL canonize [A, L, L] (S2)
-        15:    ALL undersign [O] (S3)
+        18:    ALL canonize [A, L, L] (S2)
         (ALL canonize subscript: deduped)
-        16:    D undersign [A] (S3)
-        17:    M undersign [L] (S3)
-        18:    L connotate [O] (S3)
         """
         entries = compile_dev(_SEC1411_SOURCE)
         assert len(entries) == 18
 
-        # Spot-check critical entries by dbg.label
+        # Spot-check critical entries by dbg.label — the first emitted
+        # kline is now a source countersign, not an MTS component identity.
         assert (
             entries[0].kline.dbg
-            and entries[0].kline.dbg.label == "M"
-            and entries[0].kline.dbg.op == "IDENTITY"
+            and entries[0].kline.dbg.label == "MHALL"
+            and entries[0].kline.dbg.op == "COUNTERSIGNED"
         )
         # MHALL CANONIZE with 5 nodes
         mhall_canon = [

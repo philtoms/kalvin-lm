@@ -224,6 +224,42 @@ class TestKS35ComplexNested:
         """
         assert _count_entries(self.entries, "IDENTITY") == 7
 
+    def test_source_precedes_mts(self) -> None:
+        """Compiled source precedes any MTS entries in the output.
+
+        Source klines (COUNTERSIGNED/UNDERSIGNED/CONNOTED/IDENTITY that come
+        directly from the script, and single-char CANONIZE) appear before
+        every MTS expansion kline (§8 character-level components/canonizations
+        and §11.3 BPE-subword decompositions). The partition is stable, so
+        relative order is preserved within each group.
+        """
+        ops = [e.kline.dbg.op for e in self.entries]
+
+        # The COUNTERSIGNED pair is source and must precede every CANONIZED
+        # (MTS canonization) and every MTS component IDENTITY.
+        first_countersign = ops.index("COUNTERSIGNED")
+        last_countersign = len(ops) - 1 - ops[::-1].index("COUNTERSIGNED")
+        first_canonized = ops.index("CANONIZED")
+        assert last_countersign < first_canonized, (
+            f"source COUNTERSIGNED must precede MTS CANONIZED; "
+            f"last CS@{last_countersign}, first CAN@{first_canonized}"
+        )
+
+        # No MTS-only op (CANONIZED here is always MTS — every CANONIZE in
+        # §14.11 comes from a multi-char expansion) appears before the last
+        # source operator entry.
+        source_ops = {"COUNTERSIGNED", "UNDERSIGNED", "CONNOTED"}
+        last_source = max(i for i, o in enumerate(ops) if o in source_ops)
+        first_mts = min(
+            i for i, e in enumerate(self.entries)
+            if e.kline.dbg.op == "CANONIZED"
+        )
+        assert last_source < first_mts
+
+        # Sanity: the first emitted entry is a source countersign, not an MTS
+        # component identity.
+        assert ops[0] == "COUNTERSIGNED"
+
 
 # ---------------------------------------------------------------------------
 # KS-36: Word-bound example (§14.12)
@@ -294,10 +330,19 @@ class TestKS36WordBound:
         entries = compile_source(SOURCE_14_12, tokenizer=tok)
 
         # S(ubject) → 'Subject' resolves into a node-list under BPE.
+        # The output is source-first: a source entry may carry a packed
+        # (compound) node that is opaque under BPE decode (§11.6), so
+        # decode is defensive — only single-word node lists decode.
         found = False
         for e in entries:
             nodes = e.kline.as_node_list()
-            if nodes and tok.decode(nodes) == "Subject":
+            if not nodes:
+                continue
+            try:
+                decoded = tok.decode(nodes)
+            except Exception:
+                continue  # packed/compound node — opaque, skip
+            if decoded == "Subject":
                 found = True
                 break
         assert found, "Expected 'Subject' from inline binding"

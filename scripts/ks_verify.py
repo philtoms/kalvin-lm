@@ -93,133 +93,38 @@ def print_section(title: str, tokenizer, entries: list[KLine], start: int, end: 
 def _detect_sections(entries: list[KLine]) -> list[tuple[str, int, int]]:
     """Detect semantic sections in a kline list.
 
-    Returns list of (title, start, end) tuples where end is exclusive.
+    The compiler emits compiled source before any MTS entries: operator
+    klines (COUNTERSIGNED/UNDERSIGNED/CONNOTED) come first, followed by MTS
+    expansion klines (IDENTITY components and CANONIZED aggregates — both
+    §8 character-level and §11.3 BPE-subword). We surface this as two macro
+    sections in that order. A source that emits bare identity klines with
+    no operator (e.g. §14.8) is folded into the MTS section by this
+    op-only heuristic; each row still carries its own op label.
     """
     if not entries:
         return []
 
+    def is_source(kl: KLine) -> bool:
+        return (kl.dbg.op if kl.dbg else "") in (
+            "COUNTERSIGNED",
+            "UNDERSIGNED",
+            "CONNOTED",
+        )
+
+    # Source occupies a leading contiguous run; the remainder is MTS.
+    boundary = 0
+    while boundary < len(entries) and is_source(entries[boundary]):
+        boundary += 1
+
     sections: list[tuple[str, int, int]] = []
-
-    # --- Phase 1: Corpus word MTS blocks ---
-    # A corpus word block is: N× IDENTITY (subwords), 1× CANONIZE, 1× IDENTITY (compound)
-    # We detect the boundary where the label changes.
-
-    # Walk until we see the first non-corpus label (not a word from annotation)
-    # Corpus labels appear as the first group of entries whose labels are
-    # words from the opening annotation. They end when we encounter a label
-    # that is a multi-char identifier NOT from the annotation.
-    # Heuristic: corpus entries are IDENTITY+CANONIZE blocks where each
-    # CANONIZE's nodes are all single-char or resolved-word subwords.
-
-    # Find where corpus ends: first entry whose label differs from previous
-    # AND is an identifier (uppercase letters, no lowercase word pattern).
-    # Simpler: group consecutive entries that share the same label into blocks,
-    # then classify blocks as corpus or structural.
-
-    # Group by label runs
-    groups: list[tuple[str, int, int]] = []  # (label, start, end)
-    current_label = entries[0].dbg.label if entries[0].dbg else ""
-    group_start = 0
-
-    for j in range(len(entries)):
-        kl = entries[j]
-        label = kl.dbg.label if kl.dbg else ""
-        if label != current_label:
-            groups.append((current_label, group_start, j))
-            current_label = label
-            group_start = j
-    groups.append((current_label, group_start, len(entries)))
-
-    # Classify groups
-    # Corpus words: groups whose label is lowercase (Mary, had, a, little, lamb, etc.)
-    # Then structural: MHALL, S/V/O, SVO, label expansions (Subject, Verb, Object, etc.)
-    # Then operators: COUNTERSIGN, UNDERSIGN, CONNOTATE
-
-    def is_corpus_label(label: str) -> bool:
-        """Corpus words start with an uppercase letter but aren't all-caps identifiers."""
-        if not label:
-            return False
-        # All-caps multi-char = identifier (MHALL, SVO, ALL)
-        if len(label) > 1 and label.isupper():
-            return False
-        # Single char = structural (S, V, O, A, L)
-        if len(label) == 1:
-            return False
-        return True
-
-    def is_operator(op: str) -> bool:
-        return op in ("COUNTERSIGNED", "UNDERSIGNED", "CONNOTED")
-
-    # Build sections from groups
-    idx = 0
-
-    # Collect corpus groups
-    corpus_groups: list[tuple[str, int, int]] = []
-    while idx < len(groups) and is_corpus_label(groups[idx][0]):
-        corpus_groups.append(groups[idx])
-        idx += 1
-
-    # Emit corpus sections
-    for label, gs, ge in corpus_groups:
-        word = label
-        sections.append((f'Corpus: "{word}"', gs, ge))
-
-    if not sections:
-        # No corpus detected — just emit everything as one section
-        return [("KLines", 0, len(entries))]
-
-    # Collect structural groups (identifiers, label expansions) until operators
-    structural_start = None
-
-    while idx < len(groups):
-        label, gs, ge = groups[idx]
-        # Check if this group contains any operator entries
-        has_operator = any(is_operator(entries[j].dbg.op) for j in range(gs, ge) if entries[j].dbg)
-        if has_operator:
-            break
-        if structural_start is None:
-            structural_start = gs
-        structural_end = ge
-        idx += 1
-
-    if structural_start is not None:
-        sections.append(("Structural: identifiers & labels", structural_start, structural_end))
-
-    # Remaining groups: split into operator sections by type
-    remaining_start = sections[-1][2] if sections else 0
-
-    # Fine-grained: walk entries from remaining_start, group consecutive
-    # entries by their operator type into sub-sections
-    j = remaining_start
-    while j < len(entries):
-        kl = entries[j]
-        op = kl.dbg.op if kl.dbg else "IDENTITY"
-
-        if op == "COUNTERSIGNED":
-            cs_start = j
-            while j < len(entries) and entries[j].dbg and entries[j].dbg.op == "COUNTERSIGNED":
-                j += 1
-            sections.append(("COUNTERSIGNED", cs_start, j))
-        elif op == "UNDERSIGNED":
-            us_start = j
-            while j < len(entries) and entries[j].dbg and entries[j].dbg.op == "UNDERSIGNED":
-                j += 1
-            sections.append(("UNDERSIGNED", us_start, j))
-        elif op == "CONNOTED":
-            co_start = j
-            while j < len(entries) and entries[j].dbg and entries[j].dbg.op == "CONNOTED":
-                j += 1
-            sections.append(("CONNOTED", co_start, j))
-        else:
-            # Structural or identity — batch until next operator
-            st_start = j
-            while j < len(entries):
-                e_op = entries[j].dbg.op if entries[j].dbg else "IDENTITY"
-                if e_op in ("COUNTERSIGNED", "UNDERSIGNED", "CONNOTED"):
-                    break
-                j += 1
-            sections.append(("Identifiers & labels", st_start, j))
-
+    if boundary > 0:
+        sections.append(("Compiled source (operators)", 0, boundary))
+    if boundary < len(entries):
+        sections.append((
+            "MTS expansion (identities & canonizations)",
+            boundary,
+            len(entries),
+        ))
     return sections
 
 
@@ -276,7 +181,10 @@ def run(source: str, tokenizer_name: str, raw: bool = False) -> None:
     """Compile source and print verification."""
     tokenizer, tok_label = load_tokenizer(tokenizer_name)
 
-    entries = compile_source(source, tokenizer, dev=True)
+    compiled = compile_source(source, tokenizer, dev=True)
+    # compile_source returns KValue (kline + significance); the display path
+    # works on the underlying KLine, so unwrap once.
+    entries: list[KLine] = [kv.kline for kv in compiled]
 
     w = len(str(len(entries) - 1)) if entries else 1
 

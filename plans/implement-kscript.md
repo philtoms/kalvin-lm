@@ -587,7 +587,9 @@ This yields three coupled rules, all consequences of "a compound has one identit
 2. Packed-sig IDENTITY suppression: when `op == IDENTITY` and the signature is packed (multi-token §11.3 word or compound), do not emit a main IDENTITY kline — the decomposition above is the sole representation, and a packed value cannot head an identity (CONTEXT.md "Identity").
 3. `_build_dbg` must not `decode()` a packed signature: it is opaque per §11.5 (decode may crash or return an unrelated word). Track `sig_is_packed` alongside the signature and skip decode/grammar-lookup when set; decode defensively (try/except) for the single-token path.
 
-Operator entries (COUNTERSIGNED/UNDERSIGNED/CONNOTED) with a compound signature are legitimate references and are emitted normally; for them `signature != OR(nodes)` by design (the signature is a registry lookup, not a reduction of that entry's own nodes).
+Operator entries (COUNTERSIGNED/UNDERSIGN/CONNOTED) with a compound signature are legitimate references and are emitted normally; for them `signature != OR(nodes)` by design (the signature is a registry lookup, not a reduction of that entry's own nodes).
+
+**Output ordering (§11.6).** Compiled source precedes every MTS kline in the returned list. Implementation: tag each encoded `KValue` as MTS or source — the ASTEmitter marks §8 MTS-produced `SymbolicEntry`s (`is_mts=True` on component identities and MTS canonizations), and `TokenEncoder` additionally tags its own §11.3 BPE-subword extras. `encode_entries` then applies a **stable partition**: source entries first, MTS entries last, relative order preserved within each group. Encoding itself still runs in definition-before-reference order (the compound registry and dedup are unaffected); only the finished output is re-partitioned, so the ordering is a no-op for scripts that emit only source or only MTS.
 
 ### Multi-token word handling
 
@@ -769,7 +771,8 @@ def has_entry(md, sig, nodes):
 | KS-39   | MTS Dedup   | Intra-expansion dedup                                                                     |
 | KS-40   | MTS Dedup   | Canonization dedup                                                                        |
 | KS-41   | MTS         | Canonical resolution (§8.3) — same identifier resolves identically wherever it appears    |
-| KS-42   | Encoding    | Canonical encoding (§11.3/§11.4) — one CANONIZED per compound; single-token identity sigs |
+| KS-42   | Encoding    | Canonical encoding (§11.3/§11.4) — one CANONIZED per compound; single-token identity sigs    |
+| KS-43   | Output      | Output ordering (§11.6) — compiled source precedes all MTS; stable partition              |
 
 ---
 

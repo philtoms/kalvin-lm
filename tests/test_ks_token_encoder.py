@@ -300,17 +300,22 @@ class TestMultiTokenMTS:
         ]
         assert len(results) == 3
 
-    def test_mts_entries_come_before_main(self) -> None:
-        """MTS expansion entries appear before the entry that references them."""
+    def test_source_precedes_mts(self) -> None:
+        """Compiled source precedes any MTS entries in the output.
+
+        A source entry (CONNOTED) whose node triggers BPE MTS is emitted
+        first; its §11.3 MTS expansion (subword identities + canonization)
+        follows. This is the output-ordering contract: source before MTS.
+        """
         mock = MockMultiTokenTokenizer({"Mary": [10, 20]})
         enc = TokenEncoder(mock, dev=True)
         entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTED")
         results = enc.encode_entries([entry])
 
-        # Main entry is last
-        assert results[-1].kline.dbg.op == "CONNOTED"
-        # All MTS entries come before
-        for r in results[:-1]:
+        # Source entry is first
+        assert results[0].kline.dbg.op == "CONNOTED"
+        # All remaining entries are MTS (IDENTITY/CANONIZED)
+        for r in results[1:]:
             assert r.kline.dbg.op in ("IDENTITY", "CANONIZED")
 
 
