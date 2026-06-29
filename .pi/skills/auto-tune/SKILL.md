@@ -91,7 +91,7 @@ Capture the Python interpreter path from the main repo, then initialise:
 # From the main project repo:
 AT_PYTHON="$(pwd)/.venv/bin/python"
 
-PYTHONPATH=src $AT_PYTHON -m training.supervisors.auto_tune init \
+PYTHONPATH=src $AT_PYTHON -m training.auto_tune init \
   --session <name> --curriculum <curriculum-path>
 ```
 
@@ -106,7 +106,7 @@ cd .worktrees/auto-tune/<name>
 All subsequent commands run from inside the worktree using `$AT_PYTHON`:
 
 ```bash
-PYTHONPATH=src $AT_PYTHON -m training.supervisors.auto_tune <command> --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.auto_tune <command> --session <name>
 ```
 
 Then create the initial `auto-tune/<name>/session-state.md` using the template from `references/session-state-format.md`. Fill in the goal, done criteria, session details. Set **Current Phase** to `running`, **Next Action** to `start run 1`. Include the **Worktree** field.
@@ -131,8 +131,8 @@ Each iteration:
 ### a. Start processes
 
 ```bash
-PYTHONPATH=src $AT_PYTHON -m training.supervisors.auto_tune start-harness --session <name>
-PYTHONPATH=src $AT_PYTHON -m training.supervisors.auto_tune start-supervisor --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.auto_tune start-harness --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.auto_tune start-supervisor --session <name>
 ```
 
 Update state: **Current Phase** → `running`.
@@ -148,10 +148,10 @@ Drive these with `continue`. You may batch them in a loop and do **not** need to
 hold each in context — note only the highlights that inform your next edit.
 
 ```bash
-PYTHONPATH=src $AT_PYTHON -m training.supervisors.auto_tune step \
+PYTHONPATH=src $AT_PYTHON -m training.auto_tune step \
   --session <name> --command '{"action": "start"}'
 # Loop continue until a supervisor-decision event or run completion:
-PYTHONPATH=src $AT_PYTHON -m training.supervisors.auto_tune step \
+PYTHONPATH=src $AT_PYTHON -m training.auto_tune step \
   --session <name> --command '{"action": "continue"}'
 ```
 
@@ -171,7 +171,7 @@ failure.
 ### c. Snapshot
 
 ```bash
-PYTHONPATH=src $AT_PYTHON -m training.supervisors.auto_tune snapshot --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.auto_tune snapshot --session <name>
 ```
 
 ### d. Observe → Update State
@@ -204,9 +204,9 @@ Read `session-state.md` (your fresh update) and decide:
 Update state: **Current Phase** → `resetting`.
 
 ```bash
-PYTHONPATH=src $AT_PYTHON -m training.supervisors.auto_tune stop-supervisor --session <name>
-PYTHONPATH=src $AT_PYTHON -m training.supervisors.auto_tune stop-harness --session <name>
-PYTHONPATH=src $AT_PYTHON -m training.supervisors.auto_tune reset --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.auto_tune stop-supervisor --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.auto_tune stop-harness --session <name>
+PYTHONPATH=src $AT_PYTHON -m training.auto_tune reset --session <name>
 ```
 
 Then return to step a.
@@ -229,7 +229,7 @@ Every auto-tune session must consolidate existing documentation:
 
 ```bash
 cd <main-repo-root>
-PYTHONPATH=src .venv/bin/python -m training.supervisors.auto_tune teardown --session <name>
+PYTHONPATH=src .venv/bin/python -m training.auto_tune teardown --session <name>
 ```
 
 Update state: **Current Phase** → `complete`.

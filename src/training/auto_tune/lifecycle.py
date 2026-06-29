@@ -21,7 +21,7 @@ import time
 import urllib.parse
 from pathlib import Path
 
-from training.supervisors.auto_tune.session import SessionConfig
+from training.auto_tune.session import SessionConfig
 
 # Private helpers
 
@@ -37,7 +37,7 @@ def _resolve_python() -> str:
     Falls back to ``sys.executable`` when no venv is found.
     """
     # Walk upward to the project root (this file lives at
-    # <project-root>/src/training/supervisors/auto_tune/lifecycle.py).
+    # <project-root>/src/training/auto_tune/lifecycle.py).
     venv_python = Path(__file__).resolve().parents[3] / ".venv" / "bin" / "python"
     if venv_python.exists():
         return str(venv_python)

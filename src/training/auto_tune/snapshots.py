@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from training.supervisors.auto_tune.session import SessionConfig, SessionDir
+from training.auto_tune.session import SessionConfig, SessionDir
 
 # Helpers
 

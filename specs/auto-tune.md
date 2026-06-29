@@ -6,7 +6,7 @@ Auto-tune is a CLI tool and supervisor participant that enables an LLM coding ag
 
 The system has two components:
 
-- **Auto-tune CLI** (`python -m training.supervisors.auto_tune`) — session management, process lifecycle, and the `step`/`send`/`events` commands.
+- **Auto-tune CLI** (`python -m training.auto_tune`) — session management, process lifecycle, and the `step`/`send`/`events` commands.
 - **CLI Supervisor** — a WebSocket client participant that connects to the harness, reads commands from a file, writes events to a file, and blocks per-event for maximum observability.
 
 ## Dependencies

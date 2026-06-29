@@ -18,11 +18,11 @@ Exports:
 def __getattr__(name: str):
     """Lazy imports matching the supervisors package convention."""
     if name == "SessionConfig":
-        from training.supervisors.auto_tune.session import SessionConfig
+        from training.auto_tune.session import SessionConfig
 
         return SessionConfig
     if name == "SessionDir":
-        from training.supervisors.auto_tune.session import SessionDir
+        from training.auto_tune.session import SessionDir
 
         return SessionDir
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

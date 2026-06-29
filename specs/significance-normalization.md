@@ -109,7 +109,7 @@ Two sites produce normalized significance and must use the single shared
 1. **Trainer log** (`src/training/trainer/trainer.py`) — `sig_norm` in the frame event
    log line. The log line additionally shows the raw distance for debug
    readability (e.g. `→ 0.17 (d=200)`).
-2. **Auto-tune event enrichment** (`src/training/supervisors/auto_tune/events.py`) —
+2. **Auto-tune event enrichment** (`src/training/supervisors/cli_events.py`) —
    `normalised` field in the significance object.
 
 The shared implementation lives in the significance module
