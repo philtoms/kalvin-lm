@@ -1,5 +1,7 @@
 # Reactive Decision Delegation — Specification
 
+> **SUPERSEDED.** This flag-based delegation model is retired by `@specs/supervisor-decision.md` (the unified supervisor-decision model). The `trainer.llm.enabled` flag, the two reactive code paths, and the inline Trainer-side Cogitator are all removed; the decider is always a supervisor participant. The surviving contracts (decision-request enrichment, the scaffold command, the decision gate) are re-owned by `@specs/supervisor-decision.md`. This file is retained for traceability and will be removed at the next docs-reset.
+
 ## Overview
 
 The Trainer's LLM agent (the Cogitator) owns one decision during a training session: what reactive scaffolding to write when Kalvin hits the slow path (an S2/S3 proposal that did not auto-countersign). This spec defines a flag that disables that decision and delegates it to a supervisor participant instead — so an auto-tune session can let pi act as the reactive agent without changing Kalvin, the harness, or the bus protocol.

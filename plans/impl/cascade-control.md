@@ -1,5 +1,7 @@
 # Cascade Control — Implementation Plan
 
+> **SUPERSEDED** by `@plans/impl/realign-training-roles.md` (Task T4). The reactive-round budget and silent-drop-past-budget behaviour implemented here is removed: under `@specs/supervisor-decision.md` there is no Trainer-side budget and no escalation. This file is retained for traceability and will be removed at the next docs-reset.
+
 **Status:** Done — implementation and tests complete.
 **Spec refs:**
 - `@specs/reactive-delegation.md` §Reactive-Round Budget (Default Mode) (RD-8a, RD-8b)

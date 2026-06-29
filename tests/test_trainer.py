@@ -155,7 +155,6 @@ def _make_trainer(
     curriculum_file: str | Path | None = None,
     curricula_dir: str | Path | None = None,
     llm_client=None,
-    delegate_reactive: bool = False,
 ) -> tuple[Trainer, BusCapture]:
     """Create a Trainer with BusCapture installed.
 
@@ -170,7 +169,6 @@ def _make_trainer(
         curriculum_file=curriculum_file,
         curricula_dir=curricula_dir,
         llm_client=llm_client,
-        delegate_reactive=delegate_reactive,
     )
     capture = BusCapture(bus)
     capture.install()
@@ -185,7 +183,6 @@ def _make_trainer_with_capture(
     curriculum_file: str | Path | None = None,
     curricula_dir: str | Path | None = None,
     llm_client=None,
-    delegate_reactive: bool = False,
 ) -> tuple[Trainer, BusCapture]:
     """Create a Trainer with BusCapture installed BEFORE construction.
 
@@ -202,7 +199,6 @@ def _make_trainer_with_capture(
         curriculum_file=curriculum_file,
         curricula_dir=curricula_dir,
         llm_client=llm_client,
-        delegate_reactive=delegate_reactive,
     )
     return trainer, capture
 
@@ -1887,8 +1883,10 @@ class TestEventRelay:
 
 
 class TestTrainerProgressToAllSupervisors:
-    """HRNS-31: Trainer sends progress and escalation to role `supervisor`;
-    all supervisor subscribers receive."""
+    """HRNS-31: Trainer sends progress to role `supervisor`; all supervisor
+    subscribers receive. (Escalation fan-out was HRNS-14, now [removed] —
+    there is no Trainer-side escalation; the Trainer sends ``ratify_request``
+    instead, owned by `@specs/supervisor-decision.md`.)"""
 
     @patch("training.trainer.trainer.compile_source")
     def test_progress_to_all_supervisor_subscribers(self, mock_compile: MagicMock) -> None:
@@ -1953,246 +1951,6 @@ class TestTrainerProgressToAllSupervisors:
         finally:
             bus.stop()
             bus_thread.join(timeout=2)
-
-    @patch("training.trainer.trainer.compile_source")
-    @requires_tokenizer_data
-    def test_escalation_to_all_supervisor_subscribers(self, mock_compile: MagicMock) -> None:
-        """Two handlers subscribed to supervisor both receive escalation."""
-        import threading
-
-        entry = _make_entry(100, [10])
-        mock_compile.return_value = [entry]
-
-        bus = MessageBus()
-
-        # Two separate handlers subscribed to supervisor role
-        received_a: list[Message] = []
-        received_b: list[Message] = []
-        event = threading.Event()
-        count = 0
-
-        def handler_a(msg: Message) -> None:
-            nonlocal count
-            received_a.append(msg)
-            if msg.action == "notify":
-                count += 1
-                if count == 2:
-                    event.set()
-
-        def handler_b(msg: Message) -> None:
-            nonlocal count
-            received_b.append(msg)
-            if msg.action == "notify":
-                count += 1
-                if count == 2:
-                    event.set()
-
-        bus.subscribe(SUPERVISOR_ROLE, handler_a)
-        bus.subscribe(SUPERVISOR_ROLE, handler_b)
-
-        curriculum = Curriculum(["lesson1"])
-
-        # Run bus in background thread
-        bus_thread = threading.Thread(target=bus.run, daemon=True)
-        bus_thread.start()
-
-        try:
-            trainer = Trainer(bus, curriculum)
-            trainer.start_session()
-
-            # Trigger escalation by sending enough non-matching S2/S3 events
-            # to exhaust the reactive budget (default max_reactive_rounds=5)
-            for _ in range(6):
-                ev = _make_event(
-                    "frame",
-                    query=KLine(signature=999, nodes=[99]),
-                    proposal=KLine(signature=999, nodes=[99]),
-                    significance=_S2_SIGNIFICANCE,
-                )
-                trainer.on_message(Message(role=TRAINER_ROLE, action="frame", message=ev))
-
-            assert event.wait(timeout=2), "Both handlers should have received escalation"
-
-            # Both handlers should have received the escalation (notify) message
-            notify_in_a = [m for m in received_a if m.action == "notify"]
-            notify_in_b = [m for m in received_b if m.action == "notify"]
-
-            assert len(notify_in_a) >= 1, "handler_a should have received escalation"
-            assert len(notify_in_b) >= 1, "handler_b should have received escalation"
-
-            # Verify escalation targets supervisor role
-            for msg in notify_in_a + notify_in_b:
-                assert msg.role == SUPERVISOR_ROLE
-                assert msg.message["reason"] in ("budget_exhaustion", "low_confidence")
-        finally:
-            bus.stop()
-            bus_thread.join(timeout=2)
-
-
-# ── Cogitator auto-wiring ────────────────────────────────────
-
-
-class TestCogitatorAutoWiring:
-    """Trainer auto-wires Cogitator when llm_client is provided."""
-
-    @requires_tokenizer_data
-    def test_auto_wires_cogitator_when_llm_client_provided(self) -> None:
-        """When llm_client is provided without cogitate_fn, reactor gets wired."""
-        mock_llm = MagicMock()
-        bus = MessageBus()
-        curriculum = Curriculum([])
-        trainer = Trainer(bus, curriculum, llm_client=mock_llm)
-
-        assert trainer._reactor._cogitate_fn is not None
-
-    def test_explicit_cogitate_fn_not_overwritten(self) -> None:
-        """When both llm_client and cogitate_fn are provided, explicit fn wins."""
-        explicit_fn = MagicMock(return_value=("explicit", 0.9))
-        mock_llm = MagicMock()
-
-        bus = MessageBus()
-        curriculum = Curriculum([])
-        trainer = Trainer(
-            bus,
-            curriculum,
-            llm_client=mock_llm,
-            cogitate_fn=explicit_fn,
-        )
-
-        assert trainer._reactor._cogitate_fn is explicit_fn
-
-    def test_no_llm_client_no_cogitate_fn(self) -> None:
-        """When neither is provided, cogitate_fn remains None."""
-        bus = MessageBus()
-        curriculum = Curriculum([])
-        trainer = Trainer(bus, curriculum)
-
-        assert trainer._reactor._cogitate_fn is None
-
-    @requires_tokenizer_data
-    def test_cogitate_adapter_calls_cogitator(self) -> None:
-        """Auto-wired adapter builds CogitationRequest and returns the right tuple."""
-        from training.trainer.cogitation import CogitationRequest, CogitationResult
-
-        mock_result = CogitationResult(
-            scaffolding="0x10 -> 0x20",
-            confidence=0.85,
-            reasoning="test reasoning",
-            raw_response=None,
-        )
-
-        mock_cogitator = MagicMock()
-        mock_cogitator.cogitate.return_value = mock_result
-
-        with patch("training.trainer.cogitation.Cogitator", return_value=mock_cogitator):
-            bus = MessageBus()
-            curriculum = Curriculum([])
-            trainer = Trainer(bus, curriculum, llm_client=MagicMock())
-
-        assert trainer._reactor._cogitate_fn is not None
-
-        # Call the adapter
-        query = KLine(signature=0xFF, nodes=[0x10])
-        proposal = KLine(signature=0x0F, nodes=[0x20])
-        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
-
-        result = trainer._reactor._cogitate_fn(event)
-
-        # Cogitator.cogitate was called once
-        mock_cogitator.cogitate.assert_called_once()
-
-        # Verify the CogitationRequest structure
-        call_args = mock_cogitator.cogitate.call_args[0][0]
-        assert isinstance(call_args, CogitationRequest)
-        assert call_args.events == [event]
-        assert len(call_args.misfits) == 1
-        assert call_args.curriculum_context == ""
-        assert call_args.round_number == 1
-        assert call_args.max_rounds == 3
-
-        # Result is the right tuple
-        assert result == ("0x10 -> 0x20", 0.85)
-
-    @requires_tokenizer_data
-    def test_cogitate_adapter_returns_none_on_no_scaffolding(self) -> None:
-        """Auto-wired adapter returns None when Cogitator produces no scaffolding."""
-        from training.trainer.cogitation import CogitationResult
-
-        mock_result = CogitationResult(
-            scaffolding=None,
-            confidence=0.0,
-            reasoning="failed",
-            raw_response=None,
-        )
-
-        mock_cogitator = MagicMock()
-        mock_cogitator.cogitate.return_value = mock_result
-
-        with patch("training.trainer.cogitation.Cogitator", return_value=mock_cogitator):
-            bus = MessageBus()
-            curriculum = Curriculum([])
-            trainer = Trainer(bus, curriculum, llm_client=MagicMock())
-
-        query = KLine(signature=0xFF, nodes=[0x10])
-        proposal = KLine(signature=0x0F, nodes=[0x20])
-        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
-
-        result = trainer._reactor._cogitate_fn(event)
-        assert result is None
-
-    @patch("training.trainer.trainer.compile_source")
-    @requires_tokenizer_data
-    def test_reactive_mode_uses_cogitator_end_to_end(
-        self,
-        mock_compile: MagicMock,
-    ) -> None:
-        """S2/S3 event with auto-wired cogitator: scaffolding submitted, no escalation."""
-        from training.trainer.cogitation import CogitationResult
-
-        entry = _make_entry(100, [10])
-        mock_compile.return_value = [entry]
-
-        mock_result = CogitationResult(
-            scaffolding="0x10 -> 0x20",
-            confidence=0.85,
-            reasoning="test",
-            raw_response=None,
-        )
-
-        mock_cogitator = MagicMock()
-        mock_cogitator.cogitate.return_value = mock_result
-
-        with patch("training.trainer.cogitation.Cogitator", return_value=mock_cogitator):
-            bus = MessageBus()
-            curriculum = Curriculum(["lesson1", "lesson2"])
-            trainer = Trainer(bus, curriculum, llm_client=MagicMock())
-
-        capture = BusCapture(bus)
-        capture.install()
-        trainer.start_session()
-        capture.reset()
-
-        # Non-matching S2/S3 event
-        proposal = KLine(signature=999, nodes=[88])
-        query = KLine(signature=888, nodes=[1])
-        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
-
-        trainer.on_message(Message(role=TRAINER_ROLE, action="frame", message=event))
-
-        # Reactive scaffolding was submitted to kalvin
-        submit_msgs = capture.find_all(TRAINEE_ROLE, "submit")
-        scaffolding_msgs = [m for m in submit_msgs if m.message == "0x10 -> 0x20"]
-        assert len(scaffolding_msgs) == 1
-        assert scaffolding_msgs[0].sender == "trainer"
-
-        # No escalation (low_confidence or budget_exhaustion)
-        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
-        escalation_msgs = [
-            m
-            for m in notify_msgs
-            if m.message.get("reason") in ("low_confidence", "budget_exhaustion")
-        ]
-        assert len(escalation_msgs) == 0
 
 
 # ── Misfit diagnosis helper ──────────────────────────────────
@@ -2358,17 +2116,20 @@ class TestKV15ConsumesProposalSignificance:
 # ── Delegated reactive decisions ─────────────────────────────
 
 
-class TestDelegatedReactiveDecisions:
-    """Trainer enriches ratify_request in delegated mode (RD-7, RD-8)."""
+class TestDecisionRequest:
+    """SD-1: the Trainer escalates every proposal it cannot auto-ratify as an
+    enriched ``ratify_request``. Enrichment (``misfit``, ``curriculum_context``)
+    is unconditional — every decider receives the same context."""
 
     @patch("training.trainer.trainer.compile_source")
     @requires_tokenizer_data
     def test_enriched_ratify_request(self, mock_compile: MagicMock, tmp_path: Path) -> None:
-        """RD-7: delegate_reactive=True emits an enriched ratify_request.
+        """SD-1: a non-auto-matching proposal emits an enriched ratify_request.
 
-        The payload carries the existing ``proposal``/``query``/``significance``
+        The payload carries the base ``proposal``/``query``/``significance``
         PLUS ``misfit`` and ``curriculum_context`` derived from a
-        CurriculumDocument-backed curriculum.
+        CurriculumDocument-backed curriculum. There is no delegation flag —
+        enrichment is unconditional.
         """
         mock_compile.return_value = [_make_entry(100, [10])]
 
@@ -2379,7 +2140,7 @@ class TestDelegatedReactiveDecisions:
         bus = MessageBus()
         curriculum = Curriculum(doc)
         trainer, capture = _make_trainer(
-            bus, curriculum, delegate_reactive=True, curriculum_file=curriculum_path
+            bus, curriculum, curriculum_file=curriculum_path
         )
         trainer.start_session()
         capture.reset()
@@ -2397,7 +2158,7 @@ class TestDelegatedReactiveDecisions:
         assert len(ratify_msgs) == 1
         payload = ratify_msgs[0].message
 
-        # Existing keys
+        # Base keys
         assert payload["proposal"] is event.proposal
         assert payload["query"] is event.query
         assert payload["significance"] == event.proposal.significance
@@ -2421,82 +2182,6 @@ class TestDelegatedReactiveDecisions:
             "approach": "Step by step.",
             "lesson_prose": "First lesson.",
         }
-
-    @patch("training.trainer.trainer.compile_source")
-    @requires_tokenizer_data
-    def test_no_client_unchanged(self, mock_compile: MagicMock) -> None:
-        """RD-8: delegate_reactive=False + llm_client=None → unchanged no-client path.
-
-        The real Reactor runs (no patch). A non-matching S2/S3 escalates
-        ``low_confidence`` as today, and the ratify_request payload has no
-        enrichment keys.
-        """
-        mock_compile.return_value = [_make_entry(100, [10])]
-
-        bus = MessageBus()
-        curriculum = Curriculum(["lesson1", "lesson2"])
-        trainer, capture = _make_trainer(bus, curriculum, delegate_reactive=False)
-        trainer.start_session()
-        capture.reset()
-
-        # Non-auto-matching S2/S3 frame event — let the real Reactor run
-        proposal = KLine(signature=999, nodes=[88])
-        query = KLine(signature=888, nodes=[1])
-        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
-        trainer.on_message(Message(role=TRAINER_ROLE, action="frame", message=event))
-
-        # low_confidence escalation emitted (no cogitate_fn available)
-        notify_msgs = capture.find_all(SUPERVISOR_ROLE, "notify")
-        low_conf = [m for m in notify_msgs if m.message.get("reason") == "low_confidence"]
-        assert len(low_conf) == 1
-
-        # ratify_request sent without enrichment keys
-        ratify_msgs = capture.find_all(SUPERVISOR_ROLE, "ratify_request")
-        assert len(ratify_msgs) == 1
-        payload = ratify_msgs[0].message
-        assert "misfit" not in payload
-        assert "curriculum_context" not in payload
-
-    def test_delegated_skips_cogitate_wiring(self) -> None:
-        """RD-3 cross-check: delegate_reactive=True skips Cogitator wiring.
-
-        Even when an llm_client is provided, the auto-wiring block is
-        bypassed so ``_cogitate_fn`` stays ``None``.
-        """
-        mock_llm = MagicMock()
-        bus = MessageBus()
-        curriculum = Curriculum([])
-        trainer = Trainer(bus, curriculum, llm_client=mock_llm, delegate_reactive=True)
-
-        assert trainer._reactor._cogitate_fn is None
-
-    @patch("training.trainer.trainer.compile_source")
-    @requires_tokenizer_data
-    def test_non_delegated_payload_unchanged(self, mock_compile: MagicMock) -> None:
-        """delegate_reactive=False: ratify_request payload is exactly the base keys.
-
-        No ``misfit`` or ``curriculum_context`` keys are added when delegation
-        is off, preserving the contract for existing supervisors.
-        """
-        mock_compile.return_value = [_make_entry(100, [10])]
-
-        bus = MessageBus()
-        curriculum = Curriculum(["lesson1", "lesson2"])
-        trainer, capture = _make_trainer(bus, curriculum, delegate_reactive=False)
-        trainer.start_session()
-        capture.reset()
-
-        trainer._reactor.process_s2_s3 = MagicMock(return_value=False)
-
-        proposal = KLine(signature=999, nodes=[88])
-        query = KLine(signature=888, nodes=[1])
-        event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)
-        trainer.on_message(Message(role=TRAINER_ROLE, action="frame", message=event))
-
-        ratify_msgs = capture.find_all(SUPERVISOR_ROLE, "ratify_request")
-        assert len(ratify_msgs) == 1
-        payload = ratify_msgs[0].message
-        assert set(payload) == {"proposal", "query", "significance"}
 
 
 # ── Restart action ───────────────────────────────────────────────────

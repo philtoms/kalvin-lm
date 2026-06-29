@@ -132,8 +132,10 @@ submitted`), where `submitted` now spans all four bands, not just S1.
    identity `X:[]`), the trainer looks up signature X in the Held Index and submits
    every held kline for X, in pull-priority order (canon → relation → identity).
    This is ratification.
-7. If signature X has no held entry, the trainer escalates (see §Stalls) — it has
-   no ratification to offer.
+7. If signature X has no held entry, the trainer cannot auto-ratify the request —
+   it escalates the proposal to the supervisor (`@specs/supervisor-decision.md` SD-1).
+   The request carries `{X: []}` as its proposal; the supervisor answers scaffold
+   (write a kline for X) or continue.
 8. The trainer submits one kline per Kalvin request-response turn (paced), not in
    a batch. Each submission yields the next request/ground events from Kalvin,
    which drive the next trainer response.
@@ -173,17 +175,16 @@ submitted`), where `submitted` now spans all four bands, not just S1.
 
 ### Stall (no held kline for a request)
 
-16. If Kalvin requests a signature X and the trainer holds no kline for X, the
-    trainer cannot ratify. It escalates to the supervisor (`escalation`, reason
-    `ungroundable_request`), carrying the requested signature and current cascade
-    position.
-17. In delegated mode (no LLM), the stall is surfaced as a `ratify_request` enriched
-    with the requested signature, for the supervisor to answer.
+16. [removed] — folded into `@specs/supervisor-decision.md` SD-1. A request for which
+    the trainer holds no kline is a proposal (`{X: []}`) the trainer cannot
+    auto-ratify; it is escalated to the supervisor like any other unresolvable
+    proposal. There is no distinct `ungroundable_request` event or escalation reason.
+17. [removed] — the delegated-mode / default-mode distinction is retired; there is
+    one escalation path (`@specs/supervisor-decision.md`).
 
-This is the parked "never-derives" branch, scoped to the trainer. Real-Kalvin
-divergence from the table (Kalvin requests something the table doesn't prescribe, or
-never requests what the table expects) is deferred to the Kalvin grill — the stub
-never diverges, so this branch is unreachable in the bootstrap dialogue.
+Real-Kalvin divergence from the table (Kalvin requests something the table doesn't
+prescribe, or never requests what the table expects) is deferred to the Kalvin grill
+— the stub never diverges, so this branch is unreachable in the bootstrap dialogue.
 
 ### Divergence (band mismatch)
 
@@ -209,12 +210,12 @@ never diverges, so this branch is unreachable in the bootstrap dialogue.
   expand, misfit) — owned by the Kalvin grill, validated against the same table.
 - The global event-kind change (`ground`/`frame` → significance). This spec keys on
   `proposal.significance`, forward-compatible with the change.
-- Reactive scaffolding via LLM (the existing Cogitator path). The paced loop
-  replaces batch submission; reactive scaffolding is re-evaluated after the Kalvin
-  grill. For now, the stub dialogue needs no scaffolding.
-- The `ratify_request` enrichment fields (`misfit`, `curriculum_context`) from
-  `@specs/reactive-delegation.md`. These remain; the paced loop adds the requested-
-  signature enrichment on stall.
+- Reactive-scaffolding generation (the LLMSupervisor) and the decision contract —
+  owned by `@specs/supervisor-decision.md`. The paced loop submits klines and marks
+  satisfaction; what happens when it cannot auto-ratify a proposal is the
+  supervisor-decision contract.
+- The `ratify_request` enrichment fields (`misfit`, `curriculum_context`) — owned by
+  `@specs/supervisor-decision.md`, emitted on every escalated proposal.
 - Goal-based curriculum generation.
 
 ## Canonical Example
@@ -243,7 +244,7 @@ declared band; the lesson completes on the primary's S1 countersign.
 | TS-10 | A ground at S4 satisfies an identity (S4 is learned, not a failure) | §Satisfaction, §Grounding |
 | TS-11 | The primary is satisfied by a frame at S1 (Kalvin-emitted countersign) | §Satisfaction |
 | TS-12 | Lesson completes when satisfied ⊇ submitted across all four bands | §Lesson Completion |
-| TS-13 | A request for a signature with no held kline escalates `ungroundable_request` | §Stall |
+| TS-13 | [removed] — relocated to `@specs/supervisor-decision.md` SD-1 (escalation of an unresolvable proposal) | §Stall |
 | TS-14 | Over-reach (reported > declared) satisfies the entry and emits `progress: over_reach` | §Divergences |
 | TS-15 | Under-reach (reported < declared) does not satisfy; cascade continues | §Divergences |
 | TS-16 | Ratification delivers withheld klines via submission, not via countersign | §Ratification |

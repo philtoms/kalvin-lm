@@ -76,7 +76,6 @@ class BusCapture:
 def _make_reactor(
     *,
     entries: list[KValue] | None = None,
-    max_reactive_rounds: int = 5,
 ) -> tuple[Reactor, BusCapture]:
     """Create a Reactor with BusCapture installed."""
     bus = MessageBus()
@@ -88,7 +87,6 @@ def _make_reactor(
         bus,
         state,
         role="trainer",
-        max_reactive_rounds=max_reactive_rounds,
     )
     if entries:
         reactor.load_lesson(entries)
@@ -148,14 +146,14 @@ class TestProcessS2S3ReturnFalse:
         assert result is False
 
 
-# ── HRNS-37: _handle_reactive not called on auto-countersign ────────────
+# ── SAC-2: escalation not invoked on auto-countersign ────────────────
 
 
 class TestHandleReactiveNotCalledOnAutoCountersign:
-    """HRNS-37: _handle_reactive is not called when auto-countersign succeeds."""
+    """SAC-2: when auto-countersign succeeds, escalation is not invoked."""
 
-    def test_no_escalation_on_auto_countersign(self) -> None:
-        """When auto-countersign succeeds, no escalation or notify messages."""
+    def test_no_notify_on_auto_countersign(self) -> None:
+        """When auto-countersign succeeds, no notify/escalation messages."""
         entry = _make_entry(100, [10, 20])
         reactor, capture = _make_reactor(entries=[entry])
 

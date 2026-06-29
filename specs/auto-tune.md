@@ -15,6 +15,7 @@ The system has two components:
 - `src/training/supervisors/commands.py` — `parse_command()` for mapping simplified commands to bus messages
 - `src/kalvin/expand.py` — `D_MAX` for significance normalisation
 - `specs/harness-server.md` — harness configuration and participant architecture
+- `specs/supervisor-decision.md` — the decision contract the CLI supervisor participates in
 - `specs/curriculum.md` — curriculum state persistence format
 
 ## Definitions
@@ -42,8 +43,8 @@ Each line is a JSON object with a monotonic `seq` counter.
 | `disconnected`   | `seq`                                                                        | Supervisor disconnected (planned or error)                                                                                                                                                                                        |
 | `progress`       | `seq`, `status`, `lesson`, `lessons_total`, `lessons_completed`              | Training progress: `started`, `lesson_complete`, `complete`, `amended`, `polling_for_goal`, `ready`                                                                                                                               |
 | `rationalise`    | `seq`, `kind`, `significance`, `query`, `proposal`                           | Kalvin rationalisation event (`ground` or `frame`), with decompiled source and significance breakdown                                                                                                                             |
-| `ratify_request` | `seq`, `query`, `proposal`, `significance`, (`misfit`, `curriculum_context`) | S2/S3 proposal requiring ratification decision. When reactive delegation is active (`@specs/reactive-delegation.md`), enriched with the misfit diagnosis and curriculum context so the supervisor can write reactive scaffolding. |
-| `escalation`     | `seq`, `reason`, `detail`, `lesson_position`                                 | Trainer cannot make progress (`budget_exhaustion` or `low_confidence`)                                                                                                                                                            |
+| `ratify_request` | `seq`, `query`, `proposal`, `significance`, `misfit`, `curriculum_context` | A proposal the Trainer cannot auto-ratify, requiring a supervisor decision. Enriched with the misfit diagnosis and curriculum context (`@specs/supervisor-decision.md`). |
+| `escalation`     | `seq`, `reason`, `detail`, `lesson_position`                                 | Trainer cannot make progress (`budget_exhaustion` or `low_confidence`) → [removed] — no escalation mechanism (`@specs/supervisor-decision.md` SD-3)                                                                                                                                                            |
 
 ### Significance Object
 
@@ -76,7 +77,7 @@ A single JSON object, written by pi, consumed and deleted by the supervisor.
 | `load`     | `action`         | Load Kalvin model                                                                                             |
 | `goal`     | `action`, `text` | Set training goal                                                                                             |
 | `guidance` | `action`, `text` | Freeform guidance for the trainer                                                                             |
-| `scaffold` | `action`, `text` | Submit reactive scaffolding KScript to Kalvin (delegated reactive decision — `@specs/reactive-delegation.md`) |
+| `scaffold` | `action`, `text` | Submit reactive scaffolding KScript to Kalvin (supervisor decision — `@specs/supervisor-decision.md`) |
 | `continue` | `action`         | No-op: acknowledge event, wait for next                                                                       |
 | `shutdown` | `action`         | Graceful supervisor shutdown                                                                                  |
 
@@ -139,7 +140,7 @@ Session artefacts are persisted to files inside the session's git worktree. The 
 ### Harness Lifecycle
 
 7. `start-harness` starts the harness server as a background process, configured from the per-session harness config.
-   7a. `start-harness` generates that per-session harness config (from the project harness config) setting `trainer.llm.enabled: false`, placing the session in delegated mode so pi acts as the reactive decision-maker (`@specs/reactive-delegation.md`).
+   7a. `start-harness` generates that per-session harness config from the project harness config. Auto-tune does not configure an LLMSupervisor participant, so pi (the CLI supervisor) is the sole decider for the session (`@specs/supervisor-decision.md`).
 8. `start-harness` records the PID in the session directory.
 9. `start-harness` polls the WebSocket port until it accepts connections, then returns.
 10. `stop-harness` sends SIGTERM to the harness PID, waits for exit (SIGKILL on 5s timeout).

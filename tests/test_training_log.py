@@ -92,14 +92,12 @@ def _make_trainer(
     bus: MessageBus,
     curriculum: Curriculum,
     *,
-    cogitate_fn=None,
     curriculum_file: str | None = None,
 ) -> Trainer:
     return Trainer(
         bus,
         curriculum,
         role=TRAINER_ROLE,
-        cogitate_fn=cogitate_fn,
         curriculum_file=curriculum_file,
     )
 
@@ -285,9 +283,12 @@ class TestTrainerLogging:
 
 
 class TestReactorLogging:
-    """TL-10 through TL-15: Reactor log output."""
+    """TL-10 through TL-11: Reactor log output. (TL-12 through TL-15 are
+    [removed] — reactive scaffolding, cogitation failure, budget exhaustion,
+    and escalation logging belonged to the inline-cogitation path, which is
+    retired per `@specs/supervisor-decision.md` SD-3.)"""
 
-    def _make_reactor(self, bus: MessageBus, *, max_rounds: int = 5, cogitate_fn=None) -> Reactor:
+    def _make_reactor(self, bus: MessageBus) -> Reactor:
         doc = CurriculumDocument(
             objective="test",
             approach="test",
@@ -297,15 +298,13 @@ class TestReactorLogging:
         from training.trainer.curriculum import CurriculumState
 
         cs = CurriculumState(curriculum)
-        return Reactor(
-            bus, cs, role=TRAINER_ROLE, max_reactive_rounds=max_rounds, cogitate_fn=cogitate_fn
-        )
+        return Reactor(bus, cs, role=TRAINER_ROLE)
 
     def test_auto_countersign_match_log(self, caplog: pytest.LogCaptureFixture) -> None:
         """TL-10: Auto-countersign match logged at INFO."""
         bus = MessageBus()
         _cap = BusCapture(bus)
-        reactor = self._make_reactor(bus, cogitate_fn=None)
+        reactor = self._make_reactor(bus)
         caplog.set_level(logging.INFO, logger="training.trainer.reactor")
 
         entry = _make_entry(256, [])
@@ -334,92 +333,10 @@ class TestReactorLogging:
         proposal = KLine(signature=999, nodes=[])
         event = _make_event("frame", proposal, proposal=proposal, significance=_S2_SIGNIFICANCE)
 
-        # No cogitate_fn → will escalate. We just check the debug log before escalation.
+        # No match → surfaced. The miss debug log appears before escalation.
         reactor.process_s2_s3(event)
-
-        # Just check the log appeared — the miss is logged before escalation
 
         assert any(r.levelno == logging.DEBUG and "no match" in r.message for r in caplog.records)
-
-    def test_reactive_scaffolding_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-12: Reactive scaffolding logged with round, confidence, source."""
-        bus = MessageBus()
-        _cap = BusCapture(bus)
-
-        def mock_cogitate(event):
-            return ("M = H", 0.85)
-
-        reactor = self._make_reactor(bus, cogitate_fn=mock_cogitate)
-        caplog.set_level(logging.INFO, logger="training.trainer.reactor")
-
-        entry = _make_entry(256, [])
-        reactor.load_lesson([entry])
-
-        proposal = KLine(signature=999, nodes=[])
-        event = _make_event("frame", proposal, proposal=proposal, significance=_S2_SIGNIFICANCE)
-        reactor.process_s2_s3(event)
-
-        assert any(
-            "Reactive scaffolding" in r.message and "0.85" in r.message for r in caplog.records
-        )
-
-    def test_cogitation_failure_warning(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-13: Cogitation failure logged at WARNING."""
-        bus = MessageBus()
-        _cap = BusCapture(bus)
-
-        def mock_cogitate(event):
-            return None
-
-        reactor = self._make_reactor(bus, cogitate_fn=mock_cogitate)
-        caplog.set_level(logging.WARNING, logger="training.trainer.reactor")
-
-        entry = _make_entry(256, [])
-        reactor.load_lesson([entry])
-
-        proposal = KLine(signature=999, nodes=[])
-        event = _make_event("frame", proposal, proposal=proposal, significance=_S2_SIGNIFICANCE)
-        reactor.process_s2_s3(event)
-
-        assert any(
-            r.levelno == logging.WARNING and "no scaffolding" in r.message for r in caplog.records
-        )
-
-    def test_budget_exhaustion_warning(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-14: Budget exhaustion logged at WARNING with round count."""
-        bus = MessageBus()
-        _cap = BusCapture(bus)
-
-        reactor = self._make_reactor(bus, max_rounds=1)
-        caplog.set_level(logging.WARNING, logger="training.trainer.reactor")
-
-        entry = _make_entry(256, [])
-        reactor.load_lesson([entry])
-
-        proposal = KLine(signature=999, nodes=[])
-        event = _make_event("frame", proposal, proposal=proposal, significance=_S2_SIGNIFICANCE)
-        reactor.process_s2_s3(event)
-
-        assert any(
-            r.levelno == logging.WARNING and "budget exhausted" in r.message for r in caplog.records
-        )
-
-    def test_escalation_error_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-15: Escalation logged at ERROR with reason."""
-        bus = MessageBus()
-        _cap = BusCapture(bus)
-
-        reactor = self._make_reactor(bus, max_rounds=1)
-        caplog.set_level(logging.ERROR, logger="training.trainer.reactor")
-
-        entry = _make_entry(256, [])
-        reactor.load_lesson([entry])
-
-        proposal = KLine(signature=999, nodes=[])
-        event = _make_event("frame", proposal, proposal=proposal, significance=_S2_SIGNIFICANCE)
-        reactor.process_s2_s3(event)
-
-        assert any(r.levelno == logging.ERROR and "Escalation" in r.message for r in caplog.records)
 
 
 # ═══════════════════════════════════════════════════════════════════════

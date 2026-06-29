@@ -2,9 +2,11 @@
 
 The Trainer submits curriculum lessons to the KAgent and manages session
 lifecycle (start/stop/pause, curriculum loading, file polling, progress
-emission, message routing). Reactive handling of S2/S3 events — auto-
-countersign matching, scaffolding via ``cogitate_fn``, budget tracking,
-and escalation — is delegated to the :class:`~trainer.reactor.Reactor`.
+emission, message routing). Reactive decisions — what to do when a proposal
+cannot be auto-ratified — are owned by a supervisor participant; the Trainer
+surfaces them as decision requests, gates the run until answered, and
+applies the answer. The Reactor handles the Trainer's mechanical S2/S3
+work (auto-countersign, recurrence dedup).
 
 Supports document-based curriculum with file polling, label-based tracking,
 session startup resolution, amendment handling, and progress events.
@@ -17,7 +19,6 @@ from __future__ import annotations
 
 import logging
 from collections import deque
-from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -30,7 +31,7 @@ from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
 from training.harness.bus import MessageBus
-from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
+from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
 from training.harness.message import Message
 from training.trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from training.trainer.curriculum_document import (
@@ -70,39 +71,14 @@ class Trainer:
         The :class:`Curriculum` instance with ordered lessons.
     role:
         Bus role for this participant (default ``"trainer"``).
-    max_reactive_rounds:
-        Maximum reactive scaffolding rounds before budget-exhaustion escalation.
-    cogitate_fn:
-        Optional cogitation function. Signature:
-        ``(RationaliseEvent) -> tuple[str, float] | None``.
-        Returns ``(kscript_source, confidence)`` or ``None`` if no
-        scaffolding can be generated. When ``llm_client`` is provided
-        but ``cogitate_fn`` is not, a :class:`~trainer.cogitation.Cogitator`
-        is automatically constructed and its ``cogitate()`` method is
-        adapted into the ``cogitate_fn`` callable the
-        :class:`~trainer.reactor.Reactor` expects. This auto-wiring is
-        skipped when ``delegate_reactive`` is ``True``.
     llm_client:
-        Optional LLM client for curriculum generation and reactive
-        scaffolding. Must satisfy the :class:`~trainer.cogitation.LLMClient`
-        protocol. When provided without an explicit ``cogitate_fn``,
-        a :class:`~trainer.cogitation.Cogitator` is auto-wired for
-        reactive scaffolding on S2/S3 events (unless ``delegate_reactive``
-        is ``True``). Also enables goal-based curriculum generation via
-        the CurriculumGenerator.
-    delegate_reactive:
-        When ``True``, the Trainer enters **delegated mode**: the Cogitator
-        is never auto-wired (``cogitate_fn`` stays ``None`` regardless of
-        ``llm_client``) and the Reactor defers every reactive decision to
-        the supervisor. For S2/S3 proposals that do not auto-countersign,
-        the emitted ``ratify_request`` is enriched with ``misfit`` and
-        ``curriculum_context`` so a supervisor participant can make the
-        decision. When ``False`` (the default), today's behaviour is
-        unchanged: the Cogitator is auto-wired when an ``llm_client`` is
-        available, and the ``ratify_request`` payload carries only
-        ``{proposal, query, significance}``. This parameter is the inverse
-        of the ``trainer.llm.enabled`` config flag
-        (``delegate_reactive = not llm_enabled``).
+        Optional LLM client for curriculum generation (goal resolution).
+        Must satisfy the :class:`~trainer.cogitation.LLMClient` protocol.
+        Enables goal-based curriculum generation via the
+        :class:`~trainer.curriculum_generator.CurriculumGenerator`. Reactive
+        decisions are owned by a supervisor participant (the LLMSupervisor
+        is one such participant); the Trainer surfaces decisions and gates
+        the run — it never decides reactively (`@specs/supervisor-decision.md`).
     save_path:
         Optional file path for curriculum state persistence.
     curriculum_file:
@@ -118,10 +94,7 @@ class Trainer:
         curriculum: Curriculum,
         *,
         role: str = "trainer",
-        max_reactive_rounds: int = 5,
-        cogitate_fn: Callable[[RationaliseEvent], tuple[str, float] | None] | None = None,
         llm_client: Any | None = None,
-        delegate_reactive: bool = False,
         save_path: str | Path | None = None,
         curriculum_file: str | Path | None = None,
         curricula_dir: str | Path | None = None,
@@ -138,89 +111,17 @@ class Trainer:
             curriculum_file=str(curriculum_file) if curriculum_file else None,
         )
         self._llm_client = llm_client
-        self._delegate_reactive = delegate_reactive
         self._curriculum_file = Path(curriculum_file) if curriculum_file else None
         self._curricula_dir = Path(curricula_dir) if curricula_dir else None
 
-        # Auto-wire Cogitator when llm_client is provided without an explicit
-        # cogitate_fn. The adapter closes over a local Cogitator (not self)
-        # so cogitate_fn stays a plain callable. In delegated mode the
-        # Cogitator is never wired — the Reactor must not cogitate.
-        if llm_client is not None and cogitate_fn is None and not delegate_reactive:
-            from training.trainer.cogitation import CogitationRequest, Cogitator, MisfitInfo
-
-            _cogitator = Cogitator(client=llm_client)
-            _display_tok = _display_tokenizer()
-            _display_sig = _display_signifier()
-
-            def _cogitate_adapter(
-                event: RationaliseEvent,
-            ) -> tuple[str, float] | None:
-                misfit = self._compute_misfit(event)
-
-                # Display klines as human-readable KScript for the LLM
-                try:
-                    query_src = kline_display(event.query.kline, _display_tok, _display_sig)
-                except Exception:
-                    query_src = repr(event.query)
-                try:
-                    proposal_src = kline_display(event.proposal.kline, _display_tok, _display_sig)
-                except Exception:
-                    proposal_src = repr(event.proposal)
-
-                logger.info(
-                    "Cogitate adapter: event query=%r (%s), proposal=%r (%s)",
-                    event.query,
-                    query_src,
-                    event.proposal,
-                    proposal_src,
-                )
-                logger.info(
-                    "Cogitate misfit: underfit=%s, overfit=%s, gap=%#x, mask=%#x",
-                    misfit["underfit"],
-                    misfit["overfit"],
-                    misfit["underfit_gap"],
-                    misfit["overfit_mask"],
-                )
-
-                misfit_info = MisfitInfo(
-                    underfit=misfit["underfit"],
-                    overfit=misfit["overfit"],
-                    underfit_gap=misfit["underfit_gap"],
-                    overfit_mask=misfit["overfit_mask"],
-                    expectation_summary=query_src,
-                    proposal_summary=proposal_src,
-                )
-
-                request = CogitationRequest(
-                    events=[event],
-                    misfits=[misfit_info],
-                    curriculum_context="",
-                    conversation_history=[],
-                    round_number=1,
-                    max_rounds=3,
-                )
-
-                result = _cogitator.cogitate(request)
-                logger.info(
-                    "Cogitate result: scaffolding=%s, confidence=%.2f, reasoning=%s",
-                    "None" if result.scaffolding is None else result.scaffolding[:80],
-                    result.confidence,
-                    result.reasoning[:80] if result.reasoning else "",
-                )
-                if result.scaffolding is not None:
-                    return (result.scaffolding, result.confidence)
-                return None
-
-            cogitate_fn = _cogitate_adapter
-
+        # The Reactor owns the Trainer's mechanical S2/S3 handling
+        # (auto-countersign + recurrence dedup). Every proposal it cannot
+        # resolve itself is surfaced to the supervisor as a decision
+        # (`@specs/supervisor-decision.md`). The Trainer never cogitates.
         self._reactor = Reactor(
             bus,
             self._state,
             role=role,
-            max_reactive_rounds=max_reactive_rounds,
-            cogitate_fn=cogitate_fn,
-            delegate_reactive=delegate_reactive,
         )
 
         self._session_active: bool = False
@@ -230,10 +131,10 @@ class Trainer:
         self._polling_for_goal: bool = False
         self._drain_pending: bool = False
 
-        # Delegated-decision gate (RD-7/9). When a ratify_request is emitted
-        # in delegated mode, the Trainer holds subsequent KAgent events until
-        # the supervisor replies (``supervisor_decision`` action). This makes
-        # the supervisor the gating decision-maker: the lesson cannot advance
+        # Decision gate (SD-7/9). When a ratify_request is emitted
+        # the Trainer holds subsequent KAgent events until the supervisor
+        # replies (``supervisor_decision`` action). This makes the supervisor
+        # the gating decision-maker: the lesson cannot advance
         # (``_check_lesson_complete`` / next-lesson submit are among the held
         # events) until the pending decision is resolved. Each replayed event
         # may raise a new decision, yielding a multi-turn loop. The bus itself
@@ -308,7 +209,7 @@ class Trainer:
         }
 
     def _compute_curriculum_context(self) -> dict | str:
-        """Derive the curriculum context for a delegated decision request.
+        """Derive the curriculum context for a decision request.
 
         Returns ``{objective, approach, lesson_prose}`` mirroring
         :class:`~trainer.cogitation.CogitationRequest`, or a legacy empty
@@ -344,7 +245,7 @@ class Trainer:
             self._handle_supervisor_decision(msg)
             return
 
-        # While a delegated decision is pending, hold KAgent events (and the
+        # While a decision is pending, hold KAgent events (and the
         # drained/lesson-advance they trigger) until the supervisor replies.
         # This is what makes the supervisor gating: the run cannot advance
         # past the pending proposal. ``supervisor_decision`` above bypasses
@@ -426,72 +327,67 @@ class Trainer:
         )
 
         if self._is_s1(event):
-            # S1 fast path: auto-satisfy by query match
+            # S1: the Trainer resolves this itself — auto-ratify by query match.
             key = _entry_key(event.query)
             self._state.mark_satisfied(key)
         else:
-            # S2/S3 slow path: skip if already satisfied (e.g. an S1
-            # cogitation event arrived before this S3 expansion).
+            # A proposal the Trainer may not be able to auto-ratify. The
+            # Reactor resolves what it can (auto-countersign, recurrence);
+            # anything else is escalated to the supervisor as a decision
+            # (`@specs/supervisor-decision.md`). The decision gate is
+            # unconditional (SD-8): every decision request arms the hold.
             #
-            # The skip is scoped to NON-delegated mode only. In delegated
-            # mode the Reactor's _auto_countersign already short-circuits
-            # satisfied matches (it returns True with no ratify_request),
-            # so applying this skip here would also suppress *genuinely
-            # non-matching* proposals whose query entry happens to be
-            # satisfied — hiding decisions RD-7 requires the supervisor to
-            # see. Letting them flow to the Reactor is both safe and
-            # correct: matches are absorbed, non-matches surface.
-            key = _entry_key(event.query)
-            if self._state.is_satisfied(key) and not self._delegate_reactive:
-                logger.debug("S2/S3 event for already-satisfied entry — skipping")
-            else:
-                auto_matched = self._reactor.process_s2_s3(event)
+            # We do NOT short-circuit on ``is_satisfied(query)``: the
+            # Reactor's ``_auto_countersign`` already absorbs genuine
+            # structural matches (returning True), so letting a proposal
+            # whose query entry happens to be satisfied flow through is
+            # safe — matches are absorbed, non-matches surface as
+            # decisions the supervisor needs to see.
+            auto_matched = self._reactor.process_s2_s3(event)
 
-                # S2/S3 ratify request (HRNS-33), sent only when
-                # auto-countersign did not handle it. In delegated mode
-                # (RD-7) the payload is enriched with misfit and
-                # curriculum context; otherwise it stays as today (RD-8):
-                # ``{proposal, query, significance}``. A context-gathering
-                # failure must never block the request itself.
-                if not auto_matched:
-                    payload: dict = {
-                        "proposal": event.proposal,
-                        "query": event.query,
-                        "significance": event.proposal.significance,
-                    }
+            # Escalation: a proposal the Reactor could not resolve. The
+            # decision request is always enriched with ``misfit`` and
+            # ``curriculum_context`` so every decider receives the same
+            # context (SD-1). A context-gathering failure must never block
+            # the request itself.
+            if not auto_matched:
+                payload: dict = {
+                    "proposal": event.proposal,
+                    "query": event.query,
+                    "significance": event.proposal.significance,
+                }
 
-                    if self._delegate_reactive:
-                        try:
-                            payload["misfit"] = self._compute_misfit(event)
-                        except Exception:
-                            logger.warning(
-                                "Failed to compute misfit for ratify_request",
-                                exc_info=True,
-                            )
-                        try:
-                            payload["curriculum_context"] = self._compute_curriculum_context()
-                        except Exception:
-                            logger.warning(
-                                "Failed to derive curriculum context for ratify_request",
-                                exc_info=True,
-                            )
-
-                    self._bus.send(
-                        Message(
-                            role=SUPERVISOR_ROLE,
-                            action="ratify_request",
-                            message=payload,
-                            sender=self._role,
-                        )
+                try:
+                    payload["misfit"] = self._compute_misfit(event)
+                except Exception:
+                    logger.warning(
+                        "Failed to compute misfit for ratify_request",
+                        exc_info=True,
+                    )
+                try:
+                    payload["curriculum_context"] = self._compute_curriculum_context()
+                except Exception:
+                    logger.warning(
+                        "Failed to derive curriculum context for ratify_request",
+                        exc_info=True,
                     )
 
-                    # Delegated-decision gate: hold subsequent events until
-                    # the supervisor resolves this decision. Makes the
-                    # supervisor gating (RD-9: "progress is bounded only by
-                    # the supervisor's responses"). The bus never blocks —
-                    # on_message stashes later events into _held_messages.
-                    if self._delegate_reactive:
-                        self._pending_decision = event
+                self._bus.send(
+                    Message(
+                        role=SUPERVISOR_ROLE,
+                        action="ratify_request",
+                        message=payload,
+                        sender=self._role,
+                    )
+                )
+
+                # Decision gate (SD-4/5/6/7/8): hold subsequent trainee
+                # events until the supervisor resolves this decision.
+                # "Progress is bounded only by the supervisor's responses"
+                # is a runtime guarantee. The bus never blocks —
+                # on_message stashes later events into _held_messages
+                # and returns immediately.
+                self._pending_decision = event
 
         self._check_lesson_complete()
 
@@ -523,15 +419,15 @@ class Trainer:
         self._do_submit_lesson()
 
     def _handle_supervisor_decision(self, msg: Message) -> None:
-        """Resolve a pending delegated decision and replay held events.
+        """Resolve a pending decision and replay held events.
 
-        The supervisor (CLI) routes ratify/scaffold/continue to the trainer
+        The supervisor routes ratify/scaffold/continue to the trainer
         as a ``supervisor_decision`` message when a ratify_request is
-        pending. This is the gating point (RD-9: "progress is bounded only
-        by the supervisor's responses"): the decision is applied and the
+        pending. This is the gating point ("progress is bounded only by
+        the supervisor's responses"): the decision is applied and the
         held event stream resumes. Replaying a held event may raise a new
         ratify_request, which re-arms the gate (remaining events stay held)
-        — yielding the multi-turn delegated loop. The bus never blocks.
+        — yielding the multi-turn decision loop. The bus never blocks.
         """
         if self._pending_decision is None:
             logger.debug("supervisor_decision with no pending decision — ignoring")
@@ -572,7 +468,7 @@ class Trainer:
         elif decision == "continue":
             logger.info("Delegated decision: skipped proposal %s", pending.proposal)
         else:
-            logger.warning("Unknown delegated decision %r — treating as skip", decision)
+            logger.warning("Unknown decision %r — treating as skip", decision)
 
         # Replay held events until the gate re-arms (a new ratify_request
         # sets _pending_decision) or the hold drains. Each replayed event

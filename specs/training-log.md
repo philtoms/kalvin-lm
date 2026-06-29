@@ -96,10 +96,10 @@ When running under auto-tune, the harness server's stderr is redirected to `<ses
 10. On auto-countersign match, log at INFO level.
 11. On auto-countersign miss (no match), log at DEBUG level.
 12. On auto-countersign of an already-satisfied entry, log at DEBUG level.
-13. On reactive scaffolding, log the round number, confidence, and first 100 chars of scaffolding source at INFO level.
-14. On cogitation failure (no scaffolding produced), log at WARNING level.
-15. On reactive budget exhaustion, log the round count at WARNING level.
-16. On escalation, log the reason and detail at ERROR level.
+13. [removed] — the Trainer no longer produces reactive scaffolding; the LLMSupervisor owns its own logging (`@specs/supervisor-decision.md`). On applying a scaffold decision (SD-10), the Trainer logs the applied KScript at INFO.
+14. [removed] — no inline cogitation; the LLMSupervisor decides.
+15. [removed] — no reactive budget (`@specs/supervisor-decision.md` SD-3).
+16. [removed] — no escalation mechanism (`@specs/supervisor-decision.md` SD-3).
 
 ### Adapter Logging
 

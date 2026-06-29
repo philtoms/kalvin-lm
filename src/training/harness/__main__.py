@@ -167,9 +167,12 @@ def main(argv: list[str] | None = None) -> None:
         else:
             curriculum = Curriculum(lessons=[])
 
-        # When trainer.llm.enabled is False the Cogitator is not wired and
-        # reactive decisions are delegated to the supervisor (spec RD-3).
-        llm_client, delegate_reactive = _resolve_llm_wiring(trainer_cfg)
+        # The LLMSupervisor (when launched) is a supervisor participant that
+        # resolves reactive decisions. The Trainer never decides reactively
+        # (`@specs/supervisor-decision.md`); it surfaces decisions and gates
+        # the run. ``llm_client`` is used only for goal-based curriculum
+        # generation here.
+        llm_client = _build_llm_client(trainer_cfg)
 
         trainer = Trainer(
             bus,
@@ -179,7 +182,6 @@ def main(argv: list[str] | None = None) -> None:
             curriculum_file=curriculum_file or None,
             curricula_dir=curricula_dir or None,
             llm_client=llm_client,
-            delegate_reactive=delegate_reactive,
             tokenizer=shared_tokenizer,
             signifier=shared_signifier,
         )
@@ -260,24 +262,6 @@ def _build_llm_client(trainer_cfg: dict) -> Any | None:
     except Exception:
         logger.exception("Failed to create LLM client")
         return None
-
-
-def _resolve_llm_wiring(trainer_cfg: dict) -> tuple[Any | None, bool]:
-    """Resolve LLM client and delegation mode from trainer config.
-
-    Returns ``(llm_client, delegate_reactive)``.
-
-    - ``trainer.llm.enabled`` defaults to ``True`` (spec RD-1).
-    - When ``enabled`` is ``False``, ``_build_llm_client`` is NOT called —
-      the client is ``None`` regardless of ``KALVIN_LLM_API_KEY`` (spec RD-3),
-      and ``delegate_reactive`` is ``True``.
-    - When ``enabled`` is ``True``, today's path: build the client from the
-      env var (may still be ``None``), ``delegate_reactive`` is ``False``
-      (spec RD-2).
-    """
-    llm_enabled = bool(trainer_cfg.get("llm", {}).get("enabled", True))
-    llm_client = _build_llm_client(trainer_cfg) if llm_enabled else None
-    return llm_client, not llm_enabled
 
 
 if __name__ == "__main__":

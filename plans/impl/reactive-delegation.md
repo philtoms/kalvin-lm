@@ -1,5 +1,7 @@
 # Reactive Decision Delegation — Implementation Plan
 
+> **SUPERSEDED** by `@plans/impl/realign-training-roles.md`, which implements `@specs/supervisor-decision.md`. The flag-based delegation work documented here is retired; its surviving tasks (decision gate, enrichment passthrough, scaffold command) are re-scoped under the unified model. This file is retained for traceability and will be removed at the next docs-reset.
+
 **Status:** implemented (RD-1–13 in prior work; RD-7a/7b/14–17 + KALVIN_DATA_DIR + Decision Gate landed in the `meta-supervisor-s2` auto-tune session — see Auto-Tune Evidence below)
 **Spec refs:** `specs/reactive-delegation.md`
 

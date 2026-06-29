@@ -388,58 +388,6 @@ contract prevents this cross-lesson spillover.
   work item begins, cleared after it finishes). `drain()` waits for both
   the backlog to be empty AND the processing flag to be clear.
 
-## Reactive Scaffolding Submission
-
-When the Trainer's LLM agent generates reactive scaffolding in response to
-S2/S3 events, the scaffolding must be compiled, validated, and submitted to
-Kalvin via the harness bus. The Cogitator sanitises LLM output before
-compilation and decompiles klines into human-readable KScript so the LLM
-has the name context it needs.
-
-### RS-1 — System prompt uses correct KScript syntax
-
-The cogitation system prompt documents the syntax the KScript lexer
-actually supports:
-
-- Identifiers: uppercase letters only (A–Z); no hex literals.
-- Operators: `==` (countersign), `=>` (canonize), `=` (undersign),
-  `>` (relationship). No `~>`, `<-`, or `->`.
-- Comments: parenthesised `(...)` only; no `#` comments.
-
-### RS-2 — Misfit summaries are decompiled to KScript
-
-The cogitate adapter decompiles the event query and proposal klines to
-human-readable KScript (e.g. `M > H`) before passing them as
-`expectation_summary` and `proposal_summary` to the `MisfitInfo`. If
-decompilation fails, the adapter falls back to the raw `repr`.
-
-### RS-3 — Hash-comment stripping before compilation
-
-`_strip_hash_comments()` removes lines starting with `#` from scaffolding
-before compilation — a defensive measure for LLMs trained on Python-style
-comments. If sanitisation removes all content (scaffolding was entirely
-comments), the Cogitator returns `scaffolding=None` without attempting
-compilation.
-
-### RS-4 — Submission log line
-
-The Reactor logs `"submitted reactive scaffolding"` at INFO level after
-successfully sending reactive scaffolding to the trainee role, giving an
-observable end-to-end confirmation.
-
-### Behavioural rules
-
-6. The Cogitator MUST sanitise scaffolding source by removing `#`-prefixed
-   comment lines before attempting compilation.
-7. If sanitisation removes all content, the Cogitator MUST return
-   `scaffolding=None` without attempting compilation.
-8. The system prompt MUST only document operators the KScript lexer
-   supports.
-9. Misfit summaries passed to the LLM MUST use decompiled KScript, not hex
-   repr; on decompilation failure they fall back to repr.
-10. The Reactor MUST log "submitted reactive scaffolding" after sending
-    scaffolding to the trainee role.
-
 ## Resolved Questions
 
 ### Cogitator Receives Pre-Routed Work Items
@@ -478,16 +426,16 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 | AGT-45 | Empty-backlog drain completes in <10ms (DRN-3)                                                 | —          |
 | AGT-46 | Drain timeout returns False but does not stop the thread (DRN-4)                               | —          |
 | AGT-47 | Processing flag guards against premature drain return (DRN-5)                                  | —          |
-| AGT-48 | Cross-lesson spillover eliminated: lesson N events don't affect lesson N+1 budget              | —          |
-| AGT-49 | System prompt contains no hex literal syntax (RS-1)                                            | —          |
-| AGT-50 | System prompt contains no invalid operators `~>`, `<-`, `->` (RS-1)                            | —          |
-| AGT-51 | `_strip_hash_comments` removes `#` lines, keeps valid KScript (RS-3)                           | —          |
-| AGT-52 | `_strip_hash_comments` returns empty for all-comment input (RS-3)                              | —          |
-| AGT-53 | Cogitator returns None when scaffolding is all comments (RS-3)                                 | —          |
-| AGT-54 | Cogitate adapter decompiles query kline to KScript (RS-2)                                      | —          |
-| AGT-55 | Cogitate adapter decompiles proposal kline to KScript (RS-2)                                   | —          |
-| AGT-56 | Cogitate adapter falls back to repr on decompilation failure (RS-2)                            | —          |
-| AGT-57 | Reactor logs "submitted reactive scaffolding" after bus send (RS-4)                            | —          |
+| AGT-48 | Cross-lesson spillover eliminated: lesson N events don't affect lesson N+1 satisfaction tracking              | —          |
+| AGT-49 | [removed] relocated to `@specs/supervisor-decision.md` SD-16 (LLMSupervisor pipeline)                                          | —          |
+| AGT-50 | [removed] relocated to `@specs/supervisor-decision.md` SD-17 (LLMSupervisor pipeline)                                          | —          |
+| AGT-51 | [removed] relocated to `@specs/supervisor-decision.md` SD-20 (LLMSupervisor pipeline)                                          | —          |
+| AGT-52 | [removed] relocated to `@specs/supervisor-decision.md` SD-20 (LLMSupervisor pipeline)                                          | —          |
+| AGT-53 | [removed] relocated to `@specs/supervisor-decision.md` SD-21 (LLMSupervisor pipeline)                                          | —          |
+| AGT-54 | [removed] relocated to `@specs/supervisor-decision.md` SD-18 (LLMSupervisor pipeline)                                          | —          |
+| AGT-55 | [removed] relocated to `@specs/supervisor-decision.md` SD-18 (LLMSupervisor pipeline)                                          | —          |
+| AGT-56 | [removed] relocated to `@specs/supervisor-decision.md` SD-19 (LLMSupervisor pipeline)                                          | —          |
+| AGT-57 | [removed] absorbed into `@specs/supervisor-decision.md` SD-10 (Trainer applies scaffold answer)                                | —          |
 
 ## Out of Scope
 
@@ -498,18 +446,15 @@ The following are explicitly **out of scope** for this spec:
 - **Significance computation.** Distance→significance inversion is internal
   to the model's `expand()` (@model spec).
 - **Persistence format, tokenisation, model internals.**
-- **The Trainer's LLM cogitator's reactive-scaffolding pipeline**
-  (sanitisation, decompilation, submission logging) lives in this spec's
-  §Reactive Scaffolding Submission. The reactive-decision _delegation_
-  (whether the Cogitator or the supervisor makes the decision) is a
-  distinct component (@reactive-delegation spec).
+- **Reactive-scaffolding generation** (the LLMSupervisor's prompt,
+  sanitisation, decompilation, and submission) is owned by
+  `@specs/supervisor-decision.md` §LLMSupervisor Pipeline. This spec is
+  solely about Kalvin's slow-path rationalisation thread.
 
 ## Referenced By
 
 - **Agent** (@agent spec) — owns and submits work items to the Cogitator,
   and is the primary `CogitationHandler` implementation.
 - **Cogitator Drain** — see §Lifecycle › Inter-Lesson Drain in this spec.
-- **Reactive Scaffolding Submission** — see §Reactive Scaffolding Submission
-  in this spec.
 - **Model** (@model spec) — provides `expand()`, `generate_expansions()`,
   and tiered writes consumed by the Cogitator.

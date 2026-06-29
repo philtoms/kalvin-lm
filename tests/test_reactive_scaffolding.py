@@ -15,17 +15,12 @@ from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
-from training.harness.bus import MessageBus
-from training.harness.constants import TRAINEE_ROLE
-from training.harness.message import Message
 from training.trainer.cogitation import (
     _SYSTEM_PROMPT,
     Cogitator,
     LLMResponse,
     _strip_hash_comments,
 )
-from training.trainer.curriculum import CurriculumState
-from training.trainer.reactor import Reactor
 
 # ── AGT-49: System prompt contains no hex literal syntax ────────────
 
@@ -214,67 +209,9 @@ class TestCogitatorSanitisation:
         assert result.scaffolding is None
 
 
-# ── AGT-57: Reactor log line ────────────────────────────────────────
-
-
-class _BusCapture:
-    """Capture bus messages for test assertions."""
-
-    def __init__(self, bus: MessageBus) -> None:
-        self.messages: list[Message] = []
-        self._bus = bus
-        self._original = bus.send
-
-    def install(self) -> None:
-        cap = self
-
-        def _send(msg: Message) -> None:
-            cap.messages.append(msg)
-
-        self._bus.send = _send  # type: ignore[assignment]
-
-    def find_all(self, role: str, action: str) -> list[Message]:
-        return [m for m in self.messages if m.role == role and m.action == action]
-
-
-class TestReactorSubmittedLog:
-    """AGT-57: Reactor logs 'submitted reactive scaffolding'."""
-
-    def test_reactor_submitted_log_line(self, caplog):
-        """Reactor logs confirmation after sending reactive scaffolding."""
-        bus = MessageBus()
-        cap = _BusCapture(bus)
-        cap.install()
-
-        state = MagicMock(spec=CurriculumState)
-        state.log_event = MagicMock()
-        state.curriculum = MagicMock()
-        state.curriculum.position = 0
-
-        def cogitate_fn(event):
-            return ("M > H", 0.8)
-
-        reactor = Reactor(
-            bus,
-            state,
-            role="trainer",
-            max_reactive_rounds=5,
-            cogitate_fn=cogitate_fn,
-        )
-
-        event = RationaliseEvent(
-            kind="frame",
-            query=KValue(KLine(signature=0x1, nodes=[]), 100),
-            proposal=KValue(KLine(signature=0x2, nodes=[]), 100),
-        )
-
-        with caplog.at_level(logging.INFO, logger="training.trainer.reactor"):
-            reactor.process_s2_s3(event)
-
-        # Check log line
-        assert any("submitted reactive scaffolding" in r.message for r in caplog.records)
-
-        # Check bus message was sent to trainee with submit action
-        submits = cap.find_all(TRAINEE_ROLE, "submit")
-        assert len(submits) == 1
-        assert submits[0].message == "M > H"
+# ── AGT-57: [removed] — the Reactor no longer submits reactive scaffolding ──
+# The "submitted reactive scaffolding" log line (AGT-57) belonged to the
+# Reactor's inline cogitation path, which is removed. The LLMSupervisor
+# participant will own its own logging when implemented (T1). The prompt
+# and sanitisation tests above (TestSystemPrompt, TestStripHashComments,
+# TestCogitatorSanitisation) cover the relocated SD-16…21 contract.
