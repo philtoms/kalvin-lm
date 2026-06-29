@@ -188,7 +188,7 @@ The Trainer publishes **progress events** after each lesson completes. These
 appear in the Slack channel and the TUI event log, showing:
 
 - Which lesson just completed (label and title)
-- Status: satisfied, pending, or escalated
+- Status: satisfied, pending, or surfaced to the supervisor
 - A brief summary
 
 You can also open the curriculum file directly — since it's a regular
@@ -238,10 +238,14 @@ The curriculum should always read as a logical and temporal narrative.
 
 ### Reactive Scaffolding
 
-When Kalvin hits an S2/S3 event (partial understanding), the Trainer
-enters reactive mode and generates scaffolding via the LLM client. This
-scaffolding is written into the curriculum as a new lesson — making the
-Trainer's reactive work visible, persistent, and auditable.
+When Kalvin produces a proposal the Trainer cannot auto-ratify (partial
+understanding that neither auto-countersigns nor recurs), the Trainer
+escalates it to the supervisor as a `ratify_request`. A decider answers with
+`scaffold` (writes reactive KScript), `ratify` (accepts the proposal), or
+`continue` (skips). The Trainer applies the answer and gates the run until it
+arrives. The LLMSupervisor participant automates this with an LLM; a human on
+the TUI/Slack, or pi via the CLI supervisor, can decide instead
+(`@specs/supervisor-decision.md`).
 
 ### Rollback and Replay
 
@@ -269,11 +273,12 @@ trainer:
   curriculum_file: "curricula/first-steps.md" # Pre-made curriculum, or "" to wait for a goal
   curricula_dir: "curricula" # Directory for generated curriculum files
   # State file is auto-derived from curriculum_file: e.g. curricula/first-steps.md → curricula/first-steps.json
-  max_reactive_rounds: 5 # Max reactive scaffolding rounds before escalation
   # llm:                                        # Uncomment to override defaults
   #   base_url: "https://api.z.ai/api/coding/paas/v4"
   #   model: "glm-5.1"
-  # API key is read from KALVIN_LLM_API_KEY env var — never put it here
+  # API key is read from KALVIN_LLM_API_KEY env var — never put it here.
+  # The llm client is used for goal-based curriculum generation; reactive
+  # decisions are owned by a supervisor participant (see LLMSupervisor below).
 
 # Participant definitions
 participants:
@@ -286,7 +291,10 @@ participants:
     type: embedded
     class: Trainer
 
-  # Client participants — connect via WebSocket
+  # Client participants — connect via WebSocket. A session launches exactly
+  # one decider (convention): TUI/Slack (human), the CLI supervisor (pi via
+  # the auto-tune file protocol), or the LLMSupervisor (LLM). All register as
+  # role `supervisor` and share one decision contract.
   - role: supervisor
     type: client
     class: SlackParticipant
@@ -294,6 +302,13 @@ participants:
   - role: supervisor
     type: client
     class: TUIParticipant
+
+  # Optional LLM decider — uncomment to let an LLM resolve reactive decisions
+  # instead of a human. Launches as its own process:
+  #   KALVIN_LLM_API_KEY=... uv run python -m training.supervisors.llm_supervisor
+  # - role: supervisor
+  #   type: client
+  #   class: LLMSupervisor
 ```
 
 ### Configuration Sections
@@ -304,9 +319,8 @@ participants:
 | `server`         | `port`                | `8765`        | WebSocket server bind port                                              |
 | `trainer`        | `curriculum_file`     | `""`          | Path to a pre-made curriculum file; empty string waits for a goal       |
 | `trainer`        | `curricula_dir`       | `"curricula"` | Directory for generated curriculum files                                |
-| `trainer`        | `max_reactive_rounds` | `5`           | Reactive scaffolding budget before escalation                           |
-| `trainer`        | `llm.base_url`        | _(see code)_  | OpenAI-compatible API endpoint                                          |
-| `trainer`        | `llm.model`           | `"glm-5.1"`   | Model name for LLM calls                                                |
+| `trainer`        | `llm.base_url`        | _(see code)_  | OpenAI-compatible API endpoint (curriculum generation)                  |
+| `trainer`        | `llm.model`           | `"glm-5.1"`   | Model name for LLM calls (curriculum generation)                        |
 | `participants[]` | `role`                | —             | Bus role for this participant (used for routing)                        |
 | `participants[]` | `type`                | —             | `"embedded"` (loaded in-process) or `"client"` (connects via WebSocket) |
 | `participants[]` | `class`               | —             | Registered class name (e.g. `KAgent`, `Trainer`, `SlackParticipant`)    |
@@ -323,15 +337,22 @@ participants:
 
 ## API Keys & Environment Variables
 
-### LLM Client (Trainer / Cogitation)
+### LLM Client
 
-The Trainer's reactive mode uses the `Cogitator` with an `OpenAICompatibleClient`. To enable this:
+Two distinct uses of an LLM, both reading `KALVIN_LLM_API_KEY`:
+
+- **Curriculum generation** (Trainer) — a natural-language goal is turned
+  into a curriculum file. The Trainer reads the key directly.
+- **Reactive decisions** (LLMSupervisor participant) — an LLM resolves
+  proposals the Trainer cannot auto-ratify. Launch the LLMSupervisor as its
+  own process (`python -m training.supervisors.llm_supervisor`); it connects
+  to the harness, registers as `supervisor`, and answers `ratify_request`
+  frames with `scaffold`/`continue` decisions. See
+  `@specs/supervisor-decision.md` §LLMSupervisor Pipeline.
 
 | Variable             | Required | Description                                                                        |
 | -------------------- | -------- | ---------------------------------------------------------------------------------- |
-| `KALVIN_LLM_API_KEY` | No       | API key passed to the LLM client. If unset, reactive mode escalates to supervisor. |
-
-The `base_url` and `model` are read from the `trainer.llm` config section and default to the ZhipuAI GLM-5.1 endpoint. Any OpenAI-compatible endpoint works.
+| `KALVIN_LLM_API_KEY` | No       | API key for the OpenAI-compatible client. If unset, curriculum generation is unavailable and no LLMSupervisor can run; reactive decisions fall to the launched human/pi supervisor. |
 
 ### Slack Participant (optional)
 
@@ -450,11 +471,13 @@ Events from Kalvin are routed back to the original sender (stored in a sender ma
 
 #### Trainer (`role: "trainer"`)
 
-Drives the training loop. Holds LLM access for curriculum generation and reactive scaffolding:
+Drives the training loop. Holds LLM access for curriculum generation; reactive
+decisions are surfaced to a supervisor participant (`@specs/supervisor-decision.md`):
 
 | Incoming Action    | Behaviour                                                                                                                      |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| `ground` / `frame` | Kalvin events. S1 events auto-satisfy. S2/S3 events trigger reactive mode (auto-countersign → cogitation → escalation).        |
+| `ground` / `frame` | Kalvin events. Proposals the Trainer can auto-ratify (structural match / recurrence) are resolved; the rest are escalated to the supervisor as `ratify_request`. S1 events auto-satisfy. |
+| `supervisor_decision` | A decider's answer to a pending `ratify_request`: `ratify` (countersign), `scaffold` (submit KScript), or `continue` (skip). Applied by the Trainer, which then replays any held events. |
 | `input`            | Supervisor input from Slack/TUI. Supports: `goal: <text or path>`, `pause`, `stop`, `resume`, amendment requests, or guidance. |
 | `error`            | Kalvin compilation error. Logged and counted toward lesson completion.                                                         |
 | `progress`         | Published by the Trainer after each lesson completes. Consumed by TUI and Slack to display status.                             |
@@ -466,10 +489,11 @@ Drives the training loop. Holds LLM access for curriculum generation and reactiv
 3. Submits lessons from the curriculum to `"trainee"` via `submit` messages. Re-reads the curriculum file before each lesson to pick up amendments.
 4. Listens for ground/frame events:
    - **S1** (fully grounded) → auto-satisfy, advance curriculum.
-   - **S2/S3** → try auto-countersign, then reactive mode:
-     - Up to `max_reactive_rounds` of cogitation.
-     - If cogitation generates scaffolding → write as a new lesson in the curriculum, then submit.
-     - If stuck → **escalate** to `"supervisor"` with a `notify` message.
+   - **Cannot auto-ratify** → escalate to `"supervisor"` as a `ratify_request`
+     (enriched with misfit + curriculum context) and **gate**: hold further
+     trainee events until the supervisor answers `supervisor_decision`
+     (`ratify` / `scaffold` / `continue`). There is no Trainer-side budget or
+     escalation — the decider is terminal.
 5. Publishes **progress events** after each lesson completes.
 6. When curriculum is complete → end session, persist state, process queued goals.
 
@@ -506,7 +530,7 @@ await agent.start()
 A Textual TUI that displays Kalvin's events and provides ratification (countersign) controls:
 
 - **EventLog** — scrollable log of all events received from the harness.
-- **RatifyBar** — button/keyboard shortcut (`Ctrl+R`) to send a `countersign` message to `"trainee"`.
+- **RatifyBar** — button/keyboard shortcut (`Ctrl+R`) to route a `ratify` decision to the `trainer` role as `supervisor_decision` (the Trainer applies the countersign after replaying held events).
 
 **Running the TUI participant:**
 
@@ -554,17 +578,19 @@ After registration, all outbound frames are messages. The `sender` field is set 
 ```json
 {
   "role": "supervisor",
-  "action": "notify",
+  "action": "ratify_request",
   "message": {
-    "reason": "budget_exhaustion",
-    "detail": "",
-    "lesson_position": 3
+    "proposal": {"signature": 305419896, "nodes": [1, 2]},
+    "query": {"signature": 3735928559, "nodes": [3]},
+    "significance": 100,
+    "misfit": {"underfit": true, "overfit": false, "underfit_gap": 1, "overfit_mask": 0},
+    "curriculum_context": {"objective": "...", "approach": "...", "lesson_prose": "..."}
   },
   "sender": "trainer"
 }
 ```
 
-Inbound frames are routed by `role` — the harness delivers them to all handlers subscribed to that role.
+Inbound frames are routed by `role` — the harness delivers them to all handlers subscribed to that role. A `ratify_request` is the Trainer escalating a proposal it cannot auto-ratify; the decider answers with a `supervisor_decision` frame addressed to the `trainer` role.
 
 ### Error Frames
 
@@ -700,26 +726,34 @@ A typical training cycle looks like this:
      │                    │  frame (S2)        │
      │                    │<───────────────────│
      │                    │                    │
-     │                    │ reactive mode:     │
-     │                    │ cogitate → submit  │
+     │                    │ cannot auto-ratify │
+     │                    │ → gate (hold)      │
+     │                    │                    │
+     │  ratify_request    │                    │
+     │  (proposal, misfit,│                    │
+     │   curriculum ctx)  │                    │
+     │<───────────────────│                    │
+     │                    │  (held events      │
+     │                    │   queued; the bus  │
+     │                    │   never blocks)    │
+     │                    │                    │
+     │  supervisor_       │                    │
+     │  decision: ratify  │                    │
+     │───────────────────>│                    │
+     │                    │ countersign        │
      │                    │───────────────────>│
      │                    │                    │ rationalise()
      │                    │  frame (S1)        │
      │                    │<───────────────────│
-     │                    │                    │
-     │                    │ [stuck after N     │
-     │                    │  reactive rounds]  │
-     │                    │                    │
-     │  notify            │                    │
-     │  (escalation)      │                    │
-     │<───────────────────│                    │
-     │                    │                    │
-     │  "try breaking     │                    │
-     │   it down"         │                    │
-     │───────────────────>│                    │
-     │                    │ (guidance stored   │
-     │                    │  for cogitation)   │
+     │                    │  (replays held     │
+     │                    │   events, advance) │
 ```
+
+A proposal the Trainer cannot auto-ratify is escalated to the supervisor as
+a `ratify_request`; the Trainer **gates** (holds further trainee events) until
+the supervisor answers `supervisor_decision` (`ratify` / `scaffold` / `continue`).
+There is no Trainer-side budget or escalation — the decider is terminal
+(`@specs/supervisor-decision.md`).
 
 ---
 
