@@ -228,6 +228,9 @@ relations `{M:[S]}`, `{H:[V]}`, `{A:[D]}`, `{Lᵢ:[Mo]}`, `{Lₐ:[O]}`, `{ALL:[O
 (S3); and every identity atom (S4). Every compiled entry is grounded at its
 declared band; the lesson completes on the primary's S1 countersign.
 
+The deterministic driver for this dialogue — a table-driven contract double that
+emits it without real cogitation — is `@specs/stub-kagent.md` (`StubKAgent`).
+
 ## Test Matrix
 
 | ID  | Criterion | Origin ref |
