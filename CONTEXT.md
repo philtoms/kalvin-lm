@@ -97,10 +97,6 @@ A scripted kline that enters the slow path (S2/S3) during rationalisation and re
 **Proposal**:
 A KLine emitted by the Agent as a candidate response during rationalisation.
 
-**Countersign**:
-The reciprocal kline of a proposal. For `{Q: [V]}`, the reciprocal is `{V: [Q]}`. Both halves are COUNTERSIGNED (the structural state produced by `==`). As a verb: to emit or accept the reciprocal, ratifying a proposal toward S1.
-_Avoid_: countersignature (the head of any kline — reciprocal or not — is its Signature)
-
 **Significance**:
 A participant's subjective assessment of how well a KLine relates to what that participant already knows — classified into four levels: S1 (fully grounded), S2, S3, S4 (completely novel). Every participant assesses independently. Kalvin realises its own assessment by _computing_ it from structure (a 64-bit inverted distance whose bands map onto the structural states); that structural mapping is Kalvin's method, not a definition of the levels. See **Structural State** for the objective structural facts the bands map onto.
 _Avoid_: confidence, score, weight
@@ -113,7 +109,7 @@ _Avoid_: KLine-with-significance, annotated kline, assessed kline (all describe 
 The structural relationship between a kline's signature and its nodes, implied by the written relational token that produces the kline. A closed set of five states, each produced by compiling a written relational token (`==`, `=`, `>`, `=>`) or, for identity, by the absence of one:
 
 - **COUNTERSIGNED** — bidirectional: emits a reciprocal pair `{A: [B]}`, `{B: [A]}`.
-- **CANONIZED** — aggregated: `{A: [B, C, D]}`.
+- **CANONIZED** — aggregated: `{A: [B, C, D]}`. The structural state produced by the `=>` written token; it declares an intent to aggregate, not that the result is a Canon (see Canon).
 - **CONNOTED** — forward: `{A: [B]}`.
 - **UNDERSIGNED** — reversed: `{B: [A]}`.
 - **IDENTITY** — `{A: []}` or `{A: [A]}` (self-referential) — see Identity.
@@ -137,10 +133,6 @@ _Avoid_: session log (Frame is not a log), session
 Persistent knowledge that survives across sessions — klines confirmed (S1) or novel (S4). Structurally identical to Frame; the distinction is semantic. Monotonic; loaded at session start, saved at session end.
 _Avoid_: persistent store (too vague), knowledge base, LTM frame
 
-**Recency Precedence**:
-When two or more klines share a signature, the most recently added one wins. Rationalisation preference defaults to this rule.
-_Avoid_: recency (too vague), temporal preference (conflates the rule with its use as a default)
-
 **Fast Path**:
 Rationalisation that resolves immediately (S1 ground, S4 identity, S1 canonical, S1 countersigned). The Trainer auto-satisfies these.
 
@@ -148,7 +140,7 @@ Rationalisation that resolves immediately (S1 ground, S4 identity, S1 canonical,
 Rationalisation that requires cogitation (S2/S3). The Trainer tracks these as pending expectations.
 
 **Ratify**:
-The action of countersigning a selected proposal. Performed by the Trainer during curriculum execution.
+The action of countersigning a selected proposal. Usually performed by the Trainer during curriculum execution.
 
 **MTS Entry**:
 A kline whose signature is the OR-reduction of two or more nodes — produced as CANONIZED (S2 intent) but structurally a perfect fit (S1); the subscript child klines canonize it to S1.
