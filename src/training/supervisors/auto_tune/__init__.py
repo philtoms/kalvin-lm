@@ -4,10 +4,14 @@ Provides session initialisation, configuration, directory management,
 orchestration functions, snapshot/restore, and process lifecycle commands
 for automated training sessions driven by an LLM coding agent.
 
+Auto-tune is the codebase-tuning loop (session/worktree/snapshot orchestration).
+The CLI supervisor participant that auto-tune launches lives in
+``training.supervisors.cli_supervisor`` (a peer of the TUI/Slack/LLM
+supervisors) — it is not part of this package.
+
 Exports:
     SessionConfig — serialisable configuration for an auto-tune session.
     SessionDir — manages session directories, config files, and git branches.
-    CLISupervisor — headless WebSocket client for auto-tune sessions.
 """
 
 
@@ -21,11 +25,7 @@ def __getattr__(name: str):
         from training.supervisors.auto_tune.session import SessionDir
 
         return SessionDir
-    if name == "CLISupervisor":
-        from training.supervisors.auto_tune.supervisor import CLISupervisor
-
-        return CLISupervisor
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-__all__ = ["CLISupervisor", "SessionConfig", "SessionDir"]
+__all__ = ["SessionConfig", "SessionDir"]

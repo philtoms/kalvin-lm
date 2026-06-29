@@ -23,9 +23,9 @@ from typing import Any
 
 import websockets
 
-from training.supervisors.auto_tune.events import enrich_event
-from training.supervisors.commands import parse_command
 from training.harness.constants import TRAINER_ROLE
+from training.supervisors.cli_events import enrich_event
+from training.supervisors.commands import parse_command
 
 logger = logging.getLogger(__name__)
 

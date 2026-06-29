@@ -237,7 +237,7 @@ def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     """Start the CLI supervisor as a background process.
 
     Kills any stale supervisor, launches
-    ``python -m training.supervisors.auto_tune.supervisor``, and polls
+    ``python -m training.supervisors.cli_supervisor``, and polls
     ``status.json`` until ``connected`` is ``true``.
 
     Args:
@@ -258,7 +258,7 @@ def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
         [
             _resolve_python(),
             "-m",
-            "training.supervisors.auto_tune.supervisor",
+            "training.supervisors.cli_supervisor",
             "--session-dir",
             str(session_dir),
         ],
@@ -345,13 +345,6 @@ def _generate_session_harness_config(session_dir: Path, cfg: SessionConfig) -> P
         data = {}
 
     data.setdefault("trainer", {})["curriculum_file"] = cfg.curriculum
-
-    # Force delegated reactive mode: pi (the CLI supervisor) is the sole
-    # reactive decision-maker, not the Cogitator LLM agent.
-    # setdefault preserves any existing llm.base_url / llm.model overrides.
-    # Spec ref: specs/reactive-delegation.md RD-12, specs/auto-tune.md rule 7a.
-    llm = data["trainer"].setdefault("llm", {})
-    llm["enabled"] = False
 
     config_path.write_text(
         yaml.dump(data, default_flow_style=False, sort_keys=False),

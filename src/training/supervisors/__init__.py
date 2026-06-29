@@ -1,42 +1,19 @@
 """Harness WebSocket client supervisors.
 
-Two client supervisors that connect to the harness server:
+Four client supervisors that connect to the harness server, all registering
+as the ``supervisor`` role and sharing one decision contract
+(``@specs/supervisor-decision.md``) — they differ only in the process that
+produces an answer:
 
-- **SlackParticipant** — bridges Slack API and the harness message bus.
-  Registers as the supervisor role and renders all supervisor actions
-  (progress, event, escalation, ratify_request) to Slack. Forwards supervisor
-  commands through the shared command parser to the appropriate harness role.
+- **SlackParticipant** — a human on Slack.
+- **TUIParticipant** (``TUIApp`` / ``HarnessClient``) — a human on a Textual TUI.
+- **CLISupervisor** — pi (an LLM coding agent) via the auto-tune file protocol
+  (``events.jsonl`` out, ``cmd.json`` in). The protocol relay auto-tune
+  launches; pi is the decider.
+- **LLMSupervisor** — an LLM decider participant.
 
-- **TUIParticipant** (``TUIApp`` / ``HarnessClient``) — a Textual TUI that
-  displays KAgent events and provides ratification (countersign) controls.
-
-Both supervisors register on connect via the WebSocket wire protocol:
-``{"register": "<role>"}`` followed by bidirectional JSON message frames.
-
-Running
--------
-
-**Slack Participant:**
-
-    Set environment variables ``SLACK_BOT_TOKEN`` and ``SLACK_APP_TOKEN``,
-    then connect to the harness::
-
-        from training.supervisors import SlackParticipant
-
-        agent = SlackParticipant(
-            harness_url="ws://localhost:8765",
-            channel_id="C01234567",
-        )
-        await agent.start()
-
-**TUI Participant:**
-
-    Launch the Textual TUI app::
-
-        from training.supervisors import TUIApp
-
-        app = TUIApp(harness_url="ws://localhost:8765")
-        app.run()
+All register via ``{"register": "<role>"}`` followed by bidirectional JSON
+frames.
 """
 
 
@@ -50,7 +27,21 @@ def __getattr__(name: str):
         from training.supervisors.tui_client import HarnessClient, TUIApp
 
         return HarnessClient if name == "HarnessClient" else TUIApp
+    if name == "CLISupervisor":
+        from training.supervisors.cli_supervisor import CLISupervisor
+
+        return CLISupervisor
+    if name == "LLMSupervisor":
+        from training.supervisors.llm_supervisor import LLMSupervisor
+
+        return LLMSupervisor
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-__all__ = ["HarnessClient", "SlackParticipant", "TUIApp"]
+__all__ = [
+    "CLISupervisor",
+    "HarnessClient",
+    "LLMSupervisor",
+    "SlackParticipant",
+    "TUIApp",
+]
