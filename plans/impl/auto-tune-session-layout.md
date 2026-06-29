@@ -17,7 +17,7 @@ without carrying file names in the spec.
 ## Concept → File Mapping
 
 The auto-tune spec describes each persisted artefact by concept. The production
-code (`src/training/participants/auto_tune/session.py`, `supervisor.py`,
+code (`src/training/supervisors/auto_tune/session.py`, `supervisor.py`,
 `snapshots.py`) reads and writes these concrete files:
 
 | Concept (spec term)                 | Real file                 | Defined in spec                                   |

@@ -3,7 +3,7 @@
 All commands require `PYTHONPATH=src` and are invoked as:
 
 ```bash
-PYTHONPATH=src $AT_PYTHON -m training.participants.auto_tune <command> --session <name> [options]
+PYTHONPATH=src $AT_PYTHON -m training.supervisors.auto_tune <command> --session <name> [options]
 ```
 
 Where `$AT_PYTHON` is the absolute path to the main repo's `.venv/bin/python`, captured before entering the worktree:

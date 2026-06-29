@@ -19,7 +19,7 @@ from kalvin.kvalue import KValue
 from training.harness.bus import MessageBus
 from training.harness.message import Message
 from training.harness.protocol import WebSocketProtocol
-from training.participants.auto_tune.events import enrich_event
+from training.supervisors.auto_tune.events import enrich_event
 
 # -- helpers ---------------------------------------------------------------
 

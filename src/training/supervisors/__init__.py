@@ -1,6 +1,6 @@
-"""Harness WebSocket client participants.
+"""Harness WebSocket client supervisors.
 
-Two client participants that connect to the harness server:
+Two client supervisors that connect to the harness server:
 
 - **SlackParticipant** — bridges Slack API and the harness message bus.
   Registers as the supervisor role and renders all supervisor actions
@@ -10,7 +10,7 @@ Two client participants that connect to the harness server:
 - **TUIParticipant** (``TUIApp`` / ``HarnessClient``) — a Textual TUI that
   displays KAgent events and provides ratification (countersign) controls.
 
-Both participants register on connect via the WebSocket wire protocol:
+Both supervisors register on connect via the WebSocket wire protocol:
 ``{"register": "<role>"}`` followed by bidirectional JSON message frames.
 
 Running
@@ -21,7 +21,7 @@ Running
     Set environment variables ``SLACK_BOT_TOKEN`` and ``SLACK_APP_TOKEN``,
     then connect to the harness::
 
-        from training.participants import SlackParticipant
+        from training.supervisors import SlackParticipant
 
         agent = SlackParticipant(
             harness_url="ws://localhost:8765",
@@ -33,7 +33,7 @@ Running
 
     Launch the Textual TUI app::
 
-        from training.participants import TUIApp
+        from training.supervisors import TUIApp
 
         app = TUIApp(harness_url="ws://localhost:8765")
         app.run()
@@ -43,11 +43,11 @@ Running
 def __getattr__(name: str):
     """Lazy imports to avoid import errors when modules are partially built."""
     if name == "SlackParticipant":
-        from training.participants.slack_agent import SlackParticipant
+        from training.supervisors.slack_agent import SlackParticipant
 
         return SlackParticipant
     if name in ("HarnessClient", "TUIApp"):
-        from training.participants.tui_client import HarnessClient, TUIApp
+        from training.supervisors.tui_client import HarnessClient, TUIApp
 
         return HarnessClient if name == "HarnessClient" else TUIApp
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

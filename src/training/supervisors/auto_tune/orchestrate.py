@@ -15,7 +15,7 @@ import json
 import time
 from pathlib import Path
 
-from training.participants.auto_tune.session import SessionDir
+from training.supervisors.auto_tune.session import SessionDir
 
 # send_command
 

@@ -1,7 +1,7 @@
-"""Shared command parser for supervisor participants.
+"""Shared command parser for supervisors.
 
 Maps supervisor free-text input to structured commands, which are then dispatched
-as bus messages. Used by both TUI and Slack participants to interpret user
+as bus messages. Used by both the TUI and Slack supervisors to interpret user
 input uniformly.
 
 Spec ref: specs/harness-server.md §Shared Command Protocol (HRNS-32).

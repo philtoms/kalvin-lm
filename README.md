@@ -142,7 +142,7 @@ src/
     │   ├── trainer.py       #   Curriculum execution + reactive mode
     │   ├── curriculum.py    #   Curriculum state + persistence
     │   └── cogitation.py    #   LLM agent integration
-    └── participants/    #   Client participants
+    └── supervisors/     #   Client supervisors (Slack, TUI, auto-tune)
         ├── slack_agent.py   #   Slack ↔ harness
         └── tui_client.py    #   TUI ↔ harness
 ```

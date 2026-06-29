@@ -23,8 +23,8 @@ from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header, Input
 
 from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
-from training.participants.commands import parse_command
-from training.participants.tui_regions import EventLog, InputBar, RatifyBar
+from training.supervisors.commands import parse_command
+from training.supervisors.tui_regions import EventLog, InputBar, RatifyBar
 
 logger = logging.getLogger(__name__)
 

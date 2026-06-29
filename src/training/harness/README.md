@@ -491,7 +491,7 @@ Bridges Slack and the harness:
 **Running the Slack participant:**
 
 ```python
-from training.participants import SlackParticipant
+from training.supervisors import SlackParticipant
 
 agent = SlackParticipant(
     harness_url="ws://localhost:8765",
@@ -511,13 +511,13 @@ A Textual TUI that displays Kalvin's events and provides ratification (countersi
 **Running the TUI participant:**
 
 ```bash
-uv run python -m training.participants.tui_client
+uv run python -m training.supervisors.tui_client
 ```
 
 Or programmatically:
 
 ```python
-from training.participants import TUIApp
+from training.supervisors import TUIApp
 
 app = TUIApp(harness_url="ws://localhost:8765")
 app.run()

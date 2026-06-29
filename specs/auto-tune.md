@@ -6,13 +6,13 @@ Auto-tune is a CLI tool and supervisor participant that enables an LLM coding ag
 
 The system has two components:
 
-- **Auto-tune CLI** (`python -m training.participants.auto_tune`) — session management, process lifecycle, and the `step`/`send`/`events` commands.
+- **Auto-tune CLI** (`python -m training.supervisors.auto_tune`) — session management, process lifecycle, and the `step`/`send`/`events` commands.
 - **CLI Supervisor** — a WebSocket client participant that connects to the harness, reads commands from a file, writes events to a file, and blocks per-event for maximum observability.
 
 ## Dependencies
 
 - `src/training/harness/` — message bus, WebSocket protocol, harness server
-- `src/training/participants/commands.py` — `parse_command()` for mapping simplified commands to bus messages
+- `src/training/supervisors/commands.py` — `parse_command()` for mapping simplified commands to bus messages
 - `src/kalvin/expand.py` — `D_MAX` for significance normalisation
 - `specs/harness-server.md` — harness configuration and participant architecture
 - `specs/curriculum.md` — curriculum state persistence format
@@ -161,7 +161,7 @@ Session artefacts are persisted to files inside the session's git worktree. The 
 
 ### Command Processing
 
-20. The supervisor maps simplified commands to harness bus messages using `parse_command()` from `src/training/participants/commands.py`.
+20. The supervisor maps simplified commands to harness bus messages using `parse_command()` from `src/training/supervisors/commands.py`.
 21. Commands that map to multiple bus messages (e.g., `ratify` → `countersign`) send all messages sequentially.
 22. The supervisor sends commands via the WebSocket using the same JSON frame protocol as the TUI.
 

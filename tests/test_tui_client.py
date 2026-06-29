@@ -24,8 +24,8 @@ from typing import Any
 
 import websockets
 
-from training.participants.tui_client import HarnessClient, TUIApp
-from training.participants.tui_regions import EventLog, InputBar, RatifyBar
+from training.supervisors.tui_client import HarnessClient, TUIApp
+from training.supervisors.tui_regions import EventLog, InputBar, RatifyBar
 
 # ---------------------------------------------------------------------------
 # Stub harness WebSocket server
@@ -215,7 +215,7 @@ def test_ratify_button_disabled_after_disable():
 
 
 def test_input_bar_imports():
-    """InputBar is importable from participants.tui_regions."""
+    """InputBar is importable from supervisors.tui_regions."""
     assert InputBar is not None
     assert hasattr(InputBar, "Submitted")
 

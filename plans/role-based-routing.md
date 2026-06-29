@@ -145,7 +145,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T9: TUI Client — rename `address` to `role`, register as `supervisor`
 
 - **Spec ref:** @specs/harness-server.md §TUI Participant — HRNS-25, HRNS-25a, HRNS-26, HRNS-27, HRNS-28
-- **Files:** `src/training/participants/tui_client.py`
+- **Files:** `src/training/supervisors/tui_client.py`
 - **Details:**
   - `HarnessClient`: rename `address` parameter → `role`, default `SUPERVISOR_ROLE`
   - Update registration frame: `{"register": self._role}`
@@ -160,7 +160,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T10: Slack Agent — register as `supervisor`, rename `address` to `role`
 
 - **Spec ref:** @specs/harness-server.md §Slack Participant — HRNS-17, HRNS-18, HRNS-31, HRNS-34
-- **Files:** `src/training/participants/slack_agent.py`
+- **Files:** `src/training/supervisors/slack_agent.py`
 - **Details:**
   - Registration: change `{"register": "slack"}` → `{"register": "supervisor"}`
   - `_send_to_trainer`: frame uses `"role": "trainer"` instead of `"address": "trainer"`
@@ -213,7 +213,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 ### Task T14: Shared command parser
 
 - **Spec ref:** @specs/harness-server.md §Shared Command Protocol — HRNS-32
-- **Files:** `src/training/participants/commands.py` (new), `tests/test_commands.py` (new)
+- **Files:** `src/training/supervisors/commands.py` (new), `tests/test_commands.py` (new)
 - **Details:**
   - Define command dataclasses: `StartCommand`, `StopCommand`, `PauseCommand`, `ResumeCommand`, `GoalCommand`, `RatifyCommand`, `FileGoalCommand`, `GuidanceCommand`
   - `parse_command(text: str) -> Command` — maps free-text to command
@@ -288,7 +288,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 
 7. **Sender is the sender's role** — when Trainer sends to trainee, `sender="trainer"`. Trainee responds to role `"trainer"`. This works because each embedded participant has a unique role. For client participants, the sender is the role they registered for (e.g. `"supervisor"`).
 
-8. **Shared command parser lives in `src/training/participants/`** — it's a participant-level concern, not a harness concern. Both TUI and Slack import and use it. The Trainer does not need to know about it — commands are still delivered as `input` actions on the `trainer` role, except `ratify` which goes directly to `trainee`.
+8. **Shared command parser lives in `src/training/supervisors/`** — it's a participant-level concern, not a harness concern. Both TUI and Slack import and use it. The Trainer does not need to know about it — commands are still delivered as `input` actions on the `trainer` role, except `ratify` which goes directly to `trainee`.
 
 9. **Event relay is Trainer's responsibility** — the Trainer already receives all Kalvin events. Rather than making Kalvin aware of supervisors, the Trainer relays events to the `supervisor` role. This maintains Kalvin's ignorance of the training loop.
 

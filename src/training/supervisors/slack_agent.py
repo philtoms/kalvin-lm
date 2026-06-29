@@ -20,7 +20,7 @@ from typing import Any
 
 import websockets
 
-from training.participants.commands import parse_command
+from training.supervisors.commands import parse_command
 
 logger = logging.getLogger(__name__)
 

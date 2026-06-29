@@ -21,7 +21,7 @@ import time
 import urllib.parse
 from pathlib import Path
 
-from training.participants.auto_tune.session import SessionConfig
+from training.supervisors.auto_tune.session import SessionConfig
 
 # Private helpers
 
@@ -37,7 +37,7 @@ def _resolve_python() -> str:
     Falls back to ``sys.executable`` when no venv is found.
     """
     # Walk upward to the project root (this file lives at
-    # <project-root>/src/training/participants/auto_tune/lifecycle.py).
+    # <project-root>/src/training/supervisors/auto_tune/lifecycle.py).
     venv_python = Path(__file__).resolve().parents[3] / ".venv" / "bin" / "python"
     if venv_python.exists():
         return str(venv_python)
@@ -237,7 +237,7 @@ def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     """Start the CLI supervisor as a background process.
 
     Kills any stale supervisor, launches
-    ``python -m training.participants.auto_tune.supervisor``, and polls
+    ``python -m training.supervisors.auto_tune.supervisor``, and polls
     ``status.json`` until ``connected`` is ``true``.
 
     Args:
@@ -258,7 +258,7 @@ def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
         [
             _resolve_python(),
             "-m",
-            "training.participants.auto_tune.supervisor",
+            "training.supervisors.auto_tune.supervisor",
             "--session-dir",
             str(session_dir),
         ],

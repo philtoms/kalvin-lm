@@ -58,7 +58,7 @@
     - `curriculum_context`: derive `{objective, approach, lesson_prose}` from the current lesson if available, else a legacy string. (Mirror what `CogitationRequest` would carry.)
   - RD-8 (no-client path unchanged when flag on): ensure `delegate_reactive=False` + `llm_client=None` still wires the `None` cogitate_fn and escalates `low_confidence` as today — i.e. only `delegate_reactive=True` suppresses escalation.
 
-### Task 4: Scaffold command (`src/training/participants/commands.py`)
+### Task 4: Scaffold command (`src/training/supervisors/commands.py`)
 
 - **Spec ref:** @specs/reactive-delegation §Scaffold Command (RD-9, RD-10, RD-11)
 - **Test mapping:** `tests/test_commands.py` → new `TestScaffoldCommand`
@@ -67,14 +67,14 @@
   - In `parse_command`: recognise `scaffold:` / `scaffold ` prefix (case-insensitive); text after the prefix is the KScript source (may be multi-line). Place the rule before the file-path heuristic so multi-line KScript is not misclassified.
   - RD-10/RD-11: the produced `submit` is handled by Kalvin's adapter exactly as any lesson submit (HRNS-7); compile failures return as `error` events (HRNS-8) — no new validation path. Assert the bus message in `to_messages`; the compile-error round-trip is already covered by existing adapter tests.
 
-### Task 5: CLI supervisor scaffold dispatch (`src/training/participants/auto_tune/supervisor.py`)
+### Task 5: CLI supervisor scaffold dispatch (`src/training/supervisors/auto_tune/supervisor.py`)
 
 - **Spec ref:** @specs/reactive-delegation §Auto-Tune Integration (RD-13)
 - **Test mapping:** `tests/test_auto_tune_supervisor.py` (extend command-dispatch tests)
 - **Details:**
   - In `_process_command`, handle `action == "scaffold"`: reconstruct `f"scaffold:{cmd['text']}"` and pass through `parse_command`, mirroring the existing `goal` action handler. Dispatch the resulting messages.
 
-### Task 6: Auto-tune sets the flag off (`src/training/participants/auto_tune/lifecycle.py`)
+### Task 6: Auto-tune sets the flag off (`src/training/supervisors/auto_tune/lifecycle.py`)
 
 - **Spec ref:** @specs/reactive-delegation §Auto-Tune Integration (RD-12), @specs/auto-tune rule 7a
 - **Test mapping:** `tests/test_auto_tune_lifecycle.py` → `TestSessionHarnessConfig`
@@ -105,19 +105,19 @@
 - **Test mapping:** `tests/test_reactor.py` → `TestDelegatedMode.test_recurrence_does_not_escalate`
 - **Details:** the recurrence branch of `process_s2_s3` incremented `_reactive_rounds` and called `_check_budget()` (escalates `budget_exhaustion`) before the `delegate_reactive` check, so delegated mode escalated — violating RD-6. Add a delegated-mode early return in the recurrence branch: re-submit the recurring proposal at a declared `SIG_S4` (drop signal) WITHOUT touching the budget. Non-delegated behaviour unchanged.
 
-### Task 10: Enrichment passthrough in supervisor event layer (`src/training/participants/auto_tune/events.py`)
+### Task 10: Enrichment passthrough in supervisor event layer (`src/training/supervisors/auto_tune/events.py`)
 
 - **Spec ref:** @specs/reactive-delegation §Delegated Mode (RD-7, RD-7b) — landed
 - **Test mapping:** `tests/test_auto_tune_events.py` → `test_ratify_request_carries_misfit_and_curriculum_context`
 - **Details:** `_enrich_ratify_request` built a fixed-schema `{seq,type,query,proposal,significance}` and dropped the `misfit`/`curriculum_context` the Trainer sends in delegated mode. Pass them through verbatim when present (optional; absent in default mode per RD-8).
 
-### Task 11: Decision Gate — hold/replay on the sync bus (`src/training/trainer/trainer.py`, `src/training/participants/auto_tune/supervisor.py`)
+### Task 11: Decision Gate — hold/replay on the sync bus (`src/training/trainer/trainer.py`, `src/training/supervisors/auto_tune/supervisor.py`)
 
 - **Spec ref:** @specs/reactive-delegation §Decision Gate (RD-14, RD-15, RD-16, RD-17) — landed
 - **Test mapping:** `tests/test_trainer.py` → `TestDelegatedDecisionGate` (hold + replay + re-arm); `tests/test_auto_tune_supervisor.py` → routing of `ratify`/`scaffold`/`continue` to `trainer` as `supervisor_decision`
 - **Details:** see Design Decisions 7–9. Trainer adds `_pending_decision` + `_held_messages`; on emitting a delegated `ratify_request` it sets the pending marker and `on_message` stashes subsequent KAgent events (ground/frame/error/drained) — the bus never blocks. A new `supervisor_decision` action applies the decision (ratify→countersign trainee; scaffold→submit trainee; continue→skip), clears pending, and replays held events through `on_message`; a replayed event raising a new `ratify_request` re-arms the gate (multi-turn loop). The CLI supervisor routes `ratify`/`scaffold`/`continue` to the `trainer` role as `supervisor_decision` when a proposal is pending.
 
-### Task 12: `KALVIN_DATA_DIR` for worktree subprocesses (`src/training/participants/auto_tune/lifecycle.py`)
+### Task 12: `KALVIN_DATA_DIR` for worktree subprocesses (`src/training/supervisors/auto_tune/lifecycle.py`)
 
 - **Spec ref:** @specs/reactive-delegation §Auto-Tune Integration (RD-14 last bullet — note: this RD-14 is the spec's "Auto-Tune Integration" rule, distinct from the Test-Matrix RD-14)
 - **Test mapping:** `tests/test_auto_tune_lifecycle.py` → `TestSubprocessEnv.test_worktree_sets_kalvin_data_dir`

@@ -133,7 +133,7 @@
   - Returns confidence level alongside scaffolding
   - Low confidence → trigger escalation
 
-### Task 10: Slack Participant (`src/training/participants/slack_agent.py`)
+### Task 10: Slack Participant (`src/training/supervisors/slack_agent.py`)
 
 - **Spec ref:** @specs/harness-server §Slack Participant — HRNS-17, HRNS-18
 - **Test mapping:** HRNS-17, HRNS-18
@@ -144,7 +144,7 @@
   - Slack webhook/event listener: forward human input as `{address: trainer, action: input, message: <text>}`
   - Dedicated training channel; no addressing syntax
 
-### Task 11: TUI Participant (`src/training/participants/tui_client.py`, `src/training/participants/tui_regions.py`)
+### Task 11: TUI Participant (`src/training/supervisors/tui_client.py`, `src/training/supervisors/tui_regions.py`)
 
 - **Spec ref:** @specs/harness-server §TUI Participant — HRNS-25, HRNS-26, HRNS-27, HRNS-28
 - **Test mapping:** HRNS-25, HRNS-26, HRNS-27, HRNS-28

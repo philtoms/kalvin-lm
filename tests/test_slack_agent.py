@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import websockets
 
-from training.participants.slack_agent import SlackParticipant
+from training.supervisors.slack_agent import SlackParticipant
 
 # ---------------------------------------------------------------------------
 # Stub harness WebSocket server
