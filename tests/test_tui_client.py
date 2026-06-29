@@ -244,12 +244,13 @@ def test_input_bar_has_clear_method():
 # ═══════════════════════════════════════════════════════════════════════
 
 
-async def test_tuiapp_ratify_sends_countersign():
-    """TUIApp's ratify handler sends countersign via HarnessClient.
+async def test_tuiapp_ratify_sends_supervisor_decision():
+    """TUIApp's ratify handler routes a ratify decision to the Trainer.
 
     Verifies that on ratify click, the app sends
-    ``{role: "trainee", action: "countersign", message: <event_data>}``
-    through the HarnessClient.
+    ``{role: "trainer", action: "supervisor_decision",
+    message: {decision: "ratify", proposal: <event_data>}}``
+    through the HarnessClient (`@specs/supervisor-decision.md` SD-9).
     """
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)
@@ -270,13 +271,16 @@ async def test_tuiapp_ratify_sends_countersign():
             await pilot.click("#ratify-btn")
             await asyncio.sleep(0.2)
 
-            # Wait for the countersign message to arrive at the stub
+            # Wait for the supervisor_decision message to arrive at the stub
             await stub.wait_for_frames(2, timeout=3.0)
 
             msg = stub.received_frames[1]
-            assert msg["role"] == "trainee"
-            assert msg["action"] == "countersign"
-            assert msg["message"] == {"signature": 42, "nodes": [10, 20]}
+            assert msg["role"] == "trainer"
+            assert msg["action"] == "supervisor_decision"
+            assert msg["message"] == {
+                "decision": "ratify",
+                "proposal": {"signature": 42, "nodes": [10, 20]},
+            }
 
 
 async def test_tuiapp_event_polling_populates_log():
@@ -506,12 +510,13 @@ async def test_sends_freeform_input_to_trainer():
             assert msg["message"] == "what is the capital of France?"
 
 
-async def test_sends_countersign_on_ratify():
-    """HRNS-27: RatifyBar sends countersign to trainee on ctrl+r.
+async def test_sends_supervisor_decision_on_ratify():
+    """HRNS-27: RatifyBar routes a ratify decision to the trainer on ctrl+r.
 
     Enables ratify with event data, then presses ctrl+r to trigger
     the ratify keyboard shortcut. Verifies the stub server receives
-    ``{role: "trainee", action: "countersign", message: <event_data>}``.
+    ``{role: "trainer", action: "supervisor_decision",
+    message: {decision: "ratify", proposal: <event_data>}}``.
     """
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)
@@ -531,9 +536,12 @@ async def test_sends_countersign_on_ratify():
             await stub.wait_for_frames(2, timeout=3.0)
 
             msg = stub.received_frames[1]
-            assert msg["role"] == "trainee"
-            assert msg["action"] == "countersign"
-            assert msg["message"] == {"signature": 99, "nodes": [5, 10]}
+            assert msg["role"] == "trainer"
+            assert msg["action"] == "supervisor_decision"
+            assert msg["message"] == {
+                "decision": "ratify",
+                "proposal": {"signature": 99, "nodes": [5, 10]},
+            }
 
 
 async def test_input_bar_clears_after_send():
@@ -596,11 +604,11 @@ async def test_input_uses_command_parser_start():
 
 
 async def test_input_uses_command_parser_ratify():
-    """HRNS-25a: typing "ratify" in InputBar sends countersign to trainee.
+    """HRNS-25a: typing "ratify" in InputBar routes a decision to the trainer.
 
     Requires a pending _latest_ratify_proposal (canonical KLine wire dict) on
-    the TUIApp. The RatifyCommand from the shared parser routes to trainee
-    with action "countersign".
+    the TUIApp. The RatifyCommand from the shared parser routes a
+    supervisor_decision to the trainer (SD-9).
     """
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)
@@ -624,9 +632,12 @@ async def test_input_uses_command_parser_ratify():
             await stub.wait_for_frames(2, timeout=3.0)
 
             msg = stub.received_frames[1]
-            assert msg["role"] == "trainee"
-            assert msg["action"] == "countersign"
-            assert msg["message"] == {"signature": 42, "nodes": [1, 2, 3]}
+            assert msg["role"] == "trainer"
+            assert msg["action"] == "supervisor_decision"
+            assert msg["message"] == {
+                "decision": "ratify",
+                "proposal": {"signature": 42, "nodes": [1, 2, 3]},
+            }
 
 
 async def test_tracks_latest_ratify_proposal():
@@ -669,15 +680,15 @@ async def test_tracks_latest_ratify_proposal():
             assert ratify_bar._selected_event_data == proposal
 
 
-async def test_ratify_request_to_countersign_wire_shape():
-    """Full round-trip regression: ratify_request → "ratify" → countersign wire dict.
+async def test_ratify_request_to_supervisor_decision_wire_shape():
+    """Full round-trip regression: ratify_request → "ratify" → supervisor_decision.
 
     The critical guard for the buffering fix: a properly shaped
     ``ratify_request`` (full ``{proposal, query, significance}`` envelope)
     followed by typing ``"ratify"`` in the InputBar must produce a
-    ``countersign`` frame whose message is the raw KLine wire dict — NOT the
-    ``{proposal, query, significance}`` envelope. Matches the wire contract
-    in ``specs/harness-server.md`` (countersign carries a KLine proposal).
+    ``supervisor_decision`` frame whose ``proposal`` is the raw KLine wire
+    dict — NOT the ``{proposal, query, significance}`` envelope
+    (`@specs/supervisor-decision.md` SD-9).
     """
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)
@@ -711,11 +722,11 @@ async def test_ratify_request_to_countersign_wire_shape():
 
             await stub.wait_for_frames(2, timeout=3.0)
 
-            # The countersign frame must carry the raw KLine wire dict, not
-            # the {proposal, query, significance} envelope.
+            # The supervisor_decision frame must carry the raw KLine wire dict
+            # as its proposal, not the {proposal, query, significance} envelope.
             msg = stub.received_frames[1]
             assert msg == {
-                "role": "trainee",
-                "action": "countersign",
-                "message": proposal,
+                "role": "trainer",
+                "action": "supervisor_decision",
+                "message": {"decision": "ratify", "proposal": proposal},
             }

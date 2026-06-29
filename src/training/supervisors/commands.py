@@ -115,12 +115,24 @@ class GoalCommand(Command):
 
 @dataclass
 class RatifyCommand(Command):
-    """Countersign the latest pending proposal."""
+    """Accept the latest pending proposal — a supervisor decision.
+
+    Routes to the ``trainer`` role as a ``supervisor_decision`` so the Trainer
+    applies the countersign itself after replaying any held events
+    (`@specs/supervisor-decision.md` SD-9). The proposal is carried verbatim
+    so the Trainer countersigns the exact kline Kalvin proposed.
+    """
 
     def to_messages(self, latest_proposal: Any) -> list[tuple[str, str, Any]]:
         if latest_proposal is None:
             return []
-        return [(TRAINEE_ROLE, "countersign", latest_proposal)]
+        return [
+            (
+                TRAINER_ROLE,
+                "supervisor_decision",
+                {"decision": "ratify", "proposal": latest_proposal},
+            )
+        ]
 
 
 @dataclass
@@ -145,19 +157,33 @@ class GuidanceCommand(Command):
 
 @dataclass
 class ScaffoldCommand(Command):
-    """Submit reactive scaffolding (KScript) to Kalvin.
+    """Submit reactive scaffolding (KScript) — a supervisor decision.
 
-    The supervisor-side equivalent of the Cogitator's reactive scaffolding
-    output. Reuses the existing ``trainee`` ``submit`` bus action, so the
-    KScript is compiled by Kalvin's adapter exactly like any lesson
-    submission; compilation failures surface as ``error`` events.
+    When a proposal is pending, routes to the ``trainer`` role as a
+    ``supervisor_decision`` so the Trainer applies the scaffold answer
+    (`@specs/supervisor-decision.md` SD-10); the KScript is then submitted to
+    Kalvin and compiled like any lesson submission (compile failures surface
+    as ``error`` events — SD-12).
 
-    Spec ref: specs/reactive-delegation.md §Scaffold Command
+    When no proposal is pending, this is a free submission to Kalvin (not a
+    decision answer) and goes directly to the ``trainee`` ``submit`` action.
     """
 
     text: str
 
     def to_messages(self, latest_proposal: Any) -> list[tuple[str, str, Any]]:
+        if latest_proposal is not None:
+            return [
+                (
+                    TRAINER_ROLE,
+                    "supervisor_decision",
+                    {
+                        "decision": "scaffold",
+                        "proposal": latest_proposal,
+                        "text": self.text,
+                    },
+                )
+            ]
         return [(TRAINEE_ROLE, "submit", self.text)]
 
 

@@ -22,7 +22,7 @@ import websockets
 from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header, Input
 
-from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE
+from training.harness.constants import SUPERVISOR_ROLE, TRAINER_ROLE
 from training.supervisors.commands import parse_command
 from training.supervisors.tui_regions import EventLog, InputBar, RatifyBar
 
@@ -262,14 +262,17 @@ class TUIApp(App):
             pass
 
     def on_ratify_bar_ratify_clicked(self, event: RatifyBar.RatifyClicked) -> None:
-        """Handle Ratify button click — send countersign via HarnessClient.
+        """Handle Ratify button click — route a ratify decision to the Trainer.
 
-        Sends ``{role: TRAINEE_ROLE, action: "countersign", message: <event_data>}``
-        where ``event_data`` is the raw ``message`` payload from the selected
-        harness event frame (a JSON-serializable value, not a KLine object).
+        Sends ``{role: TRAINER_ROLE, action: "supervisor_decision",
+        message: {decision: "ratify", proposal: <event_data>}}`` so the Trainer
+        applies the countersign itself after replaying any held events
+        (`@specs/supervisor-decision.md` SD-9). Same path as typing ``ratify``
+        in the InputBar.
         """
+        payload = {"decision": "ratify", "proposal": event.event_data}
         # Schedule the async send as a background task
-        asyncio.create_task(self._client.send(TRAINEE_ROLE, "countersign", event.event_data))
+        asyncio.create_task(self._client.send(TRAINER_ROLE, "supervisor_decision", payload))
         # Disable ratify after sending
         ratify_bar = self.query_one(RatifyBar)
         ratify_bar.disable_ratify()

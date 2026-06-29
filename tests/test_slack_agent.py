@@ -265,11 +265,11 @@ async def test_slack_forwards_human_input():
         await participant.stop()
 
 
-async def test_slack_ratify_command_sends_countersign():
-    """HRNS-34: ``ratify`` command sends ``countersign`` to trainee role.
+async def test_slack_ratify_command_routes_supervisor_decision():
+    """HRNS-34: ``ratify`` command routes a ``supervisor_decision`` to the trainer.
 
     The buffered ``_latest_ratify_proposal`` (canonical KLine wire dict) is
-    emitted verbatim as the countersign message.
+    carried verbatim inside the decision payload (`@specs/supervisor-decision.md` SD-9).
     """
     async with StubHarness() as stub:
         participant = await _make_participant(stub)
@@ -282,26 +282,26 @@ async def test_slack_ratify_command_sends_countersign():
         await participant._dispatch_command("ratify")
         await stub.wait_for_frames(2)
 
-        # Second frame should be countersign to trainee carrying the wire dict
+        # Second frame should be a supervisor_decision to the trainer carrying
+        # the wire dict as the proposal.
         msg_frame = stub.received_frames[1]
         assert msg_frame == {
-            "role": "trainee",
-            "action": "countersign",
-            "message": proposal,
+            "role": "trainer",
+            "action": "supervisor_decision",
+            "message": {"decision": "ratify", "proposal": proposal},
         }
 
         await participant.stop()
 
 
-async def test_slack_ratify_request_to_countersign_wire_shape():
-    """Full round-trip regression: ratify_request → "ratify" → countersign wire dict.
+async def test_slack_ratify_request_to_supervisor_decision_wire_shape():
+    """Full round-trip regression: ratify_request → "ratify" → supervisor_decision.
 
     The critical guard for the buffering fix: a properly shaped
     ``ratify_request`` (full ``{proposal, query, significance}`` envelope)
-    followed by a ``"ratify"`` dispatch must produce a ``countersign`` frame
-    whose message is the raw KLine wire dict — NOT the
-    ``{proposal, query, significance}`` envelope. Matches the wire contract
-    in ``specs/harness-server.md`` (countersign carries a KLine proposal).
+    followed by a ``"ratify"`` dispatch must produce a ``supervisor_decision``
+    frame whose ``proposal`` is the raw KLine wire dict — NOT the
+    ``{proposal, query, significance}`` envelope (`@specs/supervisor-decision.md` SD-9).
     """
     async with StubHarness() as stub:
         participant = await _make_participant(stub)
@@ -324,13 +324,13 @@ async def test_slack_ratify_request_to_countersign_wire_shape():
         await participant._dispatch_command("ratify")
         await stub.wait_for_frames(2)
 
-        # The countersign frame must carry the raw KLine wire dict, not the
-        # {proposal, query, significance} envelope.
+        # The supervisor_decision frame must carry the raw KLine wire dict as
+        # its proposal, not the {proposal, query, significance} envelope.
         msg_frame = stub.received_frames[1]
         assert msg_frame == {
-            "role": "trainee",
-            "action": "countersign",
-            "message": proposal,
+            "role": "trainer",
+            "action": "supervisor_decision",
+            "message": {"decision": "ratify", "proposal": proposal},
         }
 
         await participant.stop()

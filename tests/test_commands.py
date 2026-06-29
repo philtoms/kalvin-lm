@@ -121,7 +121,15 @@ class TestRatifyCommand:
         cmd = parse_command("ratify")
         proposal = {"proposal": "MHALL = SVO"}
         msgs = cmd.to_messages(proposal)
-        assert msgs == [(TRAINEE_ROLE, "countersign", {"proposal": "MHALL = SVO"})]
+        # SD-9: ratify routes to the trainer as a supervisor_decision (the
+        # Trainer applies the countersign after replaying held events).
+        assert msgs == [
+            (
+                TRAINER_ROLE,
+                "supervisor_decision",
+                {"decision": "ratify", "proposal": {"proposal": "MHALL = SVO"}},
+            )
+        ]
 
     def test_to_messages_without_proposal(self):
         cmd = parse_command("ratify")
@@ -167,12 +175,13 @@ class TestFileGoalCommand:
 
 
 class TestScaffoldCommand:
-    """ScaffoldCommand submits reactive scaffolding (KScript) to Kalvin.
+    """ScaffoldCommand submits reactive scaffolding (KScript).
 
-    RD-11 note: the compile-error round-trip (invalid KScript → ``error``
-    event) is exercised by Kalvin's adapter tests (HRNS-8); here we assert
-    only that ``to_messages`` produces the ``{trainee, submit}`` tuple that
-    the adapter consumes.
+    Two paths (`@specs/supervisor-decision.md` SD-10): with a pending
+    proposal it routes to the trainer as a scaffold decision; without one it
+    is a free submission to the trainee. The compile-error round-trip
+    (invalid KScript → ``error`` event) is exercised by Kalvin's adapter
+    tests (HRNS-8).
     """
 
     def test_parse_with_colon(self):
@@ -201,11 +210,25 @@ class TestScaffoldCommand:
         assert isinstance(cmd, ScaffoldCommand)
         assert cmd.text == "MHALL = SVO\nSVO = agent"
 
-    def test_to_messages_routes_to_trainee_submit(self):
-        # RD-10: reuses the existing trainee submit bus action.
+    def test_to_messages_free_submit_when_no_proposal(self):
+        # No pending proposal → a free submission to Kalvin (not a decision).
         cmd = ScaffoldCommand(original_text="scaffold:MHALL = SVO", text="MHALL = SVO")
         msgs = cmd.to_messages(None)
         assert msgs == [(TRAINEE_ROLE, "submit", "MHALL = SVO")]
+
+    def test_to_messages_decision_when_proposal_pending(self):
+        # SD-10: with a pending proposal, scaffold routes to the trainer as a
+        # supervisor_decision so the Trainer applies the answer.
+        cmd = ScaffoldCommand(original_text="scaffold:M > H", text="M > H")
+        proposal = {"signature": 5, "nodes": [1, 2]}
+        msgs = cmd.to_messages(proposal)
+        assert msgs == [
+            (
+                TRAINER_ROLE,
+                "supervisor_decision",
+                {"decision": "scaffold", "proposal": proposal, "text": "M > H"},
+            )
+        ]
 
     def test_original_text_preserved(self):
         cmd = parse_command("scaffold:MHALL = SVO")
