@@ -55,8 +55,6 @@ select = ["E", "F", "I", "N", "W", "UP"]
 "dev/nlp/*.py" = ["E402"]
 # standalone dev/test scripts with sys.path bootstrap before imports
 "scripts/*.py" = ["E402"]
-# ui entry point bootstraps sys.path before importing the app module
-"ui/kscript/__main__.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.10"

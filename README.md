@@ -100,12 +100,6 @@ uv run python -m kscript script.ks -out output.json
 uv run python -m kscript script.ks -out output.bin
 ```
 
-### KScript TUI (standalone)
-
-```bash
-uv run python -m ui.kscript
-```
-
 ### Harness Server (multi-agent)
 
 ```bash

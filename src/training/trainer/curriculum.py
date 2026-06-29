@@ -27,7 +27,6 @@ from training.trainer.curriculum_document import (
 logger = logging.getLogger(__name__)
 
 # Type alias for entry identity keys used in tracking sets.
-# Mirrors the pattern from ui/kscript/app.py line 23.
 EntryKey: TypeAlias = tuple[int, tuple[int, ...]]
 
 
