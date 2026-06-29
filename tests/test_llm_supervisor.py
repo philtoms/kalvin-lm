@@ -60,7 +60,7 @@ class TestDecideMapping:
 
     def test_scaffold_when_adequate_confidence(self) -> None:
         """Adequate scaffolding (confidence >= threshold) → scaffold answer."""
-        from training.trainer.cogitation import CogitationResult
+        from training.supervisors.llm_supervisor import CogitationResult
 
         result = CogitationResult(
             scaffolding="M > H",
@@ -80,7 +80,7 @@ class TestDecideMapping:
 
     def test_continue_when_low_confidence(self) -> None:
         """Low confidence (< threshold) → continue (decider cannot help)."""
-        from training.trainer.cogitation import CogitationResult
+        from training.supervisors.llm_supervisor import CogitationResult
 
         result = CogitationResult(
             scaffolding="M > H",
@@ -97,7 +97,7 @@ class TestDecideMapping:
 
     def test_continue_when_no_scaffolding(self) -> None:
         """No scaffolding produced → continue."""
-        from training.trainer.cogitation import CogitationResult
+        from training.supervisors.llm_supervisor import CogitationResult
 
         result = CogitationResult(
             scaffolding=None,
@@ -115,7 +115,7 @@ class TestDecideMapping:
     def test_decide_passes_proposal_through_verbatim(self) -> None:
         """The proposal is carried unchanged so the Trainer countersigns the
         exact kline Kalvin proposed (no reconstruction drift)."""
-        from training.trainer.cogitation import CogitationResult
+        from training.supervisors.llm_supervisor import CogitationResult
 
         result = CogitationResult("M > H", 0.9, "ok", None)
         sup = _make_supervisor(result)
@@ -129,7 +129,7 @@ class TestDecideMapping:
     def test_decide_calls_cogitator_once(self) -> None:
         """One ratify_request → one cogitate call (single-shot; the Trainer
         gates between requests, so there is no multi-round within a request)."""
-        from training.trainer.cogitation import CogitationResult
+        from training.supervisors.llm_supervisor import CogitationResult
 
         cogitator = MagicMock()
         cogitator.cogitate.return_value = CogitationResult("M > H", 0.9, "ok", None)
@@ -153,7 +153,7 @@ class TestBuildRequest:
 
     def test_lifts_structured_curriculum_context(self) -> None:
         """A structured curriculum_context dict populates objective/approach/lesson_prose."""
-        from training.trainer.cogitation import CogitationRequest
+        from training.supervisors.llm_supervisor import CogitationRequest
 
         sup = _make_supervisor(None)
         frame = _frame(

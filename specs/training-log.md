@@ -2,7 +2,7 @@
 
 ## Overview
 
-The training log provides a structured, human-readable server-side trace of training operations. Every significant event in the training pipeline — session lifecycle, lesson submission, rationalisation, satisfaction, escalation — is logged at an appropriate level with decompiled KScript source for readability. The log enables a developer to reconstruct what happened during a training run without needing to observe the session in real time.
+The training log provides a structured, human-readable server-side trace of training operations. Every significant event in the training pipeline — session lifecycle, lesson submission, rationalisation, satisfaction — is logged at an appropriate level with decompiled KScript source for readability. The log enables a developer to reconstruct what happened during a training run without needing to observe the session in real time.
 
 ## Dependencies
 
@@ -23,15 +23,17 @@ The training log provides a structured, human-readable server-side trace of trai
 | Lesson complete | `trainer.trainer` | INFO | All entries in a lesson satisfied |
 | Curriculum complete | `trainer.trainer` | INFO | All lessons in curriculum submitted |
 | Rationalise event | `trainer.trainer` | INFO | KAgent ground or frame event received |
+| Supervisor decision applied | `trainer.trainer` | INFO | A pending decision resolved: ratify / scaffold / continue (SD-9/10/11) |
 | Entry submit | `harness.adapter` | INFO | Compiled entries submitted to KAgent |
 | Countersign | `harness.adapter` | INFO | Countersign sent to KAgent |
 | Auto-countersign match | `trainer.reactor` | INFO | Proposal structurally matched expectation |
 | Auto-countersign miss | `trainer.reactor` | DEBUG | No structural match found |
 | Auto-countersign dup | `trainer.reactor` | DEBUG | Already-satisfied entry re-matched |
-| Reactive scaffolding | `trainer.reactor` | INFO | Scaffolding generated from cogitation |
-| Cogitation failure | `trainer.reactor` | WARNING | Cogitation produced no scaffolding |
-| Budget exhaustion | `trainer.reactor` | WARNING | Reactive rounds exhausted |
-| Escalation | `trainer.reactor` | ERROR | Escalation sent to supervisor |
+| Recurring proposal dropped | `trainer.reactor` | INFO | Within-lesson recurrence re-submitted at declared S4 (drop signal) (SD-14) |
+| [removed] — Reactive scaffolding | — | — | no inline cogitation; the LLMSupervisor decides (SD-3) |
+| [removed] — Cogitation failure | — | — | no inline cogitation (SD-3) |
+| [removed] — Budget exhaustion | — | — | no reactive budget (SD-3) |
+| [removed] — Escalation | — | — | no escalation mechanism (SD-3) |
 | Compilation error | `harness.adapter` | ERROR | KScript compilation failed |
 
 ### Log Format
@@ -90,27 +92,29 @@ When running under auto-tune, the harness server's stderr is redirected to `<ses
 7. S2/S3 events log with the normalised significance and the proposal (if any).
 8. On lesson completion, log the satisfaction counts at INFO level.
 9. On curriculum completion, log at INFO level.
+10. On applying a supervisor decision (ratify / scaffold / continue) to a pending proposal, log the applied action at INFO (`@specs/supervisor-decision.md` SD-9/10/11).
 
 ### Reactor Logging
 
-10. On auto-countersign match, log at INFO level.
-11. On auto-countersign miss (no match), log at DEBUG level.
-12. On auto-countersign of an already-satisfied entry, log at DEBUG level.
-13. [removed] — the Trainer no longer produces reactive scaffolding; the LLMSupervisor owns its own logging (`@specs/supervisor-decision.md`). On applying a scaffold decision (SD-10), the Trainer logs the applied KScript at INFO.
-14. [removed] — no inline cogitation; the LLMSupervisor decides.
-15. [removed] — no reactive budget (`@specs/supervisor-decision.md` SD-3).
-16. [removed] — no escalation mechanism (`@specs/supervisor-decision.md` SD-3).
+11. On auto-countersign match, log at INFO level.
+12. On auto-countersign miss (no match), log at DEBUG level.
+13. On auto-countersign of an already-satisfied entry, log at DEBUG level.
+14. On dropping a within-lesson recurrence (re-submitting at declared S4), log at INFO level (`@specs/supervisor-decision.md` SD-14).
+15. [removed] — the Trainer no longer produces reactive scaffolding; the LLMSupervisor owns its own logging (`@specs/supervisor-decision.md`).
+16. [removed] — no inline cogitation; the LLMSupervisor decides.
+17. [removed] — no reactive budget (`@specs/supervisor-decision.md` SD-3).
+18. [removed] — no escalation mechanism (`@specs/supervisor-decision.md` SD-3).
 
 ### Adapter Logging
 
-17. On entry submission, log the count of compiled entries at INFO level.
-18. On compilation error, log the error at ERROR level.
-19. On countersign, log the KLine at INFO level.
+19. On entry submission, log the count of compiled entries at INFO level.
+20. On compilation error, log the error at ERROR level.
+21. On countersign, log the KLine at INFO level.
 
 ### Auto-Tune Log Capture
 
-20. `start_harness` redirects the harness subprocess stderr to `<session_dir>/harness.log`.
-21. The log file is overwritten on each harness start (not appended across runs).
+22. `start_harness` redirects the harness subprocess stderr to `<session_dir>/harness.log`.
+23. The log file is overwritten on each harness start (not appended across runs).
 
 ## Test Matrix
 
@@ -127,15 +131,18 @@ When running under auto-tune, the harness server's stderr is redirected to `<ses
 | TL-9 | Curriculum complete logged at INFO level | §Trainer Logging |
 | TL-10 | Auto-countersign match logged at INFO | §Reactor Logging |
 | TL-11 | Auto-countersign miss logged at DEBUG | §Reactor Logging |
-| TL-12 | Reactive scaffolding logged with round, confidence, source | §Reactor Logging |
-| TL-13 | Cogitation failure logged at WARNING | §Reactor Logging |
-| TL-14 | Budget exhaustion logged at WARNING with round count | §Reactor Logging |
-| TL-15 | Escalation logged at ERROR with reason | §Reactor Logging |
+| TL-12 | [removed] — reactive scaffolding logging; no inline cogitation (`@specs/supervisor-decision.md` SD-3) | §Reactor Logging |
+| TL-13 | [removed] — cogitation failure logging; no inline cogitation (`@specs/supervisor-decision.md` SD-3) | §Reactor Logging |
+| TL-14 | [removed] — budget exhaustion logging; no reactive budget (`@specs/supervisor-decision.md` SD-3) | §Reactor Logging |
+| TL-15 | [removed] — escalation logging; no escalation mechanism (`@specs/supervisor-decision.md` SD-3) | §Reactor Logging |
 | TL-16 | Entry submission logged with count at INFO | §Adapter Logging |
 | TL-17 | Compilation error logged at ERROR | §Adapter Logging |
 | TL-18 | Countersign logged with KLine at INFO | §Adapter Logging |
 | TL-19 | Auto-tune start_harness captures stderr to harness.log | §Auto-Tune Log Capture |
 | TL-20 | harness.log is overwritten (not appended) on start | §Auto-Tune Log Capture |
+| TL-21 | Supervisor decision application (ratify/scaffold/continue) logged at INFO | §Trainer Logging |
+| TL-22 | Within-lesson recurrence drop logged at INFO | §Reactor Logging |
+| TL-23 | Auto-countersign of an already-satisfied entry logged at DEBUG | §Reactor Logging |
 
 ## Out of Scope
 

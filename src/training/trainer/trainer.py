@@ -73,7 +73,7 @@ class Trainer:
         Bus role for this participant (default ``"trainer"``).
     llm_client:
         Optional LLM client for curriculum generation (goal resolution).
-        Must satisfy the :class:`~trainer.cogitation.LLMClient` protocol.
+        Must satisfy the :class:`~training.harness.llm.LLMClient` protocol.
         Enables goal-based curriculum generation via the
         :class:`~trainer.curriculum_generator.CurriculumGenerator`. Reactive
         decisions are owned by a supervisor participant (the LLMSupervisor
@@ -212,7 +212,7 @@ class Trainer:
         """Derive the curriculum context for a decision request.
 
         Returns ``{objective, approach, lesson_prose}`` mirroring
-        :class:`~trainer.cogitation.CogitationRequest`, or a legacy empty
+        :class:`~training.supervisors.llm_supervisor.CogitationRequest`, or a legacy empty
         string when no document is available or all three fields are empty.
         """
         document = self._state.curriculum.document

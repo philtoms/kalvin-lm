@@ -8,7 +8,7 @@
 ## Spec References
 
 - `@specs/harness-server.md` — HRNS-1 through HRNS-24
-- `@specs/agent.md` — KAgent rationalisation API, events (AGT-1..AGT-40)
+- `@specs/agent.md` — KAgent rationalisation API, events (AGT-1..AGT-28, AGT-58..AGT-60)
 - `@specs/kscript.md` — compilation pipeline (KS-1..KS-33)
 - `CONTEXT.md` — Agents and the Harness section
 
@@ -117,7 +117,7 @@
   - `save(path)` / `load(path)`: JSON persistence for restart recovery
   - Session management: one active session, queue for pending goals
 
-### Task 9: Trainer — LLM agent Integration (`src/training/trainer/cogitation.py`)
+### Task 9: Trainer — LLM agent Integration (`src/training/supervisors/llm_supervisor.py` — relocated out of the Trainer; was `trainer/cogitation.py`)
 
 - **Spec ref:** @specs/harness-server §Trainer Participant — HRNS-13, HRNS-14
 - **Test mapping:** HRNS-13, HRNS-14

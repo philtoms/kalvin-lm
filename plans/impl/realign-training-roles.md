@@ -32,7 +32,7 @@ The flag `trainer.llm.enabled` and the `delegate_reactive` parameter are removed
 
 - **Spec ref:** @specs/supervisor-decision.md §Decision ownership (LLMSupervisor), §LLMSupervisor Pipeline
 - **New files:** `src/training/supervisors/llm_supervisor.py` (class `LLMSupervisor`)
-- **Reused:** the prompt/extraction/sanitisation logic currently in `src/training/trainer/cogitation.py` (the GLM-5.1 client, `build_prompt`, `build_tool_definitions`, `extract_result`, `_strip_hash_comments`, `CogitationRequest`/`MisfitInfo`/`CogitationResult`) — moved or imported as a library, no longer Trainer-internal. The SD-16…21 sanitisation contract is owned by `@specs/supervisor-decision.md`.
+- **Relocated (complete):** the prompt/extraction/sanitisation pipeline now lives in `src/training/supervisors/llm_supervisor.py` (the `LLMSupervisor` class plus `Cogitator`, `build_prompt`, `build_tool_definitions`, `extract_result`, `_strip_hash_comments`, `CogitationRequest`/`MisfitInfo`/`CogitationResult`) — folded into the supervisor that owns it, not imported from the trainer. The shared LLM transport (`LLMClient`/`LLMResponse`/`OpenAICompatibleClient`, the GLM-5.1 client) is extracted to `src/training/harness/llm.py` so the LLMSupervisor pipeline and the Trainer's `CurriculumGenerator` share it without either importing from the other. The old `src/training/trainer/cogitation.py` is deleted. The SD-16…21 sanitisation contract is owned by `@specs/supervisor-decision.md`.
 - **Details:**
   - A WebSocket client participant mirroring `src/training/supervisors/auto_tune/supervisor.py` (pre-T6 location) / the relocated CLI supervisor structure: connect, register as `supervisor`, receive frames, on `ratify_request` build a prompt from the frame's `misfit` + `curriculum_context`, call the LLM, extract + sanitise the scaffold, emit a `supervisor_decision` answer (`ratify`/`scaffold`/`continue` derived from the result).
   - Runs as a separate process (D3.a). Lifecycle helper added peer to the CLI supervisor's `start_supervisor`/`stop_supervisor`.
@@ -113,7 +113,7 @@ Existing tests asserting the `delegate_reactive` flag, the two-mode budget, or T
 
 **D3.a — The LLMSupervisor runs as a separate process (resolved).** A WebSocket client participant, launched like the CLI supervisor. Rationale: cleanest isolation and reuses the existing subprocess lifecycle pattern; as a side effect it removes the latent bus-blocking bug (an inline LLM call today runs on the single-threaded bus dispatch and stalls all traffic). Accepted by the user.
 
-**G1 — Two-Cogitator collision resolved by rename (resolved).** "Cogitator" properly belongs to Kalvin's slow-path rationalisation thread (`src/kalvin/cogitator.py`, `@specs/cogitator.md`); the LLM scaffolding cogitator (`src/training/trainer/cogitation.py`) was the interloper and is renamed **LLMSupervisor** when it relocates. The RS-1…4 sanitisation rules move out of `cogitator.md` into `@specs/supervisor-decision.md` §LLMSupervisor Pipeline (G1b). `cogitator.md` is now solely about Kalvin's Cogitator.
+**G1 — Two-Cogitator collision resolved by rename (resolved).** "Cogitator" properly belongs to Kalvin's slow-path rationalisation thread (`src/kalvin/cogitator.py`, `@specs/cogitator.md`); the LLM scaffolding cogitator (`src/training/trainer/cogitation.py`) was the interloper and is renamed **LLMSupervisor**; it relocated into `src/training/supervisors/llm_supervisor.py` (its pipeline folded in), the old `src/training/trainer/cogitation.py` is deleted, and the shared LLM transport moved to `src/training/harness/llm.py`. The RS-1…4 sanitisation rules move out of `cogitator.md` into `@specs/supervisor-decision.md` §LLMSupervisor Pipeline (G1b). `cogitator.md` is now solely about Kalvin's Cogitator.
 
 **G2 — harness-server.md keeps bus-message facts only (resolved).** The Trainer section keeps what actions it emits and to which roles; reactive-mode and escalation bullets are removed; HRNS-13/14 are `[removed]`-tombstoned. The decision contract is owned by `@specs/supervisor-decision.md`; the loop model by `@specs/trainer-satisfaction.md`. Ratify routing unified through the Trainer (`supervisor_decision`) for all deciders — HRNS-27/34 reworded accordingly.
 
@@ -135,6 +135,6 @@ All steps executed:
 
 ## Status
 
-- **Phase:** documentation cascade complete. Implementation (T1–T6) pending.
+- **Phase:** documentation cascade complete. Implementation in progress: the LLMSupervisor pipeline relocation (T1, file move) is complete; T2–T6 pending.
 - **Build order:** T2+T3+T4 as one Trainer-refactor change; then T1 (LLMSupervisor relocation) and T6 (CLI supervisor relocation) as isolated moves; T5 (routing unification) last, touching all supervisors.
 - **Blockers:** none.

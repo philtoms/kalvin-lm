@@ -16,8 +16,8 @@ from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
 from training.harness.bus import MessageBus
 from training.harness.constants import SUPERVISOR_ROLE, TRAINEE_ROLE, TRAINER_ROLE
+from training.harness.llm import LLMResponse
 from training.harness.message import Message
-from training.trainer.cogitation import LLMResponse
 from training.trainer.curriculum import Curriculum, CurriculumState, EntryKey
 from training.trainer.curriculum_document import CurriculumDocument, Lesson
 from training.trainer.curriculum_generator import CurriculumGenerationError

@@ -8,10 +8,9 @@
 
 See **@cogitator spec** for the full definition (Cogitator, CogitationHandler,
 WorkItem, QueryCandidate consumption, S1 fast-path, S2 expansion,
-significance boundaries, lifecycle, inter-lesson drain, reactive
-scaffolding submission).
-Test matrix: AGT-29 through AGT-57 (relocated from @agent spec + merged
-inter-lesson drain and reactive-scaffolding criteria, IDs stable).
+significance boundaries, lifecycle, inter-lesson drain).
+Test matrix: AGT-29 through AGT-48 (relocated from @agent spec + merged
+inter-lesson drain criteria, IDs stable).
 
 See **@agent spec** §Cogitation for the seam (the agent submits work items
 and is the primary `CogitationHandler`).
@@ -19,11 +18,7 @@ and is the primary `CogitationHandler`).
 ## 2. Implementation
 
 **Files:** `src/kalvin/cogitator.py` (canonical home), `src/kalvin/agent.py`
-(consumer + handler), `src/training/trainer/cogitation.py` (reactive
-scaffolding sanitisation + system prompt), `src/training/trainer/trainer.py`
-(cogitate adapter decompilation), `src/training/trainer/reactor.py`
-(submission log line), `tests/test_agent.py`, `tests/test_cogitator_drain.py`,
-`tests/test_cascade_control.py`, `tests/test_reactive_scaffolding.py`.
+(consumer + handler), `tests/test_agent.py`, `tests/test_cogitator_drain.py`.
 
 ### Module responsibility
 
@@ -88,10 +83,6 @@ See `plans/impl/structural-grounding.md` for the expansion algorithm detail.
 | AGT-46  | `tests/test_cogitator_drain.py` | `test_drain_timeout_returns_false` | ✅ |
 | AGT-47  | `tests/test_cogitator_drain.py` | `test_processing_flag_guards_drain` | ✅ |
 | AGT-48  | `tests/test_cogitator_drain.py` | `test_no_cross_lesson_spillover` | ✅ |
-| AGT-49–50 | `tests/test_reactive_scaffolding.py` | `test_system_prompt_no_hex` / `test_system_prompt_no_invalid_operators` | ✅ |
-| AGT-51–53 | `tests/test_reactive_scaffolding.py` | strip-hash-comments + all-comments-returns-none | ✅ |
-| AGT-54–56 | `tests/test_reactive_scaffolding.py` | cogitate-adapter decompile query/proposal/fallback | ✅ |
-| AGT-57  | `tests/test_reactive_scaffolding.py` | `test_reactor_submitted_log_line` | ✅ |
 
 ## 4. Design Decisions
 
@@ -100,9 +91,9 @@ See `plans/impl/structural-grounding.md` for the expansion algorithm detail.
    test import paths without duplicating definitions.
 
 2. **No renumbering of AGT- IDs.** Per cascade rule 2, relocated test-matrix
-   rows keep their stable IDs (AGT-29..AGT-42). The inter-lesson drain and
-   reactive-scaffolding criteria, formerly separate specs, are now appended
-   as AGT-43..AGT-57 under the same owning spec.
+   rows keep their stable IDs (AGT-29..AGT-48). The inter-lesson drain
+   criteria, formerly a separate spec, are appended as AGT-43..AGT-48 under
+   the same owning spec.
 
 3. **Drain via async bus message.** The Trainer sends a `drain` message to
    the adapter and defers lesson submission until the `drained` response
@@ -110,16 +101,6 @@ See `plans/impl/structural-grounding.md` for the expansion algorithm detail.
    itself). Lesson submission splits into two phases: `_submit_next_lesson`
    sends the drain request; `_do_submit_lesson` performs compilation and
    submission after the drain.
-
-4. **Reactive-scaffolding sanitisation is defensive.** Even with the
-   corrected prompt, some LLMs produce `#` comments. The Cogitator strips
-   them and logs the fact rather than failing, making the pipeline robust
-   against LLM variation.
-
-5. **Decompile at the adapter level.** The cogitate adapter in `trainer.py`
-   is the bridge between the event world (hex klines) and the cogitation
-   world (text prompts); decompilation belongs there, not in the cogitation
-   module, which stays agnostic about where its text comes from.
 
 ## 5. Status
 

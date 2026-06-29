@@ -100,7 +100,7 @@
     3. Called from: `start_session`, `_check_lesson_complete`, `_end_session`, amendment handler
   - Cogitation context: build from `document.objective`, `document.approach`, current `lesson.prose`
 
-### Task 5: Cogitation Context Update (`src/training/trainer/cogitation.py`)
+### Task 5: Cogitation Context Update (`src/training/supervisors/llm_supervisor.py`)
 
 - **Spec ref:** @specs/curriculum §CogitationRequest, CRS-50..CRS-52
 - **Test mapping:** CRS-50..CRS-52

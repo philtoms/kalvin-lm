@@ -242,7 +242,7 @@ def _build_llm_client(trainer_cfg: dict) -> Any | None:
     llm_cfg = trainer_cfg.get("llm") or {}
 
     try:
-        from training.trainer.cogitation import OpenAICompatibleClient
+        from training.harness.llm import OpenAICompatibleClient
 
         base_url = llm_cfg.get("base_url", "https://api.z.ai/api/coding/paas/v4")
         model = llm_cfg.get("model", "glm-5.1")

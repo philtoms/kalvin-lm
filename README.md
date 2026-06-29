@@ -131,14 +131,15 @@ src/
     │   ├── server.py    #     Harness server + config loading
     │   ├── bus.py       #     Addressed message bus
     │   ├── adapter.py   #     KAgent ↔ bus adapter
+    │   ├── llm.py       #     Shared LLM client (LLMClient/OpenAICompatibleClient)
     │   └── protocol.py  #     WebSocket wire protocol
     ├── trainer/         #   Trainer participant
     │   ├── trainer.py       #   Curriculum execution + reactive mode
-    │   ├── curriculum.py    #   Curriculum state + persistence
-    │   └── cogitation.py    #   LLM agent integration
-    └── supervisors/     #   Client supervisors (Slack, TUI, auto-tune)
+    │   └── curriculum.py    #   Curriculum state + persistence
+    └── supervisors/     #   Client supervisors (Slack, TUI, CLI, LLM)
         ├── slack_agent.py   #   Slack ↔ harness
-        └── tui_client.py    #   TUI ↔ harness
+        ├── tui_client.py    #   TUI ↔ harness
+        └── llm_supervisor.py #   LLM decider + reactive scaffolding pipeline
 ```
 
 ## Documentation

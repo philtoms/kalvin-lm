@@ -427,15 +427,6 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 | AGT-46 | Drain timeout returns False but does not stop the thread (DRN-4)                               | —          |
 | AGT-47 | Processing flag guards against premature drain return (DRN-5)                                  | —          |
 | AGT-48 | Cross-lesson spillover eliminated: lesson N events don't affect lesson N+1 satisfaction tracking              | —          |
-| AGT-49 | [removed] relocated to `@specs/supervisor-decision.md` SD-16 (LLMSupervisor pipeline)                                          | —          |
-| AGT-50 | [removed] relocated to `@specs/supervisor-decision.md` SD-17 (LLMSupervisor pipeline)                                          | —          |
-| AGT-51 | [removed] relocated to `@specs/supervisor-decision.md` SD-20 (LLMSupervisor pipeline)                                          | —          |
-| AGT-52 | [removed] relocated to `@specs/supervisor-decision.md` SD-20 (LLMSupervisor pipeline)                                          | —          |
-| AGT-53 | [removed] relocated to `@specs/supervisor-decision.md` SD-21 (LLMSupervisor pipeline)                                          | —          |
-| AGT-54 | [removed] relocated to `@specs/supervisor-decision.md` SD-18 (LLMSupervisor pipeline)                                          | —          |
-| AGT-55 | [removed] relocated to `@specs/supervisor-decision.md` SD-18 (LLMSupervisor pipeline)                                          | —          |
-| AGT-56 | [removed] relocated to `@specs/supervisor-decision.md` SD-19 (LLMSupervisor pipeline)                                          | —          |
-| AGT-57 | [removed] absorbed into `@specs/supervisor-decision.md` SD-10 (Trainer applies scaffold answer)                                | —          |
 
 ## Out of Scope
 
@@ -446,10 +437,6 @@ The following are explicitly **out of scope** for this spec:
 - **Significance computation.** Distance→significance inversion is internal
   to the model's `expand()` (@model spec).
 - **Persistence format, tokenisation, model internals.**
-- **Reactive-scaffolding generation** (the LLMSupervisor's prompt,
-  sanitisation, decompilation, and submission) is owned by
-  `@specs/supervisor-decision.md` §LLMSupervisor Pipeline. This spec is
-  solely about Kalvin's slow-path rationalisation thread.
 
 ## Referenced By
 

@@ -8,13 +8,13 @@ from kalvin.events import RationaliseEvent
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
-from training.trainer.cogitation import (
+from training.harness.llm import LLMResponse
+from training.supervisors.llm_supervisor import (
     ESCALATION_THRESHOLD,
     CogitationRequest,
     CogitationResult,
     Cogitator,
     ConversationTurn,
-    LLMResponse,
     MisfitInfo,
     build_prompt,
     build_tool_definitions,

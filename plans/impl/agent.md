@@ -78,7 +78,7 @@ Test matrix: AGT-23 through AGT-27.
 
 See **@agent spec** for full definition (rationalisation pipeline phases,
 routing, cogitation, work items, S2 expansion).
-Test matrix: AGT-1 through AGT-40.
+Test matrix: AGT-1 through AGT-42, AGT-58 through AGT-60.
 
 ### Routing Implementation — `_route(query, candidate) → str`
 
@@ -193,6 +193,6 @@ See `plans/impl/cogitator.md` §Test Mapping for test functions.
 
 | Spec ID | Test              | Description                           |
 | ------- | ----------------- | ------------------------------------- |
-| AGT-38  | JSON round-trip   | Save/load preserves KLines            |
-| AGT-39  | Binary round-trip | Save/load preserves KLines            |
-| AGT-40  | Empty agent       | Serializes and deserializes correctly |
+| AGT-58  | JSON round-trip   | Save/load preserves KLines            |
+| AGT-59  | Binary round-trip | Save/load preserves KLines            |
+| AGT-60  | Empty agent       | Serializes and deserializes correctly |

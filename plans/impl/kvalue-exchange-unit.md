@@ -243,7 +243,7 @@ Spec ref: @harness-server spec; D5 consumer map.
   - `Trainer._is_s1`: `event.proposal.significance >= _S1_FRAME_THRESHOLD` (was `event.significance`).
   - distance/normalise logging: `event.proposal.significance`.
   - `ratify_request` payload `"significance"`: `event.proposal.significance` (payload dict field unchanged; value source moves).
-  - `trainer/cogitation.py` `_classify_significance` and prompt builder: read `event.proposal.significance`.
+  - `supervisors/llm_supervisor.py` `_classify_significance` and prompt builder: read `event.proposal.significance`.
 
 ### Task H — Codec: confirm objective-only (no code change expected)
 
@@ -308,7 +308,7 @@ loop; **H** locks the storage contract.
 | `trainer.py _is_s1`                      | `event.significance`             | `event.proposal.significance`        | Kalvin's    |
 | `trainer.py` distance/normalise logging  | `event.significance`             | `event.proposal.significance`        | Kalvin's    |
 | `trainer.py` ratify_request payload      | `event.significance`             | `event.proposal.significance`        | Kalvin's    |
-| `trainer/cogitation.py` classify + prompt| `event.significance`             | `event.proposal.significance`        | Kalvin's    |
+| `supervisors/llm_supervisor.py` classify + prompt| `event.significance`             | `event.proposal.significance`        | Kalvin's    |
 | `auto_tune/events.py` (payload reader)   | `message.significance` (payload) | unchanged (payload dict field)       | n/a         |
 
 All current consumers want **Kalvin's** assessment → `proposal.significance`.

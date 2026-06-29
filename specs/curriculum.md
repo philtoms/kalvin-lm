@@ -23,10 +23,17 @@ This spec depends on the following concepts, defined elsewhere:
 - HRNS-IDs define the Trainer's existing harness integration.
 - The Trainer drives the training loop, submits lessons, and manages state persistence.
 
-### Cogitation (@specs/cogitation — internal to trainer)
+### LLMSupervisor Pipeline (@specs/supervisor-decision.md)
 
-- `CogitationRequest` carries context to the LLM for reactive scaffolding.
-- `LLMClient` protocol abstracts the LLM API for testability.
+- The curriculum document's `objective`, `approach`, and current-lesson
+  `prose` are carried to the LLMSupervisor's reactive-scaffolding prompt via
+  its `CogitationRequest` (§LLMSupervisor Pipeline). Reactive scaffolding is
+  a supervisor decision, not Trainer-internal cogitation — it is unrelated to
+  Kalvin's Cogitator (`@specs/cogitator.md`, the slow-path rationalisation
+  thread).
+- Goal-based curriculum generation (`CurriculumGenerator`) uses the shared
+  `LLMClient` (`src/training/harness/llm.py`) for one-shot goal → curriculum
+  resolution at session start.
 
 ## Definition
 

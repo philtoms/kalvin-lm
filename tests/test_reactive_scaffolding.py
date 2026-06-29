@@ -15,10 +15,10 @@ from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
-from training.trainer.cogitation import (
+from training.harness.llm import LLMResponse
+from training.supervisors.llm_supervisor import (
     _SYSTEM_PROMPT,
     Cogitator,
-    LLMResponse,
     _strip_hash_comments,
 )
 
@@ -30,7 +30,7 @@ class TestSystemPrompt:
 
     def test_system_prompt_no_hex(self):
         """AGT-49: Prompt must not instruct LLM to use hex literals."""
-        # The prompt should not tell the LLM to USE hex — it may
+        # The prompt should not tell the LLM to USE hex - it may
         # mention hex in a "never use" warning, which is correct.
         lines = _SYSTEM_PROMPT.split("\n")
         # No line should say identifiers ARE hex or use 0x prefix
@@ -132,7 +132,7 @@ class TestCogitatorSanitisation:
         )
 
         cogitator = Cogitator(client=client)
-        from training.trainer.cogitation import CogitationRequest, MisfitInfo
+        from training.supervisors.llm_supervisor import CogitationRequest, MisfitInfo
 
         event = RationaliseEvent(
             kind="frame",
@@ -156,7 +156,7 @@ class TestCogitatorSanitisation:
             max_rounds=3,
         )
 
-        with caplog.at_level(logging.INFO, logger="training.trainer.cogitation"):
+        with caplog.at_level(logging.INFO, logger="training.supervisors.llm_supervisor"):
             result = cogitator.cogitate(request)
 
         assert result.scaffolding == "M > H"
@@ -181,7 +181,7 @@ class TestCogitatorSanitisation:
         )
 
         cogitator = Cogitator(client=client)
-        from training.trainer.cogitation import CogitationRequest, MisfitInfo
+        from training.supervisors.llm_supervisor import CogitationRequest, MisfitInfo
 
         event = RationaliseEvent(
             kind="frame",
@@ -209,9 +209,9 @@ class TestCogitatorSanitisation:
         assert result.scaffolding is None
 
 
-# ── AGT-57: [removed] — the Reactor no longer submits reactive scaffolding ──
+# ── AGT-57: [removed] - the Reactor no longer submits reactive scaffolding ──
 # The "submitted reactive scaffolding" log line (AGT-57) belonged to the
 # Reactor's inline cogitation path, which is removed. The LLMSupervisor
 # participant will own its own logging when implemented (T1). The prompt
 # and sanitisation tests above (TestSystemPrompt, TestStripHashComments,
-# TestCogitatorSanitisation) cover the relocated SD-16…21 contract.
+# TestCogitatorSanitisation) cover the relocated SD-16...21 contract.

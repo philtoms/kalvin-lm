@@ -19,7 +19,7 @@ A reset consolidates the development trace to WHAT-IS: every surviving doc reads
 - *ADRs* are temporary scaffolding: once their decision is absorbed into code/spec/plan, the ADR file is deleted.
 - *CONTEXT.md* and *docs/kalvin-vision.md* are already WHAT-IS by construction; a reset touches them only for renamed/retired terms or mechanism leakage.
 
-**Mechanics (two commits).** (1) Migrate each artifact's surviving conclusion into its proper layer and commit; (2) tag that commit `docs-archive-YYYY-MM-DD` — it holds every to-be-deleted file in pre-deletion form; (3) delete the spent artifacts, append to `docs/ARCHIVE.md`, commit.
+**Mechanics (two commits).** (1) Migrate each artifact's surviving conclusion into its proper layer and commit; (2) tag that commit `docs-archive-<date>` for the first reset of a day, or `docs-archive-<date>-N` (`-2`, `-3`, …) for a subsequent same-day run — it holds every to-be-deleted file in pre-deletion form; never move an existing tag; (3) delete the spent artifacts, append to `docs/ARCHIVE.md`, commit.
 
 **`docs/ARCHIVE.md`** is a persistent, append-only, one-line index per archived artifact — artifact → where its conclusion migrated → recovery tag. An index entry is a finding aid, never a narrative. Git is the archive; the repo is lean.
 
@@ -29,13 +29,19 @@ The reference files expand these rules with worked examples and the exact git se
 
 ## Entry Points
 
+The runbook and tag name use `<date>` = `YYYY-MM-DD` for the first reset of a day; subsequent same-day resets append a sequence suffix (`-2`, `-3`, …). See `references/archive-mechanics.md` §Same-day collisions. Never move an existing tag — that destroys the prior run's archive guarantee.
+
 ### Fresh Reset
 
-No un-archived runbook exists at `plans/docs-reset-<YYYY-MM-DD>.md`, and no `docs-archive-<YYYY-MM-DD>` tag points at a pre-deletion commit from today. → Complete step 1 (Inventory), then proceed through the workflow.
+No `docs-archive-<date>` tag family exists for today (neither the bare `docs-archive-<YYYY-MM-DD>` nor any `docs-archive-<YYYY-MM-DD>-N`), and no un-archived runbook exists for today. → Use the bare `<date>`; complete step 1 (Inventory), then proceed through the workflow.
+
+### Subsequent same-day Reset
+
+A `docs-archive-<date>` tag (bare or `-N`) already exists for today. → You are a follow-on run: choose the smallest N≥2 such that `docs-archive-<YYYY-MM-DD>-N` does not yet exist; both runbook and tag use `-N`. Complete step 1, then proceed.
 
 ### Resume Reset
 
-A runbook exists at `plans/docs-reset-<date>.md` but its tag `docs-archive-<date>` does not yet exist (commit 1 done, commit 2 pending), OR the runbook is only partially complete. → Read the runbook, confirm with the user where it stopped, jump to that step.
+A runbook exists at `plans/docs-reset-<date>[-N].md` but its tag does not yet exist (commit 1 done, commit 2 pending), OR the runbook is only partially complete. → Read the runbook, confirm with the user where it stopped, jump to that step.
 
 ---
 
@@ -76,7 +82,7 @@ Do not execute until the user confirms the classification. Adjust on feedback.
 
 ## 4. Generate the runbook
 
-Write `plans/docs-reset-<YYYY-MM-DD>.md` (use today's date) capturing: scope, safety constraints (blocking task IDs), the per-artifact classification table, the migration targets, and the delete list. Model it on the cascade plan format but keep it operational — it is a checklist, not a spec.
+Write `plans/docs-reset-<date>[-N].md` (use the `<date>`/sequence chosen at Entry Points) capturing: scope, safety constraints (blocking task IDs), the per-artifact classification table, the migration targets, and the delete list. Model it on the cascade plan format but keep it operational — it is a checklist, not a spec.
 
 This runbook is itself a spent artifact: after the reset lands it gets one `ARCHIVE.md` row and is deleted under its own tag (see §Final).
 
@@ -93,14 +99,16 @@ Commit with a migrate message. **This commit's tree still contains every to-be-d
 
 ## 6. Tag
 
+Tag commit 1 with the name chosen at Entry Points (bare `<date>` or `<date>-N`). Never reuse or move an existing tag.
+
 ```bash
-git tag -a docs-archive-<YYYY-MM-DD> -m "Documentation reset <YYYY-MM-DD>: pre-deletion archive. See docs/ARCHIVE.md." <commit-1-sha>
+git tag -a docs-archive-<date>[-N] -m "Documentation reset <date>: pre-deletion archive. See docs/ARCHIVE.md." <commit-1-sha>
 ```
 
 Verify the guarantee before proceeding:
 
 ```bash
-git show docs-archive-<YYYY-MM-DD>:docs/adr/<some-deleted-file>.md   # must return the file
+git show docs-archive-<date>[-N]:docs/adr/<some-deleted-file>.md   # must return the file
 ```
 
 ## 7. Execute — Commit 2 (Delete + Index)

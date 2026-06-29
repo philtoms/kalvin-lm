@@ -458,9 +458,9 @@ See @cogitator spec §Test Matrix.
 
 | ID     | Criterion                                         | Origin ref |
 | ------ | ------------------------------------------------- | ---------- |
-| AGT-38 | JSON round-trip: save/load preserves KLines        | — |
-| AGT-39 | Binary round-trip: save/load preserves KLines      | — |
-| AGT-40 | Empty agent: serializes and deserializes correctly | — |
+| AGT-58 | JSON round-trip: save/load preserves KLines        | — |
+| AGT-59 | Binary round-trip: save/load preserves KLines      | — |
+| AGT-60 | Empty agent: serializes and deserializes correctly | — |
 
 ## Open Questions
 

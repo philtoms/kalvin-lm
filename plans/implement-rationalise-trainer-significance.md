@@ -250,7 +250,7 @@ which is correct — a dropped proposal must not trigger a `ratify_request`.
 | (reactor budget preserved) | `tests/test_reactor.py` — pure-recurrence at budget cliff still escalates `budget_exhaustion` | new |
 | (reactor per-lesson reset) | `tests/test_reactor.py` — `load_lesson` clears `_seen_proposals` | new |
 
-Baseline to re-run: the full suite (reactor/agent/adapter/trainer/cogitation)
+Baseline to re-run: the full suite (reactor/agent/adapter/trainer/supervisors/llm_supervisor)
 must stay green. The gate's `derived==declared` path is the common case, so
 existing tests that submit compiled entries (whose declared band always
 equals their derived band) should be unaffected — verify, don't assume.
