@@ -170,7 +170,7 @@ class TestFileGoalCommand:
 
 
 # ---------------------------------------------------------------------------
-# Scaffold command (reactive scaffolding — RD-9/10/11)
+# Scaffold command (reactive scaffolding — SD-10)
 # ---------------------------------------------------------------------------
 
 
@@ -185,26 +185,26 @@ class TestScaffoldCommand:
     """
 
     def test_parse_with_colon(self):
-        # RD-9
+        # SD-10
         cmd = parse_command("scaffold:MHALL = SVO")
         assert isinstance(cmd, ScaffoldCommand)
         assert cmd.text == "MHALL = SVO"
         assert cmd.original_text == "scaffold:MHALL = SVO"
 
     def test_parse_with_space(self):
-        # RD-9 (space variant)
+        # SD-10 (space variant)
         cmd = parse_command("scaffold MHALL = SVO")
         assert isinstance(cmd, ScaffoldCommand)
         assert cmd.text == "MHALL = SVO"
 
     def test_parse_case_insensitive(self):
-        # RD-9 (case insensitivity)
+        # SD-10 (case insensitivity)
         cmd = parse_command("SCAFFOLD:MHALL = SVO")
         assert isinstance(cmd, ScaffoldCommand)
         assert cmd.text == "MHALL = SVO"
 
     def test_parse_multiline(self):
-        # RD-9 (multi-line): the full multi-line source is preserved and is
+        # SD-10 (multi-line): the full multi-line source is preserved and is
         # not misclassified as a FileGoalCommand.
         cmd = parse_command("scaffold:\nMHALL = SVO\nSVO = agent")
         assert isinstance(cmd, ScaffoldCommand)

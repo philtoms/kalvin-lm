@@ -6,7 +6,7 @@ input uniformly.
 
 Spec ref: specs/harness-server.md §Shared Command Protocol (HRNS-32).
 The ``scaffold`` command (reactive scaffolding) is defined in
-specs/reactive-delegation.md §Scaffold Command.
+specs/supervisor-decision.md §Decision answers (SD-10).
 """
 
 from __future__ import annotations
