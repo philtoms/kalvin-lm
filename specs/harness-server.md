@@ -109,7 +109,7 @@ Kalvin's interface to the harness bus. A thin layer that:
    - `countersign` — materialise the bus payload to a KValue and call `kagent.countersign(kvalue)`. The payload may arrive as a live KValue, a wire dict, or a legacy KLine (wrapped at S1); see @kvalue spec §KP-2.
    - `rationalise` — materialise the bus payload to a KValue and call `kagent.rationalise(kvalue)` directly. Unlike `submit` (which re-derives significance from structure) and `countersign` (which builds the reciprocal at S1), this delivers the KValue as-is: the significance on the KValue is the sender's declared assessment, carried straight into the Phase 1b significance-comparison gate (@agent spec §Rationalisation). Same three payload forms as `countersign`.
 3. Receives Kalvin's callbacks directly (no internal EventBus) and wraps them into harness messages dispatched to the original sender's role.
-4. Maintains a sender map: when entries arrive from role X, the adapter records X as the sender. Kalvin's callbacks are sent to role X.
+4. Maintains a sender map: when entries arrive from role X (via `submit` or `rationalise`), the adapter records X as the sender so Kalvin's callbacks about those klines route back to X. (`countersign` is a fire-and-forget ratification and does not record the sender; any callback it provokes flows from the subsequent rationalise path.)
 
 ### Adapter Callback Interface
 

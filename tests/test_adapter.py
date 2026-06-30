@@ -499,6 +499,27 @@ class TestRationaliseAction:
             Message(role=TRAINEE_ROLE, action="rationalise", message=kv, sender="trainer")
         )
 
+    def test_rationalise_records_sender_for_routing(self) -> None:
+        """A rationalise submission records the sender so its events route back.
+
+        Mirrors ``submit``: ``on_event`` looks the query kline up in the
+        sender map and orphan-drops anything absent. Without this record, a
+        paced KValue submission (e.g. a dialogue runner or the future paced
+        Trainer handing Kalvin withheld klines one at a time) would never
+        receive the events Kalvin emits about it.
+        """
+        bus = MessageBus()
+        kagent = FakeKAgent()
+        adapter = KAgentAdapter(bus, kagent=kagent)
+
+        kv = KValue(KLine(0xABCD, [0x1234]), SIG_S4)
+        adapter.on_message(
+            Message(role=TRAINEE_ROLE, action="rationalise", message=kv, sender="trainer")
+        )
+
+        key = (0xABCD, (0x1234,))
+        assert adapter._sender_map[key] == "trainer"
+
 
 # ── HRNS-22: KAgent calls adapter directly ───────────────────────────────
 

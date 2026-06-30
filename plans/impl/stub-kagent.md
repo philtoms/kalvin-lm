@@ -209,4 +209,21 @@ global event-kind change.
 
 ## Status
 
-Plan complete; implementation pending.
+Complete. `StubKAgent` (`src/kalvin/stub_kagent.py`) is implemented with
+ST-1..ST-11 covered by `tests/test_stub_kagent.py`. Integration is proven
+end-to-end by `scripts/dialogue_runner.py`, which resolves the symbolic
+`scripts/dialogue-mhall.json` dialogue into a ResponseTable + a paced trainer
+submission sequence and drives it through the real MessageBus + KAgentAdapter +
+StubKAgent (see `tests/test_dialogue_runner.py`). The runner is the Option-C
+bridge: it stands in for the (still-unbuilt) paced Trainer
+(`@specs/trainer-satisfaction.md` TS-1..TS-17), replaying the canonical trainer
+turns so the stub, the dialogue, the resolver, and the harness plumbing are
+validated together.
+
+Two resolution notes surfaced by the runner (faithful to the stub's one-shot
+row model, KV-2): a kline submitted twice — e.g. the shared 'l' BPE piece of
+*little*/*lamb* — drives a single row and grounds once (idempotent); and the
+resolver derives its expected-emission order as requests→grounds→countersigns
+per row (ST-7), not the dialogue's narrative turn order.
+
+The paced Trainer (Gap B) remains outstanding.

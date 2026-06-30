@@ -361,6 +361,14 @@ class KAgentAdapter:
             return
 
         kvalue = _materialise_kvalue(msg.message)
+        # Record the sender so events Kalvin emits about this kline route
+        # back to the participant that handed it in. Mirrors ``_handle_submit``;
+        # without this, a paced KValue submission's events would be orphaned
+        # (on_event drops anything absent from the sender map). The recurrence
+        # drop-signal path is unaffected: the KAgent drops those (no events),
+        # so the extra entry is simply unused.
+        key: EntryKey = (kvalue.kline.signature, tuple(kvalue.kline.nodes))
+        self._sender_map[key] = msg.sender or ""
         logger.info("Rationalise (direct): %s", kvalue)
         self._kagent.rationalise(kvalue)  # fire-and-forget; events via on_event
 
