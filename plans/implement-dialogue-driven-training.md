@@ -29,9 +29,10 @@ subwords (see Phase 1, task 1.0).
 
 ### Phase 1 — Decoder (pre-loop configuration)
 
-**1.0 Reconcile the dialogue artifact.** Update `scripts/dialogue-mhall.json`
-subword node names to the tokenizer's actual decoded subwords (e.g. `Ma,ry` →
-the real `decoded` pair from compiler output). Verify every node list matches a
+**1.0 Reconcile the dialogue artifact.** ✅ Done (commit 18a9408). Updated
+`scripts/dialogue-mhall.json` symbolic labels to match the tokenizer's actual
+decoded subwords, corrected the `{a:[Det]}` op (CANON→CONNOTED), and reconciled
+compound/subword case (Subject/Verb/Object). Verified every node list matches a
 compiled canon. → supports DDT-1, DDT-4.
 
 **1.1 Dialogue-table loader.** Parse `script` + `turns[]` into a typed
@@ -100,23 +101,26 @@ opening entry point; the table validates turn 0 like any other T turn. → DDT-7
 **3.6 Synchronous execution** under the stub: submit → drain → validate. No event
 loop. → §Training Loop.
 
-### Phase 4 — Satisfaction / learning
+### Phase 4 — Termination (no satisfaction module)
 
-**4.1 Declared-band satisfaction.** Mark an entry learned on a Kalvin ground
-event whose proposal equals the entry (KLine equality) and whose significance
-equals the entry's declared band. `learned` spans all four bands. → DDT-15, DDT-16.
+**There is no Phase-4 satisfaction module.** A design ruling supersedes the
+original DDT-15/16/17 framing: Kalvin emits no grounding events, and the Trainer
+never verifies whether Kalvin has learned anything — its only K-verification is
+structural (K == table K at the cursor). Termination is therefore dual cursor
+exhaustion, which Phase 3 already implements and tests (DDT-18, DDT-26, DDT-27).
 
-**4.2 Lesson completion** when `learned ⊇ submitted`. Emit `progress:
-lesson_complete`. → DDT-17.
+**4.1 (retired)** No declared-band satisfaction; no `learned ⊇ submitted`
+computation. → DDT-15, DDT-16, DDT-17 retired.
 
-**4.3 Run end** on Kalvin's closing S1 countersign of the primary. → DDT-18.
+**4.2 (retired)** No `progress: lesson_complete` gate.
 
-**4.4 Divergences.** Under-reach → not learned, continue. Over-reach → learned +
-`progress: over_reach`. (Exercised only by real Kalvin; stub never diverges.)
-→ DDT-21.
+**4.3 Run end** on dual cursor exhaustion. → DDT-18 (implemented in Phase 3).
+
+**4.4 (retired)** No band-comparison divergence. The only K divergence is
+structural (K != table K), caught by two-sided validation. → DDT-21 reframed.
 
 **4.5 Stall escalation.** Unresolvable request → `@specs/supervisor-decision.md`
-path. → DDT-20.
+path. → DDT-20 (not exercised under the stub; deferred to the real-Kalvin grill).
 
 ### Phase 5 — Switchover (final)
 
@@ -129,38 +133,40 @@ as a separate step.
 
 | Spec ID | Test | Status |
 |---------|------|--------|
-| DDT-1 | loader parses table/turn fields; notes stripped | todo |
-| DDT-2 | decode() returns flat ordered list of DecodedTurn | todo |
-| DDT-3 | single-stage: kline from script + sig lookup + actor/op pass-through | todo |
-| DDT-4 | canon retrieved by node-list match | todo |
-| DDT-5 | supply is pure: same inputs → same output; no state mutated across calls | todo |
-| DDT-6 | significance dispatch: S2/S3→respond, S4→supply, S1→advance | todo |
-| DDT-7 | trainer opens with primary half at S2; opening computed, table-validated | todo |
-| DDT-8 | request for X supplies held klines in canon→relation→identity order | todo |
-| DDT-9 | relation behind a canon is never supplied (shadowed) | todo |
-| DDT-10 | shadowed relation is K-discovered (S3) then T-ratified (S1) | todo |
-| DDT-11 | relation with no canon is supplied on request | todo |
-| DDT-12 | terminal nodes→S1, non-terminal→S2 on supplied entries | todo |
-| DDT-13 | K S3 proposal → T reciprocal at S1 | todo |
-| DDT-14 | K S1 terminal → trainer no-op, advance | todo |
-| DDT-15 | entry learned on ground at declared band (kline+sig equal) | todo |
-| DDT-16 | S4 satisfies identity; S2 canon; S3 relation; S1 primary | todo |
-| DDT-17 | lesson completes when learned ⊇ submitted (all bands) | todo |
-| DDT-18 | run ends on dual cursor exhaustion; closing S1 verified not trusted | todo |
-| DDT-19 | subword canons withheld, ratifiable, learned at S2 | todo |
-| DDT-20 | unresolvable request escalates per supervisor-decision | todo |
-| DDT-21 | over-reach learned + over_reach signal; under-reach not learned | todo |
-| DDT-22 | loop is dispatch-driven (T computed, table validates), not replay | todo |
-| DDT-23 | self-cursored actors (trainer over T-rows, stub over K-rows); no kline matching | todo |
-| DDT-24 | greedy per-actor dispatch; multi-row runs handled identically to 1:1 | todo |
-| DDT-25 | two-sided validation per turn (K==table, T==table) with side attribution | todo |
-| DDT-26 | truncated table fails (non-empty stub cursor at trainer exhaustion) | todo |
-| DDT-27 | closing S1 verified (final K-run consumed + matched), not semantically detected | todo |
-| DDT-28 | annotation-only turns dropped at decode | todo |
+| DDT-1 | loader parses table/turn fields; notes stripped | done (test_dialogue_decoder) |
+| DDT-2 | decode() returns flat ordered list of DecodedTurn | done (test_dialogue_decoder) |
+| DDT-3 | single-stage: kline from script + sig lookup + actor/op pass-through | done (test_dialogue_decoder) |
+| DDT-4 | canon retrieved by node-list match | done (test_dialogue_decoder) |
+| DDT-5 | supply is pure: same inputs → same output; no state mutated across calls | done (test_dialogue_supply) |
+| DDT-6 | significance dispatch: S2/S3→respond, S4→supply, S1→advance | done (test_dialogue_supply) |
+| DDT-7 | trainer opens with primary half at S2; opening computed, table-validated | done (test_dialogue_supply, test_dialogue_loop) |
+| DDT-8 | request for X supplies held klines in canon→relation→identity order | done (test_dialogue_supply) |
+| DDT-9 | relation behind a canon is never supplied (shadowed) | done (test_dialogue_supply) |
+| DDT-10 | shadowed relation is K-discovered (S3) then T-ratified (S1) | done (test_dialogue_supply) |
+| DDT-11 | relation with no canon is supplied on request | done (test_dialogue_supply) |
+| DDT-12 | terminal nodes→S1, non-terminal→S2 on supplied entries | done (test_dialogue_supply) |
+| DDT-13 | K S3 proposal → T reciprocal at S1 | done (test_dialogue_supply) |
+| DDT-14 | K S1 terminal → trainer no-op, advance | done (test_dialogue_supply) |
+| DDT-15 | (retired) no declared-band satisfaction; Trainer never verifies K's learning | retired (spec 95d0a0a) |
+| DDT-16 | (retired) Kalvin emits no grounding event | retired (spec 95d0a0a) |
+| DDT-17 | (retired) no learned ⊇ submitted; termination is dual-exhaustion | retired (spec 95d0a0a) |
+| DDT-18 | run ends on dual cursor exhaustion; closing S1 verified not trusted | done (test_dialogue_loop) |
+| DDT-19 | subword canons withheld, ratifiable, supplied at node-terminality band | done (test_dialogue_supply) |
+| DDT-20 | unresolvable request escalates per supervisor-decision | deferred (real-Kalvin grill) |
+| DDT-21 | (retired) no band divergence; only structural K!=table K divergence | retired (spec 95d0a0a); structural case done (test_dialogue_loop) |
+| DDT-22 | loop is dispatch-driven (T computed, table validates), not replay | done (test_dialogue_loop) |
+| DDT-23 | self-cursored actors (trainer over T-rows, stub over K-rows); no kline matching | done (test_dialogue_loop) |
+| DDT-24 | greedy per-actor dispatch; multi-row runs handled identically to 1:1 | done (test_dialogue_loop) |
+| DDT-25 | two-sided validation per turn (K==table, T==table) with side attribution | done (test_dialogue_loop) |
+| DDT-26 | truncated table fails (non-empty stub cursor at trainer exhaustion) | done (test_dialogue_loop) |
+| DDT-27 | closing S1 verified (final K-run consumed + matched), not semantically detected | done (test_dialogue_loop) |
+| DDT-28 | annotation-only turns dropped at decode | done (test_dialogue_decoder) |
 
-Canonical end-to-end test: the full "Mary had a little lamb" dialogue
-(`scripts/dialogue-mhall.json`) runs against `StubKAgent` and every compiled
-entry is learned at its declared band, ending on the primary's S1 countersign.
+Canonical end-to-end test (done, `test_dialogue_loop.py::test_canonical_run_completes_on_primary_closing_s1`):
+the full "Mary had a little lamb" dialogue (`scripts/dialogue-mhall.json`) runs
+against `StubKAgent`, every turn validated two-sided, terminating on the primary's
+S1 countersign via dual cursor exhaustion. (Kalvin's learning is monotonic memory,
+not a Trainer-verified gate — see the corrected spec.)
 
 ## Design Decisions
 
@@ -190,12 +196,15 @@ buys nothing; pre-decode validates the table against the script up front and
 keeps the loop a pure iterator. Rejected: JIT decode (entangles loop with
 script); split significance/structure stages (no useful intermediate).
 
-**D5 — Grounding, not S1, is the satisfaction signal; learned = declared-band
-agreement.** Resolved in grill: an identity is learned at S4, a canon at S2, a
-relation at S3, only the countersigned primary at S1. *Rationale:* separates
-"understood and in LTM" from "countersigned"; lets the loop terminate at the
-structural band the author declared. Forward-compatible with the deferred
-event-kind change (ground→S1, frame→S2–S4).
+**D5 — (SUPERSEDED) Grounding, not S1, is the satisfaction signal; learned =
+declared-band agreement.** Resolved in grill: an identity is learned at S4, a
+canon at S2, a relation at S3, only the countersigned primary at S1. *Rationale:*
+separates "understood and in LTM" from "countersigned"; lets the loop terminate
+at the structural band the author declared. Forward-compatible with the deferred
+event-kind change (ground→S1, frame→S2–S4). **Superseded by the design ruling
+(spec 95d0a0a):** Kalvin emits no grounding events, so there is no declared-band
+signal to detect and no `learned ⊇ submitted` gate. Termination is dual cursor
+exhaustion (D8/D10). Retained as a grill record.
 
 **D6 — Symmetric significance contract.** Resolved in grill: either party may
 send any band; S2/S3 = proposal, S4 = request, S1 = terminal. *Rationale:*
@@ -203,8 +212,10 @@ symmetry is a design feature — there is no structural reason Kalvin cannot
 assume a supervisor role. K-originated S2 is deferred to a later grill.
 
 **D7 — Subword canons are not filtered.** Resolved in grill: withheld and
-learned at S2 like any canon. *Rationale:* subword structure is future-proofing
-(reconstructing words for novel queries); all subword entries become grounded.
+ratifiable, supplied at the node-terminality band like any canon. *Rationale:*
+subword structure is future-proofing (reconstructing words for novel queries).
+(Originally framed as "learned at S2"; reframed under the design ruling —
+supplied-at-band is the Trainer's behaviour, not a learned-at-band gate.)
 
 **D8 — Dispatch-driven loop; table is the shared source of truth.** Resolved in
 grill: both the trainer-side loop and the stub read the same pre-decoded table,
@@ -240,18 +251,23 @@ grounds; multi-row K-run timing (moot for the 1:1 table).
 
 ## Status
 
-- Spec: `@specs/dialogue-driven-training.md` — written; Training Loop section
-  and dispatch/cursor/dual-exhaustion criteria added (DDT-22..28); DDT-18
-  reframed to cursor exhaustion.
-- Glossary: `@CONTEXT.md` updated (Canon added, Ratify loosened, MTS Entry
-  demoted, Learned added).
-- Artifact: `scripts/dialogue-mhall.json` exists in the grilled simple format
-  (`{script, turns[]}`, actors T/K); subword node names need reconciliation
-  (task 1.0).
-- **To replace (previous design generation):** `scripts/dialogue_runner.py`
-  (legend format + replay driver — KeyErrors on the current artifact) and the
-  trigger-keyed `ResponseRow` model in `@specs/stub-kagent.md`. The stub becomes
-  a self-cursored table reader; the runner becomes the dispatch loop (Phase 3).
-  These are replaced, not patched.
-- Implementation: not started.
-- Open: switchover strategy and retirement of the prior spec/plan (Phase 5).
+- Spec: `@specs/dialogue-driven-training.md` — written and corrected; the
+  Phase-4 satisfaction framing (DDT-15/16/17, DDT-21 band-divergence) is retired
+  by a design ruling (Kalvin emits no grounding events; the Trainer verifies only
+  that K emitted the expected kline). Termination is dual cursor exhaustion
+  (DDT-18, DDT-26, DDT-27).
+- Glossary: `@CONTEXT.md` — "Learned" retired (wrong + redundant); LTM states
+  S1-grounds-by-LTM-update with no grounding event.
+- Stub spec: `@specs/stub-kagent.md` — §Event Kinds corrected (K emits only
+  request/proposal/countersign; no ground rows); ST-2/ST-3/ST-10 aligned.
+- Artifact: `scripts/dialogue-mhall.json` — reconciled (task 1.0 done, commit
+  18a9408).
+- Previous generation retired: `scripts/dialogue_runner.py`, the trigger-keyed
+  `ResponseRow` stub, `plans/impl/stub-kagent.md`, and their tests were removed
+  (commit fdd177b). The stub is now the self-cursored table reader; the dispatch
+  loop is `src/training/dialogue/loop.py`.
+- Implementation: **Phases 1-3 done** (commit 7597258) — `src/training/dialogue/`
+  (decoder, supply, stub_kagent, loop); 34 tests; full suite 1199 passed. **Phase
+  4 retired** (no satisfaction module; termination is Phase 3's dual-exhaustion).
+- Open: switchover strategy and retirement of the prior spec/plan (Phase 5);
+  DDT-20 stall escalation (deferred to the real-Kalvin grill).
