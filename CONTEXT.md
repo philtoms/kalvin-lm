@@ -124,7 +124,7 @@ Recognised working context — the klines Kalvin has matched, expanded, or ratif
 _Avoid_: session log (Frame is not a log), session
 
 **LTM (Long-Term Memory)**:
-Persistent knowledge that survives across sessions — klines confirmed (S1) or novel (S4). Structurally identical to Frame; the distinction is semantic. Monotonic; loaded at session start, saved at session end.
+Persistent knowledge that survives across sessions. Structurally identical to Frame; the distinction is semantic. Monotonic; loaded at session start, saved at session end. Kalvin learns continuously (monotonic memory); under S1 ratification it grounds an entry by updating LTM. It does **not** emit a grounding event — grounding is a memory update, not a signal.
 _Avoid_: persistent store (too vague), knowledge base, LTM frame
 
 **Escalation**:
@@ -140,8 +140,13 @@ _Avoid_: canonical (ambiguous with the Structural State), canonized (the intent,
 **MTS Entry**:
 A Canon produced by multi-token signature expansion — the tokenizer encodes a compound signature as the OR-reduction of its constituent token IDs, so the resulting kline is a Canon by construction. An instance of Canon, not the definition; other Canons need not arise from MTS expansion.
 
-**Learned**:
-A compiled entry whose reported significance agrees with its declared significance — Kalvin has understood it and stored it in LTM. Grounding at the declared band is the signal; S1 is not required (an identity is learned at S4, a canon at S2, a relation at S3).
+<!-- "Learned" was retired: the glossary entry framed learning as a detectable,
+band-matched Kalvin event, which is both wrong and redundant. Kalvin learns
+continuously (monotonic memory) and grounds under S1 by updating LTM; it emits
+no grounding event, so there is no event to match a "declared band" against.
+The dialogue-driven-training spec derives run termination from dual cursor
+exhaustion (trainer-side loop + stub), not from any "learned ⊇ submitted"
+computation. -->
 
 **Word Binding**:
 The association of a single-character KScript signature with a word, resolved through BPE annotations in the source. Bindings are scoped by relational-token boundaries; a character resolves to the most recent matching word in its scope.

@@ -6,8 +6,10 @@ This spec defines a training model in which a lesson is driven by an authored
 **dialogue** between Trainer (T) and Kalvin (K), turn by turn. The dialogue is a
 deterministic, table-driven artifact; the Trainer is a **stateless** responder;
 Kalvin is driven by a deterministic contract double during bootstrap and by real
-rationalisation thereafter. An entry is **learned** when it is grounded at its
-declared band — grounding, not S1, is the satisfaction signal.
+rationalisation thereafter. The Trainer's only verification of Kalvin is that K
+emitted the expected kline (the K-side of two-sided validation); it never
+assesses whether Kalvin has *learned* anything. The run terminates on dual
+cursor exhaustion.
 
 This is an **alternative** to `@specs/trainer-satisfaction.md` and its associated
 planning. It replaces that spec's batch-partition + held-index framing with a
@@ -19,7 +21,7 @@ source change.
 
 ## Dependencies
 
-- `@CONTEXT.md` — Learned, Canon, Ratify, Significance, Structural State, Scaffolding.
+- `@CONTEXT.md` — Canon, Ratify, Significance, Structural State, Scaffolding.
 - `@specs/harness-server.md` — Trainer participant, bus actions (`submit`,
   `countersign`, `rationalise`), supervisor messages, KAgent adapter.
 - `@specs/agent.md` — RationaliseEvent shape; significance carried on the KValue.
@@ -185,16 +187,21 @@ reciprocal at **S1** (UNDERSIGNED for a CONNOTED proposal, etc.). Ratification i
 the Trainer's endorsement of a structure Kalvin constructed. Per `@CONTEXT.md`
 §Ratify, ratification is the action of countersigning a selected proposal.
 
-### Learned / Satisfaction
+### Termination and K-verification
 
-An entry is **learned** (satisfied) when Kalvin grounds it at its **declared
-band** — i.e. a Kalvin event whose `proposal` kline equals the entry's kline
-(KLine equality) and whose `proposal.significance` equals the entry's declared
-band. S1 is not required: an identity is learned at S4, a canon at S2, a relation
-at S3, a countersigned pair at S1.
+There is no satisfaction or "learned" computation. Kalvin learns continuously
+(monotonic memory) and grounds under S1 ratification by updating LTM; it emits
+**no grounding event**, so there is nothing for the Trainer to match a declared
+band against. The Trainer never verifies whether Kalvin has learned an entry —
+its only verification of Kalvin is structural: **did K emit the expected kline at
+the cursor?** (the K-side of two-sided validation, §Training Loop).
 
-The lesson is complete when every compiled entry is learned (`learned ⊇
-submitted`), where `submitted` spans all four bands.
+The run ends on **dual cursor exhaustion** (§Training Loop): the trainer-side
+cursor and the stub cursor both reach the end. The canonical table's final K is
+the closing S1 countersign of the primary; dual-exhaustion requires that K-run
+to have been emitted and matched, so the closing S1 is **verified by
+construction, not trusted** (and not semantically detected — the Trainer stays
+stateless).
 
 ### Training Loop (dispatch and cursors)
 
@@ -288,14 +295,16 @@ authored.
 11. The Trainer is stateless. Its response depends only on the incoming turn and
     the compiled script — never on dialogue history.
 
-### Learning
+### K-verification and termination
 
-12. An entry is learned when Kalvin grounds it at its declared band (KLine equal,
-    significance equal).
-13. Grounding, not S1, is the satisfaction signal. S4 grounds satisfy
-    identities; S2 grounds satisfy canons; S3 grounds satisfy relations; S1
-    satisfies the countersigned primary.
-14. The lesson is complete when `learned ⊇ submitted` across all four bands.
+12. The Trainer never verifies whether Kalvin has learned an entry. Its only
+    verification of Kalvin is structural: the K it received equals the table's K
+    at the cursor (the K-side of two-sided validation, §Training Loop).
+13. Kalvin learns continuously (monotonic memory) and grounds under S1
+    ratification by updating LTM. It emits **no grounding event** — there is no
+    "declared band" event to match, and no `learned ⊇ submitted` computation.
+14. The Trainer never verifies whether Kalvin has learned an entry; its only
+    K-verification is structural (K == table K at the cursor).
 15. The run ends on **dual cursor exhaustion** (trainer cursor AND stub cursor
     empty). The canonical table's final K is the closing S1 countersign of the
     primary; dual-exhaustion requires that K-run to have been emitted and
@@ -324,7 +333,8 @@ authored.
 ### Subword Canons
 
 16. Tokenizer subword canons are **not filtered** out of the withheld set. They
-    are withheld, ratifiable, and learned at S2 like any Canon.
+    are withheld and ratifiable, supplied at the node-terminality band like any
+    Canon.
 17. Subword structure is future-proofing: Kalvin needs it to reconstruct words
     for novel queries. All subword entries become grounded.
 
@@ -337,17 +347,18 @@ authored.
     distinct event or escalation reason. (Supervisors are not invoked in the
     bootstrap run.)
 
-### Divergence (band mismatch)
+### Divergence (K mismatch)
 
-19. If Kalvin grounds an entry at a band different from its declared band, the
-    Trainer records a divergence (reported ≠ declared).
-    - **Under-reach** (reported < declared): not learned; the cascade continues.
-    - **Over-reach** (reported > declared): learned, with an informational
-      supervisor signal (`progress: over_reach`) so a supervisor can decide
-      whether the over-reach is a discovery or an author error.
-20. The stub never diverges; §Divergences is exercised only by real Kalvin. It is
-    specified here to fix the Trainer's behaviour when the Kalvin grill
-    introduces real responses.
+19. The only Kalvin divergence the Trainer recognises is structural: K emitted a
+    kline that does not match the table's K at the cursor (a stub/table view
+    mismatch, or — for real Kalvin — a kline the table did not prescribe). This
+    is caught by the K-side of two-sided validation (§Training Loop) and fails
+    fast with side attribution. There is no band-comparison divergence:
+    "over-reach" and "under-reach" as reported-vs-declared-band concepts do not
+    apply, because Kalvin emits no grounding event to compare.
+20. The stub cannot diverge structurally either: it emits its own K-rows from its
+    own cursor, so by construction it emits exactly its view of the table (§Out
+    of Scope of the stub spec). §Divergence is exercised only by real Kalvin.
 
 ### "Kalvin never derives a withheld kline"
 
@@ -373,12 +384,13 @@ authored.
 
 The reference dialogue is the "Mary had a little lamb" exchange
 (`scripts/dialogue-mhall.json`): a single depth-first cascade opened by the
-primary `{MHALL:[SVO]}` at S2, driven by K's S4 requests, resolving the canons
-C_MHALL, C_ALL, C_SVO at S2 and every subword canon at S2/S1, with the
-role-binding relations (Mary↔subject, had↔verb, ALL↔object) K-discovered as S3
-proposals and T-ratified as S1, closing on K's S1 countersign of the primary.
-Every compiled entry is learned at its declared band. The deterministic driver
-is `@specs/stub-kagent.md`.
+primary `{MHALL:[SVO]}` at S2, driven by K's S4 requests, with the role-binding
+relations (Mary↔subject, had↔verb, ALL↔object) K-discovered as S3 proposals and
+T-ratified as S1, closing on K's S1 countersign of the primary. K emits only
+requests, proposals, and the closing countersign — it emits no grounding events.
+The run terminates on dual cursor exhaustion; the deterministic driver is
+`@specs/stub-kagent.md`. (Kalvin's learning — entries entering LTM under S1
+ratification — is monotonic memory, not a Trainer-verified gate.)
 
 ## Test Matrix
 
@@ -398,13 +410,13 @@ is `@specs/stub-kagent.md`.
 | DDT-12 | The Trainer attaches S1 to supplied entries with terminal nodes, S2 to those with non-terminal nodes | §Significance the Trainer Attaches |
 | DDT-13 | On a K S3 proposal, the Trainer ratifies with the reciprocal at S1 | §Ratification |
 | DDT-14 | On a K S1 terminal, the Trainer takes no action; the run advances | §Driving the dialogue |
-| DDT-15 | An entry is learned when grounded at its declared band (KLine equal, significance equal) | §Learned / Satisfaction |
-| DDT-16 | Grounding, not S1, satisfies; S4 satisfies identities, S2 canons, S3 relations | §Learned / Satisfaction |
-| DDT-17 | The lesson completes when `learned ⊇ submitted` across all four bands | §Learned / Satisfaction |
-| DDT-18 | The run ends on dual cursor exhaustion (trainer AND stub); the canonical table's final K is the closing S1, verified not trusted | §Training Loop, §Driving the dialogue |
-| DDT-19 | Subword canons are not filtered; they are withheld, ratifiable, learned at S2 | §Subword Canons |
+| DDT-15 | (retired) The Trainer never verifies Kalvin's learning; its only K-verification is structural (K == table K at the cursor) | §Termination and K-verification |
+| DDT-16 | (retired) Kalvin learns continuously and grounds under S1 by updating LTM; it emits no grounding event | §Termination and K-verification |
+| DDT-17 | (retired) No `learned ⊇ submitted` computation; the run terminates on dual cursor exhaustion | §Termination and K-verification |
+| DDT-18 | The run ends on dual cursor exhaustion (trainer AND stub); the canonical table's final K is the closing S1, verified not trusted | §Training Loop, §Termination and K-verification |
+| DDT-19 | Subword canons are not filtered; they are withheld, ratifiable, supplied at the node-terminality band | §Subword Canons |
 | DDT-20 | A request with no held kline is escalated per supervisor-decision (no distinct event) | §Stall |
-| DDT-21 | Over-reach is learned with an informational `progress: over_reach`; under-reach is not learned | §Divergence |
+| DDT-21 | (retired) No band-comparison divergence (over/under-reach); the only K divergence is structural (K != table K), caught by two-sided validation | §Divergence |
 | DDT-22 | The loop is dispatch-driven: T computed by the supply function, table validates; not a replayer | §Training Loop |
 | DDT-23 | Both actors are self-cursored (trainer over T-rows, stub over K-rows); no kline-matching between them | §Training Loop |
 | DDT-24 | Dispatch is greedy per actor: a run of consecutive same-actor rows is consumed whole; 1:1 is not a constraint | §Training Loop |

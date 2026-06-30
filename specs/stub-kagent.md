@@ -42,21 +42,21 @@ of it is its ordered subsequence of `actor == "K"` turns.
 
 Per the mental note (not yet spec'd globally), event kinds collapse toward
 significance. The stub emits every K-turn as a `frame` event whose
-`proposal.significance` is the turn's declared band:
+`proposal.significance` is the turn's declared band. K emits **only** requests,
+proposals, and the closing countersign — it never emits a grounding event
+(Kalvin learns continuously and grounds under S1 by updating LTM; grounding is a
+memory update, not an emitted signal):
 
 | K-turn intent | Event `kind` | `proposal.significance` | Meaning |
 |---------------|--------------|------------------------|---------|
 | request (gap) | `frame` | S4 | "I'm missing this operand" |
-| ground at S4 (atom) | `frame` | S4 | atom understood, in LTM |
-| ground at S2 (canon) | `frame` | S2 | canon resolved, in LTM |
-| ground at S3 (relation) | `frame` | S3 | relation resolved, in LTM |
+| proposal (relation) | `frame` | S3 | tentative association K constructed |
 | countersign (primary S1) | `frame` | S1 | primary reciprocal detected, ratified |
 
 The stub never emits the legacy `ground` kind; `ground` is reserved for the future
-S1-only reading. Until the global event-kind change lands, the trainer's
-satisfaction logic keys on `proposal.significance` (the band), not on `kind`. The
-`query` voice of each emitted event is the `value` passed to the `rationalise`
-call that triggered the emission.
+S1-only reading. The trainer keys on `proposal.significance` (the band), not on
+`kind`. The `query` voice of each emitted event is the `value` passed to the
+`rationalise` call that triggered the emission.
 
 ### Self-Cursored, Greedy Emission
 
@@ -80,12 +80,14 @@ well-formed table.
 
 ### Atom Reuse
 
-When a Canon whose operands are already grounded is reached in the K-row sequence,
-the table emits the Canon's ground at S2 with no preceding requests. Atom reuse is
-**table-prescribed**, not inferred — the table omits the request rows for already-
-grounded operands (e.g. `C_SVO` grounds with zero new primes because S, V, O
-grounded earlier in the cascade). The stub's `grounded` set is observational, not
-behavioural: the stub never consults it to decide what to emit.
+When a Canon whose operands are already requested is reached in the K-row
+sequence, the table prescribes the Canon's behaviour directly (it emits no
+preceding requests for already-supplied operands). Atom reuse is
+**table-prescribed**, not inferred — the table omits request rows for operands
+already in play. The stub's `grounded` set is observational, not behavioural:
+the stub never consults it to decide what to emit. (The stub emits no grounding
+events; `grounded` merely records which kline signatures the stub has emitted a
+K-turn for.)
 
 ## Definition (the stub as a KAgent)
 
@@ -192,14 +194,14 @@ The stub is dumb by design; it cannot recover, and it does not need to.
 |-----|-----------|------------|
 | ST-1 | `StubKAgent` satisfies `_KAgentLike` (rationalise, countersign, save, codec) | §Definition |
 | ST-2 | `rationalise` emits a K-run's request rows as `frame` events at SIG_S4 | §rationalise |
-| ST-3 | `rationalise` emits a K-run's ground rows at their structural band | §rationalise |
+| ST-3 | `rationalise` emits a K-run's proposal rows at SIG_S3 and countersign rows at SIG_S1 (K emits no grounding events) | §rationalise |
 | ST-4 | `rationalise` emits a K-run's countersign rows at SIG_S1 | §rationalise |
 | ST-5 | The stub is self-cursored: each `rationalise` advances the cursor by one K-run; the cursor never moves backward and never inspects `value` | §Self-Cursored, §Behavioural Rules |
 | ST-6 | `rationalise` with the cursor at end returns True with no events (normal end-of-run signal) | §rationalise |
 | ST-7 | Events are emitted in authored (cursor) order within a K-run | §rationalise |
 | ST-8 | `countersign` is a no-op returning True | §countersign |
 | ST-9 | The stub drives a single cascade from its opening emission to the end of its K-rows; no proactive re-prompts mid-run | §Single Cascade |
-| ST-10 | Atom reuse is table-prescribed (the K-row sequence omits requests for already-grounded operands); `grounded` is observational, never consulted for emission | §Atom Reuse |
+| ST-10 | Atom reuse is table-prescribed (the K-row sequence omits requests for operands already in play); `grounded` is observational, never consulted for emission | §Atom Reuse |
 | ST-11 | Event significance is carried on `proposal.significance`, not on the event `kind` | §Event Kinds |
 | ST-12 | The stub consumes the K-rows of the shared pre-decoded dialogue table (no separate response table; no trigger-matching) | §The Dialogue Table |
 | ST-13 | The `query` voice of every emitted event is the `value` passed to the triggering `rationalise` | §Event Kinds, §rationalise |
