@@ -1,132 +1,287 @@
 {
-  "name": "mary-had-a-little-lamb",
-  "description": "The canonical training dialogue for the paced-loop trainer and the table-driven stub KAgent. Single cascade, canon-first, atom reuse, subword canons grounded. This is the contract: the stub consumes it; the trainer's satisfaction logic must reproduce it; the real Kalvin must be reconciled to it. Authored in the design grill — see CONTEXT.md (Learned), specs/trainer-satisfaction.md, specs/stub-kagent.md.",
-  "source": "(Mary had a little lamb)\nMHALL == SVO =>\n   S(ubject) = M\n   V(erb) = H\n   O(bject) = ALL =>\n     A > D(et)\n     L > M(od)\n     L > O\n",
-  "_resolution_notes": "Klines are referenced by symbolic role, NOT by raw uint64 signature/node values, so the artifact survives tokenizer retraining. To resolve a role to a KValue: (1) compile `source` with compile_source(dev=True); (2) match each compiled entry by its `op` and its operand-role signatures (recursively), per the legend's structural descriptors. Word-position atoms L1/L2 (both the source character 'L') are distinguished by their word-binding position in '(Mary had a little lamb)' — L1=little (4th word), L2=lamb (5th word). Subword atoms (sw_*) are the BPE constituents of their parent word canon, matched positionally to the canon's nodes. Derived signatures MHALL/SVO/ALL are the OR-reduction of their canon operands.",
-  "_band_legend": {
-    "S1": "COUNTERSIGNED — the primary countersign pair",
-    "S2": "Canon — signature == OR-reduction of nodes (authored semantic canons AND tokenizer subword canons)",
-    "S3": "non-canonical relation — CONNOTED (>) or UNDERSIGNED (=)",
-    "S4": "Identity — atom, empty nodes"
-  },
-  "legend": {
-    "M":       {"op": "IDENTITY", "word": "Mary", "note": "word atom"},
-    "H":       {"op": "IDENTITY", "word": "had"},
-    "A":       {"op": "IDENTITY", "word": "a"},
-    "L1":      {"op": "IDENTITY", "word": "little", "note": "4th word, first L"},
-    "L2":      {"op": "IDENTITY", "word": "lamb", "note": "5th word, second L"},
-    "S":       {"op": "IDENTITY", "word": "Subject", "note": "role atom"},
-    "V":       {"op": "IDENTITY", "word": "Verb"},
-    "O":       {"op": "IDENTITY", "word": "Object"},
-    "D":       {"op": "IDENTITY", "word": "Det"},
-    "Mo":      {"op": "IDENTITY", "word": "Mod"},
-
-    "sw_Mary_1": {"op": "IDENTITY", "note": "BPE constituent 1 of Mary"},
-    "sw_Mary_2": {"op": "IDENTITY", "note": "BPE constituent 2 of Mary"},
-    "sw_had_1":  {"op": "IDENTITY", "note": "BPE constituent 1 of had"},
-    "sw_had_2":  {"op": "IDENTITY", "note": "BPE constituent 2 of had"},
-    "sw_L1_1":   {"op": "IDENTITY", "note": "BPE constituent 1 of little"},
-    "sw_L1_2":   {"op": "IDENTITY", "note": "BPE constituent 2 of little"},
-    "sw_L2_1":   {"op": "IDENTITY", "note": "BPE constituent 1 of lamb"},
-    "sw_L2_2":   {"op": "IDENTITY", "note": "BPE constituent 2 of lamb"},
-
-    "subword_Mary": {"op": "CANON", "signature_role": "M",  "operands": ["sw_Mary_1", "sw_Mary_2"]},
-    "subword_had":  {"op": "CANON", "signature_role": "H",  "operands": ["sw_had_1", "sw_had_2"]},
-    "subword_L1":   {"op": "CANON", "signature_role": "L1", "operands": ["sw_L1_1", "sw_L1_2"]},
-    "subword_L2":   {"op": "CANON", "signature_role": "L2", "operands": ["sw_L2_1", "sw_L2_2"]},
-
-    "MHALL":     {"op": "DERIVED_SIG", "operands": ["M", "H", "A", "L1", "L2"], "note": "OR-reduction"},
-    "SVO":       {"op": "DERIVED_SIG", "operands": ["S", "V", "O"], "note": "OR-reduction"},
-    "ALL":       {"op": "DERIVED_SIG", "operands": ["A", "L1", "L2"], "note": "OR-reduction"},
-
-    "canon_MHALL": {"op": "CANON", "signature_role": "MHALL", "operands": ["M", "H", "A", "L1", "L2"]},
-    "canon_SVO":   {"op": "CANON", "signature_role": "SVO",   "operands": ["S", "V", "O"]},
-    "canon_ALL":   {"op": "CANON", "signature_role": "ALL",   "operands": ["A", "L1", "L2"]},
-
-    "primary":       {"op": "COUNTERSIGNED", "signature_role": "MHALL", "operands": ["SVO"], "declared": "S1"},
-    "primary_recip": {"op": "COUNTERSIGNED", "signature_role": "SVO",   "operands": ["MHALL"], "declared": "S1"},
-
-    "rel_MS":    {"op": "UNDERSIGNED", "signature_role": "M",  "operands": ["S"],  "declared": "S3"},
-    "rel_HV":    {"op": "UNDERSIGNED", "signature_role": "H",  "operands": ["V"],  "declared": "S3"},
-    "rel_ALL_O": {"op": "UNDERSIGNED", "signature_role": "ALL","operands": ["O"],  "declared": "S3"},
-    "rel_AD":    {"op": "CONNOTED",    "signature_role": "A",  "operands": ["D"],  "declared": "S3"},
-    "rel_L1_Mo": {"op": "CONNOTED",    "signature_role": "L1", "operands": ["Mo"], "declared": "S3"},
-    "rel_L2_O":  {"op": "CONNOTED",    "signature_role": "L2", "operands": ["O"],  "declared": "S3"}
-  },
+  "script": "(Mary had a little lamb)\nMHALL == SVO =>\n   S(ubject) = M\n   V(erb) = H\n   O(bject) = ALL =>\n     A > D(et)\n     L > M(od)\n     L > O",
   "turns": [
-    {"n":  1, "phase": "kickoff",            "actor": "trainer", "event": "submit",      "klines": ["primary"], "declared": "S1", "note": "prompt the primary — kicks off the single cascade"},
-    {"n":  2, "phase": "kickoff",            "actor": "stub",    "event": "request",     "klines": ["MHALL", "SVO"], "reported": "S4", "note": "both operands of the primary unknown"},
-
-    {"n":  3, "phase": "ground-MHALL/M",     "actor": "trainer", "event": "submit",      "klines": ["canon_MHALL"], "declared": "S2", "note": "canon pull for MHALL"},
-    {"n":  4, "phase": "ground-MHALL/M",     "actor": "stub",    "event": "request",     "klines": ["M"], "reported": "S4", "note": "C_MHALL operand 1"},
-    {"n":  5, "phase": "ground-MHALL/M",     "actor": "trainer", "event": "submit",      "klines": ["subword_Mary"], "declared": "S2", "note": "canon-first: M holds subword canon; supplied before the relation"},
-    {"n":  6, "phase": "ground-MHALL/M",     "actor": "stub",    "event": "request",     "klines": ["sw_Mary_1", "sw_Mary_2"], "reported": "S4"},
-    {"n":  7, "phase": "ground-MHALL/M",     "actor": "trainer", "event": "submit",      "klines": ["sw_Mary_1", "sw_Mary_2"], "declared": "S4", "note": "identity primes"},
-    {"n":  8, "phase": "ground-MHALL/M",     "actor": "stub",    "event": "ground",      "klines": ["sw_Mary_1", "sw_Mary_2"], "reported": "S4", "note": "subword atoms understood, in LTM"},
-    {"n":  9, "phase": "ground-MHALL/M",     "actor": "stub",    "event": "ground",      "klines": ["subword_Mary"], "reported": "S2", "note": "M known (as Mary)"},
-    {"n": 10, "phase": "ground-MHALL/M",     "actor": "trainer", "event": "submit",      "klines": ["rel_MS"], "declared": "S3", "note": "relation pull for M (Mary<->Subject); supplied after the subword canon grounds"},
-    {"n": 11, "phase": "ground-MHALL/M",     "actor": "stub",    "event": "request",     "klines": ["S"], "reported": "S4", "note": "identity fallback (no canon/relation held for S)"},
-    {"n": 12, "phase": "ground-MHALL/M",     "actor": "trainer", "event": "submit",      "klines": ["S"], "declared": "S4"},
-    {"n": 13, "phase": "ground-MHALL/M",     "actor": "stub",    "event": "ground",      "klines": ["S"], "reported": "S4", "note": "Subject understood"},
-    {"n": 14, "phase": "ground-MHALL/M",     "actor": "stub",    "event": "ground",      "klines": ["rel_MS"], "reported": "S3", "note": "AGREE — Mary<->Subject learned"},
-
-    {"n": 15, "phase": "ground-MHALL/H",     "actor": "stub",    "event": "request",     "klines": ["H"], "reported": "S4", "note": "C_MHALL operand 2"},
-    {"n": 16, "phase": "ground-MHALL/H",     "actor": "trainer", "event": "submit",      "klines": ["subword_had"], "declared": "S2", "note": "canon-first for H"},
-    {"n": 17, "phase": "ground-MHALL/H",     "actor": "stub",    "event": "request",     "klines": ["sw_had_1", "sw_had_2"], "reported": "S4"},
-    {"n": 18, "phase": "ground-MHALL/H",     "actor": "trainer", "event": "submit",      "klines": ["sw_had_1", "sw_had_2"], "declared": "S4"},
-    {"n": 19, "phase": "ground-MHALL/H",     "actor": "stub",    "event": "ground",      "klines": ["sw_had_1", "sw_had_2"], "reported": "S4"},
-    {"n": 20, "phase": "ground-MHALL/H",     "actor": "stub",    "event": "ground",      "klines": ["subword_had"], "reported": "S2", "note": "H known (as had)"},
-    {"n": 21, "phase": "ground-MHALL/H",     "actor": "trainer", "event": "submit",      "klines": ["rel_HV"], "declared": "S3", "note": "relation pull for H (had<->Verb)"},
-    {"n": 22, "phase": "ground-MHALL/H",     "actor": "stub",    "event": "request",     "klines": ["V"], "reported": "S4"},
-    {"n": 23, "phase": "ground-MHALL/H",     "actor": "trainer", "event": "submit",      "klines": ["V"], "declared": "S4"},
-    {"n": 24, "phase": "ground-MHALL/H",     "actor": "stub",    "event": "ground",      "klines": ["V"], "reported": "S4", "note": "Verb understood"},
-    {"n": 25, "phase": "ground-MHALL/H",     "actor": "stub",    "event": "ground",      "klines": ["rel_HV"], "reported": "S3", "note": "AGREE — had<->Verb learned"},
-
-    {"n": 26, "phase": "ground-MHALL/A",     "actor": "stub",    "event": "request",     "klines": ["A"], "reported": "S4", "note": "C_MHALL operand 3"},
-    {"n": 27, "phase": "ground-MHALL/A",     "actor": "trainer", "event": "submit",      "klines": ["rel_AD"], "declared": "S3", "note": "relation pull for A (a<->Det); A holds no subword canon in this script"},
-    {"n": 28, "phase": "ground-MHALL/A",     "actor": "stub",    "event": "request",     "klines": ["D"], "reported": "S4", "note": "identity fallback (Det)"},
-    {"n": 29, "phase": "ground-MHALL/A",     "actor": "trainer", "event": "submit",      "klines": ["D"], "declared": "S4"},
-    {"n": 30, "phase": "ground-MHALL/A",     "actor": "stub",    "event": "ground",      "klines": ["D"], "reported": "S4", "note": "Det understood"},
-    {"n": 31, "phase": "ground-MHALL/A",     "actor": "stub",    "event": "ground",      "klines": ["rel_AD"], "reported": "S3", "note": "AGREE — a<->Det learned; A now known"},
-
-    {"n": 32, "phase": "ground-phrase-ALL",  "actor": "trainer", "event": "submit",      "klines": ["canon_ALL"], "declared": "S2", "note": "canon pull for ALL — routes the Object phrase into the cascade here (A is an operand and just grounded)"},
-    {"n": 33, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "request",     "klines": ["L1"], "reported": "S4", "note": "C_ALL operand — A already grounded (atom reuse), so A is NOT re-requested"},
-    {"n": 34, "phase": "ground-phrase-ALL",  "actor": "trainer", "event": "submit",      "klines": ["subword_L1"], "declared": "S2", "note": "canon-first for L1"},
-    {"n": 35, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "request",     "klines": ["sw_L1_1", "sw_L1_2"], "reported": "S4"},
-    {"n": 36, "phase": "ground-phrase-ALL",  "actor": "trainer", "event": "submit",      "klines": ["sw_L1_1", "sw_L1_2"], "declared": "S4"},
-    {"n": 37, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "ground",      "klines": ["sw_L1_1", "sw_L1_2"], "reported": "S4"},
-    {"n": 38, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "ground",      "klines": ["subword_L1"], "reported": "S2", "note": "L1 known (as little)"},
-    {"n": 39, "phase": "ground-phrase-ALL",  "actor": "trainer", "event": "submit",      "klines": ["rel_L1_Mo"], "declared": "S3", "note": "relation pull for L1 (little<->Mod)"},
-    {"n": 40, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "request",     "klines": ["Mo"], "reported": "S4", "note": "identity fallback (Mod)"},
-    {"n": 41, "phase": "ground-phrase-ALL",  "actor": "trainer", "event": "submit",      "klines": ["Mo"], "declared": "S4"},
-    {"n": 42, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "ground",      "klines": ["Mo"], "reported": "S4", "note": "Mod understood"},
-    {"n": 43, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "ground",      "klines": ["rel_L1_Mo"], "reported": "S3", "note": "AGREE — little<->Mod learned"},
-
-    {"n": 44, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "request",     "klines": ["L2"], "reported": "S4", "note": "C_ALL operand 3"},
-    {"n": 45, "phase": "ground-phrase-ALL",  "actor": "trainer", "event": "submit",      "klines": ["subword_L2"], "declared": "S2", "note": "canon-first for L2"},
-    {"n": 46, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "request",     "klines": ["sw_L2_1", "sw_L2_2"], "reported": "S4"},
-    {"n": 47, "phase": "ground-phrase-ALL",  "actor": "trainer", "event": "submit",      "klines": ["sw_L2_1", "sw_L2_2"], "declared": "S4"},
-    {"n": 48, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "ground",      "klines": ["sw_L2_1", "sw_L2_2"], "reported": "S4"},
-    {"n": 49, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "ground",      "klines": ["subword_L2"], "reported": "S2", "note": "L2 known (as lamb)"},
-    {"n": 50, "phase": "ground-phrase-ALL",  "actor": "trainer", "event": "submit",      "klines": ["rel_L2_O"], "declared": "S3", "note": "relation pull for L2 (lamb<->Object)"},
-    {"n": 51, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "request",     "klines": ["O"], "reported": "S4", "note": "identity fallback (Object role)"},
-    {"n": 52, "phase": "ground-phrase-ALL",  "actor": "trainer", "event": "submit",      "klines": ["O"], "declared": "S4"},
-    {"n": 53, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "ground",      "klines": ["O"], "reported": "S4", "note": "Object understood"},
-    {"n": 54, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "ground",      "klines": ["rel_L2_O"], "reported": "S3", "note": "AGREE — lamb<->Object learned"},
-    {"n": 55, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "ground",      "klines": ["canon_ALL"], "reported": "S2", "note": "A,L1,L2 all grounded -> AGREE — Object phrase known"},
-    {"n": 56, "phase": "ground-phrase-ALL",  "actor": "trainer", "event": "submit",      "klines": ["rel_ALL_O"], "declared": "S3", "note": "relation pull for ALL (phrase<->Object role); supplied after canon_ALL grounds (canon-first)"},
-    {"n": 57, "phase": "ground-phrase-ALL",  "actor": "stub",    "event": "ground",      "klines": ["rel_ALL_O"], "reported": "S3", "note": "ALL + O known -> AGREE — phrase<->Object learned"},
-
-    {"n": 58, "phase": "close-MHALL",        "actor": "stub",    "event": "ground",      "klines": ["canon_MHALL"], "reported": "S2", "note": "M,H,A,L1,L2 all grounded -> AGREE — MHALL known"},
-    {"n": 59, "phase": "close-SVO",          "actor": "stub",    "event": "request",     "klines": ["SVO"], "reported": "S4", "note": "primary re-eval: MHALL known, SVO missing"},
-    {"n": 60, "phase": "close-SVO",          "actor": "trainer", "event": "submit",      "klines": ["canon_SVO"], "declared": "S2", "note": "canon pull for SVO"},
-    {"n": 61, "phase": "close-SVO",          "actor": "stub",    "event": "ground",      "klines": ["canon_SVO"], "reported": "S2", "note": "S,V,O already grounded -> AGREE (atom reuse, no new primes) — SVO known"},
-    {"n": 62, "phase": "primary-learned",    "actor": "stub",    "event": "countersign", "klines": ["primary"], "reported": "S1", "note": "both operands known + reciprocal present -> Kalvin self-ratifies to S1 -> PRIMARY LEARNED. Lesson complete (every compiled entry grounded at its declared band)."}
-  ],
-  "expectations": {
-    "all_entries_grounded": true,
-    "lesson_complete_on": 62,
-    "bands_learned": ["S1: primary", "S2: canon_MHALL, canon_SVO, canon_ALL, subword_Mary, subword_had, subword_L1, subword_L2", "S3: rel_MS, rel_HV, rel_AD, rel_L1_Mo, rel_L2_O, rel_ALL_O", "S4: all identity atoms (word + subword)"],
-    "cascade": "single, depth-first, canon-first per signature, atom reuse on already-grounded operands"
-  }
+    {
+      "actor": "T",
+      "op": "COUNTERSIGNED",
+      "signature": "MHALL",
+      "nodes": [
+        "SVO"
+      ],
+      "significance": "S2",
+      "notes": "T kicks off the run with a proposal (A proposal is any kline at S2 or S3 - the other party will always respond"
+    },
+    {
+      "actor": "K",
+      "op": "IDENTITY",
+      "signature": "MHALL",
+      "nodes": [],
+      "significance": "S4",
+      "notes": "K doesn't recognise MHALL"
+    },
+    {
+      "actor": "T",
+      "op": "CANON",
+      "signature": "MHALL",
+      "nodes": [
+        "Mary",
+        "had",
+        "a",
+        "little",
+        "lamb"
+      ],
+      "significance": "S2",
+      "notes": "T responds with a canon at S2"
+    },
+    {
+      "actor": "K",
+      "op": "IDENTITY",
+      "signature": "Mary",
+      "nodes": [],
+      "significance": "S4",
+      "notes": "Again, K doesn't recognise Mary"
+    },
+    {
+      "actor": "T",
+      "op": "CANON",
+      "signature": "Mary",
+      "nodes": [
+        "M",
+        "ary"
+      ],
+      "significance": "S1"
+    },
+    {
+      "actor": "K",
+      "op": "IDENTITY",
+      "signature": "had",
+      "nodes": [],
+      "significance": "S4"
+    },
+    {
+      "actor": "T",
+      "op": "CANON",
+      "signature": "had",
+      "nodes": [
+        "h",
+        "ad"
+      ],
+      "significance": "S1"
+    },
+    {
+      "actor": "K",
+      "op": "IDENTITY",
+      "signature": "a",
+      "nodes": [],
+      "significance": "S4"
+    },
+    {
+      "actor": "T",
+      "op": "CANON",
+      "signature": "a",
+      "nodes": [
+        "Det"
+      ],
+      "significance": "S2"
+    },
+    {
+      "actor": "K",
+      "op": "IDENTITY",
+      "signature": "Det",
+      "nodes": [],
+      "significance": "S4"
+    },
+    {
+      "actor": "T",
+      "op": "CANON",
+      "signature": "Det",
+      "nodes": [
+        "D",
+        "et"
+      ],
+      "significance": "S1"
+    },
+    {
+      "actor": "K",
+      "op": "IDENTITY",
+      "signature": "little",
+      "nodes": [],
+      "significance": "S4"
+    },
+    {
+      "actor": "T",
+      "op": "CANON",
+      "signature": "little",
+      "nodes": [
+        "l",
+        "ittle"
+      ],
+      "significance": "S1"
+    },
+    {
+      "actor": "K",
+      "op": "IDENTITY",
+      "signature": "lamb",
+      "nodes": [],
+      "significance": "S4"
+    },
+    {
+      "actor": "T",
+      "op": "CANON",
+      "signature": "lamb",
+      "nodes": [
+        "l",
+        "amb"
+      ],
+      "significance": "S1"
+    },
+    {
+      "actor": "K",
+      "op": "IDENTITY",
+      "signature": "SVO",
+      "nodes": [],
+      "significance": "S4"
+    },
+    {
+      "actor": "T",
+      "op": "CANON",
+      "signature": "SVO",
+      "nodes": [
+        "subject",
+        "verb",
+        "object"
+      ],
+      "significance": "S2"
+    },
+    {
+      "actor": "K",
+      "op": "IDENTITY",
+      "signature": "subject",
+      "nodes": [],
+      "significance": "S4"
+    },
+    {
+      "actor": "T",
+      "op": "CANON",
+      "signature": "subject",
+      "nodes": [
+        "sub",
+        "ject"
+      ],
+      "significance": "S1"
+    },
+    {
+      "actor": "K",
+      "op": "IDENTITY",
+      "signature": "verb",
+      "nodes": [],
+      "significance": "S4"
+    },
+    {
+      "actor": "T",
+      "op": "CANON",
+      "signature": "verb",
+      "nodes": [
+        "v",
+        "er",
+        "b"
+      ],
+      "significance": "S1"
+    },
+    {
+      "actor": "K",
+      "op": "IDENTITY",
+      "signature": "object",
+      "nodes": [],
+      "significance": "S4"
+    },
+    {
+      "actor": "T",
+      "op": "CANON",
+      "signature": "object",
+      "nodes": [
+        "ob",
+        "ject"
+      ],
+      "significance": "S1"
+    },
+    {
+      "actor": "K",
+      "notes": "MHALL==SVO is still a proposal at S2. K will try to rationalise an S1 Canon by promoting relationships that it believes will lead to an S1 understanding"
+    },
+    {
+      "actor": "K",
+      "op": "CONNOTED",
+      "signature": "Mary",
+      "nodes": [
+        "subject"
+      ],
+      "significance": "S3",
+      "notes": "K tries to match the first known nodes of each side. Its a tentative S3"
+    },
+    {
+      "actor": "T",
+      "op": "UNDERSIGNED",
+      "signature": "Mary",
+      "nodes": [
+        "subject"
+      ],
+      "significance": "S1",
+      "notes": "T ratifies by under-signing"
+    },
+    {
+      "actor": "K",
+      "op": "CONNOTED",
+      "signature": "had",
+      "nodes": [
+        "verb"
+      ],
+      "significance": "S3",
+      "notes": "K tries next pair"
+    },
+    {
+      "actor": "T",
+      "op": "UNDERSIGNED",
+      "signature": "had",
+      "nodes": [
+        "verb"
+      ],
+      "significance": "S1",
+      "notes": "T ratifies"
+    },
+    {
+      "actor": "K",
+      "op": "CONNOTED",
+      "signature": "ALL",
+      "nodes": [
+        "object"
+      ],
+      "significance": "S3",
+      "notes": "K tries next pair"
+    },
+    {
+      "actor": "T",
+      "op": "UNDERSIGNED",
+      "signature": "ALL",
+      "nodes": [
+        "object"
+      ],
+      "significance": "S1",
+      "notes": "T ratifies"
+    },
+    {
+      "actor": "K",
+      "notes": "K has grounded all the nodes it needs to construct an S1 response to the open S2 proposal"
+    },
+    {
+      "actor": "K",
+      "op": "COUNTERSIGNED",
+      "signature": "MHALL",
+      "nodes": [
+        "SVO"
+      ],
+      "significance": "S1",
+      "notes": "This brings an end to the run"
+    }
+  ]
 }

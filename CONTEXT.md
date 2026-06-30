@@ -131,10 +131,17 @@ _Avoid_: persistent store (too vague), knowledge base, LTM frame
 The Trainer deferring a proposal it cannot auto-ratify to the supervisor for resolution. The boundary between what the Trainer resolves and what the supervisor resolves.
 
 **Ratify**:
-Countersigning a selected proposal. Either auto-ratified by the Trainer when the proposal structurally matches a loaded expectation, or performed by the supervisor when the proposal is escalated.
+The action of countersigning a selected proposal. Usually performed by the Trainer during curriculum execution.
+
+**Canon**:
+A relationship kline whose signature is the OR-reduction of its nodes (`signature == make_signature(nodes)`) — structurally a self-grounded fit (S1), even when compiled at the S2 band. The structural fact; distinct from CANONIZED, which names the written token (`=>`) and the intent to aggregate. A CANONIZED kline need not be a Canon.
+_Avoid_: canonical (ambiguous with the Structural State), canonized (the intent, not the property), MTS (an example, not the concept)
 
 **MTS Entry**:
-A kline whose signature is the OR-reduction of two or more nodes — produced as CANONIZED (S2 intent) but structurally a perfect fit (S1); the subscript child klines canonize it to S1.
+A Canon produced by multi-token signature expansion — the tokenizer encodes a compound signature as the OR-reduction of its constituent token IDs, so the resulting kline is a Canon by construction. An instance of Canon, not the definition; other Canons need not arise from MTS expansion.
+
+**Learned**:
+A compiled entry whose reported significance agrees with its declared significance — Kalvin has understood it and stored it in LTM. Grounding at the declared band is the signal; S1 is not required (an identity is learned at S4, a canon at S2, a relation at S3).
 
 **Word Binding**:
 The association of a single-character KScript signature with a word, resolved through BPE annotations in the source. Bindings are scoped by relational-token boundaries; a character resolves to the most recent matching word in its scope.
