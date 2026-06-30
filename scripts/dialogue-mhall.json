@@ -77,7 +77,7 @@
     },
     {
       "actor": "T",
-      "op": "CANON",
+      "op": "CONNOTED",
       "signature": "a",
       "nodes": [
         "Det"
@@ -147,25 +147,25 @@
       "op": "CANON",
       "signature": "SVO",
       "nodes": [
-        "subject",
-        "verb",
-        "object"
+        "Subject",
+        "Verb",
+        "Object"
       ],
       "significance": "S2"
     },
     {
       "actor": "K",
       "op": "IDENTITY",
-      "signature": "subject",
+      "signature": "Subject",
       "nodes": [],
       "significance": "S4"
     },
     {
       "actor": "T",
       "op": "CANON",
-      "signature": "subject",
+      "signature": "Subject",
       "nodes": [
-        "sub",
+        "Sub",
         "ject"
       ],
       "significance": "S1"
@@ -173,16 +173,16 @@
     {
       "actor": "K",
       "op": "IDENTITY",
-      "signature": "verb",
+      "signature": "Verb",
       "nodes": [],
       "significance": "S4"
     },
     {
       "actor": "T",
       "op": "CANON",
-      "signature": "verb",
+      "signature": "Verb",
       "nodes": [
-        "v",
+        "V",
         "er",
         "b"
       ],
@@ -191,16 +191,16 @@
     {
       "actor": "K",
       "op": "IDENTITY",
-      "signature": "object",
+      "signature": "Object",
       "nodes": [],
       "significance": "S4"
     },
     {
       "actor": "T",
       "op": "CANON",
-      "signature": "object",
+      "signature": "Object",
       "nodes": [
-        "ob",
+        "Ob",
         "ject"
       ],
       "significance": "S1"
@@ -214,7 +214,7 @@
       "op": "CONNOTED",
       "signature": "Mary",
       "nodes": [
-        "subject"
+        "Subject"
       ],
       "significance": "S3",
       "notes": "K tries to match the first known nodes of each side. Its a tentative S3"
@@ -224,7 +224,7 @@
       "op": "UNDERSIGNED",
       "signature": "Mary",
       "nodes": [
-        "subject"
+        "Subject"
       ],
       "significance": "S1",
       "notes": "T ratifies by under-signing"
@@ -234,7 +234,7 @@
       "op": "CONNOTED",
       "signature": "had",
       "nodes": [
-        "verb"
+        "Verb"
       ],
       "significance": "S3",
       "notes": "K tries next pair"
@@ -244,7 +244,7 @@
       "op": "UNDERSIGNED",
       "signature": "had",
       "nodes": [
-        "verb"
+        "Verb"
       ],
       "significance": "S1",
       "notes": "T ratifies"
@@ -254,7 +254,7 @@
       "op": "CONNOTED",
       "signature": "ALL",
       "nodes": [
-        "object"
+        "Object"
       ],
       "significance": "S3",
       "notes": "K tries next pair"
@@ -264,7 +264,7 @@
       "op": "UNDERSIGNED",
       "signature": "ALL",
       "nodes": [
-        "object"
+        "Object"
       ],
       "significance": "S1",
       "notes": "T ratifies"
