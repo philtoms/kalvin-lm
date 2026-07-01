@@ -2,26 +2,25 @@
   "script": "(Mary had a little lamb)\nMHALL == SVO =>\n   S(ubject) = M\n   V(erb) = H\n   O(bject) = ALL =>\n     A > D(et)\n     L > M(od)\n     L > O",
   "turns": [
     {
-      "actor": "T",
       "op": "COUNTERSIGNED",
       "signature": "MHALL",
       "nodes": [
         "SVO"
       ],
       "significance": "S2",
-      "notes": "T kicks off the run with a proposal (A proposal is any kline at S2 or S3 - the other party will always respond"
+      "notes": "T kicks off the run with a proposal (A proposal is any kline at S2 or S3 - the other party will always respond",
+      "role": "T"
     },
     {
-      "actor": "K",
       "op": "IDENTITY",
       "signature": "MHALL",
       "nodes": [],
       "significance": "S4",
-      "notes": "K doesn't recognise MHALL"
+      "notes": "K doesn't recognise MHALL",
+      "role": "K"
     },
     {
-      "actor": "T",
-      "op": "CANON",
+      "op": "CANONIZED",
       "signature": "MHALL",
       "nodes": [
         "Mary",
@@ -31,257 +30,258 @@
         "lamb"
       ],
       "significance": "S2",
-      "notes": "T responds with a canon at S2"
+      "notes": "T responds with a canon at S2",
+      "role": "T"
     },
     {
-      "actor": "K",
       "op": "IDENTITY",
       "signature": "Mary",
       "nodes": [],
       "significance": "S4",
-      "notes": "Again, K doesn't recognise Mary"
+      "notes": "Again, K doesn't recognise Mary",
+      "role": "K"
     },
     {
-      "actor": "T",
-      "op": "CANON",
+      "op": "CANONIZED",
       "signature": "Mary",
       "nodes": [
         "M",
         "ary"
       ],
-      "significance": "S1"
+      "significance": "S1",
+      "role": "T"
     },
     {
-      "actor": "K",
       "op": "IDENTITY",
       "signature": "had",
       "nodes": [],
-      "significance": "S4"
+      "significance": "S4",
+      "role": "K"
     },
     {
-      "actor": "T",
-      "op": "CANON",
+      "op": "CANONIZED",
       "signature": "had",
       "nodes": [
         "h",
         "ad"
       ],
-      "significance": "S1"
+      "significance": "S1",
+      "role": "T"
     },
     {
-      "actor": "K",
       "op": "IDENTITY",
       "signature": "a",
       "nodes": [],
-      "significance": "S4"
+      "significance": "S4",
+      "role": "K"
     },
     {
-      "actor": "T",
       "op": "CONNOTED",
       "signature": "a",
       "nodes": [
         "Det"
       ],
-      "significance": "S2"
+      "significance": "S2",
+      "role": "T"
     },
     {
-      "actor": "K",
       "op": "IDENTITY",
       "signature": "Det",
       "nodes": [],
-      "significance": "S4"
+      "significance": "S4",
+      "role": "K"
     },
     {
-      "actor": "T",
-      "op": "CANON",
+      "op": "CANONIZED",
       "signature": "Det",
       "nodes": [
         "D",
         "et"
       ],
-      "significance": "S1"
+      "significance": "S1",
+      "role": "T"
     },
     {
-      "actor": "K",
       "op": "IDENTITY",
       "signature": "little",
       "nodes": [],
-      "significance": "S4"
+      "significance": "S4",
+      "role": "K"
     },
     {
-      "actor": "T",
-      "op": "CANON",
+      "op": "CANONIZED",
       "signature": "little",
       "nodes": [
         "l",
         "ittle"
       ],
-      "significance": "S1"
+      "significance": "S1",
+      "role": "T"
     },
     {
-      "actor": "K",
       "op": "IDENTITY",
       "signature": "lamb",
       "nodes": [],
-      "significance": "S4"
+      "significance": "S4",
+      "role": "K"
     },
     {
-      "actor": "T",
-      "op": "CANON",
+      "op": "CANONIZED",
       "signature": "lamb",
       "nodes": [
         "l",
         "amb"
       ],
-      "significance": "S1"
+      "significance": "S1",
+      "role": "T"
     },
     {
-      "actor": "K",
       "op": "IDENTITY",
       "signature": "SVO",
       "nodes": [],
-      "significance": "S4"
+      "significance": "S4",
+      "role": "K"
     },
     {
-      "actor": "T",
-      "op": "CANON",
+      "op": "CANONIZED",
       "signature": "SVO",
       "nodes": [
         "Subject",
         "Verb",
         "Object"
       ],
-      "significance": "S2"
+      "significance": "S2",
+      "role": "T"
     },
     {
-      "actor": "K",
       "op": "IDENTITY",
       "signature": "Subject",
       "nodes": [],
-      "significance": "S4"
+      "significance": "S4",
+      "role": "K"
     },
     {
-      "actor": "T",
-      "op": "CANON",
+      "op": "CANONIZED",
       "signature": "Subject",
       "nodes": [
         "Sub",
         "ject"
       ],
-      "significance": "S1"
+      "significance": "S1",
+      "role": "T"
     },
     {
-      "actor": "K",
       "op": "IDENTITY",
       "signature": "Verb",
       "nodes": [],
-      "significance": "S4"
+      "significance": "S4",
+      "role": "K"
     },
     {
-      "actor": "T",
-      "op": "CANON",
+      "op": "CANONIZED",
       "signature": "Verb",
       "nodes": [
         "V",
         "er",
         "b"
       ],
-      "significance": "S1"
+      "significance": "S1",
+      "role": "T"
     },
     {
-      "actor": "K",
       "op": "IDENTITY",
       "signature": "Object",
       "nodes": [],
-      "significance": "S4"
+      "significance": "S4",
+      "role": "K"
     },
     {
-      "actor": "T",
-      "op": "CANON",
+      "op": "CANONIZED",
       "signature": "Object",
       "nodes": [
         "Ob",
         "ject"
       ],
-      "significance": "S1"
+      "significance": "S1",
+      "role": "T"
     },
     {
-      "actor": "K",
-      "notes": "MHALL==SVO is still a proposal at S2. K will try to rationalise an S1 Canon by promoting relationships that it believes will lead to an S1 understanding"
+      "notes": "MHALL==SVO is still a proposal at S2. K will try to rationalise an S1 Canon by promoting relationships that it believes will lead to an S1 understanding",
+      "role": "K"
     },
     {
-      "actor": "K",
       "op": "CONNOTED",
       "signature": "Mary",
       "nodes": [
         "Subject"
       ],
       "significance": "S3",
-      "notes": "K tries to match the first known nodes of each side. Its a tentative S3"
+      "notes": "K tries to match the first known nodes of each side. Its a tentative S3",
+      "role": "K"
     },
     {
-      "actor": "T",
       "op": "UNDERSIGNED",
       "signature": "Mary",
       "nodes": [
         "Subject"
       ],
       "significance": "S1",
-      "notes": "T ratifies by under-signing"
+      "notes": "T ratifies by under-signing",
+      "role": "T"
     },
     {
-      "actor": "K",
       "op": "CONNOTED",
       "signature": "had",
       "nodes": [
         "Verb"
       ],
       "significance": "S3",
-      "notes": "K tries next pair"
+      "notes": "K tries next pair",
+      "role": "K"
     },
     {
-      "actor": "T",
       "op": "UNDERSIGNED",
       "signature": "had",
       "nodes": [
         "Verb"
       ],
       "significance": "S1",
-      "notes": "T ratifies"
+      "notes": "T ratifies",
+      "role": "T"
     },
     {
-      "actor": "K",
       "op": "CONNOTED",
       "signature": "ALL",
       "nodes": [
         "Object"
       ],
       "significance": "S3",
-      "notes": "K tries next pair"
+      "notes": "K tries next pair",
+      "role": "K"
     },
     {
-      "actor": "T",
       "op": "UNDERSIGNED",
       "signature": "ALL",
       "nodes": [
         "Object"
       ],
       "significance": "S1",
-      "notes": "T ratifies"
+      "notes": "T ratifies",
+      "role": "T"
     },
     {
-      "actor": "K",
-      "notes": "K has grounded all the nodes it needs to construct an S1 response to the open S2 proposal"
+      "notes": "K has grounded all the nodes it needs to construct an S1 response to the open S2 proposal",
+      "role": "K"
     },
     {
-      "actor": "K",
       "op": "COUNTERSIGNED",
       "signature": "MHALL",
       "nodes": [
         "SVO"
       ],
       "significance": "S1",
-      "notes": "This brings an end to the run"
+      "notes": "This brings an end to the run",
+      "role": "K"
     }
   ]
 }

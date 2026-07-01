@@ -1,18 +1,12 @@
-"""Run a dialogue-driven training session end-to-end against the StubKAgent.
+"""Run a dialogue end-to-end through the table-reading trainer and trainee.
 
-This is the new-model replacement for the retired ``scripts/dialogue_runner.py``
-(legend format + replay driver; removed in fdd177b). It loads a dialogue table,
-pre-decodes it, wires the self-cursored :class:`StubKAgent` through the real
-:class:`KAgentAdapter` + :class:`MessageBus`, drives the dispatch loop
-(:func:`run_session`), and prints a PASS/FAIL summary. It is the runnable proof
-that the stub is exercised outside the test suite, and the tool to reach for to
-watch a dialogue run.
+Loads a dialogue table, decodes it, drives the bus-agnostic runner
+(:func:`training.dialogue.run`) with a fresh :class:`TableTrainer` and
+:class:`TableTrainee`, and prints a PASS/FAIL summary. With ``--verbose`` it
+traces the interleaved T/K exchange.
 
-The run is synchronous (the stub resolves everything inside ``rationalise()``):
-the loop submits each Trainer turn via the bus (action ``rationalise``) and
-drains before the next, observing the stub's K emissions in order. Termination is
-dual cursor exhaustion; the closing K (the primary's S1 countersign) is verified
-by construction, not detected.
+The runner is bus-agnostic: there is no harness message bus and no adapter here.
+Bus integration arrives with the real actors.
 
 Usage::
 
@@ -20,8 +14,8 @@ Usage::
     python scripts/dialogue_run.py scripts/dialogue-mhall.json # explicit path
     python scripts/dialogue_run.py --verbose                   # per-turn trace
 
-Exit code is 0 on a completing run (dual exhaustion reached, closing K verified),
-1 on any two-sided validation failure or exhaustion violation.
+Exit code is 0 on a completing run (table exhausted), 1 on an actor divergence
+or incomplete run.
 """
 
 from __future__ import annotations
@@ -39,19 +33,13 @@ from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4  # noqa: E402
 from kalvin.nlp_tokenizer import NLPTokenizer  # noqa: E402
 from kalvin.signifier import NLPSignifier  # noqa: E402
 from training.dialogue import (  # noqa: E402
-    LoopError,
-    LoopResult,
-    StubKAgent,
+    ActorDivergence,
     decode,
+    default_actors,
     load_table,
-    run_session,
+    run,
 )
-from training.harness.adapter import KAgentAdapter  # noqa: E402
-from training.harness.bus import MessageBus  # noqa: E402
-from training.harness.constants import TRAINEE_ROLE  # noqa: E402
 
-# Band constants are uint64 inverted-distance values; map back to labels for
-# readable output (the same mapping the decoder uses, inverted).
 _SIG_TO_BAND = {
     SIG_S1: "S1",
     SIG_S2: "S2",
@@ -62,56 +50,56 @@ _SIG_TO_BAND = {
 DEFAULT_DIALOGUE = "scripts/dialogue-mhall.json"
 
 
-def _label_of(turn) -> str:
-    """Best-effort symbolic label for a decoded turn's kline (for trace output)."""
-    dbg = turn.value.kline.dbg
+def _label_of(kv) -> str:
+    """Best-effort symbolic label for a KValue's kline (for trace output)."""
+    dbg = kv.kline.dbg
     if dbg is None:
-        return f"sig=0x{turn.value.kline.signature:x}"
-    return dbg.label or dbg.decoded or f"sig=0x{turn.value.kline.signature:x}"
+        return f"sig=0x{kv.kline.signature:x}"
+    return dbg.label or dbg.decoded or f"sig=0x{kv.kline.signature:x}"
 
 
-def _trace(result: LoopResult) -> str:
-    """A per-turn interleaved trace of the validated T/K exchange."""
+def _trace(events: list, decoded) -> str:
+    """A per-turn interleaved trace of the exchange, tagged by actor from the table."""
+    # Reconstruct the actor/op tag per emitted event from the decoded order.
+    tags: list[str] = []
+    di = 0
+    for ev in events:
+        while di < len(decoded) and decoded[di].value.kline != ev.proposal.kline:
+            di += 1
+        if di < len(decoded):
+            tags.append(f"{decoded[di].role} {decoded[di].op}")
+            di += 1
+        else:  # pragma: no cover - defensive
+            tags.append("? ?")
+
     lines = []
-    n = max(len(result.t_submissions), len(result.k_emissions))
-    for i in range(n):
-        if i < len(result.t_submissions):
-            t = result.t_submissions[i]
-            band = _SIG_TO_BAND.get(t.value.significance, "?")
-            lines.append(
-                f"  T#{i:2} {t.op:13} {_label_of(t):10} {band}  sig=0x{t.value.kline.signature:x}"
-            )
-        if i < len(result.k_emissions):
-            k = result.k_emissions[i]
-            band = _SIG_TO_BAND.get(k.value.significance, "?")
-            lines.append(
-                f"  K#{i:2} {k.op:13} {_label_of(k):10} {band}  sig=0x{k.value.kline.signature:x}"
-            )
+    for i, (ev, tag) in enumerate(zip(events, tags)):
+        actor, op = tag.split(" ", 1)
+        band = _SIG_TO_BAND.get(ev.proposal.significance, "?")
+        lines.append(
+            f"  {actor}#{i:2} {op:13} {_label_of(ev.proposal):10} {band}"
+        )
     return "\n".join(lines)
 
 
-def _summary(result: LoopResult, dialogue_path: str, verbose: bool) -> str:
-    closing = result.closing
-    closing_desc = (
-        f"{closing.op} {_label_of(closing)} @ {_SIG_TO_BAND.get(closing.value.significance, '?')}"
-        if closing is not None
-        else "(none — run did not close)"
-    )
+def _summary(result, decoded, dialogue_path: str, verbose: bool) -> str:
+    n_t = sum(1 for t in decoded if t.role == "T")
+    n_k = sum(1 for t in decoded if t.role == "K")
     header = (
         f"Dialogue session: {dialogue_path}\n"
-        f"  trainer submissions : {len(result.t_submissions)}\n"
-        f"  stub emissions      : {len(result.k_emissions)}\n"
-        f"  dual exhaustion     : {result.dual_exhaustion}\n"
-        f"  closing K           : {closing_desc}\n"
+        f"  table trainer turns : {n_t}\n"
+        f"  table trainee turns : {n_k}\n"
+        f"  events emitted      : {len(result.events)}\n"
+        f"  complete            : {result.complete}\n"
     )
     if verbose:
-        return header + "\nValidated exchange:\n" + _trace(result)
+        return header + "\nExchange:\n" + _trace(result.events, decoded)
     return header
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run a dialogue end-to-end against the StubKAgent."
+        description="Run a dialogue end-to-end through the table-reading actors."
     )
     parser.add_argument(
         "dialogue",
@@ -122,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--verbose",
         action="store_true",
-        help="Print the validated T/K exchange turn by turn.",
+        help="Print the exchange turn by turn.",
     )
     args = parser.parse_args(argv)
 
@@ -131,25 +119,25 @@ def main(argv: list[str] | None = None) -> int:
     sigf = NLPSignifier()
 
     table = load_table(json.loads(Path(dialogue_path).read_text()))
-    # Pre-decode once to get the K-rows for the stub (run_session re-decodes
-    # internally too; this mirrors the spec's "stub constructed with its K-rows"
-    # wiring and gives an early decode-error if the table is malformed).
     decoded = decode(table, tokenizer=tok, signifier=sigf)
-    k_rows = [t for t in decoded if t.actor == "K"]
 
-    bus = MessageBus()
-    adapter = KAgentAdapter(bus, role=TRAINEE_ROLE, tokenizer=tok, signifier=sigf)
-    stub = StubKAgent(adapter, k_rows)
-    adapter.bind(stub)
+    trainer, trainee = default_actors(decoded)
 
     try:
-        result = run_session(table, adapter=adapter, tokenizer=tok, signifier=sigf)
-    except LoopError as exc:
-        print(f"FAIL — {exc.kind}: {exc}", file=sys.stderr)
+        result = run(decoded, trainer=trainer, trainee=trainee)
+    except ActorDivergence as exc:
+        print(
+            f"FAIL — {exc.role} divergence at cursor {exc.cursor}: "
+            f"expected {_label_of(exc.expected)} "
+            f"(sig={exc.expected.significance:#x}), "
+            f"emitted {_label_of(exc.emitted)} "
+            f"(sig={exc.emitted.significance:#x})",
+            file=sys.stderr,
+        )
         return 1
 
-    print(_summary(result, dialogue_path, args.verbose))
-    return 0 if result.dual_exhaustion else 1
+    print(_summary(result, decoded, dialogue_path, args.verbose))
+    return 0 if result.complete else 1
 
 
 if __name__ == "__main__":

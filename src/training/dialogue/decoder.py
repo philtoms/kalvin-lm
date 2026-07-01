@@ -13,24 +13,13 @@ Spec mapping
 - DDT-2 — :func:`decode` returns a flat ordered ``list[DecodedTurn]``.
 - DDT-3 — single-stage: resolve the kline from ``script``, attach significance
   by band lookup, pass through ``actor``/``op``, ignore ``notes``.
-- DDT-4 — canons retrieved by **node-list match** against compiled canons.
+- DDT-5 — canons retrieved by **node-list match** against compiled canons.
 - DDT-28 — annotation-only turns (notes, no structural fields) are dropped at
   decode time (not submittable).
-
-Dialogue op vocabulary vs. compiler ``dbg.op``
-----------------------------------------------
-The table's ``op`` is the **symbolic structural state** the dialogue author
-writes (``COUNTERSIGNED | CANON | CONNOTED | UNDERSIGNED | IDENTITY``). It is a
-turn-table vocabulary, distinct from the compiler's ``dbg.op`` (whose aggregate
-token is ``CANONIZED``). ``CANON`` is the table's retrieval directive ("fetch
-the canon by node-list match"); it is **passed through** as-is (DDT-3) and never
-conflated with ``CANONIZED``. The set below is exactly the spec's closed op set
-(§Dialogue Table) — kept here so an unknown op fails loudly at decode.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
@@ -57,12 +46,11 @@ BAND_TO_SIG: dict[str, int] = {
     "S4": SIG_S4,
 }
 
-Actor = Literal["T", "K"]
+Role = Literal["T", "K"]  # a turn's role: trainer (T) or trainee (K)
 
-# The table's closed op vocabulary (spec §Dialogue Table). Distinct from the
-# compiler's ``dbg.op`` (``CANONIZED`` is the compiler's aggregate token; the
-# table's retrieval directive is ``CANON``). An unknown op is a decode error.
-DIALOGUE_OPS = frozenset({"COUNTERSIGNED", "CANON", "CONNOTED", "UNDERSIGNED", "IDENTITY"})
+# The table's closed op vocabulary (spec §Dialogue Table). An unknown op is
+# a decode error.
+DIALOGUE_OPS = frozenset({"COUNTERSIGNED", "CANONIZED", "CONNOTED", "UNDERSIGNED", "IDENTITY"})
 
 
 class DecodeError(Exception):
@@ -82,7 +70,7 @@ class Turn:
     (DDT-28) — they are not submittable klines.
     """
 
-    actor: Actor
+    role: Role
     op: str | None  # None on annotation-only turns (DDT-28)
     signature: str | None
     nodes: tuple[str, ...]
@@ -116,12 +104,12 @@ class DialogueTable:
 class DecodedTurn:
     """A turn resolved to a submittable structure (spec §Decoded Turn).
 
-    ``actor`` and ``op`` are carried alongside the KValue and **never folded
+    ``role`` and ``op`` are carried alongside the KValue and **never folded
     into it** (DDT-3): ``op`` is the structural state; ``significance`` (on the
     KValue) is the dialogic stance. They are independent axes.
     """
 
-    actor: Actor
+    role: Role
     op: str
     value: KValue
 
@@ -139,7 +127,7 @@ DECODEDTurn = DecodedTurn
 class _ResolvedScript:
     """Compiled-script indices built once at decode time.
 
-    - ``by_node_labels`` — the canon-retrieval index (DDT-4): maps the tuple of
+    - ``by_node_labels`` — the canon-retrieval index (DDT-5): maps the tuple of
       *decoded node labels* of each compiled canon to that canon's KValue.
       Retrieval key is exactly the turn's symbolic node list.
     - ``canon_by_label`` — canonical signature per label: a relation node whose
@@ -163,7 +151,7 @@ class _ResolvedScript:
 
 
 def _node_decoded_label(entry_value: KValue, by_sig: dict[int, list[KValue]]) -> tuple[str, ...]:
-    """The decoded-label tuple of a kline's nodes (the DDT-4 retrieval key).
+    """The decoded-label tuple of a kline's nodes (the DDT-5 retrieval key).
 
     A canon's own signature is a packed MTS (OR-reduction), so its ``dbg.decoded``
     is empty (the encoder suppresses decode for packed signatures). Each **node**
@@ -187,14 +175,14 @@ def _node_decoded_label(entry_value: KValue, by_sig: dict[int, list[KValue]]) ->
 def _resolve_script(
     script: str,
     *,
-    tokenizer: "NLPTokenizer | None" = None,
-    signifier: "KSignifier | None" = None,
+    tokenizer: NLPTokenizer | None = None,
+    signifier: KSignifier | None = None,
 ) -> tuple[list[KValue], _ResolvedScript]:
     """Compile ``script`` once and build the canon + label indices.
 
     Compilation reuses :func:`ks.compiler.compile_source` (plan task 1.2). The
     indices are:
-      - ``by_node_labels`` — node-decoded-label tuple → canon KValue (DDT-4).
+      - ``by_node_labels`` — node-decoded-label tuple → canon KValue (DDT-5).
         Multiple canons sharing a node-label tuple would be ambiguous; the first
         compiled canon wins and a debug note is kept (the MHALL table has none).
       - ``labels`` — display label → KLine, for atom/compound resolution.
@@ -209,7 +197,7 @@ def _resolve_script(
     for e in entries:
         kl = e.kline
         d = kl.dbg
-        # Canon index: keyed by node-decoded-label tuple (DDT-4).
+        # Canon index: keyed by node-decoded-label tuple (DDT-5).
         if d.op == "CANONIZED" and kl.nodes:
             key = _node_decoded_label(e, by_sig)
             # Ambiguity would mean two canons decompose identically — a script
@@ -244,8 +232,8 @@ def _resolve_kline(
 
     Three branches per spec §Decoder step 1:
 
-    - **CANON** — retrieve the compiled canon whose node-decoded labels match
-      the turn's ``nodes`` list (node-list match, DDT-4). The turn's node names
+    - **CANONIZED** — retrieve the compiled canon whose node-decoded labels match
+      the turn's ``nodes`` list (node-list match, DDT-5). The turn's node names
       *are* the retrieval key; ``signature`` is a redundant author hint (checked
       for consistency).
     - **IDENTITY** — resolve the atom by label (its compiled identity KLine, or
@@ -255,21 +243,18 @@ def _resolve_kline(
       relation KLine with the compiler's signifier (``make_signature``). A node
       label may be a compound (e.g. ``subject``) or an atom; both resolve via
       the label index.
-
-    The ``CANONIZED`` compiler token never appears here — the table's aggregate
-    directive is ``CANON`` (see module docstring).
     """
-    if op == "CANON":
+    if op == "CANONIZED":
         canon = resolved.by_node_labels.get(nodes)
         if canon is None:
             raise DecodeError(
-                f"CANON {signature!r}: no compiled canon matches node-list {list(nodes)}"
+                f"CANONIZED {signature!r}: no compiled canon matches node-list {list(nodes)}"
             )
         # ``signature`` is an author hint; confirm it names the canon's label.
         canon_label = canon.kline.dbg.label
         if canon_label != signature:
             raise DecodeError(
-                f"CANON node-list {list(nodes)} resolved to canon "
+                f"CANONIZED node-list {list(nodes)} resolved to canon "
                 f"{canon_label!r}, but the turn's signature is {signature!r}"
             )
         return canon.kline
@@ -322,8 +307,8 @@ def _resolve_kline(
 def decode(
     table: DialogueTable,
     *,
-    tokenizer: "NLPTokenizer | None" = None,
-    signifier: "KSignifier | None" = None,
+    tokenizer: NLPTokenizer | None = None,
+    signifier: KSignifier | None = None,
 ) -> list[DecodedTurn]:
     """Pre-decode every turn into a flat ordered ``list[DecodedTurn]`` (DDT-2).
 
@@ -355,7 +340,7 @@ def decode(
         significance = BAND_TO_SIG[turn.significance]
         out.append(
             DecodedTurn(
-                actor=turn.actor,
+                role=turn.role,
                 op=turn.op,
                 value=KValue(kline, significance),
             )
@@ -374,9 +359,9 @@ def _turn_from_dict(raw: dict) -> Turn:
     ``op`` must also carry ``signature`` and ``significance``; a structural
     turn missing them is a malformed-table decode error.
     """
-    actor = raw.get("actor")
-    if actor not in ("T", "K"):
-        raise DecodeError(f"turn actor must be 'T' or 'K', got {actor!r}")
+    role = raw.get("role")
+    if role not in ("T", "K"):
+        raise DecodeError(f"turn role must be 'T' or 'K', got {role!r}")
     op = raw.get("op")
     if op is not None and op not in DIALOGUE_OPS:
         raise DecodeError(f"unknown op {op!r}")
@@ -387,7 +372,7 @@ def _turn_from_dict(raw: dict) -> Turn:
         if "significance" not in raw:
             raise DecodeError(f"structural turn missing 'significance': {raw!r}")
     return Turn(
-        actor=actor,
+        role=role,
         op=op,
         signature=raw.get("signature"),
         nodes=nodes,

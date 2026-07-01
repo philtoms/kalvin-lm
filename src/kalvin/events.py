@@ -24,19 +24,28 @@ class RationaliseEvent:
     (the sender's declared assessment); ``proposal`` is Kalvin's assessment
     of the same (or an expansion-proposal) KLine. Each KValue supplies its
     own significance.
+
+    ``role`` is the self-declared role of the emitting actor (the routing key the
+    harness bus uses to address participants). It is ``None`` for events that are
+    not part of a routed dialogue (e.g. internal cogitation emissions); dialogue
+    actors set it so a runner can route and validate their responses without
+    inferring the sender from context.
     """
 
-    __slots__ = ("kind", "query", "proposal")
+    __slots__ = ("kind", "query", "proposal", "role")
 
     def __init__(
         self,
         kind: str,
         query: KValue,
         proposal: KValue,
+        *,
+        role: str | None = None,
     ):
         self.kind = kind
         self.query = query
         self.proposal = proposal
+        self.role = role
 
     def __repr__(self) -> str:
         # Report Kalvin's assessment (the proposal's significance).

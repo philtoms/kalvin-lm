@@ -333,9 +333,10 @@ The Agent publishes events during rationalisation for observers to consume.
 
 ```
 RationaliseEvent:
-  kind:     str       # "ground", "frame", "done"
-  query:    KValue    # the inbound KValue (the sender's declared assessment)
-  proposal: KValue    # Kalvin's assessment of it
+  kind:     str           # "ground", "frame", "done"
+  query:    KValue        # the inbound KValue (the sender's declared assessment)
+  proposal: KValue        # Kalvin's assessment of it
+  role:     str | None    # the emitting actor's routing key (None for internal emissions)
 ```
 
 `query` and `proposal` are **KValues** (@kvalue spec), each carrying its own
@@ -344,6 +345,13 @@ is the sender's declared assessment and `proposal.significance` is Kalvin's
 assessment. Consumers that previously read the event significance read
 `event.proposal.significance` (Kalvin's assessment) or
 `event.query.significance` (the sender's declared assessment).
+
+`role` is the self-declared routing key of the emitting actor — the same
+discriminator the harness bus calls *role* (`@CONTEXT.md` §Role). It is
+optional (`None` default) for events that are not part of a routed dialogue
+(internal cogitation emissions); the dialogue runner (`@specs/dialogue-driven-
+training.md` §Validation) sets and validates it so an actor announces itself
+rather than being identified by table position.
 
 On the fast path, `query` and `proposal` wrap the same immutable KLine
 (`query.kline is proposal.kline`), differing only in significance.

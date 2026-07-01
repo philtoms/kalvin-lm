@@ -2,277 +2,156 @@
 
 ## Spec References
 
-- `@specs/dialogue-driven-training.md` — WHAT this plan implements (all DDT-* criteria).
-- `@specs/stub-kagent.md` — the deterministic contract double the loop is validated against.
-- `@specs/supervisor-decision.md` — escalation path on unresolvable proposals (DDT-20).
-- `@specs/harness-server.md` — Trainer participant, bus actions, adapter (unchanged surface).
-- `@specs/kscript.md`, `@specs/kline.md`, `@specs/signifier.md` — compile, `is_canon`, `make_signature`.
+- `@specs/dialogue-driven-training.md` — WHAT this plan implements (all DDT-\* criteria).
+- `@specs/kscript.md`, `@specs/kline.md`, `@specs/kvalue.md`, `@specs/agent.md` — compile, KLine equality, KValue, `RationaliseEvent`.
 
-This plan is an **alternative** to `@plans/implement-rationalise-trainer-significance.md`.
-Where they conflict, this plan governs. It does not delete the prior plan; both
-coexist until the dialogue-driven model is chosen as the path forward.
-
-## Relationship to Existing Code
-
-The current Trainer (`src/training/trainer/trainer.py`) and Reactor
-(`src/training/trainer/reactor.py`) implement the batch-submit + auto-countersign
-loop from `@specs/trainer-satisfaction.md`. This plan adds the dialogue-driven
-path alongside it; the switchover (replacing the batch loop) is the final phase.
-The bus protocol, the KAgent adapter, and the supervisor message surface are
-unchanged — only the Trainer's internal loop and its configuration source change.
-
-The dialogue artifact `scripts/dialogue-mhall.json` already exists and is the
-canonical example; subword node names in it must be reconciled to real decoded
-subwords (see Phase 1, task 1.0).
+This plan supersedes `@plans/implement-rationalise-trainer-significance.md` for
+dialogue-table lessons. It does not delete that plan; both coexist until the
+dialogue-driven model is chosen as the path forward.
 
 ## Implementation Tasks
 
-### Phase 1 — Decoder (pre-loop configuration)
-
-**1.0 Reconcile the dialogue artifact.** ✅ Done (commit 18a9408). Updated
-`scripts/dialogue-mhall.json` symbolic labels to match the tokenizer's actual
-decoded subwords, corrected the `{a:[Det]}` op (CANON→CONNOTED), and reconciled
-compound/subword case (Subject/Verb/Object). Verified every node list matches a
-compiled canon. → supports DDT-1, DDT-4.
+### Phase 1 — Decoder (configuration time)
 
 **1.1 Dialogue-table loader.** Parse `script` + `turns[]` into a typed
-`DialogueTable`/`Turn` structure. Strip `notes` at load. → DDT-1.
+`DialogueTable`/`Turn`. Annotation-only turns (notes, no `op`) are retained on
+`Turn` and dropped at decode. → DDT-1.
 
-**1.2 Symbol resolution against compiled script.** Compile `script` once
-(reuse `ks.compiler.compile_source`). Build:
-- canon index: node-decoded-label tuple → compiled canon KValue (for DDT-4 retrieval);
-- compound/atom label → canonical signature (for relation construction).
-
-→ DDT-3, DDT-4.
+**1.2 Script resolution.** Compile `script` once (`ks.compiler.compile_source`).
+Build the canon-retrieval index: node-decoded-label tuple → compiled canon
+KValue; plus a label → KLine index for atom/relation resolution. → DDT-4, DDT-5.
 
 **1.3 Single-stage decode.** `decode(table) -> list[DecodedTurn]`. Per turn:
-retrieve canon by node-match / resolve atom by label / construct relation from
-compound labels; attach significance by band lookup; pass through `actor`, `op`.
-→ DDT-2, DDT-3.
+CANONIZED → canon by node-list match; IDENTITY → atom by label; constructed
+relation → rebuild from node canonical signatures; attach significance by band
+lookup; pass through role/op; drop annotation-only turns; ignore notes.
+→ DDT-3, DDT-5.
 
-**1.4 Pre-decode the whole table** into a flat ordered list at configuration
-time. The loop receives only the list. → DDT-2.
+### Phase 2 — The runner
 
-### Phase 2 — Stateless Trainer supply rule
+**2.1 Actor interface & event role.** Add an optional `role: str | None` field
+to `RationaliseEvent` (default `None`; existing non-dialogue emitters are
+untouched). A `respond(incoming: RationaliseEvent | None) -> (int,
+RationaliseEvent) | None` protocol. Each actor holds its own cursor (starting
+before its first row); `respond` advances it by one and returns
+`(next_cursor, event)` with the actor's role on the event, or `None` when
+exhausted. → DDT-9, DDT-16, DDT-17.
 
-**2.1 Held index.** On lesson compile, build `signature → [held klines]` ordered
-canon → relation → identity. Withheld = Identities + Canons (incl. subword
-canons, unfiltered). → DDT-8, DDT-19.
+**2.2 Table-reading actors.** `TableTrainer` and `TableTrainee`, each holding
+its own cursor into its own rows (the decoded table filtered to its role).
+`respond` advances by one and returns `(next_cursor, event)` (`proposal` = the
+row's KValue, `query` = the incoming event's proposal, `role` = the actor's
+key); `None` when exhausted. Neither inspects the incoming event. The actor is
+dumb: it does not know about alternation or run boundaries. → DDT-7, DDT-8,
+DDT-9, DDT-10.
 
-**2.2 Supply function** (pure): `supply(request_signature, held_index, script) ->
-DecodedTurn`. Canon-first with full shadowing (DDT-9); relation only when no
-canon shadows it (DDT-11); identity fallback. One kline per call. → DDT-8.
+**2.3 The run loop.** `run(decoded, trainer, trainee) -> RunResult`. The runner
+owns the table cursor: each step reads `decoded[cursor].role`, asks that actor
+for its next row, and advances. Greediness is automatic — consecutive
+same-actor rows go to the same actor. Ends when the cursor passes the table
+end. → DDT-6, DDT-7, DDT-13, DDT-14.
 
-**2.3 Node-terminality significance.** Derive the significance the Trainer
-attaches to a supplied entry: terminal nodes → S1, non-terminal → S2. → DDT-12.
+**2.4 Validation (router).** After each response, validate by the **role the
+actor declared on its event**: look up the decoded rows for that role and check
+the emitted `proposal` equals the row at the cursor the actor returned. A role
+with no table rows or a kline/significance mismatch raises
+`ActorDivergence(role, cursor, expected, emitted)`. Keying on the event's
+self-declared role (not the table key) is what lets a real, possibly
+asynchronous actor announce itself. → DDT-11, DDT-17.
 
-**2.4 Stateless response dispatch.** A pure function of `(incoming turn,
-held_index, script)`:
-- K S4 request → `supply(...)` (DDT-8);
-- K S3 proposal → ratify, reciprocal at S1 (DDT-13);
-- K S1 terminal → no-op / advance (DDT-14).
+### Phase 3 — Driver
 
-No provenance, no open-proposal ledger. → DDT-5.
+**3.1 `scripts/dialogue_run.py`.** Load a table, decode it, construct the
+default actor pair (`default_actors`), call `run`, print a PASS/FAIL summary
+(`--verbose` traces the exchange). Exit 0 on completion, 1 on divergence.
+No bus, no adapter.
 
-### Phase 3 — Training loop (dispatch + cursors)
+## File Structure
 
-**3.1 Loop driver (dispatch-driven).** The trainer-side loop holds a cursor over
-the pre-decoded T-rows; the stub holds its own cursor over the K-rows (see
-`@specs/stub-kagent.md`). The loop computes each T via the §2.4 supply function
-and validates it against the table; it does not read T turns from the table for
-submission. → DDT-22, DDT-23.
-
-**3.2 Greedy cursor dispatch.** Consume a run of same-actor rows whole. The
-1:1 canonical table is handled identically to a future multi-row table.
-→ DDT-24.
-
-**3.3 Two-sided validation (Model A).** Per turn: validate received K == table K
-(stub/table divergence); compute T; validate computed T == table T (supply bug);
-submit T. Fail fast with side attribution. → DDT-25.
-
-**3.4 Dual-exhaustion termination.** End the run only when both cursors are empty.
-A non-empty stub cursor at trainer exhaustion fails loudly, naming the un-emitted
-K-run — this verifies the final K (the closing S1) was consumed and matched, not
-trusted. → DDT-26, DDT-27.
-
-**3.5 Opening.** The supply function computes the primary `==` half at S2 via an
-opening entry point; the table validates turn 0 like any other T turn. → DDT-7.
-
-**3.6 Synchronous execution** under the stub: submit → drain → validate. No event
-loop. → §Training Loop.
-
-### Phase 4 — Termination (no satisfaction module)
-
-**There is no Phase-4 satisfaction module.** A design ruling supersedes the
-original DDT-15/16/17 framing: Kalvin emits no grounding events, and the Trainer
-never verifies whether Kalvin has learned anything — its only K-verification is
-structural (K == table K at the cursor). Termination is therefore dual cursor
-exhaustion, which Phase 3 already implements and tests (DDT-18, DDT-26, DDT-27).
-
-**4.1 (retired)** No declared-band satisfaction; no `learned ⊇ submitted`
-computation. → DDT-15, DDT-16, DDT-17 retired.
-
-**4.2 (retired)** No `progress: lesson_complete` gate.
-
-**4.3 Run end** on dual cursor exhaustion. → DDT-18 (implemented in Phase 3).
-
-**4.4 (retired)** No band-comparison divergence. The only K divergence is
-structural (K != table K), caught by two-sided validation. → DDT-21 reframed.
-
-**4.5 Stall escalation.** Unresolvable request → `@specs/supervisor-decision.md`
-path. → DDT-20 (not exercised under the stub; deferred to the real-Kalvin grill).
-
-### Phase 5 — Switchover (final)
-
-**5.1** Route the Trainer participant through the dialogue-driven loop for
-dialogue-table lessons; retain the legacy batch loop for legacy curricula until
-deprecated. Decide retirement of `@specs/trainer-satisfaction.md` and its plan
-as a separate step.
+- `src/kalvin/events.py` — `RationaliseEvent` gains an optional `role: str | None` field (Phase 2).
+- `src/training/dialogue/decoder.py` — table structures + `decode` + `load_table` (Phase 1).
+- `src/training/dialogue/runner.py` — `Actor` protocol, `_TableActor`, `TableTrainer`, `TableTrainee`, `default_actors`, `run`, `RunResult`, `ActorDivergence` (Phase 2).
+- `scripts/dialogue_run.py` — driver (Phase 3).
+- Deleted: `src/training/dialogue/supply.py`, `loop.py`, `stub_kagent.py` (the supply rule / held index / two-sided Model A / dual-exhaustion / `_KAgentLike` stub they encoded are gone).
+- `scripts/dialogue-mhall.json` — the canonical example dialogue.
 
 ## Test Mapping
 
-| Spec ID | Test | Status |
-|---------|------|--------|
-| DDT-1 | loader parses table/turn fields; notes stripped | done (test_dialogue_decoder) |
-| DDT-2 | decode() returns flat ordered list of DecodedTurn | done (test_dialogue_decoder) |
-| DDT-3 | single-stage: kline from script + sig lookup + actor/op pass-through | done (test_dialogue_decoder) |
-| DDT-4 | canon retrieved by node-list match | done (test_dialogue_decoder) |
-| DDT-5 | supply is pure: same inputs → same output; no state mutated across calls | done (test_dialogue_supply) |
-| DDT-6 | significance dispatch: S2/S3→respond, S4→supply, S1→advance | done (test_dialogue_supply) |
-| DDT-7 | trainer opens with primary half at S2; opening computed, table-validated | done (test_dialogue_supply, test_dialogue_loop) |
-| DDT-8 | request for X supplies held klines in canon→relation→identity order | done (test_dialogue_supply) |
-| DDT-9 | relation behind a canon is never supplied (shadowed) | done (test_dialogue_supply) |
-| DDT-10 | shadowed relation is K-discovered (S3) then T-ratified (S1) | done (test_dialogue_supply) |
-| DDT-11 | relation with no canon is supplied on request | done (test_dialogue_supply) |
-| DDT-12 | terminal nodes→S1, non-terminal→S2 on supplied entries | done (test_dialogue_supply) |
-| DDT-13 | K S3 proposal → T reciprocal at S1 | done (test_dialogue_supply) |
-| DDT-14 | K S1 terminal → trainer no-op, advance | done (test_dialogue_supply) |
-| DDT-15 | (retired) no declared-band satisfaction; Trainer never verifies K's learning | retired (spec 95d0a0a) |
-| DDT-16 | (retired) Kalvin emits no grounding event | retired (spec 95d0a0a) |
-| DDT-17 | (retired) no learned ⊇ submitted; termination is dual-exhaustion | retired (spec 95d0a0a) |
-| DDT-18 | run ends on dual cursor exhaustion; closing S1 verified not trusted | done (test_dialogue_loop) |
-| DDT-19 | subword canons withheld, ratifiable, supplied at node-terminality band | done (test_dialogue_supply) |
-| DDT-20 | unresolvable request escalates per supervisor-decision | deferred (real-Kalvin grill) |
-| DDT-21 | (retired) no band divergence; only structural K!=table K divergence | retired (spec 95d0a0a); structural case done (test_dialogue_loop) |
-| DDT-22 | loop is dispatch-driven (T computed, table validates), not replay | done (test_dialogue_loop) |
-| DDT-23 | self-cursored actors (trainer over T-rows, stub over K-rows); no kline matching | done (test_dialogue_loop) |
-| DDT-24 | greedy per-actor dispatch; multi-row runs handled identically to 1:1 | done (test_dialogue_loop) |
-| DDT-25 | two-sided validation per turn (K==table, T==table) with side attribution | done (test_dialogue_loop) |
-| DDT-26 | truncated table fails (non-empty stub cursor at trainer exhaustion) | done (test_dialogue_loop) |
-| DDT-27 | closing S1 verified (final K-run consumed + matched), not semantically detected | done (test_dialogue_loop) |
-| DDT-28 | annotation-only turns dropped at decode | done (test_dialogue_decoder) |
+| Spec ID | Test                                                                                                                   |
+| ------- | ---------------------------------------------------------------------------------------------------------------------- |
+| DDT-1   | loader parses table/turn fields                                                                                        |
+| DDT-2   | loader rejects an unknown `op`                                                                                         |
+| DDT-3   | `decode` returns a flat ordered `list[DecodedTurn]`                                                                    |
+| DDT-4   | decode resolves kline from script + significance lookup + role/op pass-through; annotation-only dropped; notes ignored |
+| DDT-5   | CANONIZED retrieved by node-list match                                                                                 |
+| DDT-6   | runner owns the table cursor; reads whose row is next and asks that actor; first row is the trainer's                  |
+| DDT-7   | greedy: consecutive same-actor rows go to the same actor (e.g. `T,T,K` → trainer twice, then trainee)                  |
+| DDT-8   | trainer and trainee are symmetric cursor readers of the same table                                                     |
+| DDT-9   | actor yields one event per `respond`, returning `(next_cursor, event)`; `proposal`/`query`/`role` wired correctly      |
+| DDT-10  | default actors do not inspect the incoming event                                                                       |
+| DDT-11  | actor divergence raises `ActorDivergence` keyed on the event's declared role, naming role/cursor/expected/emitted      |
+| DDT-12  | (removed) both actors are now validated (DDT-11)                                                                       |
+| DDT-13  | run ends when the cursor passes the end of the table                                                                   |
+| DDT-14  | runner has no harness message-bus dependency                                                                           |
+| DDT-15  | no learned/grounding notion or signal in the runner                                                                    |
+| DDT-16  | actor cursor starts before its first row; `respond` advances by one and returns `(next_cursor, event)` or `None`       |
+| DDT-17  | runner routes/validates on the event's self-declared `role` (router shape for async real actors)                       |
 
-Canonical end-to-end test (done, `test_dialogue_loop.py::test_canonical_run_completes_on_primary_closing_s1`):
-the full "Mary had a little lamb" dialogue (`scripts/dialogue-mhall.json`) runs
-against `StubKAgent`, every turn validated two-sided, terminating on the primary's
-S1 countersign via dual cursor exhaustion. (Kalvin's learning is monotonic memory,
-not a Trainer-verified gate — see the corrected spec.)
+Canonical end-to-end test: the full "Mary had a little lamb" dialogue
+(`scripts/dialogue-mhall.json`) runs to exhaustion through the default actor
+pair, every run validated.
 
 ## Design Decisions
 
-**D1 — Trainer is stateless.** Resolved in grill: the Trainer is a pure function
-of `(incoming turn, compiled script)`. Open-proposal tracking is Kalvin's state,
-not the Trainer's. *Rationale:* concentrates the new intelligence in a
-deterministic, testable function; matches the principle that only participants
-(supervisors, Kalvin) carry temporal state and cogitate. Rejected alternative: a
-provenance ledger of open proposals (unnecessary — Kalvin owns that state).
+**D1 — Both actors emit `RationaliseEvent`s.** The exchange shape is fixed: each
+turn is a `RationaliseEvent(kind, query, proposal)`. Significance is carried on
+the `proposal` KValue. This is the shape a real trainer and a real trainee will
+produce, so the default actors produce it too — replacement is a like-for-like
+swap. _Rejected:_ a bare-KValue exchange (loses the query/proposal pairing real
+actors rely on).
 
-**D2 — Canon-first with full shadowing.** Resolved in grill: a relation whose
-signature carries a canon is never T-supplied; it is K-discovered then
-T-ratified. *Rationale:* this is how "make Kalvin work harder" emerges without a
-special withholding rule — anything behind a canon is invisible to supply.
-Rejected alternative: filter subword canons or supply relations after their canon
-grounds (both require state, violating D1).
+**D2 — Both actors are validated against the table.** The runner checks every
+emitted response — trainer and trainee — against the authored table. A real
+trainer is expected to synthesise its training responses, and a real trainee
+its responses; both are validated the same way. The table-reading doubles cannot
+diverge (they read the table the runner validates against); the checks exist for
+the real actors. _Rejected:_ trainee-side-only validation (left the trainer
+unchecked, and a synthesising real trainer is exactly the case that most needs
+checking).
 
-**D3 — Significance from node-terminality (supplied entries).** Resolved in
-grill: terminal nodes → S1, non-terminal → S2. *Rationale:* generative and
-self-validating — it caught the `{a:[Det]}` error in the table (Det non-terminal
-⇒ S2, not S1). The rule produces the dialogue rather than merely describing it.
+**D3 — Bus-agnostic runner.** The runner is a plain Python loop. Bus integration
+arrives with the real actors. _Rejected:_ routing the default actors through the
+real `KAgentAdapter` + `MessageBus` (couples a simple loop to harness
+complexity, and misrepresents the default actors as `_KAgentLike` peers).
 
-**D4 — Pre-decode, single-stage decoder.** Resolved in grill: decode all turns
-to a flat list at configuration time; one function per turn. *Rationale:* symbol
-resolution is deterministic and total (independent of dialogue history), so JIT
-buys nothing; pre-decode validates the table against the script up front and
-keeps the loop a pure iterator. Rejected: JIT decode (entangles loop with
-script); split significance/structure stages (no useful intermediate).
+**D4 — The runner owns the table cursor; greediness is the runner's.** The
+runner reads `decoded[cursor].role` and asks that actor for its next row; while
+consecutive rows share an actor, it asks the same actor again. The actor itself
+is dumb: it holds its own cursor into its own rows and yields one row per
+`respond`, knowing nothing about alternation or run boundaries. For a strictly
+alternating table each actor is asked one row at a time; a `T,T,K` table asks
+the trainer twice, then the trainee. _Rejected:_ the actor emitting a whole run
+per `respond` (couples the actor to run-boundary detection and forces the two
+actors to share a position — a synchronisation problem); per-actor sub-tables
+with independent cursors over the shared sequence (same problem).
 
-**D5 — (SUPERSEDED) Grounding, not S1, is the satisfaction signal; learned =
-declared-band agreement.** Resolved in grill: an identity is learned at S4, a
-canon at S2, a relation at S3, only the countersigned primary at S1. *Rationale:*
-separates "understood and in LTM" from "countersigned"; lets the loop terminate
-at the structural band the author declared. Forward-compatible with the deferred
-event-kind change (ground→S1, frame→S2–S4). **Superseded by the design ruling
-(spec 95d0a0a):** Kalvin emits no grounding events, so there is no declared-band
-signal to detect and no `learned ⊇ submitted` gate. Termination is dual cursor
-exhaustion (D8/D10). Retained as a grill record.
+**D5 — No supply rule.** The trainer's "correct next response" is the table's
+trainer rows at the cursor. No held index, no canon-first shadowing, no
+node-terminality significance, no ratification dispatch, no opening entry-point.
+All of that was the trainer's internal cleverness, belonging to a real trainer,
+not to the loop. _Rejected:_ a stateless supply function computing trainer turns
+(ENTANGLES the loop with script structure and invents a shadowing model the
+table already prescribes).
 
-**D6 — Symmetric significance contract.** Resolved in grill: either party may
-send any band; S2/S3 = proposal, S4 = request, S1 = terminal. *Rationale:*
-symmetry is a design feature — there is no structural reason Kalvin cannot
-assume a supervisor role. K-originated S2 is deferred to a later grill.
+**D6 — The actor's role rides on the event; the runner is a router.**
+`RationaliseEvent` gains an optional `role` field; dialogue actors self-declare
+it (`"T"`/`"K"`), and the runner validates by that role rather than by the
+table key. This makes the event self-describing — the shape a real, possibly
+asynchronous actor uses to announce itself — without forcing the 30-odd
+non-dialogue emitters (cogitator, agent, supervisor, …) to supply a role.
+_Rejected:_ a required `role` field (breaks every emitter outside the dialogue);
+a separate dialogue-event type (duplicates `RationaliseEvent` and splits the
+exchange shape the real actors must converge on).
 
-**D7 — Subword canons are not filtered.** Resolved in grill: withheld and
-ratifiable, supplied at the node-terminality band like any canon. *Rationale:*
-subword structure is future-proofing (reconstructing words for novel queries).
-(Originally framed as "learned at S2"; reframed under the design ruling —
-supplied-at-band is the Trainer's behaviour, not a learned-at-band gate.)
-
-**D8 — Dispatch-driven loop; table is the shared source of truth.** Resolved in
-grill: both the trainer-side loop and the stub read the same pre-decoded table,
-each consuming only its own rows via a self-held cursor. The trainer *computes*
-its turns (supply function) and the table *validates* them; the stub *scripts*
-its turns from the table. *Rationale:* dispatch is the only loop that survives
-the move to real Kalvin (a replayer can't react to divergence); self-cursored
-actors are bus-faithful (the stub owns its turn like real Kalvin). Rejected:
-replay (orphaned `scripts/dialogue_runner.py` — replaced, not patched);
-trigger-keyed stub (the cursor dissolves the matching problem the orphaned
-`ResponseRow` solved).
-
-**D9 — Greedy cursor dispatch; 1:1 is not a constraint.** Resolved in grill: a
-run of consecutive same-actor rows is consumed whole by that actor. The
-canonical table happens to be 1:1 T/K alternating; future tables may have
-longer runs and are handled identically. *Rationale:* keeps the loop
-format-agnostic and makes the table the sole determinant of run shape.
-
-**D10 — Two-sided validation (Model A) + dual-exhaustion termination.** Resolved
-in grill: each turn validates K-against-table then T-against-table (precise
-failure attribution: stub/table vs supply bug); the run ends only when both
-cursors are empty, so the final K (the closing S1) is verified by construction,
-not trusted. *Rationale:* bootstrap exists to validate the trainer's brain
-(explicit T-validation is the point); dual-exhaustion guarantees the closing S1
-is reached and matched. Rejected: implicit T-validation via K divergence (loses
-the precise attribution); trainer-side semantic detection of the closing S1
-(violates statelessness, D1).
-
-**Deferred (later grills).** Multi-primary scripts; Trainer intentionality
-(submitting S1–S4 to signal intent); the event-kind → significance change;
-"Kalvin never derives a withheld kline"; how real Kalvin produces requests and
-grounds; multi-row K-run timing (moot for the 1:1 table).
-
-## Status
-
-- Spec: `@specs/dialogue-driven-training.md` — written and corrected; the
-  Phase-4 satisfaction framing (DDT-15/16/17, DDT-21 band-divergence) is retired
-  by a design ruling (Kalvin emits no grounding events; the Trainer verifies only
-  that K emitted the expected kline). Termination is dual cursor exhaustion
-  (DDT-18, DDT-26, DDT-27).
-- Glossary: `@CONTEXT.md` — "Learned" retired (wrong + redundant); LTM states
-  S1-grounds-by-LTM-update with no grounding event.
-- Stub spec: `@specs/stub-kagent.md` — §Event Kinds corrected (K emits only
-  request/proposal/countersign; no ground rows); ST-2/ST-3/ST-10 aligned.
-- Artifact: `scripts/dialogue-mhall.json` — reconciled (task 1.0 done, commit
-  18a9408).
-- Previous generation retired: `scripts/dialogue_runner.py`, the trigger-keyed
-  `ResponseRow` stub, `plans/impl/stub-kagent.md`, and their tests were removed
-  (commit fdd177b). The stub is now the self-cursored table reader; the dispatch
-  loop is `src/training/dialogue/loop.py`.
-- Implementation: **Phases 1-3 done** (commit 7597258) — `src/training/dialogue/`
-  (decoder, supply, stub_kagent, loop); 34 tests; full suite 1199 passed. **Phase
-  4 retired** (no satisfaction module; termination is Phase 3's dual-exhaustion).
-- Runnable driver: `scripts/dialogue_run.py` — the new-model replacement for
-  the retired `dialogue_runner.py`. Loads a dialogue table, wires the
-  self-cursored stub through the real adapter + bus, drives `run_session`, and
-  prints a PASS/FAIL summary (`--verbose` traces the validated T/K exchange).
-  This is the runnable proof the stub is exercised outside the test suite.
-- Open: switchover strategy and retirement of the prior spec/plan (Phase 5);
-  DDT-20 stall escalation (deferred to the real-Kalvin grill).
+**Deferred.** Real trainer / real trainee; bus integration; supervisor
+escalation; multi-cascade and multi-primary lessons.

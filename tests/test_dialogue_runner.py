@@ -1,0 +1,291 @@
+"""The bus-agnostic dialogue runner tests.
+
+Spec: ``@specs/dialogue-driven-training.md`` DDT-6..16. The runner owns the table
+cursor: at each step it reads whose row is next and asks that actor for its next
+row. Greediness is automatic — consecutive same-actor rows are served to the same
+actor (e.g. ``T,T,K`` asks the trainer twice, then the trainee). Each actor yields
+its own rows one at a time. Every response is validated against the table.
+
+The decisive acceptance test is the canonical end-to-end run
+(``scripts/dialogue-mhall.json``): runs to exhaustion, every row validated.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from kalvin.events import RationaliseEvent
+from kalvin.expand import SIG_S1
+from kalvin.kline import KLine
+from kalvin.kvalue import KValue
+from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.signifier import NLPSignifier
+from training.dialogue import (
+    ActorDivergence,
+    TableTrainee,
+    TableTrainer,
+    decode,
+    load_table,
+    run,
+)
+from training.dialogue.runner import _TableActor, run_table
+
+MHALL = Path(__file__).resolve().parent.parent / "scripts" / "dialogue-mhall.json"
+
+
+@pytest.fixture(scope="module")
+def _decoded_mhall():
+    tok, sigf = NLPTokenizer(), NLPSignifier()
+    table = load_table(json.loads(MHALL.read_text()))
+    return decode(table, tokenizer=tok, signifier=sigf)
+
+
+def _ev(sig: int = 0, role: str | None = None) -> RationaliseEvent:
+    return RationaliseEvent(
+        kind="frame",
+        query=KValue(KLine(sig, ()), 0),
+        proposal=KValue(KLine(sig, ()), 0),
+        role=role,
+    )
+
+
+def _row(role: str, sig: int):
+    from training.dialogue.decoder import DecodedTurn
+
+    return DecodedTurn(role=role, op="IDENTITY", value=KValue(KLine(sig, ()), 0))
+
+
+# ── DDT-9/10/16: an actor yields its rows one at a time, never inspecting incoming ─
+
+
+def test_actor_yields_rows_one_at_a_time(_decoded_mhall):
+    """DDT-9/16: each respond() advances the cursor by one and returns
+    (next_cursor, event); None when exhausted."""
+    actor = TableTrainer(_decoded_mhall)
+    t_rows = [t for t in _decoded_mhall if t.role == "T"]
+    for i, row in enumerate(t_rows):
+        nxt = actor.respond(None)
+        assert nxt is not None
+        next_cursor, event = nxt
+        assert next_cursor == i
+        assert event.proposal.kline == row.value.kline
+    assert actor.respond(None) is None
+    assert actor.exhausted
+
+
+def test_actor_does_not_inspect_incoming(_decoded_mhall):
+    """DDT-10: the emitted row is independent of the incoming event."""
+    first_t = next(t for t in _decoded_mhall if t.role == "T")
+    a = TableTrainer(_decoded_mhall)
+    b = TableTrainer(_decoded_mhall)
+    _, ea = a.respond(_ev())
+    _, eb = b.respond(None)
+    assert ea.proposal.kline == eb.proposal.kline == first_t.value.kline
+
+
+def test_actor_query_is_incoming_proposal(_decoded_mhall):
+    """DDT-9: the event's query is the incoming proposal (own turn on opening)."""
+    trainer = TableTrainer(_decoded_mhall)
+    _, opening = trainer.respond(None)
+    assert opening.query.kline == opening.proposal.kline  # no incoming → own turn
+
+
+def test_actor_cursor_starts_before_first_row(_decoded_mhall):
+    """DDT-16: the cursor starts at -1 (before the first row)."""
+    actor = TableTrainee(_decoded_mhall)
+    assert actor.cursor == -1
+
+
+# ── DDT-7: greedy — the runner serves a run of same-actor rows to one actor ─
+
+
+def test_greedy_runner_serves_run_to_same_actor():
+    """DDT-7: for a T,T,K table the trainer is asked twice, then the trainee once.
+    Greediness is the runner's behaviour, not the actor's."""
+    decoded = [_row("T", 0xAA), _row("T", 0xBB), _row("K", 0xCC)]
+    seen: list[str] = []
+
+    class _RecordingTrainer(_TableActor):
+        def respond(self, incoming):
+            r = super().respond(incoming)
+            if r is not None:
+                seen.append("T")
+            return r
+
+    class _RecordingTrainee(_TableActor):
+        def respond(self, incoming):
+            r = super().respond(incoming)
+            if r is not None:
+                seen.append("K")
+            return r
+
+    trainer = _RecordingTrainer(decoded, role="T", kind="frame")
+    trainee = _RecordingTrainee(decoded, role="K", kind="frame")
+    result = run(decoded, trainer=trainer, trainee=trainee)
+    assert result.complete
+    assert seen == ["T", "T", "K"]
+    assert [e.proposal.kline.signature for e in result.events] == [0xAA, 0xBB, 0xCC]
+
+
+# ── DDT-8: trainer and trainee are symmetric ──────────────────────────────
+
+
+def test_trainer_and_trainee_are_symmetric_readers(_decoded_mhall):
+    """DDT-8: both yield their own rows in order; together they cover the table."""
+    assert isinstance(TableTrainer(_decoded_mhall), _TableActor)
+    assert isinstance(TableTrainee(_decoded_mhall), _TableActor)
+    result = run(
+        _decoded_mhall, trainer=TableTrainer(_decoded_mhall), trainee=TableTrainee(_decoded_mhall)
+    )
+    assert [e.proposal.kline for e in result.events] == [t.value.kline for t in _decoded_mhall]
+
+
+# ── DDT-6/13: the run is driven by the table cursor, opens with the trainer ─
+
+
+def test_run_opens_with_trainer_and_ends_on_exhaustion(_decoded_mhall):
+    """DDT-6/13: the first row is the trainer's; the run ends at the table end."""
+    result = run(
+        _decoded_mhall, trainer=TableTrainer(_decoded_mhall), trainee=TableTrainee(_decoded_mhall)
+    )
+    assert result.complete
+    t_rows = [t for t in _decoded_mhall if t.role == "T"]
+    assert result.events[0].proposal.kline == t_rows[0].value.kline
+    assert len(result.events) == len(_decoded_mhall)
+
+
+def test_run_greedy_multi_row_table_completes():
+    """DDT-7/13: a T,T,K,K,T table runs to exhaustion with greedy multi-row runs."""
+    decoded = [
+        _row("T", 0x1),
+        _row("T", 0x2),
+        _row("K", 0x3),
+        _row("K", 0x4),
+        _row("T", 0x5),
+    ]
+    result = run(decoded, trainer=TableTrainer(decoded), trainee=TableTrainee(decoded))
+    assert result.complete
+    assert [e.proposal.kline.signature for e in result.events] == [0x1, 0x2, 0x3, 0x4, 0x5]
+
+
+# ── DDT-11: both actors are validated against the table ─────────────────
+
+
+def test_trainee_divergence_raises(_decoded_mhall):
+    """DDT-11: a trainee response that does not match the table raises ActorDivergence."""
+
+    class _BadTrainee:
+        cursor = 0  # reports cursor 0 (the row it claims to have consumed)
+
+        def respond(self, incoming):
+            # Declares role K, emits a kline that matches nothing in the table.
+            return 0, _ev(0xDEAD, role="K")
+
+    with pytest.raises(ActorDivergence) as exc_info:
+        run(_decoded_mhall, trainer=TableTrainer(_decoded_mhall), trainee=_BadTrainee())
+    assert exc_info.value.role == "K"
+    assert exc_info.value.cursor == 0
+    assert exc_info.value.emitted.kline.signature == 0xDEAD
+
+
+def test_trainer_divergence_raises(_decoded_mhall):
+    """DDT-11: a synthesising trainer whose response does not match the table raises
+    ActorDivergence. A real trainer is expected to synthesise its responses and
+    is validated against the table like the trainee."""
+
+    class _SynthesisingTrainer:
+        cursor = 0
+
+        def respond(self, incoming):
+            # Declares role T, emits a synthesised non-table kline — rejected.
+            return 0, _ev(0x99, role="T")
+
+    with pytest.raises(ActorDivergence) as exc_info:
+        run(_decoded_mhall, trainer=_SynthesisingTrainer(), trainee=TableTrainee(_decoded_mhall))
+    assert exc_info.value.role == "T"
+    assert exc_info.value.emitted.kline.signature == 0x99
+
+
+def test_validation_keys_off_event_role_not_table_key(_decoded_mhall):
+    """DDT-11: the runner validates by the role the actor declared on its event,
+    not by the table's view of who responded. An actor that declares a role with
+    no matching table rows is caught by the role-keyed lookup."""
+
+    class _WrongRoleTrainee:
+        cursor = 0
+
+        def respond(self, incoming):
+            # The table expects a K row here, but the actor declares role "X" —
+            # a role the table has no rows for. Validation keys off the declared
+            # role and raises.
+            return 0, _ev(0xDEAD, role="X")
+
+    with pytest.raises(ActorDivergence) as exc_info:
+        run(_decoded_mhall, trainer=TableTrainer(_decoded_mhall), trainee=_WrongRoleTrainee())
+    assert exc_info.value.role == "X"  # the declared role, not the table key "K"
+
+
+def test_event_carries_emitting_role(_decoded_mhall):
+    """The default actors self-declare their role on every emitted event."""
+    result = run(
+        _decoded_mhall, trainer=TableTrainer(_decoded_mhall), trainee=TableTrainee(_decoded_mhall)
+    )
+    roles = [e.role for e in result.events]
+    # The MHALL table opens with a trainer turn (role "T").
+    assert roles[0] == "T"
+    assert set(roles) == {"T", "K"}
+
+
+# ── DDT-14: bus-agnostic ──────────────────────────────────────────────────
+
+
+def test_runner_has_no_bus_dependency():
+    """DDT-14: the runner module does not import the harness bus/adapter."""
+    import training.dialogue.runner as runner_mod
+
+    import_lines = [
+        line
+        for line in open(runner_mod.__file__).read().splitlines()
+        if line.startswith("import ") or line.startswith("from ")
+    ]
+    joined = "\n".join(import_lines)
+    assert "training.harness" not in joined
+    assert "MessageBus" not in joined
+    assert "KAgentAdapter" not in joined
+
+
+# ── DDT-15: no learned/grounding notion ───────────────────────────────────
+
+
+def test_runner_has_no_learning_notion():
+    """DDT-15: the runner carries no learned/grounding notion or signal."""
+    import training.dialogue.runner as runner_mod
+
+    src = open(runner_mod.__file__).read()
+    assert "def _learned" not in src
+    assert "grounding_event" not in src
+    assert "Learned" not in src
+
+
+# ── Canonical end-to-end (decisive acceptance) ────────────────────────────
+
+
+def test_canonical_run_completes(_decoded_mhall):
+    """The full MHALL dialogue runs to exhaustion through the default actors,
+    every row validated, closing on the trainee's S1 countersign of the primary."""
+    result = run(
+        _decoded_mhall, trainer=TableTrainer(_decoded_mhall), trainee=TableTrainee(_decoded_mhall)
+    )
+    assert result.complete
+    assert result.events[-1].proposal.significance == SIG_S1
+    assert result.events[-1].proposal.kline == result.events[0].proposal.kline
+
+
+def test_run_table_convenience():
+    """run_table decodes and runs with default actors in one call."""
+    table = load_table(json.loads(MHALL.read_text()))
+    result = run_table(table, tokenizer=NLPTokenizer(), signifier=NLPSignifier())
+    assert result.complete

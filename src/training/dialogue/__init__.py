@@ -1,14 +1,13 @@
 """Dialogue-driven training (spec: ``@specs/dialogue-driven-training.md``).
 
 A lesson is driven by an authored **dialogue table** (``script`` + ordered
-``turns``) between Trainer (T) and Kalvin (K). This package implements the
-configuration-time **decoder** that turns a table into a flat ordered list of
-``DecodedTurn`` (Phase 1 of the plan), plus the downstream stateless supply
-rule, self-cursored stub, and dispatch loop (Phases 2–4).
+``turns``) between Trainer (T) and Trainee (K). This package implements the
+configuration-time **decoder** (table → flat ordered ``list[DecodedTurn]``) and
+the bus-agnostic **runner** that alternates the two actors to exhaustion.
 
-The decoder is a single-stage, pre-loop function (spec §Decoder): symbol
-resolution is deterministic and total, so it runs once at configuration time
-and the training loop never touches ``script`` again.
+The decoder is single-stage and runs once at configuration time; the runner
+never touches ``script`` again. Both default actors are table-reading doubles,
+structurally symmetric and individually replaceable by a real trainer or trainee.
 """
 
 from training.dialogue.decoder import (
@@ -20,43 +19,31 @@ from training.dialogue.decoder import (
     decode,
     load_table,
 )
-from training.dialogue.supply import (
-    HeldIndex,
-    SupplyMiss,
-    TrainerResponse,
-    build_held_index,
-    opening,
-    respond,
-    supply,
-    terminal_significance,
+from training.dialogue.runner import (
+    Actor,
+    ActorDivergence,
+    RunResult,
+    TableTrainee,
+    TableTrainer,
+    default_actors,
+    run,
+    run_table,
 )
-from training.dialogue.loop import (
-    LoopError,
-    LoopResult,
-    run_session,
-    run_with_held,
-)
-from training.dialogue.stub_kagent import StubKAgent
 
 __all__ = [
+    "Actor",
+    "ActorDivergence",
     "BAND_TO_SIG",
     "DECODEDTurn",
     "DecodedTurn",
     "DialogueTable",
-    "HeldIndex",
-    "LoopError",
-    "LoopResult",
-    "StubKAgent",
-    "SupplyMiss",
-    "TrainerResponse",
+    "RunResult",
+    "TableTrainee",
+    "TableTrainer",
     "Turn",
-    "build_held_index",
     "decode",
+    "default_actors",
     "load_table",
-    "opening",
-    "respond",
-    "run_session",
-    "run_with_held",
-    "supply",
-    "terminal_significance",
+    "run",
+    "run_table",
 ]

@@ -124,7 +124,7 @@ Recognised working context — the klines Kalvin has matched, expanded, or ratif
 _Avoid_: session log (Frame is not a log), session
 
 **LTM (Long-Term Memory)**:
-Persistent knowledge that survives across sessions. Structurally identical to Frame; the distinction is semantic. Monotonic; loaded at session start, saved at session end. Kalvin learns continuously (monotonic memory); under S1 ratification it grounds an entry by updating LTM. It does **not** emit a grounding event — grounding is a memory update, not a signal.
+Persistent knowledge that survives across sessions. Structurally identical to Frame; the distinction is semantic. Monotonic; loaded at session start, saved at session end. Kalvin learns through experience by accumulating grounded structure.
 _Avoid_: persistent store (too vague), knowledge base, LTM frame
 
 **Escalation**:
@@ -134,19 +134,11 @@ The Trainer deferring a proposal it cannot auto-ratify to the supervisor for res
 The action of countersigning a selected proposal. Usually performed by the Trainer during curriculum execution.
 
 **Canon**:
-A relationship kline whose signature is the OR-reduction of its nodes (`signature == make_signature(nodes)`) — structurally a self-grounded fit (S1), even when compiled at the S2 band. The structural fact; distinct from CANONIZED, which names the written token (`=>`) and the intent to aggregate. A CANONIZED kline need not be a Canon.
-_Avoid_: canonical (ambiguous with the Structural State), canonized (the intent, not the property), MTS (an example, not the concept)
+A relationship kline whose signature is the OR-reduction of its nodes: `signature == make_signature(nodes)`. The signature carries no information beyond what its nodes already express, so the kline is structurally self-grounded.
+_Avoid_: canonical (ambiguous with the Structural State), CANONIZED (that names the written token `=>` and the intent to aggregate — a CANONIZED kline need not be a Canon), MTS (an example, not the concept)
 
 **MTS Entry**:
 A Canon produced by multi-token signature expansion — the tokenizer encodes a compound signature as the OR-reduction of its constituent token IDs, so the resulting kline is a Canon by construction. An instance of Canon, not the definition; other Canons need not arise from MTS expansion.
-
-<!-- "Learned" was retired: the glossary entry framed learning as a detectable,
-band-matched Kalvin event, which is both wrong and redundant. Kalvin learns
-continuously (monotonic memory) and grounds under S1 by updating LTM; it emits
-no grounding event, so there is no event to match a "declared band" against.
-The dialogue-driven-training spec derives run termination from dual cursor
-exhaustion (trainer-side loop + stub), not from any "learned ⊇ submitted"
-computation. -->
 
 **Word Binding**:
 The association of a single-character KScript signature with a word, resolved through BPE annotations in the source. Bindings are scoped by relational-token boundaries; a character resolves to the most recent matching word in its scope.
