@@ -244,7 +244,9 @@ def run_with_held(
     # The opening's K emissions must match the next K-rows at the cursor.
     for ev in k_emissions:
         _validate_k_event(ev, k_rows, k_expect_cursor)
-        result.k_emissions.append(_event_to_turn(ev, actor="K"))
+        result.k_emissions.append(
+            _event_to_turn(ev, actor="K", op=k_rows[k_expect_cursor].op)
+        )
         k_expect_cursor += 1
     t_cursor = 1
 
@@ -302,7 +304,9 @@ def run_with_held(
                     kind="stub_divergence",
                 )
             _validate_k_event(ev, k_rows, k_expect_cursor)
-            result.k_emissions.append(_event_to_turn(ev, actor="K"))
+            result.k_emissions.append(
+                _event_to_turn(ev, actor="K", op=k_rows[k_expect_cursor].op)
+            )
             k_expect_cursor += 1
 
     # Dual-exhaustion gate (DDT-26, DDT-27).
@@ -386,14 +390,15 @@ def _submit_and_collect(
     return submit(t_value)
 
 
-def _event_to_turn(event: RationaliseEvent, *, actor: str) -> DecodedTurn:
-    """Reconstruct a DecodedTurn from an observed RationaliseEvent.
+def _event_to_turn(event: RationaliseEvent, *, actor: str, op: str) -> DecodedTurn:
+    """Reconstruct a DecodedTurn from an observed, validated RationaliseEvent.
 
-    The op is read off the emitted kline's compiled structural state (mapped to
-    the dialogue vocabulary). Used only for bookkeeping in :class:`LoopResult`;
-    validation reads the event's ``proposal`` directly.
+    The op is **not** recoverable from the event alone (the stub emits a
+    ``RationaliseEvent`` with no op field, and the emitted kline's ``dbg.op`` is
+    the compiled structural state, which differs from the dialogue op — e.g. an
+    IDENTITY request whose label resolves to a COUNTERSIGNED compiled kline).
+    The caller passes the op of the table row the event was just validated
+    against, so :attr:`LoopResult.k_emissions` records the validated truth rather
+    than a guess.
     """
-    op = event.proposal.kline.dbg.op if event.proposal.kline.dbg else "IDENTITY"
-    if op == "CANONIZED":
-        op = "CANON"
     return DecodedTurn(actor=actor, op=op, value=event.proposal)

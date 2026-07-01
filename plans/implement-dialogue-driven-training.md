@@ -269,5 +269,10 @@ grounds; multi-row K-run timing (moot for the 1:1 table).
 - Implementation: **Phases 1-3 done** (commit 7597258) — `src/training/dialogue/`
   (decoder, supply, stub_kagent, loop); 34 tests; full suite 1199 passed. **Phase
   4 retired** (no satisfaction module; termination is Phase 3's dual-exhaustion).
+- Runnable driver: `scripts/dialogue_run.py` — the new-model replacement for
+  the retired `dialogue_runner.py`. Loads a dialogue table, wires the
+  self-cursored stub through the real adapter + bus, drives `run_session`, and
+  prints a PASS/FAIL summary (`--verbose` traces the validated T/K exchange).
+  This is the runnable proof the stub is exercised outside the test suite.
 - Open: switchover strategy and retirement of the prior spec/plan (Phase 5);
   DDT-20 stall escalation (deferred to the real-Kalvin grill).
