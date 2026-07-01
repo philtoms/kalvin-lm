@@ -38,23 +38,11 @@ An agent-in-the-loop that drives the training loop on behalf of a supervisor. Re
 _Avoid_: auto-agent, training bot
 
 **Scaffolding**:
-KScript entries that provide grounding context for other entries. Two forms — **pre-compiled** (written into the script by the curriculum designer) and **reactive** (written by the supervisor during rationalisation). Structurally identical; the difference is when they are created.
-
-**Pre-compiled Scaffolding**:
-Scaffolding written into the original script by the curriculum designer — what they anticipated Kalvin needs to understand the parent line.
-
-**Reactive Scaffolding**:
-Scaffolding written by the supervisor when Kalvin's S2/S3 proposals mismatch expectations — targeted klines written to bridge the gap.
+KScript entries that provide grounding context for other entries. Structurally identical regardless of origin; the difference is only when they are created — **pre-compiled** (written into the original script by the curriculum designer) or **reactive** (written by the supervisor when Kalvin's S2/S3 proposals mismatch expectations).
 
 **Curriculum**:
 A living structured document owned by the Harness and accessible to all participants. The source of truth for training — never rolled back, only evolved forward. Three sections: **objective** (what it teaches), **approach** (the pedagogical strategy), and **lessons** (ordered KScript entries with human-readable context).
 _Avoid_: lesson plan (too narrow — the curriculum is more than its lessons)
-
-**Curriculum Amendment**:
-A change to a running curriculum — inserting, appending, or modifying lessons. Any participant may request one via the Trainer; applied immediately without human ratification.
-
-**Goal**:
-The input that starts a training session — either a natural language request (the Trainer generates a curriculum via LLM agent) or a file path to an existing curriculum. The Trainer resolves either to a curriculum file and begins training.
 
 **Harness**:
 The multi-agent runtime that loads participants and runs a dialogue loop between them. A message broker — participants send role-addressed messages through the harness and it routes them to all subscribers of that role. Participants never communicate directly.
@@ -116,15 +104,15 @@ A kline that carries no decomposition — either of two forms: empty nodes (`{S:
 _Avoid_: unsigned (implementation term), bare signature (describes the syntax, not the structure)
 
 **STM (Short-Term Memory)**:
-The lowest tier in the write cascade and Kalvin's event register — every write reaches it. All klines encountered during a session pass through: queries, retrieved candidates, expanded proposals, and ratified results. Empty at session start.
+The lowest tier in the write cascade and Kalvin's event register — every write reaches it. Empty at session start.
 _Avoid_: STM caching (too vague), working memory (too vague), context window (implies a passive buffer)
 
 **Frame**:
-Recognised working context — the klines Kalvin has matched, expanded, or ratified during a session. Receives only expanded proposals (S2/S3), ratified klines (S1), and novel klines (S4); the slow-path query reaches STM alone unless cogitation produces a result. Monotonic; persisted across sessions.
+Recognised working context persisted across sessions. Monotonic.
 _Avoid_: session log (Frame is not a log), session
 
 **LTM (Long-Term Memory)**:
-Persistent knowledge that survives across sessions. Structurally identical to Frame; the distinction is semantic. Monotonic; loaded at session start, saved at session end. Kalvin learns through experience by accumulating grounded structure.
+Persistent knowledge that survives across sessions. Structurally identical to Frame; the distinction is semantic.
 _Avoid_: persistent store (too vague), knowledge base, LTM frame
 
 **Escalation**:
@@ -136,9 +124,6 @@ The action of countersigning a selected proposal. Usually performed by the Train
 **Canon**:
 A relationship kline whose signature is the OR-reduction of its nodes: `signature == make_signature(nodes)`. The signature carries no information beyond what its nodes already express, so the kline is structurally self-grounded.
 _Avoid_: canonical (ambiguous with the Structural State), CANONIZED (that names the written token `=>` and the intent to aggregate — a CANONIZED kline need not be a Canon), MTS (an example, not the concept)
-
-**MTS Entry**:
-A Canon produced by multi-token signature expansion — the tokenizer encodes a compound signature as the OR-reduction of its constituent token IDs, so the resulting kline is a Canon by construction. An instance of Canon, not the definition; other Canons need not arise from MTS expansion.
 
 **Word Binding**:
 The association of a single-character KScript signature with a word, resolved through BPE annotations in the source. Bindings are scoped by relational-token boundaries; a character resolves to the most recent matching word in its scope.
