@@ -313,15 +313,22 @@ table nor script nor `dbg`. → D1–D12.
 ### Phase 2 — Tests
 
 **2.1 `tests/test_rationalise.py`.** Unit tests per mechanism branch, not only
-through the golden master:
-- Entry rule: S4-pop, S1-ground-and-pop, S2/S3-push.
-- Level 0 identity emission.
-- Level 1 1:1 → S3; non-1:1 → S2 (the **S2 branch is built but unexercised by
-  MHALL** — see Coverage Gaps; supply a synthetic golden master to cover it).
-- Grouping (D10): reproduces `{ALL:[Object]}` from a 3-vs-1 residual; the
-  synthetic ALL signature is constructed, not looked up.
-- Escalation (D11): against `TableTrainer` reading an authored golden master
-  with a trainer-S4 refusal; verify group-size increment and pass restart.
+through the golden master. Each test asserts the mechanism **as implemented**
+(evolved beyond the plan's original sketch — e.g. S1 is recursive cleanup, not a
+simple pop):
+- Construction & Actor interface: role `"K"`; respond returns event or `None`.
+- Entry rule: S2/S3 unpack (query + node identities + signature identity);
+  recognised nodes not re-pushed; S4 pop; S1 ground + cleanup.
+- Level 0: identity emission at S4; no opening special-case (D8).
+- Cleanup & MTS discrimination: a non-MTS relationship grounds when its node
+  grounds; an MTS relationship does not ground early (`_groundable` predicate).
+- Level 1 grouping (D10): the 3-vs-1 residual constructs a synthetic ALL
+  operand (`make_signature`), not looked up.
+- Level 1 significance: every MHALL proposal is 1:1 (single node).
+- Termination (D12): empty work-list → `None`.
+- **G1 (S2 multi-node proposal) and G2 (escalation on trainer-S4 refusal)**
+  are `pytest.skip` markers pointing at the coverage gap rather than tests of
+  unimplemented behaviour.
 
 **2.2 Runner integration test.** `Rationaliser` runs MHALL to exhaustion with
 zero divergence against the golden master (the trainer stays a `TableTrainer` —
