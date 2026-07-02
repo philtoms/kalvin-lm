@@ -331,8 +331,13 @@ simple pop):
   unimplemented behaviour.
 
 **2.2 Runner integration test.** `Rationaliser` runs MHALL to exhaustion with
-zero divergence against the golden master (the trainer stays a `TableTrainer` —
-the deterministic oracle). This is the canonical end-to-end proof.
+zero divergence against the golden master, driven through the runner's `run()`
+like any Actor (the trainer stays a `TableTrainer` — the deterministic
+oracle). **Prerequisite done:** the runner/Actor refactor (synthesizing-trainer
+D7) — `Actor.respond` returns just `RationaliseEvent | None` (no cursor); the
+runner validates against `decoded[cursor]`. The spec's §Actor/§Validation and
+test matrix (DDT-9, DDT-16) updated to match. This is the canonical end-to-end
+proof that a rationalising trainee is a drop-in `TableTrainee` replacement.
 
 **2.3 Driver flag.** `scripts/dialogue_run.py` gains a `--rationalise` flag that
 substitutes `Rationaliser` for `TableTrainee`, demonstrating the drop-in (trainer

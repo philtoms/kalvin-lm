@@ -65,54 +65,47 @@ class ActorDivergence(Exception):  # noqa: N818 - spec names this type
 class Actor(Protocol):
     """One side of the dialogue (spec §Actor).
 
-    Each actor holds its own cursor (starting before its first row) and yields
-    its rows one at a time in order. ``respond`` advances the cursor by one and
-    returns ``(next_cursor, event)`` — the new cursor position and the event for
-    that row — or ``None`` when the actor is exhausted. The actor does not know
-    the table's actor sequence; the runner decides whose turn it is. The event's
-    ``proposal`` is the actor's turn; ``query`` is the ``incoming`` event's
-    ``proposal`` (or the actor's own turn on the opening).
+    Each actor yields its rows one at a time in order. ``respond`` returns the
+    event for its next row, or ``None`` when the actor is exhausted. The actor
+    holds no cursor it returns to the runner; it does not know the table's actor
+    sequence, and the runner decides whose turn it is. The event's ``proposal``
+    is the actor's turn; ``query`` is the ``incoming`` event's ``proposal`` (or
+    the actor's own turn on the opening). The **runner owns the validation
+    index** into the full decoded table; the actor returns only its event.
     """
 
     def respond(
         self, incoming: RationaliseEvent | None
-    ) -> tuple[int, RationaliseEvent] | None: ...
+    ) -> RationaliseEvent | None: ...
 
 
 # ── Table-reading actors (spec §The Runner, §Actor) ───────────────────────
 #
-# Each actor holds its own cursor into its own rows (the subsequence of the
-# decoded table matching its ``actor`` label) and yields them one at a time in
-# order. It never inspects the incoming event to decide what to emit (DDT-10) —
+# Each actor holds its own index into its own rows (the subsequence of the
+# decoded table matching its ``role``) and yields them one at a time in order.
+# It never inspects the incoming event to decide what to emit (DDT-10) —
 # ``incoming`` only supplies the emitted event's ``query`` voice. The actor is
-# dumb on purpose: it does not know about actor alternation or run boundaries.
+# dumb on purpose: it does not know about actor alternation or run boundaries,
+# and it returns no cursor to the runner (the runner owns the validation index).
 # The runner decides whose turn it is; greediness is the runner's behaviour.
 
 
 class _TableActor:
     """Default actor: yields its rows in order, one per ``respond`` call.
 
-    Holds the decoded table and an ``actor`` label, plus a cursor that starts
-    before the actor's first row (-1). Each ``respond`` advances the cursor by
-    one and returns ``(next_cursor, event)`` — the new cursor and the event for
-    that row — or ``None`` once exhausted. Each event's ``query`` is the incoming
-    event's ``proposal`` (or the row's own turn on the opening).
+    Holds the decoded table and a ``role`` label, plus an internal index that
+    starts before the actor's first row. Each ``respond`` advances the index by
+    one and returns the event for that row, or ``None`` once exhausted. Each
+    event's ``query`` is the incoming event's ``proposal`` (or the row's own
+    turn on the opening). The actor returns no cursor — the runner validates
+    against the full decoded table at its own cursor.
     """
 
     def __init__(self, table: Sequence[DecodedTurn], role: str, *, kind: str) -> None:
         self._rows: tuple[DecodedTurn, ...] = tuple(t for t in table if t.role == role)
-        self._cursor = -1
+        self._index = -1
         self._kind = kind
         self._role = role
-
-    @property
-    def cursor(self) -> int:
-        """The last cursor position advanced to (-1 before any call)."""
-        return self._cursor
-
-    @property
-    def exhausted(self) -> bool:
-        return self._cursor >= len(self._rows) - 1
 
     @property
     def role(self) -> str:
@@ -121,14 +114,14 @@ class _TableActor:
 
     def respond(
         self, incoming: RationaliseEvent | None
-    ) -> tuple[int, RationaliseEvent] | None:
-        nxt = self._cursor + 1
+    ) -> RationaliseEvent | None:
+        nxt = self._index + 1
         if nxt >= len(self._rows):
             return None
-        self._cursor = nxt
+        self._index = nxt
         turn = self._rows[nxt]
         query = incoming.proposal if incoming is not None else turn.value
-        return nxt, RationaliseEvent(
+        return RationaliseEvent(
             kind=self._kind, query=query, proposal=turn.value, role=self._role
         )
 
@@ -186,10 +179,6 @@ def run(decoded: Sequence[DecodedTurn], trainer: Actor, trainee: Actor) -> RunRe
     the runner routes on what the actor said, checking it against the table.
     """
     actors: dict[str, Actor] = {"T": trainer, "K": trainee}
-    rows_by_role = {
-        "T": [t for t in decoded if t.role == "T"],
-        "K": [t for t in decoded if t.role == "K"],
-    }
     result = RunResult()
 
     incoming: RationaliseEvent | None = None
@@ -197,12 +186,11 @@ def run(decoded: Sequence[DecodedTurn], trainer: Actor, trainee: Actor) -> RunRe
     while cursor < len(decoded):
         role = decoded[cursor].role
         actor = actors[role]
-        nxt = actor.respond(incoming)
-        if nxt is None:
+        event = actor.respond(incoming)
+        if event is None:
             break  # actor exhausted before the table — incomplete
-        next_cursor, event = nxt
         result.events.append(event)
-        _validate(next_cursor, event, rows_by_role)
+        _validate(cursor, event, decoded)
         incoming = event
         cursor += 1
 
@@ -211,44 +199,35 @@ def run(decoded: Sequence[DecodedTurn], trainer: Actor, trainee: Actor) -> RunRe
 
 
 def _validate(
-    cursor: int, event: RationaliseEvent, rows_by_role: dict[str, list[DecodedTurn]]
+    cursor: int, event: RationaliseEvent, decoded: Sequence[DecodedTurn]
 ) -> None:
-    """Validate ``event`` by its self-declared ``role`` (§Validation).
+    """Validate ``event`` against ``decoded[cursor]`` by self-declared ``role``.
 
-    The actor announces its role on the event; the runner uses that role (not the
-    table key) to find the decoded rows for that actor and check the emitted
-    ``proposal`` equals the row at ``cursor``. A role the table has no rows for,
-    or a kline/significance mismatch, raises :class:`ActorDivergence`.
+    The actor announces its role on the event; the runner checks the event's
+    ``role`` equals ``decoded[cursor].role`` and the emitted ``proposal`` equals
+    ``decoded[cursor].value``. A role mismatch or a kline/significance mismatch
+    raises :class:`ActorDivergence` (spec §Validation).
 
-    ``cursor`` is the next-cursor the actor returned (the 0-based index of the
-    row among that actor's own rows). Skipped when the event carries no role
-    (a real actor substituted later may run without a decoded reference table).
+    Keying validation on the event's self-declared ``role`` (rather than the
+    table key) is what lets a real, possibly asynchronous actor announce itself:
+    the runner routes on what the actor said, checking it against the table.
     """
-    role = event.role
-    if role is None:
-        return
-    rows = rows_by_role.get(role)
-    if not rows:
+    if event.role is None:
+        return  # internal emission — no decoded reference to validate against
+    if event.role != decoded[cursor].role:
         raise ActorDivergence(
-            role=role,
-            cursor=max(cursor, 0),
-            expected=event.proposal,
+            role=event.role,
+            cursor=cursor,
+            expected=decoded[cursor].value,
             emitted=event.proposal,
         )
-    if cursor < 0 or cursor >= len(rows):
-        raise ActorDivergence(
-            role=role,
-            cursor=max(cursor, 0),
-            expected=rows[-1].value,
-            emitted=event.proposal,
-        )
-    expected = rows[cursor].value
+    expected = decoded[cursor].value
     if (
         event.proposal.kline != expected.kline
         or event.proposal.significance != expected.significance
     ):
         raise ActorDivergence(
-            role=role,
+            role=event.role,
             cursor=cursor,
             expected=expected,
             emitted=event.proposal,

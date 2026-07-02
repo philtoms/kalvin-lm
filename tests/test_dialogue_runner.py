@@ -62,18 +62,15 @@ def _row(role: str, sig: int):
 
 
 def test_actor_yields_rows_one_at_a_time(_decoded_mhall):
-    """DDT-9/16: each respond() advances the cursor by one and returns
-    (next_cursor, event); None when exhausted."""
+    """DDT-9/16: each respond() returns the next row's event; None when exhausted.
+    The actor returns no cursor — the runner owns the validation index."""
     actor = TableTrainer(_decoded_mhall)
     t_rows = [t for t in _decoded_mhall if t.role == "T"]
     for i, row in enumerate(t_rows):
-        nxt = actor.respond(None)
-        assert nxt is not None
-        next_cursor, event = nxt
-        assert next_cursor == i
+        event = actor.respond(None)
+        assert event is not None
         assert event.proposal.kline == row.value.kline
     assert actor.respond(None) is None
-    assert actor.exhausted
 
 
 def test_actor_does_not_inspect_incoming(_decoded_mhall):
@@ -81,22 +78,26 @@ def test_actor_does_not_inspect_incoming(_decoded_mhall):
     first_t = next(t for t in _decoded_mhall if t.role == "T")
     a = TableTrainer(_decoded_mhall)
     b = TableTrainer(_decoded_mhall)
-    _, ea = a.respond(_ev())
-    _, eb = b.respond(None)
+    ea = a.respond(_ev())
+    eb = b.respond(None)
     assert ea.proposal.kline == eb.proposal.kline == first_t.value.kline
 
 
 def test_actor_query_is_incoming_proposal(_decoded_mhall):
     """DDT-9: the event's query is the incoming proposal (own turn on opening)."""
     trainer = TableTrainer(_decoded_mhall)
-    _, opening = trainer.respond(None)
+    opening = trainer.respond(None)
     assert opening.query.kline == opening.proposal.kline  # no incoming → own turn
 
 
-def test_actor_cursor_starts_before_first_row(_decoded_mhall):
-    """DDT-16: the cursor starts at -1 (before the first row)."""
+def test_actor_yields_first_row_on_first_respond(_decoded_mhall):
+    """DDT-16: the actor yields its first row on the first respond (no cursor is
+    returned to the runner; the runner owns the validation index)."""
     actor = TableTrainee(_decoded_mhall)
-    assert actor.cursor == -1
+    first_k = next(t for t in _decoded_mhall if t.role == "K")
+    event = actor.respond(None)
+    assert event is not None
+    assert event.proposal.kline == first_k.value.kline
 
 
 # ── DDT-7: greedy — the runner serves a run of same-actor rows to one actor ─
@@ -178,16 +179,16 @@ def test_trainee_divergence_raises(_decoded_mhall):
     """DDT-11: a trainee response that does not match the table raises ActorDivergence."""
 
     class _BadTrainee:
-        cursor = 0  # reports cursor 0 (the row it claims to have consumed)
-
         def respond(self, incoming):
             # Declares role K, emits a kline that matches nothing in the table.
-            return 0, _ev(0xDEAD, role="K")
+            return _ev(0xDEAD, role="K")
 
     with pytest.raises(ActorDivergence) as exc_info:
         run(_decoded_mhall, trainer=TableTrainer(_decoded_mhall), trainee=_BadTrainee())
     assert exc_info.value.role == "K"
-    assert exc_info.value.cursor == 0
+    # The first K-row is at full-table cursor 1 (after the T-row at cursor 0);
+    # the runner validates against decoded[cursor], so the divergence is at 1.
+    assert exc_info.value.cursor == 1
     assert exc_info.value.emitted.kline.signature == 0xDEAD
 
 
@@ -197,11 +198,9 @@ def test_trainer_divergence_raises(_decoded_mhall):
     is validated against the table like the trainee."""
 
     class _SynthesisingTrainer:
-        cursor = 0
-
         def respond(self, incoming):
             # Declares role T, emits a synthesised non-table kline — rejected.
-            return 0, _ev(0x99, role="T")
+            return _ev(0x99, role="T")
 
     with pytest.raises(ActorDivergence) as exc_info:
         run(_decoded_mhall, trainer=_SynthesisingTrainer(), trainee=TableTrainee(_decoded_mhall))
@@ -215,13 +214,11 @@ def test_validation_keys_off_event_role_not_table_key(_decoded_mhall):
     no matching table rows is caught by the role-keyed lookup."""
 
     class _WrongRoleTrainee:
-        cursor = 0
-
         def respond(self, incoming):
             # The table expects a K row here, but the actor declares role "X" —
             # a role the table has no rows for. Validation keys off the declared
             # role and raises.
-            return 0, _ev(0xDEAD, role="X")
+            return _ev(0xDEAD, role="X")
 
     with pytest.raises(ActorDivergence) as exc_info:
         run(_decoded_mhall, trainer=TableTrainer(_decoded_mhall), trainee=_WrongRoleTrainee())
@@ -289,3 +286,28 @@ def test_run_table_convenience():
     table = load_table(json.loads(MHALL.read_text()))
     result = run_table(table, tokenizer=NLPTokenizer(), signifier=NLPSignifier())
     assert result.complete
+
+
+# ── Rationaliser integration (plan §Phase 2.2) ────────────────────────────
+
+
+def test_rationaliser_runs_mhall_to_exhaustion(_decoded_mhall):
+    """The Rationaliser (a real, stateful trainee) runs MHALL to exhaustion
+    with zero divergence against the golden master, driven through the runner's
+    ``run()`` like any Actor. The trainer stays a ``TableTrainer`` (the
+    deterministic oracle). This is the canonical end-to-end proof that a
+    rationalising trainee is a drop-in replacement for ``TableTrainee``."""
+    from training.dialogue.rationalise import Rationaliser
+
+    result = run(
+        _decoded_mhall,
+        trainer=TableTrainer(_decoded_mhall),
+        trainee=Rationaliser(NLPSignifier()),
+    )
+    assert result.complete
+    # Every emitted event validated against decoded[cursor] (run would have
+    # raised ActorDivergence otherwise). Confirm the closing S1 countersign.
+    assert result.events[-1].proposal.significance == SIG_S1
+    assert result.events[-1].proposal.kline == result.events[0].proposal.kline
+    # The rationaliser produced exactly the table's rows (no more, no less).
+    assert len(result.events) == len(_decoded_mhall)
