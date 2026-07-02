@@ -28,15 +28,19 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-# Significance band constants (SIG_S1..SIG_S4) and KValue are imported in
-# the step that implements the entry rule and cogitation levels.
 from kalvin.events import RationaliseEvent
+from kalvin.expand import SIG_S4, boundaries, classify
 from kalvin.kline import KLine
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
 
 __all__ = ["Rationaliser"]
+
+# Significance band classification — used by the entry rule to classify an
+# incoming query's significance. S4 is a sentinel detected by *value*
+# (``== SIG_S4``), not by band: ``classify()`` collapses the S3|S4 boundary
+# so the band function can never return S4 (see @agent spec §Phase 1b).
 
 # The role the Rationaliser announces on every emitted event (the routing key
 # the runner validates against — spec §Validation, DDT-17).
@@ -102,6 +106,8 @@ class Rationaliser:
     def __init__(self, signifier: KSignifier) -> None:
         self._signifier = signifier
         self._state = _State()
+        # Significance boundaries, computed once (they are constants).
+        self._s12, self._s23, self._s34 = boundaries()
 
     @property
     def role(self) -> str:
@@ -115,16 +121,92 @@ class Rationaliser:
     ) -> RationaliseEvent | None:
         """Rationalise one turn: process the query, then process the next step.
 
+        Applies the **entry rule** to ``incoming`` as bookkeeping, then runs
+        cogitation on the selected work-list entry and emits exactly one event.
+        Returns ``None`` when the work-list is empty after the entry rule (the
+        runner then signals termination — plan D12).
+
         .. note::
 
-            This shell targets the **refactored** ``Actor`` contract
+            Targets the **refactored** ``Actor`` contract
             (``RationaliseEvent | None`` — synthesizing-trainer plan D7), NOT
             the current cursor-leaking ``tuple[int, RationaliseEvent] | None``.
             The runner/actor refactor (synthesizing-trainer D7) is a
             prerequisite for integration; until then the Rationaliser cannot
             be driven by the unrefactored runner.
         """
+        # Step 1 — entry rule: process the query (bookkeeping).
+        if incoming is not None:
+            self._process_query(incoming)
+
+        # Step 2 — process next step: cogitation emits exactly one event,
+        # or returns None when the work-list is empty (D12).
         raise NotImplementedError(
-            "Rationaliser.respond: shell only — entry rule and cogitation "
-            "(Levels 0 and 1) are filled in subsequent steps."
+            "Rationaliser.respond: cogitation (Levels 0 and 1) is filled in "
+            "a subsequent step."
         )
+
+    # ── Entry rule (plan §Entry rule) ─────────────────────────────────────
+
+    def _process_query(self, incoming: RationaliseEvent) -> None:
+        """Apply the entry rule to an incoming query (plan §Entry rule).
+
+        Fires on every received query, before cogitation. It is bookkeeping
+        only — it never emits; emission is cogitation's job (D7). Three cases
+        by the query's significance band:
+
+        - **S4** matching a work-list entry → pop the entry (the other side
+          says "I don't know this either" — stalemate accepted, leaf bottomed
+          out). S4 is a sentinel detected by value, not by band (see @agent
+          spec §Phase 1b).
+        - **S1** → ground it immediately in K's state; if it matches a
+          work-list entry, pop it (the other side says "I understand this").
+        - **S2 or S3** → push onto the work-list; cogitation will work it.
+        """
+        query = incoming.proposal
+        sig = query.significance
+
+        # S4 sentinel — detected by value (classify() cannot return S4).
+        if sig == SIG_S4:
+            self._pop_matching(query.kline)
+            return
+
+        band = classify(sig, self._s12, self._s23, self._s34)
+        if band == "S1":
+            self._ground(query.kline)
+            self._pop_matching(query.kline)
+            return
+
+        # S2 or S3 — push for cogitation.
+        self._state.work_list.append(query.kline)
+
+    # ── State helpers ─────────────────────────────────────────────────────
+
+    def _ground(self, kline: KLine) -> None:
+        """Record that K has grounded ``kline`` (the trainee's own S1).
+
+        Mirrors ``KModel``: append the kline under its signature. Shape
+        (identity, canon, relationship) is irrelevant to storage — everything
+        is a kline. Idempotent: grounding an already-grounded kline is a
+        no-op (K already understands it).
+        """
+        bucket = self._state.grounded.setdefault(kline.signature, [])
+        for existing in bucket:
+            if existing.nodes == kline.nodes:
+                return  # already grounded
+        bucket.append(kline)
+
+    def _is_grounded_sig(self, signature: int) -> bool:
+        """Does K have a record of ``signature``? (decides Level 0 vs Level 1)."""
+        return signature in self._state.grounded
+
+    def _pop_matching(self, kline: KLine) -> None:
+        """Pop the first work-list entry whose (signature, nodes) match.
+
+        Used by the entry rule's S4 and S1 branches to retire an entry the
+        other side has now resolved. No-op if no entry matches.
+        """
+        for i, entry in enumerate(self._state.work_list):
+            if entry.signature == kline.signature and entry.nodes == kline.nodes:
+                del self._state.work_list[i]
+                return
