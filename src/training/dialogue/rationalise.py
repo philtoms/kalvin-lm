@@ -181,8 +181,21 @@ class Rationaliser:
             self._cleanup_s1(query.kline.signature)
             return
 
-        # S2 or S3 — unpack into identity work-items (Correction 2).
-        self._unpack(query.kline)
+        # S2 or S3 — two cases:
+        # (a) The signature matches an in-flight identity work-item: this S2/S3
+        #   is the trainer's *reply* to K's ask (e.g. K asks IDENTITY `a`;
+        #   trainer replies `{a:[Det]}` S2). Ground the kline (K now has the
+        #   answer — a decomposition or relationship) and retire the identity.
+        # (b) Unsolicited (no matching identity, e.g. the opening turn):
+        #   push the signature's identity so K asks about it.
+        # Nodes are unpacked first so the signature (when pushed) is the LIFO
+        # top — K asks about the signature before descending into its nodes.
+        self._unpack_nodes(query.kline)
+        if self._has_identity_in_flight(query.kline.signature):
+            self._ground(query.kline)
+            self._pop_matching_identity(query.kline.signature)
+        elif not self._recognised(query.kline.signature):
+            self._state.work_list.append(KLine(query.kline.signature, []))
 
     # ── State helpers ─────────────────────────────────────────────────────
 
@@ -222,23 +235,34 @@ class Rationaliser:
             return True
         return any(entry.signature == signature for entry in self._state.work_list)
 
-    def _unpack(self, kline: KLine) -> None:
-        """Unpack an S2/S3 kline right-to-left into identity work-items.
+    def _has_identity_in_flight(self, signature: int) -> bool:
+        """Is there an in-flight identity work-item under ``signature``?
 
-        For ``{S: [n1, n2, ...]}``: each node, right-to-left, then the
-        signature, is checked for recognition; if not recognised, an identity
-        work-item ``{sig: []}`` is pushed onto the work-list. Right-to-left
-        ordering with LIFO popping means the signature is worked first, then
-        its nodes — matching the golden master's descent (Correction 2).
+        True iff the work-list contains an identity entry ``{signature: []}``.
+        Used by the S2/S3 branch to distinguish a *reply* to K's ask (signature
+        matches an in-flight identity → ground + retire) from an unsolicited
+        S2 (no matching identity → push the signature's identity).
+        """
+        return any(
+            entry.signature == signature and not entry.nodes
+            for entry in self._state.work_list
+        )
 
-        Idempotent per signature: a signature already recognised (grounded or
-        in flight) is not pushed again.
+    def _unpack_nodes(self, kline: KLine) -> None:
+        """Unpack an S2/S3 kline's *nodes* right-to-left into identity work-items.
+
+        For ``{S: [n1, n2, ...]}``: each node, right-to-left, is checked for
+        recognition; if not recognised (grounded or in flight), an identity
+        work-item ``{node: []}`` is pushed. Right-to-left ordering with LIFO
+        popping means the first node is worked first (Correction 2).
+
+        Only the nodes — the signature is handled by the caller, which decides
+        whether to ground it (a reply) or push its identity (unsolicited).
+        Idempotent per node: a node already recognised is not pushed again.
         """
         for node in reversed(kline.nodes):
             if not self._recognised(node):
                 self._state.work_list.append(KLine(node, []))
-        if not self._recognised(kline.signature):
-            self._state.work_list.append(KLine(kline.signature, []))
 
     def _cleanup_s1(self, signature: int) -> None:
         """After grounding ``signature``, retire resolved identity work-items.

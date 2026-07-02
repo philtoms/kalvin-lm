@@ -173,7 +173,7 @@ because reaching S1 is always broadcast. No special-case termination logic.
 | --- | --- |
 | **S4** | Pop the matching identity work-item (the other side says "I don't know this either" — stalemate accepted, leaf bottomed out). S4 is a sentinel detected by value, not by band (see @agent spec §Phase 1b). |
 | **S1** | **Ground** the kline immediately, then **clean up** the work-list: pop identity work-items whose own signature is now grounded. Silent — an S1 emission (broadcast) happens **only when K grounds the opening query**, not on every pop (Correction 1); so the S1 branch itself never emits. |
-| **S2 or S3** | **Unpack** the kline right-to-left (nodes then signature): for each signature not recognised (grounded or already in flight), push an identity work-item `{sig: []}`. This makes node processing identical to any other work-item (Correction 2). |
+| **S2 or S3** | Two cases. **(a) Reply:** the signature matches an in-flight identity work-item — this S2/S3 is the trainer's answer to K's ask (e.g. K asks IDENTITY `a`; trainer replies `{a:[Det]}` S2). Ground the kline (K now has the answer) and retire the identity. **(b) Unsolicited:** no matching identity (e.g. the opening turn) — push the signature's identity so K asks about it. In both cases the kline's *nodes* are unpacked right-to-left into identity work-items first, so the signature (when pushed) is the LIFO top (Correction 2). |
 
 Then (D7): proceed to cogitation and emit exactly one event, unless the
 work-list is empty (→ return `None`, runner terminates).
@@ -264,19 +264,10 @@ Consequences resolved by the grill:
 
 ### Verification against MHALL
 
-The mechanism reproduces the identity-phase K-rows of
-`scripts/dialogue-mhall.json` (Level 0). Level 1 (relationship proposals) and
-the closing S1 broadcast are subsequent steps. K-rows 0–3 (MHALL, Mary, had, a)
-reproduce exactly. K-rows 4, 8, 9, 10 (Det, Subject, Verb, Object) diverge from
-the golden master **due to a pre-existing decoder label-collision bug** (see
-§Decoder label-collision, Coverage Gap G5), not a rationaliser error: the
-rationaliser emits the canon signature; the decoder resolved the golden
-master's identity to the atom signature. K-rows 5–7 cascade from that
-divergence.
-
-The full per-turn trace (including the Level-1 relationship proposals at
-K-rows 24–28 and the closing S1 broadcast at K-row 31) will be re-established
-once Level 1 is implemented and the decoder label-collision (G5) is resolved.
+The mechanism reproduces **all 11 identity-phase K-rows** of
+`scripts/dialogue-mhall.json` (Level 0): MHALL, Mary, had, a, Det, little,
+lamb, SVO, Subject, Verb, Object — each matched exactly. Level 1 (relationship
+proposals) and the closing S1 broadcast are subsequent steps.
 
 ## The Minimal State
 
@@ -383,18 +374,13 @@ mechanism branches above and to the canonical end-to-end run.
   count imbalance. A mature rationaliser leaps on significance when no scaffold
   exists; deferred to a later grill where true distance-based significance can
   inform the leap rather than a count heuristic.
-- **G5 — Decoder label-collision (pre-existing, blocks the MHALL identity
-  trace).** When a KScript label names both a canon and its atoms (e.g.
-  `Det`, `Subject`, `Verb`, `Object` in MHALL), the decoder's IDENTITY
-  resolution (`labels[label]`) picks the atom (first compiled entry) instead
-  of the canon, while relation-node resolution (`canon_by_label[label]`)
-  picks the canon. The same label therefore resolves to two different
-  signatures depending on context. The rationaliser emits the canon signature
-  (correct); the golden master's K-rows 4/8/9/10 carry the atom signature
-  (decoder-resolved), so they diverge. This is a decoder bug, not a
-  rationaliser error, and must be fixed in the decoder before the full MHALL
-  identity trace can be verified end-to-end. Out of scope for this plan —
-  tracked separately.
+- **G5 — Decoder label-collision (RESOLVED).** When a KScript label names
+  both a canon and its atoms (e.g. `Det`, `Subject`, `Verb`, `Object` in
+  MHALL), the decoder's IDENTITY resolution previously picked the atom (first
+  compiled entry) instead of the canon. Fixed: the IDENTITY branch now prefers
+  `canon_by_label` when the label names a canon, mirroring the
+  constructed-relation branch. The rationaliser then reproduces all 11
+  identity K-rows.
 
 ## Out of Scope
 
