@@ -178,6 +178,34 @@ because reaching S1 is always broadcast. No special-case termination logic.
 Then (D7): proceed to cogitation and emit exactly one event, unless the
 work-list is empty (→ return `None`, runner terminates).
 
+#### Work-list discipline (clarifies the pop/ground semantics)
+
+The work-list holds the **open proposals K is working** — the S2/S3 klines K
+has *received* (pushed by the entry rule) or *emitted* (pushed by Level 1). It
+does **not** hold every identity K has asked about. K's emitted identities
+(Level 0) are *responses*, not outstanding work; they enter the work-list only
+if the trainer later sends that same kline at S2/S3 (which does not happen on
+MHALL).
+
+Consequences resolved by the grill:
+
+- **S1 grounds literally; no recursion.** `_ground` records exactly the kline
+  received, keyed by its signature (mirroring `KModel`). It does **not**
+  recursively ground the kline's nodes — nodes become known only when something
+  is grounded *under their signature*. K grounds what it was told, not the
+  transitive closure.
+- **Pop-matching is relevant only for K's own outstanding proposals.** The
+  trainer's canon/identity S1s (e.g. `{Mary:[M,ary]}`) ground the kline but
+  match no work-list entry (the work-list holds the open proposal
+  `{MHALL:[...]}`, not `{Mary:[]}`), so nothing pops — grounding is what
+  matters for those. Pop-matching fires only for the S1 *ratifications* of K's
+  own relationship proposals (e.g. `{Mary:[Subject]}` matches the relationship
+  K pushed at Level 1).
+- **Non-matching S4 / S1 are silent no-ops** for the pop step (grounding still
+  occurs for S1). The entry rule is bookkeeping; an unmatched query simply has
+  nothing to retire, and cogitation proceeds. A non-matching S4 is not itself
+  pushed.
+
 ### Cogitation (Level 0 and Level 1 only, on the selected work-list entry)
 
 Selection (D6): LIFO — most-recently-added ungrounded entry first
