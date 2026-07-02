@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S4, boundaries, classify
+from kalvin.expand import SIG_S1, SIG_S3, SIG_S4, boundaries, classify
 from kalvin.kline import KLine, is_canon, is_identity
 from kalvin.kvalue import KValue
 
@@ -342,10 +342,10 @@ class Rationaliser:
         if is_identity(entry):
             return self._level0_identity(entry.signature, incoming)
 
-        # Level 1 (Relationships) — subsequent step.
-        raise NotImplementedError(
-            "Rationaliser Level 1 (Relationships) is filled in a subsequent step."
-        )
+        # Level 1 — a pending multi-node (relationship) kline. Propose the
+        # operand bindings between its signature's canon and its node's canon,
+        # or close at S1 when all bindings are ratified.
+        return self._level1_relationships(entry, incoming)
 
     def _level0_identity(
         self, signature: int, incoming: RationaliseEvent | None
@@ -367,3 +367,125 @@ class Rationaliser:
         proposal = KValue(identity, SIG_S4)
         query = incoming.proposal if incoming is not None else proposal
         return RationaliseEvent(_KIND, query, proposal, role=_ROLE)
+
+    def _level1_relationships(
+        self, entry: KLine, incoming: RationaliseEvent | None
+    ) -> RationaliseEvent:
+        """Level 1 — propose operand bindings for a pending relationship, or close.
+
+        ``entry`` is a multi-node relationship ``{L:[R]}`` whose operands L and
+        R are MTS signatures with grounded canons (e.g. the opening
+        ``{MHALL:[SVO]}``). K pairs the operands of L's canon and R's canon
+        left-to-right at group size 1, grouping one side's residual into a
+        single synthetic operand when the other reaches a single node (D10).
+
+        Each call emits the **first not-yet-ratified** binding as a CONNOTED
+        relationship at S3 (1:1) or S2 (grouped). A binding is ratified once
+        its kline is grounded (the trainer replied S1). When every binding is
+        ratified, K closes by emitting the entry itself at S1 (COUNTERSIGNED)
+        — the broadcast that K grounds the opening query (Correction 1) — and
+        the entry is removed from the work-list.
+
+        Group-size escalation on a trainer S4 refusal (D11) is deferred: the
+        bootstrap targets golden masters the convention satisfies at size 1.
+        """
+        right = entry.nodes  # the operand side of {L:[R]} — e.g. [SVO]
+        assert len(right) == 1, "Level 1 expects a single-node relationship entry"
+        left_sig = entry.signature  # e.g. MHALL
+
+        # LHS signatures come from left_sig's canon (MHALL -> Mary, had, ...);
+        # RHS nodes come from the operand's canon (SVO -> Subject, Verb, Object).
+        left_nodes = self._canon_nodes(left_sig)
+        right_nodes = self._canon_nodes(right[0])
+        if left_nodes is None or right_nodes is None:
+            # A canon is missing — cannot bind. Defer (should not happen on a
+            # well-formed golden master where both operands grounded).
+            raise NotImplementedError(
+                "Level 1: an operand canon is missing; cannot bind."
+            )
+
+        plan = self._binding_plan(left_nodes, right_nodes)
+
+        for lhs_sig, rhs_node in plan:
+            if not self._binding_ratified(lhs_sig, rhs_node):
+                # Emit the next unratified binding. Significance is the emitted
+                # kline's signature-to-node count (grill Q3): a 1:1 proposal
+                # (one signature, one node) is S3; a multi-node proposal is S2.
+                # MHALL's proposals are all 1:1 (grouping makes a synthetic lhs,
+                # not multiple rhs nodes), so all are S3 here. The S2 (multi-node)
+                # branch is coverage gap G1, unexercised by MHALL.
+                proposal_kline = KLine(lhs_sig, [rhs_node])
+                proposal = KValue(proposal_kline, SIG_S3)
+                query = incoming.proposal if incoming is not None else proposal
+                return RationaliseEvent(_KIND, query, proposal, role=_ROLE)
+
+        # All bindings ratified — close at S1 (Correction 1: the only S1
+        # broadcast). Ground the entry and remove it from the work-list.
+        self._state.work_list.pop()  # the entry is the LIFO top
+        self._ground(entry)
+        proposal = KValue(entry, SIG_S1)
+        query = incoming.proposal if incoming is not None else proposal
+        return RationaliseEvent(_KIND, query, proposal, role=_ROLE)
+
+    # ── Level 1 helpers ───────────────────────────────────────────────────
+
+    def _canon_nodes(self, signature: int) -> list[int] | None:
+        """The nodes of ``signature``'s grounded canon, or None if none.
+
+        An MTS signature has a canon decomposition in K's grounded memory; this
+        returns its node list. Used by Level 1 to get the operands of each side
+        of a pending relationship.
+        """
+        for kline in self._state.grounded.get(signature, []):
+            if is_canon(kline, self._signifier):
+                return list(kline.nodes)
+        return None
+
+    def _binding_plan(
+        self, left_nodes: list[int], right_nodes: list[int]
+    ) -> list[tuple[int, int]]:
+        """Pair two canons' operands into a list of ``(lhs_sig, rhs_node)``.
+
+        Group-size-1 convention (D10): pair left-to-right while both sides have
+        more than one node remaining; when one side reaches a single node,
+        group the other side's entire residual into one synthetic operand
+        (``make_signature(residual)``) and pair it with the remaining single.
+        Returns the plan as emitted-relationship shapes ``(signature, [node])``;
+        a grouped lhs carries a synthetic signature.
+        """
+        plan: list[tuple[int, int]] = []
+        i = j = 0
+        while i < len(left_nodes) and j < len(right_nodes):
+            left_rem = len(left_nodes) - i
+            right_rem = len(right_nodes) - j
+            if left_rem == 1 and right_rem == 1:
+                plan.append((left_nodes[i], right_nodes[j]))
+                i += 1
+                j += 1
+            elif left_rem == 1:
+                # Group right's residual; lhs is the single left node.
+                residual = right_nodes[j:]
+                plan.append((left_nodes[i], self._signifier.make_signature(residual)))
+                break
+            elif right_rem == 1:
+                # Group left's residual into a synthetic lhs; rhs is single.
+                residual = left_nodes[i:]
+                plan.append((self._signifier.make_signature(residual), right_nodes[j]))
+                break
+            else:
+                plan.append((left_nodes[i], right_nodes[j]))
+                i += 1
+                j += 1
+        return plan
+
+    def _binding_ratified(self, lhs_sig: int, rhs_node: int) -> bool:
+        """Has the trainer ratified the binding ``{lhs_sig:[rhs_node]}``?
+
+        True iff that relationship kline is grounded (the trainer replied S1,
+        which cleanup grounded). Used by Level 1 to find the next unratified
+        binding.
+        """
+        for kline in self._state.grounded.get(lhs_sig, []):
+            if list(kline.nodes) == [rhs_node]:
+                return True
+        return False

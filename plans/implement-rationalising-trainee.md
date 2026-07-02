@@ -228,8 +228,23 @@ IDENTITY `{sig: []}` at S4. The entry stays in the list; it is retired by
 cleanup when its signature grounds, or by the S4 branch on a matching
 stalemate.
 
-**Level 1 — Relationships.** The entry is a multi-node (pending query) kline.
-Filled in a subsequent step.
+**Level 1 — Relationships.** The entry is a multi-node relationship
+``{L:[R]}`` whose operands L and R are MTS signatures with grounded canons
+(e.g. the opening ``{MHALL:[SVO]}``). K pairs the operands of L's canon and R's
+canon left-to-right at group size 1, grouping one side's residual into a single
+synthetic operand (``make_signature(residual)``) when the other reaches a
+single node (D10). Each call emits the **first not-yet-ratified** binding as a
+CONNOTED relationship; a binding is ratified once its kline is grounded (the
+trainer replied S1). When every binding is ratified, K closes by emitting the
+entry itself at S1 (the broadcast that K grounds the opening query, Correction
+1) and removes it from the work-list.
+
+Significance is the **emitted kline's signature-to-node count** (grill Q3):
+1:1 → S3; multi-node → S2. MHALL's proposals are all 1:1 (grouping makes a
+synthetic *lhs*, not multiple rhs nodes), so all are S3; the S2 branch is
+coverage gap G1, unexercised by MHALL. Group-size escalation on a trainer S4
+refusal (D11) is deferred — the bootstrap targets golden masters the convention
+satisfies at size 1.
 
 #### Recognition (the unpack push-decision)
 
@@ -252,13 +267,12 @@ bookkeeping.
 
 ### Verification against MHALL
 
-The mechanism reproduces **all 11 identity-phase K-rows** of
-`scripts/dialogue-mhall.json` (Level 0): MHALL, Mary, had, a, Det, little,
-lamb, SVO, Subject, Verb, Object — each matched exactly. At the Level-1
-boundary (K#11), the work-list reduces cleanly to the sole opening relationship
-``{MHALL:[SVO]}`` (the MTS relationship correctly survives cleanup), ready for
-Level 1. The closing S1 broadcast and the relationship proposals (K#11–K#14)
-are the subsequent step.
+The mechanism reproduces **all 15 K-rows** of `scripts/dialogue-mhall.json`
+end-to-end with zero divergence: the 11 identity asks (Level 0), the three
+operand-binding proposals ``{Mary:[Subject]}``, ``{had:[Verb]}``,
+``{ALL:[Object]}`` (Level 1, ALL constructed synthetically via D10), and the
+closing ``{MHALL:[SVO]}`` COUNTERSIGNED S1 (the opening grounded). The
+rationaliser drives the full dialogue to completion against the table trainer.
 
 ## The Minimal State
 
