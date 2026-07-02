@@ -183,21 +183,38 @@ work-list is empty (→ return `None`, runner terminates).
 Cleanup is the mechanism that grounds klines **structurally**, never by
 promoting an S2 to S1. It is triggered by every received S1 and recurses.
 
-Ground the triggering kline, then repeatedly scan the work-list for any kline
-whose **nodes are all now grounded** — ground it, remove it, and continue
-(grounding one kline may unblock others). The rule is uniform over identity and
-multi-node klines, because an identity `{sig: []}` ≡ `{sig: [sig]}`
-(@CONTEXT.md §Identity): its nodes are all grounded iff its own signature is
-grounded. So a pending query kline like `{a:[Det]}` grounds when Det grounds
-(its sole node resolved), which in turn retires `{a: []}` (`a` now grounded)
-and may unblock further klines up the chain.
+Ground the triggering kline, then repeatedly ground any *groundable* work-list
+kline, removing it and continuing (grounding one kline may unblock others).
+
+**Groundability is keyed on the kline's kind, discriminated by MTS**
+(@specs/signifier SIG-14; @specs/kscript §8 — a Multi-Token Signature is the
+OR-reduction of two or more token values):
+
+- **Identity** ``{sig: []}`` ≡ ``{sig: [sig]}`` — groundable iff its own
+  signature is grounded.
+- **Canon** ``{S:[nodes]}`` — groundable iff all its nodes are grounded.
+- **Relationship** ``{S:[node]}`` (non-canon, non-identity) — groundable iff all
+  its nodes are grounded **and ``S`` is not an MTS**.
+
+`_is_mts(signature)` is true iff K has a grounded canon under the signature (K
+knows a multi-token decomposition). The MTS distinction is the S2-query clarity
+Level 1 surfaced: **a relationship to a single-token (non-MTS) signature is
+terminal** — grounding its node fully resolves it (``a`` ↔ Det grounds `a` once
+Det grounds). **A relationship to an MTS signature is non-terminal** — grounding
+its node does not resolve it (understanding ``MHALL`` ↔ ``SVO`` requires the
+operand binding, Level 1, not just ``SVO`` grounding). So an MTS relationship
+grounds only by explicit ratification (an S1 for that kline).
 
 - **No S2→S1 promotion.** A kline is grounded only structurally — an S1
-  arrived for it, or all its nodes grounded. Receiving `{a:[Det]}` at S2 does
-  NOT ground `a`; `a` grounds only once Det grounds and cleanup recurses.
-- **Identities are self-referential.** `{sig: []}` ≡ `{sig: [sig]}`; the
-  uniform "all nodes grounded" rule retires an identity exactly when its
-  signature grounds. No vacuous-empty-nodes special case.
+  arrived for it, all its canon nodes grounded, or (for a non-MTS relationship)
+  its node grounded.
+- **Identities are self-referential.** ``{sig: []}`` ≡ ``{sig: [sig]}``; an
+  identity retires exactly when its signature grounds.
+- **Note on ``is_canon`` vs cleanup.** The codebase ``is_canon`` deliberately
+  excludes identities (for retrieval/recency reasons). Cleanup's groundability
+  includes identities (an identity is structurally a canon whose sole node is
+  itself) and additionally admits non-MTS relationships. These are different
+  questions on the same klines.
 
 ### Cogitation (Level 0 and Level 1, on the selected work-list entry)
 
@@ -237,8 +254,11 @@ bookkeeping.
 
 The mechanism reproduces **all 11 identity-phase K-rows** of
 `scripts/dialogue-mhall.json` (Level 0): MHALL, Mary, had, a, Det, little,
-lamb, SVO, Subject, Verb, Object — each matched exactly. Level 1 (relationship
-proposals) and the closing S1 broadcast are subsequent steps.
+lamb, SVO, Subject, Verb, Object — each matched exactly. At the Level-1
+boundary (K#11), the work-list reduces cleanly to the sole opening relationship
+``{MHALL:[SVO]}`` (the MTS relationship correctly survives cleanup), ready for
+Level 1. The closing S1 broadcast and the relationship proposals (K#11–K#14)
+are the subsequent step.
 
 ## The Minimal State
 

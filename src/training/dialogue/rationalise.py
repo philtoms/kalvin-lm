@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING
 
 from kalvin.events import RationaliseEvent
 from kalvin.expand import SIG_S4, boundaries, classify
-from kalvin.kline import KLine, is_identity
+from kalvin.kline import KLine, is_canon, is_identity
 from kalvin.kvalue import KValue
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -199,10 +199,6 @@ class Rationaliser:
                 return  # already grounded
         bucket.append(kline)
 
-    def _is_grounded_sig(self, signature: int) -> bool:
-        """Is ``signature`` grounded?"""
-        return signature in self._state.grounded
-
     def _recognised(self, signature: int) -> bool:
         """Has K seen ``signature`` before, as an identity or grounded kline?
 
@@ -244,44 +240,70 @@ class Rationaliser:
         """Ground ``kline`` and recursively ground every kline it unblocks.
 
         The grounding engine (Correction 3, recursive). Ground the triggering
-        kline, then repeatedly scan the work-list for any kline whose **nodes
-        are all now grounded** — ground it, remove it, and recurse (grounding
-        one kline may unblock others). The rule is uniform: an identity
-        ``{sig: []}`` ≡ ``{sig: [sig]}`` is groundable iff its own signature is
-        grounded; a multi-node kline is groundable iff all its nodes are.
+        kline, then repeatedly ground any *groundable* work-list kline (a canon
+        or an identity whose nodes are all grounded), removing it and
+        continuing (grounding one kline may unblock others).
 
-        No S2→S1 promotion: a kline is grounded only structurally (an S1
-        arrived for it, or all its nodes grounded). This is what retires a
-        pending query kline like ``{a:[Det]}`` once Det grounds — `a` is
-        grounded by the structural fact that its relationship's node resolved.
+        **Only canons and identities ground by node-resolution** — never
+        relationships. A canon ``{S:[nodes]}`` grounds when all its nodes
+        ground (K has all the pieces of the decomposition); an identity
+        ``{sig: []}`` ≡ ``{sig: [sig]}`` grounds when its own signature grounds.
+        A relationship (``{MHALL:[SVO]}``, ``{a:[Det]}``) does NOT ground this
+        way — it grounds only by explicit ratification (an S1 for that kline).
+        This stops the opening relationship from grounding prematurely when
+        its operands' nodes resolve.
         """
         self._ground(kline)
-        # Repeatedly ground any work-list kline whose nodes are all grounded,
-        # removing it and continuing until no more can be grounded.
         changed = True
         while changed:
             changed = False
             for i, entry in enumerate(self._state.work_list):
-                if self._nodes_all_grounded(entry):
+                if self._groundable(entry):
                     del self._state.work_list[i]
-                    newly = not self._is_grounded_sig(entry.signature)
                     self._ground(entry)
                     changed = True
-                    if newly:
-                        # Grounding this signature may unblock others; loop.
-                        pass
                     break
 
-    def _nodes_all_grounded(self, kline: KLine) -> bool:
-        """Are all of ``kline``'s nodes grounded?
+    def _groundable(self, kline: KLine) -> bool:
+        """Is ``kline`` eligible to ground by node-resolution?
 
-        Uniform over identity and multi-node klines: an identity ``{sig: []}``
-        ≡ ``{sig: [sig]}``, so its nodes are all grounded iff its own signature
-        is grounded (@CONTEXT.md §Identity).
+        - **Identity** ``{sig: []}`` ≡ ``{sig: [sig]}`` — groundable iff its
+          own signature is grounded (@CONTEXT.md §Identity).
+        - **Canon** ``{S:[nodes]}`` — groundable iff all its nodes are grounded
+          (K has all the pieces of the decomposition).
+        - **Relationship** ``{S:[node]}`` (non-canon, non-identity) — groundable
+          iff all its nodes are grounded **and ``S`` is not an MTS**. A
+          single-token (non-MTS) signature's relationship is *terminal*: when
+          its node grounds, the signature is fully resolved (e.g. ``a`` ↔ Det).
+          An MTS signature's relationship is *non-terminal*: grounding its node
+          does not resolve it — understanding ``MHALL`` ↔ ``SVO`` requires the
+          operand binding (Level 1), not just ``SVO`` grounding. So an MTS
+          relationship grounds only by explicit ratification.
         """
         if is_identity(kline):
             return kline.signature in self._state.grounded
+        if is_canon(kline, self._signifier):
+            return all(node in self._state.grounded for node in kline.nodes)
+        # A relationship: groundable only if non-MTS and all nodes grounded.
+        if self._is_mts(kline.signature):
+            return False
         return all(node in self._state.grounded for node in kline.nodes)
+
+    def _is_mts(self, signature: int) -> bool:
+        """Is ``signature`` a Multi-Token Signature (a compound)?
+
+        An MTS is the OR-reduction of two or more token values
+        (@specs/signifier SIG-14; @specs/kscript §8 MTS expansion). Operationally,
+        for the rationaliser: a signature is an MTS iff K has a grounded **canon**
+        under it — i.e. K knows a decomposition of the signature into multiple
+        tokens. A single-token signature (e.g. ``a``) has no canon, so it is not
+        an MTS; its relationships are terminal. A compound (``MHALL``, ``SVO``,
+        ``Det``) has a canon, so it is an MTS; its relationships need binding.
+        """
+        for kline in self._state.grounded.get(signature, []):
+            if is_canon(kline, self._signifier):
+                return True
+        return False
 
     def _pop_identity(self, signature: int) -> None:
         """Pop the first identity work-item under ``signature`` (S4 branch).
