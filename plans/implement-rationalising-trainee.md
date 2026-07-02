@@ -171,9 +171,9 @@ because reaching S1 is always broadcast. No special-case termination logic.
 
 | Receive | Action |
 | --- | --- |
-| **S4** query matching a work-list entry | Pop the entry immediately. (The other side says "I don't know this either" — stalemate accepted, leaf bottomed out.) |
-| **S1** query | **Ground it immediately** in K's state. If it matches a work-list entry, pop the entry immediately. (The other side says "I understand this" — K records that understanding.) |
-| **S2 or S3** query | **Push** it onto the work-list and enter cogitation at Level 0. |
+| **S4** | Pop the matching identity work-item (the other side says "I don't know this either" — stalemate accepted, leaf bottomed out). S4 is a sentinel detected by value, not by band (see @agent spec §Phase 1b). |
+| **S1** | **Ground** the kline immediately, then **clean up** the work-list: pop identity work-items whose own signature is now grounded. Silent — an S1 emission (broadcast) happens **only when K grounds the opening query**, not on every pop (Correction 1); so the S1 branch itself never emits. |
+| **S2 or S3** | **Unpack** the kline right-to-left (nodes then signature): for each signature not recognised (grounded or already in flight), push an identity work-item `{sig: []}`. This makes node processing identical to any other work-item (Correction 2). |
 
 Then (D7): proceed to cogitation and emit exactly one event, unless the
 work-list is empty (→ return `None`, runner terminates).
@@ -208,51 +208,75 @@ Consequences resolved by the grill:
 
 ### Cogitation (Level 0 and Level 1 only, on the selected work-list entry)
 
-Selection (D6): LIFO — most-recently-added ungrounded entry first
-(**convention**, placeholder for future significance-based selection).
+Selection (D6): LIFO — the most-recently-added work-item first
+(**convention**, placeholder for future significance-based selection). After
+unpacking, the work-list is a stack of identity work-items `{sig: []}`; the
+LIFO top is the next signature to ask about.
 
-**Level 0 — Identity.** K has no record of the entry's signature. Emit
-IDENTITY `{sig: []}` at S4. The entry stays in the list; it is popped later by a
-matching S4 reply or by K grounding it another way.
+**Level 0 — Identity.** The selected entry's signature is **not grounded**
+(K does not yet understand it). Emit IDENTITY `{sig: []}` at S4. The
+ask-decision keys on **grounding**, not recognition: an identity work-item is,
+by definition, not yet grounded, so it must still be asked about even though
+it is in flight. The entry stays in the list; it is retired by the entry
+rule's S1 cleanup when K later grounds the signature, or by the S4 branch on
+a matching stalemate.
 
-**Level 1 — Relationships.** K now has identities for the entry's nodes. Propose
-relationships among them (D10 grouping; D11 escalation). Significance is
-determined by the **emitted kline's signature-to-node count**: 1:1 → **S3**;
-otherwise → **S2**. Either way the proposed relationship is **pushed** onto the
-work-list. When a proposed relationship is later matched by an entry (the
-trainer's reply corroborates it), it is grounded at S1 and popped (via the entry
-rule on the next S1).
+**Level 1 — Relationships.** The selected entry's signature IS grounded.
+Filled in a subsequent step.
 
-An entry may be visited multiple times as it ascends 0→1 — it stays in the
-work-list until grounded. LIFO selection means K usually returns to it promptly
-after grounding prerequisites.
+#### Two recognition predicates
+
+Unpacking (push-decision) and cogitation (ask-decision) use **different**
+predicates, and the distinction is load-bearing:
+
+- **Push-decision (unpack idempotency):** a signature is *recognised* if it is
+  grounded OR already has an entry in the work-list. Prevents pushing a
+  duplicate identity work-item for a signature already in flight.
+- **Ask-decision (Level 0 vs 1):** a signature is asked about (Level 0) iff it
+  is **not grounded**. The work-item's own in-flight presence does not count —
+  otherwise a freshly-pushed identity would recognise its own signature and
+  skip the ask.
+
+#### Work-list discipline (clarifies the pop/ground semantics)
+
+The work-list holds **identity work-items** ``{sig: []}`` — signatures K is
+asking about. After unpacking, every outstanding ask is a uniform identity
+work-item; there is no separate notion of "open proposals" vs "identities."
+
+Consequences resolved by the grill:
+
+- **S1 grounds literally; no recursion.** Grounding records exactly the kline
+  received, keyed by its signature (mirroring ``KModel``). It does **not**
+  recursively ground the kline's nodes — nodes become grounded only when K
+  receives an S1 under their signature.
+- **S1 cleanup retires identity work-items whose signature is now grounded.**
+  The trainer's canon/identity S1s (e.g. ``{Mary:[M,ary]}``) ground the kline
+  and pop the matching ``{Mary:[]}`` work-item. (Multi-node entry cleanup is
+  Level-1 territory.)
+- **Non-matching S4 / S1 are silent no-ops** for the pop step (grounding still
+  occurs for S1). The entry rule is bookkeeping; an unmatched query simply
+  has nothing to retire, and cogitation proceeds. A non-matching S4 is not
+  itself pushed.
+- **Broadcast only on grounding the opening query (Correction 1).** An S1
+  emission happens only when K grounds the opening query — not on every
+  work-item popped at S1. The entry rule's S1 branch is therefore silent;
+  emission is cogitation's job.
 
 ### Verification against MHALL
 
-The mechanism reproduces every K-row of `scripts/dialogue-mhall.json` with zero
-special-casing:
+The mechanism reproduces the identity-phase K-rows of
+`scripts/dialogue-mhall.json` (Level 0). Level 1 (relationship proposals) and
+the closing S1 broadcast are subsequent steps. K-rows 0–3 (MHALL, Mary, had, a)
+reproduce exactly. K-rows 4, 8, 9, 10 (Det, Subject, Verb, Object) diverge from
+the golden master **due to a pre-existing decoder label-collision bug** (see
+§Decoder label-collision, Coverage Gap G5), not a rationaliser error: the
+rationaliser emits the canon signature; the decoder resolved the golden
+master's identity to the atom signature. K-rows 5–7 cascade from that
+divergence.
 
-| K turn | Receives | Entry rule | Cogitation emits |
-| --- | --- | --- | --- |
-| 1 | `{MHALL:[SVO]}` S2 | push MHALL, SVO | L0 → IDENTITY MHALL S4 |
-| 3 | `{MHALL:[Mary,had,a,little,lamb]}` S2 | push | L0 → IDENTITY Mary S4 |
-| 5 | `{Mary:[M,ary]}` S1 | ground Mary, pop | L0 → IDENTITY had S4 |
-| 7 | `{had:[h,ad]}` S1 | ground had, pop | L0 → IDENTITY a S4 |
-| 9 | `{a:[Det]}` S2 | push Det | L0 → IDENTITY Det S4 |
-| 11 | `{Det:[D,et]}` S1 | ground Det, pop | L0 → IDENTITY little S4 |
-| 13 | `{little:[l,ittle]}` S1 | ground little, pop | L0 → IDENTITY lamb S4 |
-| 15 | `{lamb:[l,amb]}` S1 | ground lamb, pop | L0 → IDENTITY SVO S4 |
-| 17 | `{SVO:[Subject,Verb,Object]}` S2 | push Subject,Verb,Object | L0 → IDENTITY Subject S4 |
-| 19 | `{Subject:[Sub,ject]}` S1 | ground Subject, pop | L0 → IDENTITY Verb S4 |
-| 21 | `{Verb:[V,er,b]}` S1 | ground Verb, pop | L0 → IDENTITY Object S4 |
-| 23 | `{Object:[Ob,ject]}` S1 | ground Object, pop | *(annotation-only — narration, no K emission)* |
-| 24 | — | — | L1 → CONNOTED `{Mary:[Subject]}` S3 (1:1), push |
-| 26 | `{Mary:[Subject]}` S1 | ground rel, pop | L1 → CONNOTED `{had:[Verb]}` S3, push |
-| 28 | `{had:[Verb]}` S1 | ground rel, pop | L1 → CONNOTED `{ALL:[Object]}` S3 (ALL synthetic via D10; emitted 1:1 → S3), push |
-| 31 | `{ALL:[Object]}` S1 | ground rel, pop; open proposal now grounds | L1 → COUNTERSIGNED `{MHALL:[SVO]}` S1 (final S1, broadcast) → work-list empty |
-
-Turn 23 is annotation-only (narration) and produces no K emission; the closing
-countersign (turn 31) is emitted directly once the open proposal grounds.
+The full per-turn trace (including the Level-1 relationship proposals at
+K-rows 24–28 and the closing S1 broadcast at K-row 31) will be re-established
+once Level 1 is implemented and the decoder label-collision (G5) is resolved.
 
 ## The Minimal State
 
@@ -359,6 +383,18 @@ mechanism branches above and to the canonical end-to-end run.
   count imbalance. A mature rationaliser leaps on significance when no scaffold
   exists; deferred to a later grill where true distance-based significance can
   inform the leap rather than a count heuristic.
+- **G5 — Decoder label-collision (pre-existing, blocks the MHALL identity
+  trace).** When a KScript label names both a canon and its atoms (e.g.
+  `Det`, `Subject`, `Verb`, `Object` in MHALL), the decoder's IDENTITY
+  resolution (`labels[label]`) picks the atom (first compiled entry) instead
+  of the canon, while relation-node resolution (`canon_by_label[label]`)
+  picks the canon. The same label therefore resolves to two different
+  signatures depending on context. The rationaliser emits the canon signature
+  (correct); the golden master's K-rows 4/8/9/10 carry the atom signature
+  (decoder-resolved), so they diverge. This is a decoder bug, not a
+  rationaliser error, and must be fixed in the decoder before the full MHALL
+  identity trace can be verified end-to-end. Out of scope for this plan —
+  tracked separately.
 
 ## Out of Scope
 

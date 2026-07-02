@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING
 from kalvin.events import RationaliseEvent
 from kalvin.expand import SIG_S4, boundaries, classify
 from kalvin.kline import KLine
+from kalvin.kvalue import KValue
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
@@ -141,10 +142,7 @@ class Rationaliser:
 
         # Step 2 — process next step: cogitation emits exactly one event,
         # or returns None when the work-list is empty (D12).
-        raise NotImplementedError(
-            "Rationaliser.respond: cogitation (Levels 0 and 1) is filled in "
-            "a subsequent step."
-        )
+        return self._cogitate(incoming)
 
     # ── Entry rule (plan §Entry rule) ─────────────────────────────────────
 
@@ -159,26 +157,32 @@ class Rationaliser:
           says "I don't know this either" — stalemate accepted, leaf bottomed
           out). S4 is a sentinel detected by value, not by band (see @agent
           spec §Phase 1b).
-        - **S1** → ground it immediately in K's state; if it matches a
-          work-list entry, pop it (the other side says "I understand this").
-        - **S2 or S3** → push onto the work-list; cogitation will work it.
+        - **S1** → ground it immediately, then clean up the work-list (pop
+          any entry whose nodes include this signature and whose nodes are all
+          now grounded). The other side says "I understand this." An S1
+          emission (broadcast) happens only when K grounds the opening query —
+          not on every pop (Correction 1) — so this branch is silent.
+        - **S2 or S3** → **unpack** the kline right-to-left (nodes then
+          signature), pushing an identity work-item ``{sig: []}`` for each
+          signature not already recognised (grounded or in flight). This makes
+          node processing identical to any other work-item (Correction 2).
         """
         query = incoming.proposal
         sig = query.significance
 
         # S4 sentinel — detected by value (classify() cannot return S4).
         if sig == SIG_S4:
-            self._pop_matching(query.kline)
+            self._pop_matching_identity(query.kline.signature)
             return
 
         band = classify(sig, self._s12, self._s23, self._s34)
         if band == "S1":
             self._ground(query.kline)
-            self._pop_matching(query.kline)
+            self._cleanup_s1(query.kline.signature)
             return
 
-        # S2 or S3 — push for cogitation.
-        self._state.work_list.append(query.kline)
+        # S2 or S3 — unpack into identity work-items (Correction 2).
+        self._unpack(query.kline)
 
     # ── State helpers ─────────────────────────────────────────────────────
 
@@ -197,16 +201,121 @@ class Rationaliser:
         bucket.append(kline)
 
     def _is_grounded_sig(self, signature: int) -> bool:
-        """Does K have a record of ``signature``? (decides Level 0 vs Level 1)."""
+        """Is ``signature`` a grounded signature? (the Level-0 ask-decision).
+
+        Distinct from :meth:`_recognised` (the unpack push-decision): an
+        identity work-item ``{sig: []}`` is in flight but not grounded, so it
+        must still be asked about — the ask-decision keys on grounding alone.
+        """
         return signature in self._state.grounded
 
-    def _pop_matching(self, kline: KLine) -> None:
-        """Pop the first work-list entry whose (signature, nodes) match.
+    def _recognised(self, signature: int) -> bool:
+        """Has K seen ``signature`` before?
 
-        Used by the entry rule's S4 and S1 branches to retire an entry the
-        other side has now resolved. No-op if no entry matches.
+        A signature is **recognised** if K has any kline under it — either
+        grounded (K holds it) or in flight (the work-list has an entry under
+        it). This is the push-decision predicate for unpacking (Correction 2)
+        and the Level-0 ask-decision for cogitation: a recognised signature is
+        not re-asked as an identity.
+        """
+        if signature in self._state.grounded:
+            return True
+        return any(entry.signature == signature for entry in self._state.work_list)
+
+    def _unpack(self, kline: KLine) -> None:
+        """Unpack an S2/S3 kline right-to-left into identity work-items.
+
+        For ``{S: [n1, n2, ...]}``: each node, right-to-left, then the
+        signature, is checked for recognition; if not recognised, an identity
+        work-item ``{sig: []}`` is pushed onto the work-list. Right-to-left
+        ordering with LIFO popping means the signature is worked first, then
+        its nodes — matching the golden master's descent (Correction 2).
+
+        Idempotent per signature: a signature already recognised (grounded or
+        in flight) is not pushed again.
+        """
+        for node in reversed(kline.nodes):
+            if not self._recognised(node):
+                self._state.work_list.append(KLine(node, []))
+        if not self._recognised(kline.signature):
+            self._state.work_list.append(KLine(kline.signature, []))
+
+    def _cleanup_s1(self, signature: int) -> None:
+        """After grounding ``signature``, retire resolved identity work-items.
+
+        Pop every work-list identity entry whose own signature is now grounded
+        (Correction 3). An identity work-item ``{sig: []}`` is retired when K
+        grounds ``{sig: ...}``. (Multi-node entries are Level-1 territory,
+        handled later.)
+        """
+        self._state.work_list = [
+            entry
+            for entry in self._state.work_list
+            if not (not entry.nodes and entry.signature in self._state.grounded)
+        ]
+
+    def _pop_matching_identity(self, signature: int) -> None:
+        """Pop the first identity work-item under ``signature`` (S4 branch).
+
+        Used by the entry rule's S4 branch to retire an identity the other
+        side also doesn't know. No-op if no matching identity entry exists.
         """
         for i, entry in enumerate(self._state.work_list):
-            if entry.signature == kline.signature and entry.nodes == kline.nodes:
+            if entry.signature == signature and not entry.nodes:
                 del self._state.work_list[i]
                 return
+
+    # ── Cogitation (plan §Cogitation) ──────────────────────────────────────
+
+    def _cogitate(self, incoming: RationaliseEvent | None) -> RationaliseEvent | None:
+        """Work the selected work-list entry and emit exactly one event.
+
+        Selection (D6): LIFO — the most-recently-added entry. After unpacking
+        (Correction 2), the work-list is a stack of identity work-items
+        ``{sig: []}``; the LIFO top is the next signature to ask about.
+
+        - **Level 0 (Identity)** — the entry's signature is NOT grounded
+          (K does not yet understand it). Emit IDENTITY ``{sig: []}`` at S4.
+          The entry stays in the list; it is retired by the entry rule's S1
+          cleanup when K later grounds the signature, or by the S4 branch on a
+          matching stalemate. (The ask-decision is *grounded*, not *recognised*:
+          the identity entry itself is, by definition, not yet grounded.)
+        - **Level 1 (Relationships)** — the entry's signature IS grounded.
+          Filled in a subsequent step.
+
+        Returns ``None`` when the work-list is empty (D12 — termination is the
+        runner's job, not K's).
+        """
+        if not self._state.work_list:
+            return None  # D12 — no work; the runner terminates.
+
+        entry = self._state.work_list[-1]  # LIFO (D6, convention)
+
+        if not self._is_grounded_sig(entry.signature):
+            return self._level0_identity(entry.signature, incoming)
+
+        # Level 1 (Relationships) — subsequent step.
+        raise NotImplementedError(
+            "Rationaliser Level 1 (Relationships) is filled in a subsequent step."
+        )
+
+    def _level0_identity(
+        self, signature: int, incoming: RationaliseEvent | None
+    ) -> RationaliseEvent:
+        """Level 0 — emit IDENTITY ``{signature: []}`` at S4.
+
+        K has never seen ``signature``, so it calls it out as an identity:
+        "I don't know this; what is it?" The identity work-item stays on the
+        work-list; it is retired later by the entry rule (S1 cleanup when K
+        grounds the signature, or the S4 branch on a matching stalemate).
+
+        The emitted event's ``query`` voice is the incoming proposal (the
+        thing K is responding to), or the identity itself on the opening —
+        matching the table-actor convention. The runner validates only
+        ``proposal`` and ``role`` (spec §Validation), so ``query`` is
+        diagnostic only.
+        """
+        identity = KLine(signature, [])
+        proposal = KValue(identity, SIG_S4)
+        query = incoming.proposal if incoming is not None else proposal
+        return RationaliseEvent(_KIND, query, proposal, role=_ROLE)
