@@ -172,95 +172,66 @@ because reaching S1 is always broadcast. No special-case termination logic.
 | Receive | Action |
 | --- | --- |
 | **S4** | Pop the matching identity work-item (the other side says "I don't know this either" — stalemate accepted, leaf bottomed out). S4 is a sentinel detected by value, not by band (see @agent spec §Phase 1b). |
-| **S1** | **Ground** the kline immediately, then **clean up** the work-list: pop identity work-items whose own signature is now grounded. Silent — an S1 emission (broadcast) happens **only when K grounds the opening query**, not on every pop (Correction 1); so the S1 branch itself never emits. |
-| **S2 or S3** | Two cases. **(a) Reply:** the signature matches an in-flight identity work-item — this S2/S3 is the trainer's answer to K's ask (e.g. K asks IDENTITY `a`; trainer replies `{a:[Det]}` S2). Ground the kline (K now has the answer) and retire the identity. **(b) Unsolicited:** no matching identity (e.g. the opening turn) — push the signature's identity so K asks about it. In both cases the kline's *nodes* are unpacked right-to-left into identity work-items first, so the signature (when pushed) is the LIFO top (Correction 2). |
+| **S1** | Run **cleanup** (see §Cleanup): ground the kline and recursively ground every work-list kline it unblocks. Silent — an S1 emission (broadcast) happens only when K grounds the opening query, not on every grounding (Correction 1); so the S1 branch itself never emits. |
+| **S2 or S3** | **Unpack**: push the query kline itself AND identity work-items for each unrecognised node (right-to-left), and — if the signature is unrecognised — `{signature: []}` last (LIFO top, so K asks about the signature before its nodes). The query kline is held pending in the work-list until cleanup grounds it; node identities are what K asks about. |
 
 Then (D7): proceed to cogitation and emit exactly one event, unless the
 work-list is empty (→ return `None`, runner terminates).
 
-#### Work-list discipline (clarifies the pop/ground semantics)
+### Cleanup (recursive grounding engine)
 
-The work-list holds the **open proposals K is working** — the S2/S3 klines K
-has *received* (pushed by the entry rule) or *emitted* (pushed by Level 1). It
-does **not** hold every identity K has asked about. K's emitted identities
-(Level 0) are *responses*, not outstanding work; they enter the work-list only
-if the trainer later sends that same kline at S2/S3 (which does not happen on
-MHALL).
+Cleanup is the mechanism that grounds klines **structurally**, never by
+promoting an S2 to S1. It is triggered by every received S1 and recurses.
 
-Consequences resolved by the grill:
+Ground the triggering kline, then repeatedly scan the work-list for any kline
+whose **nodes are all now grounded** — ground it, remove it, and continue
+(grounding one kline may unblock others). The rule is uniform over identity and
+multi-node klines, because an identity `{sig: []}` ≡ `{sig: [sig]}`
+(@CONTEXT.md §Identity): its nodes are all grounded iff its own signature is
+grounded. So a pending query kline like `{a:[Det]}` grounds when Det grounds
+(its sole node resolved), which in turn retires `{a: []}` (`a` now grounded)
+and may unblock further klines up the chain.
 
-- **S1 grounds literally; no recursion.** `_ground` records exactly the kline
-  received, keyed by its signature (mirroring `KModel`). It does **not**
-  recursively ground the kline's nodes — nodes become known only when something
-  is grounded *under their signature*. K grounds what it was told, not the
-  transitive closure.
-- **Pop-matching is relevant only for K's own outstanding proposals.** The
-  trainer's canon/identity S1s (e.g. `{Mary:[M,ary]}`) ground the kline but
-  match no work-list entry (the work-list holds the open proposal
-  `{MHALL:[...]}`, not `{Mary:[]}`), so nothing pops — grounding is what
-  matters for those. Pop-matching fires only for the S1 *ratifications* of K's
-  own relationship proposals (e.g. `{Mary:[Subject]}` matches the relationship
-  K pushed at Level 1).
-- **Non-matching S4 / S1 are silent no-ops** for the pop step (grounding still
-  occurs for S1). The entry rule is bookkeeping; an unmatched query simply has
-  nothing to retire, and cogitation proceeds. A non-matching S4 is not itself
-  pushed.
+- **No S2→S1 promotion.** A kline is grounded only structurally — an S1
+  arrived for it, or all its nodes grounded. Receiving `{a:[Det]}` at S2 does
+  NOT ground `a`; `a` grounds only once Det grounds and cleanup recurses.
+- **Identities are self-referential.** `{sig: []}` ≡ `{sig: [sig]}`; the
+  uniform "all nodes grounded" rule retires an identity exactly when its
+  signature grounds. No vacuous-empty-nodes special case.
 
-### Cogitation (Level 0 and Level 1 only, on the selected work-list entry)
+### Cogitation (Level 0 and Level 1, on the selected work-list entry)
 
-Selection (D6): LIFO — the most-recently-added work-item first
-(**convention**, placeholder for future significance-based selection). After
-unpacking, the work-list is a stack of identity work-items `{sig: []}`; the
-LIFO top is the next signature to ask about.
+Selection (D6): LIFO — the most-recently-added work-item first (**convention**,
+placeholder for future significance-based selection). The work-list is
+heterogeneous: it holds both identity asks `{sig: []}` and pending query klines
+`{sig:[nodes]}`. Dispatch is by kline **shape** (structural):
 
-**Level 0 — Identity.** The selected entry's signature is **not grounded**
-(K does not yet understand it). Emit IDENTITY `{sig: []}` at S4. The
-ask-decision keys on **grounding**, not recognition: an identity work-item is,
-by definition, not yet grounded, so it must still be asked about even though
-it is in flight. The entry stays in the list; it is retired by the entry
-rule's S1 cleanup when K later grounds the signature, or by the S4 branch on
-a matching stalemate.
+**Level 0 — Identity.** The entry is an identity (`is_identity`). Emit
+IDENTITY `{sig: []}` at S4. The entry stays in the list; it is retired by
+cleanup when its signature grounds, or by the S4 branch on a matching
+stalemate.
 
-**Level 1 — Relationships.** The selected entry's signature IS grounded.
+**Level 1 — Relationships.** The entry is a multi-node (pending query) kline.
 Filled in a subsequent step.
 
-#### Two recognition predicates
+#### Recognition (the unpack push-decision)
 
-Unpacking (push-decision) and cogitation (ask-decision) use **different**
-predicates, and the distinction is load-bearing:
+A signature is **recognised** iff it is grounded OR already has an *identity*
+work-item in flight. A pending multi-node query kline under the signature does
+**not** count — K still wants to ask about that signature, so the query kline
+must not recognise its own signature. Recognition drives unpack idempotency
+(don't push a duplicate identity for a signature/node already known). The
+Level-0 ask-decision needs no separate predicate: it is purely structural
+(`is_identity`), not state-based.
 
-- **Push-decision (unpack idempotency):** a signature is *recognised* if it is
-  grounded OR already has an entry in the work-list. Prevents pushing a
-  duplicate identity work-item for a signature already in flight.
-- **Ask-decision (Level 0 vs 1):** a signature is asked about (Level 0) iff it
-  is **not grounded**. The work-item's own in-flight presence does not count —
-  otherwise a freshly-pushed identity would recognise its own signature and
-  skip the ask.
+#### Work-list discipline
 
-#### Work-list discipline (clarifies the pop/ground semantics)
-
-The work-list holds **identity work-items** ``{sig: []}`` — signatures K is
-asking about. After unpacking, every outstanding ask is a uniform identity
-work-item; there is no separate notion of "open proposals" vs "identities."
-
-Consequences resolved by the grill:
-
-- **S1 grounds literally; no recursion.** Grounding records exactly the kline
-  received, keyed by its signature (mirroring ``KModel``). It does **not**
-  recursively ground the kline's nodes — nodes become grounded only when K
-  receives an S1 under their signature.
-- **S1 cleanup retires identity work-items whose signature is now grounded.**
-  The trainer's canon/identity S1s (e.g. ``{Mary:[M,ary]}``) ground the kline
-  and pop the matching ``{Mary:[]}`` work-item. (Multi-node entry cleanup is
-  Level-1 territory.)
-- **Non-matching S4 / S1 are silent no-ops** for the pop step (grounding still
-  occurs for S1). The entry rule is bookkeeping; an unmatched query simply
-  has nothing to retire, and cogitation proceeds. A non-matching S4 is not
-  itself pushed.
-- **Broadcast only on grounding the opening query (Correction 1).** An S1
-  emission happens only when K grounds the opening query — not on every
-  work-item popped at S1. The entry rule's S1 branch is therefore silent;
-  emission is cogitation's job.
+The work-list holds two kinds of entry uniformly: **identity asks**
+`{sig: []}` (things K emits about) and **pending query klines** `{sig:[nodes]}`
+(held until cleanup grounds them). Both are KLines; cleanup and cogitation
+distinguish them structurally. An S1 emission (broadcast) happens only when K
+grounds the opening query (Correction 1); every other grounding is silent
+bookkeeping.
 
 ### Verification against MHALL
 
