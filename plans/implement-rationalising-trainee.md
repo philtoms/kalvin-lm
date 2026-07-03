@@ -394,6 +394,49 @@ mechanism branches above and to the canonical end-to-end run.
   count imbalance. A mature rationaliser leaps on significance when no scaffold
   exists; deferred to a later grill where true distance-based significance can
   inform the leap rather than a count heuristic.
+
+  **Exploration (post-implementation probe).** The signifier exposes a
+  *semantic* signal — `signifies(a, b)` is true when two values share an NLP
+  type-word bit (upper 32 bits). That is the natural significance signal a leap
+  would act on. Probed against MHALL's grouped residual `[a, little, lamb]`:
+  `a` does not signify `little` or `lamb`; `little` signifies `lamb`; the
+  constructed `ALL` does not signify its target `Object`. For contrast, the
+  correct 1:1 binding `Mary ↔ Subject` does **not** signify either. So on
+  MHALL, `signifies` is a *weak, partial* signal — present for some true
+  groupings, absent for others, and absent for correct bindings.
+
+  Three consequences for any future leap strategy:
+
+  1. **`signifies` alone is insufficient.** A leap keyed purely on `signifies`
+     would miss `Mary ↔ Subject` (no shared type-word) and would not confirm
+     `[a,little,lamb] → Object`. The count convention (D10) currently gets
+     these right where significance is silent; a leap must *combine* significance
+     with structure, not replace structure with it.
+  2. **The leap's home is the binding phase, not the identity phase.** Synthetic
+     signatures arise when K must relate two operands of different cardinality —
+     i.e. inside Level 1's `_binding_plan`. A primary leap strategy means Level 1
+     considers *candidate groupings* (partitions of the residual) scored by
+     significance, rather than the single deterministic group-the-whole-tail
+     rule. This is the "try-all-partitions, pick by distance" future form D10
+     names.
+  3. **Distance, not boolean significance, is the real signal.** The mature
+     Kalvin uses `expand()`'s packed distance (the inverted significance) to
+     rank candidates. The bootstrap rationaliser has no distance computation —
+     it trades that for deterministic conventions. A G4 resolution therefore
+     depends on giving the rationaliser *some* distance proxy (even a simple
+     one: shared type-word count, node-overlap count), which is a larger change
+     than the bootstrap's "no `expand()`" stance (D3, D5).
+
+  **Recommendation for the next grill.** Frame G4 as: *replace D10's count-only
+  grouping with a significance-scored partition search, accepting that the
+  significance proxy will be approximate and must co-exist with the structural
+  count rule as a tie-breaker.* The probe shows `signifies` is too weak to
+  stand alone; the grill should decide which distance proxy (shared type-words?
+  the real `expand()` distance? a bespoke node-overlap metric?) is appropriate
+  for a bootstrap, and how significance and structure combine when they
+  disagree. Do **not** attempt this before G1 (the S2 multi-node proposal
+  branch) is covered — the partition search emits multi-node proposals, which
+  the S2 branch exists to handle and is currently unexercised.
 - **G5 — Decoder label-collision (RESOLVED).** When a KScript label names
   both a canon and its atoms (e.g. `Det`, `Subject`, `Verb`, `Object` in
   MHALL), the decoder's IDENTITY resolution previously picked the atom (first
