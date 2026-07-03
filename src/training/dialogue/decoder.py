@@ -206,7 +206,8 @@ def _resolve_script(
         # compiler invariant violation, not a decode error.
         if d is None:
             raise DecodeError(
-                f"compiled entry 0x{kl.signature:x} has no debug info — dev compile invariant broken"
+                f"compiled entry 0x{kl.signature:x} has no debug info "
+                "— dev compile invariant broken"
             )
         # Canon index: keyed by node-decoded-label tuple (DDT-5).
         if d.op == "CANONIZED" and kl.nodes:
