@@ -181,38 +181,42 @@ def test_level0_no_opening_special_case(
 # ── Cleanup & MTS discrimination ──────────────────────────────────────────
 
 
-def test_non_mts_relationship_grounds_when_node_grounds(
+def test_relationship_grounds_by_elevation_on_rereceipt(
     rationaliser: Rationaliser, signifier: NLPSignifier
 ) -> None:
-    """A relationship to a NON-MTS (single-token) signature is terminal: it
-    grounds when its node grounds. {a:[Det]} grounds `a` once Det grounds."""
-    a = signifier.make_signature([0b1])  # single-token, non-MTS
-    det = signifier.make_signature([0b10, 0b100])  # will be MTS once canon grounded
-    # Ground Det's canon so Det is an MTS, then feed {a:[Det]} at S2, then S1 Det.
-    rationaliser._process_query(_event(KLine(det, [0b10, 0b100]), SIG_S1))
+    """A relationship grounds by ELEVATION on re-receipt, not by node-resolution
+    in cleanup. {a:[Det]} is received at S2 (Det ungrounded) and stays pending;
+    once Det grounds, re-receiving {a:[Det]} at S2 elevates it — K re-derives
+    its own significance (node now grounded) and grounds it at S1. This is the
+    async-grounding mechanism."""
+    a = signifier.make_signature([0b1])
+    det = signifier.make_signature([0b10, 0b100])
+    # First receipt: {a:[Det]} at S2, Det ungrounded -> not elevatable -> unpack.
     rationaliser._process_query(_event(KLine(a, [det]), SIG_S2))
     assert a not in rationaliser._state.grounded
-    rationaliser._process_query(_event(KLine(det, []), SIG_S1))  # ground Det (again, idempotent)
-    assert a in rationaliser._state.grounded  # {a:[Det]} grounded via node-resolution
+    # Ground Det.
+    rationaliser._process_query(_event(KLine(det, []), SIG_S1))
+    assert a not in rationaliser._state.grounded  # still not grounded — no re-receipt yet
+    # Re-receive {a:[Det]} at S2: now Det grounded -> elevation -> a grounds.
+    assert rationaliser._elevatable(KLine(a, [det]))
+    rationaliser._process_query(_event(KLine(a, [det]), SIG_S2))
+    assert a in rationaliser._state.grounded
 
 
-def test_mts_relationship_does_not_ground_early(
+def test_relationship_does_not_ground_via_cleanup(
     rationaliser: Rationaliser, signifier: NLPSignifier
 ) -> None:
-    """A relationship to an MTS signature is non-terminal: grounding its node
-    does NOT ground it (it needs binding/ratification). The opening {MHALL:[SVO]}
-    survives cleanup. Verified end-to-end in test_mhall_runs_to_exhaustion; here
-    we assert the _groundable predicate directly."""
+    """Relationships never ground by node-resolution in cleanup (only canons and
+    identities do). The opening {MHALL:[SVO]} (a relationship) is NOT
+    cleanup-groundable even once SVO grounds — it grounds by K's own closing S1
+    broadcast, not by cleanup. Asserts the _groundable predicate directly."""
     a = signifier.make_signature([0b1])
-    b = signifier.make_signature([0b10])
-    ab = signifier.make_signature([0b1, 0b10])  # MTS
-    # Ground AB's canon so AB is an MTS; the relationship {AB:[A]} must not be
-    # cleanup-groundable even once A grounds.
-    rationaliser._process_query(_event(KLine(ab, [a, b]), SIG_S1))
-    rationaliser._process_query(_event(KLine(a, []), SIG_S1))  # A grounded
-    rel = KLine(ab, [a])
-    assert rationaliser._is_mts(ab)
-    assert not rationaliser._groundable(rel)  # MTS relationship -> not groundable here
+    ab = signifier.make_signature([0b1, 0b10])  # compound
+    rel = KLine(ab, [a])  # a relationship (non-canon, non-identity)
+    assert not rationaliser._groundable(rel)  # relationships are never cleanup-groundable
+    # Even after grounding A, the relationship {AB:[A]} is not cleanup-groundable.
+    rationaliser._process_query(_event(KLine(a, []), SIG_S1))
+    assert not rationaliser._groundable(rel)
 
 
 # ── Level 1 (Relationships) — grouping (D10) ──────────────────────────────
@@ -252,41 +256,49 @@ def _drive_to_level1(rationaliser: Rationaliser, decoded) -> None:
             ki += 1
 
 
-def test_level1_grouping_constructs_synthetic_all(
+def _level1_entry(rationaliser: Rationaliser) -> KLine:
+    """Find the Level-1-eligible opening in the work-list (the entry cogitation
+    would dispatch to Level 1) — not necessarily the LIFO top, which may be an
+    async-pending relationship skipped by cogitation."""
+    for entry in reversed(rationaliser._state.work_list):
+        if rationaliser._level1_eligible(entry):
+            return entry
+    raise AssertionError("no Level-1-eligible entry in work-list")
+
+
+def test_level1_grouping_emits_canonical_request_for_residual(
     rationaliser: Rationaliser, signifier: NLPSignifier, _decoded_mhall
 ) -> None:
-    """D10: the 3-vs-1 residual groups into a synthetic ALL operand. The binding
-    plan pairs Mary↔Subject, had↔Verb, then groups [a,little,lamb] -> ALL ↔
-    Object. ALL is constructed (make_signature), not looked up."""
+    """D10 (async model): the 3-vs-1 residual does NOT assert a binding to a
+    synthesised signature. The relationship plan pairs Mary<->Subject,
+    had<->Verb, then carries a residual [a,little,lamb] for the grouped pair —
+    which Level 1 emits as a canonical request {make_signature(residual):
+    residual} at S2 (a hypothesis), not a relationship assertion."""
     _drive_to_level1(rationaliser, _decoded_mhall)
-    # The opening {MHALL:[SVO]} entry is the LIFO top at the Level-1 boundary.
-    entry = rationaliser._state.work_list[-1]
-    left_nodes = rationaliser._canon_nodes(entry.signature)  # MHALL canon
-    right_nodes = rationaliser._canon_nodes(entry.nodes[0])  # SVO canon
-    plan = rationaliser._binding_plan(left_nodes, right_nodes)
-    # Three bindings; the last lhs is a synthetic signature (ALL) not equal to
-    # any single left/right canon node.
+    entry = _level1_entry(rationaliser)
+    left_nodes = rationaliser._find_canon_nodes(entry.signature)  # MHALL canon
+    right_nodes = rationaliser._find_canon_nodes(entry.nodes[0])  # SVO canon
+    plan = rationaliser._relationship_plan(left_nodes, right_nodes)
+    # Three pairs; the last carries a non-empty residual (the grouped operands).
     assert len(plan) == 3
-    last_lhs, last_rhs = plan[-1]
-    assert last_lhs not in left_nodes
-    assert last_lhs not in right_nodes
-    assert last_lhs == signifier.make_signature(left_nodes[2:])  # [a,little,lamb]
+    last_lhs, last_rhs, last_residual = plan[-1]
+    assert last_residual  # grouped pair -> residual present
+    assert last_lhs == signifier.make_signature(last_residual)  # synthesised sig
 
 
-def test_level1_proposals_are_s3_one_to_one(
+def test_level1_one_to_one_pairs_carry_no_residual(
     rationaliser: Rationaliser, signifier: NLPSignifier, _decoded_mhall
 ) -> None:
-    """Grill Q3: a 1:1 relationship proposal (one signature, one node) is S3.
-    MHALL's proposals are all 1:1 — the S2 (multi-node) branch is G1."""
+    """A 1:1 pair (one left operand, one right operand) carries no residual —
+    Level 1 emits it as a CONNOTED relationship at S3. MHALL's first two pairs
+    (Mary<->Subject, had<->Verb) are 1:1."""
     _drive_to_level1(rationaliser, _decoded_mhall)
-    entry = rationaliser._state.work_list[-1]
-    left_nodes = rationaliser._canon_nodes(entry.signature)
-    right_nodes = rationaliser._canon_nodes(entry.nodes[0])
-    plan = rationaliser._binding_plan(left_nodes, right_nodes)
-    for lhs_sig, rhs_node in plan:
-        emitted_kline = KLine(lhs_sig, [rhs_node])
-        # Every emitted proposal is 1:1 (single node) -> would be S3.
-        assert len(emitted_kline.nodes) == 1
+    entry = _level1_entry(rationaliser)
+    left_nodes = rationaliser._find_canon_nodes(entry.signature)
+    right_nodes = rationaliser._find_canon_nodes(entry.nodes[0])
+    plan = rationaliser._relationship_plan(left_nodes, right_nodes)
+    for lhs_sig, rhs_node, residual in plan[:2]:  # the 1:1 pairs
+        assert residual == []  # no residual -> 1:1 -> CONNOTED at S3
 
 
 @pytest.mark.skip(

@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S1, SIG_S3, SIG_S4, boundaries, classify
+from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4, boundaries, classify
 from kalvin.kline import KLine, is_canon, is_identity
 from kalvin.kvalue import KValue
 
@@ -79,6 +79,11 @@ class _State:
 
     work_list: list[KLine] = field(default_factory=list)
     grounded: dict[int, list[KLine]] = field(default_factory=dict)
+    # Signatures K has already asked about as identities (Level 0). Tracked
+    # separately because identities are popped on emission (Strategy B): an
+    # asked signature must not be re-asked when a later unpack encounters it,
+    # even though its identity work-item is gone. Consulted by _recognised.
+    asked: set[int] = field(default_factory=set)
 
 
 # ── The Rationaliser ──────────────────────────────────────────────────────
@@ -162,10 +167,15 @@ class Rationaliser:
           and removed, transitively. Silent — an S1 emission (broadcast)
           happens only when K grounds the opening query, not on every pop
           (Correction 1) — so this branch never emits.
-        - **S2 or S3** → **unpack**: push the query kline itself AND identity
-          work-items ``{node: []}`` for each unrecognised node, all into the
-          one work-list. The query kline is held pending until cleanup grounds
-          it (its nodes all ground); the identities are what K asks about.
+        - **S2 or S3** → **elevation check, then unpack**. If K's *own* current
+          assessment of the kline is S1 — i.e. it is a relationship whose nodes
+          are all now grounded — K elevates it: ground it via cleanup (the
+          sender's declared S2 is honoured no higher than K's own re-derived
+          S1; this is the two-way significance dialog). Otherwise unpack: push
+          the query kline itself AND identity work-items ``{node: []}`` for
+          each unrecognised node. This is how an asynchronously-grounded
+          relationship (``{a:[Det]}`` re-received after Det grounded) finally
+          grounds.
         """
         query = incoming.proposal
         sig = query.significance
@@ -180,7 +190,14 @@ class Rationaliser:
             self._cleanup(query.kline)
             return
 
-        # S2 or S3 — unpack the query kline and its unrecognised nodes.
+        # S2 or S3 — elevation check: a relationship whose nodes are all now
+        # grounded is elevated to S1 (K's own assessment outranks the sender's
+        # declared S2). This grounds async relationships on re-receipt.
+        if self._elevatable(query.kline):
+            self._cleanup(query.kline)
+            return
+
+        # Otherwise unpack the query kline and its unrecognised nodes.
         self._unpack(query.kline)
 
     # ── State helpers ─────────────────────────────────────────────────────
@@ -199,16 +216,23 @@ class Rationaliser:
                 return  # already grounded
         bucket.append(kline)
 
-    def _recognised(self, signature: int) -> bool:
-        """Has K seen ``signature`` before, as an identity or grounded kline?
+    def _recognised(self, signature: int, *, is_signature: bool = False) -> bool:
+        """Has K seen ``signature`` before?
 
-        Recognised iff the signature is grounded OR already has an *identity*
-        work-item in flight. A pending multi-node query kline under the
-        signature does NOT count — K still wants to ask about that signature.
-        This is the unpack push-decision: a recognised signature (or node) is
-        not pushed as a fresh identity work-item.
+        - **Nodes** (``is_signature=False``): recognised iff grounded, asked, or
+          an identity work-item is in flight. Re-traversing an already-asked
+          node in a NEW canon is legitimate (the new context may resolve it —
+          e.g. re-asking ``a`` while traversing ALL, so the re-receipt can
+          elevate ``{a:[Det]}``), so the asked set does NOT suppress node asks;
+          it only suppresses *duplicate* identity work-items in flight.
+        - **Signature** (``is_signature=True``): recognised iff grounded or
+          asked. A signature K has already asked about is not re-asked when a
+          later unpack encounters it as the signature (its identity work-item
+          was popped on emission — Strategy B).
         """
         if signature in self._state.grounded:
+            return True
+        if is_signature and signature in self._state.asked:
             return True
         return any(
             entry.signature == signature and is_identity(entry)
@@ -233,7 +257,7 @@ class Rationaliser:
         for node in reversed(kline.nodes):
             if not self._recognised(node):
                 self._state.work_list.append(KLine(node, []))
-        if not self._recognised(kline.signature):
+        if not self._recognised(kline.signature, is_signature=True):
             self._state.work_list.append(KLine(kline.signature, []))
 
     def _cleanup(self, kline: KLine) -> None:
@@ -246,12 +270,11 @@ class Rationaliser:
 
         **Only canons and identities ground by node-resolution** — never
         relationships. A canon ``{S:[nodes]}`` grounds when all its nodes
-        ground (K has all the pieces of the decomposition); an identity
-        ``{sig: []}`` ≡ ``{sig: [sig]}`` grounds when its own signature grounds.
-        A relationship (``{MHALL:[SVO]}``, ``{a:[Det]}``) does NOT ground this
-        way — it grounds only by explicit ratification (an S1 for that kline).
-        This stops the opening relationship from grounding prematurely when
-        its operands' nodes resolve.
+        ground; an identity ``{sig: []}`` ≡ ``{sig: [sig]}`` grounds when its
+        own signature grounds. A relationship grounds by **elevation on
+        re-receipt** (the entry rule), not here — so the opening relationship
+        never grounds prematurely (it is received once, never re-received, and
+        is closed by K's own S1 broadcast once its canon's operands resolve).
         """
         self._ground(kline)
         changed = True
@@ -267,43 +290,33 @@ class Rationaliser:
     def _groundable(self, kline: KLine) -> bool:
         """Is ``kline`` eligible to ground by node-resolution?
 
+        Only **canons and identities** — never relationships:
         - **Identity** ``{sig: []}`` ≡ ``{sig: [sig]}`` — groundable iff its
           own signature is grounded (@CONTEXT.md §Identity).
-        - **Canon** ``{S:[nodes]}`` — groundable iff all its nodes are grounded
-          (K has all the pieces of the decomposition).
-        - **Relationship** ``{S:[node]}`` (non-canon, non-identity) — groundable
-          iff all its nodes are grounded **and ``S`` is not an MTS**. A
-          single-token (non-MTS) signature's relationship is *terminal*: when
-          its node grounds, the signature is fully resolved (e.g. ``a`` ↔ Det).
-          An MTS signature's relationship is *non-terminal*: grounding its node
-          does not resolve it — understanding ``MHALL`` ↔ ``SVO`` requires the
-          operand binding (Level 1), not just ``SVO`` grounding. So an MTS
-          relationship grounds only by explicit ratification.
+        - **Canon** ``{S:[nodes]}`` — groundable iff all its nodes are grounded.
+        - **Relationship** (non-canon, non-identity) — never groundable here;
+          it grounds by elevation on re-receipt (the entry rule).
         """
         if is_identity(kline):
             return kline.signature in self._state.grounded
         if is_canon(kline, self._signifier):
             return all(node in self._state.grounded for node in kline.nodes)
-        # A relationship: groundable only if non-MTS and all nodes grounded.
-        if self._is_mts(kline.signature):
+        return False  # a relationship — grounds only by elevation on re-receipt
+
+    def _elevatable(self, kline: KLine) -> bool:
+        """Should K elevate an incoming S2/S3 relationship to S1?
+
+        True iff ``kline`` is a relationship (non-canon, non-identity) whose
+        nodes are all now grounded. The sender declared S2 (e.g. the stateless
+        trainer resubmitting ``{a:[Det]}`` after Det grounded); K re-derives its
+        own significance from current model state and, finding the node
+        grounded, elevates to S1. This is the async-grounding mechanism and the
+        two-way significance dialog (K does not blindly accept the sender's
+        significance). Canons/identities are handled by the S1/unpack branches.
+        """
+        if is_identity(kline) or is_canon(kline, self._signifier):
             return False
         return all(node in self._state.grounded for node in kline.nodes)
-
-    def _is_mts(self, signature: int) -> bool:
-        """Is ``signature`` a Multi-Token Signature (a compound)?
-
-        An MTS is the OR-reduction of two or more token values
-        (@specs/signifier SIG-14; @specs/kscript §8 MTS expansion). Operationally,
-        for the rationaliser: a signature is an MTS iff K has a grounded **canon**
-        under it — i.e. K knows a decomposition of the signature into multiple
-        tokens. A single-token signature (e.g. ``a``) has no canon, so it is not
-        an MTS; its relationships are terminal. A compound (``MHALL``, ``SVO``,
-        ``Det``) has a canon, so it is an MTS; its relationships need binding.
-        """
-        for kline in self._state.grounded.get(signature, []):
-            if is_canon(kline, self._signifier):
-                return True
-        return False
 
     def _pop_identity(self, signature: int) -> None:
         """Pop the first identity work-item under ``signature`` (S4 branch).
@@ -321,41 +334,60 @@ class Rationaliser:
     def _cogitate(self, incoming: RationaliseEvent | None) -> RationaliseEvent | None:
         """Work the selected work-list entry and emit exactly one event.
 
-        Selection (D6): LIFO — the most-recently-added entry. Dispatch is by
-        kline **shape** (structural), not state:
+        Selection: LIFO among **workable** entries (a convention, placeholder
+        for future significance-based selection — the work-list is a list, not a
+        queue, because not every entry is workable at all times). An entry is
+        workable iff it is:
+        - an **identity** ``{sig: []}`` (always askable), or
+        - a **Level-1-eligible opening** (a relationship whose operands both
+          have grounded canons).
+        An **async-pending relationship** (e.g. ``{a:[Det]}`` awaiting elevation
+        on re-receipt) is NOT workable — K cannot emit about it now; it is
+        skipped and removed later by cleanup when elevation grounds it.
 
-        - **Level 0 (Identity)** — the entry is an identity ``{sig: []}`` ≡
-          ``{sig: [sig]}``. Emit IDENTITY ``{sig: []}`` at S4. The entry stays
-          in the list; it is retired by cleanup when its signature grounds, or
-          by the S4 branch on a matching stalemate.
-        - **Level 1 (Relationships)** — the entry is a multi-node (pending
-          query) kline. Filled in a subsequent step.
-
-        Returns ``None`` when the work-list is empty (D12 — termination is the
+        Returns ``None`` when no entry is workable (D12 — termination is the
         runner's job, not K's).
         """
-        if not self._state.work_list:
-            return None  # D12 — no work; the runner terminates.
+        for idx in range(len(self._state.work_list) - 1, -1, -1):
+            entry = self._state.work_list[idx]
+            if is_identity(entry):
+                return self._level0_identity(idx, entry.signature, incoming)
+            if self._level1_eligible(entry):
+                return self._level1_relationships(entry, incoming)
+            # else: async-pending relationship — skip, look further down.
+        return None  # D12 — nothing workable; the runner terminates.
 
-        entry = self._state.work_list[-1]  # LIFO (D6, convention)
+    def _level1_eligible(self, entry: KLine) -> bool:
+        """Is ``entry`` an opening relationship ready for Level 1?
 
-        if is_identity(entry):
-            return self._level0_identity(entry.signature, incoming)
-
-        # Level 1 — a pending multi-node (relationship) kline. Propose the
-        # operand bindings between its signature's canon and its node's canon,
-        # or close at S1 when all bindings are ratified.
-        return self._level1_relationships(entry, incoming)
+        True iff ``entry`` is a single-node relationship ``{L:[R]}`` whose
+        operands L and R BOTH have canons K has seen (in the work-list or
+        grounded) — so K can read their operands to pair. The canons need not be
+        *grounded*: Level 1 fires as soon as K has the operand lists, which may
+        precede full grounding (e.g. MHALL's canon is seen before ``a`` grounds
+        async). A single-node async-pending relationship like ``{a:[Det]}`` is
+        not eligible (``a`` has no canon).
+        """
+        if is_identity(entry) or len(entry.nodes) != 1:
+            return False
+        return (
+            self._find_canon_nodes(entry.signature) is not None
+            and self._find_canon_nodes(entry.nodes[0]) is not None
+        )
 
     def _level0_identity(
-        self, signature: int, incoming: RationaliseEvent | None
+        self, idx: int, signature: int, incoming: RationaliseEvent | None
     ) -> RationaliseEvent:
-        """Level 0 — emit IDENTITY ``{signature: []}`` at S4.
+        """Level 0 — emit IDENTITY ``{signature: []}`` at S4 and pop the entry.
 
-        K has never seen ``signature``, so it calls it out as an identity:
-        "I don't know this; what is it?" The identity work-item stays on the
-        work-list; it is retired later by the entry rule (S1 cleanup when K
-        grounds the signature, or the S4 branch on a matching stalemate).
+        K calls out the signature as an identity: "I don't know this; what is
+        it?" The identity work-item is **popped on emission** (Strategy B):
+        the ask is fire-and-forget — K does not retain identities to re-ask.
+        This is what lets K move past an async-blocked signature (e.g. ``a``,
+        whose ``{a:[Det]}`` awaits elevation) to ask the next workable entry,
+        rather than banging against a lingering ``{a: []}`` under pure LIFO.
+        The signature becomes grounded later via the entry rule (S1, or
+        elevation on re-receipt), independent of the popped identity.
 
         The emitted event's ``query`` voice is the incoming proposal (the
         thing K is responding to), or the identity itself on the opening —
@@ -363,6 +395,8 @@ class Rationaliser:
         ``proposal`` and ``role`` (spec §Validation), so ``query`` is
         diagnostic only.
         """
+        del self._state.work_list[idx]
+        self._state.asked.add(signature)
         identity = KLine(signature, [])
         proposal = KValue(identity, SIG_S4)
         query = incoming.proposal if incoming is not None else proposal
@@ -371,7 +405,7 @@ class Rationaliser:
     def _level1_relationships(
         self, entry: KLine, incoming: RationaliseEvent | None
     ) -> RationaliseEvent:
-        """Level 1 — propose operand bindings for a pending relationship, or close.
+        """Level 1 — propose operand relationships for a pending relationship, or close.
 
         ``entry`` is a multi-node relationship ``{L:[R]}`` whose operands L and
         R are MTS signatures with grounded canons (e.g. the opening
@@ -379,15 +413,27 @@ class Rationaliser:
         left-to-right at group size 1, grouping one side's residual into a
         single synthetic operand when the other reaches a single node (D10).
 
-        Each call emits the **first not-yet-ratified** binding as a CONNOTED
-        relationship at S3 (1:1) or S2 (grouped). A binding is ratified once
-        its kline is grounded (the trainer replied S1). When every binding is
-        ratified, K closes by emitting the entry itself at S1 (COUNTERSIGNED)
-        — the broadcast that K grounds the opening query (Correction 1) — and
-        the entry is removed from the work-list.
+        Each call emits the next not-yet-ratified relationship:
+        - a **1:1 relationship** ``{lhs:[rhs]}`` is emitted CONNOTED at S3
+          (a tentative connoted relationship, inviting ratification).
+        - a **synthesised residual** requires inventing a signature K was never
+          taught; rather than assert a relationship to it (a leap too far), K
+          emits a **canonical request** ``{make_signature(residual): residual}``
+          at S2 — "is this a thing?" — the same shape as every other S2 query.
+          The trainer replies with the scaffolding; K traverses it; async
+          relationships (``{a:[Det]}``) ground by elevation on re-receipt.
 
-        Group-size escalation on a trainer S4 refusal (D11) is deferred: the
-        bootstrap targets golden masters the convention satisfies at size 1.
+        A pair is **resolved** when:
+        - a 1:1 pair ``{lhs:[rhs]}`` is ratified (its kline grounded, trainer
+          replied S1), OR
+        - a grouped pair is resolved when its synthesised canon
+          ``{make_signature(residual): residual}`` is grounded (the canonical
+          request was traversed and its async relationships elevated).
+        When every pair is resolved, K closes by emitting the entry itself at
+        S1 (COUNTERSIGNED) — the broadcast that K grounds the opening query
+        (Correction 1) — and the entry is removed from the work-list.
+
+        Group-size escalation on a trainer S4 refusal (D11) is deferred.
         """
         right = entry.nodes  # the operand side of {L:[R]} — e.g. [SVO]
         assert len(right) == 1, "Level 1 expects a single-node relationship entry"
@@ -395,33 +441,39 @@ class Rationaliser:
 
         # LHS signatures come from left_sig's canon (MHALL -> Mary, had, ...);
         # RHS nodes come from the operand's canon (SVO -> Subject, Verb, Object).
-        left_nodes = self._canon_nodes(left_sig)
-        right_nodes = self._canon_nodes(right[0])
+        left_nodes = self._find_canon_nodes(left_sig)
+        right_nodes = self._find_canon_nodes(right[0])
         if left_nodes is None or right_nodes is None:
-            # A canon is missing — cannot bind. Defer (should not happen on a
-            # well-formed golden master where both operands grounded).
             raise NotImplementedError(
-                "Level 1: an operand canon is missing; cannot bind."
+                "Level 1: an operand canon is missing; cannot relate."
             )
 
-        plan = self._binding_plan(left_nodes, right_nodes)
-
-        for lhs_sig, rhs_node in plan:
-            if not self._binding_ratified(lhs_sig, rhs_node):
-                # Emit the next unratified binding. Significance is the emitted
-                # kline's signature-to-node count (grill Q3): a 1:1 proposal
-                # (one signature, one node) is S3; a multi-node proposal is S2.
-                # MHALL's proposals are all 1:1 (grouping makes a synthetic lhs,
-                # not multiple rhs nodes), so all are S3 here. The S2 (multi-node)
-                # branch is coverage gap G1, unexercised by MHALL.
+        for lhs_sig, rhs_node, residual in self._relationship_plan(left_nodes, right_nodes):
+            if self._pair_resolved(lhs_sig, rhs_node, residual):
+                continue
+            if residual:
+                # A synthesised lhs (a signature K was never taught): emit a
+                # canonical request {synthesised: residual} at S2 — "is this a
+                # thing?" — not a relationship assertion. K cannot legitimately
+                # relate to a signature it invented. Mark it asked so a later
+                # unpack doesn't re-ask it as an identity.
+                synth_sig = self._signifier.make_signature(residual)
+                proposal_kline = KLine(synth_sig, residual)
+                sig_band = SIG_S2
+                self._state.asked.add(synth_sig)
+            else:
+                # A 1:1 relationship between known signatures: CONNOTED at S3.
                 proposal_kline = KLine(lhs_sig, [rhs_node])
-                proposal = KValue(proposal_kline, SIG_S3)
-                query = incoming.proposal if incoming is not None else proposal
-                return RationaliseEvent(_KIND, query, proposal, role=_ROLE)
+                sig_band = SIG_S3
+            proposal = KValue(proposal_kline, sig_band)
+            query = incoming.proposal if incoming is not None else proposal
+            return RationaliseEvent(_KIND, query, proposal, role=_ROLE)
 
-        # All bindings ratified — close at S1 (Correction 1: the only S1
+        # All pairs resolved — close at S1 (Correction 1: the only S1
         # broadcast). Ground the entry and remove it from the work-list.
-        self._state.work_list.pop()  # the entry is the LIFO top
+        # (entry may be anywhere in the work-list, not just LIFO top, since
+        # cogitation may have skipped async-pending entries above it.)
+        self._state.work_list.remove(entry)
         self._ground(entry)
         proposal = KValue(entry, SIG_S1)
         query = incoming.proposal if incoming is not None else proposal
@@ -430,60 +482,95 @@ class Rationaliser:
     # ── Level 1 helpers ───────────────────────────────────────────────────
 
     def _canon_nodes(self, signature: int) -> list[int] | None:
-        """The nodes of ``signature``'s grounded canon, or None if none.
+        """The nodes of ``signature``'s grounded canon, or None if none grounded.
 
         An MTS signature has a canon decomposition in K's grounded memory; this
-        returns its node list. Used by Level 1 to get the operands of each side
-        of a pending relationship.
+        returns its node list. Used where grounded status matters.
         """
         for kline in self._state.grounded.get(signature, []):
             if is_canon(kline, self._signifier):
                 return list(kline.nodes)
         return None
 
-    def _binding_plan(
+    def _find_canon_nodes(self, signature: int) -> list[int] | None:
+        """The nodes of ``signature``'s canon, wherever K has seen it.
+
+        Searches grounded memory AND the work-list. Used by Level 1: K can read
+        a canon's operands as soon as it has seen the canon, even before the
+        canon fully grounds (e.g. MHALL's canon is seen before ``a`` grounds
+        async). Returns the first canon found's node list, or None.
+        """
+        for kline in self._state.grounded.get(signature, []):
+            if is_canon(kline, self._signifier):
+                return list(kline.nodes)
+        for kline in self._state.work_list:
+            if kline.signature == signature and is_canon(kline, self._signifier):
+                return list(kline.nodes)
+        return None
+
+    def _relationship_plan(
         self, left_nodes: list[int], right_nodes: list[int]
-    ) -> list[tuple[int, int]]:
-        """Pair two canons' operands into a list of ``(lhs_sig, rhs_node)``.
+    ) -> list[tuple[int, int, list[int]]]:
+        """Pair two canons' operands into ``(lhs_sig, rhs_node, residual)`` tuples.
 
         Group-size-1 convention (D10): pair left-to-right while both sides have
         more than one node remaining; when one side reaches a single node,
-        group the other side's entire residual into one synthetic operand
-        (``make_signature(residual)``) and pair it with the remaining single.
-        Returns the plan as emitted-relationship shapes ``(signature, [node])``;
-        a grouped lhs carries a synthetic signature.
+        group the other side's entire residual into one synthetic operand and
+        pair it with the remaining single. ``residual`` is empty for a 1:1 pair;
+        for a grouped pair it carries the residual node list (so the caller can
+        emit a canonical request ``{make_signature(residual): residual}``).
         """
-        plan: list[tuple[int, int]] = []
+        plan: list[tuple[int, int, list[int]]] = []
         i = j = 0
         while i < len(left_nodes) and j < len(right_nodes):
             left_rem = len(left_nodes) - i
             right_rem = len(right_nodes) - j
             if left_rem == 1 and right_rem == 1:
-                plan.append((left_nodes[i], right_nodes[j]))
+                plan.append((left_nodes[i], right_nodes[j], []))
                 i += 1
                 j += 1
             elif left_rem == 1:
                 # Group right's residual; lhs is the single left node.
-                residual = right_nodes[j:]
-                plan.append((left_nodes[i], self._signifier.make_signature(residual)))
+                residual = list(right_nodes[j:])
+                plan.append((left_nodes[i], self._signifier.make_signature(residual), residual))
                 break
             elif right_rem == 1:
                 # Group left's residual into a synthetic lhs; rhs is single.
-                residual = left_nodes[i:]
-                plan.append((self._signifier.make_signature(residual), right_nodes[j]))
+                residual = list(left_nodes[i:])
+                plan.append((self._signifier.make_signature(residual), right_nodes[j], residual))
                 break
             else:
-                plan.append((left_nodes[i], right_nodes[j]))
+                plan.append((left_nodes[i], right_nodes[j], []))
                 i += 1
                 j += 1
         return plan
 
-    def _binding_ratified(self, lhs_sig: int, rhs_node: int) -> bool:
-        """Has the trainer ratified the binding ``{lhs_sig:[rhs_node]}``?
+    def _pair_resolved(
+        self, lhs_sig: int, rhs_node: int, residual: list[int]
+    ) -> bool:
+        """Is this relationship-plan pair resolved?
+
+        - **1:1 pair** (``residual`` empty): resolved iff ``{lhs_sig:[rhs_node]}``
+          is grounded (the trainer ratified it at S1).
+        - **Grouped pair** (``residual`` non-empty): resolved iff the synthesised
+          canon ``{make_signature(residual): residual}`` is grounded — i.e. the
+          canonical request was traversed and any async relationships within it
+          elevated. The synthesised canon grounds via cleanup once all its
+          residual nodes ground.
+        """
+        if residual:
+            synth_sig = self._signifier.make_signature(residual)
+            return any(
+                is_canon(kl, self._signifier) for kl in self._state.grounded.get(synth_sig, [])
+            )
+        return self._relationship_ratified(lhs_sig, rhs_node)
+
+    def _relationship_ratified(self, lhs_sig: int, rhs_node: int) -> bool:
+        """Has the trainer ratified the relationship ``{lhs_sig:[rhs_node]}``?
 
         True iff that relationship kline is grounded (the trainer replied S1,
         which cleanup grounded). Used by Level 1 to find the next unratified
-        binding.
+        relationship.
         """
         for kline in self._state.grounded.get(lhs_sig, []):
             if list(kline.nodes) == [rhs_node]:
