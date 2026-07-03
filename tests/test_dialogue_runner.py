@@ -43,6 +43,17 @@ def _decoded_mhall():
     return decode(table, tokenizer=tok, signifier=sigf)
 
 
+@pytest.fixture(scope="module")
+def _compiled_mhall():
+    """The MHALL compiled script + the signifier it was built with."""
+    from ks.compiler import compile_source
+
+    tok, sigf = NLPTokenizer(), NLPSignifier()
+    table = load_table(json.loads(MHALL.read_text()))
+    compiled = compile_source(table.script, tokenizer=tok, signifier=sigf, dev=True)
+    return compiled, sigf
+
+
 def _ev(sig: int = 0, role: str | None = None) -> RationaliseEvent:
     return RationaliseEvent(
         kind="frame",
@@ -310,4 +321,31 @@ def test_rationaliser_runs_mhall_to_exhaustion(_decoded_mhall):
     assert result.events[-1].proposal.significance == SIG_S1
     assert result.events[-1].proposal.kline == result.events[0].proposal.kline
     # The rationaliser produced exactly the table's rows (no more, no less).
+    assert len(result.events) == len(_decoded_mhall)
+
+
+# ── SynthesizingTrainer integration (plan §Phase 4.2) ────────────────────
+
+
+def test_synthesizing_trainer_runs_mhall_to_exhaustion(_decoded_mhall, _compiled_mhall):
+    """The SynthesizingTrainer (a real, script-deriving trainer) runs MHALL to
+    exhaustion with zero divergence against the golden master, driven through
+    the runner's ``run()`` like any Actor. The trainee stays a ``TableTrainee``
+    (the deterministic oracle). This is the canonical end-to-end proof that a
+    synthesizing trainer is a drop-in replacement for ``TableTrainer`` — the
+    symmetric counterpart to the Rationaliser test above."""
+    from training.dialogue.runner import SynthesizingTrainer
+
+    compiled, sigf = _compiled_mhall
+    result = run(
+        _decoded_mhall,
+        trainer=SynthesizingTrainer(compiled, sigf),
+        trainee=TableTrainee(_decoded_mhall),
+    )
+    assert result.complete
+    # Every emitted event validated against decoded[cursor] (run would have
+    # raised ActorDivergence otherwise). Confirm the closing S1 countersign.
+    assert result.events[-1].proposal.significance == SIG_S1
+    assert result.events[-1].proposal.kline == result.events[0].proposal.kline
+    # The synthesizer produced exactly the table's rows (no more, no less).
     assert len(result.events) == len(_decoded_mhall)
