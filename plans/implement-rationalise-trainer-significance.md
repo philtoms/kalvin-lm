@@ -4,7 +4,7 @@
 rationalisation — the first piece of the two-way significance dialog. MVP
 scope: Kalvin honours an S4 disagreement by dropping the query, which lets
 it ratify a ratification and drop a recurring proposal.
-**Status:** plan complete; implementation pending
+**Status:** complete (all tasks landed — see §Status)
 **Spec refs:** `@specs/agent.md` §Rationalisation (new significance-gate
 phase), `@specs/kvalue.md` §What a KValue is Not (slimmed — consumption moves
 to agent.md), `@specs/harness-server.md` §Kalvin Adapter (new `rationalise`

@@ -2,7 +2,7 @@
 
 **Parent:** kline decode correctness (passing kline nodes directly to the
 tokenizer does not account for packed/multi-token nodes)
-**Status:** spec complete; implementation pending
+**Status:** complete (all tasks landed — see §Status)
 **Spec refs:** `specs/model.md` §Graph Traversal › Unpack (MOD-60..MOD-66)
 **Depends on:** —
 
