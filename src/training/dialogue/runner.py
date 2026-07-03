@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from kalvin.events import RationaliseEvent
 from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn
+from training.dialogue.rationalise import Rationaliser
 from training.dialogue.synthesize import synthesize
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -184,6 +185,48 @@ class SynthesizingTrainer:
         query = incoming_value if incoming_value is not None else proposal
         return RationaliseEvent(
             kind="frame", query=query, proposal=proposal, role="T"
+        )
+
+
+# ── Rationalising actor (spec §Actor; plan @plans/implement-rationalising-trainee.md) ─
+#
+# A real trainee that rationalises each turn from its own state and the
+# trainer's last KValue (via the :class:`~training.dialogue.rationalise.Rationaliser`
+# engine), never reading the decoded table. Mirrors :class:`SynthesizingTrainer`:
+# the engine returns a ``KValue``; this actor wraps it in a ``RationaliseEvent``.
+# Unlike the table-reading actors it is non-exhausting only while work remains —
+# the engine returns ``None`` when nothing is workable (D12), which this actor
+# forwards. Not produced by :func:`default_actors`; callers wire it explicitly.
+
+
+class RationalisingTrainee:
+    """A trainee that rationalises each turn from its own model state.
+
+    Drop-in for :class:`TableTrainee` wherever an :class:`Actor` is accepted.
+    Holds a :class:`~training.dialogue.rationalise.Rationaliser` engine and a
+    signifier (the engine is built at construction) and wraps each emitted
+    ``KValue`` in a ``RationaliseEvent``. Constructor does **not** take
+    ``decoded`` — the table is only the validation oracle.
+    """
+
+    def __init__(self, signifier: KSignifier) -> None:
+        self._engine = Rationaliser(signifier)
+
+    @property
+    def role(self) -> str:
+        """The role this actor emits on its events (the routing key)."""
+        return "K"
+
+    def respond(
+        self, incoming: RationaliseEvent | None
+    ) -> RationaliseEvent | None:
+        incoming_value = incoming.proposal if incoming is not None else None
+        proposal = self._engine.rationalise(incoming_value)
+        if proposal is None:
+            return None
+        query = incoming_value if incoming_value is not None else proposal
+        return RationaliseEvent(
+            kind="frame", query=query, proposal=proposal, role="K"
         )
 
 

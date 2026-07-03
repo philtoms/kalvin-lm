@@ -303,17 +303,17 @@ def test_run_table_convenience():
 
 
 def test_rationaliser_runs_mhall_to_exhaustion(_decoded_mhall):
-    """The Rationaliser (a real, stateful trainee) runs MHALL to exhaustion
+    """The RationalisingTrainee (a real, stateful trainee) runs MHALL to exhaustion
     with zero divergence against the golden master, driven through the runner's
     ``run()`` like any Actor. The trainer stays a ``TableTrainer`` (the
     deterministic oracle). This is the canonical end-to-end proof that a
     rationalising trainee is a drop-in replacement for ``TableTrainee``."""
-    from training.dialogue.rationalise import Rationaliser
+    from training.dialogue.runner import RationalisingTrainee
 
     result = run(
         _decoded_mhall,
         trainer=TableTrainer(_decoded_mhall),
-        trainee=Rationaliser(NLPSignifier()),
+        trainee=RationalisingTrainee(NLPSignifier()),
     )
     assert result.complete
     # Every emitted event validated against decoded[cursor] (run would have

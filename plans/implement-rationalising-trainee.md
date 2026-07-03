@@ -348,13 +348,20 @@ read structurally where a predicate needs it.
 
 ### Phase 1 — The rationaliser
 
-**1.1 `src/training/dialogue/rationalise.py`.** The `Rationaliser` class — a
-stateful `Actor` (`role="K"`, `kind="frame"`). Holds `_State` + `signifier`.
-Implements `respond(incoming)` as: entry rule (bookkeeping) → cogitation
-(one event) → return, or `None` if work-list empty. Implements Level 0, Level 1
+**1.1 `src/training/dialogue/rationalise.py`.** The `Rationaliser` class — the
+rationalising **engine**. Holds `_State` + `signifier`. Implements
+`rationalise(incoming)` as: entry rule (bookkeeping) → cogitation (one
+`KValue`) → return, or `None` if work-list empty. Implements Level 0, Level 1
 (grouping per D10, escalation per D11), the entry rule, and S1/S4 pop/ground.
 Constructs synthetic signatures via `signifier.make_signature`. Reads neither
-table nor script nor `dbg`. → D1–D12.
+table nor script nor `dbg`. Returns `KValue` (not `RationaliseEvent`) — the
+actor wrapper lives in the runner (see §File Structure). → D1–D12.
+
+The **actor** — `RationalisingTrainee` in `runner.py` — is a thin wrapper
+holding a `Rationaliser` engine, wrapping each emitted `KValue` in a
+`RationaliseEvent` (`role="K"`, `kind="frame"`). This engine/actor split
+mirrors `SynthesizingTrainer` (its engine is `synthesize.py`); it was applied
+retroactively to this module for architectural consistency.
 
 ### Phase 2 — Tests
 
@@ -362,7 +369,8 @@ table nor script nor `dbg`. → D1–D12.
 through the golden master. Each test asserts the mechanism **as implemented**
 (evolved beyond the plan's original sketch — e.g. S1 is recursive cleanup, not a
 simple pop):
-- Construction & Actor interface: role `"K"`; respond returns event or `None`.
+- Construction & engine interface: rationalise returns `KValue` or `None`
+  (the actor `RationalisingTrainee` adds `role="K"` and event-wrapping).
 - Entry rule: S2/S3 unpack (query + node identities + signature identity);
   recognised nodes not re-pushed; S4 pop; S1 ground + cleanup; S2/S3 elevation
   of an elevatable relationship.
@@ -378,7 +386,7 @@ simple pop):
   are `pytest.skip` markers pointing at the coverage gap rather than tests of
   unimplemented behaviour.
 
-**2.2 Runner integration test.** `Rationaliser` runs MHALL to exhaustion with
+**2.2 Runner integration test.** `RationalisingTrainee` runs MHALL to exhaustion with
 zero divergence against the golden master, driven through the runner's `run()`
 like any Actor (the trainer stays a `TableTrainer` — the deterministic
 oracle). **Prerequisite done:** the runner/Actor refactor (synthesizing-trainer
@@ -388,7 +396,7 @@ test matrix (DDT-9, DDT-16) updated to match. This is the canonical end-to-end
 proof that a rationalising trainee is a drop-in `TableTrainee` replacement.
 
 **2.3 Driver flag.** `scripts/dialogue_run.py` gains a `--rationalise` flag
-that substitutes `Rationaliser` for `TableTrainee`, demonstrating the drop-in
+that substitutes `RationalisingTrainee` for `TableTrainee`, demonstrating the drop-in
 (trainer stays `TableTrainer` for deterministic validation). Implemented and
 verified: both modes run MHALL to completion (exit 0, 30 events);
 `--rationalise --verbose` traces the full rationalised exchange through the
@@ -397,7 +405,10 @@ the async-elevation cascade, to the closing S1.
 
 ## File Structure
 
-- `src/training/dialogue/rationalise.py` — new: the `Rationaliser` (Phase 1).
+- `src/training/dialogue/rationalise.py` — new: the `Rationaliser` engine
+  (Phase 1). Returns `KValue`, not `RationaliseEvent`.
+- `src/training/dialogue/runner.py` — `RationalisingTrainee` actor (wraps the
+  engine; mirrors `SynthesizingTrainer`).
 - `tests/test_rationalise.py` — new (Phase 2.1).
 - `tests/test_dialogue_runner.py` — add the rationaliser integration test
   (Phase 2.2).
@@ -414,7 +425,7 @@ mechanism branches above and to the canonical end-to-end run.
 
 | Mechanism / Spec | Test |
 | --- | --- |
-| Actor interface (DDT-9, DDT-16, DDT-17) | `Rationaliser.respond` returns `RationaliseEvent` with `role="K"` or `None` |
+| Actor interface (DDT-9, DDT-16, DDT-17) | `RationalisingTrainee` (the actor) returns `RationaliseEvent` with `role="K"` or `None`; `Rationaliser` (the engine) returns `KValue` or `None` |
 | Validation (DDT-11) | MHALL runs to exhaustion with zero divergence |
 | Entry rule — S4 pop | unit |
 | Entry rule — S1 cleanup | unit |

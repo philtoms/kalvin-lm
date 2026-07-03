@@ -1,20 +1,26 @@
-"""The Rationalising Trainee — a drop-in replacement for ``TableTrainee``.
+"""The rationalising engine — the pure-logic core of a rationalising trainee.
 
 Plan: ``@plans/implement-rationalising-trainee.md``.
-Spec seam: ``@specs/dialogue-driven-training.md`` §Actor, §The Runner,
-§Validation (the Rationaliser satisfies the existing contract).
+Spec seam: ``@specs/dialogue-driven-training.md`` §Actor (the trainee side).
 
-Unlike ``TableTrainee`` (which yields the table's K-rows in order), the
-Rationaliser derives each turn from ``(incoming, state)``: it maintains a
-minimal model of what it has grounded and never reads the authored table or
-the compiled script. The table is only the validation oracle the runner checks
-every emitted turn against.
+This module holds the rationalising **engine**: a stateful object that
+derives each turn from ``(incoming, state)`` and returns a ``KValue``. It knows
+nothing of ``RationaliseEvent``, roles, or event kinds — the actor wrapper
+(:class:`~training.dialogue.runner.RationalisingTrainee`) lives in the runner
+and wraps each emitted ``KValue`` in a ``RationaliseEvent``, mirroring how
+:func:`~training.dialogue.synthesize.synthesize` is the engine for
+:class:`~training.dialogue.runner.SynthesizingTrainer`.
+
+The engine maintains a minimal model of what it has grounded and never reads
+the authored table or the compiled script. The table is only the validation
+oracle the runner checks every emitted turn against.
 
 Cogitation is a deliberate simplification of the real Kalvin's async
 ``expand()`` / ``propose_expansions()`` slow path — synchronous, deterministic,
-inline (plan D3, D5). Each ``respond`` call applies the entry rule to the
-incoming query as bookkeeping, then emits exactly one event from cogitation,
-returning ``None`` when nothing is workable (plan D7, D12).
+inline (plan D3, D5). Each :meth:`Rationaliser.rationalise` call applies the
+entry rule to the incoming query as bookkeeping, then emits exactly one
+``KValue`` from cogitation, returning ``None`` when nothing is workable
+(plan D7, D12).
 """
 
 from __future__ import annotations
@@ -22,7 +28,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from kalvin.events import RationaliseEvent
 from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4, boundaries, classify
 from kalvin.kline import KLine, is_canon, is_identity
 from kalvin.kvalue import KValue
@@ -31,11 +36,6 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
 
 __all__ = ["Rationaliser"]
-
-# Wire constants: the routing key the runner validates against (spec §Validation),
-# and the event kind for an actor turn.
-_ROLE = "K"
-_KIND = "frame"
 
 
 @dataclass
@@ -54,12 +54,13 @@ class _State:
 
 
 class Rationaliser:
-    """A stateful trainee actor that rationalises.
+    """The rationalising engine — derives each turn from ``(incoming, state)``.
 
-    Satisfies the ``Actor`` protocol (``@specs/dialogue-driven-training.md``
-    §Actor) with ``role="K"``. Reads neither the table nor the compiled script
-    nor ``dbg``; constructs synthetic signatures via ``signifier.make_signature``
-    when grouping requires it.
+    Returns a ``KValue`` per :meth:`rationalise` call (or ``None`` when nothing
+    is workable). The :class:`~training.dialogue.runner.RationalisingTrainee`
+    actor wraps each emitted value in a ``RationaliseEvent``. Reads neither the
+    table nor the compiled script nor ``dbg``; constructs synthetic signatures
+    via ``signifier.make_signature`` when grouping requires it.
     """
 
     def __init__(self, signifier: KSignifier) -> None:
@@ -67,21 +68,17 @@ class Rationaliser:
         self._state = _State()
         self._s12, self._s23, self._s34 = boundaries()
 
-    @property
-    def role(self) -> str:
-        return _ROLE
+    # ── The turn ─────────────────────────────────────────────────────
 
-    # ── Actor protocol ────────────────────────────────────────────────────
-
-    def respond(self, incoming: RationaliseEvent | None) -> RationaliseEvent | None:
-        """Apply the entry rule to ``incoming``, then emit exactly one event."""
+    def rationalise(self, incoming: KValue | None) -> KValue | None:
+        """Apply the entry rule to ``incoming``, then emit exactly one value."""
         if incoming is not None:
             self._process_query(incoming)
-        return self._cogitate(incoming)
+        return self._cogitate()
 
     # ── Entry rule ────────────────────────────────────────────────────────
 
-    def _process_query(self, incoming: RationaliseEvent) -> None:
+    def _process_query(self, incoming: KValue) -> None:
         """Bookkeeping for an incoming query; never emits.
 
         - **S4** (sentinel by value — ``classify`` never returns it): pop the
@@ -90,9 +87,8 @@ class Rationaliser:
         - **S2/S3**: elevate an elevatable relationship to S1 (grounding it via
           cleanup), else unpack it.
         """
-        query = incoming.proposal
-        kline = query.kline
-        sig = query.significance
+        kline = incoming.kline
+        sig = incoming.significance
 
         if sig == SIG_S4:
             self._pop_identity(kline.signature)
@@ -191,8 +187,8 @@ class Rationaliser:
 
     # ── Cogitation ────────────────────────────────────────────────────────
 
-    def _cogitate(self, incoming: RationaliseEvent | None) -> RationaliseEvent | None:
-        """Work the next workable entry (LIFO) and emit exactly one event.
+    def _cogitate(self) -> KValue | None:
+        """Work the next workable entry (LIFO) and emit exactly one value.
 
         Workable: an identity (always askable) or a Level-1-eligible opening.
         Async-pending relationships are skipped. Returns ``None`` when nothing
@@ -201,9 +197,9 @@ class Rationaliser:
         for idx in range(len(self._state.work_list) - 1, -1, -1):
             entry = self._state.work_list[idx]
             if is_identity(entry):
-                return self._emit_identity(idx, entry.signature, incoming)
+                return self._emit_identity(idx, entry.signature)
             if self._level1_eligible(entry):
-                return self._emit_relationships(entry, incoming)
+                return self._emit_relationships(entry)
         return None
 
     def _level1_eligible(self, entry: KLine) -> bool:
@@ -215,9 +211,7 @@ class Rationaliser:
             and self._find_canon_nodes(entry.nodes[0]) is not None
         )
 
-    def _emit_identity(
-        self, idx: int, signature: int, incoming: RationaliseEvent | None
-    ) -> RationaliseEvent:
+    def _emit_identity(self, idx: int, signature: int) -> KValue:
         """Level 0 — emit IDENTITY ``{signature: []}`` at S4 and pop the entry.
 
         The ask is fire-and-forget: the identity is popped on emission so it
@@ -225,13 +219,9 @@ class Rationaliser:
         """
         del self._state.work_list[idx]
         self._state.asked.add(signature)
-        proposal = KValue(KLine(signature, []), SIG_S4)
-        query = incoming.proposal if incoming is not None else proposal
-        return RationaliseEvent(_KIND, query, proposal, role=_ROLE)
+        return KValue(KLine(signature, []), SIG_S4)
 
-    def _emit_relationships(
-        self, entry: KLine, incoming: RationaliseEvent | None
-    ) -> RationaliseEvent:
+    def _emit_relationships(self, entry: KLine) -> KValue:
         """Level 1 — emit the next unresolved operand pair, or close at S1.
 
         ``entry`` is ``{L:[R]}`` whose operands L and R are signatures with seen
@@ -268,16 +258,12 @@ class Rationaliser:
             else:
                 proposal_kline = KLine(lhs_sig, [rhs_node])
                 significance = SIG_S3
-            proposal = KValue(proposal_kline, significance)
-            query = incoming.proposal if incoming is not None else proposal
-            return RationaliseEvent(_KIND, query, proposal, role=_ROLE)
+            return KValue(proposal_kline, significance)
 
         # All pairs resolved — close at S1.
         self._state.work_list.remove(entry)
         self._ground(entry)
-        proposal = KValue(entry, SIG_S1)
-        query = incoming.proposal if incoming is not None else proposal
-        return RationaliseEvent(_KIND, query, proposal, role=_ROLE)
+        return KValue(entry, SIG_S1)
 
     # ── Level 1 helpers ───────────────────────────────────────────────────
 
@@ -347,8 +333,7 @@ class Rationaliser:
                 is_canon(kl, self._signifier)
                 for kl in self._state.grounded.get(synth_sig, [])
             )
-
-        """Has the trainer ratified ``{lhs_sig:[rhs_node]}`` (its kline grounded)?"""
+        # 1:1 pair: resolved iff {lhs_sig:[rhs_node]} is grounded (ratified).
         return any(
             list(kline.nodes) == [rhs_node]
             for kline in self._state.grounded.get(lhs_sig, [])

@@ -5,7 +5,7 @@ Loads a dialogue table, decodes it, drives the bus-agnostic runner
 :class:`TableTrainee`, and prints a PASS/FAIL summary. With ``--verbose`` it
 traces the interleaved T/K exchange.
 
-With ``--rationalise`` the trainee is a :class:`Rationaliser` — a real,
+With ``--rationalise`` the trainee is a :class:`RationalisingTrainee` — a real,
 stateful, rationalising trainee and drop-in ``TableTrainee`` replacement —
 while the trainer stays a ``TableTrainer`` (the deterministic oracle). With
 ``--synthesize`` the trainer is a :class:`SynthesizingTrainer` — a real
@@ -21,7 +21,7 @@ Usage::
     python scripts/dialogue_run.py                             # default dialogue
     python scripts/dialogue_run.py scripts/dialogue-mhall.json # explicit path
     python scripts/dialogue_run.py --verbose                   # per-turn trace
-    python scripts/dialogue_run.py --rationalise               # Rationaliser trainee
+    python scripts/dialogue_run.py --rationalise               # RationalisingTrainee
     python scripts/dialogue_run.py --synthesize                # SynthesizingTrainer
     python scripts/dialogue_run.py --synthesize --rationalise  # both real actors
 
@@ -51,8 +51,11 @@ from training.dialogue import (  # noqa: E402
     load_table,
     run,
 )
-from training.dialogue.rationalise import Rationaliser  # noqa: E402
-from training.dialogue.runner import Actor, SynthesizingTrainer  # noqa: E402
+from training.dialogue.runner import (  # noqa: E402
+    Actor,
+    RationalisingTrainee,
+    SynthesizingTrainer,
+)
 
 _SIG_TO_BAND = {
     SIG_S1: "S1",
@@ -139,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
         "--rationalise",
         action="store_true",
         help=(
-            "Substitute a Rationaliser (a real, stateful rationalising trainee) "
+            "Substitute a RationalisingTrainee (a real, stateful rationalising trainee) "
             "for the default TableTrainee. The trainer stays a TableTrainer "
             "(the deterministic oracle)."
         ),
@@ -171,8 +174,8 @@ def main(argv: list[str] | None = None) -> int:
         trainer_kind = "TableTrainer"
 
     if args.rationalise:
-        trainee: Actor = Rationaliser(sigf)
-        trainee_kind = "Rationaliser"
+        trainee: Actor = RationalisingTrainee(sigf)
+        trainee_kind = "RationalisingTrainee"
     else:
         from training.dialogue import TableTrainee
 
