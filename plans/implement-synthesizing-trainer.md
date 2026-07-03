@@ -93,7 +93,7 @@ filtered-subsequence cursor (re-introduces the leakage it forces us to remove).
 
 ## The Synthesis Rules
 
-Four rules, verified against all 14 trainer turns of the MHALL golden master.
+Three rules, verified against all 16 trainer turns of the MHALL golden master.
 Trigger conditions are detected structurally from `incoming.proposal`
 (identity = `nodes == []` or self-referential `{S:[S]}`) plus its significance
 band.
@@ -113,13 +113,15 @@ canonicality class → first in compilation order. Response significance:
 - **S4** if no decomposition exists for `Q` (stalemate — the trainer doesn't
   know it either; unreachable for a well-formed single-primary script).
 
-**R3 — Reply to a non-identity proposal at S3** (ratification): if a compiled
-relation exists for the proposal's `(signature, nodes)`, emit **that compiled
-kline verbatim** (its op, its exact nodes) at **S1**; else emit CONNOTED,S4.
-
-**R4 — Reply to a non-identity proposal at S1**: no action (defensive; never
-fires in MHALL — the closing COUNTERSIGNED,S1 is the trainee's move, after
-which the run ends).
+**R3 — Reply to a non-identity proposal matching a compiled kline** (by
+`(signature, nodes)`): emit **that compiled kline verbatim**. Response
+significance depends on the match's kind — **S1** for a relation (the trainer
+*ratifies* K's tentative proposal; the relation op is irrelevant to the
+significance), **S2** for a canon (the trainer *confirms* K's hypothesised
+canon). No match → CONNOTED,S4. (R3 fires on any non-identity proposal
+regardless of its incoming band — a canon proposed at S2, e.g. K's
+`{ALL:[a,little,lamb]}`, is confirmed at S2; a relation proposed at S3 is
+ratified at S1.)
 
 > Significance bands carry an intentional reading from the trainer (S1 =
 > right/accept; S2 = essentially correct, cogitate; S3 = alternative reading;

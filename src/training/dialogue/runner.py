@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from kalvin.events import RationaliseEvent
 from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn
+from training.dialogue.synthesize import synthesize
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
@@ -144,6 +145,46 @@ class TableTrainee(_TableActor):
 
     def __init__(self, table: Sequence[DecodedTurn]) -> None:
         super().__init__(table, role="K", kind="frame")
+
+
+# ── Synthesizing actor (spec §Actor; plan @plans/implement-synthesizing-trainer.md) ─
+#
+# A real trainer that derives each turn from the compiled script and the
+# trainee's last KValue (via :func:`~training.dialogue.synthesize.synthesize`),
+# never reading the decoded table. The table is only the validation oracle the
+# runner checks the synthesised turn against (D1). Unlike the table-reading
+# actors it is non-exhausting: R1–R3 always produce a KValue, so ``respond``
+# never returns ``None``. Not produced by :func:`default_actors`; callers wire
+# it explicitly (like :class:`~training.dialogue.rationalise.Rationaliser`).
+
+
+class SynthesizingTrainer:
+    """A trainer that synthesises each turn from the compiled script.
+
+    Drop-in for :class:`TableTrainer` wherever an :class:`Actor` is accepted.
+    Holds the compiled script and a signifier (built once at construction) and
+    delegates to :func:`~training.dialogue.synthesize.synthesize`. Constructor
+    does **not** take ``decoded`` — the table is only the validation oracle.
+    """
+
+    def __init__(self, compiled: list[KValue], signifier: KSignifier) -> None:
+        self._compiled = compiled
+        self._signifier = signifier
+
+    @property
+    def role(self) -> str:
+        """The role this actor emits on its events (the routing key)."""
+        return "T"
+
+    def respond(
+        self, incoming: RationaliseEvent | None
+    ) -> RationaliseEvent | None:
+        incoming_value = incoming.proposal if incoming is not None else None
+        proposal = synthesize(self._compiled, incoming_value, self._signifier)
+        query = incoming_value if incoming_value is not None else proposal
+        return RationaliseEvent(
+            kind="frame", query=query, proposal=proposal, role="T"
+        )
 
 
 # ── The run (spec §The Runner) ────────────────────────────────────────────

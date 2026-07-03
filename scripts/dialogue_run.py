@@ -7,9 +7,11 @@ traces the interleaved T/K exchange.
 
 With ``--rationalise`` the trainee is a :class:`Rationaliser` — a real,
 stateful, rationalising trainee and drop-in ``TableTrainee`` replacement —
-while the trainer stays a ``TableTrainer`` (the deterministic oracle). This is
-the canonical demonstration that a rationalising trainee reproduces the golden
-master through the runner.
+while the trainer stays a ``TableTrainer`` (the deterministic oracle). With
+``--synthesize`` the trainer is a :class:`SynthesizingTrainer` — a real
+trainer that derives each turn from the compiled script — while the trainee
+stays a ``TableTrainee``. The two flags are orthogonal: passing both runs the
+two real actors against the same golden master.
 
 The runner is bus-agnostic: there is no harness message bus and no adapter here.
 Bus integration arrives with the real actors.
@@ -20,6 +22,8 @@ Usage::
     python scripts/dialogue_run.py scripts/dialogue-mhall.json # explicit path
     python scripts/dialogue_run.py --verbose                   # per-turn trace
     python scripts/dialogue_run.py --rationalise               # Rationaliser trainee
+    python scripts/dialogue_run.py --synthesize                # SynthesizingTrainer
+    python scripts/dialogue_run.py --synthesize --rationalise  # both real actors
 
 Exit code is 0 on a completing run (table exhausted), 1 on an actor divergence
 or incomplete run.
@@ -39,6 +43,7 @@ if str(_SYS_SRC) not in sys.path:
 from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4  # noqa: E402
 from kalvin.nlp_tokenizer import NLPTokenizer  # noqa: E402
 from kalvin.signifier import NLPSignifier  # noqa: E402
+from ks.compiler import compile_source  # noqa: E402
 from training.dialogue import (  # noqa: E402
     ActorDivergence,
     TableTrainer,
@@ -47,6 +52,7 @@ from training.dialogue import (  # noqa: E402
     run,
 )
 from training.dialogue.rationalise import Rationaliser  # noqa: E402
+from training.dialogue.runner import Actor, SynthesizingTrainer  # noqa: E402
 
 _SIG_TO_BAND = {
     SIG_S1: "S1",
@@ -90,12 +96,19 @@ def _trace(events: list, decoded) -> str:
     return "\n".join(lines)
 
 
-def _summary(result, decoded, dialogue_path: str, verbose: bool, trainee_kind: str) -> str:
+def _summary(
+    result,
+    decoded,
+    dialogue_path: str,
+    verbose: bool,
+    trainer_kind: str,
+    trainee_kind: str,
+) -> str:
     n_t = sum(1 for t in decoded if t.role == "T")
     n_k = sum(1 for t in decoded if t.role == "K")
     header = (
         f"Dialogue session: {dialogue_path}\n"
-        f"  trainer             : TableTrainer\n"
+        f"  trainer             : {trainer_kind}\n"
         f"  trainee             : {trainee_kind}\n"
         f"  table trainer turns : {n_t}\n"
         f"  table trainee turns : {n_k}\n"
@@ -131,6 +144,15 @@ def main(argv: list[str] | None = None) -> int:
             "(the deterministic oracle)."
         ),
     )
+    parser.add_argument(
+        "--synthesize",
+        action="store_true",
+        help=(
+            "Substitute a SynthesizingTrainer (a real trainer that derives each "
+            "turn from the compiled script) for the default TableTrainer. "
+            "Orthogonal to --rationalise."
+        ),
+    )
     args = parser.parse_args(argv)
 
     dialogue_path = args.dialogue
@@ -140,9 +162,16 @@ def main(argv: list[str] | None = None) -> int:
     table = load_table(json.loads(Path(dialogue_path).read_text()))
     decoded = decode(table, tokenizer=tok, signifier=sigf)
 
-    trainer = TableTrainer(decoded)
+    if args.synthesize:
+        compiled = compile_source(table.script, tokenizer=tok, signifier=sigf, dev=True)
+        trainer: Actor = SynthesizingTrainer(compiled, sigf)
+        trainer_kind = "SynthesizingTrainer"
+    else:
+        trainer = TableTrainer(decoded)
+        trainer_kind = "TableTrainer"
+
     if args.rationalise:
-        trainee = Rationaliser(sigf)
+        trainee: Actor = Rationaliser(sigf)
         trainee_kind = "Rationaliser"
     else:
         from training.dialogue import TableTrainee
@@ -163,7 +192,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    print(_summary(result, decoded, dialogue_path, args.verbose, trainee_kind))
+    print(_summary(result, decoded, dialogue_path, args.verbose, trainer_kind, trainee_kind))
     return 0 if result.complete else 1
 
 
