@@ -250,23 +250,44 @@
       "role": "T"
     },
     {
-      "op": "CONNOTED",
+      "op": "CANONIZED",
       "signature": "ALL",
       "nodes": [
-        "Object"
+        "a",
+        "little",
+        "lamb"
       ],
-      "significance": "S3",
-      "notes": "K tries next pair",
+      "significance": "S2",
+      "notes": "K synthesised ALL out of thin air, so it asks if this is even a thing",
       "role": "K"
     },
     {
-      "op": "UNDERSIGNED",
+      "op": "CANONIZED",
       "signature": "ALL",
       "nodes": [
-        "Object"
+        "a",
+        "little",
+        "lamb"
       ],
-      "significance": "S1",
-      "notes": "T ratifies",
+      "significance": "S2",
+      "notes": "T cant ratify because its nodes are compounds",
+      "role": "T"
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "a",
+      "nodes": [],
+      "significance": "S4",
+      "role": "K"
+    },
+    {
+      "op": "CONNOTED",
+      "signature": "a",
+      "nodes": [
+        "Det"
+      ],
+      "significance": "S2",
+      "notes": "Same response as before",
       "role": "T"
     },
     {

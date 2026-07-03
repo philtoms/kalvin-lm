@@ -5,6 +5,12 @@ Loads a dialogue table, decodes it, drives the bus-agnostic runner
 :class:`TableTrainee`, and prints a PASS/FAIL summary. With ``--verbose`` it
 traces the interleaved T/K exchange.
 
+With ``--rationalise`` the trainee is a :class:`Rationaliser` — a real,
+stateful, rationalising trainee and drop-in ``TableTrainee`` replacement —
+while the trainer stays a ``TableTrainer`` (the deterministic oracle). This is
+the canonical demonstration that a rationalising trainee reproduces the golden
+master through the runner.
+
 The runner is bus-agnostic: there is no harness message bus and no adapter here.
 Bus integration arrives with the real actors.
 
@@ -13,6 +19,7 @@ Usage::
     python scripts/dialogue_run.py                             # default dialogue
     python scripts/dialogue_run.py scripts/dialogue-mhall.json # explicit path
     python scripts/dialogue_run.py --verbose                   # per-turn trace
+    python scripts/dialogue_run.py --rationalise               # Rationaliser trainee
 
 Exit code is 0 on a completing run (table exhausted), 1 on an actor divergence
 or incomplete run.
@@ -34,11 +41,12 @@ from kalvin.nlp_tokenizer import NLPTokenizer  # noqa: E402
 from kalvin.signifier import NLPSignifier  # noqa: E402
 from training.dialogue import (  # noqa: E402
     ActorDivergence,
+    TableTrainer,
     decode,
-    default_actors,
     load_table,
     run,
 )
+from training.dialogue.rationalise import Rationaliser  # noqa: E402
 
 _SIG_TO_BAND = {
     SIG_S1: "S1",
@@ -82,11 +90,13 @@ def _trace(events: list, decoded) -> str:
     return "\n".join(lines)
 
 
-def _summary(result, decoded, dialogue_path: str, verbose: bool) -> str:
+def _summary(result, decoded, dialogue_path: str, verbose: bool, trainee_kind: str) -> str:
     n_t = sum(1 for t in decoded if t.role == "T")
     n_k = sum(1 for t in decoded if t.role == "K")
     header = (
         f"Dialogue session: {dialogue_path}\n"
+        f"  trainer             : TableTrainer\n"
+        f"  trainee             : {trainee_kind}\n"
         f"  table trainer turns : {n_t}\n"
         f"  table trainee turns : {n_k}\n"
         f"  events emitted      : {len(result.events)}\n"
@@ -112,6 +122,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Print the exchange turn by turn.",
     )
+    parser.add_argument(
+        "--rationalise",
+        action="store_true",
+        help=(
+            "Substitute a Rationaliser (a real, stateful rationalising trainee) "
+            "for the default TableTrainee. The trainer stays a TableTrainer "
+            "(the deterministic oracle)."
+        ),
+    )
     args = parser.parse_args(argv)
 
     dialogue_path = args.dialogue
@@ -121,7 +140,15 @@ def main(argv: list[str] | None = None) -> int:
     table = load_table(json.loads(Path(dialogue_path).read_text()))
     decoded = decode(table, tokenizer=tok, signifier=sigf)
 
-    trainer, trainee = default_actors(decoded)
+    trainer = TableTrainer(decoded)
+    if args.rationalise:
+        trainee = Rationaliser(sigf)
+        trainee_kind = "Rationaliser"
+    else:
+        from training.dialogue import TableTrainee
+
+        trainee = TableTrainee(decoded)
+        trainee_kind = "TableTrainee"
 
     try:
         result = run(decoded, trainer=trainer, trainee=trainee)
@@ -136,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    print(_summary(result, decoded, dialogue_path, args.verbose))
+    print(_summary(result, decoded, dialogue_path, args.verbose, trainee_kind))
     return 0 if result.complete else 1
 
 

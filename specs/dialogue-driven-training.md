@@ -122,20 +122,20 @@ own rows in order.
 
 ```
 Actor:
-  respond(incoming: RationaliseEvent | None) -> (next_cursor, RationaliseEvent) | None
+  respond(incoming: RationaliseEvent | None) -> RationaliseEvent | None
 ```
 
-Each actor holds its own cursor (starting before its first row) and yields its
-rows one at a time in order. `respond` advances the cursor by one and returns
-`(next_cursor, event)` — the new cursor position and the event for that row —
-or `None` when the actor is exhausted. The actor does not know the table's
-actor sequence; the runner decides whose turn it is. The event's `proposal` is
-the actor's turn; `query` is the `incoming` event's `proposal` (or the actor's
-own turn on the opening). **Every event carries the actor's role**
-(`event.role`) — the self-declared routing key (the same discriminator the
-harness bus calls _role_, `@CONTEXT.md` §Role). The runner uses it to route
-and validate; the actor announces itself rather than being identified by table
-position.
+Each actor yields its rows one at a time in order. `respond` returns the event
+for its next row, or `None` when the actor is exhausted. The actor holds **no**
+cursor it returns to the runner; it does not know the table's actor sequence,
+and the runner decides whose turn it is. The event's `proposal` is the actor's
+turn; `query` is the `incoming` event's `proposal` (or the actor's own turn on
+the opening). **Every event carries the actor's role** (`event.role`) — the
+self-declared routing key (the same discriminator the harness bus calls
+_role_, `@CONTEXT.md` §Role). The runner uses it to route and validate; the
+actor announces itself rather than being identified by table position. **The
+runner owns the validation index** into the full decoded table; the actor
+returns only its event.
 
 Both default actors (`TableTrainer`, `TableTrainee`) read the decoded table,
 filter to their own `actor`, and yield those rows in order with their role on
@@ -143,13 +143,13 @@ each event. They never inspect the incoming event to decide what to emit.
 
 ## Validation
 
-The runner is a **router**: it validates each response by the **role the actor
-declared on its event** (`event.role`), not by the table's view of who
-responded. It looks up the decoded rows for that role and checks the emitted
-`proposal` (KLine + significance) equals the row at the cursor the actor
-returned. A role the table has no rows for, or a kline/significance mismatch,
-is an `ActorDivergence` and fails the run, naming the role, the cursor, and the
-expected vs. emitted turn.
+The runner is a **router**: it validates each response against the row at its
+own full-table cursor (`decoded[cursor]`), by the **role the actor declared on
+its event** (`event.role`), not by the table's view of who responded. It checks
+`event.role == decoded[cursor].role` and the emitted `proposal` (KLine +
+significance) equals `decoded[cursor].value`. A role mismatch or a
+kline/significance mismatch is an `ActorDivergence` and fails the run, naming
+the role, the cursor, and the expected vs. emitted turn.
 
 A real trainer is expected to synthesise its training responses, and a real
 trainee its responses; both announce their role and are validated against the
@@ -204,12 +204,12 @@ table-reading actors to exhaustion.
 | DDT-6  | The runner owns the table cursor: each step reads whose row is next and asks that actor; the first row is the trainer's                                                                                                                                                                              | §The Runner            |
 | DDT-7  | Greediness is the runner's behaviour: while consecutive table rows share an actor, the same actor is asked again (e.g. `T,T,K` asks the trainer twice, then the trainee)                                                                                                                             | §The Runner            |
 | DDT-8  | The trainer and trainee are symmetric cursor readers of the same decoded table, differing only by actor                                                                                                                                                                                              | §The Runner            |
-| DDT-9  | An actor yields one `RationaliseEvent` per `respond`, returning `(next_cursor, event)`; the event's `proposal` is the row's KValue, `query` is the incoming event's proposal, and `role` is the actor's self-declared routing key                                                                    | §Actor                 |
+| DDT-9  | An actor yields one `RationaliseEvent` per `respond`, returning just the event (no cursor); the event's `proposal` is the row's KValue, `query` is the incoming event's proposal, and `role` is the actor's self-declared routing key                                                                    | §Actor                 |
 | DDT-10 | The default actors never inspect the incoming event to decide what to emit                                                                                                                                                                                                                           | §Actor                 |
 | DDT-11 | The runner validates by the role the actor declared on its event (not the table key): each emitted `proposal` must equal the decoded row for that role at the cursor; a role with no table rows or a kline/significance mismatch raises `ActorDivergence` naming role, cursor, expected, and emitted | §Validation            |
 | DDT-12 | (removed) The runner no longer treats the trainer as unvalidated; both actors are validated (see DDT-11)                                                                                                                                                                                             | §Validation            |
 | DDT-13 | The run ends when the cursor passes the end of the table                                                                                                                                                                                                                                             | §The Runner            |
 | DDT-14 | The runner is bus-agnostic (no harness message-bus dependency)                                                                                                                                                                                                                                       | §Overview, §The Runner |
 | DDT-15 | The runner carries no notion of learned/grounding and emits no grounding signal                                                                                                                                                                                                                      | §What Training Is      |
-| DDT-16 | An actor's cursor starts before its first row; `respond` advances it by one and returns `(next_cursor, event)`, or `None` when exhausted                                                                                                                                                             | §Actor                 |
+| DDT-16 | The runner owns the validation index into the full decoded table; an actor yields its next row's event or `None` when exhausted, returning no cursor of its own                                                                                                                                                             | §Actor                 |
 | DDT-17 | The runner is a router: an actor announces itself via `event.role`, and the runner routes/validates on that self-declared role — the shape a real, possibly asynchronous actor will use                                                                                                              | §Validation            |

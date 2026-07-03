@@ -236,8 +236,9 @@ def _resolve_kline(
       the turn's ``nodes`` list (node-list match, DDT-5). The turn's node names
       *are* the retrieval key; ``signature`` is a redundant author hint (checked
       for consistency).
-    - **IDENTITY** — resolve the atom by label (its compiled identity KLine, or
-      a synthesised ``{sig: []}`` if the compiler emitted no standalone entry).
+    - **IDENTITY** — resolve the atom by label, preferring the canon when the
+      label names one (a label may name both a canon and its atoms; the
+      identity names the concept, i.e. the canon).
     - **Constructed relation** (``CONNOTED`` / ``UNDERSIGNED`` / ``COUNTERSIGNED``)
       — resolve each node label to its canonical signature and reconstruct the
       relation KLine with the compiler's signifier (``make_signature``). A node
@@ -260,7 +261,17 @@ def _resolve_kline(
         return canon.kline
 
     if op == "IDENTITY":
-        kl = resolved.labels.get(signature)
+        # Prefer the canon when the label names one. A KScript label may name
+        # both a canon and its atoms (e.g. ``Det`` names the Det canon AND the
+        # atoms D, et, which all carry dbg.label=='Det'); the atoms are compiled
+        # before the canon, so a bare ``labels[label]`` lookup would resolve
+        # to the first atom rather than the concept. An IDENTITY turn names the
+        # *concept* (e.g. K asking "what is Det?" means Det the canon), so the
+        # canon signature is correct; a pure-atom label (no canon) falls back
+        # to the label index.
+        kl = resolved.canon_by_label.get(signature)
+        if kl is None:
+            kl = resolved.labels.get(signature)
         if kl is None:
             raise DecodeError(
                 f"IDENTITY {signature!r}: label not found in compiled script"
