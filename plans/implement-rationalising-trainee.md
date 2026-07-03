@@ -339,9 +339,12 @@ runner validates against `decoded[cursor]`. The spec's §Actor/§Validation and
 test matrix (DDT-9, DDT-16) updated to match. This is the canonical end-to-end
 proof that a rationalising trainee is a drop-in `TableTrainee` replacement.
 
-**2.3 Driver flag.** `scripts/dialogue_run.py` gains a `--rationalise` flag that
-substitutes `Rationaliser` for `TableTrainee`, demonstrating the drop-in (trainer
-stays `TableTrainer` for deterministic validation).
+**2.3 Driver flag.** `scripts/dialogue_run.py` gains a `--rationalise` flag
+that substitutes `Rationaliser` for `TableTrainee`, demonstrating the drop-in
+(trainer stays `TableTrainer` for deterministic validation). Implemented and
+verified: both modes run MHALL to completion (exit 0, 30 events);
+`--rationalise --verbose` traces the full rationalised exchange through the
+identity phase and the Level-1 binding proposals to the closing S1.
 
 ## File Structure
 
