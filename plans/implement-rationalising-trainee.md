@@ -128,22 +128,28 @@ IDENTITY. This contrasts with the *trainer* synthesis (R1 is an explicit opening
 rule); the asymmetry is fine — the trainer is script-driven and must know to
 start, K is reactive and just responds to whatever arrives first.
 
-**D9 — Rationalisation may construct synthetic signatures (cogitation).** When
-the grouping convention (D10) requires it, K forms a signature by OR-reduction
-of dangling nodes (e.g. `ALL = make_signature([a, little, lamb])`) and proposes
-the relationship. Constructing a synthetic signature to jump between
-deterministic states is cogitation, not a synthesizer move. The
-rationaliser/synthesizer prop is violated only by *reading the table or script
-to decide the turn* — never by constructing a signature from node state.
+**D9 — A synthesised signature is emitted as a canonical request, not a
+binding assertion (the "leap too far" correction).** When the grouping
+convention (D10) identifies a residual that would require synthesis, K forms
+the signature by OR-reduction (`ALL = make_signature([a, little, lamb])`) but
+emits `{ALL:[a,little,lamb]}` at S2 — a **canonical request** ("is this a
+thing?"), the same shape as every other S2 query — NOT a relationship
+assertion. K cannot legitimately assert a relationship to a signature it
+invented; it must first confirm the signature exists. The trainer replies with
+the scaffolding; K traverses it; async relationships (`{a:[Det]}`) ground by
+elevation on re-receipt. Constructing a synthetic signature to pose as a
+hypothesis is cogitation, not a synthesizer move; the rationaliser/synthesizer
+prop is violated only by *reading the table or script to decide the turn*.
+_Replaced:_ the earlier "synthesise-and-bind" (`{ALL:[Object]}`) which leapt
+past the confirmation step.
 
-**D10 — Grouping is triggered by residual count imbalance (convention).** During
-Level 1, after 1:1 relationship binding from the front, when one side's residual
+**D10 — Grouping is triggered by residual count imbalance (convention).**
+During Level 1, after 1:1 pairing from the front, when one side's residual
 reaches a single node the other side's entire residual is grouped into one
-synthetic operand (`make_signature(remaining_nodes)`), and that relationship is
-proposed. This is the **convention** standing in for a future significance-based
-grouping (try-all-partitions, pick by distance). It reproduces MHALL's
-`{ALL:[Object]}` with no extra grounding rows — ALL is constructed, not looked
-up.
+synthetic operand (`make_signature(remaining_nodes)`). Per D9, that grouped
+pair is emitted as a canonical request (S2), not a binding. This is the
+**convention** standing in for a future significance-based grouping
+(try-all-partitions, pick by distance).
 
 **D11 — Retry via group-size escalation (built, validated only against the table
 trainer).** A pass groups at a fixed size; if the trainer responds S4 (refusal),
@@ -158,121 +164,156 @@ trainer-S4 refusal turns. A future grill extends the trainer's range of
 expression to refuse; until then, the synthetic trainer exercises only the
 happy path (group size 1).
 
-**D12 — Termination is the runner's job, not K's.** When the work-list is empty
-after the entry rule, K has no work and `respond` returns `None`. The runner
-detects this and signals termination (spec DDT-13, DDT-15). The closing
-COUNTERSIGNED S1 (MHALL turn 31) is not a special "I'm done" emission — it is
-the last entry leaving the work-list as K grounds the open proposal, broadcast
-because reaching S1 is always broadcast. No special-case termination logic.
+**D12 — Termination is the runner's job, not K's.** When no entry is
+*workable* after the entry rule (no identity, no Level-1-eligible opening —
+though async-pending relationships may remain in the list), K has nothing to
+emit and `respond` returns `None`. The runner detects this and signals
+termination (spec DDT-13, DDT-15). The closing COUNTERSIGNED S1 (MHALL's last
+K-row) is not a special "I'm done" emission — it is the opening relationship
+leaving the work-list once all its pairs resolve (K grounds it via its own S1
+broadcast, Correction 1). No special-case termination logic.
 
 ## The Rationaliser Mechanism
+
+### Significance elevation (the async-grounding mechanism)
+
+Not all grounding is synchronous. A relationship may arrive at S2 before its
+node is grounded; it cannot ground then, but it may ground later, when its node
+has grounded through some independent cascade. The stateless trainer, unable to
+track K's state, resubmits the same S2 — and K, re-deriving its own significance
+from current model state, finds the node now grounded and **elevates** the
+relationship to S1.
+
+**Elevation** (`_elevatable`): an incoming S2/S3 **relationship** (non-canon,
+non-identity) whose nodes are all now grounded is elevated — K grounds it at S1.
+This is the two-way significance dialog: K does not blindly accept the sender's
+declared significance; it re-derives its own, which may be higher. Canons and
+identities are never elevated (they have their own grounding paths).
+
+This replaces the earlier MTS discriminator (which was contrived: it keyed on
+signature shape, coincidental for single-token `a`). The honest rule is:
+**relationships ground by elevation on re-receipt, never by node-resolution in
+cleanup.** The over-grounding bug (the opening `{MHALL:[SVO]}` grounding early)
+is prevented because the opening is *received once* and never re-received —
+elevation never fires for it. The opening grounds by K's own closing S1
+broadcast, not by elevation.
 
 ### Entry rule (fires on every received query, before cogitation)
 
 | Receive | Action |
 | --- | --- |
-| **S4** | Pop the matching identity work-item (the other side says "I don't know this either" — stalemate accepted, leaf bottomed out). S4 is a sentinel detected by value, not by band (see @agent spec §Phase 1b). |
-| **S1** | Run **cleanup** (see §Cleanup): ground the kline and recursively ground every work-list kline it unblocks. Silent — an S1 emission (broadcast) happens only when K grounds the opening query, not on every grounding (Correction 1); so the S1 branch itself never emits. |
-| **S2 or S3** | **Unpack**: push the query kline itself AND identity work-items for each unrecognised node (right-to-left), and — if the signature is unrecognised — `{signature: []}` last (LIFO top, so K asks about the signature before its nodes). The query kline is held pending in the work-list until cleanup grounds it; node identities are what K asks about. |
+| **S4** | Pop the matching identity work-item (stalemate accepted). S4 is a sentinel detected by value, not by band. |
+| **S1** | Run cleanup (ground + recurse). |
+| **S2 or S3** | (1) Pop any in-flight identity under the query's signature — the trainer's reply answers K's ask, retiring it. (2) **Elevation check**: if the query is an elevatable relationship, ground it via cleanup and return. (3) Otherwise unpack. |
 
-Then (D7): proceed to cogitation and emit exactly one event, unless the
-work-list is empty (→ return `None`, runner terminates).
+Then proceed to cogitation (emit exactly one event, or return `None` when no
+entry is workable — D12).
 
 ### Cleanup (recursive grounding engine)
-
-Cleanup is the mechanism that grounds klines **structurally**, never by
-promoting an S2 to S1. It is triggered by every received S1 and recurses.
 
 Ground the triggering kline, then repeatedly ground any *groundable* work-list
 kline, removing it and continuing (grounding one kline may unblock others).
 
-**Groundability is keyed on the kline's kind, discriminated by MTS**
-(@specs/signifier SIG-14; @specs/kscript §8 — a Multi-Token Signature is the
-OR-reduction of two or more token values):
+**Groundability** (`_groundable`) — only **canons and identities**, never
+relationships:
 
-- **Identity** ``{sig: []}`` ≡ ``{sig: [sig]}`` — groundable iff its own
-  signature is grounded.
-- **Canon** ``{S:[nodes]}`` — groundable iff all its nodes are grounded.
-- **Relationship** ``{S:[node]}`` (non-canon, non-identity) — groundable iff all
-  its nodes are grounded **and ``S`` is not an MTS**.
+- **Identity** `{sig: []}` ≡ `{sig: [sig]}` — groundable iff its own signature
+  is grounded.
+- **Canon** `{S:[nodes]}` — groundable iff all its nodes are grounded.
+- **Relationship** (non-canon, non-identity) — **never** groundable here. It
+  grounds by elevation on re-receipt (above), not by node-resolution. This is
+  what stops the opening relationship from grounding prematurely.
 
-`_is_mts(signature)` is true iff K has a grounded canon under the signature (K
-knows a multi-token decomposition). The MTS distinction is the S2-query clarity
-Level 1 surfaced: **a relationship to a single-token (non-MTS) signature is
-terminal** — grounding its node fully resolves it (``a`` ↔ Det grounds `a` once
-Det grounds). **A relationship to an MTS signature is non-terminal** — grounding
-its node does not resolve it (understanding ``MHALL`` ↔ ``SVO`` requires the
-operand binding, Level 1, not just ``SVO`` grounding). So an MTS relationship
-grounds only by explicit ratification (an S1 for that kline).
-
-- **No S2→S1 promotion.** A kline is grounded only structurally — an S1
-  arrived for it, all its canon nodes grounded, or (for a non-MTS relationship)
-  its node grounded.
-- **Identities are self-referential.** ``{sig: []}`` ≡ ``{sig: [sig]}``; an
-  identity retires exactly when its signature grounds.
-- **Note on ``is_canon`` vs cleanup.** The codebase ``is_canon`` deliberately
+- **No S2→S1 promotion in cleanup.** A kline is grounded here only structurally
+  (an S1 arrived for it, or all its canon nodes grounded).
+- **Identities are self-referential.** `{sig: []}` ≡ `{sig: [sig]}`; an identity
+  retires exactly when its signature grounds.
+- **Note on `is_canon` vs cleanup.** The codebase `is_canon` deliberately
   excludes identities (for retrieval/recency reasons). Cleanup's groundability
   includes identities (an identity is structurally a canon whose sole node is
-  itself) and additionally admits non-MTS relationships. These are different
-  questions on the same klines.
+  itself). These are different questions on the same klines.
 
-### Cogitation (Level 0 and Level 1, on the selected work-list entry)
+### Cogitation (Level 0 and Level 1)
 
-Selection (D6): LIFO — the most-recently-added work-item first (**convention**,
-placeholder for future significance-based selection). The work-list is
-heterogeneous: it holds both identity asks `{sig: []}` and pending query klines
-`{sig:[nodes]}`. Dispatch is by kline **shape** (structural):
+**Selection: LIFO among *workable* entries** (a convention, placeholder for
+future significance-based selection — the work-list is a list, not a queue,
+because not every entry is workable at all times). Cogitation scans the
+work-list top-down for the first workable entry:
 
-**Level 0 — Identity.** The entry is an identity (`is_identity`). Emit
-IDENTITY `{sig: []}` at S4. The entry stays in the list; it is retired by
-cleanup when its signature grounds, or by the S4 branch on a matching
-stalemate.
+- an **identity** (always askable), or
+- a **Level-1-eligible opening** (a single-node relationship `{L:[R]}` whose
+  operands L and R both have canons K has *seen* — in the work-list or grounded
+  — so K can read their operands to pair).
 
-**Level 1 — Relationships.** The entry is a multi-node relationship
-``{L:[R]}`` whose operands L and R are MTS signatures with grounded canons
-(e.g. the opening ``{MHALL:[SVO]}``). K pairs the operands of L's canon and R's
-canon left-to-right at group size 1, grouping one side's residual into a single
-synthetic operand (``make_signature(residual)``) when the other reaches a
-single node (D10). Each call emits the **first not-yet-ratified** binding as a
-CONNOTED relationship; a binding is ratified once its kline is grounded (the
-trainer replied S1). When every binding is ratified, K closes by emitting the
-entry itself at S1 (the broadcast that K grounds the opening query, Correction
-1) and removes it from the work-list.
+**Async-pending relationships** (e.g. `{a:[Det]}` awaiting elevation) are **not
+workable** — K cannot emit about them now; they are skipped, and removed later by
+cleanup when elevation grounds them.
 
-Significance is the **emitted kline's signature-to-node count** (grill Q3):
-1:1 → S3; multi-node → S2. MHALL's proposals are all 1:1 (grouping makes a
-synthetic *lhs*, not multiple rhs nodes), so all are S3; the S2 branch is
-coverage gap G1, unexercised by MHALL. Group-size escalation on a trainer S4
-refusal (D11) is deferred — the bootstrap targets golden masters the convention
-satisfies at size 1.
+**Level 0 — Identity.** Emit IDENTITY `{sig: []}` at S4. The identity work-item
+is **popped on emission** (fire-and-forget): the ask does not linger to block
+cogitation under LIFO. This is what lets K move past an async-blocked signature
+(e.g. `a`, whose `{a:[Det]}` awaits elevation) to ask the next workable entry,
+rather than banging against a lingering `{a: []}`.
+
+**Level 1 — Relationships.** The eligible opening `{L:[R]}`. K pairs the operands
+of L's canon and R's canon left-to-right at group size 1, grouping one side's
+residual into a single synthetic operand when the other reaches a single node
+(D10). Each call emits the next unresolved pair:
+
+- a **1:1 pair** `{lhs:[rhs]}` is emitted CONNOTED at S3 (a tentative connoted
+  relationship, inviting ratification);
+- a **grouped pair** (a synthesised residual) is emitted as a **canonical
+  request** `{make_signature(residual): residual}` at S2 — *"is this a thing?"* —
+  the same shape as every other S2 query. K cannot legitimately assert a
+  relationship to a signature it invented (the "leap too far" was asserting the
+  binding, not the synthesis). The trainer replies with the scaffolding; K
+  traverses it; async relationships (`{a:[Det]}`) ground by elevation on
+  re-receipt.
+
+A pair is **resolved** when: a 1:1 pair is ratified (its kline grounded, trainer
+replied S1), OR a grouped pair's synthesised canon is grounded (the
+canonical-request traversal completed and any async relationships elevated).
+When every pair is resolved, K closes by emitting the entry itself at S1
+(COUNTERSIGNED) — the broadcast that K grounds the opening query (Correction 1)
+— and removes it from the work-list. Group-size escalation on a trainer S4
+refusal (D11) is deferred.
 
 #### Recognition (the unpack push-decision)
 
-A signature is **recognised** iff it is grounded OR already has an *identity*
-work-item in flight. A pending multi-node query kline under the signature does
-**not** count — K still wants to ask about that signature, so the query kline
-must not recognise its own signature. Recognition drives unpack idempotency
-(don't push a duplicate identity for a signature/node already known). The
-Level-0 ask-decision needs no separate predicate: it is purely structural
-(`is_identity`), not state-based.
+`_recognised` has two modes:
+
+- **Node** (re-traversal): recognised iff grounded, asked, or an identity is in
+  flight. Re-traversing an already-asked node in a *new* canon is legitimate
+  (the new context may resolve it — e.g. re-asking `a` while traversing ALL, so
+  the re-receipt can elevate `{a:[Det]}`), so the `asked` set does **not**
+  suppress node asks; it only suppresses duplicate identity work-items in flight.
+- **Signature**: recognised iff grounded or asked. A signature K has already
+  asked about is not re-asked when a later unpack encounters it as a signature
+  (its identity work-item was popped on emission). The `asked` set is also
+  populated when Level 1 emits a canonical request (the synthesised signature
+  has been "asked about" via a different shape).
 
 #### Work-list discipline
 
-The work-list holds two kinds of entry uniformly: **identity asks**
-`{sig: []}` (things K emits about) and **pending query klines** `{sig:[nodes]}`
-(held until cleanup grounds them). Both are KLines; cleanup and cogitation
-distinguish them structurally. An S1 emission (broadcast) happens only when K
-grounds the opening query (Correction 1); every other grounding is silent
+The work-list is heterogeneous: **identity asks** `{sig: []}` (transient —
+popped on emission), **pending query/canon klines** `{sig:[nodes]}` (held until
+cleanup grounds them), and **async-pending relationships** (held until elevation
+grounds them). All are KLines; cleanup, cogitation, and elevation distinguish
+them structurally. An S1 emission (broadcast) happens only when K grounds the
+opening query (Correction 1) or via elevation; every other grounding is silent
 bookkeeping.
 
 ### Verification against MHALL
 
-The mechanism reproduces **all 15 K-rows** of `scripts/dialogue-mhall.json`
-end-to-end with zero divergence: the 11 identity asks (Level 0), the three
-operand-binding proposals ``{Mary:[Subject]}``, ``{had:[Verb]}``,
-``{ALL:[Object]}`` (Level 1, ALL constructed synthetically via D10), and the
-closing ``{MHALL:[SVO]}`` COUNTERSIGNED S1 (the opening grounded). The
-rationaliser drives the full dialogue to completion against the table trainer.
+The mechanism reproduces **all 16 K-rows** of the modified
+`scripts/dialogue-mhall.json` end-to-end with zero divergence: the 11 identity
+asks (Level 0), the two 1:1 CONNOTED proposals `{Mary:[Subject]}`,
+`{had:[Verb]}` (ratified at S1), the **canonical request**
+`{ALL:[a,little,lamb]}` at S2 with its scaffolding reply and async-elevation
+cascade (the modified golden master turns 27–30), and the closing
+`{MHALL:[SVO]}` COUNTERSIGNED S1 once all pairs resolve. The rationaliser drives
+the full dialogue to completion against the table trainer.
+
 
 ## The Minimal State
 
@@ -281,11 +322,16 @@ rationaliser drives the full dialogue to completion against the table trainer.
 class _State:
     work_list: list[KLine]
     grounded: dict[int, list[KLine]]
+    asked: set[int]
 ```
 
 `grounded` mirrors `KModel`: keyed by signature, each value the list of
 grounded klines under that signature. Identities and relationships are stored
-alike — there is no ordered distinction; everything is a kline.
+alike — there is no ordered distinction; everything is a kline. `asked` tracks
+signatures K has already asked about (as identities at Level 0, or as canonical
+requests at Level 1) so unpack does not re-ask them as signature identities
+(nodes may still be legitimately re-asked in a new traversal — see
+§Recognition).
 
 Predicates:
 - "K has a record of signature `S`" → `S in grounded`.
@@ -318,14 +364,16 @@ through the golden master. Each test asserts the mechanism **as implemented**
 simple pop):
 - Construction & Actor interface: role `"K"`; respond returns event or `None`.
 - Entry rule: S2/S3 unpack (query + node identities + signature identity);
-  recognised nodes not re-pushed; S4 pop; S1 ground + cleanup.
-- Level 0: identity emission at S4; no opening special-case (D8).
-- Cleanup & MTS discrimination: a non-MTS relationship grounds when its node
-  grounds; an MTS relationship does not ground early (`_groundable` predicate).
-- Level 1 grouping (D10): the 3-vs-1 residual constructs a synthetic ALL
-  operand (`make_signature`), not looked up.
-- Level 1 significance: every MHALL proposal is 1:1 (single node).
-- Termination (D12): empty work-list → `None`.
+  recognised nodes not re-pushed; S4 pop; S1 ground + cleanup; S2/S3 elevation
+  of an elevatable relationship.
+- Level 0: identity emission at S4 (popped on emission); no opening special-case (D8).
+- Async grounding & cleanup: a relationship grounds by **elevation on
+  re-receipt** (`_elevatable`), not by node-resolution in cleanup; relationships
+  are never `_groundable` (only canons/identities are).
+- Level 1 grouping (D10): the 3-vs-1 residual emits a **canonical request**
+  `{make_signature(residual): residual}` (S2), not a binding assertion; 1:1
+  pairs carry no residual (CONNOTED S3).
+- Termination (D12): no workable entry → `None`.
 - **G1 (S2 multi-node proposal) and G2 (escalation on trainer-S4 refusal)**
   are `pytest.skip` markers pointing at the coverage gap rather than tests of
   unimplemented behaviour.
@@ -344,7 +392,8 @@ that substitutes `Rationaliser` for `TableTrainee`, demonstrating the drop-in
 (trainer stays `TableTrainer` for deterministic validation). Implemented and
 verified: both modes run MHALL to completion (exit 0, 30 events);
 `--rationalise --verbose` traces the full rationalised exchange through the
-identity phase and the Level-1 binding proposals to the closing S1.
+identity phase, the Level-1 relationship proposals and canonical request, and
+the async-elevation cascade, to the closing S1.
 
 ## File Structure
 
@@ -353,8 +402,9 @@ identity phase and the Level-1 binding proposals to the closing S1.
 - `tests/test_dialogue_runner.py` — add the rationaliser integration test
   (Phase 2.2).
 - `scripts/dialogue_run.py` — `--rationalise` flag (Phase 2.3).
-- `scripts/dialogue-mhall.json` — unchanged. The golden master is reproduced
-  as-is; no extra rows are added (ALL is constructed, not grounded — D10).
+- `scripts/dialogue-mhall.json` — **modified**: the ALL grouped residual is
+  now a canonical-request + scaffolding-reply + async-elevation sequence
+  (turns 27–30) instead of a synthesised `{ALL:[Object]}` binding. 16 K-rows.
 
 ## Test Mapping
 
@@ -367,10 +417,13 @@ mechanism branches above and to the canonical end-to-end run.
 | Actor interface (DDT-9, DDT-16, DDT-17) | `Rationaliser.respond` returns `RationaliseEvent` with `role="K"` or `None` |
 | Validation (DDT-11) | MHALL runs to exhaustion with zero divergence |
 | Entry rule — S4 pop | unit |
-| Entry rule — S1 ground + pop | unit |
-| Entry rule — S2/S3 push | unit |
-| Level 0 identity | unit |
-| Level 1 1:1 → S3 | unit |
+| Entry rule — S1 cleanup | unit |
+| Entry rule — S2/S3 unpack + elevation | unit |
+| Level 0 identity (popped on emission) | unit |
+| Async grounding — elevation on re-receipt (`_elevatable`) | unit |
+| Relationships never cleanup-groundable (`_groundable`) | unit |
+| Level 1 1:1 → S3 (no residual) | unit |
+| Level 1 grouped → canonical request S2 (residual) | unit |
 | Level 1 non-1:1 → S2 | unit (synthetic golden master — Coverage Gap G1) |
 | Grouping D10 | unit |
 | Escalation D11 | unit (authored trainer-S4 golden master — Coverage Gap G2) |
@@ -412,13 +465,16 @@ mechanism branches above and to the canonical end-to-end run.
      `[a,little,lamb] → Object`. The count convention (D10) currently gets
      these right where significance is silent; a leap must *combine* significance
      with structure, not replace structure with it.
-  2. **The leap's home is the binding phase, not the identity phase.** Synthetic
-     signatures arise when K must relate two operands of different cardinality —
-     i.e. inside Level 1's `_binding_plan`. A primary leap strategy means Level 1
-     considers *candidate groupings* (partitions of the residual) scored by
-     significance, rather than the single deterministic group-the-whole-tail
-     rule. This is the "try-all-partitions, pick by distance" future form D10
-     names.
+  2. **The leap's home is the relationship phase (Level 1), not the identity
+     phase.** Synthetic signatures arise when K must relate two operands of
+     different cardinality — i.e. inside Level 1's `_relationship_plan`. A
+     primary leap strategy means Level 1 considers *candidate groupings*
+     (partitions of the residual) scored by significance, rather than the
+     single deterministic group-the-whole-tail rule. This is the
+     "try-all-partitions, pick by distance" future form D10 names. (Under the
+     async model, the chosen grouping is still emitted as a canonical request
+     per D9 — the leap chooses *which* signature to hypothesise, not whether to
+     assert it.)
   3. **Distance, not boolean significance, is the real signal.** The mature
      Kalvin uses `expand()`'s packed distance (the inverted significance) to
      rank candidates. The bootstrap rationaliser has no distance computation —
