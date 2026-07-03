@@ -167,6 +167,10 @@ def _node_decoded_label(entry_value: KValue, by_sig: dict[int, list[KValue]]) ->
                 f"canon node 0x{sig:x} has no compiled entry — cannot resolve its label"
             )
         d = hits[0].kline.dbg
+        if d is None:
+            raise DecodeError(
+                f"canon node 0x{sig:x} has no compiled debug info — cannot resolve its label"
+            )
         return d.decoded or d.label
 
     return tuple(_label_for(n) for n in entry_value.kline.nodes)
@@ -197,6 +201,13 @@ def _resolve_script(
     for e in entries:
         kl = e.kline
         d = kl.dbg
+        # Compiled entries from ``compile_source(..., dev=True)`` always carry
+        # ``dbg`` (op/label/decoded provenance). An entry without it is a
+        # compiler invariant violation, not a decode error.
+        if d is None:
+            raise DecodeError(
+                f"compiled entry 0x{kl.signature:x} has no debug info — dev compile invariant broken"
+            )
         # Canon index: keyed by node-decoded-label tuple (DDT-5).
         if d.op == "CANONIZED" and kl.nodes:
             key = _node_decoded_label(e, by_sig)
@@ -252,7 +263,12 @@ def _resolve_kline(
                 f"CANONIZED {signature!r}: no compiled canon matches node-list {list(nodes)}"
             )
         # ``signature`` is an author hint; confirm it names the canon's label.
-        canon_label = canon.kline.dbg.label
+        canon_dbg = canon.kline.dbg
+        if canon_dbg is None:
+            raise DecodeError(
+                f"CANONIZED node-list {list(nodes)} resolved to a canon with no debug info"
+            )
+        canon_label = canon_dbg.label
         if canon_label != signature:
             raise DecodeError(
                 f"CANONIZED node-list {list(nodes)} resolved to canon "
@@ -288,9 +304,9 @@ def _resolve_kline(
     # relation KLine. Atom labels (no canon) fall back to the label index.
     node_sigs: list[int] = []
     for n in nodes:
-        canon = resolved.canon_by_label.get(n)
-        if canon is not None:
-            node_sigs.append(canon.signature)
+        ncanon = resolved.canon_by_label.get(n)
+        if ncanon is not None:
+            node_sigs.append(ncanon.signature)
             continue
         nkl = resolved.labels.get(n)
         if nkl is None:
@@ -340,6 +356,10 @@ def decode(
         if turn.is_annotation_only:
             continue
         assert turn.op is not None and turn.significance is not None  # annotation guard
+        # A structural turn (op set) must carry ``signature`` — enforced at
+        # load time (``_turn_from_dict``), so this is a defensive decode check.
+        if turn.signature is None:
+            raise DecodeError(f"turn {idx}: structural turn missing 'signature'")
         if turn.op not in DIALOGUE_OPS:
             raise DecodeError(f"turn {idx}: unknown op {turn.op!r}")
         if turn.significance not in BAND_TO_SIG:
