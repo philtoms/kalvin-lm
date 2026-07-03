@@ -204,7 +204,7 @@ broadcast, not by elevation.
 | --- | --- |
 | **S4** | Pop the matching identity work-item (stalemate accepted). S4 is a sentinel detected by value, not by band. |
 | **S1** | Run cleanup (ground + recurse). |
-| **S2 or S3** | (1) Pop any in-flight identity under the query's signature — the trainer's reply answers K's ask, retiring it. (2) **Elevation check**: if the query is an elevatable relationship, ground it via cleanup and return. (3) Otherwise unpack. |
+| **S2 or S3** | (1) **Elevation check**: if the query is an elevatable relationship, ground it via cleanup and return. (2) Otherwise unpack. (An identity asked at Level 0 is retired on *emission*, not on S2/S3 receipt — the `asked` set prevents re-asking; see §Cogitation.) |
 
 Then proceed to cogitation (emit exactly one event, or return `None` when no
 entry is workable — D12).
