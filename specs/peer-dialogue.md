@@ -48,9 +48,12 @@ A peer-mode decoded table has three zones, two of them positionally pinned:
 ### Invariants
 
 - The opening is a trainer (`T`) row.
-- The opening and the closing are **content-distinct** (different
-  `(role, kline, significance)`). A peer-mode table whose opening and closing
-  are content-equal is malformed.
+- The closing is **content-distinct** from the opening **and** from every
+  middle row: its `(role, kline, significance)` appears exactly once in the
+  table. A closing that duplicates the opening would make coverage degenerate
+  (the opening satisfies it); a closing that duplicates a middle row would make
+  the positional "consumed last" semantics ambiguous (which occurrence is the
+  closing?). A peer-mode table violating either is malformed at decode time.
 
 ## The Runner
 
@@ -180,7 +183,7 @@ table-ordered — a deliberate difference from the synchronous `RunResult.events
 | PDT-1 | A `DialogueTable` declares its run regime; a peer-mode table declares peer mode and a divergence policy, resolved by the loader into `run_peer` inputs; the runner consumes `DecodedTurn`s, not the raw table | §The Table in Peer Mode |
 | PDT-2 | The `turns` of a peer-mode table are an ordered list documenting cause and effect; that order is not enforced within the middle by the runner                                                  | §The Table in Peer Mode |
 | PDT-3 | A peer-mode decoded table has three zones: opening (`decoded[0]`, first, positional, trainer), middle (`decoded[1:-1]`, coverage set), closing (`decoded[-1]`, last, positional)               | §Zones            |
-| PDT-4 | The opening is a trainer row; the opening and closing are content-distinct; a table violating either is malformed at decode time                                                                | §Invariants       |
+| PDT-4 | The opening is a trainer row; the closing is content-distinct from the opening **and** from every middle row; a table violating any is malformed at decode time                                                                | §Invariants       |
 | PDT-5 | `run_peer` is a sink: it exposes `receive`, does not call into actors, decides no turns, and holds no actor-coupling state                                                                      | §The Runner, §Sink contract, §Permitted state |
 | PDT-6 | The runner holds coverage bookkeeping only (unconsumed distinct middle set, closing-seen flag); no per-actor cursors, turn tracking, or pacing                                                  | §Permitted state  |
 | PDT-7 | A received emission matches unconsumed same-role middle rows by `(role, kline, significance)` content equality                                                                                  | §Matching         |

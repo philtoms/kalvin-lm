@@ -129,6 +129,20 @@ def test_peer_decode_rejects_content_equal_opening_and_closing():
         )
 
 
+def test_peer_decode_rejects_closing_content_in_middle():
+    """PDT-4: the closing content must be unique — not present as a middle row."""
+    with pytest.raises(DecodeError, match="middle row"):
+        _decode(
+            _peer_table(
+                [
+                    _identity("T", "A", "S2"),   # opening
+                    _identity("T", "B", "S1"),   # middle — same content as closing
+                    _identity("T", "B", "S1"),   # closing
+                ]
+            )
+        )
+
+
 def test_peer_decode_rejects_table_with_too_few_turns():
     """PDT-4: a peer table needs at least an opening and a closing."""
     with pytest.raises(DecodeError, match="at least"):

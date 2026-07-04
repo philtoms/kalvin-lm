@@ -464,10 +464,12 @@ def _validate_peer(decoded: list[DecodedTurn]) -> None:
     """Validate the peer-mode invariants (spec @specs/peer-dialogue.md §Invariants).
 
     - The opening (``decoded[0]``) is a trainer (``T``) row.
-    - The opening and closing (``decoded[-1]``) are content-distinct: their
-      ``(role, kline, significance)`` content keys differ. A peer table whose
-      opening and closing are content-equal is malformed — coverage would be
-      degenerate (the closing's content is satisfied by the opening).
+    - The closing (``decoded[-1]``) is content-distinct from the opening **and**
+      from every middle row: its ``(role, kline, significance)`` content key
+      appears exactly once in the table. A closing that duplicates the opening
+      would make coverage degenerate (the opening satisfies it); a closing that
+      duplicates a middle row would make the positional "consumed last"
+      semantics ambiguous (which occurrence is the closing?).
     """
     if len(decoded) < 2:
         raise DecodeError(
@@ -477,10 +479,18 @@ def _validate_peer(decoded: list[DecodedTurn]) -> None:
         raise DecodeError(
             f"peer-mode opening must be a trainer (T) row, got role {decoded[0].role!r}"
         )
-    if turn_content_key(decoded[0]) == turn_content_key(decoded[-1]):
+    closing_key = turn_content_key(decoded[-1])
+    middle_keys = {turn_content_key(t) for t in decoded[1:-1]}
+    opening_key = turn_content_key(decoded[0])
+    if closing_key == opening_key:
         raise DecodeError(
             "peer-mode opening and closing are content-equal "
             "(same role, kline, significance) — malformed table"
+        )
+    if closing_key in middle_keys:
+        raise DecodeError(
+            "peer-mode closing content also appears as a middle row "
+            "— the closing must be a unique terminal content"
         )
 
 
