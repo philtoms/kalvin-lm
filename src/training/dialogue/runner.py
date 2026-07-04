@@ -6,6 +6,10 @@ runner owns the table cursor; at each step it reads whose row is next and asks
 that actor for its next row. Greediness is the runner's behaviour: while
 consecutive table rows share an actor, the same actor is asked again.
 
+This is the **ordered** (synchronous) regime. The **peer** regime — a sink that
+receives out-of-order emissions after the trainer's opening — lives in
+:mod:`training.dialogue.peer_runner` (spec ``@specs/peer-dialogue.md``).
+
 Each actor holds its own cursor and yields its rows one at a time. Both default
 actors (:class:`TableTrainer`, :class:`TableTrainee`) are structurally identical,
 differing only by which ``actor`` they read — that symmetry is what makes either
