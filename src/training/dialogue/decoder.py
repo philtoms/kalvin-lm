@@ -48,6 +48,16 @@ BAND_TO_SIG: dict[str, int] = {
 
 Role = Literal["T", "K"]  # a turn's role: trainer (T) or trainee (K)
 
+# The table's run regime (spec ``@specs/peer-dialogue.md`` §The Table in Peer
+# Mode). The default ``"ordered"`` regime is driven by the synchronous
+# :func:`training.dialogue.runner.run`; a ``"peer"`` table is consumed by the
+# sink-shaped :class:`~training.dialogue.peer_runner.PeerRunner`.
+TableMode = Literal["ordered", "peer"]
+
+# The peer runner's divergence policy (spec ``@specs/peer-dialogue.md``
+# §Matching). Only meaningful under ``mode == "peer"``; ignored otherwise.
+OnDivergence = Literal["fail", "accept"]
+
 # The table's closed op vocabulary (spec §Dialogue Table). An unknown op is
 # a decode error.
 DIALOGUE_OPS = frozenset({"COUNTERSIGNED", "CANONIZED", "CONNOTED", "UNDERSIGNED", "IDENTITY"})
@@ -94,10 +104,20 @@ class DialogueTable:
     ``script`` is the single source of truth for kline structure (canonical
     signatures, atom values, subword composition). ``turns`` is the exact T/K
     exchange — prescriptive, not predictive.
+
+    ``mode`` selects the run regime (spec ``@specs/peer-dialogue.md`` §The
+    Table in Peer Mode): ``"ordered"`` (default) drives the synchronous
+    :func:`~training.dialogue.runner.run`; ``"peer"`` drives the sink-shaped
+    :class:`~training.dialogue.peer_runner.PeerRunner`. ``on_divergence`` is
+    the peer runner's divergence policy, meaningful only under ``mode ==
+    "peer"``. Both are authoring knobs resolved by the loader into runner
+    inputs; the runners consume :class:`DecodedTurn`s, not the raw table.
     """
 
     script: str
     turns: tuple[Turn, ...]
+    mode: TableMode = "ordered"
+    on_divergence: OnDivergence = "fail"
 
 
 @dataclass(frozen=True)
@@ -377,6 +397,11 @@ def decode(
                 value=KValue(kline, significance),
             )
         )
+    # Peer-mode invariants are checked on the decoded list (spec
+    # @specs/peer-dialogue.md §Invariants). They require symbol resolution to
+    # have run, so they live here, not in the loader.
+    if table.mode == "peer":
+        _validate_peer(out)
     return out
 
 
@@ -413,16 +438,77 @@ def _turn_from_dict(raw: dict) -> Turn:
     )
 
 
+# ── Peer-run decode-time validations (spec @specs/peer-dialogue.md §Invariants) ─
+
+
+def turn_content_key(turn: DecodedTurn) -> tuple[str, int, tuple[int, ...], int]:
+    """The content identity of a decoded turn (spec @specs/peer-dialogue.md
+    §Matching): ``(role, kline_signature, kline_nodes_tuple, significance)``.
+
+    Peer matching keys on role + KLine + significance. The KLine is carried by
+    its signature and nodes tuple (the two fields that define KLine equality,
+    ``@specs/kline.md``). This helper exists because :class:`KValue.__eq__` is
+    structural-only and ignores significance (``src/kalvin/kvalue.py``), so peer
+    matching cannot use ``KValue`` equality directly — significance must be
+    compared explicitly alongside the kline.
+    """
+    return (
+        turn.role,
+        turn.value.kline.signature,
+        tuple(turn.value.kline.nodes),
+        turn.value.significance,
+    )
+
+
+def _validate_peer(decoded: list[DecodedTurn]) -> None:
+    """Validate the peer-mode invariants (spec @specs/peer-dialogue.md §Invariants).
+
+    - The opening (``decoded[0]``) is a trainer (``T``) row.
+    - The opening and closing (``decoded[-1]``) are content-distinct: their
+      ``(role, kline, significance)`` content keys differ. A peer table whose
+      opening and closing are content-equal is malformed — coverage would be
+      degenerate (the closing's content is satisfied by the opening).
+    """
+    if len(decoded) < 2:
+        raise DecodeError(
+            "peer-mode table needs at least an opening and a closing turn"
+        )
+    if decoded[0].role != "T":
+        raise DecodeError(
+            f"peer-mode opening must be a trainer (T) row, got role {decoded[0].role!r}"
+        )
+    if turn_content_key(decoded[0]) == turn_content_key(decoded[-1]):
+        raise DecodeError(
+            "peer-mode opening and closing are content-equal "
+            "(same role, kline, significance) — malformed table"
+        )
+
+
 def load_table(raw: dict) -> DialogueTable:
     """Parse a raw ``{script, turns[]}`` dict into a :class:`DialogueTable` (DDT-1).
 
     ``notes`` are carried on each :class:`Turn` (the decoder ignores them) but
     the structural fields are validated for shape here; symbol resolution happens
-    later in :func:`decode`.
+    later in :func:`decode`. ``mode`` (default ``"ordered"``) and
+    ``on_divergence`` (default ``"fail"``) are the peer-run knobs (spec
+    ``@specs/peer-dialogue.md`` §The Table in Peer Mode); both are optional.
     """
     if "script" not in raw or not isinstance(raw["script"], str):
         raise DecodeError("dialogue table missing string 'script'")
     if "turns" not in raw or not isinstance(raw["turns"], list):
         raise DecodeError("dialogue table missing list 'turns'")
+    mode = raw.get("mode", "ordered")
+    if mode not in ("ordered", "peer"):
+        raise DecodeError(f"table mode must be 'ordered' or 'peer', got {mode!r}")
+    on_divergence = raw.get("on_divergence", "fail")
+    if on_divergence not in ("fail", "accept"):
+        raise DecodeError(
+            f"on_divergence must be 'fail' or 'accept', got {on_divergence!r}"
+        )
     turns = tuple(_turn_from_dict(t) for t in raw["turns"])
-    return DialogueTable(script=raw["script"], turns=turns)
+    return DialogueTable(
+        script=raw["script"],
+        turns=turns,
+        mode=mode,
+        on_divergence=on_divergence,
+    )
