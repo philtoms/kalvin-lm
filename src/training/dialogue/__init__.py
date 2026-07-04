@@ -19,6 +19,12 @@ from training.dialogue.decoder import (
     decode,
     load_table,
 )
+from training.dialogue.peer_runner import (
+    PeerDivergence,
+    PeerRunner,
+    PeerRunResult,
+    run_peer,
+)
 from training.dialogue.runner import (
     Actor,
     ActorDivergence,
@@ -37,6 +43,9 @@ __all__ = [
     "DECODEDTurn",
     "DecodedTurn",
     "DialogueTable",
+    "PeerDivergence",
+    "PeerRunResult",
+    "PeerRunner",
     "RunResult",
     "TableTrainee",
     "TableTrainer",
@@ -45,5 +54,6 @@ __all__ = [
     "default_actors",
     "load_table",
     "run",
+    "run_peer",
     "run_table",
 ]

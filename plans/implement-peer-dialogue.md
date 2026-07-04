@@ -43,34 +43,37 @@ Distinct from `RunResult`. → PDT-15.
 
 **3.1 `PeerRunner` sink.** A class (not a function-loop) holding coverage
 bookkeeping only:
-- the unconsumed distinct middle set, keyed by `(role, kline, significance)`,
-  built once at construction from `decoded[1:-1]`;
+- the table's **fixed set of distinct middle contents**, keyed by
+  `(role, kline, significance)`, built once at construction from
+  `decoded[1:-1]` (duplicate rows collapse to one entry);
+- a **covered subset** that grows monotonically as emissions match;
 - a `closing` reference (`decoded[-1]`) and a `closing_seen` flag.
 
-API: `receive(event) -> None`, property `complete`, property `result`.
-`receive` is the sole entry point once the run has begun. → PDT-5, PDT-6.
+API: `receive(event) -> None`, property `complete`, property `covered`,
+property `result`. `receive` is the sole entry point once the run has begun.
+→ PDT-5, PDT-6.
 
 **3.2 Matching in `receive`.** On each event:
-1. If the event equals the closing content — set `closing_seen`, consume the
-   closing. → PDT-10.
-2. Else look up the event's `(role, kline, significance)` in the unconsumed
-   same-role middle set:
-   - present → remove the distinct content (duplicates collapsed by set
-     membership). → PDT-7, PDT-8.
-   - absent → divergence. `on_divergence="fail"` raises `PeerDivergence(role,
-     emitted=event.proposal, unconsumed=<frozen unconsumed same-role rows>)`;
-     `"accept"` appends `event` to `result.unmatched`. → PDT-9.
-3. Append `event` to `result.events` in arrival order. → PDT-15.
+1. If the event equals the closing content — set `closing_seen`. → PDT-10.
+2. Else if the event's `(role, kline, significance)` is present in the table's
+   distinct middle contents — add it to the covered subset (idempotent:
+   re-emitting already-covered content is *not* divergence; duplicates in the
+   table collapsed to this one entry). → PDT-7, PDT-8.
+3. Else (present nowhere in the table) — divergence.
+   `on_divergence="fail"` raises `PeerDivergence(role, emitted=event.proposal,
+   unconsumed=<uncovered same-role contents>)`; `"accept"` appends `event` to
+   `result.unmatched`. → PDT-9.
+4. Append `event` to `result.events` in arrival order. → PDT-15.
 
 Anticipation requires no special code path: matching is content-only and
-order-agnostic, so an "ahead-of-causal" emission matches whatever unconsumed
-same-role row its content equals. → PDT-11, PDT-12.
+order-agnostic, so an "ahead-of-causal" emission matches whatever distinct
+middle content its content equals. → PDT-11, PDT-12.
 
-**3.3 Completion.** `complete` is a property: `closing_seen AND (unconsumed
-middle set empty)`. `covered` is `unconsumed middle set empty` (without the
-closing conjunct) — a diagnostic, not a terminal condition. On a query to
-`result` before completion, `uncovered` is populated from the remaining
-unconsumed middle set. → PDT-13, PDT-15.
+**3.3 Completion.** `complete` is a property: `closing_seen` (closing-seen is
+the only terminal goal). `covered` is `distinct_middle <= covered` — an
+**efficiency diagnostic**, not a terminal condition (extreme anticipation —
+closing-first, zero coverage — is technically complete). `uncovered` is
+`distinct_middle - covered`. → PDT-13, PDT-15.
 
 **3.4 `run_peer` constructor function.** A thin constructor:
 `run_peer(decoded, *, on_divergence="fail") -> PeerRunner`. Validates the
@@ -120,13 +123,15 @@ test/script wiring only — it does not belong in the runner.
   own contract and types.
 - **Opening delivery is the caller's job.** A pure sink cannot perform the one
   asymmetric priming act. The script/test wiring layer seeds the trainee.
-- **Coverage bookkeeping only.** The runner tracks the unconsumed distinct
-  middle set and a closing-seen flag. It tracks nothing per-actor.
-- **Duplicates collapse by set membership.** The unconsumed middle is held as
-  a set keyed by `(role, kline, significance)`; consuming X removes it once,
-  satisfying all duplicate X rows. Completion is over distinct contents.
+- **Coverage bookkeeping only.** The runner tracks the table's fixed distinct
+  middle content set and a growing covered subset, plus closing-seen. It tracks
+  nothing per-actor.
+- **Coverage is efficiency, not a count.** Duplicate table rows collapse to
+  one distinct content; coverage is idempotent (re-emitting covered content is
+  not divergence). Completion is closing-seen alone; coverage is a diagnostic,
+  meaningful especially when a training strategy thins the middle before start.
 - **Separate `PeerDivergence` / `PeerRunResult`.** The peer regime's data
-  (unconsumed set, arrival-ordered events) has no cursor; reusing the
+  (covered subset, arrival-ordered events) has no cursor; reusing the
   synchronous types would force sometimes-`None` cursor fields.
 
 ## Open location question (resolve before Phase 2)

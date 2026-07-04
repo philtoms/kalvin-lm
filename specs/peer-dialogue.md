@@ -75,7 +75,7 @@ The runner exposes a push entry point:
 
 ```
 PeerRunner.receive(event: RationaliseEvent) -> None
-PeerRunner.complete -> bool        # closing seen AND middle coverage satisfied
+PeerRunner.complete -> bool        # closing-seen (the only terminal goal)
 PeerRunner.result -> PeerRunResult
 ```
 
@@ -84,26 +84,28 @@ accepted in arrival order; the runner imposes no ordering on the caller.
 
 ### Permitted state
 
-The runner holds **coverage bookkeeping** only: the set of unconsumed distinct
-middle contents, and a `closing-seen` flag. It holds **no** actor-coupling
+The runner holds **coverage bookkeeping** only: the table's **fixed set of
+distinct middle contents**, a **covered subset** that grows monotonically as
+emissions match, and a `closing-seen` flag. It holds **no** actor-coupling
 state — no notion of whose turn it is, no per-actor cursors, no pacing, no
 retry counts. Coverage bookkeeping is the runner's own accounting as a sink and
 does not couple it to any actor.
 
 ## Matching
 
-Each received emission is matched against the unconsumed **same-role** middle
-rows by content equality `(role, kline, significance)`:
+Each received emission is matched against the table's **distinct middle
+contents** and the closing by content equality
+`(role, kline, significance)`:
 
-- **One or more matches** — consume the distinct content. Duplicate rows
-  collapse: a single emission satisfying content X consumes all unconsumed
-  rows with content X in one step.
-- **Zero matches, and the emission is not the closing** — **divergence**. Under
-  `on_divergence="fail"` the runner raises `PeerDivergence`. Under
-  `on_divergence="accept"` the emission is recorded in `PeerRunResult.unmatched`
-  and the run continues.
-- **The emission equals the closing content** — mark `closing-seen` and consume
-  the closing.
+- **Equals the closing** — mark `closing-seen`.
+- **Present in the distinct middle contents** — mark that content **covered**.
+  Duplicate table rows collapsed to this one distinct content at construction;
+  coverage is **idempotent** — re-emitting already-covered content is *not*
+  divergence (it leaves the content covered).
+- **Present nowhere in the table** (neither closing nor any middle content) —
+  **divergence**. Under `on_divergence="fail"` the runner raises
+  `PeerDivergence`. Under `on_divergence="accept"` the emission is recorded in
+  `PeerRunResult.unmatched` and the run continues.
 
 ### Anticipation
 
@@ -121,19 +123,22 @@ middle zone; the opening and closing are not anticipatable.
 ## Completion
 
 ```
-complete = closing-seen AND (middle distinct-set exhausted)
+complete = closing-seen
 ```
 
-The middle distinct-set is exhausted when every distinct
-`(role, kline, significance)` among the middle rows has been consumed (via
-match or collapse). The closing is consumed only by an emission matching its
-content.
+Completion is the **closing entry alone** — the only really important goal.
+The closing is consumed only by an emission matching its content.
 
-Coverage is a **measured property**, reported in `PeerRunResult`, not a
-terminal condition on its own: a run may continue after the middle is covered
-if the closing has not arrived (further middle emissions would then be
-divergences). Completion is the conjunction of closing-seen and middle
-exhausted.
+Coverage is a measure of **efficiency**, not a matching count, and is **not a
+terminal condition**: duplicate table rows collapse to one distinct content,
+and `covered` reports whether every distinct middle content has been seen at
+least once. A run is complete the moment the closing arrives, regardless of
+how much of the middle was seen. Extreme anticipation (closing-first, zero
+middle coverage) is technically complete, though rare in practice; `covered`
+makes the inefficiency visible. The coverage fraction becomes a meaningful
+signal when a training strategy thins the middle before start (e.g. randomly
+removing entries), making completion closing-driven and coverage the measure
+of how much of the authored exchange the actors actually traversed.
 
 ## Types
 
@@ -145,7 +150,7 @@ PeerDivergence(Exception):
 
 PeerRunResult:
     events:    list[RationaliseEvent]    # every received emission, in ARRIVAL order
-    complete:  bool                      # closing seen AND middle distinct-set exhausted
+    complete:  bool                      # closing-seen (the only terminal goal)
     covered:   bool                      # every distinct middle content emitted
     unmatched: list[RationaliseEvent]    # emissions matching nothing (accept-mode only)
     uncovered: list[DecodedTurn]         # distinct middle rows never consumed (incomplete runs)
@@ -185,14 +190,14 @@ table-ordered — a deliberate difference from the synchronous `RunResult.events
 | PDT-3 | A peer-mode decoded table has three zones: opening (`decoded[0]`, first, positional, trainer), middle (`decoded[1:-1]`, coverage set), closing (`decoded[-1]`, last, positional)               | §Zones            |
 | PDT-4 | The opening is a trainer row; the closing is content-distinct from the opening **and** from every middle row; a table violating any is malformed at decode time                                                                | §Invariants       |
 | PDT-5 | `run_peer` is a sink: it exposes `receive`, does not call into actors, decides no turns, and holds no actor-coupling state                                                                      | §The Runner, §Sink contract, §Permitted state |
-| PDT-6 | The runner holds coverage bookkeeping only (unconsumed distinct middle set, closing-seen flag); no per-actor cursors, turn tracking, or pacing                                                  | §Permitted state  |
+| PDT-6 | The runner holds coverage bookkeeping only (fixed distinct middle content set, growing covered subset, closing-seen flag); no per-actor cursors, turn tracking, or pacing                          | §Permitted state  |
 | PDT-7 | A received emission matches unconsumed same-role middle rows by `(role, kline, significance)` content equality                                                                                  | §Matching         |
-| PDT-8 | One or more matches consume the distinct content; duplicate rows collapse in one step (one emission of X consumes all unconsumed X rows)                                                       | §Matching         |
+| PDT-8 | A content present in the distinct middle marks it covered (idempotent); duplicate table rows collapse to one distinct content; re-emitting covered content is not divergence                         | §Matching         |
 | PDT-9 | Zero matches (and not the closing) is divergence: `on_divergence="fail"` raises `PeerDivergence(role, emitted, unconsumed)`; `"accept"` appends to `PeerRunResult.unmatched` and continues      | §Matching         |
 | PDT-10 | An emission equal to the closing's content marks `closing-seen` and consumes the closing                                                                                                       | §Matching         |
 | PDT-11 | Anticipation within the middle is permitted and unflagged: an emission matching an unconsumed same-role row by content is a normal match regardless of authored causal order                   | §Anticipation     |
 | PDT-12 | The opening and closing are the only positional constraints; anticipation applies to the middle only; the opening is not anticipatable                                                          | §Anticipation     |
-| PDT-13 | `complete = closing-seen AND middle distinct-set exhausted`; coverage alone does not terminate the run                                                                                          | §Completion       |
+| PDT-13 | `complete = closing-seen`; coverage is a separate efficiency diagnostic, not a terminal condition (extreme anticipation — closing-first, zero middle coverage — is technically complete)                | §Completion       |
 | PDT-14 | `PeerDivergence` is a separate type carrying `(role, emitted, unconsumed)`, distinct from synchronous `ActorDivergence`                                                                         | §Types            |
 | PDT-15 | `PeerRunResult` is a separate type with arrival-ordered `events`, plus `complete`, `covered`, `unmatched` (accept-mode), `uncovered` (incomplete runs); distinct from synchronous `RunResult`   | §Types            |
 | PDT-16 | The synchronous `run`, the `Actor`/`respond` contract, `ActorDivergence`, and `RunResult` are unchanged by this spec                                                                            | §Overview, §Types |

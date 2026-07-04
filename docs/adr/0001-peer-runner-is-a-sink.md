@@ -24,6 +24,6 @@ The synchronous `run` and the peer `run_peer` are now structurally different
 regimes sharing a table and a content-equality notion of a match, not two
 variants of one loop. `PeerDivergence` and `PeerRunResult` are separate from
 `ActorDivergence` and `RunResult` because the peer regime's data
-(unconsumed set, arrival-ordered events) has no cursor to sit on. Delivering
+(covered subset, arrival-ordered events) has no cursor to sit on. Delivering
 the opening to the trainee is the caller's responsibility, since a pure sink
 cannot perform the one asymmetric priming act.

@@ -102,20 +102,20 @@ def test_emission_matching_middle_consumes_it():
     assert runner.complete
 
 
-def test_duplicate_rows_collapse_in_one_step():
-    """PDT-8: a single emission of X consumes all duplicate X middle rows."""
-    # Two identical K middle rows (same role, sig, band).
+def test_duplicate_rows_collapse_to_one_covered_entry():
+    """PDT-8: duplicate table rows collapse to one distinct content, covered on
+    first match; re-emitting that content is idempotent — not divergence."""
     runner = run_peer(
         _decoded(("T", 1, 1), [("K", 2, 2), ("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     )
-    runner.receive(_ev("K", 2, 2))  # one emission collapses both K(2,2) rows
+    runner.receive(_ev("K", 2, 2))  # first emission covers the distinct K(2,2)
+    runner.receive(_ev("K", 2, 2))  # re-emission: idempotent, not divergence
+    runner.receive(_ev("T", 3, 3))
+    runner.receive(_ev("T", 9, 9))
     res = runner.result
-    # Both K(2,2) middles are now consumed (covered over distinct contents; the
-    # single distinct K(2,2) is gone from the unconsumed set).
-    assert all(
-        not (t.role == "K" and t.value.kline.signature == 2)
-        for t in res.uncovered
-    )
+    assert res.complete
+    assert res.covered
+    assert res.unmatched == []  # the re-emission was not recorded as unmatched
 
 
 def test_role_mismatch_is_not_a_match():
@@ -162,12 +162,24 @@ def test_divergence_accept_records_and_continues():
 
 
 def test_closing_emission_marks_closing_seen():
-    """PDT-10: an emission equal to closing content marks closing-seen."""
+    """PDT-10/PDT-13: an emission equal to closing content marks closing-seen,
+    and closing-seen alone is completion."""
     runner = run_peer(_decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)))
-    runner.receive(_ev("T", 9, 9))
-    assert not runner.complete  # middle not yet covered
-    runner.receive(_ev("K", 2, 2))
+    assert not runner.complete
+    runner.receive(_ev("T", 9, 9))  # closing
+    assert runner.complete  # completion is closing-seen only
+    assert not runner.covered  # middle not seen → coverage diagnostic is False
+
+
+def test_extreme_anticipation_closing_first_is_complete():
+    """PDT-13: closing-first is technically complete (extreme anticipation).
+    Rare in practice; ``covered`` reports the inefficiency (zero middle seen)."""
+    runner = run_peer(
+        _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
+    )
+    runner.receive(_ev("T", 9, 9))  # closing, before any middle
     assert runner.complete
+    assert not runner.covered  # no middle seen
 
 
 def test_closing_recognized_regardless_of_middle_order():
@@ -226,31 +238,32 @@ def test_out_of_order_completion_is_valid():
 # ── PDT-13: completion ────────────────────────────────────────────────────
 
 
-def test_completion_requires_closing_and_middle_coverage():
-    """PDT-13: complete = closing-seen AND middle distinct-set exhausted."""
+def test_completion_is_closing_seen_only():
+    """PDT-13: complete = closing-seen. Middle coverage is a separate diagnostic."""
     runner = run_peer(
         _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     )
-    # Middle covered, closing not seen.
+    # Middle fully covered, closing not seen.
     runner.receive(_ev("K", 2, 2))
     runner.receive(_ev("T", 3, 3))
     assert not runner.complete
-    assert runner.result.covered is True  # covered is the middle-only diagnostic
-    # Closing arrives.
+    assert runner.covered is True  # diagnostic: middle fully seen
+    # Closing arrives → complete.
     runner.receive(_ev("T", 9, 9))
     assert runner.complete
 
 
-def test_coverage_alone_does_not_terminate():
-    """PDT-13: a run may continue after the middle is covered if the closing
-    has not arrived; a further middle emission is then a divergence."""
+def test_coverage_is_independent_of_completion():
+    """PDT-13: a run may be covered but incomplete (closing not seen), or
+    complete but uncovered (closing-first). A non-table emission is still
+    divergence regardless of coverage state."""
     runner = run_peer(
         _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)), on_divergence="accept"
     )
     runner.receive(_ev("K", 2, 2))  # middle covered
-    assert runner.result.covered is True
-    assert not runner.complete  # closing not seen → run continues
-    runner.receive(_ev("K", 50, 50))  # nothing outstanding → unmatched
+    assert runner.covered is True
+    assert not runner.complete  # closing not seen → not complete
+    runner.receive(_ev("K", 50, 50))  # content in no table → unmatched
     res = runner.result
     assert not res.complete
     assert len(res.unmatched) == 1
