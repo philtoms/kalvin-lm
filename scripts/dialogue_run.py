@@ -15,8 +15,12 @@ default ``TableTrainee``, and ``--synthesize`` substitutes a
 :class:`SynthesizingTrainer` (a real trainer that derives each turn from the
 compiled script) for the default ``TableTrainer``. The two flags are
 orthogonal: passing both runs the two real actors against the same golden
-master. These flags apply to ordered tables only; a peer table uses the
-table-reading actors as the bridge.
+master. They apply in both regimes — the real actors are drop-in (adapter-
+driven), so a peer table with ``--rationalise`` / ``--synthesize`` runs the
+real actors through the bus-subscriber relay. Note real actors do not
+reproduce the table exactly, so peer mode with them typically needs
+``on_divergence: "accept"`` in the table's ``peer`` section (else off-table
+emissions raise ``PeerDivergence``).
 
 The runner is bus-agnostic: there is no harness message bus and no adapter
 here. Bus integration arrives with the real actors.
@@ -181,11 +185,28 @@ def main(argv: list[str] | None = None) -> int:
     # the peer section.
     if table.is_peer:
         assert table.peer is not None  # narrowed by is_peer
+        # The --synthesize/--rationalise flags honour peer mode too: the real
+        # actors are drop-in (adapter-driven). Orthogonal, as in ordered mode.
+        compiled = (
+            compile_source(table.script, tokenizer=tok, signifier=sigf, dev=True)
+            if args.synthesize
+            else None
+        )
+        trainer_factory = (
+            (lambda sink: SynthesizingTrainer(compiled, sigf, sink=sink))
+            if args.synthesize
+            else (lambda sink: TableTrainer(decoded, sink=sink))
+        )
+        trainee_factory = (
+            (lambda sink: RationalisingTrainee(sigf, sink=sink))
+            if args.rationalise
+            else (lambda sink: TableTrainee(decoded, sink=sink))
+        )
         try:
             runner = run_peer(
                 decoded,
-                lambda sink: TableTrainer(decoded, sink=sink),
-                lambda sink: TableTrainee(decoded, sink=sink),
+                trainer_factory,
+                trainee_factory,
                 on_divergence=table.peer.on_divergence,
             )
             res = runner.run()
