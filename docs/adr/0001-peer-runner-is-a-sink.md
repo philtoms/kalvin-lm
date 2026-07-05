@@ -1,5 +1,7 @@
 # 0001 — The peer runner is a sink, not a driver
 
+**Status:** superseded by ADR-0002.
+
 After the trainer delivers the opening entry to the trainee, `run_peer`
 receives emissions via a push `receive(event)` contract and holds coverage
 bookkeeping only. It does not call into actors, decide whose turn it is, or

@@ -5,7 +5,8 @@
 - `@specs/peer-dialogue.md` — WHAT this plan implements (all PDT-\* criteria).
 - `@specs/dialogue-driven-training.md` — `DialogueTable`, `DecodedTurn`,
   `RationaliseEvent`, `Actor`, the synchronous `run` (unchanged by this work).
-- `@docs/adr/0001-peer-runner-is-a-sink.md` — why `run_peer` is a sink.
+- `@docs/adr/0002-peer-runner-is-a-bus-subscriber.md` — why the peer runner is
+  a `MessageBus` subscriber (supersedes ADR-0001).
 
 ## Implementation Tasks
 
@@ -29,134 +30,137 @@ opening and closing (`decoded[-1]`) are content-distinct — i.e.
 `(role, kline, significance)` differ. Violation raises a malformed-table
 error before any run begins. → PDT-3, PDT-4.
 
-### Phase 2 — The sink types
+### Phase 2 — The peer types (unchanged by the bus decision)
 
-**2.1 `PeerDivergence`.** A new exception type in `src/training/dialogue/runner.py`
-(or a sibling module — see §Open location question), carrying `(role: str,
-emitted: KValue, unconsumed: tuple[DecodedTurn])`. Distinct from
-`ActorDivergence`; no `cursor` field. → PDT-14.
+**2.1 `PeerDivergence`.** Exception carrying `(role: str, emitted: KValue,
+unconsumed: tuple[DecodedTurn])`. Distinct from `ActorDivergence`; no `cursor`
+field. → PDT-14.
 
-**2.2 `PeerRunResult`.** A new dataclass:
-`events: list[RationaliseEvent]` (arrival-ordered), `complete: bool`,
-`covered: bool`, `unmatched: list[RationaliseEvent]`, `uncovered: list[DecodedTurn]`.
-Distinct from `RunResult`. → PDT-15.
+**2.2 `PeerRunResult`.** Dataclass: `events: list[RationaliseEvent]`
+(arrival-ordered), `complete: bool`, `covered: bool`,
+`unmatched: list[RationaliseEvent]`, `uncovered: list[DecodedTurn]`. Distinct
+from `RunResult`. → PDT-15.
 
-### Phase 3 — The runner
+### Phase 3 — The runner as a MessageBus subscriber (ADR-0002)
 
-**3.1 `PeerRunner` sink.** A class (not a function-loop) holding coverage
-bookkeeping only:
-- the table's **fixed set of distinct middle contents**, keyed by
-  `(role, kline, significance)`, built once at construction from
-  `decoded[1:-1]` (duplicate rows collapse to one entry);
-- a **covered subset** that grows monotonically as emissions match;
-- a `closing` reference (`decoded[-1]`) and a `closing_seen` flag.
+The peer runner is a coverage-tracking wildcard subscriber over a
+`MessageBus`, plus a thin driver. It is **not** a standalone sink — the bus is
+the sink and the relay. The existing standalone-sink `PeerRunner` (from earlier
+commits on this branch) is replaced.
 
-API: `receive(event) -> None`, property `complete`, property `covered`,
-property `result`. `receive` is the sole entry point once the run has begun.
-→ PDT-5, PDT-6.
+**3.1 `BusSink` + `accept` on `Actor`.** Define a narrow `BusSink` protocol
+(`send(Message) -> None`) that `MessageBus` satisfies. Add
+`Actor.accept(event: RationaliseEvent | None, sink: BusSink) -> None` —
+fire-and-forget; the actor replies zero-or-many via `sink.send(Message(
+role=<other>, action="accept", message=<RationaliseEvent>))`. `event=None`
+signals "you open". The ordered `respond` is unchanged. → PDT-17.
 
-**3.2 Matching in `receive`.** On each event:
-1. If the event equals the closing content — set `closing_seen`. → PDT-10.
-2. Else if the event's `(role, kline, significance)` is present in the table's
-   distinct middle contents — add it to the covered subset (idempotent:
-   re-emitting already-covered content is *not* divergence; duplicates in the
-   table collapsed to this one entry). → PDT-7, PDT-8.
-3. Else (present nowhere in the table) — divergence.
-   `on_divergence="fail"` raises `PeerDivergence(role, emitted=event.proposal,
-   unconsumed=<uncovered same-role contents>)`; `"accept"` appends `event` to
-   `result.unmatched`. → PDT-9.
-4. Append `event` to `result.events` in arrival order. → PDT-15.
+**3.2 `PeerRunner` as a bus subscriber.** Construction builds a `MessageBus`,
+subscribes the runner (as a wildcard handler) for coverage, subscribes the two
+actors to their own roles (their `accept` is the handler). Holds coverage
+bookkeeping only: the table's fixed distinct middle content set, a growing
+covered subset, a closing reference, a `closing_seen` flag, the idle deadline.
+No actor-coupling state. → PDT-5, PDT-6.
 
-Anticipation requires no special code path: matching is content-only and
-order-agnostic, so an "ahead-of-causal" emission matches whatever distinct
-middle content its content equals. → PDT-11, PDT-12.
+**3.3 The wildcard handler (coverage).** On each observed emission:
+1. Append to `events` (arrival order). → PDT-15.
+2. If the emission equals the closing content — set `closing_seen`, call
+   `bus.stop()`. → PDT-10, PDT-13.
+3. Else if present in distinct middle contents — add to covered subset
+   (idempotent). → PDT-7, PDT-8.
+4. Else — divergence: `on_divergence="fail"` raises `PeerDivergence(role,
+   emitted, unconsumed=<uncovered same-role>)`; `"accept"` appends to
+   `unmatched`. → PDT-9.
 
-**3.3 Completion.** `complete` is a property: `closing_seen` (closing-seen is
-the only terminal goal). `covered` is `distinct_middle <= covered` — an
-**efficiency diagnostic**, not a terminal condition (extreme anticipation —
-closing-first, zero coverage — is technically complete). `uncovered` is
-`distinct_middle - covered`. → PDT-13, PDT-15.
+Anticipation/interjection require no special path — matching is content-only
+and order-agnostic. → PDT-11, PDT-12.
 
-**3.4 `run_peer` constructor function.** A thin constructor:
-`run_peer(decoded, *, on_divergence="fail") -> PeerRunner`. Validates the
-opening/closing invariants a second time defensively, builds the coverage
-set, returns the `PeerRunner`. The caller is responsible for delivering the
-opening to the trainee before pushing emissions; the runner performs no
-outbound delivery. → PDT-5 (Out of Scope: opening delivery).
+**3.4 The driver.** `run(trainer, trainee)` seeds the opening by `bus.send(
+Message(role="T", action="accept", message=None))`, then runs `bus.run()` on a
+thread. The trainer's `accept` handler replies (addressed to "K"), the bus
+delivers to the trainee's `accept`, which replies to "T", and so on — the bus
+relays; the runner only observes. Terminates on `closing_seen` (subscriber
+calls `bus.stop()`). Idle timeout = `queue.get(timeout=idle_timeout)`; on
+silence-with-no-closing, the run stops with `complete = False`. → PDT-18,
+PDT-19.
+
+**3.5 `run_peer` constructor.** `run_peer(decoded, trainer, trainee,
+*, on_divergence="fail", idle_timeout=...) -> PeerRunner`. Builds the bus,
+wires subscribers, returns the runner; the caller calls `runner.run()`.
 
 ### Phase 4 — Wiring + script
 
 **4.1 `__init__` exports.** Export `run_peer`, `PeerRunner`, `PeerDivergence`,
 `PeerRunResult` from `training.dialogue`.
 
-**4.2 `scripts/dialogue_run.py` regime dispatch.** The script is regime-
-agnostic: it reads `table.is_peer` and dispatches — a table with a `peer`
-section drives a `PeerRunner` (bridging the table-reading actors onto it), a
-table without drives the synchronous `run`. There are **no CLI flags** for the
-regime or peer modifiers; they are table-driven (`peer.on_divergence` comes
-from the section). Because the default table-reading actors are pull-shaped,
-the script acts as the caller-bridge for peer mode: it seeds the trainee with
-the trainer's opening (consumed positionally, never pushed to the sink), then
-pulls each actor in turn and pushes emissions into the runner until `complete`.
-This bridge is test/script wiring only — it does not belong in the runner.
+**4.2 `scripts/dialogue_run.py` regime dispatch.** The script reads
+`table.is_peer` and dispatches — a peer table constructs a `PeerRunner` (with
+`TableTrainer`/`TableTrainee` given `accept` implementations) and calls
+`runner.run()`; an ordered table drives the synchronous `run`. No CLI flags
+for the regime or peer modifiers (table-driven). → PDT-5.
+
+The default `TableTrainer`/`TableTrainee` gain `accept` as a thin adapter over
+their existing cursor logic (they emit their next row(s) via the sink). Their
+`respond` is unchanged for the ordered regime.
 
 ## Test Mapping Table
 
-| Spec ID | Test file                                         | Status |
-| ------- | ------------------------------------------------- | ------ |
-| PDT-1   | `tests/dialogue/test_peer_table_regime.py`        | todo   |
-| PDT-2   | `tests/dialogue/test_peer_anticipation.py`        | todo   |
-| PDT-3   | `tests/dialogue/test_peer_zones.py`               | todo   |
-| PDT-4   | `tests/dialogue/test_peer_decode_validations.py`  | todo   |
-| PDT-5   | `tests/dialogue/test_peer_sink_contract.py`       | todo   |
-| PDT-6   | `tests/dialogue/test_peer_sink_contract.py`       | todo   |
-| PDT-7   | `tests/dialogue/test_peer_matching.py`            | todo   |
-| PDT-8   | `tests/dialogue/test_peer_duplicate_collapse.py`  | todo   |
-| PDT-9   | `tests/dialogue/test_peer_divergence.py`          | todo   |
-| PDT-10  | `tests/dialogue/test_peer_closing.py`             | todo   |
-| PDT-11  | `tests/dialogue/test_peer_anticipation.py`        | todo   |
-| PDT-12  | `tests/dialogue/test_peer_anticipation.py`        | todo   |
-| PDT-13  | `tests/dialogue/test_peer_completion.py`          | todo   |
-| PDT-14  | `tests/dialogue/test_peer_divergence.py`          | todo   |
-| PDT-15  | `tests/dialogue/test_peer_result.py`              | todo   |
-| PDT-16  | `tests/dialogue/test_sync_run_unchanged.py`       | todo   |
+Tests are flat under `tests/` (matching the project convention), not
+`tests/dialogue/`. Phase 1 tests exist (`tests/test_peer_dialogue_decoder.py`);
+the sink-contract tests from earlier commits will be reworked against the
+bus-subscriber model.
+
+| Spec ID | Test file                                         | Status   |
+| ------- | ------------------------------------------------- | -------- |
+| PDT-1   | `tests/test_peer_dialogue_decoder.py`             | done     |
+| PDT-2   | `tests/test_peer_runner.py`                       | rework   |
+| PDT-3   | `tests/test_peer_dialogue_decoder.py`             | done     |
+| PDT-4   | `tests/test_peer_dialogue_decoder.py`             | done     |
+| PDT-5   | `tests/test_peer_runner.py`                       | rework   |
+| PDT-6   | `tests/test_peer_runner.py`                       | rework   |
+| PDT-7   | `tests/test_peer_runner.py`                       | rework   |
+| PDT-8   | `tests/test_peer_runner.py`                       | rework   |
+| PDT-9   | `tests/test_peer_runner.py`                       | rework   |
+| PDT-10  | `tests/test_peer_runner.py`                       | rework   |
+| PDT-11  | `tests/test_peer_runner.py`                       | rework   |
+| PDT-12  | `tests/test_peer_runner.py`                       | rework   |
+| PDT-13  | `tests/test_peer_runner.py`                       | rework   |
+| PDT-14  | `tests/test_peer_runner.py`                       | rework   |
+| PDT-15  | `tests/test_peer_runner.py`                       | rework   |
+| PDT-16  | `tests/test_dialogue_runner.py`                   | done     |
+| PDT-17  | `tests/test_peer_runner.py`                       | todo     |
+| PDT-18  | `tests/test_peer_runner.py`                       | todo     |
+| PDT-19  | `tests/test_peer_runner.py`                       | todo     |
 
 ## Design Decisions
 
-- **Sink, not driver.** See `@docs/adr/0001-peer-runner-is-a-sink.md`. The
-  synchronous `run` is left intact; `run_peer` is a sibling regime with its
-  own contract and types.
-- **Opening delivery is the caller's job.** A pure sink cannot perform the one
-  asymmetric priming act. The script/test wiring layer seeds the trainee.
-- **Coverage bookkeeping only.** The runner tracks the table's fixed distinct
-  middle content set and a growing covered subset, plus closing-seen. It tracks
-  nothing per-actor.
+- **Bus subscriber, not a standalone sink.** See
+  `@docs/adr/0002-peer-runner-is-a-bus-subscriber.md` (supersedes ADR-0001).
+  The harness `MessageBus` is the sink and relay; the runner is a coverage-
+  tracking wildcard subscriber. This delivers true non-blocking `accept` for
+  free (actors reply from any thread via the thread-safe bus) without
+  introducing `asyncio` or duplicating the bus. The synchronous ordered `run`
+  is untouched and stays bus-agnostic.
+- **Fire-and-forget `accept`, zero-or-many replies.** The actor's autonomy
+  (when/whether/how-many to reply) is what makes the dialogue messy and real,
+  and what lets T and K be out of sync. No synchronised alternation.
+- **Routing by bus addressing.** Each actor addresses replies to the other
+  role; the bus delivers; the runner never reroutes. Interjection is just
+  "sending to the other role unsolicited".
 - **Coverage is efficiency, not a count.** Duplicate table rows collapse to
   one distinct content; coverage is idempotent (re-emitting covered content is
-  not divergence). Completion is closing-seen alone; coverage is a diagnostic,
-  meaningful especially when a training strategy thins the middle before start.
+  not divergence). Completion is closing-seen alone; an idle timeout ends a
+  stalled run as incomplete (non-fatal).
 - **Separate `PeerDivergence` / `PeerRunResult`.** The peer regime's data
   (covered subset, arrival-ordered events) has no cursor; reusing the
   synchronous types would force sometimes-`None` cursor fields.
 
-## Open location question (resolve before Phase 2)
-
-The synchronous runner lives in `src/training/dialogue/runner.py`. Two homes
-for the peer code:
-- **(a) Same file** — one `runner.py` holding both regimes, sharing the
-  content-equality notion of a match. Maximises colocation of the two
-  sibling regimes.
-- **(b) `peer_runner.py` sibling** — a separate module. Keeps each regime's
-  file focused; mirrors the type separation (`PeerDivergence`/`PeerRunResult`
-  are already separate).
-
-Lean **(b)**: the regimes are structurally different (sink vs loop), the types
-are already separate, and a dedicated file signals "this is a different
-artifact" to a reader. Confirm at implementation time.
-
 ## Status
 
-- Spec: `@specs/peer-dialogue.md` — written.
-- ADR: `@docs/adr/0001-peer-runner-is-a-sink.md` — written.
+- Spec: `@specs/peer-dialogue.md` — written (PDT-1..PDT-19).
+- ADR: `@docs/adr/0002-peer-runner-is-a-bus-subscriber.md` — written
+  (supersedes 0001).
 - Plan: this document — written.
-- Code: not started.
+- Code: Phase 1 (table/decode) done on this branch; Phases 2–4 to be
+  reworked against the bus-subscriber model (the existing standalone-sink
+  `PeerRunner` is replaced).
