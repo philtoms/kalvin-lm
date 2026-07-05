@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from kalvin.events import RationaliseEvent
+from kalvin.expand import SIG_S1
 from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn
 from training.dialogue.rationalise import Rationaliser
@@ -200,21 +201,46 @@ class SynthesizingTrainer:
     delegates to :func:`~training.dialogue.synthesize.synthesize`. Constructor
     does **not** take ``decoded`` — the table is only the validation oracle.
     Pass ``sink`` for the peer regime (publishes via it); omit for ordered.
+
+    **Open-dialog-close (per script).** The dialogue for a script is bookended:
+    the trainer opens (R1 — primary at S2) and the trainee closes (an S1 on the
+    primary). The trainer recognises the trainee's S1 on the primary as the
+    close and withholds — it does not echo/ratify what the trainee has already
+    grounded. This is the single-script instance of the general per-script
+    open-dialog-close semantics; a future multi-script trainer (B) generalises
+    it to track a set of script primaries. The rule lives in the actor (a
+    dialogue-level concern), not in the pure :func:`synthesize`.
     """
 
     def __init__(self, compiled: list[KValue], signifier: KSignifier, sink=None) -> None:
         self._compiled = compiled
         self._signifier = signifier
         self._sink = sink
+        # The primary signature (compiled[0]) — the script the trainer opened.
+        # The trainee's S1 on this signature is the close.
+        self._primary_signature = compiled[0].kline.signature
 
     @property
     def role(self) -> str:
         """The role this actor emits on its events (the routing key)."""
         return "T"
 
+    def _is_close(self, incoming: RationaliseEvent | None) -> bool:
+        """The trainee has closed: an S1 proposal on the primary signature."""
+        if incoming is None:
+            return False
+        return (
+            incoming.proposal.significance == SIG_S1
+            and incoming.proposal.kline.signature == self._primary_signature
+        )
+
     def _next_event(
         self, incoming: RationaliseEvent | None
     ) -> RationaliseEvent | None:
+        # Open-dialog-close: the trainee's S1 on the primary is the close —
+        # withhold (the trainee has grounded the script; the trainer stops).
+        if self._is_close(incoming):
+            return None
         incoming_value = incoming.proposal if incoming is not None else None
         proposal = synthesize(self._compiled, incoming_value, self._signifier)
         query = incoming_value if incoming_value is not None else proposal
