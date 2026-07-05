@@ -278,38 +278,73 @@ class RationalisingTrainee:
     signifier (the engine is built at construction) and wraps each emitted
     ``KValue`` in a ``RationaliseEvent``. Constructor does **not** take
     ``decoded`` — the table is only the validation oracle. Pass ``sink`` for
-    the peer regime (publishes via it); omit for ordered.
+    the peer regime (publishes via it); omit for ordered. Pass
+    ``burst_mode=True`` for the peer regime so cogitation batches identity
+    asks into one blast (the engine emits one-at-a-time otherwise, preserving
+    the ordered regime's golden-master sequence).
     """
 
-    def __init__(self, signifier: KSignifier, sink=None) -> None:
-        self._engine = Rationaliser(signifier)
+    def __init__(self, signifier: KSignifier, sink=None, *, burst_mode: bool = False) -> None:
+        self._engine = Rationaliser(signifier, burst_mode=burst_mode)
         self._sink = sink
+        self._burst_mode = burst_mode
+        # FIFO of buffered events for the ordered regime: ``respond`` doles out
+        # a batch one event at a time to preserve the one-event-per-call contract.
+        # Every incoming is processed (fed to the engine) regardless of buffer
+        # state; the buffer only smooths emission granularity.
+        self._respond_list: list[RationaliseEvent] = []
 
     @property
     def role(self) -> str:
         """The role this actor emits on its events (the routing key)."""
         return "K"
 
-    def _next_event(
+    def _process_and_collect(
         self, incoming: RationaliseEvent | None
-    ) -> RationaliseEvent | None:
+    ) -> list[RationaliseEvent]:
+        """Feed ``incoming`` to the engine and collect its emitted batch as events.
+
+        Every call processes its incoming (the engine's entry-rule bookkeeping
+        runs each time), so the trainee's state stays in lockstep with the
+        trainer's responses even while a burst is being drained from the buffer.
+        """
         incoming_value = incoming.proposal if incoming is not None else None
-        proposal = self._engine.rationalise(incoming_value)
-        if proposal is None:
-            return None
-        query = incoming_value if incoming_value is not None else proposal
-        return RationaliseEvent(
-            kind="frame", query=query, proposal=proposal, role="K"
-        )
+        query = incoming_value
+        events: list[RationaliseEvent] = []
+        for proposal in self._engine.rationalise(incoming_value):
+            q = query if query is not None else proposal
+            events.append(
+                RationaliseEvent(kind="frame", query=q, proposal=proposal, role="K")
+            )
+        return events
+
+    def next_events(
+        self, incoming: RationaliseEvent | None
+    ) -> list[RationaliseEvent]:
+        """Rationalise ``incoming`` into a batch of events (peer regime).
+
+        The engine returns an identity blast or a single relationship emission
+        (never mixed); each emitted ``KValue`` is wrapped in a
+        ``RationaliseEvent``. Returns an empty list when nothing is workable.
+        """
+        return self._process_and_collect(incoming)
 
     def respond(
         self, incoming: RationaliseEvent | None
     ) -> RationaliseEvent | None:
-        return self._next_event(incoming)
+        # Ordered regime: process every incoming (append its batch to the FIFO),
+        # then dole one event out per call. This keeps state lockstep with the
+        # trainer's responses while preserving one-event-per-call emission.
+        self._respond_list.extend(self._process_and_collect(incoming))
+        if not self._respond_list:
+            return None
+        return self._respond_list.pop(0)
 
     def accept(self, incoming: RationaliseEvent | None) -> None:
-        event = self._next_event(incoming)
-        if event is not None and self._sink is not None:
+        # Peer regime: publish the whole batch (the point of batching).
+        if self._sink is None:
+            return
+        for event in self._process_and_collect(incoming):
             self._sink.on_event(event)
 
 

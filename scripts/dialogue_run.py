@@ -198,7 +198,7 @@ def main(argv: list[str] | None = None) -> int:
             else (lambda sink: TableTrainer(decoded, sink=sink))
         )
         trainee_factory = (
-            (lambda sink: RationalisingTrainee(sigf, sink=sink))
+            (lambda sink: RationalisingTrainee(sigf, sink=sink, burst_mode=True))
             if args.rationalise
             else (lambda sink: TableTrainee(decoded, sink=sink))
         )
