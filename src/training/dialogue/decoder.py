@@ -48,14 +48,9 @@ BAND_TO_SIG: dict[str, int] = {
 
 Role = Literal["T", "K"]  # a turn's role: trainer (T) or trainee (K)
 
-# The table's run regime (spec ``@specs/peer-dialogue.md`` §The Table in Peer
-# Mode). The default ``"ordered"`` regime is driven by the synchronous
-# :func:`training.dialogue.runner.run`; a ``"peer"`` table is consumed by the
-# sink-shaped :class:`~training.dialogue.peer_runner.PeerRunner`.
-TableMode = Literal["ordered", "peer"]
-
 # The peer runner's divergence policy (spec ``@specs/peer-dialogue.md``
-# §Matching). Only meaningful under ``mode == "peer"``; ignored otherwise.
+# §Matching). Lives on :class:`PeerConfig`, which selects peer mode by its
+# presence on the table.
 OnDivergence = Literal["fail", "accept"]
 
 # The table's closed op vocabulary (spec §Dialogue Table). An unknown op is
@@ -98,6 +93,23 @@ class Turn:
 
 
 @dataclass(frozen=True)
+class PeerConfig:
+    """Peer-mode configuration (spec ``@specs/peer-dialogue.md`` §The Table in
+    Peer Mode).
+
+    A table is in **peer mode** when it carries a ``peer`` section; the
+    section's presence is the mode selector (there is no separate ``mode``
+    field). All peer operations and modifiers live in this one block so future
+    peer knobs extend it without touching the rest of the table.
+
+    - ``on_divergence`` — the peer runner's divergence policy (default
+      ``"fail"``).
+    """
+
+    on_divergence: OnDivergence = "fail"
+
+
+@dataclass(frozen=True)
 class DialogueTable:
     """The source artifact for a lesson (spec §Dialogue Table).
 
@@ -105,19 +117,23 @@ class DialogueTable:
     signatures, atom values, subword composition). ``turns`` is the exact T/K
     exchange — prescriptive, not predictive.
 
-    ``mode`` selects the run regime (spec ``@specs/peer-dialogue.md`` §The
-    Table in Peer Mode): ``"ordered"`` (default) drives the synchronous
-    :func:`~training.dialogue.runner.run`; ``"peer"`` drives the sink-shaped
-    :class:`~training.dialogue.peer_runner.PeerRunner`. ``on_divergence`` is
-    the peer runner's divergence policy, meaningful only under ``mode ==
-    "peer"``. Both are authoring knobs resolved by the loader into runner
-    inputs; the runners consume :class:`DecodedTurn`s, not the raw table.
+    ``peer`` selects the run regime (spec ``@specs/peer-dialogue.md`` §The
+    Table in Peer Mode): ``None`` (default, no ``peer`` section) drives the
+    synchronous :func:`~training.dialogue.runner.run`; a :class:`PeerConfig`
+    drives the sink-shaped :class:`~training.dialogue.peer_runner.PeerRunner`.
+    The section's presence *is* the peer-mode selector — all peer operations
+    and modifiers live in it. The runners consume :class:`DecodedTurn`s, not
+    the raw table.
     """
 
     script: str
     turns: tuple[Turn, ...]
-    mode: TableMode = "ordered"
-    on_divergence: OnDivergence = "fail"
+    peer: PeerConfig | None = None
+
+    @property
+    def is_peer(self) -> bool:
+        """True when this table declares peer mode (carries a ``peer`` section)."""
+        return self.peer is not None
 
 
 @dataclass(frozen=True)
@@ -400,7 +416,7 @@ def decode(
     # Peer-mode invariants are checked on the decoded list (spec
     # @specs/peer-dialogue.md §Invariants). They require symbol resolution to
     # have run, so they live here, not in the loader.
-    if table.mode == "peer":
+    if table.is_peer:
         _validate_peer(out)
     return out
 
@@ -494,31 +510,44 @@ def _validate_peer(decoded: list[DecodedTurn]) -> None:
         )
 
 
+def _peer_config_from_dict(raw: dict) -> PeerConfig:
+    """Build a :class:`PeerConfig` from a raw ``peer`` section dict.
+
+    The section's presence selects peer mode. Only the known modifier
+    ``on_divergence`` (default ``"fail"``) is read; an unknown key is a decode
+    error so future peer knobs are added deliberately, not silently ignored.
+    """
+    on_divergence = raw.get("on_divergence", "fail")
+    if on_divergence not in ("fail", "accept"):
+        raise DecodeError(
+            f"peer.on_divergence must be 'fail' or 'accept', got {on_divergence!r}"
+        )
+    unknown = set(raw) - {"on_divergence"}
+    if unknown:
+        raise DecodeError(f"unknown peer section keys: {sorted(unknown)!r}")
+    return PeerConfig(on_divergence=on_divergence)
+
+
 def load_table(raw: dict) -> DialogueTable:
-    """Parse a raw ``{script, turns[]}`` dict into a :class:`DialogueTable` (DDT-1).
+    """Parse a raw ``{script, turns[], peer?}`` dict into a :class:`DialogueTable`.
 
     ``notes`` are carried on each :class:`Turn` (the decoder ignores them) but
-    the structural fields are validated for shape here; symbol resolution happens
-    later in :func:`decode`. ``mode`` (default ``"ordered"``) and
-    ``on_divergence`` (default ``"fail"``) are the peer-run knobs (spec
-    ``@specs/peer-dialogue.md`` §The Table in Peer Mode); both are optional.
+    the structural fields are validated for shape here; symbol resolution
+    happens later in :func:`decode`. A ``peer`` section (optional) selects peer
+    mode and carries its modifiers (spec ``@specs/peer-dialogue.md`` §The Table
+    in Peer Mode); its presence is the mode selector — there is no top-level
+    ``mode`` field. Unknown keys inside ``peer`` are rejected.
     """
     if "script" not in raw or not isinstance(raw["script"], str):
         raise DecodeError("dialogue table missing string 'script'")
     if "turns" not in raw or not isinstance(raw["turns"], list):
         raise DecodeError("dialogue table missing list 'turns'")
-    mode = raw.get("mode", "ordered")
-    if mode not in ("ordered", "peer"):
-        raise DecodeError(f"table mode must be 'ordered' or 'peer', got {mode!r}")
-    on_divergence = raw.get("on_divergence", "fail")
-    if on_divergence not in ("fail", "accept"):
-        raise DecodeError(
-            f"on_divergence must be 'fail' or 'accept', got {on_divergence!r}"
-        )
+    peer_raw = raw.get("peer")
+    if peer_raw is not None:
+        if not isinstance(peer_raw, dict):
+            raise DecodeError("'peer' section must be an object")
+        peer = _peer_config_from_dict(peer_raw)
+    else:
+        peer = None
     turns = tuple(_turn_from_dict(t) for t in raw["turns"])
-    return DialogueTable(
-        script=raw["script"],
-        turns=turns,
-        mode=mode,
-        on_divergence=on_divergence,
-    )
+    return DialogueTable(script=raw["script"], turns=turns, peer=peer)

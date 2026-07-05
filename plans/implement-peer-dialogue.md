@@ -15,14 +15,16 @@ or `RunResult`.
 
 ### Phase 1 — Table regime + decode-time validation
 
-**1.1 Dialogue-table regime fields.** Extend the dialogue-table loader to read
-the regime declaration (peer mode) and the divergence policy
-(`on_divergence`, default `"fail"`). These are authoring knobs on the table;
-the loader resolves them into `run_peer` inputs. The runner never reads the
-raw table. → PDT-1.
+**1.1 Dialogue-table peer section.** Extend the dialogue-table loader to read
+an optional `peer` section. The section's presence selects peer mode (there
+is no top-level `mode` field); all peer modifiers live in it. The single
+modifier today is `on_divergence` (default `"fail"`). Unknown keys inside
+`peer` are a decode error. The loader resolves the section into a
+`PeerConfig` carried on `DialogueTable.peer` (None ⇒ ordered); the runner
+never reads the raw table. → PDT-1.
 
-**1.2 Decode-time peer validations.** When the table declares peer mode, the
-decode path validates: (a) the opening (`decoded[0]`) is a `T` row; (b) the
+**1.2 Decode-time peer validations.** When the table carries a `peer` section,
+the decode path validates: (a) the opening (`decoded[0]`) is a `T` row; (b) the
 opening and closing (`decoded[-1]`) are content-distinct — i.e.
 `(role, kline, significance)` differ. Violation raises a malformed-table
 error before any run begins. → PDT-3, PDT-4.
@@ -87,13 +89,16 @@ outbound delivery. → PDT-5 (Out of Scope: opening delivery).
 **4.1 `__init__` exports.** Export `run_peer`, `PeerRunner`, `PeerDivergence`,
 `PeerRunResult` from `training.dialogue`.
 
-**4.2 `scripts/dialogue_run.py` flag.** Add a `--peer` flag (and
-`--on-divergence {fail,accept}`) that, given a peer-mode table, constructs a
-`PeerRunner` and feeds it from the default actors' emissions. Because the
-default table-reading actors are pull-shaped, the script acts as the
-caller-bridge: it seeds the trainee with the opening, then pulls each actor
-in turn and pushes emissions into the runner until `complete`. This bridge is
-test/script wiring only — it does not belong in the runner.
+**4.2 `scripts/dialogue_run.py` regime dispatch.** The script is regime-
+agnostic: it reads `table.is_peer` and dispatches — a table with a `peer`
+section drives a `PeerRunner` (bridging the table-reading actors onto it), a
+table without drives the synchronous `run`. There are **no CLI flags** for the
+regime or peer modifiers; they are table-driven (`peer.on_divergence` comes
+from the section). Because the default table-reading actors are pull-shaped,
+the script acts as the caller-bridge for peer mode: it seeds the trainee with
+the trainer's opening (consumed positionally, never pushed to the sink), then
+pulls each actor in turn and pushes emissions into the runner until `complete`.
+This bridge is test/script wiring only — it does not belong in the runner.
 
 ## Test Mapping Table
 

@@ -29,9 +29,12 @@ _SCRIPT = "(alpha beta)\nA(=alpha)\nB(=beta)"
 
 
 def _peer_table(turns: list[dict], **extra) -> dict:
-    """Build a raw peer-mode table dict with the given turns."""
-    base = {"script": _SCRIPT, "turns": turns, "mode": "peer"}
-    base.update(extra)
+    """Build a raw peer-mode table dict with the given turns.
+
+    A ``peer`` section (present) selects peer mode; its modifiers come from
+    ``extra`` (e.g. ``on_divergence="accept"``)."""
+    peer = dict(extra)
+    base = {"script": _SCRIPT, "turns": turns, "peer": peer}
     return base
 
 
@@ -47,35 +50,54 @@ def _decode(table_dict: dict):
 # ── PDT-1: table regime fields ────────────────────────────────────────────
 
 
-def test_default_mode_is_ordered():
-    """PDT-1: a table without ``mode`` defaults to ``ordered`` (synchronous run)."""
+def test_table_without_peer_section_is_ordered():
+    """PDT-1: a table with no ``peer`` section is ordered (synchronous run)."""
     table = load_table({"script": _SCRIPT, "turns": [_identity("T", "A")]})
-    assert table.mode == "ordered"
-    assert table.on_divergence == "fail"  # default
+    assert not table.is_peer
+    assert table.peer is None
 
 
-def test_peer_mode_and_on_divergence_round_trip():
-    """PDT-1: ``mode`` and ``on_divergence`` are parsed and carried on the table."""
+def test_peer_section_selects_peer_mode():
+    """PDT-1: a ``peer`` section (even empty) selects peer mode."""
+    table = load_table(
+        {"script": _SCRIPT, "turns": [_identity("T", "A")], "peer": {}}
+    )
+    assert table.is_peer
+    assert table.peer is not None
+    assert table.peer.on_divergence == "fail"  # default
+
+
+def test_peer_on_divergence_round_trips():
+    """PDT-1: ``peer.on_divergence`` is parsed and carried on the PeerConfig."""
     table = load_table(
         _peer_table(
             [_identity("T", "A"), _identity("K", "A"), _identity("T", "B", "S1")],
             on_divergence="accept",
         )
     )
-    assert table.mode == "peer"
-    assert table.on_divergence == "accept"
-
-
-def test_loader_rejects_bad_mode():
-    with pytest.raises(DecodeError):
-        load_table({"script": _SCRIPT, "turns": [], "mode": "bogus"})
+    assert table.is_peer
+    assert table.peer is not None
+    assert table.peer.on_divergence == "accept"
 
 
 def test_loader_rejects_bad_on_divergence():
     with pytest.raises(DecodeError):
         load_table(
-            {"script": _SCRIPT, "turns": [], "mode": "peer", "on_divergence": "maybe"}
+            {"script": _SCRIPT, "turns": [], "peer": {"on_divergence": "maybe"}}
         )
+
+
+def test_loader_rejects_unknown_peer_keys():
+    """PDT-1: unknown keys inside the ``peer`` section are a decode error."""
+    with pytest.raises(DecodeError, match="unknown peer"):
+        load_table(
+            {"script": _SCRIPT, "turns": [], "peer": {"bogus": True}}
+        )
+
+
+def test_loader_rejects_non_object_peer_section():
+    with pytest.raises(DecodeError):
+        load_table({"script": _SCRIPT, "turns": [], "peer": "not-an-object"})
 
 
 # ── PDT-3: three zones ──────────────────────────────────────────────────────

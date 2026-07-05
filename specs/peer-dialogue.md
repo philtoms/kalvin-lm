@@ -24,11 +24,23 @@ content-equality notion of a match; they differ in control regime.
 
 ## The Table in Peer Mode
 
-A `DialogueTable` declares its run regime. The synchronous regime is the
-default; a peer-mode table declares peer mode and a divergence policy. The
-authoring knobs live on the table; the loader resolves them into `run_peer`
-inputs. The runner itself is format-agnostic (it consumes `DecodedTurn`s, not
-the raw table).
+A `DialogueTable` declares its run regime via an optional **`peer` section**:
+a table carrying a `peer` section is in peer mode; a table without one is in
+the default ordered (synchronous) regime. There is no top-level `mode` field —
+the section's presence *is* the selector. **All peer operations and modifiers
+live in the `peer` section** (so future peer knobs extend it without touching
+the rest of the table); the runner is format-agnostic and consumes
+`DecodedTurn`s, not the raw table. The loader resolves the section into
+`run_peer` inputs.
+
+The single peer modifier today is:
+
+```
+peer:
+  on_divergence: "fail" | "accept"   # default "fail"
+```
+
+Unknown keys inside `peer` are a decode error.
 
 The `turns` of a peer-mode table are an ordered list that documents **cause and
 effect** (a ratification follows its proposal, an identity supply follows its
@@ -185,7 +197,7 @@ table-ordered — a deliberate difference from the synchronous `RunResult.events
 
 | ID    | Criterion                                                                                                                                                                                      | Origin ref        |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| PDT-1 | A `DialogueTable` declares its run regime; a peer-mode table declares peer mode and a divergence policy, resolved by the loader into `run_peer` inputs; the runner consumes `DecodedTurn`s, not the raw table | §The Table in Peer Mode |
+| PDT-1 | A `DialogueTable` carries an optional `peer` section whose presence selects peer mode (no top-level `mode` field); all peer modifiers live in it; the loader resolves them into `run_peer` inputs; unknown `peer` keys are a decode error; the runner consumes `DecodedTurn`s, not the raw table | §The Table in Peer Mode |
 | PDT-2 | The `turns` of a peer-mode table are an ordered list documenting cause and effect; that order is not enforced within the middle by the runner                                                  | §The Table in Peer Mode |
 | PDT-3 | A peer-mode decoded table has three zones: opening (`decoded[0]`, first, positional, trainer), middle (`decoded[1:-1]`, coverage set), closing (`decoded[-1]`, last, positional)               | §Zones            |
 | PDT-4 | The opening is a trainer row; the closing is content-distinct from the opening **and** from every middle row; a table violating any is malformed at decode time                                                                | §Invariants       |

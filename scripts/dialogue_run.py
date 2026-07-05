@@ -1,20 +1,25 @@
 """Run a dialogue end-to-end through the table-reading trainer and trainee.
 
-Loads a dialogue table, decodes it, drives the bus-agnostic runner
-(:func:`training.dialogue.run`) with a fresh :class:`TableTrainer` and
-:class:`TableTrainee`, and prints a PASS/FAIL summary. With ``--verbose`` it
-traces the interleaved T/K exchange.
+Loads a dialogue table, decodes it, and drives it to completion. The **table
+selects the run regime**: a table with no ``peer`` section drives the
+bus-agnostic ordered runner (:func:`training.dialogue.run`) with a fresh
+:class:`TableTrainer` and :class:`TableTrainee`; a table carrying a ``peer``
+section drives the sink-shaped :class:`PeerRunner`, bridging the table-reading
+actors onto it. There are no CLI flags for the regime or peer modifiers —
+they live in the table. Prints a PASS/FAIL summary; with ``--verbose`` it
+traces the exchange.
 
-With ``--rationalise`` the trainee is a :class:`RationalisingTrainee` — a real,
-stateful, rationalising trainee and drop-in ``TableTrainee`` replacement —
-while the trainer stays a ``TableTrainer`` (the deterministic oracle). With
-``--synthesize`` the trainer is a :class:`SynthesizingTrainer` — a real
-trainer that derives each turn from the compiled script — while the trainee
-stays a ``TableTrainee``. The two flags are orthogonal: passing both runs the
-two real actors against the same golden master.
+For an ordered table, ``--rationalise`` substitutes a
+:class:`RationalisingTrainee` (a real, stateful, rationalising trainee) for the
+default ``TableTrainee``, and ``--synthesize`` substitutes a
+:class:`SynthesizingTrainer` (a real trainer that derives each turn from the
+compiled script) for the default ``TableTrainer``. The two flags are
+orthogonal: passing both runs the two real actors against the same golden
+master. These flags apply to ordered tables only; a peer table uses the
+table-reading actors as the bridge.
 
-The runner is bus-agnostic: there is no harness message bus and no adapter here.
-Bus integration arrives with the real actors.
+The runner is bus-agnostic: there is no harness message bus and no adapter
+here. Bus integration arrives with the real actors.
 
 Usage::
 
@@ -24,6 +29,7 @@ Usage::
     python scripts/dialogue_run.py --rationalise               # RationalisingTrainee
     python scripts/dialogue_run.py --synthesize                # SynthesizingTrainer
     python scripts/dialogue_run.py --synthesize --rationalise  # both real actors
+    # A peer-mode table (one with a "peer" section) runs through PeerRunner.
 
 Exit code is 0 on a completing run (table exhausted), 1 on an actor divergence
 or incomplete run.
@@ -222,22 +228,6 @@ def main(argv: list[str] | None = None) -> int:
             "Orthogonal to --rationalise."
         ),
     )
-    parser.add_argument(
-        "--peer",
-        action="store_true",
-        help=(
-            "Run in peer mode: a sink that receives the default actors' emissions "
-            "after the opening. Overrides --synthesize/--rationalise (peer mode "
-            "uses the table-reading actors as the bridge). The table must declare "
-            "peer mode."
-        ),
-    )
-    parser.add_argument(
-        "--on-divergence",
-        choices=("fail", "accept"),
-        default="fail",
-        help="Peer-mode divergence policy (default: fail). Ignored without --peer.",
-    )
     args = parser.parse_args(argv)
 
     dialogue_path = args.dialogue
@@ -247,34 +237,34 @@ def main(argv: list[str] | None = None) -> int:
     table = load_table(json.loads(Path(dialogue_path).read_text()))
     decoded = decode(table, tokenizer=tok, signifier=sigf)
 
-    # Peer mode: bridge the default actors onto the peer sink. The --peer flag
-    # overrides --synthesize/--rationalise (the bridge uses the table-reading
-    # actors). The table must declare peer mode for this to be meaningful.
-    if args.peer:
-        if table.mode != "peer":
-            print(
-                f"FAIL — --peer requires a peer-mode table (got mode={table.mode!r}).",
-                file=sys.stderr,
-            )
-            return 1
+    # The table selects the run regime: a ``peer`` section drives the sink-
+    # shaped PeerRunner (bridging the table-reading actors onto it); no ``peer``
+    # section drives the synchronous ordered run. The regime is table-driven —
+    # there are no CLI flags for it. Peer modifiers (on_divergence) come from
+    # the peer section.
+    if table.is_peer:
+        assert table.peer is not None  # narrowed by is_peer
         trainer_actor: Actor = TableTrainer(decoded)
         trainee_actor: Actor = TableTrainee(decoded)
         try:
             runner = _run_peer_with_default_actors(
-                decoded, trainer_actor, trainee_actor, on_divergence=args.on_divergence
+                decoded,
+                trainer_actor,
+                trainee_actor,
+                on_divergence=table.peer.on_divergence,
             )
         except PeerDivergence as exc:
             print(
                 f"FAIL — {exc.role} divergence: emitted {_label_of(exc.emitted)} "
-                f"(sig={exc.emitted.significance:#x}) matches no unconsumed "
-                f"same-role row ({len(exc.unconsumed)} outstanding).",
+                f"(sig={exc.emitted.significance:#x}) matches no closing or "
+                f"middle content ({len(exc.unconsumed)} uncovered same-role).",
                 file=sys.stderr,
             )
             return 1
         res = runner.result
         print(
             f"Peer dialogue session: {dialogue_path}\n"
-            f"  on divergence       : {args.on_divergence}\n"
+            f"  on divergence       : {table.peer.on_divergence}\n"
             f"  events received     : {len(res.events)}\n"
             f"  complete            : {res.complete}\n"
             f"  covered (middle)    : {res.covered}\n"
