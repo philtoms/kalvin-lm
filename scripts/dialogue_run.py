@@ -132,69 +132,6 @@ def _summary(
     return header
 
 
-def _run_peer_with_default_actors(
-    decoded,
-    trainer: Actor,
-    trainee: Actor,
-    *,
-    on_divergence: str,
-):
-    """Bridge the pull-shaped default actors onto the peer sink (script wiring).
-
-    The peer runner is a pure sink: the caller delivers the opening to the
-    trainee and then pushes emissions into it. The default actors are
-    pull-shaped (``respond``), so this helper acts as the caller-bridge. The
-    trainer speaks the opening (``trainer.respond(None)`` — its first row is the
-    opening T-row, per the decode-time invariant); that opening is handed to the
-    trainee as its incoming event and is **not** pushed to the sink (it is
-    consumed positionally, before any emission reaches the sink). The trainee's
-    response is the first peer emission; from there the two actors alternate,
-    each pulled with the other's last event as incoming, and each emission
-    pushed into the sink until the runner completes or both actors exhaust.
-
-    This bridge is wiring only — the sink behaviour itself lives in
-    ``PeerRunner``.
-    """
-    runner = run_peer(decoded, on_divergence=on_divergence)
-
-    # The trainer speaks the opening. Its first row is the opening T-row (the
-    # decode-time invariant guarantees it); we pull it once and hand it to the
-    # trainee as the trainee's first incoming event. The opening is consumed
-    # positionally — it never reaches the sink.
-    opening_event = trainer.respond(None)
-    if opening_event is None:  # pragma: no cover - defensive: a peer table has a T-row
-        return runner
-
-    incoming = opening_event
-    # The trainee responds first (it just received the opening); then trainer,
-    # trainee, ... Each emission is pushed to the sink.
-    actors: list[Actor] = [trainee, trainer]
-    idx = 0
-    # Safety bound: well-formed peer runs terminate when the runner completes;
-    # the cap guards a pathological actor that never exhausts against an
-    # incomplete table.
-    max_steps = 4 * len(decoded) + 16
-    steps = 0
-    while not runner.complete and steps < max_steps:
-        actor = actors[idx % len(actors)]
-        event = actor.respond(incoming)
-        if event is None:
-            # This actor is exhausted; try the other. If both exhaust without
-            # completion, the run is incomplete.
-            other = actors[(idx + 1) % len(actors)]
-            if other is actor:
-                break
-            event = other.respond(incoming)
-            if event is None:
-                break
-            idx += 1  # consumed the other's turn too
-        runner.receive(event)
-        incoming = event
-        idx += 1
-        steps += 1
-    return runner
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run a dialogue end-to-end through the table-reading actors."
@@ -247,12 +184,13 @@ def main(argv: list[str] | None = None) -> int:
         trainer_actor: Actor = TableTrainer(decoded)
         trainee_actor: Actor = TableTrainee(decoded)
         try:
-            runner = _run_peer_with_default_actors(
+            runner = run_peer(
                 decoded,
                 trainer_actor,
                 trainee_actor,
                 on_divergence=table.peer.on_divergence,
             )
+            res = runner.run()
         except PeerDivergence as exc:
             print(
                 f"FAIL — {exc.role} divergence: emitted {_label_of(exc.emitted)} "
@@ -261,7 +199,6 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
-        res = runner.result
         print(
             f"Peer dialogue session: {dialogue_path}\n"
             f"  on divergence       : {table.peer.on_divergence}\n"

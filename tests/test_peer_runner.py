@@ -1,12 +1,14 @@
-"""Phase 3 — the PeerRunner sink: matching, completion, divergence, anticipation.
+"""Phase 3 — the PeerRunner as a MessageBus subscriber.
 
-Spec: ``@specs/peer-dialogue.md`` PDT-5..PDT-13. The runner is a sink that
-receives emissions, validates each against the unconsumed same-role middle
-rows by content (duplicates collapse), watches for the closing, and reports
-completion. It carries no actor-coupling state.
+Spec: ``@specs/peer-dialogue.md`` PDT-5..PDT-19. The runner is a coverage-
+tracking wildcard subscriber over a ``MessageBus`` (the sink + relay), plus a
+driver that seeds the opening and runs the bus until the closing is seen.
+Actors reply fire-and-forget via the bus; no synchronised alternation;
+anticipation and interjection are first-class.
 
-Tests build a small decoded peer table by hand (bypassing the script decoder)
-and push emissions in various orders.
+Tests use a :class:`_ScriptedActor` that emits scripted **bursts** of replies
+(one burst per ``accept``, each burst a list of events), giving deterministic
+control over the messy relay including zero-or-many replies per accept.
 """
 
 from __future__ import annotations
@@ -24,11 +26,7 @@ from training.dialogue.peer_runner import (
     run_peer,
 )
 
-# ── Fixtures: hand-built decoded turns ────────────────────────────────────
-#
-# Each turn is a (role, sig, significance) triple. The kline is a bare
-# identity (sig, no nodes) so two turns differ iff their (role, sig, sig-band)
-# triple differs — exactly the content-key axes the matcher uses.
+# ── Fixtures ──────────────────────────────────────────────────────────────
 
 
 def _kv(sig: int, band: int) -> KValue:
@@ -50,246 +48,325 @@ def _decoded(
     middles: list[tuple[str, int, int]],
     closing: tuple[str, int, int],
 ) -> list[DecodedTurn]:
-    rows = [_turn(*opening)] + [_turn(*m) for m in middles] + [_turn(*closing)]
-    return rows
+    return [_turn(*opening)] + [_turn(*m) for m in middles] + [_turn(*closing)]
 
 
-# ── PDT-5: sink contract ──────────────────────────────────────────────────
+def _bursts(*events: RationaliseEvent) -> list[list[RationaliseEvent]]:
+    """Wrap each event as its own single-event burst (one reply per accept)."""
+    return [[e] for e in events]
 
 
-def test_runner_exposes_receive_complete_result():
-    """PDT-5: the sink exposes receive(), complete, result; no driver methods."""
-    runner = run_peer(_decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)))
-    assert callable(runner.receive)
-    assert hasattr(runner, "complete")
-    assert hasattr(runner, "result")
-    # No respond() / driver-style entry points.
-    assert not hasattr(runner, "respond")
+class _ScriptedActor:
+    """An actor that emits scripted bursts of replies across ``accept``.
+
+    Each ``accept`` consumes the next burst (a list of events) and emits every
+    event in it via the sink — modelling zero-or-many replies per accept. When
+    the burst list is exhausted, ``accept`` replies zero times.
+    """
+
+    def __init__(self, role: str, bursts: list[list[RationaliseEvent]]):
+        self._role = cast(Role, role)
+        self._bursts = [list(b) for b in bursts]
+        self._i = 0
+
+    @property
+    def role(self) -> str:
+        return self._role
+
+    def accept(self, event, sink) -> None:  # type: ignore[no-untyped-def]
+        if self._i >= len(self._bursts):
+            return  # exhausted — reply zero times
+        burst = self._bursts[self._i]
+        self._i += 1
+        from training.harness.message import Message
+
+        for reply in burst:
+            sink.send(Message(role=self._role, action="accept", message=reply))
 
 
-def test_run_peer_validates_on_divergence_value():
-    with pytest.raises(ValueError):
-        run_peer(_decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)), on_divergence="bogus")
-
-
-def test_run_peer_rejects_too_few_turns():
-    with pytest.raises(ValueError):
-        run_peer([_turn("T", 1, 1)])
-
-
-# ── PDT-6: coverage bookkeeping only ──────────────────────────────────────
-
-
-def test_runner_tracks_coverage_not_actor_state():
-    """PDT-6: the runner has no per-actor cursors / turn tracking attributes."""
-    runner = run_peer(_decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)))
-    # Only coverage bookkeeping should be present; no actor-coupling state.
-    for attr in ("_cursor", "_turn", "_actor", "_next_role", "_pacing"):
-        assert not hasattr(runner, attr), f"runner has actor-coupling attr {attr!r}"
-
-
-# ── PDT-7/PDT-8: content matching + duplicate collapse ────────────────────
-
-
-def test_emission_matching_middle_consumes_it():
-    """PDT-7: an emission matching an unconsumed same-role middle row consumes it."""
-    runner = run_peer(_decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9)))
-    runner.receive(_ev("K", 2, 2))
-    assert not runner.complete  # closing + one middle still outstanding
-    runner.receive(_ev("T", 3, 3))
-    assert not runner.complete  # closing still outstanding
-    runner.receive(_ev("T", 9, 9))  # closing
-    assert runner.complete
-
-
-def test_duplicate_rows_collapse_to_one_covered_entry():
-    """PDT-8: duplicate table rows collapse to one distinct content, covered on
-    first match; re-emitting that content is idempotent — not divergence."""
+def _run(
+    decoded: list[DecodedTurn],
+    trainer_bursts: list[list[RationaliseEvent]],
+    trainee_bursts: list[list[RationaliseEvent]],
+    *,
+    on_divergence: str = "fail",
+    idle_timeout: float = 1.0,
+):
+    """Construct actors + runner and drive to completion."""
+    trainer = _ScriptedActor("T", trainer_bursts)
+    trainee = _ScriptedActor("K", trainee_bursts)
     runner = run_peer(
-        _decoded(("T", 1, 1), [("K", 2, 2), ("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
+        decoded,
+        trainer,
+        trainee,
+        on_divergence=on_divergence,
+        idle_timeout=idle_timeout,
     )
-    runner.receive(_ev("K", 2, 2))  # first emission covers the distinct K(2,2)
-    runner.receive(_ev("K", 2, 2))  # re-emission: idempotent, not divergence
-    runner.receive(_ev("T", 3, 3))
-    runner.receive(_ev("T", 9, 9))
-    res = runner.result
+    return runner, runner.run()
+
+
+# ── PDT-5/PDT-6: bus subscriber, coverage-only state ─────────────────────
+
+
+def test_runner_drives_to_completion_via_bus():
+    """PDT-5: the runner drives the bus; opening seeds, replies relay, closing
+    terminates. Trainer opens, trainee covers the middle, trainer closes."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        # T opens, then (after K's turn) closes.
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        trainee_bursts=_bursts(_ev("K", 2, 2)),
+    )
     assert res.complete
     assert res.covered
-    assert res.unmatched == []  # the re-emission was not recorded as unmatched
 
 
-def test_role_mismatch_is_not_a_match():
-    """PDT-7: matching is same-role; a K emission of T-content does not consume it."""
+def test_runner_holds_no_actor_coupling_state():
+    """PDT-6: the runner has no per-actor cursors / turn tracking."""
     runner = run_peer(
-        _decoded(("T", 1, 1), [("T", 3, 3)], ("T", 9, 9)), on_divergence="accept"
+        _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)),
+        _ScriptedActor("T", []),
+        _ScriptedActor("K", []),
     )
-    runner.receive(_ev("K", 3, 3))  # wrong role → divergence (accept-mode records)
-    res = runner.result
+    for attr in ("_cursor", "_turn", "_next_role", "_pacing", "_whos_turn"):
+        assert not hasattr(runner, attr)
+
+
+# ── PDT-7/PDT-8: content matching + idempotent coverage ──────────────────
+
+
+def test_middle_emission_marks_covered():
+    """PDT-7: an emission matching a distinct middle content marks it covered."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        # T opens, covers its middle T(3,3), then closes (3 accept calls).
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
+        # K covers its middle K(2,2), then re-emits to give T its closing turn.
+        trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
+    )
+    assert res.covered
+    assert res.complete
+
+
+def test_duplicate_middle_content_collapses_idempotently():
+    """PDT-8: duplicate table rows collapse to one distinct content; re-emitting
+    covered content is not divergence."""
+    decoded = _decoded(
+        ("T", 1, 1), [("K", 2, 2), ("K", 2, 2), ("T", 3, 3)], ("T", 9, 9)
+    )
+    runner, res = _run(
+        decoded,
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
+        # K emits K(2,2) twice (table has it twice) — idempotent, not divergence.
+        trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
+    )
+    assert res.complete
+    assert res.unmatched == []
+
+
+def test_role_mismatch_is_divergence():
+    """PDT-7: matching is same-role; a K emission whose content matches a T-only
+    middle has a different (role,kline,sig) key → divergence."""
+    decoded = _decoded(("T", 1, 1), [("T", 3, 3)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        # K emits K(3,3): content is T-only → no same-role match → unmatched.
+        trainee_bursts=_bursts(_ev("K", 3, 3)),
+        on_divergence="accept",
+    )
     assert len(res.unmatched) == 1
 
 
 # ── PDT-9: divergence policy ──────────────────────────────────────────────
 
 
-def test_divergence_fail_raises_with_unconsumed_context():
-    """PDT-9: on_divergence='fail' raises PeerDivergence naming role + unconsumed."""
-    runner = run_peer(
-        _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)), on_divergence="fail"
-    )
+def test_divergence_fail_raises_on_caller_thread():
+    """PDT-9: on_divergence='fail' raises PeerDivergence on the caller's thread
+    (captured from the bus dispatch thread and re-raised by run())."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
+    trainer = _ScriptedActor("T", _bursts(_ev("T", 1, 1), _ev("T", 9, 9)))
+    trainee = _ScriptedActor("K", _bursts(_ev("K", 99, 99)))  # nothing matches
+    runner = run_peer(decoded, trainer, trainee, on_divergence="fail", idle_timeout=1.0)
     with pytest.raises(PeerDivergence) as exc_info:
-        runner.receive(_ev("K", 99, 99))  # nothing outstanding for K(99,99)
-    err = exc_info.value
-    assert err.role == "K"
-    # The unconsumed same-role (K) rows at the moment of divergence.
-    assert any(t.role == "K" and t.value.kline.signature == 2 for t in err.unconsumed)
+        runner.run()
+    assert exc_info.value.role == "K"
 
 
 def test_divergence_accept_records_and_continues():
     """PDT-9: on_divergence='accept' records to unmatched and continues."""
-    runner = run_peer(
-        _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)), on_divergence="accept"
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        # K emits off-script K(99) then legit K(2,2).
+        trainee_bursts=_bursts(_ev("K", 99, 99), _ev("K", 2, 2)),
+        on_divergence="accept",
     )
-    runner.receive(_ev("K", 99, 99))  # off-script
-    runner.receive(_ev("K", 2, 2))     # legitimate middle
-    runner.receive(_ev("T", 9, 9))     # closing
-    res = runner.result
-    assert res.complete is True
+    assert res.complete
     assert len(res.unmatched) == 1
     assert res.unmatched[0].proposal.kline.signature == 99
 
 
-# ── PDT-10: closing ───────────────────────────────────────────────────────
+# ── PDT-10/PDT-13: closing + completion ───────────────────────────────────
 
 
-def test_closing_emission_marks_closing_seen():
-    """PDT-10/PDT-13: an emission equal to closing content marks closing-seen,
-    and closing-seen alone is completion."""
-    runner = run_peer(_decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)))
-    assert not runner.complete
-    runner.receive(_ev("T", 9, 9))  # closing
-    assert runner.complete  # completion is closing-seen only
-    assert not runner.covered  # middle not seen → coverage diagnostic is False
+def test_closing_emission_completes_run():
+    """PDT-10/PDT-13: the closing emission marks closing-seen = completion."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        trainee_bursts=_bursts(_ev("K", 2, 2)),
+    )
+    assert res.complete
 
 
 def test_extreme_anticipation_closing_first_is_complete():
-    """PDT-13: closing-first is technically complete (extreme anticipation).
-    Rare in practice; ``covered`` reports the inefficiency (zero middle seen)."""
-    runner = run_peer(
-        _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
+    """PDT-13: closing-first is technically complete. The trainer emits opening
+    AND closing in a single accept burst (anticipates past the whole middle)."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        # T opens and closes in one burst — zero-or-many replies per accept.
+        trainer_bursts=[[_ev("T", 1, 1), _ev("T", 9, 9)]],
+        trainee_bursts=[],
     )
-    runner.receive(_ev("T", 9, 9))  # closing, before any middle
-    assert runner.complete
-    assert not runner.covered  # no middle seen
-
-
-def test_closing_recognized_regardless_of_middle_order():
-    """PDT-10: the closing is recognized whenever its content arrives; the
-    decode-time invariant guarantees the closing content cannot collide with a
-    middle row, so no closing-vs-middle precedence question arises at the runner."""
-    runner = run_peer(
-        _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
-    )
-    runner.receive(_ev("T", 9, 9))  # closing first
-    runner.receive(_ev("T", 3, 3))
-    runner.receive(_ev("K", 2, 2))
-    assert runner.complete
-
-
-# ── PDT-11/PDT-12: anticipation (permitted, unflagged, middle-only) ────────
-
-
-def test_anticipation_in_middle_is_permitted_and_unflagged():
-    """PDT-11: an actor may emit ahead of the authored causal order; it's a
-    normal match, not divergence, not flagged. Here the trainer emits its
-    second middle turn before the trainee emits its first."""
-    runner = run_peer(
-        _decoded(
-            ("T", 1, 1),
-            [("K", 2, 2), ("T", 3, 3)],  # authored order: K then T
-            ("T", 9, 9),
-        )
-    )
-    # Anticipate: T emits its middle before K does.
-    runner.receive(_ev("T", 3, 3))
-    runner.receive(_ev("K", 2, 2))
-    runner.receive(_ev("T", 9, 9))
-    res = runner.result
     assert res.complete
-    assert res.unmatched == []  # anticipation is not recorded as unmatched
+    assert not res.covered  # middle unseen → coverage diagnostic False
 
 
-def test_out_of_order_completion_is_valid():
-    """PDT-11/PDT-13: the middle can be consumed in any order; completion holds."""
-    runner = run_peer(
-        _decoded(
-            ("T", 1, 1),
-            [("K", 2, 2), ("T", 3, 3), ("K", 4, 4)],
-            ("T", 9, 9),
-        )
+def test_no_closing_means_incomplete():
+    """PDT-13/PDT-19: without the closing, the run stalls → incomplete."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        trainer_bursts=_bursts(_ev("T", 1, 1)),  # opens but never closes
+        trainee_bursts=_bursts(_ev("K", 2, 2)),
+        idle_timeout=0.5,
     )
-    # Fully scrambled middle order.
-    runner.receive(_ev("K", 4, 4))
-    runner.receive(_ev("T", 3, 3))
-    runner.receive(_ev("K", 2, 2))
-    runner.receive(_ev("T", 9, 9))
-    assert runner.complete
-
-
-# ── PDT-13: completion ────────────────────────────────────────────────────
-
-
-def test_completion_is_closing_seen_only():
-    """PDT-13: complete = closing-seen. Middle coverage is a separate diagnostic."""
-    runner = run_peer(
-        _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
-    )
-    # Middle fully covered, closing not seen.
-    runner.receive(_ev("K", 2, 2))
-    runner.receive(_ev("T", 3, 3))
-    assert not runner.complete
-    assert runner.covered is True  # diagnostic: middle fully seen
-    # Closing arrives → complete.
-    runner.receive(_ev("T", 9, 9))
-    assert runner.complete
-
-
-def test_coverage_is_independent_of_completion():
-    """PDT-13: a run may be covered but incomplete (closing not seen), or
-    complete but uncovered (closing-first). A non-table emission is still
-    divergence regardless of coverage state."""
-    runner = run_peer(
-        _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)), on_divergence="accept"
-    )
-    runner.receive(_ev("K", 2, 2))  # middle covered
-    assert runner.covered is True
-    assert not runner.complete  # closing not seen → not complete
-    runner.receive(_ev("K", 50, 50))  # content in no table → unmatched
-    res = runner.result
     assert not res.complete
-    assert len(res.unmatched) == 1
+    assert res.covered  # middle covered, but closing never arrived
 
 
-def test_result_uncovered_reports_outstanding_middle():
-    """PDT-15/PDT-13: uncovered lists distinct middle rows never consumed."""
-    runner = run_peer(
-        _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
+# ── PDT-11/PDT-12: anticipation + interjection ───────────────────────────
+
+
+def test_anticipation_permitted_and_unflagged():
+    """PDT-11: the trainer emits its middle before the authored causal order;
+    a normal match, not divergence."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        # T opens, emits its middle T(3,3) early, then closes.
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
+        trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
     )
-    runner.receive(_ev("K", 2, 2))
-    res = runner.result
-    assert any(t.role == "T" and t.value.kline.signature == 3 for t in res.uncovered)
-    assert not any(t.role == "K" and t.value.kline.signature == 2 for t in res.uncovered)
+    assert res.complete
+    assert res.unmatched == []
 
 
-# ── PDT-15: arrival-ordered events ─────────────────────────────────────────
+def test_interjection_permitted():
+    """PDT-11: an actor may emit extra covered content (interjection);
+    idempotent coverage, not divergence."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        # K interjects K(2,2) twice (more than the table has).
+        trainee_bursts=[[_ev("K", 2, 2), _ev("K", 2, 2)]],
+    )
+    assert res.complete
+    assert res.unmatched == []
+
+
+# ── PDT-18: no synchronised alternation, route-to-other ───────────────────
+
+
+def test_zero_replies_then_burst_relayed_correctly():
+    """PDT-18: an actor may reply zero-or-many per accept; the bus relays each.
+    Here the trainee replies zero, and the trainer emits opening + middle +
+    closing in a single accept burst — terminating the run without the trainee
+    ever emitting (extreme trainer autonomy)."""
+    decoded = _decoded(("T", 1, 1), [("T", 3, 3)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        # T emits everything in its opening accept: open, middle, close.
+        trainer_bursts=[[_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)]],
+        # K never emits — but T's burst self-terminates via the closing.
+        trainee_bursts=[[]],
+    )
+    assert res.complete
+    assert res.covered
+
+
+# ── PDT-19: idle timeout ──────────────────────────────────────────────────
+
+
+def test_idle_timeout_ends_stalled_run_as_incomplete():
+    """PDT-19: silence before the closing → idle timeout → complete=False
+    (non-fatal, surfaced in result)."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        trainer_bursts=_bursts(_ev("T", 1, 1)),  # opens, then both go silent
+        trainee_bursts=_bursts(_ev("K", 2, 2)),
+        idle_timeout=0.3,
+    )
+    assert not res.complete  # stalled
+    assert res.covered
+
+
+# ── PDT-15: arrival-ordered events + diagnostics ──────────────────────────
 
 
 def test_result_events_are_arrival_ordered():
-    """PDT-15: events are in arrival order, not table order."""
-    runner = run_peer(
-        _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
+    """PDT-15: events are in arrival order (bus delivery order); opening first."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
+        trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
     )
-    runner.receive(_ev("T", 3, 3))
-    runner.receive(_ev("K", 2, 2))
-    runner.receive(_ev("T", 9, 9))
-    res = runner.result
-    assert [e.proposal.kline.signature for e in res.events] == [3, 2, 9]
+    sigs = [e.proposal.kline.signature for e in res.events]
+    assert sigs[0] == 1  # opening first
+    assert 9 in sigs  # closing present
+
+
+def test_result_uncovered_reports_unseen_middle():
+    """PDT-15: uncovered lists distinct middle contents never seen."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        # T opens and closes immediately; middle never covered.
+        trainer_bursts=[[_ev("T", 1, 1), _ev("T", 9, 9)]],
+        trainee_bursts=[],
+    )
+    assert res.complete
+    assert not res.covered
+    uncovered_sigs = {t.value.kline.signature for t in res.uncovered}
+    assert {2, 3} <= uncovered_sigs
+
+
+# ── Construction validation ───────────────────────────────────────────────
+
+
+def test_run_peer_validates_on_divergence():
+    with pytest.raises(ValueError):
+        run_peer(
+            _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)),
+            _ScriptedActor("T", []),
+            _ScriptedActor("K", []),
+            on_divergence="bogus",
+        )
+
+
+def test_run_peer_rejects_too_few_turns():
+    with pytest.raises(ValueError):
+        run_peer(
+            [_turn("T", 1, 1)],
+            _ScriptedActor("T", []),
+            _ScriptedActor("K", []),
+        )

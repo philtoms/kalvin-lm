@@ -131,6 +131,28 @@ class _TableActor:
             kind=self._kind, query=query, proposal=turn.value, role=self._role
         )
 
+    # ── Peer regime (spec @specs/peer-dialogue.md §Actor contract) ────────
+    #
+    # ``accept`` is a thin adapter over the same cursor logic as ``respond``:
+    # it emits the next row (if any) via the sink, addressed to the other
+    # role by the sink wrapper. Fire-and-forget; zero-or-one reply per call
+    # for the table-reading doubles (real actors may reply zero-or-many).
+    # ``respond`` is unchanged for the ordered regime.
+
+    def accept(self, incoming: RationaliseEvent | None, sink) -> None:
+        nxt = self._index + 1
+        if nxt >= len(self._rows):
+            return  # exhausted — reply zero times
+        self._index = nxt
+        turn = self._rows[nxt]
+        query = incoming.proposal if incoming is not None else turn.value
+        event = RationaliseEvent(
+            kind=self._kind, query=query, proposal=turn.value, role=self._role
+        )
+        from training.harness.message import Message
+
+        sink.send(Message(role=self._role, action="accept", message=event))
+
 
 class TableTrainer(_TableActor):
     """The default trainer: yields the table's T-rows in order.
