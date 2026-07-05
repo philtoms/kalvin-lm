@@ -59,29 +59,29 @@ def _bursts(*events: RationaliseEvent) -> list[list[RationaliseEvent]]:
 class _ScriptedActor:
     """An actor that emits scripted bursts of replies across ``accept``.
 
-    Each ``accept`` consumes the next burst (a list of events) and emits every
+    Holds a sink (injected at construction, as KAgent holds an adapter). Each
+    ``accept`` consumes the next burst (a list of events) and publishes every
     event in it via the sink — modelling zero-or-many replies per accept. When
     the burst list is exhausted, ``accept`` replies zero times.
     """
 
-    def __init__(self, role: str, bursts: list[list[RationaliseEvent]]):
+    def __init__(self, role: str, bursts: list[list[RationaliseEvent]], sink=None):
         self._role = cast(Role, role)
         self._bursts = [list(b) for b in bursts]
         self._i = 0
+        self._sink = sink
 
     @property
     def role(self) -> str:
         return self._role
 
-    def accept(self, event, sink) -> None:  # type: ignore[no-untyped-def]
-        if self._i >= len(self._bursts):
-            return  # exhausted — reply zero times
+    def accept(self, event) -> None:  # type: ignore[no-untyped-def]
+        if self._i >= len(self._bursts) or self._sink is None:
+            return  # exhausted or no sink — reply zero times
         burst = self._bursts[self._i]
         self._i += 1
-        from training.harness.message import Message
-
         for reply in burst:
-            sink.send(Message(role=self._role, action="accept", message=reply))
+            self._sink.on_event(reply)
 
 
 def _run(
@@ -92,13 +92,11 @@ def _run(
     on_divergence: str = "fail",
     idle_timeout: float = 1.0,
 ):
-    """Construct actors + runner and drive to completion."""
-    trainer = _ScriptedActor("T", trainer_bursts)
-    trainee = _ScriptedActor("K", trainee_bursts)
+    """Construct actors (via factories) + runner and drive to completion."""
     runner = run_peer(
         decoded,
-        trainer,
-        trainee,
+        lambda sink: _ScriptedActor("T", trainer_bursts, sink=sink),
+        lambda sink: _ScriptedActor("K", trainee_bursts, sink=sink),
         on_divergence=on_divergence,
         idle_timeout=idle_timeout,
     )
@@ -126,8 +124,8 @@ def test_runner_holds_no_actor_coupling_state():
     """PDT-6: the runner has no per-actor cursors / turn tracking."""
     runner = run_peer(
         _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)),
-        _ScriptedActor("T", []),
-        _ScriptedActor("K", []),
+        lambda sink: _ScriptedActor("T", [], sink=sink),
+        lambda sink: _ScriptedActor("K", [], sink=sink),
     )
     for attr in ("_cursor", "_turn", "_next_role", "_pacing", "_whos_turn"):
         assert not hasattr(runner, attr)
@@ -187,9 +185,13 @@ def test_divergence_fail_raises_on_caller_thread():
     """PDT-9: on_divergence='fail' raises PeerDivergence on the caller's thread
     (captured from the bus dispatch thread and re-raised by run())."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
-    trainer = _ScriptedActor("T", _bursts(_ev("T", 1, 1), _ev("T", 9, 9)))
-    trainee = _ScriptedActor("K", _bursts(_ev("K", 99, 99)))  # nothing matches
-    runner = run_peer(decoded, trainer, trainee, on_divergence="fail", idle_timeout=1.0)
+    runner = run_peer(
+        decoded,
+        lambda sink: _ScriptedActor("T", _bursts(_ev("T", 1, 1), _ev("T", 9, 9)), sink=sink),
+        lambda sink: _ScriptedActor("K", _bursts(_ev("K", 99, 99)), sink=sink),  # nothing matches
+        on_divergence="fail",
+        idle_timeout=1.0,
+    )
     with pytest.raises(PeerDivergence) as exc_info:
         runner.run()
     assert exc_info.value.role == "K"
@@ -357,8 +359,8 @@ def test_run_peer_validates_on_divergence():
     with pytest.raises(ValueError):
         run_peer(
             _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)),
-            _ScriptedActor("T", []),
-            _ScriptedActor("K", []),
+            lambda sink: _ScriptedActor("T", [], sink=sink),
+            lambda sink: _ScriptedActor("K", [], sink=sink),
             on_divergence="bogus",
         )
 
@@ -367,6 +369,6 @@ def test_run_peer_rejects_too_few_turns():
     with pytest.raises(ValueError):
         run_peer(
             [_turn("T", 1, 1)],
-            _ScriptedActor("T", []),
-            _ScriptedActor("K", []),
+            lambda sink: _ScriptedActor("T", [], sink=sink),
+            lambda sink: _ScriptedActor("K", [], sink=sink),
         )

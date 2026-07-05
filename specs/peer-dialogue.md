@@ -70,7 +70,7 @@ A peer-mode decoded table has three zones, two of them positionally pinned:
 ## The Runner
 
 ```
-run_peer(decoded, trainer, trainee, *, on_divergence, idle_timeout) -> PeerRunner
+run_peer(decoded, trainer_factory, trainee_factory, *, on_divergence, idle_timeout) -> PeerRunner
 ```
 
 The peer run is driven by the harness **`MessageBus`**
@@ -80,14 +80,17 @@ that seeds the opening and runs the bus until the closing is seen. The peer
 runner depends on `training.harness` — it is a training application and belongs
 next to the harness (ADR-0002).
 
-- **Sink = the bus.** Actors reply by `bus.send(Message(role=<other>,
-  action="accept", message=<event>))`. `send` is thread-safe — actors reply
-  from any thread (including a cogitation thread), which is the true
-  non-blocking behaviour the peer regime requires. No `asyncio`; no second
-  concurrency model.
+- **Sink = the bus (via a bus-wired `EventSink`).** Actors publish events to an
+  `EventSink` injected at construction; the runner's bus-wired sink bridges
+  each `on_event` to a `Message` addressed to the other role. The bus's `send`
+  is thread-safe — actors publish from any thread (including a cogitation
+  thread), which is the true non-blocking behaviour the peer regime requires.
+  No `asyncio`; no second concurrency model. The actor does not know about the
+  bus; it publishes to its sink, as `KAgent` publishes to its adapter.
 - **Relay = the bus's role dispatch.** Each actor subscribes to its own role;
-  an actor addresses its replies to the **other** role; the bus delivers. The
-  runner does not relay — the bus does. The runner never reroutes.
+  the bus-wired sink addresses each published event to the **other** role; the
+  bus delivers. The runner does not relay — the bus does. The runner never
+  reroutes.
 - **Coverage = a wildcard subscriber.** The runner subscribes to `*` (every
   message), updates its distinct-middle / covered / closing-seen bookkeeping on
   each emission, and calls `bus.stop()` when `closing_seen`.
@@ -106,21 +109,36 @@ The synchronous `run` and its `Actor`/`respond` contract are untouched.
 
 ### Actor contract
 
-`Actor` gains `accept`:
+Peer-regime actors mirror :class:`~kalvin.agent.KAgent`'s adapter pattern:
+an actor holds an **`EventSink`** (injected at construction, as KAgent holds an
+adapter) and publishes events to it via `on_event` (as KAgent publishes via
+`_publish` → `adapter.on_event`). The runner builds a bus-wired sink per actor
+(bridging `on_event` to a bus `Message` addressed to the other role) and
+constructs each actor with its sink, so any adapter-driven actor is drop-in.
 
 ```
-Actor:
-  accept(event: RationaliseEvent | None, sink: BusSink) -> None   # peer regime
-  respond(incoming: RationaliseEvent | None) -> RationaliseEvent | None  # ordered regime
+EventSink:
+  on_event(event: RationaliseEvent) -> None
+
+PeerActor:
+  role: str
+  accept(event: RationaliseEvent | None) -> None   # peer regime; publishes via its sink
 ```
 
-`accept` is **fire-and-forget**: it returns immediately; the actor replies
-**zero or many** times by calling `sink.send(Message(role=<other>,
-action="accept", message=<RationaliseEvent>))`. The actor decides when and
-whether to reply, possibly later (from a cogitation thread), possibly many
-times (a priming burst, a scaffolding sequence), possibly never. `event=None`
-signals "you open." `BusSink` is a narrow handle exposing only `send` (the bus
-satisfies it).
+`accept` is **fire-and-forget**: it receives an incoming event (or `None` for
+the opening seed) and returns immediately; the actor decides when and whether
+to publish events via its sink — possibly later (from a cogitation thread),
+possibly many times (a priming burst, a scaffolding sequence), possibly never.
+The actor does not know about the bus; it merely publishes to its sink, and the
+sink routes. The ordered regime's blocking `Actor.respond` is a separate
+contract; an actor may implement one or both.
+
+The runner constructs actors via **factories** ``(sink) -> PeerActor``: only
+the runner owns the bus, so only it can build the bus-wired sink, so it builds
+the actors too (mirroring how a harness injects `KAgentAdapter(bus)` into
+`KAgent`). This makes any adapter-driven actor — including the existing
+`SynthesizingTrainer` and `RationalisingTrainee`, written for the ordered
+regime — drop-in for peer mode.
 
 ### Permitted state
 
@@ -255,6 +273,6 @@ table-ordered — a deliberate difference from the synchronous `RunResult.events
 | PDT-14 | `PeerDivergence` is a separate type carrying `(role, emitted, unconsumed)`, distinct from synchronous `ActorDivergence`                                                                         | §Types            |
 | PDT-15 | `PeerRunResult` is a separate type with arrival-ordered `events`, plus `complete`, `covered`, `unmatched` (accept-mode), `uncovered` (incomplete runs); distinct from synchronous `RunResult`   | §Types            |
 | PDT-16 | The synchronous `run`, the `Actor`/`respond` contract, `ActorDivergence`, and `RunResult` are unchanged by this spec                                                                                                                                            | §Overview, §Types |
-| PDT-17 | `Actor` gains `accept(event: RationaliseEvent | None, sink: BusSink) -> None` for the peer regime: fire-and-forget, zero-or-many replies via `sink.send(Message(role=<other>, ...))`; `event=None` signals "you open". `respond` is unchanged for the ordered regime     | §Actor contract   |
+| PDT-17 | Peer actors mirror KAgent's adapter pattern: an actor holds an `EventSink` (injected at construction) and publishes via `on_event`; `accept(event)` receives incoming and the actor publishes zero-or-many replies via its sink (`event=None` = "you open"); the runner builds the bus-wired sink and constructs actors via factories `(sink) -> PeerActor`; any adapter-driven actor is drop-in. `respond` is unchanged for the ordered regime | §Actor contract |
 | PDT-18 | There is no synchronised alternation: an actor may reply zero-or-many times per `accept`; each reply is routed by the bus to the other role (the actor addresses replies to the non-emitter); the runner never reroutes          | §The Runner, §Actor contract |
 | PDT-19 | Termination is `closing_seen` (the subscriber calls `bus.stop()`); the idle timeout is silence-bounded (the bus's `queue.get(timeout=...)`) and a stall is reported as `complete = False`, not raised                       | §Termination and stall |

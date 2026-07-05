@@ -48,19 +48,24 @@ The peer runner is a coverage-tracking wildcard subscriber over a
 the sink and the relay. The existing standalone-sink `PeerRunner` (from earlier
 commits on this branch) is replaced.
 
-**3.1 `BusSink` + `accept` on `Actor`.** Define a narrow `BusSink` protocol
-(`send(Message) -> None`) that `MessageBus` satisfies. Add
-`Actor.accept(event: RationaliseEvent | None, sink: BusSink) -> None` —
-fire-and-forget; the actor replies zero-or-many via `sink.send(Message(
-role=<other>, action="accept", message=<RationaliseEvent>))`. `event=None`
-signals "you open". The ordered `respond` is unchanged. → PDT-17.
+**3.1 `EventSink` + adapter-driven actors (mirrors KAgent).** Define an
+`EventSink` protocol (`on_event(event) -> None`) — the publish target an actor
+holds, paralleling `KAgentAdapter`. Actors take `sink: EventSink | None` at
+construction and publish via it. Add `PeerActor.accept(event) -> None` (no sink
+param — the actor holds it): fire-and-forget; the actor publishes zero-or-many
+replies via `self._sink.on_event(...)`. `event=None` signals "you open". The
+ordered `respond` is unchanged (returns directly, no sink). The existing
+`TableTrainer`/`TableTrainee`/`SynthesizingTrainer`/`RationalisingTrainee` all
+gain an optional `sink` constructor param + `accept`, making them drop-in for
+peer mode. → PDT-17.
 
 **3.2 `PeerRunner` as a bus subscriber.** Construction builds a `MessageBus`,
-subscribes the runner (as a wildcard handler) for coverage, subscribes the two
-actors to their own roles (their `accept` is the handler). Holds coverage
-bookkeeping only: the table's fixed distinct middle content set, a growing
-covered subset, a closing reference, a `closing_seen` flag, the idle deadline.
-No actor-coupling state. → PDT-5, PDT-6.
+builds a bus-wired `_BusEventSink` per actor (bridging `on_event` to a
+`Message(role=<other>)`, enforcing route-to-other structurally), constructs
+each actor with its sink via an actor **factory** `(sink) -> PeerActor`, then
+subscribes the runner (wildcard) for coverage and each actor's `accept` as its
+role's handler. Holds coverage bookkeeping only. No actor-coupling state.
+→ PDT-5, PDT-6, PDT-18.
 
 **3.3 The wildcard handler (coverage).** On each observed emission:
 1. Append to `events` (arrival order). → PDT-15.
@@ -84,9 +89,12 @@ calls `bus.stop()`). Idle timeout = `queue.get(timeout=idle_timeout)`; on
 silence-with-no-closing, the run stops with `complete = False`. → PDT-18,
 PDT-19.
 
-**3.5 `run_peer` constructor.** `run_peer(decoded, trainer, trainee,
-*, on_divergence="fail", idle_timeout=...) -> PeerRunner`. Builds the bus,
-wires subscribers, returns the runner; the caller calls `runner.run()`.
+**3.5 `run_peer` constructor.** `run_peer(decoded, trainer_factory,
+trainee_factory, *, on_divergence="fail", idle_timeout=...) -> PeerRunner`.
+The factories are `(sink) -> PeerActor`; the runner builds the bus-wired sink
+and constructs each actor with it (mirroring harness injection of
+`KAgentAdapter(bus)` into `KAgent`). Returns the runner; the caller calls
+`runner.run()`.
 
 ### Phase 4 — Wiring + script
 
@@ -94,13 +102,14 @@ wires subscribers, returns the runner; the caller calls `runner.run()`.
 `PeerRunResult` from `training.dialogue`.
 
 **4.2 `scripts/dialogue_run.py` regime dispatch.** The script reads
-`table.is_peer` and dispatches — a peer table constructs a `PeerRunner` (with
-`TableTrainer`/`TableTrainee` given `accept` implementations) and calls
-`runner.run()`; an ordered table drives the synchronous `run`. No CLI flags
-for the regime or peer modifiers (table-driven). → PDT-5.
+`table.is_peer` and dispatches — a peer table calls `run_peer(decoded,
+lambda sink: TableTrainer(decoded, sink=sink), lambda sink: TableTrainee(decoded,
+sink=sink), ...)` then `runner.run()`; an ordered table drives the synchronous
+`run`. No CLI flags for the regime or peer modifiers (table-driven). → PDT-5.
 
-The default `TableTrainer`/`TableTrainee` gain `accept` as a thin adapter over
-their existing cursor logic (they emit their next row(s) via the sink). Their
+The default `TableTrainer`/`TableTrainee` (and `SynthesizingTrainer`/
+`RationalisingTrainee`) gain an optional `sink` constructor param + `accept`
+that publishes via the sink — making them drop-in for peer mode. Their
 `respond` is unchanged for the ordered regime.
 
 ## Test Mapping Table
@@ -141,12 +150,18 @@ bus-subscriber model.
   free (actors reply from any thread via the thread-safe bus) without
   introducing `asyncio` or duplicating the bus. The synchronous ordered `run`
   is untouched and stays bus-agnostic.
+- **Adapter-driven actors (mirrors KAgent).** Actors hold an `EventSink`
+  injected at construction and publish to it (as KAgent holds an adapter and
+  publishes via `_publish`). The runner builds the bus-wired sink and
+  constructs actors via factories — making any adapter-driven actor (including
+  the existing `SynthesizingTrainer`/`RationalisingTrainee`, written for the
+  ordered regime) drop-in for peer mode.
 - **Fire-and-forget `accept`, zero-or-many replies.** The actor's autonomy
-  (when/whether/how-many to reply) is what makes the dialogue messy and real,
+  (when/whether/how-many to publish) is what makes the dialogue messy and real,
   and what lets T and K be out of sync. No synchronised alternation.
-- **Routing by bus addressing.** Each actor addresses replies to the other
-  role; the bus delivers; the runner never reroutes. Interjection is just
-  "sending to the other role unsolicited".
+- **Routing by the bus-wired sink.** The sink addresses each published event
+  to the other role; the bus delivers; the runner never reroutes. Interjection
+  is just "publishing to the other role unsolicited".
 - **Coverage is efficiency, not a count.** Duplicate table rows collapse to
   one distinct content; coverage is idempotent (re-emitting covered content is
   not divergence). Completion is closing-seen alone; an idle timeout ends a

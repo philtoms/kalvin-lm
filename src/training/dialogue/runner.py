@@ -100,25 +100,39 @@ class _TableActor:
     """Default actor: yields its rows in order, one per ``respond`` call.
 
     Holds the decoded table and a ``role`` label, plus an internal index that
-    starts before the actor's first row. Each ``respond`` advances the index by
-    one and returns the event for that row, or ``None`` once exhausted. Each
-    event's ``query`` is the incoming event's ``proposal`` (or the row's own
-    turn on the opening). The actor returns no cursor — the runner validates
-    against the full decoded table at its own cursor.
+    starts before the actor's first row. Each ``respond``/``accept`` advances
+    the index by one and produces the event for that row (or nothing once
+    exhausted). Each event's ``query`` is the incoming event's ``proposal`` (or
+    the row's own turn on the opening).
+
+    Adapter pattern (spec ``@specs/peer-dialogue.md`` §Actor contract): the
+    actor optionally holds an :class:`~training.dialogue.peer_runner.EventSink`
+    (injected at construction, as :class:`~kalvin.agent.KAgent` holds an
+    adapter). ``accept`` publishes the next row via the sink (peer regime);
+    ``respond`` returns it directly (ordered regime). When no sink is supplied
+    the actor is ordered-only.
     """
 
-    def __init__(self, table: Sequence[DecodedTurn], role: str, *, kind: str) -> None:
+    def __init__(
+        self,
+        table: Sequence[DecodedTurn],
+        role: str,
+        *,
+        kind: str,
+        sink=None,
+    ) -> None:
         self._rows: tuple[DecodedTurn, ...] = tuple(t for t in table if t.role == role)
         self._index = -1
         self._kind = kind
         self._role = role
+        self._sink = sink
 
     @property
     def role(self) -> str:
         """The role this actor emits on its events (the routing key)."""
         return self._role
 
-    def respond(
+    def _next_event(
         self, incoming: RationaliseEvent | None
     ) -> RationaliseEvent | None:
         nxt = self._index + 1
@@ -131,47 +145,40 @@ class _TableActor:
             kind=self._kind, query=query, proposal=turn.value, role=self._role
         )
 
-    # ── Peer regime (spec @specs/peer-dialogue.md §Actor contract) ────────
-    #
-    # ``accept`` is a thin adapter over the same cursor logic as ``respond``:
-    # it emits the next row (if any) via the sink, addressed to the other
-    # role by the sink wrapper. Fire-and-forget; zero-or-one reply per call
-    # for the table-reading doubles (real actors may reply zero-or-many).
-    # ``respond`` is unchanged for the ordered regime.
+    def respond(
+        self, incoming: RationaliseEvent | None
+    ) -> RationaliseEvent | None:
+        # Ordered regime: return the next event directly.
+        return self._next_event(incoming)
 
-    def accept(self, incoming: RationaliseEvent | None, sink) -> None:
-        nxt = self._index + 1
-        if nxt >= len(self._rows):
-            return  # exhausted — reply zero times
-        self._index = nxt
-        turn = self._rows[nxt]
-        query = incoming.proposal if incoming is not None else turn.value
-        event = RationaliseEvent(
-            kind=self._kind, query=query, proposal=turn.value, role=self._role
-        )
-        from training.harness.message import Message
-
-        sink.send(Message(role=self._role, action="accept", message=event))
+    def accept(self, incoming: RationaliseEvent | None) -> None:
+        # Peer regime: publish the next event (if any) via the sink.
+        event = self._next_event(incoming)
+        if event is not None and self._sink is not None:
+            self._sink.on_event(event)
 
 
 class TableTrainer(_TableActor):
     """The default trainer: yields the table's T-rows in order.
 
-    Replaceable by a real trainer that satisfies :class:`Actor`.
+    Replaceable by a real trainer that satisfies :class:`Actor`. Pass ``sink``
+    for the peer regime (publishes via it); omit it for the ordered regime.
     """
 
-    def __init__(self, table: Sequence[DecodedTurn]) -> None:
-        super().__init__(table, role="T", kind="frame")
+    def __init__(self, table: Sequence[DecodedTurn], sink=None) -> None:
+        super().__init__(table, role="T", kind="frame", sink=sink)
 
 
 class TableTrainee(_TableActor):
     """The default trainee: yields the table's K-rows in order.
 
-    Replaceable by a real trainee (Kalvin) that satisfies :class:`Actor`.
+    Replaceable by a real trainee (Kalvin) that satisfies :class:`Actor`. Pass
+    ``sink`` for the peer regime (publishes via it); omit it for the ordered
+    regime.
     """
 
-    def __init__(self, table: Sequence[DecodedTurn]) -> None:
-        super().__init__(table, role="K", kind="frame")
+    def __init__(self, table: Sequence[DecodedTurn], sink=None) -> None:
+        super().__init__(table, role="K", kind="frame", sink=sink)
 
 
 # ── Synthesizing actor (spec §Actor; plan @plans/implement-synthesizing-trainer.md) ─
@@ -192,18 +199,20 @@ class SynthesizingTrainer:
     Holds the compiled script and a signifier (built once at construction) and
     delegates to :func:`~training.dialogue.synthesize.synthesize`. Constructor
     does **not** take ``decoded`` — the table is only the validation oracle.
+    Pass ``sink`` for the peer regime (publishes via it); omit for ordered.
     """
 
-    def __init__(self, compiled: list[KValue], signifier: KSignifier) -> None:
+    def __init__(self, compiled: list[KValue], signifier: KSignifier, sink=None) -> None:
         self._compiled = compiled
         self._signifier = signifier
+        self._sink = sink
 
     @property
     def role(self) -> str:
         """The role this actor emits on its events (the routing key)."""
         return "T"
 
-    def respond(
+    def _next_event(
         self, incoming: RationaliseEvent | None
     ) -> RationaliseEvent | None:
         incoming_value = incoming.proposal if incoming is not None else None
@@ -212,6 +221,16 @@ class SynthesizingTrainer:
         return RationaliseEvent(
             kind="frame", query=query, proposal=proposal, role="T"
         )
+
+    def respond(
+        self, incoming: RationaliseEvent | None
+    ) -> RationaliseEvent | None:
+        return self._next_event(incoming)
+
+    def accept(self, incoming: RationaliseEvent | None) -> None:
+        event = self._next_event(incoming)
+        if event is not None and self._sink is not None:
+            self._sink.on_event(event)
 
 
 # ── Rationalising actor (spec §Actor; plan @plans/implement-rationalising-trainee.md) ─
@@ -232,18 +251,20 @@ class RationalisingTrainee:
     Holds a :class:`~training.dialogue.rationalise.Rationaliser` engine and a
     signifier (the engine is built at construction) and wraps each emitted
     ``KValue`` in a ``RationaliseEvent``. Constructor does **not** take
-    ``decoded`` — the table is only the validation oracle.
+    ``decoded`` — the table is only the validation oracle. Pass ``sink`` for
+    the peer regime (publishes via it); omit for ordered.
     """
 
-    def __init__(self, signifier: KSignifier) -> None:
+    def __init__(self, signifier: KSignifier, sink=None) -> None:
         self._engine = Rationaliser(signifier)
+        self._sink = sink
 
     @property
     def role(self) -> str:
         """The role this actor emits on its events (the routing key)."""
         return "K"
 
-    def respond(
+    def _next_event(
         self, incoming: RationaliseEvent | None
     ) -> RationaliseEvent | None:
         incoming_value = incoming.proposal if incoming is not None else None
@@ -254,6 +275,16 @@ class RationalisingTrainee:
         return RationaliseEvent(
             kind="frame", query=query, proposal=proposal, role="K"
         )
+
+    def respond(
+        self, incoming: RationaliseEvent | None
+    ) -> RationaliseEvent | None:
+        return self._next_event(incoming)
+
+    def accept(self, incoming: RationaliseEvent | None) -> None:
+        event = self._next_event(incoming)
+        if event is not None and self._sink is not None:
+            self._sink.on_event(event)
 
 
 # ── The run (spec §The Runner) ────────────────────────────────────────────

@@ -181,13 +181,11 @@ def main(argv: list[str] | None = None) -> int:
     # the peer section.
     if table.is_peer:
         assert table.peer is not None  # narrowed by is_peer
-        trainer_actor: Actor = TableTrainer(decoded)
-        trainee_actor: Actor = TableTrainee(decoded)
         try:
             runner = run_peer(
                 decoded,
-                trainer_actor,
-                trainee_actor,
+                lambda sink: TableTrainer(decoded, sink=sink),
+                lambda sink: TableTrainee(decoded, sink=sink),
                 on_divergence=table.peer.on_divergence,
             )
             res = runner.run()

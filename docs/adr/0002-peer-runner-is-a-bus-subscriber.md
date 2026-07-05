@@ -16,11 +16,11 @@ ADR-0001 made the peer runner a standalone, bus-agnostic sink that "imports no
 concurrency primitive" and rejected the threaded bus as "the harness server's
 job." Two later decisions overturned that:
 
-1. **The Actor contract became fire-and-forget `accept(event, sink) -> None`
-   with zero-or-many replies, and `accept` must be non-blocking** (true async).
-   A standalone sink has no concurrency primitive to make `accept` non-blocking;
-   it would have to introduce one (asyncio, or a local thread/queue duplicating
-   the bus).
+1. **The Actor contract became fire-and-forget `accept` with zero-or-many
+   replies via an injected `EventSink` (mirroring KAgent's adapter), and
+   `accept` must be non-blocking** (true async). A standalone sink has no
+   concurrency primitive to make `accept` non-blocking; it would have to
+   introduce one (asyncio, or a local thread/queue duplicating the bus).
 2. **The peer runner belongs next to the harness** — it is a training
    application. Reusing the existing thread-safe, role-routed `MessageBus` as the
    sink+relay is both the non-blocking mechanism *and* the correct locality. The
@@ -52,9 +52,9 @@ job." Two later decisions overturned that:
   This is the natural seam.
 - The idle timeout (Q7) is the bus's `queue.get(timeout=...)` — no custom timer.
 - The relay rule ("route to the non-emitting actor", Q4) is expressed as bus
-  addressing: each actor addresses its reply to the *other* role; the bus
-  delivers; the runner-as-wildcard-subscriber does coverage bookkeeping and
-  never reroutes.
+  addressing: the bus-wired sink addresses each published event to the *other*
+  role; the bus delivers; the runner-as-wildcard-subscriber does coverage
+  bookkeeping and never reroutes.
 - `PeerDivergence` / `PeerRunResult` remain peer-specific types (covered subset,
   arrival-ordered events) distinct from the synchronous `ActorDivergence` /
   `RunResult`.
