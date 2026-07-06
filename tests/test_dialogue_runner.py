@@ -349,3 +349,50 @@ def test_synthesizing_trainer_runs_mhall_to_exhaustion(_decoded_mhall, _compiled
     assert result.events[-1].proposal.kline == result.events[0].proposal.kline
     # The synthesizer produced exactly the table's rows (no more, no less).
     assert len(result.events) == len(_decoded_mhall)
+
+
+# ── R4 — open-dialog-close (plan @plans/implement-synthesizing-trainer.md) ─
+
+
+def test_synthesizing_trainer_withholds_on_trainee_s1_on_primary(_compiled_mhall):
+    """R4: the trainer recognises the trainee's S1 on the primary as the close
+    and withholds — it does not echo/ratify what the trainee has grounded.
+
+    Before R4 the synthesiser re-emitted the primary at S1 on the trainee's
+    close (a spurious closing countersign on the trainer's role), which
+    diverged in peer mode. R4 makes the trainer withhold instead."""
+    from training.dialogue.runner import SynthesizingTrainer
+
+    compiled, sigf = _compiled_mhall
+    trainer = SynthesizingTrainer(compiled, sigf)
+    primary_event = RationaliseEvent(
+        kind="frame",
+        query=KValue(KLine(compiled[0].kline.signature, ()), 0),
+        proposal=KValue(compiled[0].kline, SIG_S1),  # trainee closes: S1 on primary
+        role="K",
+    )
+    # The trainer withholds on the close (R4).
+    assert trainer.respond(primary_event) is None
+
+
+def test_synthesizing_trainer_does_not_withhold_on_non_primary_s1(_compiled_mhall):
+    """R4 is primary-specific: an S1 on a non-primary kline is not a close;
+    the trainer still synthesises (R3 ratifies the relation)."""
+    from training.dialogue.runner import SynthesizingTrainer
+
+    compiled, sigf = _compiled_mhall
+    trainer = SynthesizingTrainer(compiled, sigf)
+    # Find a non-primary relation in the compiled script.
+    non_primary = next(
+        kv
+        for kv in compiled[1:]
+        if kv.kline.nodes and kv.kline.signature != compiled[0].kline.signature
+    )
+    non_primary_event = RationaliseEvent(
+        kind="frame",
+        query=KValue(non_primary.kline, 0),
+        proposal=KValue(non_primary.kline, SIG_S1),
+        role="K",
+    )
+    # Not the primary → not a close → trainer responds (does not withhold).
+    assert trainer.respond(non_primary_event) is not None

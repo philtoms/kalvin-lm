@@ -1,4 +1,4 @@
-"""The rationalising engine — the pure-logic core of a rationalising trainee.
+r"""The rationalising engine — the pure-logic core of a rationalising trainee.
 
 Plan: ``@plans/implement-rationalising-trainee.md``.
 Spec seam: ``@specs/dialogue-driven-training.md`` §Actor (the trainee side).
@@ -18,9 +18,11 @@ oracle the runner checks every emitted turn against.
 Cogitation is a deliberate simplification of the real Kalvin's async
 ``expand()`` / ``propose_expansions()`` slow path — synchronous, deterministic,
 inline (plan D3, D5). Each :meth:`Rationaliser.rationalise` call applies the
-entry rule to the incoming query as bookkeeping, then emits exactly one
-``KValue`` from cogitation, returning ``None`` when nothing is workable
-(plan D7, D12).
+entry rule to the incoming query as bookkeeping, then emits a **batch** of
+``KValue``\ s from cogitation — an identity blast (zero or more S4 asks) or a
+single relationship emission (a relationship always terminates the batch and
+is never appended to identities). Returns an empty list when nothing is
+workable (plan D7, D12).
 """
 
 from __future__ import annotations
@@ -54,24 +56,34 @@ class _State:
 
 
 class Rationaliser:
-    """The rationalising engine — derives each turn from ``(incoming, state)``.
+    r"""The rationalising engine — derives each turn from ``(incoming, state)``.
 
-    Returns a ``KValue`` per :meth:`rationalise` call (or ``None`` when nothing
-    is workable). The :class:`~training.dialogue.runner.RationalisingTrainee`
+    Returns a **batch** of ``KValue``\ s per :meth:`rationalise` call (or an
+    empty list when nothing is workable) — an identity blast or a single
+    relationship emission. The :class:`~training.dialogue.runner.RationalisingTrainee`
     actor wraps each emitted value in a ``RationaliseEvent``. Reads neither the
     table nor the compiled script nor ``dbg``; constructs synthetic signatures
     via ``signifier.make_signature`` when grouping requires it.
     """
 
-    def __init__(self, signifier: KSignifier) -> None:
+    def __init__(self, signifier: KSignifier, *, burst_mode: bool = False) -> None:
         self._signifier = signifier
         self._state = _State()
         self._s12, self._s23, self._s34 = boundaries()
+        # When True, cogitation batches identities into one blast (peer regime);
+        # when False (default), it emits exactly one value per call (ordered
+        # regime — preserves the original golden-master sequence).
+        self._burst_mode = burst_mode
 
     # ── The turn ─────────────────────────────────────────────────────
 
-    def rationalise(self, incoming: KValue | None) -> KValue | None:
-        """Apply the entry rule to ``incoming``, then emit exactly one value."""
+    def rationalise(self, incoming: KValue | None) -> list[KValue]:
+        """Apply the entry rule to ``incoming``, then emit a batch.
+
+        Returns a list of emitted values: an identity blast (zero or more S4
+        identity asks), a single relationship emission (S2/S3/S1), or an empty
+        list when nothing is workable. Identities and relationships are never
+        mixed in one batch (a relationship always terminates the batch)."""
         if incoming is not None:
             self._process_query(incoming)
         return self._cogitate()
@@ -187,20 +199,41 @@ class Rationaliser:
 
     # ── Cogitation ────────────────────────────────────────────────────────
 
-    def _cogitate(self) -> KValue | None:
-        """Work the next workable entry (LIFO) and emit exactly one value.
+    def _cogitate(self) -> list[KValue]:
+        """Work the next workable entry (LIFO) and emit a batch.
 
-        Workable: an identity (always askable) or a Level-1-eligible opening.
-        Async-pending relationships are skipped. Returns ``None`` when nothing
-        is workable (termination is the runner's job).
+        Granularity is controlled by ``burst_mode``:
+
+        - **``burst_mode=False`` (default, ordered regime)** — emit exactly one
+          value: the first workable identity or the first workable relationship
+          (the original one-at-a-time sequence, preserving the golden master).
+          Returned as a one-element list (or empty when nothing is workable) so
+          the return type is uniform.
+        - **``burst_mode=True`` (peer regime)** — batch every workable identity
+          into the list (each emitted at S4 and popped). A relationship always
+          terminates the batch and is never appended to identities: the first
+          workable non-identity returns ``[entry]`` if no identities were
+          collected, else the identities collected so far (the relationship
+          waits for the next call).
+
+        Returns an empty list when nothing is workable. State mutations (pop
+        identity, add to ``asked``) are identical to the single-emission path;
+        only the return granularity changes.
         """
+        batch: list[KValue] = []
         for idx in range(len(self._state.work_list) - 1, -1, -1):
             entry = self._state.work_list[idx]
             if is_identity(entry):
-                return self._emit_identity(idx, entry.signature)
+                batch.append(self._emit_identity(idx, entry.signature))
+                if not self._burst_mode:
+                    break
+                continue
+            # First workable non-identity: a relationship terminates the batch.
             if self._level1_eligible(entry):
-                return self._emit_relationships(entry)
-        return None
+                if batch:
+                    return batch  # identities collected; relationship waits
+                return [self._emit_relationships(entry)]
+        return batch
 
     def _level1_eligible(self, entry: KLine) -> bool:
         """Is ``entry`` a single-node relationship whose operands both have seen canons?"""

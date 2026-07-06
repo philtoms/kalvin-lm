@@ -1,20 +1,29 @@
 """Run a dialogue end-to-end through the table-reading trainer and trainee.
 
-Loads a dialogue table, decodes it, drives the bus-agnostic runner
-(:func:`training.dialogue.run`) with a fresh :class:`TableTrainer` and
-:class:`TableTrainee`, and prints a PASS/FAIL summary. With ``--verbose`` it
-traces the interleaved T/K exchange.
+Loads a dialogue table, decodes it, and drives it to completion. The **table
+selects the run regime**: a table with no ``peer`` section drives the
+bus-agnostic ordered runner (:func:`training.dialogue.run`) with a fresh
+:class:`TableTrainer` and :class:`TableTrainee`; a table carrying a ``peer``
+section drives the sink-shaped :class:`PeerRunner`, bridging the table-reading
+actors onto it. There are no CLI flags for the regime or peer modifiers —
+they live in the table. Prints a PASS/FAIL summary; with ``--verbose`` it
+traces the exchange.
 
-With ``--rationalise`` the trainee is a :class:`RationalisingTrainee` — a real,
-stateful, rationalising trainee and drop-in ``TableTrainee`` replacement —
-while the trainer stays a ``TableTrainer`` (the deterministic oracle). With
-``--synthesize`` the trainer is a :class:`SynthesizingTrainer` — a real
-trainer that derives each turn from the compiled script — while the trainee
-stays a ``TableTrainee``. The two flags are orthogonal: passing both runs the
-two real actors against the same golden master.
+For an ordered table, ``--rationalise`` substitutes a
+:class:`RationalisingTrainee` (a real, stateful, rationalising trainee) for the
+default ``TableTrainee``, and ``--synthesize`` substitutes a
+:class:`SynthesizingTrainer` (a real trainer that derives each turn from the
+compiled script) for the default ``TableTrainer``. The two flags are
+orthogonal: passing both runs the two real actors against the same golden
+master. They apply in both regimes — the real actors are drop-in (adapter-
+driven), so a peer table with ``--rationalise`` / ``--synthesize`` runs the
+real actors through the bus-subscriber relay. Note real actors do not
+reproduce the table exactly, so peer mode with them typically needs
+``on_divergence: "accept"`` in the table's ``peer`` section (else off-table
+emissions raise ``PeerDivergence``).
 
-The runner is bus-agnostic: there is no harness message bus and no adapter here.
-Bus integration arrives with the real actors.
+The runner is bus-agnostic: there is no harness message bus and no adapter
+here. Bus integration arrives with the real actors.
 
 Usage::
 
@@ -24,6 +33,7 @@ Usage::
     python scripts/dialogue_run.py --rationalise               # RationalisingTrainee
     python scripts/dialogue_run.py --synthesize                # SynthesizingTrainer
     python scripts/dialogue_run.py --synthesize --rationalise  # both real actors
+    # A peer-mode table (one with a "peer" section) runs through PeerRunner.
 
 Exit code is 0 on a completing run (table exhausted), 1 on an actor divergence
 or incomplete run.
@@ -46,10 +56,13 @@ from kalvin.signifier import NLPSignifier  # noqa: E402
 from ks.compiler import compile_source  # noqa: E402
 from training.dialogue import (  # noqa: E402
     ActorDivergence,
+    PeerDivergence,
+    TableTrainee,
     TableTrainer,
     decode,
     load_table,
     run,
+    run_peer,
 )
 from training.dialogue.runner import (  # noqa: E402
     Actor,
@@ -165,6 +178,57 @@ def main(argv: list[str] | None = None) -> int:
     table = load_table(json.loads(Path(dialogue_path).read_text()))
     decoded = decode(table, tokenizer=tok, signifier=sigf)
 
+    # The table selects the run regime: a ``peer`` section drives the sink-
+    # shaped PeerRunner (bridging the table-reading actors onto it); no ``peer``
+    # section drives the synchronous ordered run. The regime is table-driven —
+    # there are no CLI flags for it. Peer modifiers (on_divergence) come from
+    # the peer section.
+    if table.is_peer:
+        assert table.peer is not None  # narrowed by is_peer
+        # The --synthesize/--rationalise flags honour peer mode too: the real
+        # actors are drop-in (adapter-driven). Orthogonal, as in ordered mode.
+        compiled = (
+            compile_source(table.script, tokenizer=tok, signifier=sigf, dev=True)
+            if args.synthesize
+            else None
+        )
+        trainer_factory = (
+            (lambda sink: SynthesizingTrainer(compiled, sigf, sink=sink))
+            if args.synthesize
+            else (lambda sink: TableTrainer(decoded, sink=sink))
+        )
+        trainee_factory = (
+            (lambda sink: RationalisingTrainee(sigf, sink=sink, burst_mode=True))
+            if args.rationalise
+            else (lambda sink: TableTrainee(decoded, sink=sink))
+        )
+        try:
+            runner = run_peer(
+                decoded,
+                trainer_factory,
+                trainee_factory,
+                on_divergence=table.peer.on_divergence,
+            )
+            res = runner.run()
+        except PeerDivergence as exc:
+            print(
+                f"FAIL — {exc.role} divergence: emitted {_label_of(exc.emitted)} "
+                f"(sig={exc.emitted.significance:#x}) matches no closing or "
+                f"middle content ({len(exc.unconsumed)} uncovered same-role).",
+                file=sys.stderr,
+            )
+            return 1
+        print(
+            f"Peer dialogue session: {dialogue_path}\n"
+            f"  on divergence       : {table.peer.on_divergence}\n"
+            f"  events received     : {len(res.events)}\n"
+            f"  complete            : {res.complete}\n"
+            f"  covered (middle)    : {res.covered}\n"
+            f"  unmatched emissions : {len(res.unmatched)}\n"
+            f"  uncovered rows      : {len(res.uncovered)}"
+        )
+        return 0 if res.complete else 1
+
     if args.synthesize:
         compiled = compile_source(table.script, tokenizer=tok, signifier=sigf, dev=True)
         trainer: Actor = SynthesizingTrainer(compiled, sigf)
@@ -177,8 +241,6 @@ def main(argv: list[str] | None = None) -> int:
         trainee: Actor = RationalisingTrainee(sigf)
         trainee_kind = "RationalisingTrainee"
     else:
-        from training.dialogue import TableTrainee
-
         trainee = TableTrainee(decoded)
         trainee_kind = "TableTrainee"
 

@@ -57,20 +57,22 @@ def _work_list(r: Rationaliser) -> list[tuple[int, list[int]]]:
 # ── Construction & engine interface ────────────────────────────────────────
 
 
-def test_rationalise_returns_value_or_none(
+def test_rationalise_returns_batch_or_empty(
     rationaliser: Rationaliser, signifier: NLPSignifier
 ) -> None:
-    """rationalise returns a KValue while there is work, None when idle."""
+    """rationalise returns a list of KValues while there is work, empty when idle."""
     a = signifier.make_signature([0b1])
     ab = signifier.make_signature([0b1, 0b10])
-    # No work, no incoming -> None (D12: termination is the runner's job).
-    assert rationaliser.rationalise(None) is None
-    # With an S2 incoming, cogitation emits an identity value.
+    # No work, no incoming -> empty list (D12: termination is the runner's job).
+    assert rationaliser.rationalise(None) == []
+    # With an S2 incoming, cogitation emits an identity value (one-element batch
+    # in the default non-burst mode).
     emitted = rationaliser.rationalise(_value(KLine(ab, [a]), SIG_S2))
-    assert isinstance(emitted, KValue)
-    assert emitted.kline.signature == ab
-    assert list(emitted.kline.nodes) == []
-    assert emitted.significance == SIG_S4
+    assert isinstance(emitted, list)
+    assert len(emitted) == 1
+    assert emitted[0].kline.signature == ab
+    assert list(emitted[0].kline.nodes) == []
+    assert emitted[0].significance == SIG_S4
 
 
 # ── Entry rule ────────────────────────────────────────────────────────────
@@ -155,10 +157,10 @@ def test_level0_emits_identity_at_s4(
     ab = signifier.make_signature([0b1, 0b10])
     a = signifier.make_signature([0b1])
     emitted = rationaliser.rationalise(_value(KLine(ab, [a]), SIG_S2))
-    assert emitted is not None
-    assert emitted.kline.signature == ab
-    assert list(emitted.kline.nodes) == []
-    assert emitted.significance == SIG_S4
+    assert len(emitted) == 1
+    assert emitted[0].kline.signature == ab
+    assert list(emitted[0].kline.nodes) == []
+    assert emitted[0].significance == SIG_S4
 
 
 def test_level0_no_opening_special_case(
@@ -170,9 +172,9 @@ def test_level0_no_opening_special_case(
     a = signifier.make_signature([0b1])
     opening = rationaliser.rationalise(_value(KLine(ab, [a]), SIG_S2))
     # Same emission as test_level0_emits_identity_at_s4 — turn-0 == any S2 turn.
-    assert opening is not None
-    assert opening.kline.signature == ab
-    assert opening.significance == SIG_S4
+    assert len(opening) == 1
+    assert opening[0].kline.signature == ab
+    assert opening[0].significance == SIG_S4
 
 
 # ── Cleanup & MTS discrimination ──────────────────────────────────────────
@@ -310,10 +312,10 @@ def test_level1_non_one_to_one_is_s2() -> None:
 # ── Termination (D12) ─────────────────────────────────────────────────────
 
 
-def test_termination_returns_none_when_idle(rationaliser: Rationaliser) -> None:
-    """D12: an empty work-list after the entry rule -> respond returns None;
-    the runner signals termination (termination is the runner's job, not K's)."""
-    assert rationaliser.rationalise(None) is None
+def test_termination_returns_empty_when_idle(rationaliser: Rationaliser) -> None:
+    """D12: an empty work-list after the entry rule -> empty batch; the runner
+    signals termination (termination is the runner's job, not K's)."""
+    assert rationaliser.rationalise(None) == []
 
 
 # ── Escalation (D11) — deferred ───────────────────────────────────────────

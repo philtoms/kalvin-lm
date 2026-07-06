@@ -6,6 +6,10 @@ runner owns the table cursor; at each step it reads whose row is next and asks
 that actor for its next row. Greediness is the runner's behaviour: while
 consecutive table rows share an actor, the same actor is asked again.
 
+This is the **ordered** (synchronous) regime. The **peer** regime — a sink that
+receives out-of-order emissions after the trainer's opening — lives in
+:mod:`training.dialogue.peer_runner` (spec ``@specs/peer-dialogue.md``).
+
 Each actor holds its own cursor and yields its rows one at a time. Both default
 actors (:class:`TableTrainer`, :class:`TableTrainee`) are structurally identical,
 differing only by which ``actor`` they read — that symmetry is what makes either
@@ -26,6 +30,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from kalvin.events import RationaliseEvent
+from kalvin.expand import SIG_S1
 from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn
 from training.dialogue.rationalise import Rationaliser
@@ -96,25 +101,39 @@ class _TableActor:
     """Default actor: yields its rows in order, one per ``respond`` call.
 
     Holds the decoded table and a ``role`` label, plus an internal index that
-    starts before the actor's first row. Each ``respond`` advances the index by
-    one and returns the event for that row, or ``None`` once exhausted. Each
-    event's ``query`` is the incoming event's ``proposal`` (or the row's own
-    turn on the opening). The actor returns no cursor — the runner validates
-    against the full decoded table at its own cursor.
+    starts before the actor's first row. Each ``respond``/``accept`` advances
+    the index by one and produces the event for that row (or nothing once
+    exhausted). Each event's ``query`` is the incoming event's ``proposal`` (or
+    the row's own turn on the opening).
+
+    Adapter pattern (spec ``@specs/peer-dialogue.md`` §Actor contract): the
+    actor optionally holds an :class:`~training.dialogue.peer_runner.EventSink`
+    (injected at construction, as :class:`~kalvin.agent.KAgent` holds an
+    adapter). ``accept`` publishes the next row via the sink (peer regime);
+    ``respond`` returns it directly (ordered regime). When no sink is supplied
+    the actor is ordered-only.
     """
 
-    def __init__(self, table: Sequence[DecodedTurn], role: str, *, kind: str) -> None:
+    def __init__(
+        self,
+        table: Sequence[DecodedTurn],
+        role: str,
+        *,
+        kind: str,
+        sink=None,
+    ) -> None:
         self._rows: tuple[DecodedTurn, ...] = tuple(t for t in table if t.role == role)
         self._index = -1
         self._kind = kind
         self._role = role
+        self._sink = sink
 
     @property
     def role(self) -> str:
         """The role this actor emits on its events (the routing key)."""
         return self._role
 
-    def respond(
+    def _next_event(
         self, incoming: RationaliseEvent | None
     ) -> RationaliseEvent | None:
         nxt = self._index + 1
@@ -127,25 +146,40 @@ class _TableActor:
             kind=self._kind, query=query, proposal=turn.value, role=self._role
         )
 
+    def respond(
+        self, incoming: RationaliseEvent | None
+    ) -> RationaliseEvent | None:
+        # Ordered regime: return the next event directly.
+        return self._next_event(incoming)
+
+    def accept(self, incoming: RationaliseEvent | None) -> None:
+        # Peer regime: publish the next event (if any) via the sink.
+        event = self._next_event(incoming)
+        if event is not None and self._sink is not None:
+            self._sink.on_event(event)
+
 
 class TableTrainer(_TableActor):
     """The default trainer: yields the table's T-rows in order.
 
-    Replaceable by a real trainer that satisfies :class:`Actor`.
+    Replaceable by a real trainer that satisfies :class:`Actor`. Pass ``sink``
+    for the peer regime (publishes via it); omit it for the ordered regime.
     """
 
-    def __init__(self, table: Sequence[DecodedTurn]) -> None:
-        super().__init__(table, role="T", kind="frame")
+    def __init__(self, table: Sequence[DecodedTurn], sink=None) -> None:
+        super().__init__(table, role="T", kind="frame", sink=sink)
 
 
 class TableTrainee(_TableActor):
     """The default trainee: yields the table's K-rows in order.
 
-    Replaceable by a real trainee (Kalvin) that satisfies :class:`Actor`.
+    Replaceable by a real trainee (Kalvin) that satisfies :class:`Actor`. Pass
+    ``sink`` for the peer regime (publishes via it); omit it for the ordered
+    regime.
     """
 
-    def __init__(self, table: Sequence[DecodedTurn]) -> None:
-        super().__init__(table, role="K", kind="frame")
+    def __init__(self, table: Sequence[DecodedTurn], sink=None) -> None:
+        super().__init__(table, role="K", kind="frame", sink=sink)
 
 
 # ── Synthesizing actor (spec §Actor; plan @plans/implement-synthesizing-trainer.md) ─
@@ -166,26 +200,63 @@ class SynthesizingTrainer:
     Holds the compiled script and a signifier (built once at construction) and
     delegates to :func:`~training.dialogue.synthesize.synthesize`. Constructor
     does **not** take ``decoded`` — the table is only the validation oracle.
+    Pass ``sink`` for the peer regime (publishes via it); omit for ordered.
+
+    **Open-dialog-close (per script).** The dialogue for a script is bookended:
+    the trainer opens (R1 — primary at S2) and the trainee closes (an S1 on the
+    primary). The trainer recognises the trainee's S1 on the primary as the
+    close and withholds — it does not echo/ratify what the trainee has already
+    grounded. This is the single-script instance of the general per-script
+    open-dialog-close semantics; a future multi-script trainer (B) generalises
+    it to track a set of script primaries. The rule lives in the actor (a
+    dialogue-level concern), not in the pure :func:`synthesize`.
     """
 
-    def __init__(self, compiled: list[KValue], signifier: KSignifier) -> None:
+    def __init__(self, compiled: list[KValue], signifier: KSignifier, sink=None) -> None:
         self._compiled = compiled
         self._signifier = signifier
+        self._sink = sink
+        # The primary signature (compiled[0]) — the script the trainer opened.
+        # The trainee's S1 on this signature is the close.
+        self._primary_signature = compiled[0].kline.signature
 
     @property
     def role(self) -> str:
         """The role this actor emits on its events (the routing key)."""
         return "T"
 
-    def respond(
+    def _is_close(self, incoming: RationaliseEvent | None) -> bool:
+        """The trainee has closed: an S1 proposal on the primary signature."""
+        if incoming is None:
+            return False
+        return (
+            incoming.proposal.significance == SIG_S1
+            and incoming.proposal.kline.signature == self._primary_signature
+        )
+
+    def _next_event(
         self, incoming: RationaliseEvent | None
     ) -> RationaliseEvent | None:
+        # Open-dialog-close: the trainee's S1 on the primary is the close —
+        # withhold (the trainee has grounded the script; the trainer stops).
+        if self._is_close(incoming):
+            return None
         incoming_value = incoming.proposal if incoming is not None else None
         proposal = synthesize(self._compiled, incoming_value, self._signifier)
         query = incoming_value if incoming_value is not None else proposal
         return RationaliseEvent(
             kind="frame", query=query, proposal=proposal, role="T"
         )
+
+    def respond(
+        self, incoming: RationaliseEvent | None
+    ) -> RationaliseEvent | None:
+        return self._next_event(incoming)
+
+    def accept(self, incoming: RationaliseEvent | None) -> None:
+        event = self._next_event(incoming)
+        if event is not None and self._sink is not None:
+            self._sink.on_event(event)
 
 
 # ── Rationalising actor (spec §Actor; plan @plans/implement-rationalising-trainee.md) ─
@@ -206,28 +277,75 @@ class RationalisingTrainee:
     Holds a :class:`~training.dialogue.rationalise.Rationaliser` engine and a
     signifier (the engine is built at construction) and wraps each emitted
     ``KValue`` in a ``RationaliseEvent``. Constructor does **not** take
-    ``decoded`` — the table is only the validation oracle.
+    ``decoded`` — the table is only the validation oracle. Pass ``sink`` for
+    the peer regime (publishes via it); omit for ordered. Pass
+    ``burst_mode=True`` for the peer regime so cogitation batches identity
+    asks into one blast (the engine emits one-at-a-time otherwise, preserving
+    the ordered regime's golden-master sequence).
     """
 
-    def __init__(self, signifier: KSignifier) -> None:
-        self._engine = Rationaliser(signifier)
+    def __init__(self, signifier: KSignifier, sink=None, *, burst_mode: bool = False) -> None:
+        self._engine = Rationaliser(signifier, burst_mode=burst_mode)
+        self._sink = sink
+        self._burst_mode = burst_mode
+        # FIFO of buffered events for the ordered regime: ``respond`` doles out
+        # a batch one event at a time to preserve the one-event-per-call contract.
+        # Every incoming is processed (fed to the engine) regardless of buffer
+        # state; the buffer only smooths emission granularity.
+        self._respond_list: list[RationaliseEvent] = []
 
     @property
     def role(self) -> str:
         """The role this actor emits on its events (the routing key)."""
         return "K"
 
+    def _process_and_collect(
+        self, incoming: RationaliseEvent | None
+    ) -> list[RationaliseEvent]:
+        """Feed ``incoming`` to the engine and collect its emitted batch as events.
+
+        Every call processes its incoming (the engine's entry-rule bookkeeping
+        runs each time), so the trainee's state stays in lockstep with the
+        trainer's responses even while a burst is being drained from the buffer.
+        """
+        incoming_value = incoming.proposal if incoming is not None else None
+        query = incoming_value
+        events: list[RationaliseEvent] = []
+        for proposal in self._engine.rationalise(incoming_value):
+            q = query if query is not None else proposal
+            events.append(
+                RationaliseEvent(kind="frame", query=q, proposal=proposal, role="K")
+            )
+        return events
+
+    def next_events(
+        self, incoming: RationaliseEvent | None
+    ) -> list[RationaliseEvent]:
+        """Rationalise ``incoming`` into a batch of events (peer regime).
+
+        The engine returns an identity blast or a single relationship emission
+        (never mixed); each emitted ``KValue`` is wrapped in a
+        ``RationaliseEvent``. Returns an empty list when nothing is workable.
+        """
+        return self._process_and_collect(incoming)
+
     def respond(
         self, incoming: RationaliseEvent | None
     ) -> RationaliseEvent | None:
-        incoming_value = incoming.proposal if incoming is not None else None
-        proposal = self._engine.rationalise(incoming_value)
-        if proposal is None:
+        # Ordered regime: process every incoming (append its batch to the FIFO),
+        # then dole one event out per call. This keeps state lockstep with the
+        # trainer's responses while preserving one-event-per-call emission.
+        self._respond_list.extend(self._process_and_collect(incoming))
+        if not self._respond_list:
             return None
-        query = incoming_value if incoming_value is not None else proposal
-        return RationaliseEvent(
-            kind="frame", query=query, proposal=proposal, role="K"
-        )
+        return self._respond_list.pop(0)
+
+    def accept(self, incoming: RationaliseEvent | None) -> None:
+        # Peer regime: publish the whole batch (the point of batching).
+        if self._sink is None:
+            return
+        for event in self._process_and_collect(incoming):
+            self._sink.on_event(event)
 
 
 # ── The run (spec §The Runner) ────────────────────────────────────────────
