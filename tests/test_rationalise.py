@@ -18,18 +18,16 @@ rather than asserting unimplemented behaviour.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from kalvin.expand import SIG_S1, SIG_S2, SIG_S4
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
+from tests._fixtures import mhall_table
 from training.dialogue.decoder import decode, load_table
 from training.dialogue.rationalise import Rationaliser
 
-MHALL = Path(__file__).resolve().parent.parent / "scripts" / "dialogue-mhall.json"
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────
@@ -223,7 +221,7 @@ def test_relationship_does_not_ground_via_cleanup(
 
 @pytest.fixture(scope="module")
 def _decoded_mhall():
-    table = load_table(__import__("json").loads(MHALL.read_text()))
+    table = load_table(mhall_table())
     return decode(table, signifier=NLPSignifier())
 
 

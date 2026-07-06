@@ -33,7 +33,8 @@ The source artifact for a lesson. A JSON object:
 
 ```
 DialogueTable:
-  script:  str          # KScript source — the authority for kline structure
+  script:  str          # KScript source, or a path to a .ks file — the
+                         # authority for kline structure
   turns:   list[Turn]   # ordered, the exact T/K exchange
 ```
 
@@ -51,6 +52,14 @@ Turn:
 `script` is the single source of truth for kline structure (canonical
 signatures, atom values, subword composition). `turns` is the exact exchange.
 `op` is a Structural State (`@CONTEXT.md`).
+
+`script` may be given **inline** (the KScript source text) or as a **path** to a
+`.ks` file. The two are disambiguated by path-likeness, not existence: a value
+is treated as a path when it contains a path separator (`/` or `\`) or ends in
+`.ks`, and is then resolved against the file system; any other value is used
+verbatim as inline source. A path-like value that is missing or unreadable is a
+load error (no silent inline fallback, so a typo or wrong working directory is
+not masked).
 
 An **annotation-only turn** carries `notes` but no `op`; it is human commentary
 and is not part of the exchange.

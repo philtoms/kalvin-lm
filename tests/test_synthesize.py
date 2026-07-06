@@ -14,18 +14,15 @@ for R2's relation precedence, never for the canon/identity decisions.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
+from tests._fixtures import mhall_table
 from training.dialogue.decoder import decode, load_table
 from training.dialogue.synthesize import synthesize
-
-MHALL = Path(__file__).resolve().parent.parent / "scripts" / "dialogue-mhall.json"
 
 
 @pytest.fixture
@@ -209,11 +206,9 @@ def test_mhall_trainer_turns_reproduce(signifier: NLPSignifier) -> None:
     end-to-end proof independent of the Actor wrapper (Phase 4.2 adds the
     runner-driven version).
     """
-    import json
-
     from ks.compiler import compile_source
 
-    raw = json.loads(MHALL.read_text())
+    raw = mhall_table()
     table = load_table(raw)
     compiled = compile_source(table.script, tokenizer=None, signifier=signifier, dev=True)
     decoded = decode(table, tokenizer=None, signifier=signifier)

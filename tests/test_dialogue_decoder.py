@@ -4,27 +4,24 @@ Spec: ``@specs/dialogue-driven-training.md`` DDT-1..5. The decoder is a
 single-stage configuration-time function that turns a ``DialogueTable`` into a
 flat ordered ``list[DecodedTurn]``.
 
-The canonical acceptance input is ``scripts/dialogue-mhall.json`` (the
-"Mary had a little lamb" reference dialogue).
+The canonical acceptance input is the "Mary had a little lamb" reference
+dialogue, frozen in :mod:`tests._fixtures` (``scripts/dialogue-mhall.json`` is
+user-editable and must not be read by tests).
 """
 
 from __future__ import annotations
-
-import json
-from pathlib import Path
 
 import pytest
 
 from kalvin.expand import SIG_S1, SIG_S2
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
+from tests._fixtures import mhall_table
 from training.dialogue.decoder import (
     DecodeError,
     decode,
     load_table,
 )
-
-MHALL = Path(__file__).resolve().parent.parent / "scripts" / "dialogue-mhall.json"
 
 
 @pytest.fixture(scope="module")
@@ -35,7 +32,7 @@ def _tok_sig():
 @pytest.fixture(scope="module")
 def decoded_mhall(_tok_sig):
     tok, sigf = _tok_sig
-    table = load_table(json.loads(MHALL.read_text()))
+    table = load_table(mhall_table())
     return decode(table, tokenizer=tok, signifier=sigf), table
 
 
@@ -44,7 +41,7 @@ def decoded_mhall(_tok_sig):
 
 def test_load_parses_table_and_turn_fields():
     """DDT-1: loader parses ``script`` + ``turns[]``; each turn has the typed fields."""
-    table = load_table(json.loads(MHALL.read_text()))
+    table = load_table(mhall_table())
     assert isinstance(table.script, str) and table.script
     assert len(table.turns) >= 2
     first = table.turns[0]

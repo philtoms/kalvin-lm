@@ -6,14 +6,12 @@ row. Greediness is automatic — consecutive same-actor rows are served to the s
 actor (e.g. ``T,T,K`` asks the trainer twice, then the trainee). Each actor yields
 its own rows one at a time. Every response is validated against the table.
 
-The decisive acceptance test is the canonical end-to-end run
-(``scripts/dialogue-mhall.json``): runs to exhaustion, every row validated.
+The decisive acceptance test is the canonical end-to-end run (the "Mary had
+a little lamb" reference dialogue, frozen in :mod:`tests._fixtures`):
+runs to exhaustion, every row validated.
 """
 
 from __future__ import annotations
-
-import json
-from pathlib import Path
 
 import pytest
 
@@ -23,6 +21,7 @@ from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
+from tests._fixtures import mhall_table
 from training.dialogue import (
     ActorDivergence,
     TableTrainee,
@@ -33,13 +32,11 @@ from training.dialogue import (
 )
 from training.dialogue.runner import _TableActor, run_table
 
-MHALL = Path(__file__).resolve().parent.parent / "scripts" / "dialogue-mhall.json"
-
 
 @pytest.fixture(scope="module")
 def _decoded_mhall():
     tok, sigf = NLPTokenizer(), NLPSignifier()
-    table = load_table(json.loads(MHALL.read_text()))
+    table = load_table(mhall_table())
     return decode(table, tokenizer=tok, signifier=sigf)
 
 
@@ -49,7 +46,7 @@ def _compiled_mhall():
     from ks.compiler import compile_source
 
     tok, sigf = NLPTokenizer(), NLPSignifier()
-    table = load_table(json.loads(MHALL.read_text()))
+    table = load_table(mhall_table())
     compiled = compile_source(table.script, tokenizer=tok, signifier=sigf, dev=True)
     return compiled, sigf
 
@@ -294,7 +291,7 @@ def test_canonical_run_completes(_decoded_mhall):
 
 def test_run_table_convenience():
     """run_table decodes and runs with default actors in one call."""
-    table = load_table(json.loads(MHALL.read_text()))
+    table = load_table(mhall_table())
     result = run_table(table, tokenizer=NLPTokenizer(), signifier=NLPSignifier())
     assert result.complete
 

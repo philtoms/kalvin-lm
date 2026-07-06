@@ -21,6 +21,7 @@ Spec mapping
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4
@@ -540,6 +541,23 @@ def load_table(raw: dict) -> DialogueTable:
     """
     if "script" not in raw or not isinstance(raw["script"], str):
         raise DecodeError("dialogue table missing string 'script'")
+    # ``script`` may be a path to a KScript file or inline source. The two are
+    # disambiguated by **path-likeness**, not by existence: a value is treated
+    # as a path when it contains a path separator (``/`` or ``\``) or ends in
+    # ``.ks``. A path-like value is resolved against the file system — a missing
+    # or unreadable file is a hard error (no silent inline fallback, which would
+    # mask a typo or a wrong working directory). A non-path-like value is used
+    # verbatim as inline KScript (the original behaviour).
+    script = raw["script"]
+    looks_like_path = ("/" in script) or ("\\" in script) or script.endswith(".ks")
+    if looks_like_path:
+        script_path = Path(script)
+        try:
+            script = script_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise DecodeError(
+                f"dialogue table 'script' path {script!r} could not be read: {exc}"
+            ) from exc
     if "turns" not in raw or not isinstance(raw["turns"], list):
         raise DecodeError("dialogue table missing list 'turns'")
     peer_raw = raw.get("peer")
@@ -550,4 +568,4 @@ def load_table(raw: dict) -> DialogueTable:
     else:
         peer = None
     turns = tuple(_turn_from_dict(t) for t in raw["turns"])
-    return DialogueTable(script=raw["script"], turns=turns, peer=peer)
+    return DialogueTable(script=script, turns=turns, peer=peer)
