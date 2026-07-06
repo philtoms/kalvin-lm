@@ -34,8 +34,13 @@ MHALL == SVO =>
      A > D(et)
      L > M(od)
      L > O
-"""
 
+(what did Mary have)
+WDMH =>
+  M
+  H => D H
+  W = ALL
+"""
 
 class DeadlineExceededError(Exception):
     """Raised when a wall-clock --deadline elapses mid-run."""

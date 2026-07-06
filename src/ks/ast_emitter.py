@@ -175,20 +175,35 @@ class ASTEmitter:
             return
 
         node_ids = self._collect_node_ids(scope)
+
+        # A CANONIZE scope introduces a subscript scope (§3): push it BEFORE
+        # expanding node MTS and resolving operands, so a node-compound's
+        # chars (e.g. SVO's S,V,O) resolve against the subscript's bindings
+        # (S->Subject, V->Verb, O->Object) rather than the outer scope where
+        # they are unbound. BindingScope.push_scope resets parent counters too,
+        # so duplicate chars (the two Ls in ALL => A=L L=L against 'Mary had
+        # a Little Lamb') resolve to their distinct words. _compile_children
+        # pops this scope after walking the block.
+        is_canonize = op == "CANONIZED"
+        pushed_scope = False
+        if is_canonize and self._scope is not None:
+            self._scope.push_scope()
+            pushed_scope = True
+
         for nid in node_ids:
             if len(nid) > 1:
                 self._emit_mts(nid)
 
-        # A CANONIZE scope whose sig was MTS-expanded aggregates the SAME
-        # identifier's components — reuse the cached resolution (§8.3) so the
-        # operator entry matches and dedups against the MTS canonize entry.
-        if op == "CANONIZED" and scope.sig.id in self._resolution_cache:
-            resolved_nodes = list(self._resolution_cache[scope.sig.id])
-        else:
-            resolved_nodes = self._resolve_nodes(node_ids, scope)
+        # A CANONIZE scope's nodes are its declared block operands — always.
+        # The signature's MTS character-expansion is a separate decoding-aid
+        # kline (emitted by _emit_mts above); it coexists with the block canon
+        # and is never the canon's node-list. The two share a signature but are
+        # distinct relationships: signature:block (the canon) and signature:MTS
+        # (the decoding aid). Do not let the MTS cache override the block.
+        resolved_nodes = self._resolve_nodes(node_ids, scope)
 
         self._emit_operator_entries(sig_resolved, resolved_nodes, op)
-        self._compile_children(scope, op, mts_idx)
+        self._compile_children(scope, op, mts_idx, pushed_scope=pushed_scope)
 
     # Operator emission (Step 2)
 
@@ -217,7 +232,21 @@ class ASTEmitter:
                 self._emit_entry(sig, [node], "CONNOTED")
 
         elif op == "CANONIZED":
-            self._emit_entry(sig, list(nodes), "CANONIZED")
+            # The block definition is authoritative: if an MTS CANONIZE entry
+            # already exists for this sig (emitted when the sig was expanded as
+            # a node or via _emit_mts), patch its nodes to the block's resolved
+            # operands rather than emitting a duplicate. The MTS entry's role
+            # was a decoding aid; the block supplies the real canon nodes.
+            key = (sig, tuple(nodes))
+            patched = False
+            for idx, e in enumerate(self.entries):
+                if e.sig == sig and e.op == "CANONIZED":
+                    self.entries[idx] = e._replace(nodes=list(nodes))
+                    self._mts_canonize_seen[key] = idx
+                    patched = True
+                    break
+            if not patched:
+                self._emit_entry(sig, list(nodes), "CANONIZED")
 
     # Node collection (Step 2)
 
@@ -369,6 +398,8 @@ class ASTEmitter:
         scope: OperatorScope,
         op: str,
         mts_idx: int | None,
+        *,
+        pushed_scope: bool = False,
     ) -> None:
         """After emitting operator entries, recursively process children.
 
@@ -404,8 +435,8 @@ class ASTEmitter:
             self._parent_kline_chars = scope.sig.id
             self._parent_kline_canonize_idx = mts_idx
 
-        if is_canonize and self._scope is not None:
-            self._scope.push_scope()
+        # The subscript scope was pushed in _process_scope (before operand
+        # resolution); this method only walks children and pops it.
 
         # Activate subscript identity for a single-char CANONIZE sig
         # (mts_idx is None) with recursive content.
@@ -461,7 +492,7 @@ class ASTEmitter:
                     self._emit_identity_if_needed(resolved)
                 self._process_construct(construct)
 
-        if is_canonize and self._scope is not None:
+        if pushed_scope and self._scope is not None:
             self._scope.pop_scope()
 
         self._parent_kline_chars = saved_chars
