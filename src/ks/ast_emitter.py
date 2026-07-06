@@ -487,17 +487,27 @@ class ASTEmitter:
         sig: str,
         inline_annotation: Annotation | None,
     ) -> str:
-        """Resolve a signature: inline annotation first, then BindingScope.
+        """Resolve a scope signature.
 
-        - If inline annotation present: extract word, trigger Rule B4
-          override patching, return the word.
-        - If single-char sig with no inline: resolve via BindingScope.
+        Word Binding (top-level): a signature-prefix annotation binds
+        fill-if-empty — it takes effect only when the character is currently
+        unbound in the scope. If ``sig`` is already bound (e.g. H bound to
+        'had' by an outer scope), the annotation is inert and the existing
+        binding stands. This guarantees each identity is bound once, with no
+        competing token.
+
+        - If ``inline_annotation`` present AND ``sig`` is a single unbound char:
+          extract word, trigger Rule B4 patching, return the word.
+        - Else if single-char sig: resolve via BindingScope (may be unbound → raw char).
         - If multi-char sig: return as-is (MTS handles individual chars).
         """
-        if inline_annotation is not None:
-            word = self._extract_inline_word(sig, inline_annotation)
-            self._patch_parent_canonize(sig, word)
-            return word
+        if inline_annotation is not None and len(sig) == 1:
+            existing = self._scope.resolve(sig) if self._scope is not None else None
+            if existing is None:
+                word = self._extract_inline_word(sig, inline_annotation)
+                self._patch_parent_canonize(sig, word)
+                return word
+            return existing  # already bound — top-level annotation is inert
         if len(sig) == 1:
             return self._resolve_char(sig)
         return sig
@@ -509,19 +519,56 @@ class ASTEmitter:
     ) -> list[str]:
         """Resolve node identifiers to their bound or raw forms.
 
-        Handles node_inline_annotation for the first node (if present).
-        All other nodes are resolved via _resolve_char.
+        Word Binding (inline): an inline annotation on a Signature item binds
+        unconditionally to that item, overriding any outer binding. The
+        per-item annotations come from the Signature items in ``scope.items``
+        (and the subscript block), matched to ``node_ids`` in order; any node
+        without an inline annotation resolves via ``_resolve_char``.
         """
+        # Build a per-position inline-annotation map from the scope's Signature
+        # items, in collection order, aligned with node_ids.
+        inline_by_pos = self._collect_item_inline_annotations(scope)
         resolved: list[str] = []
-        first_inline = scope.node_inline_annotation
         for i, nid in enumerate(node_ids):
-            if i == 0 and first_inline is not None:
-                word = self._extract_inline_word(nid, first_inline)
+            ann = inline_by_pos[i] if i < len(inline_by_pos) else None
+            if ann is not None:
+                word = self._extract_inline_word(nid, ann)
                 self._patch_parent_canonize(nid, word)
                 resolved.append(word)
             else:
                 resolved.append(self._resolve_char(nid))
         return resolved
+
+    def _collect_item_inline_annotations(
+        self, scope: OperatorScope
+    ) -> list[Annotation | None]:
+        """Inline annotations on this scope's Signature items, in node order.
+
+        Mirrors ``_collect_node_ids``: walks items (Signature items) and the
+        subscript child_block, returning each item's ``inline_annotation``
+        (or None) aligned to the collected node positions.
+        """
+        anns: list[Annotation | None] = []
+        for item in scope.items:
+            if isinstance(item, Signature):
+                anns.append(item.inline_annotation)
+            elif isinstance(item, OperatorScope):
+                anns.append(None)  # nested scope — no per-item inline here
+        if scope.child_block is not None:
+            for construct in scope.child_block.constructs:
+                self._collect_block_item_inline_annotations(construct, anns)
+        return anns
+
+    def _collect_block_item_inline_annotations(
+        self,
+        construct: ConstructItem,
+        anns: list[Annotation | None],
+    ) -> None:
+        if isinstance(construct, OperatorScope):
+            anns.append(construct.inline_annotation)
+        elif isinstance(construct, Block):
+            for c in construct.constructs:
+                self._collect_block_item_inline_annotations(c, anns)
 
     # Word extraction helpers
 

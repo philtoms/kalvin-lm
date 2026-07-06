@@ -39,7 +39,6 @@ def _scope(
     items: list | None = None,
     child_block: Block | None = None,
     inline_annotation: Annotation | None = None,
-    node_inline_annotation: Annotation | None = None,
 ) -> OperatorScope:
     return OperatorScope(
         sig=_sig(sig_id),
@@ -47,7 +46,6 @@ def _scope(
         items=items or [],
         child_block=child_block,
         inline_annotation=inline_annotation,
-        node_inline_annotation=node_inline_annotation,
     )
 
 

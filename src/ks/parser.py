@@ -22,7 +22,7 @@ Scope rules enforced (spec §3):
 Inline annotations (spec §5.1):
 
     Sig-side   S(ubject) = M   →  OperatorScope.inline_annotation
-    Node-side  A = D(et)       →  OperatorScope.node_inline_annotation
+    Node-side  A = D(et)       →  Signature.inline_annotation (per-item)
 
 NEWLINE tokens are insignificant — skipped between constructs.
 Bare signature (no operator) produces OperatorScope with op=None.
@@ -168,7 +168,7 @@ class Parser:
             return OperatorScope(sig=sig, op=None, items=[], inline_annotation=inline_ann)
 
         # Items on the same line as the operator
-        items, node_inline = self._parse_items()
+        items = self._parse_items()
 
         # Child block on subsequent indented lines
         self._skip_newlines()
@@ -182,22 +182,23 @@ class Parser:
             items=items,
             child_block=child_block,
             inline_annotation=inline_ann,
-            node_inline_annotation=node_inline,
         )
 
     # Items  (same-line nodes within an operator scope)
 
-    def _parse_items(self) -> tuple[list[ScopeItem], Annotation | None]:
+    def _parse_items(self) -> list[ScopeItem]:
         """Collect items on the same line as the operator.
 
-        Returns (items, node_inline_annotation).
         Items stop at NEWLINE, INDENT, DEDENT, or EOF.
         A SIGNATURE followed (skipping ANNOTATIONs) by an operator is
         parsed as a nested OperatorScope per grammar rule
         ``item ::= operator_scope``.
+
+        An ANNOTATION immediately following a bare Signature item attaches to
+        that item as its ``inline_annotation`` (Word Binding: inline annotations
+        bind unconditionally to their item), rather than becoming a loose item.
         """
         items: list[ScopeItem] = []
-        node_inline: Annotation | None = None
 
         while not self._at_end():
             tok = self._peek()
@@ -220,28 +221,26 @@ class Parser:
                     )
                     items.append(sig_item)
 
-                    # Node-side inline annotation: A = D(et)
+                    # Inline annotation on this item: D(et) — attach to the
+                    # Signature (bound unconditionally to it per Word Binding).
                     if not self._at_end() and self._peek().type == TokenType.ANNOTATION:
                         ann_tok = self._advance()
-                        ann = Annotation(
+                        sig_item.inline_annotation = Annotation(
                             text=ann_tok.value,
                             line=ann_tok.line,
                             column=ann_tok.column,
                         )
-                        if node_inline is None:
-                            node_inline = ann
-                        else:
-                            # Subsequent node-side annotations become items
-                            items.append(ann)
 
             elif tok.type == TokenType.ANNOTATION:
+                # An annotation not following a Signature (e.g. a leading word
+                # list) stays a loose item.
                 items.append(self._parse_annotation())
 
             else:
                 # Unexpected token → stop item collection
                 break
 
-        return items, node_inline
+        return items
 
     def _sig_followed_by_operator(self) -> bool:
         """True if the current SIGNATURE is followed (skipping ANNOTATIONs) by an operator.

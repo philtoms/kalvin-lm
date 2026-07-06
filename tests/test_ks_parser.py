@@ -378,7 +378,8 @@ class TestKS9InlineAnnotation:
         assert scope.inline_annotation.text == "(ubject)"
         assert scope.op is TokenType.UNDERSIGN
         assert scope.items[0].id == "M"
-        assert scope.node_inline_annotation is None
+        # The M item has no inline annotation; node_inline_annotation is retired.
+        assert scope.items[0].inline_annotation is None
 
     def test_node_side_inline_annotation(self) -> None:
         """A = D(et) — ANNOTATION after SIGNATURE that is an item."""
@@ -396,9 +397,12 @@ class TestKS9InlineAnnotation:
         assert isinstance(scope, OperatorScope)
         assert scope.sig.id == "A"
         assert scope.inline_annotation is None
-        assert scope.node_inline_annotation is not None
-        assert scope.node_inline_annotation.text == "(et)"
-        assert scope.items[0].id == "D"
+        # The annotation attaches to the D item, not the scope.
+        d_item = scope.items[0]
+        assert isinstance(d_item, Signature)
+        assert d_item.id == "D"
+        assert d_item.inline_annotation is not None
+        assert d_item.inline_annotation.text == "(et)"
 
     def test_both_inline_annotations(self) -> None:
         """S(ubject) = D(et) — both sig-side and node-side on same scope."""
@@ -417,8 +421,11 @@ class TestKS9InlineAnnotation:
         assert isinstance(scope, OperatorScope)
         assert scope.inline_annotation is not None
         assert scope.inline_annotation.text == "(ubject)"
-        assert scope.node_inline_annotation is not None
-        assert scope.node_inline_annotation.text == "(et)"
+        # The (et) attaches to the D item.
+        d_item = scope.items[0]
+        assert isinstance(d_item, Signature)
+        assert d_item.inline_annotation is not None
+        assert d_item.inline_annotation.text == "(et)"
 
     def test_sig_side_inline_on_bare_signature(self) -> None:
         """S(ubject) without operator — bare sig with inline annotation."""

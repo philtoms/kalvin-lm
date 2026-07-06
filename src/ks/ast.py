@@ -20,11 +20,15 @@ class Signature:
     """An uppercase identifier [A-Z]+.
 
     Can appear as a scope's signature or as a bare node within a scope's items.
+    When used as an item, may carry an ``inline_annotation`` — an annotation
+    that immediately follows it in source (e.g. the ``(ave)`` on the second H
+    in ``H => D H(ave)``), bound unconditionally to this item by Word Binding.
     """
 
     id: str  # uppercase
     line: int
     column: int
+    inline_annotation: Annotation | None = None  # inline (item-side)
 
 
 @dataclass
@@ -49,22 +53,19 @@ class OperatorScope:
         items: Nodes and child constructs within this scope. Typed as
             ScopeItem (Signature | Annotation | OperatorScope) to accommodate
             bare Signature nodes per grammar §4: item ::= sig | annotation | operator_scope.
+            A Signature item may carry its own ``inline_annotation`` (bound
+            unconditionally to that item per Word Binding).
         child_block: Indented child scope extending this operator's scope (§3 Rule S4).
         inline_annotation: Annotation attached to sig-side, e.g. S(ubject) = M.
-            Singular — one annotation per signature position.
-        node_inline_annotation: Annotation attached to the first node-side
-            Signature, e.g. A = D(et). Singular — for multi-node scopes with
-            multiple inline-annotated nodes, the parser is responsible
-            for attaching subsequent annotations via the items list (as Annotation
-            entries preceding the annotated Signature) or another mechanism.
+            A top-level (signature-prefix) annotation: binds fill-if-empty per
+            Word Binding (never overriding an outer binding on the same char).
     """
 
     sig: Signature
     op: TokenType | None = None
     items: list[ScopeItem] = field(default_factory=list)
     child_block: Block | None = None
-    inline_annotation: Annotation | None = None  # sig-side
-    node_inline_annotation: Annotation | None = None  # node-side (first node)
+    inline_annotation: Annotation | None = None  # sig-side (top-level)
 
 
 @dataclass
