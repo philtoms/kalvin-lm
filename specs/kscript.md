@@ -352,7 +352,7 @@ The identity-filling flag does not propagate between CANONIZE scopes; only the i
 
 ## 8. MTS (Multi-Token Signature) Expansion
 
-When a signature has **more than one character**, the ASTEmitter automatically emits:
+When a signature is an **all-uppercase multi-character identifier** (a compound, e.g. `MHALL`, `SVO`, `ALL`), the ASTEmitter automatically emits:
 
 1. **Component identities:** One identity entry per constituent character (resolved via BindingScope).
 2. **MTS canonization:** One entry mapping the compound to its resolved components.
@@ -363,7 +363,9 @@ ABC  →  {A: []}, {B: []}, {C: []}, {ABC: [A, B, C]}
 
 Single-character signatures do NOT trigger MTS expansion.
 
-MTS applies to any multi-character identifier wherever it appears — signature side or node side, any operator. There is no position-dependent rule.
+**Compounds vs words.** MTS character-expansion applies only to all-uppercase identifiers. A lowercase or mixed-case multi-character identifier (e.g. `had`, `did`, `all`) is a **single word** — one token — not a compound; it is emitted as its own IDENTITY and is never decomposed into per-character entries. Case is the discriminator that separates a compound from a word; both are admitted by the case-insensitive SIGNATURE rule (§2). (Historically every multi-character identifier was uppercase, so the case guard was implicit; the SIGNATURE relaxation made it explicit.)
+
+MTS applies to compounds wherever they appear — signature side or node side, any operator. There is no position-dependent rule.
 
 ### 8.1 Character Resolution
 
@@ -830,8 +832,9 @@ SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL componen
 | KS-17                 | DEDENT returns to parent scope                                                                                                                                           | Scope       |
 | KS-18                 | Non-CANONIZE with indent: per-item emission extends into child block                                                                                                     | Scope       |
 | **MTS**               |                                                                                                                                                                          |             |
-| KS-19                 | MTS expansion: multi-char identifier produces component identities + canonization                                                                                        | MTS         |
+| KS-19                 | MTS expansion: all-uppercase multi-char compound produces component identities + canonization                                                                            | MTS         |
 | KS-20                 | No MTS for single-char identifiers                                                                                                                                       | MTS         |
+| KS-20b                | No MTS for lowercase/mixed-case words (`had`, `Hello`) — single-token, not decomposed                                                                                   | MTS         |
 | KS-21                 | MTS on node side: `A == MHALL` triggers MTS for MHALL                                                                                                                    | MTS         |
 | KS-22                 | Node count invariant: MTS node count equals character count                                                                                                              | MTS         |
 | **Binding**           |                                                                                                                                                                          |             |

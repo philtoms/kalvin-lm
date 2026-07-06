@@ -19,12 +19,17 @@ converts SymbolicEntry tuples to encoded uint64 values.
   Self-identity (A = A) collapses to IDENTITY with empty nodes (spec §7.3).
 
 **MTS expansion (spec §8):**
-  Multi-character identifiers trigger automatic emission of:
+  Multi-character all-uppercase identifiers (compounds: MHALL, SVO, ALL)
+  trigger automatic emission of:
   1. One IDENTITY entry per resolved constituent character.
   2. One CANONIZE entry mapping the compound to its resolved components.
 
-  MTS applies to identifiers wherever they appear — signature side or node
-  side, any operator.  Single-character identifiers do NOT trigger MTS.
+  MTS applies to compounds wherever they appear — signature side or node
+  side, any operator.  Single-character identifiers and lowercase/mixed-case
+  words (had, did, all) do NOT trigger MTS — they are single-word tokens,
+  not multi-token compounds. The case distinction is what separates a
+  compound from a word, both admitted by the case-insensitive SIGNATURE
+  rule (§2).
 
 **MTS deduplication (§8.3):**
   CANONIZE entries are deduplicated on (sig, nodes).  Component IDENTITY
@@ -307,9 +312,14 @@ class ASTEmitter:
         an identity (spec §8; CONTEXT.md "Identity" glossary).
 
         Returns the index of the CANONIZE entry (for Rule B4), or None
-        if no MTS was emitted (single-char identifier).
+        if no MTS was emitted (single-char or non-uppercase identifier).
         """
-        if len(sig) <= 1:
+        # MTS character-decomposition applies only to all-uppercase
+        # multi-character identifiers (compounds: MHALL, SVO, ALL). A
+        # lowercase/mixed-case multi-char identifier is a single word
+        # (had, did, all) admitted by the case-insensitive SIGNATURE rule;
+        # decomposing it by character would be wrong. (§8)
+        if len(sig) <= 1 or not sig.isupper():
             return None
 
         # Resolve once on first expansion (§8.3); reuse the cached list so
