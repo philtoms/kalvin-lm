@@ -30,6 +30,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from kalvin.events import RationaliseEvent
+from kalvin.expand import SIG_S2
+from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn
 from training.dialogue.rationalise import Rationaliser
@@ -214,22 +216,32 @@ class SynthesizingTrainer:
     """A trainer that synthesises each turn from the compiled script.
 
     Drop-in for :class:`TableTrainer` wherever an :class:`Actor` is accepted.
-    Holds the compiled script and a signifier (built once at construction) and
-    delegates to :func:`~training.dialogue.synthesize.synthesize`. Constructor
-    does **not** take ``decoded`` — the table is only the validation oracle.
-    Pass ``sink`` for the peer regime (publishes via it); omit for ordered.
+    Holds the compiled script (for structure — R2/R3 decompositions) and the
+    ordered script ``primaries`` (for openings — R1), plus a signifier. The
+    table is only the validation oracle; the constructor takes neither
+    ``decoded`` nor the table. Pass ``sink`` for the peer regime.
 
     The trainer does not detect script closes. The runner owns the table
     cursor and the ``close`` markers; on a close it routes the next trainer
-    turn as an open (``incoming=None``), so this actor simply synthesises the
-    turn for whatever ``incoming`` it is handed. R1 (open) and R2/R3 (reply)
-    live in the pure :func:`synthesize`; this actor wraps its result in an
-    event.
+    turn as an open (``incoming=None``). On an open the trainer emits the
+    current primary at S2 (R1) and advances to the next primary, so a
+    multi-script file opens each script's own primary in turn. On a reply
+    (``incoming`` is a KValue) it delegates to :func:`synthesize` (R2/R3).
     """
 
-    def __init__(self, compiled: list[KValue], signifier: KSignifier, sink=None) -> None:
+    def __init__(
+        self,
+        compiled: list[KValue],
+        signifier: KSignifier,
+        primaries: list[KLine],
+        sink=None,
+    ) -> None:
+        if not primaries:
+            raise ValueError("SynthesizingTrainer needs at least one primary")
         self._compiled = compiled
         self._signifier = signifier
+        self._primaries = tuple(primaries)
+        self._primary_index = 0
         self._sink = sink
 
     @property
@@ -240,9 +252,19 @@ class SynthesizingTrainer:
     def _next_event(
         self, incoming: RationaliseEvent | None
     ) -> RationaliseEvent | None:
-        incoming_value = incoming.proposal if incoming is not None else None
-        proposal = synthesize(self._compiled, incoming_value, self._signifier)
-        query = incoming_value if incoming_value is not None else proposal
+        if incoming is None:
+            # R1 — open the current script's primary at S2, then advance so
+            # the next open (after the next close) opens the following primary.
+            primary = self._primaries[self._primary_index]
+            self._primary_index = min(
+                self._primary_index + 1, len(self._primaries) - 1
+            )
+            proposal = KValue(primary, SIG_S2)
+            query = proposal
+        else:
+            incoming_value = incoming.proposal
+            proposal = synthesize(self._compiled, incoming_value, self._signifier)
+            query = incoming_value
         return RationaliseEvent(
             kind="frame", query=query, proposal=proposal, role="T"
         )

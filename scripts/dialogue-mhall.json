@@ -1,5 +1,5 @@
 {
-  "script": "(Mary had a little lamb)\nMHALL == SVO =>\n   S(ubject) = M\n   V(erb) = H\n   O(bject) = ALL =>\n     A > D(et)\n     L > M(od)\n     L > O",
+  "script": "data/scripts/mhall.ks",
   "turns": [
     {
       "op": "COUNTERSIGNED",
@@ -302,7 +302,8 @@
       ],
       "significance": "S1",
       "notes": "This brings an end to the run",
-      "role": "K"
+      "role": "K",
+      "close": 1
     }
   ],
   "peer": {}

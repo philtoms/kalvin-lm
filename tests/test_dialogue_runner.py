@@ -16,7 +16,7 @@ from __future__ import annotations
 import pytest
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S1
+from kalvin.expand import SIG_S1, SIG_S2
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
@@ -336,7 +336,7 @@ def test_synthesizing_trainer_runs_mhall_to_exhaustion(_decoded_mhall, _compiled
     compiled, sigf = _compiled_mhall
     result = run(
         _decoded_mhall,
-        trainer=SynthesizingTrainer(compiled, sigf),
+        trainer=SynthesizingTrainer(compiled, sigf, [compiled[0].kline]),
         trainee=TableTrainee(_decoded_mhall),
     )
     assert result.complete
@@ -359,7 +359,7 @@ def test_synthesizing_trainer_replies_to_any_incoming(_compiled_mhall):
     from training.dialogue.runner import SynthesizingTrainer
 
     compiled, sigf = _compiled_mhall
-    trainer = SynthesizingTrainer(compiled, sigf)
+    trainer = SynthesizingTrainer(compiled, sigf, [compiled[0].kline])
     # A primary-shaped incoming (formerly the close): the trainer still replies
     # (R3 echoes the matching compiled kline) — it does not withhold.
     primary_event = RationaliseEvent(
@@ -369,6 +369,31 @@ def test_synthesizing_trainer_replies_to_any_incoming(_compiled_mhall):
         role="K",
     )
     assert trainer.respond(primary_event) is not None
+
+
+def test_synthesizing_trainer_advances_primary_on_each_open():
+    """On an open (``incoming=None``) the trainer emits the current primary at
+    S2 (R1) and advances, so a multi-script trainer opens each script's own
+    primary in turn: primary 0 on the first open, primary 1 after the first
+    close, and so on. The runner drives the opens via close-aware routing."""
+    from pathlib import Path
+
+    from training.dialogue.decoder import primaries_from_source
+    from training.dialogue.runner import SynthesizingTrainer
+
+    tok, sigf = NLPTokenizer(), NLPSignifier()
+    source = Path("data/scripts/mhall.ks").read_text()
+    primaries = primaries_from_source(source, tokenizer=tok, signifier=sigf)
+    p0, p1 = primaries
+    # ``compiled`` only feeds R2/R3 structure lookups; any non-empty list works
+    # here since both opens take the ``incoming=None`` branch.
+    trainer = SynthesizingTrainer([KValue(p0, 0)], sigf, [p0, p1])
+    first = trainer.respond(None)            # open script 1
+    assert first.proposal.kline == p0
+    assert first.proposal.significance == SIG_S2
+    second = trainer.respond(None)           # open script 2 (after a close)
+    assert second.proposal.kline == p1
+    assert second.proposal.significance == SIG_S2
 
 
 def test_run_routes_next_turn_as_open_after_close():

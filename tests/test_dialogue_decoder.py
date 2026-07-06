@@ -105,6 +105,22 @@ def test_decode_rejects_non_contiguous_close_markers():
         }))
 
 
+def test_primaries_from_source_extracts_each_top_level_script():
+    """primaries_from_source returns one primary per top-level KScript scope,
+    in source order - the klines a multi-script trainer opens (R1) per script."""
+    from pathlib import Path
+
+    from training.dialogue.decoder import primaries_from_source
+
+    tok, sigf = NLPTokenizer(), NLPSignifier()
+    # The real two-script file: MHALL then WDMH as separate top-level scopes.
+    source = Path("data/scripts/mhall.ks").read_text()
+    primaries = primaries_from_source(source, tokenizer=tok, signifier=sigf)
+    assert len(primaries) == 2
+    # Each primary is a distinct compiled kline (MHALL's, then WDMH's).
+    assert primaries[0] != primaries[1]
+
+
 
 # ── DDT-3: decode() returns a flat ordered list ───────────────────────────
 

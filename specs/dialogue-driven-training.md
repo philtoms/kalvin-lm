@@ -197,10 +197,14 @@ runner carries no notion of "learned" and emits no grounding signal.
   runner does not.
 - Supervisor escalation on a request the trainer cannot resolve — belongs to the
   real trainer.
-- Multi-cascade *synthesis*. The runner routes multi-script boundaries via the
-  `close` marker (a multi-script table runs script-to-script), but the
-  synthesizing trainer still opens only the first compiled primary; opening
-  successive scripts' primaries is not yet implemented.
+- Multi-cascade *tables*. The runner routes multi-script boundaries via the
+  `close` marker and the synthesizing trainer opens each script's own primary
+  in turn (via ``primaries_from_source``), so a multi-script table runs
+  script-to-script. What is not yet specified is authoring a *misfit* second
+  script (e.g. a question script whose atoms are not all first-class compiled
+  klines) — the S2-misfit pedagogy that motivates a developmental second
+  script. Peer-mode multi-script is also out of scope (the peer runner still
+  treats the last row as the single close).
 - Measuring, detecting, or signalling learning or grounding.
 
 ## Canonical Example

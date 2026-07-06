@@ -199,7 +199,7 @@ class _ResolvedScript:
     labels: dict[str, KLine] = field(default_factory=dict)
 
 
-def _node_decoded_label(entry_value: KValue, by_sig: dict[int, list[KValue]]) -> tuple[str, ...]:
+def _node_decoded_label(entry_value: KValue, by_sig: dict[int, list[KValue]]) -> tuple[str, ...] | None:
     """The decoded-label tuple of a kline's nodes (the DDT-5 retrieval key).
 
     A canon's own signature is a packed MTS (OR-reduction), so its ``dbg.decoded``
@@ -207,22 +207,28 @@ def _node_decoded_label(entry_value: KValue, by_sig: dict[int, list[KValue]]) ->
     is a single-token signature whose compiled entry carries the real subword text
     in ``dbg.decoded`` (or ``dbg.label`` for authored atoms). We resolve each node
     to its compiled entry and read its display label.
+
+    Returns ``None`` when any node has no resolvable compiled entry: such a canon
+    is not retrievable by node-list match (its node labels cannot be keyed) and
+    is skipped in the index. This lets a script contain canons whose nodes are
+    not all first-class compiled klines (e.g. a question script whose atoms are
+    only ever referenced as nodes) without poisoning the whole index; the
+    retrieval-time error surfaces only if a turn actually requests that canon.
     """
 
-    def _label_for(sig: int) -> str:
+    def _label_for(sig: int) -> str | None:
         hits = by_sig.get(sig)
         if not hits:
-            raise DecodeError(
-                f"canon node 0x{sig:x} has no compiled entry — cannot resolve its label"
-            )
+            return None  # unresolvable node — canon not node-list-keyable
         d = hits[0].kline.dbg
         if d is None:
-            raise DecodeError(
-                f"canon node 0x{sig:x} has no compiled debug info — cannot resolve its label"
-            )
+            return None
         return d.decoded or d.label
 
-    return tuple(_label_for(n) for n in entry_value.kline.nodes)
+    labels = [_label_for(n) for n in entry_value.kline.nodes]
+    if any(lbl is None for lbl in labels):
+        return None
+    return tuple(lbl for lbl in labels if lbl is not None)
 
 
 def _resolve_script(
@@ -261,9 +267,13 @@ def _resolve_script(
         # Canon index: keyed by node-decoded-label tuple (DDT-5).
         if d.op == "CANONIZED" and kl.nodes:
             key = _node_decoded_label(e, by_sig)
+            # A canon whose nodes cannot all be resolved (e.g. a question
+            # script referencing atoms that are never first-class compiled) is
+            # not node-list-keyable; skip it rather than poisoning the index.
             # Ambiguity would mean two canons decompose identically — a script
             # authoring error. Keep the first and let later lookups be stable.
-            resolved.by_node_labels.setdefault(key, e)
+            if key is not None:
+                resolved.by_node_labels.setdefault(key, e)
             # Canon-by-label: the canonical signature for this label.
             if d.label:
                 resolved.canon_by_label.setdefault(d.label, kl)
@@ -278,6 +288,51 @@ def _resolve_script(
         if d.decoded:
             resolved.labels.setdefault(d.decoded, kl)
     return entries, resolved
+
+
+def primaries_from_source(
+    script: str,
+    *,
+    tokenizer: NLPTokenizer | None = None,
+    signifier: KSignifier | None = None,
+) -> list[KLine]:
+    """The ordered script primaries (one per top-level KScript scope).
+
+    A multi-script file (e.g. ``MHALL`` then ``WDMH``) has one primary per
+    top-level ``OperatorScope``, in source order. Each primary is the first
+    compiled entry whose ``dbg.label`` matches the scope's signature id — the
+    kline a trainer opens (R1) for that script. Used by a multi-script trainer
+    to open successive scripts after each close.
+
+    The AST is the principled source of script boundaries (a compiled list
+    alone cannot distinguish a primary from any other labelled entry); this
+    helper keeps that AST knowledge in the decoder, next to the other
+    compile-time indexing.
+    """
+    from ks.lexer import Lexer
+    from ks.parser import OperatorScope, Parser
+
+    kfile = Parser(Lexer(script).tokenize()).parse()
+    scope_labels = [
+        c.sig.id for c in kfile.constructs if isinstance(c, OperatorScope)
+    ]
+    if not scope_labels:
+        return []
+    entries = compile_source(script, tokenizer=tokenizer, signifier=signifier, dev=True)
+    first_by_label: dict[str, KLine] = {}
+    for e in entries:
+        lbl = e.kline.dbg.label if e.kline.dbg else None
+        if lbl and lbl not in first_by_label:
+            first_by_label[lbl] = e.kline
+    primaries: list[KLine] = []
+    for label in scope_labels:
+        kl = first_by_label.get(label)
+        if kl is None:
+            raise DecodeError(
+                f"script primary {label!r} has no compiled entry — cannot resolve"
+            )
+        primaries.append(kl)
+    return primaries
 
 
 # ── The single-stage decode (DDT-2, DDT-3, DDT-28) ────────────────────────

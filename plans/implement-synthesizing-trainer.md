@@ -98,9 +98,13 @@ Trigger conditions are detected structurally from `incoming.proposal`
 (identity = `nodes == []` or self-referential `{S:[S]}`) plus its significance
 band.
 
-**R1 — Opening** (`incoming is None`): emit the **first compiled entry** at its
-compiled op, **S2**. Scoped to single-primary, single-cascade scripts (matches
-the spec's existing Out-of-Scope).
+**R1 — Opening** (`incoming is None`): emit the **current primary** at **S2**.
+In the pure ``synthesize`` the primary is ``compiled[0]`` (the single-script
+case). The :class:`SynthesizingTrainer` overrides this for multi-script: it
+holds the ordered primaries (from ``primaries_from_source``) and, on each
+open, emits the current primary and advances — so each script opens its own
+primary. ``synthesize`` itself stays single-primary (its opening is the
+single-script fallback); multi-script opening is the trainer's responsibility.
 
 **R2 — Reply to IDENTITY,S4** (the trainee does not recognise signature `Q`):
 find compiled kline(s) with `signature == Q` and non-empty nodes; emit the
@@ -222,10 +226,11 @@ drop-in.
 
 ## Out of Scope
 
-- Multi-primary / multi-cascade *synthesis* — the trainer still opens only
-  ``compiled[0]`` (R1); opening successive scripts' primaries is the next step
-  (the ``close: n`` routing is in place, but the trainer does not yet advance
-  its primary across scripts).
+- Multi-primary opening — **implemented**. The trainer takes the ordered
+  primaries (sourced from the AST via ``primaries_from_source``) and opens each
+  script's own primary in turn (R1), advancing on each open; the runner's
+  ``close: n`` routing drives the opens. What remains is authoring a misfit
+  second script (the S2-misfit pedagogy) and peer-mode multi-script.
 - The Kalvin cogitator (the trainee-side synthesizer) — the next grill.
 - Bus integration, supervisor escalation — belong to the real harness trainer.
 - Changing the encoder so identity and canon signatures agree (explicitly
