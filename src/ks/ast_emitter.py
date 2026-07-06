@@ -212,10 +212,27 @@ class ASTEmitter:
         # and is never the canon's node-list. The two share a signature but are
         # distinct relationships: signature:block (the canon) and signature:MTS
         # (the decoding aid). Do not let the MTS cache override the block.
+        #
+        # Rule B4 parent-kline tracking must be active DURING _resolve_nodes,
+        # because inline annotations on the block operands (e.g. S(ubject) in
+        # `SVO => S(ubject) = M`) fire _patch_parent_canonize here, and the
+        # MTS CANONIZE entry they must patch is the compound's own (kept
+        # intact under the two-entry scheme). Setting it here (before
+        # _resolve_nodes and _compile_children) and restoring after ensures
+        # both operand resolution and the child walk see the correct parent.
+        saved_chars = self._parent_kline_chars
+        saved_idx = self._parent_kline_canonize_idx
+        if is_canonize and mts_idx is not None:
+            self._parent_kline_chars = scope.sig.id
+            self._parent_kline_canonize_idx = mts_idx
+
         resolved_nodes = self._resolve_nodes(node_ids, scope)
 
         self._emit_operator_entries(sig_resolved, resolved_nodes, op)
         self._compile_children(scope, op, mts_idx, pushed_scope=pushed_scope)
+
+        self._parent_kline_chars = saved_chars
+        self._parent_kline_canonize_idx = saved_idx
 
     # Operator emission (Step 2)
 
@@ -244,21 +261,37 @@ class ASTEmitter:
                 self._emit_entry(sig, [node], "CONNOTED")
 
         elif op == "CANONIZED":
-            # The block definition is authoritative: if an MTS CANONIZE entry
-            # already exists for this sig (emitted when the sig was expanded as
-            # a node or via _emit_mts), patch its nodes to the block's resolved
-            # operands rather than emitting a duplicate. The MTS entry's role
-            # was a decoding aid; the block supplies the real canon nodes.
-            key = (sig, tuple(nodes))
-            patched = False
-            for idx, e in enumerate(self.entries):
-                if e.sig == sig and e.op == "CANONIZED":
-                    self.entries[idx] = e._replace(nodes=list(nodes))
-                    self._mts_canonize_seen[key] = idx
-                    patched = True
-                    break
-            if not patched:
-                self._emit_entry(sig, list(nodes), "CANONIZED")
+            # A compound-headed CANONIZE scope produces TWO distinct
+            # relationships that share one signature (spec §11.4):
+            #   1. MTS CANONIZE  — compound → its declared character
+            #      components (the decoding aid; already emitted by
+            #      _emit_mts when the sig was expanded). This entry DEFINES
+            #      the compound's signature: the encoder computes it as
+            #      make_signature over these character components.
+            #   2. Block canon    — compound → the block's resolved operands
+            #      (the script's declared signature↔nodes relationship).
+            # The block canon is emitted here as a SEPARATE CANONIZED entry
+            # that reuses the compound's signature (a reference, not a
+            # re-definition).
+            #
+            # These must not be conflated: when the block operands differ
+            # from the compound's characters (a deliberate misfit, e.g.
+            # `WDMH => M H W` omits D), the compound's signature is still the
+            # OR of ALL its characters (W,D,M,H) so the block canon composes
+            # into a misfit — the whole point of the script. Patching the MTS
+            # entry's nodes with the block operands would drop the missing
+            # character from the signature and collapse the misfit into a
+            # full canon with the wrong signature.
+            #
+            # When the block operands equal the character components (the
+            # common case, e.g. `SVO => S V O`), both entries share the same
+            # (sig, nodes) and §8.3 CANONIZE dedup collapses them to one —
+            # preserving the prior single-entry behaviour.
+            #
+            # Rule B4 inline-override patching is unaffected: it patches the
+            # MTS entry directly via _parent_kline_canonize_idx, which the
+            # MTS entry retains (it is not replaced here).
+            self._emit_entry(sig, list(nodes), "CANONIZED")
 
     # Node collection (Step 2)
 
@@ -444,13 +477,11 @@ class ASTEmitter:
         """
         is_canonize = op == "CANONIZED"
 
-        saved_chars = self._parent_kline_chars
-        saved_idx = self._parent_kline_canonize_idx
+        # Parent-kline tracking (Rule B4) is now set in _process_scope so it
+        # is active during operand resolution; this method only walks children
+        # and pops the subscript scope. _in_canonize_subscript still needs
+        # save/restore (it is subscript-local and does not propagate).
         saved_in_canonize = self._in_canonize_subscript
-
-        if is_canonize and mts_idx is not None:
-            self._parent_kline_chars = scope.sig.id
-            self._parent_kline_canonize_idx = mts_idx
 
         # The subscript scope was pushed in _process_scope (before operand
         # resolution); this method only walks children and pops it.
@@ -512,8 +543,6 @@ class ASTEmitter:
         if pushed_scope and self._scope is not None:
             self._scope.pop_scope()
 
-        self._parent_kline_chars = saved_chars
-        self._parent_kline_canonize_idx = saved_idx
         self._in_canonize_subscript = saved_in_canonize
 
     # Binding integration (§10, Step 5)
@@ -721,6 +750,19 @@ class ASTEmitter:
             self.entries[self._parent_kline_canonize_idx] = entry._replace(
                 nodes=new_nodes,
             )
+            # Re-key the CANONIZE dedup registry (§8.3): the patched entry's
+            # (sig, nodes) changed, so the stale key under which it was
+            # registered no longer matches. Without this, a block-canon entry
+            # whose operands equal the PATCHED component list (the common case,
+            # e.g. `SVO => S(ubject) V O`) would fail to dedup against it and
+            # emit a spurious duplicate. Remove the old key and register the
+            # new one, pointing at the same entry index.
+            if entry.is_mts:
+                old_key = (entry.sig, tuple(entry.nodes))
+                self._mts_canonize_seen.pop(old_key, None)
+                self._mts_canonize_seen[(entry.sig, tuple(new_nodes))] = (
+                    self._parent_kline_canonize_idx
+                )
 
     # Helpers
 

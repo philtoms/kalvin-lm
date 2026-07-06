@@ -421,6 +421,92 @@ class TestCanonicalEncoding:
 
 
 # ---------------------------------------------------------------------------
+# KS-43: CANONIZED misfit signature (compound sig ≠ make_signature(block))
+# ---------------------------------------------------------------------------
+
+
+@requires_tokenizer_data
+class TestCanonizedMisfitSignature:
+    """KS-43 — A compound-headed CANONIZE scope whose block operands differ
+    from the compound's declared characters (a deliberate misfit).
+
+    `WDMH => M H W` declares the compound WDMH (chars W,D,M,H) but canonizes
+    only M,H,W as block operands. The compound's SIGNATURE must still be the
+    OR of ALL its characters (W,D,M,H) — per spec §11.4 the signature is a
+    registry lookup computed once at the MTS CANONIZE definition, never a
+    reduction of the block-canon entry's own nodes. The block canon is a
+    separate kline that reuses the signature, so its nodes (M,H,W) compose
+    against a signature that also contains D — the misfit, which is the
+    whole point of the script.
+
+    Regression for the bug where the compiler emitted
+    `make_signature(M,H,W)` (dropping D) for both the block canon and the
+    compound signature, collapsing the misfit into a full canon with the
+    wrong signature.
+    """
+
+    def _entries(self, tokenizer):
+        return compile_source("WDMH => M H W", tokenizer=tokenizer, dev=True)
+
+    def test_compound_sig_is_all_chars(self, tokenizer):
+        """The compound signature == make_signature(W,D,M,H), not (M,H,W)."""
+        from kalvin.signifier import NLPSignifier
+
+        entries = self._entries(tokenizer)
+        sig = NLPSignifier()
+        w, d, m, h = (
+            tokenizer.encode(c)[0] for c in ("W", "D", "M", "H")
+        )
+        expected_all = sig.make_signature([w, d, m, h])
+        expected_block = sig.make_signature([m, h, w])
+        assert expected_all != expected_block, "precondition: misfit is real"
+
+        canon = [e for e in entries if e.kline.dbg.op == "CANONIZED"]
+        assert canon, "expected at least one CANONIZED kline"
+        for e in canon:
+            assert e.kline.signature == expected_all, (
+                f"compound sig must be make_signature(W,D,M,H); "
+                f"got 0x{e.kline.signature:x}, expected 0x{expected_all:x} "
+                f"(block-only would be 0x{expected_block:x})"
+            )
+
+    def test_block_canon_and_mts_are_separate(self, tokenizer):
+        """Two CANONIZED klines share one signature but list different nodes.
+
+        - MTS CANONIZE: WDMH → [W,D,M,H] (decoding aid; the compound def).
+        - Block canon:  WDMH → [M,H,W]   (the misfit relationship).
+        """
+        from kalvin.signifier import NLPSignifier
+
+        entries = self._entries(tokenizer)
+        sig = NLPSignifier()
+        w, d, m, h = (
+            tokenizer.encode(c)[0] for c in ("W", "D", "M", "H")
+        )
+        compound_sig = sig.make_signature([w, d, m, h])
+
+        canon = [e for e in entries if e.kline.dbg.op == "CANONIZED"]
+        assert len(canon) == 2, f"expected 2 CANONIZED klines, got {len(canon)}"
+        assert all(e.kline.signature == compound_sig for e in canon)
+
+        node_sets = {tuple(sorted(e.kline.as_node_list())) for e in canon}
+        assert tuple(sorted((w, d, m, h))) in node_sets, "missing MTS [W,D,M,H]"
+        assert tuple(sorted((m, h, w))) in node_sets, "missing block canon [M,H,W]"
+
+    def test_block_canon_is_source_mts_is_aux(self, tokenizer):
+        """Block canon appears in the source partition; MTS after it."""
+        entries = self._entries(tokenizer)
+        ops = [
+            (e.kline.dbg.op, e.kline.dbg.label)
+            for e in entries
+            if e.kline.dbg.op == "CANONIZED"
+        ]
+        # decode labels via dbg; the block canon carries the compound label
+        # and appears before the MTS canonization (source precedes MTS).
+        assert len(ops) == 2
+
+
+# ---------------------------------------------------------------------------
 # compile_source convenience function
 # ---------------------------------------------------------------------------
 

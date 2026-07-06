@@ -169,7 +169,16 @@ class TokenEncoder:
 
         # 3. Compound definition: sig = OR of resolved component node
         #    values (§11.4); register for reuse by references.
-        if is_compound_def:
+        #    Only the DEFINING entry registers — the MTS CANONIZE entry
+        #    (compound → its declared characters), which is emitted before
+        #    any block canon. A block-canon entry (compound → block
+        #    operands, e.g. `WDMH => M H W`) is a REFERENCE: it reuses the
+        #    registered signature and must NOT recompute it from its own
+        #    (possibly partial/misfit) operands, or it would clobber the
+        #    compound's true signature with make_signature(block_nodes)
+        #    (§11.4: signature is a registry lookup, not a per-entry
+        #    reduction of nodes).
+        if is_compound_def and not is_compound_ref:
             sig_uint64 = self._signifier.make_signature(node_values)
             self._compound_sigs[entry.sig] = sig_uint64
             sig_is_packed = True
