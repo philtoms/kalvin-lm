@@ -125,6 +125,10 @@ The action of countersigning a selected proposal. Usually performed by the Train
 A relationship kline whose signature is the OR-reduction of its nodes: `signature == make_signature(nodes)`. The signature carries no information beyond what its nodes already express, so the kline is structurally self-grounded.
 _Avoid_: canonical (ambiguous with the Structural State), CANONIZED (that names the written token `=>` and the intent to aggregate — a CANONIZED kline need not be a Canon), MTS (an example, not the concept)
 
+**MTS (Multi-Token Signature)**:
+A compound signature built from more than one Token ID by OR-reduction. The compiler expands a multi-character KScript identifier into its constituent character identities plus one MTS relationship; this expansion is a property of the *signature string*, distinct from any CANONIZED decomposition a script declares for that signature via a block. A CANONIZED scope's nodes are the declared block operands, never the signature's own MTS character expansion.
+_Avoid_: decomposition (overloaded — a Canon decomposes into its nodes; an MTS expands a signature into characters), packed signature (the uint64 result, not the expansion)
+
 **Word Binding**:
-The association of a single-character KScript signature with a word, resolved through BPE annotations in the source. Bindings are scoped by relational-token boundaries; a character resolves to the most recent matching word in its scope.
-_Avoid_: comment mapping (the binding is a specific compiler artefact, not a general comment feature)
+The association of a single-character KScript signature with a word, resolved through annotations in the source. Bindings are scoped by relational-token boundaries; a character resolves to the most recent matching word in its scope. Two annotation kinds bind with different strength: a **top-level annotation** (on a scope signature) binds only if the character is currently unbound — fill-if-empty, never overriding an outer binding; an **inline annotation** (on an item) binds unconditionally, overriding any outer binding for that occurrence. Each identity occurrence is bound exactly once by the most specific annotation that applies to it, so one character never acquires two competing tokens.
+_Avoid_: comment mapping (the binding is a specific compiler artefact, not a general comment feature), rebind (a top-level annotation never overrides; an inline annotation always does — use the specific kind)
