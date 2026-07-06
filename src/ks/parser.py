@@ -209,8 +209,14 @@ class Parser:
 
             if tok.type == TokenType.SIGNATURE:
                 if self._sig_followed_by_operator():
-                    # Nested operator_scope item
-                    items.append(self._parse_operator_scope())
+                    # Nested operator_scope item. If it consumes a child block
+                    # (multi-line), the parent's same-line items end here — a
+                    # nested scope crossing a newline cannot be followed by more
+                    # items on the parent's original line.
+                    nested = self._parse_operator_scope()
+                    items.append(nested)
+                    if nested.child_block is not None:
+                        break
                 else:
                     # Bare Signature item
                     sig_tok = self._advance()
