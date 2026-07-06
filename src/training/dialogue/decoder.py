@@ -199,7 +199,7 @@ class _ResolvedScript:
     labels: dict[str, KLine] = field(default_factory=dict)
 
 
-def _node_decoded_label(entry_value: KValue, by_sig: dict[int, list[KValue]]) -> tuple[str, ...] | None:
+def _node_decoded_label(entry_value: KValue, by_sig: dict[int, list[KValue]]) -> tuple[str, ...]:
     """The decoded-label tuple of a kline's nodes (the DDT-5 retrieval key).
 
     A canon's own signature is a packed MTS (OR-reduction), so its ``dbg.decoded``
@@ -207,28 +207,22 @@ def _node_decoded_label(entry_value: KValue, by_sig: dict[int, list[KValue]]) ->
     is a single-token signature whose compiled entry carries the real subword text
     in ``dbg.decoded`` (or ``dbg.label`` for authored atoms). We resolve each node
     to its compiled entry and read its display label.
-
-    Returns ``None`` when any node has no resolvable compiled entry: such a canon
-    is not retrievable by node-list match (its node labels cannot be keyed) and
-    is skipped in the index. This lets a script contain canons whose nodes are
-    not all first-class compiled klines (e.g. a question script whose atoms are
-    only ever referenced as nodes) without poisoning the whole index; the
-    retrieval-time error surfaces only if a turn actually requests that canon.
     """
 
-    def _label_for(sig: int) -> str | None:
+    def _label_for(sig: int) -> str:
         hits = by_sig.get(sig)
         if not hits:
-            return None  # unresolvable node — canon not node-list-keyable
+            raise DecodeError(
+                f"canon node 0x{sig:x} has no compiled entry — cannot resolve its label"
+            )
         d = hits[0].kline.dbg
         if d is None:
-            return None
+            raise DecodeError(
+                f"canon node 0x{sig:x} has no compiled debug info — cannot resolve its label"
+            )
         return d.decoded or d.label
 
-    labels = [_label_for(n) for n in entry_value.kline.nodes]
-    if any(lbl is None for lbl in labels):
-        return None
-    return tuple(lbl for lbl in labels if lbl is not None)
+    return tuple(_label_for(n) for n in entry_value.kline.nodes)
 
 
 def _resolve_script(
@@ -267,13 +261,9 @@ def _resolve_script(
         # Canon index: keyed by node-decoded-label tuple (DDT-5).
         if d.op == "CANONIZED" and kl.nodes:
             key = _node_decoded_label(e, by_sig)
-            # A canon whose nodes cannot all be resolved (e.g. a question
-            # script referencing atoms that are never first-class compiled) is
-            # not node-list-keyable; skip it rather than poisoning the index.
             # Ambiguity would mean two canons decompose identically — a script
             # authoring error. Keep the first and let later lookups be stable.
-            if key is not None:
-                resolved.by_node_labels.setdefault(key, e)
+            resolved.by_node_labels.setdefault(key, e)
             # Canon-by-label: the canonical signature for this label.
             if d.label:
                 resolved.canon_by_label.setdefault(d.label, kl)
