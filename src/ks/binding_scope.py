@@ -37,10 +37,18 @@ class _Scope:
         word_lists: Ordered collection of word lists added to this scope.
         counters: Per-character occurrence counter for disambiguation.
             Keyed on lowercase character, value is the current counter.
+        overrides: Inline (item) word bindings, keyed on lowercase char.
+            An inline annotation binds unconditionally and overrides any
+            outer (word-list) binding for that char (Word Binding rule:
+            inline binds tighter than top-level). Checked before word-list
+            resolution so every code path that resolves the char (MTS char
+            expansion, identity emission, node resolution) sees the inline
+            word, keeping one token per char.
     """
 
     word_lists: list[list[str]] = field(default_factory=list)
     counters: dict[str, int] = field(default_factory=dict)
+    overrides: dict[str, str] = field(default_factory=dict)
 
 
 class BindingScope:
@@ -103,6 +111,19 @@ class BindingScope:
         assert self._stack, "No current scope — stack is empty"
         self._stack[-1].word_lists.append(list(words))
 
+    def bind_override(self, char: str, word: str) -> None:
+        """Register an inline (item) binding for ``char`` in the current scope.
+
+        An inline annotation binds unconditionally and overrides any outer
+        (word-list) binding for that char. Registered in the current (topmost)
+        scope so it is honored before word-list resolution wherever the char
+        is resolved — including MTS char expansion and identity emission, not
+        only the inline item's own node. This keeps one token per char: the
+        inline word wins everywhere, never competing with a looser binding.
+        """
+        assert self._stack, "No current scope — stack is empty"
+        self._stack[-1].overrides[char.lower()] = word
+
     def resolve(self, char: str) -> str | None:
         """Resolve a character to a word by walking the scope stack.
 
@@ -118,7 +139,13 @@ class BindingScope:
         Returns:
             The matched word, or ``None`` if unbound.
         """
+        key = char.lower()
         for scope in reversed(self._stack):
+            # Inline (item) bindings override word-list bindings for this char
+            # (Word Binding rule: inline binds tighter than top-level). Checked
+            # first so every resolution path sees the inline word.
+            if key in scope.overrides:
+                return scope.overrides[key]
             result = self._resolve_in_scope(scope, char)
             if result is not None:
                 return result

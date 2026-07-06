@@ -168,6 +168,13 @@ class ASTEmitter:
             scope.sig.id,
             scope.inline_annotation,
         )
+        # Pre-register this scope's inline (item) bindings before MTS, so the
+        # signature's MTS char-expansion resolves each char to its inline word
+        # (inline binds tighter than any looser word-list binding). Without
+        # this, MTS runs before the children are processed and resolves chars
+        # against the word list, producing a competing token for a char that
+        # an inline annotation has already bound (Word Binding regression).
+        self._register_inline_overrides(scope)
         mts_idx = self._emit_mts(scope.sig.id)
         op = self._op_to_str(scope.op)
 
@@ -547,6 +554,11 @@ class ASTEmitter:
             if existing is None:
                 word = self._extract_inline_word(sig, inline_annotation)
                 self._patch_parent_canonize(sig, word)
+                # Register the inline binding so it overrides any looser
+                # word-list binding for this char everywhere it is resolved
+                # (MTS char expansion, identity emission — not only here).
+                if self._scope is not None:
+                    self._scope.bind_override(sig, word)
                 return word
             return existing  # already bound — top-level annotation is inert
         if len(sig) == 1:
@@ -575,10 +587,41 @@ class ASTEmitter:
             if ann is not None:
                 word = self._extract_inline_word(nid, ann)
                 self._patch_parent_canonize(nid, word)
+                # Register the inline binding (see _resolve_inline_or_scope):
+                # the inline word overrides any looser binding for this char
+                # everywhere, so MTS/identity emission sees the same token.
+                if self._scope is not None:
+                    self._scope.bind_override(nid, word)
                 resolved.append(word)
             else:
                 resolved.append(self._resolve_char(nid))
         return resolved
+
+    def _register_inline_overrides(self, scope: OperatorScope) -> None:
+        """Pre-register this scope subtree's inline (item) bindings.
+
+        Walks ``scope``'s items and child_block (one level into nested
+        OperatorScopes' items) for ``Signature`` items carrying an
+        ``inline_annotation``, and binds each via :meth:`bind_override` in the
+        current scope. Called before the scope's MTS so the signature's
+        char-expansion — which runs before children are processed — resolves
+        each char to its inline word (inline binds tighter than word-list).
+        """
+        if self._scope is None:
+            return
+
+        def _bind_from_items(items) -> None:
+            for item in items:
+                if isinstance(item, Signature) and item.inline_annotation is not None:
+                    if len(item.id) == 1:
+                        word = self._extract_inline_word(item.id, item.inline_annotation)
+                        self._scope.bind_override(item.id, word)
+
+        _bind_from_items(scope.items)
+        if scope.child_block is not None:
+            for construct in scope.child_block.constructs:
+                if isinstance(construct, OperatorScope):
+                    _bind_from_items(construct.items)
 
     def _collect_item_inline_annotations(
         self, scope: OperatorScope
