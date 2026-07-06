@@ -131,7 +131,7 @@ ratified at S1.)
 > (trainer-S4 replying to a trainee-S4 means "I don't know it either," not
 > "you're wrong"). It is deliberately not added to `CONTEXT.md`.
 
-**R4 — Close (dialogue-level, lives in the actor, not `synthesize`).** A
+**R4 — Close (dialogue-level; lives in a shared `ScriptClose`, not `synthesize`).** A
 script's dialogue is bookended: the trainer opens (R1 — primary at S2) and the
 trainee closes (an **S1 on the primary**). The trainer recognises the trainee's
 S1 on the primary signature as the close and **withholds** — it does not
@@ -142,8 +142,11 @@ at S1 on the trainee's close, diverging in peer mode). R4 is the single-script
 instance of general per-script **open-dialog-close** semantics: trainer opens
 a script, trainee closes with S1 on that script's primary. A future multi-
 script trainer generalises R4 to track a set of script primaries. The rule
-lives in `SynthesizingTrainer` (a dialogue-level concern) — `synthesize` stays
-a pure function of `(compiled, incoming)`.
+lives in `ScriptClose` (a dialogue-contract object composed by every trainer
+derivation, so the rule is written once) — `synthesize` stays
+a pure function of `(compiled, incoming)`. `ScriptClose` is single-primary
+today; the multi-script generalization (ordered primaries + current index +
+`advance` on close) extends that object without touching the trainers.
 
 ## Implementation Tasks
 
