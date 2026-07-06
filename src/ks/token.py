@@ -17,7 +17,7 @@ class TokenType(Enum):
         UNDERSIGN:    =   (undersign link)
 
     Node types:
-        SIGNATURE: [A-Z]+    (uppercase identifier — can be construct owner)
+        SIGNATURE: [a-zA-Z][a-zA-Z0-9]*    (identifier — case-insensitive; can be construct owner)
 
     Structure:
         ANNOTATION: (...)    (parenthesized annotation)
@@ -34,7 +34,7 @@ class TokenType(Enum):
     UNDERSIGN = auto()  # =
 
     # Node types
-    SIGNATURE = auto()  # [A-Z]+
+    SIGNATURE = auto()  # [a-zA-Z][a-zA-Z0-9]*
 
     # Structure
     ANNOTATION = auto()  # (...)

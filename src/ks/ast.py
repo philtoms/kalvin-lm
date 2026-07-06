@@ -17,7 +17,7 @@ from .token import TokenType
 
 @dataclass
 class Signature:
-    """An uppercase identifier [A-Z]+.
+    """An identifier [a-zA-Z][a-zA-Z0-9]* (case-insensitive).
 
     Can appear as a scope's signature or as a bare node within a scope's items.
     When used as an item, may carry an ``inline_annotation`` — an annotation
@@ -25,7 +25,7 @@ class Signature:
     in ``H => D H(ave)``), bound unconditionally to this item by Word Binding.
     """
 
-    id: str  # uppercase
+    id: str  # identifier (any case)
     line: int
     column: int
     inline_annotation: Annotation | None = None  # inline (item-side)
