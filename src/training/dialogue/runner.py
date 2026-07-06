@@ -30,7 +30,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S1
 from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn
 from training.dialogue.rationalise import Rationaliser
@@ -193,39 +192,22 @@ class TableTrainee(_TableActor):
 # it explicitly (like :class:`~training.dialogue.rationalise.Rationaliser`).
 
 
-# ── Script-close predicate (dialogue contract; plan R4) ───────────────────
+# ── Synthesizing trainer ──────────────────────────────────────────────────
 #
-# A script's dialogue is bookended: the trainer opens (R1 — primary at S2)
-# and the trainee closes with an **S1 on the script's primary**. Recognising
-# that close is a property of the dialogue contract, not of any one trainer —
-# every trainer derivation must apply the same rule or it will echo/ratify a
-# turn the trainee has already grounded (the divergence R4 was added to fix).
-# This object owns the rule so it is written once and composed by any trainer.
+# A real trainer that derives each turn from the compiled script and the
+# trainee's last KValue (via :func:`~training.dialogue.synthesize.synthesize`),
+# never reading the decoded table. The table is only the validation oracle the
+# runner checks the synthesised turn against (D1). Unlike the table-reading
+# actors it is non-exhausting: R1–R3 always produce a KValue, so ``respond``
+# never returns ``None`` on its own. Not produced by :func:`default_actors`;
+# callers wire it explicitly (like :class:`~training.dialogue.rationalise.Rationaliser`).
 #
-# Single-primary today. The multi-script generalization (an ordered list of
-# primaries, a current index, and ``advance`` on close) lands here later —
-# without touching the trainers that compose this object.
-
-
-@dataclass
-class ScriptClose:
-    """Recognise a script close: the trainee's S1 on the current primary.
-
-    The trainer composes one of these instead of inlining the predicate, so the
-    close rule is shared across every trainer derivation. Holds the current
-    script's primary signature; ``is_close`` answers whether a proposal closes
-    *that* script. The multi-script generalization will extend this object
-    (ordered primaries + ``advance``); trainers will not change.
-    """
-
-    primary_signature: int
-
-    def is_close(self, proposal: KValue) -> bool:
-        """``proposal`` is the trainee closing this script: S1 on the primary."""
-        return (
-            proposal.significance == SIG_S1
-            and proposal.kline.signature == self.primary_signature
-        )
+# The trainer does **not** detect script closes. Close detection is the
+# runner's job: it owns the table cursor and reads each turn's ``close``
+# marker (spec §Dialogue Table). On a close the runner routes the *next* turn
+# to the trainer with ``incoming=None`` (an open), so the trainer opens the
+# next script rather than replying to the close. This keeps close-recognition
+# in one place (the runner) instead of duplicated across trainer derivations.
 
 
 class SynthesizingTrainer:
@@ -237,25 +219,18 @@ class SynthesizingTrainer:
     does **not** take ``decoded`` — the table is only the validation oracle.
     Pass ``sink`` for the peer regime (publishes via it); omit for ordered.
 
-    **Open-dialog-close (per script).** The dialogue for a script is bookended:
-    the trainer opens (R1 — primary at S2) and the trainee closes (an S1 on the
-    primary). The trainer recognises the trainee's S1 on the primary as the
-    close and withholds — it does not echo/ratify what the trainee has already
-    grounded. This is the single-script instance of the general per-script
-    open-dialog-close semantics; a future multi-script trainer (B) generalises
-    it to track a set of script primaries. The rule lives in the composed
-    :class:`ScriptClose` (a dialogue-level concern shared by every trainer
-    derivation), not in the pure :func:`synthesize`.
+    The trainer does not detect script closes. The runner owns the table
+    cursor and the ``close`` markers; on a close it routes the next trainer
+    turn as an open (``incoming=None``), so this actor simply synthesises the
+    turn for whatever ``incoming`` it is handed. R1 (open) and R2/R3 (reply)
+    live in the pure :func:`synthesize`; this actor wraps its result in an
+    event.
     """
 
     def __init__(self, compiled: list[KValue], signifier: KSignifier, sink=None) -> None:
         self._compiled = compiled
         self._signifier = signifier
         self._sink = sink
-        # The close rule is a shared dialogue-contract concern (plan R4): the
-        # trainee's S1 on the script's primary closes it. Composed rather than
-        # inlined so every trainer derivation applies the same rule.
-        self._close = ScriptClose(primary_signature=compiled[0].kline.signature)
 
     @property
     def role(self) -> str:
@@ -265,10 +240,6 @@ class SynthesizingTrainer:
     def _next_event(
         self, incoming: RationaliseEvent | None
     ) -> RationaliseEvent | None:
-        # Open-dialog-close: the trainee's S1 on the primary is the close —
-        # withhold (the trainee has grounded the script; the trainer stops).
-        if incoming is not None and self._close.is_close(incoming.proposal):
-            return None
         incoming_value = incoming.proposal if incoming is not None else None
         proposal = synthesize(self._compiled, incoming_value, self._signifier)
         query = incoming_value if incoming_value is not None else proposal
@@ -407,6 +378,11 @@ def run(decoded: Sequence[DecodedTurn], trainer: Actor, trainee: Actor) -> RunRe
     Keying validation on the event's self-declared ``role`` (rather than the
     table key) is what lets a real, possibly asynchronous actor announce itself:
     the runner routes on what the actor said, checking it against the table.
+
+    Script boundaries come from the table: a turn carrying a ``close`` marker
+    ends its script, and the next turn opens a fresh one (the runner hands the
+    next actor ``incoming=None`` so it opens rather than replying to the close).
+    The runner owns this boundary; the trainer does not detect closes.
     """
     actors: dict[str, Actor] = {"T": trainer, "K": trainee}
     result = RunResult()
@@ -421,7 +397,11 @@ def run(decoded: Sequence[DecodedTurn], trainer: Actor, trainee: Actor) -> RunRe
             break  # actor exhausted before the table — incomplete
         result.events.append(event)
         _validate(cursor, event, decoded)
-        incoming = event
+        # A close ends a script (its ``close`` marker names which). The next
+        # turn opens a new script, so the actor is handed ``incoming=None`` (an
+        # open) rather than the close event (a reply). The trainer does not
+        # detect closes; the runner owns the boundary.
+        incoming = None if decoded[cursor].close is not None else event
         cursor += 1
 
     result.complete = cursor == len(decoded)

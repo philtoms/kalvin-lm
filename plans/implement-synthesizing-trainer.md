@@ -131,22 +131,22 @@ ratified at S1.)
 > (trainer-S4 replying to a trainee-S4 means "I don't know it either," not
 > "you're wrong"). It is deliberately not added to `CONTEXT.md`.
 
-**R4 — Close (dialogue-level; lives in a shared `ScriptClose`, not `synthesize`).** A
+**R4 — Close (table-declared via ``close: n``; owned by the runner, not the trainer).** A
 script's dialogue is bookended: the trainer opens (R1 — primary at S2) and the
-trainee closes (an **S1 on the primary**). The trainer recognises the trainee's
-S1 on the primary signature as the close and **withholds** — it does not
-R3-echo/ratify what the trainee has already grounded. This prevents the
-trainer from emitting a spurious closing S1 on the primary (observed: the
-synthesiser reproduced MHALL's middle perfectly but then re-emitted the primary
-at S1 on the trainee's close, diverging in peer mode). R4 is the single-script
-instance of general per-script **open-dialog-close** semantics: trainer opens
-a script, trainee closes with S1 on that script's primary. A future multi-
-script trainer generalises R4 to track a set of script primaries. The rule
-lives in `ScriptClose` (a dialogue-contract object composed by every trainer
-derivation, so the rule is written once) — `synthesize` stays
-a pure function of `(compiled, incoming)`. `ScriptClose` is single-primary
-today; the multi-script generalization (ordered primaries + current index +
-`advance` on close) extends that object without touching the trainers.
+trainee closes with the table-declared closing turn. The closing turn carries
+a ``close: n`` marker (the script it closes); the runner reads it. Previously
+the trainer detected the close itself (matching the trainee's S1 on the
+primary) and **withheld** — that recognition was duplicated across every
+trainer derivation. It now lives in one place: the runner, which owns the
+table cursor. On a close the runner routes the *next* turn with
+``incoming=None`` (an open), so the trainer opens the next script rather than
+replying to the close; the trainer never detects closes and never withholds.
+The former peer-mode echo race (the synthesiser re-emitted the primary at S1
+on the trainee's close, diverging in peer mode) is now contained by the
+runner's close-aware routing (and the peer runner's stop-on-close).
+Multi-script support follows from the same marker: ``close: 1`` then
+``close: 2`` etc. name successive scripts. `synthesize` stays a pure function
+of ``(compiled, incoming)`` — opening is just ``incoming=None``.
 
 ## Implementation Tasks
 
@@ -222,8 +222,10 @@ drop-in.
 
 ## Out of Scope
 
-- Multi-primary / multi-cascade scripts (R1 assumes a single primary; matches
-  the spec's existing Out-of-Scope).
+- Multi-primary / multi-cascade *synthesis* — the trainer still opens only
+  ``compiled[0]`` (R1); opening successive scripts' primaries is the next step
+  (the ``close: n`` routing is in place, but the trainer does not yet advance
+  its primary across scripts).
 - The Kalvin cogitator (the trainee-side synthesizer) — the next grill.
 - Bus integration, supervisor escalation — belong to the real harness trainer.
 - Changing the encoder so identity and canon signatures agree (explicitly

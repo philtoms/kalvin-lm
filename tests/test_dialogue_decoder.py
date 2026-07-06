@@ -57,11 +57,52 @@ def test_load_rejects_malformed_table():
     with pytest.raises(DecodeError):
         load_table({"turns": []})
     with pytest.raises(DecodeError):
-        load_table({"script": "x"})
+        load_table({"script": "A"})
     with pytest.raises(DecodeError):
-        load_table({"script": "x", "turns": [{"role": "X", "op": "IDENTITY"}]})
+        load_table({"script": "A", "turns": [{"role": "X", "op": "IDENTITY"}]})
     with pytest.raises(DecodeError):
-        load_table({"script": "x", "turns": [{"role": "T", "op": "BOGUS"}]})
+        load_table({"script": "A", "turns": [{"role": "T", "op": "BOGUS"}]})
+
+
+def test_load_parses_close_marker():
+    """A turn may carry ``close: n`` (the script it closes); it parses to an int."""
+    table = load_table(
+        {"script": "A", "turns": [{"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": 1}]}
+    )
+    assert table.turns[0].close == 1
+
+
+def test_load_rejects_bad_close_marker():
+    """``close`` must be a positive int (not 0, not a string, not bool)."""
+    for bad in (0, -1, "1", True, 1.0):
+        with pytest.raises(DecodeError):
+            load_table(
+                {"script": "A", "turns": [{"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": bad}]}
+            )
+
+
+def test_decode_rejects_close_on_trainer_row():
+    """A close must be on a trainee (K) row — the trainee reaches the conclusion."""
+    with pytest.raises(DecodeError):
+        decode(load_table({
+            "script": "A",
+            "turns": [
+                {"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S2"},
+                {"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": 1},
+            ],
+        }))
+
+
+def test_decode_rejects_non_contiguous_close_markers():
+    """``close`` values must be contiguous from 1."""
+    with pytest.raises(DecodeError):
+        decode(load_table({
+            "script": "A",
+            "turns": [
+                {"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S2"},
+                {"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": 2},
+            ],
+        }))
 
 
 

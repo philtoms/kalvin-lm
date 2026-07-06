@@ -47,6 +47,10 @@ Turn:
   nodes:        list[str]   # symbolic labels, resolved by the decoder
   significance: "S1" | "S2" | "S3" | "S4"
   notes:        str   # human commentary; ignored by the decoder
+  close:        int   # optional (1, 2, …): this turn closes script `close`.
+                      # The runner reads it as the script boundary and routes
+                      # the next turn as an open. Absent unless this turn is a
+                      # close; must be on a trainee (K) row.
 ```
 
 `script` is the single source of truth for kline structure (canonical
@@ -115,6 +119,12 @@ objects satisfying the Actor interface (§Actor). **The runner owns the table
 cursor.** Each step: read the actor of `decoded[cursor]`, ask that actor for its
 next row, validate it, advance. The run ends when the cursor passes the end of
 the table.
+
+**Script boundaries are table-declared** (§Dialogue Table `close`). When a turn
+carries a `close: n` marker, it ends script `n`; the runner routes the *next*
+turn with `incoming=None` (an open), so the next actor opens a fresh script
+rather than replying to the close. Close-detection is the runner's job (it owns
+the cursor and the markers); the trainer does not detect closes.
 
 Dispatch is **greedy** — and greediness is the runner's behaviour, not the
 actor's. While consecutive table rows share an actor, the runner asks the same
@@ -187,8 +197,10 @@ runner carries no notion of "learned" and emits no grounding signal.
   runner does not.
 - Supervisor escalation on a request the trainer cannot resolve — belongs to the
   real trainer.
-- Multi-cascade lessons and multi-primary scripts. The bootstrap table is a
-  single cascade.
+- Multi-cascade *synthesis*. The runner routes multi-script boundaries via the
+  `close` marker (a multi-script table runs script-to-script), but the
+  synthesizing trainer still opens only the first compiled primary; opening
+  successive scripts' primaries is not yet implemented.
 - Measuring, detecting, or signalling learning or grounding.
 
 ## Canonical Example

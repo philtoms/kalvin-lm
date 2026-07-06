@@ -74,6 +74,11 @@ class Turn:
     Structural turns (those carrying ``op``) decode to a :class:`DecodedTurn`.
     Annotation-only turns (``notes`` but no ``op``) are dropped at decode time
     (DDT-28) — they are not submittable klines.
+
+    ``close`` marks a turn as the close of script ``n`` (1, 2, …). It is the
+    table's explicit script-boundary authority: the runner reads it to know
+    when a script ends (and, for multi-script, when to open the next). A turn
+    without ``close`` is not a close. See :class:`DecodedTurn.close`.
     """
 
     role: Role
@@ -82,6 +87,7 @@ class Turn:
     nodes: tuple[str, ...]
     significance: str | None  # None on annotation-only turns
     notes: str = ""
+    close: int | None = None  # None unless this turn closes script `close`
 
     @property
     def is_annotation_only(self) -> bool:
@@ -144,11 +150,17 @@ class DecodedTurn:
     ``role`` and ``op`` are carried alongside the KValue and **never folded
     into it** (DDT-3): ``op`` is the structural state; ``significance`` (on the
     KValue) is the dialogic stance. They are independent axes.
+
+    ``close`` is carried through from :class:`Turn.close`: when set (1, 2, …),
+    this turn is the close of script ``close``. The runner — which owns the
+    table cursor — reads it as the script-boundary signal; the trainer does
+    not detect closes (it is told, via routing, that a script has ended).
     """
 
     role: Role
     op: str
     value: KValue
+    close: int | None = None  # None unless this turn closes script `close`
 
 
 # backwards-compat alias for the documented `DECODEDTurn` spelling used in the
@@ -412,8 +424,13 @@ def decode(
                 role=turn.role,
                 op=turn.op,
                 value=KValue(kline, significance),
+                close=turn.close,
             )
         )
+    # ``close`` markers are validated on the decoded list (they are a property
+    # of the exchange, but the per-turn shape check happens here alongside the
+    # other decoded-list invariants).
+    _validate_close(out)
     # Peer-mode invariants are checked on the decoded list (spec
     # @specs/peer-dialogue.md §Invariants). They require symbol resolution to
     # have run, so they live here, not in the loader.
@@ -445,6 +462,11 @@ def _turn_from_dict(raw: dict) -> Turn:
             raise DecodeError(f"structural turn missing 'signature': {raw!r}")
         if "significance" not in raw:
             raise DecodeError(f"structural turn missing 'significance': {raw!r}")
+    close = raw.get("close")
+    if close is not None and (not isinstance(close, int) or isinstance(close, bool) or close < 1):
+        raise DecodeError(
+            f"'close' must be a positive int (the script it closes), got {close!r}"
+        )
     return Turn(
         role=role,
         op=op,
@@ -452,6 +474,7 @@ def _turn_from_dict(raw: dict) -> Turn:
         nodes=nodes,
         significance=raw.get("significance"),
         notes=raw.get("notes", ""),
+        close=close,
     )
 
 
@@ -475,6 +498,42 @@ def turn_content_key(turn: DecodedTurn) -> tuple[str, int, tuple[int, ...], int]
         tuple(turn.value.kline.nodes),
         turn.value.significance,
     )
+
+
+def _validate_close(decoded: list[DecodedTurn]) -> None:
+    """Validate the ``close`` markers (spec §Dialogue Table).
+
+    A ``close`` turn closes a script; its ``n`` (1, 2, …) names which. Rules:
+    - a ``close`` must be on a trainee (K) row (the trainee reaches the
+      expected conclusion; a trainer does not close a script);
+    - ``close`` values, if present, are contiguous starting at 1
+      (``close:1`` then ``close:2`` …) — a skipped or missing ``close:1`` is a
+      malformed table;
+    - at most one turn closes a given script.
+
+    Tables with no ``close`` markers are valid (single-script, backward
+    compatible): the runner ends at the last row and no script boundary fires.
+    """
+    seen: set[int] = set()
+    expected = 1
+    for idx, turn in enumerate(decoded):
+        if turn.close is None:
+            continue
+        if turn.role != "K":
+            raise DecodeError(
+                f"turn {idx}: a 'close' must be on a trainee (K) row, got role {turn.role!r}"
+            )
+        if turn.close != expected:
+            raise DecodeError(
+                f"turn {idx}: close markers must be contiguous from 1, "
+                f"got close:{turn.close} expected close:{expected}"
+            )
+        if turn.close in seen:
+            raise DecodeError(
+                f"turn {idx}: duplicate close marker for script {turn.close}"
+            )
+        seen.add(turn.close)
+        expected += 1
 
 
 def _validate_peer(decoded: list[DecodedTurn]) -> None:
