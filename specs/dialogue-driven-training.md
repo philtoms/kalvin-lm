@@ -47,10 +47,10 @@ Turn:
   nodes:        list[str]   # symbolic labels, resolved by the decoder
   significance: "S1" | "S2" | "S3" | "S4"
   notes:        str   # human commentary; ignored by the decoder
-  close:        int   # optional (1, 2, …): this turn closes script `close`.
+  close:        bool  # optional: `true` marks this turn as a script close.
                       # The runner reads it as the script boundary and routes
-                      # the next turn as an open. Absent unless this turn is a
-                      # close; must be on a trainee (K) row.
+                      # the next turn as an open. Absent (or false) unless
+                      # this turn is a close; must be on a trainee (K) row.
 ```
 
 `script` is the single source of truth for kline structure (canonical
@@ -121,7 +121,7 @@ next row, validate it, advance. The run ends when the cursor passes the end of
 the table.
 
 **Script boundaries are table-declared** (§Dialogue Table `close`). When a turn
-carries a `close: n` marker, it ends script `n`; the runner routes the *next*
+carries a `close: true` marker, it ends a script; the runner routes the *next*
 turn with `incoming=None` (an open), so the next actor opens a fresh script
 rather than replying to the close. Close-detection is the runner's job (it owns
 the cursor and the markers); the trainer does not detect closes.

@@ -404,11 +404,11 @@ def test_run_routes_next_turn_as_open_after_close():
     from training.dialogue.decoder import DecodedTurn
 
     # Decoded rows with distinct values so the recording actors can reproduce
-    # them in order: T(11), K(22), K(33, close:1), T(44).
+    # them in order: T(11), K(22), K(33, close), T(44).
     decoded = [
         DecodedTurn(role="T", op="IDENTITY", value=KValue(KLine(11, ()), 0)),
         DecodedTurn(role="K", op="IDENTITY", value=KValue(KLine(22, ()), 0)),
-        DecodedTurn(role="K", op="IDENTITY", value=KValue(KLine(33, ()), 0), close=1),
+        DecodedTurn(role="K", op="IDENTITY", value=KValue(KLine(33, ()), 0), close=True),
         DecodedTurn(role="T", op="IDENTITY", value=KValue(KLine(44, ()), 0)),
     ]
     seen: list = []  # the incoming each respond() got

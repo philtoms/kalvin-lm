@@ -65,16 +65,16 @@ def test_load_rejects_malformed_table():
 
 
 def test_load_parses_close_marker():
-    """A turn may carry ``close: n`` (the script it closes); it parses to an int."""
+    """A turn may carry ``close: true`` (a script-boundary marker); it parses to ``True``."""
     table = load_table(
-        {"script": "A", "turns": [{"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": 1}]}
+        {"script": "A", "turns": [{"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": True}]}
     )
-    assert table.turns[0].close == 1
+    assert table.turns[0].close is True
 
 
 def test_load_rejects_bad_close_marker():
-    """``close`` must be a positive int (not 0, not a string, not bool)."""
-    for bad in (0, -1, "1", True, 1.0):
+    """``close`` must be the boolean ``true`` (not 0, not an int, not a string)."""
+    for bad in (0, 1, 2, -1, "1", "true", 1.0, False):
         with pytest.raises(DecodeError):
             load_table(
                 {"script": "A", "turns": [{"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": bad}]}
@@ -88,21 +88,21 @@ def test_decode_rejects_close_on_trainer_row():
             "script": "A",
             "turns": [
                 {"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S2"},
-                {"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": 1},
+                {"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": True},
             ],
         }))
 
 
-def test_decode_rejects_non_contiguous_close_markers():
-    """``close`` values must be contiguous from 1."""
-    with pytest.raises(DecodeError):
-        decode(load_table({
-            "script": "A",
-            "turns": [
-                {"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S2"},
-                {"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": 2},
-            ],
-        }))
+def test_decode_accepts_single_close_marker():
+    """``close: true`` survives decode on a trainee (K) row (presence-only)."""
+    table = mhall_table()
+    table = {**table, "turns": list(table["turns"])}
+    table["turns"][-1] = {**table["turns"][-1], "close": True}  # the K closer
+    decoded = decode(load_table(table))
+    closers = [t for t in decoded if t.close]
+    assert len(closers) == 1
+    assert closers[0].close is True
+    assert closers[0].role == "K"
 
 
 def test_primaries_from_source_extracts_each_top_level_script():

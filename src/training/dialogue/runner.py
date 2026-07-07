@@ -423,7 +423,7 @@ def run(decoded: Sequence[DecodedTurn], trainer: Actor, trainee: Actor) -> RunRe
         # turn opens a new script, so the actor is handed ``incoming=None`` (an
         # open) rather than the close event (a reply). The trainer does not
         # detect closes; the runner owns the boundary.
-        incoming = None if decoded[cursor].close is not None else event
+        incoming = None if decoded[cursor].close else event
         cursor += 1
 
     result.complete = cursor == len(decoded)
