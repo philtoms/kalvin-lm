@@ -179,9 +179,6 @@ DECODEDTurn = DecodedTurn
 class _ResolvedScript:
     """Compiled-script indices built once at decode time.
 
-    - ``by_node_labels`` — the canon-retrieval index (DDT-5): maps the tuple of
-      *decoded node labels* of each compiled canon to that canon's KValue.
-      Retrieval key is exactly the turn's symbolic node list.
     - ``canon_by_label`` — canonical signature per label: a relation node whose
       label names a canon (e.g. ``Det``) resolves to the canon's signature, not
       the atom identity that shares the label. This keeps relation construction
@@ -196,36 +193,9 @@ class _ResolvedScript:
       resolve atom signatures (IDENTITY) and as the label fallback.
     """
 
-    by_node_labels: dict[tuple[str, ...], KValue] = field(default_factory=dict)
     canon_by_label: dict[str, KLine] = field(default_factory=dict)
     relation_by_label: dict[str, KLine] = field(default_factory=dict)
     labels: dict[str, KLine] = field(default_factory=dict)
-
-
-def _node_decoded_label(entry_value: KValue, by_sig: dict[int, list[KValue]]) -> tuple[str, ...]:
-    """The decoded-label tuple of a kline's nodes (the DDT-5 retrieval key).
-
-    A canon's own signature is a packed MTS (OR-reduction), so its ``dbg.decoded``
-    is empty (the encoder suppresses decode for packed signatures). Each **node**
-    is a single-token signature whose compiled entry carries the real subword text
-    in ``dbg.decoded`` (or ``dbg.label`` for authored atoms). We resolve each node
-    to its compiled entry and read its display label.
-    """
-
-    def _label_for(sig: int) -> str:
-        hits = by_sig.get(sig)
-        if not hits:
-            raise DecodeError(
-                f"canon node 0x{sig:x} has no compiled entry — cannot resolve its label"
-            )
-        d = hits[0].kline.dbg
-        if d is None:
-            raise DecodeError(
-                f"canon node 0x{sig:x} has no compiled debug info — cannot resolve its label"
-            )
-        return d.decoded or d.label
-
-    return tuple(_label_for(n) for n in entry_value.kline.nodes)
 
 
 def _resolve_script(
@@ -238,16 +208,11 @@ def _resolve_script(
 
     Compilation reuses :func:`ks.compiler.compile_source` (plan task 1.2). The
     indices are:
-      - ``by_node_labels`` — node-decoded-label tuple → canon KValue (DDT-5).
-        Multiple canons sharing a node-label tuple would be ambiguous; the first
-        compiled canon wins and a debug note is kept (the MHALL table has none).
+      - ``canon_by_label`` — canon label → its canonical KLine signature.
+      - ``relation_by_label`` — relation label → its compiled KLine.
       - ``labels`` — display label → KLine, for atom/compound resolution.
     """
     entries = compile_source(script, tokenizer=tokenizer, signifier=signifier, dev=True)
-
-    by_sig: dict[int, list[KValue]] = {}
-    for e in entries:
-        by_sig.setdefault(e.kline.signature, []).append(e)
 
     resolved = _ResolvedScript()
     for e in entries:
@@ -261,16 +226,13 @@ def _resolve_script(
                 f"compiled entry 0x{kl.signature:x} has no debug info "
                 "— dev compile invariant broken"
             )
-        # Canon index: keyed by node-decoded-label tuple (DDT-5).
-        if d.op == "CANONIZED" and kl.nodes:
-            key = _node_decoded_label(e, by_sig)
-            # Ambiguity would mean two canons decompose identically — a script
-            # authoring error. Keep the first and let later lookups be stable.
-            resolved.by_node_labels.setdefault(key, e)
-            # Canon-by-label: the canonical signature for this label.
-            if d.label:
-                resolved.canon_by_label.setdefault(d.label, kl)
-        elif d.op in ("COUNTERSIGNED", "CONNOTED", "UNDERSIGNED") and d.label:
+        # Canon-by-label: the canonical signature for this label. Populated for
+        # any compiled canon (COUNTERSIGNED canons like MHALL, and CANONIZED
+        # canons like Det) so both node and signature resolution can prefer the
+        # canon when a label names one.
+        if d.op in ("CANONIZED", "COUNTERSIGNED") and kl.nodes and d.label:
+            resolved.canon_by_label.setdefault(d.label, kl)
+        if d.op in ("COUNTERSIGNED", "CONNOTED", "UNDERSIGNED") and d.label:
             # Relation-by-label: carries the relation's structural dbg.op, so a
             # constructed-relation turn reports e.g. COUNTERSIGNED, not the
             # CANONIZED of a canon that shares the label.
@@ -331,6 +293,34 @@ def primaries_from_source(
 # ── The single-stage decode (DDT-2, DDT-3, DDT-28) ────────────────────────
 
 
+def _resolve_node_signatures(
+    nodes: tuple[str, ...],
+    resolved: _ResolvedScript,
+    *,
+    op: str,
+) -> list[int]:
+    """Resolve each node label to its canonical signature.
+
+    Shared by the CANONIZED and constructed-relation branches. A label that
+    names a canon resolves to the canon's signature (so e.g. ``Det`` resolves to
+    the Det canon signature, matching the compiler's binding); a pure-atom label
+    (no canon) falls back to the label index.
+    """
+    node_sigs: list[int] = []
+    for n in nodes:
+        ncanon = resolved.canon_by_label.get(n)
+        if ncanon is not None:
+            node_sigs.append(ncanon.signature)
+            continue
+        nkl = resolved.labels.get(n)
+        if nkl is None:
+            raise DecodeError(
+                f"{op} node {n!r}: label not found in compiled script"
+            )
+        node_sigs.append(nkl.signature)
+    return node_sigs
+
+
 def _resolve_kline(
     op: str,
     signature: str,
@@ -339,12 +329,18 @@ def _resolve_kline(
 ) -> KLine:
     """Resolve a turn's symbolic ``(op, signature, nodes)`` to a KLine.
 
-    Three branches per spec §Decoder step 1:
+    Three branches per spec §Decoder step 1. **The decoder is a resolver, not
+    a gatekeeper**: it builds the kline the turn declares — the declared
+    ``signature`` verbatim, the ``nodes`` resolved to their canonical
+    signatures — and never second-guesses whether the signature "matches" the
+    nodes. The script author is the golden master; an author may declare a
+    signature that differs from the canon its nodes retrieve (a deliberate
+    misfit — see ``scripts/dialogue-rationalisation-behaviours.md``).
 
-    - **CANONIZED** — retrieve the compiled canon whose node-decoded labels match
-      the turn's ``nodes`` list (node-list match, DDT-5). The turn's node names
-      *are* the retrieval key; ``signature`` is a redundant author hint (checked
-      for consistency).
+    - **CANONIZED** — resolve each node label to its canonical signature
+      (canon-preferred, atom fallback) and build ``KLine(signature, nodes)``
+      with the declared signature verbatim. No canon retrieval by node-list,
+      no signature-consistency check.
     - **IDENTITY** — resolve the atom by label, preferring the canon when the
       label names one (a label may name both a canon and its atoms; the
       identity names the concept, i.e. the canon).
@@ -355,24 +351,24 @@ def _resolve_kline(
       the label index.
     """
     if op == "CANONIZED":
-        canon = resolved.by_node_labels.get(nodes)
-        if canon is None:
+        # Resolve each node label to its canonical signature, then build the
+        # kline with the declared signature verbatim. The decoder does not
+        # retrieve a canon by node-list and does not check that the declared
+        # signature matches the canon those nodes would form: an author may
+        # declare a deliberate misfit (e.g. a K-generated leap whose signature
+        # is the query and whose nodes are the answer's atoms).
+        node_sigs = _resolve_node_signatures(nodes, resolved, op="CANONIZED")
+        # Carry the signature label's compiled ``dbg`` (op/label provenance) when
+        # the label resolves; the turn's ``op`` is the dialogue vocabulary and
+        # stays on the DecodedTurn.
+        sig_kl = resolved.canon_by_label.get(signature)
+        if sig_kl is None:
+            sig_kl = resolved.labels.get(signature)
+        if sig_kl is None:
             raise DecodeError(
-                f"CANONIZED {signature!r}: no compiled canon matches node-list {list(nodes)}"
+                f"CANONIZED signature {signature!r}: label not found in compiled script"
             )
-        # ``signature`` is an author hint; confirm it names the canon's label.
-        canon_dbg = canon.kline.dbg
-        if canon_dbg is None:
-            raise DecodeError(
-                f"CANONIZED node-list {list(nodes)} resolved to a canon with no debug info"
-            )
-        canon_label = canon_dbg.label
-        if canon_label != signature:
-            raise DecodeError(
-                f"CANONIZED node-list {list(nodes)} resolved to canon "
-                f"{canon_label!r}, but the turn's signature is {signature!r}"
-            )
-        return canon.kline
+        return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
 
     if op == "IDENTITY":
         # Prefer the canon when the label names one. A KScript label may name
@@ -400,18 +396,7 @@ def _resolve_kline(
     # (preferring the canon when the label names one — e.g. ``Det`` resolves to
     # the Det canon signature, matching the compiler's binding), then rebuild the
     # relation KLine. Atom labels (no canon) fall back to the label index.
-    node_sigs: list[int] = []
-    for n in nodes:
-        ncanon = resolved.canon_by_label.get(n)
-        if ncanon is not None:
-            node_sigs.append(ncanon.signature)
-            continue
-        nkl = resolved.labels.get(n)
-        if nkl is None:
-            raise DecodeError(
-                f"relation node {n!r}: label not found in compiled script"
-            )
-        node_sigs.append(nkl.signature)
+    node_sigs = _resolve_node_signatures(nodes, resolved, op="relation")
     sig_kl = resolved.relation_by_label.get(signature)
     if sig_kl is None:
         # No compiled relation for this label: fall back to the canon signature

@@ -108,10 +108,16 @@ decode(table) -> list[DecodedTurn]
 
 Per turn:
 
-1. **Resolve the kline from `script`** (script is authority):
-   - **CANONIZED** — retrieve the compiled canon whose node-decoded labels match
-     the turn's `nodes` list (node-list match). The turn's symbolic node names
-     are the retrieval key.
+1. **Resolve the kline from `script`** (script is authority). The decoder is a
+   **resolver, not a gatekeeper**: it builds the kline the turn declares — the
+   declared `signature` verbatim, the `nodes` resolved to their canonical
+   signatures — and never checks that the signature "matches" the nodes. An
+   author may declare a signature that differs from the canon its nodes form
+   (a deliberate misfit — see `scripts/dialogue-rationalisation-behaviours.md`).
+   - **CANONIZED** — resolve each node label to its canonical signature
+     (canon-preferred, atom fallback) and build `KLine(signature, nodes)` with
+     the declared signature verbatim. No canon retrieval by node-list, no
+     signature-consistency check.
    - **IDENTITY** — resolve the atom by label.
    - **Constructed relation** (`COUNTERSIGNED` / `CONNOTED` / `UNDERSIGNED`) —
      resolve each node label to its canonical signature and rebuild the relation
@@ -120,8 +126,10 @@ Per turn:
 3. **Pass through** `actor` and `op`; **drop** annotation-only turns and ignore
    `notes` on the rest.
 
-Subword node names must be the tokenizer's actual decoded subwords; the table is
-maintained against real compiler output.
+Every signature and node label must resolve to a compiled entry (a label not
+found in the script is a decode error). What the decoder does *not* do is
+relate the signature to the nodes: that relationship is the author's to
+declare, not the decoder's to police.
 
 ## The Runner
 
@@ -240,7 +248,7 @@ table-reading actors to exhaustion.
 | DDT-2  | Each turn's `op` is a Structural State (`@CONTEXT.md`)                                                                                                                                                                                                                                               | §Dialogue Table        |
 | DDT-3  | The decoder pre-decodes every turn into a flat ordered `list[DecodedTurn]` at configuration time                                                                                                                                                                                                     | §Decoder               |
 | DDT-4  | Decoding resolves the kline from `script`, attaches significance by lookup, passes through actor/op, drops annotation-only turns and ignores notes                                                                                                                                                   | §Decoder               |
-| DDT-5  | A CANONIZED turn is retrieved by node-list match against compiled canons                                                                                                                                                                                                                             | §Decoder               |
+| DDT-5  | A CANONIZED turn resolves each node label to its canonical signature and builds `KLine(signature, nodes)` with the declared signature verbatim — no canon retrieval by node-list, no signature-consistency check (an author may declare a deliberate misfit)         | §Decoder               |
 | DDT-6  | The runner owns the table cursor: each step reads whose row is next and asks that actor; the first row is the trainer's                                                                                                                                                                              | §The Runner            |
 | DDT-7  | Greediness is the runner's behaviour: while consecutive table rows share an actor, the same actor is asked again (e.g. `T,T,K` asks the trainer twice, then the trainee)                                                                                                                             | §The Runner            |
 | DDT-8  | The trainer and trainee are symmetric cursor readers of the same decoded table, differing only by actor                                                                                                                                                                                              | §The Runner            |

@@ -227,11 +227,11 @@ def test_decode_drops_annotation_only_turns(decoded_mhall):
     assert len(turns) == len(table.turns) - len(annotation_only)
 
 
-# ── DDT-5: CANONIZED retrieved by node-list match ─────────────────────────
+# ── DDT-5: CANONIZED resolves nodes, builds the declared signature verbatim ──
 
 
 def test_canonized_resolves_to_compiled_canon(decoded_mhall):
-    """DDT-5: a CANONIZED turn resolves to the compiled canon kline."""
+    """DDT-5: a CANONIZED turn resolves each node label to its canonical signature."""
     turns, _ = decoded_mhall
     mary = next(
         t for t in turns if t.op == "CANONIZED" and t.value.kline.dbg.label == "Mary"
@@ -240,8 +240,8 @@ def test_canonized_resolves_to_compiled_canon(decoded_mhall):
     assert len(mary.value.kline.nodes) == 2  # [M, ary]
 
 
-def test_canonized_retrieved_by_node_list_match(decoded_mhall):
-    """DDT-5: the canon's nodes are the compiled decompositions."""
+def test_canonized_nodes_are_compiled_decompositions(decoded_mhall):
+    """DDT-5: the kline's nodes are the resolved compiled decompositions."""
     turns, _ = decoded_mhall
     svo = next(
         t for t in turns if t.op == "CANONIZED" and t.value.kline.dbg.label == "SVO"
@@ -253,8 +253,13 @@ def test_canonized_retrieved_by_node_list_match(decoded_mhall):
     assert len(mhall.value.kline.nodes) == 5
 
 
-def test_decode_rejects_canonized_with_no_matching_node_list():
-    """DDT-5: a CANONIZED turn whose node-list matches no compiled canon fails."""
+def test_decode_rejects_canonized_with_unknown_node_label():
+    """DDT-5: a CANONIZED turn whose node label is not in the script fails.
+
+    The decoder is a resolver, not a gatekeeper: it does not check that the
+    declared signature matches the canon its nodes would form (an author may
+    declare a deliberate misfit). It only requires every label to resolve.
+    """
     table = load_table(
         {
             "script": "(Mary had a little lamb)\nMHALL == SVO =>",
@@ -262,7 +267,7 @@ def test_decode_rejects_canonized_with_no_matching_node_list():
                 {
                     "role": "T",
                     "op": "CANONIZED",
-                    "signature": "Bogus",
+                    "signature": "MHALL",
                     "nodes": ["Nope"],
                     "significance": "S2",
                 }
@@ -271,6 +276,40 @@ def test_decode_rejects_canonized_with_no_matching_node_list():
     )
     with pytest.raises(DecodeError):
         decode(table, tokenizer=NLPTokenizer(), signifier=NLPSignifier())
+
+
+def test_decode_admits_canonized_signature_misfit():
+    """DDT-5: a CANONIZED turn may declare a signature that differs from the
+    canon its nodes form — a deliberate misfit (e.g. a K-generated leap).
+
+    The decoder builds the kline as written: declared signature verbatim, nodes
+    resolved to their canonical signatures. No consistency check. See
+    ``scripts/dialogue-rationalisation-behaviours.md``.
+    """
+    table = load_table(
+        {
+            # MHALL canon and WDMH canon both compile; their nodes differ.
+            "script": open("data/scripts/mhall.ks").read(),
+            "turns": [
+                {
+                    "role": "K",
+                    "op": "CANONIZED",
+                    # The signature is the question; the nodes are the answer's
+                    # atoms — a signature-changing leap, declared as written.
+                    "signature": "WDMH",
+                    "nodes": ["Mary", "had", "a", "little", "lamb"],
+                    "significance": "S2",
+                }
+            ],
+        }
+    )
+    turns = decode(table, tokenizer=NLPTokenizer(), signifier=NLPSignifier())
+    assert len(turns) == 1
+    kline = turns[0].value.kline
+    # The declared signature is honoured verbatim (it is WDMH's compiled sig),
+    # and the five nodes resolve to the MHALL atoms' canonical signatures.
+    assert kline.dbg.label == "WDMH"
+    assert len(kline.nodes) == 5
 
 
 # ── Canonical end state ───────────────────────────────────────────────────
