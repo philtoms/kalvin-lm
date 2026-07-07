@@ -1,13 +1,14 @@
 """Run a dialogue end-to-end through the table-reading trainer and trainee.
 
 Loads a dialogue table, decodes it, and drives it to completion. The **run
-regime is selected by the ``--peer`` flag** (not by the table): without
-``--peer`` the bus-agnostic ordered runner (:func:`training.dialogue.run`)
-drives a fresh :class:`TableTrainer` and :class:`TableTrainee`; with
-``--peer`` the sink-shaped :class:`PeerRunner` drives the same actors,
-bridging their emissions onto it. Selecting the regime on the command line
-keeps the table under test untouched — the same JSON can be run either way.
-Prints a PASS/FAIL summary; with ``--verbose`` it traces the exchange, showing
+regime defaults to peer mode**: the sink-shaped :class:`PeerRunner` drives a
+fresh :class:`TableTrainer` and :class:`TableTrainee`, bridging their
+emissions onto it (order-agnostic on middle entries — the natural fit for
+real actors). Pass ``--ordered`` to drive the bus-agnostic ordered runner
+(:func:`training.dialogue.run`) instead, which enforces strict turn order.
+Selecting the regime on the command line keeps the table under test untouched
+— the same JSON can be run either way. Prints a PASS/FAIL summary; with
+``--verbose`` it traces the exchange, showing
 each validated entry in its scripted (declarative table-row) form.
 
 For an ordered run, ``--rationalise`` substitutes a
@@ -17,7 +18,7 @@ default ``TableTrainee`, and ``--synthesize`` substitutes a
 compiled script) for the default ``TableTrainer``. The two flags are
 orthogonal: passing both runs the two real actors against the same golden
 master. They apply in both regimes — the real actors are drop-in (adapter-
-driven), so ``--peer`` with ``--rationalise`` / ``--synthesize`` runs the real
+driven), so peer mode with ``--rationalise`` / ``--synthesize`` runs the real
 actors through the bus-subscriber relay. Note real actors do not reproduce the
 table exactly, so peer mode with them typically needs ``--on-divergence
 accept`` (else off-table emissions raise ``PeerDivergence``).
@@ -27,14 +28,14 @@ here. Bus integration arrives with the real actors.
 
 Usage::
 
-    python scripts/dialogue_run.py                             # default dialogue
+    python scripts/dialogue_run.py                             # default dialogue (peer mode)
     python scripts/dialogue_run.py scripts/dialogue-mhall.json # explicit path
     python scripts/dialogue_run.py --verbose                   # scripted-form trace
     python scripts/dialogue_run.py --rationalise               # RationalisingTrainee
     python scripts/dialogue_run.py --synthesize                # SynthesizingTrainer
     python scripts/dialogue_run.py --synthesize --rationalise  # both real actors
-    python scripts/dialogue_run.py --peer                      # peer mode (PeerRunner)
-    python scripts/dialogue_run.py --peer --on-divergence accept  # accept off-table
+    python scripts/dialogue_run.py --ordered                   # ordered mode (strict turn order)
+    python scripts/dialogue_run.py --on-divergence accept      # accept off-table emissions (peer)
 
 Exit code is 0 on a completing run (table exhausted), 1 on an actor divergence
 or incomplete run.
@@ -336,12 +337,12 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--peer",
+        "--ordered",
         action="store_true",
         help=(
-            "Run in peer mode: drive the PeerRunner, a sink that receives the "
-            "actors' emissions after the opening. The regime is selected by this "
-            "flag, not by the table, so the JSON under test stays untouched."
+            "Run in ordered mode: drive the bus-agnostic ordered runner, which "
+            "enforces strict turn order against the table cursor. The default "
+            "is peer mode (the PeerRunner, order-agnostic on middle entries)."
         ),
     )
     parser.add_argument(
@@ -350,7 +351,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=(
             "Peer-mode divergence policy (default: fail, or the table's "
-            "peer.on_divergence when it declares one). Ignored without --peer."
+            "peer.on_divergence when it declares one). Ignored in ordered mode."
         ),
     )
     args = parser.parse_args(argv)
@@ -367,12 +368,14 @@ def main(argv: list[str] | None = None) -> int:
         _sig_to_label(table, tokenizer=tok, signifier=sigf) if args.verbose else {}
     )
 
-    # The run regime is selected by the ``--peer`` flag, not by the table: a
-    # table is run either way without editing its JSON. The flag is the sole
-    # selector — a table's ``peer`` section does not force peer mode. The
-    # divergence policy is ``--on-divergence`` when given, else the table's
-    # declared ``peer.on_divergence``, else ``fail``.
-    if args.peer:
+    # The run regime defaults to peer mode (the PeerRunner, order-agnostic
+    # on middle entries — the natural fit for real actors). ``--ordered``
+    # opts into the bus-agnostic ordered runner, which enforces strict turn
+    # order. The regime is selected on the command line, not by the table, so
+    # the JSON under test stays untouched. The divergence policy is
+    # ``--on-divergence`` when given, else the table's declared
+    # ``peer.on_divergence``, else ``fail``.
+    if not args.ordered:
         on_divergence = args.on_divergence
         if on_divergence is None:
             on_divergence = table.peer.on_divergence if table.is_peer else "fail"
