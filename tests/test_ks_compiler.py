@@ -506,6 +506,80 @@ class TestCanonizedMisfitSignature:
         assert len(ops) == 2
 
 
+class TestBlockCanonReusesPriorMtsSignature:
+    """KS-44 (regression) — a compound id MTS-expanded from a preamble
+    word-list, then declared as a block canon in a later script, must reuse
+    the MTS signature.
+
+    The MTS CANONIZE of a compound (emitted when the word is encoded as a
+    preamble word or a node) DEFINES the compound's signature. A later
+    block-canon entry with the same compound id (``had => did have``) is a
+    REFERENCE and must reuse that signature — not recompute it as
+    ``make_signature(block_nodes)``, which would clobber the compound's true
+    signature and corrupt cross-references (the dialogue decoder's
+    ``canon_by_label`` picks one canon per label; a clobbered signature makes
+    ``is_canon`` fail on the other script's canon, stalling a real
+    rationalising actor mid-run).
+
+    This is the multi-script generalisation of :class:`TestCanonizedMisfitSignature`
+    (which covers the single-scope case where the block canon is the first/
+    defining entry). Here the MTS expansion precedes the block canon across
+    script scopes.
+    """
+
+    def _entries(self, tokenizer):
+        # MHALL's preamble word-list MTS-expands `had` (compound -> [h, ad]).
+        # WDMH then declares `had => did have` — a block canon that must reuse
+        # the MTS signature, not recompute make_signature([did, have]).
+        source = (
+            "(Mary had a little lamb)\n"
+            "MHALL == SVO =>\n"
+            "   V(erb) = H\n"
+            "\n"
+            "(what did Mary have)\n"
+            "WDMH =>\n"
+            "  h(ad) => d(id) h(ave)\n"
+        )
+        return compile_source(source, tokenizer=tokenizer, dev=True)
+
+    def test_block_canon_sig_equals_mts_sig(self, tokenizer):
+        """The WDMH `had` block canon shares MHALL's MTS `had` signature."""
+        from kalvin.signifier import NLPSignifier
+
+        entries = self._entries(tokenizer)
+        sig = NLPSignifier()
+        h, ad = (tokenizer.encode(c)[0] for c in ("h", "ad"))
+        mts_had_sig = sig.make_signature([h, ad])
+
+        had_canon = [
+            e for e in entries
+            if e.kline.dbg.label == "had" and e.kline.dbg.op == "CANONIZED"
+        ]
+        assert had_canon, "expected at least one had CANONIZED kline"
+        for e in had_canon:
+            assert e.kline.signature == mts_had_sig, (
+                f"had block canon sig must be the MTS value 0x{mts_had_sig:x}; "
+                f"got 0x{e.kline.signature:x} (clobbered by block nodes?)"
+            )
+
+    def test_block_canon_keeps_its_body_nodes(self, tokenizer):
+        """The misfit relationship is preserved: had -> [did, have] nodes."""
+        entries = self._entries(tokenizer)
+        did, have = (tokenizer.encode(c)[0] for c in ("did", "have"))
+        block_canon = None
+        for e in entries:
+            if (
+                e.kline.dbg.label == "had"
+                and e.kline.dbg.op == "CANONIZED"
+                and tuple(e.kline.nodes) == (did, have)
+            ):
+                block_canon = e
+                break
+        assert block_canon is not None, (
+            "missing the had => [did, have] block-canon kline"
+        )
+
+
 # ---------------------------------------------------------------------------
 # compile_source convenience function
 # ---------------------------------------------------------------------------

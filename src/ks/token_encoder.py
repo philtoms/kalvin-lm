@@ -260,6 +260,17 @@ class TokenEncoder:
         token_key = tuple(tokens)
         packed = self._signifier.make_signature(tokens)
 
+        # Register the compound's packed signature (§11.4: the MTS CANONIZE
+        # — compound → its subword tokens — DEFINES the signature; a later
+        # block-canon entry with the same compound id is a REFERENCE that must
+        # reuse this value, not recompute it from its own operands). Without
+        # this registration, a block canon (e.g. `had => did have`) falls into
+        # the defining branch and clobbers the compound's true signature with
+        # make_signature(block_nodes). Only register when ``dbg_label`` names
+        # the compound (it is empty at internal call sites that have no id).
+        if dbg_label:
+            self._compound_sigs.setdefault(dbg_label, packed)
+
         extras: list[KValue] = []
 
         if token_key not in self._decomposed:

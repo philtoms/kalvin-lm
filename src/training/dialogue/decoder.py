@@ -90,6 +90,10 @@ class Turn:
     significance: str | None  # None on annotation-only turns
     notes: str = ""
     close: bool = False  # True when this turn closes a script (a boundary marker)
+    # The raw JSON record this turn was loaded from (``None`` for turns built
+    # synthetically, e.g. test fixtures). Carried for diagnostics so a trace
+    # can show the table row verbatim alongside its decoded form.
+    record: dict | None = None
 
     @property
     def is_annotation_only(self) -> bool:
@@ -164,6 +168,11 @@ class DecodedTurn:
     op: str
     value: KValue
     close: bool = False  # True when this turn closes a script (a boundary marker)
+    # The raw JSON record this decoded turn was loaded from (``None`` for
+    # turns built synthetically, e.g. test fixtures or peer-runner placeholders
+    # reconstructed from a content key). Carried for diagnostics so a trace can
+    # show the table row verbatim alongside its decoded form.
+    record: dict | None = None
 
 
 # backwards-compat alias for the documented `DECODEDTurn` spelling used in the
@@ -458,6 +467,7 @@ def decode(
                 op=turn.op,
                 value=KValue(kline, significance),
                 close=turn.close,
+                record=turn.record,
             )
         )
     # ``close`` markers are validated on the decoded list (they are a property
@@ -508,6 +518,7 @@ def _turn_from_dict(raw: dict) -> Turn:
         significance=raw.get("significance"),
         notes=raw.get("notes", ""),
         close=close,
+        record=raw,
     )
 
 
