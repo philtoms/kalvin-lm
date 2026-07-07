@@ -81,16 +81,17 @@ def test_load_rejects_bad_close_marker():
             )
 
 
-def test_decode_rejects_close_on_trainer_row():
-    """A close must be on a trainee (K) row — the trainee reaches the conclusion."""
-    with pytest.raises(DecodeError):
-        decode(load_table({
-            "script": "A",
-            "turns": [
-                {"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S2"},
-                {"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": True},
-            ],
-        }))
+def test_decode_accepts_close_on_trainer_row():
+    """Closing is a runner concern, not a role constraint: a close may sit on
+    a trainer (T) row as well as a trainee (K) row."""
+    table = mhall_table()
+    table = {**table, "turns": list(table["turns"])}
+    table["turns"][0] = {**table["turns"][0], "close": True}  # the T opener carries the close
+    decoded = decode(load_table(table))
+    closers = [t for t in decoded if t.close]
+    assert len(closers) == 1
+    assert closers[0].close is True
+    assert closers[0].role == "T"
 
 
 def test_decode_accepts_single_close_marker():

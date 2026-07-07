@@ -78,7 +78,8 @@ class Turn:
     ``close`` marks a turn as a script close (the table's explicit boundary
     marker). The runner reads it to know when a script ends (and, for
     multi-script, when to open the next). A turn without ``close`` is not a
-    close. See :class:`DecodedTurn.close`.
+    close. Closing is a runner concern and is role-agnostic — it may sit on
+    either a T or a K row. See :class:`DecodedTurn.close`.
     """
 
     role: Role
@@ -549,20 +550,17 @@ def turn_content_key(turn: DecodedTurn) -> tuple[str, int, tuple[int, ...], int]
 def _validate_close(decoded: list[DecodedTurn]) -> None:
     """Validate the ``close`` markers (spec §Dialogue Table).
 
-    A ``close`` turn closes a script (a boundary marker). Rules:
-    - a ``close`` must be on a trainee (K) row (the trainee reaches the
-      expected conclusion; a trainer does not close a script).
+    A ``close`` turn closes a script (a boundary marker). The marker is
+    role-agnostic: it may sit on either a trainer (T) or trainee (K) row.
+    Closing is a runner concern (the runner owns the table cursor and reads
+    the marker as the script boundary); it is not tied to a role.
 
     Tables with no ``close`` markers are valid (single-script, backward
     compatible): the runner ends at the last row and no script boundary fires.
     """
-    for idx, turn in enumerate(decoded):
-        if not turn.close:
-            continue
-        if turn.role != "K":
-            raise DecodeError(
-                f"turn {idx}: a 'close' must be on a trainee (K) row, got role {turn.role!r}"
-            )
+    # Presence-only: a `close: true` is well-formed on any row. No role check —
+    # the runner, not the decoder, decides how a close routes.
+    return
 
 
 def _validate_peer(decoded: list[DecodedTurn]) -> None:

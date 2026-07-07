@@ -50,7 +50,9 @@ Turn:
   close:        bool  # optional: `true` marks this turn as a script close.
                       # The runner reads it as the script boundary and routes
                       # the next turn as an open. Absent (or false) unless
-                      # this turn is a close; must be on a trainee (K) row.
+                      # this turn is a close. Role-agnostic: it may sit on
+                      # either a trainer (T) or trainee (K) row — closing is
+                      # a runner concern, not a role constraint.
 ```
 
 `script` is the single source of truth for kline structure (canonical
