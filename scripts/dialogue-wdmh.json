@@ -120,7 +120,7 @@
       ],
       "significance": "S2",
       "role": "K",
-      "notes": "LEAP 1 - Misfit at H: K substitutes 'did have' for had"
+      "notes": "Misfit at H: K substitutes 'did have' for had"
     },
     {
       "op": "CANONIZED",
@@ -147,7 +147,21 @@
       ],
       "significance": "S2",
       "role": "K",
-      "notes": "LEAP 2 - promotion: K substitutes MHALL for MHW.",
+      "notes": "Misfit proposal: K substitutes had for 'did have', 'a little lamb' for what."
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "WDMH",
+      "nodes": [
+        "Mary",
+        "had",
+        "a",
+        "little",
+        "lamb"
+      ],
+      "significance": "S1",
+      "role": "T",
+      "notes": "T ratifies",
       "close": true
     }
   ],
