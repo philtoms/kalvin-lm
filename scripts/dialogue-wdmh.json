@@ -1,6 +1,8 @@
 {
   "script": "data/scripts/mhall.ks",
-  "prior": "scripts/dialogue-mhall.json",
+  "priors": [
+    "scripts/dialogue-mhall.json"
+  ],
   "turns": [
     {
       "notes": "T starts a dialogue",

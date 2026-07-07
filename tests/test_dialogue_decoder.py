@@ -106,6 +106,76 @@ def test_decode_accepts_single_close_marker():
     assert closers[0].role == "K"
 
 
+def test_load_prepends_priors_in_list_order(tmp_path):
+    """``priors`` names other dialogue-table files; their turns are inserted
+    before this table's own turns, in list order (prior[0] first)."""
+    import json
+
+    prior_a = tmp_path / "a.json"
+    prior_b = tmp_path / "b.json"
+    prior_a.write_text(json.dumps({
+        "script": "A",
+        "turns": [{"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "prior-a"}],
+    }))
+    prior_b.write_text(json.dumps({
+        "script": "A",
+        "turns": [{"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "prior-b"}],
+    }))
+    table = load_table({
+        "script": "A",
+        "priors": [str(prior_a), str(prior_b)],
+        "turns": [{"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "own"}],
+    })
+    notes = [t.notes for t in table.turns]
+    assert notes == ["prior-a", "prior-b", "own"]
+
+
+def test_load_priors_resolve_recursively(tmp_path):
+    """A prior's own ``priors`` compose: prior-b is pulled in via prior-a, so
+    its turns precede prior-a's, which precede the table's own."""
+    import json
+
+    prior_b = tmp_path / "b.json"
+    prior_b.write_text(json.dumps({
+        "script": "A",
+        "turns": [{"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "prior-b"}],
+    }))
+    prior_a = tmp_path / "a.json"
+    prior_a.write_text(json.dumps({
+        "script": "A",
+        "priors": [str(prior_b)],
+        "turns": [{"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "prior-a"}],
+    }))
+    table = load_table({
+        "script": "A",
+        "priors": [str(prior_a)],
+        "turns": [{"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "own"}],
+    })
+    notes = [t.notes for t in table.turns]
+    assert notes == ["prior-b", "prior-a", "own"]
+
+
+def test_load_rejects_missing_prior_file(tmp_path):
+    """A prior path that cannot be read is a hard error (no silent skip)."""
+    with pytest.raises(DecodeError):
+        load_table({
+            "script": "A",
+            "priors": [str(tmp_path / "missing.json")],
+            "turns": [{"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1"}],
+        })
+
+
+def test_load_rejects_malformed_priors_field():
+    """``priors`` must be a list of path strings."""
+    for bad in ("scripts/x.json", [1, 2], {"a": 1}):
+        with pytest.raises(DecodeError):
+            load_table({
+                "script": "A",
+                "priors": bad,
+                "turns": [{"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1"}],
+            })
+
+
 def test_primaries_from_source_extracts_each_top_level_script():
     """primaries_from_source returns one primary per top-level KScript scope,
     in source order - the klines a multi-script trainer opens (R1) per script."""

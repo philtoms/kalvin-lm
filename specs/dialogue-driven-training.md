@@ -35,6 +35,12 @@ The source artifact for a lesson. A JSON object:
 DialogueTable:
   script:  str          # KScript source, or a path to a .ks file — the
                          # authority for kline structure
+  priors:  list[str]    # optional: paths to other DialogueTable files whose
+                         # turns run before this table's own, in list order.
+                         # Resolved recursively; each prior's turns are
+                         # inserted (in list order) ahead of this table's.
+                         # A prior resolves its own `script`; only its turns
+                         # are carried in.
   turns:   list[Turn]   # ordered, the exact T/K exchange
 ```
 
@@ -66,6 +72,13 @@ is treated as a path when it contains a path separator (`/` or `\`) or ends in
 verbatim as inline source. A path-like value that is missing or unreadable is a
 load error (no silent inline fallback, so a typo or wrong working directory is
 not masked).
+
+`priors` (optional) names other `DialogueTable` files whose turns precede this
+table's own. Each prior is loaded and resolved against **its own** `script`;
+only its `turns` are carried in, inserted in list order (priors[0] first), so a
+multi-file lesson reads as one continuous exchange. Priors resolve recursively
+(a prior may name its own priors); the merged `turns` are what `decode` and the
+runner consume. A missing or malformed prior file is a load error.
 
 An **annotation-only turn** carries `notes` but no `op`; it is human commentary
 and is not part of the exchange.

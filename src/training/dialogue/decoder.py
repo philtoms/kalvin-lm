@@ -20,6 +20,7 @@ Spec mapping
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -615,6 +616,34 @@ def _peer_config_from_dict(raw: dict) -> PeerConfig:
     return PeerConfig(on_divergence=on_divergence)
 
 
+def _load_table_file(path: Path) -> DialogueTable:
+    """Load a :class:`DialogueTable` from a JSON file (used for ``priors``).
+
+    The path is resolved against the file system (the cwd, like the ``script``
+    field). A missing or unreadable file is a hard error. The loaded table's
+    own ``priors`` (if any) are resolved recursively by :func:`load_table`, so
+    a chain of priors composes; cycles would surface as an ``OSError`` (the
+    second load of an already-open path) rather than a silent loop.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise DecodeError(
+            f"dialogue prior table {str(path)!r} could not be read: {exc}"
+        ) from exc
+    try:
+        raw = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise DecodeError(
+            f"dialogue prior table {str(path)!r} is not valid JSON: {exc}"
+        ) from exc
+    if not isinstance(raw, dict):
+        raise DecodeError(
+            f"dialogue prior table {str(path)!r} must be a JSON object"
+        )
+    return load_table(raw)
+
+
 def load_table(raw: dict) -> DialogueTable:
     """Parse a raw ``{script, turns[], peer?}`` dict into a :class:`DialogueTable`.
 
@@ -654,4 +683,20 @@ def load_table(raw: dict) -> DialogueTable:
     else:
         peer = None
     turns = tuple(_turn_from_dict(t) for t in raw["turns"])
+    # ``priors`` (optional) names other dialogue-table files whose turns run
+    # before this table's own, in list order (spec §Dialogue Table). Each is
+    # loaded recursively; its turns are prepended so a multi-file lesson reads
+    # as one continuous exchange. A prior resolves its own ``script`` (its
+    # turns' symbols must be resolvable there); only the turns are carried in.
+    priors_raw = raw.get("priors")
+    if priors_raw is not None:
+        if not isinstance(priors_raw, list) or not all(
+            isinstance(p, str) for p in priors_raw
+        ):
+            raise DecodeError("'priors' must be a list of table-file path strings")
+        prior_turns: list[Turn] = []
+        for prior_path in priors_raw:
+            prior_table = _load_table_file(Path(prior_path))
+            prior_turns.extend(prior_table.turns)
+        turns = tuple(prior_turns) + turns
     return DialogueTable(script=script, turns=turns, peer=peer)
