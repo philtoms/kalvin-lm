@@ -16,7 +16,7 @@ from __future__ import annotations
 import pytest
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S1
+from kalvin.expand import SIG_S1, SIG_S2
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
@@ -336,7 +336,7 @@ def test_synthesizing_trainer_runs_mhall_to_exhaustion(_decoded_mhall, _compiled
     compiled, sigf = _compiled_mhall
     result = run(
         _decoded_mhall,
-        trainer=SynthesizingTrainer(compiled, sigf),
+        trainer=SynthesizingTrainer(compiled, sigf, [compiled[0].kline]),
         trainee=TableTrainee(_decoded_mhall),
     )
     assert result.complete
@@ -351,45 +351,95 @@ def test_synthesizing_trainer_runs_mhall_to_exhaustion(_decoded_mhall, _compiled
 # ── R4 — open-dialog-close (plan @plans/implement-synthesizing-trainer.md) ─
 
 
-def test_synthesizing_trainer_withholds_on_trainee_s1_on_primary(_compiled_mhall):
-    """R4: the trainer recognises the trainee's S1 on the primary as the close
-    and withholds — it does not echo/ratify what the trainee has grounded.
-
-    Before R4 the synthesiser re-emitted the primary at S1 on the trainee's
-    close (a spurious closing countersign on the trainer's role), which
-    diverged in peer mode. R4 makes the trainer withhold instead."""
+def test_synthesizing_trainer_replies_to_any_incoming(_compiled_mhall):
+    """The trainer does not detect script closes and never withholds on its
+    own — it synthesises a reply for whatever ``incoming`` it is handed.
+    Close-detection is the runner's job (it owns the ``close`` markers and
+    routes accordingly). This replaces the former R4 trainer-side withhold."""
     from training.dialogue.runner import SynthesizingTrainer
 
     compiled, sigf = _compiled_mhall
-    trainer = SynthesizingTrainer(compiled, sigf)
+    trainer = SynthesizingTrainer(compiled, sigf, [compiled[0].kline])
+    # A primary-shaped incoming (formerly the close): the trainer still replies
+    # (R3 echoes the matching compiled kline) — it does not withhold.
     primary_event = RationaliseEvent(
         kind="frame",
         query=KValue(KLine(compiled[0].kline.signature, ()), 0),
-        proposal=KValue(compiled[0].kline, SIG_S1),  # trainee closes: S1 on primary
+        proposal=KValue(compiled[0].kline, SIG_S1),
         role="K",
     )
-    # The trainer withholds on the close (R4).
-    assert trainer.respond(primary_event) is None
+    assert trainer.respond(primary_event) is not None
 
 
-def test_synthesizing_trainer_does_not_withhold_on_non_primary_s1(_compiled_mhall):
-    """R4 is primary-specific: an S1 on a non-primary kline is not a close;
-    the trainer still synthesises (R3 ratifies the relation)."""
+def test_synthesizing_trainer_advances_primary_on_each_open():
+    """On an open (``incoming=None``) the trainer emits the current primary at
+    S2 (R1) and advances, so a multi-script trainer opens each script's own
+    primary in turn: primary 0 on the first open, primary 1 after the first
+    close, and so on. The runner drives the opens via close-aware routing."""
+    from pathlib import Path
+
+    from training.dialogue.decoder import primaries_from_source
     from training.dialogue.runner import SynthesizingTrainer
 
-    compiled, sigf = _compiled_mhall
-    trainer = SynthesizingTrainer(compiled, sigf)
-    # Find a non-primary relation in the compiled script.
-    non_primary = next(
-        kv
-        for kv in compiled[1:]
-        if kv.kline.nodes and kv.kline.signature != compiled[0].kline.signature
-    )
-    non_primary_event = RationaliseEvent(
-        kind="frame",
-        query=KValue(non_primary.kline, 0),
-        proposal=KValue(non_primary.kline, SIG_S1),
-        role="K",
-    )
-    # Not the primary → not a close → trainer responds (does not withhold).
-    assert trainer.respond(non_primary_event) is not None
+    tok, sigf = NLPTokenizer(), NLPSignifier()
+    source = Path("data/scripts/mhall.ks").read_text()
+    primaries = primaries_from_source(source, tokenizer=tok, signifier=sigf)
+    p0, p1 = primaries
+    # ``compiled`` only feeds R2/R3 structure lookups; any non-empty list works
+    # here since both opens take the ``incoming=None`` branch.
+    trainer = SynthesizingTrainer([KValue(p0, 0)], sigf, [p0, p1])
+    first = trainer.respond(None)            # open script 1
+    assert first.proposal.kline == p0
+    assert first.proposal.significance == SIG_S2
+    second = trainer.respond(None)           # open script 2 (after a close)
+    assert second.proposal.kline == p1
+    assert second.proposal.significance == SIG_S2
+
+
+def test_run_routes_next_turn_as_open_after_close():
+    """Script boundaries are the runner's: after a turn carrying a ``close``
+    marker, the next actor is handed ``incoming=None`` (an open) rather than
+    the close event (a reply). A close ends a script; the next turn opens a
+    fresh one. The trainer never detects the close — the runner does."""
+    from training.dialogue.decoder import DecodedTurn
+
+    # Decoded rows with distinct values so the recording actors can reproduce
+    # them in order: T(11), K(22), K(33, close), T(44).
+    decoded = [
+        DecodedTurn(role="T", op="IDENTITY", value=KValue(KLine(11, ()), 0)),
+        DecodedTurn(role="K", op="IDENTITY", value=KValue(KLine(22, ()), 0)),
+        DecodedTurn(role="K", op="IDENTITY", value=KValue(KLine(33, ()), 0), close=True),
+        DecodedTurn(role="T", op="IDENTITY", value=KValue(KLine(44, ()), 0)),
+    ]
+    seen: list = []  # the incoming each respond() got
+
+    def _recorder(role_label):
+        rows = [t for t in decoded if t.role == role_label]
+        i = 0
+
+        class _A:
+            role = role_label
+
+            def respond(self, incoming):
+                nonlocal i
+                seen.append(incoming)
+                turn = rows[i]
+                i += 1
+                return RationaliseEvent(
+                    kind="frame",
+                    query=turn.value,
+                    proposal=turn.value,
+                    role=role_label,
+                )
+
+        return _A()
+
+    run(decoded, _recorder("T"), _recorder("K"))
+    # 4 turns taken in role order T,K,K,T → 4 recorded incomings.
+    # [0] None (opening); [1] T event; [2] K event;
+    # [3] None (close at index 2 routes the next turn as an open).
+    assert len(seen) == 4
+    assert seen[0] is None
+    assert seen[1] is not None and seen[1].role == "T"
+    assert seen[2] is not None and seen[2].role == "K"
+    assert seen[3] is None

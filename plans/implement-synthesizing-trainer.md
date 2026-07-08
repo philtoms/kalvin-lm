@@ -98,9 +98,13 @@ Trigger conditions are detected structurally from `incoming.proposal`
 (identity = `nodes == []` or self-referential `{S:[S]}`) plus its significance
 band.
 
-**R1 — Opening** (`incoming is None`): emit the **first compiled entry** at its
-compiled op, **S2**. Scoped to single-primary, single-cascade scripts (matches
-the spec's existing Out-of-Scope).
+**R1 — Opening** (`incoming is None`): emit the **current primary** at **S2**.
+In the pure ``synthesize`` the primary is ``compiled[0]`` (the single-script
+case). The :class:`SynthesizingTrainer` overrides this for multi-script: it
+holds the ordered primaries (from ``primaries_from_source``) and, on each
+open, emits the current primary and advances — so each script opens its own
+primary. ``synthesize`` itself stays single-primary (its opening is the
+single-script fallback); multi-script opening is the trainer's responsibility.
 
 **R2 — Reply to IDENTITY,S4** (the trainee does not recognise signature `Q`):
 find compiled kline(s) with `signature == Q` and non-empty nodes; emit the
@@ -131,19 +135,22 @@ ratified at S1.)
 > (trainer-S4 replying to a trainee-S4 means "I don't know it either," not
 > "you're wrong"). It is deliberately not added to `CONTEXT.md`.
 
-**R4 — Close (dialogue-level, lives in the actor, not `synthesize`).** A
+**R4 — Close (table-declared via ``close: n``; owned by the runner, not the trainer).** A
 script's dialogue is bookended: the trainer opens (R1 — primary at S2) and the
-trainee closes (an **S1 on the primary**). The trainer recognises the trainee's
-S1 on the primary signature as the close and **withholds** — it does not
-R3-echo/ratify what the trainee has already grounded. This prevents the
-trainer from emitting a spurious closing S1 on the primary (observed: the
-synthesiser reproduced MHALL's middle perfectly but then re-emitted the primary
-at S1 on the trainee's close, diverging in peer mode). R4 is the single-script
-instance of general per-script **open-dialog-close** semantics: trainer opens
-a script, trainee closes with S1 on that script's primary. A future multi-
-script trainer generalises R4 to track a set of script primaries. The rule
-lives in `SynthesizingTrainer` (a dialogue-level concern) — `synthesize` stays
-a pure function of `(compiled, incoming)`.
+trainee closes with the table-declared closing turn. The closing turn carries
+a ``close: n`` marker (the script it closes); the runner reads it. Previously
+the trainer detected the close itself (matching the trainee's S1 on the
+primary) and **withheld** — that recognition was duplicated across every
+trainer derivation. It now lives in one place: the runner, which owns the
+table cursor. On a close the runner routes the *next* turn with
+``incoming=None`` (an open), so the trainer opens the next script rather than
+replying to the close; the trainer never detects closes and never withholds.
+The former peer-mode echo race (the synthesiser re-emitted the primary at S1
+on the trainee's close, diverging in peer mode) is now contained by the
+runner's close-aware routing (and the peer runner's stop-on-close).
+Multi-script support follows from the same marker: ``close: 1`` then
+``close: 2`` etc. name successive scripts. `synthesize` stays a pure function
+of ``(compiled, incoming)`` — opening is just ``incoming=None``.
 
 ## Implementation Tasks
 
@@ -219,8 +226,11 @@ drop-in.
 
 ## Out of Scope
 
-- Multi-primary / multi-cascade scripts (R1 assumes a single primary; matches
-  the spec's existing Out-of-Scope).
+- Multi-primary opening — **implemented**. The trainer takes the ordered
+  primaries (sourced from the AST via ``primaries_from_source``) and opens each
+  script's own primary in turn (R1), advancing on each open; the runner's
+  ``close: n`` routing drives the opens. What remains is authoring a misfit
+  second script (the S2-misfit pedagogy) and peer-mode multi-script.
 - The Kalvin cogitator (the trainee-side synthesizer) — the next grill.
 - Bus integration, supervisor escalation — belong to the real harness trainer.
 - Changing the encoder so identity and canon signatures agree (explicitly

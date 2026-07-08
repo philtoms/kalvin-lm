@@ -352,7 +352,7 @@ The identity-filling flag does not propagate between CANONIZE scopes; only the i
 
 ## 8. MTS (Multi-Token Signature) Expansion
 
-When a signature has **more than one character**, the ASTEmitter automatically emits:
+When a signature is an **all-uppercase multi-character identifier** (a compound, e.g. `MHALL`, `SVO`, `ALL`), the ASTEmitter automatically emits:
 
 1. **Component identities:** One identity entry per constituent character (resolved via BindingScope).
 2. **MTS canonization:** One entry mapping the compound to its resolved components.
@@ -363,7 +363,9 @@ ABC  →  {A: []}, {B: []}, {C: []}, {ABC: [A, B, C]}
 
 Single-character signatures do NOT trigger MTS expansion.
 
-MTS applies to any multi-character identifier wherever it appears — signature side or node side, any operator. There is no position-dependent rule.
+**Compounds vs words.** MTS character-expansion applies only to all-uppercase identifiers. A lowercase or mixed-case multi-character identifier (e.g. `had`, `did`, `all`) is a **single word** — one token — not a compound; it is emitted as its own IDENTITY and is never decomposed into per-character entries. Case is the discriminator that separates a compound from a word; both are admitted by the case-insensitive SIGNATURE rule (§2). (Historically every multi-character identifier was uppercase, so the case guard was implicit; the SIGNATURE relaxation made it explicit.)
+
+MTS applies to compounds wherever they appear — signature side or node side, any operator. There is no position-dependent rule.
 
 ### 8.1 Character Resolution
 
@@ -499,7 +501,9 @@ Signatures are constructed from node values via the Signifier (@signifier).
 
 The compiler does not inspect or mask node values — they are opaque `uint64` integers.
 
-**Canonical encoding.** A compound identifier's signature is computed once — at its CANONIZED definition, via `make_signature` over its resolved component node values (@signifier) — and reused by every referencing entry (as signature or node), so all klines referring to the same compound share one uint64. (Operator entries where the compound is the signature but the node is a different identifier — e.g. `COUNTERSIGNED MHALL [SVO]` — have `signature ≠ make_signature(nodes)` by design: the signature is a registry lookup, not a reduction of that entry's own nodes.)
+**Canonical encoding.** A compound identifier's signature is computed once — at its **MTS CANONIZE definition** (§8: the compound → its declared character components), via `make_signature` over those resolved component node values (@signifier) — and reused by every referencing entry (as signature or node), so all klines referring to the same compound share one uint64. The signature is therefore the OR of **all** the compound's declared characters, regardless of what any single referencing kline lists as its nodes. (Operator entries where the compound is the signature but the node is a different identifier — e.g. `COUNTERSIGNED MHALL [SVO]` — have `signature ≠ make_signature(nodes)` by design: the signature is a registry lookup, not a reduction of that entry's own nodes.)
+
+**Block canon is a reference, not a definition.** When a compound heads a `=>` scope (§7.5), the scope produces two distinct relationships that share the one compound signature: (1) the MTS CANONIZE — compound → its declared characters (§8, the decoding aid and the signature's sole definition); and (2) the block canon — compound → the scope's resolved operands (the script's declared `signature↔nodes` relationship). The block canon is encoded as a *reference*: it reuses the registered signature and must not recompute it from its own operands. This matters for a deliberate **misfit** such as `WDMH => M H W`, where the block operands omit `D`: the compound signature is still `make_signature(W,D,M,H)`, so the block-canon kline (`signature` contains `D`, `nodes` do not) composes into the intended misfit. Recomputing the signature from the block operands would drop `D` and collapse the misfit into a full canon with the wrong signature. When the block operands coincide with the compound's characters (the common case, e.g. `SVO => S V O`), §8.3 CANONIZE dedup collapses the two entries to one.
 
 ### 11.5 Design Tension: Annotations and Encoding Opacity
 
@@ -830,8 +834,9 @@ SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL componen
 | KS-17                 | DEDENT returns to parent scope                                                                                                                                           | Scope       |
 | KS-18                 | Non-CANONIZE with indent: per-item emission extends into child block                                                                                                     | Scope       |
 | **MTS**               |                                                                                                                                                                          |             |
-| KS-19                 | MTS expansion: multi-char identifier produces component identities + canonization                                                                                        | MTS         |
+| KS-19                 | MTS expansion: all-uppercase multi-char compound produces component identities + canonization                                                                            | MTS         |
 | KS-20                 | No MTS for single-char identifiers                                                                                                                                       | MTS         |
+| KS-20b                | No MTS for lowercase/mixed-case words (`had`, `Hello`) — single-token, not decomposed                                                                                   | MTS         |
 | KS-21                 | MTS on node side: `A == MHALL` triggers MTS for MHALL                                                                                                                    | MTS         |
 | KS-22                 | Node count invariant: MTS node count equals character count                                                                                                              | MTS         |
 | **Binding**           |                                                                                                                                                                          |             |
@@ -858,6 +863,7 @@ SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL componen
 | KS-39                 | Intra-expansion dedup: repeated characters in one compound emit only one identity (e.g., second L in MHALL)                                                              | MTS Dedup   |
 | KS-40                 | Canonization dedup: CANONIZE entries with same (sig, nodes) silently dropped across MTS and subscript                                                                    | MTS Dedup   |
 | KS-41                 | Canonical resolution (§8.3): an identifier's MTS components are identical wherever it appears (node-side and signature-side), even under an ambiguous occurrence counter | MTS         |
-| KS-42                 | Canonical encoding (§11.3/§11.4): exactly one CANONIZED kline per compound identifier; identity klines carry single-token signatures only (CONTEXT.md "Identity")        | Encoding    |
+| KS-42                 | Canonical encoding (§11.3/§11.4): exactly one compound signature per compound identifier (one CANONIZED kline when block operands coincide with the compound's characters); identity klines carry single-token signatures only (CONTEXT.md "Identity") | Encoding    |
+| KS-44                 | CANONIZED misfit signature (§11.4): a compound-headed `=>` scope whose block operands omit a character (e.g. `WDMH => M H W`) still uses the compound's full-character signature; the block canon is a separate reference kline that composes into the misfit | Encoding    |
 | **Output Ordering**   |                                                                                                                                                                          |             |
 | KS-43                 | Output ordering (§11.6): compiled source (operators, subscript identities, single-char CANONIZE) precedes all MTS entries (§8 character-level, §11.3 BPE-subword); partition is stable | Output      |

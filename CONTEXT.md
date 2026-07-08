@@ -122,9 +122,17 @@ The Trainer deferring a proposal it cannot auto-ratify to the supervisor for res
 The action of countersigning a selected proposal. Usually performed by the Trainer during curriculum execution.
 
 **Canon**:
-A relationship kline whose signature is the OR-reduction of its nodes: `signature == make_signature(nodes)`. The signature carries no information beyond what its nodes already express, so the kline is structurally self-grounded.
+A relationship kline whose signature is the OR-reduction of its nodes: `signature == make_signature(nodes)`. The signature carries no information beyond what its nodes already express, so the kline is structurally self-grounded. A Canon can self-close at S1 during rationalisation.
 _Avoid_: canonical (ambiguous with the Structural State), CANONIZED (that names the written token `=>` and the intent to aggregate — a CANONIZED kline need not be a Canon), MTS (an example, not the concept)
 
+**Misfit (proposal)**:
+A proposal whose signature is not the OR-reduction of its nodes — `signature ≠ make_signature(nodes)`, equivalently `classify_misfit` returns a non-trivial `(underfit, overfit)`. A misfit is still a **Proposal**; "misfit" names a structural property of it, not a separate emission category. A misfit cannot self-close at S1 (it lacks the self-grounding of a Canon); it reaches S1 only by **ratification** (a countersign from another participant). A participant may **originate** a misfit (construct and emit one whose signature it knows does not reduce to its nodes) only within the boundaries in `scripts/dialogue-rationalisation-behaviours.md`. Distinguished from an **observed** misfit — a received kline the recipient classifies as a misfit but did not author.
+_Avoid_: fabrication (informal; the act is originating a misfit), conjecture/hypothesis (a misfit is a proposal, not a distinct kind)
+
+**MTS (Multi-Token Signature)**:
+A compound signature built from more than one Token ID by OR-reduction. The compiler expands a multi-character KScript identifier into its constituent character identities plus one MTS relationship; this expansion is a property of the *signature string*, distinct from any CANONIZED decomposition a script declares for that signature via a block. A CANONIZED scope's nodes are the declared block operands, never the signature's own MTS character expansion.
+_Avoid_: decomposition (overloaded — a Canon decomposes into its nodes; an MTS expands a signature into characters), packed signature (the uint64 result, not the expansion)
+
 **Word Binding**:
-The association of a single-character KScript signature with a word, resolved through BPE annotations in the source. Bindings are scoped by relational-token boundaries; a character resolves to the most recent matching word in its scope.
-_Avoid_: comment mapping (the binding is a specific compiler artefact, not a general comment feature)
+The association of a single-character KScript signature with a word, resolved through annotations in the source. Bindings are scoped by relational-token boundaries; a character resolves to the most recent matching word in its scope. Two annotation kinds bind with different strength: a **top-level annotation** (on a scope signature) binds only if the character is currently unbound — fill-if-empty, never overriding an outer binding; an **inline annotation** (on an item) binds unconditionally, overriding any outer binding for that occurrence. Each identity occurrence is bound exactly once by the most specific annotation that applies to it, so one character never acquires two competing tokens.
+_Avoid_: comment mapping (the binding is a specific compiler artefact, not a general comment feature), rebind (a top-level annotation never overrides; an inline annotation always does — use the specific kind)

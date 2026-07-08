@@ -53,7 +53,7 @@ import pytest
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from ks import compile_source
-from ks.ast import Annotation, Block, KScriptFile, OperatorScope
+from ks.ast import Annotation, Block, KScriptFile, OperatorScope, Signature
 from ks.binding_scope import BindingScope
 from ks.lexer import Lexer, LexerError
 from ks.parser import Parser
@@ -419,13 +419,16 @@ class TestParserAST:
         assert scope.inline_annotation.text == "(ubject)"
 
     def test_ks9_node_inline_annotation(self):
-        """KS-9: 'A = D(et)' attaches node_inline_annotation to scope."""
+        """KS-9: 'A = D(et)' attaches the inline annotation to the D item."""
         ast = self._parse("A = D(et)")
         scope = ast.constructs[0]
         assert isinstance(scope, OperatorScope)
         assert scope.sig.id == "A"
-        assert scope.node_inline_annotation is not None
-        assert scope.node_inline_annotation.text == "(et)"
+        d_item = scope.items[0]
+        assert isinstance(d_item, Signature)
+        assert d_item.id == "D"
+        assert d_item.inline_annotation is not None
+        assert d_item.inline_annotation.text == "(et)"
 
     # -- KS-10: Empty source ---------------------------------------------
 

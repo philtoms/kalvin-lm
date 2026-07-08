@@ -1,0 +1,169 @@
+{
+  "script": "data/scripts/mhall.ks",
+  "priors": [
+    "scripts/dialogue-mhall.json"
+  ],
+  "turns": [
+    {
+      "notes": "T starts a dialogue",
+      "role": "T"
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "WDMH",
+      "nodes": [
+        "Mary",
+        "had",
+        "what"
+      ],
+      "significance": "S2",
+      "role": "T",
+      "notes": "T opens script 2: the question 'what did Mary have' is actually encoded 'mary had what' at S2."
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "WDMH",
+      "nodes": [],
+      "significance": "S4",
+      "notes": "K doesn't recognise WDMH",
+      "role": "K"
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "WDMH",
+      "nodes": [
+        "what",
+        "did",
+        "Mary",
+        "have"
+      ],
+      "significance": "S2",
+      "role": "T",
+      "notes": "T expands on WDMH"
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "what",
+      "nodes": [],
+      "significance": "S4",
+      "notes": "K doesn't recognise what, did, have",
+      "role": "K"
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "what",
+      "nodes": [],
+      "significance": "S1",
+      "role": "T"
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "did",
+      "nodes": [],
+      "significance": "S4",
+      "notes": "K doesn't recognise did, have",
+      "role": "K"
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "did",
+      "nodes": [],
+      "significance": "S1",
+      "role": "T"
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "have",
+      "nodes": [],
+      "significance": "S4",
+      "notes": "K doesn't recognise have",
+      "role": "K"
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "have",
+      "nodes": [],
+      "significance": "S1",
+      "role": "T"
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "had",
+      "nodes": [],
+      "significance": "S4",
+      "notes": "K doesn't recognise has",
+      "role": "K"
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "had",
+      "nodes": [
+        "did",
+        "have"
+      ],
+      "significance": "S2",
+      "role": "T",
+      "notes": "T expands had into 'did have' at S2, K promotes to S1"
+    },
+    {
+      "notes": "K has grounded all of the identities, WDMH => MHW is still outstanding",
+      "role": "K"
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "WDMH",
+      "nodes": [
+        "what",
+        "did",
+        "Mary",
+        "have"
+      ],
+      "significance": "S2",
+      "role": "K",
+      "notes": "Misfit at H: K substitutes 'did have' for had"
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "WDMH",
+      "nodes": [
+        "what",
+        "did",
+        "Mary",
+        "have"
+      ],
+      "significance": "S1",
+      "role": "T",
+      "notes": "T ratifies"
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "WDMH",
+      "nodes": [
+        "Mary",
+        "had",
+        "a",
+        "little",
+        "lamb"
+      ],
+      "significance": "S2",
+      "role": "K",
+      "notes": "Misfit proposal: K substitutes had for 'did have', 'a little lamb' for what."
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "WDMH",
+      "nodes": [
+        "Mary",
+        "had",
+        "a",
+        "little",
+        "lamb"
+      ],
+      "significance": "S1",
+      "role": "T",
+      "notes": "T ratifies",
+      "close": true
+    }
+  ],
+  "peer": {}
+}

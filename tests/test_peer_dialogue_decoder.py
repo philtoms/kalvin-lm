@@ -25,7 +25,7 @@ from training.dialogue.decoder import (
 
 # A minimal script with two resolvable atoms (A, B) so we can build IDENTITY
 # turns for both the opening and closing without needing the full MHALL cascade.
-_SCRIPT = "(alpha beta)\nA(=alpha)\nB(=beta)"
+_SCRIPT = "A\nB"
 
 
 def _peer_table(turns: list[dict], **extra) -> dict:

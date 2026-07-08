@@ -39,7 +39,6 @@ def _scope(
     items: list | None = None,
     child_block: Block | None = None,
     inline_annotation: Annotation | None = None,
-    node_inline_annotation: Annotation | None = None,
 ) -> OperatorScope:
     return OperatorScope(
         sig=_sig(sig_id),
@@ -47,7 +46,6 @@ def _scope(
         items=items or [],
         child_block=child_block,
         inline_annotation=inline_annotation,
-        node_inline_annotation=node_inline_annotation,
     )
 
 
@@ -675,6 +673,48 @@ class TestKS20NoMTS:
         unsigned = _find_entries(entries, sig="A", op="IDENTITY")
         assert len(unsigned) == 1
         assert unsigned[0].nodes == []
+
+
+# ======================================================================
+# Test: KS-20b No MTS for lowercase/mixed words
+# ======================================================================
+
+
+class TestKS20bNoMTSForWords:
+    """Lowercase/mixed multi-char words are single-token identifiers, not
+    compounds. They must NOT be decomposed into per-character entries.
+
+    Regression: commit 490d98f relaxed the SIGNATURE rule to admit lowercase
+    words (had, did, all). Previously only uppercase identifiers reached the
+    compiler, so §8 MTS decomposed every multi-char identifier. Without an
+    uppercase guard, `all` would decompose to [a, l, l]. The fix: MTS
+    character-expansion applies only to all-uppercase compounds.
+    """
+
+    def test_no_mts_lowercase_word(self):
+        entries = emit(_file(_bare("had")))
+        # No CANONIZE (MTS) entry, and no per-char identities.
+        assert len(_find_entries(entries, op="CANONIZED")) == 0
+        assert len(_find_entries(entries, sig="h")) == 0
+        assert len(_find_entries(entries, sig="a")) == 0
+        assert len(_find_entries(entries, sig="d")) == 0
+        # The word itself is emitted as a single identity.
+        unsigned = _find_entries(entries, sig="had", op="IDENTITY")
+        assert len(unsigned) == 1
+        assert unsigned[0].nodes == []
+
+    def test_no_mts_mixed_case_word(self):
+        entries = emit(_file(_bare("Hello")))
+        assert len(_find_entries(entries, op="CANONIZED")) == 0
+        unsigned = _find_entries(entries, sig="Hello", op="IDENTITY")
+        assert len(unsigned) == 1
+        assert unsigned[0].nodes == []
+
+    def test_uppercase_still_decomposes(self):
+        # Sanity: all-uppercase multi-char identifiers still trigger MTS.
+        entries = emit(_file(_bare("ALL")))
+        assert_has_entry(entries, "ALL", ["A", "L", "L"], "CANONIZED")
+        assert_has_entry(entries, "A", [], "IDENTITY")
 
 
 # ======================================================================

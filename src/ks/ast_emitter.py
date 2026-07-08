@@ -19,12 +19,17 @@ converts SymbolicEntry tuples to encoded uint64 values.
   Self-identity (A = A) collapses to IDENTITY with empty nodes (spec §7.3).
 
 **MTS expansion (spec §8):**
-  Multi-character identifiers trigger automatic emission of:
+  Multi-character all-uppercase identifiers (compounds: MHALL, SVO, ALL)
+  trigger automatic emission of:
   1. One IDENTITY entry per resolved constituent character.
   2. One CANONIZE entry mapping the compound to its resolved components.
 
-  MTS applies to identifiers wherever they appear — signature side or node
-  side, any operator.  Single-character identifiers do NOT trigger MTS.
+  MTS applies to compounds wherever they appear — signature side or node
+  side, any operator.  Single-character identifiers and lowercase/mixed-case
+  words (had, did, all) do NOT trigger MTS — they are single-word tokens,
+  not multi-token compounds. The case distinction is what separates a
+  compound from a word, both admitted by the case-insensitive SIGNATURE
+  rule (§2).
 
 **MTS deduplication (§8.3):**
   CANONIZE entries are deduplicated on (sig, nodes).  Component IDENTITY
@@ -163,6 +168,13 @@ class ASTEmitter:
             scope.sig.id,
             scope.inline_annotation,
         )
+        # Pre-register this scope's inline (item) bindings before MTS, so the
+        # signature's MTS char-expansion resolves each char to its inline word
+        # (inline binds tighter than any looser word-list binding). Without
+        # this, MTS runs before the children are processed and resolves chars
+        # against the word list, producing a competing token for a char that
+        # an inline annotation has already bound (Word Binding regression).
+        self._register_inline_overrides(scope)
         mts_idx = self._emit_mts(scope.sig.id)
         op = self._op_to_str(scope.op)
 
@@ -175,20 +187,52 @@ class ASTEmitter:
             return
 
         node_ids = self._collect_node_ids(scope)
+
+        # A CANONIZE scope introduces a subscript scope (§3): push it BEFORE
+        # expanding node MTS and resolving operands, so a node-compound's
+        # chars (e.g. SVO's S,V,O) resolve against the subscript's bindings
+        # (S->Subject, V->Verb, O->Object) rather than the outer scope where
+        # they are unbound. BindingScope.push_scope resets parent counters too,
+        # so duplicate chars (the two Ls in ALL => A=L L=L against 'Mary had
+        # a Little Lamb') resolve to their distinct words. _compile_children
+        # pops this scope after walking the block.
+        is_canonize = op == "CANONIZED"
+        pushed_scope = False
+        if is_canonize and self._scope is not None:
+            self._scope.push_scope()
+            pushed_scope = True
+
         for nid in node_ids:
             if len(nid) > 1:
                 self._emit_mts(nid)
 
-        # A CANONIZE scope whose sig was MTS-expanded aggregates the SAME
-        # identifier's components — reuse the cached resolution (§8.3) so the
-        # operator entry matches and dedups against the MTS canonize entry.
-        if op == "CANONIZED" and scope.sig.id in self._resolution_cache:
-            resolved_nodes = list(self._resolution_cache[scope.sig.id])
-        else:
-            resolved_nodes = self._resolve_nodes(node_ids, scope)
+        # A CANONIZE scope's nodes are its declared block operands — always.
+        # The signature's MTS character-expansion is a separate decoding-aid
+        # kline (emitted by _emit_mts above); it coexists with the block canon
+        # and is never the canon's node-list. The two share a signature but are
+        # distinct relationships: signature:block (the canon) and signature:MTS
+        # (the decoding aid). Do not let the MTS cache override the block.
+        #
+        # Rule B4 parent-kline tracking must be active DURING _resolve_nodes,
+        # because inline annotations on the block operands (e.g. S(ubject) in
+        # `SVO => S(ubject) = M`) fire _patch_parent_canonize here, and the
+        # MTS CANONIZE entry they must patch is the compound's own (kept
+        # intact under the two-entry scheme). Setting it here (before
+        # _resolve_nodes and _compile_children) and restoring after ensures
+        # both operand resolution and the child walk see the correct parent.
+        saved_chars = self._parent_kline_chars
+        saved_idx = self._parent_kline_canonize_idx
+        if is_canonize and mts_idx is not None:
+            self._parent_kline_chars = scope.sig.id
+            self._parent_kline_canonize_idx = mts_idx
+
+        resolved_nodes = self._resolve_nodes(node_ids, scope)
 
         self._emit_operator_entries(sig_resolved, resolved_nodes, op)
-        self._compile_children(scope, op, mts_idx)
+        self._compile_children(scope, op, mts_idx, pushed_scope=pushed_scope)
+
+        self._parent_kline_chars = saved_chars
+        self._parent_kline_canonize_idx = saved_idx
 
     # Operator emission (Step 2)
 
@@ -217,6 +261,36 @@ class ASTEmitter:
                 self._emit_entry(sig, [node], "CONNOTED")
 
         elif op == "CANONIZED":
+            # A compound-headed CANONIZE scope produces TWO distinct
+            # relationships that share one signature (spec §11.4):
+            #   1. MTS CANONIZE  — compound → its declared character
+            #      components (the decoding aid; already emitted by
+            #      _emit_mts when the sig was expanded). This entry DEFINES
+            #      the compound's signature: the encoder computes it as
+            #      make_signature over these character components.
+            #   2. Block canon    — compound → the block's resolved operands
+            #      (the script's declared signature↔nodes relationship).
+            # The block canon is emitted here as a SEPARATE CANONIZED entry
+            # that reuses the compound's signature (a reference, not a
+            # re-definition).
+            #
+            # These must not be conflated: when the block operands differ
+            # from the compound's characters (a deliberate misfit, e.g.
+            # `WDMH => M H W` omits D), the compound's signature is still the
+            # OR of ALL its characters (W,D,M,H) so the block canon composes
+            # into a misfit — the whole point of the script. Patching the MTS
+            # entry's nodes with the block operands would drop the missing
+            # character from the signature and collapse the misfit into a
+            # full canon with the wrong signature.
+            #
+            # When the block operands equal the character components (the
+            # common case, e.g. `SVO => S V O`), both entries share the same
+            # (sig, nodes) and §8.3 CANONIZE dedup collapses them to one —
+            # preserving the prior single-entry behaviour.
+            #
+            # Rule B4 inline-override patching is unaffected: it patches the
+            # MTS entry directly via _parent_kline_canonize_idx, which the
+            # MTS entry retains (it is not replaced here).
             self._emit_entry(sig, list(nodes), "CANONIZED")
 
     # Node collection (Step 2)
@@ -278,9 +352,14 @@ class ASTEmitter:
         an identity (spec §8; CONTEXT.md "Identity" glossary).
 
         Returns the index of the CANONIZE entry (for Rule B4), or None
-        if no MTS was emitted (single-char identifier).
+        if no MTS was emitted (single-char or non-uppercase identifier).
         """
-        if len(sig) <= 1:
+        # MTS character-decomposition applies only to all-uppercase
+        # multi-character identifiers (compounds: MHALL, SVO, ALL). A
+        # lowercase/mixed-case multi-char identifier is a single word
+        # (had, did, all) admitted by the case-insensitive SIGNATURE rule;
+        # decomposing it by character would be wrong. (§8)
+        if len(sig) <= 1 or not sig.isupper():
             return None
 
         # Resolve once on first expansion (§8.3); reuse the cached list so
@@ -369,6 +448,8 @@ class ASTEmitter:
         scope: OperatorScope,
         op: str,
         mts_idx: int | None,
+        *,
+        pushed_scope: bool = False,
     ) -> None:
         """After emitting operator entries, recursively process children.
 
@@ -396,16 +477,14 @@ class ASTEmitter:
         """
         is_canonize = op == "CANONIZED"
 
-        saved_chars = self._parent_kline_chars
-        saved_idx = self._parent_kline_canonize_idx
+        # Parent-kline tracking (Rule B4) is now set in _process_scope so it
+        # is active during operand resolution; this method only walks children
+        # and pops the subscript scope. _in_canonize_subscript still needs
+        # save/restore (it is subscript-local and does not propagate).
         saved_in_canonize = self._in_canonize_subscript
 
-        if is_canonize and mts_idx is not None:
-            self._parent_kline_chars = scope.sig.id
-            self._parent_kline_canonize_idx = mts_idx
-
-        if is_canonize and self._scope is not None:
-            self._scope.push_scope()
+        # The subscript scope was pushed in _process_scope (before operand
+        # resolution); this method only walks children and pops it.
 
         # Activate subscript identity for a single-char CANONIZE sig
         # (mts_idx is None) with recursive content.
@@ -461,11 +540,9 @@ class ASTEmitter:
                     self._emit_identity_if_needed(resolved)
                 self._process_construct(construct)
 
-        if is_canonize and self._scope is not None:
+        if pushed_scope and self._scope is not None:
             self._scope.pop_scope()
 
-        self._parent_kline_chars = saved_chars
-        self._parent_kline_canonize_idx = saved_idx
         self._in_canonize_subscript = saved_in_canonize
 
     # Binding integration (§10, Step 5)
@@ -487,17 +564,32 @@ class ASTEmitter:
         sig: str,
         inline_annotation: Annotation | None,
     ) -> str:
-        """Resolve a signature: inline annotation first, then BindingScope.
+        """Resolve a scope signature.
 
-        - If inline annotation present: extract word, trigger Rule B4
-          override patching, return the word.
-        - If single-char sig with no inline: resolve via BindingScope.
+        Word Binding (top-level): a signature-prefix annotation binds
+        fill-if-empty — it takes effect only when the character is currently
+        unbound in the scope. If ``sig`` is already bound (e.g. H bound to
+        'had' by an outer scope), the annotation is inert and the existing
+        binding stands. This guarantees each identity is bound once, with no
+        competing token.
+
+        - If ``inline_annotation`` present AND ``sig`` is a single unbound char:
+          extract word, trigger Rule B4 patching, return the word.
+        - Else if single-char sig: resolve via BindingScope (may be unbound → raw char).
         - If multi-char sig: return as-is (MTS handles individual chars).
         """
-        if inline_annotation is not None:
-            word = self._extract_inline_word(sig, inline_annotation)
-            self._patch_parent_canonize(sig, word)
-            return word
+        if inline_annotation is not None and len(sig) == 1:
+            existing = self._scope.resolve(sig) if self._scope is not None else None
+            if existing is None:
+                word = self._extract_inline_word(sig, inline_annotation)
+                self._patch_parent_canonize(sig, word)
+                # Register the inline binding so it overrides any looser
+                # word-list binding for this char everywhere it is resolved
+                # (MTS char expansion, identity emission — not only here).
+                if self._scope is not None:
+                    self._scope.bind_override(sig, word)
+                return word
+            return existing  # already bound — top-level annotation is inert
         if len(sig) == 1:
             return self._resolve_char(sig)
         return sig
@@ -509,19 +601,87 @@ class ASTEmitter:
     ) -> list[str]:
         """Resolve node identifiers to their bound or raw forms.
 
-        Handles node_inline_annotation for the first node (if present).
-        All other nodes are resolved via _resolve_char.
+        Word Binding (inline): an inline annotation on a Signature item binds
+        unconditionally to that item, overriding any outer binding. The
+        per-item annotations come from the Signature items in ``scope.items``
+        (and the subscript block), matched to ``node_ids`` in order; any node
+        without an inline annotation resolves via ``_resolve_char``.
         """
+        # Build a per-position inline-annotation map from the scope's Signature
+        # items, in collection order, aligned with node_ids.
+        inline_by_pos = self._collect_item_inline_annotations(scope)
         resolved: list[str] = []
-        first_inline = scope.node_inline_annotation
         for i, nid in enumerate(node_ids):
-            if i == 0 and first_inline is not None:
-                word = self._extract_inline_word(nid, first_inline)
+            ann = inline_by_pos[i] if i < len(inline_by_pos) else None
+            if ann is not None:
+                word = self._extract_inline_word(nid, ann)
                 self._patch_parent_canonize(nid, word)
+                # Register the inline binding (see _resolve_inline_or_scope):
+                # the inline word overrides any looser binding for this char
+                # everywhere, so MTS/identity emission sees the same token.
+                if self._scope is not None:
+                    self._scope.bind_override(nid, word)
                 resolved.append(word)
             else:
                 resolved.append(self._resolve_char(nid))
         return resolved
+
+    def _register_inline_overrides(self, scope: OperatorScope) -> None:
+        """Pre-register this scope subtree's inline (item) bindings.
+
+        Walks ``scope``'s items and child_block (one level into nested
+        OperatorScopes' items) for ``Signature`` items carrying an
+        ``inline_annotation``, and binds each via :meth:`bind_override` in the
+        current scope. Called before the scope's MTS so the signature's
+        char-expansion — which runs before children are processed — resolves
+        each char to its inline word (inline binds tighter than word-list).
+        """
+        if self._scope is None:
+            return
+
+        def _bind_from_items(items) -> None:
+            for item in items:
+                if isinstance(item, Signature) and item.inline_annotation is not None:
+                    if len(item.id) == 1:
+                        word = self._extract_inline_word(item.id, item.inline_annotation)
+                        self._scope.bind_override(item.id, word)
+
+        _bind_from_items(scope.items)
+        if scope.child_block is not None:
+            for construct in scope.child_block.constructs:
+                if isinstance(construct, OperatorScope):
+                    _bind_from_items(construct.items)
+
+    def _collect_item_inline_annotations(
+        self, scope: OperatorScope
+    ) -> list[Annotation | None]:
+        """Inline annotations on this scope's Signature items, in node order.
+
+        Mirrors ``_collect_node_ids``: walks items (Signature items) and the
+        subscript child_block, returning each item's ``inline_annotation``
+        (or None) aligned to the collected node positions.
+        """
+        anns: list[Annotation | None] = []
+        for item in scope.items:
+            if isinstance(item, Signature):
+                anns.append(item.inline_annotation)
+            elif isinstance(item, OperatorScope):
+                anns.append(None)  # nested scope — no per-item inline here
+        if scope.child_block is not None:
+            for construct in scope.child_block.constructs:
+                self._collect_block_item_inline_annotations(construct, anns)
+        return anns
+
+    def _collect_block_item_inline_annotations(
+        self,
+        construct: ConstructItem,
+        anns: list[Annotation | None],
+    ) -> None:
+        if isinstance(construct, OperatorScope):
+            anns.append(construct.inline_annotation)
+        elif isinstance(construct, Block):
+            for c in construct.constructs:
+                self._collect_block_item_inline_annotations(c, anns)
 
     # Word extraction helpers
 
@@ -590,6 +750,19 @@ class ASTEmitter:
             self.entries[self._parent_kline_canonize_idx] = entry._replace(
                 nodes=new_nodes,
             )
+            # Re-key the CANONIZE dedup registry (§8.3): the patched entry's
+            # (sig, nodes) changed, so the stale key under which it was
+            # registered no longer matches. Without this, a block-canon entry
+            # whose operands equal the PATCHED component list (the common case,
+            # e.g. `SVO => S(ubject) V O`) would fail to dedup against it and
+            # emit a spurious duplicate. Remove the old key and register the
+            # new one, pointing at the same entry index.
+            if entry.is_mts:
+                old_key = (entry.sig, tuple(entry.nodes))
+                self._mts_canonize_seen.pop(old_key, None)
+                self._mts_canonize_seen[(entry.sig, tuple(new_nodes))] = (
+                    self._parent_kline_canonize_idx
+                )
 
     # Helpers
 

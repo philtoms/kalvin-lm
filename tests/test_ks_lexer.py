@@ -267,19 +267,17 @@ class TestEdgeCases:
         assert exc_info.value.line == 1
         assert exc_info.value.column == 3
 
-    def test_identifier_with_digits_error(self):
-        """'AB3' → LexerError (digits in identifier)."""
-        with pytest.raises(LexerError) as exc_info:
-            _tokens("AB3")
-        assert exc_info.value.line == 1
-        assert exc_info.value.column == 1
+    def test_identifier_with_digits_accepted(self):
+        """'AB3' → SIGNATURE (digits after first char are valid)."""
+        toks = _tokens("AB3")
+        assert toks[0].type == TokenType.SIGNATURE
+        assert toks[0].value == "AB3"
 
-    def test_lowercase_identifier_error(self):
-        """'abc' → LexerError (lowercase)."""
-        with pytest.raises(LexerError) as exc_info:
-            _tokens("abc")
-        assert exc_info.value.line == 1
-        assert exc_info.value.column == 1
+    def test_lowercase_identifier_accepted(self):
+        """'abc' → SIGNATURE (identifiers are case-insensitive)."""
+        toks = _tokens("abc")
+        assert toks[0].type == TokenType.SIGNATURE
+        assert toks[0].value == "abc"
 
     def test_tabs_as_indent(self):
         """Tabs count as indent units."""
@@ -382,7 +380,7 @@ class TestLexerError:
 
     def test_error_inherits_exception(self):
         with pytest.raises(LexerError) as exc_info:
-            _tokens("abc")
+            _tokens("3abc")
         assert isinstance(exc_info.value, Exception)
 
     def test_error_string_includes_position(self):

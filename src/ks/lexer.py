@@ -2,7 +2,7 @@
 
 Handles:
   - Multi-character operators (==, =>) before single-char (=, >)
-  - Signatures [A-Z]+ with optional inline annotation
+  - Signatures [a-zA-Z][a-zA-Z0-9]* with optional inline annotation
   - Annotations (...) with nested paren handling
   - Python-style INDENT/DEDENT tokens
   - Unknown characters raise LexerError
@@ -37,7 +37,7 @@ class Lexer:
     """Tokenizes KScript source code with indentation tracking.
 
     The lexer produces a flat list of Token objects from a source string.
-    Only SIGNATURE tokens ([A-Z]+) can be construct owners in the grammar.
+    Only SIGNATURE tokens ([a-zA-Z][a-zA-Z0-9]*) can be construct owners in the grammar.
 
     Usage::
 
@@ -168,8 +168,12 @@ class Lexer:
     def _read_identifier(self) -> Token:
         """Read an identifier [a-zA-Z][a-zA-Z0-9]*.
 
-        Returns SIGNATURE if all uppercase alpha.
-        Raises LexerError for mixed/lowercase identifiers.
+        Returns SIGNATURE for any alphabetic identifier (case-insensitive).
+        Signatures may be uppercase (MHALL), lowercase words (had, did), or
+        mixed — the uppercase-only rule was redundant once Mod32 token support
+        was dropped, and prevented the lowercase-word identifiers Word Binding
+        needs. Case is not a disambiguator: operators are matched before
+        identifiers, and there are no keywords.
 
         When '(' immediately follows the identifier (e.g., S(ubject)),
         reads the annotation and queues it as a pending ANNOTATION token.
@@ -184,12 +188,11 @@ class Lexer:
         if self.pos < len(self.source) and self.source[self.pos] == "(":
             self.pending_tokens.append(self._read_annotation())
 
-        if name.isupper() and name.isalpha():
+        if name and name[0].isalpha():
             return Token(TokenType.SIGNATURE, name, start_line, start_col)
 
         raise LexerError(
-            f"Invalid identifier '{name}': identifiers must be all uppercase "
-            f"(signatures). Use a quoted string for non-signature values.",
+            f"Invalid identifier '{name}': identifiers must start with a letter.",
             start_line,
             start_col,
         )

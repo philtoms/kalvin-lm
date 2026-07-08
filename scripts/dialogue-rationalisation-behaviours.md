@@ -1,0 +1,201 @@
+# S2-Misfit Rationalisation Behaviours
+
+This document specifies how a participant (Kalvin, K; symmetrically the Trainer, T)
+**originates misfit proposals** during rationalisation. It is referenced by
+`@specs/dialogue-driven-training.md` (§Decoder, §Out of Scope) as the home of the
+S2-misfit pedagogy and is the output of the rationalisation grill (2026-07-07).
+
+It is pre-cascade: it establishes the model a future spec and plan will be written
+from. Terms are defined in `@CONTEXT.md` (**Proposal**, **Misfit (proposal)**,
+**Canon**, **Ratify**); this document owns the *mechanism* and the *boundaries* on
+the act, not the glossary.
+
+The reference dialogue is `scripts/dialogue-wdmh.json` ("What Did Mary Have") — a
+two-script dialogue whose second script encodes a question as a deliberate misfit
+(`WDMH` with nodes that do not OR-reduce to `WDMH`).
+
+## 1. The problem
+
+A **Canon** can self-close at S1 during rationalisation: its signature is the
+OR-reduction of its nodes, so when its nodes ground, the kline is structurally
+self-grounded and K re-derives it as S1. A **Misfit** (`@CONTEXT.md`) cannot — its
+signature carries information its nodes do not, so no amount of node-grounding
+yields a structural warrant for S1. The only path to S1 for a misfit is
+**ratification**: another participant countersigns it.
+
+K nonetheless always strives to S1. When the level-1 entry K is working is a
+misfit, K cannot self-close; instead K must **originate a misfit proposal** — a
+candidate whose signature it knows does not reduce to its nodes — and offer it for
+ratification. This document bounds that act.
+
+## 2. Scope
+
+- **In scope:** originated misfits — klines a participant *constructs and emits*
+  whose own signature does not reduce to its own nodes. The grill establishes
+  Kalvin's behaviour in full.
+- **Out of scope (this document):** the Trainer originating misfits. T's generation
+  follows the **same boundaries** (the principle is symmetric — see §9); only the
+  ratifier differs. T's real-actor cogitation is deferred to a later grill.
+- **Out of scope (other documents):** observed misfits (a received kline classified
+  via `classify_misfit` — `@specs/cogitator.md` §S2 Expansion); supervisor escalation
+  when no candidate admits (`@specs/supervisor-decision.md`).
+
+## 3. Boundaries
+
+These are the rules that govern when and how K may originate a misfit proposal.
+
+**B1 — Trigger (misfit entries only).** K may originate a misfit proposal only when
+the level-1 entry it is working is itself a misfit (`is_canon(entry) == False` after
+its nodes have grounded — the canon self-close path is blocked). Honest entries
+(identities, canons) never originate misfits; they self-close. The licence is
+**structural** (a pure `is_canon` test) and **permissive** — K does honest work
+(identity asks, canon grounding) on a misfit entry before, or instead of,
+originating a misfit reply.
+
+**B2 — No invention.** Every node in an originated misfit proposal must be a node of
+a kline K has grounded. K recombines grounded klines; it never fabricates a node
+value it has never seen. This mirrors the cogitator's Universal Constraint
+(`@specs/cogitator.md` §S2 Expansion): every signature/node generated must already
+exist in the model.
+
+**B3 — Candidate admission (shared nodes).** A grounded kline `C` is a candidate
+for entry `E` iff `C` shares at least one **node value** with `E.nodes`:
+`node_overlap(C.nodes, E.nodes) ≠ ∅`. Admission is keyed on the entry's *nodes*,
+not its head signature — this avoids the over-admission that single-bit NLP type
+words would cause under `signifies`. (Both klines having a `Mary` node is the
+intended commonality.)
+
+**B4 — Drop already-grounded proposals.** If the proposal K shapes is already
+grounded (an isomorphic kline exists in K's memory), K drops it rather than
+emitting it.
+
+## 4. The generation mechanism — one proposal, accumulated shaping
+
+K shapes a **single proposal** by processing admitted candidates in preference
+order, mutating one target as each candidate fires. There is no meta-proposal set
+and no selection step; the proposal is *built*, not *chosen*.
+
+**Initialise.** `target = copy(entry.nodes)`. A node with no admitted candidate is
+**open** — a slot a later match may fill.
+
+**Process candidates in preference order:**
+
+1. **Node-expansion** (preferred). For a candidate `C` where `C.signature ∈
+   target.nodes`: replace that one node in `target` with `C.nodes`. The matched
+   node is consumed; `target`'s other nodes persist.
+2. **Node-graft** (with `must_match`). For a candidate `C` that did not fire rule 1
+   and shares at least one node with `target`:
+   - Compute `must_match` from the **current accumulated** `target`: the nodes that
+     prior matches have established (resolved/expanded), **excluding still-open
+     nodes**. Open nodes are not required to match — they are slots to be filled.
+   - Resolve `must_match` against `C` by **recursive canon-resolution to fixed
+     point** (§5). If `must_match` is fully matched, graft: substitute `C`'s
+     difference (`C.nodes − shared`) into the open slots. If `must_match` cannot be
+     fully matched, `C` does not fire.
+
+**Accumulation.** Each match mutates `target`, so the next candidate sees the
+changed target. `must_match` reflects everything prior matches have established
+(rule 1's expansions are *preserved* — rule 2 must respect them, possibly by
+resolving them back through grounded canons). The proposal is the accumulated
+`target` when no more candidates fire.
+
+## 5. Recursive canon-resolution (`must_match`)
+
+`must_match` is the set of accumulated nodes a node-graft candidate must account
+for. Direct match first; failures resolve through grounded canons:
+
+1. **Partition** the failed nodes into maximally-coverable subsets, each matching a
+   grounded canon's `nodes` exactly. Uncoverable nodes are retained in `must_match`.
+2. **Replace** each coverable subset with its canon's signature; `must_match`
+   becomes shallower (the resolved signature replaces its constituent nodes — e.g.
+   `[did, have] → had`).
+3. **Re-check** the new `must_match` against `C`. Resolved signatures may now form
+   *new* coverable subsets, so **recurse** — re-partition, re-resolve, re-check —
+   until either `must_match` is fully matched (graft proceeds) or a resolution pass
+   produces no change (candidate rejected).
+
+`must_match` updates cumulatively: the shallow resolved form replaces the deeper
+form for any subsequent candidate. Resolution is full-depth (the combinatorial cost
+of the partition search at each level is accepted for completeness); termination is
+the fixed point.
+
+The purpose of `must_match` is to **balance graft**: without it, a candidate
+sharing a single node (`Mary`) could licence wholesale substitution of its entire
+surplus, over-powering the prior node-expansion work. `must_match` forces the graft
+to *earn* its substitution by accounting for the accumulated structure, directly or
+via canon-resolution.
+
+## 6. Sequence and termination
+
+- K cogitates the work-list **LIFO**. A misfit entry persists in the work-list
+  (cleanup grounds canons and identities; it never removes a non-canon
+  relationship, so a CANONIZED-but-misfit entry survives).
+- K has **no notion of closing**. The level-1 entry is not "closed" by a successful
+  proposal; K keeps cogitating. A run terminates because an emission matches the
+  master's terminal row, not because K decided it was done.
+- After K emits a misfit proposal and it is ratified (grounded), the next
+  cogitation re-runs generation against the same entry. Already-grounded proposals
+  are dropped (B4), so K advances naturally — it does not re-emit the ratified shape.
+
+## 7. Worked example — WDMH
+
+Entry (the misfit; the canon form T also sends resolves and clears):
+`E = {WDMH: [Mary, had, what]}`. Open: `what` (no candidate yet).
+
+Candidates admitted (B3): the canon `{had: [did, have]}` (shares `had`) and
+`{MHALL: [Mary, had, a, little, lamb]}` (shares `Mary, had`).
+
+**Node-expansion:** `had ∈ target` → `target = [Mary, did, have, what]`.
+Accumulated: `[Mary, did, have]`. Open: `what`.
+
+**Node-graft (`MHALL`):**
+- `must_match = [Mary, did, have]` (accumulated; `what` open, excluded).
+- Direct: `Mary`✓, `did`✗, `have`✗. Failed `{did, have}`.
+- Resolve: `{did, have}` matches grounded canon `{had: [did, have]}` → `had`.
+  `must_match = [Mary, had]`.
+- Re-check: `Mary`✓, `had`✓. Fully matched.
+- Graft: shared `{Mary, had}`, difference `{a, little, lamb}` → substitute into
+  open `what`. `target = [Mary, had, a, little, lamb]`.
+
+No more candidates fire. **Proposal = `{WDMH: [Mary, had, a, little, lamb]}` at
+S2.** T ratifies (countersigns) → S1.
+
+Note that the node-expansion's intermediate shape `[Mary, did, have, what]` is never
+emitted — it is a step in the accumulation, absorbed and resolved back into the
+final shape. There is one proposal, shaped by two successive matches.
+
+## 8. Consequence for `scripts/dialogue-wdmh.json`
+
+The table currently encodes a **two-step** misfit sequence (rows `#47` and `#48` in
+the trace), predating this mechanism. Under the locked mechanism the proposal is
+shaped in a single cogitation: `#47`'s shape is an intermediate accumulation, not
+an emission. **The table should be collapsed to a single misfit proposal** — the
+`#48`-equivalent `WDMH(Mary, had, a, little, lamb)` at S2, ratified by T at S1 —
+with the redundant `#47` row removed.
+
+_Table edit deferred to a follow-up (awaiting go-ahead)._
+
+## 9. Symmetry with the Trainer
+
+The Trainer may originate misfits under the **identical** boundaries (B1–B4) and
+the identical generation mechanism (§4–§5). The sole asymmetry is the **ratifier**:
+K-originated misfits are ratified by T (the Trainer's countersign);
+T-originated misfits are ratified by the supervisor (the third role), consistent
+with the existing escalation path (`@specs/supervisor-decision.md`). Specifying and
+validating T's real-actor cogitation is deferred.
+
+## 10. Open questions
+
+These were identified by the grill and are **not** decided here:
+
+- **Work-list state at the terminal proposal.** Cleanup preserves the opening
+  misfit but grounds every S1 kline T sends. The precise work-list state at the
+  moment K must emit the proposal matching the master's terminal row needs
+  verification against the new rationaliser code once it is testable.
+- **`must_match` edge cases.** Multiple node-graft candidates; resolution chains
+  that revisit signatures (termination is the fixed point, but pathological
+  grounded sets warrant test coverage).
+- **Accumulation bookkeeping.** The exact definition of "accumulated vs open" when
+  several node-expansion and node-graft candidates interleave needs test
+  fixtures beyond the WDMH example.
+- **T-side generation.** Symmetric in principle (§9); implementation deferred.

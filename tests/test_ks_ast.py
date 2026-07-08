@@ -46,7 +46,6 @@ class TestScopeModelStructure:
         assert scope.items == [sig_b]
         assert scope.child_block is None
         assert scope.inline_annotation is None
-        assert scope.node_inline_annotation is None
 
     def test_flat_scope_model_a_eq_b_gt_c_eq_d(self) -> None:
         """Build three OperatorScope nodes for A == B > C = D as flat list.
@@ -147,31 +146,31 @@ class TestInlineAnnotation:
         assert scope.inline_annotation.column == 2
 
     def test_node_side_inline_annotation(self) -> None:
-        """A = D(et) — node_inline_annotation on first node-side Signature."""
+        """A = D(et) — inline annotation on the D item (Signature.inline_annotation)."""
+        d_item = Signature("D", 1, 5, inline_annotation=Annotation("(et)", 1, 6))
         scope = OperatorScope(
             sig=Signature("A", 1, 1),
             op=TokenType.UNDERSIGN,
-            items=[Signature("D", 1, 5)],
-            node_inline_annotation=Annotation("(et)", 1, 6),
+            items=[d_item],
         )
 
-        assert scope.node_inline_annotation is not None
-        assert scope.node_inline_annotation.text == "(et)"
+        assert d_item.inline_annotation is not None
+        assert d_item.inline_annotation.text == "(et)"
 
     def test_both_inline_annotations(self) -> None:
         """Both sig-side and node-side inline annotations on same scope."""
+        d_item = Signature("D", 1, 10, inline_annotation=Annotation("(et)", 1, 11))
         scope = OperatorScope(
             sig=Signature("S", 1, 1),
             op=TokenType.UNDERSIGN,
-            items=[Signature("D", 1, 10)],
+            items=[d_item],
             inline_annotation=Annotation("(ubject)", 1, 2),
-            node_inline_annotation=Annotation("(et)", 1, 11),
         )
 
         assert scope.inline_annotation is not None
         assert scope.inline_annotation.text == "(ubject)"
-        assert scope.node_inline_annotation is not None
-        assert scope.node_inline_annotation.text == "(et)"
+        assert d_item.inline_annotation is not None
+        assert d_item.inline_annotation.text == "(et)"
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +189,6 @@ class TestDefaults:
         assert scope.items == []
         assert scope.child_block is None
         assert scope.inline_annotation is None
-        assert scope.node_inline_annotation is None
 
     def test_default_items_is_independent(self) -> None:
         """Each OperatorScope gets its own items list (not shared)."""

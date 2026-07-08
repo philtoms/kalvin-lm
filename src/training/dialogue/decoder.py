@@ -20,6 +20,7 @@ Spec mapping
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -74,6 +75,12 @@ class Turn:
     Structural turns (those carrying ``op``) decode to a :class:`DecodedTurn`.
     Annotation-only turns (``notes`` but no ``op``) are dropped at decode time
     (DDT-28) — they are not submittable klines.
+
+    ``close`` marks a turn as a script close (the table's explicit boundary
+    marker). The runner reads it to know when a script ends (and, for
+    multi-script, when to open the next). A turn without ``close`` is not a
+    close. Closing is a runner concern and is role-agnostic — it may sit on
+    either a T or a K row. See :class:`DecodedTurn.close`.
     """
 
     role: Role
@@ -82,6 +89,11 @@ class Turn:
     nodes: tuple[str, ...]
     significance: str | None  # None on annotation-only turns
     notes: str = ""
+    close: bool = False  # True when this turn closes a script (a boundary marker)
+    # The raw JSON record this turn was loaded from (``None`` for turns built
+    # synthetically, e.g. test fixtures). Carried for diagnostics so a trace
+    # can show the table row verbatim alongside its decoded form.
+    record: dict | None = None
 
     @property
     def is_annotation_only(self) -> bool:
@@ -144,11 +156,23 @@ class DecodedTurn:
     ``role`` and ``op`` are carried alongside the KValue and **never folded
     into it** (DDT-3): ``op`` is the structural state; ``significance`` (on the
     KValue) is the dialogic stance. They are independent axes.
+
+    ``close`` is carried through from :class:`Turn.close`: when ``True``, this
+    turn is a script close (the table's explicit boundary marker). The runner
+    — which owns the table cursor — reads it as the script-boundary signal;
+    the trainer does not detect closes (it is told, via routing, that a script
+    has ended).
     """
 
     role: Role
     op: str
     value: KValue
+    close: bool = False  # True when this turn closes a script (a boundary marker)
+    # The raw JSON record this decoded turn was loaded from (``None`` for
+    # turns built synthetically, e.g. test fixtures or peer-runner placeholders
+    # reconstructed from a content key). Carried for diagnostics so a trace can
+    # show the table row verbatim alongside its decoded form.
+    record: dict | None = None
 
 
 # backwards-compat alias for the documented `DECODEDTurn` spelling used in the
@@ -164,9 +188,6 @@ DECODEDTurn = DecodedTurn
 class _ResolvedScript:
     """Compiled-script indices built once at decode time.
 
-    - ``by_node_labels`` — the canon-retrieval index (DDT-5): maps the tuple of
-      *decoded node labels* of each compiled canon to that canon's KValue.
-      Retrieval key is exactly the turn's symbolic node list.
     - ``canon_by_label`` — canonical signature per label: a relation node whose
       label names a canon (e.g. ``Det``) resolves to the canon's signature, not
       the atom identity that shares the label. This keeps relation construction
@@ -181,36 +202,9 @@ class _ResolvedScript:
       resolve atom signatures (IDENTITY) and as the label fallback.
     """
 
-    by_node_labels: dict[tuple[str, ...], KValue] = field(default_factory=dict)
     canon_by_label: dict[str, KLine] = field(default_factory=dict)
     relation_by_label: dict[str, KLine] = field(default_factory=dict)
     labels: dict[str, KLine] = field(default_factory=dict)
-
-
-def _node_decoded_label(entry_value: KValue, by_sig: dict[int, list[KValue]]) -> tuple[str, ...]:
-    """The decoded-label tuple of a kline's nodes (the DDT-5 retrieval key).
-
-    A canon's own signature is a packed MTS (OR-reduction), so its ``dbg.decoded``
-    is empty (the encoder suppresses decode for packed signatures). Each **node**
-    is a single-token signature whose compiled entry carries the real subword text
-    in ``dbg.decoded`` (or ``dbg.label`` for authored atoms). We resolve each node
-    to its compiled entry and read its display label.
-    """
-
-    def _label_for(sig: int) -> str:
-        hits = by_sig.get(sig)
-        if not hits:
-            raise DecodeError(
-                f"canon node 0x{sig:x} has no compiled entry — cannot resolve its label"
-            )
-        d = hits[0].kline.dbg
-        if d is None:
-            raise DecodeError(
-                f"canon node 0x{sig:x} has no compiled debug info — cannot resolve its label"
-            )
-        return d.decoded or d.label
-
-    return tuple(_label_for(n) for n in entry_value.kline.nodes)
 
 
 def _resolve_script(
@@ -223,16 +217,11 @@ def _resolve_script(
 
     Compilation reuses :func:`ks.compiler.compile_source` (plan task 1.2). The
     indices are:
-      - ``by_node_labels`` — node-decoded-label tuple → canon KValue (DDT-5).
-        Multiple canons sharing a node-label tuple would be ambiguous; the first
-        compiled canon wins and a debug note is kept (the MHALL table has none).
+      - ``canon_by_label`` — canon label → its canonical KLine signature.
+      - ``relation_by_label`` — relation label → its compiled KLine.
       - ``labels`` — display label → KLine, for atom/compound resolution.
     """
     entries = compile_source(script, tokenizer=tokenizer, signifier=signifier, dev=True)
-
-    by_sig: dict[int, list[KValue]] = {}
-    for e in entries:
-        by_sig.setdefault(e.kline.signature, []).append(e)
 
     resolved = _ResolvedScript()
     for e in entries:
@@ -246,16 +235,13 @@ def _resolve_script(
                 f"compiled entry 0x{kl.signature:x} has no debug info "
                 "— dev compile invariant broken"
             )
-        # Canon index: keyed by node-decoded-label tuple (DDT-5).
-        if d.op == "CANONIZED" and kl.nodes:
-            key = _node_decoded_label(e, by_sig)
-            # Ambiguity would mean two canons decompose identically — a script
-            # authoring error. Keep the first and let later lookups be stable.
-            resolved.by_node_labels.setdefault(key, e)
-            # Canon-by-label: the canonical signature for this label.
-            if d.label:
-                resolved.canon_by_label.setdefault(d.label, kl)
-        elif d.op in ("COUNTERSIGNED", "CONNOTED", "UNDERSIGNED") and d.label:
+        # Canon-by-label: the canonical signature for this label. Populated for
+        # any compiled canon (COUNTERSIGNED canons like MHALL, and CANONIZED
+        # canons like Det) so both node and signature resolution can prefer the
+        # canon when a label names one.
+        if d.op in ("CANONIZED", "COUNTERSIGNED") and kl.nodes and d.label:
+            resolved.canon_by_label.setdefault(d.label, kl)
+        if d.op in ("COUNTERSIGNED", "CONNOTED", "UNDERSIGNED") and d.label:
             # Relation-by-label: carries the relation's structural dbg.op, so a
             # constructed-relation turn reports e.g. COUNTERSIGNED, not the
             # CANONIZED of a canon that shares the label.
@@ -268,7 +254,80 @@ def _resolve_script(
     return entries, resolved
 
 
+def primaries_from_source(
+    script: str,
+    *,
+    tokenizer: NLPTokenizer | None = None,
+    signifier: KSignifier | None = None,
+) -> list[KLine]:
+    """The ordered script primaries (one per top-level KScript scope).
+
+    A multi-script file (e.g. ``MHALL`` then ``WDMH``) has one primary per
+    top-level ``OperatorScope``, in source order. Each primary is the first
+    compiled entry whose ``dbg.label`` matches the scope's signature id — the
+    kline a trainer opens (R1) for that script. Used by a multi-script trainer
+    to open successive scripts after each close.
+
+    The AST is the principled source of script boundaries (a compiled list
+    alone cannot distinguish a primary from any other labelled entry); this
+    helper keeps that AST knowledge in the decoder, next to the other
+    compile-time indexing.
+    """
+    from ks.lexer import Lexer
+    from ks.parser import OperatorScope, Parser
+
+    kfile = Parser(Lexer(script).tokenize()).parse()
+    scope_labels = [
+        c.sig.id for c in kfile.constructs if isinstance(c, OperatorScope)
+    ]
+    if not scope_labels:
+        return []
+    entries = compile_source(script, tokenizer=tokenizer, signifier=signifier, dev=True)
+    first_by_label: dict[str, KLine] = {}
+    for e in entries:
+        lbl = e.kline.dbg.label if e.kline.dbg else None
+        if lbl and lbl not in first_by_label:
+            first_by_label[lbl] = e.kline
+    primaries: list[KLine] = []
+    for label in scope_labels:
+        kl = first_by_label.get(label)
+        if kl is None:
+            raise DecodeError(
+                f"script primary {label!r} has no compiled entry — cannot resolve"
+            )
+        primaries.append(kl)
+    return primaries
+
+
 # ── The single-stage decode (DDT-2, DDT-3, DDT-28) ────────────────────────
+
+
+def _resolve_node_signatures(
+    nodes: tuple[str, ...],
+    resolved: _ResolvedScript,
+    *,
+    op: str,
+) -> list[int]:
+    """Resolve each node label to its canonical signature.
+
+    Shared by the CANONIZED and constructed-relation branches. A label that
+    names a canon resolves to the canon's signature (so e.g. ``Det`` resolves to
+    the Det canon signature, matching the compiler's binding); a pure-atom label
+    (no canon) falls back to the label index.
+    """
+    node_sigs: list[int] = []
+    for n in nodes:
+        ncanon = resolved.canon_by_label.get(n)
+        if ncanon is not None:
+            node_sigs.append(ncanon.signature)
+            continue
+        nkl = resolved.labels.get(n)
+        if nkl is None:
+            raise DecodeError(
+                f"{op} node {n!r}: label not found in compiled script"
+            )
+        node_sigs.append(nkl.signature)
+    return node_sigs
 
 
 def _resolve_kline(
@@ -279,12 +338,18 @@ def _resolve_kline(
 ) -> KLine:
     """Resolve a turn's symbolic ``(op, signature, nodes)`` to a KLine.
 
-    Three branches per spec §Decoder step 1:
+    Three branches per spec §Decoder step 1. **The decoder is a resolver, not
+    a gatekeeper**: it builds the kline the turn declares — the declared
+    ``signature`` verbatim, the ``nodes`` resolved to their canonical
+    signatures — and never second-guesses whether the signature "matches" the
+    nodes. The script author is the golden master; an author may declare a
+    signature that differs from the canon its nodes retrieve (a deliberate
+    misfit — see ``scripts/dialogue-rationalisation-behaviours.md``).
 
-    - **CANONIZED** — retrieve the compiled canon whose node-decoded labels match
-      the turn's ``nodes`` list (node-list match, DDT-5). The turn's node names
-      *are* the retrieval key; ``signature`` is a redundant author hint (checked
-      for consistency).
+    - **CANONIZED** — resolve each node label to its canonical signature
+      (canon-preferred, atom fallback) and build ``KLine(signature, nodes)``
+      with the declared signature verbatim. No canon retrieval by node-list,
+      no signature-consistency check.
     - **IDENTITY** — resolve the atom by label, preferring the canon when the
       label names one (a label may name both a canon and its atoms; the
       identity names the concept, i.e. the canon).
@@ -295,24 +360,24 @@ def _resolve_kline(
       the label index.
     """
     if op == "CANONIZED":
-        canon = resolved.by_node_labels.get(nodes)
-        if canon is None:
+        # Resolve each node label to its canonical signature, then build the
+        # kline with the declared signature verbatim. The decoder does not
+        # retrieve a canon by node-list and does not check that the declared
+        # signature matches the canon those nodes would form: an author may
+        # declare a deliberate misfit (e.g. a K-generated leap whose signature
+        # is the query and whose nodes are the answer's atoms).
+        node_sigs = _resolve_node_signatures(nodes, resolved, op="CANONIZED")
+        # Carry the signature label's compiled ``dbg`` (op/label provenance) when
+        # the label resolves; the turn's ``op`` is the dialogue vocabulary and
+        # stays on the DecodedTurn.
+        sig_kl = resolved.canon_by_label.get(signature)
+        if sig_kl is None:
+            sig_kl = resolved.labels.get(signature)
+        if sig_kl is None:
             raise DecodeError(
-                f"CANONIZED {signature!r}: no compiled canon matches node-list {list(nodes)}"
+                f"CANONIZED signature {signature!r}: label not found in compiled script"
             )
-        # ``signature`` is an author hint; confirm it names the canon's label.
-        canon_dbg = canon.kline.dbg
-        if canon_dbg is None:
-            raise DecodeError(
-                f"CANONIZED node-list {list(nodes)} resolved to a canon with no debug info"
-            )
-        canon_label = canon_dbg.label
-        if canon_label != signature:
-            raise DecodeError(
-                f"CANONIZED node-list {list(nodes)} resolved to canon "
-                f"{canon_label!r}, but the turn's signature is {signature!r}"
-            )
-        return canon.kline
+        return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
 
     if op == "IDENTITY":
         # Prefer the canon when the label names one. A KScript label may name
@@ -340,18 +405,7 @@ def _resolve_kline(
     # (preferring the canon when the label names one — e.g. ``Det`` resolves to
     # the Det canon signature, matching the compiler's binding), then rebuild the
     # relation KLine. Atom labels (no canon) fall back to the label index.
-    node_sigs: list[int] = []
-    for n in nodes:
-        ncanon = resolved.canon_by_label.get(n)
-        if ncanon is not None:
-            node_sigs.append(ncanon.signature)
-            continue
-        nkl = resolved.labels.get(n)
-        if nkl is None:
-            raise DecodeError(
-                f"relation node {n!r}: label not found in compiled script"
-            )
-        node_sigs.append(nkl.signature)
+    node_sigs = _resolve_node_signatures(nodes, resolved, op="relation")
     sig_kl = resolved.relation_by_label.get(signature)
     if sig_kl is None:
         # No compiled relation for this label: fall back to the canon signature
@@ -412,8 +466,14 @@ def decode(
                 role=turn.role,
                 op=turn.op,
                 value=KValue(kline, significance),
+                close=turn.close,
+                record=turn.record,
             )
         )
+    # ``close`` markers are validated on the decoded list (they are a property
+    # of the exchange, but the per-turn shape check happens here alongside the
+    # other decoded-list invariants).
+    _validate_close(out)
     # Peer-mode invariants are checked on the decoded list (spec
     # @specs/peer-dialogue.md §Invariants). They require symbol resolution to
     # have run, so they live here, not in the loader.
@@ -445,6 +505,11 @@ def _turn_from_dict(raw: dict) -> Turn:
             raise DecodeError(f"structural turn missing 'signature': {raw!r}")
         if "significance" not in raw:
             raise DecodeError(f"structural turn missing 'significance': {raw!r}")
+    close = raw.get("close")
+    if close is not None and not (isinstance(close, bool) and close):
+        raise DecodeError(
+            f"'close' must be the boolean true (a script-boundary marker), got {close!r}"
+        )
     return Turn(
         role=role,
         op=op,
@@ -452,6 +517,8 @@ def _turn_from_dict(raw: dict) -> Turn:
         nodes=nodes,
         significance=raw.get("significance"),
         notes=raw.get("notes", ""),
+        close=close,
+        record=raw,
     )
 
 
@@ -475,6 +542,22 @@ def turn_content_key(turn: DecodedTurn) -> tuple[str, int, tuple[int, ...], int]
         tuple(turn.value.kline.nodes),
         turn.value.significance,
     )
+
+
+def _validate_close(decoded: list[DecodedTurn]) -> None:
+    """Validate the ``close`` markers (spec §Dialogue Table).
+
+    A ``close`` turn closes a script (a boundary marker). The marker is
+    role-agnostic: it may sit on either a trainer (T) or trainee (K) row.
+    Closing is a runner concern (the runner owns the table cursor and reads
+    the marker as the script boundary); it is not tied to a role.
+
+    Tables with no ``close`` markers are valid (single-script, backward
+    compatible): the runner ends at the last row and no script boundary fires.
+    """
+    # Presence-only: a `close: true` is well-formed on any row. No role check —
+    # the runner, not the decoder, decides how a close routes.
+    return
 
 
 def _validate_peer(decoded: list[DecodedTurn]) -> None:
@@ -529,6 +612,34 @@ def _peer_config_from_dict(raw: dict) -> PeerConfig:
     return PeerConfig(on_divergence=on_divergence)
 
 
+def _load_table_file(path: Path) -> DialogueTable:
+    """Load a :class:`DialogueTable` from a JSON file (used for ``priors``).
+
+    The path is resolved against the file system (the cwd, like the ``script``
+    field). A missing or unreadable file is a hard error. The loaded table's
+    own ``priors`` (if any) are resolved recursively by :func:`load_table`, so
+    a chain of priors composes; cycles would surface as an ``OSError`` (the
+    second load of an already-open path) rather than a silent loop.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise DecodeError(
+            f"dialogue prior table {str(path)!r} could not be read: {exc}"
+        ) from exc
+    try:
+        raw = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise DecodeError(
+            f"dialogue prior table {str(path)!r} is not valid JSON: {exc}"
+        ) from exc
+    if not isinstance(raw, dict):
+        raise DecodeError(
+            f"dialogue prior table {str(path)!r} must be a JSON object"
+        )
+    return load_table(raw)
+
+
 def load_table(raw: dict) -> DialogueTable:
     """Parse a raw ``{script, turns[], peer?}`` dict into a :class:`DialogueTable`.
 
@@ -568,4 +679,20 @@ def load_table(raw: dict) -> DialogueTable:
     else:
         peer = None
     turns = tuple(_turn_from_dict(t) for t in raw["turns"])
+    # ``priors`` (optional) names other dialogue-table files whose turns run
+    # before this table's own, in list order (spec §Dialogue Table). Each is
+    # loaded recursively; its turns are prepended so a multi-file lesson reads
+    # as one continuous exchange. A prior resolves its own ``script`` (its
+    # turns' symbols must be resolvable there); only the turns are carried in.
+    priors_raw = raw.get("priors")
+    if priors_raw is not None:
+        if not isinstance(priors_raw, list) or not all(
+            isinstance(p, str) for p in priors_raw
+        ):
+            raise DecodeError("'priors' must be a list of table-file path strings")
+        prior_turns: list[Turn] = []
+        for prior_path in priors_raw:
+            prior_table = _load_table_file(Path(prior_path))
+            prior_turns.extend(prior_table.turns)
+        turns = tuple(prior_turns) + turns
     return DialogueTable(script=script, turns=turns, peer=peer)

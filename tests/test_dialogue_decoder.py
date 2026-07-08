@@ -57,11 +57,139 @@ def test_load_rejects_malformed_table():
     with pytest.raises(DecodeError):
         load_table({"turns": []})
     with pytest.raises(DecodeError):
-        load_table({"script": "x"})
+        load_table({"script": "A"})
     with pytest.raises(DecodeError):
-        load_table({"script": "x", "turns": [{"role": "X", "op": "IDENTITY"}]})
+        load_table({"script": "A", "turns": [{"role": "X", "op": "IDENTITY"}]})
     with pytest.raises(DecodeError):
-        load_table({"script": "x", "turns": [{"role": "T", "op": "BOGUS"}]})
+        load_table({"script": "A", "turns": [{"role": "T", "op": "BOGUS"}]})
+
+
+def test_load_parses_close_marker():
+    """A turn may carry ``close: true`` (a script-boundary marker); it parses to ``True``."""
+    table = load_table(
+        {"script": "A", "turns": [{"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": True}]}
+    )
+    assert table.turns[0].close is True
+
+
+def test_load_rejects_bad_close_marker():
+    """``close`` must be the boolean ``true`` (not 0, not an int, not a string)."""
+    for bad in (0, 1, 2, -1, "1", "true", 1.0, False):
+        with pytest.raises(DecodeError):
+            load_table(
+                {"script": "A", "turns": [{"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": bad}]}
+            )
+
+
+def test_decode_accepts_close_on_trainer_row():
+    """Closing is a runner concern, not a role constraint: a close may sit on
+    a trainer (T) row as well as a trainee (K) row."""
+    table = mhall_table()
+    table = {**table, "turns": list(table["turns"])}
+    table["turns"][0] = {**table["turns"][0], "close": True}  # the T opener carries the close
+    decoded = decode(load_table(table))
+    closers = [t for t in decoded if t.close]
+    assert len(closers) == 1
+    assert closers[0].close is True
+    assert closers[0].role == "T"
+
+
+def test_decode_accepts_single_close_marker():
+    """``close: true`` survives decode on a trainee (K) row (presence-only)."""
+    table = mhall_table()
+    table = {**table, "turns": list(table["turns"])}
+    table["turns"][-1] = {**table["turns"][-1], "close": True}  # the K closer
+    decoded = decode(load_table(table))
+    closers = [t for t in decoded if t.close]
+    assert len(closers) == 1
+    assert closers[0].close is True
+    assert closers[0].role == "K"
+
+
+def test_load_prepends_priors_in_list_order(tmp_path):
+    """``priors`` names other dialogue-table files; their turns are inserted
+    before this table's own turns, in list order (prior[0] first)."""
+    import json
+
+    prior_a = tmp_path / "a.json"
+    prior_b = tmp_path / "b.json"
+    prior_a.write_text(json.dumps({
+        "script": "A",
+        "turns": [{"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "prior-a"}],
+    }))
+    prior_b.write_text(json.dumps({
+        "script": "A",
+        "turns": [{"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "prior-b"}],
+    }))
+    table = load_table({
+        "script": "A",
+        "priors": [str(prior_a), str(prior_b)],
+        "turns": [{"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "own"}],
+    })
+    notes = [t.notes for t in table.turns]
+    assert notes == ["prior-a", "prior-b", "own"]
+
+
+def test_load_priors_resolve_recursively(tmp_path):
+    """A prior's own ``priors`` compose: prior-b is pulled in via prior-a, so
+    its turns precede prior-a's, which precede the table's own."""
+    import json
+
+    prior_b = tmp_path / "b.json"
+    prior_b.write_text(json.dumps({
+        "script": "A",
+        "turns": [{"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "prior-b"}],
+    }))
+    prior_a = tmp_path / "a.json"
+    prior_a.write_text(json.dumps({
+        "script": "A",
+        "priors": [str(prior_b)],
+        "turns": [{"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "prior-a"}],
+    }))
+    table = load_table({
+        "script": "A",
+        "priors": [str(prior_a)],
+        "turns": [{"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "own"}],
+    })
+    notes = [t.notes for t in table.turns]
+    assert notes == ["prior-b", "prior-a", "own"]
+
+
+def test_load_rejects_missing_prior_file(tmp_path):
+    """A prior path that cannot be read is a hard error (no silent skip)."""
+    with pytest.raises(DecodeError):
+        load_table({
+            "script": "A",
+            "priors": [str(tmp_path / "missing.json")],
+            "turns": [{"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1"}],
+        })
+
+
+def test_load_rejects_malformed_priors_field():
+    """``priors`` must be a list of path strings."""
+    for bad in ("scripts/x.json", [1, 2], {"a": 1}):
+        with pytest.raises(DecodeError):
+            load_table({
+                "script": "A",
+                "priors": bad,
+                "turns": [{"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1"}],
+            })
+
+
+def test_primaries_from_source_extracts_each_top_level_script():
+    """primaries_from_source returns one primary per top-level KScript scope,
+    in source order - the klines a multi-script trainer opens (R1) per script."""
+    from pathlib import Path
+
+    from training.dialogue.decoder import primaries_from_source
+
+    tok, sigf = NLPTokenizer(), NLPSignifier()
+    # The real two-script file: MHALL then WDMH as separate top-level scopes.
+    source = Path("data/scripts/mhall.ks").read_text()
+    primaries = primaries_from_source(source, tokenizer=tok, signifier=sigf)
+    assert len(primaries) == 2
+    # Each primary is a distinct compiled kline (MHALL's, then WDMH's).
+    assert primaries[0] != primaries[1]
 
 
 
@@ -99,11 +227,11 @@ def test_decode_drops_annotation_only_turns(decoded_mhall):
     assert len(turns) == len(table.turns) - len(annotation_only)
 
 
-# ── DDT-5: CANONIZED retrieved by node-list match ─────────────────────────
+# ── DDT-5: CANONIZED resolves nodes, builds the declared signature verbatim ──
 
 
 def test_canonized_resolves_to_compiled_canon(decoded_mhall):
-    """DDT-5: a CANONIZED turn resolves to the compiled canon kline."""
+    """DDT-5: a CANONIZED turn resolves each node label to its canonical signature."""
     turns, _ = decoded_mhall
     mary = next(
         t for t in turns if t.op == "CANONIZED" and t.value.kline.dbg.label == "Mary"
@@ -112,8 +240,8 @@ def test_canonized_resolves_to_compiled_canon(decoded_mhall):
     assert len(mary.value.kline.nodes) == 2  # [M, ary]
 
 
-def test_canonized_retrieved_by_node_list_match(decoded_mhall):
-    """DDT-5: the canon's nodes are the compiled decompositions."""
+def test_canonized_nodes_are_compiled_decompositions(decoded_mhall):
+    """DDT-5: the kline's nodes are the resolved compiled decompositions."""
     turns, _ = decoded_mhall
     svo = next(
         t for t in turns if t.op == "CANONIZED" and t.value.kline.dbg.label == "SVO"
@@ -125,8 +253,13 @@ def test_canonized_retrieved_by_node_list_match(decoded_mhall):
     assert len(mhall.value.kline.nodes) == 5
 
 
-def test_decode_rejects_canonized_with_no_matching_node_list():
-    """DDT-5: a CANONIZED turn whose node-list matches no compiled canon fails."""
+def test_decode_rejects_canonized_with_unknown_node_label():
+    """DDT-5: a CANONIZED turn whose node label is not in the script fails.
+
+    The decoder is a resolver, not a gatekeeper: it does not check that the
+    declared signature matches the canon its nodes would form (an author may
+    declare a deliberate misfit). It only requires every label to resolve.
+    """
     table = load_table(
         {
             "script": "(Mary had a little lamb)\nMHALL == SVO =>",
@@ -134,7 +267,7 @@ def test_decode_rejects_canonized_with_no_matching_node_list():
                 {
                     "role": "T",
                     "op": "CANONIZED",
-                    "signature": "Bogus",
+                    "signature": "MHALL",
                     "nodes": ["Nope"],
                     "significance": "S2",
                 }
@@ -143,6 +276,40 @@ def test_decode_rejects_canonized_with_no_matching_node_list():
     )
     with pytest.raises(DecodeError):
         decode(table, tokenizer=NLPTokenizer(), signifier=NLPSignifier())
+
+
+def test_decode_admits_canonized_signature_misfit():
+    """DDT-5: a CANONIZED turn may declare a signature that differs from the
+    canon its nodes form — a deliberate misfit (e.g. a K-generated leap).
+
+    The decoder builds the kline as written: declared signature verbatim, nodes
+    resolved to their canonical signatures. No consistency check. See
+    ``scripts/dialogue-rationalisation-behaviours.md``.
+    """
+    table = load_table(
+        {
+            # MHALL canon and WDMH canon both compile; their nodes differ.
+            "script": open("data/scripts/mhall.ks").read(),
+            "turns": [
+                {
+                    "role": "K",
+                    "op": "CANONIZED",
+                    # The signature is the question; the nodes are the answer's
+                    # atoms — a signature-changing leap, declared as written.
+                    "signature": "WDMH",
+                    "nodes": ["Mary", "had", "a", "little", "lamb"],
+                    "significance": "S2",
+                }
+            ],
+        }
+    )
+    turns = decode(table, tokenizer=NLPTokenizer(), signifier=NLPSignifier())
+    assert len(turns) == 1
+    kline = turns[0].value.kline
+    # The declared signature is honoured verbatim (it is WDMH's compiled sig),
+    # and the five nodes resolve to the MHALL atoms' canonical signatures.
+    assert kline.dbg.label == "WDMH"
+    assert len(kline.nodes) == 5
 
 
 # ── Canonical end state ───────────────────────────────────────────────────

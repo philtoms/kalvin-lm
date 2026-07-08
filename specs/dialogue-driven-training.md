@@ -35,6 +35,12 @@ The source artifact for a lesson. A JSON object:
 DialogueTable:
   script:  str          # KScript source, or a path to a .ks file — the
                          # authority for kline structure
+  priors:  list[str]    # optional: paths to other DialogueTable files whose
+                         # turns run before this table's own, in list order.
+                         # Resolved recursively; each prior's turns are
+                         # inserted (in list order) ahead of this table's.
+                         # A prior resolves its own `script`; only its turns
+                         # are carried in.
   turns:   list[Turn]   # ordered, the exact T/K exchange
 ```
 
@@ -47,6 +53,12 @@ Turn:
   nodes:        list[str]   # symbolic labels, resolved by the decoder
   significance: "S1" | "S2" | "S3" | "S4"
   notes:        str   # human commentary; ignored by the decoder
+  close:        bool  # optional: `true` marks this turn as a script close.
+                      # The runner reads it as the script boundary and routes
+                      # the next turn as an open. Absent (or false) unless
+                      # this turn is a close. Role-agnostic: it may sit on
+                      # either a trainer (T) or trainee (K) row — closing is
+                      # a runner concern, not a role constraint.
 ```
 
 `script` is the single source of truth for kline structure (canonical
@@ -60,6 +72,13 @@ is treated as a path when it contains a path separator (`/` or `\`) or ends in
 verbatim as inline source. A path-like value that is missing or unreadable is a
 load error (no silent inline fallback, so a typo or wrong working directory is
 not masked).
+
+`priors` (optional) names other `DialogueTable` files whose turns precede this
+table's own. Each prior is loaded and resolved against **its own** `script`;
+only its `turns` are carried in, inserted in list order (priors[0] first), so a
+multi-file lesson reads as one continuous exchange. Priors resolve recursively
+(a prior may name its own priors); the merged `turns` are what `decode` and the
+runner consume. A missing or malformed prior file is a load error.
 
 An **annotation-only turn** carries `notes` but no `op`; it is human commentary
 and is not part of the exchange.
@@ -89,10 +108,16 @@ decode(table) -> list[DecodedTurn]
 
 Per turn:
 
-1. **Resolve the kline from `script`** (script is authority):
-   - **CANONIZED** — retrieve the compiled canon whose node-decoded labels match
-     the turn's `nodes` list (node-list match). The turn's symbolic node names
-     are the retrieval key.
+1. **Resolve the kline from `script`** (script is authority). The decoder is a
+   **resolver, not a gatekeeper**: it builds the kline the turn declares — the
+   declared `signature` verbatim, the `nodes` resolved to their canonical
+   signatures — and never checks that the signature "matches" the nodes. An
+   author may declare a signature that differs from the canon its nodes form
+   (a deliberate misfit — see `scripts/dialogue-rationalisation-behaviours.md`).
+   - **CANONIZED** — resolve each node label to its canonical signature
+     (canon-preferred, atom fallback) and build `KLine(signature, nodes)` with
+     the declared signature verbatim. No canon retrieval by node-list, no
+     signature-consistency check.
    - **IDENTITY** — resolve the atom by label.
    - **Constructed relation** (`COUNTERSIGNED` / `CONNOTED` / `UNDERSIGNED`) —
      resolve each node label to its canonical signature and rebuild the relation
@@ -101,8 +126,10 @@ Per turn:
 3. **Pass through** `actor` and `op`; **drop** annotation-only turns and ignore
    `notes` on the rest.
 
-Subword node names must be the tokenizer's actual decoded subwords; the table is
-maintained against real compiler output.
+Every signature and node label must resolve to a compiled entry (a label not
+found in the script is a decode error). What the decoder does *not* do is
+relate the signature to the nodes: that relationship is the author's to
+declare, not the decoder's to police.
 
 ## The Runner
 
@@ -115,6 +142,12 @@ objects satisfying the Actor interface (§Actor). **The runner owns the table
 cursor.** Each step: read the actor of `decoded[cursor]`, ask that actor for its
 next row, validate it, advance. The run ends when the cursor passes the end of
 the table.
+
+**Script boundaries are table-declared** (§Dialogue Table `close`). When a turn
+carries a `close: true` marker, it ends a script; the runner routes the *next*
+turn with `incoming=None` (an open), so the next actor opens a fresh script
+rather than replying to the close. Close-detection is the runner's job (it owns
+the cursor and the markers); the trainer does not detect closes.
 
 Dispatch is **greedy** — and greediness is the runner's behaviour, not the
 actor's. While consecutive table rows share an actor, the runner asks the same
@@ -187,8 +220,14 @@ runner carries no notion of "learned" and emits no grounding signal.
   runner does not.
 - Supervisor escalation on a request the trainer cannot resolve — belongs to the
   real trainer.
-- Multi-cascade lessons and multi-primary scripts. The bootstrap table is a
-  single cascade.
+- Multi-cascade *tables*. The runner routes multi-script boundaries via the
+  `close` marker and the synthesizing trainer opens each script's own primary
+  in turn (via ``primaries_from_source``), so a multi-script table runs
+  script-to-script. What is not yet specified is authoring a *misfit* second
+  script (e.g. a question script whose atoms are not all first-class compiled
+  klines) — the S2-misfit pedagogy that motivates a developmental second
+  script. Peer-mode multi-script is also out of scope (the peer runner still
+  treats the last row as the single close).
 - Measuring, detecting, or signalling learning or grounding.
 
 ## Canonical Example
@@ -209,7 +248,7 @@ table-reading actors to exhaustion.
 | DDT-2  | Each turn's `op` is a Structural State (`@CONTEXT.md`)                                                                                                                                                                                                                                               | §Dialogue Table        |
 | DDT-3  | The decoder pre-decodes every turn into a flat ordered `list[DecodedTurn]` at configuration time                                                                                                                                                                                                     | §Decoder               |
 | DDT-4  | Decoding resolves the kline from `script`, attaches significance by lookup, passes through actor/op, drops annotation-only turns and ignores notes                                                                                                                                                   | §Decoder               |
-| DDT-5  | A CANONIZED turn is retrieved by node-list match against compiled canons                                                                                                                                                                                                                             | §Decoder               |
+| DDT-5  | A CANONIZED turn resolves each node label to its canonical signature and builds `KLine(signature, nodes)` with the declared signature verbatim — no canon retrieval by node-list, no signature-consistency check (an author may declare a deliberate misfit)         | §Decoder               |
 | DDT-6  | The runner owns the table cursor: each step reads whose row is next and asks that actor; the first row is the trainer's                                                                                                                                                                              | §The Runner            |
 | DDT-7  | Greediness is the runner's behaviour: while consecutive table rows share an actor, the same actor is asked again (e.g. `T,T,K` asks the trainer twice, then the trainee)                                                                                                                             | §The Runner            |
 | DDT-8  | The trainer and trainee are symmetric cursor readers of the same decoded table, differing only by actor                                                                                                                                                                                              | §The Runner            |
