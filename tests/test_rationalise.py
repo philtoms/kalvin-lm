@@ -2,8 +2,8 @@
 
 Spec seam: ``@specs/dialogue-driven-training.md`` §Actor — the Rationaliser
 satisfies the existing Actor contract; this plan introduces no new spec IDs.
-These tests exercise each mechanism branch in isolation (entry rule, Level 0,
-Level 1, cleanup, grouping, MTS discrimination, termination), not only through
+These tests exercise each mechanism branch in isolation (entry rule, S4
+identity, S3 pairing, cleanup, grouping, MTS discrimination, termination), not only through
 the MHALL golden master (which the runner integration test in
 ``test_dialogue_runner.py`` covers end-to-end).
 
@@ -21,14 +21,12 @@ from __future__ import annotations
 import pytest
 
 from kalvin.expand import SIG_S1, SIG_S2, SIG_S4
-from kalvin.kline import KLine
+from kalvin.kline import KLine, is_canon
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 from tests._fixtures import mhall_table
 from training.dialogue.decoder import decode, load_table
 from training.dialogue.rationalise import Rationaliser
-
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────
 
@@ -145,13 +143,13 @@ def test_entry_s1_canon_grounds_when_all_nodes_ground(
     assert ab in rationaliser._state.grounded
 
 
-# ── Level 0 (Identity) ────────────────────────────────────────────────────
+# ── S4 (Identity) ────────────────────────────────────────────────────────
 
 
 def test_level0_emits_identity_at_s4(
     rationaliser: Rationaliser, signifier: NLPSignifier
 ) -> None:
-    """Level 0: an unrecognised signature's identity is emitted at S4.
+    """S4: an unrecognised signature's identity is emitted at S4.
 
     Cogitation batches every workable identity: the query's signature and its
     unrecognised node are both emitted at S4 in one blast."""
@@ -219,7 +217,7 @@ def test_relationship_does_not_ground_via_cleanup(
     assert not rationaliser._groundable(rel)
 
 
-# ── Level 1 (Relationships) — grouping (D10) ──────────────────────────────
+# ── S3 (Relationships) — grouping (D10) ───────────────────────────────────
 
 
 @pytest.fixture(scope="module")
@@ -228,15 +226,15 @@ def _decoded_mhall():
     return decode(table, signifier=NLPSignifier())
 
 
-def _drive_to_level1(rationaliser: Rationaliser, decoded) -> None:
+def _drive_to_s3(rationaliser: Rationaliser, decoded) -> None:
     """Drive the rationaliser through the identity phase until the work-list has
-    settled to the opening relationship (Level-1 boundary).
+    settled to the opening relationship (S3 boundary).
 
     Mirrors the working end-to-end simulation: T-rows become incoming, K-rows
-    trigger respond(incoming). The first Level-1 K-row is NOT consumed, but the
+    trigger respond(incoming). The first S3 K-row is NOT consumed, but the
     T-row preceding it (which grounds the last operand and triggers the
     cleanup reducing the work-list) is processed via its entry rule so the
-    work-list settles to the opening relationship ready for Level 1.
+    work-list settles to the opening relationship ready for S3 cogitation.
     """
     incoming = None
     ki = 0
@@ -246,7 +244,7 @@ def _drive_to_level1(rationaliser: Rationaliser, decoded) -> None:
             incoming = _value(turn.value.kline, turn.value.significance)
         else:
             if len(k_rows[ki].value.kline.nodes) != 0:
-                # First Level-1 row. Its preceding T-row's entry rule settles
+                # First S3 row. Its preceding T-row's entry rule settles
                 # the work-list — process it now without cogitating.
                 if incoming is not None:
                     rationaliser._process_query(incoming)
@@ -256,14 +254,14 @@ def _drive_to_level1(rationaliser: Rationaliser, decoded) -> None:
             ki += 1
 
 
-def _level1_entry(rationaliser: Rationaliser) -> KLine:
-    """Find the Level-1-eligible opening in the work-list (the entry cogitation
-    would dispatch to Level 1) — not necessarily the LIFO top, which may be an
-    async-pending relationship skipped by cogitation."""
+def _s3_entry(rationaliser: Rationaliser) -> KLine:
+    """Find the S3-pairable opening in the work-list (the entry cogitation
+    would dispatch to S3 pairing) — not necessarily the LIFO top, which may be
+    an async-pending relationship skipped by cogitation."""
     for entry in reversed(rationaliser._state.work_list):
-        if rationaliser._level1_eligible(entry):
+        if rationaliser._s3_pairable(entry):
             return entry
-    raise AssertionError("no Level-1-eligible entry in work-list")
+    raise AssertionError("no S3-pairable entry in work-list")
 
 
 def test_level1_grouping_emits_canonical_request_for_residual(
@@ -272,10 +270,10 @@ def test_level1_grouping_emits_canonical_request_for_residual(
     """D10 (async model): the 3-vs-1 residual does NOT assert a binding to a
     synthesised signature. The relationship plan pairs Mary<->Subject,
     had<->Verb, then carries a residual [a,little,lamb] for the grouped pair —
-    which Level 1 emits as a canonical request {make_signature(residual):
+    which S3 pairing emits as a canonical request {make_signature(residual):
     residual} at S2 (a hypothesis), not a relationship assertion."""
-    _drive_to_level1(rationaliser, _decoded_mhall)
-    entry = _level1_entry(rationaliser)
+    _drive_to_s3(rationaliser, _decoded_mhall)
+    entry = _s3_entry(rationaliser)
     left_nodes = rationaliser._find_canon_nodes(entry.signature)  # MHALL canon
     right_nodes = rationaliser._find_canon_nodes(entry.nodes[0])  # SVO canon
     plan = rationaliser._relationship_plan(left_nodes, right_nodes)
@@ -290,10 +288,10 @@ def test_level1_one_to_one_pairs_carry_no_residual(
     rationaliser: Rationaliser, signifier: NLPSignifier, _decoded_mhall
 ) -> None:
     """A 1:1 pair (one left operand, one right operand) carries no residual —
-    Level 1 emits it as a CONNOTED relationship at S3. MHALL's first two pairs
+    S3 pairing emits it as a CONNOTED relationship at S3. MHALL's first two pairs
     (Mary<->Subject, had<->Verb) are 1:1."""
-    _drive_to_level1(rationaliser, _decoded_mhall)
-    entry = _level1_entry(rationaliser)
+    _drive_to_s3(rationaliser, _decoded_mhall)
+    entry = _s3_entry(rationaliser)
     left_nodes = rationaliser._find_canon_nodes(entry.signature)
     right_nodes = rationaliser._find_canon_nodes(entry.nodes[0])
     plan = rationaliser._relationship_plan(left_nodes, right_nodes)
@@ -305,12 +303,66 @@ def test_level1_one_to_one_pairs_carry_no_residual(
     reason="Coverage gap G1: S2 (non-1:1) proposal branch is built but "
     "unexercised by MHALL"
 )
-def test_level1_non_one_to_one_is_s2() -> None:
+def test_s3_non_one_to_one_is_s2() -> None:
     """A multi-node proposal {S:[n1,n2]} (one signature, multiple nodes) would
     be S2. MHALL produces none; supply a synthetic golden master to cover."""
 
 
-# ── Termination (D12) ─────────────────────────────────────────────────────
+# ── S2 (Misfit) routing — scripts/dialogue-rationalisation-behaviours.md §3a ─
+
+
+def test_s2_misfit_routes_to_s2_path_and_idles(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """B1/§3a: a multi-node misfit (signature != make_signature(nodes))
+    routes to the S2 path, not the S3 pairing path. With the S2 generation
+    mechanism stubbed, it emits nothing and idles in the work-list (no crash,
+    no spurious emission). S3 structures continue to take the pairing path
+    (covered by MHALL)."""
+    x = 0b1 << 32
+    y = 0b10 << 32
+    z = 0b100 << 32
+    # A multi-node misfit: signature != make_signature(nodes).
+    sig = signifier.make_signature([x])           # carries the x type bit only
+    nodes = [y, z]                                # make_signature([y,z]) = y|z != sig
+    misfit = KLine(sig, nodes)
+    assert not is_canon(misfit, signifier)
+    assert not rationaliser._s3_pairable(misfit)  # not single-node
+    assert rationaliser._s2_eligible(misfit)      # multi-node misfit -> S2
+
+    rationaliser._state.work_list.append(misfit)
+    emitted = rationaliser.rationalise(None)
+
+    # Stubbed S2 path: no emission, entry persists.
+    assert emitted == []
+    assert (sig, [y, z]) in _work_list(rationaliser)
+
+
+def test_single_node_unpairable_relationship_not_routed_to_s2(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """§3a regression: a single-node relationship whose operand canons are not
+    yet seen is S3-structure but not workable. Cogitation must SKIP it (it
+    awaits elevation/cleanup), NOT route it to the S2 path — else MHALL's
+    pairings stall forever. S2 eligibility requires a multi-node misfit."""
+    x = 0b1 << 32
+    y = 0b10 << 32
+    lhs = signifier.make_signature([x])
+    rhs = signifier.make_signature([y])
+    rel = KLine(lhs, [rhs])                       # single-node, operands not seen
+    assert not rationaliser._s3_pairable(rel)      # not yet workable
+    assert not rationaliser._s2_eligible(rel)      # single-node -> NOT S2
+
+    rationaliser._state.work_list.append(rel)
+    emitted = rationaliser.rationalise(None)
+
+    # Skipped (not workable), not routed to S2: no emission, entry persists
+    # awaiting the operand canons that make it S3-pairable.
+    assert emitted == []
+    assert (lhs, [rhs]) in _work_list(rationaliser)
+
+
+# ── Termination (D12) ──────────────────────────────────────────────────
 
 
 def test_termination_returns_empty_when_idle(rationaliser: Rationaliser) -> None:

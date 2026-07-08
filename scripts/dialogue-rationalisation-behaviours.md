@@ -44,13 +44,49 @@ ratification. This document bounds that act.
 
 These are the rules that govern when and how K may originate a misfit proposal.
 
-**B1 — Trigger (misfit entries only).** K may originate a misfit proposal only when
-the level-1 entry it is working is itself a misfit (`is_canon(entry) == False` after
-its nodes have grounded — the canon self-close path is blocked). Honest entries
-(identities, canons) never originate misfits; they self-close. The licence is
-**structural** (a pure `is_canon` test) and **permissive** — K does honest work
-(identity asks, canon grounding) on a misfit entry before, or instead of,
-originating a misfit reply.
+### 3a. Routing — cogitation dispatches on significance
+
+Cogitation routes work-list entries on **significance**, not on a numeric
+"level." Rationalisation performs the first split: **S1** grounds/cleans and
+**S4** pops the identity ask in the entry rule (never reaching cogitation);
+**S2 / S3** reach cogitation. Cogitation then performs the second split by
+structure-as-significance:
+
+- **S3 path (operand pairing).** A single-node relationship `{L:[R]}`.
+  When its operands L and R have seen canons, K relates the two canons by
+  pairing their operands left-to-right (`Mary↔Subject`, `had↔Verb`), emitting
+  each unresolved pair as a proposal. This is the existing `_emit_s3_pairing` /
+  `_pair_resolved` machinery — the S3 path. A pair is resolved when ratified
+  (the trainer countersigned it). The path self-closes at S1 when all pairs
+  resolve. A single-node relationship whose operand canons are not yet seen is
+  S3-*structure* but not *workable* — cogitation skips it (it awaits
+  elevation/cleanup) and does **not** route it to S2.
+- **S2 path (misfit origination).** A **multi-node** misfit entry whose
+  signature does not reduce to its nodes (`{WDMH:[Mary,had,what]}`). K cannot
+  pair operands (there is no second canon to pair against); it must *originate
+  substitutions* — the accumulation mechanism in §4. Single-node relationships
+  are never S2 (they are S3-structure); only multi-node misfits route here.
+
+The S2 and S3 bands **overlap** (the boundary is `S2|S3`, not a clean split).
+A 1:1 structure that is typically S3 may stall — the trainer did not ratify the
+  pair — and behave misfit-like. The S3 path's `_pair_resolved` already encodes
+  this roughly ("trainer did not immediately ratify"). A stalled S3 entry may
+  **migrate** to the S2 path; the migration is in scope for this implementation
+  (§10) and is specified once both paths exist and real stall behaviour can be
+  observed against the WDMH golden master.
+
+**B1 — Trigger (S2 routing).** K may originate a misfit proposal only when the
+entry it is working is an **S2 (multi-node misfit) structure** — routed to the
+S2 origination path, not the S3 pairing path. The routing is structural: a
+non-identity, non-canon entry with two or more nodes is an S2 structure.
+Honest entries (identities, canons), single-node relationships (S3-structure),
+and S3-pairable entries never originate misfits; they take their own paths.
+The licence is **permissive** — K does honest work (identity asks, canon
+grounding) on an S2 entry before, or instead of, originating a misfit reply.
+(B1 was originally framed as "the canon self-close path is blocked";
+investigation showed the trigger is *eligibility/routing*, not the close — a
+misfit entry never reaches the S3 close path because it never enters the S3
+path.)
 
 **B2 — No invention.** Every node in an originated misfit proposal must be a node of
 a kline K has grounded. K recombines grounded klines; it never fabricates a node
@@ -198,4 +234,8 @@ These were identified by the grill and are **not** decided here:
 - **Accumulation bookkeeping.** The exact definition of "accumulated vs open" when
   several node-expansion and node-graft candidates interleave needs test
   fixtures beyond the WDMH example.
+- **S3-stall → S2 migration (in scope).** When a 1:1 S3 pair is not ratified, the
+  entry stalls and may migrate to the S2 path. The migration condition and the
+  state transition are specified once the clean S2 and S3 paths exist and real
+  stall behaviour can be observed against the WDMH golden master (§3a).
 - **T-side generation.** Symmetric in principle (§9); implementation deferred.

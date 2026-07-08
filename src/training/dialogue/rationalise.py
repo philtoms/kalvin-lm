@@ -212,15 +212,36 @@ class Rationaliser:
             if is_identity(entry):
                 batch.append(self._emit_identity(idx, entry.signature))
                 continue
-            # First workable non-identity: a relationship terminates the batch.
-            if self._level1_eligible(entry):
+            # First workable non-identity dispatches by significance routing
+            # (scripts/dialogue-rationalisation-behaviours.md §3a):
+            #   S3 structure (1:1 relationship)    → operand pairing (if workable)
+            #   S2 structure (multi-node misfit)    → misfit origination
+            # A single-node S3 relationship whose operand canons are not yet
+            # seen is S3-structure but NOT workable — skip it (it awaits
+            # elevation/cleanup), do not route it to S2.
+            if self._s3_pairable(entry):
                 if batch:
                     return batch  # identities collected; relationship waits
-                return [self._emit_relationships(entry)]
+                return [self._emit_s3_pairing(entry)]
+            if self._s2_eligible(entry):
+                if batch:
+                    return batch
+                emitted = self._originate_s2(entry)
+                return [emitted] if emitted is not None else batch
         return batch
 
-    def _level1_eligible(self, entry: KLine) -> bool:
-        """Is ``entry`` a single-node relationship whose operands both have seen canons?"""
+    def _s3_pairable(self, entry: KLine) -> bool:
+        """Is ``entry`` a workable S3 structure — a 1:1 relationship whose
+        operands both have seen canons, so K can pair their operands?
+
+        S3 path precondition (scripts/dialogue-rationalisation-behaviours.md
+        §3a). The S3 path pairs the operands of two canons; it requires a
+        single-node relationship ``{L:[R]}`` whose operands L and R each have a
+        seen canon (in grounded memory or the work-list). A single-node
+        relationship whose operand canons are not yet seen is S3-*structure* but
+        not *workable* — cogitation skips it (it awaits elevation/cleanup) and
+        does NOT route it to S2. Multi-node entries are never S3-pairable.
+        """
         if is_identity(entry) or len(entry.nodes) != 1:
             return False
         return (
@@ -228,8 +249,22 @@ class Rationaliser:
             and self._find_canon_nodes(entry.nodes[0]) is not None
         )
 
+    def _s2_eligible(self, entry: KLine) -> bool:
+        """Is ``entry`` an S2 structure — a multi-node misfit routed to misfit
+        origination?
+
+        S2 path precondition (scripts/dialogue-rationalisation-behaviours.md
+        §3a, B1). The S2 path originates substitutions onto an entry's own
+        nodes; it requires a **multi-node** misfit (a single-node relationship
+        is S3-structure, routed to — or awaiting — the S3 path, never S2 even
+        when not yet pairable). Identities and canons never route here.
+        """
+        if is_identity(entry) or len(entry.nodes) < 2:
+            return False
+        return not is_canon(entry, self._signifier)
+
     def _emit_identity(self, idx: int, signature: int) -> KValue:
-        """Level 0 — emit IDENTITY ``{signature: []}`` at S4 and pop the entry.
+        """S4 — emit IDENTITY ``{signature: []}`` at S4 and pop the entry.
 
         The ask is fire-and-forget: the identity is popped on emission so it
         cannot block cogitation under LIFO while its signature grounds async.
@@ -238,8 +273,8 @@ class Rationaliser:
         self._state.asked.add(signature)
         return KValue(KLine(signature, []), SIG_S4)
 
-    def _emit_relationships(self, entry: KLine) -> KValue:
-        """Level 1 — emit the next unresolved operand pair, or close at S1.
+    def _emit_s3_pairing(self, entry: KLine) -> KValue:
+        """S3 path — emit the next unresolved operand pair, or close at S1.
 
         ``entry`` is ``{L:[R]}`` whose operands L and R are signatures with seen
         canons. K pairs the operands of the two canons left-to-right at group
@@ -254,12 +289,12 @@ class Rationaliser:
         (COUNTERSIGNED) and removes it from the work-list.
         """
         right = entry.nodes
-        assert len(right) == 1, "Level 1 expects a single-node relationship entry"
+        assert len(right) == 1, "S3 pairing expects a single-node relationship entry"
         left_nodes = self._find_canon_nodes(entry.signature)
         right_nodes = self._find_canon_nodes(right[0])
         if left_nodes is None or right_nodes is None:
             raise NotImplementedError(
-                "Level 1: an operand canon is missing; cannot relate."
+                "S3 pairing: an operand canon is missing; cannot relate."
             )
 
         for lhs_sig, rhs_node, residual in self._relationship_plan(left_nodes, right_nodes):
@@ -282,7 +317,21 @@ class Rationaliser:
         self._ground(entry)
         return KValue(entry, SIG_S1)
 
-    # ── Level 1 helpers ───────────────────────────────────────────────────
+    # ── S2 path (misfit origination) — scripts/dialogue-rationalisation- ─
+    # ─ behaviours.md §4. Stubbed: returns no emission until steps 2+ land. ─
+
+    def _originate_s2(self, entry: KLine) -> KValue | None:
+        """S2 path — originate a misfit proposal by accumulated shaping.
+
+        Stubbed in step 1 of the misfit implementation: returns ``None`` (no
+        emission) so an S2 entry idles harmlessly in the work-list until the
+        generation mechanism (candidate admission, node-expansion, ``must_match``
+        node-graft) lands in later steps. See
+        scripts/dialogue-rationalisation-behaviours.md §4–§5.
+        """
+        return None
+
+    # ── S3 helpers ────────────────────────────────────────────────────────
 
     def _find_canon_nodes(self, signature: int) -> list[int] | None:
         """The nodes of ``signature``'s canon, searching grounded memory and the work-list.
