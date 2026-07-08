@@ -420,6 +420,118 @@ def test_s2_node_expansion_applies_all_in_one_cogitation(
     assert list(emitted[0].kline.nodes) == [m1, m2, had, w1, w2]
 
 
+# ── S2 rule 2 precondition: must_match resolution (§5) ───────────────────
+
+
+def test_must_match_direct_match_needs_no_resolution(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """§5: when every must_match node is directly in the candidate's nodes,
+    resolution is trivial — fully matched, no canon lookup."""
+    mary = 0b1 << 32
+    had = 0b10 << 32
+    a = 0b100 << 32
+    mhall_nodes = [mary, had, a]
+    resolved, fully = rationaliser._resolve_must_match([mary, had], mhall_nodes)
+    assert fully is True
+    assert set(resolved) == {mary, had}
+
+
+def test_must_match_resolves_failed_nodes_via_grounded_kline(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """§5 worked example: must_match=[Mary,did,have] against MHALL.nodes.
+    Mary matches directly; {did,have} fail but resolve via the grounded kline
+    {had:[did,have]} -> had, which MHALL has. Result: fully matched, shallower
+    must_match [Mary,had].
+    """
+    mary = 0b1 << 32
+    did = 0b10 << 32
+    have = 0b100 << 32
+    had = 0b1000 << 32                            # distinct from did|have: a misfit
+    assert had != signifier.make_signature([did, have])
+    a = 0b10000 << 32
+    little = 0b100000 << 32
+    lamb = 0b1000000 << 32
+    _ground(rationaliser, KLine(had, [did, have]))          # grounded (ratified) misfit
+    mhall_nodes = [mary, had, a, little, lamb]
+
+    resolved, fully = rationaliser._resolve_must_match([mary, did, have], mhall_nodes)
+    assert fully is True
+    # Mary stayed; [did,have] resolved to had. Order is not guaranteed by spec;
+    # assert as a set.
+    assert set(resolved) == {mary, had}
+
+
+def test_must_match_rejects_when_no_kline_covers_failed(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """§5: if the failed set cannot be covered by any grounded kline, the
+    candidate is rejected (not fully matched). must_match is returned in its
+    best-effort resolved form, but fully=False."""
+    mary = 0b1 << 32
+    did = 0b10 << 32
+    have = 0b100 << 32
+    unknown = 0b1000 << 32                         # no kline covers this
+    mhall_nodes = [mary]                            # candidate shares only Mary
+
+    resolved, fully = rationaliser._resolve_must_match(
+        [mary, did, have, unknown], mhall_nodes
+    )
+    assert fully is False
+    # Mary matched; the rest uncovered (no klines grounded).
+    assert unknown in resolved
+
+
+def test_must_match_resolves_recursively_to_fixed_point(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """§5: resolution recurses — a resolved signature may, with another failed
+    node, form a new coverable subset. Chain: {b,c}->B grounded, {B,d}->D
+    grounded. must_match=[a, b, c, d] against candidate.nodes=[a, D]. First
+    pass: a matches; {b,c}->B (failed becomes [B,d]); {B,d}->D. D is in the
+    candidate -> fully matched."""
+    a = 0b1 << 32
+    b = 0b10 << 32
+    c = 0b100 << 32
+    d = 0b1000 << 32
+    bc_sig = signifier.make_signature([b, c])
+    d_sig = signifier.make_signature([bc_sig, d])
+    _ground(rationaliser, KLine(bc_sig, [b, c]))       # {b,c}->bc_sig
+    _ground(rationaliser, KLine(d_sig, [bc_sig, d]))   # {bc_sig,d}->d_sig
+
+    resolved, fully = rationaliser._resolve_must_match([a, b, c, d], [a, d_sig])
+    assert fully is True
+    assert set(resolved) == {a, d_sig}
+
+
+def test_must_match_partition_picks_maximal_disjoint_cover(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """§5: the partition search is maximal — greedy on size is insufficient.
+    Two canons cover overlapping failed sets; the search must pick the disjoint
+    combination covering the most nodes. {x,y}->P and {y,z}->Q both subset of
+    failed {x,y,z}; they overlap on y so can't both fire. Either alone covers 2;
+    the search returns one of them (covered==2), leaving the third node."""
+    x = 0b1 << 32
+    y = 0b10 << 32
+    z = 0b100 << 32
+    p_sig = signifier.make_signature([x, y])
+    q_sig = signifier.make_signature([y, z])
+    _ground(rationaliser, KLine(p_sig, [x, y]))
+    _ground(rationaliser, KLine(q_sig, [y, z]))
+
+    resolved, fully = rationaliser._resolve_must_match([x, y, z], [])  # nothing direct
+    assert fully is False                            # z or x always uncovered
+    # Exactly one canon fired (2 nodes covered); the third node remains.
+    covered_sigs = {p_sig, q_sig}
+    fired = [n for n in resolved if n in covered_sigs]
+    assert len(fired) == 1
+    # One of x/z remains uncovered (the one not under the fired canon).
+    remaining = [n for n in resolved if n not in covered_sigs]
+    assert remaining in ([x], [z])
+
+
 def test_single_node_unpairable_relationship_not_routed_to_s2(
     rationaliser: Rationaliser, signifier: NLPSignifier
 ) -> None:

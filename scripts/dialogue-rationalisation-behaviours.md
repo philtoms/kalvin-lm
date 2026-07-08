@@ -7,7 +7,7 @@ S2-misfit pedagogy and is the output of the rationalisation grill (2026-07-07).
 
 It is pre-cascade: it establishes the model a future spec and plan will be written
 from. Terms are defined in `@CONTEXT.md` (**Proposal**, **Misfit (proposal)**,
-**Canon**, **Ratify**); this document owns the *mechanism* and the *boundaries* on
+**Canon**, **Ratify**); this document owns the _mechanism_ and the _boundaries_ on
 the act, not the glossary.
 
 The reference dialogue is `scripts/dialogue-wdmh.json` ("What Did Mary Have") — a
@@ -30,7 +30,7 @@ ratification. This document bounds that act.
 
 ## 2. Scope
 
-- **In scope:** originated misfits — klines a participant *constructs and emits*
+- **In scope:** originated misfits — klines a participant _constructs and emits_
   whose own signature does not reduce to its own nodes. The grill establishes
   Kalvin's behaviour in full.
 - **Out of scope (this document):** the Trainer originating misfits. T's generation
@@ -59,21 +59,21 @@ structure-as-significance:
   `_pair_resolved` machinery — the S3 path. A pair is resolved when ratified
   (the trainer countersigned it). The path self-closes at S1 when all pairs
   resolve. A single-node relationship whose operand canons are not yet seen is
-  S3-*structure* but not *workable* — cogitation skips it (it awaits
+  S3-_structure_ but not _workable_ — cogitation skips it (it awaits
   elevation/cleanup) and does **not** route it to S2.
 - **S2 path (misfit origination).** A **multi-node** misfit entry whose
   signature does not reduce to its nodes (`{WDMH:[Mary,had,what]}`). K cannot
-  pair operands (there is no second canon to pair against); it must *originate
-  substitutions* — the accumulation mechanism in §4. Single-node relationships
+  pair operands (there is no second canon to pair against); it must _originate
+  substitutions_ — the accumulation mechanism in §4. Single-node relationships
   are never S2 (they are S3-structure); only multi-node misfits route here.
 
 The S2 and S3 bands **overlap** (the boundary is `S2|S3`, not a clean split).
 A 1:1 structure that is typically S3 may stall — the trainer did not ratify the
-  pair — and behave misfit-like. The S3 path's `_pair_resolved` already encodes
-  this roughly ("trainer did not immediately ratify"). A stalled S3 entry may
-  **migrate** to the S2 path; the migration is in scope for this implementation
-  (§10) and is specified once both paths exist and real stall behaviour can be
-  observed against the WDMH golden master.
+pair — and behave misfit-like. The S3 path's `_pair_resolved` already encodes
+this roughly ("trainer did not immediately ratify"). A stalled S3 entry may
+**migrate** to the S2 path; the migration is in scope for this implementation
+(§10) and is specified once both paths exist and real stall behaviour can be
+observed against the WDMH golden master.
 
 **B1 — Trigger (S2 routing).** K may originate a misfit proposal only when the
 entry it is working is an **S2 (multi-node misfit) structure** — routed to the
@@ -84,7 +84,7 @@ and S3-pairable entries never originate misfits; they take their own paths.
 The licence is **permissive** — K does honest work (identity asks, canon
 grounding) on an S2 entry before, or instead of, originating a misfit reply.
 (B1 was originally framed as "the canon self-close path is blocked";
-investigation showed the trigger is *eligibility/routing*, not the close — a
+investigation showed the trigger is _eligibility/routing_, not the close — a
 misfit entry never reaches the S3 close path because it never enters the S3
 path.)
 
@@ -96,7 +96,7 @@ exist in the model.
 
 **B3 — Candidate admission (shared nodes).** A grounded kline `C` is a candidate
 for entry `E` iff `C` shares at least one **node value** with `E.nodes`:
-`node_overlap(C.nodes, E.nodes) ≠ ∅`. Admission is keyed on the entry's *nodes*,
+`node_overlap(C.nodes, E.nodes) ≠ ∅`. Admission is keyed on the entry's _nodes_,
 not its head signature — this avoids the over-admission that single-bit NLP type
 words would cause under `signifies`. (Both klines having a `Mary` node is the
 intended commonality.)
@@ -109,7 +109,7 @@ emitting it.
 
 K shapes a **single proposal** by processing admitted candidates in preference
 order, mutating one target as each candidate fires. There is no meta-proposal set
-and no selection step; the proposal is *built*, not *chosen*.
+and no selection step; the proposal is _built_, not _chosen_.
 
 **Initialise.** `target = copy(entry.nodes)`. A node with no admitted candidate is
 **open** — a slot a later match may fill.
@@ -133,22 +133,24 @@ and no selection step; the proposal is *built*, not *chosen*.
 
 **Accumulation.** Each match mutates `target`, so the next candidate sees the
 changed target. `must_match` reflects everything prior matches have established
-(rule 1's expansions are *preserved* — rule 2 must respect them, possibly by
-resolving them back through grounded canons). The proposal is the accumulated
+(rule 1's expansions are _preserved_ — rule 2 must respect them, possibly by
+resolving them back through grounded klines). The proposal is the accumulated
 `target` when no more candidates fire.
 
 ## 5. Recursive canon-resolution (`must_match`)
 
 `must_match` is the set of accumulated nodes a node-graft candidate must account
-for. Direct match first; failures resolve through grounded canons:
+for. Direct match first; failures resolve through grounded klines:
 
 1. **Partition** the failed nodes into maximally-coverable subsets, each matching a
-   grounded canon's `nodes` exactly. Uncoverable nodes are retained in `must_match`.
-2. **Replace** each coverable subset with its canon's signature; `must_match`
+   grounded kline's `nodes` exactly. Uncoverable nodes are retained
+   in `must_match`.
+2. **Replace** each coverable subset with its grounded kline's signature;
+   `must_match`
    becomes shallower (the resolved signature replaces its constituent nodes — e.g.
    `[did, have] → had`).
 3. **Re-check** the new `must_match` against `C`. Resolved signatures may now form
-   *new* coverable subsets, so **recurse** — re-partition, re-resolve, re-check —
+   _new_ coverable subsets, so **recurse** — re-partition, re-resolve, re-check —
    until either `must_match` is fully matched (graft proceeds) or a resolution pass
    produces no change (candidate rejected).
 
@@ -160,7 +162,7 @@ the fixed point.
 The purpose of `must_match` is to **balance graft**: without it, a candidate
 sharing a single node (`Mary`) could licence wholesale substitution of its entire
 surplus, over-powering the prior node-expansion work. `must_match` forces the graft
-to *earn* its substitution by accounting for the accumulated structure, directly or
+to _earn_ its substitution by accounting for the accumulated structure, directly or
 via canon-resolution.
 
 ## 6. Sequence and termination
@@ -182,19 +184,20 @@ Entry (the misfit; the canon form T also sends resolves and clears):
 
 Rule-1 candidates (signatures in `E.nodes`): the canon `{had: [did, have]}`
 (`had ∈ E.nodes`). Sourced separately from B3 — rule 1 finds klines whose
-*signature* the entry references as a node.
+_signature_ the entry references as a node.
 
-B3 candidates (shared *nodes*, feeding rule 2): `{MHALL: [Mary, had, a,
+B3 candidates (shared _nodes_, feeding rule 2): `{MHALL: [Mary, had, a,
 little, lamb]}` (shares `Mary, had` as nodes). Note `{had: [did, have]}` is
-*not* a B3 candidate — its nodes `[did, have]` share nothing with `E.nodes`.
+_not_ a B3 candidate — its nodes `[did, have]` share nothing with `E.nodes`.
 
 **Node-expansion:** `had ∈ target` → `target = [Mary, did, have, what]`.
 Accumulated: `[Mary, did, have]`. Open: `what`.
 
 **Node-graft (`MHALL`):**
+
 - `must_match = [Mary, did, have]` (accumulated; `what` open, excluded).
 - Direct: `Mary`✓, `did`✗, `have`✗. Failed `{did, have}`.
-- Resolve: `{did, have}` matches grounded canon `{had: [did, have]}` → `had`.
+- Resolve: `{did, have}` matches grounded kline `{had: [did, have]}` → `had`.
   `must_match = [Mary, had]`.
 - Re-check: `Mary`✓, `had`✓. Fully matched.
 - Graft: shared `{Mary, had}`, difference `{a, little, lamb}` → substitute into

@@ -366,6 +366,112 @@ class Rationaliser:
                 return list(kline.nodes)
         return None
 
+    # ── S2 rule 2 precondition: must_match resolution (§5) ────────────────
+
+    def _resolve_must_match(
+        self, must_match: list[int], candidate_nodes: list[int]
+    ) -> tuple[list[int], bool]:
+        """Resolve ``must_match`` against a graft candidate's nodes to fixed point.
+
+        Returns ``(resolved_must_match, fully_matched)``. A node is directly
+        matched if it appears in ``candidate_nodes``; the failed set resolves
+        through grounded kline: partition it into maximally-coverable subsets,
+        each a grounded klines's nodes exactly, and replace each subset with that
+        klines's signature (``[did, have] -> had``). Re-check the shallower
+        ``must_match`` — resolved signatures may form new coverable subsets —
+        and recurse until either every node is matched (graft proceeds) or a
+        pass produces no change (candidate rejected). Behaviours doc §5.
+        """
+        current = list(must_match)
+        while True:
+            failed = [n for n in current if n not in candidate_nodes]
+            if not failed:
+                return current, True
+            resolved = self._partition_and_resolve(failed)
+            if resolved == failed:
+                # No kline covered any failed node this pass: stuck. Any
+                # remaining failed node means the candidate cannot account for
+                # the accumulated structure.
+                return current, False
+            # Rebuild must_match: keep matched nodes, replace failed with their
+            # resolution (resolved signatures + uncoverable leftovers).
+            current = [n for n in current if n in candidate_nodes] + resolved
+
+    def _partition_and_resolve(self, failed: list[int]) -> list[int]:
+        """Maximally cover ``failed`` with disjoint grounded-kline node-sets.
+
+        Returns the resolved list: each coverable subset replaced by its
+        grounded kline's signature, plus any uncoverable leftovers. Greedy on
+        node count is insufficient (a larger kline may block two smaller ones
+        that together cover more), so this searches for a maximal-disjoint
+        cover. The grounded set per signature is small, so the search is
+        tractable.
+
+        A grounded kline is a candidate cover-set iff its nodes are a subset of
+        ``failed`` (every node it would resolve is actually outstanding).
+        """
+        # Collect cover-set candidates: (kline_nodes, kline_signature), deduped.
+        # A grounded kline is a candidate cover-set iff its nodes are a subset
+        # of `failed`.
+        covers: list[tuple[tuple[int, ...], int]] = []
+        seen_sigs: set[int] = set()
+        failed_set = set(failed)
+        for bucket in self._state.grounded.values():
+            for kline in bucket:
+                if kline.signature in seen_sigs:
+                    continue
+                if not kline.nodes:
+                    continue
+                if set(kline.nodes).issubset(failed_set):
+                    covers.append((tuple(kline.nodes), kline.signature))
+                    seen_sigs.add(kline.signature)
+        # Search for a maximal disjoint cover (by node count covered).
+        best = self._best_disjoint_cover(covers, failed_set)
+        if not best:
+            return list(failed)
+        covered: set[int] = set()
+        resolved: list[int] = []
+        for canon_nodes, canon_sig in best:
+            resolved.append(canon_sig)
+            covered.update(canon_nodes)
+        # Append any failed nodes no cover-set accounted for.
+        resolved.extend(n for n in failed if n not in covered)
+        return resolved
+
+    def _best_disjoint_cover(
+        self, covers: list[tuple[tuple[int, ...], int]], failed_set: set[int]
+    ) -> list[tuple[tuple[int, ...], int]]:
+        """The maximal-disjoint subset of ``covers`` (by total nodes covered).
+
+        Recursive search: covers are disjoint when their node-sets don't
+        overlap. Returns the selection covering the most failed nodes. With
+        small cover sets this is tractable; the combinatorial cost is accepted
+        for completeness (behaviours doc §5).
+        """
+        best: list[tuple[tuple[int, ...], int]] = []
+        best_covered = 0
+
+        def _recurse(
+            idx: int,
+            chosen: list[tuple[tuple[int, ...], int]],
+            used: set[int],
+            covered: int,
+        ) -> None:
+            nonlocal best, best_covered
+            if covered > best_covered:
+                best_covered = covered
+                best = list(chosen)
+            for i in range(idx, len(covers)):
+                kline_nodes, _ = covers[i]
+                if used & set(kline_nodes):
+                    continue  # overlaps an already-chosen cover
+                chosen.append(covers[i])
+                _recurse(i + 1, chosen, used | set(kline_nodes), covered + len(kline_nodes))
+                chosen.pop()
+
+        _recurse(0, [], set(), 0)
+        return best
+
     def _s2_candidates(self, entry: KLine) -> list[KLine]:
         """Grounded klines sharing at least one node value with ``entry.nodes``.
 
