@@ -532,6 +532,99 @@ def test_must_match_partition_picks_maximal_disjoint_cover(
     assert remaining in ([x], [z])
 
 
+# ── S2 rule 2 (node-graft) — behaviours doc §4–§5 ────────────────────────
+
+
+def test_s2_graft_produces_wdmh_48_shape(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """§7 worked example, end-to-end: entry {WDMH:[Mary,had,what]} with grounded
+    {had:[did,have]} (resolving misfit) and {MHALL:[Mary,had,a,little,lamb]}
+    (B3 candidate). Rule 1 expands had->[did,have]; the MHALL graft resolves
+    [did,have]->had, coarsens the core to [Mary,had], and grafts [a,little,lamb]
+    into the open `what` slot. Result: {WDMH:[Mary,had,a,little,lamb]} at S2
+    (the `#48` shape)."""
+    mary = 0b1 << 32
+    had = 0b10 << 32
+    what = 0b100 << 32
+    did = 0b1000 << 32
+    have = 0b10000 << 32
+    a = 0b100000 << 32
+    little = 0b1000000 << 32
+    lamb = 0b10000000 << 32
+    wdmh = signifier.make_signature([mary, had, what, 0b100000000 << 32])
+    entry = KLine(wdmh, [mary, had, what])
+    assert not is_canon(entry, signifier)
+    _ground(rationaliser, KLine(had, [did, have]))               # resolving misfit
+    mhall = signifier.make_signature([mary, had, a, little, lamb])
+    _ground(rationaliser, KLine(mhall, [mary, had, a, little, lamb]))
+
+    rationaliser._state.work_list.append(entry)
+    emitted = rationaliser.rationalise(None)
+
+    assert len(emitted) == 1
+    assert emitted[0].kline.signature == wdmh
+    assert list(emitted[0].kline.nodes) == [mary, had, a, little, lamb]
+
+
+def test_s2_graft_replaces_open_with_candidate_difference(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """§4: E_open non-empty, C_open non-empty -> REPLACE. Entry [A,B,open1],
+    candidate [A,B,X,Y] (shares A,B). Core=[A,B], E_open=[open1], C_open=[X,Y].
+    Result: [A,B,X,Y] (open1 replaced by X,Y)."""
+    a = 0b1 << 32
+    b = 0b10 << 32
+    open1 = 0b100 << 32
+    x = 0b1000 << 32
+    y = 0b10000 << 32
+    sig = signifier.make_signature([a, b, open1, 0b100000 << 32])  # misfit
+    entry = KLine(sig, [a, b, open1])
+    cand_sig = signifier.make_signature([a, b, x, y])
+    _ground(rationaliser, KLine(cand_sig, [a, b, x, y]))
+
+    rationaliser._state.work_list.append(entry)
+    emitted = rationaliser.rationalise(None)
+
+    assert list(emitted[0].kline.nodes) == [a, b, x, y]
+
+
+def test_s2_graft_extends_when_target_open_empty(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """§4: E_open empty, C_open non-empty -> EXTEND. Entry [A,B] fully resolves
+    into candidate [A,B,X]; core=[A,B], E_open=[], C_open=[X]. Result [A,B,X]."""
+    a = 0b1 << 32
+    b = 0b10 << 32
+    x = 0b100 << 32
+    sig = signifier.make_signature([a, b, 0b1000 << 32])          # misfit
+    entry = KLine(sig, [a, b])
+    cand_sig = signifier.make_signature([a, b, x])
+    _ground(rationaliser, KLine(cand_sig, [a, b, x]))
+
+    rationaliser._state.work_list.append(entry)
+    emitted = rationaliser.rationalise(None)
+
+    assert list(emitted[0].kline.nodes) == [a, b, x]
+
+
+def test_s2_graft_does_not_fire_without_foothold(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """§4/B2: a candidate whose resolution yields an empty core (shares/resolves
+    to nothing in the target) does not fire — no foothold means invention.
+    Tested directly on _apply_node_graft: a target and a candidate sharing no
+    node produce an empty core, so the target is returned unchanged."""
+    a = 0b1 << 32
+    b = 0b10 << 32
+    c = 0b100 << 32
+    extra = 0b1000 << 32
+    target = [a, b]
+    cand = KLine(signifier.make_signature([c, extra]), [c, extra])  # shares nothing
+    result = rationaliser._apply_node_graft(target, cand)
+    assert result == [a, b]       # unchanged: no foothold, did not fire
+
+
 def test_single_node_unpairable_relationship_not_routed_to_s2(
     rationaliser: Rationaliser, signifier: NLPSignifier
 ) -> None:

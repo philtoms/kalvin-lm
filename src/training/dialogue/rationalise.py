@@ -318,23 +318,93 @@ class Rationaliser:
         return KValue(entry, SIG_S1)
 
     # ── S2 path (misfit origination) — scripts/dialogue-rationalisation- ─
-    # ─ behaviours.md §4. Rule 1 (node-expansion) landed; rule 2 pending. ─
+    # ─ behaviours.md §4–§5. Rule 1 + rule 2 (graft) both landed. ──────
 
     def _originate_s2(self, entry: KLine) -> KValue | None:
         """S2 path — originate a misfit proposal by accumulated shaping.
 
-        Step 3 implements **rule 1 (node-expansion)** only: initialise
-        ``target = copy(entry.nodes)``, then for each grounded kline whose
-        signature is in ``target.nodes``, replace that node with the kline's
-        nodes. Rule 2 (node-graft with ``must_match``) lands in step 5; until
-        then only expansions shape the proposal. The accumulated ``target`` is
-        emitted at S2 (an originated misfit awaiting ratification). The entry
-        stays in the work-list (B1 — no self-close). See
-        scripts/dialogue-rationalisation-behaviours.md §4.
+        Shape one proposal by processing candidates in preference order,
+        mutating one target as each fires (behaviours doc §4):
+
+        1. **Node-expansion** (rule 1): each node that is a grounded kline's
+           signature is replaced by that kline's nodes.
+        2. **Node-graft** (rule 2, with ``must_match``): each B3-admitted
+           candidate (shared nodes) resolves against the accumulated target;
+           if it fires, the target is coarsened to the resolved core and the
+           candidate's open nodes extend/contract/replace the target's open
+           slots (§5).
+
+        The accumulated target is emitted at S2. The entry stays in the
+        work-list (B1 — no self-close).
         """
         target = list(entry.nodes)
         target = self._apply_node_expansions(target)
+        for candidate in self._s2_candidates(entry):
+            target = self._apply_node_graft(target, candidate)
         return KValue(KLine(entry.signature, target), SIG_S2)
+
+    def _apply_node_graft(self, target: list[int], candidate: KLine) -> list[int]:
+        """Rule 2 — graft ``candidate`` onto ``target`` if it fires.
+
+        Resolve ``target`` against ``candidate.nodes`` into a resolved core and
+        the target's open nodes (``E_open``); ``C_open`` = candidate's nodes not
+        in the core. The candidate fires iff ``must_match`` is empty OR the core
+        is non-empty (behaviours doc §4–§5). On firing, the new target is the
+        resolved core + ``C_open``: ``E_open`` empty & ``C_open`` non-empty
+        extends; ``E_open`` non-empty & ``C_open`` empty contracts; both
+        non-empty replaces; coarsening (resolved form replaces deeper form) is
+        cumulative. If the candidate does not fire, ``target`` is returned
+        unchanged.
+        """
+        core, e_open = self._resolve_target(target, list(candidate.nodes))
+        c_open = [n for n in candidate.nodes if n not in core]
+        # Fires iff must_match empty OR core non-empty. must_match here is the
+        # target itself (every node must be accounted for or be open); a node is
+        # open precisely when it did not resolve into the candidate. So the fire
+        # condition reduces to: core is non-empty OR target was empty to begin
+        # with. An empty core means the candidate shares/resolves-to nothing in
+        # target -> no foothold -> invention -> does not fire (B2).
+        if not core:
+            return target
+        # Graft result: resolved core + C_open (E_open dropped, replaced/filled).
+        return core + c_open
+
+    def _resolve_target(
+        self, target: list[int], candidate_nodes: list[int]
+    ) -> tuple[list[int], list[int]]:
+        """Resolve ``target`` against ``candidate_nodes`` into (core, open).
+
+        The **core** is the portion of ``target`` that resolves into the
+        candidate — directly (a target node is in ``candidate_nodes``) or via a
+        grounded kline whose nodes cover a subset of the unresolved target and
+        whose signature is in ``candidate_nodes``. The core carries the
+        *resolved* (coarsened) form: ``[did, have] -> had`` when ``had`` is in
+        the candidate. The **open** list is the target nodes that resolve to
+        neither (the slots a graft fills). Reuses the maximal-disjoint cover of
+        :meth:`_partition_and_resolve`; iterates to fixed point so resolved
+        signatures can form new coverable subsets (behaviours doc §5).
+        """
+        candidate_set = set(candidate_nodes)
+        core: list[int] = []
+        remaining = list(target)
+        while True:
+            direct = [n for n in remaining if n in candidate_set]
+            failed = [n for n in remaining if n not in candidate_set]
+            if not failed:
+                core.extend(direct)
+                return core, []
+            resolved = self._partition_and_resolve(failed)
+            # Of the resolved failed nodes, those whose resolution landed in
+            # candidate_set join the core; the rest stay unresolved (open or
+            # pending further resolution).
+            newly_matched = [n for n in resolved if n in candidate_set]
+            still_failed = [n for n in resolved if n not in candidate_set]
+            core.extend(direct)
+            core.extend(newly_matched)
+            if not newly_matched:
+                # No progress: still_failed are genuinely open (unresolvable).
+                return core, still_failed
+            remaining = still_failed
 
     def _apply_node_expansions(self, target: list[int]) -> list[int]:
         """Rule 1 — expand every node that is a grounded kline's signature.
