@@ -216,14 +216,22 @@ final shape. There is one proposal, shaped by two successive matches.
 
 ## 8. Consequence for `scripts/dialogue-wdmh.json`
 
-The table currently encodes a **two-step** misfit sequence (rows `#47` and `#48` in
-the trace), predating this mechanism. Under the locked mechanism the proposal is
-shaped in a single cogitation: `#47`'s shape is an intermediate accumulation, not
-an emission. **The table should be collapsed to a single misfit proposal** — the
-`#48`-equivalent `WDMH(Mary, had, a, little, lamb)` at S2, ratified by T at S1 —
-with the redundant `#47` row removed.
+The table previously encoded a **two-step** misfit sequence, predating this
+mechanism. Under the locked mechanism the proposal is shaped in a single
+cogitation: the `#47`-shape (`WDMH(what, did, Mary, have)`) is an intermediate
+accumulation, never emitted. **The table is collapsed to a single misfit
+proposal** — `WDMH(Mary, had, a, little, lamb)` at S2, ratified by T at S1 —
+with the redundant `#47` row (and its ratification) removed.
 
-_Table edit deferred to a follow-up (awaiting go-ahead)._
+**Verification (step 9):** the collapsed table runs to completion with zero
+uncovered rows; K produces the `#48` shape at S2 and T ratifies it at S1.
+**Known artefact (pending step 8):** K re-emits the unratified S2 proposal on
+consecutive cogitations before T ratifies it, and continues shaping different
+proposals after the first is grounded (the S2 entry persists, B1). Both are
+peer-runner consequences of K cogitating without T interleaving and expose an
+S2-lifecycle question — when should an S2 entry retire after ratification? —
+that folds into the S3-stall → S2 migration work (§10). The real harness's
+ratification flow interleaves T between K emissions and does not show this.
 
 ## 9. Symmetry with the Trainer
 

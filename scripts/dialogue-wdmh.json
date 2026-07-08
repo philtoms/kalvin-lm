@@ -113,32 +113,6 @@
       "op": "CANONIZED",
       "signature": "WDMH",
       "nodes": [
-        "what",
-        "did",
-        "Mary",
-        "have"
-      ],
-      "significance": "S2",
-      "role": "K",
-      "notes": "Misfit at H: K substitutes 'did have' for had"
-    },
-    {
-      "op": "CANONIZED",
-      "signature": "WDMH",
-      "nodes": [
-        "what",
-        "did",
-        "Mary",
-        "have"
-      ],
-      "significance": "S1",
-      "role": "T",
-      "notes": "T ratifies"
-    },
-    {
-      "op": "CANONIZED",
-      "signature": "WDMH",
-      "nodes": [
         "Mary",
         "had",
         "a",
