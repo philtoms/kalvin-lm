@@ -1,12 +1,11 @@
 """Phase 2 — peer runner sink types: ``PeerDivergence`` and ``PeerRunResult``.
 
-Spec: ``@specs/peer-dialogue.md`` PDT-14, PDT-15. These are the peer-regime
-analogues of the synchronous ``ActorDivergence`` / ``RunResult``. They carry
-peer-shaped data (an unconsumed set; arrival-ordered events) that the
-synchronous types' cursor-shaped fields cannot express.
+Spec: ``@specs/peer-dialogue.md`` PDT-14, PDT-15. They carry peer-shaped data
+(an unconsumed set; arrival-ordered events) and pin the types' shape and
+defaults.
 
 The sink behaviour itself (Phases 3) is exercised in
-``tests/test_peer_runner.py``. These tests pin the types' shape and defaults.
+``tests/test_peer_runner.py``.
 """
 
 from __future__ import annotations
@@ -48,16 +47,8 @@ def test_peer_divergence_carries_role_emitted_unconsumed():
     assert "T" in str(err) and "divergence" in str(err)
 
 
-def test_peer_divergence_is_distinct_from_actor_divergence():
-    """PDT-14: a separate type, not the synchronous ActorDivergence."""
-    from training.dialogue.runner import ActorDivergence
-
-    assert PeerDivergence is not ActorDivergence
-    assert not issubclass(PeerDivergence, ActorDivergence)
-
-
 def test_peer_divergence_has_no_cursor_field():
-    """PDT-14: peer divergence carries no cursor (unlike ActorDivergence)."""
+    """PDT-14: peer divergence carries no cursor — coverage is content-keyed."""
     err = PeerDivergence(role="K", emitted=_kv(1), unconsumed=())
     assert not hasattr(err, "cursor")
 
@@ -73,13 +64,6 @@ def test_peer_run_result_defaults_are_empty_and_incomplete():
     assert r.covered is False
     assert r.unmatched == []
     assert r.uncovered == []
-
-
-def test_peer_run_result_is_distinct_from_run_result():
-    """PDT-15: a separate type, not the synchronous RunResult."""
-    from training.dialogue.runner import RunResult
-
-    assert PeerRunResult is not RunResult
 
 
 def test_peer_run_result_events_append_in_arrival_order():

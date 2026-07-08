@@ -43,18 +43,17 @@ job." Two later decisions overturned that:
 
 ## Consequences
 
-- The peer runner depends on `training.harness.bus` and `Message`. It is no
-  longer bus-agnostic; it is a harness component, consistent with its nature as
-  a training application.
-- The synchronous ordered `run` (`runner.py`) stays bus-agnostic and
-  synchronous. The two regimes now differ not only in control (loop vs. bus) but
-  in dependency: `runner.py` is standalone; `peer_runner.py` is harness-bound.
-  This is the natural seam.
+- The peer runner depends on `training.harness.bus` and `Message`. It is a
+  harness component, consistent with its nature as a training application.
 - The idle timeout (Q7) is the bus's `queue.get(timeout=...)` — no custom timer.
 - The relay rule ("route to the non-emitting actor", Q4) is expressed as bus
   addressing: the bus-wired sink addresses each published event to the *other*
   role; the bus delivers; the runner-as-wildcard-subscriber does coverage
   bookkeeping and never reroutes.
-- `PeerDivergence` / `PeerRunResult` remain peer-specific types (covered subset,
-  arrival-ordered events) distinct from the synchronous `ActorDivergence` /
-  `RunResult`.
+- `PeerDivergence` / `PeerRunResult` are peer-specific types (covered subset,
+  arrival-ordered events).
+
+> **Update (2026-07-08):** the synchronous ordered `run` was later removed
+> entirely — peer mode is now the only run regime. The bus-subscriber design
+> captured here is the sole runner. ADR-0001 (standalone sink) is moot; the
+> "two regimes" framing throughout is historical.

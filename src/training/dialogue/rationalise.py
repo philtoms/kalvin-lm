@@ -66,14 +66,10 @@ class Rationaliser:
     via ``signifier.make_signature`` when grouping requires it.
     """
 
-    def __init__(self, signifier: KSignifier, *, burst_mode: bool = False) -> None:
+    def __init__(self, signifier: KSignifier) -> None:
         self._signifier = signifier
         self._state = _State()
         self._s12, self._s23, self._s34 = boundaries()
-        # When True, cogitation batches identities into one blast (peer regime);
-        # when False (default), it emits exactly one value per call (ordered
-        # regime — preserves the original golden-master sequence).
-        self._burst_mode = burst_mode
 
     # ── The turn ─────────────────────────────────────────────────────
 
@@ -202,31 +198,19 @@ class Rationaliser:
     def _cogitate(self) -> list[KValue]:
         """Work the next workable entry (LIFO) and emit a batch.
 
-        Granularity is controlled by ``burst_mode``:
+        Batch every workable identity into the list (each emitted at S4 and
+        popped). A relationship always terminates the batch and is never
+        appended to identities: the first workable non-identity returns
+        ``[entry]`` if no identities were collected, else the identities
+        collected so far (the relationship waits for the next call).
 
-        - **``burst_mode=False`` (default, ordered regime)** — emit exactly one
-          value: the first workable identity or the first workable relationship
-          (the original one-at-a-time sequence, preserving the golden master).
-          Returned as a one-element list (or empty when nothing is workable) so
-          the return type is uniform.
-        - **``burst_mode=True`` (peer regime)** — batch every workable identity
-          into the list (each emitted at S4 and popped). A relationship always
-          terminates the batch and is never appended to identities: the first
-          workable non-identity returns ``[entry]`` if no identities were
-          collected, else the identities collected so far (the relationship
-          waits for the next call).
-
-        Returns an empty list when nothing is workable. State mutations (pop
-        identity, add to ``asked``) are identical to the single-emission path;
-        only the return granularity changes.
+        Returns an empty list when nothing is workable.
         """
         batch: list[KValue] = []
         for idx in range(len(self._state.work_list) - 1, -1, -1):
             entry = self._state.work_list[idx]
             if is_identity(entry):
                 batch.append(self._emit_identity(idx, entry.signature))
-                if not self._burst_mode:
-                    break
                 continue
             # First workable non-identity: a relationship terminates the batch.
             if self._level1_eligible(entry):

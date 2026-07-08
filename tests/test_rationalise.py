@@ -63,14 +63,14 @@ def test_rationalise_returns_batch_or_empty(
     ab = signifier.make_signature([0b1, 0b10])
     # No work, no incoming -> empty list (D12: termination is the runner's job).
     assert rationaliser.rationalise(None) == []
-    # With an S2 incoming, cogitation emits an identity value (one-element batch
-    # in the default non-burst mode).
+    # With an S2 incoming, cogitation emits an identity blast (every workable
+    # identity at S4) — here the query's signature and its unrecognised node.
     emitted = rationaliser.rationalise(_value(KLine(ab, [a]), SIG_S2))
     assert isinstance(emitted, list)
-    assert len(emitted) == 1
-    assert emitted[0].kline.signature == ab
-    assert list(emitted[0].kline.nodes) == []
-    assert emitted[0].significance == SIG_S4
+    assert len(emitted) == 2
+    assert all(e.significance == SIG_S4 for e in emitted)
+    assert {e.kline.signature for e in emitted} == {ab, a}
+    assert all(list(e.kline.nodes) == [] for e in emitted)
 
 
 # ── Entry rule ────────────────────────────────────────────────────────────
@@ -151,14 +151,17 @@ def test_entry_s1_canon_grounds_when_all_nodes_ground(
 def test_level0_emits_identity_at_s4(
     rationaliser: Rationaliser, signifier: NLPSignifier
 ) -> None:
-    """Level 0: an unrecognised signature's identity is emitted at S4."""
+    """Level 0: an unrecognised signature's identity is emitted at S4.
+
+    Cogitation batches every workable identity: the query's signature and its
+    unrecognised node are both emitted at S4 in one blast."""
     ab = signifier.make_signature([0b1, 0b10])
     a = signifier.make_signature([0b1])
     emitted = rationaliser.rationalise(_value(KLine(ab, [a]), SIG_S2))
-    assert len(emitted) == 1
-    assert emitted[0].kline.signature == ab
-    assert list(emitted[0].kline.nodes) == []
-    assert emitted[0].significance == SIG_S4
+    assert len(emitted) == 2
+    assert all(e.significance == SIG_S4 for e in emitted)
+    assert {e.kline.signature for e in emitted} == {ab, a}
+    assert all(list(e.kline.nodes) == [] for e in emitted)
 
 
 def test_level0_no_opening_special_case(
@@ -170,8 +173,8 @@ def test_level0_no_opening_special_case(
     a = signifier.make_signature([0b1])
     opening = rationaliser.rationalise(_value(KLine(ab, [a]), SIG_S2))
     # Same emission as test_level0_emits_identity_at_s4 — turn-0 == any S2 turn.
-    assert len(opening) == 1
-    assert opening[0].kline.signature == ab
+    assert len(opening) == 2
+    assert {e.kline.signature for e in opening} == {ab, a}
     assert opening[0].significance == SIG_S4
 
 

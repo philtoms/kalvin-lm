@@ -2,18 +2,17 @@
 
 ## Overview
 
-A **peer dialogue** is an alternative run regime for an authored
-`DialogueTable` (`@specs/dialogue-driven-training.md`). After the trainer
-delivers the opening entry to the trainee, both sides emit on their own
-schedule, in any order and any count; the runner is a **sink** that receives
-emissions, validates them against a coverage set, and watches for the closing
-entry. Order within the middle is not enforced; anticipation (an actor emitting
-ahead of the table's causal order) is permitted and unflagged.
+A **peer dialogue** is the run regime for an authored `DialogueTable`
+(`@specs/dialogue-driven-training.md`). After the trainer delivers the opening
+entry to the trainee, both sides emit on their own schedule, in any order and
+any count; the runner is a **sink** that receives emissions, validates them
+against a coverage set, and watches for the closing entry. Order within the
+middle is not enforced; anticipation (an actor emitting ahead of the table's
+causal order) is permitted and unflagged.
 
-The synchronous `run` (`@specs/dialogue-driven-training.md` §The Runner) is
-unchanged. This spec adds a sibling regime, `run_peer`, with its own contract
-and result types. The two share the `DialogueTable`, the `DecodedTurn`, and the
-content-equality notion of a match; they differ in control regime.
+This spec defines the runner (`run_peer`), its contract, and its result types.
+It shares the `DialogueTable`, the `DecodedTurn`, and the content-equality
+notion of a match with `@specs/dialogue-driven-training.md`.
 
 ## Dependencies
 
@@ -22,16 +21,13 @@ content-equality notion of a match; they differ in control regime.
 - `@specs/agent.md` — `RationaliseEvent(kind, query, proposal, role)`.
 - `@CONTEXT.md` — Role, KValue, Significance.
 
-## The Table in Peer Mode
+## The Table
 
-A `DialogueTable` declares its run regime via an optional **`peer` section**:
-a table carrying a `peer` section is in peer mode; a table without one is in
-the default ordered (synchronous) regime. There is no top-level `mode` field —
-the section's presence *is* the selector. **All peer operations and modifiers
-live in the `peer` section** (so future peer knobs extend it without touching
-the rest of the table); the runner is format-agnostic and consumes
-`DecodedTurn`s, not the raw table. The loader resolves the section into
-`run_peer` inputs.
+A `DialogueTable` is a peer-mode table. An optional **`peer` section** carries
+the peer modifiers; **all peer operations and modifiers live in the `peer`
+section** (so future peer knobs extend it without touching the rest of the
+table). The runner is format-agnostic and consumes `DecodedTurn`s, not the raw
+table. The loader resolves the section into `run_peer` inputs.
 
 The single peer modifier today is:
 
@@ -105,16 +101,14 @@ not track turns. **Anticipation** (emitting ahead of authored causal order) and
 participant polices order; agents must rationalise and cogitate to make sense
 of the stream — the point of Kalvin.
 
-The synchronous `run` and its `Actor`/`respond` contract are untouched.
-
 ### Actor contract
 
-Peer-regime actors mirror :class:`~kalvin.agent.KAgent`'s adapter pattern:
-an actor holds an **`EventSink`** (injected at construction, as KAgent holds an
-adapter) and publishes events to it via `on_event` (as KAgent publishes via
-`_publish` → `adapter.on_event`). The runner builds a bus-wired sink per actor
-(bridging `on_event` to a bus `Message` addressed to the other role) and
-constructs each actor with its sink, so any adapter-driven actor is drop-in.
+Actors mirror :class:`~kalvin.agent.KAgent`'s adapter pattern: an actor holds
+an **`EventSink`** (injected at construction, as KAgent holds an adapter) and
+publishes events to it via `on_event` (as KAgent publishes via `_publish` →
+`adapter.on_event`). The runner builds a bus-wired sink per actor (bridging
+`on_event` to a bus `Message` addressed to the other role) and constructs each
+actor with its sink, so any adapter-driven actor is drop-in.
 
 ```
 EventSink:
@@ -122,7 +116,7 @@ EventSink:
 
 PeerActor:
   role: str
-  accept(event: RationaliseEvent | None) -> None   # peer regime; publishes via its sink
+  accept(event: RationaliseEvent | None) -> None   # publishes via its sink
 ```
 
 `accept` is **fire-and-forget**: it receives an incoming event (or `None` for
@@ -130,15 +124,13 @@ the opening seed) and returns immediately; the actor decides when and whether
 to publish events via its sink — possibly later (from a cogitation thread),
 possibly many times (a priming burst, a scaffolding sequence), possibly never.
 The actor does not know about the bus; it merely publishes to its sink, and the
-sink routes. The ordered regime's blocking `Actor.respond` is a separate
-contract; an actor may implement one or both.
+sink routes.
 
 The runner constructs actors via **factories** ``(sink) -> PeerActor``: only
 the runner owns the bus, so only it can build the bus-wired sink, so it builds
 the actors too (mirroring how a harness injects `KAgentAdapter(bus)` into
-`KAgent`). This makes any adapter-driven actor — including the existing
-`SynthesizingTrainer` and `RationalisingTrainee`, written for the ordered
-regime — drop-in for peer mode.
+`KAgent`). This makes any adapter-driven actor — including
+`SynthesizingTrainer` and `RationalisingTrainee` — drop-in.
 
 ### Permitted state
 
@@ -207,7 +199,7 @@ of how much of the authored exchange the actors actually traversed.
 
 The driver runs `bus.run()` until `closing_seen` (the subscriber calls
 `bus.stop()`). Because `accept` is fire-and-forget and replies are zero-or-many,
-there is no synchronous "actor finished" signal; the run ends only on the
+there is no "actor finished" signal; the run ends only on the
 closing. If the actors go silent before the closing — a **stall** — the **idle
 timeout** ends the run: an silence-bounded deadline (the bus's
 `queue.get(timeout=...)`); if no emission arrives within it and the closing
@@ -233,11 +225,10 @@ PeerRunResult:
     uncovered: list[DecodedTurn]         # distinct middle rows never consumed (incomplete runs)
 ```
 
-`PeerDivergence` and `PeerRunResult` are **separate** from the synchronous
-`ActorDivergence` and `RunResult`. They carry peer-shaped data (an unconsumed
-set, arrival-ordered events) that the synchronous types' cursor-shaped fields
-cannot express. `PeerRunResult.events` is **arrival-ordered**, not
-table-ordered — a deliberate difference from the synchronous `RunResult.events`.
+`PeerRunResult.events` is **arrival-ordered** — every received emission in
+the order the bus delivered it. `unmatched` is populated only under
+`on_divergence="accept"`; `uncovered` lists the distinct middle rows never
+seen (an efficiency diagnostic for incomplete runs).
 
 ## Out of Scope
 
@@ -257,8 +248,8 @@ table-ordered — a deliberate difference from the synchronous `RunResult.events
 
 | ID    | Criterion                                                                                                                                                                                      | Origin ref        |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| PDT-1 | A `DialogueTable` carries an optional `peer` section whose presence selects peer mode (no top-level `mode` field); all peer modifiers live in it; the loader resolves them into `run_peer` inputs; unknown `peer` keys are a decode error; the runner consumes `DecodedTurn`s, not the raw table | §The Table in Peer Mode |
-| PDT-2 | The `turns` of a peer-mode table are an ordered list documenting cause and effect; that order is not enforced within the middle by the runner                                                  | §The Table in Peer Mode |
+| PDT-1 | A `DialogueTable` may carry an optional `peer` section holding peer modifiers; all peer modifiers live in it; the loader resolves them into `run_peer` inputs; unknown `peer` keys are a decode error; the runner consumes `DecodedTurn`s, not the raw table | §The Table |
+| PDT-2 | The `turns` of a peer-mode table are an ordered list documenting cause and effect; that order is not enforced within the middle by the runner                                                  | §The Table        |
 | PDT-3 | A peer-mode decoded table has three zones: opening (`decoded[0]`, first, positional, trainer), middle (`decoded[1:-1]`, coverage set), closing (`decoded[-1]`, last, positional)               | §Zones            |
 | PDT-4 | The opening is a trainer row; the closing is content-distinct from the opening **and** from every middle row; a table violating any is malformed at decode time                                                                | §Invariants       |
 | PDT-5 | The peer run is driven by the harness `MessageBus`: the bus is the sink and relay; the runner is a coverage-tracking wildcard subscriber plus a thin driver that seeds the opening and runs `bus.run()` until the closing. The runner depends on `training.harness` (ADR-0002)            | §The Runner       |
@@ -270,9 +261,9 @@ table-ordered — a deliberate difference from the synchronous `RunResult.events
 | PDT-11 | Anticipation and interjection within the middle are permitted and unflagged: an emission matching a same-role distinct content is a normal match regardless of authored causal order or whether it was solicited                | §Anticipation and interjection |
 | PDT-12 | The opening and closing are the only positional constraints (enforced by decode-time validation and call order, not by the relay); anticipation/interjection apply to the middle only; the opening is not anticipatable              | §Anticipation and interjection |
 | PDT-13 | `complete = closing-seen`; an idle timeout ends a stalled run (silence, no closing) as incomplete (`complete = False`, non-fatal); coverage is a separate efficiency diagnostic, not a terminal condition (extreme anticipation — closing-first, zero middle coverage — is technically complete) | §Completion, §Termination and stall |
-| PDT-14 | `PeerDivergence` is a separate type carrying `(role, emitted, unconsumed)`, distinct from synchronous `ActorDivergence`                                                                         | §Types            |
-| PDT-15 | `PeerRunResult` is a separate type with arrival-ordered `events`, plus `complete`, `covered`, `unmatched` (accept-mode), `uncovered` (incomplete runs); distinct from synchronous `RunResult`   | §Types            |
-| PDT-16 | The synchronous `run`, the `Actor`/`respond` contract, `ActorDivergence`, and `RunResult` are unchanged by this spec                                                                                                                                            | §Overview, §Types |
-| PDT-17 | Peer actors mirror KAgent's adapter pattern: an actor holds an `EventSink` (injected at construction) and publishes via `on_event`; `accept(event)` receives incoming and the actor publishes zero-or-many replies via its sink (`event=None` = "you open"); the runner builds the bus-wired sink and constructs actors via factories `(sink) -> PeerActor`; any adapter-driven actor is drop-in. `respond` is unchanged for the ordered regime | §Actor contract |
+| PDT-14 | `PeerDivergence` carries `(role, emitted, unconsumed)` and has no cursor (coverage is content-keyed)                                                                                          | §Types            |
+| PDT-15 | `PeerRunResult` has arrival-ordered `events`, plus `complete`, `covered`, `unmatched` (accept-mode), `uncovered` (incomplete runs)                                                              | §Types            |
+| PDT-16 | (removed) The synchronous ordered `run` is gone; peer mode (`run_peer`) is the only run regime                                                                                                  | §Overview, §Types |
+| PDT-17 | Actors mirror KAgent's adapter pattern: an actor holds an `EventSink` (injected at construction) and publishes via `on_event`; `accept(event)` receives incoming and the actor publishes zero-or-many replies via its sink (`event=None` = "you open"); the runner builds the bus-wired sink and constructs actors via factories `(sink) -> PeerActor`; any adapter-driven actor is drop-in | §Actor contract |
 | PDT-18 | There is no synchronised alternation: an actor may reply zero-or-many times per `accept`; each reply is routed by the bus to the other role (the actor addresses replies to the non-emitter); the runner never reroutes          | §The Runner, §Actor contract |
 | PDT-19 | Termination is `closing_seen` (the subscriber calls `bus.stop()`); the idle timeout is silence-bounded (the bus's `queue.get(timeout=...)`) and a stall is reported as `complete = False`, not raised                       | §Termination and stall |

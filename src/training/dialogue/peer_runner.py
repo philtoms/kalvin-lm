@@ -9,8 +9,7 @@ This module mirrors the :class:`~kalvin.agent.KAgent` adapter pattern: actors
 take an :class:`EventSink` at construction (as KAgent takes an adapter) and
 publish events to it (as KAgent publishes via its adapter). The runner builds a
 bus-wired sink per actor (the sink bridges ``on_event`` to a bus ``Message``
-addressed to the other role), so any adapter-driven actor is drop-in. The
-ordered-regime ``respond`` contract is unchanged.
+addressed to the other role), so any adapter-driven actor is drop-in.
 
 The dialogue is messy and real: **no synchronised alternation** (an actor may
 publish zero-or-many per incoming), and **anticipation** and **interjection**
@@ -78,8 +77,7 @@ class PeerActor(Protocol):
     Holds an :class:`EventSink` (injected at construction) and publishes events
     to it. ``accept`` receives an incoming event (or ``None`` for the opening
     seed) and the actor decides whether/when/how-many events to publish via its
-    sink — fire-and-forget, zero-or-many. This is the peer-regime contract; the
-    ordered regime's ``respond`` is a separate, blocking contract.
+    sink — fire-and-forget, zero-or-many.
     """
 
     @property
@@ -104,9 +102,8 @@ class PeerDivergence(Exception):  # noqa: N818 - spec names this type
     Raised under ``on_divergence="fail"`` when an emission's
     ``(role, kline, significance)`` matches neither the closing nor any of the
     table's distinct middle contents. Carries the role, the emitted proposal,
-    and the uncovered same-role contents at the moment of divergence. Distinct
-    from the synchronous :class:`~training.dialogue.runner.ActorDivergence`,
-    which is cursor-shaped; peer divergence has no cursor.
+    and the uncovered same-role contents at the moment of divergence. Peer
+    divergence has no cursor — coverage is content-keyed, not positional.
     """
 
     def __init__(
@@ -133,8 +130,8 @@ class PeerRunResult:
     """Outcome of a peer dialogue run (spec §Types).
 
     ``events`` is **arrival-ordered** — every observed emission, in the order
-    the bus delivered them — not table-ordered. ``unmatched`` is populated only
-    under ``on_divergence="accept"``; ``uncovered`` lists the distinct middle
+    the bus delivered them. ``unmatched`` is populated only under
+    ``on_divergence="accept"``; ``uncovered`` lists the distinct middle
     contents never seen (a coverage/efficiency diagnostic).
     """
 

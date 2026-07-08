@@ -1,43 +1,36 @@
 """Run a dialogue end-to-end through the table-reading trainer and trainee.
 
-Loads a dialogue table, decodes it, and drives it to completion. The **run
-regime defaults to peer mode**: the sink-shaped :class:`PeerRunner` drives a
-fresh :class:`TableTrainer` and :class:`TableTrainee`, bridging their
-emissions onto it (order-agnostic on middle entries — the natural fit for
-real actors). Pass ``--ordered`` to drive the bus-agnostic ordered runner
-(:func:`training.dialogue.run`) instead, which enforces strict turn order.
-Selecting the regime on the command line keeps the table under test untouched
-— the same JSON can be run either way. Prints a PASS/FAIL summary; with
-``--verbose`` it traces the exchange, showing
-each validated entry in its scripted (declarative table-row) form.
+Loads a dialogue table, decodes it, and drives it to completion through the
+sink-shaped :class:`PeerRunner`, which bridges the actors' emissions onto a
+:class:`MessageBus` (coverage is order-agnostic on middle entries — the natural
+fit for real actors). Prints a PASS/FAIL summary; with ``--verbose`` it traces
+the exchange, showing each validated entry in its scripted (declarative
+table-row) form.
 
-For an ordered run, ``--rationalise`` substitutes a
-:class:`RationalisingTrainee` (a real, stateful, rationalising trainee) for the
-default ``TableTrainee`, and ``--synthesize`` substitutes a
-:class:`SynthesizingTrainer` (a real trainer that derives each turn from the
-compiled script) for the default ``TableTrainer``. The two flags are
-orthogonal: passing both runs the two real actors against the same golden
-master. They apply in both regimes — the real actors are drop-in (adapter-
-driven), so peer mode with ``--rationalise`` / ``--synthesize`` runs the real
-actors through the bus-subscriber relay. Note real actors do not reproduce the
-table exactly, so peer mode with them typically needs ``--on-divergence
-accept`` (else off-table emissions raise ``PeerDivergence``).
+``--rationalise`` substitutes a :class:`RationalisingTrainee` (a real, stateful,
+rationalising trainee) for the default ``TableTrainee``, and ``--synthesize``
+substitutes a :class:`SynthesizingTrainer` (a real trainer that derives each
+turn from the compiled script) for the default ``TableTrainer``. The two flags
+are orthogonal: passing both runs the two real actors against the same golden
+master. Note real actors do not reproduce the table exactly, so running them
+typically needs ``--on-divergence accept`` (else off-table emissions raise
+``PeerDivergence``).
 
-The runner is bus-agnostic: there is no harness message bus and no adapter
-here. Bus integration arrives with the real actors.
+The runner is bus-driven: it owns a :class:`MessageBus`, builds a bus-wired
+:class:`EventSink` per actor, and runs the bus until the closing is seen or the
+idle timeout fires.
 
 Usage::
 
-    python scripts/dialogue_run.py                             # default dialogue (peer mode)
+    python scripts/dialogue_run.py                             # default dialogue
     python scripts/dialogue_run.py scripts/dialogue-mhall.json # explicit path
     python scripts/dialogue_run.py --verbose                   # scripted-form trace
     python scripts/dialogue_run.py --rationalise               # RationalisingTrainee
     python scripts/dialogue_run.py --synthesize                # SynthesizingTrainer
     python scripts/dialogue_run.py --synthesize --rationalise  # both real actors
-    python scripts/dialogue_run.py --ordered                   # ordered mode (strict turn order)
-    python scripts/dialogue_run.py --on-divergence accept      # accept off-table emissions (peer)
+    python scripts/dialogue_run.py --on-divergence accept      # accept off-table emissions
 
-Exit code is 0 on a completing run (table exhausted), 1 on an actor divergence
+Exit code is 0 on a completing run (closing seen), 1 on an actor divergence
 or incomplete run.
 """
 
@@ -57,17 +50,15 @@ from kalvin.nlp_tokenizer import NLPTokenizer  # noqa: E402
 from kalvin.signifier import NLPSignifier  # noqa: E402
 from ks.compiler import compile_source  # noqa: E402
 from training.dialogue import (  # noqa: E402
-    ActorDivergence,
     PeerDivergence,
     TableTrainee,
     TableTrainer,
     decode,
     load_table,
-    run,
     run_peer,
 )
+from training.dialogue.decoder import primaries_from_source  # noqa: E402
 from training.dialogue.runner import (  # noqa: E402
-    Actor,
     RationalisingTrainee,
     SynthesizingTrainer,
 )
@@ -128,11 +119,6 @@ def _render_scripted(
     ``sig_to_label``. A signature/node with no known label falls back to its
     hex form rather than disappearing silently. A script ``close`` marker is
     surfaced when present.
-
-    Shared by the ordered trace (decoded turn) and the peer trace (event):
-    both carry a role and a KValue; ``op`` is the dialogue vocabulary on a
-    decoded turn and the proposal's structural ``dbg.op`` (or ``?``) on a peer
-    event.
     """
     sig_label = sig_to_label.get(kvalue.kline.signature) or f"0x{kvalue.kline.signature:x}"
     node_labels = [
@@ -144,13 +130,8 @@ def _render_scripted(
     return f"{role} {op:13} {sig_label}{nodes} {band}{close_marker}"
 
 
-def _scripted_form(turn, sig_to_label: dict[int, str]) -> str:
-    """Scripted form of a decoded (ordered-regime) turn."""
-    return _render_scripted(turn.role, turn.op, turn.value, sig_to_label, close=turn.close)
-
-
 def _scripted_form_event(event, sig_to_label: dict[int, str]) -> str:
-    """Scripted form of a peer-regime emission (arrival-ordered).
+    """Scripted form of an emission (arrival-ordered).
 
     A peer event carries the emitter's ``role`` and its ``proposal`` KValue but
     not the table's ``op``; the proposal's ``dbg.op`` (the structural state the
@@ -163,10 +144,8 @@ def _scripted_form_event(event, sig_to_label: dict[int, str]) -> str:
 def _render_trace_entry(idx: int, scripted: str, record: dict | None) -> str:
     """One trace line: the scripted form, with the source JSON record beneath.
 
-    Shared by the ordered and peer traces. ``record`` is the raw JSON turn dict
-    carried on the decoded turn (``None`` for synthetic turns / unmatched
-    events) — when present it is shown verbatim so the table row the author
-    wrote is visible alongside its decoded form.
+    ``record`` is the raw JSON turn dict — when present it is shown verbatim so
+    the table row the author wrote is visible alongside its decoded form.
     """
     line = f"  #{idx:2} {scripted}"
     if record is not None:
@@ -174,68 +153,25 @@ def _render_trace_entry(idx: int, scripted: str, record: dict | None) -> str:
     return line
 
 
-def _trace(events: list, decoded, sig_to_label: dict[int, str]) -> str:
-    """A per-turn trace showing the scripted form of each validated entry.
-
-    Each emitted event is aligned to its decoded turn (by KLine identity) and
-    rendered as the scripted row that produced it (see :func:`_scripted_form`),
-    with the source JSON record shown beneath. When the run is incomplete —
-    fewer events than decoded turns — the unreached table rows are appended
-    in a clearly marked section so the whole table is visible.
-    """
-    # Reconstruct the decoded turn per emitted event from the decoded order.
-    turns: list = []
-    di = 0
-    for ev in events:
-        while di < len(decoded) and decoded[di].value.kline != ev.proposal.kline:
-            di += 1
-        if di < len(decoded):
-            turns.append(decoded[di])
-            di += 1
-        else:  # pragma: no cover - defensive
-            turns.append(None)
-
-    lines = []
-    for i, turn in enumerate(turns):
-        if turn is None:
-            lines.append(f"  #{i:2} (unmatched event)")
-        else:
-            lines.append(
-                _render_trace_entry(i, _scripted_form(turn, sig_to_label), turn.record)
-            )
-    # Unreached rows: the run stopped before the table was exhausted (a real
-    # actor diverged or stalled). Surface them so the full table is visible.
-    unreached = decoded[di:]
-    if unreached:
-        lines.append("  --- unreached (run incomplete) ---")
-        idx = len(turns)
-        for turn in unreached:
-            lines.append(
-                _render_trace_entry(idx, _scripted_form(turn, sig_to_label), turn.record)
-            )
-            idx += 1
-    return "\n".join(lines)
-
-
 def _peer_trace(
     events: list,
     decoded: list,
     sig_to_label: dict[int, str],
 ) -> str:
-    """Arrival-ordered trace of peer emissions in scripted form.
+    """Arrival-ordered trace of emissions in scripted form.
 
-    Peer events arrive in bus-delivery order (no synchronised alternation). Each
-    is rendered on its own numbered line via :func:`_scripted_form_event`, and —
-    when the emission matches a decoded turn's content key — the table's JSON
-    record for that turn is shown beneath it (the verbatim row the author
-    wrote). An emission with no matching decoded turn (e.g. an off-table
-    emission under ``on_divergence="accept"``) shows no record.
+    Events arrive in bus-delivery order. Each is rendered on its own numbered
+    line via :func:`_scripted_form_event`, and — when the emission matches a
+    decoded turn's content key — the table's JSON record for that turn is shown
+    beneath it (the verbatim row the author wrote). An emission with no
+    matching decoded turn (e.g. an off-table emission under
+    ``on_divergence="accept"``) shows no record.
     """
     # Index decoded turns by content key so each event can be associated with
-    # its source table row (peer content identity is role + kline +
-    # significance — see ``turn_content_key``). The first decoded turn per key
-    # wins; duplicate content collapses to one record, matching the peer
-    # runner's own coverage bookkeeping.
+    # its source table row (content identity is role + kline + significance —
+    # see ``turn_content_key``). The first decoded turn per key wins; duplicate
+    # content collapses to one record, matching the runner's own coverage
+    # bookkeeping.
     from training.dialogue.decoder import turn_content_key
 
     record_by_key: dict = {}
@@ -271,36 +207,13 @@ def _peer_trace(
         lines.append("  --- unreached (run incomplete) ---")
         idx = len(events)
         for turn in unreached:
-            lines.append(
-                _render_trace_entry(idx, _scripted_form(turn, sig_to_label), turn.record)
+            op = turn.op if turn.op else "?"
+            scripted = _render_scripted(
+                turn.role, op, turn.value, sig_to_label, close=turn.close
             )
+            lines.append(_render_trace_entry(idx, scripted, turn.record))
             idx += 1
     return "\n".join(lines)
-
-
-def _summary(
-    result,
-    decoded,
-    dialogue_path: str,
-    verbose: bool,
-    trainer_kind: str,
-    trainee_kind: str,
-    sig_to_label: dict[int, str],
-) -> str:
-    n_t = sum(1 for t in decoded if t.role == "T")
-    n_k = sum(1 for t in decoded if t.role == "K")
-    header = (
-        f"Dialogue session: {dialogue_path}\n"
-        f"  trainer             : {trainer_kind}\n"
-        f"  trainee             : {trainee_kind}\n"
-        f"  table trainer turns : {n_t}\n"
-        f"  table trainee turns : {n_k}\n"
-        f"  events emitted      : {len(result.events)}\n"
-        f"  complete            : {result.complete}\n"
-    )
-    if verbose:
-        return header + "\nExchange:\n" + _trace(result.events, decoded, sig_to_label)
-    return header
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -337,21 +250,12 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--ordered",
-        action="store_true",
-        help=(
-            "Run in ordered mode: drive the bus-agnostic ordered runner, which "
-            "enforces strict turn order against the table cursor. The default "
-            "is peer mode (the PeerRunner, order-agnostic on middle entries)."
-        ),
-    )
-    parser.add_argument(
         "--on-divergence",
         choices=("fail", "accept"),
         default=None,
         help=(
-            "Peer-mode divergence policy (default: fail, or the table's "
-            "peer.on_divergence when it declares one). Ignored in ordered mode."
+            "Divergence policy (default: fail, or the table's "
+            "peer.on_divergence when it declares one)."
         ),
     )
     args = parser.parse_args(argv)
@@ -363,111 +267,69 @@ def main(argv: list[str] | None = None) -> int:
     table = load_table(json.loads(Path(dialogue_path).read_text()))
     decoded = decode(table, tokenizer=tok, signifier=sigf)
     # The scripted-form trace needs the compiled script's signature→label map;
-    # build it once when --verbose is set (shared by both regimes).
+    # build it once when --verbose is set.
     sig_to_label = (
         _sig_to_label(table, tokenizer=tok, signifier=sigf) if args.verbose else {}
     )
 
-    # The run regime defaults to peer mode (the PeerRunner, order-agnostic
-    # on middle entries — the natural fit for real actors). ``--ordered``
-    # opts into the bus-agnostic ordered runner, which enforces strict turn
-    # order. The regime is selected on the command line, not by the table, so
-    # the JSON under test stays untouched. The divergence policy is
-    # ``--on-divergence`` when given, else the table's declared
-    # ``peer.on_divergence``, else ``fail``.
-    if not args.ordered:
-        on_divergence = args.on_divergence
-        if on_divergence is None:
-            on_divergence = table.peer.on_divergence if table.is_peer else "fail"
-        # The --synthesize/--rationalise flags honour peer mode too: the real
-        # actors are drop-in (adapter-driven). Orthogonal, as in ordered mode.
-        compiled = (
-            compile_source(table.script, tokenizer=tok, signifier=sigf, dev=True)
-            if args.synthesize
-            else None
-        )
-        trainer_factory = (
-            (lambda sink: SynthesizingTrainer(compiled, sigf, sink=sink))
-            if args.synthesize
-            else (lambda sink: TableTrainer(decoded, sink=sink))
-        )
-        trainee_factory = (
-            (lambda sink: RationalisingTrainee(sigf, sink=sink, burst_mode=True))
-            if args.rationalise
-            else (lambda sink: TableTrainee(decoded, sink=sink))
-        )
-        try:
-            runner = run_peer(
-                decoded,
-                trainer_factory,
-                trainee_factory,
-                on_divergence=on_divergence,
-            )
-            res = runner.run()
-        except PeerDivergence as exc:
-            print(
-                f"FAIL — {exc.role} divergence: emitted {_label_of(exc.emitted)} "
-                f"(sig={exc.emitted.significance:#x}) matches no closing or "
-                f"middle content ({len(exc.unconsumed)} uncovered same-role).",
-                file=sys.stderr,
-            )
-            return 1
-        print(
-            f"Peer dialogue session: {dialogue_path}\n"
-            f"  on divergence       : {on_divergence}\n"
-            f"  events received     : {len(res.events)}\n"
-            f"  complete            : {res.complete}\n"
-            f"  covered (middle)    : {res.covered}\n"
-            f"  unmatched emissions : {len(res.unmatched)}\n"
-            f"  uncovered rows      : {len(res.uncovered)}"
-        )
-        if args.verbose:
-            print(
-                "\nExchange (arrival order):\n"
-                + _peer_trace(res.events, decoded, sig_to_label)
-            )
-        return 0 if res.complete else 1
+    # The divergence policy is ``--on-divergence`` when given, else the table's
+    # declared ``peer.on_divergence``, else ``fail``.
+    on_divergence = args.on_divergence
+    if on_divergence is None:
+        on_divergence = table.peer.on_divergence if table.is_peer else "fail"
 
+    # The --synthesize/--rationalise flags substitute real actors. They are
+    # orthogonal: passing both runs the two real actors against the same golden
+    # master. The real actors are drop-in (adapter-driven).
+    compiled = None
+    primaries = None
     if args.synthesize:
         compiled = compile_source(table.script, tokenizer=tok, signifier=sigf, dev=True)
-        trainer: Actor = SynthesizingTrainer(compiled, sigf)
-        trainer_kind = "SynthesizingTrainer"
-    else:
-        trainer = TableTrainer(decoded)
-        trainer_kind = "TableTrainer"
+        primaries = primaries_from_source(
+            table.script, tokenizer=tok, signifier=sigf
+        )
 
-    if args.rationalise:
-        trainee: Actor = RationalisingTrainee(sigf)
-        trainee_kind = "RationalisingTrainee"
-    else:
-        trainee = TableTrainee(decoded)
-        trainee_kind = "TableTrainee"
-
+    trainer_factory = (
+        (lambda sink: SynthesizingTrainer(compiled, sigf, primaries, sink=sink))
+        if args.synthesize
+        else (lambda sink: TableTrainer(decoded, sink=sink))
+    )
+    trainee_factory = (
+        (lambda sink: RationalisingTrainee(sigf, sink=sink))
+        if args.rationalise
+        else (lambda sink: TableTrainee(decoded, sink=sink))
+    )
     try:
-        result = run(decoded, trainer=trainer, trainee=trainee)
-    except ActorDivergence as exc:
+        runner = run_peer(
+            decoded,
+            trainer_factory,
+            trainee_factory,
+            on_divergence=on_divergence,
+        )
+        res = runner.run()
+    except PeerDivergence as exc:
         print(
-            f"FAIL — {exc.role} divergence at cursor {exc.cursor}: "
-            f"expected {_label_of(exc.expected)} "
-            f"(sig={exc.expected.significance:#x}), "
-            f"emitted {_label_of(exc.emitted)} "
-            f"(sig={exc.emitted.significance:#x})",
+            f"FAIL — {exc.role} divergence: emitted {_label_of(exc.emitted)} "
+            f"(sig={exc.emitted.significance:#x}) matches no closing or "
+            f"middle content ({len(exc.unconsumed)} uncovered same-role).",
             file=sys.stderr,
         )
         return 1
-
     print(
-        _summary(
-            result,
-            decoded,
-            dialogue_path,
-            args.verbose,
-            trainer_kind,
-            trainee_kind,
-            sig_to_label,
-        )
+        f"Dialogue session: {dialogue_path}\n"
+        f"  on divergence       : {on_divergence}\n"
+        f"  events received     : {len(res.events)}\n"
+        f"  complete            : {res.complete}\n"
+        f"  covered (middle)    : {res.covered}\n"
+        f"  unmatched emissions : {len(res.unmatched)}\n"
+        f"  uncovered rows      : {len(res.uncovered)}"
     )
-    return 0 if result.complete else 1
+    if args.verbose:
+        print(
+            "\nExchange (arrival order):\n"
+            + _peer_trace(res.events, decoded, sig_to_label)
+        )
+    return 0 if res.complete else 1
 
 
 if __name__ == "__main__":

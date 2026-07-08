@@ -51,8 +51,8 @@ BAND_TO_SIG: dict[str, int] = {
 Role = Literal["T", "K"]  # a turn's role: trainer (T) or trainee (K)
 
 # The peer runner's divergence policy (spec ``@specs/peer-dialogue.md``
-# §Matching). Lives on :class:`PeerConfig`, which selects peer mode by its
-# presence on the table.
+# §Matching). Lives on :class:`PeerConfig`, carried on the table's optional
+# ``peer`` section.
 OnDivergence = Literal["fail", "accept"]
 
 # The table's closed op vocabulary (spec §Dialogue Table). An unknown op is
@@ -107,13 +107,11 @@ class Turn:
 
 @dataclass(frozen=True)
 class PeerConfig:
-    """Peer-mode configuration (spec ``@specs/peer-dialogue.md`` §The Table in
-    Peer Mode).
+    """Peer-runner configuration (spec ``@specs/peer-dialogue.md`` §The Table).
 
-    A table is in **peer mode** when it carries a ``peer`` section; the
-    section's presence is the mode selector (there is no separate ``mode``
-    field). All peer operations and modifiers live in this one block so future
-    peer knobs extend it without touching the rest of the table.
+    Carried on a ``DialogueTable``'s optional ``peer`` section. All peer
+    operations and modifiers live in this one block so future peer knobs extend
+    it without touching the rest of the table.
 
     - ``on_divergence`` — the peer runner's divergence policy (default
       ``"fail"``).
@@ -130,13 +128,12 @@ class DialogueTable:
     signatures, atom values, subword composition). ``turns`` is the exact T/K
     exchange — prescriptive, not predictive.
 
-    ``peer`` selects the run regime (spec ``@specs/peer-dialogue.md`` §The
-    Table in Peer Mode): ``None`` (default, no ``peer`` section) drives the
-    synchronous :func:`~training.dialogue.runner.run`; a :class:`PeerConfig`
-    drives the sink-shaped :class:`~training.dialogue.peer_runner.PeerRunner`.
-    The section's presence *is* the peer-mode selector — all peer operations
-    and modifiers live in it. The runners consume :class:`DecodedTurn`s, not
-    the raw table.
+    ``peer`` carries the peer-runner modifiers (spec
+    ``@specs/peer-dialogue.md`` §The Table): ``None`` (default, no ``peer``
+    section) means the defaults apply; a :class:`PeerConfig` overrides them.
+    The section's presence is **not** a regime selector — peer mode is the only
+    run regime — it is purely the modifiers container. The runner consumes
+    :class:`DecodedTurn`s, not the raw table.
     """
 
     script: str
@@ -145,7 +142,7 @@ class DialogueTable:
 
     @property
     def is_peer(self) -> bool:
-        """True when this table declares peer mode (carries a ``peer`` section)."""
+        """True when this table carries a ``peer`` section (peer modifiers present)."""
         return self.peer is not None
 
 
@@ -597,9 +594,9 @@ def _validate_peer(decoded: list[DecodedTurn]) -> None:
 def _peer_config_from_dict(raw: dict) -> PeerConfig:
     """Build a :class:`PeerConfig` from a raw ``peer`` section dict.
 
-    The section's presence selects peer mode. Only the known modifier
-    ``on_divergence`` (default ``"fail"``) is read; an unknown key is a decode
-    error so future peer knobs are added deliberately, not silently ignored.
+    Only the known modifier ``on_divergence`` (default ``"fail"``) is read; an
+    unknown key is a decode error so future peer knobs are added deliberately,
+    not silently ignored.
     """
     on_divergence = raw.get("on_divergence", "fail")
     if on_divergence not in ("fail", "accept"):
@@ -645,10 +642,10 @@ def load_table(raw: dict) -> DialogueTable:
 
     ``notes`` are carried on each :class:`Turn` (the decoder ignores them) but
     the structural fields are validated for shape here; symbol resolution
-    happens later in :func:`decode`. A ``peer`` section (optional) selects peer
-    mode and carries its modifiers (spec ``@specs/peer-dialogue.md`` §The Table
-    in Peer Mode); its presence is the mode selector — there is no top-level
-    ``mode`` field. Unknown keys inside ``peer`` are rejected.
+    happens later in :func:`decode`. A ``peer`` section (optional) carries the
+    peer-runner modifiers (spec ``@specs/peer-dialogue.md`` §The Table); there
+    is no top-level ``mode`` field — peer mode is the only run regime. Unknown
+    keys inside ``peer`` are rejected.
     """
     if "script" not in raw or not isinstance(raw["script"], str):
         raise DecodeError("dialogue table missing string 'script'")
