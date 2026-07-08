@@ -654,6 +654,44 @@ def test_s2_drops_already_grounded_proposal(
     assert (wdmh, [mary, had, what]) in _work_list(rationaliser)  # entry persists
 
 
+# ── S2 no-invention (B2) — behaviours doc §3 ─────────────────────────────
+
+
+def test_s2_substituted_nodes_all_come_from_grounded_klines(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """B2: every SUBSTITUTED node in the proposal is a node of a grounded kline.
+    The entry's own substrate nodes may pass through untouched (received, not
+    substituted); only what rule 1 (expansion) and rule 2 (graft) introduce is
+    bound by B2, and both source from grounded klines. Verified on the #48
+    shape: the substituted nodes ([a, little, lamb] from the MHALL graft) are
+    all nodes of the grounded MHALL kline."""
+    mary = 0b1 << 32
+    had = 0b10 << 32
+    what = 0b100 << 32
+    did = 0b1000 << 32
+    have = 0b10000 << 32
+    a = 0b100000 << 32
+    little = 0b1000000 << 32
+    lamb = 0b10000000 << 32
+    wdmh = signifier.make_signature([mary, had, what, 0b100000000 << 32])
+    entry = KLine(wdmh, [mary, had, what])
+    _ground(rationaliser, KLine(had, [did, have]))
+    mhall = signifier.make_signature([mary, had, a, little, lamb])
+    mhall_kline = KLine(mhall, [mary, had, a, little, lamb])
+    _ground(rationaliser, mhall_kline)
+
+    rationaliser._state.work_list.append(entry)
+    emitted = rationaliser.rationalise(None)
+
+    proposal_nodes = set(emitted[0].kline.nodes)
+    entry_nodes = set(entry.nodes)
+    substituted = proposal_nodes - entry_nodes           # what rules introduced
+    grounded_nodes = set(mhall_kline.nodes) | {had}       # nodes of grounded klines
+    # Every substituted node is a node of a grounded kline (B2).
+    assert substituted <= grounded_nodes
+
+
 def test_single_node_unpairable_relationship_not_routed_to_s2(
     rationaliser: Rationaliser, signifier: NLPSignifier
 ) -> None:

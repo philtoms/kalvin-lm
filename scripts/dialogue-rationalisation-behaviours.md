@@ -88,11 +88,15 @@ investigation showed the trigger is _eligibility/routing_, not the close — a
 misfit entry never reaches the S3 close path because it never enters the S3
 path.)
 
-**B2 — No invention.** Every node in an originated misfit proposal must be a node of
-a kline K has grounded. K recombines grounded klines; it never fabricates a node
-value it has never seen. This mirrors the cogitator's Universal Constraint
-(`@specs/cogitator.md` §S2 Expansion): every signature/node generated must already
-exist in the model.
+**B2 — No invention.** Every **substituted** node in an originated misfit proposal
+must be a node of a kline K has grounded. The entry's own nodes (the substrate
+`target` starts from) are received, not substituted; only what rule 1
+(expansion) and rule 2 (graft) introduce counts, and both draw exclusively from
+grounded klines. K recombines grounded klines; it never fabricates a node value
+it has not grounded into a substitution. This mirrors the cogitator's Universal
+Constraint (`@specs/cogitator.md` §S2 Expansion): every signature/node
+generated must already exist in the model. B2 is satisfied by construction — no
+guard is needed beyond the rules sourcing from grounded klines.
 
 **B3 — Candidate admission (shared nodes).** A grounded kline `C` is a candidate
 for entry `E` iff `C` shares at least one **node value** with `E.nodes`:
