@@ -318,17 +318,52 @@ class Rationaliser:
         return KValue(entry, SIG_S1)
 
     # ── S2 path (misfit origination) — scripts/dialogue-rationalisation- ─
-    # ─ behaviours.md §4. _originate_s2 still stubbed; admission landed. ──
+    # ─ behaviours.md §4. Rule 1 (node-expansion) landed; rule 2 pending. ─
 
     def _originate_s2(self, entry: KLine) -> KValue | None:
         """S2 path — originate a misfit proposal by accumulated shaping.
 
-        Stubbed in step 1 of the misfit implementation: returns ``None`` (no
-        emission) so an S2 entry idles harmlessly in the work-list until the
-        generation mechanism (candidate admission, node-expansion, ``must_match``
-        node-graft) lands in later steps. See
-        scripts/dialogue-rationalisation-behaviours.md §4–§5.
+        Step 3 implements **rule 1 (node-expansion)** only: initialise
+        ``target = copy(entry.nodes)``, then for each grounded kline whose
+        signature is in ``target.nodes``, replace that node with the kline's
+        nodes. Rule 2 (node-graft with ``must_match``) lands in step 5; until
+        then only expansions shape the proposal. The accumulated ``target`` is
+        emitted at S2 (an originated misfit awaiting ratification). The entry
+        stays in the work-list (B1 — no self-close). See
+        scripts/dialogue-rationalisation-behaviours.md §4.
         """
+        target = list(entry.nodes)
+        target = self._apply_node_expansions(target)
+        return KValue(KLine(entry.signature, target), SIG_S2)
+
+    def _apply_node_expansions(self, target: list[int]) -> list[int]:
+        """Rule 1 — expand every node that is a grounded kline's signature.
+
+        For each node ``n`` in ``target``, if a grounded kline with signature
+        ``n`` and non-empty nodes exists, replace ``n`` with that kline's nodes
+        (the matched node is consumed; other nodes persist). Rule 1 sources its
+        candidates by signature-in-target-nodes — a separate scan from B3
+        (behaviours doc §4). Identities (empty nodes) never fire (nothing to
+        substitute with). Mutates by rebuilding; returns the new node list.
+        """
+        expanded: list[int] = []
+        for node in target:
+            sub = self._find_grounded_nodes(node)
+            expanded.extend(sub if sub is not None else [node])
+        return expanded
+
+    def _find_grounded_nodes(self, signature: int) -> list[int] | None:
+        """The nodes of any grounded kline under ``signature`` with non-empty
+        nodes, else None.
+
+        Rule 1's candidate source: a grounded kline whose signature is a node in
+        the target. Identities (empty nodes) return None — they carry no
+        decomposition to substitute. If multiple grounded klines exist under the
+        signature, the first (insertion order) wins.
+        """
+        for kline in self._state.grounded.get(signature, []):
+            if kline.nodes:
+                return list(kline.nodes)
         return None
 
     def _s2_candidates(self, entry: KLine) -> list[KLine]:

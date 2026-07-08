@@ -314,11 +314,11 @@ def test_s3_non_one_to_one_is_s2() -> None:
 def test_s2_misfit_routes_to_s2_path_and_idles(
     rationaliser: Rationaliser, signifier: NLPSignifier
 ) -> None:
-    """B1/§3a: a multi-node misfit (signature != make_signature(nodes))
-    routes to the S2 path, not the S3 pairing path. With the S2 generation
-    mechanism stubbed, it emits nothing and idles in the work-list (no crash,
-    no spurious emission). S3 structures continue to take the pairing path
-    (covered by MHALL)."""
+    """B1/§3a + §4 rule 1: a multi-node misfit (signature != make_signature(nodes))
+    routes to the S2 path. With no grounded kline under its nodes, rule 1
+    (node-expansion) fires nothing and the proposal equals the entry shape,
+    emitted at S2. The entry persists in the work-list (B1 — no self-close).
+    S3 structures continue to take the pairing path (covered by MHALL)."""
     x = 0b1 << 32
     y = 0b10 << 32
     z = 0b100 << 32
@@ -333,9 +333,91 @@ def test_s2_misfit_routes_to_s2_path_and_idles(
     rationaliser._state.work_list.append(misfit)
     emitted = rationaliser.rationalise(None)
 
-    # Stubbed S2 path: no emission, entry persists.
-    assert emitted == []
+    # Rule 1 fired no expansions (nothing grounded under y/z): proposal is the
+    # entry shape, emitted at S2. Entry persists (B1).
+    assert len(emitted) == 1
+    assert emitted[0].significance == SIG_S2
+    assert emitted[0].kline.signature == sig
+    assert list(emitted[0].kline.nodes) == [y, z]
     assert (sig, [y, z]) in _work_list(rationaliser)
+
+
+# ── S2 rule 1 (node-expansion) — behaviours doc §4 ───────────────────────
+
+
+def test_s2_node_expansion_replaces_signature_node(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """§4 rule 1: a node in the entry that is a grounded kline's signature is
+    replaced by that kline's nodes. Mirrors the WDMH `#47` shape: entry
+    {WDMH:[Mary,had,what]} with grounded {had:[did,have]} expands `had` ->
+    [did,have], yielding target [Mary,did,have,what]. Emitted at S2; entry
+    persists (B1)."""
+    mary = 0b1 << 32
+    had = 0b10 << 32
+    what = 0b100 << 32
+    did = 0b1000 << 32
+    have = 0b10000 << 32
+    # A genuine misfit: signature carries a type bit none of the nodes have.
+    wdmh = signifier.make_signature([mary, had, what, 0b100000 << 32])
+    entry = KLine(wdmh, [mary, had, what])
+    assert not is_canon(entry, signifier)           # precondition: real misfit
+    _ground(rationaliser, KLine(had, [did, have]))   # `had` canon grounded
+
+    rationaliser._state.work_list.append(entry)
+    emitted = rationaliser.rationalise(None)
+
+    assert len(emitted) == 1
+    assert emitted[0].significance == SIG_S2
+    assert emitted[0].kline.signature == wdmh
+    # `had` replaced by [did, have]; Mary and what persist.
+    assert list(emitted[0].kline.nodes) == [mary, did, have, what]
+    # B1: the (unexpanded) entry persists in the work-list.
+    assert (wdmh, [mary, had, what]) in _work_list(rationaliser)
+
+
+def test_s2_node_expansion_skips_identities(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """§4 rule 1: a node that is a grounded *identity* (empty nodes) is NOT
+    expanded — identities carry no decomposition to substitute with. The node
+    persists unchanged in the target."""
+    mary = 0b1 << 32
+    had = 0b10 << 32
+    what = 0b100 << 32
+    wdmh = signifier.make_signature([mary, had, what, 0b100000 << 32])
+    entry = KLine(wdmh, [mary, had, what])
+    assert not is_canon(entry, signifier)
+    _ground(rationaliser, KLine(mary, []))           # identity under Mary
+
+    rationaliser._state.work_list.append(entry)
+    emitted = rationaliser.rationalise(None)
+
+    # Mary is an identity (no nodes) -> not expanded; target unchanged.
+    assert list(emitted[0].kline.nodes) == [mary, had, what]
+
+
+def test_s2_node_expansion_applies_all_in_one_cogitation(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """§4: rule 1 runs every expansion in one cogitation, then emits the
+    accumulated target. Two expandable nodes both expand in a single emission."""
+    mary = 0b1 << 32
+    had = 0b10 << 32
+    what = 0b100 << 32
+    m1, m2 = 0b1000 << 32, 0b10000 << 32    # Mary decomposes into m1, m2
+    w1, w2 = 0b100000 << 32, 0b1000000 << 32  # what decomposes into w1, w2
+    wdmh = signifier.make_signature([mary, had, what, 0b10000000 << 32])
+    entry = KLine(wdmh, [mary, had, what])
+    assert not is_canon(entry, signifier)
+    _ground(rationaliser, KLine(mary, [m1, m2]))
+    _ground(rationaliser, KLine(what, [w1, w2]))
+
+    rationaliser._state.work_list.append(entry)
+    emitted = rationaliser.rationalise(None)
+
+    # Both Mary and what expanded in the one emission; had persists.
+    assert list(emitted[0].kline.nodes) == [m1, m2, had, w1, w2]
 
 
 def test_single_node_unpairable_relationship_not_routed_to_s2(
