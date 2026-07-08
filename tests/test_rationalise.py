@@ -625,6 +625,35 @@ def test_s2_graft_does_not_fire_without_foothold(
     assert result == [a, b]       # unchanged: no foothold, did not fire
 
 
+def test_s2_drops_already_grounded_proposal(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """B4/§6: if the shaped proposal is isomorphic to a grounded kline, K drops
+    it (no emission) and advances. Mirrors the post-ratification advance: after
+    T ratifies the #48 shape, K re-shapes it, finds it grounded, emits nothing."""
+    mary = 0b1 << 32
+    had = 0b10 << 32
+    what = 0b100 << 32
+    did = 0b1000 << 32
+    have = 0b10000 << 32
+    a = 0b100000 << 32
+    little = 0b1000000 << 32
+    lamb = 0b10000000 << 32
+    wdmh = signifier.make_signature([mary, had, what, 0b100000000 << 32])
+    entry = KLine(wdmh, [mary, had, what])
+    _ground(rationaliser, KLine(had, [did, have]))
+    mhall = signifier.make_signature([mary, had, a, little, lamb])
+    _ground(rationaliser, KLine(mhall, [mary, had, a, little, lamb]))
+    # Ground the proposal K would shape (#48 shape) -> B4 will drop it.
+    _ground(rationaliser, KLine(wdmh, [mary, had, a, little, lamb]))
+
+    rationaliser._state.work_list.append(entry)
+    emitted = rationaliser.rationalise(None)
+
+    assert emitted == []           # shaped proposal is grounded -> dropped (B4)
+    assert (wdmh, [mary, had, what]) in _work_list(rationaliser)  # entry persists
+
+
 def test_single_node_unpairable_relationship_not_routed_to_s2(
     rationaliser: Rationaliser, signifier: NLPSignifier
 ) -> None:

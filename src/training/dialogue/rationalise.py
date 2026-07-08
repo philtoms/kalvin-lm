@@ -341,7 +341,20 @@ class Rationaliser:
         target = self._apply_node_expansions(target)
         for candidate in self._s2_candidates(entry):
             target = self._apply_node_graft(target, candidate)
-        return KValue(KLine(entry.signature, target), SIG_S2)
+        # B4: if the shaped proposal is already grounded (an isomorphic kline
+        # exists in memory), drop it — do not re-emit the ratified shape. K
+        # advances naturally on the next cogitation (behaviours doc §3 B4, §6).
+        proposal = KLine(entry.signature, target)
+        if self._is_grounded(proposal):
+            return None
+        return KValue(proposal, SIG_S2)
+
+    def _is_grounded(self, kline: KLine) -> bool:
+        """Is an isomorphic kline (same signature and nodes) in grounded memory?"""
+        return any(
+            existing.nodes == kline.nodes
+            for existing in self._state.grounded.get(kline.signature, [])
+        )
 
     def _apply_node_graft(self, target: list[int], candidate: KLine) -> list[int]:
         """Rule 2 — graft ``candidate`` onto ``target`` if it fires.
