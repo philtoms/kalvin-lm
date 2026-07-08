@@ -116,11 +116,13 @@ and no selection step; the proposal is *built*, not *chosen*.
 
 **Process candidates in preference order:**
 
-1. **Node-expansion** (preferred). For a candidate `C` where `C.signature ∈
-   target.nodes`: replace that one node in `target` with `C.nodes`. The matched
-   node is consumed; `target`'s other nodes persist.
-2. **Node-graft** (with `must_match`). For a candidate `C` that did not fire rule 1
-   and shares at least one node with `target`:
+1. **Node-expansion** (preferred). For each grounded kline `C` whose signature
+   is in `target.nodes` (`C.signature ∈ target.nodes`): replace that one node in
+   `target` with `C.nodes`. The matched node is consumed; `target`'s other nodes
+   persist. (Rule 1 sources its candidates by signature-in-target-nodes, a
+   separate scan from B3 — a kline need not share a node value to fire rule 1.)
+2. **Node-graft** (with `must_match`). For each B3-admitted candidate `C` (shared
+   nodes) that did not fire rule 1:
    - Compute `must_match` from the **current accumulated** `target`: the nodes that
      prior matches have established (resolved/expanded), **excluding still-open
      nodes**. Open nodes are not required to match — they are slots to be filled.
@@ -178,8 +180,13 @@ via canon-resolution.
 Entry (the misfit; the canon form T also sends resolves and clears):
 `E = {WDMH: [Mary, had, what]}`. Open: `what` (no candidate yet).
 
-Candidates admitted (B3): the canon `{had: [did, have]}` (shares `had`) and
-`{MHALL: [Mary, had, a, little, lamb]}` (shares `Mary, had`).
+Rule-1 candidates (signatures in `E.nodes`): the canon `{had: [did, have]}`
+(`had ∈ E.nodes`). Sourced separately from B3 — rule 1 finds klines whose
+*signature* the entry references as a node.
+
+B3 candidates (shared *nodes*, feeding rule 2): `{MHALL: [Mary, had, a,
+little, lamb]}` (shares `Mary, had` as nodes). Note `{had: [did, have]}` is
+*not* a B3 candidate — its nodes `[did, have]` share nothing with `E.nodes`.
 
 **Node-expansion:** `had ∈ target` → `target = [Mary, did, have, what]`.
 Accumulated: `[Mary, did, have]`. Open: `what`.

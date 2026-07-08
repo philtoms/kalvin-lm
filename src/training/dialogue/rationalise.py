@@ -318,7 +318,7 @@ class Rationaliser:
         return KValue(entry, SIG_S1)
 
     # ── S2 path (misfit origination) — scripts/dialogue-rationalisation- ─
-    # ─ behaviours.md §4. Stubbed: returns no emission until steps 2+ land. ─
+    # ─ behaviours.md §4. _originate_s2 still stubbed; admission landed. ──
 
     def _originate_s2(self, entry: KLine) -> KValue | None:
         """S2 path — originate a misfit proposal by accumulated shaping.
@@ -330,6 +330,31 @@ class Rationaliser:
         scripts/dialogue-rationalisation-behaviours.md §4–§5.
         """
         return None
+
+    def _s2_candidates(self, entry: KLine) -> list[KLine]:
+        """Grounded klines sharing at least one node value with ``entry.nodes``.
+
+        B3 candidate admission (scripts/dialogue-rationalisation-behaviours.md
+        §3). Admission is keyed on the entry's *nodes* (not its head
+        signature) — this avoids the over-admission single-bit NLP type words
+        would cause under ``signifies``; the intended commonality is a shared
+        node value (both klines having a ``Mary`` node). Identities carry no
+        nodes and never admit (they have nothing to substitute with). The entry
+        itself is excluded. Order follows the grounded dict's iteration order
+        (insertion order); later steps shape one proposal from the admitted
+        set, so order only matters for tie-breaking.
+        """
+        entry_nodes = set(entry.nodes)
+        candidates: list[KLine] = []
+        for bucket in self._state.grounded.values():
+            for kline in bucket:
+                if kline is entry:
+                    continue
+                if not kline.nodes:
+                    continue  # identities carry no nodes
+                if entry_nodes & set(kline.nodes):
+                    candidates.append(kline)
+        return candidates
 
     # ── S3 helpers ────────────────────────────────────────────────────────
 

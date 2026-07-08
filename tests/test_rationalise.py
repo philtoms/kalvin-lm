@@ -362,6 +362,92 @@ def test_single_node_unpairable_relationship_not_routed_to_s2(
     assert (lhs, [rhs]) in _work_list(rationaliser)
 
 
+# ── S2 candidate admission (B3) — behaviours doc §3 ──────────────────────
+
+
+def _ground(rationaliser: Rationaliser, kline: KLine) -> None:
+    """Ground a kline directly (test helper, mirrors Rationaliser._ground)."""
+    rationaliser._ground(kline)
+
+
+def test_s2_candidates_admit_shared_node_klines(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """B3: a grounded kline sharing >=1 node value with the entry's nodes is
+    admitted. Mirrors the WDMH worked example's rule-2 (graft) candidate:
+    entry {WDMH:[Mary,had,what]} admits {MHALL:[Mary,had,a,little,lamb]}
+    (shares `Mary`,`had` as nodes).
+
+    Note {had:[did,have]} is NOT a B3 candidate — it shares no *node* with the
+    entry (`had` is its signature, not its node). It is sourced separately by
+    rule 1 (node-expansion) via `signature in entry.nodes`, not via B3.
+    """
+    mary = 0b1 << 32
+    had = 0b10 << 32
+    what = 0b100 << 32
+    did = 0b1000 << 32
+    have = 0b10000 << 32
+    a = 0b100000 << 32
+    little = 0b1000000 << 32
+    lamb = 0b10000000 << 32
+    wdmh = signifier.make_signature([mary, had, what])   # entry signature
+    mhall = signifier.make_signature([mary, had, a, little, lamb])
+
+    entry = KLine(wdmh, [mary, had, what])
+    had_canon = KLine(had, [did, have])                  # NOT a B3 candidate
+    mhall_canon = KLine(mhall, [mary, had, a, little, lamb])  # shares Mary,had
+    _ground(rationaliser, had_canon)
+    _ground(rationaliser, mhall_canon)
+
+    admitted = rationaliser._s2_candidates(entry)
+    admitted_sigs = {k.signature for k in admitted}
+    assert mhall in admitted_sigs         # {MHALL:[...]} admitted (shared nodes)
+    assert had not in admitted_sigs       # {had:[did,have]} NOT admitted (no shared node)
+
+
+def test_s2_candidates_exclude_identities_and_no_overlap(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """B3: identities (empty nodes) never admit — they have nothing to
+    substitute with. A grounded kline sharing no node value with the entry is
+    not admitted."""
+    mary = 0b1 << 32
+    had = 0b10 << 32
+    what = 0b100 << 32
+    unrelated = 0b1000 << 32
+    wdmh = signifier.make_signature([mary, had, what])
+    entry = KLine(wdmh, [mary, had, what])
+
+    # An identity under `mary` (empty nodes) — grounded, but no nodes to share.
+    _ground(rationaliser, KLine(mary, []))
+    # A grounded kline sharing no node with the entry.
+    _ground(rationaliser, KLine(unrelated, [unrelated]))
+
+    admitted = rationaliser._s2_candidates(entry)
+    assert admitted == []                # neither identity nor no-overlap admits
+
+
+def test_s2_candidates_exclude_entry_itself(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """B3: the entry itself is not admitted as a candidate (a kline is not its
+    own substitution source)."""
+    mary = 0b1 << 32
+    had = 0b10 << 32
+    wdmh = signifier.make_signature([mary, had])
+    entry = KLine(wdmh, [mary, had])
+    # Even if a kline identical to the entry were grounded, the entry object
+    # itself (passed in) is excluded by identity.
+    rationaliser._state.work_list.append(entry)
+    _ground(rationaliser, KLine(wdmh, [mary, had]))   # same shape, different obj
+
+    admitted = rationaliser._s2_candidates(entry)
+    # The grounded same-shape kline IS admitted (it's a distinct grounded kline
+    # sharing nodes); only the entry object itself is excluded.
+    assert any(k.signature == wdmh for k in admitted)
+    assert all(k is not entry for k in admitted)
+
+
 # ── Termination (D12) ──────────────────────────────────────────────────
 
 
