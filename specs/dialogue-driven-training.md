@@ -19,9 +19,8 @@ they are not the design's point, only its scaffolding. The runner does not defen
 against replacement — it will evolve when real actors arrive.
 
 The runner is **bus-driven**: it drives the exchange over the harness
-`MessageBus`. The actors are adapter-driven — each holds an `EventSink` and
-publishes its turns via `accept` (fire-and-forget, zero-or-many per incoming),
-mirroring how `KAgent` publishes via its adapter.
+`MessageBus`. The actors are sink-driven — each holds an `EventSink` and
+publishes its turns via `accept` (fire-and-forget, zero-or-many per incoming).
 
 ## Dependencies
 
@@ -29,7 +28,7 @@ mirroring how `KAgent` publishes via its adapter.
 - `@specs/kscript.md` — compiled-entry `op` field (the structural states).
 - `@specs/kline.md` — `is_canon`, KLine equality.
 - `@specs/kvalue.md` — KValue (KLine + significance).
-- `@specs/agent.md` — `RationaliseEvent(kind, query, proposal, role)`.
+- `@specs/agent.md` — `RationaliseEvent` (the event type actors publish).
 - `@specs/harness-server.md` — the `MessageBus` the run is driven over.
 
 ## Definitions
@@ -198,7 +197,7 @@ to the harness.
   is thread-safe — actors publish from any thread (including a cogitation
   thread), which is the true non-blocking behaviour the run regime requires.
   No `asyncio`; no second concurrency model. The actor does not know about the
-  bus; it publishes to its sink, as `KAgent` publishes to its adapter.
+  bus; it publishes to its sink, and the sink routes.
 - **Relay = the bus's role dispatch.** Each actor subscribes to its own role;
   the bus-wired sink addresses each published event to the **other** role; the
   bus delivers. The runner does not relay — the bus does. The runner never
@@ -219,12 +218,11 @@ of the stream — the point of Kalvin.
 
 ### Actor contract
 
-Actors mirror :class:`~kalvin.agent.KAgent`'s adapter pattern: an actor holds
-an **`EventSink`** (injected at construction, as KAgent holds an adapter) and
-publishes events to it via `on_event` (as KAgent publishes via `_publish` →
-`adapter.on_event`). The runner builds a bus-wired sink per actor (bridging
-`on_event` to a bus `Message` addressed to the other role) and constructs each
-actor with its sink, so any adapter-driven actor is drop-in.
+An actor is a dialogue participant. It holds an **`EventSink`** (injected at
+construction) and publishes events to it via `on_event`. The runner builds a
+bus-wired sink per actor (bridging `on_event` to a bus `Message` addressed to
+the other role) and constructs each actor with its sink, so any actor is
+drop-in.
 
 ```
 EventSink:
@@ -244,9 +242,8 @@ sink routes.
 
 The runner constructs actors via **factories** ``(sink) -> Actor``: only the
 runner owns the bus, so only it can build the bus-wired sink, so it builds the
-actors too (mirroring how a harness injects `KAgentAdapter(bus)` into
-`KAgent`). This makes any adapter-driven actor — including
-`SynthesizingTrainer` and `RationalisingTrainee` — drop-in.
+actors too. This makes any actor — including `SynthesizingTrainer` and
+`RationalisingTrainee` — drop-in.
 
 Both default actors (`TableTrainer`, `TableTrainee`) read the decoded table,
 filter to their own `actor`, and yield those rows in order with their role on
@@ -424,7 +421,7 @@ table-reading actors over the harness message bus to completion.
 | DDT-18 | `complete = closing-seen`; an idle timeout ends a stalled run (silence, no closing) as incomplete (`complete = False`, non-fatal); coverage is a separate efficiency diagnostic, not a terminal condition (extreme anticipation — closing-first, zero middle coverage — is technically complete)        | §Completion            |
 | DDT-19 | `Divergence` carries `(role, emitted, unconsumed)` and has no cursor (coverage is content-keyed)                                                                                                                                                                                                     | §Types                 |
 | DDT-20 | `RunResult` has arrival-ordered `events`, plus `complete`, `covered`, `unmatched` (accept-mode), `uncovered` (incomplete runs)                                                                                                                                                                       | §Types                 |
-| DDT-21 | Actors mirror KAgent's adapter pattern: an actor holds an `EventSink` (injected at construction) and publishes via `on_event`; `accept(event)` receives incoming and the actor publishes zero-or-many replies via its sink (`event=None` = "you open"); the runner builds the bus-wired sink and constructs actors via factories `(sink) -> Actor`; any adapter-driven actor is drop-in | §Actor contract |
+| DDT-21 | An actor holds an `EventSink` (injected at construction) and publishes via `on_event`; `accept(event)` receives incoming and the actor publishes zero-or-many replies via its sink (`event=None` = "you open"); the runner builds the bus-wired sink and constructs actors via factories `(sink) -> Actor`; any actor is drop-in | §Actor contract |
 | DDT-22 | There is no synchronised alternation: an actor may reply zero-or-many times per `accept`; each reply is routed by the bus to the other role; the runner never reroutes                                                                                                                                | §The Runner            |
 | DDT-23 | The trainer and trainee are symmetric readers of the same decoded table, differing only by actor; the default actors never inspect the incoming event to decide what to emit                                                                                                                         | §Actor contract        |
 | DDT-24 | The runner routes on the actor's self-declared `event.role`: the actor announces itself and the bus addresses its emissions to the other role — the shape a real, possibly asynchronous actor will use                                                                                              | §Matching              |

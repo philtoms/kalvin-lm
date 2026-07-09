@@ -1,13 +1,12 @@
-"""Dialogue actors (spec ``@specs/dialogue-driven-training.md``, ``@specs/dialogue-runner.md``).
+"""Dialogue actors (spec ``@specs/dialogue-driven-training.md``).
 
 A lesson is an authored dialogue between a Trainer (T) and a Trainee (K). The
 actors here are the **dialogue participants**: each holds an
-:class:`~training.dialogue.runner.EventSink` (injected at construction, as
-:class:`~kalvin.agent.KAgent` holds an adapter) and publishes its turns to it via
-``accept`` (fire-and-forget, zero-or-many per incoming). The runner
-(:mod:`training.dialogue.runner`) drives the run over the harness
-:class:`~training.harness.bus.MessageBus` and validates emissions against the
-authored table.
+:class:`~training.dialogue.runner.EventSink` (injected at construction) and
+publishes its turns to it via :meth:`Actor.accept` (fire-and-forget,
+zero-or-many per incoming). The runner (:mod:`training.dialogue.runner`) drives
+the run over the harness :class:`~training.harness.bus.MessageBus` and
+validates emissions against the authored table.
 
 The two default actors (:class:`TableTrainer`, :class:`TableTrainee`) are
 table-reading doubles — structurally identical, differing only by which ``role``
@@ -16,14 +15,13 @@ real trainee. The default actors are scaffolding, not the design's point.
 
 Two real actors are provided: :class:`SynthesizingTrainer` (a trainer that
 derives each turn from the compiled script) and :class:`RationalisingTrainee` (a
-stateful trainee that rationalises each turn from its own model). Both are
-adapter-driven and publish via their injected sink, so they are drop-in for the
-default actors.
+stateful trainee that rationalises each turn from its own model). Both publish
+via their injected sink, so they are drop-in for the default actors.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING
 
 from kalvin.events import RationaliseEvent
@@ -39,9 +37,60 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from training.dialogue.runner import EventSink
 
 
+# ── The Actor base class ─────────────────────────────────────────────────
+#
+# Every dialogue participant shares one invariant: it holds an EventSink and
+# publishes its turns to it via ``accept``, fire-and-forget, zero-or-many per
+# incoming. The base class owns that invariant — the sink, the role, and the
+# publish loop. A subclass implements only ``next_events``: given an incoming
+# event (or ``None`` for the opening seed), produce the turns to publish. The
+# base does the rest.
+
+
+class Actor:
+    """A dialogue participant that publishes turns via an injected sink.
+
+    Holds an :class:`~training.dialogue.runner.EventSink` and a ``role`` (the
+    routing key this actor emits on its events). :meth:`accept` is the
+    fire-and-forget entry point: it calls :meth:`next_events` and publishes
+    each produced event to the sink. ``incoming`` is ``None`` on the opening
+    seed (an actor may open), or a prior event otherwise.
+
+    Subclasses override :meth:`next_events` to decide what to publish for a
+    given incoming — zero, one, or many events. They must not publish directly
+    to the sink; they return events and the base publishes them.
+    """
+
+    def __init__(self, *, role: str, sink: EventSink) -> None:
+        self._role = role
+        self._sink = sink
+
+    @property
+    def role(self) -> str:
+        """The role this actor emits on its events (the routing key)."""
+        return self._role
+
+    def next_events(
+        self, incoming: RationaliseEvent | None
+    ) -> Iterable[RationaliseEvent]:
+        """Produce the events to publish for ``incoming``.
+
+        ``incoming`` is ``None`` on the opening seed; otherwise it is the prior
+        event. Returns zero, one, or many events; the base publishes each via
+        the sink. Override in a subclass; the base raises
+        :class:`NotImplementedError`.
+        """
+        raise NotImplementedError
+
+    def accept(self, incoming: RationaliseEvent | None) -> None:
+        """Publish every event produced for ``incoming`` via the sink."""
+        for event in self.next_events(incoming):
+            self._sink.on_event(event)
+
+
 # ── Table-reading actors (spec §The Runner, §Actor) ───────────────────────
 #
-# Each actor holds its own index into its own rows (the subsequence of the
+# Each table actor holds its own index into its own rows (the subsequence of the
 # decoded table matching its ``role``) and yields them one at a time in order,
 # one per ``accept``. It never inspects the incoming event to decide what to
 # emit (DDT-10) — ``incoming`` only supplies the emitted event's ``query``
@@ -49,15 +98,14 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 # the table cursor, and it publishes only via its sink.
 
 
-class _TableActor:
+class _TableActor(Actor):
     """Default actor: yields its rows in order, one per ``accept`` call.
 
     Holds the decoded table and a ``role`` label, plus an internal index that
     starts before the actor's first row. Each ``accept`` advances the index by
-    one and publishes the event for that row (or nothing once exhausted) via
-    the injected :class:`~training.dialogue.runner.EventSink`. Each event's
-    ``query`` is the incoming event's ``proposal`` (or the row's own turn on the
-    opening).
+    one and produces the event for that row (or nothing once exhausted). Each
+    event's ``query`` is the incoming event's ``proposal`` (or the row's own
+    turn on the opening).
     """
 
     def __init__(
@@ -68,34 +116,23 @@ class _TableActor:
         kind: str,
         sink: EventSink,
     ) -> None:
+        super().__init__(role=role, sink=sink)
         self._rows: tuple[DecodedTurn, ...] = tuple(t for t in table if t.role == role)
         self._index = -1
         self._kind = kind
-        self._role = role
-        self._sink = sink
 
-    @property
-    def role(self) -> str:
-        """The role this actor emits on its events (the routing key)."""
-        return self._role
-
-    def _next_event(
+    def next_events(
         self, incoming: RationaliseEvent | None
-    ) -> RationaliseEvent | None:
+    ) -> Iterable[RationaliseEvent]:
         nxt = self._index + 1
         if nxt >= len(self._rows):
-            return None
+            return
         self._index = nxt
         turn = self._rows[nxt]
         query = incoming.proposal if incoming is not None else turn.value
-        return RationaliseEvent(
+        yield RationaliseEvent(
             kind=self._kind, query=query, proposal=turn.value, role=self._role
         )
-
-    def accept(self, incoming: RationaliseEvent | None) -> None:
-        event = self._next_event(incoming)
-        if event is not None:
-            self._sink.on_event(event)
 
 
 class TableTrainer(_TableActor):
@@ -111,7 +148,7 @@ class TableTrainer(_TableActor):
 class TableTrainee(_TableActor):
     """The default trainee: yields the table's K-rows in order.
 
-    Replaceable by a real trainee (Kalvin) that publishes via its sink.
+    Replaceable by a real trainee that publishes via its sink.
     """
 
     def __init__(self, table: Sequence[DecodedTurn], sink: EventSink) -> None:
@@ -137,7 +174,7 @@ class TableTrainee(_TableActor):
 # :func:`synthesize` (R2/R3).
 
 
-class SynthesizingTrainer:
+class SynthesizingTrainer(Actor):
     """A trainer that synthesises each turn from the compiled script.
 
     Drop-in for :class:`TableTrainer`. Holds the compiled script (for structure
@@ -161,20 +198,15 @@ class SynthesizingTrainer:
     ) -> None:
         if not primaries:
             raise ValueError("SynthesizingTrainer needs at least one primary")
+        super().__init__(role="T", sink=sink)
         self._compiled = compiled
         self._signifier = signifier
         self._primaries = tuple(primaries)
         self._primary_index = 0
-        self._sink = sink
 
-    @property
-    def role(self) -> str:
-        """The role this actor emits on its events (the routing key)."""
-        return "T"
-
-    def _next_event(
+    def next_events(
         self, incoming: RationaliseEvent | None
-    ) -> RationaliseEvent | None:
+    ) -> Iterable[RationaliseEvent]:
         if incoming is None:
             # R1 — open the current script's primary at S2, then advance so
             # the next open (after the next close) opens the following primary.
@@ -188,27 +220,21 @@ class SynthesizingTrainer:
             incoming_value = incoming.proposal
             proposal = synthesize(self._compiled, incoming_value, self._signifier)
             query = incoming_value
-        return RationaliseEvent(
+        yield RationaliseEvent(
             kind="frame", query=query, proposal=proposal, role="T"
         )
-
-    def accept(self, incoming: RationaliseEvent | None) -> None:
-        event = self._next_event(incoming)
-        if event is not None:
-            self._sink.on_event(event)
 
 
 # ── Rationalising trainee ─────────────────────────────────────────────────
 #
 # A real trainee that rationalises each turn from its own state and the
 # trainer's last KValue (via the :class:`~training.dialogue.rationalise.Rationaliser`
-# engine), never reading the decoded table. Mirrors :class:`SynthesizingTrainer`:
-# the engine returns a batch of ``KValue``\ s; this actor wraps each in a
-# ``RationaliseEvent`` and publishes the whole batch. Not produced by the
-# runner; callers wire it explicitly.
+# engine), never reading the decoded table. The engine returns a batch of
+# ``KValue``\ s; this actor yields each wrapped in a ``RationaliseEvent``. Not
+# produced by the runner; callers wire it explicitly.
 
 
-class RationalisingTrainee:
+class RationalisingTrainee(Actor):
     """A trainee that rationalises each turn from its own model state.
 
     Drop-in for :class:`TableTrainee`. Holds a
@@ -224,42 +250,30 @@ class RationalisingTrainee:
     """
 
     def __init__(self, signifier: KSignifier, sink: EventSink) -> None:
+        super().__init__(role="K", sink=sink)
         self._engine = Rationaliser(signifier)
-        self._sink = sink
 
-    @property
-    def role(self) -> str:
-        """The role this actor emits on its events (the routing key)."""
-        return "K"
-
-    def next_events(self, incoming: RationaliseEvent) -> list[RationaliseEvent]:
+    def next_events(
+        self, incoming: RationaliseEvent | None
+    ) -> Iterable[RationaliseEvent]:
         """Rationalise ``incoming`` into a batch of events.
 
         The engine returns an identity blast or a single relationship emission
         (never mixed); each emitted ``KValue`` is wrapped in a
-        ``RationaliseEvent``. Returns an empty list when nothing is workable.
-        """
-        return self._process_and_collect(incoming)
-
-    def _process_and_collect(
-        self, incoming: RationaliseEvent
-    ) -> list[RationaliseEvent]:
-        """Feed ``incoming`` to the engine and collect its emitted batch as events.
+        ``RationaliseEvent``. Yields nothing when nothing is workable.
 
         Every call processes its incoming (the engine's entry-rule bookkeeping
         runs each time), so the trainee's state stays in lockstep with the
         trainer's responses.
+
+        A trainee never opens a dialogue (only the trainer opens, on the
+        ``None`` seed); ``incoming`` is therefore always a real event here.
+        ``None`` is a caller bug and crashes loudly.
         """
+        assert incoming is not None, "a trainee never opens; incoming must be set"
         incoming_value = incoming.proposal
         query = incoming_value
-        events: list[RationaliseEvent] = []
         for proposal in self._engine.rationalise(incoming_value):
-            events.append(
-                RationaliseEvent(kind="frame", query=query, proposal=proposal, role="K")
+            yield RationaliseEvent(
+                kind="frame", query=query, proposal=proposal, role="K"
             )
-        return events
-
-    def accept(self, incoming: RationaliseEvent) -> None:
-        """Publish the whole batch for ``incoming`` (the point of batching)."""
-        for event in self._process_and_collect(incoming):
-            self._sink.on_event(event)

@@ -1,5 +1,5 @@
 """Dialogue runner — a coverage-tracking subscriber over the harness
-``MessageBus`` (spec ``@specs/dialogue-runner.md``).
+``MessageBus`` (spec ``@specs/dialogue-driven-training.md``).
 
 The harness :class:`~training.harness.bus.MessageBus` is the **sink and the
 relay**; this module's runner (:class:`Runner`) is a **coverage-tracking
@@ -7,11 +7,10 @@ wildcard subscriber** plus a thin driver that seeds the opening and runs the bus
 until the closing is seen. The actors the runner drives live in
 :mod:`training.dialogue.actors`.
 
-This module mirrors the :class:`~kalvin.agent.KAgent` adapter pattern: actors
-take an :class:`EventSink` at construction (as KAgent takes an adapter) and
-publish events to it (as KAgent publishes via its adapter). The runner builds a
-bus-wired sink per actor (the sink bridges ``on_event`` to a bus ``Message``
-addressed to the other role), so any adapter-driven actor is drop-in.
+An actor takes an :class:`EventSink` at construction and publishes events to it
+via ``on_event``. The runner builds a bus-wired sink per actor (the sink bridges
+``on_event`` to a bus ``Message`` addressed to the other role), so any actor is
+drop-in: it publishes to its sink, the sink routes onto the bus.
 
 The dialogue is messy and real: **no synchronised alternation** (an actor may
 publish zero-or-many per incoming), and **anticipation** and **interjection**
@@ -27,7 +26,7 @@ Spec mapping
 - PDT-11/PDT-12 — anticipation + interjection (permitted, unflagged, middle-only).
 - PDT-13 — completion (closing-seen; coverage is a diagnostic, not a gate).
 - PDT-14/PDT-15 — :class:`Divergence` / :class:`RunResult`.
-- PDT-17 — ``EventSink`` + adapter-driven actors (mirrors KAgent).
+- PDT-17 — ``EventSink`` + sink-driven actors.
 - PDT-18 — no synchronised alternation; route-to-other via the bus-wired sink.
 - PDT-19 — terminate on closing-seen; idle timeout ends a stall as incomplete.
 """
@@ -55,20 +54,18 @@ ContentKey = tuple[str, int, tuple[int, ...], int]
 _ACCEPT_ACTION = "accept"
 
 
-# ── EventSink (PDT-17) — mirrors KAgent's adapter ─────────────────────────
+# ── EventSink (PDT-17) — the actor's publish target ───────────────────────
 
 
 @runtime_checkable
 class EventSink(Protocol):
-    """The publish target an actor holds (mirrors ``KAgentAdapter``).
+    """The publish target an actor holds.
 
     An actor is constructed with an ``EventSink`` and publishes events to it via
-    ``on_event`` — exactly as :class:`~kalvin.agent.KAgent` holds an adapter and
-    publishes via ``_publish`` → ``adapter.on_event``. The bus-wired sink
-    (:class:`_BusEventSink`) bridges each ``on_event`` to a bus ``Message``
-    addressed to the other role, so the actor's published events flow onto the
-    relay without the actor knowing about the bus. This is least-coupling: the
-    actor publishes, the sink routes.
+    ``on_event``. The bus-wired sink (:class:`_BusEventSink`) bridges each
+    ``on_event`` to a bus ``Message`` addressed to the other role, so the
+    actor's published events flow onto the relay without the actor knowing about
+    the bus. This is least-coupling: the actor publishes, the sink routes.
     """
 
     def on_event(self, event: RationaliseEvent) -> None: ...
@@ -76,12 +73,16 @@ class EventSink(Protocol):
 
 @runtime_checkable
 class Actor(Protocol):
-    """An adapter-driven dialogue actor (mirrors KAgent's shape).
+    """A dialogue actor.
 
     Holds an :class:`EventSink` (injected at construction) and publishes events
     to it. ``accept`` receives an incoming event (or ``None`` for the opening
     seed) and the actor decides whether/when/how-many events to publish via its
     sink — fire-and-forget, zero-or-many.
+
+    This is the duck-typed contract the runner types :data:`ActorFactory`
+    against; :class:`~training.dialogue.actors.Actor` is the base implementation
+    that satisfies it. The runner depends on the contract, not the base class.
     """
 
     @property
@@ -91,9 +92,8 @@ class Actor(Protocol):
 
 
 # Actor factory: the runner builds the bus-wired sink (it owns the bus) and
-# constructs the actor via this callable, passing the sink. Mirrors how a
-# harness wires ``KAgentAdapter(bus)`` into ``KAgent(...)``: only the component
-# that owns the bus can build the adapter, so it builds the actor too.
+# constructs the actor via this callable, passing the sink. Only the component
+# that owns the bus can build the bus-wired sink, so it builds the actor too.
 ActorFactory = Callable[[EventSink], Actor]
 
 
@@ -155,7 +155,7 @@ class _BusEventSink:
     The route-to-other rule (PDT-18) is enforced structurally: the actor calls
     ``on_event(event)`` (the event carries the emitter's role on ``event.role``)
     and this sink addresses the bus ``Message`` to the *other* role. The actor
-    cannot misroute — it merely publishes, as KAgent does.
+    cannot misroute — it merely publishes to its sink.
     """
 
     def __init__(self, bus: MessageBus, other_role: str) -> None:
@@ -178,8 +178,7 @@ class Runner:
 
     - owns a ``MessageBus``;
     - builds a bus-wired :class:`EventSink` per actor (addressed to the other
-      role) and constructs each actor with its sink via the actor factory —
-      mirroring how a harness injects ``KAgentAdapter(bus)`` into ``KAgent``;
+      role) and constructs each actor with its sink via the actor factory;
     - subscribes itself as a **wildcard handler** for coverage bookkeeping;
     - subscribes each actor's ``accept`` as its role's handler;
     - drives the run by seeding the opening (addressed to the trainer) and
@@ -436,9 +435,8 @@ def run(
 
     ``trainer_factory`` / ``trainee_factory`` are callables ``(sink) -> Actor``:
     the runner builds the bus-wired sink (it owns the bus) and constructs each
-    actor with its sink — mirroring how a harness injects ``KAgentAdapter(bus)``
-    into ``KAgent``. This makes any adapter-driven actor drop-in: the actor
-    author writes only the publish-to-sink logic; the runner handles the bus.
+    actor with its sink. This makes any actor drop-in: the actor author writes
+    only the publish-to-sink logic; the runner handles the bus.
 
     The caller calls :meth:`Runner.run` to drive.
     """
