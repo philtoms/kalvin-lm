@@ -32,6 +32,8 @@ Spec mapping
 
 from __future__ import annotations
 
+import os
+import sys
 import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -258,7 +260,21 @@ class PeerRunner:
         return self.result
 
     def _run_bus_bounded(self) -> None:
-        """Run the bus, enforcing the idle timeout via a watchdog."""
+        """Run the bus, enforcing the idle timeout via a watchdog.
+
+        The idle timeout is **skipped when a debugger is attached** (detected
+        via :func:`sys.gettrace`, or forced off with the ``KALVIN_NO_IDLE_TIMEOUT``
+        env var). Under a debugger the run pauses on breakpoints while wall
+        clock keeps ticking; the watchdog would then mistake the pause for a
+        stall and terminate the run early. The timeout still guards production
+        (no debugger) and the unit tests (which pass ``idle_timeout`` short and
+        run without a tracer attached).
+        """
+        if _idle_timeout_disabled():
+            inner = threading.Thread(target=self._bus.run, daemon=True)
+            inner.start()
+            inner.join()
+            return
         inner = threading.Thread(target=self._bus.run, daemon=True)
         inner.start()
         while True:
@@ -371,6 +387,21 @@ class PeerRunner:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────
+
+
+def _idle_timeout_disabled() -> bool:
+    """True when the idle-timeout watchdog must not enforce its deadline.
+
+    The timeout ends a stalled run as incomplete (PDT-19), but it is wall-clock
+    based: while paused on a breakpoint the deadline still elapses, so the
+    watchdog would terminate the run early. Disable it when a debugger tracer
+    is attached (``sys.gettrace()`` returns one) or when the caller opts out via
+    the ``KALVIN_NO_IDLE_TIMEOUT`` env var. Production and the unit tests run
+    without a tracer, so PDT-19 is unaffected there.
+    """
+    if os.environ.get("KALVIN_NO_IDLE_TIMEOUT"):
+        return True
+    return sys.gettrace() is not None
 
 
 def _key_sort(k: ContentKey):

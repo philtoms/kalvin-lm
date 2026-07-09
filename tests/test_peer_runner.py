@@ -321,6 +321,17 @@ def test_idle_timeout_ends_stalled_run_as_incomplete():
     assert res.covered
 
 
+def test_idle_timeout_skipped_when_debugger_attached(monkeypatch):
+    """Under a debugger the idle timeout must not fire: a breakpoint pause
+    is not a stall. Faked tracer presence flips the helper to disabled."""
+    from training.dialogue import peer_runner
+
+    monkeypatch.setattr(peer_runner.sys, "gettrace", lambda: object)  # truthy
+    assert peer_runner._idle_timeout_disabled() is True
+    monkeypatch.setattr(peer_runner.sys, "gettrace", lambda: None)
+    assert peer_runner._idle_timeout_disabled() is False
+
+
 # ── PDT-15: arrival-ordered events + diagnostics ──────────────────────────
 
 
