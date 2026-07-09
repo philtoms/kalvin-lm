@@ -23,6 +23,10 @@ entry rule to the incoming query as bookkeeping, then emits a **batch** of
 single relationship emission (a relationship always terminates the batch and
 is never appended to identities). Returns an empty list when nothing is
 workable (plan D7, D12).
+
+A dialogue never rationalises an empty statement: :meth:`rationalise` requires
+a real incoming ``KValue``. There is no drain / no-op entry — cogitation only
+runs as the second phase of a turn, driven by an incoming query.
 """
 
 from __future__ import annotations
@@ -73,15 +77,16 @@ class Rationaliser:
 
     # ── The turn ─────────────────────────────────────────────────────
 
-    def rationalise(self, incoming: KValue | None) -> list[KValue]:
+    def rationalise(self, incoming: KValue) -> list[KValue]:
         """Apply the entry rule to ``incoming``, then emit a batch.
 
+        ``incoming`` is the trainer's value this turn — a dialogue never
+        rationalises an empty statement, so there is no ``None`` / drain path.
         Returns a list of emitted values: an identity blast (zero or more S4
         identity asks), a single relationship emission (S2/S3/S1), or an empty
         list when nothing is workable. Identities and relationships are never
         mixed in one batch (a relationship always terminates the batch)."""
-        if incoming is not None:
-            self._process_query(incoming)
+        self._process_query(incoming)
         return self._cogitate()
 
     # ── Entry rule ────────────────────────────────────────────────────────

@@ -92,11 +92,12 @@ no ordered distinction between identities and relationships — they are all
 klines.
 
 **D4 — Inputs: `(incoming, state, signifier)`.** `incoming` is the trainer's
-last `RationaliseEvent` (or `None` for the opening, which the rationaliser has
-no special case for — see D8). `state` is the rationaliser's mutable memory.
-`signifier` is the production `KSignifier`. The rationaliser reads neither the
-table nor the compiled script — this is the key difference from the trainer,
-which reads `compiled`.
+last `RationaliseEvent`'s `KValue`. A dialogue never rationalises an empty
+statement: the engine takes no `None` — the opening seed (`None`) is a
+trainer-only concept that never reaches the trainee or the engine. `state` is
+the rationaliser's mutable memory. `signifier` is the production
+`KSignifier`. The rationaliser reads neither the table nor the compiled
+script — this is the key difference from the trainer, which reads `compiled`.
 
 **D5 — Cogitation is simplified: synchronous, deterministic, inline.** No
 background thread, no `expand()` distance computation, no `propose_expansions()`

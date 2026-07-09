@@ -216,6 +216,11 @@ class RationalisingTrainee:
     (the engine is built at construction), and publishes each emitted ``KValue``
     (wrapped in a ``RationaliseEvent``) via the injected sink. Constructor does
     **not** take ``decoded`` — the table is only the validation oracle.
+
+    A trainee never opens a dialogue (only the trainer opens, on the
+    ``None`` seed), so its ``accept`` always receives a real
+    ``RationaliseEvent`` — there is no drain / no-op path. A dialogue never
+    rationalises an empty statement.
     """
 
     def __init__(self, signifier: KSignifier, sink: EventSink) -> None:
@@ -227,9 +232,7 @@ class RationalisingTrainee:
         """The role this actor emits on its events (the routing key)."""
         return "K"
 
-    def next_events(
-        self, incoming: RationaliseEvent | None
-    ) -> list[RationaliseEvent]:
+    def next_events(self, incoming: RationaliseEvent) -> list[RationaliseEvent]:
         """Rationalise ``incoming`` into a batch of events.
 
         The engine returns an identity blast or a single relationship emission
@@ -239,7 +242,7 @@ class RationalisingTrainee:
         return self._process_and_collect(incoming)
 
     def _process_and_collect(
-        self, incoming: RationaliseEvent | None
+        self, incoming: RationaliseEvent
     ) -> list[RationaliseEvent]:
         """Feed ``incoming`` to the engine and collect its emitted batch as events.
 
@@ -247,17 +250,16 @@ class RationalisingTrainee:
         runs each time), so the trainee's state stays in lockstep with the
         trainer's responses.
         """
-        incoming_value = incoming.proposal if incoming is not None else None
+        incoming_value = incoming.proposal
         query = incoming_value
         events: list[RationaliseEvent] = []
         for proposal in self._engine.rationalise(incoming_value):
-            q = query if query is not None else proposal
             events.append(
-                RationaliseEvent(kind="frame", query=q, proposal=proposal, role="K")
+                RationaliseEvent(kind="frame", query=query, proposal=proposal, role="K")
             )
         return events
 
-    def accept(self, incoming: RationaliseEvent | None) -> None:
+    def accept(self, incoming: RationaliseEvent) -> None:
         """Publish the whole batch for ``incoming`` (the point of batching)."""
         for event in self._process_and_collect(incoming):
             self._sink.on_event(event)

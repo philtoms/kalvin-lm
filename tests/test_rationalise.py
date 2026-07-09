@@ -56,11 +56,15 @@ def _work_list(r: Rationaliser) -> list[tuple[int, list[int]]]:
 def test_rationalise_returns_batch_or_empty(
     rationaliser: Rationaliser, signifier: NLPSignifier
 ) -> None:
-    """rationalise returns a list of KValues while there is work, empty when idle."""
+    """rationalise returns a list of KValues while there is work, empty when idle.
+
+    A dialogue never rationalises an empty statement, so the engine always
+    receives a real incoming value. Cogitation with nothing workable returns an
+    empty batch (D12: termination is the runner's job)."""
     a = signifier.make_signature([0b1])
     ab = signifier.make_signature([0b1, 0b10])
-    # No work, no incoming -> empty list (D12: termination is the runner's job).
-    assert rationaliser.rationalise(None) == []
+    # Cogitation over an idle work-list -> empty batch (D12).
+    assert rationaliser._cogitate() == []
     # With an S2 incoming, cogitation emits an identity blast (every workable
     # identity at S4) — here the query's signature and its unrecognised node.
     emitted = rationaliser.rationalise(_value(KLine(ab, [a]), SIG_S2))
@@ -331,7 +335,7 @@ def test_s2_misfit_routes_to_s2_path_and_idles(
     assert rationaliser._s2_eligible(misfit)      # multi-node misfit -> S2
 
     rationaliser._state.work_list.append(misfit)
-    emitted = rationaliser.rationalise(None)
+    emitted = rationaliser._cogitate()
 
     # Rule 1 fired no expansions (nothing grounded under y/z): proposal is the
     # entry shape, emitted at S2. Entry persists (B1).
@@ -365,7 +369,7 @@ def test_s2_node_expansion_replaces_signature_node(
     _ground(rationaliser, KLine(had, [did, have]))   # `had` canon grounded
 
     rationaliser._state.work_list.append(entry)
-    emitted = rationaliser.rationalise(None)
+    emitted = rationaliser._cogitate()
 
     assert len(emitted) == 1
     assert emitted[0].significance == SIG_S2
@@ -391,7 +395,7 @@ def test_s2_node_expansion_skips_identities(
     _ground(rationaliser, KLine(mary, []))           # identity under Mary
 
     rationaliser._state.work_list.append(entry)
-    emitted = rationaliser.rationalise(None)
+    emitted = rationaliser._cogitate()
 
     # Mary is an identity (no nodes) -> not expanded; target unchanged.
     assert list(emitted[0].kline.nodes) == [mary, had, what]
@@ -414,7 +418,7 @@ def test_s2_node_expansion_applies_all_in_one_cogitation(
     _ground(rationaliser, KLine(what, [w1, w2]))
 
     rationaliser._state.work_list.append(entry)
-    emitted = rationaliser.rationalise(None)
+    emitted = rationaliser._cogitate()
 
     # Both Mary and what expanded in the one emission; had persists.
     assert list(emitted[0].kline.nodes) == [m1, m2, had, w1, w2]
@@ -560,7 +564,7 @@ def test_s2_graft_produces_wdmh_48_shape(
     _ground(rationaliser, KLine(mhall, [mary, had, a, little, lamb]))
 
     rationaliser._state.work_list.append(entry)
-    emitted = rationaliser.rationalise(None)
+    emitted = rationaliser._cogitate()
 
     assert len(emitted) == 1
     assert emitted[0].kline.signature == wdmh
@@ -584,7 +588,7 @@ def test_s2_graft_replaces_open_with_candidate_difference(
     _ground(rationaliser, KLine(cand_sig, [a, b, x, y]))
 
     rationaliser._state.work_list.append(entry)
-    emitted = rationaliser.rationalise(None)
+    emitted = rationaliser._cogitate()
 
     assert list(emitted[0].kline.nodes) == [a, b, x, y]
 
@@ -603,7 +607,7 @@ def test_s2_graft_extends_when_target_open_empty(
     _ground(rationaliser, KLine(cand_sig, [a, b, x]))
 
     rationaliser._state.work_list.append(entry)
-    emitted = rationaliser.rationalise(None)
+    emitted = rationaliser._cogitate()
 
     assert list(emitted[0].kline.nodes) == [a, b, x]
 
@@ -648,7 +652,7 @@ def test_s2_drops_already_grounded_proposal(
     _ground(rationaliser, KLine(wdmh, [mary, had, a, little, lamb]))
 
     rationaliser._state.work_list.append(entry)
-    emitted = rationaliser.rationalise(None)
+    emitted = rationaliser._cogitate()
 
     assert emitted == []           # shaped proposal is grounded -> dropped (B4)
     assert (wdmh, [mary, had, what]) in _work_list(rationaliser)  # entry persists
@@ -682,7 +686,7 @@ def test_s2_substituted_nodes_all_come_from_grounded_klines(
     _ground(rationaliser, mhall_kline)
 
     rationaliser._state.work_list.append(entry)
-    emitted = rationaliser.rationalise(None)
+    emitted = rationaliser._cogitate()
 
     proposal_nodes = set(emitted[0].kline.nodes)
     entry_nodes = set(entry.nodes)
@@ -708,7 +712,7 @@ def test_single_node_unpairable_relationship_not_routed_to_s2(
     assert not rationaliser._s2_eligible(rel)      # single-node -> NOT S2
 
     rationaliser._state.work_list.append(rel)
-    emitted = rationaliser.rationalise(None)
+    emitted = rationaliser._cogitate()
 
     # Skipped (not workable), not routed to S2: no emission, entry persists
     # awaiting the operand canons that make it S3-pairable.
@@ -807,8 +811,11 @@ def test_s2_candidates_exclude_entry_itself(
 
 def test_termination_returns_empty_when_idle(rationaliser: Rationaliser) -> None:
     """D12: an empty work-list after the entry rule -> empty batch; the runner
-    signals termination (termination is the runner's job, not K's)."""
-    assert rationaliser.rationalise(None) == []
+    signals termination (termination is the runner's job, not K's).
+
+    A dialogue never rationalises an empty statement, so the empty-batch case
+    is exercised by cogitation over an idle (post-entry-rule) work-list."""
+    assert rationaliser._cogitate() == []
 
 
 # ── Escalation (D11) — deferred ───────────────────────────────────────────
