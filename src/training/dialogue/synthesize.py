@@ -5,7 +5,7 @@ Spec seam: ``@specs/dialogue-driven-training.md`` §Actor, §The Runner,
 §Validation (the synthesizer satisfies the existing Actor contract).
 
 The :func:`synthesize` function is the drop-in core of a
-:class:`~training.dialogue.runner.SynthesizingTrainer`. It derives the next
+:class:`~training.dialogue.actors.SynthesizingTrainer`. It derives the next
 trainer KValue from two inputs — the compiled script and the trainee's last
 KValue — using structural predicates only (D2: ``dbg``-free). It never reads
 the authored dialogue table; that table is only the validation oracle the

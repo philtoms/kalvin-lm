@@ -14,7 +14,7 @@ they are not the design's point, only its scaffolding. The runner does not defen
 against replacement — it will evolve when real actors arrive.
 
 The runner is **bus-driven**: it drives the exchange over the harness
-`MessageBus` (spec `@specs/peer-dialogue.md`). The actors are adapter-driven —
+`MessageBus` (spec `@specs/dialogue-runner.md`). The actors are adapter-driven —
 each holds an `EventSink` and publishes its turns via `accept`
 (fire-and-forget, zero-or-many per incoming), mirroring how `KAgent` publishes
 via its adapter.
@@ -136,7 +136,7 @@ declare, not the decoder's to police.
 ## The Runner
 
 The run is driven by the harness `MessageBus` (spec
-`@specs/peer-dialogue.md` §The Runner): the bus is the sink and the relay; the
+`@specs/dialogue-runner.md` §The Runner): the bus is the sink and the relay; the
 runner is a coverage-tracking wildcard subscriber plus a thin driver that seeds
 the opening and runs the bus until the closing is seen. The runner validates
 emissions by content match against the table's distinct middle contents and the
@@ -150,7 +150,7 @@ closes — on the opening seed (`incoming=None`) it opens a fresh script's prima
 ### Actor
 
 ```
-PeerActor:
+Actor:
   role: str
   accept(incoming: RationaliseEvent | None) -> None   # publishes via its sink
 ```
@@ -174,8 +174,8 @@ The runner is a **content matcher**: each emission is matched against the table'
 distinct middle contents and the closing by `(role, kline, significance)` content
 equality. An emission matching a middle content marks it covered (idempotent);
 an emission matching the closing marks completion; an emission matching nothing
-is **divergence** (`PeerDivergence` under `on_divergence="fail"`, recorded in
-`PeerRunResult.unmatched` under `"accept"`).
+is **divergence** (`Divergence` under `on_divergence="fail"`, recorded in
+`RunResult.unmatched` under `"accept"`).
 
 A real trainer is expected to synthesise its training responses, and a real
 trainee its responses; both announce their role and are matched against the
@@ -196,7 +196,7 @@ runner carries no notion of "learned" and emits no grounding signal.
 
 - How a real trainer produces its turns, or a real trainee its responses. Both
   arrive with their own cogitation and (for the trainee) memory; the runner's
-  `PeerActor` interface is the contract they satisfy.
+  `Actor` interface is the contract they satisfy.
 - Supervisor escalation on a request the trainer cannot resolve — belongs to the
   real trainer.
 - Multi-cascade *tables*. The runner routes multi-script boundaries via the
@@ -228,15 +228,15 @@ table-reading actors over the harness message bus to completion.
 | DDT-3  | The decoder pre-decodes every turn into a flat ordered `list[DecodedTurn]` at configuration time                                                                                                                                                                                                     | §Decoder               |
 | DDT-4  | Decoding resolves the kline from `script`, attaches significance by lookup, passes through actor/op, drops annotation-only turns and ignores notes                                                                                                                                                   | §Decoder               |
 | DDT-5  | A CANONIZED turn resolves each node label to its canonical signature and builds `KLine(signature, nodes)` with the declared signature verbatim — no canon retrieval by node-list, no signature-consistency check (an author may declare a deliberate misfit)         | §Decoder               |
-| DDT-6  | (removed) The runner no longer owns a table cursor; emissions are matched by content (see `@specs/peer-dialogue.md` PDT-7)                                                                                                                                                                          | §The Runner            |
-| DDT-7  | (removed) Greedy cursor dispatch is gone; an actor may reply zero-or-many per incoming (see `@specs/peer-dialogue.md` PDT-18)                                                                                                                                                                       | §The Runner            |
+| DDT-6  | (removed) The runner no longer owns a table cursor; emissions are matched by content (see `@specs/dialogue-runner.md` PDT-7)                                                                                                                                                                          | §The Runner            |
+| DDT-7  | (removed) Greedy cursor dispatch is gone; an actor may reply zero-or-many per incoming (see `@specs/dialogue-runner.md` PDT-18)                                                                                                                                                                       | §The Runner            |
 | DDT-8  | The trainer and trainee are symmetric readers of the same decoded table, differing only by actor                                                                                                                                                                                                     | §The Runner            |
 | DDT-9  | An actor publishes one `RationaliseEvent` per row via its sink; the event's `proposal` is the row's KValue, `query` is the incoming event's proposal, and `role` is the actor's self-declared routing key                                                                                            | §Actor                 |
 | DDT-10 | The default actors never inspect the incoming event to decide what to emit                                                                                                                                                                                                                           | §Actor                 |
-| DDT-11 | (removed) Validation is content-match against the table, not cursor-keyed (see `@specs/peer-dialogue.md` PDT-7..PDT-9); a non-matching emission is `PeerDivergence`/`unmatched`, not `ActorDivergence`                                                                                              | §Validation            |
+| DDT-11 | (removed) Validation is content-match against the table, not cursor-keyed (see `@specs/dialogue-runner.md` PDT-7..PDT-9); a non-matching emission is `Divergence`/`unmatched`, not `ActorDivergence`                                                                                              | §Validation            |
 | DDT-12 | (removed) The runner no longer treats the trainer as unvalidated; both actors are matched (see DDT-11)                                                                                                                                                                                               | §Validation            |
-| DDT-13 | (removed) Completion is closing-seen, not cursor-exhaustion (see `@specs/peer-dialogue.md` PDT-13)                                                                                                                                                                                                  | §The Runner            |
-| DDT-14 | (removed) The runner is bus-driven, not bus-agnostic (see `@specs/peer-dialogue.md` PDT-5)                                                                                                                                                                                                           | §Overview, §The Runner |
+| DDT-13 | (removed) Completion is closing-seen, not cursor-exhaustion (see `@specs/dialogue-runner.md` PDT-13)                                                                                                                                                                                                  | §The Runner            |
+| DDT-14 | (removed) The runner is bus-driven, not bus-agnostic (see `@specs/dialogue-runner.md` PDT-5)                                                                                                                                                                                                           | §Overview, §The Runner |
 | DDT-15 | The runner carries no notion of learned/grounding and emits no grounding signal                                                                                                                                                                                                                      | §What Training Is      |
 | DDT-16 | (removed) There is no validation index; an actor publishes its rows via its sink and holds no cursor (see §Actor)                                                                                                                                                                                    | §Actor                 |
 | DDT-17 | The runner routes on the actor's self-declared `event.role`: the actor announces itself and the bus addresses its emissions to the other role — the shape a real, possibly asynchronous actor will use                                                                                              | §Validation            |

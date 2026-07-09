@@ -1,7 +1,7 @@
 """Run a dialogue end-to-end through the table-reading trainer and trainee.
 
 Loads a dialogue table, decodes it, and drives it to completion through the
-sink-shaped :class:`PeerRunner`, which bridges the actors' emissions onto a
+sink-shaped :class:`Runner`, which bridges the actors' emissions onto a
 :class:`MessageBus` (coverage is order-agnostic on middle entries — the natural
 fit for real actors). Prints a PASS/FAIL summary; with ``--verbose`` it traces
 the exchange, showing each validated entry in its scripted (declarative
@@ -14,7 +14,7 @@ turn from the compiled script) for the default ``TableTrainer``. The two flags
 are orthogonal: passing both runs the two real actors against the same golden
 master. Note real actors do not reproduce the table exactly, so running them
 typically needs ``--on-divergence accept`` (else off-table emissions raise
-``PeerDivergence``).
+``Divergence``).
 
 The runner is bus-driven: it owns a :class:`MessageBus`, builds a bus-wired
 :class:`EventSink` per actor, and runs the bus until the closing is seen or the
@@ -50,15 +50,15 @@ from kalvin.nlp_tokenizer import NLPTokenizer  # noqa: E402
 from kalvin.signifier import NLPSignifier  # noqa: E402
 from ks.compiler import compile_source  # noqa: E402
 from training.dialogue import (  # noqa: E402
-    PeerDivergence,
+    Divergence,
     TableTrainee,
     TableTrainer,
     decode,
     load_table,
-    run_peer,
+    run,
 )
 from training.dialogue.decoder import primaries_from_source  # noqa: E402
-from training.dialogue.runner import (  # noqa: E402
+from training.dialogue.actors import (  # noqa: E402
     RationalisingTrainee,
     SynthesizingTrainer,
 )
@@ -133,7 +133,7 @@ def _render_scripted(
 def _scripted_form_event(event, sig_to_label: dict[int, str]) -> str:
     """Scripted form of an emission (arrival-ordered).
 
-    A peer event carries the emitter's ``role`` and its ``proposal`` KValue but
+    An event carries the emitter's ``role`` and its ``proposal`` KValue but
     not the table's ``op``; the proposal's ``dbg.op`` (the structural state the
     kline was built with) stands in, falling back to ``?`` when absent.
     """
@@ -153,7 +153,7 @@ def _render_trace_entry(idx: int, scripted: str, record: dict | None) -> str:
     return line
 
 
-def _peer_trace(
+def _trace(
     events: list,
     decoded: list,
     sig_to_label: dict[int, str],
@@ -196,7 +196,7 @@ def _peer_trace(
         )
     # Unreached rows: table content whose key never appeared in an emission
     # (the run stalled or a real actor never produced it). Surface them so the
-    # full table is visible. The opening and closing are positional in peer
+    # full table is visible. The opening and closing are positional in dialogue
     # mode (consumed/terminal, not coverage), so they are never "unreached".
     unreached = [
         t for t in decoded[1:-1]
@@ -255,7 +255,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=(
             "Divergence policy (default: fail, or the table's "
-            "peer.on_divergence when it declares one)."
+            "run.on_divergence when it declares one)."
         ),
     )
     args = parser.parse_args(argv)
@@ -273,10 +273,12 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # The divergence policy is ``--on-divergence`` when given, else the table's
-    # declared ``peer.on_divergence``, else ``fail``.
+    # declared ``run.on_divergence``, else ``fail``.
     on_divergence = args.on_divergence
     if on_divergence is None:
-        on_divergence = table.peer.on_divergence if table.is_peer else "fail"
+        on_divergence = (
+            table.run_config.on_divergence if table.has_run_config else "fail"
+        )
 
     # The --synthesize/--rationalise flags substitute real actors. They are
     # orthogonal: passing both runs the two real actors against the same golden
@@ -300,14 +302,14 @@ def main(argv: list[str] | None = None) -> int:
         else (lambda sink: TableTrainee(decoded, sink=sink))
     )
     try:
-        runner = run_peer(
+        runner = run(
             decoded,
             trainer_factory,
             trainee_factory,
             on_divergence=on_divergence,
         )
         res = runner.run()
-    except PeerDivergence as exc:
+    except Divergence as exc:
         print(
             f"FAIL — {exc.role} divergence: emitted {_label_of(exc.emitted)} "
             f"(sig={exc.emitted.significance:#x}) matches no closing or "
@@ -327,7 +329,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.verbose:
         print(
             "\nExchange (arrival order):\n"
-            + _peer_trace(res.events, decoded, sig_to_label)
+            + _trace(res.events, decoded, sig_to_label)
         )
     return 0 if res.complete else 1
 

@@ -228,7 +228,7 @@ uncovered rows; K produces the `#48` shape at S2 and T ratifies it at S1.
 **Known artefact (pending step 8):** K re-emits the unratified S2 proposal on
 consecutive cogitations before T ratifies it, and continues shaping different
 proposals after the first is grounded (the S2 entry persists, B1). Both are
-peer-runner consequences of K cogitating without T interleaving and expose an
+runner consequences of K cogitating without T interleaving and expose an
 S2-lifecycle question — when should an S2 entry retire after ratification? —
 that folds into the S3-stall → S2 migration work (§10). The real harness's
 ratification flow interleaves T between K emissions and does not show this.

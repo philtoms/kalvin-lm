@@ -1,15 +1,15 @@
 """Dialogue actor tests.
 
 Spec: ``@specs/dialogue-driven-training.md`` DDT-9/10/16 (actor shape) and
-``@specs/peer-dialogue.md`` (peer run). The actors publish their turns via an
+``@specs/dialogue-runner.md`` (run). The actors publish their turns via an
 injected ``EventSink`` (``accept``), one row per call, and never inspect the
-incoming event to decide what to emit. The peer runner drives them over the
+incoming event to decide what to emit. The runner drives them over the
 harness :class:`~training.harness.bus.MessageBus` and validates emissions
 against the authored table.
 
 The decisive acceptance test is the canonical end-to-end run (the "Mary had
 a little lamb" reference dialogue, frozen in :mod:`tests._fixtures`): runs to
-completion through the peer runner with the default actors, every emission
+completion through the runner with the default actors, every emission
 validated by content match.
 """
 
@@ -29,7 +29,7 @@ from training.dialogue import (
     TableTrainer,
     decode,
     load_table,
-    run_peer,
+    run,
 )
 
 
@@ -44,7 +44,7 @@ def _sigf() -> NLPSignifier:
 @pytest.fixture(scope="module")
 def _decoded_mhall(_sigf: NLPSignifier):
     tok = NLPTokenizer()
-    table = load_table(_peer_mhall())
+    table = load_table(_run_mhall())
     return decode(table, tokenizer=tok, signifier=_sigf)
 
 
@@ -54,15 +54,15 @@ def _compiled_mhall(_sigf: NLPSignifier):
     from ks.compiler import compile_source
 
     tok = NLPTokenizer()
-    table = load_table(_peer_mhall())
+    table = load_table(_run_mhall())
     compiled = compile_source(table.script, tokenizer=tok, signifier=_sigf, dev=True)
     return compiled, _sigf
 
 
-def _peer_mhall() -> dict:
-    """The MHALL table in peer mode (a ``peer`` section selects the regime)."""
+def _run_mhall() -> dict:
+    """The MHALL table in dialogue mode (a ``run`` section opts into run-validation)."""
     table = mhall_table()
-    table["peer"] = {}
+    table["run"] = {}
     return table
 
 
@@ -76,9 +76,9 @@ class _CapturingSink:
         self.events.append(event)
 
 
-def _run_peer_default(decoded):
-    """Drive ``decoded`` through the peer runner with the default table-reading actors."""
-    return run_peer(
+def _run_default(decoded):
+    """Drive ``decoded`` through the runner with the default table-reading actors."""
+    return run(
         decoded,
         lambda sink: TableTrainer(decoded, sink=sink),
         lambda sink: TableTrainee(decoded, sink=sink),
@@ -140,14 +140,14 @@ def test_actor_yields_first_row_on_first_accept(_decoded_mhall):
 
 def test_trainer_and_trainee_are_symmetric_readers(_decoded_mhall):
     """DDT-8: both yield their own rows in order; together they cover the table."""
-    res = _run_peer_default(_decoded_mhall)
+    res = _run_default(_decoded_mhall)
     assert res.complete
     assert res.covered
 
 
 def test_event_carries_emitting_role(_decoded_mhall):
     """The default actors self-declare their role on every emitted event."""
-    res = _run_peer_default(_decoded_mhall)
+    res = _run_default(_decoded_mhall)
     roles = [e.role for e in res.events]
     assert roles[0] == "T"  # the MHALL table opens with a trainer turn
     assert set(roles) == {"T", "K"}
@@ -157,9 +157,9 @@ def test_event_carries_emitting_role(_decoded_mhall):
 
 
 def test_canonical_run_completes(_decoded_mhall):
-    """The full MHALL dialogue runs to completion through the peer runner with the
+    """The full MHALL dialogue runs to completion through the runner with the
     default actors, the closing S1 countersign of the primary delivered last."""
-    res = _run_peer_default(_decoded_mhall)
+    res = _run_default(_decoded_mhall)
     assert res.complete
     assert res.events[-1].proposal.significance == SIG_S1
     assert res.events[-1].proposal.kline == res.events[0].proposal.kline
@@ -169,7 +169,7 @@ def test_canonical_run_emits_every_table_row(_decoded_mhall):
     """Every decoded turn's content is emitted exactly once by the default actors."""
     from training.dialogue.decoder import turn_content_key
 
-    res = _run_peer_default(_decoded_mhall)
+    res = _run_default(_decoded_mhall)
     emitted_keys = [
         (e.role, e.proposal.kline.signature, tuple(e.proposal.kline.nodes), e.proposal.significance)
         for e in res.events
@@ -184,12 +184,12 @@ def test_canonical_run_emits_every_table_row(_decoded_mhall):
 def test_rationaliser_runs_mhall_to_exhaustion(_decoded_mhall, _sigf: NLPSignifier):
     """The RationalisingTrainee (a real, stateful trainee) runs MHALL to
     completion with zero divergence against the golden master, driven through
-    the peer runner. The trainer stays a ``TableTrainer`` (the deterministic
+    the runner. The trainer stays a ``TableTrainer`` (the deterministic
     oracle). This is the canonical end-to-end proof that a rationalising trainee
     is a drop-in replacement for ``TableTrainee``."""
-    from training.dialogue.runner import RationalisingTrainee
+    from training.dialogue.actors import RationalisingTrainee
 
-    res = run_peer(
+    res = run(
         _decoded_mhall,
         lambda sink: TableTrainer(_decoded_mhall, sink=sink),
         lambda sink: RationalisingTrainee(_sigf, sink=sink),
@@ -211,18 +211,18 @@ def test_synthesizing_trainer_runs_mhall_to_exhaustion(
 ):
     """The SynthesizingTrainer (a real, script-deriving trainer) runs MHALL to
     completion with zero divergence against the golden master, driven through the
-    peer runner. The trainee stays a ``TableTrainee`` (the deterministic oracle).
+    runner. The trainee stays a ``TableTrainee`` (the deterministic oracle).
     This is the canonical end-to-end proof that a synthesizing trainer is a
     drop-in replacement for ``TableTrainer`` — the symmetric counterpart to the
     Rationaliser test above."""
     from training.dialogue.decoder import primaries_from_source
-    from training.dialogue.runner import SynthesizingTrainer
+    from training.dialogue.actors import SynthesizingTrainer
 
     compiled, sigf = _compiled_mhall
     primaries = primaries_from_source(
-        load_table(_peer_mhall()).script, tokenizer=NLPTokenizer(), signifier=sigf
+        load_table(_run_mhall()).script, tokenizer=NLPTokenizer(), signifier=sigf
     )
-    res = run_peer(
+    res = run(
         _decoded_mhall,
         lambda sink: SynthesizingTrainer(compiled, sigf, primaries, sink=sink),
         lambda sink: TableTrainee(_decoded_mhall, sink=sink),
@@ -240,9 +240,9 @@ def test_synthesizing_trainer_runs_mhall_to_exhaustion(
 def test_synthesizing_trainer_replies_to_any_incoming(_compiled_mhall):
     """The trainer does not detect script closes and never withholds on its
     own — it synthesises a reply for whatever ``incoming`` it is handed.
-    Close-detection is the peer runner's job (it owns the table and routes
+    Close-detection is the runner's job (it owns the table and routes
     accordingly). This replaces the former R4 trainer-side withhold."""
-    from training.dialogue.runner import SynthesizingTrainer
+    from training.dialogue.actors import SynthesizingTrainer
 
     compiled, sigf = _compiled_mhall
     sink = _CapturingSink()
@@ -264,11 +264,11 @@ def test_synthesizing_trainer_advances_primary_on_each_open():
     """On the opening seed (``incoming=None``) the trainer emits the current
     primary at S2 (R1) and advances, so a multi-script trainer opens each
     script's own primary in turn: primary 0 on the first open, primary 1 after
-    the first close, and so on. The peer runner drives the opens."""
+    the first close, and so on. The runner drives the opens."""
     from pathlib import Path
 
     from training.dialogue.decoder import primaries_from_source
-    from training.dialogue.runner import SynthesizingTrainer
+    from training.dialogue.actors import SynthesizingTrainer
 
     tok, sigf = NLPTokenizer(), NLPSignifier()
     source = Path("data/scripts/mhall.ks").read_text()

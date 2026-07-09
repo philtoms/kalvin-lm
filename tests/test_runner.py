@@ -1,6 +1,6 @@
-"""Phase 3 — the PeerRunner as a MessageBus subscriber.
+"""Phase 3 — the Runner as a MessageBus subscriber.
 
-Spec: ``@specs/peer-dialogue.md`` PDT-5..PDT-19. The runner is a coverage-
+Spec: ``@specs/dialogue-runner.md`` PDT-5..PDT-19. The runner is a coverage-
 tracking wildcard subscriber over a ``MessageBus`` (the sink + relay), plus a
 driver that seeds the opening and runs the bus until the closing is seen.
 Actors reply fire-and-forget via the bus; no synchronised alternation;
@@ -21,9 +21,9 @@ from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn, Role
-from training.dialogue.peer_runner import (
-    PeerDivergence,
-    run_peer,
+from training.dialogue.runner import (
+    Divergence,
+    run,
 )
 
 # ── Fixtures ──────────────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ def _run(
     idle_timeout: float = 1.0,
 ):
     """Construct actors (via factories) + runner and drive to completion."""
-    runner = run_peer(
+    runner = run(
         decoded,
         lambda sink: _ScriptedActor("T", trainer_bursts, sink=sink),
         lambda sink: _ScriptedActor("K", trainee_bursts, sink=sink),
@@ -122,7 +122,7 @@ def test_runner_drives_to_completion_via_bus():
 
 def test_runner_holds_no_actor_coupling_state():
     """PDT-6: the runner has no per-actor cursors / turn tracking."""
-    runner = run_peer(
+    runner = run(
         _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)),
         lambda sink: _ScriptedActor("T", [], sink=sink),
         lambda sink: _ScriptedActor("K", [], sink=sink),
@@ -182,17 +182,17 @@ def test_role_mismatch_is_divergence():
 
 
 def test_divergence_fail_raises_on_caller_thread():
-    """PDT-9: on_divergence='fail' raises PeerDivergence on the caller's thread
+    """PDT-9: on_divergence='fail' raises Divergence on the caller's thread
     (captured from the bus dispatch thread and re-raised by run())."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
-    runner = run_peer(
+    runner = run(
         decoded,
         lambda sink: _ScriptedActor("T", _bursts(_ev("T", 1, 1), _ev("T", 9, 9)), sink=sink),
         lambda sink: _ScriptedActor("K", _bursts(_ev("K", 99, 99)), sink=sink),  # nothing matches
         on_divergence="fail",
         idle_timeout=1.0,
     )
-    with pytest.raises(PeerDivergence) as exc_info:
+    with pytest.raises(Divergence) as exc_info:
         runner.run()
     assert exc_info.value.role == "K"
 
@@ -324,12 +324,12 @@ def test_idle_timeout_ends_stalled_run_as_incomplete():
 def test_idle_timeout_skipped_when_debugger_attached(monkeypatch):
     """Under a debugger the idle timeout must not fire: a breakpoint pause
     is not a stall. Faked tracer presence flips the helper to disabled."""
-    from training.dialogue import peer_runner
+    from training.dialogue import runner
 
-    monkeypatch.setattr(peer_runner.sys, "gettrace", lambda: object)  # truthy
-    assert peer_runner._idle_timeout_disabled() is True
-    monkeypatch.setattr(peer_runner.sys, "gettrace", lambda: None)
-    assert peer_runner._idle_timeout_disabled() is False
+    monkeypatch.setattr(runner.sys, "gettrace", lambda: object)  # truthy
+    assert runner._idle_timeout_disabled() is True
+    monkeypatch.setattr(runner.sys, "gettrace", lambda: None)
+    assert runner._idle_timeout_disabled() is False
 
 
 # ── PDT-15: arrival-ordered events + diagnostics ──────────────────────────
@@ -366,9 +366,9 @@ def test_result_uncovered_reports_unseen_middle():
 # ── Construction validation ───────────────────────────────────────────────
 
 
-def test_run_peer_validates_on_divergence():
+def test_run_validates_on_divergence():
     with pytest.raises(ValueError):
-        run_peer(
+        run(
             _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)),
             lambda sink: _ScriptedActor("T", [], sink=sink),
             lambda sink: _ScriptedActor("K", [], sink=sink),
@@ -376,9 +376,9 @@ def test_run_peer_validates_on_divergence():
         )
 
 
-def test_run_peer_rejects_too_few_turns():
+def test_run_rejects_too_few_turns():
     with pytest.raises(ValueError):
-        run_peer(
+        run(
             [_turn("T", 1, 1)],
             lambda sink: _ScriptedActor("T", [], sink=sink),
             lambda sink: _ScriptedActor("K", [], sink=sink),

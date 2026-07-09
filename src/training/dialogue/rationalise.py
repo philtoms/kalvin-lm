@@ -6,10 +6,10 @@ Spec seam: ``@specs/dialogue-driven-training.md`` §Actor (the trainee side).
 This module holds the rationalising **engine**: a stateful object that
 derives each turn from ``(incoming, state)`` and returns a ``KValue``. It knows
 nothing of ``RationaliseEvent``, roles, or event kinds — the actor wrapper
-(:class:`~training.dialogue.runner.RationalisingTrainee`) lives in the runner
-and wraps each emitted ``KValue`` in a ``RationaliseEvent``, mirroring how
+(:class:`~training.dialogue.actors.RationalisingTrainee`) lives in the actors
+module and wraps each emitted ``KValue`` in a ``RationaliseEvent``, mirroring how
 :func:`~training.dialogue.synthesize.synthesize` is the engine for
-:class:`~training.dialogue.runner.SynthesizingTrainer`.
+:class:`~training.dialogue.actors.SynthesizingTrainer`.
 
 The engine maintains a minimal model of what it has grounded and never reads
 the authored table or the compiled script. The table is only the validation
@@ -64,7 +64,7 @@ class Rationaliser:
 
     Returns a **batch** of ``KValue``\ s per :meth:`rationalise` call (or an
     empty list when nothing is workable) — an identity blast or a single
-    relationship emission. The :class:`~training.dialogue.runner.RationalisingTrainee`
+    relationship emission. The :class:`~training.dialogue.actors.RationalisingTrainee`
     actor wraps each emitted value in a ``RationaliseEvent``. Reads neither the
     table nor the compiled script nor ``dbg``; constructs synthetic signatures
     via ``signifier.make_signature`` when grouping requires it.
