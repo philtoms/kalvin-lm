@@ -1,6 +1,5 @@
 r"""The rationalising engine — the pure-logic core of a rationalising trainee.
 
-Plan: ``@plans/implement-rationalising-trainee.md``.
 Spec seam: ``@specs/dialogue-driven-training.md`` §Actor (the trainee side).
 
 This module holds the rationalising **engine**: a stateful object that
@@ -11,9 +10,8 @@ module and wraps each emitted ``KValue`` in a ``RationaliseEvent``, mirroring ho
 :func:`~training.dialogue.synthesize.synthesize` is the engine for
 :class:`~training.dialogue.actors.SynthesizingTrainer`.
 
-The engine maintains a minimal model of what it has grounded and never reads
-the authored table or the compiled script. The table is only the validation
-oracle the runner checks every emitted turn against.
+The engine maintains a minimal model of what it has grounded. The runner
+checks every emitted turn against the table.
 
 Cogitation is a deliberate simplification of the real Kalvin's async
 ``expand()`` / ``propose_expansions()`` slow path — synchronous, deterministic,
@@ -24,9 +22,8 @@ single relationship emission (a relationship always terminates the batch and
 is never appended to identities). Returns an empty list when nothing is
 workable (plan D7, D12).
 
-A dialogue never rationalises an empty statement: :meth:`rationalise` requires
-a real incoming ``KValue``. There is no drain / no-op entry — cogitation only
-runs as the second phase of a turn, driven by an incoming query.
+:meth:`rationalise` requires a real incoming ``KValue`` — cogitation runs only
+as the second phase of a turn, driven by an incoming query.
 """
 
 from __future__ import annotations
@@ -65,9 +62,8 @@ class Rationaliser:
     Returns a **batch** of ``KValue``\ s per :meth:`rationalise` call (or an
     empty list when nothing is workable) — an identity blast or a single
     relationship emission. The :class:`~training.dialogue.actors.RationalisingTrainee`
-    actor wraps each emitted value in a ``RationaliseEvent``. Reads neither the
-    table nor the compiled script nor ``dbg``; constructs synthetic signatures
-    via ``signifier.make_signature`` when grouping requires it.
+    actor wraps each emitted value in a ``RationaliseEvent``. Constructs synthetic
+    signatures via ``signifier.make_signature`` when grouping requires it.
     """
 
     def __init__(self, signifier: KSignifier) -> None:
@@ -80,22 +76,21 @@ class Rationaliser:
     def rationalise(self, incoming: KValue) -> list[KValue]:
         """Apply the entry rule to ``incoming``, then emit a batch.
 
-        ``incoming`` is the trainer's value this turn — a dialogue never
-        rationalises an empty statement, so there is no ``None`` / drain path.
-        Returns a list of emitted values: an identity blast (zero or more S4
-        identity asks), a single relationship emission (S2/S3/S1), or an empty
-        list when nothing is workable. Identities and relationships are never
-        mixed in one batch (a relationship always terminates the batch)."""
+        ``incoming`` is the trainer's value this turn. Returns a list of
+        emitted values: an identity blast (zero or more S4 identity asks), a
+        single relationship emission (S2/S3/S1), or an empty list when nothing
+        is workable. Identities and relationships are never mixed in one batch
+        (a relationship always terminates the batch)."""
         self._process_query(incoming)
         return self._cogitate()
 
     # ── Entry rule ────────────────────────────────────────────────────────
 
     def _process_query(self, incoming: KValue) -> None:
-        """Bookkeeping for an incoming query; never emits.
+        """Bookkeeping for an incoming query; emits nothing.
 
-        - **S4** (sentinel by value — ``classify`` never returns it): pop the
-          matching identity work-item (stalemate accepted).
+        - **S4** (sentinel by value): pop the matching identity work-item
+          (stalemate accepted).
         - **S1**: cleanup — ground the kline and recurse over what it unblocks.
         - **S2/S3**: elevate an elevatable relationship to S1 (grounding it via
           cleanup), else unpack it.
@@ -173,7 +168,7 @@ class Rationaliser:
         """Is ``kline`` eligible to ground by node-resolution?
 
         Only identities and canons — relationships ground by elevation on
-        re-receipt (``_elevatable``), never here.
+        re-receipt (``_elevatable``).
         """
         if is_identity(kline):
             return kline.signature in self._state.grounded
@@ -222,8 +217,8 @@ class Rationaliser:
             #   S3 structure (1:1 relationship)    → operand pairing (if workable)
             #   S2 structure (multi-node misfit)    → misfit origination
             # A single-node S3 relationship whose operand canons are not yet
-            # seen is S3-structure but NOT workable — skip it (it awaits
-            # elevation/cleanup), do not route it to S2.
+            # seen is S3-structure but not workable — skip it (it awaits
+            # elevation/cleanup).
             if self._s3_pairable(entry):
                 if batch:
                     return batch  # identities collected; relationship waits
@@ -244,8 +239,8 @@ class Rationaliser:
         single-node relationship ``{L:[R]}`` whose operands L and R each have a
         seen canon (in grounded memory or the work-list). A single-node
         relationship whose operand canons are not yet seen is S3-*structure* but
-        not *workable* — cogitation skips it (it awaits elevation/cleanup) and
-        does NOT route it to S2. Multi-node entries are never S3-pairable.
+        not *workable* — cogitation skips it (it awaits elevation/cleanup).
+        Multi-node entries are not S3-pairable.
         """
         if is_identity(entry) or len(entry.nodes) != 1:
             return False
@@ -261,8 +256,8 @@ class Rationaliser:
         S2 path precondition (scripts/dialogue-rationalisation-behaviours.md
         §3a, B1). The S2 path originates substitutions onto an entry's own
         nodes; it requires a **multi-node** misfit (a single-node relationship
-        is S3-structure, routed to — or awaiting — the S3 path, never S2 even
-        when not yet pairable). Identities and canons never route here.
+        is S3-structure, routed to — or awaiting — the S3 path). Identities and
+        canons do not route here.
         """
         if is_identity(entry) or len(entry.nodes) < 2:
             return False
@@ -306,7 +301,7 @@ class Rationaliser:
             if self._pair_resolved(lhs_sig, rhs_node, residual):
                 continue
             if residual:
-                # A synthesised lhs K was never taught: emit a canonical request
+                # A synthesised lhs K was untaught: emit a canonical request
                 # at S2, and mark it asked so unpack won't re-ask it as an identity.
                 synth_sig = self._signifier.make_signature(residual)
                 proposal_kline = KLine(synth_sig, residual)
@@ -347,8 +342,8 @@ class Rationaliser:
         for candidate in self._s2_candidates(entry):
             target = self._apply_node_graft(target, candidate)
         # B4: if the shaped proposal is already grounded (an isomorphic kline
-        # exists in memory), drop it — do not re-emit the ratified shape. K
-        # advances naturally on the next cogitation (behaviours doc §3 B4, §6).
+        # exists in memory), drop it — K advances on the next cogitation
+        # (behaviours doc §3 B4, §6).
         proposal = KLine(entry.signature, target)
         if self._is_grounded(proposal):
             return None
@@ -431,8 +426,8 @@ class Rationaliser:
         ``n`` and non-empty nodes exists, replace ``n`` with that kline's nodes
         (the matched node is consumed; other nodes persist). Rule 1 sources its
         candidates by signature-in-target-nodes — a separate scan from B3
-        (behaviours doc §4). Identities (empty nodes) never fire (nothing to
-        substitute with). Mutates by rebuilding; returns the new node list.
+        (behaviours doc §4). Identities (empty nodes) carry no substitution.
+        Mutates by rebuilding; returns the new node list.
         """
         expanded: list[int] = []
         for node in target:
@@ -568,10 +563,10 @@ class Rationaliser:
         signature) — this avoids the over-admission single-bit NLP type words
         would cause under ``signifies``; the intended commonality is a shared
         node value (both klines having a ``Mary`` node). Identities carry no
-        nodes and never admit (they have nothing to substitute with). The entry
-        itself is excluded. Order follows the grounded dict's iteration order
-        (insertion order); later steps shape one proposal from the admitted
-        set, so order only matters for tie-breaking.
+        nodes, so they do not admit. The entry itself is excluded. Order follows
+        the grounded dict's iteration order (insertion order); later steps shape
+        one proposal from the admitted set, so order only matters for
+        tie-breaking.
         """
         entry_nodes = set(entry.nodes)
         candidates: list[KLine] = []

@@ -4,7 +4,7 @@
 The harness :class:`~training.harness.bus.MessageBus` is the **sink and the
 relay**; this module's runner (:class:`Runner`) is a **coverage-tracking
 wildcard subscriber** plus a thin driver that seeds the opening and runs the bus
-until the closing is seen. The actors the runner drives live in
+until a terminal condition. The actors the runner drives live in
 :mod:`training.dialogue.actors`.
 
 An actor takes an :class:`EventSink` at construction and publishes events to it
@@ -20,19 +20,16 @@ sense of the stream — the point of Kalvin.
 Every ``accept`` yields at least one proposal (the ``burst >= 1`` contract,
 §Actor contract): an actor with nothing substantive to say publishes a **PASS**
 — a sentinel proposal (``PASS_SIGNATURE`` at S1). The runner intercepts PASS
-before matching: it is neither coverage nor divergence, is routed to the other
-role, and **two consecutive PASSes** (each side passing in turn) is a terminal
-condition (the actors have nothing more to say). The runner is **not a judge**:
-it loads and feeds the actors, closes mechanically (close-content seen, the
-coverage set exhausted, or mutual PASS — not an important distinction), and
-tracks coverage and divergence. It carries no ``complete``/``covered`` verdict;
-the **displacement** (uncovered coverage rows) is the signal of how much of the
-authored exchange the actors traversed.
+before matching: it routes to the other role, and **two consecutive PASSes**
+(each side passing in turn) is a terminal condition (the actors have nothing
+more to say). A run ends mechanically on the close content being seen, the
+coverage set being exhausted, or mutual PASS. The **displacement** (uncovered
+coverage rows) records how much of the authored exchange the actors traversed.
 
 Spec mapping
 ------------
-- The runner is a bus subscriber holding coverage bookkeeping only; the bus is
-  the sink/relay. It tracks coverage and immediate divergence; it is not a judge.
+- The runner is a bus subscriber holding coverage bookkeeping; the bus is the
+  sink/relay. It tracks coverage and immediate divergence.
 - Matching (content presence, idempotent coverage, immediate divergence, close).
 - Anticipation + interjection (permitted, unflagged).
 - The close is de-positional: any agent may emit it at any time; a table has no
@@ -41,7 +38,7 @@ Spec mapping
 - ``EventSink`` + sink-driven actors.
 - No synchronised alternation; route-to-other via the bus-wired sink.
 - ``burst >= 1``: an actor always emits at least one proposal; a PASS is the
-  no-content proposal. Mutual PASS is a terminal condition (not a verdict).
+  no-content proposal. Mutual PASS is a terminal condition.
 """
 
 from __future__ import annotations
@@ -71,9 +68,9 @@ _ACCEPT_ACTION = "accept"
 # An actor whose cogitation yields nothing substantive still owes the dialogue a
 # proposal (``burst >= 1``). It publishes a PASS: a reserved sentinel signature
 # at S1 (the top band). The meaning lives in the signature; S1 only sorts it
-# highest. The runner intercepts PASS *before* content matching — it is neither
-# coverage, nor divergence, nor a closing — routes it to the other role, and
-# watches for two consecutive PASSes (each side passing) as the stall signal.
+# highest. The runner intercepts PASS *before* content matching — it routes
+# it to the other role, and watches for two consecutive PASSes (each side
+# passing) as the stall signal.
 #
 # A reserved bit pattern unlikely to collide with any compiled signature (the
 # compiler hashes real content; this is an arbitrary fixed sentinel).
@@ -84,8 +81,8 @@ def is_pass(event: RationaliseEvent) -> bool:
     """True when ``event`` is a PASS — the no-content proposal (DDT-22).
 
     Detected by the sentinel signature on the proposal's kline. The runner
-    treats a PASS specially: it routes it to the other role but never matches,
-    covers, or flags it as divergence. The actor base emits a PASS when its
+    treats a PASS specially: it routes it to the other role but does not match,
+    cover, or flag it as divergence. The actor base emits a PASS when its
     :meth:`~training.dialogue.actors.Actor.next_events` yields nothing, so the
     ``burst >= 1`` contract holds for every actor.
     """
@@ -102,7 +99,7 @@ def pass_event(role: str) -> RationaliseEvent:
     return RationaliseEvent(kind="frame", query=kv, proposal=kv, role=role)
 
 
-# ── EventSink (DDT-17) — the actor's publish target ───────────────────────
+# ── EventSink (DDT-21) — the actor's publish target ───────────────────────
 
 
 @runtime_checkable
@@ -150,13 +147,13 @@ ActorFactory = Callable[[EventSink], Actor]
 
 
 class Divergence(Exception):  # noqa: N818 - spec names this type
-    """A run emission matched neither the closing nor any middle content.
+    """A run emission that matched no close or coverage content.
 
     Raised under ``on_divergence="fail"`` when an emission's
-    ``(role, kline, significance)`` matches neither the closing nor any of the
-    table's distinct middle contents. Carries the role, the emitted proposal,
-    and the uncovered same-role contents at the moment of divergence. It has no
-    cursor — coverage is content-keyed, not positional.
+    ``(role, kline, significance)`` matches neither the close nor any coverage
+    content. Carries the role, the emitted proposal, and the uncovered
+    same-role contents at the moment of divergence. It has no cursor —
+    coverage is content-keyed, not positional.
     """
 
     def __init__(
@@ -182,14 +179,13 @@ class Divergence(Exception):  # noqa: N818 - spec names this type
 class RunResult:
     """The record of a dialogue run (spec §Types).
 
-    The runner is **not a judge**: it carries no ``complete`` / ``covered``
-    verdict. It records what happened — the arrival-ordered emission log, the
-    immediate divergences (emissions matching nothing, under
-    ``on_divergence="accept"``), and the **displacement**: the coverage rows
-    never emitted (how far the realized dialogue fell short of the authored
-    whole-exchange coverage). Closing is mechanical (close-content seen, the
-    coverage set exhausted, or mutual PASS); the displacement — not a verdict
-    — is the signal of how much of the exchange the actors traversed.
+    Records what happened — the arrival-ordered emission log, the immediate
+    divergences (emissions matching nothing, under ``on_divergence="accept"``),
+    and the **displacement**: the coverage rows never emitted (how far the
+    realized dialogue fell short of the authored whole-exchange coverage). A run
+    ends mechanically (close content seen, coverage exhausted, or mutual PASS);
+    the displacement is the signal of how much of the exchange the actors
+    traversed.
     """
 
     events: list[RationaliseEvent] = field(default_factory=list)
@@ -205,8 +201,7 @@ class _BusEventSink:
 
     The route-to-other rule (DDT-18) is enforced structurally: the actor calls
     ``on_event(event)`` (the event carries the emitter's role on ``event.role``)
-    and this sink addresses the bus ``Message`` to the *other* role. The actor
-    cannot misroute — it merely publishes to its sink.
+    and this sink addresses the bus ``Message`` to the *other* role.
     """
 
     def __init__(self, bus: MessageBus, other_role: str) -> None:
@@ -236,9 +231,9 @@ class Runner:
       ``bus.run()`` on a thread until a terminal condition: the close content
       is seen, the coverage set is exhausted, or both actors pass in turn.
 
-    The runner is **not a judge**. It holds coverage bookkeeping only, tracks
-    immediate divergence, and records displacement. No actor-coupling state.
-    The relay lives in the bus; the runner only observes and records.
+    The runner holds coverage bookkeeping only and tracks immediate divergence
+    and displacement. No actor-coupling state. The relay lives in the bus; the
+    runner observes and records.
 
     Construct via :func:`run`; call :meth:`run` to drive.
     """
@@ -306,8 +301,7 @@ class Runner:
         bus exits when the coverage handler calls ``bus.stop()`` — on the close
         content being seen, the coverage set being exhausted, or a mutual PASS.
         Every ``accept`` yields ≥1 proposal (``burst >= 1``), so the bus never
-        blocks indefinitely. The runner is not a judge: it returns the record
-        (log, divergences, displacement), not a verdict.
+        blocks indefinitely.
         """
         self._bus.send(
             Message(role=self._trainer.role, action=_ACCEPT_ACTION, message=None)
@@ -336,11 +330,11 @@ class Runner:
             return
 
         # A PASS is the no-content proposal. Intercept it *before* any content
-        # matching: it is neither coverage, nor divergence, nor a close. It
-        # routes to the other role (the bus-wired sink already addressed it).
-        # A PASS from one role followed by a PASS from the other is terminal
-        # (the actors have nothing more to say). Two PASSes from the same role
-        # are not (that side is waiting while the other still has content).
+        # matching: it routes to the other role (the bus-wired sink already
+        # addressed it). A PASS from one role followed by a PASS from the other
+        # is terminal (the actors have nothing more to say). Two PASSes from the
+        # same role are not (that side is waiting while the other still has
+        # content).
         if is_pass(event):
             self._events.append(event)
             role = event.role or "?"
@@ -364,8 +358,7 @@ class Runner:
         # A content present in the coverage set marks it covered (idempotent —
         # re-emitting covered content is not divergence). When the coverage set
         # is exhausted, the run ends (entry exhaustion — the exchange is
-        # covered; the runner is not a judge, so this is not distinguished from
-        # a close).
+        # covered).
         if key in self._distinct_coverage:
             self._covered.add(key)
             if self._distinct_coverage <= self._covered:
@@ -401,8 +394,8 @@ class Runner:
     def result(self) -> RunResult:
         """The current :class:`RunResult` snapshot (spec §Types).
 
-        Not a verdict: the arrival log, immediate divergences, and the
-        displacement (coverage rows never emitted).
+        The arrival log, immediate divergences, and the displacement (coverage
+        rows never emitted).
         """
         return RunResult(
             events=list(self._events),

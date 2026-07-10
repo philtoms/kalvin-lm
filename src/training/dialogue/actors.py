@@ -17,9 +17,9 @@ yields nothing. The runner intercepts PASS before matching; two consecutive
 PASSes (each side passing) end the run as a stall.
 
 The two default actors (:class:`TableTrainer`, :class:`TableTrainee`) are
-table-reading doubles — structurally identical, differing only by which ``role``
-they read. That symmetry is what makes either replaceable by a real trainer or a
-real trainee. The default actors are scaffolding, not the design's point.
+table-reading and structurally identical, differing only by which ``role``
+they read. That symmetry is what makes either replaceable by a real trainer or
+a real trainee.
 
 Two real actors are provided: :class:`SynthesizingTrainer` (a trainer that
 derives each turn from the compiled script) and :class:`RationalisingTrainee` (a
@@ -116,10 +116,9 @@ class Actor:
 #
 # Each table actor holds its own index into its own rows (the subsequence of the
 # decoded table matching its ``role``) and yields them one at a time in order,
-# one per ``accept``. It never inspects the incoming event to decide what to
-# emit (DDT-10) — ``incoming`` only supplies the emitted event's ``query``
-# voice. The actor is dumb on purpose: it does not know about run boundaries or
-# the table cursor, and it publishes only via its sink.
+# one per ``accept``. ``incoming`` only supplies the emitted event's ``query``
+# voice (DDT-10). The actor is dumb on purpose: it does not know about run
+# boundaries or the table cursor, and it publishes only via its sink.
 
 
 class _TableActor(Actor):
@@ -182,12 +181,11 @@ class TableTrainee(_TableActor):
 # ── Synthesizing trainer ──────────────────────────────────────────────────
 #
 # A real trainer that derives each turn from the compiled script and the
-# trainee's last KValue (via :func:`~training.dialogue.synthesize.synthesize`),
-# never reading the decoded table. The table is only the validation oracle the
-# runner checks the synthesised turn against (D1). Unlike the table-reading
-# actors it is non-exhausting: R1–R3 always produce a KValue, so ``accept``
-# always publishes. Not produced by the runner; callers wire it explicitly
-# (like :class:`RationalisingTrainee`).
+# trainee's last KValue (via :func:`~training.dialogue.synthesize.synthesize`).
+# The runner checks the synthesised turn against the table (D1). Unlike the
+# table-reading actors it is non-exhausting: R1–R3 always produce a KValue, so
+# ``accept`` always publishes. Callers wire it explicitly (like
+# :class:`RationalisingTrainee`).
 #
 # The trainer does **not** detect script closes. Close detection is the
 # runner's job: it owns the table and reads each turn's ``close`` marker (spec
@@ -203,9 +201,8 @@ class SynthesizingTrainer(Actor):
 
     Drop-in for :class:`TableTrainer`. Holds the compiled script (for structure
     — R2/R3 decompositions) and the ordered script ``primaries`` (for openings
-    — R1), plus a signifier and the injected sink it publishes to. The table is
-    only the validation oracle; the constructor takes neither ``decoded`` nor
-    the table.
+    — R1), plus a signifier and the injected sink it publishes to. The runner
+    checks each turn against the table.
 
     On the opening seed (``incoming=None``) the trainer emits the current
     primary at S2 (R1) and advances to the next primary, so a multi-script file
@@ -253,9 +250,8 @@ class SynthesizingTrainer(Actor):
 #
 # A real trainee that rationalises each turn from its own state and the
 # trainer's last KValue (via the :class:`~training.dialogue.rationalise.Rationaliser`
-# engine), never reading the decoded table. The engine returns a batch of
-# ``KValue``\ s; this actor yields each wrapped in a ``RationaliseEvent``. Not
-# produced by the runner; callers wire it explicitly.
+# engine). The engine returns a batch of ``KValue``\ s; this actor yields each
+# wrapped in a ``RationaliseEvent``. Callers wire it explicitly.
 
 
 class RationalisingTrainee(Actor):
@@ -264,15 +260,14 @@ class RationalisingTrainee(Actor):
     Drop-in for :class:`TableTrainee`. Holds a
     :class:`~training.dialogue.rationalise.Rationaliser` engine and a signifier
     (the engine is built at construction), and publishes each emitted ``KValue``
-    (wrapped in a ``RationaliseEvent``) via the injected sink. Constructor does
-    **not** take ``decoded`` — the table is only the validation oracle.
+    (wrapped in a ``RationaliseEvent``) via the injected sink. The runner checks
+    each turn against the table.
 
-    A trainee never opens a dialogue (only the trainer opens, on the
-    ``None`` seed), so its ``accept`` always receives a real
-    ``RationaliseEvent`` — there is no drain / no-op path. A dialogue never
-    rationalises an empty statement. When the engine has nothing workable for a
-    turn, :meth:`next_events` yields nothing and the :class:`Actor` base emits
-    a PASS (``burst >= 1``, DDT-22) — the trainee is waiting, not silent.
+    A trainee opens via the trainer (on the ``None`` seed); its ``accept``
+    always receives a real ``RationaliseEvent``. When the engine has nothing
+    workable for a turn, :meth:`next_events` yields nothing and the
+    :class:`Actor` base emits a PASS (``burst >= 1``, DDT-22) — the trainee is
+    waiting, not silent.
     """
 
     def __init__(self, signifier: KSignifier, sink: EventSink) -> None:
@@ -294,11 +289,10 @@ class RationalisingTrainee(Actor):
         runs each time), so the trainee's state stays in lockstep with the
         trainer's responses.
 
-        A trainee never opens a dialogue (only the trainer opens, on the
-        ``None`` seed); ``incoming`` is therefore always a real event here.
-        ``None`` is a caller bug and crashes loudly.
+        ``incoming`` is always a real event here (the trainer opens via the
+        ``None`` seed). ``None`` is a caller bug and crashes loudly.
         """
-        assert incoming is not None, "a trainee never opens; incoming must be set"
+        assert incoming is not None, "a trainee does not open; incoming must be set"
         incoming_value = incoming.proposal
         query = incoming_value
         for proposal in self._engine.rationalise(incoming_value):

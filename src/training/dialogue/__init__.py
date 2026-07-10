@@ -9,14 +9,13 @@ the dialogue **actors** (:mod:`training.dialogue.actors`), and the
 over the harness :class:`~training.harness.bus.MessageBus` that drives the two
 actors to completion.
 
-The decoder is single-stage and runs once at configuration time; the runner
-never touches ``script`` again. Both default actors are table-reading doubles,
-structurally symmetric and individually replaceable by a real trainer or trainee.
+The decoder is single-stage and runs once at configuration time. Both default
+actors are table-reading, structurally symmetric, and individually replaceable
+by a real trainer or trainee.
 """
 
 from training.dialogue.decoder import (
     BAND_TO_SIG,
-    DECODEDTurn,
     DecodedTurn,
     DialogueTable,
     Turn,
@@ -36,7 +35,6 @@ from training.dialogue.runner import (
 
 __all__ = [
     "BAND_TO_SIG",
-    "DECODEDTurn",
     "DecodedTurn",
     "DialogueTable",
     "Divergence",

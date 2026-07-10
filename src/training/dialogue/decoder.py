@@ -1,10 +1,9 @@
 """Single-stage dialogue-table decoder (spec ``@specs/dialogue-driven-training.md`` §Decoder).
 
-This is Phase 1 of the plan. The decoder is a **pre-loop configuration stage**:
-``decode(table)`` turns a :class:`DialogueTable` into a flat ordered list of
-:class:`DecodedTurn`, resolving every symbolic label against ``script`` (the
-single source of truth for kline structure). The training loop (Phases 2–3)
-receives only the decoded list and never touches ``script`` or the symbol map.
+The decoder is a **pre-loop configuration stage**: ``decode(table)`` turns a
+:class:`DialogueTable` into a flat ordered list of :class:`DecodedTurn`,
+resolving every symbolic label against ``script`` (the single source of truth
+for kline structure). The training loop receives the decoded list.
 
 Spec mapping
 ------------
@@ -131,9 +130,8 @@ class DialogueTable:
     ``run_config`` carries the runner modifiers (spec
     ``@specs/dialogue-runner.md`` §The Table): ``None`` (default, no ``run``
     section) means the defaults apply; a :class:`RunConfig` overrides them.
-    The section's presence is **not** a regime selector — dialogue mode is the
-    only run regime — it is purely the modifiers container. The runner consumes
-    :class:`DecodedTurn`s, not the raw table.
+    The section is purely the modifiers container (dialogue mode is the only
+    run regime). The runner consumes :class:`DecodedTurn`s.
     """
 
     script: str
@@ -150,9 +148,9 @@ class DialogueTable:
 class DecodedTurn:
     """A turn resolved to a submittable structure (spec §Decoded Turn).
 
-    ``role`` and ``op`` are carried alongside the KValue and **never folded
-    into it** (DDT-3): ``op`` is the structural state; ``significance`` (on the
-    KValue) is the dialogic stance. They are independent axes.
+    ``role`` and ``op`` are carried alongside the KValue as independent axes
+    (DDT-3): ``op`` is the structural state; ``significance`` (on the KValue)
+    is the dialogic stance.
 
     ``close`` is carried through from :class:`Turn.close`: when ``True``, this
     turn is a script close (the table's explicit boundary marker). The runner
@@ -172,11 +170,6 @@ class DecodedTurn:
     record: dict | None = None
 
 
-# backwards-compat alias for the documented `DECODEDTurn` spelling used in the
-# spec text ("a flat ordered list of `DecodedTurn`"). Both names refer to the
-# same class.
-DECODEDTurn = DecodedTurn
-
 
 # ── Symbol resolution against compiled script ─────────────────────────────
 
@@ -192,8 +185,8 @@ class _ResolvedScript:
       Det canon signature).
     - ``relation_by_label`` — the compiled relation (COUNTERSIGNED/CONNOTED/
       UNDERSIGNED) per label, so a constructed-relation turn carries the
-      relation's structural ``dbg.op`` (e.g. ``COUNTERSIGNED``), not the canon's
-      (``CANONIZED``) when the signature label names both.
+      relation's structural ``dbg.op`` (e.g. ``COUNTERSIGNED``), since the
+      signature label may name both the relation and the canon.
     - ``labels`` — every resolvable label (a compound/atom ``dbg.label`` or a
       subword atom ``dbg.decoded``), mapped to its compiled KLine. Used to
       resolve atom signatures (IDENTITY) and as the label fallback.
@@ -338,8 +331,7 @@ def _resolve_kline(
     Three branches per spec §Decoder step 1. **The decoder is a resolver, not
     a gatekeeper**: it builds the kline the turn declares — the declared
     ``signature`` verbatim, the ``nodes`` resolved to their canonical
-    signatures — and never second-guesses whether the signature "matches" the
-    nodes. The script author is the golden master; an author may declare a
+    signatures. The script author is the golden master; an author may declare a
     signature that differs from the canon its nodes retrieve (a deliberate
     misfit — see ``scripts/dialogue-rationalisation-behaviours.md``).
 
@@ -381,7 +373,7 @@ def _resolve_kline(
         # both a canon and its atoms (e.g. ``Det`` names the Det canon AND the
         # atoms D, et, which all carry dbg.label=='Det'); the atoms are compiled
         # before the canon, so a bare ``labels[label]`` lookup would resolve
-        # to the first atom rather than the concept. An IDENTITY turn names the
+        # rather than the concept. An IDENTITY turn names the
         # *concept* (e.g. K asking "what is Det?" means Det the canon), so the
         # canon signature is correct; a pure-atom label (no canon) falls back
         # to the label index.
@@ -433,7 +425,7 @@ def decode(
     ``notes``. Annotation-only turns are dropped (DDT-28).
 
     This is a configuration-time function: call once, hand the result to the
-    training loop. The loop never touches ``script`` again.
+    training loop.
     """
     _entries, resolved = _resolve_script(
         table.script, tokenizer=tokenizer, signifier=signifier
@@ -549,11 +541,11 @@ def _validate_close(decoded: list[DecodedTurn]) -> None:
     Closing is a runner concern (the runner owns the table cursor and reads
     the marker as the script boundary); it is not tied to a role.
 
-    Tables with no ``close`` markers are valid (single-script, backward
-    compatible): the runner ends at the last row and no script boundary fires.
+    Tables with no ``close`` markers are valid (single-script): the runner
+    ends at the last row and no script boundary fires.
     """
-    # Presence-only: a `close: true` is well-formed on any row. No role check —
-    # the runner, not the decoder, decides how a close routes.
+    # Presence-only: a `close: true` is well-formed on any row. The runner
+    # decides how a close routes.
     return
 
 
@@ -562,8 +554,8 @@ def _validate_run(decoded: list[DecodedTurn]) -> None:
 
     A table is de-positional: it has a **coverage set** (every turn) and one
     **close** — the ``close:true`` turn if any, else the last row — which any
-    agent may emit at any time to end the run. There is no start-middle-end
-    structure and no positional opening pin.
+    agent may emit at any time to end the run. There is no positional opening
+    pin.
 
     The single invariant: the close content must be **unique** — its
     ``(role, kline, significance)`` key appears exactly once in the table. A
@@ -609,8 +601,8 @@ def _load_table_file(path: Path) -> DialogueTable:
     The path is resolved against the file system (the cwd, like the ``script``
     field). A missing or unreadable file is a hard error. The loaded table's
     own ``priors`` (if any) are resolved recursively by :func:`load_table`, so
-    a chain of priors composes; cycles would surface as an ``OSError`` (the
-    second load of an already-open path) rather than a silent loop.
+    a chain of priors composes; cycles surface as an ``OSError`` (the second
+    load of an already-open path).
     """
     try:
         text = path.read_text(encoding="utf-8")
@@ -637,9 +629,8 @@ def load_table(raw: dict) -> DialogueTable:
     ``notes`` are carried on each :class:`Turn` (the decoder ignores them) but
     the structural fields are validated for shape here; symbol resolution
     happens later in :func:`decode`. A ``run`` section (optional) carries the
-    runner modifiers (spec ``@specs/dialogue-runner.md`` §The Table); there
-    is no top-level ``mode`` field — dialogue mode is the only run regime. Unknown
-    keys inside ``run`` are rejected.
+    runner modifiers (spec ``@specs/dialogue-runner.md`` §The Table); dialogue
+    mode is the only run regime. Unknown keys inside ``run`` are rejected.
     """
     if "script" not in raw or not isinstance(raw["script"], str):
         raise DecodeError("dialogue table missing string 'script'")
