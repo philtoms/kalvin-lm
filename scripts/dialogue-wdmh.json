@@ -6,7 +6,9 @@
   "turns": [
     {
       "notes": "T starts a dialogue",
-      "role": "T"
+      "role": "T",
+      "turn": 35,
+      "role_turn": 17
     },
     {
       "op": "CANONIZED",
@@ -18,6 +20,8 @@
       ],
       "significance": "S2",
       "role": "T",
+      "turn": 36,
+      "role_turn": 18,
       "notes": "T opens script 2: the question 'what did Mary have' is actually encoded 'mary had what' at S2."
     },
     {
@@ -26,7 +30,9 @@
       "nodes": [],
       "significance": "S4",
       "notes": "K doesn't recognise WDMH",
-      "role": "K"
+      "role": "K",
+      "turn": 37,
+      "role_turn": 19
     },
     {
       "op": "CANONIZED",
@@ -39,6 +45,8 @@
       ],
       "significance": "S2",
       "role": "T",
+      "turn": 38,
+      "role_turn": 19,
       "notes": "T expands on WDMH"
     },
     {
@@ -47,14 +55,18 @@
       "nodes": [],
       "significance": "S4",
       "notes": "K doesn't recognise what, did, have",
-      "role": "K"
+      "role": "K",
+      "turn": 39,
+      "role_turn": 20
     },
     {
       "op": "IDENTITY",
       "signature": "what",
       "nodes": [],
       "significance": "S1",
-      "role": "T"
+      "role": "T",
+      "turn": 40,
+      "role_turn": 20
     },
     {
       "op": "IDENTITY",
@@ -62,14 +74,18 @@
       "nodes": [],
       "significance": "S4",
       "notes": "K doesn't recognise did, have",
-      "role": "K"
+      "role": "K",
+      "turn": 41,
+      "role_turn": 21
     },
     {
       "op": "IDENTITY",
       "signature": "did",
       "nodes": [],
       "significance": "S1",
-      "role": "T"
+      "role": "T",
+      "turn": 42,
+      "role_turn": 21
     },
     {
       "op": "IDENTITY",
@@ -77,14 +93,18 @@
       "nodes": [],
       "significance": "S4",
       "notes": "K doesn't recognise have",
-      "role": "K"
+      "role": "K",
+      "turn": 43,
+      "role_turn": 22
     },
     {
       "op": "IDENTITY",
       "signature": "have",
       "nodes": [],
       "significance": "S1",
-      "role": "T"
+      "role": "T",
+      "turn": 44,
+      "role_turn": 22
     },
     {
       "op": "IDENTITY",
@@ -92,7 +112,9 @@
       "nodes": [],
       "significance": "S4",
       "notes": "K doesn't recognise has",
-      "role": "K"
+      "role": "K",
+      "turn": 45,
+      "role_turn": 23
     },
     {
       "op": "CANONIZED",
@@ -103,11 +125,15 @@
       ],
       "significance": "S2",
       "role": "T",
+      "turn": 46,
+      "role_turn": 23,
       "notes": "T expands had into 'did have' at S2, K promotes to S1"
     },
     {
       "notes": "K has grounded all of the identities, WDMH => MHW is still outstanding",
-      "role": "K"
+      "role": "K",
+      "turn": 47,
+      "role_turn": 24
     },
     {
       "op": "CANONIZED",
@@ -121,6 +147,8 @@
       ],
       "significance": "S2",
       "role": "K",
+      "turn": 48,
+      "role_turn": 25,
       "notes": "Misfit proposal: K substitutes had for 'did have', 'a little lamb' for what."
     },
     {
@@ -135,6 +163,8 @@
       ],
       "significance": "S1",
       "role": "T",
+      "turn": 49,
+      "role_turn": 24,
       "notes": "T ratifies",
       "close": true
     }
