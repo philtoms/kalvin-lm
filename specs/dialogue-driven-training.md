@@ -283,11 +283,17 @@ lives in the bus; the runner only observes and records.
 ## Matching
 
 The runner is a **content matcher**. Each emission observed by the wildcard
-subscriber is first checked for PASS (§Actor contract): a PASS is intercepted
-**before** matching — it is neither coverage, nor divergence, nor a closing.
-Any non-PASS emission is matched against the table's **distinct middle
-contents** and the closing by content equality
-`(role, kline, significance)`:
+subscriber is first checked against completion: once `closing-seen` is set, the
+run is over and **every subsequent emission is dropped** (not recorded, not
+matched, not divergence). This matters because the bus dispatches role handlers
+*before* wildcards: a role handler may react to the closing (e.g. a synthesizing
+trainer ratifying the trainee's closing countersign) and enqueue an emission
+*before* the wildcard marks `closing-seen`. Such a trailing emission is
+post-completion noise, not divergence. Before completion, each emission is
+checked for PASS (§Actor contract): a PASS is intercepted **before** matching —
+it is neither coverage, nor divergence, nor a closing. Any other emission is
+matched against the table's **distinct middle contents** and the closing by
+content equality `(role, kline, significance)`:
 
 - **Equals the closing** — mark `closing-seen`.
 - **Present in the distinct middle contents** — mark that content **covered**.
@@ -443,7 +449,7 @@ table-reading actors over the harness message bus to completion.
 | DDT-12 | An emission observed by the wildcard subscriber matches the distinct middle contents / closing by `(role, kline, significance)` content equality                                                                                                                                                     | §Matching              |
 | DDT-13 | A content present in the distinct middle marks it covered (idempotent); duplicate table rows collapse to one distinct content; re-emitting covered content is not divergence                                                                                                                         | §Matching              |
 | DDT-14 | Zero matches (and not the closing) is divergence: `on_divergence="fail"` raises `Divergence(role, emitted, unconsumed)`; `"accept"` appends to `RunResult.unmatched` and continues                                                                                                                   | §Matching              |
-| DDT-15 | An emission equal to the closing's content marks `closing-seen` and consumes the closing                                                                                                                                                                                                             | §Matching              |
+| DDT-15 | An emission equal to the closing's content marks `closing-seen` and consumes the closing; once `closing-seen` is set, every subsequent emission is dropped (not recorded, not matched, not divergence) — the bus dispatches role handlers before wildcards, so a role handler may react to the closing before the wildcard marks it seen | §Matching              |
 | DDT-16 | Anticipation and interjection within the middle are permitted and unflagged: an emission matching a same-role distinct content is a normal match regardless of authored causal order or whether it was solicited                                                                                     | §Anticipation          |
 | DDT-17 | The opening and closing are the only positional constraints (enforced by decode-time validation and call order, not by the relay); anticipation/interjection apply to the middle only; the opening is not anticipatable                                                                              | §Anticipation          |
 | DDT-18 | `complete = closing-seen`; a mutual-PASS stall (each role passing in turn, no closing) ends the run incomplete (`complete = False`, non-fatal) — there is no idle timeout (every `accept` yields ≥1 proposal, so the bus never goes silent). Coverage is a separate efficiency diagnostic, not a terminal condition (extreme anticipation — closing-first, zero middle coverage — is technically complete)        | §Completion            |

@@ -322,6 +322,15 @@ class Runner:
             return  # the opening seed, not an emission
         assert isinstance(event, RationaliseEvent)
 
+        # The closing is terminal (DDT-15): once seen, the run is over. The bus
+        # dispatches role handlers before wildcards, so a role handler may react
+        # to the closing (e.g. a synthesizing trainer ratifying it) and enqueue
+        # an emission *before* this wildcard marks closing-seen and stops the
+        # bus. Such trailing emissions are post-completion noise — drop them
+        # entirely (no recording, no coverage, no divergence, no PASS logic).
+        if self._closing_seen:
+            return
+
         # DDT-22: a PASS is the no-content proposal. Intercept it *before* any
         # content matching: it is neither coverage, nor divergence, nor a
         # closing. It routes to the other role (the bus-wired sink already

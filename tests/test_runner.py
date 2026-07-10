@@ -268,6 +268,32 @@ def test_no_closing_means_incomplete():
     assert res.covered  # middle covered, but closing never arrived
 
 
+def test_emission_after_closing_is_not_divergence():
+    """DDT-15: the closing is terminal. The bus dispatches role handlers before
+    wildcards, so a role handler may react to the closing (e.g. a synthesizing
+    trainer ratifying the trainee's closing countersign) and enqueue an
+    emission *before* the wildcard marks closing-seen. Such a trailing emission
+    matches nothing and must NOT be treated as divergence — the run is already
+    complete. Regression for the SynthesizingTrainer-vs-TableTrainee run."""
+    # A T middle row (T 3,3) lets T's 2nd accept match; T's 3rd accept reacts to
+    # the K closing (9,9) by emitting an off-table T(7,7) "ratification".
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("K", 9, 9))
+    runner = run(
+        decoded,
+        lambda sink: _ScriptedActor(
+            "T", _bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 7, 7)), sink=sink
+        ),
+        # K covers the middle then delivers the closing.
+        lambda sink: _ScriptedActor(
+            "K", _bursts(_ev("K", 2, 2), _ev("K", 9, 9)), sink=sink
+        ),
+        on_divergence="fail",
+    )
+    res = runner.run()
+    assert res.complete  # closing seen
+    assert res.unmatched == []  # the trailing T(7,7) was not divergence
+
+
 # ── DDT-11/DDT-12: anticipation + interjection ───────────────────────────
 
 
