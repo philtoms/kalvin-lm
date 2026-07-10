@@ -558,36 +558,30 @@ def _validate_close(decoded: list[DecodedTurn]) -> None:
 
 
 def _validate_run(decoded: list[DecodedTurn]) -> None:
-    """Validate the dialogue-mode invariants (spec @specs/dialogue-runner.md §Invariants).
+    """Validate the dialogue-mode invariants.
 
-    - The opening (``decoded[0]``) is a trainer (``T``) row.
-    - The closing (``decoded[-1]``) is content-distinct from the opening **and**
-      from every middle row: its ``(role, kline, significance)`` content key
-      appears exactly once in the table. A closing that duplicates the opening
-      would make coverage degenerate (the opening satisfies it); a closing that
-      duplicates a middle row would make the positional "consumed last"
-      semantics ambiguous (which occurrence is the closing?).
+    A table is de-positional: it has a **coverage set** (every turn) and one
+    **close** — the ``close:true`` turn if any, else the last row — which any
+    agent may emit at any time to end the run. There is no start-middle-end
+    structure and no positional opening pin.
+
+    The single invariant: the close content must be **unique** — its
+    ``(role, kline, significance)`` key appears exactly once in the table. A
+    close whose content also appears as a coverage row would be ambiguous (an
+    emission of that content could be coverage or the close), so it is a
+    malformed table.
     """
     if len(decoded) < 2:
         raise DecodeError(
-            "dialogue-mode table needs at least an opening and a closing turn"
+            "dialogue-mode table needs at least two turns (a coverage set and a close)"
         )
-    if decoded[0].role != "T":
+    close_idx = next((i for i, t in enumerate(decoded) if t.close), len(decoded) - 1)
+    close_key = turn_content_key(decoded[close_idx])
+    other_keys = [turn_content_key(t) for i, t in enumerate(decoded) if i != close_idx]
+    if close_key in other_keys:
         raise DecodeError(
-            f"dialogue-mode opening must be a trainer (T) row, got role {decoded[0].role!r}"
-        )
-    closing_key = turn_content_key(decoded[-1])
-    middle_keys = {turn_content_key(t) for t in decoded[1:-1]}
-    opening_key = turn_content_key(decoded[0])
-    if closing_key == opening_key:
-        raise DecodeError(
-            "dialogue-mode opening and closing are content-equal "
-            "(same role, kline, significance) — malformed table"
-        )
-    if closing_key in middle_keys:
-        raise DecodeError(
-            "dialogue-mode closing content also appears as a middle row "
-            "— the closing must be a unique terminal content"
+            "dialogue-mode close content also appears as a coverage row "
+            "— the close must be a unique content"
         )
 
 

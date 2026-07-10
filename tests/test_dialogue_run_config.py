@@ -100,66 +100,51 @@ def test_loader_rejects_non_object_run_section():
         load_table({"script": _SCRIPT, "turns": [], "run": "not-an-object"})
 
 
-# ── PDT-3: three zones ──────────────────────────────────────────────────────
+# ── De-positional: a coverage set and one unique close ─────────────────────
 
 
-def test_decode_keeps_opening_first_and_closing_last():
-    """PDT-3: the decoded order retains opening (turn 0) and closing (turn -1)
-    in their authored positions; the runner pins them positionally."""
+def test_decode_preserves_authored_order():
+    """The decoded order retains the authored turn order (documentation of cause
+    and effect). The runner is de-positional: the first row is not pinned as an
+    opening, and the close is the ``close:true`` turn or the last row."""
     decoded = _decode(
         _run_table(
             [
-                _identity("T", "A"),       # opening
-                _identity("K", "A"),       # middle
-                _identity("T", "B", "S2"),  # middle
-                _identity("T", "B", "S1"),  # closing
+                _identity("T", "A"),       # coverage
+                _identity("K", "A"),       # coverage
+                _identity("T", "B", "S2"),  # coverage
+                _identity("T", "B", "S1"),  # close (last row)
             ]
         )
     )
-    assert decoded[0].role == "T" and decoded[0].value.kline.signature != 0
-    assert decoded[-1].value.significance != decoded[0].value.significance or (
-        decoded[-1].role != decoded[0].role
+    assert len(decoded) == 4
+
+
+def test_decode_accepts_any_first_row_role():
+    """The first row is not pinned as a trainer opening — any role may sit
+    there (de-positional). The runner seeds the trainer mechanically, not by
+    table position."""
+    decoded = _decode(
+        _run_table(
+            [
+                _identity("K", "A"),       # first row is K — valid now
+                _identity("T", "B", "S1"),
+            ]
+        )
     )
+    assert decoded[0].role == "K"
 
 
-# ── PDT-4: run invariants ───────────────────────────────────────────────────
-
-
-def test_decode_rejects_non_trainer_opening():
-    """PDT-4: the opening must be a trainer (T) row."""
-    with pytest.raises(DecodeError, match="trainer"):
+def test_decode_rejects_close_content_in_coverage():
+    """The close content must be unique — not present as a coverage row (an
+    emission of that content would be ambiguous: coverage or close?)."""
+    with pytest.raises(DecodeError, match="coverage row"):
         _decode(
             _run_table(
                 [
-                    _identity("K", "A"),       # opening is K — malformed
-                    _identity("T", "B", "S1"),
-                ]
-            )
-        )
-
-
-def test_decode_rejects_content_equal_opening_and_closing():
-    """PDT-4: opening and closing must be content-distinct (role, kline, sig)."""
-    with pytest.raises(DecodeError, match="content-equal"):
-        _decode(
-            _run_table(
-                [
-                    _identity("T", "A", "S2"),   # opening
-                    _identity("T", "A", "S2"),   # closing — identical content
-                ]
-            )
-        )
-
-
-def test_decode_rejects_closing_content_in_middle():
-    """PDT-4: the closing content must be unique — not present as a middle row."""
-    with pytest.raises(DecodeError, match="middle row"):
-        _decode(
-            _run_table(
-                [
-                    _identity("T", "A", "S2"),   # opening
-                    _identity("T", "B", "S1"),   # middle — same content as closing
-                    _identity("T", "B", "S1"),   # closing
+                    _identity("T", "A", "S2"),   # coverage
+                    _identity("T", "B", "S1"),   # coverage — same content as close
+                    _identity("T", "B", "S1"),   # close (last row)
                 ]
             )
         )

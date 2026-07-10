@@ -21,24 +21,27 @@ Every ``accept`` yields at least one proposal (the ``burst >= 1`` contract,
 §Actor contract): an actor with nothing substantive to say publishes a **PASS**
 — a sentinel proposal (``PASS_SIGNATURE`` at S1). The runner intercepts PASS
 before matching: it is neither coverage nor divergence, is routed to the other
-role, and **two consecutive PASSes** (each side passing in turn) is a **stall**
-that terminates the run incomplete. A run therefore never goes silent — a
-compliant actor always emits — so the runner has no idle timeout: termination is
-closing-seen (complete) or mutual-PASS (incomplete), both content-driven.
+role, and **two consecutive PASSes** (each side passing in turn) is a terminal
+condition (the actors have nothing more to say). The runner is **not a judge**:
+it loads and feeds the actors, closes mechanically (close-content seen, the
+coverage set exhausted, or mutual PASS — not an important distinction), and
+tracks coverage and divergence. It carries no ``complete``/``covered`` verdict;
+the **displacement** (uncovered coverage rows) is the signal of how much of the
+authored exchange the actors traversed.
 
 Spec mapping
 ------------
-- DDT-5/DDT-6 — the runner is a bus subscriber holding coverage bookkeeping
-  only; the bus is the sink/relay.
-- DDT-7..DDT-10 — matching (content presence, idempotent coverage, divergence,
-  closing).
-- DDT-11/DDT-12 — anticipation + interjection (permitted, unflagged, middle-only).
-- DDT-13 — completion (closing-seen; coverage is a diagnostic, not a gate).
-- DDT-14/DDT-15 — :class:`Divergence` / :class:`RunResult`.
-- DDT-17 — ``EventSink`` + sink-driven actors.
-- DDT-18 — no synchronised alternation; route-to-other via the bus-wired sink.
-- DDT-22 — ``burst >= 1``: an actor always emits at least one proposal; a
-  PASS is the no-content proposal. Mutual PASS is the stall terminator.
+- The runner is a bus subscriber holding coverage bookkeeping only; the bus is
+  the sink/relay. It tracks coverage and immediate divergence; it is not a judge.
+- Matching (content presence, idempotent coverage, immediate divergence, close).
+- Anticipation + interjection (permitted, unflagged).
+- The close is de-positional: any agent may emit it at any time; a table has no
+  start-middle-end structure, only a coverage set and one close turn.
+- ``RunResult`` records the arrival log, immediate divergences, and displacement.
+- ``EventSink`` + sink-driven actors.
+- No synchronised alternation; route-to-other via the bus-wired sink.
+- ``burst >= 1``: an actor always emits at least one proposal; a PASS is the
+  no-content proposal. Mutual PASS is a terminal condition (not a verdict).
 """
 
 from __future__ import annotations
@@ -172,22 +175,24 @@ class Divergence(Exception):  # noqa: N818 - spec names this type
         )
 
 
-# ── Result (DDT-15) ───────────────────────────────────────────────────────
+# ── Result ───────────────────────────────────────────────────────────────
 
 
 @dataclass
 class RunResult:
-    """Outcome of a dialogue run (spec §Types).
+    """The record of a dialogue run (spec §Types).
 
-    ``events`` is **arrival-ordered** — every observed emission, in the order
-    the bus delivered them. ``unmatched`` is populated only under
-    ``on_divergence="accept"``; ``uncovered`` lists the distinct middle
-    contents never seen (a coverage/efficiency diagnostic).
+    The runner is **not a judge**: it carries no ``complete`` / ``covered``
+    verdict. It records what happened — the arrival-ordered emission log, the
+    immediate divergences (emissions matching nothing, under
+    ``on_divergence="accept"``), and the **displacement**: the coverage rows
+    never emitted (how far the realized dialogue fell short of the authored
+    whole-exchange coverage). Closing is mechanical (close-content seen, the
+    coverage set exhausted, or mutual PASS); the displacement — not a verdict
+    — is the signal of how much of the exchange the actors traversed.
     """
 
     events: list[RationaliseEvent] = field(default_factory=list)
-    complete: bool = False
-    covered: bool = False
     unmatched: list[RationaliseEvent] = field(default_factory=list)
     uncovered: list[DecodedTurn] = field(default_factory=list)
 
@@ -227,12 +232,13 @@ class Runner:
       role) and constructs each actor with its sink via the actor factory;
     - subscribes itself as a **wildcard handler** for coverage bookkeeping;
     - subscribes each actor's ``accept`` as its role's handler;
-    - drives the run by seeding the opening (addressed to the trainer) and
-      running ``bus.run()`` on a thread until the closing is seen (complete)
-      or both actors pass consecutively (a stall: incomplete).
+    - drives the run by seeding the trainer (the opening seed) and running
+      ``bus.run()`` on a thread until a terminal condition: the close content
+      is seen, the coverage set is exhausted, or both actors pass in turn.
 
-    Holds **coverage bookkeeping only**. No actor-coupling state. The relay
-    lives in the bus; the runner only observes and records.
+    The runner is **not a judge**. It holds coverage bookkeeping only, tracks
+    immediate divergence, and records displacement. No actor-coupling state.
+    The relay lives in the bus; the runner only observes and records.
 
     Construct via :func:`run`; call :meth:`run` to drive.
     """
@@ -250,30 +256,30 @@ class Runner:
                 f"on_divergence must be 'fail' or 'accept', got {on_divergence!r}"
             )
         if len(decoded) < 2:
-            raise ValueError("a run needs at least an opening and a closing turn")
+            raise ValueError("a run needs at least two turns (a coverage set and a close)")
         self._on_divergence = on_divergence
 
-        # Coverage bookkeeping (DDT-6). Fixed distinct middle set (duplicates
-        # collapse to one entry); covered subset grows monotonically. The
-        # opening (decoded[0]) is consumed positionally — neither coverage nor
-        # divergence — so its key is tracked and skipped by the handler.
-        self._distinct_middle: set[ContentKey] = {
-            turn_content_key(t) for t in decoded[1:-1]
+        # The close is de-positional: the ``close:true`` turn if any, else the
+        # last row. It may be emitted by any agent at any time to end the run.
+        # Everything else is the coverage set. Duplicates collapse to one
+        # distinct content; the covered subset grows monotonically.
+        close_idx = next((i for i, t in enumerate(decoded) if t.close), len(decoded) - 1)
+        self._closing_key: ContentKey = turn_content_key(decoded[close_idx])
+        coverage = [t for i, t in enumerate(decoded) if i != close_idx]
+        self._distinct_coverage: set[ContentKey] = {
+            turn_content_key(t) for t in coverage
         }
         self._covered: set[ContentKey] = set()
-        self._opening_key: ContentKey = turn_content_key(decoded[0])
-        self._closing: DecodedTurn = decoded[-1]
-        self._closing_key: ContentKey = turn_content_key(self._closing)
-        self._closing_seen: bool = False
+        self._closed: bool = False
         self._events: list[RationaliseEvent] = []
         self._unmatched: list[RationaliseEvent] = []
         self._thread_exc: BaseException | None = None
 
-        # PASS-stall tracking (DDT-22). ``_last_pass_role`` records the role of
-        # the most recent PASS (None when the last emission was substantive).
-        # A stall is a PASS from one role followed by a PASS from the *other*
-        # role — each side passing in turn — which ends the run incomplete. Two
-        # PASSes from the same role are not a stall (that side is waiting).
+        # PASS tracking. ``_last_pass_role`` records the role of the most recent
+        # PASS (None when the last emission was substantive). A PASS from one
+        # role followed by a PASS from the other is a terminal condition (the
+        # actors have nothing more to say). Two PASSes from the same role are
+        # not (that side is waiting while the other still has content).
         self._last_pass_role: str | None = None
 
         # The bus is the sink and relay. Build the bus-wired sinks and construct
@@ -290,18 +296,18 @@ class Runner:
         self._bus.subscribe(self._trainer.role, self._make_handler(self._trainer))
         self._bus.subscribe(self._trainee.role, self._make_handler(self._trainee))
 
-    # -- the driver (DDT-18, DDT-22) -----------------------------------------
+    # -- the driver ---------------------------------------------------------
 
     def run(self) -> RunResult:
-        """Drive the run to completion (spec §The Runner).
+        """Drive the run (spec §The Runner).
 
-        Seeds the opening by addressing an ``accept`` message to the trainer
-        (``message=None`` signals "you open"), then runs ``bus.run()`` on a
-        dedicated thread. The bus exits when the coverage handler calls
-        ``bus.stop()`` — which it does on the closing (complete) or on a
-        mutual-PASS stall (incomplete). Every ``accept`` yields ≥1 proposal
-        (the ``burst >= 1`` contract), so the bus never blocks indefinitely;
-        there is no idle timeout.
+        Seeds the trainer (addressing an ``accept`` message with
+        ``message=None``), then runs ``bus.run()`` on a dedicated thread. The
+        bus exits when the coverage handler calls ``bus.stop()`` — on the close
+        content being seen, the coverage set being exhausted, or a mutual PASS.
+        Every ``accept`` yields ≥1 proposal (``burst >= 1``), so the bus never
+        blocks indefinitely. The runner is not a judge: it returns the record
+        (log, divergences, displacement), not a verdict.
         """
         self._bus.send(
             Message(role=self._trainer.role, action=_ACCEPT_ACTION, message=None)
@@ -313,38 +319,33 @@ class Runner:
             raise self._thread_exc
         return self.result
 
-    # -- coverage handler (the wildcard subscriber) (DDT-7..DDT-13) ---------
+    # -- coverage handler (the wildcard subscriber) -------------------------
 
     def _on_emission(self, msg: Message) -> None:
-        """Wildcard handler: record coverage on every observed emission."""
+        """Wildcard handler: track coverage and divergence on every emission."""
         event = msg.message
         if event is None:
             return  # the opening seed, not an emission
         assert isinstance(event, RationaliseEvent)
 
-        # The closing is terminal (DDT-15): once seen, the run is over. The bus
-        # dispatches role handlers before wildcards, so a role handler may react
-        # to the closing (e.g. a synthesizing trainer ratifying it) and enqueue
-        # an emission *before* this wildcard marks closing-seen and stops the
-        # bus. Such trailing emissions are post-completion noise — drop them
-        # entirely (no recording, no coverage, no divergence, no PASS logic).
-        if self._closing_seen:
+        # The run is closed: drop everything after. The bus dispatches role
+        # handlers before wildcards, so a role handler may react to a terminal
+        # emission and enqueue another *before* this wildcard marks the run
+        # closed and stops the bus. Such trailing emissions are noise.
+        if self._closed:
             return
 
-        # DDT-22: a PASS is the no-content proposal. Intercept it *before* any
-        # content matching: it is neither coverage, nor divergence, nor a
-        # closing. It routes to the other role (the bus-wired sink already
-        # addressed it). A stall is **each side passing in turn**: a PASS from
-        # one role followed by a PASS from the *other* role. Two PASSes from
-        # the same role are not a stall — that side is simply waiting (cogitation
-        # repeatedly yields nothing while the other side still has content),
-        # and the dialogue continues.
+        # A PASS is the no-content proposal. Intercept it *before* any content
+        # matching: it is neither coverage, nor divergence, nor a close. It
+        # routes to the other role (the bus-wired sink already addressed it).
+        # A PASS from one role followed by a PASS from the other is terminal
+        # (the actors have nothing more to say). Two PASSes from the same role
+        # are not (that side is waiting while the other still has content).
         if is_pass(event):
             self._events.append(event)
             role = event.role or "?"
             if self._last_pass_role is not None and self._last_pass_role != role:
-                # Each side passed in turn: the dialogue has nothing more to
-                # say. Stop the bus; ``complete`` stays False (closing unseen).
+                self._closed = True
                 self._bus.stop()
                 return
             self._last_pass_role = role
@@ -354,24 +355,25 @@ class Runner:
         self._events.append(event)
         key = self._event_key(event)
 
-        # The opening is consumed positionally (DDT-3): neither coverage nor
-        # divergence. The trainer publishes it as its first turn; skip it here.
-        if key == self._opening_key and not self._closing_seen:
-            return
-
-        # DDT-10: closing seen → mark and stop the bus (terminal).
+        # The close content, emitted by any agent at any time, ends the run.
         if key == self._closing_key:
-            self._closing_seen = True
+            self._closed = True
             self._bus.stop()
             return
 
-        # DDT-7/DDT-8: a content present in the distinct middle marks it covered
-        # (idempotent — re-emitting covered content is not divergence).
-        if key in self._distinct_middle:
+        # A content present in the coverage set marks it covered (idempotent —
+        # re-emitting covered content is not divergence). When the coverage set
+        # is exhausted, the run ends (entry exhaustion — the exchange is
+        # covered; the runner is not a judge, so this is not distinguished from
+        # a close).
+        if key in self._distinct_coverage:
             self._covered.add(key)
+            if self._distinct_coverage <= self._covered:
+                self._closed = True
+                self._bus.stop()
             return
 
-        # DDT-9: divergence — present nowhere in the table.
+        # Immediate divergence: present nowhere in the table.
         if self._on_divergence == "fail":
             exc = Divergence(
                 role=event.role or "?",
@@ -393,25 +395,17 @@ class Runner:
 
         return handler
 
-    # -- result + diagnostics -----------------------------------------------
-
-    @property
-    def complete(self) -> bool:
-        """``closing-seen`` (DDT-13)."""
-        return self._closing_seen
-
-    @property
-    def covered(self) -> bool:
-        """True when every distinct middle content has been seen (efficiency)."""
-        return self._distinct_middle <= self._covered
+    # -- result + displacement --------------------------------------------
 
     @property
     def result(self) -> RunResult:
-        """The current :class:`RunResult` snapshot (DDT-15)."""
+        """The current :class:`RunResult` snapshot (spec §Types).
+
+        Not a verdict: the arrival log, immediate divergences, and the
+        displacement (coverage rows never emitted).
+        """
         return RunResult(
             events=list(self._events),
-            complete=self.complete,
-            covered=self.covered,
             unmatched=list(self._unmatched),
             uncovered=list(self._uncovered_rows()),
         )
@@ -429,7 +423,7 @@ class Runner:
 
     def _uncovered_rows_for_role(self, role: str | None) -> list[DecodedTurn]:
         r = role if role is not None else "?"
-        unseen = self._distinct_middle - self._covered
+        unseen = self._distinct_coverage - self._covered
         return [
             _placeholder_turn(k)
             for k in sorted(unseen, key=_key_sort)
@@ -437,7 +431,7 @@ class Runner:
         ]
 
     def _uncovered_rows(self) -> list[DecodedTurn]:
-        unseen = self._distinct_middle - self._covered
+        unseen = self._distinct_coverage - self._covered
         return [_placeholder_turn(k) for k in sorted(unseen, key=_key_sort)]
 
 

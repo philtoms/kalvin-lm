@@ -17,11 +17,13 @@ master. Real actors may emit off-table content; under the default
 job — do not reach for ``--on-divergence accept`` to silence it; fix the actor).
 
 The runner is bus-driven: it owns a :class:`MessageBus`, builds a bus-wired
-:class:`EventSink` per actor, and runs the bus until the closing is seen
-(complete) or both actors pass consecutively (a stall: incomplete). Every
-``accept`` yields at least one proposal (``burst >= 1``): an actor with nothing
-substantive to say publishes a PASS, which the runner intercepts before
-matching. There is no idle timeout.
+:class:`EventSink` per actor, and runs the bus until a terminal condition:
+the close content is seen, the coverage set is exhausted, or both actors pass
+in turn. The runner is **not a judge**: it tracks coverage and immediate
+divergence, and reports the **displacement** (uncovered coverage rows) — not a
+pass/fail verdict. Every ``accept`` yields at least one proposal (``burst >=
+1``): an actor with nothing substantive to say publishes a PASS, which the
+runner intercepts before matching.
 
 Usage::
 
@@ -33,8 +35,9 @@ Usage::
     python scripts/dialogue_run.py --synthesize --rationalise  # both real actors
     python scripts/dialogue_run.py --on-divergence accept      # accept off-table emissions
 
-Exit code is 0 on a completing run (closing seen), 1 on an actor divergence
-or incomplete run.
+Exit code is 1 only on an immediate divergence (``on_divergence=fail``); 0
+otherwise. The runner is not a judge — displacement (uncovered rows) is
+reported, not used as a pass/fail verdict.
 """
 
 from __future__ import annotations
@@ -194,17 +197,18 @@ def _trace(
         lines.append(
             _render_trace_entry(i, _scripted_form_event(ev, sig_to_label), record)
         )
-    # Unreached rows: table content whose key never appeared in an emission
-    # (the run stalled or a real actor never produced it). Surface them so the
-    # full table is visible. The opening and closing are positional in dialogue
-    # mode (consumed/terminal, not coverage), so they are never "unreached".
+    # Displacement: coverage rows whose key never appeared in an emission
+    # (the runner's ``uncovered`` — how far the realized dialogue fell short
+    # of the authored whole-exchange coverage). The close is the ``close:true``
+    # turn or the last row; it is terminal, not coverage, so it is never
+    # "displaced".
+    close_idx = next((i for i, t in enumerate(decoded) if t.close), len(decoded) - 1)
     unreached = [
-        t for t in decoded[1:-1]
-        if turn_content_key(t) not in emitted_keys
-        and turn_content_key(t) != turn_content_key(decoded[0])
+        t for i, t in enumerate(decoded)
+        if i != close_idx and turn_content_key(t) not in emitted_keys
     ]
     if unreached:
-        lines.append("  --- unreached (run incomplete) ---")
+        lines.append("  --- displacement (uncovered) ---")
         idx = len(events)
         for turn in unreached:
             op = turn.op if turn.op else "?"
@@ -341,17 +345,18 @@ def main(argv: list[str] | None = None) -> int:
         f"Dialogue session: {dialogue_path}\n"
         f"  on divergence       : {on_divergence}\n"
         f"  events received     : {len(res.events)}\n"
-        f"  complete            : {res.complete}\n"
-        f"  covered (middle)    : {res.covered}\n"
         f"  unmatched emissions : {len(res.unmatched)}\n"
-        f"  uncovered rows      : {len(res.uncovered)}"
+        f"  uncovered (displacement): {len(res.uncovered)}"
     )
     if args.verbose:
         print(
             "\nExchange (arrival order):\n"
             + _trace(res.events, decoded, sig_to_label)
         )
-    return 0 if res.complete else 1
+    # The runner is not a judge: reaching here means no immediate divergence
+    # was raised. The displacement (uncovered) is reported above, not used as a
+    # pass/fail verdict.
+    return 0
 
 
 if __name__ == "__main__":

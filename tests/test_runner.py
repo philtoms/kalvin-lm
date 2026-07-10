@@ -119,25 +119,25 @@ def _run(
     return runner, runner.run()
 
 
-# ── DDT-5/DDT-6: bus subscriber, coverage-only state ─────────────────────
+# ── The runner drives the bus and tracks coverage (not a judge) ────────
 
 
-def test_runner_drives_to_completion_via_bus():
-    """DDT-5: the runner drives the bus; opening seeds, replies relay, closing
-    terminates. Trainer opens, trainee covers the middle, trainer closes."""
+def test_runner_drives_the_exchange_via_bus():
+    """The runner drives the bus: the seed fires, replies relay, and the run
+    terminates. It is not a judge — assert coverage (displacement) and that the
+    exchange ran, not a verdict."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T opens, then (after K's turn) closes.
         trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
         trainee_bursts=_bursts(_ev("K", 2, 2)),
     )
-    assert res.complete
-    assert res.covered
+    assert len(res.events) >= 2  # the exchange ran
+    assert res.uncovered == []  # full coverage — zero displacement
 
 
 def test_runner_holds_no_actor_coupling_state():
-    """DDT-6: the runner has no per-actor cursors / turn tracking."""
+    """The runner has no per-actor cursors / turn tracking."""
     runner = run(
         _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)),
         lambda sink: _ScriptedActor("T", [], sink=sink),
@@ -147,25 +147,23 @@ def test_runner_holds_no_actor_coupling_state():
         assert not hasattr(runner, attr)
 
 
-# ── DDT-7/DDT-8: content matching + idempotent coverage ──────────────────
+# ── Content matching + idempotent coverage ──────────────────────────────
 
 
-def test_middle_emission_marks_covered():
-    """DDT-7: an emission matching a distinct middle content marks it covered."""
+def test_coverage_row_emission_marks_covered():
+    """An emission matching a coverage row marks it covered; full coverage is
+    zero displacement."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T opens, covers its middle T(3,3), then closes (3 accept calls).
         trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
-        # K covers its middle K(2,2), then re-emits to give T its closing turn.
         trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
     )
-    assert res.covered
-    assert res.complete
+    assert res.uncovered == []
 
 
-def test_duplicate_middle_content_collapses_idempotently():
-    """DDT-8: duplicate table rows collapse to one distinct content; re-emitting
+def test_duplicate_content_collapses_idempotently():
+    """Duplicate table rows collapse to one distinct content; re-emitting
     covered content is not divergence."""
     decoded = _decoded(
         ("T", 1, 1), [("K", 2, 2), ("K", 2, 2), ("T", 3, 3)], ("T", 9, 9)
@@ -173,21 +171,18 @@ def test_duplicate_middle_content_collapses_idempotently():
     runner, res = _run(
         decoded,
         trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
-        # K emits K(2,2) twice (table has it twice) — idempotent, not divergence.
         trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
     )
-    assert res.complete
     assert res.unmatched == []
 
 
-def test_role_mismatch_is_divergence():
-    """DDT-7: matching is same-role; a K emission whose content matches a T-only
-    middle has a different (role,kline,sig) key → divergence."""
+def test_role_mismatch_is_immediate_divergence():
+    """Matching is same-role; a K emission whose content matches a T-only row
+    has a different (role,kline,sig) key → immediate divergence."""
     decoded = _decoded(("T", 1, 1), [("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
         trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
-        # K emits K(3,3): content is T-only → no same-role match → unmatched.
         trainee_bursts=_bursts(_ev("K", 3, 3)),
         on_divergence="accept",
     )
@@ -213,7 +208,8 @@ def test_divergence_fail_raises_on_caller_thread():
 
 
 def test_divergence_accept_records_and_continues():
-    """DDT-9: on_divergence='accept' records to unmatched and continues."""
+    """on_divergence='accept' records an immediate divergence to unmatched and
+    continues the run."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
@@ -222,98 +218,111 @@ def test_divergence_accept_records_and_continues():
         trainee_bursts=_bursts(_ev("K", 99, 99), _ev("K", 2, 2)),
         on_divergence="accept",
     )
-    assert res.complete
     assert len(res.unmatched) == 1
     assert res.unmatched[0].proposal.kline.signature == 99
 
 
-# ── DDT-10/DDT-13: closing + completion ───────────────────────────────────
+# ── Close: de-positional, any agent, any time ─────────────────────────────
 
 
-def test_closing_emission_completes_run():
-    """DDT-10/DDT-13: the closing emission marks closing-seen = completion."""
+def test_close_emission_terminates_run():
+    """The close content, emitted by any agent at any time, terminates the run."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
         trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
         trainee_bursts=_bursts(_ev("K", 2, 2)),
     )
-    assert res.complete
+    assert res.uncovered == []
 
 
-def test_extreme_anticipation_closing_first_is_complete():
-    """DDT-13: closing-first is technically complete. The trainer emits opening
-    AND closing in a single accept burst (anticipates past the whole middle)."""
+def test_close_can_come_first():
+    """The close is de-positional: emitting it first (anticipation) terminates
+    the run immediately. The displacement (uncovered coverage rows) is the
+    signal of how much of the exchange was skipped — not a verdict."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T opens and closes in one burst — one-or-many replies per accept.
+        # T emits opening and close in one burst.
         trainer_bursts=[[_ev("T", 1, 1), _ev("T", 9, 9)]],
         trainee_bursts=[],
     )
-    assert res.complete
-    assert not res.covered  # middle unseen → coverage diagnostic False
+    uncovered_sigs = {t.value.kline.signature for t in res.uncovered}
+    assert {2, 3} <= uncovered_sigs  # the skipped coverage rows = displacement
 
 
-def test_no_closing_means_incomplete():
-    """DDT-13/DDT-22: without the closing, both actors exhaust and PASS in turn
-    → mutual PASS stall → incomplete."""
+def test_entry_exhaustion_terminates_run():
+    """When the coverage set is fully covered, the run terminates (entry
+    exhaustion) even without the close being emitted. The runner is not a
+    judge: close-vs-exhaustion is not an important distinction."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1)),  # opens but never closes
+        # T opens (covers T(1,1)); never emits the close.
+        trainer_bursts=_bursts(_ev("T", 1, 1)),
+        # K covers K(2,2). Now every coverage row is covered → exhaustion.
         trainee_bursts=_bursts(_ev("K", 2, 2)),
     )
-    assert not res.complete
-    assert res.covered  # middle covered, but closing never arrived
+    assert res.uncovered == []  # full coverage
 
 
-def test_emission_after_closing_is_not_divergence():
-    """DDT-15: the closing is terminal. The bus dispatches role handlers before
-    wildcards, so a role handler may react to the closing (e.g. a synthesizing
-    trainer ratifying the trainee's closing countersign) and enqueue an
-    emission *before* the wildcard marks closing-seen. Such a trailing emission
-    matches nothing and must NOT be treated as divergence — the run is already
-    complete. Regression for the SynthesizingTrainer-vs-TableTrainee run."""
-    # A T middle row (T 3,3) lets T's 2nd accept match; T's 3rd accept reacts to
-    # the K closing (9,9) by emitting an off-table T(7,7) "ratification".
+def test_mutual_pass_terminates_with_displacement():
+    """Two consecutive PASSes from the two roles is a terminal condition (the
+    actors have nothing more to say). It is not a verdict: any coverage rows
+    never emitted are reported as displacement."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        # T opens, then exhausts → PASS.
+        trainer_bursts=_bursts(_ev("T", 1, 1)),
+        # K exhausts immediately → PASS.
+        trainee_bursts=[],
+    )
+    uncovered_sigs = {t.value.kline.signature for t in res.uncovered}
+    assert {2, 3, 9} & uncovered_sigs  # displacement: coverage never traversed
+
+
+def test_emission_after_terminal_is_not_divergence():
+    """The run is closed mechanically on the first terminal emission. The bus
+    dispatches role handlers before wildcards, so a role handler may react to a
+    terminal emission and enqueue another *before* the wildcard marks the run
+    closed. Such a trailing emission must NOT be treated as divergence.
+    Regression for the SynthesizingTrainer-vs-TableTrainee run."""
+    # A T coverage row (T 3,3) lets T's 2nd accept match; T's 3rd accept reacts
+    # to the K close (9,9) by emitting an off-table T(7,7) "ratification".
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("K", 9, 9))
     runner = run(
         decoded,
         lambda sink: _ScriptedActor(
             "T", _bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 7, 7)), sink=sink
         ),
-        # K covers the middle then delivers the closing.
         lambda sink: _ScriptedActor(
             "K", _bursts(_ev("K", 2, 2), _ev("K", 9, 9)), sink=sink
         ),
         on_divergence="fail",
     )
     res = runner.run()
-    assert res.complete  # closing seen
     assert res.unmatched == []  # the trailing T(7,7) was not divergence
 
 
-# ── DDT-11/DDT-12: anticipation + interjection ───────────────────────────
+# ── Anticipation + interjection (permitted, unflagged) ───────────────────
 
 
 def test_anticipation_permitted_and_unflagged():
-    """DDT-11: the trainer emits its middle before the authored causal order;
-    a normal match, not divergence."""
+    """A trainer emits its coverage row before the authored causal order; a
+    normal match, not divergence."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T opens, emits its middle T(3,3) early, then closes.
         trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
         trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
     )
-    assert res.complete
     assert res.unmatched == []
 
 
 def test_interjection_permitted():
-    """DDT-11: an actor may emit extra covered content (interjection);
-    idempotent coverage, not divergence."""
+    """An actor may emit extra covered content (interjection); idempotent
+    coverage, not divergence."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
@@ -321,47 +330,42 @@ def test_interjection_permitted():
         # K interjects K(2,2) twice (more than the table has).
         trainee_bursts=[[_ev("K", 2, 2), _ev("K", 2, 2)]],
     )
-    assert res.complete
     assert res.unmatched == []
 
 
-# ── DDT-18: no synchronised alternation, route-to-other ───────────────────
+# ── No synchronised alternation, route-to-other ───────────────────────────
 
 
-def test_zero_replies_then_burst_relayed_correctly():
-    """DDT-18: an actor may reply one-or-many per accept; the bus relays each.
-    Here the trainee PASSes (an empty accept yields a PASS under ``burst >= 1``),
-    and the trainer emits opening + middle + closing in a single accept burst —
-    terminating the run without the trainee ever emitting substance (extreme
-    trainer autonomy)."""
+def test_pass_then_burst_relayed_correctly():
+    """An actor may reply one-or-many per accept; the bus relays each. Here the
+    trainee PASSes (an empty accept yields a PASS under ``burst >= 1``), and the
+    trainer emits the whole exchange in a single accept burst — terminating
+    the run without the trainee ever emitting substance (extreme trainer
+    autonomy)."""
     decoded = _decoded(("T", 1, 1), [("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T emits everything in its opening accept: open, middle, close.
+        # T emits everything in its opening accept: open, coverage, close.
         trainer_bursts=[[_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)]],
-        # K PASSes — but T's burst self-terminates via the closing.
         trainee_bursts=[[]],
     )
-    assert res.complete
-    assert res.covered
+    assert res.uncovered == []  # the coverage row was traversed
 
 
-# ── DDT-22: PASS (burst >= 1) + mutual-PASS stall ─────────────────────────
+# ── PASS (burst >= 1) + mutual-PASS termination ─────────────────────────
 
 
-def test_pass_is_not_recorded_as_coverage_or_divergence():
-    """DDT-22: a PASS is intercepted before matching — neither coverage nor
-    divergence. A trainee that PASSes (nothing workable) while the trainer
-    drives opening + closing completes cleanly with no unmatched emission."""
+def test_pass_is_not_coverage_or_divergence():
+    """A PASS is intercepted before matching — neither coverage nor divergence.
+    A trainee that PASSes (nothing workable) while the trainer drives the
+    exchange runs cleanly with no unmatched emission."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T opens, then closes.
         trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
-        # K PASSes once (empty accept), then covers the middle.
+        # K PASSes once (empty accept), then covers the coverage row.
         trainee_bursts=[[], _bursts(_ev("K", 2, 2))[0]],
     )
-    assert res.complete
     assert res.unmatched == []
     # The PASS is recorded in arrival-ordered events but never matched.
     passes = [e for e in res.events if is_pass(e)]
@@ -369,10 +373,10 @@ def test_pass_is_not_recorded_as_coverage_or_divergence():
     assert passes[0].proposal.kline.signature == PASS_SIGNATURE
 
 
-def test_mutual_pass_ends_run_incomplete():
-    """DDT-22: two consecutive PASSes (each side passing) is the stall
-    terminator → the run ends incomplete (closing unseen), with no idle
-    timeout. Both actors exhaust after the opening."""
+def test_mutual_pass_terminates():
+    """Two consecutive PASSes from the two roles is a terminal condition (the
+    actors have nothing more to say). It is mechanical termination, not a
+    verdict; the displacement is whatever coverage was never traversed."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
@@ -381,15 +385,14 @@ def test_mutual_pass_ends_run_incomplete():
         # K exhausts immediately → PASS.
         trainee_bursts=[],
     )
-    assert not res.complete  # mutual-PASS stall, closing never arrived
-    # The two trailing emissions are both PASSes (T then K, or K then T).
+    # The two trailing emissions are both PASSes (the two roles passing).
     trailing = res.events[-2:]
     assert all(is_pass(e) for e in trailing)
 
 
 def test_pass_event_builder_has_sentinel_signature_at_s1():
-    """DDT-22: pass_event() builds {PASS:[]} at S1 — the sentinel signature on
-    an identity kline, top-band significance."""
+    """pass_event() builds {PASS:[]} at S1 — the sentinel signature on an
+    identity kline, top-band significance."""
     from kalvin.expand import SIG_S1
 
     ev = pass_event("K")
@@ -400,11 +403,11 @@ def test_pass_event_builder_has_sentinel_signature_at_s1():
     assert is_pass(ev)
 
 
-# ── DDT-15: arrival-ordered events + diagnostics ──────────────────────────
+# ── Arrival-ordered log + displacement ──────────────────────────────────
 
 
 def test_result_events_are_arrival_ordered():
-    """DDT-15: events are in arrival order (bus delivery order); opening first."""
+    """events are in arrival order (bus delivery order); the seed emission first."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
@@ -412,21 +415,18 @@ def test_result_events_are_arrival_ordered():
         trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
     )
     sigs = [e.proposal.kline.signature for e in res.events]
-    assert sigs[0] == 1  # opening first
-    assert 9 in sigs  # closing present
+    assert sigs[0] == 1  # the seed emission first
 
 
-def test_result_uncovered_reports_unseen_middle():
-    """DDT-15: uncovered lists distinct middle contents never seen."""
+def test_result_uncovered_reports_displacement():
+    """uncovered lists the coverage rows never emitted — the displacement."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T opens and closes immediately; middle never covered.
+        # T opens and closes immediately; coverage rows never traversed.
         trainer_bursts=[[_ev("T", 1, 1), _ev("T", 9, 9)]],
         trainee_bursts=[],
     )
-    assert res.complete
-    assert not res.covered
     uncovered_sigs = {t.value.kline.signature for t in res.uncovered}
     assert {2, 3} <= uncovered_sigs
 

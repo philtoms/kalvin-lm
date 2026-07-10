@@ -143,10 +143,10 @@ def test_actor_yields_first_row_on_first_accept(_decoded_mhall):
 
 
 def test_trainer_and_trainee_are_symmetric_readers(_decoded_mhall):
-    """DDT-8: both yield their own rows in order; together they cover the table."""
+    """Both yield their own rows in order; together they cover the table (zero
+    displacement)."""
     res = _run_default(_decoded_mhall)
-    assert res.complete
-    assert res.covered
+    assert res.uncovered == []
 
 
 def test_event_carries_emitting_role(_decoded_mhall):
@@ -160,47 +160,43 @@ def test_event_carries_emitting_role(_decoded_mhall):
 # ── Canonical end-to-end (decisive acceptance) ────────────────────────────
 
 
-def test_canonical_run_completes(_decoded_mhall):
-    """The full MHALL dialogue runs to completion through the runner with the
-    default actors: the closing S1 countersign of the primary is seen. Trailing
-    no-op PASSes (an exhausted actor passing after the closing) may follow in
-    the arrival log; completion is closing-seen, found by content not position."""
+def test_canonical_run_closes_and_covers(_decoded_mhall):
+    """The full MHALL dialogue runs through the runner with the default actors
+    and covers the whole exchange (zero displacement). The runner is not a
+    judge: the run may terminate by entry exhaustion (full coverage) before the
+    close content is itself emitted — that is not distinguished from a close."""
     res = _run_default(_decoded_mhall)
-    assert res.complete
-    opening = res.events[0].proposal.kline
-    closings = [
-        e for e in res.events
-        if e.proposal.significance == SIG_S1 and e.proposal.kline == opening
-    ]
-    assert closings, "the closing S1 countersign of the primary was never seen"
+    assert res.uncovered == []  # full coverage — zero displacement
 
 
-def test_canonical_run_emits_every_table_row(_decoded_mhall):
-    """Every decoded turn's content is emitted at least once by the default
-    actors. The arrival log may also carry no-op PASSes (control traffic, not
-    content), which are excluded from the content comparison."""
-    from training.dialogue.decoder import turn_content_key
+def test_canonical_run_emits_every_coverage_row(_decoded_mhall):
+    """Every distinct coverage row's content is emitted at least once by the
+    default actors — zero displacement (``uncovered`` is empty). Duplicate
+    coverage rows collapse to one distinct content; the arrival log may also
+    carry no-op PASSes."""
     from training.dialogue.runner import is_pass
 
     res = _run_default(_decoded_mhall)
-    emitted_keys = [
+    assert res.uncovered == []  # every distinct coverage row was traversed
+    # Sanity: the non-PASS emissions are a subset of the table's content.
+    from training.dialogue.decoder import turn_content_key
+    close_idx = next((i for i, t in enumerate(_decoded_mhall) if t.close), len(_decoded_mhall) - 1)
+    coverage_set = {turn_content_key(t) for i, t in enumerate(_decoded_mhall) if i != close_idx}
+    emitted_set = {
         (e.role, e.proposal.kline.signature, tuple(e.proposal.kline.nodes), e.proposal.significance)
-        for e in res.events
-        if not is_pass(e)
-    ]
-    table_keys = [turn_content_key(t) for t in _decoded_mhall]
-    assert sorted(emitted_keys) == sorted(table_keys)
+        for e in res.events if not is_pass(e)
+    }
+    assert coverage_set <= emitted_set
 
 
 # ── Rationaliser integration (plan §Phase 2.2) ────────────────────────────
 
 
 def test_rationaliser_runs_mhall_to_exhaustion(_decoded_mhall, _sigf: NLPSignifier):
-    """The RationalisingTrainee (a real, stateful trainee) runs MHALL to
-    completion with zero divergence against the golden master, driven through
-    the runner. The trainer stays a ``TableTrainer`` (the deterministic
-    oracle). This is the canonical end-to-end proof that a rationalising trainee
-    is a drop-in replacement for ``TableTrainee``."""
+    """The RationalisingTrainee (a real, stateful trainee) runs MHALL through
+    the runner with zero displacement and zero divergence. The trainer stays a
+    ``TableTrainer`` (the deterministic oracle). Canonical proof that a
+    rationalising trainee is a drop-in replacement for ``TableTrainee``."""
     from training.dialogue.actors import RationalisingTrainee
 
     res = run(
@@ -209,16 +205,8 @@ def test_rationaliser_runs_mhall_to_exhaustion(_decoded_mhall, _sigf: NLPSignifi
         lambda sink: RationalisingTrainee(_sigf, sink=sink),
         on_divergence="accept",
     ).run()
-    assert res.complete
-    # The rationaliser eventually delivers the closing S1 countersign of the
-    # primary (it may also emit unmatched off-table content, and trailing
-    # no-op PASSes, along the way). Find the closing by content, not position.
-    opening = res.events[0].proposal.kline
-    closings = [
-        e for e in res.events
-        if e.proposal.significance == SIG_S1 and e.proposal.kline == opening
-    ]
-    assert closings, "the closing S1 countersign of the primary was never seen"
+    assert res.uncovered == []  # zero displacement
+    assert res.unmatched == []  # zero divergence
 
 
 # ── SynthesizingTrainer integration (plan §Phase 4.2) ────────────────────
@@ -246,13 +234,8 @@ def test_synthesizing_trainer_runs_mhall_to_exhaustion(
         lambda sink: TableTrainee(_decoded_mhall, sink=sink),
         on_divergence="accept",
     ).run()
-    assert res.complete
-    opening = res.events[0].proposal.kline
-    closings = [
-        e for e in res.events
-        if e.proposal.significance == SIG_S1 and e.proposal.kline == opening
-    ]
-    assert closings, "the closing S1 countersign of the primary was never seen"
+    assert res.uncovered == []  # zero displacement
+    assert res.unmatched == []  # zero divergence
 
 
 # ── R4 — open-dialog-close (plan @plans/implement-synthesizing-trainer.md) ─
