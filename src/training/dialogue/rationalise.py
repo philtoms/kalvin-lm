@@ -149,9 +149,9 @@ class Rationaliser:
         self._state.work_list.append(kline)
         for node in reversed(kline.nodes):
             if not self._recognised(node):
-                self._state.work_list.append(KLine(node, []))
+                self._state.work_list.append(KLine(node, [], kline.dbg))
         if not self._recognised(kline.signature, is_signature=True):
-            self._state.work_list.append(KLine(kline.signature, []))
+            self._state.work_list.append(KLine(kline.signature, [],kline.dbg))
 
     def _cleanup(self, kline: KLine) -> None:
         """Ground ``kline``, then repeatedly ground any work-list kline it unblocks."""
@@ -214,22 +214,20 @@ class Rationaliser:
             if is_identity(entry):
                 batch.append(self._emit_identity(idx, entry.signature))
                 continue
-            # First workable non-identity dispatches by significance routing
-            # (@specs/dialogue-cogitation.md §Routing, COG-2):
-            #   S3 structure (1:1 relationship)    → countersignature (if countersignable)
-            #   S2 structure (multi-node misfit)    → misfit origination
-            # A single-node S3 relationship whose operand canons are not yet
-            # seen is S3-structure but not countersignable — skip it (it awaits
-            # elevation/cleanup).
-            if self._countersignable(entry):
-                if batch:
-                    return batch  # identities collected; relationship waits
-                return self._emit_countersignature(entry)
-            if self._s2_eligible(entry):
-                if batch:
-                    return batch
-                emitted = self._originate_s2(entry)
-                return [emitted] if emitted is not None else batch
+            if not batch:
+                # First workable non-identity dispatches by significance routing
+                # (@specs/dialogue-cogitation.md §Routing, COG-2):
+                #   S3 structure (1:1 relationship)    → countersignature (if countersignable)
+                #   S2 structure (multi-node misfit)    → misfit origination
+                # A single-node S3 relationship whose operand canons are not yet
+                # seen is S3-structure but not countersignable — skip it (it awaits
+                # elevation/cleanup).
+                if self._countersignable(entry):
+                    return self._emit_countersignature(entry)
+                if self._s2_eligible(entry):
+                    emitted = self._originate_s2(entry)
+                    if emitted is not None:
+                        return [emitted] 
         return batch
 
     def _countersignable(self, entry: KLine) -> bool:

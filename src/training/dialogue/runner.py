@@ -7,10 +7,12 @@ wildcard subscriber** plus a thin driver that seeds the opening and runs the bus
 until a terminal condition. The actors the runner drives live in
 :mod:`training.dialogue.actors`.
 
-An actor takes an :class:`EventSink` at construction and publishes events to it
-via ``on_event``. The runner builds a bus-wired sink per actor (the sink bridges
-``on_event`` to a bus ``Message`` addressed to the other role), so any actor is
-drop-in: it publishes to its sink, the sink routes onto the bus.
+An actor takes an :class:`EventSink` at construction and publishes a **burst**
+of events to it via ``on_burst``. The runner builds a bus-wired sink per actor
+(the sink bridges ``on_burst`` to a single bus ``Message`` — carrying the whole
+burst as its payload — addressed to the other role), so any actor is drop-in:
+it publishes to its sink, the sink routes onto the bus. Because the bus payload
+is ``Any``, a burst rides as one ``Message``; it never serialises across many.
 
 The dialogue is messy and real: **no synchronised alternation** (an actor may
 publish one-or-many per incoming), and **anticipation** and **interjection**
@@ -50,6 +52,13 @@ from typing import Protocol, runtime_checkable
 
 from kalvin.events import RationaliseEvent
 from kalvin.expand import SIG_S1
+
+# A burst: the list of events one actor publishes in a single ``accept`` reply,
+# and the list it receives as the other role's reply. A burst is the bus
+# payload (``Message.message``) — the payload-blind bus carries it whole, so a
+# reply never serialises across multiple messages. An empty burst is the
+# opening seed (no prior turn).
+Burst = list[RationaliseEvent]
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn, turn_content_key
@@ -106,25 +115,28 @@ def pass_event(role: str) -> RationaliseEvent:
 class EventSink(Protocol):
     """The publish target an actor holds.
 
-    An actor is constructed with an ``EventSink`` and publishes events to it via
-    ``on_event``. The bus-wired sink (:class:`_BusEventSink`) bridges each
-    ``on_event`` to a bus ``Message`` addressed to the other role, so the
-    actor's published events flow onto the relay without the actor knowing about
-    the bus. This is least-coupling: the actor publishes, the sink routes.
+    An actor is constructed with an ``EventSink`` and publishes a **burst** of
+    events to it via ``on_burst``. The bus-wired sink (:class:`_BusEventSink`)
+    bridges each ``on_burst`` to a single bus ``Message`` — carrying the whole
+    burst as its payload — addressed to the other role, so the actor's
+    published burst flows onto the relay as one message without the actor
+    knowing about the bus. This is least-coupling: the actor publishes a
+    burst, the sink routes it.
     """
 
-    def on_event(self, event: RationaliseEvent) -> None: ...
+    def on_burst(self, events: list[RationaliseEvent]) -> None: ...
 
 
 @runtime_checkable
 class Actor(Protocol):
     """A dialogue actor.
 
-    Holds an :class:`EventSink` (injected at construction) and publishes events
-    to it. ``accept`` receives an incoming event (or ``None`` for the opening
-    seed) and the actor decides whether/when/how-many events to publish via its
-    sink — fire-and-forget, one-or-many (``burst >= 1``, DDT-22: an actor with
-    nothing substantive publishes a PASS, never zero).
+    Holds an :class:`EventSink` (injected at construction) and publishes a
+    **burst** of events to it. ``accept`` receives the incoming burst — the
+    other role's whole reply as one list (empty for the opening seed) — and
+    the actor decides how-many events to publish via its sink: fire-and-forget,
+    one-or-many (``burst >= 1``, DDT-22: an actor with nothing substantive
+    publishes a PASS, never zero).
 
     This is the duck-typed contract the runner types :data:`ActorFactory`
     against; :class:`~training.dialogue.actors.Actor` is the base implementation
@@ -134,7 +146,7 @@ class Actor(Protocol):
     @property
     def role(self) -> str: ...
 
-    def accept(self, event: RationaliseEvent | None) -> None: ...
+    def accept(self, incoming: list[RationaliseEvent]) -> None: ...
 
 
 # Actor factory: the runner builds the bus-wired sink (it owns the bus) and
@@ -197,20 +209,21 @@ class RunResult:
 
 
 class _BusEventSink:
-    """An :class:`EventSink` that publishes each event to the other role.
+    """An :class:`EventSink` that publishes a whole burst to the other role.
 
     The route-to-other rule (DDT-18) is enforced structurally: the actor calls
-    ``on_event(event)`` (the event carries the emitter's role on ``event.role``)
-    and this sink addresses the bus ``Message`` to the *other* role.
+    ``on_burst(events)`` and this sink addresses one bus ``Message`` to the
+    *other* role, carrying the burst as its payload. The payload-blind bus
+    delivers it whole — a reply never serialises across multiple messages.
     """
 
     def __init__(self, bus: MessageBus, other_role: str) -> None:
         self._bus = bus
         self._other = other_role
 
-    def on_event(self, event: RationaliseEvent) -> None:
+    def on_burst(self, events: list[RationaliseEvent]) -> None:
         self._bus.send(
-            Message(role=self._other, action=_ACCEPT_ACTION, message=event)
+            Message(role=self._other, action=_ACCEPT_ACTION, message=events)
         )
 
 
@@ -296,15 +309,15 @@ class Runner:
     def run(self) -> RunResult:
         """Drive the run (spec §The Runner).
 
-        Seeds the trainer (addressing an ``accept`` message with
-        ``message=None``), then runs ``bus.run()`` on a dedicated thread. The
-        bus exits when the coverage handler calls ``bus.stop()`` — on the close
-        content being seen, the coverage set being exhausted, or a mutual PASS.
-        Every ``accept`` yields ≥1 proposal (``burst >= 1``), so the bus never
-        blocks indefinitely.
+        Seeds the trainer (addressing an ``accept`` message with an empty
+        burst — ``message=[]`` — the opening seed), then runs ``bus.run()`` on
+        a dedicated thread. The bus exits when the coverage handler calls
+        ``bus.stop()`` — on the close content being seen, the coverage set
+        being exhausted, or a mutual PASS. Every ``accept`` yields ≥1 proposal
+        (``burst >= 1``), so the bus never blocks indefinitely.
         """
         self._bus.send(
-            Message(role=self._trainer.role, action=_ACCEPT_ACTION, message=None)
+            Message(role=self._trainer.role, action=_ACCEPT_ACTION, message=[])
         )
         bus_thread = threading.Thread(target=self._bus.run, daemon=True)
         bus_thread.start()
@@ -316,10 +329,21 @@ class Runner:
     # -- coverage handler (the wildcard subscriber) -------------------------
 
     def _on_emission(self, msg: Message) -> None:
-        """Wildcard handler: track coverage and divergence on every emission."""
-        event = msg.message
-        if event is None:
+        """Wildcard handler: track coverage and divergence on every emission.
+
+        ``msg.message`` is a burst (a ``list[RationaliseEvent]``): the other
+        role's whole reply carried as one bus payload. The bus delivers it
+        whole, so this handler unpacks the burst and applies the per-event
+        coverage / PASS / divergence logic to each event in arrival order.
+        """
+        burst = msg.message
+        if not burst:
             return  # the opening seed, not an emission
+        for event in burst:
+            self._observe(event)
+
+    def _observe(self, event: RationaliseEvent) -> None:
+        """Apply coverage / PASS / divergence bookkeeping to one emission."""
         assert isinstance(event, RationaliseEvent)
 
         # The run is closed: drop everything after. The bus dispatches role
@@ -384,7 +408,7 @@ class Runner:
         """Adapt an actor's ``accept`` to the bus's ``(msg) -> None`` handler."""
 
         def handler(msg: Message) -> None:
-            actor.accept(msg.message)  # RationaliseEvent | None
+            actor.accept(msg.message)  # list[RationaliseEvent] (empty = seed)
 
         return handler
 

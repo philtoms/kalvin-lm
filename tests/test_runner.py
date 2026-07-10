@@ -67,9 +67,10 @@ class _ScriptedActor:
     """An actor that emits scripted bursts of replies across ``accept``.
 
     Holds a sink (injected at construction, as KAgent holds an adapter). Each
-    ``accept`` consumes the next burst (a list of events) and publishes every
-    event in it via the sink — modelling one-or-many replies per accept. When
-    the burst list is exhausted, ``accept`` publishes a PASS
+    ``accept`` consumes the next burst (a list of events) and publishes the
+    whole burst to the sink via ``on_burst`` — modelling one-or-many replies
+    per accept as a single bus payload. When the burst list is exhausted,
+    ``accept`` publishes a single-PASS burst
     (:func:`~training.dialogue.runner.pass_event`) — the ``burst >= 1``
     contract (DDT-22): a compliant actor never replies zero. Two consecutive
     PASSes (both actors exhausted) end the run as a stall.
@@ -85,21 +86,20 @@ class _ScriptedActor:
     def role(self) -> str:
         return self._role
 
-    def accept(self, event) -> None:  # type: ignore[no-untyped-def]
+    def accept(self, incoming) -> None:  # type: ignore[no-untyped-def]
         if self._sink is None:
             return
         if self._i >= len(self._bursts):
             # Exhausted: ``burst >= 1`` — emit a PASS rather than silence.
-            self._sink.on_event(pass_event(self._role))
+            self._sink.on_burst([pass_event(self._role)])
             return
         burst = self._bursts[self._i]
         self._i += 1
         if not burst:
             # An explicit empty burst is also a PASS (one-or-many per accept).
-            self._sink.on_event(pass_event(self._role))
+            self._sink.on_burst([pass_event(self._role)])
             return
-        for reply in burst:
-            self._sink.on_event(reply)
+        self._sink.on_burst(burst)
 
 
 def _run(

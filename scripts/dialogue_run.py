@@ -114,10 +114,10 @@ def _render_scripted(
     node_labels = [
         sig_to_label.get(n) or f"0x{n:x}" for n in kvalue.kline.nodes
     ]
-    nodes = "(" + ", ".join(node_labels) + ")" if node_labels else "()"
+    nodes = "[" + ", ".join(node_labels) + "]" if node_labels else "[]"
     band = _SIG_TO_BAND.get(kvalue.significance, "?")
     close_marker = " close" if close else ""
-    return f"{role} {op:13} {sig_label}{nodes} {band}{close_marker}"
+    return f"{role} {op:13} {sig_label}:{nodes} {band}{close_marker}"
 
 
 def _scripted_form_event(event, sig_to_label: dict[int, str]) -> str:
@@ -275,6 +275,7 @@ def main(argv: list[str] | None = None) -> int:
     # The compiled script's signature→label map.
     sig_to_label = _sig_to_label(table, tokenizer=tok, signifier=sigf)
 
+    # Always on
     on_divergence = "fail"
 
     # The --synthesize/--rationalise flags substitute real actors. They are
@@ -317,12 +318,10 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"\nDialogue session: {dialogue_path}\n"
         f"  events received     : {len(res.events)}\n"
-        f"  unmatched emissions : {len(res.unmatched)}\n"
+        # f"  unmatched emissions : {len(res.unmatched)}\n"
         f"  uncovered (displacement): {len(res.uncovered)}"
     )
-    # The runner is not a judge: reaching here means no immediate divergence
-    # was raised. The displacement (uncovered) is reported above, not used as a
-    # pass/fail verdict.
+    # Reaching here means no immediate divergence was raised. 
     return 0
 
 

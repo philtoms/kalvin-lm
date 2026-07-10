@@ -24,8 +24,9 @@ against replacement — it will evolve when real actors arrive.
 
 The runner is **bus-driven**: it drives the exchange over the harness
 `MessageBus`. The actors are sink-driven — each holds an `EventSink` and
-publishes its turns via `accept` (fire-and-forget, one-or-many per incoming —
-see §Actor contract and the PASS proposal).
+publishes its turns as a **burst** via `accept` (fire-and-forget,
+one-or-many events per incoming burst — see §Actor contract and the PASS
+proposal).
 
 ## Dependencies
 
@@ -174,8 +175,9 @@ cause and effect; the runner does not enforce it.
   emission of that content ambiguous (coverage or close?) — malformed at decode
   time.
 
-The runner seeds the trainer mechanically (an ``accept`` with ``message=None``);
-the close is position-free. A close can happen anywhere, on any agent, at any time.
+The runner seeds the trainer mechanically (an ``accept`` with an empty
+burst — ``message=[]``); the close is position-free. A close can happen
+anywhere, on any agent, at any time.
 
 ## The Runner
 
@@ -190,13 +192,15 @@ seeds the trainer and runs the bus until a terminal condition. The runner
 depends on `training.harness` — it is a training application and belongs next to
 the harness.
 
-- **Sink = the bus (via a bus-wired `EventSink`).** Actors publish events to an
-  `EventSink` injected at construction; the runner's bus-wired sink bridges
-  each `on_event` to a `Message` addressed to the other role. The bus's `send`
-  is thread-safe — actors publish from any thread (including a cogitation
-  thread), which is the true non-blocking behaviour the run regime requires.
-  No `asyncio`; no second concurrency model. The actor does not know about the
-  bus; it publishes to its sink, and the sink routes.
+- **Sink = the bus (via a bus-wired `EventSink`).** Actors publish a **burst**
+  of events to an `EventSink` injected at construction; the runner's bus-wired
+  sink bridges each `on_burst` to a single `Message` — carrying the whole burst
+  as its payload — addressed to the other role. The bus payload is `Any`, so a
+  burst rides as one message; a reply never serialises across many. The bus's
+  `send` is thread-safe — actors publish from any thread (including a
+  cogitation thread), which is the true non-blocking behaviour the run regime
+  requires. No `asyncio`; no second concurrency model. The actor does not know
+  about the bus; it publishes a burst to its sink, and the sink routes it.
 - **Relay = the bus's role dispatch.** Each actor subscribes to its own role;
   the bus-wired sink addresses each published event to the **other** role; the
   bus delivers. The runner does not relay — the bus does.
@@ -205,11 +209,11 @@ the harness.
   a terminal condition. A PASS emission (§Actor contract) is intercepted
   before matching: neither coverage, nor divergence, nor a close.
 - **Driver.** A thin `run()` seeds the trainer by addressing a `Message` to the
-  trainer's role (`message=None`), then runs `bus.run()` on a dedicated thread
-  until a terminal condition: the close content is emitted, the coverage set is
-  exhausted, or both actors pass in turn. Every `accept` yields at least one
-  proposal (`burst >= 1`), so the bus never blocks indefinitely. The
-  displacement (uncovered coverage rows) is what matters.
+  trainer's role with an empty burst (`message=[]`), then runs `bus.run()` on a
+  dedicated thread until a terminal condition: the close content is emitted,
+  the coverage set is exhausted, or both actors pass in turn. Every `accept`
+  yields at least one proposal (`burst >= 1`), so the bus never blocks
+  indefinitely. The displacement (uncovered coverage rows) is what matters.
 
 The dialogue metaphor: messy and real. **No synchronised alternation** — an
 actor may emit one-or-many replies per incoming message (at least one — a PASS
@@ -222,25 +226,28 @@ of the stream — the point of Kalvin.
 ### Actor contract
 
 An actor is a dialogue participant. It holds an **`EventSink`** (injected at
-construction) and publishes events to it via `on_event`. The runner builds a
-bus-wired sink per actor (bridging `on_event` to a bus `Message` addressed to
-the other role) and constructs each actor with its sink, so any actor is
-drop-in.
+construction) and publishes a **burst** of events to it via `on_burst`. The
+runner builds a bus-wired sink per actor (bridging `on_burst` to a single bus
+`Message` — carrying the whole burst as its payload — addressed to the other
+role) and constructs each actor with its sink, so any actor is drop-in. The bus
+payload is `Any`, so a burst rides as one message and never serialises across
+many.
 
 ```
 EventSink:
-  on_event(event: RationaliseEvent) -> None
+  on_burst(events: list[RationaliseEvent]) -> None
 
 Actor:
   role: str
-  accept(event: RationaliseEvent | None) -> None   # publishes via its sink
+  accept(incoming: list[RationaliseEvent]) -> None   # publishes a burst via its sink
 ```
 
-`accept` is **fire-and-forget**: it receives an incoming event (or `None` for
-the opening seed) and returns immediately; the actor decides when and how many
-events to publish via its sink — possibly later (from a cogitation thread),
-possibly many times (a priming burst, a scaffolding sequence). The actor does
-not know about the bus; it publishes to its sink, and the sink routes.
+`accept` is **fire-and-forget**: it receives the incoming burst — the other
+role's whole reply as one list (empty for the opening seed) — and returns
+immediately; the actor decides how many events to publish via its sink —
+possibly later (from a cogitation thread), possibly many (a priming burst, a
+scaffolding sequence). The actor does not know about the bus; it publishes a
+burst to its sink, and the sink routes it as one message.
 
 `accept` always publishes **at least one** proposal (`burst >= 1`): the actors
 in a dialogue drive each other's next events, so an actor never replies with
@@ -262,10 +269,17 @@ runner owns the bus, so only it can build the bus-wired sink, so it builds the
 actors too. This makes any actor — including `SynthesizingTrainer` and
 `RationalisingTrainee` — drop-in.
 
-Both default actors (`TableTrainer`, `TableTrainee`) read the decoded table,
-filter to their own `actor`, and yield those rows in order with their role on
-each event. They emit by index; `incoming` only supplies the emitted event's
-`query`.
+Both default actors (`TableTrainer`, `TableTrainee`) read the decoded table
+and **answer each entry in the received batch**. On the opening seed (an empty
+burst) each emits its opening **contiguous same-role run** — every consecutive
+row tagged with its `role` from its cursor, skipping other-role rows to its
+first. On a reply burst of N events it emits **one response row per incoming
+event** — advancing past other-role rows to its next same-role row for each —
+so a trainee burst of N events gets N trainer responses, not one. Each
+response row's `query` is the corresponding incoming event's `proposal`; each
+seed row's `query` is its own turn. The actor is content-blind (DDT-10): it
+does not realign its cursor to the incoming content — that is the R1
+follow-on — only advances forward through the table's own order.
 
 ### Permitted state
 
@@ -442,8 +456,8 @@ displacement when the whole exchange is traversed).
 | DDT-18 | The runner terminates mechanically (close / exhaustion / mutual PASS; no idle timeout — every `accept` yields ≥1 proposal) and reports the **displacement** (`uncovered`) — coverage rows never emitted                                                                                                | §Termination, §Types   |
 | DDT-19 | `Divergence` carries `(role, emitted, unconsumed)` and has no cursor (coverage is content-keyed)                                                                                                                                                                                                     | §Types                 |
 | DDT-20 | `RunResult` has arrival-ordered `events`, plus `unmatched` (immediate divergences, accept-mode) and `uncovered` (displacement: coverage rows never emitted)                                                                                                                                           | §Types                 |
-| DDT-21 | An actor holds an `EventSink` (injected at construction) and publishes via `on_event`; `accept(event)` receives incoming and the actor publishes one-or-many replies via its sink (`event=None` = "you open"); `burst >= 1` — when cogitation yields nothing the actor publishes a PASS (`{PASS: []}` at S1). The runner builds the bus-wired sink and constructs actors via factories `(sink) -> Actor`; any actor is drop-in | §Actor contract |
-| DDT-22 | There is no synchronised alternation: an actor may reply one-or-many times per `accept` (at least one — a PASS when it has nothing substantive); each reply is routed by the bus to the other role. A PASS is intercepted before matching (not coverage, not divergence, not close); two consecutive PASSes from the two roles is a terminal condition (mutual PASS) | §The Runner, §Actor contract |
-| DDT-23 | The trainer and trainee are symmetric readers of the same decoded table, differing only by actor; the default actors emit by index (`incoming` only supplies the emitted event's `query`)                                                                                                              | §Actor contract        |
+| DDT-21 | An actor holds an `EventSink` (injected at construction) and publishes a **burst** via `on_burst`; `accept(incoming)` receives the other role's whole reply as one list (empty = "you open") and the actor publishes one-or-many replies as one burst via its sink; `burst >= 1` — when cogitation yields nothing the actor publishes a PASS (`{PASS: []}` at S1). The bus payload is `Any`, so a burst rides as one `Message` and never serialises across many. The runner builds the bus-wired sink and constructs actors via factories `(sink) -> Actor`; any actor is drop-in | §Actor contract |
+| DDT-22 | There is no synchronised alternation: an actor may reply one-or-many events per `accept` (at least one — a PASS when it has nothing substantive); the whole reply burst is routed by the bus to the other role as one message. A PASS is intercepted before matching (not coverage, not divergence, not close); two consecutive PASSes from the two roles is a terminal condition (mutual PASS) | §The Runner, §Actor contract |
+| DDT-23 | The trainer and trainee are symmetric readers of the same decoded table, differing only by actor; the default actors **answer each entry in the received batch**: on the opening seed (empty burst) each emits its opening contiguous same-role run; on a reply burst of N events each emits one response row per incoming event (advancing its cursor in table order), each stamped with that event's `query`. The actor is content-blind (no cursor realignment to incoming — that is the R1 follow-on) | §Actor contract |
 | DDT-24 | The runner routes on the actor's self-declared `event.role`: the actor announces itself and the bus addresses its emissions to the other role — the shape a real, possibly asynchronous actor will use                                                                                              | §Matching              |
 | DDT-25 | Training measures learning only indirectly, through the displacement; grounding is an internal state surfaced as significance on each emission. The runner's concern is the exchange and its coverage                                                                                               | §What Training Is      |

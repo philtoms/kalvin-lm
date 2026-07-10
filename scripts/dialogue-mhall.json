@@ -41,6 +41,92 @@
     },
     {
       "op": "IDENTITY",
+      "signature": "SVO",
+      "nodes": [],
+      "significance": "S4",
+      "role": "K",
+      "turn": 17,
+      "role_turn": 9
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "SVO",
+      "nodes": [
+        "Subject",
+        "Verb",
+        "Object"
+      ],
+      "significance": "S2",
+      "role": "T",
+      "turn": 18,
+      "role_turn": 9
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "Subject",
+      "nodes": [],
+      "significance": "S4",
+      "role": "K",
+      "turn": 19,
+      "role_turn": 10
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "Subject",
+      "nodes": [
+        "Sub",
+        "ject"
+      ],
+      "significance": "S1",
+      "role": "T",
+      "turn": 20,
+      "role_turn": 10
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "Verb",
+      "nodes": [],
+      "significance": "S4",
+      "role": "K",
+      "turn": 21,
+      "role_turn": 11
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "Verb",
+      "nodes": [
+        "V",
+        "er",
+        "b"
+      ],
+      "significance": "S1",
+      "role": "T",
+      "turn": 22,
+      "role_turn": 11
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "Object",
+      "nodes": [],
+      "significance": "S4",
+      "role": "K",
+      "turn": 23,
+      "role_turn": 12
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "Object",
+      "nodes": [
+        "Ob",
+        "ject"
+      ],
+      "significance": "S1",
+      "role": "T",
+      "turn": 24,
+      "role_turn": 12
+    },
+    {
+      "op": "IDENTITY",
       "signature": "Mary",
       "nodes": [],
       "significance": "S4",
@@ -172,92 +258,6 @@
       "role": "K",
       "turn": 16,
       "role_turn": 8
-    },
-    {
-      "op": "IDENTITY",
-      "signature": "SVO",
-      "nodes": [],
-      "significance": "S4",
-      "role": "K",
-      "turn": 17,
-      "role_turn": 9
-    },
-    {
-      "op": "CANONIZED",
-      "signature": "SVO",
-      "nodes": [
-        "Subject",
-        "Verb",
-        "Object"
-      ],
-      "significance": "S2",
-      "role": "T",
-      "turn": 18,
-      "role_turn": 9
-    },
-    {
-      "op": "IDENTITY",
-      "signature": "Subject",
-      "nodes": [],
-      "significance": "S4",
-      "role": "K",
-      "turn": 19,
-      "role_turn": 10
-    },
-    {
-      "op": "CANONIZED",
-      "signature": "Subject",
-      "nodes": [
-        "Sub",
-        "ject"
-      ],
-      "significance": "S1",
-      "role": "T",
-      "turn": 20,
-      "role_turn": 10
-    },
-    {
-      "op": "IDENTITY",
-      "signature": "Verb",
-      "nodes": [],
-      "significance": "S4",
-      "role": "K",
-      "turn": 21,
-      "role_turn": 11
-    },
-    {
-      "op": "CANONIZED",
-      "signature": "Verb",
-      "nodes": [
-        "V",
-        "er",
-        "b"
-      ],
-      "significance": "S1",
-      "role": "T",
-      "turn": 22,
-      "role_turn": 11
-    },
-    {
-      "op": "IDENTITY",
-      "signature": "Object",
-      "nodes": [],
-      "significance": "S4",
-      "role": "K",
-      "turn": 23,
-      "role_turn": 12
-    },
-    {
-      "op": "CANONIZED",
-      "signature": "Object",
-      "nodes": [
-        "Ob",
-        "ject"
-      ],
-      "significance": "S1",
-      "role": "T",
-      "turn": 24,
-      "role_turn": 12
     },
     {
       "notes": "MHALL and SVO are grounded but MHALL==SVO is still a proposal at S2. K will try to rationalise it by promoting signature-node relationships it believes will lead to an S1 countersignature",

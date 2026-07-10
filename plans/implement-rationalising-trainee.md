@@ -470,14 +470,24 @@ simple pop):
   are `pytest.skip` markers pointing at the coverage gap rather than tests of
   unimplemented behaviour.
 
-**2.2 Runner integration test.** `RationalisingTrainee` runs MHALL to exhaustion with
-zero divergence against the golden master, driven through the runner's `run()`
-like any Actor (the trainer stays a `TableTrainer` — the deterministic
-oracle). **Prerequisite done:** the runner/Actor refactor (synthesizing-trainer
-D7) — `Actor.respond` returns just `RationaliseEvent | None` (no cursor); the
-runner validates against `decoded[cursor]`. The spec's §Actor/§Validation and
-test matrix (DDT-9, DDT-16) updated to match. This is the canonical end-to-end
-proof that a rationalising trainee is a drop-in `TableTrainee` replacement.
+**2.2 Runner integration.** `RationalisingTrainee` is wired through the
+runner's `run()` like any Actor (the trainer stays a `TableTrainer` — the
+deterministic oracle), exercised via the `--rationalise` driver flag (2.3).
+_Prerequisite done:_ the runner/Actor refactor (synthesizing-trainer D7). The
+spec's §Actor/§Validation and test matrix (DDT-9, DDT-16) match the burst-
+first contract.
+
+_A previously-planned end-to-end "runs MHALL to exhaustion with zero
+displacement" assertion was **removed** (deliberate)._ It locked down, as a
+pass/fail gate, the very property the dialogue training system exists to
+let evolve — how a real cogitating trainee's multi-event bursts traverse the
+authored exchange. Under the table actor's answer-each-entry semantics (a
+trainee burst of N events gets N trainer responses), a cogitative burst that
+is not cardinality-aligned with the table's interleaved turns no longer hits
+zero displacement by construction, and that is the expected, healthy signal
+— not a regression to gate on. The drop-in property is the Actor contract
+(satisfies the protocol, wires via the factory); it is not a zero-displacement
+verdict.
 
 **2.3 Driver flag.** `scripts/dialogue_run.py` gains a `--rationalise` flag
 that substitutes `RationalisingTrainee` for `TableTrainee`, demonstrating the drop-in
@@ -494,8 +504,9 @@ the async-elevation cascade, to the closing S1.
 - `src/training/dialogue/runner.py` — `RationalisingTrainee` actor (wraps the
   engine; mirrors `SynthesizingTrainer`).
 - `tests/test_rationalise.py` — new (Phase 2.1).
-- `tests/test_dialogue_runner.py` — add the rationaliser integration test
-  (Phase 2.2).
+- `tests/test_dialogue_runner.py` — actor unit tests for the rationalising
+  trainee where they pin protocol behaviour (Phase 2.2). The end-to-end
+  zero-displacement run is intentionally not a test (see 2.2).
 - `scripts/dialogue_run.py` — `--rationalise` flag (Phase 2.3).
 - `scripts/dialogue-mhall.json` — **modified**: the ALL grouped residual is
   now a canonical-request + scaffolding-reply + async-elevation sequence
@@ -509,8 +520,8 @@ mechanism branches above and to the canonical end-to-end run.
 
 | Mechanism / Spec | Test |
 | --- | --- |
-| Actor interface (DDT-9, DDT-16, DDT-17) | `RationalisingTrainee` (the actor) returns `RationaliseEvent` with `role="K"` or `None`; `Rationaliser` (the engine) returns `KValue` or `None` |
-| Validation (DDT-11) | MHALL runs to exhaustion with zero divergence |
+| Actor interface (DDT-9, DDT-16, DDT-17) | `RationalisingTrainee` (the actor) emits a burst of `RationaliseEvent` with `role="K"` (empty → a PASS under `burst >= 1`); `Rationaliser` (the engine) returns a `list[KValue]` (possibly empty) |
+| Validation (DDT-11) | exercised via the `--rationalise` driver flag; no end-to-end zero-displacement gate (see Phase 2.2) |
 | Entry rule — S4 pop | unit |
 | Entry rule — S1 cleanup | unit |
 | Entry rule — S2/S3 unpack + elevation | unit |

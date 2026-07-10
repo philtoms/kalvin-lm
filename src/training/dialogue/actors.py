@@ -51,9 +51,10 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 # Every dialogue participant shares one invariant: it holds an EventSink and
 # publishes its turns to it via ``accept``, fire-and-forget, **one-or-many**
 # per incoming. The base class owns that invariant — the sink, the role, and
-# the publish loop. A subclass implements only ``next_events``: given an
-# incoming event (or ``None`` for the opening seed), produce the turns to
-# publish. The base publishes each, and — crucially — emits a PASS when
+# the publish step. A subclass implements only ``next_events``: given the
+# incoming burst (the other role's whole reply as one list; empty for the
+# opening seed), produce the turns to publish. The base packs them into one
+# burst and publishes it via the sink, and — crucially — emits a PASS when
 # ``next_events`` yields nothing, so the ``burst >= 1`` contract always holds.
 
 
@@ -62,14 +63,15 @@ class Actor:
 
     Holds an :class:`~training.dialogue.runner.EventSink` and a ``role`` (the
     routing key this actor emits on its events). :meth:`accept` is the
-    fire-and-forget entry point: it calls :meth:`next_events` and publishes
-    each produced event to the sink. ``incoming`` is ``None`` on the opening
-    seed (an actor may open), or a prior event otherwise.
+    fire-and-forget entry point: it calls :meth:`next_events`, collects the
+    produced events into one burst, and publishes that burst to the sink.
+    ``incoming`` is the other role's whole reply as one list — empty on the
+    opening seed (an actor may open), or a prior burst otherwise.
 
     Subclasses override :meth:`next_events` to decide what to publish for a
-    given incoming — one, or many events. They must not publish directly to
-    the sink; they return events and the base publishes them. When
-    :meth:`next_events` yields nothing, the base emits a single PASS
+    given incoming burst — one, or many events. They must not publish directly
+    to the sink; they return events and the base publishes them as one burst.
+    When :meth:`next_events` yields nothing, the base emits a single PASS
     (:func:`~training.dialogue.runner.pass_event`) so the ``burst >= 1``
     contract (DDT-22) holds: every ``accept`` publishes at least one proposal.
     """
@@ -84,51 +86,63 @@ class Actor:
         return self._role
 
     def next_events(
-        self, incoming: RationaliseEvent | None
+        self, incoming: list[RationaliseEvent]
     ) -> Iterable[RationaliseEvent]:
-        """Produce the events to publish for ``incoming``.
+        """Produce the events to publish for the incoming ``burst``.
 
-        ``incoming`` is ``None`` on the opening seed; otherwise it is the prior
-        event. Returns one, or many events; the base publishes each via the
-        sink. Override in a subclass; the base raises
-        :class:`NotImplementedError`. Returning nothing is permitted — the
-        base then emits a PASS to satisfy ``burst >= 1`` (DDT-22).
+        ``incoming`` is the other role's whole reply as one list — empty on
+        the opening seed. Returns one, or many events; the base collects them
+        into a burst and publishes it via the sink. Override in a subclass; the
+        base raises :class:`NotImplementedError`. Returning nothing is
+        permitted — the base then emits a PASS to satisfy ``burst >= 1``
+        (DDT-22).
         """
         raise NotImplementedError
 
-    def accept(self, incoming: RationaliseEvent | None) -> None:
-        """Publish every event produced for ``incoming`` via the sink.
+    def accept(self, incoming: list[RationaliseEvent]) -> None:
+        """Publish every event produced for ``incoming`` as one burst.
 
+        Collects :meth:`next_events`' output into a single burst and publishes
+        it via ``on_burst`` — one bus message carrying the whole reply.
         ``burst >= 1`` (DDT-22): when :meth:`next_events` yields nothing the
-        base emits a single PASS so the dialogue always gets a turn. The
+        base emits a single-PASS burst so the dialogue always gets a turn. The
         runner intercepts PASS before matching; two consecutive PASSes end the
         run as a stall.
         """
-        count = 0
-        for event in self.next_events(incoming):
-            self._sink.on_event(event)
-            count += 1
-        if count == 0:
-            self._sink.on_event(pass_event(self._role))
+        burst = list(self.next_events(incoming))
+        if not burst:
+            burst = [pass_event(self._role)]
+        self._sink.on_burst(burst)
 
 
 # ── Table-reading actors (spec §The Runner, §Actor) ───────────────────────
 #
-# Each table actor holds its own index into its own rows (the subsequence of the
-# decoded table matching its ``role``) and yields them one at a time in order,
-# one per ``accept``. ``incoming`` only supplies the emitted event's ``query``
-# voice (DDT-10). The actor is dumb on purpose: it does not know about run
-# boundaries or the table cursor, and it publishes only via its sink.
+# Each table actor holds a cursor into the **full decoded table** (not just its
+# own rows). On the opening seed (an empty incoming burst) it emits its opening
+# **contiguous same-role run** — every consecutive row tagged with its
+# ``role`` from the cursor, stopping at the first other-role row. On a reply (a
+# non-empty burst of N events) it **responds to each entry**: it advances to its
+# next same-role row per incoming event and emits it, with that event's
+# proposal as the emitted row's ``query`` voice. So a trainee burst of N events
+# gets N trainer responses, not one — the table actor matches and answers the
+# whole batch. ``incoming``'s content is still not used to *realign* the cursor
+# (that is R1); the cursor only advances forward through the table's own order
+# (DDT-10 intact). The actor is dumb on purpose: it does not know about run
+# boundaries or coverage, and it publishes only via its sink.
 
 
 class _TableActor(Actor):
-    """Default actor: yields its rows in order, one per ``accept`` call.
+    """Default actor: answers each incoming event with its next row.
 
-    Holds the decoded table and a ``role`` label, plus an internal index that
-    starts before the actor's first row. Each ``accept`` advances the index by
-    one and produces the event for that row (or nothing once exhausted). Each
-    event's ``query`` is the incoming event's ``proposal`` (or the row's own
-    turn on the opening).
+    Holds the decoded table and a ``role`` label, plus an internal cursor into
+    the full table that starts before the first row. On the opening seed (an
+    empty burst) it emits its opening contiguous same-role run (skipping any
+    other-role rows to its first row, then every consecutive same-role row
+    from there). On a reply burst of N events it emits one response row per
+    incoming event — advancing past any other-role rows to its next same-role
+    row for each — so the whole received batch is matched and answered. Each
+    response row's ``query`` is the corresponding incoming event's
+    ``proposal``; each seed row's ``query`` is its own turn.
     """
 
     def __init__(
@@ -140,21 +154,57 @@ class _TableActor(Actor):
         sink: EventSink,
     ) -> None:
         super().__init__(role=role, sink=sink)
-        self._rows: tuple[DecodedTurn, ...] = tuple(t for t in table if t.role == role)
-        self._index = -1
+        self._table: tuple[DecodedTurn, ...] = tuple(table)
+        self._cursor = -1
         self._kind = kind
 
     def next_events(
-        self, incoming: RationaliseEvent | None
+        self, incoming: list[RationaliseEvent]
     ) -> Iterable[RationaliseEvent]:
-        nxt = self._index + 1
-        if nxt >= len(self._rows):
+        if not incoming:
+            # Opening seed: emit the opening contiguous same-role run. Skip any
+            # other-role rows to reach this actor's first row, then emit every
+            # consecutive same-role row from there. Each emitted row's query is
+            # its own turn (there is no inbound voice).
+            i = self._cursor + 1
+            while i < len(self._table) and self._table[i].role != self._role:
+                i += 1
+            start = i
+            while i < len(self._table) and self._table[i].role == self._role:
+                turn = self._table[i]
+                yield RationaliseEvent(
+                    kind=self._kind, query=turn.value, proposal=turn.value,
+                    role=self._role,
+                )
+                i += 1
+            self._cursor = i - 1 if i > start else self._cursor
             return
-        self._index = nxt
-        turn = self._rows[nxt]
-        query = incoming.proposal if incoming is not None else turn.value
+        # Reply: answer each incoming event with the next same-role row, using
+        # that event's proposal as the emitted row's query voice. Yields nothing
+        # for an entry once this actor's rows are exhausted (the base may then
+        # emit a PASS for the whole accept).
+        for event in incoming:
+            yield from self._emit_row(query=event.proposal)
+
+    def _emit_row(self, query: KValue) -> Iterable[RationaliseEvent]:
+        """Emit the next same-role row, advancing past other-role rows.
+
+        Advances the cursor past any other-role rows to the next same-role row
+        and emits it, stamped with ``query`` as the inbound voice. Yields
+        nothing once this actor's rows are exhausted.
+        """
+        i = self._cursor + 1
+        while i < len(self._table) and self._table[i].role != self._role:
+            i += 1
+        if i >= len(self._table):
+            return  # no same-role row remains
+        turn = self._table[i]
+        self._cursor = i
         yield RationaliseEvent(
-            kind=self._kind, query=query, proposal=turn.value, role=self._role
+            kind=self._kind,
+            query=query,
+            proposal=turn.value,
+            role=self._role,
         )
 
 
@@ -189,11 +239,11 @@ class TableTrainee(_TableActor):
 #
 # The trainer does **not** detect script closes. Close detection is the
 # runner's job: it owns the table and reads each turn's ``close`` marker (spec
-# §Dialogue Table). The opening seed (``incoming=None``) is what opens a script:
-# on ``None`` the trainer emits the current primary at S2 (R1) and advances to
-# the next primary, so a multi-script file opens each script's own primary in
-# turn. On a reply (``incoming`` is a KValue) it delegates to
-# :func:`synthesize` (R2/R3).
+# §Dialogue Table). The opening seed (an empty incoming burst) is what opens a
+# script: on the empty burst the trainer emits the current primary at S2 (R1)
+# and advances to the next primary, so a multi-script file opens each script's
+# own primary in turn. On a reply (a non-empty burst) it delegates to
+# :func:`synthesize` (R2/R3) against the burst's last proposal.
 
 
 class SynthesizingTrainer(Actor):
@@ -204,10 +254,11 @@ class SynthesizingTrainer(Actor):
     — R1), plus a signifier and the injected sink it publishes to. The runner
     checks each turn against the table.
 
-    On the opening seed (``incoming=None``) the trainer emits the current
-    primary at S2 (R1) and advances to the next primary, so a multi-script file
-    opens each script's own primary in turn. On a reply (``incoming`` is a
-    KValue) it delegates to :func:`synthesize` (R2/R3).
+    On the opening seed (an empty incoming burst) the trainer emits the
+    current primary at S2 (R1) and advances to the next primary, so a
+    multi-script file opens each script's own primary in turn. On a reply (a
+    non-empty burst) it delegates to :func:`synthesize` (R2/R3) against the
+    burst's last proposal.
     """
 
     def __init__(
@@ -226,9 +277,9 @@ class SynthesizingTrainer(Actor):
         self._primary_index = 0
 
     def next_events(
-        self, incoming: RationaliseEvent | None
+        self, incoming: list[RationaliseEvent]
     ) -> Iterable[RationaliseEvent]:
-        if incoming is None:
+        if not incoming:
             # R1 — open the current script's primary at S2, then advance so
             # the next open (after the next close) opens the following primary.
             primary = self._primaries[self._primary_index]
@@ -238,7 +289,7 @@ class SynthesizingTrainer(Actor):
             proposal = KValue(primary, SIG_S2)
             query = proposal
         else:
-            incoming_value = incoming.proposal
+            incoming_value = incoming[-1].proposal
             proposal = synthesize(self._compiled, incoming_value, self._signifier)
             query = incoming_value
         yield RationaliseEvent(
@@ -263,11 +314,10 @@ class RationalisingTrainee(Actor):
     (wrapped in a ``RationaliseEvent``) via the injected sink. The runner checks
     each turn against the table.
 
-    A trainee opens via the trainer (on the ``None`` seed); its ``accept``
-    always receives a real ``RationaliseEvent``. When the engine has nothing
-    workable for a turn, :meth:`next_events` yields nothing and the
-    :class:`Actor` base emits a PASS (``burst >= 1``, DDT-22) — the trainee is
-    waiting, not silent.
+    A trainee opens via the trainer (on the empty-burst seed); its ``accept``
+    always receives a non-empty burst. When the engine has nothing workable for
+    a turn, :meth:`next_events` yields nothing and the :class:`Actor` base
+    emits a PASS (``burst >= 1``, DDT-22) — the trainee is waiting, not silent.
     """
 
     def __init__(self, signifier: KSignifier, sink: EventSink) -> None:
@@ -275,9 +325,9 @@ class RationalisingTrainee(Actor):
         self._engine = Rationaliser(signifier)
 
     def next_events(
-        self, incoming: RationaliseEvent | None
+        self, incoming: list[RationaliseEvent]
     ) -> Iterable[RationaliseEvent]:
-        """Rationalise ``incoming`` into a batch of events.
+        """Rationalise the incoming burst into a batch of events.
 
         The engine returns an identity blast, a batch of S3 pairings, or the
         S1 countersignature reciprocal pair (relationship paths are never mixed
@@ -286,17 +336,18 @@ class RationalisingTrainee(Actor):
         :class:`Actor` base then emits a PASS so the dialogue always gets a
         turn (DDT-22).
 
-        Every call processes its incoming (the engine's entry-rule bookkeeping
-        runs each time), so the trainee's state stays in lockstep with the
-        trainer's responses.
+        Every call processes the incoming burst's last proposal (the engine's
+        entry-rule bookkeeping runs each time), so the trainee's state stays in
+        lockstep with the trainer's responses.
 
-        ``incoming`` is always a real event here (the trainer opens via the
-        ``None`` seed). ``None`` is a caller bug and crashes loudly.
+        ``incoming`` is always a non-empty burst here (the trainer opens via
+        the empty-burst seed). An empty burst is a caller bug and crashes
+        loudly.
         """
-        assert incoming is not None, "a trainee does not open; incoming must be set"
-        incoming_value = incoming.proposal
-        query = incoming_value
-        for proposal in self._engine.rationalise(incoming_value):
-            yield RationaliseEvent(
-                kind="frame", query=query, proposal=proposal, role="K"
-            )
+        assert incoming, "a trainee does not open; incoming must be non-empty"
+        for incoming_value in incoming:
+            query = incoming_value.proposal
+            for proposal in self._engine.rationalise(query):
+                yield RationaliseEvent(
+                    kind="frame", query=query, proposal=proposal, role="K"
+                )
