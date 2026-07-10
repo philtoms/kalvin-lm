@@ -17,10 +17,11 @@ Cogitation is a deliberate simplification of the real Kalvin's async
 ``expand()`` / ``propose_expansions()`` slow path — synchronous, deterministic,
 inline (plan D3, D5). Each :meth:`Rationaliser.rationalise` call applies the
 entry rule to the incoming query as bookkeeping, then emits a **batch** of
-``KValue``\ s from cogitation — an identity blast (zero or more S4 asks) or a
-single relationship emission (a relationship always terminates the batch and
-is never appended to identities). Returns an empty list when nothing is
-workable (plan D7, D12).
+``KValue``\ s from cogitation — an identity blast (zero or more S4 asks), a
+batch of S3 pairings (proposals for ratification), or the S1 countersignature
+(both directions of the reciprocal pair). A non-identity path always
+terminates the batch and is never appended to identities. Returns an empty
+list when nothing is workable (plan D7, D12).
 
 :meth:`rationalise` requires a real incoming ``KValue`` — cogitation runs only
 as the second phase of a turn, driven by an incoming query.
@@ -78,9 +79,10 @@ class Rationaliser:
 
         ``incoming`` is the trainer's value this turn. Returns a list of
         emitted values: an identity blast (zero or more S4 identity asks), a
-        single relationship emission (S2/S3/S1), or an empty list when nothing
-        is workable. Identities and relationships are never mixed in one batch
-        (a relationship always terminates the batch)."""
+        batch of S3 pairings (proposals for ratification), the S1
+        countersignature (both directions of the reciprocal pair), or an empty
+        list when nothing is workable. Identities and relationships are never
+        mixed in one batch (a relationship path always terminates the batch)."""
         self._process_query(incoming)
         return self._cogitate()
 
@@ -213,16 +215,16 @@ class Rationaliser:
                 batch.append(self._emit_identity(idx, entry.signature))
                 continue
             # First workable non-identity dispatches by significance routing
-            # (scripts/dialogue-rationalisation-behaviours.md §3a):
-            #   S3 structure (1:1 relationship)    → operand pairing (if workable)
+            # (@specs/dialogue-cogitation.md §Routing, COG-2):
+            #   S3 structure (1:1 relationship)    → countersignature (if countersignable)
             #   S2 structure (multi-node misfit)    → misfit origination
             # A single-node S3 relationship whose operand canons are not yet
-            # seen is S3-structure but not workable — skip it (it awaits
+            # seen is S3-structure but not countersignable — skip it (it awaits
             # elevation/cleanup).
-            if self._s3_pairable(entry):
+            if self._countersignable(entry):
                 if batch:
                     return batch  # identities collected; relationship waits
-                return [self._emit_s3_pairing(entry)]
+                return self._emit_countersignature(entry)
             if self._s2_eligible(entry):
                 if batch:
                     return batch
@@ -230,17 +232,18 @@ class Rationaliser:
                 return [emitted] if emitted is not None else batch
         return batch
 
-    def _s3_pairable(self, entry: KLine) -> bool:
-        """Is ``entry`` a workable S3 structure — a 1:1 relationship whose
-        operands both have seen canons, so K can pair their operands?
+    def _countersignable(self, entry: KLine) -> bool:
+        """Is ``entry`` a single-node relationship whose two operands have seen
+        canons, so K can pursue an S1 countersignature for it?
 
-        S3 path precondition (scripts/dialogue-rationalisation-behaviours.md
-        §3a). The S3 path pairs the operands of two canons; it requires a
+        Countersignature precondition (scripts/dialogue-rationalisation-
+        behaviours.md §3a). A countersignature relates two canons: it requires a
         single-node relationship ``{L:[R]}`` whose operands L and R each have a
-        seen canon (in grounded memory or the work-list). A single-node
-        relationship whose operand canons are not yet seen is S3-*structure* but
-        not *workable* — cogitation skips it (it awaits elevation/cleanup).
-        Multi-node entries are not S3-pairable.
+        seen canon (in grounded memory or the work-list) so their operands can
+        be paired. A single-node relationship whose operand canons are not yet
+        seen is S3-*structure* but not *countersignable* — cogitation skips it
+        (it awaits elevation/cleanup). Multi-node entries are not
+        countersignable.
         """
         if is_identity(entry) or len(entry.nodes) != 1:
             return False
@@ -253,8 +256,8 @@ class Rationaliser:
         """Is ``entry`` an S2 structure — a multi-node misfit routed to misfit
         origination?
 
-        S2 path precondition (scripts/dialogue-rationalisation-behaviours.md
-        §3a, B1). The S2 path originates substitutions onto an entry's own
+        S2 path precondition (@specs/dialogue-cogitation.md
+        §Routing/§S2 boundaries, COG-2/COG-7). The S2 path originates substitutions onto an entry's own
         nodes; it requires a **multi-node** misfit (a single-node relationship
         is S3-structure, routed to — or awaiting — the S3 path). Identities and
         canons do not route here.
@@ -273,30 +276,71 @@ class Rationaliser:
         self._state.asked.add(signature)
         return KValue(KLine(signature, []), SIG_S4)
 
-    def _emit_s3_pairing(self, entry: KLine) -> KValue:
-        """S3 path — emit the next unresolved operand pair, or close at S1.
+    def _emit_countersignature(self, entry: KLine) -> list[KValue]:
+        """Establish the S1 countersignature for ``entry``, pairing first.
+
+        ``entry`` is ``{L:[R]}`` (a single-node relationship) whose operands L
+        and R are signatures with seen canons. The act is to **countersign the
+        canon pair** — relate the two canons at S1 — and it runs in two phases:
+
+        1. **Establish the S3 pairings** (:meth:`_emit_pairings`): pair the two
+           canons' operands left-to-right at group size 1, emitting every
+           unresolved pairing as a proposal for ratification. While any pairing
+           is unresolved, each call returns that batch and the countersignature
+           waits.
+        2. **Establish the S1 countersignature**: once every pairing is
+           ratified, remove ``entry`` from the work-list, ground the reciprocal
+           pair, and emit both directions at S1.
+
+        A COUNTERSIGNED state is bidirectional — it emits the reciprocal pair
+        ``{A:[B]}`` and ``{B:[A]}`` (CONTEXT.md, Structural State). The close
+        therefore grounds and emits both ``entry`` and its reciprocal
+        ``{make_signature(entry.nodes):[entry.signature]}`` (e.g. for
+        ``{MHALL:[SVO]}`` it also grounds and emits ``{SVO:[MHALL]}``), so that
+        ``is_countersigned`` re-recognises the pair at S1 on retrieval.
+        """
+        batch = self._emit_pairings(entry)
+        if batch:
+            return batch
+
+        # Phase 2 — every pairing ratified: establish the S1 countersignature.
+        # Ground and emit both directions of the reciprocal pair.
+        self._state.work_list.remove(entry)
+        self._ground(entry)
+        reciprocal_sig = self._signifier.make_signature(entry.nodes)
+        reciprocal = KLine(reciprocal_sig, [entry.signature])
+        self._ground(reciprocal)
+        return [KValue(entry, SIG_S1), KValue(reciprocal, SIG_S1)]
+
+    def _emit_pairings(self, entry: KLine) -> list[KValue]:
+        """Emit every unresolved S3 pairing for ``entry`` in one batch, or ``[]``
+        if all pairings are already ratified.
 
         ``entry`` is ``{L:[R]}`` whose operands L and R are signatures with seen
-        canons. K pairs the operands of the two canons left-to-right at group
-        size 1, grouping one side's residual into a single synthesised operand
-        when the other reaches a single node.
-
-        Each call emits the next unresolved pair: a 1:1 pair ``{lhs:[rhs]}`` is
-        CONNOTED at S3; a grouped residual is emitted as a canonical request
+        canons. Pair the two canons' operands left-to-right at group size 1,
+        grouping one side's residual into a single synthesised operand when the
+        other reaches a single node. A 1:1 pair ``{lhs:[rhs]}`` is CONNOTED at
+        S3; a grouped residual is emitted as a canonical request
         ``{make_signature(residual): residual}`` at S2 (K cannot assert a
         relationship to a signature it invented — it must first confirm it).
-        When every pair is resolved, K closes by emitting ``entry`` at S1
-        (COUNTERSIGNED) and removes it from the work-list.
+
+        Batching: emit **every** unresolved pairing in one batch rather than
+        round-tripping one per cogitation. The residual (when the plan has one)
+        is the final pairing and is a canon request at S2; it sits in the same
+        batch as the 1:1 proposals. Returns ``[]`` only when every pairing is
+        already ratified — the signal for :meth:`_emit_countersignature` to
+        proceed to the S1 reciprocal pair.
         """
         right = entry.nodes
-        assert len(right) == 1, "S3 pairing expects a single-node relationship entry"
+        assert len(right) == 1, "S3 pairings expect a single-node relationship entry"
         left_nodes = self._find_canon_nodes(entry.signature)
         right_nodes = self._find_canon_nodes(right[0])
         if left_nodes is None or right_nodes is None:
             raise NotImplementedError(
-                "S3 pairing: an operand canon is missing; cannot relate."
+                "S3 pairings: an operand canon is missing; cannot relate."
             )
 
+        batch: list[KValue] = []
         for lhs_sig, rhs_node, residual in self._relationship_plan(left_nodes, right_nodes):
             if self._pair_resolved(lhs_sig, rhs_node, residual):
                 continue
@@ -310,12 +354,11 @@ class Rationaliser:
             else:
                 proposal_kline = KLine(lhs_sig, [rhs_node])
                 significance = SIG_S3
-            return KValue(proposal_kline, significance)
+            batch.append(KValue(proposal_kline, significance))
 
-        # All pairs resolved — close at S1.
-        self._state.work_list.remove(entry)
-        self._ground(entry)
-        return KValue(entry, SIG_S1)
+        # Every unresolved pairing collected in one batch (empty iff all were
+        # already ratified) — the signal for the countersignature to proceed.
+        return batch
 
     # ── S2 path (misfit origination) — scripts/dialogue-rationalisation- ─
     # ─ behaviours.md §4–§5. Rule 1 + rule 2 (graft) both landed. ──────
@@ -558,8 +601,8 @@ class Rationaliser:
     def _s2_candidates(self, entry: KLine) -> list[KLine]:
         """Grounded klines sharing at least one node value with ``entry.nodes``.
 
-        B3 candidate admission (scripts/dialogue-rationalisation-behaviours.md
-        §3). Admission is keyed on the entry's *nodes* (not its head
+        COG-9 candidate admission (@specs/dialogue-cogitation.md
+        §S2 boundaries). Admission is keyed on the entry's *nodes* (not its head
         signature) — this avoids the over-admission single-bit NLP type words
         would cause under ``signifies``; the intended commonality is a shared
         node value (both klines having a ``Mary`` node). Identities carry no

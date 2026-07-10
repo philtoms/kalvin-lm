@@ -7,6 +7,10 @@
   This plan adds a stateful trainee actor that satisfies the existing contract.
   The spec is unchanged — its Out-of-Scope ("how a real trainee produces its
   responses") is where this plan lives.
+- `@specs/dialogue-cogitation.md` — WHAT for the cogitation mechanism this plan
+  implements: the two cogitation paths (S3 countersignature, S2 misfit
+  origination), their routing and boundaries (COG-1–COG-13). The algorithm /
+  accumulation detail (the HOW) lives in this plan (§The Rationaliser Mechanism).
 - `@CONTEXT.md` — Identity, Canon (`signature == make_signature(nodes)`),
   Significance (S1 as the signal event), Structural State, KValue, Role.
 - `@specs/kline.md`, `@specs/kvalue.md`, `@specs/agent.md` — KLine (signature +
@@ -165,7 +169,7 @@ expression to refuse; until then, the synthetic trainer exercises only the
 happy path (group size 1).
 
 **D12 — Termination is the runner's job, not K's.** When no entry is
-*workable* after the entry rule (no identity, no S3-pairable opening —
+*workable* after the entry rule (no identity, no countersignable opening —
 though async-pending relationships may remain in the list), K has nothing to
 emit and `respond` returns `None`. The runner detects this and signals
 termination (spec DDT-13, DDT-15). The closing COUNTERSIGNED S1 (MHALL's last
@@ -241,7 +245,7 @@ because not every entry is workable at all times). Cogitation scans the
 work-list top-down for the first workable entry:
 
 - an **identity** (always askable), or
-- a **S3-pairable opening** (a single-node relationship `{L:[R]}` whose
+- a **countersignable opening** (a single-node relationship `{L:[R]}` whose
   operands L and R both have canons K has *seen* — in the work-list or grounded
   — so K can read their operands to pair).
 
@@ -258,7 +262,8 @@ rather than banging against a lingering `{a: []}`.
 **S3 — Relationships.** The eligible opening `{L:[R]}`. K pairs the operands
 of L's canon and R's canon left-to-right at group size 1, grouping one side's
 residual into a single synthetic operand when the other reaches a single node
-(D10). Each call emits the next unresolved pair:
+(D10). K emits **every unresolved pairing in one batch** (rather than
+round-tripping one per cogitation):
 
 - a **1:1 pair** `{lhs:[rhs]}` is emitted CONNOTED at S3 (a tentative connoted
   relationship, inviting ratification);
@@ -273,10 +278,88 @@ residual into a single synthetic operand when the other reaches a single node
 A pair is **resolved** when: a 1:1 pair is ratified (its kline grounded, trainer
 replied S1), OR a grouped pair's synthesised canon is grounded (the
 canonical-request traversal completed and any async relationships elevated).
-When every pair is resolved, K closes by emitting the entry itself at S1
-(COUNTERSIGNED) — the broadcast that K grounds the opening query (Correction 1)
-— and removes it from the work-list. Group-size escalation on a trainer S4
-refusal (D11) is deferred.
+When every pair is resolved, K establishes the **S1 countersignature**:
+`_emit_countersignature` grounds and emits **both directions of the reciprocal
+pair** — the entry `{L:[R]}` and its reciprocal `{R:[L]}` at S1 — so that
+`is_countersigned` re-recognises the pair on retrieval (a COUNTERSIGNED state is
+bidirectional, `@CONTEXT.md`). The entry is removed from the work-list.
+Group-size escalation on a trainer S4 refusal (D11) is deferred.
+
+**S2 — Misfit origination.** A multi-node misfit entry (signature does not
+OR-reduce to its nodes). K cannot pair operands (no second canon); it shapes a
+**single proposal** by processing admitted candidates in preference order,
+mutating one target as each candidate fires (the proposal is *built*, not
+*chosen*). Boundaries and routing are owned by `@specs/dialogue-cogitation.md`
+(COG-7–COG-10); the mechanism is here.
+
+*Initialise.* `target = copy(entry.nodes)`. A node with no admitted candidate
+is **open** — a slot a later match may fill.
+
+*Process candidates in preference order:*
+
+1. **Node-expansion** (preferred). For each grounded kline `C` whose signature
+   is in `target.nodes` (`C.signature ∈ target.nodes`): replace that one node
+   in `target` with `C.nodes`. The matched node is consumed; `target`'s other
+   nodes persist. (Rule 1 sources its candidates by signature-in-target-nodes,
+   a separate scan from B3/COG-9 — a kline need not share a node value to fire
+   rule 1.) Identities (empty nodes) carry no decomposition and are skipped.
+2. **Node-graft** (with `must_match`). For each COG-9-admitted candidate `C`
+   (shared nodes) that did not fire rule 1:
+   - Compute `must_match` from the **current accumulated** `target`: the nodes
+     that prior matches have established (resolved/expanded), **excluding
+     still-open nodes**. Open nodes are not required to match — they are slots
+     to be filled.
+   - Resolve `must_match` against `C` by **recursive canon-resolution to fixed
+     point** (§must_match). If `must_match` is fully matched, graft: the new
+     target is the resolved core + `C`'s difference (`C.nodes − shared`)
+     substituted into the open slots (`E_open` empty & `C_open` non-empty extends;
+     `E_open` non-empty & `C_open` empty contracts; both non-empty replaces).
+     An empty core (no foothold) does not fire (B2/COG-8: no invention). If
+     `must_match` cannot be fully matched, `C` does not fire.
+
+*Accumulation.* Each match mutates `target`, so the next candidate sees the
+changed target. `must_match` reflects everything prior matches have established
+(rule 1's expansions are *preserved* — rule 2 must respect them, possibly by
+resolving them back through grounded klines). The proposal is the accumulated
+`target` when no more candidates fire, emitted at S2; the entry persists in the
+work-list (COG-11/12). If the shaped proposal is already grounded (isomorphic
+kline in memory) it is dropped (COG-10) and K advances on the next cogitation.
+
+**must_match — recursive canon-resolution.** `must_match` is the set of
+accumulated nodes a node-graft candidate must account for. Direct match first;
+failures resolve through grounded klines:
+
+1. **Partition** the failed nodes into maximally-coverable subsets, each
+   matching a grounded kline's `nodes` exactly (a maximal-disjoint cover search;
+   greedy on size is insufficient — a larger kline may block two smaller ones
+   that together cover more). Uncoverable nodes are retained.
+2. **Replace** each coverable subset with its grounded kline's signature;
+   `must_match` becomes shallower (the resolved signature replaces its
+   constituent nodes — e.g. `[did, have] → had`).
+3. **Re-check** the new `must_match` against `C`. Resolved signatures may now
+   form *new* coverable subsets, so **recurse** — re-partition, re-resolve,
+   re-check — until either `must_match` is fully matched (graft proceeds) or a
+   pass produces no change (candidate rejected). Resolution updates
+cumulatively; the shallow resolved form replaces the deeper form for any
+subsequent candidate.
+
+The purpose of `must_match` is to **balance graft**: without it, a candidate
+sharing a single node (`Mary`) could licence wholesale substitution of its
+entire surplus, over-powering the prior node-expansion work. `must_match`
+forces the graft to *earn* its substitution by accounting for the accumulated
+structure, directly or via canon-resolution.
+
+**Worked trace — WDMH.** Entry `E = {WDMH:[Mary,had,what]}`, open: `what`.
+Rule-1 candidate: the canon `{had:[did,have]}` (`had ∈ E.nodes`). COG-9
+candidate: `{MHALL:[Mary,had,a,little,lamb]}` (shares `Mary,had` as nodes).
+Node-expansion: `had ∈ target` → `target = [Mary,did,have,what]`, accumulated
+`[Mary,did,have]`, open `what`. Node-graft (`MHALL`): `must_match =
+[Mary,did,have]`; `Mary` direct, `{did,have}` fail → resolve via `{had:[did,have]}`
+→ `had`; `must_match = [Mary,had]`; fully matched; graft difference
+`{a,little,lamb}` into open `what` → `target = [Mary,had,a,little,lamb]`. No more
+candidates fire. **Proposal = `{WDMH:[Mary,had,a,little,lamb]}` at S2**,
+ratified by T → S1. The intermediate `[Mary,did,have,what]` is never emitted —
+it is an accumulation step, absorbed and resolved back into the final shape.
 
 #### Recognition (the unpack push-decision)
 
@@ -311,7 +394,8 @@ asks (S4), the two 1:1 CONNOTED proposals `{Mary:[Subject]}`,
 `{had:[Verb]}` (ratified at S1), the **canonical request**
 `{ALL:[a,little,lamb]}` at S2 with its scaffolding reply and async-elevation
 cascade (the modified golden master turns 27–30), and the closing
-`{MHALL:[SVO]}` COUNTERSIGNED S1 once all pairs resolve. The rationaliser drives
+`{MHALL:[SVO]}` COUNTERSIGNED S1 (with its reciprocal `{SVO:[MHALL]}`) once
+all pairs resolve. The rationaliser drives
 the full dialogue to completion against the table trainer.
 
 

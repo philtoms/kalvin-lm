@@ -259,13 +259,13 @@ def _drive_to_s3(rationaliser: Rationaliser, decoded) -> None:
 
 
 def _s3_entry(rationaliser: Rationaliser) -> KLine:
-    """Find the S3-pairable opening in the work-list (the entry cogitation
-    would dispatch to S3 pairing) — not necessarily the LIFO top, which may be
-    an async-pending relationship skipped by cogitation."""
+    """Find the countersignable opening in the work-list (the entry cogitation
+    would dispatch to a countersignature) — not necessarily the LIFO top, which
+    may be an async-pending relationship skipped by cogitation."""
     for entry in reversed(rationaliser._state.work_list):
-        if rationaliser._s3_pairable(entry):
+        if rationaliser._countersignable(entry):
             return entry
-    raise AssertionError("no S3-pairable entry in work-list")
+    raise AssertionError("no countersignable entry in work-list")
 
 
 def test_level1_grouping_emits_canonical_request_for_residual(
@@ -312,7 +312,7 @@ def test_s3_non_one_to_one_is_s2() -> None:
     be S2. MHALL produces none; supply a synthetic golden master to cover."""
 
 
-# ── S2 (Misfit) routing — scripts/dialogue-rationalisation-behaviours.md §3a ─
+# ── S2 (Misfit) routing — @specs/dialogue-cogitation.md §Routing ─
 
 
 def test_s2_misfit_routes_to_s2_path_and_idles(
@@ -331,7 +331,7 @@ def test_s2_misfit_routes_to_s2_path_and_idles(
     nodes = [y, z]                                # make_signature([y,z]) = y|z != sig
     misfit = KLine(sig, nodes)
     assert not is_canon(misfit, signifier)
-    assert not rationaliser._s3_pairable(misfit)  # not single-node
+    assert not rationaliser._countersignable(misfit)  # not single-node
     assert rationaliser._s2_eligible(misfit)      # multi-node misfit -> S2
 
     rationaliser._state.work_list.append(misfit)
@@ -708,14 +708,14 @@ def test_single_node_unpairable_relationship_not_routed_to_s2(
     lhs = signifier.make_signature([x])
     rhs = signifier.make_signature([y])
     rel = KLine(lhs, [rhs])                       # single-node, operands not seen
-    assert not rationaliser._s3_pairable(rel)      # not yet workable
+    assert not rationaliser._countersignable(rel)      # not yet workable
     assert not rationaliser._s2_eligible(rel)      # single-node -> NOT S2
 
     rationaliser._state.work_list.append(rel)
     emitted = rationaliser._cogitate()
 
     # Skipped (not workable), not routed to S2: no emission, entry persists
-    # awaiting the operand canons that make it S3-pairable.
+    # awaiting the operand canons that make it countersignable.
     assert emitted == []
     assert (lhs, [rhs]) in _work_list(rationaliser)
 

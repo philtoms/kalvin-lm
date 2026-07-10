@@ -279,8 +279,9 @@ class RationalisingTrainee(Actor):
     ) -> Iterable[RationaliseEvent]:
         """Rationalise ``incoming`` into a batch of events.
 
-        The engine returns an identity blast or a single relationship emission
-        (never mixed); each emitted ``KValue`` is wrapped in a
+        The engine returns an identity blast, a batch of S3 pairings, or the
+        S1 countersignature reciprocal pair (relationship paths are never mixed
+        with identities); each emitted ``KValue`` is wrapped in a
         ``RationaliseEvent``. Yields nothing when nothing is workable — the
         :class:`Actor` base then emits a PASS so the dialogue always gets a
         turn (DDT-22).

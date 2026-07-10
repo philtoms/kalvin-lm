@@ -333,7 +333,7 @@ def _resolve_kline(
     ``signature`` verbatim, the ``nodes`` resolved to their canonical
     signatures. The script author is the golden master; an author may declare a
     signature that differs from the canon its nodes retrieve (a deliberate
-    misfit — see ``scripts/dialogue-rationalisation-behaviours.md``).
+    misfit — see ``@specs/dialogue-cogitation.md``).
 
     - **CANONIZED** — resolve each node label to its canonical signature
       (canon-preferred, atom fallback) and build ``KLine(signature, nodes)``

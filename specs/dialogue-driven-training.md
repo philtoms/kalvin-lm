@@ -139,7 +139,7 @@ Per turn:
    **resolver**: it builds the kline the turn declares — the
    declared `signature` verbatim, the `nodes` resolved to their canonical
    signatures. An author may declare a signature that differs from the canon
-   its nodes form (a deliberate misfit — see `scripts/dialogue-rationalisation-behaviours.md`).
+   its nodes form (a deliberate misfit — see `@specs/dialogue-cogitation.md`).
    - **CANONIZED** — resolve each node label to its canonical signature
      (canon-preferred, atom fallback) and build `KLine(signature, nodes)` with
      the declared signature verbatim.
@@ -413,7 +413,9 @@ The reference dialogue is the "Mary had a little lamb" exchange
 opens with the primary `{MHALL:[SVO]}` at S2; the trainee requests each unknown
 operand at S4; the trainer supplies it; the trainee proposes the role bindings
 (Mary↔subject, had↔verb, ALL↔object) at S3; the trainer ratifies each at S1; the
-trainee closes with the primary's S1 countersign. The runner drives the two
+trainee closes with the primary's S1 countersign — emitting the reciprocal
+pair (`{MHALL:[SVO]}` and `{SVO:[MHALL]}` at S1), since a COUNTERSIGNED state
+is bidirectional (`@CONTEXT.md`, Structural State). The runner drives the two
 table-reading actors over the harness message bus; it tracks coverage (zero
 displacement when the whole exchange is traversed).
 

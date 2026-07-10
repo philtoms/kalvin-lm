@@ -284,7 +284,7 @@ def test_decode_admits_canonized_signature_misfit():
 
     The decoder builds the kline as written: declared signature verbatim, nodes
     resolved to their canonical signatures. No consistency check. See
-    ``scripts/dialogue-rationalisation-behaviours.md``.
+    ``@specs/dialogue-cogitation.md``.
     """
     table = load_table(
         {
