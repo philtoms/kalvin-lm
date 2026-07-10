@@ -3,41 +3,33 @@
 Loads a dialogue table, decodes it, and drives it to completion through the
 sink-shaped :class:`Runner`, which bridges the actors' emissions onto a
 :class:`MessageBus` (coverage is order-agnostic on middle entries — the natural
-fit for real actors). Prints a PASS/FAIL summary; with ``--verbose`` it traces
-the exchange, showing each validated entry in its scripted (declarative
-table-row) form.
+fit for real actors). 
 
 ``--rationalise`` substitutes a :class:`RationalisingTrainee` (a real, stateful,
 rationalising trainee) for the default ``TableTrainee``, and ``--synthesize``
 substitutes a :class:`SynthesizingTrainer` (a real trainer that derives each
 turn from the compiled script) for the default ``TableTrainer``. The two flags
 are orthogonal: passing both runs the two real actors against the same golden
-master. Real actors may emit off-table content; under the default
-``on_divergence=fail`` that raises ``Divergence`` (the validation doing its
-job — do not reach for ``--on-divergence accept`` to silence it; fix the actor).
+master. 
 
 The runner is bus-driven: it owns a :class:`MessageBus`, builds a bus-wired
 :class:`EventSink` per actor, and runs the bus until a terminal condition:
 the close content is seen, the coverage set is exhausted, or both actors pass
-in turn. The runner is **not a judge**: it tracks coverage and immediate
-divergence, and reports the **displacement** (uncovered coverage rows) — not a
-pass/fail verdict. Every ``accept`` yields at least one proposal (``burst >=
-1``): an actor with nothing substantive to say publishes a PASS, which the
-runner intercepts before matching.
+in turn. The runner tracks coverage and immediate divergence, and reports the 
+**displacement** (uncovered coverage rows). 
+Every ``accept`` yields at least one proposal (``burst >=1``): an actor with 
+nothing substantive to say publishes a PASS, which the runner intercepts before 
+matching.
 
 Usage::
 
     python scripts/dialogue_run.py                             # default dialogue
     python scripts/dialogue_run.py scripts/dialogue-mhall.json # explicit path
-    python scripts/dialogue_run.py --verbose                   # scripted-form trace
     python scripts/dialogue_run.py --rationalise               # RationalisingTrainee
     python scripts/dialogue_run.py --synthesize                # SynthesizingTrainer
     python scripts/dialogue_run.py --synthesize --rationalise  # both real actors
-    python scripts/dialogue_run.py --on-divergence accept      # accept off-table emissions
 
-Exit code is 1 only on an immediate divergence (``on_divergence=fail``); 0
-otherwise. The runner is not a judge — displacement (uncovered rows) is
-reported, not used as a pass/fail verdict.
+Exit code is 1 only on an immediate divergence; 0 otherwise. 
 """
 
 from __future__ import annotations
@@ -167,8 +159,7 @@ def _trace(
     line via :func:`_scripted_form_event`, and — when the emission matches a
     decoded turn's content key — the table's JSON record for that turn is shown
     beneath it (the verbatim row the author wrote). An emission with no
-    matching decoded turn (e.g. an off-table emission under
-    ``on_divergence="accept"``) shows no record.
+    matching decoded turn shows no record.
     """
     # Index decoded turns by content key so each event can be associated with
     # its source table row (content identity is role + kline + significance —
@@ -221,7 +212,7 @@ def _trace(
 
 
 def _render_divergence(exc: Divergence, sig_to_label: dict[int, str]) -> str:
-    """Human-readable divergence report (the default ``on_divergence=fail``).
+    """Human-readable divergence report.
 
     The raw :class:`Divergence` carries signatures as hex and a bare count of
     uncovered rows — opaque without the compiled script's label map. This
@@ -256,11 +247,6 @@ def main(argv: list[str] | None = None) -> int:
         help=f"Path to a dialogue JSON (default: {DEFAULT_DIALOGUE})",
     )
     parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Print each validated entry in its scripted (table-row) form.",
-    )
-    parser.add_argument(
         "--rationalise",
         action="store_true",
         help=(
@@ -278,15 +264,6 @@ def main(argv: list[str] | None = None) -> int:
             "Orthogonal to --rationalise."
         ),
     )
-    parser.add_argument(
-        "--on-divergence",
-        choices=("fail", "accept"),
-        default=None,
-        help=(
-            "Divergence policy (default: fail, or the table's "
-            "run.on_divergence when it declares one)."
-        ),
-    )
     args = parser.parse_args(argv)
 
     dialogue_path = args.dialogue
@@ -295,19 +272,10 @@ def main(argv: list[str] | None = None) -> int:
 
     table = load_table(json.loads(Path(dialogue_path).read_text()))
     decoded = decode(table, tokenizer=tok, signifier=sigf)
-    # The compiled script's signature→label map. Always built: the default
-    # ``on_divergence=fail`` report renders the diverging emission and the
-    # uncovered rows in scripted form, and ``--verbose`` traces the whole
-    # exchange — both need it.
+    # The compiled script's signature→label map.
     sig_to_label = _sig_to_label(table, tokenizer=tok, signifier=sigf)
 
-    # The divergence policy is ``--on-divergence`` when given, else the table's
-    # declared ``run.on_divergence``, else ``fail``.
-    on_divergence = args.on_divergence
-    if on_divergence is None:
-        on_divergence = (
-            table.run_config.on_divergence if table.has_run_config else "fail"
-        )
+    on_divergence = "fail"
 
     # The --synthesize/--rationalise flags substitute real actors. They are
     # orthogonal: passing both runs the two real actors against the same golden
@@ -341,18 +309,17 @@ def main(argv: list[str] | None = None) -> int:
     except Divergence as exc:
         print(_render_divergence(exc, sig_to_label), file=sys.stderr)
         return 1
+
     print(
-        f"Dialogue session: {dialogue_path}\n"
-        f"  on divergence       : {on_divergence}\n"
+        "Exchange (arrival order):\n"
+        + _trace(res.events, decoded, sig_to_label)
+    )
+    print(
+        f"\nDialogue session: {dialogue_path}\n"
         f"  events received     : {len(res.events)}\n"
         f"  unmatched emissions : {len(res.unmatched)}\n"
         f"  uncovered (displacement): {len(res.uncovered)}"
     )
-    if args.verbose:
-        print(
-            "\nExchange (arrival order):\n"
-            + _trace(res.events, decoded, sig_to_label)
-        )
     # The runner is not a judge: reaching here means no immediate divergence
     # was raised. The displacement (uncovered) is reported above, not used as a
     # pass/fail verdict.

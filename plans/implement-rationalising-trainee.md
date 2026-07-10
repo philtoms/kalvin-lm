@@ -64,16 +64,15 @@ for the model's semantics. Conventions are explicitly flagged where they appear.
 
 **D1 — The table is the validation oracle, not a script.** The rationaliser is
 "drop-in" in the precise sense that it satisfies the `Actor` protocol and can
-be passed wherever `TableTrainee` goes. It never reads the table to decide what
-to say; the runner validates every emitted turn against `decoded[cursor]` like
-any real actor (spec DDT-11). MHALL's hand-authored K-rows are deliberately what
+be passed wherever `TableTrainee` goes. The runner validates every emitted turn
+against `decoded[cursor]` like any real actor (spec DDT-11). MHALL's hand-authored K-rows are deliberately what
 correct rationalisation yields, so the run completes. _Rejected:_ turning
 validation off for a rationalising trainee (defeats the check that most needs to
 run).
 
 **D2 — `dbg`-free; structural predicates only.** Every decision derives from
 `KLine.signature` + `KLine.nodes` + `signifier.make_signature` — the production
-`KSignifier` interface — and never reads `dbg`. Mirrors the synthesizing
+`KSignifier` interface. Mirrors the synthesizing
 trainer's D2. Predicates: identity = `nodes == []` or self-referential
 `{S:[S]}`; canon = `signature == make_signature(nodes)`; relationship shape =
 node count.
@@ -505,13 +504,12 @@ mechanism branches above and to the canonical end-to-end run.
   disagree. Do **not** attempt this before G1 (the S2 multi-node proposal
   branch) is covered — the partition search emits multi-node proposals, which
   the S2 branch exists to handle and is currently unexercised.
-- **G5 — Decoder label-collision (RESOLVED).** When a KScript label names
+- **G5 — Decoder label-collision.** When a KScript label names
   both a canon and its atoms (e.g. `Det`, `Subject`, `Verb`, `Object` in
-  MHALL), the decoder's IDENTITY resolution previously picked the atom (first
-  compiled entry) instead of the canon. Fixed: the IDENTITY branch now prefers
-  `canon_by_label` when the label names a canon, mirroring the
-  constructed-relation branch. The rationaliser then reproduces all 11
-  identity K-rows.
+  MHALL), the decoder's IDENTITY resolution prefers `canon_by_label` when the
+  label names a canon (mirroring the constructed-relation branch), so an
+  IDENTITY turn names the concept, not its first-compiled atom. The
+  rationaliser then reproduces all 11 identity K-rows.
 
 ## Out of Scope
 
