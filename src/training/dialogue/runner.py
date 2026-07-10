@@ -13,34 +13,44 @@ via ``on_event``. The runner builds a bus-wired sink per actor (the sink bridges
 drop-in: it publishes to its sink, the sink routes onto the bus.
 
 The dialogue is messy and real: **no synchronised alternation** (an actor may
-publish zero-or-many per incoming), and **anticipation** and **interjection**
+publish one-or-many per incoming), and **anticipation** and **interjection**
 are first-class and unflagged. Agents must rationalise and cogitate to make
 sense of the stream — the point of Kalvin.
 
+Every ``accept`` yields at least one proposal (the ``burst >= 1`` contract,
+§Actor contract): an actor with nothing substantive to say publishes a **PASS**
+— a sentinel proposal (``PASS_SIGNATURE`` at S1). The runner intercepts PASS
+before matching: it is neither coverage nor divergence, is routed to the other
+role, and **two consecutive PASSes** (each side passing in turn) is a **stall**
+that terminates the run incomplete. A run therefore never goes silent — a
+compliant actor always emits — so the runner has no idle timeout: termination is
+closing-seen (complete) or mutual-PASS (incomplete), both content-driven.
+
 Spec mapping
 ------------
-- PDT-5/PDT-6 — the runner is a bus subscriber holding coverage bookkeeping
+- DDT-5/DDT-6 — the runner is a bus subscriber holding coverage bookkeeping
   only; the bus is the sink/relay.
-- PDT-7..PDT-10 — matching (content presence, idempotent coverage, divergence,
+- DDT-7..DDT-10 — matching (content presence, idempotent coverage, divergence,
   closing).
-- PDT-11/PDT-12 — anticipation + interjection (permitted, unflagged, middle-only).
-- PDT-13 — completion (closing-seen; coverage is a diagnostic, not a gate).
-- PDT-14/PDT-15 — :class:`Divergence` / :class:`RunResult`.
-- PDT-17 — ``EventSink`` + sink-driven actors.
-- PDT-18 — no synchronised alternation; route-to-other via the bus-wired sink.
-- PDT-19 — terminate on closing-seen; idle timeout ends a stall as incomplete.
+- DDT-11/DDT-12 — anticipation + interjection (permitted, unflagged, middle-only).
+- DDT-13 — completion (closing-seen; coverage is a diagnostic, not a gate).
+- DDT-14/DDT-15 — :class:`Divergence` / :class:`RunResult`.
+- DDT-17 — ``EventSink`` + sink-driven actors.
+- DDT-18 — no synchronised alternation; route-to-other via the bus-wired sink.
+- DDT-22 — ``burst >= 1``: an actor always emits at least one proposal; a
+  PASS is the no-content proposal. Mutual PASS is the stall terminator.
 """
 
 from __future__ import annotations
 
-import os
-import sys
 import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 from kalvin.events import RationaliseEvent
+from kalvin.expand import SIG_S1
+from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn, turn_content_key
 from training.harness.bus import WILDCARD_ROLE, MessageBus
@@ -53,8 +63,43 @@ ContentKey = tuple[str, int, tuple[int, ...], int]
 # recipient actor's ``accept``.
 _ACCEPT_ACTION = "accept"
 
+# ── PASS — the no-content proposal (DDT-22) ──────────────────────────────
+#
+# An actor whose cogitation yields nothing substantive still owes the dialogue a
+# proposal (``burst >= 1``). It publishes a PASS: a reserved sentinel signature
+# at S1 (the top band). The meaning lives in the signature; S1 only sorts it
+# highest. The runner intercepts PASS *before* content matching — it is neither
+# coverage, nor divergence, nor a closing — routes it to the other role, and
+# watches for two consecutive PASSes (each side passing) as the stall signal.
+#
+# A reserved bit pattern unlikely to collide with any compiled signature (the
+# compiler hashes real content; this is an arbitrary fixed sentinel).
+PASS_SIGNATURE: int = 0x504153535F504153  # "PASS_PAS" as bytes, a stable sentinel
 
-# ── EventSink (PDT-17) — the actor's publish target ───────────────────────
+
+def is_pass(event: RationaliseEvent) -> bool:
+    """True when ``event`` is a PASS — the no-content proposal (DDT-22).
+
+    Detected by the sentinel signature on the proposal's kline. The runner
+    treats a PASS specially: it routes it to the other role but never matches,
+    covers, or flags it as divergence. The actor base emits a PASS when its
+    :meth:`~training.dialogue.actors.Actor.next_events` yields nothing, so the
+    ``burst >= 1`` contract holds for every actor.
+    """
+    return event.proposal.kline.signature == PASS_SIGNATURE
+
+
+def pass_event(role: str) -> RationaliseEvent:
+    """Build a PASS :class:`RationaliseEvent` for ``role`` (DDT-22).
+
+    A ``{PASS: []}`` kline at S1. ``query`` is the PASS itself (there is no
+    inbound value to echo when the actor originates the PASS).
+    """
+    kv = KValue(KLine(PASS_SIGNATURE, []), SIG_S1)
+    return RationaliseEvent(kind="frame", query=kv, proposal=kv, role=role)
+
+
+# ── EventSink (DDT-17) — the actor's publish target ───────────────────────
 
 
 @runtime_checkable
@@ -78,7 +123,8 @@ class Actor(Protocol):
     Holds an :class:`EventSink` (injected at construction) and publishes events
     to it. ``accept`` receives an incoming event (or ``None`` for the opening
     seed) and the actor decides whether/when/how-many events to publish via its
-    sink — fire-and-forget, zero-or-many.
+    sink — fire-and-forget, one-or-many (``burst >= 1``, DDT-22: an actor with
+    nothing substantive publishes a PASS, never zero).
 
     This is the duck-typed contract the runner types :data:`ActorFactory`
     against; :class:`~training.dialogue.actors.Actor` is the base implementation
@@ -97,7 +143,7 @@ class Actor(Protocol):
 ActorFactory = Callable[[EventSink], Actor]
 
 
-# ── Divergence (PDT-14) ───────────────────────────────────────────────────
+# ── Divergence (DDT-14) ───────────────────────────────────────────────────
 
 
 class Divergence(Exception):  # noqa: N818 - spec names this type
@@ -126,7 +172,7 @@ class Divergence(Exception):  # noqa: N818 - spec names this type
         )
 
 
-# ── Result (PDT-15) ───────────────────────────────────────────────────────
+# ── Result (DDT-15) ───────────────────────────────────────────────────────
 
 
 @dataclass
@@ -146,13 +192,13 @@ class RunResult:
     uncovered: list[DecodedTurn] = field(default_factory=list)
 
 
-# ── The bus-wired sink (enforces route-to-other, PDT-18) ──────────────────
+# ── The bus-wired sink (enforces route-to-other, DDT-18) ──────────────────
 
 
 class _BusEventSink:
     """An :class:`EventSink` that publishes each event to the other role.
 
-    The route-to-other rule (PDT-18) is enforced structurally: the actor calls
+    The route-to-other rule (DDT-18) is enforced structurally: the actor calls
     ``on_event(event)`` (the event carries the emitter's role on ``event.role``)
     and this sink addresses the bus ``Message`` to the *other* role. The actor
     cannot misroute — it merely publishes to its sink.
@@ -168,7 +214,7 @@ class _BusEventSink:
         )
 
 
-# ── The runner as a MessageBus subscriber (PDT-5..PDT-19) ─────────────────
+# ── The runner as a MessageBus subscriber (DDT-5..DDT-22) ─────────────────
 
 
 class Runner:
@@ -182,8 +228,8 @@ class Runner:
     - subscribes itself as a **wildcard handler** for coverage bookkeeping;
     - subscribes each actor's ``accept`` as its role's handler;
     - drives the run by seeding the opening (addressed to the trainer) and
-      running ``bus.run()`` on a thread until the closing is seen or the idle
-      timeout fires.
+      running ``bus.run()`` on a thread until the closing is seen (complete)
+      or both actors pass consecutively (a stall: incomplete).
 
     Holds **coverage bookkeeping only**. No actor-coupling state. The relay
     lives in the bus; the runner only observes and records.
@@ -198,7 +244,6 @@ class Runner:
         trainee_factory: ActorFactory,
         *,
         on_divergence: str = "fail",
-        idle_timeout: float = 5.0,
     ) -> None:
         if on_divergence not in ("fail", "accept"):
             raise ValueError(
@@ -207,9 +252,8 @@ class Runner:
         if len(decoded) < 2:
             raise ValueError("a run needs at least an opening and a closing turn")
         self._on_divergence = on_divergence
-        self._idle_timeout = idle_timeout
 
-        # Coverage bookkeeping (PDT-6). Fixed distinct middle set (duplicates
+        # Coverage bookkeeping (DDT-6). Fixed distinct middle set (duplicates
         # collapse to one entry); covered subset grows monotonically. The
         # opening (decoded[0]) is consumed positionally — neither coverage nor
         # divergence — so its key is tracked and skipped by the handler.
@@ -225,6 +269,13 @@ class Runner:
         self._unmatched: list[RationaliseEvent] = []
         self._thread_exc: BaseException | None = None
 
+        # PASS-stall tracking (DDT-22). ``_last_pass_role`` records the role of
+        # the most recent PASS (None when the last emission was substantive).
+        # A stall is a PASS from one role followed by a PASS from the *other*
+        # role — each side passing in turn — which ends the run incomplete. Two
+        # PASSes from the same role are not a stall (that side is waiting).
+        self._last_pass_role: str | None = None
+
         # The bus is the sink and relay. Build the bus-wired sinks and construct
         # the actors with them (factories), then subscribe the actors' accept
         # handlers and the runner's wildcard coverage handler.
@@ -239,57 +290,30 @@ class Runner:
         self._bus.subscribe(self._trainer.role, self._make_handler(self._trainer))
         self._bus.subscribe(self._trainee.role, self._make_handler(self._trainee))
 
-    # -- the driver (PDT-18, PDT-19) -----------------------------------------
+    # -- the driver (DDT-18, DDT-22) -----------------------------------------
 
     def run(self) -> RunResult:
         """Drive the run to completion (spec §The Runner).
 
         Seeds the opening by addressing an ``accept`` message to the trainer
         (``message=None`` signals "you open"), then runs ``bus.run()`` on a
-        dedicated thread. Terminates when the coverage handler sees the closing
-        (it calls ``bus.stop()``), or when the idle timeout fires with no
-        closing (a stall: ``complete = False``).
+        dedicated thread. The bus exits when the coverage handler calls
+        ``bus.stop()`` — which it does on the closing (complete) or on a
+        mutual-PASS stall (incomplete). Every ``accept`` yields ≥1 proposal
+        (the ``burst >= 1`` contract), so the bus never blocks indefinitely;
+        there is no idle timeout.
         """
         self._bus.send(
             Message(role=self._trainer.role, action=_ACCEPT_ACTION, message=None)
         )
-        bus_thread = threading.Thread(target=self._run_bus_bounded, daemon=True)
+        bus_thread = threading.Thread(target=self._bus.run, daemon=True)
         bus_thread.start()
         bus_thread.join()
         if self._thread_exc is not None:
             raise self._thread_exc
         return self.result
 
-    def _run_bus_bounded(self) -> None:
-        """Run the bus, enforcing the idle timeout via a watchdog.
-
-        The idle timeout is **skipped when a debugger is attached** (detected
-        via :func:`sys.gettrace`, or forced off with the ``KALVIN_NO_IDLE_TIMEOUT``
-        env var). Under a debugger the run pauses on breakpoints while wall
-        clock keeps ticking; the watchdog would then mistake the pause for a
-        stall and terminate the run early. The timeout still guards production
-        (no debugger) and the unit tests (which pass ``idle_timeout`` short and
-        run without a tracer attached).
-        """
-        if _idle_timeout_disabled():
-            inner = threading.Thread(target=self._bus.run, daemon=True)
-            inner.start()
-            inner.join()
-            return
-        inner = threading.Thread(target=self._bus.run, daemon=True)
-        inner.start()
-        while True:
-            inner.join(self._idle_timeout)
-            if not inner.is_alive():
-                return  # bus stopped (closing-seen called bus.stop())
-            if self._closing_seen:
-                return  # race: closing seen but bus not yet exited — done
-            # Idle window elapsed with no closing: stall. Stop the bus.
-            self._bus.stop()
-            inner.join(self._idle_timeout)
-            return
-
-    # -- coverage handler (the wildcard subscriber) (PDT-7..PDT-13) ---------
+    # -- coverage handler (the wildcard subscriber) (DDT-7..DDT-13) ---------
 
     def _on_emission(self, msg: Message) -> None:
         """Wildcard handler: record coverage on every observed emission."""
@@ -297,27 +321,48 @@ class Runner:
         if event is None:
             return  # the opening seed, not an emission
         assert isinstance(event, RationaliseEvent)
+
+        # DDT-22: a PASS is the no-content proposal. Intercept it *before* any
+        # content matching: it is neither coverage, nor divergence, nor a
+        # closing. It routes to the other role (the bus-wired sink already
+        # addressed it). A stall is **each side passing in turn**: a PASS from
+        # one role followed by a PASS from the *other* role. Two PASSes from
+        # the same role are not a stall — that side is simply waiting (cogitation
+        # repeatedly yields nothing while the other side still has content),
+        # and the dialogue continues.
+        if is_pass(event):
+            self._events.append(event)
+            role = event.role or "?"
+            if self._last_pass_role is not None and self._last_pass_role != role:
+                # Each side passed in turn: the dialogue has nothing more to
+                # say. Stop the bus; ``complete`` stays False (closing unseen).
+                self._bus.stop()
+                return
+            self._last_pass_role = role
+            return
+        self._last_pass_role = None
+
         self._events.append(event)
         key = self._event_key(event)
 
-        # The opening is consumed positionally (PDT-3): neither coverage nor
+        # The opening is consumed positionally (DDT-3): neither coverage nor
         # divergence. The trainer publishes it as its first turn; skip it here.
         if key == self._opening_key and not self._closing_seen:
             return
 
-        # PDT-10: closing seen → mark and stop the bus (terminal).
+        # DDT-10: closing seen → mark and stop the bus (terminal).
         if key == self._closing_key:
             self._closing_seen = True
             self._bus.stop()
             return
 
-        # PDT-7/PDT-8: a content present in the distinct middle marks it covered
+        # DDT-7/DDT-8: a content present in the distinct middle marks it covered
         # (idempotent — re-emitting covered content is not divergence).
         if key in self._distinct_middle:
             self._covered.add(key)
             return
 
-        # PDT-9: divergence — present nowhere in the table.
+        # DDT-9: divergence — present nowhere in the table.
         if self._on_divergence == "fail":
             exc = Divergence(
                 role=event.role or "?",
@@ -343,7 +388,7 @@ class Runner:
 
     @property
     def complete(self) -> bool:
-        """``closing-seen`` (PDT-13)."""
+        """``closing-seen`` (DDT-13)."""
         return self._closing_seen
 
     @property
@@ -353,7 +398,7 @@ class Runner:
 
     @property
     def result(self) -> RunResult:
-        """The current :class:`RunResult` snapshot (PDT-15)."""
+        """The current :class:`RunResult` snapshot (DDT-15)."""
         return RunResult(
             events=list(self._events),
             complete=self.complete,
@@ -387,24 +432,6 @@ class Runner:
         return [_placeholder_turn(k) for k in sorted(unseen, key=_key_sort)]
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────
-
-
-def _idle_timeout_disabled() -> bool:
-    """True when the idle-timeout watchdog must not enforce its deadline.
-
-    The timeout ends a stalled run as incomplete (PDT-19), but it is wall-clock
-    based: while paused on a breakpoint the deadline still elapses, so the
-    watchdog would terminate the run early. Disable it when a debugger tracer
-    is attached (``sys.gettrace()`` returns one) or when the caller opts out via
-    the ``KALVIN_NO_IDLE_TIMEOUT`` env var. Production and the unit tests run
-    without a tracer, so PDT-19 is unaffected there.
-    """
-    if os.environ.get("KALVIN_NO_IDLE_TIMEOUT"):
-        return True
-    return sys.gettrace() is not None
-
-
 def _key_sort(k: ContentKey):
     return (k[0], k[1], k[2], k[3])
 
@@ -429,7 +456,6 @@ def run(
     trainee_factory: ActorFactory,
     *,
     on_divergence: str = "fail",
-    idle_timeout: float = 5.0,
 ) -> Runner:
     """Construct a :class:`Runner` for ``decoded`` (spec §The Runner).
 
@@ -445,5 +471,4 @@ def run(
         trainer_factory,
         trainee_factory,
         on_divergence=on_divergence,
-        idle_timeout=idle_timeout,
     )

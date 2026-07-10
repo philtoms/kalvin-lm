@@ -89,8 +89,11 @@ def _run_default(decoded):
 
 
 def test_actor_yields_rows_one_at_a_time(_decoded_mhall):
-    """DDT-9/16: each accept() publishes the next row's event; nothing once
-    exhausted. The actor holds no cursor it returns to the runner."""
+    """DDT-9/16: each accept() publishes the next row's event; a PASS once
+    exhausted (``burst >= 1``, DDT-22 — an actor never replies zero). The actor
+    holds no cursor it returns to the runner."""
+    from training.dialogue.runner import is_pass
+
     sink = _CapturingSink()
     actor = TableTrainer(_decoded_mhall, sink=sink)
     t_rows = [t for t in _decoded_mhall if t.role == "T"]
@@ -98,8 +101,9 @@ def test_actor_yields_rows_one_at_a_time(_decoded_mhall):
         before = len(sink.events)
         actor.accept(None)
         assert len(sink.events) == before + 1  # exactly one event published
-    actor.accept(None)  # exhausted → nothing published
-    assert len(sink.events) == len(t_rows)
+    actor.accept(None)  # exhausted → a PASS (burst >= 1), not silence
+    assert len(sink.events) == len(t_rows) + 1
+    assert is_pass(sink.events[-1])
 
 
 def test_actor_does_not_inspect_incoming(_decoded_mhall):
@@ -158,21 +162,31 @@ def test_event_carries_emitting_role(_decoded_mhall):
 
 def test_canonical_run_completes(_decoded_mhall):
     """The full MHALL dialogue runs to completion through the runner with the
-    default actors, the closing S1 countersign of the primary delivered last."""
+    default actors: the closing S1 countersign of the primary is seen. Trailing
+    no-op PASSes (an exhausted actor passing after the closing) may follow in
+    the arrival log; completion is closing-seen, found by content not position."""
     res = _run_default(_decoded_mhall)
     assert res.complete
-    assert res.events[-1].proposal.significance == SIG_S1
-    assert res.events[-1].proposal.kline == res.events[0].proposal.kline
+    opening = res.events[0].proposal.kline
+    closings = [
+        e for e in res.events
+        if e.proposal.significance == SIG_S1 and e.proposal.kline == opening
+    ]
+    assert closings, "the closing S1 countersign of the primary was never seen"
 
 
 def test_canonical_run_emits_every_table_row(_decoded_mhall):
-    """Every decoded turn's content is emitted exactly once by the default actors."""
+    """Every decoded turn's content is emitted at least once by the default
+    actors. The arrival log may also carry no-op PASSes (control traffic, not
+    content), which are excluded from the content comparison."""
     from training.dialogue.decoder import turn_content_key
+    from training.dialogue.runner import is_pass
 
     res = _run_default(_decoded_mhall)
     emitted_keys = [
         (e.role, e.proposal.kline.signature, tuple(e.proposal.kline.nodes), e.proposal.significance)
         for e in res.events
+        if not is_pass(e)
     ]
     table_keys = [turn_content_key(t) for t in _decoded_mhall]
     assert sorted(emitted_keys) == sorted(table_keys)
@@ -197,10 +211,14 @@ def test_rationaliser_runs_mhall_to_exhaustion(_decoded_mhall, _sigf: NLPSignifi
     ).run()
     assert res.complete
     # The rationaliser eventually delivers the closing S1 countersign of the
-    # primary (it may also emit unmatched off-table content along the way).
-    closing = res.events[-1]
-    assert closing.proposal.significance == SIG_S1
-    assert closing.proposal.kline == res.events[0].proposal.kline
+    # primary (it may also emit unmatched off-table content, and trailing
+    # no-op PASSes, along the way). Find the closing by content, not position.
+    opening = res.events[0].proposal.kline
+    closings = [
+        e for e in res.events
+        if e.proposal.significance == SIG_S1 and e.proposal.kline == opening
+    ]
+    assert closings, "the closing S1 countersign of the primary was never seen"
 
 
 # ── SynthesizingTrainer integration (plan §Phase 4.2) ────────────────────
@@ -229,9 +247,12 @@ def test_synthesizing_trainer_runs_mhall_to_exhaustion(
         on_divergence="accept",
     ).run()
     assert res.complete
-    closing = res.events[-1]
-    assert closing.proposal.significance == SIG_S1
-    assert closing.proposal.kline == res.events[0].proposal.kline
+    opening = res.events[0].proposal.kline
+    closings = [
+        e for e in res.events
+        if e.proposal.significance == SIG_S1 and e.proposal.kline == opening
+    ]
+    assert closings, "the closing S1 countersign of the primary was never seen"
 
 
 # ── R4 — open-dialog-close (plan @plans/implement-synthesizing-trainer.md) ─

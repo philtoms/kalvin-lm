@@ -20,7 +20,8 @@ against replacement — it will evolve when real actors arrive.
 
 The runner is **bus-driven**: it drives the exchange over the harness
 `MessageBus`. The actors are sink-driven — each holds an `EventSink` and
-publishes its turns via `accept` (fire-and-forget, zero-or-many per incoming).
+publishes its turns via `accept` (fire-and-forget, one-or-many per incoming —
+see §Actor contract and the PASS proposal).
 
 ## Dependencies
 
@@ -181,15 +182,16 @@ A decoded table has three zones, two of them positionally pinned:
 ## The Runner
 
 ```
-run(decoded, trainer_factory, trainee_factory, *, on_divergence, idle_timeout) -> Runner
+run(decoded, trainer_factory, trainee_factory, *, on_divergence) -> Runner
 ```
 
 The run is driven by the harness **`MessageBus`**
 (`src/training/harness/bus.py`). The bus is the **sink and the relay**; the
 runner is a **coverage-tracking wildcard subscriber** plus a thin driver that
-seeds the opening and runs the bus until the closing is seen. The runner
-depends on `training.harness` — it is a training application and belongs next
-to the harness.
+seeds the opening and runs the bus until the closing is seen (complete) or both
+actors pass consecutively (a stall: incomplete). The runner depends on
+`training.harness` — it is a training application and belongs next to the
+harness.
 
 - **Sink = the bus (via a bus-wired `EventSink`).** Actors publish events to an
   `EventSink` injected at construction; the runner's bus-wired sink bridges
@@ -204,14 +206,20 @@ to the harness.
   reroutes.
 - **Coverage = a wildcard subscriber.** The runner subscribes to `*` (every
   message), updates its distinct-middle / covered / closing-seen bookkeeping on
-  each emission, and calls `bus.stop()` when `closing_seen`.
+  each emission, and calls `bus.stop()` when `closing_seen` or on a mutual-PASS
+  stall. A PASS emission (§Actor contract) is intercepted before matching:
+  neither coverage, nor divergence, nor a closing.
 - **Driver.** A thin `run()` seeds the opening by addressing a `Message` to the
   trainer's role (`message=None` signals "you open"), then runs `bus.run()` on
-  a dedicated thread until `closing_seen` or the idle timeout fires.
+  a dedicated thread until `closing_seen` (complete) or a mutual PASS (a stall:
+  incomplete). Every `accept` yields at least one proposal (`burst >= 1`), so
+  the bus never blocks indefinitely; **there is no idle timeout** — termination
+  is closing-seen or mutual-PASS, both content-driven.
 
 The dialogue metaphor: messy and real. **No synchronised alternation** — an
-actor may emit zero-or-many replies per incoming message, and the relay does
-not track turns. **Anticipation** (emitting ahead of authored causal order) and
+actor may emit one-or-many replies per incoming message (at least one — a PASS
+when it has nothing substantive), and the relay does not track turns.
+**Anticipation** (emitting ahead of authored causal order) and
 **interjection** (emitting unsolicited) are first-class and unflagged. No
 participant polices order; agents must rationalise and cogitate to make sense
 of the stream — the point of Kalvin.
@@ -234,11 +242,24 @@ Actor:
 ```
 
 `accept` is **fire-and-forget**: it receives an incoming event (or `None` for
-the opening seed) and returns immediately; the actor decides when and whether
-to publish events via its sink — possibly later (from a cogitation thread),
-possibly many times (a priming burst, a scaffolding sequence), possibly never.
-The actor does not know about the bus; it merely publishes to its sink, and the
-sink routes.
+the opening seed) and returns immediately; the actor decides when and how many
+events to publish via its sink — possibly later (from a cogitation thread),
+possibly many times (a priming burst, a scaffolding sequence). The actor does
+not know about the bus; it merely publishes to its sink, and the sink routes.
+
+`accept` always publishes **at least one** proposal (`burst >= 1`): the actors
+in a dialogue drive each other's next events, so an actor never replies with
+nothing. When an actor's cogitation yields nothing substantive (the
+rationaliser has no workable move; a table actor has exhausted its rows), it
+publishes a **PASS** — a sentinel proposal `{PASS: []}` at S1 (`PASS_SIGNATURE`,
+a reserved signature; the meaning lives in the signature, S1 only sorts it
+highest). The runner intercepts a PASS **before** content matching: it is
+neither coverage, nor divergence, nor a closing; it routes to the other role,
+and **two consecutive PASSes from the two roles** (each side passing in turn)
+is the **stall** that ends the run incomplete. Two PASSes from the same role
+are not a stall — that side is waiting while the other still has content. The
+`Actor` base class enforces `burst >= 1` by emitting a PASS when an actor's
+`next_events` yields nothing, so the contract holds for every actor.
 
 The runner constructs actors via **factories** ``(sink) -> Actor``: only the
 runner owns the bus, so only it can build the bus-wired sink, so it builds the
@@ -253,16 +274,20 @@ each event. They never inspect the incoming event to decide what to emit.
 
 The runner holds **coverage bookkeeping** only (as a bus subscriber): the
 table's **fixed set of distinct middle contents**, a **covered subset** that
-grows monotonically as emissions match, a `closing-seen` flag, and the idle
-deadline. It holds **no** actor-coupling state — no notion of whose turn it is,
-no per-actor cursors, no pacing, no retry counts. The relay lives in the bus;
-the runner only observes and records.
+grows monotonically as emissions match, a `closing-seen` flag, and the **role
+of the most recent PASS** (for mutual-PASS stall detection — §Actor contract).
+It holds **no** actor-coupling state — no notion of whose turn it is, no
+per-actor cursors, no pacing, no retry counts, no idle deadline. The relay
+lives in the bus; the runner only observes and records.
 
 ## Matching
 
 The runner is a **content matcher**. Each emission observed by the wildcard
-subscriber is matched against the table's **distinct middle contents** and the
-closing by content equality `(role, kline, significance)`:
+subscriber is first checked for PASS (§Actor contract): a PASS is intercepted
+**before** matching — it is neither coverage, nor divergence, nor a closing.
+Any non-PASS emission is matched against the table's **distinct middle
+contents** and the closing by content equality
+`(role, kline, significance)`:
 
 - **Equals the closing** — mark `closing-seen`.
 - **Present in the distinct middle contents** — mark that content **covered**.
@@ -322,16 +347,19 @@ of the authored exchange the actors actually traversed.
 ### Termination and stall
 
 The driver runs `bus.run()` until `closing_seen` (the subscriber calls
-`bus.stop()`). Because `accept` is fire-and-forget and replies are zero-or-many,
-there is no "actor finished" signal; the run ends only on the closing. If the
-actors go silent before the closing — a **stall** — the **idle timeout** ends
-the run: a silence-bounded deadline (the bus's `queue.get(timeout=...)`); if no
-emission arrives within it and the closing has not been seen, the run stops
-incomplete (`RunResult.complete = False`). The idle timeout bounds quiescence,
-not work — a long but active cogitation that keeps emitting does not trip it;
-only true silence does. A timeout is a *property of the result* (the run did
-not finish), not a divergence (nothing went wrong); it is surfaced in
-`RunResult` (non-fatal), not raised.
+`bus.stop()`). Because `accept` is fire-and-forget and replies are
+**one-or-many** (`burst >= 1`, §Actor contract), an actor never goes silent:
+it always publishes at least one proposal, emitting a PASS when it has nothing
+substantive. There is therefore **no idle timeout** — the bus never blocks
+indefinitely waiting for a message that never comes, because a message always
+comes. A **stall** is content-driven, not silence-driven: when the two roles
+**each publish a PASS in turn** (a PASS from one role followed by a PASS from
+the other), the dialogue has nothing more to say and the runner stops the bus
+incomplete (`RunResult.complete = False`). Two PASSes from the same role are
+not a stall — that side is waiting while the other still has content, and the
+dialogue continues. A stall is a *property of the result* (the run did not
+finish), not a divergence (nothing went wrong); it is surfaced in `RunResult`
+(non-fatal), not raised.
 
 ## Types
 
@@ -411,18 +439,18 @@ table-reading actors over the harness message bus to completion.
 | DDT-8  | A decoded table has three zones: opening (`decoded[0]`, first, positional, trainer), middle (`decoded[1:-1]`, coverage set), closing (`decoded[-1]`, last, positional)                                                                                                                              | §Zones                 |
 | DDT-9  | The opening is a trainer row; the closing is content-distinct from the opening **and** from every middle row; a table violating either is malformed at decode time                                                                                                                                  | §Zones, §Invariants    |
 | DDT-10 | The run is driven by the harness `MessageBus`: the bus is the sink and relay; the runner is a coverage-tracking wildcard subscriber plus a thin driver that seeds the opening and runs `bus.run()` until the closing. The runner depends on `training.harness`                                       | §The Runner            |
-| DDT-11 | The runner holds coverage bookkeeping only (fixed distinct middle content set, growing covered subset, closing-seen flag, idle deadline); no per-actor cursors, turn tracking, or pacing. The relay lives in the bus                                                                                  | §Permitted state       |
+| DDT-11 | The runner holds coverage bookkeeping only (fixed distinct middle content set, growing covered subset, closing-seen flag, the role of the most recent PASS for stall detection); no per-actor cursors, turn tracking, pacing, or idle deadline. The relay lives in the bus                                                                                  | §Permitted state       |
 | DDT-12 | An emission observed by the wildcard subscriber matches the distinct middle contents / closing by `(role, kline, significance)` content equality                                                                                                                                                     | §Matching              |
 | DDT-13 | A content present in the distinct middle marks it covered (idempotent); duplicate table rows collapse to one distinct content; re-emitting covered content is not divergence                                                                                                                         | §Matching              |
 | DDT-14 | Zero matches (and not the closing) is divergence: `on_divergence="fail"` raises `Divergence(role, emitted, unconsumed)`; `"accept"` appends to `RunResult.unmatched` and continues                                                                                                                   | §Matching              |
 | DDT-15 | An emission equal to the closing's content marks `closing-seen` and consumes the closing                                                                                                                                                                                                             | §Matching              |
 | DDT-16 | Anticipation and interjection within the middle are permitted and unflagged: an emission matching a same-role distinct content is a normal match regardless of authored causal order or whether it was solicited                                                                                     | §Anticipation          |
 | DDT-17 | The opening and closing are the only positional constraints (enforced by decode-time validation and call order, not by the relay); anticipation/interjection apply to the middle only; the opening is not anticipatable                                                                              | §Anticipation          |
-| DDT-18 | `complete = closing-seen`; an idle timeout ends a stalled run (silence, no closing) as incomplete (`complete = False`, non-fatal); coverage is a separate efficiency diagnostic, not a terminal condition (extreme anticipation — closing-first, zero middle coverage — is technically complete)        | §Completion            |
+| DDT-18 | `complete = closing-seen`; a mutual-PASS stall (each role passing in turn, no closing) ends the run incomplete (`complete = False`, non-fatal) — there is no idle timeout (every `accept` yields ≥1 proposal, so the bus never goes silent). Coverage is a separate efficiency diagnostic, not a terminal condition (extreme anticipation — closing-first, zero middle coverage — is technically complete)        | §Completion            |
 | DDT-19 | `Divergence` carries `(role, emitted, unconsumed)` and has no cursor (coverage is content-keyed)                                                                                                                                                                                                     | §Types                 |
 | DDT-20 | `RunResult` has arrival-ordered `events`, plus `complete`, `covered`, `unmatched` (accept-mode), `uncovered` (incomplete runs)                                                                                                                                                                       | §Types                 |
-| DDT-21 | An actor holds an `EventSink` (injected at construction) and publishes via `on_event`; `accept(event)` receives incoming and the actor publishes zero-or-many replies via its sink (`event=None` = "you open"); the runner builds the bus-wired sink and constructs actors via factories `(sink) -> Actor`; any actor is drop-in | §Actor contract |
-| DDT-22 | There is no synchronised alternation: an actor may reply zero-or-many times per `accept`; each reply is routed by the bus to the other role; the runner never reroutes                                                                                                                                | §The Runner            |
+| DDT-21 | An actor holds an `EventSink` (injected at construction) and publishes via `on_event`; `accept(event)` receives incoming and the actor publishes one-or-many replies via its sink (`event=None` = "you open"); `burst >= 1` — when cogitation yields nothing the actor publishes a PASS (`{PASS: []}` at S1). The runner builds the bus-wired sink and constructs actors via factories `(sink) -> Actor`; any actor is drop-in | §Actor contract |
+| DDT-22 | There is no synchronised alternation: an actor may reply one-or-many times per `accept` (at least one — a PASS when it has nothing substantive); each reply is routed by the bus to the other role; the runner never reroutes. A PASS is intercepted before matching (not coverage, not divergence, not closing); two consecutive PASSes from the two roles is the stall terminator | §The Runner, §Actor contract |
 | DDT-23 | The trainer and trainee are symmetric readers of the same decoded table, differing only by actor; the default actors never inspect the incoming event to decide what to emit                                                                                                                         | §Actor contract        |
 | DDT-24 | The runner routes on the actor's self-declared `event.role`: the actor announces itself and the bus addresses its emissions to the other role — the shape a real, possibly asynchronous actor will use                                                                                              | §Matching              |
 | DDT-25 | The runner carries no notion of learned/grounding and emits no grounding signal                                                                                                                                                                                                                      | §What Training Is      |

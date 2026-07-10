@@ -1,14 +1,18 @@
 """Phase 3 — the Runner as a MessageBus subscriber.
 
-Spec: ``@specs/dialogue-runner.md`` PDT-5..PDT-19. The runner is a coverage-
-tracking wildcard subscriber over a ``MessageBus`` (the sink + relay), plus a
-driver that seeds the opening and runs the bus until the closing is seen.
-Actors reply fire-and-forget via the bus; no synchronised alternation;
-anticipation and interjection are first-class.
+Spec: ``@specs/dialogue-driven-training.md`` DDT-5..DDT-22. The runner is a
+coverage-tracking wildcard subscriber over a ``MessageBus`` (the sink +
+relay), plus a driver that seeds the opening and runs the bus until the
+closing is seen (complete) or both actors pass consecutively (a stall:
+incomplete). Actors reply fire-and-forget via the bus; no synchronised
+alternation; anticipation and interjection are first-class.
 
-Tests use a :class:`_ScriptedActor` that emits scripted **bursts** of replies
-(one burst per ``accept``, each burst a list of events), giving deterministic
-control over the messy relay including zero-or-many replies per accept.
+Every ``accept`` yields at least one proposal (``burst >= 1``, DDT-22): the
+actor base emits a PASS when ``next_events`` yields nothing, and two
+consecutive PASSes end the run as a stall. Tests use a
+:class:`_ScriptedActor` that emits scripted **bursts** of replies (one burst
+per ``accept``), then PASSes once exhausted — modelling one-or-many replies
+per accept with deterministic control over the messy relay.
 """
 
 from __future__ import annotations
@@ -23,6 +27,9 @@ from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn, Role
 from training.dialogue.runner import (
     Divergence,
+    PASS_SIGNATURE,
+    is_pass,
+    pass_event,
     run,
 )
 
@@ -61,8 +68,11 @@ class _ScriptedActor:
 
     Holds a sink (injected at construction, as KAgent holds an adapter). Each
     ``accept`` consumes the next burst (a list of events) and publishes every
-    event in it via the sink — modelling zero-or-many replies per accept. When
-    the burst list is exhausted, ``accept`` replies zero times.
+    event in it via the sink — modelling one-or-many replies per accept. When
+    the burst list is exhausted, ``accept`` publishes a PASS
+    (:func:`~training.dialogue.runner.pass_event`) — the ``burst >= 1``
+    contract (DDT-22): a compliant actor never replies zero. Two consecutive
+    PASSes (both actors exhausted) end the run as a stall.
     """
 
     def __init__(self, role: str, bursts: list[list[RationaliseEvent]], sink=None):
@@ -76,10 +86,18 @@ class _ScriptedActor:
         return self._role
 
     def accept(self, event) -> None:  # type: ignore[no-untyped-def]
-        if self._i >= len(self._bursts) or self._sink is None:
-            return  # exhausted or no sink — reply zero times
+        if self._sink is None:
+            return
+        if self._i >= len(self._bursts):
+            # Exhausted: ``burst >= 1`` — emit a PASS rather than silence.
+            self._sink.on_event(pass_event(self._role))
+            return
         burst = self._bursts[self._i]
         self._i += 1
+        if not burst:
+            # An explicit empty burst is also a PASS (one-or-many per accept).
+            self._sink.on_event(pass_event(self._role))
+            return
         for reply in burst:
             self._sink.on_event(reply)
 
@@ -90,7 +108,6 @@ def _run(
     trainee_bursts: list[list[RationaliseEvent]],
     *,
     on_divergence: str = "fail",
-    idle_timeout: float = 1.0,
 ):
     """Construct actors (via factories) + runner and drive to completion."""
     runner = run(
@@ -98,16 +115,15 @@ def _run(
         lambda sink: _ScriptedActor("T", trainer_bursts, sink=sink),
         lambda sink: _ScriptedActor("K", trainee_bursts, sink=sink),
         on_divergence=on_divergence,
-        idle_timeout=idle_timeout,
     )
     return runner, runner.run()
 
 
-# ── PDT-5/PDT-6: bus subscriber, coverage-only state ─────────────────────
+# ── DDT-5/DDT-6: bus subscriber, coverage-only state ─────────────────────
 
 
 def test_runner_drives_to_completion_via_bus():
-    """PDT-5: the runner drives the bus; opening seeds, replies relay, closing
+    """DDT-5: the runner drives the bus; opening seeds, replies relay, closing
     terminates. Trainer opens, trainee covers the middle, trainer closes."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
@@ -121,7 +137,7 @@ def test_runner_drives_to_completion_via_bus():
 
 
 def test_runner_holds_no_actor_coupling_state():
-    """PDT-6: the runner has no per-actor cursors / turn tracking."""
+    """DDT-6: the runner has no per-actor cursors / turn tracking."""
     runner = run(
         _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9)),
         lambda sink: _ScriptedActor("T", [], sink=sink),
@@ -131,11 +147,11 @@ def test_runner_holds_no_actor_coupling_state():
         assert not hasattr(runner, attr)
 
 
-# ── PDT-7/PDT-8: content matching + idempotent coverage ──────────────────
+# ── DDT-7/DDT-8: content matching + idempotent coverage ──────────────────
 
 
 def test_middle_emission_marks_covered():
-    """PDT-7: an emission matching a distinct middle content marks it covered."""
+    """DDT-7: an emission matching a distinct middle content marks it covered."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
@@ -149,7 +165,7 @@ def test_middle_emission_marks_covered():
 
 
 def test_duplicate_middle_content_collapses_idempotently():
-    """PDT-8: duplicate table rows collapse to one distinct content; re-emitting
+    """DDT-8: duplicate table rows collapse to one distinct content; re-emitting
     covered content is not divergence."""
     decoded = _decoded(
         ("T", 1, 1), [("K", 2, 2), ("K", 2, 2), ("T", 3, 3)], ("T", 9, 9)
@@ -165,7 +181,7 @@ def test_duplicate_middle_content_collapses_idempotently():
 
 
 def test_role_mismatch_is_divergence():
-    """PDT-7: matching is same-role; a K emission whose content matches a T-only
+    """DDT-7: matching is same-role; a K emission whose content matches a T-only
     middle has a different (role,kline,sig) key → divergence."""
     decoded = _decoded(("T", 1, 1), [("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
@@ -178,11 +194,11 @@ def test_role_mismatch_is_divergence():
     assert len(res.unmatched) == 1
 
 
-# ── PDT-9: divergence policy ──────────────────────────────────────────────
+# ── DDT-9: divergence policy ──────────────────────────────────────────────
 
 
 def test_divergence_fail_raises_on_caller_thread():
-    """PDT-9: on_divergence='fail' raises Divergence on the caller's thread
+    """DDT-9: on_divergence='fail' raises Divergence on the caller's thread
     (captured from the bus dispatch thread and re-raised by run())."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner = run(
@@ -190,7 +206,6 @@ def test_divergence_fail_raises_on_caller_thread():
         lambda sink: _ScriptedActor("T", _bursts(_ev("T", 1, 1), _ev("T", 9, 9)), sink=sink),
         lambda sink: _ScriptedActor("K", _bursts(_ev("K", 99, 99)), sink=sink),  # nothing matches
         on_divergence="fail",
-        idle_timeout=1.0,
     )
     with pytest.raises(Divergence) as exc_info:
         runner.run()
@@ -198,7 +213,7 @@ def test_divergence_fail_raises_on_caller_thread():
 
 
 def test_divergence_accept_records_and_continues():
-    """PDT-9: on_divergence='accept' records to unmatched and continues."""
+    """DDT-9: on_divergence='accept' records to unmatched and continues."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
@@ -212,11 +227,11 @@ def test_divergence_accept_records_and_continues():
     assert res.unmatched[0].proposal.kline.signature == 99
 
 
-# ── PDT-10/PDT-13: closing + completion ───────────────────────────────────
+# ── DDT-10/DDT-13: closing + completion ───────────────────────────────────
 
 
 def test_closing_emission_completes_run():
-    """PDT-10/PDT-13: the closing emission marks closing-seen = completion."""
+    """DDT-10/DDT-13: the closing emission marks closing-seen = completion."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
@@ -227,12 +242,12 @@ def test_closing_emission_completes_run():
 
 
 def test_extreme_anticipation_closing_first_is_complete():
-    """PDT-13: closing-first is technically complete. The trainer emits opening
+    """DDT-13: closing-first is technically complete. The trainer emits opening
     AND closing in a single accept burst (anticipates past the whole middle)."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T opens and closes in one burst — zero-or-many replies per accept.
+        # T opens and closes in one burst — one-or-many replies per accept.
         trainer_bursts=[[_ev("T", 1, 1), _ev("T", 9, 9)]],
         trainee_bursts=[],
     )
@@ -241,23 +256,23 @@ def test_extreme_anticipation_closing_first_is_complete():
 
 
 def test_no_closing_means_incomplete():
-    """PDT-13/PDT-19: without the closing, the run stalls → incomplete."""
+    """DDT-13/DDT-22: without the closing, both actors exhaust and PASS in turn
+    → mutual PASS stall → incomplete."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
         trainer_bursts=_bursts(_ev("T", 1, 1)),  # opens but never closes
         trainee_bursts=_bursts(_ev("K", 2, 2)),
-        idle_timeout=0.5,
     )
     assert not res.complete
     assert res.covered  # middle covered, but closing never arrived
 
 
-# ── PDT-11/PDT-12: anticipation + interjection ───────────────────────────
+# ── DDT-11/DDT-12: anticipation + interjection ───────────────────────────
 
 
 def test_anticipation_permitted_and_unflagged():
-    """PDT-11: the trainer emits its middle before the authored causal order;
+    """DDT-11: the trainer emits its middle before the authored causal order;
     a normal match, not divergence."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
@@ -271,7 +286,7 @@ def test_anticipation_permitted_and_unflagged():
 
 
 def test_interjection_permitted():
-    """PDT-11: an actor may emit extra covered content (interjection);
+    """DDT-11: an actor may emit extra covered content (interjection);
     idempotent coverage, not divergence."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
@@ -284,59 +299,86 @@ def test_interjection_permitted():
     assert res.unmatched == []
 
 
-# ── PDT-18: no synchronised alternation, route-to-other ───────────────────
+# ── DDT-18: no synchronised alternation, route-to-other ───────────────────
 
 
 def test_zero_replies_then_burst_relayed_correctly():
-    """PDT-18: an actor may reply zero-or-many per accept; the bus relays each.
-    Here the trainee replies zero, and the trainer emits opening + middle +
-    closing in a single accept burst — terminating the run without the trainee
-    ever emitting (extreme trainer autonomy)."""
+    """DDT-18: an actor may reply one-or-many per accept; the bus relays each.
+    Here the trainee PASSes (an empty accept yields a PASS under ``burst >= 1``),
+    and the trainer emits opening + middle + closing in a single accept burst —
+    terminating the run without the trainee ever emitting substance (extreme
+    trainer autonomy)."""
     decoded = _decoded(("T", 1, 1), [("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
         # T emits everything in its opening accept: open, middle, close.
         trainer_bursts=[[_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)]],
-        # K never emits — but T's burst self-terminates via the closing.
+        # K PASSes — but T's burst self-terminates via the closing.
         trainee_bursts=[[]],
     )
     assert res.complete
     assert res.covered
 
 
-# ── PDT-19: idle timeout ──────────────────────────────────────────────────
+# ── DDT-22: PASS (burst >= 1) + mutual-PASS stall ─────────────────────────
 
 
-def test_idle_timeout_ends_stalled_run_as_incomplete():
-    """PDT-19: silence before the closing → idle timeout → complete=False
-    (non-fatal, surfaced in result)."""
+def test_pass_is_not_recorded_as_coverage_or_divergence():
+    """DDT-22: a PASS is intercepted before matching — neither coverage nor
+    divergence. A trainee that PASSes (nothing workable) while the trainer
+    drives opening + closing completes cleanly with no unmatched emission."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1)),  # opens, then both go silent
-        trainee_bursts=_bursts(_ev("K", 2, 2)),
-        idle_timeout=0.3,
+        # T opens, then closes.
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        # K PASSes once (empty accept), then covers the middle.
+        trainee_bursts=[[], _bursts(_ev("K", 2, 2))[0]],
     )
-    assert not res.complete  # stalled
-    assert res.covered
+    assert res.complete
+    assert res.unmatched == []
+    # The PASS is recorded in arrival-ordered events but never matched.
+    passes = [e for e in res.events if is_pass(e)]
+    assert len(passes) == 1
+    assert passes[0].proposal.kline.signature == PASS_SIGNATURE
 
 
-def test_idle_timeout_skipped_when_debugger_attached(monkeypatch):
-    """Under a debugger the idle timeout must not fire: a breakpoint pause
-    is not a stall. Faked tracer presence flips the helper to disabled."""
-    from training.dialogue import runner
+def test_mutual_pass_ends_run_incomplete():
+    """DDT-22: two consecutive PASSes (each side passing) is the stall
+    terminator → the run ends incomplete (closing unseen), with no idle
+    timeout. Both actors exhaust after the opening."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        # T opens (sig 1), then exhausts → PASS.
+        trainer_bursts=_bursts(_ev("T", 1, 1)),
+        # K exhausts immediately → PASS.
+        trainee_bursts=[],
+    )
+    assert not res.complete  # mutual-PASS stall, closing never arrived
+    # The two trailing emissions are both PASSes (T then K, or K then T).
+    trailing = res.events[-2:]
+    assert all(is_pass(e) for e in trailing)
 
-    monkeypatch.setattr(runner.sys, "gettrace", lambda: object)  # truthy
-    assert runner._idle_timeout_disabled() is True
-    monkeypatch.setattr(runner.sys, "gettrace", lambda: None)
-    assert runner._idle_timeout_disabled() is False
+
+def test_pass_event_builder_has_sentinel_signature_at_s1():
+    """DDT-22: pass_event() builds {PASS:[]} at S1 — the sentinel signature on
+    an identity kline, top-band significance."""
+    from kalvin.expand import SIG_S1
+
+    ev = pass_event("K")
+    assert ev.role == "K"
+    assert ev.proposal.kline.signature == PASS_SIGNATURE
+    assert ev.proposal.kline.nodes == []
+    assert ev.proposal.significance == SIG_S1
+    assert is_pass(ev)
 
 
-# ── PDT-15: arrival-ordered events + diagnostics ──────────────────────────
+# ── DDT-15: arrival-ordered events + diagnostics ──────────────────────────
 
 
 def test_result_events_are_arrival_ordered():
-    """PDT-15: events are in arrival order (bus delivery order); opening first."""
+    """DDT-15: events are in arrival order (bus delivery order); opening first."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
@@ -349,7 +391,7 @@ def test_result_events_are_arrival_ordered():
 
 
 def test_result_uncovered_reports_unseen_middle():
-    """PDT-15: uncovered lists distinct middle contents never seen."""
+    """DDT-15: uncovered lists distinct middle contents never seen."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,

@@ -12,13 +12,16 @@ rationalising trainee) for the default ``TableTrainee``, and ``--synthesize``
 substitutes a :class:`SynthesizingTrainer` (a real trainer that derives each
 turn from the compiled script) for the default ``TableTrainer``. The two flags
 are orthogonal: passing both runs the two real actors against the same golden
-master. Note real actors do not reproduce the table exactly, so running them
-typically needs ``--on-divergence accept`` (else off-table emissions raise
-``Divergence``).
+master. Real actors may emit off-table content; under the default
+``on_divergence=fail`` that raises ``Divergence`` (the validation doing its
+job — do not reach for ``--on-divergence accept`` to silence it; fix the actor).
 
 The runner is bus-driven: it owns a :class:`MessageBus`, builds a bus-wired
-:class:`EventSink` per actor, and runs the bus until the closing is seen or the
-idle timeout fires.
+:class:`EventSink` per actor, and runs the bus until the closing is seen
+(complete) or both actors pass consecutively (a stall: incomplete). Every
+``accept`` yields at least one proposal (``burst >= 1``): an actor with nothing
+substantive to say publishes a PASS, which the runner intercepts before
+matching. There is no idle timeout.
 
 Usage::
 
@@ -135,8 +138,13 @@ def _scripted_form_event(event, sig_to_label: dict[int, str]) -> str:
 
     An event carries the emitter's ``role`` and its ``proposal`` KValue but
     not the table's ``op``; the proposal's ``dbg.op`` (the structural state the
-    kline was built with) stands in, falling back to ``?`` when absent.
+    kline was built with) stands in, falling back to ``?`` when absent. A PASS
+    (the no-content proposal, DDT-22) renders as ``<role> PASS``.
     """
+    from training.dialogue.runner import is_pass
+
+    if is_pass(event):
+        return f"{event.role or '?'} PASS"
     op = event.proposal.kline.dbg.op if event.proposal.kline.dbg else "?"
     return _render_scripted(event.role or "?", op, event.proposal, sig_to_label)
 
@@ -216,6 +224,36 @@ def _trace(
     return "\n".join(lines)
 
 
+def _render_divergence(exc: Divergence, sig_to_label: dict[int, str]) -> str:
+    """Human-readable divergence report (the default ``on_divergence=fail``).
+
+    The raw :class:`Divergence` carries signatures as hex and a bare count of
+    uncovered rows — opaque without the compiled script's label map. This
+    inverts the diverging emission and the still-uncovered same-role rows into
+    their scripted (table-row) form, so an author can read what the actor said
+    versus what it was still expected to say. An ``unconsumed`` entry built by
+    the runner from a content key has no ``record`` (it is a placeholder), so
+    only its scripted form is shown.
+    """
+    emitted_label = sig_to_label.get(exc.emitted.kline.signature)
+    emitted_desc = (
+        f"{emitted_label} {hex(exc.emitted.significance)}"
+        if emitted_label
+        else f"sig=0x{exc.emitted.kline.signature:x} {hex(exc.emitted.significance)}"
+    )
+    header = (
+        f"FAIL — {exc.role} divergence: {exc.role} emitted {emitted_desc}, "
+        f"which matches no closing or middle row."
+    )
+    if not exc.unconsumed:
+        return header + "\n  (no same-role rows remained uncovered.)"
+    body = [header, f"  Still-uncovered {exc.role} rows at divergence:"]
+    for turn in exc.unconsumed:
+        op = turn.op if turn.op else "?"
+        body.append("    " + _render_scripted(turn.role, op, turn.value, sig_to_label))
+    return "\n".join(body)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run a dialogue end-to-end through the table-reading actors."
@@ -266,11 +304,11 @@ def main(argv: list[str] | None = None) -> int:
 
     table = load_table(json.loads(Path(dialogue_path).read_text()))
     decoded = decode(table, tokenizer=tok, signifier=sigf)
-    # The scripted-form trace needs the compiled script's signature→label map;
-    # build it once when --verbose is set.
-    sig_to_label = (
-        _sig_to_label(table, tokenizer=tok, signifier=sigf) if args.verbose else {}
-    )
+    # The compiled script's signature→label map. Always built: the default
+    # ``on_divergence=fail`` report renders the diverging emission and the
+    # uncovered rows in scripted form, and ``--verbose`` traces the whole
+    # exchange — both need it.
+    sig_to_label = _sig_to_label(table, tokenizer=tok, signifier=sigf)
 
     # The divergence policy is ``--on-divergence`` when given, else the table's
     # declared ``run.on_divergence``, else ``fail``.
@@ -310,12 +348,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         res = runner.run()
     except Divergence as exc:
-        print(
-            f"FAIL — {exc.role} divergence: emitted {_label_of(exc.emitted)} "
-            f"(sig={exc.emitted.significance:#x}) matches no closing or "
-            f"middle content ({len(exc.unconsumed)} uncovered same-role).",
-            file=sys.stderr,
-        )
+        print(_render_divergence(exc, sig_to_label), file=sys.stderr)
         return 1
     print(
         f"Dialogue session: {dialogue_path}\n"

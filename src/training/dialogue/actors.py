@@ -4,9 +4,17 @@ A lesson is an authored dialogue between a Trainer (T) and a Trainee (K). The
 actors here are the **dialogue participants**: each holds an
 :class:`~training.dialogue.runner.EventSink` (injected at construction) and
 publishes its turns to it via :meth:`Actor.accept` (fire-and-forget,
-zero-or-many per incoming). The runner (:mod:`training.dialogue.runner`) drives
+one-or-many per incoming). The runner (:mod:`training.dialogue.runner`) drives
 the run over the harness :class:`~training.harness.bus.MessageBus` and
 validates emissions against the authored table.
+
+Every ``accept`` yields **at least one** proposal (the ``burst >= 1``
+contract, DDT-22): an actor whose cogitation produces nothing substantive
+still owes the dialogue a turn, and the :class:`Actor` base emits a **PASS** —
+a sentinel no-content proposal
+(:func:`~training.dialogue.runner.pass_event`) — when :meth:`next_events`
+yields nothing. The runner intercepts PASS before matching; two consecutive
+PASSes (each side passing) end the run as a stall.
 
 The two default actors (:class:`TableTrainer`, :class:`TableTrainee`) are
 table-reading doubles — structurally identical, differing only by which ``role``
@@ -30,6 +38,7 @@ from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn
 from training.dialogue.rationalise import Rationaliser
+from training.dialogue.runner import pass_event
 from training.dialogue.synthesize import synthesize
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -40,11 +49,12 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 # ── The Actor base class ─────────────────────────────────────────────────
 #
 # Every dialogue participant shares one invariant: it holds an EventSink and
-# publishes its turns to it via ``accept``, fire-and-forget, zero-or-many per
-# incoming. The base class owns that invariant — the sink, the role, and the
-# publish loop. A subclass implements only ``next_events``: given an incoming
-# event (or ``None`` for the opening seed), produce the turns to publish. The
-# base does the rest.
+# publishes its turns to it via ``accept``, fire-and-forget, **one-or-many**
+# per incoming. The base class owns that invariant — the sink, the role, and
+# the publish loop. A subclass implements only ``next_events``: given an
+# incoming event (or ``None`` for the opening seed), produce the turns to
+# publish. The base publishes each, and — crucially — emits a PASS when
+# ``next_events`` yields nothing, so the ``burst >= 1`` contract always holds.
 
 
 class Actor:
@@ -57,8 +67,11 @@ class Actor:
     seed (an actor may open), or a prior event otherwise.
 
     Subclasses override :meth:`next_events` to decide what to publish for a
-    given incoming — zero, one, or many events. They must not publish directly
-    to the sink; they return events and the base publishes them.
+    given incoming — one, or many events. They must not publish directly to
+    the sink; they return events and the base publishes them. When
+    :meth:`next_events` yields nothing, the base emits a single PASS
+    (:func:`~training.dialogue.runner.pass_event`) so the ``burst >= 1``
+    contract (DDT-22) holds: every ``accept`` publishes at least one proposal.
     """
 
     def __init__(self, *, role: str, sink: EventSink) -> None:
@@ -76,16 +89,27 @@ class Actor:
         """Produce the events to publish for ``incoming``.
 
         ``incoming`` is ``None`` on the opening seed; otherwise it is the prior
-        event. Returns zero, one, or many events; the base publishes each via
-        the sink. Override in a subclass; the base raises
-        :class:`NotImplementedError`.
+        event. Returns one, or many events; the base publishes each via the
+        sink. Override in a subclass; the base raises
+        :class:`NotImplementedError`. Returning nothing is permitted — the
+        base then emits a PASS to satisfy ``burst >= 1`` (DDT-22).
         """
         raise NotImplementedError
 
     def accept(self, incoming: RationaliseEvent | None) -> None:
-        """Publish every event produced for ``incoming`` via the sink."""
+        """Publish every event produced for ``incoming`` via the sink.
+
+        ``burst >= 1`` (DDT-22): when :meth:`next_events` yields nothing the
+        base emits a single PASS so the dialogue always gets a turn. The
+        runner intercepts PASS before matching; two consecutive PASSes end the
+        run as a stall.
+        """
+        count = 0
         for event in self.next_events(incoming):
             self._sink.on_event(event)
+            count += 1
+        if count == 0:
+            self._sink.on_event(pass_event(self._role))
 
 
 # ── Table-reading actors (spec §The Runner, §Actor) ───────────────────────
@@ -246,7 +270,9 @@ class RationalisingTrainee(Actor):
     A trainee never opens a dialogue (only the trainer opens, on the
     ``None`` seed), so its ``accept`` always receives a real
     ``RationaliseEvent`` — there is no drain / no-op path. A dialogue never
-    rationalises an empty statement.
+    rationalises an empty statement. When the engine has nothing workable for a
+    turn, :meth:`next_events` yields nothing and the :class:`Actor` base emits
+    a PASS (``burst >= 1``, DDT-22) — the trainee is waiting, not silent.
     """
 
     def __init__(self, signifier: KSignifier, sink: EventSink) -> None:
@@ -260,7 +286,9 @@ class RationalisingTrainee(Actor):
 
         The engine returns an identity blast or a single relationship emission
         (never mixed); each emitted ``KValue`` is wrapped in a
-        ``RationaliseEvent``. Yields nothing when nothing is workable.
+        ``RationaliseEvent``. Yields nothing when nothing is workable — the
+        :class:`Actor` base then emits a PASS so the dialogue always gets a
+        turn (DDT-22).
 
         Every call processes its incoming (the engine's entry-rule bookkeeping
         runs each time), so the trainee's state stays in lockstep with the
