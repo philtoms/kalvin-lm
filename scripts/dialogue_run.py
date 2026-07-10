@@ -76,14 +76,6 @@ _SIG_TO_BAND = {
 DEFAULT_DIALOGUE = "scripts/dialogue-mhall.json"
 
 
-def _label_of(kv) -> str:
-    """Best-effort symbolic label for a KValue's kline (for trace output)."""
-    dbg = kv.kline.dbg
-    if dbg is None:
-        return f"sig=0x{kv.kline.signature:x}"
-    return dbg.label or dbg.decoded or f"sig=0x{kv.kline.signature:x}"
-
-
 def _sig_to_label(table, *, tokenizer, signifier) -> dict[int, str]:
     """Reverse the compiled script into a ``{signature: label}`` map.
 
@@ -235,14 +227,9 @@ def _render_divergence(exc: Divergence, sig_to_label: dict[int, str]) -> str:
     the runner from a content key has no ``record`` (it is a placeholder), so
     only its scripted form is shown.
     """
-    emitted_label = sig_to_label.get(exc.emitted.kline.signature)
-    emitted_desc = (
-        f"{emitted_label} {hex(exc.emitted.significance)}"
-        if emitted_label
-        else f"sig=0x{exc.emitted.kline.signature:x} {hex(exc.emitted.significance)}"
-    )
+    emitted_scripted = _render_scripted(exc.role, "emit", exc.emitted, sig_to_label)
     header = (
-        f"FAIL — {exc.role} divergence: {exc.role} emitted {emitted_desc}, "
+        f"FAIL — {exc.role} divergence: emitted {emitted_scripted}, "
         f"which matches no closing or middle row."
     )
     if not exc.unconsumed:
