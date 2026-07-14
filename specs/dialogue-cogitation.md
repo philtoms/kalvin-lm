@@ -121,7 +121,13 @@ sourcing from grounded klines.
 `E` iff `C` shares at least one **node value** with `E.nodes`
 (`node_overlap(C.nodes, E.nodes) ≠ ∅`). Admission is keyed on the entry's
 _nodes_, not its head signature — this avoids the over-admission that single-bit
-NLP type words would cause under `signifies`.
+NLP type words would cause under `signifies`. **A canon under `E`'s own
+signature is never admitted**: a misfit-origination entry is a pre-canonical
+shape of its signature, and the true canon under that signature is its
+resolution, not a recombination ingredient. (A canon under a *different*
+signature — e.g. `MHALL` against a `WDMH` entry — is a legitimate ingredient
+and is admitted; recombining other canons is the point of misfit origination.)
+Identities never admit (no nodes).
 
 **COG-10 (Drop already-grounded proposals).** If the proposal K shapes is
 already grounded (an isomorphic kline exists in K's memory), K drops it rather
@@ -156,7 +162,7 @@ integration test in `tests/test_dialogue_runner.py`.
 | COG-6  | S3 close grounds and emits both directions of the reciprocal pair at S1                                                                                                      | §S3 path       |
 | COG-7  | Only a misfit-origination entry originates a misfit; S3-structure and countersignable entries do not                                                                         | §S2 boundaries |
 | COG-8  | Every substituted node in an originated proposal is a node of a grounded kline                                                                                               | §S2 boundaries |
-| COG-9  | Candidate admission requires a shared node value (not signature); identities never admit                                                                                     | §S2 boundaries |
+| COG-9  | Candidate admission requires a shared node value (not signature); identities never admit; a canon under the entry's own signature (its resolution) is never admitted | §S2 boundaries |
 | COG-10 | A shaped proposal isomorphic to a grounded kline is dropped, not emitted                                                                                                     | §S2 boundaries |
 | COG-13 | After ratification the next cogitation advances (the ratified shape is not re-emitted)                                                                                       | §Termination   |
 

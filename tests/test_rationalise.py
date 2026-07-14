@@ -789,21 +789,58 @@ def test_s2_candidates_exclude_entry_itself(
     rationaliser: Rationaliser, signifier: NLPSignifier
 ) -> None:
     """B3: the entry itself is not admitted as a candidate (a kline is not its
-    own substitution source)."""
+    own substitution source).
+
+    The distinct grounded kline must be a **misfit under a different
+    signature** so it is a legitimate ingredient (a canon under the entry's own
+    signature is the entry's resolution, excluded by the same-signature canon
+    rule — see ``test_s2_candidates_exclude_same_signature_canon``)."""
     mary = 0b1 << 32
     had = 0b10 << 32
     wdmh = signifier.make_signature([mary, had])
     entry = KLine(wdmh, [mary, had])
-    # Even if a kline identical to the entry were grounded, the entry object
-    # itself (passed in) is excluded by identity.
+    # Even if a kline sharing the entry's nodes were grounded, the entry object
+    # itself (passed in) is excluded by identity. The grounded kline is a misfit
+    # under a different signature so it is a valid candidate.
     rationaliser._state.work_list.append(entry)
-    _ground(rationaliser, KLine(wdmh, [mary, had]))   # same shape, different obj
+    other = signifier.make_signature([mary, had, 0b100 << 32])
+    _ground(rationaliser, KLine(other, [mary, had]))   # misfit, different sig
 
     admitted = rationaliser._s2_candidates(entry)
-    # The grounded same-shape kline IS admitted (it's a distinct grounded kline
-    # sharing nodes); only the entry object itself is excluded.
-    assert any(k.signature == wdmh for k in admitted)
+    # The grounded same-node misfit IS admitted (distinct kline, different
+    # signature, sharing nodes); only the entry object itself is excluded.
+    assert any(k.signature == other for k in admitted)
     assert all(k is not entry for k in admitted)
+
+
+def test_s2_candidates_exclude_same_signature_canon(
+    rationaliser: Rationaliser, signifier: NLPSignifier
+) -> None:
+    """A canon under the entry's own signature is the entry's canonical
+    resolution, not a recombination ingredient — never admitted as a B3
+    candidate.
+
+    Regression: ``scripts/dialogue-wdmh.json``. T sends the misfit
+    ``WDMH:[Mary,had,what]`` then the true canon ``WDMH:[what,did,Mary,have]``.
+    Once K grounds the canon, it must NOT be admitted against the misfit entry —
+    otherwise its one-node overlap (``Mary``) over-powers the intended MHALL
+    graft and re-orders the proposal to ``[Mary,what,did,have]`` (divergence).
+    """
+    mary = 0b1 << 32
+    had = 0b10 << 32
+    what = 0b100 << 32
+    did = 0b1000 << 32
+    have = 0b10000 << 32
+    canon_nodes = [what, did, mary, have]
+    wdmh = signifier.make_signature(canon_nodes)       # true canon signature
+    entry = KLine(wdmh, [mary, had, what])              # the misfit
+    canon = KLine(wdmh, canon_nodes)                    # true canon, same sig
+    assert is_canon(canon, signifier)
+    assert not is_canon(entry, signifier)
+    _ground(rationaliser, canon)
+
+    admitted = rationaliser._s2_candidates(entry)
+    assert admitted == []           # the same-signature canon is excluded
 
 
 # ── Termination (D12) ──────────────────────────────────────────────────

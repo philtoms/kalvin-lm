@@ -611,6 +611,17 @@ class Rationaliser:
         the grounded dict's iteration order (insertion order); later steps shape
         one proposal from the admitted set, so order only matters for
         tie-breaking.
+
+        A grounded **canon under the entry's own signature** is never admitted.
+        A misfit-origination entry is a *pre-canonical* shape of its signature;
+        the true canon under that same signature is its resolution, not a
+        recombination ingredient. Admitting it (e.g. the resolved
+        ``WDMH:[what,did,Mary,have]`` against a ``WDMH:[Mary,had,what]`` entry)
+        would let a one-node overlap over-power the intended substitution and
+        re-order the proposal away from the authored shape. A canon under a
+        *different* signature (e.g. ``MHALL``) is a legitimate ingredient and is
+        admitted — recombining other canons is the whole point of misfit
+        origination. Identities already drop out (no nodes).
         """
         entry_nodes = set(entry.nodes)
         candidates: list[KLine] = []
@@ -620,6 +631,12 @@ class Rationaliser:
                     continue
                 if not kline.nodes:
                     continue  # identities carry no nodes
+                # The canonical resolution of the entry's own signature is the
+                # answer, not an ingredient: never admit it as a candidate.
+                if kline.signature == entry.signature and is_canon(
+                    kline, self._signifier
+                ):
+                    continue
                 if entry_nodes & set(kline.nodes):
                     candidates.append(kline)
         return candidates

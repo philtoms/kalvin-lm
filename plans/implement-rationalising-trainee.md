@@ -361,6 +361,14 @@ candidates fire. **Proposal = `{WDMH:[Mary,had,a,little,lamb]}` at S2**,
 ratified by T → S1. The intermediate `[Mary,did,have,what]` is never emitted —
 it is an accumulation step, absorbed and resolved back into the final shape.
 
+> **Note on the true canon.** In the full WDMH dialogue T also sends the true
+canon `{WDMH:[what,did,Mary,have]}` (a CANONIZED turn, `is_canon` true). Once
+K grounds it, COG-9 still does **not** admit it against the misfit entry: a
+canon under the entry's own signature is the entry's resolution, not an
+ingredient, and is excluded by the same-signature canon rule. Without that
+exclusion the canon's single shared node (`Mary`) would over-power the MHALL
+graft and re-order the proposal to `[Mary,what,did,have]` (a divergence).
+
 #### Recognition (the unpack push-decision)
 
 `_recognised` has two modes:
