@@ -102,7 +102,11 @@ table's own. Each prior is loaded and resolved against **its own** `script`;
 only its `turns` are carried in, inserted in list order (priors[0] first), so a
 multi-file lesson reads as one continuous exchange. Priors resolve recursively
 (a prior may name its own priors); the merged `turns` are what `decode` and the
-runner consume. A missing or malformed prior file is a load error.
+runner consume. A missing or malformed prior file is a load error. Because a
+prior's own `close:true` marker is a script boundary *within that file*, the
+loader collapses all but the last `close` in the merged list: a composed table
+has a single close (the final one), and earlier prior closes become ordinary
+coverage rows.
 
 An **annotation-only turn** carries `notes` but no `op`; it is human commentary
 and is not part of the exchange.

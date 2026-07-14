@@ -375,10 +375,21 @@
         "SVO"
       ],
       "significance": "S1",
-      "notes": "This brings an end to the run",
       "role": "K",
       "turn": 35,
-      "role_turn": 19,
+      "role_turn": 19
+    },
+    {
+      "op": "COUNTERSIGNED",
+      "signature": "SVO",
+      "nodes": [
+        "MHALL"
+      ],
+      "significance": "S1",
+      "notes": "This brings an end to the run",
+      "role": "K",
+      "turn": 36,
+      "role_turn": 20,
       "close": true
     }
   ],

@@ -155,6 +155,65 @@ def test_load_priors_resolve_recursively(tmp_path):
     assert notes == ["prior-b", "prior-a", "own"]
 
 
+def test_load_priors_collapse_to_single_close(tmp_path):
+    """A composed (multi-file) table has a single close: a prior's own
+    ``close:true`` is a script boundary within that file, so the loader keeps
+    only the last ``close`` in the merged list and clears every earlier one.
+
+    Regression: ``scripts/dialogue-wdmh.json`` (which lists mhall as a prior)
+    used to stop the runner at mhall's close instead of running on to the WDMH
+    close.
+    """
+    import json
+
+    prior = tmp_path / "prior.json"
+    prior.write_text(json.dumps({
+        "script": "A",
+        "turns": [
+            {"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "prior-mid"},
+            {"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "prior-close", "close": True},
+        ],
+    }))
+    table = load_table({
+        "script": "A",
+        "priors": [str(prior)],
+        "turns": [
+            {"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "own-mid"},
+            {"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "notes": "own-close", "close": True},
+        ],
+    })
+    closers = [t for t in table.turns if t.close]
+    assert len(closers) == 1
+    assert closers[0].notes == "own-close"
+
+
+def test_load_single_file_close_is_a_noop():
+    """A table authored without priors is untouched by the single-close
+    collapse: at most one close, already last."""
+    table = load_table({
+        "script": "A",
+        "turns": [
+            {"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1"},
+            {"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1", "close": True},
+        ],
+    })
+    closers = [t for t in table.turns if t.close]
+    assert len(closers) == 1
+    assert closers[0].role == "K"
+
+
+def test_load_no_close_is_a_noop():
+    """A table with no ``close`` markers at all is untouched."""
+    table = load_table({
+        "script": "A",
+        "turns": [
+            {"role": "T", "op": "IDENTITY", "signature": "a", "significance": "S1"},
+            {"role": "K", "op": "IDENTITY", "signature": "a", "significance": "S1"},
+        ],
+    })
+    assert not any(t.close for t in table.turns)
+
+
 def test_load_rejects_missing_prior_file(tmp_path):
     """A prior path that cannot be read is a hard error (no silent skip)."""
     with pytest.raises(DecodeError):

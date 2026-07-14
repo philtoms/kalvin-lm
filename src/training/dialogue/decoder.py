@@ -623,6 +623,32 @@ def _load_table_file(path: Path) -> DialogueTable:
     return load_table(raw)
 
 
+def _collapse_to_single_close(turns: tuple[Turn, ...]) -> tuple[Turn, ...]:
+    """Keep only the last ``close`` marker; clear every earlier one.
+
+    A composed multi-file table is one de-positional table with a single close
+    (spec §Table Structure; "a multi-script table still has a single close").
+    Each prior file may mark its own last turn ``close:true`` (a script
+    boundary within that file); in the merged list those are intermediate
+    script boundaries, not the run's terminal close. Only the final
+    ``close:true`` turn survives as the close — every earlier ``close`` becomes
+    an ordinary coverage row. A table with zero or one close is a no-op.
+
+    :class:`Turn` is frozen, so stripped turns are rebuilt via ``replace``.
+    """
+    last_close = max(
+        (i for i, t in enumerate(turns) if t.close), default=-1
+    )
+    if last_close < 0:
+        return turns
+    from dataclasses import replace
+
+    return tuple(
+        replace(t, close=False) if (t.close and i != last_close) else t
+        for i, t in enumerate(turns)
+    )
+
+
 def load_table(raw: dict) -> DialogueTable:
     """Parse a raw ``{script, turns[], run?}`` dict into a :class:`DialogueTable`.
 
@@ -677,4 +703,14 @@ def load_table(raw: dict) -> DialogueTable:
             prior_table = _load_table_file(Path(prior_path))
             prior_turns.extend(prior_table.turns)
         turns = tuple(prior_turns) + turns
+    # A composed (multi-file) table must read as one de-positional table: a
+    # coverage set plus a single close (spec §Table Structure; "a multi-script
+    # table still has a single close"). Each prior table may carry its own
+    # ``close`` marker (a script boundary within that prior's own file), but in
+    # the merged list those are intermediate script boundaries, not the run's
+    # terminal close. Strip every ``close`` except the last in the merged list:
+    # the final ``close:true`` turn is the run's terminal content; the rest
+    # become ordinary coverage rows. (A table authored with no priors is a
+    # no-op here: at most one close, already last.)
+    turns = _collapse_to_single_close(turns)
     return DialogueTable(script=script, turns=turns, run_config=run_config)
