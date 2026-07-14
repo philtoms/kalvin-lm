@@ -1,17 +1,15 @@
-"""Synthesize a trainer turn from the compiled script (not the table).
+"""Synthesize a trainer turn from the compiled script.
 
-Plan: ``@plans/implement-synthesizing-trainer.md``.
 Spec seam: ``@specs/dialogue-driven-training.md`` §Actor, §The Runner,
 §Validation (the synthesizer satisfies the existing Actor contract).
 
 The :func:`synthesize` function is the drop-in core of a
-:class:`~training.dialogue.runner.SynthesizingTrainer`. It derives the next
+:class:`~training.dialogue.actors.SynthesizingTrainer`. It derives the next
 trainer KValue from two inputs — the compiled script and the trainee's last
-KValue — using structural predicates only (D2: ``dbg``-free). It never reads
-the authored dialogue table; that table is only the validation oracle the
-runner checks the synthesised turn against.
+KValue — using structural predicates only (D2: ``dbg``-free). The runner checks
+the synthesised turn against the table.
 
-See the plan's §The Synthesis Rules for R1–R3 (verified against all 16 trainer
+See §The Synthesis Rules for R1–R3 (verified against all 16 trainer
 turns of the MHALL golden master).
 """
 
@@ -43,9 +41,9 @@ def synthesize(
 
     Pure: ``compiled`` is indexed once internally; the result is otherwise a
     pure function of ``incoming``. Implements R1 (opening), R2 (reply to an
-    identity), and R3 (echo a matching compiled kline). ``dbg`` is never read
-    for decisions — canon is detected structurally via ``is_canon`` (plan D5),
-    and relation-vs-canon in R3 via ``is_canon`` as well.
+    identity), and R3 (echo a matching compiled kline). Canon is detected
+    structurally via ``is_canon`` (plan D5), and relation-vs-canon in R3 via
+    ``is_canon`` as well.
     """
     decompositions: dict[int, list[KLine]] = {}
     for value in compiled:
@@ -121,8 +119,7 @@ def _relation_op(kline: KLine) -> str | None:
     """The relation op carried on ``kline.dbg`` if it is a known relation, else None.
 
     A non-canon kline with nodes is a relation; its op distinguishes
-    UNDERSIGNED from CONNOTED. dbg is read only here (an ordering hint), never
-    for the canon/identity decisions that D2 guards.
+    UNDERSIGNED from CONNOTED. dbg is read only here as an ordering hint.
     """
     op = kline.dbg.op if kline.dbg else None
     return op if op in _RELATION_PRECEDENCE else None

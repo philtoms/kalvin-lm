@@ -8,8 +8,10 @@
         "SVO"
       ],
       "significance": "S2",
-      "notes": "T kicks off the run with a proposal (A proposal is any kline at S2 or S3 - the other party will always respond",
-      "role": "T"
+      "notes": "The run kicks off with a T proposal (A proposal is any kline at S2 or S3 - the other party will always respond",
+      "role": "T",
+      "turn": 1,
+      "role_turn": 1
     },
     {
       "op": "IDENTITY",
@@ -17,7 +19,9 @@
       "nodes": [],
       "significance": "S4",
       "notes": "K doesn't recognise MHALL",
-      "role": "K"
+      "role": "K",
+      "turn": 2,
+      "role_turn": 1
     },
     {
       "op": "CANONIZED",
@@ -30,117 +34,19 @@
         "lamb"
       ],
       "significance": "S2",
-      "notes": "T responds with a canon at S2",
-      "role": "T"
-    },
-    {
-      "op": "IDENTITY",
-      "signature": "Mary",
-      "nodes": [],
-      "significance": "S4",
-      "notes": "Again, K doesn't recognise Mary",
-      "role": "K"
-    },
-    {
-      "op": "CANONIZED",
-      "signature": "Mary",
-      "nodes": [
-        "M",
-        "ary"
-      ],
-      "significance": "S1",
-      "role": "T"
-    },
-    {
-      "op": "IDENTITY",
-      "signature": "had",
-      "nodes": [],
-      "significance": "S4",
-      "role": "K"
-    },
-    {
-      "op": "CANONIZED",
-      "signature": "had",
-      "nodes": [
-        "h",
-        "ad"
-      ],
-      "significance": "S1",
-      "role": "T"
-    },
-    {
-      "op": "IDENTITY",
-      "signature": "a",
-      "nodes": [],
-      "significance": "S4",
-      "role": "K"
-    },
-    {
-      "op": "CONNOTED",
-      "signature": "a",
-      "nodes": [
-        "Det"
-      ],
-      "significance": "S2",
-      "role": "T"
-    },
-    {
-      "op": "IDENTITY",
-      "signature": "Det",
-      "nodes": [],
-      "significance": "S4",
-      "role": "K"
-    },
-    {
-      "op": "CANONIZED",
-      "signature": "Det",
-      "nodes": [
-        "D",
-        "et"
-      ],
-      "significance": "S1",
-      "role": "T"
-    },
-    {
-      "op": "IDENTITY",
-      "signature": "little",
-      "nodes": [],
-      "significance": "S4",
-      "role": "K"
-    },
-    {
-      "op": "CANONIZED",
-      "signature": "little",
-      "nodes": [
-        "l",
-        "ittle"
-      ],
-      "significance": "S1",
-      "role": "T"
-    },
-    {
-      "op": "IDENTITY",
-      "signature": "lamb",
-      "nodes": [],
-      "significance": "S4",
-      "role": "K"
-    },
-    {
-      "op": "CANONIZED",
-      "signature": "lamb",
-      "nodes": [
-        "l",
-        "amb"
-      ],
-      "significance": "S1",
-      "role": "T"
+      "notes": "T responds with a canon at S2 because some of the nodes are compounds and K needs to learn these.",
+      "role": "T",
+      "turn": 3,
+      "role_turn": 2
     },
     {
       "op": "IDENTITY",
       "signature": "SVO",
       "nodes": [],
       "significance": "S4",
-      "role": "K"
+      "role": "K",
+      "turn": 17,
+      "role_turn": 9
     },
     {
       "op": "CANONIZED",
@@ -151,14 +57,18 @@
         "Object"
       ],
       "significance": "S2",
-      "role": "T"
+      "role": "T",
+      "turn": 18,
+      "role_turn": 9
     },
     {
       "op": "IDENTITY",
       "signature": "Subject",
       "nodes": [],
       "significance": "S4",
-      "role": "K"
+      "role": "K",
+      "turn": 19,
+      "role_turn": 10
     },
     {
       "op": "CANONIZED",
@@ -168,14 +78,18 @@
         "ject"
       ],
       "significance": "S1",
-      "role": "T"
+      "role": "T",
+      "turn": 20,
+      "role_turn": 10
     },
     {
       "op": "IDENTITY",
       "signature": "Verb",
       "nodes": [],
       "significance": "S4",
-      "role": "K"
+      "role": "K",
+      "turn": 21,
+      "role_turn": 11
     },
     {
       "op": "CANONIZED",
@@ -186,14 +100,18 @@
         "b"
       ],
       "significance": "S1",
-      "role": "T"
+      "role": "T",
+      "turn": 22,
+      "role_turn": 11
     },
     {
       "op": "IDENTITY",
       "signature": "Object",
       "nodes": [],
       "significance": "S4",
-      "role": "K"
+      "role": "K",
+      "turn": 23,
+      "role_turn": 12
     },
     {
       "op": "CANONIZED",
@@ -203,11 +121,149 @@
         "ject"
       ],
       "significance": "S1",
-      "role": "T"
+      "role": "T",
+      "turn": 24,
+      "role_turn": 12
     },
     {
-      "notes": "MHALL==SVO is still a proposal at S2. K will try to rationalise an S1 Canon by promoting relationships that it believes will lead to an S1 understanding",
-      "role": "K"
+      "op": "IDENTITY",
+      "signature": "Mary",
+      "nodes": [],
+      "significance": "S4",
+      "notes": "Again, K doesn't recognise Mary",
+      "role": "K",
+      "turn": 4,
+      "role_turn": 2
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "Mary",
+      "nodes": [
+        "M",
+        "ary"
+      ],
+      "significance": "S1",
+      "notes": "T ratifies Mary",
+      "role": "T",
+      "turn": 5,
+      "role_turn": 3
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "had",
+      "nodes": [],
+      "significance": "S4",
+      "role": "K",
+      "turn": 6,
+      "role_turn": 3
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "had",
+      "nodes": [
+        "h",
+        "ad"
+      ],
+      "significance": "S1",
+      "role": "T",
+      "turn": 7,
+      "role_turn": 4
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "a",
+      "nodes": [],
+      "significance": "S4",
+      "role": "K",
+      "turn": 8,
+      "role_turn": 4
+    },
+    {
+      "op": "CONNOTED",
+      "signature": "a",
+      "nodes": [
+        "Det"
+      ],
+      "significance": "S2",
+      "role": "T",
+      "turn": 9,
+      "role_turn": 5
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "Det",
+      "nodes": [],
+      "significance": "S4",
+      "role": "K",
+      "turn": 10,
+      "role_turn": 5
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "Det",
+      "nodes": [
+        "D",
+        "et"
+      ],
+      "significance": "S1",
+      "notes": "T responds with an S1 canon this time because its nodes are all ratified identities",
+      "role": "T",
+      "turn": 11,
+      "role_turn": 6
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "little",
+      "nodes": [],
+      "significance": "S4",
+      "role": "K",
+      "turn": 12,
+      "role_turn": 6
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "little",
+      "nodes": [
+        "l",
+        "ittle"
+      ],
+      "significance": "S1",
+      "role": "T",
+      "turn": 13,
+      "role_turn": 7
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "lamb",
+      "nodes": [],
+      "significance": "S4",
+      "role": "K",
+      "turn": 14,
+      "role_turn": 7
+    },
+    {
+      "op": "CANONIZED",
+      "signature": "lamb",
+      "nodes": [
+        "l",
+        "amb"
+      ],
+      "significance": "S1",
+      "role": "T",
+      "turn": 15,
+      "role_turn": 8
+    },
+    {
+      "notes": "K having grounded MHALL moves on to SVO",
+      "role": "K",
+      "turn": 16,
+      "role_turn": 8
+    },
+    {
+      "notes": "MHALL and SVO are grounded but MHALL==SVO is still a proposal at S2. K will try to rationalise it by promoting signature-node relationships it believes will lead to an S1 countersignature",
+      "role": "K",
+      "turn": 25,
+      "role_turn": 13
     },
     {
       "op": "CONNOTED",
@@ -217,7 +273,9 @@
       ],
       "significance": "S3",
       "notes": "K tries to match the first known nodes of each side. Its a tentative S3",
-      "role": "K"
+      "role": "K",
+      "turn": 26,
+      "role_turn": 14
     },
     {
       "op": "UNDERSIGNED",
@@ -227,7 +285,9 @@
       ],
       "significance": "S1",
       "notes": "T ratifies by under-signing",
-      "role": "T"
+      "role": "T",
+      "turn": 27,
+      "role_turn": 13
     },
     {
       "op": "CONNOTED",
@@ -237,7 +297,9 @@
       ],
       "significance": "S3",
       "notes": "K tries next pair",
-      "role": "K"
+      "role": "K",
+      "turn": 28,
+      "role_turn": 15
     },
     {
       "op": "UNDERSIGNED",
@@ -247,7 +309,9 @@
       ],
       "significance": "S1",
       "notes": "T ratifies",
-      "role": "T"
+      "role": "T",
+      "turn": 29,
+      "role_turn": 14
     },
     {
       "op": "CANONIZED",
@@ -258,8 +322,10 @@
         "lamb"
       ],
       "significance": "S2",
-      "notes": "K synthesised ALL out of thin air, so it asks if this is even a thing",
-      "role": "K"
+      "notes": "K attempts to canonise ALL",
+      "role": "K",
+      "turn": 30,
+      "role_turn": 16
     },
     {
       "op": "CANONIZED",
@@ -270,15 +336,19 @@
         "lamb"
       ],
       "significance": "S2",
-      "notes": "T cant ratify because its nodes are compounds",
-      "role": "T"
+      "notes": "T accepts the canon but cant ratify yet because its nodes are compounds",
+      "role": "T",
+      "turn": 31,
+      "role_turn": 15
     },
     {
       "op": "IDENTITY",
       "signature": "a",
       "nodes": [],
       "significance": "S4",
-      "role": "K"
+      "role": "K",
+      "turn": 32,
+      "role_turn": 17
     },
     {
       "op": "CONNOTED",
@@ -288,11 +358,15 @@
       ],
       "significance": "S2",
       "notes": "Same response as before",
-      "role": "T"
+      "role": "T",
+      "turn": 33,
+      "role_turn": 16
     },
     {
       "notes": "K has grounded all the nodes it needs to construct an S1 response to the open S2 proposal",
-      "role": "K"
+      "role": "K",
+      "turn": 34,
+      "role_turn": 18
     },
     {
       "op": "COUNTERSIGNED",
@@ -303,8 +377,10 @@
       "significance": "S1",
       "notes": "This brings an end to the run",
       "role": "K",
+      "turn": 35,
+      "role_turn": 19,
       "close": true
     }
   ],
-  "peer": {}
+  "run": {}
 }

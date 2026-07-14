@@ -30,10 +30,9 @@ canonical easy path — structurally interesting enough to bootstrap this traine
 
 **D1 — The table is the validation oracle, not a script.** The synthesizer is
 "drop-in" in the precise sense that it satisfies the `Actor` protocol and can
-be passed wherever `TableTrainer` goes. It never reads the table to decide what
-to say; the runner validates every emitted turn against `decoded[cursor]` like
-any real actor (spec DDT-11, design decision D2 of
-`@plans/implement-dialogue-driven-training.md`). MHALL's hand-authored T-rows
+be passed wherever `TableTrainer` goes. The runner validates every emitted turn
+against `decoded[cursor]` like any real actor (spec DDT-11, design decision D2
+of `@plans/implement-dialogue-driven-training.md`). MHALL's hand-authored T-rows
 are deliberately what correct synthesis yields, so the run completes.
 _Rejected:_ turning validation off for a synthesizing trainer (defeats the
 check that most needs to run); making the T-rows vestigial.
@@ -41,8 +40,8 @@ check that most needs to run); making the T-rows vestigial.
 **D2 — The synthesizer is `dbg`-free.** This is a sub-goal: the function must
 drop into a **production** trainer that does not rely on development
 diagnostics. Every decision derives from `KLine.signature` + `KLine.nodes` +
-`signifier.make_signature` — the production `KSignifier` interface — and never
-reads `dbg`. _Rejected:_ reading `dbg.op` to distinguish canon from relation
+`signifier.make_signature` — the production `KSignifier` interface. _Rejected:
+reading `dbg.op` to distinguish canon from relation
 (use the structural Canon test, D5); reading `dbg.label` to bridge identities
 to canons (use signature equality, D6).
 
@@ -138,16 +137,13 @@ ratified at S1.)
 **R4 — Close (table-declared via ``close: n``; owned by the runner, not the trainer).** A
 script's dialogue is bookended: the trainer opens (R1 — primary at S2) and the
 trainee closes with the table-declared closing turn. The closing turn carries
-a ``close: n`` marker (the script it closes); the runner reads it. Previously
-the trainer detected the close itself (matching the trainee's S1 on the
-primary) and **withheld** — that recognition was duplicated across every
-trainer derivation. It now lives in one place: the runner, which owns the
-table cursor. On a close the runner routes the *next* turn with
-``incoming=None`` (an open), so the trainer opens the next script rather than
-replying to the close; the trainer never detects closes and never withholds.
-The former peer-mode echo race (the synthesiser re-emitted the primary at S1
-on the trainee's close, diverging in peer mode) is now contained by the
-runner's close-aware routing (and the peer runner's stop-on-close).
+a ``close: n`` marker (the script it closes); the runner reads it. Close
+detection lives in one place — the runner, which owns the table cursor — so the
+trainer holds no close logic. On a close the runner routes the *next* turn with
+``incoming=None`` (an open), so the trainer opens the next script. This also
+contains the peer-mode echo race (the synthesiser re-emitting the primary at S1
+on the trainee's close) via the runner's close-aware routing (and the peer
+runner's stop-on-close).
 Multi-script support follows from the same marker: ``close: 1`` then
 ``close: 2`` etc. name successive scripts. `synthesize` stays a pure function
 of ``(compiled, incoming)`` — opening is just ``incoming=None``.

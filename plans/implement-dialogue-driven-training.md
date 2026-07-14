@@ -113,8 +113,8 @@ actors rely on).
 **D2 — Both actors are validated against the table.** The runner checks every
 emitted response — trainer and trainee — against the authored table. A real
 trainer is expected to synthesise its training responses, and a real trainee
-its responses; both are validated the same way. The table-reading doubles cannot
-diverge (they read the table the runner validates against); the checks exist for
+its responses; both are validated the same way. The table-reading defaults
+cannot diverge (they read the table the runner validates against); the checks exist for
 the real actors. _Rejected:_ trainee-side-only validation (left the trainer
 unchecked, and a synthesising real trainer is exactly the case that most needs
 checking).

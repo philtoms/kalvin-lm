@@ -1,28 +1,30 @@
 r"""The rationalising engine — the pure-logic core of a rationalising trainee.
 
-Plan: ``@plans/implement-rationalising-trainee.md``.
 Spec seam: ``@specs/dialogue-driven-training.md`` §Actor (the trainee side).
 
 This module holds the rationalising **engine**: a stateful object that
 derives each turn from ``(incoming, state)`` and returns a ``KValue``. It knows
 nothing of ``RationaliseEvent``, roles, or event kinds — the actor wrapper
-(:class:`~training.dialogue.runner.RationalisingTrainee`) lives in the runner
-and wraps each emitted ``KValue`` in a ``RationaliseEvent``, mirroring how
+(:class:`~training.dialogue.actors.RationalisingTrainee`) lives in the actors
+module and wraps each emitted ``KValue`` in a ``RationaliseEvent``, mirroring how
 :func:`~training.dialogue.synthesize.synthesize` is the engine for
-:class:`~training.dialogue.runner.SynthesizingTrainer`.
+:class:`~training.dialogue.actors.SynthesizingTrainer`.
 
-The engine maintains a minimal model of what it has grounded and never reads
-the authored table or the compiled script. The table is only the validation
-oracle the runner checks every emitted turn against.
+The engine maintains a minimal model of what it has grounded. The runner
+checks every emitted turn against the table.
 
 Cogitation is a deliberate simplification of the real Kalvin's async
 ``expand()`` / ``propose_expansions()`` slow path — synchronous, deterministic,
 inline (plan D3, D5). Each :meth:`Rationaliser.rationalise` call applies the
 entry rule to the incoming query as bookkeeping, then emits a **batch** of
-``KValue``\ s from cogitation — an identity blast (zero or more S4 asks) or a
-single relationship emission (a relationship always terminates the batch and
-is never appended to identities). Returns an empty list when nothing is
-workable (plan D7, D12).
+``KValue``\ s from cogitation — an identity blast (zero or more S4 asks), a
+batch of S3 pairings (proposals for ratification), or the S1 countersignature
+(both directions of the reciprocal pair). A non-identity path always
+terminates the batch and is never appended to identities. Returns an empty
+list when nothing is workable (plan D7, D12).
+
+:meth:`rationalise` requires a real incoming ``KValue`` — cogitation runs only
+as the second phase of a turn, driven by an incoming query.
 """
 
 from __future__ import annotations
@@ -60,10 +62,9 @@ class Rationaliser:
 
     Returns a **batch** of ``KValue``\ s per :meth:`rationalise` call (or an
     empty list when nothing is workable) — an identity blast or a single
-    relationship emission. The :class:`~training.dialogue.runner.RationalisingTrainee`
-    actor wraps each emitted value in a ``RationaliseEvent``. Reads neither the
-    table nor the compiled script nor ``dbg``; constructs synthetic signatures
-    via ``signifier.make_signature`` when grouping requires it.
+    relationship emission. The :class:`~training.dialogue.actors.RationalisingTrainee`
+    actor wraps each emitted value in a ``RationaliseEvent``. Constructs synthetic
+    signatures via ``signifier.make_signature`` when grouping requires it.
     """
 
     def __init__(self, signifier: KSignifier) -> None:
@@ -73,24 +74,25 @@ class Rationaliser:
 
     # ── The turn ─────────────────────────────────────────────────────
 
-    def rationalise(self, incoming: KValue | None) -> list[KValue]:
+    def rationalise(self, incoming: KValue) -> list[KValue]:
         """Apply the entry rule to ``incoming``, then emit a batch.
 
-        Returns a list of emitted values: an identity blast (zero or more S4
-        identity asks), a single relationship emission (S2/S3/S1), or an empty
+        ``incoming`` is the trainer's value this turn. Returns a list of
+        emitted values: an identity blast (zero or more S4 identity asks), a
+        batch of S3 pairings (proposals for ratification), the S1
+        countersignature (both directions of the reciprocal pair), or an empty
         list when nothing is workable. Identities and relationships are never
-        mixed in one batch (a relationship always terminates the batch)."""
-        if incoming is not None:
-            self._process_query(incoming)
+        mixed in one batch (a relationship path always terminates the batch)."""
+        self._process_query(incoming)
         return self._cogitate()
 
     # ── Entry rule ────────────────────────────────────────────────────────
 
     def _process_query(self, incoming: KValue) -> None:
-        """Bookkeeping for an incoming query; never emits.
+        """Bookkeeping for an incoming query; emits nothing.
 
-        - **S4** (sentinel by value — ``classify`` never returns it): pop the
-          matching identity work-item (stalemate accepted).
+        - **S4** (sentinel by value): pop the matching identity work-item
+          (stalemate accepted).
         - **S1**: cleanup — ground the kline and recurse over what it unblocks.
         - **S2/S3**: elevate an elevatable relationship to S1 (grounding it via
           cleanup), else unpack it.
@@ -147,9 +149,9 @@ class Rationaliser:
         self._state.work_list.append(kline)
         for node in reversed(kline.nodes):
             if not self._recognised(node):
-                self._state.work_list.append(KLine(node, []))
+                self._state.work_list.append(KLine(node, [], kline.dbg))
         if not self._recognised(kline.signature, is_signature=True):
-            self._state.work_list.append(KLine(kline.signature, []))
+            self._state.work_list.append(KLine(kline.signature, [],kline.dbg))
 
     def _cleanup(self, kline: KLine) -> None:
         """Ground ``kline``, then repeatedly ground any work-list kline it unblocks."""
@@ -168,7 +170,7 @@ class Rationaliser:
         """Is ``kline`` eligible to ground by node-resolution?
 
         Only identities and canons — relationships ground by elevation on
-        re-receipt (``_elevatable``), never here.
+        re-receipt (``_elevatable``).
         """
         if is_identity(kline):
             return kline.signature in self._state.grounded
@@ -212,15 +214,35 @@ class Rationaliser:
             if is_identity(entry):
                 batch.append(self._emit_identity(idx, entry.signature))
                 continue
-            # First workable non-identity: a relationship terminates the batch.
-            if self._level1_eligible(entry):
-                if batch:
-                    return batch  # identities collected; relationship waits
-                return [self._emit_relationships(entry)]
+            if not batch:
+                # First workable non-identity dispatches by significance routing
+                # (@specs/dialogue-cogitation.md §Routing, COG-2):
+                #   S3 structure (1:1 relationship)    → countersignature (if countersignable)
+                #   S2 structure (multi-node misfit)    → misfit origination
+                # A single-node S3 relationship whose operand canons are not yet
+                # seen is S3-structure but not countersignable — skip it (it awaits
+                # elevation/cleanup).
+                if self._countersignable(entry):
+                    return self._emit_countersignature(entry)
+                if self._s2_eligible(entry):
+                    emitted = self._originate_s2(entry)
+                    if emitted is not None:
+                        return [emitted] 
         return batch
 
-    def _level1_eligible(self, entry: KLine) -> bool:
-        """Is ``entry`` a single-node relationship whose operands both have seen canons?"""
+    def _countersignable(self, entry: KLine) -> bool:
+        """Is ``entry`` a single-node relationship whose two operands have seen
+        canons, so K can pursue an S1 countersignature for it?
+
+        Countersignature precondition (scripts/dialogue-rationalisation-
+        behaviours.md §3a). A countersignature relates two canons: it requires a
+        single-node relationship ``{L:[R]}`` whose operands L and R each have a
+        seen canon (in grounded memory or the work-list) so their operands can
+        be paired. A single-node relationship whose operand canons are not yet
+        seen is S3-*structure* but not *countersignable* — cogitation skips it
+        (it awaits elevation/cleanup). Multi-node entries are not
+        countersignable.
+        """
         if is_identity(entry) or len(entry.nodes) != 1:
             return False
         return (
@@ -228,8 +250,22 @@ class Rationaliser:
             and self._find_canon_nodes(entry.nodes[0]) is not None
         )
 
+    def _s2_eligible(self, entry: KLine) -> bool:
+        """Is ``entry`` an S2 structure — a multi-node misfit routed to misfit
+        origination?
+
+        S2 path precondition (@specs/dialogue-cogitation.md
+        §Routing/§S2 boundaries, COG-2/COG-7). The S2 path originates substitutions onto an entry's own
+        nodes; it requires a **multi-node** misfit (a single-node relationship
+        is S3-structure, routed to — or awaiting — the S3 path). Identities and
+        canons do not route here.
+        """
+        if is_identity(entry) or len(entry.nodes) < 2:
+            return False
+        return not is_canon(entry, self._signifier)
+
     def _emit_identity(self, idx: int, signature: int) -> KValue:
-        """Level 0 — emit IDENTITY ``{signature: []}`` at S4 and pop the entry.
+        """S4 — emit IDENTITY ``{signature: []}`` at S4 and pop the entry.
 
         The ask is fire-and-forget: the identity is popped on emission so it
         cannot block cogitation under LIFO while its signature grounds async.
@@ -238,35 +274,76 @@ class Rationaliser:
         self._state.asked.add(signature)
         return KValue(KLine(signature, []), SIG_S4)
 
-    def _emit_relationships(self, entry: KLine) -> KValue:
-        """Level 1 — emit the next unresolved operand pair, or close at S1.
+    def _emit_countersignature(self, entry: KLine) -> list[KValue]:
+        """Establish the S1 countersignature for ``entry``, pairing first.
+
+        ``entry`` is ``{L:[R]}`` (a single-node relationship) whose operands L
+        and R are signatures with seen canons. The act is to **countersign the
+        canon pair** — relate the two canons at S1 — and it runs in two phases:
+
+        1. **Establish the S3 pairings** (:meth:`_emit_pairings`): pair the two
+           canons' operands left-to-right at group size 1, emitting every
+           unresolved pairing as a proposal for ratification. While any pairing
+           is unresolved, each call returns that batch and the countersignature
+           waits.
+        2. **Establish the S1 countersignature**: once every pairing is
+           ratified, remove ``entry`` from the work-list, ground the reciprocal
+           pair, and emit both directions at S1.
+
+        A COUNTERSIGNED state is bidirectional — it emits the reciprocal pair
+        ``{A:[B]}`` and ``{B:[A]}`` (CONTEXT.md, Structural State). The close
+        therefore grounds and emits both ``entry`` and its reciprocal
+        ``{make_signature(entry.nodes):[entry.signature]}`` (e.g. for
+        ``{MHALL:[SVO]}`` it also grounds and emits ``{SVO:[MHALL]}``), so that
+        ``is_countersigned`` re-recognises the pair at S1 on retrieval.
+        """
+        batch = self._emit_pairings(entry)
+        if batch:
+            return batch
+
+        # Phase 2 — every pairing ratified: establish the S1 countersignature.
+        # Ground and emit both directions of the reciprocal pair.
+        self._state.work_list.remove(entry)
+        self._ground(entry)
+        reciprocal_sig = self._signifier.make_signature(entry.nodes)
+        reciprocal = KLine(reciprocal_sig, [entry.signature])
+        self._ground(reciprocal)
+        return [KValue(entry, SIG_S1), KValue(reciprocal, SIG_S1)]
+
+    def _emit_pairings(self, entry: KLine) -> list[KValue]:
+        """Emit every unresolved S3 pairing for ``entry`` in one batch, or ``[]``
+        if all pairings are already ratified.
 
         ``entry`` is ``{L:[R]}`` whose operands L and R are signatures with seen
-        canons. K pairs the operands of the two canons left-to-right at group
-        size 1, grouping one side's residual into a single synthesised operand
-        when the other reaches a single node.
-
-        Each call emits the next unresolved pair: a 1:1 pair ``{lhs:[rhs]}`` is
-        CONNOTED at S3; a grouped residual is emitted as a canonical request
+        canons. Pair the two canons' operands left-to-right at group size 1,
+        grouping one side's residual into a single synthesised operand when the
+        other reaches a single node. A 1:1 pair ``{lhs:[rhs]}`` is CONNOTED at
+        S3; a grouped residual is emitted as a canonical request
         ``{make_signature(residual): residual}`` at S2 (K cannot assert a
         relationship to a signature it invented — it must first confirm it).
-        When every pair is resolved, K closes by emitting ``entry`` at S1
-        (COUNTERSIGNED) and removes it from the work-list.
+
+        Batching: emit **every** unresolved pairing in one batch rather than
+        round-tripping one per cogitation. The residual (when the plan has one)
+        is the final pairing and is a canon request at S2; it sits in the same
+        batch as the 1:1 proposals. Returns ``[]`` only when every pairing is
+        already ratified — the signal for :meth:`_emit_countersignature` to
+        proceed to the S1 reciprocal pair.
         """
         right = entry.nodes
-        assert len(right) == 1, "Level 1 expects a single-node relationship entry"
+        assert len(right) == 1, "S3 pairings expect a single-node relationship entry"
         left_nodes = self._find_canon_nodes(entry.signature)
         right_nodes = self._find_canon_nodes(right[0])
         if left_nodes is None or right_nodes is None:
             raise NotImplementedError(
-                "Level 1: an operand canon is missing; cannot relate."
+                "S3 pairings: an operand canon is missing; cannot relate."
             )
 
+        batch: list[KValue] = []
         for lhs_sig, rhs_node, residual in self._relationship_plan(left_nodes, right_nodes):
             if self._pair_resolved(lhs_sig, rhs_node, residual):
                 continue
             if residual:
-                # A synthesised lhs K was never taught: emit a canonical request
+                # A synthesised lhs K was untaught: emit a canonical request
                 # at S2, and mark it asked so unpack won't re-ask it as an identity.
                 synth_sig = self._signifier.make_signature(residual)
                 proposal_kline = KLine(synth_sig, residual)
@@ -275,14 +352,276 @@ class Rationaliser:
             else:
                 proposal_kline = KLine(lhs_sig, [rhs_node])
                 significance = SIG_S3
-            return KValue(proposal_kline, significance)
+            batch.append(KValue(proposal_kline, significance))
 
-        # All pairs resolved — close at S1.
-        self._state.work_list.remove(entry)
-        self._ground(entry)
-        return KValue(entry, SIG_S1)
+        # Every unresolved pairing collected in one batch (empty iff all were
+        # already ratified) — the signal for the countersignature to proceed.
+        return batch
 
-    # ── Level 1 helpers ───────────────────────────────────────────────────
+    # ── S2 path (misfit origination) — scripts/dialogue-rationalisation- ─
+    # ─ behaviours.md §4–§5. Rule 1 + rule 2 (graft) both landed. ──────
+
+    def _originate_s2(self, entry: KLine) -> KValue | None:
+        """S2 path — originate a misfit proposal by accumulated shaping.
+
+        Shape one proposal by processing candidates in preference order,
+        mutating one target as each fires (behaviours doc §4):
+
+        1. **Node-expansion** (rule 1): each node that is a grounded kline's
+           signature is replaced by that kline's nodes.
+        2. **Node-graft** (rule 2, with ``must_match``): each B3-admitted
+           candidate (shared nodes) resolves against the accumulated target;
+           if it fires, the target is coarsened to the resolved core and the
+           candidate's open nodes extend/contract/replace the target's open
+           slots (§5).
+
+        The accumulated target is emitted at S2. The entry stays in the
+        work-list (B1 — no self-close).
+        """
+        target = list(entry.nodes)
+        target = self._apply_node_expansions(target)
+        for candidate in self._s2_candidates(entry):
+            target = self._apply_node_graft(target, candidate)
+        # B4: if the shaped proposal is already grounded (an isomorphic kline
+        # exists in memory), drop it — K advances on the next cogitation
+        # (behaviours doc §3 B4, §6).
+        proposal = KLine(entry.signature, target)
+        if self._is_grounded(proposal):
+            return None
+        return KValue(proposal, SIG_S2)
+
+    def _is_grounded(self, kline: KLine) -> bool:
+        """Is an isomorphic kline (same signature and nodes) in grounded memory?"""
+        return any(
+            existing.nodes == kline.nodes
+            for existing in self._state.grounded.get(kline.signature, [])
+        )
+
+    def _apply_node_graft(self, target: list[int], candidate: KLine) -> list[int]:
+        """Rule 2 — graft ``candidate`` onto ``target`` if it fires.
+
+        Resolve ``target`` against ``candidate.nodes`` into a resolved core and
+        the target's open nodes (``E_open``); ``C_open`` = candidate's nodes not
+        in the core. The candidate fires iff ``must_match`` is empty OR the core
+        is non-empty (behaviours doc §4–§5). On firing, the new target is the
+        resolved core + ``C_open``: ``E_open`` empty & ``C_open`` non-empty
+        extends; ``E_open`` non-empty & ``C_open`` empty contracts; both
+        non-empty replaces; coarsening (resolved form replaces deeper form) is
+        cumulative. If the candidate does not fire, ``target`` is returned
+        unchanged.
+        """
+        core, e_open = self._resolve_target(target, list(candidate.nodes))
+        c_open = [n for n in candidate.nodes if n not in core]
+        # Fires iff must_match empty OR core non-empty. must_match here is the
+        # target itself (every node must be accounted for or be open); a node is
+        # open precisely when it did not resolve into the candidate. So the fire
+        # condition reduces to: core is non-empty OR target was empty to begin
+        # with. An empty core means the candidate shares/resolves-to nothing in
+        # target -> no foothold -> invention -> does not fire (B2).
+        if not core:
+            return target
+        # Graft result: resolved core + C_open (E_open dropped, replaced/filled).
+        return core + c_open
+
+    def _resolve_target(
+        self, target: list[int], candidate_nodes: list[int]
+    ) -> tuple[list[int], list[int]]:
+        """Resolve ``target`` against ``candidate_nodes`` into (core, open).
+
+        The **core** is the portion of ``target`` that resolves into the
+        candidate — directly (a target node is in ``candidate_nodes``) or via a
+        grounded kline whose nodes cover a subset of the unresolved target and
+        whose signature is in ``candidate_nodes``. The core carries the
+        *resolved* (coarsened) form: ``[did, have] -> had`` when ``had`` is in
+        the candidate. The **open** list is the target nodes that resolve to
+        neither (the slots a graft fills). Reuses the maximal-disjoint cover of
+        :meth:`_partition_and_resolve`; iterates to fixed point so resolved
+        signatures can form new coverable subsets (behaviours doc §5).
+        """
+        candidate_set = set(candidate_nodes)
+        core: list[int] = []
+        remaining = list(target)
+        while True:
+            direct = [n for n in remaining if n in candidate_set]
+            failed = [n for n in remaining if n not in candidate_set]
+            if not failed:
+                core.extend(direct)
+                return core, []
+            resolved = self._partition_and_resolve(failed)
+            # Of the resolved failed nodes, those whose resolution landed in
+            # candidate_set join the core; the rest stay unresolved (open or
+            # pending further resolution).
+            newly_matched = [n for n in resolved if n in candidate_set]
+            still_failed = [n for n in resolved if n not in candidate_set]
+            core.extend(direct)
+            core.extend(newly_matched)
+            if not newly_matched:
+                # No progress: still_failed are genuinely open (unresolvable).
+                return core, still_failed
+            remaining = still_failed
+
+    def _apply_node_expansions(self, target: list[int]) -> list[int]:
+        """Rule 1 — expand every node that is a grounded kline's signature.
+
+        For each node ``n`` in ``target``, if a grounded kline with signature
+        ``n`` and non-empty nodes exists, replace ``n`` with that kline's nodes
+        (the matched node is consumed; other nodes persist). Rule 1 sources its
+        candidates by signature-in-target-nodes — a separate scan from B3
+        (behaviours doc §4). Identities (empty nodes) carry no substitution.
+        Mutates by rebuilding; returns the new node list.
+        """
+        expanded: list[int] = []
+        for node in target:
+            sub = self._find_grounded_nodes(node)
+            expanded.extend(sub if sub is not None else [node])
+        return expanded
+
+    def _find_grounded_nodes(self, signature: int) -> list[int] | None:
+        """The nodes of any grounded kline under ``signature`` with non-empty
+        nodes, else None.
+
+        Rule 1's candidate source: a grounded kline whose signature is a node in
+        the target. Identities (empty nodes) return None — they carry no
+        decomposition to substitute. If multiple grounded klines exist under the
+        signature, the first (insertion order) wins.
+        """
+        for kline in self._state.grounded.get(signature, []):
+            if kline.nodes:
+                return list(kline.nodes)
+        return None
+
+    # ── S2 rule 2 precondition: must_match resolution (§5) ────────────────
+
+    def _resolve_must_match(
+        self, must_match: list[int], candidate_nodes: list[int]
+    ) -> tuple[list[int], bool]:
+        """Resolve ``must_match`` against a graft candidate's nodes to fixed point.
+
+        Returns ``(resolved_must_match, fully_matched)``. A node is directly
+        matched if it appears in ``candidate_nodes``; the failed set resolves
+        through grounded kline: partition it into maximally-coverable subsets,
+        each a grounded klines's nodes exactly, and replace each subset with that
+        klines's signature (``[did, have] -> had``). Re-check the shallower
+        ``must_match`` — resolved signatures may form new coverable subsets —
+        and recurse until either every node is matched (graft proceeds) or a
+        pass produces no change (candidate rejected). Behaviours doc §5.
+        """
+        current = list(must_match)
+        while True:
+            failed = [n for n in current if n not in candidate_nodes]
+            if not failed:
+                return current, True
+            resolved = self._partition_and_resolve(failed)
+            if resolved == failed:
+                # No kline covered any failed node this pass: stuck. Any
+                # remaining failed node means the candidate cannot account for
+                # the accumulated structure.
+                return current, False
+            # Rebuild must_match: keep matched nodes, replace failed with their
+            # resolution (resolved signatures + uncoverable leftovers).
+            current = [n for n in current if n in candidate_nodes] + resolved
+
+    def _partition_and_resolve(self, failed: list[int]) -> list[int]:
+        """Maximally cover ``failed`` with disjoint grounded-kline node-sets.
+
+        Returns the resolved list: each coverable subset replaced by its
+        grounded kline's signature, plus any uncoverable leftovers. Greedy on
+        node count is insufficient (a larger kline may block two smaller ones
+        that together cover more), so this searches for a maximal-disjoint
+        cover. The grounded set per signature is small, so the search is
+        tractable.
+
+        A grounded kline is a candidate cover-set iff its nodes are a subset of
+        ``failed`` (every node it would resolve is actually outstanding).
+        """
+        # Collect cover-set candidates: (kline_nodes, kline_signature), deduped.
+        # A grounded kline is a candidate cover-set iff its nodes are a subset
+        # of `failed`.
+        covers: list[tuple[tuple[int, ...], int]] = []
+        seen_sigs: set[int] = set()
+        failed_set = set(failed)
+        for bucket in self._state.grounded.values():
+            for kline in bucket:
+                if kline.signature in seen_sigs:
+                    continue
+                if not kline.nodes:
+                    continue
+                if set(kline.nodes).issubset(failed_set):
+                    covers.append((tuple(kline.nodes), kline.signature))
+                    seen_sigs.add(kline.signature)
+        # Search for a maximal disjoint cover (by node count covered).
+        best = self._best_disjoint_cover(covers, failed_set)
+        if not best:
+            return list(failed)
+        covered: set[int] = set()
+        resolved: list[int] = []
+        for canon_nodes, canon_sig in best:
+            resolved.append(canon_sig)
+            covered.update(canon_nodes)
+        # Append any failed nodes no cover-set accounted for.
+        resolved.extend(n for n in failed if n not in covered)
+        return resolved
+
+    def _best_disjoint_cover(
+        self, covers: list[tuple[tuple[int, ...], int]], failed_set: set[int]
+    ) -> list[tuple[tuple[int, ...], int]]:
+        """The maximal-disjoint subset of ``covers`` (by total nodes covered).
+
+        Recursive search: covers are disjoint when their node-sets don't
+        overlap. Returns the selection covering the most failed nodes. With
+        small cover sets this is tractable; the combinatorial cost is accepted
+        for completeness (behaviours doc §5).
+        """
+        best: list[tuple[tuple[int, ...], int]] = []
+        best_covered = 0
+
+        def _recurse(
+            idx: int,
+            chosen: list[tuple[tuple[int, ...], int]],
+            used: set[int],
+            covered: int,
+        ) -> None:
+            nonlocal best, best_covered
+            if covered > best_covered:
+                best_covered = covered
+                best = list(chosen)
+            for i in range(idx, len(covers)):
+                kline_nodes, _ = covers[i]
+                if used & set(kline_nodes):
+                    continue  # overlaps an already-chosen cover
+                chosen.append(covers[i])
+                _recurse(i + 1, chosen, used | set(kline_nodes), covered + len(kline_nodes))
+                chosen.pop()
+
+        _recurse(0, [], set(), 0)
+        return best
+
+    def _s2_candidates(self, entry: KLine) -> list[KLine]:
+        """Grounded klines sharing at least one node value with ``entry.nodes``.
+
+        COG-9 candidate admission (@specs/dialogue-cogitation.md
+        §S2 boundaries). Admission is keyed on the entry's *nodes* (not its head
+        signature) — this avoids the over-admission single-bit NLP type words
+        would cause under ``signifies``; the intended commonality is a shared
+        node value (both klines having a ``Mary`` node). Identities carry no
+        nodes, so they do not admit. The entry itself is excluded. Order follows
+        the grounded dict's iteration order (insertion order); later steps shape
+        one proposal from the admitted set, so order only matters for
+        tie-breaking.
+        """
+        entry_nodes = set(entry.nodes)
+        candidates: list[KLine] = []
+        for bucket in self._state.grounded.values():
+            for kline in bucket:
+                if kline is entry:
+                    continue
+                if not kline.nodes:
+                    continue  # identities carry no nodes
+                if entry_nodes & set(kline.nodes):
+                    candidates.append(kline)
+        return candidates
+
+    # ── S3 helpers ────────────────────────────────────────────────────────
 
     def _find_canon_nodes(self, signature: int) -> list[int] | None:
         """The nodes of ``signature``'s canon, searching grounded memory and the work-list.

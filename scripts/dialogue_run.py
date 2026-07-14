@@ -1,37 +1,35 @@
 """Run a dialogue end-to-end through the table-reading trainer and trainee.
 
 Loads a dialogue table, decodes it, and drives it to completion through the
-sink-shaped :class:`PeerRunner`, which bridges the actors' emissions onto a
+sink-shaped :class:`Runner`, which bridges the actors' emissions onto a
 :class:`MessageBus` (coverage is order-agnostic on middle entries — the natural
-fit for real actors). Prints a PASS/FAIL summary; with ``--verbose`` it traces
-the exchange, showing each validated entry in its scripted (declarative
-table-row) form.
+fit for real actors). 
 
 ``--rationalise`` substitutes a :class:`RationalisingTrainee` (a real, stateful,
 rationalising trainee) for the default ``TableTrainee``, and ``--synthesize``
 substitutes a :class:`SynthesizingTrainer` (a real trainer that derives each
 turn from the compiled script) for the default ``TableTrainer``. The two flags
 are orthogonal: passing both runs the two real actors against the same golden
-master. Note real actors do not reproduce the table exactly, so running them
-typically needs ``--on-divergence accept`` (else off-table emissions raise
-``PeerDivergence``).
+master. 
 
 The runner is bus-driven: it owns a :class:`MessageBus`, builds a bus-wired
-:class:`EventSink` per actor, and runs the bus until the closing is seen or the
-idle timeout fires.
+:class:`EventSink` per actor, and runs the bus until a terminal condition:
+the close content is seen, the coverage set is exhausted, or both actors pass
+in turn. The runner tracks coverage and immediate divergence, and reports the 
+**displacement** (uncovered coverage rows). 
+Every ``accept`` yields at least one proposal (``burst >=1``): an actor with 
+nothing substantive to say publishes a PASS, which the runner intercepts before 
+matching.
 
 Usage::
 
     python scripts/dialogue_run.py                             # default dialogue
     python scripts/dialogue_run.py scripts/dialogue-mhall.json # explicit path
-    python scripts/dialogue_run.py --verbose                   # scripted-form trace
     python scripts/dialogue_run.py --rationalise               # RationalisingTrainee
     python scripts/dialogue_run.py --synthesize                # SynthesizingTrainer
     python scripts/dialogue_run.py --synthesize --rationalise  # both real actors
-    python scripts/dialogue_run.py --on-divergence accept      # accept off-table emissions
 
-Exit code is 0 on a completing run (closing seen), 1 on an actor divergence
-or incomplete run.
+Exit code is 1 only on an immediate divergence; 0 otherwise. 
 """
 
 from __future__ import annotations
@@ -50,15 +48,15 @@ from kalvin.nlp_tokenizer import NLPTokenizer  # noqa: E402
 from kalvin.signifier import NLPSignifier  # noqa: E402
 from ks.compiler import compile_source  # noqa: E402
 from training.dialogue import (  # noqa: E402
-    PeerDivergence,
+    Divergence,
     TableTrainee,
     TableTrainer,
     decode,
     load_table,
-    run_peer,
+    run,
 )
 from training.dialogue.decoder import primaries_from_source  # noqa: E402
-from training.dialogue.runner import (  # noqa: E402
+from training.dialogue.actors import (  # noqa: E402
     RationalisingTrainee,
     SynthesizingTrainer,
 )
@@ -71,14 +69,6 @@ _SIG_TO_BAND = {
 }
 
 DEFAULT_DIALOGUE = "scripts/dialogue-mhall.json"
-
-
-def _label_of(kv) -> str:
-    """Best-effort symbolic label for a KValue's kline (for trace output)."""
-    dbg = kv.kline.dbg
-    if dbg is None:
-        return f"sig=0x{kv.kline.signature:x}"
-    return dbg.label or dbg.decoded or f"sig=0x{kv.kline.signature:x}"
 
 
 def _sig_to_label(table, *, tokenizer, signifier) -> dict[int, str]:
@@ -124,19 +114,24 @@ def _render_scripted(
     node_labels = [
         sig_to_label.get(n) or f"0x{n:x}" for n in kvalue.kline.nodes
     ]
-    nodes = "(" + ", ".join(node_labels) + ")" if node_labels else "()"
+    nodes = "[" + ", ".join(node_labels) + "]" if node_labels else "[]"
     band = _SIG_TO_BAND.get(kvalue.significance, "?")
     close_marker = " close" if close else ""
-    return f"{role} {op:13} {sig_label}{nodes} {band}{close_marker}"
+    return f"{role} {op:13} {sig_label}:{nodes} {band}{close_marker}"
 
 
 def _scripted_form_event(event, sig_to_label: dict[int, str]) -> str:
     """Scripted form of an emission (arrival-ordered).
 
-    A peer event carries the emitter's ``role`` and its ``proposal`` KValue but
+    An event carries the emitter's ``role`` and its ``proposal`` KValue but
     not the table's ``op``; the proposal's ``dbg.op`` (the structural state the
-    kline was built with) stands in, falling back to ``?`` when absent.
+    kline was built with) stands in, falling back to ``?`` when absent. A PASS
+    (the no-content proposal, DDT-22) renders as ``<role> PASS``.
     """
+    from training.dialogue.runner import is_pass
+
+    if is_pass(event):
+        return f"{event.role or '?'} PASS"
     op = event.proposal.kline.dbg.op if event.proposal.kline.dbg else "?"
     return _render_scripted(event.role or "?", op, event.proposal, sig_to_label)
 
@@ -153,7 +148,7 @@ def _render_trace_entry(idx: int, scripted: str, record: dict | None) -> str:
     return line
 
 
-def _peer_trace(
+def _trace(
     events: list,
     decoded: list,
     sig_to_label: dict[int, str],
@@ -164,8 +159,7 @@ def _peer_trace(
     line via :func:`_scripted_form_event`, and — when the emission matches a
     decoded turn's content key — the table's JSON record for that turn is shown
     beneath it (the verbatim row the author wrote). An emission with no
-    matching decoded turn (e.g. an off-table emission under
-    ``on_divergence="accept"``) shows no record.
+    matching decoded turn shows no record.
     """
     # Index decoded turns by content key so each event can be associated with
     # its source table row (content identity is role + kline + significance —
@@ -194,17 +188,18 @@ def _peer_trace(
         lines.append(
             _render_trace_entry(i, _scripted_form_event(ev, sig_to_label), record)
         )
-    # Unreached rows: table content whose key never appeared in an emission
-    # (the run stalled or a real actor never produced it). Surface them so the
-    # full table is visible. The opening and closing are positional in peer
-    # mode (consumed/terminal, not coverage), so they are never "unreached".
+    # Displacement: coverage rows whose key never appeared in an emission
+    # (the runner's ``uncovered`` — how far the realized dialogue fell short
+    # of the authored whole-exchange coverage). The close is the ``close:true``
+    # turn or the last row; it is terminal, not coverage, so it is never
+    # "displaced".
+    close_idx = next((i for i, t in enumerate(decoded) if t.close), len(decoded) - 1)
     unreached = [
-        t for t in decoded[1:-1]
-        if turn_content_key(t) not in emitted_keys
-        and turn_content_key(t) != turn_content_key(decoded[0])
+        t for i, t in enumerate(decoded)
+        if i != close_idx and turn_content_key(t) not in emitted_keys
     ]
     if unreached:
-        lines.append("  --- unreached (run incomplete) ---")
+        lines.append("  --- displacement (uncovered) ---")
         idx = len(events)
         for turn in unreached:
             op = turn.op if turn.op else "?"
@@ -213,6 +208,46 @@ def _peer_trace(
             )
             lines.append(_render_trace_entry(idx, scripted, turn.record))
             idx += 1
+    return "\n".join(lines)
+
+
+def _render_divergence(exc: Divergence, sig_to_label: dict[int, str]) -> str:
+    """Human-readable divergence report.
+
+    The raw :class:`Divergence` carries signatures as hex and a bare count of
+    uncovered rows — opaque without the compiled script's label map. This
+    inverts the diverging emission, the last healthy coverage match, and the
+    still-uncovered same-role rows into their scripted (table-row) form, so an
+    author can read what the actor said versus what it was still expected to
+    say. Two divergence reasons are distinguished: ``exhausted`` (the content
+    is in the table but every authored copy was already consumed — duplicate-
+    key exhaustion) and ``unmatched`` (the content matches no row). An
+    ``unconsumed`` entry built by the runner from a content key has no
+    ``record`` (it is a placeholder), so only its scripted form is shown.
+    """
+    emitted_scripted = _render_scripted(exc.role, "emit", exc.emitted, sig_to_label)
+    if exc.reason == "exhausted":
+        verdict = "which exhausts its authored coverage budget"
+    else:
+        verdict = "which matches no closing or middle row"
+    header = f"FAIL — {exc.role} divergence: emitted {emitted_scripted}, {verdict}."
+    lines = [header]
+    if exc.last_coverage_event is not None:
+        last = exc.last_coverage_event
+        last_role = last.role or "?"
+        last_scripted = _render_scripted(
+            last_role, "cover", last.proposal, sig_to_label
+        )
+        lines.append(f"  Last healthy coverage match: {last_scripted}")
+    if not exc.unconsumed:
+        lines.append("  (no same-role rows remained uncovered.)")
+    else:
+        lines.append(f"  Still-uncovered {exc.role} rows at divergence:")
+        for turn in exc.unconsumed:
+            op = turn.op if turn.op else "?"
+            lines.append(
+                "    " + _render_scripted(turn.role, op, turn.value, sig_to_label)
+            )
     return "\n".join(lines)
 
 
@@ -225,11 +260,6 @@ def main(argv: list[str] | None = None) -> int:
         nargs="?",
         default=DEFAULT_DIALOGUE,
         help=f"Path to a dialogue JSON (default: {DEFAULT_DIALOGUE})",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Print each validated entry in its scripted (table-row) form.",
     )
     parser.add_argument(
         "--rationalise",
@@ -249,15 +279,6 @@ def main(argv: list[str] | None = None) -> int:
             "Orthogonal to --rationalise."
         ),
     )
-    parser.add_argument(
-        "--on-divergence",
-        choices=("fail", "accept"),
-        default=None,
-        help=(
-            "Divergence policy (default: fail, or the table's "
-            "peer.on_divergence when it declares one)."
-        ),
-    )
     args = parser.parse_args(argv)
 
     dialogue_path = args.dialogue
@@ -266,17 +287,11 @@ def main(argv: list[str] | None = None) -> int:
 
     table = load_table(json.loads(Path(dialogue_path).read_text()))
     decoded = decode(table, tokenizer=tok, signifier=sigf)
-    # The scripted-form trace needs the compiled script's signature→label map;
-    # build it once when --verbose is set.
-    sig_to_label = (
-        _sig_to_label(table, tokenizer=tok, signifier=sigf) if args.verbose else {}
-    )
+    # The compiled script's signature→label map.
+    sig_to_label = _sig_to_label(table, tokenizer=tok, signifier=sigf)
 
-    # The divergence policy is ``--on-divergence`` when given, else the table's
-    # declared ``peer.on_divergence``, else ``fail``.
-    on_divergence = args.on_divergence
-    if on_divergence is None:
-        on_divergence = table.peer.on_divergence if table.is_peer else "fail"
+    # Always on
+    on_divergence = "fail"
 
     # The --synthesize/--rationalise flags substitute real actors. They are
     # orthogonal: passing both runs the two real actors against the same golden
@@ -300,36 +315,29 @@ def main(argv: list[str] | None = None) -> int:
         else (lambda sink: TableTrainee(decoded, sink=sink))
     )
     try:
-        runner = run_peer(
+        runner = run(
             decoded,
             trainer_factory,
             trainee_factory,
             on_divergence=on_divergence,
         )
         res = runner.run()
-    except PeerDivergence as exc:
-        print(
-            f"FAIL — {exc.role} divergence: emitted {_label_of(exc.emitted)} "
-            f"(sig={exc.emitted.significance:#x}) matches no closing or "
-            f"middle content ({len(exc.unconsumed)} uncovered same-role).",
-            file=sys.stderr,
-        )
+    except Divergence as exc:
+        print(_render_divergence(exc, sig_to_label), file=sys.stderr)
         return 1
+
     print(
-        f"Dialogue session: {dialogue_path}\n"
-        f"  on divergence       : {on_divergence}\n"
-        f"  events received     : {len(res.events)}\n"
-        f"  complete            : {res.complete}\n"
-        f"  covered (middle)    : {res.covered}\n"
-        f"  unmatched emissions : {len(res.unmatched)}\n"
-        f"  uncovered rows      : {len(res.uncovered)}"
+        "Exchange (arrival order):\n"
+        + _trace(res.events, decoded, sig_to_label)
     )
-    if args.verbose:
-        print(
-            "\nExchange (arrival order):\n"
-            + _peer_trace(res.events, decoded, sig_to_label)
-        )
-    return 0 if res.complete else 1
+    print(
+        f"\nDialogue session: {dialogue_path}\n"
+        f"  events received     : {len(res.events)}\n"
+        # f"  unmatched emissions : {len(res.unmatched)}\n"
+        f"  uncovered (displacement): {len(res.uncovered)}"
+    )
+    # Reaching here means no immediate divergence was raised. 
+    return 0
 
 
 if __name__ == "__main__":

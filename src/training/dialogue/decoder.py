@@ -1,10 +1,9 @@
 """Single-stage dialogue-table decoder (spec ``@specs/dialogue-driven-training.md`` §Decoder).
 
-This is Phase 1 of the plan. The decoder is a **pre-loop configuration stage**:
-``decode(table)`` turns a :class:`DialogueTable` into a flat ordered list of
-:class:`DecodedTurn`, resolving every symbolic label against ``script`` (the
-single source of truth for kline structure). The training loop (Phases 2–3)
-receives only the decoded list and never touches ``script`` or the symbol map.
+The decoder is a **pre-loop configuration stage**: ``decode(table)`` turns a
+:class:`DialogueTable` into a flat ordered list of :class:`DecodedTurn`,
+resolving every symbolic label against ``script`` (the single source of truth
+for kline structure). The training loop receives the decoded list.
 
 Spec mapping
 ------------
@@ -50,9 +49,9 @@ BAND_TO_SIG: dict[str, int] = {
 
 Role = Literal["T", "K"]  # a turn's role: trainer (T) or trainee (K)
 
-# The peer runner's divergence policy (spec ``@specs/peer-dialogue.md``
-# §Matching). Lives on :class:`PeerConfig`, carried on the table's optional
-# ``peer`` section.
+# The runner's divergence policy (spec ``@specs/dialogue-runner.md``
+# §Matching). Lives on :class:`RunConfig`, carried on the table's optional
+# ``run`` section.
 OnDivergence = Literal["fail", "accept"]
 
 # The table's closed op vocabulary (spec §Dialogue Table). An unknown op is
@@ -106,14 +105,14 @@ class Turn:
 
 
 @dataclass(frozen=True)
-class PeerConfig:
-    """Peer-runner configuration (spec ``@specs/peer-dialogue.md`` §The Table).
+class RunConfig:
+    """Runner configuration (spec ``@specs/dialogue-runner.md`` §The Table).
 
-    Carried on a ``DialogueTable``'s optional ``peer`` section. All peer
-    operations and modifiers live in this one block so future peer knobs extend
-    it without touching the rest of the table.
+    Carried on a ``DialogueTable``'s optional ``run`` section. All run
+    modifiers live in this one block so future run knobs extend it without
+    touching the rest of the table.
 
-    - ``on_divergence`` — the peer runner's divergence policy (default
+    - ``on_divergence`` — the runner's divergence policy (default
       ``"fail"``).
     """
 
@@ -128,31 +127,30 @@ class DialogueTable:
     signatures, atom values, subword composition). ``turns`` is the exact T/K
     exchange — prescriptive, not predictive.
 
-    ``peer`` carries the peer-runner modifiers (spec
-    ``@specs/peer-dialogue.md`` §The Table): ``None`` (default, no ``peer``
-    section) means the defaults apply; a :class:`PeerConfig` overrides them.
-    The section's presence is **not** a regime selector — peer mode is the only
-    run regime — it is purely the modifiers container. The runner consumes
-    :class:`DecodedTurn`s, not the raw table.
+    ``run_config`` carries the runner modifiers (spec
+    ``@specs/dialogue-runner.md`` §The Table): ``None`` (default, no ``run``
+    section) means the defaults apply; a :class:`RunConfig` overrides them.
+    The section is purely the modifiers container (dialogue mode is the only
+    run regime). The runner consumes :class:`DecodedTurn`s.
     """
 
     script: str
     turns: tuple[Turn, ...]
-    peer: PeerConfig | None = None
+    run_config: RunConfig | None = None
 
     @property
-    def is_peer(self) -> bool:
-        """True when this table carries a ``peer`` section (peer modifiers present)."""
-        return self.peer is not None
+    def has_run_config(self) -> bool:
+        """True when this table carries a ``run`` section (run modifiers present)."""
+        return self.run_config is not None
 
 
 @dataclass(frozen=True)
 class DecodedTurn:
     """A turn resolved to a submittable structure (spec §Decoded Turn).
 
-    ``role`` and ``op`` are carried alongside the KValue and **never folded
-    into it** (DDT-3): ``op`` is the structural state; ``significance`` (on the
-    KValue) is the dialogic stance. They are independent axes.
+    ``role`` and ``op`` are carried alongside the KValue as independent axes
+    (DDT-3): ``op`` is the structural state; ``significance`` (on the KValue)
+    is the dialogic stance.
 
     ``close`` is carried through from :class:`Turn.close`: when ``True``, this
     turn is a script close (the table's explicit boundary marker). The runner
@@ -166,16 +164,11 @@ class DecodedTurn:
     value: KValue
     close: bool = False  # True when this turn closes a script (a boundary marker)
     # The raw JSON record this decoded turn was loaded from (``None`` for
-    # turns built synthetically, e.g. test fixtures or peer-runner placeholders
+    # turns built synthetically, e.g. test fixtures or runner placeholders
     # reconstructed from a content key). Carried for diagnostics so a trace can
     # show the table row verbatim alongside its decoded form.
     record: dict | None = None
 
-
-# backwards-compat alias for the documented `DECODEDTurn` spelling used in the
-# spec text ("a flat ordered list of `DecodedTurn`"). Both names refer to the
-# same class.
-DECODEDTurn = DecodedTurn
 
 
 # ── Symbol resolution against compiled script ─────────────────────────────
@@ -192,8 +185,8 @@ class _ResolvedScript:
       Det canon signature).
     - ``relation_by_label`` — the compiled relation (COUNTERSIGNED/CONNOTED/
       UNDERSIGNED) per label, so a constructed-relation turn carries the
-      relation's structural ``dbg.op`` (e.g. ``COUNTERSIGNED``), not the canon's
-      (``CANONIZED``) when the signature label names both.
+      relation's structural ``dbg.op`` (e.g. ``COUNTERSIGNED``), since the
+      signature label may name both the relation and the canon.
     - ``labels`` — every resolvable label (a compound/atom ``dbg.label`` or a
       subword atom ``dbg.decoded``), mapped to its compiled KLine. Used to
       resolve atom signatures (IDENTITY) and as the label fallback.
@@ -338,10 +331,9 @@ def _resolve_kline(
     Three branches per spec §Decoder step 1. **The decoder is a resolver, not
     a gatekeeper**: it builds the kline the turn declares — the declared
     ``signature`` verbatim, the ``nodes`` resolved to their canonical
-    signatures — and never second-guesses whether the signature "matches" the
-    nodes. The script author is the golden master; an author may declare a
+    signatures. The script author is the golden master; an author may declare a
     signature that differs from the canon its nodes retrieve (a deliberate
-    misfit — see ``scripts/dialogue-rationalisation-behaviours.md``).
+    misfit — see ``@specs/dialogue-cogitation.md``).
 
     - **CANONIZED** — resolve each node label to its canonical signature
       (canon-preferred, atom fallback) and build ``KLine(signature, nodes)``
@@ -381,7 +373,7 @@ def _resolve_kline(
         # both a canon and its atoms (e.g. ``Det`` names the Det canon AND the
         # atoms D, et, which all carry dbg.label=='Det'); the atoms are compiled
         # before the canon, so a bare ``labels[label]`` lookup would resolve
-        # to the first atom rather than the concept. An IDENTITY turn names the
+        # rather than the concept. An IDENTITY turn names the
         # *concept* (e.g. K asking "what is Det?" means Det the canon), so the
         # canon signature is correct; a pure-atom label (no canon) falls back
         # to the label index.
@@ -433,7 +425,7 @@ def decode(
     ``notes``. Annotation-only turns are dropped (DDT-28).
 
     This is a configuration-time function: call once, hand the result to the
-    training loop. The loop never touches ``script`` again.
+    training loop.
     """
     _entries, resolved = _resolve_script(
         table.script, tokenizer=tokenizer, signifier=signifier
@@ -471,11 +463,11 @@ def decode(
     # of the exchange, but the per-turn shape check happens here alongside the
     # other decoded-list invariants).
     _validate_close(out)
-    # Peer-mode invariants are checked on the decoded list (spec
-    # @specs/peer-dialogue.md §Invariants). They require symbol resolution to
+    # Dialogue-mode invariants are checked on the decoded list (spec
+    # @specs/dialogue-runner.md §Invariants). They require symbol resolution to
     # have run, so they live here, not in the loader.
-    if table.is_peer:
-        _validate_peer(out)
+    if table.has_run_config:
+        _validate_run(out)
     return out
 
 
@@ -519,17 +511,17 @@ def _turn_from_dict(raw: dict) -> Turn:
     )
 
 
-# ── Peer-run decode-time validations (spec @specs/peer-dialogue.md §Invariants) ─
+# ── Dialogue-run decode-time validations (spec @specs/dialogue-runner.md §Invariants) ─
 
 
 def turn_content_key(turn: DecodedTurn) -> tuple[str, int, tuple[int, ...], int]:
-    """The content identity of a decoded turn (spec @specs/peer-dialogue.md
+    """The content identity of a decoded turn (spec @specs/dialogue-runner.md
     §Matching): ``(role, kline_signature, kline_nodes_tuple, significance)``.
 
-    Peer matching keys on role + KLine + significance. The KLine is carried by
+    Content matching keys on role + KLine + significance. The KLine is carried by
     its signature and nodes tuple (the two fields that define KLine equality,
     ``@specs/kline.md``). This helper exists because :class:`KValue.__eq__` is
-    structural-only and ignores significance (``src/kalvin/kvalue.py``), so peer
+    structural-only and ignores significance (``src/kalvin/kvalue.py``), so
     matching cannot use ``KValue`` equality directly — significance must be
     compared explicitly alongside the kline.
     """
@@ -549,64 +541,58 @@ def _validate_close(decoded: list[DecodedTurn]) -> None:
     Closing is a runner concern (the runner owns the table cursor and reads
     the marker as the script boundary); it is not tied to a role.
 
-    Tables with no ``close`` markers are valid (single-script, backward
-    compatible): the runner ends at the last row and no script boundary fires.
+    Tables with no ``close`` markers are valid (single-script): the runner
+    ends at the last row and no script boundary fires.
     """
-    # Presence-only: a `close: true` is well-formed on any row. No role check —
-    # the runner, not the decoder, decides how a close routes.
+    # Presence-only: a `close: true` is well-formed on any row. The runner
+    # decides how a close routes.
     return
 
 
-def _validate_peer(decoded: list[DecodedTurn]) -> None:
-    """Validate the peer-mode invariants (spec @specs/peer-dialogue.md §Invariants).
+def _validate_run(decoded: list[DecodedTurn]) -> None:
+    """Validate the dialogue-mode invariants.
 
-    - The opening (``decoded[0]``) is a trainer (``T``) row.
-    - The closing (``decoded[-1]``) is content-distinct from the opening **and**
-      from every middle row: its ``(role, kline, significance)`` content key
-      appears exactly once in the table. A closing that duplicates the opening
-      would make coverage degenerate (the opening satisfies it); a closing that
-      duplicates a middle row would make the positional "consumed last"
-      semantics ambiguous (which occurrence is the closing?).
+    A table is de-positional: it has a **coverage set** (every turn) and one
+    **close** — the ``close:true`` turn if any, else the last row — which any
+    agent may emit at any time to end the run. There is no positional opening
+    pin.
+
+    The single invariant: the close content must be **unique** — its
+    ``(role, kline, significance)`` key appears exactly once in the table. A
+    close whose content also appears as a coverage row would be ambiguous (an
+    emission of that content could be coverage or the close), so it is a
+    malformed table.
     """
     if len(decoded) < 2:
         raise DecodeError(
-            "peer-mode table needs at least an opening and a closing turn"
+            "dialogue-mode table needs at least two turns (a coverage set and a close)"
         )
-    if decoded[0].role != "T":
+    close_idx = next((i for i, t in enumerate(decoded) if t.close), len(decoded) - 1)
+    close_key = turn_content_key(decoded[close_idx])
+    other_keys = [turn_content_key(t) for i, t in enumerate(decoded) if i != close_idx]
+    if close_key in other_keys:
         raise DecodeError(
-            f"peer-mode opening must be a trainer (T) row, got role {decoded[0].role!r}"
-        )
-    closing_key = turn_content_key(decoded[-1])
-    middle_keys = {turn_content_key(t) for t in decoded[1:-1]}
-    opening_key = turn_content_key(decoded[0])
-    if closing_key == opening_key:
-        raise DecodeError(
-            "peer-mode opening and closing are content-equal "
-            "(same role, kline, significance) — malformed table"
-        )
-    if closing_key in middle_keys:
-        raise DecodeError(
-            "peer-mode closing content also appears as a middle row "
-            "— the closing must be a unique terminal content"
+            "dialogue-mode close content also appears as a coverage row "
+            "— the close must be a unique content"
         )
 
 
-def _peer_config_from_dict(raw: dict) -> PeerConfig:
-    """Build a :class:`PeerConfig` from a raw ``peer`` section dict.
+def _run_config_from_dict(raw: dict) -> RunConfig:
+    """Build a :class:`RunConfig` from a raw ``run`` section dict.
 
     Only the known modifier ``on_divergence`` (default ``"fail"``) is read; an
-    unknown key is a decode error so future peer knobs are added deliberately,
+    unknown key is a decode error so future run knobs are added deliberately,
     not silently ignored.
     """
     on_divergence = raw.get("on_divergence", "fail")
     if on_divergence not in ("fail", "accept"):
         raise DecodeError(
-            f"peer.on_divergence must be 'fail' or 'accept', got {on_divergence!r}"
+            f"run.on_divergence must be 'fail' or 'accept', got {on_divergence!r}"
         )
     unknown = set(raw) - {"on_divergence"}
     if unknown:
-        raise DecodeError(f"unknown peer section keys: {sorted(unknown)!r}")
-    return PeerConfig(on_divergence=on_divergence)
+        raise DecodeError(f"unknown run section keys: {sorted(unknown)!r}")
+    return RunConfig(on_divergence=on_divergence)
 
 
 def _load_table_file(path: Path) -> DialogueTable:
@@ -615,8 +601,8 @@ def _load_table_file(path: Path) -> DialogueTable:
     The path is resolved against the file system (the cwd, like the ``script``
     field). A missing or unreadable file is a hard error. The loaded table's
     own ``priors`` (if any) are resolved recursively by :func:`load_table`, so
-    a chain of priors composes; cycles would surface as an ``OSError`` (the
-    second load of an already-open path) rather than a silent loop.
+    a chain of priors composes; cycles surface as an ``OSError`` (the second
+    load of an already-open path).
     """
     try:
         text = path.read_text(encoding="utf-8")
@@ -638,14 +624,13 @@ def _load_table_file(path: Path) -> DialogueTable:
 
 
 def load_table(raw: dict) -> DialogueTable:
-    """Parse a raw ``{script, turns[], peer?}`` dict into a :class:`DialogueTable`.
+    """Parse a raw ``{script, turns[], run?}`` dict into a :class:`DialogueTable`.
 
     ``notes`` are carried on each :class:`Turn` (the decoder ignores them) but
     the structural fields are validated for shape here; symbol resolution
-    happens later in :func:`decode`. A ``peer`` section (optional) carries the
-    peer-runner modifiers (spec ``@specs/peer-dialogue.md`` §The Table); there
-    is no top-level ``mode`` field — peer mode is the only run regime. Unknown
-    keys inside ``peer`` are rejected.
+    happens later in :func:`decode`. A ``run`` section (optional) carries the
+    runner modifiers (spec ``@specs/dialogue-runner.md`` §The Table); dialogue
+    mode is the only run regime. Unknown keys inside ``run`` are rejected.
     """
     if "script" not in raw or not isinstance(raw["script"], str):
         raise DecodeError("dialogue table missing string 'script'")
@@ -668,13 +653,13 @@ def load_table(raw: dict) -> DialogueTable:
             ) from exc
     if "turns" not in raw or not isinstance(raw["turns"], list):
         raise DecodeError("dialogue table missing list 'turns'")
-    peer_raw = raw.get("peer")
-    if peer_raw is not None:
-        if not isinstance(peer_raw, dict):
-            raise DecodeError("'peer' section must be an object")
-        peer = _peer_config_from_dict(peer_raw)
+    run_raw = raw.get("run")
+    if run_raw is not None:
+        if not isinstance(run_raw, dict):
+            raise DecodeError("'run' section must be an object")
+        run_config = _run_config_from_dict(run_raw)
     else:
-        peer = None
+        run_config = None
     turns = tuple(_turn_from_dict(t) for t in raw["turns"])
     # ``priors`` (optional) names other dialogue-table files whose turns run
     # before this table's own, in list order (spec §Dialogue Table). Each is
@@ -692,4 +677,4 @@ def load_table(raw: dict) -> DialogueTable:
             prior_table = _load_table_file(Path(prior_path))
             prior_turns.extend(prior_table.turns)
         turns = tuple(prior_turns) + turns
-    return DialogueTable(script=script, turns=turns, peer=peer)
+    return DialogueTable(script=script, turns=turns, run_config=run_config)
