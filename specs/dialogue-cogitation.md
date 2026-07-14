@@ -2,10 +2,11 @@
 
 ## Overview
 
-Cogitation is an agents's act of working a work-list entry toward S1. Each
-`rationalise` call applies the entry rule to the incoming query as bookkeeping,
-then emits a **batch** of values from cogitation. Cogitation dispatches a
-workable entry on **structure-as-significance** into one of two paths:
+Cogitation is an agents's act of working a work-list entry toward S1. A
+`rationalise` call applies the entry rule to the received events as
+bookkeeping, then emits a **batch** of values from cogitation. Cogitation
+dispatches a workable entry on **structure-as-significance** into one of two
+paths:
 
 - the **S3 countersignature path** — a single-node relationship `{L:[R]}` whose
   operands both have seen canons: K pairs the two canons' operands into proposals

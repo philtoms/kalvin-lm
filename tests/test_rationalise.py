@@ -67,7 +67,7 @@ def test_rationalise_returns_batch_or_empty(
     assert rationaliser._cogitate() == []
     # With an S2 incoming, cogitation emits an identity blast (every workable
     # identity at S4) — here the query's signature and its unrecognised node.
-    emitted = rationaliser.rationalise(_value(KLine(ab, [a]), SIG_S2))
+    emitted = rationaliser.rationalise([_value(KLine(ab, [a]), SIG_S2)])
     assert isinstance(emitted, list)
     assert len(emitted) == 2
     assert all(e.significance == SIG_S4 for e in emitted)
@@ -159,7 +159,7 @@ def test_level0_emits_identity_at_s4(
     unrecognised node are both emitted at S4 in one blast."""
     ab = signifier.make_signature([0b1, 0b10])
     a = signifier.make_signature([0b1])
-    emitted = rationaliser.rationalise(_value(KLine(ab, [a]), SIG_S2))
+    emitted = rationaliser.rationalise([_value(KLine(ab, [a]), SIG_S2)])
     assert len(emitted) == 2
     assert all(e.significance == SIG_S4 for e in emitted)
     assert {e.kline.signature for e in emitted} == {ab, a}
@@ -173,7 +173,7 @@ def test_level0_no_opening_special_case(
     path as any other S2 — there is no opening special-case."""
     ab = signifier.make_signature([0b1, 0b10])
     a = signifier.make_signature([0b1])
-    opening = rationaliser.rationalise(_value(KLine(ab, [a]), SIG_S2))
+    opening = rationaliser.rationalise([_value(KLine(ab, [a]), SIG_S2)])
     # Same emission as test_level0_emits_identity_at_s4 — turn-0 == any S2 turn.
     assert len(opening) == 2
     assert {e.kline.signature for e in opening} == {ab, a}
@@ -253,7 +253,7 @@ def _drive_to_s3(rationaliser: Rationaliser, decoded) -> None:
                 if incoming is not None:
                     rationaliser._process_query(incoming)
                 break
-            rationaliser.rationalise(incoming)
+            rationaliser.rationalise([incoming])
             incoming = None
             ki += 1
 

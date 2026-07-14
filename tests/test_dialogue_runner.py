@@ -340,3 +340,32 @@ def test_synthesizing_trainer_advances_primary_on_each_open():
     trainer.accept([])            # open script 2 (after a close)
     assert sink.events[1].proposal.kline == p1
     assert sink.events[1].proposal.significance == SIG_S2
+
+
+def test_rationalising_trainee_reacts_to_all_events_not_one_at_a_time(_decoded_mhall, _sigf):
+    """The RationalisingTrainee passes every received event to the engine in
+    one reaction, so it does not re-emit an unresolved countersignature once
+    per event. Driven through the runner against MHALL, the run progresses
+    past the Mary:[Subject] S3 countersignature — the divergence (if any) is
+    not that S3 pairing.
+
+    (Re-emitting per event would exhaust the Mary:[Subject] coverage budget on
+    the second event and diverge on an S3 emission. Reacting to all events at
+    once emits it once, so the run traverses it cleanly. A separate re-emission
+    of the ALL residual may still surface later; this test pins only this fix.)"""
+    from kalvin.expand import SIG_S3
+    from training.dialogue.actors import RationalisingTrainee
+
+    decoded = _decoded_mhall
+    res = run(
+        decoded,
+        lambda sink: TableTrainer(decoded, sink=sink),
+        lambda sink: RationalisingTrainee(_sigf, sink=sink),
+        on_divergence="accept",
+    ).run()
+
+    for e in res.unmatched:
+        assert e.proposal.significance != SIG_S3, (
+            "trainee diverged on an S3 countersignature pairing — it re-emitted "
+            "the pairing once per received event instead of reacting to all at once"
+        )

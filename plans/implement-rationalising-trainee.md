@@ -434,8 +434,8 @@ read structurally where a predicate needs it.
 
 **1.1 `src/training/dialogue/rationalise.py`.** The `Rationaliser` class — the
 rationalising **engine**. Holds `_State` + `signifier`. Implements
-`rationalise(incoming)` as: entry rule (bookkeeping) → cogitation (one
-`KValue`) → return, or `None` if work-list empty. Implements S4, S3
+`rationalise(incoming)` as: entry rule (bookkeeping, per received value) →
+cogitation (one `KValue`) → return, or `None` if work-list empty. Implements S4, S3
 (grouping per D10, escalation per D11), the entry rule, and S1/S4 pop/ground.
 Constructs synthetic signatures via `signifier.make_signature`. Reads neither
 table nor script nor `dbg`. Returns `KValue` (not `RationaliseEvent`) — the

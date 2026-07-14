@@ -327,27 +327,19 @@ class RationalisingTrainee(Actor):
     def next_events(
         self, incoming: list[RationaliseEvent]
     ) -> Iterable[RationaliseEvent]:
-        """Rationalise the incoming burst into a batch of events.
+        """Rationalise the incoming events into a batch of proposals.
 
-        The engine returns an identity blast, a batch of S3 pairings, or the
-        S1 countersignature reciprocal pair (relationship paths are never mixed
-        with identities); each emitted ``KValue`` is wrapped in a
-        ``RationaliseEvent``. Yields nothing when nothing is workable — the
-        :class:`Actor` base then emits a PASS so the dialogue always gets a
-        turn (DDT-22).
+        The engine receives every incoming proposal and reacts to the lot;
+        each emitted ``KValue`` is wrapped in a ``RationaliseEvent``. Yields
+        nothing when nothing is workable — the :class:`Actor` base then emits
+        a PASS so the dialogue always gets a turn (DDT-22).
 
-        Every call processes the incoming burst's last proposal (the engine's
-        entry-rule bookkeeping runs each time), so the trainee's state stays in
-        lockstep with the trainer's responses.
-
-        ``incoming`` is always a non-empty burst here (the trainer opens via
-        the empty-burst seed). An empty burst is a caller bug and crashes
-        loudly.
+        ``incoming`` is always non-empty here (the trainer opens via the
+        empty-burst seed). An empty list is a caller bug and crashes loudly.
         """
         assert incoming, "a trainee does not open; incoming must be non-empty"
-        for incoming_value in incoming:
-            query = incoming_value.proposal
-            for proposal in self._engine.rationalise(query):
-                yield RationaliseEvent(
-                    kind="frame", query=query, proposal=proposal, role="K"
-                )
+        query = incoming[-1].proposal
+        for proposal in self._engine.rationalise([e.proposal for e in incoming]):
+            yield RationaliseEvent(
+                kind="frame", query=query, proposal=proposal, role="K"
+            )

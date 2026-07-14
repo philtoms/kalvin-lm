@@ -29,6 +29,7 @@ as the second phase of a turn, driven by an incoming query.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -74,16 +75,18 @@ class Rationaliser:
 
     # ── The turn ─────────────────────────────────────────────────────
 
-    def rationalise(self, incoming: KValue) -> list[KValue]:
-        """Apply the entry rule to ``incoming``, then emit a batch.
+    def rationalise(self, incoming: Sequence[KValue]) -> list[KValue]:
+        """Apply the entry rule to every incoming value, then emit a batch.
 
-        ``incoming`` is the trainer's value this turn. Returns a list of
-        emitted values: an identity blast (zero or more S4 identity asks), a
-        batch of S3 pairings (proposals for ratification), the S1
-        countersignature (both directions of the reciprocal pair), or an empty
-        list when nothing is workable. Identities and relationships are never
-        mixed in one batch (a relationship path always terminates the batch)."""
-        self._process_query(incoming)
+        ``incoming`` is the values received this turn (one or more). The entry
+        rule runs on each in arrival order, then cogitation emits one batch:
+        an identity blast (zero or more S4 identity asks), a batch of S3
+        pairings (proposals for ratification), the S1 countersignature (both
+        directions of the reciprocal pair), or an empty list when nothing is
+        workable. Identities and relationships are never mixed in one batch
+        (a relationship path always terminates the batch)."""
+        for value in incoming:
+            self._process_query(value)
         return self._cogitate()
 
     # ── Entry rule ────────────────────────────────────────────────────────
