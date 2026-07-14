@@ -45,7 +45,21 @@ def test_divergence_carries_role_emitted_unconsumed():
     assert err.role == "T"
     assert err.emitted is emitted
     assert err.unconsumed == unconsumed
+    assert err.reason == "unmatched"  # default
+    assert err.last_coverage_event is None  # default
     assert "T" in str(err) and "divergence" in str(err)
+
+
+def test_divergence_exhausted_reason_message():
+    """reason='exhausted' distinguishes duplicate-key exhaustion and shapes the message."""
+    err = Divergence(
+        role="K",
+        emitted=_kv(2),
+        unconsumed=(_turn("K", 3),),
+        reason="exhausted",
+    )
+    assert err.reason == "exhausted"
+    assert "exhausts its coverage budget" in str(err)
 
 
 def test_divergence_has_no_cursor_field():
@@ -64,6 +78,7 @@ def test_run_result_defaults_are_empty():
     assert r.events == []
     assert r.unmatched == []
     assert r.uncovered == []
+    assert r.last_coverage_event is None
     assert not hasattr(r, "complete")
     assert not hasattr(r, "covered")
 

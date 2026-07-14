@@ -208,8 +208,9 @@ def test_divergence_fail_raises_on_caller_thread():
 
 
 def test_divergence_accept_records_and_continues():
-    """on_divergence='accept' records an immediate divergence to unmatched and
-    continues the run."""
+    """on_divergence='accept' records an immediate divergence to unmatched.
+    Under the stop-on-divergence rule the run halts at the divergent emission,
+    so the later legit K(2,2) is never reached (it surfaces as displacement)."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
@@ -220,6 +221,165 @@ def test_divergence_accept_records_and_continues():
     )
     assert len(res.unmatched) == 1
     assert res.unmatched[0].proposal.kline.signature == 99
+    # The run stopped at K(99,99); K(2,2) was never covered = displacement.
+    assert {t.value.kline.signature for t in res.uncovered} == {2}
+
+
+# ── Duplicate-key exhaustion (coverage as a per-key budget) ────────────────
+
+
+def test_coverage_budget_counts_duplicate_rows():
+    """The coverage set is a per-key budget: two authored copies of K(2,2) let
+    the run emit K(2,2) twice without divergence."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
+        # K emits its budget of two K(2,2) copies — exactly authored.
+        trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
+    )
+    assert res.unmatched == []
+    assert res.uncovered == []
+
+
+def test_over_budget_emission_is_exhaustion_divergence():
+    """The headline case: the table authors two X keys, the run emits three →
+    the third is immediate divergence (duplicate-key exhaustion), not a clean
+    match. The three emissions ride one burst so all are matched before the
+    burst-boundary exhaustion check."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("K", 2, 2)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        # K emits three K(2,2) in one burst — one more than the budget of two.
+        trainee_bursts=[[_ev("K", 2, 2), _ev("K", 2, 2), _ev("K", 2, 2)]],
+        on_divergence="accept",
+    )
+    assert len(res.unmatched) == 1
+    assert res.unmatched[0].proposal.kline.signature == 2
+
+
+def test_exhaustion_divergence_stops_immediately_under_accept():
+    """Duplicate-key exhaustion is terminal under *both* policies: once the
+    budget is depleted, further over-budget copies in the same burst are not
+    recorded — the run stops at the first over-budget copy."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("K", 2, 2)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        # K emits FOUR K(2,2) in one burst — two over budget. Only the first
+        # over-budget copy is recorded; the run halts there.
+        trainee_bursts=[
+            [_ev("K", 2, 2), _ev("K", 2, 2), _ev("K", 2, 2), _ev("K", 2, 2)]
+        ],
+        on_divergence="accept",
+    )
+    assert len(res.unmatched) == 1
+    assert res.unmatched[0].proposal.kline.signature == 2
+
+
+def test_unmatched_divergence_stops_immediately_under_accept():
+    """An unmatched divergence also stops the run immediately under accept:
+    a second off-table emission in the same burst is not recorded. The
+    ``on_divergence`` policy governs raise-vs-record, not whether to stop."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        # K emits two off-table K(99) in one burst; only the first is recorded.
+        trainee_bursts=[[_ev("K", 99, 99), _ev("K", 99, 99)]],
+        on_divergence="accept",
+    )
+    assert len(res.unmatched) == 1
+    assert res.unmatched[0].proposal.kline.signature == 99
+
+
+def test_exhaustion_divergence_under_fail_carries_reason():
+    """Under on_divergence='fail', over-budget emission raises a Divergence
+    whose ``reason`` is 'exhausted' (distinguished from 'unmatched')."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
+    runner = run(
+        decoded,
+        lambda sink: _ScriptedActor(
+            "T", _bursts(_ev("T", 1, 1), _ev("T", 9, 9)), sink=sink
+        ),
+        # K emits K(2,2) twice in one burst — budget is one.
+        lambda sink: _ScriptedActor(
+            "K", [[_ev("K", 2, 2), _ev("K", 2, 2)]], sink=sink
+        ),
+        on_divergence="fail",
+    )
+    with pytest.raises(Divergence) as exc_info:
+        runner.run()
+    assert exc_info.value.reason == "exhausted"
+
+
+def test_unmatched_divergence_reason_is_unmatched():
+    """A divergence for content present nowhere has reason 'unmatched'."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
+    runner = run(
+        decoded,
+        lambda sink: _ScriptedActor(
+            "T", _bursts(_ev("T", 1, 1), _ev("T", 9, 9)), sink=sink
+        ),
+        lambda sink: _ScriptedActor("K", _bursts(_ev("K", 99, 99)), sink=sink),
+        on_divergence="fail",
+    )
+    with pytest.raises(Divergence) as exc_info:
+        runner.run()
+    assert exc_info.value.reason == "unmatched"
+
+
+def test_last_coverage_event_recorded_on_result():
+    """RunResult.last_coverage_event is the last emission that consumed a
+    coverage allowance — the last healthy point."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
+    runner, res = _run(
+        decoded,
+        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
+        trainee_bursts=_bursts(_ev("K", 2, 2)),
+    )
+    # The last coverage-consuming emission is T(3,3) (the close T(9,9) is not
+    # a coverage match).
+    assert res.last_coverage_event is not None
+    assert res.last_coverage_event.proposal.kline.signature == 3
+
+
+def test_last_coverage_event_carried_on_exhaustion_divergence():
+    """Divergence.last_coverage_event anchors where the run was healthy
+    before the over-budget emission."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("K", 2, 2)], ("T", 9, 9))
+    runner = run(
+        decoded,
+        lambda sink: _ScriptedActor(
+            "T", _bursts(_ev("T", 1, 1), _ev("T", 9, 9)), sink=sink
+        ),
+        # K emits three K(2,2) in one burst; the third exhausts the budget.
+        lambda sink: _ScriptedActor(
+            "K", [[_ev("K", 2, 2), _ev("K", 2, 2), _ev("K", 2, 2)]], sink=sink
+        ),
+        on_divergence="fail",
+    )
+    with pytest.raises(Divergence) as exc_info:
+        runner.run()
+    assert exc_info.value.last_coverage_event is not None
+    assert exc_info.value.last_coverage_event.proposal.kline.signature == 2
+
+
+def test_last_coverage_event_none_when_nothing_covered():
+    """When no coverage content was ever matched, last_coverage_event is None.
+    The trainer diverges on its very first (opening) emission, so no coverage
+    allowance is ever consumed."""
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
+    runner = run(
+        decoded,
+        # T opens with off-table content T(99,99) — diverges immediately.
+        lambda sink: _ScriptedActor("T", _bursts(_ev("T", 99, 99)), sink=sink),
+        lambda sink: _ScriptedActor("K", [], sink=sink),
+        on_divergence="accept",
+    )
+    res = runner.run()
+    assert res.last_coverage_event is None
 
 
 # ── Close: de-positional, any agent, any time ─────────────────────────────
@@ -320,15 +480,17 @@ def test_anticipation_permitted_and_unflagged():
     assert res.unmatched == []
 
 
-def test_interjection_permitted():
-    """An actor may emit extra covered content (interjection); idempotent
-    coverage, not divergence."""
+def test_interjection_within_budget_is_permitted():
+    """An actor may interject covered content up to its authored budget.
+    The table authors one K(2,2); emitting it exactly once is a normal match.
+    (Emitting *more* copies than authored is duplicate-key exhaustion — see
+    the exhaustion tests below.)"""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
         trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
-        # K interjects K(2,2) twice (more than the table has).
-        trainee_bursts=[[_ev("K", 2, 2), _ev("K", 2, 2)]],
+        # K interjects K(2,2) once — within its budget of one.
+        trainee_bursts=_bursts(_ev("K", 2, 2)),
     )
     assert res.unmatched == []
 

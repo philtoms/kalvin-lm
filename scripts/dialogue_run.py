@@ -216,24 +216,39 @@ def _render_divergence(exc: Divergence, sig_to_label: dict[int, str]) -> str:
 
     The raw :class:`Divergence` carries signatures as hex and a bare count of
     uncovered rows — opaque without the compiled script's label map. This
-    inverts the diverging emission and the still-uncovered same-role rows into
-    their scripted (table-row) form, so an author can read what the actor said
-    versus what it was still expected to say. An ``unconsumed`` entry built by
-    the runner from a content key has no ``record`` (it is a placeholder), so
-    only its scripted form is shown.
+    inverts the diverging emission, the last healthy coverage match, and the
+    still-uncovered same-role rows into their scripted (table-row) form, so an
+    author can read what the actor said versus what it was still expected to
+    say. Two divergence reasons are distinguished: ``exhausted`` (the content
+    is in the table but every authored copy was already consumed — duplicate-
+    key exhaustion) and ``unmatched`` (the content matches no row). An
+    ``unconsumed`` entry built by the runner from a content key has no
+    ``record`` (it is a placeholder), so only its scripted form is shown.
     """
     emitted_scripted = _render_scripted(exc.role, "emit", exc.emitted, sig_to_label)
-    header = (
-        f"FAIL — {exc.role} divergence: emitted {emitted_scripted}, "
-        f"which matches no closing or middle row."
-    )
+    if exc.reason == "exhausted":
+        verdict = "which exhausts its authored coverage budget"
+    else:
+        verdict = "which matches no closing or middle row"
+    header = f"FAIL — {exc.role} divergence: emitted {emitted_scripted}, {verdict}."
+    lines = [header]
+    if exc.last_coverage_event is not None:
+        last = exc.last_coverage_event
+        last_role = last.role or "?"
+        last_scripted = _render_scripted(
+            last_role, "cover", last.proposal, sig_to_label
+        )
+        lines.append(f"  Last healthy coverage match: {last_scripted}")
     if not exc.unconsumed:
-        return header + "\n  (no same-role rows remained uncovered.)"
-    body = [header, f"  Still-uncovered {exc.role} rows at divergence:"]
-    for turn in exc.unconsumed:
-        op = turn.op if turn.op else "?"
-        body.append("    " + _render_scripted(turn.role, op, turn.value, sig_to_label))
-    return "\n".join(body)
+        lines.append("  (no same-role rows remained uncovered.)")
+    else:
+        lines.append(f"  Still-uncovered {exc.role} rows at divergence:")
+        for turn in exc.unconsumed:
+            op = turn.op if turn.op else "?"
+            lines.append(
+                "    " + _render_scripted(turn.role, op, turn.value, sig_to_label)
+            )
+    return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None) -> int:

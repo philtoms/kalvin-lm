@@ -32,7 +32,8 @@ Spec mapping
 ------------
 - The runner is a bus subscriber holding coverage bookkeeping; the bus is the
   sink/relay. It tracks coverage and immediate divergence.
-- Matching (content presence, idempotent coverage, immediate divergence, close).
+- Matching (content presence, coverage budget, duplicate-key exhaustion,
+  immediate divergence, close).
 - Anticipation + interjection (permitted, unflagged).
 - The close is de-positional: any agent may emit it at any time; a table has no
   start-middle-end structure, only a coverage set and one close turn.
@@ -46,6 +47,7 @@ Spec mapping
 from __future__ import annotations
 
 import threading
+from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
@@ -159,29 +161,56 @@ ActorFactory = Callable[[EventSink], Actor]
 
 
 class Divergence(Exception):  # noqa: N818 - spec names this type
-    """A run emission that matched no close or coverage content.
+    """A run emission the authored table did not authorise.
 
-    Raised under ``on_divergence="fail"`` when an emission's
-    ``(role, kline, significance)`` matches neither the close nor any coverage
-    content. Carries the role, the emitted proposal, and the uncovered
-    same-role contents at the moment of divergence. It has no cursor —
-    coverage is content-keyed, not positional.
+    Raised under ``on_divergence="fail"``. Two reasons:
+
+    - ``"unmatched"`` — the emission's ``(role, kline, significance)`` matches
+      neither the close nor any coverage content (present nowhere in the
+      table).
+    - ``"exhausted"`` — **duplicate key exhaustion**: the content *is* in the
+      coverage set, but every authored copy has already been consumed. The
+      table authorises a fixed count of each content (its multiplicity in the
+      coverage rows); emitting more copies than authored is divergence.
+
+    Carries the role, the emitted proposal, the reason, the unconsumed
+    same-role contents at the moment of divergence, and the last event that
+    successfully consumed a coverage allowance (the last healthy point before
+    divergence). It has no cursor — coverage is content-keyed, not positional.
     """
+
+    #: ``"unmatched"`` (present nowhere) or ``"exhausted"`` (duplicate key
+    #: exhaustion — more copies emitted than the table authored).
+    reason: str
 
     def __init__(
         self,
         role: str,
         emitted: KValue,
         unconsumed: tuple[DecodedTurn, ...],
+        *,
+        reason: str = "unmatched",
+        last_coverage_event: RationaliseEvent | None = None,
     ) -> None:
         self.role = role
         self.emitted = emitted
         self.unconsumed = unconsumed
-        super().__init__(
-            f"{role} divergence: emitted sig={emitted.significance:#x} "
-            f"matches no closing or middle content "
-            f"({len(unconsumed)} uncovered same-role contents)"
-        )
+        self.reason = reason
+        self.last_coverage_event = last_coverage_event
+        if reason == "exhausted":
+            msg = (
+                f"{role} divergence: emitted sig={emitted.significance:#x} "
+                f"exhausts its coverage budget "
+                f"(every authored copy already consumed; "
+                f"{len(unconsumed)} same-role contents remain uncovered)"
+            )
+        else:
+            msg = (
+                f"{role} divergence: emitted sig={emitted.significance:#x} "
+                f"matches no closing or middle content "
+                f"({len(unconsumed)} uncovered same-role contents)"
+            )
+        super().__init__(msg)
 
 
 # ── Result ───────────────────────────────────────────────────────────────
@@ -198,11 +227,18 @@ class RunResult:
     ends mechanically (close content seen, coverage exhausted, or mutual PASS);
     the displacement is the signal of how much of the exchange the actors
     traversed.
+
+    ``last_coverage_event`` is the most recent emission that successfully
+    consumed a coverage allowance — the last healthy point before any
+    divergence (or ``None`` when no coverage content was ever matched). It is
+    the anchor for divergence diagnostics: it says where the run was still on
+    the authored exchange.
     """
 
     events: list[RationaliseEvent] = field(default_factory=list)
     unmatched: list[RationaliseEvent] = field(default_factory=list)
     uncovered: list[DecodedTurn] = field(default_factory=list)
+    last_coverage_event: RationaliseEvent | None = None
 
 
 # ── The bus-wired sink (enforces route-to-other, DDT-18) ──────────────────
@@ -269,19 +305,25 @@ class Runner:
 
         # The close is de-positional: the ``close:true`` turn if any, else the
         # last row. It may be emitted by any agent at any time to end the run.
-        # Everything else is the coverage set. Duplicates collapse to one
-        # distinct content; the covered subset grows monotonically.
+        # Everything else is the coverage set. The coverage set is a **budget**
+        # per content key: a content's multiplicity in the coverage rows is the
+        # number of times the authored exchange permits it. Emitting more
+        # copies than authored is duplicate-key exhaustion → divergence.
         close_idx = next((i for i, t in enumerate(decoded) if t.close), len(decoded) - 1)
         self._closing_key: ContentKey = turn_content_key(decoded[close_idx])
         coverage = [t for i, t in enumerate(decoded) if i != close_idx]
-        self._distinct_coverage: set[ContentKey] = {
+        self._coverage_budget: Counter[ContentKey] = Counter(
             turn_content_key(t) for t in coverage
-        }
-        self._covered: set[ContentKey] = set()
+        )
+        self._consumed: Counter[ContentKey] = Counter()
         self._closed: bool = False
         self._events: list[RationaliseEvent] = []
         self._unmatched: list[RationaliseEvent] = []
         self._thread_exc: BaseException | None = None
+        # The last emission that successfully consumed a coverage allowance —
+        # the last healthy point before any divergence. Surfaced on
+        # ``RunResult.last_coverage_event`` and on ``Divergence`` for diagnostics.
+        self._last_coverage_event: RationaliseEvent | None = None
 
         # PASS tracking. ``_last_pass_role`` records the role of the most recent
         # PASS (None when the last emission was substantive). A PASS from one
@@ -335,12 +377,29 @@ class Runner:
         role's whole reply carried as one bus payload. The bus delivers it
         whole, so this handler unpacks the burst and applies the per-event
         coverage / PASS / divergence logic to each event in arrival order.
+
+        Coverage-exhaustion is checked at the **burst boundary** (after every
+        event in the burst has been matched), not mid-burst: a single burst may
+        legitimately exhaust a key's budget and then over-emit it (the third
+        copy is duplicate-key exhaustion, §Matching), and that over-emission
+        must be observable as divergence rather than swallowed by an early
+        exhaustion-termination. The close, by contrast, terminates immediately
+        (it may land mid-burst; later events in the same burst are dropped as
+        trailing-after-terminal).
         """
         burst = msg.message
         if not burst:
             return  # the opening seed, not an emission
         for event in burst:
             self._observe(event)
+            if self._closed:
+                return
+        # Entry exhaustion: every authored coverage copy has been consumed.
+        # Checked at the burst boundary so an over-budget emission inside the
+        # burst is surfaced as divergence first.
+        if not self._closed and self._consumed == self._coverage_budget:
+            self._closed = True
+            self._bus.stop()
 
     def _observe(self, event: RationaliseEvent) -> None:
         """Apply coverage / PASS / divergence bookkeeping to one emission."""
@@ -379,28 +438,50 @@ class Runner:
             self._bus.stop()
             return
 
-        # A content present in the coverage set marks it covered (idempotent —
-        # re-emitting covered content is not divergence). When the coverage set
-        # is exhausted, the run ends (entry exhaustion — the exchange is
-        # covered).
-        if key in self._distinct_coverage:
-            self._covered.add(key)
-            if self._distinct_coverage <= self._covered:
-                self._closed = True
-                self._bus.stop()
+        # A content present in the coverage set consumes one authored copy.
+        # The coverage set is a per-key budget (its multiplicity in the table):
+        # emitting more copies than authored is duplicate-key exhaustion →
+        # divergence. Coverage exhaustion (every budget spent) is checked at
+        # the burst boundary by ``_on_emission``, not here, so an over-budget
+        # emission arriving later in the same burst is surfaced as divergence.
+        budget = self._coverage_budget.get(key, 0)
+        if self._consumed[key] < budget:
+            self._consumed[key] += 1
+            self._last_coverage_event = event
             return
 
-        # Immediate divergence: present nowhere in the table.
+        # Immediate divergence. Two reasons, distinguished for diagnostics:
+        # ``"exhausted"`` — the content is in the table but every authored
+        # copy has been consumed (duplicate-key exhaustion); ``"unmatched"`` —
+        # the content is present nowhere in the table. Either way the run stops
+        # immediately: a divergent emission means the actor has left the
+        # authored exchange, so there is no further authored progress to make.
+        # ``on_divergence`` only governs how the divergence is reported — raise
+        # (``fail``) or record (``accept``) — not whether to stop.
+        reason = "exhausted" if budget > 0 else "unmatched"
+        self._record_divergence(event, reason)
+        self._closed = True
+        self._bus.stop()
+
+    def _record_divergence(self, event: RationaliseEvent, reason: str) -> None:
+        """Record the :class:`Divergence` for ``event`` per the run's policy.
+
+        Under ``on_divergence="fail"`` the exception is stashed on
+        ``_thread_exc`` (re-raised by :meth:`run` on the caller's thread).
+        Under ``"accept"`` the divergent emission is appended to
+        ``_unmatched``. Either way the caller stops the run immediately after.
+        """
+        exc = Divergence(
+            role=event.role or "?",
+            emitted=event.proposal,
+            unconsumed=tuple(self._uncovered_rows_for_role(event.role)),
+            reason=reason,
+            last_coverage_event=self._last_coverage_event,
+        )
         if self._on_divergence == "fail":
-            exc = Divergence(
-                role=event.role or "?",
-                emitted=event.proposal,
-                unconsumed=tuple(self._uncovered_rows_for_role(event.role)),
-            )
             self._thread_exc = exc
-            self._bus.stop()
-            return
-        self._unmatched.append(event)
+        else:
+            self._unmatched.append(event)
 
     # -- actor handler adapter ----------------------------------------------
 
@@ -418,13 +499,15 @@ class Runner:
     def result(self) -> RunResult:
         """The current :class:`RunResult` snapshot (spec §Types).
 
-        The arrival log, immediate divergences, and the displacement (coverage
-        rows never emitted).
+        The arrival log, immediate divergences, the displacement (coverage
+        rows never emitted), and the last event that consumed a coverage
+        allowance.
         """
         return RunResult(
             events=list(self._events),
             unmatched=list(self._unmatched),
             uncovered=list(self._uncovered_rows()),
+            last_coverage_event=self._last_coverage_event,
         )
 
     # -- internals -----------------------------------------------------------
@@ -440,16 +523,21 @@ class Runner:
 
     def _uncovered_rows_for_role(self, role: str | None) -> list[DecodedTurn]:
         r = role if role is not None else "?"
-        unseen = self._distinct_coverage - self._covered
         return [
-            _placeholder_turn(k)
-            for k in sorted(unseen, key=_key_sort)
-            if k[0] == r
+            turn
+            for turn in self._uncovered_rows()
+            if turn.role == r
         ]
 
     def _uncovered_rows(self) -> list[DecodedTurn]:
-        unseen = self._distinct_coverage - self._covered
-        return [_placeholder_turn(k) for k in sorted(unseen, key=_key_sort)]
+        # A coverage key is uncovered to the degree its budget is unconsumed:
+        # one placeholder per remaining authored copy, so the displacement
+        # count reflects authored rows not traversed (not just distinct keys).
+        out: list[DecodedTurn] = []
+        for k in sorted(self._coverage_budget, key=_key_sort):
+            remaining = self._coverage_budget[k] - self._consumed[k]
+            out.extend([_placeholder_turn(k)] * max(remaining, 0))
+        return out
 
 
 def _key_sort(k: ContentKey):

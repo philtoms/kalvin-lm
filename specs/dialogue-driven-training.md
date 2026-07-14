@@ -284,12 +284,16 @@ follow-on — only advances forward through the table's own order.
 ### Permitted state
 
 The runner holds **coverage bookkeeping** only (as a bus subscriber): the
-table's **fixed set of distinct coverage contents**, a **covered subset** that
-grows monotonically as emissions match, the close content key, a `closed` flag,
-and the **role of the most recent PASS** (for mutual-PASS termination —
-§Actor contract). That is its entire state: whose turn it is, per-actor
-cursors, pacing, retry counts, and idle deadlines all live in the actors. The
-relay lives in the bus; the runner observes and records.
+table's **per-key coverage budget** (a content key → its multiplicity in the
+coverage rows — how many authored copies the exchange permits), a **consumed
+counter** that grows as emissions match (one unit per matching emission), the
+close content key, a `closed` flag, the **last coverage event** (the most
+recent emission that consumed a coverage allowance — the last healthy point,
+surfaced for divergence diagnostics), and the **role of the most recent PASS**
+(for mutual-PASS termination — §Actor contract). That is its entire state:
+whose turn it is, per-actor cursors, pacing, retry counts, and idle deadlines
+all live in the actors. The relay lives in the bus; the runner observes and
+records.
 
 ## Matching
 
@@ -301,21 +305,39 @@ matched, not divergence). This matters because the bus dispatches role handlers
 another *before* the wildcard marks the run closed. Such a trailing emission is
 noise, not divergence. Before termination, each emission is checked for PASS
 (§Actor contract): a PASS is intercepted **before** matching — it is neither
-coverage, nor divergence, nor a close. Any other emission is matched against the
-table's **distinct coverage contents** and the close by content equality
+coverage, nor divergence, nor a close. Any other emission is matched against
+the table's **coverage budget** and the close by content equality
 `(role, kline, significance)`:
 
 - **Equals the close** — terminate (the close may be emitted by any agent at
   any time).
-- **Present in the distinct coverage contents** — mark that content **covered**.
-  Duplicate table rows collapsed to this one distinct content at construction;
-  coverage is **idempotent** — re-emitting already-covered content is *not*
-  divergence. When the coverage set is exhausted, the run terminates (entry
-  exhaustion).
+- **Present in the coverage budget with copies remaining** — consume one
+  authored copy of that content (record it as the last coverage event). A
+  content's multiplicity in the coverage rows is its budget — how many times
+  the authored exchange permits it. When every budget is exhausted, the run
+  terminates (entry exhaustion).
+- **Present in the table but with its budget exhausted** — **duplicate-key
+  exhaustion**: every authored copy of that content has already been consumed.
+  This is immediate divergence (reason `"exhausted"`).
 - **Present nowhere in the table** (neither close nor any coverage content) —
-  **immediate divergence**. Under `on_divergence="fail"` the runner raises
-  `Divergence`. Under `on_divergence="accept"` the emission is recorded in
-  `RunResult.unmatched` and the run continues.
+  **immediate divergence** (reason `"unmatched"`).
+
+Either divergence **stops the run immediately** regardless of policy: a
+divergent emission means the actor has left the authored exchange, so there is
+no further authored progress to make. ``on_divergence`` only governs how the
+divergence is reported — `"fail"`` raises ``Divergence`` (re-raised by
+``run()`` on the caller's thread); `"accept"`` appends the emission to
+``RunResult.unmatched``. The role of the most-recent PASS is irrelevant here —
+a divergence preempts mutual-PASS termination.
+
+Exhaustion divergence and exhaustion termination are distinct: a content whose
+budget is exactly met consumes its last copy; a further same-content emission
+*over* the budget is divergence. Coverage exhaustion (every budget spent)
+terminates the run at the **burst boundary**, so an over-budget emission
+arriving later in the same burst is surfaced as divergence rather than
+swallowed by an early exhaustion-termination. The close, by contrast,
+terminates immediately (it may land mid-burst; later events in the same burst
+are dropped as trailing-after-terminal).
 
 A real trainer is expected to synthesise its training responses, and a real
 trainee its responses; both announce their role and are matched against the
@@ -348,10 +370,14 @@ The driver runs `bus.run()` until a terminal condition (the subscriber calls
 
 - **Close emitted** — any agent emits the close content (the ``close:true``
   turn's content, or the last row's), anywhere in the stream.
-- **Coverage exhausted** — every distinct coverage content has been covered.
+- **Coverage exhausted** — every coverage budget is fully consumed (every
+  authored copy emitted). Checked at the burst boundary so an over-budget
+  emission inside the burst is surfaced as divergence first.
 - **Mutual PASS** — the two roles each publish a PASS in turn (a PASS from one
   role followed by a PASS from the other). Two PASSes from the same role are
   not terminal — that side is waiting while the other still has content.
+- **Divergence** — any immediate divergence (exhausted or unmatched) stops the
+  run at once, under both ``on_divergence`` policies (§Matching).
 
 Because
 `accept` is fire-and-forget and replies are **one-or-many** (`burst >= 1`,
@@ -366,23 +392,29 @@ the realized dialogue fell short of that.
 
 ```
 Divergence(Exception):
-    role:           str                  # the role of the divergent emission
-    emitted:        KValue               # the unmatched emission's proposal
-    unconsumed:     tuple[DecodedTurn]   # unconsumed same-role rows at the moment of divergence
+    role:                str                  # the role of the divergent emission
+    emitted:             KValue               # the divergent emission's proposal
+    unconsumed:          tuple[DecodedTurn]   # unconsumed same-role rows at the moment of divergence
+    reason:              str                  # "unmatched" (present nowhere) | "exhausted" (duplicate-key exhaustion)
+    last_coverage_event: RationaliseEvent | None  # last emission that consumed a coverage allowance
 
 RunResult:
-    events:    list[RationaliseEvent]    # every received emission, in ARRIVAL order
-    unmatched: list[RationaliseEvent]    # immediate divergences: emissions matching nothing (accept-mode only)
-    uncovered: list[DecodedTurn]         # DISPLACEMENT: distinct coverage rows never emitted
+    events:               list[RationaliseEvent]      # every received emission, in ARRIVAL order
+    unmatched:            list[RationaliseEvent]      # immediate divergences (accept-mode only)
+    uncovered:            list[DecodedTurn]           # DISPLACEMENT: coverage rows never emitted (one per unconsumed copy)
+    last_coverage_event:  RationaliseEvent | None     # last emission that consumed a coverage allowance
 ```
 
 `events` is **arrival-ordered** — every received emission in the order
 the bus delivered it. `unmatched` is populated only under
 `on_divergence="accept"` (immediate divergences recorded as they occur).
-`uncovered` is the **displacement** — the distinct coverage rows never emitted,
-measuring how far the realized dialogue fell short of the authored
-whole-exchange coverage. A script is orchestrated to cover the whole exchange;
-zero displacement means the actors traversed all of it.
+`uncovered` is the **displacement** — the coverage rows never emitted (one
+placeholder per unconsumed authored copy), measuring how far the realized
+dialogue fell short of the authored whole-exchange coverage. A script is
+orchestrated to cover the whole exchange; zero displacement means the actors
+traversed all of it. `last_coverage_event` (on both `RunResult` and
+`Divergence`) is the last emission that consumed a coverage allowance — the
+last healthy point before any divergence, anchoring diagnostics.
 
 ## What Training Is
 
@@ -447,15 +479,15 @@ displacement when the whole exchange is traversed).
 | DDT-8  | A decoded table is de-positional: a coverage set (every turn) plus one close (the `close:true` turn, or the last row) any agent may emit at any time                                                                                                                                                    | §Table Structure       |
 | DDT-9  | The close content is unique — its `(role, kline, significance)` appears exactly once; a close duplicating a coverage row is malformed at decode time                                                                                                                                                 | §Table Structure       |
 | DDT-10 | The run is driven by the harness `MessageBus`: the bus is the sink and relay; the runner is a coverage-tracking wildcard subscriber plus a thin driver that seeds the trainer and runs `bus.run()` until a terminal condition. The runner depends on `training.harness`                             | §The Runner            |
-| DDT-11 | The runner holds coverage bookkeeping only (fixed distinct coverage set, growing covered subset, close key, closed flag, last-PASS role); whose-turn, per-actor cursors, turn tracking, pacing, idle deadline, and complete/covered judgment all live in the actors. The relay lives in the bus                                        | §Permitted state       |
-| DDT-12 | An emission observed by the wildcard subscriber matches the distinct coverage contents / close by `(role, kline, significance)` content equality                                                                                                                                                     | §Matching              |
-| DDT-13 | A content present in the distinct coverage set marks it covered (idempotent); duplicate table rows collapse to one distinct content; re-emitting covered content is not divergence                                                                                                                   | §Matching              |
-| DDT-14 | Zero matches (and not the close) is immediate divergence: `on_divergence="fail"` raises `Divergence(role, emitted, unconsumed)`; `"accept"` appends to `RunResult.unmatched` and continues                                                                                                          | §Matching              |
-| DDT-15 | The run terminates on the close content being emitted (any agent, any time), the coverage set being exhausted, or a mutual PASS; once closed, every subsequent emission is dropped                                                                                                                      | §Termination           |
+| DDT-11 | The runner holds coverage bookkeeping only (per-key coverage budget, growing consumed counter, close key, closed flag, last coverage event, last-PASS role); whose-turn, per-actor cursors, turn tracking, pacing, idle deadline, and complete/covered judgment all live in the actors. The relay lives in the bus                                        | §Permitted state       |
+| DDT-12 | An emission observed by the wildcard subscriber matches the coverage budget / close by `(role, kline, significance)` content equality                                                                                                                                                     | §Matching              |
+| DDT-13 | A content present in the coverage budget with copies remaining consumes one authored copy; a content's multiplicity in the coverage rows is its budget. Re-emitting up to the budget is a normal match; emitting *more* copies than authored is duplicate-key exhaustion → divergence. Coverage exhaustion (every budget spent) terminates at the burst boundary                                                                                                                   | §Matching              |
+| DDT-14 | Zero remaining budget or present-nowhere is immediate divergence that **stops the run immediately** under both policies: `on_divergence="fail"` raises `Divergence(role, emitted, unconsumed, reason, last_coverage_event)`; `"accept"` appends to `RunResult.unmatched`. The policy governs report-only, not whether to stop                                                                                                          | §Matching              |
+| DDT-15 | The run terminates on the close content being emitted (any agent, any time), the coverage set being exhausted, a mutual PASS, or any immediate divergence; once closed, every subsequent emission is dropped                                                                                                                      | §Termination           |
 | DDT-16 | Anticipation and interjection are permitted and unflagged across the whole table: an emission matching a same-role distinct content is a normal match regardless of authored causal order or whether it was solicited; there are no positional pins                                                  | §Anticipation          |
-| DDT-18 | The runner terminates mechanically (close / exhaustion / mutual PASS; no idle timeout — every `accept` yields ≥1 proposal) and reports the **displacement** (`uncovered`) — coverage rows never emitted                                                                                                | §Termination, §Types   |
-| DDT-19 | `Divergence` carries `(role, emitted, unconsumed)` and has no cursor (coverage is content-keyed)                                                                                                                                                                                                     | §Types                 |
-| DDT-20 | `RunResult` has arrival-ordered `events`, plus `unmatched` (immediate divergences, accept-mode) and `uncovered` (displacement: coverage rows never emitted)                                                                                                                                           | §Types                 |
+| DDT-18 | The runner terminates mechanically (close / exhaustion / mutual PASS / divergence; no idle timeout — every `accept` yields ≥1 proposal) and reports the **displacement** (`uncovered`) — coverage rows never emitted                                                                                                | §Termination, §Types   |
+| DDT-19 | `Divergence` carries `(role, emitted, unconsumed, reason, last_coverage_event)` and has no cursor (coverage is content-keyed); `reason` is `"unmatched"` or `"exhausted"`                                                                                                                                                                     | §Types                 |
+| DDT-20 | `RunResult` has arrival-ordered `events`, plus `unmatched` (immediate divergences, accept-mode), `uncovered` (displacement: coverage rows never emitted, one per unconsumed copy), and `last_coverage_event` (last emission that consumed a coverage allowance)                                                                                                                                           | §Types                 |
 | DDT-21 | An actor holds an `EventSink` (injected at construction) and publishes a **burst** via `on_burst`; `accept(incoming)` receives the other role's whole reply as one list (empty = "you open") and the actor publishes one-or-many replies as one burst via its sink; `burst >= 1` — when cogitation yields nothing the actor publishes a PASS (`{PASS: []}` at S1). The bus payload is `Any`, so a burst rides as one `Message` and never serialises across many. The runner builds the bus-wired sink and constructs actors via factories `(sink) -> Actor`; any actor is drop-in | §Actor contract |
 | DDT-22 | There is no synchronised alternation: an actor may reply one-or-many events per `accept` (at least one — a PASS when it has nothing substantive); the whole reply burst is routed by the bus to the other role as one message. A PASS is intercepted before matching (not coverage, not divergence, not close); two consecutive PASSes from the two roles is a terminal condition (mutual PASS) | §The Runner, §Actor contract |
 | DDT-23 | The trainer and trainee are symmetric readers of the same decoded table, differing only by actor; the default actors **answer each entry in the received batch**: on the opening seed (empty burst) each emits its opening contiguous same-role run; on a reply burst of N events each emits one response row per incoming event (advancing its cursor in table order), each stamped with that event's `query`. The actor is content-blind (no cursor realignment to incoming — that is the R1 follow-on) | §Actor contract |
