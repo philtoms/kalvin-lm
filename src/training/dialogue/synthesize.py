@@ -1,16 +1,10 @@
 """Synthesize a trainer turn from the compiled script.
 
-Spec seam: ``@specs/dialogue-driven-training.md`` §Actor, §The Runner,
-§Validation (the synthesizer satisfies the existing Actor contract).
-
-The :func:`synthesize` function is the drop-in core of a
+:func:`synthesize` is the core of
 :class:`~training.dialogue.actors.SynthesizingTrainer`. It derives the next
-trainer KValue from two inputs — the compiled script and the trainee's last
-KValue — using structural predicates only (D2: ``dbg``-free). The runner checks
-the synthesised turn against the table.
-
-See §The Synthesis Rules for R1–R3 (verified against all 16 trainer
-turns of the MHALL golden master).
+trainer KValue from the compiled script and the trainee's last KValue using
+structural predicates only (no ``dbg`` reads). The runner checks the
+synthesised turn against the table.
 """
 
 from __future__ import annotations
@@ -41,9 +35,7 @@ def synthesize(
 
     Pure: ``compiled`` is indexed once internally; the result is otherwise a
     pure function of ``incoming``. Implements R1 (opening), R2 (reply to an
-    identity), and R3 (echo a matching compiled kline). Canon is detected
-    structurally via ``is_canon`` (plan D5), and relation-vs-canon in R3 via
-    ``is_canon`` as well.
+    identity), and R3 (echo a matching compiled kline).
     """
     decompositions: dict[int, list[KLine]] = {}
     for value in compiled:
@@ -65,11 +57,7 @@ def synthesize(
 
 
 def _opening(primary: KLine) -> KValue:
-    """R1 — emit the first compiled entry at S2.
-
-    ``compiled`` is assumed non-empty (single-primary, single-cascade scripts —
-    the spec's existing Out-of-Scope).
-    """
+    """R1 — emit the first compiled entry at S2."""
     return KValue(primary, SIG_S2)
 
 
@@ -85,9 +73,8 @@ def _reply_identity(
 
     Emit the first decomposition by op-precedence (canon > relation; among
     relations UNDERSIGNED > CONNOTED), then compilation order. Significance:
-    S1 when every node is a leaf (no further decomposition), S2 when any node
-    is itself decomposable (the trainee will re-ask), S4 when no decomposition
-    exists (stalemate).
+    S1 when every node is a leaf, S2 when any node is itself decomposable, S4
+    when no decomposition exists.
     """
     candidates = decompositions.get(signature, [])
     chosen = _precedence_pick(candidates, signifier)
@@ -116,11 +103,7 @@ def _precedence_pick(
 
 
 def _relation_op(kline: KLine) -> str | None:
-    """The relation op carried on ``kline.dbg`` if it is a known relation, else None.
-
-    A non-canon kline with nodes is a relation; its op distinguishes
-    UNDERSIGNED from CONNOTED. dbg is read only here as an ordering hint.
-    """
+    """The relation op on ``kline.dbg`` if it is a known relation, else None."""
     op = kline.dbg.op if kline.dbg else None
     return op if op in _RELATION_PRECEDENCE else None
 
@@ -142,8 +125,8 @@ def _echo_compiled(
     """R3 — the trainee proposed a kline the trainer has compiled: echo it verbatim.
 
     A match is a compiled kline under ``proposal.signature`` whose nodes equal
-    ``proposal.nodes``. Significance: S1 for a relation (the trainer ratifies),
-    S2 for a canon (the trainer confirms). No match → CONNOTED,S4.
+    ``proposal.nodes``. Significance: S1 for a relation (ratify), S2 for a
+    canon (confirm). No match → CONNOTED,S4.
     """
     for kline in decompositions.get(proposal.signature, []):
         if list(kline.nodes) == list(proposal.nodes):

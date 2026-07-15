@@ -1,17 +1,14 @@
-"""Dialogue-driven training (spec: ``@specs/dialogue-driven-training.md``,
-``@specs/dialogue-runner.md``).
+"""Dialogue-driven training.
 
-A lesson is driven by an authored **dialogue table** (``script`` + ordered
-``turns``) between Trainer (T) and Trainee (K). This package implements the
-configuration-time **decoder** (table → flat ordered ``list[DecodedTurn]``),
-the dialogue **actors** (:mod:`training.dialogue.actors`), and the
-**runner** (:mod:`training.dialogue.runner`) — a coverage-tracking subscriber
-over the harness :class:`~training.harness.bus.MessageBus` that drives the two
-actors to completion.
+An authored **dialogue table** drives a lesson between Trainer (T) and
+Trainee (K). The package has a configuration-time **decoder** (table → flat
+ordered ``list[DecodedTurn]``), dialogue **actors**, and a **runner** that
+drives the two actors over the harness ``MessageBus`` and tracks how much of
+the authored exchange they traverse.
 
-The decoder is single-stage and runs once at configuration time. Both default
-actors are table-reading, structurally symmetric, and individually replaceable
-by a real trainer or trainee.
+The decoder runs once at configuration time. The default actors are
+table-reading scaffolding, individually replaceable by a real trainer or
+trainee.
 """
 
 from training.dialogue.decoder import (
