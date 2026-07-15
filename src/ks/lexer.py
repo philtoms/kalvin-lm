@@ -42,7 +42,7 @@ class Lexer:
     Usage::
 
         tokens = Lexer("A == B").tokenize()
-        # [SIGNATURE("A"), COUNTERSIGN("=="), SIGNATURE("B"), EOF("")]
+        # [SIGNATURE("A"), COUNTERSIGNS("=="), SIGNATURE("B"), EOF("")]
     """
 
     def __init__(self, source: str) -> None:
@@ -113,14 +113,14 @@ class Lexer:
         if self.pos + 1 < len(self.source):
             two_char = self.source[self.pos : self.pos + 2]
             if two_char == "==":
-                return self._make_token(TokenType.COUNTERSIGN, "==")
+                return self._make_token(TokenType.COUNTERSIGNS, "==")
             if two_char == "=>":
-                return self._make_token(TokenType.CANONIZE, "=>")
+                return self._make_token(TokenType.CANONIZES, "=>")
 
         if ch == "=":
-            return self._make_token(TokenType.UNDERSIGN, "=")
+            return self._make_token(TokenType.DENOTES, "=")
         if ch == ">":
-            return self._make_token(TokenType.CONNOTATE, ">")
+            return self._make_token(TokenType.CONNOTES, ">")
         if ch == "<":
             raise LexerError(f"Unexpected character: {ch!r}", self.line, self.column)
 

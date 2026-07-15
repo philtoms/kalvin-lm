@@ -2,7 +2,7 @@
   "script": "data/scripts/mhall.ks",
   "turns": [
     {
-      "op": "COUNTERSIGNED",
+      "op": "COUNTERSIGNS",
       "signature": "MHALL",
       "nodes": [
         "SVO"
@@ -24,7 +24,7 @@
       "role_turn": 1
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "MHALL",
       "nodes": [
         "Mary",
@@ -50,7 +50,7 @@
       "role_turn": 2
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "Mary",
       "nodes": [
         "M",
@@ -72,7 +72,7 @@
       "role_turn": 3
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "had",
       "nodes": [
         "h",
@@ -93,7 +93,7 @@
       "role_turn": 4
     },
     {
-      "op": "CONNOTED",
+      "op": "CONNOTES",
       "signature": "a",
       "nodes": [
         "Det"
@@ -113,7 +113,7 @@
       "role_turn": 5
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "Det",
       "nodes": [
         "D",
@@ -135,7 +135,7 @@
       "role_turn": 6
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "little",
       "nodes": [
         "l",
@@ -156,7 +156,7 @@
       "role_turn": 7
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "lamb",
       "nodes": [
         "l",
@@ -183,7 +183,7 @@
       "role_turn": 9
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "SVO",
       "nodes": [
         "Subject",
@@ -205,7 +205,7 @@
       "role_turn": 10
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "Subject",
       "nodes": [
         "Sub",
@@ -226,7 +226,7 @@
       "role_turn": 11
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "Verb",
       "nodes": [
         "V",
@@ -248,7 +248,7 @@
       "role_turn": 12
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "Object",
       "nodes": [
         "Ob",
@@ -266,7 +266,7 @@
       "role_turn": 13
     },
     {
-      "op": "CONNOTED",
+      "op": "CONNOTES",
       "signature": "Mary",
       "nodes": [
         "Subject"
@@ -278,7 +278,7 @@
       "role_turn": 14
     },
     {
-      "op": "UNDERSIGNED",
+      "op": "DENOTES",
       "signature": "Mary",
       "nodes": [
         "Subject"
@@ -290,7 +290,7 @@
       "role_turn": 13
     },
     {
-      "op": "CONNOTED",
+      "op": "CONNOTES",
       "signature": "had",
       "nodes": [
         "Verb"
@@ -302,7 +302,7 @@
       "role_turn": 15
     },
     {
-      "op": "UNDERSIGNED",
+      "op": "DENOTES",
       "signature": "had",
       "nodes": [
         "Verb"
@@ -314,7 +314,7 @@
       "role_turn": 14
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "ALL",
       "nodes": [
         "a",
@@ -328,7 +328,7 @@
       "role_turn": 16
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "ALL",
       "nodes": [
         "a",
@@ -351,7 +351,7 @@
       "role_turn": 17
     },
     {
-      "op": "CONNOTED",
+      "op": "CONNOTES",
       "signature": "a",
       "nodes": [
         "Det"
@@ -369,7 +369,7 @@
       "role_turn": 18
     },
     {
-      "op": "COUNTERSIGNED",
+      "op": "COUNTERSIGNS",
       "signature": "MHALL",
       "nodes": [
         "SVO"
@@ -380,7 +380,7 @@
       "role_turn": 19
     },
     {
-      "op": "COUNTERSIGNED",
+      "op": "COUNTERSIGNS",
       "signature": "SVO",
       "nodes": [
         "MHALL"

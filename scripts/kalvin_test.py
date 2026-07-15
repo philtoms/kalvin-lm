@@ -64,7 +64,7 @@ def _decode_value(value: int, model, tokenizer) -> str:
 
     Tries each kline headed by *value* (most-recent-first) and unpacks the
     first that decomposes to identity tokens. This skips semantic-
-    relationship klines (connoted/undersigned) that share a signature with
+    relationship klines (connoted/denoted) that share a signature with
     a canonize, landing on the structural decomposition. Falls back to a
     hex label — never raises.
     """

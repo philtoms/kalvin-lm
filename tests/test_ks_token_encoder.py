@@ -87,7 +87,7 @@ class TestUnresolvedCharEncoding:
     """Unresolved characters encode as their own raw typed nodes."""
 
     def test_unresolved_chars_encode(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
-        entry = SymbolicEntry(sig="A", nodes=["B", "C"], op="COUNTERSIGNED")
+        entry = SymbolicEntry(sig="A", nodes=["B", "C"], op="COUNTERSIGNS")
         results = encoder.encode_entries([entry])
         assert len(results) == 1
         compiled = results[0]
@@ -119,7 +119,7 @@ class TestNodesAlwaysList:
         assert isinstance(results[0].kline.nodes, list)
 
     def test_single_node_is_list(self, encoder: TokenEncoder) -> None:
-        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTED")
+        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTES")
         results = encoder.encode_entries([entry])
         assert len(results) == 1
         assert isinstance(results[0].kline.nodes, list)
@@ -127,7 +127,7 @@ class TestNodesAlwaysList:
         assert not isinstance(results[0].kline.nodes, int)
 
     def test_multiple_nodes(self, encoder: TokenEncoder) -> None:
-        entry = SymbolicEntry(sig="A", nodes=["B", "C", "D"], op="CANONIZED")
+        entry = SymbolicEntry(sig="A", nodes=["B", "C", "D"], op="CANONIZES")
         results = encoder.encode_entries([entry])
         assert len(results) == 1
         assert isinstance(results[0].kline.nodes, list)
@@ -137,8 +137,8 @@ class TestNodesAlwaysList:
         """Every KLine produced must have list nodes."""
         entries = [
             SymbolicEntry(sig="A", nodes=[], op="IDENTITY"),
-            SymbolicEntry(sig="B", nodes=["C"], op="CONNOTED"),
-            SymbolicEntry(sig="D", nodes=["E", "F"], op="COUNTERSIGNED"),
+            SymbolicEntry(sig="B", nodes=["C"], op="CONNOTES"),
+            SymbolicEntry(sig="D", nodes=["E", "F"], op="COUNTERSIGNS"),
         ]
         results = encoder.encode_entries(entries)
         for r in results:
@@ -160,7 +160,7 @@ class TestSignatureEncoding:
         """Multi-token identifier is packed via OR-reduction (make_signature).
 
         A multi-token signature heading an IDENTITY entry is decomposed into
-        per-token IDENTITY entries plus a packed CANONIZE entry (the last
+        per-token IDENTITY entries plus a packed CANONIZES entry (the last
         result); its signature is signifier.make_signature(tokens) — i.e. OR of the tokens.
         """
         entry = SymbolicEntry(sig="HELLO", nodes=[], op="IDENTITY")
@@ -176,7 +176,7 @@ class TestNodeEncoding:
     """Node strings are correctly encoded to uint64."""
 
     def test_node_values(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
-        entry = SymbolicEntry(sig="A", nodes=["B", "C"], op="CONNOTED")
+        entry = SymbolicEntry(sig="A", nodes=["B", "C"], op="CONNOTES")
         results = encoder.encode_entries([entry])
         compiled = results[0]
         assert compiled.kline.nodes[0] == tz.encode("B")[0]
@@ -192,10 +192,10 @@ class TestSignificanceLevels:
     @pytest.mark.parametrize(
         "op,expected_level",
         [
-            ("COUNTERSIGNED", "S1"),
-            ("UNDERSIGNED", "S3"),
-            ("CANONIZED", "S2"),
-            ("CONNOTED", "S3"),
+            ("COUNTERSIGNS", "S1"),
+            ("DENOTES", "S3"),
+            ("CANONIZES", "S2"),
+            ("CONNOTES", "S3"),
             ("IDENTITY", "S4"),
         ],
     )
@@ -220,7 +220,7 @@ class TestFullUint64:
         entry = SymbolicEntry(sig="ABC", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
         raw = signifier.make_signature(tz.encode("ABC"))
-        # The packed CANONIZE entry (last) carries the unmasked OR-reduction.
+        # The packed CANONIZES entry (last) carries the unmasked OR-reduction.
         assert results[-1].kline.signature == raw
         # Ensure the value is unmasked — it should have multiple bits set
         assert results[-1].kline.signature == raw
@@ -240,21 +240,21 @@ class TestFullUint64:
 
 
 class TestMultiTokenMTS:
-    """Multi-token BPE words produce unsigned per token + CANONIZE packed."""
+    """Multi-token BPE words produce unsigned per token + CANONIZES packed."""
 
     def test_multi_token_node_emits_mts(self) -> None:
-        """A multi-token node triggers unsigned + CANONIZE entries."""
+        """A multi-token node triggers unsigned + CANONIZES entries."""
         mock = MockMultiTokenTokenizer({"Mary": [10, 20]})
         enc = TokenEncoder(mock, dev=True)
-        entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTED")
+        entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTES")
         results = enc.encode_entries([entry])
 
-        # Should have: IDENTITY(10), IDENTITY(20), CANONIZE(30, [10,20]), CONNOTATE(A, [30])
+        # Should have: IDENTITY(10), IDENTITY(20), CANONIZES(30, [10,20]), CONNOTES(A, [30])
         unsigned_entries = [
             r for r in results if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and not r.kline.nodes
         ]
-        canonize_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CANONIZED"]
-        connotate_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CONNOTED"]
+        canonize_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CANONIZES"]
+        connote_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CONNOTES"]
 
         assert len(unsigned_entries) == 2
         assert unsigned_entries[0].kline.signature == 10
@@ -267,8 +267,8 @@ class TestMultiTokenMTS:
         assert canonize_entries[0].kline.signature == packed
         assert canonize_entries[0].kline.nodes == [10, 20]
 
-        assert len(connotate_entries) == 1
-        assert connotate_entries[0].kline.nodes == [packed]
+        assert len(connote_entries) == 1
+        assert connote_entries[0].kline.nodes == [packed]
 
     def test_multi_token_sig_emits_mts(self) -> None:
         """A multi-token signature heading an IDENTITY entry is represented
@@ -282,12 +282,12 @@ class TestMultiTokenMTS:
 
         packed = signifier.make_signature([50, 60])
 
-        # §11.4 MTS: IDENTITY(50), IDENTITY(60), CANONIZE(packed, [50,60])
+        # §11.4 MTS: IDENTITY(50), IDENTITY(60), CANONIZES(packed, [50,60])
         mts_unsigned = [
             r for r in results
             if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and r.kline.signature in (50, 60)
         ]
-        canonize_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CANONIZED"]
+        canonize_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CANONIZES"]
         assert len(mts_unsigned) == 2
         assert len(canonize_entries) == 1
         assert canonize_entries[0].kline.signature == packed
@@ -303,20 +303,20 @@ class TestMultiTokenMTS:
     def test_source_precedes_mts(self) -> None:
         """Compiled source precedes any MTS entries in the output.
 
-        A source entry (CONNOTED) whose node triggers BPE MTS is emitted
+        A source entry (CONNOTES) whose node triggers BPE MTS is emitted
         first; its §11.3 MTS expansion (subword identities + canonization)
         follows. This is the output-ordering contract: source before MTS.
         """
         mock = MockMultiTokenTokenizer({"Mary": [10, 20]})
         enc = TokenEncoder(mock, dev=True)
-        entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTED")
+        entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTES")
         results = enc.encode_entries([entry])
 
         # Source entry is first
-        assert results[0].kline.dbg.op == "CONNOTED"
-        # All remaining entries are MTS (IDENTITY/CANONIZED)
+        assert results[0].kline.dbg.op == "CONNOTES"
+        # All remaining entries are MTS (IDENTITY/CANONIZES)
         for r in results[1:]:
-            assert r.kline.dbg.op in ("IDENTITY", "CANONIZED")
+            assert r.kline.dbg.op in ("IDENTITY", "CANONIZES")
 
 
 # ── Dedup multi-token MTS ────────────────────────────────────────────
@@ -329,26 +329,26 @@ class TestDedupMTS:
         mock = MockMultiTokenTokenizer({"Mary": [10, 20]})
         enc = TokenEncoder(mock, dev=True)
         entries = [
-            SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTED"),
-            SymbolicEntry(sig="B", nodes=["Mary"], op="CONNOTED"),
+            SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTES"),
+            SymbolicEntry(sig="B", nodes=["Mary"], op="CONNOTES"),
         ]
         results = enc.encode_entries(entries)
 
-        # Only 2 IDENTITY entries (not 4) and 1 CANONIZE (not 2)
+        # Only 2 IDENTITY entries (not 4) and 1 CANONIZES (not 2)
         unsigned_entries = [
             r for r in results if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and not r.kline.nodes
         ]
-        canonize_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CANONIZED"]
-        connotate_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CONNOTED"]
+        canonize_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CANONIZES"]
+        connote_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CONNOTES"]
 
         assert len(unsigned_entries) == 2  # deduped from potential 4
         assert len(canonize_entries) == 1  # deduped from potential 2
-        assert len(connotate_entries) == 2  # both main entries
+        assert len(connote_entries) == 2  # both main entries
 
         # Both main entries use the same packed node value
         packed = signifier.make_signature([10, 20])
-        assert connotate_entries[0].kline.nodes == [packed]
-        assert connotate_entries[1].kline.nodes == [packed]
+        assert connote_entries[0].kline.nodes == [packed]
+        assert connote_entries[1].kline.nodes == [packed]
 
 
 # ── KLine identity ──────────────────────────────────────────────────
@@ -358,7 +358,7 @@ class TestKLineIdentity:
     """Compiled KLines behave correctly as KLines."""
 
     def test_isinstance_kline(self, encoder: TokenEncoder) -> None:
-        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTED")
+        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTES")
         results = encoder.encode_entries([entry])
         assert isinstance(results[0], KValue)
         assert isinstance(results[0].kline, KLine)
@@ -399,8 +399,8 @@ class TestMultipleEntries:
     def test_ordering_and_completeness(self, dev_encoder: TokenEncoder) -> None:
         entries = [
             SymbolicEntry(sig="A", nodes=[], op="IDENTITY"),
-            SymbolicEntry(sig="B", nodes=["C"], op="CONNOTED"),
-            SymbolicEntry(sig="D", nodes=["E", "F"], op="CANONIZED"),
+            SymbolicEntry(sig="B", nodes=["C"], op="CONNOTES"),
+            SymbolicEntry(sig="D", nodes=["E", "F"], op="CANONIZES"),
         ]
         results = dev_encoder.encode_entries(entries)
         # At least one per input entry
@@ -408,8 +408,8 @@ class TestMultipleEntries:
         # Ops present in order
         ops = [r.kline.dbg.op for r in results]
         assert "IDENTITY" in ops
-        assert "CONNOTED" in ops
-        assert "CANONIZED" in ops
+        assert "CONNOTES" in ops
+        assert "CANONIZES" in ops
 
 
 # ── Dev mode debug text ─────────────────────────────────────────────
@@ -420,14 +420,14 @@ class TestDevMode:
 
     def test_dev_dbg(self, tz: NLPTokenizer) -> None:
         enc = TokenEncoder(tz, dev=True)
-        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTED")
+        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTES")
         results = enc.encode_entries([entry])
         # Main entry should have dbg
         assert results[0].kline.dbg is not None
-        assert results[0].kline.dbg.op == "CONNOTED"
+        assert results[0].kline.dbg.op == "CONNOTES"
 
     def test_no_dev_dbg(self, encoder: TokenEncoder) -> None:
-        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTED")
+        entry = SymbolicEntry(sig="A", nodes=["B"], op="CONNOTES")
         results = encoder.encode_entries([entry])
         # In non-dev mode, only MTS subword entries get a minimal dbg
         # Main entries may or may not have dbg depending on encoder

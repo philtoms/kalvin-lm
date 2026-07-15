@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4, boundaries, classify
-from kalvin.kline import KLine, is_canon, is_identity
+from kalvin.kline import KLine, is_canon, is_identity, is_misfit
 from kalvin.kvalue import KValue
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -54,110 +54,34 @@ class Rationaliser:
     # ── The turn ─────────────────────────────────────────────────────
 
     def rationalise(self, incoming: Sequence[KValue]) -> list[KValue]:
-        """Apply the entry rule to every incoming value, then emit a batch.
-
-        ``incoming`` is the values received this turn (one or more). The entry
-        rule runs on each in arrival order, then cogitation emits one batch:
-        an identity blast (zero or more S4 identity asks), a batch of S3
-        proposals, the S1 countersignature (both directions of the reciprocal 
-        pair), or an empty list when nothing is workable. Identities and 
-        relationships are never mixed in one batch (a relationship path always 
-        terminates the batch)."""
-        for value in incoming:
-            self._process_query(value)
+        """Route every incoming query, then cogitate."""
+        for query in incoming:
+            self._route(query)
         return self._cogitate()
 
-    # ── Entry rule ────────────────────────────────────────────────────────
-
-    def _process_query(self, incoming: KValue) -> None:
-        """Bookkeeping for an incoming query; emits nothing."""
-        kline = incoming.kline
-        sig = incoming.significance
+    def _route(self, query: KValue) -> None:
+        """Route an incoming query based on its surface significance.
+        
+        S1 and S4 are grounded immediately.
+        S2 and S3 might be promotable - these are also grounded.
+        Otherwise the query is unpacked for cogitation.
+        """
+        kline = query.kline
+        sig = query.significance
 
         if sig == SIG_S4:
             self._pop_identity(kline.signature)
             return
 
         if classify(sig, self._s12, self._s23, self._s34) == "S1":
-            self._cleanup(kline)
+            self._promote(kline)
             return
 
         # S2 or S3.
-        if self._elevatable(kline):
-            self._cleanup(kline)
+        if self._is_promotable(kline):
+            self._promote(kline)
         else:
             self._unpack(kline)
-
-    # ── State ─────────────────────────────────────────────────────────────
-
-    def _ground(self, kline: KLine) -> None:
-        """Record that K has grounded ``kline``. Idempotent on nodes."""
-        bucket = self._state.grounded.setdefault(kline.signature, [])
-        if not any(existing.nodes == kline.nodes for existing in bucket):
-            bucket.append(kline)
-
-    def _recognised(self, signature: int, *, is_signature: bool = False) -> bool:
-        """Has K seen ``signature``?"""
-        if signature in self._state.grounded:
-            return True
-        if is_signature and signature in self._state.asked:
-            return True
-        return any(
-            entry.signature == signature and is_identity(entry)
-            for entry in self._state.work_list
-        )
-
-    def _unpack(self, kline: KLine) -> None:
-        """Push an S2/S3 kline, its unrecognised nodes, and (if new) its signature."""
-        self._state.work_list.append(kline)
-        for node in reversed(kline.nodes):
-            if not self._recognised(node):
-                self._state.work_list.append(KLine(node, [], kline.dbg))
-        if not self._recognised(kline.signature, is_signature=True):
-            self._state.work_list.append(KLine(kline.signature, [],kline.dbg))
-
-    def _cleanup(self, kline: KLine) -> None:
-        """Ground ``kline``, then repeatedly ground any work-list kline it unblocks."""
-        self._ground(kline)
-        changed = True
-        while changed:
-            changed = False
-            for i, entry in enumerate(self._state.work_list):
-                if self._groundable(entry):
-                    del self._state.work_list[i]
-                    self._ground(entry)
-                    changed = True
-                    break
-
-    def _groundable(self, kline: KLine) -> bool:
-        """Is ``kline`` eligible to ground by node-resolution?
-
-        Only identities and canons — relationships ground by elevation on
-        re-receipt.
-        """
-        if is_identity(kline):
-            return kline.signature in self._state.grounded
-        if is_canon(kline, self._signifier):
-            return all(node in self._state.grounded for node in kline.nodes)
-        return False
-
-    def _elevatable(self, kline: KLine) -> bool:
-        """Should K elevate an incoming S2/S3 relationship to S1?
-
-        True iff ``kline`` is a relationship whose nodes are all now grounded.
-        """
-        if is_identity(kline) or is_canon(kline, self._signifier):
-            return False
-        return all(node in self._state.grounded for node in kline.nodes)
-
-    def _pop_identity(self, signature: int) -> None:
-        """Pop the first identity work-item under ``signature`` (S4 branch)."""
-        for i, entry in enumerate(self._state.work_list):
-            if entry.signature == signature and is_identity(entry):
-                del self._state.work_list[i]
-                return
-
-    # ── Cogitation ────────────────────────────────────────────────────────
 
     def _cogitate(self) -> list[KValue]:
         """Work the next workable entry (LIFO) and emit a batch."""
@@ -169,19 +93,79 @@ class Rationaliser:
                 continue
             if not batch:
                 # First workable non-identity dispatches on structure:
-                #   S3 structure (1:1 relationship) → countersignature (if countersignable)
-                #   S2 structure (multi-node misfit) → misfit origination
-                # A single-node S3 relationship whose operand canons are not yet
-                # seen is S3-structure but not countersignable — skip it.
-                if self._countersignable(entry):
-                    return self._emit_countersignature(entry)
-                if self._s2_eligible(entry):
-                    emitted = self._originate_s2(entry)
-                    if emitted is not None:
-                        return [emitted] 
+                #   S3 connoted (single node) → countersign
+                #   S2 misfit (multi-node) → canonize
+                if self._is_countersignable(entry):
+                    batch = self._expand_connotation(entry)
+                    if batch:
+                        return batch
+                    return self.countersign(entry)
+                if is_misfit(entry, self._signifier):
+                    batch = self._propose_similar_fit(entry)
+
         return batch
 
-    def _countersignable(self, entry: KLine) -> bool:
+    # ── State ─────────────────────────────────────────────────────────────
+
+    def _is_groundable(self, kline: KLine) -> bool:
+        """Is ``kline`` eligible to ground by node-resolution?
+
+        Only identities and canons — relationships ground by elevation on
+        re-receipt.
+        """
+        if is_identity(kline):
+            return kline.signature in self._state.grounded
+        if is_canon(kline, self._signifier):
+            return all(node in self._state.grounded for node in kline.nodes)
+        return False
+
+    def _is_grounded(self, kline: KLine) -> bool:
+        """Is an isomorphic kline (same signature and nodes) in grounded memory?"""
+        return any(
+            existing.nodes == kline.nodes
+            for existing in self._state.grounded.get(kline.signature, [])
+        )
+
+    def _ground(self, kline: KLine) -> None:
+        """Record that K has grounded ``kline``. Idempotent on nodes."""
+        bucket = self._state.grounded.setdefault(kline.signature, [])
+        if not any(existing.nodes == kline.nodes for existing in bucket):
+            bucket.append(kline)
+
+    def _is_promotable(self, kline: KLine) -> bool:
+        """Should K promote an incoming S2/S3 relationship to S1?
+
+        True iff ``kline`` is a relationship whose nodes are all now grounded.
+        """
+        if is_identity(kline) or is_canon(kline, self._signifier):
+            return False
+        return all(node in self._state.grounded for node in kline.nodes)
+
+    def _promote(self, kline: KLine) -> None:
+        """Ground ``kline``, then repeatedly ground any work-list kline it unblocks."""
+        self._ground(kline)
+        changed = True
+        while changed:
+            changed = False
+            for i, entry in enumerate(self._state.work_list):
+                if self._is_groundable(entry):
+                    del self._state.work_list[i]
+                    self._ground(entry)
+                    changed = True
+                    break
+
+    def _is_recognised(self, signature: int, *, is_signature: bool = False) -> bool:
+        """Has K seen ``signature``?"""
+        if signature in self._state.grounded:
+            return True
+        if is_signature and signature in self._state.asked:
+            return True
+        return any(
+            entry.signature == signature and is_identity(entry)
+            for entry in self._state.work_list
+        )
+
+    def _is_countersignable(self, entry: KLine) -> bool:
         """Is ``entry`` a single-node relationship whose two operands have seen
         canons, so K can pursue an S1 countersignature for it?"""
         if is_identity(entry) or len(entry.nodes) != 1:
@@ -191,12 +175,24 @@ class Rationaliser:
             and self._find_canon_nodes(entry.nodes[0]) is not None
         )
 
-    def _s2_eligible(self, entry: KLine) -> bool:
-        """Is ``entry`` an S2 structure — a multi-node misfit routed to misfit
-        origination?"""
-        if is_identity(entry) or len(entry.nodes) < 2:
-            return False
-        return not is_canon(entry, self._signifier)
+    def _pop_identity(self, signature: int) -> None:
+        """Pop the first identity work-item under ``signature`` (S4 branch)."""
+        for i, entry in enumerate(self._state.work_list):
+            if entry.signature == signature and is_identity(entry):
+                del self._state.work_list[i]
+                return
+
+    # ── Cogitation ────────────────────────────────────────────────────────
+
+
+    def _unpack(self, kline: KLine) -> None:
+        """Push an S2/S3 kline, its unrecognised nodes, and (if new) its signature."""
+        self._state.work_list.append(kline)
+        for node in kline.nodes:
+            if not self._is_recognised(node):
+                self._state.work_list.append(KLine(node, [], kline.dbg))
+        if not self._is_recognised(kline.signature, is_signature=True):
+            self._state.work_list.append(KLine(kline.signature, [],kline.dbg))
 
     def _emit_identity(self, idx: int, signature: int) -> KValue:
         """S4 — emit IDENTITY ``{signature: []}`` at S4 and pop the entry."""
@@ -204,20 +200,12 @@ class Rationaliser:
         self._state.asked.add(signature)
         return KValue(KLine(signature, []), SIG_S4)
 
-    def _emit_countersignature(self, entry: KLine) -> list[KValue]:
-        """Establish the S1 countersignature for ``entry``, pairing first.
+    def countersign(self, entry: KLine) -> list[KValue]:
+        """Establish the S1 countersignature for ``entry``.
 
         ``entry`` is ``{L:[R]}`` whose operands L and R are signatures with
-        seen canons. First emit the S3 pairings (via :meth:`_emit_pairings`);
-        once every pairing is grounded, remove ``entry`` from the work-list,
-        ground the reciprocal pair, and emit both directions at S1.
+        seen canons. Emit both directions at S1.
         """
-        batch = self._emit_pairings(entry)
-        if batch:
-            return batch
-
-        # Phase 2 — every pairing grounded: establish the S1 countersignature.
-        # Ground and emit both directions of the reciprocal pair.
         self._state.work_list.remove(entry)
         self._ground(entry)
         reciprocal_sig = self._signifier.make_signature(entry.nodes)
@@ -225,13 +213,13 @@ class Rationaliser:
         self._ground(reciprocal)
         return [KValue(entry, SIG_S1), KValue(reciprocal, SIG_S1)]
 
-    def _emit_pairings(self, entry: KLine) -> list[KValue]:
+    def _expand_connotation(self, entry: KLine) -> list[KValue]:
         """Emit every unresolved S3 pairing for ``entry`` in one batch, or ``[]``
         if all pairings are already grounded.
 
         Pair the two canons' operands left-to-right at group size 1, grouping
         one side's residual into a single synthesised operand when the other
-        reaches a single node. A 1:1 pair is CONNOTED at S3; a grouped residual
+        reaches a single node. A 1:1 pair is CONNOTES at S3; a grouped residual
         is a canonical request at S2.
         """
         right = entry.nodes
@@ -265,7 +253,7 @@ class Rationaliser:
 
     # ── S2 path (misfit origination) ────────────────────────────────────
 
-    def _originate_s2(self, entry: KLine) -> KValue | None:
+    def _propose_similar_fit(self, entry: KLine) -> list[KValue]:
         """S2 path — originate a misfit proposal by accumulated shaping.
 
         Shape one proposal by processing candidates in preference order:
@@ -278,40 +266,20 @@ class Rationaliser:
         target = list(entry.nodes)
         target = self._apply_node_expansions(target)
         for candidate in self._s2_candidates(entry):
-            target = self._apply_node_graft(target, candidate)
+            # Resolve ``target`` against ``candidate.nodes`` into a resolved core and
+            # the target's open nodes. The candidate fires iff the core is non-empty;
+            # on firing the new target is the resolved core + the candidate's nodes
+            # not in the core. If it does not fire, ``target`` is returned unchanged.
+            core, e_open = self._resolve_target(target, list(candidate.nodes))
+            if core:
+                c_open = [n for n in candidate.nodes if n not in core]
+                target = core + c_open
+
         # Drop if the shaped proposal is already grounded.
         proposal = KLine(entry.signature, target)
         if self._is_grounded(proposal):
-            return None
-        return KValue(proposal, SIG_S2)
-
-    def _is_grounded(self, kline: KLine) -> bool:
-        """Is an isomorphic kline (same signature and nodes) in grounded memory?"""
-        return any(
-            existing.nodes == kline.nodes
-            for existing in self._state.grounded.get(kline.signature, [])
-        )
-
-    def _apply_node_graft(self, target: list[int], candidate: KLine) -> list[int]:
-        """Rule 2 — graft ``candidate`` onto ``target`` if it fires.
-
-        Resolve ``target`` against ``candidate.nodes`` into a resolved core and
-        the target's open nodes. The candidate fires iff the core is non-empty;
-        on firing the new target is the resolved core + the candidate's nodes
-        not in the core. If it does not fire, ``target`` is returned unchanged.
-        """
-        core, e_open = self._resolve_target(target, list(candidate.nodes))
-        c_open = [n for n in candidate.nodes if n not in core]
-        # Fires iff must_match empty OR core non-empty. must_match here is the
-        # target itself (every node must be accounted for or be open); a node is
-        # open precisely when it did not resolve into the candidate. So the fire
-        # condition reduces to: core is non-empty OR target was empty to begin
-        # with. An empty core means the candidate shares/resolves-to nothing in
-        # target -> no foothold -> invention -> does not fire (B2).
-        if not core:
-            return target
-        # Graft result: resolved core + C_open (E_open dropped, replaced/filled).
-        return core + c_open
+            return []
+        return [KValue(proposal, SIG_S2)]
 
     def _resolve_target(
         self, target: list[int], candidate_nodes: list[int]

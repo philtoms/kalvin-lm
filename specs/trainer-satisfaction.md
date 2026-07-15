@@ -22,7 +22,7 @@ Kalvin and in LTM, with reported significance agreeing with declared significanc
 - `@specs/harness-server.md` — Trainer participant, bus actions, supervisor messages.
 - `@specs/agent.md` — RationaliseEvent shape, significance on the KValue.
 - `@specs/kscript.md` — compiled-entry declared bands (`op` field), structural
-  states (COUNTERSIGNED, CANONIZED, CONNOTED, UNDERSIGNED, IDENTITY).
+  states (COUNTERSIGNS, CANONIZES, CONNOTES, DENOTES, IDENTITY).
 - `@specs/kline.md` — `is_canon`, `is_identity`, KLine equality.
 - `@specs/signifier.md` — `make_signature`, `residual` (misfit diagnosis).
 - `@specs/stub-kagent.md` — the bootstrap trainee the satisfaction logic is
@@ -45,8 +45,8 @@ Kalvin signature request:
   tokenizer's subword canons (`{Mary:[Ma,ry]}`, etc.). Both are withheld; subword
   canons are not filtered out (see §Subword Canons).
 
-**Prompted** — every other compiled entry: COUNTERSIGNED, CONNOTED, UNDERSIGNED,
-and CANONIZED-but-not-Canon. These are submitted one at a time.
+**Prompted** — every other compiled entry: COUNTERSIGNS, CONNOTES, DENOTES,
+and CANONIZES-but-not-Canon. These are submitted one at a time.
 
 ### Held Index
 
@@ -69,13 +69,13 @@ The band the author asserted via the written token, read from the compiled entry
 
 | `op` | Declared band |
 |------|---------------|
-| COUNTERSIGNED | S1 |
-| CANONIZED-which-is-Canon | S2 |
-| CANONIZED-not-Canon | (n/a — treated as prompted, see below) |
-| CONNOTED, UNDERSIGNED | S3 |
+| COUNTERSIGNS | S1 |
+| CANONIZES-which-is-Canon | S2 |
+| CANONIZES-not-Canon | (n/a — treated as prompted, see below) |
+| CONNOTES, DENOTES | S3 |
 | IDENTITY | S4 |
 
-A CANONIZED entry that is not a Canon (e.g. `A => B` where `A ≠ B|…`) is prompted,
+A CANONIZES entry that is not a Canon (e.g. `A => B` where `A ≠ B|…`) is prompted,
 not withheld, and its declared band is S3 (it carries no OR-reduction structure).
 
 ### Ratification

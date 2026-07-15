@@ -27,7 +27,7 @@ from ks.compiler import compile_source
 _signifier = NLPSignifier()
 
 # Default curriculum script — Mary Had A Little Lamb (MHALL).
-# Exercises every operator: COUNTERSIGN, CANONIZE, UNDERSIGN, CONNOTATE,
+# Exercises every operator: COUNTERSIGNS, CANONIZES, DENOTES, CONNOTES,
 # and the corpus annotation + subscript scaffolding forms.
 DEFAULT_SOURCE = """\
 (Mary had a little lamb)
@@ -94,8 +94,8 @@ def _detect_sections(entries: list[KLine]) -> list[tuple[str, int, int]]:
     """Detect semantic sections in a kline list.
 
     The compiler emits compiled source before any MTS entries: operator
-    klines (COUNTERSIGNED/UNDERSIGNED/CONNOTED) come first, followed by MTS
-    expansion klines (IDENTITY components and CANONIZED aggregates — both
+    klines (COUNTERSIGNS/DENOTES/CONNOTES) come first, followed by MTS
+    expansion klines (IDENTITY components and CANONIZES aggregates — both
     §8 character-level and §11.3 BPE-subword). We surface this as two macro
     sections in that order. A source that emits bare identity klines with
     no operator (e.g. §14.8) is folded into the MTS section by this
@@ -106,9 +106,9 @@ def _detect_sections(entries: list[KLine]) -> list[tuple[str, int, int]]:
 
     def is_source(kl: KLine) -> bool:
         return (kl.dbg.op if kl.dbg else "") in (
-            "COUNTERSIGNED",
-            "UNDERSIGNED",
-            "CONNOTED",
+            "COUNTERSIGNS",
+            "DENOTES",
+            "CONNOTES",
         )
 
     # Source occupies a leading contiguous run; the remainder is MTS.

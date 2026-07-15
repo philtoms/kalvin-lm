@@ -32,10 +32,10 @@ This spec depends on the following concepts, defined elsewhere:
   also exposes `is_s1` — `is_canon OR is_countersigned` — but the retrieval
   cascade does not invoke it directly (see §Retrieval).
 
-### Structural State (@CONTEXT.md §Structural State)
+### Structural Relationship (@CONTEXT.md §Structural Relationship)
 
-- The closed set of structural states (COUNTERSIGNED, CANONIZED, CONNOTED,
-  UNDERSIGNED, IDENTITY) produced by the written relational token.
+- The closed set of structural relationships (COUNTERSIGNS, CANONIZES, CONNOTES,
+  DENOTES, IDENTITY) produced by the written relational token.
 
 ## Definition
 
@@ -80,14 +80,14 @@ inverted scale (higher = more grounded):
 1. **Band-representative value** — one of four fixed constants, asserted by a
    producer that declares a band rather than computing a distance. The values
    and their derivation are owned by @model spec §Significance Semantics ›
-   Band-representative Values. The producer maps an entry's structural state
-   (@CONTEXT.md §Structural State) to its band as follows:
+   Band-representative Values. The producer maps an entry's structural relationship
+   (@CONTEXT.md §Structural Relationship) to its band as follows:
 
-   | Structural State       | Band |
+   | Structural Relationship       | Band |
    | ---------------------- | ---- |
-   | COUNTERSIGNED          | S1   |
-   | CANONIZED              | S2   |
-   | CONNOTED / UNDERSIGNED | S3   |
+   | COUNTERSIGNS          | S1   |
+   | CANONIZES              | S2   |
+   | CONNOTES / DENOTES | S3   |
    | IDENTITY               | S4   |
 
 2. **Computed value** — a full 64-bit inverted distance produced by
@@ -105,16 +105,16 @@ Every participant that emits a KValue sets its significance:
 
 | Producer            | KLine source               | significance                                |
 | ------------------- | -------------------------- | ------------------------------------------- |
-| Compiler            | compiled entry             | band-representative, derived from the entry's structural state (COUNTERSIGNED→S1, CANONIZED→S2, CONNOTED/UNDERSIGNED→S3, IDENTITY→S4) |
+| Compiler            | compiled entry             | band-representative, derived from the entry's structural relationship (COUNTERSIGNS→S1, CANONIZES→S2, CONNOTES/DENOTES→S3, IDENTITY→S4) |
 | Countersign         | the reciprocal kline       | `D_MAX` (S1) — the act of countersigning is an S1 ratification             |
 | Cogitation / expand | expansion proposal kline   | the computed value yielded by `expand()`    |
 | Kalvin fast path    | the inbound kline          | the computed/structural value Kalvin assigns during rationalisation |
 
 ### KP-1 — Compiler attaches band-representative significance
 
-The compiler's existing per-entry structural state (today carried as unspec'd
+The compiler's existing per-entry structural relationship (today carried as unspec'd
 debug provenance) becomes the source of the significance: each compiled KValue
-receives the band-representative value for its structural state.
+receives the band-representative value for its structural relationship.
 
 ### KP-2 — Countersign produces an S1 KValue
 
@@ -146,7 +146,7 @@ cascade over the structural predicates (@model spec):
 | `is_identity(kline)`                                                | S4           |
 | `is_countersigned(kline, model)` — reciprocal countersigner present | S1           |
 | `is_canon(kline)`                                                   | S2           |
-| otherwise (CONNOTED / UNDERSIGNED)                                  | S3           |
+| otherwise (CONNOTES / DENOTES)                                  | S3           |
 
 The integer for each band is the band-representative value owned by @model
 spec §Significance Semantics › Band-representative Values.
@@ -241,7 +241,7 @@ The following are explicitly **out of scope** for this spec:
 | KV-8  | Re-derivation: identity kline → S4                                          | §KV-1 |
 | KV-9  | Re-derivation: canonical kline → S2                                         | §KV-1 |
 | KV-10 | Re-derivation: countersigned kline (reciprocal present) → S1                | §KV-1 |
-| KV-11 | Re-derivation: connoted/undersigned kline → S3                              | §KV-1 |
+| KV-11 | Re-derivation: connoted/denoted kline → S3                              | §KV-1 |
 | KV-12 | Re-derivation never yields an unset significance                            | §KV-1 |
 | KV-13 | Fast-path event: `query.kline is proposal.kline`, significances independent | §KE-1 |
 | KV-14 | RationaliseEvent has no `significance` field                                | §KE-3 |

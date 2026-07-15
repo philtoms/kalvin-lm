@@ -10,7 +10,7 @@ Grammar (spec §4)::
     items           ::= item*
     item            ::= sig | annotation | operator_scope
     sig             ::= SIGNATURE
-    operator        ::= COUNTERSIGN | CANONIZE | CONNOTATE | UNDERSIGN
+    operator        ::= COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES
 
 Scope rules enforced (spec §3):
 
@@ -51,10 +51,10 @@ from ks.token import Token, TokenType
 # Operator token types that create scope boundaries
 _OPERATOR_TYPES: frozenset[TokenType] = frozenset(
     {
-        TokenType.COUNTERSIGN,
-        TokenType.CANONIZE,
-        TokenType.CONNOTATE,
-        TokenType.UNDERSIGN,
+        TokenType.COUNTERSIGNS,
+        TokenType.CANONIZES,
+        TokenType.CONNOTES,
+        TokenType.DENOTES,
     }
 )
 

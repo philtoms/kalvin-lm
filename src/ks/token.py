@@ -10,11 +10,11 @@ from enum import Enum, auto
 class TokenType(Enum):
     """Token types for KScript v3 language.
 
-    Construct operators:
-        COUNTERSIGN:  ==  (bidirectional link)
-        CANONIZE:     =>  (canonization)
-        CONNOTATE:    >   (connotation)
-        UNDERSIGN:    =   (undersign link)
+    Construct operators (relationship each token declares):
+        COUNTERSIGNS: ==  (bidirectional link)
+        CANONIZES:    =>  (aggregation)
+        CONNOTES:     >   (connotation)
+        DENOTES:      =   (denotation)
 
     Node types:
         SIGNATURE: [a-zA-Z][a-zA-Z0-9]*    (identifier — case-insensitive; can be construct owner)
@@ -27,11 +27,11 @@ class TokenType(Enum):
         EOF:        -        (end of file)
     """
 
-    # Construct operators
-    COUNTERSIGN = auto()  # ==
-    CANONIZE = auto()  # =>
-    CONNOTATE = auto()  # >
-    UNDERSIGN = auto()  # =
+    # Construct operators (relationship each token declares)
+    COUNTERSIGNS = auto()  # ==
+    CANONIZES = auto()  # =>
+    CONNOTES = auto()  # >
+    DENOTES = auto()  # =
 
     # Node types
     SIGNATURE = auto()  # [a-zA-Z][a-zA-Z0-9]*

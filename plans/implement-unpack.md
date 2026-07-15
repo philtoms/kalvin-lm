@@ -105,7 +105,7 @@ Resolved during the grilling session that produced this plan.
 unpack currently handles identities and clean S2 canons only. Three
 bit-overlap regimes carry node information the decoder must eventually walk:
 S2 canon (full overlap), S2 misfit (partial overlap), and S3 connoted /
-undersigned (no overlap). Folding S2-misfit and S3 into the resolution will
+denoted (no overlap). Folding S2-misfit and S3 into the resolution will
 likely require reading structural state rather than the identity-vs-canon
 test. Separate session.
 

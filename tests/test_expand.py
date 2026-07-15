@@ -75,23 +75,23 @@ class TestBandRepresentativeConstants:
 
 
 class TestBandSignificance:
-    """Verify band_significance() maps structural states to band constants (KP-1)."""
+    """Verify band_significance() maps structural relationships to band constants (KP-1)."""
 
     def test_countersigned_is_s1(self):
-        """COUNTERSIGNED → SIG_S1."""
-        assert band_significance("COUNTERSIGNED") == SIG_S1
+        """COUNTERSIGNS → SIG_S1."""
+        assert band_significance("COUNTERSIGNS") == SIG_S1
 
     def test_canonized_is_s2(self):
-        """CANONIZED → SIG_S2."""
-        assert band_significance("CANONIZED") == SIG_S2
+        """CANONIZES → SIG_S2."""
+        assert band_significance("CANONIZES") == SIG_S2
 
     def test_connoted_is_s3(self):
-        """CONNOTED → SIG_S3."""
-        assert band_significance("CONNOTED") == SIG_S3
+        """CONNOTES → SIG_S3."""
+        assert band_significance("CONNOTES") == SIG_S3
 
-    def test_undersigned_is_s3(self):
-        """UNDERSIGNED → SIG_S3 (same band as CONNOTED)."""
-        assert band_significance("UNDERSIGNED") == SIG_S3
+    def test_denoted_is_s3(self):
+        """DENOTES → SIG_S3 (same band as CONNOTES)."""
+        assert band_significance("DENOTES") == SIG_S3
 
     def test_identity_is_s4(self):
         """IDENTITY → SIG_S4."""

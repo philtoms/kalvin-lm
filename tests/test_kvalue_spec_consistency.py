@@ -8,7 +8,7 @@ The §Retrieval cascade table in ``specs/kvalue.md`` must match the implemented
 ``is_canon OR is_countersigned`` and placing it before the ``is_canon → S2``
 row would swallow every canonical kline into S1, rendering that branch
 unreachable (breaking KV-9 and contradicting the producer mapping
-CANONIZED → S2). These tests lock the spec text to the code so the wording
+CANONIZES → S2). These tests lock the spec text to the code so the wording
 cannot silently revert.
 
 The guard also locks the ``derive_significance`` cascade descriptions in the
@@ -39,7 +39,7 @@ _BAND = re.compile(r"S[1-4]")
 # guard catches both quote styles. (The unrelated Trainer._is_s1 /
 # _S1_FRAME_THRESHOLD threshold concept at lines 243/308 never uses the arrow.)
 _PLAN_S1_VIA_IS_S1 = re.compile(r"is_s1[`']?\s*→\s*S1")
-_PLAN_S1_VIA_IS_COUNTERSIGNED = re.compile(r"is_countersigned[`']?\s*→\s*S1")
+_PLAN_S1_VIA_IS_COUNTERSIGNS = re.compile(r"is_countersigned[`']?\s*→\s*S1")
 
 
 def _cascade_rows() -> list[tuple[str, str]]:
@@ -123,7 +123,7 @@ def test_re_derivation_s1_branch_uses_is_countersigned() -> None:
         "The S1 cascade row must use is_countersigned(kline, model), not is_s1. "
         "is_s1 is is_canon OR is_countersigned; on the S1 row (before is_canon → S2) "
         "it would swallow every canonical kline into S1, breaking KV-9 "
-        "(canonical → S2) and the producer mapping CANONIZED → S2. "
+        "(canonical → S2) and the producer mapping CANONIZES → S2. "
         f"Got: {s1_test!r}"
     )
 
@@ -134,14 +134,14 @@ def test_re_derivation_never_pairs_is_s1_with_s1_band() -> None:
     This is the exact wording reversion this task (KB-357) fixes. A future edit
     that rewrites the S1 row back to ``is_s1(kline)`` would reintroduce an
     unreachable ``is_canon → S2`` branch, breaking KV-9 (canonical → S2) and
-    contradicting the producer mapping CANONIZED → S2.
+    contradicting the producer mapping CANONIZES → S2.
     """
     offenders = [test for test, band in _cascade_rows() if band == "S1" and "is_s1" in test]
     assert not offenders, (
         "re-derivation cascade reverted: the S1 row references is_s1 (must be "
         "is_countersigned). is_s1 = is_canon OR is_countersigned; placed before "
         "is_canon → S2 it makes the canonical branch unreachable, breaking KV-9 "
-        "(canonical → S2) and the producer mapping CANONIZED → S2. "
+        "(canonical → S2) and the producer mapping CANONIZES → S2. "
         f"Offenders: {offenders}"
     )
 
@@ -183,7 +183,7 @@ def test_plan_derive_significance_s1_branch_is_not_is_s1() -> None:
     must be ``is_countersigned``: ``is_s1`` is ``is_canon OR is_countersigned``,
     so placing it before ``is_canon → S2`` swallows every canonical kline into
     S1, rendering the ``is_canon → S2`` branch unreachable (breaking KV-9 and
-    contradicting the producer mapping CANONIZED → S2). The U+2192 arrow (→)
+    contradicting the producer mapping CANONIZES → S2). The U+2192 arrow (→)
     scopes the check to the cascade descriptions, excluding the unrelated
     ``Trainer._is_s1`` / ``_S1_FRAME_THRESHOLD`` threshold concept (which never
     uses the arrow).
@@ -195,7 +195,7 @@ def test_plan_derive_significance_s1_branch_is_not_is_s1() -> None:
         "band (in §2 D4 and/or §3 Task B). The S1 branch must be is_countersigned. "
         "is_s1 = is_canon OR is_countersigned; placed before is_canon → S2 it "
         "makes the canonical branch unreachable, breaking KV-9 (canonical → S2) "
-        "and the producer mapping CANONIZED → S2. "
+        "and the producer mapping CANONIZES → S2. "
         f"Offenders: {offenders}"
     )
 
@@ -208,7 +208,7 @@ def test_plan_derive_significance_s1_branch_is_is_countersigned() -> None:
     ``derive_significance``.
     """
     text = PLAN.read_text(encoding="utf-8")
-    assert _PLAN_S1_VIA_IS_COUNTERSIGNED.search(text), (
+    assert _PLAN_S1_VIA_IS_COUNTERSIGNS.search(text), (
         "plan derive_significance cascade must describe the S1 branch as "
         "is_countersigned→S1 (matching the spec table and derive_significance)."
     )

@@ -16,10 +16,10 @@ from src.ks.lexer import Lexer, LexerError
 from src.ks.token import Token, TokenType
 
 # Shorthand aliases
-CS = TokenType.COUNTERSIGN
-CZ = TokenType.CANONIZE
-CT = TokenType.CONNOTATE
-US = TokenType.UNDERSIGN
+CS = TokenType.COUNTERSIGNS
+CZ = TokenType.CANONIZES
+CT = TokenType.CONNOTES
+US = TokenType.DENOTES
 SG = TokenType.SIGNATURE
 AN = TokenType.ANNOTATION
 NL = TokenType.NEWLINE
@@ -49,10 +49,10 @@ class TestAllTokenTypes:
         tokens = _tokens(source)
         type_names = {t.type.name for t in tokens}
         expected = {
-            "COUNTERSIGN",
-            "CANONIZE",
-            "CONNOTATE",
-            "UNDERSIGN",
+            "COUNTERSIGNS",
+            "CANONIZES",
+            "CONNOTES",
+            "DENOTES",
             "SIGNATURE",
             "ANNOTATION",
             "NEWLINE",
@@ -84,15 +84,15 @@ class TestAllTokenTypes:
 class TestOperatorPriority:
     """KS-2: Multi-char operators (==, =>) matched before single-char (=, >)."""
 
-    def test_countersign_not_two_undersigns(self):
-        """'A == B' → SIGNATURE, COUNTERSIGN, SIGNATURE (not two UNDERSIGN)."""
+    def test_countersign_not_two_denotes(self):
+        """'A == B' → SIGNATURE, COUNTERSIGNS, SIGNATURE (not two DENOTES)."""
         tokens = _tokens("A == B")
         assert tokens[1].type == CS
         assert tokens[1].value == "=="
         assert len([t for t in tokens if t.type == US]) == 0
 
-    def test_canonize_not_undersign_connotate(self):
-        """'A => B' → SIGNATURE, CANONIZE, SIGNATURE (not =, >)."""
+    def test_canonize_not_denote_connote(self):
+        """'A => B' → SIGNATURE, CANONIZES, SIGNATURE (not =, >)."""
         tokens = _tokens("A => B")
         assert tokens[1].type == CZ
         assert tokens[1].value == "=>"
@@ -100,7 +100,7 @@ class TestOperatorPriority:
         assert len([t for t in tokens if t.type == CT]) == 0
 
     def test_single_char_operators_when_not_multi(self):
-        """'A = B > C' → SIGNATURE, UNDERSIGN, SIGNATURE, CONNOTATE, SIGNATURE."""
+        """'A = B > C' → SIGNATURE, DENOTES, SIGNATURE, CONNOTES, SIGNATURE."""
         types = _types("A = B > C")
         assert types == [SG, US, SG, CT, SG]
 
@@ -298,7 +298,7 @@ class TestEdgeCases:
         assert tokens[0].value == "ABC"
 
     def test_consecutive_operators(self):
-        """'A = =' → SIGNATURE, UNDERSIGN, UNDERSIGN."""
+        """'A = =' → SIGNATURE, DENOTES, DENOTES."""
         types = _types("A = =")
         assert types == [SG, US, US]
 

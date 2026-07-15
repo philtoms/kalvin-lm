@@ -109,7 +109,7 @@ On an S2/S3 event that does not auto-countersign and is not a recurrence: emit t
 
 When the LLMSupervisor receives a decision request, it builds a prompt from the request's `misfit` and `curriculum_context`, calls its LLM client, extracts a scaffold answer, sanitises it, and emits a decision answer. The sanitisation and decompilation mechanics are specified here; the prompt wording and LLM client are implementation details.
 
-17. The LLMSupervisor's system prompt MUST document only the KScript syntax the lexer supports: identifiers are uppercase letters only (A–Z) with no hex literals; the only operators are `==` (countersign), `=>` (canonize), `=` (undersign), `>` (relationship); comments are parenthesised `(...)` only.
+17. The LLMSupervisor's system prompt MUST document only the KScript syntax the lexer supports: identifiers are uppercase letters only (A–Z) with no hex literals; the only operators are `==` (countersign), `=>` (canonize), `=` (denote), `>` (connote); comments are parenthesised `(...)` only.
 18. The misfit summaries passed to the LLM MUST be decompiled to human-readable KScript (e.g. `M > H`), not hex repr; on decompilation failure they fall back to repr.
 19. The LLMSupervisor MUST sanitise scaffolding source by removing `#`-prefixed comment lines before attempting compilation. If sanitisation removes all content, it MUST produce no scaffolding (answering `continue` or `ratify`) without attempting compilation.
 

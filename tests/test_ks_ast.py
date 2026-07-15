@@ -36,13 +36,13 @@ class TestScopeModelStructure:
         sig_b = Signature("B", 1, 6)
         scope = OperatorScope(
             sig=sig_a,
-            op=TokenType.COUNTERSIGN,
+            op=TokenType.COUNTERSIGNS,
             items=[sig_b],
             child_block=None,
         )
 
         assert scope.sig is sig_a
-        assert scope.op is TokenType.COUNTERSIGN
+        assert scope.op is TokenType.COUNTERSIGNS
         assert scope.items == [sig_b]
         assert scope.child_block is None
         assert scope.inline_annotation is None
@@ -56,19 +56,19 @@ class TestScopeModelStructure:
         # A == B
         scope_ab = OperatorScope(
             sig=Signature("A", 1, 1),
-            op=TokenType.COUNTERSIGN,
+            op=TokenType.COUNTERSIGNS,
             items=[Signature("B", 1, 6)],
         )
         # B > C
         scope_bc = OperatorScope(
             sig=Signature("B", 1, 6),
-            op=TokenType.CONNOTATE,
+            op=TokenType.CONNOTES,
             items=[Signature("C", 1, 10)],
         )
         # C = D
         scope_cd = OperatorScope(
             sig=Signature("C", 1, 10),
-            op=TokenType.UNDERSIGN,
+            op=TokenType.DENOTES,
             items=[Signature("D", 1, 14)],
         )
 
@@ -76,9 +76,9 @@ class TestScopeModelStructure:
         scopes = [scope_ab, scope_bc, scope_cd]
 
         assert len(scopes) == 3
-        assert scopes[0].op is TokenType.COUNTERSIGN
-        assert scopes[1].op is TokenType.CONNOTATE
-        assert scopes[2].op is TokenType.UNDERSIGN
+        assert scopes[0].op is TokenType.COUNTERSIGNS
+        assert scopes[1].op is TokenType.CONNOTES
+        assert scopes[2].op is TokenType.DENOTES
         # Verify no chain_right exists — each scope is independent
         for s in scopes:
             assert not hasattr(s, "chain_right")
@@ -106,7 +106,7 @@ class TestAnnotationsPreserved:
         ann = Annotation("(subject)", 2, 5)
         scope = OperatorScope(
             sig=Signature("A", 1, 1),
-            op=TokenType.UNDERSIGN,
+            op=TokenType.DENOTES,
             items=[ann, Signature("B", 2, 15)],
         )
 
@@ -135,7 +135,7 @@ class TestInlineAnnotation:
         """S(ubject) = M — inline_annotation on sig-side."""
         scope = OperatorScope(
             sig=Signature("S", 1, 1),
-            op=TokenType.UNDERSIGN,
+            op=TokenType.DENOTES,
             items=[Signature("M", 1, 12)],
             inline_annotation=Annotation("(ubject)", 1, 2),
         )
@@ -150,7 +150,7 @@ class TestInlineAnnotation:
         d_item = Signature("D", 1, 5, inline_annotation=Annotation("(et)", 1, 6))
         scope = OperatorScope(
             sig=Signature("A", 1, 1),
-            op=TokenType.UNDERSIGN,
+            op=TokenType.DENOTES,
             items=[d_item],
         )
 
@@ -162,7 +162,7 @@ class TestInlineAnnotation:
         d_item = Signature("D", 1, 10, inline_annotation=Annotation("(et)", 1, 11))
         scope = OperatorScope(
             sig=Signature("S", 1, 1),
-            op=TokenType.UNDERSIGN,
+            op=TokenType.DENOTES,
             items=[d_item],
             inline_annotation=Annotation("(ubject)", 1, 2),
         )
@@ -213,7 +213,7 @@ class TestScopeItemComposition:
         items: list[ScopeItem] = [
             Signature("A", 1, 1),
             Annotation("(hello)", 1, 3),
-            OperatorScope(sig=Signature("B", 1, 10), op=TokenType.UNDERSIGN),
+            OperatorScope(sig=Signature("B", 1, 10), op=TokenType.DENOTES),
             Signature("C", 2, 1),
         ]
 
@@ -227,12 +227,12 @@ class TestScopeItemComposition:
         """OperatorScope.items can contain child OperatorScope instances."""
         child = OperatorScope(
             sig=Signature("X", 2, 3),
-            op=TokenType.CONNOTATE,
+            op=TokenType.CONNOTES,
             items=[Signature("Y", 2, 7)],
         )
         parent = OperatorScope(
             sig=Signature("A", 1, 1),
-            op=TokenType.UNDERSIGN,
+            op=TokenType.DENOTES,
             items=[child],
         )
 
@@ -252,7 +252,7 @@ class TestConstructItemComposition:
         """A list[ConstructItem] can hold Annotation, OperatorScope, Block."""
         items: list[ConstructItem] = [
             Annotation("(header)", 1, 1),
-            OperatorScope(sig=Signature("A", 2, 1), op=TokenType.COUNTERSIGN),
+            OperatorScope(sig=Signature("A", 2, 1), op=TokenType.COUNTERSIGNS),
             Block(constructs=[Annotation("(nested)", 3, 5)]),
         ]
 
@@ -294,7 +294,7 @@ class TestKScriptFile:
         kf = KScriptFile(
             constructs=[
                 Annotation("(doc)", 1, 1),
-                OperatorScope(sig=Signature("A", 2, 1), op=TokenType.UNDERSIGN),
+                OperatorScope(sig=Signature("A", 2, 1), op=TokenType.DENOTES),
             ]
         )
         assert len(kf.constructs) == 2
@@ -308,7 +308,7 @@ class TestKScriptFile:
         )
         scope = OperatorScope(
             sig=Signature("A", 1, 1),
-            op=TokenType.UNDERSIGN,
+            op=TokenType.DENOTES,
             items=[Signature("B", 1, 5)],
             child_block=inner,
         )

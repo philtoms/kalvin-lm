@@ -11,7 +11,7 @@
       "role_turn": 17
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "WDMH",
       "nodes": [
         "Mary",
@@ -35,7 +35,7 @@
       "role_turn": 19
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "WDMH",
       "nodes": [
         "what",
@@ -117,7 +117,7 @@
       "role_turn": 23
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "had",
       "nodes": [
         "did",
@@ -136,7 +136,7 @@
       "role_turn": 24
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "WDMH",
       "nodes": [
         "Mary",
@@ -152,7 +152,7 @@
       "notes": "Misfit proposal: K substitutes had for 'did have', 'a little lamb' for what."
     },
     {
-      "op": "CANONIZED",
+      "op": "CANONIZES",
       "signature": "WDMH",
       "nodes": [
         "Mary",

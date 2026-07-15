@@ -4,7 +4,7 @@ Teach Kalvin that MHALL (Mary Had A Little Lamb) is structurally equivalent to S
 
 ## Approach
 
-Introduce identities first, then build the structural decomposition layers using only countersign and undersign (S1-level operators). The final lesson presents the full MHALL == SVO equivalence with subscript scaffolding that Kalvin should ground via fast path.
+Introduce identities first, then build the structural decomposition layers using only countersign and denote (S1-level operators). The final lesson presents the full MHALL == SVO equivalence with subscript scaffolding that Kalvin should ground via fast path.
 
 ## Lessons
 
@@ -42,7 +42,7 @@ ALL => A L(ittle) L(amb)
 
 ### 4
 
-Establish the structural mapping between grammatical roles and lexical identities using undersign: M undersigns S, H undersigns V, ALL undersigns O.
+Establish the structural mapping between grammatical roles and lexical identities using denote: M denotes S, H denotes V, ALL denotes O.
 
 ```
 M(ary) = S(ubject)

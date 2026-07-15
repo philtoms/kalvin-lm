@@ -68,10 +68,10 @@ from enum import Enum, auto
 from dataclasses import dataclass
 
 class TokenType(Enum):
-    COUNTERSIGN = auto()    # ==
-    CANONIZE = auto()       # =>
-    CONNOTATE = auto()      # >
-    UNDERSIGN = auto()      # =
+    COUNTERSIGNS = auto()    # ==
+    CANONIZES = auto()       # =>
+    CONNOTES = auto()      # >
+    DENOTES = auto()      # =
     SIGNATURE = auto()      # [A-Z]+
     ANNOTATION = auto()     # (...)
     NEWLINE = auto()
@@ -125,7 +125,7 @@ class Lexer:
 | Spec ID | Test                                                                                    |
 | ------- | --------------------------------------------------------------------------------------- |
 | KS-1    | All token types recognized                                                              |
-| KS-2    | `==`, `=>` matched before `=`, `>`: `A == B` produces SIGNATURE, COUNTERSIGN, SIGNATURE |
+| KS-2    | `==`, `=>` matched before `=`, `>`: `A == B` produces SIGNATURE, COUNTERSIGNS, SIGNATURE |
 | KS-3    | `(...)` with nested parens preserved as ANNOTATION                                      |
 | KS-4    | Python-style INDENT/DEDENT tokens                                                       |
 | KS-5    | Empty input → [EOF]; unknown char → LexerError                                          |
@@ -212,7 +212,7 @@ operator_scope ::= sig ( operator items )?
 items       ::= item*
 item        ::= sig | annotation | operator_scope
 sig         ::= SIGNATURE
-operator    ::= COUNTERSIGN | CANONIZE | CONNOTATE | UNDERSIGN
+operator    ::= COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES
 ```
 
 ### Scope model in the parser (§3)
@@ -325,7 +325,7 @@ resolve(char):
 - **B1**: Once bound in a scope, cannot be re-bound within that scope.
 - **B2**: Characters seek bindings: inline first, then scope stack.
 - **B3**: First-letter matching, case-insensitive, occurrence counter for duplicates.
-- **B4**: Inline override — patches parent scope's MTS CANONIZED entry.
+- **B4**: Inline override — patches parent scope's MTS CANONIZES entry.
 
 Note: B1 and B4 enforcement happens in the ASTEmitter, not in BindingScope. The scope provides resolution only.
 
@@ -358,7 +358,7 @@ This is the largest task. Build in layers: unsigned → inline ops → multi-ite
 class SymbolicEntry(NamedTuple):
     sig: str
     nodes: list[str]       # always a list
-    op: str                # COUNTERSIGNED, CANONIZED, CONNOTED, UNDERSIGNED, IDENTITY
+    op: str                # COUNTERSIGNS, CANONIZES, CONNOTES, DENOTES, IDENTITY
     component_labels: list[str] | None = None  # resolved words per sig char
 
 class ASTEmitter:
@@ -370,10 +370,10 @@ class ASTEmitter:
 
 ```python
 _sig_levels = {
-    "COUNTERSIGNED": "S1",
-    "UNDERSIGNED": "S1",
-    "CANONIZED": "S2",
-    "CONNOTED": "S3",
+    "COUNTERSIGNS": "S1",
+    "DENOTES": "S1",
+    "CANONIZES": "S2",
+    "CONNOTES": "S3",
     "IDENTITY": "S4",
 }
 ```
@@ -404,24 +404,24 @@ def _process_scope(self, scope: OperatorScope) -> None:
     # Collect all node identifiers for this scope
     node_ids = self._collect_node_ids(items, child_block)
 
-    if scope.op == TokenType.COUNTERSIGN:
+    if scope.op == TokenType.COUNTERSIGNS:
         for node_id in node_ids:
-            self._emit_entry(resolved_sig, [node_id], "COUNTERSIGNED")
-            self._emit_entry(node_id, [resolved_sig], "COUNTERSIGNED")
+            self._emit_entry(resolved_sig, [node_id], "COUNTERSIGNS")
+            self._emit_entry(node_id, [resolved_sig], "COUNTERSIGNS")
 
-    elif scope.op == TokenType.UNDERSIGN:
+    elif scope.op == TokenType.DENOTES:
         for node_id in node_ids:
             if node_id == resolved_sig:
                 self._emit_entry(resolved_sig, [], "IDENTITY")
             else:
-                self._emit_entry(node_id, [resolved_sig], "UNDERSIGNED")
+                self._emit_entry(node_id, [resolved_sig], "DENOTES")
 
-    elif scope.op == TokenType.CONNOTATE:
+    elif scope.op == TokenType.CONNOTES:
         for node_id in node_ids:
-            self._emit_entry(resolved_sig, [node_id], "CONNOTED")
+            self._emit_entry(resolved_sig, [node_id], "CONNOTES")
 
-    elif scope.op == TokenType.CANONIZE:
-        self._emit_entry(resolved_sig, node_ids, "CANONIZED")
+    elif scope.op == TokenType.CANONIZES:
+        self._emit_entry(resolved_sig, node_ids, "CANONIZES")
 
     # Recursively compile child items
     self._compile_children(items, child_block)
@@ -437,7 +437,7 @@ A == B > C = D
 
 The parser produces three OperatorScope nodes in sequence. The emitter processes each, and the last node of each scope feeds the next scope's signature.
 
-For CANONIZED, items in child_block are flattened into the CANONIZED node list:
+For CANONIZES, items in child_block are flattened into the CANONIZES node list:
 
 ```python
 def _collect_node_ids(self, items, child_block) -> list[str]:
@@ -448,7 +448,7 @@ def _collect_node_ids(self, items, child_block) -> list[str]:
         elif isinstance(item, OperatorScope):
             ids.append(item.sig.id)
     if child_block:
-        # Flatten child block items into CANONIZED node list
+        # Flatten child block items into CANONIZES node list
         ids.extend(self._collect_block_ids(child_block))
     return ids
 ```
@@ -480,20 +480,20 @@ def _emit_mts(self, sig: str) -> int | None:
 
     for resolved_char in chars:
         self._emit_entry(resolved_char, [], "IDENTITY")      # deduped via _mts_identity_seen
-    self._emit_entry(sig, chars, "CANONIZED")             # deduped via _mts_canonize_seen
-    return len(self.entries) - 1  # index of CANONIZED entry for Rule B4
+    self._emit_entry(sig, chars, "CANONIZES")             # deduped via _mts_canonize_seen
+    return len(self.entries) - 1  # index of CANONIZES entry for Rule B4
 ```
 
-Initialize `self._resolution_cache: dict[str, list[str]] = {}` in the constructor. The cache is what realizes both §8.3 canonical resolution and (because a CANONIZED scope whose subscript children spell its own sig reuses the cached components) the single-expansion invariant for a node-that-is-a-nested-scope.
+Initialize `self._resolution_cache: dict[str, list[str]] = {}` in the constructor. The cache is what realizes both §8.3 canonical resolution and (because a CANONIZES scope whose subscript children spell its own sig reuses the cached components) the single-expansion invariant for a node-that-is-a-nested-scope.
 
 **MTS deduplication (§8.3):**
 
-Track emitted `(sig, tuple(nodes))` pairs for CANONIZED entries only. If a subsequent CANONIZED entry would produce the same pair, skip it. This prevents duplicate MTS canonization from subscript blocks.
+Track emitted `(sig, tuple(nodes))` pairs for CANONIZES entries only. If a subsequent CANONIZES entry would produce the same pair, skip it. This prevents duplicate MTS canonization from subscript blocks.
 
 ```python
 def _emit_entry(self, sig, nodes, op):
     key = (sig, tuple(nodes))
-    if op == "CANONIZED":
+    if op == "CANONIZES":
         if key in self._mts_canonize_seen:
             return
         self._mts_canonize_seen.add(key)
@@ -515,7 +515,7 @@ def _resolve_char(self, char: str) -> str:
     return char
 ```
 
-Rule B4 override: when inline annotation fires inside a subscript, patch the parent's MTS CANONIZED entry:
+Rule B4 override: when inline annotation fires inside a subscript, patch the parent's MTS CANONIZES entry:
 
 ```python
 def _apply_inline_override(self, char: str, word: str, parent_canonize_idx: int | None):
@@ -532,19 +532,19 @@ def _apply_inline_override(self, char: str, word: str, parent_canonize_idx: int 
 
 | Spec ID | Test                                                                    |
 | ------- | ----------------------------------------------------------------------- |
-| KS-11   | COUNTERSIGNED per-item: `A == B C` → `{A:[B]}, {B:[A]}, {A:[C]}, {C:[A]}` |
-| KS-12   | UNDERSIGNED per-item reversed: `A = B C` → `{B:[A]}, {C:[A]}`             |
-| KS-13   | CONNOTED per-item: `A > B C` → `{A:[B]}, {A:[C]}`                      |
-| KS-14   | CANONIZED aggregates: `A => B C D` → `{A:[B,C,D]}`                       |
+| KS-11   | COUNTERSIGNS per-item: `A == B C` → `{A:[B]}, {B:[A]}, {A:[C]}, {C:[A]}` |
+| KS-12   | DENOTES per-item reversed: `A = B C` → `{B:[A]}, {C:[A]}`             |
+| KS-13   | CONNOTES per-item: `A > B C` → `{A:[B]}, {A:[C]}`                      |
+| KS-14   | CANONIZES aggregates: `A => B C D` → `{A:[B,C,D]}`                       |
 | KS-15   | Operator chain: `A == B > C = D` → correct signatures per scope         |
 | KS-16   | Indent extends scope: child block items belong to parent operator       |
 | KS-17   | DEDENT returns to parent scope                                          |
-| KS-18   | Non-CANONIZED with indent: per-item extends into child block             |
+| KS-18   | Non-CANONIZES with indent: per-item extends into child block             |
 | KS-19   | MTS expansion: multi-char produces components + canonization + identity |
 | KS-20   | No MTS for single-char identifiers                                      |
 | KS-21   | MTS on node side: `A == MHALL` triggers MTS for MHALL                   |
 | KS-22   | Node count invariant: MTS node count equals character count             |
-| KS-26   | Rule B4 override: inline patches parent MTS CANONIZED                    |
+| KS-26   | Rule B4 override: inline patches parent MTS CANONIZES                    |
 | KS-33   | Self-identity: `A = A` → `{A:[]}` with op=IDENTITY                      |
 | KS-34   | Nodes always a list: `A => B` → `{A:[B]}`, `A` → `{A:[]}`               |
 
@@ -574,11 +574,11 @@ class TokenEncoder:
 - **Signature string** → `tokenizer.encode(sig)` → single `uint64` (or packed from multi-token).
 - **Node strings** → each encoded via tokenizer → `list[uint64]`. Always a list.
 - **Empty nodes** → `[]`. Never None.
-- **Multi-token words** (§11.3): When a resolved word BPE-encodes to multiple tokens, run full MTS at the BPE-token level: emit identity entries per token, CANONIZED mapping packed signature → tokens, return packed signature as the single node.
+- **Multi-token words** (§11.3): When a resolved word BPE-encodes to multiple tokens, run full MTS at the BPE-token level: emit identity entries per token, CANONIZES mapping packed signature → tokens, return packed signature as the single node.
 
 **Canonical encoding (§11.3/§11.4).** A compound identifier (§8 multi-char sig) is BPE-encoded via its resolved components, never by re-encoding its literal string. Maintain `_compound_sigs: dict[str, int]`:
 
-- On a CANONIZED definition (the compound's defining entry): compute `sig = make_signature(node_values)` and register `entry.sig → sig`. The ASTEmitter guarantees definition-before-reference ordering.
+- On a CANONIZES definition (the compound's defining entry): compute `sig = make_signature(node_values)` and register `entry.sig → sig`. The ASTEmitter guarantees definition-before-reference ordering.
 - On any entry whose signature or node string is a known compound: reuse the registered uint64 instead of `encode(literal_string)`.
 
 This yields three coupled rules, all consequences of "a compound has one identity, computed once":
@@ -587,7 +587,7 @@ This yields three coupled rules, all consequences of "a compound has one identit
 2. Packed-sig IDENTITY suppression: when `op == IDENTITY` and the signature is packed (multi-token §11.3 word or compound), do not emit a main IDENTITY kline — the decomposition above is the sole representation, and a packed value cannot head an identity (CONTEXT.md "Identity").
 3. `_build_dbg` must not `decode()` a packed signature: it is opaque per §11.5 (decode may crash or return an unrelated word). Track `sig_is_packed` alongside the signature and skip decode/grammar-lookup when set; decode defensively (try/except) for the single-token path.
 
-Operator entries (COUNTERSIGNED/UNDERSIGN/CONNOTED) with a compound signature are legitimate references and are emitted normally; for them `signature != OR(nodes)` by design (the signature is a registry lookup, not a reduction of that entry's own nodes).
+Operator entries (COUNTERSIGNS/DENOTES/CONNOTES) with a compound signature are legitimate references and are emitted normally; for them `signature != OR(nodes)` by design (the signature is a registry lookup, not a reduction of that entry's own nodes).
 
 **Output ordering (§11.6).** Compiled source precedes every MTS kline in the returned list. Implementation: tag each encoded `KValue` as MTS or source — the ASTEmitter marks §8 MTS-produced `SymbolicEntry`s (`is_mts=True` on component identities and MTS canonizations), and `TokenEncoder` additionally tags its own §11.3 BPE-subword extras. `encode_entries` then applies a **stable partition**: source entries first, MTS entries last, relative order preserved within each group. Encoding itself still runs in definition-before-reference order (the compound registry and dedup are unaffected); only the finished output is re-partitioned, so the ordering is a no-op for scripts that emit only source or only MTS.
 
@@ -606,7 +606,7 @@ def _encode_node(self, word: str) -> tuple[int, list[SymbolicEntry]]:
     packed = 0
     for tok in tokens:
         packed |= tok
-    extras.append(SymbolicEntry(packed, tokens, "CANONIZED"))
+    extras.append(SymbolicEntry(packed, tokens, "CANONIZES"))
     return packed, extras
 ```
 
@@ -686,8 +686,8 @@ TestParserAST              — §3-4 (5 tests)
 TestBindingScope           — §10  (9 tests)
 TestEmitterUnsigned        — §7.1 (1 test)
 TestEmitterCountersign     — §7.2 (2 tests)
-TestEmitterUndersign       — §7.3 (2 tests)
-TestEmitterConnotate       — §7.4 (1 test)
+TestEmitterDenote       — §7.3 (2 tests)
+TestEmitterConnote       — §7.4 (1 test)
 TestEmitterCanonize        — §7.5 (2 tests)
 TestEmitterScopeChains     — §3.2 (4 tests)
 TestEmitterMTS             — §8   (4 tests)
@@ -740,14 +740,14 @@ def has_entry(md, sig, nodes):
 | KS-8    | Parser      | Annotations preserved                                                                     |
 | KS-9    | Parser      | Inline annotation attachment                                                              |
 | KS-10   | Parser      | Empty source                                                                              |
-| KS-11   | Scope       | COUNTERSIGNED per-item                                                                      |
-| KS-12   | Scope       | UNDERSIGNED per-item reversed                                                               |
-| KS-13   | Scope       | CONNOTED per-item                                                                        |
-| KS-14   | Scope       | CANONIZED aggregates                                                                       |
+| KS-11   | Scope       | COUNTERSIGNS per-item                                                                      |
+| KS-12   | Scope       | DENOTES per-item reversed                                                               |
+| KS-13   | Scope       | CONNOTES per-item                                                                        |
+| KS-14   | Scope       | CANONIZES aggregates                                                                       |
 | KS-15   | Scope       | Operator chain                                                                            |
 | KS-16   | Scope       | Indent extends scope                                                                      |
 | KS-17   | Scope       | DEDENT returns to parent                                                                  |
-| KS-18   | Scope       | Non-CANONIZED with indent                                                                  |
+| KS-18   | Scope       | Non-CANONIZES with indent                                                                  |
 | KS-19   | MTS         | Multi-char expansion                                                                      |
 | KS-20   | MTS         | No single-char expansion                                                                  |
 | KS-21   | MTS         | MTS on node side                                                                          |
@@ -771,7 +771,7 @@ def has_entry(md, sig, nodes):
 | KS-39   | MTS Dedup   | Intra-expansion dedup                                                                     |
 | KS-40   | MTS Dedup   | Canonization dedup                                                                        |
 | KS-41   | MTS         | Canonical resolution (§8.3) — same identifier resolves identically wherever it appears    |
-| KS-42   | Encoding    | Canonical encoding (§11.3/§11.4) — one CANONIZED per compound; single-token identity sigs    |
+| KS-42   | Encoding    | Canonical encoding (§11.3/§11.4) — one CANONIZES per compound; single-token identity sigs    |
 | KS-43   | Output      | Output ordering (§11.6) — compiled source precedes all MTS; stable partition              |
 
 ---
@@ -805,6 +805,6 @@ ks/
 | No `chain_right`                   | Scope model (§3). Each operator creates a scope boundary.                                        |
 | `nodes: list[uint64]` always       | Eliminates None checks, singleton unwrapping, type branching. Uniform structure.                 |
 | BindingScope always active         | Unresolved identifiers encode as their own raw NLP-BPE nodes (see @kscript spec §10).            |
-| MTS dedup on CANONIZED only        | Prevents duplicate entries from MTS + subscript CANONIZED overlap. Not a general dedup mechanism. |
+| MTS dedup on CANONIZES only        | Prevents duplicate entries from MTS + subscript CANONIZES overlap. Not a general dedup mechanism. |
 | `Annotation` replaces `Comment`    | Terminology reflects purpose: these are BPE encoding inputs, not inert documentation.            |
 | Multi-token MTS in TokenEncoder    | BPE subword decomposition is an encoding concern. The ASTEmitter works with symbolic strings.    |

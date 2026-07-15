@@ -43,7 +43,7 @@ A(lpha)
 Submit a connoted misfit that routes S2/S3 against the {Mark: [Halo]}
 countersign established in lesson 3.
 
-The `>` CONNOTED operator is used (not `=>` CANONIZED): the `=>` operator makes
+The `>` CONNOTES operator is used (not `=>` CANONIZES): the `=>` operator makes
 a compound signature canonical by construction (signature == make_signature
 (nodes)), so such a kline is never a misfit and resolves S1 via the self-grounded
 short-circuit before any candidate is retrieved. With `>`, the signature stays

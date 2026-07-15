@@ -58,9 +58,9 @@ MHALL = SVO =>
 | Operator    | Syntax     | Significance | Meaning                |
 | ----------- | ---------- | ------------ | ---------------------- |
 | Countersign | `A == B`   | S1           | Mutual / bidirectional |
-| Undersign   | `A = B`    | S1           | Unconditional          |
+| Denote     | `A = B`    | S3           | Objective — A denotes B (B is an A) |
 | Canonize    | `A => B C` | S2           | Canonical              |
-| Connotate   | `A > B`    | S3           | Connotative            |
+| Connote     | `A > B`    | S3           | Connotative — A connotes B |
 | Unsigned    | `A`        | S4           | Identity only          |
 
 Indented blocks are **scaffolding** — context that steers Kalvin toward understanding the parent line.

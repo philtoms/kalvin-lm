@@ -38,10 +38,9 @@ Each lesson body contains:
 
 KScript syntax:
 - Identity: single character (e.g. M)
-- Assignment: name = expression
-- Undersign: Q = V  →  {V: [Q]}
+- Denote: Q = V  →  {V: [Q]}  (Q denotes V)
 - Countersign: Q == V  →  {Q: [V]}, {V: [Q]}
-- Connotate: Q > V  →  {Q: [V]}
+- Connote: Q > V  →  {Q: [V]}  (Q connotes V)
 - Canonize: Q => V1 V2  →  {Q: [V1, V2]}
 - Indented chaining: value on one line becomes query of indented block
 

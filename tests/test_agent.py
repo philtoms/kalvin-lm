@@ -214,7 +214,7 @@ class TestAgentRationalise:
     def test_gate_s4_disagreement_drops(self):
         """declared S4, derived != S4 → drop: returns True, no STM, no event.
 
-        A relationship kline that derives to S3 (CONNOTED/UNDERSIGNED) but is
+        A relationship kline that derives to S3 (CONNOTES/DENOTES) but is
         handed in with a declared S4 is the MVP drop case. It must NOT touch
         STM, Frame, or LTM, and must NOT publish.
         """

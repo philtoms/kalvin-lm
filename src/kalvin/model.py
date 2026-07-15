@@ -464,7 +464,7 @@ class Model:
         - Canon (``is_canon`` — non-empty, non-self-referential, signature ==
           make_signature(nodes)) → concatenation of unpack(child) per node,
           in node order.
-        - Any other input (connoted, undersigned, misfit) → ValueError.
+        - Any other input (connoted, denoted, misfit) → ValueError.
         - Child resolution: identity preferred over canon; within a kind,
           most recently added wins (Recency Precedence).
         - Raises ValueError if a child node resolves to no identity or canon.

@@ -4,7 +4,7 @@ Push S2/S3 reactive scaffolding to its limits by creating conflicting prior know
 ## Approach
 Introduce identities, establish bidirectional countersigns that create populated klines, then submit compound connoted misfits whose nodes are disjoint from every existing candidate — triggering S3 routing and expansion proposals.
 
-The misfit lessons use the `>` CONNOTED operator (not `=>` CANONIZED): a CANONIZED
+The misfit lessons use the `>` CONNOTES operator (not `=>` CANONIZES): a CANONIZES
 compound definition sets its signature to `make_signature(nodes)` by construction
 (@kscript §11.4), so such a kline is canonical, never a misfit, and resolves S1 via
 the self-grounded short-circuit (@agent AGT-14) before any candidate is retrieved

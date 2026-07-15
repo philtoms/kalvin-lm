@@ -31,8 +31,8 @@ class KDbg:
     by misfit expansions and model duplication.
 
     Attributes:
-        op: Structural state (COUNTERSIGNED, UNDERSIGNED, CONNOTED,
-            CANONIZED, IDENTITY).
+        op: Structural relationship (COUNTERSIGNS, DENOTES, CONNOTES,
+            CANONIZES, IDENTITY).
         label: Origin word or operator context.
         decoded: Tokenizer decode of the signature (actual subword text).
         type_info: Short debug summary of the node's type-dictionary entry
@@ -149,39 +149,26 @@ def is_identity(kline: KLine) -> bool:
 def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is canonical.
 
-    A kline is canonical when it is neither identity nor self-referential AND
-    its signature is the reduction of its nodes
-    (``signature == signifier.make_signature(nodes)``).
-
-    ``{S: [S]}`` is NOT canonical — it is identity (see :func:`is_identity`).
-    Allowing it as a canon would let it displace the genuine canon for the
-    same signature under Recency Precedence, collapsing ``unpack()`` to
-    identity. No relational token (``==``, ``=``, ``>``, ``=>``) produces a
-    self-referential kline.
+    A kline is a canon when it has multiple nodes and each of them is represented in its signature.
     """
-    if not kline.nodes:
-        return False  # identity
-    if kline.signature in kline.nodes:
-        return False  # self-referential — identity, not canon
-    return kline.signature == signifier.make_signature(kline.nodes)
+    return len(kline.nodes) > 1 and kline.signature == signifier.make_signature(kline.nodes)
 
+def is_misfit(kline: KLine, signifier: KSignifier) -> bool:
+    """Test whether a kline is a misfit.
+    
+    A kline is a misfit when it has multiple nodes and at least one node is 
+    not represented by its signature (ie, kline is not a canon)
+    """
+    return len(kline.nodes) > 1 and not is_canon(kline, signifier)
 
 # Display helper
 
 _OP_SYMBOLS = {
-    "COUNTERSIGNED": "==",
-    "UNDERSIGNED": "=",
-    "CONNOTED": ">",
-    "CANONIZED": "=>",
+    "COUNTERSIGNS": "==",
+    "DENOTES": "=",
+    "CONNOTES": ">",
+    "CANONIZES": "=>",
     "IDENTITY": None,
-}
-
-_SIG_LEVELS = {
-    "COUNTERSIGNED": "S1",
-    "UNDERSIGNED": "S3",
-    "CANONIZED": "S2",
-    "CONNOTED": "S3",
-    "IDENTITY": "S4",
 }
 
 
@@ -190,9 +177,12 @@ def sig_level(kline: KLine, signifier: KSignifier) -> str:
 
     Uses dbg.op when available, infers from structure otherwise.
     """
-    if kline.dbg and kline.dbg.op:
-        return _SIG_LEVELS.get(kline.dbg.op, "S4")
-    return _infer_level(kline, signifier)
+    nodes = kline.nodes
+    if not nodes:
+        return "S4"
+    if len(nodes) == 1:
+        return "S3"
+    return "S1" if kline.signature == signifier.make_signature(kline.nodes) else "S2"
 
 
 def kline_display(kline: KLine, tokenizer: object, signifier: KSignifier) -> str:
@@ -246,19 +236,6 @@ def _decode_token(tokenizer: object, token: int) -> str:
     return f"<{token:#x}>"
 
 
-def _infer_level(kline: KLine, signifier: KSignifier) -> str:
-    """Infer significance level from KLine structure."""
-    nodes = kline.nodes
-    if not nodes:
-        return "S4"
-    nodes_sig = signifier.make_signature(nodes)
-    if kline.signature == nodes_sig:
-        return "S2"  # perfect fit → canonize
-    if len(nodes) == 1:
-        return "S2" if signifier.signifies(kline.signature, nodes[0]) else "S3"
-    return "S2" if signifier.signifies(kline.signature, nodes_sig) else "S3"
-
-
 def _infer_op_symbol(kline: KLine, signifier: KSignifier) -> str:
     """Infer operator symbol from KLine structure."""
     if not kline.nodes:
@@ -266,7 +243,7 @@ def _infer_op_symbol(kline: KLine, signifier: KSignifier) -> str:
     nodes_sig = signifier.make_signature(kline.nodes)
     if kline.signature == nodes_sig:
         return "=>"  # perfect fit → canonize
-    return ">"  # default: connotate
+    return ">"  # default: connote
 
 
 def _normalize_nodes(nodes: KNodes | KNode | None) -> list[KNode]:

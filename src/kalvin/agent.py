@@ -264,7 +264,7 @@ class KAgent:
         self._model.add_to_stm(kline)
 
         # Ratification — countersigned in the model → S1. Only countersign
-        # produces reciprocal klines; undersign/connotate share a structure
+        # produces reciprocal klines; denote/connote share a structure
         # (a single node entry in opposite directions) and are handled below.
         if is_countersigned(self._model, kline, self._signifier):
             self._model.add_to_ltm(kline)

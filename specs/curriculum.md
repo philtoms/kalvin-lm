@@ -318,14 +318,14 @@ _conventions_ every curriculum follows.
     bindings are silently skipped with a debug-level log message.
 47. A lesson that intends a kline to reach the S2/S3 expansion band (a
     _misfit_ — its signature does not match its nodes; see @kalvin-vision §S2
-    Expansion) MUST NOT use the `=>` CANONIZED operator. A CANONIZED compound
+    Expansion) MUST NOT use the `=>` CANONIZES operator. A CANONIZES compound
     definition sets its signature to `make_signature(nodes)` by construction
     (@kscript §11.4 canonical encoding), so the kline is canonical, never a
     misfit, and resolves S1 via the self-grounded short-circuit (@agent AGT-14)
     before any candidate is retrieved. Express an S2/S3 misfit with the `>`
-    CONNOTED operator (or any operator) using a signature whose value differs
+    CONNOTES operator (or any operator) using a signature whose value differs
     from `make_signature(nodes)`. Note also that for a _compound_ (multi-char)
-    signature, the CANONIZED/CONNOTED right-hand nodes are taken from the
+    signature, the CANONIZES/CONNOTES right-hand nodes are taken from the
     signature's own MTS resolution; bind the intended node words with a block
     word list rather than relying on the right-hand side.
 

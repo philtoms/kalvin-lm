@@ -6,7 +6,7 @@ Covers:
   KS-8  — Annotations preserved as AST nodes
   KS-9  — Inline annotation attachment (sig-side and node-side)
   KS-10 — Empty source produces empty constructs
-  Additional coverage: bare signature, CANONIZE, multi-item scopes,
+  Additional coverage: bare signature, CANONIZES, multi-item scopes,
   child blocks, annotations mixed with operators, parse errors.
 """
 
@@ -31,7 +31,7 @@ def tok(type_: TokenType, value: str = "", line: int = 1, column: int = 1) -> To
 def tokens(*specs: tuple[TokenType, str], eof_line: int = 1, eof_col: int = 0) -> list[Token]:
     """Build a token list with line 1 and auto-incrementing columns.
 
-    Usage: tokens((SIGNATURE, "A"), (COUNTERSIGN, "=="), (SIGNATURE, "B"))
+    Usage: tokens((SIGNATURE, "A"), (COUNTERSIGNS, "=="), (SIGNATURE, "B"))
     """
     result: list[Token] = []
     col = 1
@@ -85,14 +85,14 @@ class TestKS10EmptySource:
 class TestKS6ChainedScopes:
     """KS-6: AST structure reflects scope model with nested OperatorScope nodes."""
 
-    def test_a_counter_b_connotate_c_undersign_d(self) -> None:
+    def test_a_counter_b_connote_c_denote_d(self) -> None:
         """Parse 'A == B > C = D' — three nested OperatorScope nodes.
 
         Structure (nested model per grammar §4 item ::= operator_scope):
-            constructs[0]         → OperatorScope(sig=A, op=COUNTERSIGN)
-            constructs[0].items[0] → OperatorScope(sig=B, op=CONNOTATE)
+            constructs[0]         → OperatorScope(sig=A, op=COUNTERSIGNS)
+            constructs[0].items[0] → OperatorScope(sig=B, op=CONNOTES)
             constructs[0].items[0].items[0] →
-              OperatorScope(sig=C, op=UNDERSIGN, items=[Signature(D)])
+              OperatorScope(sig=C, op=DENOTES, items=[Signature(D)])
 
         Scope rules S2/S3: B is a node in scope A and the signature of scope B.
         C is a node in scope B and the signature of scope C.  D is a node in scope C.
@@ -100,11 +100,11 @@ class TestKS6ChainedScopes:
         result = parse_tokens(
             [
                 tok(TokenType.SIGNATURE, "A", 1, 1),
-                tok(TokenType.COUNTERSIGN, "==", 1, 3),
+                tok(TokenType.COUNTERSIGNS, "==", 1, 3),
                 tok(TokenType.SIGNATURE, "B", 1, 6),
-                tok(TokenType.CONNOTATE, ">", 1, 8),
+                tok(TokenType.CONNOTES, ">", 1, 8),
                 tok(TokenType.SIGNATURE, "C", 1, 10),
-                tok(TokenType.UNDERSIGN, "=", 1, 12),
+                tok(TokenType.DENOTES, "=", 1, 12),
                 tok(TokenType.SIGNATURE, "D", 1, 14),
                 tok(TokenType.EOF, "", 1, 15),
             ]
@@ -116,21 +116,21 @@ class TestKS6ChainedScopes:
         scope_ab = result.constructs[0]
         assert isinstance(scope_ab, OperatorScope)
         assert scope_ab.sig.id == "A"
-        assert scope_ab.op is TokenType.COUNTERSIGN
+        assert scope_ab.op is TokenType.COUNTERSIGNS
         assert len(scope_ab.items) == 1
 
         # Scope 2: B > C (nested as item of scope 1)
         scope_bc = scope_ab.items[0]
         assert isinstance(scope_bc, OperatorScope)
         assert scope_bc.sig.id == "B"
-        assert scope_bc.op is TokenType.CONNOTATE
+        assert scope_bc.op is TokenType.CONNOTES
         assert len(scope_bc.items) == 1
 
         # Scope 3: C = D (nested as item of scope 2)
         scope_cd = scope_bc.items[0]
         assert isinstance(scope_cd, OperatorScope)
         assert scope_cd.sig.id == "C"
-        assert scope_cd.op is TokenType.UNDERSIGN
+        assert scope_cd.op is TokenType.DENOTES
         assert len(scope_cd.items) == 1
         assert isinstance(scope_cd.items[0], Signature)
         assert scope_cd.items[0].id == "D"
@@ -140,9 +140,9 @@ class TestKS6ChainedScopes:
         result = parse_tokens(
             [
                 tok(TokenType.SIGNATURE, "X", 1, 1),
-                tok(TokenType.UNDERSIGN, "=", 1, 3),
+                tok(TokenType.DENOTES, "=", 1, 3),
                 tok(TokenType.SIGNATURE, "Y", 1, 5),
-                tok(TokenType.CONNOTATE, ">", 1, 7),
+                tok(TokenType.CONNOTES, ">", 1, 7),
                 tok(TokenType.SIGNATURE, "Z", 1, 9),
                 tok(TokenType.EOF, "", 1, 10),
             ]
@@ -176,7 +176,7 @@ class TestKS7BlockParsing:
         result = parse_tokens(
             [
                 tok(TokenType.SIGNATURE, "A", 1, 1),
-                tok(TokenType.CANONIZE, "=>", 1, 3),
+                tok(TokenType.CANONIZES, "=>", 1, 3),
                 tok(TokenType.NEWLINE, "\n", 1, 5),
                 tok(TokenType.INDENT, "", 2, 1),
                 tok(TokenType.SIGNATURE, "B", 2, 3),
@@ -191,7 +191,7 @@ class TestKS7BlockParsing:
         scope = result.constructs[0]
         assert isinstance(scope, OperatorScope)
         assert scope.sig.id == "A"
-        assert scope.op is TokenType.CANONIZE
+        assert scope.op is TokenType.CANONIZES
         assert scope.items == []  # no items on same line
 
         # child_block is a Block with two bare-sig constructs
@@ -215,11 +215,11 @@ class TestKS7BlockParsing:
         result = parse_tokens(
             [
                 tok(TokenType.SIGNATURE, "A", 1, 1),
-                tok(TokenType.CANONIZE, "=>", 1, 3),
+                tok(TokenType.CANONIZES, "=>", 1, 3),
                 tok(TokenType.NEWLINE, "\n", 1, 5),
                 tok(TokenType.INDENT, "", 2, 1),
                 tok(TokenType.SIGNATURE, "B", 2, 3),
-                tok(TokenType.UNDERSIGN, "=", 2, 5),
+                tok(TokenType.DENOTES, "=", 2, 5),
                 tok(TokenType.SIGNATURE, "C", 2, 7),
                 tok(TokenType.NEWLINE, "\n", 2, 8),
                 tok(TokenType.INDENT, "", 3, 1),
@@ -237,7 +237,7 @@ class TestKS7BlockParsing:
         scope_b = scope_a.child_block.constructs[0]
         assert isinstance(scope_b, OperatorScope)
         assert scope_b.sig.id == "B"
-        assert scope_b.op is TokenType.UNDERSIGN
+        assert scope_b.op is TokenType.DENOTES
         assert scope_b.items[0].id == "C"
         assert scope_b.child_block is not None
         assert len(scope_b.child_block.constructs) == 1
@@ -252,7 +252,7 @@ class TestKS7BlockParsing:
         result = parse_tokens(
             [
                 tok(TokenType.SIGNATURE, "A", 1, 1),
-                tok(TokenType.COUNTERSIGN, "==", 1, 3),
+                tok(TokenType.COUNTERSIGNS, "==", 1, 3),
                 tok(TokenType.SIGNATURE, "B", 1, 6),
                 tok(TokenType.NEWLINE, "\n", 1, 7),
                 tok(TokenType.INDENT, "", 2, 1),
@@ -266,7 +266,7 @@ class TestKS7BlockParsing:
 
         scope = result.constructs[0]
         assert scope.sig.id == "A"
-        assert scope.op is TokenType.COUNTERSIGN
+        assert scope.op is TokenType.COUNTERSIGNS
         # B on same line
         assert len(scope.items) == 1
         assert scope.items[0].id == "B"
@@ -290,7 +290,7 @@ class TestKS8AnnotationsPreserved:
                 tok(TokenType.ANNOTATION, "(Mary Had A Little Lamb)", 1, 1),
                 tok(TokenType.NEWLINE, "\n", 1, 24),
                 tok(TokenType.SIGNATURE, "MHALL", 2, 1),
-                tok(TokenType.COUNTERSIGN, "==", 2, 7),
+                tok(TokenType.COUNTERSIGNS, "==", 2, 7),
                 tok(TokenType.SIGNATURE, "SVO", 2, 10),
                 tok(TokenType.EOF, "", 2, 13),
             ]
@@ -313,7 +313,7 @@ class TestKS8AnnotationsPreserved:
         result = parse_tokens(
             [
                 tok(TokenType.SIGNATURE, "A", 1, 1),
-                tok(TokenType.CANONIZE, "=>", 1, 3),
+                tok(TokenType.CANONIZES, "=>", 1, 3),
                 tok(TokenType.NEWLINE, "\n", 1, 5),
                 tok(TokenType.INDENT, "", 2, 1),
                 tok(TokenType.ANNOTATION, "(hello)", 2, 3),
@@ -335,7 +335,7 @@ class TestKS8AnnotationsPreserved:
         result = parse_tokens(
             [
                 tok(TokenType.SIGNATURE, "A", 1, 1),
-                tok(TokenType.UNDERSIGN, "=", 1, 3),
+                tok(TokenType.DENOTES, "=", 1, 3),
                 tok(TokenType.ANNOTATION, "(note)", 1, 5),
                 tok(TokenType.SIGNATURE, "B", 1, 12),
                 tok(TokenType.EOF, "", 1, 13),
@@ -365,7 +365,7 @@ class TestKS9InlineAnnotation:
             [
                 tok(TokenType.SIGNATURE, "S", 1, 1),
                 tok(TokenType.ANNOTATION, "(ubject)", 1, 2),
-                tok(TokenType.UNDERSIGN, "=", 1, 11),
+                tok(TokenType.DENOTES, "=", 1, 11),
                 tok(TokenType.SIGNATURE, "M", 1, 13),
                 tok(TokenType.EOF, "", 1, 14),
             ]
@@ -376,7 +376,7 @@ class TestKS9InlineAnnotation:
         assert scope.sig.id == "S"
         assert scope.inline_annotation is not None
         assert scope.inline_annotation.text == "(ubject)"
-        assert scope.op is TokenType.UNDERSIGN
+        assert scope.op is TokenType.DENOTES
         assert scope.items[0].id == "M"
         # The M item has no inline annotation; node_inline_annotation is retired.
         assert scope.items[0].inline_annotation is None
@@ -386,7 +386,7 @@ class TestKS9InlineAnnotation:
         result = parse_tokens(
             [
                 tok(TokenType.SIGNATURE, "A", 1, 1),
-                tok(TokenType.UNDERSIGN, "=", 1, 3),
+                tok(TokenType.DENOTES, "=", 1, 3),
                 tok(TokenType.SIGNATURE, "D", 1, 5),
                 tok(TokenType.ANNOTATION, "(et)", 1, 6),
                 tok(TokenType.EOF, "", 1, 10),
@@ -410,7 +410,7 @@ class TestKS9InlineAnnotation:
             [
                 tok(TokenType.SIGNATURE, "S", 1, 1),
                 tok(TokenType.ANNOTATION, "(ubject)", 1, 2),
-                tok(TokenType.UNDERSIGN, "=", 1, 11),
+                tok(TokenType.DENOTES, "=", 1, 11),
                 tok(TokenType.SIGNATURE, "D", 1, 13),
                 tok(TokenType.ANNOTATION, "(et)", 1, 14),
                 tok(TokenType.EOF, "", 1, 18),
@@ -471,14 +471,14 @@ class TestBareSignature:
 
 
 class TestCanonizeWithItems:
-    """CANONIZE operator with multiple items on the same line."""
+    """CANONIZES operator with multiple items on the same line."""
 
     def test_canonize_multiple_items(self) -> None:
-        """A => B C D — three items aggregated under CANONIZE."""
+        """A => B C D — three items aggregated under CANONIZES."""
         result = parse_tokens(
             [
                 tok(TokenType.SIGNATURE, "A", 1, 1),
-                tok(TokenType.CANONIZE, "=>", 1, 3),
+                tok(TokenType.CANONIZES, "=>", 1, 3),
                 tok(TokenType.SIGNATURE, "B", 1, 6),
                 tok(TokenType.SIGNATURE, "C", 1, 8),
                 tok(TokenType.SIGNATURE, "D", 1, 10),
@@ -489,7 +489,7 @@ class TestCanonizeWithItems:
         scope = result.constructs[0]
         assert isinstance(scope, OperatorScope)
         assert scope.sig.id == "A"
-        assert scope.op is TokenType.CANONIZE
+        assert scope.op is TokenType.CANONIZES
         assert len(scope.items) == 3
         assert [s.id for s in scope.items] == ["B", "C", "D"]
         assert scope.child_block is None
@@ -498,12 +498,12 @@ class TestCanonizeWithItems:
 class TestOperatorWithMultipleItems:
     """Operators with multiple items where last carries into next scope."""
 
-    def test_undersign_multiple_items(self) -> None:
-        """A = B C D — three items under UNDERSIGN."""
+    def test_denote_multiple_items(self) -> None:
+        """A = B C D — three items under DENOTES."""
         result = parse_tokens(
             [
                 tok(TokenType.SIGNATURE, "A", 1, 1),
-                tok(TokenType.UNDERSIGN, "=", 1, 3),
+                tok(TokenType.DENOTES, "=", 1, 3),
                 tok(TokenType.SIGNATURE, "B", 1, 5),
                 tok(TokenType.SIGNATURE, "C", 1, 7),
                 tok(TokenType.SIGNATURE, "D", 1, 9),
@@ -514,7 +514,7 @@ class TestOperatorWithMultipleItems:
         scope = result.constructs[0]
         assert isinstance(scope, OperatorScope)
         assert scope.sig.id == "A"
-        assert scope.op is TokenType.UNDERSIGN
+        assert scope.op is TokenType.DENOTES
         assert len(scope.items) == 3
         assert [s.id for s in scope.items] == ["B", "C", "D"]
 
@@ -523,10 +523,10 @@ class TestOperatorWithMultipleItems:
         result = parse_tokens(
             [
                 tok(TokenType.SIGNATURE, "A", 1, 1),
-                tok(TokenType.COUNTERSIGN, "==", 1, 3),
+                tok(TokenType.COUNTERSIGNS, "==", 1, 3),
                 tok(TokenType.SIGNATURE, "B", 1, 6),
                 tok(TokenType.SIGNATURE, "C", 1, 8),
-                tok(TokenType.CONNOTATE, ">", 1, 10),
+                tok(TokenType.CONNOTES, ">", 1, 10),
                 tok(TokenType.SIGNATURE, "D", 1, 12),
                 tok(TokenType.EOF, "", 1, 13),
             ]
@@ -534,14 +534,14 @@ class TestOperatorWithMultipleItems:
 
         scope_ab = result.constructs[0]
         assert scope_ab.sig.id == "A"
-        assert scope_ab.op is TokenType.COUNTERSIGN
+        assert scope_ab.op is TokenType.COUNTERSIGNS
         # B and C are items; C is also the sig of the nested scope
         assert len(scope_ab.items) == 2
         assert isinstance(scope_ab.items[0], Signature)
         assert scope_ab.items[0].id == "B"
         assert isinstance(scope_ab.items[1], OperatorScope)
         assert scope_ab.items[1].sig.id == "C"
-        assert scope_ab.items[1].op is TokenType.CONNOTATE
+        assert scope_ab.items[1].op is TokenType.CONNOTES
         assert scope_ab.items[1].items[0].id == "D"
 
 
@@ -553,7 +553,7 @@ class TestIndentedChildBlock:
         result = parse_tokens(
             [
                 tok(TokenType.SIGNATURE, "A", 1, 1),
-                tok(TokenType.CANONIZE, "=>", 1, 3),
+                tok(TokenType.CANONIZES, "=>", 1, 3),
                 tok(TokenType.SIGNATURE, "B", 1, 6),
                 tok(TokenType.NEWLINE, "\n", 1, 7),
                 tok(TokenType.INDENT, "", 2, 1),
@@ -565,7 +565,7 @@ class TestIndentedChildBlock:
 
         scope = result.constructs[0]
         assert scope.sig.id == "A"
-        assert scope.op is TokenType.CANONIZE
+        assert scope.op is TokenType.CANONIZES
         assert len(scope.items) == 1
         assert scope.items[0].id == "B"
         assert scope.child_block is not None
@@ -583,13 +583,13 @@ class TestAnnotationsMixedWithOperators:
                 tok(TokenType.ANNOTATION, "(doc)", 1, 1),
                 tok(TokenType.NEWLINE, "\n", 1, 6),
                 tok(TokenType.SIGNATURE, "A", 2, 1),
-                tok(TokenType.COUNTERSIGN, "==", 2, 3),
+                tok(TokenType.COUNTERSIGNS, "==", 2, 3),
                 tok(TokenType.SIGNATURE, "B", 2, 6),
                 tok(TokenType.NEWLINE, "\n", 2, 7),
                 tok(TokenType.ANNOTATION, "(note)", 3, 1),
                 tok(TokenType.NEWLINE, "\n", 3, 7),
                 tok(TokenType.SIGNATURE, "C", 4, 1),
-                tok(TokenType.CONNOTATE, ">", 4, 3),
+                tok(TokenType.CONNOTES, ">", 4, 3),
                 tok(TokenType.SIGNATURE, "D", 4, 5),
                 tok(TokenType.EOF, "", 4, 6),
             ]
@@ -603,7 +603,7 @@ class TestAnnotationsMixedWithOperators:
         scope_ab = result.constructs[1]
         assert isinstance(scope_ab, OperatorScope)
         assert scope_ab.sig.id == "A"
-        assert scope_ab.op is TokenType.COUNTERSIGN
+        assert scope_ab.op is TokenType.COUNTERSIGNS
 
         assert isinstance(result.constructs[2], Annotation)
         assert result.constructs[2].text == "(note)"
@@ -611,7 +611,7 @@ class TestAnnotationsMixedWithOperators:
         scope_cd = result.constructs[3]
         assert isinstance(scope_cd, OperatorScope)
         assert scope_cd.sig.id == "C"
-        assert scope_cd.op is TokenType.CONNOTATE
+        assert scope_cd.op is TokenType.CONNOTES
 
 
 class TestParseErrors:
@@ -622,7 +622,7 @@ class TestParseErrors:
         with pytest.raises(ParseError, match="Unexpected token"):
             parse_tokens(
                 [
-                    tok(TokenType.COUNTERSIGN, "==", 1, 1),
+                    tok(TokenType.COUNTERSIGNS, "==", 1, 1),
                     tok(TokenType.EOF, "", 1, 3),
                 ]
             )
@@ -633,8 +633,8 @@ class TestParseErrors:
             parse_tokens(
                 [
                     tok(TokenType.SIGNATURE, "A", 1, 1),
-                    tok(TokenType.COUNTERSIGN, "==", 1, 3),
-                    tok(TokenType.UNDERSIGN, "=", 1, 6),
+                    tok(TokenType.COUNTERSIGNS, "==", 1, 3),
+                    tok(TokenType.DENOTES, "=", 1, 6),
                     tok(TokenType.EOF, "", 1, 7),
                 ]
             )

@@ -5,7 +5,7 @@ Spec references: @specs/agent.md §Rationalisation (Phase 2–5),
 @specs/kscript.md §7 (operator significance levels).
 
 Covers: pre-registration, ground-check STM exclusion, self-filter,
-sig_level propagation, undersign=connotate identity, and countersign
+sig_level propagation, denote=connote identity, and countersign
 pair resolution.
 """
 
@@ -152,54 +152,54 @@ class TestSigLevelPropagation:
         assert isinstance(sig_level(kl, signifier), str)
 
 
-class TestUndersignIsConnotateReversed:
-    """CR-7: Undersign gets no special fast path. CR-8: connotate through slow path."""
+class TestDenoteIsConnoteReversed:
+    """CR-7: Denote gets no special fast path. CR-8: connote through slow path."""
 
-    def test_undersign_no_special_fast_path(self):
-        """Undersign {M: S} resolves as S3 (not S1), goes through slow path."""
+    def test_denote_no_special_fast_path(self):
+        """Denote {M: S} resolves as S3 (not S1), goes through slow path."""
         bus = EventBus()
         a = KAgent(adapter=bus)
 
         # Add identities (derived from compile_source so signatures match the
-        # tokenizer encoding used by the undersign compilation below)
+        # tokenizer encoding used by the denote compilation below)
         # M (tokenizer-consistent identity)
         a.rationalise(compile_source("M", dev=True)[0])
         # S (tokenizer-consistent identity)
         a.rationalise(compile_source("S", dev=True)[0])
 
-        # Compile undersign: S = M -> {M: S}
+        # Compile denote: S = M -> {M: S}
         entries = compile_source("S = M", dev=True)
-        # Filter to just the undersign entry (not the unsigned identity)
-        undersign = [e for e in entries if e.kline.nodes]
-        assert len(undersign) == 1
-        e = undersign[0]
-        # Undersign maps to S3 (not S1) in _SIG_LEVELS
-        assert e.kline.dbg.op == "UNDERSIGNED"
+        # Filter to just the denote entry (not the unsigned identity)
+        denote = [e for e in entries if e.kline.nodes]
+        assert len(denote) == 1
+        e = denote[0]
+        # Denote maps to S3 (not S1) in _SIG_LEVELS
+        assert e.kline.dbg.op == "DENOTES"
         assert sig_level(e.kline, signifier) == "S3"
 
         # Pre-register
         a.model.add_to_stm(e.kline)
 
         result = a.rationalise(e)
-        # Undersign gets no special fast path: {M: [S]} is routed against
+        # Denote gets no special fast path: {M: [S]} is routed against
         # the {M: []} identity (match_count 0) -> S3, so it goes through the
         # slow path and rationalise returns False (CR-7).
         assert result is False
 
-    def test_connotate_goes_through_slow_path(self):
-        """Connotate {A: D} should go through candidate retrieval -> slow path."""
+    def test_connote_goes_through_slow_path(self):
+        """Connote {A: D} should go through candidate retrieval -> slow path."""
         bus = EventBus()
         a = KAgent(adapter=bus)
 
         # Add identity A only (D is unknown).  Derived from compile_source so
-        # its signature matches the tokenizer encoding used by the connotate below.)
+        # its signature matches the tokenizer encoding used by the connote below.)
         # A (tokenizer-consistent identity)
         a.rationalise(compile_source("A", dev=True)[0])
 
         entries = compile_source("A > D", dev=True)
-        connotate = [e for e in entries if e.kline.nodes]
-        assert len(connotate) == 1
-        e = connotate[0]
+        connote = [e for e in entries if e.kline.nodes]
+        assert len(connote) == 1
+        e = connote[0]
         assert sig_level(e.kline, signifier) == "S3"
 
         a.model.add_to_stm(e.kline)

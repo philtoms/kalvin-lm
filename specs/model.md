@@ -422,7 +422,7 @@ identity signatures (@CONTEXT.md §Identity).
   `signature == make_signature(nodes)`, @signifier spec) → the
   concatenation, in node order, of `unpack(child)` for each child kline
   resolved from the node value.
-- Any other input (connoted, undersigned, misfit) → raises.
+- Any other input (connoted, denoted, misfit) → raises.
 - **Child resolution** uses three-tier precedence (highest first):
   1. empty-nodes identity, 2. genuine canon, 3. self-referential identity.
      The self-referential form is identity but carries no decomposition, so it

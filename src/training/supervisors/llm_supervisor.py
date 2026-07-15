@@ -144,14 +144,15 @@ KScript syntax overview:
 - Relationship: `NAME > N1 N2`  (nodes listed after >)
 - Countersign: `SIG == N1 N2`  (bidirectional mapping)
 - Canonize: `SIG => N1 N2`  (unidirectional mapping)
-- Assignment: `SIG = N1 N2`  (undersign/expansion)
+- Denote: `SIG = N1 N2`  (objective mapping — SIG denotes each node)
+- Connote: `SIG > N1 N2`  (unidirectional mapping — SIG connotes each node)
 
 All identifiers are UPPERCASE LETTERS ONLY (A–Z). Never use hex literals \
 (0x...) or numbers — KScript only accepts uppercase names. Each line \
 defines one construct. Comments use parenthesised syntax: (this is a comment).
 
 The only valid operators are: == (countersign), => (canonize), \
-= (undersign), and > (relationship). Do not use ~>, <-, ->, or any \
+= (denote), and > (connote). Do not use ~>, <-, ->, or any \
 other operators.
 
 Use the submit_scaffolding tool to return your generated KScript, your \

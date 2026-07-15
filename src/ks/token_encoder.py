@@ -11,7 +11,7 @@ Encoding rules (spec §11):
   - Nodes → each encoded individually via _encode_node(); multi-token
     words trigger §11.3 BPE-level MTS.
   - Canonical encoding (§11.4/§11.5): a compound identifier's signature
-    is computed once at its CANONIZED definition (OR of its resolved
+    is computed once at its CANONIZES definition (OR of its resolved
     component node values) and reused by every reference via the
     ``_compound_sigs`` registry; compounds are exempt from §11.3; a
     packed signature never heads an IDENTITY kline (CONTEXT.md
@@ -20,8 +20,8 @@ Encoding rules (spec §11):
 Significance levels (compile-time intent) — each emitted KValue carries
 kalvin.expand.band_significance(op), computed from the production op at
 encode time (never from dbg):
-    COUNTERSIGNED → S1    UNDERSIGNED → S3    CANONIZED → S2
-    CONNOTED → S3      IDENTITY → S4
+    COUNTERSIGNS → S1    DENOTES → S3    CANONIZES → S2
+    CONNOTES → S3      IDENTITY → S4
 
 Dependencies: kalvin.kline.KLine, kalvin.kvalue.KValue,
               kalvin.expand.band_significance, kalvin.abstract.KTokenizer,
@@ -69,7 +69,7 @@ class TokenEncoder:
         # produces the same BPE tokens).
         self._decomposed: set[tuple[int, ...]] = set()
         # Canonical encoding registry (§11.4): a compound identifier's
-        # signature uint64, computed once at its CANONIZED definition as
+        # signature uint64, computed once at its CANONIZES definition as
         # OR of its resolved component node values, then reused by every
         # referencing entry. The ASTEmitter emits definitions before
         # references, so this is populated on demand.
@@ -133,7 +133,7 @@ class TokenEncoder:
         """
         extras: list[tuple[KValue, bool]] = []
 
-        is_compound_def = entry.op == "CANONIZED" and len(entry.sig) > 1
+        is_compound_def = entry.op == "CANONIZES" and len(entry.sig) > 1
         is_compound_ref = entry.sig in self._compound_sigs
         sig_is_packed = False
 
@@ -169,7 +169,7 @@ class TokenEncoder:
 
         # 3. Compound definition: sig = OR of resolved component node
         #    values (§11.4); register for reuse by references.
-        #    Only the DEFINING entry registers — the MTS CANONIZE entry
+        #    Only the DEFINING entry registers — the MTS CANONIZES entry
         #    (compound → its declared characters), which is emitted before
         #    any block canon. A block-canon entry (compound → block
         #    operands, e.g. `WDMH => M H W`) is a REFERENCE: it reuses the
@@ -240,14 +240,14 @@ class TokenEncoder:
 
         Emits:
           1. One IDENTITY KValue per BPE subword token.
-          2. One CANONIZE KValue with packed signature → subword tokens.
+          2. One CANONIZES KValue with packed signature → subword tokens.
 
         Deduplicates: if this exact token tuple has been seen before,
         no entries are emitted (but the packed signature is still returned).
 
         Each emitted KValue carries the band-representative significance for
         its production op (subword IDENTITY entries use ``op`` — always
-        "IDENTITY" at call sites; the CANONIZE entry uses "CANONIZED").
+        "IDENTITY" at call sites; the CANONIZES entry uses "CANONIZES").
 
         Args:
             tokens: List of BPE token uint64 values.
@@ -260,7 +260,7 @@ class TokenEncoder:
         token_key = tuple(tokens)
         packed = self._signifier.make_signature(tokens)
 
-        # Register the compound's packed signature (§11.4: the MTS CANONIZE
+        # Register the compound's packed signature (§11.4: the MTS CANONIZES
         # — compound → its subword tokens — DEFINES the signature; a later
         # block-canon entry with the same compound id is a REFERENCE that must
         # reuse this value, not recompute it from its own operands). Without
@@ -293,13 +293,13 @@ class TokenEncoder:
                     )
                 )
 
-            # CANONIZE: packed sig → subword tokens. Packed values are
+            # CANONIZES: packed sig → subword tokens. Packed values are
             # opaque per §11.5 — _build_dbg skips decode for them.
             canon_dbg: KDbg | None = None
             if self._dev:
-                canon_dbg = self._build_dbg(packed, dbg_label, op="CANONIZED", packed=True)
+                canon_dbg = self._build_dbg(packed, dbg_label, op="CANONIZES", packed=True)
             else:
-                canon_dbg = KDbg(op="CANONIZED")
+                canon_dbg = KDbg(op="CANONIZES")
             extras.append(
                 KValue(
                     KLine(
@@ -307,7 +307,7 @@ class TokenEncoder:
                         nodes=list(tokens),
                         dbg=canon_dbg,
                     ),
-                    band_significance("CANONIZED"),
+                    band_significance("CANONIZES"),
                 )
             )
 

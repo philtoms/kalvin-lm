@@ -258,11 +258,11 @@ amendment frequency (human or LLM-driven, not high-throughput).
 
 ### DD-6 note: `first-steps-s2.md` lesson-5 misfit operator
 
-`first-steps-s2.md` lesson 5 (the S2-routing lesson) uses the `>` CONNOTED
-operator, not `=>` CANONIZED: a CANONIZED compound kline is canonical by
+`first-steps-s2.md` lesson 5 (the S2-routing lesson) uses the `>` CONNOTES
+operator, not `=>` CANONIZES: a CANONIZES compound kline is canonical by
 construction (@kscript §11.4) and resolves S1 via AGT-14 before candidate
 retrieval, so it can never be the S2 misfit the lesson intends. With
-`(Mark Halo Alpha)\nMH > H A`, CONNOTED yields two misfit klines
+`(Mark Halo Alpha)\nMH > H A`, CONNOTES yields two misfit klines
 `{MH:[Halo]}` (underfit, routes S2 against the lesson-3 `{Mark:[Halo]}`
 countersign) and `{MH:[Alpha]}` (dual, escapes the auto-countersign backstop
 and requests ratification). See @curriculum §Curriculum Annotation Conventions
@@ -271,9 +271,9 @@ rule 47.
 ### DD-6 note: `cascade-pressure.md` + `conflict-drill.md` misfit operators
 
 The misfit lessons in `cascade-pressure.md` (L3/L4/L5) and `conflict-drill.md`
-(L3/L4) use the `>` CONNOTED operator, not `=>` CANONIZED — the same rule-47
+(L3/L4) use the `>` CONNOTES operator, not `=>` CANONIZES — the same rule-47
 convention as `first-steps-s2.md` lesson 5. The fix
-rewrites each to `>` CONNOTED + block word lists; because a genuine misfit is
+rewrites each to `>` CONNOTES + block word lists; because a genuine misfit is
 always single-node under the settled compiler contracts, multi-node `=>` intents
 decompose into single-node misfits (e.g. `ABCD > E F` → `{ABCD:[Echo]}` +
 `{ABCD:[Foxtrot]}`). `cascade-pressure.md` L5 (`ABCDEFGHIJ > A C E G`) uses four

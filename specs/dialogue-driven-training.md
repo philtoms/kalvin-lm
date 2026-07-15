@@ -4,7 +4,7 @@
 > shape of the dialogue sub-project as it stands today. It is intentionally
 > light: replace it wholesale as fresh discoveries reshape the design, rather
 > than augmenting it. Behavioural granularity belongs in the code (and in tests
-> added when a behaviour is *newly discovered*, not to defend yesterday's).
+> added when a behaviour is _newly discovered_, not to defend yesterday's).
 
 ## Overview
 
@@ -41,7 +41,7 @@ DialogueTable:
 ```
 Turn:
   actor:        "T" | "K"
-  op:           str   # COUNTERSIGNED | CANONIZED | CONNOTED | UNDERSIGNED | IDENTITY
+  op:           str   # COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES | IDENTITY
   signature:    str   # symbolic label, resolved by the decoder
   nodes:        list[str]
   significance: "S1" | "S2" | "S3" | "S4"
@@ -158,16 +158,14 @@ Tests live in `tests/test_dialogue_smoke.py` and cover **basic operation**
 only. Add criteria here as fresh behaviours are discovered — do not enumerate
 today's implementation choices as contract.
 
-| ID    | Criterion                                                                       |
-| ----- | ------------------------------------------------------------------------------- |
-| DDT-1 | `decode(table)` returns a flat ordered `list[DecodedTurn]`, one per structural turn, significance attached by band lookup. |
-| DDT-2 | A malformed table (missing `script`/`turns`) is a decode error.                |
+| ID    | Criterion                                                                                                                                  |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| DDT-1 | `decode(table)` returns a flat ordered `list[DecodedTurn]`, one per structural turn, significance attached by band lookup.                 |
+| DDT-2 | A malformed table (missing `script`/`turns`) is a decode error.                                                                            |
 | DDT-3 | The canonical MHALL dialogue runs end-to-end through the runner with the default actors and covers the whole exchange (zero displacement). |
 
 ## Out of Scope
 
-- How a real trainer produces its turns, or a real trainee its responses.
-- Reject-and-re-prompt; per-turn ordering constraints; multi-actor-per-role.
 - Measuring, detecting, or signalling learning or grounding.
 
 ## Canonical Example

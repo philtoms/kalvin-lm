@@ -15,14 +15,14 @@ This module covers all 37 spec test IDs (KS-1 through KS-37):
     KS-8   — Annotations preserved                           TestParserAST
     KS-9   — Inline annotation attachment                    TestParserAST
     KS-10  — Empty source                                    TestParserAST
-    KS-11  — COUNTERSIGN per-item                            TestEmitterOperators
-    KS-12  — UNDERSIGN per-item reversed                     TestEmitterOperators
-    KS-13  — CONNOTATE per-item                              TestEmitterOperators
-    KS-14  — CANONIZE aggregates                             TestEmitterOperators
+    KS-11  — COUNTERSIGNS per-item                            TestEmitterOperators
+    KS-12  — DENOTES per-item reversed                     TestEmitterOperators
+    KS-13  — CONNOTES per-item                              TestEmitterOperators
+    KS-14  — CANONIZES aggregates                             TestEmitterOperators
     KS-15  — Operator chain                                  TestEmitterOperators
     KS-16  — Indent extends scope                            TestEmitterOperators
     KS-17  — DEDENT returns to parent                        TestEmitterOperators
-    KS-18  — Non-CANONIZE with indent                        TestEmitterOperators
+    KS-18  — Non-CANONIZES with indent                        TestEmitterOperators
     KS-19  — MTS expansion                                   TestEmitterMTS
     KS-20  — No MTS for single-char                          TestEmitterMTS
     KS-21  — MTS on node side                                TestEmitterMTS
@@ -155,8 +155,8 @@ def has_entry(
 # KS-9  : test_ks9_sig_inline_annotation, test_ks9_node_inline_annotation
 # KS-10 : test_ks10_empty_source
 # KS-11 : test_ks11_countersign_per_item
-# KS-12 : test_ks12_undersign_per_item_reversed
-# KS-13 : test_ks13_connotate_per_item
+# KS-12 : test_ks12_denote_per_item_reversed
+# KS-13 : test_ks13_connote_per_item
 # KS-14 : test_ks14_canonize_aggregates
 # KS-15 : test_ks15_operator_chain
 # KS-16 : test_ks16_indent_extends_scope
@@ -194,10 +194,10 @@ class TestTokenType:
     def test_token_type_members(self):
         """KS-1: All 10 TokenType members exist."""
         expected = {
-            "COUNTERSIGN",
-            "CANONIZE",
-            "CONNOTATE",
-            "UNDERSIGN",
+            "COUNTERSIGNS",
+            "CANONIZES",
+            "CONNOTES",
+            "DENOTES",
             "SIGNATURE",
             "ANNOTATION",
             "NEWLINE",
@@ -219,11 +219,11 @@ class TestTokenType:
     def test_ks1_token_recognition(self):
         """KS-1: Lexer produces correct token types for A == B."""
         tokens = Lexer("A == B").tokenize()
-        # Expect: SIGNATURE("A"), COUNTERSIGN("=="), SIGNATURE("B"), EOF
+        # Expect: SIGNATURE("A"), COUNTERSIGNS("=="), SIGNATURE("B"), EOF
         types = [t.type for t in tokens]
         assert types == [
             TokenType.SIGNATURE,
-            TokenType.COUNTERSIGN,
+            TokenType.COUNTERSIGNS,
             TokenType.SIGNATURE,
             TokenType.EOF,
         ]
@@ -240,30 +240,30 @@ class TestLexer:
     # -- KS-2: Multi-char operator priority --------------------------------
 
     def test_ks2_multi_char_operator_priority_eq(self):
-        """KS-2: '==' is lexed as COUNTERSIGN, not two UNDERSIGN tokens."""
+        """KS-2: '==' is lexed as COUNTERSIGNS, not two DENOTES tokens."""
         tokens = Lexer("A == B").tokenize()
         types = [t.type for t in tokens]
         assert types == [
             TokenType.SIGNATURE,
-            TokenType.COUNTERSIGN,
+            TokenType.COUNTERSIGNS,
             TokenType.SIGNATURE,
             TokenType.EOF,
         ]
-        # Confirm no UNDERSIGN tokens
-        assert TokenType.UNDERSIGN not in types
+        # Confirm no DENOTES tokens
+        assert TokenType.DENOTES not in types
 
     def test_ks2_multi_char_operator_priority_arrow(self):
-        """KS-2: '=>' is lexed as CANONIZE, not UNDERSIGN + CONNOTATE."""
+        """KS-2: '=>' is lexed as CANONIZES, not DENOTES + CONNOTES."""
         tokens = Lexer("A => B").tokenize()
         types = [t.type for t in tokens]
         assert types == [
             TokenType.SIGNATURE,
-            TokenType.CANONIZE,
+            TokenType.CANONIZES,
             TokenType.SIGNATURE,
             TokenType.EOF,
         ]
-        assert TokenType.UNDERSIGN not in types
-        assert TokenType.CONNOTATE not in types
+        assert TokenType.DENOTES not in types
+        assert TokenType.CONNOTES not in types
 
     # -- KS-3: BPE annotations --------------------------------------------
 
@@ -363,23 +363,23 @@ class TestParserAST:
         scope = ast.constructs[0]
         assert isinstance(scope, OperatorScope)
         assert scope.sig.id == "A"
-        assert scope.op == TokenType.COUNTERSIGN
+        assert scope.op == TokenType.COUNTERSIGNS
 
         # First item is B (Signature), but since B > C = D forms a chain,
-        # the items should contain a nested OperatorScope for the connotate.
-        # A == [B > C = D]  — B is both a COUNTERSIGN node and the sig for >
+        # the items should contain a nested OperatorScope for the connote.
+        # A == [B > C = D]  — B is both a COUNTERSIGNS node and the sig for >
         assert len(scope.items) >= 1
         inner = scope.items[0]
         assert isinstance(inner, OperatorScope)
         assert inner.sig.id == "B"
-        assert inner.op == TokenType.CONNOTATE
+        assert inner.op == TokenType.CONNOTES
 
-        # B > [C = D] — C is the connotate node and the sig for =
+        # B > [C = D] — C is the connote node and the sig for =
         assert len(inner.items) >= 1
         deepest = inner.items[0]
         assert isinstance(deepest, OperatorScope)
         assert deepest.sig.id == "C"
-        assert deepest.op == TokenType.UNDERSIGN
+        assert deepest.op == TokenType.DENOTES
 
     # -- KS-7: Block parsing ---------------------------------------------
 
@@ -392,7 +392,7 @@ class TestParserAST:
         scope = ast.constructs[0]
         assert isinstance(scope, OperatorScope)
         assert scope.sig.id == "A"
-        assert scope.op == TokenType.CANONIZE
+        assert scope.op == TokenType.CANONIZES
         assert scope.child_block is not None
         assert isinstance(scope.child_block, Block)
         assert len(scope.child_block.constructs) == 2
@@ -540,72 +540,72 @@ class TestBindingScope:
 class TestEmitterOperators:
     """Emitter operator tests covering KS-11–KS-18, KS-25, KS-33."""
 
-    # -- KS-11: COUNTERSIGN per-item -------------------------------------
+    # -- KS-11: COUNTERSIGNS per-item -------------------------------------
 
     def test_ks11_countersign_per_item(self):
-        """KS-11: A == B C → {A:[B]}, {B:[A]}, {A:[C]}, {C:[A]} COUNTERSIGN."""
+        """KS-11: A == B C → {A:[B]}, {B:[A]}, {A:[C]}, {C:[A]} COUNTERSIGNS."""
         entries = compile_dev("A == B C")
         assert len(entries) == 4
-        assert all(e.kline.dbg.op == "COUNTERSIGNED" for e in entries)
-        assert has_entry(entries, sig="A", op="COUNTERSIGNED", nodes=["B"])
-        assert has_entry(entries, sig="B", op="COUNTERSIGNED", nodes=["A"])
-        assert has_entry(entries, sig="A", op="COUNTERSIGNED", nodes=["C"])
-        assert has_entry(entries, sig="C", op="COUNTERSIGNED", nodes=["A"])
+        assert all(e.kline.dbg.op == "COUNTERSIGNS" for e in entries)
+        assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["B"])
+        assert has_entry(entries, sig="B", op="COUNTERSIGNS", nodes=["A"])
+        assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["C"])
+        assert has_entry(entries, sig="C", op="COUNTERSIGNS", nodes=["A"])
 
     def test_ks11_countersign_entries_present(self):
-        """KS-11 (relaxed): The 4 COUNTERSIGN pairs are present regardless of extras."""
+        """KS-11 (relaxed): The 4 COUNTERSIGNS pairs are present regardless of extras."""
         entries = compile_dev("A == B C")
-        assert has_entry(entries, sig="A", op="COUNTERSIGNED", nodes=["B"])
-        assert has_entry(entries, sig="B", op="COUNTERSIGNED", nodes=["A"])
-        assert has_entry(entries, sig="A", op="COUNTERSIGNED", nodes=["C"])
-        assert has_entry(entries, sig="C", op="COUNTERSIGNED", nodes=["A"])
+        assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["B"])
+        assert has_entry(entries, sig="B", op="COUNTERSIGNS", nodes=["A"])
+        assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["C"])
+        assert has_entry(entries, sig="C", op="COUNTERSIGNS", nodes=["A"])
 
-    # -- KS-12: UNDERSIGN per-item reversed -------------------------------
+    # -- KS-12: DENOTES per-item reversed -------------------------------
 
-    def test_ks12_undersign_per_item_reversed(self):
-        """KS-12: A = B C → {B:[A]}, {C:[A]} UNDERSIGN."""
+    def test_ks12_denote_per_item_reversed(self):
+        """KS-12: A = B C → {B:[A]}, {C:[A]} DENOTES."""
         entries = compile_dev("A = B C")
         assert len(entries) == 2
-        assert all(e.kline.dbg.op == "UNDERSIGNED" for e in entries)
-        assert has_entry(entries, sig="B", op="UNDERSIGNED", nodes=["A"])
-        assert has_entry(entries, sig="C", op="UNDERSIGNED", nodes=["A"])
+        assert all(e.kline.dbg.op == "DENOTES" for e in entries)
+        assert has_entry(entries, sig="B", op="DENOTES", nodes=["A"])
+        assert has_entry(entries, sig="C", op="DENOTES", nodes=["A"])
 
-    def test_ks12_undersign_entries_present(self):
-        """KS-12 (relaxed): The 2 UNDERSIGN entries are present."""
+    def test_ks12_denote_entries_present(self):
+        """KS-12 (relaxed): The 2 DENOTES entries are present."""
         entries = compile_dev("A = B C")
-        assert has_entry(entries, sig="B", op="UNDERSIGNED", nodes=["A"])
-        assert has_entry(entries, sig="C", op="UNDERSIGNED", nodes=["A"])
+        assert has_entry(entries, sig="B", op="DENOTES", nodes=["A"])
+        assert has_entry(entries, sig="C", op="DENOTES", nodes=["A"])
 
-    # -- KS-13: CONNOTATE per-item ----------------------------------------
+    # -- KS-13: CONNOTES per-item ----------------------------------------
 
-    def test_ks13_connotate_per_item(self):
-        """KS-13: A > B C → {A:[B]}, {A:[C]} CONNOTATE."""
+    def test_ks13_connote_per_item(self):
+        """KS-13: A > B C → {A:[B]}, {A:[C]} CONNOTES."""
         entries = compile_dev("A > B C")
         assert len(entries) == 2
-        assert all(e.kline.dbg.op == "CONNOTED" for e in entries)
-        assert has_entry(entries, sig="A", op="CONNOTED", nodes=["B"])
-        assert has_entry(entries, sig="A", op="CONNOTED", nodes=["C"])
+        assert all(e.kline.dbg.op == "CONNOTES" for e in entries)
+        assert has_entry(entries, sig="A", op="CONNOTES", nodes=["B"])
+        assert has_entry(entries, sig="A", op="CONNOTES", nodes=["C"])
 
-    def test_ks13_connotate_entries_present(self):
-        """KS-13 (relaxed): The 2 CONNOTATE entries are present."""
+    def test_ks13_connote_entries_present(self):
+        """KS-13 (relaxed): The 2 CONNOTES entries are present."""
         entries = compile_dev("A > B C")
-        assert has_entry(entries, sig="A", op="CONNOTED", nodes=["B"])
-        assert has_entry(entries, sig="A", op="CONNOTED", nodes=["C"])
+        assert has_entry(entries, sig="A", op="CONNOTES", nodes=["B"])
+        assert has_entry(entries, sig="A", op="CONNOTES", nodes=["C"])
 
-    # -- KS-14: CANONIZE aggregates ---------------------------------------
+    # -- KS-14: CANONIZES aggregates ---------------------------------------
 
     def test_ks14_canonize_aggregates(self):
-        """KS-14: A => B C D → {A:[B,C,D]} CANONIZE."""
+        """KS-14: A => B C D → {A:[B,C,D]} CANONIZES."""
         entries = compile_dev("A => B C D")
         assert len(entries) == 1
-        assert entries[0].kline.dbg.op == "CANONIZED"
+        assert entries[0].kline.dbg.op == "CANONIZES"
         assert _sig_str(entries[0]) == "A"
         assert _node_strs(entries[0]) == ["B", "C", "D"]
 
     def test_ks14_canonize_entry_present(self):
-        """KS-14 (relaxed): The CANONIZE aggregate entry is present."""
+        """KS-14 (relaxed): The CANONIZES aggregate entry is present."""
         entries = compile_dev("A => B C D")
-        assert has_entry(entries, sig="A", op="CANONIZED", nodes=["B", "C", "D"])
+        assert has_entry(entries, sig="A", op="CANONIZES", nodes=["B", "C", "D"])
 
     # -- KS-15: Operator chain -------------------------------------------
 
@@ -613,27 +613,27 @@ class TestEmitterOperators:
         """KS-15: A == B > C = D → entries per §14.7 table."""
         entries = compile_dev("A == B > C = D")
         assert len(entries) == 4
-        assert has_entry(entries, sig="A", op="COUNTERSIGNED", nodes=["B"])
-        assert has_entry(entries, sig="B", op="COUNTERSIGNED", nodes=["A"])
-        assert has_entry(entries, sig="B", op="CONNOTED", nodes=["C"])
-        assert has_entry(entries, sig="D", op="UNDERSIGNED", nodes=["C"])
+        assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["B"])
+        assert has_entry(entries, sig="B", op="COUNTERSIGNS", nodes=["A"])
+        assert has_entry(entries, sig="B", op="CONNOTES", nodes=["C"])
+        assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
 
     def test_ks15_operator_chain_entries_present(self):
         """KS-15 (relaxed): The 4 operator chain entries are present."""
         entries = compile_dev("A == B > C = D")
-        assert has_entry(entries, sig="A", op="COUNTERSIGNED", nodes=["B"])
-        assert has_entry(entries, sig="B", op="COUNTERSIGNED", nodes=["A"])
-        assert has_entry(entries, sig="B", op="CONNOTED", nodes=["C"])
-        assert has_entry(entries, sig="D", op="UNDERSIGNED", nodes=["C"])
+        assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["B"])
+        assert has_entry(entries, sig="B", op="COUNTERSIGNS", nodes=["A"])
+        assert has_entry(entries, sig="B", op="CONNOTES", nodes=["C"])
+        assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
 
     # -- KS-16: Indent extends scope --------------------------------------
 
     def test_ks16_indent_extends_scope(self):
-        """KS-16: Indented items under CANONIZE belong to parent's node list."""
+        """KS-16: Indented items under CANONIZES belong to parent's node list."""
         source = "A =>\n  B\n  C"
         entries = compile_dev(source)
-        # CANONIZE should have B and C as nodes
-        assert has_entry(entries, sig="A", op="CANONIZED", nodes=["B", "C"])
+        # CANONIZES should have B and C as nodes
+        assert has_entry(entries, sig="A", op="CANONIZES", nodes=["B", "C"])
 
     # -- KS-17: DEDENT returns to parent ----------------------------------
 
@@ -641,31 +641,31 @@ class TestEmitterOperators:
         """KS-17: After dedent, subsequent constructs compile at parent level."""
         source = "A =>\n  B\nC = D"
         entries = compile_dev(source)
-        # A CANONIZE with B as node (from indented block)
-        assert has_entry(entries, sig="A", op="CANONIZED", nodes=["B"])
-        # D UNDERSIGN [C] (at parent level after dedent)
-        assert has_entry(entries, sig="D", op="UNDERSIGNED", nodes=["C"])
+        # A CANONIZES with B as node (from indented block)
+        assert has_entry(entries, sig="A", op="CANONIZES", nodes=["B"])
+        # D DENOTES [C] (at parent level after dedent)
+        assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
 
-    # -- KS-18: Non-CANONIZE with indent ---------------------------------
+    # -- KS-18: Non-CANONIZES with indent ---------------------------------
 
     def test_ks18_non_canonize_with_indent(self):
-        """KS-18: A == B\\n  C\\n  D → 6 COUNTERSIGN entries (§14.10)."""
+        """KS-18: A == B\\n  C\\n  D → 6 COUNTERSIGNS entries (§14.10)."""
         source = "A == B\n  C\n  D"
         entries = compile_dev(source)
         assert len(entries) == 6
-        # All should be COUNTERSIGN (bidirectional pairs)
-        assert all(e.kline.dbg.op == "COUNTERSIGNED" for e in entries)
+        # All should be COUNTERSIGNS (bidirectional pairs)
+        assert all(e.kline.dbg.op == "COUNTERSIGNS" for e in entries)
 
     def test_ks18_non_canonize_entries_present(self):
-        """KS-18 (relaxed): The 6 COUNTERSIGN pairs are present."""
+        """KS-18 (relaxed): The 6 COUNTERSIGNS pairs are present."""
         source = "A == B\n  C\n  D"
         entries = compile_dev(source)
-        assert has_entry(entries, sig="A", op="COUNTERSIGNED", nodes=["B"])
-        assert has_entry(entries, sig="B", op="COUNTERSIGNED", nodes=["A"])
-        assert has_entry(entries, sig="A", op="COUNTERSIGNED", nodes=["C"])
-        assert has_entry(entries, sig="C", op="COUNTERSIGNED", nodes=["A"])
-        assert has_entry(entries, sig="A", op="COUNTERSIGNED", nodes=["D"])
-        assert has_entry(entries, sig="D", op="COUNTERSIGNED", nodes=["A"])
+        assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["B"])
+        assert has_entry(entries, sig="B", op="COUNTERSIGNS", nodes=["A"])
+        assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["C"])
+        assert has_entry(entries, sig="C", op="COUNTERSIGNS", nodes=["A"])
+        assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["D"])
+        assert has_entry(entries, sig="D", op="COUNTERSIGNS", nodes=["A"])
 
     # -- KS-25: Inline binding bypass ------------------------------------
 
@@ -717,7 +717,7 @@ class TestEmitterMTS:
         assert _sig_str(entries[0]) == "A" and entries[0].kline.dbg.op == "IDENTITY"
         assert _sig_str(entries[1]) == "B" and entries[1].kline.dbg.op == "IDENTITY"
         assert _sig_str(entries[2]) == "C" and entries[2].kline.dbg.op == "IDENTITY"
-        assert _sig_str(entries[3]) == "ABC" and entries[3].kline.dbg.op == "CANONIZED"
+        assert _sig_str(entries[3]) == "ABC" and entries[3].kline.dbg.op == "CANONIZES"
         assert _node_strs(entries[3]) == ["A", "B", "C"]
 
     # -- KS-20: No MTS for single-char -----------------------------------
@@ -735,14 +735,14 @@ class TestEmitterMTS:
     def test_ks21_mts_on_node_side(self):
         """KS-21: A == MHALL triggers MTS expansion for MHALL on the node side."""
         entries = compile_dev("A == MHALL")
-        # MTS for MHALL: component unsigned entries + CANONIZE entry
-        assert has_entry(entries, sig="MHALL", op="CANONIZED")
+        # MTS for MHALL: component unsigned entries + CANONIZES entry
+        assert has_entry(entries, sig="MHALL", op="CANONIZES")
         # Countersign pairs: A ↔ MHALL (node is the packed uint64 for MHALL,
         # which decodes to sorted chars, so we check by sig and op only)
-        a_cs = _find_entries(entries, sig="A", op="COUNTERSIGNED")
-        assert len(a_cs) >= 1, "Expected A COUNTERSIGN entry"
-        mhall_cs = _find_entries(entries, sig="MHALL", op="COUNTERSIGNED")
-        assert len(mhall_cs) >= 1, "Expected MHALL COUNTERSIGN entry"
+        a_cs = _find_entries(entries, sig="A", op="COUNTERSIGNS")
+        assert len(a_cs) >= 1, "Expected A COUNTERSIGNS entry"
+        mhall_cs = _find_entries(entries, sig="MHALL", op="COUNTERSIGNS")
+        assert len(mhall_cs) >= 1, "Expected MHALL COUNTERSIGNS entry"
 
     # -- KS-22: Node count invariant --------------------------------------
 
@@ -750,8 +750,8 @@ class TestEmitterMTS:
         """KS-22: MTS canonization entry has N nodes for an N-char identifier."""
         for ident in ["AB", "ABC", "ABCD", "MHALL"]:
             entries = compile_dev(ident)
-            canonize_entries = _find_entries(entries, sig=ident, op="CANONIZED")
-            assert len(canonize_entries) >= 1, f"No CANONIZE entry for {ident}"
+            canonize_entries = _find_entries(entries, sig=ident, op="CANONIZES")
+            assert len(canonize_entries) >= 1, f"No CANONIZES entry for {ident}"
             canon = canonize_entries[0]
             actual = len(canon.kline.nodes)
             assert actual == len(ident), (
@@ -770,10 +770,10 @@ class TestEmitterBinding:
     # -- KS-26: Rule B4 override -----------------------------------------
 
     def test_ks26_rule_b4_override(self):
-        """KS-26: Inline annotation patches parent MTS CANONIZE entry.
+        """KS-26: Inline annotation patches parent MTS CANONIZES entry.
 
         In the §14.12 source, S(ubject) inside a subscript block patches
-        the parent SVO CANONIZE entry: S → 'Subject'.
+        the parent SVO CANONIZES entry: S → 'Subject'.
         """
         source = (
             "(Mary Had A Little Lamb)\n"
@@ -786,9 +786,9 @@ class TestEmitterBinding:
             "    L > O"
         )
         entries = compile_dev(source)
-        # Find the SVO CANONIZE entry — it should have "Subject" as first node
-        svo_canon = _find_entries(entries, sig="SVO", op="CANONIZED")
-        assert len(svo_canon) >= 1, "Expected at least one SVO CANONIZE entry"
+        # Find the SVO CANONIZES entry — it should have "Subject" as first node
+        svo_canon = _find_entries(entries, sig="SVO", op="CANONIZES")
+        assert len(svo_canon) >= 1, "Expected at least one SVO CANONIZES entry"
         # A simpler check: verify that "Subject" unsigned entries exist
         # (from the inline annotation's MTS expansion)
         subject_entries = _find_entries(entries, sig="Subject")
@@ -804,9 +804,9 @@ class TestStructure:
     """Structural invariant tests covering KS-34."""
 
     def test_ks34_nodes_always_list_canonize(self):
-        """KS-34: CANONIZE entry nodes is a list of length 1+ (not scalar)."""
+        """KS-34: CANONIZES entry nodes is a list of length 1+ (not scalar)."""
         entries = compile_dev("A => B")
-        canon = _find_entries(entries, sig="A", op="CANONIZED")
+        canon = _find_entries(entries, sig="A", op="CANONIZES")
         assert len(canon) == 1
         assert isinstance(canon[0].kline.nodes, list)
         assert len(canon[0].kline.nodes) >= 1
@@ -885,8 +885,8 @@ class TestComplexExamples:
         """§14.8 secondary regression — strict spec count (5 entries)."""
         entries = compile_dev(_SEC148_SOURCE)
         assert len(entries) == 5
-        assert has_entry(entries, sig="A", op="CANONIZED", nodes=["B", "C"])
-        assert has_entry(entries, sig="D", op="UNDERSIGNED", nodes=["C"])
+        assert has_entry(entries, sig="A", op="CANONIZES", nodes=["B", "C"])
+        assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
         assert has_entry(entries, sig="B", op="IDENTITY", nodes=[])
         assert has_entry(entries, sig="C", op="IDENTITY", nodes=[])
         assert has_entry(entries, sig="D", op="IDENTITY", nodes=[])
@@ -894,15 +894,15 @@ class TestComplexExamples:
     def test_sec148_presence(self):
         """§14.8 secondary regression — key entries present (5 entries).
 
-        CANONIZE subscript blocks emit identity for
-        bare scopes, UNDERSIGN scope sigs, and leaf Signature items.
+        CANONIZES subscript blocks emit identity for
+        bare scopes, DENOTES scope sigs, and leaf Signature items.
         identity entries use IDENTITY op.
         Now matches spec §14.8 exactly (5 entries).
         """
         entries = compile_dev(_SEC148_SOURCE)
         assert len(entries) == 5
-        assert has_entry(entries, sig="A", op="CANONIZED", nodes=["B", "C"])
-        assert has_entry(entries, sig="D", op="UNDERSIGNED", nodes=["C"])
+        assert has_entry(entries, sig="A", op="CANONIZES", nodes=["B", "C"])
+        assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
         assert has_entry(entries, sig="B", op="IDENTITY", nodes=[])
         assert has_entry(entries, sig="C", op="IDENTITY", nodes=[])
         assert has_entry(entries, sig="D", op="IDENTITY", nodes=[])
@@ -915,17 +915,17 @@ class TestComplexExamples:
         Output ordering is source-first: compiled source klines precede
         every MTS expansion kline. MTS component IDENTITY dedup, no
         compound-own identity, subscript identity suppression for MTS
-        CANONIZE scopes.
+        CANONIZES scopes.
 
         Source entries (S1/S3, in emission order):
         1:     MHALL countersign [SVO] (S1)
         2:     SVO countersign [MHALL] (S1)
-        3:     M undersign [S] (S3)
-        4:     H undersign [V] (S3)
-        5:     ALL undersign [O] (S3)
-        6:     D undersign [A] (S3)
-        7:     M undersign [L] (S3)
-        8:     L connotate [O] (S3)
+        3:     M denote [S] (S3)
+        4:     H denote [V] (S3)
+        5:     ALL denote [O] (S3)
+        6:     D denote [A] (S3)
+        7:     M denote [L] (S3)
+        8:     L connote [O] (S3)
         MTS entries (S2/S4, after all source):
         9–12:  MTS M, H, A, L identity (S4)
         13:    MHALL canonize [M, H, A, L, L] (S2)
@@ -944,36 +944,36 @@ class TestComplexExamples:
         assert (
             entries[0].kline.dbg
             and entries[0].kline.dbg.label == "MHALL"
-            and entries[0].kline.dbg.op == "COUNTERSIGNED"
+            and entries[0].kline.dbg.op == "COUNTERSIGNS"
         )
-        # MHALL CANONIZE with 5 nodes
+        # MHALL CANONIZES with 5 nodes
         mhall_canon = [
             e for e in entries
-            if e.kline.dbg and e.kline.dbg.label == "MHALL" and e.kline.dbg.op == "CANONIZED"
+            if e.kline.dbg and e.kline.dbg.label == "MHALL" and e.kline.dbg.op == "CANONIZES"
         ]
         assert len(mhall_canon) == 1
         assert len(mhall_canon[0].kline.nodes) == 5  # M, H, A, L, L
 
-        # SVO CANONIZE with 3 nodes
+        # SVO CANONIZES with 3 nodes
         svo_canon = [
             e for e in entries
-            if e.kline.dbg and e.kline.dbg.label == "SVO" and e.kline.dbg.op == "CANONIZED"
+            if e.kline.dbg and e.kline.dbg.label == "SVO" and e.kline.dbg.op == "CANONIZES"
         ]
         assert len(svo_canon) == 1
         assert len(svo_canon[0].kline.nodes) == 3  # S, V, O
 
         # Countersign pair
-        assert has_entry(entries, sig="MHALL", op="COUNTERSIGNED")
-        assert has_entry(entries, sig="SVO", op="COUNTERSIGNED")
+        assert has_entry(entries, sig="MHALL", op="COUNTERSIGNS")
+        assert has_entry(entries, sig="SVO", op="COUNTERSIGNS")
 
-        # Undersign entries
-        assert has_entry(entries, sig="M", op="UNDERSIGNED")
-        assert has_entry(entries, sig="H", op="UNDERSIGNED")
-        assert has_entry(entries, sig="ALL", op="UNDERSIGNED")
-        assert has_entry(entries, sig="D", op="UNDERSIGNED")
+        # Denote entries
+        assert has_entry(entries, sig="M", op="DENOTES")
+        assert has_entry(entries, sig="H", op="DENOTES")
+        assert has_entry(entries, sig="ALL", op="DENOTES")
+        assert has_entry(entries, sig="D", op="DENOTES")
 
-        # Connotate
-        assert has_entry(entries, sig="L", op="CONNOTED")
+        # Connote
+        assert has_entry(entries, sig="L", op="CONNOTES")
 
     def test_ks35_complex_nested_presence(self):
         """KS-35: §14.11 master regression — key entries present (18 entries)."""
@@ -984,50 +984,50 @@ class TestComplexExamples:
         for char in ["M", "H", "A", "L", "S", "V", "O"]:
             assert has_entry(entries, sig=char, op="IDENTITY"), f"Missing IDENTITY entry for {char}"
 
-        # MTS CANONIZE for compound identifiers
-        assert has_entry(entries, sig="MHALL", op="CANONIZED")
-        assert has_entry(entries, sig="SVO", op="CANONIZED")
-        assert has_entry(entries, sig="ALL", op="CANONIZED")
+        # MTS CANONIZES for compound identifiers
+        assert has_entry(entries, sig="MHALL", op="CANONIZES")
+        assert has_entry(entries, sig="SVO", op="CANONIZES")
+        assert has_entry(entries, sig="ALL", op="CANONIZES")
 
-        # MHALL CANONIZE has 5 nodes (M, H, A, L, L)
-        mhall_canon = _find_entries(entries, sig="MHALL", op="CANONIZED")
+        # MHALL CANONIZES has 5 nodes (M, H, A, L, L)
+        mhall_canon = _find_entries(entries, sig="MHALL", op="CANONIZES")
         assert len(mhall_canon) >= 1
         assert len(mhall_canon[0].kline.nodes) == 5
 
-        # SVO CANONIZE has 3 nodes (S, V, O)
-        svo_canon = _find_entries(entries, sig="SVO", op="CANONIZED")
+        # SVO CANONIZES has 3 nodes (S, V, O)
+        svo_canon = _find_entries(entries, sig="SVO", op="CANONIZES")
         assert len(svo_canon) >= 1
         assert len(svo_canon[0].kline.nodes) == 3
 
-        # ALL CANONIZE has 3 nodes (A, L, L)
-        all_canon = _find_entries(entries, sig="ALL", op="CANONIZED")
+        # ALL CANONIZES has 3 nodes (A, L, L)
+        all_canon = _find_entries(entries, sig="ALL", op="CANONIZES")
         assert len(all_canon) >= 1
         assert len(all_canon[0].kline.nodes) == 3
 
         # Countersign pair: MHALL ↔ SVO
-        assert has_entry(entries, sig="MHALL", op="COUNTERSIGNED")
-        assert has_entry(entries, sig="SVO", op="COUNTERSIGNED")
+        assert has_entry(entries, sig="MHALL", op="COUNTERSIGNS")
+        assert has_entry(entries, sig="SVO", op="COUNTERSIGNS")
 
-        # Undersign entries from subscript
-        assert has_entry(entries, sig="M", op="UNDERSIGNED")  # M undersign [S]
-        assert has_entry(entries, sig="H", op="UNDERSIGNED")  # H undersign [V]
-        assert has_entry(entries, sig="ALL", op="UNDERSIGNED")  # ALL undersign [O]
-        assert has_entry(entries, sig="D", op="UNDERSIGNED")  # D undersign [A]
-        assert has_entry(entries, sig="M", op="UNDERSIGNED")  # M undersign [L]
+        # Denote entries from subscript
+        assert has_entry(entries, sig="M", op="DENOTES")  # M denote [S]
+        assert has_entry(entries, sig="H", op="DENOTES")  # H denote [V]
+        assert has_entry(entries, sig="ALL", op="DENOTES")  # ALL denote [O]
+        assert has_entry(entries, sig="D", op="DENOTES")  # D denote [A]
+        assert has_entry(entries, sig="M", op="DENOTES")  # M denote [L]
 
-        # Connotate
-        assert has_entry(entries, sig="L", op="CONNOTED")  # L connotate [O]
+        # Connote
+        assert has_entry(entries, sig="L", op="CONNOTES")  # L connote [O]
 
         # Verify significance levels
         from kalvin.kline import _SIG_LEVELS
 
-        cs_entries = _find_entries(entries, op="COUNTERSIGNED")
+        cs_entries = _find_entries(entries, op="COUNTERSIGNS")
         assert all(_SIG_LEVELS.get(e.kline.dbg.op, "S4") == "S1" for e in cs_entries)
-        us_entries = _find_entries(entries, op="UNDERSIGNED")
+        us_entries = _find_entries(entries, op="DENOTES")
         assert all(_SIG_LEVELS.get(e.kline.dbg.op, "S4") == "S3" for e in us_entries)
-        canon_entries = _find_entries(entries, op="CANONIZED")
+        canon_entries = _find_entries(entries, op="CANONIZES")
         assert all(_SIG_LEVELS.get(e.kline.dbg.op, "S4") == "S2" for e in canon_entries)
-        con_entries = _find_entries(entries, op="CONNOTED")
+        con_entries = _find_entries(entries, op="CONNOTES")
         assert all(_SIG_LEVELS.get(e.kline.dbg.op, "S4") == "S3" for e in con_entries)
 
     # -- KS-36: §14.12 Word-bound example ---------------------------------
@@ -1037,7 +1037,7 @@ class TestComplexExamples:
 
         The block annotation (Mary Had A Little Lamb) provides words for
         MHALL's character resolution. Inline annotation S(ubject) triggers
-        Rule B4 override on parent SVO CANONIZE entry.
+        Rule B4 override on parent SVO CANONIZES entry.
         """
         entries = compile_dev(_SEC1412_SOURCE)
         assert len(entries) > 0
@@ -1045,7 +1045,7 @@ class TestComplexExamples:
         # MTS for MHALL should resolve M→Mary, H→Had, A→"A", L→Little, L→Lamb
         # Check that "Mary" appears as a signature (from MTS resolution)
         assert has_entry(entries, sig="Mary", op="IDENTITY") or has_entry(
-            entries, sig="Mary", op="CANONIZED"
+            entries, sig="Mary", op="CANONIZES"
         ), "Expected 'Mary' entries from MHALL MTS resolution"
 
         # "Subject" should appear from inline annotation S(ubject)
@@ -1054,12 +1054,12 @@ class TestComplexExamples:
             "Expected 'Subject' entries from inline annotation S(ubject)"
         )
 
-        # SVO CANONIZE should exist (potentially with "Subject" patched in)
-        assert has_entry(entries, sig="SVO", op="CANONIZED")
+        # SVO CANONIZES should exist (potentially with "Subject" patched in)
+        assert has_entry(entries, sig="SVO", op="CANONIZES")
 
         # Basic operator entries should still exist
-        assert has_entry(entries, sig="MHALL", op="COUNTERSIGNED")
-        assert has_entry(entries, sig="SVO", op="COUNTERSIGNED")
+        assert has_entry(entries, sig="MHALL", op="COUNTERSIGNS")
+        assert has_entry(entries, sig="SVO", op="COUNTERSIGNS")
 
     # -- KS-37: Uniform tokenizer integration ----------------------------
 
@@ -1087,10 +1087,10 @@ class TestComplexExamples:
 
         for e in entries:
             assert e.kline.dbg and e.kline.dbg.op in (
-                "COUNTERSIGNED",
-                "CANONIZED",
-                "CONNOTED",
-                "UNDERSIGNED",
+                "COUNTERSIGNS",
+                "CANONIZES",
+                "CONNOTES",
+                "DENOTES",
                 "IDENTITY",
             )
             assert _SIG_LEVELS.get(e.kline.dbg.op, "S4") in ("S1", "S2", "S3", "S4")

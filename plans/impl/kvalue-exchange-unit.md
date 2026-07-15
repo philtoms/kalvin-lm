@@ -137,10 +137,10 @@ SIG_S3 = D_MAX - 101
 SIG_S4 = 0
 
 _OP_TO_SIG: dict[str, int] = {
-    "COUNTERSIGNED": SIG_S1,
-    "CANONIZED":     SIG_S2,
-    "CONNOTED":      SIG_S3,
-    "UNDERSIGNED":   SIG_S3,
+    "COUNTERSIGNS": SIG_S1,
+    "CANONIZES":     SIG_S2,
+    "CONNOTES":      SIG_S3,
+    "DENOTES":   SIG_S3,
     "IDENTITY":      SIG_S4,
 }
 
@@ -272,7 +272,7 @@ Spec ref: @kvalue spec §Storage; KV-7.
 | KV-8    | Re-derive identity → S4                           | test_expand.py             | B         |
 | KV-9    | Re-derive canonical → S2                          | test_expand.py             | B         |
 | KV-10   | Re-derive countersigned (reciprocal present) → S1 | test_expand.py             | B         |
-| KV-11   | Re-derive connoted/undersigned → S3               | test_expand.py             | B         |
+| KV-11   | Re-derive connoted/denoted → S3               | test_expand.py             | B         |
 | KV-12   | Re-derivation never unset                         | test_expand.py             | B         |
 | KV-13   | Fast path: shared kline, independent significances| test_agent.py              | E         |
 | KV-14   | RationaliseEvent has no significance field        | test_agent.py              | E         |

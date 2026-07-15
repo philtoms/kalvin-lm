@@ -131,19 +131,19 @@ class TestKDbgOp:
         assert dbg.op == "IDENTITY"
 
     def test_op_set_on_construction(self):
-        dbg = KDbg(op="COUNTERSIGNED")
-        assert dbg.op == "COUNTERSIGNED"
+        dbg = KDbg(op="COUNTERSIGNS")
+        assert dbg.op == "COUNTERSIGNS"
 
     def test_repr_includes_op_when_not_identity(self):
-        dbg = KDbg(op="COUNTERSIGNED")
-        assert "op=COUNTERSIGN" in repr(dbg)
+        dbg = KDbg(op="COUNTERSIGNS")
+        assert "op=COUNTERSIGNS" in repr(dbg)
 
     def test_repr_omits_identity_op(self):
         dbg = KDbg(op="IDENTITY")
         assert "op=" not in repr(dbg)
 
     def test_truthy_with_only_op(self):
-        dbg = KDbg(op="COUNTERSIGNED")
+        dbg = KDbg(op="COUNTERSIGNS")
         assert bool(dbg) is True
 
 
@@ -151,19 +151,19 @@ class TestSigLevelHelper:
     """kalvin.kline.sig_level() helper function."""
 
     def test_countersign_is_s1(self):
-        kl = KLine(0xFF, [1], dbg=KDbg(op="COUNTERSIGNED"))
+        kl = KLine(0xFF, [1], dbg=KDbg(op="COUNTERSIGNS"))
         assert sig_level(kl, signifier) == "S1"
 
-    def test_undersign_is_s3(self):
-        kl = KLine(0xFF, [1], dbg=KDbg(op="UNDERSIGNED"))
+    def test_denote_is_s3(self):
+        kl = KLine(0xFF, [1], dbg=KDbg(op="DENOTES"))
         assert sig_level(kl, signifier) == "S3"
 
-    def test_connotate_is_s3(self):
-        kl = KLine(0xFF, [1], dbg=KDbg(op="CONNOTED"))
+    def test_connote_is_s3(self):
+        kl = KLine(0xFF, [1], dbg=KDbg(op="CONNOTES"))
         assert sig_level(kl, signifier) == "S3"
 
     def test_canonize_is_s2(self):
-        kl = KLine(0xFF, [1, 2], dbg=KDbg(op="CANONIZED"))
+        kl = KLine(0xFF, [1, 2], dbg=KDbg(op="CANONIZES"))
         assert sig_level(kl, signifier) == "S2"
 
     def test_identity_is_s4(self):

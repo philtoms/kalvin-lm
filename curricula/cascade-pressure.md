@@ -6,7 +6,7 @@ Stress-test intra-lesson reactive cascade by creating high candidate density. Ma
 2. Submit compound misfits whose compound signature signifies the established pair klines
 3. The goal is to observe how the reactor and cogitator handle high candidate counts within a single lesson
 
-The misfit lessons use the `>` CONNOTED operator (not `=>` CANONIZED): a CANONIZED
+The misfit lessons use the `>` CONNOTES operator (not `=>` CANONIZES): a CANONIZES
 compound definition sets its signature to `make_signature(nodes)` by construction
 (@kscript §11.4), so such a kline is canonical, never a misfit, and resolves S1 via
 the self-grounded short-circuit (@agent AGT-14) before any candidate is retrieved

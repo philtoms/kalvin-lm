@@ -80,24 +80,21 @@ A scripted kline that enters the slow path (S2/S3) during rationalisation and re
 A KLine emitted by the Agent as a candidate response during rationalisation.
 
 **Significance**:
-A participant's subjective assessment of how well a KLine relates to what that participant already knows — classified into four levels: S1 (fully grounded), S2, S3, S4 (completely novel). Every participant assesses independently. Kalvin realises its own assessment by _computing_ it from structure (a 64-bit inverted distance whose bands map onto the structural states); that structural mapping is Kalvin's method, not a definition of the levels. See **Structural State** for the objective structural facts the bands map onto.
+A participant's subjective assessment of how well a KLine relates to what that participant already knows — classified into four levels: S1 (fully grounded), S2, S3, S4 (completely novel). Every participant assesses independently. Kalvin realises its own assessment by _computing_ it from structure (a 64-bit inverted distance whose bands map onto the structural relationships); that structural mapping is Kalvin's method, not a definition of the levels. See **Structural Relationship** for the objective structural facts the bands map onto.
 _Avoid_: confidence, score, weight
 
 **KValue**:
 The unit of exchange between participants — a **KLine** (objective structure) paired with a **significance** (the sender's assessment of it). In flight a KValue carries both; in memory only the KLine is stored, and significance is re-derived on retrieval.
 _Avoid_: KLine-with-significance, annotated kline, assessed kline (all describe the wrapping, not the unit)
 
-**Structural State**:
-The structural relationship between a kline's signature and its nodes, implied by the written relational token that produces the kline. A closed set of five states, each produced by compiling a written relational token (`==`, `=`, `>`, `=>`) or, for identity, by the absence of one:
+**Structural Relationship**:
+The relationship between a kline's signature and its nodes, declared by the written relational token that produces the kline. A closed set of five relationships, each declared by a written relational token (`==`, `=`, `>`, `=>`) or, for identity, by the absence of one:
 
-- **COUNTERSIGNED** — bidirectional: emits a reciprocal pair `{A: [B]}`, `{B: [A]}`.
-- **CANONIZED** — aggregated: `{A: [B, C, D]}`. The structural state produced by the `=>` written token; it declares an intent to aggregate, not that the result is a Canon (see Canon).
-- **CONNOTED** — forward: `{A: [B]}`.
-- **UNDERSIGNED** — reversed: `{B: [A]}`.
+- **COUNTERSIGNS** (`==`) — 1:1 emits a reciprocal pair `{A: [B]}`, `{B: [A]}`. The signature countersigns each other's nodes.
+- **CANONIZES** (`=>`) — 1:many `{A: [B, C, D]}`. The signature canonizes its nodes into a single kline; this declares an intent to aggregate, not that the result is a Canon (see Canon).
+- **CONNOTES** (`>`) — 1:1 `{A: [B]}`. The signature connotes each node (`A > B` ⇒ A connotes B; subjectively, _A is a B_).
+- **DENOTES** (`=`) — 1:1 `{B: [A]}`. The signature denotes each node (`A = B` ⇒ A denotes B; objectively, _B is an A_).
 - **IDENTITY** — `{A: []}` or `{A: [A]}` (self-referential) — see Identity.
-
-States describe structure, not operation: no actor operates on a kline; the written token merely declares the relationship, and the state names the resulting structure.
-_Avoid_: operator (implies an action); COUNTERSIGN / UNDERSIGN / CONNOTATE / CANONIZE as state names (those are the written-token names)
 
 **Identity**:
 A kline that carries no decomposition — either of two forms: empty nodes (`{S: []}`) or self-referential (`{S: [S]}`, whose sole node is its own signature). The self-referential form is identity _by definition_: a value that decomposes into itself carries no further information, and this overrules any CANON classification. Every kline bottoms out at one or more identities.
@@ -123,14 +120,14 @@ The action of countersigning a selected proposal. Usually performed by the Train
 
 **Canon**:
 A relationship kline whose signature is the OR-reduction of its nodes: `signature == make_signature(nodes)`. The signature carries no information beyond what its nodes already express, so the kline is structurally self-grounded. A Canon can self-close at S1 during rationalisation.
-_Avoid_: canonical (ambiguous with the Structural State), CANONIZED (that names the written token `=>` and the intent to aggregate — a CANONIZED kline need not be a Canon), MTS (an example, not the concept)
+_Avoid_: canonical (ambiguous with the Structural Relationship), treating `=>` (CANONIZES) as synonymous with being a Canon (the relationship declares an intent to aggregate — a CANONIZES kline need not be a Canon), MTS (an example, not the concept)
 
 **Misfit (proposal)**:
 A proposal whose signature is not the OR-reduction of its nodes — `signature ≠ make_signature(nodes)`, equivalently `classify_misfit` returns a non-trivial `(underfit, overfit)`. A misfit is still a **Proposal**; "misfit" names a structural property of it, not a separate emission category. A misfit cannot self-close at S1 (it lacks the self-grounding of a Canon); it reaches S1 only by **ratification** (a countersign from another participant). A participant may **originate** a misfit (construct and emit one whose signature it knows does not reduce to its nodes) only within the boundaries in `@specs/dialogue-cogitation.md`. Distinguished from an **observed** misfit — a received kline the recipient classifies as a misfit but did not author.
 _Avoid_: fabrication (informal; the act is originating a misfit), conjecture/hypothesis (a misfit is a proposal, not a distinct kind)
 
 **MTS (Multi-Token Signature)**:
-A compound signature built from more than one Token ID by OR-reduction. The compiler expands a multi-character KScript identifier into its constituent character identities plus one MTS relationship; this expansion is a property of the *signature string*, distinct from any CANONIZED decomposition a script declares for that signature via a block. A CANONIZED scope's nodes are the declared block operands, never the signature's own MTS character expansion.
+A compound signature built from more than one Token ID by OR-reduction. The compiler expands a multi-character KScript identifier into its constituent character identities plus one MTS relationship; this expansion is a property of the _signature string_, distinct from any CANONIZES decomposition a script declares for that signature via a block. A CANONIZES scope's nodes are the declared block operands, never the signature's own MTS character expansion.
 _Avoid_: decomposition (overloaded — a Canon decomposes into its nodes; an MTS expands a signature into characters), packed signature (the uint64 result, not the expansion)
 
 **Word Binding**:

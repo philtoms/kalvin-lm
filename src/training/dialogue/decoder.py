@@ -40,7 +40,7 @@ Role = Literal["T", "K"]  # a turn's role: trainer (T) or trainee (K)
 OnDivergence = Literal["fail", "accept"]
 
 # The table's closed op vocabulary. An unknown op is a decode error.
-DIALOGUE_OPS = frozenset({"COUNTERSIGNED", "CANONIZED", "CONNOTED", "UNDERSIGNED", "IDENTITY"})
+DIALOGUE_OPS = frozenset({"COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES", "IDENTITY"})
 
 
 class DecodeError(Exception):
@@ -158,15 +158,15 @@ def _resolve_script(
                 "— dev compile invariant broken"
             )
         # Canon-by-label: the canonical signature for this label. Populated for
-        # any compiled canon (COUNTERSIGNED canons like MHALL, and CANONIZED
+        # any compiled canon (COUNTERSIGNS canons like MHALL, and CANONIZES
         # canons like Det) so both node and signature resolution can prefer the
         # canon when a label names one.
-        if d.op in ("CANONIZED", "COUNTERSIGNED") and kl.nodes and d.label:
+        if d.op in ("CANONIZES", "COUNTERSIGNS") and kl.nodes and d.label:
             resolved.canon_by_label.setdefault(d.label, kl)
-        if d.op in ("COUNTERSIGNED", "CONNOTED", "UNDERSIGNED") and d.label:
+        if d.op in ("COUNTERSIGNS", "CONNOTES", "DENOTES") and d.label:
             # Relation-by-label: carries the relation's structural dbg.op, so a
-            # constructed-relation turn reports e.g. COUNTERSIGNED, not the
-            # CANONIZED of a canon that shares the label.
+            # constructed-relation turn reports e.g. COUNTERSIGNS, not the
+            # CANONIZES of a canon that shares the label.
             resolved.relation_by_label.setdefault(d.label, kl)
         # Label index: compound/atom dbg.label, and subword atom dbg.decoded.
         if d.label:
@@ -223,7 +223,7 @@ def _resolve_node_signatures(
     op: str,
 ) -> list[int]:
     """Resolve each node label to its canonical signature (canon-preferred,
-    atom fallback). Shared by the CANONIZED and constructed-relation branches."""
+    atom fallback). Shared by the CANONIZES and constructed-relation branches."""
     node_sigs: list[int] = []
     for n in nodes:
         ncanon = resolved.canon_by_label.get(n)
@@ -250,19 +250,19 @@ def _resolve_kline(
     The decoder is a resolver, not a gatekeeper: it builds the kline the turn
     declares (declared signature verbatim, nodes resolved to canonical
     signatures) — an author may declare a deliberate misfit. Three branches:
-    CANONIZED, IDENTITY, and constructed relation (CONNOTED/UNDERSIGNED/
-    COUNTERSIGNED).
+    CANONIZES, IDENTITY, and constructed relation (CONNOTES/DENOTES/
+    COUNTERSIGNS).
     """
-    if op == "CANONIZED":
+    if op == "CANONIZES":
         # Build the kline with the declared signature verbatim; nodes resolved
         # to their canonical signatures. No signature-consistency check.
-        node_sigs = _resolve_node_signatures(nodes, resolved, op="CANONIZED")
+        node_sigs = _resolve_node_signatures(nodes, resolved, op="CANONIZES")
         sig_kl = resolved.canon_by_label.get(signature)
         if sig_kl is None:
             sig_kl = resolved.labels.get(signature)
         if sig_kl is None:
             raise DecodeError(
-                f"CANONIZED signature {signature!r}: label not found in compiled script"
+                f"CANONIZES signature {signature!r}: label not found in compiled script"
             )
         return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
 

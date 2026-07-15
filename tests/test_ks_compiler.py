@@ -146,25 +146,25 @@ class TestKS35ComplexNested:
         """Total entry count matches spec §14.11 (18 entries).
 
         MTS component IDENTITY dedup, no compound-own
-        identity, and subscript identity suppression for MTS CANONIZE scopes.
+        identity, and subscript identity suppression for MTS CANONIZES scopes.
         """
         assert len(self.entries) == 18
 
     def test_no_duplicate_canonize(self) -> None:
-        """CANONIZE dedup: no two CANONIZE entries share the same (sig, nodes)."""
+        """CANONIZES dedup: no two CANONIZES entries share the same (sig, nodes)."""
         canonize_keys: set[tuple[int, tuple[int, ...]]] = set()
         for e in self.entries:
-            if e.kline.dbg.op == "CANONIZED":
+            if e.kline.dbg.op == "CANONIZES":
                 nodes = tuple(sorted(e.kline.as_node_list()))
                 key = (e.kline.signature, nodes)
                 assert key not in canonize_keys, (
-                    f"Duplicate CANONIZE: sig=0x{e.kline.signature:x}, nodes={nodes}"
+                    f"Duplicate CANONIZES: sig=0x{e.kline.signature:x}, nodes={nodes}"
                 )
                 canonize_keys.add(key)
 
     def test_canonize_count(self) -> None:
-        """Three unique CANONIZE entries: MHALL, SVO, ALL."""
-        assert _count_entries(self.entries, "CANONIZED") == 3
+        """Three unique CANONIZES entries: MHALL, SVO, ALL."""
+        assert _count_entries(self.entries, "CANONIZES") == 3
 
     def test_mts_mhall_components(self) -> None:
         """MTS for MHALL: unsigned entries for M, H, A, L components."""
@@ -175,7 +175,7 @@ class TestKS35ComplexNested:
 
     def test_mts_mhall_canonize(self) -> None:
         """MTS canonization: MHALL → [M, H, A, L, L]."""
-        assert _has_entry(self.entries, "CANONIZED", "MHALL", "MHALL")
+        assert _has_entry(self.entries, "CANONIZES", "MHALL", "MHALL")
 
     def test_mts_svo_components(self) -> None:
         """MTS for SVO: unsigned entries for S, V, O components."""
@@ -185,31 +185,31 @@ class TestKS35ComplexNested:
 
     def test_mts_svo_canonize(self) -> None:
         """MTS canonization: SVO → [S, V, O]."""
-        assert _has_entry(self.entries, "CANONIZED", "SVO", "SVO")
+        assert _has_entry(self.entries, "CANONIZES", "SVO", "SVO")
 
     def test_countersign_pair(self) -> None:
         """Countersign: MHALL → SVO and SVO → MHALL."""
-        assert _has_entry(self.entries, "COUNTERSIGNED", "MHALL", "SVO")
-        assert _has_entry(self.entries, "COUNTERSIGNED", "SVO", "MHALL")
+        assert _has_entry(self.entries, "COUNTERSIGNS", "MHALL", "SVO")
+        assert _has_entry(self.entries, "COUNTERSIGNS", "SVO", "MHALL")
 
-    def test_undersign_pairs(self) -> None:
-        """Undersign entries: M→S, H→V (reversed direction)."""
-        assert _has_entry(self.entries, "UNDERSIGNED", "M", "S")
-        assert _has_entry(self.entries, "UNDERSIGNED", "H", "V")
+    def test_denote_pairs(self) -> None:
+        """Denote entries: M→S, H→V (reversed direction)."""
+        assert _has_entry(self.entries, "DENOTES", "M", "S")
+        assert _has_entry(self.entries, "DENOTES", "H", "V")
 
     def test_mts_all(self) -> None:
-        """MTS for ALL: canonize entry and undersign O→ALL."""
-        assert _has_entry(self.entries, "CANONIZED", "ALL", "ALL")
-        assert _has_entry(self.entries, "UNDERSIGNED", "ALL", "O")
+        """MTS for ALL: canonize entry and denote O→ALL."""
+        assert _has_entry(self.entries, "CANONIZES", "ALL", "ALL")
+        assert _has_entry(self.entries, "DENOTES", "ALL", "O")
 
-    def test_leaf_undersign(self) -> None:
-        """Leaf undersign: D→A, M→L."""
-        assert _has_entry(self.entries, "UNDERSIGNED", "D", "A")
-        assert _has_entry(self.entries, "UNDERSIGNED", "M", "L")
+    def test_leaf_denote(self) -> None:
+        """Leaf denote: D→A, M→L."""
+        assert _has_entry(self.entries, "DENOTES", "D", "A")
+        assert _has_entry(self.entries, "DENOTES", "M", "L")
 
-    def test_connotate(self) -> None:
-        """Connotate: L → O."""
-        assert _has_entry(self.entries, "CONNOTED", "L", "O")
+    def test_connote(self) -> None:
+        """Connote: L → O."""
+        assert _has_entry(self.entries, "CONNOTES", "L", "O")
 
     def test_all_entries_are_compiled_entry(self) -> None:
         """Every entry is a KValue instance."""
@@ -227,38 +227,38 @@ class TestKS35ComplexNested:
     def test_source_precedes_mts(self) -> None:
         """Compiled source precedes any MTS entries in the output.
 
-        Source klines (COUNTERSIGNED/UNDERSIGNED/CONNOTED/IDENTITY that come
-        directly from the script, and single-char CANONIZE) appear before
+        Source klines (COUNTERSIGNS/DENOTES/CONNOTES/IDENTITY that come
+        directly from the script, and single-char CANONIZES) appear before
         every MTS expansion kline (§8 character-level components/canonizations
         and §11.3 BPE-subword decompositions). The partition is stable, so
         relative order is preserved within each group.
         """
         ops = [e.kline.dbg.op for e in self.entries]
 
-        # The COUNTERSIGNED pair is source and must precede every CANONIZED
+        # The COUNTERSIGNS pair is source and must precede every CANONIZES
         # (MTS canonization) and every MTS component IDENTITY.
-        first_countersign = ops.index("COUNTERSIGNED")
-        last_countersign = len(ops) - 1 - ops[::-1].index("COUNTERSIGNED")
-        first_canonized = ops.index("CANONIZED")
+        first_countersign = ops.index("COUNTERSIGNS")
+        last_countersign = len(ops) - 1 - ops[::-1].index("COUNTERSIGNS")
+        first_canonized = ops.index("CANONIZES")
         assert last_countersign < first_canonized, (
-            f"source COUNTERSIGNED must precede MTS CANONIZED; "
+            f"source COUNTERSIGNS must precede MTS CANONIZES; "
             f"last CS@{last_countersign}, first CAN@{first_canonized}"
         )
 
-        # No MTS-only op (CANONIZED here is always MTS — every CANONIZE in
+        # No MTS-only op (CANONIZES here is always MTS — every CANONIZES in
         # §14.11 comes from a multi-char expansion) appears before the last
         # source operator entry.
-        source_ops = {"COUNTERSIGNED", "UNDERSIGNED", "CONNOTED"}
+        source_ops = {"COUNTERSIGNS", "DENOTES", "CONNOTES"}
         last_source = max(i for i, o in enumerate(ops) if o in source_ops)
         first_mts = min(
             i for i, e in enumerate(self.entries)
-            if e.kline.dbg.op == "CANONIZED"
+            if e.kline.dbg.op == "CANONIZES"
         )
         assert last_source < first_mts
 
         # Sanity: the first emitted entry is a source countersign, not an MTS
         # component identity.
-        assert ops[0] == "COUNTERSIGNED"
+        assert ops[0] == "COUNTERSIGNS"
 
 
 # ---------------------------------------------------------------------------
@@ -357,7 +357,7 @@ class TestKS36WordBound:
             assert isinstance(e.kline, KLine)
             assert isinstance(e.kline.signature, int)
             assert e.kline.dbg.op in (
-                "COUNTERSIGNED", "CANONIZED", "CONNOTED", "UNDERSIGNED", "IDENTITY"
+                "COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES", "IDENTITY"
             )
 
 
@@ -372,7 +372,7 @@ class TestCanonicalEncoding:
 
     Asserted at the KLine level (post-TokenEncoder) on the §14.12
     Word-bound example. These are the regression net for the duplicate-
-    CANONIZE and phantom-IDENTITY bugs: an identifier has one identity,
+    CANONIZES and phantom-IDENTITY bugs: an identifier has one identity,
     computed once and reused.
     """
 
@@ -380,20 +380,20 @@ class TestCanonicalEncoding:
         return compile_source(SOURCE_14_12, tokenizer=tokenizer, dev=True)
 
     def test_one_canonized_per_compound(self, tokenizer):
-        """KS-42: exactly one CANONIZED kline per compound identifier."""
+        """KS-42: exactly one CANONIZES kline per compound identifier."""
         entries = self._entries(tokenizer)
         from collections import Counter
 
-        counts = Counter(e.kline.dbg.label for e in entries if e.kline.dbg.op == "CANONIZED")
+        counts = Counter(e.kline.dbg.label for e in entries if e.kline.dbg.op == "CANONIZES")
         for compound in ("MHALL", "SVO", "ALL"):
             assert counts.get(compound, 0) == 1, (
-                f"{compound}: expected 1 CANONIZED, got {counts.get(compound, 0)}"
+                f"{compound}: expected 1 CANONIZES, got {counts.get(compound, 0)}"
             )
 
     def test_no_packed_identity(self, tokenizer):
         """KS-42: no IDENTITY kline carries a packed (compound) signature."""
         entries = self._entries(tokenizer)
-        packed_sigs = {e.kline.signature for e in entries if e.kline.dbg.op == "CANONIZED"}
+        packed_sigs = {e.kline.signature for e in entries if e.kline.dbg.op == "CANONIZES"}
         bad = [
             e for e in entries
             if e.kline.dbg.op == "IDENTITY" and e.kline.signature in packed_sigs
@@ -403,37 +403,37 @@ class TestCanonicalEncoding:
     def test_compound_resolution_consistent(self, tokenizer):
         """KS-41: a compound resolves identically wherever it appears.
 
-        The CANONIZED definition's nodes are the canonical resolution;
-        no other kline should carry a CANONIZED entry for the same
+        The CANONIZES definition's nodes are the canonical resolution;
+        no other kline should carry a CANONIZES entry for the same
         compound with different (decoded) nodes.
         """
         entries = self._entries(tokenizer)
         seen = {}
         for e in entries:
-            if e.kline.dbg.op != "CANONIZED":
+            if e.kline.dbg.op != "CANONIZES":
                 continue
             nodes = tuple(sorted(e.kline.as_node_list()))
             prev = seen.get(e.kline.dbg.label)
             assert prev is None or prev == nodes, (
-                f"{e.kline.dbg.label}: divergent CANONIZED nodes {prev} vs {nodes}"
+                f"{e.kline.dbg.label}: divergent CANONIZES nodes {prev} vs {nodes}"
             )
             seen[e.kline.dbg.label] = nodes
 
 
 # ---------------------------------------------------------------------------
-# KS-43: CANONIZED misfit signature (compound sig ≠ make_signature(block))
+# KS-43: CANONIZES misfit signature (compound sig ≠ make_signature(block))
 # ---------------------------------------------------------------------------
 
 
 @requires_tokenizer_data
 class TestCanonizedMisfitSignature:
-    """KS-43 — A compound-headed CANONIZE scope whose block operands differ
+    """KS-43 — A compound-headed CANONIZES scope whose block operands differ
     from the compound's declared characters (a deliberate misfit).
 
     `WDMH => M H W` declares the compound WDMH (chars W,D,M,H) but canonizes
     only M,H,W as block operands. The compound's SIGNATURE must still be the
     OR of ALL its characters (W,D,M,H) — per spec §11.4 the signature is a
-    registry lookup computed once at the MTS CANONIZE definition, never a
+    registry lookup computed once at the MTS CANONIZES definition, never a
     reduction of the block-canon entry's own nodes. The block canon is a
     separate kline that reuses the signature, so its nodes (M,H,W) compose
     against a signature that also contains D — the misfit, which is the
@@ -461,8 +461,8 @@ class TestCanonizedMisfitSignature:
         expected_block = sig.make_signature([m, h, w])
         assert expected_all != expected_block, "precondition: misfit is real"
 
-        canon = [e for e in entries if e.kline.dbg.op == "CANONIZED"]
-        assert canon, "expected at least one CANONIZED kline"
+        canon = [e for e in entries if e.kline.dbg.op == "CANONIZES"]
+        assert canon, "expected at least one CANONIZES kline"
         for e in canon:
             assert e.kline.signature == expected_all, (
                 f"compound sig must be make_signature(W,D,M,H); "
@@ -471,9 +471,9 @@ class TestCanonizedMisfitSignature:
             )
 
     def test_block_canon_and_mts_are_separate(self, tokenizer):
-        """Two CANONIZED klines share one signature but list different nodes.
+        """Two CANONIZES klines share one signature but list different nodes.
 
-        - MTS CANONIZE: WDMH → [W,D,M,H] (decoding aid; the compound def).
+        - MTS CANONIZES: WDMH → [W,D,M,H] (decoding aid; the compound def).
         - Block canon:  WDMH → [M,H,W]   (the misfit relationship).
         """
         from kalvin.signifier import NLPSignifier
@@ -485,8 +485,8 @@ class TestCanonizedMisfitSignature:
         )
         compound_sig = sig.make_signature([w, d, m, h])
 
-        canon = [e for e in entries if e.kline.dbg.op == "CANONIZED"]
-        assert len(canon) == 2, f"expected 2 CANONIZED klines, got {len(canon)}"
+        canon = [e for e in entries if e.kline.dbg.op == "CANONIZES"]
+        assert len(canon) == 2, f"expected 2 CANONIZES klines, got {len(canon)}"
         assert all(e.kline.signature == compound_sig for e in canon)
 
         node_sets = {tuple(sorted(e.kline.as_node_list())) for e in canon}
@@ -499,7 +499,7 @@ class TestCanonizedMisfitSignature:
         ops = [
             (e.kline.dbg.op, e.kline.dbg.label)
             for e in entries
-            if e.kline.dbg.op == "CANONIZED"
+            if e.kline.dbg.op == "CANONIZES"
         ]
         # decode labels via dbg; the block canon carries the compound label
         # and appears before the MTS canonization (source precedes MTS).
@@ -511,7 +511,7 @@ class TestBlockCanonReusesPriorMtsSignature:
     word-list, then declared as a block canon in a later script, must reuse
     the MTS signature.
 
-    The MTS CANONIZE of a compound (emitted when the word is encoded as a
+    The MTS CANONIZES of a compound (emitted when the word is encoded as a
     preamble word or a node) DEFINES the compound's signature. A later
     block-canon entry with the same compound id (``had => did have``) is a
     REFERENCE and must reuse that signature — not recompute it as
@@ -553,9 +553,9 @@ class TestBlockCanonReusesPriorMtsSignature:
 
         had_canon = [
             e for e in entries
-            if e.kline.dbg.label == "had" and e.kline.dbg.op == "CANONIZED"
+            if e.kline.dbg.label == "had" and e.kline.dbg.op == "CANONIZES"
         ]
-        assert had_canon, "expected at least one had CANONIZED kline"
+        assert had_canon, "expected at least one had CANONIZES kline"
         for e in had_canon:
             assert e.kline.signature == mts_had_sig, (
                 f"had block canon sig must be the MTS value 0x{mts_had_sig:x}; "
@@ -570,7 +570,7 @@ class TestBlockCanonReusesPriorMtsSignature:
         for e in entries:
             if (
                 e.kline.dbg.label == "had"
-                and e.kline.dbg.op == "CANONIZED"
+                and e.kline.dbg.op == "CANONIZES"
                 and tuple(e.kline.nodes) == (did, have)
             ):
                 block_canon = e
@@ -603,11 +603,11 @@ class TestCompileSource:
             assert isinstance(e.kline.dbg.op, str)
 
     def test_correct_structure_countersign(self) -> None:
-        """COUNTERSIGN produces correct sig/nodes structure."""
+        """COUNTERSIGNS produces correct sig/nodes structure."""
         entries = compile_source("A == B")
-        # Should have COUNTERSIGN A→B and B→A
-        assert _has_entry(entries, "COUNTERSIGNED", "A", "B")
-        assert _has_entry(entries, "COUNTERSIGNED", "B", "A")
+        # Should have COUNTERSIGNS A→B and B→A
+        assert _has_entry(entries, "COUNTERSIGNS", "A", "B")
+        assert _has_entry(entries, "COUNTERSIGNS", "B", "A")
 
     def test_empty_source(self) -> None:
         """Empty source produces empty entries."""
@@ -654,7 +654,7 @@ class TestKScriptAPI:
         """KScript handles complex nested source."""
         model = KScript(SOURCE_14_11, dev=True)
         assert len(model.entries) > 10
-        assert _has_entry(model.entries, "COUNTERSIGNED", "MHALL", "SVO")
+        assert _has_entry(model.entries, "COUNTERSIGNS", "MHALL", "SVO")
 
     def test_dev_mode(self) -> None:
         """KScript(dev=True) enables debug text."""
@@ -686,7 +686,7 @@ class TestPipelineWiring:
         kfile = Parser(tokens).parse()
         entries = compiler.compile(kfile)
         assert len(entries) > 0
-        assert _has_entry(entries, "COUNTERSIGNED", "A", "B")
+        assert _has_entry(entries, "COUNTERSIGNS", "A", "B")
 
     def test_end_to_end_mts(self) -> None:
         """Multi-character identifier triggers MTS expansion."""
@@ -699,17 +699,17 @@ class TestPipelineWiring:
         assert _has_entry(entries, "IDENTITY", "B")
         assert _has_entry(entries, "IDENTITY", "C")
         # No MTS for single-char X
-        assert _has_entry(entries, "COUNTERSIGNED", "ABC", "X")
-        assert _has_entry(entries, "COUNTERSIGNED", "X", "ABC")
+        assert _has_entry(entries, "COUNTERSIGNS", "ABC", "X")
+        assert _has_entry(entries, "COUNTERSIGNS", "X", "ABC")
 
     def test_end_to_end_canonize(self) -> None:
-        """CANONIZE operator with subscript block."""
+        """CANONIZES operator with subscript block."""
         source = "A =>\n  B\n  C"
         compiler = Compiler()
         tokens = Lexer(source).tokenize()
         kfile = Parser(tokens).parse()
         entries = compiler.compile(kfile)
-        assert _has_entry(entries, "CANONIZED", "A", "BC")
+        assert _has_entry(entries, "CANONIZES", "A", "BC")
 
     def test_compiler_with_custom_tokenizer(self) -> None:
         """Compiler accepts custom tokenizer."""
@@ -776,8 +776,8 @@ class TestBindingScopeAlwaysCreated:
         # A resolves to 'annotation' via first-letter match
         # Verify entries exist (binding scope was active)
         assert len(entries) > 0
-        # The COUNTERSIGN pair should involve the resolved word
-        countersigns = [e for e in entries if e.kline.dbg.op == "COUNTERSIGNED"]
+        # The COUNTERSIGNS pair should involve the resolved word
+        countersigns = [e for e in entries if e.kline.dbg.op == "COUNTERSIGNS"]
         assert len(countersigns) >= 2
 
 
@@ -789,17 +789,17 @@ class TestBindingScopeAlwaysCreated:
 class TestKV4CompilerSignificance:
     """KV-4 — Compiler attaches band-representative significance.
 
-    S1 for == (COUNTERSIGNED), S2 for => (CANONIZED),
-    S3 for = (UNDERSIGNED) and > (CONNOTED), S4 for identity (IDENTITY).
+    S1 for == (COUNTERSIGNS), S2 for => (CANONIZES),
+    S3 for = (DENOTES) and > (CONNOTES), S4 for identity (IDENTITY).
 
     The significance is stamped on the KValue at construction from the
     production op (KP-1, D3), never derived from dbg.
     """
 
-    # -- S1: COUNTERSIGNED (==) -------------------------------------------
+    # -- S1: COUNTERSIGNS (==) -------------------------------------------
 
     def test_countersign_is_s1(self) -> None:
-        """`A == B` (single-char, no MTS) → two COUNTERSIGNED entries, both S1.
+        """`A == B` (single-char, no MTS) → two COUNTERSIGNS entries, both S1.
 
         Single-char identifiers produce no MTS, so the only entries are the
         bidirectional countersign pair (A→B and B→A).
@@ -808,34 +808,34 @@ class TestKV4CompilerSignificance:
         assert len(entries) == 2
         for kv in entries:
             assert kv.significance == SIG_S1
-            assert kv.kline.dbg.op == "COUNTERSIGNED"
+            assert kv.kline.dbg.op == "COUNTERSIGNS"
 
-    # -- S2: CANONIZED (=>) ----------------------------------------------
+    # -- S2: CANONIZES (=>) ----------------------------------------------
 
     def test_canonized_is_s2(self) -> None:
-        """`A => B C` (inline, single-char, no MTS) → one CANONIZED entry, S2.
+        """`A => B C` (inline, single-char, no MTS) → one CANONIZES entry, S2.
 
-        Inline items (no child block) produce exactly one aggregated CANONIZE
+        Inline items (no child block) produce exactly one aggregated CANONIZES
         entry with no subscript-identity extras.
         """
         entries = compile_source("A => B C", dev=True)
         assert len(entries) == 1
         assert entries[0].significance == SIG_S2
-        assert entries[0].kline.dbg.op == "CANONIZED"
+        assert entries[0].kline.dbg.op == "CANONIZES"
 
-    # -- S3: UNDERSIGNED (=) and CONNOTED (>) -----------------------------
+    # -- S3: DENOTES (=) and CONNOTES (>) -----------------------------
 
-    def test_undersigned_is_s3(self) -> None:
-        """`A = B` (inline) → one UNDERSIGNED entry, S3."""
+    def test_denoted_is_s3(self) -> None:
+        """`A = B` (inline) → one DENOTES entry, S3."""
         entries = compile_source("A = B", dev=True)
-        undersigned = [kv for kv in entries if kv.kline.dbg.op == "UNDERSIGNED"]
-        assert len(undersigned) == 1
-        assert undersigned[0].significance == SIG_S3
+        denoted = [kv for kv in entries if kv.kline.dbg.op == "DENOTES"]
+        assert len(denoted) == 1
+        assert denoted[0].significance == SIG_S3
 
     def test_connoted_is_s3(self) -> None:
-        """`A > B` (inline) → one CONNOTED entry, S3."""
+        """`A > B` (inline) → one CONNOTES entry, S3."""
         entries = compile_source("A > B", dev=True)
-        connoted = [kv for kv in entries if kv.kline.dbg.op == "CONNOTED"]
+        connoted = [kv for kv in entries if kv.kline.dbg.op == "CONNOTES"]
         assert len(connoted) == 1
         assert connoted[0].significance == SIG_S3
 
@@ -853,21 +853,21 @@ class TestKV4CompilerSignificance:
     def test_mts_entries_get_correct_significance(self) -> None:
         """`ABC == X` (multi-char triggers MTS) threads the op correctly.
 
-        IDENTITY entries (MTS subwords) get SIG_S4, CANONIZED entries (the
-        ABC aggregate) get SIG_S2, and COUNTERSIGNED entries (ABC↔X) get
+        IDENTITY entries (MTS subwords) get SIG_S4, CANONIZES entries (the
+        ABC aggregate) get SIG_S2, and COUNTERSIGNS entries (ABC↔X) get
         SIG_S1. This verifies the production op is threaded through MTS
         expansion, not lost when wrapping KLines as KValues.
         """
         entries = compile_source("ABC == X", dev=True)
 
         identities = [kv for kv in entries if kv.kline.dbg.op == "IDENTITY"]
-        canonized = [kv for kv in entries if kv.kline.dbg.op == "CANONIZED"]
-        countersigned = [kv for kv in entries if kv.kline.dbg.op == "COUNTERSIGNED"]
+        canonized = [kv for kv in entries if kv.kline.dbg.op == "CANONIZES"]
+        countersigned = [kv for kv in entries if kv.kline.dbg.op == "COUNTERSIGNS"]
 
         # Guard against vacuous pass: at least one entry of each op exists.
         assert len(identities) >= 1, "Expected MTS subword IDENTITY entries"
-        assert len(canonized) >= 1, "Expected an ABC CANONIZED entry"
-        assert len(countersigned) >= 1, "Expected ABC↔X COUNTERSIGNED entries"
+        assert len(canonized) >= 1, "Expected an ABC CANONIZES entry"
+        assert len(countersigned) >= 1, "Expected ABC↔X COUNTERSIGNS entries"
 
         assert all(kv.significance == SIG_S4 for kv in identities)
         assert all(kv.significance == SIG_S2 for kv in canonized)
@@ -887,6 +887,6 @@ class TestKV4CompilerSignificance:
         directly, verified by code review).
         """
         entries = compile_source("A == B", dev=False)
-        countersigned = [kv for kv in entries if kv.kline.dbg.op == "COUNTERSIGNED"]
+        countersigned = [kv for kv in entries if kv.kline.dbg.op == "COUNTERSIGNS"]
         assert len(countersigned) >= 1
         assert all(kv.significance == SIG_S1 for kv in countersigned)

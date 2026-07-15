@@ -73,23 +73,23 @@ SIG_S2 = D_MAX - 1  # distance 1
 SIG_S3 = D_MAX - 101  # distance 101  (first S3 distance: S2_S3_DISTANCE + _S3_BIAS)
 SIG_S4 = 0  # the S4 sentinel
 
-# Compile-time structural state (@CONTEXT.md §Structural State) → band-
+# Compile-time structural relationship (@CONTEXT.md §Structural Relationship) → band-
 # representative significance. Producers that assert a band rather than compute
-# a distance (the compiler, per @kvalue spec KP-1) look up here. CONNOTED and
-# UNDERSIGNED both map to SIG_S3; unknown ops default to SIG_S4.
+# a distance (the compiler, per @kvalue spec KP-1) look up here. CONNOTES and
+# DENOTES both map to SIG_S3; unknown ops default to SIG_S4.
 _OP_TO_SIG: dict[str, int] = {
-    "COUNTERSIGNED": SIG_S1,
-    "CANONIZED": SIG_S2,
-    "CONNOTED": SIG_S3,
-    "UNDERSIGNED": SIG_S3,
+    "COUNTERSIGNS": SIG_S1,
+    "CANONIZES": SIG_S2,
+    "CONNOTES": SIG_S3,
+    "DENOTES": SIG_S3,
     "IDENTITY": SIG_S4,
 }
 
 
 def band_significance(op: str) -> int:
-    """Compile-time structural state → band-representative significance.
+    """Compile-time structural relationship → band-representative significance.
 
-    Maps the closed set of structural states (@CONTEXT.md §Structural State)
+    Maps the closed set of structural relationships (@CONTEXT.md §Structural Relationship)
     to the maximal significance of each band. Used by producers that assert a
     band rather than compute a distance (the compiler, per @kvalue spec KP-1).
     Unknown ops default to ``SIG_S4``.
@@ -272,7 +272,7 @@ def derive_significance(kline: KLine, model: Model, signifier: KSignifier) -> in
       1. is_identity(kline)            → SIG_S4   (KV-8)
       2. is_countersigned(model, ...)  → SIG_S1   (KV-10 — model-state-dependent upgrade)
       3. is_canon(kline, signifier)    → SIG_S2   (KV-9 — structural, never changes)
-      4. otherwise                     → SIG_S3   (KV-11 — CONNOTED / UNDERSIGNED)
+      4. otherwise                     → SIG_S3   (KV-11 — CONNOTES / DENOTES)
 
     Only countersigned status (which is model-dependent) can upgrade a kline
     from S2 to S1. Canonical status is structural and invariant, so a canonical
@@ -428,7 +428,7 @@ def promote_participating(model: Model, query: KLine, candidate: KLine, signifie
     1. The query and candidate themselves (always)
     2. Any STM kline whose signature is a node value in the query or
        candidate AND whose nodes are empty (identity frame), a single
-       non-literal node (countersign/undersign pair), or a canonical
+       non-literal node (countersign/denote pair), or a canonical
        composition (canonization entry).
 
     Does NOT promote cogitator expansion proposals (multi-node non-

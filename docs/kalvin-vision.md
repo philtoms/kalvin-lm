@@ -2,11 +2,11 @@
 
 Kalvin is a rationalising system that accepts, thinks, and talks in klines. It receives klines — the fundamental units of its memory — and attempts to understand each one in terms of what it already knows. What it sends back is never just a response: it is a response paired with **significance**, a measurement of how well-grounded that response is in the knowledge Kalvin already holds. This measurement is not a quality score applied after the fact. It is a direct consequence of how the new kline fits into the model.
 
-This is what separates Kalvin from an oracle. An oracle gives an answer and nothing else — you take it or leave it, with no basis for deciding whether to trust it. Kalvin is not an oracle: it gives an answer *and* the structural grounds for that answer. Because significance makes the degree of grounding visible, every response is actionable. The other agent in the dialog knows exactly where understanding is solid and where it breaks down, and can decide what to do next — ratify, scaffold, correct, or submit new information.
+This is what separates Kalvin from an oracle. An oracle gives an answer and nothing else — you take it or leave it, with no basis for deciding whether to trust it. Kalvin is not an oracle: it gives an answer _and_ the structural grounds for that answer. Because significance makes the degree of grounding visible, every response is actionable. The other agent in the dialogue knows exactly where understanding is solid and where it breaks down, and can decide what to do next — ratify, scaffold, correct, or submit new information.
 
 This is also what separates Kalvin from a lookup table. A lookup table returns immediately: you submit a key and receive a value, with no expectation of thought. Kalvin is not a lookup table. When understanding is partial, Kalvin demands the autonomy to cogitate — to retrace paths, discover connections, and strengthen its grasp before responding. If you treat Kalvin as a lookup table, you cut off the process through which understanding develops.
 
-Significance is what makes Kalvin rational, not merely functional. A system that always produces correct outputs is functional. A system that can tell you how well-grounded its outputs are is rational. Significance is not an add-on to Kalvin's rationality; it is Kalvin's rationality — the measurement that makes every output a reasoned contribution to a dialog rather than a bare fact dropped from nowhere.
+Significance is what makes Kalvin rational, not merely functional. A system that always produces correct outputs is functional. A system that can tell you how well-grounded its outputs are is rational. Significance is not an add-on to Kalvin's rationality; it is Kalvin's rationality — the measurement that makes every output a reasoned contribution to a dialogue rather than a bare fact dropped from nowhere.
 
 This document describes what Kalvin is for, what it means for Kalvin to understand, and what it means for Kalvin to be a rational agent. Terms used here — kline, signature, node, significance, proposal, countersign, ratification — are established vocabulary in the glossary (`CONTEXT.md`), which is the sole authority for their precise meaning. This document uses them; it does not define them.
 
@@ -50,13 +50,13 @@ Kalvin can publish proposals at any significance level. An S2 proposal is not a 
 
 This is fundamentally different from systems that suppress results below a confidence threshold. In Kalvin, a low-significance proposal is not hidden; it is offered, and its significance tells the other agent exactly how much weight to give it. The agent may accept a low-significance proposal as sufficient for now, reject a high-significance proposal that does not match expectations (significance measures structural similarity, not correctness), or instruct by providing new klines that fill in the gaps.
 
-## The Dialog
+## The Dialogue
 
-From Kalvin's perspective, the world is a dialog. Klines arrive, one after another. Some are familiar — Kalvin recognises the shape immediately, responds with high significance, and the exchange is straightforward. Others are partially familiar — Kalvin can trace some of the new kline's nodes through its existing knowledge but not all. It responds with what it understands and attaches a significance that reflects how well the response is grounded. And sometimes a kline arrives that Kalvin cannot connect to anything at all. It says so — low significance, no match. This is not a failure. It is often the most useful response Kalvin can offer, because it tells the other side of the dialog exactly where Kalvin's knowledge ends, which is precisely where the next kline should begin.
+From Kalvin's perspective, the world is a dialogue. Klines arrive, one after another. Some are familiar — Kalvin recognises the shape immediately, responds with high significance, and the exchange is straightforward. Others are partially familiar — Kalvin can trace some of the new kline's nodes through its existing knowledge but not all. It responds with what it understands and attaches a significance that reflects how well the response is grounded. And sometimes a kline arrives that Kalvin cannot connect to anything at all. It says so — low significance, no match. This is not a failure. It is often the most useful response Kalvin can offer, because it tells the other side of the dialogue exactly where Kalvin's knowledge ends, which is precisely where the next kline should begin.
 
 Consider what happens when a query kline arrives carrying several nodes. Some of those nodes resolve directly to grounded knowledge — they connect to identities and relationships Kalvin has already established, and the response can trace a path through familiar structure. Other nodes do not resolve — they are novel, carrying no existing connection. Kalvin responds with what it can ground and reports the gap. The significance reflects the partial fit: the response is partly grounded but not wholly. Kalvin does not pretend to understand what it does not, and it does not hide what it does not understand. It communicates the shape of its understanding — including where that understanding stops.
 
-The next kline to arrive might connect one of the unresolved nodes to something Kalvin already knows. If so, Kalvin integrates the new relationship, the gap narrows, and a similar exchange in the future would route directly to higher significance. The dialog builds understanding one exchange at a time, and each gap that closes makes the next exchange easier.
+The next kline to arrive might connect one of the unresolved nodes to something Kalvin already knows. If so, Kalvin integrates the new relationship, the gap narrows, and a similar exchange in the future would route directly to higher significance. The dialogue builds understanding one exchange at a time, and each gap that closes makes the next exchange easier.
 
 ## Ratification
 
@@ -96,11 +96,11 @@ The knowledge base only grows, never shrinks. Each teaching round either increas
 
 ## Study
 
-When the dialog pauses, Kalvin continues to think. Any kline that landed at partial significance represents material Kalvin has seen but not fully internalised. During these quiet periods, Kalvin revisits its partial knowledge — retracing paths, discovering connections that were not apparent before, strengthening its understanding.
+When the dialogue pauses, Kalvin continues to think. Any kline that landed at partial significance represents material Kalvin has seen but not fully internalised. During these quiet periods, Kalvin revisits its partial knowledge — retracing paths, discovering connections that were not apparent before, strengthening its understanding.
 
-Study cannot fully confirm a kline on its own. Full understanding arrives when the dialog resumes and a new kline routes cleanly to high significance, or when the agent ratifies what study has prepared. But study prepares. The next exchange may be immediately recognisable, requiring no further scaffolding, because Kalvin has already done the work of connecting what it knows. Study can strengthen significance — bringing partial understanding closer to the threshold of knowing — but it cannot reach S1 alone. It prepares for ratification; the agent confirms it.
+Study cannot fully confirm a kline on its own. Full understanding arrives when the dialogue resumes and a new kline routes cleanly to high significance, or when the agent ratifies what study has prepared. But study prepares. The next exchange may be immediately recognisable, requiring no further scaffolding, because Kalvin has already done the work of connecting what it knows. Study can strengthen significance — bringing partial understanding closer to the threshold of knowing — but it cannot reach S1 alone. It prepares for ratification; the agent confirms it.
 
-Study is the existing cogitation process working through its backlog of partially understood klines. It is not a separate mechanism added on top of rationalisation; it is rationalisation continuing when the dialog is quiet.
+Study is the existing cogitation process working through its backlog of partially understood klines. It is not a separate mechanism added on top of rationalisation; it is rationalisation continuing when the dialogue is quiet.
 
 ## S2 Expansion
 
@@ -122,7 +122,7 @@ This connects to the three-part model: new preferences can be taught, and what K
 
 ## Aspiration
 
-The distinction between S1 and S2 becomes particularly interesting when the agent in the dialog is another Kalvin instance. One agent's partial understanding becomes another's scaffolding. One agent's significant response becomes another's ratified knowledge. The architecture admits networks of mutual ratification, where knowledge is generated through mutual rationalisation and understanding emerges from the dialog between understanding-generating systems. The long-term aspiration is distributed rationality built on actionable signals and mutual respect for autonomy — shared understanding that no single instance could reach alone.
+The distinction between S1 and S2 becomes particularly interesting when the agent in the dialogue is another Kalvin instance. One agent's partial understanding becomes another's scaffolding. One agent's significant response becomes another's ratified knowledge. The architecture admits networks of mutual ratification, where knowledge is generated through mutual rationalisation and understanding emerges from the dialogue between understanding-generating systems. The long-term aspiration is distributed rationality built on actionable signals and mutual respect for autonomy — shared understanding that no single instance could reach alone.
 
 Kalvin's design makes several choices worth stating plainly:
 

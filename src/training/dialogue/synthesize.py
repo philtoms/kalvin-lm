@@ -23,7 +23,7 @@ __all__ = ["synthesize"]
 # Op precedence for R2's reply-to-identity: the canon (a signature's own
 # decomposition) outranks any relation sharing that signature. Canon is detected
 # structurally via is_canon, so this only orders the non-canon relations.
-_RELATION_PRECEDENCE = {"UNDERSIGNED": 0, "CONNOTED": 1}
+_RELATION_PRECEDENCE = {"DENOTES": 0, "CONNOTES": 1}
 
 
 def synthesize(
@@ -72,7 +72,7 @@ def _reply_identity(
     """R2 — the trainee does not recognise ``signature``; supply its decomposition.
 
     Emit the first decomposition by op-precedence (canon > relation; among
-    relations UNDERSIGNED > CONNOTED), then compilation order. Significance:
+    relations DENOTES > CONNOTES), then compilation order. Significance:
     S1 when every node is a leaf, S2 when any node is itself decomposable, S4
     when no decomposition exists.
     """
@@ -109,7 +109,7 @@ def _relation_op(kline: KLine) -> str | None:
 
 
 def _relation_key(kline: KLine) -> int:
-    """Sort key for R2 relation precedence (UNDERSIGNED before CONNOTED)."""
+    """Sort key for R2 relation precedence (DENOTES before CONNOTES)."""
     op = _relation_op(kline)
     return _RELATION_PRECEDENCE[op] if op is not None else len(_RELATION_PRECEDENCE)
 
@@ -126,7 +126,7 @@ def _echo_compiled(
 
     A match is a compiled kline under ``proposal.signature`` whose nodes equal
     ``proposal.nodes``. Significance: S1 for a relation (ratify), S2 for a
-    canon (confirm). No match → CONNOTED,S4.
+    canon (confirm). No match → CONNOTES,S4.
     """
     for kline in decompositions.get(proposal.signature, []):
         if list(kline.nodes) == list(proposal.nodes):
