@@ -1,47 +1,20 @@
-"""Dialogue runner — a coverage-tracking subscriber over the harness
-``MessageBus`` (spec ``@specs/dialogue-driven-training.md``).
+"""Dialogue runner — a coverage-tracking subscriber over the harness ``MessageBus``.
 
-The harness :class:`~training.harness.bus.MessageBus` is the **sink and the
-relay**; this module's runner (:class:`Runner`) is a **coverage-tracking
-wildcard subscriber** plus a thin driver that seeds the opening and runs the bus
-until a terminal condition. The actors the runner drives live in
-:mod:`training.dialogue.actors`.
+The :class:`Runner` is a coverage-tracking wildcard subscriber plus a thin
+driver: it seeds the opening and runs the bus until a terminal condition. The
+actors it drives live in :mod:`training.dialogue.actors`.
 
 An actor takes an :class:`EventSink` at construction and publishes a **burst**
 of events to it via ``on_burst``. The runner builds a bus-wired sink per actor
-(the sink bridges ``on_burst`` to a single bus ``Message`` — carrying the whole
-burst as its payload — addressed to the other role), so any actor is drop-in:
-it publishes to its sink, the sink routes onto the bus. Because the bus payload
-is ``Any``, a burst rides as one ``Message``; it never serialises across many.
+(the sink bridges ``on_burst`` to a single bus ``Message`` addressed to the
+other role), so any actor is drop-in.
 
-The dialogue is messy and real: **no synchronised alternation** (an actor may
-publish one-or-many per incoming), and **anticipation** and **interjection**
-are first-class and unflagged. Agents must rationalise and cogitate to make
-sense of the stream — the point of Kalvin.
-
-Every ``accept`` yields at least one proposal (the ``burst >= 1`` contract,
-§Actor contract): an actor with nothing substantive to say publishes a **PASS**
-— a sentinel proposal (``PASS_SIGNATURE`` at S1). The runner intercepts PASS
-before matching: it routes to the other role, and **two consecutive PASSes**
-(each side passing in turn) is a terminal condition (the actors have nothing
-more to say). A run ends mechanically on the close content being seen, the
-coverage set being exhausted, or mutual PASS. The **displacement** (uncovered
-coverage rows) records how much of the authored exchange the actors traversed.
-
-Spec mapping
-------------
-- The runner is a bus subscriber holding coverage bookkeeping; the bus is the
-  sink/relay. It tracks coverage and immediate divergence.
-- Matching (content presence, coverage budget, duplicate-key exhaustion,
-  immediate divergence, close).
-- Anticipation + interjection (permitted, unflagged).
-- The close is de-positional: any agent may emit it at any time; a table has no
-  start-middle-end structure, only a coverage set and one close turn.
-- ``RunResult`` records the arrival log, immediate divergences, and displacement.
-- ``EventSink`` + sink-driven actors.
-- No synchronised alternation; route-to-other via the bus-wired sink.
-- ``burst >= 1``: an actor always emits at least one proposal; a PASS is the
-  no-content proposal. Mutual PASS is a terminal condition.
+Every ``accept`` yields at least one proposal (``burst >= 1``): an actor with
+nothing substantive publishes a **PASS** — a sentinel proposal. The runner
+intercepts PASS before matching; two consecutive PASSes (each side passing) is
+terminal. A run ends on the close content being seen, the coverage set being
+exhausted, or mutual PASS. The **displacement** (uncovered coverage rows)
+ecords how much of the authored exchange the actors traversed.
 """
 
 from __future__ import annotations
@@ -56,10 +29,8 @@ from kalvin.events import RationaliseEvent
 from kalvin.expand import SIG_S1
 
 # A burst: the list of events one actor publishes in a single ``accept`` reply,
-# and the list it receives as the other role's reply. A burst is the bus
-# payload (``Message.message``) — the payload-blind bus carries it whole, so a
-# reply never serialises across multiple messages. An empty burst is the
-# opening seed (no prior turn).
+# and the list it receives as the other role's reply. An empty burst is the
+# opening seed.
 Burst = list[RationaliseEvent]
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
@@ -74,56 +45,38 @@ ContentKey = tuple[str, int, tuple[int, ...], int]
 # recipient actor's ``accept``.
 _ACCEPT_ACTION = "accept"
 
-# ── PASS — the no-content proposal (DDT-22) ──────────────────────────────
+# ── PASS — the no-content proposal ────────────────────────────────────────
 #
-# An actor whose cogitation yields nothing substantive still owes the dialogue a
-# proposal (``burst >= 1``). It publishes a PASS: a reserved sentinel signature
-# at S1 (the top band). The meaning lives in the signature; S1 only sorts it
-# highest. The runner intercepts PASS *before* content matching — it routes
-# it to the other role, and watches for two consecutive PASSes (each side
-# passing) as the stall signal.
+# An actor whose cogitation yields nothing substantive still owes the dialogue
+# a proposal (``burst >= 1``). It publishes a PASS: a reserved sentinel
+# signature at S1. The runner intercepts PASS *before* content matching and
+# watches for two consecutive PASSes (each side passing) as the stall signal.
 #
-# A reserved bit pattern unlikely to collide with any compiled signature (the
-# compiler hashes real content; this is an arbitrary fixed sentinel).
+# A reserved bit pattern unlikely to collide with any compiled signature.
 PASS_SIGNATURE: int = 0x504153535F504153  # "PASS_PAS" as bytes, a stable sentinel
 
 
 def is_pass(event: RationaliseEvent) -> bool:
-    """True when ``event`` is a PASS — the no-content proposal (DDT-22).
-
-    Detected by the sentinel signature on the proposal's kline. The runner
-    treats a PASS specially: it routes it to the other role but does not match,
-    cover, or flag it as divergence. The actor base emits a PASS when its
-    :meth:`~training.dialogue.actors.Actor.next_events` yields nothing, so the
-    ``burst >= 1`` contract holds for every actor.
-    """
+    """True when ``event`` is a PASS — the no-content proposal."""
     return event.proposal.kline.signature == PASS_SIGNATURE
 
 
 def pass_event(role: str) -> RationaliseEvent:
-    """Build a PASS :class:`RationaliseEvent` for ``role`` (DDT-22).
-
-    A ``{PASS: []}`` kline at S1. ``query`` is the PASS itself (there is no
-    inbound value to echo when the actor originates the PASS).
-    """
+    """Build a PASS :class:`RationaliseEvent` for ``role``."""
     kv = KValue(KLine(PASS_SIGNATURE, []), SIG_S1)
     return RationaliseEvent(kind="frame", query=kv, proposal=kv, role=role)
 
 
-# ── EventSink (DDT-21) — the actor's publish target ───────────────────────
+# ── EventSink — the actor's publish target ───────────────────────────────
 
 
 @runtime_checkable
 class EventSink(Protocol):
     """The publish target an actor holds.
 
-    An actor is constructed with an ``EventSink`` and publishes a **burst** of
-    events to it via ``on_burst``. The bus-wired sink (:class:`_BusEventSink`)
-    bridges each ``on_burst`` to a single bus ``Message`` — carrying the whole
-    burst as its payload — addressed to the other role, so the actor's
-    published burst flows onto the relay as one message without the actor
-    knowing about the bus. This is least-coupling: the actor publishes a
-    burst, the sink routes it.
+    The bus-wired sink (:class:`_BusEventSink`) bridges each ``on_burst`` to
+    a single bus ``Message`` addressed to the other role, so the actor's
+    published burst flows onto the relay without the actor knowing about the bus.
     """
 
     def on_burst(self, events: list[RationaliseEvent]) -> None: ...
@@ -137,12 +90,8 @@ class Actor(Protocol):
     **burst** of events to it. ``accept`` receives the incoming burst — the
     other role's whole reply as one list (empty for the opening seed) — and
     the actor decides how-many events to publish via its sink: fire-and-forget,
-    one-or-many (``burst >= 1``, DDT-22: an actor with nothing substantive
-    publishes a PASS, never zero).
-
-    This is the duck-typed contract the runner types :data:`ActorFactory`
-    against; :class:`~training.dialogue.actors.Actor` is the base implementation
-    that satisfies it. The runner depends on the contract, not the base class.
+    one-or-many (``burst >= 1``: an actor with nothing substantive publishes a
+    PASS, never zero).
     """
 
     @property
@@ -157,26 +106,16 @@ class Actor(Protocol):
 ActorFactory = Callable[[EventSink], Actor]
 
 
-# ── Divergence (DDT-14) ───────────────────────────────────────────────────
+# ── Divergence ────────────────────────────────────────────────────────────
 
 
 class Divergence(Exception):  # noqa: N818 - spec names this type
     """A run emission the authored table did not authorise.
 
-    Raised under ``on_divergence="fail"``. Two reasons:
-
-    - ``"unmatched"`` — the emission's ``(role, kline, significance)`` matches
-      neither the close nor any coverage content (present nowhere in the
-      table).
-    - ``"exhausted"`` — **duplicate key exhaustion**: the content *is* in the
-      coverage set, but every authored copy has already been consumed. The
-      table authorises a fixed count of each content (its multiplicity in the
-      coverage rows); emitting more copies than authored is divergence.
-
-    Carries the role, the emitted proposal, the reason, the unconsumed
-    same-role contents at the moment of divergence, and the last event that
-    successfully consumed a coverage allowance (the last healthy point before
-    divergence). It has no cursor — coverage is content-keyed, not positional.
+    Raised under ``on_divergence="fail"``. ``reason`` is ``"unmatched"`` (the
+    emission matches neither the close nor any coverage content) or
+    ``"exhausted"`` (the content is in the coverage set but every authored
+    copy has already been consumed).
     """
 
     #: ``"unmatched"`` (present nowhere) or ``"exhausted"`` (duplicate key
@@ -218,21 +157,13 @@ class Divergence(Exception):  # noqa: N818 - spec names this type
 
 @dataclass
 class RunResult:
-    """The record of a dialogue run (spec §Types).
+    """The record of a dialogue run.
 
-    Records what happened — the arrival-ordered emission log, the immediate
-    divergences (emissions matching nothing, under ``on_divergence="accept"``),
-    and the **displacement**: the coverage rows never emitted (how far the
-    realized dialogue fell short of the authored whole-exchange coverage). A run
-    ends mechanically (close content seen, coverage exhausted, or mutual PASS);
-    the displacement is the signal of how much of the exchange the actors
-    traversed.
-
-    ``last_coverage_event`` is the most recent emission that successfully
-    consumed a coverage allowance — the last healthy point before any
-    divergence (or ``None`` when no coverage content was ever matched). It is
-    the anchor for divergence diagnostics: it says where the run was still on
-    the authored exchange.
+    ``events`` is arrival-ordered; ``unmatched`` holds immediate divergences
+    (accept-mode only); ``uncovered`` is the **displacement** — coverage rows
+    never emitted (one placeholder per unconsumed authored copy).
+    ``last_coverage_event`` is the last emission that consumed a coverage
+    allowance — the last healthy point before any divergence.
     """
 
     events: list[RationaliseEvent] = field(default_factory=list)
@@ -241,17 +172,11 @@ class RunResult:
     last_coverage_event: RationaliseEvent | None = None
 
 
-# ── The bus-wired sink (enforces route-to-other, DDT-18) ──────────────────
+# ── The bus-wired sink ───────────────────────────────────────────────────
 
 
 class _BusEventSink:
-    """An :class:`EventSink` that publishes a whole burst to the other role.
-
-    The route-to-other rule (DDT-18) is enforced structurally: the actor calls
-    ``on_burst(events)`` and this sink addresses one bus ``Message`` to the
-    *other* role, carrying the burst as its payload. The payload-blind bus
-    delivers it whole — a reply never serialises across multiple messages.
-    """
+    """An :class:`EventSink` that publishes a whole burst to the other role."""
 
     def __init__(self, bus: MessageBus, other_role: str) -> None:
         self._bus = bus
@@ -263,26 +188,18 @@ class _BusEventSink:
         )
 
 
-# ── The runner as a MessageBus subscriber (DDT-5..DDT-22) ─────────────────
+# ── The runner as a MessageBus subscriber ─────────────────────────────────
 
 
 class Runner:
-    """The dialogue run: a bus subscriber + driver (spec §The Runner).
+    """The dialogue run: a bus subscriber + driver.
 
-    The harness :class:`MessageBus` is the sink and the relay. The runner:
-
-    - owns a ``MessageBus``;
-    - builds a bus-wired :class:`EventSink` per actor (addressed to the other
-      role) and constructs each actor with its sink via the actor factory;
-    - subscribes itself as a **wildcard handler** for coverage bookkeeping;
-    - subscribes each actor's ``accept`` as its role's handler;
-    - drives the run by seeding the trainer (the opening seed) and running
-      ``bus.run()`` on a thread until a terminal condition: the close content
-      is seen, the coverage set is exhausted, or both actors pass in turn.
-
-    The runner holds coverage bookkeeping only and tracks immediate divergence
-    and displacement. No actor-coupling state. The relay lives in the bus; the
-    runner observes and records.
+    Owns a ``MessageBus``; builds a bus-wired :class:`EventSink` per actor and
+    constructs each actor with its sink; subscribes itself as a wildcard
+    handler for coverage bookkeeping and each actor's ``accept`` as its role's
+    handler; then seeds the trainer and runs ``bus.run()`` on a thread until a
+    terminal condition. The runner holds coverage bookkeeping only; the relay
+    lives in the bus.
 
     Construct via :func:`run`; call :meth:`run` to drive.
     """
@@ -303,12 +220,9 @@ class Runner:
             raise ValueError("a run needs at least two turns (a coverage set and a close)")
         self._on_divergence = on_divergence
 
-        # The close is de-positional: the ``close:true`` turn if any, else the
-        # last row. It may be emitted by any agent at any time to end the run.
-        # Everything else is the coverage set. The coverage set is a **budget**
-        # per content key: a content's multiplicity in the coverage rows is the
-        # number of times the authored exchange permits it. Emitting more
-        # copies than authored is duplicate-key exhaustion → divergence.
+        # The close is the ``close:true`` turn if any, else the last row;
+        # everything else is the coverage set. The coverage set is a per-key
+        # budget (a content's multiplicity in the coverage rows).
         close_idx = next((i for i, t in enumerate(decoded) if t.close), len(decoded) - 1)
         self._closing_key: ContentKey = turn_content_key(decoded[close_idx])
         coverage = [t for i, t in enumerate(decoded) if i != close_idx]
@@ -320,21 +234,17 @@ class Runner:
         self._events: list[RationaliseEvent] = []
         self._unmatched: list[RationaliseEvent] = []
         self._thread_exc: BaseException | None = None
-        # The last emission that successfully consumed a coverage allowance —
-        # the last healthy point before any divergence. Surfaced on
-        # ``RunResult.last_coverage_event`` and on ``Divergence`` for diagnostics.
+        # The last emission that consumed a coverage allowance — the last
+        # healthy point before any divergence.
         self._last_coverage_event: RationaliseEvent | None = None
 
-        # PASS tracking. ``_last_pass_role`` records the role of the most recent
-        # PASS (None when the last emission was substantive). A PASS from one
-        # role followed by a PASS from the other is a terminal condition (the
-        # actors have nothing more to say). Two PASSes from the same role are
-        # not (that side is waiting while the other still has content).
+        # PASS tracking: the role of the most recent PASS (None when the last
+        # emission was substantive). A PASS from one role followed by a PASS
+        # from the other is terminal.
         self._last_pass_role: str | None = None
 
-        # The bus is the sink and relay. Build the bus-wired sinks and construct
-        # the actors with them (factories), then subscribe the actors' accept
-        # handlers and the runner's wildcard coverage handler.
+        # Build the bus-wired sinks, construct the actors, and subscribe the
+        # actors' accept handlers + the wildcard coverage handler.
         self._bus = MessageBus()
         self._trainer = trainer_factory(_BusEventSink(self._bus, "K"))
         self._trainee = trainee_factory(_BusEventSink(self._bus, "T"))
@@ -349,15 +259,8 @@ class Runner:
     # -- the driver ---------------------------------------------------------
 
     def run(self) -> RunResult:
-        """Drive the run (spec §The Runner).
-
-        Seeds the trainer (addressing an ``accept`` message with an empty
-        burst — ``message=[]`` — the opening seed), then runs ``bus.run()`` on
-        a dedicated thread. The bus exits when the coverage handler calls
-        ``bus.stop()`` — on the close content being seen, the coverage set
-        being exhausted, or a mutual PASS. Every ``accept`` yields ≥1 proposal
-        (``burst >= 1``), so the bus never blocks indefinitely.
-        """
+        """Seed the trainer and run ``bus.run()`` on a dedicated thread until a
+        terminal condition."""
         self._bus.send(
             Message(role=self._trainer.role, action=_ACCEPT_ACTION, message=[])
         )
@@ -371,22 +274,7 @@ class Runner:
     # -- coverage handler (the wildcard subscriber) -------------------------
 
     def _on_emission(self, msg: Message) -> None:
-        """Wildcard handler: track coverage and divergence on every emission.
-
-        ``msg.message`` is a burst (a ``list[RationaliseEvent]``): the other
-        role's whole reply carried as one bus payload. The bus delivers it
-        whole, so this handler unpacks the burst and applies the per-event
-        coverage / PASS / divergence logic to each event in arrival order.
-
-        Coverage-exhaustion is checked at the **burst boundary** (after every
-        event in the burst has been matched), not mid-burst: a single burst may
-        legitimately exhaust a key's budget and then over-emit it (the third
-        copy is duplicate-key exhaustion, §Matching), and that over-emission
-        must be observable as divergence rather than swallowed by an early
-        exhaustion-termination. The close, by contrast, terminates immediately
-        (it may land mid-burst; later events in the same burst are dropped as
-        trailing-after-terminal).
-        """
+        """Wildcard handler: track coverage and divergence on every emission."""
         burst = msg.message
         if not burst:
             return  # the opening seed, not an emission
@@ -405,19 +293,12 @@ class Runner:
         """Apply coverage / PASS / divergence bookkeeping to one emission."""
         assert isinstance(event, RationaliseEvent)
 
-        # The run is closed: drop everything after. The bus dispatches role
-        # handlers before wildcards, so a role handler may react to a terminal
-        # emission and enqueue another *before* this wildcard marks the run
-        # closed and stops the bus. Such trailing emissions are noise.
+        # Closed: drop trailing emissions.
         if self._closed:
             return
 
-        # A PASS is the no-content proposal. Intercept it *before* any content
-        # matching: it routes to the other role (the bus-wired sink already
-        # addressed it). A PASS from one role followed by a PASS from the other
-        # is terminal (the actors have nothing more to say). Two PASSes from the
-        # same role are not (that side is waiting while the other still has
-        # content).
+        # A PASS is intercepted before content matching. A PASS from one role
+        # followed by a PASS from the other is terminal.
         if is_pass(event):
             self._events.append(event)
             role = event.role or "?"
@@ -432,45 +313,29 @@ class Runner:
         self._events.append(event)
         key = self._event_key(event)
 
-        # The close content, emitted by any agent at any time, ends the run.
+        # The close content ends the run (any agent, any time).
         if key == self._closing_key:
             self._closed = True
             self._bus.stop()
             return
 
-        # A content present in the coverage set consumes one authored copy.
-        # The coverage set is a per-key budget (its multiplicity in the table):
-        # emitting more copies than authored is duplicate-key exhaustion →
-        # divergence. Coverage exhaustion (every budget spent) is checked at
-        # the burst boundary by ``_on_emission``, not here, so an over-budget
-        # emission arriving later in the same burst is surfaced as divergence.
+        # In the coverage set with copies remaining: consume one. Budget
+        # exhaustion is checked at the burst boundary by ``_on_emission``.
         budget = self._coverage_budget.get(key, 0)
         if self._consumed[key] < budget:
             self._consumed[key] += 1
             self._last_coverage_event = event
             return
 
-        # Immediate divergence. Two reasons, distinguished for diagnostics:
-        # ``"exhausted"`` — the content is in the table but every authored
-        # copy has been consumed (duplicate-key exhaustion); ``"unmatched"`` —
-        # the content is present nowhere in the table. Either way the run stops
-        # immediately: a divergent emission means the actor has left the
-        # authored exchange, so there is no further authored progress to make.
-        # ``on_divergence`` only governs how the divergence is reported — raise
-        # (``fail``) or record (``accept``) — not whether to stop.
+        # Immediate divergence (exhausted: budget spent; unmatched: present
+        # nowhere). Either stops the run immediately.
         reason = "exhausted" if budget > 0 else "unmatched"
         self._record_divergence(event, reason)
         self._closed = True
         self._bus.stop()
 
     def _record_divergence(self, event: RationaliseEvent, reason: str) -> None:
-        """Record the :class:`Divergence` for ``event`` per the run's policy.
-
-        Under ``on_divergence="fail"`` the exception is stashed on
-        ``_thread_exc`` (re-raised by :meth:`run` on the caller's thread).
-        Under ``"accept"`` the divergent emission is appended to
-        ``_unmatched``. Either way the caller stops the run immediately after.
-        """
+        """Record the :class:`Divergence` for ``event`` per the run's policy."""
         exc = Divergence(
             role=event.role or "?",
             emitted=event.proposal,
@@ -497,12 +362,7 @@ class Runner:
 
     @property
     def result(self) -> RunResult:
-        """The current :class:`RunResult` snapshot (spec §Types).
-
-        The arrival log, immediate divergences, the displacement (coverage
-        rows never emitted), and the last event that consumed a coverage
-        allowance.
-        """
+        """The current :class:`RunResult` snapshot."""
         return RunResult(
             events=list(self._events),
             unmatched=list(self._unmatched),
@@ -530,9 +390,8 @@ class Runner:
         ]
 
     def _uncovered_rows(self) -> list[DecodedTurn]:
-        # A coverage key is uncovered to the degree its budget is unconsumed:
-        # one placeholder per remaining authored copy, so the displacement
-        # count reflects authored rows not traversed (not just distinct keys).
+        # One placeholder per remaining authored copy, so the displacement
+        # count reflects authored rows not traversed.
         out: list[DecodedTurn] = []
         for k in sorted(self._coverage_budget, key=_key_sort):
             remaining = self._coverage_budget[k] - self._consumed[k]
@@ -565,13 +424,10 @@ def run(
     *,
     on_divergence: str = "fail",
 ) -> Runner:
-    """Construct a :class:`Runner` for ``decoded`` (spec §The Runner).
+    """Construct a :class:`Runner` for ``decoded``.
 
     ``trainer_factory`` / ``trainee_factory`` are callables ``(sink) -> Actor``:
-    the runner builds the bus-wired sink (it owns the bus) and constructs each
-    actor with its sink. This makes any actor drop-in: the actor author writes
-    only the publish-to-sink logic; the runner handles the bus.
-
+    the runner builds the bus-wired sink and constructs each actor with it.
     The caller calls :meth:`Runner.run` to drive.
     """
     return Runner(
