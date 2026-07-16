@@ -1,6 +1,6 @@
-"""Single-stage dialogue-table decoder.
+"""Single-stage dialogue-script decoder.
 
-``decode(table)`` turns a :class:`DialogueTable` into a flat ordered list of
+``decode(script)`` turns a :class:`DialogueTable` into a flat ordered list of
 :class:`DecodedTurn`, resolving every symbolic label against ``script``. The
 training loop receives the decoded list.
 """
@@ -36,10 +36,10 @@ BAND_TO_SIG: dict[str, int] = {
 Role = Literal["T", "K"]  # a turn's role: trainer (T) or trainee (K)
 
 # The runner's divergence policy. Lives on :class:`RunConfig`, carried on
-# the table's optional ``run`` section.
+# the script's optional ``run`` section.
 OnDivergence = Literal["fail", "accept"]
 
-# The table's closed op vocabulary. An unknown op is a decode error.
+# The script's closed op vocabulary. An unknown op is a decode error.
 DIALOGUE_OPS = frozenset({"COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES", "IDENTITY"})
 
 
@@ -47,12 +47,12 @@ class DecodeError(Exception):
     """A turn could not be decoded: an unknown op, an unresolved symbol, an
     ambiguous/missing canon node-list match, or a band typo."""
 
-# ── Typed table structures ────────────────────────────────────────────────
+# ── Typed script structures ────────────────────────────────────────────────
 
 
 @dataclass(frozen=True)
 class Turn:
-    """One row of the dialogue table.
+    """One row of the dialogue script.
 
     Structural turns (those carrying ``op``) decode to a :class:`DecodedTurn`.
     Annotation-only turns (``notes`` but no ``op``) are dropped at decode time.
@@ -69,7 +69,7 @@ class Turn:
     close: bool = False  # True when this turn closes a script (a boundary marker)
     # The raw JSON record this turn was loaded from (``None`` for turns built
     # synthetically, e.g. test fixtures). Carried for diagnostics so a trace
-    # can show the table row verbatim alongside its decoded form.
+    # can show the script row verbatim alongside its decoded form.
     record: dict | None = None
 
     @property
@@ -87,21 +87,21 @@ class RunConfig:
 
 
 @dataclass(frozen=True)
-class DialogueTable:
+class DialogueScript:
     """The source artifact for a lesson.
 
-    ``script`` is the source of truth for kline structure; ``turns`` is the
+    ``source`` is the source of truth for kline structure; ``turns`` is the
     exact T/K exchange. ``run_config`` carries the runner modifiers (``None``
     when no ``run`` section is present).
     """
 
-    script: str
+    source: str
     turns: tuple[Turn, ...]
     run_config: RunConfig | None = None
 
     @property
     def has_run_config(self) -> bool:
-        """True when this table carries a ``run`` section."""
+        """True when this script carries a ``run`` section."""
         return self.run_config is not None
 
 
@@ -123,12 +123,12 @@ class DecodedTurn:
 
 
 
-# ── Symbol resolution against compiled script ─────────────────────────────
+# ── Symbol resolution against compiled source ─────────────────────────────
 
 
 @dataclass(frozen=True)
 class _ResolvedScript:
-    """Compiled-script indices built once at decode time: canon-by-label,
+    """Compiled-source indices built once at decode time: canon-by-label,
     relation-by-label, and a general label→KLine index."""
 
     canon_by_label: dict[str, KLine] = field(default_factory=dict)
@@ -137,13 +137,13 @@ class _ResolvedScript:
 
 
 def _resolve_script(
-    script: str,
+    source: str,
     *,
     tokenizer: NLPTokenizer | None = None,
     signifier: KSignifier | None = None,
 ) -> tuple[list[KValue], _ResolvedScript]:
-    """Compile ``script`` once and build the canon + label indices."""
-    entries = compile_source(script, tokenizer=tokenizer, signifier=signifier, dev=True)
+    """Compile ``source`` once and build the canon + label indices."""
+    entries = compile_source(source, tokenizer=tokenizer, signifier=signifier, dev=True)
 
     resolved = _ResolvedScript()
     for e in entries:
@@ -177,26 +177,26 @@ def _resolve_script(
 
 
 def primaries_from_source(
-    script: str,
+    source: str,
     *,
     tokenizer: NLPTokenizer | None = None,
     signifier: KSignifier | None = None,
 ) -> list[KLine]:
-    """The ordered script primaries (one per top-level KScript scope).
+    """The ordered source primaries (one per top-level KScript scope).
 
-    Each primary is the kline a trainer opens (R1) for that script. Used by a
+    Each primary is the kline a trainer opens (R1) for that source. Used by a
     multi-script trainer to open successive scripts after each close.
     """
     from ks.lexer import Lexer
     from ks.parser import OperatorScope, Parser
 
-    kfile = Parser(Lexer(script).tokenize()).parse()
+    kfile = Parser(Lexer(source).tokenize()).parse()
     scope_labels = [
         c.sig.id for c in kfile.constructs if isinstance(c, OperatorScope)
     ]
     if not scope_labels:
         return []
-    entries = compile_source(script, tokenizer=tokenizer, signifier=signifier, dev=True)
+    entries = compile_source(source, tokenizer=tokenizer, signifier=signifier, dev=True)
     first_by_label: dict[str, KLine] = {}
     for e in entries:
         lbl = e.kline.dbg.label if e.kline.dbg else None
@@ -207,7 +207,7 @@ def primaries_from_source(
         kl = first_by_label.get(label)
         if kl is None:
             raise DecodeError(
-                f"script primary {label!r} has no compiled entry — cannot resolve"
+                f"source primary {label!r} has no compiled entry — cannot resolve"
             )
         primaries.append(kl)
     return primaries
@@ -233,7 +233,7 @@ def _resolve_node_signatures(
         nkl = resolved.labels.get(n)
         if nkl is None:
             raise DecodeError(
-                f"{op} node {n!r}: label not found in compiled script"
+                f"{op} node {n!r}: label not found in compiled source"
             )
         node_sigs.append(nkl.signature)
     return node_sigs
@@ -262,7 +262,7 @@ def _resolve_kline(
             sig_kl = resolved.labels.get(signature)
         if sig_kl is None:
             raise DecodeError(
-                f"CANONIZES signature {signature!r}: label not found in compiled script"
+                f"CANONIZES signature {signature!r}: label not found in compiled source"
             )
         return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
 
@@ -274,7 +274,7 @@ def _resolve_kline(
             kl = resolved.labels.get(signature)
         if kl is None:
             raise DecodeError(
-                f"IDENTITY {signature!r}: label not found in compiled script"
+                f"IDENTITY {signature!r}: label not found in compiled source"
             )
         return KLine(kl.signature, [], dbg=kl.dbg)
 
@@ -288,30 +288,30 @@ def _resolve_kline(
         sig_kl = sig_canon if sig_canon is not None else resolved.labels.get(signature)
     if sig_kl is None:
         raise DecodeError(
-            f"relation signature {signature!r}: label not found in compiled script"
+            f"relation signature {signature!r}: label not found in compiled source"
         )
     return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
 
 
 def decode(
-    table: DialogueTable,
+    script: DialogueScript,
     *,
     tokenizer: NLPTokenizer | None = None,
     signifier: KSignifier | None = None,
 ) -> list[DecodedTurn]:
     """Pre-decode every turn into a flat ordered ``list[DecodedTurn]``.
 
-    Per turn: resolve the kline from ``script``, attach significance by band
+    Per turn: resolve the kline from ``source``, attach significance by band
     lookup, pass through ``actor``/``op``, ignore ``notes``. Annotation-only
     turns are dropped. A configuration-time function: call once, hand the
     result to the training loop.
     """
     _entries, resolved = _resolve_script(
-        table.script, tokenizer=tokenizer, signifier=signifier
+        script.source, tokenizer=tokenizer, signifier=signifier
     )
 
     out: list[DecodedTurn] = []
-    for idx, turn in enumerate(table.turns):
+    for idx, turn in enumerate(script.turns):
         # Annotation-only turns (notes, no op) are dropped.
         if turn.is_annotation_only:
             continue
@@ -339,7 +339,7 @@ def decode(
     # ``close`` markers and dialogue-mode invariants are validated on the
     # decoded list (they require symbol resolution to have run).
     _validate_close(out)
-    if table.has_run_config:
+    if script.has_run_config:
         _validate_run(out)
     return out
 
@@ -368,7 +368,7 @@ def _turn_from_dict(raw: dict) -> Turn:
     close = raw.get("close")
     if close is not None and not (isinstance(close, bool) and close):
         raise DecodeError(
-            f"'close' must be the boolean true (a script-boundary marker), got {close!r}"
+            f"'close' must be the boolean true (a source-boundary marker), got {close!r}"
         )
     return Turn(
         role=role,
@@ -416,7 +416,7 @@ def _validate_run(decoded: list[DecodedTurn]) -> None:
     """
     if len(decoded) < 2:
         raise DecodeError(
-            "dialogue-mode table needs at least two turns (a coverage set and a close)"
+            "dialogue-mode script needs at least two turns (a coverage set and a close)"
         )
     close_idx = next((i for i, t in enumerate(decoded) if t.close), len(decoded) - 1)
     close_key = turn_content_key(decoded[close_idx])
@@ -442,36 +442,36 @@ def _run_config_from_dict(raw: dict) -> RunConfig:
     return RunConfig(on_divergence=on_divergence)
 
 
-def _load_table_file(path: Path) -> DialogueTable:
+def _load_table_file(path: Path) -> DialogueScript:
     """Load a :class:`DialogueTable` from a JSON file (used for ``priors``).
 
-    The loaded table's own ``priors`` resolve recursively by :func:`load_table`.
+    The loaded script's own ``priors`` resolve recursively by :func:`load_table`.
     """
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
         raise DecodeError(
-            f"dialogue prior table {str(path)!r} could not be read: {exc}"
+            f"dialogue prior script {str(path)!r} could not be read: {exc}"
         ) from exc
     try:
         raw = json.loads(text)
     except json.JSONDecodeError as exc:
         raise DecodeError(
-            f"dialogue prior table {str(path)!r} is not valid JSON: {exc}"
+            f"dialogue prior script {str(path)!r} is not valid JSON: {exc}"
         ) from exc
     if not isinstance(raw, dict):
         raise DecodeError(
-            f"dialogue prior table {str(path)!r} must be a JSON object"
+            f"dialogue prior script {str(path)!r} must be a JSON object"
         )
-    return load_table(raw)
+    return load_script(raw)
 
 
 def _collapse_to_single_close(turns: tuple[Turn, ...]) -> tuple[Turn, ...]:
     """Keep only the last ``close`` marker; clear every earlier one.
 
-    A composed multi-file table has a single close; each prior's own
-    ``close:true`` is an intermediate script boundary that becomes an ordinary
-    coverage row. A table with zero or one close is a no-op.
+    A composed multi-file script has a single close; each prior's own
+    ``close:true`` is an intermediate source boundary that becomes an ordinary
+    coverage row. A script with zero or one close is a no-op.
     """
     last_close = max(
         (i for i, t in enumerate(turns) if t.close), default=-1
@@ -486,29 +486,29 @@ def _collapse_to_single_close(turns: tuple[Turn, ...]) -> tuple[Turn, ...]:
     )
 
 
-def load_table(raw: dict) -> DialogueTable:
-    """Parse a raw ``{script, turns[], run?, priors?}`` dict into a
+def load_script(raw: dict) -> DialogueScript:
+    """Parse a raw ``{source, turns[], run?, priors?}`` dict into a
     :class:`DialogueTable`. Structural fields are validated for shape here;
     symbol resolution happens later in :func:`decode`.
     """
-    if "script" not in raw or not isinstance(raw["script"], str):
-        raise DecodeError("dialogue table missing string 'script'")
-    # ``script`` may be a path to a .ks file or inline source, disambiguated
+    if "source" not in raw or not isinstance(raw["source"], str):
+        raise DecodeError("dialogue script missing string 'source'")
+    # ``source`` may be a path to a .ks file or inline source, disambiguated
     # by path-likeness (path separator or ``.ks`` suffix). A path-like value
     # is resolved against the file system; otherwise used verbatim as inline
     # KScript.
-    script = raw["script"]
-    looks_like_path = ("/" in script) or ("\\" in script) or script.endswith(".ks")
+    source = raw["source"]
+    looks_like_path = ("/" in source) or ("\\" in source) or source.endswith(".ks")
     if looks_like_path:
-        script_path = Path(script)
+        script_path = Path(source)
         try:
-            script = script_path.read_text(encoding="utf-8")
+            source = script_path.read_text(encoding="utf-8")
         except OSError as exc:
             raise DecodeError(
-                f"dialogue table 'script' path {script!r} could not be read: {exc}"
+                f"dialogue script 'source' path {source!r} could not be read: {exc}"
             ) from exc
     if "turns" not in raw or not isinstance(raw["turns"], list):
-        raise DecodeError("dialogue table missing list 'turns'")
+        raise DecodeError("dialogue script missing list 'turns'")
     run_raw = raw.get("run")
     if run_raw is not None:
         if not isinstance(run_raw, dict):
@@ -517,15 +517,15 @@ def load_table(raw: dict) -> DialogueTable:
     else:
         run_config = None
     turns = tuple(_turn_from_dict(t) for t in raw["turns"])
-    # ``priors`` (optional): other table files whose turns run before this
-    # table's own, in list order. Each resolves its own ``script``; only its
+    # ``priors`` (optional): other script files whose turns run before this
+    # script's own, in list order. Each resolves its own ``source``; only its
     # turns are carried in.
     priors_raw = raw.get("priors")
     if priors_raw is not None:
         if not isinstance(priors_raw, list) or not all(
             isinstance(p, str) for p in priors_raw
         ):
-            raise DecodeError("'priors' must be a list of table-file path strings")
+            raise DecodeError("'priors' must be a list of script-file path strings")
         prior_turns: list[Turn] = []
         for prior_path in priors_raw:
             prior_table = _load_table_file(Path(prior_path))
@@ -535,4 +535,4 @@ def load_table(raw: dict) -> DialogueTable:
     # ``close:true`` is the run's terminal content; earlier ones become
     # ordinary coverage rows.
     turns = _collapse_to_single_close(turns)
-    return DialogueTable(script=script, turns=turns, run_config=run_config)
+    return DialogueScript(source=source, turns=turns, run_config=run_config)

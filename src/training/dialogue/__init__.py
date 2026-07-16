@@ -14,14 +14,14 @@ trainee.
 from training.dialogue.decoder import (
     BAND_TO_SIG,
     DecodedTurn,
-    DialogueTable,
+    DialogueScript,
     Turn,
     decode,
-    load_table,
+    load_script,
 )
 from training.dialogue.actors import (
-    TableTrainee,
-    TableTrainer,
+    ScriptTrainee,
+    ScriptTrainer,
 )
 from training.dialogue.runner import (
     Divergence,
@@ -33,14 +33,14 @@ from training.dialogue.runner import (
 __all__ = [
     "BAND_TO_SIG",
     "DecodedTurn",
-    "DialogueTable",
+    "DialogueScript",
     "Divergence",
     "RunResult",
     "Runner",
-    "TableTrainee",
-    "TableTrainer",
+    "ScriptTrainee",
+    "ScriptTrainer",
     "Turn",
     "decode",
-    "load_table",
+    "load_script",
     "run",
 ]

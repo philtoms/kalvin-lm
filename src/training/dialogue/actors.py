@@ -134,14 +134,14 @@ class _TableActor(Actor):
         )
 
 
-class TableTrainer(_TableActor):
+class ScriptTrainer(_TableActor):
     """The default trainer: yields the table's T-rows in order."""
 
     def __init__(self, table: Sequence[DecodedTurn], sink: EventSink) -> None:
         super().__init__(table, role="T", kind="frame", sink=sink)
 
 
-class TableTrainee(_TableActor):
+class ScriptTrainee(_TableActor):
     """The default trainee: yields the table's K-rows in order."""
 
     def __init__(self, table: Sequence[DecodedTurn], sink: EventSink) -> None:

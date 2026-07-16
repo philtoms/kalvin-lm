@@ -9,14 +9,14 @@
 ## Overview
 
 A lesson is an authored **dialogue** between a Trainer (T) and a Trainee (K),
-turn by turn, captured as a deterministic **dialogue table**. A **runner**
-decodes the table, then drives two **actors** over the harness `MessageBus`,
+turn by turn, captured as a deterministic **dialogue script**. A **runner**
+decodes the script, then drives two **actors** over the harness `MessageBus`,
 tracking how much of the authored exchange the actors actually traverse.
 
 Both sides emit on their own schedule and count; the runner is a
 **coverage-tracking subscriber** that watches for a terminal condition and
 reports the **displacement** — coverage rows never emitted. The default actors
-are table-reading scaffolding; either side is meant to be replaced by a real
+are script-reading scaffolding; either side is meant to be replaced by a real
 trainer or trainee, and the runner is expected to evolve when real actors
 arrive.
 
@@ -26,14 +26,14 @@ arrive.
 - `@specs/kscript.md`, `@specs/kline.md`, `@specs/kvalue.md`, `@specs/agent.md`.
 - `@specs/harness-server.md` — the `MessageBus` the run is driven over.
 
-## The Dialogue Table
+## The Dialogue Script
 
 A JSON object:
 
 ```
-DialogueTable:
-  script:  str          # KScript source, or a path to a .ks file
-  priors:  list[str]    # optional: other table files whose turns run first
+DialogueScript:
+  source:  str          # KScript source, or a path to a .ks file
+  priors:  list[str]    # optional: other script files whose turns run first
   run:     RunConfig    # optional: run modifiers (e.g. on_divergence)
   turns:   list[Turn]   # the ordered T/K exchange
 ```
@@ -49,7 +49,7 @@ Turn:
   close:        bool  # optional: marks this turn as the run's close
 ```
 
-`script` is the single source of truth for kline structure. `turns` is the
+`source` is the single source of truth for kline structure. `turns` is the
 exchange. An **annotation-only turn** (notes, no `op`) is human commentary and
 is dropped at decode. A `close: true` turn marks the run's terminal content
 (role-agnostic; may sit on T or K). When no turn is `close`, the last row is.
@@ -57,11 +57,11 @@ is dropped at decode. A `close: true` turn marks the run's terminal content
 ## Decode
 
 ```
-decode(table) -> list[DecodedTurn]
+decode(script) -> list[DecodedTurn]
 ```
 
 A single-stage, configuration-time function. Per turn it resolves the kline
-from `script`, attaches significance by band lookup, and passes through
+from `source`, attaches significance by band lookup, and passes through
 `actor`/`op`. The decoder is a **resolver**: it builds the kline the turn
 declares (declared signature verbatim, nodes resolved to canonical signatures)
 and does not check that signature and nodes are consistent — an author may
@@ -112,8 +112,8 @@ Actor:
 
 The runner builds the bus-wired sink and constructs actors via **factories**
 `(sink) -> Actor`, so any actor is drop-in. The two defaults
-(`TableTrainer`, `TableTrainee`) read the decoded table and are content-blind —
-they advance their own cursor in table order and never realign to incoming
+(`ScriptTrainer`, `ScriptTrainee`) read the decoded script and are content-blind —
+they advance their own cursor in script order and never realign to incoming
 content.
 
 ### Matching & termination
@@ -125,14 +125,14 @@ significance)` equality:
 - **Equals the close** → terminate.
 - **In the budget with copies remaining** → consume one copy. Every budget
   spent → terminate (coverage exhaustion).
-- **In the table but budget exhausted** → immediate divergence (reason
+- **In the script but budget exhausted** → immediate divergence (reason
   `"exhausted"`).
 - **Present nowhere** → immediate divergence (reason `"unmatched"`).
 
 Either divergence stops the run at once, regardless of policy;
 `on_divergence` governs report-only (`"fail"` raises `Divergence`; `"accept"`
 appends to `RunResult.unmatched`). The close may be emitted by any agent at any
-time; the table is **de-positional** (the first row carries no opening
+time; the script is **de-positional** (the first row carries no opening
 semantics, and anticipation/interjection are permitted and unflagged).
 
 ### Types
@@ -160,8 +160,8 @@ today's implementation choices as contract.
 
 | ID    | Criterion                                                                                                                                  |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| DDT-1 | `decode(table)` returns a flat ordered `list[DecodedTurn]`, one per structural turn, significance attached by band lookup.                 |
-| DDT-2 | A malformed table (missing `script`/`turns`) is a decode error.                                                                            |
+| DDT-1 | `decode(script)` returns a flat ordered `list[DecodedTurn]`, one per structural turn, significance attached by band lookup.                |
+| DDT-2 | A malformed script (missing `source`/`turns`) is a decode error.                                                                           |
 | DDT-3 | The canonical MHALL dialogue runs end-to-end through the runner with the default actors and covers the whole exchange (zero displacement). |
 
 ## Out of Scope

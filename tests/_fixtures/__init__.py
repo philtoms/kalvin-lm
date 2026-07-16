@@ -3,7 +3,7 @@
 ``scripts/dialogue-mhall.json`` is a user-editable artefact (the reference
 dialogue for "Mary had a little lamb"). Tests must not depend on its current
 contents, so the canonical acceptance fixture is frozen here as a Python dict.
-``mhall_table()`` returns a fresh copy each call so a test can mutate it
+``mhall_script()`` returns a fresh copy each call so a test can mutate it
 without affecting other tests.
 """
 
@@ -15,7 +15,7 @@ import json
 # The "Mary had a little lamb" reference dialogue. Frozen from
 # ``scripts/dialogue-mhall.json``; if the script's structure is intentionally
 # changed, update this constant deliberately — tests assert against it.
-MHALL_SCRIPT = (
+MHALL_SOURCE = (
     "(Mary had a little lamb)\n"
     "MHALL == SVO =>\n"
     "   S(ubject) = M\n"
@@ -64,15 +64,15 @@ MHALL_TURNS = [
 ]
 
 
-def mhall_table() -> dict:
-    """Return a fresh deep copy of the MHALL dialogue-table dict.
+def mhall_script() -> dict:
+    """Return a fresh deep copy of the MHALL dialogue-script dict.
 
-    Each call returns an independent copy so a test can mutate the table
+    Each call returns an independent copy so a test can mutate the script
     (drop turns, rewrite fields) without leaking state to other tests.
     """
-    return copy.deepcopy({"script": MHALL_SCRIPT, "turns": MHALL_TURNS})
+    return copy.deepcopy({"source": MHALL_SOURCE, "turns": MHALL_TURNS})
 
 
 def mhall_json() -> str:
-    """The MHALL table serialised as JSON (mirrors the on-disk file shape)."""
-    return json.dumps(mhall_table())
+    """The MHALL script serialised as JSON (mirrors the on-disk file shape)."""
+    return json.dumps(mhall_script())

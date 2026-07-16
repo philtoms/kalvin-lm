@@ -1,14 +1,14 @@
-"""Run a dialogue end-to-end through the table-reading trainer and trainee.
+"""Run a dialogue end-to-end through the script-reading trainer and trainee.
 
-Loads a dialogue table, decodes it, and drives it to completion through the
+Loads a dialogue script, decodes it, and drives it to completion through the
 sink-shaped :class:`Runner`, which bridges the actors' emissions onto a
 :class:`MessageBus` (coverage is order-agnostic on middle entries — the natural
 fit for real actors). 
 
 ``--rationalise`` substitutes a :class:`RationalisingTrainee` (a real, stateful,
-rationalising trainee) for the default ``TableTrainee``, and ``--synthesize``
+rationalising trainee) for the default ``ScriptTrainee``, and ``--synthesize``
 substitutes a :class:`SynthesizingTrainer` (a real trainer that derives each
-turn from the compiled script) for the default ``TableTrainer``. The two flags
+turn from the compiled source) for the default ``ScriptTrainer``. The two flags
 are orthogonal: passing both runs the two real actors against the same golden
 master. 
 
@@ -49,10 +49,10 @@ from kalvin.signifier import NLPSignifier  # noqa: E402
 from ks.compiler import compile_source  # noqa: E402
 from training.dialogue import (  # noqa: E402
     Divergence,
-    TableTrainee,
-    TableTrainer,
+    ScriptTrainee,
+    ScriptTrainer,
     decode,
-    load_table,
+    load_script,
     run,
 )
 from training.dialogue.decoder import primaries_from_source  # noqa: E402
@@ -71,16 +71,16 @@ _SIG_TO_BAND = {
 DEFAULT_DIALOGUE = "scripts/dialogue-mhall.json"
 
 
-def _sig_to_label(table, *, tokenizer, signifier) -> dict[int, str]:
-    """Reverse the compiled script into a ``{signature: label}`` map.
+def _sig_to_label(script, *, tokenizer, signifier) -> dict[int, str]:
+    """Reverse the compiled source into a ``{signature: label}`` map.
 
     Used to recover the **scripted** (symbolic) form of a validated entry: a
     decoded turn carries a resolved :class:`KLine` (signature + node
     signatures as uint64s), and this map turns those back into the labels a
-    table author wrote (e.g. ``MHALL``, ``Mary``, ``had``). The first compiled
+    script author wrote (e.g. ``MHALL``, ``Mary``, ``had``). The first compiled
     entry per signature wins, matching the decoder's own label indexing.
     """
-    entries = compile_source(table.script, tokenizer=tokenizer, signifier=signifier, dev=True)
+    entries = compile_source(script.source, tokenizer=tokenizer, signifier=signifier, dev=True)
     out: dict[int, str] = {}
     for e in entries:
         d = e.kline.dbg
@@ -100,12 +100,12 @@ def _render_scripted(
     *,
     close: bool = False,
 ) -> str:
-    """The scripted (declarative table-row) version of a validated entry.
+    """The scripted (declarative script-row) version of a validated entry.
 
     A validated entry resolves every symbol to a :class:`KLine` (on its
     :class:`~kalvin.kvalue.KValue`); this inverts that for display,
     reconstructing the ``(role, op, signature, nodes, significance)`` row a
-    table author would write, with symbolic labels recovered from
+    script author would write, with symbolic labels recovered from
     ``sig_to_label``. A signature/node with no known label falls back to its
     hex form rather than disappearing silently. A script ``close`` marker is
     surfaced when present.
@@ -124,7 +124,7 @@ def _scripted_form_event(event, sig_to_label: dict[int, str]) -> str:
     """Scripted form of an emission (arrival-ordered).
 
     An event carries the emitter's ``role`` and its ``proposal`` KValue but
-    not the table's ``op``; the proposal's ``dbg.op`` (the structural state the
+    not the script's ``op``; the proposal's ``dbg.op`` (the structural state the
     kline was built with) stands in, falling back to ``?`` when absent. A PASS
     (the no-content proposal, DDT-22) renders as ``<role> PASS``.
     """
@@ -140,7 +140,7 @@ def _render_trace_entry(idx: int, scripted: str, record: dict | None) -> str:
     """One trace line: the scripted form, with the source JSON record beneath.
 
     ``record`` is the raw JSON turn dict — when present it is shown verbatim so
-    the table row the author wrote is visible alongside its decoded form.
+    the script row the author wrote is visible alongside its decoded form.
     """
     line = f"  #{idx:2} {scripted}"
     if record is not None:
@@ -157,12 +157,12 @@ def _trace(
 
     Events arrive in bus-delivery order. Each is rendered on its own numbered
     line via :func:`_scripted_form_event`, and — when the emission matches a
-    decoded turn's content key — the table's JSON record for that turn is shown
+    decoded turn's content key — the script's JSON record for that turn is shown
     beneath it (the verbatim row the author wrote). An emission with no
     matching decoded turn shows no record.
     """
     # Index decoded turns by content key so each event can be associated with
-    # its source table row (content identity is role + kline + significance —
+    # its source script row (content identity is role + kline + significance —
     # see ``turn_content_key``). The first decoded turn per key wins; duplicate
     # content collapses to one record, matching the runner's own coverage
     # bookkeeping.
@@ -215,12 +215,12 @@ def _render_divergence(exc: Divergence, sig_to_label: dict[int, str]) -> str:
     """Human-readable divergence report.
 
     The raw :class:`Divergence` carries signatures as hex and a bare count of
-    uncovered rows — opaque without the compiled script's label map. This
+    uncovered rows — opaque without the compiled sources's label map. This
     inverts the diverging emission, the last healthy coverage match, and the
-    still-uncovered same-role rows into their scripted (table-row) form, so an
+    still-uncovered same-role rows into their scripted (script-row) form, so an
     author can read what the actor said versus what it was still expected to
     say. Two divergence reasons are distinguished: ``exhausted`` (the content
-    is in the table but every authored copy was already consumed — duplicate-
+    is in the script but every authored copy was already consumed — duplicate-
     key exhaustion) and ``unmatched`` (the content matches no row). An
     ``unconsumed`` entry built by the runner from a content key has no
     ``record`` (it is a placeholder), so only its scripted form is shown.
@@ -253,7 +253,7 @@ def _render_divergence(exc: Divergence, sig_to_label: dict[int, str]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run a dialogue end-to-end through the table-reading actors."
+        description="Run a dialogue end-to-end through the script-reading actors."
     )
     parser.add_argument(
         "dialogue",
@@ -266,7 +266,7 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=(
             "Substitute a RationalisingTrainee (a real, stateful rationalising trainee) "
-            "for the default TableTrainee. The trainer stays a TableTrainer "
+            "for the default ScriptTrainee. The trainer stays a ScriptTrainer "
             "(the deterministic oracle)."
         ),
     )
@@ -275,7 +275,7 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=(
             "Substitute a SynthesizingTrainer (a real trainer that derives each "
-            "turn from the compiled script) for the default TableTrainer. "
+            "turn from the compiled source) for the default ScriptTrainer. "
             "Orthogonal to --rationalise."
         ),
     )
@@ -285,10 +285,10 @@ def main(argv: list[str] | None = None) -> int:
     tok = NLPTokenizer()
     sigf = NLPSignifier()
 
-    table = load_table(json.loads(Path(dialogue_path).read_text()))
-    decoded = decode(table, tokenizer=tok, signifier=sigf)
-    # The compiled script's signature→label map.
-    sig_to_label = _sig_to_label(table, tokenizer=tok, signifier=sigf)
+    script = load_script(json.loads(Path(dialogue_path).read_text()))
+    decoded = decode(script, tokenizer=tok, signifier=sigf)
+    # The compiled source's signature→label map.
+    sig_to_label = _sig_to_label(script, tokenizer=tok, signifier=sigf)
 
     # Always on
     on_divergence = "fail"
@@ -299,20 +299,20 @@ def main(argv: list[str] | None = None) -> int:
     compiled = None
     primaries = None
     if args.synthesize:
-        compiled = compile_source(table.script, tokenizer=tok, signifier=sigf, dev=True)
+        compiled = compile_source(script.source, tokenizer=tok, signifier=sigf, dev=True)
         primaries = primaries_from_source(
-            table.script, tokenizer=tok, signifier=sigf
+            script.source, tokenizer=tok, signifier=sigf
         )
 
     trainer_factory = (
         (lambda sink: SynthesizingTrainer(compiled, sigf, primaries, sink=sink))
         if args.synthesize
-        else (lambda sink: TableTrainer(decoded, sink=sink))
+        else (lambda sink: ScriptTrainer(decoded, sink=sink))
     )
     trainee_factory = (
         (lambda sink: RationalisingTrainee(sigf, sink=sink))
         if args.rationalise
-        else (lambda sink: TableTrainee(decoded, sink=sink))
+        else (lambda sink: ScriptTrainee(decoded, sink=sink))
     )
     try:
         runner = run(
