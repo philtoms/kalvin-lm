@@ -218,11 +218,23 @@ class RationalisingTrainee(Actor):
         self._engine = Rationaliser(signifier)
         self._state = RationaliserState()
         self._observations: list[KValue] = []
+        # Signatures of proposals already emitted into the dialogue (by
+        # ``(signature, nodes)`` key). The engine is free to re-derive an
+        # emission — it has no memory of what it has said — and the actor drops
+        # any proposal it has already published, so K never repeats itself.
+        # This is the single deduplication point; it lets the engine stay
+        # stateless about its own emissions.
+        self._emitted: set[tuple[int, tuple[int, ...]]] = set()
 
     def next_events(
         self, incoming: list[RationaliseEvent]
     ) -> Iterable[RationaliseEvent]:
-        """Rationalise the incoming events into a batch of proposals."""
+        """Rationalise the incoming events into a batch of proposals.
+
+        Drops any proposal the engine re-derives that K has already published
+        (emission deduplication). If every proposal is a duplicate the batch is
+        empty and the base emits a PASS — K waits for the trainer.
+        """
         assert incoming, "a trainee does not open; incoming must be non-empty"
         query = incoming[-1].proposal
         batch, observations = self._engine.rationalise(
@@ -230,6 +242,10 @@ class RationalisingTrainee(Actor):
         )
         self._observations.extend(observations)
         for proposal in batch:
+            key = (proposal.kline.signature, tuple(proposal.kline.nodes))
+            if key in self._emitted:
+                continue
+            self._emitted.add(key)
             yield RationaliseEvent(
                 kind="frame", query=query, proposal=proposal, role="K"
             )

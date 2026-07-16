@@ -39,6 +39,15 @@ this spec owns only the two paths and their boundaries.
   proposals, S2 similar-fit proposals) and **observations** of K's internal
   S1 groundings (every kline K grounds). Grounding does not emit into the
   dialogue; observations are surfaced for white-box verification.
+- **Emission deduplication.** K never publishes the same proposal twice. The
+  engine is **stateless about its own emissions** — it may re-derive a
+  proposal on successive turns (an S2 misfit persists in the work-list until
+  ratified; an unresolved identity re-surfaces) — and the **actor** is the
+  single deduplication point: it records every proposal it has published (by
+  `(signature, nodes)`) and drops any re-derivation. When the engine's whole
+  batch is duplicates, the actor emits nothing and the runner sees a PASS — K
+  waits for the trainer. Dedup lives in the actor, not the engine, so the
+  engine's state can stay a pure model of what K has grounded.
 - **Routing.** The routing rule handles S1 (ground/cleanup), S4 (pop the
   identity ask), and retrospective promotion before handing over to cogitation;
   only S2/S3 entries and their ungrounded identities reach cogitation.
@@ -60,7 +69,10 @@ this spec owns only the two paths and their boundaries.
   Every substituted node must be a node of a grounded kline (no invention).
   A grounded kline is a candidate iff it shares a **node value** with the
   entry's nodes; a canon under the entry's own signature is never admitted.
-  A shaped proposal already grounded is dropped, not emitted.
+  A shaped proposal already grounded is dropped, not emitted. Because the
+  misfit entry persists until ratified, the engine re-derives the same
+  proposal on successive turns; the actor's emission deduplication (above)
+  ensures K publishes it once and then waits.
 - **Work-list.** An entry that matches neither path is not discarded — it
   persists and is re-tried on later turns. Only grounding (the entry's nodes
   becoming seen) or an operand's canon arriving makes it fire; until then it

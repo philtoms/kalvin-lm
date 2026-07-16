@@ -34,14 +34,15 @@ __all__ = ["Rationaliser", "RationaliserState"]
 class RationaliserState:
     """The Rationaliser's mutable memory, owned by the actor.
 
-    A work-list of pending klines, the grounded model (keyed by signature),
-    and the set of signatures already asked about as identities. Passed into
-    :meth:`Rationaliser.rationalise` and mutated in place by reference.
+    A work-list of pending klines and the grounded model (keyed by signature).
+    Passed into :meth:`Rationaliser.rationalise` and mutated in place by
+    reference. Emission deduplication is the actor's responsibility, not the
+    engine's: the engine is free to re-derive an emission, and the actor drops
+    any it has already published.
     """
 
     work_list: list[KLine] = field(default_factory=list)
     grounded: dict[int, list[KLine]] = field(default_factory=dict)
-    asked: set[int] = field(default_factory=set)
 
 
 class Rationaliser:
@@ -206,11 +207,9 @@ class _Turn:
                     changed = True
                     break
 
-    def _is_recognised(self, signature: int, *, is_signature: bool = False) -> bool:
-        """Has K seen ``signature``?"""
+    def _is_recognised(self, signature: int) -> bool:
+        """Has K seen ``signature`` — grounded or pending as an identity?"""
         if signature in self._state.grounded:
-            return True
-        if is_signature and signature in self._state.asked:
             return True
         return any(
             entry.signature == signature and is_identity(entry)
@@ -243,13 +242,12 @@ class _Turn:
         for node in kline.nodes:
             if not self._is_recognised(node):
                 self._state.work_list.append(KLine(node, [], kline.dbg))
-        if not self._is_recognised(kline.signature, is_signature=True):
-            self._state.work_list.append(KLine(kline.signature, [],kline.dbg))
+        if not self._is_recognised(kline.signature):
+            self._state.work_list.append(KLine(kline.signature, [], kline.dbg))
 
     def _emit_identity(self, idx: int, signature: int) -> KValue:
         """S4 — emit IDENTITY ``{signature: []}`` at S4 and pop the entry."""
         del self._state.work_list[idx]
-        self._state.asked.add(signature)
         return KValue(KLine(signature, []), SIG_S4)
 
     def _countersign(self, entry: KLine) -> None:

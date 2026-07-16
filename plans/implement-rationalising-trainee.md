@@ -13,7 +13,13 @@ returns a `(batch, observations)` pair. The `RationalisingTrainee` actor
 (`actors.py`) owns the `RationaliserState`, wraps each batch value in a
 `RationaliseEvent`, and exposes the observations via `drain_observations`.
 The state holds a minimal model of what K has grounded (`grounded`, keyed by
-signature) and a work-list.
+signature) and a work-list. The engine is **stateless about its own
+emissions**: it may re-derive a proposal on successive turns, and the actor
+is the single deduplication point — it records every proposal it has
+published (by `(signature, nodes)`) and drops re-derivations, so K never
+repeats itself. (An earlier build kept an `asked` set in the engine to
+dedup identity asks; that responsibility moved to the actor so the engine's
+state is a pure model of grounding.)
 
 The turn produces two channels: the **batch** (dialogue emissions — speech
 acts for T) and the **observations** (every S1 grounding K performs, for
