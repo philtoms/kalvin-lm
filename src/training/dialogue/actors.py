@@ -21,7 +21,7 @@ from kalvin.expand import SIG_S2
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn
-from training.dialogue.rationalise import Rationaliser
+from training.dialogue.rationalise import Rationaliser, RationaliserState
 from training.dialogue.runner import pass_event
 from training.dialogue.synthesize import synthesize
 
@@ -203,16 +203,21 @@ class RationalisingTrainee(Actor):
     """A trainee that rationalises each turn from its own model state.
 
     Drop-in for :class:`TableTrainee`. Holds a
-    :class:`~training.dialogue.rationalise.Rationaliser` engine and a
-    signifier, and publishes each emitted ``KValue`` (wrapped in a
-    ``RationaliseEvent``) via the injected sink. A trainee opens via the
-    trainer; when the engine has nothing workable, :meth:`next_events` yields
-    nothing and the base emits a PASS.
+    :class:`~training.dialogue.rationalise.Rationaliser` engine and owns the
+    :class:`~training.dialogue.rationalise.RationaliserState`. Each turn it
+    runs the pure engine over the incoming batch, publishes the resulting
+    dialogue emissions (wrapped in ``RationaliseEvent``\ s), and retains the
+    S1 grounding observations for the runner to drain via
+    :meth:`drain_observations`. A trainee opens via the trainer; when the
+    engine has nothing workable, :meth:`next_events` yields nothing and the
+    base emits a PASS.
     """
 
     def __init__(self, signifier: KSignifier, sink: EventSink) -> None:
         super().__init__(role="K", sink=sink)
         self._engine = Rationaliser(signifier)
+        self._state = RationaliserState()
+        self._observations: list[KValue] = []
 
     def next_events(
         self, incoming: list[RationaliseEvent]
@@ -220,7 +225,21 @@ class RationalisingTrainee(Actor):
         """Rationalise the incoming events into a batch of proposals."""
         assert incoming, "a trainee does not open; incoming must be non-empty"
         query = incoming[-1].proposal
-        for proposal in self._engine.rationalise([e.proposal for e in incoming]):
+        batch, observations = self._engine.rationalise(
+            self._state, [e.proposal for e in incoming]
+        )
+        self._observations.extend(observations)
+        for proposal in batch:
             yield RationaliseEvent(
                 kind="frame", query=query, proposal=proposal, role="K"
             )
+
+    def drain_observations(self) -> list[KValue]:
+        """Return and clear the S1 grounding observations accumulated this turn.
+
+        The runner calls this after each K turn to verify K's internal
+        grounding against the script's ``events`` (white-box), separately from
+        the dialogue coverage check (black-box).
+        """
+        drained, self._observations = self._observations, []
+        return drained

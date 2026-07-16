@@ -91,12 +91,15 @@ class DialogueScript:
     """The source artifact for a lesson.
 
     ``source`` is the source of truth for kline structure; ``turns`` is the
-    exact T/K exchange. ``run_config`` carries the runner modifiers (``None``
-    when no ``run`` section is present).
+    exact T/K exchange. ``events`` (optional, same row shape as ``turns``)
+    holds expected K groundings the runner verifies white-box, separately
+    from the dialogue coverage check. ``run_config`` carries the runner
+    modifiers (``None`` when no ``run`` section is present).
     """
 
     source: str
     turns: tuple[Turn, ...]
+    events: tuple[Turn, ...] = ()
     run_config: RunConfig | None = None
 
     @property
@@ -306,23 +309,58 @@ def decode(
     turns are dropped. A configuration-time function: call once, hand the
     result to the training loop.
     """
-    _entries, resolved = _resolve_script(
+    resolved = _resolve_script(
         script.source, tokenizer=tokenizer, signifier=signifier
-    )
+    )[1]
 
+    out = _decode_turns(script.turns, resolved, what="turn")
+    # ``close`` markers and dialogue-mode invariants are validated on the
+    # decoded list (they require symbol resolution to have run).
+    _validate_close(out)
+    if script.has_run_config:
+        _validate_run(out)
+    return out
+
+
+def decode_events(
+    script: DialogueScript,
+    *,
+    tokenizer: NLPTokenizer | None = None,
+    signifier: KSignifier | None = None,
+) -> list[DecodedTurn]:
+    """Decode the script's ``events`` (expected K groundings) for white-box
+    verification.
+
+    Same row shape and resolution as :func:`decode`, but the result carries no
+    ``close`` semantics (events are groundings, not terminal dialogue content).
+    """
+    resolved = _resolve_script(
+        script.source, tokenizer=tokenizer, signifier=signifier
+    )[1]
+    return _decode_turns(script.events, resolved, what="event")
+
+
+def _decode_turns(
+    turns: tuple[Turn, ...], resolved, *, what: str
+) -> list[DecodedTurn]:
+    """Resolve a sequence of :class:`Turn`\ s into :class:`DecodedTurn`\ s.
+
+    Shared by :func:`decode` (turns) and :func:`decode_events` (events).
+    Annotation-only rows are dropped. ``what`` labels the row kind in errors.
+    """
     out: list[DecodedTurn] = []
-    for idx, turn in enumerate(script.turns):
+    for idx, turn in enumerate(turns):
         # Annotation-only turns (notes, no op) are dropped.
         if turn.is_annotation_only:
             continue
         assert turn.op is not None and turn.significance is not None  # annotation guard
         if turn.signature is None:
-            raise DecodeError(f"turn {idx}: structural turn missing 'signature'")
+            raise DecodeError(f"{what} {idx}: structural row missing 'signature'")
         if turn.op not in DIALOGUE_OPS:
-            raise DecodeError(f"turn {idx}: unknown op {turn.op!r}")
+            raise DecodeError(f"{what} {idx}: unknown op {turn.op!r}")
         if turn.significance not in BAND_TO_SIG:
             raise DecodeError(
-                f"turn {idx}: unknown significance {turn.significance!r}"
+                f"{what} {idx}: unknown significance {turn.significance!r}"
             )
 
         kline = _resolve_kline(turn.op, turn.signature, turn.nodes, resolved)
@@ -336,11 +374,6 @@ def decode(
                 record=turn.record,
             )
         )
-    # ``close`` markers and dialogue-mode invariants are validated on the
-    # decoded list (they require symbol resolution to have run).
-    _validate_close(out)
-    if script.has_run_config:
-        _validate_run(out)
     return out
 
 
@@ -410,21 +443,15 @@ def _validate_close(decoded: list[DecodedTurn]) -> None:
 def _validate_run(decoded: list[DecodedTurn]) -> None:
     """Validate the dialogue-mode invariants.
 
-    The single invariant: the close content must be **unique** — its
-    ``(role, kline, significance)`` key appears exactly once. A close that
-    duplicates a coverage row is ambiguous and malformed.
+    The close need not be a unique content: it may recur as a coverage row,
+    in which case its coverage copies are consumed first and the run closes
+    on the post-exhaustion emission (see runner ``_observe``). The only
+    requirement is that a close is present (a script needs at least two
+    turns: a coverage set and a close).
     """
     if len(decoded) < 2:
         raise DecodeError(
             "dialogue-mode script needs at least two turns (a coverage set and a close)"
-        )
-    close_idx = next((i for i, t in enumerate(decoded) if t.close), len(decoded) - 1)
-    close_key = turn_content_key(decoded[close_idx])
-    other_keys = [turn_content_key(t) for i, t in enumerate(decoded) if i != close_idx]
-    if close_key in other_keys:
-        raise DecodeError(
-            "dialogue-mode close content also appears as a coverage row "
-            "— the close must be a unique content"
         )
 
 
@@ -517,9 +544,18 @@ def load_script(raw: dict) -> DialogueScript:
     else:
         run_config = None
     turns = tuple(_turn_from_dict(t) for t in raw["turns"])
+    # ``events`` (optional): expected K groundings the runner verifies
+    # white-box, same row shape as ``turns``.
+    events_raw = raw.get("events")
+    if events_raw is not None:
+        if not isinstance(events_raw, list):
+            raise DecodeError("'events' must be a list of turn rows")
+        events = tuple(_turn_from_dict(t) for t in events_raw)
+    else:
+        events = ()
     # ``priors`` (optional): other script files whose turns run before this
     # script's own, in list order. Each resolves its own ``source``; only its
-    # turns are carried in.
+    # turns (and events) are carried in.
     priors_raw = raw.get("priors")
     if priors_raw is not None:
         if not isinstance(priors_raw, list) or not all(
@@ -527,12 +563,15 @@ def load_script(raw: dict) -> DialogueScript:
         ):
             raise DecodeError("'priors' must be a list of script-file path strings")
         prior_turns: list[Turn] = []
+        prior_events: list[Turn] = []
         for prior_path in priors_raw:
             prior_table = _load_table_file(Path(prior_path))
             prior_turns.extend(prior_table.turns)
+            prior_events.extend(prior_table.events)
         turns = tuple(prior_turns) + turns
+        events = tuple(prior_events) + events
     # Collapse to a single close: in the merged list only the final
     # ``close:true`` is the run's terminal content; earlier ones become
     # ordinary coverage rows.
     turns = _collapse_to_single_close(turns)
-    return DialogueScript(source=source, turns=turns, run_config=run_config)
+    return DialogueScript(source=source, turns=turns, events=events, run_config=run_config)

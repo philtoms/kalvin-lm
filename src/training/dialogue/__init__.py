@@ -17,6 +17,7 @@ from training.dialogue.decoder import (
     DialogueScript,
     Turn,
     decode,
+    decode_events,
     load_script,
 )
 from training.dialogue.actors import (
@@ -25,6 +26,7 @@ from training.dialogue.actors import (
 )
 from training.dialogue.runner import (
     Divergence,
+    GroundingDivergence,
     Runner,
     RunResult,
     run,
@@ -35,12 +37,14 @@ __all__ = [
     "DecodedTurn",
     "DialogueScript",
     "Divergence",
+    "GroundingDivergence",
     "RunResult",
     "Runner",
     "ScriptTrainee",
     "ScriptTrainer",
     "Turn",
     "decode",
+    "decode_events",
     "load_script",
     "run",
 ]

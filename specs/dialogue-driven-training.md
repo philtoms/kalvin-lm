@@ -36,6 +36,7 @@ DialogueScript:
   priors:  list[str]    # optional: other script files whose turns run first
   run:     RunConfig    # optional: run modifiers (e.g. on_divergence)
   turns:   list[Turn]   # the ordered T/K exchange
+  events:  list[Turn]   # optional: expected K groundings (white-box assertions)
 ```
 
 ```
@@ -53,6 +54,9 @@ Turn:
 exchange. An **annotation-only turn** (notes, no `op`) is human commentary and
 is dropped at decode. A `close: true` turn marks the run's terminal content
 (role-agnostic; may sit on T or K). When no turn is `close`, the last row is.
+`events` (same row shape as `turns`, no `close` semantics) holds expected K
+S1 groundings the runner verifies white-box (see §Grounding verification) —
+targeted assertions, not an exhaustive manifest.
 
 ## Decode
 
@@ -78,7 +82,7 @@ DecodedTurn:
 ## The Runner
 
 ```
-run(decoded, trainer_factory, trainee_factory, *, on_divergence) -> Runner
+run(decoded, trainer_factory, trainee_factory, *, expected_groundings=(), on_divergence) -> Runner
 ```
 
 The run is driven over the harness `MessageBus`:
@@ -99,6 +103,12 @@ proposal (`burst >= 1`): an actor with nothing substantive publishes a **PASS**
 (neither coverage, nor divergence, nor a close); two consecutive PASSes from
 the two roles is a terminal condition (mutual PASS).
 
+The dialogue (what actors say) and K's grounding (what K knows) are verified
+on **separate channels**: the dialogue is **black-box** (coverage by emission);
+K's S1 groundings are **white-box** (a rationalising trainee exposes them via
+`drain_observations`, and the runner checks them against `expected_groundings`).
+Grounding is K's internal bookkeeping and does not emit into the dialogue.
+
 ### Actor contract
 
 ```
@@ -108,25 +118,32 @@ EventSink:
 Actor:
   role: str
   accept(incoming: list[RationaliseEvent]) -> None   # publishes a burst via its sink
+
+RationalisingTrainee (adds):
+  drain_observations() -> list[KValue]   # K's S1 grounding events since last call
 ```
 
 The runner builds the bus-wired sink and constructs actors via **factories**
 `(sink) -> Actor`, so any actor is drop-in. The two defaults
 (`ScriptTrainer`, `ScriptTrainee`) read the decoded script and are content-blind —
 they advance their own cursor in script order and never realign to incoming
-content.
+content. `ScriptTrainee` exposes no `drain_observations`; grounding assertions
+apply only to a trainee that does (a rationalising trainee).
 
 ### Matching & termination
 
 Each emission is matched against a **coverage budget** (a content key's
 multiplicity in the coverage rows) and the close, by `(role, kline,
-significance)` equality:
+significance)` equality. Coverage is consumed first; the close terminates only
+once its own coverage copies are spent (so a close that recurs as coverage
+closes on its final occurrence, not its first):
 
-- **Equals the close** → terminate.
 - **In the budget with copies remaining** → consume one copy. Every budget
   spent → terminate (coverage exhaustion).
-- **In the script but budget exhausted** → immediate divergence (reason
-  `"exhausted"`).
+- **Equals the close (budget exhausted for its key)** → terminate. A unique
+  close has no coverage copies, so terminates on first emission.
+- **In the script but budget exhausted, and not the close** → immediate
+  divergence (reason `"exhausted"`).
 - **Present nowhere** → immediate divergence (reason `"unmatched"`).
 
 Either divergence stops the run at once, regardless of policy;
@@ -135,17 +152,32 @@ appends to `RunResult.unmatched`). The close may be emitted by any agent at any
 time; the script is **de-positional** (the first row carries no opening
 semantics, and anticipation/interjection are permitted and unflagged).
 
+### Grounding verification (white-box)
+
+After each K turn the runner drains the trainee's observations (if it exposes
+`drain_observations`) and, at run end, checks every asserted grounding in
+`expected_groundings` was observed at least once — a **subset** check (model B):
+asserted groundings K never performs are a `GroundingDivergence` (reason
+`"missing"`); extra K groundings not asserted are not policed. Grounding key
+is `(signature, nodes, significance)` (role is always K). Grounding assertions
+are ignored for a non-observable trainee (the table actors).
+
 ### Types
 
 ```
 Divergence(Exception):
     role, emitted, unconsumed, reason, last_coverage_event
 
+GroundingDivergence(Exception):
+    grounded, unconsumed, reason ("missing"), last_coverage_event
+
 RunResult:
-    events:               list[RationaliseEvent]   # arrival-ordered
-    unmatched:            list[RationaliseEvent]   # divergences (accept-mode)
-    uncovered:            list[DecodedTurn]        # DISPLACEMENT: rows never emitted
-    last_coverage_event:  RationaliseEvent | None
+    events:                list[RationaliseEvent]   # arrival-ordered
+    unmatched:             list[RationaliseEvent]   # divergences (accept-mode)
+    uncovered:             list[DecodedTurn]        # DISPLACEMENT: rows never emitted
+    last_coverage_event:   RationaliseEvent | None
+    unmatched_groundings:  list[KValue]             # grounding divergences (accept-mode)
+    uncovered_groundings:  list[DecodedTurn]        # asserted groundings never observed
 ```
 
 The signal that matters is the **displacement** (`uncovered`): coverage rows

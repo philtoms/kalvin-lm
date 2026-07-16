@@ -1,15 +1,17 @@
 r"""The rationalising engine — the pure-logic core of a rationalising trainee.
 
-This module holds the rationalising **engine**: a stateful object that
-derives each turn from ``(incoming, state)`` and returns a batch of
-``KValue``\ s. It knows nothing of ``RationaliseEvent``, roles, or event
-kinds — the :class:`~training.dialogue.actors.RationalisingTrainee` wrapper
-wraps each emitted ``KValue`` in a ``RationaliseEvent``.
+This module holds the rationalising **engine**: a stateless object that
+derives each turn from ``(state, incoming)`` and returns a ``(batch,
+observations)`` pair. It knows nothing of ``RationaliseEvent``, roles, or
+event kinds — the :class:`~training.dialogue.actors.RationalisingTrainee`
+wrapper owns the :class:`RationaliserState` and wraps each emitted
+``KValue`` in a ``RationaliseEvent``.
 
-The engine maintains a minimal model of what it has grounded. Each
-:meth:`Rationaliser.rationalise` call applies the entry rule to the incoming
-query as bookkeeping, then emits a batch from cogitation. Returns an empty
-list when nothing is workable.
+The **batch** holds dialogue emissions — speech acts K addresses to T (S4
+identity asks, S3 connotation proposals, S2 similar-fit proposals). The
+**observations** hold K's internal S1 grounding events (same shape as the
+batch: a list of ``KValue``\ s), surfaced for white-box verification. Every
+kline K grounds produces one observation.
 """
 
 from __future__ import annotations
@@ -25,13 +27,17 @@ from kalvin.kvalue import KValue
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
 
-__all__ = ["Rationaliser"]
+__all__ = ["Rationaliser", "RationaliserState"]
 
 
 @dataclass
-class _State:
-    """The Rationaliser's mutable memory: a work-list, the grounded model, and
-    the set of signatures already asked about as identities."""
+class RationaliserState:
+    """The Rationaliser's mutable memory, owned by the actor.
+
+    A work-list of pending klines, the grounded model (keyed by signature),
+    and the set of signatures already asked about as identities. Passed into
+    :meth:`Rationaliser.rationalise` and mutated in place by reference.
+    """
 
     work_list: list[KLine] = field(default_factory=list)
     grounded: dict[int, list[KLine]] = field(default_factory=dict)
@@ -39,62 +45,91 @@ class _State:
 
 
 class Rationaliser:
-    r"""The rationalising engine — derives each turn from ``(incoming, state)``.
+    r"""The rationalising engine — derives each turn from ``(state, incoming)``.
 
-    Returns a **batch** of ``KValue``\ s per :meth:`rationalise` call (or an
-    empty list when nothing is workable). Constructs synthetic signatures via
-    ``signifier.make_signature`` when grouping requires it.
+    Stateless: holds only the signifier and the significance boundaries. Each
+    :meth:`rationalise` call applies the entry rule to the incoming query as
+    bookkeeping, then cogitates. Returns a ``(batch, observations)`` pair:
+    the batch is the dialogue emissions (empty when nothing is workable), the
+    observations are the S1 grounding events K performed this turn.
     """
 
     def __init__(self, signifier: KSignifier) -> None:
         self._signifier = signifier
-        self._state = _State()
         self._s12, self._s23, self._s34 = boundaries()
 
     # ── The turn ─────────────────────────────────────────────────────
 
-    def rationalise(self, incoming: Sequence[KValue]) -> list[KValue]:
+    def rationalise(
+        self, state: RationaliserState, incoming: Sequence[KValue]
+    ) -> tuple[list[KValue], list[KValue]]:
         """Route every incoming query, then cogitate.
 
-        A route may emit a batch directly (the S1 canon-countersignature); the
-        first such batch is returned verbatim and cogitation is skipped.
+        Mutates ``state`` in place. Returns ``(batch, observations)``: the
+        batch holds dialogue emissions (speech acts for T), the observations
+        hold the S1 grounding events K performed this turn (for white-box
+        verification).
         """
+        turn = _Turn(state, self._signifier, self._s12, self._s23, self._s34)
         for query in incoming:
-            emitted = self._route(query)
-            if emitted is not None:
-                return emitted
-        return self._cogitate()
+            turn.route(query)
+        batch = turn.cogitate()
+        return batch, turn.observations
 
-    def _route(self, query: KValue) -> list[KValue] | None:
+
+class _Turn:
+    """A single rationalise turn: scoped accumulators over a shared state.
+
+    Confines mutation to one ``rationalise`` call. Holds the state (mutated by
+    reference), the signifier, the significance boundaries, and accumulates the
+    turn's ``observations`` (the batch is returned from :meth:`cogitate`).
+    """
+
+    def __init__(
+        self,
+        state: RationaliserState,
+        signifier: KSignifier,
+        s12: int,
+        s23: int,
+        s34: int,
+    ) -> None:
+        self._state = state
+        self._signifier = signifier
+        self._s12, self._s23, self._s34 = s12, s23, s34
+        self.observations: list[KValue] = []
+
+    # ── Routing ──────────────────────────────────────────────────────
+
+    def route(self, query: KValue) -> None:
         """Route an incoming query based on its surface significance.
 
-        S1 grounds/cleans (or takes the canon-countersignature branch when T
-        ratifies a misfit whose nodes are all grounded); S4 pops the identity
-        ask; S2 and S3 might be promotable - these are also grounded.
-        Otherwise the query is unpacked for cogitation. Returns a batch when a
-        route emits directly, else ``None``.
+        S1 grounds (plain promote, retrospective promote, or the canon-
+        countersignature branch); S4 pops the identity ask; S2 and S3 might be
+        promotable - these are also grounded. Otherwise the query is unpacked
+        for cogitation. Grounding appends to ``observations``; routing emits no
+        dialogue batch.
         """
         kline = query.kline
         sig = query.significance
 
         if sig == SIG_S4:
             self._pop_identity(kline.signature)
-            return None
+            return
 
         if classify(sig, self._s12, self._s23, self._s34) == "S1":
             if self._is_canon_countersignable(kline):
-                return self._canon_countersign(kline)
-            self._promote(kline)
-            return None
+                self._canon_countersign(kline)
+            else:
+                self._promote(kline)
+            return
 
         # S2 or S3.
         if self._is_promotable(kline):
             self._promote(kline)
         else:
             self._unpack(kline)
-        return None
 
-    def _cogitate(self) -> list[KValue]:
+    def cogitate(self) -> list[KValue]:
         """Work the next workable entry (LIFO) and emit a batch."""
         batch: list[KValue] = []
         for idx in range(len(self._state.work_list) - 1, -1, -1):
@@ -107,10 +142,11 @@ class Rationaliser:
                 #   S3 connoted (single node) → countersign
                 #   S2 misfit (multi-node) → canonize
                 if self._is_countersignable(entry):
-                    batch = self._expand_connotation(entry)
-                    if batch:
-                        return batch
-                    return self.countersign(entry)
+                    pairings = self._expand_connotation(entry)
+                    if pairings:
+                        return pairings
+                    self._countersign(entry)
+                    continue
                 if is_misfit(entry, self._signifier):
                     batch = self._propose_similar_fit(entry)
 
@@ -138,10 +174,15 @@ class Rationaliser:
         )
 
     def _ground(self, kline: KLine) -> None:
-        """Record that K has grounded ``kline``. Idempotent on nodes."""
+        """Record that K has grounded ``kline`` and observe it at S1.
+
+        Idempotent on nodes — an already-grounded kline is not re-observed.
+        """
         bucket = self._state.grounded.setdefault(kline.signature, [])
-        if not any(existing.nodes == kline.nodes for existing in bucket):
-            bucket.append(kline)
+        if any(existing.nodes == kline.nodes for existing in bucket):
+            return
+        bucket.append(kline)
+        self.observations.append(KValue(kline, SIG_S1))
 
     def _is_promotable(self, kline: KLine) -> bool:
         """Should K promote an incoming S2/S3 relationship to S1?
@@ -211,18 +252,18 @@ class Rationaliser:
         self._state.asked.add(signature)
         return KValue(KLine(signature, []), SIG_S4)
 
-    def countersign(self, entry: KLine) -> list[KValue]:
+    def _countersign(self, entry: KLine) -> None:
         """Establish the S1 countersignature for ``entry``.
 
         ``entry`` is ``{L:[R]}`` whose operands L and R are signatures with
-        seen canons. Emit both directions at S1.
+        seen canons. Grounds both directions; each ground is observed. Emits
+        nothing into the dialogue batch.
         """
         self._state.work_list.remove(entry)
         self._ground(entry)
         reciprocal_sig = self._signifier.make_signature(entry.nodes)
         reciprocal = KLine(reciprocal_sig, [entry.signature])
         self._ground(reciprocal)
-        return [KValue(entry, SIG_S1), KValue(reciprocal, SIG_S1)]
 
     def _is_canon_countersignable(self, kline: KLine) -> bool:
         """Should ``kline`` take the S1 canon-countersignature branch?
@@ -230,20 +271,21 @@ class Rationaliser:
         True iff ``kline`` is an S1 relationship ``{S: nodes}`` with more than
         one node, all grounded. 1:1 shapes (connotations, denotations) and
         identities fall through to promotion — they ground directly without a
-        countersignature emission.
+        countersignature.
         """
         if len(kline.nodes) <= 1:
             return False
         return all(node in self._state.grounded for node in kline.nodes)
 
-    def _canon_countersign(self, entry: KLine) -> list[KValue]:
+    def _canon_countersign(self, entry: KLine) -> None:
         """Establish the S1 canon-countersignature for a ratified misfit.
 
         T ratified ``{S: nodes}`` at S1. K does not ground the misfit; it
         computes ``C = make_signature(nodes)`` (the canon the ratified nodes
-        form), promotes C by grounding ``{C: nodes}``, then emits both
-        directions of the reciprocal pair ``{S: [C]}`` and ``{C: [S]}`` at S1.
-        Pending work-list entries under S are dropped.
+        form), promotes C by grounding ``{C: nodes}``, then establishes the S1
+        countersignature by grounding ``{S: [C]}`` and ``{C: [S]}``. Each ground
+        is observed. Pending work-list entries under S are dropped. Emits
+        nothing into the dialogue batch.
         """
         canon_sig = self._signifier.make_signature(entry.nodes)
         canon = KLine(canon_sig, list(entry.nodes))
@@ -256,7 +298,6 @@ class Rationaliser:
         self._state.work_list = [
             kl for kl in self._state.work_list if kl.signature != entry.signature
         ]
-        return [KValue(left, SIG_S1), KValue(right, SIG_S1)]
 
     def _expand_connotation(self, entry: KLine) -> list[KValue]:
         """Emit every unresolved S3 pairing for ``entry`` in one batch, or ``[]``

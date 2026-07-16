@@ -41,6 +41,11 @@ from training.harness.message import Message
 # A content key: (role, kline_signature, kline_nodes_tuple, significance).
 ContentKey = tuple[str, int, tuple[int, ...], int]
 
+# A grounding key: (kline_signature, kline_nodes_tuple, significance). K's
+# internal S1 grounding events are verified white-box against the script's
+# ``events``; role is always K and not part of the key.
+GroundingKey = tuple[int, tuple[int, ...], int]
+
 # The bus action used for actor emissions: the recipient's handler is the
 # recipient actor's ``accept``.
 _ACCEPT_ACTION = "accept"
@@ -152,6 +157,50 @@ class Divergence(Exception):  # noqa: N818 - spec names this type
         super().__init__(msg)
 
 
+class GroundingDivergence(Exception):  # noqa: N818
+    """A K grounding observation the script's ``events`` did not authorise.
+
+    White-box counterpart to :class:`Divergence`. Raised under
+    ``on_divergence="fail"`` when K grounds a kline not expected by the
+    script (``reason="unmatched"``) or grounds more copies of an expected
+    grounding than authored (``reason="exhausted"``).
+    """
+
+    reason: str
+
+    def __init__(
+        self,
+        grounded: KValue,
+        unconsumed: tuple[DecodedTurn, ...],
+        *,
+        reason: str = "unmatched",
+        last_coverage_event: RationaliseEvent | None = None,
+    ) -> None:
+        self.grounded = grounded
+        self.unconsumed = unconsumed
+        self.reason = reason
+        self.last_coverage_event = last_coverage_event
+        if reason == "exhausted":
+            msg = (
+                f"grounding divergence: grounded sig={grounded.significance:#x} "
+                f"exhausts its expected budget "
+                f"(every authored copy already consumed)"
+            )
+        elif reason == "missing":
+            msg = (
+                f"grounding divergence: asserted grounding "
+                f"sig={grounded.significance:#x} was never observed "
+                f"({len(unconsumed)} asserted groundings unobserved)"
+            )
+        else:
+            msg = (
+                f"grounding divergence: grounded sig={grounded.significance:#x} "
+                f"matches no expected grounding "
+                f"({len(unconsumed)} expected groundings remain unconsumed)"
+            )
+        super().__init__(msg)
+
+
 # ── Result ───────────────────────────────────────────────────────────────
 
 
@@ -164,12 +213,17 @@ class RunResult:
     never emitted (one placeholder per unconsumed authored copy).
     ``last_coverage_event`` is the last emission that consumed a coverage
     allowance — the last healthy point before any divergence.
+    ``unmatched_groundings`` holds grounding divergences (accept-mode only);
+    ``uncovered_groundings`` is the grounding displacement — expected
+    groundings never observed.
     """
 
     events: list[RationaliseEvent] = field(default_factory=list)
     unmatched: list[RationaliseEvent] = field(default_factory=list)
     uncovered: list[DecodedTurn] = field(default_factory=list)
     last_coverage_event: RationaliseEvent | None = None
+    unmatched_groundings: list[KValue] = field(default_factory=list)
+    uncovered_groundings: list[DecodedTurn] = field(default_factory=list)
 
 
 # ── The bus-wired sink ───────────────────────────────────────────────────
@@ -210,6 +264,7 @@ class Runner:
         trainer_factory: ActorFactory,
         trainee_factory: ActorFactory,
         *,
+        expected_groundings: Sequence[DecodedTurn] = (),
         on_divergence: str = "fail",
     ) -> None:
         if on_divergence not in ("fail", "accept"):
@@ -229,6 +284,13 @@ class Runner:
         self._coverage_budget: Counter[ContentKey] = Counter(
             turn_content_key(t) for t in coverage
         )
+        # Expected groundings: a set of targeted assertions (subset check).
+        # The runner verifies each asserted grounding is observed at least
+        # once across the run; extra K groundings are not policed (model B).
+        self._expected_groundings: dict[GroundingKey, DecodedTurn] = {
+            _grounding_key(t): t for t in expected_groundings
+        }
+        self._observed_groundings: set[GroundingKey] = set()
         self._consumed: Counter[ContentKey] = Counter()
         self._closed: bool = False
         self._events: list[RationaliseEvent] = []
@@ -243,6 +305,9 @@ class Runner:
         # from the other is terminal.
         self._last_pass_role: str | None = None
 
+        # Grounding-divergence accumulations (accept-mode).
+        self._unmatched_groundings: list[KValue] = []
+
         # Build the bus-wired sinks, construct the actors, and subscribe the
         # actors' accept handlers + the wildcard coverage handler.
         self._bus = MessageBus()
@@ -252,6 +317,9 @@ class Runner:
             raise ValueError(
                 f"trainer and trainee must have different roles, got {self._trainer.role!r}"
             )
+        # Grounding assertions apply only to an observable trainee (one that
+        # exposes ``drain_observations``); a table trainee has no groundings.
+        self._trainee_observable = hasattr(self._trainee, "drain_observations")
         self._bus.subscribe(WILDCARD_ROLE, self._on_emission)
         self._bus.subscribe(self._trainer.role, self._make_handler(self._trainer))
         self._bus.subscribe(self._trainee.role, self._make_handler(self._trainee))
@@ -269,6 +337,12 @@ class Runner:
         bus_thread.join()
         if self._thread_exc is not None:
             raise self._thread_exc
+        # White-box: every asserted grounding must have been observed (model B),
+        # and only when the trainee is observable.
+        if self._trainee_observable:
+            self._check_grounding_assertions()
+            if self._thread_exc is not None:
+                raise self._thread_exc
         return self.result
 
     # -- coverage handler (the wildcard subscriber) -------------------------
@@ -313,18 +387,21 @@ class Runner:
         self._events.append(event)
         key = self._event_key(event)
 
-        # The close content ends the run (any agent, any time).
-        if key == self._closing_key:
-            self._closed = True
-            self._bus.stop()
-            return
-
-        # In the coverage set with copies remaining: consume one. Budget
+        # In the coverage set with copies remaining: consume one. (A close
+        # that recurs as coverage consumes its coverage copies first; the
+        # close terminates only once its budget is exhausted.) Budget
         # exhaustion is checked at the burst boundary by ``_on_emission``.
         budget = self._coverage_budget.get(key, 0)
         if self._consumed[key] < budget:
             self._consumed[key] += 1
             self._last_coverage_event = event
+            return
+
+        # The close content ends the run (any agent, any time) — once its
+        # coverage copies are consumed (a unique close has none, so fires now).
+        if key == self._closing_key:
+            self._closed = True
+            self._bus.stop()
             return
 
         # Immediate divergence (exhausted: budget spent; unmatched: present
@@ -348,13 +425,32 @@ class Runner:
         else:
             self._unmatched.append(event)
 
+    def _observe_grounding(self, grounded: KValue) -> None:
+        """White-box: record a K grounding observation (model B).
+
+        Observations accumulate across the run; the missing-assertion check
+        runs at run end. Extra observations (not asserted) are ignored.
+        """
+        self._observed_groundings.add(_grounding_key_from_value(grounded))
+
     # -- actor handler adapter ----------------------------------------------
 
     def _make_handler(self, actor: Actor):
-        """Adapt an actor's ``accept`` to the bus's ``(msg) -> None`` handler."""
+        """Adapt an actor's ``accept`` to the bus's ``(msg) -> None`` handler.
+
+        For a trainee that exposes ``drain_observations`` (the
+        :class:`~training.dialogue.actors.RationalisingTrainee`), observations
+        are drained after ``accept`` and verified against the expected
+        groundings budget (white-box).
+        """
 
         def handler(msg: Message) -> None:
             actor.accept(msg.message)  # list[RationaliseEvent] (empty = seed)
+            if hasattr(actor, "drain_observations"):
+                for grounded in actor.drain_observations():
+                    self._observe_grounding(grounded)
+                    if self._closed:
+                        return
 
         return handler
 
@@ -368,6 +464,8 @@ class Runner:
             unmatched=list(self._unmatched),
             uncovered=list(self._uncovered_rows()),
             last_coverage_event=self._last_coverage_event,
+            unmatched_groundings=list(self._unmatched_groundings),
+            uncovered_groundings=list(self._uncovered_groundings()),
         )
 
     # -- internals -----------------------------------------------------------
@@ -398,9 +496,56 @@ class Runner:
             out.extend([_placeholder_turn(k)] * max(remaining, 0))
         return out
 
+    def _uncovered_groundings(self) -> list[DecodedTurn]:
+        """Asserted groundings never observed (grounding displacement)."""
+        missing = [
+            self._expected_groundings[k]
+            for k in sorted(self._expected_groundings, key=_grounding_key_sort)
+            if k not in self._observed_groundings
+        ]
+        return missing
+
+    def _check_grounding_assertions(self) -> None:
+        """Raise/record a :class:`GroundingDivergence` for any asserted
+        grounding never observed (model B subset check)."""
+        missing = self._uncovered_groundings()
+        if not missing:
+            return
+        if self._on_divergence == "fail":
+            self._thread_exc = GroundingDivergence(
+                grounded=missing[0].value,
+                unconsumed=tuple(missing),
+                reason="missing",
+                last_coverage_event=self._last_coverage_event,
+            )
+        else:
+            self._unmatched_groundings.extend(t.value for t in missing)
+
 
 def _key_sort(k: ContentKey):
     return (k[0], k[1], k[2], k[3])
+
+
+def _grounding_key(turn: DecodedTurn) -> GroundingKey:
+    """The grounding identity of an expected grounding row."""
+    return (
+        turn.value.kline.signature,
+        tuple(turn.value.kline.nodes),
+        turn.value.significance,
+    )
+
+
+def _grounding_key_from_value(value: KValue) -> GroundingKey:
+    """The grounding identity of an observed K grounding."""
+    return (
+        value.kline.signature,
+        tuple(value.kline.nodes),
+        value.significance,
+    )
+
+
+def _grounding_key_sort(k: GroundingKey):
+    return (k[0], k[1], k[2])
 
 
 def _placeholder_turn(k: ContentKey) -> DecodedTurn:
@@ -422,17 +567,21 @@ def run(
     trainer_factory: ActorFactory,
     trainee_factory: ActorFactory,
     *,
+    expected_groundings: Sequence[DecodedTurn] = (),
     on_divergence: str = "fail",
 ) -> Runner:
     """Construct a :class:`Runner` for ``decoded``.
 
     ``trainer_factory`` / ``trainee_factory`` are callables ``(sink) -> Actor``:
     the runner builds the bus-wired sink and constructs each actor with it.
-    The caller calls :meth:`Runner.run` to drive.
+    ``expected_groundings`` are the decoded ``events`` the runner verifies
+    white-box against K's grounding observations. The caller calls
+    :meth:`Runner.run` to drive.
     """
     return Runner(
         decoded,
         trainer_factory,
         trainee_factory,
+        expected_groundings=expected_groundings,
         on_divergence=on_divergence,
     )

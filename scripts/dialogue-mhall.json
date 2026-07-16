@@ -357,17 +357,20 @@
         "Det"
       ],
       "significance": "S2",
-      "notes": "Same response as before",
+      "notes": "Same response as before; closes the dialogue (the close may recur as coverage — its coverage copy is consumed first). K's S3 countersignature of MHALL<->SVO is an internal grounding (see events).",
       "role": "T",
       "turn": 33,
-      "role_turn": 16
+      "role_turn": 16,
+      "close": true
     },
     {
       "notes": "K has grounded all the nodes it needs to construct an S1 response to the open S2 proposal",
       "role": "K",
       "turn": 34,
       "role_turn": 18
-    },
+    }
+  ],
+  "events": [
     {
       "op": "COUNTERSIGNS",
       "signature": "MHALL",
@@ -376,8 +379,7 @@
       ],
       "significance": "S1",
       "role": "K",
-      "turn": 35,
-      "role_turn": 19
+      "notes": "K's S3 countersignature: MHALL and SVO reciprocally countersign once all operands are resolved."
     },
     {
       "op": "COUNTERSIGNS",
@@ -386,11 +388,8 @@
         "MHALL"
       ],
       "significance": "S1",
-      "notes": "This brings an end to the run",
       "role": "K",
-      "turn": 36,
-      "role_turn": 20,
-      "close": true
+      "notes": "The reciprocal direction of the S3 countersignature."
     }
   ],
   "run": {}

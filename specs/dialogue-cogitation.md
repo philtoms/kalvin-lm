@@ -33,6 +33,11 @@ this spec owns only the two paths and their boundaries.
 
 ## Behavioural Rules
 
+- **Dialogue vs grounding.** Cogitation produces two channels: a **batch**
+  of dialogue emissions (speech acts for T — S4 identity asks, S3 connotation
+  proposals, S2 similar-fit proposals) and **observations** of K's internal
+  S1 groundings (every kline K grounds). Grounding does not emit into the
+  dialogue; observations are surfaced for white-box verification.
 - **Routing.** The routing rule handles S1 (ground/cleanup), S4 (pop the
   identity ask), and retrospective promotion before handing over to cogitation;
   only S2/S3 entries and their ungrounded identities reach cogitation.
@@ -45,8 +50,8 @@ this spec owns only the two paths and their boundaries.
 - **S3 countersignature.** K pairs the operands of the two canons left-to-right
   at group size 1, emitting every unresolved pairing in one batch (a 1:1 pair
   CONNOTES at S3; a grouped residual as a canonical request at S2). When every
-  pairing is resolved, K grounds and emits **both directions of the reciprocal pair**
-  at S1.
+  pairing is resolved, K grounds **both directions of the reciprocal pair** at
+  S1 (observed, not emitted into the dialogue).
 - **S2 similar fit proposal.** Only a misfit entry proposes a similar fit.
   Every substituted node must be a node of a grounded kline (no invention).
   A grounded kline is a candidate iff it shares a **node value** with the
@@ -60,10 +65,10 @@ this spec owns only the two paths and their boundaries.
   relationship `{S: nodes}` with more than one node, all grounded — K does
   not ground the misfit. K computes `C = make_signature(nodes)` (the canon
   the ratified nodes form), promotes C by grounding `{C: nodes}`, then
-  establishes the S1 countersignature: emits `{S: [C]}` and `{C: [S]}` at
-  S1. K drops the pending work-list entries under S. K never searches for
-  an existing canon; it computes C and admits it whether or not it was
-  previously seen.
+  establishes the S1 countersignature by grounding `{S: [C]}` and `{C: [S]}`.
+  Each ground is observed; nothing is emitted into the dialogue. K drops
+  the pending work-list entries under S. K never searches for an existing
+  canon; it computes C and admits it whether or not it was previously seen.
 
 ## Test Matrix
 

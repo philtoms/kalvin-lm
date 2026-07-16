@@ -49,9 +49,11 @@ from kalvin.signifier import NLPSignifier  # noqa: E402
 from ks.compiler import compile_source  # noqa: E402
 from training.dialogue import (  # noqa: E402
     Divergence,
+    GroundingDivergence,
     ScriptTrainee,
     ScriptTrainer,
     decode,
+    decode_events,
     load_script,
     run,
 )
@@ -161,16 +163,18 @@ def _trace(
     beneath it (the verbatim row the author wrote). An emission with no
     matching decoded turn shows no record.
     """
-    # Index decoded turns by content key so each event can be associated with
-    # its source script row (content identity is role + kline + significance —
-    # see ``turn_content_key``). The first decoded turn per key wins; duplicate
-    # content collapses to one record, matching the runner's own coverage
-    # bookkeeping.
+    # Index decoded turns by content key as ordered queues, so each
+    # emission of a key associates with the next decoded turn of that key in
+    # script order (the Nth emission ↔ the Nth occurrence). A close that
+    # recurs as coverage is consumed in order: the 1st emission shows the
+    # coverage row, the 2nd shows the close row.
+    from collections import defaultdict, deque
+
     from training.dialogue.decoder import turn_content_key
 
-    record_by_key: dict = {}
+    records_by_key: dict = defaultdict(deque)
     for turn in decoded:
-        record_by_key.setdefault(turn_content_key(turn), turn.record)
+        records_by_key[turn_content_key(turn)].append(turn.record)
 
     def _key_of(ev) -> tuple:
         return (
@@ -180,24 +184,25 @@ def _trace(
             ev.proposal.significance,
         )
 
-    emitted_keys = set()
     lines = []
     for i, ev in enumerate(events):
-        emitted_keys.add(_key_of(ev))
-        record = record_by_key.get(_key_of(ev))
+        key = _key_of(ev)
+        queue = records_by_key.get(key)
+        record = queue.popleft() if queue else None
         lines.append(
             _render_trace_entry(i, _scripted_form_event(ev, sig_to_label), record)
         )
-    # Displacement: coverage rows whose key never appeared in an emission
-    # (the runner's ``uncovered`` — how far the realized dialogue fell short
-    # of the authored whole-exchange coverage). The close is the ``close:true``
-    # turn or the last row; it is terminal, not coverage, so it is never
-    # "displaced".
-    close_idx = next((i for i, t in enumerate(decoded) if t.close), len(decoded) - 1)
-    unreached = [
-        t for i, t in enumerate(decoded)
-        if i != close_idx and turn_content_key(t) not in emitted_keys
-    ]
+    # Displacement: authored coverage copies never emitted. The per-key
+    # queues were popped once per emission, so leftover entries are authored
+    # rows never consumed. The close is terminal (its slot pops only when the
+    # run closes on it), so it is never reported here as displaced.
+    unreached = []
+    for turn in decoded:
+        if turn.close:
+            continue
+        q = records_by_key.get(turn_content_key(turn))
+        if q:
+            unreached.append(turn)
     if unreached:
         lines.append("  --- displacement (uncovered) ---")
         idx = len(events)
@@ -251,6 +256,36 @@ def _render_divergence(exc: Divergence, sig_to_label: dict[int, str]) -> str:
     return "\n".join(lines)
 
 
+def _render_grounding_divergence(
+    exc: GroundingDivergence, sig_to_label: dict[int, str]
+) -> str:
+    """Human-readable grounding-divergence report (white-box).
+
+    Inverts the unexpected/over-budget K grounding and the still-unconsumed
+    expected groundings into scripted form, mirroring
+    :func:`_render_divergence` for the grounding channel.
+    """
+    grounded_scripted = _render_scripted("K", "ground", exc.grounded, sig_to_label)
+    if exc.reason == "exhausted":
+        verdict = "which exhausts its expected grounding budget"
+    elif exc.reason == "missing":
+        verdict = "an asserted grounding that was never observed"
+    else:
+        verdict = "which matches no expected grounding"
+    header = f"FAIL — K grounding divergence: {verdict}: {grounded_scripted}."
+    lines = [header]
+    if not exc.unconsumed:
+        lines.append("  (no other asserted groundings were unobserved.)")
+    else:
+        lines.append("  Unobserved asserted groundings:")
+        for turn in exc.unconsumed:
+            op = turn.op if turn.op else "?"
+            lines.append(
+                "    " + _render_scripted(turn.role, op, turn.value, sig_to_label)
+            )
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run a dialogue end-to-end through the script-reading actors."
@@ -287,6 +322,7 @@ def main(argv: list[str] | None = None) -> int:
 
     script = load_script(json.loads(Path(dialogue_path).read_text()))
     decoded = decode(script, tokenizer=tok, signifier=sigf)
+    expected_groundings = decode_events(script, tokenizer=tok, signifier=sigf)
     # The compiled source's signature→label map.
     sig_to_label = _sig_to_label(script, tokenizer=tok, signifier=sigf)
 
@@ -319,11 +355,15 @@ def main(argv: list[str] | None = None) -> int:
             decoded,
             trainer_factory,
             trainee_factory,
+            expected_groundings=expected_groundings,
             on_divergence=on_divergence,
         )
         res = runner.run()
     except Divergence as exc:
         print(_render_divergence(exc, sig_to_label), file=sys.stderr)
+        return 1
+    except GroundingDivergence as exc:
+        print(_render_grounding_divergence(exc, sig_to_label), file=sys.stderr)
         return 1
 
     print(
@@ -334,7 +374,8 @@ def main(argv: list[str] | None = None) -> int:
         f"\nDialogue session: {dialogue_path}\n"
         f"  events received     : {len(res.events)}\n"
         # f"  unmatched emissions : {len(res.unmatched)}\n"
-        f"  uncovered (displacement): {len(res.uncovered)}"
+        f"  uncovered (displacement): {len(res.uncovered)}\n"
+        f"  uncovered groundings   : {len(res.uncovered_groundings)}"
     )
     # Reaching here means no immediate divergence was raised. 
     return 0
