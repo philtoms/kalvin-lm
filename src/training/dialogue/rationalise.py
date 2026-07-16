@@ -54,34 +54,45 @@ class Rationaliser:
     # ── The turn ─────────────────────────────────────────────────────
 
     def rationalise(self, incoming: Sequence[KValue]) -> list[KValue]:
-        """Route every incoming query, then cogitate."""
+        """Route every incoming query, then cogitate.
+
+        A route may emit a batch directly (the S1 canon-countersignature); the
+        first such batch is returned verbatim and cogitation is skipped.
+        """
         for query in incoming:
-            self._route(query)
+            emitted = self._route(query)
+            if emitted is not None:
+                return emitted
         return self._cogitate()
 
-    def _route(self, query: KValue) -> None:
+    def _route(self, query: KValue) -> list[KValue] | None:
         """Route an incoming query based on its surface significance.
-        
-        S1 and S4 are grounded immediately.
-        S2 and S3 might be promotable - these are also grounded.
-        Otherwise the query is unpacked for cogitation.
+
+        S1 grounds/cleans (or takes the canon-countersignature branch when T
+        ratifies a misfit whose nodes are all grounded); S4 pops the identity
+        ask; S2 and S3 might be promotable - these are also grounded.
+        Otherwise the query is unpacked for cogitation. Returns a batch when a
+        route emits directly, else ``None``.
         """
         kline = query.kline
         sig = query.significance
 
         if sig == SIG_S4:
             self._pop_identity(kline.signature)
-            return
+            return None
 
         if classify(sig, self._s12, self._s23, self._s34) == "S1":
+            if self._is_canon_countersignable(kline):
+                return self._canon_countersign(kline)
             self._promote(kline)
-            return
+            return None
 
         # S2 or S3.
         if self._is_promotable(kline):
             self._promote(kline)
         else:
             self._unpack(kline)
+        return None
 
     def _cogitate(self) -> list[KValue]:
         """Work the next workable entry (LIFO) and emit a batch."""
@@ -212,6 +223,40 @@ class Rationaliser:
         reciprocal = KLine(reciprocal_sig, [entry.signature])
         self._ground(reciprocal)
         return [KValue(entry, SIG_S1), KValue(reciprocal, SIG_S1)]
+
+    def _is_canon_countersignable(self, kline: KLine) -> bool:
+        """Should ``kline`` take the S1 canon-countersignature branch?
+
+        True iff ``kline`` is an S1 relationship ``{S: nodes}`` with more than
+        one node, all grounded. 1:1 shapes (connotations, denotations) and
+        identities fall through to promotion — they ground directly without a
+        countersignature emission.
+        """
+        if len(kline.nodes) <= 1:
+            return False
+        return all(node in self._state.grounded for node in kline.nodes)
+
+    def _canon_countersign(self, entry: KLine) -> list[KValue]:
+        """Establish the S1 canon-countersignature for a ratified misfit.
+
+        T ratified ``{S: nodes}`` at S1. K does not ground the misfit; it
+        computes ``C = make_signature(nodes)`` (the canon the ratified nodes
+        form), promotes C by grounding ``{C: nodes}``, then emits both
+        directions of the reciprocal pair ``{S: [C]}`` and ``{C: [S]}`` at S1.
+        Pending work-list entries under S are dropped.
+        """
+        canon_sig = self._signifier.make_signature(entry.nodes)
+        canon = KLine(canon_sig, list(entry.nodes))
+        self._ground(canon)
+        left = KLine(entry.signature, [canon_sig])
+        right = KLine(canon_sig, [entry.signature])
+        self._ground(left)
+        self._ground(right)
+        # Drop pending work-list entries under S (the original misfits).
+        self._state.work_list = [
+            kl for kl in self._state.work_list if kl.signature != entry.signature
+        ]
+        return [KValue(left, SIG_S1), KValue(right, SIG_S1)]
 
     def _expand_connotation(self, entry: KLine) -> list[KValue]:
         """Emit every unresolved S3 pairing for ``entry`` in one batch, or ``[]``

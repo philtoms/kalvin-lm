@@ -165,7 +165,31 @@
       "role": "T",
       "turn": 49,
       "role_turn": 24,
-      "notes": "T ratifies",
+      "notes": "T ratifies the misfit at S1."
+    },
+    {
+      "op": "COUNTERSIGNS",
+      "signature": "WDMH",
+      "nodes": [
+        "MHALL"
+      ],
+      "significance": "S1",
+      "role": "K",
+      "turn": 50,
+      "role_turn": 26,
+      "notes": "K's canon-countersignature: the ratified nodes form the MHALL canon, so WDMH aliases MHALL."
+    },
+    {
+      "op": "COUNTERSIGNS",
+      "signature": "MHALL",
+      "nodes": [
+        "WDMH"
+      ],
+      "significance": "S1",
+      "role": "K",
+      "turn": 51,
+      "role_turn": 27,
+      "notes": "The reciprocal direction of the canon-countersignature; closes the dialogue.",
       "close": true
     }
   ],

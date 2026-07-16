@@ -36,6 +36,9 @@ this spec owns only the two paths and their boundaries.
 - **Routing.** The routing rule handles S1 (ground/cleanup), S4 (pop the
   identity ask), and retrospective promotion before handing over to cogitation;
   only S2/S3 entries and their ungrounded identities reach cogitation.
+  An S1 relationship `{S: nodes}` with more than one node, all grounded,
+  is an exception: it takes the **canon-countersignature** branch below,
+  not promotion. (1:1 shapes — connotations, denotations — promote directly.)
 - **Cogitation.** A countersignable entry takes the S3 path; a multi-node misfit
   takes the S2 path. Both of these are emitted as proposals. Identities are batched
   up and emitted as a single request.
@@ -49,6 +52,18 @@ this spec owns only the two paths and their boundaries.
   A grounded kline is a candidate iff it shares a **node value** with the
   entry's nodes; a canon under the entry's own signature is never admitted.
   A shaped proposal already grounded is dropped, not emitted.
+- **Work-list.** An entry that matches neither path is not discarded — it
+  persists and is re-tried on later turns. Only grounding (the entry's nodes
+  becoming seen) or an operand's canon arriving makes it fire; until then it
+  emits nothing.
+- **S1 canon-countersignature.** When T ratifies a misfit at S1 — an S1
+  relationship `{S: nodes}` with more than one node, all grounded — K does
+  not ground the misfit. K computes `C = make_signature(nodes)` (the canon
+  the ratified nodes form), promotes C by grounding `{C: nodes}`, then
+  establishes the S1 countersignature: emits `{S: [C]}` and `{C: [S]}` at
+  S1. K drops the pending work-list entries under S. K never searches for
+  an existing canon; it computes C and admits it whether or not it was
+  previously seen.
 
 ## Test Matrix
 

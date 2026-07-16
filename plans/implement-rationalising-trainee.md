@@ -24,7 +24,19 @@ The mechanism has two cogitation paths:
   substituted node from grounded klines (no invention), and emit it at S2.
 
 Entry rule: S1 grounds/cleans, S4 pops the identity ask; only S2/S3 reach
-cogitation. Cogitation is LIFO; a misfit entry persists.
+cogitation. Cogitation is LIFO; a misfit entry persists, and any entry that
+matches neither dispatch predicate is skipped and re-scanned on every
+subsequent turn (no bound) until `_promote`'s cascade grounds it or an
+operand canon arrives and flips it countersignable.
+
+- **S1 canon-countersignature** — a new routing branch, ahead of `_promote`:
+an S1 relationship `{S: nodes}` with more than one node, all grounded. K
+  does not ground the misfit; it computes `C = make_signature(nodes)`,
+  grounds `{C: nodes}` (promoting C), emits `{S:[C]}` and `{C:[S]}` at S1,
+  and drops the work-list entries under S. 1:1 shapes (connotations,
+  denotations), identities, and self-canons fall through to `_promote` and
+  ground directly without emission. K does not look up C; `make_signature`
+  computes it and it is admitted whether seen or not.
 
 ## Spec References
 
