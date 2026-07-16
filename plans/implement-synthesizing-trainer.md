@@ -11,7 +11,7 @@ from the compiled script and the trainee's last KValue, never reading the
 dialogue table. The table remains the validation oracle the runner checks
 against.
 
-Three rules, verified against the MHALL golden master:
+Three rules, verified against the MHALL reference dialogue:
 
 - **R1 — Opening** (`incoming is None`): emit the current primary at S2.
 - **R2 — Reply to an identity** (`nodes == []`): emit the first decomposition
@@ -23,6 +23,14 @@ The synthesizer is `dbg`-free — every decision derives from `signature` +
 `nodes` + `signifier.make_signature`. Multi-script opening is the trainer's
 responsibility (it holds ordered `primaries` from `primaries_from_source` and
 advances on each open).
+
+> **Note on the residual pairing.** The reference dialogue is not a frozen
+> oracle; the script, the code, and the rules co-evolve toward agreement with
+> the author (see `@specs/dialogue-driven-training.md` §Purpose). An earlier
+> reading treated a grouped S3 residual as a canonical request emitted at S2;
+> the corrected rule synthesises the residual into a left-operand signature and
+> emits the grouped pair as a CONNOTES at S3, identical to a 1:1 pair. The
+> MHALL script's `ALL` pairing was updated to match.
 
 ## Spec References
 

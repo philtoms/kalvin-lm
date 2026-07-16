@@ -14,7 +14,8 @@ workable entry on **structure-as-significance** into one of two paths:
 
 - the **S3 countersignature path** — a single-node relationship `{L:[R]}`
   whose operands both have seen canons: K pairs the two canons' operands into
-  proposals for ratification, then establishes the S1 countersignature (both
+  proposals (each a CONNOTES at S3, including a grouped residual synthesised
+  into a left-operand signature), then establishes the S1 countersignature (both
   directions of the reciprocal pair); and
 - the **S2 similar-fit-proposal path** — a multi-node misfit: K originates a
   proposal by recombining grounded klines and offers it for ratification.
@@ -48,10 +49,13 @@ this spec owns only the two paths and their boundaries.
   takes the S2 path. Both of these are emitted as proposals. Identities are batched
   up and emitted as a single request.
 - **S3 countersignature.** K pairs the operands of the two canons left-to-right
-  at group size 1, emitting every unresolved pairing in one batch (a 1:1 pair
-  CONNOTES at S3; a grouped residual as a canonical request at S2). When every
-  pairing is resolved, K grounds **both directions of the reciprocal pair** at
-  S1 (observed, not emitted into the dialogue).
+  at group size 1, emitting every unresolved pairing in one batch. Every pairing
+  — whether a 1:1 pair or a grouped residual — is a CONNOTES proposal at S3:
+  when one side reaches a single node, the other side's residual is synthesised
+  into a signature (substituted for that pair's left operand) so the grouped
+  pair takes the same S3 connotation path as a 1:1 pair. When every pairing is
+  resolved, K grounds **both directions of the reciprocal pair** at S1
+  (observed, not emitted into the dialogue).
 - **S2 similar fit proposal.** Only a misfit entry proposes a similar fit.
   Every substituted node must be a node of a grounded kline (no invention).
   A grounded kline is a candidate iff it shares a **node value** with the

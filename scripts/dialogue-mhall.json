@@ -314,29 +314,25 @@
       "role_turn": 14
     },
     {
-      "op": "CANONIZES",
+      "op": "CONNOTES",
       "signature": "ALL",
       "nodes": [
-        "a",
-        "little",
-        "lamb"
+        "Object"
       ],
-      "significance": "S2",
-      "notes": "K attempts to canonise ALL",
+      "significance": "S3",
+      "notes": "K continues the S3 connotation pattern: the residual [a, little, lamb] synthesised into ALL connotes the remaining right operand Object.",
       "role": "K",
       "turn": 30,
       "role_turn": 16
     },
     {
-      "op": "CANONIZES",
+      "op": "DENOTES",
       "signature": "ALL",
       "nodes": [
-        "a",
-        "little",
-        "lamb"
+        "Object"
       ],
-      "significance": "S2",
-      "notes": "T accepts the canon but cant ratify yet because its nodes are compounds",
+      "significance": "S1",
+      "notes": "T ratifies the ALL/Object pairing by under-signing",
       "role": "T",
       "turn": 31,
       "role_turn": 15

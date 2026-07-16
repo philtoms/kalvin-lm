@@ -9,8 +9,8 @@ fit for real actors).
 rationalising trainee) for the default ``ScriptTrainee``, and ``--synthesize``
 substitutes a :class:`SynthesizingTrainer` (a real trainer that derives each
 turn from the compiled source) for the default ``ScriptTrainer``. The two flags
-are orthogonal: passing both runs the two real actors against the same golden
-master. 
+are orthogonal: passing both runs the two real actors against the same
+reference script.
 
 The runner is bus-driven: it owns a :class:`MessageBus`, builds a bus-wired
 :class:`EventSink` per actor, and runs the bus until a terminal condition:
@@ -330,8 +330,8 @@ def main(argv: list[str] | None = None) -> int:
     on_divergence = "fail"
 
     # The --synthesize/--rationalise flags substitute real actors. They are
-    # orthogonal: passing both runs the two real actors against the same golden
-    # master. The real actors are drop-in (adapter-driven).
+    # orthogonal: passing both runs the two real actors against the same
+    # reference script. The real actors are drop-in (adapter-driven).
     compiled = None
     primaries = None
     if args.synthesize:

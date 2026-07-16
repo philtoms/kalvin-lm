@@ -305,8 +305,10 @@ class _Turn:
 
         Pair the two canons' operands left-to-right at group size 1, grouping
         one side's residual into a single synthesised operand when the other
-        reaches a single node. A 1:1 pair is CONNOTES at S3; a grouped residual
-        is a canonical request at S2.
+        reaches a single node. Both a 1:1 pair and a grouped residual are
+        CONNOTES at S3: the residual is synthesised into a signature that is
+        substituted for ``lhs_sig``, so the grouped pair takes the same S3
+        connotation path as a 1:1 pair.
         """
         right = entry.nodes
         assert len(right) == 1, "S3 pairings expect a single-node relationship entry"
@@ -321,16 +323,14 @@ class _Turn:
         for lhs_sig, rhs_node, residual in self._relationship_plan(left_nodes, right_nodes):
             if self._pair_resolved(lhs_sig, rhs_node, residual):
                 continue
-            if residual:
-                # A synthesised lhs K was untaught: emit a canonical request
-                # at S2, and mark it asked so unpack won't re-ask it as an identity.
-                synth_sig = self._signifier.make_signature(residual)
-                proposal_kline = KLine(synth_sig, residual)
-                significance = SIG_S2
-                self._state.asked.add(synth_sig)
-            else:
-                proposal_kline = KLine(lhs_sig, [rhs_node])
-                significance = SIG_S3
+            # A grouped residual is synthesised into a signature and
+            # substituted for lhs_sig, so the grouped pair takes the same
+            # S3 connotation path as a 1:1 pair.
+            head_sig = (
+                self._signifier.make_signature(residual) if residual else lhs_sig
+            )
+            proposal_kline = KLine(head_sig, [rhs_node])
+            significance = SIG_S3
             batch.append(KValue(proposal_kline, significance))
 
         # Every unresolved pairing collected in one batch (empty iff all were
@@ -585,17 +585,17 @@ class _Turn:
     def _pair_resolved(
         self, lhs_sig: int, rhs_node: int, residual: list[int]
     ) -> bool:
-        """Is this relationship-plan pair resolved? A 1:1 pair is resolved when
-        ``{lhs_sig:[rhs_node]}`` is grounded; a grouped pair when its
-        synthesised canon is grounded."""
-        if residual:
-            synth_sig = self._signifier.make_signature(residual)
-            return any(
-                is_canon(kl, self._signifier)
-                for kl in self._state.grounded.get(synth_sig, [])
-            )
-        # 1:1 pair: resolved iff {lhs_sig:[rhs_node]} is grounded.
+        """Is this relationship-plan pair resolved?
+
+        A pair — whether a 1:1 pair or a grouped residual — is resolved when its
+        CONNOTES proposal ``{head_sig:[rhs_node]}`` is grounded (ratified). For a
+        grouped residual ``head_sig`` is the signature synthesised from the
+        residual; for a 1:1 pair it is ``lhs_sig``.
+        """
+        head_sig = (
+            self._signifier.make_signature(residual) if residual else lhs_sig
+        )
         return any(
             list(kline.nodes) == [rhs_node]
-            for kline in self._state.grounded.get(lhs_sig, [])
+            for kline in self._state.grounded.get(head_sig, [])
         )

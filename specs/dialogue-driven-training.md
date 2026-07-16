@@ -20,6 +20,18 @@ are script-reading scaffolding; either side is meant to be replaced by a real
 trainer or trainee, and the runner is expected to evolve when real actors
 arrive.
 
+## Purpose of dialogue work
+
+The script is **not** a golden master. It is one of three coupled artefacts —
+the **script**, the **code**, and the **rules** — that dialogue work exists to
+bring into agreement with the author. The running purpose of every dialogue
+change is to move all three toward that agreement; a script turn that the code
+or the rules cannot honestly produce is a defect in one of the three, not a
+target to reverse-engineer. Treating the script as an oracle the code must
+blindly reproduce has, in the past, encoded mistakes (an author's slip becomes
+the shape of the code). When a turn does not fit, locate the disagreement,
+decide which artefact is wrong, and update them together.
+
 ## Dependencies
 
 - `@CONTEXT.md` — Structural State, Canon, KValue, Role, Significance.
@@ -203,8 +215,11 @@ today's implementation choices as contract.
 ## Canonical Example
 
 The reference dialogue is "Mary had a little lamb" (`scripts/dialogue-mhall.json`,
-frozen for tests in `tests/_fixtures`). A single depth-first cascade: the
-trainer opens with the primary at S2; the trainee requests each unknown operand
-at S4; the trainer supplies it; the trainee proposes role bindings at S3; the
-trainer ratifies each at S1; the trainee closes with the primary's S1
-countersign.
+frozen for tests in `tests/_fixtures`). It is a **reference**, not a golden
+master: its turns are edited in step with the code and the rules (see
+§Purpose of dialogue work). A single depth-first cascade: the trainer opens
+with the primary at S2; the trainee requests each unknown operand at S4; the
+trainer supplies it; the trainee proposes role bindings at S3; the trainer
+ratifies each at S1; the trainee closes with the primary's S1 countersign.
+Where one side's operands outnumber the other's, the residual is synthesised
+into a left-operand signature and connoted at S3 like any other pairing.
