@@ -102,26 +102,27 @@ class _Turn:
     # ── Routing ──────────────────────────────────────────────────────
 
     def route(self, query: KValue) -> None:
-        """Route an incoming query based on its surface significance.
+        """Route an incoming query on its calculated structural significance.
 
-        S1 grounds (plain promote, retrospective promote, or the canon-
-        countersignature branch); S4 pops the identity ask; S2 and S3 might be
-        promotable - these are also grounded. Otherwise the query is unpacked
-        for cogitation. Grounding appends to ``observations``; routing emits no
-        dialogue batch.
+        Routing uses structural (objective) rather than subjective significance. 
+        S1 grounds (plain promote, retrospective promote, or the canon-countersignature branch);
+        S4 pops the identity ask; S2 and S3 might be promotable - these are
+        also grounded. Otherwise the query is unpacked for cogitation. Grounding
+        appends to ``observations``; routing emits no dialogue batch.
         """
         kline = query.kline
-        sig = query.significance
+        sig = self._structural_significance(kline)
 
         if sig == SIG_S4:
             self._pop_identity(kline.signature)
             return
 
-        if classify(sig, self._s12, self._s23, self._s34) == "S1":
-            if self._is_canon_countersignable(kline):
-                self._canon_countersign(kline)
-            else:
+        s1_sig = classify(sig, self._s12, self._s23, self._s34) == "S1"
+        if s1_sig or self._is_canon_countersignable(kline):
+            if s1_sig:
                 self._promote(kline)
+            else:
+                self._canon_countersign(kline)
             return
 
         # S2 or S3.
@@ -129,6 +130,35 @@ class _Turn:
             self._promote(kline)
         else:
             self._unpack(kline)
+
+    def _structural_significance(self, kline: KLine) -> int:
+        """Derive the band-representative significance from ``kline``'s structure.
+
+        Structure-as-significance (@CONTEXT.md §Structural Relationship):
+
+        - S1 — self-referential identity ``{A:[A]}`` or a canon
+          ``{AB:[A, B]}`` (multi-node whose signature describes its nodes).
+        - S2 — a multi-node misfit: underfit ``{AB:[A, B, C]}``, overfit
+          ``{ABC:[A, C]}``, or misfit ``{ABC:[B, D]}``.
+        - S3 — a single-node, non-self relationship ``{A:[B]}`` (connotation /
+          denotation).
+        - S4 — an empty identity frame ``{A:[]}``.
+
+        The two identity forms split: ``{A:[]}`` is the S4 identity ask, while
+        ``{A:[A]}`` is a self-grounded S1. This is the pure-structural twin of
+        :func:`~kalvin.expand.derive_significance` (which folds in model state
+        for countersigned S1); routing is structural only.
+        """
+        nodes = kline.nodes
+        if not nodes:
+            return SIG_S4
+        if nodes == [kline.signature]:
+            return SIG_S1  # self-referential identity
+        if len(nodes) == 1:
+            return SIG_S3  # single-node relationship (connotation / denotation)
+        if kline.signature == self._signifier.make_signature(nodes):
+            return SIG_S1  # canon
+        return SIG_S2  # multi-node misfit (underfit / overfit / misfit)
 
     def cogitate(self) -> list[KValue]:
         """Work the next workable entry (LIFO) and emit a batch."""

@@ -48,12 +48,16 @@ this spec owns only the two paths and their boundaries.
   batch is duplicates, the actor emits nothing and the runner sees a PASS — K
   waits for the trainer. Dedup lives in the actor, not the engine, so the
   engine's state can stay a pure model of what K has grounded.
-- **Routing.** The routing rule handles S1 (ground/cleanup), S4 (pop the
-  identity ask), and retrospective promotion before handing over to cogitation;
-  only S2/S3 entries and their ungrounded identities reach cogitation.
-  An S1 relationship `{S: nodes}` with more than one node, all grounded,
-  is an exception: it takes the **canon-countersignature** branch below,
-  not promotion. (1:1 shapes — connotations, denotations — promote directly.)
+- **Routing.** Routing significance is **calculated from structure** (the
+  objective structural relationship), not read from the producer's surface
+  stamp — the same structural derivation as cogitation's dispatch. The
+  routing rule handles S1 (ground/cleanup), S4 (pop the identity ask), and
+  retrospective promotion before handing over to cogitation; only S2/S3
+  entries and their ungrounded identities reach cogitation. A relationship
+  `{S: nodes}` with more than one node, all grounded, takes the
+  **canon-countersignature** branch below, not promotion — whether or not it
+  is structurally S1 (a ratified multi-node misfit qualifies). (1:1 shapes —
+  connotations, denotations — promote directly.)
 - **Cogitation.** A countersignable entry takes the S3 path; a multi-node misfit
   takes the S2 path. Both of these are emitted as proposals. Identities are batched
   up and emitted as a single request.

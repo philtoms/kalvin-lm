@@ -62,7 +62,9 @@
     {
       "op": "IDENTITY",
       "signature": "what",
-      "nodes": [],
+      "nodes": [
+        "what"
+      ],
       "significance": "S1",
       "role": "T",
       "turn": 40,
@@ -81,7 +83,9 @@
     {
       "op": "IDENTITY",
       "signature": "did",
-      "nodes": [],
+      "nodes": [
+        "did"
+      ],
       "significance": "S1",
       "role": "T",
       "turn": 42,
@@ -100,7 +104,9 @@
     {
       "op": "IDENTITY",
       "signature": "have",
-      "nodes": [],
+      "nodes": [
+        "have"
+      ],
       "significance": "S1",
       "role": "T",
       "turn": 44,
