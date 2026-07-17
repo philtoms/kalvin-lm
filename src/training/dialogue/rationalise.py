@@ -335,10 +335,10 @@ class _Turn:
         # already grounded) — the signal for the countersignature to proceed.
         return batch
 
-    # ── S2 path (misfit origination) ────────────────────────────────────
+    # ── S2 path (misfit canonisation) ────────────────────────────────────
 
     def _propose_similar_fit(self, entry: KLine) -> list[KValue]:
-        """S2 path — originate a misfit proposal by accumulated shaping.
+        """S2 path — originate a misfit proposal by accumulated canonisation (shaping).
 
         Shape one proposal by processing candidates in preference order:
         (1) node-expansion — replace each node that is a grounded kline's
@@ -350,11 +350,11 @@ class _Turn:
         target = list(entry.nodes)
         target = self._apply_node_expansions(target)
         for candidate in self._s2_candidates(entry):
-            # Resolve ``target`` against ``candidate.nodes`` into a resolved core and
-            # the target's open nodes. The candidate fires iff the core is non-empty;
-            # on firing the new target is the resolved core + the candidate's nodes
-            # not in the core. If it does not fire, ``target`` is returned unchanged.
-            core, e_open = self._resolve_target(target, list(candidate.nodes))
+            # Resolve ``target`` against ``candidate.nodes`` into a resolved core.
+            # The candidate fires iff the core is non-empty (a foothold); on firing
+            # the new target is the resolved core + the candidate's nodes not in
+            # the core. If it does not fire, ``target`` is returned unchanged.
+            core = self._resolve_target(target, list(candidate.nodes))
             if core:
                 c_open = [n for n in candidate.nodes if n not in core]
                 target = core + c_open
@@ -367,13 +367,14 @@ class _Turn:
 
     def _resolve_target(
         self, target: list[int], candidate_nodes: list[int]
-    ) -> tuple[list[int], list[int]]:
-        """Resolve ``target`` against ``candidate_nodes`` into (core, open).
+    ) -> list[int]:
+        """Resolve ``target`` against ``candidate_nodes`` into the resolved core.
 
         The **core** is the portion of ``target`` that resolves into the
         candidate (directly or via a grounded kline whose signature is in the
-        candidate); the **open** list is the target nodes that resolve to
-        neither. Iterates to fixed point.
+        candidate). Target nodes that resolve to neither are dropped (open
+        slots filled by the candidate's surplus in the caller). Iterates to
+        fixed point.
         """
         candidate_set = set(candidate_nodes)
         core: list[int] = []
@@ -383,19 +384,17 @@ class _Turn:
             failed = [n for n in remaining if n not in candidate_set]
             if not failed:
                 core.extend(direct)
-                return core, []
+                return core
             resolved = self._partition_and_resolve(failed)
             # Of the resolved failed nodes, those whose resolution landed in
-            # candidate_set join the core; the rest stay unresolved (open or
-            # pending further resolution).
+            # candidate_set join the core; the rest are dropped (open slots).
             newly_matched = [n for n in resolved if n in candidate_set]
-            still_failed = [n for n in resolved if n not in candidate_set]
             core.extend(direct)
             core.extend(newly_matched)
             if not newly_matched:
-                # No progress: still_failed are genuinely open (unresolvable).
-                return core, still_failed
-            remaining = still_failed
+                # No progress: remaining nodes are genuinely unresolvable.
+                return core
+            remaining = [n for n in resolved if n not in candidate_set]
 
     def _apply_node_expansions(self, target: list[int]) -> list[int]:
         """Rule 1 — replace each node that is a grounded kline's signature with
@@ -413,33 +412,6 @@ class _Turn:
             if kline.nodes:
                 return list(kline.nodes)
         return None
-
-    # ── S2 rule 2 precondition: must_match resolution ──────────────────
-
-    def _resolve_must_match(
-        self, must_match: list[int], candidate_nodes: list[int]
-    ) -> tuple[list[int], bool]:
-        """Resolve ``must_match`` against a graft candidate's nodes to fixed point.
-
-        Returns ``(resolved_must_match, fully_matched)``. A node is directly
-        matched if it appears in ``candidate_nodes``; the failed set resolves
-        through grounded klines, iterating until every node is matched (graft
-        proceeds) or a pass produces no change (candidate rejected).
-        """
-        current = list(must_match)
-        while True:
-            failed = [n for n in current if n not in candidate_nodes]
-            if not failed:
-                return current, True
-            resolved = self._partition_and_resolve(failed)
-            if resolved == failed:
-                # No kline covered any failed node this pass: stuck. Any
-                # remaining failed node means the candidate cannot account for
-                # the accumulated structure.
-                return current, False
-            # Rebuild must_match: keep matched nodes, replace failed with their
-            # resolution (resolved signatures + uncoverable leftovers).
-            current = [n for n in current if n in candidate_nodes] + resolved
 
     def _partition_and_resolve(self, failed: list[int]) -> list[int]:
         """Maximally cover ``failed`` with disjoint grounded-kline node-sets.

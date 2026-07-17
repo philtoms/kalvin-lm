@@ -25,15 +25,15 @@ The turn produces two channels: the **batch** (dialogue emissions — speech
 acts for T) and the **observations** (every S1 grounding K performs, for
 white-box verification). Grounding does not emit into the dialogue.
 
-The mechanism has two cogitation paths:
+The mechanism has two cogitation paths (so far, there will be more):
 
 - **S3 countersignature** — a single-node relationship whose operands both
   have seen canons: pair the operands left-to-right at group size 1, emit every
   unresolved pairing in one batch, then on resolution ground both directions
   of the reciprocal pair at S1 (observed, not emitted).
-- **S2 misfit origination** — a multi-node misfit: shape one proposal by
-  recombining grounded klines (node-expansion + node-graft), sourcing every
-  substituted node from grounded klines (no invention), and emit it at S2.
+- **S2 misfit canonisation** — shape one multi-node proposal by recombining
+  grounded klines (node-expansion + node-graft), sourcing every substituted
+  node from grounded klines (no invention), and emit it at S2.
 
 Entry rule: S1 grounds/cleans, S4 pops the identity ask; only S2/S3 reach
 cogitation. Cogitation is LIFO; a misfit entry persists, and any entry that
@@ -42,7 +42,7 @@ subsequent turn (no bound) until `_promote`'s cascade grounds it or an
 operand canon arrives and flips it countersignable.
 
 - **S1 canon-countersignature** — a new routing branch, ahead of `_promote`:
-an S1 relationship `{S: nodes}` with more than one node, all grounded. K
+  an S1 relationship `{S: nodes}` with more than one node, all grounded. K
   does not ground the misfit; it computes `C = make_signature(nodes)`,
   grounds `{C: nodes}` (promoting C), grounds `{S:[C]}` and `{C:[S]}`, and
   drops the work-list entries under S. Each ground is observed; nothing is
