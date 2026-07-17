@@ -457,6 +457,22 @@ class Runner:
     # -- result + displacement --------------------------------------------
 
     @property
+    def trainer(self) -> Actor:
+        """The trainer actor (built internally from ``trainer_factory``)."""
+        return self._trainer
+
+    @property
+    def trainee(self) -> Actor:
+        """The trainee actor (built internally from ``trainee_factory``).
+
+        Exposed so callers (e.g. ``scripts/dialogue_run.py -v``) can inspect a
+        real actor's post-run state — notably a
+        :class:`~training.dialogue.actors.RationalisingTrainee`'s grounded
+        model.
+        """
+        return self._trainee
+
+    @property
     def result(self) -> RunResult:
         """The current :class:`RunResult` snapshot."""
         return RunResult(

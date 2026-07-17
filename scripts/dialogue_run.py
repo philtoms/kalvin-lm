@@ -256,6 +256,42 @@ def _render_divergence(exc: Divergence, sig_to_label: dict[int, str]) -> str:
     return "\n".join(lines)
 
 
+def _render_grounded(
+    trainee: RationalisingTrainee,
+    sig_to_label: dict[int, str],
+) -> str:
+    """K's grounded klines after the run, in scripted form.
+
+    ``RationaliserState.grounded`` is ``{signature: [KLine, ...]}`` — every
+    kline K has grounded at S1, deduplicated by nodes. Rendered one per line
+    as ``S:[nodes]`` with labels recovered from ``sig_to_label`` (falling
+    back to hex), grouped under each owning signature. Identities (empty
+    nodes) render as ``S:[]``.
+    """
+    state = trainee._state  # noqa: SLF001 — post-run inspection by the script
+    if not state.grounded:
+        return "  (K grounded nothing)"
+    lines = []
+    for signature in sorted(state.grounded, key=lambda s: (s.bit_length(), s)):
+        owner = sig_to_label.get(signature) or f"0x{signature:x}"
+        bucket = state.grounded[signature]
+        if len(bucket) == 1:
+            lines.append(f"  {owner}: " + _render_nodes(bucket[0], sig_to_label))
+        else:
+            lines.append(f"  {owner}:")
+            for kl in bucket:
+                lines.append("    - " + _render_nodes(kl, sig_to_label))
+    return "\n".join(lines)
+
+
+def _render_nodes(kline, sig_to_label: dict[int, str]) -> str:
+    """Render a kline's nodes as ``[a, b, c]`` (or ``[]`` for identities)."""
+    if not kline.nodes:
+        return "[]"
+    labels = [sig_to_label.get(n) or f"0x{n:x}" for n in kline.nodes]
+    return "[" + ", ".join(labels) + "]"
+
+
 def _render_grounding_divergence(
     exc: GroundingDivergence, sig_to_label: dict[int, str]
 ) -> str:
@@ -312,6 +348,14 @@ def main(argv: list[str] | None = None) -> int:
             "Substitute a SynthesizingTrainer (a real trainer that derives each "
             "turn from the compiled source) for the default ScriptTrainer. "
             "Orthogonal to --rationalise."
+        ),
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help=(
+            "After the run, list the klines K grounded (only meaningful with "
+            "--rationalise; the default ScriptTrainee carries no grounded state)."
         ),
     )
     args = parser.parse_args(argv)
@@ -377,6 +421,16 @@ def main(argv: list[str] | None = None) -> int:
         f"  uncovered (displacement): {len(res.uncovered)}\n"
         f"  uncovered groundings   : {len(res.uncovered_groundings)}"
     )
+    if args.verbose:
+        trainee = runner.trainee
+        if isinstance(trainee, RationalisingTrainee):
+            print("\nK grounded klines:")
+            print(_render_grounded(trainee, sig_to_label))
+        else:
+            print(
+                "\n(verbose: -v lists K's grounded klines, but the trainee "
+                "is not a RationalisingTrainee — pass --rationalise.)"
+            )
     # Reaching here means no immediate divergence was raised. 
     return 0
 
