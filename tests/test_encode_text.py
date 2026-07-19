@@ -10,7 +10,7 @@ import pytest
 
 from kalvin.agent import KAgent
 from kalvin.events import EventBus
-from kalvin.expand import derive_significance
+from kalvin.expand import SIG_S1, SIG_S2, is_countersigned, structural_significance
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
@@ -22,10 +22,12 @@ signifier = NLPSignifier()
 
 def _kv(kline, model):
     """Wrap a hand-built kline in a KValue declaring its structurally-correct
-    band via derive_significance (kvalue spec KP-1). Replaces the prior SIG_S4
-    placeholder used where significance was ignored (before the comparison gate).
-    Canonical klines declare S2; empty/identity klines declare S4."""
-    return KValue(kline, derive_significance(kline, model, signifier))
+    band (kvalue spec KP-1): the structural band with the model-state S2→S1
+    countersigned fork KAgent applies. Empty/identity klines declare S4."""
+    band = structural_significance(kline, signifier)
+    if band == SIG_S2 and is_countersigned(model, kline, signifier):
+        band = SIG_S1
+    return KValue(kline, band)
 
 # Encoding through KAgent uses the kalvin tokenizer; skip cleanly when the
 # data assets are absent on a fresh clone.

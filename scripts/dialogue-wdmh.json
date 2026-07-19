@@ -177,24 +177,17 @@
   ],
   "events": [
     {
-      "op": "COUNTERSIGNS",
+      "op": "CANONIZES",
       "signature": "WDMH",
       "nodes": [
-        "MHALL"
+        "Mary",
+        "had",
+        "a",
+        "little",
+        "lamb"
       ],
       "significance": "S1",
-      "role": "K",
-      "notes": "K's canon-countersignature: the ratified nodes form the MHALL canon, so WDMH aliases MHALL."
-    },
-    {
-      "op": "COUNTERSIGNS",
-      "signature": "MHALL",
-      "nodes": [
-        "WDMH"
-      ],
-      "significance": "S1",
-      "role": "K",
-      "notes": "The reciprocal direction of the canon-countersignature."
+      "role": "K"
     }
   ],
   "run": {}

@@ -20,7 +20,15 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4, boundaries, classify
+from kalvin.expand import (
+    SIG_S1,
+    SIG_S2,
+    SIG_S3,
+    SIG_S4,
+    boundaries,
+    classify,
+    structural_significance,
+)
 from kalvin.kline import KLine, is_canon, is_identity, is_misfit
 from kalvin.kvalue import KValue
 
@@ -104,64 +112,44 @@ class _Turn:
     def route(self, query: KValue) -> None:
         """Route an incoming query on its calculated structural significance.
 
-        Routing uses structural (objective) rather than subjective significance. 
-        S1 grounds (plain promote, retrospective promote, or the canon-countersignature branch);
-        S4 pops the identity ask; S2 and S3 might be promotable - these are
-        also grounded. Otherwise the query is unpacked for cogitation. Grounding
-        appends to ``observations``; routing emits no dialogue batch.
+        Routing uses structural (objective) rather than subjective significance.
+        S1 grounds (plain promote); S4 pops the identity ask; S2 and S3 are
+        unpacked for cogitation. Promotion is a cognitive act, not a routing
+        one: an S3 connotation whose reciprocal denotation is already grounded
+        is promoted during cogitation (see :meth:`cogitate`), never on receipt.
+        Grounding appends to ``observations``; routing emits no dialogue batch.
         """
         kline = query.kline
-        sig = self._structural_significance(kline)
+        sig = structural_significance(kline, self._signifier)
 
         if sig == SIG_S4:
             self._pop_identity(kline.signature)
             return
 
-        s1_sig = classify(sig, self._s12, self._s23, self._s34) == "S1"
-        if s1_sig or self._is_canon_countersignable(kline):
-            if s1_sig:
-                self._promote(kline)
-            else:
-                self._canon_countersign(kline)
+        if classify(sig, self._s12, self._s23, self._s34) == "S1":
+            self._promote(kline)
             return
 
-        # S2 or S3.
-        if self._is_promotable(kline):
-            self._promote(kline)
-        else:
-            self._unpack(kline)
-
-    def _structural_significance(self, kline: KLine) -> int:
-        """Derive the band-representative significance from ``kline``'s structure.
-
-        Structure-as-significance (@CONTEXT.md §Structural Relationship):
-
-        - S1 — self-referential identity ``{A:[A]}`` or a canon
-          ``{AB:[A, B]}`` (multi-node whose signature describes its nodes).
-        - S2 — a multi-node misfit: underfit ``{AB:[A, B, C]}``, overfit
-          ``{ABC:[A, C]}``, or misfit ``{ABC:[B, D]}``.
-        - S3 — a single-node, non-self relationship ``{A:[B]}`` (connotation /
-          denotation).
-        - S4 — an empty identity frame ``{A:[]}``.
-
-        The two identity forms split: ``{A:[]}`` is the S4 identity ask, while
-        ``{A:[A]}`` is a self-grounded S1. This is the pure-structural twin of
-        :func:`~kalvin.expand.derive_significance` (which folds in model state
-        for countersigned S1); routing is structural only.
-        """
-        nodes = kline.nodes
-        if not nodes:
-            return SIG_S4
-        if nodes == [kline.signature]:
-            return SIG_S1  # self-referential identity
-        if len(nodes) == 1:
-            return SIG_S3  # single-node relationship (connotation / denotation)
-        if kline.signature == self._signifier.make_signature(nodes):
-            return SIG_S1  # canon
-        return SIG_S2  # multi-node misfit (underfit / overfit / misfit)
+        # S2 or S3: unpack for cogitation. S3 reciprocals are promoted in
+        # cogitate, not here.
+        self._unpack(kline)
 
     def cogitate(self) -> list[KValue]:
-        """Work the next workable entry (LIFO) and emit a batch."""
+        """Silently drain every promotable reciprocal, then emit one batch.
+
+        Two phases:
+
+        1. **Promote** — scan the work-list and silently ground every S3
+           connotation whose reciprocal denotation is already grounded (and
+           vice-versa), cascading until no more reciprocals are unblocked. This
+           is the cognitive home of promotion: K ratifies a connotation the
+           moment its denotation is already in memory, without a dialogue act.
+        2. **Dispatch** — LIFO over the remaining work-list. Identities emit
+           S4 asks; the first workable non-identity dispatches on structure:
+           S3 (canon-countersign) or S2 (similar-fit proposal).
+        """
+        self._drain_promotions()
+
         batch: list[KValue] = []
         for idx in range(len(self._state.work_list) - 1, -1, -1):
             entry = self._state.work_list[idx]
@@ -170,8 +158,8 @@ class _Turn:
                 continue
             if not batch:
                 # First workable non-identity dispatches on structure:
-                #   S3 connoted (single node) → countersign
-                #   S2 misfit (multi-node) → canonize
+                #   S3 connoted (single node) → canon-countersign
+                #   S2 misfit (multi-node) → similar-fit proposal
                 if self._is_countersignable(entry):
                     pairings = self._expand_connotation(entry)
                     if pairings:
@@ -216,16 +204,46 @@ class _Turn:
         self.observations.append(KValue(kline, SIG_S1))
 
     def _is_promotable(self, kline: KLine) -> bool:
-        """Should K promote an incoming S2/S3 relationship to S1?
+        """Should K promote an S3 connotation ``{L:[R]}`` to S1?
 
-        True iff ``kline`` is a relationship whose nodes are all now grounded.
+        True iff ``kline`` is a single-node relationship whose reciprocal
+        denotation ``{R:[L]}`` is already grounded. A connotation is ratified
+        the moment its denotation is in memory (and vice-versa). Identities and
+        canons are not promotable here — they take the S1 / canon paths. S2
+        multi-node misfits are never promoted: they propose, never ground.
         """
         if is_identity(kline) or is_canon(kline, self._signifier):
             return False
-        return all(node in self._state.grounded for node in kline.nodes)
+        if len(kline.nodes) != 1:
+            return False  # S2 misfit — propose, never promote
+        reciprocal = KLine(kline.nodes[0], [kline.signature])
+        return self._is_grounded(reciprocal)
+
+    def _drain_promotions(self) -> None:
+        """Silently ground every promotable S3 reciprocal, cascading to fixed point.
+
+        Grounding one connotation can unblock the reciprocal of another
+        work-list entry, so this repeats until a full pass promotes nothing.
+        Promoted entries are removed from the work-list; each ground is
+        observed at S1 (white-box) and emits nothing into the dialogue batch.
+        """
+        changed = True
+        while changed:
+            changed = False
+            for i, entry in enumerate(self._state.work_list):
+                if self._is_promotable(entry):
+                    del self._state.work_list[i]
+                    self._promote(entry)
+                    changed = True
+                    break
 
     def _promote(self, kline: KLine) -> None:
-        """Ground ``kline``, then repeatedly ground any work-list kline it unblocks."""
+        """Ground ``kline`` at S1, then drain any node-resolution it unblocks.
+
+        For an S3 connotation ``{L:[R]}`` the reciprocal ``{R:[L]}`` is already
+        grounded (that is the promotion condition); both directions are now in
+        memory. Then cascades any identities/canons whose nodes newly resolve.
+        """
         self._ground(kline)
         changed = True
         while changed:
@@ -292,40 +310,6 @@ class _Turn:
         reciprocal_sig = self._signifier.make_signature(entry.nodes)
         reciprocal = KLine(reciprocal_sig, [entry.signature])
         self._ground(reciprocal)
-
-    def _is_canon_countersignable(self, kline: KLine) -> bool:
-        """Should ``kline`` take the S1 canon-countersignature branch?
-
-        True iff ``kline`` is an S1 relationship ``{S: nodes}`` with more than
-        one node, all grounded. 1:1 shapes (connotations, denotations) and
-        identities fall through to promotion — they ground directly without a
-        countersignature.
-        """
-        if len(kline.nodes) <= 1:
-            return False
-        return all(node in self._state.grounded for node in kline.nodes)
-
-    def _canon_countersign(self, entry: KLine) -> None:
-        """Establish the S1 canon-countersignature for a ratified misfit.
-
-        T ratified ``{S: nodes}`` at S1. K does not ground the misfit; it
-        computes ``C = make_signature(nodes)`` (the canon the ratified nodes
-        form), promotes C by grounding ``{C: nodes}``, then establishes the S1
-        countersignature by grounding ``{S: [C]}`` and ``{C: [S]}``. Each ground
-        is observed. Pending work-list entries under S are dropped. Emits
-        nothing into the dialogue batch.
-        """
-        canon_sig = self._signifier.make_signature(entry.nodes)
-        canon = KLine(canon_sig, list(entry.nodes))
-        self._ground(canon)
-        left = KLine(entry.signature, [canon_sig])
-        right = KLine(canon_sig, [entry.signature])
-        self._ground(left)
-        self._ground(right)
-        # Drop pending work-list entries under S (the original misfits).
-        self._state.work_list = [
-            kl for kl in self._state.work_list if kl.signature != entry.signature
-        ]
 
     def _expand_connotation(self, entry: KLine) -> list[KValue]:
         """Emit every unresolved S3 pairing for ``entry`` in one batch, or ``[]``

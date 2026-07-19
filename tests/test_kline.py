@@ -1,6 +1,6 @@
 """Tests for KLine — specs/kline.md conformance."""
 
-from kalvin.kline import KDbg, KLine, is_canon, is_identity, sig_level
+from kalvin.kline import COMPOUND_BIT, KDbg, KLine, is_canon, is_identity
 from kalvin.signifier import NLPSignifier
 
 signifier = NLPSignifier()
@@ -118,11 +118,6 @@ class TestKLineNodeAccess:
         assert len(KLine(0, [1])) == 1
         assert len(KLine(0, [1, 2, 3])) == 3
 
-    def test_as_node_list_compat(self):
-        k = KLine(5, [1, 2])
-        assert k.as_node_list() == [1, 2]
-
-
 class TestKDbgOp:
     """KDbg.op field for operator provenance."""
 
@@ -147,30 +142,6 @@ class TestKDbgOp:
         assert bool(dbg) is True
 
 
-class TestSigLevelHelper:
-    """kalvin.kline.sig_level() helper function."""
-
-    def test_countersign_is_s1(self):
-        kl = KLine(0xFF, [1], dbg=KDbg(op="COUNTERSIGNS"))
-        assert sig_level(kl, signifier) == "S1"
-
-    def test_denote_is_s3(self):
-        kl = KLine(0xFF, [1], dbg=KDbg(op="DENOTES"))
-        assert sig_level(kl, signifier) == "S3"
-
-    def test_connote_is_s3(self):
-        kl = KLine(0xFF, [1], dbg=KDbg(op="CONNOTES"))
-        assert sig_level(kl, signifier) == "S3"
-
-    def test_canonize_is_s2(self):
-        kl = KLine(0xFF, [1, 2], dbg=KDbg(op="CANONIZES"))
-        assert sig_level(kl, signifier) == "S2"
-
-    def test_identity_is_s4(self):
-        kl = KLine(0xFF, [], dbg=KDbg(op="IDENTITY"))
-        assert sig_level(kl, signifier) == "S4"
-
-
 class TestStructuralPredicates:
     """is_identity / is_canon — specs/kline.md §Structural Predicates."""
 
@@ -182,6 +153,24 @@ class TestStructuralPredicates:
 
     def test_kl22_is_identity_single_different_node(self):
         assert is_identity(KLine(0xFF, [0x01])) is False
+
+    def test_is_identity_compound_word(self):
+        # A §11.3 compound-word: signature carries COMPOUND_BIT, nodes don't.
+        # Structurally canon-shaped (multi-node) but semantically an identity.
+        nodes = [0b100, 0b010]
+        sig = (0b110 | COMPOUND_BIT)
+        assert is_identity(KLine(sig, nodes)) is True
+
+    def test_is_identity_compound_word_bit_on_node_is_not_identity(self):
+        # If a node also carries the bit, it is not a compound-word identity
+        # (the bit is signature-only by construction).
+        nodes = [0b100 | COMPOUND_BIT, 0b010]
+        sig = (0b110 | COMPOUND_BIT)
+        assert is_identity(KLine(sig, nodes)) is False
+
+    def test_is_identity_compound_word_no_bit_is_not_identity(self):
+        # Without the bit, a canon-shaped kline is just a canon candidate.
+        assert is_identity(KLine(0b110, [0b100, 0b010])) is False
 
     def test_kl23_is_canon_genuine(self):
         # sig 0b110 = OR(0b100, 0b010); neither node is the signature.
@@ -195,3 +184,9 @@ class TestStructuralPredicates:
 
     def test_is_canon_mismatched_sig(self):
         assert is_canon(KLine(0b100, [0b110]), signifier) is False
+
+    def test_is_canon_compound_word_is_not_canon(self):
+        # A compound-word is an identity, so it is filtered out of is_canon.
+        nodes = [0b100, 0b010]
+        sig = (0b110 | COMPOUND_BIT)
+        assert is_canon(KLine(sig, nodes), signifier) is False

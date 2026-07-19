@@ -15,7 +15,6 @@ from kalvin.expand import (
     band_significance,
     boundaries,
     classify,
-    derive_significance,
     edge_hops,
     expand,
     is_canon,
@@ -23,8 +22,9 @@ from kalvin.expand import (
     is_s1,
     promote_participating,
     propose_expansions,
+    structural_significance,
 )
-from kalvin.kline import KLine
+from kalvin.kline import COMPOUND_BIT, KLine
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
 
@@ -556,89 +556,43 @@ class TestIsCountersigned:
         assert is_countersigned(m, query, signifier) is False
 
 
-class TestDeriveSignificance:
-    """Re-derivation cascade — KV-8 through KV-12 (@kvalue spec §Retrieval)."""
+class TestStructuralSignificance:
+    """structural_significance — the pure-structural band, no model state.
 
-    def test_kv8_identity_empty_nodes(self):
-        """KV-8: empty-nodes identity → SIG_S4."""
-        kl = KLine(42, [])
-        assert derive_significance(kl, make_model(), signifier) == SIG_S4
+    Composed from the kline predicates (is_identity, is_canon, is_misfit) and
+    node count; the compound-word identity form is folded into is_identity and
+    never named here. The sole model-state adjustment (the S2→S1 countersigned
+    fork) is applied at the call site, not here.
+    """
 
-    def test_kv8_identity_self_referential(self):
-        """KV-8: self-referential {S: [S]} → SIG_S4; overrules canon check."""
-        kl = KLine(42, [42])
-        # is_identity is checked first, so this resolves to S4 even though it
-        # is not canonical. make_signature([42]) == 42 == sig, but the
-        # self-referential form is identity, not canon.
-        assert derive_significance(kl, make_model(), signifier) == SIG_S4
+    def test_empty_identity_ask_is_s4(self):
+        assert structural_significance(KLine(42, []), signifier) == SIG_S4
 
-    def test_kv9_canonical_is_s2(self):
-        """KV-9: genuine canon without a reciprocal → SIG_S2.
+    def test_self_referential_identity_is_s1(self):
+        # {S: [S]} is identity, with nodes → self-grounded S1.
+        assert structural_significance(KLine(42, [42]), signifier) == SIG_S1
 
-        This test PROVES is_countersigned (not is_s1) drives the S1 branch:
-        is_s1 = is_canon OR is_countersigned would catch this canonical kline
-        and wrongly return SIG_S1.
-        """
-        m = make_model()
-        # sig 0b110 == make_signature([0b100, 0b010]); non-self-referential → canon.
-        kl = KLine(0b110, [0b100, 0b010])
-        assert derive_significance(kl, m, signifier) == SIG_S2
+    def test_compound_word_is_s1(self):
+        # A §11.3 compound-word: signature carries COMPOUND_BIT, nodes don't.
+        # It is an identity (folded into is_identity) with nodes → S1; its
+        # subwords are opaque and never re-enter the band logic here.
+        nodes = [0b100, 0b010]
+        kl = KLine(0b110 | COMPOUND_BIT, nodes)
+        assert structural_significance(kl, signifier) == SIG_S1
 
-    def test_kv10_countersigned_is_s1(self):
-        """KV-10: kline whose reciprocal countersigner is present → SIG_S1."""
-        m = make_model()
-        query = KLine(5, [10, 20])  # sig=5, make_sig([10,20])=30 ≠ 5 → not canon
-        # make_sig([10, 20]) = 30 (OR-reduction); one node = query.signature = 5.
-        countersigner = KLine(30, [5])
-        m.add_to_frame(query)
-        m.add_to_frame(countersigner)
-        assert derive_significance(query, m, signifier) == SIG_S1
+    def test_canon_is_s1(self):
+        # A canon is a grounded aggregation by structure → S1. (A canon whose
+        # reciprocal countersigner is in the model is also S1, trivially.)
+        kl = KLine(0b110, [0b100, 0b010])  # sig == make_signature(nodes)
+        assert structural_significance(kl, signifier) == SIG_S1
 
-    def test_kv10_model_state_dependence(self):
-        """KV-10: the SAME kline is S1 with the reciprocal, S3 without it.
+    def test_single_node_relationship_is_s3(self):
+        # {A: [B]} (A ≠ B) — connotation / denotation.
+        assert structural_significance(KLine(0xFF, [0x01]), signifier) == SIG_S3
 
-        Significance is re-made, not recorded: removing the reciprocal
-        countersigner from the model downgrades the re-derived significance.
-        """
-        query = KLine(5, [10, 20])
-        countersigner = KLine(30, [5])
-        m = make_model()
-        m.add_to_frame(query)
-        m.add_to_frame(countersigner)
-        assert derive_significance(query, m, signifier) == SIG_S1
-        # Fresh empty model — no reciprocal present.
-        assert derive_significance(query, make_model(), signifier) == SIG_S3
-
-    def test_kv11_connoted_is_s3(self):
-        """KV-11: not identity, not canon, not countersigned → SIG_S3."""
-        # sig=5, make_sig([10])=10 ≠ 5 → not canon; no reciprocal → not countersigned.
-        kl = KLine(5, [10])
-        assert derive_significance(kl, make_model(), signifier) == SIG_S3
-
-    @pytest.mark.parametrize(
-        ("kline", "reciprocals"),
-        [
-            (KLine(42, []), []),  # identity → S4
-            (KLine(0b110, [0b100, 0b010]), []),  # canon → S2
-            (KLine(5, [10, 20]), [KLine(30, [5])]),  # countersigned → S1
-            (KLine(5, [10]), []),  # connoted → S3
-        ],
-    )
-    def test_kv12_never_unset(self, kline, reciprocals):
-        """KV-12: every structural category resolves to a member of the band set."""
-        m = make_model()
-        m.add_to_frame(kline)
-        for r in reciprocals:
-            m.add_to_frame(r)
-        result = derive_significance(kline, m, signifier)
-        bands = {SIG_S1, SIG_S2, SIG_S3, SIG_S4}
-        assert result in bands
-        assert 0 <= result <= MASK64  # non-negative uint64
-
-    def test_kv12_band_ordering_is_arithmetic(self):
-        """KV-12: the four bands are arithmetically ordered S1 > S2 > S3 > S4."""
-        # Unsigned comparison is the basis for significance ranking.
-        assert SIG_S1 > SIG_S2 > SIG_S3 > SIG_S4
+    def test_multi_node_misfit_is_s2(self):
+        # {AB: [A, C]} — multi-node, not identity, not canon → misfit.
+        assert structural_significance(KLine(0b110, [0b100, 0b001]), signifier) == SIG_S2
 
 
 class TestPromoteParticipating:

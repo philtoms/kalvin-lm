@@ -67,7 +67,7 @@ def _decode_nodes(
     map (signature → conceptual identity) built from the surrounding entries;
     single-character tokens fall back to a raw BPE decode.
     """
-    nodes = entry.kline.as_node_list()
+    nodes = entry.kline.nodes
     if not nodes:
         return ""
     parts: list[str] = []
@@ -155,7 +155,7 @@ class TestKS35ComplexNested:
         canonize_keys: set[tuple[int, tuple[int, ...]]] = set()
         for e in self.entries:
             if e.kline.dbg.op == "CANONIZES":
-                nodes = tuple(sorted(e.kline.as_node_list()))
+                nodes = tuple(sorted(e.kline.nodes))
                 key = (e.kline.signature, nodes)
                 assert key not in canonize_keys, (
                     f"Duplicate CANONIZES: sig=0x{e.kline.signature:x}, nodes={nodes}"
@@ -305,7 +305,7 @@ class TestKS36WordBound:
         for e in entries:
             if e.kline.dbg.label:
                 all_text.append(e.kline.dbg.label)
-            for node_val in e.kline.as_node_list():
+            for node_val in e.kline.nodes:
                 try:
                     decoded = tok.decode([node_val])
                     if decoded:
@@ -335,7 +335,7 @@ class TestKS36WordBound:
         # decode is defensive — only single-word node lists decode.
         found = False
         for e in entries:
-            nodes = e.kline.as_node_list()
+            nodes = e.kline.nodes
             if not nodes:
                 continue
             try:
@@ -412,7 +412,7 @@ class TestCanonicalEncoding:
         for e in entries:
             if e.kline.dbg.op != "CANONIZES":
                 continue
-            nodes = tuple(sorted(e.kline.as_node_list()))
+            nodes = tuple(sorted(e.kline.nodes))
             prev = seen.get(e.kline.dbg.label)
             assert prev is None or prev == nodes, (
                 f"{e.kline.dbg.label}: divergent CANONIZES nodes {prev} vs {nodes}"
@@ -489,7 +489,7 @@ class TestCanonizedMisfitSignature:
         assert len(canon) == 2, f"expected 2 CANONIZES klines, got {len(canon)}"
         assert all(e.kline.signature == compound_sig for e in canon)
 
-        node_sets = {tuple(sorted(e.kline.as_node_list())) for e in canon}
+        node_sets = {tuple(sorted(e.kline.nodes)) for e in canon}
         assert tuple(sorted((w, d, m, h))) in node_sets, "missing MTS [W,D,M,H]"
         assert tuple(sorted((m, h, w))) in node_sets, "missing block canon [M,H,W]"
 
@@ -543,22 +543,39 @@ class TestBlockCanonReusesPriorMtsSignature:
         return compile_source(source, tokenizer=tokenizer, dev=True)
 
     def test_block_canon_sig_equals_mts_sig(self, tokenizer):
-        """The WDMH `had` block canon shares MHALL's MTS `had` signature."""
+        """The WDMH `had` block canon shares MHALL's MTS `had` signature value.
+
+        Two `had` CANONIZES klines result:
+        - the §11.3 MTS compound-word identity (``had`` → its BPE subwords),
+          whose signature carries COMPOUND_BIT (it is an identity, not a canon);
+        - the block-canon reference (``had => did have``), a deliberate misfit
+          that reuses the compound's *clean* signature value (the bit marks
+          the owning identity kline only, never the value in use).
+        """
+        from kalvin.kline import COMPOUND_BIT, is_identity
         from kalvin.signifier import NLPSignifier
 
         entries = self._entries(tokenizer)
         sig = NLPSignifier()
         h, ad = (tokenizer.encode(c)[0] for c in ("h", "ad"))
-        mts_had_sig = sig.make_signature([h, ad])
+        clean_had_sig = sig.make_signature([h, ad])
 
         had_canon = [
             e for e in entries
             if e.kline.dbg.label == "had" and e.kline.dbg.op == "CANONIZES"
         ]
         assert had_canon, "expected at least one had CANONIZES kline"
-        for e in had_canon:
-            assert e.kline.signature == mts_had_sig, (
-                f"had block canon sig must be the MTS value 0x{mts_had_sig:x}; "
+        # The MTS compound-word identity kline carries the marker bit.
+        mts_identity = [e for e in had_canon if is_identity(e.kline)]
+        assert mts_identity, "expected the had MTS compound-word identity"
+        for e in mts_identity:
+            assert e.kline.signature == clean_had_sig | COMPOUND_BIT
+        # The block-canon reference reuses the clean signature value (no bit).
+        block_refs = [e for e in had_canon if not is_identity(e.kline)]
+        assert block_refs, "expected the had block-canon reference"
+        for e in block_refs:
+            assert e.kline.signature == clean_had_sig, (
+                f"had block canon sig must be the clean MTS value 0x{clean_had_sig:x}; "
                 f"got 0x{e.kline.signature:x} (clobbered by block nodes?)"
             )
 

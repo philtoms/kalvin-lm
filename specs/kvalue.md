@@ -138,23 +138,27 @@ assessment is re-made, not recorded.
 ### Retrieval re-derives significance
 
 Materialising a KValue from a stored KLine re-derives its significance from
-the KLine's current structural relationship to the model. Re-derivation is a
-cascade over the structural predicates (@model spec):
+the KLine's structure via `structural_significance` (@expand), composed from
+the structural predicates (@kline spec) and the node count:
 
-| Structural test (in order)                                          | significance |
-| ------------------------------------------------------------------- | ------------ |
-| `is_identity(kline)`                                                | S4           |
-| `is_countersigned(kline, model)` — reciprocal countersigner present | S1           |
-| `is_canon(kline)`                                                   | S2           |
-| otherwise (CONNOTES / DENOTES)                                  | S3           |
+| Structure (composed from predicates)                                  | significance |
+| --------------------------------------------------------------------- | ------------ |
+| identity with empty nodes `{A:[]}` (the identity ask)                 | S4           |
+| identity with nodes (self-referential `{A:[A]}` or a compound-word)   | S1           |
+| canon `{AB:[A, B]}`                                                    | S1           |
+| single-node non-identity relationship `{A:[B]}` (CONNOTES / DENOTES)  | S3           |
+| multi-node misfit (underfit / overfit / misfit)                       | S2           |
 
 The integer for each band is the band-representative value owned by @model
 spec §Significance Semantics › Band-representative Values.
 
-Countersigned detection depends on model state (the reciprocal must be
-present), so a retrieved KLine's re-derived significance reflects the model as
-it currently is — consistent with significance being re-made rather than
-recorded.
+The sole model-state adjustment to this structural band is the
+**countersigned upgrade**: a structurally-S2 misfit whose reciprocal
+countersigner is present in the model upgrades to S1. This fork is applied
+at the call site that needs model state (e.g. @agent spec §Phase 1b),
+keeping `structural_significance` itself model-free. A retrieved KLine's
+re-derived significance therefore reflects the model as it currently is —
+consistent with significance being re-made rather than recorded.
 
 ### KV-1 — Re-derivation never yields "unset"
 
@@ -238,11 +242,11 @@ The following are explicitly **out of scope** for this spec:
 | KV-5  | Countersign reciprocal KValue carries `D_MAX`                              | §KP-2 |
 | KV-6  | Cogitation proposal KValue carries the `expand()`-computed significance    | §KP-3 |
 | KV-7  | Codec persists `{signature, nodes}` only; significance not serialised      | §Storage |
-| KV-8  | Re-derivation: identity kline → S4                                          | §KV-1 |
-| KV-9  | Re-derivation: canonical kline → S2                                         | §KV-1 |
-| KV-10 | Re-derivation: countersigned kline (reciprocal present) → S1                | §KV-1 |
-| KV-11 | Re-derivation: connoted/denoted kline → S3                              | §KV-1 |
-| KV-12 | Re-derivation never yields an unset significance                            | §KV-1 |
+| KV-8  | Re-derivation: identity ask (empty nodes) → S4                               | §KV-1 |
+| KV-9  | Re-derivation: grounded identity / canon → S1                                | §KV-1 |
+| KV-10 | Re-derivation: S2 misfit with reciprocal countersigner present → S1          | §KV-1 |
+| KV-11 | Re-derivation: single-node relationship → S3                                 | §KV-1 |
+| KV-12 | Re-derivation never yields an unset significance                             | §KV-1 |
 | KV-13 | Fast-path event: `query.kline is proposal.kline`, significances independent | §KE-1 |
 | KV-14 | RationaliseEvent has no `significance` field                                | §KE-3 |
 | KV-15 | Consumer reads `event.proposal.significance` (Kalvin's assessment)         | §KE-4 |

@@ -36,7 +36,7 @@ from __future__ import annotations
 
 from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.expand import band_significance
-from kalvin.kline import KDbg, KLine
+from kalvin.kline import COMPOUND_BIT, KDbg, KLine
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 
@@ -259,6 +259,13 @@ class TokenEncoder:
         """
         token_key = tuple(tokens)
         packed = self._signifier.make_signature(tokens)
+        # The compound-word identity kline's signature carries COMPOUND_BIT —
+        # this §11.3 kline (a single word the external tokenizer split into
+        # BPE subwords) is structurally canon-shaped but semantically an
+        # identity. The bit is applied ONLY to this kline's signature (below),
+        # never to ``packed`` itself: ``packed`` is returned to callers and
+        # reused as a clean node/signature value elsewhere, so the marker must
+        # not leak into the value space. See @kline spec.
 
         # Register the compound's packed signature (§11.4: the MTS CANONIZES
         # — compound → its subword tokens — DEFINES the signature; a later
@@ -303,7 +310,7 @@ class TokenEncoder:
             extras.append(
                 KValue(
                     KLine(
-                        signature=packed,
+                        signature=packed | COMPOUND_BIT,
                         nodes=list(tokens),
                         dbg=canon_dbg,
                     ),

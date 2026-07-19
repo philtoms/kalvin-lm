@@ -98,7 +98,8 @@ Rationalise(Q):
   │ 1. PREPARE                                               │
   │    Assign signature if missing.                           │
   │ 1b. SIGNIFICANCE COMPARISON                              │
-  │    derived = derive_significance(Q.kline)                │
+  │    derived = structural_significance(Q.kline)            │
+  │            (S2 fork: +is_countersigned → S1)             │
   │    if declared == SIG_S4 and derived != SIG_S4: drop     │
   │      (return True, no STM write, no event)               │
   ├───────────────────────────────────────────────────────────┤
@@ -165,7 +166,11 @@ Kalvin compares its own **derived** significance to the sender's **declared**
 significance and decides whether to honour a disagreement.
 
 ```
-derived  = derive_significance(Q.kline, model, signifier)
+derived  = structural_significance(Q.kline, signifier)
+           # model-state fork: an S2 misfit upgrades to S1 if its
+           # reciprocal countersigner is present in the model.
+           if derived == SIG_S2 and is_countersigned(model, Q.kline, signifier):
+               derived = SIG_S1
 declared = Q.significance
 if declared == SIG_S4 and derived != SIG_S4:
     return True            # drop — no STM write, no event
@@ -185,7 +190,7 @@ Three outcomes:
 
 | Condition | MVP action |
 | --------- | ---------- |
-| `derived == SIG_S4` and `declared == SIG_S4` (agree) | process normally — Kalvin agrees. Identity klines the compiler marks IDENTITY→S4 agree here and are never dropped. |
+| `derived == SIG_S4` and `declared == SIG_S4` (agree) | process normally — Kalvin agrees. An identity ask (empty-nodes identity) declared S4 agrees here and is never dropped. |
 | `declared == SIG_S4` and `derived != SIG_S4` (S4 disagreement) | **drop** — return `True`, no STM write, no event. This is the MVP's honoured disagreement. |
 | `declared != SIG_S4` (any S1/S2/S3 disagreement, or agreement) | process normally — the MVP ignores non-S4 disagreements. |
 
@@ -197,10 +202,10 @@ consumption: Kalvin gauging the sender's confidence and choosing (MVP-only)
 to honour an S4 disagreement by discarding. Consuming S1/S2/S3 disagreements
 is deferred.
 
-**How a declared-S4 disagreement arises.** `derive_significance` yields
-`SIG_S4` only for identity klines (`is_identity`), and the compiler's
+**How a declared-S4 disagreement arises.** `structural_significance`
+yields `SIG_S4` only for the empty-nodes identity ask, and the compiler's
 IDENTITY→S4 mapping always agrees with that — so a declared S4 over an
-identity kline never reaches the drop branch. The drop branch is live only
+identity ask never reaches the drop branch. The drop branch is live only
 against a **sender-constructed KValue** carrying `SIG_S4` over a
 non-identity kline: the sender re-submits a proposal at declared S4 to
 signal "this proposal doesn't work." The trainer produces such a KValue on

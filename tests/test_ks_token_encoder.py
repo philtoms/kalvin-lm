@@ -161,11 +161,13 @@ class TestSignatureEncoding:
 
         A multi-token signature heading an IDENTITY entry is decomposed into
         per-token IDENTITY entries plus a packed CANONIZES entry (the last
-        result); its signature is signifier.make_signature(tokens) — i.e. OR of the tokens.
+        result); its signature is ``make_signature(tokens) | COMPOUND_BIT`` —
+        the compound-word identity marker is set on the kline signature.
         """
+        from kalvin.kline import COMPOUND_BIT
         entry = SymbolicEntry(sig="HELLO", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
-        expected = signifier.make_signature(tz.encode("HELLO"))
+        expected = signifier.make_signature(tz.encode("HELLO")) | COMPOUND_BIT
         assert results[-1].kline.signature == expected
 
 
@@ -217,21 +219,26 @@ class TestFullUint64:
     """Signatures are raw values from tokenizer — not masked or truncated."""
 
     def test_no_masking(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
+        from kalvin.kline import COMPOUND_BIT
         entry = SymbolicEntry(sig="ABC", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
         raw = signifier.make_signature(tz.encode("ABC"))
-        # The packed CANONIZES entry (last) carries the unmasked OR-reduction.
-        assert results[-1].kline.signature == raw
-        # Ensure the value is unmasked — it should have multiple bits set
-        assert results[-1].kline.signature == raw
+        # The packed CANONIZES entry (last) carries the unmasked OR-reduction
+        # plus the compound-word identity marker bit.
+        assert results[-1].kline.signature == raw | COMPOUND_BIT
+        # Ensure the value is unmasked — multiple type-word bits set (ABC
+        # spans >1 token, so the OR-reduction has several bits).
+        assert bin(raw).count("1") > 1
 
     def test_signature_matches_make_signature(self) -> None:
-        """For multi-token words, sig == signifier.make_signature(tokens)."""
+        """For multi-token words, the compound-word CANONIZES sig is
+        ``make_signature(tokens) | COMPOUND_BIT``."""
+        from kalvin.kline import COMPOUND_BIT
         mock = MockMultiTokenTokenizer({"WORD": [100, 200]})
         enc = TokenEncoder(mock)
         entry = SymbolicEntry(sig="WORD", nodes=[], op="IDENTITY")
         results = enc.encode_entries([entry])
-        expected = signifier.make_signature([100, 200])
+        expected = signifier.make_signature([100, 200]) | COMPOUND_BIT
         # Main entry is last (after MTS expansion entries)
         assert results[-1].kline.signature == expected
 
@@ -264,10 +271,16 @@ class TestMultiTokenMTS:
 
         assert len(canonize_entries) == 1
         packed = signifier.make_signature([10, 20])
-        assert canonize_entries[0].kline.signature == packed
+        # The §11.3 compound-word CANONIZES kline's signature carries
+        # COMPOUND_BIT (it is an identity, not a canon); the bit is on the
+        # kline signature only, never on the constituent nodes.
+        from kalvin.kline import COMPOUND_BIT
+        assert canonize_entries[0].kline.signature == packed | COMPOUND_BIT
         assert canonize_entries[0].kline.nodes == [10, 20]
 
         assert len(connote_entries) == 1
+        # The packed value reused as a node is clean (no COMPOUND_BIT) — the
+        # bit marks the owning kline's signature, not the value in use.
         assert connote_entries[0].kline.nodes == [packed]
 
     def test_multi_token_sig_emits_mts(self) -> None:
@@ -290,7 +303,9 @@ class TestMultiTokenMTS:
         canonize_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CANONIZES"]
         assert len(mts_unsigned) == 2
         assert len(canonize_entries) == 1
-        assert canonize_entries[0].kline.signature == packed
+        # The compound-word CANONIZES signature carries COMPOUND_BIT.
+        from kalvin.kline import COMPOUND_BIT
+        assert canonize_entries[0].kline.signature == packed | COMPOUND_BIT
         assert canonize_entries[0].kline.nodes == [50, 60]
 
         # No standalone IDENTITY at the packed signature.

@@ -77,13 +77,17 @@ production field.
 
 ### D4 — Re-derivation function lives in `kalvin/expand.py`
 
-`derive_significance(kline, model, signifier) -> int` implements the
-re-derivation cascade (identity→S4, is_countersigned→S1, is_canon→S2, else→S3) per @kvalue
+`structural_significance(kline, signifier) -> int` implements the
+structural band (identity-ask→S4; grounded identity/canon→S1;
+single-node relationship→S3; multi-node misfit→S2) per @kvalue
 spec §Retrieval. It belongs with the significance semantics and band constants
-(already owned by `expand.py`), and reuses the existing structural predicates
-(`is_identity`, `is_canon` from `kline.py`; `is_countersigned` from
-`expand.py`). Used whenever a stored KLine is materialised as a KValue without a
-producer-supplied significance.
+(already owned by `expand.py`), and composes the existing structural predicates
+(`is_identity`, `is_canon`, `is_misfit` from `kline.py`). The one model-state
+adjustment — a structurally-S2 misfit upgrading to S1 when its reciprocal
+countersigner is present (`is_countersigned` from `expand.py`) — is applied at
+the call site (e.g. @agent spec §Phase 1b), keeping `structural_significance`
+itself model-free. Used whenever a stored KLine is materialised as a KValue
+without a producer-supplied significance.
 
 ### D5 — `RationaliseEvent` loses its `significance` field
 
@@ -147,17 +151,22 @@ _OP_TO_SIG: dict[str, int] = {
 def band_significance(op: str) -> int:
     """Compile-time op → band-representative significance."""
 
-def derive_significance(kline, model, signifier) -> int:
-    """Re-derive significance from a stored KLine's current structural
-    relationship to the model (KV-1 cascade)."""
+def structural_significance(kline, signifier) -> int:
+    """Derive a KLine's significance band from its structure alone
+    (the model-state S2→S1 countersigned fork is applied at the call
+    site, not here)."""
 ```
 
-- `derive_significance` cascade order: `is_identity`→S4; `is_countersigned`→S1; `is_canon`→S2; else→S3.
-  Never returns an unset value (KV-12).
+- `structural_significance` mapping: identity-ask (empty nodes)→S4;
+  grounded identity / canon→S1; single-node relationship→S3; multi-node
+  misfit→S2. Never returns an unset value (KV-12). The S2→S1 countersigned
+  fork is applied at the call site (e.g. `agent.py`).
 - Note: `token_encoder.py` already has a `_SIG_LEVELS` op→"S1" string map; this
   task replaces/promotes it to the integer map above (single source of truth).
 
-**Tests:** `tests/test_expand.py` (extend) — re-derivation for identity/canon/countersigned/connoted (KV-8..KV-12); `tests/test_ks_compiler.py` — op→band (KV-4).
+**Tests:** `tests/test_expand.py` (extend) — `structural_significance` for
+identity/canon/relationship/misfit plus the S2→S1 countersigned fork
+(KV-8..KV-12); `tests/test_ks_compiler.py` — op→band (KV-4).
 
 ### Task C — Compiler produces KValues (`src/ks/token_encoder.py`, `src/ks/compiler.py`)
 
@@ -269,11 +278,11 @@ Spec ref: @kvalue spec §Storage; KV-7.
 | KV-5    | Countersign reciprocal carries `D_MAX`            | test_agent.py              | D, E      |
 | KV-6    | Cogitation proposal carries computed significance | test_agent.py / test_cogitator | E      |
 | KV-7    | Codec persists `{signature,nodes}` only           | test_agent_codec.py        | H         |
-| KV-8    | Re-derive identity → S4                           | test_expand.py             | B         |
-| KV-9    | Re-derive canonical → S2                          | test_expand.py             | B         |
-| KV-10   | Re-derive countersigned (reciprocal present) → S1 | test_expand.py             | B         |
-| KV-11   | Re-derive connoted/denoted → S3               | test_expand.py             | B         |
-| KV-12   | Re-derivation never unset                         | test_expand.py             | B         |
+| KV-8    | Re-derive identity ask (empty nodes) → S4          | test_expand.py             | B         |
+| KV-9    | Re-derive grounded identity / canon → S1           | test_expand.py             | B         |
+| KV-10   | Re-derive S2 misfit + countersigner present → S1   | test_expand.py             | B         |
+| KV-11   | Re-derive single-node relationship → S3            | test_expand.py             | B         |
+| KV-12   | Re-derivation never unset                          | test_expand.py             | B         |
 | KV-13   | Fast path: shared kline, independent significances| test_agent.py              | E         |
 | KV-14   | RationaliseEvent has no significance field        | test_agent.py              | E         |
 | KV-15   | Consumer reads event.proposal.significance        | test_reactor.py / test_trainer | G     |

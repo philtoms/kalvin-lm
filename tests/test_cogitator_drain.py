@@ -13,7 +13,7 @@ import time
 from kalvin.agent import KAgent
 from kalvin.cogitator import Cogitator, WorkItem
 from kalvin.events import EventBus
-from kalvin.expand import derive_significance
+from kalvin.expand import SIG_S1, SIG_S2, is_countersigned, structural_significance
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.model import Model
@@ -25,10 +25,12 @@ signifier = NLPSignifier()
 
 def _kv(kline, model):
     """Wrap a hand-built kline in a KValue declaring its structurally-correct
-    band via derive_significance (kvalue spec KP-1). Replaces the prior literal
-    ``0`` (SIG_S4) placeholder used on non-identity klines where significance
-    was ignored (before the comparison gate). Identity klines still declare S4."""
-    return KValue(kline, derive_significance(kline, model, signifier))
+    band: the structural band with the model-state S2→S1 countersigned fork
+    KAgent applies. Identity klines still declare S4."""
+    band = structural_significance(kline, signifier)
+    if band == SIG_S2 and is_countersigned(model, kline, signifier):
+        band = SIG_S1
+    return KValue(kline, band)
 
 
 def t(bits: int) -> int:
@@ -231,10 +233,12 @@ class TestNoCrossLessonSpillover:
 
             # ── Lesson 2: verify cogitator health post-drain ──
             # Signature 64 = 0b1000000 shares zero type bits with lesson-1
-            # signatures (5 | 30 = 31 = 0b11111), so it routes S4 (no
-            # candidates) — a clean frame event with no S2/S3 cogitation.
+            # signatures (5 | 30 = 31 = 0b11111), so it routes S4 (an empty
+            # identity ask — no candidates, no S2/S3 cogitation): a clean
+            # frame event. (A self-referential {S:[S]} is now S1 under
+            # structural_significance, so the empty form is the genuine S4.)
             events.clear()
-            agent.rationalise(KValue(KLine(t(64), [t(64)]), 0))
+            agent.rationalise(KValue(KLine(t(64), []), 0))
 
             result = agent.cogitate_drain(timeout=5.0)
             assert result is True

@@ -37,11 +37,19 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from kalvin.abstract import KSignifier
+from kalvin.kline import COMPOUND_BIT
 
 # The NLP type word occupies the upper 32 bits of a node; signifies() compares
 # only that half — the BPE component (lower 32) is masked off so two values
 # signify each other based on type-word overlap, not token identity.
 _TYPE_MASK = 0xFFFF_FFFF_0000_0000
+
+# COMPOUND_BIT (type-word bit 17) is a structural marker, not part of the
+# signature algebra: it marks a §11.3 compound-word kline's signature and
+# must not propagate when a compound-word signature participates as a node in
+# a larger signature. make_signature masks it off so the bit stays on the
+# owning kline only.
+_SIG_MASK = ~COMPOUND_BIT & 0xFFFF_FFFF_FFFF_FFFF
 
 
 class NLPSignifier(KSignifier):
@@ -62,11 +70,17 @@ class NLPSignifier(KSignifier):
         Every node contributes its entire 64-bit value; the result
         accumulates the NLP type words of all nodes. Lossy of order and
         multiplicity (``{A, B}`` and ``{A, A, B}`` reduce identically).
+
+        :data:`~kalvin.kline.COMPOUND_BIT` is masked off: it is a structural
+        marker on a compound-word kline's signature, not part of the algebra.
+        A compound-word signature used as a node contributes its clean value,
+        so the bit does not propagate into the signatures of aggregates that
+        contain it.
         """
         sig = 0
         for node in nodes:
             sig |= node
-        return sig
+        return sig & _SIG_MASK
 
     def signifies(self, a: int, b: int) -> bool:
         """Test whether two values share an NLP type-word bit.

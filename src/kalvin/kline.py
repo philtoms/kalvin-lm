@@ -88,12 +88,6 @@ class KLine:
         self.nodes = _normalize_nodes(nodes)
         self.dbg = dbg
 
-    # Backwards-compatible helpers
-
-    def as_node_list(self) -> list[KNode]:
-        """Get nodes as a list. Always returns self.nodes (already a list)."""
-        return self.nodes
-
     # Equality, hashing
 
     def __eq__(self, other: object) -> bool:
@@ -129,37 +123,76 @@ KGraph: TypeAlias = "object"  # Iterator[KLine] — for compat
 # module agrees on what counts as identity vs canon. See @kline spec and
 # @cogitator spec §Universal Constraint.
 
+#: The **compound-word marker bit**. Set by the compiler on the *signature*
+#: of a §11.3 word-compound kline — a single word (e.g. ``Mary``) that the
+#: external tokenizer splits into multiple BPE subwords (``[M, ary]``). The
+#: kline is structurally canon-shaped but semantically an identity: the
+#: word is one lexical item, and the subword decomposition is an artefact of
+#: external tokenisation, not a declared aggregation.
+#:
+#: The bit lives in the NLP type word's only free slot (type-word bit 17 =
+#: node bit 49) — see @nlp_tokenizer spec. It is set on the signature only,
+#: never on the constituent nodes, so a compound-word is detectable from the
+#: signature/nodes alone (no provenance, no model state): the signature
+#: carries the bit, none of its nodes do. Because the bit distinguishes the
+#: signature from ``make_signature(nodes)``, a compound-word fails the canon
+#: test structurally and is reclassified as identity by :func:`is_identity`.
+COMPOUND_BIT: KSig = 0x0002_0000_0000_0000
+
+
+def _is_compound_word(kline: KLine) -> bool:
+    """Test whether a kline is a §11.3 compound-word identity.
+
+    True iff the kline's signature carries :data:`COMPOUND_BIT` and none of
+    its nodes do. The bit is signature-only by construction (the compiler
+    sets it on the packed signature of a BPE-decomposed word and never on a
+    node), so this asymmetry uniquely identifies a compound-word. Purely
+    structural — no signifier, no provenance.
+    """
+    if not (kline.signature & COMPOUND_BIT):
+        return False
+    return not any(node & COMPOUND_BIT for node in kline.nodes)
+
 
 def is_identity(kline: KLine) -> bool:
     """Test whether a kline is an identity.
 
     A kline is identity when it carries no decomposition — either form:
       - empty nodes: ``{S: []}``, or
-      - self-referential: ``{S: [S]}`` — its own signature is its sole node.
+      - self-referential: ``{S: [S]}`` — its own signature is its sole node, or
+      - compound-word: ``{S+COMPOUND_BIT: [nodes]}`` — a single word whose
+        signature carries :data:`COMPOUND_BIT` because the external tokenizer
+        split it into multiple BPE subwords. The word is one lexical item;
+        the decomposition is an encoding artefact, not a declared aggregation.
 
     The self-referential form is identity *by definition*: a value that
-    decomposes into itself carries no further information. This overrules any
-    canon classification (see :func:`is_canon`).
+    decomposes into itself carries no further information. The compound-word
+    form is identity *by external tokenisation*: the word does not aggregate
+    its subwords. Both overrule any canon classification (see :func:`is_canon`).
     """
     if not kline.nodes:
         return True
-    return kline.nodes == [kline.signature]
+    if kline.nodes == [kline.signature]:
+        return True
+    return _is_compound_word(kline)
 
 
 def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is canonical.
 
-    A kline is a canon when it has multiple nodes and each of them is represented in its signature.
+    A kline is a canon when it has multiple nodes and each of them is
+    represented in its signature but does not constitute a compound identity. 
     """
-    return len(kline.nodes) > 1 and kline.signature == signifier.make_signature(kline.nodes)
+    return not is_identity(kline) and kline.signature == signifier.make_signature(kline.nodes)
 
 def is_misfit(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a misfit.
     
     A kline is a misfit when it has multiple nodes and at least one node is 
-    not represented by its signature (ie, kline is not a canon)
+    not represented by its signature (ie, kline is not a canon) but does not 
+    constitute a compound identity. 
     """
-    return len(kline.nodes) > 1 and not is_canon(kline, signifier)
+    return len(kline.nodes) > 1 and not _is_compound_word(kline) and not is_canon(kline, signifier)
 
 # Display helper
 
@@ -239,7 +272,7 @@ def _decode_token(tokenizer: object, token: int) -> str:
 def _infer_op_symbol(kline: KLine, signifier: KSignifier) -> str:
     """Infer operator symbol from KLine structure."""
     if not kline.nodes:
-        return None
+        return ""
     nodes_sig = signifier.make_signature(kline.nodes)
     if kline.signature == nodes_sig:
         return "=>"  # perfect fit → canonize

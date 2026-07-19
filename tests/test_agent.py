@@ -11,7 +11,7 @@ from kalvin.agent import KAgent
 from kalvin.agent_codec import AgentCodec
 from kalvin.cogitator import CogitationHandler, Cogitator, WorkItem
 from kalvin.events import EventBus, RationaliseEvent
-from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4, derive_significance
+from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4, is_countersigned, structural_significance
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
 from kalvin.model import Model
@@ -41,12 +41,15 @@ def _kv(kline: KLine, model: Model) -> KValue:
     """Wrap a kline in a KValue declaring its structurally-correct band.
 
     Honours kvalue spec KP-1 for hand-built test klines: the producer
-    declares the band ``derive_significance`` assigns from the kline's
-    current structural relationship to the model. This replaces the prior
-    ``SIG_S4`` placeholder used everywhere significance was ignored (before
-    the significance-comparison gate). Identity klines still declare SIG_S4.
+    declares the band the kline resolves to — the structural band
+    (structural_significance) with the one model-state fork KAgent applies:
+    a structurally-S2 misfit whose reciprocal countersigner is present in the
+    model upgrades to S1. Identity klines with empty nodes declare SIG_S4.
     """
-    return KValue(kline, derive_significance(kline, model, signifier))
+    band = structural_significance(kline, signifier)
+    if band == SIG_S2 and is_countersigned(model, kline, signifier):
+        band = SIG_S1
+    return KValue(kline, band)
 
 
 class TestAgentInit:

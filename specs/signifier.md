@@ -128,9 +128,13 @@ not of the interface — a different Signifier need not understand any packing.
 
 ### `make_signature` — bitwise OR-reduce
 
-OR-reduces the full 64-bit node values (`sig |= node` over the entire word).
-Every node contributes its full value; the resulting signature accumulates
-the `sig_word` words of all nodes.
+OR-reduces the full 64-bit node values (`sig |= node` over the entire word),
+then masks off `COMPOUND_BIT` (@kline spec §Structural Predicates). Every
+node contributes its full value; the resulting signature accumulates the
+`sig_word` words of all nodes. `COMPOUND_BIT` is a structural marker on a
+compound-word kline's signature, not part of the algebra: a compound-word
+signature used as a node contributes its clean value, so the bit does not
+propagate into the signatures of aggregates that contain it.
 
 ### `signifies` — masked type-word overlap
 

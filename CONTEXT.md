@@ -67,7 +67,7 @@ A value produced by the tokenizer.
 A token value occupying a slot in a kline's nodes list. May be a single Token ID or the OR-reduction of two or more token IDs.
 
 **KLine**:
-The fundamental unit of Kalvin's memory: a **signature** and a **nodes** list. Two structural kinds: **identity** (signature is a single Token ID, empty nodes list — see Identity) and **relationship** (one or more nodes). Objective structure only — see **KValue** for the subjective+objective exchange unit.
+The fundamental unit of Kalvin's memory: a **signature** and a **nodes** list. Two structural kinds: **identity** (carries no decomposition — see Identity) and **relationship** (one or more nodes that the signature aggregates, connotes, or misfits against). Objective structure only — see **KValue** for the subjective+objective exchange unit.
 _Avoid_: kvalue (a KValue pairs a KLine with significance; a KLine is objective-only)
 
 **Signature**:
@@ -97,7 +97,7 @@ The relationship between a kline's signature and its nodes, declared by the writ
 - **IDENTITY** — `{A: []}` or `{A: [A]}` (self-referential) — see Identity.
 
 **Identity**:
-A kline that carries no decomposition — either of two forms: empty nodes (`{S: []}`) or self-referential (`{S: [S]}`, whose sole node is its own signature). The self-referential form is identity _by definition_: a value that decomposes into itself carries no further information, and this overrules any CANON classification. Every kline bottoms out at one or more identities.
+A kline that carries no decomposition — one of three forms: empty nodes (`{S: []}`, the identity ask), self-referential (`{S: [S]}`, whose sole node is its own signature), or a compound-word (a single word the external tokenizer split into multiple BPE subwords, marked structurally so it is recognised as identity rather than a canon). The self-referential form is identity _by definition_: a value that decomposes into itself carries no further information. The compound-word form is identity _by external tokenisation_: the word is one lexical item and its subwords are an encoding artefact. Both overrule any CANON classification. Every kline bottoms out at one or more identities.
 _Avoid_: unsigned (implementation term), bare signature (describes the syntax, not the structure)
 
 **STM (Short-Term Memory)**:

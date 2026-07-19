@@ -30,11 +30,12 @@ from kalvin.cogitator import (
 from kalvin.events import EventBus, RationaliseEvent  # EventBus: test/dev fallback
 from kalvin.expand import (
     SIG_S1,
+    SIG_S2,
     SIG_S4,
-    derive_significance,
     is_countersigned,
     is_s1,
     promote_participating,
+    structural_significance,
 )
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
@@ -229,10 +230,15 @@ class KAgent:
         #
         # S4 is the sentinel SIG_S4 (= 0), detected by value: classify()
         # collapses the S3|S4 boundary (0 classifies as S3), so the band
-        # function cannot be used to detect S4. derive_significance yields
-        # SIG_S4 only for identity klines, so an identity kline declared S4
-        # agrees here and is never dropped.
-        derived_sig = derive_significance(kline, self._model, self._signifier)
+        # function cannot be used to detect S4. The derived band is the
+        # structural band (structural_significance) with the one model-state
+        # fork: a structurally-S2 misfit whose reciprocal countersigner is
+        # present upgrades to S1. Only an identity ask (empty-nodes identity)
+        # derives SIG_S4, so an identity kline declared S4 agrees here and is
+        # never dropped.
+        derived_sig = structural_significance(kline, self._signifier)
+        if derived_sig == SIG_S2 and is_countersigned(self._model, kline, self._signifier):
+            derived_sig = SIG_S1
         if value.significance == SIG_S4 and derived_sig != SIG_S4:
             return True  # drop — sender declares S4; Kalvin derives otherwise
 

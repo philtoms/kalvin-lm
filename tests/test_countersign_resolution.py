@@ -11,7 +11,7 @@ pair resolution.
 
 from kalvin.agent import KAgent
 from kalvin.events import EventBus
-from kalvin.expand import derive_significance
+from kalvin.expand import SIG_S1, SIG_S2, is_countersigned, structural_significance
 from kalvin.kline import KLine, sig_level
 from kalvin.kvalue import KValue
 from kalvin.model import Model
@@ -34,9 +34,12 @@ def t(bits: int) -> int:
 
 def _kv(kline, model):
     """Wrap a hand-built kline in a KValue declaring its structurally-correct
-    band via derive_significance (kvalue spec KP-1). Replaces the prior SIG_S4
-    placeholder used where significance was ignored (before the comparison gate)."""
-    return KValue(kline, derive_significance(kline, model, signifier))
+    band: the structural band with the model-state S2→S1 countersigned fork
+    KAgent applies."""
+    band = structural_significance(kline, signifier)
+    if band == SIG_S2 and is_countersigned(model, kline, signifier):
+        band = SIG_S1
+    return KValue(kline, band)
 
 
 # Every test in this module drives ``compile_source`` (which builds a
@@ -126,31 +129,6 @@ class TestSelfFilterInCandidates:
         result = a.rationalise(_kv(q, a.model))
         # S2 should return False (slow path) even though q is in STM
         assert result is False
-
-
-class TestSigLevelPropagation:
-    """CR-6: sig_level is set on CompiledEntry matching operator type."""
-
-    def test_sig_level_set_on_compiled_entry(self):
-        entries = compile_source("M == H", dev=True)
-        for e in entries:
-            assert sig_level(e.kline, signifier) == "S1"
-
-        entries = compile_source("M > H", dev=True)
-        for e in entries:
-            if e.kline.nodes:  # skip unsigned identities
-                assert sig_level(e.kline, signifier) == "S3"
-
-        entries = compile_source("M => H", dev=True)
-        for e in entries:
-            if e.kline.nodes and not isinstance(e.kline.nodes, list):
-                assert sig_level(e.kline, signifier) == "S2"
-
-    def test_sig_level_none_by_default(self):
-        kl = KLine(0xFF, [1])
-        # sig_level() always returns a string via _infer_level() or _SIG_LEVELS
-        assert isinstance(sig_level(kl, signifier), str)
-
 
 class TestDenoteIsConnoteReversed:
     """CR-7: Denote gets no special fast path. CR-8: connote through slow path."""

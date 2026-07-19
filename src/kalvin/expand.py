@@ -11,8 +11,9 @@ pipeline:
   3. **Expansion proposals** — propose_expansions() classifies misfits and
      generates (proposal, significance) tuples for the caller to dispatch.
   4. **Structural grounding** — is_s1(), is_countersigned() verify S1 status;
-     derive_significance() re-derives a stored KLine's band from its current
-     structural relationship to the model.
+     structural_significance() derives a stored KLine's band from its
+     structure alone (the model-state S2→S1 countersigned fork is applied at
+     the call site, e.g. KAgent).
 
 The module reads from the Model (storage) but is a separate responsibility:
 Model indexes and retrieves; Expand computes how far apart two KLines are.
@@ -26,7 +27,7 @@ Band-anchored normalization:
 
 Producer significance:
   band_significance — op → band-representative integer (KP-1)
-  derive_significance — re-derive a stored KLine's significance (KV-8..KV-12)
+  structural_significance — derive a KLine's structural band
 """
 
 from __future__ import annotations
@@ -35,7 +36,7 @@ import logging
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
-from kalvin.kline import KLine, is_canon, is_identity
+from kalvin.kline import KLine, is_canon, is_identity, is_misfit
 from kalvin.misfit import generate_expansions
 
 if TYPE_CHECKING:
@@ -213,15 +214,6 @@ def edge_hops(model: Model, sig: int, signifier: KSignifier) -> Iterator[tuple[i
         sig = signifier.make_signature(kline.nodes)
         yield hop_count, sig
 
-
-def _as_kline(model: Model, node: int) -> KLine:
-    """Resolve a node value to a KLine. Raises ValueError if not resolvable."""
-    kline = model.find(node)
-    if kline is None:
-        raise ValueError(f"Node {node:#x} does not resolve to any KLine")
-    return kline
-
-
 # Structural Grounding
 
 
@@ -259,39 +251,30 @@ def is_countersigned(model: Model, kline: KLine, signifier: KSignifier) -> bool:
     return False
 
 
-def derive_significance(kline: KLine, model: Model, signifier: KSignifier) -> int:
-    """Re-derive a stored KLine's significance from its current structural
-    relationship to the model (@kvalue spec §Retrieval; criteria KV-8..KV-12).
+def structural_significance(kline: KLine, signifier: KSignifier) -> int:
+    """Derive a kline's significance band from its structure alone.
 
-    Significance is re-made, not recorded: countersigned detection depends on
-    model state (the reciprocal must be present), so a retrieved kline's
-    significance reflects the model *as it currently is*.
+    No model state — structure is an emergent property of the kline — this
+    function composes the predicates rather than re-deriving structure inline.
 
-    Cascade order (the first match wins):
+    Mapping (@CONTEXT.md §Structural Relationship):
 
-      1. is_identity(kline)            → SIG_S4   (KV-8)
-      2. is_countersigned(model, ...)  → SIG_S1   (KV-10 — model-state-dependent upgrade)
-      3. is_canon(kline, signifier)    → SIG_S2   (KV-9 — structural, never changes)
-      4. otherwise                     → SIG_S3   (KV-11 — CONNOTES / DENOTES)
-
-    Only countersigned status (which is model-dependent) can upgrade a kline
-    from S2 to S1. Canonical status is structural and invariant, so a canonical
-    kline is always S2 unless its reciprocal countersigner is present in the
-    model. Every KLine resolves to exactly one band — there is no unset value
-    (KV-12).
-
-    Note: the S1 branch uses ``is_countersigned`` rather than ``is_s1``.
-    ``is_s1`` is ``is_canon OR is_countersigned``; placing it before the
-    ``is_canon`` check would swallow every canonical kline into S1 and render
-    the ``is_canon → SIG_S2`` branch unreachable.
+    - **S1** — a grounded identity or a canon. An identity with nodes
+      (self-referential ``{A:[A]}`` or a compound-word) is self-grounded;
+      the empty form ``{A:[]}`` is the S4 ask, not S1. A canon
+      ``{AB:[A, B]}`` is a grounded aggregation.
+    - **S3** — a single-node, non-identity relationship ``{A:[B]}``
+      (connotation / denotation).
+    - **S2** — a multi-node misfit (underfit / overfit / misfit).
+    - **S4** — the empty identity frame ``{A:[]}``.
     """
     if is_identity(kline):
-        return SIG_S4
-    if is_countersigned(model, kline, signifier):
-        return SIG_S1
+        return SIG_S4 if not kline.nodes else SIG_S1
+    if len(kline.nodes) == 1:
+        return SIG_S3
     if is_canon(kline, signifier):
-        return SIG_S2
-    return SIG_S3
+        return SIG_S1
+    return SIG_S2
 
 
 # Graph Expansion
