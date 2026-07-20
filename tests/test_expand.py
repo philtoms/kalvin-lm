@@ -24,7 +24,8 @@ from kalvin.expand import (
     propose_expansions,
     structural_significance,
 )
-from kalvin.kline import COMPOUND_BIT, KLine
+from kalvin.kline import KLine
+from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
 
@@ -573,11 +574,11 @@ class TestStructuralSignificance:
         assert structural_significance(KLine(42, [42]), signifier) == SIG_S1
 
     def test_compound_word_is_s1(self):
-        # A §11.3 compound-word: signature carries COMPOUND_BIT, nodes don't.
+        # A §11.3 compound-word: COMPOUND_TOKEN is among the nodes.
         # It is an identity (folded into is_identity) with nodes → S1; its
         # subwords are opaque and never re-enter the band logic here.
-        nodes = [0b100, 0b010]
-        kl = KLine(0b110 | COMPOUND_BIT, nodes)
+        nodes = [0b100, 0b010, COMPOUND_TOKEN]
+        kl = KLine(0b110 | COMPOUND_TOKEN, nodes)
         assert structural_significance(kl, signifier) == SIG_S1
 
     def test_canon_is_s1(self):

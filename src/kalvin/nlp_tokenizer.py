@@ -36,6 +36,26 @@ from kalvin.tokenizer import Tokenizer
 # untyped tokens still carry a valid NLP POS flag.
 UNKNOWN_NLP_TYPE = 65536
 
+#: The **compound marker token**. Appended by the compiler to the nodes of a
+#: §11.3 compound-word kline — a single word (e.g. ``Mary``) that the
+#: external tokenizer splits into multiple BPE subwords (``[M, ary]``) —
+#: so the kline is built as ``Mary: [M, ary, COMPOUND_TOKEN]``. The token
+#: participates in the signature algebra like any other node (its type
+#: word contributes to ``make_signature``), so a compound's signature
+#: *encodes* the marker without any masking: ``signature ==
+#: make_signature([M, ary, COMPOUND_TOKEN])``. Detection is structural —
+#: ``COMPOUND_TOKEN in kline.nodes`` — with no bit-twiddling and no
+#: special-case masking in the signifier.
+#:
+#: The token's type word occupies type-word bit 17 (``0x0002_0000``) — the
+#: sole free slot in the NLP type-word layout (every other bit is assigned
+#: by ``dev/nlp`` tooling). Its BPE id is 0 (the token carries no BPE
+#: component; it is a pure structural marker). The token is confined to the
+#: kalvin↔NLP boundary: defined here, set only by ``ks/token_encoder.py``,
+#: and read only by ``kalvin/kline.py``'s compound predicate.
+COMPOUND_TOKEN_TYPE_WORD = 0x0002_0000
+COMPOUND_TOKEN: int = (COMPOUND_TOKEN_TYPE_WORD << 32) | 0
+
 
 def load_grammar_dict(path: str | Path) -> dict[int, dict]:
     """Load an NLP grammar dictionary from JSON.

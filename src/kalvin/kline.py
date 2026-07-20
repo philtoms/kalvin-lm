@@ -123,35 +123,24 @@ KGraph: TypeAlias = "object"  # Iterator[KLine] — for compat
 # module agrees on what counts as identity vs canon. See @kline spec and
 # @cogitator spec §Universal Constraint.
 
-#: The **compound-word marker bit**. Set by the compiler on the *signature*
-#: of a §11.3 word-compound kline — a single word (e.g. ``Mary``) that the
-#: external tokenizer splits into multiple BPE subwords (``[M, ary]``). The
-#: kline is structurally canon-shaped but semantically an identity: the
-#: word is one lexical item, and the subword decomposition is an artefact of
-#: external tokenisation, not a declared aggregation.
-#:
-#: The bit lives in the NLP type word's only free slot (type-word bit 17 =
-#: node bit 49) — see @nlp_tokenizer spec. It is set on the signature only,
-#: never on the constituent nodes, so a compound-word is detectable from the
-#: signature/nodes alone (no provenance, no model state): the signature
-#: carries the bit, none of its nodes do. Because the bit distinguishes the
-#: signature from ``make_signature(nodes)``, a compound-word fails the canon
-#: test structurally and is reclassified as identity by :func:`is_identity`.
-COMPOUND_BIT: KSig = 0x0002_0000_0000_0000
+#: The **compound marker token**, re-exported from the kalvin↔NLP boundary
+#: (:mod:`kalvin.nlp_tokenizer`). The compiler appends it to the nodes of a
+#: §11.3 compound-word kline (``Mary: [M, ary, COMPOUND_TOKEN]``); the token
+#: participates in the signature algebra, so the marker needs no masking.
+#: See :data:`kalvin.nlp_tokenizer.COMPOUND_TOKEN` for the full rationale.
+from kalvin.nlp_tokenizer import COMPOUND_TOKEN  # noqa: E402
 
 
 def _is_compound_word(kline: KLine) -> bool:
     """Test whether a kline is a §11.3 compound-word identity.
 
-    True iff the kline's signature carries :data:`COMPOUND_BIT` and none of
-    its nodes do. The bit is signature-only by construction (the compiler
-    sets it on the packed signature of a BPE-decomposed word and never on a
-    node), so this asymmetry uniquely identifies a compound-word. Purely
-    structural — no signifier, no provenance.
+    True iff :data:`COMPOUND_TOKEN` is among the kline's nodes. The compiler
+    appends the token only to a compound-word's nodes (a single word the
+    #: external tokenizer split into BPE subwords), so its presence is the
+    #: structural signal. Purely structural — no signifier, no provenance,
+    #: no bit masking.
     """
-    if not (kline.signature & COMPOUND_BIT):
-        return False
-    return not any(node & COMPOUND_BIT for node in kline.nodes)
+    return COMPOUND_TOKEN in kline.nodes
 
 
 def is_identity(kline: KLine) -> bool:
@@ -160,10 +149,11 @@ def is_identity(kline: KLine) -> bool:
     A kline is identity when it carries no decomposition — either form:
       - empty nodes: ``{S: []}``, or
       - self-referential: ``{S: [S]}`` — its own signature is its sole node, or
-      - compound-word: ``{S+COMPOUND_BIT: [nodes]}`` — a single word whose
-        signature carries :data:`COMPOUND_BIT` because the external tokenizer
-        split it into multiple BPE subwords. The word is one lexical item;
-        the decomposition is an encoding artefact, not a declared aggregation.
+      - compound-word: ``{S: [M, ary, COMPOUND_TOKEN]}`` — a single word
+        whose nodes include :data:`COMPOUND_TOKEN` because the external
+        tokenizer split it into multiple BPE subwords. The word is one
+        lexical item; the decomposition is an encoding artefact, not a
+        declared aggregation.
 
     The self-referential form is identity *by definition*: a value that
     decomposes into itself carries no further information. The compound-word

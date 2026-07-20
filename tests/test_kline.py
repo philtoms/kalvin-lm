@@ -1,6 +1,7 @@
 """Tests for KLine — specs/kline.md conformance."""
 
-from kalvin.kline import COMPOUND_BIT, KDbg, KLine, is_canon, is_identity
+from kalvin.kline import KDbg, KLine, is_canon, is_identity
+from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from kalvin.signifier import NLPSignifier
 
 signifier = NLPSignifier()
@@ -155,21 +156,14 @@ class TestStructuralPredicates:
         assert is_identity(KLine(0xFF, [0x01])) is False
 
     def test_is_identity_compound_word(self):
-        # A §11.3 compound-word: signature carries COMPOUND_BIT, nodes don't.
+        # A §11.3 compound-word: COMPOUND_TOKEN is among the nodes.
         # Structurally canon-shaped (multi-node) but semantically an identity.
-        nodes = [0b100, 0b010]
-        sig = (0b110 | COMPOUND_BIT)
-        assert is_identity(KLine(sig, nodes)) is True
+        nodes = [0b100, 0b010, COMPOUND_TOKEN]
+        assert is_identity(KLine(0b110 | COMPOUND_TOKEN, nodes)) is True
 
-    def test_is_identity_compound_word_bit_on_node_is_not_identity(self):
-        # If a node also carries the bit, it is not a compound-word identity
-        # (the bit is signature-only by construction).
-        nodes = [0b100 | COMPOUND_BIT, 0b010]
-        sig = (0b110 | COMPOUND_BIT)
-        assert is_identity(KLine(sig, nodes)) is False
-
-    def test_is_identity_compound_word_no_bit_is_not_identity(self):
-        # Without the bit, a canon-shaped kline is just a canon candidate.
+    def test_is_identity_compound_word_no_token_is_not_identity(self):
+        # Without COMPOUND_TOKEN in the nodes, a canon-shaped kline is just a
+        # canon candidate.
         assert is_identity(KLine(0b110, [0b100, 0b010])) is False
 
     def test_kl23_is_canon_genuine(self):
@@ -187,6 +181,5 @@ class TestStructuralPredicates:
 
     def test_is_canon_compound_word_is_not_canon(self):
         # A compound-word is an identity, so it is filtered out of is_canon.
-        nodes = [0b100, 0b010]
-        sig = (0b110 | COMPOUND_BIT)
-        assert is_canon(KLine(sig, nodes), signifier) is False
+        nodes = [0b100, 0b010, COMPOUND_TOKEN]
+        assert is_canon(KLine(0b110 | COMPOUND_TOKEN, nodes), signifier) is False

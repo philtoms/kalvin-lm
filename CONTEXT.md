@@ -97,7 +97,7 @@ The relationship between a kline's signature and its nodes, declared by the writ
 - **IDENTITY** — `{A: []}` or `{A: [A]}` (self-referential) — see Identity.
 
 **Identity**:
-A kline that carries no decomposition — one of three forms: empty nodes (`{S: []}`, the identity ask), self-referential (`{S: [S]}`, whose sole node is its own signature), or a compound-word (a single word the external tokenizer split into multiple BPE subwords, marked structurally so it is recognised as identity rather than a canon). The self-referential form is identity _by definition_: a value that decomposes into itself carries no further information. The compound-word form is identity _by external tokenisation_: the word is one lexical item and its subwords are an encoding artefact. Both overrule any CANON classification. Every kline bottoms out at one or more identities.
+A kline that carries no decomposition — one of three forms: empty nodes (`{S: []}`, the identity ask), self-referential (`{S: [S]}`, whose sole node is its own signature), or a compound-word (a single word the external tokenizer split into multiple BPE subwords, carrying the boundary marker token `COMPOUND_TOKEN` as an extra node so it is recognised as identity rather than a canon). The self-referential form is identity _by definition_: a value that decomposes into itself carries no further information. The compound-word form is identity _by external tokenisation_: the word is one lexical item and its subwords are an encoding artefact. Both overrule any CANON classification. Every kline bottoms out at one or more identities.
 _Avoid_: unsigned (implementation term), bare signature (describes the syntax, not the structure)
 
 **STM (Short-Term Memory)**:

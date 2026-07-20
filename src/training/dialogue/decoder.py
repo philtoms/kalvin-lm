@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Literal
 from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
+from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from ks.compiler import compile_source
 
 if TYPE_CHECKING:
@@ -132,10 +133,11 @@ class DecodedTurn:
 @dataclass(frozen=True)
 class _ResolvedScript:
     """Compiled-source indices built once at decode time: canon-by-label,
-    relation-by-label, and a general label→KLine index."""
+    relation-by-label, compound-by-label, and a general label→KLine index."""
 
     canon_by_label: dict[str, KLine] = field(default_factory=dict)
     relation_by_label: dict[str, KLine] = field(default_factory=dict)
+    compound_by_label: dict[str, KLine] = field(default_factory=dict)
     labels: dict[str, KLine] = field(default_factory=dict)
 
 
@@ -166,6 +168,18 @@ def _resolve_script(
         # canon when a label names one.
         if d.op in ("CANONIZES", "COUNTERSIGNS") and kl.nodes and d.label:
             resolved.canon_by_label.setdefault(d.label, kl)
+        # Compound-by-label: the §11.3 compound-word identity for this label
+        # (the CANONIZES whose nodes include COMPOUND_TOKEN). A label may have
+        # several CANONIZES (a compound identity plus a block-canon reference);
+        # this index holds the compound one specifically, so the decoder can
+        # recognise a compound signature without confusing it with a same-label
+        # block-canon misfit.
+        if (
+            d.op == "CANONIZES"
+            and d.label
+            and COMPOUND_TOKEN in kl.nodes
+        ):
+            resolved.compound_by_label.setdefault(d.label, kl)
         if d.op in ("COUNTERSIGNS", "CONNOTES", "DENOTES") and d.label:
             # Relation-by-label: carries the relation's structural dbg.op, so a
             # constructed-relation turn reports e.g. COUNTERSIGNS, not the
@@ -267,6 +281,15 @@ def _resolve_kline(
             raise DecodeError(
                 f"CANONIZES signature {signature!r}: label not found in compiled source"
             )
+        # Compound catch-up: when the signature names a compound-word
+        # (it has a compiled compound identity), the decoded kline must carry
+        # the marker too — otherwise the declared subwords form a misfit
+        # against the compound's CT-encoded signature. The author writes the
+        # subwords (``Mary => M ary``); the decoder appends the system marker
+        # so the kline is the compound identity the compiler would produce.
+        compound = resolved.compound_by_label.get(signature)
+        if compound is not None and COMPOUND_TOKEN not in node_sigs:
+            node_sigs = [*node_sigs, COMPOUND_TOKEN]
         return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
 
     if op == "IDENTITY":

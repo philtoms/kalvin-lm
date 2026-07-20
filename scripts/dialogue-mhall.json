@@ -50,7 +50,7 @@
       "role_turn": 2
     },
     {
-      "op": "CANONIZES",
+      "op": "IDENTITY",
       "signature": "Mary",
       "nodes": [
         "M",
@@ -72,7 +72,7 @@
       "role_turn": 3
     },
     {
-      "op": "CANONIZES",
+      "op": "IDENTITY",
       "signature": "had",
       "nodes": [
         "h",
@@ -113,7 +113,7 @@
       "role_turn": 5
     },
     {
-      "op": "CANONIZES",
+      "op": "IDENTITY",
       "signature": "Det",
       "nodes": [
         "D",
@@ -135,7 +135,7 @@
       "role_turn": 6
     },
     {
-      "op": "CANONIZES",
+      "op": "IDENTITY",
       "signature": "little",
       "nodes": [
         "l",
@@ -156,7 +156,7 @@
       "role_turn": 7
     },
     {
-      "op": "CANONIZES",
+      "op": "IDENTITY",
       "signature": "lamb",
       "nodes": [
         "l",
@@ -205,7 +205,7 @@
       "role_turn": 10
     },
     {
-      "op": "CANONIZES",
+      "op": "IDENTITY",
       "signature": "Subject",
       "nodes": [
         "Sub",
@@ -226,7 +226,7 @@
       "role_turn": 11
     },
     {
-      "op": "CANONIZES",
+      "op": "IDENTITY",
       "signature": "Verb",
       "nodes": [
         "V",
@@ -248,7 +248,7 @@
       "role_turn": 12
     },
     {
-      "op": "CANONIZES",
+      "op": "IDENTITY",
       "signature": "Object",
       "nodes": [
         "Ob",

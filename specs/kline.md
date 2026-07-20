@@ -74,26 +74,28 @@ The number of nodes. Equivalent to `len(kline.nodes)`.
 ## Structural Predicates
 
 A kline's structural kind is determined by its signature and nodes (no model
-state). The signature may carry a compiler-set **compound-word marker** bit
-(`COMPOUND_BIT`) marking a §11.3 word-compound — a single word the external
-tokenizer split into BPE subwords; the bit is part of the signature value, so
-the predicates remain pure signature+nodes tests. Three predicates capture the
-kinds relevant to rationalisation:
+state). A §11.3 **compound-word** — a single word the external tokenizer
+split into BPE subwords — carries the boundary marker token
+`COMPOUND_TOKEN` (@nlp_tokenizer spec) as an extra node: `Mary: [M, ary,
+COMPOUND_TOKEN]`. The token participates in the signature algebra like any
+other node, so the compound's signature *encodes* the marker naturally
+(`signature == make_signature([M, ary, COMPOUND_TOKEN])`) — no bit masking
+anywhere. Three predicates capture the kinds relevant to rationalisation:
 
 - **`is_identity(kline)`** — `True` for the empty form `{S: []}`, the
   self-referential form `{S: [S]}` (sole node equals signature), or a
-  compound-word (signature carries `COMPOUND_BIT`, nodes do not). All three
-  carry no decomposition: the self-referential form is identity *by
-  definition* (a value that decomposes into itself), the compound-word form
-  is identity *by external tokenisation* (the word is one lexical item; its
-  subwords are an encoding artefact). Both overrule any canon classification
-  (see @CONTEXT.md §Identity).
-- **`is_compound_word(kline)`** — `True` iff the signature carries
-  `COMPOUND_BIT` and none of the nodes do. The bit is signature-only by
-  construction (the compiler sets it on the packed signature of a
-  BPE-decomposed word and never on a node). The marker is confined to this
-  module and the kalvin↔NLP boundary (`signifier.py` masks it in
-  `make_signature`; `ks/token_encoder.py` sets it); no other module names it.
+  compound-word (`COMPOUND_TOKEN` is among the nodes). All three carry no
+  decomposition: the self-referential form is identity *by definition* (a
+  value that decomposes into itself), the compound-word form is identity
+  *by external tokenisation* (the word is one lexical item; its subwords
+  are an encoding artefact). Both overrule any canon classification (see
+  @CONTEXT.md §Identity).
+- **`is_compound_word(kline)`** — `True` iff `COMPOUND_TOKEN` is among the
+  kline's nodes. The compiler appends the token only to a compound-word's
+  nodes. The marker is confined to the kalvin↔NLP boundary: defined in
+  `nlp_tokenizer.py`, appended by `ks/token_encoder.py`, read here; no other
+  module names it, and the signifier treats it as an ordinary node (no
+  masking).
 - **`is_canon(kline)`** — `True` when the kline is not identity AND
   `signature == make_signature(nodes)`.
 
@@ -108,8 +110,8 @@ and significance modules consume them.
 | KL-23 | `is_canon({S: [A, B]})` where `S == A\|B` and `S` not in nodes → True       |
 | KL-24 | `is_canon({S: [S]})` → False (self-referential is identity, not canon)     |
 | KL-25 | `is_canon({S: []})` → False (identity)                                     |
-| KL-26 | `is_identity({S+COMPOUND_BIT: [A, B]})` → True (compound-word)             |
-| KL-27 | `is_canon({S+COMPOUND_BIT: [A, B]})` → False (compound-word is identity)   |
+| KL-26 | `is_identity({S: [A, B, COMPOUND_TOKEN]})` → True (compound-word)          |
+| KL-27 | `is_canon({S: [A, B, COMPOUND_TOKEN]})` → False (compound-word is identity)|
 
 ## What a Kline is Not
 

@@ -63,6 +63,25 @@ At encode time, BPE tokens without a type-dictionary entry receive `POS_X =
 a valid NLP type bit, preserving the node-format invariant. (The shipped
 data tags every BPE token, so this path is rarely exercised.)
 
+### Compound Marker Token (`COMPOUND_TOKEN`)
+
+A reserved node value the compiler appends to a §11.3 **compound-word**
+kline's nodes — a single word (e.g. `Mary`) the external tokenizer splits
+into multiple BPE subwords (`[M, ary]`) — so the kline is built as
+`Mary: [M, ary, COMPOUND_TOKEN]`. The token is a pure structural marker
+(carries no BPE component): its type word is `0x0002_0000` (bit 17 — the
+sole free slot in the `sig_word` space; every other bit is assigned by
+`dev/nlp/tag_vocab.py`) and its BPE id is 0, giving the full value
+`0x0002_0000_0000_0000`.
+
+The token participates in the signature algebra like any other node, so a
+compound's signature *encodes* the marker (`signature ==
+make_signature([M, ary, COMPOUND_TOKEN])`) with no bit masking. Detection is
+`COMPOUND_TOKEN in kline.nodes` (@kline spec §Structural Predicates). The
+marker is confined to the kalvin↔NLP boundary: defined here, appended by
+`ks/token_encoder.py`, read by `kalvin/kline.py`; it is a compiler/NLP
+concern and does not appear in Kalvin's semantic layer.
+
 ## Dependencies
 
 ### Tokenizer (@tokenizer spec)

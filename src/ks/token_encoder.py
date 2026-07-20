@@ -36,7 +36,8 @@ from __future__ import annotations
 
 from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.expand import band_significance
-from kalvin.kline import COMPOUND_BIT, KDbg, KLine
+from kalvin.kline import KDbg, KLine
+from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 
@@ -258,23 +259,26 @@ class TokenEncoder:
             (packed_signature, extra_entries).
         """
         token_key = tuple(tokens)
-        packed = self._signifier.make_signature(tokens)
-        # The compound-word identity kline's signature carries COMPOUND_BIT —
-        # this §11.3 kline (a single word the external tokenizer split into
-        # BPE subwords) is structurally canon-shaped but semantically an
-        # identity. The bit is applied ONLY to this kline's signature (below),
-        # never to ``packed`` itself: ``packed`` is returned to callers and
-        # reused as a clean node/signature value elsewhere, so the marker must
-        # not leak into the value space. See @kline spec.
+        # The compound-word identity kline carries COMPOUND_TOKEN as an extra
+        # node (e.g. ``Mary: [M, ary, COMPOUND_TOKEN]``). The token
+        # participates in the signature algebra like any other node, so the
+        # compound's signature is ``make_signature(tokens + [COMPOUND_TOKEN])``
+        # — the marker is *encoded* in the signature, not OR'd on as a bit.
+        # No masking anywhere: ``packed`` below is this full signature, and it
+        # is the value reused by references (a block-canon under the same
+        # word). See @kline spec §Structural Predicates.
+        compound_nodes = [COMPOUND_TOKEN] + list(tokens)
+        packed = self._signifier.make_signature(compound_nodes)
 
-        # Register the compound's packed signature (§11.4: the MTS CANONIZES
-        # — compound → its subword tokens — DEFINES the signature; a later
-        # block-canon entry with the same compound id is a REFERENCE that must
-        # reuse this value, not recompute it from its own operands). Without
-        # this registration, a block canon (e.g. `had => did have`) falls into
-        # the defining branch and clobbers the compound's true signature with
-        # make_signature(block_nodes). Only register when ``dbg_label`` names
-        # the compound (it is empty at internal call sites that have no id).
+        # Register the compound's signature (§11.4: the MTS CANONIZES
+        # — compound → its subword tokens + marker — DEFINES the signature;
+        # a later block-canon entry with the same compound id is a REFERENCE
+        # that must reuse this value, not recompute it from its own operands).
+        # Without this registration, a block canon (e.g. `had => did have`)
+        # falls into the defining branch and clobbers the compound's true
+        # signature with make_signature(block_nodes). Only register when
+        # ``dbg_label`` names the compound (it is empty at internal call
+        # sites that have no id).
         if dbg_label:
             self._compound_sigs.setdefault(dbg_label, packed)
 
@@ -300,8 +304,9 @@ class TokenEncoder:
                     )
                 )
 
-            # CANONIZES: packed sig → subword tokens. Packed values are
-            # opaque per §11.5 — _build_dbg skips decode for them.
+            # CANONIZES: compound sig → subword tokens + COMPOUND_TOKEN.
+            # Packed values are opaque per §11.5 — _build_dbg skips decode
+            # for them.
             canon_dbg: KDbg | None = None
             if self._dev:
                 canon_dbg = self._build_dbg(packed, dbg_label, op="CANONIZES", packed=True)
@@ -310,8 +315,8 @@ class TokenEncoder:
             extras.append(
                 KValue(
                     KLine(
-                        signature=packed | COMPOUND_BIT,
-                        nodes=list(tokens),
+                        signature=packed,
+                        nodes=compound_nodes,
                         dbg=canon_dbg,
                     ),
                     band_significance("CANONIZES"),

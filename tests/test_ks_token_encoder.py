@@ -160,14 +160,15 @@ class TestSignatureEncoding:
         """Multi-token identifier is packed via OR-reduction (make_signature).
 
         A multi-token signature heading an IDENTITY entry is decomposed into
-        per-token IDENTITY entries plus a packed CANONIZES entry (the last
-        result); its signature is ``make_signature(tokens) | COMPOUND_BIT`` —
-        the compound-word identity marker is set on the kline signature.
+        per-token IDENTITY entries plus a compound CANONIZES entry (the last
+        result) whose nodes are the tokens plus COMPOUND_TOKEN; its signature
+        is ``make_signature(tokens + [COMPOUND_TOKEN])`` — the marker is
+        encoded in the signature, not OR'd on as a bit.
         """
-        from kalvin.kline import COMPOUND_BIT
+        from kalvin.nlp_tokenizer import COMPOUND_TOKEN
         entry = SymbolicEntry(sig="HELLO", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
-        expected = signifier.make_signature(tz.encode("HELLO")) | COMPOUND_BIT
+        expected = signifier.make_signature(tz.encode("HELLO") + [COMPOUND_TOKEN])
         assert results[-1].kline.signature == expected
 
 
@@ -219,26 +220,27 @@ class TestFullUint64:
     """Signatures are raw values from tokenizer — not masked or truncated."""
 
     def test_no_masking(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
-        from kalvin.kline import COMPOUND_BIT
+        from kalvin.nlp_tokenizer import COMPOUND_TOKEN
         entry = SymbolicEntry(sig="ABC", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
         raw = signifier.make_signature(tz.encode("ABC"))
-        # The packed CANONIZES entry (last) carries the unmasked OR-reduction
-        # plus the compound-word identity marker bit.
-        assert results[-1].kline.signature == raw | COMPOUND_BIT
+        # The compound CANONIZES entry (last) carries the unmasked OR-reduction
+        # of the tokens plus COMPOUND_TOKEN (the marker encoded as a node).
+        expected = signifier.make_signature(tz.encode("ABC") + [COMPOUND_TOKEN])
+        assert results[-1].kline.signature == expected
         # Ensure the value is unmasked — multiple type-word bits set (ABC
         # spans >1 token, so the OR-reduction has several bits).
         assert bin(raw).count("1") > 1
 
     def test_signature_matches_make_signature(self) -> None:
-        """For multi-token words, the compound-word CANONIZES sig is
-        ``make_signature(tokens) | COMPOUND_BIT``."""
-        from kalvin.kline import COMPOUND_BIT
+        """For multi-token words, the compound CANONIZES sig is
+        ``make_signature(tokens + [COMPOUND_TOKEN])``."""
+        from kalvin.nlp_tokenizer import COMPOUND_TOKEN
         mock = MockMultiTokenTokenizer({"WORD": [100, 200]})
         enc = TokenEncoder(mock)
         entry = SymbolicEntry(sig="WORD", nodes=[], op="IDENTITY")
         results = enc.encode_entries([entry])
-        expected = signifier.make_signature([100, 200]) | COMPOUND_BIT
+        expected = signifier.make_signature([100, 200, COMPOUND_TOKEN])
         # Main entry is last (after MTS expansion entries)
         assert results[-1].kline.signature == expected
 
@@ -251,12 +253,13 @@ class TestMultiTokenMTS:
 
     def test_multi_token_node_emits_mts(self) -> None:
         """A multi-token node triggers unsigned + CANONIZES entries."""
+        from kalvin.nlp_tokenizer import COMPOUND_TOKEN
         mock = MockMultiTokenTokenizer({"Mary": [10, 20]})
         enc = TokenEncoder(mock, dev=True)
         entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTES")
         results = enc.encode_entries([entry])
 
-        # Should have: IDENTITY(10), IDENTITY(20), CANONIZES(30, [10,20]), CONNOTES(A, [30])
+        # Should have: IDENTITY(10), IDENTITY(20), CANONIZES(packed,[10,20,CT]), CONNOTES(A, [packed])
         unsigned_entries = [
             r for r in results if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and not r.kline.nodes
         ]
@@ -270,17 +273,16 @@ class TestMultiTokenMTS:
         assert unsigned_entries[1].kline.nodes == []
 
         assert len(canonize_entries) == 1
-        packed = signifier.make_signature([10, 20])
-        # The §11.3 compound-word CANONIZES kline's signature carries
-        # COMPOUND_BIT (it is an identity, not a canon); the bit is on the
-        # kline signature only, never on the constituent nodes.
-        from kalvin.kline import COMPOUND_BIT
-        assert canonize_entries[0].kline.signature == packed | COMPOUND_BIT
-        assert canonize_entries[0].kline.nodes == [10, 20]
+        packed = signifier.make_signature([10, 20, COMPOUND_TOKEN])
+        # The §11.3 compound-word CANONIZES kline's nodes are the subword
+        # tokens plus COMPOUND_TOKEN; its signature encodes the marker
+        # (make_signature includes the token) — no bit masking.
+        assert canonize_entries[0].kline.signature == packed
+        assert canonize_entries[0].kline.nodes == [10, 20, COMPOUND_TOKEN]
 
         assert len(connote_entries) == 1
-        # The packed value reused as a node is clean (no COMPOUND_BIT) — the
-        # bit marks the owning kline's signature, not the value in use.
+        # The compound's signature (with the marker encoded) is reused as a
+        # node value — references share the same value as the definition.
         assert connote_entries[0].kline.nodes == [packed]
 
     def test_multi_token_sig_emits_mts(self) -> None:
@@ -288,14 +290,15 @@ class TestMultiTokenMTS:
         solely by its §11.4 decomposition — no standalone packed-sig
         IDENTITY (CONTEXT.md "Identity").
         """
+        from kalvin.nlp_tokenizer import COMPOUND_TOKEN
         mock = MockMultiTokenTokenizer({"WORD": [50, 60]})
         enc = TokenEncoder(mock, dev=True)
         entry = SymbolicEntry(sig="WORD", nodes=[], op="IDENTITY")
         results = enc.encode_entries([entry])
 
-        packed = signifier.make_signature([50, 60])
+        packed = signifier.make_signature([50, 60, COMPOUND_TOKEN])
 
-        # §11.4 MTS: IDENTITY(50), IDENTITY(60), CANONIZES(packed, [50,60])
+        # §11.4 MTS: IDENTITY(50), IDENTITY(60), CANONIZES(packed, [50,60,CT])
         mts_unsigned = [
             r for r in results
             if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and r.kline.signature in (50, 60)
@@ -303,10 +306,9 @@ class TestMultiTokenMTS:
         canonize_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CANONIZES"]
         assert len(mts_unsigned) == 2
         assert len(canonize_entries) == 1
-        # The compound-word CANONIZES signature carries COMPOUND_BIT.
-        from kalvin.kline import COMPOUND_BIT
-        assert canonize_entries[0].kline.signature == packed | COMPOUND_BIT
-        assert canonize_entries[0].kline.nodes == [50, 60]
+        # The compound CANONIZES signature encodes COMPOUND_TOKEN (a node).
+        assert canonize_entries[0].kline.signature == packed
+        assert canonize_entries[0].kline.nodes == [50, 60, COMPOUND_TOKEN]
 
         # No standalone IDENTITY at the packed signature.
         assert not [
@@ -341,6 +343,7 @@ class TestDedupMTS:
     """Same multi-token word encoded twice should not duplicate MTS entries."""
 
     def test_dedup_same_word_twice(self) -> None:
+        from kalvin.nlp_tokenizer import COMPOUND_TOKEN
         mock = MockMultiTokenTokenizer({"Mary": [10, 20]})
         enc = TokenEncoder(mock, dev=True)
         entries = [
@@ -360,8 +363,8 @@ class TestDedupMTS:
         assert len(canonize_entries) == 1  # deduped from potential 2
         assert len(connote_entries) == 2  # both main entries
 
-        # Both main entries use the same packed node value
-        packed = signifier.make_signature([10, 20])
+        # Both main entries use the same compound signature as the node value
+        packed = signifier.make_signature([10, 20, COMPOUND_TOKEN])
         assert connote_entries[0].kline.nodes == [packed]
         assert connote_entries[1].kline.nodes == [packed]
 

@@ -322,30 +322,24 @@ class TestKS36WordBound:
         """Inline annotation S(ubject) → 'Subject'.
 
         The SVO canonize entry should have S patched to 'Subject'
-        via Rule B4 override.  Under BPE, 'Subject' splits across
-        subwords, so the resolved word appears in an entry's node-list
-        rather than a single-node signature.
+        via Rule B4 override.  Under BPE, 'Subject' is a compound whose
+        signature encodes COMPOUND_TOKEN, so it is opaque under BPE decode
+        (§11.5/§11.6). The resolved word is verified via the dbg label of
+        the Subject compound identity the binding produces, not by decoding
+        the opaque compound node.
         """
         tok = self._get_tokenizer()
-        entries = compile_source(SOURCE_14_12, tokenizer=tok)
+        entries = compile_source(SOURCE_14_12, tokenizer=tok, dev=True)
 
-        # S(ubject) → 'Subject' resolves into a node-list under BPE.
-        # The output is source-first: a source entry may carry a packed
-        # (compound) node that is opaque under BPE decode (§11.6), so
-        # decode is defensive — only single-word node lists decode.
-        found = False
-        for e in entries:
-            nodes = e.kline.nodes
-            if not nodes:
-                continue
-            try:
-                decoded = tok.decode(nodes)
-            except Exception:
-                continue  # packed/compound node — opaque, skip
-            if decoded == "Subject":
-                found = True
-                break
-        assert found, "Expected 'Subject' from inline binding"
+        # The inline binding resolves S → 'Subject', producing a compound
+        # identity whose dbg label is 'Subject'. Its signature is opaque
+        # (encodes COMPOUND_TOKEN), so decode cannot recover the text; the
+        # dbg label is the reliable provenance.
+        labels = {e.kline.dbg.label for e in entries if e.kline.dbg.label}
+        assert "Subject" in labels, (
+            f"Expected 'Subject' compound identity from inline binding; "
+            f"labels present: {sorted(labels)}"
+        )
 
     def test_compiled_entries_valid(self) -> None:
         """All entries are KValue instances with valid structure."""
@@ -546,36 +540,40 @@ class TestBlockCanonReusesPriorMtsSignature:
         """The WDMH `had` block canon shares MHALL's MTS `had` signature value.
 
         Two `had` CANONIZES klines result:
-        - the §11.3 MTS compound-word identity (``had`` → its BPE subwords),
-          whose signature carries COMPOUND_BIT (it is an identity, not a canon);
+        - the §11.3 compound-word identity (``had`` → its BPE subwords +
+          COMPOUND_TOKEN), whose nodes include the marker token (it is an
+          identity, not a canon);
         - the block-canon reference (``had => did have``), a deliberate misfit
-          that reuses the compound's *clean* signature value (the bit marks
-          the owning identity kline only, never the value in use).
+          that reuses the compound's signature value (the marker is encoded
+          in the shared signature, but the reference's own nodes omit it).
         """
-        from kalvin.kline import COMPOUND_BIT, is_identity
+        from kalvin.kline import is_identity
+        from kalvin.nlp_tokenizer import COMPOUND_TOKEN
         from kalvin.signifier import NLPSignifier
 
         entries = self._entries(tokenizer)
         sig = NLPSignifier()
         h, ad = (tokenizer.encode(c)[0] for c in ("h", "ad"))
-        clean_had_sig = sig.make_signature([h, ad])
+        had_sig = sig.make_signature([h, ad, COMPOUND_TOKEN])
 
         had_canon = [
             e for e in entries
             if e.kline.dbg.label == "had" and e.kline.dbg.op == "CANONIZES"
         ]
         assert had_canon, "expected at least one had CANONIZES kline"
-        # The MTS compound-word identity kline carries the marker bit.
+        # The MTS compound-word identity kline carries the marker token in
+        # its nodes.
         mts_identity = [e for e in had_canon if is_identity(e.kline)]
         assert mts_identity, "expected the had MTS compound-word identity"
         for e in mts_identity:
-            assert e.kline.signature == clean_had_sig | COMPOUND_BIT
-        # The block-canon reference reuses the clean signature value (no bit).
+            assert e.kline.signature == had_sig
+            assert COMPOUND_TOKEN in e.kline.nodes
+        # The block-canon reference reuses the same signature value.
         block_refs = [e for e in had_canon if not is_identity(e.kline)]
         assert block_refs, "expected the had block-canon reference"
         for e in block_refs:
-            assert e.kline.signature == clean_had_sig, (
-                f"had block canon sig must be the clean MTS value 0x{clean_had_sig:x}; "
+            assert e.kline.signature == had_sig, (
+                f"had block canon sig must be the MTS value 0x{had_sig:x}; "
                 f"got 0x{e.kline.signature:x} (clobbered by block nodes?)"
             )
 
