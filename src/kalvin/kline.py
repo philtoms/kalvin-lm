@@ -149,7 +149,7 @@ def is_identity(kline: KLine) -> bool:
     A kline is identity when it carries no decomposition — either form:
       - empty nodes: ``{S: []}``, or
       - self-referential: ``{S: [S]}`` — its own signature is its sole node, or
-      - compound-word: ``{S: [M, ary, COMPOUND_TOKEN]}`` — a single word
+      - compound-word: ``{S: [COMPOUND_TOKEN, M, ary]}`` — a single word
         whose nodes include :data:`COMPOUND_TOKEN` because the external
         tokenizer split it into multiple BPE subwords. The word is one
         lexical item; the decomposition is an encoding artefact, not a

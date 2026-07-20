@@ -51,7 +51,7 @@ class RationaliserState:
 
     work_list: list[KLine] = field(default_factory=list)
     grounded: dict[int, list[KLine]] = field(default_factory=dict)
-
+    _dbg_step: int = 0
 
 class Rationaliser:
     r"""The rationalising engine — derives each turn from ``(state, incoming)``.
@@ -79,6 +79,7 @@ class Rationaliser:
         hold the S1 grounding events K performed this turn (for white-box
         verification).
         """
+        state._dbg_step += 1
         turn = _Turn(state, self._signifier, self._s12, self._s23, self._s34)
         for query in incoming:
             turn.route(query)

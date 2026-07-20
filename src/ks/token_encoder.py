@@ -8,14 +8,18 @@ significance is derived from the production op (KP-1, D3).
 Encoding rules (spec §11):
   - Signature → tokenizer.encode(sig) → uint64 (multi-token results are
     OR-reduced via make_signature()).
-  - Nodes → each encoded individually via _encode_node(); multi-token
-    words trigger §11.3 BPE-level MTS.
-  - Canonical encoding (§11.4/§11.5): a compound identifier's signature
-    is computed once at its CANONIZES definition (OR of its resolved
-    component node values) and reused by every reference via the
-    ``_compound_sigs`` registry; compounds are exempt from §11.3; a
-    packed signature never heads an IDENTITY kline (CONTEXT.md
-    "Identity"). Packed signatures are opaque per §11.5.
+  - Nodes → each encoded individually via _encode_node(); a multi-token
+    word (a resolved word the tokenizer splits into ≥2 subwords) triggers
+    §11.3 compound-word decomposition, which emits a CANONIZES-shaped
+    identity carrying the COMPOUND_TOKEN boundary marker.
+  - Canonical encoding (§11.4/§11.5): a declared compound identifier's
+    signature is computed once at its MTS CANONIZES definition (OR of its
+    resolved component node values) and reused by every reference via the
+    ``_compound_sigs`` registry; declared compounds are exempt from §11.3
+    (their decomposition is their §8 MTS entry, not a re-encoding of the
+    literal string); a packed signature never heads an empty-form
+    `{S: []}` IDENTITY kline (CONTEXT.md "Identity"). Packed signatures
+    are opaque per §11.5.
 
 Significance levels (compile-time intent) — each emitted KValue carries
 kalvin.expand.band_significance(op), computed from the production op at
@@ -28,8 +32,9 @@ Dependencies: kalvin.kline.KLine, kalvin.kvalue.KValue,
               kalvin.signifier.NLPSignifier, ks.ast_emitter.SymbolicEntry.
 
 Output ordering: compiled source (operator + identity klines from the
-script) precedes every MTS kline (§8 character-level components/canoniza-
-tions and §11.3 BPE-subword decompositions). See ``encode_entries``.
+script) precedes every decomposition kline — §8 MTS expansions (declared
+compounds) and §11.3 compound-word decompositions (BPE-split words).
+See ``encode_entries``.
 """
 
 from __future__ import annotations
@@ -66,13 +71,13 @@ class TokenEncoder:
         self._signifier = signifier or NLPSignifier()
         self._dev = dev
         # Track already-decomposed multi-token words to avoid duplicate
-        # MTS emissions.  Key is tuple of BPE tokens (same word always
-        # produces the same BPE tokens).
+        # §11.3 compound-word emissions.  Key is tuple of BPE tokens (same
+        # word always produces the same BPE tokens).
         self._decomposed: set[tuple[int, ...]] = set()
-        # Canonical encoding registry (§11.4): a compound identifier's
-        # signature uint64, computed once at its CANONIZES definition as
-        # OR of its resolved component node values, then reused by every
-        # referencing entry. The ASTEmitter emits definitions before
+        # Canonical encoding registry (§11.4): a declared compound
+        # identifier's signature uint64, computed once at its MTS CANONIZES
+        # definition as OR of its resolved component node values, then reused
+        # by every referencing entry. The ASTEmitter emits definitions before
         # references, so this is populated on demand.
         self._compound_sigs: dict[str, int] = {}
 
@@ -86,30 +91,33 @@ class TokenEncoder:
 
         Returns:
             Ordered list of KValue objects (each wrapping a KLine).
-            **Compiled source precedes any MTS entries:** operator and
-            identity klines that come from the script appear first, followed
-            by every MTS expansion kline (§8 character-level components and
-            canonizations, plus §11.3 BPE-subword decompositions).
+            **Compiled source precedes any decomposition entries:** operator
+            and identity klines that come from the script appear first,
+            followed by every auxiliary decomposition kline — §8 MTS
+            expansions (declared compounds) and §11.3 compound-word
+            decompositions (BPE-split words).
 
             Encoding still runs in def-before-ref order internally (so a
-            compound's canonical signature is registered before any
-            reference is encoded); the source-before-MTS ordering is a
-            stable partition applied to the finished output, preserving
-            relative order within each group.  Every KValue carries a
-            band-representative significance derived from the production
-            ``op`` (KP-1).
+            declared compound's canonical signature is registered before
+            any reference is encoded); the source-before-decomposition
+            ordering is a stable partition applied to the finished output,
+            preserving relative order within each group.  Every KValue
+            carries a band-representative significance derived from the
+            production ``op`` (KP-1).
         """
         if not symbolic:
             return []
 
         # Encode in emission order (def-before-ref), tagging each output
-        # KValue as MTS (auxiliary decomposition) or source.
+        # KValue as a decomposition entry (§8 MTS or §11.3 compound-word)
+        # or source.
         tagged: list[tuple[KValue, bool]] = []
         for entry in symbolic:
             for kv, bpe_mts in self._encode_entries_for_entry(entry):
                 tagged.append((kv, entry.is_mts or bpe_mts))
 
-        # Output ordering: compiled source precedes any MTS entries.
+        # Output ordering: compiled source precedes any decomposition
+        # entries (§8 MTS or §11.3 compound-word).
         # Stable partition preserves relative order within each group.
         source = [kv for kv, is_mts in tagged if not is_mts]
         mts = [kv for kv, is_mts in tagged if is_mts]
@@ -121,16 +129,20 @@ class TokenEncoder:
         """Process one SymbolicEntry into one or more (KValue, is_bpe_mts) pairs.
 
         Steps:
-          1. Encode signature → uint64 (with multi-token MTS if needed).
-          2. Encode each node → uint64 (with multi-token MTS if needed).
+          1. Encode signature → uint64 (with §11.3 compound-word
+             decomposition if the sig is a multi-token word).
+          2. Encode each node → uint64 (with §11.3 compound-word
+             decomposition if the node is a multi-token word).
           3. Emit the main entry wrapped as a KValue.
 
         Returns:
-            List of (KValue, is_bpe_mts).  ``is_bpe_mts`` marks KValues that
-            are §11.3 BPE-subword MTS extras; the main entry is tagged
-            ``False``.  The entry-level §8 MTS flag (``entry.is_mts``) is
-            combined with this in :meth:`encode_entries` so the final output
-            can push every MTS kline after compiled source.
+            List of (KValue, is_bpe_mts).  ``is_bpe_mts`` marks KValues
+            that are §11.3 compound-word decomposition extras; the main
+            entry is tagged ``False``.  The entry-level §8 MTS flag
+            (``entry.is_mts``) is combined with this in
+            :meth:`encode_entries` so the final output can push every
+            decomposition kline (§8 MTS or §11.3 compound-word) after
+            compiled source.
         """
         extras: list[tuple[KValue, bool]] = []
 
@@ -139,7 +151,8 @@ class TokenEncoder:
         sig_is_packed = False
 
         # Compound refs reuse the registry; compound defs defer
-        # to step 3 below; others use §11.3 MTS for multi-token sigs.
+        # to step 3 below; others use §11.3 compound-word decomposition
+        # for multi-token sigs.
         if is_compound_ref:
             sig_uint64 = self._compound_sigs[entry.sig]
             sig_is_packed = True
@@ -168,17 +181,17 @@ class TokenEncoder:
                 extras.extend((kv, True) for kv in node_extras)
                 node_values.append(node_val)
 
-        # 3. Compound definition: sig = OR of resolved component node
-        #    values (§11.4); register for reuse by references.
+        # 3. Declared-compound definition: sig = OR of resolved component
+        #    node values (§11.4); register for reuse by references.
         #    Only the DEFINING entry registers — the MTS CANONIZES entry
-        #    (compound → its declared characters), which is emitted before
-        #    any block canon. A block-canon entry (compound → block
-        #    operands, e.g. `WDMH => M H W`) is a REFERENCE: it reuses the
-        #    registered signature and must NOT recompute it from its own
-        #    (possibly partial/misfit) operands, or it would clobber the
-        #    compound's true signature with make_signature(block_nodes)
-        #    (§11.4: signature is a registry lookup, not a per-entry
-        #    reduction of nodes).
+        #    (declared compound → its declared characters), which is
+        #    emitted before any block canon. A block-canon entry
+        #    (compound → block operands, e.g. `WDMH => M H W`) is a
+        #    REFERENCE: it reuses the registered signature and must NOT
+        #    recompute it from its own (possibly partial/misfit) operands,
+        #    or it would clobber the compound's true signature with
+        #    make_signature(block_nodes) (§11.4: signature is a registry
+        #    lookup, not a per-entry reduction of nodes).
         if is_compound_def and not is_compound_ref:
             sig_uint64 = self._signifier.make_signature(node_values)
             self._compound_sigs[entry.sig] = sig_uint64
@@ -189,10 +202,11 @@ class TokenEncoder:
         if self._dev:
             dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op, packed=sig_is_packed)
 
-        # 5. A packed signature cannot head an IDENTITY kline (CONTEXT.md
-        #    "Identity"); the §11.3/§8 decomposition above is the sole
-        #    representation. Operator entries with a packed sig are
-        #    legitimate references and are emitted normally.
+        # 5. A packed signature cannot head an empty-form `{S: []}`
+        #    IDENTITY kline (CONTEXT.md "Identity"); the §11.3 compound-word
+        #    decomposition (CANONIZES-shaped, carrying COMPOUND_TOKEN) or the
+        #    §8 MTS entry is the sole representation. Operator entries with a
+        #    packed sig are legitimate references and are emitted normally.
         if entry.op == "IDENTITY" and sig_is_packed:
             return extras
 
@@ -226,10 +240,10 @@ class TokenEncoder:
         if len(tokens) == 1:
             return (tokens[0], [])
 
-        # Multi-token word → MTS at BPE-token level (§11.3)
+        # Multi-token word → §11.3 compound-word decomposition.
         return self._emit_mts_for_tokens(tokens, dbg_label=word, op="IDENTITY")
 
-    # MTS emission for multi-token results
+    # §11.3 compound-word decomposition for multi-token results
 
     def _emit_mts_for_tokens(
         self,
@@ -237,11 +251,21 @@ class TokenEncoder:
         dbg_label: str = "",
         op: str = "IDENTITY",
     ) -> tuple[int, list[KValue]]:
-        """Emit MTS entries for a multi-token encoding result.
+        """Emit §11.3 compound-word decomposition entries for a multi-token word.
+
+        A resolved word the external tokenizer splits into ≥2 subwords
+        (e.g. ``Mary`` → ``[mar, y]``) is a *compound-word*: one lexical
+        item whose decomposition is an encoding artefact, not a declared
+        aggregation. This is orthogonal to §8 MTS (declared compounds),
+        which shares the emit shape but produces a canon rather than an
+        identity. The two are distinguished structurally by COMPOUND_TOKEN:
+        only a compound-word's kline carries it.
 
         Emits:
           1. One IDENTITY KValue per BPE subword token.
-          2. One CANONIZES KValue with packed signature → subword tokens.
+          2. One CANONIZES-shaped KValue whose nodes are the subword tokens
+             plus COMPOUND_TOKEN — canon-shaped but an identity (S1)
+             because of the marker.
 
         Deduplicates: if this exact token tuple has been seen before,
         no entries are emitted (but the packed signature is still returned).
@@ -270,15 +294,16 @@ class TokenEncoder:
         compound_nodes = [COMPOUND_TOKEN] + list(tokens)
         packed = self._signifier.make_signature(compound_nodes)
 
-        # Register the compound's signature (§11.4: the MTS CANONIZES
-        # — compound → its subword tokens + marker — DEFINES the signature;
-        # a later block-canon entry with the same compound id is a REFERENCE
-        # that must reuse this value, not recompute it from its own operands).
-        # Without this registration, a block canon (e.g. `had => did have`)
-        # falls into the defining branch and clobbers the compound's true
-        # signature with make_signature(block_nodes). Only register when
-        # ``dbg_label`` names the compound (it is empty at internal call
-        # sites that have no id).
+        # Register the compound-word's signature (§11.4: the compound-word
+        # CANONIZES — word → its subword tokens + marker — DEFINES the
+        # signature; a later block-canon entry with the same word id is a
+        # REFERENCE that must reuse this value, not recompute it from its
+        # own operands). Without this registration, a block canon
+        # (e.g. `had => did have`) falls into the defining branch and
+        # clobbers the compound-word's true signature with
+        # make_signature(block_nodes). Only register when ``dbg_label``
+        # names the compound-word (it is empty at internal call sites that
+        # have no id).
         if dbg_label:
             self._compound_sigs.setdefault(dbg_label, packed)
 
