@@ -26,7 +26,6 @@ from kalvin.expand import (
     SIG_S3,
     SIG_S4,
     boundaries,
-    classify,
     structural_significance,
 )
 from kalvin.kline import KLine, is_canon, is_identity, is_misfit
@@ -113,12 +112,10 @@ class _Turn:
     def route(self, query: KValue) -> None:
         """Route an incoming query on its calculated structural significance.
 
-        Routing uses structural (objective) rather than subjective significance.
-        S1 grounds (plain promote); S4 pops the identity ask; S2 and S3 are
-        unpacked for cogitation. Promotion is a cognitive act, not a routing
-        one: an S3 connotation whose reciprocal denotation is already grounded
-        is promoted during cogitation (see :meth:`cogitate`), never on receipt.
-        Grounding appends to ``observations``; routing emits no dialogue batch.
+        S4 pops the identity ask; every other query (S1, S2, S3) is appended
+        to the work-list for :meth:`cogitate`. An S2 misfit additionally
+        unpacks its unrecognised nodes and signature onto the work-list as
+        identity placeholders.
         """
         kline = query.kline
         sig = structural_significance(kline, self._signifier)
@@ -127,33 +124,27 @@ class _Turn:
             self._pop_identity(kline.signature)
             return
 
-        if classify(sig, self._s12, self._s23, self._s34) == "S1":
-            self._promote(kline)
-            return
+        self._state.work_list.append(kline)
 
-        # S2 or S3: unpack for cogitation. S3 reciprocals are promoted in
-        # cogitate, not here.
-        self._unpack(kline)
+        # S2: unpack unrecognised nodes and signature as identity placeholders.
+        if sig == SIG_S2:
+            for node in kline.nodes:
+                if not self._is_recognised(node):
+                    self._state.work_list.append(KLine(node, [], kline.dbg))
+            if not self._is_recognised(kline.signature):
+                self._state.work_list.append(KLine(kline.signature, [], kline.dbg))
 
     def cogitate(self) -> list[KValue]:
-        """Silently drain every promotable reciprocal, then emit one batch.
-
-        Two phases:
-
-        1. **Promote** — scan the work-list and silently ground every S3
-           connotation whose reciprocal denotation is already grounded (and
-           vice-versa), cascading until no more reciprocals are unblocked. This
-           is the cognitive home of promotion: K ratifies a connotation the
-           moment its denotation is already in memory, without a dialogue act.
-        2. **Dispatch** — LIFO over the remaining work-list. Identities emit
-           S4 asks; the first workable non-identity dispatches on structure:
-           S3 (canon-countersign) or S2 (similar-fit proposal).
+        """Promote, countersign, or propose: amongst all entries in the work-list
+        are those ready to be promoted, countersigned, or expanded into new proposals.
         """
-        self._drain_promotions()
-
         batch: list[KValue] = []
         for idx in range(len(self._state.work_list) - 1, -1, -1):
             entry = self._state.work_list[idx]
+            if self._is_promotable(entry) or self._is_groundable(entry):
+                del self._state.work_list[idx]
+                self._ground(entry)
+                continue
             if is_identity(entry):
                 batch.append(self._emit_identity(idx, entry.signature))
                 continue
@@ -220,42 +211,6 @@ class _Turn:
         reciprocal = KLine(kline.nodes[0], [kline.signature])
         return self._is_grounded(reciprocal)
 
-    def _drain_promotions(self) -> None:
-        """Silently ground every promotable S3 reciprocal, cascading to fixed point.
-
-        Grounding one connotation can unblock the reciprocal of another
-        work-list entry, so this repeats until a full pass promotes nothing.
-        Promoted entries are removed from the work-list; each ground is
-        observed at S1 (white-box) and emits nothing into the dialogue batch.
-        """
-        changed = True
-        while changed:
-            changed = False
-            for i, entry in enumerate(self._state.work_list):
-                if self._is_promotable(entry):
-                    del self._state.work_list[i]
-                    self._promote(entry)
-                    changed = True
-                    break
-
-    def _promote(self, kline: KLine) -> None:
-        """Ground ``kline`` at S1, then drain any node-resolution it unblocks.
-
-        For an S3 connotation ``{L:[R]}`` the reciprocal ``{R:[L]}`` is already
-        grounded (that is the promotion condition); both directions are now in
-        memory. Then cascades any identities/canons whose nodes newly resolve.
-        """
-        self._ground(kline)
-        changed = True
-        while changed:
-            changed = False
-            for i, entry in enumerate(self._state.work_list):
-                if self._is_groundable(entry):
-                    del self._state.work_list[i]
-                    self._ground(entry)
-                    changed = True
-                    break
-
     def _is_recognised(self, signature: int) -> bool:
         """Has K seen ``signature`` — grounded or pending as an identity?"""
         if signature in self._state.grounded:
@@ -283,16 +238,6 @@ class _Turn:
                 return
 
     # ── Cogitation ────────────────────────────────────────────────────────
-
-
-    def _unpack(self, kline: KLine) -> None:
-        """Push an S2/S3 kline, its unrecognised nodes, and (if new) its signature."""
-        self._state.work_list.append(kline)
-        for node in kline.nodes:
-            if not self._is_recognised(node):
-                self._state.work_list.append(KLine(node, [], kline.dbg))
-        if not self._is_recognised(kline.signature):
-            self._state.work_list.append(KLine(kline.signature, [], kline.dbg))
 
     def _emit_identity(self, idx: int, signature: int) -> KValue:
         """S4 — emit IDENTITY ``{signature: []}`` at S4 and pop the entry."""

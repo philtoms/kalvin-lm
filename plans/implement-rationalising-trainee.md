@@ -25,7 +25,7 @@ The turn produces two channels: the **batch** (dialogue emissions — speech
 acts for T) and the **observations** (every S1 grounding K performs, for
 white-box verification). Grounding does not emit into the dialogue.
 
-The mechanism has two cogitation paths (so far, there will be more):
+The mechanism has two cogitation dispatch paths:
 
 - **S3 countersignature** — a single-node relationship whose operands both
   have seen canons: pair the operands left-to-right at group size 1, emit every
@@ -35,20 +35,22 @@ The mechanism has two cogitation paths (so far, there will be more):
   grounded klines (node-expansion + node-graft), sourcing every substituted
   node from grounded klines (no invention), and emit it at S2.
 
-Entry rule: S1 grounds/cleans, S4 pops the identity ask; only S2/S3 reach
-cogitation. Cogitation is LIFO; a misfit entry persists, and any entry that
-matches neither dispatch predicate is skipped and re-scanned on every
-subsequent turn (no bound) until `_promote`'s cascade grounds it or an
-operand canon arrives and flips it countersignable.
+The turn is two stages inside `_Turn`: `route` then `cogitate`.
 
-- **S1 canon-countersignature** — a new routing branch, ahead of `_promote`:
-  an S1 relationship `{S: nodes}` with more than one node, all grounded. K
-  does not ground the misfit; it computes `C = make_signature(nodes)`,
-  grounds `{C: nodes}` (promoting C), grounds `{S:[C]}` and `{C:[S]}`, and
-  drops the work-list entries under S. Each ground is observed; nothing is
-  emitted into the dialogue. 1:1 shapes (connotations, denotations),
-  identities, and self-canons fall through to `_promote`. K does not look up
-  C; `make_signature` computes it and it is admitted whether seen or not.
+- **Routing** (`_Turn.route`) only pops an **S4** query's pending identity
+  ask; **every other query (S1, S2, S3)** is appended to the work-list. An
+  **S2** misfit additionally appends its unrecognised nodes and signature as
+  identity placeholders. Routing does no grounding and emits nothing.
+- **Cogitation** (`_Turn.cogitate`) is a single LIFO pass over the
+  work-list. Each entry is resolved in priority order: a **promotable**
+  entry (a single-node relationship whose reciprocal is grounded) or a
+  **groundable** entry (an identity whose signature is grounded, or a canon
+  whose nodes are all grounded) is grounded at S1 (observed, not emitted)
+  and dropped; a countersignable entry takes the S3 path; a multi-node
+  misfit takes the S2 path; an identity that remains ungroundable is
+  emitted as an S4 ask. A misfit entry persists, and any entry that matches
+  neither dispatch predicate is skipped and re-scanned on every subsequent
+  turn until grounding flips it promotable/countersignable.
 
 The runner verifies K's observations **white-box** (model B subset check)
 against the script's `events` section (decoded via `decode_events`): every
