@@ -194,7 +194,9 @@ class _Turn:
         countersigned a kline K previously cogitated; K now grounds it. The
         new grounding may unblock identities or canons whose nodes newly
         resolve, so this cascades: any work-list entry that becomes groundable
-        is grounded in turn, until no further grounding is possible.
+        is grounded in turn, until no further grounding is possible. Each
+        grounding flows through :meth:`_ground`, which grounds the reciprocal
+        of a relationship kline as part of its own bookkeeping.
         """
         self._ground(kline)
         changed = True
@@ -263,8 +265,6 @@ class _Turn:
                     pairings = self._expand_connotation(kline)
                     if pairings:
                         return pairings
-                    del self._state.work_list[idx]
-                    self._countersign(kline)
                     continue
                 if is_misfit(kline, self._signifier):
                     batch = self._propose_similar_fit(kline)
@@ -295,7 +295,7 @@ class _Turn:
             for existing in self._state.grounded.get(kline.signature, [])
         )
 
-    def _ground(self, kline: KLine) -> None:
+    def _ground(self, kline: KLine, countersigning = False) -> None:
         """Record that K has grounded ``kline`` and observe it at S1.
 
         Idempotent on nodes — an already-grounded kline is not re-observed.
@@ -305,6 +305,10 @@ class _Turn:
             return
         bucket.append(kline)
         self.observations.append(KValue(kline, SIG_S1))
+        if not countersigning and self._is_countersignable(kline):
+            reciprocal_sig = self._signifier.make_signature(kline.nodes)
+            reciprocal = KLine(reciprocal_sig, [kline.signature])
+            self._ground(reciprocal, True)
 
     def _is_recognised(self, signature: int) -> bool:
         """Has K seen ``signature`` — grounded or pending as an identity?"""
@@ -362,19 +366,6 @@ class _Turn:
         """S4 — emit IDENTITY ``{signature: []}`` at S4 and pop the entry."""
         del self._state.work_list[idx]
         return KValue(KLine(signature, []), SIG_S4)
-
-    def _countersign(self, entry: KLine) -> None:
-        """Establish the S1 countersignature for ``entry``.
-
-        ``entry`` is ``{L:[R]}`` whose operands L and R are signatures with
-        seen canons. Grounds both directions; each ground is observed. Emits
-        nothing into the dialogue batch. The work-list entry is removed by the
-        caller before this runs.
-        """
-        self._ground(entry)
-        reciprocal_sig = self._signifier.make_signature(entry.nodes)
-        reciprocal = KLine(reciprocal_sig, [entry.signature])
-        self._ground(reciprocal)
 
     def _expand_connotation(self, entry: KLine) -> list[KValue]:
         """Emit every unresolved S3 pairing for ``entry`` in one batch, or ``[]``
