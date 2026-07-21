@@ -33,6 +33,16 @@ The mechanism has two cogitation dispatch paths:
   grounds through the normal groundable path; grounding a countersignable
   kline grounds its reciprocal too (both directions of the reciprocal pair
   end up grounded at S1, observed not emitted).
+
+  **Canonical-level reciprocal** — the S3 path's natural completion: when
+  cogitation finds every operand pairing of the relationship entry resolved,
+  it grounds the **entry itself** at S1 (e.g. `MHALL:[SVO]`); the existing
+  `_is_countersignable` reciprocal in `_ground` then mirrors `SVO:[MHALL]`.
+  Fired from `cogitate` (not `_promote`'s cascade): the entry drives its own
+  completion, so it fires on any cogitation pass after the last pairing
+  resolves — independent of which T query triggered the turn. Reuses
+  `_expand_connotation` (the empty-pairings result is the completion signal)
+  and `_ground`'s reciprocal mirroring; no new pairing logic.
 - **S2 misfit canonisation** — shape one multi-node proposal by recombining
   grounded klines (node-expansion + node-graft), sourcing every substituted
   node from grounded klines (no invention), and emit it at S2.

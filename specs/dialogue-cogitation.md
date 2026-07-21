@@ -70,9 +70,16 @@ this spec owns only the two paths and their boundaries.
   — whether a 1:1 pair or a grouped residual — is a CONNOTES proposal at S3:
   when one side reaches a single node, the other side's residual is synthesised
   into a signature (substituted for that pair's left operand) so the grouped
-  pair takes the same S3 connotation path as a 1:1 pair. When every pairing is
-  resolved, K grounds **both directions of the reciprocal pair** at S1
-  (observed, not emitted into the dialogue).
+  pair takes the same S3 connotation path as a 1:1 pair. Each pairing K grounds
+  yields its **operand-level reciprocal** at S1 (e.g. `Mary:[Subject]` grounds
+  `Subject:[Mary]`). The relationship entry itself persists on the work-list
+  across turns; when cogitation finds **every** pairing resolved, it grounds
+  the **entry itself** at S1 — the **canonical-level reciprocal** (e.g.
+  `MHALL:[SVO]`), whose own reciprocal (`SVO:[MHALL]`) is mirrored by the same
+  operand-level-reciprocal rule. Both reciprocals are observed, not emitted
+  into the dialogue. Because the entry drives its own completion, no T query
+  is required to trigger it — any cogitation pass after the last pairing
+  resolves completes the countersignature.
 - **S2 similar fit proposal.** Only a misfit entry proposes a similar fit.
   Every substituted node must be a node of a grounded kline (no invention).
   A grounded kline is a candidate iff it shares a **node value** with the
@@ -92,6 +99,13 @@ Cogitation is exercised end-to-end by the canonical MHALL run
 (`tests/test_dialogue_smoke.py`). Isolated mechanism tests were removed to keep
 the sub-project exploratory; add them as fresh behaviours are discovered, not
 to defend the current mechanism.
+
+- **DDT-3** — canonical MHALL run with table actors covers the whole exchange
+  (zero displacement): the core loop is wired correctly.
+- **DDT-4** — when two canons' operands are reciprocally paired (every CONNOTES
+  pairing resolved), K grounds both directions of the canonical reciprocal
+  pair (`{A:[B]}` and `{B:[A]}`) at S1. Pinned by
+  `test_canon_reciprocal_grounded_when_all_operand_pairings_resolve`.
 
 ## Out of Scope
 

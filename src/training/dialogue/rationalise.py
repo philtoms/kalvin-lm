@@ -187,7 +187,7 @@ class _Turn:
 
         self._promote(kline)
 
-    def _promote(self, kline: KLine) -> None:
+    def _promote(self, kline: KLine, idx = None) -> None:
         """Ground ``kline`` at S1, then drain any node-resolution it unblocks.
 
         A subjective-S1 match in the frame means another participant has
@@ -199,13 +199,15 @@ class _Turn:
         of a relationship kline as part of its own bookkeeping.
         """
         self._ground(kline)
+        if idx != None:
+            del self._state.work_list[idx]
+
         changed = True
         while changed:
             changed = False
             for i, entry in enumerate(self._state.work_list):
                 if self._is_groundable(entry):
-                    del self._state.work_list[i]
-                    self._ground(entry)
+                    self._promote(entry, i)
                     changed = True
                     break
 
@@ -256,12 +258,11 @@ class _Turn:
             if is_identity(kline):
                 batch.append(self._emit_identity(idx, kline.signature))
                 continue
-
-            if structural_significance(kline, self._signifier) == SIG_S1:
-                self._promote(kline)
-                continue
             
             if not batch:
+                if structural_significance(kline, self._signifier) == SIG_S1:
+                    self._promote(kline, idx)
+                    continue
                 # First workable non-identity dispatches on structure:
                 #   S3 connoted (single node) → canon-countersign
                 #   S2 misfit (multi-node) → similar-fit proposal
@@ -269,6 +270,12 @@ class _Turn:
                     pairings = self._expand_connotation(kline)
                     if pairings:
                         return pairings
+                    # Every operand pairing is resolved: the countersignature
+                    # is complete. Ground the entry at S1 (the canonical-level
+                    # reciprocal) and drop it. _ground mirrors its reciprocal
+                    # (e.g. MHALL:[SVO] → SVO:[MHALL]) via the existing
+                    # countersignable-reciprocal path.
+                    self._promote(kline, idx)
                     continue
                 if is_misfit(kline, self._signifier):
                     batch = self._propose_similar_fit(kline)
@@ -304,6 +311,9 @@ class _Turn:
         """Record that K has grounded ``kline`` and observe it at S1.
 
         Idempotent on nodes — an already-grounded kline is not re-observed.
+        Grounding a single-node relationship whose two operands have seen
+        canons recursively grounds its **operand-level reciprocal** (both
+        directions end up grounded at S1), guarded so it doesn't loop.
         """
         bucket = self._state.grounded.setdefault(kline.signature, [])
         if any(existing.nodes == kline.nodes for existing in bucket):
@@ -312,8 +322,7 @@ class _Turn:
         self.observations.append(KValue(kline, SIG_S1))
         if not countersigning and self._is_countersignable(kline):
             reciprocal_sig = self._signifier.make_signature(kline.nodes)
-            reciprocal = KLine(reciprocal_sig, [kline.signature])
-            self._ground(reciprocal, True)
+            self._ground(KLine(reciprocal_sig, [kline.signature]), True)
 
     def _is_recognised(self, signature: int) -> bool:
         """Has K seen ``signature`` — grounded or pending as an identity?"""
