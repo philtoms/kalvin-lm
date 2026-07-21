@@ -86,10 +86,18 @@ must resolve to a compiled entry (else a decode error).
 
 **Compound catch-up.** A CANONIZES turn whose signature names a compound-word
 (a label with a compiled compound identity) is decoded with `COMPOUND_TOKEN`
-(@nlp_tokenizer spec) prepended to its nodes. The author writes the subwords
+(@nlp_tokenizer spec) prepended to its nodes **only when the declared nodes
+are that compound's subwords**. The author writes the subwords
 (`Mary => M ary`); the decoder adds the system marker so the kline matches
-the compound identity the compiler produces. Without this, the declared
-subwords would form a misfit against the compound's CT-encoded signature.
+the compound identity the compiler produces.
+
+A label may carry several CANONIZES — the §11.3 compound-word identity *plus*
+a §8 block-canon reference (e.g. `had => did have`, a semantic expansion under
+the same compound-word signature). The block-canon is a legitimate S2 misfit,
+not the compound identity: catch-up is gated on the declared nodes matching
+the compound's subwords (the compound's nodes minus the marker), so a
+declared misfit like `had CANONIZES [did, have]` decodes verbatim and is not
+folded into the compound-word identity.
 
 ```
 DecodedTurn:

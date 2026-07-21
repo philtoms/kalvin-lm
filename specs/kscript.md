@@ -441,6 +441,17 @@ The counter is per-scope-per-character, keyed on the lowercase character value. 
 
 **Rule B4 — Inline Override.** An inline annotation `S(ubject)` binds immediately, bypassing the occurrence counter. Additionally, it retroactively patches the matching character in the parent scope's MTS CANONIZES entry. Only the immediate parent scope is patched — no propagation beyond one level. If the character is not found in the parent's MTS entry, the override is a safe no-op.
 
+An inline override binds at **its own scope level**: it is registered in the scope that is current when the annotated item is resolved (the enclosing subscript scope for a node-side annotation, e.g. `H` inside `DH = h(ad)`). It is **never leaked into a parent or the root scope**, so a nested inline cannot steal a first-letter binding that an outer compound's MTS expansion is entitled to. Concretely, in
+
+```
+(what did Mary have)
+WDMH =>
+  M
+  DH = h(ad)
+  W
+```
+the `h(ad)` override binds `h → "had"` only within `DH`'s own subscript (so `DH`'s MTS expansion resolves its `H` char to "had"). It does **not** affect `WDMH`'s MTS expansion, whose `H` char resolves to the header word **"have"** via first-letter matching — giving `have` its own identity kline and `DH` the surface `[did, have]`.
+
 ### 10.2 Binding Scope
 
 Scopes are created by operator boundaries (§3). Each scope holds:

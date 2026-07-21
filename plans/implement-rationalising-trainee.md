@@ -29,8 +29,10 @@ The mechanism has two cogitation dispatch paths:
 
 - **S3 countersignature** — a single-node relationship whose operands both
   have seen canons: pair the operands left-to-right at group size 1, emit every
-  unresolved pairing in one batch, then on resolution ground both directions
-  of the reciprocal pair at S1 (observed, not emitted).
+  unresolved pairing in one batch. Once every pairing is resolved the entry
+  grounds through the normal groundable path; grounding a countersignable
+  kline grounds its reciprocal too (both directions of the reciprocal pair
+  end up grounded at S1, observed not emitted).
 - **S2 misfit canonisation** — shape one multi-node proposal by recombining
   grounded klines (node-expansion + node-graft), sourcing every substituted
   node from grounded klines (no invention), and emit it at S2.
@@ -46,11 +48,15 @@ The turn is two stages inside `_Turn`: `route` then `cogitate`.
   entry (a single-node relationship whose reciprocal is grounded) or a
   **groundable** entry (an identity whose signature is grounded, or a canon
   whose nodes are all grounded) is grounded at S1 (observed, not emitted)
-  and dropped; a countersignable entry takes the S3 path; a multi-node
-  misfit takes the S2 path; an identity that remains ungroundable is
-  emitted as an S4 ask. A misfit entry persists, and any entry that matches
-  neither dispatch predicate is skipped and re-scanned on every subsequent
-  turn until grounding flips it promotable/countersignable.
+  and dropped; a countersignable entry whose pairings are unresolved takes
+  the S3 path (emitting the unresolved pairings); a multi-node misfit takes
+  the S2 path; an identity that remains ungroundable is emitted as an S4
+  ask. Grounding — whether reached from routing's promotion cascade or from
+  cogitation — flows through `_ground`, which grounds the reciprocal of any
+  countersignable kline as part of its own bookkeeping, so the two paths
+  cannot disagree on the reciprocal. A misfit entry persists, and any entry
+  that matches neither dispatch predicate is skipped and re-scanned on
+  every subsequent turn until grounding flips it promotable/countersignable.
 
 The runner verifies K's observations **white-box** (model B subset check)
 against the script's `events` section (decoded via `decode_events`): every

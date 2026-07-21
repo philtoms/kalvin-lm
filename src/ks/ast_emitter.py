@@ -627,30 +627,32 @@ class ASTEmitter:
         return resolved
 
     def _register_inline_overrides(self, scope: OperatorScope) -> None:
-        """Pre-register this scope subtree's inline (item) bindings.
+        """Pre-register this scope's direct inline (item) bindings.
 
-        Walks ``scope``'s items and child_block (one level into nested
-        OperatorScopes' items) for ``Signature`` items carrying an
-        ``inline_annotation``, and binds each via :meth:`bind_override` in the
+        Walks ``scope``'s own items for ``Signature`` items carrying an
+        ``inline_annotation`` and binds each via :meth:`bind_override` in the
         current scope. Called before the scope's MTS so the signature's
         char-expansion — which runs before children are processed — resolves
         each char to its inline word (inline binds tighter than word-list).
+
+        Only direct items are pre-registered. Inline annotations on items of
+        *nested* scopes (in ``child_block``) are registered by those scopes'
+        own processing (after their subscript scope is pushed, via
+        :meth:`_resolve_nodes`), so they bind at the correct scope level.
+        Descending into ``child_block`` here would register a nested item's
+        override in the *parent* scope, leaking it across scope boundaries —
+        e.g. a nested ``DH = h(ad)`` would force ``H → had`` everywhere instead
+        of only within ``DH``'s own MTS, stealing the binding from a header
+        word (``H → have``) that the parent compound's MTS should resolve.
         """
         if self._scope is None:
             return
 
-        def _bind_from_items(items) -> None:
-            for item in items:
-                if isinstance(item, Signature) and item.inline_annotation is not None:
-                    if len(item.id) == 1:
-                        word = self._extract_inline_word(item.id, item.inline_annotation)
-                        self._scope.bind_override(item.id, word)
-
-        _bind_from_items(scope.items)
-        if scope.child_block is not None:
-            for construct in scope.child_block.constructs:
-                if isinstance(construct, OperatorScope):
-                    _bind_from_items(construct.items)
+        for item in scope.items:
+            if isinstance(item, Signature) and item.inline_annotation is not None:
+                if len(item.id) == 1:
+                    word = self._extract_inline_word(item.id, item.inline_annotation)
+                    self._scope.bind_override(item.id, word)
 
     def _collect_item_inline_annotations(
         self, scope: OperatorScope

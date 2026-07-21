@@ -282,14 +282,24 @@ def _resolve_kline(
                 f"CANONIZES signature {signature!r}: label not found in compiled source"
             )
         # Compound catch-up: when the signature names a compound-word
-        # (it has a compiled compound identity), the decoded kline must carry
-        # the marker too — otherwise the declared subwords form a misfit
-        # against the compound's CT-encoded signature. The author writes the
-        # subwords (``Mary => M ary``); the decoder prepends the system marker
-        # so the kline is the compound identity the compiler would produce.
+        # (it has a compiled compound identity) AND the declared nodes are
+        # that compound's subwords, the decoded kline must carry the marker
+        # too — otherwise the declared subwords form a misfit against the
+        # compound's CT-encoded signature. The author writes the subwords
+        # (``Mary => M ary``); the decoder prepends the system marker so the
+        # kline is the compound identity the compiler would produce.
+        #
+        # The catch-up fires only on a genuine subword declaration. A label
+        # may carry several CANONIZES (the compound identity plus a block-canon
+        # reference, e.g. ``had => did have``); the block-canon is a legitimate
+        # S2 misfit under the compound signature and must NOT be folded into
+        # the compound identity. Catch-up is gated on the declared nodes
+        # matching the compound's subwords (compound.nodes minus the marker).
         compound = resolved.compound_by_label.get(signature)
         if compound is not None and COMPOUND_TOKEN not in node_sigs:
-            node_sigs = [COMPOUND_TOKEN, *node_sigs]
+            subwords = [n for n in compound.nodes if n != COMPOUND_TOKEN]
+            if list(node_sigs) == subwords:
+                node_sigs = [COMPOUND_TOKEN, *node_sigs]
         return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
 
     if op == "IDENTITY":
