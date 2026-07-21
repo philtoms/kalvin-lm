@@ -257,6 +257,10 @@ class _Turn:
                 batch.append(self._emit_identity(idx, kline.signature))
                 continue
 
+            if structural_significance(kline, self._signifier) == SIG_S1:
+                self._promote(kline)
+                continue
+            
             if not batch:
                 # First workable non-identity dispatches on structure:
                 #   S3 connoted (single node) → canon-countersign
