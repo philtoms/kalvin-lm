@@ -129,11 +129,11 @@
         "did",
         "have"
       ],
-      "significance": "S2",
+      "significance": "S1",
       "role": "T",
       "turn": 46,
       "role_turn": 23,
-      "notes": "T expands had into 'did have' at S2, K promotes to S1"
+      "notes": "T ratifies the canon `had => did have` at S1; K grounds it."
     },
     {
       "notes": "K has grounded all of the identities, WDMH => MHW is still outstanding",

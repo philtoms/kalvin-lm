@@ -276,13 +276,14 @@ class _Turn:
     def _is_groundable(self, kline: KLine) -> bool:
         """Is ``kline`` ready to ground at S1?
 
-        Two cases: a canon whose nodes are all grounded; or a
-        single-node relationship whose reciprocal denotation is already
-        grounded (a ratified connotation). S2 multi-node misfits never ground
+        Two cases: an identity whose signature is grounded; or a
+        canon whose nodes are all grounded. S2 multi-node misfits never ground
         here — they propose.
         """
-        if all(node in self._state.grounded for node in kline.nodes):
-            return True
+        if is_identity(kline):
+            return kline.signature in self._state.grounded
+        if is_canon(kline, self._signifier):
+            return all(node in self._state.grounded for node in kline.nodes)
         if len(kline.nodes) != 1:
             return False  # S2 misfit — propose, never ground
         reciprocal = KLine(kline.nodes[0], [kline.signature])
