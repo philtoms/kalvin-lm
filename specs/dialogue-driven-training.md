@@ -86,7 +86,7 @@ must resolve to a compiled entry (else a decode error).
 
 **Compound catch-up.** A CANONIZES turn whose signature names a compound-word
 (a label with a compiled compound identity) is decoded with `COMPOUND_TOKEN`
-(@nlp_tokenizer spec) appended to its nodes. The author writes the subwords
+(@nlp_tokenizer spec) prepended to its nodes. The author writes the subwords
 (`Mary => M ary`); the decoder adds the system marker so the kline matches
 the compound identity the compiler produces. Without this, the declared
 subwords would form a misfit against the compound's CT-encoded signature.

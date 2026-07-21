@@ -26,7 +26,7 @@ The signature algebra over these nodes — reduction (`make_signature`) and
 overlap matching (`signifies`) — is owned by the @signifier spec. The NLP
 deployment bundles this tokenizer with `NLPSignifier`, the production
 concrete Signifier, as two sibling NLP specialisations: the tokenizer
-fixes the type-word *values*, the signifier owns the *bit algebra* over
+fixes the type-word _values_, the signifier owns the _bit algebra_ over
 them.
 
 ## NLP Sig-Word Layout
@@ -68,15 +68,15 @@ data tags every BPE token, so this path is rarely exercised.)
 A reserved node value the compiler appends to a §11.3 **compound-word**
 kline's nodes — a single word (e.g. `Mary`) the external tokenizer splits
 into multiple BPE subwords (`[M, ary]`) — so the kline is built as
-`Mary: [M, ary, COMPOUND_TOKEN]`. The token is a pure structural marker
+`Mary: [COMPOUND_TOKEN, M, ary]`. The token is a pure structural marker
 (carries no BPE component): its type word is `0x0002_0000` (bit 17 — the
 sole free slot in the `sig_word` space; every other bit is assigned by
 `dev/nlp/tag_vocab.py`) and its BPE id is 0, giving the full value
 `0x0002_0000_0000_0000`.
 
 The token participates in the signature algebra like any other node, so a
-compound's signature *encodes* the marker (`signature ==
-make_signature([M, ary, COMPOUND_TOKEN])`) with no bit masking. Detection is
+compound's signature _encodes_ the marker (`signature ==
+make_signature([COMPOUND_TOKEN, M, ary])`) with no bit masking. Detection is
 `COMPOUND_TOKEN in kline.nodes` (@kline spec §Structural Predicates). The
 marker is confined to the kalvin↔NLP boundary: defined here, appended by
 `ks/token_encoder.py`, read by `kalvin/kline.py`; it is a compiler/NLP
@@ -178,13 +178,13 @@ NLP type dictionary have the same size:
 
 Source files:
 
-| File | Purpose |
-| ---- | ------- |
-| `data/tokenizer/tokenizer-32768.json` | BPE vocabulary metadata |
-| `data/tokenizer/tokenizer-32768.bin` | BPE mergeable ranks |
+| File                                                 | Purpose                                           |
+| ---------------------------------------------------- | ------------------------------------------------- |
+| `data/tokenizer/tokenizer-32768.json`                | BPE vocabulary metadata                           |
+| `data/tokenizer/tokenizer-32768.bin`                 | BPE mergeable ranks                               |
 | `data/tokenizer/tokenizer-32768_tagged_grammar.json` | Type dictionary (BPE→`sig_word`, with NLP labels) |
-| `data/tokenizer/simplestories-1_grammar.json` | NLP grammar (input to tagging; uses `nlp_type32`) |
-| `data/tokenizer/simplestories-1_nlp_type32.json` | 32-bit NLP type legend |
+| `data/tokenizer/simplestories-1_grammar.json`        | NLP grammar (input to tagging; uses `nlp_type32`) |
+| `data/tokenizer/simplestories-1_nlp_type32.json`     | 32-bit NLP type legend                            |
 
 ## Construction
 
@@ -209,10 +209,10 @@ The `nlp_type32` encoding provides **32 dimensions**:
 - 8 DEP groups (bits 17–24)
 - 7 MORPH features (bits 25–31)
 
-| Tokenizer | Dimensions | Notes |
-| --------- | ---------- | ----- |
+| Tokenizer | Dimensions | Notes                    |
+| --------- | ---------- | ------------------------ |
 | NLP       | 32         | 17 POS + 8 DEP + 7 MORPH |
-| Target    | ~35        | From the vision |
+| Target    | ~35        | From the vision          |
 
 ## Curriculum Compatibility (Bare Signatures)
 
@@ -235,23 +235,23 @@ parenthetical annotation.
 
 ## Test Matrix
 
-| ID    | Criterion                                                                  | Origin ref |
-| ----- | -------------------------------------------------------------------------- | ---------- |
-| TOK-NLP-1 | NLP encode produces the typed-node format `(sig_word << 32) \| bpe_token_id` for each token | NLP |
-| TOK-8 | Typed-node format: every node is `(sig_word << 32) \| bpe_token_id` (production layout) | @tokenizer |
-| TOK-NLP-2 | NLP encode with unknown BPE token uses `POS_X = 65536` as the sig word   | NLP |
-| TOK-10 | Type dictionary: `lookup_type(id)` returns the entry's `sig_word` | @tokenizer |
-| TOK-11 | Unknown-token fallback: tokens absent from the dictionary get `POS_X` | @tokenizer |
-| TOK-12 | The base `Tokenizer` is a BPE-engine wrapper, not a `KTokenizer` (only `NLPTokenizer` is a concrete `KTokenizer`) | @tokenizer |
-| TOK-NLP-4 | NLP round-trip: `decode(encode("Tea brewed softly")) == "Tea brewed softly"` | NLP |
-| TOK-NLP-7 | Vocabulary sizes: BPE vocab = 25,007 tokens, type dictionary = 25,007 entries | NLP |
-| TOK-NLP-8 | Dimension count: `nlp_type32` provides 32 dimensions (17 POS + 8 DEP + 7 MORPH) | NLP |
-| TOK-NLP-9 | Bare single-character signatures (e.g. `M`, `H`, `A`) produce consistent typed nodes; the same character always yields the same node value | NLP |
-| TOK-NLP-10 | Bare multi-token signatures (e.g. `MHALL`, `SVO`) decompose into individual identity entries plus a canonize (S2) entry mapping the first token to all tokens | NLP |
-| TOK-NLP-11 | The binding resolver operates correctly with an empty symbol table (bare sigs compile without annotation) | NLP |
-| TOK-NLP-12 | Curricula using abstract uppercase letters (A–Z) require no parenthetical comments; comments are required only when semantic word resolution is desired | NLP |
-| TOK-NLP-13 | `NLPTokenizer()` loads the BPE engine and NLP type dictionary from standard paths | NLP |
-| TOK-NLP-14 | `NLPTokenizer` is the sole concrete `KTokenizer`; the base `Tokenizer` is a BPE-engine wrapper, not a `KTokenizer` | NLP |
+| ID         | Criterion                                                                                                                                                     | Origin ref |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| TOK-NLP-1  | NLP encode produces the typed-node format `(sig_word << 32) \| bpe_token_id` for each token                                                                   | NLP        |
+| TOK-8      | Typed-node format: every node is `(sig_word << 32) \| bpe_token_id` (production layout)                                                                       | @tokenizer |
+| TOK-NLP-2  | NLP encode with unknown BPE token uses `POS_X = 65536` as the sig word                                                                                        | NLP        |
+| TOK-10     | Type dictionary: `lookup_type(id)` returns the entry's `sig_word`                                                                                             | @tokenizer |
+| TOK-11     | Unknown-token fallback: tokens absent from the dictionary get `POS_X`                                                                                         | @tokenizer |
+| TOK-12     | The base `Tokenizer` is a BPE-engine wrapper, not a `KTokenizer` (only `NLPTokenizer` is a concrete `KTokenizer`)                                             | @tokenizer |
+| TOK-NLP-4  | NLP round-trip: `decode(encode("Tea brewed softly")) == "Tea brewed softly"`                                                                                  | NLP        |
+| TOK-NLP-7  | Vocabulary sizes: BPE vocab = 25,007 tokens, type dictionary = 25,007 entries                                                                                 | NLP        |
+| TOK-NLP-8  | Dimension count: `nlp_type32` provides 32 dimensions (17 POS + 8 DEP + 7 MORPH)                                                                               | NLP        |
+| TOK-NLP-9  | Bare single-character signatures (e.g. `M`, `H`, `A`) produce consistent typed nodes; the same character always yields the same node value                    | NLP        |
+| TOK-NLP-10 | Bare multi-token signatures (e.g. `MHALL`, `SVO`) decompose into individual identity entries plus a canonize (S2) entry mapping the first token to all tokens | NLP        |
+| TOK-NLP-11 | The binding resolver operates correctly with an empty symbol table (bare sigs compile without annotation)                                                     | NLP        |
+| TOK-NLP-12 | Curricula using abstract uppercase letters (A–Z) require no parenthetical comments; comments are required only when semantic word resolution is desired       | NLP        |
+| TOK-NLP-13 | `NLPTokenizer()` loads the BPE engine and NLP type dictionary from standard paths                                                                             | NLP        |
+| TOK-NLP-14 | `NLPTokenizer` is the sole concrete `KTokenizer`; the base `Tokenizer` is a BPE-engine wrapper, not a `KTokenizer`                                            | NLP        |
 
 ## Referenced By
 

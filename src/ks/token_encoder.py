@@ -284,9 +284,9 @@ class TokenEncoder:
         """
         token_key = tuple(tokens)
         # The compound-word identity kline carries COMPOUND_TOKEN as an extra
-        # node (e.g. ``Mary: [M, ary, COMPOUND_TOKEN]``). The token
+        # node (e.g. ``Mary: [COMPOUND_TOKEN, M, ary]``). The token
         # participates in the signature algebra like any other node, so the
-        # compound's signature is ``make_signature(tokens + [COMPOUND_TOKEN])``
+        # compound's signature is ``make_signature([COMPOUND_TOKEN] + tokens)``
         # — the marker is *encoded* in the signature, not OR'd on as a bit.
         # No masking anywhere: ``packed`` below is this full signature, and it
         # is the value reused by references (a block-canon under the same
@@ -329,7 +329,7 @@ class TokenEncoder:
                     )
                 )
 
-            # CANONIZES: compound sig → subword tokens + COMPOUND_TOKEN.
+            # CANONIZES: compound sig → COMPOUND_TOKEN + subword tokens.
             # Packed values are opaque per §11.5 — _build_dbg skips decode
             # for them.
             canon_dbg: KDbg | None = None

@@ -176,7 +176,7 @@ tells you where to look. Key invariants to keep in mind while reading:
   _declares_ (declared signature verbatim, nodes resolved to canonical
   signatures) and does **not** check that signature and nodes are consistent —
   an author may declare a deliberate misfit. Compound-word signatures get
-  `COMPOUND_TOKEN` appended at decode (compound catch-up).
+  `COMPOUND_TOKEN` prepended at decode (compound catch-up).
 - **The runner is de-positional.** The first row carries no opening semantics;
   anticipation and interjection are permitted and unflagged. Coverage is
   order-agnostic on middle entries (the natural fit for real actors).

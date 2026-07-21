@@ -285,11 +285,11 @@ def _resolve_kline(
         # (it has a compiled compound identity), the decoded kline must carry
         # the marker too — otherwise the declared subwords form a misfit
         # against the compound's CT-encoded signature. The author writes the
-        # subwords (``Mary => M ary``); the decoder appends the system marker
+        # subwords (``Mary => M ary``); the decoder prepends the system marker
         # so the kline is the compound identity the compiler would produce.
         compound = resolved.compound_by_label.get(signature)
         if compound is not None and COMPOUND_TOKEN not in node_sigs:
-            node_sigs = [*node_sigs, COMPOUND_TOKEN]
+            node_sigs = [COMPOUND_TOKEN, *node_sigs]
         return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
 
     if op == "IDENTITY":

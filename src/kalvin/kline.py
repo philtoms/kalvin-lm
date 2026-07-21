@@ -125,7 +125,7 @@ KGraph: TypeAlias = "object"  # Iterator[KLine] — for compat
 
 #: The **compound marker token**, re-exported from the kalvin↔NLP boundary
 #: (:mod:`kalvin.nlp_tokenizer`). The compiler appends it to the nodes of a
-#: §11.3 compound-word kline (``Mary: [M, ary, COMPOUND_TOKEN]``); the token
+#: §11.3 compound-word kline (``Mary: [COMPOUND_TOKEN, M, ary]``); the token
 #: participates in the signature algebra, so the marker needs no masking.
 #: See :data:`kalvin.nlp_tokenizer.COMPOUND_TOKEN` for the full rationale.
 from kalvin.nlp_tokenizer import COMPOUND_TOKEN  # noqa: E402

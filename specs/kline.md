@@ -76,18 +76,18 @@ The number of nodes. Equivalent to `len(kline.nodes)`.
 A kline's structural kind is determined by its signature and nodes (no model
 state). A §11.3 **compound-word** — a single word the external tokenizer
 split into BPE subwords — carries the boundary marker token
-`COMPOUND_TOKEN` (@nlp_tokenizer spec) as an extra node: `Mary: [M, ary,
-COMPOUND_TOKEN]`. The token participates in the signature algebra like any
-other node, so the compound's signature *encodes* the marker naturally
+`COMPOUND_TOKEN` (@nlp_tokenizer spec) as an extra node: `Mary: [COMPOUND_TOKEN, M, ary]`.
+The token participates in the signature algebra like any other node, so the
+compound's signature _encodes_ the marker naturally
 (`signature == make_signature([M, ary, COMPOUND_TOKEN])`) — no bit masking
 anywhere. Three predicates capture the kinds relevant to rationalisation:
 
 - **`is_identity(kline)`** — `True` for the empty form `{S: []}`, the
   self-referential form `{S: [S]}` (sole node equals signature), or a
   compound-word (`COMPOUND_TOKEN` is among the nodes). All three carry no
-  decomposition: the self-referential form is identity *by definition* (a
+  decomposition: the self-referential form is identity _by definition_ (a
   value that decomposes into itself), the compound-word form is identity
-  *by external tokenisation* (the word is one lexical item; its subwords
+  _by external tokenisation_ (the word is one lexical item; its subwords
   are an encoding artefact). Both overrule any canon classification (see
   @CONTEXT.md §Identity).
 - **`is_compound_word(kline)`** — `True` iff `COMPOUND_TOKEN` is among the
@@ -102,16 +102,16 @@ anywhere. Three predicates capture the kinds relevant to rationalisation:
 These live with the KLine because they are structural properties; the model
 and significance modules consume them.
 
-| ID    | Criterion                                                                  |
-| ----- | -------------------------------------------------------------------------- |
-| KL-20 | `is_identity({S: []})` → True                                              |
-| KL-21 | `is_identity({S: [S]})` → True (self-referential)                          |
-| KL-22 | `is_identity({S: [A]})` (A ≠ S) → False                                    |
+| ID    | Criterion                                                                   |
+| ----- | --------------------------------------------------------------------------- |
+| KL-20 | `is_identity({S: []})` → True                                               |
+| KL-21 | `is_identity({S: [S]})` → True (self-referential)                           |
+| KL-22 | `is_identity({S: [A]})` (A ≠ S) → False                                     |
 | KL-23 | `is_canon({S: [A, B]})` where `S == A\|B` and `S` not in nodes → True       |
-| KL-24 | `is_canon({S: [S]})` → False (self-referential is identity, not canon)     |
-| KL-25 | `is_canon({S: []})` → False (identity)                                     |
-| KL-26 | `is_identity({S: [A, B, COMPOUND_TOKEN]})` → True (compound-word)          |
-| KL-27 | `is_canon({S: [A, B, COMPOUND_TOKEN]})` → False (compound-word is identity)|
+| KL-24 | `is_canon({S: [S]})` → False (self-referential is identity, not canon)      |
+| KL-25 | `is_canon({S: []})` → False (identity)                                      |
+| KL-26 | `is_identity({S: [COMPOUND_TOKEN, A, B]})` → True (compound-word)           |
+| KL-27 | `is_canon({S: [COMPOUND_TOKEN, A, B]})` → False (compound-word is identity) |
 
 ## What a Kline is Not
 
