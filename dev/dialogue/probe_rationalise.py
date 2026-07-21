@@ -101,10 +101,9 @@ def main() -> None:
         _show_obs(obs, labels)
         print(f"  work_list depth: {len(state.work_list)}")
         for e in state.work_list:
-            ek = e.kline
-            ed = ek.dbg
-            el = labels.get(ek.signature, ek.signature)
-            print(f"    - {ed.op if ed else '?':10s} {el!s:16s} nodes={[labels.get(n,n) for n in ek.nodes]}  band={_BAND.get(e.significance,'?')}")
+            ed = e.dbg
+            el = labels.get(e.signature, e.signature)
+            print(f"    - {ed.op if ed else '?':10s} {el!s:16s} nodes={[labels.get(n,n) for n in e.nodes]}")
         if state.frame:
             print(f"  frame depth: {sum(len(v) for v in state.frame.values())}")
             for sig, bucket in state.frame.items():

@@ -41,16 +41,24 @@ __all__ = ["Rationaliser", "RationaliserState"]
 class RationaliserState:
     """The Rationaliser's mutable memory, owned by the actor.
 
-    A work-list of pending KValues (each carrying its structural
-    band) and the grounded model (keyed by signature). Passed into
+    A work-list of pending klines (work-list entries carry no
+    significance band — dispatch is structural) and the grounded model
+    (keyed by signature). Passed into
     :meth:`Rationaliser.rationalise` and mutated in place by reference.
     Emission deduplication is the actor's responsibility, not the engine's:
     the engine is free to re-derive an emission, and the actor drops any it
     has already published.
+
+    The **frame** holds previously cogitated (emitted) klines — same
+    structure as ``grounded`` (keyed by signature, deduplicated on nodes).
+    The fast route matches incoming subjective-S1/S4 queries against it by
+    structural signature; only genuinely-new emissions are added to it (see
+    :meth:`_Turn.frame_batch`).
     """
 
-    work_list: list[KValue] = field(default_factory=list)
+    work_list: list[KLine] = field(default_factory=list)
     grounded: dict[int, list[KLine]] = field(default_factory=dict)
+    frame: dict[int, list[KLine]] = field(default_factory=dict)
     _dbg_step: int = 0
 
 class Rationaliser:
@@ -78,12 +86,21 @@ class Rationaliser:
         batch holds dialogue emissions (speech acts for T), the observations
         hold the S1 grounding events K performed this turn (for white-box
         verification).
+
+        Two routes, dispatched on the query's **subjective** significance
+        (the producer's surface stamp): the **fast route** (subjective S1/S4)
+        matches the query against ``state.frame`` and promotes or pops;
+        the **slow route** (everything else) is the work-list cogitation.
+        Frame is the last thing updated before returning: the batch is
+        filtered to genuinely-new emissions, those are added to the frame,
+        and the filtered batch is returned.
         """
         state._dbg_step += 1
         turn = _Turn(state, self._signifier, self._s12, self._s23, self._s34)
         for query in incoming:
             turn.route(query)
         batch = turn.cogitate()
+        batch = turn.frame_batch(batch)
         return batch, turn.observations
 
 
@@ -111,33 +128,120 @@ class _Turn:
     # ── Routing ──────────────────────────────────────────────────────
 
     def route(self, query: KValue) -> None:
-        """Route an incoming query on its calculated structural significance.
+        """Route an incoming query first on subjective significance, then on structural significance.
 
-        S4 pops the identity ask; S1 grounds and then, like S2/S3, unpacks its
-        unrecognised nodes and signature onto the work-list as identity asks
-        (``KValue`` at S4) for :meth:`cogitate`. S2/S3 are themselves appended
-        to the work-list at their structural band before unpacking.
+        Two routes, fast and slow, dispatched on the query's **subjective**
+        significance (the producer's surface stamp, ``query.significance``):
+
+        - **Fast route** (subjective S1, S4) — structurally match the query
+          against ``state.frame`` (same signature, same *structural*
+          significance). An S1 match **promotes** the kline (grounds it at S1
+          and cascades any node-resolution it unblocks); an S4 match **pops**
+          the matching identity ask from the work-list. Either way the framed
+          kline is consumed (removed from the frame). An unmatched query is
+          dropped silently. The fast route never appends to the work-list.
+        - **Slow route** (subjective S2, S3) — append to the work-list at the
+          query's *structural* band, then unpack unrecognised nodes and
+          signature as S4 identity asks for :meth:`cogitate`.
         """
-        kline = query.kline
-        sig = structural_significance(kline, self._signifier)
 
-        if sig == SIG_S4:
-            self._pop_identity(kline.signature)
+        if query.significance in (SIG_S1, SIG_S4):
+            self._fast_route(query)
             return
 
-        self._state.work_list.append(KValue(kline, sig))
+        kline = query.kline
+        self._state.work_list.append(kline)
 
         # Unrecognised nodes and signature become identity asks (S4) on the
         # work-list, for cogitate to emit.
         for node in kline.nodes:
             if not self._is_recognised(node):
-                self._state.work_list.append(
-                    KValue(KLine(node, [], kline.dbg), SIG_S4)
-                )
+                self._state.work_list.append(KLine(node, [], kline.dbg))
         if not self._is_recognised(kline.signature):
-            self._state.work_list.append(
-                KValue(KLine(kline.signature, [], kline.dbg), SIG_S4)
-            )
+            self._state.work_list.append(KLine(kline.signature, [], kline.dbg))
+
+    def _fast_route(self, query: KValue) -> None:
+        """Match ``query`` (S1 or S4) against the frame.
+
+        Structural match: a framed kline with the same signature and the same
+        *structural* significance as ``query.kline``. On a match the framed kline is
+        consumed (unframed) and:
+
+        - **S4** — pop the pending identity ask for ``kline``'s
+          signature from the work-list (T has answered K's ask).
+        - **S1** — promote ``kline``: ground it at S1 and cascade
+          any node-resolution the new grounding unblocks.
+
+        An unmatched query is dropped silently.
+        """
+        kline = query.kline
+        sig = query.significance
+
+        if not self._match_in_frame(kline):
+            return  # unmatched — dropped silently
+
+        self._unframe(kline)
+        if sig == SIG_S4:
+            self._pop_identity(kline.signature)
+            return
+
+        self._promote(kline)
+
+    def _promote(self, kline: KLine) -> None:
+        """Ground ``kline`` at S1, then drain any node-resolution it unblocks.
+
+        A subjective-S1 match in the frame means another participant has
+        countersigned a kline K previously cogitated; K now grounds it. The
+        new grounding may unblock identities or canons whose nodes newly
+        resolve, so this cascades: any work-list entry that becomes groundable
+        is grounded in turn, until no further grounding is possible.
+        """
+        self._ground(kline)
+        changed = True
+        while changed:
+            changed = False
+            for i, entry in enumerate(self._state.work_list):
+                if self._is_groundable(entry):
+                    del self._state.work_list[i]
+                    self._ground(entry)
+                    changed = True
+                    break
+
+    def _pop_identity(self, signature: int) -> None:
+        """Pop the first identity work-item under ``signature`` (S4 branch).
+
+        Called from the fast route on a subjective-S4 match: T has supplied
+        an identity K previously asked about, so the pending ask is withdrawn.
+        A no-op when no identity ask is pending.
+        """
+        for i, entry in enumerate(self._state.work_list):
+            if entry.signature == signature and is_identity(entry):
+                del self._state.work_list[i]
+                return
+
+    def _match_in_frame(self, kline: KLine) -> bool:
+        """The framed kline matching ``kline``, else None.
+
+        Match is on signature and *structural* significance: the query's
+        subjective band selects the route, but the frame lookup is structural
+        (two klines frame-match when they are the same kline structurally).
+        """
+        target = structural_significance(kline, self._signifier)
+        for framed in self._state.frame.get(kline.signature, []):
+            if structural_significance(framed, self._signifier) == target:
+                return True
+        return False
+
+    def _unframe(self, kline: KLine) -> None:
+        """Remove ``kline`` from the frame (exact signature + nodes match)."""
+        bucket = self._state.frame.get(kline.signature)
+        if not bucket:
+            return
+        self._state.frame[kline.signature] = [
+            k for k in bucket if not (k.signature == kline.signature and k.nodes == kline.nodes)
+        ]
+        if not self._state.frame[kline.signature]:
+            del self._state.frame[kline.signature]
 
     def cogitate(self) -> list[KValue]:
         """Ground, countersign, or propose: amongst all entries in the work-list
@@ -145,17 +249,10 @@ class _Turn:
         """
         batch: list[KValue] = []
         for idx in range(len(self._state.work_list) - 1, -1, -1):
-            entry = self._state.work_list[idx]
-            sig = entry.significance
-            kline = entry.kline
+            kline = self._state.work_list[idx]
 
             if is_identity(kline):
                 batch.append(self._emit_identity(idx, kline.signature))
-                continue
-
-            if sig == SIG_S1 or self._is_groundable(kline):
-                del self._state.work_list[idx]
-                self._ground(kline)
                 continue
 
             if not batch:
@@ -214,7 +311,7 @@ class _Turn:
         if signature in self._state.grounded:
             return True
         return any(
-            entry.kline.signature == signature and is_identity(entry.kline)
+            entry.signature == signature and is_identity(entry)
             for entry in self._state.work_list
         )
 
@@ -228,12 +325,36 @@ class _Turn:
             and self._find_canon_nodes(entry.nodes[0]) is not None
         )
 
-    def _pop_identity(self, signature: int) -> None:
-        """Pop the first identity work-item under ``signature`` (S4 branch)."""
-        for i, entry in enumerate(self._state.work_list):
-            if entry.kline.signature == signature and is_identity(entry.kline):
-                del self._state.work_list[i]
-                return
+    def frame_batch(self, batch: list[KValue]) -> list[KValue]:
+        """Filter ``batch`` to genuinely-new emissions and add them to the frame.
+
+        The frame holds previously cogitated (emitted) klines. An emission
+        whose kline is already framed (exact signature + nodes match, like
+        :meth:`_is_grounded`) is dropped from the returned batch; the rest
+        are added to the frame and returned. Run as the last action of a
+        turn, before returning the batch.
+        """
+        new_batch: list[KValue] = []
+        for value in batch:
+            if self._is_framed(value.kline):
+                continue
+            self._frame(value.kline)
+            new_batch.append(value)
+        return new_batch
+
+    def _is_framed(self, kline: KLine) -> bool:
+        """Is an isomorphic kline (same signature and nodes) in the frame?"""
+        return any(
+            existing.nodes == kline.nodes
+            for existing in self._state.frame.get(kline.signature, [])
+        )
+
+    def _frame(self, kline: KLine) -> None:
+        """Record that K has emitted ``kline`` into a batch (add to frame).
+
+        Idempotent on nodes — call sites filter via :meth:`_is_framed` first.
+        """
+        self._state.frame.setdefault(kline.signature, []).append(kline)
 
     # ── Cogitation ────────────────────────────────────────────────────────
 
@@ -470,8 +591,8 @@ class _Turn:
             if is_canon(kline, self._signifier):
                 return list(kline.nodes)
         for entry in self._state.work_list:
-            if entry.kline.signature == signature and is_canon(entry.kline, self._signifier):
-                return list(entry.kline.nodes)
+            if entry.signature == signature and is_canon(entry, self._signifier):
+                return list(entry.nodes)
         return None
 
     def _relationship_plan(

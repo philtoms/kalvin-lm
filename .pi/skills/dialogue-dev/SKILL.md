@@ -1,6 +1,6 @@
 ---
 name: dialogue-dev
-description: Investigates and progresses the dialogue sub-project (src/training/dialogue/ + scripts/dialogue_run.py) — the authored-script ↔ real-actor ↔ rules triad and the coverage/displacement loop that brings them into agreement. Use when the user says "/dialogue-dev" or asks to work on, debug, advance, tune, or understand the dialogue training system, the rationalising trainee, the synthesizing trainer, the runner, or dialogue scripts.
+description: Investigates and progresses the dialogue sub-project src/training/dialogue/ — the authored-script ↔ real-actor ↔ rules triad and the coverage/displacement loop that brings them into agreement. Use when the user says "/dialogue-dev" or asks to work on, debug, advance, tune, or understand the dialogue training system, the rationalising trainee, the synthesizing trainer, the runner, or dialogue scripts.
 ---
 
 # Dialogue Dev
@@ -131,7 +131,8 @@ It is meant to be **edited in place** for the investigation at hand: change
 the compiled `source`, swap the hand-fed queries (`_find(entries, op=..., label=...)`),
 or add steps to walk further into the dialogue. Keep it a probe — a scratch
 harness you reshape per question, not a growing test suite. The smoke test
-(`tests/test_dialogue_smoke.py`) is where confirmed behaviour gets pinned.
+(`tests/test_dialogue_smoke.py`) is where confirmed behaviour gets pinned. Don't
+run this **until** new behaviour has been confirmed.
 
 ### 2. Read the output
 
@@ -327,6 +328,8 @@ what K has grounded. This is the single most important invariant here.
   intentionally covers basic operation only.
 - **Augmenting the spec instead of replacing it.** The contracts are working
   sketches. Replace wholesale as discovery reshapes the design.
+- **Over-engineering or over-documenting.** This is a simplified kalvin system -
+  Lets keep it that way.
 - **Confusing the two channels.** Dialogue divergence and grounding divergence
   are separate. Read the right report.
 - **Forgetting `burst >= 1`.** An actor that returns nothing from

@@ -77,9 +77,7 @@ def main() -> None:
         from kalvin.events import RationaliseEvent
         print(f"    [work-list before: {len(trainee._state.work_list)} entries]")
         for e in trainee._state.work_list:
-            ek = e.kline
-            print(f"      - {lab(ek.signature)!s:16s} nodes={[lab(n) for n in ek.nodes]} "
-                  f"band={_BAND.get(e.significance,'?')}")
+            print(f"      - {lab(e.signature)!s:16s} nodes={[lab(n) for n in e.nodes]}")
         grounded_sigs = list(trainee._state.grounded.keys())
         print(f"    [grounded sigs: {[lab(s) for s in grounded_sigs]}]")
         events = list(trainee.next_events([RationaliseEvent(
