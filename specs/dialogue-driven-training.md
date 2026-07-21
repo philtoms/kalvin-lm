@@ -173,11 +173,14 @@ closes on its final occurrence, not its first):
   divergence (reason `"exhausted"`).
 - **Present nowhere** → immediate divergence (reason `"unmatched"`).
 
-Either divergence stops the run at once, regardless of policy;
-`on_divergence` governs report-only (`"fail"` raises `Divergence`; `"accept"`
-appends to `RunResult.unmatched`). The close may be emitted by any agent at any
-time; the script is **de-positional** (the first row carries no opening
-semantics, and anticipation/interjection are permitted and unflagged).
+`on_divergence` governs what happens at a divergence. Under `"fail"` the
+run stops at once (and raises `Divergence`); under `"accept"` the divergent
+emission is recorded in `RunResult.unmatched` and the run **continues** to the
+next emission — a divergent emission consumes no coverage budget (it matched
+neither a coverage row nor the close), so accepting it lets the run collect
+further signal and report full displacement. The close may be emitted by any
+agent at any time; the script is **de-positional** (the first row carries no
+opening semantics, and anticipation/interjection are permitted and unflagged).
 
 ### Grounding verification (white-box)
 
@@ -222,6 +225,7 @@ today's implementation choices as contract.
 | DDT-1 | `decode(script)` returns a flat ordered `list[DecodedTurn]`, one per structural turn, significance attached by band lookup.                |
 | DDT-2 | A malformed script (missing `source`/`turns`) is a decode error.                                                                           |
 | DDT-3 | The canonical MHALL dialogue runs end-to-end through the runner with the default actors and covers the whole exchange (zero displacement). |
+| DDT-4 | Under `on_divergence="accept"` a divergent emission is recorded in `RunResult.unmatched` and the run continues past it; under `"fail"` the same divergence raises `Divergence`. |
 
 ## Out of Scope
 

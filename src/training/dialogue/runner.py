@@ -405,11 +405,13 @@ class Runner:
             return
 
         # Immediate divergence (exhausted: budget spent; unmatched: present
-        # nowhere). Either stops the run immediately.
+        # nowhere). Under "fail" the run stops immediately; under "accept" the
+        # divergence is recorded and the run continues to the next emission.
         reason = "exhausted" if budget > 0 else "unmatched"
         self._record_divergence(event, reason)
-        self._closed = True
-        self._bus.stop()
+        if self._on_divergence == "fail":
+            self._closed = True
+            self._bus.stop()
 
     def _record_divergence(self, event: RationaliseEvent, reason: str) -> None:
         """Record the :class:`Divergence` for ``event`` per the run's policy."""
