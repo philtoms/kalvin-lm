@@ -103,9 +103,14 @@ PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --rationalise      
 PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --synthesize             # real trainer, table trainee
 PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --synthesize --rationalise  # both real actors
 PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --rationalise -v         # also list K's grounded klines
+PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --divergence             # fail (exit 1) on the first immediate divergence
 ```
 
-Flags are **orthogonal**. The canonical workflow:
+Flags are **orthogonal**. By default divergences are **accepted**: the run
+completes (exit 0) and any unmatched emissions/groundings are listed in the
+trace. Pass `--divergence` to fail (exit 1) on the first immediate divergence
+instead — useful when you want the run to stop and surface a divergence report
+the moment an actor strays. The canonical workflow below uses the default (accept):
 
 1. **Both table actors** — should always pass with zero displacement. If it
    doesn't, the script or decoder is broken before any actor work matters.
@@ -113,8 +118,9 @@ Flags are **orthogonal**. The canonical workflow:
    trainee against a deterministic oracle. This is where trainee work shows up.
 3. **`--synthesize --rationalise` (both real)** — the full real-actor run.
 
-Exit code is `1` only on an immediate divergence; `0` otherwise (a clean exit
-does **not** mean zero displacement — read the counts).
+Exit code is `1` only on an immediate divergence **under `--divergence`**;
+`0` otherwise. With the default (accept), a clean exit does **not** mean zero
+displacement — read the counts and the unmatched-emissions/groundings sections.
 
 **Turn-by-turn (`dev/dialogue/probe_rationalise.py`)** — drives the pure `Rationaliser`
 engine directly, with no actor, no bus, no runner. It hand-feeds T queries and
@@ -149,12 +155,14 @@ The driver prints, in order:
 - **With `-v` and `--rationalise`**: `K grounded klines` — K's post-run model,
   grouped by owning signature, rendered in scripted form.
 
-On an immediate divergence (`on_divergence="fail"`, the default), stderr gets a
+On an immediate divergence (`--divergence`, i.e. `on_divergence="fail"`), stderr gets a
 **divergence report** instead: the emitted kline that diverged, the verdict
 (`exhausted` — every authored copy already consumed; or `unmatched` — matches
 no row), the last healthy coverage match, and the still-uncovered same-role
 rows. A `GroundingDivergence` report mirrors this for the grounding channel
-(`missing` — an asserted grounding never observed).
+(`missing` — an asserted grounding never observed). When divergences are
+accepted (the default), the run completes and the same information surfaces as
+**unmatched emissions / unmatched groundings** sections in the trace instead.
 
 ### 3. Diagnose — pick the channel, pick the artefact
 

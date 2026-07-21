@@ -45,7 +45,7 @@ def main() -> None:
     tok = NLPTokenizer()
     sigf = NLPSignifier()
     script = load_script(__import__("json").loads(
-        Path("scripts/dialogue-mhall.json").read_text()))
+        Path("scripts/dialogue-wdmh.json").read_text()))
     decoded = decode(script, tokenizer=tok, signifier=sigf)
     labels = _labels(script, tok, sigf)
 
