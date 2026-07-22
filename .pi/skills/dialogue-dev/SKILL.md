@@ -286,8 +286,10 @@ nothing is produced. Two defaults read the table; two reals derive turns.
 - **`ScriptTrainer` / `ScriptTrainee`** — `_TableActor` subclasses, content-blind,
   cursor-advancing. Cannot diverge. Exist to exercise the runner.
 - **`SynthesizingTrainer`** — derives each turn from the compiled source via
-  `synthesize` (R1 opening at S2, R2 reply to identity, R3 echo a matching
-  compiled kline).
+  `synthesize` (R1 opening at S2, R2 reply to an identity by precedence:
+  canon → CONNOTES → ratify-identity; R3 echo an exact compiled match), and
+  falls back to the decoded table for its driving moves when K PASSes (a
+  close, the next script's opening).
 - **`RationalisingTrainee`** — wraps the pure `Rationaliser` engine, owns the
   `RationaliserState`, deduplicates its own emissions, and exposes S1
   groundings via `drain_observations`.

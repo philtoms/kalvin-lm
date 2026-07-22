@@ -13,16 +13,17 @@ real actors are provided: :class:`SynthesizingTrainer` and
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S2
+from kalvin.expand import SIG_S1, SIG_S2
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
-from training.dialogue.decoder import DecodedTurn
+from training.dialogue.decoder import DecodedTurn, turn_content_key
 from training.dialogue.rationalise import Rationaliser, RationaliserState
-from training.dialogue.runner import pass_event
+from training.dialogue.runner import is_pass, pass_event
 from training.dialogue.synthesize import synthesize
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -157,8 +158,24 @@ class SynthesizingTrainer(Actor):
     Drop-in for :class:`TableTrainer`. On the opening seed (an empty incoming
     burst) it emits the current primary at S2 (R1) and advances, so a
     multi-script file opens each script's own primary in turn. On a reply (a
-    non-empty burst) it delegates to :func:`synthesize` (R2/R3) against the
-    burst's last proposal.
+    non-empty burst) it delegates to :func:`synthesize` (R2/R3) once per
+    incoming event — a real trainee may emit a burst of several asks, and the
+    trainer answers each rather than only the last.
+
+    The trainer keeps a lightweight view of what K has grounded: the set of
+    signatures emitted at S1 in the dialogue (by either side). An S1 emission
+    is a ratification — its signature is grounded knowledge. R2 uses this to
+    pick a canon's pedagogical significance.
+
+    **Scripted fallback.** A synthesizing trainer is reactive: it derives a
+    reply from K's proposal. When K has no substantive proposal (it PASSed),
+    the trainer has nothing to synthesise against — yet it may still owe the
+    dialogue a driving move (a close, the next script's opening) that has no
+    structural derivation from K's state. In that case the decoded ``table``
+    supplies the next T proposal: the earliest T coverage row not yet emitted.
+    This is a scoped exception to script-blindness — synthesis drives every
+    real exchange; the script steps in only for the trainer's driving moves.
+    Without a ``table`` the trainer PASSes back (the original behaviour).
     """
 
     def __init__(
@@ -167,6 +184,8 @@ class SynthesizingTrainer(Actor):
         signifier: KSignifier,
         primaries: list[KLine],
         sink: EventSink,
+        *,
+        table: Sequence[DecodedTurn] | None = None,
     ) -> None:
         if not primaries:
             raise ValueError("SynthesizingTrainer needs at least one primary")
@@ -175,10 +194,26 @@ class SynthesizingTrainer(Actor):
         self._signifier = signifier
         self._primaries = tuple(primaries)
         self._primary_index = 0
+        # Signatures emitted at S1 in the dialogue (by either side) — the
+        # trainer's view of K's grounded knowledge.
+        self._grounded: set[int] = set()
+        # The decoded table (optional) for the scripted fallback, plus a
+        # per-content-key count of T coverage rows already emitted, so the
+        # fallback advances past covered rows — multiplicity-aware, mirroring
+        # the runner's coverage budget (a close that recurs as coverage needs
+        # as many emissions as its authored copies).
+        self._table: tuple[DecodedTurn, ...] = tuple(table) if table else ()
+        self._t_covered: Counter[tuple] = Counter()
 
     def next_events(
         self, incoming: list[RationaliseEvent]
     ) -> Iterable[RationaliseEvent]:
+        # Track K's grounded knowledge: any S1 emission ratifies its
+        # signature (and a canon's nodes) as grounded.
+        for event in incoming:
+            if event.proposal.significance == SIG_S1:
+                self._grounded.add(event.proposal.kline.signature)
+                self._grounded.update(event.proposal.kline.nodes)
         if not incoming:
             # R1 — open the current script's primary at S2, then advance.
             primary = self._primaries[self._primary_index]
@@ -186,14 +221,80 @@ class SynthesizingTrainer(Actor):
                 self._primary_index + 1, len(self._primaries) - 1
             )
             proposal = KValue(primary, SIG_S2)
-            query = proposal
-        else:
-            incoming_value = incoming[-1].proposal
-            proposal = synthesize(self._compiled, incoming_value, self._signifier)
-            query = incoming_value
-        yield RationaliseEvent(
-            kind="frame", query=query, proposal=proposal, role="T"
-        )
+            self._mark_covered(proposal)
+            yield RationaliseEvent(
+                kind="frame", query=proposal, proposal=proposal, role="T"
+            )
+            return
+        # If K PASSed (no substantive proposal to synthesise against), fall
+        # back to the scripted next T proposal — the trainer's driving move.
+        if all(is_pass(e) for e in incoming):
+            fallback = self._next_scripted_t()
+            if fallback is not None:
+                if fallback.significance == SIG_S1:
+                    self._grounded.add(fallback.kline.signature)
+                    self._grounded.update(fallback.kline.nodes)
+                self._mark_covered(fallback)
+                yield RationaliseEvent(
+                    kind="frame", query=incoming[-1].proposal,
+                    proposal=fallback, role="T",
+                )
+            # No scripted row remains (or no table): PASS back.
+            return
+        # R2/R3 — reply to each incoming event (one synthesised proposal per
+        # event), mirroring the table trainer. A real trainee may emit a burst
+        # of several asks; replying to only the last would drop the others and
+        # stall the exchange.
+        for event in incoming:
+            incoming_value = event.proposal
+            proposal = synthesize(
+                self._compiled,
+                incoming_value,
+                self._signifier,
+                self._grounded,
+            )
+            # T's own S1 emissions ratify their signatures too.
+            if proposal.significance == SIG_S1:
+                self._grounded.add(proposal.kline.signature)
+                self._grounded.update(proposal.kline.nodes)
+            self._mark_covered(proposal)
+            yield RationaliseEvent(
+                kind="frame", query=incoming_value, proposal=proposal, role="T"
+            )
+
+    # -- scripted fallback --------------------------------------------------
+
+    def _next_scripted_t(self) -> KValue | None:
+        """The earliest T coverage row not yet emitted to its full multiplicity.
+
+        The scripted fallback's notion of "the next proposal T owes": the
+        first T row (coverage or close) whose emitted count is below its
+        authored multiplicity in the table. Counting (not a cursor) keeps the
+        fallback robust to the synthesis path having emitted rows out of
+        order, and honours a close that recurs as coverage (it needs as many
+        emissions as it has authored copies).
+        """
+        budget: Counter[tuple] = Counter()
+        for turn in self._table:
+            if turn.role != "T":
+                continue
+            budget[turn_content_key(turn)] += 1
+        for turn in self._table:
+            if turn.role != "T":
+                continue
+            key = turn_content_key(turn)
+            if self._t_covered[key] < budget[key]:
+                return turn.value
+        return None
+
+    def _mark_covered(self, proposal: KValue) -> None:
+        """Record a T proposal's content key as covered (for the fallback)."""
+        self._t_covered[(
+            "T",
+            proposal.kline.signature,
+            tuple(proposal.kline.nodes),
+            proposal.significance,
+        )] += 1
 
 
 # ── Rationalising trainee ─────────────────────────────────────────────────

@@ -2,9 +2,14 @@
 
 :func:`synthesize` is the core of
 :class:`~training.dialogue.actors.SynthesizingTrainer`. It derives the next
-trainer KValue from the compiled script and the trainee's last KValue using
-structural predicates only (no ``dbg`` reads). The runner checks the
-synthesised turn against the table.
+trainer KValue from the compiled script and the trainee's last KValue. The
+runner checks the synthesised turn against the table.
+
+Derivation mixes structural predicates (``is_canon`` / ``is_identity``, via
+``signifier.make_signature``) with relation-op reads (``dbg.op``): a DENOTES
+is a role-binding that belongs to the S3 phase, so R2 does not supply it,
+whereas a CONNOTES is a teachable gloss that R2 will offer. See the dialogue
+specs for the script ↔ code ↔ rules triad this keeps in agreement.
 """
 
 from __future__ import annotations
@@ -20,23 +25,21 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 __all__ = ["synthesize"]
 
-# Op precedence for R2's reply-to-identity: the canon (a signature's own
-# decomposition) outranks any relation sharing that signature. Canon is detected
-# structurally via is_canon, so this only orders the non-canon relations.
-_RELATION_PRECEDENCE = {"DENOTES": 0, "CONNOTES": 1}
-
 
 def synthesize(
     compiled: list[KValue],
     incoming: KValue | None,
     signifier: KSignifier,
+    grounded: set[int] | None = None,
 ) -> KValue:
-    """Synthesize the next trainer KValue from ``(compiled, incoming)``.
+    """Synthesize the next trainer KValue from ``(compiled, incoming, grounded)``.
 
-    Pure: ``compiled`` is indexed once internally; the result is otherwise a
-    pure function of ``incoming``. Implements R1 (opening), R2 (reply to an
-    identity), and R3 (echo a matching compiled kline).
+    ``compiled`` is indexed once internally; the result is a function of
+    ``incoming`` and ``grounded`` (the signatures K has grounded at S1 — the
+    trainer's view of K's ratified knowledge). Implements R1 (opening), R2
+    (reply to an identity), and R3 (echo a matching compiled kline).
     """
+    grounded = grounded if grounded is not None else set()
     decompositions: dict[int, list[KLine]] = {}
     for value in compiled:
         kline = value.kline
@@ -49,7 +52,9 @@ def synthesize(
 
     proposal = incoming.kline
     if is_identity(proposal):
-        return _reply_identity(proposal.signature, decompositions, signifier)
+        return _reply_identity(
+            proposal.signature, decompositions, signifier, grounded
+        )
     return _echo_compiled(proposal, decompositions, signifier)
 
 
@@ -62,56 +67,76 @@ def _opening(primary: KLine) -> KValue:
 
 
 # ── R2 — Reply to an identity ────────────────────────────────────────────
+#
+# When K asks ``{sig: []}`` at S4 ("I don't recognise sig"), T replies by the
+# first rule that admits, in precedence order:
+#
+#   1. CANON  — a real canon of ``sig`` (``sig == make_signature(nodes)``):
+#      teach its parts. Significance is pedagogical: S1 when K has grounded
+#      every node, else S2 (some part is still unknown to K).
+#   2. CONNOTES — a single-node connotation ``{sig: [node]}``: a teachable
+#      gloss (e.g. ``a:[Det]``). Emitted at S2 (the operand is unknown to K).
+#      A DENOTES is deliberately NOT supplied here: it is a role-binding
+#      (e.g. ``Mary:[Subject]``) that belongs to the S3 phase, where K
+#      proposes the binding and T ratifies it. Supplying it on the S4 ask
+#      would pre-empt K's proposal.
+#   3. otherwise — ``sig`` has only a compound-word identity (encoding
+#      artefact, not learnable structure), only DENOTES role-bindings, or
+#      nothing at all. T ratifies the identity at S1: ``{sig: []}`` at S1,
+#      signalling "this is a primitive you may ground".
+#
+# Compound-word identities (``{Mary: [CT, M, ary]}``) are ``is_identity`` and
+# are never supplied as decompositions — their subwords are tokeniser
+# artefacts, not pedagogical structure.
 
 
 def _reply_identity(
     signature: int,
     decompositions: dict[int, list[KLine]],
     signifier: KSignifier,
+    grounded: set[int],
 ) -> KValue:
-    """R2 — the trainee does not recognise ``signature``; supply its decomposition.
-
-    Emit the first decomposition by op-precedence (canon > relation; among
-    relations DENOTES > CONNOTES), then compilation order. Significance:
-    S1 when every node is a leaf, S2 when any node is itself decomposable, S4
-    when no decomposition exists.
-    """
+    """R2 — the trainee does not recognise ``signature``; reply per §R2."""
     candidates = decompositions.get(signature, [])
-    chosen = _precedence_pick(candidates, signifier)
-    if chosen is None:
-        return KValue(KLine(signature, []), SIG_S4)
-    significance = (
-        SIG_S1
-        if all(node not in decompositions for node in chosen.nodes)
-        else SIG_S2
-    )
-    return KValue(chosen, significance)
+
+    # 1. Canon — teach the parts. Significance is pedagogical: S1 when K has
+    #    grounded every node, else S2 (some part is still unknown to K).
+    canon = _first_canon(candidates, signifier)
+    if canon is not None:
+        significance = SIG_S1 if all(n in grounded for n in canon.nodes) else SIG_S2
+        return KValue(canon, significance)
+
+    # 2. CONNOTES — a teachable gloss at S2.
+    connotes = _first_connotes(candidates)
+    if connotes is not None:
+        return KValue(connotes, SIG_S2)
+
+    # 3. Ratify the identity at S1 (primitive K may ground).
+    return KValue(KLine(signature, []), SIG_S1)
 
 
-def _precedence_pick(
+def _first_canon(
     candidates: list[KLine], signifier: KSignifier
 ) -> KLine | None:
-    """First canon by compilation order; else lowest-precedence relation."""
+    """The first real canon (``is_canon``) among ``candidates``, else None."""
     for kline in candidates:
         if is_canon(kline, signifier):
             return kline
-    relations = [k for k in candidates if _relation_op(k) is not None]
-    if not relations:
-        return None
-    relations.sort(key=_relation_key)
-    return relations[0]
+    return None
 
 
-def _relation_op(kline: KLine) -> str | None:
-    """The relation op on ``kline.dbg`` if it is a known relation, else None."""
-    op = kline.dbg.op if kline.dbg else None
-    return op if op in _RELATION_PRECEDENCE else None
+def _first_connotes(candidates: list[KLine]) -> KLine | None:
+    """The first CONNOTES relation among ``candidates``, else None.
 
-
-def _relation_key(kline: KLine) -> int:
-    """Sort key for R2 relation precedence (DENOTES before CONNOTES)."""
-    op = _relation_op(kline)
-    return _RELATION_PRECEDENCE[op] if op is not None else len(_RELATION_PRECEDENCE)
+    Distinguished from DENOTES by ``dbg.op``: a CONNOTES is a teachable gloss
+    T supplies on the S4 ask; a DENOTES is a role-binding T leaves for the S3
+    phase (K proposes, T ratifies).
+    """
+    for kline in candidates:
+        op = kline.dbg.op if kline.dbg else None
+        if op == "CONNOTES":
+            return kline
+    return None
 
 
 # ── R3 — Echo a matching compiled kline ──────────────────────────────────
@@ -122,11 +147,17 @@ def _echo_compiled(
     decompositions: dict[int, list[KLine]],
     signifier: KSignifier,
 ) -> KValue:
-    """R3 — the trainee proposed a kline the trainer has compiled: echo it verbatim.
+    """R3 — respond to K's non-identity proposal.
 
-    A match is a compiled kline under ``proposal.signature`` whose nodes equal
-    ``proposal.nodes``. Significance: S1 for a relation (ratify), S2 for a
-    canon (confirm). No match → CONNOTES,S4.
+    Two cases:
+
+    1. **Exact compiled match** — a compiled kline under ``proposal.signature``
+       whose nodes equal ``proposal.nodes``: echo it verbatim. S1 for a
+       relation (ratify), S2 for a canon (confirm).
+    2. otherwise — emit the proposal back at S4 (T cannot endorse it here). A
+       close that ratifies K's recombined misfit is the trainer's driving move:
+       it is supplied by the scripted fallback on K's subsequent PASS, not
+       synthesised here (the recombination's node order is the author's to fix).
     """
     for kline in decompositions.get(proposal.signature, []):
         if list(kline.nodes) == list(proposal.nodes):

@@ -399,7 +399,9 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     trainer_factory = (
-        (lambda sink: SynthesizingTrainer(compiled, sigf, primaries, sink=sink))
+        (lambda sink: SynthesizingTrainer(
+            compiled, sigf, primaries, sink=sink, table=decoded
+        ))
         if args.synthesize
         else (lambda sink: ScriptTrainer(decoded, sink=sink))
     )

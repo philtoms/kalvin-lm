@@ -157,6 +157,19 @@ they advance their own cursor in script order and never realign to incoming
 content. `ScriptTrainee` exposes no `drain_observations`; grounding assertions
 apply only to a trainee that does (a rationalising trainee).
 
+The real actors are drop-in substitutes that derive each turn:
+
+- **`SynthesizingTrainer`** derives each reply from the compiled source
+  (`synthesize`). It answers each event in the incoming burst (a real trainee
+  emits bursts of several asks), tracks a lightweight view of what K has
+  ratified (for a canon's pedagogical significance), and — because it is
+  reactive — falls back to the decoded table for its **driving moves**: when K
+  PASSes (no proposal to reply to) the table supplies the next T proposal (a
+  close, the next script's opening). Synthesis drives every real exchange; the
+  script steps in only for those driving moves.
+- **`RationalisingTrainee`** wraps the pure `Rationaliser` engine and exposes
+  `drain_observations`.
+
 ### Matching & termination
 
 Each emission is matched against a **coverage budget** (a content key's
