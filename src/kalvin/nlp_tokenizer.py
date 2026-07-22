@@ -39,11 +39,11 @@ UNKNOWN_NLP_TYPE = 65536
 #: The **compound marker token**. Appended by the compiler to the nodes of a
 #: §11.3 compound-word kline — a single word (e.g. ``Mary``) that the
 #: external tokenizer splits into multiple BPE subwords (``[M, ary]``) —
-#: so the kline is built as ``Mary: [M, ary, COMPOUND_TOKEN]``. The token
+#: so the kline is built as ``Mary: [COMPOUND_TOKEN, M, ary]``. The token
 #: participates in the signature algebra like any other node (its type
 #: word contributes to ``make_signature``), so a compound's signature
 #: *encodes* the marker without any masking: ``signature ==
-#: make_signature([M, ary, COMPOUND_TOKEN])``. Detection is structural —
+#: make_signature([COMPOUND_TOKEN, M, ary])``. Detection is structural —
 #: ``COMPOUND_TOKEN in kline.nodes`` — with no bit-twiddling and no
 #: special-case masking in the signifier.
 #:

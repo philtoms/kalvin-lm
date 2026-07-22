@@ -50,25 +50,36 @@ this spec owns only the two paths and their boundaries.
   engine's state can stay a pure model of what K has grounded.
 - **Routing.** Routing significance is **calculated from structure** (the
   objective structural relationship), not read from the producer's surface
-  stamp — the same structural derivation as cogitation's dispatch. The
-  routing rule handles S1 (ground/cleanup), S4 (pop the identity ask), and
-  retrospective promotion before handing over to cogitation; only S2/S3
-  entries and their ungrounded identities reach cogitation. A relationship
-  `{S: nodes}` with more than one node, all grounded, takes the
-  **canon-countersignature** branch below, not promotion — whether or not it
-  is structurally S1 (a ratified multi-node misfit qualifies). (1:1 shapes —
-  connotations, denotations — promote directly.)
-- **Cogitation.** A countersignable entry takes the S3 path; a multi-node misfit
-  takes the S2 path. Both of these are emitted as proposals. Identities are batched
-  up and emitted as a single request.
+  stamp — the same structural derivation as cogitation's dispatch. Routing
+  does one thing per query: an **S4** pops the pending identity ask;
+  **every other query (S1, S2, S3)** is appended to the work-list for
+  cogitation. An **S2** misfit additionally unpacks its unrecognised nodes
+  and signature onto the work-list as identity placeholders. Routing emits
+  no dialogue batch and performs no grounding — promotion is a per-entry act
+  of cogitation, not a routing pre-pass.
+- **Cogitation.** Each work-list entry is resolved in one pass, LIFO. An
+  entry that is **promotable** (a single-node relationship whose reciprocal
+  is grounded) or **groundable** (an identity whose signature is grounded, or
+  a canon whose nodes are all grounded) is grounded at S1 — observed, not
+  emitted — and dropped. A countersignable entry takes the S3 path; a
+  multi-node misfit takes the S2 path. Both of these are emitted as
+  proposals. Identities that remain ungroundable are batched up and emitted
+  as a single S4 request.
 - **S3 countersignature.** K pairs the operands of the two canons left-to-right
   at group size 1, emitting every unresolved pairing in one batch. Every pairing
   — whether a 1:1 pair or a grouped residual — is a CONNOTES proposal at S3:
   when one side reaches a single node, the other side's residual is synthesised
   into a signature (substituted for that pair's left operand) so the grouped
-  pair takes the same S3 connotation path as a 1:1 pair. When every pairing is
-  resolved, K grounds **both directions of the reciprocal pair** at S1
-  (observed, not emitted into the dialogue).
+  pair takes the same S3 connotation path as a 1:1 pair. Each pairing K grounds
+  yields its **operand-level reciprocal** at S1 (e.g. `Mary:[Subject]` grounds
+  `Subject:[Mary]`). The relationship entry itself persists on the work-list
+  across turns; when cogitation finds **every** pairing resolved, it grounds
+  the **entry itself** at S1 — the **canonical-level reciprocal** (e.g.
+  `MHALL:[SVO]`), whose own reciprocal (`SVO:[MHALL]`) is mirrored by the same
+  operand-level-reciprocal rule. Both reciprocals are observed, not emitted
+  into the dialogue. Because the entry drives its own completion, no T query
+  is required to trigger it — any cogitation pass after the last pairing
+  resolves completes the countersignature.
 - **S2 similar fit proposal.** Only a misfit entry proposes a similar fit.
   Every substituted node must be a node of a grounded kline (no invention).
   A grounded kline is a candidate iff it shares a **node value** with the
@@ -77,18 +88,10 @@ this spec owns only the two paths and their boundaries.
   misfit entry persists until ratified, the engine re-derives the same
   proposal on successive turns; the actor's emission deduplication (above)
   ensures K publishes it once and then waits.
-- **Work-list.** An entry that matches neither path is not discarded — it
-  persists and is re-tried on later turns. Only grounding (the entry's nodes
-  becoming seen) or an operand's canon arriving makes it fire; until then it
-  emits nothing.
-- **S1 canon-countersignature.** When T ratifies a misfit at S1 — an S1
-  relationship `{S: nodes}` with more than one node, all grounded — K does
-  not ground the misfit. K computes `C = make_signature(nodes)` (the canon
-  the ratified nodes form), promotes C by grounding `{C: nodes}`, then
-  establishes the S1 countersignature by grounding `{S: [C]}` and `{C: [S]}`.
-  Each ground is observed; nothing is emitted into the dialogue. K drops
-  the pending work-list entries under S. K never searches for an existing
-  canon; it computes C and admits it whether or not it was previously seen.
+- **Work-list.** An entry that matches neither dispatch path is not
+  discarded — it persists and is re-tried on later turns. Only grounding
+  (the entry's nodes becoming seen) or an operand's canon arriving makes it
+  fire; until then it emits nothing.
 
 ## Test Matrix
 
@@ -96,6 +99,13 @@ Cogitation is exercised end-to-end by the canonical MHALL run
 (`tests/test_dialogue_smoke.py`). Isolated mechanism tests were removed to keep
 the sub-project exploratory; add them as fresh behaviours are discovered, not
 to defend the current mechanism.
+
+- **DDT-3** — canonical MHALL run with table actors covers the whole exchange
+  (zero displacement): the core loop is wired correctly.
+- **DDT-4** — when two canons' operands are reciprocally paired (every CONNOTES
+  pairing resolved), K grounds both directions of the canonical reciprocal
+  pair (`{A:[B]}` and `{B:[A]}`) at S1. Pinned by
+  `test_canon_reciprocal_grounded_when_all_operand_pairings_resolve`.
 
 ## Out of Scope
 

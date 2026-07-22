@@ -86,10 +86,18 @@ must resolve to a compiled entry (else a decode error).
 
 **Compound catch-up.** A CANONIZES turn whose signature names a compound-word
 (a label with a compiled compound identity) is decoded with `COMPOUND_TOKEN`
-(@nlp_tokenizer spec) appended to its nodes. The author writes the subwords
+(@nlp_tokenizer spec) prepended to its nodes **only when the declared nodes
+are that compound's subwords**. The author writes the subwords
 (`Mary => M ary`); the decoder adds the system marker so the kline matches
-the compound identity the compiler produces. Without this, the declared
-subwords would form a misfit against the compound's CT-encoded signature.
+the compound identity the compiler produces.
+
+A label may carry several CANONIZES — the §11.3 compound-word identity *plus*
+a §8 block-canon reference (e.g. `had => did have`, a semantic expansion under
+the same compound-word signature). The block-canon is a legitimate S2 misfit,
+not the compound identity: catch-up is gated on the declared nodes matching
+the compound's subwords (the compound's nodes minus the marker), so a
+declared misfit like `had CANONIZES [did, have]` decodes verbatim and is not
+folded into the compound-word identity.
 
 ```
 DecodedTurn:
@@ -158,18 +166,24 @@ once its own coverage copies are spent (so a close that recurs as coverage
 closes on its final occurrence, not its first):
 
 - **In the budget with copies remaining** → consume one copy. Every budget
-  spent → terminate (coverage exhaustion).
+  spent terminates only once the close has been delivered — coverage
+  exhaustion does not preempt an undelivered close (the close may be emitted
+  by either agent at any time, so the run defers to the close, with mutual
+  PASS as the backstop).
 - **Equals the close (budget exhausted for its key)** → terminate. A unique
   close has no coverage copies, so terminates on first emission.
 - **In the script but budget exhausted, and not the close** → immediate
   divergence (reason `"exhausted"`).
 - **Present nowhere** → immediate divergence (reason `"unmatched"`).
 
-Either divergence stops the run at once, regardless of policy;
-`on_divergence` governs report-only (`"fail"` raises `Divergence`; `"accept"`
-appends to `RunResult.unmatched`). The close may be emitted by any agent at any
-time; the script is **de-positional** (the first row carries no opening
-semantics, and anticipation/interjection are permitted and unflagged).
+`on_divergence` governs what happens at a divergence. Under `"fail"` the
+run stops at once (and raises `Divergence`); under `"accept"` the divergent
+emission is recorded in `RunResult.unmatched` and the run **continues** to the
+next emission — a divergent emission consumes no coverage budget (it matched
+neither a coverage row nor the close), so accepting it lets the run collect
+further signal and report full displacement. The close may be emitted by any
+agent at any time; the script is **de-positional** (the first row carries no
+opening semantics, and anticipation/interjection are permitted and unflagged).
 
 ### Grounding verification (white-box)
 
@@ -214,6 +228,7 @@ today's implementation choices as contract.
 | DDT-1 | `decode(script)` returns a flat ordered `list[DecodedTurn]`, one per structural turn, significance attached by band lookup.                |
 | DDT-2 | A malformed script (missing `source`/`turns`) is a decode error.                                                                           |
 | DDT-3 | The canonical MHALL dialogue runs end-to-end through the runner with the default actors and covers the whole exchange (zero displacement). |
+| DDT-4 | Under `on_divergence="accept"` a divergent emission is recorded in `RunResult.unmatched` and the run continues past it; under `"fail"` the same divergence raises `Divergence`. |
 
 ## Out of Scope
 

@@ -305,6 +305,14 @@ class Runner:
         # from the other is terminal.
         self._last_pass_role: str | None = None
 
+        # Whether the close content has been emitted and terminated the run.
+        # Coverage exhaustion must not preempt an undelivered close — the
+        # close may be emitted by either agent at any time (the script is
+        # de-positional), so the run defers to the close (and to mutual PASS
+        # as a backstop) rather than stopping the moment every coverage copy
+        # is consumed.
+        self._close_delivered: bool = False
+
         # Grounding-divergence accumulations (accept-mode).
         self._unmatched_groundings: list[KValue] = []
 
@@ -358,8 +366,15 @@ class Runner:
                 return
         # Entry exhaustion: every authored coverage copy has been consumed.
         # Checked at the burst boundary so an over-budget emission inside the
-        # burst is surfaced as divergence first.
-        if not self._closed and self._consumed == self._coverage_budget:
+        # burst is surfaced as divergence first. This must not preempt an
+        # undelivered close (see ``_close_delivered``): when a close is still
+        # outstanding the run continues so the close — or mutual PASS — can
+        # terminate it.
+        if (
+            not self._closed
+            and self._close_delivered
+            and self._consumed == self._coverage_budget
+        ):
             self._closed = True
             self._bus.stop()
 
@@ -400,16 +415,19 @@ class Runner:
         # The close content ends the run (any agent, any time) — once its
         # coverage copies are consumed (a unique close has none, so fires now).
         if key == self._closing_key:
+            self._close_delivered = True
             self._closed = True
             self._bus.stop()
             return
 
         # Immediate divergence (exhausted: budget spent; unmatched: present
-        # nowhere). Either stops the run immediately.
+        # nowhere). Under "fail" the run stops immediately; under "accept" the
+        # divergence is recorded and the run continues to the next emission.
         reason = "exhausted" if budget > 0 else "unmatched"
         self._record_divergence(event, reason)
-        self._closed = True
-        self._bus.stop()
+        if self._on_divergence == "fail":
+            self._closed = True
+            self._bus.stop()
 
     def _record_divergence(self, event: RationaliseEvent, reason: str) -> None:
         """Record the :class:`Divergence` for ``event`` per the run's policy."""

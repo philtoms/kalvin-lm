@@ -28,8 +28,11 @@ Usage::
     python scripts/dialogue_run.py --rationalise               # RationalisingTrainee
     python scripts/dialogue_run.py --synthesize                # SynthesizingTrainer
     python scripts/dialogue_run.py --synthesize --rationalise  # both real actors
+    python scripts/dialogue_run.py --divergence                # fail (exit 1) on divergence
 
-Exit code is 1 only on an immediate divergence; 0 otherwise. 
+By default divergences are accepted and the run completes (exit 0), with any
+unmatched emissions/groundings reported in the trace. Pass ``--divergence`` to
+fail (exit 1) on the first immediate divergence instead. 
 """
 
 from __future__ import annotations
@@ -351,6 +354,16 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--divergence",
+        action="store_true",
+        help=(
+            "Fail (exit 1) on an immediate divergence. Off by default: "
+            "divergences are accepted and the run completes, with displacement "
+            "and any divergence reported in the trace. Maps to the runner's "
+            "on_divergence='fail'; the default maps to on_divergence='accept'."
+        ),
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help=(
@@ -370,8 +383,9 @@ def main(argv: list[str] | None = None) -> int:
     # The compiled source's signature→label map.
     sig_to_label = _sig_to_label(script, tokenizer=tok, signifier=sigf)
 
-    # Always on
-    on_divergence = "fail"
+    # --divergence opts into fail-on-divergence; the default accepts
+    # divergences so the run completes and displacement is reported.
+    on_divergence = "fail" if args.divergence else "accept"
 
     # The --synthesize/--rationalise flags substitute real actors. They are
     # orthogonal: passing both runs the two real actors against the same
@@ -416,11 +430,25 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(
         f"\nDialogue session: {dialogue_path}\n"
-        f"  events received     : {len(res.events)}\n"
-        # f"  unmatched emissions : {len(res.unmatched)}\n"
+        f"  events received        : {len(res.events)}\n"
+        f"  unmatched emissions    : {len(res.unmatched)}\n"
         f"  uncovered (displacement): {len(res.uncovered)}\n"
         f"  uncovered groundings   : {len(res.uncovered_groundings)}"
     )
+    # When divergence is accepted (the default), surface any unmatched
+    # emissions / groundings so the actor's divergences are visible without
+    # a hard failure.
+    if res.unmatched:
+        print("\n  --- unmatched emissions (accepted divergence) ---")
+        for ev in res.unmatched:
+            print(
+                "    "
+                + _scripted_form_event(ev, sig_to_label)
+            )
+    if res.unmatched_groundings:
+        print("\n  --- unmatched groundings (accepted divergence) ---")
+        for gv in res.unmatched_groundings:
+            print("    " + _render_scripted("K", "ground", gv, sig_to_label))
     if args.verbose:
         trainee = runner.trainee
         if isinstance(trainee, RationalisingTrainee):

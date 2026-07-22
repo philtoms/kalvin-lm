@@ -441,6 +441,17 @@ The counter is per-scope-per-character, keyed on the lowercase character value. 
 
 **Rule B4 — Inline Override.** An inline annotation `S(ubject)` binds immediately, bypassing the occurrence counter. Additionally, it retroactively patches the matching character in the parent scope's MTS CANONIZES entry. Only the immediate parent scope is patched — no propagation beyond one level. If the character is not found in the parent's MTS entry, the override is a safe no-op.
 
+An inline override binds at **its own scope level**: it is registered in the scope that is current when the annotated item is resolved (the enclosing subscript scope for a node-side annotation, e.g. `H` inside `DH = h(ad)`). It is **never leaked into a parent or the root scope**, so a nested inline cannot steal a first-letter binding that an outer compound's MTS expansion is entitled to. Concretely, in
+
+```
+(what did Mary have)
+WDMH =>
+  M
+  DH = h(ad)
+  W
+```
+the `h(ad)` override binds `h → "had"` only within `DH`'s own subscript (so `DH`'s MTS expansion resolves its `H` char to "had"). It does **not** affect `WDMH`'s MTS expansion, whose `H` char resolves to the header word **"have"** via first-letter matching — giving `have` its own identity kline and `DH` the surface `[did, have]`.
+
 ### 10.2 Binding Scope
 
 Scopes are created by operator boundaries (§3). Each scope holds:
@@ -483,7 +494,7 @@ encode("HELLO") → (sig_word << 32) | bpe_token_id
 
 **Compound-word decomposition** is the compiler mechanism that handles a resolved **word** the external BPE tokenizer splits into multiple subword tokens (e.g. `Mary` → `[mar, y]`). It is **orthogonal to MTS (§8)**: structurally the two emit the same shape (component identities + a CANONIZES over a packed signature), but their semantics are opposite. Where an MTS entry's decomposition is the _content_ (a real aggregation → canon/misfit), a compound-word's decomposition is an _encoding artefact_ of external tokenization — the word is one lexical item, so the kline must be recognised as an **identity**, not a canon.
 
-The discriminator is the boundary marker token `COMPOUND_TOKEN` (@nlp_tokenizer spec): the compiler prepends it as an extra node, so a compound-word kline is `Mary: [COMPOUND_TOKEN, mar, y]`. The token participates in the signature algebra like any other node — the signature is `make_signature([mar, y, COMPOUND_TOKEN])` — and its presence in the nodes is the sole structural signal that the kline is a compound-word identity rather than a canon (@kline spec §Structural Predicates). `COMPOUND_TOKEN` is the **only** point at which the compiler's compound/MTS distinction leaks into kalvin; both terms are otherwise compiler-internal.
+The discriminator is the boundary marker token `COMPOUND_TOKEN` (@nlp_tokenizer spec): the compiler prepends it as an extra node, so a compound-word kline is `Mary: [COMPOUND_TOKEN, mar, y]`. The token participates in the signature algebra like any other node — the signature is `make_signature([COMPOUND_TOKEN, mar, y])` — and its presence in the nodes is the sole structural signal that the kline is a compound-word identity rather than a canon (@kline spec §Structural Predicates). `COMPOUND_TOKEN` is the **only** point at which the compiler's compound/MTS distinction leaks into kalvin; both terms are otherwise compiler-internal.
 
 When a resolved word BPE-encodes to multiple tokens, the TokenEncoder emits:
 
