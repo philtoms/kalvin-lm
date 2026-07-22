@@ -338,10 +338,7 @@
       "role_turn": 15
     },
     {
-      "op": "IDENTITY",
-      "signature": "a",
-      "nodes": [],
-      "significance": "S4",
+      "notes": "K has grounded everything it needs; it has nothing further to propose here, so it PASSes (mutual PASS with T would be terminal, but T still owes the closing coverage copy).",
       "role": "K",
       "turn": 32,
       "role_turn": 17

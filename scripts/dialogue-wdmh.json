@@ -113,11 +113,7 @@
       "role_turn": 22
     },
     {
-      "op": "IDENTITY",
-      "signature": "had",
-      "nodes": [],
-      "significance": "S4",
-      "notes": "K doesn't recognise has",
+      "notes": "K already grounded `had` in the MHALL lesson, so it does not re-query it; it jumps straight to the misfit proposal below.",
       "role": "K",
       "turn": 45,
       "role_turn": 23
@@ -145,8 +141,8 @@
       "op": "CANONIZES",
       "signature": "WDMH",
       "nodes": [
-        "Mary",
         "had",
+        "Mary",
         "a",
         "little",
         "lamb"
@@ -155,7 +151,7 @@
       "role": "K",
       "turn": 48,
       "role_turn": 25,
-      "notes": "Misfit proposal: K substitutes had for 'did have', 'a little lamb' for what."
+      "notes": "Misfit proposal: K substitutes had for 'did have', 'a little lamb' for what. Node order is the order K actually synthesises (had leads)."
     },
     {
       "op": "CANONIZES",

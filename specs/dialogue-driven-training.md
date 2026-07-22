@@ -166,7 +166,10 @@ once its own coverage copies are spent (so a close that recurs as coverage
 closes on its final occurrence, not its first):
 
 - **In the budget with copies remaining** → consume one copy. Every budget
-  spent → terminate (coverage exhaustion).
+  spent terminates only once the close has been delivered — coverage
+  exhaustion does not preempt an undelivered close (the close may be emitted
+  by either agent at any time, so the run defers to the close, with mutual
+  PASS as the backstop).
 - **Equals the close (budget exhausted for its key)** → terminate. A unique
   close has no coverage copies, so terminates on first emission.
 - **In the script but budget exhausted, and not the close** → immediate
