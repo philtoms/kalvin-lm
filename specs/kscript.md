@@ -508,6 +508,8 @@ When a resolved word BPE-encodes to multiple tokens, the TokenEncoder emits:
   parent kline uses Mary's signature as its single node
 ```
 
+**Provenance (diagnostic).** Each component identity is named after its **own** subword token (the `mar` and `y` klines), not the compound word; only the compound-word identity carries `Mary`. (`dbg` is a non-spec'd diagnostic — this names the convention the compiler follows, not a contract.)
+
 **Semantics.** The compound-word kline is structurally an **identity** (S1) — `COMPOUND_TOKEN` in its nodes makes `is_identity` overrule any canon classification. This is the structural opposite of an MTS canonization entry (§8), which is a canon (S1-eligible) precisely because it carries no marker.
 
 ### 11.4 Signature Construction

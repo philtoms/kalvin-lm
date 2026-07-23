@@ -315,7 +315,13 @@ class TokenEncoder:
             for tok in tokens:
                 tok_dbg: KDbg | None = None
                 if self._dev:
-                    tok_dbg = self._build_dbg(tok, dbg_label, op="IDENTITY")
+                    # Each subword IDENTITY kline is its own lexical item,
+                    # not the compound word: pass no label so _build_dbg
+                    # names the kline after its own decoded subword text
+                    # (e.g. ``M``, ``ary``) instead of inheriting the
+                    # compound's ``dbg_label`` (``Mary``), which would label
+                    # every subword identically and obscure which is which.
+                    tok_dbg = self._build_dbg(tok, "", op="IDENTITY")
                 else:
                     tok_dbg = KDbg(op="IDENTITY")
                 extras.append(
@@ -370,6 +376,11 @@ class TokenEncoder:
         type-dictionary entry summarised into ``type_info`` (decode is
         defensive — ``decoded`` is purely diagnostic and must not crash
         compilation).
+
+        When ``label`` is empty for a single (non-packed) token, it
+        defaults to the token's own decoded text — the kline's label then
+        names what the kline *is* (e.g. a ``M`` subword) rather than the
+        compound word it was split from (``Mary``).
         """
         if packed:
             return KDbg(op=op, label=label)
@@ -377,6 +388,8 @@ class TokenEncoder:
             decoded = self._tokenizer.decode([sig_uint64])
         except Exception:
             decoded = ""
+        if not label:
+            label = decoded
         type_info = ""
         # type-info is an NLP-specific debug affordance: only type-aware
         # tokenizers expose a node-taking entry lookup. The KTokenizer
