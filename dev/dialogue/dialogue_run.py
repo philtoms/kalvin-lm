@@ -181,6 +181,8 @@ def _trace(
 
     records_by_key: dict = defaultdict(deque)
     for turn in decoded:
+        if turn.close:
+            continue  # close is terminal (its own slot); exclude from queue
         records_by_key[turn_content_key(turn)].append(turn.record)
 
     def _key_of(ev) -> tuple:
