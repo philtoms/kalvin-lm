@@ -21,6 +21,8 @@ from training.dialogue.decoder import (
     load_script,
 )
 from training.dialogue.actors import (
+    RationalisingTrainee,
+    RationalisingTrainer,
     ScriptTrainee,
     ScriptTrainer,
 )
@@ -38,6 +40,8 @@ __all__ = [
     "DialogueScript",
     "Divergence",
     "GroundingDivergence",
+    "RationalisingTrainee",
+    "RationalisingTrainer",
     "RunResult",
     "Runner",
     "ScriptTrainee",

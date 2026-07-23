@@ -26,8 +26,10 @@ Usage::
     python scripts/dialogue_run.py                             # default dialogue
     python scripts/dialogue_run.py scripts/dialogue-mhall.json # explicit path
     python scripts/dialogue_run.py --rationalise               # RationalisingTrainee
+    python scripts/dialogue_run.py --rationalise-trainer       # RationalisingTrainer
+    python scripts/dialogue_run.py --rationalise-both          # both rationalising actors
     python scripts/dialogue_run.py --synthesize                # SynthesizingTrainer
-    python scripts/dialogue_run.py --synthesize --rationalise  # both real actors
+    python scripts/dialogue_run.py --synthesize --rationalise  # SynthesizingTrainer + RationalisingTrainee
     python scripts/dialogue_run.py --divergence                # fail (exit 1) on divergence
 
 By default divergences are accepted and the run completes (exit 0), with any
@@ -63,6 +65,7 @@ from training.dialogue import (  # noqa: E402
 from training.dialogue.decoder import primaries_from_source  # noqa: E402
 from training.dialogue.actors import (  # noqa: E402
     RationalisingTrainee,
+    RationalisingTrainer,
     SynthesizingTrainer,
 )
 
@@ -260,20 +263,20 @@ def _render_divergence(exc: Divergence, sig_to_label: dict[int, str]) -> str:
 
 
 def _render_grounded(
-    trainee: RationalisingTrainee,
+    actor: RationalisingTrainee | RationalisingTrainer,
     sig_to_label: dict[int, str],
 ) -> str:
-    """K's grounded klines after the run, in scripted form.
+    """A rationalising actor's grounded klines after the run, in scripted form.
 
     ``RationaliserState.grounded`` is ``{signature: [KLine, ...]}`` — every
-    kline K has grounded at S1, deduplicated by nodes. Rendered one per line
-    as ``S:[nodes]`` with labels recovered from ``sig_to_label`` (falling
+    kline the actor has grounded at S1, deduplicated by nodes. Rendered one per
+    line as ``S:[nodes]`` with labels recovered from ``sig_to_label`` (falling
     back to hex), grouped under each owning signature. Identities (empty
     nodes) render as ``S:[]``.
     """
-    state = trainee._state  # noqa: SLF001 — post-run inspection by the script
+    state = actor._state  # noqa: SLF001 — post-run inspection by the script
     if not state.grounded:
-        return "  (K grounded nothing)"
+        return "  (grounded nothing)"
     lines = []
     for signature in sorted(state.grounded, key=lambda s: (s.bit_length(), s)):
         owner = sig_to_label.get(signature) or f"0x{signature:x}"
@@ -354,6 +357,26 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--rationalise-trainer",
+        action="store_true",
+        help=(
+            "Substitute a RationalisingTrainer (a real trainer that shares the "
+            "rationaliser engine with RationalisingTrainee and leads the "
+            "dialogue) for the default ScriptTrainer. Orthogonal to "
+            "--rationalise and --synthesize."
+        ),
+    )
+    parser.add_argument(
+        "--rationalise-both",
+        action="store_true",
+        help=(
+            "Run both sides as rationalising actors (RationalisingTrainer + "
+            "RationalisingTrainee). Shorthand for --rationalise "
+            "--rationalise-trainer; mutually exclusive with the other "
+            "actor-substitution flags."
+        ),
+    )
+    parser.add_argument(
         "--divergence",
         action="store_true",
         help=(
@@ -387,27 +410,52 @@ def main(argv: list[str] | None = None) -> int:
     # divergences so the run completes and displacement is reported.
     on_divergence = "fail" if args.divergence else "accept"
 
-    # The --synthesize/--rationalise flags substitute real actors. They are
-    # orthogonal: passing both runs the two real actors against the same
-    # reference script. The real actors are drop-in (adapter-driven).
+    # The --synthesize/--rationalise/--rationalise-trainer/--rationalise-both
+    # flags substitute real actors. The individual flags are orthogonal
+    # (each selects one side as a real actor against a table counterpart);
+    # --rationalise-both selects both rationalising actors at once and is
+    # mutually exclusive with the others. The real actors are drop-in.
+    if args.rationalise_both and (args.rationalise or args.rationalise_trainer
+                                  or args.synthesize):
+        parser.error(
+            "--rationalise-both is mutually exclusive with --rationalise, "
+            "--rationalise-trainer, and --synthesize (it selects both actors)"
+        )
+    if args.synthesize and args.rationalise_trainer:
+        parser.error("--synthesize and --rationalise-trainer are mutually exclusive "
+                     "(both substitute the trainer)")
+    # Resolve which sides run a real actor. --rationalise-both turns on both
+    # rationalising actors; otherwise each flag selects its own side.
+    rationalise_trainee = args.rationalise or args.rationalise_both
+    rationalise_trainer = args.rationalise_trainer or args.rationalise_both
+
+    # When a real trainer needs the compiled source or primaries, build them
+    # once here.
     compiled = None
     primaries = None
-    if args.synthesize:
+    if args.synthesize or rationalise_trainer:
         compiled = compile_source(script.source, tokenizer=tok, signifier=sigf, dev=True)
         primaries = primaries_from_source(
             script.source, tokenizer=tok, signifier=sigf
         )
 
-    trainer_factory = (
-        (lambda sink: SynthesizingTrainer(
-            compiled, sigf, primaries, sink=sink, table=decoded
-        ))
-        if args.synthesize
-        else (lambda sink: ScriptTrainer(decoded, sink=sink))
-    )
+    if args.synthesize:
+        trainer_factory = (
+            lambda sink: SynthesizingTrainer(
+                compiled, sigf, primaries, sink=sink, table=decoded
+            )
+        )
+    elif rationalise_trainer:
+        trainer_factory = (
+            lambda sink: RationalisingTrainer(
+                sigf, primaries, sink=sink, compiled=compiled, table=decoded
+            )
+        )
+    else:
+        trainer_factory = lambda sink: ScriptTrainer(decoded, sink=sink)
     trainee_factory = (
         (lambda sink: RationalisingTrainee(sigf, sink=sink))
-        if args.rationalise
+        if rationalise_trainee
         else (lambda sink: ScriptTrainee(decoded, sink=sink))
     )
     try:
@@ -430,12 +478,24 @@ def main(argv: list[str] | None = None) -> int:
         "Exchange (arrival order):\n"
         + _trace(res.events, decoded, sig_to_label)
     )
+    # The supervisor-load baseline: how often the rationalising trainer's
+    # cogitation PASSed and it asked the supervisor. Surfaced on every run
+    # (not just -v) so the trajectory is visible as the rationaliser takes on
+    # more of the load — the count is the baseline for that work.
+    supervisor_line = ""
+    if isinstance(runner.trainer, RationalisingTrainer):
+        asks, emissions = runner.trainer.supervisor_escalations()
+        supervisor_line = (
+            f"\n  supervisor escalations : {asks} asks, "
+            f"{len(emissions)} emitted"
+        )
     print(
         f"\nDialogue session: {dialogue_path}\n"
         f"  events received        : {len(res.events)}\n"
         f"  unmatched emissions    : {len(res.unmatched)}\n"
         f"  uncovered (displacement): {len(res.uncovered)}\n"
         f"  uncovered groundings   : {len(res.uncovered_groundings)}"
+        + supervisor_line
     )
     # When divergence is accepted (the default), surface any unmatched
     # emissions / groundings so the actor's divergences are visible without
@@ -452,15 +512,34 @@ def main(argv: list[str] | None = None) -> int:
         for gv in res.unmatched_groundings:
             print("    " + _render_scripted("K", "ground", gv, sig_to_label))
     if args.verbose:
-        trainee = runner.trainee
-        if isinstance(trainee, RationalisingTrainee):
-            print("\nK grounded klines:")
-            print(_render_grounded(trainee, sig_to_label))
+        # -v lists the grounded klines of every rationalising actor in play.
+        # Under --rationalise-both both sides are rationalising and both are
+        # listed. The table actors carry no grounded state.
+        actors = []
+        if isinstance(runner.trainer, (RationalisingTrainee, RationalisingTrainer)):
+            actors.append(("T", runner.trainer))
+        if isinstance(runner.trainee, (RationalisingTrainee, RationalisingTrainer)):
+            actors.append(("K", runner.trainee))
+        if actors:
+            for label, actor in actors:
+                print(f"\n{label} grounded klines:")
+                print(_render_grounded(actor, sig_to_label))
         else:
             print(
-                "\n(verbose: -v lists K's grounded klines, but the trainee "
-                "is not a RationalisingTrainee — pass --rationalise.)"
+                "\n(verbose: -v lists a rationalising actor's grounded klines, "
+                "but neither side is a Rationalising actor — pass "
+                "--rationalise, --rationalise-trainer, or --rationalise-both.)"
             )
+        # When the trainer is a RationalisingTrainer, -v also lists which
+        # proposals the supervisor supplied — the specific load to target next.
+        if isinstance(runner.trainer, RationalisingTrainer):
+            _asks, emissions = runner.trainer.supervisor_escalations()
+            if emissions:
+                print("\nT supervisor-supplied proposals:")
+                for v in emissions:
+                    print("    " + _render_scripted("T", "sup", v, sig_to_label))
+            else:
+                print("\n(supervisor supplied nothing — full rationaliser load)")
     # Reaching here means no immediate divergence was raised. 
     return 0
 

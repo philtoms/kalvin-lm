@@ -18,7 +18,7 @@ from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S1, SIG_S2
+from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn, turn_content_key
@@ -360,3 +360,263 @@ class RationalisingTrainee(Actor):
         """
         drained, self._observations = self._observations, []
         return drained
+
+
+# ── Rationalising trainer ─────────────────────────────────────────────────
+
+#: The significance bands a trainer speaks in. The dialogue is band-asymmetric:
+#: S1 (ratify) and S2 (propose/canon) are the trainer's speech acts; S3
+#: (connote) and S4 (identity ask) are the trainee's. A rationalising trainer
+#: shares the trainee's cogitation engine, whose emissions may land in either
+#: side's bands — only an S1/S2 emission is something a trainer should say.
+_TRAINER_BANDS = frozenset({SIG_S1, SIG_S2})
+
+
+class RationalisingTrainer(Actor):
+    """A trainer that rationalises each turn, with a synthesizer supervisor.
+
+    A rationalising counterpart to :class:`RationalisingTrainee`: it shares the
+    pure :class:`~training.dialogue.rationalise.Rationaliser` engine and owns a
+    :class:`~training.dialogue.rationalise.RationaliserState` of its own. The
+    difference is that the trainer **leads**: it handles the opening seed (an
+    empty incoming burst) by emitting the current primary at S2 and advancing,
+    then routes and cogitates over K's replies like the trainee.
+
+    **Supervisor escalation.** The shared engine was written from the trainee's
+    perspective, so the trainer's own cogitation will naturally PASS at moments
+    where a trainer must act — answering K's S4 identity ask, ratifying an S3
+    proposal. At those natural-PASS moments the trainer asks its **supervisor**,
+    :func:`~training.dialogue.synthesize.synthesize`, which answers from the
+    compiled source (R2 reply to an identity, R3 echo of a compiled kline). The
+    supervisor's reply flows back through the trainer's normal emission path —
+    deduped, recorded as ratified knowledge when at S1 — so cogitation and
+    supervision share one bookkeeping loop.
+
+    The two share a ``_grounded`` view (the signatures emitted at S1 by either
+    side), exactly like :class:`SynthesizingTrainer`: it is what the supervisor
+    reads to pick a canon's pedagogical significance. A scripted fallback (the
+    decoded ``table``) remains as the **driving-move backstop** for moves that
+    have no supervisor derivation — a close, the next script's opening after K
+    PASSes.
+
+    Drop-in for :class:`ScriptTrainer` / :class:`SynthesizingTrainer`. Like the
+    trainee, it deduplicates its own emissions (the engine is stateless about
+    what it has said, so the actor is the single dedup point) and exposes its
+    internal S1 groundings via :meth:`drain_observations` for inspection.
+    """
+
+    def __init__(
+        self,
+        signifier: KSignifier,
+        primaries: Sequence[KLine],
+        sink: EventSink,
+        *,
+        compiled: Sequence[KValue] | None = None,
+        table: Sequence[DecodedTurn] | None = None,
+    ) -> None:
+        if not primaries:
+            raise ValueError("RationalisingTrainer needs at least one primary")
+        super().__init__(role="T", sink=sink)
+        self._signifier = signifier
+        self._primaries: tuple[KLine, ...] = tuple(primaries)
+        self._primary_index = 0
+        self._engine = Rationaliser(signifier)
+        self._state = RationaliserState()
+        self._observations: list[KValue] = []
+        # Signatures of proposals already emitted into the dialogue (by
+        # ``(signature, nodes)`` key). The engine is free to re-derive an
+        # emission — the actor drops any proposal it has already published,
+        # so T never repeats itself. Mirrors the trainee's dedup point.
+        self._emitted: set[tuple[int, tuple[int, ...]]] = set()
+        # The compiled source (optional) — the body the **supervisor**
+        # (:func:`~training.dialogue.synthesize.synthesize`) answers from
+        # when the trainer's own cogitation has nothing to say. Without it
+        # the trainer has no supervisor and a natural PASS stays a PASS.
+        self._compiled: tuple[KValue, ...] = tuple(compiled) if compiled else ()
+        # Signatures emitted at S1 in the dialogue (by either side) — the
+        # trainer's view of ratified knowledge, fed to the supervisor so a
+        # canon's pedagogical significance reflects what K has actually
+        # grounded. Mirrors :class:`SynthesizingTrainer`.
+        self._grounded: set[int] = set()
+        # The decoded table (optional) for the scripted fallback — the
+        # driving-move backstop (a close, the next script's opening) that has
+        # no supervisor derivation. Multiplicity-aware, mirroring the runner's
+        # coverage budget and the SynthesizingTrainer's fallback. Without a
+        # ``table`` the trainer PASSes back.
+        self._table: tuple[DecodedTurn, ...] = tuple(table) if table else ()
+        self._t_covered: Counter[tuple] = Counter()
+        # Supervisor-load baseline: how often cogitation naturally PASSed and
+        # the trainer asked the supervisor, and which proposals the supervisor
+        # actually supplied (dedup'd-in). The goal is for this to trend toward
+        # zero as the rationaliser takes on more of the trainer's load — the
+        # count is the baseline for that trajectory.
+        self._supervisor_asks: int = 0
+        self._supervisor_emissions: list[KValue] = []
+
+    def next_events(
+        self, incoming: list[RationaliseEvent]
+    ) -> Iterable[RationaliseEvent]:
+        # Track ratified knowledge: any S1 emission (by either side) grounds
+        # its signature (and a canon's nodes). Fed to the supervisor so its
+        # canon significance reflects what K has actually grounded.
+        for event in incoming:
+            if event.proposal.significance == SIG_S1:
+                self._grounded.add(event.proposal.kline.signature)
+                self._grounded.update(event.proposal.kline.nodes)
+
+        # Opening seed — the trainer leads. Emit the current primary at S2,
+        # advance, and seed the engine's work-list with the relationship that
+        # primary declares so cogitation can drive from it on later turns.
+        if not incoming:
+            primary = self._primaries[self._primary_index]
+            self._primary_index = min(
+                self._primary_index + 1, len(self._primaries) - 1
+            )
+            proposal = KValue(primary, SIG_S2)
+            self._seed_work_list(primary)
+            event = self._emit(proposal, query=proposal)
+            if event is not None:
+                yield event
+            return
+
+        # If K PASSed, the trainer owes a driving move (a close, the next
+        # script's opening) that has no supervisor derivation — the scripted
+        # fallback is the backstop. Without a table the trainer PASSes back
+        # (mutual PASS — terminal).
+        if all(is_pass(e) for e in incoming):
+            fallback = self._next_scripted_t()
+            if fallback is not None:
+                event = self._emit(fallback, query=incoming[-1].proposal)
+                if event is not None:
+                    yield event
+            return
+
+        # Route + cogitate over K's replies (shared engine), deduplicating
+        # any proposal T has already published. The engine was written from
+        # the trainee's perspective, so its cogitation may emit at the
+        # **trainee's** bands (S3 proposals, S4 identity asks) — speech acts a
+        # trainer does not make (T leads and ratifies: S1/S2 only). Only an
+        # emission at the trainer's own bands counts as "cogitation had
+        # something to say"; otherwise this is the trainer's natural PASS —
+        # escalate to the supervisor (``synthesize``), which answers from the
+        # compiled source (R2 reply to an identity, R3 echo of a kline).
+        query = incoming[-1].proposal
+        batch, observations = self._engine.rationalise(
+            self._state, [e.proposal for e in incoming]
+        )
+        self._observations.extend(observations)
+        emitted_any = False
+        for proposal in batch:
+            if proposal.significance not in _TRAINER_BANDS:
+                continue  # a trainee speech act (S3/S4) — not for T to say
+            event = self._emit(proposal, query=query)
+            if event is not None:
+                emitted_any = True
+                yield event
+        if emitted_any:
+            return
+        # Natural PASS: cogitation produced nothing for T to say. Ask the
+        # supervisor.
+        for incoming_event in incoming:
+            if is_pass(incoming_event):
+                continue
+            self._supervisor_asks += 1
+            supervised = synthesize(
+                list(self._compiled),
+                incoming_event.proposal,
+                self._signifier,
+                self._grounded,
+            )
+            event = self._emit(supervised, query=query)
+            if event is not None:
+                self._supervisor_emissions.append(supervised)
+                yield event
+
+    def _emit(self, proposal: KValue, *, query: KValue) -> RationaliseEvent | None:
+        """Build one T event for ``proposal`` with shared bookkeeping.
+
+        The single emission path for cogitated, supervised, and fallback
+        proposals: dedup against what T has already published, record an S1
+        proposal as ratified knowledge (feeding the supervisor next turn), and
+        mark its content key covered (for the scripted fallback). Returns the
+        event, or ``None`` when ``proposal`` is a duplicate — so the caller can
+        tell cogitation produced nothing new and escalate to the supervisor.
+        """
+        key = (proposal.kline.signature, tuple(proposal.kline.nodes))
+        if key in self._emitted:
+            return None
+        self._emitted.add(key)
+        if proposal.significance == SIG_S1:
+            self._grounded.add(proposal.kline.signature)
+            self._grounded.update(proposal.kline.nodes)
+        self._mark_covered(proposal)
+        return RationaliseEvent(
+            kind="frame", query=query, proposal=proposal, role="T"
+        )
+
+    def drain_observations(self) -> list[KValue]:
+        """Return and clear the S1 grounding observations accumulated this turn.
+
+        Surfaced for inspection (e.g. by the driver). The runner's grounding
+        assertions apply only to the trainee, so these observations are not
+        verified against the script; they are the trainer's internal bookkeeping.
+        """
+        drained, self._observations = self._observations, []
+        return drained
+
+    def supervisor_escalations(self) -> tuple[int, list[KValue]]:
+        """The supervisor-load baseline: ``(asks, emissions)``.
+
+        ``asks`` is how many times cogitation naturally PASSed and the trainer
+        consulted the supervisor; ``emissions`` is the subset of those answers
+        that were actually published (not dedup'd out), in emission order. The
+        goal is for both to trend toward zero as the rationaliser takes on more
+        of the trainer's load — this is the baseline for that trajectory.
+        """
+        return self._supervisor_asks, list(self._supervisor_emissions)
+
+    # -- opening seed -------------------------------------------------------
+
+    def _seed_work_list(self, primary: KLine) -> None:
+        """Seed the engine's work-list with the relationship the primary declares.
+
+        A primary opens as a proposal: the trainer has *asserted* it, not
+        grounded it. Placing it on the work-list lets cogitation treat it as a
+        pending entry the trainee will be asked to recognise — mirroring how a
+        trainee's work-list accumulates incoming S2 proposals.
+        """
+        if primary not in self._state.work_list:
+            self._state.work_list.append(primary)
+
+    # -- scripted fallback --------------------------------------------------
+
+    def _next_scripted_t(self) -> KValue | None:
+        """The earliest T coverage row not yet emitted to its full multiplicity.
+
+        The same notion of "the next proposal T owes" as the
+        :class:`SynthesizingTrainer` fallback: the first T row (coverage or
+        close) whose emitted count is below its authored multiplicity. Counting
+        (not a cursor) keeps the fallback robust to the cogitation path having
+        emitted rows out of order, and honours a close that recurs as coverage.
+        """
+        budget: Counter[tuple] = Counter()
+        for turn in self._table:
+            if turn.role != "T":
+                continue
+            budget[turn_content_key(turn)] += 1
+        for turn in self._table:
+            if turn.role != "T":
+                continue
+            key = turn_content_key(turn)
+            if self._t_covered[key] < budget[key]:
+                return turn.value
+        return None
+
+    def _mark_covered(self, proposal: KValue) -> None:
+        """Record a T proposal's content key as covered (for the fallback)."""
+        self._t_covered[(
+            "T",
+            proposal.kline.signature,
+            tuple(proposal.kline.nodes),
+            proposal.significance,
+        )] += 1

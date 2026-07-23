@@ -43,8 +43,10 @@ the authored exchange the actors actually traverse.
   script. They exist so the runner's coverage machinery has something to drive
   before the real actors arrive.
 - The **real actors** are drop-in: `SynthesizingTrainer` (derives each turn
-  from the compiled source) and `RationalisingTrainee` (a stateful, rationalising
-  trainee). Either or both can be substituted via flags on the driver.
+  from the compiled source), `RationalisingTrainee` (a stateful, rationalising
+  trainee), and `RationalisingTrainer` (a trainer sharing the rationaliser
+  engine). Any combination can be substituted via flags on the driver;
+  `--rationalise-both` runs both rationalising actors at once.
 
 ### Two verification channels
 
@@ -65,7 +67,7 @@ not policed.
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | Package root         | `src/training/dialogue/__init__.py`                                                                                      | Public re-exports                                                                  |
 | Decoder              | `src/training/dialogue/decoder.py`                                                                                       | Script → flat `list[DecodedTurn]` (config-time, a resolver)                        |
-| Actors               | `src/training/dialogue/actors.py`                                                                                        | `ScriptTrainer`/`ScriptTrainee`, `SynthesizingTrainer`, `RationalisingTrainee`     |
+| Actors               | `src/training/dialogue/actors.py`                                                                                        | `ScriptTrainer`/`ScriptTrainee`, `SynthesizingTrainer`, `RationalisingTrainer`, `RationalisingTrainee` |
 | Runner               | `src/training/dialogue/runner.py`                                                                                        | Bus subscriber + driver, coverage/divergence/PASS, `RunResult`                     |
 | Rationaliser         | `src/training/dialogue/rationalise.py`                                                                                   | Pure engine: `(state, incoming) -> (batch, observations)`                          |
 | Synthesize           | `src/training/dialogue/synthesize.py`                                                                                    | `SynthesizingTrainer`'s R1/R2/R3 derivation                                        |
@@ -100,23 +102,31 @@ runner, and actors. Reach for this first; it's the single richest surface.
 PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py                          # default (MHALL), both table actors
 PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py scripts/dialogue-wdmh.json
 PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --rationalise            # real trainee, table trainer (deterministic oracle)
-PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --synthesize             # real trainer, table trainee
-PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --synthesize --rationalise  # both real actors
-PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --rationalise -v         # also list K's grounded klines
-PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --divergence             # fail (exit 1) on the first immediate divergence
+PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --rationalise-trainer   # real trainer, table trainee
+PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --synthesize           # synthesizing trainer, table trainee
+PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --rationalise-both      # both rationalising actors (RationalisingTrainer + RationalisingTrainee)
+PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --synthesize --rationalise  # synthesizing trainer + rationalising trainee
+PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --rationalise -v        # also list K's grounded klines
+PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --divergence           # fail (exit 1) on the first immediate divergence
 ```
 
-Flags are **orthogonal**. By default divergences are **accepted**: the run
-completes (exit 0) and any unmatched emissions/groundings are listed in the
-trace. Pass `--divergence` to fail (exit 1) on the first immediate divergence
-instead — useful when you want the run to stop and surface a divergence report
-the moment an actor strays. The canonical workflow below uses the default (accept):
+The actor-substitution flags select which sides run a real actor (the other
+sides default to their table counterpart): `--rationalise` (real trainee),
+`--rationalise-trainer` (real trainer), `--synthesize` (synthesizing trainer).
+They are **orthogonal** and may be combined — except `--rationalise-both`, a
+shorthand that selects both rationalising actors and is mutually exclusive
+with the others. By default divergences are **accepted**: the run completes
+(exit 0) and any unmatched emissions/groundings are listed in the trace. Pass
+`--divergence` to fail (exit 1) on the first immediate divergence instead —
+useful when you want the run to stop and surface a divergence report the
+moment an actor strays. The canonical workflow below uses the default (accept):
 
 1. **Both table actors** — should always pass with zero displacement. If it
    doesn't, the script or decoder is broken before any actor work matters.
 2. **`--rationalise` (real trainee vs. table trainer)** — the rationalising
    trainee against a deterministic oracle. This is where trainee work shows up.
-3. **`--synthesize --rationalise` (both real)** — the full real-actor run.
+3. **`--rationalise-both` (both rationalising)** — the full real-actor run;
+   `--synthesize --rationalise` is the variant with the synthesizing trainer.
 
 Exit code is `1` only on an immediate divergence **under `--divergence`**;
 `0` otherwise. With the default (accept), a clean exit does **not** mean zero
@@ -152,8 +162,12 @@ The driver prints, in order:
   and never produced.
 - **Counts**: `events received`, `uncovered (displacement)`,
   `uncovered groundings`.
-- **With `-v` and `--rationalise`**: `K grounded klines` — K's post-run model,
-  grouped by owning signature, rendered in scripted form.
+- **With `-v` and a rationalising actor** (`--rationalise`,
+  `--rationalise-trainer`, or `--rationalise-both`): `<role> grounded klines` —
+  each rationalising actor's post-run model, grouped by owning signature,
+  rendered in scripted form. Under `--rationalise-both` both T and K are
+  listed; under `--rationalise-trainer` the supervisor-supplied proposals are
+  listed too (the load to target next).
 
 On an immediate divergence (`--divergence`, i.e. `on_divergence="fail"`), stderr gets a
 **divergence report** instead: the emitted kline that diverged, the verdict
@@ -281,7 +295,7 @@ resolution rule belongs here only if it is a genuine resolution concern
 
 The `Actor` base publishes a burst via its injected `EventSink`; `accept`
 collects `next_events` and publishes them as one burst, emitting a PASS when
-nothing is produced. Two defaults read the table; two reals derive turns.
+nothing is produced. Two defaults read the table; three reals derive turns.
 
 - **`ScriptTrainer` / `ScriptTrainee`** — `_TableActor` subclasses, content-blind,
   cursor-advancing. Cannot diverge. Exist to exercise the runner.
@@ -290,6 +304,13 @@ nothing is produced. Two defaults read the table; two reals derive turns.
   canon → CONNOTES → ratify-identity; R3 echo an exact compiled match), and
   falls back to the decoded table for its driving moves when K PASSes (a
   close, the next script's opening).
+- **`RationalisingTrainer`** — a trainer that shares the `Rationaliser` engine
+  with the trainee and **leads** the dialogue (handles the opening, then
+  routes/cogitates over K's replies). At the moments its cogitation would
+  naturally PASS (answering an S4 ask, ratifying an S3 proposal) it escalates
+  to `synthesize` as a **supervisor**; a scripted table fallback remains as the
+  driving-move backstop (closes, next-script openings). Run via
+  `--rationalise-trainer`, or both rationalising actors via `--rationalise-both`.
 - **`RationalisingTrainee`** — wraps the pure `Rationaliser` engine, owns the
   `RationaliserState`, deduplicates its own emissions, and exposes S1
   groundings via `drain_observations`.
