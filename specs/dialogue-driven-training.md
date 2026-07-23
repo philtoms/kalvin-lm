@@ -184,6 +184,15 @@ The real actors are drop-in substitutes that derive each turn:
   loaded with a **grounded prior** (a `RationaliserState` saved from a run as
   a trainee against the supervisor) earns most replies from that state and
   escalates far less — the prior is state, not a live oracle.
+- **Kline-level actor interventions.** The engine's significance is
+  structural bookkeeping (a canon is S1 when every node is grounded). The
+  trainer's *speech acts* follow a teaching protocol that differs, so the
+  actor applies per-kline corrections to engine emissions before publishing.
+  The first such intervention: **a trainer proposes canons at S2** to direct
+  the listener to cogitate over their nodes, even when the engine has already
+  grounded every node (S1). The engine stays correct; protocol moves
+  increasingly live in the actors. The trainee applies no kline override —
+  its band filter is whole-batch only.
 - **State injection.** Every rationalising actor takes an optional
   `RationaliserState` at construction (empty by default). A state snapshot
   persists via `RationaliserState.save/load` (JSON); the driver's `--load`/

@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from kalvin.events import RationaliseEvent
 from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4
-from kalvin.kline import KLine
+from kalvin.kline import KLine, is_canon
 from kalvin.kvalue import KValue
 from training.dialogue.decoder import DecodedTurn, turn_content_key
 from training.dialogue.rationalise import Rationaliser, RationaliserState
@@ -526,6 +526,7 @@ class RationalisingTrainer(Actor):
         for proposal in batch:
             if proposal.significance not in _TRAINER_BANDS:
                 continue  # a trainee speech act (S3/S4) — not for T to say
+            proposal = self._trainer_kline_override(proposal)
             event = self._emit(proposal, query=query)
             if event is not None:
                 emitted_any = True
@@ -548,6 +549,21 @@ class RationalisingTrainer(Actor):
             if event is not None:
                 self._supervisor_emissions.append(supervised)
                 yield event
+
+    def _trainer_kline_override(self, proposal: KValue) -> KValue:
+        """Kline-level protocol corrections the trainer applies to engine emissions.
+
+        The engine is role-neutral and its significance is structural
+        bookkeeping (S1 when a canon's nodes are all grounded). The trainer's
+        *speech acts* follow a different protocol: a canon is **proposed at
+        S2** to direct the listener to cogitate over its nodes, even when the
+        engine has grounded every node (S1). This is the first kline-level
+        actor intervention — engine semantics stay correct, protocol moves
+        increasingly live here.
+        """
+        if proposal.significance == SIG_S1 and is_canon(proposal.kline, self._signifier):
+            return KValue(proposal.kline, SIG_S2)
+        return proposal
 
     def _emit(self, proposal: KValue, *, query: KValue) -> RationaliseEvent | None:
         """Build one T event for ``proposal`` with shared bookkeeping.

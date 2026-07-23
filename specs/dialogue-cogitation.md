@@ -77,14 +77,18 @@ this spec owns only the two paths and their boundaries.
   for that signature.
 - **Replies (role-neutral).** The engine replies to an incoming query from
   its own state, in addition to its trainee-side proposals: an **S4 identity
-  ask** about ``X`` is answered with ``X``'s canon (S2, or S1 when every node
-  is grounded) or, failing a canon, ``X``'s compound identity at S1; an **S3
-  proposal** is ratified at S1. These are earned (no oracle): they read the
-  engine's grounded model only. The engine is role-neutral; the **actor**
-  filters its role's bands — the trainee keeps S2/S3/S4 and suppresses S1/S2
-  replies; the trainer keeps S1/S2 and suppresses S3/S4. An ask the engine
-  cannot answer from state (e.g. a CONNOTES gloss) is left for the actor's
-  other paths (escalation or scripted fallback).
+  ask** about ``X`` is answered with ``X``'s canon (S1 when every node is
+  grounded, else S2 — the engine's structural bookkeeping) or, failing a
+  canon, ``X``'s compound identity at S1; an **S3 proposal** is ratified at
+  S1. These are earned (no oracle): they read the engine's grounded model
+  only. The engine is role-neutral; protocol corrections at the kline level
+  are the **actor's** job, not the engine's. The actor filters its role's
+  bands (the trainee keeps S2/S3/S4 and suppresses S1/S2 replies; the
+  trainer keeps S1/S2 and suppresses S3/S4) and may intervene on individual
+  klines — e.g. a trainer proposes canons at S2 to direct the listener to
+  cogitate over their nodes, regardless of the engine's S1/S2 stamp. An ask
+  the engine cannot answer from state (e.g. a CONNOTES gloss) is left for
+  the actor's other paths (escalation or scripted fallback).
 - **Cogitation.** Each work-list entry is resolved in one pass, LIFO. An
   entry that is **promotable** (a single-node relationship whose reciprocal
   is grounded) or **groundable** (an identity whose signature is grounded, or

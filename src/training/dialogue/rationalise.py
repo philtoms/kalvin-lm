@@ -313,7 +313,11 @@ class _Turn:
         is left unanswered for the actor's other paths. Returns None when the
         engine has no canon or compound for ``signature``.
         """
-        # Canon — teach the parts.
+        # Canon — teach the parts. Significance is structural: S1 when every
+        # node is grounded, else S2. This is the engine's bookkeeping, not a
+        # protocol choice: whether a canon is *proposed* at S2 (a trainer
+        # speech act, to direct the listener to cogitate over its nodes) is a
+        # kline-level decision owned by the actor, not the engine.
         nodes = self._canon_nodes(signature)
         if nodes:
             kline = KLine(signature, list(nodes))
